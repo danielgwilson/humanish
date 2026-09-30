@@ -39,7 +39,7 @@ fail-closed cross-validation, and forward-declared warnings.
 | `execution.runtimeAuth`               | `openai-env` (default) or opt-in `openai-egress`; names-only durable evidence                                                |
 | `execution.runtime.version`           | Optional exact `@openai/codex` version; observed before keyed execution                                                      |
 | `actors[0].model` / `reasoningEffort` | Forwarded to Codex; retained as declarations, not observed provider identity                                                 |
-| `scenario.caps`                       | `{ maxUsd, maxJobs, maxMinutes }`: the blast-radius budget                                                                   |
+| `scenario.caps`                       | `{ maxUsd, maxJobs, maxMinutes }`: the blast-radius budget; `maxUsd > 0` is refused unless a `costProbe` measures spend      |
 | `policies`                            | `allowPrivateRepoAccess` / `allowProviderCredentials` / `allowPaymentCredentials` / `allowGitHubMutation`, all DEFAULT FALSE |
 | `actors[0].type`                      | `codex-exec`: a registered terminal actor (`keyPlacement: in-sandbox-command-scoped`)                                        |
 | `LabBackend`                          | `terminal` → `runTerminalProductLab` ([`src/routes/terminal/lab.ts`](../../src/routes/terminal/lab.ts))                      |

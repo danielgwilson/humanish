@@ -127,7 +127,11 @@ Without `maxOutputTokens` the worst case has no bound, so a capped lab without
 for that reason.
 
 The terminal route uses `scenario.caps.maxUsd` for its separate cost-ledger and
-product-spend rules; it does not use these computer-use model thresholds. The
+product-spend rules; it does not use these computer-use model thresholds. Its
+Codex tokens are counted but unpriced, so a live terminal run with a positive
+`maxUsd` is refused with `HUMANISH_TERMINAL_LAB_UNPRICED_CAP` unless an adapter's
+cost probe measures spend. Set `maxUsd: 0` and bound the run with
+`scenario.caps.maxMinutes`, which stops the agent command. The
 computer-use route uses `execution.caps`; `scenario.caps.maxTotalUsd` is not a
 terminal study budget. Check route warnings before relying on a field.
 

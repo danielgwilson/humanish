@@ -126,6 +126,12 @@ export const routeCases: readonly AdmissionCase[] = [
   },
   { name: "terminal live without keys", raw: lab("terminal", live), parser: "accepts" },
   {
+    name: "terminal live positive maxUsd",
+    raw: lab("terminal", { scenario: { mode: "live", caps: { maxUsd: 1, maxMinutes: 5 } } }),
+    parser: "accepts",
+    options: { env: "keys" },
+  },
+  {
     name: "shared world live without keys",
     raw: lab("sharedProvisioned", live),
     parser: "accepts",

@@ -241,7 +241,7 @@
       "at": "[ts]",
       "level": "info",
       "type": "terminal-lab.cost.measured",
-      "message": "Cost ledger: known total 0 USD (lower bound; unmeasured: product, media, payment, provider). No-spend proof satisfied for maxUsd=0.",
+      "message": "Cost ledger: known total 0 USD (lower bound). Not measured (null, not claimed zero): product, media, payment, provider. No-spend proof not established for maxUsd=0: no spend line was measured.",
       "simId": "sim-001",
       "streamId": "stream-001"
     },
@@ -250,7 +250,7 @@
       "at": "[ts]",
       "level": "info",
       "type": "terminal-lab.no-spend.proof",
-      "message": "No-spend proof SATISFIED for maxUsd=0: every MEASURED spend line is zero (known total 0 USD). UNPRICED (null, NOT claimed zero): product, media, payment, provider. The proof does not vouch for these. They carry no spend signal for this run.",
+      "message": "No-spend proof not established for maxUsd=0: no spend line was measured. Not measured (null, not claimed zero): product, media, payment, provider.",
       "simId": "sim-001",
       "streamId": "stream-001"
     }
@@ -339,11 +339,11 @@
         {
           "at": "[ts]",
           "event": "terminal-lab.cost.measured",
-          "message": "Cost ledger: known total 0 USD (lower bound; unmeasured: product, media, payment, provider). No-spend proof satisfied for maxUsd=0."
+          "message": "Cost ledger: known total 0 USD (lower bound). Not measured (null, not claimed zero): product, media, payment, provider. No-spend proof not established for maxUsd=0: no spend line was measured."
         }
       ],
       "knownGaps": [
-        "No-spend proof is partial: product, media, payment, provider spend was UNMEASURED for this run (recorded null, not claimed zero; an adapter may supply these signals through costProbe)."
+        "No-spend proof not established for maxUsd=0: no spend line was measured. Not measured (null, not claimed zero): product, media, payment, provider. An adapter may supply the missing signals through costProbe."
       ]
     },
     "summary": {
@@ -614,7 +614,7 @@
             "at": "[ts]",
             "level": "info",
             "type": "terminal-lab.cost.measured",
-            "message": "Cost ledger: known total 0 USD (lower bound; unmeasured: product, media, payment, provider). No-spend proof satisfied for maxUsd=0.",
+            "message": "Cost ledger: known total 0 USD (lower bound). Not measured (null, not claimed zero): product, media, payment, provider. No-spend proof not established for maxUsd=0: no spend line was measured.",
             "simId": "sim-001",
             "streamId": "stream-001"
           },
@@ -623,7 +623,7 @@
             "at": "[ts]",
             "level": "info",
             "type": "terminal-lab.no-spend.proof",
-            "message": "No-spend proof SATISFIED for maxUsd=0: every MEASURED spend line is zero (known total 0 USD). UNPRICED (null, NOT claimed zero): product, media, payment, provider. The proof does not vouch for these. They carry no spend signal for this run.",
+            "message": "No-spend proof not established for maxUsd=0: no spend line was measured. Not measured (null, not claimed zero): product, media, payment, provider.",
             "simId": "sim-001",
             "streamId": "stream-001"
           }
@@ -726,7 +726,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "terminal-lab.cost.measured",
-        "message": "Cost ledger: known total 0 USD (lower bound; unmeasured: product, media, payment, provider). No-spend proof satisfied for maxUsd=0.",
+        "message": "Cost ledger: known total 0 USD (lower bound). Not measured (null, not claimed zero): product, media, payment, provider. No-spend proof not established for maxUsd=0: no spend line was measured.",
         "simId": "sim-001",
         "streamId": "stream-001"
       },
@@ -735,7 +735,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "terminal-lab.no-spend.proof",
-        "message": "No-spend proof SATISFIED for maxUsd=0: every MEASURED spend line is zero (known total 0 USD). UNPRICED (null, NOT claimed zero): product, media, payment, provider. The proof does not vouch for these. They carry no spend signal for this run.",
+        "message": "No-spend proof not established for maxUsd=0: no spend line was measured. Not measured (null, not claimed zero): product, media, payment, provider.",
         "simId": "sim-001",
         "streamId": "stream-001"
       }
@@ -792,10 +792,10 @@
     "verdict": "pass",
     "summary": "agent reported passed verdict marker (nonce-verified)",
     "gaps": [
-      "No-spend proof is partial: product, media, payment, provider spend was UNMEASURED for this run (recorded null, not claimed zero; an adapter may supply these signals through costProbe)."
+      "No-spend proof not established for maxUsd=0: no spend line was measured. Not measured (null, not claimed zero): product, media, payment, provider. An adapter may supply the missing signals through costProbe."
     ]
   },
-  "review.md": "# Terminal live proof\n\n- run: [run]\n- mode: live\n- verdict: pass\n- summary: agent reported passed verdict marker (nonce-verified)\n- mission: Discover widgetsmith-cli from public surfaces.\n\n## Gaps\n- No-spend proof is partial: product, media, payment, provider spend was UNMEASURED for this run (recorded null, not claimed zero; an adapter may supply these signals through costProbe).\n",
+  "review.md": "# Terminal live proof\n\n- run: [run]\n- mode: live\n- verdict: pass\n- summary: agent reported passed verdict marker (nonce-verified)\n- mission: Discover widgetsmith-cli from public surfaces.\n\n## Gaps\n- No-spend proof not established for maxUsd=0: no spend line was measured. Not measured (null, not claimed zero): product, media, payment, provider. An adapter may supply the missing signals through costProbe.\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -891,7 +891,7 @@
       {
         "at": "[ts]",
         "event": "terminal-lab.cost.measured",
-        "message": "Cost ledger: known total 0 USD (lower bound; unmeasured: product, media, payment, provider). No-spend proof satisfied for maxUsd=0."
+        "message": "Cost ledger: known total 0 USD (lower bound). Not measured (null, not claimed zero): product, media, payment, provider. No-spend proof not established for maxUsd=0: no spend line was measured."
       }
     ],
     "simulations": [
@@ -1147,7 +1147,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "terminal-lab.cost.measured",
-        "message": "Cost ledger: known total 0 USD (lower bound; unmeasured: product, media, payment, provider). No-spend proof satisfied for maxUsd=0.",
+        "message": "Cost ledger: known total 0 USD (lower bound). Not measured (null, not claimed zero): product, media, payment, provider. No-spend proof not established for maxUsd=0: no spend line was measured.",
         "simId": "sim-001",
         "streamId": "stream-001"
       },
@@ -1156,7 +1156,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "terminal-lab.no-spend.proof",
-        "message": "No-spend proof SATISFIED for maxUsd=0: every MEASURED spend line is zero (known total 0 USD). UNPRICED (null, NOT claimed zero): product, media, payment, provider. The proof does not vouch for these. They carry no spend signal for this run.",
+        "message": "No-spend proof not established for maxUsd=0: no spend line was measured. Not measured (null, not claimed zero): product, media, payment, provider.",
         "simId": "sim-001",
         "streamId": "stream-001"
       }
@@ -1177,7 +1177,7 @@
       "verdict": "pass",
       "summary": "agent reported passed verdict marker (nonce-verified)",
       "gaps": [
-        "No-spend proof is partial: product, media, payment, provider spend was UNMEASURED for this run (recorded null, not claimed zero; an adapter may supply these signals through costProbe)."
+        "No-spend proof not established for maxUsd=0: no spend line was measured. Not measured (null, not claimed zero): product, media, payment, provider. An adapter may supply the missing signals through costProbe."
       ]
     },
     "feedbackCandidates": []
@@ -1276,7 +1276,7 @@
       {
         "at": "[ts]",
         "event": "terminal-lab.cost.measured",
-        "message": "Cost ledger: known total 0 USD (lower bound; unmeasured: product, media, payment, provider). No-spend proof satisfied for maxUsd=0."
+        "message": "Cost ledger: known total 0 USD (lower bound). Not measured (null, not claimed zero): product, media, payment, provider. No-spend proof not established for maxUsd=0: no spend line was measured."
       }
     ],
     "commandLog": [
@@ -1342,7 +1342,7 @@
         "provider"
       ],
       "knownTotalUsd": 0,
-      "statement": "No-spend proof SATISFIED for maxUsd=0: every MEASURED spend line is zero (known total 0 USD). UNPRICED (null, NOT claimed zero): product, media, payment, provider. The proof does not vouch for these. They carry no spend signal for this run."
+      "statement": "No-spend proof not established for maxUsd=0: no spend line was measured. Not measured (null, not claimed zero): product, media, payment, provider."
     }
   },
   "terminal-transcript.txt": "HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=[nonce]\n\n"

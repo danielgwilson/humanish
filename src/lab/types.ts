@@ -603,8 +603,9 @@ type LabScenarioMode = "dry-run" | "live";
  * The blast-radius budget for a route that passes a live key to an in-sandbox command.
  * Per the safety contract, the live key is never exercised without a fail-closed cap in force.
  * All values are non-negative numbers (0 is the no-spend default). Live runs require maxUsd and a
- * positive maxMinutes; maxUsd/maxJobs are enforced against known ledger signals and maxMinutes is
- * enforced as the command wall clock.
+ * positive maxMinutes; maxUsd/maxJobs are checked after the session against known ledger signals
+ * and maxMinutes is enforced as the command wall clock. Codex tokens are unpriced, so a live run
+ * refuses a positive maxUsd unless a costProbe measures spend (HUMANISH_TERMINAL_LAB_UNPRICED_CAP).
  */
 export interface LabScenarioCaps {
   /** Max USD the run may spend (provider + product). 0 = no-spend. */

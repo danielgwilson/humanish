@@ -923,7 +923,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       const prefix = `Visible unicode: café 🧭\n${repeated}${repeated}known value ${FAKE_RUNTIME_KEY}\n`;
       const result = await runTerminalProductLab({
         cwd,
-        config: liveConfig({ caps: { maxUsd: 1, maxMinutes: 1 } }),
+        config: liveConfig({ caps: { maxUsd: 0, maxMinutes: 1 } }),
         dryRun: false,
         open: false,
         hooks: {
