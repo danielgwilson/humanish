@@ -1,0 +1,803 @@
+{
+  "invalid analysis id": {
+    "thrown": "ANALYSIS_ID_INVALID",
+    "requests": [],
+    "progress": []
+  },
+  "sensitive question": {
+    "thrown": "ANALYSIS_QUESTION_SENSITIVE",
+    "requests": [],
+    "progress": []
+  },
+  "api key missing": {
+    "result": {
+      "schema": "humanish.study-analysis.v1",
+      "id": "analysis-golden-1",
+      "runId": "synthetic-study",
+      "status": "failed",
+      "createdAt": "[ts]",
+      "completedAt": "[ts]",
+      "sourceRunSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "inputDigest": "e7b2f2aadb0dab4739b9fd2bce2a3f11c75db956e9cb174997f481b9378fe923",
+      "configDigest": "52d979c1849c48ae630173b75b55aa7872935c44689f0377f496de206eb3aace",
+      "config": {
+        "model": "gpt-5.6-sol",
+        "question": null,
+        "maxCostUsd": 5,
+        "timeoutMs": 1000,
+        "maxOutputTokens": 8192
+      },
+      "promptVersion": "study-evidence-6",
+      "provider": "openai",
+      "participants": [
+        {
+          "streamId": "participant-a",
+          "label": "Participant A",
+          "assignment": "Create an item.",
+          "recordedStatus": "complete",
+          "recordedReason": "Finished.",
+          "provenance": {
+            "actorStatus": null,
+            "completionReason": null,
+            "stopCause": null,
+            "goalSource": null,
+            "declaredOutcome": null,
+            "taskOutcomes": null
+          }
+        }
+      ],
+      "coverage": {
+        "includedStreamIds": [
+          "participant-a"
+        ],
+        "omittedStreamIds": [],
+        "evidenceCount": 1,
+        "captureCount": 0,
+        "complete": true,
+        "omissions": []
+      },
+      "evidence": [
+        {
+          "id": "e000002",
+          "streamId": "participant-a",
+          "eventId": "account-1",
+          "kind": "message",
+          "text": "I could not create the item.",
+          "quoteEligible": true,
+          "at": null,
+          "elapsedMs": null,
+          "frame": 0,
+          "capture": null
+        }
+      ],
+      "usage": {
+        "inputTokens": null,
+        "outputTokens": null,
+        "cachedInputTokens": null,
+        "cacheWriteInputTokens": null,
+        "estimatedCostUsd": null,
+        "usageComplete": false,
+        "dispatched": false,
+        "ratesAsOf": "2026-09-03",
+        "estimatedAdmissionUsd": 0.250235
+      },
+      "result": null,
+      "error": "analysis_api_key_missing"
+    },
+    "requests": [],
+    "progress": [
+      {
+        "phase": "finished",
+        "evidenceCount": 1,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": 0.250235,
+        "status": "failed"
+      }
+    ]
+  },
+  "openai completes with priced usage": {
+    "result": {
+      "schema": "humanish.study-analysis.v1",
+      "id": "analysis-golden-1",
+      "runId": "synthetic-study",
+      "status": "complete",
+      "createdAt": "[ts]",
+      "completedAt": "[ts]",
+      "sourceRunSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "inputDigest": "e7b2f2aadb0dab4739b9fd2bce2a3f11c75db956e9cb174997f481b9378fe923",
+      "configDigest": "52d979c1849c48ae630173b75b55aa7872935c44689f0377f496de206eb3aace",
+      "config": {
+        "model": "gpt-5.6-sol",
+        "question": null,
+        "maxCostUsd": 5,
+        "timeoutMs": 1000,
+        "maxOutputTokens": 8192
+      },
+      "promptVersion": "study-evidence-6",
+      "provider": "openai",
+      "participants": [
+        {
+          "streamId": "participant-a",
+          "label": "Participant A",
+          "assignment": "Create an item.",
+          "recordedStatus": "complete",
+          "recordedReason": "Finished.",
+          "provenance": {
+            "actorStatus": null,
+            "completionReason": null,
+            "stopCause": null,
+            "goalSource": null,
+            "declaredOutcome": null,
+            "taskOutcomes": null
+          }
+        }
+      ],
+      "coverage": {
+        "includedStreamIds": [
+          "participant-a"
+        ],
+        "omittedStreamIds": [],
+        "evidenceCount": 1,
+        "captureCount": 0,
+        "complete": true,
+        "omissions": []
+      },
+      "evidence": [
+        {
+          "id": "e000002",
+          "streamId": "participant-a",
+          "eventId": "account-1",
+          "kind": "message",
+          "text": "I could not create the item.",
+          "quoteEligible": true,
+          "at": null,
+          "elapsedMs": null,
+          "frame": 0,
+          "capture": null
+        }
+      ],
+      "usage": {
+        "inputTokens": 13543,
+        "outputTokens": 221,
+        "cachedInputTokens": 0,
+        "cacheWriteInputTokens": 13468,
+        "estimatedCostUsd": 0.07206,
+        "usageComplete": true,
+        "dispatched": true,
+        "ratesAsOf": "2026-09-03",
+        "estimatedAdmissionUsd": 0.250235
+      },
+      "result": {
+        "summary": "The participant encountered an obstacle.",
+        "participants": [
+          {
+            "streamId": "participant-a",
+            "summary": "The participant attempted the assigned task.",
+            "intent": "Create an item.",
+            "outcome": "blocked",
+            "outcomeReason": "The retained evidence shows an obstacle.",
+            "evidenceIds": [
+              "e000002"
+            ],
+            "feedback": [
+              {
+                "evidenceId": "e000002",
+                "text": "I could not create the item."
+              }
+            ],
+            "limitations": []
+          }
+        ],
+        "findings": [
+          {
+            "id": "finding-1",
+            "title": "Item creation was blocked",
+            "summary": "The participant could not create an item.",
+            "impact": "blocked_task",
+            "affectedStreamIds": [
+              "participant-a"
+            ],
+            "exposedStreamIds": [
+              "participant-a"
+            ],
+            "exposureReason": "The included participants attempted the same task.",
+            "recovery": "not_observed",
+            "confidence": "medium",
+            "observations": [
+              {
+                "claim": "The creation attempt did not produce an item.",
+                "basis": "inference",
+                "evidenceIds": [
+                  "e000002"
+                ],
+                "limitation": "This is a synthetic fixture."
+              }
+            ],
+            "nextStep": "Check the create interaction.",
+            "priorityReason": "The obstacle affected the assigned task."
+          }
+        ],
+        "limitations": [
+          "Synthetic fixture; no real product behavior is measured."
+        ],
+        "concernReviews": []
+      },
+      "error": null
+    },
+    "requests": [
+      {
+        "url": "https://api.openai.com/v1/responses",
+        "model": "gpt-5.6-sol",
+        "maxOutputTokens": 8192,
+        "bodySha256": "5124bcde249c2f05"
+      }
+    ],
+    "progress": [
+      {
+        "phase": "admitted",
+        "evidenceCount": 1,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": 0.250235
+      },
+      {
+        "phase": "requesting",
+        "evidenceCount": 1,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": 0.250235
+      },
+      {
+        "phase": "validating",
+        "evidenceCount": 1,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": 0.250235
+      },
+      {
+        "phase": "finished",
+        "evidenceCount": 1,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": 0.250235,
+        "status": "complete"
+      }
+    ]
+  },
+  "aborted before dispatch": {
+    "result": {
+      "schema": "humanish.study-analysis.v1",
+      "id": "analysis-golden-1",
+      "runId": "synthetic-study",
+      "status": "cancelled",
+      "createdAt": "[ts]",
+      "completedAt": "[ts]",
+      "sourceRunSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "inputDigest": "e7b2f2aadb0dab4739b9fd2bce2a3f11c75db956e9cb174997f481b9378fe923",
+      "configDigest": "52d979c1849c48ae630173b75b55aa7872935c44689f0377f496de206eb3aace",
+      "config": {
+        "model": "gpt-5.6-sol",
+        "question": null,
+        "maxCostUsd": 5,
+        "timeoutMs": 1000,
+        "maxOutputTokens": 8192
+      },
+      "promptVersion": "study-evidence-6",
+      "provider": "openai",
+      "participants": [
+        {
+          "streamId": "participant-a",
+          "label": "Participant A",
+          "assignment": "Create an item.",
+          "recordedStatus": "complete",
+          "recordedReason": "Finished.",
+          "provenance": {
+            "actorStatus": null,
+            "completionReason": null,
+            "stopCause": null,
+            "goalSource": null,
+            "declaredOutcome": null,
+            "taskOutcomes": null
+          }
+        }
+      ],
+      "coverage": {
+        "includedStreamIds": [
+          "participant-a"
+        ],
+        "omittedStreamIds": [],
+        "evidenceCount": 1,
+        "captureCount": 0,
+        "complete": true,
+        "omissions": []
+      },
+      "evidence": [
+        {
+          "id": "e000002",
+          "streamId": "participant-a",
+          "eventId": "account-1",
+          "kind": "message",
+          "text": "I could not create the item.",
+          "quoteEligible": true,
+          "at": null,
+          "elapsedMs": null,
+          "frame": 0,
+          "capture": null
+        }
+      ],
+      "usage": {
+        "inputTokens": null,
+        "outputTokens": null,
+        "cachedInputTokens": null,
+        "cacheWriteInputTokens": null,
+        "estimatedCostUsd": null,
+        "usageComplete": false,
+        "dispatched": false,
+        "ratesAsOf": "2026-09-03",
+        "estimatedAdmissionUsd": 0.250235
+      },
+      "result": null,
+      "error": "analysis_cancelled"
+    },
+    "requests": [],
+    "progress": [
+      {
+        "phase": "finished",
+        "evidenceCount": 1,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": 0.250235,
+        "status": "cancelled"
+      }
+    ]
+  },
+  "codex completes with cached usage": {
+    "result": {
+      "schema": "humanish.study-analysis.v1",
+      "id": "analysis-golden-1",
+      "runId": "synthetic-study",
+      "status": "complete",
+      "createdAt": "[ts]",
+      "completedAt": "[ts]",
+      "sourceRunSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "inputDigest": "e7b2f2aadb0dab4739b9fd2bce2a3f11c75db956e9cb174997f481b9378fe923",
+      "configDigest": "9e63469e4fb20f329cc358c3c4b60a4e436ffcd38501f22d4db56e0d3b63ca94",
+      "config": {
+        "provider": "codex",
+        "model": "gpt-6-astra",
+        "question": null,
+        "timeoutMs": 1000,
+        "maxCostUsd": null,
+        "maxOutputTokens": null,
+        "identity": {
+          "transport": "codex-app-server",
+          "authentication": "chatgpt-account",
+          "billing": "account-unknown",
+          "requestedModel": "gpt-6-astra",
+          "resolvedModel": "gpt-6-astra",
+          "reasoningEffort": "low",
+          "toolPolicy": "restricted-codex-v1",
+          "cliVersion": "0.157.1"
+        }
+      },
+      "promptVersion": "study-evidence-6",
+      "provider": "codex",
+      "participants": [
+        {
+          "streamId": "participant-a",
+          "label": "Participant A",
+          "assignment": "Create an item.",
+          "recordedStatus": "complete",
+          "recordedReason": "Finished.",
+          "provenance": {
+            "actorStatus": null,
+            "completionReason": null,
+            "stopCause": null,
+            "goalSource": null,
+            "declaredOutcome": null,
+            "taskOutcomes": null
+          }
+        }
+      ],
+      "coverage": {
+        "includedStreamIds": [
+          "participant-a"
+        ],
+        "omittedStreamIds": [],
+        "evidenceCount": 1,
+        "captureCount": 0,
+        "complete": true,
+        "omissions": []
+      },
+      "evidence": [
+        {
+          "id": "e000002",
+          "streamId": "participant-a",
+          "eventId": "account-1",
+          "kind": "message",
+          "text": "I could not create the item.",
+          "quoteEligible": true,
+          "at": null,
+          "elapsedMs": null,
+          "frame": 0,
+          "capture": null
+        }
+      ],
+      "usage": {
+        "inputTokens": 400,
+        "outputTokens": 80,
+        "cachedInputTokens": 20,
+        "cacheWriteInputTokens": null,
+        "estimatedCostUsd": null,
+        "usageComplete": true,
+        "dispatched": true,
+        "ratesAsOf": null,
+        "estimatedAdmissionUsd": null
+      },
+      "result": {
+        "summary": "The participant encountered an obstacle.",
+        "participants": [
+          {
+            "streamId": "participant-a",
+            "summary": "The participant attempted the assigned task.",
+            "intent": "Create an item.",
+            "outcome": "blocked",
+            "outcomeReason": "The retained evidence shows an obstacle.",
+            "evidenceIds": [
+              "e000002"
+            ],
+            "feedback": [
+              {
+                "evidenceId": "e000002",
+                "text": "I could not create the item."
+              }
+            ],
+            "limitations": []
+          }
+        ],
+        "findings": [
+          {
+            "id": "finding-1",
+            "title": "Item creation was blocked",
+            "summary": "The participant could not create an item.",
+            "impact": "blocked_task",
+            "affectedStreamIds": [
+              "participant-a"
+            ],
+            "exposedStreamIds": [
+              "participant-a"
+            ],
+            "exposureReason": "The included participants attempted the same task.",
+            "recovery": "not_observed",
+            "confidence": "medium",
+            "observations": [
+              {
+                "claim": "The creation attempt did not produce an item.",
+                "basis": "inference",
+                "evidenceIds": [
+                  "e000002"
+                ],
+                "limitation": "This is a synthetic fixture."
+              }
+            ],
+            "nextStep": "Check the create interaction.",
+            "priorityReason": "The obstacle affected the assigned task."
+          }
+        ],
+        "limitations": [
+          "Synthetic fixture; no real product behavior is measured."
+        ],
+        "concernReviews": []
+      },
+      "error": null
+    },
+    "requests": [
+      {
+        "model": "gpt-6-astra",
+        "maxOutputTokens": null,
+        "images": 0,
+        "bodySha256": "b276c6cdb50e16b0"
+      }
+    ],
+    "progress": [
+      {
+        "phase": "admitted",
+        "evidenceCount": 1,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": null
+      },
+      {
+        "phase": "requesting",
+        "evidenceCount": 1,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": null
+      },
+      {
+        "phase": "validating",
+        "evidenceCount": 1,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": null
+      },
+      {
+        "phase": "finished",
+        "evidenceCount": 1,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": null,
+        "status": "complete"
+      }
+    ]
+  },
+  "codex returns no usage": {
+    "result": {
+      "schema": "humanish.study-analysis.v1",
+      "id": "analysis-golden-1",
+      "runId": "synthetic-study",
+      "status": "complete",
+      "createdAt": "[ts]",
+      "completedAt": "[ts]",
+      "sourceRunSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "inputDigest": "e7b2f2aadb0dab4739b9fd2bce2a3f11c75db956e9cb174997f481b9378fe923",
+      "configDigest": "9e63469e4fb20f329cc358c3c4b60a4e436ffcd38501f22d4db56e0d3b63ca94",
+      "config": {
+        "provider": "codex",
+        "model": "gpt-6-astra",
+        "question": null,
+        "timeoutMs": 1000,
+        "maxCostUsd": null,
+        "maxOutputTokens": null,
+        "identity": {
+          "transport": "codex-app-server",
+          "authentication": "chatgpt-account",
+          "billing": "account-unknown",
+          "requestedModel": "gpt-6-astra",
+          "resolvedModel": "gpt-6-astra",
+          "reasoningEffort": "low",
+          "toolPolicy": "restricted-codex-v1",
+          "cliVersion": "0.157.1"
+        }
+      },
+      "promptVersion": "study-evidence-6",
+      "provider": "codex",
+      "participants": [
+        {
+          "streamId": "participant-a",
+          "label": "Participant A",
+          "assignment": "Create an item.",
+          "recordedStatus": "complete",
+          "recordedReason": "Finished.",
+          "provenance": {
+            "actorStatus": null,
+            "completionReason": null,
+            "stopCause": null,
+            "goalSource": null,
+            "declaredOutcome": null,
+            "taskOutcomes": null
+          }
+        }
+      ],
+      "coverage": {
+        "includedStreamIds": [
+          "participant-a"
+        ],
+        "omittedStreamIds": [],
+        "evidenceCount": 1,
+        "captureCount": 0,
+        "complete": true,
+        "omissions": []
+      },
+      "evidence": [
+        {
+          "id": "e000002",
+          "streamId": "participant-a",
+          "eventId": "account-1",
+          "kind": "message",
+          "text": "I could not create the item.",
+          "quoteEligible": true,
+          "at": null,
+          "elapsedMs": null,
+          "frame": 0,
+          "capture": null
+        }
+      ],
+      "usage": {
+        "inputTokens": null,
+        "outputTokens": null,
+        "cachedInputTokens": null,
+        "cacheWriteInputTokens": null,
+        "estimatedCostUsd": null,
+        "usageComplete": false,
+        "dispatched": true,
+        "ratesAsOf": null,
+        "estimatedAdmissionUsd": null
+      },
+      "result": {
+        "summary": "The participant encountered an obstacle.",
+        "participants": [
+          {
+            "streamId": "participant-a",
+            "summary": "The participant attempted the assigned task.",
+            "intent": "Create an item.",
+            "outcome": "blocked",
+            "outcomeReason": "The retained evidence shows an obstacle.",
+            "evidenceIds": [
+              "e000002"
+            ],
+            "feedback": [
+              {
+                "evidenceId": "e000002",
+                "text": "I could not create the item."
+              }
+            ],
+            "limitations": []
+          }
+        ],
+        "findings": [
+          {
+            "id": "finding-1",
+            "title": "Item creation was blocked",
+            "summary": "The participant could not create an item.",
+            "impact": "blocked_task",
+            "affectedStreamIds": [
+              "participant-a"
+            ],
+            "exposedStreamIds": [
+              "participant-a"
+            ],
+            "exposureReason": "The included participants attempted the same task.",
+            "recovery": "not_observed",
+            "confidence": "medium",
+            "observations": [
+              {
+                "claim": "The creation attempt did not produce an item.",
+                "basis": "inference",
+                "evidenceIds": [
+                  "e000002"
+                ],
+                "limitation": "This is a synthetic fixture."
+              }
+            ],
+            "nextStep": "Check the create interaction.",
+            "priorityReason": "The obstacle affected the assigned task."
+          }
+        ],
+        "limitations": [
+          "Synthetic fixture; no real product behavior is measured."
+        ],
+        "concernReviews": []
+      },
+      "error": null
+    },
+    "requests": [],
+    "progress": [
+      {
+        "phase": "admitted",
+        "evidenceCount": 1,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": null
+      },
+      {
+        "phase": "requesting",
+        "evidenceCount": 1,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": null
+      },
+      {
+        "phase": "validating",
+        "evidenceCount": 1,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": null
+      },
+      {
+        "phase": "finished",
+        "evidenceCount": 1,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": null,
+        "status": "complete"
+      }
+    ]
+  },
+  "codex is cancelled": {
+    "result": {
+      "schema": "humanish.study-analysis.v1",
+      "id": "analysis-golden-1",
+      "runId": "synthetic-study",
+      "status": "cancelled",
+      "createdAt": "[ts]",
+      "completedAt": "[ts]",
+      "sourceRunSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "inputDigest": "e7b2f2aadb0dab4739b9fd2bce2a3f11c75db956e9cb174997f481b9378fe923",
+      "configDigest": "9e63469e4fb20f329cc358c3c4b60a4e436ffcd38501f22d4db56e0d3b63ca94",
+      "config": {
+        "provider": "codex",
+        "model": "gpt-6-astra",
+        "question": null,
+        "timeoutMs": 1000,
+        "maxCostUsd": null,
+        "maxOutputTokens": null,
+        "identity": {
+          "transport": "codex-app-server",
+          "authentication": "chatgpt-account",
+          "billing": "account-unknown",
+          "requestedModel": "gpt-6-astra",
+          "resolvedModel": "gpt-6-astra",
+          "reasoningEffort": "low",
+          "toolPolicy": "restricted-codex-v1",
+          "cliVersion": "0.157.1"
+        }
+      },
+      "promptVersion": "study-evidence-6",
+      "provider": "codex",
+      "participants": [
+        {
+          "streamId": "participant-a",
+          "label": "Participant A",
+          "assignment": "Create an item.",
+          "recordedStatus": "complete",
+          "recordedReason": "Finished.",
+          "provenance": {
+            "actorStatus": null,
+            "completionReason": null,
+            "stopCause": null,
+            "goalSource": null,
+            "declaredOutcome": null,
+            "taskOutcomes": null
+          }
+        }
+      ],
+      "coverage": {
+        "includedStreamIds": [
+          "participant-a"
+        ],
+        "omittedStreamIds": [],
+        "evidenceCount": 1,
+        "captureCount": 0,
+        "complete": true,
+        "omissions": []
+      },
+      "evidence": [
+        {
+          "id": "e000002",
+          "streamId": "participant-a",
+          "eventId": "account-1",
+          "kind": "message",
+          "text": "I could not create the item.",
+          "quoteEligible": true,
+          "at": null,
+          "elapsedMs": null,
+          "frame": 0,
+          "capture": null
+        }
+      ],
+      "usage": {
+        "inputTokens": 400,
+        "outputTokens": 80,
+        "cachedInputTokens": 20,
+        "cacheWriteInputTokens": null,
+        "estimatedCostUsd": null,
+        "usageComplete": true,
+        "dispatched": true,
+        "ratesAsOf": null,
+        "estimatedAdmissionUsd": null
+      },
+      "result": null,
+      "error": "analysis_cancelled"
+    },
+    "requests": [],
+    "progress": [
+      {
+        "phase": "admitted",
+        "evidenceCount": 1,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": null
+      },
+      {
+        "phase": "requesting",
+        "evidenceCount": 1,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": null
+      },
+      {
+        "phase": "finished",
+        "evidenceCount": 1,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": null,
+        "status": "cancelled"
+      }
+    ]
+  }
+}
