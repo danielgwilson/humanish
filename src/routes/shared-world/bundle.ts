@@ -29,7 +29,12 @@ import type { RunStream } from "../../run/streams.js";
 import { commandDigestOf } from "../../subject/state.js";
 import { buildRunCostSummary, desktopSpanToMinutes } from "../../run/cost-summary.js";
 import { participantFactsOf } from "../computer-use/bundle.js";
-import { judgeSharedWorld, participantPassed, type SharedWorldJudgment } from "../../run/judge.js";
+import {
+  judgeSharedWorld,
+  participantPassed,
+  sharedWorldShortfall,
+  type SharedWorldJudgment,
+} from "../../run/judge.js";
 import { combineCheckpointDigest } from "./checkpoints.js";
 import { hostOriginDigest } from "./provenance.js";
 import { seatRecords } from "./seat-records.js";
@@ -314,6 +319,30 @@ function sharedWorldEvidence(
   return { sharedWorld, laneWindows, stateSeries, outcomes };
 }
 
+/**
+ * A finished run's gaps: each seat that did not pass, or, when every seat passed, the world
+ * shortfall that failed the run.
+ */
+function finishedGaps(
+  actorResults: ConcurrentBundleArgs["actorResults"],
+  shortfall: string | undefined,
+): string[] {
+  const participantGaps = actorResults
+    .filter(
+      (result) =>
+        result.outcome.sessionError !== undefined ||
+        result.outcome.noEngagement ||
+        result.outcome.selfReportedBlocker ||
+        result.outcome.session === undefined ||
+        result.outcome.session.status !== "passed",
+    )
+    .map(
+      (result) =>
+        `${result.spec.planned.id}: ${result.outcome.sessionError ?? result.outcome.session?.reason ?? "did not pass"}`,
+    );
+  return participantGaps.length === 0 && shortfall !== undefined ? [shortfall] : participantGaps;
+}
+
 /** Records the concurrency event and returns the review. */
 function concurrencyReview(
   args: ConcurrentBundleArgs,
@@ -376,19 +405,7 @@ function concurrencyReview(
         ? [
             "Final actor traces, screenshots, state deltas, and verification are pending; this Observer is for live watch only.",
           ]
-        : actorResults
-            .filter(
-              (result) =>
-                result.outcome.sessionError !== undefined ||
-                result.outcome.noEngagement ||
-                result.outcome.selfReportedBlocker ||
-                result.outcome.session === undefined ||
-                result.outcome.session.status !== "passed",
-            )
-            .map(
-              (result) =>
-                `${result.spec.planned.id}: ${result.outcome.sessionError ?? result.outcome.session?.reason ?? "did not pass"}`,
-            ),
+        : finishedGaps(actorResults, sharedWorldShortfall(args.judgment.world)),
   };
   return review;
 }

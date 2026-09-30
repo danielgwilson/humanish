@@ -6,6 +6,7 @@ import { readFileSync, symlinkSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
+import { Command } from "commander";
 import { parse } from "yaml";
 import { PNG } from "pngjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -31,6 +32,8 @@ import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
 import { routesToConcurrentSharedWorld } from "../../../src/lab/routing.js";
 import { runLab, selectLabBackend } from "../../../src/lab/engine.js";
+import { runBackend } from "../../../src/cli/commands/lab-backend-run.js";
+import { sharedWorldBackendRun } from "../../../src/cli/commands/lab-backend-shared-world.js";
 import { runConcurrentSharedWorld } from "../../../src/routes/shared-world/lab.js";
 import {
   extractLobbyCodeFromNarration,
@@ -43,6 +46,7 @@ import type { BrowserLabScoringContext, RunAdapterScore, RunBundle } from "../..
 import type { SubjectPhaseEvent } from "../../../src/subject/steps.js";
 import { reclaimRunSandboxes } from "../../../src/run/reclaim.js";
 import { verifyRun } from "../../../src/verify/verify.js";
+import { sharedWorldEvidenceFindings } from "../../../src/verify/shared-world.js";
 import {
   LANE_SHAPE_VARIANTS,
   pinnedVerifyResult,
@@ -325,6 +329,8 @@ function makeRunSession(
         reason?: string;
         actions?: number;
         messages?: number;
+        /** False leaves the shared world unchanged by this seat's turn. */
+        mutates?: boolean;
       }
     | undefined,
 ): (options: CuaActorSessionOptions) => Promise<CuaLoopResult> {
@@ -344,8 +350,8 @@ function makeRunSession(
     await new Promise<void>((resolve) => {
       setTimeout(resolve, 15);
     });
-    state.worldVersion += 1; // each actor's turn mutates the shared world
     const o = override?.(myIndex);
+    if (o?.mutates !== false) state.worldVersion += 1; // each actor's turn mutates the shared world
     if (o?.throwMessage) {
       throw new Error(o.throwMessage);
     }
@@ -1405,6 +1411,105 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     expect(status.outcome?.verdict).toBe(bundle.review.verdict);
     expect(result.ok).toBe(ok);
     expect(result.overlapProven).toBe(true);
+  });
+
+  // A shared-world pass requires what verify's shared-world check requires of one: two seats live
+  // at once and, on this provisioned plane, a state change after they overlapped. Every seat
+  // passes in each case below; only the world differs.
+  type WorldCase = "overlap" | "no overlap" | "overlap without a state change";
+  function worldHooks(world: WorldCase): SharedWorldLabHooks {
+    const { hooks } = baseHooks(
+      { worldVersion: 0 },
+      makeRendezvous(3),
+      world === "overlap without a state change" ? () => ({ mutates: false }) : undefined,
+    );
+    // A clock that never advances gives every seat a zero-width window, so none overlap.
+    return world === "no overlap" ? { ...hooks, now: () => 1_000 } : hooks;
+  }
+  const WORLD_CASES: Array<[WorldCase, RunBundle["review"]["verdict"], string | undefined]> = [
+    ["overlap", "pass", undefined],
+    ["no overlap", "fail", "No two seats were live at the same time"],
+    ["overlap without a state change", "fail", "The shared state did not change"],
+  ];
+
+  it.each(WORLD_CASES)(
+    "agrees across bundle, result and status with %s",
+    async (world, verdict, shortfall) => {
+      const result = await runConcurrentSharedWorld({
+        cwd,
+        config: concurrentConfig(3, 3),
+        dryRun: false,
+        hooks: worldHooks(world),
+      });
+      const runDir = path.join(cwd, ".humanish", "runs", result.runId);
+      const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
+      const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8")) as {
+        outcome?: { verdict?: string };
+      };
+      expect(bundle.review.verdict).toBe(verdict);
+      expect(status.outcome?.verdict).toBe(verdict);
+      expect(result.ok).toBe(verdict === "pass");
+      expect(result.overlapProven).toBe(world !== "no overlap");
+      expect(result.roles.every((role) => role.ok)).toBe(true);
+      if (shortfall === undefined) {
+        expect(result.error).toBeUndefined();
+      } else {
+        expect(result.error?.message).toContain(shortfall);
+        expect(bundle.review.gaps).toEqual([expect.stringContaining(shortfall)]);
+      }
+      expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
+    },
+  );
+
+  it("gives a pass exactly where verify's shared-world check would accept one", async () => {
+    for (const [world] of WORLD_CASES) {
+      const result = await runConcurrentSharedWorld({
+        cwd,
+        config: concurrentConfig(3, 3),
+        dryRun: false,
+        hooks: worldHooks(world),
+      });
+      const bundle = JSON.parse(
+        await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+      ) as RunBundle;
+      // Verify's gate only reads a pass, so it is asked about the same bundle claiming one.
+      const claimingPass = { ...bundle, review: { ...bundle.review, verdict: "pass" as const } };
+      expect(sharedWorldEvidenceFindings(claimingPass).length === 0, world).toBe(
+        bundle.review.verdict === "pass",
+      );
+    }
+  });
+
+  it("exits non-zero through the CLI when every seat passed but none overlapped", async () => {
+    const exitCodes: Array<number | undefined> = [];
+    for (const world of ["overlap", "no overlap"] as const) {
+      const config = concurrentConfig(3, 3);
+      const printed: string[] = [];
+      let exitCode: number | undefined;
+      // The lab command's path: the backend's setup, then its one runLab call.
+      const run = sharedWorldBackendRun({
+        command: new Command(),
+        io: {
+          writeOut: (text) => printed.push(text),
+          writeErr: () => undefined,
+          setExitCode: (code) => {
+            exitCode = code;
+          },
+        },
+        config,
+        mode: "run",
+        options: { cwd, dryRun: false, open: false },
+      });
+      if (run === undefined) throw new Error("expected the run setup to proceed");
+      // The CLI sets onEvent, which refuses the older onPhase hook beside it.
+      const { onPhase: _onPhase, ...hooks } = worldHooks(world);
+      await runBackend(config, { ...run, options: { ...run.options, sharedWorldHooks: hooks } });
+      exitCodes.push(exitCode);
+      if (world === "no overlap") {
+        expect(printed.join("")).toContain("No two seats were live at the same time");
+      }
+    }
+    expect(exitCodes).toEqual([0, 2]);
   });
 
   it("fails review when a lane returns a terminal failed actor trace", async () => {
