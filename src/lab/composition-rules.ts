@@ -14,7 +14,7 @@ import {
   registeredComputerUseActors,
   registeredScriptedBrowserActors,
   registeredTerminalActors,
-  routesToComputerUse,
+  isComputerUseComposition,
 } from "./routing.js";
 import type { LabConfig } from "./types.js";
 import {
@@ -35,7 +35,7 @@ export function compositionReason(config: LabConfig): string | null {
     cloneComputerUseValidationReason(config) ??
     localTreeValidationReason(config) ??
     // Independent computer-use lanes: the roster contract on every route that resolves to cua.
-    (routesToComputerUse(config) ? cuaLaneValidationReason(config) : null) ??
+    (isComputerUseComposition(config) ? cuaLaneValidationReason(config) : null) ??
     // Whenever shared world is declared, not only when it routes, so a half-declared shared world
     // fails with a precise reason instead of running as independent lanes.
     (config.subject.topology === "shared-world" ? sharedWorldValidationReason(config) : null) ??

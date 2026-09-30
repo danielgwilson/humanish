@@ -11,7 +11,7 @@ import {
   routesToComputerUse,
   routesToConcurrentSharedWorld,
   routesToExternalPublicSharedWorld,
-  routesToProvisionedScriptedBrowser,
+  isProvisionedScriptedBrowserComposition,
   routesToProvisionedSharedWorld,
   routesToScriptedBrowser,
   routesToSharedWorld,
@@ -49,7 +49,7 @@ const predicates = {
   externalPublicSharedWorld: routesToExternalPublicSharedWorld,
   concurrentSharedWorld: routesToConcurrentSharedWorld,
   scriptedBrowser: routesToScriptedBrowser,
-  provisionedScriptedBrowser: routesToProvisionedScriptedBrowser,
+  provisionedScriptedBrowser: isProvisionedScriptedBrowserComposition,
   terminalProduct: routesToTerminalProduct,
 };
 

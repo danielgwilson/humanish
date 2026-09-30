@@ -68,8 +68,8 @@ import { parseSubject } from "./parse/subject.js";
 import { invalid, isRecord, optionalStr, str } from "./parse/values.js";
 import {
   effectiveComputerUseLaneIds,
-  routesToComputerUse,
-  routesToSharedWorld,
+  isComputerUseComposition,
+  isSharedWorldComposition,
 } from "./routing.js";
 import {
   ID_PATTERN,
@@ -187,7 +187,11 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
   // its default is filled here for the envelopes and warnings that read the parsed config.
   {
     const seats = config.actors[0]?.lanes?.length ?? config.actors[0]?.count ?? 1;
-    if (seats > 1 && config.execution?.concurrency === undefined && routesToSharedWorld(config)) {
+    if (
+      seats > 1 &&
+      config.execution?.concurrency === undefined &&
+      isSharedWorldComposition(config)
+    ) {
       config.execution = { ...config.execution, concurrency: seats };
     }
   }
@@ -200,7 +204,7 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
   // recipients covering zero lanes are a hard error (a guaranteed-dead funnel).
   const receivingReason = receivingEmailValidationReason(config);
   if (receivingReason) return invalid(receivingReason);
-  if (config.comms?.email?.kind === "fake" && routesToComputerUse(config)) {
+  if (config.comms?.email?.kind === "fake" && isComputerUseComposition(config)) {
     const laneIds = effectiveComputerUseLaneIds(config);
     const email = config.comms.email;
     if (email.recipients === undefined) {

@@ -8,10 +8,10 @@ import {
   MAX_CUA_LANES,
   registeredComputerUseActors,
   resolveSeatUrl,
-  routesToComputerUse,
-  routesToScriptedBrowser,
-  routesToSharedWorld,
-  routesToTerminalProduct,
+  isComputerUseComposition,
+  isScriptedBrowserComposition,
+  isSharedWorldComposition,
+  isTerminalProductComposition,
 } from "./routing.js";
 import type { LabConfig } from "./types.js";
 
@@ -170,7 +170,7 @@ function provisionedSharedWorldStructureReason(config: LabConfig): string | null
  */
 export function desktopMediaValidationReason(
   config: LabConfig,
-  supportsMedia = routesToComputerUse(config),
+  supportsMedia = isComputerUseComposition(config),
 ): string | undefined {
   if (
     config.execution?.desktop?.recording !== undefined &&
@@ -219,7 +219,7 @@ export function desktopMediaValidationReason(
 export function receivingEmailValidationReason(config: LabConfig): string | undefined {
   if (config.comms?.email?.kind !== "real") return undefined;
   if (
-    !routesToComputerUse(config) ||
+    !isComputerUseComposition(config) ||
     !["app-url", "clone", "local-tree"].includes(config.subject.source)
   ) {
     return "Real email receiving requires a hosted computer-use browser study with an app-url, clone, or local-tree subject. Scripted, terminal, desktop-cli and local-app routes are unsupported.";
@@ -234,7 +234,7 @@ export function receivingEmailValidationReason(config: LabConfig): string | unde
  * Direct runners pass their actual support rather than trusting the config's dispatch shape. */
 export function taskProtocolValidationReason(
   config: LabConfig,
-  supportsTasks = routesToComputerUse(config) && !routesToSharedWorld(config),
+  supportsTasks = isComputerUseComposition(config) && !isSharedWorldComposition(config),
 ): string | null {
   for (const [index, actor] of config.actors.entries()) {
     if (actor.tasks === undefined) continue;
@@ -270,7 +270,7 @@ export function cloneTargetValidationReason(config: LabConfig): string | null {
  * library callers.
  */
 export function scenarioCapsValidationReason(config: LabConfig): string | null {
-  if (!routesToComputerUse(config)) return null;
+  if (!isComputerUseComposition(config)) return null;
   for (const key of ["maxUsd", "maxTotalUsd"] as const) {
     const value = config.scenario?.caps?.[key];
     if (value === undefined || value <= 0) continue;
@@ -287,7 +287,7 @@ export function outputTokenLimitValidationReason(config: LabConfig): string | nu
     return "actors[0].maxOutputTokens must be a positive safe integer.";
   if (
     actor.type !== "openai-computer-use" ||
-    !routesToComputerUse(config) ||
+    !isComputerUseComposition(config) ||
     config.subject.source === "local-app"
   ) {
     return "actors[0].maxOutputTokens is supported only by first-party OpenAI computer-use routes; terminal, local-agent, scripted and custom in-process routes cannot enforce it.";
@@ -416,10 +416,10 @@ export function externalPublicSharedWorldValidationReason(config: LabConfig): st
 export function automaticAnalysisRouteReason(config: LabConfig): string | undefined {
   if (config.review?.analysis === undefined || config.review.analysis === false) return undefined;
   if (
-    routesToComputerUse(config) ||
-    routesToScriptedBrowser(config) ||
-    routesToTerminalProduct(config) ||
-    routesToSharedWorld(config) ||
+    isComputerUseComposition(config) ||
+    isScriptedBrowserComposition(config) ||
+    isTerminalProductComposition(config) ||
+    isSharedWorldComposition(config) ||
     ["app-url", "local-app", "local-tree", "desktop-cli", "terminal-product"].includes(
       config.subject.source,
     )

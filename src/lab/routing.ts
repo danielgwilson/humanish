@@ -97,7 +97,7 @@ export function participantIdAt(
 export function effectiveComputerUseLaneIds(config: LabConfig): string[] {
   const actor = config.actors[0];
   const roster = actor?.lanes;
-  const kind = routesToSharedWorld(config) ? "seat" : "lane";
+  const kind = isSharedWorldComposition(config) ? "seat" : "lane";
   if (roster && roster.length > 0) {
     return roster.map((lane, index) => participantIdAt(index, lane.id, kind));
   }
@@ -114,7 +114,7 @@ export function effectiveComputerUseLaneIds(config: LabConfig): string[] {
  * routeOf keeps a bare app-url fallback to the cua backend so library-API configs
  * with unknown actors still hit its fail-closed ACTOR_UNSUPPORTED.)
  */
-export function routesToComputerUse(config: LabConfig): boolean {
+export function isComputerUseComposition(config: LabConfig): boolean {
   // local-app drives the cua loop in-process (a custom executor + a non-vision provider), so it
   // routes to the cua backend exactly like an app-url subject with a computer-use actor.
   if (config.subject.source === "app-url" || config.subject.source === "local-app") {
@@ -142,18 +142,20 @@ export function routesToComputerUse(config: LabConfig): boolean {
 /**
  * True when this config routes to the SHARED-WORLD backend (#164): a clone or local-tree subject
  * on a hosted desktop whose first actor resolves to a computer-use actor AND that declares the
- * `shared-world` topology. Mirror of routesToComputerUse; the single source of truth shared by
+ * `shared-world` topology. Mirror of isComputerUseComposition; the single source of truth shared by
  * routeOf (which checks it BEFORE the cua route) and the warning logic. Every
  * shared-world study runs its participants at once (`execution.concurrency` >= 2). The same
  * clone/local-tree × e2b-desktop × computer-use composition WITHOUT `topology: shared-world` stays per-lane-worlds
  * (the cua route) — the topology declaration is the override switch.
  */
-export function routesToSharedWorld(config: LabConfig): boolean {
-  return routesToProvisionedSharedWorld(config) || routesToExternalPublicSharedWorld(config);
+export function isSharedWorldComposition(config: LabConfig): boolean {
+  return (
+    isProvisionedSharedWorldComposition(config) || isExternalPublicSharedWorldComposition(config)
+  );
 }
 
 /** The getHost provisioned-subject shared-world shape (clone/local-tree served + exposed in-sandbox). */
-export function routesToProvisionedSharedWorld(config: LabConfig): boolean {
+function isProvisionedSharedWorldComposition(config: LabConfig): boolean {
   return (
     (config.subject.source === "clone" || config.subject.source === "local-tree") &&
     config.subject.topology === "shared-world" &&
@@ -171,7 +173,7 @@ export function routesToProvisionedSharedWorld(config: LabConfig): boolean {
  * half-declared external-public config still routes here to get its precise fail-closed reason
  * rather than silently downgrading to the per-lane cua route).
  */
-export function routesToExternalPublicSharedWorld(config: LabConfig): boolean {
+function isExternalPublicSharedWorldComposition(config: LabConfig): boolean {
   return (
     config.subject.source === "app-url" &&
     config.subject.topology === "shared-world" &&
@@ -179,14 +181,6 @@ export function routesToExternalPublicSharedWorld(config: LabConfig): boolean {
     actorResolvesToComputerUse(config.actors[0]?.type) &&
     config.policies?.allowPublicTargets === true
   );
-}
-
-/**
- * @deprecated Every shared-world study runs its participants at once since the sequential
- * shared-world route was removed. Use routesToSharedWorld; this alias goes in the next minor.
- */
-export function routesToConcurrentSharedWorld(config: LabConfig): boolean {
-  return routesToSharedWorld(config);
 }
 
 /**
@@ -216,20 +210,22 @@ export function resolveSeatUrl(serveUrl: string, entry: string | undefined): str
 /**
  * True when this config routes to the scripted-browser backend: an app-url subject whose
  * first actor resolves to a registered scripted-browser actor (execution.target local or
- * absent — the parse layer enforces that pairing). Mirror of routesToComputerUse; the single
+ * absent — the parse layer enforces that pairing). Mirror of isComputerUseComposition; the single
  * source of truth for routeOf and the warning logic.
  */
-export function routesToScriptedBrowser(config: LabConfig): boolean {
-  return routesToLocalScriptedBrowser(config) || routesToProvisionedScriptedBrowser(config);
+export function isScriptedBrowserComposition(config: LabConfig): boolean {
+  return (
+    isLocalScriptedBrowserComposition(config) || isProvisionedScriptedBrowserComposition(config)
+  );
 }
 
-function routesToLocalScriptedBrowser(config: LabConfig): boolean {
+function isLocalScriptedBrowserComposition(config: LabConfig): boolean {
   return (
     config.subject.source === "app-url" && actorResolvesToScriptedBrowser(config.actors[0]?.type)
   );
 }
 
-export function routesToProvisionedScriptedBrowser(config: LabConfig): boolean {
+export function isProvisionedScriptedBrowserComposition(config: LabConfig): boolean {
   return (
     config.subject.source === "clone" &&
     config.execution?.target === "e2b-desktop" &&
@@ -240,11 +236,52 @@ export function routesToProvisionedScriptedBrowser(config: LabConfig): boolean {
 /**
  * True when this config routes to the terminal-product backend: a terminal-product subject whose
  * first actor resolves to a registered terminal actor (execution.target e2b-terminal or absent —
- * the parse layer enforces that pairing). Mirror of routesToComputerUse/routesToScriptedBrowser;
+ * the parse layer enforces that pairing). Mirror of isComputerUseComposition/isScriptedBrowserComposition;
  * the single source of truth for routeOf and the warning logic.
  */
-export function routesToTerminalProduct(config: LabConfig): boolean {
+export function isTerminalProductComposition(config: LabConfig): boolean {
   return (
     config.subject.source === "terminal-product" && actorResolvesToTerminal(config.actors[0]?.type)
   );
+}
+
+// The package's older names for these predicates. routeOf is the route decision; each of these
+// says whether a config composes that route with a registered actor of its kind.
+
+/** @deprecated Use `routeOf`. This goes in the next minor. */
+export function routesToComputerUse(config: LabConfig): boolean {
+  return isComputerUseComposition(config);
+}
+
+/** @deprecated Use `routeOf`. This goes in the next minor. */
+export function routesToSharedWorld(config: LabConfig): boolean {
+  return isSharedWorldComposition(config);
+}
+
+/** @deprecated Use `routeOf`. This goes in the next minor. */
+export function routesToProvisionedSharedWorld(config: LabConfig): boolean {
+  return isProvisionedSharedWorldComposition(config);
+}
+
+/** @deprecated Use `routeOf`. This goes in the next minor. */
+export function routesToExternalPublicSharedWorld(config: LabConfig): boolean {
+  return isExternalPublicSharedWorldComposition(config);
+}
+
+/**
+ * @deprecated Every shared-world study runs its participants at once since the sequential
+ * shared-world route was removed. Use `routeOf`; this alias goes in the next minor.
+ */
+export function routesToConcurrentSharedWorld(config: LabConfig): boolean {
+  return isSharedWorldComposition(config);
+}
+
+/** @deprecated Use `routeOf`. This goes in the next minor. */
+export function routesToScriptedBrowser(config: LabConfig): boolean {
+  return isScriptedBrowserComposition(config);
+}
+
+/** @deprecated Use `routeOf`. This goes in the next minor. */
+export function routesToTerminalProduct(config: LabConfig): boolean {
+  return isTerminalProductComposition(config);
 }
