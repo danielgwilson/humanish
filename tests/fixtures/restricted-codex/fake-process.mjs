@@ -40,6 +40,8 @@ if (operation === "--version") {
   if (scenario === "participant-wrong-thread") participantTool.request.params.threadId = "unexpected-thread";
   if (scenario === "participant-raw-wrong-function")
     participantTool.afterResponse.find(event => event.params?.item?.type === "function_call").params.item.name = "unexpected_function";
+  if (scenario === "participant-raw-wrong-custom-tool")
+    participantTool.beforeResponse.find(event => event.params?.item?.type === "custom_tool_call").params.item.name = "apply_patch";
   let participantDuplicateSent = false;
   // participant-deadline-reset holds the tool request and the turn completion until the test
   // creates a gate file. The test advances a fake clock in between, so this process never waits
@@ -178,6 +180,15 @@ if (operation === "--version") {
       if (scenario === "wrong-turn") { answer.params.turnId = "wrong-turn"; emit(answer); return; }
       if (scenario === "raw-tool") { emit(capture("raw-tool-call.json")); return; }
       if (scenario === "async-question") { for (const event of capture("async-question-items.json")) emit(event); return; }
+      // The captured participant exec call, which the analyst profile's raw types do not allow.
+      if (scenario === "analyst-raw-exec") {
+        emit(capture("participant-code-mode-tool-turn.json").beforeResponse.find(event => event.params?.item?.type === "custom_tool_call"));
+        return;
+      }
+      if (scenario === "questions-without-async") {
+        for (const event of capture("async-question-items.json")) { event.params.item.delivery = null; emit(event); }
+        return;
+      }
       if (scenario === "interrupted") { emit(usage); for (const event of capture("interrupted-turn.json")) emit(event); return; }
       if (scenario === "invalid-json") answer.params.item.text = "{invalid-json}";
       if (scenario === "multiple-answers") { const other = structuredClone(answer); other.params.item.id = "other-answer"; emit(other); }

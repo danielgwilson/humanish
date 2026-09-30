@@ -4,6 +4,7 @@ import {
   admitsRestrictedCodexConfig,
   restrictedCodexConfig,
   restrictedCodexRequestError,
+  toolPolicyViolation,
   type RestrictedCodexRequest,
 } from "../../../src/actors/codex/restricted-policy.js";
 
@@ -116,5 +117,46 @@ describe("restricted Codex effective policy", () => {
     expect(
       admitsRestrictedCodexConfig(value, "/unused/operator/config.toml", undefined, mode),
     ).toBe(false);
+  });
+});
+
+describe("restricted Codex tool policy", () => {
+  const RAW = "rawResponseItem/completed";
+  const analyst = ["message", "reasoning", "compaction"];
+  const participant = [...analyst, "custom_tool_call", "function_call"];
+  const violates = (method: string, item: Record<string, unknown>, allowed = participant) =>
+    toolPolicyViolation(method, item, allowed);
+
+  it("refuses a raw item whose type the profile does not allow", () => {
+    expect(violates(RAW, { type: "function_call", name: "wait" }, analyst)).toBe(true);
+    expect(violates(RAW, { type: "local_shell_call" })).toBe(true);
+    expect(violates(RAW, { type: "message" }, analyst)).toBe(false);
+  });
+
+  it("allows exec as the only custom tool", () => {
+    expect(violates(RAW, { type: "custom_tool_call", name: "exec" })).toBe(false);
+    expect(violates(RAW, { type: "custom_tool_call", name: "apply_patch" })).toBe(true);
+    expect(violates(RAW, { type: "custom_tool_call" })).toBe(true);
+  });
+
+  it("allows wait as the only function", () => {
+    expect(violates(RAW, { type: "function_call", name: "wait" })).toBe(false);
+    expect(violates(RAW, { type: "function_call", name: "request_user_input" })).toBe(true);
+  });
+
+  it("refuses an agent message that delivers asynchronously or asks a question", () => {
+    for (const method of ["item/started", "item/completed"]) {
+      expect(violates(method, { type: "agentMessage", delivery: "async" })).toBe(true);
+      expect(violates(method, { type: "agentMessage", delivery: null, questions: [{}] })).toBe(
+        true,
+      );
+      expect(violates(method, { type: "agentMessage", delivery: null, questions: [] })).toBe(false);
+    }
+  });
+
+  it("leaves every other event to the session's own checks", () => {
+    expect(violates("item/agentMessage/delta", { type: "local_shell_call" })).toBe(false);
+    expect(violates("item/completed", { type: "dynamicToolCall", delivery: "async" })).toBe(false);
+    expect(violates("turn/completed", {})).toBe(false);
   });
 });

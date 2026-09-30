@@ -33,6 +33,7 @@ import {
   restrictedCodexFailure,
   restrictedCodexRequestError,
   restrictedCodexUsage,
+  toolPolicyViolation,
   type RestrictedCodexRequest,
   type RestrictedCodexResult,
   type RestrictedCodexUsage,
@@ -371,6 +372,36 @@ function usageDelta(
     : null;
 }
 
+/**
+ * Writes each evidence image into the private scratch directory (mode 0600) and returns the turn
+ * input items that label and name it. Request validation has already matched CODEX_IMAGE.
+ */
+async function writeEvidenceImages(
+  scratch: string,
+  images: RestrictedCodexRequest["images"],
+  deadline: RestrictedCodexDeadline,
+): Promise<Record<string, unknown>[]> {
+  const input: Record<string, unknown>[] = [];
+  for (const [index, image] of images.entries()) {
+    deadline.check();
+    const match = CODEX_IMAGE.exec(image.dataUrl)!;
+    const imagePath = path.join(
+      scratch,
+      `evidence-${index}.${match[1] === "jpeg" ? "jpg" : match[1]}`,
+    );
+    await writeFile(imagePath, Buffer.from(match[2]!, "base64"), { mode: 0o600 });
+    input.push(
+      {
+        type: "text",
+        text: JSON.stringify({ captureEvidenceId: image.evidenceId }),
+        text_elements: [],
+      },
+      { type: "localImage", path: imagePath },
+    );
+  }
+  return input;
+}
+
 /** One private process and conversation per owner. Only completed turns may continue. */
 export interface RestrictedCodexSession {
   readonly pendingUsage?: RestrictedCodexUsage | undefined;
@@ -499,26 +530,14 @@ export function createRestrictedCodexSession(
         rawCompactionTypes.includes(String(item.type))
       )
         compacted = true;
-      if (method === "rawResponseItem/completed") {
-        if (!allowedRawItemTypes.includes(String(item.type))) {
-          deadline.stop("codex_tool_call");
-          return;
-        }
-        if (item.type === "custom_tool_call" && item.name !== "exec") {
-          deadline.stop("codex_tool_call");
-          return;
-        }
-        if (item.type === "function_call" && item.name !== "wait") {
-          deadline.stop("codex_tool_call");
-          return;
-        }
-        if (
-          item.type === "message" &&
-          Array.isArray(item.content) &&
-          item.content.some((content) => codexRecord(content).type === "refusal")
-        )
-          deadline.stop("refusal");
-      }
+      // onNotification already applied toolPolicyViolation to this event.
+      if (
+        method === "rawResponseItem/completed" &&
+        item.type === "message" &&
+        Array.isArray(item.content) &&
+        item.content.some((content) => codexRecord(content).type === "refusal")
+      )
+        deadline.stop("refusal");
       if (method === "thread/tokenUsage/updated") {
         const total = restrictedCodexUsage(params.tokenUsage);
         // App-server reports cumulative thread usage. Receipts must charge only this turn.
@@ -557,13 +576,6 @@ export function createRestrictedCodexSession(
           return;
         }
         if (item.type === "agentMessage") {
-          if (
-            item.delivery === "async" ||
-            (Array.isArray(item.questions) && item.questions.length > 0)
-          ) {
-            deadline.stop("codex_tool_call");
-            return;
-          }
           if (method === "item/completed" && item.phase !== "commentary") {
             if (
               typeof item.id !== "string" ||
@@ -629,22 +641,10 @@ export function createRestrictedCodexSession(
           return;
         }
       }
-      const item = codexRecord(params.item);
-      // Tool requests must fail even if the turn-start acknowledgment is lost.
-      if (
-        (method === "rawResponseItem/completed" &&
-          !allowedRawItemTypes.includes(String(item.type))) ||
-        (method === "rawResponseItem/completed" &&
-          item.type === "custom_tool_call" &&
-          item.name !== "exec") ||
-        (method === "rawResponseItem/completed" &&
-          item.type === "function_call" &&
-          item.name !== "wait") ||
-        (["item/started", "item/completed"].includes(method) &&
-          item.type === "agentMessage" &&
-          (item.delivery === "async" ||
-            (Array.isArray(item.questions) && item.questions.length > 0)))
-      ) {
+      // The single tool-policy check. Tool requests must fail even if the turn-start
+      // acknowledgment is lost, and every event reaches handleTurnEvent only from here, directly
+      // or through the early buffer, so no event skips it.
+      if (toolPolicyViolation(method, codexRecord(params.item), allowedRawItemTypes)) {
         deadline.stop("codex_tool_call");
         return;
       }
@@ -768,10 +768,6 @@ export function createRestrictedCodexSession(
           }),
         );
         transport = new RestrictedCodexTransport(owned, deadline, frameLimit);
-        transport.onNotification = onNotification;
-        transport.onRequestComplete = () => {
-          toolRequestPending = false;
-        };
         phase = "initialize";
         const initialize = await transport.rpc("initialize", {
           clientInfo: { name: "humanish_analysis", version: "1.0.0" },
@@ -859,13 +855,13 @@ export function createRestrictedCodexSession(
           model: selectedModel,
           instructions: request.instructions,
         };
-      } else {
-        transport.beginRequest(deadline, frameLimit);
-        transport.onNotification = onNotification;
-        transport.onRequestComplete = () => {
-          toolRequestPending = false;
-        };
-      }
+      } else transport.beginRequest(deadline, frameLimit);
+      // onNotification ignores events before dispatch and onRequestComplete follows only a host
+      // callback, so wiring both after the first launch's handshake loses nothing.
+      transport.onNotification = onNotification;
+      transport.onRequestComplete = () => {
+        toolRequestPending = false;
+      };
       if (readinessOnly) {
         result = {
           status: "completed",
@@ -880,24 +876,8 @@ export function createRestrictedCodexSession(
         if (participant) transport.onRequest = onRequest;
         const input: Record<string, unknown>[] = [
           { type: "text", text: request.evidence, text_elements: [] },
+          ...(await writeEvidenceImages(scratch, request.images, deadline)),
         ];
-        for (const [index, image] of request.images.entries()) {
-          deadline.check();
-          const match = CODEX_IMAGE.exec(image.dataUrl)!;
-          const imagePath = path.join(
-            scratch,
-            `evidence-${index}.${match[1] === "jpeg" ? "jpg" : match[1]}`,
-          );
-          await writeFile(imagePath, Buffer.from(match[2]!, "base64"), { mode: 0o600 });
-          input.push(
-            {
-              type: "text",
-              text: JSON.stringify({ captureEvidenceId: image.evidenceId }),
-              text_elements: [],
-            },
-            { type: "localImage", path: imagePath },
-          );
-        }
         deadline.check();
         // Even a lost acknowledgment may have dispatched the request. Never claim zero cost.
         dispatched = true;
