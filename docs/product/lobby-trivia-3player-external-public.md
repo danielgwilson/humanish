@@ -7,12 +7,12 @@ a public deployment YOU own/operate.
 
 ## What it does
 
-- The public site is the shared plane DIRECTLY — no clone, no getHost, no subject sandbox, no seed.
+- The public site is the shared plane DIRECTLY: no clone, no getHost, no subject sandbox, no seed.
 - A host-first barrier: the `host: true` seat creates the lobby; the orchestrator reads the
   `/lobby/CODE` from the host's CDP-observed URL and threads it into the follower Join missions.
   Followers go through the real Join flow (a direct `/lobby/CODE` visit does not auto-join a
   non-member).
-- Convergence — all three seats reaching one `/lobby/CODE` — is the pass signal (a digest-only
+- Convergence (all three seats reaching one `/lobby/CODE`) is the pass signal (a digest-only
   `lobbyConvergenceDigest`), plus temporal co-occupancy of the three seats' windows.
 
 ## Mobile fidelity caveat (read before over-reading the results)
@@ -35,7 +35,7 @@ CSS-viewport rendering is the #221 CDP-device-emulation upgrade.
 
 ## Run it
 
-Dry-run (the default, $0 — proves the plumbing + the honesty contract, no sandboxes, no tokens):
+Dry-run (the default, $0; proves the plumbing + the honesty contract, with no sandboxes and no tokens):
 
 ```
 humanish lab run lobby-trivia-3player          # or: humanish watch lobby-trivia-3player
@@ -48,19 +48,20 @@ Live (opens 3 real mobile-layout seats against the public app):
 humanish watch lobby-trivia-3player --env-file .env.local   # OPENAI_API_KEY + E2B_API_KEY
 ```
 
-Watch it from a phone (today): serve the run directory's Observer through an authed edge —
+Watch it from a phone (today): serve the run directory's Observer through an authed edge:
 
 ```
 humanish serve --expose --tunnel <provider> --oauth <provider> --allow-emails you@example.com
 ```
 
-Native live-desktop `--expose` streaming on the concurrent path (watch the 3 live desktops, not just
+Native live-desktop `--expose` streaming on the concurrent path (watch the 3 live desktops as well as
 the evolving Observer artifacts) is a 0.20.1 fast-follow.
 
 ## Honesty
 
 This is a real public-application study of a deployment the operator attests they own/operate
-(`subject.publicTarget: { owner, authorized: true }` — author-trust, unverifiable by the harness).
+(`subject.publicTarget: { owner, authorized: true }`; this is author trust, which the harness cannot
+verify).
 Attribution stays `shared-world` (N seats, ONE plane), but every strength claim degrades honestly and
 is asserted-absent by verify: provenance `external-public` (not seeded); NO synthetic attestation (you
 cannot claim synthetic on a real site); plane control is operator-attested, not harness-controlled; NO
