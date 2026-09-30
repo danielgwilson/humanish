@@ -18,27 +18,39 @@ export interface RepoIndex {
   suffixes: ReadonlySet<string>;
   /** Every directory name that appears in a file path. */
   directoryNames: ReadonlySet<string>;
+  /** Every directory path that holds a file, with a trailing `/` (`src/`, `src/run/`, ...). */
+  directories: ReadonlySet<string>;
 }
 
 export function buildRepoIndex(paths: Iterable<string>): RepoIndex {
   const files = new Set<string>();
   const suffixes = new Set<string>();
   const directoryNames = new Set<string>();
+  const directories = new Set<string>();
   for (const path of paths) {
     const segments = path.split("/");
     files.add(path);
     for (let index = 0; index < segments.length; index++) {
       suffixes.add(segments.slice(index).join("/"));
-      if (index < segments.length - 1) directoryNames.add(segments[index]!);
+      if (index < segments.length - 1) {
+        directoryNames.add(segments[index]!);
+        directories.add(`${segments.slice(0, index + 1).join("/")}/`);
+      }
     }
   }
-  return { files, suffixes, directoryNames };
+  return { files, suffixes, directoryNames, directories };
 }
 
 // docs/goals/, docs/plans/ and docs/roadmap/ are dated history, so they may name files that
 // have since moved.
 const HISTORY_DIRECTORIES = ["docs/goals/", "docs/plans/", "docs/roadmap/"];
-const ROOT_GUIDES = new Set(["README.md", "AGENTS.md", "CONTEXT.md", "CONTRIBUTING.md"]);
+const ROOT_GUIDES = new Set([
+  "README.md",
+  "AGENTS.md",
+  "ARCHITECTURE.md",
+  "CONTEXT.md",
+  "CONTRIBUTING.md",
+]);
 
 export function isCheckedDoc(path: string): boolean {
   if (ROOT_GUIDES.has(path)) return true;
@@ -52,11 +64,14 @@ export function isCheckedSource(path: string): boolean {
   return path.startsWith("src/") && path.endsWith(".ts");
 }
 
-// A root `src/` or `tests/` path at the start of a token, behind optional `./` or `../` segments
-// (a relative link) or behind a GitHub blob URL for this repository. The same folder inside
-// another workspace (`tui/src/...`) and paths with globs or placeholders do not match.
+// A path from the repo root at the start of a token, behind optional `./` or `../` segments (a
+// relative link) or behind a GitHub blob URL for this repository. It names a file with one of the
+// listed extensions, or a directory written with a trailing `/`. A root folder inside another path
+// (`tui/src/...` holds no root `src/` match) and paths with globs or placeholders do not match.
+// `observer/` is left out because a run bundle has its own `observer/` folder, and `.js` because a
+// `.js` name in a doc is often an emitted file or an ESM specifier.
 const DOC_REPO_PATH =
-  /(?:github\.com\/[\w.-]+\/humanish\/blob\/[\w.-]+\/|(?<![\w.@/-])((?:\.{1,2}\/)*))((?:src|tests)\/[\w./-]*?\.ts)(?![\w/-])/g;
+  /(?:github\.com\/[\w.-]+\/humanish\/blob\/[\w.-]+\/|(?<![\w.@/-])((?:\.{1,2}\/)*))((?:src|tests|scripts|docs|tui|site|runtime)\/[\w./-]*?(?:\.(?:tsx?|mts|mjs|json|ya?ml|md|py)|\/))(?![\w/-])/g;
 
 export function findDocPathIssues(file: string, text: string, index: RepoIndex): PathIssue[] {
   const issues: PathIssue[] = [];
@@ -64,7 +79,8 @@ export function findDocPathIssues(file: string, text: string, index: RepoIndex):
     const prefix = match[1] ?? "";
     const path = match[2]!;
     const resolved = prefix ? posix.join(posix.dirname(file), prefix, path) : path;
-    if (!index.files.has(resolved)) {
+    const known = resolved.endsWith("/") ? index.directories : index.files;
+    if (!known.has(resolved)) {
       issues.push({ file, line: lineAt(text, match.index), path: prefix + path });
     }
   }

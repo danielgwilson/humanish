@@ -39,7 +39,8 @@
     "README.md",
     "LICENSE",
     "SECURITY.md",
-    "CONTRIBUTING.md"
+    "CONTRIBUTING.md",
+    "ARCHITECTURE.md"
   ],
   "type": "module",
   "main": "./dist/index.js",

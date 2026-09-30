@@ -2,6 +2,10 @@
 
 Thanks for helping make Humanish better.
 
+Read [ARCHITECTURE.md](ARCHITECTURE.md) before your first change. It traces `humanish run <lab>`
+through the code, maps each folder to the file to read first, and lists the invariants a change
+must keep.
+
 ## Ground Rules
 
 - Follow [engineering principles](docs/principles/engineering.md): prefer simple,

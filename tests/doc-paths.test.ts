@@ -28,6 +28,7 @@ describe("doc path check", () => {
     expect(
       [
         "README.md",
+        "ARCHITECTURE.md",
         "CONTEXT.md",
         "docs/contracts/core.md",
         "docs/goals/current.md",
@@ -40,6 +41,7 @@ describe("doc path check", () => {
       ].filter(isCheckedDoc),
     ).toEqual([
       "README.md",
+      "ARCHITECTURE.md",
       "CONTEXT.md",
       "docs/contracts/core.md",
       "site/content/docs/quickstart.mdx",
@@ -77,12 +79,31 @@ describe("doc path check", () => {
     ]);
   });
 
-  it("ignores other workspaces, globs, placeholders, tsx files and other repositories", () => {
+  it("checks files and directories under every listed root", () => {
     const text = [
-      "`tui/src/navigation.ts`",
+      "| `src/run/` | `src/run/verify.ts` | `src/lanes/` |",
+      "`scripts/tui-smoke.mjs` and `scripts/gone.mjs`",
+      "`tests/fixtures/labs.json`",
+      "`tui/src/app.tsx` and `tui/src/navigation.ts`",
+      "[example](docs/architecture/example.md) and [gone](docs/architecture/gone.md)",
+    ].join("\n");
+    expect(paths(findDocPathIssues("ARCHITECTURE.md", text, index))).toEqual([
+      "src/lanes/",
+      "scripts/gone.mjs",
+      "tests/fixtures/labs.json",
+      "tui/src/navigation.ts",
+      "docs/architecture/gone.md",
+    ]);
+  });
+
+  it("ignores bundle paths, .js names, nested roots, globs, placeholders and other repositories", () => {
+    const text = [
+      // Every run bundle has an observer/ folder, so observer/ is not a checked root.
+      "`observer/observer-data.json`",
+      "`src/cli.js`",
+      "`observer/src/missing.ts`",
       "`src/routes/*/lab.ts`",
       "`src/routes/<route>/lab.ts`",
-      "`src/app.tsx`",
       "https://github.com/example/other/blob/main/src/missing.ts",
     ].join("\n");
     expect(findDocPathIssues("docs/contracts/run.md", text, index)).toEqual([]);
