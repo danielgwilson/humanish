@@ -644,6 +644,30 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     expect(JSON.parse(event.message).observedVersion).toBeUndefined();
   });
 
+  it("labels a dry run's terminal stream with the declared stdin mode", async () => {
+    const config = liveConfig();
+    config.execution!.terminal = { transport: "exec-stream", stdin: "planned" };
+    const result = await runTerminalProductLab({
+      cwd,
+      config,
+      dryRun: true,
+      open: false,
+      hooks: {
+        loadModule: async () => {
+          throw new Error("must not resolve or allocate");
+        },
+      },
+    });
+    expect(result.ok).toBe(true);
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    );
+    expect(bundle.streams[0].terminal).toMatchObject({
+      title: "codex-exec exec (stdin planned)",
+      stdin: "planned",
+    });
+  });
+
   it("pins the observed executable, forwards declared model/effort, and preserves additive provenance", async () => {
     const creates: RecordedCreate[] = [],
       runs: RecordedRun[] = [],
@@ -940,6 +964,41 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     expect(actor.completionReason).toBe("timed_out");
     const ledgers = JSON.parse(await readFile(path.join(runDir, "terminal-ledgers.json"), "utf8"));
     expect(ledgers.commandLog[0]).toMatchObject({ label: "codex-exec", timedOut: true });
+  });
+
+  it("stamps the live stream and simulation with the session's completion time", async () => {
+    const creates: RecordedCreate[] = [],
+      runs: RecordedRun[] = [],
+      killed: string[] = [];
+    let clock = 1_000_000;
+    const result = await runTerminalProductLab({
+      cwd,
+      config: liveConfig(),
+      dryRun: false,
+      open: false,
+      hooks: {
+        env: baseEnv(),
+        // Each reading is one second later, so the session completes after the run was created.
+        now: () => (clock += 1_000),
+        loadModule: async () =>
+          makeFakeModule({
+            creates,
+            runs,
+            killed,
+            codexBehavior: (cmd) => ({
+              exitCode: 0,
+              stdout: `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+            }),
+          }),
+      },
+    });
+    expect(result.ok, JSON.stringify(result.error)).toBe(true);
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
+    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
+    const actor = JSON.parse(await readFile(path.join(runDir, "actor.json"), "utf8"));
+    expect(Date.parse(actor.completedAt)).toBeGreaterThan(Date.parse(bundle.createdAt));
+    expect(bundle.streams[0].updatedAt).toBe(actor.completedAt);
+    expect(bundle.simulations[0].updatedAt).toBe(actor.completedAt);
   });
 
   it("rejects a bad pin at the exported engine before loading or allocating", async () => {

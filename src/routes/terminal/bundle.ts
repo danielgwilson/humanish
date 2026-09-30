@@ -57,52 +57,23 @@ export function buildTerminalProductBundle(args: {
   const reason =
     "Contract bundle only: dry-run declared the terminal-product study contract without creating an E2B sandbox, injecting any key, or spending. This run did not execute an agent or prove live behavior.";
 
-  const simulation: RunSimulation = {
-    id: "sim-001",
-    index: 1,
-    personaId: args.persona.id,
-    scenarioId: `terminal-${args.labId}`,
-    status: "contract_proof_only",
-    streamKind: "terminal",
-    mode: "cli-sim",
-    progress: 100,
-    currentStep: reason,
-    summary: `Contract lane for the terminal agent (${args.actorId}) studying ${args.productName} from public surfaces.`,
-    streamIds: ["stream-001"],
-    startedAt: args.createdAt,
-    updatedAt: args.createdAt,
-  };
-
   // The terminal stream is a CONTRACT PLACEHOLDER on the dry-run path: stdin is disabled and no
   // exec output was captured, so the tail is empty and transport stays "snapshot" — NOT "pty"
   // (captured non-interactive exec output is never an interactive PTY; invariant 6 + the PTY
   // ruling). The shipped live builder fills terminal.tail from redacted exec-stream capture.
-  const stream: RunStream = {
-    id: "stream-001",
-    simId: "sim-001",
-    assignment: participantAssignment({ mission: args.mission }),
-    kind: "terminal",
-    label: `Terminal agent — ${args.labId}`,
+  const { simulation, stream } = terminalLane(args, {
     status: "contract_proof_only",
-    transport: "snapshot",
+    reason,
+    summary: `Contract lane for the terminal agent (${args.actorId}) studying ${args.productName} from public surfaces.`,
     updatedAt: args.createdAt,
-    embed: { kind: "placeholder", title: `Terminal agent (${args.productName})` },
-    terminal: {
-      title: `${args.actorId} exec (stdin ${args.stdin})`,
-      format: "plain",
-      stdin: args.stdin,
-      tail: "",
-    },
-    ui: {
-      intent: `Watch the terminal agent discover and use ${args.productName} from its public surfaces.`,
-      state: reason,
-    },
+    stdin: args.stdin,
+    tail: "",
     artifacts: [
       { label: "run bundle", path: "run.json", kind: "bundle" as const },
       { label: "review", path: "review.md", kind: "review" as const },
       { label: "events", path: "events.ndjson", kind: "events" as const },
     ],
-  };
+  });
 
   const capsText = describeCaps(args.caps);
   const events: RunEvent[] = [
@@ -167,32 +138,8 @@ export function buildTerminalProductBundle(args: {
     ],
   };
 
-  return {
-    schema: RUN_BUNDLE_SCHEMA,
-    runId: args.runId,
+  return terminalRunBundle(args, {
     mode: args.dryRun ? "dry-run" : "live",
-    simCount: 1,
-    createdAt: args.createdAt,
-    cwd: PUBLIC_TARGET_CWD,
-    ...(args.lab === undefined ? {} : { lab: args.lab }),
-    artifactRoot: path.join(".humanish", "runs", args.runId),
-    source: args.source,
-    persona: {
-      id: args.persona.id,
-      name: `Autonomous terminal agent (${args.persona.id})`,
-      source: `lab:${args.labId}`,
-      sourceDigest: args.persona.promptDigest,
-    },
-    scenario: {
-      id: `terminal-${args.labId}`,
-      title: args.labTitle ?? `Terminal-product lab: ${args.labId}`,
-      // The author mission is public-safe committed lab text — recorded plaintext as the goal,
-      // redacted defensively before persisting (it never carries a secret, but the harness never
-      // trusts that). The full composed prompt is bound by digest, not text.
-      goal: redactText(args.mission),
-      source: `lab:${args.labId}`,
-      sourceDigest: args.persona.promptDigest,
-    },
     lifecycle: [
       {
         at: args.createdAt,
@@ -200,24 +147,13 @@ export function buildTerminalProductBundle(args: {
         message: `Created terminal-product lab run with one in-sandbox agent lane (actor ${args.actorId}, product ${args.productName}).`,
       },
     ],
-    simulations: [simulation],
-    streams: [stream],
+    simulation,
+    stream,
     events,
-    redaction: {
-      status: "passed",
-      notes:
-        "Dry-run contract bundle: no sandbox ran, no key was injected, no exec output was captured. The author mission is public-safe committed lab text (redacted defensively); the composed prompt is bound by digest. The shipped live path applies scrubKnownValues then redactText at the capture source before persistence.",
-    },
-    artifacts: {
-      run: "run.json",
-      reviewJson: "review.json",
-      reviewMarkdown: "review.md",
-      observerData: "observer/observer-data.json",
-      events: "events.ndjson",
-    },
+    redactionNotes:
+      "Dry-run contract bundle: no sandbox ran, no key was injected, no exec output was captured. The author mission is public-safe committed lab text (redacted defensively); the composed prompt is bound by digest. The shipped live path applies scrubKnownValues then redactText at the capture source before persistence.",
     review,
-    feedbackCandidates: [],
-  };
+  });
 }
 
 /**
@@ -265,44 +201,15 @@ export function buildLiveTerminalProductBundle(args: {
   const messageItem = args.trace.items.find((item) => item.kind === "message");
   const tail = (messageItem?.text ?? args.trace.reason).slice(0, 2000);
 
-  const simulation: RunSimulation = {
-    id: "sim-001",
-    index: 1,
-    personaId: args.persona.id,
-    scenarioId: `terminal-${args.labId}`,
-    status: simStatus,
-    streamKind: "terminal",
-    mode: "cli-sim",
-    progress: 100,
-    currentStep: args.sessionReason,
-    summary: `Terminal agent (${args.actorId}) studied ${args.productName} from public surfaces (${args.trace.status}).`,
-    streamIds: ["stream-001"],
-    startedAt: args.createdAt,
-    updatedAt: args.trace.completedAt,
-  };
-
   // transport "snapshot": the persisted tail is a redacted snapshot of the captured exec output,
   // NOT an interactive PTY (stdin disabled). The actor trace seam carries the structured evidence.
-  const stream: RunStream = {
-    id: "stream-001",
-    simId: "sim-001",
-    assignment: participantAssignment({ mission: args.mission }),
-    kind: "terminal",
-    label: `Terminal agent — ${args.labId}`,
+  const { simulation, stream } = terminalLane(args, {
     status: simStatus,
-    transport: "snapshot",
+    reason: args.sessionReason,
+    summary: `Terminal agent (${args.actorId}) studied ${args.productName} from public surfaces (${args.trace.status}).`,
     updatedAt: args.trace.completedAt,
-    embed: { kind: "placeholder", title: `Terminal agent (${args.productName})` },
-    terminal: {
-      title: `${args.actorId} exec (stdin disabled)`,
-      format: "plain",
-      stdin: "disabled",
-      tail,
-    },
-    ui: {
-      intent: `Watch the terminal agent discover and use ${args.productName} from its public surfaces.`,
-      state: args.sessionReason,
-    },
+    stdin: "disabled",
+    tail,
     actor: args.trace,
     artifacts: [
       { label: "run bundle", path: "run.json", kind: "bundle" as const },
@@ -313,7 +220,7 @@ export function buildLiveTerminalProductBundle(args: {
       { label: "terminal transcript", path: TERMINAL_TRANSCRIPT_ARTIFACT, kind: "log" as const },
       { label: "terminal ledgers", path: TERMINAL_LEDGERS_ARTIFACT, kind: "log" as const },
     ],
-  };
+  });
 
   // Substrate-lifecycle ledger -> bundle events (each already sanitized when recorded).
   const lifecycleEvents: RunEvent[] = args.ledgers.lifecycle.map((record, index) => ({
@@ -371,10 +278,109 @@ export function buildLiveTerminalProductBundle(args: {
     ],
   };
 
+  return terminalRunBundle(args, {
+    mode: "live",
+    lifecycle: args.ledgers.lifecycle.map((record) => ({
+      at: record.at,
+      event: record.event,
+      message: record.message,
+    })),
+    simulation,
+    stream,
+    events: lifecycleEvents,
+    redactionNotes: `Live terminal-product run: the in-sandbox agent's output was captured via commands.run onStdout/onStderr and scrubbed (literal known values incl. the runtime key) THEN redacted (shape patterns) AT THE SOURCE before persisting. ${args.runtimeAuth === "openai-egress" ? `Runtime auth openai-egress: the raw key from ${args.runtimeAuthKeyName} is reserved for E2B's external api.openai.com HTTPS header transform. ${args.ledgers.commandLog.some((command) => command.label === "codex-exec") ? "Codex received an inert CODEX_API_KEY placeholder." : "Codex was not launched."} Any created sandbox retains a spendable OpenAI proxy capability until teardown; additional provider calls may not appear in the Codex usage ledger.` : `Runtime auth openai-env: the runtime key (${args.runtimeAuthKeyName}) was injected ONLY into the command-scoped codex invocation, never sandbox-global env or metadata; only its NAME appears in evidence.`} Subject provenance is UNPINNED (public-surface study).`,
+    review,
+    ...(args.cost === undefined ? {} : { cost: args.cost }),
+  });
+}
+
+/** What both builders read to name the run, its persona and its scenario. */
+interface TerminalBundleCommon {
+  lab?: RunLabProvenance;
+  actorId: string;
+  createdAt: string;
+  labId: string;
+  labTitle?: string;
+  mission: string;
+  persona: ActorPersonaRef;
+  productName: string;
+  runId: string;
+  source: RunBundle["source"];
+}
+
+/** The one terminal lane: its simulation and its stream. */
+function terminalLane(
+  args: TerminalBundleCommon,
+  lane: {
+    status: RunSimulationStatus;
+    reason: string;
+    summary: string;
+    updatedAt: string;
+    stdin: "disabled" | "planned" | "sent";
+    tail: string;
+    actor?: ActorTrace;
+    artifacts: RunStream["artifacts"];
+  },
+): { simulation: RunSimulation; stream: RunStream } {
+  const simulation: RunSimulation = {
+    id: "sim-001",
+    index: 1,
+    personaId: args.persona.id,
+    scenarioId: `terminal-${args.labId}`,
+    status: lane.status,
+    streamKind: "terminal",
+    mode: "cli-sim",
+    progress: 100,
+    currentStep: lane.reason,
+    summary: lane.summary,
+    streamIds: ["stream-001"],
+    startedAt: args.createdAt,
+    updatedAt: lane.updatedAt,
+  };
+  const stream: RunStream = {
+    id: "stream-001",
+    simId: "sim-001",
+    assignment: participantAssignment({ mission: args.mission }),
+    kind: "terminal",
+    label: `Terminal agent — ${args.labId}`,
+    status: lane.status,
+    transport: "snapshot",
+    updatedAt: lane.updatedAt,
+    embed: { kind: "placeholder", title: `Terminal agent (${args.productName})` },
+    terminal: {
+      title: `${args.actorId} exec (stdin ${lane.stdin})`,
+      format: "plain",
+      stdin: lane.stdin,
+      tail: lane.tail,
+    },
+    ui: {
+      intent: `Watch the terminal agent discover and use ${args.productName} from its public surfaces.`,
+      state: lane.reason,
+    },
+    ...(lane.actor === undefined ? {} : { actor: lane.actor }),
+    artifacts: lane.artifacts,
+  };
+  return { simulation, stream };
+}
+
+/** The run bundle around the lane: the fields both builders fill the same way. */
+function terminalRunBundle(
+  args: TerminalBundleCommon,
+  parts: {
+    mode: RunBundle["mode"];
+    lifecycle: RunBundle["lifecycle"];
+    simulation: RunSimulation;
+    stream: RunStream;
+    events: RunEvent[];
+    redactionNotes: string;
+    review: ReviewSummary;
+    cost?: RunCostSummary;
+  },
+): RunBundle {
   return {
     schema: RUN_BUNDLE_SCHEMA,
     runId: args.runId,
-    mode: "live",
+    mode: parts.mode,
     simCount: 1,
     createdAt: args.createdAt,
     cwd: PUBLIC_TARGET_CWD,
@@ -390,22 +396,18 @@ export function buildLiveTerminalProductBundle(args: {
     scenario: {
       id: `terminal-${args.labId}`,
       title: args.labTitle ?? `Terminal-product lab: ${args.labId}`,
+      // The author mission is public-safe committed lab text — recorded plaintext as the goal,
+      // redacted defensively before persisting (it never carries a secret, but the harness never
+      // trusts that). The full composed prompt is bound by digest, not text.
       goal: redactText(args.mission),
       source: `lab:${args.labId}`,
       sourceDigest: args.persona.promptDigest,
     },
-    lifecycle: args.ledgers.lifecycle.map((record) => ({
-      at: record.at,
-      event: record.event,
-      message: record.message,
-    })),
-    simulations: [simulation],
-    streams: [stream],
-    events: lifecycleEvents,
-    redaction: {
-      status: "passed",
-      notes: `Live terminal-product run: the in-sandbox agent's output was captured via commands.run onStdout/onStderr and scrubbed (literal known values incl. the runtime key) THEN redacted (shape patterns) AT THE SOURCE before persisting. ${args.runtimeAuth === "openai-egress" ? `Runtime auth openai-egress: the raw key from ${args.runtimeAuthKeyName} is reserved for E2B's external api.openai.com HTTPS header transform. ${args.ledgers.commandLog.some((command) => command.label === "codex-exec") ? "Codex received an inert CODEX_API_KEY placeholder." : "Codex was not launched."} Any created sandbox retains a spendable OpenAI proxy capability until teardown; additional provider calls may not appear in the Codex usage ledger.` : `Runtime auth openai-env: the runtime key (${args.runtimeAuthKeyName}) was injected ONLY into the command-scoped codex invocation, never sandbox-global env or metadata; only its NAME appears in evidence.`} Subject provenance is UNPINNED (public-surface study).`,
-    },
+    lifecycle: parts.lifecycle,
+    simulations: [parts.simulation],
+    streams: [parts.stream],
+    events: parts.events,
+    redaction: { status: "passed", notes: parts.redactionNotes },
     artifacts: {
       run: "run.json",
       reviewJson: "review.json",
@@ -413,9 +415,9 @@ export function buildLiveTerminalProductBundle(args: {
       observerData: "observer/observer-data.json",
       events: "events.ndjson",
     },
-    review,
+    review: parts.review,
     feedbackCandidates: [],
-    ...(args.cost === undefined ? {} : { cost: args.cost }),
+    ...(parts.cost === undefined ? {} : { cost: parts.cost }),
   };
 }
 
