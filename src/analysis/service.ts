@@ -25,10 +25,10 @@ import {
   assertStudyAnalysisPublicationCapacity,
   beginStudyAnalysisExecution,
   listStudyAnalyses,
-  loadStudyAnalysis,
   writeStudyAnalysis,
   writeStudyAnalysisExecutionReceipt,
 } from "./store.js";
+import { loadStudyAnalysis } from "./load.js";
 import { hashStudyAnalysisValue } from "./validation.js";
 import {
   STUDY_ANALYSIS_CORRECTION_SCHEMA,

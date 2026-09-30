@@ -27,7 +27,8 @@ import {
   readAutomaticStudyAnalysisPrepared,
   AUTOMATIC_STUDY_ANALYSIS_DIRECTORY,
 } from "../../src/analysis/job.js";
-import { loadStudyAnalysis, listStudyAnalysisExecutions } from "../../src/analysis/store.js";
+import { listStudyAnalysisExecutions } from "../../src/analysis/store.js";
+import { loadStudyAnalysis } from "../../src/analysis/load.js";
 import { captureStudyEvidence } from "../../src/analysis/evidence.js";
 import {
   projectShareCheckedAnalysis,

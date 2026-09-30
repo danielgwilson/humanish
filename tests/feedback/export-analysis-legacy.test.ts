@@ -16,10 +16,10 @@ import { type RunBundle } from "../../src/run/bundle.js";
 import { captureStudyEvidence } from "../../src/analysis/evidence.js";
 import {
   appendStudyAnalysisCorrection,
-  loadStudyAnalysis,
   writeStudyAnalysis,
   writeStudyAnalysisExecutionReceipt,
 } from "../../src/analysis/store.js";
+import { loadStudyAnalysis } from "../../src/analysis/load.js";
 import { hashStudyAnalysisValue } from "../../src/analysis/validation.js";
 import { syntheticArtifact } from "../analysis/fixtures.js";
 

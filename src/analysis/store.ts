@@ -25,7 +25,6 @@ import type {
   StudyAnalysisArtifact,
   StudyAnalysisCorrection,
 } from "./study-analysis.js";
-import { readAutomaticStudyAnalysisPrepared } from "./job.js";
 
 const STUDY_ANALYSIS_DIRECTORY = "analysis";
 const ANALYSIS_MAX_BYTES = 4 * 1024 * 1024;
@@ -343,7 +342,7 @@ async function readCorrections(
   return { corrections, warnings };
 }
 
-async function loadStudyAnalysisRecord(
+export async function loadStudyAnalysisRecord(
   prepared: PreparedRunArtifactPaths,
   id?: string,
 ): Promise<LoadedStudyAnalysis> {
@@ -377,17 +376,6 @@ async function loadStudyAnalysisRecord(
   }
 }
 
-export async function loadStudyAnalysis(
-  prepared: PreparedRunArtifactPaths,
-  id?: string,
-): Promise<LoadedStudyAnalysis> {
-  const [loaded, automatic] = await Promise.all([
-    loadStudyAnalysisRecord(prepared, id),
-    readAutomaticStudyAnalysisPrepared(prepared),
-  ]);
-  return automatic === undefined ? loaded : { ...loaded, automatic };
-}
-
 function assertCorrectionBinding(
   analysis: StudyAnalysisArtifact,
   correction: StudyAnalysisCorrection,
@@ -408,7 +396,7 @@ export async function appendStudyAnalysisCorrection(
   value: StudyAnalysisCorrection,
 ): Promise<void> {
   const correction = validateStudyAnalysisCorrection(value);
-  const loaded = await loadStudyAnalysis(prepared, correction.analysisId);
+  const loaded = await loadStudyAnalysisRecord(prepared, correction.analysisId);
   if (loaded.state !== "ready" || !loaded.analysis)
     throw new Error("ANALYSIS_CORRECTION_SOURCE_UNAVAILABLE");
   assertCorrectionBinding(loaded.analysis, correction);
