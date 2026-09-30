@@ -253,10 +253,17 @@ export function turnFromResult(result: JsonObject): CuaTurn {
   const usage = result.usage as JsonObject | undefined;
   const count = (key: string): number | undefined =>
     typeof usage?.[key] === "number" ? (usage[key] as number) : undefined;
-  const input = count("input_tokens");
+  // Anthropic's input_tokens counts only the tokens after the last cache breakpoint; cache reads
+  // and writes are reported beside it. ActorTokenUsage.input is the whole prompt, with cachedInput
+  // and cacheWriteInput as parts of it, so the three are summed.
+  const uncachedInput = count("input_tokens");
   const output = count("output_tokens");
   const cachedInput = count("cache_read_input_tokens");
   const cacheWriteInput = count("cache_creation_input_tokens");
+  const input =
+    uncachedInput === undefined
+      ? undefined
+      : uncachedInput + (cachedInput ?? 0) + (cacheWriteInput ?? 0);
   return {
     actions,
     pendingSafetyChecks: [],
