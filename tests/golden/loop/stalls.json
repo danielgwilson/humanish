@@ -141,6 +141,148 @@
       ]
     ]
   },
+  "providerStallCancelsFirstRequest": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "Finished after a retry.",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "raw",
+          "notes": "1 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+        },
+        "startedAt": "1970-01-01T00:00:01.000Z",
+        "completedAt": "1970-01-01T00:00:09.000Z",
+        "durationMs": 8000,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "Finished after a retry.",
+        "ids": {
+          "model": "golden-1"
+        },
+        "counts": {
+          "turns": 1,
+          "actions": 0,
+          "materialActions": 0,
+          "screenshots": 1,
+          "reasonings": 0,
+          "messages": 1,
+          "idleTurns": 0,
+          "noProgressTurns": 0
+        },
+        "items": [
+          {
+            "id": "screenshot-001",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-00-start",
+            "screenshotRef": {
+              "path": "screenshots/turn-00-start.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:03.000Z"
+          },
+          {
+            "id": "notice-002",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "warn",
+            "title": "provider turn stalled; retrying once",
+            "text": "provider turn 1 produced nothing within 5ms; sending the same observation again",
+            "at": "1970-01-01T00:00:06.000Z"
+          },
+          {
+            "id": "message-003",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 1",
+            "text": "Finished after a retry.",
+            "at": "1970-01-01T00:00:08.000Z"
+          }
+        ],
+        "interactionUsageIncomplete": true,
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "turn-00-start.png",
+        15
+      ],
+      [
+        "onTrace",
+        1,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "screenshot": "[buffer 15 bytes]",
+            "stateSignature": "s0"
+          }
+        }
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "screenshot": "[buffer 15 bytes]",
+            "stateSignature": "s0"
+          }
+        }
+      ],
+      [
+        "onMessage",
+        "Finished after a retry."
+      ]
+    ]
+  },
   "providerStallTwice": {
     "result": {
       "status": "failed",

@@ -1448,5 +1448,788 @@
         "Finished."
       ]
     ]
+  },
+  "dwellFramelessAfterWindow": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "Finished.",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "raw",
+          "notes": "3 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+        },
+        "startedAt": "1970-01-01T00:00:00.001Z",
+        "completedAt": "1970-01-01T00:00:00.036Z",
+        "durationMs": 35,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "Finished.",
+        "ids": {
+          "model": "golden-1"
+        },
+        "counts": {
+          "turns": 1,
+          "actions": 0,
+          "materialActions": 0,
+          "screenshots": 3,
+          "reasonings": 0,
+          "messages": 1,
+          "idleTurns": 0,
+          "noProgressTurns": 0
+        },
+        "items": [
+          {
+            "id": "screenshot-001",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-00-start",
+            "screenshotRef": {
+              "path": "screenshots/turn-00-start.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:00.003Z"
+          },
+          {
+            "id": "notice-002",
+            "kind": "notice",
+            "lifecycle": "started",
+            "title": "dwell window started",
+            "text": "at the start at turn 0: holding 20ms, a frame every 10ms, no actions, no model turns",
+            "at": "1970-01-01T00:00:00.006Z"
+          },
+          {
+            "id": "screenshot-003",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "dwell-01",
+            "screenshotRef": {
+              "path": "screenshots/dwell-01.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:00.020Z"
+          },
+          {
+            "id": "screenshot-004",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "dwell-02",
+            "screenshotRef": {
+              "path": "screenshots/dwell-02.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:00.027Z"
+          },
+          {
+            "id": "notice-005",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "ok",
+            "title": "dwell window complete",
+            "text": "2 frame(s) over 24ms; no model turn was requested during the window",
+            "at": "1970-01-01T00:00:00.030Z"
+          },
+          {
+            "id": "notice-006",
+            "kind": "notice",
+            "title": "Participant context hint",
+            "text": "The study held this page under observation for 0 seconds (a declared dwell window; you took no actions in that time). Continue the mission from the current state of the page.",
+            "lifecycle": "completed",
+            "at": "1970-01-01T00:00:00.034Z"
+          },
+          {
+            "id": "message-007",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 1",
+            "text": "Finished.",
+            "at": "1970-01-01T00:00:00.035Z"
+          }
+        ],
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "turn-00-start.png",
+        15
+      ],
+      [
+        "onTrace",
+        1,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "executor.observe",
+        1
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "dwell-01.png",
+        15
+      ],
+      [
+        "onTrace",
+        3,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "executor.observe",
+        2
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "dwell-02.png",
+        15
+      ],
+      [
+        "onTrace",
+        4,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "executor.observe",
+        3
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "stateSignature": "a"
+          },
+          "contextHint": "The study held this page under observation for 0 seconds (a declared dwell window; you took no actions in that time). Continue the mission from the current state of the page."
+        }
+      ],
+      [
+        "onMessage",
+        "Finished."
+      ]
+    ]
+  },
+  "dwellAppStateAfterWindow": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "Finished.",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "n/a",
+          "notes": "no screenshots captured"
+        },
+        "startedAt": "1970-01-01T00:00:00.001Z",
+        "completedAt": "1970-01-01T00:00:00.034Z",
+        "durationMs": 33,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "Finished.",
+        "ids": {
+          "model": "golden-1"
+        },
+        "counts": {
+          "turns": 1,
+          "actions": 0,
+          "materialActions": 0,
+          "screenshots": 0,
+          "reasonings": 0,
+          "messages": 1,
+          "idleTurns": 0,
+          "noProgressTurns": 0
+        },
+        "items": [
+          {
+            "id": "notice-001",
+            "kind": "notice",
+            "lifecycle": "started",
+            "title": "dwell window started",
+            "text": "at the start at turn 0: holding 20ms, a frame every 10ms, no actions, no model turns",
+            "at": "1970-01-01T00:00:00.005Z"
+          },
+          {
+            "id": "notice-002",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "ok",
+            "title": "dwell window complete",
+            "text": "2 frame(s) over 23ms; no model turn was requested during the window",
+            "at": "1970-01-01T00:00:00.028Z"
+          },
+          {
+            "id": "notice-003",
+            "kind": "notice",
+            "title": "Participant context hint",
+            "text": "The study held this page under observation for 0 seconds (a declared dwell window; you took no actions in that time). Continue the mission from the current state of the page.",
+            "lifecycle": "completed",
+            "at": "1970-01-01T00:00:00.032Z"
+          },
+          {
+            "id": "message-004",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 1",
+            "text": "Finished.",
+            "at": "1970-01-01T00:00:00.033Z"
+          }
+        ],
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onTrace",
+        0,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "executor.observe",
+        1
+      ],
+      [
+        "onTrace",
+        1,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "executor.observe",
+        2
+      ],
+      [
+        "onTrace",
+        1,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "executor.observe",
+        3
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "stateSignature": "a",
+            "appState": {
+              "route": "/after-window"
+            }
+          },
+          "contextHint": "The study held this page under observation for 0 seconds (a declared dwell window; you took no actions in that time). Continue the mission from the current state of the page."
+        }
+      ],
+      [
+        "onMessage",
+        "Finished."
+      ]
+    ]
+  },
+  "dwellHintWithBackstopHint": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "Finished.",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "raw",
+          "notes": "6 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+        },
+        "startedAt": "1970-01-01T00:00:00.001Z",
+        "completedAt": "1970-01-01T00:00:00.049Z",
+        "durationMs": 48,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "Finished.",
+        "ids": {
+          "model": "golden-1"
+        },
+        "counts": {
+          "turns": 3,
+          "actions": 2,
+          "materialActions": 2,
+          "screenshots": 6,
+          "reasonings": 0,
+          "messages": 1,
+          "idleTurns": 0,
+          "noProgressTurns": 1
+        },
+        "items": [
+          {
+            "id": "screenshot-001",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-00-start",
+            "screenshotRef": {
+              "path": "screenshots/turn-00-start.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:00.003Z"
+          },
+          {
+            "id": "ui_action-002",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (1, 1)",
+            "coord": {
+              "x": 1,
+              "y": 1
+            },
+            "at": "1970-01-01T00:00:00.007Z"
+          },
+          {
+            "id": "screenshot-003",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-01",
+            "screenshotRef": {
+              "path": "screenshots/turn-01.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:00.009Z"
+          },
+          {
+            "id": "ui_action-004",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (1, 1)",
+            "coord": {
+              "x": 1,
+              "y": 1
+            },
+            "at": "1970-01-01T00:00:00.013Z"
+          },
+          {
+            "id": "screenshot-005",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-02",
+            "screenshotRef": {
+              "path": "screenshots/turn-02.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:00.015Z"
+          },
+          {
+            "id": "notice-006",
+            "kind": "notice",
+            "lifecycle": "started",
+            "title": "dwell window started",
+            "text": "its condition matched at turn 2: holding 20ms, a frame every 10ms, no actions, no model turns",
+            "at": "1970-01-01T00:00:00.018Z"
+          },
+          {
+            "id": "screenshot-007",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "dwell-01",
+            "screenshotRef": {
+              "path": "screenshots/dwell-01.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:00.032Z"
+          },
+          {
+            "id": "screenshot-008",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "dwell-02",
+            "screenshotRef": {
+              "path": "screenshots/dwell-02.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:00.039Z"
+          },
+          {
+            "id": "notice-009",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "ok",
+            "title": "dwell window complete",
+            "text": "2 frame(s) over 24ms; no model turn was requested during the window",
+            "at": "1970-01-01T00:00:00.042Z"
+          },
+          {
+            "id": "screenshot-010",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-02-after-dwell",
+            "screenshotRef": {
+              "path": "screenshots/turn-02-after-dwell.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:00.044Z"
+          },
+          {
+            "id": "notice-011",
+            "kind": "notice",
+            "title": "Participant context hint",
+            "text": "No visible progress for 1 step(s). If your task calls for waiting for another participant or a pending transition, you may continue waiting. Choose whether to continue or stop based on your situation and what you observe.",
+            "lifecycle": "completed",
+            "at": "1970-01-01T00:00:00.047Z"
+          },
+          {
+            "id": "message-012",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 3",
+            "text": "Finished.",
+            "at": "1970-01-01T00:00:00.048Z"
+          }
+        ],
+        "affordanceUse": {
+          "schema": "humanish.affordance-use.v1",
+          "counts": {
+            "pointer": 2
+          },
+          "total": 2,
+          "shortcutTotal": 0
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "turn-00-start.png",
+        15
+      ],
+      [
+        "onTrace",
+        1,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "screenshot": "[buffer 15 bytes]",
+            "stateSignature": "a"
+          }
+        }
+      ],
+      [
+        "executor.execute",
+        {
+          "kind": "click",
+          "x": 1,
+          "y": 1
+        }
+      ],
+      [
+        "executor.observe",
+        1
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "turn-01.png",
+        15
+      ],
+      [
+        "onTrace",
+        3,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "screenshot": "[buffer 15 bytes]",
+            "stateSignature": "a"
+          }
+        }
+      ],
+      [
+        "executor.execute",
+        {
+          "kind": "click",
+          "x": 1,
+          "y": 1
+        }
+      ],
+      [
+        "executor.observe",
+        2
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "turn-02.png",
+        15
+      ],
+      [
+        "onTrace",
+        5,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "executor.observe",
+        3
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "dwell-01.png",
+        15
+      ],
+      [
+        "onTrace",
+        7,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "executor.observe",
+        4
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "dwell-02.png",
+        15
+      ],
+      [
+        "onTrace",
+        8,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "executor.observe",
+        5
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "turn-02-after-dwell.png",
+        15
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "screenshot": "[buffer 15 bytes]",
+            "stateSignature": "a"
+          },
+          "contextHint": "No visible progress for 1 step(s). If your task calls for waiting for another participant or a pending transition, you may continue waiting. Choose whether to continue or stop based on your situation and what you observe."
+        }
+      ],
+      [
+        "onMessage",
+        "Finished."
+      ]
+    ]
   }
 }
