@@ -1,6 +1,6 @@
-// Teardown for one E2B desktop lane: the recording and speech worker are collected first, then the
-// sandbox is released by id (or kept for debugging), with a warning for every outcome that is not
-// a confirmed release.
+// Teardown for one E2B desktop lane: its final geometry and comms evidence are collected, then the
+// recording and speech worker, then the sandbox is released by id (or kept for debugging), with a
+// warning for every outcome that is not a confirmed release.
 
 import { collectDesktopRecording } from "../../evidence/desktop-recording-artifact.js";
 import type { RunDesktopRecording } from "../../evidence/desktop-recording-types.js";
@@ -8,13 +8,17 @@ import { redactText, toErrorMessage } from "../../evidence/redaction.js";
 import type { OwnedDesktopAllocation } from "../../substrates/desktop-session.js";
 import type { startE2BDesktopMedia } from "../../substrates/e2b/desktop-media.js";
 import type { startE2BDesktopRecording } from "../../substrates/e2b/desktop-recording.js";
+import { e2bShell } from "../../substrates/e2b/shell.js";
+import { drainCommsEvidence } from "./e2b-desktop-comms.js";
+import { finalLaneGeometry } from "./e2b-desktop-fidelity.js";
+import type { E2BLaneContext, E2BLaneState } from "./e2b-desktop-state.js";
 import type { CuaLaneDeps, CuaLaneSpec } from "./types.js";
 
 /**
  * Each route's own keep flag gates its own lane only: a clone.keep can never leak into a local-tree
  * lane's teardown decision, and vice versa.
  */
-export function laneKeepReason(deps: CuaLaneDeps): string | undefined {
+function laneKeepReason(deps: CuaLaneDeps): string | undefined {
   const { config, cloneRoute, localTreeRoute } = deps;
   if (cloneRoute && config.subject.clone?.keep === true) return "subject.clone.keep";
   if (localTreeRoute && config.subject.localTree?.keep === true) return "subject.localTree.keep";
@@ -22,7 +26,7 @@ export function laneKeepReason(deps: CuaLaneDeps): string | undefined {
 }
 
 /** Collect the recording and stop the speech worker; failures are warnings. */
-export async function stopLaneMedia(args: {
+async function stopLaneMedia(args: {
   spec: CuaLaneSpec;
   deps: CuaLaneDeps;
   recording: Awaited<ReturnType<typeof startE2BDesktopRecording>> | undefined;
@@ -55,7 +59,7 @@ export async function stopLaneMedia(args: {
  * only when the release is confirmed. A kept or unconfirmed sandbox can still accrue compute cost,
  * which the warnings say.
  */
-export async function releaseLaneDesktop(args: {
+async function releaseLaneDesktop(args: {
   allocation: OwnedDesktopAllocation;
   keepReason: string | undefined;
   failed: boolean;
@@ -89,4 +93,98 @@ export async function releaseLaneDesktop(args: {
     }
   }
   return released.status === "released";
+}
+
+/**
+ * Finish a lane: collect its final geometry and comms evidence, then stop its media and release
+ * its sandbox. Evidence failures are warnings; the release always runs.
+ */
+export async function finishLane(
+  ctx: E2BLaneContext,
+  state: E2BLaneState,
+  failed: boolean,
+): Promise<void> {
+  const { spec, deps, warnings } = ctx;
+  // Stop the mid-run inbox-surface loop first, before the evidence drain below, so the two `cat`s
+  // never overlap and the final surface state is deterministic. A surface failure can never block
+  // teardown (the loop body is fully try/caught and this await is on its already-caught promise).
+  await state.commsCatch?.stopSurface();
+  const { desktop, allocation } = state;
+  if (!desktop || !allocation) return;
+  try {
+    if (state.browserLaunched) {
+      state.desktopGeometry = await finalLaneGeometry({
+        desktop,
+        spec,
+        deps,
+        targetUrl: ctx.targetUrl,
+        browserFamily: state.launchedBrowserFamily,
+        launchIdentity: state.browserLaunchIdentity,
+        windowId: state.browserWindowId,
+        targetId: state.browserTargetId,
+        initial: state.initialBrowserGeometry,
+        geometry: state.desktopGeometry,
+        fidelity: state.fidelity,
+        warnings,
+      });
+    }
+    if (deps.receiving) {
+      try {
+        await deps.receiving.finishParticipant(spec.laneId);
+      } catch {
+        warnings.push(
+          "Real email finalization is incomplete. Inspect communication cleanup with humanish comms recover.",
+        );
+      }
+    }
+    if (ctx.comms && state.commsCatch?.deployed.ready) {
+      const drained = await drainCommsEvidence({
+        shell: e2bShell(desktop),
+        comms: ctx.comms,
+        deployed: state.commsCatch.deployed,
+        spec,
+        deps,
+        warnings,
+      });
+      if (drained !== undefined) state.commsArtifactPath = drained;
+    }
+  } catch (error) {
+    warnings.push(
+      `Desktop final evidence collection failed: ${redactText(deps.scrubKnownValues(toErrorMessage(error)))}`,
+    );
+  } finally {
+    state.recordingEvidence = await stopLaneMedia({
+      spec,
+      deps,
+      recording: state.recording,
+      speech: state.speech,
+      mediaStop: state.mediaStop,
+      warnings,
+    });
+    state.released = await releaseLaneDesktop({
+      allocation,
+      keepReason: laneKeepReason(deps),
+      failed,
+      deps,
+      warnings,
+    });
+    // Close the observed span. A kept or unconfirmed sandbox can still accrue compute cost; the
+    // summary records that remaining lifetime as unknown instead of calling this complete.
+    state.sandboxTornDownAtMs = deps.now();
+    // The lane's live stream is now a dead page whichever teardown path ran (released, kept, or
+    // release-failed-awaiting-TTL); tell the watch overlay so the tile falls back to recorded
+    // evidence instead of "sandbox not found" (#357). Guarded: a viewer callback must never
+    // break teardown.
+    if (state.streamUrl !== undefined) {
+      try {
+        await deps.hooks.onRuntimeStreamEnded?.({
+          laneId: spec.laneId,
+          simId: spec.simId,
+          streamId: spec.streamId,
+        });
+      } catch {
+        // viewer-side only; nothing to record
+      }
+    }
+  }
 }
