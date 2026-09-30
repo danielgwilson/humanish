@@ -616,6 +616,56 @@ describe("desktop-cli runtime prerequisites (#515)", () => {
 });
 
 describe("runCuaActorLab", () => {
+  it("carries a failed drain of the operator-hosted catch into the result warnings", async () => {
+    const parsed = parseLabConfig({
+      schema: LAB_CONFIG_SCHEMA,
+      id: "cua-external-comms",
+      subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
+      actors: [{ type: "openai-computer-use", persona: "first-time-visitor", mission: "Sign up." }],
+      execution: { target: "e2b-desktop", timeoutMs: 60_000 },
+      comms: { email: { external: { catchBaseUrl: "https://catch.example.test" } } },
+      scenario: { mode: "live" },
+      review: { analysis: false },
+    });
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    // The catch passes its health check, then fails when the run drains it.
+    vi.stubGlobal("fetch", async (input: string | URL) => {
+      if (String(input).endsWith("/health")) {
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            service: "humanish-comms-catch",
+            capabilities: ["recipient-inbox-v1"],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      throw new Error("synthetic catch outage");
+    });
+    try {
+      const { module } = makeFakeModule(makeFakeSandbox());
+      const result = await runCuaActorLab({
+        cwd,
+        config: parsed.config,
+        dryRun: false,
+        hooks: {
+          env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
+          loadDesktopModule: async () => module,
+          runSession: async (options) =>
+            runCuaActorSession({
+              ...options,
+              openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            }),
+        },
+      });
+      expect(result.warnings.join("\n")).toContain(
+        "Comms evidence collection failed against the adopter-hosted catch",
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it.each(["missing-artifact", "missing-run"] as const)(
     "classifies the real Observer's %s refusal as invalid evidence",
     async (kind) => {
@@ -3666,6 +3716,7 @@ describe("runCuaActorLab", () => {
           OPENAI_API_KEY: "test-openai-key",
           E2B_API_KEY: "test-e2b-key",
           DATABASE_URL: "postgres-secret-value",
+          HUMANISH_E2B_REQUEST_TIMEOUT_MS: "45000",
         },
         loadDesktopModule: async () => module,
         runSession: async (options) =>
@@ -3684,6 +3735,8 @@ describe("runCuaActorLab", () => {
 
     // Env placement: EXACTLY the declared subject names — never the actor keys.
     expect(created[0]?.envs).toEqual({ DATABASE_URL: "postgres-secret-value" });
+    // The operator's E2B request timeout reaches the desktop create.
+    expect(created[0]?.requestTimeoutMs).toBe(45_000);
 
     // Provisioning sequence: the wrapper scripts carry the declared commands.
     const scriptFor = (name: string): string => {

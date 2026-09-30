@@ -205,7 +205,15 @@ describe("configured receiving through exported study runners", () => {
     },
   );
 
-  async function expectRouteProof(route: Route, failCreate: boolean): Promise<void> {
+  it("cua-clone scrubs an address the receiving setup registered from a lane's error", async () => {
+    await expectRouteProof("cua-clone", false, true);
+  });
+
+  async function expectRouteProof(
+    route: Route,
+    failCreate: boolean,
+    failSession = false,
+  ): Promise<void> {
     const cwd = await mkdtemp(path.join(tmpdir(), "humanish-receiving-outer-"));
     roots.push(cwd);
     const events: string[] = [],
@@ -294,6 +302,12 @@ describe("configured receiving through exported study runners", () => {
     vi.stubGlobal("fetch", noNetwork);
     const runSession = async (options: CuaActorSessionOptions): Promise<CuaLoopResult> => {
       prompts.push(options.instructions);
+      if (failSession) {
+        const address = [...addresses.values()].find((value) =>
+          options.instructions.includes(value),
+        );
+        throw new Error(`Synthetic mailbox rejected ${address}`);
+      }
       options.onObservedUrl?.("https://collaboration.example.test/lobby/AB2CD9");
       await new Promise((resolve) => setTimeout(resolve, 15));
       return {
@@ -399,6 +413,12 @@ describe("configured receiving through exported study runners", () => {
     }
     if (failCreate) {
       expect(attached.size).toBe(0);
+      return;
+    }
+    if (failSession) {
+      const text = JSON.stringify(bundle);
+      for (const address of addresses.values()) expect(text).not.toContain(`rejected ${address}`);
+      expect(text).toContain("Synthetic mailbox rejected [REDACTED_SECRET]");
       return;
     }
     expect(result.ok).toBe(true);
