@@ -429,6 +429,8 @@ async function runScriptedBrowserLabInScope(
     mode: dryRun ? "dry-run" : "live",
     ...(options.lab === undefined ? {} : { lab: options.lab }),
   });
+  // Before any sandbox exists: a run killed after acquiring one must still have a status record.
+  await runStatus.started;
   const artifactRoot = runPaths.physicalRunRoot;
   const createdAt = new Date().toISOString();
   const source = await buildRunSource({
