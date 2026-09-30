@@ -5,10 +5,10 @@ import {
   buildDesktopRecorderPulseSetupCommands,
   buildDesktopRecorderProbeCommand,
   parseDesktopRecorderDuration,
-  type DesktopRecordingAudioSource,
 } from "../../evidence/desktop-recorder.js";
 import {
   DESKTOP_RECORDING_MAX_BYTES,
+  type DesktopRecordingAudioSource,
   type DesktopRecordingMetadata,
 } from "../../evidence/desktop-recording-types.js";
 import { runOrThrow, shellQuote, type Shell } from "../shell.js";

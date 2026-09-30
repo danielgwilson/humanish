@@ -1,4 +1,4 @@
-import { lstat, realpath, stat } from "node:fs/promises";
+import { lstat, realpath } from "node:fs/promises";
 import path from "node:path";
 import {
   AGENTS_SECTION_MARKER,
@@ -17,6 +17,7 @@ import {
   starterFiles,
   starterFilesFor,
 } from "./init-templates.js";
+import { validateCwd } from "../run/project.js";
 import {
   assertPreparedSelectedOutputDirectory,
   prepareContainedOutputDirectory,
@@ -680,30 +681,6 @@ async function pathExists(
   } catch (error) {
     if (isNodeError(error) && error.code === "ENOENT") {
       return false;
-    }
-
-    throw error;
-  }
-}
-
-async function validateCwd(cwd: string): Promise<InitResult["error"] | null> {
-  try {
-    const stats = await stat(cwd);
-
-    if (!stats.isDirectory()) {
-      return {
-        code: "HUMANISH_INVALID_CWD",
-        message: `Target cwd is not a directory: ${cwd}`,
-      };
-    }
-
-    return null;
-  } catch (error) {
-    if (isNodeError(error) && error.code === "ENOENT") {
-      return {
-        code: "HUMANISH_INVALID_CWD",
-        message: `Target cwd does not exist: ${cwd}`,
-      };
     }
 
     throw error;

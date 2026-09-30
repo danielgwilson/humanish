@@ -4,19 +4,17 @@ import { randomUUID } from "node:crypto";
 import path from "node:path";
 
 import {
+  assertDirectoryIdentity,
+  assertRegularFileOrMissing,
   isPathInside,
   prepareHumanishStorageDirectory,
   resolveExistingHumanishStorageDirectory,
   type PreparedRunArtifactPaths,
   validatePreparedRunArtifactPaths,
   validatePreparedRunRootIdentity,
+  type FileIdentity,
 } from "./paths.js";
-
-interface FileIdentity {
-  readonly birthtimeNs: bigint;
-  readonly dev: bigint;
-  readonly ino: bigint;
-}
+import { isNodeError } from "./primitives.js";
 
 export interface PreparedSelectedOutputDirectory {
   readonly identity: FileIdentity;
@@ -92,7 +90,7 @@ export async function prepareSelectedOutputFile(
   const requestedParent = path.dirname(requestedPath);
   const physicalParent = await prepareAbsoluteSelectedDirectory(requestedParent);
   const physicalPath = path.join(physicalParent, fileName);
-  await assertRegularFileOrMissing(physicalPath);
+  await assertRegularFileOrMissing(physicalPath, "Selected output files");
   const parentIdentity = await captureDirectoryIdentity(physicalParent);
   const prepared = Object.freeze({
     parentIdentity,
@@ -114,7 +112,11 @@ export async function assertPreparedSelectedOutputDirectory(
   if (requestedPhysicalPath !== prepared.physicalPath) {
     throw new Error("Selected output root changed physical destination.");
   }
-  await assertDirectoryIdentity(prepared.physicalPath, prepared.identity, "Selected output root");
+  await assertDirectoryIdentity(
+    prepared.physicalPath,
+    prepared.identity,
+    "Selected output root identity changed after it was prepared.",
+  );
 }
 
 async function assertPreparedSelectedOutputFile(
@@ -127,9 +129,9 @@ async function assertPreparedSelectedOutputFile(
   await assertDirectoryIdentity(
     prepared.physicalParent,
     prepared.parentIdentity,
-    "Selected output parent",
+    "Selected output parent identity changed after it was prepared.",
   );
-  await assertRegularFileOrMissing(prepared.physicalPath);
+  await assertRegularFileOrMissing(prepared.physicalPath, "Selected output files");
 }
 
 export async function writePreparedSelectedOutputFile(
@@ -198,7 +200,7 @@ export async function prepareContainedOutputFile(
     path.relative(root, path.dirname(absolute)),
   );
   const filePath = path.join(parent, path.basename(absolute));
-  await assertRegularFileOrMissing(filePath);
+  await assertRegularFileOrMissing(filePath, "Selected output files");
   return filePath;
 }
 
@@ -216,7 +218,7 @@ export async function writeContainedOutputFile(
       throw new Error("Output root changed after it was prepared.");
     }
     await assertContainedDirectoryChain(root, path.dirname(filePath));
-    await assertRegularFileOrMissing(filePath);
+    await assertRegularFileOrMissing(filePath, "Selected output files");
   });
 }
 
@@ -422,46 +424,12 @@ async function resolveBaseDirectory(directory: string, label: string): Promise<s
   return physical;
 }
 
-async function assertRegularFileOrMissing(filePath: string): Promise<void> {
-  try {
-    const stats = await lstat(filePath);
-    if (stats.isSymbolicLink() || !stats.isFile() || stats.nlink > 1) {
-      throw new Error(
-        "Selected output files must be single-link regular files, not symbolic links or hardlinks.",
-      );
-    }
-  } catch (error) {
-    if (isNodeError(error) && error.code === "ENOENT") {
-      return;
-    }
-    throw error;
-  }
-}
-
 async function captureDirectoryIdentity(directory: string): Promise<FileIdentity> {
   const stats = await lstat(directory, { bigint: true });
   if (stats.isSymbolicLink() || !stats.isDirectory() || (await realpath(directory)) !== directory) {
     throw new Error("Prepared output root must use a physical directory.");
   }
   return Object.freeze({ birthtimeNs: stats.birthtimeNs, dev: stats.dev, ino: stats.ino });
-}
-
-async function assertDirectoryIdentity(
-  directory: string,
-  identity: FileIdentity,
-  label: string,
-): Promise<void> {
-  const stats = await lstat(directory, { bigint: true });
-  if (
-    stats.isSymbolicLink() ||
-    !stats.isDirectory() ||
-    stats.birthtimeNs !== identity.birthtimeNs ||
-    stats.dev !== identity.dev ||
-    stats.ino !== identity.ino ||
-    (await realpath(directory)) !== directory
-  ) {
-    throw new Error(`${label} identity changed after it was prepared.`);
-  }
 }
 
 async function assertContainedDirectoryChain(root: string, directory: string): Promise<void> {
@@ -501,7 +469,7 @@ async function atomicWriteOutputFile(
     handle = undefined;
     await revalidate();
     await rename(temporary, target);
-    await assertRegularFileOrMissing(target);
+    await assertRegularFileOrMissing(target, "Selected output files");
   } finally {
     await handle?.close().catch(() => undefined);
     await unlink(temporary).catch(() => undefined);
@@ -512,8 +480,4 @@ function assertPathText(value: string, label: string): void {
   if (value.includes("\0")) {
     throw new Error(`${label} must not contain a null byte.`);
   }
-}
-
-function isNodeError(error: unknown): error is NodeJS.ErrnoException {
-  return error instanceof Error && "code" in error;
 }

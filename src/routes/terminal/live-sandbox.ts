@@ -11,7 +11,10 @@ import type { LabConfig, LabRuntimeAuth } from "../../lab/types.js";
 import { desktopSpanToMinutes, type DesktopUsage } from "../../run/cost-summary.js";
 import { validatePreparedRunArtifactPaths } from "../../run/paths.js";
 import type { RunScope } from "../../run/run.js";
-import { extractLocalActorVerdict, normalizeLocalActorTranscript } from "../../run/verify-actor.js";
+import {
+  extractLocalActorVerdict,
+  normalizeLocalActorTranscript,
+} from "../../run/terminal-contract.js";
 import { NODE_BOOTSTRAP_COMMAND, NODE_BOOTSTRAP_TIMEOUT_MS } from "../../subject/node-bootstrap.js";
 import {
   observeDesktopResources,

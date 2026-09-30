@@ -3,6 +3,7 @@ import type { SharedWorldEvidence } from "./shared-world-evidence.js";
 import {
   COMMAND_DIGEST_PATTERN,
   SHARED_WORLD_STATESERIES_KEYS,
+  planeProvenanceFindings,
   sharedWorldCommonFindings,
 } from "./guards-shared-world.js";
 import { isRecord } from "./primitives.js";
@@ -60,14 +61,14 @@ export function concurrentSharedWorldFindings(
   // getHost-specific assertion (hostDigest, exposure: synthetic, seeded provenance, state-delta on
   // pass) is gated on this — it never leaks onto the external-public class, and the external-public
   // assertions never leak onto getHost.
-  const planeClass = (sw as { planeClass?: unknown }).planeClass;
+  const planeClass = (sw as { planeClass?: string }).planeClass;
   if (planeClass === "external-public") {
     return externalPublicConcurrentFindings(bundle, sw);
   }
   if (planeClass !== undefined && planeClass !== "provisioned-getHost") {
     return [
       ...sharedWorldCommonFindings(bundle, sw),
-      `sharedWorld.planeClass must be "provisioned-getHost" or "external-public" (got "${String(planeClass)}")`,
+      `sharedWorld.planeClass must be "provisioned-getHost" or "external-public" (got "${planeClass}")`,
     ];
   }
   return provisionedGetHostConcurrentFindings(bundle, sw);
@@ -195,26 +196,13 @@ function provisionedGetHostConcurrentFindings(
   }
 
   // Single-plane provenance: every laneWindow shares ONE (commit, seedDigest) matching plane.
-  const planeKeys = new Set(
-    laneWindows.map(
-      (window) => `${String(window.commit ?? "")}::${String(window.seedDigest ?? "")}`,
-    ),
+  findings.push(
+    ...planeProvenanceFindings(laneWindows, plane, {
+      items: "laneWindows",
+      item: "laneWindow",
+      run: "concurrent",
+    }),
   );
-  if (planeKeys.size > 1) {
-    findings.push(
-      "laneWindows reference divergent plane provenance (commit/seedDigest) — a concurrent run drives ONE plane",
-    );
-  }
-  for (const window of laneWindows) {
-    if (
-      String(window.seedDigest ?? "") !== String(plane.seedDigest ?? "") ||
-      String(window.commit ?? "") !== String(plane.commit ?? "")
-    ) {
-      const roleId = typeof window.roleId === "string" ? window.roleId : "(unnamed)";
-      findings.push(`laneWindow "${roleId}" plane provenance diverges from sharedWorld.plane`);
-      break;
-    }
-  }
 
   // stateSeries is DIGEST-ONLY with the allowed-keys tripwire (no per-delta→actor field).
   for (const snapshot of stateSeries) {
@@ -467,26 +455,13 @@ function externalPublicConcurrentFindings(bundle: RunBundle, sw: SharedWorldEvid
 
   // Single-plane provenance: every laneWindow shares ONE (commit, seedDigest) matching plane. commit
   // is absent on this class (nothing cloned); seedDigest is the constant empty-recipe digest.
-  const planeKeys = new Set(
-    laneWindows.map(
-      (window) => `${String(window.commit ?? "")}::${String(window.seedDigest ?? "")}`,
-    ),
+  findings.push(
+    ...planeProvenanceFindings(laneWindows, plane, {
+      items: "laneWindows",
+      item: "laneWindow",
+      run: "shared-world",
+    }),
   );
-  if (planeKeys.size > 1) {
-    findings.push(
-      "laneWindows reference divergent plane provenance (commit/seedDigest) — a shared-world run drives ONE plane",
-    );
-  }
-  for (const window of laneWindows) {
-    if (
-      String(window.seedDigest ?? "") !== String(plane.seedDigest ?? "") ||
-      String(window.commit ?? "") !== String(plane.commit ?? "")
-    ) {
-      const roleId = typeof window.roleId === "string" ? window.roleId : "(unnamed)";
-      findings.push(`laneWindow "${roleId}" plane provenance diverges from sharedWorld.plane`);
-      break;
-    }
-  }
 
   // The lobby-convergence proof (optional-but-strong): if present it must be a sha256-16 digest of the
   // shared /lobby/CODE path all seats converged on (digest-only; the raw CODE never lands).

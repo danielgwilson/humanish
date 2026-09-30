@@ -8,6 +8,7 @@ import {
   prepareSelectedOutputDirectory,
 } from "./selected-output-paths.js";
 import {
+  RUN_BUNDLE_FILE,
   buildRunSource,
   RUN_BUNDLE_SCHEMA,
   type RunBundle,
@@ -16,7 +17,7 @@ import {
 } from "./bundle.js";
 import { type RunOptions, type RunResult } from "./results.js";
 import { type RunSimulationStatus, type RunStream, type RunStreamKind } from "./streams.js";
-import { implicitProjectDirectoryExists, readPackageName, validateCwd } from "./locate.js";
+import { implicitProjectDirectoryExists, readPackageName, validateCwd } from "./project.js";
 import { loadDryRunSelection } from "./dry-run-selection.js";
 import { createReviewSummary, renderReviewMarkdown } from "./synthetic-review.js";
 
@@ -149,7 +150,7 @@ async function runDryRunInScope(options: RunOptions, scope: RunScope): Promise<R
       notes: "Dry-run bundle contains synthetic contract proof only.",
     },
     artifacts: {
-      run: "run.json",
+      run: RUN_BUNDLE_FILE,
       reviewJson: "review.json",
       reviewMarkdown: "review.md",
       observerData: "observer/observer-data.json",
@@ -171,7 +172,7 @@ async function runDryRunInScope(options: RunOptions, scope: RunScope): Promise<R
     simCount,
     cwd,
     artifactRoot,
-    bundlePath: path.join(artifactRoot, "run.json"),
+    bundlePath: path.join(artifactRoot, RUN_BUNDLE_FILE),
     reviewPath: path.join(artifactRoot, "review.md"),
     latestPath: runPaths.relativeLatestPointer,
     ...(observer === undefined ? {} : { observer }),
@@ -203,6 +204,53 @@ async function renderPreviewObserver(
   }
 }
 
+/** One synthetic stream per lane kind; the preview cycles through them. */
+const SYNTHETIC_STREAM_TEMPLATES = [
+  {
+    kind: "ui" as const,
+    mode: "browser-sim" as const,
+    label: "UI journey",
+    currentStep: "Route and viewport contract captured",
+    summary:
+      "Browser lane reserved for VNC playback, screenshots, route state, and interaction trace.",
+    tail: "open target app\nresolve first-run route\ncapture viewport state\nrecord interaction trace",
+    viewport: { width: 1440, height: 960, deviceScaleFactor: 1 },
+  },
+  {
+    kind: "terminal" as const,
+    mode: "cli-sim" as const,
+    label: "CLI actor",
+    currentStep: "Command transcript contract captured",
+    summary:
+      "CLI lane reserved for command-by-command persona runs with stdout/stderr and artifact links.",
+    // Every command in a shipped sample tail must be one the CLI actually accepts: participants
+    // read and run them. tests/shipped-command-strings.test.ts checks this against the command
+    // table.
+    tail: "$ humanish doctor\nok target cwd\nok humanish source\n$ humanish run first-run\ncontract proof emitted",
+    viewport: undefined,
+  },
+  {
+    kind: "tui" as const,
+    mode: "tui-sim" as const,
+    label: "TUI actor",
+    currentStep: "Terminal UI frame contract captured",
+    summary:
+      "TUI lane reserved for PTY bytes, ANSI rendering, focus replay, and optional assisted attach.",
+    tail: "\u001b[2mhumanish TUI frame\u001b[0m\n> persona: skeptical-power-user\n> scenario: onboarding-regression\nstatus: awaiting live PTY transport",
+    viewport: undefined,
+  },
+  {
+    kind: "codex-ui" as const,
+    mode: "codex-app-sim" as const,
+    label: "Codex UI",
+    currentStep: "App-server embed contract captured",
+    summary:
+      "Codex UI lane reserved for app-server sessions that can be watched beside terminal evidence.",
+    tail: "codex-app-server session contract\nstate: not_connected\nembed: pending provider URL\nreceipts: planned",
+    viewport: { width: 1280, height: 900, deviceScaleFactor: 1 },
+  },
+] as const;
+
 function buildSyntheticObserverFixtures(args: {
   createdAt: string;
   personaId: string;
@@ -213,52 +261,6 @@ function buildSyntheticObserverFixtures(args: {
   simulations: RunSimulation[];
   streams: RunStream[];
 } {
-  const templates = [
-    {
-      kind: "ui" as const,
-      mode: "browser-sim" as const,
-      label: "UI journey",
-      currentStep: "Route and viewport contract captured",
-      summary:
-        "Browser lane reserved for VNC playback, screenshots, route state, and interaction trace.",
-      tail: "open target app\nresolve first-run route\ncapture viewport state\nrecord interaction trace",
-      viewport: { width: 1440, height: 960, deviceScaleFactor: 1 },
-    },
-    {
-      kind: "terminal" as const,
-      mode: "cli-sim" as const,
-      label: "CLI actor",
-      currentStep: "Command transcript contract captured",
-      summary:
-        "CLI lane reserved for command-by-command persona runs with stdout/stderr and artifact links.",
-      // Every command in a shipped sample tail must be one the CLI actually accepts: participants
-      // read and run them. tests/shipped-command-strings.test.ts checks this against the command
-      // table.
-      tail: "$ humanish doctor\nok target cwd\nok humanish source\n$ humanish run first-run\ncontract proof emitted",
-      viewport: undefined,
-    },
-    {
-      kind: "tui" as const,
-      mode: "tui-sim" as const,
-      label: "TUI actor",
-      currentStep: "Terminal UI frame contract captured",
-      summary:
-        "TUI lane reserved for PTY bytes, ANSI rendering, focus replay, and optional assisted attach.",
-      tail: "\u001b[2mhumanish TUI frame\u001b[0m\n> persona: skeptical-power-user\n> scenario: onboarding-regression\nstatus: awaiting live PTY transport",
-      viewport: undefined,
-    },
-    {
-      kind: "codex-ui" as const,
-      mode: "codex-app-sim" as const,
-      label: "Codex UI",
-      currentStep: "App-server embed contract captured",
-      summary:
-        "Codex UI lane reserved for app-server sessions that can be watched beside terminal evidence.",
-      tail: "codex-app-server session contract\nstate: not_connected\nembed: pending provider URL\nreceipts: planned",
-      viewport: { width: 1280, height: 900, deviceScaleFactor: 1 },
-    },
-  ];
-
   const simulations: RunSimulation[] = [];
   const streams: RunStream[] = [];
   const events: RunEvent[] = [
@@ -272,7 +274,7 @@ function buildSyntheticObserverFixtures(args: {
   ];
 
   for (let index = 0; index < args.simCount; index += 1) {
-    const template = templates[index % templates.length];
+    const template = SYNTHETIC_STREAM_TEMPLATES[index % SYNTHETIC_STREAM_TEMPLATES.length];
     if (!template) {
       throw new Error("Synthetic observer template missing.");
     }
@@ -308,7 +310,7 @@ function buildSyntheticObserverFixtures(args: {
         kind: template.kind === "terminal" || template.kind === "tui" ? "terminal" : "placeholder",
         title: template.label,
       },
-      ...(template.viewport ? { viewport: template.viewport } : {}),
+      ...(template.viewport ? { viewport: { ...template.viewport } } : {}),
       terminal: {
         title: template.label,
         format: template.kind === "tui" ? "ansi" : "plain",
@@ -335,7 +337,7 @@ function buildSyntheticObserverFixtures(args: {
           }
         : {}),
       artifacts: [
-        { label: "run bundle", path: "run.json", kind: "bundle" },
+        { label: "run bundle", path: RUN_BUNDLE_FILE, kind: "bundle" },
         { label: "review", path: "review.md", kind: "review" },
         { label: "event log", path: "events.ndjson", kind: "events" },
       ],

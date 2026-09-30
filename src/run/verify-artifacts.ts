@@ -3,14 +3,22 @@ import path from "node:path";
 import { screenshotEvidenceError } from "../evidence/image.js";
 import { isStudyAnalysisRecordPath } from "../analysis/sharing.js";
 import { containsSensitive } from "../evidence/redaction.js";
-import { validatePreparedRunArtifactPaths, type PreparedRunArtifactPaths } from "./paths.js";
+import {
+  isLocalEvidenceArtifactPath,
+  isRiskyPublicArtifactPath,
+  validatePreparedRunArtifactPaths,
+  type PreparedRunArtifactPaths,
+} from "./paths.js";
 import { openContainedRegularFile } from "./selected-output-paths.js";
 import type { RunBundle } from "./bundle.js";
 import type { RunStream } from "./streams.js";
-import { isLocalEvidenceArtifactPath, isRiskyPublicArtifactPath } from "./guards.js";
 import { readSafeRunArtifactBytes, readSafeRunArtifactJson } from "./locate.js";
 import { isRecord } from "./primitives.js";
-import { isZeroEventTerminalTrace, TERMINAL_EVENTS_FILE } from "./verify-actor.js";
+import { TERMINAL_EVENTS_ARTIFACT } from "./terminal-contract.js";
+import { isZeroEventTerminalTrace } from "./verify-actor.js";
+
+/** Public-safety and evidence-reference findings stop at this many per list. */
+export const MAX_REPORTED_FINDINGS = 50;
 
 export async function missingLocalEvidenceArtifacts(
   runPaths: PreparedRunArtifactPaths,
@@ -52,7 +60,7 @@ export async function missingLocalEvidenceArtifacts(
           screenshot: artifact.kind === "screenshot",
           allowEmpty:
             artifact.kind === "log" &&
-            artifact.path === TERMINAL_EVENTS_FILE &&
+            artifact.path === TERMINAL_EVENTS_ARTIFACT &&
             emptyTerminalEvents,
         });
       }
@@ -232,7 +240,7 @@ export function invalidRunEvidenceReferences(bundle: RunBundle): string[] {
       }
     }
   }
-  return findings.slice(0, 50);
+  return findings.slice(0, MAX_REPORTED_FINDINGS);
 }
 
 /**
@@ -292,7 +300,7 @@ async function scanRunPublicSafetyDirectory(
 ): Promise<void> {
   // Each authority has its own finding budget. Derived files must never consume
   // the source scan's budget and make an unscanned recording appear verified.
-  if (findings.length >= 50 && derivedFindings.length >= 50) {
+  if (findings.length >= MAX_REPORTED_FINDINGS && derivedFindings.length >= MAX_REPORTED_FINDINGS) {
     return;
   }
 
@@ -308,8 +316,8 @@ async function scanRunPublicSafetyDirectory(
       (relativePath === "observer/study-analysis.json" || isStudyAnalysisRecordPath(relativePath))
         ? derivedFindings
         : findings;
-    if (isRiskyPublicArtifactPath(relativePath) || containsSensitivePattern(relativePath)) {
-      if (selectedFindings.length < 50)
+    if (isRiskyPublicArtifactPath(relativePath) || containsSensitive(relativePath)) {
+      if (selectedFindings.length < MAX_REPORTED_FINDINGS)
         selectedFindings.push(`risky artifact path ${relativePath}`);
     }
 
@@ -319,7 +327,7 @@ async function scanRunPublicSafetyDirectory(
       (!stats.isDirectory() && !stats.isFile()) ||
       (stats.isFile() && stats.nlink > 1n)
     ) {
-      if (selectedFindings.length < 50)
+      if (selectedFindings.length < MAX_REPORTED_FINDINGS)
         selectedFindings.push(`unsafe artifact leaf ${relativePath}`);
       continue;
     }
@@ -337,7 +345,7 @@ async function scanRunPublicSafetyDirectory(
       continue;
     }
 
-    if (selectedFindings.length >= 50) continue;
+    if (selectedFindings.length >= MAX_REPORTED_FINDINGS) continue;
 
     if (path.extname(relativePath).toLowerCase() === ".mp4" && !recordingPaths.has(relativePath)) {
       selectedFindings.push(`unregistered continuous media ${relativePath}`);
@@ -348,7 +356,7 @@ async function scanRunPublicSafetyDirectory(
 
     const bytes = await readSafeRunArtifactBytes(runPaths, relativePath);
     const text = bytes?.toString("utf8") ?? null;
-    if (text !== null && containsSensitivePattern(text)) {
+    if (text !== null && containsSensitive(text)) {
       selectedFindings.push(`sensitive text ${relativePath}`);
     }
   }
@@ -372,8 +380,4 @@ function normalizeLocalEvidenceReference(value: string | undefined): string | nu
   }
 
   return isLocalEvidenceArtifactPath(normalized) ? normalized : null;
-}
-
-export function containsSensitivePattern(text: string): boolean {
-  return containsSensitive(text);
 }

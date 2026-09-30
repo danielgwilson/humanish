@@ -16,7 +16,8 @@ import {
   readContainedRegularFile,
   writeContainedOutputFile,
 } from "../run/selected-output-paths.js";
-import { loadRunBundlePrepared, verifyRunPrepared, type VerifyResult } from "../run/verify.js";
+import { loadRunBundlePrepared } from "../run/locate.js";
+import { verifyRunPrepared, type VerifyResult } from "../run/verify.js";
 import {
   buildAnalysisDraft,
   buildDraft,

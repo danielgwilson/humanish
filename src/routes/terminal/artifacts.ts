@@ -5,9 +5,8 @@ import {
   TERMINAL_EVENTS_ARTIFACT,
   TERMINAL_LEDGERS_ARTIFACT,
   TERMINAL_TRANSCRIPT_ARTIFACT,
-  type TerminalEventRecord,
-  type TerminalLedgers,
-} from "./types.js";
+} from "../../run/terminal-contract.js";
+import type { TerminalEventRecord, TerminalLedgers } from "./types.js";
 
 /** Persist the terminal evidence: redacted events, normalized transcript, ledgers, actor trace. */
 export async function writeTerminalEvidence(

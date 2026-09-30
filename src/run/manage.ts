@@ -18,7 +18,12 @@ import {
   type PreparedSelectedOutputDirectory,
   writeContainedOutputFile,
 } from "./selected-output-paths.js";
-import { PUBLIC_TARGET_CWD, type ReviewSummary, type RunBundle } from "./bundle.js";
+import {
+  RUN_BUNDLE_FILE,
+  PUBLIC_TARGET_CWD,
+  type ReviewSummary,
+  type RunBundle,
+} from "./bundle.js";
 import {
   CLEANUP_SCHEMA,
   type CleanupAdapterResult,
@@ -62,6 +67,55 @@ export interface RunsResult {
   };
 }
 
+/** A cleanup result that refused before inspecting any resource. */
+function cleanupRefusal(
+  cwd: string,
+  runInput: string,
+  checkedAt: string,
+  error: NonNullable<CleanupResult["error"]>,
+  bundlePath?: string,
+): CleanupResult {
+  return {
+    schema: CLEANUP_SCHEMA,
+    ok: false,
+    cwd,
+    run: runInput,
+    ...(bundlePath === undefined ? {} : { bundlePath }),
+    checkedAt,
+    summary: { resources: 0, killed: 0, alreadyClean: 0, failed: 0, skipped: 0 },
+    resources: [],
+    adapterResults: [],
+    warnings: [],
+    error,
+  };
+}
+
+/** What the recorded evidence says about one provider resource; nothing is killed from here. */
+function recordedResourceResult(
+  resource: NonNullable<RunBundle["providerResources"]>[number],
+): CleanupResourceResult {
+  const base = { provider: resource.provider, kind: resource.kind, id: resource.id };
+  if (resource.provider !== "e2b-desktop" || resource.kind !== "sandbox") {
+    return {
+      ...base,
+      status: "skipped",
+      message: "cleanup only supports e2b-desktop sandbox resources",
+    };
+  }
+  if (resource.status === "killed" || resource.cleanup?.killed === true) {
+    return {
+      ...base,
+      status: "already_clean",
+      message: "resource was already recorded as killed",
+    };
+  }
+  return {
+    ...base,
+    status: "failed",
+    message: "automatic provider cleanup requires a verified resource lease",
+  };
+}
+
 export async function cleanupRun(
   cwdInput: string,
   runInput: string,
@@ -73,46 +127,24 @@ export async function cleanupRun(
   try {
     resolved = await resolveRunPath(cwd, runInput);
   } catch {
-    return {
-      schema: CLEANUP_SCHEMA,
-      ok: false,
-      cwd,
-      run: runInput,
-      checkedAt,
-      summary: { resources: 0, killed: 0, alreadyClean: 0, failed: 0, skipped: 0 },
-      resources: [],
-      adapterResults: [],
-      warnings: [],
-      error: {
-        code: "HUMANISH_INVALID_RUN_BUNDLE",
-        message: "Run storage failed containment validation.",
-      },
-    };
+    return cleanupRefusal(cwd, runInput, checkedAt, {
+      code: "HUMANISH_INVALID_RUN_BUNDLE",
+      message: "Run storage failed containment validation.",
+    });
   }
 
   if (!resolved) {
-    return {
-      schema: CLEANUP_SCHEMA,
-      ok: false,
-      cwd,
-      run: runInput,
-      checkedAt,
-      summary: { resources: 0, killed: 0, alreadyClean: 0, failed: 0, skipped: 0 },
-      resources: [],
-      adapterResults: [],
-      warnings: [],
-      error: {
-        code: "HUMANISH_RUN_NOT_FOUND",
-        message: `Run not found: ${runInput}`,
-      },
-    };
+    return cleanupRefusal(cwd, runInput, checkedAt, {
+      code: "HUMANISH_RUN_NOT_FOUND",
+      message: `Run not found: ${runInput}`,
+    });
   }
 
   const runPaths = resolved;
-  const bundlePath = path.join(runPaths.absoluteRunRoot, "run.json");
+  const bundlePath = path.join(runPaths.absoluteRunRoot, RUN_BUNDLE_FILE);
   const cleanupPath = path.join(runPaths.absoluteRunRoot, "cleanup.json");
   await prepareContainedOutputFile(runPaths, "cleanup.json");
-  const bundleBytes = await readContainedRegularFile(runPaths, "run.json");
+  const bundleBytes = await readContainedRegularFile(runPaths, RUN_BUNDLE_FILE);
   let bundle: unknown = null;
   if (bundleBytes) {
     try {
@@ -123,59 +155,21 @@ export async function cleanupRun(
   }
 
   if (!isRunBundle(bundle)) {
-    return {
-      schema: CLEANUP_SCHEMA,
-      ok: false,
+    return cleanupRefusal(
       cwd,
-      run: runInput,
-      bundlePath: path.relative(cwd, bundlePath),
+      runInput,
       checkedAt,
-      summary: { resources: 0, killed: 0, alreadyClean: 0, failed: 0, skipped: 0 },
-      resources: [],
-      adapterResults: [],
-      warnings: [],
-      error: {
+      {
         code: "HUMANISH_INVALID_RUN_BUNDLE",
         message: "Run bundle failed cleanup shape validation.",
       },
-    };
+      path.relative(cwd, bundlePath),
+    );
   }
 
-  const resources: CleanupResourceResult[] = [];
   const warnings: string[] = [];
   const providerResources = bundle.providerResources ?? [];
-
-  for (const resource of providerResources) {
-    if (resource.provider !== "e2b-desktop" || resource.kind !== "sandbox") {
-      resources.push({
-        provider: resource.provider,
-        kind: resource.kind,
-        id: resource.id,
-        status: "skipped",
-        message: "cleanup only supports e2b-desktop sandbox resources",
-      });
-      continue;
-    }
-
-    if (resource.status === "killed" || resource.cleanup?.killed === true) {
-      resources.push({
-        provider: resource.provider,
-        kind: resource.kind,
-        id: resource.id,
-        status: "already_clean",
-        message: "resource was already recorded as killed",
-      });
-      continue;
-    }
-
-    resources.push({
-      provider: resource.provider,
-      kind: resource.kind,
-      id: resource.id,
-      status: "failed",
-      message: "automatic provider cleanup requires a verified resource lease",
-    });
-  }
+  const resources = providerResources.map(recordedResourceResult);
 
   let adapterResults: CleanupAdapterResult[] = [];
   if (hooks.cleanupAdapterResources) {
@@ -297,7 +291,7 @@ export async function listRuns(cwdInput: string): Promise<RunsResult> {
         new Error("humanish runs root changed physical destination."),
       );
     }
-    const bundle = await readRunJsonIfExists(entryRunPaths, "run.json");
+    const bundle = await readRunJsonIfExists(entryRunPaths, RUN_BUNDLE_FILE);
     runs.push({
       runId: entryName,
       createdAt: isRecord(bundle) && typeof bundle.createdAt === "string" ? bundle.createdAt : null,
@@ -367,7 +361,7 @@ export async function readReview(
     };
   }
 
-  const bundle = runPaths ? await readRunJsonIfExists(runPaths, "run.json") : null;
+  const bundle = runPaths ? await readRunJsonIfExists(runPaths, RUN_BUNDLE_FILE) : null;
   const projected =
     isRecord(bundle) && Array.isArray(bundle.streams)
       ? withCuaReviewProvenance(review, bundle.streams.filter(isRecord))

@@ -19,8 +19,8 @@ import {
   TERMINAL_EVENTS_ARTIFACT,
   TERMINAL_LEDGERS_ARTIFACT,
   TERMINAL_TRANSCRIPT_ARTIFACT,
-  type TerminalLedgers,
-} from "./types.js";
+} from "../../run/terminal-contract.js";
+import type { TerminalLedgers } from "./types.js";
 import { describeMeasuredSpend, noSpendLineMeasured, noSpendNotEstablished } from "./ledger.js";
 
 /**

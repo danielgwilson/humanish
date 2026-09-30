@@ -26,6 +26,38 @@ export const SHARED_WORLD_CHECKPOINT_KEYS = new Set(["kind", "name", "digest", "
 // sha256-16 digest; any other key is a value-shaped leak / a smuggled per-delta→actor field.
 export const SHARED_WORLD_STATESERIES_KEYS = new Set(["timestamp", "digest"]);
 
+/**
+ * Single-plane provenance: every item shares ONE (commit, seedDigest), and that pair matches
+ * sharedWorld.plane. Only the first item that diverges from the plane is reported. The shape guard
+ * has already typed both fields as strings (commit may be absent).
+ */
+export function planeProvenanceFindings(
+  items: readonly Record<string, unknown>[],
+  plane: unknown,
+  labels: { items: string; item: string; run: string },
+): string[] {
+  const text = (value: unknown): string => (typeof value === "string" ? value : "");
+  const findings: string[] = [];
+  const keys = new Set(items.map((item) => `${text(item.commit)}::${text(item.seedDigest)}`));
+  if (keys.size > 1) {
+    findings.push(
+      `${labels.items} reference divergent plane provenance (commit/seedDigest) — a ${labels.run} run drives ONE plane`,
+    );
+  }
+  if (!isRecord(plane)) return findings;
+  for (const item of items) {
+    if (
+      text(item.seedDigest) !== text(plane.seedDigest) ||
+      text(item.commit) !== text(plane.commit)
+    ) {
+      const roleId = typeof item.roleId === "string" ? item.roleId : "(unnamed)";
+      findings.push(`${labels.item} "${roleId}" plane provenance diverges from sharedWorld.plane`);
+      break;
+    }
+  }
+  return findings;
+}
+
 /** Common shape findings shared by both topologyMode branches. */
 export function sharedWorldCommonFindings(bundle: RunBundle, sw: SharedWorldEvidence): string[] {
   const findings: string[] = [];

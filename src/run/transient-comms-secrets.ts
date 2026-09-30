@@ -1,5 +1,7 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 
+import { escapeRegExp } from "./primitives.js";
+
 /** Host-only, invocation-local exact values. No serializer, durable identifier or global fallback. */
 type SecretScope = {
   values: Set<string>;
@@ -70,7 +72,7 @@ export function scrubTransientCommsText(text: string): string {
     scope.pattern ??= new RegExp(
       [...scope.values]
         .sort((a, b) => b.length - a.length)
-        .map((value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+        .map(escapeRegExp)
         .join("|"),
       "g",
     );

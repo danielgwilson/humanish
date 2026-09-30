@@ -5,6 +5,8 @@ import type { RunLabProvenance } from "./status.js";
 import type { RunSimulationStatus, RunStream, RunStreamKind } from "./streams.js";
 
 export const RUN_BUNDLE_SCHEMA = "humanish.run-bundle.v1";
+/** The run bundle file, relative to the run directory. */
+export const RUN_BUNDLE_FILE = "run.json";
 
 export const REVIEW_SCHEMA = "humanish.review.v1";
 

@@ -3,51 +3,13 @@ import { ACTOR_TRACE_SCHEMA } from "../actors/contract.js";
 import { type PreparedRunArtifactPaths } from "./paths.js";
 import { CODEX_APP_SERVER_PROJECTED_TRACE_SCHEMA, type RunBundle } from "./bundle.js";
 import { readSafeRunArtifactBytes, readSafeRunArtifactJson } from "./locate.js";
-import { escapeRegExp, isRecord } from "./primitives.js";
-
-/**
- * Strip ANSI/control noise from a captured terminal transcript into stable, scannable text.
- * Pure (no IO). Exported so the terminal-product lane (src/routes/terminal/live-sandbox.ts) normalizes its
- * captured exec stream EXACTLY as the local-actor lanes do — the verdict-nonce scorer is only
- * sound against the same normalization the marker is matched on, so the logic must not diverge.
- */
-export function normalizeLocalActorTranscript(transcript: string): string {
-  return transcript
-    .replace(/\x1b\][^\x07]*(?:\x07|\x1b\\)/g, "")
-    .replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "")
-    .replace(/\x1b[78=>]/g, "")
-    .replace(/\r\n/g, "\n")
-    .replace(/\r/g, "\n")
-    .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, "");
-}
-
-type ActorVerdict = "passed" | "blocked" | "failed";
-
-/**
- * Extract the per-run verdict from a normalized transcript: the agent must print exactly
- * `HUMANISH_ACTOR_VERDICT=<status> HUMANISH_ACTOR_NONCE=<nonce>`, and the nonce is mandatory so a
- * bare marker (echoed or replayed from untrusted text) can never forge a verdict. Pure (no IO).
- * Exported so the terminal-product lane scores its in-sandbox `codex exec` run by the same marker;
- * divergent verdict logic would let the two lanes disagree about what "passed" means.
- */
-export function extractLocalActorVerdict(
-  transcript: string,
-  verdictNonce: string,
-): ActorVerdict | null {
-  const compactTranscript = transcript.replace(/\s+/g, "");
-  // The per-run nonce is mandatory: a bare HUMANISH_ACTOR_VERDICT=<status>
-  // marker echoed by an actor (or replayed from untrusted text) must never
-  // satisfy verdict extraction.
-  const match = new RegExp(
-    `HUMANISH_ACTOR_VERDICT=(passed|blocked|failed)HUMANISH_ACTOR_NONCE=${escapeRegExp(verdictNonce)}`,
-    "i",
-  ).exec(compactTranscript);
-  if (!match) {
-    return null;
-  }
-
-  return match[1]?.toLowerCase() as ActorVerdict;
-}
+import { isRecord } from "./primitives.js";
+import {
+  COST_CATEGORIES,
+  TERMINAL_EVENTS_ARTIFACT,
+  TERMINAL_LEDGERS_ARTIFACT,
+  TERMINAL_TRANSCRIPT_ARTIFACT,
+} from "./terminal-contract.js";
 
 export function isZeroEventTerminalTrace(value: unknown): boolean {
   return (
@@ -59,14 +21,6 @@ export function isZeroEventTerminalTrace(value: unknown): boolean {
     value.counts.terminalEvents === 0
   );
 }
-
-// The fixed artifact filenames the terminal-product lane (src/routes/terminal/types.ts) persists.
-// Kept in sync with TERMINAL_LEDGERS_ARTIFACT / TERMINAL_EVENTS_ARTIFACT / TERMINAL_TRANSCRIPT_ARTIFACT.
-const TERMINAL_LEDGERS_FILE = "terminal-ledgers.json";
-
-export const TERMINAL_EVENTS_FILE = "terminal-events.ndjson";
-
-const TERMINAL_TRANSCRIPT_FILE = "terminal-transcript.txt";
 
 /**
  * Verifier for the terminal-product real-agent lane (the in-sandbox command-scoped key route). A
@@ -97,9 +51,11 @@ export async function validateTerminalProductEvidence(
   }
 
   // The lane writes exactly one terminal run's ledgers/evidence at fixed paths in the run root.
-  const ledgers = await readSafeRunArtifactJson(runPaths, TERMINAL_LEDGERS_FILE);
+  const ledgers = await readSafeRunArtifactJson(runPaths, TERMINAL_LEDGERS_ARTIFACT);
   if (!isRecord(ledgers) || ledgers.schema !== "humanish.terminal-ledgers.v1") {
-    findings.push(`missing or malformed ${TERMINAL_LEDGERS_FILE} (humanish.terminal-ledgers.v1)`);
+    findings.push(
+      `missing or malformed ${TERMINAL_LEDGERS_ARTIFACT} (humanish.terminal-ledgers.v1)`,
+    );
     return findings;
   }
 
@@ -142,11 +98,13 @@ export async function validateTerminalProductEvidence(
   // The redacted exec-stream + normalized transcript artifacts must be WRITTEN (the producer
   // always writes them on the live path, even empty for a no-output blocked run — so absence is a
   // real evidence gap, while emptiness is legitimate and keeps blocked runs verifiable).
-  if (!(await readSafeRunArtifactBytes(runPaths, TERMINAL_EVENTS_FILE))) {
-    findings.push(`missing terminal event stream artifact (${TERMINAL_EVENTS_FILE})`);
+  if (!(await readSafeRunArtifactBytes(runPaths, TERMINAL_EVENTS_ARTIFACT))) {
+    findings.push(`missing terminal event stream artifact (${TERMINAL_EVENTS_ARTIFACT})`);
   }
-  if (!(await readSafeRunArtifactBytes(runPaths, TERMINAL_TRANSCRIPT_FILE))) {
-    findings.push(`missing normalized terminal transcript artifact (${TERMINAL_TRANSCRIPT_FILE})`);
+  if (!(await readSafeRunArtifactBytes(runPaths, TERMINAL_TRANSCRIPT_ARTIFACT))) {
+    findings.push(
+      `missing normalized terminal transcript artifact (${TERMINAL_TRANSCRIPT_ARTIFACT})`,
+    );
   }
 
   // The provider-neutral actor trace must be on the terminal lane with redaction passed.
@@ -168,10 +126,6 @@ export async function validateTerminalProductEvidence(
 
   return findings;
 }
-
-// The four cost categories the no-spend proof + cost ledger reason over. Kept in sync with
-// src/routes/terminal/ledger.ts COST_CATEGORIES (a missing category on either side is a finding).
-const TERMINAL_COST_CATEGORIES = ["product", "media", "payment", "provider"] as const;
 
 /**
  * Verifier for the terminal cost ledger and no-spend proof. A LIVE terminal-product bundle MUST
@@ -202,7 +156,7 @@ function validateTerminalCostEvidence(ledgers: Record<string, unknown>): string[
   // literally null. `undefined`/omitted is forbidden — that would silently lose the "not measured"
   // distinction. Track which categories the ledger marks null so the no-spend proof cannot lie about them.
   const nullCategories = new Set<string>();
-  for (const category of TERMINAL_COST_CATEGORIES) {
+  for (const category of COST_CATEGORIES) {
     const line = isRecord(lines[category])
       ? (lines[category] as Record<string, unknown>)
       : undefined;

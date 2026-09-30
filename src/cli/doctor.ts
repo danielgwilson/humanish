@@ -17,7 +17,7 @@ import {
   implicitProjectDirectoryExists,
   readImplicitProjectFile,
   validateCwd,
-} from "../run/locate.js";
+} from "../run/project.js";
 
 const DOCTOR_SCHEMA = "humanish.doctor-result.v1";
 

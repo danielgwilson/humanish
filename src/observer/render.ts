@@ -13,7 +13,8 @@ import {
   type PreparedRunArtifactPaths,
 } from "../run/paths.js";
 import { writeContainedOutputFile } from "../run/selected-output-paths.js";
-import { loadRunBundlePrepared, verifyRunPrepared } from "../run/verify.js";
+import { loadRunBundlePrepared } from "../run/locate.js";
+import { verifyRunPrepared } from "../run/verify.js";
 import { renderObserverHtml } from "./artifact.js";
 import { buildObserverData } from "./data.js";
 import { buildServeSecurityHeaders, hostAllowed, parsePublicOrigin } from "./http.js";

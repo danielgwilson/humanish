@@ -36,13 +36,15 @@ export const ACTOR_TRACE_SCHEMA = "humanish.actor-trace.v1";
  * - `timed_out`   the session hit its deadline with no productive activity at all
  * - `failed`      the HARNESS failed: a dead sandbox, a provider error, a broken artifact
  */
-export type ActorStatus =
-  | "passed"
-  | "abandoned"
-  | "incomplete"
-  | "blocked"
-  | "timed_out"
-  | "failed";
+export const ACTOR_STATUSES = [
+  "passed",
+  "abandoned",
+  "incomplete",
+  "blocked",
+  "timed_out",
+  "failed",
+] as const;
+export type ActorStatus = (typeof ACTOR_STATUSES)[number];
 
 /**
  * What the PARTICIPANT said happened, in a field rather than a paragraph (#570). Providers whose
