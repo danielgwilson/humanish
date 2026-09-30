@@ -378,7 +378,7 @@ pnpm humanish lab list
 - [Current safety state and goals](docs/goals/current.md)
 - [Contributing: reading order, commands and pull requests](CONTRIBUTING.md)
 - [Contributor and agent ramp](docs/ramp/README.md)
-- [Architecture: the run path, code map, support matrix and invariants](ARCHITECTURE.md)
+- [Architecture: the run path, code map and invariants](ARCHITECTURE.md)
 - [Project layout: the `humanish/` and `.humanish/` folders](docs/architecture/project-layout.md)
 - [Feedback contract](docs/contracts/feedback.md)
 - [Release readiness and gates](docs/release/open-source-readiness.md)

@@ -2,84 +2,64 @@
 
 This file describes the code on `main` and names real functions and files. `pnpm docs:check`
 fails when a path in it no longer exists, or when a file named beside a function or type no
-longer declares that name. [CONTEXT.md](CONTEXT.md) defines the domain terms.
+longer declares that name. [CONTEXT.md](CONTEXT.md) defines the domain terms, and
 [docs/decisions/](docs/decisions/README.md) records the decisions behind the rules below.
 
 ## Follow one `humanish run <lab>` from manifest to findings
 
-The steps use a live computer-use lab on a hosted E2B desktop. The scripted, terminal and
-shared-world routes share steps 1, 2, 8 and 9, and each does steps 3 to 7 in its own route file.
-The preview route writes a fixture bundle with `runDryRun` (`src/run/dry-run.ts`), publishes it
-with `Run.finish` as in step 7, and skips steps 3 to 6 and 9. It runs step 8 through
-`FinishedRun.renderObserver` when `RunOptions.observer` asks for it, as every CLI caller does.
+The steps follow a live computer-use lab on a hosted E2B desktop. The scripted, terminal and
+shared-world routes share steps 1, 2, 7 and 8 and do steps 3 to 6 in their own route files. The
+preview route writes a fixture bundle with `runDryRun` (`src/run/dry-run.ts`), publishes it as in
+step 6, and renders it as in step 7 when `RunOptions.observer` asks, as every CLI caller does.
 
-1. `runLabCommand` (`src/cli/commands/lab-run.ts`) calls `resolveLabManifest`
-   (`src/lab/discover.ts`). It reads the YAML and calls `parseLabConfig` (`src/lab/config.ts`),
-   which rejects unknown keys and every refused composition in the support matrix below. A
-   refusal exits with code 2 before a run id exists.
-2. `routeOf` (`src/lab/plan.ts`) picks one of five routes from `subject.source`,
-   `subject.topology`, `execution.target` and the registry lane of `actors[0].type`. The
-   predicates live in `src/lab/routing.ts`, and `selectLabBackend` (`src/lab/engine.ts`) maps the
-   route to its backend name. `runLabCommand` hands the lab to that backend's runner, such as
-   `runCuaBackend` (`src/cli/commands/lab-backend-cua.ts`), which calls `runLab`. `runLab` in
-   `src/lab/engine.ts` first calls `normalizeRunLabOptions` (`src/lab/run-lab-options.ts`). It
-   refuses a library option the route cannot honor, or a new option set together with the
-   hook-bag field it replaces, and maps the other new options into the route's hook bags.
-   `runLab` then dispatches to `runCuaActorLab`, `runScriptedBrowserLab`,
-   `runTerminalProductLab`, `runConcurrentSharedWorld` or `runPreviewLab`
-   (`src/routes/preview.ts`), which takes its sim count and admission from `planLab` and then
-   calls `runDryRun`. `runTerminalProductLab` takes its configuration refusals and plan from
-   `planTerminalLab` (`src/routes/terminal/plan.ts`), `runScriptedBrowserLab` from
-   `planScriptedLab` (`src/routes/scripted-browser/plan.ts`), and `runConcurrentSharedWorld` from
-   `planSharedWorldLab` (`src/routes/shared-world/plan.ts`). A run is live only when the lab
-   declares `scenario.mode: live`. The `--dry-run` flag forces a dry run.
-3. `planComputerUseLab` (`src/routes/computer-use/plan.ts`) repeats the parse checks for
-   library callers and gives `runCuaActorLab` its configuration refusals. On a live run,
-   `liveCuaRejection` (`src/routes/computer-use/preflight.ts`) checks provider keys, the local
-   agent login and subject env vars, and refuses a dollar cap it cannot price. Both run before
-   any sandbox or provider call.
-4. `createE2BCuaDesktopLane` (`src/routes/computer-use/e2b-desktop.ts`) runs the lane's steps
-   from `e2b-desktop-prepare.ts`, `e2b-desktop-start.ts` and `e2b-desktop-teardown.ts` in that
-   folder. `acquireLaneDesktop` calls `acquireE2BDesktopSandbox`
-   (`src/substrates/e2b/sandbox.ts`). It creates the sandbox, retries once on a transient
-   provider error, and appends the id with `"provider": "e2b"` to `sandbox-receipts.ndjson`
-   before it returns the handle. `provisionLaneSubject` then provisions a `clone` or `local-tree`
-   subject with `provisionCloneSubject` or `provisionLocalTreeSubject` (`src/subject/`), which
-   reach the sandbox only through the `Shell` that `e2bShell` (`src/substrates/e2b/shell.ts`)
-   builds from it. An `app-url` lab with `execution.target: local` goes to
-   `runLocalFirecrackerStudy` (`src/routes/computer-use/local-vm.ts`) instead.
-5. `runAllCuaLanes` (`src/routes/computer-use/lanes.ts`) runs `runCuaLane` for each
-   participant, at most `execution.concurrency` at a time. Each lane calls the actor's `runSession`. For
-   `openai-computer-use` and `local-agent` that is `runCuaActorSession`
-   (`src/actors/computer-use/actor.ts`), which drives `runComputerUseLoop`
-   (`src/actors/computer-use/loop.ts`).
-6. The loop saves screenshots through `makeLaneWriteScreenshot` (`src/routes/computer-use/lanes.ts`),
-   which checks each image with `assertScreenshotEvidence` (`src/evidence/image.ts`). Lane errors
-   pass through `redactText` (`src/evidence/redaction.ts`) before they are recorded. Screenshots
-   are blurred only when the lab sets `policies.redactScreenshots: true`.
-7. `buildCuaRunBundle` (`src/routes/computer-use/assemble.ts`) builds `run.json`. The route
-   started its run with `runScope` and `startRun` (`src/run/run.ts`) before any sandbox. It
-   publishes an in-progress bundle with `Run.writeSnapshot` before the lanes start, rewrites it
-   from the lanes' live traces through `startLiveTraceFlush`
-   (`src/routes/computer-use/live-flush.ts`), and publishes the final bundle with `Run.finish`.
-   `Run.finish` writes `run.json`, then the `status.json` outcome, then `review.json`,
+1. **Parse.** `runLabCommand` (`src/cli/commands/lab-run.ts`) calls `resolveLabManifest`
+   (`src/lab/discover.ts`), which reads the YAML and calls `parseLabConfig` (`src/lab/config.ts`).
+   It rejects unknown keys and every refused composition in the
+   [support matrix](docs/ramp/README.md#check-which-compositions-a-lab-can-declare). A refusal
+   exits with code 2 before a run id exists.
+2. **Route.** `routeOf` (`src/lab/plan.ts`) picks one of five routes from `subject.source`,
+   `subject.topology`, `execution.target` and the registry lane of `actors[0].type`. `runLabCommand`
+   hands the lab to that route's CLI runner, here `runCuaBackend`
+   (`src/cli/commands/lab-backend-cua.ts`), which calls `runLab` (`src/lab/engine.ts`). `runLab`
+   maps library options with `normalizeRunLabOptions` (`src/lab/run-lab-options.ts`) and calls the
+   route, here `runCuaActorLab`. Each route folder under `src/routes/` takes its refusals and plan
+   from its `plan.ts`. A run is live only when the lab declares `scenario.mode: live`; `--dry-run`
+   forces a dry run.
+3. **Preflight.** `planComputerUseLab` (`src/routes/computer-use/plan.ts`) repeats the parse
+   checks for library callers. On a live run, `liveCuaRejection`
+   (`src/routes/computer-use/preflight.ts`) checks provider keys, the local agent login and
+   subject env vars, and refuses a dollar cap it cannot price. Both run before any sandbox or
+   provider call.
+4. **Desktop.** `createE2BCuaDesktopLane` (`src/routes/computer-use/e2b-desktop.ts`) runs the
+   lane's steps from the `e2b-desktop-*.ts` files beside it. `acquireE2BDesktopSandbox`
+   (`src/substrates/e2b/sandbox.ts`) appends the sandbox id to `sandbox-receipts.ndjson` before it
+   returns the handle. A `clone` or `local-tree` subject is provisioned through `src/subject/`,
+   which reaches the sandbox only through a `Shell` (`src/substrates/e2b/shell.ts`). An `app-url`
+   lab with `execution.target: local` runs `runLocalFirecrackerStudy`
+   (`src/routes/computer-use/local-vm.ts`) instead.
+5. **Participants.** `runAllCuaLanes` (`src/routes/computer-use/lanes.ts`) runs `runCuaLane` for
+   each participant, at most `execution.concurrency` at a time. A lane's session is
+   `runCuaActorSession` (`src/actors/computer-use/actor.ts`), which drives `runComputerUseLoop`
+   (`src/actors/computer-use/loop.ts`). The loop saves screenshots through
+   `makeLaneWriteScreenshot`, which checks each image with `assertScreenshotEvidence`
+   (`src/evidence/image.ts`). Screenshots are blurred only when a lab sets
+   `policies.redactScreenshots: true`.
+6. **Bundle.** The route started its run with `runScope` and `startRun` (`src/run/run.ts`) before
+   any sandbox. It publishes an in-progress bundle with `Run.writeSnapshot`, rewrites it from the
+   lanes' live traces through `startLiveTraceFlush` (`src/routes/computer-use/live-flush.ts`), and
+   publishes the final bundle from `buildCuaRunBundle` (`src/routes/computer-use/assemble.ts`)
+   with `Run.finish`. That writes `run.json`, then the `status.json` outcome, then `review.json`,
    `review.md`, `events.ndjson` and `observer/observer-data.json`, and the
-   `.humanish/runs/latest.json` pointer last. A snapshot writes the same files without the
-   status outcome and writes the pointer only until one pointer write succeeds. Every other
-   route publishes the same way. `runConcurrentSharedWorld` also writes a snapshot before its
-   seats start and flushes their live traces, with or without an attached Observer.
-8. `renderObserver` (`src/observer/render.ts`) verifies the bundle with `verifyRunPrepared`
-   (`src/verify/verify.ts`), builds the page data with `buildObserverData` (`src/observer/data.ts`)
-   and writes `observer/index.html` with `renderObserverHtml` (`src/observer/artifact.ts`).
-   `humanish verify --run latest` runs `verifyRun` from `src/verify/verify.ts` on demand.
-9. After the route returns, `completeAutomaticAnalysis` (`src/analysis/automatic-completion.ts`)
-   calls `runAutomaticStudyAnalysis` (`src/analysis/automatic.ts`). It takes the `FinishedRun`
-   that `Run.finish` issued (`src/run/run.ts`) and reads the run id and paths from it, so a
-   refusal that echoes an older run's id never analyzes that run. Dry runs skip analysis. A lab
-   turns it off with `review.analysis: false`.
-
-[docs/architecture/project-layout.md](docs/architecture/project-layout.md) describes the
-`humanish/` and `.humanish/` folders in a project that runs studies.
+   `.humanish/runs/latest.json` pointer last. Every route publishes the same way.
+7. **Observer.** `renderObserver` (`src/observer/render.ts`) verifies the bundle with
+   `verifyRunPrepared` (`src/verify/verify.ts`), builds the page data with `buildObserverData`
+   (`src/observer/data.ts`) and writes `observer/index.html` with `renderObserverHtml`
+   (`src/observer/artifact.ts`). `humanish verify --run latest` runs `verifyRun` on demand.
+8. **Analysis.** After the route returns, `completeAutomaticAnalysis`
+   (`src/analysis/automatic-completion.ts`) calls `runAutomaticStudyAnalysis`
+   (`src/analysis/automatic.ts`) with the `FinishedRun` that `Run.finish` issued, so a refusal
+   that echoes an older run's id never analyzes that run. Dry runs skip analysis, and a lab turns
+   it off with `review.analysis: false`.
 
 ## Find the code for each part of the system
 
@@ -123,40 +103,6 @@ with `Run.finish` as in step 7, and skips steps 3 to 6 and 9. It runs step 8 thr
 `pnpm docs:check` fails when a folder directly under `src/` or `src/routes/` has no row here, or
 when a row names a folder that is gone. Add the row in the change that adds the folder.
 
-Three folders hold fixtures. `tests/fixtures/` holds test inputs, `humanish/fixtures/` holds the
-synthetic apps this repo's own labs start, and the root `fixtures/` holds synthetic apps and cases
-that several tests and scripts copy, such as `fixtures/minimal-app/`.
-
-## Check which compositions a lab can declare
-
-`parseLabConfig` (`src/lab/config.ts`) enforces this matrix through `compositionReason`
-(`src/lab/composition-rules.ts`), which uses the predicates in `src/lab/routing.ts` and the reasons
-in `src/lab/validation.ts`. The route entries check it again
-for library callers. `tests/fixtures/task-route-preflight/labs.json` holds one lab for each
-accepted row except the local browser row. `tests/lab/task-route-preflight.test.ts` checks that
-each of those labs routes as shown. `tests/lab/engine-local-substrate.test.ts` covers the local
-browser row. Accepted rows have further required fields, such as `subject.serve` on `clone`, and
-the parse error names the missing one. The computer-use actors are `openai-computer-use` and
-`local-agent`.
-
-| Route (backend name)                       | `subject.source`                                 | `execution.target`       | `actors[0].type`                       | Result                                                                         |
-| ------------------------------------------ | ------------------------------------------------ | ------------------------ | -------------------------------------- | ------------------------------------------------------------------------------ |
-| `computer-use` (`cua`)                     | `app-url`                                        | `e2b-desktop`            | a computer-use actor                   | Supported                                                                      |
-| `computer-use` (`cua`)                     | `app-url`                                        | `local`                  | a computer-use actor                   | Supported on a local Firecracker desktop, inside Lima on macOS                 |
-| `computer-use` (`cua`)                     | `clone`, `local-tree`                            | `e2b-desktop`            | a computer-use actor                   | Supported                                                                      |
-| `computer-use` (`cua`)                     | `desktop-cli`                                    | `e2b-desktop` or absent  | a computer-use actor                   | Supported                                                                      |
-| `computer-use` (`cua`)                     | `local-app`                                      | `local` or absent        | a computer-use actor                   | Library only; the CLI refuses it with `HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR` |
-| `shared-world` (`concurrent-shared-world`) | `clone`, `local-tree` + `topology: shared-world` | `e2b-desktop`            | a computer-use actor                   | Supported                                                                      |
-| `shared-world` (`concurrent-shared-world`) | `app-url` + `topology: shared-world`             | `e2b-desktop`            | a computer-use actor                   | Supported with `policies.allowPublicTargets: true`                             |
-| `scripted`                                 | `app-url` with a loopback URL                    | `local` or absent        | `scripted-browser`                     | Supported                                                                      |
-| `scripted`                                 | `clone`                                          | `e2b-desktop`            | `scripted-browser`                     | Supported                                                                      |
-| `terminal`                                 | `terminal-product`                               | `e2b-terminal` or absent | `codex-exec`                           | Supported                                                                      |
-| `preview` (`synthetic`)                    | `this-repo`                                      | absent                   | not `scripted-browser` or `codex-exec` | Dry run only                                                                   |
-| none                                       | any other pairing                                | any                      | any                                    | Refused at parse with `HUMANISH_LAB_INVALID`                                   |
-
-The fixture's `supported` field records which routes accept declared `actors[0].tasks`. The
-computer-use labs in the fixture accept them. The other routes refuse them at parse.
-
 ## Keep these invariants when you change code
 
 | Invariant                                                               | Enforced by                                                                                                                                                                                                                                                                                         | Pinned by                                                                                                                                                                                                  |
@@ -168,49 +114,17 @@ computer-use labs in the fixture accept them. The other routes refuse them at pa
 | Goldens pin route output                                                | `runDirSnapshot` (`tests/helpers/run-golden.ts`) snapshots a whole run folder                                                                                                                                                                                                                       | `tests/golden/routes/`, `tests/golden/observer-data/`, `tests/golden/labs/`                                                                                                                                |
 | A run is closed on every exit, and only a published run is analyzed     | `runScope` and `FinishedRun` (`src/run/run.ts`); `completeAutomaticAnalysis` requires an issued `FinishedRun` for the result's run                                                                                                                                                                  | `tests/run/run-lifecycle.test.ts`, `tests/analysis/automatic-analysis.test.ts`                                                                                                                             |
 
-The receipt write is best-effort. A failed append is ignored. The sandbox's server-side timeout
-then ends a sandbox that has no receipt. Any other failure after create kills the sandbox before
-the error reaches the caller. The lab preflight probe has no run directory, so
-`withPreflightSandbox` (`src/lab/preflight-probes.ts`) journals its receipt in
-`.humanish/preflight/<probe-id>/` and removes the journal after a confirmed kill.
-`humanish reclaim --preflight` (`reclaimPreflightSandboxes`, `src/run/reclaim.ts`) kills what a
-killed or failed probe left. It acts on a journal only when the probe marked it abandoned, its
-lease has elapsed, or its owner ran on this host in this pid namespace and is gone; otherwise it
-says why it left the journal. A public-preview probe's timeout is each target's readiness budget
-plus five minutes. A clone probe's timeout is `cloneProvisioningBudgetMs`
-(`src/subject/clone.ts`), the longest its clone and serve steps can take with the lab's declared
-or default budgets and retries, plus five minutes. A declared `sandboxTimeoutMs`, or E2B's
-60-minute maximum, caps both. Without a declared timeout a clone probe gets 13 minutes (clone and
-serve as-is), 53 for an npm app that installs and builds, and the 60-minute cap once pnpm or yarn
-adds its step, where it used to get 10.
+The receipt write is best-effort; the sandbox's server-side timeout ends a sandbox with no
+receipt. A lab preflight probe journals its receipt with `withPreflightSandbox`
+(`src/lab/preflight-probes.ts`), and `humanish reclaim --preflight` (`src/run/reclaim.ts`) kills
+what a failed probe left. [Trust boundaries](site/content/docs/trust-boundaries.mdx) gives the
+probe timeouts.
 
-## Make your first change
+## Read next
 
-This walkthrough changes the persona a computer-use lane gets when neither the lane nor the actor
-names one. It runs offline and spends nothing.
-
-1. Change the `"cua-operator"` fallback in `composeLaneInstructions`
-   (`src/routes/computer-use/lane-plan.ts`).
-2. Run `pnpm vitest run tests/lane-persona-fallback.test.ts`. It fails because it asserts the old
-   id. Update the assertion once the new id is what you want.
-3. Copy `humanish/labs/dwell-window-todomvc.yaml` to `.humanish/local/labs/walkthrough.yaml`.
-   Change its `id` to `walkthrough` and delete its `persona:` line.
-4. Run `pnpm humanish run walkthrough --dry-run --no-open`. Read `.humanish/runs/latest.json` for
-   the run id, then check `persona.id` in `.humanish/runs/<runId>/run.json`.
-5. Run `pnpm humanish verify --run latest`, then `pnpm format` and `pnpm check`.
-
-Common changes touch these tests and contracts:
-
-| Change                    | Tests                                                                        | Contract or doc to update                                          |
-| ------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| A lab manifest field      | `tests/lab/config.test.ts`, the route's tests                                | `docs/contracts/schemas.md`, `site/content/docs/lab-manifests.mdx` |
-| A CLI option              | the command's tests under `tests/cli/`                                       | Run `pnpm docs:generate` to update `site/content/docs/cli.mdx`     |
-| A `run.json` field        | the route's tests; rerun them with `-u` to update `tests/golden/routes/`     | `docs/contracts/run-bundle.md`                                     |
-| Observer data             | `tests/observer/data-contract.test.ts` with `UPDATE_OBSERVER_DATA_GOLDENS=1` | `docs/architecture/observer.md`                                    |
-| Observer UI               | `observer/tests/` and the four `observer:*:proof` scripts                    | `observer/AGENTS.md`                                               |
-| A route's behavior        | `tests/routes/<route>/`, `tests/lab/task-route-preflight.test.ts`            | the support matrix above                                           |
-| An actor                  | `tests/actors/`, `tests/actors/conformance.test.ts`                          | `docs/architecture/actor-contract.md`                              |
-| Redaction or share safety | `tests/evidence/`, `tests/run/transient-comms-secrets.test.ts`               | `docs/contracts/policy.md`                                         |
-| Study analysis            | `tests/analysis/`                                                            | `docs/contracts/study-analysis.md`                                 |
-| A public export           | `pnpm build` and `pnpm api:proof` (`--update` to accept)                     | `tests/golden/public-api.json`                                     |
-| An example                | `pnpm build` and `pnpm api:proof`, which runs every example                  | `examples/README.md`                                               |
+- [docs/architecture/project-layout.md](docs/architecture/project-layout.md): the `humanish/`
+  and `.humanish/` folders in a project that runs studies.
+- [docs/ramp/README.md](docs/ramp/README.md#check-which-compositions-a-lab-can-declare): the
+  support matrix, which compositions a lab can declare and which tests pin each row.
+- [CONTRIBUTING.md](CONTRIBUTING.md#make-your-first-change): a first change, offline, and the
+  tests and contracts that common changes touch.

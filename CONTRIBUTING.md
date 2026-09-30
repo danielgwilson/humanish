@@ -64,6 +64,41 @@ pnpm humanish verify --run latest --json
 pnpm pack:dry-run
 ```
 
+## Make your first change
+
+This walkthrough changes the persona a computer-use lane gets when neither the lane nor the actor
+names one. It runs offline and spends nothing.
+
+1. Change the `"cua-operator"` fallback in `composeLaneInstructions`
+   (`src/routes/computer-use/lane-plan.ts`).
+2. Run `pnpm vitest run tests/lane-persona-fallback.test.ts`. It fails because it asserts the old
+   id. Update the assertion once the new id is what you want.
+3. Copy `humanish/labs/dwell-window-todomvc.yaml` to `.humanish/local/labs/walkthrough.yaml`.
+   Change its `id` to `walkthrough` and delete its `persona:` line.
+4. Run `pnpm humanish run walkthrough --dry-run --no-open`. Read `.humanish/runs/latest.json` for
+   the run id, then check `persona.id` in `.humanish/runs/<runId>/run.json`.
+5. Run `pnpm humanish verify --run latest`, then `pnpm format` and `pnpm check`.
+
+Common changes touch these tests and contracts:
+
+| Change                    | Tests                                                                        | Contract or doc to update                                          |
+| ------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| A lab manifest field      | `tests/lab/config.test.ts`, the route's tests                                | `docs/contracts/schemas.md`, `site/content/docs/lab-manifests.mdx` |
+| A CLI option              | the command's tests under `tests/cli/`                                       | Run `pnpm docs:generate` to update `site/content/docs/cli.mdx`     |
+| A `run.json` field        | the route's tests; rerun them with `-u` to update `tests/golden/routes/`     | `docs/contracts/run-bundle.md`                                     |
+| Observer data             | `tests/observer/data-contract.test.ts` with `UPDATE_OBSERVER_DATA_GOLDENS=1` | `docs/architecture/observer.md`                                    |
+| Observer UI               | `observer/tests/` and the four `observer:*:proof` scripts                    | `observer/AGENTS.md`                                               |
+| A route's behavior        | `tests/routes/<route>/`, `tests/lab/task-route-preflight.test.ts`            | the support matrix in `docs/ramp/README.md`                        |
+| An actor                  | `tests/actors/`, `tests/actors/conformance.test.ts`                          | `docs/architecture/actor-contract.md`                              |
+| Redaction or share safety | `tests/evidence/`, `tests/run/transient-comms-secrets.test.ts`               | `docs/contracts/policy.md`                                         |
+| Study analysis            | `tests/analysis/`                                                            | `docs/contracts/study-analysis.md`                                 |
+| A public export           | `pnpm build` and `pnpm api:proof` (`--update` to accept)                     | `tests/golden/public-api.json`                                     |
+| An example                | `pnpm build` and `pnpm api:proof`, which runs every example                  | `examples/README.md`                                               |
+
+Three folders hold fixtures. `tests/fixtures/` holds test inputs, `humanish/fixtures/` holds the
+synthetic apps this repo's own labs start, and the root `fixtures/` holds synthetic apps and cases
+that several tests and scripts copy, such as `fixtures/minimal-app/`.
+
 ## Pull Requests
 
 PRs should include:
