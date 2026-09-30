@@ -174,3 +174,36 @@ export function judgeParticipants(args: {
           : "fail";
   return { verdict, allPassed: args.dryRun || allPassed };
 }
+
+/** What a shared-world run observed about its one world, beside how each seat ended. */
+export interface SharedWorldFacts {
+  /** Two or more seats were live at the same time. */
+  overlap: boolean;
+  /** Provisioned plane only: the shared state changed at or after the first overlap started. */
+  stateChangedUnderOverlap?: boolean;
+  /** External-public plane only: every seat reached one lobby. */
+  lobbyConvergence?: boolean;
+}
+
+export interface SharedWorldJudgment extends Judgment {
+  world: SharedWorldFacts;
+}
+
+/**
+ * A shared-world run: it passes only when every expected seat passed, and otherwise fails (this
+ * route has no timed_out verdict). A dry run and a run still in progress are contracts. The world
+ * facts are recorded with the verdict; the verdict does not read them.
+ */
+export function judgeSharedWorld(args: {
+  dryRun: boolean;
+  inProgress: boolean;
+  expected: number;
+  participants: ParticipantFacts[];
+  world: SharedWorldFacts;
+}): SharedWorldJudgment {
+  const allPassed =
+    args.participants.length === args.expected && args.participants.every(participantPassed);
+  const verdict: Verdict =
+    args.dryRun || args.inProgress ? "contract_proof_only" : allPassed ? "pass" : "fail";
+  return { verdict, allPassed: args.dryRun || allPassed, world: args.world };
+}

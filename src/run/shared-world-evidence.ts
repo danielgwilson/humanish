@@ -203,3 +203,47 @@ export interface SharedWorldEvidence {
   /** Per-persona outcomes (the "M of N succeeded" headline). */
   outcomes?: SharedWorldOutcome[];
 }
+
+/** A participant's time on the plane, in ms on the harness clock, as laneWindows record it. */
+interface ParticipantWindow {
+  startedAt: number;
+  endedAt: number;
+}
+
+/** Where two participant windows overlap in time, the start of each overlap (the later of the two starts). */
+function overlapStarts(windows: readonly ParticipantWindow[]): number[] {
+  const starts: number[] = [];
+  for (let i = 0; i < windows.length; i += 1) {
+    for (let j = i + 1; j < windows.length; j += 1) {
+      const a = windows[i]!;
+      const b = windows[j]!;
+      if (a.startedAt < b.endedAt && b.startedAt < a.endedAt)
+        starts.push(Math.max(a.startedAt, b.startedAt));
+    }
+  }
+  return starts;
+}
+
+/**
+ * What a shared-world run shows about concurrency, as verify's pass gate and the judge both read
+ * it: whether two or more seats were live at once, and, when the plane keeps a state series (the
+ * provisioned plane), whether the state changed at or after the first overlap started.
+ */
+export function concurrencyFacts(
+  windows: readonly ParticipantWindow[],
+  stateSeries: readonly SharedWorldStateSnapshot[] | undefined,
+): { overlap: boolean; stateChangedUnderOverlap?: boolean } {
+  const starts = overlapStarts(windows);
+  const overlap = starts.length > 0;
+  if (stateSeries === undefined) return { overlap };
+  if (!overlap) return { overlap, stateChangedUnderOverlap: false };
+  const earliestOverlapStart = Math.min(...starts);
+  const sorted = [...stateSeries].sort((x, y) => x.timestamp - y.timestamp);
+  const stateChangedUnderOverlap = sorted.some(
+    (snapshot, i) =>
+      i > 0 &&
+      snapshot.digest !== sorted[i - 1]!.digest &&
+      snapshot.timestamp >= earliestOverlapStart,
+  );
+  return { overlap, stateChangedUnderOverlap };
+}

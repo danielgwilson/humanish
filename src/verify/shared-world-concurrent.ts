@@ -1,5 +1,5 @@
 import type { RunBundle } from "../run/bundle.js";
-import type { SharedWorldEvidence } from "../run/shared-world-evidence.js";
+import { concurrencyFacts, type SharedWorldEvidence } from "../run/shared-world-evidence.js";
 import {
   COMMAND_DIGEST_PATTERN,
   SHARED_WORLD_STATESERIES_KEYS,
@@ -271,37 +271,21 @@ function stateSeriesFindings(stateSeries: Row[]): string[] {
   return findings;
 }
 
-/** Where two laneWindows overlap in time, the start of each overlap. */
-function overlapStarts(laneWindows: Row[]): number[] {
-  const starts: number[] = [];
-  for (let i = 0; i < laneWindows.length; i += 1) {
-    for (let j = i + 1; j < laneWindows.length; j += 1) {
-      const a = laneWindows[i]!;
-      const b = laneWindows[j]!;
-      const aStart = a.startedAt as number;
-      const aEnd = a.endedAt as number;
-      const bStart = b.startedAt as number;
-      const bEnd = b.endedAt as number;
-      if (
-        typeof aStart === "number" &&
-        typeof aEnd === "number" &&
-        typeof bStart === "number" &&
-        typeof bEnd === "number" &&
-        aStart < bEnd &&
-        bStart < aEnd
-      ) {
-        starts.push(Math.max(aStart, bStart));
-      }
-    }
-  }
-  return starts;
+/** The laneWindows rows with numeric start and end, as the shared concurrency facts read them. */
+function participantWindows(laneWindows: Row[]): { startedAt: number; endedAt: number }[] {
+  return laneWindows.flatMap((window) =>
+    typeof window.startedAt === "number" && typeof window.endedAt === "number"
+      ? [{ startedAt: window.startedAt, endedAt: window.endedAt }]
+      : [],
+  );
 }
 
 /**
  * The concurrency-on-pass gate: a PASSED concurrent run MUST show genuine overlap (≥2 laneWindows
  * overlapping in time) AND a stateSeries delta whose timestamp is AT/AFTER the start of an
  * overlap interval — otherwise it was not actually concurrent, or the world never changed under
- * contention (a hollow concurrent claim).
+ * contention (a hollow concurrent claim). The facts come from concurrencyFacts, which the judge
+ * also reads.
  */
 function concurrencyOnPassFindings(
   bundle: RunBundle,
@@ -309,28 +293,20 @@ function concurrencyOnPassFindings(
   stateSeries: Row[],
 ): string[] {
   if (bundle.review.verdict !== "pass") return [];
-  const starts = overlapStarts(laneWindows);
-  if (starts.length === 0) {
+  const facts = concurrencyFacts(
+    participantWindows(laneWindows),
+    stateSeries.flatMap((snapshot) =>
+      typeof snapshot.timestamp === "number"
+        ? [{ timestamp: snapshot.timestamp, digest: String(snapshot.digest) }]
+        : [],
+    ),
+  );
+  if (!facts.overlap) {
     return [
       "review verdict is pass but no two laneWindows overlap in time — the run was not actually concurrent",
     ];
   }
-  const earliestOverlapStart = Math.min(...starts);
-  const sorted = [...stateSeries]
-    .map((snapshot) => ({
-      timestamp: snapshot.timestamp as number,
-      digest: String(snapshot.digest),
-    }))
-    .filter((snapshot) => typeof snapshot.timestamp === "number")
-    .sort((x, y) => x.timestamp - y.timestamp);
-  for (let i = 1; i < sorted.length; i += 1) {
-    if (
-      sorted[i]!.digest !== sorted[i - 1]!.digest &&
-      sorted[i]!.timestamp >= earliestOverlapStart
-    ) {
-      return [];
-    }
-  }
+  if (facts.stateChangedUnderOverlap === true) return [];
   return [
     "review verdict is pass but no stateSeries delta occurs at/after an overlap interval start — the shared world did not change under concurrent load (hollow concurrent claim)",
   ];
@@ -397,7 +373,10 @@ function externalPublicConcurrentFindings(bundle: RunBundle, sw: SharedWorldEvid
   // co-occupancy (≥2 laneWindows overlapping in time). There is NO state-delta requirement — the
   // observed co-occupancy of one declared origin (plus the optional lobby convergence) carries the
   // "they shared a world" claim, disclosed as concurrency-by-temporal-co-occupancy-only.
-  if (bundle.review.verdict === "pass" && overlapStarts(laneWindows).length === 0) {
+  if (
+    bundle.review.verdict === "pass" &&
+    !concurrencyFacts(participantWindows(laneWindows), undefined).overlap
+  ) {
     findings.push(
       "review verdict is pass but no two laneWindows overlap in time — the external-public run was not actually concurrent (concurrency is proven by temporal co-occupancy on this class)",
     );

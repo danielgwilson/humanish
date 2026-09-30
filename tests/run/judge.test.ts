@@ -5,6 +5,7 @@ import {
   hollowCompletion,
   judgeOneParticipant,
   judgeParticipants,
+  judgeSharedWorld,
   participantPassed,
   participantStatus,
   selfReportedBlocker,
@@ -211,6 +212,47 @@ describe("judgeParticipants", () => {
     ).toEqual({ verdict: "contract_proof_only", allPassed: true });
     expect(
       judgeParticipants({ dryRun: false, inProgress: true, expected: 2, participants: [] }).verdict,
+    ).toBe("contract_proof_only");
+  });
+});
+
+describe("judgeSharedWorld", () => {
+  const world = { overlap: true };
+  const judge = (participants: ParticipantFacts[], expected = participants.length) =>
+    judgeSharedWorld({ dryRun: false, inProgress: false, expected, participants, world });
+
+  it("passes only when every expected seat passed, and has no timed_out verdict", () => {
+    expect(judge([passed(), passed()])).toEqual({ verdict: "pass", allPassed: true, world });
+    for (const other of [
+      passed({ status: "timed_out", completionReason: "timed_out" }),
+      passed({ noEngagement: true }),
+      passed({ selfReportedBlocker: true }),
+      passed({ sessionError: "provider exploded" }),
+    ])
+      expect(judge([passed(), other])).toMatchObject({ verdict: "fail", allPassed: false });
+    expect(judge([passed()], 2)).toMatchObject({ verdict: "fail", allPassed: false });
+  });
+
+  it("records the world facts without reading them for the verdict", () => {
+    const quiet = { overlap: false, lobbyConvergence: false };
+    expect(
+      judgeSharedWorld({
+        dryRun: false,
+        inProgress: false,
+        expected: 1,
+        participants: [passed()],
+        world: quiet,
+      }),
+    ).toEqual({ verdict: "pass", allPassed: true, world: quiet });
+  });
+
+  it("holds dry and in-progress runs as contracts", () => {
+    expect(
+      judgeSharedWorld({ dryRun: true, inProgress: false, expected: 2, participants: [], world }),
+    ).toMatchObject({ verdict: "contract_proof_only", allPassed: true });
+    expect(
+      judgeSharedWorld({ dryRun: false, inProgress: true, expected: 2, participants: [], world })
+        .verdict,
     ).toBe("contract_proof_only");
   });
 });

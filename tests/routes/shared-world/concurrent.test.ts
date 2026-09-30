@@ -323,6 +323,8 @@ function makeRunSession(
         status?: ActorStatus;
         completionReason?: ActorCompletionReason;
         reason?: string;
+        actions?: number;
+        messages?: number;
       }
     | undefined,
 ): (options: CuaActorSessionOptions) => Promise<CuaLoopResult> {
@@ -353,8 +355,8 @@ function makeRunSession(
       persona: options.persona,
       status,
       completionReason,
-      actions: 1,
-      messages: 1,
+      actions: o?.actions ?? 1,
+      messages: o?.messages ?? 1,
       ...(o?.reason === undefined ? {} : { reason: o.reason }),
     });
     return { status, completionReason, reason: trace.reason, trace };
@@ -1317,6 +1319,58 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     const verify = await verifyRun(cwd, result.runId);
     expect(verify.ok).toBe(true);
     expect(verify.checks.find((c) => c.name === "shared-world evidence")?.ok).toBe(true);
+  });
+
+  // One judgment decides the bundle's verdict and the result's ok, and status.json repeats the
+  // bundle's verdict. Seat 2 ends each way; seats 1 and 3 pass.
+  it.each<[string, Parameters<typeof makeRunSession>[2], RunBundle["review"]["verdict"], boolean]>([
+    ["every seat passes", undefined, "pass", true],
+    [
+      "a failed seat",
+      (i) => (i === 1 ? { status: "failed", completionReason: "actor_error" } : undefined),
+      "fail",
+      false,
+    ],
+    [
+      "a timed-out seat",
+      (i) => (i === 1 ? { status: "timed_out", completionReason: "timed_out" } : undefined),
+      "fail",
+      false,
+    ],
+    [
+      "a seat reporting a blocker",
+      (i) =>
+        i === 1
+          ? { reason: "I could not complete the task; the save button was disabled." }
+          : undefined,
+      "fail",
+      false,
+    ],
+    ["a hollow seat", (i) => (i === 1 ? { actions: 0, messages: 0 } : undefined), "fail", false],
+    [
+      "a seat whose session threw",
+      (i) => (i === 1 ? { throwMessage: "synthetic provider failure" } : undefined),
+      "fail",
+      false,
+    ],
+  ])("agrees across bundle, result and status with %s", async (_name, override, verdict, ok) => {
+    const state = { worldVersion: 0 };
+    const { hooks } = baseHooks(state, makeRendezvous(3), override);
+    const result = await runConcurrentSharedWorld({
+      cwd,
+      config: concurrentConfig(3, 3),
+      dryRun: false,
+      hooks,
+    });
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
+    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
+    const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8")) as {
+      outcome?: { verdict?: string };
+    };
+    expect(bundle.review.verdict).toBe(verdict);
+    expect(status.outcome?.verdict).toBe(bundle.review.verdict);
+    expect(result.ok).toBe(ok);
+    expect(result.overlapProven).toBe(true);
   });
 
   it("fails review when a lane returns a terminal failed actor trace", async () => {
