@@ -24,7 +24,7 @@ import { reclaimRunSandboxes } from "../../src/run/reclaim.js";
 import {
   parseSandboxReceipts,
   SANDBOX_RECEIPTS_ARTIFACT,
-  type SandboxReceipt,
+  type ParsedSandboxReceipt,
 } from "../../src/run/sandbox-receipts.js";
 import { runCuaActorLab } from "../../src/routes/computer-use/lab.js";
 import {
@@ -204,7 +204,7 @@ function makeFakeE2BModule(
   return { module, created, templates, killed, sandboxes, order };
 }
 
-async function readRunReceipts(runDir: string): Promise<SandboxReceipt[]> {
+async function readRunReceipts(runDir: string): Promise<ParsedSandboxReceipt[]> {
   try {
     return parseSandboxReceipts(
       await readFile(path.join(runDir, SANDBOX_RECEIPTS_ARTIFACT), "utf8"),

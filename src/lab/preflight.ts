@@ -10,11 +10,11 @@ import {
 } from "../routes/computer-use/lab.js";
 import { probeUrl } from "../substrates/e2b/detached.js";
 import {
-  createDesktopSandbox,
   loadE2BDesktopModule,
   type E2BDesktopModule,
   type E2BDesktopSandbox,
 } from "../substrates/e2b/desktop-launch.js";
+import { acquireE2BDesktopSandbox } from "../substrates/e2b/sandbox.js";
 import { isLoopbackUrl } from "./parse-subject.js";
 import { type LabConfig } from "./types.js";
 import { selectLabBackend, type LabBackend } from "./engine.js";
@@ -396,13 +396,16 @@ async function withPreflightSandbox(
   callback: (desktop: E2BDesktopSandbox) => Promise<void>,
 ): Promise<{ ok: true } | { ok: false; result: LabPreflightResult }> {
   let module: E2BDesktopModule | undefined;
-  let desktop: E2BDesktopSandbox | undefined;
+  let sandboxId: string | undefined;
   let failureMessage: string | undefined;
   try {
     module = await (ctx.hooks.loadDesktopModule ?? loadE2BDesktopModule)();
-    desktop = await createDesktopSandbox(
+    // The probe has no run directory, so it writes no receipt. Its lease is the create-time
+    // timeoutMs with kill-on-timeout: if this process dies before the finally block kills the
+    // probe, the provider kills it when that timeout ends.
+    const probe = await acquireE2BDesktopSandbox({
       module,
-      {
+      options: {
         apiKey: args.e2bApiKey,
         requestTimeoutMs: DEFAULT_REQUEST_TIMEOUT_MS,
         timeoutMs: ctx.config.execution?.desktop?.sandboxTimeoutMs ?? DEFAULT_SANDBOX_TIMEOUT_MS,
@@ -425,24 +428,26 @@ async function withPreflightSandbox(
           : {}),
         dpi: 96,
       },
-      ctx.config.execution?.desktop?.template,
-    );
+      template: ctx.config.execution?.desktop?.template,
+      receipt: null,
+    });
+    sandboxId = probe.allocation.resourceId;
     ctx.sandbox = {
       created: true,
-      sandboxIdDigest: digest(desktop.sandboxId),
+      sandboxIdDigest: digest(sandboxId),
       ...(ctx.config.execution?.desktop?.template
         ? { template: ctx.config.execution.desktop.template }
         : {}),
     };
 
-    await callback(desktop);
+    await callback(probe.sandbox);
   } catch (error: unknown) {
     failureMessage = compactError(error);
   } finally {
-    if (module && desktop) {
+    if (module && sandboxId !== undefined) {
       if (typeof module.Sandbox.kill === "function") {
         try {
-          await module.Sandbox.kill(desktop.sandboxId, {
+          await module.Sandbox.kill(sandboxId, {
             requestTimeoutMs: DEFAULT_REQUEST_TIMEOUT_MS,
           });
           ctx.sandbox = { ...ctx.sandbox, killed: true };

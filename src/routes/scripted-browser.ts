@@ -56,11 +56,11 @@ import { actorRegistry, isScriptedBrowserActorDescriptor } from "../actors/regis
 import { toErrorMessage } from "../substrates/command-failure.js";
 import { commandDigestOf, provisionCloneSubject, resolveSubjectState } from "./computer-use/lab.js";
 import {
-  createDesktopSandbox,
   loadE2BDesktopModule,
   type E2BDesktopModule,
   type E2BDesktopSandbox,
 } from "../substrates/e2b/desktop-launch.js";
+import { acquireE2BDesktopSandbox } from "../substrates/e2b/sandbox.js";
 import type { DetachedTimers } from "../substrates/e2b/detached.js";
 import type { LabConfig } from "../lab/types.js";
 import { renderObserver, type ObserverResult } from "../observer/render.js";
@@ -97,7 +97,6 @@ import {
   type ScriptedBrowserSessionOptions,
   type ScriptedBrowserSessionResult,
 } from "../actors/scripted-browser.js";
-import { appendSandboxReceipt } from "../run/sandbox-receipts.js";
 import {
   prepareSelectedOutputDirectory,
   readContainedRegularFile,
@@ -463,9 +462,12 @@ async function runScriptedBrowserLabInScope(
           SANDBOX_TIMEOUT_BUFFER_MS;
         subjectModule = await (hooks.loadDesktopModule ?? loadE2BDesktopModule)();
         await validatePreparedRunArtifactPaths(runPaths);
-        subjectDesktop = await createDesktopSandbox(
-          subjectModule,
-          {
+        // The receipt is on disk before any work on the sandbox, so `humanish reclaim` can kill
+        // it by exact id when this process dies mid-run; the finally block below only runs while
+        // the process is alive.
+        const subject = await acquireE2BDesktopSandbox({
+          module: subjectModule,
+          options: {
             apiKey: e2bApiKey,
             requestTimeoutMs,
             timeoutMs: subjectSandboxTimeoutMs,
@@ -486,18 +488,11 @@ async function runScriptedBrowserLabInScope(
             dpi: 96,
             lifecycle: { onTimeout: "kill" },
           },
-          config.execution?.desktop?.template,
-        );
-        subjectSandboxId = subjectDesktop.sandboxId;
-        // The id is journaled before any work on the sandbox so `humanish reclaim` can kill
-        // it by exact id when this process dies mid-run; the finally block below only runs while
-        // the process is alive.
-        await appendSandboxReceipt(runPaths, {
-          at: new Date().toISOString(),
-          laneId: "subject",
-          sandboxId: subjectSandboxId,
-          timeoutMs: subjectSandboxTimeoutMs,
+          template: config.execution?.desktop?.template,
+          receipt: { root: runPaths, laneId: "subject" },
         });
+        subjectDesktop = subject.sandbox;
+        subjectSandboxId = subject.allocation.resourceId;
 
         if (hooks.prepareDesktop) {
           await hooks.prepareDesktop(subjectDesktop);
@@ -570,10 +565,10 @@ async function runScriptedBrowserLabInScope(
       // harness around it failed. Redacted at this boundary before persisting anywhere.
       sessionError = redactText(scrubKnownValues(toErrorMessage(error)));
     } finally {
-      if (subjectDesktop && subjectModule) {
+      if (subjectSandboxId !== undefined && subjectModule) {
         if (typeof subjectModule.Sandbox.kill === "function") {
           try {
-            await subjectModule.Sandbox.kill(subjectDesktop.sandboxId, {
+            await subjectModule.Sandbox.kill(subjectSandboxId, {
               requestTimeoutMs: 60_000,
             });
             subjectKilled = true;

@@ -325,8 +325,8 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
   // Pack the working tree ONCE per run, on the host, BEFORE any sandbox or provider call: every
   // fan-out lane below uploads this SAME archive, so one archiveSha256 describes every lane's
   // digest. Dry-run packs nothing (no fs side effects; the contract bundle carries no
-  // archiveSha256). A packing failure fails the run closed here, before createDesktopSandbox is
-  // ever reached.
+  // archiveSha256). A packing failure fails the run closed here, before any sandbox is
+  // created.
   let localTreeArchive: LocalTreeArchive | undefined;
   let localTreeArchiveBuffer: ArrayBuffer | undefined;
   if (localTreeRoute && !dryRun) {

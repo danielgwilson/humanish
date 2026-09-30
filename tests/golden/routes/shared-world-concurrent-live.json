@@ -1909,25 +1909,30 @@
     {
       "at": "[ts]",
       "laneId": "persona-01",
+      "provider": "e2b",
       "sandboxId": "fake-sandbox-002",
       "timeoutMs": 660000
     },
     {
       "at": "[ts]",
       "laneId": "persona-02",
+      "provider": "e2b",
       "sandboxId": "fake-sandbox-003",
       "timeoutMs": 660000
     },
     {
       "at": "[ts]",
       "laneId": "persona-03",
+      "provider": "e2b",
       "sandboxId": "fake-sandbox-004",
       "timeoutMs": 660000
     },
     {
       "at": "[ts]",
       "laneId": "subject",
-      "sandboxId": "fake-sandbox-001"
+      "provider": "e2b",
+      "sandboxId": "fake-sandbox-001",
+      "timeoutMs": 2760000
     }
   ],
   "status.json": {

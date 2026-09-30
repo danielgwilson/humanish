@@ -2005,18 +2005,21 @@
     {
       "at": "[ts]",
       "laneId": "host",
+      "provider": "e2b",
       "sandboxId": "fake-sandbox-001",
       "timeoutMs": 660000
     },
     {
       "at": "[ts]",
       "laneId": "player-2",
+      "provider": "e2b",
       "sandboxId": "fake-sandbox-002",
       "timeoutMs": 660000
     },
     {
       "at": "[ts]",
       "laneId": "player-3",
+      "provider": "e2b",
       "sandboxId": "fake-sandbox-003",
       "timeoutMs": 660000
     }
