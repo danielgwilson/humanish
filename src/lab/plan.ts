@@ -25,6 +25,7 @@ import type {
   LabPlan,
   NonEmpty,
   PlanGap,
+  PlanRefusal,
   PlanResult,
   PlannedAnalysis,
   ProvisionedSubject,
@@ -46,6 +47,7 @@ import {
 } from "./routing.js";
 import type { LabTask } from "./tasks.js";
 import type { LabActorLane, LabConfig } from "./types.js";
+import { automaticAnalysisRouteReason, taskProtocolValidationReason } from "./validation.js";
 
 /** The five execution paths a lab can take. */
 export type LabRoute = "preview" | "computer-use" | "shared-world" | "terminal" | "scripted";
@@ -565,6 +567,32 @@ function planScripted(config: LabConfig, options: RunLabOptions, base: Base): Bu
 }
 
 /**
+ * The preview route's refusals before a run starts, in its order: real email receiving, then
+ * analysis, then tasks. Each would otherwise be silently ignored by a synthetic run.
+ */
+function previewRefusal(config: LabConfig): PlanRefusal | undefined {
+  const analysis = resolveAutomaticAnalysis(config.review?.analysis);
+  const analysisReason = analysis.ok ? automaticAnalysisRouteReason(config) : analysis.message;
+  if (String(config.comms?.email?.kind) === "real")
+    return {
+      route: "preview",
+      code: "HUMANISH_LAB_COMMS_UNSUPPORTED",
+      message:
+        "Real email receiving is unsupported on this backend. Use a supported hosted computer-use study.",
+    };
+  if (analysisReason)
+    return {
+      route: "preview",
+      code: analysis.ok ? "HUMANISH_LAB_ANALYSIS_UNSUPPORTED" : "HUMANISH_LAB_ANALYSIS_INVALID",
+      message: analysisReason,
+    };
+  const tasksReason = taskProtocolValidationReason(config);
+  if (tasksReason)
+    return { route: "preview", code: "HUMANISH_LAB_TASKS_UNSUPPORTED", message: tasksReason };
+  return undefined;
+}
+
+/**
  * The plan a lab runs under, built without reading files, env or the network. A combination the
  * plan types cannot hold comes back as the gap a route refuses today. Nothing dispatches on the
  * plan yet: each route adopts it in its own change, and the parser's composition rules still run
@@ -573,8 +601,12 @@ function planScripted(config: LabConfig, options: RunLabOptions, base: Base): Bu
 export function planLab(config: LabConfig, options: RunLabOptions): PlanResult {
   const route = routeOf(config);
   const lab = localBrowserDefaults(config);
+  if (route === "preview") {
+    const refusal = previewRefusal(lab);
+    if (refusal) return { ok: false, refusal };
+  }
   const analysis = resolveAutomaticAnalysis(lab.review?.analysis);
-  if (!analysis.ok) return { ok: false, route, gap: "analysis-invalid" };
+  if (!analysis.ok) return { ok: false, refusal: { route, gap: "analysis-invalid" } };
   const planned: PlannedAnalysis | undefined =
     analysis.config === undefined
       ? undefined
@@ -594,9 +626,7 @@ export function planLab(config: LabConfig, options: RunLabOptions): PlanResult {
   let plan: Built<LabPlan>;
   switch (route) {
     case "preview":
-      plan = base.dryRun
-        ? { ...base, route, dryRun: true, simCount: options.count ?? lab.actors[0]?.count ?? 4 }
-        : "live-preview";
+      plan = { ...base, route, simCount: options.count ?? lab.actors[0]?.count ?? 4 };
       break;
     case "computer-use":
       plan = planComputerUse(lab, options, base);
@@ -611,7 +641,7 @@ export function planLab(config: LabConfig, options: RunLabOptions): PlanResult {
       plan = planScripted(lab, options, base);
       break;
   }
-  if (typeof plan === "string") return { ok: false, route, gap: plan };
+  if (typeof plan === "string") return { ok: false, refusal: { route, gap: plan } };
   const bindings: LabBindings = {
     ...(options.cuaHooks === undefined ? {} : { cuaHooks: options.cuaHooks }),
     ...(options.scriptedHooks === undefined ? {} : { scriptedHooks: options.scriptedHooks }),

@@ -30,7 +30,7 @@ async function committedLabs(): Promise<[string, LabConfig][]> {
 }
 
 function planOf(result: PlanResult): LabPlan {
-  if (!result.ok) throw new Error(`gap ${result.gap} on ${result.route}`);
+  if (!result.ok) throw new Error(`refused on ${result.refusal.route}`);
   return result.planned.plan;
 }
 
@@ -53,8 +53,10 @@ describe("planLab", () => {
       const dry = planLab(config, { cwd: ROOT, dryRun: true });
       const live = planLab(config, { cwd: ROOT, dryRun: false });
       plans[id] = {
-        dry: dry.ok ? dry.planned.plan : { gap: dry.gap },
-        live: live.ok ? { requirements: live.planned.plan.requirements } : { gap: live.gap },
+        dry: dry.ok ? dry.planned.plan : { refusal: dry.refusal },
+        live: live.ok
+          ? { requirements: live.planned.plan.requirements }
+          : { refusal: live.refusal },
       };
     }
     await expect(`${JSON.stringify(plans, null, 2)}\n`).toMatchFileSnapshot(
@@ -134,7 +136,9 @@ describe("planLab", () => {
     };
     const gap = (config: LabConfig, options: Parameters<typeof planLab>[1]) => {
       const result = planLab(config, options);
-      return result.ok ? "planned" : `${result.route} ${result.gap}`;
+      if (result.ok) return "planned";
+      const { refusal } = result;
+      return `${refusal.route} ${"gap" in refusal ? refusal.gap : refusal.code}`;
     };
     const local = parsed({
       ...cuApp,
@@ -161,7 +165,7 @@ describe("planLab", () => {
         cwd: ROOT,
         dryRun: false,
       }),
-    ).toBe("preview live-preview");
+    ).toBe("planned");
     const terminal = parsed({
       subject: {
         source: "terminal-product",
@@ -190,7 +194,7 @@ describe("planLab", () => {
       }),
       { cwd: ROOT, cuaHooks },
     );
-    if (!result.ok) throw new Error(result.gap);
+    if (!result.ok) throw new Error(`refused on ${result.refusal.route}`);
     expect(result.planned.bindings.cuaHooks).toBe(cuaHooks);
     const plan = result.planned.plan;
     expect(plan.route === "computer-use" && plan.runner.brain).toEqual({ kind: "caller" });
