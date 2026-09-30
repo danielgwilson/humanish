@@ -5,8 +5,9 @@ import path from "node:path";
 import { parse, stringify } from "yaml";
 import { readCommsConnections } from "./connections.js";
 import { discoverProviderKeys } from "../cli/key-resolution.js";
-import { AgentMailReceivingError, createAgentMailReceiver } from "./agentmail.js";
-import type { ReceivingAdapter } from "./receiving-types.js";
+import { AgentMailReceivingError } from "./agentmail.js";
+import { createReceivingAdapter } from "./receiving-runtime.js";
+import { RECEIVING_SCOPE_UNSUPPORTED, type ReceivingAdapter } from "./receiving-types.js";
 import { parseLabConfig } from "../lab/config.js";
 import { resolveLabManifest } from "../lab/discover.js";
 import {
@@ -83,18 +84,9 @@ export async function checkCommsConnection(args: {
           "Connection and key are present. Authentication, permissions, capacity and delivery are not checked. Use --online for a read-only authentication check.",
       };
     base.checkedAt = new Date().toISOString();
-    const identity = await (args.makeAdapter ?? ((apiKey) => createAgentMailReceiver({ apiKey })))(
-      key,
-    ).authenticate({ timeoutMs: 8_000 });
-    if (identity.scopeType !== "organization")
-      return {
-        ...base,
-        ready: false,
-        authenticated: true,
-        code: "scope_unsupported",
-        message:
-          "Authenticated, but this release requires an organization-scoped key to acquire fresh inboxes.",
-      };
+    const makeAdapter =
+      args.makeAdapter ?? ((apiKey: string) => createReceivingAdapter(connection, apiKey));
+    await makeAdapter(key).authenticate({ timeoutMs: 8_000 });
     return {
       ...base,
       ok: true,
@@ -105,6 +97,16 @@ export async function checkCommsConnection(args: {
     };
   } catch (error) {
     const code = error instanceof AgentMailReceivingError ? error.code : "check_unavailable";
+    // The adapter authenticated the key but rejected its scope.
+    if (code === RECEIVING_SCOPE_UNSUPPORTED)
+      return {
+        ...base,
+        ready: false,
+        authenticated: true,
+        code: "scope_unsupported",
+        message:
+          "Authenticated, but this release requires an organization-scoped key to acquire fresh inboxes.",
+      };
     const rejected = code === "agentmail_auth_rejected";
     return {
       ...base,

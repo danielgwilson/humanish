@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { stringify } from "yaml";
 import { saveCommsConnection } from "../../src/comms/connections.js";
 import { checkCommsConnection, configureCommsLab } from "../../src/comms/setup.js";
-import { AgentMailReceivingError } from "../../src/comms/agentmail.js";
+import { AGENTMAIL_RECEIVING_CODES, AgentMailReceivingError } from "../../src/comms/agentmail.js";
 import { LAB_CONFIG_SCHEMA } from "../../src/lab/types.js";
 import { parseLabConfig } from "../../src/lab/config.js";
 import { resolveLabManifest } from "../../src/lab/discover.js";
@@ -37,7 +37,16 @@ function adapter(
     scopeId: "synthetic-org",
   })),
 ): ReceivingAdapter {
-  return { provider: "agentmail", authenticate, acquire: vi.fn(), read: vi.fn(), release: vi.fn() };
+  return {
+    provider: "agentmail",
+    addressing: "provisioned",
+    idempotentAcquire: true,
+    codes: AGENTMAIL_RECEIVING_CODES,
+    authenticate,
+    acquire: vi.fn(),
+    read: vi.fn(),
+    release: vi.fn(),
+  };
 }
 describe("connection authentication", () => {
   it("keeps local status offline and does not equate authentication with delivery/capacity", async () => {
@@ -76,6 +85,16 @@ describe("connection authentication", () => {
       code: "credential_missing",
     });
     expect(makeAdapter).not.toHaveBeenCalled();
+  });
+  it("reports an authenticated key the adapter rejects for scope as not ready", async () => {
+    env.AGENTMAIL_API_KEY = "synthetic-check-key";
+    const provider = adapter();
+    provider.authenticate = async () => {
+      throw new AgentMailReceivingError("comms_scope_unsupported");
+    };
+    expect(
+      await checkCommsConnection({ cwd, env, online: true, makeAdapter: () => provider }),
+    ).toMatchObject({ ok: false, authenticated: true, ready: false, code: "scope_unsupported" });
   });
   it.each(["agentmail_auth_rejected", "agentmail_rate_limited", "agentmail_timeout"] as const)(
     "classifies %s without provider text or deleting stored credentials",

@@ -4,13 +4,14 @@ import {
   MAX_INLINE_IMAGES_BYTES,
   MAX_INLINE_IMAGES,
 } from "./images.js";
-import type {
-  ReceivingAdapter,
-  ReceivingBatch,
-  ReceivingContext,
-  ReceivingIdentity,
-  ReceivingLease,
-  ReceivedEmail,
+import {
+  RECEIVING_SCOPE_UNSUPPORTED,
+  type ReceivingAdapter,
+  type ReceivingBatch,
+  type ReceivingContext,
+  type ReceivingIdentity,
+  type ReceivingLease,
+  type ReceivedEmail,
 } from "./receiving-types.js";
 
 const API_ORIGIN = "https://api.agentmail.to";
@@ -28,20 +29,36 @@ export const AGENTMAIL_RECEIVING_LIMITS = Object.freeze({
   textBytes: 256 * 1024,
   downloadRedirects: 2,
 });
-export type AgentMailReceivingErrorCode =
-  | "agentmail_auth_rejected"
-  | "agentmail_rate_limited"
-  | "agentmail_unavailable"
-  | "agentmail_timeout"
-  | "agentmail_cancelled"
-  | "agentmail_invalid_response"
-  | "agentmail_ownership_mismatch"
-  | "agentmail_not_found"
-  | "agentmail_resource_deleting"
-  | "agentmail_download_blocked"
-  | "agentmail_size_limit"
-  | "agentmail_invalid_input"
-  | "agentmail_request_limit";
+const ERROR_CODES = [
+  "agentmail_auth_rejected",
+  "agentmail_rate_limited",
+  "agentmail_unavailable",
+  "agentmail_timeout",
+  "agentmail_cancelled",
+  "agentmail_invalid_response",
+  "agentmail_ownership_mismatch",
+  "agentmail_not_found",
+  "agentmail_resource_deleting",
+  "agentmail_download_blocked",
+  "agentmail_size_limit",
+  "agentmail_invalid_input",
+  "agentmail_request_limit",
+  RECEIVING_SCOPE_UNSUPPORTED,
+] as const;
+export type AgentMailReceivingErrorCode = (typeof ERROR_CODES)[number];
+/** Every code the adapter reports: its error codes plus message and batch limitations. */
+export const AGENTMAIL_RECEIVING_CODES: ReadonlySet<string> = new Set<string>([
+  ...ERROR_CODES,
+  "agentmail_content_truncated",
+  "agentmail_content_missing",
+  "agentmail_timestamp_missing",
+  "agentmail_attachment_limit",
+  "agentmail_attachment_unsupported",
+  "agentmail_attachment_unavailable",
+  "agentmail_message_unavailable",
+  "agentmail_pagination_stalled",
+  "agentmail_page_limit",
+]);
 
 /** Safe for callers to report. Never retains the response body, URL, key or caught cause. */
 export class AgentMailReceivingError extends Error {
@@ -411,6 +428,10 @@ export function createAgentMailReceiver(options: {
   }
   return {
     provider: "agentmail",
+    addressing: "provisioned",
+    // POST /v0/inboxes with a known client_id returns the original inbox.
+    idempotentAcquire: true,
+    codes: AGENTMAIL_RECEIVING_CODES,
     authenticate: (context) =>
       operation(context, async (budget): Promise<ReceivingIdentity> => {
         const raw = success(await api("/v0/auth/me", "GET", budget));
@@ -420,6 +441,8 @@ export function createAgentMailReceiver(options: {
           raw.scope_type !== "inbox"
         )
           fail("agentmail_invalid_response");
+        // Pod- and inbox-scoped keys cannot create the fresh inboxes a study needs.
+        if (raw.scope_type !== "organization") fail(RECEIVING_SCOPE_UNSUPPORTED);
         return {
           provider: "agentmail",
           accountId: identifier(raw.organization_id),
