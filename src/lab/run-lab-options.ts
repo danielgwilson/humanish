@@ -23,6 +23,7 @@ import {
   type SubjectPhaseEvent,
 } from "../subject/steps.js";
 import type { AdapterScorerModule } from "./adapter-scorer-loader.js";
+import { withHookOverrides } from "./hook-bag.js";
 import type { LabOutcome, RunLabOptions } from "./engine.js";
 import { computerUseParticipants, resolveLabDryRun, type LabRoute } from "./plan.js";
 import type { LabConfig } from "./types.js";
@@ -429,38 +430,10 @@ export function normalizeRunLabOptions(
   return { ok: true, options: normalized, warnings };
 }
 
-/**
- * A caller's bag with new options mapped into it. With nothing to map, the bag passes through as
- * the same object. Otherwise a proxy answers the mapped keys itself and forwards every other read
- * to the bag when it happens: symbols, accessors and private state stay the bag's, and a function
- * is bound to the bag so a method that reads a private field still works.
- */
+/** A caller's bag with new options mapped into it. With nothing to map, it is the same object. */
 function withMapped<T extends object>(bag: T | undefined, mapped: Partial<T>): T | undefined {
   if (Object.keys(mapped).length === 0) return bag;
-  if (bag === undefined) return mapped as T;
-  const overrides = mapped as Record<PropertyKey, unknown>;
-  const isMapped = (key: PropertyKey): boolean => Object.hasOwn(overrides, key);
-  // The proxy's own target stays empty and extensible, so a frozen bag's property invariants never
-  // constrain what the proxy reports.
-  return new Proxy({} as T, {
-    get(_target, key) {
-      if (isMapped(key)) return overrides[key];
-      const value: unknown = Reflect.get(bag, key, bag);
-      return typeof value === "function" ? value.bind(bag) : value;
-    },
-    has(_target, key) {
-      return isMapped(key) || Reflect.has(bag, key);
-    },
-    ownKeys() {
-      return [...new Set([...Reflect.ownKeys(bag), ...Reflect.ownKeys(overrides)])];
-    },
-    getOwnPropertyDescriptor(_target, key) {
-      if (isMapped(key))
-        return { value: overrides[key], writable: true, enumerable: true, configurable: true };
-      const descriptor = Reflect.getOwnPropertyDescriptor(bag, key);
-      return descriptor === undefined ? undefined : { ...descriptor, configurable: true };
-    },
-  });
+  return withHookOverrides(bag, mapped);
 }
 
 function scorerHooks(

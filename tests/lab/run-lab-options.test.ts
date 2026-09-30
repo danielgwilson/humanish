@@ -13,6 +13,7 @@ import { normalizeRunLabOptions, type LabEvent } from "../../src/lab/run-lab-opt
 import type { LabConfig } from "../../src/lab/types.js";
 import type { CuaLanePlan, CuaLaneSpec } from "../../src/routes/computer-use/types.js";
 import type { E2BDesktopSandbox } from "../../src/substrates/e2b/desktop-launch.js";
+import { trackRuntimeStreams } from "../../src/routes/computer-use/live-flush.js";
 import { lab, type BaseName, type Patch } from "../admission/fixtures.js";
 
 function config(base: BaseName, patch?: Patch): LabConfig {
@@ -924,5 +925,34 @@ describe("a legacy-only call never reads the bag's accessors", () => {
       analysisSignal: AbortSignal.abort(),
     });
     expect(result.ok).toBe(true);
+  });
+});
+
+describe("a class bag keeps its methods through the routes' wrapping", () => {
+  class InProcessHooks {
+    readonly #executor = executor;
+    buildExecutor() {
+      return Promise.resolve(this.#executor);
+    }
+    buildProvider() {
+      return Promise.resolve(provider);
+    }
+  }
+
+  it("keeps them when a new option maps in and the stream tracker wraps the bag", async () => {
+    const mapped = normalized(config("cuLocalApp"), {
+      cuaHooks: new InProcessHooks() as never,
+      env: {},
+    }).cuaHooks!;
+    expect({ ...mapped }.buildExecutor).toBeTypeOf("function");
+    const tracked = trackRuntimeStreams(mapped).hooks;
+    await expect(tracked.buildExecutor!({} as never)).resolves.toBe(executor);
+    await expect(tracked.buildProvider!({} as never)).resolves.toBe(provider);
+  });
+
+  it("keeps them when the stream tracker wraps an untouched bag", async () => {
+    const tracked = trackRuntimeStreams(new InProcessHooks() as never).hooks;
+    await expect(tracked.buildExecutor!({} as never)).resolves.toBe(executor);
+    expect(tracked.onRuntimeStreamReady).toBeTypeOf("function");
   });
 });

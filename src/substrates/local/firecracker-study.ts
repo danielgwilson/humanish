@@ -7,6 +7,7 @@ import {
   type DesktopLaneEvidence,
 } from "../../routes/computer-use/desktop-lane.js";
 import type { CuaActorLabHooks } from "../../routes/computer-use/types.js";
+import { withHookOverrides } from "../../lab/hook-bag.js";
 import { runCuaActorSession } from "../../actors/computer-use/actor.js";
 import {
   createLocalFirecrackerDesktop,
@@ -98,8 +99,8 @@ export async function runLocalFirecrackerStudy(
       },
       // The caller's hooks come first so this study's desktop lane always wins: runLab reads
       // createDesktopLane as "desktop provided" and does not route back here.
-      cuaHooks: {
-        ...callerHooks,
+      // The caller's bag may be a class instance, so it is wrapped rather than spread.
+      cuaHooks: withHookOverrides(callerHooks, {
         createDesktopLane(spec, warnings, artifactRoot) {
           let session: LocalFirecrackerDesktop | undefined;
           let inbox: Awaited<ReturnType<typeof startLocalCapturedInbox>> | undefined;
@@ -210,7 +211,7 @@ export async function runLocalFirecrackerStudy(
                 baseRunSession({ ...input, signal: options.signal! }),
             }
           : {}),
-      },
+      }),
     });
   } finally {
     await Promise.allSettled(participants.map((participant) => participant.close()));
