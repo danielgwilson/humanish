@@ -6,7 +6,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { parseLabConfig } from "../dist/lab/config.js";
 import { runLocalFirecrackerStudy } from "../dist/local-firecracker-study.js";
-import { verifyRun } from "../dist/run.js";
+import { verifyRun } from "../dist/run/run.js";
 
 if (!process.argv[2])
   throw new Error("Usage: node scripts/local-firecracker-study.mjs <assets.json>");

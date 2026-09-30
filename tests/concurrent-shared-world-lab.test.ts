@@ -43,9 +43,9 @@ import type {
   RunBundle,
   SubjectPhaseEvent,
 } from "../src/index.js";
-import { verifyRun } from "../src/run.js";
+import { verifyRun } from "../src/run/run.js";
 import { serveObserver, type ObserverResult, type ObserverServer } from "../src/observer/render.js";
-import type { LocalTreeArchive } from "../src/source-archive.js";
+import type { LocalTreeArchive } from "../src/run/source-archive.js";
 
 // ---------------------------------------------------------------------------
 // Fakes for the N+1 substrate. The module records create/kill BY id and exposes

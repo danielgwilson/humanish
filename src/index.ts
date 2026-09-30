@@ -223,8 +223,8 @@ export {
   readReview,
   runDryRun,
   verifyRun,
-} from "./run.js";
-export { SHARED_WORLD_SCHEMA } from "./run.js";
+} from "./run/run.js";
+export { SHARED_WORLD_SCHEMA } from "./run/run.js";
 export type {
   CleanupAdapterResult,
   CleanupResourceResult,
@@ -264,7 +264,7 @@ export type {
   SharedWorldTimelineEntry,
   SharedWorldTurn,
   VerifyResult,
-} from "./run.js";
+} from "./run/run.js";
 export {
   CUA_ACTOR_LAB_PROVIDER_METADATA,
   CUA_ACTOR_LAB_SCHEMA,

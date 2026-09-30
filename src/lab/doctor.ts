@@ -3,7 +3,7 @@ import { localRuntimeStatus, type LocalRuntimeStatus } from "../local-runtime.js
 import type { LabConfig } from "./config.js";
 import type { LabBackend } from "./engine.js";
 import type { DetectedLocalAgent } from "../local-agent-cli.js";
-import type { DoctorResult } from "../run.js";
+import type { DoctorResult } from "../run/run.js";
 import { automaticAnalysisBudget } from "../analysis/automatic-config.js";
 import { externalCatchHealthy } from "../comms/sandbox-catch.js";
 import { receivingRequiredKey } from "../comms/setup.js";

@@ -16,7 +16,7 @@ import {
   resolveRunPath,
   verifyRunPrepared,
   type RunBundle,
-} from "../run.js";
+} from "../run/run.js";
 import {
   isPathInside,
   prepareRunArtifactPaths,

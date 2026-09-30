@@ -25,7 +25,7 @@ import {
   type RunLabProvenance,
   type RunLiveness,
   type RunStatusRecord,
-} from "./run-status.js";
+} from "./status.js";
 
 const RUN_INDEX_SCHEMA = "humanish.run-index.v1";
 

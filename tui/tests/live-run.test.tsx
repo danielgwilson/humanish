@@ -5,7 +5,7 @@ import React from "react";
 import { describe, expect, it, vi, type MockInstance } from "vitest";
 
 import { App } from "../src/app.js";
-import type { RunDetail } from "../../src/run-detail.js";
+import type { RunDetail } from "../../src/run/detail.js";
 import type { TuiCapabilities, TuiOptions } from "../../src/tui/contract.js";
 import { KEY, normalizeFrame, renderToText } from "../src/testing/render-to-text.js";
 import { LABS, NOW, RUNS } from "./fixtures.js";

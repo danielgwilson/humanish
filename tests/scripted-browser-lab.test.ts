@@ -18,7 +18,7 @@ import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../src/lab/co
 import { runLab, selectLabBackend } from "../src/lab/engine.js";
 import { createProgram } from "../src/program.js";
 import { digestText } from "../src/redaction.js";
-import { verifyRun } from "../src/run.js";
+import { verifyRun } from "../src/run/run.js";
 import { runCuaActorLab } from "../src/cua-actor-lab.js";
 import {
   runScriptedBrowserLab,

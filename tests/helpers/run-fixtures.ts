@@ -8,7 +8,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { RUN_STATUS_FILE, RUN_STATUS_SCHEMA } from "../../src/run-status.js";
+import { RUN_STATUS_FILE, RUN_STATUS_SCHEMA } from "../../src/run/status.js";
 
 export interface FixtureRunSpec {
   runId: string;

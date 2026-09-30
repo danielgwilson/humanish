@@ -1,10 +1,10 @@
-import { contradictsAccountBilling } from "./pricing.js";
-import type { CommsReceivingEvidence } from "./comms/receiving-types.js";
-import { isCommsReceivingEvidence } from "./comms/receiving-evidence.js";
+import { contradictsAccountBilling } from "../pricing.js";
+import type { CommsReceivingEvidence } from "../comms/receiving-types.js";
+import { isCommsReceivingEvidence } from "../comms/receiving-evidence.js";
 import {
   desktopRecordingMetadataSchema,
   type RunDesktopRecording,
-} from "./desktop-recording-types.js";
+} from "../desktop-recording-types.js";
 import { randomUUID } from "node:crypto";
 import { lstat, readdir, readFile, stat } from "node:fs/promises";
 import { existsSync } from "node:fs";
@@ -24,9 +24,9 @@ import {
   resolveBrowserCommand,
   type BrowserPersonaJourney,
   type BrowserSurfaceCapture,
-} from "./scripted-browser-actor.js";
-import { CODEX_APP_SERVER_TRACE_SCHEMA, type CodexAppServerTrace } from "./codex-app-server.js";
-import { artifactReferenceIfWritten, hasWrittenScreenshot } from "./artifact-reference.js";
+} from "../scripted-browser-actor.js";
+import { CODEX_APP_SERVER_TRACE_SCHEMA, type CodexAppServerTrace } from "../codex-app-server.js";
+import { artifactReferenceIfWritten, hasWrittenScreenshot } from "../artifact-reference.js";
 import {
   ACTOR_TRACE_SCHEMA,
   validActorExecutionProfile,
@@ -34,24 +34,24 @@ import {
   type ActorStatus,
   type ActorTrace,
   type ActorTraceItem,
-} from "./actor-contract.js";
+} from "../actor-contract.js";
 import {
   cuaGoalSource,
   isCuaTrace,
   CUA_COMPLETION_NOTE,
   type CuaGoalSource,
-} from "./actor-goal-source.js";
-import { actorEnding } from "./actor-stop-cause.js";
-import type { TaskFunnel } from "./tasks.js";
+} from "../actor-goal-source.js";
+import { actorEnding } from "../actor-stop-cause.js";
+import type { TaskFunnel } from "../tasks.js";
 import { captureGitState, GIT_STATE_SCHEMA, type CapturedGitState } from "./git-state.js";
-import { screenshotEvidenceError } from "./image-evidence.js";
-import { buildObserverData } from "./observer/data.js";
-import { parseResolvedPersona, type ResolvedPersona } from "./lab/persona.js";
-import { round6 } from "./pricing.js";
-import { loadStudyAnalysis, listStudyAnalysisExecutions } from "./analysis/store.js";
-import { isStudyAnalysisRecordPath, studyAnalysisSharingProblems } from "./analysis/sharing.js";
-import { containsSensitive, digestText, redactText } from "./redaction.js";
-import type { E2BDesktopModule } from "./e2b-desktop-launch.js";
+import { screenshotEvidenceError } from "../image-evidence.js";
+import { buildObserverData } from "../observer/data.js";
+import { parseResolvedPersona, type ResolvedPersona } from "../lab/persona.js";
+import { round6 } from "../pricing.js";
+import { loadStudyAnalysis, listStudyAnalysisExecutions } from "../analysis/store.js";
+import { isStudyAnalysisRecordPath, studyAnalysisSharingProblems } from "../analysis/sharing.js";
+import { containsSensitive, digestText, redactText } from "../redaction.js";
+import type { E2BDesktopModule } from "../e2b-desktop-launch.js";
 import {
   bindExistingRunArtifactPaths,
   RUNS_RELATIVE_ROOT,
@@ -62,21 +62,21 @@ import {
   resolveRunsRoot,
   validatePreparedRunArtifactPaths,
   type PreparedRunArtifactPaths,
-} from "./run-paths.js";
-import { probeKeySources } from "./key-resolution.js";
+} from "../run-paths.js";
+import { probeKeySources } from "../key-resolution.js";
 import {
   beginRunStatus,
   withRunStatusScope,
   type RunLabProvenance,
   type RunStatusHandle,
-} from "./run-status.js";
-import { nodeSupportsTui, terminalSurfaceMessage, tuiBundleUrl } from "./tui/contract.js";
+} from "./status.js";
+import { nodeSupportsTui, terminalSurfaceMessage, tuiBundleUrl } from "../tui/contract.js";
 import {
   detectLocalAgents,
   localAgentDoctorMessage,
   type DetectLocalAgentsOptions,
-} from "./local-agent-cli.js";
-import { labSetupChecks } from "./lab/doctor.js";
+} from "../local-agent-cli.js";
+import { labSetupChecks } from "../lab/doctor.js";
 import {
   assertPreparedSelectedOutputDirectory,
   assertSafeOutputPathSegment,
@@ -89,7 +89,7 @@ import {
   type PreparedSelectedOutputDirectory,
   writeContainedOutputFile,
   writePreparedRunLatestPointer,
-} from "./selected-output-paths.js";
+} from "../selected-output-paths.js";
 
 export const RUN_BUNDLE_SCHEMA = "humanish.run-bundle.v1";
 export const SHARED_WORLD_SCHEMA = "humanish.shared-world.v1";
@@ -2976,7 +2976,7 @@ export async function listRuns(cwdInput: string): Promise<RunsResult> {
   // other readdir failure (e.g. permission denied) is a real I/O failure and must
   // not be swallowed into a false "no runs" report.
   let entries: string[];
-  let runsRoot: import("./selected-output-paths.js").PreparedSelectedOutputDirectory | null = null;
+  let runsRoot: import("../selected-output-paths.js").PreparedSelectedOutputDirectory | null = null;
   try {
     runsRoot = await bindExistingManagedHumanishOutputDirectory(cwd, "runs");
     entries = runsRoot ? await readdir(runsRoot.physicalPath) : [];
@@ -3229,10 +3229,10 @@ export async function doctor(
   const keyNames = new Set(["OPENAI_API_KEY", "E2B_API_KEY", "GH_TOKEN", "CODEX_API_KEY"]);
   let receivingKey: string | null = null;
   if (options.lab) {
-    const { resolveLabManifest } = await import("./lab/discover.js");
+    const { resolveLabManifest } = await import("../lab/discover.js");
     const resolved = await resolveLabManifest(cwd, options.lab);
     if (resolved.ok && resolved.config.comms?.email?.kind === "real") {
-      const { receivingRequiredKey } = await import("./comms/setup.js");
+      const { receivingRequiredKey } = await import("../comms/setup.js");
       receivingKey = await receivingRequiredKey(cwd, resolved.config.comms.email.connection);
       if (receivingKey) keyNames.add(receivingKey);
     }
@@ -3324,7 +3324,7 @@ export async function doctor(
     // dies there.
     (() => {
       const supported = nodeSupportsTui();
-      const bundlePresent = existsSync(tuiBundleUrl(import.meta.url));
+      const bundlePresent = existsSync(tuiBundleUrl(new URL("../", import.meta.url).href));
       return {
         name: "terminal surface",
         ok: true,
@@ -3723,7 +3723,7 @@ export async function resolveRunPath(
 }
 
 async function readLatest(
-  runsRoot: import("./selected-output-paths.js").PreparedSelectedOutputDirectory,
+  runsRoot: import("../selected-output-paths.js").PreparedSelectedOutputDirectory,
 ): Promise<RunPointer | null> {
   const latestPath = path.join(runsRoot.physicalPath, "latest.json");
   let latestStats;

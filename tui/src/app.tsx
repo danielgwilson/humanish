@@ -6,9 +6,9 @@ import { PALETTE } from "./palette.js";
 
 import type { LabListEntry } from "../../src/lab/discover.js";
 import type { LabSummary } from "../../src/lab/summary.js";
-import type { RunDetail } from "../../src/run-detail.js";
-import type { RunIndexEntry, RunIndexResult } from "../../src/run-index.js";
-import { labRows, type LabRow } from "../../src/run-projection.js";
+import type { RunDetail } from "../../src/run/detail.js";
+import type { RunIndexEntry, RunIndexResult } from "../../src/run/run-index.js";
+import { labRows, type LabRow } from "../../src/run/projection.js";
 import type { TuiOptions } from "../../src/tui/contract.js";
 import { currentScreen, initialNav, navigate, selectedIndex, type NavState } from "./navigation.js";
 import { Frame, contentWidth } from "./frame.js";

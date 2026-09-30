@@ -35,7 +35,7 @@ import {
   type RunLabProvenance,
   type RunStatusHandle,
   withRunStatusScope,
-} from "./run-status.js";
+} from "./run/status.js";
 import { realpath } from "node:fs/promises";
 import path from "node:path";
 
@@ -77,7 +77,7 @@ import {
   type RunStream,
   type RunSubjectProvenance,
   type RunSubjectStateStepRecord,
-} from "./run.js";
+} from "./run/run.js";
 import {
   browserSurfaces,
   normalizeLocalAppUrl,

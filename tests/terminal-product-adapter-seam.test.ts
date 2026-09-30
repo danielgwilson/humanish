@@ -32,7 +32,7 @@ import {
 import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../src/lab/config.js";
 import { runTerminalProductLab } from "../src/e2b-terminal-lab.js";
 import type { E2BDesktopModule } from "../src/e2b-desktop-launch.js";
-import { verifyRun } from "../src/run.js";
+import { verifyRun } from "../src/run/run.js";
 
 // =============================================================================================
 // THE THIN EXAMPLE ADAPTER — this is the ~40-line extension an adopter would write in ITS repo.

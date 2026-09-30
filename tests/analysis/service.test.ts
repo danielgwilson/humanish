@@ -19,10 +19,10 @@ import {
 import { draftFeedback, renderIssueUrl } from "../../src/feedback/feedback.js";
 import { exportRun } from "../../src/feedback/export.js";
 import { renderObserver, serveObserver } from "../../src/observer/render.js";
-import { resolveRunPath, runDryRun, verifyRun, type RunBundle } from "../../src/run.js";
+import { resolveRunPath, runDryRun, verifyRun, type RunBundle } from "../../src/run/run.js";
 import type { StudyAnalysisConfig, StudyAnalysisInput } from "../../src/analysis/study-analysis.js";
 import { syntheticArtifact, syntheticResult } from "./fixtures.js";
-import { computeStats } from "../../src/stats.js";
+import { computeStats } from "../../src/run/stats.js";
 import {
   runAutomaticStudyAnalysis,
   readAutomaticStudyAnalysis,

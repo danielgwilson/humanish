@@ -3,7 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { FEEDBACK_SCHEMA } from "../src/feedback/feedback.js";
-import { PUBLIC_TARGET_CWD, RUN_BUNDLE_SCHEMA } from "../src/run.js";
+import { PUBLIC_TARGET_CWD, RUN_BUNDLE_SCHEMA } from "../src/run/run.js";
 
 interface AdapterFixture {
   schema: string;
@@ -292,7 +292,7 @@ describe("adapter fixture parity contracts", () => {
       await Promise.all([
         readFile("docs/contracts/schemas.md", "utf8"),
         readFile("docs/contracts/run-bundle.md", "utf8"),
-        readFile("src/run.ts", "utf8"),
+        readFile("src/run/run.ts", "utf8"),
       ])
     ).join("\n");
 

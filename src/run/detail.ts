@@ -12,12 +12,12 @@
 // Reading both means the same screen renders a run the whole way through rather than going blank
 // at the moment it completes.
 
-import { readAutomaticStudyAnalysis } from "./analysis/automatic.js";
-import type { AutomaticStudyAnalysisView } from "./analysis/job.js";
+import { readAutomaticStudyAnalysis } from "../analysis/automatic.js";
+import type { AutomaticStudyAnalysisView } from "../analysis/job.js";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-import { estimateActorCostForExecution } from "./pricing.js";
+import { estimateActorCostForExecution } from "../pricing.js";
 
 import { resolveRunPath } from "./run.js";
 

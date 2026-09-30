@@ -22,7 +22,7 @@
 
 import { AsyncLocalStorage } from "node:async_hooks";
 
-import { writeContainedOutputFile, type PreparedOutputRoot } from "./selected-output-paths.js";
+import { writeContainedOutputFile, type PreparedOutputRoot } from "../selected-output-paths.js";
 
 export const RUN_STATUS_SCHEMA = "humanish.run-status.v1";
 

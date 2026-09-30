@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import { screenshotEvidenceError } from "../image-evidence.js";
 import type { PreparedRunArtifactPaths } from "../run-paths.js";
 import type { ActorTraceItem } from "../actor-contract.js";
-import type { RunBundle, RunStream } from "../run.js";
+import type { RunBundle, RunStream } from "../run/run.js";
 import type {
   AnalysisEvidence,
   AnalysisParticipantInput,

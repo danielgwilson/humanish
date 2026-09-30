@@ -15,7 +15,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
 import { runInit } from "../src/lab/init.js";
-import { doctor } from "../src/run.js";
+import { doctor } from "../src/run/run.js";
 
 const execFileAsync = promisify(execFile);
 const env = { HUMANISH_STRICT_KEYS: "1", PATH: "" };

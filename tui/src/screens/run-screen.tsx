@@ -1,9 +1,9 @@
 import { Box, Text } from "ink";
 import React from "react";
 
-import type { RunDetail, RunParticipant } from "../../../src/run-detail.js";
-import type { RunIndexEntry } from "../../../src/run-index.js";
-import { formatDuration, normalizeThought } from "../../../src/run-projection.js";
+import type { RunDetail, RunParticipant } from "../../../src/run/detail.js";
+import type { RunIndexEntry } from "../../../src/run/run-index.js";
+import { formatDuration, normalizeThought } from "../../../src/run/projection.js";
 import { fitLabelToWidth } from "../fit-text.js";
 import { glyphColor, gutter, verdictGlyph } from "../frame.js";
 import { PALETTE } from "../palette.js";

@@ -53,7 +53,7 @@ import { resolveAutomaticAnalysis, type LabAnalysis } from "../analysis/automati
 // There is deliberately NO v1 compatibility: v1 had zero real users. Breaking schema changes
 // bump the version honestly.
 
-import { normalizeExtraExcludeEntry } from "../source-archive.js";
+import { normalizeExtraExcludeEntry } from "../run/source-archive.js";
 import { actorRegistry } from "../actor-registry.js";
 import { containsSensitive } from "../redaction.js";
 import type { LabTask } from "../tasks.js";

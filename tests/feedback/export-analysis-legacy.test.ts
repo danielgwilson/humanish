@@ -9,7 +9,7 @@ import {
   type ActorTrace,
 } from "../../src/actor-contract.js";
 import { exportRun } from "../../src/feedback/export.js";
-import { resolveRunPath, runDryRun, verifyRun, type RunBundle } from "../../src/run.js";
+import { resolveRunPath, runDryRun, verifyRun, type RunBundle } from "../../src/run/run.js";
 import { captureStudyEvidence } from "../../src/analysis/evidence.js";
 import {
   appendStudyAnalysisCorrection,

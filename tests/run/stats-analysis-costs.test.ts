@@ -2,17 +2,17 @@ import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:
 import path from "node:path";
 import os from "node:os";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { computeStats, formatStatsHuman } from "../src/stats.js";
-import { bindExistingRunArtifactPaths } from "../src/run-paths.js";
+import { computeStats, formatStatsHuman } from "../../src/run/stats.js";
+import { bindExistingRunArtifactPaths } from "../../src/run-paths.js";
 import {
   beginStudyAnalysisExecution,
   writeStudyAnalysisExecutionReceipt,
-} from "../src/analysis/store.js";
-import { claimAutomaticStudyAnalysis } from "../src/analysis/job.js";
-import { digestStudyAnalysisInput, hashStudyAnalysisValue } from "../src/analysis/validation.js";
-import { syntheticArtifact, syntheticInput } from "./analysis/fixtures.js";
-import { writeFixtureRun } from "./helpers/run-fixtures.js";
-import type { StudyAnalysisArtifact } from "../src/analysis/study-analysis.js";
+} from "../../src/analysis/store.js";
+import { claimAutomaticStudyAnalysis } from "../../src/analysis/job.js";
+import { digestStudyAnalysisInput, hashStudyAnalysisValue } from "../../src/analysis/validation.js";
+import { syntheticArtifact, syntheticInput } from "../analysis/fixtures.js";
+import { writeFixtureRun } from "../helpers/run-fixtures.js";
+import type { StudyAnalysisArtifact } from "../../src/analysis/study-analysis.js";
 
 describe("retained study cost accounting", () => {
   let cwd: string;

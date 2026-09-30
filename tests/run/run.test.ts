@@ -18,13 +18,13 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
 
-import { ACTOR_TRACE_SCHEMA, type ActorTrace } from "../src/actor-contract.js";
-import type { CuaLoopResult } from "../src/computer-use.js";
-import { captureGitState } from "../src/git-state.js";
-import { buildCuaBundle } from "../src/cua-actor-lab.js";
-import { renderObserver } from "../src/observer/render.js";
-import { createProgram } from "../src/program.js";
-import { startCodexAppServerUi } from "../src/codex-app-server-ui.js";
+import { ACTOR_TRACE_SCHEMA, type ActorTrace } from "../../src/actor-contract.js";
+import type { CuaLoopResult } from "../../src/computer-use.js";
+import { captureGitState } from "../../src/run/git-state.js";
+import { buildCuaBundle } from "../../src/cua-actor-lab.js";
+import { renderObserver } from "../../src/observer/render.js";
+import { createProgram } from "../../src/program.js";
+import { startCodexAppServerUi } from "../../src/codex-app-server-ui.js";
 import {
   CLEANUP_SCHEMA,
   PUBLIC_TARGET_CWD,
@@ -39,8 +39,8 @@ import {
   type RunBundle,
   type RunSubjectProvenance,
   type RunSubjectStateStepRecord,
-} from "../src/run.js";
-import { SYNTHETIC_PNG_1X1_BASE64, syntheticPng1x1 } from "./image-fixtures.js";
+} from "../../src/run/run.js";
+import { SYNTHETIC_PNG_1X1_BASE64, syntheticPng1x1 } from "../image-fixtures.js";
 
 const execFileAsync = promisify(execFile);
 const PNG_1X1 = syntheticPng1x1();

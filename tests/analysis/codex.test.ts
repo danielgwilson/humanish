@@ -1,7 +1,7 @@
 import {
   registerTransientCommsSecrets,
   withTransientCommsSecrets,
-} from "../../src/run-narration-secrets.js";
+} from "../../src/run/narration-secrets.js";
 import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -17,7 +17,7 @@ import {
 } from "../../src/analysis/automatic.js";
 import { parseLabConfig } from "../../src/lab/config.js";
 import { createProgram } from "../../src/program.js";
-import { resolveRunPath, runDryRun } from "../../src/run.js";
+import { resolveRunPath, runDryRun } from "../../src/run/run.js";
 import {
   estimateStudyAnalysisAdmission,
   runStudyAnalysis,
@@ -38,7 +38,7 @@ import type {
   StudyAnalysisConfig,
   StudyAnalysisInput,
 } from "../../src/analysis/study-analysis.js";
-import { computeStats } from "../../src/stats.js";
+import { computeStats } from "../../src/run/stats.js";
 import { syntheticArtifact, syntheticInput, syntheticResult } from "./fixtures.js";
 
 // These are domain-provider contract tests, not fabricated Codex RPC fixtures or live claims.

@@ -3,7 +3,7 @@
 Date: 2026-06-02 (current-state note updated 2026-07-14)
 
 Status: `humanish.run-bundle.v1` is the shipped evidence contract. The
-TypeScript shape and fail-closed verification in `src/run.ts` are
+TypeScript shape and fail-closed verification in `src/run/run.ts` are
 authoritative; this document explains the stable public fields and extension
 rules rather than independently versioning the runtime.
 
@@ -558,10 +558,10 @@ review before sharing; screenshot blur does not certify natural-language privacy
 
 ## Git Provenance
 
-`captureGitState` (`src/git-state.ts`) records git status as counts, without
+`captureGitState` (`src/run/git-state.ts`) records git status as counts, without
 branch names, remotes, file names, file paths or absolute directories. It
 refuses a forged gitdir file and unsafe linked-worktree metadata before running
-git. `tests/git-state.test.ts` covers these cases.
+git. `tests/run/git-state.test.ts` covers these cases.
 
 Proof commands:
 

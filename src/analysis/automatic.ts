@@ -1,6 +1,6 @@
 import path from "node:path";
 import { renderObserver } from "../observer/render.js";
-import { resolveRunPath, type RunBundle } from "../run.js";
+import { resolveRunPath, type RunBundle } from "../run/run.js";
 import {
   analyzeStudy,
   readCompletedStudyAnalysisSource,

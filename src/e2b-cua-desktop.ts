@@ -52,8 +52,8 @@ import {
 import { allocateE2BDesktopSession } from "./e2b-desktop-session.js";
 import { readDetachedLog } from "./e2b-detached.js";
 import { redactText } from "./redaction.js";
-import { type RunDesktopGeometry, type RunSubjectStateStepRecord } from "./run.js";
-import { appendSandboxReceipt } from "./sandbox-receipts.js";
+import { type RunDesktopGeometry, type RunSubjectStateStepRecord } from "./run/run.js";
+import { appendSandboxReceipt } from "./run/sandbox-receipts.js";
 import { writeContainedOutputFile } from "./selected-output-paths.js";
 
 function optionalAddress(address: string | undefined): { address?: string } {

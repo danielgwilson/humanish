@@ -1,4 +1,4 @@
-import { registerTransientCommsSecrets } from "../run-narration-secrets.js";
+import { registerTransientCommsSecrets } from "../run/narration-secrets.js";
 import type { LabConfig } from "../lab/config.js";
 import { readCommsConnections, type CommsConnection } from "./connections.js";
 import { discoverProviderKeys } from "../key-resolution.js";

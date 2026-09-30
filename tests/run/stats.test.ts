@@ -4,8 +4,8 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { computeStats, formatStatsHuman } from "../src/stats.js";
-import { writeFixtureRuns } from "./helpers/run-fixtures.js";
+import { computeStats, formatStatsHuman } from "../../src/run/stats.js";
+import { writeFixtureRuns } from "../helpers/run-fixtures.js";
 
 const NOW = Date.parse("2026-09-01T20:00:00.000Z");
 
