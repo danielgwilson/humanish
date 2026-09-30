@@ -13,6 +13,7 @@ import {
   type ReceivingLease,
   type ReceivedEmail,
 } from "./receiving-types.js";
+import type { CommsInlineImage } from "./types.js";
 
 const API_ORIGIN = "https://api.agentmail.to";
 const DOWNLOAD_ORIGIN = "https://cdn.agentmail.to";
@@ -224,208 +225,400 @@ function limitedText(value: unknown, limitations: string[]): string | undefined 
 }
 const transient = (code: AgentMailReceivingErrorCode) =>
   code === "agentmail_unavailable" || code === "agentmail_timeout";
+/** The operation has no time, bytes or requests left for another item. */
+const exhausted = (budget: Budget): boolean =>
+  budget.signal.aborted ||
+  budget.bytes >= AGENTMAIL_RECEIVING_LIMITS.operationBytes ||
+  budget.requests >= AGENTMAIL_RECEIVING_LIMITS.requests;
 
-/** Host-only transport; the management credential is never sent to a desktop or download host. */
-export function createAgentMailReceiver(options: {
-  apiKey: string;
-  fetch?: typeof globalThis.fetch;
-}): ReceivingAdapter {
-  if (
-    !options.apiKey ||
-    options.apiKey.length > 4096 ||
-    /[\u0000-\u0020\u007f]/.test(options.apiKey)
-  )
-    fail("agentmail_invalid_input");
-  const fetcher = options.fetch ?? globalThis.fetch;
-  const key = options.apiKey;
-  async function request(url: string, init: RequestInit, budget: Budget): Promise<Response> {
-    checkAbort(budget);
-    if (++budget.requests > AGENTMAIL_RECEIVING_LIMITS.requests) fail("agentmail_request_limit");
-    try {
-      return await unlessAborted(
-        fetcher(url, { ...init, signal: budget.signal, credentials: "omit" }).then((response) => {
+/** One receiver's state, shared by every operation: its management credential and fetch. */
+interface Receiver {
+  readonly key: string;
+  readonly fetch: typeof globalThis.fetch;
+}
+
+async function request(
+  receiver: Receiver,
+  url: string,
+  init: RequestInit,
+  budget: Budget,
+): Promise<Response> {
+  checkAbort(budget);
+  if (++budget.requests > AGENTMAIL_RECEIVING_LIMITS.requests) fail("agentmail_request_limit");
+  try {
+    return await unlessAborted(
+      receiver
+        .fetch(url, { ...init, signal: budget.signal, credentials: "omit" })
+        .then((response) => {
           if (budget.signal.aborted) {
             void response.body?.cancel().catch(() => {});
             fail(abortCode(budget));
           }
           return response;
         }),
-        budget,
-      );
-    } catch (error) {
-      if (budget.signal.aborted) fail(abortCode(budget));
-      throw new AgentMailReceivingError(safeCode(error));
-    }
-  }
-  async function api(
-    path: string,
-    method: "GET" | "POST" | "DELETE",
-    budget: Budget,
-    payload?: unknown,
-  ): Promise<ApiReply> {
-    const response = await request(
-      `${API_ORIGIN}${path}`,
-      {
-        method,
-        redirect: "error",
-        headers: {
-          Authorization: `Bearer ${key}`,
-          Accept: "application/json",
-          ...(payload === undefined ? {} : { "Content-Type": "application/json" }),
-        },
-        ...(payload === undefined ? {} : { body: JSON.stringify(payload) }),
-      },
       budget,
     );
-    const bytes = await bodyBytes(response, budget, AGENTMAIL_RECEIVING_LIMITS.responseBytes);
-    let body: unknown = null;
-    if (bytes.length) {
-      try {
-        body = JSON.parse(bytes.toString("utf8"));
-      } catch {
-        if (response.ok) fail("agentmail_invalid_response");
-      }
-    }
-    return { status: response.status, body };
+  } catch (error) {
+    if (budget.signal.aborted) fail(abortCode(budget));
+    throw new AgentMailReceivingError(safeCode(error));
   }
-  async function download(rawUrl: unknown, budget: Budget): Promise<Buffer> {
-    if (typeof rawUrl !== "string" || rawUrl.length > 16_384) fail("agentmail_download_blocked");
-    let url: URL;
+}
+/** The only request that carries the management credential, always to the API origin. */
+async function api(
+  receiver: Receiver,
+  path: string,
+  method: "GET" | "POST" | "DELETE",
+  budget: Budget,
+  payload?: unknown,
+): Promise<ApiReply> {
+  const response = await request(
+    receiver,
+    `${API_ORIGIN}${path}`,
+    {
+      method,
+      redirect: "error",
+      headers: {
+        Authorization: `Bearer ${receiver.key}`,
+        Accept: "application/json",
+        ...(payload === undefined ? {} : { "Content-Type": "application/json" }),
+      },
+      ...(payload === undefined ? {} : { body: JSON.stringify(payload) }),
+    },
+    budget,
+  );
+  const bytes = await bodyBytes(response, budget, AGENTMAIL_RECEIVING_LIMITS.responseBytes);
+  let body: unknown = null;
+  if (bytes.length) {
     try {
-      url = new URL(rawUrl);
+      body = JSON.parse(bytes.toString("utf8"));
     } catch {
-      return fail("agentmail_download_blocked");
+      if (response.ok) fail("agentmail_invalid_response");
     }
-    for (let redirect = 0; redirect <= AGENTMAIL_RECEIVING_LIMITS.downloadRedirects; redirect++) {
-      // Exact origin established by live capture. No inferred S3 wildcard and no email-body fetches.
-      if (url.origin !== DOWNLOAD_ORIGIN || url.username || url.password || url.hash)
-        fail("agentmail_download_blocked");
-      const response = await request(url.href, { method: "GET", redirect: "manual" }, budget);
-      if ([301, 302, 303, 307, 308].includes(response.status)) {
-        void response.body?.cancel().catch(() => {});
-        const next = response.headers.get("location");
-        if (!next || redirect === AGENTMAIL_RECEIVING_LIMITS.downloadRedirects)
-          fail("agentmail_download_blocked");
-        try {
-          url = new URL(next, url);
-        } catch {
-          return fail("agentmail_download_blocked");
-        }
-        continue;
-      }
-      if (!response.ok) {
-        void response.body?.cancel().catch(() => {});
-        fail("agentmail_unavailable");
-      }
-      return bodyBytes(response, budget, MAX_INLINE_IMAGE_BYTES);
-    }
+  }
+  return { status: response.status, body };
+}
+async function download(receiver: Receiver, rawUrl: unknown, budget: Budget): Promise<Buffer> {
+  if (typeof rawUrl !== "string" || rawUrl.length > 16_384) fail("agentmail_download_blocked");
+  let url: URL;
+  try {
+    url = new URL(rawUrl);
+  } catch {
     return fail("agentmail_download_blocked");
   }
-  async function getMessage(
-    lease: ReceivingLease,
-    id: string,
-    budget: Budget,
-  ): Promise<ReceivedEmail> {
-    const raw = success(await api(messagePath(lease, id), "GET", budget));
-    if (
-      raw.inbox_id !== lease.resourceId ||
-      raw.message_id !== id ||
-      !Array.isArray(raw.labels) ||
-      !raw.labels.includes("received")
-    )
-      fail("agentmail_ownership_mismatch");
-    const limitations: string[] = [];
-    const from = limitedText(raw.from, limitations);
-    if (!from) fail("agentmail_invalid_response");
-    const text = limitedText(raw.text, limitations) ?? "";
-    const html = limitedText(raw.html, limitations);
-    const subject = limitedText(raw.subject, limitations);
-    const message: ReceivedEmail = {
-      channel: "email",
-      providerMessageId: id,
-      from,
-      text,
-      ...(html === undefined ? {} : { html }),
-      ...(subject === undefined ? {} : { subject }),
-      inlineImages: [],
-      limitations,
-    };
-    if (!text && !html) limitations.push("agentmail_content_missing");
-    if (
-      typeof raw.timestamp === "string" &&
-      raw.timestamp.length <= 64 &&
-      Number.isFinite(Date.parse(raw.timestamp))
-    )
-      message.providerTimestamp = new Date(raw.timestamp).toISOString();
-    else limitations.push("agentmail_timestamp_missing");
-    if (raw.attachments !== undefined && !Array.isArray(raw.attachments))
-      fail("agentmail_invalid_response");
-    const attachments = (raw.attachments ?? []) as unknown[];
-    if (attachments.length > MAX_INLINE_IMAGES) limitations.push("agentmail_attachment_limit");
-    let imageBytes = 0;
-    for (const item of attachments.slice(0, MAX_INLINE_IMAGES)) {
+  for (let redirect = 0; redirect <= AGENTMAIL_RECEIVING_LIMITS.downloadRedirects; redirect++) {
+    // Exact origin established by live capture. No inferred S3 wildcard and no email-body fetches.
+    if (url.origin !== DOWNLOAD_ORIGIN || url.username || url.password || url.hash)
+      fail("agentmail_download_blocked");
+    const response = await request(
+      receiver,
+      url.href,
+      { method: "GET", redirect: "manual" },
+      budget,
+    );
+    if ([301, 302, 303, 307, 308].includes(response.status)) {
+      void response.body?.cancel().catch(() => {});
+      const next = response.headers.get("location");
+      if (!next || redirect === AGENTMAIL_RECEIVING_LIMITS.downloadRedirects)
+        fail("agentmail_download_blocked");
       try {
-        const attachment = object(item);
-        if (
-          attachment.content_disposition !== "inline" ||
-          !["image/png", "image/jpeg", "image/gif", "image/webp"].includes(
-            String(attachment.content_type),
-          )
-        ) {
-          limitations.push("agentmail_attachment_unsupported");
-          continue;
-        }
-        const attachmentId = identifier(attachment.attachment_id);
-        const cid = identifier(attachment.content_id).replace(/^<|>$/g, "");
-        if (cid.length > 256) fail("agentmail_invalid_response");
-        if (
-          typeof attachment.size !== "number" ||
-          !Number.isSafeInteger(attachment.size) ||
-          attachment.size <= 0 ||
-          attachment.size > MAX_INLINE_IMAGE_BYTES ||
-          imageBytes + attachment.size > MAX_INLINE_IMAGES_BYTES
-        )
-          fail("agentmail_size_limit");
-        const descriptor = success(
-          await api(
-            `${messagePath(lease, id)}/attachments/${encodeURIComponent(attachmentId)}`,
-            "GET",
-            budget,
-          ),
-        );
-        if (
-          descriptor.attachment_id !== attachmentId ||
-          descriptor.content_type !== attachment.content_type ||
-          descriptor.content_id !== attachment.content_id ||
-          descriptor.size !== attachment.size
-        )
-          fail("agentmail_invalid_response");
-        const bytes = await download(descriptor.download_url, budget);
-        if (bytes.length !== attachment.size || imageBytes + bytes.length > MAX_INLINE_IMAGES_BYTES)
-          fail("agentmail_size_limit");
-        const image = {
-          contentId: cid,
-          contentType: String(attachment.content_type),
-          base64: bytes.toString("base64"),
-        };
-        if (!inlineImageData(image)) fail("agentmail_invalid_response");
-        imageBytes += bytes.length;
-        message.inlineImages.push(image);
-      } catch (error) {
-        const code = safeCode(error);
-        if (code === "agentmail_cancelled") throw error;
-        limitations.push(code, "agentmail_attachment_unavailable");
-        if (
-          budget.signal.aborted ||
-          budget.bytes >= AGENTMAIL_RECEIVING_LIMITS.operationBytes ||
-          budget.requests >= AGENTMAIL_RECEIVING_LIMITS.requests
-        )
-          break;
+        url = new URL(next, url);
+      } catch {
+        return fail("agentmail_download_blocked");
       }
+      continue;
     }
-    message.limitations = [...new Set(limitations)];
-    return message;
+    if (!response.ok) {
+      void response.body?.cancel().catch(() => {});
+      fail("agentmail_unavailable");
+    }
+    return bodyBytes(response, budget, MAX_INLINE_IMAGE_BYTES);
   }
+  return fail("agentmail_download_blocked");
+}
+
+/**
+ * A received message's text fields and timestamp, with no inline images yet. Its `limitations`
+ * array is the working list the caller keeps adding to.
+ */
+function parseMessage(
+  raw: Record<string, unknown>,
+  lease: ReceivingLease,
+  id: string,
+): ReceivedEmail {
+  if (
+    raw.inbox_id !== lease.resourceId ||
+    raw.message_id !== id ||
+    !Array.isArray(raw.labels) ||
+    !raw.labels.includes("received")
+  )
+    fail("agentmail_ownership_mismatch");
+  const limitations: string[] = [];
+  const from = limitedText(raw.from, limitations);
+  if (!from) fail("agentmail_invalid_response");
+  const text = limitedText(raw.text, limitations) ?? "";
+  const html = limitedText(raw.html, limitations);
+  const subject = limitedText(raw.subject, limitations);
+  const message: ReceivedEmail = {
+    channel: "email",
+    providerMessageId: id,
+    from,
+    text,
+    ...(html === undefined ? {} : { html }),
+    ...(subject === undefined ? {} : { subject }),
+    inlineImages: [],
+    limitations,
+  };
+  if (!text && !html) limitations.push("agentmail_content_missing");
+  if (
+    typeof raw.timestamp === "string" &&
+    raw.timestamp.length <= 64 &&
+    Number.isFinite(Date.parse(raw.timestamp))
+  )
+    message.providerTimestamp = new Date(raw.timestamp).toISOString();
+  else limitations.push("agentmail_timestamp_missing");
+  return message;
+}
+const INLINE_IMAGE_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp"];
+/**
+ * Downloads one inline image attachment within the message's remaining image bytes, with its
+ * size; undefined for an attachment that is not an inline image.
+ */
+async function inlineImage(
+  receiver: Receiver,
+  lease: ReceivingLease,
+  id: string,
+  item: unknown,
+  imageBytes: number,
+  budget: Budget,
+): Promise<{ image: CommsInlineImage; size: number } | undefined> {
+  const attachment = object(item);
+  if (
+    attachment.content_disposition !== "inline" ||
+    !INLINE_IMAGE_TYPES.includes(String(attachment.content_type))
+  )
+    return undefined;
+  const attachmentId = identifier(attachment.attachment_id);
+  const cid = identifier(attachment.content_id).replace(/^<|>$/g, "");
+  if (cid.length > 256) fail("agentmail_invalid_response");
+  if (
+    typeof attachment.size !== "number" ||
+    !Number.isSafeInteger(attachment.size) ||
+    attachment.size <= 0 ||
+    attachment.size > MAX_INLINE_IMAGE_BYTES ||
+    imageBytes + attachment.size > MAX_INLINE_IMAGES_BYTES
+  )
+    fail("agentmail_size_limit");
+  const descriptor = success(
+    await api(
+      receiver,
+      `${messagePath(lease, id)}/attachments/${encodeURIComponent(attachmentId)}`,
+      "GET",
+      budget,
+    ),
+  );
+  if (
+    descriptor.attachment_id !== attachmentId ||
+    descriptor.content_type !== attachment.content_type ||
+    descriptor.content_id !== attachment.content_id ||
+    descriptor.size !== attachment.size
+  )
+    fail("agentmail_invalid_response");
+  const bytes = await download(receiver, descriptor.download_url, budget);
+  if (bytes.length !== attachment.size || imageBytes + bytes.length > MAX_INLINE_IMAGES_BYTES)
+    fail("agentmail_size_limit");
+  const image = {
+    contentId: cid,
+    contentType: String(attachment.content_type),
+    base64: bytes.toString("base64"),
+  };
+  if (!inlineImageData(image)) fail("agentmail_invalid_response");
+  return { image, size: bytes.length };
+}
+/** Fetches a message and its inline images; an image that fails becomes a limitation. */
+async function getMessage(
+  receiver: Receiver,
+  lease: ReceivingLease,
+  id: string,
+  budget: Budget,
+): Promise<ReceivedEmail> {
+  const raw = success(await api(receiver, messagePath(lease, id), "GET", budget));
+  const message = parseMessage(raw, lease, id);
+  const limitations = message.limitations;
+  if (raw.attachments !== undefined && !Array.isArray(raw.attachments))
+    fail("agentmail_invalid_response");
+  const attachments = (raw.attachments ?? []) as unknown[];
+  if (attachments.length > MAX_INLINE_IMAGES) limitations.push("agentmail_attachment_limit");
+  let imageBytes = 0;
+  for (const item of attachments.slice(0, MAX_INLINE_IMAGES)) {
+    try {
+      const inline = await inlineImage(receiver, lease, id, item, imageBytes, budget);
+      if (inline === undefined) {
+        limitations.push("agentmail_attachment_unsupported");
+        continue;
+      }
+      imageBytes += inline.size;
+      message.inlineImages.push(inline.image);
+    } catch (error) {
+      const code = safeCode(error);
+      if (code === "agentmail_cancelled") throw error;
+      limitations.push(code, "agentmail_attachment_unavailable");
+      if (exhausted(budget)) break;
+    }
+  }
+  message.limitations = [...new Set(limitations)];
+  return message;
+}
+
+async function authenticate(receiver: Receiver, budget: Budget): Promise<ReceivingIdentity> {
+  const raw = success(await api(receiver, "/v0/auth/me", "GET", budget));
+  if (raw.scope_type !== "organization" && raw.scope_type !== "pod" && raw.scope_type !== "inbox")
+    fail("agentmail_invalid_response");
+  // Pod- and inbox-scoped keys cannot create the fresh inboxes a study needs.
+  if (raw.scope_type !== "organization") fail(RECEIVING_SCOPE_UNSUPPORTED);
+  return {
+    provider: "agentmail",
+    accountId: identifier(raw.organization_id),
+    scopeType: raw.scope_type,
+    scopeId: identifier(raw.scope_id),
+  };
+}
+/** Provisions the inbox for `clientId`, retrying one transient failure. */
+async function acquireInbox(
+  receiver: Receiver,
+  clientId: string,
+  budget: Budget,
+): Promise<ReceivingLease> {
+  inputId(clientId);
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const raw = success(
+        await api(receiver, "/v0/inboxes", "POST", budget, { client_id: clientId }),
+      );
+      const lease = {
+        resourceId: identifier(raw.inbox_id),
+        address: identifier(raw.email),
+        clientId,
+      };
+      if (raw.client_id !== clientId) fail("agentmail_ownership_mismatch");
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(lease.address)) fail("agentmail_invalid_response");
+      return lease;
+    } catch (error) {
+      if (attempt || !transient(safeCode(error)) || budget.signal.aborted) throw error;
+    }
+  }
+  return fail("agentmail_unavailable");
+}
+/**
+ * Reads the inbox's received messages, page by page within the limits. A message or page that
+ * fails becomes a limitation and marks the batch incomplete; cancellation always throws.
+ */
+async function readInbox(
+  receiver: Receiver,
+  lease: ReceivingLease,
+  budget: Budget,
+): Promise<ReceivingBatch> {
+  checkLease(lease);
+  const batch: ReceivingBatch = { messages: [], complete: true, limitations: [] };
+  const ids = new Set<string>();
+  const tokens = new Set<string>();
+  let token: string | undefined;
+  for (let page = 0; page < AGENTMAIL_RECEIVING_LIMITS.pages; page++) {
+    try {
+      const query = new URLSearchParams({
+        limit: String(AGENTMAIL_RECEIVING_LIMITS.pageSize),
+        labels: "received",
+        ...(token === undefined ? {} : { page_token: token }),
+      });
+      const raw = success(
+        await api(receiver, `${inboxPath(lease)}/messages?${query.toString()}`, "GET", budget),
+      );
+      if (!Array.isArray(raw.messages) || raw.messages.length > AGENTMAIL_RECEIVING_LIMITS.pageSize)
+        fail("agentmail_invalid_response");
+      for (const item of raw.messages) {
+        const entry = object(item);
+        if (entry.inbox_id !== lease.resourceId) fail("agentmail_ownership_mismatch");
+        if (!Array.isArray(entry.labels)) fail("agentmail_invalid_response");
+        if (!entry.labels.includes("received")) continue;
+        const id = identifier(entry.message_id);
+        if (ids.has(id)) continue;
+        if (ids.size >= AGENTMAIL_RECEIVING_LIMITS.messages) fail("agentmail_size_limit");
+        ids.add(id);
+        try {
+          const message = await getMessage(receiver, lease, id, budget);
+          batch.messages.push(message);
+          if (message.limitations.length) {
+            batch.complete = false;
+            batch.limitations.push(...message.limitations);
+          }
+        } catch (error) {
+          if (safeCode(error) === "agentmail_cancelled") throw error;
+          batch.complete = false;
+          batch.limitations.push(safeCode(error), "agentmail_message_unavailable");
+          if (exhausted(budget)) throw error;
+        }
+      }
+      if (
+        raw.next_page_token === undefined ||
+        raw.next_page_token === null ||
+        raw.next_page_token === ""
+      )
+        break;
+      token = identifier(raw.next_page_token);
+      if (tokens.has(token)) {
+        batch.complete = false;
+        batch.limitations.push("agentmail_pagination_stalled");
+        break;
+      }
+      tokens.add(token);
+      if (page + 1 === AGENTMAIL_RECEIVING_LIMITS.pages) {
+        batch.complete = false;
+        batch.limitations.push("agentmail_page_limit");
+      }
+    } catch (error) {
+      if (safeCode(error) === "agentmail_cancelled") throw error;
+      batch.complete = false;
+      batch.limitations.push(safeCode(error));
+      break;
+    }
+  }
+  batch.limitations = [...new Set(batch.limitations)];
+  return batch;
+}
+/** Deletes the inbox after checking it is this lease's; absent or deleting counts as released. */
+async function releaseInbox(
+  receiver: Receiver,
+  lease: ReceivingLease,
+  budget: Budget,
+): Promise<{ status: "absent" | "deleting" }> {
+  checkLease(lease);
+  const before = await api(receiver, inboxPath(lease), "GET", budget);
+  const existing = absentOrDeleting(before);
+  if (existing) return { status: existing };
+  assertOwnership(success(before), lease);
+  const deleted = await api(receiver, inboxPath(lease), "DELETE", budget);
+  const state = absentOrDeleting(deleted);
+  if (state) return { status: state };
+  if (![200, 202, 204].includes(deleted.status)) statusError(deleted);
+  try {
+    const after = await api(receiver, inboxPath(lease), "GET", budget);
+    const result = absentOrDeleting(after);
+    if (result) return { status: result };
+    assertOwnership(success(after), lease);
+    return { status: "deleting" };
+  } catch (error) {
+    if (transient(safeCode(error))) return { status: "deleting" };
+    throw error;
+  }
+}
+
+/** Host-only transport; the management credential is never sent to a desktop or download host. */
+export function createAgentMailReceiver(options: {
+  apiKey: string;
+  fetch?: typeof globalThis.fetch;
+}): ReceivingAdapter {
+  if (!options.apiKey || options.apiKey.length > 4096 || /[\u0000- \u007f]/.test(options.apiKey))
+    fail("agentmail_invalid_input");
+  const receiver: Receiver = { key: options.apiKey, fetch: options.fetch ?? globalThis.fetch };
   return {
     provider: "agentmail",
     addressing: "provisioned",
@@ -433,143 +626,11 @@ export function createAgentMailReceiver(options: {
     idempotentAcquire: true,
     codes: AGENTMAIL_RECEIVING_CODES,
     authRejectedCode: "agentmail_auth_rejected",
-    authenticate: (context) =>
-      operation(context, async (budget): Promise<ReceivingIdentity> => {
-        const raw = success(await api("/v0/auth/me", "GET", budget));
-        if (
-          raw.scope_type !== "organization" &&
-          raw.scope_type !== "pod" &&
-          raw.scope_type !== "inbox"
-        )
-          fail("agentmail_invalid_response");
-        // Pod- and inbox-scoped keys cannot create the fresh inboxes a study needs.
-        if (raw.scope_type !== "organization") fail(RECEIVING_SCOPE_UNSUPPORTED);
-        return {
-          provider: "agentmail",
-          accountId: identifier(raw.organization_id),
-          scopeType: raw.scope_type,
-          scopeId: identifier(raw.scope_id),
-        };
-      }),
+    authenticate: (context) => operation(context, (budget) => authenticate(receiver, budget)),
     acquire: (clientId, context) =>
-      operation(context, async (budget): Promise<ReceivingLease> => {
-        inputId(clientId);
-        for (let attempt = 0; attempt < 2; attempt++) {
-          try {
-            const raw = success(await api("/v0/inboxes", "POST", budget, { client_id: clientId }));
-            const lease = {
-              resourceId: identifier(raw.inbox_id),
-              address: identifier(raw.email),
-              clientId,
-            };
-            if (raw.client_id !== clientId) fail("agentmail_ownership_mismatch");
-            if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(lease.address))
-              fail("agentmail_invalid_response");
-            return lease;
-          } catch (error) {
-            if (attempt || !transient(safeCode(error)) || budget.signal.aborted) throw error;
-          }
-        }
-        return fail("agentmail_unavailable");
-      }),
-    read: (lease, context) =>
-      operation(context, async (budget): Promise<ReceivingBatch> => {
-        checkLease(lease);
-        const batch: ReceivingBatch = { messages: [], complete: true, limitations: [] };
-        const ids = new Set<string>();
-        const tokens = new Set<string>();
-        let token: string | undefined;
-        for (let page = 0; page < AGENTMAIL_RECEIVING_LIMITS.pages; page++) {
-          try {
-            const query = new URLSearchParams({
-              limit: String(AGENTMAIL_RECEIVING_LIMITS.pageSize),
-              labels: "received",
-              ...(token === undefined ? {} : { page_token: token }),
-            });
-            const raw = success(
-              await api(`${inboxPath(lease)}/messages?${query.toString()}`, "GET", budget),
-            );
-            if (
-              !Array.isArray(raw.messages) ||
-              raw.messages.length > AGENTMAIL_RECEIVING_LIMITS.pageSize
-            )
-              fail("agentmail_invalid_response");
-            for (const item of raw.messages) {
-              const entry = object(item);
-              if (entry.inbox_id !== lease.resourceId) fail("agentmail_ownership_mismatch");
-              if (!Array.isArray(entry.labels)) fail("agentmail_invalid_response");
-              if (!entry.labels.includes("received")) continue;
-              const id = identifier(entry.message_id);
-              if (ids.has(id)) continue;
-              if (ids.size >= AGENTMAIL_RECEIVING_LIMITS.messages) fail("agentmail_size_limit");
-              ids.add(id);
-              try {
-                const message = await getMessage(lease, id, budget);
-                batch.messages.push(message);
-                if (message.limitations.length) {
-                  batch.complete = false;
-                  batch.limitations.push(...message.limitations);
-                }
-              } catch (error) {
-                if (safeCode(error) === "agentmail_cancelled") throw error;
-                batch.complete = false;
-                batch.limitations.push(safeCode(error), "agentmail_message_unavailable");
-                if (
-                  budget.signal.aborted ||
-                  budget.bytes >= AGENTMAIL_RECEIVING_LIMITS.operationBytes ||
-                  budget.requests >= AGENTMAIL_RECEIVING_LIMITS.requests
-                )
-                  throw error;
-              }
-            }
-            if (
-              raw.next_page_token === undefined ||
-              raw.next_page_token === null ||
-              raw.next_page_token === ""
-            )
-              break;
-            token = identifier(raw.next_page_token);
-            if (tokens.has(token)) {
-              batch.complete = false;
-              batch.limitations.push("agentmail_pagination_stalled");
-              break;
-            }
-            tokens.add(token);
-            if (page + 1 === AGENTMAIL_RECEIVING_LIMITS.pages) {
-              batch.complete = false;
-              batch.limitations.push("agentmail_page_limit");
-            }
-          } catch (error) {
-            if (safeCode(error) === "agentmail_cancelled") throw error;
-            batch.complete = false;
-            batch.limitations.push(safeCode(error));
-            break;
-          }
-        }
-        batch.limitations = [...new Set(batch.limitations)];
-        return batch;
-      }),
+      operation(context, (budget) => acquireInbox(receiver, clientId, budget)),
+    read: (lease, context) => operation(context, (budget) => readInbox(receiver, lease, budget)),
     release: (lease, context) =>
-      operation(context, async (budget) => {
-        checkLease(lease);
-        const before = await api(inboxPath(lease), "GET", budget);
-        const existing = absentOrDeleting(before);
-        if (existing) return { status: existing };
-        assertOwnership(success(before), lease);
-        const deleted = await api(inboxPath(lease), "DELETE", budget);
-        const state = absentOrDeleting(deleted);
-        if (state) return { status: state };
-        if (![200, 202, 204].includes(deleted.status)) statusError(deleted);
-        try {
-          const after = await api(inboxPath(lease), "GET", budget);
-          const result = absentOrDeleting(after);
-          if (result) return { status: result };
-          assertOwnership(success(after), lease);
-          return { status: "deleting" };
-        } catch (error) {
-          if (transient(safeCode(error))) return { status: "deleting" };
-          throw error;
-        }
-      }),
+      operation(context, (budget) => releaseInbox(receiver, lease, budget)),
   };
 }
