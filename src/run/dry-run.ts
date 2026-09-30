@@ -1,11 +1,9 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
-import { createRunArtifactPaths } from "./paths.js";
-import { beginRunStatus, withRunStatusScope, type RunStatusHandle } from "./status.js";
+import { runScope, type RunScope } from "./run.js";
 import {
   assertPreparedSelectedOutputDirectory,
   prepareSelectedOutputDirectory,
-  writePreparedRunLatestPointer,
 } from "./selected-output-paths.js";
 import {
   buildRunSource,
@@ -13,7 +11,6 @@ import {
   type RunBundle,
   type RunEvent,
   type RunOptions,
-  type RunPointer,
   type RunResult,
   type RunSimulation,
   type RunSimulationStatus,
@@ -22,15 +19,15 @@ import {
 } from "./bundle.js";
 import { implicitProjectDirectoryExists, readPackageName, validateCwd } from "./locate.js";
 import { loadDryRunSelection } from "./selection.js";
-import { createReviewSummary, writeRunBundleArtifacts } from "./write-bundle.js";
+import { createReviewSummary, renderReviewMarkdown } from "./synthetic-review.js";
 
 /**
- * The synthetic dry-run backend. The body runs inside a status scope so that returning from it —
- * by any of its exits, including the fail-closed ones — finalizes whatever status records it
- * opened. See `withRunStatusScope`.
+ * The synthetic dry-run backend. The run scope closes the run it started on every exit, including
+ * the fail-closed ones. The preview renders no Observer; its callers do.
  */
 export async function runDryRun(options: RunOptions): Promise<RunResult> {
-  return withRunStatusScope(() => runDryRunInScope(options));
+  const { result } = await runScope((scope) => runDryRunInScope(options, scope));
+  return result;
 }
 
 function refused(
@@ -47,7 +44,7 @@ function refused(
   };
 }
 
-async function runDryRunInScope(options: RunOptions): Promise<RunResult> {
+async function runDryRunInScope(options: RunOptions, scope: RunScope): Promise<RunResult> {
   const cwd = path.resolve(options.cwd);
   const cwdError = await validateCwd(cwd);
   const warnings: string[] = [];
@@ -71,10 +68,7 @@ async function runDryRunInScope(options: RunOptions): Promise<RunResult> {
     });
   }
 
-  const now = new Date();
-  const createdAt = now.toISOString();
-  const runId =
-    options.runId ?? `dryrun-${createdAt.replace(/[:.]/g, "-")}-${randomUUID().slice(0, 8)}`;
+  const createdAt = new Date().toISOString();
   const packageName = await readPackageName(projectRoot);
   const humanishSource = (await implicitProjectDirectoryExists(projectRoot, "humanish"))
     ? "present"
@@ -82,16 +76,17 @@ async function runDryRunInScope(options: RunOptions): Promise<RunResult> {
   const source = await buildRunSource({ cwd, capturedAt: createdAt, humanishSource, packageName });
   const selection = await loadDryRunSelection(projectRoot, humanishSource);
   await assertPreparedSelectedOutputDirectory(projectRoot);
-  const created = await createRunArtifactPaths(cwd, runId);
-  if (!created.ok) return refused(cwd, warnings, created);
-  const runPaths = created.paths;
-  // Identity + liveness on disk (#455): uniform across every route, so a reader classifies any
-  // run from one small file instead of parsing bundles.
-  const runStatus: RunStatusHandle = beginRunStatus(runPaths, {
-    runId,
+  const started = await scope.startRun({
+    cwd,
+    runId: options.runId,
+    mintRunId: () => `dryrun-${createdAt.replace(/[:.]/g, "-")}-${randomUUID().slice(0, 8)}`,
     mode: options.dryRun ? "dry-run" : "live",
-    ...(options.lab === undefined ? {} : { lab: options.lab }),
+    lab: options.lab,
+    renderReview: renderReviewMarkdown,
   });
+  if (!started.ok) return refused(cwd, warnings, started);
+  const { run } = started;
+  const { runId, paths: runPaths } = run;
   const artifactRoot = runPaths.relativeRunRoot;
 
   if (humanishSource === "missing") {
@@ -160,21 +155,7 @@ async function runDryRunInScope(options: RunOptions): Promise<RunResult> {
     feedbackCandidates: [],
   };
 
-  await writeRunBundleArtifacts(runPaths, bundle, runStatus);
-  await writePreparedRunLatestPointer(
-    runPaths,
-    `${JSON.stringify(
-      {
-        schema: "humanish.latest-run.v1",
-        runId,
-        path: artifactRoot,
-        updatedAt: createdAt,
-      } satisfies RunPointer,
-      null,
-      2,
-    )}\n`,
-    "utf8",
-  );
+  await run.finish(bundle);
 
   return {
     schema: "humanish.run-result.v1",

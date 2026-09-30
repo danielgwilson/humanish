@@ -423,7 +423,6 @@ describe("run path containment", () => {
     const read = (file: string) => readFile(path.resolve("src", file), "utf8");
     // Producers not yet on the run scope call the guard themselves; the scope calls it for the rest.
     const direct = [
-      "run/dry-run.ts",
       "routes/computer-use/lab.ts",
       "routes/shared-world/concurrent.ts",
       "run/run.ts",
@@ -432,6 +431,7 @@ describe("run path containment", () => {
       "routes/terminal/lab.ts",
       "routes/terminal/session.ts",
       "routes/scripted-browser.ts",
+      "run/dry-run.ts",
     ];
     for (const producer of direct) {
       expect(await read(producer), producer).toContain("createRunArtifactPaths");
