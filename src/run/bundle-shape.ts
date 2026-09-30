@@ -19,8 +19,8 @@ import {
 import {
   CLEANUP_SCHEMA,
   type CleanupAdapterResult,
-  type CleanupResourceResult,
-  type CleanupResult,
+  type StoredCleanupResourceResult,
+  type StoredCleanupResult,
   type RunPointer,
 } from "./results.js";
 import type { RunStream } from "./streams.js";
@@ -113,7 +113,7 @@ function isRunProviderResource(value: unknown): value is RunProviderResource {
   );
 }
 
-export function isCleanupResult(value: unknown): value is CleanupResult {
+export function isCleanupResult(value: unknown): value is StoredCleanupResult {
   return (
     isRecord(value) &&
     value.schema === CLEANUP_SCHEMA &&
@@ -139,7 +139,8 @@ export function isCleanupResult(value: unknown): value is CleanupResult {
   );
 }
 
-function isCleanupResourceResult(value: unknown): value is CleanupResourceResult {
+// Accepts `killed`, which v0.12.23 through v0.15.0 wrote when cleanup still killed sandboxes.
+function isCleanupResourceResult(value: unknown): value is StoredCleanupResourceResult {
   return (
     isRecord(value) &&
     value.provider === "e2b-desktop" &&

@@ -201,7 +201,7 @@ export async function cleanupRun(
 
   const summary = {
     resources: resources.length,
-    killed: resources.filter((resource) => resource.status === "killed").length,
+    killed: 0,
     alreadyClean: resources.filter((resource) => resource.status === "already_clean").length,
     failed:
       resources.filter((resource) => resource.status === "failed").length +

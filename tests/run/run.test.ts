@@ -416,6 +416,10 @@ describe("dry-run bundles", () => {
       expect(result.ok).toBe(true);
       expect(result.summary.alreadyClean).toBe(1);
       expect(result.summary.killed).toBe(0);
+
+      // Cleanup never kills, so the human summary does not offer a killed count.
+      const human = await runCli(["cleanup", "--cwd", cwd, "--run", "latest"]);
+      expect(human.stdout).toContain("resources: already-clean 1, skipped 0, failed 0");
     });
   });
 
@@ -459,6 +463,43 @@ describe("dry-run bundles", () => {
       const verify = await verifyRun(cwd, "cleanup-failed-receipt");
       expect(verify.ok).toBe(false);
       expect(verify.checks.find((check) => check.name === "cleanup receipt")?.ok).toBe(false);
+    });
+  });
+
+  it("still verifies a cleanup receipt from a release that killed sandboxes (v0.12.23 to v0.15.0)", async () => {
+    await withFixtureCopy(async (cwd) => {
+      await runDryRun({ cwd, dryRun: true, runId: "cleanup-legacy-killed" });
+      await writeFile(
+        path.join(cwd, ".humanish/runs/cleanup-legacy-killed/cleanup.json"),
+        `${JSON.stringify(
+          {
+            schema: CLEANUP_SCHEMA,
+            ok: true,
+            cwd: PUBLIC_TARGET_CWD,
+            run: "cleanup-legacy-killed",
+            runId: "cleanup-legacy-killed",
+            checkedAt: "2026-07-10T00:02:00.000Z",
+            summary: { resources: 1, killed: 1, alreadyClean: 0, failed: 0, skipped: 0 },
+            resources: [
+              {
+                provider: "e2b-desktop",
+                kind: "sandbox",
+                id: "sbx-legacy",
+                status: "killed",
+                message: "sandbox killed",
+              },
+            ],
+            adapterResults: [],
+            warnings: [],
+          },
+          null,
+          2,
+        )}\n`,
+        "utf8",
+      );
+
+      const verify = await verifyRun(cwd, "cleanup-legacy-killed");
+      expect(verify.checks.find((check) => check.name === "cleanup receipt")?.ok).toBe(true);
     });
   });
 
