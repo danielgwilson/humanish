@@ -11,7 +11,7 @@ import type { ExportFailure, ExportOptions, ExportResult } from "./export.js";
 import { renderObserver } from "../observer/render.js";
 import { buildObserverData } from "../observer/data.js";
 import { containsSensitive, redactScreenshot, redactText } from "../evidence/redaction.js";
-import { verifyRunPrepared } from "../run/verify.js";
+import { verifyRunPrepared, type VerifyResult } from "../run/verify.js";
 import { loadRunBundlePrepared, resolveRunPath } from "../run/locate.js";
 import { type RunBundle } from "../run/bundle.js";
 import {
@@ -415,6 +415,14 @@ async function removeOwnedDirectory(
   }
 }
 
+/** The directories one bundle export owns; its finally releases whatever is still held. */
+interface BundleWorkspace {
+  stage: PreparedSelectedOutputDirectory | undefined;
+  rawSnapshot: PreparedSelectedOutputDirectory | undefined;
+  claimed: PreparedSelectedOutputDirectory | undefined;
+  published: boolean;
+}
+
 export async function exportRedactedBundle(
   cwdInput: string,
   runInput: string,
@@ -441,158 +449,47 @@ export async function exportRedactedBundle(
       "HUMANISH_EXPORT_INVALID_OPTIONS",
       "--max-bytes must be a positive safe integer.",
     );
-  let stage: PreparedSelectedOutputDirectory | undefined;
-  let rawSnapshot: PreparedSelectedOutputDirectory | undefined;
-  let claimed: PreparedSelectedOutputDirectory | undefined;
-  let published = false;
+  const workspace: BundleWorkspace = {
+    stage: undefined,
+    rawSnapshot: undefined,
+    claimed: undefined,
+    published: false,
+  };
   try {
     const runPaths = await resolveRunPath(cwd, runInput);
     if (!runPaths)
       return failure("HUMANISH_EXPORT_RUN_NOT_FOUND", "No run resolves from the selected run id.");
     const source = await inventory(runPaths, maxBytes);
     const runId = runIdOf(runPaths);
-    const processStatus = source.files.find((file) => file.path === "status.json");
-    if (
-      processStatus &&
-      (JSON.parse(processStatus.bytes.toString("utf8")) as { state?: unknown }).state !== "finished"
-    ) {
-      throw new Error(
-        "Source process status is unfinished; wait for the run to finish before exporting.",
-      );
-    }
-    if (source.files.some((file) => file.path === "derivation.json"))
-      throw new Error("This run is already a derivative; export the retained original instead.");
-
-    const requested = path.resolve(
-      cwd,
-      options.out ?? path.join(".humanish", "exports", `${runId}-redacted`),
-    );
-    const prospective = await prospectivePhysicalPath(requested);
-    if (
-      isPathInside(runPaths.physicalRunsRoot, prospective) ||
-      isPathInside(prospective, runPaths.physicalRunRoot)
-    ) {
-      throw new Error("Derivative output must be outside the source run history.");
-    }
-    const parent =
-      options.out === undefined
-        ? await prepareManagedHumanishOutputDirectory(cwd, "exports")
-        : await prepareSelectedOutputDirectory(cwd, path.dirname(requested));
-    const destination = path.join(parent.physicalPath, path.basename(requested));
-    if (
-      isPathInside(runPaths.physicalRunsRoot, destination) ||
-      isPathInside(destination, runPaths.physicalRunRoot)
-    ) {
-      throw new Error("Derivative output must be outside the source run history.");
-    }
-    if (
-      await lstat(destination).then(
-        () => true,
-        (error: NodeJS.ErrnoException) => {
-          if (error.code === "ENOENT") return false;
-          throw error;
-        },
-      )
-    )
+    assertExportableSource(source);
+    const target = await resolveDestination(cwd, runPaths, runId, options);
+    if (target.exists)
       return failure(
         "HUMANISH_EXPORT_OUTPUT_EXISTS",
         "Destination already exists; choose a new workspace directory.",
       );
+    const { requested, parent, destination } = target;
 
     await assertPreparedSelectedOutputDirectory(parent);
     const stagePath = await mkdtemp(path.join(parent.physicalPath, ".humanish-export-"));
-    stage = await prepareSelectedOutputDirectory(parent.physicalPath, stagePath);
-    // Verify the SAME frozen bytes that will be transformed. Verifying the live
-    // source and then rereading run.json permits an ABA edit to contaminate a
-    // derivative whose receipt still names the first inventory's hashes.
-    // Raw verification bytes stay in private OS temporary storage, even when
-    // the caller selected a shared filesystem as the sanitized destination.
-    const snapshotPath = await mkdtemp(path.join(tmpdir(), "humanish-export-source-"));
-    rawSnapshot = await prepareSelectedOutputDirectory(tmpdir(), snapshotPath);
-    const snapshotPaths = await prepareRunArtifactPaths(rawSnapshot.physicalPath, runId);
-    for (const file of source.files)
-      await writeContainedOutputFile(snapshotPaths, file.path, file.bytes);
-    const verified = await verifyRunPrepared(rawSnapshot.physicalPath, runId, snapshotPaths);
-    if (
-      !verified.ok ||
-      (verified.shareSafety.status !== "share_ready" &&
-        !(
-          verified.shareSafety.status === "local_only" &&
-          verified.shareSafety.reasons.every((reason) => reason.code === "RAW_SCREENSHOTS")
-        ))
-    ) {
+    const stage = await prepareSelectedOutputDirectory(parent.physicalPath, stagePath);
+    workspace.stage = stage;
+    const frozen = await verifyFrozenSource(workspace, source, runId);
+    if ("shareSafety" in frozen) {
       return {
         ...failure(
           "HUMANISH_EXPORT_VERIFY_FAILED",
           "Source evidence failed verification; bundle export cannot repair invalid or blocked evidence.",
         ),
-        shareSafety: verified.shareSafety,
+        shareSafety: frozen.shareSafety,
       };
     }
-    const loaded = await loadRunBundlePrepared(rawSnapshot.physicalPath, snapshotPaths);
-    if (!loaded) throw new Error("Frozen source bundle could not be loaded.");
-    const bundle = loaded.bundle;
-    if (bundle.runId !== runId)
-      throw new Error("Source run identity does not match its directory.");
-    assertFinished(bundle);
-    assertFeedbackReferences(bundle, source);
-    await removeOwnedDirectory(rawSnapshot, true);
-    rawSnapshot = undefined;
-    const stagePaths = await prepareRunArtifactPaths(stage.physicalPath, runId);
-    const transformed = await writeDerivative(source, stagePaths, bundle);
-    const receipt = {
-      schema: DERIVATION_SCHEMA,
-      sourceRunId: runId,
-      sourceInventorySha256: source.digest,
-      createdAt: new Date().toISOString(),
-      transformation: "png-blur-at-export-v1",
-      note: "A redacted copy of the same study, not a new attempt. Original pixels are not present. Text and findings still require human review before sharing.",
-      files: transformed.entries,
-    };
-    const transformedBundle = await loadRunBundlePrepared(stage.physicalPath, stagePaths);
-    if (!transformedBundle) throw new Error("Derivative bundle could not be loaded.");
-    await writeContainedOutputFile(
-      stagePaths,
-      "observer/observer-data.json",
-      jsonBytes(buildObserverData(transformedBundle.bundle)),
-    );
-    const rendered = await renderObserver(stage.physicalPath, runId, { open: false });
-    if (!rendered.ok) throw new Error("Derivative Observer could not be rebuilt.");
-    const generated = [];
-    for (const relative of ["observer/index.html", "observer/observer-data.json"]) {
-      const bytes = await readContainedRegularFile(stagePaths, relative);
-      if (bytes === null)
-        throw new Error("Regenerated Observer artifact could not be read safely.");
-      generated.push({ path: relative, sha256: hash(bytes) });
-    }
-    await writeContainedOutputFile(
-      stagePaths,
-      "derivation.json",
-      jsonBytes({ ...receipt, generated }),
-    );
-    const derivativeVerify = await verifyRunPrepared(stage.physicalPath, runId, stagePaths);
-    if (!derivativeVerify.ok || derivativeVerify.shareSafety.status !== "share_ready") {
-      throw new Error("Transformed bundle did not independently verify as share_ready.");
-    }
-    const output = await inventory(stagePaths, maxBytes);
+    const derivative = await buildDerivative(stage, source, runId, frozen.bundle, maxBytes);
     await hooks.beforePublish?.();
     const sourceAfter = await inventory(runPaths, maxBytes);
     if (sourceAfter.digest !== source.digest)
       throw new Error("Source changed during export; no derivative was published.");
-    await assertPreparedSelectedOutputDirectory(parent);
-    await assertPreparedSelectedOutputDirectory(stage);
-    // Exclusive mkdir claims the new workspace. Only its complete, independently
-    // verified .humanish tree is published by rename; no empty existing workspace
-    // is overwritten by platform-dependent directory rename semantics.
-    await mkdir(destination, { mode: 0o700 });
-    claimed = await prepareSelectedOutputDirectory(parent.physicalPath, destination);
-    await assertPreparedSelectedOutputDirectory(parent);
-    await assertPreparedSelectedOutputDirectory(claimed);
-    await rename(
-      path.join(stage.physicalPath, ".humanish"),
-      path.join(claimed.physicalPath, ".humanish"),
-    );
-    published = true;
+    await publishDerivative(workspace, parent, stage, destination);
     return {
       schema: "humanish.export-result.v1",
       ok: true,
@@ -600,9 +497,9 @@ export async function exportRedactedBundle(
       runId,
       format: "bundle",
       path: path.relative(cwd, requested),
-      bytes: output.bytes,
-      embeddedImages: transformed.images,
-      shareSafety: derivativeVerify.shareSafety,
+      bytes: derivative.bytes,
+      embeddedImages: derivative.images,
+      shareSafety: derivative.shareSafety,
       watermarked: false,
       warnings: [
         "Screenshots were blurred during export. Review text and findings before sharing; keep the readable original for local adjudication.",
@@ -621,15 +518,199 @@ export async function exportRedactedBundle(
             : "Bundle export failed without publishing a derivative.",
     );
   } finally {
-    if (rawSnapshot) await removeOwnedDirectory(rawSnapshot);
-    if (stage) await removeOwnedDirectory(stage);
-    if (claimed && !published) {
-      try {
-        await assertPreparedSelectedOutputDirectory(claimed);
-        await rmdir(claimed.physicalPath);
-      } catch {
-        /* Never recursively delete an output another process populated. */
-      }
+    await releaseWorkspace(workspace);
+  }
+}
+
+/** Refuses a run that is still in progress or is itself a derivative. */
+function assertExportableSource(source: Inventory): void {
+  const processStatus = source.files.find((file) => file.path === "status.json");
+  if (
+    processStatus &&
+    (JSON.parse(processStatus.bytes.toString("utf8")) as { state?: unknown }).state !== "finished"
+  ) {
+    throw new Error(
+      "Source process status is unfinished; wait for the run to finish before exporting.",
+    );
+  }
+  if (source.files.some((file) => file.path === "derivation.json"))
+    throw new Error("This run is already a derivative; export the retained original instead.");
+}
+
+/** The derivative workspace path, which must sit outside the source run history. */
+async function resolveDestination(
+  cwd: string,
+  runPaths: PreparedRunArtifactPaths,
+  runId: string,
+  options: ExportOptions,
+): Promise<{
+  requested: string;
+  parent: PreparedSelectedOutputDirectory;
+  destination: string;
+  exists: boolean;
+}> {
+  const requested = path.resolve(
+    cwd,
+    options.out ?? path.join(".humanish", "exports", `${runId}-redacted`),
+  );
+  const prospective = await prospectivePhysicalPath(requested);
+  if (
+    isPathInside(runPaths.physicalRunsRoot, prospective) ||
+    isPathInside(prospective, runPaths.physicalRunRoot)
+  ) {
+    throw new Error("Derivative output must be outside the source run history.");
+  }
+  const parent =
+    options.out === undefined
+      ? await prepareManagedHumanishOutputDirectory(cwd, "exports")
+      : await prepareSelectedOutputDirectory(cwd, path.dirname(requested));
+  const destination = path.join(parent.physicalPath, path.basename(requested));
+  if (
+    isPathInside(runPaths.physicalRunsRoot, destination) ||
+    isPathInside(destination, runPaths.physicalRunRoot)
+  ) {
+    throw new Error("Derivative output must be outside the source run history.");
+  }
+  const exists = await lstat(destination).then(
+    () => true,
+    (error: NodeJS.ErrnoException) => {
+      if (error.code === "ENOENT") return false;
+      throw error;
+    },
+  );
+  return { requested, parent, destination, exists };
+}
+
+/**
+ * Verifies the frozen source bytes and loads its bundle, or returns the share safety that refused
+ * it. The raw snapshot is removed before the derivative is built.
+ */
+async function verifyFrozenSource(
+  workspace: BundleWorkspace,
+  source: Inventory,
+  runId: string,
+): Promise<{ bundle: RunBundle } | { shareSafety: VerifyResult["shareSafety"] }> {
+  // Verify the SAME frozen bytes that will be transformed. Verifying the live
+  // source and then rereading run.json permits an ABA edit to contaminate a
+  // derivative whose receipt still names the first inventory's hashes.
+  // Raw verification bytes stay in private OS temporary storage, even when
+  // the caller selected a shared filesystem as the sanitized destination.
+  const snapshotPath = await mkdtemp(path.join(tmpdir(), "humanish-export-source-"));
+  const rawSnapshot = await prepareSelectedOutputDirectory(tmpdir(), snapshotPath);
+  workspace.rawSnapshot = rawSnapshot;
+  const snapshotPaths = await prepareRunArtifactPaths(rawSnapshot.physicalPath, runId);
+  for (const file of source.files)
+    await writeContainedOutputFile(snapshotPaths, file.path, file.bytes);
+  const verified = await verifyRunPrepared(rawSnapshot.physicalPath, runId, snapshotPaths);
+  if (
+    !verified.ok ||
+    (verified.shareSafety.status !== "share_ready" &&
+      !(
+        verified.shareSafety.status === "local_only" &&
+        verified.shareSafety.reasons.every((reason) => reason.code === "RAW_SCREENSHOTS")
+      ))
+  ) {
+    return { shareSafety: verified.shareSafety };
+  }
+  const loaded = await loadRunBundlePrepared(rawSnapshot.physicalPath, snapshotPaths);
+  if (!loaded) throw new Error("Frozen source bundle could not be loaded.");
+  const bundle = loaded.bundle;
+  if (bundle.runId !== runId) throw new Error("Source run identity does not match its directory.");
+  assertFinished(bundle);
+  assertFeedbackReferences(bundle, source);
+  await removeOwnedDirectory(rawSnapshot, true);
+  workspace.rawSnapshot = undefined;
+  return { bundle };
+}
+
+/**
+ * Writes the blurred derivative into the stage with its receipt and regenerated Observer, and
+ * requires it to verify as share_ready on its own.
+ */
+async function buildDerivative(
+  stage: PreparedSelectedOutputDirectory,
+  source: Inventory,
+  runId: string,
+  bundle: RunBundle,
+  maxBytes: number,
+): Promise<{ images: number; bytes: number; shareSafety: VerifyResult["shareSafety"] }> {
+  const stagePaths = await prepareRunArtifactPaths(stage.physicalPath, runId);
+  const transformed = await writeDerivative(source, stagePaths, bundle);
+  const receipt = {
+    schema: DERIVATION_SCHEMA,
+    sourceRunId: runId,
+    sourceInventorySha256: source.digest,
+    createdAt: new Date().toISOString(),
+    transformation: "png-blur-at-export-v1",
+    note: "A redacted copy of the same study, not a new attempt. Original pixels are not present. Text and findings still require human review before sharing.",
+    files: transformed.entries,
+  };
+  const transformedBundle = await loadRunBundlePrepared(stage.physicalPath, stagePaths);
+  if (!transformedBundle) throw new Error("Derivative bundle could not be loaded.");
+  await writeContainedOutputFile(
+    stagePaths,
+    "observer/observer-data.json",
+    jsonBytes(buildObserverData(transformedBundle.bundle)),
+  );
+  const rendered = await renderObserver(stage.physicalPath, runId, { open: false });
+  if (!rendered.ok) throw new Error("Derivative Observer could not be rebuilt.");
+  const generated = [];
+  for (const relative of ["observer/index.html", "observer/observer-data.json"]) {
+    const bytes = await readContainedRegularFile(stagePaths, relative);
+    if (bytes === null) throw new Error("Regenerated Observer artifact could not be read safely.");
+    generated.push({ path: relative, sha256: hash(bytes) });
+  }
+  await writeContainedOutputFile(
+    stagePaths,
+    "derivation.json",
+    jsonBytes({ ...receipt, generated }),
+  );
+  const derivativeVerify = await verifyRunPrepared(stage.physicalPath, runId, stagePaths);
+  if (!derivativeVerify.ok || derivativeVerify.shareSafety.status !== "share_ready") {
+    throw new Error("Transformed bundle did not independently verify as share_ready.");
+  }
+  const output = await inventory(stagePaths, maxBytes);
+  return {
+    images: transformed.images,
+    bytes: output.bytes,
+    shareSafety: derivativeVerify.shareSafety,
+  };
+}
+
+/**
+ * Exclusive mkdir claims the new workspace. Only its complete, independently
+ * verified .humanish tree is published by rename; no empty existing workspace
+ * is overwritten by platform-dependent directory rename semantics.
+ */
+async function publishDerivative(
+  workspace: BundleWorkspace,
+  parent: PreparedSelectedOutputDirectory,
+  stage: PreparedSelectedOutputDirectory,
+  destination: string,
+): Promise<void> {
+  await assertPreparedSelectedOutputDirectory(parent);
+  await assertPreparedSelectedOutputDirectory(stage);
+  await mkdir(destination, { mode: 0o700 });
+  const claimed = await prepareSelectedOutputDirectory(parent.physicalPath, destination);
+  workspace.claimed = claimed;
+  await assertPreparedSelectedOutputDirectory(parent);
+  await assertPreparedSelectedOutputDirectory(claimed);
+  await rename(
+    path.join(stage.physicalPath, ".humanish"),
+    path.join(claimed.physicalPath, ".humanish"),
+  );
+  workspace.published = true;
+}
+
+async function releaseWorkspace(workspace: BundleWorkspace): Promise<void> {
+  if (workspace.rawSnapshot) await removeOwnedDirectory(workspace.rawSnapshot);
+  if (workspace.stage) await removeOwnedDirectory(workspace.stage);
+  if (workspace.claimed && !workspace.published) {
+    try {
+      await assertPreparedSelectedOutputDirectory(workspace.claimed);
+      await rmdir(workspace.claimed.physicalPath);
+    } catch {
+      /* Never recursively delete an output another process populated. */
     }
   }
 }
