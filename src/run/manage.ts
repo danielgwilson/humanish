@@ -18,16 +18,14 @@ import {
   type PreparedSelectedOutputDirectory,
   writeContainedOutputFile,
 } from "./selected-output-paths.js";
+import { PUBLIC_TARGET_CWD, type ReviewSummary, type RunBundle } from "./bundle.js";
 import {
   CLEANUP_SCHEMA,
   type CleanupAdapterResult,
   type CleanupResourceResult,
   type CleanupResult,
-  PUBLIC_TARGET_CWD,
-  type ReviewSummary,
-  type RunBundle,
   type RunPointer,
-} from "./bundle.js";
+} from "./results.js";
 import { isReviewSummary, isRunBundle } from "./guards.js";
 import { readLatest, readRunJsonIfExists, resolveRunPath } from "./locate.js";
 import { withCuaReviewProvenance } from "./outcomes.js";

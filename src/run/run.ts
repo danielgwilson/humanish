@@ -5,7 +5,8 @@
 
 import { buildObserverData } from "../observer/data.js";
 import { renderObserver, type ObserverResult } from "../observer/render.js";
-import { PUBLIC_TARGET_CWD, type RunBundle, type RunPointer } from "./bundle.js";
+import { PUBLIC_TARGET_CWD, type RunBundle } from "./bundle.js";
+import { type RunPointer } from "./results.js";
 import {
   createRunArtifactPaths,
   validatePreparedRunArtifactPaths,

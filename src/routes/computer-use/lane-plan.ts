@@ -21,7 +21,8 @@ import {
 } from "../../lab/persona.js";
 import type { ReasoningEffort } from "../../actors/reasoning-effort.js";
 import { digestText, redactText } from "../../evidence/redaction.js";
-import { type RunRerunLineage, type RunStream } from "../../run/bundle.js";
+import { type RunRerunLineage } from "../../run/bundle.js";
+import { type RunStream } from "../../run/streams.js";
 import { loadRunBundle } from "../../run/verify.js";
 import type { DwellWindow, StopWhen } from "../../actors/stop-conditions.js";
 import { renderTaskPrompt, type LabTask } from "../../lab/tasks.js";

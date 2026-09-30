@@ -38,13 +38,12 @@ import { renderObserver, type ObserverResult } from "../../observer/render.js";
 import type { ReasoningEffort } from "../../actors/reasoning-effort.js";
 import { type RunLabProvenance } from "../../run/status.js";
 import {
-  type RunDesktopGeometry,
   type RunRerunLineage,
   type RunScorerProvenance,
-  type RunStream,
   type RunSubjectProvenance,
   type RunSubjectStateStepRecord,
 } from "../../run/bundle.js";
+import { type RunDesktopGeometry, type RunStream } from "../../run/streams.js";
 import { type PreparedOutputDirectory } from "../../run/selected-output-paths.js";
 import { type LocalTreeArchive } from "../../run/source-archive.js";
 import type { DwellWindow, StopWhen } from "../../actors/stop-conditions.js";

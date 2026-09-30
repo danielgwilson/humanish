@@ -2,7 +2,7 @@
 // taken from the request.
 import { type DevicePreset } from "../../lab/device-presets.js";
 import { failureTail, redactText } from "../../evidence/redaction.js";
-import { type RunDesktopGeometry } from "../../run/bundle.js";
+import { type RunDesktopGeometry } from "../../run/streams.js";
 import {
   chromeCdpProbeCommand,
   parseChromeCdpProbeOutput,

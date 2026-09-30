@@ -3,7 +3,8 @@
 Date: 2026-06-02 (current-state note updated 2026-07-14)
 
 Status: `humanish.run-bundle.v1` is the shipped evidence contract. The
-TypeScript shape in `src/run/bundle.ts` and fail-closed verification in `src/run/verify.ts` are
+TypeScript shape in `src/run/bundle.ts` (with `streams[]` in `src/run/streams.ts` and
+`sharedWorld` in `src/run/shared-world-evidence.ts`) and fail-closed verification in `src/run/verify.ts` are
 authoritative; this document explains the stable public fields and extension
 rules rather than independently versioning the runtime.
 
@@ -340,7 +341,7 @@ The former is the app-defined simulated user bucket, such as `viewer`,
 
 Only older bundles carry `completion`. The OSS meta-lab wrote it, and that lab
 was removed. No current route writes the field. `RunStream` in
-`src/run/bundle.ts` still accepts it, so those bundles stay readable.
+`src/run/streams.ts` still accepts it, so those bundles stay readable.
 
 In those bundles, `completion` is compact and public-safe. It records
 actor/app/nested-Observer status, terminal tails that have already passed

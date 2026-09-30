@@ -139,22 +139,23 @@ import {
   PUBLIC_TARGET_CWD,
   REVIEW_SCHEMA,
   RUN_BUNDLE_SCHEMA,
-  SHARED_WORLD_SCHEMA,
   type ReviewSummary,
   type RunBundle,
   type RunEvent,
   type RunScorerProvenance,
   type RunSimulation,
-  type RunSimulationStatus,
-  type RunStream,
   type RunSubjectProvenance,
   type RunSubjectStateStepRecord,
+} from "../../run/bundle.js";
+import {
+  SHARED_WORLD_SCHEMA,
   type SharedWorldEvidence,
   type SharedWorldLaneWindow,
   type SharedWorldOutcome,
   type SharedWorldPlane,
   type SharedWorldStateSnapshot,
-} from "../../run/bundle.js";
+} from "../../run/shared-world-evidence.js";
+import { type RunSimulationStatus, type RunStream } from "../../run/streams.js";
 
 export const CONCURRENT_SHARED_WORLD_LAB_SCHEMA = "humanish.concurrent-shared-world-lab-result.v1";
 

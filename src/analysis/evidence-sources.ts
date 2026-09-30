@@ -1,7 +1,8 @@
 import { receivingAnalysisContext } from "../comms/receiving-evidence.js";
 import { cuaGoalSource } from "../actors/goal-source.js";
 import type { ActorTraceItem } from "../actors/contract.js";
-import type { RunBundle, RunStream } from "../run/bundle.js";
+import type { RunBundle } from "../run/bundle.js";
+import type { RunStream } from "../run/streams.js";
 import { isRecord } from "../run/primitives.js";
 import type { AnalysisParticipantInput } from "./study-analysis.js";
 import { isStudyEvidencePath } from "./study-files.js";

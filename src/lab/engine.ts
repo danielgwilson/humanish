@@ -31,7 +31,8 @@ import {
 import { type RunLabProvenance } from "../run/status.js";
 import type { ObserverResult } from "../observer/render.js";
 import { runDryRun } from "../run/dry-run.js";
-import { type RunResult, type RunScorerProvenance } from "../run/bundle.js";
+import { type RunScorerProvenance } from "../run/bundle.js";
+import { type RunResult } from "../run/results.js";
 import { automaticAnalysisRouteReason, taskProtocolValidationReason } from "./validation.js";
 import { backendOf, resolveLabDryRun, routeOf } from "./plan.js";
 

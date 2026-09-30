@@ -1,5 +1,5 @@
 import { redactText } from "../evidence/redaction.js";
-import type { RunParticipantAssignment } from "../run/bundle.js";
+import type { RunParticipantAssignment } from "../run/streams.js";
 
 /** Project only authored participant-facing fields. Never pass runtime-composed instructions:
  * they can contain inbox URLs or multiplayer grants. Pick fields explicitly so a task's hidden

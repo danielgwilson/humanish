@@ -9,7 +9,7 @@ import { resolveLabManifest } from "../../lab/discover.js";
 import type { LabResolveFailure } from "../../lab/discover.js";
 import { resolveLabDryRun, selectLabBackend } from "../../lab/engine.js";
 import type { RunLabProvenance } from "../../run/status.js";
-import type { RunResult } from "../../run/bundle.js";
+import type { RunResult } from "../../run/results.js";
 import {
   runConcurrentSharedWorldBackend,
   runCuaBackend,

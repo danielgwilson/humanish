@@ -24,7 +24,6 @@ import { renderObserver } from "../../src/observer/render.js";
 import { createProgram } from "../../src/cli/program.js";
 import { startCodexAppServerUi } from "../../src/actors/codex/app-server-ui.js";
 import {
-  CLEANUP_SCHEMA,
   PUBLIC_TARGET_CWD,
   RUN_BUNDLE_SCHEMA,
   buildRunSource,
@@ -33,6 +32,7 @@ import {
   type RunSubjectProvenance,
   type RunSubjectStateStepRecord,
 } from "../../src/run/bundle.js";
+import { CLEANUP_SCHEMA } from "../../src/run/results.js";
 import { cleanupRun, listRuns, readReview } from "../../src/run/manage.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { verifyRun } from "../../src/run/verify.js";

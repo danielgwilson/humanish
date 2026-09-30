@@ -12,7 +12,7 @@ import { startExposedObserver, validateExposure } from "../../observer/exposure.
 import { ServeTunnelError } from "../../observer/tunnel.js";
 import { redactText } from "../../evidence/redaction.js";
 import type { ServeTunnel } from "../../observer/tunnel.js";
-import type { RunResult } from "../../run/bundle.js";
+import type { RunResult } from "../../run/results.js";
 import {
   browserScorerHooks,
   cliAutomaticAnalysisHooks,

@@ -222,17 +222,15 @@ export type {
   ObserverStaticServeOptions,
   ObserverStaticServer,
 } from "./observer/static.js";
-export { CLEANUP_SCHEMA, REVIEW_SCHEMA, RUN_BUNDLE_SCHEMA } from "./run/bundle.js";
+export { REVIEW_SCHEMA, RUN_BUNDLE_SCHEMA } from "./run/bundle.js";
+export { CLEANUP_SCHEMA } from "./run/results.js";
 export { DOCTOR_SCHEMA, doctor } from "./cli/doctor.js";
 export { RUNS_SCHEMA, cleanupRun, listRuns, readReview } from "./run/manage.js";
 export { VERIFY_SCHEMA, verifyRun } from "./run/verify.js";
 export { extractLocalActorVerdict, normalizeLocalActorTranscript } from "./run/verify-actor.js";
 export { runDryRun } from "./run/dry-run.js";
-export { SHARED_WORLD_SCHEMA } from "./run/bundle.js";
+export { SHARED_WORLD_SCHEMA } from "./run/shared-world-evidence.js";
 export type {
-  CleanupAdapterResult,
-  CleanupResourceResult,
-  CleanupResult,
   ReviewSummary,
   RunAdapterArtifact,
   RunAdapterScore,
@@ -240,21 +238,22 @@ export type {
   RunBundle,
   RunCostLine,
   RunCostSummary,
-  RunDesktopGeometry,
   RunEvent,
   RunFeedbackCandidate,
-  RunMeaningfulUseComponentId,
-  RunMeaningfulUseScore,
-  RunOptions,
-  RunParticipantAssignment,
   RunProviderResource,
-  RunResult,
   RunScorerProvenance,
   RunSimulation,
-  RunStream,
-  RunStreamKind,
   RunSubjectProvenance,
   RunSubjectStateStepRecord,
+} from "./run/bundle.js";
+export type {
+  CleanupAdapterResult,
+  CleanupResourceResult,
+  CleanupResult,
+  RunOptions,
+  RunResult,
+} from "./run/results.js";
+export type {
   SharedWorldCheckpoint,
   SharedWorldEvidence,
   SharedWorldLaneWindow,
@@ -264,7 +263,15 @@ export type {
   SharedWorldStateSnapshot,
   SharedWorldTimelineEntry,
   SharedWorldTurn,
-} from "./run/bundle.js";
+} from "./run/shared-world-evidence.js";
+export type {
+  RunDesktopGeometry,
+  RunMeaningfulUseComponentId,
+  RunMeaningfulUseScore,
+  RunParticipantAssignment,
+  RunStream,
+  RunStreamKind,
+} from "./run/streams.js";
 export type { DoctorResult } from "./cli/doctor.js";
 export type { RunCleanupHooks, RunsResult } from "./run/manage.js";
 export type { VerifyResult } from "./run/verify.js";

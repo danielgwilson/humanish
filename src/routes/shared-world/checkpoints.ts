@@ -4,7 +4,7 @@ import type { Shell } from "../../substrates/shell.js";
 import { runDetachedStep, type DetachedTimers } from "../../substrates/detached.js";
 import { type LabConfig, type LabSubjectStateCheckpoint } from "../../lab/types.js";
 import { redactText } from "../../evidence/redaction.js";
-import { type SharedWorldCheckpoint } from "../../run/bundle.js";
+import { type SharedWorldCheckpoint } from "../../run/shared-world-evidence.js";
 
 // Per-checkpoint probe budget (read-only aggregate probes are fast).
 const CHECKPOINT_TIMEOUT_MS = 60_000;

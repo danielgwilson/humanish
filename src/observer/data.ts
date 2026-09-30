@@ -7,14 +7,8 @@ import {
   withCuaReviewProvenance,
 } from "../run/outcomes.js";
 import { cuaGoalSource, CUA_COMPLETION_NOTE } from "../actors/goal-source.js";
-import type {
-  RunBundle,
-  RunCostSummary,
-  RunEvent,
-  RunSimulation,
-  RunStream,
-  RunStreamKind,
-} from "../run/bundle.js";
+import type { RunBundle, RunCostSummary, RunEvent, RunSimulation } from "../run/bundle.js";
+import type { RunStream, RunStreamKind } from "../run/streams.js";
 
 export const OBSERVER_DATA_SCHEMA = "humanish.observer-data.v1";
 

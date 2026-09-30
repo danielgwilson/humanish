@@ -13,7 +13,7 @@ import { discoverProviderKeys } from "./key-resolution.js";
 import type { EnvFileLoadResult } from "./env-file.js";
 import { deriveStudyFacts, type TelemetryProperties } from "./telemetry.js";
 import { forTerminal } from "../routes/terminal/encoding.js";
-import type { RunResult } from "../run/bundle.js";
+import type { RunResult } from "../run/results.js";
 
 export const CLI_RESPONSE_SCHEMA = "humanish.cli-response.v1";
 
