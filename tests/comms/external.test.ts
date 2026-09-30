@@ -13,12 +13,12 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 // — so the HTTP contract (POST capture, GET /deliveries, the token guard, /health's service marker)
 // is proven against the actual implementation rather than a stub of it.
 import {
-  SANDBOX_CATCH_SCRIPT,
   collectExternalCommsThread,
   drainExternalCommsCatch,
   externalCatchHealthy,
   externalInboxUrl,
 } from "../../src/comms/sandbox-catch.js";
+import { SANDBOX_CATCH_SCRIPT } from "../../src/comms/sandbox-catch-script.js";
 import { FakeInbox } from "../../src/comms/fake-inbox.js";
 import { LAB_CONFIG_SCHEMA } from "../../src/lab/types.js";
 import { parseLabConfig } from "../../src/lab/config.js";

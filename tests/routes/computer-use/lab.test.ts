@@ -49,7 +49,8 @@ import type {
 } from "../../../src/substrates/e2b/desktop-launch.js";
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
-import { SANDBOX_CATCH_SCRIPT, externalCatchHealthy } from "../../../src/comms/sandbox-catch.js";
+import { externalCatchHealthy } from "../../../src/comms/sandbox-catch.js";
+import { SANDBOX_CATCH_SCRIPT } from "../../../src/comms/sandbox-catch-script.js";
 import { recipientInboxUrl } from "../../../src/comms/inbox.js";
 import { runLab, selectLabBackend } from "../../../src/lab/engine.js";
 import {

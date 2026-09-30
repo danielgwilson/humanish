@@ -149,7 +149,7 @@ export async function labSetupChecks(args: {
     }
   }
   if (backend === "scripted") {
-    const { resolveBrowserCommand } = await import("../actors/scripted-browser.js");
+    const { resolveBrowserCommand } = await import("../actors/scripted-browser/browser-command.js");
     checks.push({
       name: "scripted browser",
       ok: !!(await resolveBrowserCommand()),
