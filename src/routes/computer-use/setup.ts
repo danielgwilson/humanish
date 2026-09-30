@@ -375,7 +375,7 @@ async function startCuaRun(
   const deps = cuaLaneDeps(routePlan, input, planned, { runPaths, redactScreenshots, liveTrace });
 
   const subjectArgs = {
-    config,
+    routePlan,
     route: planned.route,
     ...(publicRepo === undefined ? {} : { publicRepo }),
     ...(planned.localTreeArchive === undefined
@@ -401,7 +401,7 @@ async function startCuaRun(
     descriptor,
     appUrl,
     createdAt,
-    config,
+    routePlan,
     runId,
     source,
     plan,

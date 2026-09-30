@@ -28,6 +28,7 @@ import type { CuaActorSessionOptions } from "../../actors/computer-use/actor.js"
 import { type E2BDesktopModule, type E2BDesktopSandbox } from "../../substrates/e2b/sdk.js";
 import { type DesktopResourceObservation } from "../../substrates/e2b/desktop-resources.js";
 import { type DetachedTimers } from "../../substrates/detached.js";
+import type { ComputerUsePlan } from "../../lab/plan-types.js";
 import { type LabCommsEmail, type LabConfig, type LabSubjectServe } from "../../lab/types.js";
 import { type LocalAgentId } from "../../actors/local-agent/cli.js";
 import { renderObserver, type ObserverResult } from "../../observer/render.js";
@@ -633,7 +634,7 @@ export interface CuaFanoutBundleArgs {
   appUrl: string;
   createdAt: string;
   dryRun: boolean;
-  config: LabConfig;
+  routePlan: ComputerUsePlan;
   runId: string;
   source: RunBundle["source"];
   plan: CuaLanePlan;

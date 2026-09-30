@@ -17,7 +17,7 @@ export interface FanoutLaneContext {
 }
 
 function fanoutLaneView(args: CuaFanoutBundleArgs, spec: DesktopParticipantRun, index: number) {
-  const { outcomes, config } = args;
+  const { outcomes, routePlan } = args;
   const outcome = outcomes?.[index];
   const laneAppUrl = spec.planned.targetUrl ?? args.appUrl;
   const publicLaneAppUrl = publicSafeAppUrlLabel(laneAppUrl);
@@ -61,7 +61,7 @@ function fanoutLaneView(args: CuaFanoutBundleArgs, spec: DesktopParticipantRun, 
   const screenshotMode: "raw" | "blurred" =
     traceScreenshotMode === "raw" || traceScreenshotMode === "blurred"
       ? traceScreenshotMode
-      : config.policies?.redactScreenshots === true
+      : routePlan.residual.policies?.redactScreenshots === true
         ? "blurred"
         : "raw";
   return {
@@ -86,13 +86,13 @@ function fanoutLaneSimulation(
   index: number,
   view: FanoutLaneView,
 ): RunSimulation {
-  const { config } = args;
+  const { routePlan } = args;
   const { outcome, publicLaneAppUrl, session, status, reason } = view;
   return {
     id: spec.simId,
     index: index + 1,
     personaId: spec.persona.id,
-    scenarioId: `cua-${config.id}`,
+    scenarioId: `cua-${routePlan.labId}`,
     status,
     streamKind: "browser",
     mode: "browser-sim",
@@ -118,7 +118,7 @@ function fanoutLaneStream(
   spec: DesktopParticipantRun,
   view: FanoutLaneView,
 ): RunStream {
-  const { config } = args;
+  const { routePlan } = args;
   const { outcome, publicLaneAppUrl, session, desktopGeometry, screenshots } = view;
   const { lastScreenshot, status, reason, screenshotMode } = view;
   return {
@@ -136,7 +136,7 @@ function fanoutLaneStream(
       ? {}
       : { caseGroup: spec.planned.labels.caseGroup }),
     kind: "browser",
-    label: `CUA lane ${spec.planned.id} — ${config.id}`,
+    label: `CUA lane ${spec.planned.id} — ${routePlan.labId}`,
     status,
     transport: "snapshot",
     updatedAt: args.createdAt,

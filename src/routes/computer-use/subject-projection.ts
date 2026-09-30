@@ -2,7 +2,9 @@
 // the lanes ran.
 
 import { commandDigestOf } from "../../subject/state.js";
-import type { LabConfig, LabSubjectState } from "../../lab/types.js";
+import type { ComputerUsePlan } from "../../lab/plan-types.js";
+import type { LabSubjectState } from "../../lab/types.js";
+import { cuaDeclaredState } from "./plan.js";
 import { type RunSubjectProvenance, type RunSubjectStateStepRecord } from "../../run/bundle.js";
 import { type LocalTreeArchive } from "../../run/source-archive.js";
 import { laneSubjectProjection } from "./lanes.js";
@@ -19,7 +21,7 @@ import {
  * state is projected as not yet run.
  */
 export function projectLaneSubjects(args: {
-  config: LabConfig;
+  routePlan: ComputerUsePlan;
   route: CuaRoute;
   publicRepo?: string;
   localTreeArchive?: LocalTreeArchive;
@@ -27,11 +29,12 @@ export function projectLaneSubjects(args: {
   outcomes: readonly LaneRunOutcome[] | undefined;
   dryRun: boolean;
 }): CuaSubjectProjection[] {
-  const { config, route, publicRepo, localTreeArchive } = args;
+  const { route, publicRepo, localTreeArchive } = args;
+  const declaredState = cuaDeclaredState(args.routePlan);
   return args.laneSpecs.map((_spec, index) => {
     const outcome = args.outcomes?.[index];
     const subjectState = resolveSubjectState({
-      declared: route.provisionedRoute ? config.subject.state : undefined,
+      declared: route.provisionedRoute ? declaredState : undefined,
       dryRun: args.dryRun,
       executed: outcome?.stateStepRecords ?? [],
     });

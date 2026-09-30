@@ -1,5 +1,5 @@
 import type { CuaActorDescriptor } from "../../actors/registry.js";
-import type { LabConfig } from "../../lab/types.js";
+import type { ComputerUsePlan } from "../../lab/plan-types.js";
 import type { RunBundle, RunRerunLineage } from "../../run/bundle.js";
 import type { RunLabProvenance } from "../../run/status.js";
 import { judgeOneParticipant, judgeParticipants, type Judgment } from "../../run/judge.js";
@@ -21,7 +21,7 @@ export interface CuaRunBundleBase {
   descriptor: CuaActorDescriptor;
   appUrl: string;
   createdAt: string;
-  config: LabConfig;
+  routePlan: ComputerUsePlan;
   runId: string;
   source: RunBundle["source"];
   plan: CuaLanePlan;
@@ -97,7 +97,7 @@ export function buildCuaRunBundle(
       appUrl: spec.planned.targetUrl ?? base.appUrl,
       createdAt: base.createdAt,
       dryRun: state.dryRun,
-      config: base.config,
+      routePlan: base.routePlan,
       runId: base.runId,
       source: base.source,
       redactScreenshots: base.redactScreenshots,
@@ -120,7 +120,7 @@ export function buildCuaRunBundle(
     appUrl: base.appUrl,
     createdAt: base.createdAt,
     dryRun: state.dryRun,
-    config: base.config,
+    routePlan: base.routePlan,
     runId: base.runId,
     source: base.source,
     plan: base.plan,

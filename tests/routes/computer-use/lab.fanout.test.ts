@@ -25,6 +25,8 @@ import {
 } from "../../../src/lab/device-presets.js";
 import { resolveCuaLanePlan } from "../../../src/routes/computer-use/lane-plan.js";
 import { runCuaActorLab } from "../../../src/routes/computer-use/lab.js";
+import { planComputerUseLab } from "../../../src/routes/computer-use/plan.js";
+import type { ComputerUsePlan } from "../../../src/lab/plan-types.js";
 import { declaredScreenForRender } from "../../../src/substrates/e2b/desktop-geometry.js";
 import { runCuaLanes } from "../../../src/routes/computer-use/lanes.js";
 import {
@@ -511,7 +513,7 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
       appUrl: "http://127.0.0.1:3000/",
       createdAt: "2026-01-01T00:00:00.000Z",
       dryRun: false,
-      config,
+      routePlan: routePlanOf(config),
       runId: "missing-outcomes-proof",
       source,
       plan,
@@ -525,6 +527,13 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
     expect(bundle.review.gaps).toEqual(["role-a: did not pass", "role-b: did not pass"]);
   });
 });
+
+/** The computer-use plan a fixture config makes; the bundle reads the lab's identity from it. */
+function routePlanOf(config: LabConfig): ComputerUsePlan {
+  const planned = planComputerUseLab(config, { dryRun: true });
+  if (!planned.ok) throw new Error(planned.refusal.message);
+  return planned.plan;
+}
 
 describe("cua fan-out bundle: desktop browser provenance", () => {
   function twoLaneInputs(resolved: [string, string]) {
@@ -577,7 +586,7 @@ describe("cua fan-out bundle: desktop browser provenance", () => {
       appUrl: "http://127.0.0.1:3000/",
       createdAt: "2026-01-01T00:00:00.000Z",
       dryRun: false,
-      config,
+      routePlan: routePlanOf(config),
       runId: "browser-provenance-proof",
       source: {
         packageName: "humanish",
