@@ -12,8 +12,8 @@ import {
   type CuaProvider,
   type CuaTurn,
   type CuaTurnRequest,
-  declaredOutcomeFromClosingLine,
 } from "../../../src/actors/computer-use/loop.js";
+import { declaredOutcomeFromClosingLine } from "../../../src/actors/computer-use/loop/ending.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
 import { participantFeedbackCandidates } from "../../../src/routes/computer-use/bundle.js";
 import { formatParticipantOutcomes, tallyParticipantOutcomes } from "../../../src/run/outcomes.js";
@@ -979,7 +979,7 @@ describe("runComputerUseLoop", () => {
     ).toBe(true);
   });
 
-  it("a raceSettle DEADLINE during execute() propagates (timed_out), never swallowed as a skipped action", async () => {
+  it("a raceSessionDeadline DEADLINE during execute() propagates (timed_out), never swallowed as a skipped action", async () => {
     let t = 0;
     const now = (): number => t;
     const provider: CuaProvider = {
@@ -1148,7 +1148,7 @@ describe("runComputerUseLoop", () => {
     });
 
     expect(result.completionReason).toBe("gave_up");
-    expect(result.reason).toContain("no change to the UI state");
+    expect(result.reason).toContain("repeated a recent action on an unchanged UI state");
   });
 
   it("gives up on an idle streak, citing the friction (not a turn count)", async () => {
@@ -1355,7 +1355,7 @@ describe("runComputerUseLoop", () => {
     });
 
     expect(result.completionReason).toBe("gave_up");
-    expect(result.reason).toContain("no change to the UI state");
+    expect(result.reason).toContain("repeated a recent action on an unchanged UI state");
     // A recovery hint was injected before the backstop tripped.
     expect(provider.seen.some((r) => (r.contextHint ?? "").includes("No visible progress"))).toBe(
       true,
@@ -1433,7 +1433,7 @@ describe("runComputerUseLoop", () => {
     expect(result.reason).toContain("no material progress");
   });
 
-  it("enforces the deadline on a hung provider call (raceSettle) as a zero-progress timed_out failure", async () => {
+  it("enforces the deadline on a hung provider call (raceSessionDeadline) as a zero-progress timed_out failure", async () => {
     const provider: CuaProvider = {
       id: "hang",
       version: "h",
@@ -1745,7 +1745,7 @@ describe("runComputerUseLoop with a state-driven (non-vision) executor (issue #1
     });
 
     expect(result.completionReason).toBe("gave_up");
-    expect(result.reason).toContain("no change");
+    expect(result.reason).toContain("unchanged UI state");
   });
 
   it("shuffled-key-order appState across turns is NOT progress (gives up)", async () => {

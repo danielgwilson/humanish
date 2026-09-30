@@ -1,7 +1,7 @@
 import type { ActorStopCause, ActorTraceItem, ParticipantDeclaredOutcome } from "../../contract.js";
 import type { AffordanceObservation } from "../../affordance.js";
 import { TaskTracker } from "../../../lab/tasks.js";
-import type { ClosingTrigger, Stop } from "./ending.js";
+import type { DebriefTrigger, Stop } from "./ending.js";
 import { TraceRecorder } from "./trace.js";
 import type { CuaExecutor, CuaLoopOptions, CuaProvider, CuaSafetyCheck } from "./types.js";
 import { UsageLedger } from "./usage.js";
@@ -9,21 +9,22 @@ import { UsageLedger } from "./usage.js";
 // The state one loop session shares across its phases: the options as read at entry, the session
 // clock, the trace being recorded, the usage ledger, and what the participant has done so far.
 
-// Waiting is a legitimate strategy, not idleness. A persona told to sign up and verify by email
-// polls its inbox — screenshot, wait, screenshot, wait — and at 6 steps that ended the session as
-// `gave_up`/`failed` in well under a minute, before the mail could plausibly arrive. The concurrent
-// shared-world route already overrode these to 80/40 for exactly this reason; the knowledge existed
-// in the codebase and never reached the default every other route uses.
+// Waiting is a legitimate strategy. A persona verifying a sign-up by email polls its inbox
+// (screenshot, wait, screenshot, wait), and a short idle limit ends that session as gave_up before
+// the mail can arrive.
 const DEFAULT_IDLE_STEPS = 24;
-// The no-progress signal is much stronger since #383 (a stale frame alone no longer counts — the
-// actor must also be repeating itself), so this needs less headroom than the raw idle count.
+// A no-progress turn also needs a repeated action (#383), so this needs less headroom than the
+// idle limit.
 const DEFAULT_NO_PROGRESS_STEPS = 20;
 const DEFAULT_TURN_TIMEOUT_MS = 180_000;
 const DEFAULT_OBSERVATION_TIMEOUT_MS = 60_000;
 
 export type ScreenshotRef = NonNullable<ActorTraceItem["screenshotRef"]>;
 
-/** Options passed through unchanged, as read once at entry. Callers destructure hooks to call them. */
+/**
+ * The options with no default, read once at entry and passed through. Defaulted options and
+ * wrapped callbacks are fields on LoopSession instead. Callers destructure hooks to call them.
+ */
 export type LoopSettings = {
   readonly [
     K in
@@ -44,7 +45,7 @@ export type LoopSettings = {
 };
 
 /** The participant's dispatched actions, as the backstop and failure notices describe them. */
-export interface Activity {
+export interface ActionHistory {
   lastActionTitle: string | undefined;
   lastMaterialActionTitle: string | undefined;
   readonly recentActionTitles: string[];
@@ -56,6 +57,10 @@ export interface Activity {
   interruptedActionOutcome: boolean;
 }
 
+/**
+ * One loop session's shared state: the options as read at entry, the clock and deadline, the trace
+ * recorder, the usage ledger, the participant's action history, and the stop being concluded.
+ */
 export class LoopSession {
   readonly settings: LoopSettings;
   readonly provider: CuaProvider;
@@ -79,7 +84,7 @@ export class LoopSession {
   readonly usage: UsageLedger;
   // The funnel is recorded, never consulted: task completion does not steer the loop.
   readonly taskTracker: TaskTracker | undefined;
-  readonly activity: Activity = {
+  readonly actionHistory: ActionHistory = {
     lastActionTitle: undefined,
     lastMaterialActionTitle: undefined,
     recentActionTitles: [],
@@ -90,13 +95,12 @@ export class LoopSession {
   phase = "initializing computer-use loop";
   lastScreenshotRef: ScreenshotRef | undefined;
   lastResponseId: string | undefined;
-  // Whether any observation this run surfaced structured appState (a non-vision/state executor).
-  // RUNTIME-ONLY signal: used solely to self-describe in redaction.notes that app state drove
-  // progress detection and was NOT written to the trace — the appState itself never persists.
+  // Whether any observation carried appState. trace.ts states it in redaction.notes; the appState
+  // itself is never persisted.
   observedAppState = false;
   declaredOutcome: ParticipantDeclaredOutcome | undefined;
-  /** Set by a structured stop; the closing request follows it even if the session then failed. */
-  closing: ClosingTrigger | undefined;
+  /** Set by a structured stop; the debrief follows it even if the session then failed. */
+  debriefTrigger: DebriefTrigger | undefined;
   private stopCause: ActorStopCause | undefined;
   private readonly scrubText: (text: string) => string;
 
@@ -185,12 +189,12 @@ export class LoopSession {
   }
 
   /**
-   * Commit a stop where it is decided: its closing trigger and stop cause first, then its trace
+   * Commit a stop where it is decided: its debrief trigger and stop cause first, then its trace
    * evidence. A failure while recording the evidence ends the session as an error that keeps
    * both. Returns the stop without evidence, so concluding it again records nothing.
    */
   conclude(stop: Stop): Stop {
-    this.closing = stop.closing ?? this.closing;
+    this.debriefTrigger = stop.debriefTrigger ?? this.debriefTrigger;
     this.stopCause = stop.stopCause ?? this.stopCause;
     if (stop.evidence !== undefined) this.trace.record(stop.evidence.kind, stop.evidence.body);
     return {

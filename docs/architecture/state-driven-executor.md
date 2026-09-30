@@ -92,7 +92,7 @@ action**, not a fatal error:
   count the action as a material action, and **continues**. The next `observe()`
   hands the model a fresh screenshot/state to adapt to.
 - **Every other error is re-thrown**, byte-identically preserving the existing
-  fatal handling: a `raceSettle` deadline still classifies as `timed_out` (or
+  fatal handling: a `raceSessionDeadline` deadline still classifies as `timed_out` (or
   `budget_reached` after material progress), a `CuaAbortError` as `harness_error`,
   and any genuine non-`CommandExitError` adapter fault as `actor_error`.
 - **No infinite loop.** A skipped action changes nothing on screen, so it is not

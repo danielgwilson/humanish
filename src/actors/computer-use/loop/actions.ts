@@ -1,7 +1,14 @@
 import { classifyCuaAction } from "../../affordance.js";
 import { commandFailureInfo, isCommandExitError } from "../../../substrates/command-failure.js";
 import { CuaExecutorError, isCuaExecutorError } from "../executor-error.js";
-import { CuaAbortError, CuaDeadlineError, CuaStallError, raceBounded, raceSettle } from "./race.js";
+import {
+  CuaAbortError,
+  CuaDeadlineError,
+  CuaStallError,
+  raceCallBound,
+  raceSessionDeadline,
+  requestScope,
+} from "./race.js";
 import type { LoopSession } from "./session.js";
 import { notice } from "./trace.js";
 import type { CuaAction, CuaTurnRequest } from "./types.js";
@@ -14,16 +21,20 @@ import type { CuaAction, CuaTurnRequest } from "./types.js";
 const ACTION_FINGERPRINT_BUCKET = 24;
 const RECENT_ACTION_TITLES = 8;
 
-/** The label suffix for a pointer action's held keys: key names, never typed text. */
-function holding(action: CuaAction): string {
-  return "heldKeys" in action && action.heldKeys?.length
-    ? ` holding ${action.heldKeys.join("+")}`
-    : "";
+/** The keys a pointer action holds down: key names, never typed text. */
+function heldKeysOf(action: CuaAction): readonly string[] {
+  return "heldKeys" in action && action.heldKeys !== undefined ? action.heldKeys : [];
+}
+
+/** The label suffix for a pointer action's held keys. */
+function heldKeysSuffix(action: CuaAction): string {
+  const keys = heldKeysOf(action);
+  return keys.length > 0 ? ` holding ${keys.join("+")}` : "";
 }
 
 /** A public-safe one-line action label. Never includes raw typed text. */
 export function describeCuaAction(action: CuaAction): string {
-  return describeAction(action) + holding(action);
+  return describeAction(action) + heldKeysSuffix(action);
 }
 
 function describeAction(action: CuaAction): string {
@@ -64,8 +75,8 @@ export function actionFingerprint(actions: readonly CuaAction[]): string {
   return actions
     .map((action) => {
       // A shift-click and a plain click on one control are different attempts.
-      const held =
-        "heldKeys" in action && action.heldKeys?.length ? `+${action.heldKeys.join("+")}` : "";
+      const keys = heldKeysOf(action);
+      const held = keys.length > 0 ? `+${keys.join("+")}` : "";
       switch (action.kind) {
         case "click":
         case "double_click":
@@ -117,8 +128,12 @@ function isMaterialAttempt(action: CuaAction, status: ExecutionStatus | undefine
 export interface ActionBatch {
   /** Host input acknowledgements for the provider's next request. */
   readonly execution: NonNullable<CuaTurnRequest["previousExecution"]>;
-  /** The action a pre-dispatch rejection stopped the batch at. */
-  readonly rejectedActionTitle: string | undefined;
+  /** Guidance for the next request, set when a pre-dispatch rejection stopped the batch. */
+  readonly hint: string | undefined;
+}
+
+function rejectedActionHint(title: string): string {
+  return `Your action (${title}) was rejected before dispatch. No input from that action or the rest of its batch was sent. Choose your next action from the fresh screenshot; do not assume the rejected action succeeded.`;
 }
 
 /**
@@ -131,19 +146,19 @@ export async function runActionBatch(
   actions: readonly CuaAction[],
 ): Promise<ActionBatch> {
   const execution: ActionBatch["execution"] = { actions: [] };
-  const { activity, trace } = session;
+  const { actionHistory, trace } = session;
   for (const [index, action] of actions.entries()) {
     if (session.signal?.aborted) throw new CuaAbortError();
     const title = describeCuaAction(action);
-    activity.lastActionTitle = title;
-    activity.recentActionTitles.push(title);
-    if (activity.recentActionTitles.length > RECENT_ACTION_TITLES)
-      activity.recentActionTitles.shift();
+    actionHistory.lastActionTitle = title;
+    actionHistory.recentActionTitles.push(title);
+    if (actionHistory.recentActionTitles.length > RECENT_ACTION_TITLES)
+      actionHistory.recentActionTitles.shift();
     trace.bump("actions");
     // Classify BEFORE execute, mirroring counts.actions: the record is of what the actor
     // CHOSE, so an action that then fails to actuate is still an honest record of the route
     // it reached for.
-    activity.affordances.push(classifyCuaAction(action));
+    actionHistory.affordances.push(classifyCuaAction(action));
     session.phase = `executing ${title}`;
     let status: ExecutionStatus;
     try {
@@ -175,7 +190,7 @@ export async function runActionBatch(
             ),
           ),
         );
-        return { execution, rejectedActionTitle: title };
+        return { execution, hint: rejectedActionHint(title) };
       }
       if (isCuaExecutorError(error) || !isCommandExitError(error)) throw error;
       // A skipped action changes nothing on screen, so a persistently-failing run makes no
@@ -197,7 +212,7 @@ export async function runActionBatch(
         : {}),
     }));
   }
-  return { execution, rejectedActionTitle: undefined };
+  return { execution, hint: undefined };
 }
 
 function countAttempt(
@@ -207,14 +222,14 @@ function countAttempt(
   status: ExecutionStatus | undefined,
 ): void {
   if (!isMaterialAttempt(action, status)) return;
-  session.activity.lastMaterialActionTitle = title;
+  session.actionHistory.lastMaterialActionTitle = title;
   session.trace.counts.materialActions += 1;
 }
 
 /**
- * Execute one action. Observation actions only look (#480): a `wait` that hangs inside the SDK
- * has, by definition, waited, so a stalled one is skipped with a notice and loses nothing the
- * participant chose. A failed action is recorded as completed only after execute() resolves (#248).
+ * Execute one action. Idle actions only look (#480): a `wait` that hangs inside the SDK has in
+ * effect waited, so a stalled one is skipped with a notice and loses nothing the participant
+ * chose. An action is recorded as completed only after execute() resolves (#248).
  */
 async function dispatchAction(
   session: LoopSession,
@@ -225,9 +240,9 @@ async function dispatchAction(
     await executeAction(session, action, title);
     return "completed";
   }
-  const idleBound = session.observationTimeoutMs + (action.kind === "wait" ? (action.ms ?? 0) : 0);
+  const boundMs = session.observationTimeoutMs + (action.kind === "wait" ? (action.ms ?? 0) : 0);
   try {
-    await executeAction(session, action, title, idleBound);
+    await executeAction(session, action, title, boundMs);
     return "completed";
   } catch (error) {
     if (!(error instanceof CuaStallError)) throw error;
@@ -246,17 +261,14 @@ async function executeAction(
   session: LoopSession,
   action: CuaAction,
   title: string,
-  idleBound?: number,
+  boundMs?: number,
 ): Promise<void> {
   const { signal } = session;
-  const actionController = new AbortController();
-  const onAbort = (): void => actionController.abort();
-  if (signal?.aborted) actionController.abort();
-  else signal?.addEventListener("abort", onAbort, { once: true });
+  const scope = requestScope(signal);
   try {
-    const pending = session.executor.execute(action, actionController.signal);
-    if (idleBound === undefined) await raceSettle(pending, session.remaining(), signal);
-    else await raceBounded(`idle action ${title}`, pending, session.remaining(), idleBound, signal);
+    const pending = session.executor.execute(action, scope.signal);
+    if (boundMs === undefined) await raceSessionDeadline(pending, session.remaining(), signal);
+    else await raceCallBound(`idle action ${title}`, pending, session.remaining(), boundMs, signal);
   } catch (error) {
     if (error instanceof CuaStallError && session.executor.stallRecovery === "fail_closed") {
       throw new CuaExecutorError("deadline_exceeded", "outcome_uncertain");
@@ -264,7 +276,7 @@ async function executeAction(
     if (error instanceof CuaDeadlineError || error instanceof CuaAbortError) {
       // The loop's deadline/abort may win before the executor can report whether its
       // write reached the desktop. Cancellation alone does not establish rollback.
-      session.activity.interruptedActionOutcome = true;
+      session.actionHistory.interruptedActionOutcome = true;
       session.trace.record("notice", () =>
         notice(
           "warn",
@@ -277,10 +289,9 @@ async function executeAction(
     }
     throw error;
   } finally {
-    signal?.removeEventListener("abort", onAbort);
     // A deadline also closes async executor preparation, so a late pointer read
     // cannot actuate after the loop stopped waiting for this action.
-    actionController.abort();
+    scope.end();
   }
 }
 
