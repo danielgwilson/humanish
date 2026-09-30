@@ -32,8 +32,6 @@ import {
   restrictedCodexConfig,
   restrictedCodexFailure,
   restrictedCodexRequestError,
-  restrictedCodexUsage,
-  toolPolicyViolation,
   type RestrictedCodexAnalysisErrorCode,
   type RestrictedCodexRequest,
   type RestrictedCodexResult,
@@ -47,6 +45,7 @@ import {
   ownCodexProcess,
   type RestrictedCodexSpawn,
 } from "./restricted-transport.js";
+import { RestrictedCodexTurn } from "./restricted-turn.js";
 
 /** Internal host dependencies. None of these options is accepted from a study artifact. */
 export interface RestrictedCodexSessionOptions {
@@ -270,17 +269,6 @@ async function checkVersion(
   }
 }
 
-const rawCompactionTypes = ["compaction", "compaction_summary", "context_compaction"];
-const analystRawItemTypes = ["message", "reasoning", ...rawCompactionTypes];
-const participantRawItemTypes = [
-  ...analystRawItemTypes,
-  "custom_tool_call",
-  "custom_tool_call_output",
-  "function_call",
-  "function_call_output",
-];
-
-type Event = { method: string; params: Record<string, unknown> };
 const unclosedChildren = new Set<Promise<void>>();
 function retainUnclosedChild(closed: Promise<void>): void {
   unclosedChildren.add(closed);
@@ -342,55 +330,6 @@ async function preserveUnexpectedAuth(work: string, sourceEnv: NodeJS.ProcessEnv
   await writeRecoveryMarker(work, sourceEnv, "unexpected_auth_replacement");
 }
 
-function hasScopedIdentity(
-  method: string,
-  params: Record<string, unknown>,
-  threadId: string | undefined,
-  turnId: string | undefined,
-): boolean {
-  if (method === "turn/started" || method === "turn/completed") {
-    const id = codexRecord(params.turn).id;
-    return (
-      params.threadId === threadId &&
-      typeof id === "string" &&
-      id.length > 0 &&
-      id.length <= 200 &&
-      (turnId === undefined || id === turnId)
-    );
-  }
-  if (
-    method.startsWith("item/") ||
-    method.startsWith("rawResponse") ||
-    method === "thread/tokenUsage/updated"
-  )
-    return (
-      params.threadId === threadId &&
-      typeof params.turnId === "string" &&
-      params.turnId.length > 0 &&
-      (turnId === undefined || params.turnId === turnId)
-    );
-  return (
-    (params.threadId === undefined || params.threadId === threadId) &&
-    (params.turnId === undefined || params.turnId === turnId)
-  );
-}
-
-function usageDelta(
-  total: RestrictedCodexUsage,
-  baseline: RestrictedCodexUsage,
-): RestrictedCodexUsage | null {
-  const delta = {
-    input: total.input - baseline.input,
-    output: total.output - baseline.output,
-    cachedInput: (total.cachedInput ?? 0) - (baseline.cachedInput ?? 0),
-    cacheWriteInput: (total.cacheWriteInput ?? 0) - (baseline.cacheWriteInput ?? 0),
-  };
-  return Object.values(delta).every((value) => Number.isSafeInteger(value) && value >= 0) &&
-    delta.cachedInput + delta.cacheWriteInput <= delta.input
-    ? delta
-    : null;
-}
-
 /**
  * Writes each evidence image into the private scratch directory (mode 0600) and returns the turn
  * input items that label and name it. Request validation has already matched CODEX_IMAGE.
@@ -436,6 +375,69 @@ async function hostAuthFile(
   } catch {
     throw new RestrictedCodexStop("codex_login_required");
   }
+}
+
+/** The transport's frame limit: the output or request cap, or this request's payload plus 1 MiB. */
+function requestFrameLimit(request: RestrictedCodexRequest, participant: boolean): number {
+  return Math.max(
+    participant ? CODEX_MAX_REQUEST_BYTES : CODEX_MAX_OUTPUT_BYTES,
+    Buffer.byteLength(
+      JSON.stringify({
+        instructions: request.instructions,
+        evidence: request.evidence,
+        images: request.images,
+        schema: request.schema,
+      }),
+    ) +
+      1024 * 1024,
+  );
+}
+const readinessResult = (): RestrictedCodexResult => ({
+  status: "completed",
+  output: null,
+  usage: null,
+  usageComplete: false,
+  dispatched: false,
+  errorCode: null,
+});
+/**
+ * Receipt of a failed request: a stop's code, else the deadline's, else codex_process_failed. A
+ * cleanup failure keeps its own code. Dispatch and usage are what the turn recorded.
+ */
+function failedRequest(
+  error: unknown,
+  deadline: RestrictedCodexDeadline,
+  turn: RestrictedCodexTurn,
+  phase: CuaProviderFailurePhase,
+): RestrictedCodexResult {
+  const code = error instanceof RestrictedCodexStop ? error.code : "codex_process_failed";
+  return {
+    ...restrictedCodexFailure(
+      code === "codex_cleanup_failed" ? code : (deadline.code ?? code),
+      turn.dispatched,
+      turn.usage,
+    ),
+    failurePhase: phase,
+  };
+}
+/** Receipt: a failure names its phase, and a participant's known usage lists each inference. */
+function withReceiptDetails(
+  result: RestrictedCodexResult,
+  phase: CuaProviderFailurePhase,
+  turn: RestrictedCodexTurn,
+  participant: boolean,
+): RestrictedCodexResult {
+  let receipt = result;
+  if (receipt.errorCode !== null && receipt.failurePhase === undefined)
+    receipt = { ...receipt, failurePhase: phase };
+  if (
+    participant &&
+    turn.usage !== null &&
+    turn.inferenceUsage !== null &&
+    turn.inferenceUsage.length > 0
+  )
+    receipt = { ...receipt, inferenceUsage: turn.inferenceUsage.map((item) => ({ ...item })) };
+  return receipt;
 }
 
 /** One private process and conversation per owner. Only completed turns may continue. */
@@ -674,237 +676,63 @@ export function createRestrictedCodexSession(
     return launched;
   }
 
+  /** Turn dispatch: sends turn/start with the evidence and images, then acknowledges its reply. */
+  async function startTurn(
+    active: RestrictedCodexTransport,
+    request: RestrictedCodexRequest,
+    turn: RestrictedCodexTurn,
+    deadline: RestrictedCodexDeadline,
+    model: string,
+  ): Promise<void> {
+    const input: Record<string, unknown>[] = [
+      { type: "text", text: request.evidence, text_elements: [] },
+      ...(await writeEvidenceImages(scratch, request.images, deadline)),
+    ];
+    deadline.check();
+    // Even a lost acknowledgment may have dispatched the request. Never claim zero cost.
+    turn.dispatched = true;
+    const reply = await active.rpc("turn/start", {
+      threadId,
+      cwd,
+      approvalPolicy: "never",
+      sandboxPolicy: { type: "readOnly" },
+      environments: [],
+      runtimeWorkspaceRoots: [],
+      effort: reasoningEffort,
+      model,
+      outputSchema: request.schema,
+      input,
+    });
+    turn.acknowledge(codexRecord(reply.turn).id);
+  }
+
   async function execute(
     request: RestrictedCodexRequest,
     readinessOnly: boolean,
   ): Promise<RestrictedCodexResult> {
     const deadline = new RestrictedCodexDeadline(request.timeoutMs, request.signal);
     activeDeadline = deadline;
-    let turnId: string | undefined, earlyTurnId: string | undefined;
-    let dispatched = false,
-      usage: RestrictedCodexUsage | null = null;
-    let completed = false,
-      compacted = false;
-    let toolRequestPending = false;
-    let latestUsage: RestrictedCodexUsage | null = null;
-    let inferenceUsage: RestrictedCodexUsage[] | null = participant ? [] : null;
-    const requestUsageBaseline = previousUsage;
-    let generatedDeltaBytes = 0;
-    let selectedModel = identity?.model;
-    const allowedRawItemTypes = participant ? participantRawItemTypes : analystRawItemTypes;
-    let outputItem: { id: string; text: string } | undefined;
+    const turn = new RestrictedCodexTurn({
+      deadline,
+      threadId: () => threadId,
+      tool: participant?.tool,
+      usageBaseline: previousUsage,
+      toolCallIds,
+      reportUsage: (usage, inference) => {
+        pendingUsage = usage;
+        pendingInferenceUsage = inference;
+      },
+      turnStarted: (turnId) => {
+        interrupt = { threadId: threadId!, turnId };
+      },
+    });
     let result: RestrictedCodexResult = restrictedCodexFailure("codex_process_failed");
     let phase: CuaProviderFailurePhase = "startup";
-    const early: Event[] = [];
-    let resolveTurn!: (value: RestrictedCodexResult) => void;
-    const finished = new Promise<RestrictedCodexResult>((resolve) => {
-      resolveTurn = resolve;
-    });
-    let resolveTurnReady!: (value: string) => void;
-    const turnReady = new Promise<string>((resolve) => {
-      resolveTurnReady = resolve;
-    });
-
-    const handleTurnEvent = (method: string, params: Record<string, unknown>): void => {
-      if (!hasScopedIdentity(method, params, threadId, turnId)) {
-        deadline.stop("codex_protocol_error");
-        return;
-      }
-      const item = codexRecord(params.item);
-      // CLI 0.154.0 thread totals omitted compaction requests; later releases were not re-measured.
-      // Retain known usage, but never label it complete when native compaction occurred.
-      if (
-        method === "thread/compacted" ||
-        item.type === "contextCompaction" ||
-        rawCompactionTypes.includes(String(item.type))
-      )
-        compacted = true;
-      // onNotification already applied toolPolicyViolation to this event.
-      if (
-        method === "rawResponseItem/completed" &&
-        item.type === "message" &&
-        Array.isArray(item.content) &&
-        item.content.some((content) => codexRecord(content).type === "refusal")
-      )
-        deadline.stop("refusal");
-      if (method === "thread/tokenUsage/updated") {
-        const total = restrictedCodexUsage(params.tokenUsage);
-        // App-server reports cumulative thread usage. Receipts must charge only this turn.
-        usage = total && requestUsageBaseline ? usageDelta(total, requestUsageBaseline) : null;
-        if (inferenceUsage !== null) {
-          const inferenceDelta =
-            total && (latestUsage ?? requestUsageBaseline)
-              ? usageDelta(total, (latestUsage ?? requestUsageBaseline)!)
-              : null;
-          if (!inferenceDelta) inferenceUsage = null;
-          else if (Object.values(inferenceDelta).some((value) => value > 0))
-            inferenceUsage.push(inferenceDelta);
-        }
-        pendingUsage = usage ?? undefined;
-        pendingInferenceUsage = inferenceUsage?.length
-          ? inferenceUsage.map((item) => ({ ...item }))
-          : undefined;
-        latestUsage = total;
-      }
-      if (method === "item/started" || method === "item/completed") {
-        const allowedItems = participant
-          ? ["userMessage", "agentMessage", "reasoning", "contextCompaction", "dynamicToolCall"]
-          : ["userMessage", "agentMessage", "reasoning", "contextCompaction"];
-        if (!allowedItems.includes(String(item.type))) {
-          deadline.stop("codex_tool_call");
-          return;
-        }
-        if (
-          item.type === "dynamicToolCall" &&
-          (item.tool !== participant?.tool.name ||
-            item.namespace !== null ||
-            (method === "item/started" && item.status !== "inProgress") ||
-            (method === "item/completed" && (item.status !== "completed" || item.success !== true)))
-        ) {
-          deadline.stop("codex_tool_call");
-          return;
-        }
-        if (item.type === "agentMessage") {
-          if (method === "item/completed" && item.phase !== "commentary") {
-            if (
-              typeof item.id !== "string" ||
-              typeof item.text !== "string" ||
-              Buffer.byteLength(item.text) > CODEX_MAX_OUTPUT_BYTES ||
-              (item.phase !== null && item.phase !== "final_answer") ||
-              (item.delivery !== null && item.delivery !== undefined) ||
-              (outputItem && (outputItem.id !== item.id || outputItem.text !== item.text))
-            ) {
-              deadline.stop("invalid_response");
-              return;
-            }
-            outputItem = { id: item.id, text: item.text };
-          }
-        }
-      }
-      if (method === "turn/completed") {
-        const turn = codexRecord(params.turn);
-        if (turn.id !== turnId || completed || toolRequestPending) {
-          deadline.stop("codex_protocol_error");
-          return;
-        }
-        completed = true;
-        if (turn.status === "interrupted") {
-          deadline.stop("cancelled");
-          return;
-        }
-        if (turn.status !== "completed" || turn.error !== null || !outputItem) {
-          deadline.stop("invalid_response");
-          return;
-        }
-        try {
-          pendingUsage = undefined;
-          pendingInferenceUsage = undefined;
-          resolveTurn({
-            status: "completed",
-            output: JSON.parse(outputItem.text) as unknown,
-            usage,
-            usageComplete: usage !== null && !compacted,
-            dispatched: true,
-            errorCode: null,
-          });
-        } catch {
-          deadline.stop("invalid_response");
-        }
-      }
-    };
-
-    const onNotification: RestrictedCodexTransport["onNotification"] = (method, params) => {
-      if (!dispatched) return;
-      if (!hasScopedIdentity(method, params, threadId, turnId ?? earlyTurnId)) {
-        deadline.stop("codex_protocol_error");
-        return;
-      }
-      if (method === "item/agentMessage/delta") {
-        if (typeof params.delta !== "string") {
-          deadline.stop("codex_protocol_error");
-          return;
-        }
-        generatedDeltaBytes += Buffer.byteLength(params.delta);
-        if (generatedDeltaBytes > CODEX_MAX_OUTPUT_BYTES) {
-          deadline.stop("response_too_large");
-          return;
-        }
-      }
-      // The single tool-policy check. Tool requests must fail even if the turn-start
-      // acknowledgment is lost, and every event reaches handleTurnEvent only from here, directly
-      // or through the early buffer, so no event skips it.
-      if (toolPolicyViolation(method, codexRecord(params.item), allowedRawItemTypes)) {
-        deadline.stop("codex_tool_call");
-        return;
-      }
-      if (method === "turn/started") {
-        const value = codexRecord(params.turn).id;
-        if (
-          typeof value !== "string" ||
-          value.length === 0 ||
-          (earlyTurnId !== undefined && value !== earlyTurnId)
-        )
-          deadline.stop("codex_protocol_error");
-        else {
-          earlyTurnId = value;
-          interrupt = { threadId: threadId!, turnId: value };
-        }
-      }
-      if (turnId === undefined) early.push({ method, params });
-      else handleTurnEvent(method, params);
-    };
-
-    const onRequest: RestrictedCodexTransport["onRequest"] = async (method, params) => {
-      const callId = params.callId;
-      if (
-        !participant ||
-        method !== "item/tool/call" ||
-        params.threadId !== threadId ||
-        typeof params.turnId !== "string" ||
-        params.turnId.length === 0 ||
-        params.turnId.length > 200 ||
-        params.namespace !== null ||
-        params.tool !== participant.tool.name ||
-        typeof callId !== "string" ||
-        callId.length === 0 ||
-        callId.length > 200 ||
-        toolCallIds.has(callId) ||
-        toolRequestPending
-      )
-        throw new RestrictedCodexStop("codex_tool_call");
-      // Mark the request outstanding before waiting for a same-chunk turn/start
-      // acknowledgment, so an early completion can never be accepted.
-      toolRequestPending = true;
-      const activeTurnId = turnId ?? earlyTurnId ?? (await deadline.wait(turnReady));
-      if (params.turnId !== activeTurnId) throw new RestrictedCodexStop("codex_tool_call");
-      toolCallIds.add(callId);
-      deadline.pause();
-      const text = await deadline.wait(participant.tool.call(params.arguments));
-      if (typeof text !== "string" || Buffer.byteLength(text) > CODEX_MAX_REQUEST_BYTES)
-        throw new RestrictedCodexStop("invalid_response");
-      try {
-        JSON.parse(text);
-      } catch {
-        throw new RestrictedCodexStop("invalid_response");
-      }
-      return { success: true, contentItems: [{ type: "inputText", text }] };
-    };
-
     try {
       pendingUsage = undefined;
       deadline.check();
-      const frameLimit = Math.max(
-        participant ? CODEX_MAX_REQUEST_BYTES : CODEX_MAX_OUTPUT_BYTES,
-        Buffer.byteLength(
-          JSON.stringify({
-            instructions: request.instructions,
-            evidence: request.evidence,
-            images: request.images,
-            schema: request.schema,
-          }),
-        ) +
-          1024 * 1024,
-      );
+      const frameLimit = requestFrameLimit(request, participant !== undefined);
+      let selectedModel = identity?.model;
       if (!transport) {
         transport = await launchAdmittedAppServer(request, deadline, frameLimit, (next) => {
           phase = next;
@@ -913,70 +741,21 @@ export function createRestrictedCodexSession(
       } else transport.beginRequest(deadline, frameLimit);
       // onNotification ignores events before dispatch and onRequestComplete follows only a host
       // callback, so wiring both after the first launch's handshake loses nothing.
-      transport.onNotification = onNotification;
-      transport.onRequestComplete = () => {
-        toolRequestPending = false;
-      };
-      if (readinessOnly) {
-        result = {
-          status: "completed",
-          output: null,
-          usage: null,
-          usageComplete: false,
-          dispatched: false,
-          errorCode: null,
-        };
-      } else {
+      transport.onNotification = turn.onNotification;
+      transport.onRequestComplete = turn.onRequestComplete;
+      if (readinessOnly) result = readinessResult();
+      else {
         phase = "turn/start";
-        if (participant) transport.onRequest = onRequest;
-        const input: Record<string, unknown>[] = [
-          { type: "text", text: request.evidence, text_elements: [] },
-          ...(await writeEvidenceImages(scratch, request.images, deadline)),
-        ];
-        deadline.check();
-        // Even a lost acknowledgment may have dispatched the request. Never claim zero cost.
-        dispatched = true;
-        const turn = await transport.rpc("turn/start", {
-          threadId,
-          cwd,
-          approvalPolicy: "never",
-          sandboxPolicy: { type: "readOnly" },
-          environments: [],
-          runtimeWorkspaceRoots: [],
-          effort: reasoningEffort,
-          model: selectedModel!,
-          outputSchema: request.schema,
-          input,
-        });
-        const returnedTurnId = codexRecord(turn.turn).id;
-        if (
-          typeof returnedTurnId !== "string" ||
-          returnedTurnId.length === 0 ||
-          returnedTurnId.length > 200 ||
-          (earlyTurnId !== undefined && earlyTurnId !== returnedTurnId)
-        )
-          throw new RestrictedCodexStop("codex_protocol_error");
-        turnId = returnedTurnId;
-        resolveTurnReady(turnId);
-        interrupt = { threadId: threadId!, turnId };
-        for (const event of early) handleTurnEvent(event.method, event.params);
-        early.length = 0;
+        if (participant) transport.onRequest = turn.onRequest;
+        await startTurn(transport, request, turn, deadline, selectedModel!);
         phase = "response";
-        result = await deadline.wait(finished);
+        result = await deadline.wait(turn.finished);
         deadline.check();
-        previousUsage = latestUsage;
+        previousUsage = turn.latestUsage;
         interrupt = undefined;
       }
     } catch (error) {
-      const code = error instanceof RestrictedCodexStop ? error.code : "codex_process_failed";
-      result = {
-        ...restrictedCodexFailure(
-          code === "codex_cleanup_failed" ? code : (deadline.code ?? code),
-          dispatched,
-          usage,
-        ),
-        failurePhase: phase,
-      };
+      result = failedRequest(error, deadline, turn, phase);
     } finally {
       pendingUsage = undefined;
       pendingInferenceUsage = undefined;
@@ -989,16 +768,12 @@ export function createRestrictedCodexSession(
         if (result.errorCode === "codex_cleanup_failed") cleanupTrusted = false;
         if (!(await dispose()))
           result = {
-            ...restrictedCodexFailure("codex_cleanup_failed", dispatched, usage),
+            ...restrictedCodexFailure("codex_cleanup_failed", turn.dispatched, turn.usage),
             failurePhase: "cleanup",
           };
       }
     }
-    if (result.errorCode !== null && result.failurePhase === undefined)
-      result = { ...result, failurePhase: phase };
-    if (participant && usage !== null && inferenceUsage !== null && inferenceUsage.length > 0)
-      result = { ...result, inferenceUsage: inferenceUsage.map((item) => ({ ...item })) };
-    return result;
+    return withReceiptDetails(result, phase, turn, participant !== undefined);
   }
 
   return {
