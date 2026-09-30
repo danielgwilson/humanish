@@ -1,5 +1,5 @@
 import { markFinalizedStudyResult } from "../../analysis/automatic-completion.js";
-import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { TERMINAL_NODE_BOOTSTRAP_COMMAND } from "./node-bootstrap.js";
 import { parseTerminalTokenUsage } from "./token-usage.js";
 import {
@@ -13,7 +13,7 @@ import { readFile, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 import { resolveCommittedPersona as resolveTerminalPersona } from "../../lab/persona-resolve.js";
 import type { ActorCompletionReason, ActorPersonaRef, ActorStatus } from "../../actors/contract.js";
-import { beginRunStatus, type RunStatusHandle, runStatusOutcome } from "../../run/status.js";
+import { beginRunStatus, type RunStatusHandle } from "../../run/status.js";
 import { actorRegistry } from "../../actors/registry.js";
 import { toErrorMessage } from "../../substrates/command-failure.js";
 import { buildOpenAiEgressNetwork } from "./runtime-auth.js";
@@ -31,39 +31,29 @@ import {
 } from "../../lab/persona.js";
 import { digestText, redactText, scrubLiterals } from "../../evidence/redaction.js";
 import { prepareRunArtifactPaths, validatePreparedRunArtifactPaths } from "../../run/paths.js";
-import {
-  prepareSelectedOutputDirectory,
-  writeContainedOutputFile,
-  writePreparedRunLatestPointer,
-} from "../../run/selected-output-paths.js";
+import { prepareSelectedOutputDirectory } from "../../run/selected-output-paths.js";
 import { buildRunSource } from "../../run/bundle.js";
 import { extractLocalActorVerdict, normalizeLocalActorTranscript } from "../../run/verify-actor.js";
 import { appendSandboxReceipt } from "../../run/sandbox-receipts.js";
 import { applyAdapterExtensionSeam } from "./adapter.js";
-import { buildLiveTerminalProductBundle, renderTerminalReviewMarkdown } from "./bundle.js";
+import { buildLiveTerminalProductBundle } from "./bundle.js";
 import { buildRuntimeAuth, buildSandboxMetadata } from "./credentials.js";
 import { buildCostLedger, buildNoSpendProof, evaluateCapsAgainstLedger } from "./ledger.js";
 import { runWithWallClock, teardownSandbox } from "./sandbox.js";
 import { buildTerminalActorTrace, scrubSplitKnownValues, tailOf } from "./trace.js";
 import {
-  type CommandLogRecord,
   DEFAULT_REQUEST_TIMEOUT_MS,
-  type InterventionRecord,
-  type LifecycleRecord,
-  MAX_TRANSCRIPT_BYTES,
   type RunLiveTerminalSessionArgs,
   RUNTIME_BOOTSTRAP_TIMEOUT_MS,
   SANDBOX_TIMEOUT_BUFFER_MS,
   SANDBOX_WORKDIR,
-  TERMINAL_EVENTS_ARTIFACT,
-  TERMINAL_LEDGERS_ARTIFACT,
-  TERMINAL_PRODUCT_LAB_SCHEMA,
-  TERMINAL_TRANSCRIPT_ARTIFACT,
-  type TerminalEventRecord,
   type TerminalLedgers,
   type TerminalProductLabResult,
   UPLOAD_MAX_BYTES,
 } from "./types.js";
+import { createTerminalRecorder } from "./recorder.js";
+import { writeTerminalEvidence, writeTerminalRunFiles } from "./artifacts.js";
+import { terminalLabResult } from "./result.js";
 
 /**
  * The live in-sandbox agent session orchestrator (mirror of runCuaActorLab's E2B branch). Enforces
@@ -193,71 +183,20 @@ export async function runLiveTerminalSession(
   const egressAllow = config.execution?.egressAllow;
 
   // The ledgers + capture buffers, mutated through the live lifecycle.
-  const lifecycle: LifecycleRecord[] = [];
-  const commandLog: CommandLogRecord[] = [];
-  const terminalEvents: TerminalEventRecord[] = [];
-  // Capture may stop inside a known key. Keep only enough following characters to finish the
-  // cross-chunk redaction below; this overlap is never added to terminal events/artifacts.
-  const discardedPrefixes = { stdout: "", stderr: "", combined: "" };
-  const maxDiscardedPrefixChars = Math.max(
-    0,
-    ...knownSecretValues.map((value) => value.length - 1),
-  );
-  const interventions: InterventionRecord[] = []; // ALWAYS empty while no assisted-input path ships.
-  let transcriptBytes = 0;
+  const {
+    lifecycle,
+    commandLog,
+    terminalEvents,
+    interventions,
+    discardedPrefixes,
+    recordLifecycle,
+    recordStreamedTerminalChunk,
+    appendReturnedTerminalOutput,
+  } = createTerminalRecorder({ nowIso, sanitize, knownSecretValues });
   let cleanup: TerminalLedgers["cleanup"] = {
     killed: false,
     remaining: -1,
     reason: "teardown not reached",
-  };
-
-  const recordLifecycle = (event: string, message: string): void => {
-    lifecycle.push({ at: nowIso(), event, message: sanitize(message) });
-  };
-  const appendTerminalChunk = (stream: "stdout" | "stderr", raw: string): void => {
-    if (transcriptBytes >= MAX_TRANSCRIPT_BYTES) {
-      for (const order of [stream, "combined"] as const) {
-        const remaining = maxDiscardedPrefixChars - discardedPrefixes[order].length;
-        if (remaining > 0) discardedPrefixes[order] += raw.slice(0, remaining);
-      }
-      return;
-    }
-    transcriptBytes += Buffer.byteLength(raw, "utf8");
-    // Scrub THEN redact at the SOURCE — raw bytes never leave this function (safety contract item 5).
-    terminalEvents.push({ at: nowIso(), stream, chunk: sanitize(raw) });
-  };
-
-  // E2B can stream every byte through callbacks AND return the same complete output (#667).
-  // Track transport delivery, independently per stream, rather than deduplicating participant
-  // lines or equal usage records. Hash raw callback bytes before redaction/truncation so the
-  // comparison cannot confuse two values that redact identically or lose capped-away delivery.
-  // Delivery tracking retains only counts and hashes; payloads still pass the artifact sanitizer.
-  const streamedOutput = {
-    stdout: { bytes: 0, hash: createHash("sha256") },
-    stderr: { bytes: 0, hash: createHash("sha256") },
-  };
-  const recordStreamedTerminalChunk = (stream: "stdout" | "stderr", raw: string): void => {
-    streamedOutput[stream].bytes += Buffer.byteLength(raw, "utf8");
-    streamedOutput[stream].hash.update(raw, "utf8");
-    appendTerminalChunk(stream, raw);
-  };
-  const appendReturnedTerminalOutput = (stream: "stdout" | "stderr", raw: string): void => {
-    const delivered = streamedOutput[stream];
-    const returned = Buffer.from(raw, "utf8");
-    if (delivered.bytes > 0 && returned.length >= delivered.bytes) {
-      const returnedPrefixHash = createHash("sha256")
-        .update(returned.subarray(0, delivered.bytes))
-        .digest("hex");
-      if (returnedPrefixHash === delivered.hash.copy().digest("hex")) {
-        // A complete replay adds nothing; a partly streamed prefix keeps only the unseen tail.
-        const suffix = returned.subarray(delivered.bytes).toString("utf8");
-        if (suffix) appendTerminalChunk(stream, suffix);
-        return;
-      }
-    }
-    // Older/final-only SDK delivery, or output that does not match the streamed prefix: keep it.
-    // Guessing at overlap here could erase legitimate repeated participant text.
-    appendTerminalChunk(stream, raw);
   };
 
   let sandbox: E2BDesktopSandbox | undefined;
@@ -724,30 +663,7 @@ export async function runLiveTerminalSession(
     noSpendProof,
   };
 
-  await writeContainedOutputFile(
-    runPaths,
-    TERMINAL_EVENTS_ARTIFACT,
-    `${terminalEvents.map((e) => JSON.stringify(e)).join("\n")}${terminalEvents.length > 0 ? "\n" : ""}`,
-    "utf8",
-  );
-  await writeContainedOutputFile(
-    runPaths,
-    TERMINAL_TRANSCRIPT_ARTIFACT,
-    `${normalizedTranscript}\n`,
-    "utf8",
-  );
-  await writeContainedOutputFile(
-    runPaths,
-    TERMINAL_LEDGERS_ARTIFACT,
-    `${JSON.stringify(ledgers, null, 2)}\n`,
-    "utf8",
-  );
-  await writeContainedOutputFile(
-    runPaths,
-    "actor.json",
-    `${JSON.stringify(trace, null, 2)}\n`,
-    "utf8",
-  );
+  await writeTerminalEvidence(runPaths, { terminalEvents, normalizedTranscript, ledgers, trace });
 
   const bundle = buildLiveTerminalProductBundle({
     ...(options.lab === undefined ? {} : { lab: options.lab }),
@@ -803,109 +719,31 @@ export async function runLiveTerminalSession(
   });
   await validatePreparedRunArtifactPaths(runPaths);
 
-  await writeContainedOutputFile(
-    runPaths,
-    "run.json",
-    `${JSON.stringify(bundle, null, 2)}\n`,
-    "utf8",
-  );
-  // Finalize identity+liveness from the bundle just written; a throw before this leaves the record
-  // stale, which reads as interrupted rather than as a false outcome (#455).
-  await runStatus.finish(runStatusOutcome(bundle));
-  await writeContainedOutputFile(
-    runPaths,
-    "review.json",
-    `${JSON.stringify(bundle.review, null, 2)}\n`,
-    "utf8",
-  );
-  await writeContainedOutputFile(
-    runPaths,
-    "review.md",
-    renderTerminalReviewMarkdown(bundle),
-    "utf8",
-  );
-  await writeContainedOutputFile(
-    runPaths,
-    "events.ndjson",
-    `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`,
-    "utf8",
-  );
-  await writePreparedRunLatestPointer(
-    runPaths,
-    `${JSON.stringify({ schema: "humanish.latest-run.v1", runId, path: runPaths.relativeRunRoot, updatedAt: createdAt }, null, 2)}\n`,
-    "utf8",
-  );
+  await writeTerminalRunFiles({ runPaths, runStatus, bundle, runId, createdAt });
 
   const observer = await render(physicalCwd, runId, { open: options.open === true });
   await validatePreparedRunArtifactPaths(runPaths);
 
-  // The lab's exit code: verified evidence AND no harness error AND proven cleanup. A blocked/
-  // timed-out agent run is STILL ok-as-evidence at the bundle level (the failure is the evidence),
-  // but the LAB result surfaces ok:false on a harness error or unproven teardown (fail-closed).
-  // remaining===0 is the by-id-confirmed-reclaimed state; remaining===1 (still present) and
-  // remaining===-1 (kill(id) itself failed) are both unproven by design.
-  const cleanupProven = cleanup.killed && cleanup.remaining === 0;
-  // A CONFIG-DECLARED scorer that failed to render a pass (status:"fail" / malformed / throw) fails the
-  // run RESULT too, not just the persisted verdict — the keystone lane's declared rubric is a gate, so
-  // its fail must drive exit code. Library callers never set this (additive, back-compat).
-  const ok =
-    observer.ok &&
-    completionReason !== "harness_error" &&
-    cleanupProven &&
-    declaredScorerFailure === undefined;
-
   return markFinalizedStudyResult(
-    {
-      schema: TERMINAL_PRODUCT_LAB_SCHEMA,
-      ok,
+    terminalLabResult({
       cwd,
       labId: config.id,
-      actor: descriptorId,
-      product: product.name,
-      dryRun: false,
+      actorId: descriptorId,
+      productName: product.name,
       runId,
-      session: { status: sessionStatus, completionReason, reason: sanitize(sessionReason) },
-      ...(sandboxId
-        ? { sandbox: { sandboxId, killed: cleanup.killed, remaining: cleanup.remaining } }
-        : {}),
-      cost: {
-        knownTotalUsd: cost.knownTotalUsd,
-        fullyMeasured: cost.fullyMeasured,
-        lines: {
-          product: cost.lines.product.usd,
-          media: cost.lines.media.usd,
-          payment: cost.lines.payment.usd,
-          provider: cost.lines.provider.usd,
-        },
-      },
-      noSpend: {
-        satisfied: noSpendProof.satisfied,
-        maxUsd: noSpendProof.maxUsd,
-        knownZeroLines: noSpendProof.knownZeroLines,
-        unmeasuredLines: noSpendProof.unmeasuredLines,
-      },
+      sessionStatus,
+      completionReason,
+      sessionReason: sanitize(sessionReason),
+      sessionError,
+      sandboxId,
+      cleanup,
+      cost,
+      noSpendProof,
+      capsExceeded,
+      declaredScorerFailure,
       observer,
-      warnings: [...warnings, ...observer.warnings],
-      ...(ok
-        ? {}
-        : {
-            error: {
-              code: (!cleanupProven
-                ? "HUMANISH_TERMINAL_LAB_CLEANUP_UNPROVEN"
-                : capsExceeded
-                  ? "HUMANISH_TERMINAL_LAB_CAPS_EXCEEDED"
-                  : "HUMANISH_TERMINAL_LAB_FAILED") as NonNullable<
-                TerminalProductLabResult["error"]
-              >["code"],
-              message: !cleanupProven
-                ? `Live terminal-product run could not prove sandbox teardown (killed=${cleanup.killed}, remaining=${cleanup.remaining}): ${cleanup.reason}. A run that cannot prove teardown fails closed.${sessionError ? ` Session failure: ${sessionError}` : ""}`
-                : (declaredScorerFailure ??
-                  sessionError ??
-                  observer.error?.message ??
-                  sessionReason),
-            },
-          }),
-    },
+      warnings,
+    }),
     runPaths,
   );
 }
