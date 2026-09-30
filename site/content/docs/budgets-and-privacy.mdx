@@ -134,12 +134,14 @@ product-spend rules; it does not use these computer-use model thresholds. Its
 Codex tokens are counted but unpriced, so a live terminal run with a positive
 `maxUsd` is refused with `HUMANISH_TERMINAL_LAB_UNPRICED_CAP` unless an adapter's
 cost probe measures spend. Set `maxUsd: 0` and bound the run with
-`scenario.caps.maxMinutes`, which stops the agent command. The
-computer-use route uses `execution.caps`. A positive `scenario.caps.maxUsd` or
-`scenario.caps.maxTotalUsd` on a computer-use lab is refused when the lab is
-parsed, with a message that names the matching `execution.caps` field.
-`scenario.caps.maxTotalUsd` is not a terminal study budget. Check route
-warnings before relying on a field.
+`scenario.caps.maxMinutes`, which stops the agent command. The run's cost
+summary prices the terminal sandbox's compute time the way it prices a
+computer-use desktop, from its span and size; that estimate is not counted
+against `maxUsd`. The computer-use route uses `execution.caps`. A positive
+`scenario.caps.maxUsd` or `scenario.caps.maxTotalUsd` on a computer-use lab is
+refused when the lab is parsed, with a message that names the matching
+`execution.caps` field. `scenario.caps.maxTotalUsd` is not a terminal study
+budget. Check route warnings before relying on a field.
 
 ## Store credentials
 

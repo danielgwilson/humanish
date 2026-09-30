@@ -10,6 +10,7 @@ import {
   RUN_BUNDLE_SCHEMA,
   type ReviewSummary,
   type RunBundle,
+  type RunCostSummary,
   type RunEvent,
   type RunSimulation,
 } from "../../run/bundle.js";
@@ -250,6 +251,7 @@ export function buildLiveTerminalProductBundle(args: {
   source: RunBundle["source"];
   trace: ActorTrace;
   ledgers: TerminalLedgers;
+  cost?: RunCostSummary;
   sandboxId?: string;
   sessionError?: string;
   sessionReason: string;
@@ -415,6 +417,7 @@ export function buildLiveTerminalProductBundle(args: {
     },
     review,
     feedbackCandidates: [],
+    ...(args.cost === undefined ? {} : { cost: args.cost }),
   };
 }
 
