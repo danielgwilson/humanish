@@ -13,8 +13,8 @@ import {
 } from "../../run/selected-output-paths.js";
 
 // A public-safe re-derivation of the OpenAI Responses API computer-use provider,
-// behind the CuaProvider port from src/actors/computer-use/loop.ts. It mirrors the
-// pure-mapper-plus-injectable-shim pattern proven in src/actors/claude-agent-sdk.ts:
+// behind the CuaProvider port from src/actors/computer-use/loop.ts. It splits into pure
+// mappers and an injectable live shim:
 //
 //  - PURE mappers (openAiActionToCua, parseOpenAiResponse) and request builders
 //    (buildInitialRequest, buildCallOutput, buildContinuationRequest) project the

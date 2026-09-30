@@ -5,8 +5,6 @@ import type {
   CodexAppServerTrace,
 } from "../../src/actors/codex/app-server.js";
 import type { ActorPersonaRef } from "../../src/actors/contract.js";
-import type { PiSessionResult } from "../../src/actors/pi-agent-core.js";
-import type { ClaudeSessionResult } from "../../src/actors/claude-agent-sdk.js";
 
 export const fixturePersona: ActorPersonaRef = {
   id: "synthetic-new-user",
@@ -117,85 +115,5 @@ export function buildCodexResult(): CodexAppServerRunResult {
     transcriptPath: "codex-app-server/transcript.txt",
     tracePath: "codex-app-server/summary.json",
     eventsPath: "codex-app-server/events.ndjson",
-  };
-}
-
-export function buildPiSession(): PiSessionResult {
-  return {
-    sessionId: "pi-session-1",
-    model: "synthetic-model",
-    providerVersion: "0.75.5",
-    startedAt: "2026-06-06T00:00:00.000Z",
-    completedAt: "2026-06-06T00:00:03.000Z",
-    durationMs: 3000,
-    status: "passed",
-    reason: "agent completed the turn",
-    stats: { tokens: { input: 120, output: 60, total: 180 }, cost: 0.0021 },
-    events: [
-      { type: "agent_start" },
-      { type: "turn_start" },
-      { type: "message_start", role: "assistant" },
-      { type: "message_update", thinkingDelta: "considering the task" },
-      { type: "message_update", textDelta: "Looking at the project" },
-      {
-        type: "message_end",
-        text: "Looking at the project structure.",
-        thinking: "considering the task",
-      },
-      { type: "tool_execution_start", toolCallId: "call-1", toolName: "read_file" },
-      { type: "tool_execution_end", toolCallId: "call-1", isError: false },
-      { type: "tool_execution_start", toolCallId: "call-2", toolName: "bash" },
-      { type: "tool_execution_end", toolCallId: "call-2", isError: true },
-      { type: "queue_update", summary: "steering follow-up queued" },
-      { type: "compaction_start" },
-      { type: "compaction_end" },
-      { type: "auto_retry_start" },
-      { type: "auto_retry_end" },
-      { type: "notice", method: "extension_error", message: "synthetic extension notice" },
-      { type: "turn_end" },
-      { type: "agent_end" },
-    ],
-  };
-}
-
-export function buildClaudeSession(): ClaudeSessionResult {
-  return {
-    startedAt: "2026-06-06T00:00:00.000Z",
-    completedAt: "2026-06-06T00:00:04.000Z",
-    providerVersion: "0.3.168",
-    messages: [
-      // Real sessions emit hook system messages BEFORE init; init alone carries
-      // model/session config. (Surfaced by the live proof.)
-      { type: "system", subtype: "hook_started", session_id: "claude-session-1" },
-      { type: "system", subtype: "hook_response", session_id: "claude-session-1" },
-      { type: "system", subtype: "init", session_id: "claude-session-1", model: "synthetic-model" },
-      {
-        type: "assistant",
-        message: {
-          content: [
-            { type: "thinking", thinking: "considering the request" },
-            { type: "text", text: "Inspecting the project setup." },
-            { type: "tool_use", id: "toolu_01", name: "Read" },
-          ],
-        },
-      },
-      {
-        type: "user",
-        message: {
-          content: [{ type: "tool_result", tool_use_id: "toolu_01", is_error: false }],
-        },
-      },
-      {
-        type: "result",
-        subtype: "success",
-        is_error: false,
-        duration_ms: 4000,
-        num_turns: 1,
-        session_id: "claude-session-1",
-        total_cost_usd: 0.0034,
-        usage: { input_tokens: 200, output_tokens: 80 },
-        result: "Completed the inspection.",
-      },
-    ],
   };
 }

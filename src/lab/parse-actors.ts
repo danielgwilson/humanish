@@ -9,6 +9,11 @@ import type {
 import { isReasoningEffort, reasoningEffortNames } from "../actors/reasoning-effort.js";
 import { isMaxOutputTokens } from "../actors/output-token-limit.js";
 import { isHttpUrl } from "./parse-subject.js";
+import {
+  registeredComputerUseActors,
+  registeredScriptedBrowserActors,
+  registeredTerminalActors,
+} from "./routing.js";
 import { invalid, isRecord, posInt, str } from "./parse-values.js";
 import type { LabActor, LabActorLane, LabActorLaneFocus, LabConfigParseFailure } from "./types.js";
 
@@ -19,6 +24,20 @@ export const LANE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
 export const LANE_ID_MAX_CHARS = 40;
 
 const LANE_METADATA_MAX_CHARS = 80;
+
+// Actor ids humanish no longer registers. Rejecting them at parse keeps a lab that names one
+// from running on a route that ignores actors[0].type, such as a this-repo dry run.
+const REMOVED_ACTOR_TYPES: ReadonlySet<string> = new Set(["pi-agent-core", "claude-agent-sdk"]);
+
+// Only actors on a lane a route dispatches. codex-app-server is registered but declares only the
+// "code" lane, which no lab route runs, so naming it would lead to the same dead end.
+function routableActorTypes(): string[] {
+  return [
+    ...registeredComputerUseActors(),
+    ...registeredScriptedBrowserActors(),
+    ...registeredTerminalActors(),
+  ];
+}
 
 export function parseActors(raw: unknown): { ok: true; value: LabActor[] } | LabConfigParseFailure {
   if (!Array.isArray(raw) || raw.length === 0) {
@@ -39,6 +58,11 @@ export function parseActors(raw: unknown): { ok: true; value: LabActor[] } | Lab
     const type = str(entry.type);
     if (!type) {
       return invalid(`actors[${index}].type is required.`);
+    }
+    if (REMOVED_ACTOR_TYPES.has(type)) {
+      return invalid(
+        `actors[${index}].type "${type}" is no longer a humanish actor. Use an actor a lab route runs (one of: ${routableActorTypes().join(", ")}). To drive a study with a signed-in Claude Code, use type: local-agent with localAgent: claude.`,
+      );
     }
     const actor: LabActor = { type };
     const count = posInt(entry.count);

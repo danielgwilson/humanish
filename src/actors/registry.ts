@@ -4,9 +4,7 @@ import {
   type CodexAppServerRunResult,
 } from "./codex/app-server.js";
 import {
-  CLAUDE_AGENT_SDK_CAPABILITIES,
   CODEX_APP_SERVER_CAPABILITIES,
-  PI_AGENT_CORE_CAPABILITIES,
   SCRIPTED_BROWSER_CAPABILITIES,
   TERMINAL_AGENT_CAPABILITIES,
   codexResultToActorTrace,
@@ -19,14 +17,6 @@ import {
   type TerminalAgentSessionOptions,
   type TerminalAgentSessionResult,
 } from "./terminal-agent.js";
-import { piSessionToActorTrace, type PiSessionResult } from "./pi-agent-core.js";
-import {
-  claudeSessionToActorTrace,
-  runClaudeAgentSession,
-  type ClaudeAgentSessionOptions,
-  type ClaudeAgentSessionResult,
-  type ClaudeSessionResult,
-} from "./claude-agent-sdk.js";
 import { runCuaActorSession, type CuaActorSessionOptions } from "./computer-use/actor.js";
 import { LOCAL_AGENT_CAPABILITIES } from "./local-agent/cli.js";
 import type { CuaLoopResult } from "./computer-use/loop.js";
@@ -41,8 +31,6 @@ import {
 // actor registration does not ship. See docs/architecture/actor-contract.md.
 export type ActorId =
   | "codex-app-server"
-  | "pi-agent-core"
-  | "claude-agent-sdk"
   | "openai-computer-use"
   | "local-agent"
   | "scripted-browser"
@@ -61,26 +49,9 @@ export interface CodexActorDescriptor extends ActorDescriptorBase {
   toActorTrace(result: CodexAppServerRunResult, persona: ActorPersonaRef): ActorTrace;
 }
 
-// pi currently exposes ONLY the pure mapper: live invocation is deferred
-// behind a DI seam (see src/actors/pi-agent-core.ts header), so the descriptor honestly
-// advertises just the mapping capability that exists today.
-export interface PiActorDescriptor extends ActorDescriptorBase {
-  id: "pi-agent-core";
-  toActorTrace(session: PiSessionResult, persona: ActorPersonaRef): ActorTrace;
-}
-
-// The Claude descriptor now exposes a live runSession (drives the SDK query() and
-// writes evidence artifacts) alongside the pure mapper. The SDK is an optional
-// peer loaded lazily; tests inject a fake queryFn via runSession's options.
-export interface ClaudeActorDescriptor extends ActorDescriptorBase {
-  id: "claude-agent-sdk";
-  runSession(options: ClaudeAgentSessionOptions): Promise<ClaudeAgentSessionResult>;
-  toActorTrace(session: ClaudeSessionResult, persona: ActorPersonaRef): ActorTrace;
-}
-
 // The CUA descriptor exposes runSession ONLY (no toActorTrace): runComputerUseLoop already
 // returns a fully-formed ActorTrace at result.trace, so a mapper would be a no-op identity.
-// This mirrors PiActorDescriptor being mapper-only — the union is intentionally heterogeneous.
+// The union is intentionally heterogeneous: each descriptor exposes only the entries it has.
 export interface CuaActorDescriptor extends ActorDescriptorBase {
   id: "openai-computer-use";
   runSession(options: CuaActorSessionOptions): Promise<CuaLoopResult>;
@@ -113,8 +84,6 @@ export interface TerminalActorDescriptor extends ActorDescriptorBase {
 
 export type ActorDescriptor =
   | CodexActorDescriptor
-  | PiActorDescriptor
-  | ClaudeActorDescriptor
   | CuaActorDescriptor
   | LocalAgentActorDescriptor
   | ScriptedBrowserActorDescriptor
@@ -166,19 +135,6 @@ export const actorRegistry: Record<ActorId, ActorDescriptor> = {
     runSession: runCodexAppServerSession,
     toActorTrace: codexResultToActorTrace,
   },
-  "pi-agent-core": {
-    id: "pi-agent-core",
-    label: "pi Agent Core",
-    capabilities: PI_AGENT_CORE_CAPABILITIES,
-    toActorTrace: piSessionToActorTrace,
-  },
-  "claude-agent-sdk": {
-    id: "claude-agent-sdk",
-    label: "Claude Agent SDK",
-    capabilities: CLAUDE_AGENT_SDK_CAPABILITIES,
-    runSession: runClaudeAgentSession,
-    toActorTrace: claudeSessionToActorTrace,
-  },
   // The ActorId names the actor slot (keeps the lane open for a future stagehand-cua provider);
   // the trace's `provider` string stays "openai-responses-cu" (the concrete model adapter).
   // The operator's own signed-in coding agent as the computer-use brain (Codex on a ChatGPT plan,
@@ -222,8 +178,6 @@ export const actorRegistry: Record<ActorId, ActorDescriptor> = {
 // Overloads narrow the return type per id so codex call sites keep their exact
 // signatures (e.g. getActor("codex-app-server").runSession(...) stays valid).
 export function getActor(id: "codex-app-server"): CodexActorDescriptor;
-export function getActor(id: "pi-agent-core"): PiActorDescriptor;
-export function getActor(id: "claude-agent-sdk"): ClaudeActorDescriptor;
 export function getActor(id: "openai-computer-use"): CuaActorDescriptor;
 export function getActor(id: "scripted-browser"): ScriptedBrowserActorDescriptor;
 export function getActor(id: "codex-exec"): TerminalActorDescriptor;
