@@ -61,7 +61,8 @@ import { acquireE2BDesktopSandbox } from "./sandbox.js";
 import { readDetachedLog } from "../detached.js";
 import { e2bShell } from "./shell.js";
 import { redactText } from "../../evidence/redaction.js";
-import { type RunDesktopGeometry, type RunSubjectStateStepRecord } from "../../run/bundle.js";
+import { type RunSubjectStateStepRecord } from "../../run/bundle.js";
+import { type RunDesktopGeometry } from "../../run/streams.js";
 import { writeContainedOutputFile } from "../../run/selected-output-paths.js";
 
 function optionalAddress(address: string | undefined): { address?: string } {

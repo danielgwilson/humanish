@@ -7,7 +7,7 @@ import {
 } from "../../routes/computer-use/cdp-probe.js";
 import { failureTail } from "../../evidence/redaction.js";
 import { toErrorMessage } from "../command-failure.js";
-import type { RunDesktopGeometry } from "../../run/bundle.js";
+import type { RunDesktopGeometry } from "../../run/streams.js";
 import { readDetachedLog, startDetachedProcess } from "../detached.js";
 import type { ShellResult } from "../shell.js";
 import type { E2BDesktopSandbox } from "./desktop-launch.js";

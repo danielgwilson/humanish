@@ -9,7 +9,7 @@ import {
   reclaimRunSandboxes,
   type ReclaimResult,
 } from "../../run/reclaim.js";
-import type { CleanupResult, RunResult } from "../../run/bundle.js";
+import type { CleanupResult, RunResult } from "../../run/results.js";
 import type { RunsResult } from "../../run/manage.js";
 import type { VerifyResult } from "../../run/verify.js";
 import { runLabCommand } from "./lab-run.js";

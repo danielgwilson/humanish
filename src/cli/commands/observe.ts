@@ -6,7 +6,7 @@ import type { ServeErrorCode, ServeResult } from "../../observer/serve.js";
 import { startExposedObserver, validateExposure } from "../../observer/exposure.js";
 import { ServeTunnelError } from "../../observer/tunnel.js";
 import type { ServeTunnel } from "../../observer/tunnel.js";
-import type { RunResult } from "../../run/bundle.js";
+import type { RunResult } from "../../run/results.js";
 import {
   type CliIo,
   collectRepeated,

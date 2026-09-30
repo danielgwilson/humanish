@@ -14,9 +14,9 @@ import {
   type RunBundle,
   type RunEvent,
   type RunSimulation,
-  type RunStream,
   type RunSubjectProvenance,
 } from "../../run/bundle.js";
+import { type RunStream } from "../../run/streams.js";
 import type { RunLabProvenance } from "../../run/status.js";
 
 /**

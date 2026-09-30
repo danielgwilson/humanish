@@ -12,9 +12,8 @@ import {
   type RunBundle,
   type RunEvent,
   type RunSimulation,
-  type RunSimulationStatus,
-  type RunStream,
 } from "../../run/bundle.js";
+import { type RunSimulationStatus, type RunStream } from "../../run/streams.js";
 import {
   TERMINAL_EVENTS_ARTIFACT,
   TERMINAL_LEDGERS_ARTIFACT,

@@ -14,7 +14,7 @@ import {
   readContainedRegularFile,
   type PreparedSelectedOutputDirectory,
 } from "./selected-output-paths.js";
-import type { RunPointer, RunResult } from "./bundle.js";
+import type { RunPointer, RunResult } from "./results.js";
 import { isRunPointer } from "./guards.js";
 import { isNodeError, isRecord } from "./primitives.js";
 

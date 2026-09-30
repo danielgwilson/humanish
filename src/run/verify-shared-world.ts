@@ -1,4 +1,5 @@
-import type { RunBundle, SharedWorldEvidence } from "./bundle.js";
+import type { RunBundle } from "./bundle.js";
+import type { SharedWorldEvidence } from "./shared-world-evidence.js";
 import {
   COMMAND_DIGEST_PATTERN,
   MANDATORY_ATTRIBUTION_LIMITS,

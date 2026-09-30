@@ -2,7 +2,7 @@ import { Command } from "commander";
 import { renderObserver, serveObserver } from "../observer/render.js";
 import type { ObserverResult, ObserverServer } from "../observer/render.js";
 import type { ExposureRequest } from "../observer/exposure.js";
-import type { RunResult } from "../run/bundle.js";
+import type { RunResult } from "../run/results.js";
 import {
   type CliIo,
   formatRunHuman,

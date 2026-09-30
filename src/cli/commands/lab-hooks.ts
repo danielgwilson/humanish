@@ -6,7 +6,7 @@ import type { RunScorerProvenance } from "../../run/bundle.js";
 import type { TerminalProductLabHooks } from "../../routes/terminal/types.js";
 import type { BrowserLabAdapterHooks } from "../../lab/adapter-extension.js";
 import type { LabConfig } from "../../lab/types.js";
-import type { RunResult } from "../../run/bundle.js";
+import type { RunResult } from "../../run/results.js";
 import type { CliIo } from "../io.js";
 
 /** A CONFIG-DECLARED scorer that resolved + loaded fail-closed, ready to thread into a backend. */

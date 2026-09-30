@@ -2,7 +2,7 @@ import { Command, Option } from "commander";
 import { renderObserver, serveObserver } from "../../observer/render.js";
 import type { ObserverServer } from "../../observer/render.js";
 import { runDryRun } from "../../run/dry-run.js";
-import type { RunResult } from "../../run/bundle.js";
+import type { RunResult } from "../../run/results.js";
 import { runLabCommand } from "./lab-run.js";
 import {
   applyEnvFileOption,

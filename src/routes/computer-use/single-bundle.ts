@@ -16,14 +16,16 @@ import {
   RUN_BUNDLE_SCHEMA,
   type ReviewSummary,
   type RunBundle,
-  type RunDesktopGeometry,
   type RunEvent,
   type RunFeedbackCandidate,
   type RunProviderResource,
   type RunSimulation,
+} from "../../run/bundle.js";
+import {
+  type RunDesktopGeometry,
   type RunSimulationStatus,
   type RunStream,
-} from "../../run/bundle.js";
+} from "../../run/streams.js";
 import {
   aggregateTaskFunnels,
   tallyParticipantOutcomes,
