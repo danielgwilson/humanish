@@ -1,0 +1,1010 @@
+{
+  "<result>": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": true,
+    "cwd": "[cwd]",
+    "labId": "local-vm-golden",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:4173/",
+    "dryRun": false,
+    "runId": "[run]",
+    "session": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "Done.",
+      "screenshots": 2
+    },
+    "subject": {
+      "source": "app-url",
+      "state": {
+        "provenance": "undeclared"
+      }
+    },
+    "plan": {
+      "strategy": "per-lane-worlds",
+      "laneCount": 1,
+      "concurrency": 1,
+      "waves": 1,
+      "perLaneSessionBudgetMs": 60000,
+      "worstCaseSandboxMinutes": 30,
+      "dryRun": false,
+      "lanes": [
+        {
+          "id": "lane-01",
+          "index": 1,
+          "persona": "cua-operator",
+          "device": "custom",
+          "resolution": [
+            960,
+            720
+          ],
+          "instructionDigest": "9cd5cf5309bc5e74",
+          "reasoningEffort": "low"
+        }
+      ]
+    },
+    "lanes": [
+      {
+        "id": "lane-01",
+        "index": 1,
+        "persona": "cua-operator",
+        "device": "custom",
+        "resolution": [
+          960,
+          720
+        ],
+        "subject": {
+          "source": "app-url",
+          "state": {
+            "provenance": "undeclared"
+          }
+        },
+        "status": "passed",
+        "ok": true,
+        "diagnostics": {
+          "category": "participant_outcome"
+        },
+        "session": {
+          "status": "passed",
+          "completionReason": "goal_satisfied",
+          "reason": "Done.",
+          "screenshots": 2
+        }
+      }
+    ],
+    "diagnostics": {
+      "category": "participant_outcome"
+    },
+    "laneSummary": {
+      "strategy": "per-lane-worlds",
+      "total": 1,
+      "passed": 1,
+      "skipped": 0,
+      "harnessErrors": 0,
+      "hollow": 0,
+      "concurrency": 1,
+      "waves": 1
+    },
+    "observer": {
+      "schema": "humanish.observer-result.v1",
+      "ok": true,
+      "cwd": "[cwd]",
+      "run": "[run]",
+      "observerPath": ".humanish/runs/[run]/observer/index.html",
+      "observerDataPath": ".humanish/runs/[run]/observer/observer-data.json",
+      "eventsPath": ".humanish/runs/[run]/events.ndjson",
+      "observerUrl": "file://[cwd]/.humanish/runs/[run]/observer/index.html",
+      "bundlePath": ".humanish/runs/[run]/run.json",
+      "opened": false,
+      "warnings": [
+        "Observer renders verified local evidence artifacts; runtime stream auth URLs are not persisted.",
+        "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
+      ]
+    },
+    "warnings": [
+      "Screenshots are full-fidelity (raw) for local use — the bundle stays in gitignored .humanish and nothing scans these pixels; review them before sharing anywhere. Set policies.redactScreenshots: true to blur a share-as-is bundle.",
+      "Observer renders verified local evidence artifacts; runtime stream auth URLs are not persisted.",
+      "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
+    ],
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "synthetic_no_provider"
+    }
+  },
+  "<stderr>": [],
+  "../latest.json": {
+    "schema": "humanish.latest-run.v1",
+    "runId": "[run]",
+    "path": ".humanish/runs/[run]",
+    "updatedAt": "[ts]"
+  },
+  "actor.json": {
+    "schema": "humanish.actor-trace.v1",
+    "provider": "openai-responses-cu",
+    "providerVersion": "gpt-5.6-sol",
+    "protocol": "cua-loop",
+    "lane": "computer-use",
+    "persona": {
+      "id": "cua-operator",
+      "traitsApplied": [],
+      "promptDigest": "9cd5cf5309bc5e74"
+    },
+    "redaction": {
+      "status": "passed",
+      "screenshots": "raw",
+      "notes": "2 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+    },
+    "startedAt": "[ts]",
+    "completedAt": "[ts]",
+    "durationMs": "[durationMs]",
+    "status": "passed",
+    "completionReason": "goal_satisfied",
+    "reason": "Done.",
+    "ids": {
+      "model": "gpt-5.6-sol",
+      "turnId": "resp_2"
+    },
+    "modelSettings": {
+      "reasoningEffort": "medium"
+    },
+    "counts": {
+      "turns": 2,
+      "actions": 1,
+      "materialActions": 1,
+      "screenshots": 2,
+      "reasonings": 0,
+      "messages": 1,
+      "idleTurns": 0,
+      "noProgressTurns": 0
+    },
+    "items": [
+      {
+        "id": "screenshot-001",
+        "kind": "screenshot",
+        "lifecycle": "completed",
+        "title": "turn-00-start",
+        "screenshotRef": {
+          "path": "screenshots/turn-00-start.png",
+          "redaction": "none"
+        },
+        "at": "[ts]"
+      },
+      {
+        "id": "ui_action-002",
+        "kind": "ui_action",
+        "lifecycle": "completed",
+        "title": "click (11, 22)",
+        "coord": {
+          "x": 11,
+          "y": 22
+        },
+        "at": "[ts]"
+      },
+      {
+        "id": "screenshot-003",
+        "kind": "screenshot",
+        "lifecycle": "completed",
+        "title": "turn-01",
+        "screenshotRef": {
+          "path": "screenshots/turn-01.png",
+          "redaction": "none"
+        },
+        "at": "[ts]"
+      },
+      {
+        "id": "message-004",
+        "kind": "message",
+        "lifecycle": "completed",
+        "title": "message turn 2",
+        "text": "Done.",
+        "at": "[ts]"
+      }
+    ],
+    "affordanceUse": {
+      "schema": "humanish.affordance-use.v1",
+      "counts": {
+        "pointer": 1
+      },
+      "total": 1,
+      "shortcutTotal": 0
+    },
+    "capabilities": {
+      "headless": true,
+      "structuredTrace": true,
+      "lanes": [
+        "computer-use"
+      ],
+      "producesScreenshots": true,
+      "byoModel": false,
+      "preGrantableApprovals": false,
+      "inProcessTools": false,
+      "license": "proprietary"
+    },
+    "estimatedCost": {
+      "schema": "humanish.actor-estimated-cost.v1",
+      "estimatedCostUsd": null,
+      "reason": "no_token_usage",
+      "ratesAsOf": null
+    }
+  },
+  "events.ndjson": [
+    {
+      "id": "event-000-created",
+      "at": "[ts]",
+      "level": "info",
+      "type": "cua-lab.run.created",
+      "message": "Created computer-use lab run for local-vm-golden (actor openai-computer-use)."
+    },
+    {
+      "id": "event-001-subject",
+      "at": "[ts]",
+      "level": "info",
+      "type": "cua-lab.subject.declared",
+      "message": "Subject app declared at http://127.0.0.1:4173/ (the host's loopback, opened from a browser on a local VM).",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-002-session",
+      "at": "[ts]",
+      "level": "info",
+      "type": "cua-lab.session.goal_satisfied",
+      "message": "passed: Done.",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    }
+  ],
+  "observer/index.html": "[observer build]",
+  "observer/observer-data.json": {
+    "schema": "humanish.observer-data.v1",
+    "schemaVersion": 1,
+    "generatedAt": "[ts]",
+    "run": {
+      "runId": "[run]",
+      "mode": "live",
+      "status": "pass",
+      "title": "Computer-use lab: local-vm-golden - Computer-use operator (cua-operator)",
+      "createdAt": "[ts]",
+      "simCount": 1,
+      "persona": {
+        "id": "cua-operator",
+        "name": "Computer-use operator (cua-operator)",
+        "source": "lab:local-vm-golden",
+        "sourceDigest": "9cd5cf5309bc5e74"
+      },
+      "scenario": {
+        "id": "cua-local-vm-golden",
+        "title": "Computer-use lab: local-vm-golden",
+        "goal": "You are a desktop user (custom, 960x720).\n\nSave a synthetic note.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
+        "source": "lab:local-vm-golden",
+        "sourceDigest": "9cd5cf5309bc5e74"
+      },
+      "packageName": "humanish",
+      "redaction": {
+        "status": "passed",
+        "notes": "Typed text recorded as length only and reasoning/messages pass through text redaction. Screenshots are FULL-FIDELITY (raw), retained for local use — NOT redacted for publishing; set policies.redactScreenshots: true to blur a share-as-is bundle."
+      },
+      "lifecycle": [
+        {
+          "at": "[ts]",
+          "event": "cua-lab.run.created",
+          "message": "Created computer-use lab run with one desktop browser lane (actor openai-computer-use)."
+        }
+      ],
+      "knownGaps": [
+        "Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate."
+      ],
+      "participants": {
+        "total": 1,
+        "reachedGoal": 1,
+        "abandoned": 0,
+        "ranOut": 0,
+        "blocked": 0,
+        "harnessFailed": 0,
+        "reportedFriction": 0
+      },
+      "participantsLine": "1/1 reported reaching the goal"
+    },
+    "summary": {
+      "streams": 1,
+      "byKind": {
+        "ui": 0,
+        "browser": 1,
+        "terminal": 0,
+        "tui": 0,
+        "codex-ui": 0,
+        "artifact": 0,
+        "summary": 0
+      },
+      "active": 0,
+      "blocked": 0,
+      "warnings": 0
+    },
+    "laneGroups": [],
+    "cost": {
+      "schema": "humanish.run-cost-summary.v1",
+      "currency": "usd",
+      "estimatedTotalUsd": null,
+      "ratesAsOf": null,
+      "fullyEstimated": false,
+      "placeholder": false,
+      "breakdown": [
+        {
+          "kind": "model-tokens",
+          "laneId": "lane-01",
+          "estimatedCostUsd": null,
+          "reason": "no_token_usage",
+          "ratesAsOf": null
+        }
+      ],
+      "tokenUsage": {
+        "input": 0,
+        "output": 0,
+        "total": 0
+      },
+      "desktopMinutes": null,
+      "note": "No priced spend lines this run — every cost line is DECLARED ABSENT (unknown rate / no usage / no duration); nothing is guessed. Add a rate to src/run/pricing.ts to estimate this model."
+    },
+    "streams": [
+      {
+        "id": "stream-001",
+        "simId": "sim-001",
+        "laneId": "lane-01",
+        "assignment": {
+          "mission": "Save a synthetic note."
+        },
+        "kind": "browser",
+        "label": "CUA browser — local-vm-golden",
+        "status": "passed",
+        "transport": "snapshot",
+        "updatedAt": "[ts]",
+        "embed": {
+          "kind": "screenshot",
+          "url": "screenshots/turn-01.png",
+          "title": "CUA desktop (raw)"
+        },
+        "desktopGeometry": {
+          "screen": {
+            "requested": {
+              "width": 960,
+              "height": 720
+            }
+          }
+        },
+        "ui": {
+          "route": "http://127.0.0.1:4173/",
+          "intent": "Watch the computer-use actor drive the subject app in a browser on a local VM.",
+          "state": "Done.",
+          "actorStatus": "passed",
+          "screenshotUrl": "screenshots/turn-01.png"
+        },
+        "actor": {
+          "schema": "humanish.actor-trace.v1",
+          "provider": "openai-responses-cu",
+          "providerVersion": "gpt-5.6-sol",
+          "protocol": "cua-loop",
+          "lane": "computer-use",
+          "persona": {
+            "id": "cua-operator",
+            "traitsApplied": [],
+            "promptDigest": "9cd5cf5309bc5e74"
+          },
+          "redaction": {
+            "status": "passed",
+            "screenshots": "raw",
+            "notes": "2 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+          },
+          "startedAt": "[ts]",
+          "completedAt": "[ts]",
+          "durationMs": "[durationMs]",
+          "status": "passed",
+          "completionReason": "goal_satisfied",
+          "reason": "Done.",
+          "ids": {
+            "model": "gpt-5.6-sol",
+            "turnId": "resp_2"
+          },
+          "modelSettings": {
+            "reasoningEffort": "medium"
+          },
+          "counts": {
+            "turns": 2,
+            "actions": 1,
+            "materialActions": 1,
+            "screenshots": 2,
+            "reasonings": 0,
+            "messages": 1,
+            "idleTurns": 0,
+            "noProgressTurns": 0
+          },
+          "items": [
+            {
+              "id": "screenshot-001",
+              "kind": "screenshot",
+              "lifecycle": "completed",
+              "title": "turn-00-start",
+              "screenshotRef": {
+                "path": "screenshots/turn-00-start.png",
+                "redaction": "none"
+              },
+              "at": "[ts]"
+            },
+            {
+              "id": "ui_action-002",
+              "kind": "ui_action",
+              "lifecycle": "completed",
+              "title": "click (11, 22)",
+              "coord": {
+                "x": 11,
+                "y": 22
+              },
+              "at": "[ts]"
+            },
+            {
+              "id": "screenshot-003",
+              "kind": "screenshot",
+              "lifecycle": "completed",
+              "title": "turn-01",
+              "screenshotRef": {
+                "path": "screenshots/turn-01.png",
+                "redaction": "none"
+              },
+              "at": "[ts]"
+            },
+            {
+              "id": "message-004",
+              "kind": "message",
+              "lifecycle": "completed",
+              "title": "message turn 2",
+              "text": "Done.",
+              "at": "[ts]"
+            }
+          ],
+          "affordanceUse": {
+            "schema": "humanish.affordance-use.v1",
+            "counts": {
+              "pointer": 1
+            },
+            "total": 1,
+            "shortcutTotal": 0
+          },
+          "capabilities": {
+            "headless": true,
+            "structuredTrace": true,
+            "lanes": [
+              "computer-use"
+            ],
+            "producesScreenshots": true,
+            "byoModel": false,
+            "preGrantableApprovals": false,
+            "inProcessTools": false,
+            "license": "proprietary"
+          },
+          "estimatedCost": {
+            "schema": "humanish.actor-estimated-cost.v1",
+            "estimatedCostUsd": null,
+            "reason": "no_token_usage",
+            "ratesAsOf": null
+          }
+        },
+        "artifacts": [
+          {
+            "label": "run bundle",
+            "path": "run.json",
+            "kind": "bundle"
+          },
+          {
+            "label": "review",
+            "path": "review.md",
+            "kind": "review"
+          },
+          {
+            "label": "events",
+            "path": "events.ndjson",
+            "kind": "events"
+          },
+          {
+            "label": "actor trace",
+            "path": "actor.json",
+            "kind": "trace"
+          },
+          {
+            "label": "screenshot 01 (raw)",
+            "path": "screenshots/turn-00-start.png",
+            "kind": "screenshot"
+          },
+          {
+            "label": "screenshot 02 (raw)",
+            "path": "screenshots/turn-01.png",
+            "kind": "screenshot"
+          }
+        ],
+        "sim": {
+          "id": "sim-001",
+          "index": 1,
+          "personaId": "cua-operator",
+          "scenarioId": "cua-local-vm-golden",
+          "status": "passed",
+          "streamKind": "browser",
+          "mode": "browser-sim",
+          "progress": 100,
+          "currentStep": "Done.",
+          "summary": "Computer-use actor (openai-computer-use) drove the subject app in a browser on a local VM; goal_satisfied.",
+          "streamIds": [
+            "stream-001"
+          ],
+          "startedAt": "[ts]",
+          "updatedAt": "[ts]"
+        },
+        "kindLabel": "Browser",
+        "statusLabel": "Reported complete",
+        "terminalPlain": "",
+        "timeline": [
+          {
+            "id": "event-001-subject",
+            "at": "[ts]",
+            "level": "info",
+            "type": "cua-lab.subject.declared",
+            "message": "Subject app declared at http://127.0.0.1:4173/ (the host's loopback, opened from a browser on a local VM).",
+            "simId": "sim-001",
+            "streamId": "stream-001"
+          },
+          {
+            "id": "event-002-session",
+            "at": "[ts]",
+            "level": "info",
+            "type": "cua-lab.session.goal_satisfied",
+            "message": "passed: Done.",
+            "simId": "sim-001",
+            "streamId": "stream-001"
+          }
+        ]
+      }
+    ],
+    "events": [
+      {
+        "id": "event-000-created",
+        "at": "[ts]",
+        "level": "info",
+        "type": "cua-lab.run.created",
+        "message": "Created computer-use lab run for local-vm-golden (actor openai-computer-use)."
+      },
+      {
+        "id": "event-001-subject",
+        "at": "[ts]",
+        "level": "info",
+        "type": "cua-lab.subject.declared",
+        "message": "Subject app declared at http://127.0.0.1:4173/ (the host's loopback, opened from a browser on a local VM).",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-002-session",
+        "at": "[ts]",
+        "level": "info",
+        "type": "cua-lab.session.goal_satisfied",
+        "message": "passed: Done.",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      }
+    ],
+    "artifactLinks": [
+      {
+        "label": "run bundle",
+        "href": "../run.json",
+        "kind": "bundle"
+      },
+      {
+        "label": "review JSON",
+        "href": "../review.json",
+        "kind": "review"
+      },
+      {
+        "label": "review Markdown",
+        "href": "../review.md",
+        "kind": "review"
+      },
+      {
+        "label": "event log",
+        "href": "../events.ndjson",
+        "kind": "events"
+      },
+      {
+        "label": "observer data",
+        "href": "observer-data.json",
+        "kind": "observer"
+      }
+    ],
+    "publicSafety": {
+      "publishable": false,
+      "note": "Observer artifacts are local evidence. Before filing a public issue, use `humanish feedback issue` so redaction and public-safety checks gate the payload.",
+      "share": {
+        "status": "local_only",
+        "verifiedAt": "[ts]",
+        "reasons": [
+          "RAW_SCREENSHOTS"
+        ]
+      }
+    },
+    "raw": {
+      "bundleSchema": "humanish.run-bundle.v1",
+      "artifactRoot": ".humanish/runs/[run]"
+    }
+  },
+  "observer/study-analysis.json": {
+    "state": "none",
+    "analysis": null,
+    "corrections": [],
+    "warnings": []
+  },
+  "review.json": {
+    "schema": "humanish.review.v1",
+    "verdict": "pass",
+    "participants": {
+      "total": 1,
+      "reachedGoal": 1,
+      "abandoned": 0,
+      "ranOut": 0,
+      "blocked": 0,
+      "harnessFailed": 0,
+      "reportedFriction": 0
+    },
+    "summary": "Run gate: pass. Participants: 1/1 reported reaching the goal. Recorded summary: Done.",
+    "gaps": [
+      "Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate."
+    ]
+  },
+  "review.md": "# Computer-use lab: local-vm-golden\n\n- run: [run]\n- mode: live\n- run gate: pass\n- summary: Run gate: pass. Participants: 1/1 reported reaching the goal. Recorded summary: Done.\n- actor: openai-responses-cu (computer-use/cua-loop)\n- evidence: 4 trace item(s), 2 raw screenshot(s)\n\n## Gaps\n- Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate.\n",
+  "run.json": {
+    "schema": "humanish.run-bundle.v1",
+    "runId": "[run]",
+    "mode": "live",
+    "simCount": 1,
+    "createdAt": "[ts]",
+    "cwd": "[target-cwd]",
+    "artifactRoot": ".humanish/runs/[run]",
+    "source": {
+      "packageName": "humanish",
+      "humanishSource": "present",
+      "git": {
+        "schema": "humanish.git-state.v1",
+        "status": "missing",
+        "capturedAt": "[ts]",
+        "head": {
+          "shortSha": null,
+          "refState": "unknown"
+        },
+        "changes": {
+          "staged": 0,
+          "unstaged": 0,
+          "untracked": 0,
+          "total": 0
+        },
+        "note": "No git work tree was detected."
+      }
+    },
+    "persona": {
+      "id": "cua-operator",
+      "name": "Computer-use operator (cua-operator)",
+      "source": "lab:local-vm-golden",
+      "sourceDigest": "9cd5cf5309bc5e74"
+    },
+    "scenario": {
+      "id": "cua-local-vm-golden",
+      "title": "Computer-use lab: local-vm-golden",
+      "goal": "You are a desktop user (custom, 960x720).\n\nSave a synthetic note.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
+      "source": "lab:local-vm-golden",
+      "sourceDigest": "9cd5cf5309bc5e74"
+    },
+    "lifecycle": [
+      {
+        "at": "[ts]",
+        "event": "cua-lab.run.created",
+        "message": "Created computer-use lab run with one desktop browser lane (actor openai-computer-use)."
+      }
+    ],
+    "simulations": [
+      {
+        "id": "sim-001",
+        "index": 1,
+        "personaId": "cua-operator",
+        "scenarioId": "cua-local-vm-golden",
+        "status": "passed",
+        "streamKind": "browser",
+        "mode": "browser-sim",
+        "progress": 100,
+        "currentStep": "Done.",
+        "summary": "Computer-use actor (openai-computer-use) drove the subject app in a browser on a local VM; goal_satisfied.",
+        "streamIds": [
+          "stream-001"
+        ],
+        "startedAt": "[ts]",
+        "updatedAt": "[ts]"
+      }
+    ],
+    "streams": [
+      {
+        "id": "stream-001",
+        "simId": "sim-001",
+        "laneId": "lane-01",
+        "assignment": {
+          "mission": "Save a synthetic note."
+        },
+        "kind": "browser",
+        "label": "CUA browser — local-vm-golden",
+        "status": "passed",
+        "transport": "snapshot",
+        "updatedAt": "[ts]",
+        "embed": {
+          "kind": "screenshot",
+          "url": "screenshots/turn-01.png",
+          "title": "CUA desktop (raw)"
+        },
+        "desktopGeometry": {
+          "screen": {
+            "requested": {
+              "width": 960,
+              "height": 720
+            }
+          }
+        },
+        "ui": {
+          "route": "http://127.0.0.1:4173/",
+          "intent": "Watch the computer-use actor drive the subject app in a browser on a local VM.",
+          "state": "Done.",
+          "actorStatus": "passed",
+          "screenshotUrl": "screenshots/turn-01.png"
+        },
+        "actor": {
+          "schema": "humanish.actor-trace.v1",
+          "provider": "openai-responses-cu",
+          "providerVersion": "gpt-5.6-sol",
+          "protocol": "cua-loop",
+          "lane": "computer-use",
+          "persona": {
+            "id": "cua-operator",
+            "traitsApplied": [],
+            "promptDigest": "9cd5cf5309bc5e74"
+          },
+          "redaction": {
+            "status": "passed",
+            "screenshots": "raw",
+            "notes": "2 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+          },
+          "startedAt": "[ts]",
+          "completedAt": "[ts]",
+          "durationMs": "[durationMs]",
+          "status": "passed",
+          "completionReason": "goal_satisfied",
+          "reason": "Done.",
+          "ids": {
+            "model": "gpt-5.6-sol",
+            "turnId": "resp_2"
+          },
+          "modelSettings": {
+            "reasoningEffort": "medium"
+          },
+          "counts": {
+            "turns": 2,
+            "actions": 1,
+            "materialActions": 1,
+            "screenshots": 2,
+            "reasonings": 0,
+            "messages": 1,
+            "idleTurns": 0,
+            "noProgressTurns": 0
+          },
+          "items": [
+            {
+              "id": "screenshot-001",
+              "kind": "screenshot",
+              "lifecycle": "completed",
+              "title": "turn-00-start",
+              "screenshotRef": {
+                "path": "screenshots/turn-00-start.png",
+                "redaction": "none"
+              },
+              "at": "[ts]"
+            },
+            {
+              "id": "ui_action-002",
+              "kind": "ui_action",
+              "lifecycle": "completed",
+              "title": "click (11, 22)",
+              "coord": {
+                "x": 11,
+                "y": 22
+              },
+              "at": "[ts]"
+            },
+            {
+              "id": "screenshot-003",
+              "kind": "screenshot",
+              "lifecycle": "completed",
+              "title": "turn-01",
+              "screenshotRef": {
+                "path": "screenshots/turn-01.png",
+                "redaction": "none"
+              },
+              "at": "[ts]"
+            },
+            {
+              "id": "message-004",
+              "kind": "message",
+              "lifecycle": "completed",
+              "title": "message turn 2",
+              "text": "Done.",
+              "at": "[ts]"
+            }
+          ],
+          "affordanceUse": {
+            "schema": "humanish.affordance-use.v1",
+            "counts": {
+              "pointer": 1
+            },
+            "total": 1,
+            "shortcutTotal": 0
+          },
+          "capabilities": {
+            "headless": true,
+            "structuredTrace": true,
+            "lanes": [
+              "computer-use"
+            ],
+            "producesScreenshots": true,
+            "byoModel": false,
+            "preGrantableApprovals": false,
+            "inProcessTools": false,
+            "license": "proprietary"
+          },
+          "estimatedCost": {
+            "schema": "humanish.actor-estimated-cost.v1",
+            "estimatedCostUsd": null,
+            "reason": "no_token_usage",
+            "ratesAsOf": null
+          }
+        },
+        "artifacts": [
+          {
+            "label": "run bundle",
+            "path": "run.json",
+            "kind": "bundle"
+          },
+          {
+            "label": "review",
+            "path": "review.md",
+            "kind": "review"
+          },
+          {
+            "label": "events",
+            "path": "events.ndjson",
+            "kind": "events"
+          },
+          {
+            "label": "actor trace",
+            "path": "actor.json",
+            "kind": "trace"
+          },
+          {
+            "label": "screenshot 01 (raw)",
+            "path": "screenshots/turn-00-start.png",
+            "kind": "screenshot"
+          },
+          {
+            "label": "screenshot 02 (raw)",
+            "path": "screenshots/turn-01.png",
+            "kind": "screenshot"
+          }
+        ]
+      }
+    ],
+    "events": [
+      {
+        "id": "event-000-created",
+        "at": "[ts]",
+        "level": "info",
+        "type": "cua-lab.run.created",
+        "message": "Created computer-use lab run for local-vm-golden (actor openai-computer-use)."
+      },
+      {
+        "id": "event-001-subject",
+        "at": "[ts]",
+        "level": "info",
+        "type": "cua-lab.subject.declared",
+        "message": "Subject app declared at http://127.0.0.1:4173/ (the host's loopback, opened from a browser on a local VM).",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-002-session",
+        "at": "[ts]",
+        "level": "info",
+        "type": "cua-lab.session.goal_satisfied",
+        "message": "passed: Done.",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      }
+    ],
+    "redaction": {
+      "status": "passed",
+      "notes": "Typed text recorded as length only and reasoning/messages pass through text redaction. Screenshots are FULL-FIDELITY (raw), retained for local use — NOT redacted for publishing; set policies.redactScreenshots: true to blur a share-as-is bundle."
+    },
+    "artifacts": {
+      "run": "run.json",
+      "reviewJson": "review.json",
+      "reviewMarkdown": "review.md",
+      "observerData": "observer/observer-data.json",
+      "events": "events.ndjson"
+    },
+    "review": {
+      "schema": "humanish.review.v1",
+      "verdict": "pass",
+      "participants": {
+        "total": 1,
+        "reachedGoal": 1,
+        "abandoned": 0,
+        "ranOut": 0,
+        "blocked": 0,
+        "harnessFailed": 0,
+        "reportedFriction": 0
+      },
+      "summary": "Run gate: pass. Participants: 1/1 reported reaching the goal. Recorded summary: Done.",
+      "gaps": [
+        "Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate."
+      ]
+    },
+    "feedbackCandidates": [],
+    "subject": {
+      "source": "app-url",
+      "state": {
+        "provenance": "undeclared"
+      }
+    },
+    "cost": {
+      "schema": "humanish.run-cost-summary.v1",
+      "currency": "usd",
+      "estimatedTotalUsd": null,
+      "ratesAsOf": null,
+      "fullyEstimated": false,
+      "placeholder": false,
+      "breakdown": [
+        {
+          "kind": "model-tokens",
+          "laneId": "lane-01",
+          "estimatedCostUsd": null,
+          "reason": "no_token_usage",
+          "ratesAsOf": null
+        }
+      ],
+      "tokenUsage": {
+        "input": 0,
+        "output": 0,
+        "total": 0
+      },
+      "desktopMinutes": null,
+      "note": "No priced spend lines this run — every cost line is DECLARED ABSENT (unknown rate / no usage / no duration); nothing is guessed. Add a rate to src/run/pricing.ts to estimate this model."
+    }
+  },
+  "screenshots/turn-00-start.png": "sha256:fedbceae5e9a876f4b6439752d57d1c4d3ee486b29cc75b0376788bd0d2df37e",
+  "screenshots/turn-01.png": "sha256:7659fb97ba139dedd84e9b8bf28965f4781fe7ef66269f78a31c08e519ed7a55",
+  "status.json": {
+    "schema": "humanish.run-status.v1",
+    "runId": "[run]",
+    "state": "finished",
+    "mode": "live",
+    "pid": "[pid]",
+    "startedAt": "[ts]",
+    "updatedAt": "[ts]",
+    "completedAt": "[ts]",
+    "outcome": {
+      "verdict": "pass",
+      "participants": {
+        "total": 1,
+        "reachedGoal": 1,
+        "reportedFriction": 0
+      },
+      "estimatedCostUsd": null
+    }
+  }
+}
