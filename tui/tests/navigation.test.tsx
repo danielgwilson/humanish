@@ -5,7 +5,7 @@ import React from "react";
 import { describe, expect, it } from "vitest";
 
 import { App } from "../src/app.js";
-import type { TuiOptions } from "../../src/tui-contract.js";
+import type { TuiOptions } from "../../src/tui/contract.js";
 import { KEY, normalizeFrame, renderToText } from "../src/testing/render-to-text.js";
 import { initialNav, navigate, currentScreen, selectedIndex } from "../src/navigation.js";
 import { LABS, NOW, RUNS } from "./fixtures.js";

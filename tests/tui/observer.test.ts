@@ -6,9 +6,9 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { createTuiObserverSession, type TuiObserverSession } from "../src/tui-actions.js";
-import { runDryRun } from "../src/run.js";
-import type { ObserverData } from "../src/observer/data.js";
+import { createTuiObserverSession, type TuiObserverSession } from "../../src/tui/actions.js";
+import { runDryRun } from "../../src/run.js";
+import type { ObserverData } from "../../src/observer/data.js";
 
 const roots: string[] = [];
 const sessions: TuiObserverSession[] = [];

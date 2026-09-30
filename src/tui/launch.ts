@@ -17,8 +17,8 @@ import { open } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { resolveLabManifest } from "./labs.js";
-import { prepareManagedHumanishOutputDirectory } from "./selected-output-paths.js";
+import { resolveLabManifest } from "../labs.js";
+import { prepareManagedHumanishOutputDirectory } from "../selected-output-paths.js";
 
 /**
  * A lab handle is the manifest FILENAME, which is what `humanish lab run` resolves. Restricted to
@@ -76,7 +76,7 @@ export type LaunchErrorCode = "HUMANISH_LAUNCH_INVALID_LAB" | "HUMANISH_LAUNCH_F
 
 /** Where the CLI lives, relative to this compiled module. */
 function defaultCliPath(): string {
-  return fileURLToPath(new URL("./cli.js", import.meta.url));
+  return fileURLToPath(new URL("../cli.js", import.meta.url));
 }
 
 /**

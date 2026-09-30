@@ -3,7 +3,7 @@
 import { render } from "ink";
 import React from "react";
 
-import type { StartTui, TuiOptions, TuiHandoff } from "../../src/tui-contract.js";
+import type { StartTui, TuiOptions, TuiHandoff } from "../../src/tui/contract.js";
 import { forTerminal, terminalRendersUnicode } from "../../src/terminal-encoding.js";
 import { App } from "./app.js";
 

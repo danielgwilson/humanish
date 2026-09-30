@@ -2,8 +2,8 @@ import React from "react";
 import { describe, expect, it } from "vitest";
 
 import { App } from "../src/app.js";
-import type { LaunchRunOptions } from "../../src/tui-launch.js";
-import type { TuiCapabilities, TuiOptions } from "../../src/tui-contract.js";
+import type { LaunchRunOptions } from "../../src/tui/launch.js";
+import type { TuiCapabilities, TuiOptions } from "../../src/tui/contract.js";
 import { KEY, renderToText } from "../src/testing/render-to-text.js";
 import { LABS, NOW, RUNS } from "./fixtures.js";
 
