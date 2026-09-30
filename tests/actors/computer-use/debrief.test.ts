@@ -5,11 +5,11 @@ import {
   type CuaProvider,
   type CuaTurn,
 } from "../../../src/actors/computer-use/loop.js";
+import { buildCuaCostSummary } from "../../../src/routes/computer-use/costs.js";
 import {
-  buildCuaCostSummary,
   resolveSelfReportedBlocker,
   resolveSelfReportedFriction,
-} from "../../../src/routes/computer-use/lab.js";
+} from "../../../src/routes/computer-use/self-report.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
 import { CuaAdmissionLimitError } from "../../../src/actors/computer-use/admission-limit.js";
 

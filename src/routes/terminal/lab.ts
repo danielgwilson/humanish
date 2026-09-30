@@ -2,7 +2,7 @@
 // PUBLIC SURFACES ONLY, running INSIDE an E2B shell with explicit runtime-auth placement, capturing
 // its non-interactive exec output (stdin disabled) as a redacted event stream + normalized
 // transcript, capped at no-spend, emitting durable terminal/substrate/cost/no-spend/cleanup/
-// intervention proof. Mirrors cua-actor-lab.ts / scripted-browser-lab.ts.
+// intervention proof. Mirrors routes/computer-use/lab.ts and routes/scripted-browser.ts.
 //
 // BOTH ROUTES ARE IMPLEMENTED.
 //   - DRY-RUN: a contract-only `humanish.run-bundle.v1`, honestly labeled.

@@ -341,7 +341,7 @@ const ACTION_BEARING_ACTOR_ITEM_KINDS = new Set([
 ]);
 
 /**
- * Independent mirror of the producer-side no-engagement guard (cua-actor-lab.ts): a LIVE actor
+ * Independent mirror of the producer-side no-engagement guard (routes/computer-use/lanes.ts): a LIVE actor
  * trace claiming goal_satisfied while carrying zero action-bearing items AND zero message items
  * is a hollow run — the actor neither did nor said anything — and must not verify as evidence
  * (invariant 4: evidence verifies fail-closed). Live-vs-dry-run is judged exactly as the

@@ -1,7 +1,7 @@
 // The scripted-browser lab backend: either an app-url subject (a loopback app the operator
 // already runs) or one provisioned synthetic clone subject (served in E2B and exposed through
 // getHost) driven by the REGISTRY-RESOLVED scripted-browser actor.
-// Mirrors cua-actor-lab.ts: the descriptor returned by the registry runs the session; this
+// Mirrors routes/computer-use/lab.ts: the descriptor returned by the registry runs the session; this
 // backend consumes `scenario.ref` (resolves the committed scenario whose browser steps ARE the
 // actor's behavior — no built-in fallback on the lab route, unlike `run --app-url`), composes
 // the per-surface sessions, persists the evidence bundle, and renders the Observer.

@@ -16,7 +16,7 @@ import type {
   CuaActorLabErrorCode,
   CuaLaneDeps,
   CuaLaneSpec,
-} from "../../routes/computer-use/lab.js";
+} from "../../routes/computer-use/types.js";
 import type {
   CuaDesktopLane,
   DesktopLaneEvidence,

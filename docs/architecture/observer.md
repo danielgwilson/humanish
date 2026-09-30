@@ -240,7 +240,7 @@ Subsequent additions through 2026-06-11 included:
   registered in `src/actors/registry.ts`);
 - E2B desktop substrate lanes on the meta and computer-use routes;
 - computer-use bundles persist a `screenshots/` directory and the Observer
-  renders the frames (`src/routes/computer-use/lab.ts`).
+  renders the frames (`src/routes/computer-use/lanes.ts` writes them).
 
 Intentionally still adapter work:
 

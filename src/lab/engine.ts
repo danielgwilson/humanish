@@ -11,11 +11,8 @@ import { isLocalBrowserLab, localBrowserDefaults } from "../substrates/local/run
 import { resolveAutomaticAnalysis } from "../analysis/automatic-config.js";
 import type { AutomaticAnalysisHooks } from "../analysis/automatic-completion.js";
 import path from "node:path";
-import {
-  runCuaActorLab,
-  type CuaActorLabHooks,
-  type CuaActorLabResult,
-} from "../routes/computer-use/lab.js";
+import { runCuaActorLab } from "../routes/computer-use/lab.js";
+import { type CuaActorLabHooks, type CuaActorLabResult } from "../routes/computer-use/types.js";
 import {
   runScriptedBrowserLab,
   type ScriptedBrowserLabHooks,

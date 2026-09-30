@@ -414,8 +414,8 @@ Plan:
    the run" becomes a verifiable artifact, not an assertion.
    (Status 2026-06-11: `personaToDirectives` shipped in `src/lab/persona.ts` and
    `traitsApplied` is threaded on the codex routes, but the `persona-fidelity`
-   verify check is not-yet-shipped roadmap, and the computer-use route stubs
-   `persona.traitsApplied` to `[]` today — see `src/routes/computer-use/lab.ts`.)
+   verify check is not-yet-shipped roadmap. The computer-use route records
+   `persona.traitsApplied` from the resolved persona in `src/routes/computer-use/lane-plan.ts`.)
 
 ## Decision: how abandonment is adjudicated
 

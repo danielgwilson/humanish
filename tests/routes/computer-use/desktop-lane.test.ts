@@ -10,12 +10,9 @@ import type {
   CuaProvider,
   CuaTurnRequest,
 } from "../../../src/actors/computer-use/loop.js";
-import {
-  runCuaActorLab,
-  runCuaLane,
-  type CuaLaneDeps,
-  type CuaLaneSpec,
-} from "../../../src/routes/computer-use/lab.js";
+import { runCuaActorLab } from "../../../src/routes/computer-use/lab.js";
+import { runCuaLane } from "../../../src/routes/computer-use/lanes.js";
+import { type CuaLaneDeps, type CuaLaneSpec } from "../../../src/routes/computer-use/types.js";
 import type {
   CuaDesktopLane,
   DesktopLaneEvidence,

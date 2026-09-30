@@ -1,0 +1,606 @@
+import type { RunDesktopRecording } from "../../evidence/desktop-recording-types.js";
+import { e2bDesktopTemplate } from "../../substrates/e2b/desktop-media.js";
+import {
+  type DesktopBrowserEvidence,
+  type SubjectPhaseEvent,
+} from "../../substrates/e2b/cua-provisioning.js";
+import path from "node:path";
+import type { ActorPersonaRef, ActorStatus } from "../../actors/contract.js";
+import { type CuaActorDescriptor } from "../../actors/registry.js";
+import type { CuaLoopResult } from "../../actors/computer-use/loop.js";
+import { type LabConfig } from "../../lab/types.js";
+import { participantAssignment } from "../../lab/participant-assignment.js";
+import { redactText } from "../../evidence/redaction.js";
+import { type RunLabProvenance } from "../../run/status.js";
+import {
+  PUBLIC_TARGET_CWD,
+  REVIEW_SCHEMA,
+  RUN_BUNDLE_SCHEMA,
+  type ReviewSummary,
+  type RunBundle,
+  type RunDesktopGeometry,
+  type RunEvent,
+  type RunFeedbackCandidate,
+  type RunProviderResource,
+  type RunSimulation,
+  type RunSimulationStatus,
+  type RunStream,
+} from "../../run/bundle.js";
+import {
+  aggregateTaskFunnels,
+  tallyParticipantOutcomes,
+  withCuaReviewProvenance,
+} from "../../run/outcomes.js";
+import {
+  describeSubjectState,
+  participantFeedbackCandidates,
+  participantStatusForCredibility,
+  providerResourcesForOutcome,
+  publicSafeAppUrlLabel,
+  subjectProvenanceMessage,
+  verdictForStatus,
+} from "./bundle.js";
+import { buildCuaCostSummary, desktopSpanToMinutes } from "./costs.js";
+import { phaseEventIdSuffix } from "./lane-plan.js";
+import type {
+  CuaDesktopUsage,
+  CuaLaneSpec,
+  CuaSubjectProvenanceArg,
+  LaneRunOutcome,
+} from "./types.js";
+
+/** Build the N=1 bundle via the unchanged buildCuaBundle (byte-stable). */
+export function buildSingleLaneBundle(args: {
+  lab?: RunLabProvenance;
+  spec: CuaLaneSpec;
+  outcome: LaneRunOutcome | undefined;
+  descriptor: CuaActorDescriptor;
+  appUrl: string;
+  createdAt: string;
+  dryRun: boolean;
+  config: LabConfig;
+  runId: string;
+  source: RunBundle["source"];
+  redactScreenshots: boolean;
+  subjectProvenance?: CuaSubjectProvenanceArg;
+  inProcessRoute: boolean;
+  localAppSubject: boolean;
+  inProgress?: boolean;
+}): RunBundle {
+  const { spec, outcome, config } = args;
+  const desktopTemplate = e2bDesktopTemplate(config);
+  return buildCuaBundle({
+    realEmail: config.comms?.email?.kind === "real",
+    ...(args.lab === undefined ? {} : { lab: args.lab }),
+    actorId: args.descriptor.id,
+    appUrl: args.appUrl,
+    laneId: spec.laneId,
+    ...(spec.actorType === undefined ? {} : { actorType: spec.actorType }),
+    ...(spec.surface === undefined ? {} : { surface: spec.surface }),
+    ...(spec.caseGroup === undefined ? {} : { caseGroup: spec.caseGroup }),
+    createdAt: args.createdAt,
+    dryRun: args.dryRun,
+    labId: config.id,
+    ...(config.title ? { labTitle: config.title } : {}),
+    mission: spec.evidenceInstructions ?? spec.instructions,
+    ...(spec.assignment === undefined ? {} : { assignment: spec.assignment }),
+    persona: spec.persona,
+    resolution: spec.resolution,
+    desktopRoute: !args.inProcessRoute,
+    feedbackSubstrate: args.inProcessRoute
+      ? "local-filesystem"
+      : args.config.execution?.target === "local"
+        ? "local-desktop"
+        : "e2b-desktop",
+    ...(outcome?.desktopGeometry === undefined ? {} : { desktopGeometry: outcome.desktopGeometry }),
+    ...(outcome?.recording === undefined ? {} : { recording: outcome.recording }),
+    isMobile: spec.devicePreset.isMobile,
+    runId: args.runId,
+    screenshots: outcome?.screenshots ?? [],
+    captureRedaction: args.redactScreenshots ? "blurred" : "raw",
+    ...(outcome?.session ? { session: outcome.session } : {}),
+    ...(outcome?.sessionError ? { sessionError: outcome.sessionError } : {}),
+    ...(outcome === undefined
+      ? {}
+      : {
+          credibility: {
+            noEngagement: outcome.noEngagement === true,
+            selfReportedBlocker: outcome.selfReportedBlocker === true,
+            reportedFriction: outcome.reportedFriction === true,
+          },
+        }),
+    source: args.source,
+    ...(args.inProgress === undefined ? {} : { inProgress: args.inProgress }),
+    ...(args.subjectProvenance === undefined ? {} : { subjectProvenance: args.subjectProvenance }),
+    ...(desktopTemplate === undefined ? {} : { desktopTemplate }),
+    ...(outcome?.desktopBrowser === undefined ? {} : { desktopBrowser: outcome.desktopBrowser }),
+    providerResources: providerResourcesForOutcome({
+      outcome,
+      createdAt: args.createdAt,
+      simId: spec.simId,
+      streamId: spec.streamId,
+      laneId: spec.laneId,
+    }),
+    ...(args.localAppSubject || args.inProcessRoute ? { entryKind: "local-app" as const } : {}),
+    ...(outcome?.session ? { traceArtifactPath: spec.traceArtifactPath } : {}),
+    ...(outcome?.commsArtifactPath === undefined
+      ? {}
+      : { commsArtifactPath: outcome.commsArtifactPath }),
+    ...(desktopSpanToMinutes(outcome?.desktopDurationMs) === undefined
+      ? {}
+      : { desktopMinutes: desktopSpanToMinutes(outcome?.desktopDurationMs)! }),
+    ...(outcome?.sandboxId === undefined
+      ? {}
+      : {
+          desktopUsage: {
+            laneId: spec.laneId,
+            minutes: desktopSpanToMinutes(outcome.desktopDurationMs),
+            observation: outcome.desktopResources,
+            lifetimeComplete: outcome.killed,
+          },
+        }),
+    phaseEvents: outcome?.phaseRecords ?? [],
+  });
+}
+
+export function buildCuaBundle(args: {
+  realEmail?: boolean;
+  /** Lab provenance for the bundle's own `lab` field (#455). */
+  lab?: RunLabProvenance;
+  actorId: string;
+  appUrl: string;
+  laneId?: string;
+  actorType?: string;
+  surface?: string;
+  caseGroup?: string;
+  createdAt: string;
+  dryRun: boolean;
+  labId: string;
+  labTitle?: string;
+  mission: string;
+  assignment?: RunStream["assignment"];
+  persona: ActorPersonaRef;
+  resolution: [number, number];
+  /** False only for the custom in-process route, which has no hosted screen/window to claim. */
+  desktopRoute?: boolean;
+  feedbackSubstrate?: RunFeedbackCandidate["substrate"];
+  /** Runtime screen/window/viewport evidence. `viewport` inside this object must be measured. */
+  desktopGeometry?: RunDesktopGeometry;
+  recording?: RunDesktopRecording;
+  /** Device-preset touch metadata echoed on the measured stream viewport (a prompt signal on
+   *  this route, never a rendered claim); the measured width/height/DPR stay authoritative. */
+  isMobile?: boolean;
+  runId: string;
+  screenshots: string[];
+  /** Relative run-dir path of the digest-only comms-thread evidence artifact (humanish.comms-thread.v1),
+   *  when a comms lab captured mail; registered as a "log" stream artifact. */
+  commsArtifactPath?: string;
+  /**
+   * Capture-time screenshot policy ("blurred" when policies.redactScreenshots, else "raw").
+   * When a session ran, its trace's `redaction.screenshots` is the evidence-of-record and
+   * wins; this fallback keeps labels honest for frames written before a mid-session failure
+   * (no trace exists to testify then). Defaults to "raw" — the engine default.
+   */
+  captureRedaction?: "raw" | "blurred";
+  session?: CuaLoopResult;
+  sessionError?: string;
+  /**
+   * The lane's own credibility read of a goal_satisfied session (#476). The actor's status is
+   * evidence of what it CLAIMED; whether the harness counts the claim is decided by the lane
+   * (zero engagement, a final message that describes a blocker). The review has to say the same
+   * thing the lane's exit code says, or the durable bundle reports a participant reaching the
+   * goal on a run the harness refused to count.
+   */
+  credibility?: { noEngagement: boolean; selfReportedBlocker: boolean; reportedFriction: boolean };
+  source: RunBundle["source"];
+  /** Provisioned-route provenance (clone or local-tree): what the actor actually drove (names
+   * + digests only, never values or command text), including the subject's state story. */
+  subjectProvenance?: CuaSubjectProvenanceArg;
+  /**
+   * Entry kind for the non-clone subject.declared event (invariant 5 — declare what the subject
+   * WAS). "local-app": an already-running LOCAL dev server driven in-process, un-pinnable —
+   * declared honestly as caller-provisioned/unpinned with no E2B. Absent: a plain app-url entry.
+   */
+  entryKind?: "local-app";
+  /** The custom E2B desktop template (image) this lane launched on, when configured (provenance). */
+  desktopTemplate?: string;
+  /** The configured browser choice and the command that opened, when explicitly configured. */
+  desktopBrowser?: DesktopBrowserEvidence;
+  traceArtifactPath?: string;
+  providerResources?: RunProviderResource[];
+  inProgress?: boolean;
+  /** Completed subject-phase records (clone/upload/extract/install/build/ready/state groups)
+   *  to fold into bundle.events, so run.json carries real phase timing after the fact. */
+  phaseEvents?: SubjectPhaseEvent[];
+  /** Host-side E2B desktop billed span for this lane, in minutes (from LaneRunOutcome
+   *  desktopDurationMs). Absent when no sandbox ran (in-process/dry-run) → no desktop cost line. */
+  desktopMinutes?: number;
+  desktopUsage?: CuaDesktopUsage;
+}): RunBundle {
+  const publicAppUrl = publicSafeAppUrlLabel(args.appUrl);
+  // Run-level cost ESTIMATE (advisory; omitted when nothing was priced and no sandbox ran).
+  const cost = buildCuaCostSummary({
+    lanes: args.session
+      ? [
+          {
+            ...(args.laneId === undefined ? {} : { laneId: args.laneId }),
+            trace: args.session.trace,
+          },
+        ]
+      : [],
+    desktopMinutes: args.desktopMinutes,
+    ...(args.desktopUsage === undefined ? {} : { desktops: [args.desktopUsage] }),
+  });
+  const status: RunSimulationStatus =
+    args.inProgress === true
+      ? "running"
+      : args.session
+        ? args.session.status
+        : args.sessionError
+          ? "failed"
+          : "contract_proof_only";
+  const reason =
+    args.inProgress === true
+      ? "Live computer-use session is running; stream auth URL is available only through the attached Observer server."
+      : (args.session?.reason ??
+        args.sessionError ??
+        "Contract bundle only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.");
+  const lastScreenshot = args.screenshots[args.screenshots.length - 1];
+  const desktopGeometry =
+    args.desktopRoute === false
+      ? undefined
+      : (args.desktopGeometry ?? {
+          screen: { requested: { width: args.resolution[0], height: args.resolution[1] } },
+        });
+
+  // Honest labels (invariant 6: claims match mechanism): every screenshot label names the
+  // run's ACTUAL mode. The session trace is the evidence-of-record; the capture policy covers
+  // frames written before a mid-session failure produced a trace.
+  const traceScreenshotMode = args.session?.trace.redaction.screenshots;
+  const screenshotMode: "raw" | "blurred" =
+    traceScreenshotMode === "raw" || traceScreenshotMode === "blurred"
+      ? traceScreenshotMode
+      : (args.captureRedaction ?? "raw");
+
+  const simulation: RunSimulation = {
+    id: "sim-001",
+    index: 1,
+    personaId: args.persona.id,
+    scenarioId: `cua-${args.labId}`,
+    status,
+    streamKind: "browser",
+    mode: "browser-sim",
+    progress: args.inProgress === true ? 20 : 100,
+    currentStep: reason,
+    summary: args.session
+      ? `Computer-use actor (${args.actorId}) drove the subject app in a hosted desktop browser; ${args.session.completionReason}.`
+      : args.inProgress === true
+        ? `Computer-use actor (${args.actorId}) is driving the subject app in a hosted desktop browser.`
+        : args.sessionError
+          ? `Computer-use lab failed before a terminal session verdict: ${args.sessionError}`
+          : `Contract lane for the computer-use actor (${args.actorId}) against ${publicAppUrl}.`,
+    streamIds: ["stream-001"],
+    startedAt: args.createdAt,
+    updatedAt: args.createdAt,
+  };
+
+  const stream: RunStream = {
+    id: "stream-001",
+    simId: "sim-001",
+    laneId: args.laneId ?? "lane-01",
+    ...(args.assignment === undefined
+      ? {}
+      : { assignment: participantAssignment(args.assignment) }),
+    ...(args.actorType === undefined ? {} : { actorType: args.actorType }),
+    ...(args.surface === undefined ? {} : { surface: args.surface }),
+    ...(args.caseGroup === undefined ? {} : { caseGroup: args.caseGroup }),
+    kind: "browser",
+    label: `CUA browser — ${args.labId}`,
+    status,
+    transport: "snapshot",
+    updatedAt: args.createdAt,
+    embed: lastScreenshot
+      ? { kind: "screenshot", url: lastScreenshot, title: `CUA desktop (${screenshotMode})` }
+      : { kind: "placeholder", title: "CUA desktop" },
+    ...(desktopGeometry?.viewport === undefined
+      ? {}
+      : {
+          viewport: {
+            width: desktopGeometry.viewport.width,
+            height: desktopGeometry.viewport.height,
+            deviceScaleFactor: desktopGeometry.viewport.deviceScaleFactor,
+            ...(args.isMobile === undefined ? {} : { isMobile: args.isMobile }),
+          },
+        }),
+    ...(desktopGeometry === undefined ? {} : { desktopGeometry }),
+    ...(args.recording === undefined ? {} : { recording: args.recording }),
+    ui: {
+      route: publicAppUrl,
+      intent: "Watch the computer-use actor drive the subject app in a hosted desktop browser.",
+      state: reason,
+      ...(args.session ? { actorStatus: args.session.status } : {}),
+      ...(lastScreenshot ? { screenshotUrl: lastScreenshot } : {}),
+    },
+    // The seam this lab exists to fill: the provider-neutral actor evidence projection.
+    ...(args.session ? { actor: args.session.trace } : {}),
+    artifacts: [
+      { label: "run bundle", path: "run.json", kind: "bundle" as const },
+      { label: "review", path: "review.md", kind: "review" as const },
+      { label: "events", path: "events.ndjson", kind: "events" as const },
+      ...(args.traceArtifactPath
+        ? [{ label: "actor trace", path: args.traceArtifactPath, kind: "trace" as const }]
+        : []),
+      ...(args.commsArtifactPath
+        ? [{ label: "comms thread", path: args.commsArtifactPath, kind: "log" as const }]
+        : []),
+      ...(args.recording
+        ? [{ label: "desktop recording", path: args.recording.path, kind: "recording" as const }]
+        : []),
+      ...args.screenshots.map((screenshot, index) => ({
+        label: `screenshot ${String(index + 1).padStart(2, "0")} (${screenshotMode})`,
+        path: screenshot,
+        kind: "screenshot" as const,
+      })),
+    ],
+  };
+
+  const events: RunEvent[] = [
+    {
+      id: "event-000-created",
+      at: args.createdAt,
+      level: "info",
+      type: "cua-lab.run.created",
+      message: `Created computer-use lab run for ${args.labId} (actor ${args.actorId}).`,
+    },
+    args.subjectProvenance
+      ? {
+          id: "event-001-subject",
+          at: args.createdAt,
+          level: "info" as const,
+          type: "cua-lab.subject.provenance",
+          // HONEST WORDING: claim "cloned/packed and served" only when it actually happened.
+          message: `${subjectProvenanceMessage(args.subjectProvenance, publicAppUrl, args.dryRun, args.session !== undefined)} (subject env names: ${args.subjectProvenance.envNames.length > 0 ? args.subjectProvenance.envNames.join(", ") : "none"}; values never persisted); state: ${describeSubjectState(args.subjectProvenance.state, args.dryRun)}.`,
+          simId: "sim-001",
+          streamId: "stream-001",
+        }
+      : {
+          id: "event-001-subject",
+          at: args.createdAt,
+          level: "info" as const,
+          type: "cua-lab.subject.declared",
+          // Invariant 5: declare what the subject WAS, including the ABSENCE of a pin. A
+          // local-app / in-process subject is an already-running LOCAL dev server the caller
+          // provisioned; it cannot be commit-pinned, so its provenance is honestly UNPINNED and
+          // no E2B desktop was created. A plain app-url entry runs inside the desktop sandbox.
+          message:
+            args.entryKind === "local-app"
+              ? `Subject app declared at ${publicAppUrl} (already-running LOCAL dev server driven in-process; NO clone, NO E2B desktop). Provenance: caller-provisioned and UNPINNED — a running dev server cannot be commit-pinned.`
+              : `Subject app declared at ${publicAppUrl} (loopback inside the desktop sandbox).`,
+          simId: "sim-001",
+          streamId: "stream-001",
+        },
+    args.session
+      ? {
+          id: "event-002-session",
+          at: args.createdAt,
+          level: args.session.status === "passed" ? "info" : "warn",
+          type: `cua-lab.session.${args.session.completionReason}`,
+          message: `${args.session.status}: ${args.session.reason}`,
+          simId: "sim-001",
+          streamId: "stream-001",
+        }
+      : args.inProgress === true
+        ? {
+            id: "event-002-running",
+            at: args.createdAt,
+            level: "info" as const,
+            type: "cua-lab.session.running",
+            message:
+              "Live computer-use session is running; terminal evidence has not been written yet.",
+            simId: "sim-001",
+            streamId: "stream-001",
+          }
+        : args.sessionError
+          ? {
+              id: "event-002-session",
+              at: args.createdAt,
+              level: "error" as const,
+              type: "cua-lab.session.error",
+              message: args.sessionError,
+              simId: "sim-001",
+              streamId: "stream-001",
+            }
+          : {
+              id: "event-002-contract",
+              at: args.createdAt,
+              level: "info" as const,
+              type: "cua-lab.contract.ready",
+              message:
+                "Dry-run contract bundle ready; switch scenario.mode to live for a real desktop session.",
+              simId: "sim-001",
+              streamId: "stream-001",
+            },
+  ];
+
+  // Persisted phase trail (real boot timing, not just a coarse provenance sentence): one
+  // RunEvent per COMPLETED phase boundary (started events never persist here; they carry no
+  // durationMs). ok:false phases warn rather than error, since the failing phase's own thrown
+  // error already becomes the terminal cua-lab.session.error event above.
+  let phaseEventSeq = 3;
+  for (const phase of args.phaseEvents ?? []) {
+    events.push({
+      id: `event-${String(phaseEventSeq++).padStart(3, "0")}-phase-${phaseEventIdSuffix(phase.type)}`,
+      at: phase.at,
+      level: phase.ok === false ? "warn" : "info",
+      type: phase.type,
+      message:
+        phase.durationMs === undefined ? phase.message : `${phase.message} (${phase.durationMs}ms)`,
+      simId: "sim-001",
+      streamId: "stream-001",
+    });
+  }
+  for (const warning of desktopGeometry?.warnings ?? []) {
+    events.push({
+      id: `event-${String(phaseEventSeq++).padStart(3, "0")}-geometry-warning`,
+      at: args.createdAt,
+      level: "warn",
+      type: "cua-lab.geometry.warning",
+      message: warning,
+      simId: "sim-001",
+      streamId: "stream-001",
+    });
+  }
+
+  // A funnel with a denominator of one is still the funnel — and its absence stays honest: no
+  // declared protocol (or a dry run) means no `tasks` field, never an empty one.
+  const singleStudyTasks =
+    args.inProgress !== true && args.session?.trace.taskFunnel !== undefined
+      ? aggregateTaskFunnels([args.session.trace.taskFunnel])
+      : undefined;
+  // What happened to the participant, as the LANE judged it — the same rule the fan-out roll-up
+  // applies (participantStatusForOutcome). Before #476 this read the actor's own status, so a
+  // run the lane refused as "not a credible pass" was written up as verdict pass, 1/1 reached
+  // the goal, and every projection of the bundle (Observer tally, `runs`, the status index)
+  // repeated it. Found on a real drawDB run whose participant wrote "Blocked after partial
+  // completion".
+  const participantStatus: ActorStatus | undefined =
+    args.session === undefined
+      ? undefined
+      : participantStatusForCredibility(args.session.status, args.credibility);
+  const credibilityNote =
+    args.session === undefined || participantStatus === args.session.status
+      ? undefined
+      : args.credibility?.noEngagement === true
+        ? "Not counted as a pass: the participant took no actions and said nothing."
+        : "Not counted as a pass: the participant's final message described a blocker.";
+  const review: ReviewSummary = withCuaReviewProvenance(
+    {
+      schema: REVIEW_SCHEMA,
+      verdict:
+        args.inProgress === true
+          ? "contract_proof_only"
+          : participantStatus !== undefined
+            ? verdictForStatus(participantStatus)
+            : args.sessionError
+              ? "fail"
+              : "contract_proof_only",
+      // One lane is still a study with a denominator of one, and saying so keeps a single-lane
+      // result from being read as though it generalized.
+      ...(participantStatus !== undefined && args.inProgress !== true
+        ? {
+            participants: tallyParticipantOutcomes(
+              [participantStatus],
+              [args.credibility?.reportedFriction === true],
+            ),
+          }
+        : {}),
+      ...(singleStudyTasks === undefined ? {} : { tasks: singleStudyTasks }),
+      summary: credibilityNote === undefined ? reason : `${credibilityNote} ${reason}`,
+      gaps:
+        args.session || args.sessionError
+          ? []
+          : args.inProgress === true
+            ? ["Live desktop session is still running."]
+            : ["Live desktop session not yet run (dry-run contract only)."],
+    },
+    [stream],
+  );
+
+  return {
+    schema: RUN_BUNDLE_SCHEMA,
+    ...(args.realEmail && !args.dryRun
+      ? { publication: { restrictions: ["real-communications"] as ["real-communications"] } }
+      : {}),
+    runId: args.runId,
+    mode: args.dryRun ? "dry-run" : "live",
+    simCount: 1,
+    createdAt: args.createdAt,
+    cwd: PUBLIC_TARGET_CWD,
+    artifactRoot: path.join(".humanish", "runs", args.runId),
+    ...(args.lab === undefined ? {} : { lab: args.lab }),
+    source: args.source,
+    persona: {
+      id: args.persona.id,
+      name: `Computer-use operator (${args.persona.id})`,
+      source: `lab:${args.labId}`,
+      sourceDigest: args.persona.promptDigest,
+    },
+    scenario: {
+      id: `cua-${args.labId}`,
+      title: args.labTitle ?? `Computer-use lab: ${args.labId}`,
+      goal: redactText(args.mission),
+      source: `lab:${args.labId}`,
+      sourceDigest: args.persona.promptDigest,
+    },
+    lifecycle: [
+      {
+        at: args.createdAt,
+        event: "cua-lab.run.created",
+        message: `Created computer-use lab run with one desktop browser lane (actor ${args.actorId}).`,
+      },
+    ],
+    simulations: [simulation],
+    streams: [stream],
+    events,
+    redaction: {
+      status: "passed",
+      notes:
+        traceScreenshotMode === "raw"
+          ? "Typed text recorded as length only and reasoning/messages pass through text redaction. Screenshots are FULL-FIDELITY (raw), retained for local use — NOT redacted for publishing; set policies.redactScreenshots: true to blur a share-as-is bundle."
+          : traceScreenshotMode === "blurred"
+            ? "Typed text recorded as length only and reasoning/messages pass through text redaction. Screenshots are blurred at capture (policies.redactScreenshots: true) for a share-as-is bundle."
+            : args.screenshots.length > 0
+              ? `Session ended before a trace was recorded; ${args.screenshots.length} already-written frame(s) follow the capture policy (${screenshotMode}). Typed text is recorded as length only and reasoning/messages pass through text redaction.`
+              : "No screenshots captured. Typed text is recorded as length only and reasoning/messages pass through text redaction whenever a session runs.",
+    },
+    artifacts: {
+      run: "run.json",
+      reviewJson: "review.json",
+      reviewMarkdown: "review.md",
+      observerData: "observer/observer-data.json",
+      events: "events.ndjson",
+    },
+    review,
+    // What the participant reported, when it reported anything (#392). Dry-run and in-progress
+    // bundles carry none — there is no participant yet to quote.
+    feedbackCandidates:
+      args.dryRun || args.inProgress === true
+        ? []
+        : participantFeedbackCandidates({
+            runId: args.runId,
+            scenarioId: `cua-${args.labId}`,
+            adapterId: args.labId,
+            goal: redactText(args.mission),
+            substrate:
+              args.feedbackSubstrate ??
+              (args.desktopRoute === false ? "local-filesystem" : "e2b-desktop"),
+            lanes: [
+              {
+                laneId: args.laneId ?? "lane-01",
+                streamId: "stream-001",
+                personaId: args.persona.id,
+                ...(args.session === undefined ? {} : { session: args.session }),
+                ...(args.traceArtifactPath === undefined
+                  ? {}
+                  : { traceArtifactPath: args.traceArtifactPath }),
+                screenshots: args.screenshots,
+                ...(args.commsArtifactPath === undefined
+                  ? {}
+                  : { commsArtifactPath: args.commsArtifactPath }),
+              },
+            ],
+          }),
+    // Custom desktop image provenance (omitted on the stock-template default → byte-stable).
+    ...(args.desktopTemplate === undefined ? {} : { desktopTemplate: args.desktopTemplate }),
+    ...(args.desktopBrowser === undefined ? {} : { desktopBrowser: args.desktopBrowser }),
+    ...(args.providerResources === undefined || args.providerResources.length === 0
+      ? {}
+      : { providerResources: args.providerResources }),
+    // Structured subject provenance (invariant 5): code pin + state story. Uniform and
+    // honest on app-url bundles too — the caller minted the URL, its state is the caller's.
+    // CuaSubjectProvenanceArg's two variants (clone, local-tree) are already RunSubjectProvenance-
+    // shaped, so no reconstruction is needed beyond the app-url fallback.
+    subject: args.subjectProvenance ?? { source: "app-url", state: { provenance: "undeclared" } },
+    ...(cost === undefined ? {} : { cost }),
+  };
+}

@@ -14,19 +14,20 @@ import {
   runCuaActorSession,
   type CuaActorSessionOptions,
 } from "../../../src/actors/computer-use/actor.js";
+import { buildCuaFanoutBundle } from "../../../src/routes/computer-use/fanout-bundle.js";
 import {
-  buildCuaFanoutBundle,
   floorRenderResolution,
   MIN_DESKTOP_RENDER_WIDTH,
   resolveCuaLanePlan,
-  declaredScreenForRender,
   resolveLaneDevice,
-  runCuaActorLab,
-  runCuaLanes,
+} from "../../../src/routes/computer-use/lane-plan.js";
+import { declaredScreenForRender, runCuaActorLab } from "../../../src/routes/computer-use/lab.js";
+import { runCuaLanes } from "../../../src/routes/computer-use/lanes.js";
+import {
   type CuaActorLabHooks,
   type CuaLaneSpec,
   type CuaLanePlan,
-} from "../../../src/routes/computer-use/lab.js";
+} from "../../../src/routes/computer-use/types.js";
 import { getActor } from "../../../src/actors/registry.js";
 import { DEVICE_PRESETS } from "../../../src/lab/device-presets.js";
 import type {

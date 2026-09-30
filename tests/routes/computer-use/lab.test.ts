@@ -28,18 +28,22 @@ import type {
 } from "../../../src/actors/computer-use/loop.js";
 import {
   CUA_ACTOR_LAB_PROVIDER_METADATA,
-  buildCuaBundle,
-  buildCuaCostSummary,
   makeChromeBrowserStateObserver,
-  makeLaneWriteScreenshot,
+  runCuaActorLab,
+} from "../../../src/routes/computer-use/lab.js";
+import { buildCuaBundle } from "../../../src/routes/computer-use/single-bundle.js";
+import { buildCuaCostSummary } from "../../../src/routes/computer-use/costs.js";
+import { makeLaneWriteScreenshot } from "../../../src/routes/computer-use/lanes.js";
+import {
   resolveSelfReportedBlocker,
   resolveSelfReportedFriction,
-  runCuaActorLab,
-  type CuaActorLabHooks,
-  participantStatusForCredibility,
+} from "../../../src/routes/computer-use/self-report.js";
+import { type CuaActorLabHooks } from "../../../src/routes/computer-use/types.js";
+import { participantStatusForCredibility } from "../../../src/routes/computer-use/bundle.js";
+import {
   CLOSING_LINE_DIRECTIVE,
   composeLaneInstructions,
-} from "../../../src/routes/computer-use/lab.js";
+} from "../../../src/routes/computer-use/lane-plan.js";
 import type {
   E2BDesktopCreateOptions,
   E2BDesktopModule,

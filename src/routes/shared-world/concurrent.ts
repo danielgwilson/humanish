@@ -78,24 +78,28 @@ import { labPersonaIds, resolveCommittedPersonasForCwd } from "../../lab/persona
 import type { ResolvedPersona } from "../../lab/persona.js";
 import {
   commandDigestOf,
-  composeLaneInstructions,
   defaultPackLocalTree,
   provisionCloneSubject,
   provisionLocalTreeSubject,
   declaredScreenForRender,
   inboxRecipientFor,
   laneHasInboxRecipient,
-  resolveLaneDevice,
   resolveSubjectState,
-  runCuaLane,
+  type SubjectPhaseEvent,
+} from "../computer-use/lab.js";
+import {
+  composeLaneInstructions,
+  resolveLaneDevice,
   makeCuaRunBudget,
   withInboxMission,
+} from "../computer-use/lane-plan.js";
+import { runCuaLane } from "../computer-use/lanes.js";
+import {
   type CuaActorLabHooks,
   type CuaLaneDeps,
   type CuaLaneSpec,
   type LaneRunOutcome,
-  type SubjectPhaseEvent,
-} from "../computer-use/lab.js";
+} from "../computer-use/types.js";
 import {
   DEFAULT_SANDBOX_CATCH_PORT,
   collectCommsThread,

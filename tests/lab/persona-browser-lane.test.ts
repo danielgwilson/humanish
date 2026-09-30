@@ -11,7 +11,7 @@ import path from "node:path";
 import { parse as parseYaml } from "yaml";
 import { describe, expect, it } from "vitest";
 
-import { composeLaneInstructions } from "../../src/routes/computer-use/lab.js";
+import { composeLaneInstructions } from "../../src/routes/computer-use/lane-plan.js";
 import { DEVICE_PRESETS } from "../../src/lab/device-presets.js";
 import {
   labPersonaIds,

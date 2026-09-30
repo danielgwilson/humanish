@@ -267,15 +267,11 @@ export type {
 export type { DoctorResult } from "./cli/doctor.js";
 export type { RunCleanupHooks, RunsResult } from "./run/manage.js";
 export type { VerifyResult } from "./run/verify.js";
-export {
-  CUA_ACTOR_LAB_PROVIDER_METADATA,
-  CUA_ACTOR_LAB_SCHEMA,
-  CUA_FANOUT_STRATEGY,
-  buildCuaBundle,
-  buildCuaFanoutBundle,
-  resolveCuaLanePlan,
-  runCuaActorLab,
-} from "./routes/computer-use/lab.js";
+export { CUA_ACTOR_LAB_PROVIDER_METADATA, runCuaActorLab } from "./routes/computer-use/lab.js";
+export { CUA_ACTOR_LAB_SCHEMA, CUA_FANOUT_STRATEGY } from "./routes/computer-use/types.js";
+export { buildCuaBundle } from "./routes/computer-use/single-bundle.js";
+export { buildCuaFanoutBundle } from "./routes/computer-use/fanout-bundle.js";
+export { resolveCuaLanePlan } from "./routes/computer-use/lane-plan.js";
 export type {
   CuaActorLabErrorCode,
   CuaActorLabHooks,
@@ -286,8 +282,8 @@ export type {
   CuaLaneSummary,
   CuaSubjectProjection,
   RunCuaActorLabOptions,
-  SubjectPhaseEvent,
-} from "./routes/computer-use/lab.js";
+} from "./routes/computer-use/types.js";
+export type { SubjectPhaseEvent } from "./routes/computer-use/lab.js";
 export { SCRIPTED_BROWSER_PROVIDER, runScriptedBrowserSession } from "./actors/scripted-browser.js";
 export type {
   BrowserPersonaJourney,
