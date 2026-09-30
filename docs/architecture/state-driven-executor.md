@@ -167,7 +167,7 @@ Implement `CuaExecutor.observe()/execute()`, derive `stateSignature`/`appState`
 from your own state, pair it with a non-vision `CuaProvider`, and call
 `runComputerUseLoop`. You own the bundle/redaction wiring.
 
-### 2. `runLab` + `buildExecutor` / `buildProvider` (keeps the composition)
+### 2. `runLab` + `inProcess` / `createProvider` (keeps the composition)
 
 The supported library path keeps personas, the Observer, the evidence bundle,
 redaction, and the friction loop, while skipping E2B entirely. Start with the
@@ -188,21 +188,26 @@ on `.ok`, then narrow `runLab`'s result on `backend === "cua"` before accessing
 the CUA result. The example defines all helpers rather than requiring a consumer
 to reconstruct them.
 
-When `cuaHooks.buildExecutor` is set, `runCuaActorLab` takes a branch that NEVER
+Pass `inProcess: { executor }` and `createProvider` in `RunLabOptions`. The type requires
+`createProvider` beside `inProcess`: a state executor returns no frame, so it needs a non-vision
+provider. With `inProcess` set, `runCuaActorLab` takes a branch that NEVER
 loads the E2B module, creates a sandbox, runs `prepareDesktop`, provisions a
 clone, opens a browser, or starts a stream. `sandboxId`/`streamUrl` stay
 undefined, so `result.sandbox` is omitted. That omission is the verifiable
 "no E2B SDK call" proof.
 
-Two boot-time fail-closed guards (both BEFORE any key check, so a CLI invocation
-never sees a misleading `KEYS_MISSING` first):
+Fail-closed guards, all BEFORE any key check, so a CLI invocation never sees a misleading
+`KEYS_MISSING` first:
 
-- `HUMANISH_CUA_LAB_EXECUTOR_NO_PROVIDER`: `buildExecutor` without `buildProvider`
-  (a state executor MUST be paired with a non-vision provider). `buildProvider`
-  alone is allowed; that is a model swap on the normal E2B route.
-- `HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR`: a `subject.source: local-app` config
-  run with no `buildExecutor` hook (there is no built-in in-process driver yet).
-  A structured error, never a desktop attempt.
+- `HUMANISH_LAB_OPTION_UNSUPPORTED`: `inProcess` without `createProvider` (from JavaScript,
+  where the type does not stop it), on a subject other than `app-url` or `local-app`, or with
+  more than one participant. `createProvider` alone is allowed; that is a model swap on the
+  normal E2B route.
+- `HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR`: a `subject.source: local-app` config run without
+  `inProcess` (there is no built-in in-process driver yet). A structured error, never a desktop
+  attempt.
+- `HUMANISH_CUA_LAB_EXECUTOR_NO_PROVIDER`: the deprecated `cuaHooks.buildExecutor` without
+  `cuaHooks.buildProvider`.
 
 Key gating is route-aware: the in-process route uses the caller's OWN model and
 executor, so no `OPENAI_API_KEY`/`E2B_API_KEY` is required.

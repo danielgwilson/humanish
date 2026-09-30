@@ -18,7 +18,7 @@ Hosted browser studies support these sources:
 - **`subject.source: app-url`**: drive your reachable deployment with
   `policies.allowPublicTargets: true`. The standard independent-world route
   accepts one participant for this shared URL. Library callers can also provision
-  the target through the `prepareDesktop` hook.
+  the target through `RunLabOptions.prepareDesktop`.
 - **`subject.source: local-tree`**: package the lab resolution directory, upload
   its content-pinned archive, and serve it like a clone. Declare `subject.serve`
   and use `subject.localTree.keep`, `exclude`, and `maxArchiveBytes` to control
@@ -295,8 +295,8 @@ through its in-process JS contract (`window.app.getState()` etc.) with a custom
 `CuaExecutor` (screenshot optional, `appState` as the progress signal) paired with a
 **non-vision** `CuaProvider` (`requiresFrame` falsey), keeping personas, the
 Observer, the evidence bundle, redaction, and the friction loop, with **no E2B
-desktop and no clone**. Supply `cuaHooks.buildExecutor` + `buildProvider` to
-`runLab` (a config-only run with no hooks fails closed with a structured error). See
+desktop and no clone**. Supply `inProcess.executor` + `createProvider` to
+`runLab` (a config-only run without them fails closed with a structured error). See
 [State-driven executor](https://github.com/danielgwilson/humanish/blob/main/docs/architecture/state-driven-executor.md).
 
 The [complete npm example](https://github.com/danielgwilson/humanish/tree/main/examples/participant)

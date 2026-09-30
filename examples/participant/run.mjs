@@ -65,7 +65,7 @@ try {
     id: "participant-example",
     title: "Deterministic local-app integration example",
     subject: { source: "local-app", appUrl: app.appUrl },
-    // This registry id selects the CUA loop. buildProvider supplies the actual provider.
+    // This registry id selects the CUA loop. createProvider supplies the actual provider.
     actors: [{ type: "openai-computer-use", persona: "pixel-pat", mission: "Greet the app." }],
     scenario: { mode: "live" },
     review: { analysis: false }, // Keep this deterministic example free of provider requests.
@@ -75,10 +75,10 @@ try {
   const outcome = await runLab(parsed.config, {
     cwd: process.cwd(),
     dryRun: false,
-    cuaHooks: {
-      buildExecutor: async ({ appUrl }) => createAppContractExecutor(appUrl),
-      buildProvider: async () => provider,
-    },
+    // An in-process executor returns app state, not a screenshot, so it needs a provider that
+    // reasons over state: the type requires createProvider beside inProcess.
+    inProcess: { executor: async ({ appUrl }) => createAppContractExecutor(appUrl) },
+    createProvider: async () => provider,
   });
   if (outcome.backend !== "cua") throw new Error(`Unexpected backend: ${outcome.backend}`);
   const { result } = outcome;

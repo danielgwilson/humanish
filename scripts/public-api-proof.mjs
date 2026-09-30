@@ -4,8 +4,9 @@
 // check, not a clean install. Then it compares the export names and kinds that `import "humanish"`
 // exposes (runtime values and names declared in dist/index.d.ts) with
 // tests/golden/public-api.json. This is an export-name guard: a change inside a named type is
-// caught only where the probe or an example uses it. Last, it typechecks a probe importing every
-// name plus the examples, and runs each example from the packed copy. Run after `pnpm build`.
+// caught only where the probe, an example or a consumer file in scripts/api-consumers/ uses it.
+// Last, it typechecks a probe importing every name, the examples and the consumer files, and runs
+// each example from the packed copy. Run after `pnpm build`.
 // `--update` rewrites the golden.
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
@@ -114,6 +115,8 @@ async function declaredNames(app) {
  * package, with the options the participant example's README documents.
  */
 async function typecheck(app, names) {
+  // Consumer files use public fields one by one; they are typechecked, never run.
+  await cp(join(root, "scripts/api-consumers"), join(app, "consumers"), { recursive: true });
   await writeFile(
     join(app, "probe.ts"),
     `import type {\n${names.map((name) => `  ${name},`).join("\n")}\n} from "humanish";\n`,
@@ -130,7 +133,7 @@ async function typecheck(app, names) {
       target: "ES2022",
       types: ["node"],
     },
-    include: ["probe.ts", "examples/**/*.mjs"],
+    include: ["probe.ts", "examples/**/*.mjs", "consumers/**/*.ts"],
   };
   await writeFile(join(app, "tsconfig.json"), `${JSON.stringify(tsconfig, null, 2)}\n`);
   try {

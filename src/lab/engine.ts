@@ -112,7 +112,11 @@ export async function runLab(config: LabConfig, options: RunLabOptions): Promise
   return outcome;
 }
 
-async function dispatchLab(config: LabConfig, options: RunLabOptions): Promise<LabOutcome> {
+/**
+ * Dispatch options runLab already normalized. The local VM study re-enters here with its own
+ * desktop lane, so its internal hooks are not checked or warned about as a caller's.
+ */
+export async function dispatchLab(config: LabConfig, options: RunLabOptions): Promise<LabOutcome> {
   config = localBrowserDefaults(config);
   const backend = selectLabBackend(config);
   switch (backend) {

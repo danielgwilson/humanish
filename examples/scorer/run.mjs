@@ -39,7 +39,7 @@ async function scored(runId) {
 
 const parsed = parseLabConfig(lab);
 if (!parsed.ok) throw new Error(parsed.error.message);
-const outcome = await runLab(parsed.config, { cwd: project, dryRun: true, cuaHooks: { score } });
+const outcome = await runLab(parsed.config, { cwd: project, dryRun: true, scorer: { score } });
 if (outcome.backend !== "cua" || !outcome.result.ok) {
   throw new Error(`Library dry run failed: ${JSON.stringify(outcome.result)}`);
 }

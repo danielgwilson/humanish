@@ -78,7 +78,7 @@ A lab is a composition over code primitives, not a hardcoded kind:
   from PUBLIC surfaces only; see below). A
   `local-app` subject pairs a computer-use actor with `execution.target: local`
   (or absent) and is library-assisted: the caller supplies
-  `cuaHooks.buildExecutor` + `buildProvider`; with no hooks the engine fails
+  `RunLabOptions.inProcess.executor` + `createProvider`; with neither the engine fails
   closed (`HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR`), never a desktop attempt. See
   [`docs/architecture/state-driven-executor.md`](../architecture/state-driven-executor.md);
 - `subject.localTree` (`local-tree` subjects, computer-use route): pack/upload
@@ -1322,15 +1322,73 @@ so `affordanceUse` needs no extra wiring to reach it. Present on computer-use la
 that dispatched at least one action; absent elsewhere and on every pre-existing
 bundle, and its absence is tolerated by verify.
 
+## Library options (`RunLabOptions`)
+
+`runLab(config, options)` checks its options against the lab's route before anything runs. A
+refusal comes back in the route's own result envelope, with no run directory, receipt or sandbox.
+
+| Option                                   | What it does                                                                                                                                                                                                                                       | Routes                                                                                                                                                    |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `env`                                    | Keys and subject env for the run. Defaults to `process.env`                                                                                                                                                                                        | all                                                                                                                                                       |
+| `scorer`                                 | An `AdapterScorerModule` (`score`, `deriveFeedback`, and `deriveArtifacts` on browser routes) over the finished evidence                                                                                                                           | computer use, shared world, terminal                                                                                                                      |
+| `createProvider(ctx)`                    | The participant's brain. `ctx` is `ProviderContext`: `config`, `participant { id, index, count }` and `executor`                                                                                                                                   | computer use: E2B, local VM or in process                                                                                                                 |
+| `inProcess.executor({ config, appUrl })` | Drives an `app-url` or `local-app` subject in process, one participant. Requires `createProvider`                                                                                                                                                  | computer use                                                                                                                                              |
+| `prepareDesktop(desktop, target)`        | Runs on an E2B sandbox before provisioning. `target` is `{ kind: "subject" }` or `{ kind: "participant", participant }`                                                                                                                            | computer use on E2B (each participant); shared world (provisioned: the subject, then each seat; external-public: each seat); scripted clone (the subject) |
+| `onEvent(event)`                         | Observes `LabEvent`s, below                                                                                                                                                                                                                        | all                                                                                                                                                       |
+| `onStream(event)`                        | Awaited. `ready` after a participant's live stream starts; its `url` carries an auth key and must never be persisted. `ended` after the participant's sandbox is gone. A rejected `ready` becomes a run warning; an `ended` rejection is swallowed | computer use and shared world on E2B                                                                                                                      |
+| `analysisSignal`                         | Cancels post-run analysis only                                                                                                                                                                                                                     | routes with post-run analysis                                                                                                                             |
+| `onObserverReady(observer)`              | Awaited before any participant desktop exists                                                                                                                                                                                                      | live computer use; live shared world, where the provisioned subject sandbox is already billed                                                             |
+| `rerun.participantIds`                   | Participants to rerun from `rerun.sourceRunId`                                                                                                                                                                                                     | computer use                                                                                                                                              |
+
+`LabEvent` has four types:
+
+- `plan`: the participants (`id`, `persona`, `device`, `instructionDigest`) before any sandbox
+  or provider call. Computer use only; the other routes gain it later.
+- `subject-phase`: a provisioning boundary with `target`, `name`, `message`, `at`, and `ok` and
+  `durationMs` on completed phases. Computer use sends a participant target, shared world the
+  subject.
+- `analysis-started` and `analysis-finished`, around post-run analysis. `analysis-finished`
+  fires after success, failure and cancellation.
+
+`onEvent` is never awaited, and it changes no output: subject phases still print to stderr. A
+throw or a rejected promise becomes a redacted run warning.
+
+Refusals:
+
+- `HUMANISH_LAB_OPTION_UNSUPPORTED`: the route cannot honor the option, for example `scorer` on
+  a preview or scripted lab, `createProvider` off computer use, or `prepareDesktop` where no E2B
+  desktop exists. The message names the option and the route.
+- `HUMANISH_LAB_OPTION_CONFLICT`: a new option is set together with the older field it replaces.
+
+The older route hook bags (`cuaHooks`, `scriptedHooks`, `terminalHooks`, `sharedWorldHooks`) and
+`rerun.laneIds` keep their behavior in this minor and are removed in the next. Each old field in
+use emits one `DeprecationWarning` (code `HUMANISH_RUN_LAB_OPTION_DEPRECATED`) per process:
+
+| Old field                                                                                          | New home               |
+| -------------------------------------------------------------------------------------------------- | ---------------------- |
+| `score`, `deriveFeedback`, `deriveArtifacts` on `cuaHooks`, `sharedWorldHooks` or `terminalHooks`  | `scorer`               |
+| `cuaHooks.buildProvider`                                                                           | `createProvider`       |
+| `cuaHooks.buildExecutor`                                                                           | `inProcess.executor`   |
+| `prepareDesktop` on `cuaHooks`, `scriptedHooks` or `sharedWorldHooks`                              | `prepareDesktop`       |
+| `cuaHooks.onPreflight`; `onPhase` on `cuaHooks` or `sharedWorldHooks`; `automaticAnalysis.onStart` | `onEvent`              |
+| `onRuntimeStreamReady`, `onRuntimeStreamEnded` on `cuaHooks` or `sharedWorldHooks`                 | `onStream`             |
+| `automaticAnalysis.deps.signal`                                                                    | `analysisSignal`       |
+| `env` on any bag                                                                                   | `env`                  |
+| `rerun.laneIds`                                                                                    | `rerun.participantIds` |
+
+The bags' other fields are test seams with no public replacement, and they do not warn. A
+`scorer` passed through `RunLabOptions` behaves exactly like the same functions in the old bag,
+including the route-specific verdict rules in the next section.
+
 ## Product-Adapter Extension Seam
 
 The terminal-product and browser/computer-use lanes let an adopter attach
 product-specific scoring + feedback as a THIN in-repo extension WITHOUT forking
-core. The seam is the EXPORTED contract types plus DI hooks:
-`TerminalProductLabHooks` for terminal-product runs, and the browser adapter
-hooks inherited by `CuaActorLabHooks` / `SharedWorldLabHooks` for CUA,
-and shared-world runs. This is never a
-built-in product scorer (the adopter's scorecard lives in the adopter's repo).
+core. The seam is `RunLabOptions.scorer`, an `AdapterScorerModule`, for terminal-product,
+computer-use and shared-world runs; the CLI loads the same module with `--scorer`. The older
+`TerminalProductLabHooks`, `CuaActorLabHooks` and `SharedWorldLabHooks` fields still accept the
+same functions in this minor. This is never a built-in product scorer (the adopter's scorecard
+lives in the adopter's repo).
 
 Three product-agnostic carriers keep core's nouns closed while letting the adapter
 record its own:

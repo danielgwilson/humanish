@@ -42,7 +42,7 @@ type SetupTarget =
   | { readonly kind: "participant"; readonly participant: ParticipantRef };
 
 /** What `createProvider` receives for each participant. */
-interface ProviderContext {
+export interface ProviderContext {
   readonly config: LabConfig;
   readonly participant: ParticipantRef;
   readonly executor: CuaExecutor;
@@ -161,10 +161,10 @@ function hasMember(bag: object | undefined, key: string): boolean {
 }
 
 /**
- * The first old field set together with its new home, as [home, old field]. The new option is
- * checked first, so a legacy-only call never looks at its bags.
+ * Every old field the options set that has a new home, and whether its home is set too. Presence
+ * comes from property descriptors (hasMember), so no getter of the caller's runs.
  */
-function conflictingField(options: RunLabOptions): [string, string] | undefined {
+function oldFieldsInUse(options: RunLabOptions): { home: string; old: string; clash: boolean }[] {
   const pairs: [home: string, bag: string, member: string][] = [
     ["env", "cuaHooks", "env"],
     ["env", "scriptedHooks", "env"],
@@ -202,8 +202,21 @@ function conflictingField(options: RunLabOptions): [string, string] | undefined 
     name === "automaticAnalysis.deps"
       ? options.automaticAnalysis?.deps
       : (options[name as keyof RunLabOptions] as object | undefined);
-  const found = pairs.find(([name, bag, member]) => home(name) && hasMember(bagOf(bag), member));
-  return found === undefined ? undefined : [found[0], `${found[1]}.${found[2]}`];
+  return pairs
+    .filter(([, bag, member]) => hasMember(bagOf(bag), member))
+    .map(([name, bag, member]) => ({ home: name, old: `${bag}.${member}`, clash: home(name) }));
+}
+
+const warned = new Set<string>();
+
+/** One DeprecationWarning per old field per process. Test seams have no home and never warn. */
+function warnDeprecated(home: string, old: string): void {
+  if (warned.has(old)) return;
+  warned.add(old);
+  process.emitWarning(
+    `RunLabOptions.${old} is deprecated and is removed in the next minor. Use RunLabOptions.${home}.`,
+    { type: "DeprecationWarning", code: "HUMANISH_RUN_LAB_OPTION_DEPRECATED" },
+  );
 }
 
 /** Why the route cannot honor an option it was given, or undefined when it can. */
@@ -305,10 +318,12 @@ export function normalizeRunLabOptions(
   route: LabRoute,
   options: RunLabOptions,
 ): Normalized | Refusal {
-  const clash = conflictingField(options);
-  if (clash) return conflict(...clash);
+  const inUse = oldFieldsInUse(options);
+  const clash = inUse.find((field) => field.clash);
+  if (clash) return conflict(clash.home, clash.old);
   const refused = unsupportedOption(config, route, options);
   if (refused) return refused;
+  for (const { home, old } of inUse) warnDeprecated(home, old);
 
   const warnings: string[] = [];
   const {
