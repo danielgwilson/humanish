@@ -10,6 +10,7 @@ import {
   buildInitialRequest,
   createOpenAiResponsesProvider,
   namedProviderErrorCode,
+  requestRejectionDetail,
   openAiActionToCua,
   parseOpenAiResponse,
   RETRY_AFTER_CAP_MS,
@@ -760,6 +761,55 @@ describe("createOpenAiResponsesProvider", () => {
     }
     expect((thrown as Error).message).toBe("OpenAI Responses 429 insufficient_quota");
     expect((thrown as Error).message).not.toContain("secret");
+  });
+
+  it("a 400 names its code and parameter path, never the message", async () => {
+    // Body shape from a reported /v1/responses rejection of an undecodable screenshot.
+    const body = JSON.stringify({
+      error: {
+        message: "Invalid 'input[3].output[1].image_url': secret echoed input",
+        type: "invalid_request_error",
+        param: "input[3].output[1].image_url",
+        code: "invalid_value",
+      },
+    });
+    const fetchFn: FetchLike = async () => ({
+      ok: false,
+      status: 400,
+      text: async () => body,
+      json: async () => ({}),
+    });
+    const provider = createOpenAiResponsesProvider({
+      apiKey: "test-key",
+      fetchFn,
+      maxRetries: 0,
+      delayFn: noDelay,
+    });
+    let thrown: unknown;
+    try {
+      await provider.nextTurn(request(), neverAbort);
+    } catch (error) {
+      thrown = error;
+    }
+    expect((thrown as Error).message).toBe(
+      "OpenAI Responses 400 invalid_value at input[3].output[1].image_url",
+    );
+  });
+
+  it.each([
+    [
+      { code: null, type: "invalid_request_error", param: "input" },
+      "invalid_request_error at input",
+    ],
+    [
+      { code: "previous_response_not_found", param: "previous_response_id" },
+      "previous_response_not_found at previous_response_id",
+    ],
+    [{ code: "invalid_prompt", param: null }, "invalid_prompt"],
+    [{ code: "something_new_and_private", type: "other_type" }, undefined],
+    [{ code: "invalid_value", param: "input 'with spaces'" }, "invalid_value"],
+  ])("400 detail for %j", (error, expected) => {
+    expect(requestRejectionDetail(JSON.stringify({ error }))).toBe(expected);
   });
 
   it("an unknown code in the body is not copied into the error", () => {
