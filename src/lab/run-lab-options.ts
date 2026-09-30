@@ -308,62 +308,92 @@ export function normalizeRunLabOptions(
     const { participantIds: _ids, ...rerun } = options.rerun;
     normalized.rerun = { ...rerun, laneIds: participantIds };
   }
-  if (emit !== undefined || analysisSignal !== undefined) {
-    const analysis = legacy.automaticAnalysis;
-    normalized.automaticAnalysis = {
-      ...analysis,
-      ...(analysisSignal === undefined
-        ? {}
-        : { deps: { ...analysis?.deps, signal: analysisSignal } }),
-      ...(emit === undefined
-        ? {}
-        : {
-            onStart: () => {
-              emit({ type: "analysis-started" });
-              return () => emit({ type: "analysis-finished" });
-            },
-          }),
-    };
-  }
+  const analysis = withMapped(legacy.automaticAnalysis, {
+    ...(analysisSignal === undefined
+      ? {}
+      : { deps: { ...legacy.automaticAnalysis?.deps, signal: analysisSignal } }),
+    ...(emit === undefined
+      ? {}
+      : {
+          onStart: () => {
+            emit({ type: "analysis-started" });
+            return () => emit({ type: "analysis-finished" });
+          },
+        }),
+  });
+  if (analysis !== undefined) normalized.automaticAnalysis = analysis;
+  const envHome = env === undefined ? {} : { env: { ...env } };
   const scoring = scorer === undefined ? {} : scorerHooks(scorer);
   switch (route) {
-    case "computer-use":
-      normalized.cuaHooks = {
-        ...legacy.cuaHooks,
-        ...(env === undefined ? {} : { env: { ...env } }),
+    case "computer-use": {
+      const hooks = withMapped(legacy.cuaHooks, {
+        ...envHome,
         ...scoring,
         ...computerUseHooks(config, { prepareDesktop, onStream, createProvider, inProcess }, emit),
-      };
+      });
+      if (hooks !== undefined) normalized.cuaHooks = hooks;
       break;
-    case "shared-world":
-      normalized.sharedWorldHooks = {
-        ...legacy.sharedWorldHooks,
-        ...(env === undefined ? {} : { env: { ...env } }),
+    }
+    case "shared-world": {
+      const hooks = withMapped(legacy.sharedWorldHooks, {
+        ...envHome,
         ...scoring,
         ...sharedWorldHooks({ prepareDesktop, onStream }, emit),
-      };
+      });
+      if (hooks !== undefined) normalized.sharedWorldHooks = hooks;
       break;
-    case "terminal":
-      normalized.terminalHooks = {
-        ...legacy.terminalHooks,
-        ...(env === undefined ? {} : { env: { ...env } }),
+    }
+    case "terminal": {
+      const hooks = withMapped<TerminalProductLabHooks>(legacy.terminalHooks, {
+        ...envHome,
         ...(scorer?.score === undefined ? {} : { score: scorer.score }),
         ...(scorer?.deriveFeedback === undefined ? {} : { deriveFeedback: scorer.deriveFeedback }),
-      } satisfies TerminalProductLabHooks;
+      });
+      if (hooks !== undefined) normalized.terminalHooks = hooks;
       break;
-    case "scripted":
-      normalized.scriptedHooks = {
-        ...legacy.scriptedHooks,
-        ...(env === undefined ? {} : { env: { ...env } }),
+    }
+    case "scripted": {
+      const hooks = withMapped(legacy.scriptedHooks, {
+        ...envHome,
         ...(prepareDesktop === undefined
           ? {}
-          : { prepareDesktop: (desktop) => prepareDesktop(desktop, { kind: "subject" }) }),
-      };
+          : {
+              prepareDesktop: (desktop: E2BDesktopSandbox) =>
+                prepareDesktop(desktop, { kind: "subject" }),
+            }),
+      });
+      if (hooks !== undefined) normalized.scriptedHooks = hooks;
       break;
+    }
     case "preview":
       break;
   }
   return { ok: true, options: normalized, warnings };
+}
+
+/**
+ * A caller's bag with new options mapped into it. With nothing to map, the bag passes through as
+ * the same object. Otherwise its own and inherited members are copied into a plain object, inherited
+ * methods bound to the caller's object, so a class instance keeps its prototype methods and private
+ * fields.
+ */
+function withMapped<T extends object>(bag: T | undefined, mapped: Partial<T>): T | undefined {
+  if (Object.keys(mapped).length === 0) return bag;
+  if (bag === undefined) return mapped as T;
+  const copy: Record<string, unknown> = {};
+  for (
+    let source: object | null = bag;
+    source !== null && source !== Object.prototype;
+    source = Object.getPrototypeOf(source) as object | null
+  ) {
+    for (const key of Object.getOwnPropertyNames(source)) {
+      if (key === "constructor" || key in copy) continue;
+      const value: unknown = (bag as Record<string, unknown>)[key];
+      // An inherited method needs the caller's object as `this`; an own member is copied as is.
+      copy[key] = typeof value === "function" && source !== bag ? value.bind(bag) : value;
+    }
+  }
+  return Object.assign(copy, mapped) as T;
 }
 
 function scorerHooks(

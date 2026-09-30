@@ -1,4 +1,4 @@
-import { mkdtemp, readdir, rm } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -379,13 +379,13 @@ describe("stream, rerun and analysis options land where the route reads them", (
 
   it("onStream is left unset where no E2B stream starts", () => {
     const onStream = (): void => undefined;
-    expect(normalized(localVm(), { onStream }).cuaHooks!.onRuntimeStreamReady).toBeUndefined();
+    expect(normalized(localVm(), { onStream }).cuaHooks?.onRuntimeStreamReady).toBeUndefined();
     const inProcessHooks = normalized(config("cuLocalApp"), {
       onStream,
       inProcess,
       createProvider,
     });
-    expect(inProcessHooks.cuaHooks!.onRuntimeStreamReady).toBeUndefined();
+    expect(inProcessHooks.cuaHooks?.onRuntimeStreamReady).toBeUndefined();
   });
 
   it("rerun.participantIds becomes rerun.laneIds", () => {
@@ -605,5 +605,72 @@ describe("an onEvent warning carries no known secret", () => {
     if (!result.ok) throw new Error(result.message);
     result.options.cuaHooks!.onPreflight!({ lanes: [] } as unknown as CuaLanePlan);
     expect(result.warnings[0]).not.toContain(password);
+  });
+});
+
+describe("a hook bag that is a class instance keeps its methods", () => {
+  class FailingScorer {
+    readonly #status = "fail" as const;
+    score() {
+      return {
+        schema: "humanish.adapter-score.v1" as const,
+        namespace: "class-bag",
+        status: this.#status,
+        score: 0,
+        summary: "failed by a class method",
+      };
+    }
+  }
+
+  it("passes a bag no new option maps into through as the same object", () => {
+    const bag = new FailingScorer();
+    expect(normalized(config("cuAppUrl"), { cuaHooks: bag }).cuaHooks).toBe(bag);
+  });
+
+  it("keeps prototype methods bound to the instance when a new option maps into the bag", () => {
+    const hooks = normalized(config("cuAppUrl"), {
+      cuaHooks: new FailingScorer(),
+      env: {},
+    }).cuaHooks!;
+    expect(hooks.env).toEqual({});
+    expect(hooks.score!({} as never)).toMatchObject({ status: "fail" });
+  });
+
+  it("keeps a class-instance automaticAnalysis when analysisSignal maps into it", async () => {
+    class Analysis {
+      readonly #calls: string[] = [];
+      async run() {
+        this.#calls.push("run");
+        return { state: "failed", reason: "synthetic" } as never;
+      }
+    }
+    const signal = AbortSignal.abort();
+    const analysis = normalized(config("cuAppUrl"), {
+      automaticAnalysis: new Analysis(),
+      analysisSignal: signal,
+    }).automaticAnalysis!;
+    expect(analysis.deps?.signal).toBe(signal);
+    const run = analysis.run as unknown as () => Promise<unknown>;
+    await expect(run()).resolves.toMatchObject({ state: "failed" });
+  });
+
+  it("a computer-use dry run keeps a class-instance scorer's fail", async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), "humanish-class-bag-"));
+    try {
+      const outcome = await runLab(config("cuAppUrl"), {
+        cwd,
+        dryRun: true,
+        runId: "class-bag",
+        cuaHooks: new FailingScorer(),
+      });
+      // A valid fail from a browser-route scorer fails the run.
+      expect(outcome.result.ok).toBe(false);
+      const bundle = JSON.parse(
+        await readFile(path.join(cwd, ".humanish", "runs", "class-bag", "run.json"), "utf8"),
+      ) as { adapterScore?: { status: string } };
+      expect(bundle.adapterScore?.status).toBe("fail");
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
   });
 });
