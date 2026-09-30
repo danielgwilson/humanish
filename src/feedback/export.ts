@@ -108,6 +108,29 @@ async function isInside(root: string, candidate: string): Promise<boolean> {
   return rel !== "" && !rel.startsWith("..") && !path.isAbsolute(rel);
 }
 
+const MEDIA_OMISSION =
+  "Continuous video/audio is excluded from this HTML export. Open the original run in humanish to play it.";
+
+function exportFailure(
+  cwd: string,
+  run: string,
+  code: ExportFailure["error"]["code"],
+  message: string,
+  shareSafety?: VerifyResult["shareSafety"],
+): ExportFailure {
+  return {
+    schema: EXPORT_SCHEMA,
+    ok: false,
+    cwd,
+    run,
+    ...(shareSafety === undefined ? {} : { shareSafety }),
+    error: { code, message },
+  };
+}
+
+type RunPaths = NonNullable<Awaited<ReturnType<typeof resolveRunPath>>>;
+type StudyAnalysisState = Awaited<ReturnType<typeof loadStudyAnalysis>>;
+
 export async function exportRun(
   cwdInput: string,
   runInput: string,
@@ -116,65 +139,166 @@ export async function exportRun(
 ): Promise<ExportResult | ExportFailure> {
   if (options.format === "bundle") return exportRedactedBundle(cwdInput, runInput, options);
   const cwd = path.resolve(cwdInput);
-  if (options.redactScreenshots === true) {
-    return {
-      schema: EXPORT_SCHEMA,
-      ok: false,
+  const source = await resolveExportSource(cwd, runInput, options, deps);
+  if ("error" in source) return source;
+  const { runPaths, runRoot, runId, verified } = source;
+  let shareReady = verified.shareSafety.status === "share_ready";
+
+  const warnings: string[] = [];
+  const slot = await readObserverSlot(cwd, runInput, runRoot, runId, verified, deps, warnings);
+  if (typeof slot !== "string") return slot;
+
+  // Every string in the data that names an image file inside the run becomes an asset reference. Paths are
+  // run-root-relative in the data; a path that resolves outside the run is left alone, never read.
+  const analysis = await loadStudyAnalysis(runPaths);
+  const data = await currentObserverData(runPaths, analysis, slot);
+  if (data === undefined)
+    return exportFailure(
       cwd,
-      run: runInput,
-      error: {
-        code: "HUMANISH_EXPORT_INVALID_OPTIONS",
-        message:
-          "--redact-screenshots requires --format bundle. HTML export does not transform its source.",
-      },
-    };
+      runInput,
+      "HUMANISH_EXPORT_VERIFY_FAILED",
+      "Source evidence changed while preparing the analysis export.",
+    );
+  const omittedRecording = omitRecordings(data.value);
+  if (omittedRecording) warnings.push(MEDIA_OMISSION);
+  const images = await inlineImages(runPaths, runRoot, data.value, analysis, options, warnings);
+  if (images.failure !== undefined)
+    return images.failure === "too_large"
+      ? exportFailure(
+          cwd,
+          runInput,
+          "HUMANISH_EXPORT_TOO_LARGE",
+          "A captured image exceeds the portable viewer's 64 MiB per-image limit. Export the evidence bundle instead.",
+        )
+      : exportFailure(
+          cwd,
+          runInput,
+          "HUMANISH_EXPORT_VERIFY_FAILED",
+          "Captured evidence changed while assembling the export.",
+        );
+  const { inlined, assets, embedded, imageBytes } = images;
+  makePortable(inlined, verified);
+
+  const analysisCheck = await recheckAnalysis(runPaths, analysis, verified, inlined, options);
+  if (analysisCheck === "changed")
+    return exportFailure(
+      cwd,
+      runInput,
+      "HUMANISH_EXPORT_VERIFY_FAILED",
+      "Analysis evidence changed during export.",
+    );
+  if (analysisCheck === "blocked")
+    return exportFailure(
+      cwd,
+      runInput,
+      "HUMANISH_EXPORT_SHARE_SAFETY_BLOCKED",
+      "Analysis changed or contains unverified text. Review the current evidence before sharing.",
+      verified.shareSafety,
+    );
+  if (analysisCheck === "downgraded") shareReady = false;
+  warnings.push(...analysis.warnings);
+  const watermarked = !shareReady || omittedRecording;
+  const output = renderExportHtml(
+    inlined,
+    analysis,
+    assets,
+    verified,
+    watermarked,
+    omittedRecording,
+  );
+
+  const bytes = Buffer.byteLength(output, "utf8");
+  const maxBytes = options.maxBytes ?? DEFAULT_EXPORT_MAX_BYTES;
+  if (bytes > maxBytes) {
+    return exportFailure(
+      cwd,
+      runInput,
+      "HUMANISH_EXPORT_TOO_LARGE",
+      `Export would be ${bytes} bytes (${embedded} images, ${imageBytes} image bytes), over the ${maxBytes}-byte cap. Raise --max-bytes deliberately, or export a run with fewer frames.`,
+      verified.shareSafety,
+    );
+  }
+  const outPath = path.resolve(
+    cwd,
+    options.out ?? path.join(".humanish", "exports", `${runId}.html`),
+  );
+  await mkdir(path.dirname(outPath), { recursive: true });
+  await writeFile(outPath, output, "utf8");
+  return {
+    schema: EXPORT_SCHEMA,
+    ok: true,
+    cwd,
+    runId,
+    path: path.relative(cwd, outPath),
+    bytes,
+    embeddedImages: embedded,
+    shareSafety: verified.shareSafety,
+    watermarked,
+    warnings,
+  };
+}
+
+/** Resolves the run and refuses one that does not verify or, without --local-only, is not share_ready. */
+async function resolveExportSource(
+  cwd: string,
+  runInput: string,
+  options: ExportOptions,
+  deps: ExportDeps,
+): Promise<
+  ExportFailure | { runPaths: RunPaths; runRoot: string; runId: string; verified: VerifyResult }
+> {
+  if (options.redactScreenshots === true) {
+    return exportFailure(
+      cwd,
+      runInput,
+      "HUMANISH_EXPORT_INVALID_OPTIONS",
+      "--redact-screenshots requires --format bundle. HTML export does not transform its source.",
+    );
   }
   const runPaths = await resolveRunPath(cwd, runInput).catch(() => null);
   if (runPaths === null) {
-    return {
-      schema: EXPORT_SCHEMA,
-      ok: false,
+    return exportFailure(
       cwd,
-      run: runInput,
-      error: {
-        code: "HUMANISH_EXPORT_RUN_NOT_FOUND",
-        message: `No run resolves from "${runInput}" under ${cwd}.`,
-      },
-    };
+      runInput,
+      "HUMANISH_EXPORT_RUN_NOT_FOUND",
+      `No run resolves from "${runInput}" under ${cwd}.`,
+    );
   }
   const runRoot = runPaths.absoluteRunRoot;
   const runId = path.basename(runRoot);
 
   const verified = await (deps.verify ?? verifyRun)(cwd, runInput);
   if (!verified.ok) {
-    return {
-      schema: EXPORT_SCHEMA,
-      ok: false,
+    return exportFailure(
       cwd,
-      run: runInput,
-      shareSafety: verified.shareSafety,
-      error: {
-        code: "HUMANISH_EXPORT_VERIFY_FAILED",
-        message: `Run ${runId} does not verify; export refuses to package evidence that fails its own checks.`,
-      },
-    };
+      runInput,
+      "HUMANISH_EXPORT_VERIFY_FAILED",
+      `Run ${runId} does not verify; export refuses to package evidence that fails its own checks.`,
+      verified.shareSafety,
+    );
   }
-  let shareReady = verified.shareSafety.status === "share_ready";
-  if (!shareReady && options.localOnly !== true) {
-    return {
-      schema: EXPORT_SCHEMA,
-      ok: false,
+  if (verified.shareSafety.status !== "share_ready" && options.localOnly !== true) {
+    return exportFailure(
       cwd,
-      run: runInput,
-      shareSafety: verified.shareSafety,
-      error: {
-        code: "HUMANISH_EXPORT_SHARE_SAFETY_BLOCKED",
-        message: `Run ${runId} is ${verified.shareSafety.status}, not share_ready: ${verified.shareSafety.reasons.map((r) => r.code).join(", ")}. Re-run with policies.redactScreenshots: true, or pass --local-only to export a watermarked file for people who may see raw screenshots.`,
-      },
-    };
+      runInput,
+      "HUMANISH_EXPORT_SHARE_SAFETY_BLOCKED",
+      `Run ${runId} is ${verified.shareSafety.status}, not share_ready: ${verified.shareSafety.reasons.map((r) => r.code).join(", ")}. Re-run with policies.redactScreenshots: true, or pass --local-only to export a watermarked file for people who may see raw screenshots.`,
+      verified.shareSafety,
+    );
   }
+  return { runPaths, runRoot, runId, verified };
+}
 
-  const warnings: string[] = [];
+/** The Observer's inline data slot, rendering observer/index.html first when the run has none. */
+async function readObserverSlot(
+  cwd: string,
+  runInput: string,
+  runRoot: string,
+  runId: string,
+  verified: VerifyResult,
+  deps: ExportDeps,
+  warnings: string[],
+): Promise<string | ExportFailure> {
   const observerPath = path.join(runRoot, "observer", "index.html");
   let html: string;
   try {
@@ -194,64 +318,55 @@ export async function exportRun(
         "observer/index.html was missing and has been rendered for this export (a `run` bundle; `watch` writes it)",
       );
     } catch {
-      return {
-        schema: EXPORT_SCHEMA,
-        ok: false,
+      return exportFailure(
         cwd,
-        run: runInput,
-        shareSafety: verified.shareSafety,
-        error: {
-          code: "HUMANISH_EXPORT_NO_OBSERVER",
-          message: `Run ${runId} has no observer/index.html and one could not be rendered from its bundle.`,
-        },
-      };
+        runInput,
+        "HUMANISH_EXPORT_NO_OBSERVER",
+        `Run ${runId} has no observer/index.html and one could not be rendered from its bundle.`,
+        verified.shareSafety,
+      );
     }
   }
   const slot = OBSERVER_DATA_SLOT.exec(html);
   if (slot === null) {
-    return {
-      schema: EXPORT_SCHEMA,
-      ok: false,
+    return exportFailure(
       cwd,
-      run: runInput,
-      shareSafety: verified.shareSafety,
-      error: {
-        code: "HUMANISH_EXPORT_NO_OBSERVER",
-        message: `Run ${runId}'s Observer carries no inline data slot; rebuild the run's Observer first.`,
-      },
-    };
-  }
-
-  // Every string in the data that names an image file inside the run becomes an asset reference. Paths are
-  // run-root-relative in the data; a path that resolves outside the run is left alone, never read.
-  const analysis = await loadStudyAnalysis(runPaths);
-  let data: unknown = JSON.parse(slot[1]!);
-  // A current report must travel with the current source projection, even if an
-  // older saved HTML was never refreshed. Keep old recording-only export compatibility.
-  if (analysis.state === "ready" && analysis.analysis) {
-    const source = await readBoundedStudyFile(
-      runPaths,
-      "run.json",
-      STUDY_EVIDENCE_LIMITS.sourceBytes,
+      runInput,
+      "HUMANISH_EXPORT_NO_OBSERVER",
+      `Run ${runId}'s Observer carries no inline data slot; rebuild the run's Observer first.`,
+      verified.shareSafety,
     );
-    if (
-      !source ||
-      createHash("sha256").update(source).digest("hex") !== analysis.analysis.sourceRunSha256
-    ) {
-      return {
-        schema: EXPORT_SCHEMA,
-        ok: false,
-        cwd,
-        run: runInput,
-        error: {
-          code: "HUMANISH_EXPORT_VERIFY_FAILED",
-          message: "Source evidence changed while preparing the analysis export.",
-        },
-      };
-    }
-    data = buildObserverData(JSON.parse(source.toString("utf8")) as RunBundle);
   }
-  // Portable HTML keeps the lightweight evidence. Media remains in the source run.
+  return slot[1]!;
+}
+
+/**
+ * The Observer data to export. A current report must travel with the current source projection,
+ * even if an older saved HTML was never refreshed; old recording-only exports keep the saved slot.
+ * Undefined when run.json no longer matches the analysis.
+ */
+async function currentObserverData(
+  runPaths: RunPaths,
+  analysis: StudyAnalysisState,
+  slot: string,
+): Promise<{ value: unknown } | undefined> {
+  const saved: unknown = JSON.parse(slot);
+  if (analysis.state !== "ready" || !analysis.analysis) return { value: saved };
+  const source = await readBoundedStudyFile(
+    runPaths,
+    "run.json",
+    STUDY_EVIDENCE_LIMITS.sourceBytes,
+  );
+  if (
+    !source ||
+    createHash("sha256").update(source).digest("hex") !== analysis.analysis.sourceRunSha256
+  )
+    return undefined;
+  return { value: buildObserverData(JSON.parse(source.toString("utf8")) as RunBundle) };
+}
+
+/** Portable HTML keeps the lightweight evidence; media remains in the source run. */
+function omitRecordings(data: unknown): boolean {
   let omittedRecording = false;
   if (data && typeof data === "object" && "streams" in data && Array.isArray(data.streams)) {
     for (const stream of data.streams) {
@@ -265,9 +380,28 @@ export async function exportRun(
       }
     }
   }
-  const mediaOmission =
-    "Continuous video/audio is excluded from this HTML export. Open the original run in humanish to play it.";
-  if (omittedRecording) warnings.push(mediaOmission);
+  return omittedRecording;
+}
+
+type InlinedImages =
+  | { failure: "too_large" | "changed" }
+  | {
+      failure?: undefined;
+      inlined: Record<string, unknown>;
+      assets: ObserverExportAssets;
+      embedded: number;
+      imageBytes: number;
+    };
+
+/** Replaces each image path inside the run with an embedded asset, each unique raster once. */
+async function inlineImages(
+  runPaths: RunPaths,
+  runRoot: string,
+  data: unknown,
+  analysis: StudyAnalysisState,
+  options: ExportOptions,
+  warnings: string[],
+): Promise<InlinedImages> {
   const cache = new Map<string, Promise<string>>();
   const assets: ObserverExportAssets = {};
   const analysisCaptures = new Map(
@@ -332,33 +466,16 @@ export async function exportRun(
     }
     return node;
   };
-  let inlined: Record<string, unknown>;
   try {
-    inlined = (await walk(data)) as Record<string, unknown>;
+    const inlined = (await walk(data)) as Record<string, unknown>;
+    return { inlined, assets, embedded, imageBytes };
   } catch {
-    if (oversizedImage)
-      return {
-        schema: EXPORT_SCHEMA,
-        ok: false,
-        cwd,
-        run: runInput,
-        error: {
-          code: "HUMANISH_EXPORT_TOO_LARGE",
-          message:
-            "A captured image exceeds the portable viewer's 64 MiB per-image limit. Export the evidence bundle instead.",
-        },
-      };
-    return {
-      schema: EXPORT_SCHEMA,
-      ok: false,
-      cwd,
-      run: runInput,
-      error: {
-        code: "HUMANISH_EXPORT_VERIFY_FAILED",
-        message: "Captured evidence changed while assembling the export.",
-      },
-    };
+    return { failure: oversizedImage ? "too_large" : "changed" };
   }
+}
+
+/** Drops live-runtime fields and records what verify said, so the chrome agrees with the result. */
+function makePortable(inlined: Record<string, unknown>, verified: VerifyResult): void {
   // Export is a recording, even if a saved input HTML once carried a server observation.
   // Runtime iframe authority and liveness cannot survive into a portable document.
   delete inlined.runtime;
@@ -381,7 +498,19 @@ export async function exportRun(
       reasons: verified.shareSafety.reasons.map((r) => r.code),
     },
   };
+}
 
+/**
+ * Revalidates the analysis against source evidence and its sharing checks. A failed check
+ * downgrades share safety, which only --local-only may export.
+ */
+async function recheckAnalysis(
+  runPaths: RunPaths,
+  analysis: StudyAnalysisState,
+  verified: VerifyResult,
+  inlined: Record<string, unknown>,
+  options: ExportOptions,
+): Promise<"ok" | "changed" | "blocked" | "downgraded"> {
   // Evidence survives upgrades; obsolete renderer code does not. Use this installation
   // of the Observer rather than copying script/style bytes from the saved source HTML.
   // Revalidate the independent interpretation against source evidence. Never trust a
@@ -396,106 +525,58 @@ export async function exportRun(
       if (!source) throw new Error("source unavailable");
       await validateStudyAnalysisEvidence(runPaths, analysis.analysis, source);
     } catch {
-      return {
-        schema: EXPORT_SCHEMA,
-        ok: false,
-        cwd,
-        run: runInput,
-        error: {
-          code: "HUMANISH_EXPORT_VERIFY_FAILED",
-          message: "Analysis evidence changed during export.",
-        },
-      };
+      return "changed";
     }
   }
   const analysisSharing = studyAnalysisSharingProblems(analysis);
-  if (analysisSharing.sensitive || analysisSharing.unverified) {
-    verified.shareSafety = {
-      status: analysisSharing.sensitive ? "blocked" : "local_only",
-      reasons: [
-        ...verified.shareSafety.reasons,
-        {
-          code: "ANALYSIS_UNVERIFIED",
-          message: "The exact analysis snapshot being exported did not pass sharing checks.",
-        },
-      ],
-    };
-    shareReady = false;
-    if (options.localOnly !== true)
-      return {
-        schema: EXPORT_SCHEMA,
-        ok: false,
-        cwd,
-        run: runInput,
-        shareSafety: verified.shareSafety,
-        error: {
-          code: "HUMANISH_EXPORT_SHARE_SAFETY_BLOCKED",
-          message:
-            "Analysis changed or contains unverified text. Review the current evidence before sharing.",
-        },
-      };
-    (inlined.publicSafety as Record<string, unknown>).share = {
-      status: verified.shareSafety.status,
-      verifiedAt: new Date().toISOString(),
-      reasons: verified.shareSafety.reasons.map((reason) => reason.code),
-    };
-  }
-  warnings.push(...analysis.warnings);
-  let output = renderObserverHtml(inlined as unknown as ObserverData, {
+  if (!analysisSharing.sensitive && !analysisSharing.unverified) return "ok";
+  verified.shareSafety = {
+    status: analysisSharing.sensitive ? "blocked" : "local_only",
+    reasons: [
+      ...verified.shareSafety.reasons,
+      {
+        code: "ANALYSIS_UNVERIFIED",
+        message: "The exact analysis snapshot being exported did not pass sharing checks.",
+      },
+    ],
+  };
+  if (options.localOnly !== true) return "blocked";
+  (inlined.publicSafety as Record<string, unknown>).share = {
+    status: verified.shareSafety.status,
+    verifiedAt: new Date().toISOString(),
+    reasons: verified.shareSafety.reasons.map((reason) => reason.code),
+  };
+  return "downgraded";
+}
+
+/** The portable Observer HTML, with the local-only banner when the export is watermarked. */
+function renderExportHtml(
+  inlined: Record<string, unknown>,
+  analysis: StudyAnalysisState,
+  assets: ObserverExportAssets,
+  verified: VerifyResult,
+  watermarked: boolean,
+  omittedRecording: boolean,
+): string {
+  const output = renderObserverHtml(inlined as unknown as ObserverData, {
     snapshot: true,
     analysis,
     assets,
   });
-  const watermarked = !shareReady || omittedRecording;
-  if (watermarked) {
-    const banner =
-      localOnlyBanner(verified.shareSafety.reasons.map((r) => r.code)) +
-      (omittedRecording
-        ? `<p role="status" style="margin:0;padding:8px 16px;background:#fff4d5;color:#352600;font:13px system-ui">${mediaOmission}</p>`
-        : "");
-    // The warning and app share the viewport. A full-height app beneath an
-    // extra banner would scroll the document when recording controls focus.
-    const layout = `<style id="humanish-export-layout">body[data-humanish-local-export]{display:grid;grid-template-rows:auto ${omittedRecording ? "auto " : ""}minmax(0,1fr);height:100dvh;overflow:hidden}body[data-humanish-local-export]>#root{min-height:0;overflow:hidden}</style>`;
-    output = output.includes("<body>")
-      ? output
-          .replace("</head>", `${layout}</head>`)
-          .replace("<body>", `<body data-humanish-local-export>${banner}`)
-      : `${banner}${output}`;
-  }
-  const bytes = Buffer.byteLength(output, "utf8");
-  const maxBytes = options.maxBytes ?? DEFAULT_EXPORT_MAX_BYTES;
-  if (bytes > maxBytes) {
-    return {
-      schema: EXPORT_SCHEMA,
-      ok: false,
-      cwd,
-      run: runInput,
-      shareSafety: verified.shareSafety,
-      error: {
-        code: "HUMANISH_EXPORT_TOO_LARGE",
-        message: `Export would be ${bytes} bytes (${embedded} images, ${imageBytes} image bytes), over the ${maxBytes}-byte cap. Raise --max-bytes deliberately, or export a run with fewer frames.`,
-      },
-    };
-  }
-
-  const outPath = path.resolve(
-    cwd,
-    options.out ?? path.join(".humanish", "exports", `${runId}.html`),
-  );
-  await mkdir(path.dirname(outPath), { recursive: true });
-  await writeFile(outPath, output, "utf8");
-  return {
-    schema: EXPORT_SCHEMA,
-    ok: true,
-    cwd,
-    runId,
-    path: path.relative(cwd, outPath),
-    bytes,
-    embeddedImages: embedded,
-    shareSafety: verified.shareSafety,
-    watermarked,
-    warnings,
-  };
+  if (!watermarked) return output;
+  const banner =
+    localOnlyBanner(verified.shareSafety.reasons.map((r) => r.code)) +
+    (omittedRecording
+      ? `<p role="status" style="margin:0;padding:8px 16px;background:#fff4d5;color:#352600;font:13px system-ui">${MEDIA_OMISSION}</p>`
+      : "");
+  // The warning and app share the viewport. A full-height app beneath an
+  // extra banner would scroll the document when recording controls focus.
+  const layout = `<style id="humanish-export-layout">body[data-humanish-local-export]{display:grid;grid-template-rows:auto ${omittedRecording ? "auto " : ""}minmax(0,1fr);height:100dvh;overflow:hidden}body[data-humanish-local-export]>#root{min-height:0;overflow:hidden}</style>`;
+  return output.includes("<body>")
+    ? output
+        .replace("</head>", `${layout}</head>`)
+        .replace("<body>", `<body data-humanish-local-export>${banner}`)
+    : `${banner}${output}`;
 }
 
 export function formatExportHuman(result: ExportResult | ExportFailure): string {
