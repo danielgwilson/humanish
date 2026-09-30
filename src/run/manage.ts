@@ -30,7 +30,7 @@ import { isReviewSummary, isRunBundle } from "./guards.js";
 import { readLatest, readRunJsonIfExists, resolveRunPath } from "./locate.js";
 import { withCuaReviewProvenance } from "./outcomes.js";
 import { isNodeError, isRecord } from "./primitives.js";
-import { invalidRunStorageVerifyResult, verifyPreparedRun, type VerifyResult } from "./verify.js";
+import { invalidRunStorageVerifyResult, verifyResolvedRun, type VerifyResult } from "./verify.js";
 
 export const RUNS_SCHEMA = "humanish.runs-result.v1";
 
@@ -348,7 +348,7 @@ export async function readReview(
   } catch {
     return invalidRunStorageVerifyResult(cwd, runInput);
   }
-  const verified = await verifyPreparedRun(cwd, runInput, runPaths);
+  const verified = await verifyResolvedRun(cwd, runInput, runPaths);
 
   if (!verified.ok || !verified.bundlePath) {
     return verified;

@@ -3,6 +3,8 @@ import { PNG } from "pngjs";
 const SIGNATURE_GRID = 32;
 const SIGNATURE_LEVELS = 16;
 const SIGNATURE_FALLBACK = "unreadable";
+// The brightness anchor is one hex digit over 8-bit channel means.
+const ANCHOR_LEVELS = 16;
 
 /**
  * A perceptual hash of a PNG frame for no-progress detection. Decodes the PNG, area-averages it to
@@ -97,7 +99,7 @@ function brightnessAnchor(data: Buffer, srcW: number, srcH: number): string {
     n += 1;
   }
   const mean = n ? sum / n : 0;
-  return Math.min(15, Math.floor(mean / 16)).toString(16);
+  return Math.min(ANCHOR_LEVELS - 1, Math.floor((mean * ANCHOR_LEVELS) / 256)).toString(16);
 }
 
 /** Pack 4-bit cells (two per byte) into a compact hex string. */

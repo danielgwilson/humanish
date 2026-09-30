@@ -45,7 +45,7 @@ export function emptyStudyCosts(): StudyCosts {
   };
 }
 
-const price = (value: unknown): value is number =>
+const isKnownUsd = (value: unknown): value is number =>
   typeof value === "number" && Number.isFinite(value) && value >= 0;
 const round = (value: number): number => Math.round(value * 1e6) / 1e6;
 function sumKnown(a: number | null, b: number | null): number | null {
@@ -72,7 +72,7 @@ export function addStudyCosts(into: StudyCosts, next: StudyCosts): void {
 export async function readStudyCosts(cwd: string, entry: RunIndexEntry): Promise<StudyCostRow> {
   const costs = emptyStudyCosts();
   const warnings: string[] = [];
-  costs.runEstimatedUsd = price(entry.estimatedCostUsd) ? entry.estimatedCostUsd : null;
+  costs.runEstimatedUsd = isKnownUsd(entry.estimatedCostUsd) ? entry.estimatedCostUsd : null;
   try {
     const prepared = await bindExistingRunArtifactPaths(cwd, entry.runId);
     const bytes = await readBoundedStudyFile(
@@ -92,7 +92,7 @@ export async function readStudyCosts(cwd: string, entry: RunIndexEntry): Promise
       warnings.push("RUN_COST_ID_MISMATCH");
     }
     if (bundle?.cost !== undefined) {
-      costs.runEstimatedUsd = price(bundle.cost?.estimatedTotalUsd)
+      costs.runEstimatedUsd = isKnownUsd(bundle.cost?.estimatedTotalUsd)
         ? bundle.cost.estimatedTotalUsd
         : null;
       if (bundle.cost?.fullyEstimated !== true || costs.runEstimatedUsd === null) {
@@ -137,10 +137,10 @@ export async function readStudyCosts(cwd: string, entry: RunIndexEntry): Promise
         costs.analysisEstimatedUsd = sumKnown(costs.analysisEstimatedUsd, 0);
       } else {
         costs.analysisDispatchedAttempts += 1;
-        if (price(usage.estimatedCostUsd)) {
+        if (isKnownUsd(usage.estimatedCostUsd)) {
           costs.analysisEstimatedUsd = sumKnown(costs.analysisEstimatedUsd, usage.estimatedCostUsd);
         }
-        if (!price(usage.estimatedCostUsd) || !usage.usageComplete)
+        if (!isKnownUsd(usage.estimatedCostUsd) || !usage.usageComplete)
           costs.analysisUnpricedAttempts += 1;
       }
     }

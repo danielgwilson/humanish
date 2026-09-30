@@ -75,7 +75,7 @@ export async function verifyRun(cwdInput: string, runInput: string): Promise<Ver
   } catch {
     return invalidRunStorageVerifyResult(cwd, runInput);
   }
-  return verifyPreparedRun(cwd, runInput, runPaths);
+  return verifyResolvedRun(cwd, runInput, runPaths);
 }
 
 export function invalidRunStorageVerifyResult(cwd: string, runInput: string): VerifyResult {
@@ -104,7 +104,8 @@ export function invalidRunStorageVerifyResult(cwd: string, runInput: string): Ve
   };
 }
 
-export async function verifyPreparedRun(
+/** Verify a run already resolved to prepared paths; null reports the run as not found. */
+export async function verifyResolvedRun(
   cwd: string,
   runInput: string,
   runPaths: PreparedRunArtifactPaths | null,
@@ -417,7 +418,7 @@ export async function verifyRunPrepared(
   } catch {
     return invalidRunStorageVerifyResult(cwd, runInput);
   }
-  return verifyPreparedRun(cwd, runInput, runPaths);
+  return verifyResolvedRun(cwd, runInput, runPaths);
 }
 
 /** Non-fatal hosted-desktop geometry disclosures, deduplicated across shared-screen streams. */

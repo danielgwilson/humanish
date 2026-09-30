@@ -36,6 +36,9 @@ export type AutomaticStudyAnalysisDeps = Omit<AnalyzeDeps, "analysisId" | "befor
   preferLargerOutput?: boolean;
 };
 
+const CANCELLATION_POLL_MS = 250;
+// Well inside AUTOMATIC_STUDY_ANALYSIS_STALE_MS, so a live owner never reads as stale.
+const HEARTBEAT_MS = 5000;
 const exactId = (runId: string): boolean =>
   runId !== "latest" && /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(runId);
 const skipped = (reason: string): AutomaticStudyAnalysisOutcome => ({ state: "skipped", reason });
@@ -187,14 +190,14 @@ export async function runAutomaticStudyAnalysis(
   };
   const cancellationTimer = setInterval(() => {
     void poll();
-  }, 250);
+  }, CANCELLATION_POLL_MS);
   cancellationTimer.unref();
   const heartbeat = setInterval(() => {
     void job.touch().catch(() => {
       storageFailed = true;
       controller.abort();
     });
-  }, 5000);
+  }, HEARTBEAT_MS);
   heartbeat.unref();
   let outcome: AutomaticStudyAnalysisOutcome;
   try {

@@ -1,5 +1,6 @@
 import {
   resolveAutomaticAnalysis,
+  DEFAULT_ANALYSIS_MODEL,
   DEFAULT_ANALYSIS_TIMEOUT_MS,
 } from "../../analysis/automatic-config.js";
 import { resolve } from "node:path";
@@ -54,7 +55,7 @@ export function registerAnalyzeCommand(parent: Command, io: CliIo): void {
     .option(
       "--model <id>",
       "Supported vision model. OpenAI uses high effort; qualified Codex account analysis uses low effort.",
-      "gpt-6-astra",
+      DEFAULT_ANALYSIS_MODEL,
     )
     .option(
       "--question <text>",
