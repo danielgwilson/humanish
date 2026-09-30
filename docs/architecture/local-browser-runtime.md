@@ -93,8 +93,10 @@ Later participant actions and observations do not use this startup wait.
 
 ## Current limits
 
-- Linux x64 or M3-or-newer Mac with native ARM64 Node and Lima. The installed
-  Mac setup was tested on an M5 Max; smaller machines are not capacity-qualified.
+- Linux x64 or M3-or-newer Mac with native ARM64 Node and Lima. Linux ARM64 is
+  refused: the local participant, the restricted Codex participant, runs only on
+  Linux x64 and Apple-silicon macOS. The installed Mac setup was tested on an M5
+  Max; smaller machines are not capacity-qualified.
 - On Linux, a local Docker Engine; remote contexts, rootless Docker and Docker
   Desktop are unsupported. The Mac adapter uses Docker inside its own Lima host.
 - Loopback HTTP(S) app URLs on explicit ports above 1023. Each participant can
