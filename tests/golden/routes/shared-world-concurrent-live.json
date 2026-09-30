@@ -484,6 +484,92 @@
         "caseGroup": "case-001"
       }
     ],
+    "cost": {
+      "schema": "humanish.run-cost-summary.v1",
+      "currency": "usd",
+      "estimatedTotalUsd": null,
+      "ratesAsOf": null,
+      "fullyEstimated": false,
+      "placeholder": false,
+      "breakdown": [
+        {
+          "kind": "model-tokens",
+          "laneId": "persona-01",
+          "estimatedCostUsd": null,
+          "reason": "no_token_usage",
+          "ratesAsOf": null
+        },
+        {
+          "kind": "model-tokens",
+          "laneId": "persona-02",
+          "estimatedCostUsd": null,
+          "reason": "no_token_usage",
+          "ratesAsOf": null
+        },
+        {
+          "kind": "model-tokens",
+          "laneId": "persona-03",
+          "estimatedCostUsd": null,
+          "reason": "no_token_usage",
+          "ratesAsOf": null
+        },
+        {
+          "kind": "desktop-minutes",
+          "laneId": "subject",
+          "estimatedCostUsd": null,
+          "reason": "no_desktop_resources",
+          "ratesAsOf": null,
+          "desktop": {
+            "minutes": "[minutes]",
+            "durationBasis": "host-acquired-to-cleanup",
+            "resourceUnavailableReason": "metadata_unavailable"
+          }
+        },
+        {
+          "kind": "desktop-minutes",
+          "laneId": "persona-01",
+          "estimatedCostUsd": null,
+          "reason": "no_desktop_resources",
+          "ratesAsOf": null,
+          "desktop": {
+            "minutes": "[minutes]",
+            "durationBasis": "host-acquired-to-cleanup",
+            "resourceUnavailableReason": "metadata_unavailable"
+          }
+        },
+        {
+          "kind": "desktop-minutes",
+          "laneId": "persona-02",
+          "estimatedCostUsd": null,
+          "reason": "no_desktop_resources",
+          "ratesAsOf": null,
+          "desktop": {
+            "minutes": "[minutes]",
+            "durationBasis": "host-acquired-to-cleanup",
+            "resourceUnavailableReason": "metadata_unavailable"
+          }
+        },
+        {
+          "kind": "desktop-minutes",
+          "laneId": "persona-03",
+          "estimatedCostUsd": null,
+          "reason": "no_desktop_resources",
+          "ratesAsOf": null,
+          "desktop": {
+            "minutes": "[minutes]",
+            "durationBasis": "host-acquired-to-cleanup",
+            "resourceUnavailableReason": "metadata_unavailable"
+          }
+        }
+      ],
+      "tokenUsage": {
+        "input": 0,
+        "output": 0,
+        "total": 0
+      },
+      "desktopMinutes": "[desktopMinutes]",
+      "note": "No priced spend lines this run — every cost line is DECLARED ABSENT (unknown rate / no usage / no duration); nothing is guessed. Add a rate to src/run/pricing.ts to estimate this model. Desktop compute is unmeasured: no allocation CPU/RAM observation is available."
+    },
     "streams": [
       {
         "id": "stream-001",
@@ -1903,6 +1989,92 @@
           "ok": true
         }
       ]
+    },
+    "cost": {
+      "schema": "humanish.run-cost-summary.v1",
+      "currency": "usd",
+      "estimatedTotalUsd": null,
+      "ratesAsOf": null,
+      "fullyEstimated": false,
+      "placeholder": false,
+      "breakdown": [
+        {
+          "kind": "model-tokens",
+          "laneId": "persona-01",
+          "estimatedCostUsd": null,
+          "reason": "no_token_usage",
+          "ratesAsOf": null
+        },
+        {
+          "kind": "model-tokens",
+          "laneId": "persona-02",
+          "estimatedCostUsd": null,
+          "reason": "no_token_usage",
+          "ratesAsOf": null
+        },
+        {
+          "kind": "model-tokens",
+          "laneId": "persona-03",
+          "estimatedCostUsd": null,
+          "reason": "no_token_usage",
+          "ratesAsOf": null
+        },
+        {
+          "kind": "desktop-minutes",
+          "laneId": "subject",
+          "estimatedCostUsd": null,
+          "reason": "no_desktop_resources",
+          "ratesAsOf": null,
+          "desktop": {
+            "minutes": "[minutes]",
+            "durationBasis": "host-acquired-to-cleanup",
+            "resourceUnavailableReason": "metadata_unavailable"
+          }
+        },
+        {
+          "kind": "desktop-minutes",
+          "laneId": "persona-01",
+          "estimatedCostUsd": null,
+          "reason": "no_desktop_resources",
+          "ratesAsOf": null,
+          "desktop": {
+            "minutes": "[minutes]",
+            "durationBasis": "host-acquired-to-cleanup",
+            "resourceUnavailableReason": "metadata_unavailable"
+          }
+        },
+        {
+          "kind": "desktop-minutes",
+          "laneId": "persona-02",
+          "estimatedCostUsd": null,
+          "reason": "no_desktop_resources",
+          "ratesAsOf": null,
+          "desktop": {
+            "minutes": "[minutes]",
+            "durationBasis": "host-acquired-to-cleanup",
+            "resourceUnavailableReason": "metadata_unavailable"
+          }
+        },
+        {
+          "kind": "desktop-minutes",
+          "laneId": "persona-03",
+          "estimatedCostUsd": null,
+          "reason": "no_desktop_resources",
+          "ratesAsOf": null,
+          "desktop": {
+            "minutes": "[minutes]",
+            "durationBasis": "host-acquired-to-cleanup",
+            "resourceUnavailableReason": "metadata_unavailable"
+          }
+        }
+      ],
+      "tokenUsage": {
+        "input": 0,
+        "output": 0,
+        "total": 0
+      },
+      "desktopMinutes": "[desktopMinutes]",
+      "note": "No priced spend lines this run — every cost line is DECLARED ABSENT (unknown rate / no usage / no duration); nothing is guessed. Add a rate to src/run/pricing.ts to estimate this model. Desktop compute is unmeasured: no allocation CPU/RAM observation is available."
     }
   },
   "sandbox-receipts.ndjson": [
@@ -1945,7 +2117,8 @@
     "updatedAt": "[ts]",
     "completedAt": "[ts]",
     "outcome": {
-      "verdict": "pass"
+      "verdict": "pass",
+      "estimatedCostUsd": null
     }
   }
 }

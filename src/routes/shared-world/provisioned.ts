@@ -31,6 +31,10 @@ import {
   type E2BDesktopModule,
   type E2BDesktopSandbox,
 } from "../../substrates/e2b/desktop-launch.js";
+import {
+  observeDesktopResources,
+  type DesktopResourceObservation,
+} from "../../substrates/e2b/desktop-resources.js";
 import { acquireE2BDesktopSandbox } from "../../substrates/e2b/sandbox.js";
 import { e2bShell } from "../../substrates/e2b/shell.js";
 import type { Shell } from "../../substrates/shell.js";
@@ -63,6 +67,7 @@ import {
 import {
   CONCURRENT_SHARED_WORLD_PROVIDER_METADATA,
   type ActorLaneResult,
+  type SubjectDesktopUsage,
   type LiveSeats,
   type PlaneContext,
 } from "./types.js";
@@ -98,6 +103,7 @@ export interface ProvisionedPlaneOutcome {
   subjectCommit: string | undefined;
   subjectSandboxId: string | undefined;
   subjectKilled: boolean;
+  subjectDesktop: SubjectDesktopUsage | undefined;
   getHostUrl: string | undefined;
   /** Set when the teardown drain wrote a comms thread. */
   commsArtifactPath: string | undefined;
@@ -123,6 +129,10 @@ class SubjectPlane {
   subjectSandboxId: string | undefined;
   subjectKilled = false;
   getHostUrl: string | undefined;
+  // The subject desktop's host-side span and size, priced in the run's cost estimate.
+  private subjectCreatedAtMs: number | undefined;
+  private subjectTornDownAtMs: number | undefined;
+  private subjectResources: DesktopResourceObservation | undefined;
   private readonly ctx: PlaneContext;
   private readonly setup: ProvisionedPlaneSetup;
   private subjectModule: E2BDesktopModule | undefined;
@@ -217,6 +227,8 @@ class SubjectPlane {
     this.subjectDesktop = subject.sandbox;
     this.subjectShell = e2bShell(this.subjectDesktop);
     this.subjectSandboxId = subject.allocation.resourceId;
+    this.subjectCreatedAtMs = this.ctx.now();
+    this.subjectResources = await observeDesktopResources(this.subjectDesktop);
 
     if (hooks.prepareDesktop) {
       await hooks.prepareDesktop(this.subjectDesktop);
@@ -443,6 +455,7 @@ class SubjectPlane {
             `Subject sandbox teardown failed (server-side kill-on-timeout will reclaim it): ${redactText(scrubKnownValues(toErrorMessage(error)))}`,
           );
         }
+        this.subjectTornDownAtMs = this.ctx.now();
       } else {
         warnings.push(
           "Installed @e2b/desktop SDK does not expose Sandbox.kill; server-side kill-on-timeout will reclaim the subject sandbox.",
@@ -450,6 +463,18 @@ class SubjectPlane {
       }
     }
     return commsArtifactPath;
+  }
+
+  desktopUsage(): SubjectDesktopUsage | undefined {
+    if (this.subjectSandboxId === undefined) return undefined;
+    return {
+      durationMs:
+        this.subjectCreatedAtMs === undefined || this.subjectTornDownAtMs === undefined
+          ? undefined
+          : Math.max(0, this.subjectTornDownAtMs - this.subjectCreatedAtMs),
+      observation: this.subjectResources,
+      killed: this.subjectKilled,
+    };
   }
 }
 
@@ -574,6 +599,7 @@ export async function runProvisionedPlane(
     subjectCommit: plane.subjectCommit,
     subjectSandboxId: plane.subjectSandboxId,
     subjectKilled: plane.subjectKilled,
+    subjectDesktop: plane.desktopUsage(),
     getHostUrl: plane.getHostUrl,
     commsArtifactPath,
   };

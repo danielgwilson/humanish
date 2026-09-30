@@ -8,6 +8,7 @@ import type {
 import type { CuaActorDescriptor } from "../../actors/registry.js";
 import type { CommsReceivingRun } from "../../comms/receiving.js";
 import type { LabActorLane, LabCommsEmail, LabCommsExternal, LabConfig } from "../../lab/types.js";
+import type { DesktopResourceObservation } from "../../substrates/e2b/desktop-resources.js";
 import type { ObserverResult } from "../../observer/render.js";
 import type { ObserverRuntimeStreamUrl } from "../../observer/run-routes.js";
 import type {
@@ -143,6 +144,13 @@ export interface ConcurrentSharedWorldLabResult extends AutomaticAnalysisResult 
 }
 
 /** One actor lane's measured run (internal). */
+/** The provisioned plane's own desktop, for the run's cost estimate. */
+export interface SubjectDesktopUsage {
+  durationMs: number | undefined;
+  observation: DesktopResourceObservation | undefined;
+  killed: boolean;
+}
+
 export interface ActorLaneResult {
   spec: CuaLaneSpec;
   outcome: LaneRunOutcome;
@@ -236,6 +244,8 @@ export interface ConcurrentBundleArgs {
   /** external-public only: sha256-16 of the shared /lobby/CODE path all seats converged on. */
   lobbyConvergenceDigest?: string;
   runError?: string;
+  /** The provisioned plane's own desktop; absent on external-public planes and dry runs. */
+  subjectDesktop?: SubjectDesktopUsage;
 }
 
 /** What the plane that ran reports to the finish. A plane leaves the fields it has no part in unset. */
@@ -245,6 +255,7 @@ export interface PlaneResults {
   subjectCommit: string | undefined;
   subjectSandboxId: string | undefined;
   subjectKilled: boolean;
+  subjectDesktop: SubjectDesktopUsage | undefined;
   getHostUrl: string | undefined;
   // The OBSERVED convergence origin — computed AFTER fan-out from what the seats ACTUALLY reached (the
   // convergence proof is what the seats OBSERVED, not what was declared). Set iff every observing seat

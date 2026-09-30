@@ -1219,6 +1219,8 @@ describe("external-public run directory goldens", () => {
         [cwd, "[cwd]"],
       ],
       unorderedFiles: ["sandbox-receipts.ndjson"],
+      // Desktop minutes are host-measured wall-clock spans of the fake sandboxes.
+      maskKeys: ["minutes", "desktopMinutes"],
     });
     await expect(`${JSON.stringify(snapshot, null, 2)}\n`).toMatchFileSnapshot(
       `../../golden/routes/${golden}`,

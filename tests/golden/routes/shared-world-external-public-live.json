@@ -486,6 +486,80 @@
         "status": "passed"
       }
     ],
+    "cost": {
+      "schema": "humanish.run-cost-summary.v1",
+      "currency": "usd",
+      "estimatedTotalUsd": null,
+      "ratesAsOf": null,
+      "fullyEstimated": false,
+      "placeholder": false,
+      "breakdown": [
+        {
+          "kind": "model-tokens",
+          "laneId": "host",
+          "estimatedCostUsd": null,
+          "reason": "no_token_usage",
+          "ratesAsOf": null
+        },
+        {
+          "kind": "model-tokens",
+          "laneId": "player-2",
+          "estimatedCostUsd": null,
+          "reason": "no_token_usage",
+          "ratesAsOf": null
+        },
+        {
+          "kind": "model-tokens",
+          "laneId": "player-3",
+          "estimatedCostUsd": null,
+          "reason": "no_token_usage",
+          "ratesAsOf": null
+        },
+        {
+          "kind": "desktop-minutes",
+          "laneId": "host",
+          "estimatedCostUsd": null,
+          "reason": "no_desktop_resources",
+          "ratesAsOf": null,
+          "desktop": {
+            "minutes": "[minutes]",
+            "durationBasis": "host-acquired-to-cleanup",
+            "resourceUnavailableReason": "metadata_unavailable"
+          }
+        },
+        {
+          "kind": "desktop-minutes",
+          "laneId": "player-2",
+          "estimatedCostUsd": null,
+          "reason": "no_desktop_resources",
+          "ratesAsOf": null,
+          "desktop": {
+            "minutes": "[minutes]",
+            "durationBasis": "host-acquired-to-cleanup",
+            "resourceUnavailableReason": "metadata_unavailable"
+          }
+        },
+        {
+          "kind": "desktop-minutes",
+          "laneId": "player-3",
+          "estimatedCostUsd": null,
+          "reason": "no_desktop_resources",
+          "ratesAsOf": null,
+          "desktop": {
+            "minutes": "[minutes]",
+            "durationBasis": "host-acquired-to-cleanup",
+            "resourceUnavailableReason": "metadata_unavailable"
+          }
+        }
+      ],
+      "tokenUsage": {
+        "input": 0,
+        "output": 0,
+        "total": 0
+      },
+      "desktopMinutes": "[desktopMinutes]",
+      "note": "No priced spend lines this run — every cost line is DECLARED ABSENT (unknown rate / no usage / no duration); nothing is guessed. Add a rate to src/run/pricing.ts to estimate this model. Desktop compute is unmeasured: no allocation CPU/RAM observation is available."
+    },
     "streams": [
       {
         "id": "stream-001",
@@ -1999,6 +2073,80 @@
         }
       ],
       "lobbyConvergenceDigest": "9b782607bd5b367e"
+    },
+    "cost": {
+      "schema": "humanish.run-cost-summary.v1",
+      "currency": "usd",
+      "estimatedTotalUsd": null,
+      "ratesAsOf": null,
+      "fullyEstimated": false,
+      "placeholder": false,
+      "breakdown": [
+        {
+          "kind": "model-tokens",
+          "laneId": "host",
+          "estimatedCostUsd": null,
+          "reason": "no_token_usage",
+          "ratesAsOf": null
+        },
+        {
+          "kind": "model-tokens",
+          "laneId": "player-2",
+          "estimatedCostUsd": null,
+          "reason": "no_token_usage",
+          "ratesAsOf": null
+        },
+        {
+          "kind": "model-tokens",
+          "laneId": "player-3",
+          "estimatedCostUsd": null,
+          "reason": "no_token_usage",
+          "ratesAsOf": null
+        },
+        {
+          "kind": "desktop-minutes",
+          "laneId": "host",
+          "estimatedCostUsd": null,
+          "reason": "no_desktop_resources",
+          "ratesAsOf": null,
+          "desktop": {
+            "minutes": "[minutes]",
+            "durationBasis": "host-acquired-to-cleanup",
+            "resourceUnavailableReason": "metadata_unavailable"
+          }
+        },
+        {
+          "kind": "desktop-minutes",
+          "laneId": "player-2",
+          "estimatedCostUsd": null,
+          "reason": "no_desktop_resources",
+          "ratesAsOf": null,
+          "desktop": {
+            "minutes": "[minutes]",
+            "durationBasis": "host-acquired-to-cleanup",
+            "resourceUnavailableReason": "metadata_unavailable"
+          }
+        },
+        {
+          "kind": "desktop-minutes",
+          "laneId": "player-3",
+          "estimatedCostUsd": null,
+          "reason": "no_desktop_resources",
+          "ratesAsOf": null,
+          "desktop": {
+            "minutes": "[minutes]",
+            "durationBasis": "host-acquired-to-cleanup",
+            "resourceUnavailableReason": "metadata_unavailable"
+          }
+        }
+      ],
+      "tokenUsage": {
+        "input": 0,
+        "output": 0,
+        "total": 0
+      },
+      "desktopMinutes": "[desktopMinutes]",
+      "note": "No priced spend lines this run — every cost line is DECLARED ABSENT (unknown rate / no usage / no duration); nothing is guessed. Add a rate to src/run/pricing.ts to estimate this model. Desktop compute is unmeasured: no allocation CPU/RAM observation is available."
     }
   },
   "sandbox-receipts.ndjson": [
@@ -2034,7 +2182,8 @@
     "updatedAt": "[ts]",
     "completedAt": "[ts]",
     "outcome": {
-      "verdict": "pass"
+      "verdict": "pass",
+      "estimatedCostUsd": null
     }
   }
 }

@@ -1142,7 +1142,9 @@ never authoritative: every dollar figure is a rate-table multiply, labeled
   optional `placeholder`, and a `breakdown`.
 - `humanish.run-cost-summary.v1` (`RunBundle.cost`): the sum of every lane's
   `model-tokens` lines PLUS `desktop-minutes` lines. New independent CUA runs
-  price each owned desktop separately; older single aggregate lines remain readable.
+  price each owned desktop separately; concurrent shared-world runs add one line per seat
+  and a `laneId: subject` desktop line for a provisioned plane; older single aggregate
+  lines remain readable.
   A desktop line's optional `desktop` object records `minutes`,
   `durationBasis: host-acquired-to-cleanup`, observed `resources` (`cpuCount`,
   `memoryMiB`), `resourceSource: e2b.getInfo`, and `usdPerSecond` when priceable.
