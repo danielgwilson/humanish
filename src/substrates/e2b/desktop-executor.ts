@@ -1,8 +1,7 @@
 import { shellQuote } from "../shell.js";
 import { perceptualSignature } from "../../evidence/frame-signature.js";
-
 import { commandFailureInfo } from "../command-failure.js";
-import { tailOf } from "../shell.js";
+
 import type { CuaAction, CuaExecutor, CuaObservation } from "../../actors/computer-use/loop.js";
 import { CuaExecutorError } from "../../actors/computer-use/executor-error.js";
 import { xdotoolHeldModifiers } from "../../guest-desktop-keys.js";
@@ -113,7 +112,7 @@ export interface E2BDesktopExecutorOptions {
 
 const DEFAULT_WAIT_MS = 500;
 const DEFAULT_SCROLL_AMOUNT_PER_TICK = 100;
-const TYPE_FALLBACK_TIMEOUT_MS = 15_000;
+const TYPE_COMMAND_TIMEOUT_MS = 15_000;
 const HELD_KEYS_TIMEOUT_MS = 15_000;
 const CURSOR_READ_TIMEOUT_MS = 500;
 
@@ -183,172 +182,86 @@ function toBuffer(bytes: Uint8Array | Buffer): Buffer {
   return Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes);
 }
 
-/**
- * The stage of the type -> clipboard-paste fallback chain that failed. Public-safe
- * (a path label, never typed text). Surfaced so a run bundle can tell app focus
- * from a missing clipboard utility from a failed paste keypress.
- */
-export type CuaTypeFallbackPhase =
-  | "clipboard-unavailable"
-  | "clipboard-tempfile"
-  | "clipboard-utility-missing"
-  | "clipboard-command"
-  | "paste-keypress";
+/** The stage of a `type` action that failed. */
+export type CuaTypePhase = "desktop-write" | "text-tempfile" | "text-command";
 
 /**
- * A `type` action that failed after both the primary write and the clipboard
- * paste fallback. Carries a redacted attempt chain (path labels only, never the
- * typed text), the failing phase, and a sanitized stderr/stdout tail when the
- * substrate produced one. The loop records `.name` + `.message` into the actor
- * trace notice, so the bundle proves WHERE the type stopped, not just that it did.
+ * A `type` action that failed. Typed text can be a credential (a login step typing a subject-env
+ * password), so the message names the phase and, for xdotool, its exit code only: no text, no
+ * temp-file path, no substrate output. The loop records `.name` + `.message` into the actor trace.
  */
-export class CuaTypeFallbackError extends Error {
-  readonly phase: CuaTypeFallbackPhase;
-  readonly attemptChain: readonly string[];
-  readonly stderrTail?: string;
+export class CuaTypeError extends Error {
+  readonly phase: CuaTypePhase;
+  readonly exitCode?: number;
 
-  constructor(
-    phase: CuaTypeFallbackPhase,
-    attemptChain: readonly string[],
-    stderrTail?: string,
-    cause?: unknown,
-  ) {
-    const chain = attemptChain.join(" -> ");
-    const suffix =
-      stderrTail !== undefined && stderrTail.length > 0 ? ` (stderr: ${stderrTail})` : "";
-    super(`type fallback failed at ${phase}: ${chain}${suffix}`);
-    this.name = "CuaTypeFallbackError";
+  constructor(phase: CuaTypePhase, exitCode?: number) {
+    super(`type failed at ${phase}${exitCode === undefined ? "" : ` (exit ${exitCode})`}`);
+    this.name = "CuaTypeError";
     this.phase = phase;
-    this.attemptChain = attemptChain;
-    if (stderrTail !== undefined && stderrTail.length > 0) this.stderrTail = stderrTail;
-    if (cause !== undefined) (this as { cause?: unknown }).cause = cause;
+    if (exitCode !== undefined) this.exitCode = exitCode;
   }
 }
 
-type DesktopCommandResult = { exitCode?: number; stderr?: string; stdout?: string };
+/** The SDK write's per-character delay, kept so typing keeps its pace. */
+const XDOTOOL_TYPE_DELAY_MS = 75;
 
-/** Map a clipboard-command exit code to a CuaTypeFallbackError phase and throw. */
-function throwClipboardCommandFailure(
-  exitCode: number | undefined,
-  stderrTail: string,
-  attemptChain: string[],
-  cause?: unknown,
-): never {
-  if (exitCode === 127) {
-    throw new CuaTypeFallbackError(
-      "clipboard-utility-missing",
-      [...attemptChain, "no xclip/xsel clipboard utility"],
-      stderrTail,
-      cause,
-    );
-  }
-  throw new CuaTypeFallbackError(
-    "clipboard-command",
-    [
-      ...attemptChain,
-      exitCode === undefined
-        ? "clipboard command errored"
-        : `clipboard command failed (exit ${exitCode})`,
-    ],
-    stderrTail,
-    cause,
-  );
+const TYPE_DIRECTORY = /^\/tmp\/humanish-type-[A-Za-z0-9]+$/;
+
+/** A desktop with the command and file surfaces typeText needs. */
+type TypingDesktop = E2BDesktopLike & Required<Pick<E2BDesktopLike, "commands" | "files">>;
+
+function canTypeText(desktop: E2BDesktopLike): desktop is TypingDesktop {
+  return desktop.commands !== undefined && desktop.files !== undefined;
 }
 
 /**
- * Best-effort clipboard-paste fallback for a `type` action after the primary
- * `desktop.write` failed. Records each attempt into `attemptChain` (path labels
- * only) and throws a CuaTypeFallbackError naming the failing phase + a sanitized
- * stderr tail when the chain cannot complete. The typed text is transferred via a
- * temp file (never shell-quoted) and is never included in the chain or error.
+ * Type `text` with one xdotool command in the UTF-8 locale, reading it from a file.
+ *
+ * The stock desktop runs commands in the C locale, where xdotool types the characters before the
+ * first non-ASCII one and then fails; the SDK write splits text into 25-unit chunks and fails the
+ * same way partway through. Either would leave a prefix typed, so there is one attempt and no
+ * retry. The text is written to a 0600 file in a directory `mktemp -d` makes, passed to xdotool by
+ * path (never through the shell), and the directory is removed on every exit.
  */
-async function pasteTextViaClipboard(
-  desktop: E2BDesktopLike,
-  text: string,
-  attemptChain: string[],
-): Promise<void> {
-  const files = desktop.files;
-  const commands = desktop.commands;
-  if (!files || !commands) {
-    throw new CuaTypeFallbackError("clipboard-unavailable", [
-      ...attemptChain,
-      "clipboard fallback unavailable (no command/file surface)",
-    ]);
-  }
-
-  const path = `/tmp/humanish-cua-type-${Date.now()}-${Math.random().toString(16).slice(2)}.txt`;
+async function typeText(desktop: TypingDesktop, text: string): Promise<void> {
+  const { commands, files } = desktop;
+  const quick = { requestTimeoutMs: TYPE_COMMAND_TIMEOUT_MS, timeoutMs: TYPE_COMMAND_TIMEOUT_MS };
+  let directory: string | undefined;
   try {
-    await files.write(path, text, { requestTimeoutMs: TYPE_FALLBACK_TIMEOUT_MS });
-  } catch (writeError) {
-    throw new CuaTypeFallbackError(
-      "clipboard-tempfile",
-      [...attemptChain, "clipboard temp-file write failed"],
-      undefined,
-      writeError,
+    const made = await commands.run(
+      'umask 077 && d=$(mktemp -d /tmp/humanish-type-XXXXXXXX) && : > "$d/text" && printf \'%s\' "$d"',
+      quick,
     );
+    directory = made.stdout?.trim();
+  } catch {
+    throw new CuaTypeError("text-tempfile");
   }
-
-  const clipboardCommand = [
-    "set -euo pipefail",
-    'export DISPLAY="${DISPLAY:-:0}"',
-    `text_path=${shellQuote(path)}`,
-    'cleanup() { rm -f "$text_path"; }',
-    "trap cleanup EXIT",
-    // Try xclip, then fall back to xsel if xclip is absent OR fails; distinguish a
-    // missing utility (exit 127) from a utility that ran but failed (exit 1) so the
-    // caller can name the phase.
-    // Selection owners fork and keep serving the clipboard. Their inherited output pipes
-    // must not keep the sandbox command runner waiting after the write command exits.
-    'if command -v xclip >/dev/null 2>&1 && xclip -selection clipboard < "$text_path" >/dev/null 2>&1; then',
-    "  :",
-    'elif command -v xsel >/dev/null 2>&1 && xsel --clipboard --input < "$text_path" >/dev/null 2>&1; then',
-    "  :",
-    "elif command -v xclip >/dev/null 2>&1 || command -v xsel >/dev/null 2>&1; then",
-    "  echo 'clipboard utility present but failed to set the clipboard' >&2",
-    "  exit 1",
-    "else",
-    "  echo 'no xclip/xsel clipboard utility available for paste fallback' >&2",
-    "  exit 127",
-    "fi",
-  ].join("\n");
-
-  // The real @e2b/desktop Sandbox THROWS CommandExitError on any non-zero exit
-  // (it does not return a non-zero exitCode), so the exit code + stderr must be
-  // recovered from the thrown error. A structural fake that returns a non-zero
-  // exitCode instead of throwing is also handled, so both shapes are covered.
-  let runResult: DesktopCommandResult | undefined;
-  let runError: unknown;
+  if (directory === undefined || !TYPE_DIRECTORY.test(directory))
+    throw new CuaTypeError("text-tempfile");
+  const file = `${directory}/text`;
   try {
-    runResult = await commands.run(clipboardCommand, {
-      requestTimeoutMs: TYPE_FALLBACK_TIMEOUT_MS,
-      timeoutMs: TYPE_FALLBACK_TIMEOUT_MS,
-    });
-  } catch (error) {
-    runError = error;
-  }
-
-  if (runError !== undefined) {
-    const detail = commandFailureInfo(runError);
-    throwClipboardCommandFailure(detail.exitCode, detail.stderrTail, attemptChain, runError);
-  }
-  if (runResult !== undefined && runResult.exitCode !== undefined && runResult.exitCode !== 0) {
-    throwClipboardCommandFailure(
-      runResult.exitCode,
-      tailOf(runResult.stderr ?? runResult.stdout),
-      attemptChain,
-    );
-  }
-  attemptChain.push("clipboard write ok");
-
-  try {
-    await desktop.press(["Control", "v"]);
-  } catch (pressError) {
-    throw new CuaTypeFallbackError(
-      "paste-keypress",
-      [...attemptChain, "paste keypress (Control+V) failed"],
-      undefined,
-      pressError,
-    );
+    try {
+      await files.write(file, text, { requestTimeoutMs: TYPE_COMMAND_TIMEOUT_MS });
+    } catch {
+      throw new CuaTypeError("text-tempfile");
+    }
+    // xdotool waits the delay after every character, so a long text needs a longer budget.
+    const timeoutMs = TYPE_COMMAND_TIMEOUT_MS + [...text].length * XDOTOOL_TYPE_DELAY_MS;
+    let result: { exitCode?: number } | undefined;
+    try {
+      result = await commands.run(
+        `DISPLAY="\${DISPLAY:-:0}" LC_ALL=C.UTF-8 xdotool type --delay ${XDOTOOL_TYPE_DELAY_MS} --file ${shellQuote(file)}`,
+        { requestTimeoutMs: timeoutMs, timeoutMs },
+      );
+    } catch (error) {
+      // The SDK throws on a non-zero exit; only its exit code is kept.
+      throw new CuaTypeError("text-command", commandFailureInfo(error).exitCode);
+    }
+    // A structural fake may return a non-zero exit instead of throwing, as the SDK does.
+    if (result?.exitCode !== undefined && result.exitCode !== 0)
+      throw new CuaTypeError("text-command", result.exitCode);
+  } finally {
+    await commands.run(`rm -rf -- ${shellQuote(directory)}`, quick).catch(() => undefined);
   }
 }
 
@@ -432,18 +345,18 @@ export function createE2BDesktopExecutor(
         return;
       }
       case "type": {
-        const attemptChain: string[] = [];
+        if (canTypeText(desktop)) {
+          await typeText(desktop, action.text);
+          return;
+        }
+        // A desktop without command and file surfaces keeps the SDK write, with no retry: a
+        // failed write may already have typed part of the text. Its error could echo the
+        // command, and so the text, so it is replaced.
         try {
           await desktop.write(action.text);
-          return;
         } catch {
-          // The primary write failed; record the path and try the clipboard
-          // fallback, which throws a CuaTypeFallbackError naming the phase if it
-          // also fails. (The write error carries no diagnostics beyond "it
-          // threw"; the typed text is never recorded.)
-          attemptChain.push("desktop.write failed");
+          throw new CuaTypeError("desktop-write");
         }
-        await pasteTextViaClipboard(desktop, action.text, attemptChain);
         return;
       }
       case "keypress":
