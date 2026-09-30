@@ -1,0 +1,276 @@
+// Finishing a live terminal session: the actor trace from the captured stream, the spend ledger
+// and its caps check, the evidence files, the bundle, and the lab result.
+import { buildRunCostSummary } from "../../run/cost-summary.js";
+import type { ActorPersonaRef } from "../../actors/contract.js";
+import type { LabConfig } from "../../lab/types.js";
+import type { RunBundle } from "../../run/bundle.js";
+import type { RunScope } from "../../run/run.js";
+import { validatePreparedRunArtifactPaths } from "../../run/paths.js";
+import { estimateActorCost } from "../../run/pricing.js";
+import { normalizeLocalActorTranscript } from "../../run/verify-actor.js";
+import { applyAdapterExtensionSeam } from "./adapter.js";
+import { writeTerminalEvidence } from "./artifacts.js";
+import { buildLiveTerminalProductBundle } from "./bundle.js";
+import {
+  buildCostLedger,
+  buildNoSpendProof,
+  describeMeasuredSpend,
+  evaluateCapsAgainstLedger,
+  noSpendLineMeasured,
+  noSpendNotEstablished,
+} from "./ledger.js";
+import type { LiveSandboxInputs, LiveTerminalSandbox } from "./live-sandbox.js";
+import { terminalLabResult } from "./result.js";
+import { parseTerminalTokenUsage } from "./token-usage.js";
+import { buildTerminalActorTrace, scrubSplitKnownValues, tailOf } from "./trace.js";
+import type {
+  RunLiveTerminalSessionArgs,
+  TerminalLedgers,
+  TerminalProductLabHooks,
+  TerminalProductLabResult,
+} from "./types.js";
+
+type StartedRun = Extract<Awaited<ReturnType<RunScope["startRun"]>>, { ok: true }>["run"];
+
+/** What the finish reads from the run. */
+export interface LiveFinishInputs {
+  options: RunLiveTerminalSessionArgs["options"];
+  cwd: string;
+  config: LabConfig;
+  descriptorId: string;
+  product: RunLiveTerminalSessionArgs["product"];
+  caps: RunLiveTerminalSessionArgs["caps"];
+  hooks: TerminalProductLabHooks;
+  sanitize: (text: string) => string;
+  nowIso: () => string;
+  knownSecretValues: string[];
+  runtimeEnv: LiveSandboxInputs["runtimeEnv"];
+  runtime: LiveSandboxInputs["runtime"];
+  persona: ActorPersonaRef;
+  mission: string;
+  run: StartedRun;
+  source: RunBundle["source"];
+  /** The run's warnings. The finish appends to them. */
+  warnings: string[];
+  recorder: LiveSandboxInputs["recorder"];
+  /** The session's outcome; a blown cap overrides it. */
+  session: LiveTerminalSandbox;
+}
+
+function buildLiveTrace(inputs: LiveFinishInputs): {
+  normalizedTranscript: string;
+  trace: ReturnType<typeof buildTerminalActorTrace>;
+} {
+  const { persona, product, sanitize, nowIso, runtimeEnv, runtime, knownSecretValues } = inputs;
+  const { session } = inputs;
+  const { createdAt } = inputs.run;
+  const { terminalEvents, commandLog, discardedPrefixes } = inputs.recorder;
+  // Prefix reconciliation may cut through a known key. Scrub literal values across the retained
+  // chunks before any transcript/trace/event artifact is persisted. Check both each stream and
+  // the combined event order that the transcript uses; either view can assemble a split value.
+  scrubSplitKnownValues(terminalEvents, knownSecretValues, discardedPrefixes);
+
+  // Build the actor trace FIRST (the cost ledger reads its tokenUsage).
+  const normalizedTranscript = normalizeLocalActorTranscript(
+    terminalEvents.map((e) => e.chunk).join(""),
+  );
+  // Parsed from the FULL stream, not the tail: usage records arrive once per turn and the tail
+  // would drop all but the last (#531).
+  const terminalTokenUsage = parseTerminalTokenUsage(normalizedTranscript);
+  const trace = buildTerminalActorTrace({
+    persona,
+    productName: product.name,
+    status: session.status,
+    completionReason: session.completionReason,
+    reason: sanitize(session.reason),
+    createdAt,
+    completedAt: nowIso(),
+    durationMs: commandLog[0]?.durationMs ?? 0,
+    terminalEvents,
+    commandLog,
+    transcriptTail: tailOf(normalizedTranscript),
+    runtimeAuth: runtimeEnv.mode,
+    runtime,
+    ...(terminalTokenUsage === undefined ? {} : { tokenUsage: terminalTokenUsage }),
+  });
+  // Codex tokens stay unpriced: the lane records its model as `codex`, which has no rate.
+  trace.estimatedCost = estimateActorCost(trace.tokenUsage, trace.provider);
+  return { normalizedTranscript, trace };
+}
+
+async function settleLiveLedgers(
+  inputs: LiveFinishInputs,
+  trace: ReturnType<typeof buildTerminalActorTrace>,
+  normalizedTranscript: string,
+): Promise<{
+  cost: TerminalLedgers["cost"];
+  noSpendProof: TerminalLedgers["noSpendProof"];
+  capsExceeded: boolean;
+  ledgers: TerminalLedgers;
+}> {
+  const { hooks, caps, runtime, session } = inputs;
+  const { maxUsd } = caps;
+  const runPaths = inputs.run.paths;
+  const { recordLifecycle, lifecycle, commandLog, interventions, terminalEvents } = inputs.recorder;
+  // --- Spend ledger + no-spend proof + full caps enforcement (fail-closed). ---
+  // The cost ledger is DERIVED, with the null discipline: provider spend from the trace's
+  // tokenUsage.costUsd when present (else null = NOT MEASURED), product/media/payment null by
+  // default (core has no signal). The costProbe hook lets tests or adapters inject KNOWN
+  // spend to exercise the fail-closed cap without a real billable run.
+  const injectedLines = hooks.costProbe?.(
+    trace.tokenUsage?.costUsd === undefined ? {} : { tokenCostUsd: trace.tokenUsage.costUsd },
+  );
+  if (hooks.costProbe) await validatePreparedRunArtifactPaths(runPaths);
+  const cost = buildCostLedger({
+    ...(trace.tokenUsage?.costUsd === undefined ? {} : { tokenCostUsd: trace.tokenUsage.costUsd }),
+    ...(trace.tokenUsage === undefined ? {} : { tokenUsage: trace.tokenUsage }),
+    ...(injectedLines ? { injectedLines } : {}),
+  });
+  const noSpendProof = buildNoSpendProof(cost, maxUsd ?? null, trace.tokenUsage);
+  const proofVerdict = !noSpendProof.satisfied
+    ? `No-spend proof NOT satisfied for maxUsd=${maxUsd ?? "null"}.`
+    : noSpendLineMeasured(noSpendProof)
+      ? noSpendNotEstablished(maxUsd ?? 0)
+      : `No-spend proof satisfied on the measured lines for maxUsd=${maxUsd ?? "null"}.`;
+  const measuredSpend = describeMeasuredSpend(cost, trace.tokenUsage);
+  recordLifecycle(
+    "terminal-lab.cost.measured",
+    `Cost ledger: known total ${cost.knownTotalUsd} USD${cost.fullyMeasured ? " (fully measured)" : " (lower bound)"}.${measuredSpend.length > 0 ? ` ${measuredSpend}` : ""} ${proofVerdict}`,
+  );
+
+  // FULL caps enforcement (fail-closed, NOT advisory): if a KNOWN spend line exceeds maxUsd (or a
+  // known job count exceeds maxJobs), the run fails closed — never a green pass. Unknowns (null) do
+  // NOT trip the cap (we cannot claim a violation we did not measure) but never grant a pass either
+  // (the no-spend proof reports them as unmeasured). maxMinutes is already wall-clock-enforced above.
+  const capCheck = evaluateCapsAgainstLedger(cost, caps);
+  let capsExceeded = false;
+  if (!capCheck.ok) {
+    capsExceeded = true;
+    session.status = "failed";
+    session.completionReason = "harness_error";
+    session.error = capCheck.message;
+    session.reason = capCheck.message;
+    recordLifecycle("terminal-lab.caps.exceeded", capCheck.message);
+    // Reflect the fail-closed verdict in the trace the bundle/observer reads (so the run cannot show
+    // a passing agent verdict while the cap was blown).
+    trace.status = "failed";
+    trace.completionReason = "harness_error";
+    trace.reason = capCheck.message;
+  }
+
+  // Assemble + persist the ledgers (now carrying the cost block + no-spend proof), the redacted
+  // event stream, the normalized transcript, the actor trace, and the run bundle.
+  const ledgers: TerminalLedgers = {
+    schema: "humanish.terminal-ledgers.v1",
+    runtime,
+    lifecycle,
+    commandLog,
+    interventions, // ALWAYS present, ALWAYS empty while no assisted-input path ships.
+    cleanup: session.cleanup,
+    cost,
+    noSpendProof,
+  };
+
+  await writeTerminalEvidence(runPaths, { terminalEvents, normalizedTranscript, ledgers, trace });
+  return { cost, noSpendProof, capsExceeded, ledgers };
+}
+
+export async function finishLiveTerminalSession(
+  inputs: LiveFinishInputs,
+): Promise<TerminalProductLabResult> {
+  const { normalizedTranscript, trace } = buildLiveTrace(inputs);
+  const { cost, noSpendProof, capsExceeded, ledgers } = await settleLiveLedgers(
+    inputs,
+    trace,
+    normalizedTranscript,
+  );
+  const { options, cwd, config, descriptorId, product, caps, hooks, sanitize } = inputs;
+  const { runtimeEnv, persona, mission, run, source, warnings, session } = inputs;
+  const { runId, createdAt, paths: runPaths } = run;
+
+  // The run cost summary, as the computer-use route records it: the sandbox's compute time from
+  // its span and observed size, and the participant's tokens (unpriced for Codex). It is not part
+  // of the cap ledger above, whose lines sum against scenario.caps.maxUsd.
+  const desktops = session.runCostDesktops();
+  const runCost = buildRunCostSummary({
+    lanes: [{ trace }],
+    ...(desktops === undefined ? {} : { desktops }),
+  });
+
+  const bundle = buildLiveTerminalProductBundle({
+    ...(options.lab === undefined ? {} : { lab: options.lab }),
+    actorId: descriptorId,
+    createdAt,
+    labId: config.id,
+    ...(config.title ? { labTitle: config.title } : {}),
+    mission: sanitize(mission),
+    persona,
+    productName: product.name,
+    publicSurfaces: product.publicSurfaces,
+    caps,
+    runtimeAuthKeyName: runtimeEnv.keyName,
+    runtimeAuth: runtimeEnv.mode,
+    policies: {
+      allowPrivateRepoAccess: config.policies?.allowPrivateRepoAccess ?? false,
+      allowProviderCredentials: config.policies?.allowProviderCredentials ?? false,
+      allowPaymentCredentials: config.policies?.allowPaymentCredentials ?? false,
+      allowGitHubMutation: config.policies?.allowGitHubMutation ?? false,
+    },
+    runId,
+    source,
+    trace,
+    ledgers,
+    ...(runCost === undefined ? {} : { cost: runCost }),
+    sessionReason: sanitize(session.reason),
+  });
+
+  // --- THE LAYER-6 EXTENSION SEAM (issue #154 acceptance #8). ---
+  // When a thin adapter registered a scorer / feedback strategy, the lane calls it over the
+  // FULLY-ASSEMBLED, redacted evidence and attaches the results to the bundle WITHOUT knowing any
+  // product noun: the namespaced RunAdapterScore lands on bundle.adapterScore, and the derived
+  // feedback candidates (each carrying its own namespaced product-noun block) are appended to
+  // bundle.feedbackCandidates. Core's mission-based verdict (bundle.review) is left UNCHANGED — the
+  // adapter score is additive, not a replacement. The adapter payloads pass the same scrub+redact
+  // the rest of the bundle does (the adapter is trusted in-repo code, but the harness never relies
+  // on that for secret values) and are validated fail-closed by the bundle verifier downstream.
+  const declaredScorerFailure = await applyAdapterExtensionSeam({
+    hooks,
+    bundle,
+    trace,
+    ledgers,
+    transcript: normalizedTranscript,
+    product: product.name,
+    labId: config.id,
+    runId,
+    sanitize,
+    warnings,
+    ...(options.scorerProvenance === undefined
+      ? {}
+      : { scorerProvenance: options.scorerProvenance }),
+  });
+  await validatePreparedRunArtifactPaths(runPaths);
+
+  const finished = await run.finish(bundle);
+  const observer = await finished.renderObserver();
+  await validatePreparedRunArtifactPaths(runPaths);
+
+  return terminalLabResult({
+    cwd,
+    labId: config.id,
+    actorId: descriptorId,
+    productName: product.name,
+    runId,
+    sessionStatus: session.status,
+    completionReason: session.completionReason,
+    sessionReason: sanitize(session.reason),
+    sessionError: session.error,
+    sandboxId: session.sandboxId,
+    cleanup: session.cleanup,
+    cost,
+    noSpendProof,
+    capsExceeded,
+    declaredScorerFailure,
+    observer,
+    warnings,
+  });
+}

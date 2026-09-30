@@ -24,6 +24,8 @@ function makeFakeModule(opts: {
   killed: string[];
   /** The size an instance getInfo() reports; absent means the sandbox has no getInfo. */
   size?: { cpuCount: number; memoryMB: number };
+  /** Sandbox.kill(id) throws, so teardown cannot be proven. */
+  killThrows?: boolean;
 }): E2BDesktopModule {
   let counter = 0;
   return {
@@ -72,6 +74,7 @@ function makeFakeModule(opts: {
       },
       async kill(sandboxId: string) {
         opts.killed.push(sandboxId);
+        if (opts.killThrows) throw new Error("synthetic kill failure");
         return true; // real-SDK-accurate: kill(id) resolves true ("found and killed")
       },
       // No Sandbox.getInfo/list on this fake: exercises the noGetInfo fallback in
@@ -464,7 +467,7 @@ describe("the terminal sandbox's compute time in the run cost summary", () => {
       `done\nHUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}`,
   });
 
-  async function run(size?: { cpuCount: number; memoryMB: number }) {
+  async function run(size?: { cpuCount: number; memoryMB: number }, killThrows = false) {
     const killed: string[] = [];
     let clock = 1_000_000;
     const result = await runTerminalProductLab({
@@ -481,6 +484,7 @@ describe("the terminal sandbox's compute time in the run cost summary", () => {
             killed,
             codexBehavior: codexWithUsage,
             ...(size === undefined ? {} : { size }),
+            killThrows,
           }),
       },
     });
@@ -527,6 +531,19 @@ describe("the terminal sandbox's compute time in the run cost summary", () => {
     expect(ledgers.noSpendProof.satisfied).toBe(true);
     const verified = await verifyRun(cwd, result.runId);
     expect(verified.checks.find((c) => c.name === "cost estimate labeling")?.ok).toBe(true);
+  });
+
+  it("adds an unpriced remainder line when the sandbox's teardown is not proven", async () => {
+    const { result, cost } = await run({ cpuCount: 2, memoryMB: 2048 }, true);
+    expect(result.error?.code).toBe("HUMANISH_TERMINAL_LAB_CLEANUP_UNPROVEN");
+    // The span up to the failed cleanup is priced; what ran after it is unknown.
+    expect(cost.breakdown).toContainEqual({
+      kind: "desktop-minutes",
+      estimatedCostUsd: null,
+      reason: "desktop_lifetime_incomplete",
+      ratesAsOf: null,
+    });
+    expect(cost.fullyEstimated).toBe(false);
   });
 
   it("records an unsized sandbox's span as unpriced and says why", async () => {

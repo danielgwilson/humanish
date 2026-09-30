@@ -7,7 +7,7 @@ import { escapeRegExp, isRecord } from "./primitives.js";
 
 /**
  * Strip ANSI/control noise from a captured terminal transcript into stable, scannable text.
- * Pure (no IO). Exported so the terminal-product lane (src/routes/terminal/session.ts) normalizes its
+ * Pure (no IO). Exported so the terminal-product lane (src/routes/terminal/live-sandbox.ts) normalizes its
  * captured exec stream EXACTLY as the local-actor lanes do — the verdict-nonce scorer is only
  * sound against the same normalization the marker is matched on, so the logic must not diverge.
  */

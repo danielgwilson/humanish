@@ -252,8 +252,6 @@ export function buildLiveTerminalProductBundle(args: {
   trace: ActorTrace;
   ledgers: TerminalLedgers;
   cost?: RunCostSummary;
-  sandboxId?: string;
-  sessionError?: string;
   sessionReason: string;
 }): RunBundle {
   const simStatus: RunSimulationStatus =
