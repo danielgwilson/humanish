@@ -17,3 +17,20 @@ Only `type`, `subtype`, `is_error`, `num_turns`, `result`, `stop_reason` and `us
 `session_id`, `uuid`, `modelUsage`, `total_cost_usd`, timing fields and every `system`,
 `assistant` and `rate_limit_event` message are omitted. The raw stream stayed local and is not
 committed.
+
+## Interrupted turn
+
+`interrupted-turn.ndjson` comes from a second Claude Code 2.1.285 session on 2026-09-30, spawned
+with the same arguments plus `--model haiku`. It sent a user message with `uuid`
+`11111111-…`, asking for a long synthetic list, then an `interrupt` control request
+(`{ "type": "control_request", "request_id": "int-1", "request": { "subtype": "interrupt",
+"cancel_queued": true } }`) three seconds later, then a second user message with `uuid`
+`22222222-…`. It keeps, in order:
+- the `system` `init` message's `capabilities` (it lists `interrupt_receipt_v1` and
+  `interrupt_cancel_queued_v1`) and `claude_code_version`;
+- the interrupt's `control_response` receipt;
+- the interrupted turn's `result`: `subtype` `error_during_execution`, `is_error: true`, and
+  `user_message_uuid` naming the first message;
+- the second turn's `result`, naming the second message.
+
+Every other field and message is omitted. The raw stream stayed local.
