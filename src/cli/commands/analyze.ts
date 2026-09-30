@@ -2,7 +2,6 @@ import {
   resolveAutomaticAnalysis,
   DEFAULT_ANALYSIS_TIMEOUT_MS,
 } from "../../analysis/automatic-config.js";
-import { resolve } from "node:path";
 import { Command, Option } from "commander";
 import { forTerminal } from "../../routes/terminal/encoding.js";
 import {
@@ -14,6 +13,7 @@ import {
 import { listStudyAnalyses, listStudyAnalysisExecutions } from "../../analysis/store.js";
 import { resolveRunPath } from "../../run/locate.js";
 import { type CliIo, JSON_OPTION_DESCRIPTION, writeResult } from "../io.js";
+import { resolvePhysicalCwd } from "../../run/paths.js";
 
 /** Commander may collect a shared flag on the parent; only explicit values override leaf defaults. */
 function analysisSelection<T extends { cwd: string; run: string }>(
@@ -108,7 +108,7 @@ export function registerAnalyzeCommand(parent: Command, io: CliIo): void {
         });
         if (!selected.ok || !selected.config) {
           const refusal = await dryRunBundleRefusal(
-            resolve(options.cwd),
+            await resolvePhysicalCwd(options.cwd),
             options.run,
             options.dryRun === true,
           );
@@ -196,7 +196,10 @@ export function registerAnalyzeCommand(parent: Command, io: CliIo): void {
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (options: { cwd: string; run: string }, command) => {
       options = analysisSelection(options, command);
-      const prepared = await resolveRunPath(resolve(options.cwd), options.run).catch(() => null);
+      const prepared = await resolveRunPath(
+        await resolvePhysicalCwd(options.cwd),
+        options.run,
+      ).catch(() => null);
       const versions = prepared ? await listStudyAnalyses(prepared) : [];
       const executions = prepared
         ? await listStudyAnalysisExecutions(prepared)

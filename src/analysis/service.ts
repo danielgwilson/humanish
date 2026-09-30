@@ -7,7 +7,11 @@ import { renderObserver } from "../observer/render.js";
 import { containsSensitive } from "../evidence/redaction.js";
 import { loadRunBundlePrepared, verifyRunPrepared } from "../run/verify.js";
 import { resolveRunPath } from "../run/locate.js";
-import { validatePreparedRunRootIdentity, type PreparedRunArtifactPaths } from "../run/paths.js";
+import {
+  resolvePhysicalCwd,
+  validatePreparedRunRootIdentity,
+  type PreparedRunArtifactPaths,
+} from "../run/paths.js";
 import { isRunStatusRecord, RUN_STATUS_FILE } from "../run/status.js";
 import { captureStudyEvidence, STUDY_EVIDENCE_LIMITS } from "./evidence.js";
 import { readBoundedStudyFile } from "./study-files.js";
@@ -274,7 +278,7 @@ export async function analyzeStudy(
   options: AnalyzeOptions,
   deps: AnalyzeDeps = {},
 ): Promise<AnalyzeResult> {
-  let cwd = path.resolve(cwdInput);
+  let cwd = await resolvePhysicalCwd(cwdInput);
   const dryRun = options.dryRun === true;
   const refusal = await dryRunBundleRefusal(cwd, run, dryRun, deps.expectedRun);
   if (refusal) return refusal;
@@ -460,7 +464,7 @@ export async function showStudyAnalysis(
   run: string,
   id?: string,
 ): Promise<LoadedStudyAnalysis> {
-  const prepared = await resolveRunPath(path.resolve(cwd), run).catch(() => null);
+  const prepared = await resolveRunPath(await resolvePhysicalCwd(cwd), run).catch(() => null);
   return prepared
     ? loadStudyAnalysis(prepared, id)
     : { state: "invalid", analysis: null, corrections: [], warnings: ["ANALYSIS_RUN_NOT_FOUND"] };
@@ -477,7 +481,7 @@ export async function correctStudyAnalysis(
     replacementClaim?: string;
   },
 ): Promise<StudyAnalysisCorrection> {
-  const prepared = await resolveRunPath(path.resolve(cwd), run);
+  const prepared = await resolveRunPath(await resolvePhysicalCwd(cwd), run);
   if (!prepared) throw new Error("ANALYSIS_RUN_NOT_FOUND");
   return withStudyAnalysisLock(prepared, async () => {
     const loaded = await loadStudyAnalysis(prepared, options.analysisId);

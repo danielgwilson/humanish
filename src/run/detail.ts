@@ -16,6 +16,7 @@ import path from "node:path";
 import { estimateActorCostForExecution } from "./pricing.js";
 
 import { resolveRunPath } from "./locate.js";
+import { resolvePhysicalCwd } from "./paths.js";
 
 const RUN_DETAIL_SCHEMA = "humanish.run-detail.v1";
 
@@ -178,7 +179,8 @@ function costOf(trace: ActorTraceFacts): { estimatedCostUsd?: number | null } {
  * as a claim about what a participant did; it is what to put on a screen.
  */
 export async function readRunDetail(cwdInput: string, runId: string): Promise<RunDetail | null> {
-  const runPaths = await resolveRunPath(path.resolve(cwdInput), runId).catch(() => null);
+  const cwd = await resolvePhysicalCwd(cwdInput);
+  const runPaths = await resolveRunPath(cwd, runId).catch(() => null);
   if (runPaths === null) return null;
 
   let bundle: { streams?: StreamFacts[]; runId?: string };
@@ -193,7 +195,6 @@ export async function readRunDetail(cwdInput: string, runId: string): Promise<Ru
   }
 
   const streams = Array.isArray(bundle.streams) ? bundle.streams : [];
-  const cwd = path.resolve(cwdInput);
   const observerAbsolute = path.join(runPaths.absoluteRunRoot, "observer", "index.html");
 
   const automaticAnalysis = await readAutomaticStudyAnalysis(cwd, runId);
