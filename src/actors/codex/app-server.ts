@@ -68,13 +68,8 @@ export async function runCodexAppServerSessionInPreparedRoot(
 ): Promise<CodexAppServerRunResult> {
   const startedAt = new Date();
   const startedMs = Date.now();
-  const relativeDir = "codex-app-server";
-  const artifacts: RunArtifacts = {
-    eventsPath: path.join(relativeDir, "events.ndjson"),
-    tracePath: path.join(relativeDir, "summary.json"),
-    transcriptPath: path.join(relativeDir, "transcript.txt"),
-  };
-  await prepareContainedOutputDirectory(runRoot, relativeDir);
+  const artifacts = CODEX_APP_SERVER_ARTIFACTS;
+  await prepareContainedOutputDirectory(runRoot, CODEX_APP_SERVER_DIRECTORY);
   await Promise.all([
     prepareContainedOutputFile(runRoot, artifacts.eventsPath),
     prepareContainedOutputFile(runRoot, artifacts.tracePath),
@@ -245,15 +240,22 @@ function recordingHandlers(
   };
 }
 
-interface RunArtifacts {
+/** Where a run writes its artifacts, relative to the run root; the UI prepares the same paths. */
+export interface CodexAppServerArtifacts {
   eventsPath: string;
   tracePath: string;
   transcriptPath: string;
 }
+export const CODEX_APP_SERVER_DIRECTORY = "codex-app-server";
+export const CODEX_APP_SERVER_ARTIFACTS: CodexAppServerArtifacts = {
+  eventsPath: path.join(CODEX_APP_SERVER_DIRECTORY, "events.ndjson"),
+  tracePath: path.join(CODEX_APP_SERVER_DIRECTORY, "summary.json"),
+  transcriptPath: path.join(CODEX_APP_SERVER_DIRECTORY, "transcript.txt"),
+};
 /** Writes events.ndjson, summary.json and transcript.txt, then returns the result that names them. */
 async function writeRunArtifacts(
   runRoot: PreparedOutputDirectory,
-  artifacts: RunArtifacts,
+  artifacts: CodexAppServerArtifacts,
   envelopes: readonly string[],
   trace: CodexAppServerTrace,
   exit: { exitCode: number | undefined; signal: NodeJS.Signals | undefined },

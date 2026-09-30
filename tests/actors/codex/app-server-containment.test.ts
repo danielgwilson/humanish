@@ -5,6 +5,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { startCodexAppServerUi } from "../../../src/actors/codex/app-server-ui.js";
+import { digestText } from "../../../src/evidence/redaction.js";
 import { runCodexAppServerSession } from "../../../src/actors/codex/app-server.js";
 
 // These tests assert containment, not timing. The session timeout only guards against a hang, so it
@@ -214,6 +215,27 @@ describe("Codex app-server output containment", () => {
     } finally {
       await controller.close();
     }
+  });
+
+  it("records the same prompt digest in state.json and summary.json", async () => {
+    const runRoot = path.join(root, "digest-run");
+    const prompt = "Digest the synthetic prompt.";
+    await mkdir(runRoot);
+    const controller = await startCodexAppServerUi({
+      actorCommand: actorCommand(path.join(root, "actor-started")),
+      cwd: project,
+      prompt,
+      runRoot,
+      timeoutMs: HANG_GUARD_MS,
+    });
+    await controller.completion;
+    const read = async (relative: string) =>
+      JSON.parse(await readFile(path.join(runRoot, relative), "utf8")) as { promptDigest: string };
+    const state = await read("state.json");
+    expect(state.promptDigest).toBe(digestText(prompt));
+    expect((await read(path.join("codex-app-server", "summary.json"))).promptDigest).toBe(
+      state.promptDigest,
+    );
   });
 
   it("preflights direct-session generated paths before actor spawn", async () => {
