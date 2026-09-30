@@ -27,11 +27,14 @@ import path from "node:path";
 import { completeAutomaticAnalysis } from "../../analysis/automatic-completion.js";
 import { runScope, type RunScope } from "../../run/run.js";
 import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
-import { planComputerUseLab, type ComputerUseRefusal } from "./plan.js";
+import type { ComputerUsePlan } from "../../lab/plan-types.js";
+import type { LabConfig } from "../../lab/types.js";
+import { planComputerUseLab } from "./plan.js";
 import { finishCuaRun } from "./result.js";
 import { runLabLanes } from "./run-lanes.js";
-import { prepareCuaRun } from "./setup.js";
+import { prepareCuaRun, refuseCuaLab } from "./setup.js";
 import {
+  type ComputerUseRunInput,
   CUA_ACTOR_LAB_SCHEMA,
   type CuaActorLabResult,
   type RunCuaActorLabOptions,
@@ -55,51 +58,83 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
 async function runCuaActorLabWithSecrets(
   options: RunCuaActorLabOptions,
 ): Promise<CuaActorLabResult> {
+  const { config, dryRun, lab, ...input } = options;
   // planComputerUseLab makes every configuration refusal, in the order this route always has.
-  const planned = planComputerUseLab(options.config, {
-    dryRun: options.dryRun,
-    ...(options.lab === undefined ? {} : { lab: options.lab }),
-    ...(options.hooks === undefined ? {} : { hooks: options.hooks }),
-    ...(options.countOverride === undefined ? {} : { countOverride: options.countOverride }),
-    ...(options.rerun === undefined ? {} : { rerun: options.rerun }),
+  const planned = planComputerUseLab(config, {
+    dryRun,
+    ...(lab === undefined ? {} : { lab }),
+    ...(input.hooks === undefined ? {} : { hooks: input.hooks }),
+    ...(input.countOverride === undefined ? {} : { countOverride: input.countOverride }),
+    ...(input.rerun === undefined ? {} : { rerun: input.rerun }),
   });
-  const refusal = planned.ok ? undefined : planned.refusal;
-  if (refusal?.stage === "before-scope")
+  if (planned.ok) return runPlanWithSecrets(planned.plan, input, config);
+
+  const { refusal } = planned;
+  if (refusal.stage === "before-scope")
     return {
       schema: CUA_ACTOR_LAB_SCHEMA,
       ok: false,
       cwd: path.resolve(options.cwd),
-      labId: options.config.id,
-      actor: options.config.actors[0]?.type ?? "",
-      dryRun: options.dryRun,
+      labId: config.id,
+      actor: config.actors[0]?.type ?? "",
+      dryRun,
       runId: options.runId ?? "not-created",
-      appUrl: options.config.subject.appUrl ?? options.config.subject.serve?.url ?? "",
+      appUrl: config.subject.appUrl ?? config.subject.serve?.url ?? "",
       lanes: [],
       warnings: [],
       error: { code: refusal.code, message: refusal.message },
     };
-  const analysis = resolveAutomaticAnalysis(options.config.review?.analysis);
+  // The other refusals come after the cwd checks, and the lane cap after the personas are read.
+  const analysis = resolveAutomaticAnalysis(config.review?.analysis);
+  return completeAutomaticAnalysis(
+    await refuseCuaLab(options, refusal),
+    undefined,
+    analysis.ok ? analysis.config : undefined,
+    options.automaticAnalysis,
+    { trigger: config.review?.analysis === undefined ? "default" : "explicit" },
+  );
+}
+
+/**
+ * Run a computer-use plan. The run scope gives a direct library caller the same status-record
+ * lifetime the CLI gets. `config` is read only to build participants and by the lane runner, whose
+ * hooks take the whole config; step 2A replaces it with the plan's participants.
+ */
+export async function runComputerUsePlan(
+  plan: ComputerUsePlan,
+  input: ComputerUseRunInput,
+  config: LabConfig,
+): Promise<CuaActorLabResult> {
+  return withTransientCommsSecrets(() => runPlanWithSecrets(plan, input, config));
+}
+
+async function runPlanWithSecrets(
+  plan: ComputerUsePlan,
+  input: ComputerUseRunInput,
+  config: LabConfig,
+): Promise<CuaActorLabResult> {
   const { result, finished } = await runScope((scope) =>
-    runCuaActorLabInScope(options, refusal, scope),
+    runPlanInScope(plan, input, config, scope),
   );
   return completeAutomaticAnalysis(
     result,
     finished,
-    analysis.ok ? analysis.config : undefined,
-    options.automaticAnalysis,
+    plan.analysis?.config,
+    input.automaticAnalysis,
     {
-      trigger: options.config.review?.analysis === undefined ? "default" : "explicit",
-      preferLargerOutput: analysis.ok && analysis.preferLargerOutput === true,
+      ...(plan.analysis === undefined ? {} : { trigger: plan.analysis.trigger }),
+      preferLargerOutput: plan.analysis?.preferLargerOutput === true,
     },
   );
 }
 
-async function runCuaActorLabInScope(
-  options: RunCuaActorLabOptions,
-  refusal: ComputerUseRefusal | undefined,
+async function runPlanInScope(
+  plan: ComputerUsePlan,
+  input: ComputerUseRunInput,
+  config: LabConfig,
   scope: RunScope,
 ): Promise<CuaActorLabResult> {
-  const prepared = await prepareCuaRun(options, refusal, scope);
+  const prepared = await prepareCuaRun(plan, input, config, scope);
   if (!prepared.ok) return prepared.result;
   const lanes = await runLabLanes(prepared.setup);
   if (!lanes.ok) return lanes.result;

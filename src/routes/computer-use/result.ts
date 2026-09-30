@@ -194,7 +194,8 @@ export async function finishCuaRun(
   lanes: Extract<Awaited<ReturnType<typeof runLabLanes>>, { ok: true }>,
 ): Promise<CuaActorLabResult> {
   const {
-    options,
+    routePlan,
+    input,
     config,
     dryRun,
     cwd,
@@ -248,7 +249,7 @@ export async function finishCuaRun(
     context: {
       bundle,
       runDir: physicalArtifactRoot,
-      labId: config.id,
+      labId: routePlan.labId,
       runId,
       actor: descriptor.id,
       backend: "cua",
@@ -258,9 +259,7 @@ export async function finishCuaRun(
     sanitize: (text) => redactText(scrubKnownValues(text)),
     warnings: adapterWarnings,
     hookLabel: "cuaHooks",
-    ...(options.scorerProvenance === undefined
-      ? {}
-      : { scorerProvenance: options.scorerProvenance }),
+    ...(input.scorerProvenance === undefined ? {} : { scorerProvenance: input.scorerProvenance }),
   });
 
   if (receiving) bundle.commsReceiving = receiving.snapshot();

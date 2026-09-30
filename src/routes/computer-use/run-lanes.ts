@@ -18,7 +18,8 @@ import type { CuaRunSetup } from "./setup.js";
  */
 export async function runLabLanes(setup: CuaRunSetup) {
   const {
-    options,
+    routePlan,
+    input,
     config,
     dryRun,
     cwd,
@@ -33,6 +34,7 @@ export async function runLabLanes(setup: CuaRunSetup) {
     plan,
     knownSecretValues,
     scrubKnownValues,
+    subjectEnvNames,
     run,
     runId,
     artifactRoot,
@@ -69,7 +71,7 @@ export async function runLabLanes(setup: CuaRunSetup) {
       "Live CUA Observer is attached before final verification; stream auth URLs are runtime-only and are not persisted.",
     ]);
     streams.showIn(liveObserver);
-    if (options.onObserverReady) await options.onObserverReady(liveObserver);
+    if (input.onObserverReady) await input.onObserverReady(liveObserver);
 
     // Incremental live flush (#441): as each lane's loop reports its recorded-so-far items,
     // rewrite the in-progress bundle with per-stream `liveActor` partials so the attached
@@ -87,12 +89,17 @@ export async function runLabLanes(setup: CuaRunSetup) {
 
   const receivingWarnings: string[] = [];
   let receiving: CommsReceivingRun | undefined;
-  if (!dryRun && config.comms?.email?.kind === "real") {
+  const { comms } = routePlan.residual;
+  if (!dryRun && comms?.email?.kind === "real") {
+    const { envValues } = routePlan.residual.subject;
     try {
       receiving = await prepareReceivingRun({
         cwd,
         runId,
-        config,
+        config: {
+          comms,
+          subject: { env: subjectEnvNames, ...(envValues === undefined ? {} : { envValues }) },
+        },
         env,
         participants: laneSpecs.map((spec) => spec.laneId),
         runPaths,
