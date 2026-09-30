@@ -3,7 +3,7 @@ import {
   registerTransientCommsSecrets,
   scrubTransientCommsText,
   withTransientCommsSecrets,
-} from "../src/run-narration-secrets.js";
+} from "../../src/run/narration-secrets.js";
 
 describe("transient run narration secrets", () => {
   it("matches literal overlapping values longest-first without altering ordinary text", async () => {

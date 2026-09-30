@@ -7,7 +7,7 @@ import { SCREENSHOT_MAX_SOURCE_PIXELS, readPngDeclaredDimensions } from "./scree
 
 // Single source of truth for public-safety redaction patterns. Both the Codex
 // actor trace (src/codex-app-server.ts) and the run-bundle scanner/redactor
-// (src/run.ts) use these so the denylist cannot drift between producers and the
+// (src/run/run.ts) use these so the denylist cannot drift between producers and the
 // verify gate. See docs/contracts/policy.md for the enforcement-scope policy.
 
 const SECRET_PATTERNS: RegExp[] = [

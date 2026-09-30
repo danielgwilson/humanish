@@ -16,7 +16,7 @@ import {
 } from "../src/computer-use.js";
 import { defaultRedactionHooks } from "../src/redaction.js";
 import { participantFeedbackCandidates } from "../src/cua-actor-lab.js";
-import { formatParticipantOutcomes, tallyParticipantOutcomes } from "../src/run.js";
+import { formatParticipantOutcomes, tallyParticipantOutcomes } from "../src/run/run.js";
 
 const FAKE_CAPS: ActorCapabilities = {
   headless: true,

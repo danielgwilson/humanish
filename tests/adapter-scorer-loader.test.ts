@@ -12,7 +12,7 @@ import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../src/lab/co
 import { runTerminalProductLab, type TerminalProductLabHooks } from "../src/e2b-terminal-lab.js";
 import { applyBrowserAdapterHooks } from "../src/adapter-extension.js";
 import type { E2BDesktopModule } from "../src/e2b-desktop-launch.js";
-import { verifyRun } from "../src/run.js";
+import { verifyRun } from "../src/run/run.js";
 import type { BrowserLabScoringContext, RunAdapterScore, RunBundle } from "../src/index.js";
 
 // ---------------------------------------------------------------------------------------------

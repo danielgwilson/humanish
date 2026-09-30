@@ -6,7 +6,7 @@
 // are round, and the clock is frozen — so a golden that changes means the UI changed.
 
 import type { LabListEntry } from "../../src/lab/discover.js";
-import type { RunIndexEntry } from "../../src/run-index.js";
+import type { RunIndexEntry } from "../../src/run/run-index.js";
 
 export const NOW = Date.parse("2026-08-19T12:00:00.000Z");
 

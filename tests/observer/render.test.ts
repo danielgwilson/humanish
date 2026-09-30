@@ -23,7 +23,7 @@ import {
   serveObserver,
 } from "../../src/observer/render.js";
 import { OBSERVER_DATA_SCHEMA, buildObserverData } from "../../src/observer/data.js";
-import { runDryRun, type RunBundle, type RunCostSummary } from "../../src/run.js";
+import { runDryRun, type RunBundle, type RunCostSummary } from "../../src/run/run.js";
 import { syntheticPng1x1 } from "../image-fixtures.js";
 
 const PNG_1X1 = syntheticPng1x1();

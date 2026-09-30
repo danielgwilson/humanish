@@ -15,8 +15,8 @@ import {
   estimateActorCost,
   contradictsAccountBilling,
 } from "../src/pricing.js";
-import { readRunDetail } from "../src/run-detail.js";
-import { verifyRun } from "../src/run.js";
+import { readRunDetail } from "../src/run/detail.js";
+import { verifyRun } from "../src/run/run.js";
 const { session, sessionClose } = vi.hoisted(() => ({
   session: vi.fn<(request: RestrictedCodexRequest) => Promise<RestrictedCodexResult>>(),
   sessionClose: vi.fn<() => Promise<boolean>>(),

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { RunIndexEntry } from "../src/run-index.js";
+import type { RunIndexEntry } from "../../src/run/run-index.js";
 import {
   expectationFor,
   expectationLine,
@@ -9,7 +9,7 @@ import {
   listWindow,
   livenessLabel,
   normalizeThought,
-} from "../src/run-projection.js";
+} from "../../src/run/projection.js";
 
 const run = (over: Partial<RunIndexEntry> & { runId: string }): RunIndexEntry => ({
   derivedFrom: "status",

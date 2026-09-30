@@ -6,7 +6,7 @@ import type {
   RunBundle,
   RunFeedbackCandidate,
   RunScorerProvenance,
-} from "./run.js";
+} from "./run/run.js";
 
 export type BrowserAdapterBackend = "cua" | "shared-world" | "concurrent-shared-world";
 

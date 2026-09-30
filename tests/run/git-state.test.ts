@@ -18,7 +18,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
 
-import { captureGitState, summarizePorcelainStatus } from "../src/git-state.js";
+import { captureGitState, summarizePorcelainStatus } from "../../src/run/git-state.js";
 
 const execFileAsync = promisify(execFile);
 

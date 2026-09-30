@@ -26,7 +26,7 @@ import {
 } from "../src/e2b-desktop-launch.js";
 import { E2B_SYSTEM_CA_BUNDLE, OPENAI_EGRESS_PLACEHOLDER } from "../src/terminal-runtime-auth.js";
 import { prepareSelectedOutputDirectory } from "../src/selected-output-paths.js";
-import { verifyRun } from "../src/run.js";
+import { verifyRun } from "../src/run/run.js";
 import {
   readAutomaticStudyAnalysis,
   runAutomaticStudyAnalysis,

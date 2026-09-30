@@ -35,7 +35,7 @@ import {
   type SubjectPhaseEvent,
 } from "./e2b-cua-provisioning.js";
 import { receivingEmailValidationReason } from "./lab/config.js";
-import { withTransientCommsSecrets } from "./run-narration-secrets.js";
+import { withTransientCommsSecrets } from "./run/narration-secrets.js";
 // The computer-use lab backend: a subject (an app-url the caller provisioned, or a repo the
 // lab clones AND serves in-sandbox) driven by a REGISTRY-RESOLVED computer-use actor inside a
 // hosted E2B desktop. This is the path that makes `actors[].type` load-bearing — the
@@ -175,7 +175,7 @@ import {
   withRunStatusScope,
   type RunLabProvenance,
   type RunStatusHandle,
-} from "./run-status.js";
+} from "./run/status.js";
 import {
   PUBLIC_TARGET_CWD,
   REVIEW_SCHEMA,
@@ -202,7 +202,7 @@ import {
   type RunStream,
   type RunSubjectProvenance,
   type RunSubjectStateStepRecord,
-} from "./run.js";
+} from "./run/run.js";
 import {
   assertPreparedSelectedOutputDirectory,
   assertSafeOutputPathSegment,
@@ -212,7 +212,7 @@ import {
   writePreparedRunLatestPointer,
   type PreparedOutputDirectory,
 } from "./selected-output-paths.js";
-import { createLocalTreeArchive, type LocalTreeArchive } from "./source-archive.js";
+import { createLocalTreeArchive, type LocalTreeArchive } from "./run/source-archive.js";
 import type { DwellWindow, StopWhen } from "./stop-conditions.js";
 import { renderTaskPrompt, type LabTask, type TaskFunnel } from "./tasks.js";
 

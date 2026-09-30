@@ -9,7 +9,7 @@ import { runSharedWorldLab } from "../src/shared-world-lab.js";
 import { runConcurrentSharedWorld } from "../src/concurrent-shared-world-lab.js";
 import { runTerminalProductLab } from "../src/e2b-terminal-lab.js";
 import { runScriptedBrowserLab } from "../src/scripted-browser-lab.js";
-import * as synthetic from "../src/run.js";
+import * as synthetic from "../src/run/run.js";
 
 const fixtures = JSON.parse(
   await readFile(new URL("./fixtures/task-route-preflight/labs.json", import.meta.url), "utf8"),

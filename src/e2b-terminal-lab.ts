@@ -77,7 +77,7 @@ import {
   type RunLabProvenance,
   type RunStatusHandle,
   withRunStatusScope,
-} from "./run-status.js";
+} from "./run/status.js";
 import { ACTOR_TRACE_SCHEMA, TERMINAL_AGENT_CAPABILITIES } from "./actor-contract.js";
 import { actorRegistry, isTerminalActorDescriptor } from "./actor-registry.js";
 import { toErrorMessage } from "./command-failure.js";
@@ -120,8 +120,8 @@ import {
   type RunSimulation,
   type RunSimulationStatus,
   type RunStream,
-} from "./run.js";
-import { appendSandboxReceipt } from "./sandbox-receipts.js";
+} from "./run/run.js";
+import { appendSandboxReceipt } from "./run/sandbox-receipts.js";
 import {
   applyAdapterScoreFailureToReview,
   frozenBundleView,

@@ -58,9 +58,9 @@ import type {
   RunFeedbackCandidate,
 } from "../src/index.js";
 import { containsSensitive } from "../src/redaction.js";
-import { verifyRun } from "../src/run.js";
+import { verifyRun } from "../src/run/run.js";
 import { prepareSelectedOutputDirectory } from "../src/selected-output-paths.js";
-import type { LocalTreeArchive } from "../src/source-archive.js";
+import type { LocalTreeArchive } from "../src/run/source-archive.js";
 import { freePort } from "./helpers/free-port.js";
 import { TERMINAL_NODE_BOOTSTRAP_COMMAND } from "../src/terminal-node-bootstrap.js";
 

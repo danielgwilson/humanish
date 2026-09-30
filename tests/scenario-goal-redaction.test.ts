@@ -12,7 +12,7 @@ import { describe, expect, it } from "vitest";
 
 import { buildObserverData } from "../src/observer/data.js";
 import { containsSensitive, redactText } from "../src/redaction.js";
-import type { RunBundle } from "../src/run.js";
+import type { RunBundle } from "../src/run/run.js";
 
 // A composed lane prompt of the shape the report describes: authored text naming a runtime inbox.
 const LANE_PROMPT = [

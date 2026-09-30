@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { readRunDetail } from "../src/run-detail.js";
+import { readRunDetail } from "../../src/run/detail.js";
 
 // Shapes here mirror what a REAL run writes (`humanish.actor-trace.v1` under `stream.actor`, and
 // `stream.liveActor` mid-flight), read off an actual computer-use run rather than invented.

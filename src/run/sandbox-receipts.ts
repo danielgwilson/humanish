@@ -8,7 +8,7 @@
 // the spend loss small instead of TTL-bounded.
 import { appendFile } from "node:fs/promises";
 
-import { prepareContainedOutputFile, type PreparedOutputRoot } from "./selected-output-paths.js";
+import { prepareContainedOutputFile, type PreparedOutputRoot } from "../selected-output-paths.js";
 
 export const SANDBOX_RECEIPTS_ARTIFACT = "sandbox-receipts.ndjson";
 

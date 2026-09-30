@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../src/lab/config.js";
 import { runTerminalProductLab, type TerminalProductLabHooks } from "../src/e2b-terminal-lab.js";
 import type { E2BDesktopModule } from "../src/e2b-desktop-launch.js";
-import { verifyRun } from "../src/run.js";
+import { verifyRun } from "../src/run/run.js";
 
 // SLICE 3 deterministic proof ($0, NO live E2B): the cost/spend ledger + the null-vs-zero-vs-absent
 // discipline + the no-spend proof DERIVED from the ledger + FULL caps enforcement (fail-closed).

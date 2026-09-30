@@ -4,9 +4,9 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { RunIndexCache, readRunIndex } from "../src/run-index.js";
-import { listRuns } from "../src/run.js";
-import { writeFixtureRun } from "./helpers/run-fixtures.js";
+import { RunIndexCache, readRunIndex } from "../../src/run/run-index.js";
+import { listRuns } from "../../src/run/run.js";
+import { writeFixtureRun } from "../helpers/run-fixtures.js";
 
 // Why this module exists at all, as an executable claim.
 //

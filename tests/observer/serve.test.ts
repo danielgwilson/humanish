@@ -11,7 +11,7 @@ import { renderObserver } from "../../src/observer/render.js";
 import type { LibraryHistory } from "../../src/observer/library.js";
 import { serveObserverLibrary } from "../../src/observer/serve.js";
 import type { ServeLibraryOptions, ServeLibraryServer } from "../../src/observer/serve.js";
-import { buildRunSource, runDryRun, verifyRun } from "../../src/run.js";
+import { buildRunSource, runDryRun, verifyRun } from "../../src/run/run.js";
 
 const PNG_1X1 = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADUlEQVR42mP8z8BQDwAFgwJ/lp9J1wAAAABJRU5ErkJggg==",
@@ -19,7 +19,7 @@ const PNG_1X1 = Buffer.from(
 );
 
 // Concatenated so this test file itself never contains a secret-shaped literal
-// (same convention as tests/run.test.ts and the public-surface scan).
+// (same convention as tests/run/run.test.ts and the public-surface scan).
 const SYNTHETIC_SECRET = "sk-" + "testsecretvalue1234567890abcd";
 const SECRET_EVENT_LINE = `{"message":"synthetic ${SYNTHETIC_SECRET}"}\n`;
 
@@ -223,7 +223,7 @@ function rawScreenshotActorTrace(): ActorTrace {
   };
 }
 
-// Mirrors tests/run.test.ts writeCuaRunFixture: a live bundle whose actor trace
+// Mirrors tests/run/run.test.ts writeCuaRunFixture: a live bundle whose actor trace
 // declares raw screenshots, which verify judges local_only (RAW_SCREENSHOTS).
 async function writeLocalOnlyRun(cwd: string, runId: string): Promise<void> {
   const trace = rawScreenshotActorTrace();

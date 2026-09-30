@@ -15,7 +15,7 @@ import type { ActorCapabilities, ActorTrace } from "../../src/actor-contract.js"
 import type { CuaLoopResult } from "../../src/computer-use.js";
 import { participantFeedbackCandidates } from "../../src/cua-actor-lab.js";
 import { draftFeedback, listFeedback } from "../../src/feedback/feedback.js";
-import { runDryRun } from "../../src/run.js";
+import { runDryRun } from "../../src/run/run.js";
 import { syntheticPng1x1 } from "../image-fixtures.js";
 
 const FAKE_CAPS: ActorCapabilities = {

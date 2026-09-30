@@ -5,7 +5,7 @@ import { Command } from "commander";
 import { describe, expect, it } from "vitest";
 
 import { withSiblingFlagHint } from "../src/program.js";
-import { doctor } from "../src/run.js";
+import { doctor } from "../src/run/run.js";
 import { terminalSurfaceMessage } from "../src/tui/contract.js";
 
 // Both of these were found by a participant, not by us — labs/first-contact.yaml, a real

@@ -37,7 +37,7 @@ import {
   type RunLabProvenance,
   type RunStatusHandle,
   withRunStatusScope,
-} from "./run-status.js";
+} from "./run/status.js";
 import path from "node:path";
 import { runDesktopCommandOrThrow, toErrorMessage } from "./command-failure.js";
 
@@ -110,7 +110,7 @@ import {
   writeContainedOutputFile,
   writePreparedRunLatestPointer,
 } from "./selected-output-paths.js";
-import type { LocalTreeArchive } from "./source-archive.js";
+import type { LocalTreeArchive } from "./run/source-archive.js";
 import type { DwellWindow, StopWhen } from "./stop-conditions.js";
 import {
   buildRunSource,
@@ -131,8 +131,8 @@ import {
   type SharedWorldCheckpoint,
   type SharedWorldEvidence,
   type SharedWorldTimelineEntry,
-} from "./run.js";
-import { appendSandboxReceipt } from "./sandbox-receipts.js";
+} from "./run/run.js";
+import { appendSandboxReceipt } from "./run/sandbox-receipts.js";
 import {
   estimateActorCost,
   estimateActorCostForExecution,

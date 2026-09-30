@@ -4,8 +4,8 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { RunIndexCache, readRunIndex } from "../src/run-index.js";
-import { writeFixtureRun, writeFixtureRuns } from "./helpers/run-fixtures.js";
+import { RunIndexCache, readRunIndex } from "../../src/run/run-index.js";
+import { writeFixtureRun, writeFixtureRuns } from "../helpers/run-fixtures.js";
 
 const NOW = Date.parse("2026-08-19T10:05:00.000Z");
 

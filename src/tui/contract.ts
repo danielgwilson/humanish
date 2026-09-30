@@ -15,11 +15,11 @@
 
 import type { LabListResult } from "../lab/discover.js";
 import type { LabSummary, ReadLabSummaryOptions } from "../lab/summary.js";
-import type { RunDetail } from "../run-detail.js";
-import type { ReclaimResult } from "../reclaim.js";
+import type { RunDetail } from "../run/detail.js";
+import type { ReclaimResult } from "../run/reclaim.js";
 import type { TuiActionResult } from "./actions.js";
 import type { TuiProjectState } from "./project.js";
-import type { ReadRunIndexOptions, RunIndexResult } from "../run-index.js";
+import type { ReadRunIndexOptions, RunIndexResult } from "../run/run-index.js";
 import type { LaunchRunOptions, LaunchRunResult } from "./launch.js";
 import type { CommsSetupResult, CommsSetupStatus } from "../comms/connections.js";
 import type { CommsCheckResult, CommsConfigureResult } from "../comms/setup.js";

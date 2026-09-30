@@ -35,7 +35,7 @@ import {
 } from "../../src/analysis/sharing.js";
 import { hashStudyAnalysisValue } from "../../src/analysis/validation.js";
 import { STUDY_ANALYSIS_PROMPT_VERSION, runStudyAnalysis } from "../../src/analysis/engine.js";
-import { resolveRunPath, runDryRun, verifyRun, type RunBundle } from "../../src/run.js";
+import { resolveRunPath, runDryRun, verifyRun, type RunBundle } from "../../src/run/run.js";
 import { pinDirectory, renderObserver, serveRunPath } from "../../src/observer/render.js";
 import * as observer from "../../src/observer/render.js";
 import { exportRun } from "../../src/feedback/export.js";

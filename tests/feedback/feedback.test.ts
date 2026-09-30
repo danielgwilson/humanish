@@ -25,7 +25,7 @@ import {
   verifyFeedback,
 } from "../../src/feedback/feedback.js";
 import { createProgram } from "../../src/program.js";
-import { runDryRun } from "../../src/run.js";
+import { runDryRun } from "../../src/run/run.js";
 
 async function withFixtureCopy<T>(callback: (cwd: string) => Promise<T>): Promise<T> {
   const tempRoot = await mkdtemp(path.join(os.tmpdir(), "humanish-feedback-fixture-"));

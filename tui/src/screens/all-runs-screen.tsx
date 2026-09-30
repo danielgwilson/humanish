@@ -1,9 +1,9 @@
 import { Box, Text } from "ink";
 import React from "react";
 
-import type { RunDetail } from "../../../src/run-detail.js";
-import type { RunIndexEntry } from "../../../src/run-index.js";
-import { formatDuration, listWindow, normalizeThought } from "../../../src/run-projection.js";
+import type { RunDetail } from "../../../src/run/detail.js";
+import type { RunIndexEntry } from "../../../src/run/run-index.js";
+import { formatDuration, listWindow, normalizeThought } from "../../../src/run/projection.js";
 import { fitLabelToWidth } from "../fit-text.js";
 import { gutter, spinnerFrame } from "../frame.js";
 import { PALETTE } from "../palette.js";

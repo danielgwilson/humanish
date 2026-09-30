@@ -28,7 +28,7 @@ import type {
   RunAdapterScore,
   RunFeedbackCandidate,
   RunScorerProvenance,
-} from "./run.js";
+} from "./run/run.js";
 import {
   prepareSelectedOutputDirectory,
   readContainedRegularFile,

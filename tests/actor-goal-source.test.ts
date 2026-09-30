@@ -13,7 +13,7 @@ import {
   tallyParticipantOutcomes,
   withCuaReviewProvenance,
   type RunBundle,
-} from "../src/run.js";
+} from "../src/run/run.js";
 
 function bundle(): RunBundle {
   return structuredClone(liveBundle) as unknown as RunBundle;

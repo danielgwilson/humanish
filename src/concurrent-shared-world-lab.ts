@@ -1,5 +1,5 @@
 import { scrubPersonaBrief } from "./lab/persona.js";
-import { withTransientCommsSecrets } from "./run-narration-secrets.js";
+import { withTransientCommsSecrets } from "./run/narration-secrets.js";
 import { prepareReceivingRun, receivingPublication } from "./comms/receiving-runtime.js";
 import type { CommsReceivingRun } from "./comms/receiving.js";
 import { receivingEmailValidationReason } from "./lab/config.js";
@@ -53,7 +53,7 @@ import {
   type RunLabProvenance,
   type RunStatusHandle,
   withRunStatusScope,
-} from "./run-status.js";
+} from "./run/status.js";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -63,7 +63,7 @@ import { MODEL_RATES } from "./pricing.js";
 import { actorRegistry, isCuaActorDescriptor, type CuaActorDescriptor } from "./actor-registry.js";
 import { toErrorMessage } from "./command-failure.js";
 import { mapWithConcurrency } from "./concurrency.js";
-import { appendSandboxReceipt } from "./sandbox-receipts.js";
+import { appendSandboxReceipt } from "./run/sandbox-receipts.js";
 import { labPersonaIds, resolveCommittedPersonasForCwd } from "./lab/persona-resolve.js";
 import type { ResolvedPersona } from "./lab/persona.js";
 import {
@@ -138,7 +138,7 @@ import {
   seedRecipeDigest,
   type SharedWorldLabHooks,
 } from "./shared-world-lab.js";
-import type { LocalTreeArchive } from "./source-archive.js";
+import type { LocalTreeArchive } from "./run/source-archive.js";
 import {
   buildRunSource,
   PUBLIC_TARGET_CWD,
@@ -159,7 +159,7 @@ import {
   type SharedWorldOutcome,
   type SharedWorldPlane,
   type SharedWorldStateSnapshot,
-} from "./run.js";
+} from "./run/run.js";
 
 export const CONCURRENT_SHARED_WORLD_LAB_SCHEMA = "humanish.concurrent-shared-world-lab-result.v1";
 

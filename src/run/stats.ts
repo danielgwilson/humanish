@@ -14,7 +14,7 @@ import {
   readStudyCosts,
   type StudyCosts,
   type StudyCostRow,
-} from "./study-costs.js";
+} from "./costs.js";
 
 const STATS_SCHEMA = "humanish.stats.v1";
 

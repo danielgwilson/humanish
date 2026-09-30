@@ -5,7 +5,7 @@ import {
   formatStudyTaskFunnel,
   participantOutcomeDetails,
   withCuaReviewProvenance,
-} from "../run.js";
+} from "../run/run.js";
 import { cuaGoalSource, CUA_COMPLETION_NOTE } from "../actor-goal-source.js";
 import type {
   RunBundle,
@@ -14,7 +14,7 @@ import type {
   RunSimulation,
   RunStream,
   RunStreamKind,
-} from "../run.js";
+} from "../run/run.js";
 
 export const OBSERVER_DATA_SCHEMA = "humanish.observer-data.v1";
 

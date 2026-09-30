@@ -5,12 +5,12 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
 
-import { runInit } from "../src/lab/init.js";
-import { renderObserver, serveObserver } from "../src/observer/render.js";
-import { createProgram } from "../src/program.js";
-import { doctor, listRuns, runDryRun, verifyRun } from "../src/run.js";
-import { prepareRunArtifactPaths, validatePreparedRunArtifactPaths } from "../src/run-paths.js";
-import { writePreparedRunLatestPointer } from "../src/selected-output-paths.js";
+import { runInit } from "../../src/lab/init.js";
+import { renderObserver, serveObserver } from "../../src/observer/render.js";
+import { createProgram } from "../../src/program.js";
+import { doctor, listRuns, runDryRun, verifyRun } from "../../src/run/run.js";
+import { prepareRunArtifactPaths, validatePreparedRunArtifactPaths } from "../../src/run-paths.js";
+import { writePreparedRunLatestPointer } from "../../src/selected-output-paths.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -409,7 +409,7 @@ describe("run path containment", () => {
 
   it("wires every direct run producer through the shared path guard", async () => {
     const producers = [
-      "run.ts",
+      "run/run.ts",
       "cua-actor-lab.ts",
       "shared-world-lab.ts",
       "concurrent-shared-world-lab.ts",

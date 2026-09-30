@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ACTOR_TRACE_SCHEMA } from "../src/actor-contract.js";
 import { LAB_CONFIG_SCHEMA, parseLabConfig } from "../src/lab/config.js";
 import { runLab } from "../src/lab/engine.js";
-import { verifyRun } from "../src/run.js";
+import { verifyRun } from "../src/run/run.js";
 
 // The single LIVE rung for the scripted-browser LAB: the committed scenario dispatched through
 // runLab to real playwright-core against an in-test loopback http.Server. Provider spend is $0

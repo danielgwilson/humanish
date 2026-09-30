@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { LAB_CONFIG_SCHEMA, parseLabConfig } from "../src/lab/config.js";
 import { runLab } from "../src/lab/engine.js";
-import { verifyRun } from "../src/run.js";
+import { verifyRun } from "../src/run/run.js";
 
 // The LIVE rung for the shared-world topology (#164). WRITTEN + gated, NOT run in the autonomous
 // proof: it needs (1) HUMANISH_LIVE_SHARED_WORLD=1 (the spend opt-in), (2) OPENAI_API_KEY +
