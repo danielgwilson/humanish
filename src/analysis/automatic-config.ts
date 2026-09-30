@@ -28,6 +28,9 @@ const FIELDS = new Set([
   "maxOutputTokens",
 ]);
 
+/** The spend cap on an analysis the lab did not declare. */
+export const DEFAULT_ANALYSIS_MAX_COST_USD = 3;
+
 /** Called for parsed manifests AND direct library configs, before participant execution. */
 export function resolveAutomaticAnalysis(
   raw: unknown,
@@ -35,7 +38,7 @@ export function resolveAutomaticAnalysis(
   | { ok: true; config: StudyAnalysisConfig | undefined; preferLargerOutput?: boolean }
   | { ok: false; message: string } {
   if (raw === false) return { ok: true, config: undefined };
-  if (raw === undefined) raw = { maxCostUsd: 3 };
+  if (raw === undefined) raw = { maxCostUsd: DEFAULT_ANALYSIS_MAX_COST_USD };
   if (
     raw === null ||
     typeof raw !== "object" ||

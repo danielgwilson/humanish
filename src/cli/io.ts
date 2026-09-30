@@ -1,7 +1,9 @@
 import {
   automaticAnalysisSucceeded,
+  defaultAnalysisOverBudget,
   type AutomaticAnalysisResult,
 } from "../analysis/automatic-completion.js";
+import { DEFAULT_ANALYSIS_MAX_COST_USD } from "../analysis/automatic-config.js";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -187,6 +189,8 @@ export function writeResult<T>(
         io.writeOut(
           `analysis: ${analysis.state}${analysis.reason ? ` (${analysis.reason})` : ""}\n`,
         );
+      if (defaultAnalysisOverBudget(output as AutomaticAnalysisResult))
+        io.writeOut(overBudgetAnalysisHint(output as AutomaticAnalysisResult & { runId?: string }));
     }
   }
   markInvocationEnvelopeWritten(command);
@@ -302,6 +306,13 @@ export function wantsJson(command: Command): boolean {
 }
 
 /** Preserve the run's own result while making requested post-processing failures machine-visible. */
+function overBudgetAnalysisHint(result: AutomaticAnalysisResult & { runId?: string }): string {
+  const estimate = result.automaticAnalysis?.result?.admission?.estimatedCostUsd ?? null;
+  const suggested = Math.ceil(estimate ?? DEFAULT_ANALYSIS_MAX_COST_USD + 1);
+  const shown = estimate === null ? "" : ` ($${estimate.toFixed(2)})`;
+  return `analysis: its estimate${shown} is over the default $${DEFAULT_ANALYSIS_MAX_COST_USD} cap, so no request was sent. To analyze this run: humanish analyze --run ${result.runId ?? "latest"} --max-cost ${suggested}\n`;
+}
+
 export function automaticAnalysisEnvelope<T>(result: T): T {
   if (
     result === null ||
