@@ -28,10 +28,8 @@ function fakeSession(replies: unknown[]) {
   let index = 0;
   let closed = 0;
   const transport: ClaudeStreamTransport = {
-    send: (message) => {
+    turn: async (message) => {
       sent.push(message);
-    },
-    awaitResult: async () => {
       const reply = replies[Math.min(index, replies.length - 1)];
       index += 1;
       return {
