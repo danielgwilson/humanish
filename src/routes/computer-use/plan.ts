@@ -108,177 +108,173 @@ export function cuaRoute(config: LabConfig, hooks: CuaActorLabHooks): CuaRoute {
   };
 }
 
+type Rejection = { code: CuaActorLabErrorCode; message: string } | undefined;
+
+const invalid = (message: string): Rejection => ({
+  code: "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+  message,
+});
+
 /**
  * The first reason a computer-use lab cannot start, checked before any sandbox, key or provider
  * is touched. The parser enforces most of these too; the engine repeats them for library callers
- * that hand it a config directly.
+ * that hand it a config directly. The groups run in this order, and each returns its first reason.
  */
-function cuaLabRejection(
+function cuaLabRejection(config: LabConfig, hooks: CuaActorLabHooks, route: CuaRoute): Rejection {
+  return (
+    unsupportedDeclarationReason(config, hooks, route) ??
+    subjectStructureReason(config, route) ??
+    entryTargetReason(config, route) ??
+    driverReason(config, hooks, route) ??
+    laneShapeReason(config)
+  );
+}
+
+/** A declaration this route cannot honor, for any subject or with the caller's own driver. */
+function unsupportedDeclarationReason(
   config: LabConfig,
   hooks: CuaActorLabHooks,
-  route: CuaRoute,
-): { code: CuaActorLabErrorCode; message: string } | undefined {
-  const {
-    cloneRoute,
-    desktopCliRoute,
-    localTreeRoute,
-    provisionedRoute,
-    localAppSubject,
-    inProcessRoute,
-    serve,
-    appUrl,
-    subjectRepo,
-  } = route;
-  const actor = config.actors[0];
-  const mediaReason = desktopMediaValidationReason(config);
-  if (mediaReason) return { code: "HUMANISH_CUA_LAB_SUBJECT_INVALID", message: mediaReason };
-  const outputLimitReason = outputTokenLimitValidationReason(config);
-  if (outputLimitReason)
-    return { code: "HUMANISH_CUA_LAB_SUBJECT_INVALID", message: outputLimitReason };
-  const scenarioCapsReason = scenarioCapsValidationReason(config);
-  if (scenarioCapsReason)
-    return { code: "HUMANISH_CUA_LAB_SUBJECT_INVALID", message: scenarioCapsReason };
+  { inProcessRoute }: CuaRoute,
+): Rejection {
+  const reason =
+    desktopMediaValidationReason(config) ||
+    outputTokenLimitValidationReason(config) ||
+    scenarioCapsValidationReason(config);
+  if (reason) return invalid(reason);
   if (
-    actor?.maxOutputTokens !== undefined &&
+    config.actors[0]?.maxOutputTokens !== undefined &&
     (hooks.runSession || hooks.buildProvider || hooks.buildExecutor)
-  ) {
-    return {
-      code: "HUMANISH_CUA_LAB_SUBJECT_INVALID",
-      message: "maxOutputTokens cannot be enforced by a custom runSession/provider/executor route.",
-    };
-  }
+  )
+    return invalid(
+      "maxOutputTokens cannot be enforced by a custom runSession/provider/executor route.",
+    );
   const receivingReason = receivingEmailValidationReason(config);
-  if (receivingReason)
-    return { code: "HUMANISH_CUA_LAB_SUBJECT_INVALID", message: receivingReason };
+  if (receivingReason) return invalid(receivingReason);
   if (inProcessRoute && config.comms?.email?.kind === "real")
-    return {
-      code: "HUMANISH_CUA_LAB_SUBJECT_INVALID",
-      message: "Real email receiving requires hosted participant desktops.",
-    };
-  if (inProcessRoute && config.execution?.desktop?.media !== undefined) {
-    return {
-      code: "HUMANISH_CUA_LAB_SUBJECT_INVALID",
-      message:
-        "execution.desktop.media is not provisioned by a caller-supplied executor. Remove the declaration or use a hosted computer-use browser lane.",
-    };
-  }
-  if (inProcessRoute && config.execution?.desktop?.recording !== undefined) {
-    return {
-      code: "HUMANISH_CUA_LAB_SUBJECT_INVALID",
-      message: "execution.desktop.recording is not provisioned by a caller-supplied executor.",
-    };
-  }
+    return invalid("Real email receiving requires hosted participant desktops.");
+  if (inProcessRoute && config.execution?.desktop?.media !== undefined)
+    return invalid(
+      "execution.desktop.media is not provisioned by a caller-supplied executor. Remove the declaration or use a hosted computer-use browser lane.",
+    );
+  if (inProcessRoute && config.execution?.desktop?.recording !== undefined)
+    return invalid("execution.desktop.recording is not provisioned by a caller-supplied executor.");
+  return undefined;
+}
+
+/** The subject's own shape: the clone target and repo, the local tree, and declared state. */
+function subjectStructureReason(config: LabConfig, route: CuaRoute): Rejection {
+  const { cloneRoute, localTreeRoute, provisionedRoute, serve, subjectRepo } = route;
   const cloneTargetReason = cloneTargetValidationReason(config);
-  if (cloneTargetReason)
-    return { code: "HUMANISH_CUA_LAB_SUBJECT_INVALID", message: cloneTargetReason };
-  // Engine re-enforcement of the clone-route structure (library API surface).
+  if (cloneTargetReason) return invalid(cloneTargetReason);
   if (
     cloneRoute &&
     (!serve || !subjectRepo || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(subjectRepo))
-  ) {
-    return {
-      code: "HUMANISH_CUA_LAB_SUBJECT_INVALID",
-      message: !serve
+  )
+    return invalid(
+      !serve
         ? "clone subjects on the computer-use route require `subject.serve` (start + url) — the lab serves the app in-sandbox."
         : `subject.repos[0] must be an owner/repo slug (got "${subjectRepo ?? ""}").`,
-    };
-  }
-  // Engine re-enforcement of the local-tree-route structure (library API surface): a caller
-  // driving this function directly (bypassing parseLabConfig) still gets the same fail-closed
-  // shape the parser enforces, naming which requirement is missing.
-  if (localTreeRoute && (!serve || config.execution?.target !== "e2b-desktop")) {
-    return {
-      code: "HUMANISH_CUA_LAB_SUBJECT_INVALID",
-      message: !serve
+    );
+  // A library caller that skips parseLabConfig gets the same fail-closed shape the parser
+  // enforces, naming which requirement is missing.
+  if (localTreeRoute && (!serve || config.execution?.target !== "e2b-desktop"))
+    return invalid(
+      !serve
         ? "local-tree subjects on the computer-use route require `subject.serve` (start + url): the lab packs and serves the working tree in-sandbox."
         : "local-tree subjects require `execution.target: e2b-desktop`: the packed working tree is provisioned and served inside a hosted desktop sandbox.",
-    };
-  }
-  // Engine re-enforcement of the state declaration (library API surface).
+    );
   if (config.subject.state) {
     const stateReason = !provisionedRoute
       ? "`subject.state` applies only to clone subjects or local-tree subjects (the lab seeds the state it serves)."
       : subjectStateInvalidReason(config.subject.state, config.subject.env);
-    if (stateReason) {
-      return { code: "HUMANISH_CUA_LAB_SUBJECT_INVALID", message: stateReason };
-    }
+    if (stateReason) return invalid(stateReason);
   }
-  // Re-enforce the entry-target boundary (library API surface). A desktop-cli study has no entry
-  // target at all — the subject is a program on the machine, not an address — so the boundary is
-  // vacuous there rather than violated by an empty string.
+  return undefined;
+}
+
+/**
+ * Every URL a participant opens is loopback, unless an app-url subject allows public targets. A
+ * desktop-cli study has no entry target at all (the subject is a program on the machine, not an
+ * address), so the boundary is vacuous there rather than violated by an empty string.
+ */
+function entryTargetReason(config: LabConfig, route: CuaRoute): Rejection {
+  const { desktopCliRoute, provisionedRoute, localAppSubject, appUrl } = route;
+  if (desktopCliRoute) return undefined;
   const allowPublicTargets = config.policies?.allowPublicTargets === true;
   const declaredTargets = [
     appUrl,
-    ...(actor?.lanes ?? [])
+    ...(config.actors[0]?.lanes ?? [])
       .map((lane) => lane.target)
       .filter((target): target is string => target !== undefined),
   ];
-  const entryTargetSafe =
-    desktopCliRoute ||
-    declaredTargets.every((target) =>
-      provisionedRoute || localAppSubject
-        ? isLoopbackUrl(target)
-        : allowPublicTargets
-          ? isHttpUrl(target)
-          : isLoopbackUrl(target),
-    );
-  if (!entryTargetSafe) {
-    return {
-      code: "HUMANISH_CUA_LAB_SUBJECT_UNSAFE",
-      message:
-        provisionedRoute || localAppSubject || !allowPublicTargets
-          ? "subject.appUrl and any actors[0].lanes[].target entries must be loopback (127.0.0.1 or localhost) unless policies.allowPublicTargets is set for an app-url subject."
-          : "subject.appUrl and actors[0].lanes[].target entries must be valid http(s) URLs.",
-    };
-  }
-  // In-process route pairing guard (boot-time, BEFORE key-gating): a custom executor needs a
-  // custom provider too (the default OpenAI provider is vision-based and would fail closed).
-  if (hooks.buildExecutor !== undefined && hooks.buildProvider === undefined) {
+  const entryTargetSafe = declaredTargets.every((target) =>
+    provisionedRoute || localAppSubject
+      ? isLoopbackUrl(target)
+      : allowPublicTargets
+        ? isHttpUrl(target)
+        : isLoopbackUrl(target),
+  );
+  if (entryTargetSafe) return undefined;
+  return {
+    code: "HUMANISH_CUA_LAB_SUBJECT_UNSAFE",
+    message:
+      provisionedRoute || localAppSubject || !allowPublicTargets
+        ? "subject.appUrl and any actors[0].lanes[].target entries must be loopback (127.0.0.1 or localhost) unless policies.allowPublicTargets is set for an app-url subject."
+        : "subject.appUrl and actors[0].lanes[].target entries must be valid http(s) URLs.",
+  };
+}
+
+/** Something to drive the subject: the caller's executor with its provider, or a local desktop. */
+function driverReason(
+  config: LabConfig,
+  hooks: CuaActorLabHooks,
+  { localAppSubject, inProcessRoute }: CuaRoute,
+): Rejection {
+  // A custom executor needs a custom provider too: the default OpenAI provider is vision-based
+  // and would fail closed against an executor that returns no screenshot.
+  if (hooks.buildExecutor !== undefined && hooks.buildProvider === undefined)
     return {
       code: "HUMANISH_CUA_LAB_EXECUTOR_NO_PROVIDER",
       message:
         "cuaHooks.buildExecutor requires cuaHooks.buildProvider — a state-driven executor returns no screenshot, so it must be paired with a NON-vision provider (the default OpenAI computer-use provider is vision-based and would fail closed).",
     };
-  }
-  // local-app fail-closed (BEFORE key-gating): there is no built-in in-process driver.
-  if (localAppSubject && !inProcessRoute) {
+  // There is no built-in in-process driver for a local app.
+  if (localAppSubject && !inProcessRoute)
     return {
       code: "HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR",
       message:
         "subject.source: local-app requires a library caller to supply cuaHooks.buildExecutor + buildProvider; there is no built-in driver for an in-process JS contract. (Drive the app via runLab(..., { cuaHooks: { buildExecutor, buildProvider } }).)",
     };
-  }
   if (
     config.subject.source === "app-url" &&
     config.execution?.target === "local" &&
     !hooks.createDesktopLane
-  ) {
+  )
     return {
       code: "HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR",
       message: "Local browser studies require a configured local desktop runtime.",
     };
-  }
-  // Re-enforce the fan-out cross-validation (library API surface): lanes XOR count/laneFocus,
-  // device XOR raw resolution, cap, unique ids, allowPublicTargets+N>1, clone.fanout.
-  const fanoutReason = cuaLaneValidationReason(config);
-  if (fanoutReason) {
-    return { code: "HUMANISH_CUA_LAB_FANOUT_INVALID", message: fanoutReason };
-  }
-  // The sandbox deadline is DERIVED from the session budget, so a lab can ask for a session that
-  // cannot legally be provisioned. Catch it here, before anything is created, and show the
-  // arithmetic — the provider's own error names a limit but not which knob produced it.
-  const derivedSandboxMs = resolvePerLaneSandboxMs(config);
-  if (derivedSandboxMs > MAX_SANDBOX_MS) {
-    const provisionedRoute =
-      config.subject.source === "clone" || config.subject.source === "local-tree";
-    const sessionMs = config.execution?.timeoutMs ?? defaultSessionTimeoutMs(config);
-    const headroomMs = derivedSandboxMs - sessionMs;
-    return {
-      code: "HUMANISH_CUA_LAB_SUBJECT_INVALID",
-      message: `execution.timeoutMs ${Math.round(sessionMs / 60_000)}m derives a ${Math.round(derivedSandboxMs / 60_000)}m sandbox deadline, and a sandbox may not live longer than ${MAX_SANDBOX_MS / 60_000}m. The deadline is the session budget plus ${Math.round(headroomMs / 60_000)}m of provisioning and teardown headroom${provisionedRoute ? " (this route clones, installs, builds and serves the subject before the actor starts)" : ""}. Lower execution.timeoutMs to at most ${Math.round((MAX_SANDBOX_MS - headroomMs) / 60_000)}m, or set execution.desktop.sandboxTimeoutMs explicitly.`,
-    };
-  }
   return undefined;
+}
+
+/** The lane roster, then the sandbox deadline its session budget derives. */
+function laneShapeReason(config: LabConfig): Rejection {
+  // Lanes XOR count/laneFocus, device XOR raw resolution, cap, unique ids,
+  // allowPublicTargets with more than one lane, clone.fanout.
+  const fanoutReason = cuaLaneValidationReason(config);
+  if (fanoutReason) return { code: "HUMANISH_CUA_LAB_FANOUT_INVALID", message: fanoutReason };
+  // The sandbox deadline is derived from the session budget, so a lab can ask for a session that
+  // cannot legally be provisioned. Show the arithmetic: the provider's own error names a limit
+  // but not which knob produced it.
+  const derivedSandboxMs = resolvePerLaneSandboxMs(config);
+  if (derivedSandboxMs <= MAX_SANDBOX_MS) return undefined;
+  const provisionedRoute =
+    config.subject.source === "clone" || config.subject.source === "local-tree";
+  const sessionMs = config.execution?.timeoutMs ?? defaultSessionTimeoutMs(config);
+  const headroomMs = derivedSandboxMs - sessionMs;
+  return invalid(
+    `execution.timeoutMs ${Math.round(sessionMs / 60_000)}m derives a ${Math.round(derivedSandboxMs / 60_000)}m sandbox deadline, and a sandbox may not live longer than ${MAX_SANDBOX_MS / 60_000}m. The deadline is the session budget plus ${Math.round(headroomMs / 60_000)}m of provisioning and teardown headroom${provisionedRoute ? " (this route clones, installs, builds and serves the subject before the actor starts)" : ""}. Lower execution.timeoutMs to at most ${Math.round((MAX_SANDBOX_MS - headroomMs) / 60_000)}m, or set execution.desktop.sandboxTimeoutMs explicitly.`,
+  );
 }
 
 /**
