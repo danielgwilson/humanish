@@ -844,10 +844,16 @@ Core-owned fields:
 - `status` / `completionReason` / `reason` (`completionReason` includes
   `step_failed`: a deterministic scripted step/expectation evaluated false,
   meaning the subject failed the script while the harness executed faithfully; and
-  `budget_reached`: a computer-use session stopped by its time or estimated
-  spend budget, or an explicit provider token limit, with status `incomplete`.
-  The `reason` distinguishes these causes; none establishes that the goal was
-  reached. `timed_out` remains the zero-progress wall-clock deadline outcome)
+  `budget_reached`: a computer-use session ended by a limit. The loop
+  (`src/actors/computer-use/loop/ending.ts`) emits it when the time budget runs
+  out after at least one material action, when `execution.caps.maxUsd` or the
+  study's shared spend threshold is crossed, when the adapter reports a local
+  admission limit, or when the provider hits its output or context token limit.
+  Every `budget_reached` session has status `incomplete`
+  (`statusForCompletionReason` in `src/actors/computer-use/loop/trace.ts`), and
+  `stopCause` names the limit. Other incomplete provider responses end as
+  `harness_error`. None of these establishes that the goal was reached.
+  `timed_out` remains the zero-progress wall-clock deadline outcome)
 - `ids`, `counts`, `items[]`, optional `tokenUsage`, `capabilities`. `tokenUsage`
   may carry `cacheWriteInput` (tokens billed at the provider's cache-write rate,
   OpenAI 5.6+) and `turns[]` (per provider-request usage, the recorded fact
