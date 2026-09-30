@@ -4,6 +4,7 @@ import {
   COMMAND_DIGEST_PATTERN,
   MANDATORY_ATTRIBUTION_LIMITS,
   SHARED_WORLD_CHECKPOINT_KEYS,
+  planeProvenanceFindings,
   sharedWorldCommonFindings,
 } from "./guards-shared-world.js";
 import { isRecord } from "./primitives.js";
@@ -337,27 +338,13 @@ function sequentialSharedWorldFindings(bundle: RunBundle, sw: SharedWorldEvidenc
 
   // Single-plane provenance: every turn shares ONE (commit, seedDigest), matching sharedWorld.plane.
   // (plane.seedDigest + plane.envNames shape are checked in sharedWorldCommonFindings.)
-  const plane = sw.plane;
-  const planeKeys = new Set(
-    turns.map((turn) => `${String(turn.commit ?? "")}::${String(turn.seedDigest ?? "")}`),
+  findings.push(
+    ...planeProvenanceFindings(turns, sw.plane, {
+      items: "turns",
+      item: "turn",
+      run: "shared-world",
+    }),
   );
-  if (planeKeys.size > 1) {
-    findings.push(
-      "turns reference divergent plane provenance (commit/seedDigest) — a shared-world run drives ONE plane",
-    );
-  }
-  if (isRecord(plane)) {
-    for (const turn of turns) {
-      if (
-        String(turn.seedDigest ?? "") !== String(plane.seedDigest ?? "") ||
-        String(turn.commit ?? "") !== String(plane.commit ?? "")
-      ) {
-        const roleId = typeof turn.roleId === "string" ? turn.roleId : "(unnamed)";
-        findings.push(`turn "${roleId}" plane provenance diverges from sharedWorld.plane`);
-        break;
-      }
-    }
-  }
 
   // The delta-on-pass gate: a PASSED shared-world run MUST show at least one checkpoint delta —
   // otherwise the roles never interacted through shared state and the claim is hollow.

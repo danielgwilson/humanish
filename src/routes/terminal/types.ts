@@ -9,6 +9,7 @@ import type {
   ActorTrace,
 } from "../../actors/contract.js";
 import { type RunLabProvenance } from "../../run/status.js";
+import type { CostCategory } from "../../run/terminal-contract.js";
 import type { RunScope } from "../../run/run.js";
 import type { LabConfig, LabScenarioCaps } from "../../lab/types.js";
 import { type E2BDesktopModule } from "../../substrates/e2b/sdk.js";
@@ -26,15 +27,6 @@ export const TERMINAL_PRODUCT_LAB_PROVIDER_METADATA = {
   mode: "terminal-product-lab",
   tool: "humanish",
 } as const;
-
-// The terminal-product ledger schemas the verifier asserts present on a LIVE bundle. They ride the
-// existing terminal stream + events (humanish.run-bundle.v1 is unchanged); these constants name the
-// artifact files so the producer and verifier cannot drift on the path.
-export const TERMINAL_EVENTS_ARTIFACT = "terminal-events.ndjson";
-
-export const TERMINAL_TRANSCRIPT_ARTIFACT = "terminal-transcript.txt";
-
-export const TERMINAL_LEDGERS_ARTIFACT = "terminal-ledgers.json";
 
 /** The in-sandbox working directory for the agent (a scratch dir; nothing is cloned into it). */
 export const SANDBOX_WORKDIR = "/home/user/study";
@@ -310,10 +302,6 @@ export interface CostLine {
   /** A short, public-safe note (never a secret value). */
   note: string;
 }
-
-/** The cost categories the lane meters. product/media/payment are adapter signals; core can
- *  populate the provider line from the actor trace's tokenUsage.costUsd when present. */
-export type CostCategory = "product" | "media" | "payment" | "provider";
 
 /**
  * The spend ledger (a block of `TerminalLedgers`). The no-spend PROOF is DERIVED from this — never

@@ -1,15 +1,8 @@
 import { describeTokenUsage } from "./token-usage.js";
 import type { ActorTokenUsage } from "../../actors/contract.js";
 import type { LabScenarioCaps } from "../../lab/types.js";
-import type { CostCategory, CostLine, NoSpendProof, TerminalCostLedger } from "./types.js";
-
-/** The four cost categories, in a fixed order so the ledger shape is stable across runs. */
-const COST_CATEGORIES: readonly CostCategory[] = [
-  "product",
-  "media",
-  "payment",
-  "provider",
-] as const;
+import { COST_CATEGORIES, type CostCategory } from "../../run/terminal-contract.js";
+import type { CostLine, NoSpendProof, TerminalCostLedger } from "./types.js";
 
 /**
  * Build the spend ledger from the captured session. THE NULL DISCIPLINE (issue #154):

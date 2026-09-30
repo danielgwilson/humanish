@@ -7,7 +7,7 @@ import type { RunBundle } from "../../run/bundle.js";
 import type { RunScope } from "../../run/run.js";
 import { validatePreparedRunArtifactPaths } from "../../run/paths.js";
 import { estimateActorCost } from "../../run/pricing.js";
-import { normalizeLocalActorTranscript } from "../../run/verify-actor.js";
+import { normalizeLocalActorTranscript } from "../../run/terminal-contract.js";
 import { applyAdapterExtensionSeam } from "./adapter.js";
 import { writeTerminalEvidence } from "./artifacts.js";
 import { buildLiveTerminalProductBundle } from "./bundle.js";

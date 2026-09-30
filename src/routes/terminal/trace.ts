@@ -11,7 +11,7 @@ import type {
 import { ACTOR_TRACE_SCHEMA, TERMINAL_AGENT_CAPABILITIES } from "../../actors/contract.js";
 import type { LabRuntimeAuth } from "../../lab/types.js";
 import { redactedTail } from "../../evidence/redaction.js";
-import { normalizeLocalActorTranscript } from "../../run/verify-actor.js";
+import { normalizeLocalActorTranscript } from "../../run/terminal-contract.js";
 import { type CommandLogRecord, TAIL_CHARS, type TerminalEventRecord } from "./types.js";
 
 /**

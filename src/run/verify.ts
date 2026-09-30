@@ -2,6 +2,7 @@ import path from "node:path";
 import { listStudyAnalysisExecutions } from "../analysis/store.js";
 import { loadStudyAnalysis } from "../analysis/load.js";
 import { studyAnalysisSharingProblems } from "../analysis/sharing.js";
+import { containsSensitive } from "../evidence/redaction.js";
 import { validatePreparedRunArtifactPaths, type PreparedRunArtifactPaths } from "./paths.js";
 import { RUN_BUNDLE_SCHEMA, type RunBundle } from "./bundle.js";
 import { isCleanupResult, isRunBundle } from "./guards.js";
@@ -14,8 +15,8 @@ import {
   validateTerminalProductEvidence,
 } from "./verify-actor.js";
 import {
-  containsSensitivePattern,
   invalidRunEvidenceReferences,
+  MAX_REPORTED_FINDINGS,
   missingLocalEvidenceArtifacts,
   rawScreenshotPostureWarnings,
   rawScreenshotStreamIds,
@@ -153,9 +154,9 @@ export async function verifyResolvedRun(
   // JSON escapes can hide a sensitive value from the byte scan while the
   // decoded recording exposes it to Observer, feedback, or analysis input.
   if (
-    publicSafetyFindings.length < 50 &&
+    publicSafetyFindings.length < MAX_REPORTED_FINDINGS &&
     bundle !== null &&
-    containsSensitivePattern(JSON.stringify(bundle))
+    containsSensitive(JSON.stringify(bundle))
   ) {
     publicSafetyFindings.push("sensitive decoded run.json");
   }
