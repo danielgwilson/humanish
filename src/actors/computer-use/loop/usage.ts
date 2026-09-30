@@ -108,7 +108,7 @@ export function accountBillingConflicts(
 export class UsageLedger {
   /** Settled single-dispatch requests, in order: the trace's providerRequests. */
   readonly requests: ActorProviderRequest[] = [];
-  /** A continuing request yielded actions and has not settled yet. */
+  /** A continuing request returned actions and has not settled yet. */
   requestPending = false;
   /** A request did not confirm cleanup; no further request or action is admitted. */
   cleanupUnconfirmed = false;
@@ -157,8 +157,8 @@ export class UsageLedger {
   }
 
   /**
-   * Book one settled single-dispatch request. A request that settles while an earlier yield is
-   * pending belongs to that interaction, whatever kind the caller asked for.
+   * Book one settled single-dispatch request. A request that settles while a continuing request
+   * is open belongs to that interaction, whatever kind the caller asked for.
    */
   settle(
     kind: "interaction" | "debrief",
@@ -194,13 +194,10 @@ export class UsageLedger {
   }
 
   /**
-   * The running usage both spend guards consume: totals plus the per-request ledger, shaped
-   * exactly like the trace's final tokenUsage so one estimator prices both identically. Unlike the
-   * persisted trace (where absent means "unreported"), this runtime callback arg ALWAYS carries
-   * numeric cache fields: pre-#334 guards received an object whose cachedInput was always a
-   * number (0 included), and arithmetic on a suddenly-undefined field yields NaN, which
-   * comparison operators swallow silently (red-team finding: a stale study-budget guard would run
-   * uncapped without a sound).
+   * The running usage both spend guards price: totals plus the per-inference ledger, shaped like
+   * the trace's final tokenUsage so one estimator prices both. Unlike the persisted trace, where an
+   * absent field means unreported, this always carries numeric cache fields: a guard doing
+   * arithmetic on an undefined field gets NaN, and NaN never trips a cap.
    */
   running(): ActorTokenUsage {
     return this.withPending(
@@ -232,7 +229,7 @@ export class UsageLedger {
     };
   }
 
-  /** Latest known usage of the pending continuing request, when it is complete. */
+  /** Latest known usage of the continuing request, when it is complete. */
   knownPending(): CompleteTurnUsage | undefined {
     const usage = this.requestPending ? this.provider.pendingRequestUsage : undefined;
     if (!isCompleteTurnUsage(usage)) return undefined;

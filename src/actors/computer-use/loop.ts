@@ -50,28 +50,18 @@ export { validClosingReport } from "./loop/closing.js";
 export { declaredOutcomeFromClosingLine } from "./loop/ending.js";
 export { statusForCompletionReason } from "./loop/trace.js";
 
-// The computer-use (CUA) loop engine.
+// The computer-use (CUA) loop: drive a model over a desktop turn by turn, observe the screen, act,
+// and stop at a natural endpoint or an unambiguous friction signal. The model sits behind the
+// CuaProvider port and the desktop behind the CuaExecutor port, so the loop runs against fakes with
+// no key and no spend.
 //
-// This is a public-safe re-derivation of the proven loop semantics from a
-// private single-actor reference implementation: drive a model over a real
-// desktop turn by turn, observe the screen, act, and stop on a NATURAL endpoint
-// or an unambiguous friction signal. It is deliberately provider- and
-// substrate-agnostic: the model lives behind a CuaProvider port and the desktop
-// behind a CuaExecutor port, so the engine is fully testable with fakes (no key,
-// no spend, no SDK). The real OpenAI Responses provider and E2B desktop executor
-// land behind these ports in a following slice.
-//
-// Stopping (Daniel 2026-06-06, decision locked in actor-contract.md): abandonment
-// is persona-judged PRIMARY (the model decides it reached a natural endpoint and
-// returns no further action -> goal_satisfied) with a harness-corroborated
-// BACKSTOP that force-ends only on unambiguous pathology. The backstop is
-// friction/progress-based, NEVER a turn budget: an idle streak (turns that take
-// no material action) or a no-progress streak (turns that do not change the UI
-// state). There is intentionally no maxSteps cap: turns are a terrible proxy for
-// "stop". The only count-free hard stop is the wall-clock timeoutMs, and it is
-// enforced as a deadline race on EVERY model and desktop await (raceSettle), so a
-// hung provider or executor call cannot stall the loop forever; the abort signal
-// is likewise honored before each action so a cancel cannot actuate the desktop.
+// Stopping follows the abandonment decision in docs/architecture/actor-contract.md. The
+// participant decides when it is done, and returning no further action ends the session. A harness
+// backstop force-ends only an idle streak (turns with no material action) or a no-progress streak
+// (turns that repeat a recent action on an unchanged screen). There is no turn cap. The wall-clock
+// timeoutMs is the one hard stop: every provider and desktop call is raced against it
+// (loop/race.ts), and the abort signal is checked before each action, so a hung port cannot stall
+// the loop and a cancel cannot actuate the desktop.
 //
 // Layout: this file is the driver. src/actors/computer-use/loop/ holds the parts: the port types,
 // the session state, provider calls, observation, action dispatch, the backstop fold, the Stop
@@ -89,9 +79,9 @@ interface Conversation {
 }
 
 /**
- * Drive the computer-use loop to a single explicit completion and return an
- * ActorTrace. Every screenshot is redacted through the injected RedactionHooks
- * before its ref is recorded, so the trace is public-safe by construction.
+ * Drive the loop to one explicit completion and return its CuaLoopResult: status, completion
+ * reason, public reason and ActorTrace. Model-authored text passes through redactNarration before
+ * it is recorded; screenshots are persisted raw unless redactScreenshots is set.
  */
 export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLoopResult> {
   refuseAccountBilledCaps(options);
@@ -190,7 +180,8 @@ async function runTurns(session: LoopSession, conversation: Conversation): Promi
 }
 
 /**
- * Count the turn, stage every hint for the next request, and stop when a streak tripped. The
+ * Count the turn's idle and no-progress flags, stage every hint for the next request, and stop
+ * when a streak tripped. The
  * turn's own hints (a dwell window, a rejected action) come first, then the backstop's nudges.
  */
 function applyBackstop(
@@ -290,11 +281,7 @@ function refuseTurn(session: LoopSession, turn: CuaTurn, turnNumber: number): St
   return undefined;
 }
 
-/**
- * RUNTIME-ONLY: hand the model's narration back so the concurrent host-first barrier can read the
- * lobby code the host states after creating the lobby (CDP url-read is unreliable). Raw text stays
- * in memory; only an extracted code is used (and only as a digest).
- */
+/** Hand the turn's narration to the onMessage hook; see CuaLoopOptions.onMessage. */
 function shareNarration(session: LoopSession, turn: CuaTurn): void {
   const { onMessage } = session.settings;
   const narration = [turn.reasoning, turn.message]
@@ -304,10 +291,10 @@ function shareNarration(session: LoopSession, turn: CuaTurn): void {
 }
 
 /**
- * FAIL-CLOSED spend cap (runaway-retry guard). Checked beside the wall-clock stop and BEFORE the
- * next provider request, so a model stuck retrying cannot keep spending: the moment the running
- * estimate crosses maxUsd the loop stops with a terminal, non-harness-error stop. A null estimate
- * cannot trip it (preflight guaranteed a rate). The study budget (#299) is checked next.
+ * The spend caps, checked before the next provider request so a model stuck retrying cannot keep
+ * spending. The lane cap stops the session once the running estimate crosses maxUsd; a null
+ * estimate cannot trip it, because preflight guaranteed a rate. The study budget (#299) is checked
+ * next.
  */
 function spendStop(session: LoopSession): Stop | undefined {
   const { maxUsd, overRunBudget, estimateTurnCostUsd } = session.settings;

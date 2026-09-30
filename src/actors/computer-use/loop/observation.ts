@@ -119,13 +119,11 @@ export class DesktopObserver {
   }
 
   /**
-   * A done turn takes no actions, so the cadence never observes the participant's FINAL state,
-   * and a task completed by that state read as incomplete. The first live study caught it: both
-   * participants reached the dashboard, said so, and the funnel reported 0/2. One guarded closing
-   * observation feeds the tracker; a failed observe ordinarily changes nothing (the funnel stays
-   * honest about what it saw), and no screenshot or stop evaluation rides it: the session is
-   * already over. An explicit executor failure still fails the harness instead of disappearing
-   * behind completion.
+   * A done turn takes no actions, so no checkpoint observes the participant's final state, and a
+   * task completed by that state would read as incomplete. One guarded observation feeds the
+   * tracker. An ordinary observe failure changes nothing (the funnel reports what it saw); an
+   * executor failure still fails the harness. No screenshot or stop check rides it, because the
+   * session is already over.
    */
   async observeClosingTasks(turnNumber: number): Promise<void> {
     if (this.session.taskTracker === undefined) return;
@@ -139,8 +137,9 @@ export class DesktopObserver {
     }
   }
 
-  // Legacy executors retry a stalled observe once (#480). A transport that cannot safely
-  // replay pending requests opts out, so even a shorter outer bound stops without retrying.
+  // An executor without stallRecovery "fail_closed" gets one retry of a stalled observe (#480).
+  // One that cannot safely replay a pending request opts out, so even a shorter outer bound stops
+  // without retrying.
   private async observeBounded(label: string): Promise<CuaObservation> {
     const { session } = this;
     const { executor } = session;
@@ -194,9 +193,9 @@ export class DesktopObserver {
       : { ...value, heardSpeech: this.pendingHeardSpeech.slice() };
   }
 
-  // Guarded screenshot persistence: a non-vision executor returns an observation with no
-  // screenshot, and the loop persists none that turn (counts.screenshots stays 0 → the existing
-  // "n/a" branch resolves redaction.screenshots). No Buffer.alloc(0) ever reaches disk.
+  // No frame, nothing persisted: a state-driven executor returns observations without a
+  // screenshot, counts.screenshots stays 0 and redaction.screenshots reads "n/a". No empty buffer
+  // reaches disk.
   private async recordScreenshot(observation: CuaObservation, label: string): Promise<void> {
     const { session } = this;
     const frame = observation.screenshot;

@@ -125,10 +125,8 @@ export function spendLimit(session: LoopSession, estimate: number, maxUsd: numbe
   };
 }
 
-// Fail CLOSED and LOUD on a non-finite estimate: a stale positional estimator (the pre-#334
-// (input, output, cachedInput) signature) arithmetics the usage OBJECT into NaN, and NaN > maxUsd
-// is false forever — a spend cap that silently never trips is the one failure mode this guard
-// exists to prevent (red-team finding).
+// Fail closed on a non-finite estimate: NaN > maxUsd is always false, so a cap fed NaN would never
+// trip.
 export const nonFiniteEstimate: Stop = {
   completionReason: "harness_error",
   reason:

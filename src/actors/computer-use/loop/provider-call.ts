@@ -15,13 +15,9 @@ const CUA_PROVIDER_CLEANUP_GRACE_MS = 5000;
 
 export type TurnReply = { readonly turn: CuaTurn } | { readonly stop: Stop };
 
-// Stops decided here are concluded before the `finally` releases the request signal, so their
-// notices are recorded before any abort listener runs.
-
 /**
- * Bounded per call (#469): one hung request used to be indistinguishable from thinking and cost
- * the lane its whole remaining budget. One retry with a notice; then the lane ends as
- * harness_error, named, instead of thirty silent minutes.
+ * Ask the provider for one turn. A fail_closed provider gets one single dispatch; any other is
+ * raced against turnTimeoutMs (#469) and retried once when it stalls.
  */
 export async function requestTurn(
   session: LoopSession,
@@ -53,6 +49,8 @@ export async function requestTurn(
       ),
     };
   } catch (error) {
+    // Stops are concluded here, before `finally` ends the request scope, so their notices are
+    // recorded before any abort listener runs.
     if (isCuaAdmissionLimitError(error)) return { stop: session.conclude(adapterLimit) };
     // A thrown request may have been billed without returning usage. Admission refusal is
     // the explicit no-dispatch exception above; strict capped routes cannot safely retry.
@@ -134,7 +132,7 @@ type Settlement = { turn: CuaTurn } | { error: unknown };
 /**
  * One provider request that the provider owns through settlement: an outer race never retries
  * it, and the loop waits a bounded grace for cleanup before booking the receipt. A continuing
- * interaction may yield actions before it settles; that turn is returned unbooked.
+ * request may return actions before it settles; that turn is returned unbooked.
  */
 export async function singleDispatch(
   session: LoopSession,
@@ -225,8 +223,9 @@ export async function singleDispatch(
 }
 
 /**
- * Whether a single-dispatch turn is a valid yield from a still-active interaction. A yield
- * carries actions only; a settled turn must carry a dispatched, cleaned-up receipt.
+ * Whether a single-dispatch turn is a valid turn from a continuing request (see
+ * CuaTurn.providerRequestPending), which carries actions only. A settled turn must carry a
+ * dispatched, cleaned-up receipt.
  */
 function acceptedYield(kind: "interaction" | "debrief", turn: CuaTurn): boolean {
   if (turn.providerRequestPending === true) {

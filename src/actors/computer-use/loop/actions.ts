@@ -212,9 +212,9 @@ function countAttempt(
 }
 
 /**
- * Execute one action. Observation actions only look (#480): a `wait` that hangs inside the SDK
- * has, by definition, waited, so a stalled one is skipped with a notice and loses nothing the
- * participant chose. A failed action is recorded as completed only after execute() resolves (#248).
+ * Execute one action. Idle actions only look (#480): a `wait` that hangs inside the SDK has in
+ * effect waited, so a stalled one is skipped with a notice and loses nothing the participant
+ * chose. An action is recorded as completed only after execute() resolves (#248).
  */
 async function dispatchAction(
   session: LoopSession,

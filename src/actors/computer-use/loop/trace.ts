@@ -120,10 +120,9 @@ export function loopResult(
     : session.redactScreenshots
       ? `${counts.screenshots} screenshot(s) redacted to blurred thumbnails via RedactionHooks`
       : `${counts.screenshots} full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle`;
-  // Self-describing artifact (invariant 6): when a non-vision executor surfaced structured app
-  // state, the trace declares HOW it handled that surface — app state drove progress detection
-  // each turn and was NOT written to the trace (it is a runtime-only progress input, like
-  // stateSignature). The appState itself never appears anywhere in this bundle.
+  // Self-describing artifact (invariant 6): when any observation carried structured app state,
+  // the trace says how the loop handled it: it fed progress and task checks and was not written to
+  // the trace. The appState itself never appears in this bundle.
   const notes = session.observedAppState
     ? `${screenshotNote}. App state was observed each turn to drive progress detection (a state-driven executor) and was NOT written to the trace — it is a runtime-only progress input, never persisted as evidence in this slice.`
     : screenshotNote;

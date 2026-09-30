@@ -14,11 +14,10 @@ const ACTION_REPEAT_WINDOW = 3;
  *  same dead panel cannot stay "progressing" forever. */
 const SCROLL_PROGRESS_BUCKET_PX = 200;
 
-// Caps for stableProgressKey. The progress key is a coarse turn-over-turn comparison input,
-// not a faithful serialization, so it bounds depth, breadth, string length, and total output —
-// a huge or deeply nested appState can never blow up the comparison or the trace logging in
-// tests. The values are deliberately generous (real route/turn/modal projections are tiny) but
-// finite.
+// Caps for stableProgressKey. The progress key is a coarse turn-over-turn comparison input, not a
+// faithful serialization, so it bounds depth, breadth, string length and total output, and a huge
+// or deeply nested appState cannot blow up the comparison. The values are generous (real
+// route/turn/modal projections are tiny) but finite.
 const STABLE_KEY_MAX_DEPTH = 6;
 const STABLE_KEY_MAX_KEYS = 64;
 const STABLE_KEY_MAX_ARRAY = 64;
@@ -117,10 +116,10 @@ export interface Backstop {
   /** The last few turns' action fingerprints, in memory only, for the #383 corroboration rule. */
   readonly recentFingerprints: readonly string[];
   readonly consecutiveIdle: number;
-  // One canonical "no progress" signal: turns that did not change the UI state
-  // signature (idle or not). The nudge, the stop threshold, and the reason all
-  // key off this counter, and it catches alternating idle/no-progress stalls
-  // that two separate counters would let slip past every backstop but the clock.
+  // One no-progress signal, idle turns included: turns that neither changed the progress key nor
+  // brought new speech, and repeated a recent action (#383). The nudge, the stop threshold and the
+  // reason all read this counter, so alternating idle and no-progress turns cannot slip past both
+  // backstops.
   readonly consecutiveNoProgress: number;
   readonly idleProgressForgivenessUsed: number;
 }

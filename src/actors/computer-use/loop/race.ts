@@ -3,7 +3,9 @@
 // The underlying call may still settle later. Distinct error classes let the loop tell a deadline
 // or abort apart from a real adapter failure.
 
+/** The session clock ran out before the call settled. */
 export class CuaDeadlineError extends Error {}
+/** The caller's abort signal fired before the call settled. */
 export class CuaAbortError extends Error {}
 /** A single call outlived its own bound while the session still had budget: a stall, not a deadline. */
 export class CuaStallError extends Error {
@@ -18,7 +20,8 @@ export class CuaStallError extends Error {
 /**
  * raceSettle with a second, tighter clock: the call's own bound. When the tighter clock wins the
  * result is a CuaStallError (the caller decides whether to retry); when the session clock wins it
- * stays a CuaDeadlineError, so the existing budget_reached / timed_out reading is untouched.
+ * stays a CuaDeadlineError, which the loop reads as the session deadline (timed_out or
+ * budget_reached).
  */
 export async function raceBounded<T>(
   what: string,
