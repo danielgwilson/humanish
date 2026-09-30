@@ -29,7 +29,7 @@ import {
 } from "../../src/run/sandbox-receipts.js";
 import { runCuaActorLab } from "../../src/routes/computer-use/lab.js";
 import { runScriptedBrowserLab } from "../../src/routes/scripted-browser/lab.js";
-import { type ScriptedBrowserLabHooks } from "../../src/routes/scripted-browser/types.js";
+import type { ScriptedBrowserLabHooks } from "../../src/routes/scripted-browser/types.js";
 import type {
   ScriptedBrowserLike,
   ScriptedLocatorLike,
@@ -101,6 +101,7 @@ interface FakeSubjectSandbox extends E2BDesktopSandbox {
 function makeFakeSubjectSandbox(
   id: string,
   beforeWork: () => Promise<void> = async () => undefined,
+  failStep?: string,
 ): FakeSubjectSandbox {
   const calls: Array<[string, ...unknown[]]> = [];
   const sandbox = {
@@ -110,7 +111,9 @@ function makeFakeSubjectSandbox(
       run: async (command: string) => {
         await beforeWork();
         calls.push(["commands.run", command]);
-        if (command.includes("/status")) return { exitCode: 0, stdout: "0\n" };
+        if (command.includes("/status")) {
+          return { exitCode: 0, stdout: failStep && command.includes(failStep) ? "1\n" : "0\n" };
+        }
         if (command.includes("rev-parse")) return { exitCode: 0, stdout: "abc123def4567890abc1\n" };
         if (command.includes("curl")) return { exitCode: 0, stdout: "READY\n" };
         if (command.includes("tail -c")) return { exitCode: 0, stdout: "" };
@@ -156,6 +159,8 @@ function makeFakeE2BModule(
     onFirstWork?: (sandboxId: string) => Promise<string>;
     /** What the sandbox's getInfo reports; absent leaves the size unmeasured. */
     resources?: { cpuCount: number; memoryMB: number };
+    /** A detached step name (such as `subject-install`) whose exit status reads as 1. */
+    failStep?: string;
   } = {},
 ): {
   module: E2BDesktopModule;
@@ -183,12 +188,16 @@ function makeFakeE2BModule(
         n += 1;
         const id = `fake-subject-${String(n).padStart(3, "0")}`;
         let worked = false;
-        const sandbox = makeFakeSubjectSandbox(id, async () => {
-          if (worked) return;
-          worked = true;
-          if (options.onFirstWork) order.push(await options.onFirstWork(id));
-          order.push(`first-work:${id}`);
-        });
+        const sandbox = makeFakeSubjectSandbox(
+          id,
+          async () => {
+            if (worked) return;
+            worked = true;
+            if (options.onFirstWork) order.push(await options.onFirstWork(id));
+            order.push(`first-work:${id}`);
+          },
+          options.failStep,
+        );
         order.push(`create:${id}`);
         templates.push(template);
         created.push(createOptions);
@@ -1396,6 +1405,23 @@ describe("scripted run lifetime on the provisioned clone route", () => {
     expect(status).not.toHaveProperty("outcome");
     await expect(stat(path.join(runDir, "run.json"))).rejects.toMatchObject({ code: "ENOENT" });
     expect(analysis).not.toHaveBeenCalled();
+  });
+
+  it("records the cloned commit when the install fails after the clone", async () => {
+    const runId = "install-fails-after-clone";
+    const runDir = path.join(cwd, ".humanish", "runs", runId);
+    const fakeE2B = makeFakeE2BModule({ failStep: "subject-install" });
+    const hooks = cloneHooks(fakeE2B.module, async () => {
+      throw new Error("the session must not start when the subject is not served");
+    });
+
+    const outcome = await runLab(provisionedScriptedConfig(), { cwd, runId, scriptedHooks: hooks });
+    if (outcome.backend !== "scripted") throw new Error(`unexpected backend ${outcome.backend}`);
+    expect(outcome.result.ok).toBe(false);
+    expect(fakeE2B.killed).toEqual(["fake-subject-001"]);
+    expect(outcome.result.error?.message).toMatch(/^subject install failed/);
+    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
+    expect(bundle.subject).toMatchObject({ source: "clone", commit: "abc123def4567890abc1" });
   });
 
   it("S3: after a failed subject teardown, reclaim kills the receipted subject", async () => {

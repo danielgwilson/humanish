@@ -308,49 +308,48 @@ async function runScriptedBrowserLabInScope(
   const prepared = await prepareScriptedRun(options, planned);
   if (!prepared.ok) return prepared.result;
   const { config, dryRun } = options;
-  const { cwd, physicalCwd, hooks, warnings, failed, plan, clone, evidenceAppUrl } = prepared.setup;
-  const { urlPolicy, subjectEnvNames, env, e2bApiKey, hasGithubToken } = prepared.setup;
-  const { redactRepoLabel, scrubKnownValues, scenario, journey, surfaces } = prepared.setup;
-  const { timeoutMs, persona, browserCommand } = prepared.setup;
-  let { appUrl } = prepared.setup;
+  const { setup } = prepared;
 
   const started = await scope.startRun({
-    cwd: physicalCwd,
+    cwd: setup.physicalCwd,
     runId: options.runId,
     mintRunId: makeScriptedRunId,
     mode: dryRun ? "dry-run" : "live",
     lab: options.lab,
     renderReview: renderScriptedReviewMarkdown,
-    observer: { open: options.open === true, render: hooks.renderObserverFn },
+    observer: { open: options.open === true, render: setup.hooks.renderObserverFn },
   });
   if (!started.ok) {
-    return failed(started.code, started.message, { actor: plan.actor, appUrl: evidenceAppUrl });
+    return setup.failed(started.code, started.message, {
+      actor: setup.plan.actor,
+      appUrl: setup.evidenceAppUrl,
+    });
   }
   const { run } = started;
   const { createdAt, paths: runPaths } = run;
   const artifactRoot = runPaths.physicalRunRoot;
   const source = await buildRunSource({
     capturedAt: createdAt,
-    cwd: physicalCwd,
+    cwd: setup.physicalCwd,
     humanishSource: "present",
     packageName: "humanish",
   });
 
-  const scriptedSubject = clone
+  const scriptedSubject = setup.clone
     ? new ScriptedSubject({
         config,
-        actor: plan.actor,
-        clone,
-        hooks,
-        env,
-        e2bApiKey,
+        actor: setup.plan.actor,
+        clone: setup.clone,
+        hooks: setup.hooks,
+        env: setup.env,
+        e2bApiKey: setup.e2bApiKey,
         runPaths,
-        timeoutMs,
-        subjectEnvNames,
-        hasGithubToken,
-        scrubKnownValues,
-        now: hooks.now ?? Date.now,
-        warnings,
+        timeoutMs: setup.timeoutMs,
+        subjectEnvNames: setup.subjectEnvNames,
+        hasGithubToken: setup.hasGithubToken,
+        scrubKnownValues: setup.scrubKnownValues,
+        now: setup.hooks.now ?? Date.now,
+        warnings: setup.warnings,
       })
     : undefined;
   let sessionResults: ScriptedBrowserSessionResult[] = [];
@@ -358,10 +357,23 @@ async function runScriptedBrowserLabInScope(
 
   if (!dryRun) {
     try {
-      if (scriptedSubject) appUrl = await scriptedSubject.provision();
+      const appUrl = scriptedSubject ? await scriptedSubject.provision() : setup.appUrl;
       sessionResults = await runScriptedSessions(
-        { appUrl, evidenceAppUrl, urlPolicy, journey, persona, timeoutMs, artifactRoot },
-        { surfaces, hooks, browserCommand, runPaths },
+        {
+          appUrl,
+          evidenceAppUrl: setup.evidenceAppUrl,
+          urlPolicy: setup.urlPolicy,
+          journey: setup.journey,
+          persona: setup.persona,
+          timeoutMs: setup.timeoutMs,
+          artifactRoot,
+        },
+        {
+          surfaces: setup.surfaces,
+          hooks: setup.hooks,
+          browserCommand: setup.browserCommand,
+          runPaths,
+        },
       );
     } catch (error) {
       if (error instanceof UnsafeScriptedSessionResultError) {
@@ -369,7 +381,7 @@ async function runScriptedBrowserLabInScope(
       }
       // The session itself maps launch failures to harness_error; reaching here means the
       // harness around it failed. Redacted at this boundary before persisting anywhere.
-      sessionError = redactText(scrubKnownValues(toErrorMessage(error)));
+      sessionError = redactText(setup.scrubKnownValues(toErrorMessage(error)));
     } finally {
       await scriptedSubject?.teardown();
     }
@@ -388,21 +400,21 @@ async function runScriptedBrowserLabInScope(
 
   return finishScriptedRun({
     options,
-    actor: plan.actor,
-    cwd,
-    evidenceAppUrl,
+    actor: setup.plan.actor,
+    cwd: setup.cwd,
+    evidenceAppUrl: setup.evidenceAppUrl,
     run,
     source,
-    journey,
-    scenario,
-    persona,
-    surfaces,
+    journey: setup.journey,
+    scenario: setup.scenario,
+    persona: setup.persona,
+    surfaces: setup.surfaces,
     sessionResults,
     sessionError,
-    warnings,
-    clone,
-    redactRepoLabel,
-    subjectEnvNames,
+    warnings: setup.warnings,
+    clone: setup.clone,
+    redactRepoLabel: setup.redactRepoLabel,
+    subjectEnvNames: setup.subjectEnvNames,
     scriptedSubject,
   });
 }
