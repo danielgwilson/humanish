@@ -199,8 +199,7 @@ export function forwardDeclaredWarnings(config: LabConfig): string[] {
   // execution.desktop.template (the custom E2B desktop image) is consumed ONLY where a desktop is
   // actually created via Sandbox.create — the e2b-desktop computer-use routes (cua/shared-world/
   // concurrent). It is INERT on every other route (incl. the in-process local-app cua route, which
-  // creates no desktop, and the meta route): warn so an unconsumed template is never silently
-  // ignored (invariant 6).
+  // creates no desktop): warn so an unconsumed template is never silently ignored (invariant 6).
   const createsE2BDesktop =
     (routesToCua || (routesToScripted && config.subject.source === "clone")) &&
     config.execution?.target === "e2b-desktop";
@@ -209,13 +208,10 @@ export function forwardDeclaredWarnings(config: LabConfig): string[] {
       "execution.desktop.template (the custom E2B desktop image is consumed only on execution.target: e2b-desktop computer-use routes that create a desktop; needs a computer-use actor on e2b-desktop)",
     );
   }
-  // codexAppServer is consumed only on the e2b-desktop (meta) route; flag it when it cannot reach there.
-  const routesToDesktop =
-    config.subject.source === "clone" && config.execution?.target === "e2b-desktop";
-  if (config.execution?.desktop?.codexAppServer !== undefined && !routesToDesktop) {
-    inert.push(
-      "execution.desktop.codexAppServer (needs subject.source: clone + execution.target: e2b-desktop)",
-    );
+  // No route reads codexAppServer since the route that consumed it was removed. The key still
+  // parses so older manifests load, so flag it wherever it is set.
+  if (config.execution?.desktop?.codexAppServer !== undefined) {
+    inert.push("execution.desktop.codexAppServer (no current route reads it)");
   }
   // scenario.ref is CONSUMED on the scripted-browser route (required there); forward-declared
   // everywhere else.

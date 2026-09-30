@@ -286,7 +286,7 @@ export function guardDesktopSandboxCreate(module: E2BDesktopModule): E2BDesktopM
           args,
         )) as E2BDesktopSandbox;
         restoreKill?.();
-        // The loader also serves direct Sandbox.create callers (terminal/legacy meta routes).
+        // The loader also serves direct Sandbox.create callers, such as the terminal route.
         return protectDesktopScreenshotCleanup(desktop);
       } catch (error) {
         if (cleanupOwned === undefined) throw error;

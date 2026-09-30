@@ -321,8 +321,8 @@ export function isRunStatusRecord(value: unknown): value is RunStatusRecord {
  * The legacy bridge: infer a lab id for a bundle written BEFORE this contract, where the only
  * attribution was the `lab:<id>` convention on persona/scenario source strings. Deliberately
  * conservative — it reads the convention and nothing else, and a `lab:` prefix with an empty
- * remainder is not an id. Ids may contain colons (`oss:meta`), so only the FIRST segment is
- * stripped. Returns undefined when the bundle carries no such marker.
+ * remainder is not an id. Ids may contain colons (the removed meta-lab wrote `oss:meta`), so
+ * only the FIRST segment is stripped. Returns undefined when the bundle carries no such marker.
  */
 export function inferLegacyLabId(bundle: {
   persona?: { source?: string };

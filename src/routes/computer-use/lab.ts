@@ -13,7 +13,7 @@
 //   the SUBJECT's declared env NAMES are provisioned in on the clone route — values come from
 //   the caller's environment and are never logged or persisted.
 // - The live stream URL is runtime-only (carries an auth key) and is never persisted into run
-//   artifacts — only its presence is recorded, mirroring the meta lab's convention.
+//   artifacts — only its presence is recorded.
 // - Evidence redaction is mode-aware (docs/principles/invariants-and-defaults.md, the
 //   capture-vs-publish rule): screenshots persist RAW (full fidelity) by default into gitignored
 //   .humanish/; `policies.redactScreenshots: true` opts into blur-at-capture for a share-as-is

@@ -68,7 +68,7 @@ export type AdapterScorerLoadResult =
   | { ok: false; error: { code: AdapterScorerLoadErrorCode; message: string } };
 
 /** The backends whose hooks bag can carry the loaded scorer. A declared scorer on ANY other backend
- *  (scripted / synthetic / meta / smoke) aborts at load — a gate that cannot run must never green-pass. */
+ *  (scripted or synthetic) aborts at load — a gate that cannot run must never green-pass. */
 const SCORER_CAPABLE_BACKENDS: ReadonlySet<LabBackend> = new Set<LabBackend>([
   "terminal",
   "cua",

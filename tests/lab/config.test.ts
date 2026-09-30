@@ -18,11 +18,12 @@ import { parseLabConfig } from "../../src/lab/config.js";
 import { selectLabBackend } from "../../src/lab/engine.js";
 
 describe("parseLabConfig (humanish.lab.v2)", () => {
-  it("parses an oss-meta-shaped lab (clone + e2b-desktop + codex actor)", () => {
+  it("parses a clone lab with a codex actor and warns that codexAppServer is inert", () => {
+    // This was the removed OSS meta-lab's shape. It still parses; runCuaActorLab refuses the actor.
     const result = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
-      id: "oss",
-      title: "OSS meta-lab",
+      id: "codex-clone",
+      title: "Codex actor on a clone subject",
       subject: { source: "clone", repos: ["CorentinTh/it-tools"], clone: { fanout: 4 } },
       actors: [{ type: "codex-app-server", count: 1 }],
       execution: { target: "e2b-desktop", desktop: { codexAppServer: true } },
@@ -38,7 +39,25 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     expect(result.config.actors[0]?.type).toBe("codex-app-server");
     expect(result.config.execution?.target).toBe("e2b-desktop");
     expect(result.config.execution?.desktop?.codexAppServer).toBe(true);
-    expect(result.warnings).toEqual([]);
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0]).toContain("execution.desktop.codexAppServer");
+  });
+
+  it("warns that codexAppServer is inert on a computer-use clone lab", () => {
+    const result = parseLabConfig({
+      schema: LAB_CONFIG_SCHEMA,
+      id: "cua-clone-codex-app-server",
+      subject: {
+        source: "clone",
+        repos: ["example-org/example-app"],
+        serve: { start: "pnpm start", url: "http://127.0.0.1:3000/" },
+      },
+      actors: [{ type: "openai-computer-use", mission: "Look around." }],
+      execution: { target: "e2b-desktop", desktop: { codexAppServer: true } },
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.warnings.join(" ")).toContain("execution.desktop.codexAppServer");
   });
 
   it("parses a synthetic-shaped lab (this-repo + persona actor, dry-run)", () => {
@@ -1396,7 +1415,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       expect(result.error.message).toContain("execution.desktop.template");
     });
 
-    it("warns execution.desktop.template as inert on the meta route (e2b-desktop, but no desktop-creating cua actor consumes it)", () => {
+    it("warns execution.desktop.template as inert on a clone lab whose actor creates no desktop (e2b-desktop with codex-app-server)", () => {
       const result = parseLabConfig({
         schema: LAB_CONFIG_SCHEMA,
         id: "meta-template",
@@ -1744,7 +1763,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
 
     it("REJECTS clone.fanout on the cua route (declared behavior change) but accepts clone.keep/depth", () => {
       // clone.fanout is now a hard parse error on the cua route — fan-out is declared via
-      // actors[0].count/lanes, not subject.clone.fanout (which drives the OSS smoke/meta routes).
+      // actors[0].count/lanes. No current route reads subject.clone.fanout.
       const rejected = parseLabConfig({
         ...validCloneCua,
         subject: { ...validCloneCua.subject, clone: { depth: 1, keep: true, fanout: 2 } },
@@ -2045,7 +2064,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       expect(setup.warnings[0]).toContain("subject.serve");
       expect(setup.warnings[0]).toContain("subject.env");
 
-      // Meta route (clone × e2b-desktop, non-cua actor): same story.
+      // A clone × e2b-desktop lab with a codex-app-server actor: same story.
       const meta = parseLabConfig({
         ...withState({ seed: [{ name: "fixtures", command: "pnpm prisma db seed" }] }),
         actors: [{ type: "codex-app-server" }],

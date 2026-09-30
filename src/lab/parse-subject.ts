@@ -176,7 +176,8 @@ export function parseSubject(
 
   if (source === "local-tree") {
     // A local-tree subject exists to be packed and served; there is no other way to boot it, so
-    // serve is REQUIRED here (unlike clone, where serve is optional for the smoke/meta routes).
+    // serve is REQUIRED here. Clone subjects get the same requirement from each route's checks in
+    // parseLabConfig.
     if (raw.serve === undefined) {
       return invalid(
         "`subject.serve` is required when source is local-tree: a local-tree subject exists to be packed and served, so declare install/build/start/url exactly like the clone route.",

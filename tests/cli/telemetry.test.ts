@@ -2,6 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { starterFiles } from "../../src/lab/init-templates.js";
 
 import {
   buildPayload,
@@ -112,6 +113,16 @@ describe("what telemetry can possibly contain", () => {
     expect(safeLabId("acme-secret-launch")).toBe("custom");
     expect(safeLabId("checkout-v2-redesign")).toBe("custom");
     expect(safeLabId(undefined)).toBeUndefined();
+  });
+
+  it("names every lab that humanish init writes", () => {
+    const initLabIds = starterFiles
+      .filter((file) => file.path.startsWith("humanish/labs/"))
+      .map((file) => /^id: (\S+)$/m.exec(file.contents)?.[1]);
+    expect(initLabIds).toContain("local-browser");
+    for (const id of initLabIds) expect(safeLabId(id)).toBe(id);
+    // The removed OSS meta-lab's id is no longer ours.
+    expect(safeLabId("oss")).toBe("custom");
   });
 
   it("has no field that could carry a path, a subject, or a person", () => {

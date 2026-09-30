@@ -31,7 +31,7 @@ export function cuaLaneValidationReason(config: LabConfig): string | null {
   // clone.fanout is a DECLARED behavior change: rejected on the cua route (was inert-warned).
   // Fan-out is declared via actors[0].count/lanes; subject.clone.fanout never applied here.
   if (config.subject.clone?.fanout !== undefined) {
-    return "`subject.clone.fanout` is not used on the computer-use route — declare fan-out with actors[0].count (homogeneous) or actors[0].lanes (a per-lane roster). (clone.fanout drives the OSS smoke/meta routes only.)";
+    return "`subject.clone.fanout` is not used on the computer-use route — declare fan-out with actors[0].count (homogeneous) or actors[0].lanes (a per-lane roster). (No current route reads clone.fanout.)";
   }
   if (lanes !== undefined) {
     if (actor?.count !== undefined) {
@@ -242,7 +242,7 @@ export function taskProtocolValidationReason(
       return `actors[${index}].tasks is unsupported: current runners consume only actors[0]. Use the first actor's supported CUA lanes for a task protocol.`;
     }
     if (!supportsTasks) {
-      return "actors[0].tasks is unsupported on this execution path. Task protocols require a per-lane computer-use route; shared-world, terminal-product, scripted-browser, synthetic, smoke and meta routes do not consume them. Remove tasks only if a mission-only study is intended.";
+      return "actors[0].tasks is unsupported on this execution path. Task protocols require a per-lane computer-use route; shared-world, terminal-product, scripted-browser and synthetic routes do not consume them. Remove tasks only if a mission-only study is intended.";
     }
   }
   return null;
@@ -407,5 +407,5 @@ export function automaticAnalysisRouteReason(config: LabConfig): string | undefi
     )
   )
     return undefined;
-  return "review.analysis requires a computer-use, scripted-browser, terminal-product or shared-world study; synthetic, smoke and meta routes do not produce eligible live recordings.";
+  return "review.analysis requires a computer-use, scripted-browser, terminal-product or shared-world study; this lab's route does not produce an eligible live recording.";
 }

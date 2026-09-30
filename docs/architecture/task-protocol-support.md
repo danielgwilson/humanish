@@ -14,7 +14,7 @@ that cannot carry both halves refuses the declaration before execution. Removing
 | Shared-world, provisioned or external-public          | Rejected     | Actor specs omit the protocol before CUA session dispatch                     |
 | Terminal-product                                      | Rejected     | Terminal prompt and result contract do not implement tasks                    |
 | Scripted-browser, local or provisioned                | Rejected     | Scenario steps drive the participant; no task protocol is consumed            |
-| Synthetic, smoke, meta                                | Rejected     | Lab dispatch does not pass task declarations to these engines                 |
+| Synthetic (`this-repo`)                               | Rejected     | Lab dispatch does not pass task declarations to the dry-run engine            |
 | Any second or later `actors[]` entry                  | Rejected     | Current runners consume only the first actor; use supported first-actor lanes |
 
 Both registered CUA actors (`openai-computer-use` and `local-agent`) share the CUA
@@ -26,8 +26,8 @@ The parser reports `HUMANISH_LAB_INVALID` with the unsupported field path. Direc
 library entry points report `HUMANISH_LAB_TASKS_UNSUPPORTED` in their existing
 failure envelopes. Refusal precedes run storage, source preparation, user hooks,
 local processes, sandbox allocation, and model calls. No task content appears in
-the error. Low-level synthetic/smoke/meta APIs accept no lab config or tasks; their
-lab declaration boundary is `runLab`.
+the error. The low-level synthetic API, `runDryRun`, accepts no lab config or tasks.
+Its lab declaration boundary is `runLab`.
 
 A future route gains support only after proving participant goals, hidden criteria,
 observation-backed completion, honest missing-input treatment, and per-participant

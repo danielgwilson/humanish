@@ -134,7 +134,7 @@ Two corollaries:
 loop never retained a usable frame. That destroyed the core deliverable for the common case
 (a developer watching a sim of their OWN app locally) to defend against a leak that can only
 happen at _publish_. The proof it was a default, not an invariant: the same product already
-shipped raw full-resolution frames on the meta route with only a "do not publish" warning +
+shipped raw full-resolution frames on the meta route (since removed) with only a "do not publish" warning +
 the `.humanish/` gitignore + the binary-asset scan. Two routes, opposite policies, identical
 threat. The corrected principle:
 

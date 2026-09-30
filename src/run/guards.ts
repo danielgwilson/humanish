@@ -58,6 +58,7 @@ const SAFE_GIT_NOTES = new Set([
   "Git work tree was clean; branch names, remotes, paths, and file names were not captured.",
   "No git work tree was detected.",
   "public-safe synthetic fixture",
+  // Only bundles from the removed meta-lab carry this note.
   "public-safe synthetic OSS meta-lab fixture",
 ]);
 
