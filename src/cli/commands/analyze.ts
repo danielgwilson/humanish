@@ -5,7 +5,12 @@ import {
 import { resolve } from "node:path";
 import { Command, Option } from "commander";
 import { forTerminal } from "../../routes/terminal/encoding.js";
-import { analyzeStudy, correctStudyAnalysis, showStudyAnalysis } from "../../analysis/service.js";
+import {
+  analyzeStudy,
+  correctStudyAnalysis,
+  dryRunBundleRefusal,
+  showStudyAnalysis,
+} from "../../analysis/service.js";
 import { listStudyAnalyses, listStudyAnalysisExecutions } from "../../analysis/store.js";
 import { resolveRunPath } from "../../run/locate.js";
 import { type CliIo, JSON_OPTION_DESCRIPTION, writeResult } from "../io.js";
@@ -102,6 +107,18 @@ export function registerAnalyzeCommand(parent: Command, io: CliIo): void {
             : { maxOutputTokens: Number(options.maxOutputTokens) }),
         });
         if (!selected.ok || !selected.config) {
+          const refusal = await dryRunBundleRefusal(
+            resolve(options.cwd),
+            options.run,
+            options.dryRun === true,
+          );
+          if (refusal) {
+            writeResult(command, io, refusal, (value) =>
+              forTerminal(`${value.error?.message ?? ""}\n${value.error?.code ?? ""}\n`),
+            );
+            io.setExitCode(2);
+            return;
+          }
           const result = {
             schema: "humanish.analyze-result.v1",
             ok: false,

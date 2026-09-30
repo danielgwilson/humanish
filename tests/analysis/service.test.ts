@@ -210,6 +210,45 @@ describe("ordinary study analysis flow", () => {
     expect(await readdir(runRoot)).not.toContain("analysis-attempts");
   });
 
+  it("refuses a dry-run bundle as not live before judging the analysis flags", async () => {
+    const bundle = JSON.parse(original.toString()) as RunBundle;
+    bundle.mode = "dry-run";
+    await writeFile(path.join(runRoot, "run.json"), JSON.stringify(bundle));
+    const fetch = await transport();
+    for (const flags of [[], ["--max-cost", "3"]]) {
+      const output: string[] = [];
+      let exit = 0;
+      const program = createProgram({
+        writeOut: (text) => output.push(text),
+        writeErr: () => {},
+        setExitCode: (code) => {
+          exit = code;
+        },
+      });
+      await program.parseAsync(
+        ["analyze", "--cwd", cwd, "--run", "latest", "--dry-run", ...flags, "--json"],
+        { from: "user" },
+      );
+      expect(exit).toBe(2);
+      expect(JSON.parse(output.join(""))).toMatchObject({
+        ok: false,
+        dryRun: true,
+        error: { code: "ANALYSIS_REQUIRES_LIVE_RUN" },
+      });
+    }
+    expect(
+      (
+        await analyzeStudy(
+          cwd,
+          "analysis-flow",
+          { config: { ...config, maxCostUsd: NaN }, dryRun: true },
+          { fetch },
+        )
+      ).error?.code,
+    ).toBe("ANALYSIS_REQUIRES_LIVE_RUN");
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it("requires opt-in cost and refuses budget, dry-run source, active source and cancellation before dispatch", async () => {
     const fetch = await transport();
     expect(
