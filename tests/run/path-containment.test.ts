@@ -426,10 +426,13 @@ describe("run path containment", () => {
       "run/dry-run.ts",
       "routes/computer-use/lab.ts",
       "routes/shared-world/concurrent.ts",
-      "routes/scripted-browser.ts",
       "run/run.ts",
     ];
-    const scoped = ["routes/terminal/lab.ts", "routes/terminal/session.ts"];
+    const scoped = [
+      "routes/terminal/lab.ts",
+      "routes/terminal/session.ts",
+      "routes/scripted-browser.ts",
+    ];
     for (const producer of direct) {
       expect(await read(producer), producer).toContain("createRunArtifactPaths");
     }
