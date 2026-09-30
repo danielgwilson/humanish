@@ -29,36 +29,37 @@ import {
 import type { OwnedDesktopAllocation } from "../desktop-session.js";
 import { collectDesktopRecording } from "../../evidence/desktop-recording-artifact.js";
 import type { RunDesktopRecording } from "../../evidence/desktop-recording-types.js";
+import { provisionCloneSubject } from "../../subject/clone.js";
+import { provisionDesktopCli } from "../../subject/desktop-cli.js";
+import { provisionLocalTreeSubject } from "../../subject/local-tree.js";
+import { defaultSubjectPhaseSink, type SubjectPhaseEvent } from "../../subject/steps.js";
 import {
   BROWSER_SETTLE_MS,
-  CUA_ACTOR_LAB_PROVIDER_METADATA,
-  DEFAULT_MOBILE_USER_AGENT,
-  INBOX_SURFACE_CADENCE_MS,
-  applyMobileEmulation,
-  captureDesktopBrowserGeometry,
-  declaredScreenForRender,
-  defaultSubjectPhaseSink,
-  inspectDesktopScreenGeometry,
-  makeChromeBrowserStateObserver,
   openDesktopBrowserTarget,
   openDesktopTerminal,
-  prepareDesktopMedia,
-  provisionCloneSubject,
-  provisionDesktopCli,
-  provisionLocalTreeSubject,
   startDesktopStream,
   type DesktopBrowserEvidence,
   type DesktopBrowserFamily,
   type DesktopBrowserLaunchIdentity,
-  type SubjectPhaseEvent,
-} from "./cua-provisioning.js";
+} from "./desktop-browser.js";
+import {
+  applyMobileEmulation,
+  DEFAULT_MOBILE_USER_AGENT,
+  makeChromeBrowserStateObserver,
+} from "./desktop-cdp.js";
+import {
+  captureDesktopBrowserGeometry,
+  declaredScreenForRender,
+  inspectDesktopScreenGeometry,
+} from "./desktop-geometry.js";
 import { createE2BDesktopExecutor, type E2BDesktopLike } from "./desktop-executor.js";
-import { e2bDesktopTemplate, startE2BDesktopMedia } from "./desktop-media.js";
+import { e2bDesktopTemplate, prepareDesktopMedia, startE2BDesktopMedia } from "./desktop-media.js";
 import { startE2BDesktopRecording } from "./desktop-recording.js";
 import { loadE2BDesktopModule, type E2BDesktopSandbox } from "./desktop-launch.js";
 import { observeDesktopResources, type DesktopResourceObservation } from "./desktop-resources.js";
 import { acquireE2BDesktopSandbox } from "./sandbox.js";
-import { readDetachedLog } from "./detached.js";
+import { readDetachedLog } from "../detached.js";
+import { e2bShell } from "./shell.js";
 import { redactText } from "../../evidence/redaction.js";
 import { type RunDesktopGeometry, type RunSubjectStateStepRecord } from "../../run/bundle.js";
 import { writeContainedOutputFile } from "../../run/selected-output-paths.js";
@@ -66,6 +67,15 @@ import { writeContainedOutputFile } from "../../run/selected-output-paths.js";
 function optionalAddress(address: string | undefined): { address?: string } {
   return address === undefined ? {} : { address };
 }
+
+export const CUA_ACTOR_LAB_PROVIDER_METADATA = {
+  mode: "cua-actor-lab",
+  tool: "humanish",
+} as const;
+
+/** Mid-run inbox-surface render cadence (ms). Coarse enough that the per-tick `cat` + file writes stay
+ *  cheap; fine enough that a verification email is visible seconds after the app sends it. */
+const INBOX_SURFACE_CADENCE_MS = 2500;
 
 export function createE2BCuaDesktopLane(
   spec: CuaLaneSpec,
@@ -259,6 +269,7 @@ export function createE2BCuaDesktopLane(
       receipt: { root: deps.artifactRoot, laneId: spec.laneId, now: deps.now },
     });
     desktop = acquired.sandbox;
+    const shell = e2bShell(desktop);
     allocation = acquired.allocation;
     sandboxId = allocation.resourceId;
     // The billed span starts the instant the sandbox exists.
@@ -282,7 +293,7 @@ export function createE2BCuaDesktopLane(
     // into its env at create) resolves the moment it boots. A comms-declared lab that can't stand the
     // catch up is a setup failure (fail closed) rather than silently sending real mail.
     if (deps.receiving) {
-      const surface = await deployReceivingInbox(desktop, {
+      const surface = await deployReceivingInbox(shell, {
         leaseId: spec.streamId,
         requestTimeoutMs: Math.min(deps.requestTimeoutMs, 30_000),
       });
@@ -309,7 +320,7 @@ export function createE2BCuaDesktopLane(
       }
     }
     if (commsEmail && commsPort !== undefined) {
-      deployedComms = await deployCommsCatch(desktop, {
+      deployedComms = await deployCommsCatch(shell, {
         port: commsPort,
         ...(commsSmtpPort === undefined ? {} : { smtpPort: commsSmtpPort }),
         requestTimeoutMs: deps.requestTimeoutMs,
@@ -322,7 +333,7 @@ export function createE2BCuaDesktopLane(
       // Write the EMPTY inbox once up front so the persona's /inbox always resolves to the "No messages
       // yet." page — never a bare 404 — the instant it navigates there, even before any mail arrives OR if
       // the app sends to an address no declared recipient matches (the loop only re-renders on new mail).
-      await writeInboxSurface(desktop, deployedComms.surfaceDir, [], {
+      await writeInboxSurface(shell, deployedComms.surfaceDir, [], {
         originMap: commsOriginMap,
         requestTimeoutMs: deps.requestTimeoutMs,
       });
@@ -337,7 +348,7 @@ export function createE2BCuaDesktopLane(
         for (;;) {
           try {
             const refreshed = await refreshInboxSurface({
-              desktop,
+              shell,
               deployed: deployedRef,
               recipients: surfaceRecipients,
               sinceCount: surfaceRenderedCount,
@@ -397,7 +408,7 @@ export function createE2BCuaDesktopLane(
     if (desktopCliRoute) {
       // Prepare the runtime and any declared product install, UNKEYED. With install omitted,
       // the participant discovers and installs the product from its public surfaces.
-      await provisionDesktopCli(desktop, {
+      await provisionDesktopCli(shell, {
         product: config.subject.product?.name ?? "",
         ...(config.subject.product?.install === undefined
           ? {}
@@ -408,7 +419,7 @@ export function createE2BCuaDesktopLane(
       });
     }
     if (cloneRoute && serve && subjectRepo) {
-      subjectCommit = await provisionCloneSubject(desktop, {
+      subjectCommit = await provisionCloneSubject(shell, {
         repo: subjectRepo,
         depth: config.subject.clone?.depth ?? 1,
         serve,
@@ -426,7 +437,7 @@ export function createE2BCuaDesktopLane(
         ...deps.hooks.detachedTimers,
       });
     } else if (localTreeRoute && serve && deps.localTreeArchiveBuffer) {
-      await provisionLocalTreeSubject(desktop, {
+      await provisionLocalTreeSubject(shell, {
         archiveBuffer: deps.localTreeArchiveBuffer,
         serve,
         ...(config.subject.state === undefined ? {} : { state: config.subject.state }),
@@ -758,7 +769,7 @@ export function createE2BCuaDesktopLane(
           // the sandbox is alive; the first live proof had no way to say what the holder did.
           if (appliedFidelity !== undefined && emulationHolderName !== undefined) {
             const holderLog = await readDetachedLog(
-              desktop,
+              e2bShell(desktop),
               emulationHolderName,
               deps.requestTimeoutMs,
             ).catch(() => "");
@@ -810,7 +821,7 @@ export function createE2BCuaDesktopLane(
               }
             }
             const collected = await collectCommsThread({
-              desktop,
+              shell: e2bShell(desktop),
               deployed: deployedComms,
               channel: commsChannel,
               inboxes: commsInboxes,

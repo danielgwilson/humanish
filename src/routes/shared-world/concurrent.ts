@@ -81,16 +81,16 @@ import { mapWithConcurrency } from "../../run/concurrency.js";
 import { labPersonaIds, resolveCommittedPersonasForCwd } from "../../lab/persona-resolve.js";
 import type { ResolvedPersona } from "../../lab/persona.js";
 import {
-  commandDigestOf,
   defaultPackLocalTree,
-  provisionCloneSubject,
-  provisionLocalTreeSubject,
-  declaredScreenForRender,
   inboxRecipientFor,
   laneHasInboxRecipient,
   resolveSubjectState,
-  type SubjectPhaseEvent,
 } from "../computer-use/lab.js";
+import { provisionCloneSubject } from "../../subject/clone.js";
+import { provisionLocalTreeSubject } from "../../subject/local-tree.js";
+import { commandDigestOf } from "../../subject/state.js";
+import type { SubjectPhaseEvent } from "../../subject/steps.js";
+import { declaredScreenForRender } from "../../substrates/e2b/desktop-geometry.js";
 import {
   composeLaneInstructions,
   resolveLaneDevice,
@@ -124,7 +124,9 @@ import {
   type E2BDesktopSandbox,
 } from "../../substrates/e2b/desktop-launch.js";
 import { acquireE2BDesktopSandbox } from "../../substrates/e2b/sandbox.js";
-import type { DetachedTimers } from "../../substrates/e2b/detached.js";
+import { e2bShell } from "../../substrates/e2b/shell.js";
+import type { Shell } from "../../substrates/shell.js";
+import type { DetachedTimers } from "../../substrates/detached.js";
 import { type LabActorLane, type LabConfig } from "../../lab/types.js";
 import { buildObserverData } from "../../observer/data.js";
 import {
@@ -1186,6 +1188,7 @@ async function runConcurrentSharedWorldInScope(
       }
       let subjectModule: E2BDesktopModule | undefined;
       let subjectDesktop: E2BDesktopSandbox | undefined;
+      let subjectShell: Shell | undefined;
       // The in-sandbox email catch on the ONE subject sandbox (#297); drained at teardown. Undefined
       // unless a comms lab declared it. Hoisted so the finally can drain before the subject is killed.
       let deployedComms: DeployedCommsCatch | undefined;
@@ -1198,12 +1201,12 @@ async function runConcurrentSharedWorldInScope(
       let proberLoop: Promise<void> | undefined;
 
       const proberSnapshot = async (): Promise<void> => {
-        if (!subjectDesktop) return;
+        if (!subjectShell) return;
         const timestamp = now();
         const idx = snapshotIndex;
         snapshotIndex += 1;
         const snapshot = await runCheckpointSnapshot({
-          desktop: subjectDesktop,
+          shell: subjectShell,
           snapshotIndex: idx,
           name: `state-${idx}`,
           checkpoints,
@@ -1260,6 +1263,7 @@ async function runConcurrentSharedWorldInScope(
           receipt: { root: runPaths, laneId: "subject" },
         });
         subjectDesktop = subject.sandbox;
+        subjectShell = e2bShell(subjectDesktop);
         subjectSandboxId = subject.allocation.resourceId;
 
         if (hooks.prepareDesktop) {
@@ -1272,7 +1276,7 @@ async function runConcurrentSharedWorldInScope(
         if (commsEmail && commsPort !== undefined) {
           // A SECOND (0.0.0.0) read-only inbox listener on commsPort+1 so the persona — which lives in a
           // DIFFERENT sandbox here — can reach the inbox surface via getHost; capture stays loopback.
-          deployedComms = await deployCommsCatch(subjectDesktop, {
+          deployedComms = await deployCommsCatch(subjectShell, {
             port: commsPort,
             inboxPort: commsPort + 1,
             requestTimeoutMs,
@@ -1296,7 +1300,7 @@ async function runConcurrentSharedWorldInScope(
             );
           });
         if (localTreeRoute) {
-          await provisionLocalTreeSubject(subjectDesktop, {
+          await provisionLocalTreeSubject(subjectShell, {
             archiveBuffer: localTreeArchiveBuffer!,
             serve,
             ...(config.subject.state === undefined ? {} : { state: config.subject.state }),
@@ -1309,7 +1313,7 @@ async function runConcurrentSharedWorldInScope(
             ...timers,
           });
         } else {
-          subjectCommit = await provisionCloneSubject(subjectDesktop, {
+          subjectCommit = await provisionCloneSubject(subjectShell, {
             repo: subjectRepo,
             depth: config.subject.clone?.depth ?? 1,
             serve,
@@ -1373,7 +1377,7 @@ async function runConcurrentSharedWorldInScope(
                 recipient.address !== undefined,
             )
             .map((recipient) => ({ lane: recipient.lane, address: recipient.address }));
-          await writeInboxSurface(subjectDesktop, deployedComms.surfaceDir, [], {
+          await writeInboxSurface(subjectShell, deployedComms.surfaceDir, [], {
             originMap: commsOriginMap,
             requestTimeoutMs,
           });
@@ -1386,7 +1390,7 @@ async function runConcurrentSharedWorldInScope(
             for (;;) {
               try {
                 const refreshed = await refreshInboxSurface({
-                  desktop: subjectDesktop!,
+                  shell: subjectShell!,
                   deployed: surfaceDeployed,
                   recipients: surfaceRecipients,
                   sinceCount: surfaceRenderedCount,
@@ -1570,7 +1574,7 @@ async function runConcurrentSharedWorldInScope(
         // host fake inbox addressed to the declared recipients, and write the run-level digest-only thread
         // artifact — while the subject is STILL alive, before it is killed below. Wrapped so a drain error
         // never blocks teardown (invariant: all sandboxes torn down by id in this finally).
-        if (commsEmail && deployedComms?.ready && subjectDesktop) {
+        if (commsEmail && deployedComms?.ready && subjectShell) {
           try {
             const commsChannel = new FakeInbox();
             const commsInboxes: CommsAddress[] = [];
@@ -1582,7 +1586,7 @@ async function runConcurrentSharedWorldInScope(
               }
             }
             const collected = await collectCommsThread({
-              desktop: subjectDesktop,
+              shell: subjectShell,
               deployed: deployedComms,
               channel: commsChannel,
               inboxes: commsInboxes,

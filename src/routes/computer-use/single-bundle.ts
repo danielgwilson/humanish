@@ -1,9 +1,7 @@
 import type { RunDesktopRecording } from "../../evidence/desktop-recording-types.js";
 import { e2bDesktopTemplate } from "../../substrates/e2b/desktop-media.js";
-import {
-  type DesktopBrowserEvidence,
-  type SubjectPhaseEvent,
-} from "../../substrates/e2b/cua-provisioning.js";
+import type { SubjectPhaseEvent } from "../../subject/steps.js";
+import type { DesktopBrowserEvidence } from "../../substrates/e2b/desktop-browser.js";
 import path from "node:path";
 import type { ActorPersonaRef, ActorStatus } from "../../actors/contract.js";
 import { type CuaActorDescriptor } from "../../actors/registry.js";

@@ -1,22 +1,21 @@
-// Detached process management for E2B sandboxes — the substrate primitive behind serving a
-// subject app in-sandbox. E2B's foreground `commands.run` deadlines on long-running work, so
-// every consumer of the pattern has historically re-implemented the same workaround. This
-// module lands it once:
+// Detached process management over a Shell — the substrate primitive behind serving a subject
+// app in-sandbox. A foreground command deadlines on long-running work, so every consumer of the
+// pattern has historically re-implemented the same workaround. This module lands it once:
 //
-// - Scripts are written via `files.write`, never heredocs — which eliminates the
+// - Scripts are written via `writeFile`, never heredocs — which eliminates the
 //   sentinel-collision bug class (a command line that equals the heredoc terminator) by
 //   construction.
 // - Bounded steps (install/build) run detached with an ATOMICALLY-written status file
 //   (write tmp + mv), polled by short foreground commands; a timeout kills the process
 //   group and surfaces a capped log tail for the caller to redact and persist.
-// - Long-lived steps (a dev/prod server) launch fully detached via `setsid -f`; the sandbox
-//   lifecycle (kill-on-timeout) owns their reclamation.
+// - Long-lived steps (a dev/prod server) launch fully detached through `Shell.start`; the
+//   sandbox lifecycle (kill-on-timeout) owns their reclamation.
 // - Readiness is an explicit curl probe against the declared URL.
 //
 // Log tails are returned RAW; callers must pass them through redaction before persisting
 // (build output can echo env values and paths).
 
-import type { E2BDesktopSandbox } from "./desktop-launch.js";
+import { runOrThrow, throwOnExit, type Shell } from "./shell.js";
 
 const WORK_ROOT = "/tmp/humanish-subject";
 const DEFAULT_POLL_INTERVAL_MS = 3000;
@@ -66,8 +65,8 @@ function stepDir(name: string): string {
   return `${WORK_ROOT}/${name}`;
 }
 
-// The wrapper script: runs the command from its own session (setsid launch makes the script
-// the process-group leader, so `kill -- -PID` reclaims the whole tree), logs everything, and
+// The wrapper script: runs the command from its own session (Shell.start makes the script the
+// process-group leader, so `kill -- -PID` reclaims the whole tree), logs everything, and
 // writes the exit code atomically so a poller can never read a half-written status.
 function wrapperScript(name: string, command: string, cwd: string | undefined): string {
   const dir = stepDir(name);
@@ -88,7 +87,7 @@ function wrapperScript(name: string, command: string, cwd: string | undefined): 
 }
 
 async function writeAndLaunch(
-  desktop: E2BDesktopSandbox,
+  shell: Shell,
   name: string,
   command: string,
   cwd: string | undefined,
@@ -97,26 +96,24 @@ async function writeAndLaunch(
   assertName(name);
   const dir = stepDir(name);
   const scriptPath = `${dir}/run.sh`;
-  await desktop.commands.run(`mkdir -p ${shq(dir)}`, { requestTimeoutMs });
-  await desktop.files.write(scriptPath, wrapperScript(name, command, cwd));
-  await desktop.commands.run(
-    `chmod +x ${shq(scriptPath)} && setsid -f ${shq(scriptPath)} < /dev/null > /dev/null 2>&1`,
-    { requestTimeoutMs },
-  );
+  await runOrThrow(shell, `mkdir -p ${shq(dir)}`, { requestTimeoutMs });
+  await shell.writeFile(scriptPath, wrapperScript(name, command, cwd));
+  throwOnExit(await shell.start(`bash ${shq(scriptPath)}`, { requestTimeoutMs }));
 }
 
 /** Read the capped log tail for a step (raw — caller redacts). */
 export async function readDetachedLog(
-  desktop: E2BDesktopSandbox,
+  shell: Shell,
   name: string,
   requestTimeoutMs = DEFAULT_REQUEST_TIMEOUT_MS,
 ): Promise<string> {
   assertName(name);
-  const result = await desktop.commands.run(
+  const result = await runOrThrow(
+    shell,
     `tail -c ${LOG_TAIL_BYTES} ${shq(`${stepDir(name)}/log.txt`)} 2>/dev/null || true`,
     { requestTimeoutMs },
   );
-  return result.stdout ?? "";
+  return result.stdout;
 }
 
 /**
@@ -125,7 +122,7 @@ export async function readDetachedLog(
  * still captured so failures stay diagnosable.
  */
 export async function runDetachedStep(
-  desktop: E2BDesktopSandbox,
+  shell: Shell,
   options: DetachedStepOptions,
 ): Promise<DetachedStepResult> {
   const requestTimeoutMs = options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
@@ -135,27 +132,27 @@ export async function runDetachedStep(
     options.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
   const dir = stepDir(options.name);
 
-  await writeAndLaunch(desktop, options.name, options.command, options.cwd, requestTimeoutMs);
+  await writeAndLaunch(shell, options.name, options.command, options.cwd, requestTimeoutMs);
 
   const deadline = now() + options.timeoutMs;
   for (;;) {
-    const status = await desktop.commands.run(`cat ${shq(`${dir}/status`)} 2>/dev/null || true`, {
+    const status = await runOrThrow(shell, `cat ${shq(`${dir}/status`)} 2>/dev/null || true`, {
       requestTimeoutMs,
     });
-    const text = (status.stdout ?? "").trim();
+    const text = status.stdout.trim();
     if (text.length > 0) {
       const exitCode = Number.parseInt(text, 10);
-      const logTail = await readDetachedLog(desktop, options.name, requestTimeoutMs);
+      const logTail = await readDetachedLog(shell, options.name, requestTimeoutMs);
       return { ok: exitCode === 0, exitCode, timedOut: false, logTail };
     }
     if (now() >= deadline) {
-      // Kill the whole process group (the script is its own session leader via setsid).
-      await desktop.commands
+      // Kill the whole process group (the script is its own session leader via Shell.start).
+      await shell
         .run(`kill -- -$(cat ${shq(`${dir}/pid`)} 2>/dev/null) 2>/dev/null || true`, {
           requestTimeoutMs,
         })
         .catch(() => undefined);
-      const logTail = await readDetachedLog(desktop, options.name, requestTimeoutMs);
+      const logTail = await readDetachedLog(shell, options.name, requestTimeoutMs);
       return { ok: false, timedOut: true, logTail };
     }
     await sleep(pollIntervalMs);
@@ -168,11 +165,11 @@ export async function runDetachedStep(
  * the sandbox lifecycle (create with kill-on-timeout).
  */
 export async function startDetachedProcess(
-  desktop: E2BDesktopSandbox,
+  shell: Shell,
   options: { name: string; command: string; cwd?: string; requestTimeoutMs?: number },
 ): Promise<void> {
   await writeAndLaunch(
-    desktop,
+    shell,
     options.name,
     options.command,
     options.cwd,
@@ -185,7 +182,7 @@ export async function startDetachedProcess(
  * Returns true when the subject is ready.
  */
 export async function probeUrl(
-  desktop: E2BDesktopSandbox,
+  shell: Shell,
   url: string,
   options: { timeoutMs: number; intervalMs?: number; requestTimeoutMs?: number } & DetachedTimers,
 ): Promise<boolean> {
@@ -197,12 +194,12 @@ export async function probeUrl(
   const deadline = now() + options.timeoutMs;
 
   for (;;) {
-    const result = await desktop.commands
+    const result = await shell
       .run(`curl -sf -o /dev/null --max-time 5 ${shq(url)} && echo READY || echo WAIT`, {
         requestTimeoutMs,
       })
       .catch(() => ({ stdout: "WAIT" }));
-    if ((result.stdout ?? "").includes("READY")) {
+    if (result.stdout.includes("READY")) {
       return true;
     }
     if (now() >= deadline) {

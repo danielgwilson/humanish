@@ -50,11 +50,15 @@ span, not a provider billing measurement.
    preparation or participant failure. Repeated calls share one finalization.
 6. `snapshot()` supplies the desktop facts for the existing lane outcome.
 
-The E2B implementation lives in `src/substrates/e2b/cua-desktop.ts`; its browser,
-media and subject provisioning primitives live in
-`src/substrates/e2b/cua-provisioning.ts`. Existing helper imports through
-`src/routes/computer-use/lab.ts` remain supported. The adapter never imports the
-lab runner at runtime.
+The E2B implementation lives in `src/substrates/e2b/cua-desktop.ts`. Browser
+launch is in `src/substrates/e2b/desktop-browser.ts`, DevTools reads and mobile
+emulation in `src/substrates/e2b/desktop-cdp.ts`, geometry in
+`src/substrates/e2b/desktop-geometry.ts` and media in
+`src/substrates/e2b/desktop-media.ts`. Subject provisioning lives in
+`src/subject/` and reaches the sandbox only through a `Shell`
+(`src/substrates/shell.ts`), which `e2bShell` (`src/substrates/e2b/shell.ts`)
+builds from the sandbox handle. The adapter never imports the lab runner at
+runtime.
 
 The runner owns instructions, model execution, spend guards, screenshots, trace
 persistence and participant outcome interpretation. It does not invoke desktop

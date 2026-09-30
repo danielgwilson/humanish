@@ -11,7 +11,7 @@
         // Served to the browser by bench and fixture labs.
         "bench/*/app.js",
         "fixtures/**/*.{mjs,js}",
-        "docs/architecture/examples/**/*.mjs",
+        "examples/**/*.mjs",
         "tests/fixtures/**/*.mjs",
       ],
       "project": ["src/**/*.ts", "scripts/**/*.{mjs,ts}", "tests/**/*.ts"],

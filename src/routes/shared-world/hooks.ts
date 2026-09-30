@@ -1,12 +1,12 @@
 import { type BrowserLabAdapterHooks } from "../../lab/adapter-extension.js";
 import type { CuaActorSessionOptions } from "../../actors/computer-use/actor.js";
 import type { CuaLoopResult } from "../../actors/computer-use/loop.js";
-import { type SubjectPhaseEvent } from "../computer-use/lab.js";
+import type { SubjectPhaseEvent } from "../../subject/steps.js";
 import {
   type E2BDesktopModule,
   type E2BDesktopSandbox,
 } from "../../substrates/e2b/desktop-launch.js";
-import { type DetachedTimers } from "../../substrates/e2b/detached.js";
+import { type DetachedTimers } from "../../substrates/detached.js";
 import { renderObserver } from "../../observer/render.js";
 import type { LocalTreeArchive } from "../../run/source-archive.js";
 

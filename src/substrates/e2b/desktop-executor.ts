@@ -4,6 +4,7 @@ export { perceptualSignature } from "../../evidence/frame-signature.js";
 import { commandFailureInfo, tailOf } from "../command-failure.js";
 import type { CuaAction, CuaExecutor, CuaObservation } from "../../actors/computer-use/loop.js";
 import { CuaExecutorError } from "../../actors/computer-use/executor-error.js";
+import { xdotoolHeldModifiers } from "../../guest-desktop-keys.js";
 
 // The DESKTOP side of the computer-use loop: a CuaExecutor (from
 // src/actors/computer-use/loop.ts) backed by an E2B desktop sandbox. It mirrors the
@@ -117,6 +118,7 @@ export interface E2BDesktopExecutorOptions {
 const DEFAULT_WAIT_MS = 500;
 const DEFAULT_SCROLL_AMOUNT_PER_TICK = 100;
 const TYPE_FALLBACK_TIMEOUT_MS = 15_000;
+const HELD_KEYS_TIMEOUT_MS = 15_000;
 const CURSOR_READ_TIMEOUT_MS = 500;
 
 /**
@@ -392,85 +394,131 @@ export function createE2BDesktopExecutor(
 
     async execute(action: CuaAction, signal?: AbortSignal): Promise<void> {
       signal?.throwIfAborted();
-      switch (action.kind) {
-        case "click": {
-          const button = action.button ?? "left";
-          if (button === "right") {
-            await desktop.rightClick(action.x, action.y);
-          } else if (button === "middle") {
-            await desktop.middleClick(action.x, action.y);
-          } else {
-            const alreadyAtTarget = await cursorAlreadyAt(desktop, action.x, action.y, signal);
-            signal?.throwIfAborted();
-            if (alreadyAtTarget) await desktop.leftClick();
-            else await desktop.leftClick(action.x, action.y);
-          }
-          return;
-        }
-        case "double_click": {
-          const alreadyAtTarget = await cursorAlreadyAt(desktop, action.x, action.y, signal);
-          signal?.throwIfAborted();
-          if (alreadyAtTarget) await desktop.doubleClick();
-          else await desktop.doubleClick(action.x, action.y);
-          return;
-        }
-        case "move":
-          await desktop.moveMouse(action.x, action.y);
-          return;
-        case "scroll": {
-          // The real SDK scroll is vertical only and takes no position, so move the
-          // cursor to the scroll point first (the action targets a specific spot;
-          // scrolling at the wrong cursor position would scroll the wrong panel).
-          // dx (horizontal) has no SDK target and is ignored; a zero dy is a no-op.
-          if (action.dy === 0) return;
-          await desktop.moveMouse(action.x, action.y);
-          const direction = action.dy > 0 ? "down" : "up";
-          const amount = Math.max(1, Math.round(Math.abs(action.dy) / scrollAmountPerTick));
-          await desktop.scroll(direction, amount);
-          return;
-        }
-        case "type": {
-          const attemptChain: string[] = [];
-          try {
-            await desktop.write(action.text);
-            return;
-          } catch {
-            // The primary write failed; record the path and try the clipboard
-            // fallback, which throws a CuaTypeFallbackError naming the phase if it
-            // also fails. (The write error carries no diagnostics beyond "it
-            // threw"; the typed text is never recorded.)
-            attemptChain.push("desktop.write failed");
-          }
-          await pasteTextViaClipboard(desktop, action.text, attemptChain);
-          return;
-        }
-        case "keypress":
-          // The SDK press() accepts a string[] directly; pass the keys through so
-          // a chord (e.g. ["Control", "a"]) is pressed together, not in sequence.
-          await desktop.press(action.keys);
-          return;
-        case "drag": {
-          // The SDK drag takes two endpoints, not an N-point path: drag from the
-          // first to the last point. 0 points is a safe no-op; 1 point has no
-          // distinct endpoint, so it is also a no-op (no spurious click/move).
-          const path = action.path;
-          if (path.length < 2) return;
-          const from = path[0];
-          const to = path[path.length - 1];
-          if (from === undefined || to === undefined) return;
-          await desktop.drag([from.x, from.y], [to.x, to.y]);
-          return;
-        }
-        case "wait":
-          await desktop.wait(action.ms ?? defaultWaitMs);
-          return;
-        case "screenshot":
-          // No-op: the loop calls observe() separately to capture each frame, so
-          // capturing here would double-capture. Leave the desktop untouched.
-          return;
-        case "speak":
-          throw new CuaExecutorError("action_rejected", "not_dispatched");
-      }
+      const held = "heldKeys" in action ? xdotoolHeldModifiers(action.heldKeys) : undefined;
+      // A pointer action that sends no input presses no keys either, as on the guest desktop.
+      if (held === undefined || sendsNoInput(action)) return dispatch(action, signal);
+      return withHeldModifiers(desktop, held, () => dispatch(action, signal));
     },
   };
+
+  async function dispatch(action: CuaAction, signal?: AbortSignal): Promise<void> {
+    switch (action.kind) {
+      case "click": {
+        const button = action.button ?? "left";
+        if (button === "right") {
+          await desktop.rightClick(action.x, action.y);
+        } else if (button === "middle") {
+          await desktop.middleClick(action.x, action.y);
+        } else {
+          const alreadyAtTarget = await cursorAlreadyAt(desktop, action.x, action.y, signal);
+          signal?.throwIfAborted();
+          if (alreadyAtTarget) await desktop.leftClick();
+          else await desktop.leftClick(action.x, action.y);
+        }
+        return;
+      }
+      case "double_click": {
+        const alreadyAtTarget = await cursorAlreadyAt(desktop, action.x, action.y, signal);
+        signal?.throwIfAborted();
+        if (alreadyAtTarget) await desktop.doubleClick();
+        else await desktop.doubleClick(action.x, action.y);
+        return;
+      }
+      case "move":
+        await desktop.moveMouse(action.x, action.y);
+        return;
+      case "scroll": {
+        // The real SDK scroll is vertical only and takes no position, so move the
+        // cursor to the scroll point first (the action targets a specific spot;
+        // scrolling at the wrong cursor position would scroll the wrong panel).
+        // dx (horizontal) has no SDK target and is ignored; a zero dy is a no-op.
+        if (action.dy === 0) return;
+        await desktop.moveMouse(action.x, action.y);
+        const direction = action.dy > 0 ? "down" : "up";
+        const amount = Math.max(1, Math.round(Math.abs(action.dy) / scrollAmountPerTick));
+        await desktop.scroll(direction, amount);
+        return;
+      }
+      case "type": {
+        const attemptChain: string[] = [];
+        try {
+          await desktop.write(action.text);
+          return;
+        } catch {
+          // The primary write failed; record the path and try the clipboard
+          // fallback, which throws a CuaTypeFallbackError naming the phase if it
+          // also fails. (The write error carries no diagnostics beyond "it
+          // threw"; the typed text is never recorded.)
+          attemptChain.push("desktop.write failed");
+        }
+        await pasteTextViaClipboard(desktop, action.text, attemptChain);
+        return;
+      }
+      case "keypress":
+        // The SDK press() accepts a string[] directly; pass the keys through so
+        // a chord (e.g. ["Control", "a"]) is pressed together, not in sequence.
+        await desktop.press(action.keys);
+        return;
+      case "drag": {
+        // The SDK drag takes two endpoints, not an N-point path: drag from the
+        // first to the last point. 0 points is a safe no-op; 1 point has no
+        // distinct endpoint, so it is also a no-op (no spurious click/move).
+        const path = action.path;
+        if (path.length < 2) return;
+        const from = path[0];
+        const to = path[path.length - 1];
+        if (from === undefined || to === undefined) return;
+        await desktop.drag([from.x, from.y], [to.x, to.y]);
+        return;
+      }
+      case "wait":
+        await desktop.wait(action.ms ?? defaultWaitMs);
+        return;
+      case "screenshot":
+        // No-op: the loop calls observe() separately to capture each frame, so
+        // capturing here would double-capture. Leave the desktop untouched.
+        return;
+      case "speak":
+        throw new CuaExecutorError("action_rejected", "not_dispatched");
+    }
+  }
+}
+
+function sendsNoInput(action: CuaAction): boolean {
+  return (
+    (action.kind === "scroll" && action.dy === 0) ||
+    (action.kind === "drag" && action.path.length < 2)
+  );
+}
+
+/**
+ * Hold `chord` (xdotool modifier names) down for `run`, then release it whether `run` succeeded
+ * or not. The SDK has no key-down method, so this uses the sandbox's command channel, where the
+ * SDK's own input methods also run xdotool. A release that fails leaves the desktop in an unknown
+ * state, so it ends the session.
+ */
+async function withHeldModifiers(
+  desktop: E2BDesktopLike,
+  chord: string,
+  run: () => Promise<void>,
+): Promise<void> {
+  const commands = desktop.commands;
+  if (!commands) throw new CuaExecutorError("action_rejected", "not_dispatched");
+  const options = { requestTimeoutMs: HELD_KEYS_TIMEOUT_MS, timeoutMs: HELD_KEYS_TIMEOUT_MS };
+  let failed = false;
+  let failure: unknown;
+  try {
+    await commands.run(`xdotool keydown ${chord}`, options);
+    await run();
+  } catch (error) {
+    failed = true;
+    failure = error;
+  }
+  // A keydown that failed may still have pressed some keys, so the release always runs.
+  try {
+    await commands.run(`xdotool keyup ${chord}`, options);
+  } catch {
+    throw new CuaExecutorError("execution_failed", "outcome_uncertain");
+  }
+  if (failed) throw failure;
 }
