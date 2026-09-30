@@ -121,11 +121,21 @@ export function openAiActionToCua(action: unknown): CuaAction | null {
   switch (type) {
     case "click": {
       const button = record.button;
+      // The API names the middle button `wheel`. Its back and forward buttons navigate the
+      // browser's history wherever the pointer is, so they run as the same keyboard shortcuts;
+      // the executors have no mouse button 8 or 9.
+      if (button === "back") return { kind: "keypress", keys: ["ALT", "LEFT"] };
+      if (button === "forward") return { kind: "keypress", keys: ["ALT", "RIGHT"] };
       return {
         kind: "click",
         x: asNumber(record.x),
         y: asNumber(record.y),
-        button: button === "right" || button === "middle" ? button : "left",
+        button:
+          button === "right"
+            ? "right"
+            : button === "wheel" || button === "middle"
+              ? "middle"
+              : "left",
       };
     }
     case "double_click":
