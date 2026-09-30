@@ -90,6 +90,21 @@ describe("a new run creates its directory exclusively", () => {
     expect((await verifyRun(cwd, "kept")).ok).toBe(true);
     expect((await renderObserver(cwd, "kept", { open: false })).ok).toBe(true);
   });
+
+  it("leaves the id free when the latest pointer is not a regular file", async () => {
+    const runsRoot = path.join(cwd, ".humanish", "runs");
+    const latest = path.join(runsRoot, "latest.json");
+    await mkdir(latest, { recursive: true });
+
+    await expect(runDryRun({ cwd, dryRun: true, runId: "retry" })).rejects.toThrow(
+      /single-link regular files/,
+    );
+    expect(await readdir(runsRoot)).toEqual(["latest.json"]);
+
+    await rm(latest, { recursive: true });
+    expect((await runDryRun({ cwd, dryRun: true, runId: "retry" })).ok).toBe(true);
+    expect((await verifyRun(cwd, "retry")).ok).toBe(true);
+  });
 });
 
 describe("every producer refuses a run id that is in use", () => {

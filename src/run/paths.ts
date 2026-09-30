@@ -1,4 +1,4 @@
-import { lstat, mkdir, readdir, realpath } from "node:fs/promises";
+import { lstat, mkdir, readdir, realpath, rmdir } from "node:fs/promises";
 import path from "node:path";
 
 export const RUNS_RELATIVE_ROOT = path.join(".humanish", "runs");
@@ -122,8 +122,11 @@ export async function createRunArtifactPaths(
   if (runsRoot !== path.dirname(paths.absoluteRunRoot)) {
     throw new Error("Run directory resolved outside the expected storage root.");
   }
+  // A pointer that is not a regular file refuses the start before the directory exists.
+  await assertRegularFileOrMissing(paths.absoluteLatestPointer);
+  const runDirectory = path.join(await realpath(runsRoot), runId);
   try {
-    await mkdir(path.join(await realpath(runsRoot), runId));
+    await mkdir(runDirectory);
   } catch (error) {
     if (isNodeError(error) && error.code === "EEXIST") {
       return {
@@ -134,7 +137,14 @@ export async function createRunArtifactPaths(
     }
     throw error;
   }
-  return { ok: true, paths: await prepareRunArtifactPaths(cwdInput, runId) };
+  try {
+    return { ok: true, paths: await prepareRunArtifactPaths(cwdInput, runId) };
+  } catch (error) {
+    // A failed preparation releases the id. The directory is still empty, and a non-recursive
+    // rmdir leaves it in place if anything was written into it meanwhile.
+    await rmdir(runDirectory).catch(() => undefined);
+    throw error;
+  }
 }
 
 export async function validatePreparedRunArtifactPaths(
