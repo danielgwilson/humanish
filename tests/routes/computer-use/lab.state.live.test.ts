@@ -1,9 +1,10 @@
 import { createHash } from "node:crypto";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { retainLiveRuns } from "../../helpers/live-retention.js";
 
 import { LAB_CONFIG_SCHEMA } from "../../../src/lab/types.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
@@ -34,7 +35,7 @@ describe.skipIf(!LIVE)("cua-actor-lab subject.state (LIVE, spend-gated)", () => 
   });
 
   afterEach(async () => {
-    await rm(cwd, { recursive: true, force: true });
+    await retainLiveRuns(cwd, "cua-state");
   });
 
   it(

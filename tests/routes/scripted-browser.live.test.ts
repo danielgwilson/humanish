@@ -1,10 +1,11 @@
 import { createServer, type Server } from "node:http";
-import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import type { AddressInfo } from "node:net";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { retainLiveRuns } from "../helpers/live-retention.js";
 
 import { ACTOR_TRACE_SCHEMA } from "../../src/actors/contract.js";
 import { LAB_CONFIG_SCHEMA } from "../../src/lab/types.js";
@@ -64,7 +65,7 @@ describe.skipIf(!LIVE)("scripted-browser-lab (LIVE, actuation-gated; $0 by mecha
 
   afterEach(async () => {
     await new Promise<void>((resolve) => server.close(() => resolve()));
-    await rm(cwd, { recursive: true, force: true });
+    await retainLiveRuns(cwd, "scripted-browser");
   });
 
   it(

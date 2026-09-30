@@ -3030,3 +3030,73 @@ describe("parseLabConfig (local-tree subject - issue #261)", () => {
     expect(result.error.message).toContain("subject.env");
   });
 });
+
+// A one-seat shared world never parses: #171's two-lane roster floor refuses it on both planes
+// before the concurrency rule can, so no single-participant exception to that rule is reachable.
+describe("shared-world one-seat rosters and the concurrency rule", () => {
+  const PROVISIONED_FLOOR = "requires an `actors[0].lanes` roster of at least 2 roles";
+  const EXTERNAL_FLOOR = "a single-seat shared world proves no shared session";
+  const CONCURRENCY_RULE = "need `execution.concurrency` of at least 2";
+
+  function oneLane(config: Record<string, unknown>): Record<string, unknown> {
+    const [actor] = config.actors as [{ lanes: unknown[] }];
+    return { ...config, actors: [{ ...actor, lanes: actor.lanes.slice(0, 1) }] };
+  }
+  function externalPublic(lanes: unknown[] | undefined, execution: Record<string, unknown> = {}) {
+    return {
+      schema: LAB_CONFIG_SCHEMA,
+      id: "external-one-seat",
+      subject: {
+        source: "app-url",
+        topology: "shared-world",
+        appUrl: "https://play.example.com/",
+        publicTarget: { owner: "example-org", authorized: true },
+      },
+      actors: [
+        {
+          type: "openai-computer-use",
+          mission: "Join the shared game.",
+          ...(lanes === undefined ? { count: 1 } : { lanes }),
+        },
+      ],
+      execution: { target: "e2b-desktop", timeoutMs: 60000, ...execution },
+      policies: { allowPublicTargets: true },
+    };
+  }
+  function refusal(config: unknown): string {
+    const parsed = parseLabConfig(config);
+    if (parsed.ok) throw new Error("expected the lab to be refused");
+    return parsed.error.message;
+  }
+
+  it.each([
+    ["omitted", undefined],
+    ["1", 1],
+  ])("refuses a one-seat provisioned roster by the roster floor (concurrency %s)", (_, value) => {
+    const execution = { target: "e2b-desktop", timeoutMs: 60000, concurrency: value };
+    const message = refusal(oneLane(validSharedWorld({ execution })));
+    expect(message).toContain(PROVISIONED_FLOOR);
+    expect(message).not.toContain(CONCURRENCY_RULE);
+  });
+
+  it.each([
+    ["a one-seat roster", [{ id: "host", host: true }]],
+    ["a count of 1 with no roster", undefined],
+  ])("refuses %s on the external-public plane by the roster floor", (_, lanes) => {
+    const message = refusal(externalPublic(lanes));
+    expect(message).toContain(EXTERNAL_FLOOR);
+    expect(message).not.toContain(CONCURRENCY_RULE);
+  });
+
+  it("keeps the migration refusal for two or more seats at concurrency 1", () => {
+    const provisioned = validSharedWorld({
+      execution: { target: "e2b-desktop", timeoutMs: 60000, concurrency: 1 },
+    });
+    const external = externalPublic([{ id: "host", host: true }, { id: "guest" }], {
+      concurrency: 1,
+    });
+    for (const config of [provisioned, external]) {
+      expect(refusal(config)).toContain(CONCURRENCY_RULE);
+    }
+  });
+});
