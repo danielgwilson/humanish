@@ -1,4 +1,4 @@
-import { lstat, realpath } from "node:fs/promises";
+import { realpath } from "node:fs/promises";
 import path from "node:path";
 import {
   AGENTS_SECTION_MARKER,
@@ -12,20 +12,18 @@ import { probeKeySources } from "../keys/key-resolution.js";
 
 import {
   DEFAULT_LOCAL_BROWSER_STARTER,
-  humanishScripts,
   runtimeDirectories,
-  starterFiles,
   starterFilesFor,
 } from "./init-templates.js";
-import { validateCwd } from "../run/project.js";
 import {
   assertPreparedSelectedOutputDirectory,
   prepareContainedOutputDirectory,
   prepareSelectedOutputDirectory,
-  readContainedRegularFile,
-  type PreparedSelectedOutputDirectory,
   writeContainedOutputFile,
 } from "../run/selected-output-paths.js";
+import { validateCwd } from "../run/project.js";
+import { pathExists, readTextIfExists, validateInitProjectPaths } from "./init-paths.js";
+import { planGitignore, planPackageJson, type PlannedWrite } from "./init-plan.js";
 
 const INIT_RESPONSE_SCHEMA = "humanish.init-result.v1";
 
@@ -69,20 +67,6 @@ export interface InitResult {
       | "HUMANISH_UNSAFE_PROJECT_PATH";
     message: string;
   };
-}
-
-interface PlannedWrite {
-  absolutePath: string;
-  relativePath: string;
-  contents: string;
-  target: InitChange["target"];
-}
-
-interface PackagePlan {
-  write?: PlannedWrite;
-  change: InitChange;
-  warnings: string[];
-  error?: InitResult["error"];
 }
 
 export async function runInit(options: InitOptions): Promise<InitResult> {
@@ -407,58 +391,6 @@ async function firstRunEnvironment(
   };
 }
 
-async function validateInitProjectPaths(cwd: string): Promise<InitResult["error"] | null> {
-  const targets = [
-    ...starterFiles.map((file) => ({ path: file.path, kind: "file" as const })),
-    ...runtimeDirectories.map((directory) => ({
-      path: directory.path,
-      kind: "directory" as const,
-    })),
-    { path: ".gitignore", kind: "file" as const },
-    { path: "package.json", kind: "file" as const },
-  ];
-
-  for (const targetSpec of targets) {
-    const relativePath = targetSpec.path;
-    const target = path.resolve(cwd, relativePath);
-    if (!isPathInside(cwd, target)) {
-      return unsafeProjectPath(relativePath);
-    }
-
-    const parts = path.relative(cwd, target).split(path.sep).filter(Boolean);
-    let current = cwd;
-    for (const [index, part] of parts.entries()) {
-      current = path.join(current, part);
-      try {
-        const stats = await lstat(current);
-        const isLeaf = index === parts.length - 1;
-        if (
-          stats.isSymbolicLink() ||
-          (!isLeaf && !stats.isDirectory()) ||
-          (isLeaf && targetSpec.kind === "file" && (!stats.isFile() || stats.nlink > 1)) ||
-          (isLeaf && targetSpec.kind === "directory" && !stats.isDirectory())
-        ) {
-          return unsafeProjectPath(relativePath);
-        }
-      } catch (error) {
-        if (isNodeError(error) && error.code === "ENOENT") {
-          break;
-        }
-        return unsafeProjectPath(relativePath);
-      }
-    }
-  }
-
-  return null;
-}
-
-function unsafeProjectPath(relativePath: string): NonNullable<InitResult["error"]> {
-  return {
-    code: "HUMANISH_UNSAFE_PROJECT_PATH",
-    message: `Init target must stay inside the project, use the expected regular-file or directory kind, and not traverse symbolic links or hardlinked files: ${relativePath}`,
-  };
-}
-
 function getMode(options: InitOptions): InitMode {
   if (options.dryRun) {
     return "dry-run";
@@ -469,240 +401,4 @@ function getMode(options: InitOptions): InitMode {
   }
 
   return "needs-confirmation";
-}
-
-async function planGitignore(
-  projectRoot: PreparedSelectedOutputDirectory,
-  cwd: string,
-): Promise<{ write?: PlannedWrite; change: InitChange }> {
-  const relativePath = ".gitignore";
-  const absolutePath = path.join(cwd, relativePath);
-  const existing = await readTextIfExists(projectRoot, relativePath);
-  const currentLines = existing?.split(/\r?\n/) ?? [];
-  const envIndex = currentLines.lastIndexOf(".env*");
-  const envExampleIndex = currentLines.lastIndexOf("!.env.example");
-  const needsEnv = envIndex === -1;
-  const needsEnvExample =
-    envExampleIndex === -1 || (envIndex !== -1 && envExampleIndex < envIndex) || needsEnv;
-  const missingLines = [
-    ...(currentLines.includes(".humanish/") ? [] : [".humanish/"]),
-    ...(needsEnv ? [".env*"] : []),
-    ...(needsEnvExample ? ["!.env.example"] : []),
-  ];
-
-  if (missingLines.length === 0) {
-    return {
-      change: {
-        path: relativePath,
-        action: "skip",
-        target: "gitignore",
-        reason: "already ignores humanish runtime and env files",
-      },
-    };
-  }
-
-  const prefix =
-    existing && existing.trim().length > 0 ? trimTrailingNewlines(existing) + "\n\n" : "";
-  const contents = `${prefix}# humanish runtime and local secrets\n${missingLines.join("\n")}\n`;
-
-  return {
-    write: {
-      absolutePath,
-      relativePath,
-      contents,
-      target: "gitignore",
-    },
-    change: {
-      path: relativePath,
-      action: existing === null ? "create" : "update",
-      target: "gitignore",
-      reason: `add ${missingLines.join(", ")}`,
-    },
-  };
-}
-
-async function planPackageJson(
-  projectRoot: PreparedSelectedOutputDirectory,
-  cwd: string,
-): Promise<PackagePlan> {
-  const relativePath = "package.json";
-  const absolutePath = path.join(cwd, relativePath);
-  const existing = await readTextIfExists(projectRoot, relativePath);
-
-  if (existing === null) {
-    return {
-      change: {
-        path: relativePath,
-        action: "skip",
-        target: "package-json",
-        reason: "package.json not found",
-      },
-      warnings: ["Skipped package.json scripts because package.json was not found."],
-    };
-  }
-
-  let parsed: { scripts?: Record<string, unknown>; [key: string]: unknown };
-
-  try {
-    parsed = JSON.parse(existing) as { scripts?: Record<string, unknown>; [key: string]: unknown };
-  } catch {
-    return {
-      change: {
-        path: relativePath,
-        action: "skip",
-        target: "package-json",
-        reason: "package.json is not valid JSON",
-      },
-      warnings: ["package.json is not valid JSON; init did not apply partial changes."],
-      error: {
-        code: "HUMANISH_INVALID_PACKAGE_JSON",
-        message: "package.json is not valid JSON. Fix it before running humanish init.",
-      },
-    };
-  }
-
-  if (!isRecord(parsed)) {
-    return {
-      change: {
-        path: relativePath,
-        action: "skip",
-        target: "package-json",
-        reason: "package.json root is not an object",
-      },
-      warnings: ["package.json root is not an object; init did not apply partial changes."],
-      error: {
-        code: "HUMANISH_INVALID_PACKAGE_JSON",
-        message: "package.json root must be an object. Fix it before running humanish init.",
-      },
-    };
-  }
-
-  const scripts = isRecord(parsed.scripts) ? { ...parsed.scripts } : {};
-  const missingScripts: Record<string, string> = {};
-  const conflictingScripts: string[] = [];
-
-  for (const [name, command] of Object.entries(humanishScripts)) {
-    const existingScript = scripts[name];
-
-    if (existingScript === undefined) {
-      missingScripts[name] = command;
-    } else if (existingScript !== command) {
-      conflictingScripts.push(name);
-    }
-  }
-
-  if (conflictingScripts.length > 0 && Object.keys(missingScripts).length === 0) {
-    return {
-      change: {
-        path: relativePath,
-        action: "skip",
-        target: "package-json",
-        reason: `existing script conflicts: ${conflictingScripts.join(", ")}`,
-      },
-      warnings: [
-        `Skipped package.json script patch because these scripts already exist with different values: ${conflictingScripts.join(", ")}.`,
-      ],
-    };
-  }
-
-  if (Object.keys(missingScripts).length === 0) {
-    return {
-      change: {
-        path: relativePath,
-        action: "skip",
-        target: "package-json",
-        reason: "humanish scripts already present",
-      },
-      warnings: [],
-    };
-  }
-
-  parsed.scripts = {
-    ...scripts,
-    ...missingScripts,
-  };
-
-  const warnings =
-    conflictingScripts.length === 0
-      ? []
-      : [
-          `Preserved existing script values for conflicting scripts: ${conflictingScripts.join(", ")}.`,
-        ];
-
-  return {
-    write: {
-      absolutePath,
-      relativePath,
-      contents: `${JSON.stringify(parsed, null, 2)}\n`,
-      target: "package-json",
-    },
-    change: {
-      path: relativePath,
-      action: "update",
-      target: "package-json",
-      reason: `add scripts: ${Object.keys(missingScripts).join(", ")}`,
-    },
-    warnings,
-  };
-}
-
-async function readTextIfExists(
-  projectRoot: PreparedSelectedOutputDirectory,
-  relativePath: string,
-): Promise<string | null> {
-  const bytes = await readContainedRegularFile(projectRoot, relativePath);
-  if (bytes !== null) {
-    return bytes.toString("utf8");
-  }
-  const target = path.join(projectRoot.physicalPath, relativePath);
-  try {
-    await lstat(target);
-  } catch (error) {
-    if (isNodeError(error) && error.code === "ENOENT") {
-      return null;
-    }
-    throw error;
-  }
-  throw new Error(unsafeProjectPath(relativePath).message);
-}
-
-async function pathExists(
-  projectRoot: PreparedSelectedOutputDirectory,
-  relativePath: string,
-): Promise<boolean> {
-  await assertPreparedSelectedOutputDirectory(projectRoot);
-  const filePath = path.join(projectRoot.physicalPath, relativePath);
-  try {
-    const stats = await lstat(filePath);
-    if (stats.isSymbolicLink() || !stats.isDirectory()) {
-      throw new Error(unsafeProjectPath(relativePath).message);
-    }
-    return true;
-  } catch (error) {
-    if (isNodeError(error) && error.code === "ENOENT") {
-      return false;
-    }
-
-    throw error;
-  }
-}
-
-function trimTrailingNewlines(text: string): string {
-  return text.replace(/\n+$/, "");
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function isPathInside(root: string, candidate: string): boolean {
-  const relative = path.relative(root, candidate);
-  return (
-    relative === "" ||
-    (relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative))
-  );
-}
-
-function isNodeError(error: unknown): error is NodeJS.ErrnoException {
-  return error instanceof Error && "code" in error;
 }
