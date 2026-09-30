@@ -9,18 +9,13 @@ import { resolveSubjectState } from "../computer-use/lab.js";
 import { buildScriptedLabBundle } from "./bundle.js";
 import { existingScreenshots } from "./session-result.js";
 import type { ScriptedSubject } from "./subject.js";
-import {
-  SCRIPTED_BROWSER_LAB_SCHEMA,
-  type RunScriptedBrowserLabOptions,
-  type ScriptedBrowserLabResult,
-} from "./types.js";
+import { SCRIPTED_BROWSER_LAB_SCHEMA, type ScriptedBrowserLabResult } from "./types.js";
 // Finishing a scripted-browser run: the subject's provenance, the bundle, the Observer and the
 // lab result.
 
 /** What the finish reads from the run. */
 export interface ScriptedFinishInputs {
-  options: RunScriptedBrowserLabOptions;
-  actor: string;
+  plan: ScriptedPlan;
   cwd: string;
   evidenceAppUrl: string;
   run: Extract<Awaited<ReturnType<RunScope["startRun"]>>, { ok: true }>["run"];
@@ -41,10 +36,10 @@ export interface ScriptedFinishInputs {
 export async function finishScriptedRun(
   inputs: ScriptedFinishInputs,
 ): Promise<ScriptedBrowserLabResult> {
-  const { options, actor, cwd, evidenceAppUrl, run, source, journey, scenario, persona } = inputs;
+  const { plan, cwd, evidenceAppUrl, run, source, journey, scenario, persona } = inputs;
   const { surfaces, sessionResults, sessionError, warnings, clone, redactRepoLabel } = inputs;
   const { subjectEnvNames, scriptedSubject } = inputs;
-  const { config, dryRun } = options;
+  const { actor, dryRun } = plan;
   const { runId, createdAt, paths: runPaths } = run;
   const subjectCommit = scriptedSubject?.commit;
   const subjectSandboxId = scriptedSubject?.sandboxId;
@@ -75,14 +70,14 @@ export async function finishScriptedRun(
     : undefined;
 
   const bundle = buildScriptedLabBundle({
-    ...(options.lab === undefined ? {} : { lab: options.lab }),
+    ...(plan.lab === undefined ? {} : { lab: plan.lab }),
     actorId: actor,
     appUrl: evidenceAppUrl,
     createdAt,
     dryRun,
     journey,
-    labId: config.id,
-    ...(config.title ? { labTitle: config.title } : {}),
+    labId: plan.labId,
+    ...(plan.title ? { labTitle: plan.title } : {}),
     persona,
     runId,
     scenarioSource: scenario.source,
@@ -94,9 +89,9 @@ export async function finishScriptedRun(
     surfaces,
     ...(subject === undefined ? {} : { subject }),
     ...(subjectDesktop === undefined ? {} : { subjectDesktop }),
-    ...(config.execution?.desktop?.template === undefined
+    ...(plan.residual.execution?.desktop?.template === undefined
       ? {}
-      : { desktopTemplate: config.execution.desktop.template }),
+      : { desktopTemplate: plan.residual.execution.desktop.template }),
     ...(hostDigest === undefined ? {} : { hostDigest }),
   });
 
@@ -122,7 +117,7 @@ export async function finishScriptedRun(
     schema: SCRIPTED_BROWSER_LAB_SCHEMA,
     ok,
     cwd,
-    labId: config.id,
+    labId: plan.labId,
     actor,
     appUrl: evidenceAppUrl,
     dryRun,

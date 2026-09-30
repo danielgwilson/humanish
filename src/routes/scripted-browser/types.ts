@@ -44,6 +44,9 @@ export interface ScriptedBrowserLabHooks {
   now?: () => number;
 }
 
+/** What a scripted run takes besides its plan. The plan carries the config, dry run and lab. */
+export type ScriptedRunInput = Omit<RunScriptedBrowserLabOptions, "config" | "dryRun" | "lab">;
+
 export interface RunScriptedBrowserLabOptions {
   automaticAnalysis?: AutomaticAnalysisHooks;
   /** Which manifest produced this run (#455); threaded into the status record + bundle. */
