@@ -94,8 +94,9 @@ clone` + `serve` clones, installs, and serves a real app in-sandbox from
   each route fails closed on unsupported combinations;
 - bounded per-lane-world fan-out (`actors[0].count`, `lanes[]`, or `roster[]`),
   backed by deterministic and kept live proof;
-- sequential/concurrent single-origin shared-world execution: sequential has
-  deterministic proof, while concurrent has deterministic and kept live proof;
+- concurrent single-origin shared-world execution with deterministic and kept
+  live proof; verify still reads bundles from the sequential route removed in
+  0.106.0;
 - `subject.source: local-tree`, which packages one selected working tree with a
   content pin before using the same provision-and-serve path as clone subjects;
 - an off-app comms funnel for email-gated flows: a vendor-neutral in-sandbox

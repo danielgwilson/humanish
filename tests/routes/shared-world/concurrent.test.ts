@@ -22,7 +22,10 @@ import type {
   E2BDesktopModule,
   E2BDesktopSandbox,
 } from "../../../src/substrates/e2b/desktop-launch.js";
-import { concurrentSharedWorldValidationReason } from "../../../src/lab/validation.js";
+import {
+  concurrentSharedWorldValidationReason,
+  sharedWorldValidationReason,
+} from "../../../src/lab/validation.js";
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
 import { routesToConcurrentSharedWorld } from "../../../src/lab/routing.js";
@@ -1337,6 +1340,28 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     expect(outcome.backend).toBe("concurrent-shared-world");
     if (outcome.backend !== "concurrent-shared-world") return;
     expect(outcome.result.ok).toBe(true);
+  });
+
+  it("runs a direct library config that omits concurrency, as the parser would fill it", async () => {
+    // Library callers can skip parseLabConfig, so the route must default concurrency to the
+    // participant count itself instead of treating the omission as the removed value 1.
+    const state = { worldVersion: 0 };
+    const { hooks } = baseHooks(state, makeRendezvous(3));
+    const config = concurrentConfig(3, 3);
+    delete config.execution!.concurrency;
+    expect(sharedWorldValidationReason(config)).toBeNull();
+    const outcome = await runLab(config, { cwd, dryRun: false, sharedWorldHooks: hooks });
+    expect(outcome.backend).toBe("concurrent-shared-world");
+    expect(outcome.result.ok).toBe(true);
+  });
+
+  it("the exported shared-world validator refuses what the route refuses", () => {
+    const sequential = concurrentConfig(3, 3);
+    sequential.execution!.concurrency = 1;
+    expect(sharedWorldValidationReason(sequential)).toContain("at least 2 (got 1)");
+    const unattested = concurrentConfig(3, 3);
+    delete unattested.subject.exposure;
+    expect(sharedWorldValidationReason(unattested)).toContain("exposure: synthetic");
   });
 
   it("INDEPENDENT actors (FIX-11): one actor's harness error does NOT block the swarm or suppress overlap", async () => {

@@ -85,12 +85,11 @@ import {
 } from "./types.js";
 import {
   automaticAnalysisRouteReason,
-  concurrentSharedWorldValidationReason,
   cuaLaneValidationReason,
   desktopMediaValidationReason,
-  externalPublicSharedWorldValidationReason,
   outputTokenLimitValidationReason,
   receivingEmailValidationReason,
+  sharedWorldValidationReason,
   taskProtocolValidationReason,
 } from "./validation.js";
 import { forwardDeclaredWarnings } from "./warnings.js";
@@ -484,13 +483,10 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
   // when it routes), so a half-declared shared-world fails closed with a precise reason rather than
   // silently downgrading to a per-lane-worlds cua run.
   if (config.subject.topology === "shared-world") {
-    const reason =
-      config.subject.source === "app-url"
-        ? // The external-public plane (a real public deployment as the shared plane): NEVER the getHost
-          // synthetic gate — that gate exists because getHost is internet-reachable AND harness-owned; a
-          // public site the harness neither provisioned nor exposed has neither property.
-          externalPublicSharedWorldValidationReason(config)
-        : concurrentSharedWorldValidationReason(config);
+    // The external-public plane (a real public deployment as the shared plane) never takes the
+    // getHost synthetic gate: that gate exists because getHost is internet-reachable and
+    // harness-owned, and a public site the harness neither provisioned nor exposed is neither.
+    const reason = sharedWorldValidationReason(config);
     if (reason) {
       return invalid(reason);
     }
