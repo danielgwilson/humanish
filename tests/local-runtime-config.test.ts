@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { parseLabConfig } from "../src/lab-config.js";
-import { labKeyRequirements } from "../src/doctor-lab.js";
+import { parseLabConfig } from "../src/lab/config.js";
+import { labKeyRequirements } from "../src/lab/doctor.js";
 
 const base = {
   schema: "humanish.lab.v2",

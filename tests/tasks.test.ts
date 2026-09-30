@@ -11,7 +11,7 @@
 import { describe, expect, it } from "vitest";
 
 import { TaskTracker, formatTaskFunnel, renderTaskPrompt, type LabTask } from "../src/tasks.js";
-import { LAB_CONFIG_SCHEMA, parseLabConfig } from "../src/lab-config.js";
+import { LAB_CONFIG_SCHEMA, parseLabConfig } from "../src/lab/config.js";
 
 const PROTOCOL: LabTask[] = [
   {

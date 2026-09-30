@@ -33,8 +33,8 @@ import {
   routesToConcurrentSharedWorld,
   concurrentSharedWorldValidationReason,
   type LabConfig,
-} from "../src/lab-config.js";
-import { runLab, selectLabBackend } from "../src/lab-engine.js";
+} from "../src/lab/config.js";
+import { runLab, selectLabBackend } from "../src/lab/engine.js";
 import type { SharedWorldLabHooks } from "../src/shared-world-lab.js";
 import type {
   E2BDesktopCreateOptions,

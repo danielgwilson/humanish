@@ -1,6 +1,6 @@
 import { startDesktopMedia } from "./guest-desktop-media.js";
 import type { E2BCommandResult, E2BDesktopSandbox } from "./e2b-desktop-launch.js";
-import type { LabConfig, LabDesktopMedia } from "./lab-config.js";
+import type { LabConfig, LabDesktopMedia } from "./lab/config.js";
 
 /** Versioned public template built by runtime/browser-media/e2b-template.mjs. */
 export const E2B_SPEECH_TEMPLATE = "7409n13kr83f7g7abx5g";

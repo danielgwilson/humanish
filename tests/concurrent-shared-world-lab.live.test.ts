@@ -6,8 +6,8 @@ import path from "node:path";
 import { parse } from "yaml";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { parseLabConfig } from "../src/lab-config.js";
-import { runLab } from "../src/lab-engine.js";
+import { parseLabConfig } from "../src/lab/config.js";
+import { runLab } from "../src/lab/engine.js";
 import { verifyRun } from "../src/run.js";
 
 // The LIVE rung for the CONCURRENT shared-world topology (#164 phase 2). WRITTEN + gated, NOT run

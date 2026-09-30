@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../src/lab-config.js";
+import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../src/lab/config.js";
 import { runTerminalProductLab } from "../src/e2b-terminal-lab.js";
 import { verifyRun } from "../src/run.js";
 

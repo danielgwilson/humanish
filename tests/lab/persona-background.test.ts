@@ -8,12 +8,12 @@ import {
   personaBrief,
   scrubPersonaBrief,
   PERSONA_BACKGROUND_MAX_BYTES,
-} from "../src/persona.js";
-import { resolveCommittedPersonasForCwd } from "../src/persona-resolve.js";
-import { composeLaneInstructions, withInboxMission } from "../src/cua-actor-lab.js";
-import { inspectLabManifest } from "../src/labs.js";
-import { buildInitialRequest } from "../src/openai-responses-cu.js";
-import { DEVICE_PRESETS } from "../src/device-presets.js";
+} from "../../src/lab/persona.js";
+import { resolveCommittedPersonasForCwd } from "../../src/lab/persona-resolve.js";
+import { composeLaneInstructions, withInboxMission } from "../../src/cua-actor-lab.js";
+import { inspectLabManifest } from "../../src/lab/discover.js";
+import { buildInitialRequest } from "../../src/openai-responses-cu.js";
+import { DEVICE_PRESETS } from "../../src/lab/device-presets.js";
 
 const fallback = { id: "organizer", name: "Organizer" };
 const roots: string[] = [];

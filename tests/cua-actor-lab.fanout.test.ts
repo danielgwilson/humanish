@@ -23,14 +23,14 @@ import {
   type CuaLanePlan,
 } from "../src/cua-actor-lab.js";
 import { getActor } from "../src/actor-registry.js";
-import { DEVICE_PRESETS } from "../src/device-presets.js";
+import { DEVICE_PRESETS } from "../src/lab/device-presets.js";
 import type {
   E2BDesktopCreateOptions,
   E2BDesktopModule,
   E2BDesktopSandbox,
 } from "../src/e2b-desktop-launch.js";
-import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../src/lab-config.js";
-import { runLab } from "../src/lab-engine.js";
+import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../src/lab/config.js";
+import { runLab } from "../src/lab/engine.js";
 import { OPENAI_RESPONSES_CU_CAPABILITIES, type FetchLike } from "../src/openai-responses-cu.js";
 import type { BrowserLabScoringContext, RunAdapterScore, RunBundle } from "../src/index.js";
 import { serveObserver, type ObserverResult, type ObserverServer } from "../src/observer/render.js";

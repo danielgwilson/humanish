@@ -7,8 +7,8 @@ import { defaultRedactionHooks } from "../src/redaction.js";
 import type { ActorCapabilities } from "../src/actor-contract.js";
 import type { CuaExecutor, CuaProvider, CuaTurn } from "../src/computer-use.js";
 import { runComputerUseLoop } from "../src/computer-use.js";
-import { parseLabConfig } from "../src/lab-config.js";
-import { readLabSummary } from "../src/lab-summary.js";
+import { parseLabConfig } from "../src/lab/config.js";
+import { readLabSummary } from "../src/lab/summary.js";
 import {
   DEFAULT_OPENAI_CU_REASONING_EFFORT,
   buildInitialRequest,

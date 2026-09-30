@@ -4,7 +4,7 @@ import path from "node:path";
 import { PNG } from "pngjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runRestrictedParticipantStudy } from "../src/restricted-codex-participant-run.js";
-import { parseLabConfig } from "../src/lab-config.js";
+import { parseLabConfig } from "../src/lab/config.js";
 import type {
   RestrictedCodexRequest,
   RestrictedCodexResult,

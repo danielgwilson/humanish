@@ -15,7 +15,7 @@ import {
   readAutomaticStudyAnalysis,
   runAutomaticStudyAnalysis,
 } from "../../src/analysis/automatic.js";
-import { parseLabConfig } from "../../src/lab-config.js";
+import { parseLabConfig } from "../../src/lab/config.js";
 import { createProgram } from "../../src/program.js";
 import { resolveRunPath, runDryRun } from "../../src/run.js";
 import {

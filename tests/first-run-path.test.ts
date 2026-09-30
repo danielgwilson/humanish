@@ -9,7 +9,7 @@ import {
   firstRunSteps,
   starterActorFor,
 } from "../src/first-run-path.js";
-import { runInit } from "../src/init.js";
+import { runInit } from "../src/lab/init.js";
 
 // #505: `humanish init` wrote twenty files and stopped, and the only lab that could run was a $0
 // dry run — the two live ones were templates containing `your-org/your-app`. Three independent

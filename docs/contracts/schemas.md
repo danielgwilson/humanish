@@ -61,7 +61,7 @@ workflow without leaking private upstream truth into core.
 
 ## Lab Manifest
 
-Schema: `humanish.lab.v2` (`src/lab-config.ts`). There is deliberately no v1
+Schema: `humanish.lab.v2` (`src/lab/config.ts`). There is deliberately no v1
 compatibility: v1 (`kind`, top-level `sims`) had zero real users and was
 deleted when labs became config.
 

@@ -11,14 +11,14 @@ import path from "node:path";
 import { parse as parseYaml } from "yaml";
 import { describe, expect, it } from "vitest";
 
-import { composeLaneInstructions } from "../src/cua-actor-lab.js";
-import { DEVICE_PRESETS } from "../src/device-presets.js";
+import { composeLaneInstructions } from "../../src/cua-actor-lab.js";
+import { DEVICE_PRESETS } from "../../src/lab/device-presets.js";
 import {
   labPersonaIds,
   personaTitleFromId,
   resolveCommittedPersonasForCwd,
-} from "../src/persona-resolve.js";
-import { parseResolvedPersona, personaToDirectives } from "../src/persona.js";
+} from "../../src/lab/persona-resolve.js";
+import { parseResolvedPersona, personaToDirectives } from "../../src/lab/persona.js";
 
 const DEVICE = { name: "desktop", preset: DEVICE_PRESETS.desktop } as const;
 

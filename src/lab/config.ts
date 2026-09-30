@@ -2,8 +2,8 @@ import {
   isLocalBrowserLab,
   localBrowserDefaults,
   localBrowserUnsupportedReason,
-} from "./local-runtime-config.js";
-import { resolveAutomaticAnalysis, type LabAnalysis } from "./analysis/automatic-config.js";
+} from "../local-runtime-config.js";
+import { resolveAutomaticAnalysis, type LabAnalysis } from "../analysis/automatic-config.js";
 // humanish.lab.v2 — a lab is a COMPOSITION over code primitives, not a hardcoded kind.
 //
 // HONEST SCOPE (read before trusting field names): the engine routes by
@@ -53,24 +53,24 @@ import { resolveAutomaticAnalysis, type LabAnalysis } from "./analysis/automatic
 // There is deliberately NO v1 compatibility: v1 had zero real users. Breaking schema changes
 // bump the version honestly.
 
-import { normalizeExtraExcludeEntry } from "./source-archive.js";
-import { actorRegistry } from "./actor-registry.js";
-import { containsSensitive } from "./redaction.js";
-import type { LabTask } from "./tasks.js";
+import { normalizeExtraExcludeEntry } from "../source-archive.js";
+import { actorRegistry } from "../actor-registry.js";
+import { containsSensitive } from "../redaction.js";
+import type { LabTask } from "../tasks.js";
 import { DEVICE_PRESET_NAMES, isDevicePresetName } from "./device-presets.js";
 import type {
   DwellWindow,
   StopConditionPrimitive,
   StopWhen,
   StopWhenRule,
-} from "./stop-conditions.js";
+} from "../stop-conditions.js";
 import {
   isReasoningEffort,
   reasoningEffortNames,
   type ReasoningEffort,
-} from "./reasoning-effort.js";
-import { isExactRuntimeVersion } from "./terminal-runtime.js";
-import { isMaxOutputTokens } from "./output-token-limit.js";
+} from "../reasoning-effort.js";
+import { isExactRuntimeVersion } from "../terminal-runtime.js";
+import { isMaxOutputTokens } from "../output-token-limit.js";
 
 export const LAB_CONFIG_SCHEMA = "humanish.lab.v2";
 

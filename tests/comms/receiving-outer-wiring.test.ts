@@ -8,7 +8,7 @@ import type { CuaLoopResult } from "../../src/computer-use.js";
 import { runCuaActorLab, type CuaActorLabHooks } from "../../src/cua-actor-lab.js";
 import { runConcurrentSharedWorld } from "../../src/concurrent-shared-world-lab.js";
 import type { SharedWorldLabHooks } from "../../src/shared-world-lab.js";
-import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../../src/lab-config.js";
+import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../../src/lab/config.js";
 import type {
   E2BDesktopCreateOptions,
   E2BDesktopModule,

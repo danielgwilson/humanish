@@ -6,8 +6,8 @@ import {
   firstRunGuidance,
   starterActorFor,
   type FirstRunEnvironment,
-} from "./first-run-path.js";
-import { detectLocalAgents } from "./local-agent-cli.js";
+} from "../first-run-path.js";
+import { detectLocalAgents } from "../local-agent-cli.js";
 
 import {
   DEFAULT_LOCAL_BROWSER_STARTER,
@@ -23,7 +23,7 @@ import {
   readContainedRegularFile,
   type PreparedSelectedOutputDirectory,
   writeContainedOutputFile,
-} from "./selected-output-paths.js";
+} from "../selected-output-paths.js";
 
 export const INIT_RESPONSE_SCHEMA = "humanish.init-result.v1";
 

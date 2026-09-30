@@ -7,8 +7,8 @@ import { readCommsConnections } from "./connections.js";
 import { discoverProviderKeys } from "../key-resolution.js";
 import { AgentMailReceivingError, createAgentMailReceiver } from "./agentmail.js";
 import type { ReceivingAdapter } from "./receiving-types.js";
-import { parseLabConfig } from "../lab-config.js";
-import { resolveLabManifest } from "../labs.js";
+import { parseLabConfig } from "../lab/config.js";
+import { resolveLabManifest } from "../lab/discover.js";
 import {
   assertPreparedSelectedOutputDirectory,
   prepareManagedHumanishOutputDirectory,

@@ -8,7 +8,7 @@ import {
   parseLabConfig,
   sharedWorldValidationReason,
   type LabConfig,
-} from "../src/lab-config.js";
+} from "../src/lab/config.js";
 import { runCuaActorLab } from "../src/cua-actor-lab.js";
 import { runSharedWorldLab } from "../src/shared-world-lab.js";
 import { runConcurrentSharedWorld } from "../src/concurrent-shared-world-lab.js";

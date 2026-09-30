@@ -24,8 +24,8 @@ import {
   parseLabConfig,
   type LabConfig,
   type LabDesktopBrowser,
-} from "../src/lab-config.js";
-import { runLab, selectLabBackend } from "../src/lab-engine.js";
+} from "../src/lab/config.js";
+import { runLab, selectLabBackend } from "../src/lab/engine.js";
 import {
   buildSeatBrowserTerminationCommand,
   runSharedWorldLab,

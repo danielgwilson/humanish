@@ -412,7 +412,7 @@ Plan:
    accessibility directives reached the actor input and that a `gave_up` run
    cites a concrete friction reason (not a turn count). "Did the persona drive
    the run" becomes a verifiable artifact, not an assertion.
-   (Status 2026-06-11: `personaToDirectives` shipped in `src/persona.ts` and
+   (Status 2026-06-11: `personaToDirectives` shipped in `src/lab/persona.ts` and
    `traitsApplied` is threaded on the codex routes, but the `persona-fidelity`
    verify check is not-yet-shipped roadmap, and the computer-use route stubs
    `persona.traitsApplied` to `[]` today — see `src/cua-actor-lab.ts`.)

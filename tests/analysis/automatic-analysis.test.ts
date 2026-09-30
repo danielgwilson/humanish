@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AnalysisFetch } from "../../src/analysis/provider.js";
-import { parseLabConfig, type LabConfig } from "../../src/lab-config.js";
+import { parseLabConfig, type LabConfig } from "../../src/lab/config.js";
 import {
   automaticAnalysisBudget,
   resolveAutomaticAnalysis,
@@ -20,10 +20,10 @@ import {
   cliAutomaticAnalysisHooks,
   createProgram,
 } from "../../src/program.js";
-import { readLabSummary } from "../../src/lab-summary.js";
-import { runLabPreflight } from "../../src/lab-preflight.js";
+import { readLabSummary } from "../../src/lab/summary.js";
+import { runLabPreflight } from "../../src/lab/preflight.js";
 import { parse as parseYaml } from "yaml";
-import { runLab } from "../../src/lab-engine.js";
+import { runLab } from "../../src/lab/engine.js";
 import { runCuaActorLab } from "../../src/cua-actor-lab.js";
 import { runSharedWorldLab } from "../../src/shared-world-lab.js";
 import { runConcurrentSharedWorld } from "../../src/concurrent-shared-world-lab.js";
@@ -644,7 +644,7 @@ describe("automatic analysis admission and producer boundary", () => {
     "%s during the real producer retains default termination and never starts analysis",
     async (signal) => {
       const script = `
-      import { runLab } from ${JSON.stringify(new URL("../../src/lab-engine.ts", import.meta.url).href)};
+      import { runLab } from ${JSON.stringify(new URL("../../src/lab/engine.ts", import.meta.url).href)};
       import { cliAutomaticAnalysisHooks } from ${JSON.stringify(new URL("../../src/program.ts", import.meta.url).href)};
       const config = ${JSON.stringify(fixtures.find((row) => row.name === "cua-openai-computer-use-app-url")!.config)};
       config.review = { analysis: { maxCostUsd: 5 } };

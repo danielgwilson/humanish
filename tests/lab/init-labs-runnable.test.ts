@@ -4,9 +4,9 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { runInit } from "../src/init.js";
-import { resolveLabManifest, listLabManifests } from "../src/labs.js";
-import { runLab } from "../src/lab-engine.js";
+import { runInit } from "../../src/lab/init.js";
+import { resolveLabManifest, listLabManifests } from "../../src/lab/discover.js";
+import { runLab } from "../../src/lab/engine.js";
 
 // The labs `humanish init` writes must actually RUN.
 //

@@ -46,7 +46,7 @@ import type { TaskFunnel } from "./tasks.js";
 import { captureGitState, GIT_STATE_SCHEMA, type CapturedGitState } from "./git-state.js";
 import { screenshotEvidenceError } from "./image-evidence.js";
 import { buildObserverData } from "./observer/data.js";
-import { parseResolvedPersona, type ResolvedPersona } from "./persona.js";
+import { parseResolvedPersona, type ResolvedPersona } from "./lab/persona.js";
 import { round6 } from "./pricing.js";
 import { loadStudyAnalysis, listStudyAnalysisExecutions } from "./analysis/store.js";
 import { isStudyAnalysisRecordPath, studyAnalysisSharingProblems } from "./analysis/sharing.js";
@@ -76,7 +76,7 @@ import {
   localAgentDoctorMessage,
   type DetectLocalAgentsOptions,
 } from "./local-agent-cli.js";
-import { labSetupChecks } from "./doctor-lab.js";
+import { labSetupChecks } from "./lab/doctor.js";
 import {
   assertPreparedSelectedOutputDirectory,
   assertSafeOutputPathSegment,
@@ -3229,7 +3229,7 @@ export async function doctor(
   const keyNames = new Set(["OPENAI_API_KEY", "E2B_API_KEY", "GH_TOKEN", "CODEX_API_KEY"]);
   let receivingKey: string | null = null;
   if (options.lab) {
-    const { resolveLabManifest } = await import("./labs.js");
+    const { resolveLabManifest } = await import("./lab/discover.js");
     const resolved = await resolveLabManifest(cwd, options.lab);
     if (resolved.ok && resolved.config.comms?.email?.kind === "real") {
       const { receivingRequiredKey } = await import("./comms/setup.js");

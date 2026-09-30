@@ -1,4 +1,4 @@
-import { isLocalBrowserLab, localBrowserDefaults } from "./local-runtime-config.js";
+import { isLocalBrowserLab, localBrowserDefaults } from "../local-runtime-config.js";
 // The single lab engine. A lab is a config (humanish.lab.v2); runLab routes it to an execution
 // backend by COMPOSITION — subject.source x execution.target — not by a hardcoded `kind`.
 //
@@ -8,32 +8,32 @@ import { isLocalBrowserLab, localBrowserDefaults } from "./local-runtime-config.
 // and these selectors rather than adding a lab `kind`. On actor-backed routes, subject x execution
 // selects the substrate while actors[0].type selects a registered first-party actor.
 
-import { resolveAutomaticAnalysis } from "./analysis/automatic-config.js";
-import type { AutomaticAnalysisHooks } from "./analysis/automatic-completion.js";
+import { resolveAutomaticAnalysis } from "../analysis/automatic-config.js";
+import type { AutomaticAnalysisHooks } from "../analysis/automatic-completion.js";
 import path from "node:path";
-import { runCuaActorLab, type CuaActorLabHooks, type CuaActorLabResult } from "./cua-actor-lab.js";
+import { runCuaActorLab, type CuaActorLabHooks, type CuaActorLabResult } from "../cua-actor-lab.js";
 import {
   runScriptedBrowserLab,
   type ScriptedBrowserLabHooks,
   type ScriptedBrowserLabResult,
-} from "./scripted-browser-lab.js";
+} from "../scripted-browser-lab.js";
 import {
   runTerminalProductLab,
   type TerminalProductLabHooks,
   type TerminalProductLabResult,
-} from "./e2b-terminal-lab.js";
+} from "../e2b-terminal-lab.js";
 import {
   runSharedWorldLab,
   type SharedWorldLabHooks,
   type SharedWorldLabResult,
-} from "./shared-world-lab.js";
+} from "../shared-world-lab.js";
 import {
   runConcurrentSharedWorld,
   type ConcurrentSharedWorldLabResult,
-} from "./concurrent-shared-world-lab.js";
-import { withRunStatusScope, type RunLabProvenance } from "./run-status.js";
-import type { ObserverResult } from "./observer/render.js";
-import { runDryRun, type RunResult, type RunScorerProvenance } from "./run.js";
+} from "../concurrent-shared-world-lab.js";
+import { withRunStatusScope, type RunLabProvenance } from "../run-status.js";
+import type { ObserverResult } from "../observer/render.js";
+import { runDryRun, type RunResult, type RunScorerProvenance } from "../run.js";
 import {
   automaticAnalysisRouteReason,
   taskProtocolValidationReason,
@@ -43,7 +43,7 @@ import {
   routesToSharedWorld,
   routesToTerminalProduct,
   type LabConfig,
-} from "./lab-config.js";
+} from "./config.js";
 
 export type LabBackend =
   | "synthetic"
@@ -235,7 +235,7 @@ async function runLabInScope(config: LabConfig, options: RunLabOptions): Promise
     }
     case "cua": {
       if (isLocalBrowserLab(config) && !options.cuaHooks) {
-        const { runLocalFirecrackerStudy } = await import("./local-firecracker-study.js");
+        const { runLocalFirecrackerStudy } = await import("../local-firecracker-study.js");
         return runLocalFirecrackerStudy({ ...options, config });
       }
       // Spend-safe default: a computer-use lab only goes live when the config (or CLI) says so.

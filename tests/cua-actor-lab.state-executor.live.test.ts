@@ -15,8 +15,8 @@ import type {
   CuaTurn,
   CuaExecutor,
 } from "../src/computer-use.js";
-import { LAB_CONFIG_SCHEMA, parseLabConfig } from "../src/lab-config.js";
-import { runLab } from "../src/lab-engine.js";
+import { LAB_CONFIG_SCHEMA, parseLabConfig } from "../src/lab/config.js";
+import { runLab } from "../src/lab/engine.js";
 import { verifyRun } from "../src/run.js";
 
 // The single LIVE rung for the STATE-DRIVEN (in-process, no-E2B, no-vision) lab route — the
