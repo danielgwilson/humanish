@@ -68,8 +68,9 @@ export default function Study() {
           Publishing these crops was a reviewed, deliberate act.
         </p>
         <p>
-          In lane sketch-shapes, freehand strokes produced no change to the UI state for 8
-          consecutive turns, and the persona gave up.
+          In lane sketch-shapes, 8 consecutive turns of freehand strokes left the UI state
+          unchanged, and the backstop of that version ended the lane. Since 2026-08-08 the backstop
+          also requires the participant to repeat a recent action.
         </p>
         <p>Excalidraw is the application studied; it is not a Humanish adopter or endorser.</p>
       </div>

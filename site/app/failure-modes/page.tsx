@@ -109,14 +109,17 @@ export default function FailureModes() {
             </p>
             <p className="sec-sub rev">
               <b>A stalled lane records why it stopped and fails.</b> <code>humanish</code> trips a
-              backstop after N consecutive turns with no change to the UI state and writes the
-              reason into the bundle verbatim. In the Excalidraw study, lane 03{" "}
-              <code>sketch-shapes</code> recorded &ldquo;gave up: 8 consecutive turns with no change
-              to the UI state&rdquo;, and the study publishes as 3/4 rather than 4/4.
+              backstop after N consecutive turns in which the participant repeats a recent action
+              and the UI state does not change, and writes the reason into the bundle verbatim:
+              &ldquo;gave up: N consecutive turns that repeated a recent action on an unchanged UI
+              state&rdquo;. An unchanged screen alone no longer counts, since <Issue n={383} /> on
+              2026-08-08. The Excalidraw study ran the day before, under the older rule and wording:
+              lane 03 <code>sketch-shapes</code> recorded &ldquo;gave up: 8 consecutive turns with
+              no change to the UI state&rdquo;, and the study publishes as 3/4 rather than 4/4.
             </p>
             <p className="sec-sub rev">
               <b>Our own site study lost half its lanes to this.</b> Four cold-visitor lanes ran
-              against the live humanish.dev on 2026-08-08:
+              against the live humanish.dev on 2026-08-08 and recorded the older wording:
             </p>
           </div>
 
@@ -191,8 +194,9 @@ export default function FailureModes() {
               small scrolls produce eight identical screenshots and the staleness guard concludes
               the lane is spinning. The screenshots show the actor had stepped several panels before
               it stalled, so it was making progress in the page&rsquo;s own terms. Filed as{" "}
-              <Issue n={393} />: the guard should include scroll position in the state fingerprint.
-              The two dead lanes account for ~$1.91 of the study&rsquo;s ~$3.57 estimated total.
+              <Issue n={393} /> and fixed on 2026-08-11: scroll position is now part of the state
+              the guard compares. The two dead lanes account for ~$1.91 of the study&rsquo;s ~$3.57
+              estimated total.
             </p>
             <p className="sec-sub rev">
               That finding cuts against us twice. The guard is our own heuristic, and the page it
