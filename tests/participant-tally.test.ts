@@ -9,7 +9,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { ActorStatus } from "../src/actors/contract.js";
-import { formatParticipantOutcomes, tallyParticipantOutcomes } from "../src/run/run.js";
+import { formatParticipantOutcomes, tallyParticipantOutcomes } from "../src/run/outcomes.js";
 
 describe("tallyParticipantOutcomes", () => {
   it("separates what happened to people from what happened to the harness", () => {

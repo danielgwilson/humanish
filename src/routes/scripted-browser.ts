@@ -77,7 +77,7 @@ import {
   type RunStream,
   type RunSubjectProvenance,
   type RunSubjectStateStepRecord,
-} from "../run/run.js";
+} from "../run/bundle.js";
 import {
   browserSurfaces,
   normalizeLocalAppUrl,
@@ -669,7 +669,7 @@ async function runScriptedBrowserLabInScope(
     `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`,
     "utf8",
   );
-  // Keep `verify --run latest` honest: point it at THIS run (mirrors run.ts's RunPointer).
+  // Keep `verify --run latest` honest: point it at THIS run (the RunPointer shape in run/bundle.ts).
   await writePreparedRunLatestPointer(
     runPaths,
     `${JSON.stringify(

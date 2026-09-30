@@ -1,0 +1,378 @@
+import { lstat, readdir } from "node:fs/promises";
+import path from "node:path";
+import { screenshotEvidenceError } from "../evidence/image.js";
+import { isStudyAnalysisRecordPath } from "../analysis/sharing.js";
+import { containsSensitive } from "../evidence/redaction.js";
+import { validatePreparedRunArtifactPaths, type PreparedRunArtifactPaths } from "./paths.js";
+import { openContainedRegularFile } from "./selected-output-paths.js";
+import type { RunBundle, RunStream } from "./bundle.js";
+import { isLocalEvidenceArtifactPath, isRiskyPublicArtifactPath } from "./guards.js";
+import { readSafeRunArtifactBytes, readSafeRunArtifactJson } from "./locate.js";
+import { isRecord } from "./primitives.js";
+import { isZeroEventTerminalTrace, TERMINAL_EVENTS_FILE } from "./verify-actor.js";
+
+export async function missingLocalEvidenceArtifacts(
+  runPaths: PreparedRunArtifactPaths,
+  bundle: RunBundle,
+): Promise<string[]> {
+  const recordings = new Map(
+    bundle.streams.flatMap((stream) =>
+      stream.recording ? [[stream.recording.path, stream.recording] as const] : [],
+    ),
+  );
+  const requiredPaths = new Map<string, { screenshot: boolean; allowEmpty: boolean }>();
+  const addRequiredPath = (
+    artifactPath: string,
+    options: { screenshot?: boolean; allowEmpty?: boolean } = {},
+  ): void => {
+    const existing = requiredPaths.get(artifactPath);
+    requiredPaths.set(artifactPath, {
+      screenshot: Boolean(existing?.screenshot || options.screenshot),
+      // Every consumer must permit emptiness: a terminal log cannot exempt the same path when
+      // another stream, screenshot, or adapter also requires it as nonempty evidence.
+      allowEmpty: options.allowEmpty === true && (existing?.allowEmpty ?? true),
+    });
+  };
+
+  for (const stream of bundle.streams) {
+    // A session that failed before output (or a silent terminal process) has a real zero-record
+    // NDJSON stream. Both the embedded trace and its retained artifact must declare that fact.
+    const emptyTerminalEvents =
+      isZeroEventTerminalTrace(stream.actor) &&
+      isZeroEventTerminalTrace(
+        await readSafeRunArtifactJson(
+          runPaths,
+          stream.artifacts.find((artifact) => artifact.kind === "trace")?.path ?? "actor.json",
+        ),
+      );
+    for (const artifact of stream.artifacts) {
+      if (isLocalEvidenceArtifactPath(artifact.path)) {
+        addRequiredPath(artifact.path, {
+          screenshot: artifact.kind === "screenshot",
+          allowEmpty:
+            artifact.kind === "log" &&
+            artifact.path === TERMINAL_EVENTS_FILE &&
+            emptyTerminalEvents,
+        });
+      }
+    }
+
+    const embedPath = normalizeLocalEvidenceReference(
+      stream.embed?.kind === "screenshot" ? stream.embed.url : undefined,
+    );
+    if (embedPath) {
+      addRequiredPath(embedPath, { screenshot: true });
+    }
+
+    const uiScreenshotPath = normalizeLocalEvidenceReference(stream.ui?.screenshotUrl);
+    if (uiScreenshotPath) {
+      addRequiredPath(uiScreenshotPath, { screenshot: true });
+    }
+
+    if (
+      stream.ui?.nestedObserverPath &&
+      isLocalEvidenceArtifactPath(stream.ui.nestedObserverPath)
+    ) {
+      addRequiredPath(stream.ui.nestedObserverPath);
+    }
+    for (const reference of declaredActorScreenshotReferences(stream)) {
+      if (isRunRootEvidenceReference(reference.path)) {
+        addRequiredPath(reference.path, { screenshot: true });
+      }
+    }
+  }
+
+  for (const artifact of bundle.adapterArtifacts ?? []) {
+    if (isLocalEvidenceArtifactPath(artifact.path)) {
+      addRequiredPath(artifact.path, { screenshot: artifact.kind === "screenshot" });
+    }
+  }
+
+  for (const candidate of bundle.feedbackCandidates ?? []) {
+    for (const evidence of candidate.evidence) {
+      if (isRunRootEvidenceReference(evidence.path)) {
+        addRequiredPath(evidence.path, {
+          screenshot: evidence.kind === "screenshot",
+          // Feedback accepts an existing empty nonimage file. The conjunctive merge above
+          // keeps any stricter stream, actor, or adapter requirement in force.
+          allowEmpty: evidence.kind !== "screenshot",
+        });
+      }
+    }
+  }
+
+  const missing: string[] = [];
+  for (const [artifactPath, requirements] of requiredPaths) {
+    const recording = recordings.get(artifactPath);
+    if (recording) {
+      const handle = await openContainedRegularFile(runPaths, artifactPath);
+      try {
+        if (!handle || (await handle.stat()).size !== recording.bytes) missing.push(artifactPath);
+        else {
+          const header = Buffer.alloc(12);
+          const read = await handle.read(header, 0, header.length, 0);
+          if (read.bytesRead !== header.length || header.toString("ascii", 4, 8) !== "ftyp")
+            missing.push(`${artifactPath} (invalid MP4 header)`);
+        }
+      } finally {
+        await handle?.close();
+      }
+      continue;
+    }
+    const bytes = await readSafeRunArtifactBytes(runPaths, artifactPath);
+    if (!bytes || (bytes.length === 0 && !requirements.allowEmpty)) {
+      missing.push(artifactPath);
+      continue;
+    }
+
+    if (requirements.screenshot) {
+      const imageError = screenshotEvidenceError(artifactPath, bytes);
+      if (imageError) {
+        missing.push(`${artifactPath} (${imageError})`);
+      }
+    }
+  }
+
+  return missing;
+}
+
+function declaredActorScreenshotReferences(
+  stream: RunStream,
+): Array<{ label: string; path: unknown; redaction: unknown }> {
+  const references: Array<{ label: string; path: unknown; redaction: unknown }> = [];
+  for (const field of ["actor", "liveActor"] as const) {
+    const trace: unknown = stream[field];
+    if (!isRecord(trace) || !Array.isArray(trace.items)) continue;
+    trace.items.forEach((item: unknown, index: number) => {
+      if (!isRecord(item) || !Object.hasOwn(item, "screenshotRef")) return;
+      references.push({
+        label: `${stream.id} ${field}.items[${index}].screenshotRef`,
+        path: isRecord(item.screenshotRef) ? item.screenshotRef.path : undefined,
+        redaction: isRecord(item.screenshotRef) ? item.screenshotRef.redaction : undefined,
+      });
+    });
+  }
+  return references;
+}
+
+function isRunRootEvidenceReference(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    isLocalEvidenceArtifactPath(value) &&
+    !path.win32.isAbsolute(value) &&
+    !value.includes("\0") &&
+    !/^[a-z][a-z\d+.-]*:/i.test(value)
+  );
+}
+
+export function invalidRunEvidenceReferences(bundle: RunBundle): string[] {
+  const findings: string[] = [];
+  if (path.isAbsolute(bundle.cwd)) {
+    findings.push(`run bundle persists absolute cwd ${bundle.cwd}`);
+  }
+  const adapterArtifactKeys = new Set<string>();
+  for (const artifact of bundle.adapterArtifacts ?? []) {
+    const key = `${artifact.namespace}:${artifact.kind}:${artifact.path}`;
+    if (adapterArtifactKeys.has(key)) {
+      findings.push(
+        `adapter artifact duplicate ${artifact.namespace}:${artifact.kind}:${artifact.path}`,
+      );
+    }
+    adapterArtifactKeys.add(key);
+    if (!isLocalEvidenceArtifactPath(artifact.path)) {
+      findings.push(
+        `adapter artifact ${artifact.namespace}:${artifact.kind} nonlocal artifact ${artifact.path}`,
+      );
+    }
+  }
+  for (const candidate of bundle.feedbackCandidates ?? []) {
+    for (const evidence of candidate.evidence) {
+      if (!isRunRootEvidenceReference(evidence.path)) {
+        findings.push(
+          `feedback candidate ${candidate.id} nonlocal evidence ${String(evidence.path)}`,
+        );
+      }
+    }
+  }
+  for (const stream of bundle.streams) {
+    const seen = new Set<string>();
+    for (const artifact of stream.artifacts) {
+      const key = `${artifact.kind}:${artifact.path}`;
+      if (seen.has(key)) {
+        findings.push(`${stream.id} duplicate artifact ${artifact.kind}:${artifact.path}`);
+      }
+      seen.add(key);
+      if (!isLocalEvidenceArtifactPath(artifact.path)) {
+        findings.push(`${stream.id} nonlocal artifact ${artifact.kind}:${artifact.path}`);
+      }
+    }
+
+    if (
+      stream.ui?.nestedObserverPath &&
+      !isLocalEvidenceArtifactPath(stream.ui.nestedObserverPath)
+    ) {
+      findings.push(
+        `${stream.id} nonlocal nested observer reference ${stream.ui.nestedObserverPath}`,
+      );
+    }
+    if (
+      stream.embed?.kind === "screenshot" &&
+      stream.embed.url &&
+      !normalizeLocalEvidenceReference(stream.embed.url)
+    ) {
+      findings.push(`${stream.id} nonlocal screenshot embed ${stream.embed.url}`);
+    }
+    if (stream.ui?.screenshotUrl && !normalizeLocalEvidenceReference(stream.ui.screenshotUrl)) {
+      findings.push(`${stream.id} nonlocal screenshot reference ${stream.ui.screenshotUrl}`);
+    }
+    for (const reference of declaredActorScreenshotReferences(stream)) {
+      if (!isRunRootEvidenceReference(reference.path)) {
+        findings.push(`${reference.label} is malformed or nonlocal`);
+      }
+    }
+  }
+  return findings.slice(0, 50);
+}
+
+/**
+ * redaction.screenshots: "raw" is the SUPPORTED local default (full-fidelity frames in
+ * gitignored .humanish), not a verify failure — but ok: true must never read as "share-ready",
+ * so verify surfaces the posture as a warning in both human and JSON output. Read defensively
+ * for the same reason as noEngagementActorFindings.
+ */
+export function rawScreenshotPostureWarnings(bundle: RunBundle): string[] {
+  const rawStreamIds = rawScreenshotStreamIds(bundle);
+
+  if (rawStreamIds.length === 0) {
+    return [];
+  }
+
+  return [
+    `Screenshots are FULL-FIDELITY (raw) on ${rawStreamIds.join(", ")} — supported for local use, NOT publish-safe as-is. Verify ok does not mean share-ready; set policies.redactScreenshots: true to blur a share-as-is bundle.`,
+  ];
+}
+
+export function rawScreenshotStreamIds(bundle: RunBundle): string[] {
+  const rawStreamIds: string[] = [];
+  for (const stream of bundle.streams) {
+    const trace: unknown = stream.actor;
+    const aggregateRaw =
+      isRecord(trace) && isRecord(trace.redaction) && trace.redaction.screenshots === "raw";
+    // Partial live traces have no final actor summary. An explicit raw frame must also
+    // retain local-only posture, including when it contradicts an aggregate blur claim.
+    const frameRaw = declaredActorScreenshotReferences(stream).some(
+      (reference) => reference.redaction === "none",
+    );
+    if (aggregateRaw || frameRaw) {
+      rawStreamIds.push(stream.id);
+    }
+  }
+  return rawStreamIds;
+}
+
+export async function scanRunPublicSafetyArtifacts(
+  runPaths: PreparedRunArtifactPaths,
+  derivedFindings: string[],
+  recordingPaths: Set<string>,
+): Promise<string[]> {
+  const findings: string[] = [];
+  await validatePreparedRunArtifactPaths(runPaths);
+  await scanRunPublicSafetyDirectory(runPaths, "", findings, derivedFindings, recordingPaths);
+  await validatePreparedRunArtifactPaths(runPaths);
+  return findings;
+}
+
+async function scanRunPublicSafetyDirectory(
+  runPaths: PreparedRunArtifactPaths,
+  relativeDirectory: string,
+  findings: string[],
+  derivedFindings: string[],
+  recordingPaths: Set<string>,
+): Promise<void> {
+  // Each authority has its own finding budget. Derived files must never consume
+  // the source scan's budget and make an unscanned recording appear verified.
+  if (findings.length >= 50 && derivedFindings.length >= 50) {
+    return;
+  }
+
+  const current = relativeDirectory
+    ? path.join(runPaths.physicalRunRoot, ...relativeDirectory.split("/"))
+    : runPaths.physicalRunRoot;
+  const entries = await readdir(current).catch(() => []);
+  for (const entryName of entries) {
+    const relativePath = relativeDirectory ? `${relativeDirectory}/${entryName}` : entryName;
+    const stats = await lstat(path.join(current, entryName), { bigint: true }).catch(() => null);
+    const selectedFindings =
+      !stats?.isDirectory() &&
+      (relativePath === "observer/study-analysis.json" || isStudyAnalysisRecordPath(relativePath))
+        ? derivedFindings
+        : findings;
+    if (isRiskyPublicArtifactPath(relativePath) || containsSensitivePattern(relativePath)) {
+      if (selectedFindings.length < 50)
+        selectedFindings.push(`risky artifact path ${relativePath}`);
+    }
+
+    if (
+      !stats ||
+      stats.isSymbolicLink() ||
+      (!stats.isDirectory() && !stats.isFile()) ||
+      (stats.isFile() && stats.nlink > 1n)
+    ) {
+      if (selectedFindings.length < 50)
+        selectedFindings.push(`unsafe artifact leaf ${relativePath}`);
+      continue;
+    }
+
+    if (stats.isDirectory()) {
+      // A directory named analysis.json is not an owned record. Its children
+      // can contain source evidence even after derived findings are saturated.
+      await scanRunPublicSafetyDirectory(
+        runPaths,
+        relativePath,
+        findings,
+        derivedFindings,
+        recordingPaths,
+      );
+      continue;
+    }
+
+    if (selectedFindings.length >= 50) continue;
+
+    if (path.extname(relativePath).toLowerCase() === ".mp4" && !recordingPaths.has(relativePath)) {
+      selectedFindings.push(`unregistered continuous media ${relativePath}`);
+    }
+    if (!shouldScanTextArtifact(relativePath)) {
+      continue;
+    }
+
+    const bytes = await readSafeRunArtifactBytes(runPaths, relativePath);
+    const text = bytes?.toString("utf8") ?? null;
+    if (text !== null && containsSensitivePattern(text)) {
+      selectedFindings.push(`sensitive text ${relativePath}`);
+    }
+  }
+}
+
+function shouldScanTextArtifact(relativePath: string): boolean {
+  const extension = path.extname(relativePath).toLowerCase();
+  return ![".png", ".jpg", ".jpeg", ".webp", ".gif", ".mp4", ".tgz", ".gz", ".zip"].includes(
+    extension,
+  );
+}
+
+function normalizeLocalEvidenceReference(value: string | undefined): string | null {
+  if (!value || value.includes("://") || path.isAbsolute(value)) {
+    return null;
+  }
+
+  const normalized = value.replace(/\\/g, "/");
+  if (normalized.startsWith("../")) {
+    return isLocalEvidenceArtifactPath(normalized.slice(3)) ? normalized.slice(3) : null;
+  }
+
+  return isLocalEvidenceArtifactPath(normalized) ? normalized : null;
+}
+
+export function containsSensitivePattern(text: string): boolean {
+  return containsSensitive(text);
+}

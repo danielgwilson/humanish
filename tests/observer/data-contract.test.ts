@@ -4,7 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { OBSERVER_DATA_SCHEMA, buildObserverData } from "../../src/observer/data.js";
-import type { RunBundle } from "../../src/run/run.js";
+import type { RunBundle } from "../../src/run/bundle.js";
 
 // CONTRACT FREEZE for humanish.observer-data.v1 (#426). The Observer rebuild is a
 // rendering-layer swap only if the data it renders cannot drift underneath it, so this

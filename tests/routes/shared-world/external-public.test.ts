@@ -46,7 +46,7 @@ import type {
 } from "../../../src/substrates/e2b/desktop-launch.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
 import type { RunBundle } from "../../../src/index.js";
-import { verifyRun } from "../../../src/run/run.js";
+import { verifyRun } from "../../../src/run/verify.js";
 
 // ---------------------------------------------------------------------------
 // Fakes. Same N-substrate shape as the concurrent-shared-world harness, but the

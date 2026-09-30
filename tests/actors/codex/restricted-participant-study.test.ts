@@ -16,7 +16,7 @@ import {
   contradictsAccountBilling,
 } from "../../../src/run/pricing.js";
 import { readRunDetail } from "../../../src/run/detail.js";
-import { verifyRun } from "../../../src/run/run.js";
+import { verifyRun } from "../../../src/run/verify.js";
 const { session, sessionClose } = vi.hoisted(() => ({
   session: vi.fn<(request: RestrictedCodexRequest) => Promise<RestrictedCodexResult>>(),
   sessionClose: vi.fn<() => Promise<boolean>>(),

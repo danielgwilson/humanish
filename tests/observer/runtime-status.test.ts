@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { buildObserverData, type ObserverData } from "../../src/observer/data.js";
 import { serveObserverLibrary, type ServeLibraryServer } from "../../src/observer/serve.js";
-import { runDryRun } from "../../src/run/run.js";
+import { runDryRun } from "../../src/run/dry-run.js";
 import { RUN_STATUS_SCHEMA, RUN_STATUS_STALE_MS } from "../../src/run/status.js";
 
 const roots: string[] = [];

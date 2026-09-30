@@ -10,7 +10,7 @@ import {
   type TerminalProductLabHooks,
 } from "../../../src/routes/terminal/lab.js";
 import type { E2BDesktopModule } from "../../../src/substrates/e2b/desktop-launch.js";
-import { verifyRun } from "../../../src/run/run.js";
+import { verifyRun } from "../../../src/run/verify.js";
 
 // SLICE 3 deterministic proof ($0, NO live E2B): the cost/spend ledger + the null-vs-zero-vs-absent
 // discipline + the no-spend proof DERIVED from the ledger + FULL caps enforcement (fail-closed).

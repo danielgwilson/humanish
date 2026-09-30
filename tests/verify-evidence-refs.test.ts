@@ -6,7 +6,9 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { ACTOR_TRACE_SCHEMA } from "../src/actors/contract.js";
 import { draftFeedback, verifyFeedback } from "../src/feedback/feedback.js";
-import { runDryRun, verifyRun, type RunBundle } from "../src/run/run.js";
+import { runDryRun } from "../src/run/dry-run.js";
+import { verifyRun } from "../src/run/verify.js";
+import { type RunBundle } from "../src/run/bundle.js";
 
 const RUN = "declared-evidence";
 

@@ -135,7 +135,7 @@ import {
   type SharedWorldCheckpoint,
   type SharedWorldEvidence,
   type SharedWorldTimelineEntry,
-} from "../../run/run.js";
+} from "../../run/bundle.js";
 import { appendSandboxReceipt } from "../../run/sandbox-receipts.js";
 import {
   estimateActorCost,

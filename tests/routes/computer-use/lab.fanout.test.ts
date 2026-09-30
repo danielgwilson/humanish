@@ -46,7 +46,8 @@ import {
   type ObserverResult,
   type ObserverServer,
 } from "../../../src/observer/render.js";
-import { readReview, verifyRun } from "../../../src/run/run.js";
+import { readReview } from "../../../src/run/manage.js";
+import { verifyRun } from "../../../src/run/verify.js";
 
 // ---------------------------------------------------------------------------
 // Fan-out fakes: a desktop module that mints a DISTINCT sandbox per create()

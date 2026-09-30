@@ -19,7 +19,7 @@ import path from "node:path";
 
 import { estimateActorCostForExecution } from "./pricing.js";
 
-import { resolveRunPath } from "./run.js";
+import { resolveRunPath } from "./locate.js";
 
 const RUN_DETAIL_SCHEMA = "humanish.run-detail.v1";
 

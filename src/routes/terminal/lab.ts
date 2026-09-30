@@ -11,7 +11,7 @@
 //     orchestrator on the @e2b/desktop commands.run surface.
 //
 // THE SAFETY CONTRACT (docs/goals/terminal-product-lane/goal.md) is enforced BY CONSTRUCTION here
-// and CHECKED by the verifier (run.ts validateTerminalProductEvidence):
+// and CHECKED by the verifier (run/verify-actor.ts validateTerminalProductEvidence):
 //   1. EXPLICIT KEY PLACEMENT. openai-env (default) injects the raw runtime key command-scoped,
 //      NEVER Sandbox.create({envs}). Opt-in openai-egress sends it only in the host-side E2B
 //      header transform and passes an inert command placeholder. The proxy is spendable by every
@@ -110,8 +110,6 @@ import {
 } from "../../run/selected-output-paths.js";
 import {
   buildRunSource,
-  extractLocalActorVerdict,
-  normalizeLocalActorTranscript,
   PUBLIC_TARGET_CWD,
   REVIEW_SCHEMA,
   RUN_BUNDLE_SCHEMA,
@@ -124,7 +122,8 @@ import {
   type RunSimulation,
   type RunSimulationStatus,
   type RunStream,
-} from "../../run/run.js";
+} from "../../run/bundle.js";
+import { extractLocalActorVerdict, normalizeLocalActorTranscript } from "../../run/verify-actor.js";
 import { appendSandboxReceipt } from "../../run/sandbox-receipts.js";
 import {
   applyAdapterScoreFailureToReview,
@@ -601,7 +600,7 @@ async function runTerminalProductLabInScope(
     `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`,
     "utf8",
   );
-  // Keep `verify --run latest` honest: point it at THIS run (mirrors run.ts's RunPointer).
+  // Keep `verify --run latest` honest: point it at THIS run (the RunPointer shape in run/bundle.ts).
   await writePreparedRunLatestPointer(
     runPaths,
     `${JSON.stringify(
@@ -2125,7 +2124,7 @@ async function applyAdapterExtensionSeam(args: {
   return declaredVerdictFailure;
 }
 
-/** Structural guard for an adapter-returned RunAdapterScore (mirrors run.ts isRunAdapterScore, kept
+/** Structural guard for an adapter-returned RunAdapterScore (mirrors run/guards.ts isRunAdapterScore, kept
  *  local so the lane fails closed at the seam BEFORE the bundle verifier re-checks it). */
 function isAdapterScoreShape(value: unknown): value is RunAdapterScore {
   return (
@@ -2142,7 +2141,7 @@ function isAdapterScoreShape(value: unknown): value is RunAdapterScore {
   );
 }
 
-/** Structural guard for an adapter-returned feedback candidate. This mirrors run.ts's full
+/** Structural guard for an adapter-returned feedback candidate. This mirrors run/guards-feedback.ts's full
  * isRunFeedbackCandidate predicate, including its local evidence-path contract, so a malformed
  * candidate is dropped at the extension seam instead of poisoning the persisted bundle. */
 function isAdapterFeedbackCandidateShape(value: unknown): value is RunFeedbackCandidate {
@@ -2602,7 +2601,7 @@ function buildTerminalActorTrace(args: {
         ),
       ),
       // actions == executed commands; messages == 1 when the agent produced any output. The
-      // no-engagement guard (run.ts) reads these: a real run bumps them, a no-op is caught.
+      // no-engagement guard (run/verify-actor.ts) reads these: a real run bumps them, a no-op is caught.
       actions: args.commandLog.length,
       messages: args.terminalEvents.length > 0 ? 1 : 0,
       terminalEvents: args.terminalEvents.length,

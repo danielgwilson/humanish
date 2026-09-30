@@ -4,7 +4,7 @@ import { chmod, mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { doctor } from "../../src/run/run.js";
+import { doctor } from "../../src/cli/doctor.js";
 import type { DetectLocalAgentsOptions } from "../../src/actors/local-agent/cli.js";
 import { runLabPreflight } from "../../src/lab/preflight.js";
 import { resolveLabManifest } from "../../src/lab/discover.js";

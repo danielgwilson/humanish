@@ -25,7 +25,9 @@ import {
 import { exportRun, formatExportHuman } from "../../src/feedback/export.js";
 import { exportRedactedBundle } from "../../src/feedback/export-bundle.js";
 import { draftFeedback, renderIssueMarkdown, verifyFeedback } from "../../src/feedback/feedback.js";
-import { runDryRun, verifyRun, type RunBundle } from "../../src/run/run.js";
+import { runDryRun } from "../../src/run/dry-run.js";
+import { verifyRun } from "../../src/run/verify.js";
+import { type RunBundle } from "../../src/run/bundle.js";
 import { computeStats } from "../../src/run/stats.js";
 import { createProgram } from "../../src/cli/program.js";
 

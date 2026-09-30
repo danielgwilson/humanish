@@ -32,7 +32,7 @@ import {
   type LabSubjectState,
 } from "../../lab/config.js";
 import { digestText, redactText, redactedTail } from "../../evidence/redaction.js";
-import { type RunDesktopGeometry, type RunSubjectStateStepRecord } from "../../run/run.js";
+import { type RunDesktopGeometry, type RunSubjectStateStepRecord } from "../../run/bundle.js";
 import {
   corepackCommandFor,
   needsNodeRuntime,

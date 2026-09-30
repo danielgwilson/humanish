@@ -9,7 +9,7 @@ import { chromium } from "playwright-core";
 import { renderObserver, serveObserver } from "../dist/observer/render.js";
 import { serveObserverLibrary } from "../dist/observer/serve.js";
 import { serveObserverStatic } from "../dist/observer/static.js";
-import { runDryRun } from "../dist/run/run.js";
+import { runDryRun } from "../dist/run/dry-run.js";
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const candidates = [

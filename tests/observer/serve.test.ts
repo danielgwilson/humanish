@@ -11,7 +11,9 @@ import { renderObserver } from "../../src/observer/render.js";
 import type { LibraryHistory } from "../../src/observer/library.js";
 import { serveObserverLibrary } from "../../src/observer/serve.js";
 import type { ServeLibraryOptions, ServeLibraryServer } from "../../src/observer/serve.js";
-import { buildRunSource, runDryRun, verifyRun } from "../../src/run/run.js";
+import { buildRunSource } from "../../src/run/bundle.js";
+import { runDryRun } from "../../src/run/dry-run.js";
+import { verifyRun } from "../../src/run/verify.js";
 
 const PNG_1X1 = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADUlEQVR42mP8z8BQDwAFgwJ/lp9J1wAAAABJRU5ErkJggg==",

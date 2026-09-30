@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { LAB_CONFIG_SCHEMA, parseLabConfig } from "../../../src/lab/config.js";
 import { runLab } from "../../../src/lab/engine.js";
-import { verifyRun } from "../../../src/run/run.js";
+import { verifyRun } from "../../../src/run/verify.js";
 
 // The LIVE rung for subject.state: a seed step that PROVES itself through the readiness
 // probe. The probe target (serve.url) is a file that exists ONLY because the before-start

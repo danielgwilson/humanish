@@ -60,7 +60,7 @@ import { observeDesktopResources, type DesktopResourceObservation } from "./desk
 import { allocateE2BDesktopSession } from "./desktop-session.js";
 import { readDetachedLog } from "./detached.js";
 import { redactText } from "../../evidence/redaction.js";
-import { type RunDesktopGeometry, type RunSubjectStateStepRecord } from "../../run/run.js";
+import { type RunDesktopGeometry, type RunSubjectStateStepRecord } from "../../run/bundle.js";
 import { appendSandboxReceipt } from "../../run/sandbox-receipts.js";
 import { writeContainedOutputFile } from "../../run/selected-output-paths.js";
 

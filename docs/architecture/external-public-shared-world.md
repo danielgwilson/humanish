@@ -28,7 +28,7 @@ external-public honest-downgrade limits are REQUIRED.
 
 Why the getHost synthetic gate is deliberately NOT reachable from the app-url branch: that gate
 (`concurrentSharedWorldValidationReason` → `plane.exposure == synthetic` + a `0.0.0.0` bind +
-`subject.state.provenance == seeded`, `run.ts` verify) exists because a getHost URL is
+`subject.state.provenance == seeded`, `src/run/verify-shared-world-concurrent.ts`) exists because a getHost URL is
 internet-reachable AND harness-owned — real data behind a harness-exposed URL is the hazard. A public
 site the harness neither provisioned nor exposed has NEITHER property, so the gate's hazard does not
 exist there. The app-url branch is validated by `externalPublicSharedWorldValidationReason` and is

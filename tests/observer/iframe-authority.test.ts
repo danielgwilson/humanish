@@ -13,7 +13,7 @@ import {
   type ObserverServer,
 } from "../../src/observer/render.js";
 import { serveObserverLibrary, type ServeLibraryServer } from "../../src/observer/serve.js";
-import { runDryRun } from "../../src/run/run.js";
+import { runDryRun } from "../../src/run/dry-run.js";
 import { RUN_STATUS_SCHEMA } from "../../src/run/status.js";
 
 const roots: string[] = [];

@@ -7,7 +7,7 @@ import { pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { createTuiObserverSession, type TuiObserverSession } from "../../src/tui/actions.js";
-import { runDryRun } from "../../src/run/run.js";
+import { runDryRun } from "../../src/run/dry-run.js";
 import type { ObserverData } from "../../src/observer/data.js";
 
 const roots: string[] = [];
