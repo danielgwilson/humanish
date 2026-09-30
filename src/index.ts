@@ -183,8 +183,8 @@ export {
   renderIssueMarkdown,
   renderIssueUrl,
   verifyFeedback,
-} from "./feedback.js";
-export type { FeedbackDraft, FeedbackResult } from "./feedback.js";
+} from "./feedback/feedback.js";
+export type { FeedbackDraft, FeedbackResult } from "./feedback/feedback.js";
 export { INIT_RESPONSE_SCHEMA, runInit } from "./init.js";
 export type { InitChange, InitMode, InitOptions, InitResult } from "./init.js";
 export { OBSERVER_DATA_SCHEMA, buildObserverData, stripAnsi } from "./observer-data.js";

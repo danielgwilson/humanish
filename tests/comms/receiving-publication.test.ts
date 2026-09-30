@@ -11,8 +11,8 @@ import {
   type ActorTrace,
 } from "../../src/actor-contract.js";
 import type { CommsReceivingEvidence } from "../../src/comms/receiving-types.js";
-import { exportRun } from "../../src/export.js";
-import { draftFeedback } from "../../src/feedback.js";
+import { exportRun } from "../../src/feedback/export.js";
+import { draftFeedback } from "../../src/feedback/feedback.js";
 import { createShareSafetyAdmission } from "../../src/observer-serve.js";
 import { redactScreenshot } from "../../src/redaction.js";
 import { resolveRunPath, runDryRun, verifyRun, type RunBundle } from "../../src/run.js";

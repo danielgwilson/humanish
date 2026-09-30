@@ -42,12 +42,12 @@ import {
   renderIssueMarkdown,
   renderIssueUrl,
   verifyFeedback,
-} from "./feedback.js";
-import type { FeedbackResult } from "./feedback.js";
+} from "./feedback/feedback.js";
+import type { FeedbackResult } from "./feedback/feedback.js";
 import { runInit } from "./init.js";
 import { computeStats, formatStatsHuman } from "./stats.js";
 import { PortInUseError } from "./listen.js";
-import { DEFAULT_EXPORT_MAX_BYTES, exportRun, formatExportHuman } from "./export.js";
+import { DEFAULT_EXPORT_MAX_BYTES, exportRun, formatExportHuman } from "./feedback/export.js";
 import {
   buildPayload,
   disabledByEnvironment,

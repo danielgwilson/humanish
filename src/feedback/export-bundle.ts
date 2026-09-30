@@ -6,19 +6,24 @@ import path from "node:path";
 import { tmpdir } from "node:os";
 import { parse as parseYaml } from "yaml";
 
-import { ACTOR_TRACE_SCHEMA } from "./actor-contract.js";
+import { ACTOR_TRACE_SCHEMA } from "../actor-contract.js";
 import type { ExportFailure, ExportOptions, ExportResult } from "./export.js";
-import { renderObserver } from "./observer.js";
-import { buildObserverData } from "./observer-data.js";
-import { containsSensitive, redactScreenshot, redactText } from "./redaction.js";
-import { loadRunBundlePrepared, resolveRunPath, verifyRunPrepared, type RunBundle } from "./run.js";
+import { renderObserver } from "../observer.js";
+import { buildObserverData } from "../observer-data.js";
+import { containsSensitive, redactScreenshot, redactText } from "../redaction.js";
+import {
+  loadRunBundlePrepared,
+  resolveRunPath,
+  verifyRunPrepared,
+  type RunBundle,
+} from "../run.js";
 import {
   isPathInside,
   prepareRunArtifactPaths,
   validatePreparedRunArtifactPaths,
   type PreparedRunArtifactPaths,
-} from "./run-paths.js";
-import { isStudyAnalysisRecordPath } from "./analysis/sharing.js";
+} from "../run-paths.js";
+import { isStudyAnalysisRecordPath } from "../analysis/sharing.js";
 import {
   assertPreparedSelectedOutputDirectory,
   prepareManagedHumanishOutputDirectory,
@@ -26,7 +31,7 @@ import {
   readContainedRegularFile,
   writeContainedOutputFile,
   type PreparedSelectedOutputDirectory,
-} from "./selected-output-paths.js";
+} from "../selected-output-paths.js";
 
 const DERIVATION_SCHEMA = "humanish.redacted-derivation.v1";
 const MAX_FILES = 10_000;

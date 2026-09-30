@@ -1,4 +1,4 @@
-import type { RunBundle, RunFeedbackCandidate } from "./run.js";
+import type { RunBundle, RunFeedbackCandidate } from "../run.js";
 
 /** Commands run from the evidence workspace using an installed Humanish CLI. */
 export function feedbackProofCommands(runId: string): { verify: string; watch: string } {

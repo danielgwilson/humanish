@@ -15,7 +15,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { ACTOR_TRACE_SCHEMA } from "../src/actor-contract.js";
+import { ACTOR_TRACE_SCHEMA } from "../../src/actor-contract.js";
 import {
   FEEDBACK_SCHEMA,
   draftFeedback,
@@ -23,9 +23,9 @@ import {
   renderIssueMarkdown,
   renderIssueUrl,
   verifyFeedback,
-} from "../src/feedback.js";
-import { createProgram } from "../src/program.js";
-import { runDryRun } from "../src/run.js";
+} from "../../src/feedback/feedback.js";
+import { createProgram } from "../../src/program.js";
+import { runDryRun } from "../../src/run.js";
 
 async function withFixtureCopy<T>(callback: (cwd: string) => Promise<T>): Promise<T> {
   const tempRoot = await mkdtemp(path.join(os.tmpdir(), "humanish-feedback-fixture-"));

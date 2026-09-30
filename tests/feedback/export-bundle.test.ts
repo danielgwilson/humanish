@@ -21,13 +21,13 @@ import {
   ACTOR_TRACE_SCHEMA,
   CODEX_APP_SERVER_CAPABILITIES,
   type ActorTrace,
-} from "../src/actor-contract.js";
-import { exportRun, formatExportHuman } from "../src/export.js";
-import { exportRedactedBundle } from "../src/export-bundle.js";
-import { draftFeedback, renderIssueMarkdown, verifyFeedback } from "../src/feedback.js";
-import { runDryRun, verifyRun, type RunBundle } from "../src/run.js";
-import { computeStats } from "../src/stats.js";
-import { createProgram } from "../src/program.js";
+} from "../../src/actor-contract.js";
+import { exportRun, formatExportHuman } from "../../src/feedback/export.js";
+import { exportRedactedBundle } from "../../src/feedback/export-bundle.js";
+import { draftFeedback, renderIssueMarkdown, verifyFeedback } from "../../src/feedback/feedback.js";
+import { runDryRun, verifyRun, type RunBundle } from "../../src/run.js";
+import { computeStats } from "../../src/stats.js";
+import { createProgram } from "../../src/program.js";
 
 const RUN = "synthetic-export-study";
 const OPTIONS = { format: "bundle" as const, redactScreenshots: true, out: "shared" };

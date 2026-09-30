@@ -16,8 +16,8 @@ import {
   listStudyAnalysisExecutions,
   writeStudyAnalysis,
 } from "../../src/analysis/store.js";
-import { draftFeedback, renderIssueUrl } from "../../src/feedback.js";
-import { exportRun } from "../../src/export.js";
+import { draftFeedback, renderIssueUrl } from "../../src/feedback/feedback.js";
+import { exportRun } from "../../src/feedback/export.js";
 import { renderObserver, serveObserver } from "../../src/observer.js";
 import { resolveRunPath, runDryRun, verifyRun, type RunBundle } from "../../src/run.js";
 import type { StudyAnalysisConfig, StudyAnalysisInput } from "../../src/analysis/study-analysis.js";

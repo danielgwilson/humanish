@@ -1,10 +1,10 @@
 import { realpath } from "node:fs/promises";
 import path from "node:path";
 
-import { feedbackProofCommands, projectFeedbackAcceptanceProof } from "./feedback-proof.js";
-import { loadStudyAnalysis } from "./analysis/store.js";
-import { hashStudyAnalysisValue } from "./analysis/validation.js";
-import { studyAnalysisSharingProblems } from "./analysis/sharing.js";
+import { feedbackProofCommands, projectFeedbackAcceptanceProof } from "./proof.js";
+import { loadStudyAnalysis } from "../analysis/store.js";
+import { hashStudyAnalysisValue } from "../analysis/validation.js";
+import { studyAnalysisSharingProblems } from "../analysis/sharing.js";
 
 import {
   formatParticipantOutcomes,
@@ -13,20 +13,20 @@ import {
   verifyRunPrepared,
   participantOutcomeDetails,
   withCuaReviewProvenance,
-} from "./run.js";
-import type { RunBundle, RunFeedbackCandidate, VerifyResult } from "./run.js";
+} from "../run.js";
+import type { RunBundle, RunFeedbackCandidate, VerifyResult } from "../run.js";
 import {
   bindExistingRunArtifactPaths,
   isSafeRunIdSegment,
   resolveLatestRunDirectory,
   type PreparedRunArtifactPaths,
   validatePreparedRunArtifactPaths,
-} from "./run-paths.js";
+} from "../run-paths.js";
 import {
   bindExistingManagedHumanishOutputDirectory,
   readContainedRegularFile,
   writeContainedOutputFile,
-} from "./selected-output-paths.js";
+} from "../selected-output-paths.js";
 
 export const FEEDBACK_SCHEMA = "humanish.feedback.v1";
 export const FEEDBACK_RESULT_SCHEMA = "humanish.feedback-result.v1";

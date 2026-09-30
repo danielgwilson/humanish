@@ -2,7 +2,7 @@ import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { FEEDBACK_SCHEMA } from "../src/feedback.js";
+import { FEEDBACK_SCHEMA } from "../src/feedback/feedback.js";
 import { PUBLIC_TARGET_CWD, RUN_BUNDLE_SCHEMA } from "../src/run.js";
 
 interface AdapterFixture {
