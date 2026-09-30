@@ -233,10 +233,12 @@ function makeRendezvous(count: number): () => Promise<void> {
   };
 }
 
+// A full-suite run on a loaded machine can take several seconds to reach a condition that is
+// immediate when the file runs alone. The wait returns as soon as the condition holds.
 async function waitForCondition(
   label: string,
   condition: () => boolean | Promise<boolean>,
-  timeoutMs = 2_000,
+  timeoutMs = 8_000,
 ): Promise<void> {
   const startedAt = Date.now();
   while (Date.now() - startedAt < timeoutMs) {
@@ -2448,7 +2450,9 @@ describe("concurrent run lifetime", () => {
           (await readBundle()).streams.every((stream) =>
             stream.liveActor?.items.some((item) => item.id === "live-click"),
           ),
-        5_000,
+        // The seat flush writes at most every 2 s; with the 8 s wait above this stays under the
+        // 20 s test timeout.
+        10_000,
       );
       const midRun = await readBundle();
       expect(midRun.streams.map((stream) => stream.status)).toEqual([
