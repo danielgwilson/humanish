@@ -12,7 +12,7 @@ import {
   symlink,
   writeFile,
 } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, posix, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseSync } from "oxc-parser";
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -48,7 +48,9 @@ async function closure() {
     packages = new Set();
   async function visit(name) {
     if (seen.has(name)) return;
-    if (!/^[a-z0-9-]+\.js$/.test(name)) throw new Error("Unqualified runtime import");
+    // A dist-relative module path: lowercase segments, no "." or ".." segments.
+    if (!/^(?:[a-z0-9-]+\/)*[a-z0-9-]+\.js$/.test(name))
+      throw new Error("Unqualified runtime import");
     seen.add(name);
     const text = await readFile(join(repository, "dist", name), "utf8");
     const { module, errors } = parseSync(name, text, { sourceType: "module" });
@@ -66,8 +68,12 @@ async function closure() {
     }
     for (const reference of references) {
       if (reference.startsWith("node:")) continue;
-      if (reference.startsWith("./")) await visit(reference.slice(2));
-      else {
+      if (reference.startsWith("./") || reference.startsWith("../")) {
+        const target = posix.normalize(posix.join(posix.dirname(name), reference));
+        if (target.startsWith("../") || posix.isAbsolute(target))
+          throw new Error("Runtime import leaves dist");
+        await visit(target);
+      } else {
         if (!["playwright-core", "pngjs", "zod"].includes(reference))
           throw new Error("Unqualified guest dependency");
         packages.add(reference);
@@ -76,6 +82,19 @@ async function closure() {
   }
   await visit("guest-runtime-main.js");
   return { modules: [...seen].sort(), packages: [...packages].sort() };
+}
+// Copies each closure module to its dist-relative path; the revision module is generated.
+async function copyModules(control, modules, runtimeRevision) {
+  for (const name of modules) {
+    const target = join(control, name);
+    await mkdir(dirname(target), { recursive: true });
+    if (name === "guest-runtime-revision.js")
+      await writeFile(
+        target,
+        `export const GUEST_RUNTIME_REVISION = ${JSON.stringify(runtimeRevision)};\n`,
+      );
+    else await cp(join(repository, "dist", name), target);
+  }
 }
 export async function packageGuestRuntime(destination, { media = false } = {}) {
   const output = resolve(destination),
@@ -137,15 +156,7 @@ export async function packageGuestRuntime(destination, { media = false } = {}) {
   const runtimeRevision = "guest-api1-" + sha(canonical(inputs));
   const control = join(root, "opt/humanish/control");
   await cp(fixed, root, { recursive: true, dereference: false });
-  for (const name of selected.modules) {
-    const target = join(control, name);
-    if (name === "guest-runtime-revision.js")
-      await writeFile(
-        target,
-        `export const GUEST_RUNTIME_REVISION = ${JSON.stringify(runtimeRevision)};\n`,
-      );
-    else await cp(join(repository, "dist", name), target);
-  }
+  await copyModules(control, selected.modules, runtimeRevision);
   await writeFile(join(control, "package.json"), '{"type":"module"}\n');
   for (const name of selected.packages) {
     await mkdir(join(control, "node_modules"), { recursive: true });

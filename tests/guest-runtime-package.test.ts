@@ -115,6 +115,32 @@ describe("guest package immutable input binding", () => {
     const second = JSON.parse(await readFile(join(root, "second/manifest.json"), "utf8"));
     expect(second.runtimeRevision).not.toBe(first.runtimeRevision);
   });
+  it("packages a module imported from a subdirectory at the same relative path", async () => {
+    const root = await fixture();
+    await mkdir(join(root, "dist/run"), { recursive: true });
+    await mkdir(join(root, "src/run"), { recursive: true });
+    await writeFile(join(root, "src/run/paths.ts"), "// synthetic nested input\n");
+    await writeFile(join(root, "dist/run/paths.js"), "import '../guest-runtime-revision.js';\n");
+    await writeFile(
+      join(root, "dist/guest-runtime-main.js"),
+      "import './guest-runtime-revision.js';import './run/paths.js';import 'pngjs';\n",
+    );
+    expect(run(root, "output").status).toBe(0);
+    const manifest = JSON.parse(await readFile(join(root, "output/manifest.json"), "utf8"));
+    expect(manifest.inputs.sourceFiles["dist/run/paths.js"]).toBeTruthy();
+    expect(manifest.inputs.sourceFiles["src/run/paths.ts"]).toBeTruthy();
+    expect(manifest.files["opt/humanish/control/run/paths.js"]).toBeTruthy();
+  });
+  it("refuses a runtime import that leaves dist", async () => {
+    const root = await fixture();
+    await writeFile(
+      join(root, "dist/guest-runtime-main.js"),
+      "import './guest-runtime-revision.js';import '../scripts/guest-runtime-package.mjs';\n",
+    );
+    const result = run(root, "output");
+    expect(result.status).not.toBe(0);
+    await expect(readFile(join(root, "output/manifest.json"))).rejects.toBeDefined();
+  });
   it("adds the media worker only for an explicit media package", async () => {
     const root = await fixture();
     expect(run(root, "plain").status).toBe(0);
