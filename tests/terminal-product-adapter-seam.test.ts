@@ -31,7 +31,7 @@ import {
 // harness in-test — the ADAPTER itself uses the barrel exclusively, asserted below.)
 import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../src/lab/config.js";
 import { runTerminalProductLab } from "../src/e2b-terminal-lab.js";
-import type { E2BDesktopModule } from "../src/e2b-desktop-launch.js";
+import type { E2BDesktopModule } from "../src/substrates/e2b/desktop-launch.js";
 import { verifyRun } from "../src/run/run.js";
 
 // =============================================================================================

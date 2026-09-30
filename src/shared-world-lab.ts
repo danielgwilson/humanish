@@ -84,14 +84,14 @@ import {
   desktopBrowserFamily,
   type SubjectPhaseEvent,
 } from "./cua-actor-lab.js";
-import type { E2BDesktopLike } from "./e2b-desktop-executor.js";
+import type { E2BDesktopLike } from "./substrates/e2b/desktop-executor.js";
 import {
   createDesktopSandbox,
   loadE2BDesktopModule,
   type E2BDesktopModule,
   type E2BDesktopSandbox,
-} from "./e2b-desktop-launch.js";
-import { runDetachedStep, type DetachedTimers } from "./e2b-detached.js";
+} from "./substrates/e2b/desktop-launch.js";
+import { runDetachedStep, type DetachedTimers } from "./substrates/e2b/detached.js";
 import type { DevicePreset } from "./lab/device-presets.js";
 import {
   resolveSeatUrl,

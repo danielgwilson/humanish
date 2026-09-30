@@ -20,7 +20,7 @@ import type {
   E2BDesktopCreateOptions,
   E2BDesktopModule,
   E2BDesktopSandbox,
-} from "../src/e2b-desktop-launch.js";
+} from "../src/substrates/e2b/desktop-launch.js";
 import {
   concurrentSharedWorldValidationReason,
   LAB_CONFIG_SCHEMA,

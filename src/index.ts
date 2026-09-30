@@ -96,10 +96,13 @@ export type {
 } from "./computer-use.js";
 export { runCuaActorSession } from "./computer-use-actor.js";
 export type { CuaActorSessionOptions } from "./computer-use-actor.js";
-export { createE2BDesktopExecutor } from "./e2b-desktop-executor.js";
-export type { E2BDesktopExecutorOptions, E2BDesktopLike } from "./e2b-desktop-executor.js";
-export { loadE2BDesktopModule } from "./e2b-desktop-launch.js";
-export type { E2BDesktopModule, E2BDesktopSandbox } from "./e2b-desktop-launch.js";
+export { createE2BDesktopExecutor } from "./substrates/e2b/desktop-executor.js";
+export type {
+  E2BDesktopExecutorOptions,
+  E2BDesktopLike,
+} from "./substrates/e2b/desktop-executor.js";
+export { loadE2BDesktopModule } from "./substrates/e2b/desktop-launch.js";
+export type { E2BDesktopModule, E2BDesktopSandbox } from "./substrates/e2b/desktop-launch.js";
 export {
   DEFAULT_OPENAI_CU_MODEL,
   OPENAI_RESPONSES_CU_CAPABILITIES,
@@ -362,8 +365,12 @@ export {
   readDetachedLog,
   runDetachedStep,
   startDetachedProcess,
-} from "./e2b-detached.js";
-export type { DetachedStepOptions, DetachedStepResult, DetachedTimers } from "./e2b-detached.js";
+} from "./substrates/e2b/detached.js";
+export type {
+  DetachedStepOptions,
+  DetachedStepResult,
+  DetachedTimers,
+} from "./substrates/e2b/detached.js";
 export {
   DEFAULT_DEVICE_PRESET,
   DEVICE_PRESETS,

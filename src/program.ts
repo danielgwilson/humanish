@@ -1842,7 +1842,8 @@ function registerRuntimeCommands(parent: Command, io: CliIo): void {
       .option("--json", JSON_OPTION_DESCRIPTION)
       .option("--media", "Prepare or inspect the optional camera and speech runtime.")
       .action(async (_options, command) => {
-        const { localRuntimeStatus, prepareLocalRuntime } = await import("./local-runtime.js");
+        const { localRuntimeStatus, prepareLocalRuntime } =
+          await import("./substrates/local/runtime.js");
         try {
           if (action === "setup")
             await prepareLocalRuntime({

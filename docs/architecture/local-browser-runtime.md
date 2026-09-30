@@ -119,7 +119,7 @@ rules. An unconfirmed release is reported as such.
 ## Runtime maintenance
 
 The npm build pins a release URL, byte count, SHA-256 and immutable Docker image
-ID in `src/local-runtime-release.ts`. It has no moving `latest` image dependency.
+ID in `src/substrates/local/runtime-release.ts`. It has no moving `latest` image dependency.
 Runtime releases include source archives and notices separately; study users do
 not download those archives. Updating a runtime requires a reviewed catalog
 change and a new CLI release.

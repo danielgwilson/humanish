@@ -55,8 +55,8 @@ import {
   loadE2BDesktopModule,
   type E2BDesktopModule,
   type E2BDesktopSandbox,
-} from "./e2b-desktop-launch.js";
-import type { DetachedTimers } from "./e2b-detached.js";
+} from "./substrates/e2b/desktop-launch.js";
+import type { DetachedTimers } from "./substrates/e2b/detached.js";
 import type { LabConfig } from "./lab/config.js";
 import { renderObserver, type ObserverResult } from "./observer/render.js";
 import { digestText, redactText } from "./redaction.js";

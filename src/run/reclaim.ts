@@ -5,7 +5,7 @@
 // the server-side create-time TTL (slow, spend keeps burning) or account enumeration (which this
 // codebase never does — an account-wide operation once destroyed unrelated infrastructure). This
 // reads one file inside the managed run dir, kills by id, and never lists anything.
-import { loadE2BDesktopModule, type E2BDesktopModule } from "../e2b-desktop-launch.js";
+import { loadE2BDesktopModule, type E2BDesktopModule } from "../substrates/e2b/desktop-launch.js";
 import { readContainedRegularFile, writeContainedOutputFile } from "../selected-output-paths.js";
 import { resolveRunPath } from "./run.js";
 import { parseSandboxReceipts, SANDBOX_RECEIPTS_ARTIFACT } from "./sandbox-receipts.js";

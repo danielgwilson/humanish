@@ -1,5 +1,5 @@
 import type { RunDesktopRecording } from "./desktop-recording-types.js";
-import { e2bDesktopTemplate } from "./e2b-desktop-media.js";
+import { e2bDesktopTemplate } from "./substrates/e2b/desktop-media.js";
 import type { CuaLiveMetadata } from "./computer-use.js";
 export { inboxRecipientFor, laneHasInboxRecipient } from "./cua-desktop-lane.js";
 export {
@@ -21,19 +21,19 @@ export {
   type DesktopBrowserLaunchIdentity,
   type DesktopBrowserLaunchResult,
   type SubjectPhaseEvent,
-} from "./e2b-cua-provisioning.js";
+} from "./substrates/e2b/cua-provisioning.js";
 import { prepareReceivingRun, receivingPublication } from "./comms/receiving-runtime.js";
 import type { CommsReceivingRun } from "./comms/receiving.js";
 import { laneHasInboxRecipient, type CuaDesktopLane } from "./cua-desktop-lane.js";
-import { createE2BCuaDesktopLane } from "./e2b-cua-desktop.js";
-import { isLocalBrowserLab, LOCAL_BROWSER_LIFETIME_MS } from "./local-runtime-config.js";
+import { createE2BCuaDesktopLane } from "./substrates/e2b/cua-desktop.js";
+import { isLocalBrowserLab, LOCAL_BROWSER_LIFETIME_MS } from "./substrates/local/runtime-config.js";
 import {
   DEFAULT_STATE_STEP_TIMEOUT_MS,
   commandDigestOf,
   declaredScreenForRender,
   type DesktopBrowserEvidence,
   type SubjectPhaseEvent,
-} from "./e2b-cua-provisioning.js";
+} from "./substrates/e2b/cua-provisioning.js";
 import { receivingEmailValidationReason } from "./lab/config.js";
 import { withTransientCommsSecrets } from "./run/narration-secrets.js";
 // The computer-use lab backend: a subject (an app-url the caller provisioned, or a repo the
@@ -114,9 +114,9 @@ import {
   resolveDevicePreset,
   type DevicePreset,
 } from "./lab/device-presets.js";
-import { type E2BDesktopModule, type E2BDesktopSandbox } from "./e2b-desktop-launch.js";
-import { type DesktopResourceObservation } from "./e2b-desktop-resources.js";
-import { type DetachedTimers } from "./e2b-detached.js";
+import { type E2BDesktopModule, type E2BDesktopSandbox } from "./substrates/e2b/desktop-launch.js";
+import { type DesktopResourceObservation } from "./substrates/e2b/desktop-resources.js";
+import { type DetachedTimers } from "./substrates/e2b/detached.js";
 import { assertScreenshotEvidence } from "./image-evidence.js";
 import {
   MAX_CUA_LANES,

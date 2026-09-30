@@ -11,7 +11,7 @@ import type { AdapterScorerModule, AdapterScoringContext } from "../src/index.js
 import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../src/lab/config.js";
 import { runTerminalProductLab, type TerminalProductLabHooks } from "../src/e2b-terminal-lab.js";
 import { applyBrowserAdapterHooks } from "../src/adapter-extension.js";
-import type { E2BDesktopModule } from "../src/e2b-desktop-launch.js";
+import type { E2BDesktopModule } from "../src/substrates/e2b/desktop-launch.js";
 import { verifyRun } from "../src/run/run.js";
 import type { BrowserLabScoringContext, RunAdapterScore, RunBundle } from "../src/index.js";
 

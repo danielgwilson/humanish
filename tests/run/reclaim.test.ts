@@ -18,7 +18,7 @@ import {
   SANDBOX_RECEIPTS_ARTIFACT,
 } from "../../src/run/sandbox-receipts.js";
 import { RECLAIM_RECEIPT_ARTIFACT, reclaimRunSandboxes } from "../../src/run/reclaim.js";
-import type { E2BDesktopModule } from "../../src/e2b-desktop-launch.js";
+import type { E2BDesktopModule } from "../../src/substrates/e2b/desktop-launch.js";
 
 function dryRunConfig(): LabConfig {
   const parsed = parseLabConfig({

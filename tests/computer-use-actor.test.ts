@@ -4,7 +4,7 @@ import { PNG } from "pngjs";
 import { ACTOR_TRACE_SCHEMA, type ActorPersonaRef } from "../src/actor-contract.js";
 import { getActor } from "../src/actor-registry.js";
 import { runCuaActorSession } from "../src/computer-use-actor.js";
-import type { E2BDesktopLike } from "../src/e2b-desktop-executor.js";
+import type { E2BDesktopLike } from "../src/substrates/e2b/desktop-executor.js";
 import {
   DEFAULT_OPENAI_CU_MODEL,
   OPENAI_RESPONSES_CU_CAPABILITIES,

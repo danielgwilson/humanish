@@ -23,7 +23,7 @@ import {
   type E2BDesktopCreateOptions,
   type E2BDesktopModule,
   type E2BNetworkOptions,
-} from "../src/e2b-desktop-launch.js";
+} from "../src/substrates/e2b/desktop-launch.js";
 import { E2B_SYSTEM_CA_BUNDLE, OPENAI_EGRESS_PLACEHOLDER } from "../src/terminal-runtime-auth.js";
 import { prepareSelectedOutputDirectory } from "../src/selected-output-paths.js";
 import { verifyRun } from "../src/run/run.js";
@@ -212,7 +212,7 @@ function makeFakeModule(opts: {
               const state = opts.getInfoState ?? "not-found";
               if (state === "not-found") {
                 // A real reclaimed sandbox: the SDK throws SandboxNotFoundError, detected by
-                // `.name` (see isSandboxNotFoundError in src/e2b-desktop-launch.ts).
+                // `.name` (see isSandboxNotFoundError in src/substrates/e2b/desktop-launch.ts).
                 throw Object.assign(new Error(`Sandbox ${sandboxId} not found`), {
                   name: "SandboxNotFoundError",
                 });

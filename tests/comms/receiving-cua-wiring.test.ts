@@ -9,7 +9,7 @@ import type {
   E2BDesktopCreateOptions,
   E2BDesktopModule,
   E2BDesktopSandbox,
-} from "../../src/e2b-desktop-launch.js";
+} from "../../src/substrates/e2b/desktop-launch.js";
 import { LAB_CONFIG_SCHEMA, parseLabConfig } from "../../src/lab/config.js";
 import type { CommsReceivingRun } from "../../src/comms/receiving.js";
 import type { ReceivingSurface } from "../../src/comms/receiving-types.js";
