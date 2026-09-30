@@ -93,6 +93,7 @@ import {
   type ScriptedBrowserSessionOptions,
   type ScriptedBrowserSessionResult,
 } from "../actors/scripted-browser.js";
+import { appendSandboxReceipt } from "../run/sandbox-receipts.js";
 import {
   prepareSelectedOutputDirectory,
   readContainedRegularFile,
@@ -442,6 +443,14 @@ async function runScriptedBrowserLabInScope(
       if (provisionedRoute) {
         const requestTimeoutMs = readPositiveInt(env.HUMANISH_E2B_REQUEST_TIMEOUT_MS, 60_000);
         const timers: DetachedTimers = hooks.detachedTimers ?? {};
+        const subjectSandboxTimeoutMs =
+          timeoutMs +
+          SUBJECT_PROVISION_BUDGET_MS +
+          (config.subject.state?.seed ?? []).reduce(
+            (sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS),
+            0,
+          ) +
+          SANDBOX_TIMEOUT_BUFFER_MS;
         subjectModule = await (hooks.loadDesktopModule ?? loadE2BDesktopModule)();
         await validatePreparedRunArtifactPaths(runPaths);
         subjectDesktop = await createDesktopSandbox(
@@ -449,14 +458,7 @@ async function runScriptedBrowserLabInScope(
           {
             apiKey: e2bApiKey,
             requestTimeoutMs,
-            timeoutMs:
-              timeoutMs +
-              SUBJECT_PROVISION_BUDGET_MS +
-              (config.subject.state?.seed ?? []).reduce(
-                (sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS),
-                0,
-              ) +
-              SANDBOX_TIMEOUT_BUFFER_MS,
+            timeoutMs: subjectSandboxTimeoutMs,
             metadata: {
               mode: "scripted-browser-lab",
               tool: "humanish",
@@ -477,6 +479,15 @@ async function runScriptedBrowserLabInScope(
           config.execution?.desktop?.template,
         );
         subjectSandboxId = subjectDesktop.sandboxId;
+        // The id is journaled before any work on the sandbox so `humanish reclaim` can kill
+        // it by exact id when this process dies mid-run; the finally block below only runs while
+        // the process is alive.
+        await appendSandboxReceipt(runPaths, {
+          at: new Date().toISOString(),
+          laneId: "subject",
+          sandboxId: subjectSandboxId,
+          timeoutMs: subjectSandboxTimeoutMs,
+        });
 
         if (hooks.prepareDesktop) {
           await hooks.prepareDesktop(subjectDesktop);
