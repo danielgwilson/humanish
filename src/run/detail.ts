@@ -10,13 +10,13 @@
 
 import { readAutomaticStudyAnalysis } from "../analysis/automatic.js";
 import type { AutomaticStudyAnalysisView } from "../analysis/job.js";
-import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import { estimateActorCostForExecution } from "./pricing.js";
 
 import { resolveRunPath } from "./locate.js";
-import { resolvePhysicalCwd } from "./paths.js";
+import { readContainedRegularFile } from "./selected-output-paths.js";
+import { isPathInside, resolvePhysicalCwd } from "./paths.js";
 
 const RUN_DETAIL_SCHEMA = "humanish.run-detail.v1";
 
@@ -185,8 +185,10 @@ export async function readRunDetail(cwdInput: string, runId: string): Promise<Ru
 
   let bundle: { streams?: StreamFacts[]; runId?: string };
   try {
-    const raw = await readFile(path.join(runPaths.absoluteRunRoot, "run.json"), "utf8");
-    const parsed: unknown = JSON.parse(raw);
+    // A contained read: a run.json swapped for a symlink or hardlink after resolve is refused.
+    const raw = await readContainedRegularFile(runPaths, "run.json");
+    if (raw === null) return null;
+    const parsed: unknown = JSON.parse(raw.toString("utf8"));
     if (parsed === null || typeof parsed !== "object") return null;
     bundle = parsed as { streams?: StreamFacts[]; runId?: string };
   } catch {
@@ -203,7 +205,7 @@ export async function readRunDetail(cwdInput: string, runId: string): Promise<Ru
     schema: RUN_DETAIL_SCHEMA,
     runId: bundle.runId ?? runId,
     participants: streams.map(participantFrom),
-    ...(observerAbsolute.startsWith(cwd)
+    ...(isPathInside(cwd, observerAbsolute)
       ? { observerPath: path.relative(cwd, observerAbsolute) }
       : { observerPath: observerAbsolute }),
   };

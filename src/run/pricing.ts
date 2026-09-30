@@ -159,6 +159,7 @@ const LONG_CONTEXT_TIER_272K = {
 } as const;
 
 const GPT56_SOURCE = "developers.openai.com/api/docs/pricing (gpt-5.6 family, standard tier)";
+const GPT6_ASTRA_SOURCE = "developers.openai.com/api/docs/pricing (gpt-6-astra, standard tier)";
 
 // One entry for a model on the gpt-5.6 pricing mechanics (the 5.6 family and gpt-6-astra): rates
 // in USD-per-1M for legibility, converted once. Cache writes bill at 1.25x the uncached input rate
@@ -170,6 +171,7 @@ function rateWithLongContextTier(
   writePer1M: number,
   outPer1M: number,
   asOf: string = "2026-08-18",
+  source: string = GPT56_SOURCE,
 ): ModelRate {
   return {
     inputUsdPerToken: inPer1M * 1e-6,
@@ -178,7 +180,7 @@ function rateWithLongContextTier(
     outputUsdPerToken: outPer1M * 1e-6,
     longContext: { ...LONG_CONTEXT_TIER_272K },
     asOf,
-    source: GPT56_SOURCE,
+    source,
   };
 }
 
@@ -228,7 +230,7 @@ export const MODEL_RATES: Record<string, ModelRate> = {
   // as the 5.6 family on the sheet: writes at 1.25x, >272K re-tiers at 2x input-side / 1.5x
   // output ($20 / $2 / $25 / $75 long-context columns). These rates cover explicit lab
   // model choices and the study-analysis default; the computer-use default is separate.
-  "gpt-6-astra": rateWithLongContextTier(10, 1, 12.5, 50, GPT6_ASTRA_AS_OF),
+  "gpt-6-astra": rateWithLongContextTier(10, 1, 12.5, 50, GPT6_ASTRA_AS_OF, GPT6_ASTRA_SOURCE),
 };
 
 // Current public incremental running-compute rates. Subscription fees/credits, negotiated
