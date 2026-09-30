@@ -4,7 +4,11 @@ import { DEFAULT_EXPORT_MAX_BYTES, exportRun, formatExportHuman } from "../../fe
 import { cleanupRun, listRuns, readReview } from "../../run/manage.js";
 import { runDryRun } from "../../run/dry-run.js";
 import { verifyRun } from "../../run/verify.js";
-import { reclaimRunSandboxes, type ReclaimResult } from "../../run/reclaim.js";
+import {
+  reclaimPreflightSandboxes,
+  reclaimRunSandboxes,
+  type ReclaimResult,
+} from "../../run/reclaim.js";
 import type { CleanupResult, RunResult } from "../../run/bundle.js";
 import type { RunsResult } from "../../run/manage.js";
 import type { VerifyResult } from "../../run/verify.js";
@@ -340,12 +344,25 @@ export function registerReclaimCommand(parent: Command, io: CliIo): void {
     .summary("Reclaim an interrupted run's sandboxes by recorded id.")
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--run <id>", "Run id, or 'latest'.", "latest")
+    .addOption(
+      new Option(
+        "--preflight",
+        "Reclaim sandboxes left by interrupted `humanish lab preflight` probes (journaled in .humanish/preflight) instead of a run's.",
+      ).conflicts("run"),
+    )
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (options: { cwd: string; run: string; json?: boolean }, command) => {
-      const result = await reclaimRunSandboxes(options.cwd, options.run);
-      writeResult(command, io, result, formatReclaimHuman);
-      io.setExitCode(result.ok ? 0 : 2);
-    });
+    .action(
+      async (
+        options: { cwd: string; run: string; preflight?: boolean; json?: boolean },
+        command,
+      ) => {
+        const result = options.preflight
+          ? await reclaimPreflightSandboxes(options.cwd)
+          : await reclaimRunSandboxes(options.cwd, options.run);
+        writeResult(command, io, result, formatReclaimHuman);
+        io.setExitCode(result.ok ? 0 : 2);
+      },
+    );
 }
 
 function formatReclaimHuman(result: ReclaimResult): string {

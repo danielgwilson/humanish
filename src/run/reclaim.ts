@@ -6,7 +6,16 @@
 // codebase never does — an account-wide operation once destroyed unrelated infrastructure). This
 // reads one file inside the managed run dir, kills by id, and never lists anything.
 import { loadE2BDesktopModule, type E2BDesktopModule } from "../substrates/e2b/desktop-launch.js";
-import { readContainedRegularFile, writeContainedOutputFile } from "./selected-output-paths.js";
+import {
+  readContainedRegularFile,
+  writeContainedOutputFile,
+  type PreparedOutputRoot,
+} from "./selected-output-paths.js";
+import {
+  discardPreflightJournal,
+  listPreflightJournals,
+  preflightInUse,
+} from "./preflight-receipts.js";
 import { resolveRunPath } from "./locate.js";
 import {
   parseSandboxReceipts,
@@ -82,8 +91,8 @@ export async function reclaimRunSandboxes(
   }
   const runId = path.basename(runPaths.absoluteRunRoot);
 
-  const bytes = await readContainedRegularFile(runPaths, SANDBOX_RECEIPTS_ARTIFACT);
-  if (bytes === null) {
+  const journal = await reclaimJournal(runPaths, hooks);
+  if (journal.kind === "empty") {
     // Honest empty: nothing journaled means either no sandbox was ever created (cheap interrupt —
     // nothing to reclaim) or the run predates receipts (0.35.x and earlier — the create-time TTL
     // is the only backstop for those). Either way there is no id to act on, and saying so beats
@@ -93,6 +102,96 @@ export async function reclaimRunSandboxes(
     );
     return { ...base, runId, ok: true };
   }
+  if (journal.kind === "module-unavailable") {
+    return {
+      ...base,
+      runId,
+      receiptCount: journal.receiptCount,
+      ok: false,
+      error: { code: "HUMANISH_RECLAIM_MODULE_UNAVAILABLE", message: journal.message },
+    };
+  }
+
+  const { receiptCount, outcomes } = journal;
+  const result: ReclaimResult = { ...base, runId, receiptCount, outcomes, ok: allGone(outcomes) };
+  // Keep the reclaim record next to the run it cleaned: what was attempted, what happened, when.
+  await writeReclaimReceipt(runPaths, runId, receiptCount, outcomes, warnings);
+  return result;
+}
+
+/**
+ * Kill the sandboxes left by interrupted `humanish lab preflight` probes. A probe journals under
+ * .humanish/preflight/<probe-id>/ and removes the journal after a confirmed kill, so what is left
+ * belongs to a probe that died or could not confirm its teardown. A journal whose probe may still
+ * be running (its process is alive and it was not marked abandoned) is left alone.
+ */
+export async function reclaimPreflightSandboxes(
+  cwd: string,
+  hooks: ReclaimHooks = {},
+): Promise<ReclaimResult> {
+  const warnings: string[] = [];
+  const outcomes: ReclaimOutcome[] = [];
+  let receiptCount = 0;
+  const base = { schema: RECLAIM_RESULT_SCHEMA, cwd, runId: "preflight", warnings } as const;
+  const journals = await listPreflightJournals(cwd);
+  if (journals.length === 0) {
+    warnings.push(
+      "No preflight journals in .humanish/preflight: every probe's teardown was confirmed, or no probe ran here. Nothing to reclaim by id.",
+    );
+  }
+  for (const journal of journals) {
+    if (await preflightInUse(journal)) {
+      warnings.push(
+        `Preflight ${journal.id} is still running in process ${journal.pid}; left alone.`,
+      );
+      continue;
+    }
+    const reclaimed = await reclaimJournal(journal.root, hooks);
+    if (reclaimed.kind === "module-unavailable") {
+      return {
+        ...base,
+        ok: false,
+        receiptCount: receiptCount + reclaimed.receiptCount,
+        outcomes,
+        error: { code: "HUMANISH_RECLAIM_MODULE_UNAVAILABLE", message: reclaimed.message },
+      };
+    }
+    if (reclaimed.kind === "done") {
+      receiptCount += reclaimed.receiptCount;
+      outcomes.push(...reclaimed.outcomes);
+      if (!allGone(reclaimed.outcomes)) {
+        // The journal stays so a later reclaim can try again; the receipt says what happened.
+        await writeReclaimReceipt(
+          journal.root,
+          journal.id,
+          reclaimed.receiptCount,
+          reclaimed.outcomes,
+          warnings,
+        );
+        continue;
+      }
+    }
+    await discardPreflightJournal(journal, [RECLAIM_RECEIPT_ARTIFACT]).catch((error: unknown) => {
+      warnings.push(
+        `Preflight ${journal.id} was reclaimed but its journal could not be removed: ${redactText(toErrorMessage(error))}`,
+      );
+    });
+  }
+  return { ...base, ok: allGone(outcomes), receiptCount, outcomes };
+}
+
+type JournalReclaim =
+  | { kind: "empty" }
+  | { kind: "module-unavailable"; receiptCount: number; message: string }
+  | { kind: "done"; receiptCount: number; outcomes: ReclaimOutcome[] };
+
+/** Kill every sandbox one receipts journal records, once per sandbox, by exact id. */
+async function reclaimJournal(
+  root: PreparedOutputRoot,
+  hooks: ReclaimHooks,
+): Promise<JournalReclaim> {
+  const bytes = await readContainedRegularFile(root, SANDBOX_RECEIPTS_ARTIFACT);
+  if (bytes === null) return { kind: "empty" };
 
   const receipts = parseSandboxReceipts(bytes.toString("utf8"));
   // Load the E2B SDK only when an E2B receipt needs it.
@@ -102,14 +201,9 @@ export async function reclaimRunSandboxes(
       e2b = await (hooks.loadModule ?? loadE2BDesktopModule)();
   } catch (error) {
     return {
-      ...base,
-      runId,
+      kind: "module-unavailable",
       receiptCount: receipts.length,
-      ok: false,
-      error: {
-        code: "HUMANISH_RECLAIM_MODULE_UNAVAILABLE",
-        message: `Cannot load @e2b/desktop to kill by id: ${redactText(toErrorMessage(error))}`,
-      },
+      message: `Cannot load @e2b/desktop to kill by id: ${redactText(toErrorMessage(error))}`,
     };
   }
 
@@ -138,17 +232,27 @@ export async function reclaimRunSandboxes(
       ...(await destroy(receipt)),
     });
   }
+  return { kind: "done", receiptCount: receipts.length, outcomes };
+}
 
-  const ok = outcomes.every(
+function allGone(outcomes: readonly ReclaimOutcome[]): boolean {
+  return outcomes.every(
     (outcome) => outcome.state === "killed" || outcome.state === "already-gone",
   );
-  const result: ReclaimResult = { ...base, runId, receiptCount: receipts.length, outcomes, ok };
-  // Keep the reclaim record next to the run it cleaned: what was attempted, what happened, when.
+}
+
+async function writeReclaimReceipt(
+  root: PreparedOutputRoot,
+  runId: string,
+  receiptCount: number,
+  outcomes: readonly ReclaimOutcome[],
+  warnings: string[],
+): Promise<void> {
   try {
     await writeContainedOutputFile(
-      runPaths,
+      root,
       RECLAIM_RECEIPT_ARTIFACT,
-      `${JSON.stringify({ schema: RECLAIM_RESULT_SCHEMA, at: new Date().toISOString(), runId, receiptCount: receipts.length, outcomes }, null, 2)}\n`,
+      `${JSON.stringify({ schema: RECLAIM_RESULT_SCHEMA, at: new Date().toISOString(), runId, receiptCount, outcomes }, null, 2)}\n`,
       "utf8",
     );
   } catch (error) {
@@ -156,5 +260,4 @@ export async function reclaimRunSandboxes(
       `Reclaim ran but its receipt could not be written: ${redactText(toErrorMessage(error))}`,
     );
   }
-  return result;
 }

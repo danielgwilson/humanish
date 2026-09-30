@@ -1,0 +1,335 @@
+import { spawn } from "node:child_process";
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { createProgram } from "../../src/cli/program.js";
+import { runLabPreflight } from "../../src/lab/preflight.js";
+import { reclaimPreflightSandboxes } from "../../src/run/reclaim.js";
+import { SANDBOX_RECEIPTS_ARTIFACT } from "../../src/run/sandbox-receipts.js";
+import type {
+  E2BDesktopCreateOptions,
+  E2BDesktopModule,
+  E2BDesktopSandbox,
+} from "../../src/substrates/e2b/desktop-launch.js";
+
+// The lab preflight probe journals its sandbox under .humanish/preflight/<probe-id>/ before any
+// work, removes the journal after a confirmed kill, and `humanish reclaim --preflight` kills
+// what an interrupted probe left. Fake SDK modules stand in for E2B; no provider is called.
+
+const env = { E2B_API_KEY: "synthetic-e2b-value" };
+const PROBE_TIMEOUT_MS = 30_000;
+const LEASE_BUFFER_MS = 5 * 60_000;
+
+function previewLab(extra: string[] = []): string {
+  return [
+    "schema: humanish.lab.v2",
+    "id: preview",
+    "subject:",
+    "  source: app-url",
+    "  appUrl: https://preview.example.test/start",
+    "execution:",
+    "  target: e2b-desktop",
+    ...extra,
+    "actors:",
+    "  - type: openai-computer-use",
+    "scenario:",
+    "  mode: live",
+    "policies:",
+    "  allowPublicTargets: true",
+  ].join("\n");
+}
+
+function cloneLab(): string {
+  return [
+    "schema: humanish.lab.v2",
+    "id: clone-probe",
+    "subject:",
+    "  source: clone",
+    "  repos:",
+    "    - example/notes",
+    "  serve:",
+    "    install: npm ci",
+    "    start: npm start",
+    "    url: http://127.0.0.1:3000/",
+    "  state:",
+    "    seed:",
+    "      - name: seed-notes",
+    "        command: npm run seed",
+    "        timeoutMs: 120000",
+    "execution:",
+    "  target: e2b-desktop",
+    "actors:",
+    "  - type: openai-computer-use",
+    "scenario:",
+    "  mode: live",
+  ].join("\n");
+}
+
+interface FakeProvider {
+  module: E2BDesktopModule;
+  created: E2BDesktopCreateOptions[];
+  killed: string[];
+}
+
+function fakeProvider(behavior: {
+  onFirstCommand?: () => Promise<void>;
+  killThrows?: boolean;
+}): FakeProvider {
+  const created: E2BDesktopCreateOptions[] = [];
+  const killed: string[] = [];
+  let firstCommand = true;
+  const sandbox = {
+    sandboxId: "sb-preflight-1",
+    commands: {
+      run: async (command: string) => {
+        if (firstCommand) {
+          firstCommand = false;
+          await behavior.onFirstCommand?.();
+        }
+        if (command.includes("curl")) return { exitCode: 0, stdout: "READY\n" };
+        if (command.includes("/status")) return { exitCode: 0, stdout: "0\n" };
+        if (command.includes("rev-parse")) return { exitCode: 0, stdout: "abc123\n" };
+        return { exitCode: 0, stdout: "" };
+      },
+    },
+    files: { write: async () => undefined },
+  } as unknown as E2BDesktopSandbox;
+  const module = {
+    Sandbox: {
+      create: async (options: E2BDesktopCreateOptions) => {
+        created.push(options);
+        return sandbox;
+      },
+      kill: async (sandboxId: string) => {
+        if (behavior.killThrows) throw new Error("provider unreachable");
+        killed.push(sandboxId);
+        return true;
+      },
+    },
+  } as unknown as E2BDesktopModule;
+  return { module, created, killed };
+}
+
+async function journals(cwd: string): Promise<string[]> {
+  return readdir(path.join(cwd, ".humanish", "preflight")).catch(() => []);
+}
+
+describe("lab preflight receipts", () => {
+  let cwd: string;
+  beforeEach(async () => {
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-preflight-receipt-"));
+    await mkdir(path.join(cwd, "humanish", "labs"), { recursive: true });
+  });
+  afterEach(async () => {
+    await rm(cwd, { recursive: true, force: true });
+  });
+
+  it("journals the probe before its first command and removes the journal after the kill", async () => {
+    await writeFile(path.join(cwd, "humanish/labs/preview.yaml"), previewLab());
+    let journalAtFirstCommand = "";
+    const provider = fakeProvider({
+      onFirstCommand: async () => {
+        const [id] = await journals(cwd);
+        journalAtFirstCommand = await readFile(
+          path.join(cwd, ".humanish", "preflight", id ?? "missing", SANDBOX_RECEIPTS_ARTIFACT),
+          "utf8",
+        );
+      },
+    });
+
+    const result = await runLabPreflight({
+      cwd,
+      lab: "preview",
+      reachability: "public-preview",
+      env,
+      hooks: { loadDesktopModule: async () => provider.module },
+    });
+
+    expect(result.ok).toBe(true);
+    expect(JSON.parse(journalAtFirstCommand)).toMatchObject({
+      provider: "e2b",
+      sandboxId: "sb-preflight-1",
+      timeoutMs: PROBE_TIMEOUT_MS + LEASE_BUFFER_MS,
+    });
+    expect(provider.killed).toEqual(["sb-preflight-1"]);
+    expect(await journals(cwd)).toEqual([]);
+  });
+
+  it("sizes the lease to the probe, capped by a declared sandbox timeout", async () => {
+    await writeFile(
+      path.join(cwd, "humanish/labs/preview.yaml"),
+      previewLab(["  desktop:", "    sandboxTimeoutMs: 3600000"]),
+    );
+    await writeFile(path.join(cwd, "humanish/labs/clone-probe.yaml"), cloneLab());
+    const preview = fakeProvider({});
+    const clone = fakeProvider({});
+
+    const previewResult = await runLabPreflight({
+      cwd,
+      lab: "preview",
+      reachability: "public-preview",
+      env,
+      hooks: { loadDesktopModule: async () => preview.module },
+    });
+    const cloneResult = await runLabPreflight({
+      cwd,
+      lab: "clone-probe",
+      reachability: "sandbox-loopback",
+      env,
+      hooks: { loadDesktopModule: async () => clone.module, sleep: async () => undefined },
+    });
+
+    // The run's 60-minute sandbox timeout does not become the probe's lease.
+    expect(preview.created[0]?.timeoutMs).toBe(PROBE_TIMEOUT_MS + LEASE_BUFFER_MS);
+    expect(previewResult.sandbox.timeoutMs).toBe(PROBE_TIMEOUT_MS + LEASE_BUFFER_MS);
+    // A clone probe gets the run's provisioning allowance plus its declared seed steps.
+    expect(cloneResult.ok).toBe(true);
+    expect(clone.created[0]?.timeoutMs).toBe(30 * 60_000 + 120_000 + LEASE_BUFFER_MS);
+
+    await writeFile(
+      path.join(cwd, "humanish/labs/preview.yaml"),
+      previewLab(["  desktop:", "    sandboxTimeoutMs: 120000"]),
+    );
+    const capped = fakeProvider({});
+    await runLabPreflight({
+      cwd,
+      lab: "preview",
+      reachability: "public-preview",
+      env,
+      hooks: { loadDesktopModule: async () => capped.module },
+    });
+    expect(capped.created[0]?.timeoutMs).toBe(120_000);
+  });
+
+  it("keeps the journal when the kill fails, and reclaim --preflight kills it by id", async () => {
+    await writeFile(path.join(cwd, "humanish/labs/preview.yaml"), previewLab());
+    const failing = fakeProvider({ killThrows: true });
+
+    const result = await runLabPreflight({
+      cwd,
+      lab: "preview",
+      reachability: "public-preview",
+      env,
+      hooks: { loadDesktopModule: async () => failing.module },
+    });
+
+    expect(result.error?.code).toBe("HUMANISH_LAB_PREFLIGHT_TEARDOWN_FAILED");
+    expect(result.warnings.join("\n")).toContain("humanish reclaim --preflight");
+    const [id] = await journals(cwd);
+    expect(id).toMatch(/^preflight-\d+-/);
+
+    // This process is still alive; the abandoned marker is what lets reclaim act.
+    const reclaimer = fakeProvider({});
+    const reclaim = await reclaimPreflightSandboxes(cwd, {
+      loadModule: async () => reclaimer.module,
+    });
+    expect(reclaim.ok).toBe(true);
+    expect(reclaim.outcomes).toEqual([
+      { sandboxId: "sb-preflight-1", laneId: id, state: "killed" },
+    ]);
+    expect(reclaimer.killed).toEqual(["sb-preflight-1"]);
+    expect(await journals(cwd)).toEqual([]);
+  });
+
+  it("leaves a journal alone while its probe may still be running", async () => {
+    const id = `preflight-${process.pid}-live-probe`;
+    const dir = path.join(cwd, ".humanish", "preflight", id);
+    await mkdir(dir, { recursive: true });
+    await writeFile(
+      path.join(dir, SANDBOX_RECEIPTS_ARTIFACT),
+      `${JSON.stringify({ at: "t", laneId: id, provider: "e2b", sandboxId: "sb-live" })}\n`,
+    );
+    const provider = fakeProvider({});
+
+    const reclaim = await reclaimPreflightSandboxes(cwd, {
+      loadModule: async () => provider.module,
+    });
+
+    expect(reclaim.outcomes).toEqual([]);
+    expect(reclaim.warnings.join("\n")).toContain("still running");
+    expect(provider.killed).toEqual([]);
+    expect(await journals(cwd)).toEqual([id]);
+  });
+
+  it("refuses --preflight together with --run", async () => {
+    const program = createProgram({
+      writeOut: () => undefined,
+      writeErr: () => undefined,
+      setExitCode: () => undefined,
+    });
+    // Commander's conflict check runs on the subcommand, so each command needs the override.
+    for (const command of [program, ...program.commands]) command.exitOverride();
+    await expect(
+      program.parseAsync(["node", "humanish", "reclaim", "--run", "latest", "--preflight"], {
+        from: "node",
+      }),
+    ).rejects.toMatchObject({ code: "commander.conflictingOption" });
+  });
+
+  it("reclaims the sandbox of a probe whose process was killed mid-preflight", async () => {
+    await writeFile(path.join(cwd, "humanish/labs/preview.yaml"), previewLab());
+    const root = fileURLToPath(new URL("../../", import.meta.url));
+    const script = `
+      const { runLabPreflight } = await import(${JSON.stringify(path.join(root, "src/lab/preflight.ts"))});
+      const sandbox = {
+        sandboxId: "sb-preflight-orphan",
+        // Every command hangs on an open handle, as a stuck provider socket would.
+        commands: { run: () => new Promise(() => setInterval(() => {}, 60_000)) },
+        files: { write: async () => undefined },
+      };
+      const module = { Sandbox: { create: async () => sandbox, kill: async () => true } };
+      await runLabPreflight({
+        cwd: process.env.PROBE_CWD,
+        lab: "preview",
+        reachability: "public-preview",
+        env: ${JSON.stringify(env)},
+        hooks: { loadDesktopModule: async () => module },
+      });
+    `;
+    const child = spawn(
+      process.execPath,
+      ["--import", "tsx", "--input-type=module", "--eval", script],
+      {
+        cwd: root,
+        env: { ...process.env, PROBE_CWD: cwd },
+        stdio: ["ignore", "ignore", "pipe"],
+      },
+    );
+    let stderr = "";
+    child.stderr.on("data", (chunk: Buffer) => {
+      stderr += chunk.toString("utf8");
+    });
+    const exited = new Promise<NodeJS.Signals | number | null>((resolve) => {
+      child.on("exit", (code, signal) => resolve(signal ?? code));
+    });
+    try {
+      await vi.waitFor(
+        async () => {
+          const [id] = await journals(cwd);
+          const text = id
+            ? await readFile(
+                path.join(cwd, ".humanish", "preflight", id, SANDBOX_RECEIPTS_ARTIFACT),
+                "utf8",
+              ).catch(() => "")
+            : "";
+          expect(text, stderr).toContain('"sandboxId":"sb-preflight-orphan"');
+        },
+        { timeout: 15_000, interval: 50 },
+      );
+    } finally {
+      child.kill("SIGKILL");
+    }
+    expect(await exited).toBe("SIGKILL");
+
+    const reclaimer = fakeProvider({});
+    const reclaim = await reclaimPreflightSandboxes(cwd, {
+      loadModule: async () => reclaimer.module,
+    });
+    expect(reclaimer.killed).toEqual(["sb-preflight-orphan"]);
+    expect(reclaim.ok).toBe(true);
+    expect(await journals(cwd)).toEqual([]);
+  }, 30_000);
+});

@@ -147,8 +147,15 @@ computer-use labs in the fixture accept them. The other routes refuse them at pa
 
 The receipt write is best-effort. A failed append is ignored. The sandbox's server-side timeout
 then ends a sandbox that has no receipt. Any other failure after create kills the sandbox before
-the error reaches the caller. The lab preflight probe has no run directory, so it writes no
-receipt and relies on that timeout alone.
+the error reaches the caller. The lab preflight probe has no run directory, so
+`runLabPreflight` (`src/lab/preflight.ts`) journals its receipt in
+`.humanish/preflight/<probe-id>/` and removes the journal after a confirmed kill.
+`humanish reclaim --preflight` (`reclaimPreflightSandboxes`, `src/run/reclaim.ts`) kills what a
+killed or failed probe left, and skips a journal whose probe may still be running. The probe's
+timeout is sized to its work: each public-preview target's readiness budget, or a run's
+provisioning allowance plus seed steps for a clone probe, plus five minutes, never above a
+declared `sandboxTimeoutMs`. Without that declaration a clone probe's timeout is 35 minutes, up
+from 10; the journal is what ends a leaked probe early.
 
 ## Make your first change
 
