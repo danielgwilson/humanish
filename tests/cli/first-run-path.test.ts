@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -9,6 +9,7 @@ import {
   firstRunSteps,
   starterActorFor,
 } from "../../src/cli/first-run-path.js";
+import { setUserKey } from "../../src/cli/key-resolution.js";
 import { runInit } from "../../src/lab/init.js";
 
 // #505: `humanish init` wrote twenty files and stopped, and the only lab that could run was a $0
@@ -228,6 +229,80 @@ describe("the starter live lab is written for the brain this machine has", () =>
         installedInProject: true,
       }),
     ).toBe("openai-computer-use");
+  });
+});
+
+describe("init finds a provider key the way every other command does", () => {
+  // A value no real provider would issue; the assertions check it never leaves the key store.
+  const fakeKey = "test-openai-key-not-real";
+
+  /** A home, a project and a PATH that holds a Codex CLI reporting a ChatGPT login, or nothing. */
+  async function machine(options: { signedInAgent: boolean }) {
+    const root = await mkdtemp(path.join(tmpdir(), "humanish-init-keys-"));
+    const home = path.join(root, "home");
+    const cwd = path.join(root, "project");
+    const bin = path.join(root, "bin");
+    await mkdir(home);
+    await mkdir(cwd);
+    await mkdir(bin);
+    if (options.signedInAgent) {
+      await writeFile(path.join(bin, "codex"), "#!/bin/sh\necho 'Logged in using ChatGPT'\n");
+      await chmod(path.join(bin, "codex"), 0o755);
+    }
+    return { root, cwd, env: { HOME: home, PATH: bin } as NodeJS.ProcessEnv };
+  }
+
+  async function initActor(cwd: string, env: NodeJS.ProcessEnv) {
+    const result = await runInit({ cwd, yes: true, env });
+    expect(result.ok).toBe(true);
+    expect(JSON.stringify(result)).not.toContain(fakeKey);
+    const lab = await readFile(path.join(cwd, "humanish/labs/try-live.yaml"), "utf8");
+    expect(lab).not.toContain(fakeKey);
+    return {
+      actor: /^ {2}- type: (\S+)$/m.exec(lab)?.[1],
+      capped: /^ {4}maxUsd: 2\b/m.test(lab),
+    };
+  }
+
+  it("uses the provider key from the environment, even with a signed-in agent", async () => {
+    const { root, cwd, env } = await machine({ signedInAgent: true });
+    try {
+      const lab = await initActor(cwd, { ...env, OPENAI_API_KEY: fakeKey });
+      expect(lab).toEqual({ actor: "openai-computer-use", capped: true });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("uses the provider key from the `humanish keys set` store, even with a signed-in agent", async () => {
+    const { root, cwd, env } = await machine({ signedInAgent: true });
+    try {
+      setUserKey("OPENAI_API_KEY", fakeKey, env, { homeDir: env.HOME! });
+      const lab = await initActor(cwd, env);
+      expect(lab).toEqual({ actor: "openai-computer-use", capped: true });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("uses the signed-in agent when no provider key is found anywhere", async () => {
+    const { root, cwd, env } = await machine({ signedInAgent: true });
+    try {
+      const lab = await initActor(cwd, env);
+      expect(lab).toEqual({ actor: "local-agent", capped: false });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("writes the capped provider lab when there is neither a key nor a signed-in agent", async () => {
+    const { root, cwd, env } = await machine({ signedInAgent: false });
+    try {
+      const lab = await initActor(cwd, env);
+      expect(lab).toEqual({ actor: "openai-computer-use", capped: true });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 });
 
