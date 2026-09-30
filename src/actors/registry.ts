@@ -7,11 +7,11 @@ import {
   CODEX_APP_SERVER_CAPABILITIES,
   SCRIPTED_BROWSER_CAPABILITIES,
   TERMINAL_AGENT_CAPABILITIES,
-  codexResultToActorTrace,
   type ActorCapabilities,
   type ActorPersonaRef,
   type ActorTrace,
 } from "./contract.js";
+import { codexResultToActorTrace } from "./codex/app-server-actor-trace.js";
 import {
   runTerminalAgentSession,
   type TerminalAgentSessionOptions,
