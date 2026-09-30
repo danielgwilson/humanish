@@ -179,15 +179,13 @@ export type {
   CodexAppServerUiOptions,
   CodexAppServerUiState,
 } from "./actors/codex/app-server-ui.js";
-export {
-  CODEX_APP_SERVER_TRACE_SCHEMA,
-  runCodexAppServerSession,
-} from "./actors/codex/app-server.js";
+export { runCodexAppServerSession } from "./actors/codex/app-server.js";
 export type {
   CodexAppServerRunOptions,
   CodexAppServerRunResult,
-  CodexAppServerTrace,
 } from "./actors/codex/app-server.js";
+export { CODEX_APP_SERVER_TRACE_SCHEMA } from "./actors/codex/app-server-trace.js";
+export type { CodexAppServerTrace } from "./actors/codex/app-server-trace.js";
 export {
   FEEDBACK_RESULT_SCHEMA,
   draftFeedback,

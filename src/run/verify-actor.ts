@@ -1,4 +1,4 @@
-import { CODEX_APP_SERVER_TRACE_SCHEMA } from "../actors/codex/app-server.js";
+import { CODEX_APP_SERVER_TRACE_SCHEMA } from "../actors/codex/app-server-trace.js";
 import { ACTOR_TRACE_SCHEMA } from "../actors/contract.js";
 import { type PreparedRunArtifactPaths } from "./paths.js";
 import { CODEX_APP_SERVER_PROJECTED_TRACE_SCHEMA, type RunBundle } from "./bundle.js";

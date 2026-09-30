@@ -1,9 +1,6 @@
 import type { AffordanceUse } from "./affordance.js";
-import type {
-  CodexAppServerRunResult,
-  CodexAppServerStatus,
-  CodexAppServerTrace,
-} from "./codex/app-server.js";
+import type { CodexAppServerRunResult } from "./codex/app-server.js";
+import type { CodexAppServerStatus, CodexAppServerTrace } from "./codex/app-server-trace.js";
 import type { ActorEstimatedCost } from "../run/pricing.js";
 import type { TaskFunnel } from "../lab/tasks.js";
 import { redactText } from "../evidence/redaction.js";

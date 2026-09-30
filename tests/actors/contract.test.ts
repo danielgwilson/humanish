@@ -1,9 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import type {
-  CodexAppServerRunResult,
-  CodexAppServerStatus,
-} from "../../src/actors/codex/app-server.js";
+import type { CodexAppServerRunResult } from "../../src/actors/codex/app-server.js";
+import type { CodexAppServerStatus } from "../../src/actors/codex/app-server-trace.js";
 import {
   ACTOR_TRACE_SCHEMA,
   CODEX_APP_SERVER_CAPABILITIES,
