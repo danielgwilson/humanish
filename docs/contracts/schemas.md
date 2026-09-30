@@ -883,8 +883,10 @@ Core-owned fields:
   half its sample description
 - optional `modelSettings.maxOutputTokens`: the declared positive integer
   `actors[0].maxOutputTokens`, passed to every first-party OpenAI CUA response
-  request, including reasoning output. Absent when undeclared, with no default
-  change. Closing reports use `min(maxOutputTokens, 1024)`. Unsupported routes,
+  request, including reasoning output. Absent when undeclared. The first request
+  of a session and closing reports use `min(maxOutputTokens, 1024)`, or 1024 when
+  undeclared; the first request also carries the opening screenshot as an
+  `input_image` after the instructions. Unsupported routes,
   custom provider/session hooks, and per-lane overrides fail before allocation.
   This is an output-token limit, not an input-token, request-count or billing cap.
   A reply cut off by it runs no action. The first-party OpenAI provider sets that

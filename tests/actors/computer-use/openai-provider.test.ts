@@ -383,6 +383,37 @@ describe("request builders", () => {
     expect(body.safety_identifier).toBeUndefined();
   });
 
+  it("buildInitialRequest attaches the first screen after the instructions", () => {
+    const body = buildInitialRequest(ctx, SCREENSHOT);
+    expect(body.input).toEqual([
+      {
+        role: "user",
+        content: [
+          { type: "input_text", text: "Do the thing." },
+          {
+            type: "input_image",
+            image_url: `data:image/png;base64,${SCREENSHOT.toString("base64")}`,
+          },
+        ],
+      },
+    ]);
+  });
+
+  it.each([
+    [undefined, 1024],
+    [512, 512],
+    [8192, 1024],
+  ])(
+    "buildInitialRequest limits the first request to min(declared, 1024); declared=%s",
+    (declared, expected) => {
+      const body = buildInitialRequest({
+        ...ctx,
+        ...(declared === undefined ? {} : { maxOutputTokens: declared }),
+      });
+      expect(body.max_output_tokens).toBe(expected);
+    },
+  );
+
   it("buildInitialRequest includes safety_identifier only when configured", () => {
     const body = buildInitialRequest({ ...ctx, safetyIdentifier: "persona-dana" });
     expect(body.safety_identifier).toBe("persona-dana");
@@ -466,6 +497,43 @@ describe("createOpenAiResponsesProvider", () => {
     expect(provider.version).toBe(DEFAULT_OPENAI_CU_MODEL);
     expect(provider.capabilities).toEqual(OPENAI_RESPONSES_CU_CAPABILITIES);
   });
+
+  it.each([undefined, 8192])(
+    "sends the first screen and a 1024-token limit on the first request only; declared=%s",
+    async (declared) => {
+      const { fetchFn, bodies } = scriptedFetch([
+        {
+          id: "resp_1",
+          output: [{ type: "computer_call", call_id: "call_1", actions: [{ type: "screenshot" }] }],
+        },
+        {
+          id: "resp_2",
+          output: [{ type: "message", content: [{ type: "output_text", text: "Finished." }] }],
+        },
+      ]);
+      const provider = createOpenAiResponsesProvider({
+        apiKey: "test-key",
+        fetchFn,
+        ...(declared === undefined ? {} : { maxOutputTokens: declared }),
+      });
+      await provider.nextTurn(request(), neverAbort);
+      await provider.nextTurn(request(), neverAbort);
+      const [first, second] = bodies.map(
+        (body) =>
+          JSON.parse(body) as {
+            max_output_tokens?: number;
+            input: Array<{ content?: Array<{ type: string }> }>;
+          },
+      );
+      expect(first?.max_output_tokens).toBe(1024);
+      expect(first?.input[0]?.content?.map((part) => part.type)).toEqual([
+        "input_text",
+        "input_image",
+      ]);
+      // Later requests use the declared limit, or none.
+      expect(second?.max_output_tokens).toBe(declared);
+    },
+  );
 
   it("drives multiple turns and threads call output + previous_response_id", async () => {
     const { fetchFn, bodies } = scriptedFetch([

@@ -115,11 +115,12 @@ describe("declared per-response output limit", () => {
       await provider.nextTurn(request, signal);
       await provider.debrief!(request, signal);
       expect(bodies).toHaveLength(2);
-      expect(bodies[0]?.max_output_tokens).toBe(maxOutputTokens);
+      // The first request and the closing request both use the smaller of the declared limit
+      // and 1024.
+      expect(bodies[0]?.max_output_tokens).toBe(Math.min(maxOutputTokens ?? 1024, 1024));
       expect(bodies[1]?.max_output_tokens).toBe(Math.min(maxOutputTokens ?? 1024, 1024));
       expect(bodies[1]?.tool_choice).toBe("none");
       if (maxOutputTokens === undefined) {
-        expect(bodies[0]).not.toHaveProperty("max_output_tokens");
         expect(provider.modelSettings).not.toHaveProperty("maxOutputTokens");
       }
     },

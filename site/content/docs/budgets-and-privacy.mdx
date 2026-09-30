@@ -91,10 +91,12 @@ The `maxOutputTokens` control below requires humanish `0.83.0` or later.
 
 For first-party OpenAI computer-use studies, optional `actors[0].maxOutputTokens`
 sets a positive integer limit on each response's output, including reasoning
-tokens. It applies to every participant, continuation and retry. A closing
-report uses the smaller of this value and its existing 1024-token limit. The
+tokens. It applies to every participant, continuation and retry. A participant's
+first request and a closing report use the smaller of this value and 1024,
+and 1024 when it is omitted: a first turn that asks for a screenshot needs a few
+dozen tokens. The first request also shows the model the opening screen. The
 effective setting is recorded in the actor's `modelSettings`; omitting it keeps
-the provider's normal output behavior.
+the provider's normal output behavior after the first request.
 
 A reply cut off by this limit runs no action. The same request is sent
 once more, after counting the cut-off reply's tokens against your caps, and the
