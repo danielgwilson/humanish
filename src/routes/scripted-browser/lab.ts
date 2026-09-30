@@ -49,7 +49,7 @@ import {
   writeContainedOutputFile,
 } from "../../run/contained-output.js";
 import { renderScriptedReviewMarkdown } from "./bundle.js";
-import { evidenceAppUrlOf, planScriptedLab, type ScriptedPlanResult } from "./plan.js";
+import { evidenceAppUrlOf, planScriptedLab } from "./plan.js";
 import { resolveScriptedScenario } from "./scenario.js";
 import {
   UnsafeScriptedSessionResultError,
@@ -61,6 +61,7 @@ import {
   type RunScriptedBrowserLabOptions,
   type ScriptedBrowserLabHooks,
   type ScriptedBrowserLabResult,
+  type ScriptedRunInput,
 } from "./types.js";
 import { finishScriptedRun } from "./result.js";
 import type { ScriptedPlan } from "../../lab/plan-types.js";
@@ -71,47 +72,87 @@ import path from "node:path";
 const DEFAULT_SESSION_TIMEOUT_MS = 300_000;
 
 /**
- * Wrapped so a DIRECT library caller gets the same status-record lifetime the CLI does: returning
- * from this function finalizes any record the run opened, whichever of its fail-closed exits it
- * took. `runLab` establishes a scope too and nesting is harmless — the inner scope owns what it
- * opened. Without this a test or an adopter calling the backend directly leaves the 5s cadence
- * ticking into a directory something else is deleting, which surfaces as an unrelated ENOTEMPTY.
+ * The config-taking entry point. It plans, returns a refusal with the envelope the route has always
+ * returned at that refusal's stage, and otherwise runs the plan.
  */
 export async function runScriptedBrowserLab(
   options: RunScriptedBrowserLabOptions,
 ): Promise<ScriptedBrowserLabResult> {
+  const { config, dryRun, lab, ...input } = options;
   // planScriptedLab makes every configuration refusal, in the order this route always has.
-  const planned = planScriptedLab(options.config, {
-    dryRun: options.dryRun,
-    ...(options.lab === undefined ? {} : { lab: options.lab }),
-    ...(options.hooks === undefined ? {} : { hooks: options.hooks }),
+  const planned = planScriptedLab(config, {
+    dryRun,
+    ...(lab === undefined ? {} : { lab }),
+    ...(input.hooks === undefined ? {} : { hooks: input.hooks }),
   });
-  if (!planned.ok && planned.refusal.beforeScope)
+  if (planned.ok) return runScriptedPlan(planned.plan, input);
+
+  const { refusal } = planned;
+  const cwd = path.resolve(options.cwd);
+  const actorType = config.actors[0]?.type ?? "";
+  if (refusal.beforeScope)
     return {
       schema: SCRIPTED_BROWSER_LAB_SCHEMA,
       ok: false,
-      cwd: path.resolve(options.cwd),
-      labId: options.config.id,
-      actor: options.config.actors[0]?.type ?? "",
-      dryRun: options.dryRun,
+      cwd,
+      labId: config.id,
+      actor: actorType,
+      dryRun,
       runId: options.runId ?? "not-created",
-      appUrl: options.config.subject.appUrl ?? "",
+      appUrl: config.subject.appUrl ?? "",
       sessions: [],
       warnings: [],
-      error: { code: planned.refusal.code, message: planned.refusal.message },
+      error: { code: refusal.code, message: refusal.message },
     };
-  const analysis = resolveAutomaticAnalysis(options.config.review?.analysis);
+  // The other refusals come after the output directory checks and carry the analysis record.
+  const physicalCwd = await realpath(cwd);
+  await prepareSelectedOutputDirectory(path.dirname(physicalCwd), physicalCwd);
+  const refused: ScriptedBrowserLabResult = {
+    schema: SCRIPTED_BROWSER_LAB_SCHEMA,
+    ok: false,
+    cwd,
+    labId: config.id,
+    actor: refusal.actor ?? actorType,
+    appUrl: refusal.appUrl ?? config.subject.appUrl ?? "",
+    dryRun,
+    runId: options.runId ?? "not-created",
+    sessions: [],
+    warnings: [],
+    error: { code: refusal.code, message: refusal.message },
+  };
+  const analysis = resolveAutomaticAnalysis(config.review?.analysis);
+  return completeAutomaticAnalysis(
+    refused,
+    undefined,
+    analysis.ok ? analysis.config : undefined,
+    options.automaticAnalysis,
+    { trigger: config.review?.analysis === undefined ? "default" : "explicit" },
+  );
+}
+
+/**
+ * Run a scripted plan. The run scope gives a direct library caller the same status-record lifetime
+ * the CLI gets: returning from this function finalizes any record the run opened, whichever of its
+ * fail-closed exits it took. `runLab` establishes a scope too and nesting is harmless; the inner
+ * scope owns what it opened. Without this a test or an adopter calling the backend directly leaves
+ * the 5s cadence ticking into a directory something else is deleting, which surfaces as an
+ * unrelated ENOTEMPTY.
+ */
+export async function runScriptedPlan(
+  plan: ScriptedPlan,
+  input: ScriptedRunInput,
+): Promise<ScriptedBrowserLabResult> {
   const { result, finished } = await runScope((scope) =>
-    runScriptedBrowserLabInScope(options, planned, scope),
+    runScriptedPlanInScope(plan, input, scope),
   );
   return completeAutomaticAnalysis(
     result,
     finished,
-    analysis.ok ? analysis.config : undefined,
-    options.automaticAnalysis,
+    plan.analysis?.config,
+    input.automaticAnalysis,
     {
-      trigger: options.config.review?.analysis === undefined ? "default" : "explicit",
-      preferLargerOutput: analysis.ok && analysis.preferLargerOutput === true,
+      ...(plan.analysis === undefined ? {} : { trigger: plan.analysis.trigger }),
+      preferLargerOutput: plan.analysis?.preferLargerOutput === true,
     },
   );
 }
@@ -125,9 +166,7 @@ interface ScriptedRunSetup {
   failed: (
     code: NonNullable<ScriptedBrowserLabResult["error"]>["code"],
     message: string,
-    extras?: { actor?: string; appUrl?: string },
   ) => ScriptedBrowserLabResult;
-  plan: ScriptedPlan;
   clone: Extract<ScriptedPlan["subject"], { readonly kind: "clone" }> | undefined;
   evidenceAppUrl: string;
   urlPolicy: ScriptedBrowserEvidenceUrlPolicy;
@@ -152,47 +191,36 @@ interface ScriptedRunSetup {
  * and a browser to launch. Returns the refusal, or what the run needs.
  */
 async function prepareScriptedRun(
-  options: RunScriptedBrowserLabOptions,
-  planned: ScriptedPlanResult,
+  plan: ScriptedPlan,
+  input: ScriptedRunInput,
 ): Promise<
   { ok: false; result: ScriptedBrowserLabResult } | { ok: true; setup: ScriptedRunSetup }
 > {
-  const { config, dryRun } = options;
-  const cwd = path.resolve(options.cwd);
+  const { dryRun } = plan;
+  const cwd = path.resolve(input.cwd);
   const physicalCwd = await realpath(cwd);
   const projectRoot = await prepareSelectedOutputDirectory(path.dirname(physicalCwd), physicalCwd);
-  const hooks = options.hooks ?? {};
+  const hooks = input.hooks ?? {};
   const warnings: string[] = [];
-  const actorType = config.actors[0]?.type ?? "";
-
+  const clone = plan.subject.kind === "clone" ? plan.subject : undefined;
+  const evidenceAppUrl = evidenceAppUrlOf(plan.subject);
   const failed = (
     code: NonNullable<ScriptedBrowserLabResult["error"]>["code"],
     message: string,
-    extras?: { actor?: string; appUrl?: string },
   ): ScriptedBrowserLabResult => ({
     schema: SCRIPTED_BROWSER_LAB_SCHEMA,
     ok: false,
     cwd,
-    labId: config.id,
-    actor: extras?.actor ?? actorType,
-    appUrl: extras?.appUrl ?? config.subject.appUrl ?? "",
+    labId: plan.labId,
+    actor: plan.actor,
+    appUrl: evidenceAppUrl,
     dryRun,
-    runId: options.runId ?? "not-created",
+    runId: input.runId ?? "not-created",
     sessions: [],
     warnings,
     error: { code, message },
   });
 
-  // The other refusals come back from inside the run scope, after the output directory checks.
-  if (!planned.ok) {
-    return {
-      ok: false,
-      result: failed(planned.refusal.code, planned.refusal.message, planned.refusal),
-    };
-  }
-  const { plan } = planned;
-  const clone = plan.subject.kind === "clone" ? plan.subject : undefined;
-  const evidenceAppUrl = evidenceAppUrlOf(plan.subject);
   const urlPolicy: ScriptedBrowserEvidenceUrlPolicy = clone
     ? { kind: "provisioned-subject", evidenceOrigin: evidenceAppUrl }
     : { kind: "loopback" };
@@ -200,7 +228,7 @@ async function prepareScriptedRun(
   const env = hooks.env ?? process.env;
   const e2bApiKey = env.E2B_API_KEY?.trim() ?? "";
   const hasGithubToken = subjectEnvNames.includes("GITHUB_TOKEN");
-  const redactRepoLabel = config.policies?.redactRepos ?? hasGithubToken;
+  const redactRepoLabel = plan.residual.policies?.redactRepos ?? hasGithubToken;
   const scrubSourceValues = [
     ...(clone ? [clone.repo] : []),
     ...subjectEnvNames.map((name) => env[name] ?? ""),
@@ -215,10 +243,7 @@ async function prepareScriptedRun(
   if (!scenario.ok) {
     return {
       ok: false,
-      result: failed("HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID", scenario.message, {
-        actor: plan.actor,
-        appUrl: evidenceAppUrl,
-      }),
+      result: failed("HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID", scenario.message),
     };
   }
   const journey = scenario.journey;
@@ -230,7 +255,6 @@ async function prepareScriptedRun(
         result: failed(
           "HUMANISH_SCRIPTED_LAB_KEYS_MISSING",
           `Live clone scripted-browser labs require E2B_API_KEY (dry-run remains $0 and does not provision a subject). ${describeMissingKeys(["E2B_API_KEY"], env)}`,
-          { actor: plan.actor, appUrl: evidenceAppUrl },
         ),
       };
     }
@@ -241,7 +265,6 @@ async function prepareScriptedRun(
         result: failed(
           "HUMANISH_SCRIPTED_LAB_SUBJECT_ENV_MISSING",
           `Subject env values missing for live clone scripted-browser lab: ${missingSubjectEnv.join(", ")}.`,
-          { actor: plan.actor, appUrl: evidenceAppUrl },
         ),
       };
     }
@@ -267,7 +290,6 @@ async function prepareScriptedRun(
         result: failed(
           "HUMANISH_SCRIPTED_LAB_BROWSER_MISSING",
           "No Chrome/Chromium browser command was found for the scripted-browser actor. Set HUMANISH_BROWSER_COMMAND to a browser binary playwright-core can launch.",
-          { actor: plan.actor, appUrl: evidenceAppUrl },
         ),
       };
     }
@@ -281,7 +303,6 @@ async function prepareScriptedRun(
       hooks,
       warnings,
       failed,
-      plan,
       clone,
       evidenceAppUrl,
       urlPolicy,
@@ -302,30 +323,27 @@ async function prepareScriptedRun(
   };
 }
 
-async function runScriptedBrowserLabInScope(
-  options: RunScriptedBrowserLabOptions,
-  planned: ScriptedPlanResult,
+async function runScriptedPlanInScope(
+  plan: ScriptedPlan,
+  input: ScriptedRunInput,
   scope: RunScope,
 ): Promise<ScriptedBrowserLabResult> {
-  const prepared = await prepareScriptedRun(options, planned);
+  const prepared = await prepareScriptedRun(plan, input);
   if (!prepared.ok) return prepared.result;
-  const { config, dryRun } = options;
+  const { dryRun } = plan;
   const { setup } = prepared;
 
   const started = await scope.startRun({
     cwd: setup.physicalCwd,
-    runId: options.runId,
+    runId: input.runId,
     mintRunId: makeScriptedRunId,
     mode: dryRun ? "dry-run" : "live",
-    lab: options.lab,
+    lab: plan.lab,
     renderReview: renderScriptedReviewMarkdown,
-    observer: { open: options.open === true, render: setup.hooks.renderObserverFn },
+    observer: { open: input.open === true, render: setup.hooks.renderObserverFn },
   });
   if (!started.ok) {
-    return setup.failed(started.code, started.message, {
-      actor: setup.plan.actor,
-      appUrl: setup.evidenceAppUrl,
-    });
+    return setup.failed(started.code, started.message);
   }
   const { run } = started;
   const { createdAt, paths: runPaths } = run;
@@ -339,8 +357,7 @@ async function runScriptedBrowserLabInScope(
 
   const scriptedSubject = setup.clone
     ? new ScriptedSubject({
-        config,
-        actor: setup.plan.actor,
+        plan,
         clone: setup.clone,
         hooks: setup.hooks,
         env: setup.env,
@@ -401,8 +418,7 @@ async function runScriptedBrowserLabInScope(
   }
 
   return finishScriptedRun({
-    options,
-    actor: setup.plan.actor,
+    plan,
     cwd: setup.cwd,
     evidenceAppUrl: setup.evidenceAppUrl,
     run,

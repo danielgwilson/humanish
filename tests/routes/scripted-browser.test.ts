@@ -28,7 +28,8 @@ import {
   type ParsedSandboxReceipt,
 } from "../../src/run/sandbox-receipts.js";
 import { runCuaActorLab } from "../../src/routes/computer-use/lab.js";
-import { runScriptedBrowserLab } from "../../src/routes/scripted-browser/lab.js";
+import { runScriptedBrowserLab, runScriptedPlan } from "../../src/routes/scripted-browser/lab.js";
+import { planScriptedLab } from "../../src/routes/scripted-browser/plan.js";
 import type { ScriptedBrowserLabHooks } from "../../src/routes/scripted-browser/types.js";
 import type {
   ScriptedBrowserLike,
@@ -588,6 +589,26 @@ describe("runScriptedBrowserLab", () => {
     );
     expect(bundle.simCount).toBe(1);
     expect(bundle.simulations.map((sim: { id: string }) => sim.id)).toEqual(["scripted-desktop"]);
+  });
+
+  it("runs a plan alone: the bundle records the plan's lab id, persona and surfaces", async () => {
+    await writeCommittedScenario(cwd);
+    const planned = planScriptedLab(scriptedConfig({ count: 2 }), { dryRun: true });
+    if (!planned.ok) throw new Error("expected a scripted plan");
+    const plan = {
+      ...planned.plan,
+      labId: "planned-lab",
+      personaId: "planned-persona",
+      surfaces: planned.plan.surfaces.slice(0, 1),
+    };
+    const result = await runScriptedPlan(plan, { cwd });
+    expect(result.ok).toBe(true);
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    );
+    expect(bundle.persona.id).toBe("planned-persona");
+    expect(bundle.persona.source).toBe("lab:planned-lab");
+    expect(bundle.simCount).toBe(1);
   });
 
   it.each(["default", "disabled"])(

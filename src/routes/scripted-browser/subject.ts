@@ -3,7 +3,6 @@
 // teardown.
 
 import { commandDigestOf } from "../../subject/state.js";
-import type { LabConfig } from "../../lab/types.js";
 import type { ScriptedPlan } from "../../lab/plan-types.js";
 import {
   validatePreparedRunArtifactPaths,
@@ -61,8 +60,7 @@ type ScriptedCloneSubject = Extract<ScriptedPlan["subject"], { readonly kind: "c
 
 /** What the subject needs from the run. */
 export interface ScriptedSubjectInputs {
-  config: LabConfig;
-  actor: string;
+  plan: ScriptedPlan;
   clone: ScriptedCloneSubject;
   hooks: ScriptedBrowserLabHooks;
   env: Record<string, string | undefined>;
@@ -96,7 +94,7 @@ export class ScriptedSubject {
 
   /** Acquires, provisions and serves the subject. Returns the tokenless getHost URL to drive. */
   async provision(): Promise<string> {
-    const { config, actor, clone, hooks, env, e2bApiKey, runPaths, timeoutMs } = this.inputs;
+    const { plan, clone, hooks, env, e2bApiKey, runPaths, timeoutMs } = this.inputs;
     const { subjectEnvNames, hasGithubToken, scrubKnownValues, now } = this.inputs;
     const requestTimeoutMs = readPositiveInt(env.HUMANISH_E2B_REQUEST_TIMEOUT_MS, 60_000);
     const timers: DetachedTimers = hooks.detachedTimers ?? {};
@@ -123,9 +121,9 @@ export class ScriptedSubject {
         metadata: {
           mode: "scripted-browser-lab",
           tool: "humanish",
-          labId: config.id,
+          labId: plan.labId,
           role: "subject",
-          actor,
+          actor: plan.actor,
         },
         ...(subjectEnvNames.length > 0
           ? {
@@ -135,7 +133,7 @@ export class ScriptedSubject {
         dpi: 96,
         lifecycle: { onTimeout: "kill" },
       },
-      template: config.execution?.desktop?.template,
+      template: plan.residual.execution?.desktop?.template,
       receipt: { root: runPaths, laneId: "subject" },
     });
     const subjectDesktop = subject.sandbox;
@@ -150,7 +148,7 @@ export class ScriptedSubject {
 
     this.commit = await provisionCloneSubject(e2bShell(subjectDesktop), {
       repo: clone.repo,
-      depth: config.subject.clone?.depth ?? 1,
+      depth: plan.residual.subject.clone?.depth ?? 1,
       serve: clone.serve,
       ...(clone.state === undefined ? {} : { state: clone.state }),
       hasGithubToken,
