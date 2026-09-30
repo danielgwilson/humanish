@@ -63,6 +63,27 @@ const clockWithSleep = () => {
   };
 };
 
+/**
+ * A clock and sleep for dwell scenarios that also tell which observe call is the one right after
+ * a dwell window: the second observe since the last sleep (the first is the window's last frame).
+ */
+function dwellWatch() {
+  let t = 0;
+  let observesSinceSleep = Number.POSITIVE_INFINITY;
+  return {
+    now: () => (t += 1),
+    sleep: async (ms: number) => {
+      t += ms;
+      observesSinceSleep = 0;
+    },
+    /** Call once per observe; true for the observation taken right after the window. */
+    afterWindow: () => {
+      observesSinceSleep += 1;
+      return observesSinceSleep === 2;
+    },
+  };
+}
+
 function realPng(): Buffer {
   const png = new PNG({ width: 40, height: 30 });
   for (let i = 0; i < 40 * 30; i += 1) {
@@ -146,6 +167,70 @@ it("safety checks, stop conditions and dwell windows", async () => {
         dwell: { ms: 500, everyMs: 100, then: "stop" },
       },
     }),
+    dwellFramelessAfterWindow: (probe) => {
+      const watch = dwellWatch();
+      return {
+        provider: scriptedProvider(probe, [done("Finished.")], { requiresFrame: true }),
+        executor: sequenceExecutor(probe, [
+          () => (watch.afterWindow() ? { stateSignature: "a" } : framed("a")[0]!),
+        ]),
+        options: {
+          now: watch.now,
+          sleep: watch.sleep,
+          dwell: { ms: 20, everyMs: 10, then: "continue" },
+        },
+      };
+    },
+    dwellAppStateAfterWindow: (probe) => {
+      const watch = dwellWatch();
+      return {
+        provider: scriptedProvider(probe, [done("Finished.")]),
+        executor: sequenceExecutor(probe, [
+          () =>
+            watch.afterWindow()
+              ? { stateSignature: "a", appState: { route: "/after-window" } }
+              : { stateSignature: "a" },
+        ]),
+        options: {
+          now: watch.now,
+          sleep: watch.sleep,
+          dwell: { ms: 20, everyMs: 10, then: "continue" },
+        },
+      };
+    },
+    dwellHintWithBackstopHint: (probe) => {
+      const watch = dwellWatch();
+      let observes = 0;
+      return {
+        provider: scriptedProvider(probe, [
+          turn({ actions: [click(1, 1)] }),
+          turn({ actions: [click(1, 1)] }),
+          done("Finished."),
+        ]),
+        executor: sequenceExecutor(probe, [
+          () => {
+            watch.afterWindow();
+            observes += 1;
+            return {
+              screenshot: FRAME,
+              stateSignature: "a",
+              ...(observes === 3 ? { text: "video" } : {}),
+            };
+          },
+        ]),
+        options: {
+          now: watch.now,
+          sleep: watch.sleep,
+          noProgressSteps: 2,
+          dwell: {
+            when: { any: [{ textIncludes: "video" }] },
+            ms: 20,
+            everyMs: 10,
+            then: "continue",
+          },
+        },
+      };
+    },
   });
 });
 
@@ -245,6 +330,24 @@ it("stalled provider turns, observations and idle actions", async () => {
       executor: sequenceExecutor(probe, framed("s0")),
       options: bounds,
     }),
+    providerStallCancelsFirstRequest: (probe) => {
+      let attempts = 0;
+      const provider: CuaProvider = {
+        id: "golden-cua",
+        version: "golden-1",
+        capabilities: CAPABILITIES,
+        nextTurn(request, signal) {
+          attempts += 1;
+          const attempt = attempts;
+          probe.push("provider.nextTurn", request);
+          signal.addEventListener("abort", () => probe.push("provider.signal aborted", attempt), {
+            once: true,
+          });
+          return attempt === 1 ? hang() : Promise.resolve(done("Finished after a retry."));
+        },
+      };
+      return { provider, executor: sequenceExecutor(probe, framed("s0")), options: bounds };
+    },
     providerStallTwice: (probe) => ({
       provider: scriptedProvider(probe, [hang, hang]),
       executor: sequenceExecutor(probe, framed("s0")),
@@ -296,6 +399,19 @@ it("provider interruptions", async () => {
     tokenLimit: interrupted("token_limit"),
     incomplete: interrupted("incomplete"),
     unexpectedStatus: interrupted("unexpected_status"),
+    studyBudgetCrossedByInterruption: (probe) => ({
+      provider: scriptedProvider(probe, [
+        turn({
+          actions: [click(1, 1)],
+          usage: { input: 900, output: 100 },
+          interruption: "token_limit",
+        }),
+      ]),
+      executor: sequenceExecutor(probe, framed("s0")),
+      options: {
+        overRunBudget: loggedBudget(probe, () => "study budget reached: $12.10 crossed $12"),
+      },
+    }),
   });
 });
 
@@ -369,6 +485,24 @@ it("frame guard, abort, admission limit, account billing and spend guards", asyn
         executor: sequenceExecutor(probe, framed("s0")),
         options: { maxUsd: 1, estimateTurnCostUsd: loggedEstimator(probe, () => 0) },
       };
+    },
+    accountBillingLearnedMidRunOutputCap: (probe) => {
+      let authenticated = false;
+      const provider: CuaProvider = {
+        id: "operator-account",
+        capabilities: CAPABILITIES,
+        modelSettings: { reasoningEffort: "low", maxOutputTokens: 1000 },
+        get executionProfile() {
+          return authenticated ? PARTICIPANT_PROFILE : undefined;
+        },
+        async nextTurn(request) {
+          probe.push("provider.nextTurn", request);
+          if (authenticated) return done("Finished.");
+          authenticated = true;
+          return turn({ actions: [click(1, 1)] });
+        },
+      };
+      return { provider, executor: sequenceExecutor(probe, framed("s0", "s1")) };
     },
     nonFiniteEstimate: (probe) => ({
       provider: scriptedProvider(probe, [paid]),

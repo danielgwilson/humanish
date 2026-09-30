@@ -49,20 +49,18 @@ export class DesktopObserver {
    */
   async checkpoint(turnNumber: number): Promise<Checkpoint> {
     const { session } = this;
-    const { onObservedUrl, onScreenshot, stopWhen } = session.settings;
+    const { stopWhen } = session.settings;
     const opening = turnNumber === 0;
     if (opening) session.phase = "observing initial UI state";
     else {
       if (session.signal?.aborted) throw new CuaAbortError();
       session.phase = `observing UI state after turn ${turnNumber}`;
     }
-    let observation = this.collectHeardSpeech(
-      await this.observeBounded(opening ? "initial" : `after turn ${turnNumber}`),
+    let observation = this.admit(
+      this.collectHeardSpeech(
+        await this.observeBounded(opening ? "initial" : `after turn ${turnNumber}`),
+      ),
     );
-    // Runtime-only: hand the seat's live location.href back to the orchestrator (never persisted).
-    onObservedUrl?.(observation.url);
-    if (observation.screenshot !== undefined) onScreenshot?.(observation.screenshot);
-    if (observation.appState !== undefined) session.observedAppState = true;
     // Fail closed before a vision provider is asked to reason over a missing frame.
     const frameless = missingFrame(session.provider, observation);
     if (frameless !== undefined) return { stop: frameless };
@@ -72,15 +70,17 @@ export class DesktopObserver {
     const dwell = await this.dwellIfDue(observation, turnNumber);
     let hint: string | undefined;
     if (dwell !== undefined) {
-      observation = this.collectHeardSpeech(await this.observeBounded("after dwell"));
-      onObservedUrl?.(observation.url);
-      if (observation.screenshot !== undefined) onScreenshot?.(observation.screenshot);
+      observation = this.admit(this.collectHeardSpeech(await this.observeBounded("after dwell")));
       await this.recordScreenshot(observation, `turn-${pad(turnNumber)}-after-dwell`);
       this.observeTasks(observation, turnNumber);
       if (dwell.next === "stop") {
         const when = opening ? "at the start" : `after turn ${turnNumber}`;
         return { stop: dwellCompleted(dwell.heldMs, when, observation) };
       }
+      // The window hands this observation to the provider, so it needs the same frame guard. A
+      // window that ends the session sends no turn; its closing request checks the frame itself.
+      const framelessAfterWindow = missingFrame(session.provider, observation);
+      if (framelessAfterWindow !== undefined) return { stop: framelessAfterWindow };
       hint = `The study held this page under observation for ${Math.round(dwell.heldMs / 1000)} seconds (a declared dwell window; you took no actions in that time). Continue the mission from the current state of the page.`;
     }
     const match = evaluateStopWhen(stopWhen, stopObservationOf(observation));
@@ -88,6 +88,19 @@ export class DesktopObserver {
       return { stop: stopWhenMatched(match, observation, (text) => session.redactNarration(text)) };
     }
     return { observation, hint };
+  }
+
+  /**
+   * Hand an observation the next turn may react to to the runtime hooks, and note whether it
+   * carried app state. Runtime-only: the seat's live location.href goes back to the orchestrator
+   * and is never persisted.
+   */
+  private admit(observation: CuaObservation): CuaObservation {
+    const { onObservedUrl, onScreenshot } = this.session.settings;
+    onObservedUrl?.(observation.url);
+    if (observation.screenshot !== undefined) onScreenshot?.(observation.screenshot);
+    if (observation.appState !== undefined) this.session.observedAppState = true;
+    return observation;
   }
 
   /** The provider received the pending speech; collect afresh for the next observation. */

@@ -1,7 +1,7 @@
 import { isCuaAdmissionLimitError } from "../admission-limit.js";
 import { CuaProviderError, isCuaProviderError } from "../provider-error.js";
 import { adapterLimit, providerStalledTwice, usageUnreported, type Stop } from "./ending.js";
-import { CuaAbortError, CuaDeadlineError, CuaStallError, neverAbort, raceBounded } from "./race.js";
+import { CuaAbortError, CuaDeadlineError, CuaStallError, raceBounded } from "./race.js";
 import type { LoopSession } from "./session.js";
 import { notice } from "./trace.js";
 import type { CuaTurn, CuaTurnRequest } from "./types.js";
@@ -29,8 +29,7 @@ export async function requestTurn(
   turnNumber: number,
 ): Promise<TurnReply> {
   const { provider } = session;
-  // A timeout race alone does not cancel its losing provider promise. Strict accounting
-  // owns this signal so a delayed transport failure cannot retry after the loop has ended.
+  // A single-dispatch provider owns its one attempt through settlement.
   if (provider.requestPolicy === "fail_closed") {
     return {
       turn: await singleDispatch(
@@ -42,18 +41,12 @@ export async function requestTurn(
     };
   }
   const { signal } = session;
-  const requestController = session.requiresUsage ? new AbortController() : undefined;
-  const onRequestAbort = (): void => requestController?.abort();
-  if (requestController) {
-    if (signal?.aborted) requestController.abort();
-    else signal?.addEventListener("abort", onRequestAbort, { once: true });
-  }
-  const requestSignal = requestController?.signal ?? signal ?? neverAbort;
+  const first = requestScope(signal);
   try {
     return {
       turn: await raceBounded(
         `provider turn ${turnNumber}`,
-        provider.nextTurn(request, requestSignal),
+        provider.nextTurn(request, first.signal),
         session.remaining(),
         session.turnTimeoutMs,
         signal,
@@ -68,11 +61,34 @@ export async function requestTurn(
       return { stop: session.conclude(usageUnreported) };
     }
     if (!(error instanceof CuaStallError)) throw error;
-    return await retryStalledTurn(session, request, turnNumber, error);
+    return await retryStalledTurn(session, request, turnNumber, error, first);
   } finally {
-    if (requestController) signal?.removeEventListener("abort", onRequestAbort);
-    requestController?.abort();
+    first.end();
   }
+}
+
+/**
+ * One provider request's signal. It follows the session signal and ends when the loop stops
+ * waiting on the request, because a timeout race alone does not cancel the losing promise.
+ */
+interface RequestScope {
+  readonly signal: AbortSignal;
+  /** Abort the request and stop following the session signal. Safe to call twice. */
+  end(): void;
+}
+
+function requestScope(signal: AbortSignal | undefined): RequestScope {
+  const controller = new AbortController();
+  const onAbort = (): void => controller.abort();
+  if (signal?.aborted) controller.abort();
+  else signal?.addEventListener("abort", onAbort, { once: true });
+  return {
+    signal: controller.signal,
+    end: () => {
+      signal?.removeEventListener("abort", onAbort);
+      controller.abort();
+    },
+  };
 }
 
 async function retryStalledTurn(
@@ -80,6 +96,7 @@ async function retryStalledTurn(
   request: CuaTurnRequest,
   turnNumber: number,
   stall: CuaStallError,
+  stalled: RequestScope,
 ): Promise<TurnReply> {
   session.usage.markUnreported();
   session.trace.record("notice", () =>
@@ -89,11 +106,14 @@ async function retryStalledTurn(
       `${stall.what} produced nothing within ${stall.afterMs}ms; sending the same observation again`,
     ),
   );
+  // Two copies of a paid request must not run at once: cancel the stalled one before the retry.
+  stalled.end();
+  const retry = requestScope(session.signal);
   try {
     return {
       turn: await raceBounded(
         `provider turn ${turnNumber} (retry)`,
-        session.provider.nextTurn(request, session.signal ?? neverAbort),
+        session.provider.nextTurn(request, retry.signal),
         session.remaining(),
         session.turnTimeoutMs,
         session.signal,
@@ -104,6 +124,8 @@ async function retryStalledTurn(
     if (!(retryError instanceof CuaStallError)) throw retryError;
     session.usage.markUnreported();
     return { stop: session.conclude(providerStalledTwice(turnNumber, retryError.afterMs)) };
+  } finally {
+    retry.end();
   }
 }
 

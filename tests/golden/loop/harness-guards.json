@@ -525,7 +525,7 @@
     "result": {
       "status": "failed",
       "completionReason": "harness_error",
-      "reason": "Codex is using a ChatGPT account; API dollar caps cannot bound account usage. Use a finite timeout or the OpenAI API participant.",
+      "reason": "Codex is using a ChatGPT account; API dollar caps and output-token limits cannot bound account usage. Use a finite timeout or the OpenAI API participant.",
       "trace": {
         "schema": "humanish.actor-trace.v1",
         "provider": "operator-account",
@@ -560,7 +560,7 @@
         "durationMs": 5000,
         "status": "failed",
         "completionReason": "harness_error",
-        "reason": "Codex is using a ChatGPT account; API dollar caps cannot bound account usage. Use a finite timeout or the OpenAI API participant.",
+        "reason": "Codex is using a ChatGPT account; API dollar caps and output-token limits cannot bound account usage. Use a finite timeout or the OpenAI API participant.",
         "ids": {},
         "counts": {
           "turns": 1,
@@ -595,6 +595,129 @@
             }
           ]
         },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "turn-00-start.png",
+        15
+      ],
+      [
+        "onTrace",
+        1,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "screenshot": "[buffer 15 bytes]",
+            "stateSignature": "s0"
+          }
+        }
+      ]
+    ]
+  },
+  "accountBillingLearnedMidRunOutputCap": {
+    "result": {
+      "status": "failed",
+      "completionReason": "harness_error",
+      "reason": "Codex is using a ChatGPT account; API dollar caps and output-token limits cannot bound account usage. Use a finite timeout or the OpenAI API participant.",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "operator-account",
+        "executionProfile": {
+          "schema": "humanish.actor-execution-profile.v1",
+          "transport": "codex-app-server",
+          "authentication": "chatgpt-account",
+          "billing": "account-unknown",
+          "requestedModel": "gpt-6-astra",
+          "reasoningEffort": "low",
+          "cliVersion": "0.154.0",
+          "toolPolicy": "codex-ui-tools-v1",
+          "participantSchema": "humanish.codex-ui-tool.v1",
+          "memoryPolicy": "continuing-thread-v1"
+        },
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "raw",
+          "notes": "1 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+        },
+        "startedAt": "1970-01-01T00:00:01.000Z",
+        "completedAt": "1970-01-01T00:00:06.000Z",
+        "durationMs": 5000,
+        "status": "failed",
+        "completionReason": "harness_error",
+        "reason": "Codex is using a ChatGPT account; API dollar caps and output-token limits cannot bound account usage. Use a finite timeout or the OpenAI API participant.",
+        "ids": {},
+        "modelSettings": {
+          "reasoningEffort": "low",
+          "maxOutputTokens": 1000
+        },
+        "counts": {
+          "turns": 1,
+          "actions": 0,
+          "materialActions": 0,
+          "screenshots": 1,
+          "reasonings": 0,
+          "messages": 0,
+          "idleTurns": 0,
+          "noProgressTurns": 0
+        },
+        "items": [
+          {
+            "id": "screenshot-001",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-00-start",
+            "screenshotRef": {
+              "path": "screenshots/turn-00-start.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:03.000Z"
+          }
+        ],
         "capabilities": {
           "headless": true,
           "structuredTrace": true,

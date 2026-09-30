@@ -21,7 +21,8 @@ import {
 import { DesktopObserver } from "./loop/observation.js";
 import { requestTurn } from "./loop/provider-call.js";
 import { LoopSession } from "./loop/session.js";
-import { loopResult } from "./loop/trace.js";
+import { accountBillingConflicts } from "./loop/usage.js";
+import { loopResult, notice } from "./loop/trace.js";
 import type {
   CuaLoopOptions,
   CuaLoopResult,
@@ -171,7 +172,6 @@ async function runTurns(session: LoopSession, conversation: Conversation): Promi
     const checkpoint = await observer.checkpoint(turnNumber);
     if ("stop" in checkpoint) return checkpoint.stop;
     observation = checkpoint.observation;
-    if (checkpoint.hint !== undefined) conversation.contextHint = checkpoint.hint;
 
     const step = advanceBackstop(
       backstop,
@@ -179,40 +179,35 @@ async function runTurns(session: LoopSession, conversation: Conversation): Promi
       session,
     );
     backstop = step.backstop;
-    const stalled = applyBackstop(session, conversation, step, batch.rejectedActionTitle);
+    const stalled = applyBackstop(session, conversation, step, [
+      checkpoint.hint,
+      batch.rejectedActionTitle === undefined
+        ? undefined
+        : `Your action (${batch.rejectedActionTitle}) was rejected before dispatch. No input from that action or the rest of its batch was sent. Choose your next action from the fresh screenshot; do not assume the rejected action succeeded.`,
+    ]);
     if (stalled !== undefined) return stalled;
   }
 }
 
-/** Count the turn, stage recovery hints for the next request, and stop when a streak tripped. */
+/**
+ * Count the turn, stage every hint for the next request, and stop when a streak tripped. The
+ * turn's own hints (a dwell window, a rejected action) come first, then the backstop's nudges.
+ */
 function applyBackstop(
   session: LoopSession,
   conversation: Conversation,
   step: BackstopStep,
-  rejectedActionTitle: string | undefined,
+  turnHints: ReadonlyArray<string | undefined>,
 ): Stop | undefined {
   if (step.idle) session.trace.bump("idleTurns");
   if (!step.progressed) session.trace.bump("noProgressTurns");
-  const hints = [
-    ...(rejectedActionTitle === undefined
-      ? []
-      : [
-          `Your action (${rejectedActionTitle}) was rejected before dispatch. No input from that action or the rest of its batch was sent. Choose your next action from the fresh screenshot; do not assume the rejected action succeeded.`,
-        ]),
-    ...step.hints,
-  ];
+  const hints = [...turnHints.filter((hint): hint is string => hint !== undefined), ...step.hints];
   if (hints.length > 0) conversation.contextHint = hints.join(" ");
   return step.gaveUp === undefined ? undefined : gaveUp(session, step.gaveUp);
 }
 
 function refuseAccountBilledCaps(options: CuaLoopOptions): void {
-  if (
-    options.provider.executionProfile?.billing === "account-unknown" &&
-    (options.maxUsd !== undefined ||
-      options.overRunBudget !== undefined ||
-      options.estimateTurnCostUsd !== undefined ||
-      options.provider.modelSettings?.maxOutputTokens !== undefined)
-  ) {
+  if (accountBillingConflicts(options.provider, options)) {
     throw new CuaProviderError("request_rejected", {
       dispatched: false,
       usageComplete: false,
@@ -274,17 +269,18 @@ function acceptTurn(
 
 /** Stops for a reply that must not be acted on: account billing, interruption, unknown usage. */
 function refuseTurn(session: LoopSession, turn: CuaTurn, turnNumber: number): Stop | undefined {
-  const { maxUsd, overRunBudget, estimateTurnCostUsd } = session.settings;
-  if (
-    session.provider.executionProfile?.billing === "account-unknown" &&
-    (maxUsd !== undefined || overRunBudget !== undefined || estimateTurnCostUsd !== undefined)
-  ) {
-    return accountBilledCaps;
-  }
+  const { overRunBudget } = session.settings;
+  if (accountBillingConflicts(session.provider, session.settings)) return accountBilledCaps;
   if (turn.interruption !== undefined) {
-    // Preserve usage and partial narration of an interrupted response.
-    overRunBudget?.(session.usage.running());
+    // Preserve usage and partial narration of an interrupted response. Its usage still counts
+    // toward the study budget; when that exhausts it, sibling lanes stop, so this trace says why.
+    const studyStop = overRunBudget?.(session.usage.running());
     recordNarration(session, turn, turnNumber, true);
+    if (studyStop != null) {
+      session.trace.record("notice", () =>
+        notice("warn", "study budget reached during an interrupted response", studyStop),
+      );
+    }
     return providerInterrupted(turn.interruption);
   }
   if (session.requiresUsage && session.usage.unavailableForCap()) {

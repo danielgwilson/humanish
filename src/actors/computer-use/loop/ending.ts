@@ -145,7 +145,7 @@ export function studySpendLimit(reason: string): Stop {
 export const accountBilledCaps: Stop = {
   completionReason: "harness_error",
   reason:
-    "Codex is using a ChatGPT account; API dollar caps cannot bound account usage. Use a finite timeout or the OpenAI API participant.",
+    "Codex is using a ChatGPT account; API dollar caps and output-token limits cannot bound account usage. Use a finite timeout or the OpenAI API participant.",
 };
 
 const noticeEvidence = (status: string, title: string, text: string): Evidence => ({
