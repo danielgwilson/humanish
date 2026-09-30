@@ -4,7 +4,11 @@ import type { ActorTraceItem } from "../actors/contract.js";
 import type { RunBundle } from "../run/bundle.js";
 import type { RunStream } from "../run/streams.js";
 import { isRecord } from "../run/primitives.js";
-import type { AnalysisParticipantInput } from "./study-analysis.js";
+import {
+  ACTION_CAPTURE_VERSION,
+  type AnalysisParticipantInput,
+  type CaptureVersion,
+} from "./study-analysis.js";
 import { isStudyEvidencePath } from "./study-files.js";
 
 // How a run bundle becomes analysis sources: each participant's recorded provenance and assignment,
@@ -21,8 +25,9 @@ const itemText = (item: ActorTraceItem): string =>
     ? item.text
     : [item.title, item.text].filter((entry) => entry !== undefined && entry !== "").join("\n");
 const itemsFor = (stream: RunStream): ActorTraceItem[] => stream.actor?.items ?? [];
-const isCaptureItem = (item: ActorTraceItem, captureVersion?: 2): boolean =>
-  item.kind === "screenshot" || (captureVersion === 2 && item.kind === "ui_action");
+const isCaptureItem = (item: ActorTraceItem, captureVersion?: CaptureVersion): boolean =>
+  item.kind === "screenshot" ||
+  (captureVersion === ACTION_CAPTURE_VERSION && item.kind === "ui_action");
 
 export function hasUnmappedCaptures(stream: RunStream): boolean {
   const items = itemsFor(stream);
@@ -95,9 +100,12 @@ function isObserverCapturePath(value: string): boolean {
   return false;
 }
 
-export function participantAssignment(stream: RunStream, captureVersion?: 2): string | null {
+export function participantAssignment(
+  stream: RunStream,
+  captureVersion?: CaptureVersion,
+): string | null {
   if (stream.assignment === undefined)
-    return captureVersion === 2 &&
+    return captureVersion === ACTION_CAPTURE_VERSION &&
       stream.actor?.lane === "scripted-browser" &&
       typeof stream.ui?.intent === "string" &&
       stream.ui.intent.trim()
@@ -114,7 +122,10 @@ export function participantAssignment(stream: RunStream, captureVersion?: 2): st
     .join("\n");
 }
 
-export function participantSource(stream: RunStream, captureVersion?: 2): AnalysisParticipantInput {
+export function participantSource(
+  stream: RunStream,
+  captureVersion?: CaptureVersion,
+): AnalysisParticipantInput {
   const assignment = participantAssignment(stream, captureVersion);
   const actor = stream.actor;
   return {
@@ -158,7 +169,7 @@ export interface SourceEntry {
 export function sourceEntries(
   bundle: RunBundle,
   stream: RunStream,
-  captureVersion?: 2,
+  captureVersion?: CaptureVersion,
 ): SourceEntry[] {
   const items = itemsFor(stream);
   // Absent version retains the exact legacy mapping used by saved 0.89.1 analyses.
@@ -174,7 +185,7 @@ export function sourceEntries(
   const firstAt = stamp(captures[0]?.at);
   let frame = -1;
   const entries: SourceEntry[] = [];
-  if (captureVersion === 2 && bundle.commsReceiving) {
+  if (captureVersion === ACTION_CAPTURE_VERSION && bundle.commsReceiving) {
     entries.push({
       eventId: `comms-receiving-${stream.id}`,
       kind: "harness:email_receiving",
@@ -212,7 +223,9 @@ export function sourceEntries(
       capturePath,
       captureDeclared:
         item.kind === "screenshot" ||
-        (captureVersion === 2 && item.kind === "ui_action" && item.screenshotRef !== undefined),
+        (captureVersion === ACTION_CAPTURE_VERSION &&
+          item.kind === "ui_action" &&
+          item.screenshotRef !== undefined),
       failed: ["failed", "blocked", "timed_out"].includes(item.status ?? ""),
     });
   }

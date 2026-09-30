@@ -30,6 +30,9 @@ const STUDY_ANALYSIS_DIRECTORY = "analysis";
 const ANALYSIS_MAX_BYTES = 4 * 1024 * 1024;
 const MAX_VERSIONS = 256;
 const MAX_CORRECTIONS = 256;
+const MAX_CORRECTION_BYTES = 32 * 1024;
+/** receipt.json and start.json in an execution directory. */
+const MAX_EXECUTION_RECORD_BYTES = 16 * 1024;
 const safeId = (value: string): boolean => /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(value);
 const hashBytes = (bytes: Buffer): string => createHash("sha256").update(bytes).digest("hex");
 const empty = (
@@ -307,7 +310,7 @@ async function readCorrections(
       const bytes = await readBoundedStudyFile(
         root,
         `${analysis.id}/corrections/${id}/correction.json`,
-        32 * 1024,
+        MAX_CORRECTION_BYTES,
       );
       if (!bytes) {
         // An unpublished claim directory is harmless; a present record that
@@ -442,7 +445,11 @@ export async function readStudyAnalysisExecution(
   try {
     const root = await existingRoot(prepared, STUDY_ANALYSIS_EXECUTION_DIRECTORY);
     if (!root) return null;
-    const bytes = await readBoundedStudyFile(root, `${id}/receipt.json`, 16 * 1024);
+    const bytes = await readBoundedStudyFile(
+      root,
+      `${id}/receipt.json`,
+      MAX_EXECUTION_RECORD_BYTES,
+    );
     if (!bytes) return null;
     const receipt = validateStudyAnalysisExecutionReceipt(
       JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)),
@@ -552,7 +559,11 @@ export async function listStudyAnalysisExecutions(prepared: PreparedRunArtifactP
     const inventory = await directoryIds(root, MAX_VERSIONS);
     warnings.push(...inventory.warnings);
     for (const id of inventory.ids) {
-      const bytes = await readBoundedStudyFile(root, `${id}/receipt.json`, 16 * 1024);
+      const bytes = await readBoundedStudyFile(
+        root,
+        `${id}/receipt.json`,
+        MAX_EXECUTION_RECORD_BYTES,
+      );
       if (!bytes) {
         try {
           await lstat(path.join(root.physicalPath, id, "receipt.json"));
@@ -618,7 +629,11 @@ export async function readStudyAnalysisAccountingRecords(
           records.set(id, record);
         }
         if (directory === STUDY_ANALYSIS_EXECUTION_DIRECTORY) {
-          const startBytes = await readBoundedStudyFile(root, `${id}/start.json`, 16 * 1024);
+          const startBytes = await readBoundedStudyFile(
+            root,
+            `${id}/start.json`,
+            MAX_EXECUTION_RECORD_BYTES,
+          );
           if (startBytes) {
             try {
               const start = studyAnalysisExecutionStartSchema.parse(
@@ -636,7 +651,7 @@ export async function readStudyAnalysisAccountingRecords(
         const bytes = await readBoundedStudyFile(
           root,
           `${id}/${legacy ? "analysis.json" : "receipt.json"}`,
-          legacy ? ANALYSIS_MAX_BYTES : 16 * 1024,
+          legacy ? ANALYSIS_MAX_BYTES : MAX_EXECUTION_RECORD_BYTES,
         );
         if (!bytes) continue;
         try {

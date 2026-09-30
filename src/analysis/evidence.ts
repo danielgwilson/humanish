@@ -5,10 +5,11 @@ import { screenshotEvidenceError } from "../evidence/image.js";
 import type { PreparedRunArtifactPaths } from "../run/paths.js";
 import { isRecord } from "../run/primitives.js";
 import type { RunBundle } from "../run/bundle.js";
-import type {
-  AnalysisEvidence,
-  StudyAnalysisArtifact,
-  StudyAnalysisInput,
+import {
+  ACTION_CAPTURE_VERSION,
+  type AnalysisEvidence,
+  type StudyAnalysisArtifact,
+  type StudyAnalysisInput,
 } from "./study-analysis.js";
 import {
   digestStudyAnalysisInput,
@@ -125,7 +126,7 @@ export async function captureStudyEvidence(
   const current = await readBoundedStudyFile(prepared, "run.json", limits.sourceBytes);
   if (!current || !current.equals(bundleBytes)) throw new Error("ANALYSIS_SOURCE_CHANGED");
   const bundle = parseSource(prepared, bundleBytes);
-  const captureVersion = 2 as const;
+  const captureVersion = ACTION_CAPTURE_VERSION;
   if (
     bundle.streams.some(
       (stream) =>
@@ -441,7 +442,7 @@ export async function validateStudyAnalysisEvidence(
   artifact: StudyAnalysisArtifact,
   bundleBytes: Buffer,
 ): Promise<void> {
-  if (artifact.captureVersion !== undefined && artifact.captureVersion !== 2)
+  if (artifact.captureVersion !== undefined && artifact.captureVersion !== ACTION_CAPTURE_VERSION)
     throw new Error("ANALYSIS_CAPTURE_VERSION_INVALID");
   const bundle = parseSource(prepared, bundleBytes);
   if (artifact.runId !== bundle.runId || artifact.sourceRunSha256 !== sha256(bundleBytes))
@@ -474,12 +475,16 @@ export async function validateStudyAnalysisEvidence(
       throw new Error("ANALYSIS_PARTICIPANT_INPUT_INVALID");
     }
     if (
-      artifact.captureVersion === 2 &&
+      artifact.captureVersion === ACTION_CAPTURE_VERSION &&
       artifact.coverage.complete &&
       !participant.assignment?.trim()
     )
       throw new Error("ANALYSIS_COVERAGE_INCOMPLETE");
-    if (artifact.captureVersion === 2 && artifact.coverage.complete && hasUnmappedCaptures(stream))
+    if (
+      artifact.captureVersion === ACTION_CAPTURE_VERSION &&
+      artifact.coverage.complete &&
+      hasUnmappedCaptures(stream)
+    )
       throw new Error("ANALYSIS_COVERAGE_INCOMPLETE");
   }
   const sourceKeys = new Set<string>();
@@ -508,7 +513,7 @@ export async function validateStudyAnalysisEvidence(
       artifact.coverage.complete &&
       (entry.text !== source.text ||
         ((source.capturePath !== null ||
-          (artifact.captureVersion === 2 && source.captureDeclared)) &&
+          (artifact.captureVersion === ACTION_CAPTURE_VERSION && source.captureDeclared)) &&
           entry.capture === null))
     ) {
       throw new Error("ANALYSIS_COVERAGE_INCOMPLETE");

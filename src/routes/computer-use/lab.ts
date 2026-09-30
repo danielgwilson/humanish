@@ -25,7 +25,7 @@
 import { prepareReceivingRun } from "../../comms/receiving-runtime.js";
 import type { CommsReceivingRun } from "../../comms/receiving.js";
 import { commandDigestOf } from "../../subject/state.js";
-import { withTransientCommsSecrets } from "../../run/narration-secrets.js";
+import { withTransientCommsSecrets } from "../../run/transient-comms-secrets.js";
 import { randomBytes } from "node:crypto";
 import { readFile, realpath, rm } from "node:fs/promises";
 import path from "node:path";

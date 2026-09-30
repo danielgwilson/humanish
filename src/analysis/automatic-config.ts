@@ -4,6 +4,8 @@ import { containsSensitive } from "../evidence/redaction.js";
 import type { StudyAnalysisConfig } from "./study-analysis.js";
 
 export const DEFAULT_ANALYSIS_TIMEOUT_MS = 600_000;
+const MAX_ANALYSIS_TIMEOUT_MS = 600_000;
+export const DEFAULT_ANALYSIS_MODEL = "gpt-6-astra";
 const DEFAULT_ANALYSIS_MAX_OUTPUT_TOKENS = 16_384;
 
 interface LabAnalysisSettings {
@@ -66,13 +68,12 @@ export function resolveAutomaticAnalysis(
       typeof timeoutMs !== "number" ||
       !Number.isSafeInteger(timeoutMs) ||
       timeoutMs < 1 ||
-      timeoutMs > 600_000 ||
+      timeoutMs > MAX_ANALYSIS_TIMEOUT_MS ||
       (value.question !== undefined && (typeof question !== "string" || question.length > 4000))
     ) {
       return {
         ok: false,
-        message:
-          "Codex analysis requires the qualified gpt-6-astra model and timeoutMs 1–600000. Dollar and output-token caps are unavailable; omit them. The optional question is limited to 4000 characters.",
+        message: `Codex analysis requires the qualified ${CODEX_ANALYSIS_MODEL} model and timeoutMs 1–${MAX_ANALYSIS_TIMEOUT_MS}. Dollar and output-token caps are unavailable; omit them. The optional question is limited to 4000 characters.`,
       };
     }
     if (question !== null && containsSensitive(question as string))
@@ -95,7 +96,7 @@ export function resolveAutomaticAnalysis(
     };
   }
   const { maxCostUsd } = value;
-  const model = value.model === undefined ? "gpt-6-astra" : value.model;
+  const model = value.model === undefined ? DEFAULT_ANALYSIS_MODEL : value.model;
   const question = value.question === undefined ? null : value.question;
   const timeoutMs = value.timeoutMs === undefined ? DEFAULT_ANALYSIS_TIMEOUT_MS : value.timeoutMs;
   const maxOutputTokens =
@@ -112,7 +113,7 @@ export function resolveAutomaticAnalysis(
     typeof timeoutMs !== "number" ||
     !Number.isSafeInteger(timeoutMs) ||
     timeoutMs < 1 ||
-    timeoutMs > 600_000 ||
+    timeoutMs > MAX_ANALYSIS_TIMEOUT_MS ||
     typeof maxOutputTokens !== "number" ||
     !Number.isSafeInteger(maxOutputTokens) ||
     maxOutputTokens < 256 ||
@@ -121,8 +122,7 @@ export function resolveAutomaticAnalysis(
   ) {
     return {
       ok: false,
-      message:
-        "review.analysis requires a positive maxCostUsd up to 1000, a supported analysis model, timeoutMs 1–600000, maxOutputTokens 256–32768, and an optional question of at most 4000 characters.",
+      message: `review.analysis requires a positive maxCostUsd up to 1000, a supported analysis model, timeoutMs 1–${MAX_ANALYSIS_TIMEOUT_MS}, maxOutputTokens 256–32768, and an optional question of at most 4000 characters.`,
     };
   }
   if (question !== null && containsSensitive(question as string)) {

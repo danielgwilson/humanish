@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import { ACTOR_STOP_CAUSES } from "../actors/contract.js";
 import {
+  ACTION_CAPTURE_VERSION,
   STUDY_ANALYSIS_SCHEMA,
   STUDY_ANALYSIS_CORRECTION_SCHEMA,
   type AnalysisUsage,
@@ -199,7 +200,7 @@ const studyAnalysisParticipantProvenanceSchema = z
 const studyAnalysisArtifactSchema = z
   .object({
     schema: z.literal(STUDY_ANALYSIS_SCHEMA),
-    captureVersion: z.literal(2).optional(),
+    captureVersion: z.literal(ACTION_CAPTURE_VERSION).optional(),
     id,
     runId: sourceId,
     status: z.enum(["complete", "partial", "failed", "cancelled"]),

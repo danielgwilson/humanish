@@ -3,7 +3,7 @@ import { highDetailImageTokens } from "./image-tokens.js";
 import { createHash, randomUUID } from "node:crypto";
 import { estimateActorCost, MODEL_RATES } from "../run/pricing.js";
 import { containsSensitive } from "../evidence/redaction.js";
-import { scrubTransientCommsText } from "../run/narration-secrets.js";
+import { scrubTransientCommsText } from "../run/transient-comms-secrets.js";
 import {
   STUDY_ANALYSIS_SCHEMA,
   type AnalysisObservation,

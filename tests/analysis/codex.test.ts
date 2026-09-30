@@ -1,7 +1,7 @@
 import {
   registerTransientCommsSecrets,
   withTransientCommsSecrets,
-} from "../../src/run/narration-secrets.js";
+} from "../../src/run/transient-comms-secrets.js";
 import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";

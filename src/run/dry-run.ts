@@ -17,7 +17,7 @@ import {
 import { type RunOptions, type RunResult } from "./results.js";
 import { type RunSimulationStatus, type RunStream, type RunStreamKind } from "./streams.js";
 import { implicitProjectDirectoryExists, readPackageName, validateCwd } from "./locate.js";
-import { loadDryRunSelection } from "./selection.js";
+import { loadDryRunSelection } from "./dry-run-selection.js";
 import { createReviewSummary, renderReviewMarkdown } from "./synthetic-review.js";
 
 /**

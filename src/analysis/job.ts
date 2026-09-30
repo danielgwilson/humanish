@@ -51,6 +51,7 @@ export interface AutomaticStudyAnalysisCancellation {
 const JOB_FILE = "job.json";
 const CANCEL_FILE = "cancel.json";
 const MAX_JOB_BYTES = 8192;
+const MAX_CANCEL_BYTES = 1024;
 const CANCEL_SCHEMA = "humanish.automatic-study-analysis-cancellation.v1";
 const reasons = [
   "AUTOMATIC_ANALYSIS_ALREADY_REQUESTED",
@@ -380,7 +381,7 @@ export async function claimAutomaticStudyAnalysis(
     touch: () => update({}),
     async cancellationRequested() {
       await assertPreparedSelectedOutputDirectory(root);
-      const bytes = await readBoundedStudyFile(root, CANCEL_FILE, 1024);
+      const bytes = await readBoundedStudyFile(root, CANCEL_FILE, MAX_CANCEL_BYTES);
       if (!bytes) {
         const exists = await lstat(path.join(root.physicalPath, CANCEL_FILE)).then(
           () => true,

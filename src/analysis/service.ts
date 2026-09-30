@@ -43,6 +43,7 @@ import {
 } from "./study-analysis.js";
 
 export const ANALYZE_RESULT_SCHEMA = "humanish.analyze-result.v1";
+const MAX_STATUS_BYTES = 64 * 1024;
 export interface AnalyzeOptions {
   config: StudyAnalysisConfig;
   dryRun?: boolean;
@@ -231,7 +232,7 @@ export async function readCompletedStudyAnalysisSource(
   const loaded = await loadRunBundlePrepared(cwd, prepared);
   if (!loaded || loaded.bundle.streams.length === 0) throw new Error("ANALYSIS_NO_PARTICIPANTS");
   if (loaded.bundle.mode !== "live") throw new Error("ANALYSIS_REQUIRES_LIVE_RUN");
-  const statusBytes = await readBoundedStudyFile(prepared, RUN_STATUS_FILE, 64 * 1024);
+  const statusBytes = await readBoundedStudyFile(prepared, RUN_STATUS_FILE, MAX_STATUS_BYTES);
   if (!statusBytes) {
     const statusExists = await lstat(path.join(prepared.physicalRunRoot, RUN_STATUS_FILE)).then(
       () => true,

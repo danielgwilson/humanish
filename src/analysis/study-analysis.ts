@@ -10,6 +10,13 @@ import type { AutomaticStudyAnalysisView } from "./job.js";
 /** Independent interpretation of retained evidence; never a participant or harness verdict. */
 export const STUDY_ANALYSIS_SCHEMA = "humanish.study-analysis.v1" as const;
 export const STUDY_ANALYSIS_CORRECTION_SCHEMA = "humanish.study-analysis-correction.v1" as const;
+/**
+ * Capture mapping version 2: it also maps each scripted action's own screenshot. An artifact without
+ * captureVersion uses the original screenshot-only mapping. A different mapping needs a new version,
+ * because saved v2 artifacts are validated against this one.
+ */
+export const ACTION_CAPTURE_VERSION = 2 as const;
+export type CaptureVersion = typeof ACTION_CAPTURE_VERSION;
 type AnalysisStatus = "complete" | "partial" | "failed" | "cancelled";
 type AnalysisOutcome = "completed" | "blocked" | "abandoned" | "interrupted" | "unknown";
 type AnalysisBasis = "visual" | "action" | "participant_statement" | "inference";
@@ -67,7 +74,7 @@ export interface StudyAnalysisInput {
   sourceRunSha256: string;
   inputDigest: string;
   /** Absent selects the original capture mapping for historical artifact validation. */
-  captureVersion?: 2;
+  captureVersion?: CaptureVersion;
   participants: AnalysisParticipantInput[];
   coverage: AnalysisCoverage;
   evidence: AnalysisEvidence[];
@@ -175,7 +182,7 @@ export interface StudyAnalysisArtifact {
   completedAt: string;
   sourceRunSha256: string;
   inputDigest: string;
-  captureVersion?: 2;
+  captureVersion?: CaptureVersion;
   configDigest: string;
   config: StudyAnalysisConfig;
   promptVersion: string;

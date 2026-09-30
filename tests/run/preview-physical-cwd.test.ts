@@ -6,12 +6,12 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { runDryRun } from "../../src/run/dry-run.js";
-import { loadDryRunSelection } from "../../src/run/selection.js";
+import { loadDryRunSelection } from "../../src/run/dry-run-selection.js";
 
 // The preview takes no hooks, so the alias is retargeted from inside the selection read, the last
 // step before the run starts.
-vi.mock("../../src/run/selection.js", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../src/run/selection.js")>();
+vi.mock("../../src/run/dry-run-selection.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/run/dry-run-selection.js")>();
   return { ...actual, loadDryRunSelection: vi.fn(actual.loadDryRunSelection) };
 });
 
@@ -26,8 +26,8 @@ describe("preview project binding", () => {
   });
 
   it("pins a symlink cwd before the alias can be retargeted", async () => {
-    const actual = await vi.importActual<typeof import("../../src/run/selection.js")>(
-      "../../src/run/selection.js",
+    const actual = await vi.importActual<typeof import("../../src/run/dry-run-selection.js")>(
+      "../../src/run/dry-run-selection.js",
     );
     const physicalA = path.join(root, "project-a");
     const physicalB = path.join(root, "project-b");

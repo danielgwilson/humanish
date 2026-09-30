@@ -49,7 +49,7 @@ import {
   scenarioCapsValidationReason,
   taskProtocolValidationReason,
 } from "../../lab/validation.js";
-import { withTransientCommsSecrets } from "../../run/narration-secrets.js";
+import { withTransientCommsSecrets } from "../../run/transient-comms-secrets.js";
 import { MODEL_RATES } from "../../run/pricing.js";
 import { runScope, type RunScope } from "../../run/run.js";
 import { makeCuaRunBudget } from "../computer-use/lane-plan.js";
