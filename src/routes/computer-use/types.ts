@@ -504,7 +504,6 @@ export interface LaneSpecsAndPlan {
   plan: CuaLanePlan;
 }
 
-/** Shared deps every lane runner needs (resolved once in the engine). */
 /**
  * The STUDY's shared spend ledger (#299): one counter across every lane. Each lane notes its own
  * latest running MODEL-spend estimate (monotone per lane — an estimate can only grow) and reads
@@ -518,6 +517,7 @@ export interface CuaRunBudget {
   note(laneId: string, estimateUsd: number | null): number;
 }
 
+/** Shared deps every lane runner needs (resolved once in the engine). */
 export interface CuaLaneDeps {
   /** Internal ready-desktop seam. The factory must not allocate; prepare owns that work. */
   createDesktopLane?: (

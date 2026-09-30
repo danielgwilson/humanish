@@ -145,7 +145,6 @@ export interface ConcurrentSharedWorldLabResult extends AutomaticAnalysisResult 
   error?: { code: ConcurrentSharedWorldLabErrorCode; message: string };
 }
 
-/** One actor lane's measured run (internal). */
 /** The provisioned plane's own desktop, for the run's cost estimate. */
 export interface SubjectDesktopUsage {
   durationMs: number | undefined;
@@ -153,6 +152,7 @@ export interface SubjectDesktopUsage {
   killed: boolean;
 }
 
+/** One actor lane's measured run (internal). */
 export interface ActorLaneResult {
   spec: CuaLaneSpec;
   outcome: LaneRunOutcome;

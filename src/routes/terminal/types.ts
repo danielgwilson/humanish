@@ -61,12 +61,6 @@ export const MAX_TRANSCRIPT_BYTES = 512 * 1024;
 export const TERMINAL_PRODUCT_LAB_SCHEMA = "humanish.terminal-lab-result.v1";
 
 /**
- * Library-level hooks: the DI seams that drive the full live path against a fake sandbox + mock
- * CLI at zero spend. The deterministic merge-gate test wires loadModule (a fake @e2b/desktop
- * module) + env (the operator key source) + now (an injected clock); the live rung uses none of
- * them (it loads the real module and reads the real environment).
- */
-/**
  * The read-only evidence a thin adapter's scorer/feedback hook sees (the layer-6 extension seam,
  * issue #154 acceptance #8). It is the FULLY-ASSEMBLED, redacted, verifiable evidence — the live run
  * bundle, the provider-neutral actor trace, and the persisted ledgers (substrate/command/
@@ -98,6 +92,12 @@ export interface TerminalProductScoringContext {
   runId: string;
 }
 
+/**
+ * Library-level hooks: the DI seams that drive the full live path against a fake sandbox + mock
+ * CLI at zero spend. The deterministic merge-gate test wires loadModule (a fake @e2b/desktop
+ * module) + env (the operator key source) + now (an injected clock); the live rung uses none of
+ * them (it loads the real module and reads the real environment).
+ */
 export interface TerminalProductLabHooks {
   /** Lazy-load the E2B module (tests inject a fake; default loadE2BDesktopModule). */
   loadModule?: () => Promise<E2BDesktopModule>;

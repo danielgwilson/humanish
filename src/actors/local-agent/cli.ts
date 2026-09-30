@@ -154,17 +154,17 @@ export function toCuaActions(raw: readonly RawAction[]): CuaAction[] {
   return actions;
 }
 
+/** The declared outcome, only if it is one of the three words; anything else is absence. */
+export function declaredOutcomeOf(value: unknown): ParticipantDeclaredOutcome | undefined {
+  return value === "reached" || value === "not_reached" || value === "blocked" ? value : undefined;
+}
+
 /**
  * Pull the JSON object out of whatever the CLI printed. Codex writes clean JSON to
  * `--output-last-message`; Claude Code wraps it in a ```json fence. Both are handled here rather
  * than in two places, and a response with no object at all is a turn error, never an empty turn —
  * an empty turn would read to the loop as "the participant chose to do nothing".
  */
-/** The declared outcome, only if it is one of the three words; anything else is absence. */
-export function declaredOutcomeOf(value: unknown): ParticipantDeclaredOutcome | undefined {
-  return value === "reached" || value === "not_reached" || value === "blocked" ? value : undefined;
-}
-
 export function parseAgentJson(text: string): Record<string, unknown> {
   // ORDER MATTERS, and a test caught it: Claude Code's envelope is valid JSON whose `result`
   // STRING contains a ```json fence. Stripping fences first reached inside that string and

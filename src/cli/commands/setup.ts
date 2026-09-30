@@ -113,15 +113,6 @@ export function registerDoctorCommand(parent: Command, io: CliIo): void {
 }
 
 /**
- * The stakeholder surface (#455). Every other command is written so an agent can drive it; this one
- * is the opposite — it takes the screen and waits for a person.
- *
- * That inversion is why it refuses rather than degrades. An agent that runs `humanish tui` with a
- * piped stdout has asked for something that cannot exist, and the useful answer is a structured
- * error naming the command that WOULD have answered the question. A TUI that quietly rendered
- * frames into a pipe would poison a transcript with escape codes and look like a hang.
- */
-/**
  * `humanish telemetry status|enable|disable` — the opt-out the convention requires, plus a `status`
  * that prints the exact document that would be sent. "You can read what we collect" is what makes
  * default-on honest rather than merely lawful.
