@@ -258,7 +258,7 @@ export function registerStatsCommand(parent: Command, io: CliIo): void {
   parent
     .command("stats")
     .description(
-      "Cost, outcome, and duration roll-ups across run history (#472). Estimates stay labelled; unknown costs count as unknown.",
+      "Cost, outcome, and duration roll-ups across run history. Estimates stay labelled; unknown costs count as unknown.",
     )
     .summary("Roll up cost, outcomes, and durations across runs.")
     .option("--lab <id>", "Only runs from this lab id.")
@@ -339,7 +339,7 @@ export function registerReclaimCommand(parent: Command, io: CliIo): void {
   parent
     .command("reclaim")
     .description(
-      "Kill an interrupted run's sandboxes by their journaled exact ids (the #358 salvage path — reads the run's sandbox-receipts.ndjson; never enumerates the E2B account). Needs E2B_API_KEY in the environment.",
+      "Kill an interrupted run's sandboxes by the exact ids journaled in its sandbox-receipts.ndjson; never enumerates the E2B account. Needs E2B_API_KEY in the environment.",
     )
     .summary("Reclaim an interrupted run's sandboxes by recorded id.")
     .option("--cwd <path>", "Target project directory.", ".")

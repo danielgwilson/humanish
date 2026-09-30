@@ -14,8 +14,6 @@ Four steps cost nothing and need no keys:
 3. `npx humanish telemetry disable` (or `DO_NOT_TRACK=1`) stops usage telemetry.
 4. `review.analysis: false` in the lab keeps the analyst call out of the first live run.
 
-The first paid step is one participant: `npx humanish run try-live` with `execution.caps.maxUsd` set, a synthetic account on the target, and the E2B console open so you can watch the desktop end. Read the bundle's `cost` block and `providerResources` before running a panel.
-
 ## Set a study budget
 
 For the computer-use route, declare both the study budget and a per-participant backstop:
@@ -36,6 +34,8 @@ execution:
 - A model without a known rate cannot satisfy a fail-closed computer-use cap, so the run is refused rather than treated as free.
 
 The included `try-live` lab uses one participant and `maxUsd: 2`. It is a starting point for learning the product, not a recommended budget for every task. When `init` finds no OpenAI key and a signed-in Codex or Claude Code, it writes `try-live` with a `local-agent` participant and no dollar cap: account usage has no dollar price humanish can enforce, and the 10-minute `execution.timeoutMs` bounds the run.
+
+The first paid step is this one participant. [Store the keys](#store-credentials) first, then run `npx humanish run try-live` against a synthetic account on the target, with the E2B console open so you can watch the desktop end. Read the bundle's `cost` block and `providerResources` before running a panel.
 
 Supported live runs also request post-run analysis by default. This sends selected
 retained text and captures to OpenAI, using `OPENAI_API_KEY`, with a separate $3

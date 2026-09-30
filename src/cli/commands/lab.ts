@@ -148,7 +148,7 @@ export function registerLabCommands(parent: Command, io: CliIo): void {
     .option("--cwd <path>", "Target project directory.", ".")
     .option(
       "--scorer <path>",
-      "Terminal/computer-use/shared-world labs only: repo-relative adopter scorer module (.mjs). Overrides review.scorer.ref. Executable code — review it as code.",
+      "Terminal/computer-use/shared-world labs only: repo-relative adopter scorer module (.mjs). Overrides review.scorer.ref. Executable code: review it as code.",
     )
     .option("--json", JSON_OPTION_DESCRIPTION)
     .addHelpText(

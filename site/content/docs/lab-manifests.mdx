@@ -1,6 +1,6 @@
 ---
 title: Lab manifest reference
-description: Choose a subject route, keep private labs local, and understand scripted browser and maintainer manifests.
+description: Choose a subject route, keep private labs local, and replay scripted browser scenarios.
 ---
 
 Start with the complete [own-app lab](/docs/your-app) and use this reference when changing its source, route, or execution controls.
@@ -49,8 +49,8 @@ for a lane's steer.
 | Subject source     | Use                                                                                                                               |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
 | `clone`            | Clone and serve a repository inside a hosted desktop (`execution.target: e2b-desktop`, a computer-use or scripted-browser actor). |
-| `local-tree`       | Package the selected local working tree and serve it inside a hosted desktop.                                                     |
-| `app-url`          | Study a reachable app URL; a public target requires explicit policy permission.                                                   |
+| `local-tree`       | Pack the local working tree and serve it inside a hosted desktop (`execution.target: e2b-desktop`, a computer-use actor).         |
+| `app-url`          | Study a reachable app URL with a computer-use or scripted-browser actor; a public target requires explicit policy permission.     |
 | `local-app`        | Library integration with a custom state-driven executor and provider.                                                             |
 | `terminal-product` | Exercise a CLI product in the terminal route.                                                                                     |
 | `desktop-cli`      | Give a computer-use participant a hosted terminal product task.                                                                   |
@@ -122,13 +122,20 @@ review:
   analysis: false
 ```
 
-`count: 2` adds a mobile surface to the desktop one. Without `mode: live` the lab
-is a dry run: it validates the steps and writes a contract bundle without opening a
-browser. Post-run analysis is separate from the steps: when `OPENAI_API_KEY` is
-set it runs by default with a $3 cap. `analysis: false` turns it off, so the study
-makes no model requests.
+Save it as `humanish/labs/todo-onboarding.yaml`. `count: 2` adds a mobile surface
+to the desktop one. Without `mode: live` the lab is a dry run: it validates the steps
+and writes a contract bundle without opening a browser. Post-run analysis is separate
+from the steps: when `OPENAI_API_KEY` is set it runs by default, and it is refused when
+its estimate exceeds $3. `analysis: false` turns it off, so the study makes no model
+requests.
+
+A live run drives a local Chrome or Chromium against your app, so start the app on
+`http://127.0.0.1:3000` first. If humanish finds no browser, the run stops with
+`HUMANISH_SCRIPTED_LAB_BROWSER_MISSING`; set `HUMANISH_BROWSER_COMMAND` to the browser
+binary. `--dry-run` checks the steps without either:
 
 ```bash
+npx humanish lab run todo-onboarding --dry-run --json --no-open
 npx humanish lab run todo-onboarding --json --no-open
 npx humanish verify --run latest --json
 ```

@@ -12,8 +12,8 @@ There is no Humanish price. A live study is billed by the providers you bring: a
 | Participant model                    | OpenAI, by token, for `openai-computer-use`        | Every screenshot step is a model request; the bundle records tokens and prices them at the table rate | $0.13 to $1.10 per participant on the runs below               |
 | Participant model, local-agent route | Nobody per run: your Codex or Claude Code plan     | Plan limits apply; the bundle marks model usage unpriced                                              | $0 marginal, unpriced                                          |
 | Hosted desktop                       | E2B, by CPU-second and GiB-second                  | Host-measured span from acquired handle to cleanup, priced at the allocation's resources              | $0.009 per minute for the 8 vCPU / 8 GiB desktop the runs used |
-| Analysis                             | OpenAI, by token, one request per study            | Selected retained text and captures; refused when the admission estimate exceeds the limit            | $2.29 for an eight-participant study; default limit $3         |
-| Local browser runtime                | Nobody: Firecracker on Linux or Lima on an M3+ Mac | Your machine; the participant is your signed-in Codex                                                 | $0 desktop, model under your plan                              |
+| Analysis                             | OpenAI, by token, one request per study            | Selected retained text and captures; refused when the admission estimate exceeds the limit            | $0.50 for one participant, $2.29 for eight; limit $3           |
+| Local browser runtime                | Nobody: Firecracker on Linux or Lima on an M3+ Mac | Your machine; the participant is your signed-in Codex, or `openai-computer-use` billed per token      | $0 desktop; model under your plan or per token                 |
 
 Rates in the table carry an `asOf` date and a source. On 2026-09-05 the desktop rate was $0.000014 per CPU-second and $0.0000045 per GiB-second (e2b.dev/pricing); on 2026-08-01 the default model `gpt-5.6-sol` was $4 per million input tokens and $20 per million output tokens (developers.openai.com/api/docs/pricing). A model without a table rate makes a capped run refuse to start rather than run unpriced.
 
@@ -41,15 +41,15 @@ Three fresh installs on 2026-09-01 completed the starter study in 108 to 111 sec
 
 Add the lines for one participant, then multiply by the panel:
 
-1. Desktop: minutes you allow (`execution.timeoutMs`) times $0.009 for the default template. A 10-minute cap is at most $0.09 per participant.
+1. Desktop: the minutes the desktop is held, times $0.009 for the default template. That is the session (`execution.timeoutMs`) plus the clone and build on a `clone` or `local-tree` subject. If humanish cannot close the desktop, the provider stops it at the sandbox deadline: `timeoutMs`, plus 30 minutes of provisioning room on those subjects, plus a 10-minute buffer. For a 10-minute session that ceiling is 50 minutes, about $0.45.
 2. Model: the runs above spent $0.10 to $0.55 per participant-minute of active use on `gpt-5.6-sol`; a quiet waiting-room participant spends far less than one that reads and types. Budget $0.30 per minute for a busy participant and you will be high.
-3. Analysis: one request per study. The estimate is printed before the request; the default limit is $3, and the eight-participant study cost $2.29.
+3. Analysis: one request per study. The estimate is printed before the request; the default limit is $3. On 2026-09-30 five one-participant `try-live` analyses cost $0.49 to $0.59, and the eight-participant study cost $2.29.
 
-A six-participant, ten-minute study on the hosted route therefore lands between about $3 and $20 in model spend, under $0.60 in desktop time, and up to $3 in analysis. Run it once with `--dry-run` for the contract and once live with caps before scaling the panel.
+A six-participant, ten-minute study on the hosted route therefore lands between about $3 and $20 in model spend, about $0.54 of desktop session time plus each desktop's build minutes, and one analysis, which by default is refused when its estimate exceeds $3. Run it once with `--dry-run` for the contract and once live with caps before scaling the panel.
 
 ## What the caps do
 
-`execution.caps.maxUsd` stops a participant and `maxTotalUsd` stops the study when the _estimate_ reaches the number. Both are checked after each model response reports usage, so an in-flight request and concurrent participants can cross the line before stopping; they do not reserve the next request and they are not a provider billing limit. Desktop time and analysis have their own accounting: desktops stop at `timeoutMs`, analysis at its admission limit. `maxUsd: 0` still permits one paid request. The [budgets page](/docs/budgets-and-privacy#set-a-study-budget) has the exact rules.
+`execution.caps.maxUsd` stops a participant and `maxTotalUsd` stops the study when the _estimate_ reaches the number. Both are checked after each model response reports usage, so an in-flight request and concurrent participants can cross the line before stopping; they do not reserve the next request and they are not a provider billing limit. Desktop time and analysis have their own limits: a session ends at `timeoutMs` and humanish then closes its desktop, the sandbox deadline stops a desktop humanish could not close, and analysis is refused when its estimate exceeds its admission limit. `maxUsd: 0` still permits one paid request. The [budgets page](/docs/budgets-and-privacy#set-a-study-budget) has the exact rules.
 
 ## What is not in these numbers
 
