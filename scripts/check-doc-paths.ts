@@ -31,8 +31,9 @@ const issues = [
   ...sources.flatMap((path) => findCommentPathIssues(path, read(path), index)),
 ];
 
-for (const { file, line, path } of issues) {
-  process.stderr.write(`${file}:${line} names ${path}, which does not exist\n`);
+for (const { file, line, path, resolved } of issues) {
+  const target = resolved === undefined ? path : `${path} (${resolved} from this file)`;
+  process.stderr.write(`${file}:${line} names ${target}, which does not exist\n`);
 }
 if (issues.length > 0) {
   process.stderr.write(

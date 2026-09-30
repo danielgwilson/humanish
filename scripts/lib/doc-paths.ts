@@ -9,6 +9,8 @@ export interface PathIssue {
   file: string;
   line: number;
   path: string;
+  /** For a markdown link: the repo path the link resolves to from its file. */
+  resolved?: string;
 }
 
 export interface RepoIndex {
@@ -64,27 +66,61 @@ export function isCheckedSource(path: string): boolean {
   return path.startsWith("src/") && path.endsWith(".ts");
 }
 
-// A path from the repo root at the start of a token, behind optional `./` or `../` segments (a
-// relative link) or behind a GitHub blob URL for this repository. It names a file with one of the
-// listed extensions, or a directory written with a trailing `/`. A root folder inside another path
-// (`tui/src/...` holds no root `src/` match) and paths with globs or placeholders do not match.
-// `observer/` is left out because a run bundle has its own `observer/` folder, and `.js` because a
-// `.js` name in a doc is often an emitted file or an ESM specifier.
+// A path from the repo root at the start of a token, behind optional `./` or `../` segments or
+// behind a GitHub blob URL for this repository. It names a file with one of the listed extensions,
+// or a directory written with a trailing `/`. A root folder inside another path (`tui/src/...`
+// holds no root `src/` match) and paths with globs or placeholders do not match. `observer/` is
+// left out because a run bundle has its own `observer/` folder, and `.js` because a `.js` name in
+// a doc is often an emitted file or an ESM specifier.
 const DOC_REPO_PATH =
   /(?:github\.com\/[\w.-]+\/humanish\/blob\/[\w.-]+\/|(?<![\w.@/-])((?:\.{1,2}\/)*))((?:src|tests|scripts|docs|tui|site|runtime)\/[\w./-]*?(?:\.(?:tsx?|mts|mjs|json|ya?ml|md|py)|\/))(?![\w/-])/g;
+// A markdown link target: `[text](target)` or `[text](<target> "title")`.
+const MARKDOWN_LINK = /\]\(\s*<?([^()\s<>]+?)>?(?:\s+"[^"]*")?\s*\)/g;
 
 export function findDocPathIssues(file: string, text: string, index: RepoIndex): PathIssue[] {
-  const issues: PathIssue[] = [];
+  const issues: { offset: number; path: string; resolved?: string }[] = [];
+  // A markdown link resolves from the file that contains it. Every other path in a doc is a
+  // reference written from the repo root.
+  const linkSpans: [number, number][] = [];
+  for (const match of text.matchAll(MARKDOWN_LINK)) {
+    const target = match[1]!;
+    if (!isRelativeLinkTarget(target)) continue;
+    const start = match.index + match[0].indexOf(target);
+    linkSpans.push([start, start + target.length]);
+    const path = target.split("#")[0]!.split("?")[0]!;
+    const resolved = path === "" ? undefined : missingFromFile(file, path, index);
+    if (resolved !== undefined) issues.push({ offset: start, path, resolved });
+  }
   for (const match of text.matchAll(DOC_REPO_PATH)) {
+    if (linkSpans.some(([start, end]) => match.index >= start && match.index < end)) continue;
     const prefix = match[1] ?? "";
     const path = match[2]!;
     const resolved = prefix ? posix.join(posix.dirname(file), prefix, path) : path;
     const known = resolved.endsWith("/") ? index.directories : index.files;
-    if (!known.has(resolved)) {
-      issues.push({ file, line: lineAt(text, match.index), path: prefix + path });
-    }
+    if (!known.has(resolved)) issues.push({ offset: match.index, path: prefix + path });
   }
-  return issues;
+  return issues
+    .sort((left, right) => left.offset - right.offset)
+    .map(({ offset, ...issue }) => ({ file, line: lineAt(text, offset), ...issue }));
+}
+
+// URLs, site-absolute paths, same-page anchors and placeholders are not repo files.
+function isRelativeLinkTarget(target: string): boolean {
+  return !/^[a-z][a-z0-9+.-]*:/i.test(target) && !/^[#/]/.test(target) && !/[<>{}*$]/.test(target);
+}
+
+/** The resolved repo path when the link names nothing relative to the doc, else undefined. */
+function missingFromFile(file: string, path: string, index: RepoIndex): string | undefined {
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(path);
+  } catch {
+    decoded = path;
+  }
+  const resolved = posix.normalize(posix.join(posix.dirname(file), decoded));
+  if (index.files.has(resolved)) return undefined;
+  if (index.directories.has(resolved.endsWith("/") ? resolved : `${resolved}/`)) return undefined;
+  return resolved;
 }
 
 const URL_PATTERN = /\b[a-z][a-z0-9+.-]*:\/\/\S+/gi;
