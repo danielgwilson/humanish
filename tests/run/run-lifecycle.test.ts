@@ -505,19 +505,29 @@ describe("Run.writeSnapshot publishes in-progress bundles through the same queue
     expect((await readStatus("recovered")).outcome).toEqual({ verdict: "contract_proof_only" });
   });
 
-  it("Q2: a throw while a snapshot rejects surfaces the original error and closes the status", async () => {
-    failFirstBundleWrite("snapshot failed");
-    const failure = new Error("route failed");
-    await expect(
-      runScope(async (scope) => {
-        const run = await startOk(scope, "doubly-failed");
-        void run.writeSnapshot(bundleFor("doubly-failed")).catch(() => undefined);
-        throw failure;
-      }),
-    ).rejects.toBe(failure);
-    const status = await readStatus("doubly-failed");
-    expect(status.state).toBe("finished");
-    expect(status).not.toHaveProperty("outcome");
+  it("Q2: a throw while a snapshot rejects surfaces the original error and stops the status cadence", async () => {
+    // Only the interval is faked: the status record's 5 s cadence is the one interval a run owns.
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+    try {
+      failFirstBundleWrite("snapshot failed");
+      const failure = new Error("route failed");
+      let timersWhileRunning = 0;
+      await expect(
+        runScope(async (scope) => {
+          const run = await startOk(scope, "doubly-failed");
+          timersWhileRunning = vi.getTimerCount();
+          void run.writeSnapshot(bundleFor("doubly-failed")).catch(() => undefined);
+          throw failure;
+        }),
+      ).rejects.toBe(failure);
+      expect(timersWhileRunning).toBe(1);
+      expect(vi.getTimerCount()).toBe(0);
+      const status = await readStatus("doubly-failed");
+      expect(status.state).toBe("finished");
+      expect(status).not.toHaveProperty("outcome");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("Q3: a snapshot from a timer that fires after the scope closed writes nothing", async () => {
