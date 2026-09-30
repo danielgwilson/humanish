@@ -100,6 +100,36 @@ describe("local study re-entry", () => {
     expect(bag.phases()).toEqual(["cloned"]);
   });
 
+  it("keeps a class-instance analysis bag's methods on re-entry", async () => {
+    const skipped = { state: "skipped", reason: "AUTOMATIC_ANALYSIS_DRY_RUN" } as never;
+    class AnalysisHooks {
+      readonly #calls: string[] = [];
+      onStart() {
+        this.#calls.push("start");
+      }
+      run() {
+        this.#calls.push("run");
+        return Promise.resolve(skipped);
+      }
+      calls() {
+        return this.#calls;
+      }
+    }
+    const bag = new AnalysisHooks();
+    await runLocalFirecrackerStudy({
+      cwd,
+      config: localLab("openai-computer-use"),
+      dryRun: true,
+      automaticAnalysis: bag,
+    });
+
+    reentryHooks();
+    const analysis = seams.dispatchLab.mock.calls[0]![1].automaticAnalysis!;
+    analysis.onStart!();
+    await expect(analysis.run!({} as never, {} as never, {} as never)).resolves.toBe(skipped);
+    expect(bag.calls()).toEqual(["start", "run"]);
+  });
+
   it("keeps the caller's hooks next to its own desktop lane", async () => {
     const score = vi.fn();
     const onPhase = vi.fn();

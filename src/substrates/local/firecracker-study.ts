@@ -90,13 +90,13 @@ export async function runLocalFirecrackerStudy(
   try {
     return await dispatchLab(config, {
       ...options,
-      automaticAnalysis: {
-        ...options.automaticAnalysis,
+      // Wrapped rather than spread for the same reason as cuaHooks below.
+      automaticAnalysis: withHookOverrides(options.automaticAnalysis, HOOK_MEMBERS.analysis, {
         onStart() {
           if (cleanupUnconfirmed) throw new Error("Local study cleanup is unconfirmed.");
           return options.automaticAnalysis?.onStart?.();
         },
-      },
+      }),
       // The caller's hooks come first so this study's desktop lane always wins: dispatchLab reads
       // createDesktopLane as "desktop provided" and does not route back here.
       // The caller's bag may be a class instance, so it is wrapped rather than spread.

@@ -90,7 +90,8 @@ export const HOOK_MEMBERS = {
  * result keeps every member. The members are the bag's own and inherited keys (string or symbol)
  * plus `declared`, the members its type declares, which a proxy-backed bag may answer without
  * listing. A function is bound to the bag, so its private fields still work. The overrides are
- * ordinary data properties.
+ * ordinary data properties. Declared members always appear as own properties (undefined when
+ * unset), so code reading a wrapped bag tests the value, never `in`.
  */
 export function withHookOverrides<T extends object>(
   bag: T | undefined,
