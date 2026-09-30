@@ -74,6 +74,11 @@ export function concurrentSharedWorldFindings(
   return provisionedGetHostConcurrentFindings(bundle, sw);
 }
 
+type Row = Record<string, unknown>;
+
+const roleIdOf = (window: Row): string =>
+  typeof window.roleId === "string" ? window.roleId : "(unnamed)";
+
 /**
  * PROVISIONED-getHost concurrent branch: a clone/local-tree subject served and getHost-exposed
  * in-sandbox. The harness MINTED the host, so this asserts the synthetic-seeded attestation, the
@@ -91,13 +96,9 @@ function provisionedGetHostConcurrentFindings(
       "a concurrent shared-world bundle must NOT carry a sequential timeline (topologyMode mismatch)",
     );
   }
-  const laneWindows = Array.isArray(sw.laneWindows)
-    ? (sw.laneWindows as unknown[]).filter(isRecord)
-    : null;
-  const stateSeries = Array.isArray(sw.stateSeries)
-    ? (sw.stateSeries as unknown[]).filter(isRecord)
-    : null;
-  const outcomes = Array.isArray(sw.outcomes) ? (sw.outcomes as unknown[]).filter(isRecord) : null;
+  const laneWindows = recordsOf(sw.laneWindows);
+  const stateSeries = recordsOf(sw.stateSeries);
+  const outcomes = recordsOf(sw.outcomes);
   if (laneWindows === null)
     findings.push("a concurrent shared-world bundle must carry laneWindows");
   if (stateSeries === null)
@@ -108,24 +109,50 @@ function provisionedGetHostConcurrentFindings(
   }
 
   // Required limits all present AND forbidden limits all absent.
-  const limits = Array.isArray(sw.attributionLimits) ? sw.attributionLimits : [];
-  for (const required of CONCURRENT_REQUIRED_LIMITS) {
-    if (!limits.includes(required)) {
-      findings.push(
-        `attributionLimits is missing the mandatory concurrent disclosure "${required}" — an absent ceiling overclaims`,
-      );
-    }
-  }
-  for (const forbidden of CONCURRENT_FORBIDDEN_LIMITS) {
-    if (limits.includes(forbidden)) {
-      findings.push(
-        `attributionLimits carries the forbidden disclosure "${forbidden}" — a concurrent run cannot claim a sequential guarantee`,
-      );
-    }
-  }
+  findings.push(
+    ...attributionLimitFindings(sw, CONCURRENT_REQUIRED_LIMITS, CONCURRENT_FORBIDDEN_LIMITS, {
+      missing: (limit) =>
+        `attributionLimits is missing the mandatory concurrent disclosure "${limit}" — an absent ceiling overclaims`,
+      forbidden: (limit) =>
+        `attributionLimits carries the forbidden disclosure "${limit}" — a concurrent run cannot claim a sequential guarantee`,
+    }),
+    ...roleCoverageFindings(sw, laneWindows, outcomes),
+    ...laneWindowFindings(bundle, laneWindows, "the host it drove"),
+    ...getHostPlaneFindings(bundle, sw, laneWindows),
+    ...stateSeriesFindings(stateSeries),
+    ...concurrencyOnPassFindings(bundle, laneWindows, stateSeries),
+  );
+  return findings;
+}
 
-  // Phantom/dropped role: laneWindows + outcomes each cover exactly roleCount (actors are
-  // INDEPENDENT — none are blocked by another, so all N produce a window + outcome).
+/** An array field's record entries, or null when the field is not an array. */
+function recordsOf(value: unknown): Row[] | null {
+  return Array.isArray(value) ? (value as unknown[]).filter(isRecord) : null;
+}
+
+function attributionLimitFindings(
+  sw: SharedWorldEvidence,
+  required: readonly string[],
+  forbidden: readonly string[],
+  messages: { missing: (limit: string) => string; forbidden: (limit: string) => string },
+): string[] {
+  const limits: readonly string[] = Array.isArray(sw.attributionLimits) ? sw.attributionLimits : [];
+  return [
+    ...required.filter((limit) => !limits.includes(limit)).map(messages.missing),
+    ...forbidden.filter((limit) => limits.includes(limit)).map(messages.forbidden),
+  ];
+}
+
+/**
+ * Phantom/dropped role: laneWindows + outcomes each cover exactly roleCount (actors are
+ * INDEPENDENT — none are blocked by another, so all N produce a window + outcome).
+ */
+function roleCoverageFindings(
+  sw: SharedWorldEvidence,
+  laneWindows: Row[],
+  outcomes: Row[],
+): string[] {
+  const findings: string[] = [];
   if (laneWindows.length !== sw.roleCount) {
     findings.push(
       `phantom/dropped role: laneWindows count (${laneWindows.length}) must equal roleCount (${sw.roleCount})`,
@@ -136,10 +163,14 @@ function provisionedGetHostConcurrentFindings(
       `phantom/dropped role: outcomes count (${outcomes.length}) must equal roleCount (${sw.roleCount})`,
     );
   }
+  return findings;
+}
 
-  // laneWindows: numeric well-ordered windows; sim/stream resolve; route-host digest present.
+/** laneWindows: numeric well-ordered windows; sim/stream resolve; route-host digest present. */
+function laneWindowFindings(bundle: RunBundle, laneWindows: Row[], routeTarget: string): string[] {
+  const findings: string[] = [];
   for (const window of laneWindows) {
-    const roleId = typeof window.roleId === "string" ? window.roleId : "(unnamed)";
+    const roleId = roleIdOf(window);
     const startedAt = window.startedAt;
     const endedAt = window.endedAt;
     if (typeof startedAt !== "number" || typeof endedAt !== "number" || !(startedAt <= endedAt)) {
@@ -150,7 +181,7 @@ function provisionedGetHostConcurrentFindings(
       !COMMAND_DIGEST_PATTERN.test(window.routeHostDigest)
     ) {
       findings.push(
-        `laneWindow "${roleId}" must record a sha256-16 routeHostDigest of the host it drove`,
+        `laneWindow "${roleId}" must record a sha256-16 routeHostDigest of ${routeTarget}`,
       );
     }
     if (!bundle.simulations.some((sim) => sim.id === window.simId)) {
@@ -162,10 +193,22 @@ function provisionedGetHostConcurrentFindings(
       );
     }
   }
+  return findings;
+}
 
+/**
+ * The getHost plane: every actor drove EXACTLY the harness-minted host (invariant 2), the subject is
+ * attested synthetic and seeded, and every laneWindow shares the plane's provenance.
+ */
+function getHostPlaneFindings(
+  bundle: RunBundle,
+  sw: SharedWorldEvidence,
+  laneWindows: Row[],
+): string[] {
+  const findings: string[] = [];
   // The harness-minted getHost target. plane.hostDigest present (sha256-16) + every actor's
-  // routeHostDigest equals it (every actor drove EXACTLY the harness-minted host — invariant 2).
-  const plane: Record<string, unknown> = isRecord(sw.plane) ? sw.plane : {};
+  // routeHostDigest equals it.
+  const plane: Row = isRecord(sw.plane) ? sw.plane : {};
   const hostDigest = typeof plane.hostDigest === "string" ? plane.hostDigest : undefined;
   if (!hostDigest || !COMMAND_DIGEST_PATTERN.test(hostDigest)) {
     findings.push(
@@ -173,10 +216,9 @@ function provisionedGetHostConcurrentFindings(
     );
   } else {
     for (const window of laneWindows) {
-      const roleId = typeof window.roleId === "string" ? window.roleId : "(unnamed)";
       if (typeof window.routeHostDigest === "string" && window.routeHostDigest !== hostDigest) {
         findings.push(
-          `laneWindow "${roleId}" drove a host that differs from the harness-minted plane.hostDigest (invariant 2)`,
+          `laneWindow "${roleIdOf(window)}" drove a host that differs from the harness-minted plane.hostDigest (invariant 2)`,
         );
       }
     }
@@ -203,8 +245,12 @@ function provisionedGetHostConcurrentFindings(
       run: "concurrent",
     }),
   );
+  return findings;
+}
 
-  // stateSeries is DIGEST-ONLY with the allowed-keys tripwire (no per-delta→actor field).
+/** stateSeries is DIGEST-ONLY with the allowed-keys tripwire (no per-delta→actor field). */
+function stateSeriesFindings(stateSeries: Row[]): string[] {
+  const findings: string[] = [];
   for (const snapshot of stateSeries) {
     if (typeof snapshot.timestamp !== "number") {
       findings.push("a stateSeries snapshot must carry a numeric timestamp");
@@ -222,65 +268,72 @@ function provisionedGetHostConcurrentFindings(
       }
     }
   }
+  return findings;
+}
 
-  // The concurrency-on-pass gate: a PASSED concurrent run MUST show genuine overlap (≥2 laneWindows
-  // overlapping in time) AND a stateSeries delta whose timestamp is AT/AFTER the start of an
-  // overlap interval — otherwise it was not actually concurrent, or the world never changed under
-  // contention (a hollow concurrent claim).
-  if (bundle.review.verdict === "pass") {
-    const overlapStarts: number[] = [];
-    for (let i = 0; i < laneWindows.length; i += 1) {
-      for (let j = i + 1; j < laneWindows.length; j += 1) {
-        const a = laneWindows[i]!;
-        const b = laneWindows[j]!;
-        const aStart = a.startedAt as number;
-        const aEnd = a.endedAt as number;
-        const bStart = b.startedAt as number;
-        const bEnd = b.endedAt as number;
-        if (
-          typeof aStart === "number" &&
-          typeof aEnd === "number" &&
-          typeof bStart === "number" &&
-          typeof bEnd === "number" &&
-          aStart < bEnd &&
-          bStart < aEnd
-        ) {
-          overlapStarts.push(Math.max(aStart, bStart));
-        }
-      }
-    }
-    if (overlapStarts.length === 0) {
-      findings.push(
-        "review verdict is pass but no two laneWindows overlap in time — the run was not actually concurrent",
-      );
-    } else {
-      const earliestOverlapStart = Math.min(...overlapStarts);
-      const sorted = [...stateSeries]
-        .map((snapshot) => ({
-          timestamp: snapshot.timestamp as number,
-          digest: String(snapshot.digest),
-        }))
-        .filter((snapshot) => typeof snapshot.timestamp === "number")
-        .sort((x, y) => x.timestamp - y.timestamp);
-      let deltaInWindow = false;
-      for (let i = 1; i < sorted.length; i += 1) {
-        if (
-          sorted[i]!.digest !== sorted[i - 1]!.digest &&
-          sorted[i]!.timestamp >= earliestOverlapStart
-        ) {
-          deltaInWindow = true;
-          break;
-        }
-      }
-      if (!deltaInWindow) {
-        findings.push(
-          "review verdict is pass but no stateSeries delta occurs at/after an overlap interval start — the shared world did not change under concurrent load (hollow concurrent claim)",
-        );
+/** Where two laneWindows overlap in time, the start of each overlap. */
+function overlapStarts(laneWindows: Row[]): number[] {
+  const starts: number[] = [];
+  for (let i = 0; i < laneWindows.length; i += 1) {
+    for (let j = i + 1; j < laneWindows.length; j += 1) {
+      const a = laneWindows[i]!;
+      const b = laneWindows[j]!;
+      const aStart = a.startedAt as number;
+      const aEnd = a.endedAt as number;
+      const bStart = b.startedAt as number;
+      const bEnd = b.endedAt as number;
+      if (
+        typeof aStart === "number" &&
+        typeof aEnd === "number" &&
+        typeof bStart === "number" &&
+        typeof bEnd === "number" &&
+        aStart < bEnd &&
+        bStart < aEnd
+      ) {
+        starts.push(Math.max(aStart, bStart));
       }
     }
   }
+  return starts;
+}
 
-  return findings;
+/**
+ * The concurrency-on-pass gate: a PASSED concurrent run MUST show genuine overlap (≥2 laneWindows
+ * overlapping in time) AND a stateSeries delta whose timestamp is AT/AFTER the start of an
+ * overlap interval — otherwise it was not actually concurrent, or the world never changed under
+ * contention (a hollow concurrent claim).
+ */
+function concurrencyOnPassFindings(
+  bundle: RunBundle,
+  laneWindows: Row[],
+  stateSeries: Row[],
+): string[] {
+  if (bundle.review.verdict !== "pass") return [];
+  const starts = overlapStarts(laneWindows);
+  if (starts.length === 0) {
+    return [
+      "review verdict is pass but no two laneWindows overlap in time — the run was not actually concurrent",
+    ];
+  }
+  const earliestOverlapStart = Math.min(...starts);
+  const sorted = [...stateSeries]
+    .map((snapshot) => ({
+      timestamp: snapshot.timestamp as number,
+      digest: String(snapshot.digest),
+    }))
+    .filter((snapshot) => typeof snapshot.timestamp === "number")
+    .sort((x, y) => x.timestamp - y.timestamp);
+  for (let i = 1; i < sorted.length; i += 1) {
+    if (
+      sorted[i]!.digest !== sorted[i - 1]!.digest &&
+      sorted[i]!.timestamp >= earliestOverlapStart
+    ) {
+      return [];
+    }
+  }
+  return [
+    "review verdict is pass but no stateSeries delta occurs at/after an overlap interval start — the shared world did not change under concurrent load (hollow concurrent claim)",
+  ];
 }
 
 /**
@@ -304,10 +357,8 @@ function externalPublicConcurrentFindings(bundle: RunBundle, sw: SharedWorldEvid
       "an external-public concurrent bundle must NOT carry a sequential timeline (topologyMode mismatch)",
     );
   }
-  const laneWindows = Array.isArray(sw.laneWindows)
-    ? (sw.laneWindows as unknown[]).filter(isRecord)
-    : null;
-  const outcomes = Array.isArray(sw.outcomes) ? (sw.outcomes as unknown[]).filter(isRecord) : null;
+  const laneWindows = recordsOf(sw.laneWindows);
+  const outcomes = recordsOf(sw.outcomes);
   if (laneWindows === null)
     findings.push("an external-public concurrent bundle must carry laneWindows");
   if (outcomes === null) findings.push("an external-public concurrent bundle must carry outcomes");
@@ -325,71 +376,55 @@ function externalPublicConcurrentFindings(bundle: RunBundle, sw: SharedWorldEvid
 
   // Attribution ceiling: the concurrent family AND every external-public honest-downgrade disclosure
   // must be present; the sequential family + any seeded/synthetic limit must be absent.
-  const limits = Array.isArray(sw.attributionLimits) ? sw.attributionLimits : [];
-  for (const required of [...CONCURRENT_REQUIRED_LIMITS, ...EXTERNAL_PUBLIC_EXTRA_LIMITS]) {
-    if (!limits.includes(required)) {
-      findings.push(
-        `attributionLimits is missing the mandatory external-public disclosure "${required}" — an absent honest-downgrade ceiling overclaims`,
-      );
-    }
-  }
-  for (const forbidden of EXTERNAL_PUBLIC_FORBIDDEN_LIMITS) {
-    if (limits.includes(forbidden)) {
-      findings.push(
-        `attributionLimits carries the forbidden disclosure "${forbidden}" — the external-public plane cannot claim a sequential guarantee or a seeded/synthetic attestation on a real site`,
-      );
-    }
-  }
+  findings.push(
+    ...attributionLimitFindings(
+      sw,
+      [...CONCURRENT_REQUIRED_LIMITS, ...EXTERNAL_PUBLIC_EXTRA_LIMITS],
+      EXTERNAL_PUBLIC_FORBIDDEN_LIMITS,
+      {
+        missing: (limit) =>
+          `attributionLimits is missing the mandatory external-public disclosure "${limit}" — an absent honest-downgrade ceiling overclaims`,
+        forbidden: (limit) =>
+          `attributionLimits carries the forbidden disclosure "${limit}" — the external-public plane cannot claim a sequential guarantee or a seeded/synthetic attestation on a real site`,
+      },
+    ),
+    ...roleCoverageFindings(sw, laneWindows, outcomes),
+    ...laneWindowFindings(bundle, laneWindows, "the origin it reached"),
+    ...externalPublicPlaneFindings(bundle, sw, laneWindows),
+  );
 
-  // Phantom/dropped role: laneWindows + outcomes each cover exactly roleCount.
-  if (laneWindows.length !== sw.roleCount) {
+  // The RELAXED concurrency-on-pass gate: a PASSED external-public run MUST show genuine temporal
+  // co-occupancy (≥2 laneWindows overlapping in time). There is NO state-delta requirement — the
+  // observed co-occupancy of one declared origin (plus the optional lobby convergence) carries the
+  // "they shared a world" claim, disclosed as concurrency-by-temporal-co-occupancy-only.
+  if (bundle.review.verdict === "pass" && overlapStarts(laneWindows).length === 0) {
     findings.push(
-      `phantom/dropped role: laneWindows count (${laneWindows.length}) must equal roleCount (${sw.roleCount})`,
+      "review verdict is pass but no two laneWindows overlap in time — the external-public run was not actually concurrent (concurrency is proven by temporal co-occupancy on this class)",
     );
   }
-  if (outcomes.length !== sw.roleCount) {
-    findings.push(
-      `phantom/dropped role: outcomes count (${outcomes.length}) must equal roleCount (${sw.roleCount})`,
-    );
-  }
+  return findings;
+}
 
-  // laneWindows: numeric well-ordered windows; sim/stream resolve; route-host digest present.
-  for (const window of laneWindows) {
-    const roleId = typeof window.roleId === "string" ? window.roleId : "(unnamed)";
-    if (
-      typeof window.startedAt !== "number" ||
-      typeof window.endedAt !== "number" ||
-      !((window.startedAt as number) <= (window.endedAt as number))
-    ) {
-      findings.push(`laneWindow "${roleId}" must carry numeric startedAt <= endedAt on one clock`);
-    }
-    if (
-      typeof window.routeHostDigest !== "string" ||
-      !COMMAND_DIGEST_PATTERN.test(window.routeHostDigest)
-    ) {
-      findings.push(
-        `laneWindow "${roleId}" must record a sha256-16 routeHostDigest of the origin it reached`,
-      );
-    }
-    if (!bundle.simulations.some((sim) => sim.id === window.simId)) {
-      findings.push(`laneWindow "${roleId}" references unknown simId "${String(window.simId)}"`);
-    }
-    if (!bundle.streams.some((stream) => stream.id === window.streamId)) {
-      findings.push(
-        `laneWindow "${roleId}" references unknown streamId "${String(window.streamId)}"`,
-      );
-    }
-  }
-
-  // Plane identity (the honest analog of invariant 2, WEAKER + disclosed): the convergence proof is
-  // about what the seats OBSERVED, not what was DECLARED. plane.publicOriginDigest is the OBSERVED
-  // origin the seats converged on; verify requires every seat's CDP-OBSERVED routeHostDigest to agree
-  // on ONE origin, and that publicOriginDigest BE that origin. Convergence on one observed origin proves
-  // inter-seat co-location — NOT harness control of the plane. IMPORTANT: operator OWNERSHIP rests on
-  // the subject.publicTarget.authorized attestation + the declared appUrl, NOT on digest equality — a
-  // normal cross-origin redirect (apex->www, http->https) makes the observed origin differ from the
-  // DECLARED one, which is expected and must NEVER fail verify (declaredOriginDigest is evidence-only).
-  const plane: Record<string, unknown> = isRecord(sw.plane) ? sw.plane : {};
+/**
+ * The external-public plane (the honest analog of invariant 2, WEAKER + disclosed): the seats
+ * converged on one OBSERVED origin, nothing claims harness control or a synthetic seeded subject,
+ * and every laneWindow shares the plane's provenance.
+ */
+function externalPublicPlaneFindings(
+  bundle: RunBundle,
+  sw: SharedWorldEvidence,
+  laneWindows: Row[],
+): string[] {
+  const findings: string[] = [];
+  // The convergence proof is about what the seats OBSERVED, not what was DECLARED.
+  // plane.publicOriginDigest is the OBSERVED origin the seats converged on; verify requires every
+  // seat's CDP-OBSERVED routeHostDigest to agree on ONE origin, and that publicOriginDigest BE that
+  // origin. Convergence on one observed origin proves inter-seat co-location — NOT harness control
+  // of the plane. IMPORTANT: operator OWNERSHIP rests on the subject.publicTarget.authorized
+  // attestation + the declared appUrl, NOT on digest equality — a normal cross-origin redirect
+  // (apex->www, http->https) makes the observed origin differ from the DECLARED one, which is
+  // expected and must NEVER fail verify (declaredOriginDigest is evidence-only).
+  const plane: Row = isRecord(sw.plane) ? sw.plane : {};
   const publicOriginDigest =
     typeof plane.publicOriginDigest === "string" ? plane.publicOriginDigest : undefined;
   if (!publicOriginDigest || !COMMAND_DIGEST_PATTERN.test(publicOriginDigest)) {
@@ -476,40 +511,5 @@ function externalPublicConcurrentFindings(bundle: RunBundle, sw: SharedWorldEvid
       "sharedWorld.lobbyConvergenceDigest must be a sha256-16 digest (digest-only; the raw lobby code never lands)",
     );
   }
-
-  // The RELAXED concurrency-on-pass gate: a PASSED external-public run MUST show genuine temporal
-  // co-occupancy (≥2 laneWindows overlapping in time). There is NO state-delta requirement — the
-  // observed co-occupancy of one declared origin (plus the optional lobby convergence) carries the
-  // "they shared a world" claim, disclosed as concurrency-by-temporal-co-occupancy-only.
-  if (bundle.review.verdict === "pass") {
-    let overlap = false;
-    for (let i = 0; i < laneWindows.length && !overlap; i += 1) {
-      for (let j = i + 1; j < laneWindows.length; j += 1) {
-        const a = laneWindows[i]!;
-        const b = laneWindows[j]!;
-        const aStart = a.startedAt as number;
-        const aEnd = a.endedAt as number;
-        const bStart = b.startedAt as number;
-        const bEnd = b.endedAt as number;
-        if (
-          typeof aStart === "number" &&
-          typeof aEnd === "number" &&
-          typeof bStart === "number" &&
-          typeof bEnd === "number" &&
-          aStart < bEnd &&
-          bStart < aEnd
-        ) {
-          overlap = true;
-          break;
-        }
-      }
-    }
-    if (!overlap) {
-      findings.push(
-        "review verdict is pass but no two laneWindows overlap in time — the external-public run was not actually concurrent (concurrency is proven by temporal co-occupancy on this class)",
-      );
-    }
-  }
-
   return findings;
 }

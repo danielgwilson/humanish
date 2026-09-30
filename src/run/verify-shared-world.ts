@@ -46,17 +46,16 @@ export function sharedWorldEvidenceFindings(bundle: RunBundle): string[] {
   ];
 }
 
+type Row = Record<string, unknown>;
+type SkippedTail = Row & { roles: Row[] };
+
 /** Validate the declared suffix against the executed prefix and existing participant evidence. */
 function sequentialSkippedTailFindings(
   bundle: RunBundle,
   sw: SharedWorldEvidence,
   sequence: string[],
-  turns: Record<string, unknown>[],
+  turns: Row[],
 ): string[] {
-  const failures: string[] = [];
-  const reject = (message: string): void => {
-    failures.push(`skippedTail: ${message}`);
-  };
   const tail: unknown = sw.skippedTail;
   if (
     !isRecord(tail) ||
@@ -66,7 +65,25 @@ function sequentialSkippedTailFindings(
   ) {
     return ["skippedTail: a nonempty declared role suffix is required"];
   }
-  const roster = [...turns, ...tail.roles];
+  const declared = tail as SkippedTail;
+  const roster = [...turns, ...declared.roles];
+  return [
+    ...skippedTailRosterFailures(bundle, sw, sequence, turns, declared, roster),
+    ...skippedTailRoleFailures(bundle, turns, roster),
+    ...skippedTailCauseFailures(bundle, turns, declared),
+  ].map((message) => `skippedTail: ${message}`);
+}
+
+/** The executed prefix and blocked suffix account for every simulation and stream, once each. */
+function skippedTailRosterFailures(
+  bundle: RunBundle,
+  sw: SharedWorldEvidence,
+  sequence: string[],
+  turns: Row[],
+  tail: SkippedTail,
+  roster: Row[],
+): string[] {
+  const failures: string[] = [];
   if (
     !Number.isSafeInteger(sw.roleCount) ||
     sw.roleCount < 1 ||
@@ -77,7 +94,7 @@ function sequentialSkippedTailFindings(
     sequence.length !== turns.length ||
     turns.length === 0
   ) {
-    reject(
+    failures.push(
       "executed prefix and blocked suffix must account for every declared simulation and stream",
     );
   }
@@ -87,14 +104,23 @@ function sequentialSkippedTailFindings(
       ids.some((id) => typeof id !== "string" || id.length === 0) ||
       new Set(ids).size !== ids.length
     ) {
-      reject(`declared ${key} values must be nonempty and unique`);
+      failures.push(`declared ${key} values must be nonempty and unique`);
     }
   }
   if (tail.afterRoleId !== sequence.at(-1) || tail.afterRoleId !== turns.at(-1)?.roleId) {
-    reject("blocker must be the immediately preceding executed role");
+    failures.push("blocker must be the immediately preceding executed role");
   }
   if (bundle.review.verdict === "pass")
-    reject("blocked participants cannot accompany a passed run review");
+    failures.push("blocked participants cannot accompany a passed run review");
+  return failures;
+}
+
+/**
+ * Each role's simulation and stream agree in order. An executed role has an actor or an attempted
+ * session error; an unstarted one is blocked with a reason, no evidence and one blocked event.
+ */
+function skippedTailRoleFailures(bundle: RunBundle, turns: Row[], roster: Row[]): string[] {
+  const failures: string[] = [];
   roster.forEach((role, index) => {
     const sim = bundle.simulations[index],
       stream = bundle.streams[index];
@@ -108,7 +134,7 @@ function sequentialSkippedTailFindings(
       sim.streamIds.length !== 1 ||
       sim.streamIds[0] !== stream.id
     ) {
-      reject("ordered role, simulation and stream identities must agree");
+      failures.push("ordered role, simulation and stream identities must agree");
       return;
     }
     const roleEvents = bundle.events.filter(
@@ -119,7 +145,7 @@ function sequentialSkippedTailFindings(
         !stream.actor &&
         !roleEvents.some((event) => event.type === "shared-world.session.error")
       ) {
-        reject("an executed role needs an actor or an explicit attempted-session error");
+        failures.push("an executed role needs an actor or an explicit attempted-session error");
       }
       return;
     }
@@ -138,15 +164,23 @@ function sequentialSkippedTailFindings(
       sim.currentStep.length === 0 ||
       stream.ui?.state !== sim.currentStep
     ) {
-      reject("an unstarted role must be blocked with a reason and no actor, trace or screenshot");
+      failures.push(
+        "an unstarted role must be blocked with a reason and no actor, trace or screenshot",
+      );
     }
     const sessionEvents = roleEvents.filter((event) =>
       event.type.startsWith("shared-world.session."),
     );
     if (sessionEvents.length !== 1 || sessionEvents[0]?.type !== "shared-world.session.blocked") {
-      reject("each unstarted role needs exactly one blocked session event");
+      failures.push("each unstarted role needs exactly one blocked session event");
     }
   });
+  return failures;
+}
+
+/** The typed interruption cause matches what the executed predecessor recorded. */
+function skippedTailCauseFailures(bundle: RunBundle, turns: Row[], tail: SkippedTail): string[] {
+  const failures: string[] = [];
   const predecessor = bundle.streams[turns.length - 1];
   const actor = predecessor?.actor;
   if (tail.cause === "session_error") {
@@ -159,11 +193,11 @@ function sequentialSkippedTailFindings(
           event.streamId === predecessor.id,
       )
     ) {
-      reject("session_error requires the predecessor's explicit orchestration error");
+      failures.push("session_error requires the predecessor's explicit orchestration error");
     }
   } else if (tail.cause === "harness_error") {
     if (actor?.completionReason !== "harness_error")
-      reject("harness_error must match the predecessor actor");
+      failures.push("harness_error must match the predecessor actor");
   } else if (tail.cause === "usage_unreported") {
     if (
       !actor ||
@@ -173,47 +207,50 @@ function sequentialSkippedTailFindings(
         actor.estimatedCost?.estimatedCostUsd === null
       )
     )
-      reject("usage_unreported requires recorded unavailable usage");
+      failures.push("usage_unreported requires recorded unavailable usage");
   } else if (tail.cause === "study_spend_limit") {
-    const estimates = bundle.streams
-      .slice(0, turns.length)
-      .map((stream) => stream.actor?.estimatedCost?.estimatedCostUsd);
-    const allKnown =
-      estimates.every(
-        (value) => typeof value === "number" && Number.isFinite(value) && value >= 0,
-      ) &&
-      bundle.streams
-        .slice(0, turns.length)
-        .every(
-          (stream) =>
-            stream.actor?.interactionUsageIncomplete !== true &&
-            stream.actor?.debrief?.usageReported !== false,
-        );
-    const sum = estimates.reduce<number>((total, value) => total + (value ?? 0), 0);
-    if (
-      !allKnown ||
-      typeof tail.maxTotalUsd !== "number" ||
-      !Number.isFinite(tail.maxTotalUsd) ||
-      tail.maxTotalUsd < 0 ||
-      typeof tail.estimatedTotalUsd !== "number" ||
-      !Number.isFinite(tail.estimatedTotalUsd) ||
-      tail.estimatedTotalUsd !== sum ||
-      !(sum > tail.maxTotalUsd)
-    ) {
-      reject(
+    if (!studySpendLimitRecorded(bundle, turns, tail)) {
+      failures.push(
         "study_spend_limit requires known prefix estimates exceeding the recorded finite threshold",
       );
     }
   } else {
-    reject("a supported typed interruption cause is required");
+    failures.push("a supported typed interruption cause is required");
   }
   if (
     tail.cause !== "study_spend_limit" &&
     (tail.maxTotalUsd !== undefined || tail.estimatedTotalUsd !== undefined)
   ) {
-    reject("budget figures require a measured study_spend_limit cause");
+    failures.push("budget figures require a measured study_spend_limit cause");
   }
   return failures;
+}
+
+/** Every executed participant's estimate is known, and their sum exceeds the recorded threshold. */
+function studySpendLimitRecorded(bundle: RunBundle, turns: Row[], tail: SkippedTail): boolean {
+  const estimates = bundle.streams
+    .slice(0, turns.length)
+    .map((stream) => stream.actor?.estimatedCost?.estimatedCostUsd);
+  const allKnown =
+    estimates.every((value) => typeof value === "number" && Number.isFinite(value) && value >= 0) &&
+    bundle.streams
+      .slice(0, turns.length)
+      .every(
+        (stream) =>
+          stream.actor?.interactionUsageIncomplete !== true &&
+          stream.actor?.debrief?.usageReported !== false,
+      );
+  const sum = estimates.reduce<number>((total, value) => total + (value ?? 0), 0);
+  return (
+    allKnown &&
+    typeof tail.maxTotalUsd === "number" &&
+    Number.isFinite(tail.maxTotalUsd) &&
+    tail.maxTotalUsd >= 0 &&
+    typeof tail.estimatedTotalUsd === "number" &&
+    Number.isFinite(tail.estimatedTotalUsd) &&
+    tail.estimatedTotalUsd === sum &&
+    sum > tail.maxTotalUsd
+  );
 }
 
 /**
