@@ -32,7 +32,7 @@ import {
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
 import { runTerminalProductLab } from "../../../src/routes/terminal/lab.js";
-import type { E2BDesktopModule } from "../../../src/substrates/e2b/desktop-launch.js";
+import type { E2BDesktopModule } from "../../../src/substrates/e2b/sdk.js";
 import { verifyRun } from "../../../src/run/verify.js";
 
 // =============================================================================================

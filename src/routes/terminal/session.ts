@@ -19,7 +19,7 @@ import {
   loadE2BDesktopModule,
   type E2BDesktopModule,
   type E2BDesktopSandbox,
-} from "../../substrates/e2b/desktop-launch.js";
+} from "../../substrates/e2b/sdk.js";
 import { acquireE2BShellSandbox } from "../../substrates/e2b/sandbox.js";
 import { shellQuote } from "../../substrates/shell.js";
 import {

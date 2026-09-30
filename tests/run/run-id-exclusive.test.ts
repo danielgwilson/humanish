@@ -12,7 +12,7 @@ import { bindExistingRunArtifactPaths, createRunArtifactPaths } from "../../src/
 import { reclaimRunSandboxes } from "../../src/run/reclaim.js";
 import { SANDBOX_RECEIPTS_ARTIFACT } from "../../src/run/sandbox-receipts.js";
 import { verifyRun } from "../../src/run/verify.js";
-import type { E2BDesktopModule } from "../../src/substrates/e2b/desktop-launch.js";
+import type { E2BDesktopModule } from "../../src/substrates/e2b/sdk.js";
 
 let cwd: string;
 

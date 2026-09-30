@@ -1,10 +1,7 @@
 import type { Sandbox as SdkDesktop } from "@e2b/desktop";
 import { describe, expect, it, vi } from "vitest";
 import { startE2BDesktopMedia } from "../../../src/substrates/e2b/desktop-media.js";
-import type {
-  E2BCommandRunOptions,
-  E2BDesktopSandbox,
-} from "../../../src/substrates/e2b/desktop-launch.js";
+import type { E2BCommandRunOptions, E2BDesktopSandbox } from "../../../src/substrates/e2b/sdk.js";
 
 function startInstalledBackgroundCommand(desktop: SdkDesktop) {
   return desktop.commands.run("true", { background: true, stdin: true });

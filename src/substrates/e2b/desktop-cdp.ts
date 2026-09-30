@@ -9,7 +9,7 @@ import { failureTail, toErrorMessage } from "../../evidence/redaction.js";
 import type { RunDesktopGeometry } from "../../run/streams.js";
 import { readDetachedLog, startDetachedProcess } from "../detached.js";
 import type { ShellResult } from "../shell.js";
-import type { E2BDesktopSandbox } from "./desktop-launch.js";
+import type { E2BDesktopSandbox } from "./sdk.js";
 import { e2bShell } from "./shell.js";
 
 /**

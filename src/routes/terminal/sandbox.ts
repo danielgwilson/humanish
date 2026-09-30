@@ -3,7 +3,7 @@ import {
   E2BDesktopStartupError,
   isSandboxNotFoundError,
   type E2BDesktopModule,
-} from "../../substrates/e2b/desktop-launch.js";
+} from "../../substrates/e2b/sdk.js";
 import type { TerminalLedgers } from "./types.js";
 
 /**

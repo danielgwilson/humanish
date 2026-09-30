@@ -3,7 +3,7 @@
 // the managed run dir, kills by id, and never lists the account: an account-wide operation once
 // destroyed unrelated infrastructure. Without it, orphaned sandboxes run until the server-side
 // create-time TTL.
-import { loadE2BDesktopModule, type E2BDesktopModule } from "../substrates/e2b/desktop-launch.js";
+import { loadE2BDesktopModule, type E2BDesktopModule } from "../substrates/e2b/sdk.js";
 import {
   containedPathAbsent,
   readContainedRegularFile,

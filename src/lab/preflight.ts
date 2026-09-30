@@ -7,7 +7,7 @@ import {
 import { cloneProvisioningBudgetMs, provisionCloneSubject } from "../subject/clone.js";
 import { CUA_ACTOR_LAB_PROVIDER_METADATA } from "../substrates/e2b/cua-desktop.js";
 import { probeUrl } from "../substrates/detached.js";
-import { loadE2BDesktopModule, type E2BDesktopModule } from "../substrates/e2b/desktop-launch.js";
+import { loadE2BDesktopModule, type E2BDesktopModule } from "../substrates/e2b/sdk.js";
 import { acquireE2BDesktopSandbox } from "../substrates/e2b/sandbox.js";
 import { e2bShell } from "../substrates/e2b/shell.js";
 import type { Shell } from "../substrates/shell.js";

@@ -105,8 +105,8 @@ export type {
   E2BDesktopExecutorOptions,
   E2BDesktopLike,
 } from "./substrates/e2b/desktop-executor.js";
-export { loadE2BDesktopModule } from "./substrates/e2b/desktop-launch.js";
-export type { E2BDesktopModule, E2BDesktopSandbox } from "./substrates/e2b/desktop-launch.js";
+export { loadE2BDesktopModule } from "./substrates/e2b/sdk.js";
+export type { E2BDesktopModule, E2BDesktopSandbox } from "./substrates/e2b/sdk.js";
 export {
   DEFAULT_OPENAI_CU_MODEL,
   OPENAI_RESPONSES_CU_CAPABILITIES,

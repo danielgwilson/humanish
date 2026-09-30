@@ -1,24 +1,11 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { startDesktopMedia } from "../../guest-desktop-media.js";
-import type { E2BCommandResult, E2BDesktopSandbox } from "./desktop-launch.js";
-import type { LabConfig, LabDesktopMedia } from "../../lab/types.js";
+import type { E2BCommandResult, E2BDesktopSandbox } from "./sdk.js";
+import type { LabDesktopMedia } from "../../lab/types.js";
 import { failureTail, toErrorMessage } from "../../evidence/redaction.js";
 import { runOrThrow } from "../shell.js";
 import { e2bShell } from "./shell.js";
-
-/** Versioned public template built by runtime/browser-media/e2b-template.mjs. */
-export const E2B_SPEECH_TEMPLATE = "7409n13kr83f7g7abx5g";
-
-export function e2bDesktopTemplate(config: LabConfig): string | undefined {
-  if (config.execution?.target === "local") return undefined;
-  return (
-    config.execution?.desktop?.template ??
-    (config.execution?.desktop?.media?.microphone?.source === "speech"
-      ? E2B_SPEECH_TEMPLATE
-      : undefined)
-  );
-}
 
 /** The same worker and conversation contract, transported by the hosted SDK's stdin/stdout. */
 export async function startE2BDesktopMedia(options: {

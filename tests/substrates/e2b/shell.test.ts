@@ -6,7 +6,7 @@ import path from "node:path";
 import { CommandExitError } from "@e2b/desktop";
 import { afterAll, describe, expect, it, vi } from "vitest";
 
-import type { E2BDesktopSandbox } from "../../../src/substrates/e2b/desktop-launch.js";
+import type { E2BDesktopSandbox } from "../../../src/substrates/e2b/sdk.js";
 import { e2bShell, type E2BShellHandle } from "../../../src/substrates/e2b/shell.js";
 import { hasSetsid, shellContract } from "../../helpers/shell-contract.js";
 

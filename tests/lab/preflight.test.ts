@@ -4,12 +4,10 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-import type {
-  E2BDesktopModule,
-  E2BDesktopSandbox,
-} from "../../src/substrates/e2b/desktop-launch.js";
+import type { E2BDesktopModule, E2BDesktopSandbox } from "../../src/substrates/e2b/sdk.js";
 import { runLabPreflight, type LabPreflightResult } from "../../src/lab/preflight.js";
 import { createProgram } from "../../src/cli/program.js";
+import { inertDesktopInput } from "../helpers/inert-desktop-input.js";
 
 interface CliResult {
   exitCode: number;
@@ -258,6 +256,7 @@ function fakeDesktopModule(args: {
 }): E2BDesktopModule {
   const sandbox: E2BDesktopSandbox = {
     sandboxId: "sandbox_preflight_fixture",
+    ...inertDesktopInput(),
     commands: {
       run: async (command: string) => {
         if (command.includes("curl")) {

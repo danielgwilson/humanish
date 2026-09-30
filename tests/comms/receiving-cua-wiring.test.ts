@@ -10,12 +10,13 @@ import type {
   E2BDesktopCreateOptions,
   E2BDesktopModule,
   E2BDesktopSandbox,
-} from "../../src/substrates/e2b/desktop-launch.js";
+} from "../../src/substrates/e2b/sdk.js";
 import { LAB_CONFIG_SCHEMA } from "../../src/lab/types.js";
 import { parseLabConfig } from "../../src/lab/config.js";
 import type { CommsReceivingRun } from "../../src/comms/receiving.js";
 import type { ReceivingSurface } from "../../src/comms/receiving-types.js";
 import { prepareSelectedOutputDirectory } from "../../src/run/selected-output-paths.js";
+import { inertDesktopInput } from "../helpers/inert-desktop-input.js";
 
 describe("real inbox wiring through the actual CUA lane", () => {
   it.each([false, true])(
@@ -43,6 +44,7 @@ describe("real inbox wiring through the actual CUA lane", () => {
         const write = vi.fn(async () => undefined);
         const desktop = {
           sandboxId: "synthetic-desktop",
+          ...inertDesktopInput(),
           getInfo: async () => ({ cpuCount: 2, memoryMB: 2048 }),
           commands: { run: command },
           files: { write },

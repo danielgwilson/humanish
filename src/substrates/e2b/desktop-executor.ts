@@ -1,6 +1,5 @@
 import { shellQuote } from "../shell.js";
 import { perceptualSignature } from "../../evidence/frame-signature.js";
-export { perceptualSignature } from "../../evidence/frame-signature.js";
 
 import { commandFailureInfo } from "../command-failure.js";
 import { tailOf } from "../shell.js";

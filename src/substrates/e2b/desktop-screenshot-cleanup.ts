@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 
-import type { E2BDesktopSandbox } from "./desktop-launch.js";
+import type { E2BDesktopSandbox } from "./sdk.js";
 
 type FileOperation = (path: string, ...args: unknown[]) => Promise<unknown>;
 type ScreenshotFiles = { read?: FileOperation; remove?: FileOperation };

@@ -52,10 +52,11 @@ import {
   declaredScreenForRender,
   inspectDesktopScreenGeometry,
 } from "./desktop-geometry.js";
-import { createE2BDesktopExecutor, type E2BDesktopLike } from "./desktop-executor.js";
-import { e2bDesktopTemplate, prepareDesktopMedia, startE2BDesktopMedia } from "./desktop-media.js";
+import { createE2BDesktopExecutor } from "./desktop-executor.js";
+import { prepareDesktopMedia, startE2BDesktopMedia } from "./desktop-media.js";
+import { e2bDesktopTemplate } from "./sandbox.js";
 import { startE2BDesktopRecording } from "./desktop-recording.js";
-import { loadE2BDesktopModule, type E2BDesktopSandbox } from "./desktop-launch.js";
+import { loadE2BDesktopModule, type E2BDesktopSandbox } from "./sdk.js";
 import { observeDesktopResources, type DesktopResourceObservation } from "./desktop-resources.js";
 import { acquireE2BDesktopSandbox } from "./sandbox.js";
 import { readDetachedLog } from "../detached.js";
@@ -655,7 +656,7 @@ export function createE2BCuaDesktopLane(
               }
             : undefined;
     const executor = createE2BDesktopExecutor(
-      desktop as unknown as E2BDesktopLike,
+      desktop,
       launchedBrowserFamily === "chromium"
         ? {
             observeBrowserState: makeChromeBrowserStateObserver(

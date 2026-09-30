@@ -25,7 +25,7 @@ import {
 } from "../src/actors/computer-use/loop.js";
 import { makeChromeBrowserStateObserver } from "../src/substrates/e2b/desktop-cdp.js";
 import { makeChromeDesktopGeometryObserver } from "../src/substrates/e2b/desktop-geometry.js";
-import type { E2BDesktopSandbox } from "../src/substrates/e2b/desktop-launch.js";
+import type { E2BDesktopSandbox } from "../src/substrates/e2b/sdk.js";
 import {
   createE2BDesktopExecutor,
   type E2BDesktopLike,

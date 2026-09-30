@@ -1,5 +1,5 @@
 import type { RunDesktopRecording } from "../../evidence/desktop-recording-types.js";
-import { e2bDesktopTemplate } from "../../substrates/e2b/desktop-media.js";
+import { e2bDesktopTemplate } from "../../substrates/e2b/sandbox.js";
 import type { SubjectPhaseEvent } from "../../subject/steps.js";
 import type { DesktopBrowserEvidence } from "../../substrates/e2b/desktop-browser.js";
 import path from "node:path";

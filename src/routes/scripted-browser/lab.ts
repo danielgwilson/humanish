@@ -65,7 +65,7 @@ import {
   loadE2BDesktopModule,
   type E2BDesktopModule,
   type E2BDesktopSandbox,
-} from "../../substrates/e2b/desktop-launch.js";
+} from "../../substrates/e2b/sdk.js";
 import {
   observeDesktopResources,
   type DesktopResourceObservation,

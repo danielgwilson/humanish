@@ -3,7 +3,7 @@ import {
   isTransientE2BError,
   TRANSIENT_RETRY_DELAY_MS,
   withOneRetryOnTransientE2BError,
-} from "../../../src/substrates/e2b/desktop-launch.js";
+} from "../../../src/substrates/e2b/sandbox.js";
 
 // The three shapes measured on 2026-09-04 (five of six lanes created within 100 s), plus the
 // transport resets the SDK surfaces the same way.

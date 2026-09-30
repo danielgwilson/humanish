@@ -2,11 +2,9 @@
 // real @e2b/desktop Sandbox. Every desktop route launches through this one seam; the peer dep is
 // optional and lazily loaded, so it stays out of the published tarball and CI.
 //
-// E2BDesktopSandbox is the command, file, stream and launch subset the lanes use; `open` is
-// optional because older SDKs lack it (the computer-use lane then falls back to launch). The
-// mouse and keyboard methods the executor needs are on E2BDesktopLike
-// (src/substrates/e2b/desktop-executor.ts); the Sandbox has them, and the computer-use lane casts
-// the launched sandbox to that port.
+// E2BDesktopSandbox is the command, file, stream, launch and input subset the lanes use; `open` is
+// optional because older SDKs lack it (the computer-use lane then falls back to launch). It
+// satisfies the executor's E2BDesktopLike port (src/substrates/e2b/desktop-executor.ts) as is.
 
 import { sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -145,6 +143,18 @@ export interface E2BDesktopSandbox {
   getHost?(port: number): string;
   screenshot(format?: "bytes"): Promise<Uint8Array>;
   wait(ms: number): Promise<void>;
+  // Mouse and keyboard input, as @e2b/desktop's Sandbox declares them. They make the sandbox an
+  // E2BDesktopLike, the executor's port, without a cast.
+  leftClick(x?: number, y?: number): Promise<void>;
+  rightClick(x?: number, y?: number): Promise<void>;
+  middleClick(x?: number, y?: number): Promise<void>;
+  doubleClick(x?: number, y?: number): Promise<void>;
+  moveMouse(x: number, y: number): Promise<void>;
+  getCursorPosition?(): Promise<{ x: number; y: number }>;
+  scroll(direction?: "up" | "down", amount?: number): Promise<void>;
+  write(text: string): Promise<void>;
+  press(key: string | string[]): Promise<void>;
+  drag(from: [number, number], to: [number, number]): Promise<void>;
   stream: {
     getAuthKey(): string;
     getUrl(options?: {
@@ -339,62 +349,4 @@ export function isSandboxNotFoundError(error: unknown): boolean {
   return (
     value.name === "SandboxNotFoundError" || value.constructor?.name === "SandboxNotFoundError"
   );
-}
-
-/** How a caller hears about the one retry; `sleep` is injectable so tests never wait. */
-export interface TransientRetryHooks {
-  onRetry?: (reason: string) => void;
-  sleep?: (ms: number) => Promise<void>;
-}
-
-/** Wall-clock pause before the single retry; envd routing settles within a few seconds. */
-export const TRANSIENT_RETRY_DELAY_MS = 3_000;
-
-/**
- * The provider errors worth one retry, by the message the SDK throws. Each is a gap that clears
- * within seconds of sandbox creation:
- *
- * - `12: [unimplemented] HTTP 404` and `[unavailable]`: the sandbox exists but its envd is not
- *   routable yet, so the first request (the desktop SDK's Xvfb start) hits the proxy instead.
- * - `Cannot read properties of undefined (reading 'envdVersion')` / `Response data is missing`:
- *   the create API answered without a body.
- * - `Expected to receive information about written file`: a file write the envd accepted without
- *   describing, the same routing gap seen from the upload side.
- * - transport resets (`fetch failed`, `ECONNRESET`, `socket hang up`, 502/503/504).
- *
- * NOT retried: timeouts (the budget is spent), auth (401/403), quota and rate limits (429: a burst
- * that hit the limit should be spaced, not repeated), and anything that names the request as wrong.
- */
-export function isTransientE2BError(error: unknown): boolean {
-  if (error instanceof E2BDesktopStartupError && error.cleanup === "unconfirmed") return false;
-  const message = error instanceof Error ? `${error.name}: ${error.message}` : String(error ?? "");
-  if (/timeout|timed out|deadline/i.test(message)) return false;
-  if (/\b(401|403|429)\b|unauthorized|forbidden|rate limit|quota/i.test(message)) return false;
-  return /\[unimplemented\]|\[unavailable\]|HTTP 404|HTTP 50[234]|\b50[234]\b|reading 'envdVersion'|Response data is missing|Expected to receive information about written file|fetch failed|ECONNRESET|ECONNREFUSED|socket hang up|UND_ERR/i.test(
-    message,
-  );
-}
-
-/**
- * Run `attempt`; on a transient provider error, say so through `onRetry`, wait, and run it once
- * more. A second failure, or a non-transient first one, propagates as is. The first attempt may
- * have allocated a sandbox this process never learned the id of (the SDK throws after the API
- * call); the provider's own `timeoutMs` on that sandbox is what reclaims it, which the caller's
- * warning should say.
- */
-export async function withOneRetryOnTransientE2BError<T>(
-  attempt: () => Promise<T>,
-  hooks?: TransientRetryHooks,
-): Promise<T> {
-  try {
-    return await attempt();
-  } catch (error) {
-    if (!isTransientE2BError(error)) throw error;
-    const reason = error instanceof Error ? error.message : String(error);
-    hooks?.onRetry?.(reason);
-    await (
-      hooks?.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)))
-    )(TRANSIENT_RETRY_DELAY_MS);
-    return attempt();
-  }
 }

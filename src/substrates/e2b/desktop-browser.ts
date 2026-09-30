@@ -9,7 +9,7 @@ import { isHttpUrl } from "../../lab/parse-subject.js";
 import type { LabDesktopBrowser } from "../../lab/types.js";
 import { runDetachedStep } from "../detached.js";
 import { shellQuote } from "../shell.js";
-import type { E2BDesktopSandbox } from "./desktop-launch.js";
+import type { E2BDesktopSandbox } from "./sdk.js";
 import type { DesktopMediaEvidence } from "./desktop-media.js";
 import { e2bShell } from "./shell.js";
 

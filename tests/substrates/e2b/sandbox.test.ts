@@ -16,7 +16,7 @@ import type {
   E2BDesktopCreateOptions,
   E2BDesktopModule,
   E2BDesktopSandbox,
-} from "../../../src/substrates/e2b/desktop-launch.js";
+} from "../../../src/substrates/e2b/sdk.js";
 import {
   acquireE2BDesktopSandbox,
   acquireE2BShellSandbox,

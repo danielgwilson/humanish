@@ -4,10 +4,7 @@ import { fileURLToPath } from "node:url";
 import { Sandbox as SdkDesktop } from "@e2b/desktop";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import {
-  loadE2BDesktopModule,
-  type E2BDesktopSandbox,
-} from "../../../src/substrates/e2b/desktop-launch.js";
+import { loadE2BDesktopModule, type E2BDesktopSandbox } from "../../../src/substrates/e2b/sdk.js";
 import {
   desktopScreenshotCleanupFailures,
   protectDesktopScreenshotCleanup,

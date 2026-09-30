@@ -1,4 +1,4 @@
-import { e2bDesktopTemplate } from "../../substrates/e2b/desktop-media.js";
+import { e2bDesktopTemplate } from "../../substrates/e2b/sandbox.js";
 import { receivingPublication } from "../../comms/receiving-runtime.js";
 import path from "node:path";
 import type { ActorStatus } from "../../actors/contract.js";

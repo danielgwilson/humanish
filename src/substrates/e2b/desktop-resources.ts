@@ -1,4 +1,4 @@
-import type { E2BDesktopSandbox } from "./desktop-launch.js";
+import type { E2BDesktopSandbox } from "./sdk.js";
 import { isDesktopResources, type DesktopResources } from "../../run/pricing.js";
 
 export type DesktopResourceObservation =
