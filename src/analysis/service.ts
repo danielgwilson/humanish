@@ -3,7 +3,7 @@ import type { AnalysisFetch, StudyAnalysisProvider } from "./provider.js";
 import { randomUUID } from "node:crypto";
 import { lstat, mkdir, realpath, rmdir } from "node:fs/promises";
 import path from "node:path";
-import { renderObserver } from "../observer.js";
+import { renderObserver } from "../observer/render.js";
 import { containsSensitive } from "../redaction.js";
 import { loadRunBundlePrepared, resolveRunPath, verifyRunPrepared } from "../run.js";
 import { validatePreparedRunRootIdentity, type PreparedRunArtifactPaths } from "../run-paths.js";

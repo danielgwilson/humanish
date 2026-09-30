@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { normalizeCliArgv } from "./argv.js";
-import { preflightObserverArtifact } from "./observer.js";
+import { preflightObserverArtifact } from "./observer/render.js";
 import { createProgram } from "./program.js";
 
 // Resolve (and in a repo checkout, build) the Observer artifact up front, so a

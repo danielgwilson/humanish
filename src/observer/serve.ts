@@ -10,18 +10,18 @@ import {
   pinDirectChildDirectory,
   pinDirectory,
   serveRunPath,
-} from "./observer.js";
-import type { PinnedDirectory } from "./observer.js";
-import { renderLibraryHtml } from "./observer-library.js";
-import type { LibraryHistory } from "./observer-library.js";
+} from "./render.js";
+import type { PinnedDirectory } from "./render.js";
+import { renderLibraryHtml } from "./library.js";
+import type { LibraryHistory } from "./library.js";
 import {
   buildServeSecurityHeaders,
   hostAllowed,
   parsePublicOrigin,
   type ServeMode,
-} from "./serve-http.js";
-import type { ExposureErrorCode } from "./serve-exposure.js";
-import { listRuns, verifyRun } from "./run.js";
+} from "./http.js";
+import type { ExposureErrorCode } from "./exposure.js";
+import { listRuns, verifyRun } from "../run.js";
 
 export const SERVE_SCHEMA = "humanish.serve-result.v1";
 

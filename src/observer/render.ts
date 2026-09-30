@@ -14,9 +14,9 @@ import { lstat, open, realpath, type FileHandle } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { buildObserverData, recordedStreamEmbed, withObserverEndings } from "./observer-data.js";
-import type { ObserverData } from "./observer-data.js";
-import { listRuns, loadRunBundlePrepared, verifyRunPrepared } from "./run.js";
+import { buildObserverData, recordedStreamEmbed, withObserverEndings } from "./data.js";
+import type { ObserverData } from "./data.js";
+import { listRuns, loadRunBundlePrepared, verifyRunPrepared } from "../run.js";
 import {
   bindExistingRunArtifactPaths,
   isPathInside,
@@ -24,22 +24,22 @@ import {
   resolveLatestRunDirectory,
   type PreparedRunArtifactPaths,
   validatePreparedRunArtifactPaths,
-} from "./run-paths.js";
-import { writeContainedOutputFile } from "./selected-output-paths.js";
+} from "../run-paths.js";
+import { writeContainedOutputFile } from "../selected-output-paths.js";
 import {
   buildArtifactSecurityHeaders,
   buildServeSecurityHeaders,
   hostAllowed,
   parsePublicOrigin,
-} from "./serve-http.js";
-import { isRunStatusRecord, RUN_STATUS_FILE, RUN_STATUS_STALE_MS } from "./run-status.js";
-import { loadStudyAnalysis } from "./analysis/store.js";
-import type { LoadedStudyAnalysis } from "./analysis/study-analysis.js";
+} from "./http.js";
+import { isRunStatusRecord, RUN_STATUS_FILE, RUN_STATUS_STALE_MS } from "../run-status.js";
+import { loadStudyAnalysis } from "../analysis/store.js";
+import type { LoadedStudyAnalysis } from "../analysis/study-analysis.js";
 import {
   isStudyAnalysisRecordPath,
   projectShareCheckedAnalysis,
   studyAnalysisSharingProblems,
-} from "./analysis/sharing.js";
+} from "../analysis/sharing.js";
 
 export const OBSERVER_SCHEMA = "humanish.observer-result.v1";
 
@@ -528,18 +528,17 @@ function loadObserverArtifact(): string {
   if (cachedObserverArtifact !== null) return cachedObserverArtifact;
   const moduleDir = path.dirname(fileURLToPath(import.meta.url));
 
-  // Published package: the root build ships the artifact beside this module. Never
-  // auto-built — an installed package either carries it or is broken; reinstall.
-  const packagedHtml = readObserverArtifact(path.join(moduleDir, "observer-app.html"));
+  // Published package: the root build ships the artifact at the dist/ root, one level above
+  // this module. Never auto-built: an installed package either carries it or is broken.
+  const packagedHtml = readObserverArtifact(path.join(moduleDir, "..", "observer-app.html"));
   if (packagedHtml !== null) {
     cachedObserverArtifact = packagedHtml;
     return packagedHtml;
   }
 
-  // Repo checkout (src/ and dist/ both sit one level under the root): build the
-  // workspace on demand — missing after a fresh pull, stale after edits — so the
-  // flag just works in the dev loop instead of demanding a manual build step.
-  const repoRoot = path.join(moduleDir, "..");
+  // Repo checkout (this module sits two levels under the root, in src/observer/ or
+  // dist/observer/): build the workspace on demand when it is missing or stale.
+  const repoRoot = path.join(moduleDir, "..", "..");
   const workspaceDir = path.join(repoRoot, "observer");
   const artifactPath = path.join(workspaceDir, "dist", "index.html");
   if (existsSync(path.join(workspaceDir, "package.json"))) {

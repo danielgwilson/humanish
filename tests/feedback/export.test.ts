@@ -6,12 +6,12 @@ import { createHash } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { exportRun, formatExportHuman, localOnlyBanner } from "../../src/feedback/export.js";
-import { renderObserverHtml } from "../../src/observer.js";
-import type { ObserverData } from "../../src/observer-data.js";
+import { renderObserverHtml } from "../../src/observer/render.js";
+import type { ObserverData } from "../../src/observer/data.js";
 import type { VerifyResult } from "../../src/run.js";
 import { syntheticPng1x1 } from "../image-fixtures.js";
 import liveBundle from "../golden/labs/live.json" with { type: "json" };
-import { buildObserverData } from "../../src/observer-data.js";
+import { buildObserverData } from "../../src/observer/data.js";
 import { tallyParticipantOutcomes, type RunBundle } from "../../src/run.js";
 import { writeFixtureRun } from "../helpers/run-fixtures.js";
 

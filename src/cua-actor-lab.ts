@@ -138,13 +138,13 @@ import {
   detectLocalAgents,
   type LocalAgentId,
 } from "./local-agent-cli.js";
-import { buildObserverData } from "./observer-data.js";
+import { buildObserverData } from "./observer/data.js";
 import {
   attachObserverRuntimeStreamUrls,
   renderObserver,
   type ObserverResult,
   type ObserverRuntimeStreamUrl,
-} from "./observer.js";
+} from "./observer/render.js";
 import { DEFAULT_OPENAI_CU_MODEL } from "./openai-responses-cu.js";
 import { participantAssignment } from "./participant-assignment.js";
 import { labPersonaIds, resolveCommittedPersonas } from "./persona-resolve.js";

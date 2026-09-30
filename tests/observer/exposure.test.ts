@@ -5,8 +5,8 @@ import {
   validateExposure,
   type ExposableServer,
   type ExposureRequest,
-} from "../src/serve-exposure.js";
-import type { ServeTunnel, StartNgrokTunnelOptions } from "../src/serve-tunnel.js";
+} from "../../src/observer/exposure.js";
+import type { ServeTunnel, StartNgrokTunnelOptions } from "../../src/observer/tunnel.js";
 
 function request(overrides: Partial<ExposureRequest> = {}): ExposureRequest {
   return {

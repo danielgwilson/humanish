@@ -13,8 +13,12 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import path from "node:path";
 
-import { renderObserver, renderObserverHtml, type ObserverExportAssets } from "../observer.js";
-import { buildObserverData, type ObserverData } from "../observer-data.js";
+import {
+  renderObserver,
+  renderObserverHtml,
+  type ObserverExportAssets,
+} from "../observer/render.js";
+import { buildObserverData, type ObserverData } from "../observer/data.js";
 import { resolveRunPath, verifyRun, type RunBundle, type VerifyResult } from "../run.js";
 import { exportRedactedBundle } from "./export-bundle.js";
 import { loadStudyAnalysis } from "../analysis/store.js";

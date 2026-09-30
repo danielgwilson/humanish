@@ -6,9 +6,9 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
-import { renderObserver, serveObserver } from "../dist/observer.js";
-import { serveObserverLibrary } from "../dist/observer-serve.js";
-import { serveObserverStatic } from "../dist/observer-static.js";
+import { renderObserver, serveObserver } from "../dist/observer/render.js";
+import { serveObserverLibrary } from "../dist/observer/serve.js";
+import { serveObserverStatic } from "../dist/observer/static.js";
 import { runDryRun } from "../dist/run.js";
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");

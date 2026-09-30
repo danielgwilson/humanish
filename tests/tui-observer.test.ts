@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { createTuiObserverSession, type TuiObserverSession } from "../src/tui-actions.js";
 import { runDryRun } from "../src/run.js";
-import type { ObserverData } from "../src/observer-data.js";
+import type { ObserverData } from "../src/observer/data.js";
 
 const roots: string[] = [];
 const sessions: TuiObserverSession[] = [];
@@ -173,7 +173,7 @@ describe("TUI Observer evidence session", () => {
 });
 
 it("a missing desktop opener does not crash the real Node process", async () => {
-  const moduleUrl = pathToFileURL(path.resolve("src/observer.ts")).href;
+  const moduleUrl = pathToFileURL(path.resolve("src/observer/render.ts")).href;
   const tsxUrl = import.meta.resolve("tsx");
   const execution = await new Promise<{ code: number | null; stderr: string }>(
     (resolve, reject) => {

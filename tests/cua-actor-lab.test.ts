@@ -49,7 +49,7 @@ import {
   serveObserver,
   type ObserverResult,
   type ObserverServer,
-} from "../src/observer.js";
+} from "../src/observer/render.js";
 import type { FetchLike } from "../src/openai-responses-cu.js";
 import type {
   BrowserLabScoringContext,

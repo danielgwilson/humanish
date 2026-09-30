@@ -8,8 +8,8 @@ import { parse as parseYaml } from "yaml";
 
 import { ACTOR_TRACE_SCHEMA } from "../actor-contract.js";
 import type { ExportFailure, ExportOptions, ExportResult } from "./export.js";
-import { renderObserver } from "../observer.js";
-import { buildObserverData } from "../observer-data.js";
+import { renderObserver } from "../observer/render.js";
+import { buildObserverData } from "../observer/data.js";
 import { containsSensitive, redactScreenshot, redactText } from "../redaction.js";
 import {
   loadRunBundlePrepared,

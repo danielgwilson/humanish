@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { actorEnding } from "../src/actor-stop-cause.js";
 import type { ActorStopCause, ActorTrace } from "../src/actor-contract.js";
 import liveBundle from "./golden/labs/live.json" with { type: "json" };
-import { buildObserverData } from "../src/observer-data.js";
+import { buildObserverData } from "../src/observer/data.js";
 import { tallyParticipantOutcomes, type RunBundle } from "../src/run.js";
 
 function actor(overrides: Partial<ActorTrace> = {}): ActorTrace {

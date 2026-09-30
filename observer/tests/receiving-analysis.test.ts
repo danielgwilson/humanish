@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { buildObserverData } from "../../src/observer-data.js";
+import { buildObserverData } from "../../src/observer/data.js";
 import { prepareRunArtifactPaths, type PreparedRunArtifactPaths } from "../../src/run-paths.js";
 import type { RunBundle } from "../../src/run.js";
 import { captureStudyEvidence } from "../../src/analysis/evidence.js";

@@ -10,7 +10,7 @@ import {
   observerStaticContentType,
   respondToObserverStaticRequest,
   serveObserverStatic,
-} from "../src/observer-static.js";
+} from "../../src/observer/static.js";
 
 const SECRET_BODY = "TOP-SECRET-do-not-serve\n";
 const ENTRY = "observer/index.html";

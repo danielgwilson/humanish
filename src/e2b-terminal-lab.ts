@@ -94,7 +94,7 @@ import {
   type E2BDesktopModule,
   type E2BDesktopSandbox,
 } from "./e2b-desktop-launch.js";
-import { renderObserver, type ObserverResult } from "./observer.js";
+import { renderObserver, type ObserverResult } from "./observer/render.js";
 import { personaBrief, personaToDirectives, renderPersonaPromptSection } from "./persona.js";
 import { digestText, redactedTail, redactText } from "./redaction.js";
 import { participantAssignment } from "./participant-assignment.js";

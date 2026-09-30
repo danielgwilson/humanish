@@ -4,9 +4,9 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { observerArtifactNeedsBuild, renderObserver } from "../src/observer.js";
-import { OBSERVER_DATA_SCHEMA } from "../src/observer-data.js";
-import { runDryRun } from "../src/run.js";
+import { observerArtifactNeedsBuild, renderObserver } from "../../src/observer/render.js";
+import { OBSERVER_DATA_SCHEMA } from "../../src/observer/data.js";
+import { runDryRun } from "../../src/run.js";
 
 // The Observer render path post-cutover (#426): renderObserverHtml is the one choke
 // point every surface funnels through, and the prebuilt workspace artifact is the only

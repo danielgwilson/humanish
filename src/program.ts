@@ -46,7 +46,7 @@ import {
 import type { FeedbackResult } from "./feedback/feedback.js";
 import { runInit } from "./init.js";
 import { computeStats, formatStatsHuman } from "./stats.js";
-import { PortInUseError } from "./listen.js";
+import { PortInUseError } from "./observer/listen.js";
 import { DEFAULT_EXPORT_MAX_BYTES, exportRun, formatExportHuman } from "./feedback/export.js";
 import {
   buildPayload,
@@ -82,14 +82,14 @@ import type { BrowserLabAdapterHooks } from "./adapter-extension.js";
 import type { SharedWorldLabResult } from "./shared-world-lab.js";
 import type { ConcurrentSharedWorldLabResult } from "./concurrent-shared-world-lab.js";
 import type { LabConfig } from "./lab-config.js";
-import { openTarget, renderObserver, serveObserver } from "./observer.js";
-import type { ObserverResult, ObserverServer } from "./observer.js";
-import { SERVE_SCHEMA, serveObserverLibrary } from "./observer-serve.js";
-import type { ServeErrorCode, ServeResult } from "./observer-serve.js";
-import { startExposedObserver, validateExposure } from "./serve-exposure.js";
-import type { ExposureRequest } from "./serve-exposure.js";
-import { ServeTunnelError } from "./serve-tunnel.js";
-import type { ServeTunnel } from "./serve-tunnel.js";
+import { openTarget, renderObserver, serveObserver } from "./observer/render.js";
+import type { ObserverResult, ObserverServer } from "./observer/render.js";
+import { SERVE_SCHEMA, serveObserverLibrary } from "./observer/serve.js";
+import type { ServeErrorCode, ServeResult } from "./observer/serve.js";
+import { startExposedObserver, validateExposure } from "./observer/exposure.js";
+import type { ExposureRequest } from "./observer/exposure.js";
+import { ServeTunnelError } from "./observer/tunnel.js";
+import type { ServeTunnel } from "./observer/tunnel.js";
 import { cleanupRun, doctor, listRuns, readReview, runDryRun, verifyRun } from "./run.js";
 import { reclaimRunSandboxes, type ReclaimResult } from "./reclaim.js";
 import { RunIndexCache, readRunIndex } from "./run-index.js";

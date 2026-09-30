@@ -33,7 +33,7 @@ import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../src/lab-co
 import { runLab } from "../src/lab-engine.js";
 import { OPENAI_RESPONSES_CU_CAPABILITIES, type FetchLike } from "../src/openai-responses-cu.js";
 import type { BrowserLabScoringContext, RunAdapterScore, RunBundle } from "../src/index.js";
-import { serveObserver, type ObserverResult, type ObserverServer } from "../src/observer.js";
+import { serveObserver, type ObserverResult, type ObserverServer } from "../src/observer/render.js";
 import { readReview, verifyRun } from "../src/run.js";
 
 // ---------------------------------------------------------------------------
