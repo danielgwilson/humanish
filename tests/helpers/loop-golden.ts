@@ -18,6 +18,13 @@ import { defaultRedactionHooks } from "../../src/evidence/redaction.js";
 // well as what it returned. The clock is injected, so recorded timestamps are deterministic and
 // stay unmasked; only Buffers are reduced to their length.
 
+/** One golden scenario: the ports and options a run gets, built around a fresh Probe. */
+export type LoopScenario = (probe: Probe) => {
+  provider: CuaProvider;
+  executor: CuaExecutor;
+  options?: Partial<CuaLoopOptions>;
+};
+
 export const CAPABILITIES: ActorCapabilities = {
   headless: true,
   structuredTrace: true,

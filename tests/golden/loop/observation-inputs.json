@@ -625,6 +625,136 @@
       ]
     ]
   },
+  "closingAppState": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "Reached the goal",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "n/a",
+          "notes": "no screenshots captured. App state was observed each turn to drive progress detection (a state-driven executor) and was NOT written to the trace — it is a runtime-only progress input, never persisted as evidence in this slice."
+        },
+        "startedAt": "1970-01-01T00:00:01.000Z",
+        "completedAt": "1970-01-01T00:00:08.000Z",
+        "durationMs": 7000,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "Reached the goal",
+        "ids": {
+          "model": "golden-1"
+        },
+        "counts": {
+          "turns": 1,
+          "actions": 0,
+          "materialActions": 0,
+          "screenshots": 0,
+          "reasonings": 0,
+          "messages": 1,
+          "idleTurns": 0,
+          "noProgressTurns": 0
+        },
+        "items": [
+          {
+            "id": "message-001",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 1",
+            "text": "Reached the goal",
+            "at": "1970-01-01T00:00:05.000Z"
+          },
+          {
+            "id": "notice-002",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "matched",
+            "title": "task completed: t",
+            "text": "turn 1; matched rule 0 (appStatePathEquals)",
+            "at": "1970-01-01T00:00:07.000Z"
+          }
+        ],
+        "declaredOutcome": "reached",
+        "taskFunnel": {
+          "schema": "humanish.task-funnel.v1",
+          "total": 1,
+          "completed": 1,
+          "unobservable": 0,
+          "unmeasured": 0,
+          "tasks": [
+            {
+              "id": "t",
+              "completed": true,
+              "observable": true,
+              "turn": 1
+            }
+          ]
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onTrace",
+        0,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "stateSignature": "s0"
+          }
+        }
+      ],
+      [
+        "onMessage",
+        "Reached the goal"
+      ],
+      [
+        "executor.observe",
+        1
+      ]
+    ]
+  },
   "redactedFrames": {
     "result": {
       "status": "passed",

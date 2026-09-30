@@ -3,12 +3,7 @@ import { it } from "vitest";
 
 import { CuaAdmissionLimitError } from "../../../src/actors/computer-use/admission-limit.js";
 import { CuaExecutorError } from "../../../src/actors/computer-use/executor-error.js";
-import type {
-  CuaExecutor,
-  CuaLoopOptions,
-  CuaProvider,
-  CuaTurn,
-} from "../../../src/actors/computer-use/loop.js";
+import type { CuaProvider, CuaTurn } from "../../../src/actors/computer-use/loop.js";
 import { PARTICIPANT_PROFILE } from "../../../src/actors/codex/restricted-participant-policy.js";
 import {
   CAPABILITIES,
@@ -25,17 +20,16 @@ import {
   scriptedProvider,
   sequenceExecutor,
   turn,
+  type LoopScenario,
 } from "../../helpers/loop-golden.js";
+import { dwellScenarios } from "../../helpers/loop-dwell-scenarios.js";
 
 // Edge goldens for runComputerUseLoop: each file groups the less common branches of one concern.
 
-type Scenario = (probe: Probe) => {
-  provider: CuaProvider;
-  executor: CuaExecutor;
-  options?: Partial<CuaLoopOptions>;
-};
-
-async function expectGoldenRuns(name: string, scenarios: Record<string, Scenario>): Promise<void> {
+async function expectGoldenRuns(
+  name: string,
+  scenarios: Record<string, LoopScenario>,
+): Promise<void> {
   const runs: Record<string, unknown> = {};
   for (const [key, scenario] of Object.entries(scenarios)) {
     const probe = new Probe();
@@ -53,37 +47,6 @@ const commandExit = (): Error =>
     exitCode: 2,
     stderr: "zoom failed",
   });
-const clockWithSleep = () => {
-  let t = 0;
-  return {
-    now: () => (t += 1),
-    sleep: async (ms: number) => {
-      t += ms;
-    },
-  };
-};
-
-/**
- * A clock and sleep for dwell scenarios that also tell which observe call is the one right after
- * a dwell window: the second observe since the last sleep (the first is the window's last frame).
- */
-function dwellWatch() {
-  let t = 0;
-  let observesSinceSleep = Number.POSITIVE_INFINITY;
-  return {
-    now: () => (t += 1),
-    sleep: async (ms: number) => {
-      t += ms;
-      observesSinceSleep = 0;
-    },
-    /** Call once per observe; true for the observation taken right after the window. */
-    afterWindow: () => {
-      observesSinceSleep += 1;
-      return observesSinceSleep === 2;
-    },
-  };
-}
-
 function realPng(): Buffer {
   const png = new PNG({ width: 40, height: 30 });
   for (let i = 0; i < 40 * 30; i += 1) {
@@ -137,100 +100,7 @@ it("safety checks, stop conditions and dwell windows", async () => {
         stopWhen: { any: [{ id: "thanks", urlPathEquals: "/done", textIncludes: "Thanks" }] },
       },
     }),
-    dwellContinue: (probe) => ({
-      provider: scriptedProvider(probe, [turn({ actions: [click(1, 1)] }), done("Finished.")]),
-      executor: sequenceExecutor(probe, [
-        { screenshot: FRAME, stateSignature: "a", text: "intro" },
-        { screenshot: FRAME, stateSignature: "b", text: "video playing" },
-      ]),
-      options: {
-        ...clockWithSleep(),
-        dwell: {
-          when: { any: [{ textIncludes: "video" }] },
-          ms: 100,
-          everyMs: 40,
-          then: "continue",
-        },
-      },
-    }),
-    dwellStopAtStart: (probe) => ({
-      provider: scriptedProvider(probe, []),
-      executor: sequenceExecutor(probe, framed("a")),
-      options: { ...clockWithSleep(), dwell: { ms: 60, everyMs: 30, then: "stop" } },
-    }),
-    dwellSkipped: (probe) => ({
-      provider: scriptedProvider(probe, [done("Finished.")]),
-      executor: sequenceExecutor(probe, framed("a")),
-      options: {
-        ...clockWithSleep(),
-        timeoutMs: 50,
-        dwell: { ms: 500, everyMs: 100, then: "stop" },
-      },
-    }),
-    dwellFramelessAfterWindow: (probe) => {
-      const watch = dwellWatch();
-      return {
-        provider: scriptedProvider(probe, [done("Finished.")], { requiresFrame: true }),
-        executor: sequenceExecutor(probe, [
-          () => (watch.afterWindow() ? { stateSignature: "a" } : framed("a")[0]!),
-        ]),
-        options: {
-          now: watch.now,
-          sleep: watch.sleep,
-          dwell: { ms: 20, everyMs: 10, then: "continue" },
-        },
-      };
-    },
-    dwellAppStateAfterWindow: (probe) => {
-      const watch = dwellWatch();
-      return {
-        provider: scriptedProvider(probe, [done("Finished.")]),
-        executor: sequenceExecutor(probe, [
-          () =>
-            watch.afterWindow()
-              ? { stateSignature: "a", appState: { route: "/after-window" } }
-              : { stateSignature: "a" },
-        ]),
-        options: {
-          now: watch.now,
-          sleep: watch.sleep,
-          dwell: { ms: 20, everyMs: 10, then: "continue" },
-        },
-      };
-    },
-    dwellHintWithBackstopHint: (probe) => {
-      const watch = dwellWatch();
-      let observes = 0;
-      return {
-        provider: scriptedProvider(probe, [
-          turn({ actions: [click(1, 1)] }),
-          turn({ actions: [click(1, 1)] }),
-          done("Finished."),
-        ]),
-        executor: sequenceExecutor(probe, [
-          () => {
-            watch.afterWindow();
-            observes += 1;
-            return {
-              screenshot: FRAME,
-              stateSignature: "a",
-              ...(observes === 3 ? { text: "video" } : {}),
-            };
-          },
-        ]),
-        options: {
-          now: watch.now,
-          sleep: watch.sleep,
-          noProgressSteps: 2,
-          dwell: {
-            when: { any: [{ textIncludes: "video" }] },
-            ms: 20,
-            everyMs: 10,
-            then: "continue",
-          },
-        },
-      };
-    },
+    ...dwellScenarios,
   });
 });
 
@@ -380,7 +250,7 @@ it("stalled provider turns, observations and idle actions", async () => {
 
 it("provider interruptions", async () => {
   const interrupted =
-    (interruption: NonNullable<CuaTurn["interruption"]>): Scenario =>
+    (interruption: NonNullable<CuaTurn["interruption"]>): LoopScenario =>
     (probe) => ({
       provider: scriptedProvider(probe, [
         turn({
@@ -666,6 +536,22 @@ it("speech, app state, scroll, redacted frames and scrubbed narration", async ()
         { stateSignature: "c", appState: { b: 1, a: { route: "/two" } }, scrollY: 460 },
       ]),
       options: { noProgressSteps: 2 },
+    }),
+    closingAppState: (probe) => ({
+      provider: scriptedProvider(probe, [done("Reached the goal")]),
+      executor: sequenceExecutor(probe, [
+        { stateSignature: "s0" },
+        { stateSignature: "s1", appState: { route: "/done" } },
+      ]),
+      options: {
+        tasks: [
+          {
+            id: "t",
+            goal: "Finish.",
+            success: { any: [{ appStatePathEquals: { path: "route", equals: "/done" } }] },
+          },
+        ],
+      },
     }),
     redactedFrames: (probe) => ({
       provider: scriptedProvider(probe, [
