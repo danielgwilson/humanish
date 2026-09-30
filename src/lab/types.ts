@@ -672,12 +672,10 @@ export interface LabPolicies {
    * the gate.
    */
   mediaPermission?: "prompt" | "granted";
-  /**
-   * Terminal-product credential-boundary declarations — all DEFAULT FALSE (deny-by-default). The
-   * shipped live engine always passes only the runtime LLM key, command-scoped, and records these
-   * booleans as evidence. Setting one true records intent but does not create an injection channel
-   * or authorize any additional credential in the current route.
-   */
+  // Terminal-product credential-boundary declarations — all DEFAULT FALSE (deny-by-default). The
+  // shipped live engine always passes only the runtime LLM key, command-scoped, and records these
+  // booleans as evidence. Setting one true records intent but does not create an injection channel
+  // or authorize any additional credential in the current route.
   /** Recorded private-repo-access intent. No private-repo provisioning channel ships. */
   allowPrivateRepoAccess?: boolean;
   /** Recorded provider-credential intent. No provider-credential injection channel ships. */

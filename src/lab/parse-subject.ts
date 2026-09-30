@@ -427,12 +427,6 @@ function parseServe(
 }
 
 /**
- * Structural parse of `subject.state` into a candidate LabSubjectState. Deliberately keeps
- * unrecognized `when`/`timeoutMs` values in the candidate (instead of silently dropping
- * them) so subjectStateInvalidReason rejects them — a state declaration that silently does
- * less than it says would violate invariant 6.
- */
-/**
  * LITERAL non-secret subject env. Real apps need configuration before they will boot — a public base
  * URL, a transport selector, a feature flag — and none of that is secret. Routing it through
  * `subject.env` would force an adopter to carry a private env file just to reproduce a public study.
@@ -475,6 +469,12 @@ function parseEnvValues(
   return { ok: true, value: envValues };
 }
 
+/**
+ * Structural parse of `subject.state` into a candidate LabSubjectState. Deliberately keeps
+ * unrecognized `when`/`timeoutMs` values in the candidate (instead of silently dropping
+ * them) so subjectStateInvalidReason rejects them — a state declaration that silently does
+ * less than it says would violate invariant 6.
+ */
 function parseState(
   raw: unknown,
 ): { ok: true; value: LabSubjectState | undefined } | LabConfigParseFailure {

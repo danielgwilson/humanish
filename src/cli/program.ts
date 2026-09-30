@@ -75,13 +75,6 @@ export interface UnexpectedErrorEnvelope {
 // none of the ~20 .action() handlers below need their own try/catch for this.
 
 /**
- * Record that a command ran. Anonymous, allowlisted, and unable to affect the command: it is not
- * awaited, it is bounded by its own timeout, and every failure inside it is swallowed.
- *
- * The first time it would send anything, it prints the notice first — the convention Next.js and
- * the Vercel CLI set is that collection is default-on but never silent.
- */
-/**
  * Print the disclosure the first time humanish would collect anything, and remember that it was
  * shown. AWAITED by the caller: if this loses the race with process exit, a default-on collector
  * becomes a silent one.
@@ -102,6 +95,10 @@ async function announceTelemetryOnce(command: Command, io: CliIo): Promise<void>
 /** The exit code the most recent command chose through CliIo.setExitCode; 0 until it says otherwise. */
 let lastExitCode = 0;
 
+/**
+ * Record that a command ran. Anonymous, allowlisted, and unable to affect the command: it is not
+ * awaited, it is bounded by its own timeout, and every failure inside it is swallowed.
+ */
 async function recordCommandTelemetry(
   command: Command,
   ok: boolean,

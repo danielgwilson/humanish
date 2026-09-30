@@ -51,15 +51,6 @@ export function registeredTerminalActors(): string[] {
 }
 
 /**
- * True when this config routes to the computer-use backend: an app-url subject whose first
- * actor resolves to a registered computer-use actor, or a clone subject on a hosted desktop
- * whose first actor does. Single source of truth — selectLabBackend and the warning logic
- * both use it. (The app-url branch used to be unconditionally true; it narrowed when the
- * scripted-browser lane arrived. Behavior-preserving for every parse-valid config —
- * selectLabBackend keeps a bare app-url fallback to the cua backend so library-API configs
- * with unknown actors still hit its fail-closed ACTOR_UNSUPPORTED.)
- */
-/**
  * The declared fan-out lane count on the computer-use route: a `lanes[]` roster's length, else
  * a homogeneous `count`, else 1. The single source of truth shared by the parser, the engine,
  * and the pre-flight plan so the lane count is computed ONE way everywhere.
@@ -104,6 +95,15 @@ export function effectiveComputerUseLaneIds(config: LabConfig): string[] {
   return Array.from({ length: count }, (_, index) => participantIdAt(index, undefined, kind));
 }
 
+/**
+ * True when this config routes to the computer-use backend: an app-url subject whose first
+ * actor resolves to a registered computer-use actor, or a clone subject on a hosted desktop
+ * whose first actor does. Single source of truth — selectLabBackend and the warning logic
+ * both use it. (The app-url branch used to be unconditionally true; it narrowed when the
+ * scripted-browser lane arrived. Behavior-preserving for every parse-valid config —
+ * selectLabBackend keeps a bare app-url fallback to the cua backend so library-API configs
+ * with unknown actors still hit its fail-closed ACTOR_UNSUPPORTED.)
+ */
 export function routesToComputerUse(config: LabConfig): boolean {
   // local-app drives the cua loop in-process (a custom executor + a non-vision provider), so it
   // routes to the cua backend exactly like an app-url subject with a computer-use actor.

@@ -10,6 +10,8 @@
 // read here; caller-supplied text (e.g. typed input) must never be passed to the
 // failing command as an argument, so it cannot appear in these fields.
 
+import { tailOf } from "./shell.js";
+
 /**
  * True when `error` is (structurally) the @e2b/desktop CommandExitError: a
  * non-zero substrate command exit that the real Sandbox surfaces as a THROW.
@@ -23,8 +25,6 @@
  * name override or an exitCode) or a generic Error with no exit signal, so only a
  * genuine substrate-command failure is treated as recoverable.
  */
-import { tailOf } from "./shell.js";
-
 export function isCommandExitError(error: unknown): boolean {
   if (error === null || typeof error !== "object") return false;
   const e = error as { name?: unknown; exitCode?: unknown };
