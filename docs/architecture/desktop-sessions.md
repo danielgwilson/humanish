@@ -50,7 +50,7 @@ span, not a provider billing measurement.
    preparation or participant failure. Repeated calls share one finalization.
 6. `snapshot()` supplies the desktop facts for the existing lane outcome.
 
-The E2B implementation lives in `src/substrates/e2b/cua-desktop.ts`. Browser
+The E2B implementation lives in `src/routes/computer-use/e2b-desktop.ts`. Browser
 launch is in `src/substrates/e2b/desktop-browser.ts`, DevTools reads and mobile
 emulation in `src/substrates/e2b/desktop-cdp.ts`, geometry in
 `src/substrates/e2b/desktop-geometry.ts` and media in

@@ -133,8 +133,7 @@ export async function dispatchLab(config: LabConfig, options: RunLabOptions): Pr
         hooks?.createDesktopLane === undefined &&
         hooks?.buildExecutor === undefined
       ) {
-        const { runLocalFirecrackerStudy } =
-          await import("../substrates/local/firecracker-study.js");
+        const { runLocalFirecrackerStudy } = await import("../routes/computer-use/local-vm.js");
         return runLocalFirecrackerStudy({ ...options, config });
       }
       // Spend-safe default: a computer-use lab only goes live when the config (or CLI) says so.

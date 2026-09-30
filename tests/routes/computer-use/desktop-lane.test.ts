@@ -19,7 +19,7 @@ import type {
 } from "../../../src/routes/computer-use/desktop-lane.js";
 import { ownDesktopAllocation } from "../../../src/substrates/desktop-session.js";
 import { DEVICE_PRESETS } from "../../../src/lab/device-presets.js";
-import { createE2BCuaDesktopLane } from "../../../src/substrates/e2b/cua-desktop.js";
+import { createE2BCuaDesktopLane } from "../../../src/routes/computer-use/e2b-desktop.js";
 import { E2B_SPEECH_TEMPLATE } from "../../../src/substrates/e2b/sandbox.js";
 import type { E2BDesktopModule, E2BDesktopSandbox } from "../../../src/substrates/e2b/sdk.js";
 import { LAB_CONFIG_SCHEMA } from "../../../src/lab/types.js";

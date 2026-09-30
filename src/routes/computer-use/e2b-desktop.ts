@@ -12,21 +12,10 @@ import {
   type DeployedCommsCatch,
 } from "../../comms/sandbox-catch.js";
 import type { CommsAddress } from "../../comms/types.js";
-import type {
-  CuaActorLabErrorCode,
-  CuaLaneDeps,
-  CuaLaneSpec,
-} from "../../routes/computer-use/types.js";
-import type {
-  CuaDesktopLane,
-  DesktopLaneEvidence,
-  ReadyCuaDesktop,
-} from "../../routes/computer-use/desktop-lane.js";
-import {
-  inboxRecipientFor,
-  laneHasInboxRecipient,
-} from "../../routes/computer-use/desktop-lane.js";
-import type { OwnedDesktopAllocation } from "../desktop-session.js";
+import type { CuaActorLabErrorCode, CuaLaneDeps, CuaLaneSpec } from "./types.js";
+import type { CuaDesktopLane, DesktopLaneEvidence, ReadyCuaDesktop } from "./desktop-lane.js";
+import { inboxRecipientFor, laneHasInboxRecipient } from "./desktop-lane.js";
+import type { OwnedDesktopAllocation } from "../../substrates/desktop-session.js";
 import { collectDesktopRecording } from "../../evidence/desktop-recording-artifact.js";
 import type { RunDesktopRecording } from "../../evidence/desktop-recording-types.js";
 import { provisionCloneSubject } from "../../subject/clone.js";
@@ -41,26 +30,29 @@ import {
   type DesktopBrowserEvidence,
   type DesktopBrowserFamily,
   type DesktopBrowserLaunchIdentity,
-} from "./desktop-browser.js";
+} from "../../substrates/e2b/desktop-browser.js";
 import {
   applyMobileEmulation,
   DEFAULT_MOBILE_USER_AGENT,
   makeChromeBrowserStateObserver,
-} from "./desktop-cdp.js";
+} from "../../substrates/e2b/desktop-cdp.js";
 import {
   captureDesktopBrowserGeometry,
   declaredScreenForRender,
   inspectDesktopScreenGeometry,
-} from "./desktop-geometry.js";
-import { createE2BDesktopExecutor } from "./desktop-executor.js";
-import { prepareDesktopMedia, startE2BDesktopMedia } from "./desktop-media.js";
-import { e2bDesktopTemplate } from "./sandbox.js";
-import { startE2BDesktopRecording } from "./desktop-recording.js";
-import { loadE2BDesktopModule, type E2BDesktopSandbox } from "./sdk.js";
-import { observeDesktopResources, type DesktopResourceObservation } from "./desktop-resources.js";
-import { acquireE2BDesktopSandbox } from "./sandbox.js";
-import { readDetachedLog } from "../detached.js";
-import { e2bShell } from "./shell.js";
+} from "../../substrates/e2b/desktop-geometry.js";
+import { createE2BDesktopExecutor } from "../../substrates/e2b/desktop-executor.js";
+import { prepareDesktopMedia, startE2BDesktopMedia } from "../../substrates/e2b/desktop-media.js";
+import { e2bDesktopTemplate } from "../../substrates/e2b/sandbox.js";
+import { startE2BDesktopRecording } from "../../substrates/e2b/desktop-recording.js";
+import { loadE2BDesktopModule, type E2BDesktopSandbox } from "../../substrates/e2b/sdk.js";
+import {
+  observeDesktopResources,
+  type DesktopResourceObservation,
+} from "../../substrates/e2b/desktop-resources.js";
+import { acquireE2BDesktopSandbox } from "../../substrates/e2b/sandbox.js";
+import { readDetachedLog } from "../../substrates/detached.js";
+import { e2bShell } from "../../substrates/e2b/shell.js";
 import { redactText, toErrorMessage } from "../../evidence/redaction.js";
 import { type RunSubjectStateStepRecord } from "../../run/bundle.js";
 import { type RunDesktopGeometry } from "../../run/streams.js";

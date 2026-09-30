@@ -5,7 +5,7 @@ import {
 } from "../analysis/automatic-config.js";
 
 import { cloneProvisioningBudgetMs, provisionCloneSubject } from "../subject/clone.js";
-import { CUA_ACTOR_LAB_PROVIDER_METADATA } from "../substrates/e2b/cua-desktop.js";
+import { CUA_ACTOR_LAB_PROVIDER_METADATA } from "../routes/computer-use/e2b-desktop.js";
 import { probeUrl } from "../substrates/detached.js";
 import { loadE2BDesktopModule, type E2BDesktopModule } from "../substrates/e2b/sdk.js";
 import { acquireE2BDesktopSandbox } from "../substrates/e2b/sandbox.js";

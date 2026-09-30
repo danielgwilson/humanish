@@ -276,7 +276,7 @@ export type { DoctorResult } from "./cli/doctor.js";
 export type { RunCleanupHooks, RunsResult } from "./run/manage.js";
 export type { VerifyResult } from "./run/verify.js";
 export { runCuaActorLab } from "./routes/computer-use/lab.js";
-export { CUA_ACTOR_LAB_PROVIDER_METADATA } from "./substrates/e2b/cua-desktop.js";
+export { CUA_ACTOR_LAB_PROVIDER_METADATA } from "./routes/computer-use/e2b-desktop.js";
 export { CUA_ACTOR_LAB_SCHEMA, CUA_FANOUT_STRATEGY } from "./routes/computer-use/types.js";
 export { buildCuaBundle } from "./routes/computer-use/single-bundle.js";
 export { buildCuaFanoutBundle } from "./routes/computer-use/fanout-bundle.js";

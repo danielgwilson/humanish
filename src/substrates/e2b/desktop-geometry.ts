@@ -7,7 +7,7 @@ import {
   chromeCdpProbeCommand,
   parseChromeCdpProbeOutput,
   type ChromeCdpPagePreference,
-} from "../../routes/computer-use/cdp-probe.js";
+} from "./cdp-probe.js";
 import { shellQuote } from "../shell.js";
 import { e2bShell } from "./shell.js";
 import {

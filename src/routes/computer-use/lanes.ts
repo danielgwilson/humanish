@@ -3,7 +3,7 @@ import type {
   CuaLoopResult,
   CuaProvider,
 } from "../../actors/computer-use/loop.js";
-import { createE2BCuaDesktopLane } from "../../substrates/e2b/cua-desktop.js";
+import { createE2BCuaDesktopLane } from "./e2b-desktop.js";
 import path from "node:path";
 import { cuaLaneDiagnostics } from "./diagnostics.js";
 import type { ActorTokenUsage, ActorTraceItem } from "../../actors/contract.js";
