@@ -79,153 +79,14 @@ export function registerAnalyzeCommand(parent: Command, io: CliIo): void {
       "Create a new immutable version even when the same input and configuration were analyzed.",
     )
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(
-      async (
-        options: {
-          cwd: string;
-          run: string;
-          provider?: string;
-          maxCost?: string;
-          model: string;
-          question?: string;
-          timeoutMs: string;
-          maxOutputTokens?: string;
-          dryRun?: boolean;
-          rerun?: boolean;
-        },
-        command,
-      ) => {
-        const selected = resolveAutomaticAnalysis({
-          ...(options.provider === undefined ? {} : { provider: options.provider }),
-          model: options.model,
-          ...(options.question === undefined ? {} : { question: options.question }),
-          timeoutMs: Number(options.timeoutMs),
-          ...(options.provider === "codex" && options.maxCost === undefined
-            ? {}
-            : { maxCostUsd: Number(options.maxCost) }),
-          ...(options.maxOutputTokens === undefined
-            ? {}
-            : { maxOutputTokens: Number(options.maxOutputTokens) }),
-        });
-        if (!selected.ok || !selected.config) {
-          const refusal = await dryRunBundleRefusal(
-            await resolvePhysicalCwd(options.cwd),
-            options.run,
-            options.dryRun === true,
-          );
-          if (refusal) {
-            writeResult(command, io, refusal, (value) =>
-              forTerminal(`${value.error?.message ?? ""}\n${value.error?.code ?? ""}\n`),
-            );
-            io.setExitCode(2);
-            return;
-          }
-          const result = {
-            schema: "humanish.analyze-result.v1",
-            ok: false,
-            run: options.run,
-            dryRun: options.dryRun === true,
-            reused: false,
-            warnings: [],
-            error: {
-              code: "ANALYSIS_CONFIG_INVALID",
-              message: selected.ok ? "Analysis is disabled." : selected.message,
-            },
-          };
-          writeResult(command, io, result, (value) => `${value.error.message}\n`);
-          io.setExitCode(2);
-          return;
-        }
-        const controller = new AbortController();
-        const cancel = (): void => controller.abort();
-        process.once("SIGINT", cancel);
-        try {
-          const result = await analyzeStudy(
-            options.cwd,
-            options.run,
-            {
-              config: selected.config,
-              preferLargerOutput: selected.preferLargerOutput === true,
-              ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
-              ...(options.rerun === undefined ? {} : { rerun: options.rerun }),
-            },
-            {
-              signal: controller.signal,
-              onProgress: (progress) =>
-                io.writeErr(
-                  `Analysis ${progress.phase}: ${progress.evidenceCount} evidence items, ${progress.captureCount} captures.\n`,
-                ),
-            },
-          );
-          writeResult(command, io, result, (value) => {
-            if (value.ok && value.dryRun && selected.config?.provider === "codex")
-              return "Local evidence and configuration passed admission. Codex CLI, login and model access were not checked. Dollar cost and output-token ceiling are unknown. No provider request sent.\n";
-            if (value.ok && value.dryRun)
-              return `Admission estimate: $${value.admission?.estimatedCostUsd ?? "unknown"}; output allowance: ${value.admission?.outputTokenAllowance ?? "unknown"} tokens including reasoning. No request sent.\n`;
-            const lines: string[] = [];
-            if (!value.ok)
-              lines.push(value.error?.message ?? "Analysis unavailable.", value.error?.code ?? "");
-            if (value.artifactPath)
-              lines.push(
-                `${value.reused ? "Reused" : "Saved"} ${value.status} analysis: ${value.artifactPath}`,
-              );
-            if (value.executionReceiptPath)
-              lines.push(`Execution receipt: ${value.executionReceiptPath}`);
-            if (value.usage) {
-              lines.push(
-                `Recorded attempt usage${value.usage.usageComplete ? "" : " (incomplete)"}: ${value.usage.inputTokens ?? "unknown"} input tokens, ${value.usage.outputTokens ?? "unknown"} output tokens.`,
-              );
-              lines.push(
-                `Estimated attempt cost: ${value.usage.estimatedCostUsd === null ? "unknown" : `$${value.usage.estimatedCostUsd}`}.`,
-              );
-            }
-            if (value.reused) lines.push("No new request sent.");
-            lines.push(...value.warnings);
-            return forTerminal(lines.filter(Boolean).join("\n") + "\n");
-          });
-          io.setExitCode(result.ok ? 0 : 2);
-        } finally {
-          process.removeListener("SIGINT", cancel);
-        }
-      },
-    );
+    .action((options, command) => handleAnalyze(io, options, command));
   analyze
     .command("list")
     .description("List immutable analysis versions, including failed attempts.")
     .option("--run <id>", "Run id or latest pointer.", "latest")
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (options: { cwd: string; run: string }, command) => {
-      options = analysisSelection(options, command);
-      const prepared = await resolveRunPath(
-        await resolvePhysicalCwd(options.cwd),
-        options.run,
-      ).catch(() => null);
-      const versions = prepared ? await listStudyAnalyses(prepared) : [];
-      const executions = prepared
-        ? await listStudyAnalysisExecutions(prepared)
-        : { receipts: [], warnings: [] };
-      const result = {
-        schema: "humanish.analysis-history.v1",
-        ok: prepared !== null,
-        run: options.run,
-        executions: executions.receipts,
-        warnings: executions.warnings,
-        versions: versions.map(({ id, state, analysis, warnings }) => ({
-          id,
-          state,
-          status: analysis?.status ?? null,
-          createdAt: analysis?.createdAt ?? null,
-          findings: analysis?.result?.findings.length ?? null,
-          usage: analysis?.usage ?? null,
-          warnings,
-        })),
-      };
-      writeResult(command, io, result, (value) =>
-        forTerminal(JSON.stringify(value, null, 2) + "\n"),
-      );
-      io.setExitCode(result.ok ? 0 : 2);
-    });
+    .action((options, command) => handleAnalyzeList(io, options, command));
   analyze
     .command("show")
     .description(
@@ -235,14 +96,7 @@ export function registerAnalyzeCommand(parent: Command, io: CliIo): void {
     .option("--id <id>", "Exact analysis version.")
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (options: { cwd: string; run: string; id?: string }, command) => {
-      options = analysisSelection(options, command);
-      const result = await showStudyAnalysis(options.cwd, options.run, options.id);
-      writeResult(command, io, result, (value) =>
-        forTerminal(JSON.stringify(value, null, 2) + "\n"),
-      );
-      io.setExitCode(result.state === "invalid" ? 2 : 0);
-    });
+    .action((options, command) => handleAnalyzeShow(io, options, command));
   analyze
     .command("correct")
     .description(
@@ -260,59 +114,214 @@ export function registerAnalyzeCommand(parent: Command, io: CliIo): void {
     .requiredOption("--reason <text>", "Why this disposition is supported.")
     .option("--claim <text>", "Replacement claim, required only for amended findings.")
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(
-      async (
-        options: {
-          cwd: string;
-          run: string;
-          analysis: string;
-          finding: string;
-          status: "confirmed" | "dismissed" | "amended";
-          reason: string;
-          claim?: string;
-        },
-        command,
-      ) => {
-        options = analysisSelection(options, command);
-        try {
-          const correction = await correctStudyAnalysis(options.cwd, options.run, {
-            analysisId: options.analysis,
-            findingId: options.finding,
-            status: options.status,
-            reason: options.reason,
-            ...(options.claim === undefined ? {} : { replacementClaim: options.claim }),
-          });
-          writeResult(
-            command,
-            io,
-            { schema: "humanish.analysis-correction-result.v1", ok: true, correction },
-            (value) => `Saved correction ${value.correction.id}. Original analysis preserved.\n`,
-          );
-          io.setExitCode(0);
-        } catch (error) {
-          const code =
-            error instanceof Error &&
-            ["ANALYSIS_BUSY", "ANALYSIS_CORRECTION_HISTORY_UNAVAILABLE"].includes(error.message)
-              ? error.message
-              : "ANALYSIS_CORRECTION_INVALID";
-          const message =
-            code === "ANALYSIS_BUSY"
-              ? "Another analysis or correction holds this run's lock. Retry after it finishes."
-              : code === "ANALYSIS_CORRECTION_HISTORY_UNAVAILABLE"
-                ? "Correction history is unavailable or full. No correction was added; existing records were preserved."
-                : "Correction requires a current valid finding, a reason, and a replacement claim only for amended status. Sensitive text is rejected.";
-          writeResult(
-            command,
-            io,
-            {
-              schema: "humanish.analysis-correction-result.v1",
-              ok: false,
-              error: { code, message },
-            },
-            (value) => value.error.message + "\n",
-          );
-          io.setExitCode(2);
-        }
+    .action((options, command) => handleAnalyzeCorrect(io, options, command));
+}
+
+async function handleAnalyze(
+  io: CliIo,
+  options: {
+    cwd: string;
+    run: string;
+    provider?: string;
+    maxCost?: string;
+    model: string;
+    question?: string;
+    timeoutMs: string;
+    maxOutputTokens?: string;
+    dryRun?: boolean;
+    rerun?: boolean;
+  },
+  command: Command,
+): Promise<void> {
+  const selected = resolveAutomaticAnalysis({
+    ...(options.provider === undefined ? {} : { provider: options.provider }),
+    model: options.model,
+    ...(options.question === undefined ? {} : { question: options.question }),
+    timeoutMs: Number(options.timeoutMs),
+    ...(options.provider === "codex" && options.maxCost === undefined
+      ? {}
+      : { maxCostUsd: Number(options.maxCost) }),
+    ...(options.maxOutputTokens === undefined
+      ? {}
+      : { maxOutputTokens: Number(options.maxOutputTokens) }),
+  });
+  if (!selected.ok || !selected.config) {
+    const refusal = await dryRunBundleRefusal(
+      await resolvePhysicalCwd(options.cwd),
+      options.run,
+      options.dryRun === true,
+    );
+    if (refusal) {
+      writeResult(command, io, refusal, (value) =>
+        forTerminal(`${value.error?.message ?? ""}\n${value.error?.code ?? ""}\n`),
+      );
+      io.setExitCode(2);
+      return;
+    }
+    const result = {
+      schema: "humanish.analyze-result.v1",
+      ok: false,
+      run: options.run,
+      dryRun: options.dryRun === true,
+      reused: false,
+      warnings: [],
+      error: {
+        code: "ANALYSIS_CONFIG_INVALID",
+        message: selected.ok ? "Analysis is disabled." : selected.message,
+      },
+    };
+    writeResult(command, io, result, (value) => `${value.error.message}\n`);
+    io.setExitCode(2);
+    return;
+  }
+  const controller = new AbortController();
+  const cancel = (): void => controller.abort();
+  process.once("SIGINT", cancel);
+  try {
+    const result = await analyzeStudy(
+      options.cwd,
+      options.run,
+      {
+        config: selected.config,
+        preferLargerOutput: selected.preferLargerOutput === true,
+        ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
+        ...(options.rerun === undefined ? {} : { rerun: options.rerun }),
+      },
+      {
+        signal: controller.signal,
+        onProgress: (progress) =>
+          io.writeErr(
+            `Analysis ${progress.phase}: ${progress.evidenceCount} evidence items, ${progress.captureCount} captures.\n`,
+          ),
       },
     );
+    writeResult(command, io, result, (value) => {
+      if (value.ok && value.dryRun && selected.config?.provider === "codex")
+        return "Local evidence and configuration passed admission. Codex CLI, login and model access were not checked. Dollar cost and output-token ceiling are unknown. No provider request sent.\n";
+      if (value.ok && value.dryRun)
+        return `Admission estimate: $${value.admission?.estimatedCostUsd ?? "unknown"}; output allowance: ${value.admission?.outputTokenAllowance ?? "unknown"} tokens including reasoning. No request sent.\n`;
+      const lines: string[] = [];
+      if (!value.ok)
+        lines.push(value.error?.message ?? "Analysis unavailable.", value.error?.code ?? "");
+      if (value.artifactPath)
+        lines.push(
+          `${value.reused ? "Reused" : "Saved"} ${value.status} analysis: ${value.artifactPath}`,
+        );
+      if (value.executionReceiptPath)
+        lines.push(`Execution receipt: ${value.executionReceiptPath}`);
+      if (value.usage) {
+        lines.push(
+          `Recorded attempt usage${value.usage.usageComplete ? "" : " (incomplete)"}: ${value.usage.inputTokens ?? "unknown"} input tokens, ${value.usage.outputTokens ?? "unknown"} output tokens.`,
+        );
+        lines.push(
+          `Estimated attempt cost: ${value.usage.estimatedCostUsd === null ? "unknown" : `$${value.usage.estimatedCostUsd}`}.`,
+        );
+      }
+      if (value.reused) lines.push("No new request sent.");
+      lines.push(...value.warnings);
+      return forTerminal(lines.filter(Boolean).join("\n") + "\n");
+    });
+    io.setExitCode(result.ok ? 0 : 2);
+  } finally {
+    process.removeListener("SIGINT", cancel);
+  }
+}
+
+async function handleAnalyzeList(
+  io: CliIo,
+  options: { cwd: string; run: string },
+  command: Command,
+): Promise<void> {
+  options = analysisSelection(options, command);
+  const prepared = await resolveRunPath(await resolvePhysicalCwd(options.cwd), options.run).catch(
+    () => null,
+  );
+  const versions = prepared ? await listStudyAnalyses(prepared) : [];
+  const executions = prepared
+    ? await listStudyAnalysisExecutions(prepared)
+    : { receipts: [], warnings: [] };
+  const result = {
+    schema: "humanish.analysis-history.v1",
+    ok: prepared !== null,
+    run: options.run,
+    executions: executions.receipts,
+    warnings: executions.warnings,
+    versions: versions.map(({ id, state, analysis, warnings }) => ({
+      id,
+      state,
+      status: analysis?.status ?? null,
+      createdAt: analysis?.createdAt ?? null,
+      findings: analysis?.result?.findings.length ?? null,
+      usage: analysis?.usage ?? null,
+      warnings,
+    })),
+  };
+  writeResult(command, io, result, (value) => forTerminal(JSON.stringify(value, null, 2) + "\n"));
+  io.setExitCode(result.ok ? 0 : 2);
+}
+
+async function handleAnalyzeShow(
+  io: CliIo,
+  options: { cwd: string; run: string; id?: string },
+  command: Command,
+): Promise<void> {
+  options = analysisSelection(options, command);
+  const result = await showStudyAnalysis(options.cwd, options.run, options.id);
+  writeResult(command, io, result, (value) => forTerminal(JSON.stringify(value, null, 2) + "\n"));
+  io.setExitCode(result.state === "invalid" ? 2 : 0);
+}
+
+async function handleAnalyzeCorrect(
+  io: CliIo,
+  options: {
+    cwd: string;
+    run: string;
+    analysis: string;
+    finding: string;
+    status: "confirmed" | "dismissed" | "amended";
+    reason: string;
+    claim?: string;
+  },
+  command: Command,
+): Promise<void> {
+  options = analysisSelection(options, command);
+  try {
+    const correction = await correctStudyAnalysis(options.cwd, options.run, {
+      analysisId: options.analysis,
+      findingId: options.finding,
+      status: options.status,
+      reason: options.reason,
+      ...(options.claim === undefined ? {} : { replacementClaim: options.claim }),
+    });
+    writeResult(
+      command,
+      io,
+      { schema: "humanish.analysis-correction-result.v1", ok: true, correction },
+      (value) => `Saved correction ${value.correction.id}. Original analysis preserved.\n`,
+    );
+    io.setExitCode(0);
+  } catch (error) {
+    const code =
+      error instanceof Error &&
+      ["ANALYSIS_BUSY", "ANALYSIS_CORRECTION_HISTORY_UNAVAILABLE"].includes(error.message)
+        ? error.message
+        : "ANALYSIS_CORRECTION_INVALID";
+    const message =
+      code === "ANALYSIS_BUSY"
+        ? "Another analysis or correction holds this run's lock. Retry after it finishes."
+        : code === "ANALYSIS_CORRECTION_HISTORY_UNAVAILABLE"
+          ? "Correction history is unavailable or full. No correction was added; existing records were preserved."
+          : "Correction requires a current valid finding, a reason, and a replacement claim only for amended status. Sensitive text is rejected.";
+    writeResult(
+      command,
+      io,
+      {
+        schema: "humanish.analysis-correction-result.v1",
+        ok: false,
+        error: { code, message },
+      },
+      (value) => value.error.message + "\n",
+    );
+    io.setExitCode(2);
+  }
 }

@@ -20,19 +20,7 @@ export function registerCommsCommands(parent: Command, io: CliIo): void {
     .command("providers")
     .description("List installed communication provider capabilities. No network requests.")
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action((_options, command) => {
-      const result = {
-        schema: "humanish.comms-providers.v1",
-        ok: true,
-        providers: COMMS_PROVIDERS,
-      };
-      writeResult(command, io, result, () =>
-        COMMS_PROVIDERS.map(
-          (provider) =>
-            `${provider.label}: ${provider.limitation}\nKey: ${provider.keyEnv}\nSetup: ${provider.setupUrl}\n`,
-        ).join("\n"),
-      );
-    });
+    .action((_options, command) => handleCommsProviders(io, _options, command));
 
   const connections = comms
     .command("connections")
@@ -47,19 +35,7 @@ export function registerCommsCommands(parent: Command, io: CliIo): void {
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--env-file <path>", "Load credentials for local status without printing values.")
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (options: { cwd: string; envFile?: string }, command) => {
-      if (!(await applyEnvFileOption({ command, cwd: options.cwd, envFile: options.envFile, io })))
-        return;
-      const result = await readCommsSetup(resolve(options.cwd), process.env);
-      writeResult(
-        command,
-        io,
-        result,
-        (value) =>
-          `${value.message}\nAgentMail key: ${value.credential.present ? "present" : "missing"}\n${value.connections.map((connection) => `${connection.name}: ${connection.provider} (${connection.apiKeyEnv})\n`).join("")}`,
-      );
-      io.setExitCode(result.ok ? 0 : 2);
-    });
+    .action((options, command) => handleCommsList(io, options, command));
   connections
     .command("add")
     .argument("[name]", "Project connection name.", "agentmail")
@@ -74,22 +50,7 @@ export function registerCommsCommands(parent: Command, io: CliIo): void {
       "AGENTMAIL_API_KEY",
     )
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(
-      async (
-        name: string,
-        options: { cwd: string; provider: string; apiKeyEnv: string },
-        command,
-      ) => {
-        const result = {
-          schema: "humanish.comms-connection-result.v1",
-          ...(options.provider === "agentmail"
-            ? await saveCommsConnection(resolve(options.cwd), name, options.apiKeyEnv)
-            : { ok: false, message: "Only AgentMail connection setup is currently available." }),
-        };
-        writeResult(command, io, result, (value) => `${value.message}\n`);
-        io.setExitCode(result.ok ? 0 : 2);
-      },
-    );
+    .action((name, options, command) => handleCommsAdd(io, name, options, command));
 
   comms
     .command("check")
@@ -102,45 +63,7 @@ export function registerCommsCommands(parent: Command, io: CliIo): void {
     .option("--online", "Make a read-only provider authentication request.")
     .option("--env-file <path>", "Load credentials without printing values.")
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(
-      async (
-        options: {
-          cwd: string;
-          connection: string;
-          lab?: string;
-          online?: boolean;
-          envFile?: string;
-        },
-        command,
-      ) => {
-        if (
-          !(await applyEnvFileOption({ command, cwd: options.cwd, envFile: options.envFile, io }))
-        )
-          return;
-        let connection = options.connection;
-        if (options.lab) {
-          const lab = await resolveLabManifest(options.cwd, options.lab);
-          if (!lab.ok || lab.config.comms?.email?.kind !== "real") {
-            const result = {
-              ok: false,
-              message: "This lab does not select a real email connection.",
-            };
-            writeResult(command, io, result, (value) => `${value.message}\n`);
-            io.setExitCode(2);
-            return;
-          }
-          connection = lab.config.comms.email.connection;
-        }
-        const result = await checkCommsConnection({
-          cwd: resolve(options.cwd),
-          connection,
-          env: process.env,
-          online: options.online === true,
-        });
-        writeResult(command, io, result, (value) => `${value.message}\n`);
-        io.setExitCode(result.ok ? 0 : 2);
-      },
-    );
+    .action((options, command) => handleCommsCheck(io, options, command));
   comms
     .command("configure")
     .description(
@@ -155,22 +78,7 @@ export function registerCommsCommands(parent: Command, io: CliIo): void {
       "Require the source and destination to match a previous preview.",
     )
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(
-      async (
-        options: {
-          cwd: string;
-          lab: string;
-          connection: string;
-          apply?: boolean;
-          planToken?: string;
-        },
-        command,
-      ) => {
-        const result = await configureCommsLab({ ...options, cwd: resolve(options.cwd) });
-        writeResult(command, io, result, (value) => `${value.message}\n`);
-        io.setExitCode(result.ok ? 0 : 2);
-      },
-    );
+    .action((options, command) => handleCommsConfigure(io, options, command));
   comms
     .command("recover")
     .description(
@@ -181,65 +89,7 @@ export function registerCommsCommands(parent: Command, io: CliIo): void {
     .option("--apply", "Recover the selected inactive run and verify mailbox deletion.")
     .option("--env-file <path>", "Load credentials without printing values.")
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(
-      async (
-        options: { cwd: string; run?: string; apply?: boolean; envFile?: string },
-        command,
-      ) => {
-        if (
-          !(await applyEnvFileOption({ command, cwd: options.cwd, envFile: options.envFile, io }))
-        )
-          return;
-        const cwd = resolve(options.cwd);
-        try {
-          const entries = (await inspectCommsRecovery({ cwd })).filter(
-            (entry) => !options.run || entry.runId === options.run,
-          );
-          if (!options.apply) {
-            const result = { schema: "humanish.comms-recovery.v1", ok: true, entries };
-            writeResult(command, io, result, (value) =>
-              value.entries.length
-                ? value.entries
-                    .map(
-                      (entry) =>
-                        `${entry.runId}: ${entry.unresolvedCount} unresolved; ${entry.activeOwner === null ? "unknown owner" : entry.activeOwner ? "active owner" : "inactive"}\n`,
-                    )
-                    .join("")
-                : "No recoverable email leases in this project.\n",
-            );
-            return;
-          }
-          if (!options.run || entries.length !== 1) throw new Error("selection");
-          const entry = entries[0]!;
-          const { connection, adapter } = await resolveReceivingConnection(
-            cwd,
-            entry.connectionName,
-            process.env,
-          );
-          const result = {
-            schema: "humanish.comms-recovery-result.v1",
-            ...(await recoverCommsReceiving({
-              cwd,
-              runId: options.run,
-              connectionName: entry.connectionName,
-              apiKeyEnv: connection.apiKeyEnv,
-              adapter,
-            })),
-          };
-          writeResult(command, io, result, (value) => `${value.message}\n`);
-          io.setExitCode(result.ok ? 0 : 2);
-        } catch {
-          const result = {
-            schema: "humanish.comms-recovery-result.v1",
-            ok: false,
-            message:
-              "Recovery could not complete. Select one recorded run with --run, check its connection, and retry. No unrecorded resources are eligible.",
-          };
-          writeResult(command, io, result, (value) => `${value.message}\n`);
-          io.setExitCode(2);
-        }
-      },
-    );
+    .action((options, command) => handleCommsRecover(io, options, command));
 
   comms
     .command("catch")
@@ -274,64 +124,225 @@ export function registerCommsCommands(parent: Command, io: CliIo): void {
       "Only render mail sent to this address (repeatable). Default: render whatever the app actually mailed.",
       (value: string, previous: string[] | undefined) => [...(previous ?? []), value],
     )
-    .action(
-      async (options: {
-        port: string;
-        dir: string;
-        token?: string;
-        smtpPort?: string;
-        inboxPort?: string;
-        recipient?: string[];
-      }) => {
-        const port = Number.parseInt(options.port, 10);
-        if (!Number.isInteger(port) || port <= 0 || port > 65_534) {
-          io.writeErr("--port must be an integer between 1 and 65534.\n");
-          io.setExitCode(2);
-          return;
-        }
-        let inboxPort: number | undefined;
-        if (options.inboxPort !== undefined) {
-          inboxPort = Number.parseInt(options.inboxPort, 10);
-          if (!Number.isInteger(inboxPort) || inboxPort <= 0 || inboxPort > 65_534) {
-            io.writeErr("--inbox-port must be an integer between 1 and 65534.\n");
-            io.setExitCode(2);
-            return;
-          }
-          if (inboxPort === port) {
-            io.writeErr(
-              "--inbox-port must differ from --port (the capture listener is loopback-only; the inbox listener is not).\n",
-            );
-            io.setExitCode(2);
-            return;
-          }
-        }
-        let smtpPort: number | undefined;
-        if (options.smtpPort !== undefined) {
-          smtpPort = Number(options.smtpPort);
-          if (!Number.isInteger(smtpPort) || smtpPort <= 0 || smtpPort > 65_534) {
-            io.writeErr("--smtp-port must be an integer between 1 and 65534.\n");
-            io.setExitCode(2);
-            return;
-          }
-          if (smtpPort === port || smtpPort === inboxPort) {
-            io.writeErr("--smtp-port must differ from --port and --inbox-port.\n");
-            io.setExitCode(2);
-            return;
-          }
-        }
-        await runCommsCatchHost(
-          {
-            port,
-            dir: options.dir,
-            ...(options.token ? { token: options.token } : {}),
-            ...(inboxPort === undefined ? {} : { inboxPort }),
-            ...(smtpPort === undefined ? {} : { smtpPort }),
-            ...(options.recipient && options.recipient.length > 0
-              ? { recipients: options.recipient }
-              : {}),
-          },
-          io,
-        );
-      },
+    .action((options) => handleCommsCatch(io, options));
+}
+
+function handleCommsProviders(io: CliIo, _options: unknown, command: Command): void {
+  const result = {
+    schema: "humanish.comms-providers.v1",
+    ok: true,
+    providers: COMMS_PROVIDERS,
+  };
+  writeResult(command, io, result, () =>
+    COMMS_PROVIDERS.map(
+      (provider) =>
+        `${provider.label}: ${provider.limitation}\nKey: ${provider.keyEnv}\nSetup: ${provider.setupUrl}\n`,
+    ).join("\n"),
+  );
+}
+
+async function handleCommsList(
+  io: CliIo,
+  options: { cwd: string; envFile?: string },
+  command: Command,
+): Promise<void> {
+  if (!(await applyEnvFileOption({ command, cwd: options.cwd, envFile: options.envFile, io })))
+    return;
+  const result = await readCommsSetup(resolve(options.cwd), process.env);
+  writeResult(
+    command,
+    io,
+    result,
+    (value) =>
+      `${value.message}\nAgentMail key: ${value.credential.present ? "present" : "missing"}\n${value.connections.map((connection) => `${connection.name}: ${connection.provider} (${connection.apiKeyEnv})\n`).join("")}`,
+  );
+  io.setExitCode(result.ok ? 0 : 2);
+}
+
+async function handleCommsAdd(
+  io: CliIo,
+  name: string,
+  options: { cwd: string; provider: string; apiKeyEnv: string },
+  command: Command,
+): Promise<void> {
+  const result = {
+    schema: "humanish.comms-connection-result.v1",
+    ...(options.provider === "agentmail"
+      ? await saveCommsConnection(resolve(options.cwd), name, options.apiKeyEnv)
+      : { ok: false, message: "Only AgentMail connection setup is currently available." }),
+  };
+  writeResult(command, io, result, (value) => `${value.message}\n`);
+  io.setExitCode(result.ok ? 0 : 2);
+}
+
+async function handleCommsCheck(
+  io: CliIo,
+  options: {
+    cwd: string;
+    connection: string;
+    lab?: string;
+    online?: boolean;
+    envFile?: string;
+  },
+  command: Command,
+): Promise<void> {
+  if (!(await applyEnvFileOption({ command, cwd: options.cwd, envFile: options.envFile, io })))
+    return;
+  let connection = options.connection;
+  if (options.lab) {
+    const lab = await resolveLabManifest(options.cwd, options.lab);
+    if (!lab.ok || lab.config.comms?.email?.kind !== "real") {
+      const result = {
+        ok: false,
+        message: "This lab does not select a real email connection.",
+      };
+      writeResult(command, io, result, (value) => `${value.message}\n`);
+      io.setExitCode(2);
+      return;
+    }
+    connection = lab.config.comms.email.connection;
+  }
+  const result = await checkCommsConnection({
+    cwd: resolve(options.cwd),
+    connection,
+    env: process.env,
+    online: options.online === true,
+  });
+  writeResult(command, io, result, (value) => `${value.message}\n`);
+  io.setExitCode(result.ok ? 0 : 2);
+}
+
+async function handleCommsConfigure(
+  io: CliIo,
+  options: {
+    cwd: string;
+    lab: string;
+    connection: string;
+    apply?: boolean;
+    planToken?: string;
+  },
+  command: Command,
+): Promise<void> {
+  const result = await configureCommsLab({ ...options, cwd: resolve(options.cwd) });
+  writeResult(command, io, result, (value) => `${value.message}\n`);
+  io.setExitCode(result.ok ? 0 : 2);
+}
+
+async function handleCommsRecover(
+  io: CliIo,
+  options: { cwd: string; run?: string; apply?: boolean; envFile?: string },
+  command: Command,
+): Promise<void> {
+  if (!(await applyEnvFileOption({ command, cwd: options.cwd, envFile: options.envFile, io })))
+    return;
+  const cwd = resolve(options.cwd);
+  try {
+    const entries = (await inspectCommsRecovery({ cwd })).filter(
+      (entry) => !options.run || entry.runId === options.run,
     );
+    if (!options.apply) {
+      const result = { schema: "humanish.comms-recovery.v1", ok: true, entries };
+      writeResult(command, io, result, (value) =>
+        value.entries.length
+          ? value.entries
+              .map(
+                (entry) =>
+                  `${entry.runId}: ${entry.unresolvedCount} unresolved; ${entry.activeOwner === null ? "unknown owner" : entry.activeOwner ? "active owner" : "inactive"}\n`,
+              )
+              .join("")
+          : "No recoverable email leases in this project.\n",
+      );
+      return;
+    }
+    if (!options.run || entries.length !== 1) throw new Error("selection");
+    const entry = entries[0]!;
+    const { connection, adapter } = await resolveReceivingConnection(
+      cwd,
+      entry.connectionName,
+      process.env,
+    );
+    const result = {
+      schema: "humanish.comms-recovery-result.v1",
+      ...(await recoverCommsReceiving({
+        cwd,
+        runId: options.run,
+        connectionName: entry.connectionName,
+        apiKeyEnv: connection.apiKeyEnv,
+        adapter,
+      })),
+    };
+    writeResult(command, io, result, (value) => `${value.message}\n`);
+    io.setExitCode(result.ok ? 0 : 2);
+  } catch {
+    const result = {
+      schema: "humanish.comms-recovery-result.v1",
+      ok: false,
+      message:
+        "Recovery could not complete. Select one recorded run with --run, check its connection, and retry. No unrecorded resources are eligible.",
+    };
+    writeResult(command, io, result, (value) => `${value.message}\n`);
+    io.setExitCode(2);
+  }
+}
+
+async function handleCommsCatch(
+  io: CliIo,
+  options: {
+    port: string;
+    dir: string;
+    token?: string;
+    smtpPort?: string;
+    inboxPort?: string;
+    recipient?: string[];
+  },
+): Promise<void> {
+  const port = Number.parseInt(options.port, 10);
+  if (!Number.isInteger(port) || port <= 0 || port > 65_534) {
+    io.writeErr("--port must be an integer between 1 and 65534.\n");
+    io.setExitCode(2);
+    return;
+  }
+  let inboxPort: number | undefined;
+  if (options.inboxPort !== undefined) {
+    inboxPort = Number.parseInt(options.inboxPort, 10);
+    if (!Number.isInteger(inboxPort) || inboxPort <= 0 || inboxPort > 65_534) {
+      io.writeErr("--inbox-port must be an integer between 1 and 65534.\n");
+      io.setExitCode(2);
+      return;
+    }
+    if (inboxPort === port) {
+      io.writeErr(
+        "--inbox-port must differ from --port (the capture listener is loopback-only; the inbox listener is not).\n",
+      );
+      io.setExitCode(2);
+      return;
+    }
+  }
+  let smtpPort: number | undefined;
+  if (options.smtpPort !== undefined) {
+    smtpPort = Number(options.smtpPort);
+    if (!Number.isInteger(smtpPort) || smtpPort <= 0 || smtpPort > 65_534) {
+      io.writeErr("--smtp-port must be an integer between 1 and 65534.\n");
+      io.setExitCode(2);
+      return;
+    }
+    if (smtpPort === port || smtpPort === inboxPort) {
+      io.writeErr("--smtp-port must differ from --port and --inbox-port.\n");
+      io.setExitCode(2);
+      return;
+    }
+  }
+  await runCommsCatchHost(
+    {
+      port,
+      dir: options.dir,
+      ...(options.token ? { token: options.token } : {}),
+      ...(inboxPort === undefined ? {} : { inboxPort }),
+      ...(smtpPort === undefined ? {} : { smtpPort }),
+      ...(options.recipient && options.recipient.length > 0
+        ? { recipients: options.recipient }
+        : {}),
+    },
+    io,
+  );
 }
