@@ -25,6 +25,7 @@ import {
   rawScreenshotStreamIds,
   scanRunPublicSafetyArtifacts,
 } from "./verify-artifacts.js";
+import { runNotFinishedWarnings } from "./verify-liveness.js";
 import {
   sharedWorldEvidenceFindings,
   undeclaredSubjectStateWarnings,
@@ -313,6 +314,7 @@ export async function verifyPreparedRun(
         ...rawScreenshotPostureWarnings(bundle),
         ...undeclaredSubjectStateWarnings(bundle),
         ...desktopGeometryWarnings(bundle),
+        ...(await runNotFinishedWarnings(runPaths, bundle)),
       ]
     : [];
   const shareSafety = isRunBundle(bundle)
