@@ -1,0 +1,2231 @@
+{
+  "comms-email-demo": {
+    "dry": {
+      "labId": "comms-email-demo",
+      "residual": {
+        "comms": {
+          "email": {
+            "kind": "fake",
+            "injectEnv": "RESEND_BASE_URL",
+            "recipients": [
+              {
+                "lane": "signup-a",
+                "address": "signup-a@example.test"
+              },
+              {
+                "lane": "signup-b",
+                "address": "signup-b@example.test"
+              }
+            ]
+          }
+        },
+        "defaults": {
+          "open": false
+        },
+        "subject": {
+          "repos": [
+            "example-org/user-app"
+          ]
+        }
+      },
+      "dryRun": true,
+      "analysis": {
+        "config": {
+          "model": "gpt-6-astra",
+          "maxCostUsd": 3,
+          "timeoutMs": 600000,
+          "maxOutputTokens": 16384,
+          "question": null
+        },
+        "trigger": "default",
+        "preferLargerOutput": true
+      },
+      "requirements": [],
+      "route": "computer-use",
+      "runner": {
+        "desktop": "e2b-desktop",
+        "brain": {
+          "kind": "openai",
+          "model": "gpt-5.6-sol"
+        },
+        "participants": [
+          {
+            "id": "signup-a",
+            "index": 0,
+            "personaId": "first-time-visitor",
+            "assignment": {
+              "mission": "Sign up with the email address in your instructions, verify it from your inbox, and reach the dashboard.",
+              "focus": "Create an account, complete the email verification, and stop at the dashboard."
+            },
+            "labels": {},
+            "device": {
+              "name": "desktop",
+              "preset": {
+                "width": 1440,
+                "height": 950,
+                "isMobile": false,
+                "deviceScaleFactor": 1
+              },
+              "resolution": [
+                1440,
+                950
+              ]
+            },
+            "limits": {}
+          },
+          {
+            "id": "signup-b",
+            "index": 1,
+            "personaId": "impatient-skimmer",
+            "assignment": {
+              "mission": "Sign up with the email address in your instructions, verify it from your inbox, and reach the dashboard.",
+              "focus": "Create an account; if any step is confusing, note the friction — but complete the email verification before stopping."
+            },
+            "labels": {},
+            "device": {
+              "name": "desktop",
+              "preset": {
+                "width": 1440,
+                "height": 950,
+                "isMobile": false,
+                "deviceScaleFactor": 1
+              },
+              "resolution": [
+                1440,
+                950
+              ]
+            },
+            "limits": {}
+          }
+        ],
+        "subject": {
+          "kind": "clone",
+          "repo": "example-org/user-app",
+          "serve": {
+            "start": "pnpm start",
+            "url": "http://127.0.0.1:3000/",
+            "install": "pnpm install --frozen-lockfile"
+          },
+          "env": []
+        }
+      },
+      "concurrency": 2,
+      "sessionBudgetMs": 1200000,
+      "sandboxMs": 3600000,
+      "caps": {}
+    },
+    "live": {
+      "requirements": [
+        {
+          "kind": "key",
+          "name": "E2B_API_KEY"
+        },
+        {
+          "kind": "key",
+          "name": "OPENAI_API_KEY"
+        }
+      ]
+    }
+  },
+  "detect-taskly-clean": {
+    "dry": {
+      "labId": "detect-taskly-clean",
+      "residual": {
+        "policies": {
+          "allowPrivateRepoAccess": false,
+          "allowProviderCredentials": false,
+          "allowPaymentCredentials": false,
+          "allowGitHubMutation": false
+        },
+        "subject": {}
+      },
+      "dryRun": true,
+      "analysis": {
+        "config": {
+          "model": "gpt-6-astra",
+          "maxCostUsd": 3,
+          "timeoutMs": 600000,
+          "maxOutputTokens": 16384,
+          "question": null
+        },
+        "trigger": "default",
+        "preferLargerOutput": true
+      },
+      "requirements": [],
+      "route": "computer-use",
+      "runner": {
+        "desktop": "e2b-desktop",
+        "brain": {
+          "kind": "openai",
+          "model": "gpt-5.6-sol"
+        },
+        "participants": [
+          {
+            "id": "lane-01",
+            "index": 0,
+            "personaId": "synthetic-new-user",
+            "assignment": {
+              "mission": "You are trying Taskly, a small web app for keeping a to-do list, for the first time. Use it the way you would actually use a list app. Add a few tasks, including one long enough to describe something properly. Mark something complete. Try the filters to see just what is left and just what is finished. Rename one of your tasks. Tidy up when you are done. Report what worked, and describe anything that behaved differently from what you expected, in plain terms, saying what you did and what you saw."
+            },
+            "labels": {},
+            "device": {
+              "name": "desktop",
+              "preset": {
+                "width": 1440,
+                "height": 950,
+                "isMobile": false,
+                "deviceScaleFactor": 1
+              },
+              "resolution": [
+                1440,
+                950
+              ]
+            },
+            "limits": {}
+          }
+        ],
+        "subject": {
+          "kind": "local-tree",
+          "serve": {
+            "start": "python3 -m http.server 8000 --directory bench/taskly-clean",
+            "url": "http://127.0.0.1:8000/"
+          },
+          "env": []
+        }
+      },
+      "concurrency": 1,
+      "sessionBudgetMs": 600000,
+      "sandboxMs": 3000000,
+      "caps": {}
+    },
+    "live": {
+      "requirements": [
+        {
+          "kind": "key",
+          "name": "E2B_API_KEY"
+        },
+        {
+          "kind": "key",
+          "name": "OPENAI_API_KEY"
+        }
+      ]
+    }
+  },
+  "detect-taskly-planted": {
+    "dry": {
+      "labId": "detect-taskly-planted",
+      "residual": {
+        "policies": {
+          "allowPrivateRepoAccess": false,
+          "allowProviderCredentials": false,
+          "allowPaymentCredentials": false,
+          "allowGitHubMutation": false
+        },
+        "subject": {}
+      },
+      "dryRun": true,
+      "analysis": {
+        "config": {
+          "model": "gpt-6-astra",
+          "maxCostUsd": 3,
+          "timeoutMs": 600000,
+          "maxOutputTokens": 16384,
+          "question": null
+        },
+        "trigger": "default",
+        "preferLargerOutput": true
+      },
+      "requirements": [],
+      "route": "computer-use",
+      "runner": {
+        "desktop": "e2b-desktop",
+        "brain": {
+          "kind": "openai",
+          "model": "gpt-5.6-sol"
+        },
+        "participants": [
+          {
+            "id": "lane-01",
+            "index": 0,
+            "personaId": "synthetic-new-user",
+            "assignment": {
+              "mission": "You are trying Taskly, a small web app for keeping a to-do list, for the first time. Use it the way you would actually use a list app. Add a few tasks, including one long enough to describe something properly. Mark something complete. Try the filters to see just what is left and just what is finished. Rename one of your tasks. Tidy up when you are done. Report what worked, and describe anything that behaved differently from what you expected, in plain terms, saying what you did and what you saw."
+            },
+            "labels": {},
+            "device": {
+              "name": "desktop",
+              "preset": {
+                "width": 1440,
+                "height": 950,
+                "isMobile": false,
+                "deviceScaleFactor": 1
+              },
+              "resolution": [
+                1440,
+                950
+              ]
+            },
+            "limits": {}
+          }
+        ],
+        "subject": {
+          "kind": "local-tree",
+          "serve": {
+            "start": "python3 -m http.server 8000 --directory bench/taskly-planted",
+            "url": "http://127.0.0.1:8000/"
+          },
+          "env": []
+        }
+      },
+      "concurrency": 1,
+      "sessionBudgetMs": 600000,
+      "sandboxMs": 3000000,
+      "caps": {}
+    },
+    "live": {
+      "requirements": [
+        {
+          "kind": "key",
+          "name": "E2B_API_KEY"
+        },
+        {
+          "kind": "key",
+          "name": "OPENAI_API_KEY"
+        }
+      ]
+    }
+  },
+  "detect-todomvc": {
+    "dry": {
+      "labId": "detect-todomvc",
+      "residual": {
+        "policies": {
+          "allowPrivateRepoAccess": false,
+          "allowProviderCredentials": false,
+          "allowPaymentCredentials": false,
+          "allowGitHubMutation": false
+        },
+        "subject": {
+          "clone": {
+            "depth": 1
+          },
+          "repos": [
+            "tastejs/todomvc"
+          ]
+        }
+      },
+      "dryRun": true,
+      "analysis": {
+        "config": {
+          "model": "gpt-6-astra",
+          "maxCostUsd": 3,
+          "timeoutMs": 600000,
+          "maxOutputTokens": 16384,
+          "question": null
+        },
+        "trigger": "default",
+        "preferLargerOutput": true
+      },
+      "requirements": [],
+      "route": "computer-use",
+      "runner": {
+        "desktop": "e2b-desktop",
+        "brain": {
+          "kind": "openai",
+          "model": "gpt-5.6-sol"
+        },
+        "participants": [
+          {
+            "id": "lane-01",
+            "index": 0,
+            "personaId": "synthetic-new-user",
+            "assignment": {
+              "mission": "You are trying this to-do app for the first time. Use it the way you would actually use a list app. Add a few items, including one long enough to describe something properly. Mark something complete. Try the filters to see just what is left and just what is finished. Rename one of your items. Tidy up when you are done. Report what worked, and describe anything that behaved differently from what you expected, in plain terms, saying what you did and what you saw."
+            },
+            "labels": {},
+            "device": {
+              "name": "desktop",
+              "preset": {
+                "width": 1440,
+                "height": 950,
+                "isMobile": false,
+                "deviceScaleFactor": 1
+              },
+              "resolution": [
+                1440,
+                950
+              ]
+            },
+            "limits": {}
+          }
+        ],
+        "subject": {
+          "kind": "clone",
+          "repo": "tastejs/todomvc",
+          "serve": {
+            "start": "python3 -m http.server 3000 --directory examples/javascript-es6/dist",
+            "url": "http://127.0.0.1:3000/"
+          },
+          "env": []
+        }
+      },
+      "concurrency": 1,
+      "sessionBudgetMs": 600000,
+      "sandboxMs": 3000000,
+      "caps": {}
+    },
+    "live": {
+      "requirements": [
+        {
+          "kind": "key",
+          "name": "E2B_API_KEY"
+        },
+        {
+          "kind": "key",
+          "name": "OPENAI_API_KEY"
+        }
+      ]
+    }
+  },
+  "dwell-window-todomvc": {
+    "dry": {
+      "labId": "dwell-window-todomvc",
+      "residual": {
+        "policies": {
+          "allowPrivateRepoAccess": false,
+          "allowProviderCredentials": false,
+          "allowPaymentCredentials": false,
+          "allowGitHubMutation": false
+        },
+        "defaults": {
+          "open": false
+        },
+        "subject": {
+          "clone": {
+            "depth": 1
+          },
+          "repos": [
+            "tastejs/todomvc"
+          ]
+        }
+      },
+      "dryRun": true,
+      "analysis": {
+        "config": {
+          "model": "gpt-6-astra",
+          "maxCostUsd": 3,
+          "timeoutMs": 600000,
+          "maxOutputTokens": 16384,
+          "question": null
+        },
+        "trigger": "default",
+        "preferLargerOutput": true
+      },
+      "requirements": [],
+      "route": "computer-use",
+      "runner": {
+        "desktop": "e2b-desktop",
+        "brain": {
+          "kind": "openai",
+          "model": "gpt-5.6-sol"
+        },
+        "participants": [
+          {
+            "id": "lane-01",
+            "index": 0,
+            "personaId": "synthetic-new-user",
+            "assignment": {
+              "mission": "Add one task called \"water the plants\". The study will then hold the page for a while; when you are asked to continue, add a second task called \"call the bank\", then stop. Report what you did."
+            },
+            "labels": {},
+            "device": {
+              "name": "desktop",
+              "preset": {
+                "width": 1440,
+                "height": 950,
+                "isMobile": false,
+                "deviceScaleFactor": 1
+              },
+              "resolution": [
+                1440,
+                950
+              ]
+            },
+            "limits": {
+              "dwell": {
+                "when": {
+                  "any": [
+                    {
+                      "id": "one-left",
+                      "textIncludes": "1 item left"
+                    }
+                  ]
+                },
+                "ms": 60000,
+                "everyMs": 10000,
+                "then": "continue"
+              }
+            },
+            "tasks": [
+              {
+                "id": "first-task",
+                "goal": "Add the first task.",
+                "success": {
+                  "any": [
+                    {
+                      "id": "one-left",
+                      "textIncludes": "1 item left"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "second-task",
+                "goal": "Add the second task.",
+                "success": {
+                  "any": [
+                    {
+                      "id": "two-left",
+                      "textIncludes": "2 items left"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "kind": "clone",
+          "repo": "tastejs/todomvc",
+          "serve": {
+            "start": "python3 -m http.server 3000 --directory examples/javascript-es6/dist",
+            "url": "http://127.0.0.1:3000/"
+          },
+          "env": []
+        }
+      },
+      "concurrency": 1,
+      "sessionBudgetMs": 300000,
+      "sandboxMs": 2700000,
+      "caps": {
+        "maxUsd": 2,
+        "maxTotalUsd": 2
+      }
+    },
+    "live": {
+      "requirements": [
+        {
+          "kind": "key",
+          "name": "E2B_API_KEY"
+        },
+        {
+          "kind": "key",
+          "name": "OPENAI_API_KEY"
+        }
+      ]
+    }
+  },
+  "effort-contrast-demo": {
+    "dry": {
+      "labId": "effort-contrast-demo",
+      "residual": {
+        "defaults": {
+          "open": false
+        },
+        "subject": {
+          "clone": {
+            "depth": 1
+          },
+          "repos": [
+            "drawdb-io/drawdb"
+          ]
+        }
+      },
+      "dryRun": true,
+      "analysis": {
+        "config": {
+          "model": "gpt-6-astra",
+          "maxCostUsd": 3,
+          "timeoutMs": 600000,
+          "maxOutputTokens": 16384,
+          "question": null
+        },
+        "trigger": "default",
+        "preferLargerOutput": true
+      },
+      "requirements": [],
+      "route": "computer-use",
+      "runner": {
+        "desktop": "e2b-desktop",
+        "brain": {
+          "kind": "openai",
+          "model": "gpt-5.6-sol"
+        },
+        "participants": [
+          {
+            "id": "default-effort",
+            "index": 0,
+            "personaId": "synthetic-new-user",
+            "assignment": {
+              "mission": "Create a small database diagram with at least two related tables, then stop.",
+              "focus": "Build the diagram the way you normally would, and stop when you are done or blocked."
+            },
+            "labels": {},
+            "device": {
+              "name": "desktop",
+              "preset": {
+                "width": 1440,
+                "height": 950,
+                "isMobile": false,
+                "deviceScaleFactor": 1
+              },
+              "resolution": [
+                1440,
+                950
+              ]
+            },
+            "limits": {
+              "reasoningEffort": "medium"
+            }
+          },
+          {
+            "id": "harder-effort",
+            "index": 1,
+            "personaId": "synthetic-new-user",
+            "assignment": {
+              "mission": "Create a small database diagram with at least two related tables, then stop.",
+              "focus": "Build the diagram the way you normally would, and stop when you are done or blocked."
+            },
+            "labels": {},
+            "device": {
+              "name": "desktop",
+              "preset": {
+                "width": 1440,
+                "height": 950,
+                "isMobile": false,
+                "deviceScaleFactor": 1
+              },
+              "resolution": [
+                1440,
+                950
+              ]
+            },
+            "limits": {
+              "reasoningEffort": "high"
+            }
+          }
+        ],
+        "subject": {
+          "kind": "clone",
+          "repo": "drawdb-io/drawdb",
+          "serve": {
+            "start": "npx vite preview --host 127.0.0.1 --port 3000",
+            "url": "http://127.0.0.1:3000/",
+            "install": "npm install --no-audit --no-fund",
+            "build": "npm run build"
+          },
+          "env": []
+        }
+      },
+      "concurrency": 2,
+      "sessionBudgetMs": 1200000,
+      "sandboxMs": 3600000,
+      "caps": {
+        "maxUsd": 15
+      }
+    },
+    "live": {
+      "requirements": [
+        {
+          "kind": "key",
+          "name": "E2B_API_KEY"
+        },
+        {
+          "kind": "key",
+          "name": "OPENAI_API_KEY"
+        }
+      ]
+    }
+  },
+  "fanout-demo": {
+    "dry": {
+      "labId": "fanout-demo",
+      "residual": {
+        "subject": {}
+      },
+      "dryRun": true,
+      "analysis": {
+        "config": {
+          "model": "gpt-6-astra",
+          "maxCostUsd": 3,
+          "timeoutMs": 600000,
+          "maxOutputTokens": 16384,
+          "question": null
+        },
+        "trigger": "default",
+        "preferLargerOutput": true
+      },
+      "requirements": [],
+      "route": "computer-use",
+      "runner": {
+        "desktop": "e2b-desktop",
+        "brain": {
+          "kind": "openai",
+          "model": "gpt-5.6-sol"
+        },
+        "participants": [
+          {
+            "id": "mobile-newcomer",
+            "index": 0,
+            "personaId": "first-time-visitor",
+            "assignment": {
+              "mission": "Explore the app, complete the primary task for your persona, and stop when done.",
+              "focus": "Sign up and reach the first value moment from a phone."
+            },
+            "labels": {},
+            "device": {
+              "name": "mobile",
+              "preset": {
+                "width": 414,
+                "height": 896,
+                "isMobile": true,
+                "deviceScaleFactor": 3
+              },
+              "resolution": [
+                500,
+                896
+              ]
+            },
+            "limits": {}
+          },
+          {
+            "id": "small-mobile-skimmer",
+            "index": 1,
+            "personaId": "impatient-skimmer",
+            "assignment": {
+              "mission": "Explore the app, complete the primary task for your persona, and stop when done.",
+              "focus": "Skim the landing page and bounce if the value is not obvious in 10 seconds."
+            },
+            "labels": {},
+            "device": {
+              "name": "small-mobile",
+              "preset": {
+                "width": 360,
+                "height": 740,
+                "isMobile": true,
+                "deviceScaleFactor": 3
+              },
+              "resolution": [
+                500,
+                740
+              ]
+            },
+            "limits": {}
+          },
+          {
+            "id": "desktop-power",
+            "index": 2,
+            "personaId": "power-user",
+            "assignment": {
+              "mission": "Explore the app, complete the primary task for your persona, and stop when done.",
+              "focus": "Find the advanced settings and change one preference."
+            },
+            "labels": {},
+            "device": {
+              "name": "desktop",
+              "preset": {
+                "width": 1440,
+                "height": 950,
+                "isMobile": false,
+                "deviceScaleFactor": 1
+              },
+              "resolution": [
+                1440,
+                950
+              ]
+            },
+            "limits": {}
+          },
+          {
+            "id": "wide-researcher",
+            "index": 3,
+            "personaId": "comparison-shopper",
+            "assignment": {
+              "mission": "Explore the app, complete the primary task for your persona, and stop when done.",
+              "focus": "Compare plans and locate the pricing details."
+            },
+            "labels": {},
+            "device": {
+              "name": "wide",
+              "preset": {
+                "width": 1920,
+                "height": 1080,
+                "isMobile": false,
+                "deviceScaleFactor": 1
+              },
+              "resolution": [
+                1920,
+                1080
+              ]
+            },
+            "limits": {}
+          }
+        ],
+        "subject": {
+          "kind": "app-url",
+          "appUrl": "http://127.0.0.1:3000/",
+          "publicTargets": false
+        }
+      },
+      "concurrency": 2,
+      "sessionBudgetMs": 900000,
+      "sandboxMs": 1500000,
+      "caps": {}
+    },
+    "live": {
+      "requirements": [
+        {
+          "kind": "key",
+          "name": "E2B_API_KEY"
+        },
+        {
+          "kind": "key",
+          "name": "OPENAI_API_KEY"
+        }
+      ]
+    }
+  },
+  "first-contact": {
+    "dry": {
+      "labId": "first-contact",
+      "residual": {
+        "policies": {
+          "allowPrivateRepoAccess": false,
+          "allowProviderCredentials": false,
+          "allowPaymentCredentials": false,
+          "allowGitHubMutation": false
+        },
+        "review": {
+          "analysis": false
+        },
+        "subject": {}
+      },
+      "dryRun": true,
+      "requirements": [],
+      "route": "terminal",
+      "product": {
+        "name": "humanish",
+        "publicSurfaces": [
+          "https://www.npmjs.com/package/humanish",
+          "https://github.com/danielgwilson/humanish"
+        ]
+      },
+      "personaId": "autonomous-coding-agent",
+      "mission": "You are an autonomous coding agent working in a fresh Linux shell on a throwaway machine. A teammate is considering adopting a tool called humanish and has asked you to try it and report back. Find out what it is from its public surfaces, get it running, and get as far as you can toward actually using it for what it is for. You do not have provider API keys, so do not attempt anything that spends money; if you hit a wall that needs one, say so and keep going with whatever else you can reach. Work in a scratch directory. When you are done, tell your teammate plainly: what it does, whether you got it working, exactly where you got stuck, and whether you would recommend adopting it.",
+      "runtime": {
+        "auth": "openai-env"
+      },
+      "caps": {
+        "maxUsd": 0,
+        "maxJobs": 0,
+        "maxMinutes": 12
+      }
+    },
+    "live": {
+      "requirements": [
+        {
+          "kind": "key",
+          "name": "E2B_API_KEY"
+        },
+        {
+          "kind": "key-one-of",
+          "names": [
+            "CODEX_API_KEY",
+            "OPENAI_API_KEY"
+          ]
+        }
+      ]
+    }
+  },
+  "first-run": {
+    "dry": {
+      "labId": "first-run",
+      "residual": {
+        "defaults": {
+          "open": true
+        },
+        "subject": {}
+      },
+      "dryRun": true,
+      "analysis": {
+        "config": {
+          "model": "gpt-6-astra",
+          "maxCostUsd": 3,
+          "timeoutMs": 600000,
+          "maxOutputTokens": 16384,
+          "question": null
+        },
+        "trigger": "default",
+        "preferLargerOutput": true
+      },
+      "requirements": [],
+      "route": "preview",
+      "simCount": 4
+    },
+    "live": {
+      "gap": "live-preview"
+    }
+  },
+  "handed-a-human-surface": {
+    "dry": {
+      "labId": "handed-a-human-surface",
+      "residual": {
+        "policies": {
+          "allowPrivateRepoAccess": false,
+          "allowProviderCredentials": false,
+          "allowPaymentCredentials": false,
+          "allowGitHubMutation": false
+        },
+        "subject": {}
+      },
+      "dryRun": true,
+      "analysis": {
+        "config": {
+          "model": "gpt-6-astra",
+          "maxCostUsd": 3,
+          "timeoutMs": 600000,
+          "maxOutputTokens": 16384,
+          "question": null
+        },
+        "trigger": "default",
+        "preferLargerOutput": true
+      },
+      "requirements": [],
+      "route": "terminal",
+      "product": {
+        "name": "humanish",
+        "publicSurfaces": [
+          "https://www.npmjs.com/package/humanish",
+          "https://github.com/danielgwilson/humanish"
+        ],
+        "install": "sudo -n npm install -g humanish@latest && humanish init --yes"
+      },
+      "personaId": "autonomous-coding-agent",
+      "mission": "You are a coding agent working in a teammate's project on their machine. They have just said to you: \"I've got humanish set up in here — open the humanish TUI and tell me what studies this project has, and whether any of them have ever been run.\" Do what they asked and report back to them. Work only in this directory, and do not start any run or spend any money.",
+      "runtime": {
+        "auth": "openai-env"
+      },
+      "caps": {
+        "maxUsd": 0,
+        "maxJobs": 0,
+        "maxMinutes": 10
+      }
+    },
+    "live": {
+      "requirements": [
+        {
+          "kind": "key",
+          "name": "E2B_API_KEY"
+        },
+        {
+          "kind": "key-one-of",
+          "names": [
+            "CODEX_API_KEY",
+            "OPENAI_API_KEY"
+          ]
+        }
+      ]
+    }
+  },
+  "last-mile": {
+    "dry": {
+      "labId": "last-mile",
+      "residual": {
+        "policies": {
+          "allowPrivateRepoAccess": false,
+          "allowProviderCredentials": false,
+          "allowPaymentCredentials": false,
+          "allowGitHubMutation": false
+        },
+        "subject": {}
+      },
+      "dryRun": true,
+      "analysis": {
+        "config": {
+          "model": "gpt-6-astra",
+          "maxCostUsd": 3,
+          "timeoutMs": 600000,
+          "maxOutputTokens": 16384,
+          "question": null
+        },
+        "trigger": "default",
+        "preferLargerOutput": true
+      },
+      "requirements": [],
+      "route": "terminal",
+      "product": {
+        "name": "humanish",
+        "publicSurfaces": [
+          "https://www.npmjs.com/package/humanish",
+          "https://github.com/danielgwilson/humanish"
+        ]
+      },
+      "personaId": "autonomous-coding-agent",
+      "mission": "You are an autonomous coding agent working in a fresh Linux shell on a throwaway machine. A teammate is considering adopting a tool called humanish and has asked you to take it as far as it goes: not just install it, but work out how they would actually use it for what it is for. Find out what it is from its public surfaces and get it running. There are no provider API keys in this environment, so you cannot complete anything that spends money. When you reach something that needs credentials you do not have, work out precisely what would be required: which credentials, what they are called, where they go, and the exact command your teammate should run next. Then carry on with whatever else you can still reach. Work in a scratch directory. When you are done, tell your teammate plainly: what it does, how far you got, the exact next command and what it needs in order to work, where you got stuck or had to guess, and whether you would recommend adopting it.",
+      "runtime": {
+        "auth": "openai-env"
+      },
+      "caps": {
+        "maxUsd": 0,
+        "maxJobs": 0,
+        "maxMinutes": 12
+      }
+    },
+    "live": {
+      "requirements": [
+        {
+          "kind": "key",
+          "name": "E2B_API_KEY"
+        },
+        {
+          "kind": "key-one-of",
+          "names": [
+            "CODEX_API_KEY",
+            "OPENAI_API_KEY"
+          ]
+        }
+      ]
+    }
+  },
+  "later-tab-emulation": {
+    "dry": {
+      "labId": "later-tab-emulation",
+      "residual": {
+        "policies": {
+          "allowPrivateRepoAccess": false,
+          "allowProviderCredentials": false,
+          "allowPaymentCredentials": false,
+          "allowGitHubMutation": false
+        },
+        "defaults": {
+          "open": false
+        },
+        "execution": {
+          "desktop": {
+            "browser": "chrome",
+            "fidelity": {
+              "mobileEmulation": true
+            }
+          }
+        },
+        "subject": {}
+      },
+      "dryRun": true,
+      "analysis": {
+        "config": {
+          "model": "gpt-6-astra",
+          "maxCostUsd": 3,
+          "timeoutMs": 600000,
+          "maxOutputTokens": 16384,
+          "question": null
+        },
+        "trigger": "default",
+        "preferLargerOutput": true
+      },
+      "requirements": [],
+      "route": "computer-use",
+      "runner": {
+        "desktop": "e2b-desktop",
+        "brain": {
+          "kind": "openai",
+          "model": "gpt-5.6-sol"
+        },
+        "participants": [
+          {
+            "id": "phone-newcomer",
+            "index": 0,
+            "personaId": "synthetic-new-user",
+            "assignment": {
+              "mission": "Open the guide from the link on the page. On the guide page, read the guide width, the touch points and the pixel ratio it reports, and tell me those three numbers exactly as written. Also tell me the width the first page reported. Then stop.",
+              "focus": "Use the page the way you normally would on a phone, and stop when you have the numbers."
+            },
+            "labels": {},
+            "device": {
+              "name": "mobile",
+              "preset": {
+                "width": 414,
+                "height": 896,
+                "isMobile": true,
+                "deviceScaleFactor": 3
+              },
+              "resolution": [
+                500,
+                896
+              ]
+            },
+            "limits": {},
+            "tasks": [
+              {
+                "id": "reach-guide",
+                "goal": "Open the guide page.",
+                "success": {
+                  "any": [
+                    {
+                      "id": "guide-text",
+                      "textIncludes": "Guide width"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "kind": "local-tree",
+          "serve": {
+            "start": "python3 -m http.server 8000 --directory bench/later-tab",
+            "url": "http://127.0.0.1:8000/"
+          },
+          "env": []
+        }
+      },
+      "concurrency": 1,
+      "sessionBudgetMs": 240000,
+      "sandboxMs": 2640000,
+      "caps": {
+        "maxUsd": 1,
+        "maxTotalUsd": 1
+      }
+    },
+    "live": {
+      "requirements": [
+        {
+          "kind": "key",
+          "name": "E2B_API_KEY"
+        },
+        {
+          "kind": "key",
+          "name": "OPENAI_API_KEY"
+        }
+      ]
+    }
+  },
+  "lobby-trivia-3player": {
+    "dry": {
+      "labId": "lobby-trivia-3player",
+      "residual": {
+        "policies": {
+          "allowPublicTargets": true
+        },
+        "defaults": {
+          "open": true
+        },
+        "subject": {}
+      },
+      "dryRun": true,
+      "analysis": {
+        "config": {
+          "model": "gpt-6-astra",
+          "maxCostUsd": 3,
+          "timeoutMs": 600000,
+          "maxOutputTokens": 16384,
+          "question": null
+        },
+        "trigger": "default",
+        "preferLargerOutput": true
+      },
+      "requirements": [],
+      "route": "shared-world",
+      "plane": {
+        "kind": "external-public",
+        "appUrl": "https://lobby-trivia.example.test/",
+        "owner": "your-org/your-app",
+        "participants": [
+          {
+            "id": "host",
+            "index": 0,
+            "personaId": "party-host",
+            "assignment": {
+              "mission": "You are one of several friends playing a round of an online multiplayer trivia game together on your phones at the same time. Play your role, then stop.",
+              "focus": "Create a lobby. While you wait in the waiting room, open the host settings and pick the shortest round timer so the game moves fast. You will be alone at first, which is normal: your friends are still opening the app on their own phones and will appear over the next minute. Keep waiting and re-checking the player list. Do NOT end your turn while you are waiting, and do NOT treat being alone as being blocked. Once the other players show up, start the game and play your guesses."
+            },
+            "labels": {},
+            "device": {
+              "name": "mobile",
+              "preset": {
+                "width": 414,
+                "height": 896,
+                "isMobile": true,
+                "deviceScaleFactor": 3
+              },
+              "resolution": [
+                500,
+                896
+              ]
+            },
+            "limits": {},
+            "host": true
+          },
+          {
+            "id": "player-2",
+            "index": 1,
+            "personaId": "competitive-friend",
+            "assignment": {
+              "mission": "You are one of several friends playing a round of an online multiplayer trivia game together on your phones at the same time. Play your role, then stop.",
+              "focus": "Join the lobby you're told the code for, then play your guesses. Pick a name that is actually yours, not the example shown in the name field."
+            },
+            "labels": {},
+            "device": {
+              "name": "mobile",
+              "preset": {
+                "width": 414,
+                "height": 896,
+                "isMobile": true,
+                "deviceScaleFactor": 3
+              },
+              "resolution": [
+                500,
+                896
+              ]
+            },
+            "limits": {},
+            "host": false
+          },
+          {
+            "id": "player-3",
+            "index": 2,
+            "personaId": "casual-friend",
+            "assignment": {
+              "mission": "You are one of several friends playing a round of an online multiplayer trivia game together on your phones at the same time. Play your role, then stop.",
+              "focus": "Join the lobby you're told the code for, then play your guesses. Pick a name that is actually yours, not the example shown in the name field."
+            },
+            "labels": {},
+            "device": {
+              "name": "small-mobile",
+              "preset": {
+                "width": 360,
+                "height": 740,
+                "isMobile": true,
+                "deviceScaleFactor": 3
+              },
+              "resolution": [
+                500,
+                740
+              ]
+            },
+            "limits": {},
+            "host": false
+          }
+        ]
+      },
+      "concurrency": 3,
+      "brain": {
+        "kind": "openai",
+        "model": "gpt-5.6-sol"
+      },
+      "caps": {}
+    },
+    "live": {
+      "requirements": [
+        {
+          "kind": "key",
+          "name": "E2B_API_KEY"
+        },
+        {
+          "kind": "key",
+          "name": "OPENAI_API_KEY"
+        }
+      ]
+    }
+  },
+  "participant-camera": {
+    "dry": {
+      "labId": "participant-camera",
+      "residual": {
+        "policies": {
+          "mediaPermission": "prompt",
+          "allowPrivateRepoAccess": false,
+          "allowProviderCredentials": false,
+          "allowPaymentCredentials": false,
+          "allowGitHubMutation": false
+        },
+        "defaults": {
+          "open": false
+        },
+        "execution": {
+          "desktop": {
+            "browser": "chrome",
+            "media": {
+              "camera": {
+                "source": "synthetic"
+              }
+            }
+          }
+        },
+        "subject": {}
+      },
+      "dryRun": true,
+      "analysis": {
+        "config": {
+          "model": "gpt-6-astra",
+          "maxCostUsd": 3,
+          "timeoutMs": 600000,
+          "maxOutputTokens": 16384,
+          "question": null
+        },
+        "trigger": "default",
+        "preferLargerOutput": true
+      },
+      "requirements": [],
+      "route": "computer-use",
+      "runner": {
+        "desktop": "e2b-desktop",
+        "brain": {
+          "kind": "openai",
+          "model": "gpt-5.6-sol"
+        },
+        "participants": [
+          {
+            "id": "lane-01",
+            "index": 0,
+            "personaId": "synthetic-new-user",
+            "assignment": {
+              "mission": "Turn on the camera with the button on the page. If the browser asks for permission to use the camera, allow it for this visit. Then tell me exactly what the page says under the video: the camera's name and the size. Then stop."
+            },
+            "labels": {},
+            "device": {
+              "name": "desktop",
+              "preset": {
+                "width": 1440,
+                "height": 950,
+                "isMobile": false,
+                "deviceScaleFactor": 1
+              },
+              "resolution": [
+                1440,
+                950
+              ]
+            },
+            "limits": {},
+            "tasks": [
+              {
+                "id": "camera-on",
+                "goal": "Turn the camera on.",
+                "success": {
+                  "any": [
+                    {
+                      "id": "on",
+                      "textIncludes": "Camera: on."
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "kind": "local-tree",
+          "serve": {
+            "start": "python3 -m http.server 8000 --directory bench/media-check",
+            "url": "http://127.0.0.1:8000/"
+          },
+          "env": []
+        }
+      },
+      "concurrency": 1,
+      "sessionBudgetMs": 240000,
+      "sandboxMs": 2640000,
+      "caps": {
+        "maxUsd": 1,
+        "maxTotalUsd": 1
+      }
+    },
+    "live": {
+      "requirements": [
+        {
+          "kind": "key",
+          "name": "E2B_API_KEY"
+        },
+        {
+          "kind": "key",
+          "name": "OPENAI_API_KEY"
+        }
+      ]
+    }
+  },
+  "persona-contrast-demo": {
+    "dry": {
+      "labId": "persona-contrast-demo",
+      "residual": {
+        "defaults": {
+          "open": false
+        },
+        "subject": {
+          "clone": {
+            "depth": 1
+          },
+          "repos": [
+            "drawdb-io/drawdb"
+          ]
+        }
+      },
+      "dryRun": true,
+      "analysis": {
+        "config": {
+          "model": "gpt-6-astra",
+          "maxCostUsd": 3,
+          "timeoutMs": 600000,
+          "maxOutputTokens": 16384,
+          "question": null
+        },
+        "trigger": "default",
+        "preferLargerOutput": true
+      },
+      "requirements": [],
+      "route": "computer-use",
+      "runner": {
+        "desktop": "e2b-desktop",
+        "brain": {
+          "kind": "openai",
+          "model": "gpt-5.6-sol"
+        },
+        "participants": [
+          {
+            "id": "impatient-expert",
+            "index": 0,
+            "personaId": "skeptical-power-user",
+            "assignment": {
+              "mission": "Create a small database diagram with at least two related tables, then stop.",
+              "focus": "Build the diagram the way you normally would, and stop when you are done or blocked."
+            },
+            "labels": {},
+            "device": {
+              "name": "desktop",
+              "preset": {
+                "width": 1440,
+                "height": 950,
+                "isMobile": false,
+                "deviceScaleFactor": 1
+              },
+              "resolution": [
+                1440,
+                950
+              ]
+            },
+            "limits": {}
+          },
+          {
+            "id": "patient-newcomer",
+            "index": 1,
+            "personaId": "synthetic-new-user",
+            "assignment": {
+              "mission": "Create a small database diagram with at least two related tables, then stop.",
+              "focus": "Build the diagram the way you normally would, and stop when you are done or blocked."
+            },
+            "labels": {},
+            "device": {
+              "name": "desktop",
+              "preset": {
+                "width": 1440,
+                "height": 950,
+                "isMobile": false,
+                "deviceScaleFactor": 1
+              },
+              "resolution": [
+                1440,
+                950
+              ]
+            },
+            "limits": {}
+          }
+        ],
+        "subject": {
+          "kind": "clone",
+          "repo": "drawdb-io/drawdb",
+          "serve": {
+            "start": "npx vite preview --host 127.0.0.1 --port 3000",
+            "url": "http://127.0.0.1:3000/",
+            "install": "npm install --no-audit --no-fund",
+            "build": "npm run build"
+          },
+          "env": []
+        }
+      },
+      "concurrency": 2,
+      "sessionBudgetMs": 1200000,
+      "sandboxMs": 3600000,
+      "caps": {
+        "maxUsd": 15
+      }
+    },
+    "live": {
+      "requirements": [
+        {
+          "kind": "key",
+          "name": "E2B_API_KEY"
+        },
+        {
+          "kind": "key",
+          "name": "OPENAI_API_KEY"
+        }
+      ]
+    }
+  },
+  "scripted-demo": {
+    "dry": {
+      "labId": "scripted-demo",
+      "residual": {
+        "review": {
+          "analysis": false
+        },
+        "subject": {}
+      },
+      "dryRun": true,
+      "requirements": [],
+      "route": "scripted",
+      "subject": {
+        "kind": "loopback",
+        "appUrl": "http://127.0.0.1:5173"
+      },
+      "scenarioRef": "scripted-first-run",
+      "surfaces": [
+        {
+          "id": "desktop",
+          "label": "Desktop browser surface",
+          "viewport": {
+            "width": 1440,
+            "height": 960,
+            "deviceScaleFactor": 1,
+            "isMobile": false
+          }
+        },
+        {
+          "id": "mobile",
+          "label": "Mobile browser surface",
+          "viewport": {
+            "width": 390,
+            "height": 844,
+            "deviceScaleFactor": 2,
+            "isMobile": true
+          }
+        }
+      ],
+      "personaId": "synthetic-new-user",
+      "sessionTimeoutMs": 300000
+    },
+    "live": {
+      "requirements": [
+        {
+          "kind": "host-browser"
+        }
+      ]
+    }
+  },
+  "shared-world-concurrent-demo": {
+    "dry": {
+      "labId": "shared-world-concurrent-demo",
+      "residual": {
+        "subject": {
+          "clone": {
+            "depth": 1
+          },
+          "repos": [
+            "example-org/collab-notes-app"
+          ]
+        }
+      },
+      "dryRun": true,
+      "analysis": {
+        "config": {
+          "model": "gpt-6-astra",
+          "maxCostUsd": 3,
+          "timeoutMs": 600000,
+          "maxOutputTokens": 16384,
+          "question": null
+        },
+        "trigger": "default",
+        "preferLargerOutput": true
+      },
+      "requirements": [],
+      "route": "shared-world",
+      "plane": {
+        "kind": "provisioned",
+        "subject": {
+          "kind": "clone",
+          "repo": "example-org/collab-notes-app",
+          "serve": {
+            "start": "pnpm start -H 0.0.0.0",
+            "url": "http://127.0.0.1:3000/",
+            "install": "pnpm install --frozen-lockfile",
+            "build": "pnpm build"
+          },
+          "env": [
+            "DATABASE_URL"
+          ],
+          "state": {
+            "seed": [
+              {
+                "name": "db-migrate",
+                "command": "pnpm db:migrate",
+                "when": "before-start"
+              },
+              {
+                "name": "seed-baseline",
+                "command": "pnpm db:seed",
+                "when": "before-start"
+              }
+            ],
+            "checkpoint": [
+              {
+                "name": "notes-count",
+                "command": "psql \"$DATABASE_URL\" -tAc \"select count(*) from notes\""
+              },
+              {
+                "name": "reviews-count",
+                "command": "psql \"$DATABASE_URL\" -tAc \"select count(*) from reviews\""
+              }
+            ]
+          }
+        },
+        "participants": [
+          {
+            "id": "persona-author",
+            "index": 0,
+            "personaId": "contributor",
+            "assignment": {
+              "mission": "Use the shared app to accomplish your role's task, then stop.",
+              "focus": "Create and publish a note titled \"Launch checklist\"."
+            },
+            "labels": {},
+            "device": {
+              "name": "desktop",
+              "preset": {
+                "width": 1440,
+                "height": 950,
+                "isMobile": false,
+                "deviceScaleFactor": 1
+              },
+              "resolution": [
+                1440,
+                950
+              ]
+            },
+            "limits": {},
+            "entry": "/compose"
+          },
+          {
+            "id": "persona-reviewer",
+            "index": 1,
+            "personaId": "reviewer",
+            "assignment": {
+              "mission": "Use the shared app to accomplish your role's task, then stop.",
+              "focus": "Open the most recent published note and leave one review comment."
+            },
+            "labels": {},
+            "device": {
+              "name": "desktop",
+              "preset": {
+                "width": 1440,
+                "height": 950,
+                "isMobile": false,
+                "deviceScaleFactor": 1
+              },
+              "resolution": [
+                1440,
+                950
+              ]
+            },
+            "limits": {},
+            "entry": "/inbox"
+          },
+          {
+            "id": "persona-skimmer",
+            "index": 2,
+            "personaId": "impatient-skimmer",
+            "assignment": {
+              "mission": "Use the shared app to accomplish your role's task, then stop.",
+              "focus": "Skim the feed on a phone and react to the newest note."
+            },
+            "labels": {},
+            "device": {
+              "name": "mobile",
+              "preset": {
+                "width": 414,
+                "height": 896,
+                "isMobile": true,
+                "deviceScaleFactor": 3
+              },
+              "resolution": [
+                500,
+                896
+              ]
+            },
+            "limits": {},
+            "entry": "/feed"
+          }
+        ]
+      },
+      "concurrency": 3,
+      "brain": {
+        "kind": "openai",
+        "model": "gpt-5.6-sol"
+      },
+      "caps": {}
+    },
+    "live": {
+      "requirements": [
+        {
+          "kind": "key",
+          "name": "E2B_API_KEY"
+        },
+        {
+          "kind": "key",
+          "name": "OPENAI_API_KEY"
+        },
+        {
+          "kind": "subject-env",
+          "names": [
+            "DATABASE_URL"
+          ]
+        }
+      ]
+    }
+  },
+  "shared-world-concurrent-live": {
+    "dry": {
+      "labId": "shared-world-concurrent-live",
+      "residual": {
+        "subject": {
+          "clone": {
+            "depth": 1
+          },
+          "repos": [
+            "danielgwilson/humanish"
+          ]
+        }
+      },
+      "dryRun": true,
+      "analysis": {
+        "config": {
+          "model": "gpt-6-astra",
+          "maxCostUsd": 3,
+          "timeoutMs": 600000,
+          "maxOutputTokens": 16384,
+          "question": null
+        },
+        "trigger": "default",
+        "preferLargerOutput": true
+      },
+      "requirements": [],
+      "route": "shared-world",
+      "plane": {
+        "kind": "provisioned",
+        "subject": {
+          "kind": "clone",
+          "repo": "danielgwilson/humanish",
+          "serve": {
+            "start": "HOST=0.0.0.0 PORT=3000 python3 humanish/fixtures/shared-world-app/server.py",
+            "url": "http://127.0.0.1:3000/",
+            "readyTimeoutMs": 60000
+          },
+          "env": [],
+          "state": {
+            "seed": [
+              {
+                "name": "seed-tasks",
+                "command": "python3 humanish/fixtures/shared-world-app/seed.py",
+                "when": "before-start"
+              }
+            ],
+            "checkpoint": [
+              {
+                "name": "task-count",
+                "command": "python3 humanish/fixtures/shared-world-app/checkpoint.py"
+              }
+            ]
+          }
+        },
+        "participants": [
+          {
+            "id": "persona-planner",
+            "index": 0,
+            "personaId": "weekly-planner",
+            "assignment": {
+              "mission": "You are one of several people using a shared task board at the same time. The page has a text box and an \"Add task\" button. Add exactly ONE task, then stop.",
+              "focus": "Add one task describing planning the week, then stop."
+            },
+            "labels": {
+              "actorType": "planner",
+              "surface": "task-board",
+              "caseGroup": "board-001"
+            },
+            "device": {
+              "name": "desktop",
+              "preset": {
+                "width": 1440,
+                "height": 950,
+                "isMobile": false,
+                "deviceScaleFactor": 1
+              },
+              "resolution": [
+                1440,
+                950
+              ]
+            },
+            "limits": {}
+          },
+          {
+            "id": "persona-coordinator",
+            "index": 1,
+            "personaId": "ops-coordinator",
+            "assignment": {
+              "mission": "You are one of several people using a shared task board at the same time. The page has a text box and an \"Add task\" button. Add exactly ONE task, then stop.",
+              "focus": "Add one task describing coordinating an operations handoff, then stop."
+            },
+            "labels": {
+              "actorType": "coordinator",
+              "surface": "task-board",
+              "caseGroup": "board-001"
+            },
+            "device": {
+              "name": "desktop",
+              "preset": {
+                "width": 1440,
+                "height": 950,
+                "isMobile": false,
+                "deviceScaleFactor": 1
+              },
+              "resolution": [
+                1440,
+                950
+              ]
+            },
+            "limits": {}
+          },
+          {
+            "id": "persona-mobile",
+            "index": 2,
+            "personaId": "on-the-go-contributor",
+            "assignment": {
+              "mission": "You are one of several people using a shared task board at the same time. The page has a text box and an \"Add task\" button. Add exactly ONE task, then stop.",
+              "focus": "From a phone, add one quick task describing a follow-up, then stop."
+            },
+            "labels": {
+              "actorType": "contributor",
+              "surface": "task-board",
+              "caseGroup": "board-001"
+            },
+            "device": {
+              "name": "mobile",
+              "preset": {
+                "width": 414,
+                "height": 896,
+                "isMobile": true,
+                "deviceScaleFactor": 3
+              },
+              "resolution": [
+                500,
+                896
+              ]
+            },
+            "limits": {}
+          }
+        ]
+      },
+      "concurrency": 3,
+      "brain": {
+        "kind": "openai",
+        "model": "gpt-5.6-sol"
+      },
+      "caps": {}
+    },
+    "live": {
+      "requirements": [
+        {
+          "kind": "key",
+          "name": "E2B_API_KEY"
+        },
+        {
+          "kind": "key",
+          "name": "OPENAI_API_KEY"
+        }
+      ]
+    }
+  },
+  "signup-email-verify": {
+    "dry": {
+      "labId": "signup-email-verify",
+      "residual": {
+        "comms": {
+          "email": {
+            "kind": "fake",
+            "smtp": {
+              "port": 2525,
+              "hostEnv": "NEXT_PRIVATE_SMTP_HOST",
+              "portEnv": "NEXT_PRIVATE_SMTP_PORT",
+              "userEnv": "NEXT_PRIVATE_SMTP_USERNAME",
+              "passwordEnv": "NEXT_PRIVATE_SMTP_PASSWORD"
+            },
+            "recipients": [
+              {
+                "lane": "newcomer",
+                "address": "newcomer@example.test"
+              },
+              {
+                "lane": "power-user",
+                "address": "power-user@example.test"
+              }
+            ]
+          }
+        },
+        "defaults": {
+          "open": false
+        },
+        "subject": {
+          "clone": {
+            "depth": 1
+          },
+          "repos": [
+            "documenso/documenso"
+          ]
+        }
+      },
+      "dryRun": true,
+      "analysis": {
+        "config": {
+          "model": "gpt-6-astra",
+          "maxCostUsd": 3,
+          "timeoutMs": 600000,
+          "maxOutputTokens": 16384,
+          "question": null
+        },
+        "trigger": "default",
+        "preferLargerOutput": true
+      },
+      "requirements": [],
+      "route": "computer-use",
+      "runner": {
+        "desktop": "e2b-desktop",
+        "brain": {
+          "kind": "openai",
+          "model": "gpt-5.6-sol"
+        },
+        "participants": [
+          {
+            "id": "newcomer",
+            "index": 0,
+            "personaId": "synthetic-new-user",
+            "assignment": {
+              "mission": "Create an account using the email address in your instructions, complete the email verification, sign in, and stop once you can see the signed-in dashboard.",
+              "focus": "Sign up as a new user. If a step is confusing or you get stuck, say exactly what blocked you and what you tried — that is worth more than pushing through."
+            },
+            "labels": {},
+            "device": {
+              "name": "desktop",
+              "preset": {
+                "width": 1440,
+                "height": 950,
+                "isMobile": false,
+                "deviceScaleFactor": 1
+              },
+              "resolution": [
+                1440,
+                950
+              ]
+            },
+            "limits": {},
+            "tasks": [
+              {
+                "id": "reach-signup",
+                "goal": "Find where to create an account and open the signup form.",
+                "success": {
+                  "any": [
+                    {
+                      "id": "on-signup",
+                      "urlIncludes": "/signup"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "read-verification-mail",
+                "goal": "When the app tells you it has emailed you, open your inbox and read that email.",
+                "success": {
+                  "any": [
+                    {
+                      "id": "inbox-open",
+                      "urlIncludes": "127.0.0.1:8025"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "reach-dashboard",
+                "goal": "Finish signing in, and stop once you can see your account's documents area.",
+                "success": {
+                  "any": [
+                    {
+                      "id": "signed-in",
+                      "urlIncludes": "/documents"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "id": "power-user",
+            "index": 1,
+            "personaId": "skeptical-power-user",
+            "assignment": {
+              "mission": "Create an account using the email address in your instructions, complete the email verification, sign in, and stop once you can see the signed-in dashboard.",
+              "focus": "Sign up. If a step is confusing or you get stuck, say exactly what blocked you and what you tried — that is worth more than pushing through."
+            },
+            "labels": {},
+            "device": {
+              "name": "desktop",
+              "preset": {
+                "width": 1440,
+                "height": 950,
+                "isMobile": false,
+                "deviceScaleFactor": 1
+              },
+              "resolution": [
+                1440,
+                950
+              ]
+            },
+            "limits": {},
+            "tasks": [
+              {
+                "id": "reach-signup",
+                "goal": "Find where to create an account and open the signup form.",
+                "success": {
+                  "any": [
+                    {
+                      "id": "on-signup",
+                      "urlIncludes": "/signup"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "read-verification-mail",
+                "goal": "When the app tells you it has emailed you, open your inbox and read that email.",
+                "success": {
+                  "any": [
+                    {
+                      "id": "inbox-open",
+                      "urlIncludes": "127.0.0.1:8025"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "reach-dashboard",
+                "goal": "Finish signing in, and stop once you can see your account's documents area.",
+                "success": {
+                  "any": [
+                    {
+                      "id": "signed-in",
+                      "urlIncludes": "/documents"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "kind": "clone",
+          "repo": "documenso/documenso",
+          "serve": {
+            "start": "npm run dev",
+            "url": "http://localhost:3000/",
+            "install": "sudo -n apt-get update -qq && sudo -n apt-get install -y -qq postgresql && PGVER=$(ls /etc/postgresql | head -1) && sudo -n sed -i '1i host all all 127.0.0.1/32 trust' /etc/postgresql/$PGVER/main/pg_hba.conf && sudo -n pg_ctlcluster $PGVER main start && sudo -n -u postgres createdb documenso && npm install --no-audit --no-fund",
+            "build": "npm run prisma:migrate-deploy && npm run prisma:generate && npm run translate:compile",
+            "readyTimeoutMs": 300000,
+            "installTimeoutMs": 900000,
+            "buildTimeoutMs": 600000
+          },
+          "env": []
+        }
+      },
+      "concurrency": 2,
+      "sessionBudgetMs": 1080000,
+      "sandboxMs": 3480000,
+      "caps": {
+        "maxUsd": 15,
+        "maxTotalUsd": 25
+      }
+    },
+    "live": {
+      "requirements": [
+        {
+          "kind": "key",
+          "name": "E2B_API_KEY"
+        },
+        {
+          "kind": "key",
+          "name": "OPENAI_API_KEY"
+        }
+      ]
+    }
+  },
+  "terminal-product-demo": {
+    "dry": {
+      "labId": "terminal-product-demo",
+      "residual": {
+        "policies": {
+          "allowPrivateRepoAccess": false,
+          "allowProviderCredentials": false,
+          "allowPaymentCredentials": false,
+          "allowGitHubMutation": false
+        },
+        "subject": {}
+      },
+      "dryRun": true,
+      "analysis": {
+        "config": {
+          "model": "gpt-6-astra",
+          "maxCostUsd": 3,
+          "timeoutMs": 600000,
+          "maxOutputTokens": 16384,
+          "question": null
+        },
+        "trigger": "default",
+        "preferLargerOutput": true
+      },
+      "requirements": [],
+      "route": "terminal",
+      "product": {
+        "name": "widgetsmith-cli",
+        "publicSurfaces": [
+          "https://example.com/widgetsmith",
+          "https://example.com/widgetsmith/llms.txt",
+          "https://example.com/widgetsmith/skill.md"
+        ]
+      },
+      "personaId": "autonomous-creative-agent",
+      "mission": "You are an autonomous agent. Discover widgetsmith-cli from its public surfaces and determine whether it can help with a durable real task. Stay within the declared no-spend caps. Leave feedback if the workflow is confusing.",
+      "runtime": {
+        "auth": "openai-env"
+      },
+      "caps": {
+        "maxUsd": 0,
+        "maxJobs": 0,
+        "maxMinutes": 10
+      }
+    },
+    "live": {
+      "requirements": [
+        {
+          "kind": "key",
+          "name": "E2B_API_KEY"
+        },
+        {
+          "kind": "key-one-of",
+          "names": [
+            "CODEX_API_KEY",
+            "OPENAI_API_KEY"
+          ]
+        }
+      ]
+    }
+  },
+  "tui-self-study": {
+    "dry": {
+      "labId": "tui-self-study",
+      "residual": {
+        "defaults": {
+          "open": false
+        },
+        "execution": {
+          "desktop": {
+            "resolution": [
+              1440,
+              950
+            ]
+          }
+        },
+        "subject": {}
+      },
+      "dryRun": true,
+      "analysis": {
+        "config": {
+          "model": "gpt-6-astra",
+          "maxCostUsd": 3,
+          "timeoutMs": 600000,
+          "maxOutputTokens": 16384,
+          "question": null
+        },
+        "trigger": "default",
+        "preferLargerOutput": true
+      },
+      "requirements": [],
+      "route": "computer-use",
+      "runner": {
+        "desktop": "e2b-desktop",
+        "brain": {
+          "kind": "openai",
+          "model": "gpt-5.6-sol"
+        },
+        "participants": [
+          {
+            "id": "lane-01",
+            "index": 0,
+            "personaId": "synthetic-new-user",
+            "assignment": {
+              "mission": "You are evaluating a command-line tool called humanish that your team is considering. It is already installed on this machine. Using its interactive terminal interface, find out what studies this project already contains, pick the one that looks most interesting, and find out what it would cost to run it for real. Then stop and say what you found, what confused you, and whether you could tell how to start a real run. Do not start one."
+            },
+            "labels": {},
+            "device": {
+              "name": "custom",
+              "preset": {
+                "width": 1440,
+                "height": 950,
+                "isMobile": false,
+                "deviceScaleFactor": 1
+              },
+              "resolution": [
+                1440,
+                950
+              ]
+            },
+            "limits": {}
+          }
+        ],
+        "subject": {
+          "kind": "desktop-cli",
+          "product": {
+            "name": "humanish",
+            "publicSurfaces": [
+              "https://www.npmjs.com/package/humanish",
+              "https://github.com/danielgwilson/humanish"
+            ],
+            "install": "sudo -n npm install -g humanish@latest && mkdir -p /home/user/project && cd /home/user/project && humanish init --yes",
+            "workdir": "/home/user/project"
+          }
+        }
+      },
+      "concurrency": 1,
+      "sessionBudgetMs": 600000,
+      "sandboxMs": 1200000,
+      "caps": {
+        "maxUsd": 5
+      }
+    },
+    "live": {
+      "requirements": [
+        {
+          "kind": "key",
+          "name": "E2B_API_KEY"
+        },
+        {
+          "kind": "key",
+          "name": "OPENAI_API_KEY"
+        }
+      ]
+    }
+  }
+}
