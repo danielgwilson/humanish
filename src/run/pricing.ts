@@ -235,7 +235,7 @@ export const MODEL_RATES: Record<string, ModelRate> = {
 
 // Current public incremental running-compute rates. Subscription fees/credits, negotiated
 // enterprise prices, and unobserved allocation/startup time are outside this estimate.
-export const DESKTOP_RESOURCE_RATE: DesktopResourceRate = {
+const DESKTOP_RESOURCE_RATE: DesktopResourceRate = {
   usdPerCpuSecond: 0.000014,
   usdPerGiBSecond: 0.0000045,
   asOf: "2026-09-05",

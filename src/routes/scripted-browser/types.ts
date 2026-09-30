@@ -57,7 +57,7 @@ export interface RunScriptedBrowserLabOptions {
   hooks?: ScriptedBrowserLabHooks;
 }
 
-export interface ScriptedBrowserLabSession {
+interface ScriptedBrowserLabSession {
   surface: string;
   status: ActorStatus;
   completionReason: ActorCompletionReason;

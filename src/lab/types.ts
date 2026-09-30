@@ -19,7 +19,7 @@ export const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
  * fails closed (HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR) when run without them: a structured
  * error, never a desktop attempt. See docs/architecture/state-driven-executor.md.
  */
-export type LabSubjectSource =
+type LabSubjectSource =
   | "this-repo"
   | "clone"
   | "app-url"
@@ -36,7 +36,7 @@ export type LabSubjectSource =
  * their actions interact through shared state. Consumed ONLY on the shared-world route (clone ×
  * e2b-desktop × a computer-use actor); inert/warned everywhere else (invariant 6).
  */
-export type LabSubjectTopology = "per-lane-worlds" | "shared-world";
+type LabSubjectTopology = "per-lane-worlds" | "shared-world";
 
 export interface LabSubjectClone {
   /** git clone depth; 1 (shallow) by default. Consumed on the computer-use clone route. */
@@ -83,7 +83,7 @@ export interface LabSubjectServe {
 /** When a state step runs, relative to the serve sequence (clone subjects, computer-use route). */
 export type LabStateStepWhen = "before-build" | "before-start" | "after-ready";
 
-export interface LabSubjectStateStep {
+interface LabSubjectStateStep {
   /**
    * [a-z0-9-] step label (must start alphanumeric), <=40 chars, unique across steps; becomes
    * the detached-step name `subject-state-<name>` (interpolates into in-sandbox file paths —
@@ -455,13 +455,13 @@ type LabExecutionTarget = "local" | "e2b-desktop" | "e2b-terminal";
 /** Terminal transport: the captured non-interactive exec stream (stdin disabled). NOT an
  *  interactive duplex PTY — labeling captured exec output "pty" would be a claim/mechanism
  *  mismatch (invariant 6 + the goal packet's PTY ruling), so this lane uses "exec-stream". */
-export type LabTerminalTransport = "exec-stream";
+type LabTerminalTransport = "exec-stream";
 
 /** Whether operator stdin reaches the in-sandbox agent. Disabled by default (the run is
  *  autonomous + comparable to an unassisted baseline). "planned" records intent but sends no
  *  input; "sent" is rejected because assisted-input capture and a non-comparable marker do not
  *  ship (the safety contract forbids an assisted run masquerading as green). */
-export type LabTerminalStdin = "disabled" | "planned" | "sent";
+type LabTerminalStdin = "disabled" | "planned" | "sent";
 
 export interface LabExecutionTerminal {
   /** Transport label. Default and only shipped value is "exec-stream". */

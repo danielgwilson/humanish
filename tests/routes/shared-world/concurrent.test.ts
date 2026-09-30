@@ -38,12 +38,8 @@ import {
   readLobbyCodeFromFrame,
 } from "../../../src/routes/shared-world/lobby-code.js";
 import type { SharedWorldLabHooks } from "../../../src/routes/shared-world/hooks.js";
-import type {
-  BrowserLabScoringContext,
-  RunAdapterScore,
-  RunBundle,
-  SubjectPhaseEvent,
-} from "../../../src/index.js";
+import type { BrowserLabScoringContext, RunAdapterScore, RunBundle } from "../../../src/index.js";
+import type { SubjectPhaseEvent } from "../../../src/subject/steps.js";
 import { reclaimRunSandboxes } from "../../../src/run/reclaim.js";
 import { verifyRun } from "../../../src/run/verify.js";
 import { computeStats } from "../../../src/run/stats.js";

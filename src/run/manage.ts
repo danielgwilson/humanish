@@ -32,7 +32,7 @@ import { withCuaReviewProvenance } from "./outcomes.js";
 import { isNodeError, isRecord } from "./primitives.js";
 import { invalidRunStorageVerifyResult, verifyResolvedRun, type VerifyResult } from "./verify.js";
 
-export const RUNS_SCHEMA = "humanish.runs-result.v1";
+const RUNS_SCHEMA = "humanish.runs-result.v1";
 
 export interface RunCleanupHooks {
   /** @deprecated Ignored. Stored provider ids are not authority to load or mutate a provider. */

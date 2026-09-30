@@ -1,5 +1,6 @@
 import { CommanderError } from "commander";
 import { EventEmitter } from "node:events";
+import { readFileSync } from "node:fs";
 import {
   access,
   chmod,
@@ -961,11 +962,13 @@ describe("humanish CLI scaffold", () => {
     });
   });
 
-  it("no longer exports the dead planned-command scaffold from the public package entrypoint", () => {
-    expect(Object.prototype.hasOwnProperty.call(humanishIndex, "plannedCommands")).toBe(false);
-    // The catch-all envelope helper stays: the schema string is still live.
-    expect(humanishIndex.CLI_RESPONSE_SCHEMA).toBe("humanish.cli-response.v1");
-    expect(typeof humanishIndex.createProgram).toBe("function");
+  it("exports the library surface and none of the CLI", () => {
+    const golden = JSON.parse(
+      readFileSync(new URL("../golden/public-api.json", import.meta.url), "utf8"),
+    ) as { values: string[] };
+    expect(Object.keys(humanishIndex).sort()).toEqual(golden.values);
+    for (const cliName of ["createProgram", "CLI_RESPONSE_SCHEMA", "normalizeCliArgv", "doctor"])
+      expect(humanishIndex).not.toHaveProperty(cliName);
   });
 });
 

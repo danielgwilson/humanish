@@ -27,7 +27,7 @@ import {
   type FeedbackRunContext,
 } from "./draft.js";
 
-export const FEEDBACK_RESULT_SCHEMA = "humanish.feedback-result.v1";
+const FEEDBACK_RESULT_SCHEMA = "humanish.feedback-result.v1";
 
 export interface FeedbackResult {
   schema: typeof FEEDBACK_RESULT_SCHEMA;

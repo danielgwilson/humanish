@@ -26,7 +26,7 @@ import {
   writeContainedOutputFile,
 } from "../run/selected-output-paths.js";
 
-export const INIT_RESPONSE_SCHEMA = "humanish.init-result.v1";
+const INIT_RESPONSE_SCHEMA = "humanish.init-result.v1";
 
 export interface InitOptions {
   cwd: string;
@@ -38,7 +38,7 @@ export interface InitOptions {
   localBrowser?: { appUrl: string; mission?: string };
 }
 
-export type InitMode = "dry-run" | "applied" | "needs-confirmation";
+type InitMode = "dry-run" | "applied" | "needs-confirmation";
 
 export interface InitChange {
   path: string;

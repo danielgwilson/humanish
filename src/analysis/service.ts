@@ -42,7 +42,7 @@ import {
   type LoadedStudyAnalysis,
 } from "./study-analysis.js";
 
-export const ANALYZE_RESULT_SCHEMA = "humanish.analyze-result.v1";
+const ANALYZE_RESULT_SCHEMA = "humanish.analyze-result.v1";
 const MAX_STATUS_BYTES = 64 * 1024;
 export interface AnalyzeOptions {
   config: StudyAnalysisConfig;

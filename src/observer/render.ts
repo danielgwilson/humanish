@@ -32,7 +32,7 @@ import {
   type ObserverRuntimeStreamUrl,
 } from "./run-routes.js";
 
-export const OBSERVER_SCHEMA = "humanish.observer-result.v1";
+const OBSERVER_SCHEMA = "humanish.observer-result.v1";
 
 export interface ObserverResult {
   schema: typeof OBSERVER_SCHEMA;

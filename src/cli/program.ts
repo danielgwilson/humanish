@@ -54,7 +54,7 @@ import {
 // produces when an action handler throws or rejects unexpectedly (see
 // HumanishCommand below). Reuses CLI_RESPONSE_SCHEMA so every humanish.cli-response.v1
 // document on stdout, planned or not, carries the same schema string.
-export interface UnexpectedErrorEnvelope {
+interface UnexpectedErrorEnvelope {
   schema: typeof CLI_RESPONSE_SCHEMA;
   ok: false;
   error: {

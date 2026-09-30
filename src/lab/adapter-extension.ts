@@ -8,7 +8,7 @@ import type {
   RunScorerProvenance,
 } from "../run/bundle.js";
 
-export type BrowserAdapterBackend = "cua" | "shared-world" | "concurrent-shared-world";
+type BrowserAdapterBackend = "cua" | "shared-world" | "concurrent-shared-world";
 
 /**
  * Product-agnostic scoring context for browser/computer-use lanes. Product-specific

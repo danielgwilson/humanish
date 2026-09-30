@@ -7,7 +7,7 @@
  * the [A-Z2-9] class; a locale prefix (/en/lobby/…) and a query/hash suffix are tolerated. RUNTIME-ONLY
  * input (a live location.href); only the extracted CODE is used, and it lands only as a digest.
  */
-export const LOBBY_CODE_PATTERN = /\/lobby\/([A-Z2-9]{6})(?:$|[/?#])/;
+const LOBBY_CODE_PATTERN = /\/lobby\/([A-Z2-9]{6})(?:$|[/?#])/;
 
 /** Extract the shared-session CODE from a (runtime-only) observed URL, or undefined. Exported for the
  *  handoff regex table test — pure, no side effects, never persists its input. */

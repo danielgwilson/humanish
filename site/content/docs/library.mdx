@@ -1,0 +1,84 @@
+---
+title: Use Humanish as a library
+description: Run a lab, read a run, bring your own participant, or score a run from TypeScript or JavaScript.
+---
+
+`import ... from "humanish"` exposes what an adopter needs for four things: run a lab, read a run,
+bring a participant, and score a run. Everything else is reached through the `humanish` command.
+
+## Run a lab
+
+```ts
+import { LAB_CONFIG_SCHEMA, parseLabConfig, runLab, type LabResult } from "humanish";
+
+const parsed = parseLabConfig({
+  schema: LAB_CONFIG_SCHEMA,
+  id: "library-example",
+  title: "Library example",
+  subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
+  actors: [{ type: "openai-computer-use", mission: "Explore the app." }],
+  execution: { target: "e2b-desktop", timeoutMs: 15_000 },
+});
+if (!parsed.ok) throw new Error(parsed.error.message);
+
+const outcome = await runLab(parsed.config, { cwd: process.cwd(), dryRun: true });
+if (outcome.backend === "cua") {
+  const result: LabResult<"computer-use"> = outcome.result;
+  console.log(result.runId, result.ok);
+}
+```
+
+`parseLabConfig` takes a decoded object, not YAML text. `runLab`'s options are `RunLabOptions`:
+`env`, `scorer`, `createProvider`, `inProcess`, `prepareDesktop`, `onEvent`, `onStream`,
+`analysisSignal` and `onObserverReady`, beside `dryRun`, `runId`, `count` and `rerun`. The
+[library options contract](https://github.com/danielgwilson/humanish/blob/main/docs/contracts/schemas.md#library-options-runlaboptions)
+lists which routes accept each one and the refusals for the rest. `routeOf(config)` returns the
+route a config takes, and `LabResult<route>` is that route's result type.
+
+## Read a run
+
+```ts
+import { readFile } from "node:fs/promises";
+import { renderObserver, verifyRun, type RunBundle } from "humanish";
+
+const checked = await verifyRun(process.cwd(), "latest");
+if (!checked.ok || !checked.bundlePath) throw new Error("the run did not verify");
+const bundle = JSON.parse(await readFile(checked.bundlePath, "utf8")) as RunBundle;
+console.log(bundle.review.verdict, checked.shareSafety.status);
+await renderObserver(process.cwd(), checked.run, { open: false });
+```
+
+This reads trusted local output. `RunBundle["streams"][number]` and
+`RunBundle["simulations"][number]` name a bundle's members.
+
+## Bring a participant
+
+A participant is a `CuaProvider` (the brain) driving a `CuaExecutor` (the desktop or app). Pass
+`createProvider` to `runLab` to replace the default brain on a computer-use lab, and
+`inProcess: { executor }` with it to drive an app in this process with no desktop. The
+[participant example](https://github.com/danielgwilson/humanish/tree/main/examples/participant)
+runs one end to end:
+
+```bash
+npm install humanish
+node node_modules/humanish/examples/participant/run.mjs
+```
+
+`runComputerUseLoop` is the loop underneath, for a caller that owns its own evidence;
+`defaultRedactionHooks` is the redaction it requires. `createOpenAiResponsesProvider` builds the
+default brain, and `CuaAdmissionLimitError` is how a provider refuses a request before sending it.
+
+## Score a run
+
+An `AdapterScorerModule` exports `score`, `deriveFeedback` and, on browser routes,
+`deriveArtifacts`. Pass it as `runLab`'s `scorer`, or load the same file with
+`humanish lab run <lab> --scorer <file>`. The
+[scorer example](https://github.com/danielgwilson/humanish/tree/main/examples/scorer) does both.
+Every scoring context carries `ctx.bundle` and `ctx.runId`.
+
+## Deprecated exports
+
+The route runners (`runCuaActorLab`, `runScriptedBrowserLab`, `runTerminalProductLab`,
+`runConcurrentSharedWorld`, `runDryRun`), their option and result types, the hook bag types and
+`runCuaActorSession` still work in this minor and print one `DeprecationWarning` each. They are
+removed in the next minor. Use `runLab` with the options above.
