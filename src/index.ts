@@ -381,14 +381,7 @@ export type { DevicePreset, DevicePresetName } from "./lab/device-presets.js";
 export {
   actorResolvesToTerminal,
   cuaLaneCount,
-  cuaLaneValidationReason,
-  isHttpUrl,
-  isLoopbackUrl,
-  LAB_CONFIG_SCHEMA,
   MAX_CUA_LANES,
-  concurrentSharedWorldValidationReason,
-  externalPublicSharedWorldValidationReason,
-  parseLabConfig,
   resolveSeatUrl,
   routesToComputerUse,
   routesToConcurrentSharedWorld,
@@ -397,9 +390,16 @@ export {
   routesToScriptedBrowser,
   routesToSharedWorld,
   routesToTerminalProduct,
+} from "./lab/routing.js";
+export {
+  cuaLaneValidationReason,
+  concurrentSharedWorldValidationReason,
+  externalPublicSharedWorldValidationReason,
   sharedWorldValidationReason,
-  subjectStateInvalidReason,
-} from "./lab/config.js";
+} from "./lab/validation.js";
+export { isHttpUrl, isLoopbackUrl, subjectStateInvalidReason } from "./lab/parse-subject.js";
+export { LAB_CONFIG_SCHEMA } from "./lab/types.js";
+export { parseLabConfig } from "./lab/config.js";
 export type {
   LabActor,
   LabActorLane,
@@ -419,7 +419,7 @@ export type {
   LabSubjectTopology,
   LabTerminalStdin,
   LabTerminalTransport,
-} from "./lab/config.js";
+} from "./lab/types.js";
 export { resolveLabDryRun, runLab, selectLabBackend } from "./lab/engine.js";
 export type { LabBackend, LabOutcome, RunLabOptions } from "./lab/engine.js";
 export { LAB_PREFLIGHT_SCHEMA, runLabPreflight } from "./lab/preflight.js";

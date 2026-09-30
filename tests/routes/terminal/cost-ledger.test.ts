@@ -4,7 +4,8 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../../../src/lab/config.js";
+import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
+import { parseLabConfig } from "../../../src/lab/config.js";
 import {
   runTerminalProductLab,
   type TerminalProductLabHooks,

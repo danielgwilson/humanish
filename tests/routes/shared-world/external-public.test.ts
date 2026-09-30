@@ -29,14 +29,13 @@ import {
 } from "../../../src/substrates/e2b/desktop-executor.js";
 import { extractLobbyCode, runConcurrentSharedWorld } from "../../../src/index.js";
 import { makeChromeBrowserStateObserver } from "../../../src/routes/computer-use/lab.js";
+import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
 import {
-  LAB_CONFIG_SCHEMA,
   externalPublicSharedWorldValidationReason,
-  parseLabConfig,
-  routesToConcurrentSharedWorld,
   concurrentSharedWorldValidationReason,
-  type LabConfig,
-} from "../../../src/lab/config.js";
+} from "../../../src/lab/validation.js";
+import { parseLabConfig } from "../../../src/lab/config.js";
+import { routesToConcurrentSharedWorld } from "../../../src/lab/routing.js";
 import { runLab, selectLabBackend } from "../../../src/lab/engine.js";
 import type { SharedWorldLabHooks } from "../../../src/routes/shared-world/sequential.js";
 import type {

@@ -14,7 +14,8 @@ import type {
   E2BDesktopModule,
   E2BDesktopSandbox,
 } from "../../src/substrates/e2b/desktop-launch.js";
-import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../../src/lab/config.js";
+import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/lab/types.js";
+import { parseLabConfig } from "../../src/lab/config.js";
 import { runLab, selectLabBackend } from "../../src/lab/engine.js";
 import { createProgram } from "../../src/cli/program.js";
 import { digestText } from "../../src/evidence/redaction.js";

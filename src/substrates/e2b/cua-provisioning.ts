@@ -23,14 +23,14 @@ import {
   type DetachedStepResult,
   type DetachedTimers,
 } from "./detached.js";
+import { isHttpUrl } from "../../lab/parse-subject.js";
 import {
-  isHttpUrl,
   type LabDesktopBrowser,
   type LabDesktopMedia,
   type LabStateStepWhen,
   type LabSubjectServe,
   type LabSubjectState,
-} from "../../lab/config.js";
+} from "../../lab/types.js";
 import { digestText, redactText, redactedTail } from "../../evidence/redaction.js";
 import { type RunDesktopGeometry, type RunSubjectStateStepRecord } from "../../run/bundle.js";
 import {

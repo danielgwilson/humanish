@@ -7,14 +7,13 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { TERMINAL_AGENT_CAPABILITIES } from "../../../src/actors/contract.js";
 import { actorRegistry, isTerminalActorDescriptor } from "../../../src/actors/registry.js";
+import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
+import { parseLabConfig } from "../../../src/lab/config.js";
 import {
-  LAB_CONFIG_SCHEMA,
-  parseLabConfig,
   routesToComputerUse,
   routesToScriptedBrowser,
   routesToTerminalProduct,
-  type LabConfig,
-} from "../../../src/lab/config.js";
+} from "../../../src/lab/routing.js";
 import { runLab, selectLabBackend } from "../../../src/lab/engine.js";
 import { createProgram } from "../../../src/cli/program.js";
 import { verifyRun } from "../../../src/run/verify.js";

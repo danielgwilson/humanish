@@ -5,7 +5,8 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { ACTOR_TRACE_SCHEMA } from "../../../src/actors/contract.js";
-import { LAB_CONFIG_SCHEMA, parseLabConfig } from "../../../src/lab/config.js";
+import { LAB_CONFIG_SCHEMA } from "../../../src/lab/types.js";
+import { parseLabConfig } from "../../../src/lab/config.js";
 import { runLab } from "../../../src/lab/engine.js";
 import { verifyRun } from "../../../src/run/verify.js";
 

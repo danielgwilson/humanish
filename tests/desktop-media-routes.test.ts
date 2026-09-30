@@ -5,10 +5,10 @@ import { describe, expect, it, vi } from "vitest";
 import {
   concurrentSharedWorldValidationReason,
   desktopMediaValidationReason,
-  parseLabConfig,
   sharedWorldValidationReason,
-  type LabConfig,
-} from "../src/lab/config.js";
+} from "../src/lab/validation.js";
+import { parseLabConfig } from "../src/lab/config.js";
+import { type LabConfig } from "../src/lab/types.js";
 import { runCuaActorLab } from "../src/routes/computer-use/lab.js";
 import { runSharedWorldLab } from "../src/routes/shared-world/sequential.js";
 import { runConcurrentSharedWorld } from "../src/routes/shared-world/concurrent.js";

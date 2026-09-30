@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { LAB_CONFIG_SCHEMA, parseLabConfig } from "../../../src/lab/config.js";
+import { LAB_CONFIG_SCHEMA } from "../../../src/lab/types.js";
+import { parseLabConfig } from "../../../src/lab/config.js";
 
 // #538: the terminal lane injects the operator's runtime LLM key command-scoped, and codex spawns
 // the participant's shell as a child, so the participant INHERITS that key. Two participants in a

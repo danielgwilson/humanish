@@ -2,7 +2,7 @@ import { scrubPersonaBrief } from "../../lab/persona.js";
 import { withTransientCommsSecrets } from "../../run/narration-secrets.js";
 import { prepareReceivingRun, receivingPublication } from "../../comms/receiving-runtime.js";
 import type { CommsReceivingRun } from "../../comms/receiving.js";
-import { receivingEmailValidationReason } from "../../lab/config.js";
+import { receivingEmailValidationReason } from "../../lab/validation.js";
 // The CONCURRENT shared-world lab backend (#164 phase 2): N persona lanes drive ONE shared,
 // mutable service plane SIMULTANEOUSLY — the actual leverage of a sim. A recomposition of shipped
 // pieces + the getHost wrapper:
@@ -45,7 +45,10 @@ import {
   type AutomaticAnalysisHooks,
   type AutomaticAnalysisResult,
 } from "../../analysis/automatic-completion.js";
-import { desktopMediaValidationReason, taskProtocolValidationReason } from "../../lab/config.js";
+import {
+  desktopMediaValidationReason,
+  taskProtocolValidationReason,
+} from "../../lab/validation.js";
 import { randomBytes } from "node:crypto";
 import { describeMissingKeys } from "../../cli/key-resolution.js";
 import {
@@ -118,9 +121,8 @@ import {
   concurrentSharedWorldValidationReason,
   outputTokenLimitValidationReason,
   externalPublicSharedWorldValidationReason,
-  type LabActorLane,
-  type LabConfig,
-} from "../../lab/config.js";
+} from "../../lab/validation.js";
+import { type LabActorLane, type LabConfig } from "../../lab/types.js";
 import { buildObserverData } from "../../observer/data.js";
 import {
   attachObserverRuntimeStreamUrls,

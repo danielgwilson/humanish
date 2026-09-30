@@ -44,7 +44,10 @@ import {
   type AutomaticAnalysisHooks,
   type AutomaticAnalysisResult,
 } from "../../analysis/automatic-completion.js";
-import { desktopMediaValidationReason, taskProtocolValidationReason } from "../../lab/config.js";
+import {
+  desktopMediaValidationReason,
+  taskProtocolValidationReason,
+} from "../../lab/validation.js";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { TERMINAL_NODE_BOOTSTRAP_COMMAND } from "./node-bootstrap.js";
 import { describeTokenUsage, parseTerminalTokenUsage } from "./token-usage.js";
@@ -86,7 +89,7 @@ import {
   E2B_SYSTEM_CA_BUNDLE,
   OPENAI_EGRESS_PLACEHOLDER,
 } from "./runtime-auth.js";
-import type { LabConfig, LabScenarioCaps, LabRuntimeAuth } from "../../lab/config.js";
+import type { LabConfig, LabScenarioCaps, LabRuntimeAuth } from "../../lab/types.js";
 import {
   E2BDesktopStartupError,
   isSandboxNotFoundError,

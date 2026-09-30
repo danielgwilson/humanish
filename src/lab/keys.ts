@@ -11,7 +11,7 @@ import type {
   LabActorRosterGroup,
   LabConfig,
   LabSubject,
-} from "./config.js";
+} from "./types.js";
 
 type KeyShape = { readonly [key: string]: true | KeyShape };
 // Exactly the keys of T: a missing or extra key is a compile error, so this table cannot drift

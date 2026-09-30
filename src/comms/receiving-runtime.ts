@@ -1,5 +1,5 @@
 import { registerTransientCommsSecrets } from "../run/narration-secrets.js";
-import type { LabConfig } from "../lab/config.js";
+import type { LabConfig } from "../lab/types.js";
 import { readCommsConnections, type CommsConnection } from "./connections.js";
 import { discoverProviderKeys } from "../cli/key-resolution.js";
 import { createAgentMailReceiver } from "./agentmail.js";

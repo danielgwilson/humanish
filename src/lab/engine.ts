@@ -39,16 +39,15 @@ import { withRunStatusScope, type RunLabProvenance } from "../run/status.js";
 import type { ObserverResult } from "../observer/render.js";
 import { runDryRun } from "../run/dry-run.js";
 import { type RunResult, type RunScorerProvenance } from "../run/bundle.js";
+import { automaticAnalysisRouteReason, taskProtocolValidationReason } from "./validation.js";
 import {
-  automaticAnalysisRouteReason,
-  taskProtocolValidationReason,
   routesToComputerUse,
   routesToConcurrentSharedWorld,
   routesToScriptedBrowser,
   routesToSharedWorld,
   routesToTerminalProduct,
-  type LabConfig,
-} from "./config.js";
+} from "./routing.js";
+import { type LabConfig } from "./types.js";
 
 export type LabBackend =
   | "synthetic"

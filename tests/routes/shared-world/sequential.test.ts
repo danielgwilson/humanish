@@ -25,10 +25,10 @@ import type {
 } from "../../../src/substrates/e2b/desktop-launch.js";
 import {
   LAB_CONFIG_SCHEMA,
-  parseLabConfig,
   type LabConfig,
   type LabDesktopBrowser,
-} from "../../../src/lab/config.js";
+} from "../../../src/lab/types.js";
+import { parseLabConfig } from "../../../src/lab/config.js";
 import { runLab, selectLabBackend } from "../../../src/lab/engine.js";
 import {
   buildSeatBrowserTerminationCommand,

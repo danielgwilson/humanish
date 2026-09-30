@@ -9,7 +9,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 // enumerating the account — and records honestly what happened to each. These tests drive the
 // REAL run-dir resolution chain (a $0 dry-run creates the managed dir + latest pointer) with a
 // fake @e2b/desktop module, so the containment discipline is exercised, not mocked away.
-import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../../src/lab/config.js";
+import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/lab/types.js";
+import { parseLabConfig } from "../../src/lab/config.js";
 import { runTerminalProductLab } from "../../src/routes/terminal/lab.js";
 import { resolveRunPath } from "../../src/run/locate.js";
 import {

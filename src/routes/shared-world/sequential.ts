@@ -29,7 +29,10 @@ import {
   type AutomaticAnalysisHooks,
   type AutomaticAnalysisResult,
 } from "../../analysis/automatic-completion.js";
-import { desktopMediaValidationReason, taskProtocolValidationReason } from "../../lab/config.js";
+import {
+  desktopMediaValidationReason,
+  taskProtocolValidationReason,
+} from "../../lab/validation.js";
 import { randomBytes } from "node:crypto";
 import { describeMissingKeys } from "../../cli/key-resolution.js";
 import {
@@ -97,15 +100,17 @@ import {
 } from "../../substrates/e2b/desktop-launch.js";
 import { runDetachedStep, type DetachedTimers } from "../../substrates/e2b/detached.js";
 import type { DevicePreset } from "../../lab/device-presets.js";
+import { resolveSeatUrl } from "../../lab/routing.js";
 import {
-  resolveSeatUrl,
   sharedWorldValidationReason,
   outputTokenLimitValidationReason,
+} from "../../lab/validation.js";
+import {
   type LabActorLane,
   type LabConfig,
   type LabDesktopBrowser,
   type LabSubjectStateCheckpoint,
-} from "../../lab/config.js";
+} from "../../lab/types.js";
 import { renderObserver, type ObserverResult } from "../../observer/render.js";
 import { redactText } from "../../evidence/redaction.js";
 import { participantAssignment } from "../../lab/participant-assignment.js";
