@@ -1,6 +1,7 @@
 import { validClosingReport } from "./loop.js";
 import type { ActorCapabilities } from "../contract.js";
 import { CuaAdmissionLimitError, isCuaAdmissionLimitError } from "./admission-limit.js";
+import { CuaPromptRefusedError } from "./provider-error.js";
 import type { CuaAction, CuaProvider, CuaSafetyCheck, CuaTurn, CuaTurnRequest } from "./loop.js";
 import { redactText } from "../../evidence/redaction.js";
 import type { ReasoningEffort } from "../reasoning-effort.js";
@@ -834,6 +835,10 @@ export function createOpenAiResponsesProvider(
         }
         if (isSummaryRejection(bodyText)) {
           throw new SummaryRejectionError();
+        }
+        // A usage-policy flag is terminal for this prompt: typed so the loop names it, never retried.
+        if (namedProviderErrorCode(bodyText) === "invalid_prompt") {
+          throw new CuaPromptRefusedError("OpenAI", "400 invalid_prompt");
         }
         const detail = requestRejectionDetail(bodyText);
         throw new Error(`OpenAI Responses 400${detail === undefined ? "" : ` ${detail}`}`);

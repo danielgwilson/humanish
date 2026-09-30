@@ -5,7 +5,7 @@ import type {
 } from "../../contract.js";
 import type { StopConditionMatch } from "../../stop-conditions.js";
 import { isCuaExecutorError } from "../executor-error.js";
-import { isCuaProviderError } from "../provider-error.js";
+import { isCuaPromptRefusedError, isCuaProviderError } from "../provider-error.js";
 import { CuaAbortError, CuaDeadlineError } from "./race.js";
 import type { LoopSession } from "./session.js";
 import { notice, type Evidence } from "./trace.js";
@@ -317,6 +317,20 @@ export function stopForError(error: unknown, session: LoopSession): Stop {
     lastActionTitle === undefined ? undefined : `last action: ${redact(lastActionTitle)}`;
   const screenshot =
     session.lastScreenshotRef === undefined ? {} : { screenshotRef: session.lastScreenshotRef };
+  if (isCuaPromptRefusedError(error)) {
+    // The provider's policy decision about the prompt, not a harness fault; never resent.
+    const reason = `${error.message}; the prompt was not sent again`;
+    return {
+      completionReason: "actor_error",
+      reason,
+      stopCause: "provider_refused_prompt",
+      evidence: noticeEvidence(
+        "error",
+        "provider refused the prompt",
+        `phase: ${redact(session.phase)}; ${reason}`,
+      ),
+    };
+  }
   if (isCuaProviderError(error)) {
     const reason = `participant provider error: ${error.code}${error.failurePhase ? ` during ${error.failurePhase}` : ""}; cleanup: ${error.receipt.cleanup}`;
     return {

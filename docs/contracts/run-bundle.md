@@ -88,9 +88,16 @@ responses, but durable run bundles use the public-safe `[target-cwd]` marker.
 An actor trace may include `stopCause` alongside its unchanged `status`,
 `completionReason` and verbatim `reason`. Computer-use sessions distinguish
 `provider_output_limit`, `provider_token_limit`, `time_limit`, `spend_limit`,
-`study_spend_limit`, `adapter_limit`, `provider_incomplete`, `provider_status`, and
-`harness_aborted`. Absence means the route or recording did not retain this
-precise field; it does not mean the participant finished.
+`study_spend_limit`, `adapter_limit`, `provider_incomplete`, `provider_status`,
+`provider_refused_prompt`, and `harness_aborted`. Absence means the route or
+recording did not retain this precise field; it does not mean the participant
+finished.
+
+`provider_refused_prompt` records that the model provider refused the request
+under its usage policy (OpenAI `400 invalid_prompt`). The session ends as
+`failed` / `actor_error`, not `harness_error`, and the harness does not send the
+same prompt again. The provider's refusal message is not recorded, since it can
+echo the prompt.
 
 Observer projects this as optional `streams[].ending` with a `cause` and readable
 `label`. Older `budget_reached` traces without a recognized machine notice say

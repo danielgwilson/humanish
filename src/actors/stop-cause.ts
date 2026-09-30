@@ -15,6 +15,7 @@ const labels: Record<ActorEnding["cause"], string> = {
   usage_unreported: "provider usage unavailable",
   provider_incomplete: "provider response incomplete",
   provider_status: "unexpected provider status",
+  provider_refused_prompt: "provider refused the prompt under its usage policy",
   harness_aborted: "stopped by harness",
   unspecified_limit: "limit reached",
 };
