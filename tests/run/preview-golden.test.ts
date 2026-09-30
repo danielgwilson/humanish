@@ -5,7 +5,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { runDryRun } from "../../src/run/dry-run.js";
-import { runDirSnapshot } from "../helpers/run-golden.js";
+import { captureStderr, runDirSnapshot } from "../helpers/run-golden.js";
 
 // Characterization: the complete run directory, latest pointer and returned result of the synthetic
 // preview run, pinned so a change to how it writes its bundle shows up as a diff. runDryRun renders
@@ -24,10 +24,14 @@ describe("preview run directory golden", () => {
   it("dry run of the minimal app", async () => {
     const cwd = path.join(root, "minimal-app");
     await cp(path.resolve("fixtures/minimal-app"), cwd, { recursive: true });
-    const result = await runDryRun({ cwd, dryRun: true, runId: "preview-golden" });
+    const stderr = captureStderr();
+    const result = await runDryRun({ cwd, dryRun: true, runId: "preview-golden" }).finally(
+      stderr.stop,
+    );
     expect(result.ok).toBe(true);
     const snapshot = await runDirSnapshot(path.join(cwd, ".humanish", "runs", "preview-golden"), {
       result,
+      stderr: stderr.text(),
       replace: [
         [cwd, "[cwd]"],
         ["preview-golden", "[run]"],

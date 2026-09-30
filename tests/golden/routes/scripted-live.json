@@ -50,6 +50,7 @@
       "reason": "synthetic_no_provider"
     }
   },
+  "<stderr>": [],
   "../latest.json": {
     "schema": "humanish.latest-run.v1",
     "runId": "[run]",

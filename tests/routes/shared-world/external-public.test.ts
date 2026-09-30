@@ -57,7 +57,7 @@ import {
 } from "../../helpers/verify-findings.js";
 import * as observerRender from "../../../src/observer/render.js";
 import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
-import { runDirSnapshot } from "../../helpers/run-golden.js";
+import { captureStderr, runDirSnapshot } from "../../helpers/run-golden.js";
 
 // ---------------------------------------------------------------------------
 // Fakes. Same N-substrate shape as the concurrent-shared-world harness, but the
@@ -1278,16 +1278,18 @@ describe("external-public run directory goldens", () => {
     ["live run", false, "shared-world-external-public-live.json"],
   ] as const)("%s with three seats", async (_label, dryRun, golden) => {
     const { hooks } = makeExternalHooks(makeExternalRunSession({ seen: [] }));
+    const stderr = captureStderr();
     const result = await runConcurrentSharedWorld({
       cwd,
       config: parseExternal(),
       dryRun,
       hooks,
       automaticAnalysis: { run: automaticAnalysisBoundary() },
-    });
+    }).finally(stderr.stop);
     // Seats tear down in parallel, so their sandbox receipts append in completion order.
     const snapshot = await runDirSnapshot(path.join(cwd, ".humanish", "runs", result.runId), {
       result,
+      stderr: stderr.text(),
       replace: [
         [result.runId, "[run]"],
         [cwd, "[cwd]"],

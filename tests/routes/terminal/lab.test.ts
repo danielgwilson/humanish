@@ -1,5 +1,5 @@
 import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
-import { runDirSnapshot } from "../../helpers/run-golden.js";
+import { captureStderr, runDirSnapshot } from "../../helpers/run-golden.js";
 import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -2540,6 +2540,7 @@ describe("terminal run directory golden", () => {
 
   it("live run with a passing actor verdict", async () => {
     const runs: RecordedRun[] = [];
+    const stderr = captureStderr();
     const result = await runTerminalProductLab({
       cwd,
       config: liveConfig(),
@@ -2560,12 +2561,13 @@ describe("terminal run directory golden", () => {
             }),
           }),
       },
-    });
+    }).finally(stderr.stop);
     expect(result.ok).toBe(true);
     const nonce = nonceFrom(runs.find((run) => run.command.includes(" exec "))?.command ?? "");
     // The prompt carries a random per-run verdict nonce, so the digests over it vary.
     const snapshot = await runDirSnapshot(path.join(cwd, ".humanish", "runs", result.runId), {
       result,
+      stderr: stderr.text(),
       replace: [
         [result.runId, "[run]"],
         [cwd, "[cwd]"],
@@ -2579,6 +2581,7 @@ describe("terminal run directory golden", () => {
   });
 
   it("dry run that allocates nothing", async () => {
+    const stderr = captureStderr();
     const result = await runTerminalProductLab({
       cwd,
       config: liveConfig(),
@@ -2592,10 +2595,11 @@ describe("terminal run directory golden", () => {
           throw new Error("a dry run must not load the E2B module");
         },
       },
-    });
+    }).finally(stderr.stop);
     expect(result.ok).toBe(true);
     const snapshot = await runDirSnapshot(path.join(cwd, ".humanish", "runs", result.runId), {
       result,
+      stderr: stderr.text(),
       replace: [
         [result.runId, "[run]"],
         [cwd, "[cwd]"],

@@ -1,5 +1,5 @@
 import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
-import { runDirSnapshot } from "../../helpers/run-golden.js";
+import { captureStderr, runDirSnapshot } from "../../helpers/run-golden.js";
 import { mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
 import { readFileSync, symlinkSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -2346,16 +2346,18 @@ describe("concurrent shared-world run directory goldens", () => {
     ["live run", false, "shared-world-concurrent-live.json"],
   ] as const)("%s with three seats", async (_label, dryRun, golden) => {
     const { hooks } = baseHooks({ worldVersion: 0 }, makeRendezvous(3));
+    const stderr = captureStderr();
     const result = await runConcurrentSharedWorld({
       cwd: goldenCwd,
       config: concurrentConfig(3, 3),
       dryRun,
       hooks,
       automaticAnalysis: { run: automaticAnalysisBoundary() },
-    });
+    }).finally(stderr.stop);
     // Seats tear down in parallel, so their sandbox receipts append in completion order.
     const snapshot = await runDirSnapshot(path.join(goldenCwd, ".humanish", "runs", result.runId), {
       result,
+      stderr: stderr.text(),
       replace: [
         [result.runId, "[run]"],
         [goldenCwd, "[cwd]"],

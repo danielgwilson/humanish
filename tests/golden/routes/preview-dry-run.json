@@ -14,6 +14,7 @@
       "Committed humanish/ source was not found; using built-in synthetic dry-run defaults."
     ]
   },
+  "<stderr>": [],
   "../latest.json": {
     "schema": "humanish.latest-run.v1",
     "runId": "[run]",

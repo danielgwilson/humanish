@@ -110,6 +110,9 @@
       "reason": "synthetic_no_provider"
     }
   },
+  "<stderr>": [
+    "humanish: Persona pixel-pat has no readable file under humanish/personas or .humanish/local/personas; using the id only (no persona context)."
+  ],
   "../latest.json": {
     "schema": "humanish.latest-run.v1",
     "runId": "[run]",
