@@ -172,6 +172,35 @@ describe("process observer read failures", () => {
     });
   });
 
+  it("records a descendant first seen before its exec as what it runs after it", async () => {
+    let execed = false;
+    const child = () =>
+      `101 (${execed ? "sleep" : "sh"}) S 100 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 777 0`;
+    const io = fakeProc({
+      readFile: (file) => {
+        if (file === "/p/101/stat") return child();
+        if (file === "/p/101/cmdline") return execed ? "sleep\u000030\u0000" : "sh\u0000";
+        return fakeProc().readFile(file);
+      },
+      readdir: (dir) => (dir === "/p" ? ["100", "101", "net"] : fakeProc().readdir(dir)),
+      readlink: (file) =>
+        file === "/p/101/exe"
+          ? execed
+            ? "/usr/bin/sleep"
+            : "/usr/bin/dash"
+          : fakeProc().readlink(file),
+    });
+    const observer = observeProcesses({ rootPid: 100, proc: "/p", io, intervalMs: 5 });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    execed = true;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const observation = await observer.stop();
+    expect(observation.error).toBeNull();
+    expect(observation.processes).toEqual([
+      expect.objectContaining({ pid: 101, comm: "sleep", exe: "sleep", args: "sleep 30" }),
+    ]);
+  });
+
   it("stops following the root pid once another process reuses it", async () => {
     let reused = false;
     const io = fakeProc({
@@ -231,22 +260,53 @@ describe.skipIf(!linux)("process observer on Linux", () => {
     expect(observation.aliveAfterStop).toEqual([]);
   });
 
-  it("finds a detached process through the marker and reports that it survived", async () => {
+  it("finds a process outside the tree through the marker and reports that it survived", async () => {
     const home = mkdtempSync(path.join(tmpdir(), "humanish-observer-"));
     const marker = `CODEX_HOME=${home}`;
-    const child = spawn("sh", ["-c", "(setsid sleep 0.8 &); sleep 0.3"], {
+    // Never a descendant of the root, so only the marker can find it. It outlives stop() under any
+    // load, and the finally block kills it.
+    const outside = spawn("sleep", ["30"], {
       stdio: "ignore",
+      detached: true,
       env: { ...process.env, CODEX_HOME: home },
     });
+    const root = spawn("sleep", ["0.3"], { stdio: "ignore" });
+    const observer = observeProcesses({ rootPid: root.pid!, marker, intervalMs: 20 });
+    await closed(root);
+    const observation = await observer.stop();
+    try {
+      expect(observation.processes.find((entry) => entry.pid === outside.pid)).toMatchObject({
+        comm: "sleep",
+        via: "marker",
+      });
+      expect(observation.aliveAfterStop.map((entry) => entry.pid)).toContain(outside.pid);
+    } finally {
+      outside.kill("SIGKILL");
+      rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps following a descendant that detaches and reports that it survived", async () => {
+    const home = mkdtempSync(path.join(tmpdir(), "humanish-observer-"));
+    const marker = `CODEX_HOME=${home}`;
+    // setsid runs sleep in its own pid, which the subshell prints before it exits.
+    const child = spawn("sh", ["-c", "(setsid sleep 30 >/dev/null 2>&1 & echo $!); sleep 0.3"], {
+      stdio: ["ignore", "pipe", "ignore"],
+      env: { ...process.env, CODEX_HOME: home },
+    });
+    let printed = "";
+    child.stdout!.on("data", (chunk: Buffer) => (printed += chunk.toString()));
     const observer = observeProcesses({ rootPid: child.pid!, marker, intervalMs: 20 });
     await closed(child);
     const observation = await observer.stop();
+    const pid = Number(printed.trim());
     try {
-      const detached = observation.processes.find(
-        (entry) => entry.comm === "sleep" && entry.via === "marker",
-      );
-      expect(detached).toBeDefined();
-      expect(observation.aliveAfterStop.map((entry) => entry.pid)).toContain(detached!.pid);
+      // Seen first in the tree or, once it detached, through the marker; either way as sleep.
+      expect(observation.processes.find((entry) => entry.pid === pid)).toMatchObject({
+        comm: "sleep",
+        args: "sleep 30",
+      });
+      expect(observation.aliveAfterStop.map((entry) => entry.pid)).toContain(pid);
     } finally {
       for (const entry of observation.aliveAfterStop) process.kill(entry.pid, "SIGKILL");
       rmSync(home, { recursive: true, force: true });
