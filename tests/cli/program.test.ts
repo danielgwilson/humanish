@@ -602,7 +602,7 @@ describe("humanish CLI scaffold", () => {
     // (unlike observe, which already gated on process.stdout.isTTY). Force a
     // non-TTY stdout here so the assertion holds regardless of how the test
     // runner itself is invoked, then confirm neither the bare watch path nor the
-    // lab-backed watch path (synthetic backend via renderAndMaybeFollowObserver)
+    // lab-backed watch path (synthetic backend showing the Observer its preview rendered)
     // attempts to auto-open a browser without --open, --json, or a real TTY.
     const originalIsTTY = process.stdout.isTTY;
     process.stdout.isTTY = false;

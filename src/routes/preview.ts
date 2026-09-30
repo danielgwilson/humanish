@@ -29,5 +29,6 @@ export async function runPreviewLab(config: LabConfig, options: RunLabOptions): 
     dryRun: plan.dryRun,
     simCount: plan.simCount,
     ...(options.runId === undefined ? {} : { runId: options.runId }),
+    ...(options.open === undefined ? {} : { observer: { open: options.open } }),
   });
 }

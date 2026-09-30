@@ -9,7 +9,8 @@ fails when a path in it no longer exists. [CONTEXT.md](CONTEXT.md) defines the d
 The steps use a live computer-use lab on a hosted E2B desktop. The scripted, terminal and
 shared-world routes share steps 1, 2, 8 and 9, and each does steps 3 to 7 in its own route file.
 The preview route writes a fixture bundle with `runDryRun` (`src/run/dry-run.ts`), publishes it
-with `Run.finish` as in step 7, and skips steps 3 to 6 and 9. Its callers run step 8.
+with `Run.finish` as in step 7, and skips steps 3 to 6 and 9. It runs step 8 through
+`FinishedRun.renderObserver` when `RunOptions.observer` asks for it, as every CLI caller does.
 
 1. `runLabCommand` (`src/cli/commands/lab-run.ts`) calls `resolveLabManifest`
    (`src/lab/discover.ts`). It reads the YAML and calls `parseLabConfig` (`src/lab/config.ts`),

@@ -1,6 +1,6 @@
 import { Command, Option } from "commander";
 import { renderObserver, serveObserver } from "../../observer/render.js";
-import type { ObserverServer } from "../../observer/render.js";
+import type { ObserverResult, ObserverServer } from "../../observer/render.js";
 import { runDryRun } from "../../run/dry-run.js";
 import type { RunResult } from "../../run/results.js";
 import { runLabCommand } from "./lab-run.js";
@@ -301,24 +301,6 @@ export function registerWatchCommand(parent: Command, io: CliIo): void {
         }
         const requestedSimCount = simCount ?? (runWasOmitted ? 4 : undefined);
 
-        let runInput = options.run ?? "latest";
-        if (requestedSimCount !== undefined && requestedSimCount !== null) {
-          const runResult = await runDryRun({
-            cwd: options.cwd,
-            dryRun: true,
-            simCount: requestedSimCount,
-            ...(options.runId === undefined ? {} : { runId: options.runId }),
-          });
-
-          if (!runResult.ok || !runResult.runId) {
-            writeResult(command, io, runResult, formatRunHuman);
-            io.setExitCode(2);
-            return;
-          }
-
-          runInput = runResult.runId;
-        }
-
         const wantsMachine = wantsJson(command);
         const shouldOpen =
           options.open === false
@@ -327,9 +309,31 @@ export function registerWatchCommand(parent: Command, io: CliIo): void {
               ? true
               : !wantsMachine && process.stdout.isTTY === true;
         const wantsFollow = !wantsMachine && options.detach !== true && options.follow !== false;
-        const rendered = await renderObserver(options.cwd, runInput, {
-          open: wantsFollow ? false : shouldOpen,
-        });
+        const staticOpen = wantsFollow ? false : shouldOpen;
+
+        let rendered: ObserverResult;
+        if (requestedSimCount !== undefined && requestedSimCount !== null) {
+          // A fresh run renders through its finished run, so the page shown is the run just
+          // written, never a directory swapped in under its id.
+          const runResult = await runDryRun({
+            cwd: options.cwd,
+            dryRun: true,
+            simCount: requestedSimCount,
+            ...(options.runId === undefined ? {} : { runId: options.runId }),
+            observer: { open: staticOpen },
+          });
+
+          if (!runResult.ok || runResult.observer === undefined) {
+            writeResult(command, io, runResult, formatRunHuman);
+            io.setExitCode(2);
+            return;
+          }
+          rendered = runResult.observer;
+        } else {
+          rendered = await renderObserver(options.cwd, options.run ?? "latest", {
+            open: staticOpen,
+          });
+        }
         let server: ObserverServer | null = null;
         let result = rendered;
         if (rendered.ok && wantsFollow) {

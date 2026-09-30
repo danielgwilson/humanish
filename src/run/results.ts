@@ -1,6 +1,7 @@
 // The run command's options and result, the cleanup result (cleanup.json) and the latest-run
 // pointer (latest.json). None of them are stored in run.json.
 
+import type { ObserverResult } from "../observer/render.js";
 import type { RunProviderResource } from "./bundle.js";
 import type { RunLabProvenance } from "./status.js";
 
@@ -13,6 +14,9 @@ export interface RunOptions {
   dryRun?: boolean;
   runId?: string;
   simCount?: number;
+  /** Render the run's Observer through the finished run, opening the page when `open` is true.
+   *  Without it the preview writes no observer/index.html. */
+  observer?: { open: boolean };
 }
 
 export interface RunResult {
@@ -26,6 +30,8 @@ export interface RunResult {
   bundlePath?: string;
   reviewPath?: string;
   latestPath?: string;
+  /** The Observer rendered for this run, when `RunOptions.observer` asked for one. */
+  observer?: ObserverResult;
   warnings: string[];
   error?: {
     code:
