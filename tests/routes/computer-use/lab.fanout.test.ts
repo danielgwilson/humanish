@@ -50,6 +50,7 @@ import {
   type ObserverServer,
 } from "../../../src/observer/render.js";
 import { readReview } from "../../../src/run/manage.js";
+import { reclaimRunSandboxes } from "../../../src/run/reclaim.js";
 import { verifyRun } from "../../../src/run/verify.js";
 
 // ---------------------------------------------------------------------------
@@ -785,6 +786,35 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"),
     );
     expect(bundle.desktopTemplate).toBeUndefined();
+  });
+
+  it("C6: after every lane's teardown kill fails, reclaim kills each receipted lane sandbox", async () => {
+    const handle = makeFanoutModule();
+    const kill = handle.module.Sandbox.kill!;
+    handle.module.Sandbox.kill = async (sandboxId, options) => {
+      await kill(sandboxId, options);
+      throw new Error("synthetic kill failure");
+    };
+    const outcome = await runLab(fanoutConfig({ concurrency: 2 }), {
+      cwd,
+      cuaHooks: passingHooks(handle, { active: { count: 0, max: 0 } }),
+    });
+    if (outcome.backend !== "cua") throw new Error(`unexpected backend ${outcome.backend}`);
+    expect(handle.createdIds).toHaveLength(4);
+
+    const reclaimed: string[] = [];
+    await reclaimRunSandboxes(cwd, outcome.result.runId, {
+      loadModule: async () =>
+        ({
+          Sandbox: {
+            async kill(sandboxId: string) {
+              reclaimed.push(sandboxId);
+              return true;
+            },
+          },
+        }) as unknown as E2BDesktopModule,
+    });
+    expect(reclaimed.sort()).toEqual([...handle.createdIds].sort());
   });
 
   it("runs the REAL orchestration at N=4, concurrency 2: 4 per-lane sandboxes, bounded concurrency, teardown kills ONLY each lane's own id, verifyRun ok", async () => {

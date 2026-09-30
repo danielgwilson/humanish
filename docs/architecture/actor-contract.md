@@ -277,7 +277,7 @@ export interface Actor {
 
 `scripted-browser` is the deterministic, model-free browser-actuation lane, distinct from
 `computer-use` (raw pixels + a model deciding actions). The registered
-`scripted-browser` actor (`src/actors/scripted-browser.ts`) replays a committed scenario's
+`scripted-browser` actor (`src/actors/scripted-browser/`) replays a committed scenario's
 browser steps with playwright against a loopback app; the steps ARE the behavior, so
 `byoModel: false` means there is NO model, and `tokenUsage` records zeros as an affirmative
 $0 declaration that is true by mechanism (no provider client is importable from that code

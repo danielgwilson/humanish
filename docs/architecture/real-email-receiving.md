@@ -12,9 +12,11 @@ SMS and participant outbound mail are not supported.
 
 ## Setup
 
-Open `humanish tui`, press **c**, and add an AgentMail key. Hidden entry saves it
-in the existing user key store and checks authentication without creating an inbox.
-The project profile stores only the provider and environment-variable name.
+Open `humanish tui`, press **c** for Connections, and choose **Add API key** to add an
+AgentMail key. Hidden entry saves it in the existing user key store and checks
+authentication without creating an inbox; Ctrl+C cancels entry and returns to the TUI.
+The project profile, `.humanish/local/comms.yaml`, stores only the provider and
+environment-variable name.
 Environment and explicit env-file values retain precedence over saved keys.
 A rejected or unavailable authentication check does not delete the saved key.
 Authentication does not prove inbox creation/deletion permissions, quota or delivery.

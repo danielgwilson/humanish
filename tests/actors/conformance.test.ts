@@ -12,13 +12,13 @@ import {
   type ActorTrace,
 } from "../../src/actors/contract.js";
 import { getActor } from "../../src/actors/registry.js";
+import { runScriptedBrowserSession } from "../../src/actors/scripted-browser/actor.js";
 import {
-  runScriptedBrowserSession,
   browserSurfaces,
   type ScriptedBrowserLike,
   type ScriptedLocatorLike,
   type ScriptedPageLike,
-} from "../../src/actors/scripted-browser.js";
+} from "../../src/actors/scripted-browser/types.js";
 import { buildCodexResult, fixturePersona } from "./fixtures.js";
 import { syntheticPng1x1 } from "../image-fixtures.js";
 

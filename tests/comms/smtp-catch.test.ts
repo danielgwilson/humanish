@@ -13,7 +13,8 @@ import path from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { SANDBOX_CATCH_SCRIPT, parseDeliveriesNdjson } from "../../src/comms/sandbox-catch.js";
+import { parseDeliveriesNdjson } from "../../src/comms/sandbox-catch.js";
+import { SANDBOX_CATCH_SCRIPT } from "../../src/comms/sandbox-catch-script.js";
 import { routeCapturedSends } from "../../src/comms/sandbox-catch.js";
 import { FakeInbox } from "../../src/comms/fake-inbox.js";
 

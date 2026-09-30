@@ -33,10 +33,10 @@ import {
 } from "../../src/routes/scripted-browser.js";
 import type {
   ScriptedBrowserLike,
-  ScriptedBrowserSessionResult,
   ScriptedLocatorLike,
   ScriptedPageLike,
-} from "../../src/actors/scripted-browser.js";
+} from "../../src/actors/scripted-browser/types.js";
+import type { ScriptedBrowserSessionResult } from "../../src/actors/scripted-browser/actor.js";
 import { syntheticPng1x1 } from "../image-fixtures.js";
 import { runDirSnapshot } from "../helpers/run-golden.js";
 

@@ -8,8 +8,8 @@ fails when a path in it no longer exists. [CONTEXT.md](CONTEXT.md) defines the d
 
 The steps use a live computer-use lab on a hosted E2B desktop. The scripted, terminal and
 shared-world routes share steps 1, 2, 8 and 9, and each does steps 3 to 7 in its own route file.
-The preview route writes a fixture bundle with `runDryRun` (`src/run/dry-run.ts`) and skips
-steps 3 to 7 and 9.
+The preview route writes a fixture bundle with `runDryRun` (`src/run/dry-run.ts`), publishes it
+with `Run.finish` as in step 7, and skips steps 3 to 6 and 9. Its callers run step 8.
 
 1. `runLabCommand` (`src/cli/commands/lab-run.ts`) calls `resolveLabManifest`
    (`src/lab/discover.ts`). It reads the YAML and calls `parseLabConfig` (`src/lab/config.ts`),
@@ -44,15 +44,16 @@ steps 3 to 7 and 9.
    which checks each image with `assertScreenshotEvidence` (`src/evidence/image.ts`). Lane errors
    pass through `redactText` (`src/evidence/redaction.ts`) before they are recorded. Screenshots
    are blurred only when the lab sets `policies.redactScreenshots: true`.
-7. `buildCuaRunBundle` (`src/routes/computer-use/assemble.ts`) builds `run.json`.
-   `writeCuaRunArtifacts` (`src/routes/computer-use/bundle.ts`) writes it with `review.json`,
-   `events.ndjson`, `observer/observer-data.json` and the `.humanish/runs/latest.json` pointer.
-   The route writes one bundle before the lanes start and the final one after they finish. The
-   terminal and scripted routes instead start their run with `runScope` and `startRun` and
-   publish it with `Run.finish` (`src/run/run.ts`). `Run.finish` writes `run.json`, then the
-   `status.json` outcome, then `review.json`, `review.md`, `events.ndjson` and
-   `observer/observer-data.json`, and the pointer last. The computer-use and shared-world routes
-   move onto it next.
+7. `buildCuaRunBundle` (`src/routes/computer-use/assemble.ts`) builds `run.json`. The route
+   started its run with `runScope` and `startRun` (`src/run/run.ts`) before any sandbox. It
+   publishes an in-progress bundle with `Run.writeSnapshot` before the lanes start, rewrites it
+   from the lanes' live traces through `startLiveTraceFlush`
+   (`src/routes/computer-use/live-flush.ts`), and publishes the final bundle with `Run.finish`.
+   `Run.finish` writes `run.json`, then the `status.json` outcome, then `review.json`,
+   `review.md`, `events.ndjson` and `observer/observer-data.json`, and the
+   `.humanish/runs/latest.json` pointer last. A snapshot writes the same files without the
+   status outcome and writes the pointer only until one pointer write succeeds. The terminal,
+   scripted and preview routes publish the same way; the shared-world route moves onto it next.
 8. `renderObserver` (`src/observer/render.ts`) verifies the bundle with `verifyRunPrepared`
    (`src/run/verify.ts`), builds the page data with `buildObserverData` (`src/observer/data.ts`)
    and writes `observer/index.html` with `renderObserverHtml`. `humanish verify --run latest` runs
@@ -90,15 +91,25 @@ steps 3 to 7 and 9.
 | `tui/`                 | The Ink terminal app                                                         | `tui/AGENTS.md`                     |
 | `site/`                | humanish.dev and its user docs in `site/content/docs/`                       | `site/AGENTS.md`                    |
 | `humanish/`            | This repo's own labs, personas, scenarios, fixtures and coverage notes       | `humanish/labs/first-run.yaml`      |
+| `examples/`            | Library examples shipped in the npm package: a participant and a scorer      | `examples/README.md`                |
+| `adapters/`            | Adapter fixture sets that `tests/lab/adapter-fixtures.test.ts` checks        | `adapters/fixtures/README.md`       |
+| `bench/`               | Benchmark apps with planted defects and their dated results                  | `bench/DEFECTS.md`                  |
+| `fixtures/`            | Synthetic apps and cases that tests and scripts copy                         | `fixtures/minimal-app/README.md`    |
+| `skills/`              | The companion agent skill that `npx skills add` installs                     | `skills/humanish/SKILL.md`          |
 | `runtime/`             | Desktop and browser image recipes                                            | `runtime/browser-guest/README.md`   |
 | `scripts/`             | Proof, release and check scripts that `package.json` runs                    | `scripts/check-doc-paths.ts`        |
 | `docs/contracts/`      | Bundle and schema contracts, whose documented fields are API                 | `docs/contracts/run-bundle.md`      |
 | `tests/`               | Vitest suites that mirror `src/`, plus `tests/fixtures/` and `tests/golden/` | `tests/helpers/run-golden.ts`       |
 
+Three folders hold fixtures. `tests/fixtures/` holds test inputs, `humanish/fixtures/` holds the
+synthetic apps this repo's own labs start, and the root `fixtures/` holds synthetic apps and cases
+that several tests and scripts copy, such as `fixtures/minimal-app/`.
+
 ## Check which compositions a lab can declare
 
-`parseLabConfig` (`src/lab/config.ts`) enforces this matrix with the predicates in
-`src/lab/routing.ts` and the reasons in `src/lab/validation.ts`. The route entries check it again
+`parseLabConfig` (`src/lab/config.ts`) enforces this matrix through `compositionReason`
+(`src/lab/composition-rules.ts`), which uses the predicates in `src/lab/routing.ts` and the reasons
+in `src/lab/validation.ts`. The route entries check it again
 for library callers. `tests/fixtures/task-route-preflight/labs.json` holds one lab for each
 accepted row except the local browser row. `tests/lab/task-route-preflight.test.ts` checks that
 each of those labs routes as shown. `tests/lab/engine-local-substrate.test.ts` covers the local
@@ -137,8 +148,18 @@ computer-use labs in the fixture accept them. The other routes refuse them at pa
 
 The receipt write is best-effort. A failed append is ignored. The sandbox's server-side timeout
 then ends a sandbox that has no receipt. Any other failure after create kills the sandbox before
-the error reaches the caller. The lab preflight probe has no run directory, so it writes no
-receipt and relies on that timeout alone.
+the error reaches the caller. The lab preflight probe has no run directory, so
+`runLabPreflight` (`src/lab/preflight.ts`) journals its receipt in
+`.humanish/preflight/<probe-id>/` and removes the journal after a confirmed kill.
+`humanish reclaim --preflight` (`reclaimPreflightSandboxes`, `src/run/reclaim.ts`) kills what a
+killed or failed probe left. It acts on a journal only when the probe marked it abandoned, its
+lease has elapsed, or its owner ran on this host in this pid namespace and is gone; otherwise it
+says why it left the journal. A public-preview probe's timeout is each target's readiness budget
+plus five minutes. A clone probe's timeout is `cloneProvisioningBudgetMs`
+(`src/subject/clone.ts`), the longest its clone and serve steps can take with the lab's declared
+or default budgets and retries, plus five minutes. A declared `sandboxTimeoutMs`, or E2B's
+60-minute maximum, caps both. Without a declared timeout a clone probe gets 13 minutes (clone and
+serve as-is) up to 60 (a Node app that installs and builds), where it used to get 10.
 
 ## Make your first change
 
@@ -168,3 +189,5 @@ Common changes touch these tests and contracts:
 | An actor                  | `tests/actors/`, `tests/actors/conformance.test.ts`                          | `docs/architecture/actor-contract.md`                              |
 | Redaction or share safety | `tests/evidence/`, `tests/run/narration-secrets.test.ts`                     | `docs/contracts/policy.md`                                         |
 | Study analysis            | `tests/analysis/`                                                            | `docs/contracts/study-analysis.md`                                 |
+| A public export           | `pnpm build` and `pnpm api:proof` (`--update` to accept)                     | `tests/golden/public-api.json`                                     |
+| An example                | `pnpm build` and `pnpm api:proof`, which runs every example                  | `examples/README.md`                                               |

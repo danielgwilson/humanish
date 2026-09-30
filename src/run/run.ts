@@ -46,6 +46,16 @@ interface Run {
   /** Routes write their evidence files through these and hand them to lanes. */
   readonly paths: PreparedRunArtifactPaths;
   /**
+   * Publish an in-progress bundle: run.json, review.json, review.md, events.ndjson and
+   * observer/observer-data.json, plus the latest pointer until one pointer write has succeeded,
+   * so a live run is `latest` from its first snapshot and a later flush never takes the pointer
+   * back from a newer run. status.json stays running. Writes are serialized with each other and
+   * with `finish`; a rejected write reaches only its caller. Rejects before writing once `finish`
+   * was called or the scope closed, or when the bundle names another run or mode, so a late flush
+   * can never overwrite the final bundle. Routes that throttle snapshots own their timers.
+   */
+  writeSnapshot(bundle: RunBundle): Promise<void>;
+  /**
    * The one final publication: run.json, then the status outcome, then review.json, review.md,
    * events.ndjson, observer/observer-data.json, and last the latest pointer. The status goes
    * after run.json so the index never gets ahead of the evidence, and the pointer goes last so
@@ -179,12 +189,43 @@ export async function runScope<T>(
             render: options.observer.render ?? renderObserver,
           };
     let finishCalled = false;
+    let pointerWritten = false;
+    // One chain serializes every write. A rejection reaches only the caller of that write; the
+    // chain itself continues, so a failed snapshot never blocks the final publication.
+    let tail: Promise<unknown> = Promise.resolve();
+    const enqueue = <V>(write: () => Promise<V>): Promise<V> => {
+      const written = tail.then(write);
+      tail = written.then(
+        () => undefined,
+        () => undefined,
+      );
+      return written;
+    };
+    const checkIdentity = (bundle: RunBundle): string | undefined =>
+      bundle.runId !== runId || bundle.mode !== options.mode
+        ? "The bundle names another run or mode than this run."
+        : undefined;
 
-    const publish = async (bundle: RunBundle): Promise<FinishedRun> => {
+    const writePointer = async (): Promise<void> => {
+      const pointer: RunPointer = {
+        schema: "humanish.latest-run.v1",
+        runId,
+        path: paths.relativeRunRoot,
+        updatedAt: new Date(now()).toISOString(),
+      };
+      await writePreparedRunLatestPointer(paths, json(pointer), "utf8");
+      pointerWritten = true;
+    };
+
+    /** run.json, then `afterBundle`, then the review and projections. */
+    const writeBundleFiles = async (
+      bundle: RunBundle,
+      afterBundle: (publicBundle: RunBundle) => Promise<void>,
+    ): Promise<void> => {
       await validatePreparedRunArtifactPaths(paths);
       const publicBundle: RunBundle = { ...bundle, cwd: PUBLIC_TARGET_CWD };
       await writeContainedOutputFile(paths, "run.json", json(publicBundle), "utf8");
-      await runStatus.finish(runStatusOutcome(publicBundle));
+      await afterBundle(publicBundle);
       await writeContainedOutputFile(paths, "review.json", json(publicBundle.review), "utf8");
       await writeContainedOutputFile(
         paths,
@@ -200,13 +241,18 @@ export async function runScope<T>(
         json(buildObserverData(publicBundle)),
         "utf8",
       );
-      const pointer: RunPointer = {
-        schema: "humanish.latest-run.v1",
-        runId,
-        path: paths.relativeRunRoot,
-        updatedAt: new Date(now()).toISOString(),
-      };
-      await writePreparedRunLatestPointer(paths, json(pointer), "utf8");
+    };
+
+    const snapshot = async (bundle: RunBundle): Promise<void> => {
+      await writeBundleFiles(bundle, async () => {});
+      if (!pointerWritten) await writePointer();
+    };
+
+    const publish = async (bundle: RunBundle): Promise<FinishedRun> => {
+      await writeBundleFiles(bundle, (publicBundle) =>
+        runStatus.finish(runStatusOutcome(publicBundle)),
+      );
+      await writePointer();
       return new FinishedRun(issueKey, runId, paths, observer);
     };
 
@@ -215,15 +261,21 @@ export async function runScope<T>(
       createdAt,
       mode: options.mode,
       paths,
+      writeSnapshot(bundle) {
+        if (closed) return refuse("The run scope has closed.");
+        if (finishCalled) return refuse("Run.finish was called; no snapshot follows it.");
+        const mismatch = checkIdentity(bundle);
+        if (mismatch !== undefined) return refuse(mismatch);
+        return admit(enqueue(() => snapshot(bundle)));
+      },
       finish(bundle) {
         if (closed) return refuse("The run scope has closed.");
         if (finishCalled) return refuse("Run.finish admits one call.");
-        if (bundle.runId !== runId || bundle.mode !== options.mode) {
-          return refuse("The bundle names another run or mode than this run.");
-        }
+        const mismatch = checkIdentity(bundle);
+        if (mismatch !== undefined) return refuse(mismatch);
         finishCalled = true;
         return admit(
-          publish(bundle).then((issued) => {
+          enqueue(() => publish(bundle)).then((issued) => {
             finished = issued;
             return issued;
           }),

@@ -179,6 +179,10 @@ Once you have identified the interrupted run, reclaim its sandboxes:
 npx humanish reclaim --run YOUR_RUN_ID --json
 ```
 
+A `humanish lab preflight` probe that was interrupted leaves its receipt under `.humanish/preflight/`; `npx humanish reclaim --preflight --json` stops those sandboxes.
+
+A preflight sandbox also stops on its own. A `public-preview` probe gets each target's readiness budget plus five minutes. A `sandbox-loopback` probe gets the longest its clone and serve steps can take with your lab's `serve` and seed-step budgets, including the one retry of the runtime and install steps, plus five minutes, so a preflight does not time out where the run would finish provisioning. A declared `execution.desktop.sandboxTimeoutMs`, or E2B's 60-minute maximum, caps both. Without a declared timeout, a clone probe gets 13 minutes (a clone served as-is) up to 60 minutes (a Node app that installs and builds), where earlier versions gave 10; the receipt is what lets you stop it sooner.
+
 `reclaim` immediately attempts to stop the sandboxes recorded for that run. `reclaim` uses journaled exact IDs and needs `E2B_API_KEY`; it does not sweep unrelated resources in your provider account. See [`reclaim`](/docs/cli#humanish-reclaim) for the full flags.
 
 `humanish cleanup` writes an inspection receipt. It does not itself authorize provider-resource deletion. Check your provider console if cleanup cannot be confirmed.

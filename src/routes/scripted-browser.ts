@@ -78,18 +78,20 @@ import {
 } from "../run/bundle.js";
 import {
   browserSurfaces,
-  normalizeLocalAppUrl,
-  parseBrowserPersonaJourneyFromScenario,
-  resolveBrowserCommand,
-  runScriptedBrowserSessionInPreparedRoot,
   type BrowserPersonaJourney,
   type BrowserSurface,
   type ScriptedBrowserEvidenceUrlPolicy,
   type ScriptedBrowserLaunchArgs,
   type ScriptedBrowserLike,
+} from "../actors/scripted-browser/types.js";
+import { normalizeLocalAppUrl } from "../actors/scripted-browser/steps.js";
+import { parseBrowserPersonaJourneyFromScenario } from "../actors/scripted-browser/journey.js";
+import { resolveBrowserCommand } from "../actors/scripted-browser/browser-command.js";
+import {
+  runScriptedBrowserSessionInPreparedRoot,
   type ScriptedBrowserSessionOptions,
   type ScriptedBrowserSessionResult,
-} from "../actors/scripted-browser.js";
+} from "../actors/scripted-browser/actor.js";
 import {
   prepareSelectedOutputDirectory,
   readContainedRegularFile,

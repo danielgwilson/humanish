@@ -8,7 +8,7 @@ the integration; it does not test persona behavior or the quality of an app's UI
 
 ## Run from an npm installation
 
-Use Node.js 20.3 or later (`AbortSignal.any`), in a new directory:
+Use Node.js 22.19 or newer, the package's `engines` floor, in a new directory:
 
 ```bash
 npm init -y

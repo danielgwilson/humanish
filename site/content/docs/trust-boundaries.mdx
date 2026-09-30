@@ -39,7 +39,7 @@ Three receipts say what happened to each desktop, and none of them enumerates yo
 
 - `run.json` lists every sandbox the run created under `providerResources`, with `status` `killed`, `running` or `unknown` and a `cleanup.reason`.
 - `humanish cleanup --run <id>` re-checks and writes `cleanup.json` with `killed`, `already_clean`, `failed` or `skipped` per resource.
-- `humanish reclaim --run <id>` kills the sandboxes an interrupted run journaled in `sandbox-receipts.ndjson` and writes `reclaim-receipt.json` with `killed`, `already-gone` or `kill-failed` for each. Each receipt names its provider (`e2b`; older receipts have none and count as `e2b`). A receipt from a provider this version cannot reach is reported as `unsupported-provider` and nothing is attempted for it.
+- `humanish reclaim --run <id>` kills the sandboxes an interrupted run journaled in `sandbox-receipts.ndjson` and writes `reclaim-receipt.json` with `killed`, `already-gone` or `kill-failed` for each. Each receipt names its provider (`e2b`; older receipts have none and count as `e2b`). A receipt from a provider this version cannot reach is reported as `unsupported-provider` and nothing is attempted for it. `humanish reclaim --preflight` does the same for the sandboxes interrupted `humanish lab preflight` probes journaled under `.humanish/preflight/`. It leaves a journal whose probe may still be running, including one opened on another host or in another pid namespace, until the probe marks it abandoned or its lease elapses, and the result's warnings say why.
 
 The create-time timeout on every sandbox is the backstop when a kill cannot be confirmed: E2B stops the sandbox, and its metering, when that timeout elapses.
 
