@@ -13,6 +13,33 @@ import { CAPABILITIES, FRAME, click, done, turn } from "../../helpers/loop-golde
 // Behavior the goldens do not reach: how the loop calls injected functions, when it reads its
 // options, and what survives a failure while it records a terminal item.
 
+const receipt = { dispatched: true, usageComplete: true, cleanup: "confirmed" } as const;
+
+// A provider written as a class: its methods read their state through `this`.
+class MethodProvider implements CuaProvider {
+  readonly id = "method-provider";
+  readonly capabilities = CAPABILITIES;
+  readonly requestPolicy?: "fail_closed";
+  private readonly summary = "Summarized through the provider's own state.";
+  private readonly settled: Partial<CuaTurn>;
+  constructor(requestPolicy?: "fail_closed") {
+    if (requestPolicy !== undefined) this.requestPolicy = requestPolicy;
+    this.settled =
+      requestPolicy === undefined
+        ? {}
+        : { providerRequest: receipt, usage: { input: 1, output: 1 } };
+  }
+  async nextTurn(): Promise<CuaTurn> {
+    return turn({ actions: [click(1, 1)], ...this.settled });
+  }
+  async debrief(): Promise<CuaTurn> {
+    return done("Closing.", {
+      closingReport: { summary: this.summary, frictionReports: [] },
+      ...this.settled,
+    });
+  }
+}
+
 function provider(turns: CuaTurn[], extra: Partial<CuaProvider> = {}): CuaProvider {
   let index = 0;
   return {
@@ -164,6 +191,27 @@ it("calls every injected function without a receiver", async () => {
   );
   expect([...receivers.values()].every((self) => self === undefined)).toBe(true);
 });
+
+it.each([
+  ["default", undefined],
+  ["fail_closed", "fail_closed"],
+] as const)(
+  "calls provider methods with the provider as receiver (%s requests)",
+  async (_name, requestPolicy) => {
+    const result = await runComputerUseLoop(
+      base({
+        provider: new MethodProvider(requestPolicy),
+        executor: executor([{ stateSignature: "a" }, { stateSignature: "b", text: "saved" }]),
+        stopWhen: { any: [{ id: "saved", textIncludes: "saved" }] },
+      }),
+    );
+    expect(result.completionReason).toBe("goal_satisfied");
+    expect(result.trace.debrief).toMatchObject({
+      status: "completed",
+      report: { summary: "Summarized through the provider's own state." },
+    });
+  },
+);
 
 it("reads its options once, at entry", async () => {
   const seen: string[] = [];

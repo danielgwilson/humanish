@@ -49,19 +49,15 @@ export interface CodexActorDescriptor extends ActorDescriptorBase {
   toActorTrace(result: CodexAppServerRunResult, persona: ActorPersonaRef): ActorTrace;
 }
 
-// The CUA descriptor exposes runSession ONLY (no toActorTrace): runComputerUseLoop already
-// returns a fully-formed ActorTrace at result.trace, so a mapper would be a no-op identity.
-// The union is intentionally heterogeneous: each descriptor exposes only the entries it has.
+// CuaActorDescriptor covers every actor on the computer-use lane. The ids share a session entry
+// and differ in where the provider comes from: local-agent builds it from the operator's
+// signed-in CLI, openai-computer-use from a keyed API client. The id stays distinct because it is
+// the slot a lab names when it chooses a brain. There is no toActorTrace: runComputerUseLoop
+// already returns a complete ActorTrace at result.trace, so a mapper would be an identity
+// function. The union is intentionally heterogeneous: each descriptor exposes only the entries
+// it has.
 export interface CuaActorDescriptor extends ActorDescriptorBase {
-  id: "openai-computer-use";
-  runSession(options: CuaActorSessionOptions): Promise<CuaLoopResult>;
-}
-
-// The same lane and the same session entry as CuaActorDescriptor — a separate descriptor only
-// because the ActorId is the slot a lab names, and "which brain" is the thing a lab is choosing
-// here. The provider is built from the operator's local CLI instead of a keyed API client.
-interface LocalAgentActorDescriptor extends ActorDescriptorBase {
-  id: "local-agent";
+  id: "openai-computer-use" | "local-agent";
   runSession(options: CuaActorSessionOptions): Promise<CuaLoopResult>;
 }
 
@@ -85,15 +81,15 @@ export interface TerminalActorDescriptor extends ActorDescriptorBase {
 export type ActorDescriptor =
   | CodexActorDescriptor
   | CuaActorDescriptor
-  | LocalAgentActorDescriptor
   | ScriptedBrowserActorDescriptor
   | TerminalActorDescriptor;
 
 /**
  * REGISTRY CONTRACT: an actor whose capabilities include the "computer-use" lane is a
  * CuaActorDescriptor — its runSession takes CuaActorSessionOptions and returns a CuaLoopResult.
- * Any future computer-use provider (e.g. stagehand-cua) must keep that session signature; this
- * guard is what lets the lab dispatch on capabilities rather than on hardcoded actor ids.
+ * Any future computer-use provider (e.g. stagehand-cua) must keep that session signature and add
+ * its id to CuaActorDescriptor["id"], so code narrowed by this guard can still tell the ids apart.
+ * This guard is what lets the lab dispatch on capabilities rather than on hardcoded actor ids.
  */
 export function isCuaActorDescriptor(
   descriptor: ActorDescriptor,
@@ -178,7 +174,7 @@ export const actorRegistry: Record<ActorId, ActorDescriptor> = {
 // Overloads narrow the return type per id so codex call sites keep their exact
 // signatures (e.g. getActor("codex-app-server").runSession(...) stays valid).
 export function getActor(id: "codex-app-server"): CodexActorDescriptor;
-export function getActor(id: "openai-computer-use"): CuaActorDescriptor;
+export function getActor(id: CuaActorDescriptor["id"]): CuaActorDescriptor;
 export function getActor(id: "scripted-browser"): ScriptedBrowserActorDescriptor;
 export function getActor(id: "codex-exec"): TerminalActorDescriptor;
 export function getActor(id: ActorId): ActorDescriptor;

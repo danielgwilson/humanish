@@ -11,7 +11,13 @@ import {
   codexStatusToCompletionReason,
   type ActorPersonaRef,
 } from "../../src/actors/contract.js";
-import { actorRegistry, getActor, type ActorId } from "../../src/actors/registry.js";
+import {
+  actorRegistry,
+  getActor,
+  isCuaActorDescriptor,
+  type ActorDescriptor,
+  type ActorId,
+} from "../../src/actors/registry.js";
 import { buildCodexResult } from "./fixtures.js";
 
 const persona: ActorPersonaRef = {
@@ -112,6 +118,16 @@ describe("actorRegistry", () => {
     const actorTrace = getActor("codex-app-server").toActorTrace(buildCodexResult(), persona);
     expect(actorTrace.schema).toBe(ACTOR_TRACE_SCHEMA);
     expect(actorTrace.provider).toBe("codex-app-server");
+  });
+
+  it("narrows each computer-use actor to a descriptor that keeps its own id", () => {
+    const cuaIds = Object.values(actorRegistry)
+      .filter(isCuaActorDescriptor)
+      .map((descriptor) => descriptor.id);
+    expect(cuaIds.toSorted()).toEqual(["local-agent", "openai-computer-use"]);
+    const localAgent: ActorDescriptor = actorRegistry["local-agent"];
+    // This comparison fails to typecheck if the narrowed id type drops local-agent.
+    expect(isCuaActorDescriptor(localAgent) && localAgent.id === "local-agent").toBe(true);
   });
 
   it("throws on an unknown actor id", () => {

@@ -270,7 +270,7 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
 
   // The operator's own signed-in coding agent is the brain, so there is no provider key to ask
   // for — the entire point of the actor. E2B is still required: the persona needs a machine.
-  const localAgentRoute = actorType === "local-agent";
+  const localAgentRoute = descriptor.id === "local-agent";
   // Which local CLI, from its OWN field: `model` means the model, so that "Claude Code running
   // Opus" is sayable. Preflight below refuses when the chosen one is missing or signed out — that
   // news is worthless after a sandbox is paid for.
