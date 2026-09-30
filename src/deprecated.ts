@@ -21,11 +21,11 @@ import type {
   ScriptedBrowserLabHooks as ScriptedHooks,
   ScriptedBrowserLabResult as ScriptedResult,
 } from "./routes/scripted-browser/types.js";
-import type { SharedWorldLabHooks as SharedWorldHooks } from "./routes/shared-world/hooks.js";
 import { runConcurrentSharedWorld as concurrentSharedWorld } from "./routes/shared-world/lab.js";
 import type {
   ConcurrentSharedWorldLabResult as SharedWorldResult,
   RunConcurrentSharedWorldLabOptions as SharedWorldOptions,
+  SharedWorldLabHooks as SharedWorldHooks,
 } from "./routes/shared-world/types.js";
 import { runTerminalProductLab as terminalProductLab } from "./routes/terminal/lab.js";
 import type {

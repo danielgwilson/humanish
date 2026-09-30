@@ -19,7 +19,6 @@ import {
   type SubjectComms,
 } from "./comms.js";
 import { declaredOriginDigestOf } from "./external-public.js";
-import type { SharedWorldLabHooks } from "./hooks.js";
 import { packSubjectTree, type ProvisionedPlaneSetup } from "./provisioned.js";
 import { emptyPlaneResults } from "./result.js";
 import { buildSeatSpecs, defaultSeatSessionTimeoutMs } from "./seats.js";
@@ -33,6 +32,7 @@ import type {
   PlaneResults,
   PlaneSelection,
   RunConcurrentSharedWorldLabOptions,
+  SharedWorldLabHooks,
 } from "./types.js";
 import path from "node:path";
 

@@ -21,9 +21,11 @@ import {
   type TerminalProductLabHooks,
   type TerminalProductLabResult,
 } from "../routes/terminal/types.js";
-import { type SharedWorldLabHooks } from "../routes/shared-world/hooks.js";
 import { runConcurrentSharedWorld } from "../routes/shared-world/lab.js";
-import { type ConcurrentSharedWorldLabResult } from "../routes/shared-world/types.js";
+import {
+  type ConcurrentSharedWorldLabResult,
+  type SharedWorldLabHooks,
+} from "../routes/shared-world/types.js";
 import { type RunLabProvenance } from "../run/status.js";
 import type { ObserverResult } from "../observer/render.js";
 import { runPreviewLab } from "../routes/preview.js";
