@@ -3,7 +3,7 @@ import { cuaGoalSource } from "../actors/goal-source.js";
 import type { ActorTraceItem } from "../actors/contract.js";
 import type { RunBundle } from "../run/bundle.js";
 import type { RunStream } from "../run/streams.js";
-import { isRecord } from "../run/primitives.js";
+import { isRecord } from "../run/type-guards.js";
 import {
   ACTION_CAPTURE_VERSION,
   type AnalysisParticipantInput,

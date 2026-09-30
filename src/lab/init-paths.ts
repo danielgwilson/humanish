@@ -12,7 +12,7 @@ import {
 } from "../run/contained-output.js";
 import type { InitResult } from "./init.js";
 import { isPathInside } from "../run/paths.js";
-import { isNodeError } from "../run/primitives.js";
+import { isNodeError } from "../run/type-guards.js";
 
 export async function validateInitProjectPaths(cwd: string): Promise<InitResult["error"] | null> {
   const targets = [

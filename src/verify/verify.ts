@@ -7,7 +7,7 @@ import { validatePreparedRunArtifactPaths, type PreparedRunArtifactPaths } from 
 import { RUN_BUNDLE_FILE, RUN_BUNDLE_SCHEMA, type RunBundle } from "../run/bundle.js";
 import { isCleanupResult, isRunBundle } from "../run/guards.js";
 import { readRunJsonIfExists, readRunTextIfExists, resolveRunPath } from "../run/locate.js";
-import { isRecord } from "../run/primitives.js";
+import { isRecord } from "../run/type-guards.js";
 import {
   actorVerdictConsistencyFindings,
   noEngagementActorFindings,

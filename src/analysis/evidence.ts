@@ -2,7 +2,7 @@ import { isCommsReceivingEvidence } from "../comms/receiving-evidence.js";
 import { createHash } from "node:crypto";
 import { screenshotEvidenceError } from "../evidence/image.js";
 import { runIdOf, type PreparedRunArtifactPaths } from "../run/paths.js";
-import { isRecord } from "../run/primitives.js";
+import { isRecord } from "../run/type-guards.js";
 import { RUN_BUNDLE_FILE, type RunBundle } from "../run/bundle.js";
 import type { RunStream } from "../run/streams.js";
 import {

@@ -7,7 +7,7 @@ import {
   assertPreparedSelectedOutputDirectory,
   type PreparedOutputRoot,
 } from "./contained-output.js";
-import { isNodeError } from "./primitives.js";
+import { isNodeError } from "./type-guards.js";
 
 // Reading a file from a retained run directory for analysis: the path must be a plain relative path
 // inside the run, the file a single-link regular file that stays inside it, and the read bounded.

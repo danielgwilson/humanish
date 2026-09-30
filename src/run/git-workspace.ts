@@ -2,7 +2,7 @@ import { constants } from "node:fs";
 import { lstat, open, readdir, realpath } from "node:fs/promises";
 import path from "node:path";
 
-import { isNodeError } from "./primitives.js";
+import { isNodeError } from "./type-guards.js";
 
 const GIT_METADATA_INSPECTION_FAILED_NOTE = "Git metadata could not be inspected safely.";
 const GIT_METADATA_CONTAINMENT_FAILED_NOTE = "Git metadata failed containment validation.";

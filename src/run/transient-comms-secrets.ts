@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 
-import { escapeRegExp } from "./primitives.js";
+import { escapeRegExp } from "./text.js";
 
 /** Host-only, invocation-local exact values. No serializer, durable identifier or global fallback. */
 type SecretScope = {

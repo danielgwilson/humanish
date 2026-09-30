@@ -1,6 +1,6 @@
 import path from "node:path";
 import type { RunFeedbackCandidate } from "./bundle.js";
-import { isRecord } from "./primitives.js";
+import { isRecord } from "./type-guards.js";
 
 export function isRunFeedbackCandidate(value: unknown): value is RunFeedbackCandidate {
   return (

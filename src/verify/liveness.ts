@@ -7,7 +7,7 @@ import path from "node:path";
 import type { RunBundle } from "../run/bundle.js";
 import { readRunJsonIfExists, readRunTextIfExists } from "../run/locate.js";
 import type { PreparedRunArtifactPaths } from "../run/paths.js";
-import { isRecord } from "../run/primitives.js";
+import { isRecord } from "../run/type-guards.js";
 import { RECLAIM_RECEIPT_ARTIFACT } from "../run/reclaim.js";
 import { runLiveness } from "../run/run-index.js";
 import { parseSandboxReceipts, SANDBOX_RECEIPTS_ARTIFACT } from "../run/sandbox-receipts.js";

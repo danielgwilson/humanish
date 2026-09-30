@@ -2,7 +2,7 @@
 // artifact file names, the cost categories, and the local-actor verdict marker. One definition, so
 // the producer and verifier cannot drift.
 
-import { escapeRegExp } from "./primitives.js";
+import { escapeRegExp } from "./text.js";
 
 export const TERMINAL_EVENTS_ARTIFACT = "terminal-events.ndjson";
 export const TERMINAL_TRANSCRIPT_ARTIFACT = "terminal-transcript.txt";

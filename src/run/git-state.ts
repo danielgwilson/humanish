@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import os from "node:os";
 
 import { inspectVerifiedGitWorkspace, type VerifiedGitWorkspace } from "./git-workspace.js";
-import { isNonNegativeSafeInteger, isRecord } from "./primitives.js";
+import { isNonNegativeSafeInteger, isRecord } from "./type-guards.js";
 
 const GIT_STATE_SCHEMA = "humanish.git-state.v1";
 

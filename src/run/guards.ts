@@ -28,7 +28,7 @@ import { isRunSimulationStatus, isRunStream, isRunStreamKind } from "./guards-st
 import { isLocalEvidenceArtifactPath } from "./paths.js";
 import { isRunFeedbackCandidate } from "./guards-feedback.js";
 import { isSharedWorldEvidence } from "./guards-shared-world.js";
-import { isNonNegativeSafeInteger, isPositiveSafeInteger, isRecord } from "./primitives.js";
+import { isNonNegativeSafeInteger, isPositiveSafeInteger, isRecord } from "./type-guards.js";
 
 export function isRunBundle(value: unknown): value is RunBundle {
   return (

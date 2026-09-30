@@ -1,7 +1,7 @@
 import { lstat, mkdir, readdir, realpath, rmdir } from "node:fs/promises";
 import path from "node:path";
 
-import { isNodeError } from "./primitives.js";
+import { isNodeError } from "./type-guards.js";
 
 export const RUNS_RELATIVE_ROOT = path.join(".humanish", "runs");
 const LATEST_RUN_RELATIVE_PATH = path.join(RUNS_RELATIVE_ROOT, "latest.json");

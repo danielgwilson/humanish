@@ -7,7 +7,7 @@ import {
   planeProvenanceFindings,
   sharedWorldCommonFindings,
 } from "../run/guards-shared-world.js";
-import { isRecord } from "../run/primitives.js";
+import { isRecord } from "../run/type-guards.js";
 import { concurrentSharedWorldFindings } from "./shared-world-concurrent.js";
 
 /**

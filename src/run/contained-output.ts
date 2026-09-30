@@ -14,7 +14,7 @@ import {
   validatePreparedRunRootIdentity,
   type FileIdentity,
 } from "./paths.js";
-import { isNodeError } from "./primitives.js";
+import { isNodeError } from "./type-guards.js";
 
 export interface PreparedSelectedOutputDirectory {
   readonly identity: FileIdentity;
