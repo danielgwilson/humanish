@@ -8,8 +8,8 @@ fails when a path in it no longer exists. [CONTEXT.md](CONTEXT.md) defines the d
 
 The steps use a live computer-use lab on a hosted E2B desktop. The scripted, terminal and
 shared-world routes share steps 1, 2, 8 and 9, and each does steps 3 to 7 in its own route file.
-The preview route writes a fixture bundle with `runDryRun` (`src/run/dry-run.ts`) and skips
-steps 3 to 7 and 9.
+The preview route writes a fixture bundle with `runDryRun` (`src/run/dry-run.ts`), publishes it
+with `Run.finish` as in step 7, and skips steps 3 to 6 and 9. Its callers run step 8.
 
 1. `runLabCommand` (`src/cli/commands/lab-run.ts`) calls `resolveLabManifest`
    (`src/lab/discover.ts`). It reads the YAML and calls `parseLabConfig` (`src/lab/config.ts`),
@@ -48,11 +48,11 @@ steps 3 to 7 and 9.
    `writeCuaRunArtifacts` (`src/routes/computer-use/bundle.ts`) writes it with `review.json`,
    `events.ndjson`, `observer/observer-data.json` and the `.humanish/runs/latest.json` pointer.
    The route writes one bundle before the lanes start and the final one after they finish. The
-   terminal and scripted routes instead start their run with `runScope` and `startRun` and
-   publish it with `Run.finish` (`src/run/run.ts`). `Run.finish` writes `run.json`, then the
-   `status.json` outcome, then `review.json`, `review.md`, `events.ndjson` and
-   `observer/observer-data.json`, and the pointer last. The computer-use and shared-world routes
-   move onto it next.
+   terminal, scripted and preview routes instead start their run with `runScope` and
+   `startRun` and publish it with `Run.finish` (`src/run/run.ts`). `Run.finish` writes
+   `run.json`, then the `status.json` outcome, then `review.json`, `review.md`, `events.ndjson`
+   and `observer/observer-data.json`, and the pointer last. The computer-use and shared-world
+   routes move onto it next.
 8. `renderObserver` (`src/observer/render.ts`) verifies the bundle with `verifyRunPrepared`
    (`src/run/verify.ts`), builds the page data with `buildObserverData` (`src/observer/data.ts`)
    and writes `observer/index.html` with `renderObserverHtml`. `humanish verify --run latest` runs
