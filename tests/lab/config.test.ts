@@ -18,29 +18,31 @@ import { parseLabConfig } from "../../src/lab/config.js";
 import { selectLabBackend } from "../../src/lab/engine.js";
 
 describe("parseLabConfig (humanish.lab.v2)", () => {
-  it("parses a clone lab with a codex actor and warns that codexAppServer is inert", () => {
-    // This was the removed OSS meta-lab's shape. It still parses; runCuaActorLab refuses the actor.
-    const result = parseLabConfig({
+  it("refuses a clone lab whose actor can neither drive nor script the served app", () => {
+    // The removed OSS meta-lab used this shape. It parsed, then failed at run start.
+    for (const type of ["codex-app-server", "humanish-setup"]) {
+      const result = parseLabConfig({
+        schema: LAB_CONFIG_SCHEMA,
+        id: "codex-clone",
+        subject: { source: "clone", repos: ["example-org/example-app"] },
+        actors: [{ type, count: 1 }],
+        execution: { target: "e2b-desktop" },
+      });
+      expect(result.ok).toBe(false);
+      if (result.ok) continue;
+      expect(result.error.code).toBe("HUMANISH_LAB_INVALID");
+      expect(result.error.message).toContain(`Got "${type}"`);
+    }
+    // A terminal actor keeps its own, earlier refusal.
+    const terminal = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
-      id: "codex-clone",
-      title: "Codex actor on a clone subject",
-      subject: { source: "clone", repos: ["CorentinTh/it-tools"], clone: { fanout: 4 } },
-      actors: [{ type: "codex-app-server", count: 1 }],
-      execution: { target: "e2b-desktop", desktop: { codexAppServer: true } },
-      scenario: { mode: "live" },
+      id: "terminal-clone",
+      subject: { source: "clone", repos: ["example-org/example-app"] },
+      actors: [{ type: "codex-exec" }],
+      execution: { target: "e2b-desktop" },
     });
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(result.config.subject).toEqual({
-      source: "clone",
-      repos: ["CorentinTh/it-tools"],
-      clone: { fanout: 4 },
-    });
-    expect(result.config.actors[0]?.type).toBe("codex-app-server");
-    expect(result.config.execution?.target).toBe("e2b-desktop");
-    expect(result.config.execution?.desktop?.codexAppServer).toBe(true);
-    expect(result.warnings).toHaveLength(1);
-    expect(result.warnings[0]).toContain("execution.desktop.codexAppServer");
+    expect(terminal.ok).toBe(false);
+    if (!terminal.ok) expect(terminal.error.message).toMatch(/^terminal actors require/);
   });
 
   it("warns that codexAppServer is inert on a computer-use clone lab", () => {
@@ -544,8 +546,12 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       const result = parseLabConfig({
         schema: LAB_CONFIG_SCHEMA,
         id: "clone-comms",
-        subject: { source: "clone", repos: ["example-org/example-app"] },
-        actors: [{ type: "codex-app-server", mission: "inert here" }],
+        subject: {
+          source: "clone",
+          repos: ["example-org/example-app"],
+          serve: { start: "pnpm start", url: "http://127.0.0.1:3000/" },
+        },
+        actors: [{ type: "openai-computer-use", mission: "Explore." }],
         execution: { target: "e2b-desktop" },
         comms: {
           email: {
@@ -743,10 +749,9 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     it("keeps warning about mission/persona/model on routes that do NOT consume them", () => {
       const result = parseLabConfig({
         schema: LAB_CONFIG_SCHEMA,
-        id: "clone-with-prompt-fields",
-        subject: { source: "clone", repos: ["example-org/example-app"] },
-        actors: [{ type: "codex-app-server", mission: "inert here", model: "inert" }],
-        execution: { target: "e2b-desktop" },
+        id: "preview-with-prompt-fields",
+        subject: { source: "this-repo" },
+        actors: [{ type: "synthetic-persona", mission: "inert here", model: "inert" }],
       });
       expect(result.ok).toBe(true);
       if (!result.ok) return;
@@ -1367,10 +1372,11 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     it("warns execution.desktop.device as inert on a non-cua route", () => {
       const result = parseLabConfig({
         schema: LAB_CONFIG_SCHEMA,
-        id: "clone-setup-device",
-        subject: { source: "clone", repos: ["example-org/example-app"] },
-        actors: [{ type: "humanish-setup" }],
-        execution: { target: "e2b-desktop", desktop: { device: "mobile" } },
+        id: "scripted-device",
+        subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
+        actors: [{ type: "scripted-browser" }],
+        scenario: { ref: "scripted-first-run" },
+        execution: { target: "local", desktop: { device: "mobile" } },
       });
       expect(result.ok).toBe(true);
       if (!result.ok) return;
@@ -1380,10 +1386,11 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     it("warns execution.desktop.browser as inert on a non-cua route", () => {
       const result = parseLabConfig({
         schema: LAB_CONFIG_SCHEMA,
-        id: "clone-setup-browser",
-        subject: { source: "clone", repos: ["example-org/example-app"] },
-        actors: [{ type: "humanish-setup" }],
-        execution: { target: "e2b-desktop", desktop: { browser: "chrome" } },
+        id: "scripted-browser",
+        subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
+        actors: [{ type: "scripted-browser" }],
+        scenario: { ref: "scripted-first-run" },
+        execution: { target: "local", desktop: { browser: "chrome" } },
       });
       expect(result.ok).toBe(true);
       if (!result.ok) return;
@@ -1413,19 +1420,6 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       expect(result.ok).toBe(false);
       if (result.ok) return;
       expect(result.error.message).toContain("execution.desktop.template");
-    });
-
-    it("warns execution.desktop.template as inert on a clone lab whose actor creates no desktop (e2b-desktop with codex-app-server)", () => {
-      const result = parseLabConfig({
-        schema: LAB_CONFIG_SCHEMA,
-        id: "meta-template",
-        subject: { source: "clone", repos: ["example-org/example-app"] },
-        actors: [{ type: "codex-app-server" }],
-        execution: { target: "e2b-desktop", desktop: { template: "acme-desktop-with-runtimes" } },
-      });
-      expect(result.ok).toBe(true);
-      if (!result.ok) return;
-      expect(result.warnings.join(" ")).toContain("execution.desktop.template");
     });
 
     it("warns execution.desktop.template as inert on the local-app route (routes to cua but creates NO desktop)", () => {
@@ -1793,28 +1787,6 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       expect(result.config.actors[0]?.count).toBe(3);
     });
 
-    it("warns serve/env/depth as inert on clone labs whose actor does not serve", () => {
-      const setup = parseLabConfig({
-        ...validCloneCua,
-        actors: [{ type: "humanish-setup" }],
-        scenario: undefined,
-      });
-      expect(setup.ok).toBe(true);
-      if (!setup.ok) return;
-      expect(setup.warnings[0]).toContain("subject.serve");
-      expect(setup.warnings[0]).toContain("subject.env");
-      expect(setup.warnings[0]).toContain("subject.clone.depth");
-
-      const meta = parseLabConfig({
-        ...validCloneCua,
-        subject: { ...validCloneCua.subject, serve: undefined, env: undefined },
-        actors: [{ type: "codex-app-server" }],
-      });
-      expect(meta.ok).toBe(true);
-      if (!meta.ok) return;
-      expect(meta.warnings[0] ?? "").toContain("subject.clone.depth");
-    });
-
     it.each([
       [
         "serve on app-url",
@@ -2047,32 +2019,6 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       if (result.ok) return;
       expect(result.error.message).toContain("subject.env");
       expect(result.error.message).toContain("provisioned channel");
-    });
-
-    it("warns subject.state as inert on non-cua routes — alongside the other forward-declared warnings, which still fire", () => {
-      // A clone lab whose actor no route runs: serve, env, AND state all warn — adding the
-      // state warning must not displace the existing ones.
-      const setup = parseLabConfig({
-        ...withState({ seed: [{ name: "fixtures", command: "pnpm prisma db seed" }] }),
-        actors: [{ type: "humanish-setup" }],
-        scenario: undefined,
-      });
-      expect(setup.ok).toBe(true);
-      if (!setup.ok) return;
-      expect(setup.warnings).toHaveLength(1);
-      expect(setup.warnings[0]).toContain("subject.state");
-      expect(setup.warnings[0]).toContain("subject.serve");
-      expect(setup.warnings[0]).toContain("subject.env");
-
-      // A clone × e2b-desktop lab with a codex-app-server actor: same story.
-      const meta = parseLabConfig({
-        ...withState({ seed: [{ name: "fixtures", command: "pnpm prisma db seed" }] }),
-        actors: [{ type: "codex-app-server" }],
-      });
-      expect(meta.ok).toBe(true);
-      if (!meta.ok) return;
-      expect(meta.warnings[0]).toContain("subject.state");
-      expect(meta.warnings[0]).toContain("subject.serve");
     });
   });
 });
@@ -2655,13 +2601,6 @@ describe("shared-world topology routing + cross-validation (#164)", () => {
       subject: { source: "this-repo" },
       actors: [{ type: "synthetic-persona" }],
     });
-    const meta = parseLabConfig({
-      schema: LAB_CONFIG_SCHEMA,
-      id: "m",
-      subject: { source: "clone", repos: ["a/b"] },
-      actors: [{ type: "codex-app-server" }],
-      execution: { target: "e2b-desktop" },
-    });
     const scripted = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
       id: "sc",
@@ -2678,12 +2617,11 @@ describe("shared-world topology routing + cross-validation (#164)", () => {
       },
       actors: [{ type: "codex-exec" }],
     });
-    for (const result of [synthetic, meta, scripted, terminal]) {
+    for (const result of [synthetic, scripted, terminal]) {
       expect(result.ok).toBe(true);
       if (result.ok) expect(routesToSharedWorld(result.config)).toBe(false);
     }
     if (synthetic.ok) expect(selectLabBackend(synthetic.config)).toBe("synthetic");
-    if (meta.ok) expect(selectLabBackend(meta.config)).toBe("cua");
     if (scripted.ok) expect(selectLabBackend(scripted.config)).toBe("scripted");
     if (terminal.ok) expect(selectLabBackend(terminal.config)).toBe("terminal");
   });
@@ -2841,13 +2779,6 @@ describe("concurrent shared-world routing + cross-validation (#164 phase 2)", ()
       subject: { source: "this-repo" },
       actors: [{ type: "synthetic-persona" }],
     });
-    const meta = parseLabConfig({
-      schema: LAB_CONFIG_SCHEMA,
-      id: "m",
-      subject: { source: "clone", repos: ["a/b"] },
-      actors: [{ type: "codex-app-server" }],
-      execution: { target: "e2b-desktop" },
-    });
     // A plain cua fan-out (concurrency>1 but NO shared-world topology) stays cua, NOT concurrent shared-world.
     const fanout = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
@@ -2856,7 +2787,7 @@ describe("concurrent shared-world routing + cross-validation (#164 phase 2)", ()
       actors: [{ type: "openai-computer-use", count: 3 }],
       execution: { target: "e2b-desktop", concurrency: 2 },
     });
-    for (const result of [synthetic, meta, fanout]) {
+    for (const result of [synthetic, fanout]) {
       expect(result.ok).toBe(true);
       if (result.ok) expect(routesToConcurrentSharedWorld(result.config)).toBe(false);
     }

@@ -326,17 +326,20 @@ describe("lab routing (app-url × scripted-browser → scripted)", () => {
       subject: { source: "this-repo" },
       actors: [{ type: "synthetic-persona" }],
     });
-    const meta = parseLabConfig({
+    // A clone lab without a computer-use or scripted actor no longer parses; a library caller that
+    // skips the parser still reaches the computer-use route's fail-closed actor check.
+    const cloneWithCodeActor = {
       schema: LAB_CONFIG_SCHEMA,
       id: "m",
       subject: { source: "clone", repos: ["example-org/example-app"] },
       actors: [{ type: "codex-app-server" }],
       execution: { target: "e2b-desktop" },
-    });
-    if (!cua.ok || !synthetic.ok || !meta.ok) throw new Error("fixture configs must parse");
+    } as const;
+    if (!cua.ok || !synthetic.ok) throw new Error("fixture configs must parse");
+    expect(parseLabConfig(cloneWithCodeActor).ok).toBe(false);
     expect(selectLabBackend(cua.config)).toBe("cua");
     expect(selectLabBackend(synthetic.config)).toBe("synthetic");
-    expect(selectLabBackend(meta.config)).toBe("cua");
+    expect(selectLabBackend(cloneWithCodeActor as unknown as LabConfig)).toBe("cua");
   });
 
   it("library-API fallback: app-url with an UNREGISTERED actor type still routes to cua's fail-closed gate", async () => {
