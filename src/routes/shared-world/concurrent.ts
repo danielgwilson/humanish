@@ -91,6 +91,7 @@ import {
   withInboxMission,
 } from "../computer-use/lane-plan.js";
 import { runCuaLane } from "../computer-use/lanes.js";
+import { startLiveTraceFlush, type LiveTraceFlush } from "../computer-use/live-flush.js";
 import {
   type CuaActorLabHooks,
   type CuaLaneDeps,
@@ -961,6 +962,18 @@ async function runConcurrentSharedWorldInScope(
   let snapshotIndex = 0;
   let liveObserver: (ObserverResult & { ok: true }) | undefined;
   const runtimeStreamUrls: ObserverRuntimeStreamUrl[] = [];
+  // A live run publishes an in-progress bundle before its seats start, whether or not an Observer
+  // is attached, and the seats' live traces rewrite it as they go, as on the computer-use route. A
+  // run killed mid-way leaves that evidence on disk. The flush starts with the first snapshot.
+  let liveFlush: LiveTraceFlush | undefined;
+  const startSeatFlush = (bundle: RunBundle): void => {
+    liveFlush = startLiveTraceFlush({
+      bundle,
+      laneSpecs: actorSpecs,
+      model: config.actors[0]?.model ?? DEFAULT_OPENAI_CU_MODEL,
+      write: (snapshot) => run.writeSnapshot(snapshot),
+    });
+  };
 
   // Off-app comms (#297): on the provisioned-getHost plane the harness owns the ONE subject sandbox, so
   // it can redirect the app's email-API sends into an in-sandbox catch and evidence them. Gated ENTIRELY
@@ -1341,42 +1354,40 @@ async function runConcurrentSharedWorldInScope(
 
         // Baseline state snapshot, then start the background cadence prober.
         await proberSnapshot();
-        if (options.onObserverReady) {
-          const inProgressPlaneCommit = localTreeRoute
-            ? localTreeArchive?.git?.commit
-            : subjectCommit;
-          const inProgressSubject = buildSubjectProvenance({
-            localTreeRoute,
-            publicRepo,
-            subjectCommit: inProgressPlaneCommit,
-            localTreeArchive,
-            subjectEnvNames,
-            state: resolveSubjectState({
-              declared: config.subject.state,
-              dryRun: false,
-              executed: stateStepRecords,
-            }),
-          });
-          const inProgressBundle = buildConcurrentSharedWorldBundle({
-            config,
-            descriptor,
-            createdAt,
+        const inProgressPlaneCommit = localTreeRoute
+          ? localTreeArchive?.git?.commit
+          : subjectCommit;
+        const inProgressSubject = buildSubjectProvenance({
+          localTreeRoute,
+          publicRepo,
+          subjectCommit: inProgressPlaneCommit,
+          localTreeArchive,
+          subjectEnvNames,
+          state: resolveSubjectState({
+            declared: config.subject.state,
             dryRun: false,
-            inProgress: true,
-            runId,
-            source,
-            roles,
-            actorSpecs,
-            actorResults: [],
-            stateSnapshots,
-            subject: inProgressSubject,
-            seedDigest,
-            ...(inProgressPlaneCommit === undefined
-              ? {}
-              : { subjectCommit: inProgressPlaneCommit }),
-            hostDigest: hostOriginDigest(getHostUrl!),
-          });
-          await run.writeSnapshot(inProgressBundle);
+            executed: stateStepRecords,
+          }),
+        });
+        const inProgressBundle = buildConcurrentSharedWorldBundle({
+          config,
+          descriptor,
+          createdAt,
+          dryRun: false,
+          inProgress: true,
+          runId,
+          source,
+          roles,
+          actorSpecs,
+          actorResults: [],
+          stateSnapshots,
+          subject: inProgressSubject,
+          seedDigest,
+          ...(inProgressPlaneCommit === undefined ? {} : { subjectCommit: inProgressPlaneCommit }),
+          hostDigest: hostOriginDigest(getHostUrl!),
+        });
+        await run.writeSnapshot(inProgressBundle);
+        if (options.onObserverReady) {
           liveObserver = liveObserverResult(cwd, runId, artifactRoot, [
             "Live concurrent shared-world Observer is attached before final verification; stream auth URLs are runtime-only and are not persisted.",
           ]);
@@ -1386,6 +1397,7 @@ async function runConcurrentSharedWorldInScope(
             throw new ObserverGateError(error);
           }
         }
+        startSeatFlush(inProgressBundle);
         proberLoop = (async () => {
           while (!proberDisposed) {
             let timer: ReturnType<typeof setTimeout> | undefined;
@@ -1429,6 +1441,8 @@ async function runConcurrentSharedWorldInScope(
           },
         };
         const baseActorDeps: Omit<CuaLaneDeps, "signalProvisioned" | "appUrl"> = {
+          onTrace: (laneId, items, usage, metadata) =>
+            liveFlush?.flush(laneId, items, usage, metadata),
           config,
           descriptor,
           cloneRoute: false,
@@ -1597,6 +1611,8 @@ async function runConcurrentSharedWorldInScope(
         },
       };
       const baseActorDeps: Omit<CuaLaneDeps, "signalProvisioned" | "appUrl" | "onObservedUrl"> = {
+        onTrace: (laneId, items, usage, metadata) =>
+          liveFlush?.flush(laneId, items, usage, metadata),
         config,
         descriptor,
         cloneRoute: false,
@@ -1622,33 +1638,35 @@ async function runConcurrentSharedWorldInScope(
         screenMismatchPolicy: "record-evidence",
       };
 
-      // Publish an attached live Observer BEFORE fan-out (mirrors the provisioned path).
+      // Publish the in-progress bundle and attach any live Observer before fan-out, as on the
+      // provisioned path.
+      const inProgressBundle = buildConcurrentSharedWorldBundle({
+        config,
+        descriptor,
+        createdAt,
+        dryRun: false,
+        inProgress: true,
+        runId,
+        source,
+        roles,
+        actorSpecs,
+        actorResults: [],
+        stateSnapshots: [],
+        subject: { source: "app-url", envNames: [], state: { provenance: "external-public" } },
+        seedDigest,
+        planeClass: "external-public",
+        // Pre-fan-out snapshot: no seat has observed an origin yet, so the OBSERVED publicOriginDigest
+        // is not available; surface the DECLARED origin for the live Observer's reference.
+        ...(declaredOriginDigest === undefined ? {} : { declaredOriginDigest }),
+      });
+      await run.writeSnapshot(inProgressBundle);
       if (options.onObserverReady) {
-        const inProgressBundle = buildConcurrentSharedWorldBundle({
-          config,
-          descriptor,
-          createdAt,
-          dryRun: false,
-          inProgress: true,
-          runId,
-          source,
-          roles,
-          actorSpecs,
-          actorResults: [],
-          stateSnapshots: [],
-          subject: { source: "app-url", envNames: [], state: { provenance: "external-public" } },
-          seedDigest,
-          planeClass: "external-public",
-          // Pre-fan-out snapshot: no seat has observed an origin yet, so the OBSERVED publicOriginDigest
-          // is not available; surface the DECLARED origin for the live Observer's reference.
-          ...(declaredOriginDigest === undefined ? {} : { declaredOriginDigest }),
-        });
-        await run.writeSnapshot(inProgressBundle);
         liveObserver = liveObserverResult(cwd, runId, artifactRoot, [
           "Live external-public concurrent shared-world Observer is attached before final verification; stream auth URLs are runtime-only and are not persisted.",
         ]);
         await options.onObserverReady(liveObserver);
       }
+      startSeatFlush(inProgressBundle);
 
       // The host-first handoff barrier.
       //
@@ -2021,6 +2039,8 @@ async function runConcurrentSharedWorldInScope(
         "Email finalization could not complete. Inspect humanish comms recover; provider cleanup remains unresolved.",
       );
     }
+    // Stop the seats' flush timer on every exit, before the final write.
+    await liveFlush?.stop();
   }
 
   // Subject provenance: external-public is the operator-declared, operator-owned public deployment
