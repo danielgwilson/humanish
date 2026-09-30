@@ -29,7 +29,7 @@ import type { ActorCapabilities, ParticipantDeclaredOutcome } from "../contract.
 import type { CuaAction, CuaProvider, CuaTurn, CuaTurnRequest } from "../computer-use/loop.js";
 import type { ReasoningEffort } from "../reasoning-effort.js";
 import { admittedCodexCliVersions, parseCodexCliVersion } from "../codex/qualified-versions.js";
-import { restrictedCodexNpmTarget } from "../codex/restricted-session.js";
+import { restrictedCodexNpmTarget } from "../codex/restricted-executable.js";
 
 export type LocalAgentId = "codex" | "claude";
 

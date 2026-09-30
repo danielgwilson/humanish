@@ -89,6 +89,16 @@ export class RestrictedCodexDeadline {
   }
 }
 
+// Codex processes that did not confirm closing. A session refuses new work while any remain.
+const unclosedChildren = new Set<Promise<void>>();
+export function retainUnclosedChild(closed: Promise<void>): void {
+  unclosedChildren.add(closed);
+  void closed.then(() => {
+    unclosedChildren.delete(closed);
+  });
+}
+export const hasUnclosedChildren = (): boolean => unclosedChildren.size > 0;
+
 export interface OwnedCodexProcess {
   child: ChildProcessWithoutNullStreams;
   closed: Promise<void>;
