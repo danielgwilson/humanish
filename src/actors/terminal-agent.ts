@@ -63,6 +63,6 @@ export async function runTerminalAgentSession(
   _options: TerminalAgentSessionOptions,
 ): Promise<TerminalAgentSessionResult> {
   throw new Error(
-    `${TERMINAL_AGENT_NOT_IMPLEMENTED_CODE}: direct runTerminalAgentSession calls are intentionally unsupported. Terminal execution is route-owned so the lab can enforce command-scoped runtime auth, caps, evidence capture, and by-id cleanup together. Use runTerminalProductLab or runLab with a terminal-product config.`,
+    `${TERMINAL_AGENT_NOT_IMPLEMENTED_CODE}: direct runTerminalAgentSession calls are intentionally unsupported. Terminal execution is route-owned so the lab can enforce command-scoped runtime auth, caps, evidence capture, and by-id cleanup together. Use runLab with a terminal-product config.`,
   );
 }

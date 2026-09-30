@@ -32,9 +32,10 @@ type LabSubjectSource =
  * How a subject's WORLD relates across actor lanes. `per-lane-worlds` (the default; absent ==
  * this) is the only fan-out topology the computer-use route ships — N lanes, N independent
  * worlds, isolation + per-lane attribution. `shared-world` (#164) is the DECLARED override: ONE
- * provisioned, mutable service plane that N role SEATS take turns against IN DECLARED ORDER, so
- * their actions interact through shared state. Consumed ONLY on the shared-world route (clone ×
- * e2b-desktop × a computer-use actor); inert/warned everywhere else (invariant 6).
+ * mutable service plane that N role SEATS use at the same time, so their actions interact through
+ * shared state. Consumed ONLY on the shared-world routes (a provisioned clone plane, or an
+ * external-public app-url plane) with a computer-use actor; inert/warned everywhere else
+ * (invariant 6).
  */
 type LabSubjectTopology = "per-lane-worlds" | "shared-world";
 
@@ -210,8 +211,9 @@ export interface LabSubject {
   /**
    * WORLD topology across actor lanes. Absent == `per-lane-worlds` (the isolation default; every
    * existing lab is byte-stable). `shared-world` is the declared override (#164): one mutable
-   * service plane, N role seats taking turns. Consumed ONLY on the shared-world route (clone ×
-   * e2b-desktop × a computer-use actor + a roster of ≥2 lanes); inert/warned elsewhere.
+   * service plane, N role seats at once. Consumed ONLY on the shared-world routes (a provisioned
+   * clone or an external-public app-url plane, a computer-use actor, and a roster of ≥2 lanes);
+   * inert/warned elsewhere.
    */
   topology?: LabSubjectTopology;
   /**
@@ -504,7 +506,8 @@ export interface LabExecutionDesktop {
    * lacks (e.g. node/bun/a local Postgres baked into an adopter-maintained image) run as-is. Any
    * string is a valid template name/id (there is no allowlist). Consumed ONLY on the
    * `execution.target: e2b-desktop` computer-use routes (the cua/shared-world/concurrent backends
-   * that call `Sandbox.create`); inert/warned on every route that creates no desktop. Threaded to
+   * that call `Sandbox.create`) and the clone scripted-browser route; inert/warned on every route
+   * that creates no desktop. Threaded to
    * `Sandbox.create(template, opts)`; absent leaves the byte-stable `Sandbox.create(opts)` default.
    * A template name is public-safe (not a secret) and is recorded in the run bundle.
    */
@@ -558,7 +561,10 @@ export interface LabExecution {
   timeoutMs?: number;
   /** FORWARD-DECLARED. */
   completionTimeoutMs?: number;
-  /** FORWARD-DECLARED. */
+  /**
+   * Bounds in-flight fan-out lanes on the computer-use route. Shared-world needs at least 2 and
+   * defaults to the participant count. Inert (warned) elsewhere.
+   */
   concurrency?: number;
   desktop?: LabExecutionDesktop;
   /**
