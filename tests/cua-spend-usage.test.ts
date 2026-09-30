@@ -6,9 +6,9 @@ import { defaultRedactionHooks } from "../src/evidence/redaction.js";
 import type { CuaTurn } from "../src/actors/computer-use/loop.js";
 import {
   OPENAI_RESPONSES_CU_CAPABILITIES,
-  parseOpenAiResponse,
   type FetchLike,
 } from "../src/actors/computer-use/openai-provider.js";
+import { parseOpenAiResponse } from "../src/actors/computer-use/openai-wire.js";
 
 const captured = parseOpenAiResponse(
   JSON.parse(

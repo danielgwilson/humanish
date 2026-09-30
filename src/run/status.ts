@@ -107,10 +107,9 @@ export interface RunStatusRecord {
 }
 
 export interface RunStatusHandle {
-  /** Resolves once the initial record has landed on disk. The write itself is fire-and-forget —
-   *  starting a run must never block on its own index — but a caller that needs the record to
-   *  exist before proceeding (a test, or a launcher that hands the run id to another process)
-   *  can await this instead of polling. */
+  /** Resolves once the initial record has landed on disk, and never rejects: a failed write is
+   *  swallowed, so a run is never failed by its own index. Routes await it before acquiring a
+   *  sandbox, so a run killed after its sandbox receipt lands still has a record to classify. */
   readonly started: Promise<void>;
   /** Write `updatedAt` now. Called by the internal cadence; exposed for tests and for backends
    *  that want to mark a phase boundary. Never throws. */

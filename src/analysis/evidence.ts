@@ -1,13 +1,12 @@
-import { isCommsReceivingEvidence, receivingAnalysisContext } from "../comms/receiving-evidence.js";
-import { cuaGoalSource } from "../actors/goal-source.js";
+import { isCommsReceivingEvidence } from "../comms/receiving-evidence.js";
 import { createHash } from "node:crypto";
+import path from "node:path";
 import { screenshotEvidenceError } from "../evidence/image.js";
 import type { PreparedRunArtifactPaths } from "../run/paths.js";
-import type { ActorTraceItem } from "../actors/contract.js";
-import type { RunBundle, RunStream } from "../run/bundle.js";
+import { isRecord } from "../run/primitives.js";
+import type { RunBundle } from "../run/bundle.js";
 import type {
   AnalysisEvidence,
-  AnalysisParticipantInput,
   StudyAnalysisArtifact,
   StudyAnalysisInput,
 } from "./study-analysis.js";
@@ -16,171 +15,17 @@ import {
   hashStudyAnalysisValue,
   validateStudyAnalysisInputMetadata,
 } from "./validation.js";
-import { constants } from "node:fs";
-import { lstat, open, realpath } from "node:fs/promises";
-import path from "node:path";
-
-import { isPathInside, validatePreparedRunRootIdentity } from "../run/paths.js";
 import {
-  assertPreparedSelectedOutputDirectory,
-  type PreparedOutputRoot,
-} from "../run/selected-output-paths.js";
-
-/** Analysis inputs are retained local artifacts, never URLs or caller-selected outputs. */
-export function isStudyEvidencePath(value: string): boolean {
-  if (!value || value.length > 1024) return false;
-  try {
-    encodeURIComponent(value);
-  } catch {
-    return false;
-  }
-  let checked = value;
-  for (let attempt = 0; attempt < 5; attempt++) {
-    if (
-      /[\\:\x00-\x1f\x7f]/.test(checked) ||
-      checked.startsWith("/") ||
-      checked.split("/").some((part) => part === "" || part === "." || part === "..")
-    )
-      return false;
-    let decoded: string;
-    try {
-      decoded = decodeURIComponent(checked);
-    } catch {
-      return !/%[0-9a-f]{2}/i.test(checked);
-    }
-    if (decoded === checked) return true;
-    if (decoded.split("/").length !== checked.split("/").length) return false;
-    checked = decoded;
-  }
-  return false;
-}
-
-/**
- * Bounded companion to readContainedRegularFile. A growing or swapped file must
- * not turn an analysis budget into an unbounded read. No returned bytes have
- * authority to select another file or initiate a network request.
- */
-export async function readBoundedStudyFile(
-  root: PreparedOutputRoot,
-  relativePath: string,
-  maxBytes: number,
-): Promise<Buffer | null> {
-  const result = await readBoundedStudyFileResult(root, relativePath, maxBytes);
-  return result.state === "read" ? result.bytes : null;
-}
-
-type BoundedStudyFileResult =
-  | { state: "read"; bytes: Buffer }
-  | { state: "limit"; size: bigint }
-  | { state: "unavailable" };
-const unavailable = { state: "unavailable" } as const;
-
-/** Size refusals are distinguished only after the same contained regular-file checks. */
-async function readBoundedStudyFileResult(
-  root: PreparedOutputRoot,
-  relativePath: string,
-  maxBytes: number,
-): Promise<BoundedStudyFileResult> {
-  if (!isStudyEvidencePath(relativePath) || !Number.isSafeInteger(maxBytes) || maxBytes < 1)
-    return unavailable;
-  const validateRoot = async (): Promise<string> => {
-    if ("physicalRunRoot" in root) {
-      await validatePreparedRunRootIdentity(root);
-      return root.physicalRunRoot;
-    }
-    await assertPreparedSelectedOutputDirectory(root);
-    return root.physicalPath;
-  };
-  try {
-    const physicalRoot = await validateRoot();
-    const candidate = path.join(physicalRoot, relativePath);
-    if (!isPathInside(physicalRoot, candidate) || candidate === physicalRoot) return unavailable;
-    const validateParents = async (): Promise<void> => {
-      let current = physicalRoot;
-      for (const segment of relativePath.split("/").slice(0, -1)) {
-        current = path.join(current, segment);
-        const info = await lstat(current);
-        if (!info.isDirectory() || info.isSymbolicLink())
-          throw new Error("Unsafe analysis input directory.");
-      }
-    };
-    await validateParents();
-    const before = await lstat(candidate, { bigint: true });
-    if (!before.isFile() || before.isSymbolicLink() || before.nlink !== 1n) return unavailable;
-    if ((await realpath(candidate)) !== candidate) return unavailable;
-    if (before.size > BigInt(maxBytes)) {
-      if ((await validateRoot()) !== physicalRoot) return unavailable;
-      await validateParents();
-      const final = await lstat(candidate, { bigint: true });
-      if (
-        !final.isFile() ||
-        final.isSymbolicLink() ||
-        final.nlink !== 1n ||
-        final.dev !== before.dev ||
-        final.ino !== before.ino ||
-        final.size !== before.size ||
-        final.mtimeNs !== before.mtimeNs ||
-        final.ctimeNs !== before.ctimeNs
-      )
-        return unavailable;
-      return { state: "limit", size: before.size };
-    }
-    // O_NONBLOCK avoids hanging if a regular leaf is raced into a special file.
-    const handle = await open(
-      candidate,
-      constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
-    );
-    try {
-      const opened = await handle.stat({ bigint: true });
-      if (
-        !opened.isFile() ||
-        opened.nlink !== 1n ||
-        opened.dev !== before.dev ||
-        opened.ino !== before.ino ||
-        opened.size !== before.size ||
-        opened.mtimeNs !== before.mtimeNs
-      )
-        return unavailable;
-      const chunks: Buffer[] = [];
-      let total = 0;
-      while (total <= maxBytes) {
-        const chunk = Buffer.allocUnsafe(Math.min(64 * 1024, maxBytes + 1 - total));
-        const { bytesRead } = await handle.read(chunk, 0, chunk.length, null);
-        if (bytesRead === 0) break;
-        total += bytesRead;
-        if (total > maxBytes) return unavailable;
-        chunks.push(chunk.subarray(0, bytesRead));
-      }
-      const after = await handle.stat({ bigint: true });
-      if (
-        after.size !== before.size ||
-        after.mtimeNs !== before.mtimeNs ||
-        after.ctimeNs !== before.ctimeNs ||
-        after.nlink !== 1n ||
-        total !== Number(before.size)
-      )
-        return unavailable;
-      if ((await validateRoot()) !== physicalRoot) return unavailable;
-      await validateParents();
-      const final = await lstat(candidate, { bigint: true });
-      if (
-        !final.isFile() ||
-        final.isSymbolicLink() ||
-        final.dev !== before.dev ||
-        final.ino !== before.ino ||
-        final.nlink !== 1n ||
-        final.size !== before.size ||
-        final.mtimeNs !== before.mtimeNs
-      )
-        return unavailable;
-      return { state: "read", bytes: Buffer.concat(chunks, total) };
-    } finally {
-      await handle.close();
-    }
-  } catch {
-    return unavailable;
-  }
-}
+  boundedText,
+  fairShares,
+  hasUnmappedCaptures,
+  participantAssignment,
+  participantSource,
+  sourceEntries,
+  sourceOrder,
+  type SourceEntry,
+} from "./evidence-sources.js";
+import { readBoundedStudyFile, readBoundedStudyFileResult } from "./study-files.js";
 
 export const STUDY_EVIDENCE_LIMITS = Object.freeze({
   participants: 16,
@@ -193,55 +38,13 @@ export const STUDY_EVIDENCE_LIMITS = Object.freeze({
 });
 export type StudyEvidenceLimits = { [Key in keyof typeof STUDY_EVIDENCE_LIMITS]?: number };
 const sha256 = (bytes: Buffer): string => createHash("sha256").update(bytes).digest("hex");
-const object = (value: unknown): value is Record<string, unknown> =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
-const stamp = (value: unknown): string | null =>
-  typeof value === "string" && Number.isFinite(Date.parse(value))
-    ? new Date(value).toISOString()
-    : null;
-const itemText = (item: ActorTraceItem): string =>
-  ["message", "reasoning"].includes(item.kind) && item.text !== undefined
-    ? item.text
-    : [item.title, item.text].filter((entry) => entry !== undefined && entry !== "").join("\n");
-const itemsFor = (stream: RunStream): ActorTraceItem[] => stream.actor?.items ?? [];
-const isCaptureItem = (item: ActorTraceItem, captureVersion?: 2): boolean =>
-  item.kind === "screenshot" || (captureVersion === 2 && item.kind === "ui_action");
-
-function hasUnmappedCaptures(stream: RunStream): boolean {
-  const items = itemsFor(stream);
-  const paths = new Set(
-    items.flatMap((item) =>
-      isCaptureItem(item, 2) && typeof item.screenshotRef?.path === "string"
-        ? [item.screenshotRef.path]
-        : [],
-    ),
-  );
-  // Presentation URLs use Observer-relative paths. They cannot manufacture an
-  // event/frame, but a declared capture outside the trace must limit coverage.
-  const previews = [
-    stream.ui?.screenshotUrl,
-    stream.embed?.kind === "screenshot" ? stream.embed.url : undefined,
-  ];
-  return (
-    (Array.isArray(stream.artifacts) &&
-      stream.artifacts.some(
-        (artifact) => artifact?.kind === "screenshot" && !paths.has(artifact.path),
-      )) ||
-    previews.some(
-      (ref) => typeof ref === "string" && !paths.has(ref) && !paths.has(ref.replace(/^\.\.\//, "")),
-    ) ||
-    items.some(
-      (item) => typeof item.screenshotRef?.path === "string" && !paths.has(item.screenshotRef.path),
-    )
-  );
-}
 
 function parseSource(prepared: PreparedRunArtifactPaths, bytes: Buffer): RunBundle {
   if (bytes.length > STUDY_EVIDENCE_LIMITS.sourceBytes)
     throw new Error("ANALYSIS_SOURCE_TOO_LARGE");
   const value: unknown = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
   if (
-    !object(value) ||
+    !isRecord(value) ||
     value.schema !== "humanish.run-bundle.v1" ||
     value.runId !== path.basename(prepared.physicalRunRoot) ||
     !Array.isArray(value.streams) ||
@@ -254,7 +57,7 @@ function parseSource(prepared: PreparedRunArtifactPaths, bytes: Buffer): RunBund
   const ids = new Set<string>();
   for (const stream of value.streams) {
     if (
-      !object(stream) ||
+      !isRecord(stream) ||
       typeof stream.id !== "string" ||
       stream.id.length === 0 ||
       stream.id.length > 256 ||
@@ -268,14 +71,14 @@ function parseSource(prepared: PreparedRunArtifactPaths, bytes: Buffer): RunBund
     const actor = stream.actor;
     if (
       actor !== undefined &&
-      (!object(actor) || !Array.isArray(actor.items) || actor.items.length > 100000)
+      (!isRecord(actor) || !Array.isArray(actor.items) || actor.items.length > 100000)
     ) {
       throw new Error("ANALYSIS_SOURCE_INVALID");
     }
     const eventIds = new Set<string>();
-    for (const item of object(actor) ? (actor.items as unknown[]) : []) {
+    for (const item of isRecord(actor) ? (actor.items as unknown[]) : []) {
       if (
-        !object(item) ||
+        !isRecord(item) ||
         typeof item.id !== "string" ||
         item.id.length === 0 ||
         item.id.length > 256 ||
@@ -290,7 +93,7 @@ function parseSource(prepared: PreparedRunArtifactPaths, bytes: Buffer): RunBund
   }
   for (const event of value.events) {
     if (
-      !object(event) ||
+      !isRecord(event) ||
       typeof event.id !== "string" ||
       typeof event.message !== "string" ||
       typeof event.type !== "string"
@@ -298,260 +101,6 @@ function parseSource(prepared: PreparedRunArtifactPaths, bytes: Buffer): RunBund
       throw new Error("ANALYSIS_SOURCE_INVALID");
   }
   return value as unknown as RunBundle;
-}
-
-function boundedText(value: string, maxBytes: number): string {
-  if (Buffer.byteLength(value) <= maxBytes) return value;
-  let output = "";
-  let bytes = 0;
-  for (const char of value) {
-    const size = Buffer.byteLength(char);
-    if (bytes + size > maxBytes) break;
-    output += char;
-    bytes += size;
-  }
-  return output;
-}
-
-// Count the same frame declarations as Observer even when analysis omits their bytes.
-function isObserverCapturePath(value: string): boolean {
-  if (/^data:image\/(?:png|jpeg|gif|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(value)) return true;
-  if (!value || value.length > 8192) return false;
-  try {
-    encodeURIComponent(value);
-  } catch {
-    return false;
-  }
-  let checked = value;
-  for (let attempt = 0; attempt < 5; attempt++) {
-    if (
-      /^[\\/]|[\\\u0000-\u001f\u007f]|^[a-z][a-z\d+.-]*:/i.test(checked) ||
-      checked.split("/").some((part) => part === "." || part === ".." || part === "")
-    )
-      return false;
-    let decoded: string;
-    try {
-      decoded = decodeURIComponent(checked);
-    } catch {
-      return !/%[0-9a-f]{2}/i.test(checked);
-    }
-    if (decoded === checked) return true;
-    if (decoded.split("/").length !== checked.split("/").length) return false;
-    checked = decoded;
-  }
-  return false;
-}
-
-function participantAssignment(stream: RunStream, captureVersion?: 2): string | null {
-  if (stream.assignment === undefined)
-    return captureVersion === 2 &&
-      stream.actor?.lane === "scripted-browser" &&
-      typeof stream.ui?.intent === "string" &&
-      stream.ui.intent.trim()
-      ? stream.ui.intent
-      : null;
-  return [
-    stream.assignment.mission,
-    stream.assignment.focus,
-    ...(stream.assignment.tasks ?? []).map(
-      (task) => `Task ${JSON.stringify(task.id)}: ${task.goal}`,
-    ),
-  ]
-    .filter((entry) => typeof entry === "string")
-    .join("\n");
-}
-
-function participantSource(stream: RunStream, captureVersion?: 2): AnalysisParticipantInput {
-  const assignment = participantAssignment(stream, captureVersion);
-  const actor = stream.actor;
-  return {
-    streamId: stream.id,
-    label: boundedText(stream.label, 1000),
-    assignment: assignment === null ? null : boundedText(assignment, 8000),
-    recordedStatus: stream.status,
-    recordedReason: actor?.reason === undefined ? null : boundedText(actor.reason, 4000),
-    provenance: {
-      actorStatus: actor?.status ?? null,
-      completionReason: actor?.completionReason ?? null,
-      stopCause: actor?.stopCause ?? null,
-      goalSource: cuaGoalSource(actor, stream.status) ?? null,
-      declaredOutcome: actor?.declaredOutcome ?? null,
-      taskOutcomes:
-        actor?.taskFunnel === undefined
-          ? null
-          : actor.taskFunnel.tasks.map((task) => ({
-              taskId: task.id,
-              completed: task.completed,
-              observable: task.observable,
-              inputsObserved: task.inputsObserved ?? null,
-              turn: task.turn ?? null,
-            })),
-    },
-  };
-}
-
-interface SourceEntry {
-  eventId: string;
-  kind: string;
-  text: string;
-  quoteEligible: boolean;
-  at: string | null;
-  elapsedMs: number | null;
-  frame: number | null;
-  capturePath: string | null;
-  captureDeclared: boolean;
-  failed: boolean;
-}
-function sourceEntries(bundle: RunBundle, stream: RunStream, captureVersion?: 2): SourceEntry[] {
-  const items = itemsFor(stream);
-  // Absent version retains the exact legacy mapping used by saved 0.89.1 analyses.
-  // V2 follows the actor contract: a scripted action can carry its own capture.
-  const captures = items.filter(
-    (item) =>
-      isCaptureItem(item, captureVersion) &&
-      object(item.screenshotRef) &&
-      typeof item.screenshotRef.path === "string" &&
-      isObserverCapturePath(item.screenshotRef.path),
-  );
-  const frameIds = new Set(captures.map((item) => item.id));
-  const firstAt = stamp(captures[0]?.at);
-  let frame = -1;
-  const entries: SourceEntry[] = [];
-  if (captureVersion === 2 && bundle.commsReceiving) {
-    entries.push({
-      eventId: `comms-receiving-${stream.id}`,
-      kind: "harness:email_receiving",
-      text: receivingAnalysisContext(bundle.commsReceiving, stream.laneId),
-      quoteEligible: false,
-      at: null,
-      elapsedMs: null,
-      frame: null,
-      capturePath: null,
-      captureDeclared: false,
-      failed:
-        bundle.commsReceiving.limitations.length > 0 ||
-        bundle.commsReceiving.participants.some((p) => p.limitations.length > 0),
-    });
-  }
-  for (const item of items) {
-    const capturePath =
-      isCaptureItem(item, captureVersion) &&
-      object(item.screenshotRef) &&
-      typeof item.screenshotRef.path === "string" &&
-      isStudyEvidencePath(item.screenshotRef.path)
-        ? item.screenshotRef.path
-        : null;
-    if (frameIds.has(item.id)) frame++;
-    const at = stamp(item.at);
-    const delta = at !== null && firstAt !== null ? Date.parse(at) - Date.parse(firstAt) : null;
-    entries.push({
-      eventId: item.id,
-      kind: item.kind,
-      text: itemText(item),
-      quoteEligible: ["message", "reasoning"].includes(item.kind) && typeof item.text === "string",
-      at,
-      elapsedMs: delta !== null && delta >= 0 ? delta : null,
-      frame: captures.length > 0 ? Math.max(0, frame) : null,
-      capturePath,
-      captureDeclared:
-        item.kind === "screenshot" ||
-        (captureVersion === 2 && item.kind === "ui_action" && item.screenshotRef !== undefined),
-      failed: ["failed", "blocked", "timed_out"].includes(item.status ?? ""),
-    });
-  }
-  const runEventIds = new Set<string>();
-  for (const event of bundle.events.filter(
-    (entry) =>
-      entry.streamId === stream.id ||
-      (entry.streamId === undefined && entry.simId === stream.simId),
-  )) {
-    if (runEventIds.has(event.id)) throw new Error("ANALYSIS_SOURCE_EVENT_DUPLICATE");
-    runEventIds.add(event.id);
-    entries.push({
-      eventId: event.id,
-      kind: `run_event:${event.type}`,
-      text: event.message,
-      quoteEligible: false,
-      at: stamp(event.at),
-      elapsedMs: null,
-      frame: null,
-      capturePath: null,
-      captureDeclared: false,
-      failed: event.level === "error",
-    });
-  }
-  return entries;
-}
-
-/** Max-min allocation; stable ID order breaks a remainder tie by at most one slot. */
-function fairShares(budget: number, capacities: number[]): number[] {
-  const shares = capacities.map(() => 0);
-  let active = capacities
-    .map((capacity, index) => ({ capacity, index }))
-    .filter(({ capacity }) => capacity > 0);
-  while (budget > 0 && active.length > 0) {
-    const share = Math.max(1, Math.floor(budget / active.length));
-    for (const { capacity, index } of active) {
-      const granted = Math.min(capacity - shares[index]!, share, budget);
-      shares[index]! += granted;
-      budget -= granted;
-    }
-    active = active.filter(({ capacity, index }) => shares[index]! < capacity);
-  }
-  return shares;
-}
-
-/** End, start, then successively bisect the whole interval; no prefix sampling. */
-function spreadOrder<T>(entries: T[]): T[] {
-  if (entries.length < 2) return entries;
-  const result = [entries.at(-1)!, entries[0]!];
-  const ranges: Array<[number, number]> = [[0, entries.length - 1]];
-  for (let cursor = 0; cursor < ranges.length; cursor++) {
-    const [left, right] = ranges[cursor]!;
-    if (right - left < 2) continue;
-    const middle = Math.floor((left + right) / 2);
-    result.push(entries[middle]!);
-    ranges.push([left, middle], [middle, right]);
-  }
-  return result;
-}
-
-function sourceOrder(entries: SourceEntry[], capturesOnly: boolean): SourceEntry[] {
-  const candidates = capturesOnly ? entries.filter((entry) => entry.capturePath !== null) : entries;
-  const ordered = new Set<SourceEntry>();
-  const admit = (entry: SourceEntry | undefined): void => {
-    if (entry && (!capturesOnly || entry.capturePath !== null)) ordered.add(entry);
-  };
-  // Actor endings precede appended run bookkeeping when text slots are scarce.
-  if (!capturesOnly) admit(entries.findLast((entry) => !entry.kind.startsWith("run_event:")));
-  admit(candidates.at(-1));
-  admit(candidates[0]);
-  const afterCapture: Array<SourceEntry | undefined> = [];
-  let nextCapture: SourceEntry | undefined;
-  for (let index = entries.length - 1; index >= 0; index--) {
-    const entry = entries[index]!;
-    afterCapture[index] = nextCapture;
-    if (entry.capturePath !== null) nextCapture = entry;
-  }
-  let beforeCapture: SourceEntry | undefined;
-  const failureContext: SourceEntry[] = [];
-  for (let index = 0; index < entries.length; index++) {
-    const entry = entries[index]!;
-    if (entry.failed) {
-      for (const context of [entry, afterCapture[index], beforeCapture, entries[index + 1]]) {
-        if (context) failureContext.push(context);
-      }
-    }
-    if (entry.capturePath !== null) beforeCapture = entry;
-  }
-  // Explicit failure status/level is source metadata, not a keyword diagnosis.
-  // Spread among failures as well: many early failures cannot hide the last one.
-  for (const entry of spreadOrder(failureContext)) admit(entry);
-  // A final scroll or navigation can move the result out of view. Keep its
-  // preceding capture as ending context, regardless of the reported outcome.
-  if (capturesOnly) admit(candidates.at(-2));
-  for (const entry of spreadOrder(candidates)) admit(entry);
-  return [...ordered];
 }
 
 /** Select once from retained source. Models receive no filesystem or network resolver. */

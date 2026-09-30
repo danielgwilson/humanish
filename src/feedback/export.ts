@@ -25,11 +25,8 @@ import { type RunBundle } from "../run/bundle.js";
 import { exportRedactedBundle } from "./export-bundle.js";
 import { loadStudyAnalysis } from "../analysis/store.js";
 import { studyAnalysisSharingProblems } from "../analysis/sharing.js";
-import {
-  readBoundedStudyFile,
-  STUDY_EVIDENCE_LIMITS,
-  validateStudyAnalysisEvidence,
-} from "../analysis/evidence.js";
+import { STUDY_EVIDENCE_LIMITS, validateStudyAnalysisEvidence } from "../analysis/evidence.js";
+import { readBoundedStudyFile } from "../analysis/study-files.js";
 
 const EXPORT_SCHEMA = "humanish.export-result.v1";
 /** Past this the file stops being a thing you attach to an email. Declared, never silent. */

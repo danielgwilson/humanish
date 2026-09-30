@@ -9,12 +9,8 @@ import {
   writeContainedOutputFile,
   type PreparedSelectedOutputDirectory,
 } from "../run/selected-output-paths.js";
-import {
-  isStudyEvidencePath,
-  readBoundedStudyFile,
-  STUDY_EVIDENCE_LIMITS,
-  validateStudyAnalysisEvidence,
-} from "./evidence.js";
+import { STUDY_EVIDENCE_LIMITS, validateStudyAnalysisEvidence } from "./evidence.js";
+import { isStudyEvidencePath, readBoundedStudyFile } from "./study-files.js";
 import {
   hashStudyAnalysisValue,
   validateStudyAnalysisExecutionReceipt,
