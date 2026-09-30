@@ -167,9 +167,10 @@ persona?, device?, instruction?, target?, entry? }`. The parser expands it into
   ...), so the runtime and run bundle keep one normalized lane shape. `roster`
   is XOR with explicit `lanes`, homogeneous `count`, and `laneFocus`;
 - `execution.concurrency` (computer-use E2B routes, including shared-world): a
-  CAP on lanes in flight at once. When omitted, every declared seat runs
-  simultaneously (the parser fills `concurrency = laneCount` for multi-seat
-  labs). Total sessions and spend are identical either way; only wall-clock
+  CAP on lanes in flight at once. When omitted, every seat runs
+  simultaneously: independent lanes resolve it from the final lane count,
+  after any `--count` override, and the parser fills `concurrency = laneCount`
+  for multi-seat shared-world labs. Total sessions and spend are identical either way; only wall-clock
   and simultaneity differ. Declaring a value below the seat count runs seats in
   waves and emits a warning saying so, because a green waved run is otherwise
   indistinguishable from the all-live run the author meant. Shared-world labs

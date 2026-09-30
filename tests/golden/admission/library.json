@@ -3910,8 +3910,8 @@
         "ok": true,
         "plan": {
           "laneCount": 3,
-          "concurrency": 2,
-          "waves": 2,
+          "concurrency": 3,
+          "waves": 1,
           "lanes": [
             "lane-01",
             "lane-02",
