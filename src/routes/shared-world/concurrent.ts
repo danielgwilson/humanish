@@ -56,6 +56,7 @@ import {
   type RunLabProvenance,
   type RunStatusHandle,
   withRunStatusScope,
+  runStatusOutcome,
 } from "../../run/status.js";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -134,7 +135,7 @@ import {
   type ObserverResult,
   type ObserverRuntimeStreamUrl,
 } from "../../observer/render.js";
-import { redactText } from "../../evidence/redaction.js";
+import { redactText, scrubLiterals } from "../../evidence/redaction.js";
 import { participantAssignment } from "../../lab/participant-assignment.js";
 import {
   prepareRunArtifactPaths,
@@ -947,11 +948,7 @@ async function runConcurrentSharedWorldInScope(
     ...subjectEnvNames.map((name) => env[name] ?? ""),
     ...checkpoints.flatMap((probe) => probe.redact ?? []),
   ].filter((value) => value.length >= 4);
-  const scrubKnownValues = (text: string): string =>
-    knownSecretValues.reduce(
-      (current, value) => current.split(value).join("[REDACTED_SECRET]"),
-      text,
-    );
+  const scrubKnownValues = scrubLiterals(knownSecretValues);
 
   const redactRepoLabel = config.policies?.redactRepos ?? subjectEnvNames.includes("GITHUB_TOKEN");
   const publicRepo = redactRepoLabel ? "repo-01" : subjectRepo;
@@ -2168,23 +2165,7 @@ async function runConcurrentSharedWorldInScope(
   // Finalize identity+liveness from the bundle just written. Deliberately here and not inside
   // writeConcurrentRunArtifacts — that writer is shared with the mid-run in-progress flushes, and
   // finalizing there would declare the run finished while it is still going (#455).
-  await runStatus.finish({
-    ...(bundle.review?.verdict === undefined ? {} : { verdict: bundle.review.verdict }),
-    ...(bundle.review?.participants === undefined
-      ? {}
-      : {
-          participants: {
-            total: bundle.review.participants.total,
-            reachedGoal: bundle.review.participants.reachedGoal,
-            ...(bundle.review.participants.reportedFriction === undefined
-              ? {}
-              : { reportedFriction: bundle.review.participants.reportedFriction }),
-          },
-        }),
-    ...(bundle.cost?.estimatedTotalUsd === undefined
-      ? {}
-      : { estimatedCostUsd: bundle.cost.estimatedTotalUsd }),
-  });
+  await runStatus.finish(runStatusOutcome(bundle));
 
   const observer = await render(cwd, runId, { open: options.open === true });
   if (observer.ok && liveObserver) {

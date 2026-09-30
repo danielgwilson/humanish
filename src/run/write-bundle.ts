@@ -1,6 +1,6 @@
 import { buildObserverData } from "../observer/data.js";
 import { type PreparedRunArtifactPaths } from "./paths.js";
-import { type RunStatusHandle } from "./status.js";
+import { type RunStatusHandle, runStatusOutcome } from "./status.js";
 import { writeContainedOutputFile } from "./selected-output-paths.js";
 import { PUBLIC_TARGET_CWD, REVIEW_SCHEMA, type ReviewSummary, type RunBundle } from "./bundle.js";
 
@@ -57,23 +57,7 @@ export async function writeRunBundleArtifacts(
     `${JSON.stringify(publicBundle, null, 2)}\n`,
     "utf8",
   );
-  await finalizeStatus?.finish({
-    ...(publicBundle.review?.verdict === undefined ? {} : { verdict: publicBundle.review.verdict }),
-    ...(publicBundle.review?.participants === undefined
-      ? {}
-      : {
-          participants: {
-            total: publicBundle.review.participants.total,
-            reachedGoal: publicBundle.review.participants.reachedGoal,
-            ...(publicBundle.review.participants.reportedFriction === undefined
-              ? {}
-              : { reportedFriction: publicBundle.review.participants.reportedFriction }),
-          },
-        }),
-    ...(publicBundle.cost?.estimatedTotalUsd === undefined
-      ? {}
-      : { estimatedCostUsd: publicBundle.cost.estimatedTotalUsd }),
-  });
+  await finalizeStatus?.finish(runStatusOutcome(publicBundle));
   await writeContainedOutputFile(
     runPaths,
     "review.json",

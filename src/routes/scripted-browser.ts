@@ -35,6 +35,7 @@ import {
   type RunLabProvenance,
   type RunStatusHandle,
   withRunStatusScope,
+  runStatusOutcome,
 } from "../run/status.js";
 import { realpath } from "node:fs/promises";
 import path from "node:path";
@@ -634,23 +635,7 @@ async function runScriptedBrowserLabInScope(
   );
   // Finalize identity+liveness from the bundle just written; a throw before this leaves the record
   // stale, which reads as interrupted rather than as a false outcome (#455).
-  await runStatus.finish({
-    ...(bundle.review?.verdict === undefined ? {} : { verdict: bundle.review.verdict }),
-    ...(bundle.review?.participants === undefined
-      ? {}
-      : {
-          participants: {
-            total: bundle.review.participants.total,
-            reachedGoal: bundle.review.participants.reachedGoal,
-            ...(bundle.review.participants.reportedFriction === undefined
-              ? {}
-              : { reportedFriction: bundle.review.participants.reportedFriction }),
-          },
-        }),
-    ...(bundle.cost?.estimatedTotalUsd === undefined
-      ? {}
-      : { estimatedCostUsd: bundle.cost.estimatedTotalUsd }),
-  });
+  await runStatus.finish(runStatusOutcome(bundle));
   await writeContainedOutputFile(
     runPaths,
     "review.json",

@@ -16,17 +16,23 @@ import {
   personaBrief,
   personaToDirectives,
   renderPersonaPromptSection,
+  scrubPersonaBrief,
   type ResolvedPersona,
 } from "../../lab/persona.js";
 import type { ReasoningEffort } from "../../actors/reasoning-effort.js";
-import { digestText } from "../../evidence/redaction.js";
+import { digestText, redactText } from "../../evidence/redaction.js";
 import { type RunRerunLineage, type RunStream } from "../../run/bundle.js";
 import { loadRunBundle } from "../../run/verify.js";
 import type { DwellWindow, StopWhen } from "../../actors/stop-conditions.js";
 import { renderTaskPrompt, type LabTask } from "../../lab/tasks.js";
+import { participantAssignment } from "../../lab/participant-assignment.js";
+import { labPersonaIds, resolveCommittedPersonas } from "../../lab/persona-resolve.js";
+import { MAX_CUA_LANES } from "../../lab/routing.js";
+import type { PreparedSelectedOutputDirectory } from "../../run/selected-output-paths.js";
 import {
   CUA_FANOUT_STRATEGY,
   CUA_MAX_CONCURRENCY_ENV,
+  type CuaActorLabErrorCode,
   type CuaLanePlan,
   type CuaLanePlanEntry,
   type CuaLaneSpec,
@@ -35,6 +41,7 @@ import {
   type LaneSpecsAndPlan,
   MAX_SANDBOX_MS,
   MIN_DERIVED_SESSION_TIMEOUT_MS,
+  type RunCuaActorLabOptions,
   SANDBOX_TIMEOUT_BUFFER_MS,
   SUBJECT_PROVISION_BUDGET_MS,
 } from "./types.js";
@@ -277,7 +284,7 @@ function resolveCuaConcurrency(
 
 /** Build the lane specs AND the public plan from a config (pure). countOverride is the CLI
  *  --count for homogeneous fan-out (ignored when a `lanes` roster is declared). */
-export function laneSpecsAndPlan(
+function laneSpecsAndPlan(
   config: LabConfig,
   opts: {
     countOverride?: number;
@@ -390,7 +397,7 @@ export function laneSpecsAndPlan(
   return { lanes, plan };
 }
 
-export async function resolveCuaRerunSelection(args: {
+async function resolveCuaRerunSelection(args: {
   cwd: string;
   config: LabConfig;
   sourceRunId: string;
@@ -603,4 +610,86 @@ export function readPositiveInt(value: string | undefined, fallback: number): nu
   if (value === undefined) return fallback;
   const parsed = Number.parseInt(value, 10);
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+/**
+ * The lanes a computer-use run drives, resolved before anything is created: committed personas
+ * compiled, the pure lane table built (the same for dry-run and live), the lane cap enforced, and
+ * a rerun narrowed to its selected lanes.
+ */
+export async function planCuaLanes(args: {
+  config: LabConfig;
+  cwd: string;
+  projectRoot: PreparedSelectedOutputDirectory;
+  env: Record<string, string | undefined>;
+  dryRun: boolean;
+  inProcessRoute: boolean;
+  countOverride?: number;
+  rerun?: RunCuaActorLabOptions["rerun"];
+}): Promise<
+  | { ok: true; laneSpecs: CuaLaneSpec[]; plan: CuaLanePlan; rerunLineage?: RunRerunLineage }
+  | { ok: false; code: CuaActorLabErrorCode; message: string }
+> {
+  // Compile any committed personas BEFORE planning, so the plan builder stays pure and each lane's
+  // prompt carries real behavioral directives rather than a bare `Persona: <id>.` label (#381).
+  const personaResolution = await resolveCommittedPersonas(
+    args.projectRoot,
+    labPersonaIds(args.config),
+  );
+  for (const warning of personaResolution.warnings) {
+    process.stderr.write(`humanish: ${warning}\n`);
+  }
+
+  const { lanes: laneSpecs, plan } = laneSpecsAndPlan(args.config, {
+    ...(args.countOverride === undefined ? {} : { countOverride: args.countOverride }),
+    env: args.env,
+    dryRun: args.dryRun,
+    personas: personaResolution.personas,
+  });
+  if (laneSpecs.length > MAX_CUA_LANES) {
+    return {
+      ok: false,
+      code: "HUMANISH_CUA_LAB_FANOUT_INVALID",
+      message: `Computer-use fan-out is capped at ${MAX_CUA_LANES} lanes (resolved ${laneSpecs.length}); N concurrent paid desktops is real spend.`,
+    };
+  }
+  if (args.inProcessRoute && laneSpecs.length > 1) {
+    return {
+      ok: false,
+      code: "HUMANISH_CUA_LAB_FANOUT_INVALID",
+      message:
+        "Multi-lane fan-out is not supported on the in-process route (cuaHooks.buildExecutor) — fan-out provisions one independent E2B desktop per lane, which the in-process route deliberately skips. Run a single in-process lane, or fan out on the E2B route.",
+    };
+  }
+  if (!args.rerun) return { ok: true, laneSpecs, plan };
+
+  const selected = await resolveCuaRerunSelection({
+    cwd: args.cwd,
+    config: args.config,
+    sourceRunId: args.rerun.sourceRunId,
+    ...(args.rerun.laneIds === undefined ? {} : { laneIds: args.rerun.laneIds }),
+    laneSpecs,
+    plan,
+  });
+  if (!selected.ok) {
+    return { ok: false, code: "HUMANISH_CUA_LAB_RERUN_INVALID", message: selected.message };
+  }
+  return {
+    ok: true,
+    laneSpecs: selected.laneSpecs,
+    plan: selected.plan,
+    rerunLineage: selected.rerun,
+  };
+}
+
+/** Scrub known secret values from each lane's declarative snapshot before any bundle uses it. */
+export function sanitizeLaneSpecs(
+  laneSpecs: readonly CuaLaneSpec[],
+  scrub: (text: string) => string,
+): void {
+  for (const spec of laneSpecs) {
+    if (spec.assignment) spec.assignment = participantAssignment(spec.assignment, scrub);
+    spec.evidenceInstructions = redactText(scrub(spec.instructions));
+    spec.persona = scrubPersonaBrief(spec.persona, scrub);
+  }
 }

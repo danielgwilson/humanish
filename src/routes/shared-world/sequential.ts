@@ -40,6 +40,7 @@ import {
   type RunLabProvenance,
   type RunStatusHandle,
   withRunStatusScope,
+  runStatusOutcome,
 } from "../../run/status.js";
 import path from "node:path";
 import { runDesktopCommandOrThrow, toErrorMessage } from "../../substrates/command-failure.js";
@@ -114,7 +115,7 @@ import {
   type LabSubjectStateCheckpoint,
 } from "../../lab/types.js";
 import { renderObserver, type ObserverResult } from "../../observer/render.js";
-import { redactText } from "../../evidence/redaction.js";
+import { redactText, scrubLiterals } from "../../evidence/redaction.js";
 import { participantAssignment } from "../../lab/participant-assignment.js";
 import { prepareRunArtifactPaths, validatePreparedRunArtifactPaths } from "../../run/paths.js";
 import {
@@ -805,11 +806,7 @@ async function runSharedWorldLabInScope(
     ...subjectEnvNames.map((name) => env[name] ?? ""),
     ...checkpoints.flatMap((probe) => probe.redact ?? []),
   ].filter((value) => value.length >= 4);
-  const scrubKnownValues = (text: string): string =>
-    knownSecretValues.reduce(
-      (current, value) => current.split(value).join("[REDACTED_SECRET]"),
-      text,
-    );
+  const scrubKnownValues = scrubLiterals(knownSecretValues);
   for (const spec of roleSpecs) {
     if (spec.assignment) spec.assignment = participantAssignment(spec.assignment, scrubKnownValues);
     spec.evidenceInstructions = redactText(scrubKnownValues(spec.instructions));
@@ -1477,23 +1474,7 @@ async function runSharedWorldLabInScope(
   );
   // Finalize identity+liveness from the bundle just written; a throw before this leaves the record
   // stale, which reads as interrupted rather than as a false outcome (#455).
-  await runStatus.finish({
-    ...(bundle.review?.verdict === undefined ? {} : { verdict: bundle.review.verdict }),
-    ...(bundle.review?.participants === undefined
-      ? {}
-      : {
-          participants: {
-            total: bundle.review.participants.total,
-            reachedGoal: bundle.review.participants.reachedGoal,
-            ...(bundle.review.participants.reportedFriction === undefined
-              ? {}
-              : { reportedFriction: bundle.review.participants.reportedFriction }),
-          },
-        }),
-    ...(bundle.cost?.estimatedTotalUsd === undefined
-      ? {}
-      : { estimatedCostUsd: bundle.cost.estimatedTotalUsd }),
-  });
+  await runStatus.finish(runStatusOutcome(bundle));
   await writeContainedOutputFile(
     runPaths,
     "review.json",

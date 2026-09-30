@@ -80,6 +80,7 @@ import {
   type RunLabProvenance,
   type RunStatusHandle,
   withRunStatusScope,
+  runStatusOutcome,
 } from "../../run/status.js";
 import { ACTOR_TRACE_SCHEMA, TERMINAL_AGENT_CAPABILITIES } from "../../actors/contract.js";
 import { actorRegistry, isTerminalActorDescriptor } from "../../actors/registry.js";
@@ -103,7 +104,7 @@ import {
   personaToDirectives,
   renderPersonaPromptSection,
 } from "../../lab/persona.js";
-import { digestText, redactedTail, redactText } from "../../evidence/redaction.js";
+import { digestText, redactedTail, redactText, scrubLiterals } from "../../evidence/redaction.js";
 import { participantAssignment } from "../../lab/participant-assignment.js";
 import { prepareRunArtifactPaths, validatePreparedRunArtifactPaths } from "../../run/paths.js";
 import {
@@ -455,11 +456,9 @@ async function runTerminalProductLabInScope(
   const knownSecretValues = [env.CODEX_API_KEY, env.OPENAI_API_KEY, env.E2B_API_KEY]
     .map((value) => value?.trim() ?? "")
     .filter((value) => value.length >= 4);
-  const evidenceMission = participantAssignment({ mission }, (text) =>
-    knownSecretValues.reduce(
-      (current, value) => current.split(value).join("[REDACTED_SECRET]"),
-      text,
-    ),
+  const evidenceMission = participantAssignment(
+    { mission },
+    scrubLiterals(knownSecretValues),
   ).mission;
   const personaId = config.actors[0]?.persona ?? "autonomous-terminal-agent";
   const physicalCwd = await realpath(cwd);
@@ -490,12 +489,7 @@ async function runTerminalProductLabInScope(
     promptDigest,
     ...(resolvedPersona.persona
       ? {
-          brief: personaBrief(resolvedPersona.persona, (text) =>
-            knownSecretValues.reduce(
-              (out, value) => out.split(value).join("[REDACTED_SECRET]"),
-              text,
-            ),
-          ),
+          brief: personaBrief(resolvedPersona.persona, scrubLiterals(knownSecretValues)),
         }
       : {}),
   };
@@ -568,23 +562,7 @@ async function runTerminalProductLabInScope(
   );
   // Finalize identity+liveness from the bundle just written; a throw before this leaves the record
   // stale, which reads as interrupted rather than as a false outcome (#455).
-  await runStatus.finish({
-    ...(bundle.review?.verdict === undefined ? {} : { verdict: bundle.review.verdict }),
-    ...(bundle.review?.participants === undefined
-      ? {}
-      : {
-          participants: {
-            total: bundle.review.participants.total,
-            reachedGoal: bundle.review.participants.reachedGoal,
-            ...(bundle.review.participants.reportedFriction === undefined
-              ? {}
-              : { reportedFriction: bundle.review.participants.reportedFriction }),
-          },
-        }),
-    ...(bundle.cost?.estimatedTotalUsd === undefined
-      ? {}
-      : { estimatedCostUsd: bundle.cost.estimatedTotalUsd }),
-  });
+  await runStatus.finish(runStatusOutcome(bundle));
   await writeContainedOutputFile(
     runPaths,
     "review.json",
@@ -1215,11 +1193,7 @@ async function runLiveTerminalSession(
   const knownSecretValues = [runtimeEnv.keyValue, env.E2B_API_KEY?.trim() ?? ""].filter(
     (v) => v.length >= 4,
   );
-  const scrubKnownValues = (text: string): string =>
-    knownSecretValues.reduce(
-      (current, value) => current.split(value).join("[REDACTED_SECRET]"),
-      text,
-    );
+  const scrubKnownValues = scrubLiterals(knownSecretValues);
   const sanitize = (text: string): string => redactText(scrubKnownValues(text));
   const persona: ActorPersonaRef = {
     id: personaId,
@@ -1871,23 +1845,7 @@ async function runLiveTerminalSession(
   );
   // Finalize identity+liveness from the bundle just written; a throw before this leaves the record
   // stale, which reads as interrupted rather than as a false outcome (#455).
-  await runStatus.finish({
-    ...(bundle.review?.verdict === undefined ? {} : { verdict: bundle.review.verdict }),
-    ...(bundle.review?.participants === undefined
-      ? {}
-      : {
-          participants: {
-            total: bundle.review.participants.total,
-            reachedGoal: bundle.review.participants.reachedGoal,
-            ...(bundle.review.participants.reportedFriction === undefined
-              ? {}
-              : { reportedFriction: bundle.review.participants.reportedFriction }),
-          },
-        }),
-    ...(bundle.cost?.estimatedTotalUsd === undefined
-      ? {}
-      : { estimatedCostUsd: bundle.cost.estimatedTotalUsd }),
-  });
+  await runStatus.finish(runStatusOutcome(bundle));
   await writeContainedOutputFile(
     runPaths,
     "review.json",
