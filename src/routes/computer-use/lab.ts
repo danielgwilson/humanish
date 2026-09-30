@@ -468,11 +468,15 @@ async function runCuaActorLabInScope(
       if (receiving) deps.receiving = receiving;
     } catch {
       await stopLiveFlush?.();
-      return fail(
-        "HUMANISH_CUA_LAB_SUBJECT_INVALID",
-        "Real email setup failed before desktop allocation. Run humanish comms check --online and humanish comms recover to inspect authentication and pending cleanup.",
-        descriptor.id,
-      );
+      // The run exists by now, so the refusal names it rather than "not-created".
+      return {
+        ...fail(
+          "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+          "Real email setup failed before desktop allocation. Run humanish comms check --online and humanish comms recover to inspect authentication and pending cleanup.",
+          descriptor.id,
+        ),
+        runId,
+      };
     }
   }
   // Run lanes (dry-run runs none). In-process is always one lane.
