@@ -1,4 +1,4 @@
-# Run a local app through its state contract
+# Bring your own participant: a local app through its state contract
 
 This complete library example starts a synthetic loopback HTTP app, reads its
 state with a `CuaExecutor`, sends a greeting through its action endpoint, and
@@ -13,10 +13,10 @@ Use Node.js 20.3 or later (`AbortSignal.any`), in a new directory:
 ```bash
 npm init -y
 npm install humanish
-node node_modules/humanish/docs/architecture/examples/state-driven-local-app/runner.mjs
+node node_modules/humanish/examples/participant/run.mjs
 ```
 
-The package includes both [runner.mjs](runner.mjs) and [app.mjs](app.mjs).
+The package includes both [run.mjs](run.mjs) and [app.mjs](app.mjs).
 No checkout, TypeScript loader or initialization command is needed. Each
 invocation starts a fresh app and writes a new run under `.humanish/runs/` in
 your current directory. Run the last command again for an independent repeat.
@@ -44,7 +44,7 @@ and loopback requests; absent model usage is not treated as a billing receipt.
 
 ## Adapt the two ports
 
-In `runner.mjs`, replace `createAppContractExecutor` with your trusted bridge to
+In `run.mjs`, replace `createAppContractExecutor` with your trusted bridge to
 your app's `getState()` and actions. Here those calls use `GET /state` and
 `POST /chat`; a browser bridge could call `window.app` through `page.evaluate`.
 Map supported actions explicitly and reject unsupported ones. Forward the
@@ -67,10 +67,10 @@ To check an installed copy against its packaged declarations:
 
 ```bash
 npm install --save-dev typescript @types/node@20
-npx tsc --allowJs --checkJs --noEmit --strict --skipLibCheck --types node --target ES2022 --module NodeNext --moduleResolution NodeNext node_modules/humanish/docs/architecture/examples/state-driven-local-app/*.mjs
+npx tsc --allowJs --checkJs --noEmit --strict --skipLibCheck --types node --target ES2022 --module NodeNext --moduleResolution NodeNext node_modules/humanish/examples/participant/*.mjs
 ```
 
-See the [state-driven executor guide](../../state-driven-executor.md) for progress
+See the [state-driven executor guide](../../docs/architecture/state-driven-executor.md) for progress
 projection limits, runtime-only state, unpinned local-app provenance, and the
 fail-closed guards on this route.
 

@@ -312,11 +312,11 @@ not established physical-device app behavior.
 #### Drive an already-running local app
 
 Use a custom executor and non-vision provider to drive your app's state contract
-without E2B. The [runnable npm example](docs/architecture/examples/state-driven-local-app/README.md)
+without E2B. The [runnable npm example](examples/participant/README.md)
 includes a synthetic loopback app, deterministic provider, verification and cleanup:
 
 ```bash
-node node_modules/humanish/docs/architecture/examples/state-driven-local-app/runner.mjs
+node node_modules/humanish/examples/participant/run.mjs
 ```
 
 Run it after installing `humanish`. It makes no model calls; it proves the
