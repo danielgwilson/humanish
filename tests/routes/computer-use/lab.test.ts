@@ -26,11 +26,9 @@ import type {
   CuaProvider,
   CuaTurn,
 } from "../../../src/actors/computer-use/loop.js";
-import {
-  CUA_ACTOR_LAB_PROVIDER_METADATA,
-  makeChromeBrowserStateObserver,
-  runCuaActorLab,
-} from "../../../src/routes/computer-use/lab.js";
+import { runCuaActorLab } from "../../../src/routes/computer-use/lab.js";
+import { CUA_ACTOR_LAB_PROVIDER_METADATA } from "../../../src/substrates/e2b/cua-desktop.js";
+import { makeChromeBrowserStateObserver } from "../../../src/substrates/e2b/desktop-cdp.js";
 import { buildCuaBundle } from "../../../src/routes/computer-use/single-bundle.js";
 import { buildCuaCostSummary } from "../../../src/routes/computer-use/costs.js";
 import { makeLaneWriteScreenshot } from "../../../src/routes/computer-use/lanes.js";

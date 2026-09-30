@@ -28,7 +28,7 @@ import {
   type E2BDesktopLike,
 } from "../../../src/substrates/e2b/desktop-executor.js";
 import { extractLobbyCode, runConcurrentSharedWorld } from "../../../src/index.js";
-import { makeChromeBrowserStateObserver } from "../../../src/routes/computer-use/lab.js";
+import { makeChromeBrowserStateObserver } from "../../../src/substrates/e2b/desktop-cdp.js";
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
 import {
   externalPublicSharedWorldValidationReason,

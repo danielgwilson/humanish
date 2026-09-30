@@ -77,6 +77,7 @@ failure. No exactly-once or rollback guarantee is implied by sequence IDs.
 | Image dimensions                     | 4096 per side, at most 16,000,000 pixels              |
 | Typed text and each observed string  | 64 KiB UTF-8                                          |
 | Key chord                            | 16 keys, 64 characters per key                        |
+| Held keys on a pointer action        | Same bound as a key chord, at least one key           |
 | Drag                                 | 1–1024 points                                         |
 | Coordinates, deltas, scroll position | Finite, within ±1,000,000; fractions preserved        |
 | Wait                                 | 0–30 seconds, fractions preserved                     |
@@ -88,6 +89,11 @@ title, text, and fractional scroll position; those remain runtime-only under the
 existing loop contract. Arbitrary `appState` is refused because v1 has no closed
 schema for it. The protocol does not truncate strings, round coordinates, or
 silently drop unsupported state.
+
+Click, double-click, move, scroll and drag may carry `heldKeys`, which the
+OpenAI provider maps from its computer tool's `keys`. The Codex participant's
+tool schema does not offer them. A guest older than this field refuses such an
+action as an invalid request.
 
 PNG admission checks signature, IHDR before decoder allocation, chunk framing,
 IDAT/IEND presence, no trailing bytes, CRCs and full decode. Version 1 admits

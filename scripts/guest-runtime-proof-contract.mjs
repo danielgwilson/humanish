@@ -18,6 +18,7 @@ export const GUEST_PROOF_CASES = Object.freeze({
     "reject bad key without input",
     "modal dialog rejects text without accepting or filling it",
     "revocation during drag sends no release",
+    "held modifiers reach the click and are released after it",
   ],
   "owned-stream": [
     "bootstrap and immediate HELLO",

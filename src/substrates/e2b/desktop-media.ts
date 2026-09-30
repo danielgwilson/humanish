@@ -1,6 +1,10 @@
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { startDesktopMedia } from "../../guest-desktop-media.js";
 import type { E2BCommandResult, E2BDesktopSandbox } from "./desktop-launch.js";
 import type { LabConfig, LabDesktopMedia } from "../../lab/types.js";
+import { failureTail } from "../../evidence/redaction.js";
+import { toErrorMessage } from "../command-failure.js";
 
 /** Versioned public template built by runtime/browser-media/e2b-template.mjs. */
 export const E2B_SPEECH_TEMPLATE = "7409n13kr83f7g7abx5g";
@@ -95,4 +99,101 @@ export async function startE2BDesktopMedia(options: {
       },
     },
   });
+}
+
+export interface DesktopMediaEvidence {
+  camera?: { source: "synthetic" | "file"; file: string };
+  microphone?: { source: "speech" };
+  permission: "prompt" | "granted";
+  flags: string[];
+}
+
+/** Where a lane's synthetic camera feed lives inside the sandbox: a tmpfs the sandbox user can
+ *  write, and a path that contains neither /tmp/ nor /home/, which the public-safety scan reads
+ *  as an operator's local path (this one is the harness's own and belongs in the bundle). */
+const SANDBOX_MEDIA_DIR = "/dev/shm/humanish-media";
+
+const SANDBOX_CAMERA_PATH = `${SANDBOX_MEDIA_DIR}/camera.y4m`;
+
+/** The synthetic feed: ffmpeg's test pattern, 640x480 at 10 fps, six seconds (about 28 MB of
+ *  raw Y4M on the tmpfs), looped by Chrome's fake capture device. */
+const SYNTHETIC_CAMERA_COMMAND = `mkdir -p ${SANDBOX_MEDIA_DIR} && ffmpeg -y -loglevel error -f lavfi -i testsrc=size=640x480:rate=10 -t 6 -pix_fmt yuv420p ${SANDBOX_CAMERA_PATH}`;
+
+/**
+ * Put the declared camera feed in the sandbox and return the Chromium flags that present it as a
+ * capture device (#509). Fails CLOSED: a feed that cannot be produced (no ffmpeg on the image, an
+ * unreadable host file) is named before the browser launches, because a participant told it has
+ * a camera and finds none reports the instrument's gap as the product's.
+ */
+export async function prepareDesktopMedia(
+  desktop: E2BDesktopSandbox,
+  media: LabDesktopMedia,
+  permission: "prompt" | "granted",
+  cwd: string,
+  requestTimeoutMs: number,
+  readHostFile: (absolutePath: string) => Promise<Buffer> = (absolutePath) =>
+    readFile(absolutePath),
+): Promise<DesktopMediaEvidence> {
+  if (media.microphone !== undefined) {
+    if (media.microphone.source !== "speech")
+      throw new Error("Microphone source-file injection is unsupported; use source: speech.");
+    if (media.camera !== undefined)
+      throw new Error("Hosted synthetic cameras cannot be combined with speech.");
+    // The lane starts and admits the speech worker before launching the browser.
+    return {
+      microphone: { source: "speech" },
+      permission,
+      flags: permission === "granted" ? ["--use-fake-ui-for-media-stream"] : [],
+    };
+  }
+  const flags: string[] = [];
+  let camera: DesktopMediaEvidence["camera"];
+  if (media.camera !== undefined) {
+    if (media.camera.source === "synthetic") {
+      const made = await desktop.commands.run(SYNTHETIC_CAMERA_COMMAND, {
+        requestTimeoutMs,
+        timeoutMs: 60_000,
+      });
+      if (made.exitCode !== undefined && made.exitCode !== 0) {
+        throw new Error(
+          `the synthetic camera feed could not be generated on this desktop image (ffmpeg exited ${made.exitCode}: ${failureTail(made.stderr ?? made.stdout ?? "")}); give execution.desktop.media.camera.source a .y4m file instead`,
+        );
+      }
+      camera = { source: "synthetic", file: SANDBOX_CAMERA_PATH };
+    } else {
+      const absolutePath = path.resolve(cwd, media.camera.source);
+      let bytes: Buffer;
+      try {
+        bytes = await readHostFile(absolutePath);
+      } catch (error) {
+        throw new Error(
+          `execution.desktop.media.camera.source could not be read (${toErrorMessage(error)})`,
+        );
+      }
+      if (bytes.length > 64 * 1024 * 1024) {
+        throw new Error(
+          `execution.desktop.media.camera.source is ${bytes.length} bytes; the camera feed is capped at 64 MiB`,
+        );
+      }
+      await desktop.commands.run(`mkdir -p ${SANDBOX_MEDIA_DIR}`, {
+        requestTimeoutMs,
+        timeoutMs: 15_000,
+      });
+      const payload = bytes.buffer.slice(
+        bytes.byteOffset,
+        bytes.byteOffset + bytes.byteLength,
+      ) as ArrayBuffer;
+      await desktop.files.write(SANDBOX_CAMERA_PATH, payload, {
+        requestTimeoutMs,
+        useOctetStream: true,
+      });
+      camera = { source: "file", file: SANDBOX_CAMERA_PATH };
+    }
+    flags.push(
+      "--use-fake-device-for-media-stream",
+      `--use-file-for-fake-video-capture=${SANDBOX_CAMERA_PATH}`,
+    );
+  }
+  if (permission === "granted") flags.push("--use-fake-ui-for-media-stream");
+  return { ...(camera === undefined ? {} : { camera }), permission, flags };
 }

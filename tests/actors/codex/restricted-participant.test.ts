@@ -151,6 +151,7 @@ describe("restricted participant conversation", () => {
       expect(() => parseParticipantTool(value)).toThrow();
     for (const action of [
       { kind: "click", x: 1.5, y: 2.25, button: null },
+      { kind: "click", x: 1, y: 2, heldKeys: ["SHIFT"] },
       { kind: "wait", ms: null },
       { kind: "type", text: null },
     ])
@@ -181,6 +182,7 @@ describe("restricted participant conversation", () => {
     expect(PARTICIPANT_FINAL_SCHEMA.required).toEqual(["outcome", "summary", "frictionReports"]);
     expect(JSON.stringify(PARTICIPANT_TOOL_SCHEMA)).not.toContain('"speak"');
     expect(JSON.stringify(participantToolSchema(true))).toContain('"speak"');
+    expect(JSON.stringify(participantToolSchema(true))).not.toContain("heldKeys");
   });
 
   it("keeps heard speaker evidence and spoken replies in the same admitted conversation", async () => {

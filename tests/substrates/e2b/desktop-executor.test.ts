@@ -453,3 +453,133 @@ describe("perceptualSignature", () => {
     expect(perceptualSignature(new Uint8Array(png))).toBe(perceptualSignature(png));
   });
 });
+
+describe("createE2BDesktopExecutor held modifiers", () => {
+  // Every desktop call and command in order; `failOn` makes the named step fail.
+  function heldFixture(failOn?: string) {
+    const steps: string[] = [];
+    const step = async (name: string): Promise<void> => {
+      steps.push(name);
+      if (name === failOn) throw new Error(`synthetic ${name} failure`);
+    };
+    const desktop: E2BDesktopLike = {
+      screenshot: () => Buffer.alloc(0),
+      leftClick: (x, y) => step(x === undefined ? "leftClick" : `leftClick ${x} ${y}`),
+      rightClick: (x, y) => step(`rightClick ${x} ${y}`),
+      middleClick: (x, y) => step(`middleClick ${x} ${y}`),
+      doubleClick: (x, y) => step(`doubleClick ${x} ${y}`),
+      moveMouse: (x, y) => step(`moveMouse ${x} ${y}`),
+      scroll: (direction, amount) => step(`scroll ${direction} ${amount}`),
+      write: (text) => step(`write ${text}`),
+      press: (key) => step(`press ${String(key)}`),
+      drag: (from, to) => step(`drag ${from.join(",")} ${to.join(",")}`),
+      wait: (ms) => step(`wait ${ms}`),
+      commands: {
+        run: async (command) => {
+          await step(command);
+          return { exitCode: 0, stdout: "", stderr: "" };
+        },
+      },
+    };
+    return { desktop, steps, executor: createE2BDesktopExecutor(desktop) };
+  }
+
+  it.each<[CuaAction, string[]]>([
+    [
+      { kind: "click", x: 5, y: 6, button: "right", heldKeys: ["SHIFT"] },
+      ["xdotool keydown shift", "rightClick 5 6", "xdotool keyup shift"],
+    ],
+    [
+      { kind: "double_click", x: 5, y: 6, heldKeys: ["CTRL", "ALT"] },
+      ["xdotool keydown ctrl+alt", "doubleClick 5 6", "xdotool keyup ctrl+alt"],
+    ],
+    [
+      { kind: "move", x: 5, y: 6, heldKeys: ["meta"] },
+      ["xdotool keydown super", "moveMouse 5 6", "xdotool keyup super"],
+    ],
+    [
+      { kind: "scroll", x: 5, y: 6, dx: 0, dy: 200, heldKeys: ["CONTROL"] },
+      ["xdotool keydown ctrl", "moveMouse 5 6", "scroll down 2", "xdotool keyup ctrl"],
+    ],
+    [
+      {
+        kind: "drag",
+        path: [
+          { x: 1, y: 2 },
+          { x: 3, y: 4 },
+        ],
+        heldKeys: ["SHIFT"],
+      },
+      ["xdotool keydown shift", "drag 1,2 3,4", "xdotool keyup shift"],
+    ],
+  ])("holds the modifiers around $kind", async (action, expected) => {
+    const f = heldFixture();
+    await f.executor.execute(action);
+    expect(f.steps).toEqual(expected);
+  });
+
+  it("releases the modifiers when the pointer action fails and reports that failure", async () => {
+    const f = heldFixture("rightClick 5 6");
+    await expect(
+      f.executor.execute({ kind: "click", x: 5, y: 6, button: "right", heldKeys: ["SHIFT"] }),
+    ).rejects.toThrow("synthetic rightClick 5 6 failure");
+    expect(f.steps).toEqual(["xdotool keydown shift", "rightClick 5 6", "xdotool keyup shift"]);
+  });
+
+  it("releases the modifiers when the keydown itself fails", async () => {
+    const f = heldFixture("xdotool keydown shift");
+    await expect(
+      f.executor.execute({ kind: "move", x: 5, y: 6, heldKeys: ["SHIFT"] }),
+    ).rejects.toThrow("synthetic xdotool keydown shift failure");
+    expect(f.steps).toEqual(["xdotool keydown shift", "xdotool keyup shift"]);
+  });
+
+  it("ends the session when the release fails, since the keys may still be down", async () => {
+    const f = heldFixture("xdotool keyup shift");
+    await expect(
+      f.executor.execute({ kind: "move", x: 5, y: 6, heldKeys: ["SHIFT"] }),
+    ).rejects.toMatchObject({ code: "execution_failed", disposition: "outcome_uncertain" });
+  });
+
+  it("releases the modifiers when the action is cancelled mid-way", async () => {
+    const f = heldFixture();
+    const controller = new AbortController();
+    f.desktop.getCursorPosition = () => {
+      controller.abort();
+      return { x: 0, y: 0 };
+    };
+    await expect(
+      f.executor.execute({ kind: "click", x: 5, y: 6, heldKeys: ["SHIFT"] }, controller.signal),
+    ).rejects.toMatchObject({ name: "AbortError" });
+    expect(f.steps).toEqual(["xdotool keydown shift", "xdotool keyup shift"]);
+  });
+
+  it.each<[string, string[]]>([
+    ["an ordinary key", ["a"]],
+    ["an unknown name", ["HYPER"]],
+    ["command syntax", ["shift; reboot"]],
+    ["a repeated modifier", ["CTRL", "CONTROL"]],
+  ])("refuses %s before dispatch", async (_label, heldKeys) => {
+    const f = heldFixture();
+    await expect(f.executor.execute({ kind: "click", x: 5, y: 6, heldKeys })).rejects.toMatchObject(
+      { code: "action_rejected", disposition: "not_dispatched" },
+    );
+    expect(f.steps).toEqual([]);
+  });
+
+  it("refuses held keys on a desktop with no command channel", async () => {
+    const f = heldFixture();
+    delete f.desktop.commands;
+    await expect(
+      f.executor.execute({ kind: "click", x: 5, y: 6, heldKeys: ["SHIFT"] }),
+    ).rejects.toMatchObject({ code: "action_rejected", disposition: "not_dispatched" });
+    expect(f.steps).toEqual([]);
+  });
+
+  it("presses nothing for a pointer action that sends no input", async () => {
+    const f = heldFixture();
+    await f.executor.execute({ kind: "scroll", x: 5, y: 6, dx: 0, dy: 0, heldKeys: ["SHIFT"] });
+    await f.executor.execute({ kind: "drag", path: [{ x: 1, y: 1 }], heldKeys: ["SHIFT"] });
+    expect(f.steps).toEqual([]);
+  });
+});
