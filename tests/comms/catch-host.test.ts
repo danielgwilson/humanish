@@ -17,10 +17,10 @@ import { renderInboxSurfaceLocally } from "../../src/comms/catch-host.js";
 import { freePort, withFreePort } from "../helpers/free-port.js";
 import { inboxRecipientScope } from "../../src/comms/inbox.js";
 import {
-  SANDBOX_CATCH_SCRIPT,
   capturedRecipientAddresses,
   parseDeliveriesNdjson,
 } from "../../src/comms/sandbox-catch.js";
+import { SANDBOX_CATCH_SCRIPT } from "../../src/comms/sandbox-catch-script.js";
 
 const VERIFY_HTML =
   '<p>Confirm your account.</p><p><a href="https://app.example.test/verify?token=abc123XYZ-9">Verify</a></p><p>Code: <b>481920</b></p>';

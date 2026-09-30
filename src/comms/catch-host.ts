@@ -21,12 +21,12 @@ import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import {
-  SANDBOX_CATCH_SCRIPT,
   capturedRecipientAddresses,
   inboxMessagesFrom,
   parseDeliveriesNdjson,
   type InboxSurfaceRecipient,
 } from "./sandbox-catch.js";
+import { SANDBOX_CATCH_SCRIPT } from "./sandbox-catch-script.js";
 import { buildInboxSurface } from "./inbox.js";
 
 /** The CLI writer surface this command needs (structurally compatible with cli/io.ts CliIo). */
