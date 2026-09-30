@@ -10,8 +10,15 @@ import type { CommsReceivingRun } from "../../comms/receiving.js";
 import type { LabActorLane, LabCommsEmail, LabCommsExternal, LabConfig } from "../../lab/types.js";
 import type { ObserverResult } from "../../observer/render.js";
 import type { ObserverRuntimeStreamUrl } from "../../observer/run-routes.js";
-import type { RunBundle, RunScorerProvenance, RunSubjectProvenance } from "../../run/bundle.js";
+import type {
+  RunBundle,
+  RunScorerProvenance,
+  RunSubjectProvenance,
+  RunSubjectStateStepRecord,
+} from "../../run/bundle.js";
 import type { RunScope } from "../../run/run.js";
+import type { SharedWorldStateSnapshot } from "../../run/shared-world-evidence.js";
+import type { LocalTreeArchive } from "../../run/source-archive.js";
 import type { RunLabProvenance } from "../../run/status.js";
 import type { LiveTraceFlush } from "../computer-use/live-flush.js";
 import type {
@@ -21,6 +28,7 @@ import type {
   LaneRunOutcome,
 } from "../computer-use/types.js";
 import type { SharedWorldLabHooks } from "./hooks.js";
+import type { ProvisionedPlaneSetup } from "./provisioned.js";
 
 export const CONCURRENT_SHARED_WORLD_LAB_SCHEMA = "humanish.concurrent-shared-world-lab-result.v1";
 
@@ -192,4 +200,78 @@ export interface ExternalCommsWiring {
   external: LabCommsExternal;
   email: LabCommsEmail;
   inboxUrl: string;
+}
+
+/** What buildConcurrentSharedWorldBundle projects into a run bundle. */
+export interface ConcurrentBundleArgs {
+  /** Lab provenance for the bundle\'s own `lab` field (#455). */
+  lab?: RunLabProvenance;
+  config: LabConfig;
+  descriptor: CuaActorDescriptor;
+  createdAt: string;
+  dryRun: boolean;
+  inProgress?: boolean;
+  runId: string;
+  source: RunBundle["source"];
+  roles: LabActorLane[];
+  actorSpecs: CuaLaneSpec[];
+  actorResults: ActorLaneResult[];
+  stateSnapshots: SharedWorldStateSnapshot[];
+  subject: RunSubjectProvenance;
+  seedDigest: string;
+  subjectCommit?: string;
+  hostDigest?: string;
+  /** Run-level digest-only comms-thread evidence path (humanish.comms-thread.v1), when a comms lab
+   *  captured mail into the subject sandbox's catch. Registered on the first persona stream (it is a
+   *  property of the ONE shared app, not of any single persona). */
+  commsArtifactPath?: string;
+  /** #164 phase 2: the plane-class discriminator (default provisioned-getHost, byte-stable). */
+  planeClass?: ConcurrentSharedWorldPlaneClass;
+  /** external-public only: sha256-16 of the OBSERVED origin the seats converged on (the convergence
+   *  proof — what the seats actually reached, tolerant of a declared->observed redirect). */
+  publicOriginDigest?: string;
+  /** external-public only: sha256-16 of the operator-DECLARED plane origin (evidence/reference only;
+   *  NOT asserted equal to the observed origin — a cross-origin redirect is normal and expected). */
+  declaredOriginDigest?: string;
+  /** external-public only: sha256-16 of the shared /lobby/CODE path all seats converged on. */
+  lobbyConvergenceDigest?: string;
+  runError?: string;
+}
+
+/** What the plane that ran reports to the finish. A plane leaves the fields it has no part in unset. */
+export interface PlaneResults {
+  actorResults: ActorLaneResult[];
+  runError: string | undefined;
+  subjectCommit: string | undefined;
+  subjectSandboxId: string | undefined;
+  subjectKilled: boolean;
+  getHostUrl: string | undefined;
+  // The OBSERVED convergence origin — computed AFTER fan-out from what the seats ACTUALLY reached (the
+  // convergence proof is what the seats OBSERVED, not what was declared). Set iff every observing seat
+  // agrees on ONE origin; that agreement IS the convergence proof and becomes plane.publicOriginDigest.
+  publicOriginDigest: string | undefined;
+  lobbyConvergenceDigest: string | undefined;
+  handoffTimedOut: boolean;
+  hostHandoffFailure: string | undefined;
+  commsArtifactPath: string | undefined;
+}
+
+/** Which plane runs, and the setup it needs beyond the plane context. */
+export interface PlaneSelection {
+  planeClass: ConcurrentSharedWorldPlaneClass;
+  /** Undefined when the lab declares no `subject.serve`. */
+  provisioned: ProvisionedPlaneSetup | undefined;
+  externalWiring: ExternalCommsWiring | undefined;
+}
+
+/** What the finish reads about the plane besides its results. */
+export interface FinishFacts {
+  planeClass: ConcurrentSharedWorldPlaneClass;
+  localTreeRoute: boolean;
+  localTreeArchive: LocalTreeArchive | undefined;
+  publicRepo: string;
+  subjectEnvNames: string[];
+  stateStepRecords: RunSubjectStateStepRecord[];
+  stateSnapshots: SharedWorldStateSnapshot[];
+  declaredOriginDigest: string | undefined;
 }

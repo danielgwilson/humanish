@@ -11,7 +11,12 @@ import {
   type DeployedCommsCatch,
 } from "../../comms/sandbox-catch.js";
 import { redactText, toErrorMessage } from "../../evidence/redaction.js";
-import type { LabCommsEmail, LabSubjectServe, LabSubjectStateCheckpoint } from "../../lab/types.js";
+import type {
+  LabCommsEmail,
+  LabConfig,
+  LabSubjectServe,
+  LabSubjectStateCheckpoint,
+} from "../../lab/types.js";
 import { liveObserverResult } from "../../observer/live.js";
 import type { RunSubjectStateStepRecord } from "../../run/bundle.js";
 import { mapWithConcurrency } from "../../run/concurrency.js";
@@ -30,6 +35,7 @@ import { acquireE2BDesktopSandbox } from "../../substrates/e2b/sandbox.js";
 import { e2bShell } from "../../substrates/e2b/shell.js";
 import type { Shell } from "../../substrates/shell.js";
 import {
+  defaultPackLocalTree,
   inboxRecipientFor,
   laneHasInboxRecipient,
   resolveSubjectState,
@@ -39,6 +45,7 @@ import { runCuaLane } from "../computer-use/lanes.js";
 import { buildConcurrentSharedWorldBundle } from "./bundle.js";
 import { runCheckpointSnapshot } from "./checkpoints.js";
 import { drainSubjectComms } from "./comms.js";
+import type { SharedWorldLabHooks } from "./hooks.js";
 import {
   buildSubjectProvenance,
   hostOriginDigest,
@@ -570,4 +577,40 @@ export async function runProvisionedPlane(
     getHostUrl: plane.getHostUrl,
     commsArtifactPath,
   };
+}
+
+/**
+ * Packs the working tree once per run, on the host, for a local-tree subject. Returns the archive,
+ * or the message the run fails with.
+ */
+export async function packSubjectTree(
+  cwd: string,
+  config: LabConfig,
+  hooks: SharedWorldLabHooks,
+  scrubKnownValues: (text: string) => string,
+): Promise<
+  { ok: true; archive: LocalTreeArchive; buffer: ArrayBuffer } | { ok: false; message: string }
+> {
+  const packLocalTree = hooks.packLocalTree ?? defaultPackLocalTree;
+  try {
+    const packed = await packLocalTree({
+      root: cwd,
+      ...(config.subject.localTree?.exclude === undefined
+        ? {}
+        : { extraExclude: config.subject.localTree.exclude }),
+      ...(config.subject.localTree?.maxArchiveBytes === undefined
+        ? {}
+        : { maxArchiveBytes: config.subject.localTree.maxArchiveBytes }),
+    });
+    process.stderr.write(
+      `humanish concurrent shared-world local-tree: packed ${packed.archive.fileCount} entries, ${packed.archive.totalBytes} bytes, archiveSha256 ${packed.archive.archiveSha256}` +
+        `${packed.archive.git ? ` (commit ${packed.archive.git.commit.slice(0, 12)}, ${packed.archive.git.dirty ? "dirty" : "clean"} working tree)` : " (not a git work tree)"}\n`,
+    );
+    return { ok: true, archive: packed.archive, buffer: packed.buffer };
+  } catch (error) {
+    return {
+      ok: false,
+      message: `local-tree packing failed: ${redactText(scrubKnownValues(toErrorMessage(error)))}`,
+    };
+  }
 }

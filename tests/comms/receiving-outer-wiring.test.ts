@@ -389,6 +389,12 @@ describe("configured receiving through exported study runners", () => {
       publication: "restricted-real-communications",
     });
     expect(JSON.stringify(bundle)).not.toContain("synthetic-management-key-canary");
+    if (route.startsWith("concurrent-")) {
+      // The receiving evidence is registered once, on the first stream, like any comms thread.
+      expect(
+        bundle.streams[0].artifacts.map((artifact: { path: string }) => artifact.path),
+      ).toContain("comms/receiving.json");
+    }
     if (failCreate) {
       expect(attached.size).toBe(0);
       return;

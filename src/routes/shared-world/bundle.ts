@@ -2,11 +2,9 @@
 // events, the sharedWorld evidence block and the review summary.
 
 import path from "node:path";
-import type { CuaActorDescriptor } from "../../actors/registry.js";
 import { receivingPublication } from "../../comms/receiving-runtime.js";
 import { redactText } from "../../evidence/redaction.js";
-import { participantAssignment } from "../../lab/participant-assignment.js";
-import type { LabActorLane, LabConfig } from "../../lab/types.js";
+import type { LabConfig } from "../../lab/types.js";
 import {
   PUBLIC_TARGET_CWD,
   REVIEW_SCHEMA,
@@ -15,7 +13,6 @@ import {
   type RunBundle,
   type RunEvent,
   type RunSimulation,
-  type RunSubjectProvenance,
 } from "../../run/bundle.js";
 import {
   SHARED_WORLD_SCHEMA,
@@ -25,19 +22,16 @@ import {
   type SharedWorldPlane,
   type SharedWorldStateSnapshot,
 } from "../../run/shared-world-evidence.js";
-import type { RunLabProvenance } from "../../run/status.js";
-import type { RunSimulationStatus, RunStream } from "../../run/streams.js";
+import type { RunStream } from "../../run/streams.js";
 import { commandDigestOf } from "../../subject/state.js";
-import { declaredScreenForRender } from "../../substrates/e2b/desktop-geometry.js";
-import type { CuaLaneSpec } from "../computer-use/types.js";
 import { combineCheckpointDigest } from "./checkpoints.js";
-import { hostOriginDigest, publicSafeRouteLabel } from "./provenance.js";
-import { laneTaxonomyLabel } from "./seats.js";
+import { hostOriginDigest } from "./provenance.js";
+import { seatRecords } from "./seat-records.js";
 import {
   CONCURRENT_ATTRIBUTION_LIMITS,
   EXTERNAL_PUBLIC_ATTRIBUTION_LIMITS,
   type ActorLaneResult,
-  type ConcurrentSharedWorldPlaneClass,
+  type ConcurrentBundleArgs,
 } from "./types.js";
 
 /** Max windows live at the same instant (sweep over start/end points). The honest simultaneity
@@ -127,53 +121,10 @@ function formatSharedWorldActorOutcomes(
   return `${passedSessions}/${expectedCount} actor session(s) passed credibility checks; mission endpoint: ${goalSatisfiedSessions}/${expectedCount} ended goal_satisfied; completion reasons: ${completionReasons}`;
 }
 
-/** Project the concurrent run into a humanish.run-bundle.v1 with the CONCURRENT shared-world block. */
-export function buildConcurrentSharedWorldBundle(args: {
-  /** Lab provenance for the bundle\'s own `lab` field (#455). */
-  lab?: RunLabProvenance;
-  config: LabConfig;
-  descriptor: CuaActorDescriptor;
-  createdAt: string;
-  dryRun: boolean;
-  inProgress?: boolean;
-  runId: string;
-  source: RunBundle["source"];
-  roles: LabActorLane[];
-  actorSpecs: CuaLaneSpec[];
-  actorResults: ActorLaneResult[];
-  stateSnapshots: SharedWorldStateSnapshot[];
-  subject: RunSubjectProvenance;
-  seedDigest: string;
-  subjectCommit?: string;
-  hostDigest?: string;
-  /** Run-level digest-only comms-thread evidence path (humanish.comms-thread.v1), when a comms lab
-   *  captured mail into the subject sandbox's catch. Registered on the first persona stream (it is a
-   *  property of the ONE shared app, not of any single persona). */
-  commsArtifactPath?: string;
-  /** #164 phase 2: the plane-class discriminator (default provisioned-getHost, byte-stable). */
-  planeClass?: ConcurrentSharedWorldPlaneClass;
-  /** external-public only: sha256-16 of the OBSERVED origin the seats converged on (the convergence
-   *  proof — what the seats actually reached, tolerant of a declared->observed redirect). */
-  publicOriginDigest?: string;
-  /** external-public only: sha256-16 of the operator-DECLARED plane origin (evidence/reference only;
-   *  NOT asserted equal to the observed origin — a cross-origin redirect is normal and expected). */
-  declaredOriginDigest?: string;
-  /** external-public only: sha256-16 of the shared /lobby/CODE path all seats converged on. */
-  lobbyConvergenceDigest?: string;
-  runError?: string;
-}): RunBundle {
-  const { config, descriptor, createdAt, dryRun, actorSpecs, actorResults, roles } = args;
-  const inProgress = args.inProgress === true;
-  const external = (args.planeClass ?? "provisioned-getHost") === "external-public";
-  const simulations: RunSimulation[] = [];
-  const streams: RunStream[] = [];
+/** The run's first two events: its creation and the shared plane's provenance. */
+function planeEvents(args: ConcurrentBundleArgs, external: boolean): RunEvent[] {
+  const { config, descriptor, createdAt, dryRun, actorSpecs } = args;
   const events: RunEvent[] = [];
-  // Public-safe label only — neither the raw getHost URL (provisioned) nor the raw public origin
-  // (external-public) lands in the bundle. The plane identity is a DIGEST (plane.hostDigest on
-  // getHost; plane.publicOriginDigest on external-public).
-  const appUrl = external ? "[external-public-plane]" : "[provisioned-subject]";
-  const planeCommit = external ? undefined : dryRun ? undefined : args.subjectCommit;
-
   events.push({
     id: "event-000-created",
     at: createdAt,
@@ -209,196 +160,22 @@ export function buildConcurrentSharedWorldBundle(args: {
     simId: actorSpecs[0]?.simId ?? "sim-001",
     streamId: actorSpecs[0]?.streamId ?? "stream-001",
   });
+  return events;
+}
 
-  let eventSeq = 2;
-  const nextEventId = (suffix: string): string =>
-    `event-${String(eventSeq++).padStart(3, "0")}-${suffix}`;
-
-  actorSpecs.forEach((spec, index) => {
-    const taxonomy = laneTaxonomyLabel(spec);
-    const result = actorResults[index];
-    const outcome = result?.outcome;
-    const session = outcome?.session;
-    const screenshots = outcome?.screenshots ?? [];
-    const lastScreenshot = screenshots[screenshots.length - 1];
-    // public-safe (origin redacted): external-public seats open the public plane; getHost seats a seat path.
-    const route = external ? "[external-public-plane]" : publicSafeRouteLabel(roles[index]?.entry);
-    const status: RunSimulationStatus = session
-      ? session.status
-      : outcome?.sessionError
-        ? "failed"
-        : inProgress
-          ? "running"
-          : "contract_proof_only";
-    const reason =
-      session?.reason ??
-      outcome?.sessionError ??
-      (inProgress
-        ? "Actor desktop is running; the attached Observer hydrates the runtime stream URL without persisting it."
-        : "Contract actor only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.");
-    const traceScreenshotMode = session?.trace.redaction.screenshots;
-    // Include `declared` on the no-outcome fallback too (dry-run, skipped lane): otherwise an
-    // ABSENT declared means either "the preset rendered faithfully" or "there was no live
-    // outcome", and a dry-run bundle keeps the self-confirming shape this field exists to kill.
-    const fallbackDeclared = declaredScreenForRender(
-      spec.devicePreset,
-      spec.deviceName,
-      spec.resolution,
-    );
-    const desktopGeometry = outcome?.desktopGeometry ?? {
-      screen: {
-        requested: { width: spec.resolution[0], height: spec.resolution[1] },
-        ...(fallbackDeclared ? { declared: fallbackDeclared } : {}),
-      },
-    };
-    const screenshotMode: "raw" | "blurred" =
-      traceScreenshotMode === "raw" || traceScreenshotMode === "blurred"
-        ? traceScreenshotMode
-        : config.policies?.redactScreenshots === true
-          ? "blurred"
-          : "raw";
-
-    simulations.push({
-      id: spec.simId,
-      index: index + 1,
-      personaId: spec.persona.id,
-      scenarioId: `concurrent-shared-world-${config.id}`,
-      status,
-      streamKind: "browser",
-      mode: "browser-sim",
-      progress: inProgress ? 35 : 100,
-      currentStep: reason,
-      summary: session
-        ? `Persona ${spec.laneId}${taxonomy} (${spec.persona.id}): drove the shared plane concurrently; ${session.completionReason}.`
-        : outcome?.sessionError
-          ? `Persona ${spec.laneId}${taxonomy} failed before a terminal session verdict: ${outcome.sessionError}`
-          : inProgress
-            ? `Persona ${spec.laneId}${taxonomy} (${spec.persona.id}) is running against the shared plane.`
-            : `Contract persona ${spec.laneId}${taxonomy} (${spec.persona.id}) for ${descriptor.id} against the shared plane at ${appUrl}.`,
-      streamIds: [spec.streamId],
-      startedAt: createdAt,
-      updatedAt: createdAt,
-    });
-
-    streams.push({
-      id: spec.streamId,
-      simId: spec.simId,
-      ...(spec.assignment === undefined
-        ? {}
-        : { assignment: participantAssignment(spec.assignment) }),
-      kind: "browser",
-      label: `Concurrent persona ${spec.laneId}${taxonomy} — ${config.id}`,
-      status,
-      transport: "snapshot",
-      updatedAt: createdAt,
-      embed: lastScreenshot
-        ? {
-            kind: "screenshot",
-            url: lastScreenshot,
-            title: `Shared plane, persona ${spec.laneId} (${screenshotMode})`,
-          }
-        : { kind: "placeholder", title: `Shared plane, persona ${spec.laneId}` },
-      ...(desktopGeometry.viewport === undefined
-        ? {}
-        : {
-            viewport: {
-              width: desktopGeometry.viewport.width,
-              height: desktopGeometry.viewport.height,
-              deviceScaleFactor: desktopGeometry.viewport.deviceScaleFactor,
-              isMobile: spec.devicePreset.isMobile,
-            },
-          }),
-      desktopGeometry,
-      ui: {
-        route,
-        intent: `Watch persona ${spec.laneId}${taxonomy} (${spec.persona.id}) drive the SHARED plane concurrently with the other personas.`,
-        state: reason,
-        ...(session ? { actorStatus: session.status } : {}),
-        ...(lastScreenshot ? { screenshotUrl: lastScreenshot } : {}),
-      },
-      ...(session ? { actor: session.trace } : {}),
-      artifacts: [
-        { label: "run bundle", path: "run.json", kind: "bundle" as const },
-        { label: "review", path: "review.md", kind: "review" as const },
-        { label: "events", path: "events.ndjson", kind: "events" as const },
-        ...(session
-          ? [
-              {
-                label: `persona ${spec.laneId} actor trace`,
-                path: spec.traceArtifactPath,
-                kind: "trace" as const,
-              },
-            ]
-          : []),
-        // Run-level comms evidence belongs to the ONE shared app, not a persona — register it once, on
-        // the first stream, so the bundle's existence-verify + public-safety scan cover it without
-        // double-counting across seats.
-        ...(index === 0 && args.commsArtifactPath
-          ? [{ label: "comms thread", path: args.commsArtifactPath, kind: "log" as const }]
-          : []),
-        ...screenshots.map((screenshot, screenshotIndex) => ({
-          label: `persona ${spec.laneId} screenshot ${String(screenshotIndex + 1).padStart(2, "0")} (${screenshotMode})`,
-          path: screenshot,
-          kind: "screenshot" as const,
-        })),
-      ],
-    });
-
-    for (const warning of outcome?.warnings ?? []) {
-      events.push({
-        id: nextEventId(`warning-${spec.laneId}`),
-        at: createdAt,
-        level: "warn",
-        type: "concurrent-shared-world.actor.warning",
-        message: `Persona ${spec.laneId}: ${warning}`,
-        simId: spec.simId,
-        streamId: spec.streamId,
-      });
-    }
-
-    if (session) {
-      events.push({
-        id: nextEventId(`session-${spec.laneId}`),
-        at: createdAt,
-        level: session.status === "passed" ? "info" : "warn",
-        type: `concurrent-shared-world.session.${session.completionReason}`,
-        message: `Persona ${spec.laneId}: ${session.status} — ${session.reason}`,
-        simId: spec.simId,
-        streamId: spec.streamId,
-      });
-    } else if (outcome?.sessionError) {
-      events.push({
-        id: nextEventId(`session-error-${spec.laneId}`),
-        at: createdAt,
-        level: "error",
-        type: "concurrent-shared-world.session.error",
-        message: `Persona ${spec.laneId}: ${outcome.sessionError}`,
-        simId: spec.simId,
-        streamId: spec.streamId,
-      });
-    } else if (inProgress) {
-      events.push({
-        id: nextEventId(`running-${spec.laneId}`),
-        at: createdAt,
-        level: "info",
-        type: "actor.running",
-        message: `Persona ${spec.laneId}: desktop actor is running; live stream URL is runtime-only and not persisted.`,
-        simId: spec.simId,
-        streamId: spec.streamId,
-      });
-    } else {
-      events.push({
-        id: nextEventId(`contract-${spec.laneId}`),
-        at: createdAt,
-        level: "info",
-        type: "concurrent-shared-world.contract.ready",
-        message: `Persona ${spec.laneId}: dry-run contract actor ready; switch scenario.mode to live for a real concurrent session.`,
-        simId: spec.simId,
-        streamId: spec.streamId,
-      });
-    }
-  });
-
+/** The sharedWorld block: seat windows, the state series, seat outcomes and the plane. */
+function sharedWorldEvidence(
+  args: ConcurrentBundleArgs,
+  external: boolean,
+  inProgress: boolean,
+  planeCommit: string | undefined,
+): {
+  sharedWorld: SharedWorldEvidence;
+  laneWindows: SharedWorldLaneWindow[];
+  stateSeries: SharedWorldStateSnapshot[] | undefined;
+  outcomes: SharedWorldOutcome[];
+} {
+  const { config, dryRun, actorSpecs, actorResults } = args;
   // Build the concurrent shared-world evidence block. routeHostDigest is sha256-16 of the ORIGIN each
   // seat reached: on getHost the seat URL the actor drove (verify confirms == plane.hostDigest); on
   // external-public the seat's CDP-OBSERVED URL origin (verify confirms == plane.publicOriginDigest).
@@ -507,6 +284,20 @@ export function buildConcurrentSharedWorldBundle(args: {
       : { lobbyConvergenceDigest: args.lobbyConvergenceDigest }),
   };
 
+  return { sharedWorld, laneWindows, stateSeries, outcomes };
+}
+
+/** Records the concurrency event and returns the review. */
+function concurrencyReview(
+  args: ConcurrentBundleArgs,
+  external: boolean,
+  inProgress: boolean,
+  evidence: ReturnType<typeof sharedWorldEvidence>,
+  events: RunEvent[],
+  nextEventId: (suffix: string) => string,
+): ReviewSummary {
+  const { config, descriptor, createdAt, dryRun, actorSpecs, actorResults } = args;
+  const { sharedWorld, laneWindows, stateSeries, outcomes } = evidence;
   const overlaps = actorWindowsOverlap(actorResults);
   const deltas = (stateSeries ?? []).filter(
     (snapshot, i) => i > 0 && snapshot.digest !== (stateSeries ?? [])[i - 1]!.digest,
@@ -578,6 +369,38 @@ export function buildConcurrentSharedWorldBundle(args: {
                 `${result.spec.laneId}: ${result.outcome.sessionError ?? result.outcome.session?.reason ?? "did not pass"}`,
             ),
   };
+  return review;
+}
+
+/** Project the concurrent run into a humanish.run-bundle.v1 with the CONCURRENT shared-world block. */
+export function buildConcurrentSharedWorldBundle(args: ConcurrentBundleArgs): RunBundle {
+  const { config, descriptor, createdAt, dryRun, actorSpecs, actorResults } = args;
+  const inProgress = args.inProgress === true;
+  const external = (args.planeClass ?? "provisioned-getHost") === "external-public";
+  const simulations: RunSimulation[] = [];
+  const streams: RunStream[] = [];
+  // Public-safe label only — neither the raw getHost URL (provisioned) nor the raw public origin
+  // (external-public) lands in the bundle. The plane identity is a DIGEST (plane.hostDigest on
+  // getHost; plane.publicOriginDigest on external-public).
+  const appUrl = external ? "[external-public-plane]" : "[provisioned-subject]";
+  const planeCommit = external ? undefined : dryRun ? undefined : args.subjectCommit;
+  const events = planeEvents(args, external);
+
+  let eventSeq = 2;
+  const nextEventId = (suffix: string): string =>
+    `event-${String(eventSeq++).padStart(3, "0")}-${suffix}`;
+
+  const seatContext = { args, external, inProgress, appUrl, nextEventId };
+  actorSpecs.forEach((spec, index) => {
+    const records = seatRecords(seatContext, spec, index);
+    simulations.push(records.simulation);
+    streams.push(records.stream);
+    events.push(...records.events);
+  });
+
+  const evidence = sharedWorldEvidence(args, external, inProgress, planeCommit);
+  const { sharedWorld } = evidence;
+  const review = concurrencyReview(args, external, inProgress, evidence, events, nextEventId);
 
   const anyRaw = actorResults.some(
     (result) => result.outcome.session?.trace.redaction.screenshots === "raw",

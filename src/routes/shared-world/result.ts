@@ -1,0 +1,333 @@
+// Finishing a concurrent shared-world run: publishing its bundle, rendering the Observer, and the
+// lab result with each role's outcome and the one error a run that did not pass reports.
+
+import { redactText } from "../../evidence/redaction.js";
+import {
+  adapterScoreFailureMessage,
+  applyBrowserAdapterHooks,
+} from "../../lab/adapter-extension.js";
+import { attachObserverRuntimeStreamUrls, type ObserverResult } from "../../observer/render.js";
+import type { RunSubjectProvenance } from "../../run/bundle.js";
+import { resolveSubjectState } from "../computer-use/lab.js";
+import {
+  actorLanePassed,
+  actorWindowsOverlap,
+  buildConcurrentSharedWorldBundle,
+  maxSimultaneousWindows,
+} from "./bundle.js";
+import { buildSubjectProvenance, hostOriginDigest } from "./provenance.js";
+import {
+  CONCURRENT_SHARED_WORLD_LAB_SCHEMA,
+  type ActorLaneResult,
+  type ConcurrentSharedWorldLabErrorCode,
+  type ConcurrentSharedWorldLabResult,
+  type ConcurrentSharedWorldRoleResult,
+  type FinishFacts,
+  type LiveSeats,
+  type PlaneContext,
+  type PlaneResults,
+  type RunConcurrentSharedWorldLabOptions,
+} from "./types.js";
+import type { CuaLaneSpec } from "../computer-use/types.js";
+
+/** The results of a run whose plane did not run (a dry run) or has not reported yet. */
+export function emptyPlaneResults(): PlaneResults {
+  return {
+    actorResults: [],
+    runError: undefined,
+    subjectCommit: undefined,
+    subjectSandboxId: undefined,
+    subjectKilled: false,
+    getHostUrl: undefined,
+    publicOriginDigest: undefined,
+    lobbyConvergenceDigest: undefined,
+    handoffTimedOut: false,
+    hostHandoffFailure: undefined,
+    commsArtifactPath: undefined,
+  };
+}
+
+/** Each role's outcome, in lane order. */
+function concurrentRoleResults(
+  actorSpecs: CuaLaneSpec[],
+  actorResults: ActorLaneResult[],
+  dryRun: boolean,
+): ConcurrentSharedWorldRoleResult[] {
+  const roleOk = (result: ActorLaneResult | undefined): boolean => {
+    if (dryRun) return true;
+    return actorLanePassed(result);
+  };
+  return actorSpecs.map((spec, index) => {
+    const result = actorResults[index];
+    const base = { id: spec.laneId, index: index + 1, persona: spec.persona.id };
+    if (dryRun || !result) {
+      return { ...base, status: "contract_proof_only", ok: dryRun };
+    }
+    const session = result.outcome.session;
+    const thisOk = roleOk(result);
+    return {
+      ...base,
+      status: session ? session.status : "failed",
+      ok: thisOk,
+      window: { startedAt: result.startedAt, endedAt: result.endedAt },
+      ...(session
+        ? {
+            session: {
+              status: session.status,
+              completionReason: session.completionReason,
+              reason: session.reason,
+              screenshots: result.outcome.screenshots.length,
+            },
+          }
+        : {}),
+      ...(result.outcome.sandboxId === undefined
+        ? {}
+        : { sandbox: { sandboxId: result.outcome.sandboxId, killed: result.outcome.killed } }),
+      ...(thisOk
+        ? {}
+        : {
+            error: {
+              code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED" as const,
+              message:
+                result.outcome.sessionError ??
+                (result.outcome.noEngagement
+                  ? "Actor took no actions and produced no message (likely a blank/still-loading screen); not a credible goal_satisfied."
+                  : result.outcome.selfReportedBlocker
+                    ? "Actor reported goal_satisfied while its final message described a blocker or asked for missing instructions; not a credible pass."
+                    : session?.completionReason === "harness_error"
+                      ? `Actor seat ended with a harness error: ${session.reason}`
+                      : "Actor did not produce a terminal session."),
+            },
+          }),
+    };
+  });
+}
+
+/** The error a run that did not pass reports, most specific cause first. */
+function concurrentLabError(args: {
+  ok: boolean;
+  handoffTimedOut: boolean;
+  hostHandoffFailure: string | undefined;
+  observer: ObserverResult;
+  runError: string | undefined;
+  adapterFailure: string | undefined;
+  roleResults: ConcurrentSharedWorldRoleResult[];
+  roleCount: number;
+}): ConcurrentSharedWorldLabResult["error"] | undefined {
+  const { ok, handoffTimedOut, hostHandoffFailure, observer, runError, adapterFailure } = args;
+  const { roleResults, roleCount } = args;
+  if (ok) return undefined;
+  if (handoffTimedOut) {
+    // Checked BEFORE the observer failure: the host never yielded a /lobby/CODE within the
+    // deadline (followers failed closed without opening), which is the ROOT CAUSE — and it can
+    // itself make the Observer unable to render a coherent run. Report the distinct, honest
+    // handoff-timeout code rather than a generic observer/run failure.
+    return {
+      code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_HANDOFF_TIMEOUT",
+      message:
+        runError ?? "The host seat never produced a /lobby/CODE URL within the handoff deadline.",
+    };
+  }
+  if (hostHandoffFailure !== undefined) {
+    return { code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED", message: hostHandoffFailure };
+  }
+  if (!observer.ok) {
+    return {
+      code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED",
+      message: observer.error?.message ?? "Observer failed for the concurrent shared-world run.",
+    };
+  }
+  if (runError) {
+    return { code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED", message: runError };
+  }
+  if (adapterFailure !== undefined) {
+    return { code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED", message: adapterFailure };
+  }
+  const passed = roleResults.filter((role) => role.ok).length;
+  return {
+    code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED",
+    message: `Concurrent shared-world run did not run coherently: ${passed}/${roleCount} actor(s) reached a terminal, engaged passed session.`,
+  };
+}
+
+/**
+ * The refusal envelope for a run that stops before it has results: the requested cwd, no roles,
+ * and the run id the caller asked for, if any.
+ */
+export function concurrentLabFailure(
+  options: RunConcurrentSharedWorldLabOptions,
+  requestedCwd: string,
+  concurrency: number,
+): (
+  code: ConcurrentSharedWorldLabErrorCode,
+  message: string,
+  actorLabel?: string,
+) => ConcurrentSharedWorldLabResult {
+  const { config, dryRun } = options;
+  const actorType = config.actors[0]?.type ?? "";
+  const roles = config.actors[0]?.lanes ?? [];
+  return (code, message, actorLabel) => ({
+    schema: CONCURRENT_SHARED_WORLD_LAB_SCHEMA,
+    ok: false,
+    cwd: requestedCwd,
+    labId: config.id,
+    actor: actorLabel ?? actorType,
+    topology: "shared-world",
+    topologyMode: "concurrent",
+    roleCount: roles.length,
+    concurrency,
+    dryRun,
+    runId: options.runId ?? "not-created",
+    roles: [],
+    warnings: [],
+    error: { code, message },
+  });
+}
+
+/** Builds and publishes the bundle, renders the Observer and returns the lab result. */
+export async function finishConcurrentRun(
+  ctx: PlaneContext,
+  live: LiveSeats,
+  results: PlaneResults,
+  plane: FinishFacts,
+): Promise<ConcurrentSharedWorldLabResult> {
+  const { options, config, descriptor, hooks, roles, actorSpecs, run, runId, createdAt } = ctx;
+  const { cwd, concurrency, source, seedDigest, receiving, warnings, scrubKnownValues } = ctx;
+  const dryRun = options.dryRun;
+  const physicalArtifactRoot = ctx.runPaths.physicalRunRoot;
+  const { planeClass, localTreeRoute, localTreeArchive, publicRepo, subjectEnvNames } = plane;
+  const { stateStepRecords, stateSnapshots, declaredOriginDigest } = plane;
+  const { actorResults, runError, subjectCommit, subjectSandboxId, subjectKilled } = results;
+  const { getHostUrl, publicOriginDigest, lobbyConvergenceDigest } = results;
+  const { handoffTimedOut, hostHandoffFailure, commsArtifactPath } = results;
+
+  // Subject provenance: external-public is the operator-declared, operator-owned public deployment
+  // (neither provisioned nor seeded); the provisioned path builds clone/local-tree provenance.
+  const subject: RunSubjectProvenance =
+    planeClass === "external-public"
+      ? { source: "app-url", envNames: [], state: { provenance: "external-public" } }
+      : buildSubjectProvenance({
+          localTreeRoute,
+          publicRepo,
+          subjectCommit: localTreeRoute ? localTreeArchive?.git?.commit : subjectCommit,
+          localTreeArchive,
+          subjectEnvNames,
+          state: resolveSubjectState({
+            declared: config.subject.state,
+            dryRun,
+            executed: stateStepRecords,
+          }),
+        });
+  const planeCommit = localTreeRoute ? localTreeArchive?.git?.commit : subjectCommit;
+
+  // Collect per-actor warnings (each lane's own teardown/raw-screenshot notes).
+  for (const result of actorResults) {
+    warnings.push(...result.outcome.warnings);
+  }
+
+  const bundle = buildConcurrentSharedWorldBundle({
+    ...(options.lab === undefined ? {} : { lab: options.lab }),
+    config,
+    descriptor,
+    createdAt,
+    dryRun,
+    runId,
+    source,
+    roles,
+    actorSpecs,
+    actorResults,
+    stateSnapshots,
+    subject,
+    seedDigest,
+    planeClass,
+    ...(planeCommit === undefined ? {} : { subjectCommit: planeCommit }),
+    ...(getHostUrl === undefined ? {} : { hostDigest: hostOriginDigest(getHostUrl) }),
+    ...(publicOriginDigest === undefined ? {} : { publicOriginDigest }),
+    ...(declaredOriginDigest === undefined ? {} : { declaredOriginDigest }),
+    ...(lobbyConvergenceDigest === undefined ? {} : { lobbyConvergenceDigest }),
+    ...(commsArtifactPath === undefined ? {} : { commsArtifactPath }),
+    ...(runError === undefined ? {} : { runError }),
+  });
+
+  const adapterWarnings: string[] = [];
+  const scorerResult = await applyBrowserAdapterHooks({
+    hooks,
+    bundle,
+    context: {
+      bundle,
+      runDir: physicalArtifactRoot,
+      labId: config.id,
+      runId,
+      actor: descriptor.id,
+      backend: "concurrent-shared-world",
+      dryRun,
+      laneCount: roles.length,
+    },
+    sanitize: (text) => redactText(scrubKnownValues(text)),
+    warnings: adapterWarnings,
+    hookLabel: "sharedWorldHooks",
+    ...(options.scorerProvenance === undefined
+      ? {}
+      : { scorerProvenance: options.scorerProvenance }),
+  });
+
+  if (receiving) bundle.commsReceiving = receiving.snapshot();
+  const finished = await run.finish(bundle);
+  const observer = await finished.renderObserver();
+  if (observer.ok && live.observer) {
+    attachObserverRuntimeStreamUrls(observer as ObserverResult & { ok: true }, live.streamUrls);
+  }
+
+  // Concurrent "ok": every actor must produce a terminal, engaged PASSED session. This is a
+  // harness/session-credibility gate, not mission-completion proof; a failed actor trace cannot
+  // make the route green just because the harness got a terminal.
+  const swarmRan =
+    !dryRun && actorResults.length === roles.length && actorResults.every(actorLanePassed);
+  const adapterFailure = adapterScoreFailureMessage(bundle);
+  const ok =
+    observer.ok &&
+    runError === undefined &&
+    (dryRun || swarmRan) &&
+    adapterFailure === undefined &&
+    scorerResult.declaredVerdictFailure === undefined;
+
+  const overlapProven = !dryRun && actorWindowsOverlap(actorResults);
+
+  const roleResults = concurrentRoleResults(actorSpecs, actorResults, dryRun);
+
+  const errorResult = concurrentLabError({
+    ok,
+    handoffTimedOut,
+    hostHandoffFailure,
+    observer,
+    runError,
+    adapterFailure,
+    roleResults,
+    roleCount: roles.length,
+  });
+
+  return {
+    schema: CONCURRENT_SHARED_WORLD_LAB_SCHEMA,
+    ok,
+    cwd,
+    labId: config.id,
+    actor: descriptor.id,
+    topology: "shared-world",
+    topologyMode: "concurrent",
+    roleCount: roles.length,
+    concurrency,
+    dryRun,
+    runId,
+    ...(getHostUrl === undefined ? {} : { host: getHostUrl }),
+    ...(subjectSandboxId === undefined
+      ? {}
+      : { subjectSandbox: { sandboxId: subjectSandboxId, killed: subjectKilled } }),
+    ...(dryRun ? {} : { overlapProven }),
+    ...(dryRun ? {} : { maxSimultaneousLanes: maxSimultaneousWindows(actorResults) }),
+    subject,
+    roles: roleResults,
+    observer,
+    warnings: [...warnings, ...adapterWarnings, ...observer.warnings],
+    ...(errorResult === undefined ? {} : { error: errorResult }),
+  };
+}

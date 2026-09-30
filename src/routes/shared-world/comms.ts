@@ -3,6 +3,8 @@
 // declared inboxes and write the digest-only thread.
 
 import { FakeInbox } from "../../comms/fake-inbox.js";
+import { prepareReceivingRun } from "../../comms/receiving-runtime.js";
+import type { CommsReceivingRun } from "../../comms/receiving.js";
 import {
   DEFAULT_SANDBOX_CATCH_PORT,
   collectCommsThread,
@@ -201,4 +203,48 @@ export async function drainExternalComms(
     );
   }
   return undefined;
+}
+
+/**
+ * Real email receiving, when the lab declares it on a live run. It registers the connection's
+ * secrets with the run's scrub before any desktop starts. Returns the message the run fails with
+ * when setup fails.
+ */
+export async function prepareEmailReceiving(args: {
+  cwd: string;
+  runId: string;
+  config: LabConfig;
+  env: Record<string, string | undefined>;
+  participants: string[];
+  runPaths: PlaneContext["runPaths"];
+  knownSecretValues: string[];
+  dryRun: boolean;
+}): Promise<
+  { ok: true; receiving: CommsReceivingRun | undefined } | { ok: false; message: string }
+> {
+  const { config, knownSecretValues } = args;
+  if (args.dryRun || config.comms?.email?.kind !== "real")
+    return { ok: true, receiving: undefined };
+  try {
+    const receiving = await prepareReceivingRun({
+      cwd: args.cwd,
+      runId: args.runId,
+      config,
+      env: args.env,
+      participants: args.participants,
+      runPaths: args.runPaths,
+      registerSecrets: (values) => {
+        for (const value of values)
+          if (value.length >= 4 && !knownSecretValues.includes(value))
+            knownSecretValues.push(value);
+      },
+    });
+    return { ok: true, receiving };
+  } catch {
+    return {
+      ok: false,
+      message:
+        "Real email setup failed before desktop allocation. Run humanish comms check --online and humanish comms recover to inspect authentication and pending cleanup.",
+    };
+  }
 }

@@ -429,7 +429,7 @@ describe("run path containment", () => {
       "routes/scripted-browser/lab.ts",
       "run/dry-run.ts",
       "routes/computer-use/lab.ts",
-      "routes/shared-world/lab.ts",
+      "routes/shared-world/setup.ts",
     ];
     for (const producer of direct) {
       expect(await read(producer), producer).toContain("createRunArtifactPaths");
