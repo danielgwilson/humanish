@@ -1,5 +1,6 @@
 import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
 import { captureStderr, runDirSnapshot } from "../../helpers/run-golden.js";
+import { expectFailureGolden } from "../../helpers/failure-golden.js";
 import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -815,6 +816,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       killed: string[] = [];
     const config = liveConfig();
     config.subject.product!.install = PRODUCT_INSTALL;
+    const stderr = captureStderr();
     const result = await runTerminalProductLab({
       cwd,
       config,
@@ -834,7 +836,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
             },
           }),
       },
-    });
+    }).finally(stderr.stop);
     expect(result.ok).toBe(false);
     expect(killed).toEqual(["fake-sandbox-1"]);
     expect(runs.some((r) => r.command.includes("HUMANISH_ACTOR_NONCE"))).toBe(false);
@@ -843,6 +845,20 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     );
     expect(actor.status).toBe("failed");
     expect(actor.reason).toMatch(/^subject\.product\.install could not prepare the world/);
+    await expectFailureGolden(
+      "terminal/product-install-fails",
+      path.join(cwd, ".humanish", "runs", result.runId),
+      {
+        result,
+        stderr: stderr.text(),
+        replace: [
+          [result.runId, "[run]"],
+          [cwd, "[cwd]"],
+        ],
+        // The prompt carries a random per-run verdict nonce, so the digests over it vary.
+        maskKeys: ["promptDigest", "sourceDigest", "commandDigest"],
+      },
+    );
   });
 
   it("uploads the declared product file and names it to the install command", async () => {
@@ -1977,13 +1993,14 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
           bootstrapThrow: () => ({ exitCode: 1, stderr: "sudo: a password is required" }),
         }),
     };
+    const stderr = captureStderr();
     const result = await runTerminalProductLab({
       cwd,
       config: liveConfig(),
       dryRun: false,
       open: false,
       hooks,
-    });
+    }).finally(stderr.stop);
 
     // The keyed exec is NEVER attempted once the runtime bootstrap has failed.
     expect(runs.some((r) => r.command.includes(" exec "))).toBe(false);
@@ -2004,6 +2021,16 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     expect(bootstrapEvent).toBeDefined();
     expect(String(bootstrapEvent?.message)).toMatch(/FAILED/);
     expect(ledgers.cleanup.killed).toBe(true);
+    await expectFailureGolden("terminal/runtime-bootstrap-throws", runDir, {
+      result,
+      stderr: stderr.text(),
+      replace: [
+        [result.runId, "[run]"],
+        [cwd, "[cwd]"],
+      ],
+      // The prompt carries a random per-run verdict nonce, so the digests over it vary.
+      maskKeys: ["promptDigest", "sourceDigest", "commandDigest"],
+    });
   });
 
   it("fails closed BEFORE creating a sandbox when no fail-closed cap is in force", async () => {
@@ -2080,19 +2107,36 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
           }),
         }),
     };
+    const stderr = captureStderr();
     const result = await runTerminalProductLab({
       cwd,
       config: liveConfig(),
       dryRun: false,
       open: false,
       hooks,
-    });
+    }).finally(stderr.stop);
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_TERMINAL_LAB_CLEANUP_UNPROVEN");
     expect(result.sandbox?.killed).toBe(true);
     expect(result.sandbox?.remaining).toBe(1);
     expect(killed.length).toBe(1);
     expect(listCalls.length).toBe(0);
+    const nonce = nonceFrom(runs.find((run) => run.command.includes(" exec "))?.command ?? "");
+    await expectFailureGolden(
+      "terminal/teardown-unproven",
+      path.join(cwd, ".humanish", "runs", result.runId),
+      {
+        result,
+        stderr: stderr.text(),
+        replace: [
+          [result.runId, "[run]"],
+          [cwd, "[cwd]"],
+          [nonce, "[nonce]"],
+        ],
+        // The prompt carries a random per-run verdict nonce, so the digests over it vary.
+        maskKeys: ["promptDigest", "sourceDigest", "commandDigest"],
+      },
+    );
   });
 
   it("fails closed when Sandbox.kill(id) itself throws (remaining=-1, never a re-list)", async () => {

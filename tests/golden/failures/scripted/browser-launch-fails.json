@@ -1,0 +1,885 @@
+{
+  "<result>": {
+    "schema": "humanish.scripted-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "scripted-routing-proof",
+    "actor": "scripted-browser",
+    "appUrl": "[app-url]/",
+    "dryRun": false,
+    "runId": "[run]",
+    "scenario": {
+      "id": "scripted-first-run",
+      "source": "humanish/scenarios/scripted-first-run.yaml",
+      "sourceDigest": "41dea98c2dc4",
+      "steps": 4
+    },
+    "sessions": [
+      {
+        "surface": "desktop",
+        "status": "failed",
+        "completionReason": "harness_error",
+        "reason": "Scripted browser launch failed: chromium executable missing",
+        "screenshots": 0
+      }
+    ],
+    "observer": {
+      "schema": "humanish.observer-result.v1",
+      "ok": true,
+      "cwd": "[cwd]",
+      "run": "[run]",
+      "observerPath": ".humanish/runs/[run]/observer/index.html",
+      "observerDataPath": ".humanish/runs/[run]/observer/observer-data.json",
+      "eventsPath": ".humanish/runs/[run]/events.ndjson",
+      "observerUrl": "file://[cwd]/.humanish/runs/[run]/observer/index.html",
+      "bundlePath": ".humanish/runs/[run]/run.json",
+      "opened": false,
+      "warnings": [
+        "Observer renders verified local evidence artifacts; runtime stream auth URLs are not persisted.",
+        "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
+      ]
+    },
+    "warnings": [
+      "Observer renders verified local evidence artifacts; runtime stream auth URLs are not persisted.",
+      "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
+    ],
+    "error": {
+      "code": "HUMANISH_SCRIPTED_LAB_FAILED",
+      "message": "Scripted session ended with a harness error: Scripted browser launch failed: chromium executable missing"
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "AUTOMATIC_ANALYSIS_KEY_MISSING"
+    }
+  },
+  "<stderr>": [],
+  "../latest.json": {
+    "schema": "humanish.latest-run.v1",
+    "runId": "[run]",
+    "path": ".humanish/runs/[run]",
+    "updatedAt": "[ts]"
+  },
+  "actor-desktop.json": {
+    "schema": "humanish.actor-trace.v1",
+    "provider": "browser-persona",
+    "protocol": "scripted-steps",
+    "lane": "scripted-browser",
+    "persona": {
+      "id": "synthetic-new-user",
+      "traitsApplied": [],
+      "promptDigest": "41dea98c2dc4"
+    },
+    "redaction": {
+      "status": "passed",
+      "screenshots": "n/a",
+      "notes": "Deterministic scripted steps. Step URLs sanitized to loopback origin+path (query/hash redacted); fill values are committed-scenario constants passed through redactText; screenshots are full-fidelity raw in gitignored .humanish."
+    },
+    "startedAt": "[ts]",
+    "completedAt": "[ts]",
+    "durationMs": "[durationMs]",
+    "status": "failed",
+    "completionReason": "harness_error",
+    "reason": "Scripted browser launch failed: chromium executable missing",
+    "ids": {},
+    "counts": {
+      "steps": 4,
+      "actions": 0,
+      "assertions": 0,
+      "blocked": 4,
+      "screenshots": 0
+    },
+    "items": [
+      {
+        "id": "step-01-load",
+        "kind": "ui_action",
+        "lifecycle": "completed",
+        "status": "blocked",
+        "title": "goto: Load landing page",
+        "text": "Scripted browser launch failed: chromium executable missing"
+      },
+      {
+        "id": "step-02-fill-email",
+        "kind": "ui_action",
+        "lifecycle": "completed",
+        "status": "blocked",
+        "title": "fill: Fill the signup email",
+        "text": "Scripted browser launch failed: chromium executable missing"
+      },
+      {
+        "id": "step-03-submit",
+        "kind": "ui_action",
+        "lifecycle": "completed",
+        "status": "blocked",
+        "title": "click: Submit the form",
+        "text": "Scripted browser launch failed: chromium executable missing"
+      },
+      {
+        "id": "step-04-confirm",
+        "kind": "ui_action",
+        "lifecycle": "completed",
+        "status": "blocked",
+        "title": "waitForText: Confirm success copy",
+        "text": "Scripted browser launch failed: chromium executable missing"
+      }
+    ],
+    "tokenUsage": {
+      "input": 0,
+      "output": 0,
+      "total": 0,
+      "costUsd": 0
+    },
+    "capabilities": {
+      "headless": true,
+      "structuredTrace": true,
+      "lanes": [
+        "scripted-browser"
+      ],
+      "producesScreenshots": true,
+      "byoModel": false,
+      "preGrantableApprovals": false,
+      "inProcessTools": false,
+      "license": "open"
+    }
+  },
+  "analysis-automatic/job.json": {
+    "schema": "humanish.automatic-study-analysis.v1",
+    "runId": "[run]",
+    "claimId": "[uuid]",
+    "attemptId": "analysis-[uuid]",
+    "state": "skipped",
+    "analysisId": null,
+    "reason": "AUTOMATIC_ANALYSIS_KEY_MISSING",
+    "createdAt": "[ts]",
+    "updatedAt": "[ts]",
+    "configDigest": "7b2784060eec8cdd30962537f7e3b3be18be27843350c72b45ef40348da98226",
+    "promptVersion": "study-evidence-6",
+    "sourceRunSha256": null,
+    "inputDigest": null,
+    "analysisSha256": null,
+    "receiptSha256": null,
+    "startedAt": null,
+    "finishedAt": "[ts]"
+  },
+  "events.ndjson": [
+    {
+      "id": "event-000-created",
+      "at": "[ts]",
+      "level": "info",
+      "type": "scripted-lab.run.created",
+      "message": "Created scripted-browser lab run for scripted-routing-proof (actor scripted-browser, 1 surface)."
+    },
+    {
+      "id": "event-001-subject",
+      "at": "[ts]",
+      "level": "info",
+      "type": "scripted-lab.subject.declared",
+      "message": "Subject app declared at [app-url]/; the lab did not provision it — subject build/commit provenance is UNPINNED; evidence binds to the scenario digest 41dea98c2dc4."
+    },
+    {
+      "id": "event-002-spend",
+      "at": "[ts]",
+      "level": "info",
+      "type": "scripted-lab.spend",
+      "message": "Scripted participant steps make no model requests and use no sandbox on this route; post-run analysis has a separate budget unless disabled. scenario.mode: live gates real browser actuation against the declared app."
+    },
+    {
+      "id": "event-003-session-desktop",
+      "at": "[ts]",
+      "level": "warn",
+      "type": "scripted-lab.session.harness_error",
+      "message": "desktop: failed — Scripted browser launch failed: chromium executable missing",
+      "simId": "scripted-desktop",
+      "streamId": "scripted-desktop-stream"
+    }
+  ],
+  "observer/index.html": "[observer build]",
+  "observer/observer-data.json": {
+    "schema": "humanish.observer-data.v1",
+    "schemaVersion": 1,
+    "generatedAt": "[ts]",
+    "run": {
+      "runId": "[run]",
+      "mode": "live",
+      "status": "fail",
+      "title": "First-run scripted walkthrough - Scripted journey persona (synthetic-new-user)",
+      "createdAt": "[ts]",
+      "simCount": 1,
+      "persona": {
+        "id": "synthetic-new-user",
+        "name": "Scripted journey persona (synthetic-new-user)",
+        "source": "lab:scripted-routing-proof",
+        "sourceDigest": "41dea98c2dc4"
+      },
+      "scenario": {
+        "id": "scripted-first-run",
+        "title": "First-run scripted walkthrough",
+        "goal": "Load the app, submit the primary form, and confirm the success state renders.",
+        "source": "humanish/scenarios/scripted-first-run.yaml",
+        "sourceDigest": "41dea98c2dc4"
+      },
+      "packageName": "humanish",
+      "redaction": {
+        "status": "passed",
+        "notes": "Scripted step URLs are sanitized to loopback origin+path (query/hash redacted) and step text passes text redaction. Screenshots are FULL-FIDELITY (raw), retained for local use in gitignored .humanish — NOT redacted for publishing; policies.redactScreenshots is not yet supported on this route."
+      },
+      "lifecycle": [
+        {
+          "at": "[ts]",
+          "event": "scripted-lab.run.created",
+          "message": "Created scripted-browser lab run with 1 surface lane (actor scripted-browser)."
+        }
+      ],
+      "knownGaps": [
+        "desktop: Scripted browser launch failed: chromium executable missing"
+      ]
+    },
+    "summary": {
+      "streams": 1,
+      "byKind": {
+        "ui": 0,
+        "browser": 1,
+        "terminal": 0,
+        "tui": 0,
+        "codex-ui": 0,
+        "artifact": 0,
+        "summary": 0
+      },
+      "active": 0,
+      "blocked": 1,
+      "warnings": 1
+    },
+    "laneGroups": [],
+    "cost": {
+      "schema": "humanish.run-cost-summary.v1",
+      "currency": "usd",
+      "estimatedTotalUsd": 0,
+      "ratesAsOf": null,
+      "fullyEstimated": true,
+      "placeholder": false,
+      "breakdown": [],
+      "tokenUsage": {
+        "input": 0,
+        "output": 0,
+        "total": 0
+      },
+      "desktopMinutes": null,
+      "note": "No model request and no hosted desktop: this run spent $0 by construction."
+    },
+    "streams": [
+      {
+        "id": "scripted-desktop-stream",
+        "simId": "scripted-desktop",
+        "kind": "browser",
+        "label": "Desktop browser surface — scripted-routing-proof",
+        "status": "failed",
+        "transport": "snapshot",
+        "updatedAt": "[ts]",
+        "embed": {
+          "kind": "placeholder",
+          "title": "Desktop browser surface"
+        },
+        "viewport": {
+          "width": 1440,
+          "height": 960,
+          "deviceScaleFactor": 1,
+          "isMobile": false
+        },
+        "ui": {
+          "route": "[app-url]/",
+          "intent": "Load the app, submit the primary form, and confirm the success state renders.",
+          "state": "Scripted browser launch failed: chromium executable missing",
+          "actorStatus": "failed"
+        },
+        "actor": {
+          "schema": "humanish.actor-trace.v1",
+          "provider": "browser-persona",
+          "protocol": "scripted-steps",
+          "lane": "scripted-browser",
+          "persona": {
+            "id": "synthetic-new-user",
+            "traitsApplied": [],
+            "promptDigest": "41dea98c2dc4"
+          },
+          "redaction": {
+            "status": "passed",
+            "screenshots": "n/a",
+            "notes": "Deterministic scripted steps. Step URLs sanitized to loopback origin+path (query/hash redacted); fill values are committed-scenario constants passed through redactText; screenshots are full-fidelity raw in gitignored .humanish."
+          },
+          "startedAt": "[ts]",
+          "completedAt": "[ts]",
+          "durationMs": "[durationMs]",
+          "status": "failed",
+          "completionReason": "harness_error",
+          "reason": "Scripted browser launch failed: chromium executable missing",
+          "ids": {},
+          "counts": {
+            "steps": 4,
+            "actions": 0,
+            "assertions": 0,
+            "blocked": 4,
+            "screenshots": 0
+          },
+          "items": [
+            {
+              "id": "step-01-load",
+              "kind": "ui_action",
+              "lifecycle": "completed",
+              "status": "blocked",
+              "title": "goto: Load landing page",
+              "text": "Scripted browser launch failed: chromium executable missing"
+            },
+            {
+              "id": "step-02-fill-email",
+              "kind": "ui_action",
+              "lifecycle": "completed",
+              "status": "blocked",
+              "title": "fill: Fill the signup email",
+              "text": "Scripted browser launch failed: chromium executable missing"
+            },
+            {
+              "id": "step-03-submit",
+              "kind": "ui_action",
+              "lifecycle": "completed",
+              "status": "blocked",
+              "title": "click: Submit the form",
+              "text": "Scripted browser launch failed: chromium executable missing"
+            },
+            {
+              "id": "step-04-confirm",
+              "kind": "ui_action",
+              "lifecycle": "completed",
+              "status": "blocked",
+              "title": "waitForText: Confirm success copy",
+              "text": "Scripted browser launch failed: chromium executable missing"
+            }
+          ],
+          "tokenUsage": {
+            "input": 0,
+            "output": 0,
+            "total": 0,
+            "costUsd": 0
+          },
+          "capabilities": {
+            "headless": true,
+            "structuredTrace": true,
+            "lanes": [
+              "scripted-browser"
+            ],
+            "producesScreenshots": true,
+            "byoModel": false,
+            "preGrantableApprovals": false,
+            "inProcessTools": false,
+            "license": "open"
+          }
+        },
+        "artifacts": [
+          {
+            "label": "run bundle",
+            "path": "run.json",
+            "kind": "bundle"
+          },
+          {
+            "label": "review",
+            "path": "review.md",
+            "kind": "review"
+          },
+          {
+            "label": "events",
+            "path": "events.ndjson",
+            "kind": "events"
+          },
+          {
+            "label": "desktop browser trace",
+            "path": "traces/desktop.json",
+            "kind": "trace"
+          },
+          {
+            "label": "desktop actor trace",
+            "path": "actor-desktop.json",
+            "kind": "trace"
+          }
+        ],
+        "sim": {
+          "id": "scripted-desktop",
+          "index": 1,
+          "personaId": "synthetic-new-user",
+          "scenarioId": "scripted-first-run",
+          "status": "failed",
+          "streamKind": "browser",
+          "mode": "browser-sim",
+          "progress": 100,
+          "currentStep": "Scripted browser launch failed: chromium executable missing",
+          "summary": "Scripted-browser actor (scripted-browser) replayed scripted-first-run on the desktop surface; harness_error.",
+          "streamIds": [
+            "scripted-desktop-stream"
+          ],
+          "startedAt": "[ts]",
+          "updatedAt": "[ts]"
+        },
+        "kindLabel": "Browser",
+        "statusLabel": "Failed",
+        "terminalPlain": "",
+        "timeline": [
+          {
+            "id": "event-003-session-desktop",
+            "at": "[ts]",
+            "level": "warn",
+            "type": "scripted-lab.session.harness_error",
+            "message": "desktop: failed — Scripted browser launch failed: chromium executable missing",
+            "simId": "scripted-desktop",
+            "streamId": "scripted-desktop-stream"
+          }
+        ]
+      }
+    ],
+    "events": [
+      {
+        "id": "event-000-created",
+        "at": "[ts]",
+        "level": "info",
+        "type": "scripted-lab.run.created",
+        "message": "Created scripted-browser lab run for scripted-routing-proof (actor scripted-browser, 1 surface)."
+      },
+      {
+        "id": "event-001-subject",
+        "at": "[ts]",
+        "level": "info",
+        "type": "scripted-lab.subject.declared",
+        "message": "Subject app declared at [app-url]/; the lab did not provision it — subject build/commit provenance is UNPINNED; evidence binds to the scenario digest 41dea98c2dc4."
+      },
+      {
+        "id": "event-002-spend",
+        "at": "[ts]",
+        "level": "info",
+        "type": "scripted-lab.spend",
+        "message": "Scripted participant steps make no model requests and use no sandbox on this route; post-run analysis has a separate budget unless disabled. scenario.mode: live gates real browser actuation against the declared app."
+      },
+      {
+        "id": "event-003-session-desktop",
+        "at": "[ts]",
+        "level": "warn",
+        "type": "scripted-lab.session.harness_error",
+        "message": "desktop: failed — Scripted browser launch failed: chromium executable missing",
+        "simId": "scripted-desktop",
+        "streamId": "scripted-desktop-stream"
+      }
+    ],
+    "artifactLinks": [
+      {
+        "label": "run bundle",
+        "href": "../run.json",
+        "kind": "bundle"
+      },
+      {
+        "label": "review JSON",
+        "href": "../review.json",
+        "kind": "review"
+      },
+      {
+        "label": "review Markdown",
+        "href": "../review.md",
+        "kind": "review"
+      },
+      {
+        "label": "event log",
+        "href": "../events.ndjson",
+        "kind": "events"
+      },
+      {
+        "label": "observer data",
+        "href": "observer-data.json",
+        "kind": "observer"
+      }
+    ],
+    "publicSafety": {
+      "publishable": false,
+      "note": "Observer artifacts are local evidence. Before filing a public issue, use `humanish feedback issue` so redaction and public-safety checks gate the payload.",
+      "share": {
+        "status": "share_ready",
+        "verifiedAt": "[ts]",
+        "reasons": []
+      }
+    },
+    "raw": {
+      "bundleSchema": "humanish.run-bundle.v1",
+      "artifactRoot": ".humanish/runs/[run]"
+    }
+  },
+  "observer/study-analysis.json": {
+    "state": "none",
+    "analysis": null,
+    "corrections": [],
+    "warnings": [],
+    "automatic": {
+      "state": "skipped",
+      "analysisId": null,
+      "reason": "AUTOMATIC_ANALYSIS_KEY_MISSING",
+      "updatedAt": "[ts]"
+    }
+  },
+  "review.json": {
+    "schema": "humanish.review.v1",
+    "verdict": "fail",
+    "summary": "Scripted-browser actor replayed scripted-first-run on 1 surface against [app-url]/: 0/1 satisfied the scenario predicate.",
+    "gaps": [
+      "desktop: Scripted browser launch failed: chromium executable missing"
+    ]
+  },
+  "review.md": "# First-run scripted walkthrough\n\n- run: [run]\n- mode: live\n- verdict: fail\n- summary: Scripted-browser actor replayed scripted-first-run on 1 surface against [app-url]/: 0/1 satisfied the scenario predicate.\n- scenario: scripted-first-run @ 41dea98c2dc4 (humanish/scenarios/scripted-first-run.yaml)\n- subject: Subject app declared at [app-url]/; the lab did not provision it — subject build/commit provenance is UNPINNED; evidence binds to the scenario digest 41dea98c2dc4.\n- spend: Scripted participant steps make no model requests and use no sandbox on this route; post-run analysis has a separate budget unless disabled. scenario.mode: live gates real browser actuation against the declared app.\n- scripted-desktop: browser-persona (scripted-browser/scripted-steps) failed (harness_error); 0 step action(s), 0 raw screenshot(s)\n\n## Gaps\n- desktop: Scripted browser launch failed: chromium executable missing\n",
+  "run.json": {
+    "schema": "humanish.run-bundle.v1",
+    "runId": "[run]",
+    "mode": "live",
+    "simCount": 1,
+    "createdAt": "[ts]",
+    "cwd": "[target-cwd]",
+    "artifactRoot": ".humanish/runs/[run]",
+    "source": {
+      "packageName": "humanish",
+      "humanishSource": "present",
+      "git": {
+        "schema": "humanish.git-state.v1",
+        "status": "missing",
+        "capturedAt": "[ts]",
+        "head": {
+          "shortSha": null,
+          "refState": "unknown"
+        },
+        "changes": {
+          "staged": 0,
+          "unstaged": 0,
+          "untracked": 0,
+          "total": 0
+        },
+        "note": "No git work tree was detected."
+      }
+    },
+    "persona": {
+      "id": "synthetic-new-user",
+      "name": "Scripted journey persona (synthetic-new-user)",
+      "source": "lab:scripted-routing-proof",
+      "sourceDigest": "41dea98c2dc4"
+    },
+    "scenario": {
+      "id": "scripted-first-run",
+      "title": "First-run scripted walkthrough",
+      "goal": "Load the app, submit the primary form, and confirm the success state renders.",
+      "source": "humanish/scenarios/scripted-first-run.yaml",
+      "sourceDigest": "41dea98c2dc4"
+    },
+    "lifecycle": [
+      {
+        "at": "[ts]",
+        "event": "scripted-lab.run.created",
+        "message": "Created scripted-browser lab run with 1 surface lane (actor scripted-browser)."
+      }
+    ],
+    "simulations": [
+      {
+        "id": "scripted-desktop",
+        "index": 1,
+        "personaId": "synthetic-new-user",
+        "scenarioId": "scripted-first-run",
+        "status": "failed",
+        "streamKind": "browser",
+        "mode": "browser-sim",
+        "progress": 100,
+        "currentStep": "Scripted browser launch failed: chromium executable missing",
+        "summary": "Scripted-browser actor (scripted-browser) replayed scripted-first-run on the desktop surface; harness_error.",
+        "streamIds": [
+          "scripted-desktop-stream"
+        ],
+        "startedAt": "[ts]",
+        "updatedAt": "[ts]"
+      }
+    ],
+    "streams": [
+      {
+        "id": "scripted-desktop-stream",
+        "simId": "scripted-desktop",
+        "kind": "browser",
+        "label": "Desktop browser surface — scripted-routing-proof",
+        "status": "failed",
+        "transport": "snapshot",
+        "updatedAt": "[ts]",
+        "embed": {
+          "kind": "placeholder",
+          "title": "Desktop browser surface"
+        },
+        "viewport": {
+          "width": 1440,
+          "height": 960,
+          "deviceScaleFactor": 1,
+          "isMobile": false
+        },
+        "ui": {
+          "route": "[app-url]/",
+          "intent": "Load the app, submit the primary form, and confirm the success state renders.",
+          "state": "Scripted browser launch failed: chromium executable missing",
+          "actorStatus": "failed"
+        },
+        "actor": {
+          "schema": "humanish.actor-trace.v1",
+          "provider": "browser-persona",
+          "protocol": "scripted-steps",
+          "lane": "scripted-browser",
+          "persona": {
+            "id": "synthetic-new-user",
+            "traitsApplied": [],
+            "promptDigest": "41dea98c2dc4"
+          },
+          "redaction": {
+            "status": "passed",
+            "screenshots": "n/a",
+            "notes": "Deterministic scripted steps. Step URLs sanitized to loopback origin+path (query/hash redacted); fill values are committed-scenario constants passed through redactText; screenshots are full-fidelity raw in gitignored .humanish."
+          },
+          "startedAt": "[ts]",
+          "completedAt": "[ts]",
+          "durationMs": "[durationMs]",
+          "status": "failed",
+          "completionReason": "harness_error",
+          "reason": "Scripted browser launch failed: chromium executable missing",
+          "ids": {},
+          "counts": {
+            "steps": 4,
+            "actions": 0,
+            "assertions": 0,
+            "blocked": 4,
+            "screenshots": 0
+          },
+          "items": [
+            {
+              "id": "step-01-load",
+              "kind": "ui_action",
+              "lifecycle": "completed",
+              "status": "blocked",
+              "title": "goto: Load landing page",
+              "text": "Scripted browser launch failed: chromium executable missing"
+            },
+            {
+              "id": "step-02-fill-email",
+              "kind": "ui_action",
+              "lifecycle": "completed",
+              "status": "blocked",
+              "title": "fill: Fill the signup email",
+              "text": "Scripted browser launch failed: chromium executable missing"
+            },
+            {
+              "id": "step-03-submit",
+              "kind": "ui_action",
+              "lifecycle": "completed",
+              "status": "blocked",
+              "title": "click: Submit the form",
+              "text": "Scripted browser launch failed: chromium executable missing"
+            },
+            {
+              "id": "step-04-confirm",
+              "kind": "ui_action",
+              "lifecycle": "completed",
+              "status": "blocked",
+              "title": "waitForText: Confirm success copy",
+              "text": "Scripted browser launch failed: chromium executable missing"
+            }
+          ],
+          "tokenUsage": {
+            "input": 0,
+            "output": 0,
+            "total": 0,
+            "costUsd": 0
+          },
+          "capabilities": {
+            "headless": true,
+            "structuredTrace": true,
+            "lanes": [
+              "scripted-browser"
+            ],
+            "producesScreenshots": true,
+            "byoModel": false,
+            "preGrantableApprovals": false,
+            "inProcessTools": false,
+            "license": "open"
+          }
+        },
+        "artifacts": [
+          {
+            "label": "run bundle",
+            "path": "run.json",
+            "kind": "bundle"
+          },
+          {
+            "label": "review",
+            "path": "review.md",
+            "kind": "review"
+          },
+          {
+            "label": "events",
+            "path": "events.ndjson",
+            "kind": "events"
+          },
+          {
+            "label": "desktop browser trace",
+            "path": "traces/desktop.json",
+            "kind": "trace"
+          },
+          {
+            "label": "desktop actor trace",
+            "path": "actor-desktop.json",
+            "kind": "trace"
+          }
+        ]
+      }
+    ],
+    "events": [
+      {
+        "id": "event-000-created",
+        "at": "[ts]",
+        "level": "info",
+        "type": "scripted-lab.run.created",
+        "message": "Created scripted-browser lab run for scripted-routing-proof (actor scripted-browser, 1 surface)."
+      },
+      {
+        "id": "event-001-subject",
+        "at": "[ts]",
+        "level": "info",
+        "type": "scripted-lab.subject.declared",
+        "message": "Subject app declared at [app-url]/; the lab did not provision it — subject build/commit provenance is UNPINNED; evidence binds to the scenario digest 41dea98c2dc4."
+      },
+      {
+        "id": "event-002-spend",
+        "at": "[ts]",
+        "level": "info",
+        "type": "scripted-lab.spend",
+        "message": "Scripted participant steps make no model requests and use no sandbox on this route; post-run analysis has a separate budget unless disabled. scenario.mode: live gates real browser actuation against the declared app."
+      },
+      {
+        "id": "event-003-session-desktop",
+        "at": "[ts]",
+        "level": "warn",
+        "type": "scripted-lab.session.harness_error",
+        "message": "desktop: failed — Scripted browser launch failed: chromium executable missing",
+        "simId": "scripted-desktop",
+        "streamId": "scripted-desktop-stream"
+      }
+    ],
+    "redaction": {
+      "status": "passed",
+      "notes": "Scripted step URLs are sanitized to loopback origin+path (query/hash redacted) and step text passes text redaction. Screenshots are FULL-FIDELITY (raw), retained for local use in gitignored .humanish — NOT redacted for publishing; policies.redactScreenshots is not yet supported on this route."
+    },
+    "artifacts": {
+      "run": "run.json",
+      "reviewJson": "review.json",
+      "reviewMarkdown": "review.md",
+      "observerData": "observer/observer-data.json",
+      "events": "events.ndjson"
+    },
+    "review": {
+      "schema": "humanish.review.v1",
+      "verdict": "fail",
+      "summary": "Scripted-browser actor replayed scripted-first-run on 1 surface against [app-url]/: 0/1 satisfied the scenario predicate.",
+      "gaps": [
+        "desktop: Scripted browser launch failed: chromium executable missing"
+      ]
+    },
+    "feedbackCandidates": [],
+    "cost": {
+      "schema": "humanish.run-cost-summary.v1",
+      "currency": "usd",
+      "estimatedTotalUsd": 0,
+      "ratesAsOf": null,
+      "fullyEstimated": true,
+      "placeholder": false,
+      "breakdown": [],
+      "tokenUsage": {
+        "input": 0,
+        "output": 0,
+        "total": 0
+      },
+      "desktopMinutes": null,
+      "note": "No model request and no hosted desktop: this run spent $0 by construction."
+    }
+  },
+  "status.json": {
+    "schema": "humanish.run-status.v1",
+    "runId": "[run]",
+    "state": "finished",
+    "mode": "live",
+    "pid": "[pid]",
+    "startedAt": "[ts]",
+    "updatedAt": "[ts]",
+    "completedAt": "[ts]",
+    "outcome": {
+      "verdict": "fail",
+      "estimatedCostUsd": 0
+    }
+  },
+  "traces/desktop.json": {
+    "schema": "humanish.browser-persona-trace.v1",
+    "capturedAt": "[ts]",
+    "appUrl": "[app-url]/",
+    "browserCommand": "injected-browser",
+    "durationMs": "[durationMs]",
+    "ok": false,
+    "reason": "Scripted browser launch failed: chromium executable missing",
+    "scenario": {
+      "id": "scripted-first-run",
+      "title": "First-run scripted walkthrough",
+      "source": "humanish/scenarios/scripted-first-run.yaml",
+      "sourceDigest": "41dea98c2dc4",
+      "stepCount": 4
+    },
+    "steps": [
+      {
+        "action": "goto",
+        "completedAt": "[ts]",
+        "durationMs": "[durationMs]",
+        "id": "step-01-load",
+        "label": "Load landing page",
+        "reason": "Scripted browser launch failed: chromium executable missing",
+        "status": "blocked",
+        "url": "[app-url]/"
+      },
+      {
+        "action": "fill",
+        "completedAt": "[ts]",
+        "durationMs": "[durationMs]",
+        "id": "step-02-fill-email",
+        "label": "Fill the signup email",
+        "reason": "Scripted browser launch failed: chromium executable missing",
+        "status": "blocked",
+        "url": "[app-url]/"
+      },
+      {
+        "action": "click",
+        "completedAt": "[ts]",
+        "durationMs": "[durationMs]",
+        "id": "step-03-submit",
+        "label": "Submit the form",
+        "reason": "Scripted browser launch failed: chromium executable missing",
+        "status": "blocked",
+        "url": "[app-url]/"
+      },
+      {
+        "action": "waitForText",
+        "completedAt": "[ts]",
+        "durationMs": "[durationMs]",
+        "id": "step-04-confirm",
+        "label": "Confirm success copy",
+        "reason": "Scripted browser launch failed: chromium executable missing",
+        "status": "blocked",
+        "url": "[app-url]/"
+      }
+    ],
+    "surface": {
+      "id": "desktop",
+      "label": "Desktop browser surface",
+      "viewport": {
+        "width": 1440,
+        "height": 960,
+        "deviceScaleFactor": 1,
+        "isMobile": false
+      }
+    },
+    "redaction": "passed"
+  }
+}

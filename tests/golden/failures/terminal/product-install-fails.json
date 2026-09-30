@@ -1,0 +1,1344 @@
+{
+  "<result>": {
+    "schema": "humanish.terminal-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "terminal-live-proof",
+    "actor": "codex-exec",
+    "product": "widgetsmith-cli",
+    "dryRun": false,
+    "runId": "[run]",
+    "session": {
+      "status": "failed",
+      "completionReason": "harness_error",
+      "reason": "subject.product.install could not prepare the world before codex exec: exit status 1"
+    },
+    "sandbox": {
+      "sandboxId": "fake-sandbox-1",
+      "killed": true,
+      "remaining": 0
+    },
+    "cost": {
+      "knownTotalUsd": 0,
+      "fullyMeasured": false,
+      "lines": {
+        "product": null,
+        "media": null,
+        "payment": null,
+        "provider": null
+      }
+    },
+    "noSpend": {
+      "satisfied": true,
+      "maxUsd": 0,
+      "knownZeroLines": [],
+      "unmeasuredLines": [
+        "product",
+        "media",
+        "payment",
+        "provider"
+      ]
+    },
+    "observer": {
+      "schema": "humanish.observer-result.v1",
+      "ok": true,
+      "cwd": "[cwd]",
+      "run": "[run]",
+      "observerPath": ".humanish/runs/[run]/observer/index.html",
+      "observerDataPath": ".humanish/runs/[run]/observer/observer-data.json",
+      "eventsPath": ".humanish/runs/[run]/events.ndjson",
+      "observerUrl": "file://[cwd]/.humanish/runs/[run]/observer/index.html",
+      "bundlePath": ".humanish/runs/[run]/run.json",
+      "opened": false,
+      "warnings": [
+        "Observer renders verified local evidence artifacts; runtime stream auth URLs are not persisted.",
+        "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
+      ]
+    },
+    "warnings": [
+      "Persona autonomous-creative-agent has no readable file under humanish/personas or .humanish/local/personas; using the id only (no persona context).",
+      "Sandbox resource size unavailable (metadata_unavailable); its compute cost remains unpriced.",
+      "Observer renders verified local evidence artifacts; runtime stream auth URLs are not persisted.",
+      "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
+    ],
+    "error": {
+      "code": "HUMANISH_TERMINAL_LAB_FAILED",
+      "message": "exit status 1"
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "AUTOMATIC_ANALYSIS_KEY_MISSING"
+    }
+  },
+  "<stderr>": [],
+  "../latest.json": {
+    "schema": "humanish.latest-run.v1",
+    "runId": "[run]",
+    "path": ".humanish/runs/[run]",
+    "updatedAt": "[ts]"
+  },
+  "actor.json": {
+    "schema": "humanish.actor-trace.v1",
+    "provider": "codex",
+    "providerVersion": "0.153.3",
+    "runtime": {
+      "schema": "humanish.actor-runtime.v1",
+      "package": "@openai/codex",
+      "requestedVersion": "latest",
+      "versionStatus": "verified",
+      "modelStatus": "runtime_default_unobserved",
+      "usageGranularity": "runtime_turn",
+      "observedVersion": "0.153.3"
+    },
+    "protocol": "terminal-exec",
+    "lane": "terminal",
+    "persona": {
+      "id": "autonomous-creative-agent",
+      "traitsApplied": [],
+      "promptDigest": "[promptDigest]"
+    },
+    "redaction": {
+      "status": "passed",
+      "screenshots": "n/a",
+      "notes": "Terminal exec output captured via commands.run onStdout/onStderr, scrubbed (literal known values) then redacted (shape patterns) AT THE SOURCE before persisting; no screenshots on this lane."
+    },
+    "startedAt": "[ts]",
+    "completedAt": "[ts]",
+    "durationMs": "[durationMs]",
+    "status": "failed",
+    "completionReason": "harness_error",
+    "reason": "subject.product.install could not prepare the world before codex exec: exit status 1",
+    "ids": {},
+    "counts": {
+      "commands": 0,
+      "runtimeParticipantItems": 0,
+      "actions": 0,
+      "messages": 0,
+      "terminalEvents": 0
+    },
+    "items": [],
+    "capabilities": {
+      "headless": true,
+      "structuredTrace": true,
+      "lanes": [
+        "terminal"
+      ],
+      "producesScreenshots": false,
+      "byoModel": false,
+      "preGrantableApprovals": false,
+      "inProcessTools": false,
+      "license": "open",
+      "keyPlacement": "in-sandbox-command-scoped"
+    },
+    "estimatedCost": {
+      "schema": "humanish.actor-estimated-cost.v1",
+      "estimatedCostUsd": null,
+      "reason": "no_token_usage",
+      "ratesAsOf": null
+    }
+  },
+  "analysis-automatic/job.json": {
+    "schema": "humanish.automatic-study-analysis.v1",
+    "runId": "[run]",
+    "claimId": "[uuid]",
+    "attemptId": "analysis-[uuid]",
+    "state": "skipped",
+    "analysisId": null,
+    "reason": "AUTOMATIC_ANALYSIS_KEY_MISSING",
+    "createdAt": "[ts]",
+    "updatedAt": "[ts]",
+    "configDigest": "7b2784060eec8cdd30962537f7e3b3be18be27843350c72b45ef40348da98226",
+    "promptVersion": "study-evidence-6",
+    "sourceRunSha256": null,
+    "inputDigest": null,
+    "analysisSha256": null,
+    "receiptSha256": null,
+    "startedAt": null,
+    "finishedAt": "[ts]"
+  },
+  "events.ndjson": [
+    {
+      "id": "event-000-terminal-lab.run.created",
+      "at": "[ts]",
+      "level": "info",
+      "type": "terminal-lab.run.created",
+      "message": "Created live terminal-product run [run] (actor codex-exec, product widgetsmith-cli). Caps: maxUsd=0, maxMinutes=10. Subject provenance UNPINNED (public surfaces only).",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-001-terminal-lab.sandbox.created",
+      "at": "[ts]",
+      "level": "info",
+      "type": "terminal-lab.sandbox.created",
+      "message": "E2B shell sandbox fake-sandbox-1 created with positive-allowlist metadata and kill-on-timeout; NO sandbox-global env.",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-002-terminal-lab.egress.policy",
+      "at": "[ts]",
+      "level": "info",
+      "type": "terminal-lab.egress.policy",
+      "message": "Egress UNRESTRICTED (no execution.egressAllow declared).",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-003-terminal-lab.runtime-auth",
+      "at": "[ts]",
+      "level": "info",
+      "type": "terminal-lab.runtime-auth",
+      "message": "Runtime auth openai-env: raw key from OPENAI_API_KEY is passed command-scoped to Codex and inherited by its child processes.",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-004-terminal-lab.sandbox.ready",
+      "at": "[ts]",
+      "level": "info",
+      "type": "terminal-lab.sandbox.ready",
+      "message": "Shell readiness probe exit=0; workdir [REDACTED_RUNTIME_PATH] prepared.",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-005-terminal-lab.runtime.bootstrapped",
+      "at": "[ts]",
+      "level": "info",
+      "type": "terminal-lab.runtime.bootstrapped",
+      "message": "Runtime bootstrap ensured Node/npm present in 0ms (codex exec runs via npx).",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-006-terminal-lab.runtime.version",
+      "at": "[ts]",
+      "level": "info",
+      "type": "terminal-lab.runtime.version",
+      "message": "Codex requested latest, observed 0.153.3; exact version selected for execution. Model runtime default (unobserved); reasoning effort runtime default (unobserved).",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-007-terminal-lab.product.prepared",
+      "at": "[ts]",
+      "level": "info",
+      "type": "terminal-lab.product.prepared",
+      "message": "Product setup FAILED after 0ms: exit status 1",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-008-terminal-lab.cleanup.verified",
+      "at": "[ts]",
+      "level": "info",
+      "type": "terminal-lab.cleanup.verified",
+      "message": "Sandbox fake-sandbox-1 reclaimed; getInfo(id) confirms it no longer exists (SandboxNotFoundError) -- by exact id, never re-listed.",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-009-terminal-lab.cost.measured",
+      "at": "[ts]",
+      "level": "info",
+      "type": "terminal-lab.cost.measured",
+      "message": "Cost ledger: known total 0 USD (lower bound). Not measured (null, not claimed zero): product, media, payment, provider. No-spend proof not established for maxUsd=0: no spend line was measured.",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-cost-no-spend-proof",
+      "at": "[ts]",
+      "level": "info",
+      "type": "terminal-lab.no-spend.proof",
+      "message": "No-spend proof not established for maxUsd=0: no spend line was measured. Not measured (null, not claimed zero): product, media, payment, provider.",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    }
+  ],
+  "observer/index.html": "[observer build]",
+  "observer/observer-data.json": {
+    "schema": "humanish.observer-data.v1",
+    "schemaVersion": 1,
+    "generatedAt": "[ts]",
+    "run": {
+      "runId": "[run]",
+      "mode": "live",
+      "status": "fail",
+      "title": "Terminal live proof - Autonomous terminal agent (autonomous-creative-agent)",
+      "createdAt": "[ts]",
+      "simCount": 1,
+      "persona": {
+        "id": "autonomous-creative-agent",
+        "name": "Autonomous terminal agent (autonomous-creative-agent)",
+        "source": "lab:terminal-live-proof",
+        "sourceDigest": "[sourceDigest]"
+      },
+      "scenario": {
+        "id": "terminal-terminal-live-proof",
+        "title": "Terminal live proof",
+        "goal": "Discover widgetsmith-cli from public surfaces.",
+        "source": "lab:terminal-live-proof",
+        "sourceDigest": "[sourceDigest]"
+      },
+      "packageName": "humanish",
+      "redaction": {
+        "status": "passed",
+        "notes": "Live terminal-product run: the in-sandbox agent's output was captured via commands.run onStdout/onStderr and scrubbed (literal known values incl. the runtime key) THEN redacted (shape patterns) AT THE SOURCE before persisting. Runtime auth openai-env: the runtime key (OPENAI_API_KEY) was injected ONLY into the command-scoped codex invocation, never sandbox-global env or metadata; only its NAME appears in evidence. Subject provenance is UNPINNED (public-surface study)."
+      },
+      "lifecycle": [
+        {
+          "at": "[ts]",
+          "event": "terminal-lab.run.created",
+          "message": "Created live terminal-product run [run] (actor codex-exec, product widgetsmith-cli). Caps: maxUsd=0, maxMinutes=10. Subject provenance UNPINNED (public surfaces only)."
+        },
+        {
+          "at": "[ts]",
+          "event": "terminal-lab.sandbox.created",
+          "message": "E2B shell sandbox fake-sandbox-1 created with positive-allowlist metadata and kill-on-timeout; NO sandbox-global env."
+        },
+        {
+          "at": "[ts]",
+          "event": "terminal-lab.egress.policy",
+          "message": "Egress UNRESTRICTED (no execution.egressAllow declared)."
+        },
+        {
+          "at": "[ts]",
+          "event": "terminal-lab.runtime-auth",
+          "message": "Runtime auth openai-env: raw key from OPENAI_API_KEY is passed command-scoped to Codex and inherited by its child processes."
+        },
+        {
+          "at": "[ts]",
+          "event": "terminal-lab.sandbox.ready",
+          "message": "Shell readiness probe exit=0; workdir [REDACTED_RUNTIME_PATH] prepared."
+        },
+        {
+          "at": "[ts]",
+          "event": "terminal-lab.runtime.bootstrapped",
+          "message": "Runtime bootstrap ensured Node/npm present in 0ms (codex exec runs via npx)."
+        },
+        {
+          "at": "[ts]",
+          "event": "terminal-lab.runtime.version",
+          "message": "Codex requested latest, observed 0.153.3; exact version selected for execution. Model runtime default (unobserved); reasoning effort runtime default (unobserved)."
+        },
+        {
+          "at": "[ts]",
+          "event": "terminal-lab.product.prepared",
+          "message": "Product setup FAILED after 0ms: exit status 1"
+        },
+        {
+          "at": "[ts]",
+          "event": "terminal-lab.cleanup.verified",
+          "message": "Sandbox fake-sandbox-1 reclaimed; getInfo(id) confirms it no longer exists (SandboxNotFoundError) -- by exact id, never re-listed."
+        },
+        {
+          "at": "[ts]",
+          "event": "terminal-lab.cost.measured",
+          "message": "Cost ledger: known total 0 USD (lower bound). Not measured (null, not claimed zero): product, media, payment, provider. No-spend proof not established for maxUsd=0: no spend line was measured."
+        }
+      ],
+      "knownGaps": [
+        "Agent session ended failed: subject.product.install could not prepare the world before codex exec: exit status 1",
+        "No-spend proof not established for maxUsd=0: no spend line was measured. Not measured (null, not claimed zero): product, media, payment, provider. An adapter may supply the missing signals through costProbe."
+      ]
+    },
+    "summary": {
+      "streams": 1,
+      "byKind": {
+        "ui": 0,
+        "browser": 0,
+        "terminal": 1,
+        "tui": 0,
+        "codex-ui": 0,
+        "artifact": 0,
+        "summary": 0
+      },
+      "active": 0,
+      "blocked": 1,
+      "warnings": 0
+    },
+    "laneGroups": [],
+    "cost": {
+      "schema": "humanish.run-cost-summary.v1",
+      "currency": "usd",
+      "estimatedTotalUsd": null,
+      "ratesAsOf": null,
+      "fullyEstimated": false,
+      "placeholder": false,
+      "breakdown": [
+        {
+          "kind": "model-tokens",
+          "estimatedCostUsd": null,
+          "reason": "no_token_usage",
+          "ratesAsOf": null
+        },
+        {
+          "kind": "desktop-minutes",
+          "estimatedCostUsd": null,
+          "reason": "no_desktop_resources",
+          "ratesAsOf": null,
+          "desktop": {
+            "minutes": 0,
+            "durationBasis": "host-acquired-to-cleanup",
+            "resourceUnavailableReason": "metadata_unavailable"
+          }
+        }
+      ],
+      "tokenUsage": {
+        "input": 0,
+        "output": 0,
+        "total": 0
+      },
+      "desktopMinutes": 0,
+      "note": "No priced spend lines this run — every cost line is DECLARED ABSENT (unknown rate / no usage / no duration); nothing is guessed. Add a rate to src/run/pricing.ts to estimate this model. Desktop compute is unmeasured: no allocation CPU/RAM observation is available."
+    },
+    "streams": [
+      {
+        "id": "stream-001",
+        "simId": "sim-001",
+        "assignment": {
+          "mission": "Discover widgetsmith-cli from public surfaces."
+        },
+        "kind": "terminal",
+        "label": "Terminal agent — terminal-live-proof",
+        "status": "failed",
+        "transport": "snapshot",
+        "updatedAt": "[ts]",
+        "embed": {
+          "kind": "placeholder",
+          "title": "Terminal agent (widgetsmith-cli)"
+        },
+        "terminal": {
+          "title": "codex-exec exec (stdin disabled)",
+          "format": "plain",
+          "stdin": "disabled",
+          "tail": "subject.product.install could not prepare the world before codex exec: exit status 1"
+        },
+        "ui": {
+          "intent": "Watch the terminal agent discover and use widgetsmith-cli from its public surfaces.",
+          "state": "subject.product.install could not prepare the world before codex exec: exit status 1"
+        },
+        "actor": {
+          "schema": "humanish.actor-trace.v1",
+          "provider": "codex",
+          "providerVersion": "0.153.3",
+          "runtime": {
+            "schema": "humanish.actor-runtime.v1",
+            "package": "@openai/codex",
+            "requestedVersion": "latest",
+            "versionStatus": "verified",
+            "modelStatus": "runtime_default_unobserved",
+            "usageGranularity": "runtime_turn",
+            "observedVersion": "0.153.3"
+          },
+          "protocol": "terminal-exec",
+          "lane": "terminal",
+          "persona": {
+            "id": "autonomous-creative-agent",
+            "traitsApplied": [],
+            "promptDigest": "[promptDigest]"
+          },
+          "redaction": {
+            "status": "passed",
+            "screenshots": "n/a",
+            "notes": "Terminal exec output captured via commands.run onStdout/onStderr, scrubbed (literal known values) then redacted (shape patterns) AT THE SOURCE before persisting; no screenshots on this lane."
+          },
+          "startedAt": "[ts]",
+          "completedAt": "[ts]",
+          "durationMs": "[durationMs]",
+          "status": "failed",
+          "completionReason": "harness_error",
+          "reason": "subject.product.install could not prepare the world before codex exec: exit status 1",
+          "ids": {},
+          "counts": {
+            "commands": 0,
+            "runtimeParticipantItems": 0,
+            "actions": 0,
+            "messages": 0,
+            "terminalEvents": 0
+          },
+          "items": [],
+          "capabilities": {
+            "headless": true,
+            "structuredTrace": true,
+            "lanes": [
+              "terminal"
+            ],
+            "producesScreenshots": false,
+            "byoModel": false,
+            "preGrantableApprovals": false,
+            "inProcessTools": false,
+            "license": "open",
+            "keyPlacement": "in-sandbox-command-scoped"
+          },
+          "estimatedCost": {
+            "schema": "humanish.actor-estimated-cost.v1",
+            "estimatedCostUsd": null,
+            "reason": "no_token_usage",
+            "ratesAsOf": null
+          }
+        },
+        "artifacts": [
+          {
+            "label": "run bundle",
+            "path": "run.json",
+            "kind": "bundle"
+          },
+          {
+            "label": "review",
+            "path": "review.md",
+            "kind": "review"
+          },
+          {
+            "label": "event log",
+            "path": "events.ndjson",
+            "kind": "events"
+          },
+          {
+            "label": "actor trace",
+            "path": "actor.json",
+            "kind": "trace"
+          },
+          {
+            "label": "terminal event stream",
+            "path": "terminal-events.ndjson",
+            "kind": "log"
+          },
+          {
+            "label": "terminal transcript",
+            "path": "terminal-transcript.txt",
+            "kind": "log"
+          },
+          {
+            "label": "terminal ledgers",
+            "path": "terminal-ledgers.json",
+            "kind": "log"
+          }
+        ],
+        "sim": {
+          "id": "sim-001",
+          "index": 1,
+          "personaId": "autonomous-creative-agent",
+          "scenarioId": "terminal-terminal-live-proof",
+          "status": "failed",
+          "streamKind": "terminal",
+          "mode": "cli-sim",
+          "progress": 100,
+          "currentStep": "subject.product.install could not prepare the world before codex exec: exit status 1",
+          "summary": "Terminal agent (codex-exec) studied widgetsmith-cli from public surfaces (failed).",
+          "streamIds": [
+            "stream-001"
+          ],
+          "startedAt": "[ts]",
+          "updatedAt": "[ts]"
+        },
+        "kindLabel": "CLI",
+        "statusLabel": "Failed",
+        "terminalPlain": "subject.product.install could not prepare the world before codex exec: exit status 1",
+        "timeline": [
+          {
+            "id": "event-000-terminal-lab.run.created",
+            "at": "[ts]",
+            "level": "info",
+            "type": "terminal-lab.run.created",
+            "message": "Created live terminal-product run [run] (actor codex-exec, product widgetsmith-cli). Caps: maxUsd=0, maxMinutes=10. Subject provenance UNPINNED (public surfaces only).",
+            "simId": "sim-001",
+            "streamId": "stream-001"
+          },
+          {
+            "id": "event-001-terminal-lab.sandbox.created",
+            "at": "[ts]",
+            "level": "info",
+            "type": "terminal-lab.sandbox.created",
+            "message": "E2B shell sandbox fake-sandbox-1 created with positive-allowlist metadata and kill-on-timeout; NO sandbox-global env.",
+            "simId": "sim-001",
+            "streamId": "stream-001"
+          },
+          {
+            "id": "event-002-terminal-lab.egress.policy",
+            "at": "[ts]",
+            "level": "info",
+            "type": "terminal-lab.egress.policy",
+            "message": "Egress UNRESTRICTED (no execution.egressAllow declared).",
+            "simId": "sim-001",
+            "streamId": "stream-001"
+          },
+          {
+            "id": "event-003-terminal-lab.runtime-auth",
+            "at": "[ts]",
+            "level": "info",
+            "type": "terminal-lab.runtime-auth",
+            "message": "Runtime auth openai-env: raw key from OPENAI_API_KEY is passed command-scoped to Codex and inherited by its child processes.",
+            "simId": "sim-001",
+            "streamId": "stream-001"
+          },
+          {
+            "id": "event-004-terminal-lab.sandbox.ready",
+            "at": "[ts]",
+            "level": "info",
+            "type": "terminal-lab.sandbox.ready",
+            "message": "Shell readiness probe exit=0; workdir [REDACTED_RUNTIME_PATH] prepared.",
+            "simId": "sim-001",
+            "streamId": "stream-001"
+          },
+          {
+            "id": "event-005-terminal-lab.runtime.bootstrapped",
+            "at": "[ts]",
+            "level": "info",
+            "type": "terminal-lab.runtime.bootstrapped",
+            "message": "Runtime bootstrap ensured Node/npm present in 0ms (codex exec runs via npx).",
+            "simId": "sim-001",
+            "streamId": "stream-001"
+          },
+          {
+            "id": "event-006-terminal-lab.runtime.version",
+            "at": "[ts]",
+            "level": "info",
+            "type": "terminal-lab.runtime.version",
+            "message": "Codex requested latest, observed 0.153.3; exact version selected for execution. Model runtime default (unobserved); reasoning effort runtime default (unobserved).",
+            "simId": "sim-001",
+            "streamId": "stream-001"
+          },
+          {
+            "id": "event-007-terminal-lab.product.prepared",
+            "at": "[ts]",
+            "level": "info",
+            "type": "terminal-lab.product.prepared",
+            "message": "Product setup FAILED after 0ms: exit status 1",
+            "simId": "sim-001",
+            "streamId": "stream-001"
+          },
+          {
+            "id": "event-008-terminal-lab.cleanup.verified",
+            "at": "[ts]",
+            "level": "info",
+            "type": "terminal-lab.cleanup.verified",
+            "message": "Sandbox fake-sandbox-1 reclaimed; getInfo(id) confirms it no longer exists (SandboxNotFoundError) -- by exact id, never re-listed.",
+            "simId": "sim-001",
+            "streamId": "stream-001"
+          },
+          {
+            "id": "event-009-terminal-lab.cost.measured",
+            "at": "[ts]",
+            "level": "info",
+            "type": "terminal-lab.cost.measured",
+            "message": "Cost ledger: known total 0 USD (lower bound). Not measured (null, not claimed zero): product, media, payment, provider. No-spend proof not established for maxUsd=0: no spend line was measured.",
+            "simId": "sim-001",
+            "streamId": "stream-001"
+          },
+          {
+            "id": "event-cost-no-spend-proof",
+            "at": "[ts]",
+            "level": "info",
+            "type": "terminal-lab.no-spend.proof",
+            "message": "No-spend proof not established for maxUsd=0: no spend line was measured. Not measured (null, not claimed zero): product, media, payment, provider.",
+            "simId": "sim-001",
+            "streamId": "stream-001"
+          }
+        ]
+      }
+    ],
+    "events": [
+      {
+        "id": "event-000-terminal-lab.run.created",
+        "at": "[ts]",
+        "level": "info",
+        "type": "terminal-lab.run.created",
+        "message": "Created live terminal-product run [run] (actor codex-exec, product widgetsmith-cli). Caps: maxUsd=0, maxMinutes=10. Subject provenance UNPINNED (public surfaces only).",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-001-terminal-lab.sandbox.created",
+        "at": "[ts]",
+        "level": "info",
+        "type": "terminal-lab.sandbox.created",
+        "message": "E2B shell sandbox fake-sandbox-1 created with positive-allowlist metadata and kill-on-timeout; NO sandbox-global env.",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-002-terminal-lab.egress.policy",
+        "at": "[ts]",
+        "level": "info",
+        "type": "terminal-lab.egress.policy",
+        "message": "Egress UNRESTRICTED (no execution.egressAllow declared).",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-003-terminal-lab.runtime-auth",
+        "at": "[ts]",
+        "level": "info",
+        "type": "terminal-lab.runtime-auth",
+        "message": "Runtime auth openai-env: raw key from OPENAI_API_KEY is passed command-scoped to Codex and inherited by its child processes.",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-004-terminal-lab.sandbox.ready",
+        "at": "[ts]",
+        "level": "info",
+        "type": "terminal-lab.sandbox.ready",
+        "message": "Shell readiness probe exit=0; workdir [REDACTED_RUNTIME_PATH] prepared.",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-005-terminal-lab.runtime.bootstrapped",
+        "at": "[ts]",
+        "level": "info",
+        "type": "terminal-lab.runtime.bootstrapped",
+        "message": "Runtime bootstrap ensured Node/npm present in 0ms (codex exec runs via npx).",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-006-terminal-lab.runtime.version",
+        "at": "[ts]",
+        "level": "info",
+        "type": "terminal-lab.runtime.version",
+        "message": "Codex requested latest, observed 0.153.3; exact version selected for execution. Model runtime default (unobserved); reasoning effort runtime default (unobserved).",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-007-terminal-lab.product.prepared",
+        "at": "[ts]",
+        "level": "info",
+        "type": "terminal-lab.product.prepared",
+        "message": "Product setup FAILED after 0ms: exit status 1",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-008-terminal-lab.cleanup.verified",
+        "at": "[ts]",
+        "level": "info",
+        "type": "terminal-lab.cleanup.verified",
+        "message": "Sandbox fake-sandbox-1 reclaimed; getInfo(id) confirms it no longer exists (SandboxNotFoundError) -- by exact id, never re-listed.",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-009-terminal-lab.cost.measured",
+        "at": "[ts]",
+        "level": "info",
+        "type": "terminal-lab.cost.measured",
+        "message": "Cost ledger: known total 0 USD (lower bound). Not measured (null, not claimed zero): product, media, payment, provider. No-spend proof not established for maxUsd=0: no spend line was measured.",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-cost-no-spend-proof",
+        "at": "[ts]",
+        "level": "info",
+        "type": "terminal-lab.no-spend.proof",
+        "message": "No-spend proof not established for maxUsd=0: no spend line was measured. Not measured (null, not claimed zero): product, media, payment, provider.",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      }
+    ],
+    "artifactLinks": [
+      {
+        "label": "run bundle",
+        "href": "../run.json",
+        "kind": "bundle"
+      },
+      {
+        "label": "review JSON",
+        "href": "../review.json",
+        "kind": "review"
+      },
+      {
+        "label": "review Markdown",
+        "href": "../review.md",
+        "kind": "review"
+      },
+      {
+        "label": "event log",
+        "href": "../events.ndjson",
+        "kind": "events"
+      },
+      {
+        "label": "observer data",
+        "href": "observer-data.json",
+        "kind": "observer"
+      }
+    ],
+    "publicSafety": {
+      "publishable": false,
+      "note": "Observer artifacts are local evidence. Before filing a public issue, use `humanish feedback issue` so redaction and public-safety checks gate the payload.",
+      "share": {
+        "status": "share_ready",
+        "verifiedAt": "[ts]",
+        "reasons": []
+      }
+    },
+    "raw": {
+      "bundleSchema": "humanish.run-bundle.v1",
+      "artifactRoot": ".humanish/runs/[run]"
+    }
+  },
+  "observer/study-analysis.json": {
+    "state": "none",
+    "analysis": null,
+    "corrections": [],
+    "warnings": [],
+    "automatic": {
+      "state": "skipped",
+      "analysisId": null,
+      "reason": "AUTOMATIC_ANALYSIS_KEY_MISSING",
+      "updatedAt": "[ts]"
+    }
+  },
+  "review.json": {
+    "schema": "humanish.review.v1",
+    "verdict": "fail",
+    "summary": "subject.product.install could not prepare the world before codex exec: exit status 1",
+    "gaps": [
+      "Agent session ended failed: subject.product.install could not prepare the world before codex exec: exit status 1",
+      "No-spend proof not established for maxUsd=0: no spend line was measured. Not measured (null, not claimed zero): product, media, payment, provider. An adapter may supply the missing signals through costProbe."
+    ]
+  },
+  "review.md": "# Terminal live proof\n\n- run: [run]\n- mode: live\n- verdict: fail\n- summary: subject.product.install could not prepare the world before codex exec: exit status 1\n- mission: Discover widgetsmith-cli from public surfaces.\n\n## Gaps\n- Agent session ended failed: subject.product.install could not prepare the world before codex exec: exit status 1\n- No-spend proof not established for maxUsd=0: no spend line was measured. Not measured (null, not claimed zero): product, media, payment, provider. An adapter may supply the missing signals through costProbe.\n",
+  "run.json": {
+    "schema": "humanish.run-bundle.v1",
+    "runId": "[run]",
+    "mode": "live",
+    "simCount": 1,
+    "createdAt": "[ts]",
+    "cwd": "[target-cwd]",
+    "artifactRoot": ".humanish/runs/[run]",
+    "source": {
+      "packageName": "humanish",
+      "humanishSource": "present",
+      "git": {
+        "schema": "humanish.git-state.v1",
+        "status": "missing",
+        "capturedAt": "[ts]",
+        "head": {
+          "shortSha": null,
+          "refState": "unknown"
+        },
+        "changes": {
+          "staged": 0,
+          "unstaged": 0,
+          "untracked": 0,
+          "total": 0
+        },
+        "note": "No git work tree was detected."
+      }
+    },
+    "persona": {
+      "id": "autonomous-creative-agent",
+      "name": "Autonomous terminal agent (autonomous-creative-agent)",
+      "source": "lab:terminal-live-proof",
+      "sourceDigest": "[sourceDigest]"
+    },
+    "scenario": {
+      "id": "terminal-terminal-live-proof",
+      "title": "Terminal live proof",
+      "goal": "Discover widgetsmith-cli from public surfaces.",
+      "source": "lab:terminal-live-proof",
+      "sourceDigest": "[sourceDigest]"
+    },
+    "lifecycle": [
+      {
+        "at": "[ts]",
+        "event": "terminal-lab.run.created",
+        "message": "Created live terminal-product run [run] (actor codex-exec, product widgetsmith-cli). Caps: maxUsd=0, maxMinutes=10. Subject provenance UNPINNED (public surfaces only)."
+      },
+      {
+        "at": "[ts]",
+        "event": "terminal-lab.sandbox.created",
+        "message": "E2B shell sandbox fake-sandbox-1 created with positive-allowlist metadata and kill-on-timeout; NO sandbox-global env."
+      },
+      {
+        "at": "[ts]",
+        "event": "terminal-lab.egress.policy",
+        "message": "Egress UNRESTRICTED (no execution.egressAllow declared)."
+      },
+      {
+        "at": "[ts]",
+        "event": "terminal-lab.runtime-auth",
+        "message": "Runtime auth openai-env: raw key from OPENAI_API_KEY is passed command-scoped to Codex and inherited by its child processes."
+      },
+      {
+        "at": "[ts]",
+        "event": "terminal-lab.sandbox.ready",
+        "message": "Shell readiness probe exit=0; workdir [REDACTED_RUNTIME_PATH] prepared."
+      },
+      {
+        "at": "[ts]",
+        "event": "terminal-lab.runtime.bootstrapped",
+        "message": "Runtime bootstrap ensured Node/npm present in 0ms (codex exec runs via npx)."
+      },
+      {
+        "at": "[ts]",
+        "event": "terminal-lab.runtime.version",
+        "message": "Codex requested latest, observed 0.153.3; exact version selected for execution. Model runtime default (unobserved); reasoning effort runtime default (unobserved)."
+      },
+      {
+        "at": "[ts]",
+        "event": "terminal-lab.product.prepared",
+        "message": "Product setup FAILED after 0ms: exit status 1"
+      },
+      {
+        "at": "[ts]",
+        "event": "terminal-lab.cleanup.verified",
+        "message": "Sandbox fake-sandbox-1 reclaimed; getInfo(id) confirms it no longer exists (SandboxNotFoundError) -- by exact id, never re-listed."
+      },
+      {
+        "at": "[ts]",
+        "event": "terminal-lab.cost.measured",
+        "message": "Cost ledger: known total 0 USD (lower bound). Not measured (null, not claimed zero): product, media, payment, provider. No-spend proof not established for maxUsd=0: no spend line was measured."
+      }
+    ],
+    "simulations": [
+      {
+        "id": "sim-001",
+        "index": 1,
+        "personaId": "autonomous-creative-agent",
+        "scenarioId": "terminal-terminal-live-proof",
+        "status": "failed",
+        "streamKind": "terminal",
+        "mode": "cli-sim",
+        "progress": 100,
+        "currentStep": "subject.product.install could not prepare the world before codex exec: exit status 1",
+        "summary": "Terminal agent (codex-exec) studied widgetsmith-cli from public surfaces (failed).",
+        "streamIds": [
+          "stream-001"
+        ],
+        "startedAt": "[ts]",
+        "updatedAt": "[ts]"
+      }
+    ],
+    "streams": [
+      {
+        "id": "stream-001",
+        "simId": "sim-001",
+        "assignment": {
+          "mission": "Discover widgetsmith-cli from public surfaces."
+        },
+        "kind": "terminal",
+        "label": "Terminal agent — terminal-live-proof",
+        "status": "failed",
+        "transport": "snapshot",
+        "updatedAt": "[ts]",
+        "embed": {
+          "kind": "placeholder",
+          "title": "Terminal agent (widgetsmith-cli)"
+        },
+        "terminal": {
+          "title": "codex-exec exec (stdin disabled)",
+          "format": "plain",
+          "stdin": "disabled",
+          "tail": "subject.product.install could not prepare the world before codex exec: exit status 1"
+        },
+        "ui": {
+          "intent": "Watch the terminal agent discover and use widgetsmith-cli from its public surfaces.",
+          "state": "subject.product.install could not prepare the world before codex exec: exit status 1"
+        },
+        "actor": {
+          "schema": "humanish.actor-trace.v1",
+          "provider": "codex",
+          "providerVersion": "0.153.3",
+          "runtime": {
+            "schema": "humanish.actor-runtime.v1",
+            "package": "@openai/codex",
+            "requestedVersion": "latest",
+            "versionStatus": "verified",
+            "modelStatus": "runtime_default_unobserved",
+            "usageGranularity": "runtime_turn",
+            "observedVersion": "0.153.3"
+          },
+          "protocol": "terminal-exec",
+          "lane": "terminal",
+          "persona": {
+            "id": "autonomous-creative-agent",
+            "traitsApplied": [],
+            "promptDigest": "[promptDigest]"
+          },
+          "redaction": {
+            "status": "passed",
+            "screenshots": "n/a",
+            "notes": "Terminal exec output captured via commands.run onStdout/onStderr, scrubbed (literal known values) then redacted (shape patterns) AT THE SOURCE before persisting; no screenshots on this lane."
+          },
+          "startedAt": "[ts]",
+          "completedAt": "[ts]",
+          "durationMs": "[durationMs]",
+          "status": "failed",
+          "completionReason": "harness_error",
+          "reason": "subject.product.install could not prepare the world before codex exec: exit status 1",
+          "ids": {},
+          "counts": {
+            "commands": 0,
+            "runtimeParticipantItems": 0,
+            "actions": 0,
+            "messages": 0,
+            "terminalEvents": 0
+          },
+          "items": [],
+          "capabilities": {
+            "headless": true,
+            "structuredTrace": true,
+            "lanes": [
+              "terminal"
+            ],
+            "producesScreenshots": false,
+            "byoModel": false,
+            "preGrantableApprovals": false,
+            "inProcessTools": false,
+            "license": "open",
+            "keyPlacement": "in-sandbox-command-scoped"
+          },
+          "estimatedCost": {
+            "schema": "humanish.actor-estimated-cost.v1",
+            "estimatedCostUsd": null,
+            "reason": "no_token_usage",
+            "ratesAsOf": null
+          }
+        },
+        "artifacts": [
+          {
+            "label": "run bundle",
+            "path": "run.json",
+            "kind": "bundle"
+          },
+          {
+            "label": "review",
+            "path": "review.md",
+            "kind": "review"
+          },
+          {
+            "label": "event log",
+            "path": "events.ndjson",
+            "kind": "events"
+          },
+          {
+            "label": "actor trace",
+            "path": "actor.json",
+            "kind": "trace"
+          },
+          {
+            "label": "terminal event stream",
+            "path": "terminal-events.ndjson",
+            "kind": "log"
+          },
+          {
+            "label": "terminal transcript",
+            "path": "terminal-transcript.txt",
+            "kind": "log"
+          },
+          {
+            "label": "terminal ledgers",
+            "path": "terminal-ledgers.json",
+            "kind": "log"
+          }
+        ]
+      }
+    ],
+    "events": [
+      {
+        "id": "event-000-terminal-lab.run.created",
+        "at": "[ts]",
+        "level": "info",
+        "type": "terminal-lab.run.created",
+        "message": "Created live terminal-product run [run] (actor codex-exec, product widgetsmith-cli). Caps: maxUsd=0, maxMinutes=10. Subject provenance UNPINNED (public surfaces only).",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-001-terminal-lab.sandbox.created",
+        "at": "[ts]",
+        "level": "info",
+        "type": "terminal-lab.sandbox.created",
+        "message": "E2B shell sandbox fake-sandbox-1 created with positive-allowlist metadata and kill-on-timeout; NO sandbox-global env.",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-002-terminal-lab.egress.policy",
+        "at": "[ts]",
+        "level": "info",
+        "type": "terminal-lab.egress.policy",
+        "message": "Egress UNRESTRICTED (no execution.egressAllow declared).",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-003-terminal-lab.runtime-auth",
+        "at": "[ts]",
+        "level": "info",
+        "type": "terminal-lab.runtime-auth",
+        "message": "Runtime auth openai-env: raw key from OPENAI_API_KEY is passed command-scoped to Codex and inherited by its child processes.",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-004-terminal-lab.sandbox.ready",
+        "at": "[ts]",
+        "level": "info",
+        "type": "terminal-lab.sandbox.ready",
+        "message": "Shell readiness probe exit=0; workdir [REDACTED_RUNTIME_PATH] prepared.",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-005-terminal-lab.runtime.bootstrapped",
+        "at": "[ts]",
+        "level": "info",
+        "type": "terminal-lab.runtime.bootstrapped",
+        "message": "Runtime bootstrap ensured Node/npm present in 0ms (codex exec runs via npx).",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-006-terminal-lab.runtime.version",
+        "at": "[ts]",
+        "level": "info",
+        "type": "terminal-lab.runtime.version",
+        "message": "Codex requested latest, observed 0.153.3; exact version selected for execution. Model runtime default (unobserved); reasoning effort runtime default (unobserved).",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-007-terminal-lab.product.prepared",
+        "at": "[ts]",
+        "level": "info",
+        "type": "terminal-lab.product.prepared",
+        "message": "Product setup FAILED after 0ms: exit status 1",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-008-terminal-lab.cleanup.verified",
+        "at": "[ts]",
+        "level": "info",
+        "type": "terminal-lab.cleanup.verified",
+        "message": "Sandbox fake-sandbox-1 reclaimed; getInfo(id) confirms it no longer exists (SandboxNotFoundError) -- by exact id, never re-listed.",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-009-terminal-lab.cost.measured",
+        "at": "[ts]",
+        "level": "info",
+        "type": "terminal-lab.cost.measured",
+        "message": "Cost ledger: known total 0 USD (lower bound). Not measured (null, not claimed zero): product, media, payment, provider. No-spend proof not established for maxUsd=0: no spend line was measured.",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-cost-no-spend-proof",
+        "at": "[ts]",
+        "level": "info",
+        "type": "terminal-lab.no-spend.proof",
+        "message": "No-spend proof not established for maxUsd=0: no spend line was measured. Not measured (null, not claimed zero): product, media, payment, provider.",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      }
+    ],
+    "redaction": {
+      "status": "passed",
+      "notes": "Live terminal-product run: the in-sandbox agent's output was captured via commands.run onStdout/onStderr and scrubbed (literal known values incl. the runtime key) THEN redacted (shape patterns) AT THE SOURCE before persisting. Runtime auth openai-env: the runtime key (OPENAI_API_KEY) was injected ONLY into the command-scoped codex invocation, never sandbox-global env or metadata; only its NAME appears in evidence. Subject provenance is UNPINNED (public-surface study)."
+    },
+    "artifacts": {
+      "run": "run.json",
+      "reviewJson": "review.json",
+      "reviewMarkdown": "review.md",
+      "observerData": "observer/observer-data.json",
+      "events": "events.ndjson"
+    },
+    "review": {
+      "schema": "humanish.review.v1",
+      "verdict": "fail",
+      "summary": "subject.product.install could not prepare the world before codex exec: exit status 1",
+      "gaps": [
+        "Agent session ended failed: subject.product.install could not prepare the world before codex exec: exit status 1",
+        "No-spend proof not established for maxUsd=0: no spend line was measured. Not measured (null, not claimed zero): product, media, payment, provider. An adapter may supply the missing signals through costProbe."
+      ]
+    },
+    "feedbackCandidates": [],
+    "cost": {
+      "schema": "humanish.run-cost-summary.v1",
+      "currency": "usd",
+      "estimatedTotalUsd": null,
+      "ratesAsOf": null,
+      "fullyEstimated": false,
+      "placeholder": false,
+      "breakdown": [
+        {
+          "kind": "model-tokens",
+          "estimatedCostUsd": null,
+          "reason": "no_token_usage",
+          "ratesAsOf": null
+        },
+        {
+          "kind": "desktop-minutes",
+          "estimatedCostUsd": null,
+          "reason": "no_desktop_resources",
+          "ratesAsOf": null,
+          "desktop": {
+            "minutes": 0,
+            "durationBasis": "host-acquired-to-cleanup",
+            "resourceUnavailableReason": "metadata_unavailable"
+          }
+        }
+      ],
+      "tokenUsage": {
+        "input": 0,
+        "output": 0,
+        "total": 0
+      },
+      "desktopMinutes": 0,
+      "note": "No priced spend lines this run — every cost line is DECLARED ABSENT (unknown rate / no usage / no duration); nothing is guessed. Add a rate to src/run/pricing.ts to estimate this model. Desktop compute is unmeasured: no allocation CPU/RAM observation is available."
+    }
+  },
+  "sandbox-receipts.ndjson": [
+    {
+      "at": "[ts]",
+      "laneId": "terminal",
+      "provider": "e2b",
+      "sandboxId": "fake-sandbox-1",
+      "timeoutMs": 900000
+    }
+  ],
+  "status.json": {
+    "schema": "humanish.run-status.v1",
+    "runId": "[run]",
+    "state": "finished",
+    "mode": "live",
+    "pid": "[pid]",
+    "startedAt": "[ts]",
+    "updatedAt": "[ts]",
+    "completedAt": "[ts]",
+    "outcome": {
+      "verdict": "fail",
+      "estimatedCostUsd": null
+    }
+  },
+  "terminal-events.ndjson": [],
+  "terminal-ledgers.json": {
+    "schema": "humanish.terminal-ledgers.v1",
+    "runtime": {
+      "schema": "humanish.actor-runtime.v1",
+      "package": "@openai/codex",
+      "requestedVersion": "latest",
+      "versionStatus": "verified",
+      "modelStatus": "runtime_default_unobserved",
+      "usageGranularity": "runtime_turn",
+      "observedVersion": "0.153.3"
+    },
+    "lifecycle": [
+      {
+        "at": "[ts]",
+        "event": "terminal-lab.run.created",
+        "message": "Created live terminal-product run [run] (actor codex-exec, product widgetsmith-cli). Caps: maxUsd=0, maxMinutes=10. Subject provenance UNPINNED (public surfaces only)."
+      },
+      {
+        "at": "[ts]",
+        "event": "terminal-lab.sandbox.created",
+        "message": "E2B shell sandbox fake-sandbox-1 created with positive-allowlist metadata and kill-on-timeout; NO sandbox-global env."
+      },
+      {
+        "at": "[ts]",
+        "event": "terminal-lab.egress.policy",
+        "message": "Egress UNRESTRICTED (no execution.egressAllow declared)."
+      },
+      {
+        "at": "[ts]",
+        "event": "terminal-lab.runtime-auth",
+        "message": "Runtime auth openai-env: raw key from OPENAI_API_KEY is passed command-scoped to Codex and inherited by its child processes."
+      },
+      {
+        "at": "[ts]",
+        "event": "terminal-lab.sandbox.ready",
+        "message": "Shell readiness probe exit=0; workdir [REDACTED_RUNTIME_PATH] prepared."
+      },
+      {
+        "at": "[ts]",
+        "event": "terminal-lab.runtime.bootstrapped",
+        "message": "Runtime bootstrap ensured Node/npm present in 0ms (codex exec runs via npx)."
+      },
+      {
+        "at": "[ts]",
+        "event": "terminal-lab.runtime.version",
+        "message": "Codex requested latest, observed 0.153.3; exact version selected for execution. Model runtime default (unobserved); reasoning effort runtime default (unobserved)."
+      },
+      {
+        "at": "[ts]",
+        "event": "terminal-lab.product.prepared",
+        "message": "Product setup FAILED after 0ms: exit status 1"
+      },
+      {
+        "at": "[ts]",
+        "event": "terminal-lab.cleanup.verified",
+        "message": "Sandbox fake-sandbox-1 reclaimed; getInfo(id) confirms it no longer exists (SandboxNotFoundError) -- by exact id, never re-listed."
+      },
+      {
+        "at": "[ts]",
+        "event": "terminal-lab.cost.measured",
+        "message": "Cost ledger: known total 0 USD (lower bound). Not measured (null, not claimed zero): product, media, payment, provider. No-spend proof not established for maxUsd=0: no spend line was measured."
+      }
+    ],
+    "commandLog": [],
+    "interventions": [],
+    "cleanup": {
+      "killed": true,
+      "remaining": 0,
+      "reason": "reclaimed by id; getInfo(id) confirms the exact sandbox no longer exists (SandboxNotFoundError)"
+    },
+    "cost": {
+      "schema": "humanish.terminal-cost-ledger.v1",
+      "currency": "usd",
+      "lines": {
+        "product": {
+          "usd": null,
+          "count": null,
+          "source": "unmeasured",
+          "note": "product spend NOT MEASURED: core has no product-spend signal for this run; an adapter may supply one through costProbe. Recorded null (never guessed to 0)."
+        },
+        "media": {
+          "usd": null,
+          "count": null,
+          "source": "unmeasured",
+          "note": "media spend NOT MEASURED: core has no media-spend signal for this run; an adapter may supply one through costProbe. Recorded null (never guessed to 0)."
+        },
+        "payment": {
+          "usd": null,
+          "count": null,
+          "source": "unmeasured",
+          "note": "payment spend NOT MEASURED: core has no payment-spend signal for this run; an adapter may supply one through costProbe. Recorded null (never guessed to 0)."
+        },
+        "provider": {
+          "usd": null,
+          "source": "unmeasured",
+          "note": "Provider spend NOT MEASURED: the actor trace carried no tokenUsage.costUsd this run. Recorded null (not guessed to 0)."
+        }
+      },
+      "knownTotalUsd": 0,
+      "fullyMeasured": false
+    },
+    "noSpendProof": {
+      "schema": "humanish.terminal-no-spend-proof.v1",
+      "maxUsd": 0,
+      "satisfied": true,
+      "knownZeroLines": [],
+      "knownNonZeroLines": [],
+      "unmeasuredLines": [
+        "product",
+        "media",
+        "payment",
+        "provider"
+      ],
+      "knownTotalUsd": 0,
+      "statement": "No-spend proof not established for maxUsd=0: no spend line was measured. Not measured (null, not claimed zero): product, media, payment, provider."
+    }
+  },
+  "terminal-transcript.txt": "\n"
+}
