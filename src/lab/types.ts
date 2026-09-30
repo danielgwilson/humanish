@@ -378,8 +378,8 @@ export interface LabActor {
   /**
    * The actor label. On computer-use (including shared-world), scripted-browser, and
    * terminal-product routes this is a REAL dispatch key resolved against the closed first-party
-   * actor registry. On synthetic and meta routes it remains a free-form descriptive label (e.g.
-   * synthetic-persona or humanish-setup). The terminal route owns its live lifecycle after using
+   * actor registry. On the synthetic route it remains a free-form descriptive label (e.g.
+   * synthetic-persona). The terminal route owns its live lifecycle after using
    * the descriptor for dispatch and capability enforcement.
    */
   type: string;
@@ -642,9 +642,9 @@ export interface LabScenario {
 
 export interface LabPolicies {
   /**
-   * Redact target repo labels in durable artifacts. Consumed on the meta route and on the
-   * computer-use clone route (provenance), where it DEFAULTS to true when the clone
-   * authenticates via GITHUB_TOKEN (a token-bearing clone is treated as private until
+   * Redact target repo labels in durable artifacts. Consumed on the computer-use,
+   * scripted-browser and shared-world clone routes (provenance), where it DEFAULTS to true when
+   * the clone authenticates via GITHUB_TOKEN (a token-bearing clone is treated as private until
    * declared otherwise).
    */
   redactRepos?: boolean;

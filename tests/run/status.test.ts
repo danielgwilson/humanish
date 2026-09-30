@@ -325,7 +325,7 @@ describe("run status: identity + liveness on disk (#455)", () => {
     expect(inferLegacyLabId({ persona: { source: "lab:observer-live-check" } })).toBe(
       "observer-live-check",
     );
-    // Ids may legitimately contain a colon (the meta lab is `oss:meta`).
+    // Ids may legitimately contain a colon (the removed OSS meta-lab wrote `oss:meta`).
     expect(inferLegacyLabId({ scenario: { source: "lab:oss:meta" } })).toBe("oss:meta");
     // A plain persona path is NOT a lab marker — those runs are honestly lab-less.
     expect(

@@ -24,8 +24,8 @@ telemetry, humanish cannot tell whether new users reach a working first run.
   (a bucket such as `1-5m`, never an exact duration)
 - for a study: whether it was a dry run or live, its outcome (one of a fixed
   set of words such as `passed`, `abandoned`, `all_passed`), which brain route
-  ran it (`provider-key`, `local-agent`, or `none` for a dry run), and — **only
-  if it is one of the starter labs humanish itself ships** — which one
+  ran it (`provider-key`, `local-agent`, or `none` for a dry run), and which lab
+  ran, **only if it is one of the starter labs `humanish init` writes**
 - when a command fails: humanish's own error code (`HUMANISH_…`), never the
   message. Which failure ends a first run is the question this exists to answer.
 - for CUA results with diagnostics: `diagnostic_category` is exactly one of

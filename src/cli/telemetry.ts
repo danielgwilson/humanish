@@ -29,8 +29,8 @@ const STARTER_LABS = new Set([
   "first-run",
   "try-live",
   "cua-browser",
+  "local-browser",
   "lobby-trivia-3player",
-  "oss",
 ]);
 
 /** The ONLY event names. */

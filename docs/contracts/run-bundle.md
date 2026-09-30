@@ -331,14 +331,14 @@ The former is the app-defined simulated user bucket, such as `viewer`,
 
 ## Completion And Meaningful-Use Verdicts
 
-Each live stream may include `completion` when the harness has enough evidence
-to judge the lane. Completion state is deliberately compact and public-safe:
-it records actor/app/nested-Observer status, terminal tails that have already
-passed redaction, and optional setup-quality evidence.
+Only older bundles carry `completion`. The OSS meta-lab wrote it, and that lab
+was removed. No current route writes the field. `RunStream` in
+`src/run/bundle.ts` still accepts it, so those bundles stay readable.
 
-`completion.meaningfulUse` appears in bundles written by the OSS meta-lab, which
-scored a coding agent setting up Humanish inside another project. The lab was
-removed; readers still accept the field in older bundles.
+In those bundles, `completion` is compact and public-safe. It records
+actor/app/nested-Observer status, terminal tails that have already passed
+redaction, and optional setup-quality evidence. `completion.meaningfulUse` scored
+a coding agent setting up Humanish inside another project.
 
 ```yaml
 completion:

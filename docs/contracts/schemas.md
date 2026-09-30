@@ -150,8 +150,8 @@ instruction?, target?, entry? }` becoming one independent E2B desktop (or, on th
   default `lane-01`..`lane-NN`, must be unique, and name per-lane evidence paths
   (`actors/<streamId>.json`, `screenshots/<laneId>/`). Cap 16 lanes. On every
   non-cua route `lanes` is inert (warned). `subject.clone.fanout` is REJECTED on
-  the cua route (declare fan-out via `count`/`lanes`; `clone.fanout` drives the
-  OSS smoke/meta routes only);
+  the cua, shared-world and scripted-browser routes (declare fan-out via
+  `count`/`lanes`). No current route reads `clone.fanout`;
 - `actors[0].lanes[].target` (app-url × computer-use E2B route only): an
   absolute browser URL that lane opens instead of `subject.appUrl`. This is the
   setup-produced-target handoff for crawler/swarm labs: an adapter may start any
@@ -216,8 +216,8 @@ persona?, device?, instruction?, target?, entry? }`. The parser expands it into
   stays the byte-stable `Sandbox.create(opts)` default (the stock template). The
   template actually used is recorded in the run bundle as `desktopTemplate`
   (public-safe — a template name is not a secret). Inert (warned) on every route
-  that creates no desktop, incl. the in-process `local-app` cua route and the
-  meta route — never silently ignored (invariant 6). Custom images need the
+  that creates no desktop, incl. the in-process `local-app` cua route, so it is
+  never silently ignored (invariant 6). Custom images need the
   Desktop SDK's `xdotool` input support and `xclip` or `xsel` on `PATH` for
   clipboard recovery when direct typing fails. If both clipboard utilities are
   absent, recovery fails with `clipboard-utility-missing`; a dry-run does not

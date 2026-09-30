@@ -61,9 +61,9 @@ does not enable managed local desktops.
 The same configuration works through `humanish run <lab>`, `lab run <lab>`,
 `watch <lab>`, and TUI live starts. Direct library calls to the five recording
 producers honor it too. Supported routes are computer-use, scripted-browser,
-terminal-product and shared-world. Synthetic,
-smoke and meta routes never enable analysis by default and reject an explicit
-analysis mapping before execution. `false` is accepted on every route. Dry runs show analysis
+terminal-product and shared-world. The synthetic route
+never enables analysis by default and rejects an explicit analysis mapping
+before execution. `false` is accepted on every route. Dry runs show analysis
 as skipped, without reading analysis credentials or making a provider request.
 
 Participant execution finishes and its recording is finalized before analysis is

@@ -48,6 +48,8 @@ function isFirstPartyCandidate(bundle: RunBundle, candidate: RunFeedbackCandidat
     );
   }
 
+  // Only older bundles from the removed meta-lab carry oss-meta-lab candidates. The check
+  // stays so their proof can still be read.
   if (
     candidate.adapter_id !== "oss-meta-lab" ||
     candidate.actor !== "codex-tui" ||

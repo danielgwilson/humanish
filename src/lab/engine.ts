@@ -89,8 +89,8 @@ export type LabOutcome =
 /**
  * Route a lab config to its execution backend from its declared composition.
  * subject.source x execution.target are orthogonal primitives; where both axes collide
- * (clone x e2b-desktop hosts both the meta bootstrap AND the computer-use serve path) the
- * actor LANE disambiguates — via routesToComputerUse, the single shared predicate.
+ * (clone x e2b-desktop runs the scripted-browser, shared-world and computer-use routes) the
+ * actor lane and subject.topology pick one, through the predicates in routing.ts.
  */
 export function selectLabBackend(config: LabConfig): LabBackend {
   if (routesToScriptedBrowser(config)) {

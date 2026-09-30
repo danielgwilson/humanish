@@ -432,7 +432,8 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
   }
 
   // clone × e2b-desktop disambiguates on the actor lane: a computer-use actor means the lab
-  // clones AND serves the subject in-sandbox, then drives it (the meta route otherwise).
+  // clones AND serves the subject in-sandbox, then drives it. Scripted-browser actors were checked
+  // above.
   if (
     config.subject.source === "clone" &&
     config.execution?.target === "e2b-desktop" &&
@@ -458,14 +459,14 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
   }
 
   // local-tree route: packs and uploads the operator's own working tree, then serves it exactly
-  // like a computer-use clone subject. There is no smoke/meta/scripted equivalent for a packed
-  // working tree in this slice, so e2b-desktop + a computer-use actor are the ONLY combination
-  // this source supports. `subject.serve` is already required at parse time (parseSubject); the
-  // repos/clone rejection also already happened there (local-tree never carries git slugs).
+  // like a computer-use clone subject. The scripted-browser route has no packed-working-tree
+  // mode, so e2b-desktop + a computer-use actor are the ONLY combination this source supports.
+  // `subject.serve` is already required at parse time (parseSubject); the repos/clone rejection
+  // also already happened there (local-tree never carries git slugs).
   if (config.subject.source === "local-tree") {
     if (config.execution?.target !== "e2b-desktop") {
       return invalid(
-        "local-tree subjects require `execution.target: e2b-desktop`: the packed working tree is provisioned and served inside a hosted desktop sandbox; there is no local/smoke route for a local-tree subject.",
+        "local-tree subjects require `execution.target: e2b-desktop`: the packed working tree is provisioned and served inside a hosted desktop sandbox; there is no local route for a local-tree subject.",
       );
     }
     if (!actorResolvesToComputerUse(config.actors[0]?.type)) {
