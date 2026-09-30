@@ -80,7 +80,7 @@ Implemented:
 - skills.sh-compatible agent skill;
 - first-class lab manifest resolution through `humanish/labs/*.yaml` and
   ignored `.humanish/labs/*.yaml` overlays — `humanish.lab.v2` compositions
-  (`src/lab-config.ts`), one engine, no hardcoded lab kinds;
+  (`src/lab/config.ts`), one engine, no hardcoded lab kinds;
 - a first-party actor registry with seven registered descriptors
   (`src/actor-registry.ts`); `actors[0].type` is a real dispatch key on the
   computer-use, scripted-browser, and terminal-product routes;

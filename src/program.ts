@@ -44,8 +44,8 @@ import {
   verifyFeedback,
 } from "./feedback/feedback.js";
 import type { FeedbackResult } from "./feedback/feedback.js";
-import { runInit } from "./init.js";
-import { computeStats, formatStatsHuman } from "./stats.js";
+import { runInit } from "./lab/init.js";
+import { computeStats, formatStatsHuman } from "./run/stats.js";
 import { PortInUseError } from "./observer/listen.js";
 import { DEFAULT_EXPORT_MAX_BYTES, exportRun, formatExportHuman } from "./feedback/export.js";
 import {
@@ -61,19 +61,19 @@ import {
   writeTelemetryState,
   isOwnCheckoutRun,
 } from "./telemetry.js";
-import type { InitChange, InitResult } from "./init.js";
-import { inspectLabManifest, listLabManifests, resolveLabManifest } from "./labs.js";
-import type { LabInspectResult, LabListResult, LabResolveFailure } from "./labs.js";
+import type { InitChange, InitResult } from "./lab/init.js";
+import { inspectLabManifest, listLabManifests, resolveLabManifest } from "./lab/discover.js";
+import type { LabInspectResult, LabListResult, LabResolveFailure } from "./lab/discover.js";
 import {
   runLabPreflight,
   type LabPreflightReachabilityMode,
   type LabPreflightResult,
-} from "./lab-preflight.js";
-import { runLab, resolveLabDryRun, selectLabBackend } from "./lab-engine.js";
-import type { RunLabProvenance } from "./run-status.js";
+} from "./lab/preflight.js";
+import { runLab, resolveLabDryRun, selectLabBackend } from "./lab/engine.js";
+import type { RunLabProvenance } from "./run/status.js";
 import { loadAdapterScorer, type AdapterScorerModule } from "./adapter-scorer-loader.js";
-import type { LabBackend } from "./lab-engine.js";
-import type { RunScorerProvenance } from "./run.js";
+import type { LabBackend } from "./lab/engine.js";
+import type { RunScorerProvenance } from "./run/run.js";
 import { CUA_ACTOR_LAB_SCHEMA } from "./cua-actor-lab.js";
 import type { CuaActorLabErrorCode, CuaActorLabResult } from "./cua-actor-lab.js";
 import type { ScriptedBrowserLabResult } from "./scripted-browser-lab.js";
@@ -81,7 +81,7 @@ import type { TerminalProductLabResult, TerminalProductLabHooks } from "./e2b-te
 import type { BrowserLabAdapterHooks } from "./adapter-extension.js";
 import type { SharedWorldLabResult } from "./shared-world-lab.js";
 import type { ConcurrentSharedWorldLabResult } from "./concurrent-shared-world-lab.js";
-import type { LabConfig } from "./lab-config.js";
+import type { LabConfig } from "./lab/config.js";
 import { openTarget, renderObserver, serveObserver } from "./observer/render.js";
 import type { ObserverResult, ObserverServer } from "./observer/render.js";
 import { SERVE_SCHEMA, serveObserverLibrary } from "./observer/serve.js";
@@ -90,13 +90,13 @@ import { startExposedObserver, validateExposure } from "./observer/exposure.js";
 import type { ExposureRequest } from "./observer/exposure.js";
 import { ServeTunnelError } from "./observer/tunnel.js";
 import type { ServeTunnel } from "./observer/tunnel.js";
-import { cleanupRun, doctor, listRuns, readReview, runDryRun, verifyRun } from "./run.js";
-import { reclaimRunSandboxes, type ReclaimResult } from "./reclaim.js";
-import { RunIndexCache, readRunIndex } from "./run-index.js";
-import { readLabSummary } from "./lab-summary.js";
+import { cleanupRun, doctor, listRuns, readReview, runDryRun, verifyRun } from "./run/run.js";
+import { reclaimRunSandboxes, type ReclaimResult } from "./run/reclaim.js";
+import { RunIndexCache, readRunIndex } from "./run/run-index.js";
+import { readLabSummary } from "./lab/summary.js";
 import { readProjectState } from "./tui/project.js";
 import { createTuiObserverSession, stopRun, TUI_ACTION_SCHEMA } from "./tui/actions.js";
-import { readRunDetail } from "./run-detail.js";
+import { readRunDetail } from "./run/detail.js";
 import { launchRun, readLaunchLogTail } from "./tui/launch.js";
 import {
   TUI_MIN_NODE_MAJOR,
@@ -107,11 +107,17 @@ import {
 import { forTerminal } from "./terminal-encoding.js";
 import { analyzeStudy, correctStudyAnalysis, showStudyAnalysis } from "./analysis/service.js";
 import { listStudyAnalyses, listStudyAnalysisExecutions } from "./analysis/store.js";
-import { resolveRunPath } from "./run.js";
+import { resolveRunPath } from "./run/run.js";
 import { detectAgentSession } from "./agent-session.js";
 import { runCommsCatchHost } from "./comms/catch-host.js";
 import { DEFAULT_SANDBOX_CATCH_PORT } from "./comms/sandbox-catch.js";
-import type { DoctorResult, CleanupResult, RunsResult, RunResult, VerifyResult } from "./run.js";
+import type {
+  DoctorResult,
+  CleanupResult,
+  RunsResult,
+  RunResult,
+  VerifyResult,
+} from "./run/run.js";
 
 export const CLI_RESPONSE_SCHEMA = "humanish.cli-response.v1";
 
@@ -1836,7 +1842,8 @@ function registerRuntimeCommands(parent: Command, io: CliIo): void {
       .option("--json", JSON_OPTION_DESCRIPTION)
       .option("--media", "Prepare or inspect the optional camera and speech runtime.")
       .action(async (_options, command) => {
-        const { localRuntimeStatus, prepareLocalRuntime } = await import("./local-runtime.js");
+        const { localRuntimeStatus, prepareLocalRuntime } =
+          await import("./substrates/local/runtime.js");
         try {
           if (action === "setup")
             await prepareLocalRuntime({

@@ -66,7 +66,7 @@ a received-speech acceptance run before a release can claim media qualification.
 `build.py` produces `assets.json` with an immutable image ID and runtime revision.
 `pack.py` can also package already-prepared assets without rebuilding the kernel.
 Use `docker image save <image> | gzip -1` for the downloadable archive, then
-record its exact byte count, SHA-256 and image ID in `src/local-runtime-release.ts`.
+record its exact byte count, SHA-256 and image ID in `src/substrates/local/runtime-release.ts`.
 Publish under a versioned `runtime-*` GitHub release; users never follow a moving
 tag. Runtime tags do not publish the npm package.
 

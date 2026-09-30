@@ -16,7 +16,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { buildObserverData, recordedStreamEmbed, withObserverEndings } from "./data.js";
 import type { ObserverData } from "./data.js";
-import { listRuns, loadRunBundlePrepared, verifyRunPrepared } from "../run.js";
+import { listRuns, loadRunBundlePrepared, verifyRunPrepared } from "../run/run.js";
 import {
   bindExistingRunArtifactPaths,
   isPathInside,
@@ -32,7 +32,7 @@ import {
   hostAllowed,
   parsePublicOrigin,
 } from "./http.js";
-import { isRunStatusRecord, RUN_STATUS_FILE, RUN_STATUS_STALE_MS } from "../run-status.js";
+import { isRunStatusRecord, RUN_STATUS_FILE, RUN_STATUS_STALE_MS } from "../run/status.js";
 import { loadStudyAnalysis } from "../analysis/store.js";
 import type { LoadedStudyAnalysis } from "../analysis/study-analysis.js";
 import {

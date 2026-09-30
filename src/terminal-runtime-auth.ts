@@ -1,4 +1,4 @@
-import type { E2BNetworkOptions } from "./e2b-desktop-launch.js";
+import type { E2BNetworkOptions } from "./substrates/e2b/desktop-launch.js";
 
 const OPENAI_EGRESS_HOST = "api.openai.com";
 /** E2B envd installs the sandbox-specific proxy CA into this system bundle before routing. */

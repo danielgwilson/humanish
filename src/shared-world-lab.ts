@@ -1,4 +1,4 @@
-import { scrubPersonaBrief } from "./persona.js";
+import { scrubPersonaBrief } from "./lab/persona.js";
 // The shared-world lab backend (#164): the SEQUENTIAL deterministic proof-of-concept of the
 // shared-world topology. ONE sandbox provisions a mutable service plane ONCE (clone or packed
 // working tree + serve + seed), then N role SEATS take turns IN DECLARED ORDER (each an isolated browser
@@ -29,7 +29,7 @@ import {
   type AutomaticAnalysisHooks,
   type AutomaticAnalysisResult,
 } from "./analysis/automatic-completion.js";
-import { desktopMediaValidationReason, taskProtocolValidationReason } from "./lab-config.js";
+import { desktopMediaValidationReason, taskProtocolValidationReason } from "./lab/config.js";
 import { randomBytes } from "node:crypto";
 import { describeMissingKeys } from "./key-resolution.js";
 import {
@@ -37,7 +37,7 @@ import {
   type RunLabProvenance,
   type RunStatusHandle,
   withRunStatusScope,
-} from "./run-status.js";
+} from "./run/status.js";
 import path from "node:path";
 import { runDesktopCommandOrThrow, toErrorMessage } from "./command-failure.js";
 
@@ -59,8 +59,8 @@ import {
 } from "./browser-evidence-hygiene.js";
 import type { CuaActorSessionOptions } from "./computer-use-actor.js";
 import type { CuaLoopResult } from "./computer-use.js";
-import { labPersonaIds, resolveCommittedPersonasForCwd } from "./persona-resolve.js";
-import type { ResolvedPersona } from "./persona.js";
+import { labPersonaIds, resolveCommittedPersonasForCwd } from "./lab/persona-resolve.js";
+import type { ResolvedPersona } from "./lab/persona.js";
 import type { ReasoningEffort } from "./reasoning-effort.js";
 import {
   commandDigestOf,
@@ -84,15 +84,15 @@ import {
   desktopBrowserFamily,
   type SubjectPhaseEvent,
 } from "./cua-actor-lab.js";
-import type { E2BDesktopLike } from "./e2b-desktop-executor.js";
+import type { E2BDesktopLike } from "./substrates/e2b/desktop-executor.js";
 import {
   createDesktopSandbox,
   loadE2BDesktopModule,
   type E2BDesktopModule,
   type E2BDesktopSandbox,
-} from "./e2b-desktop-launch.js";
-import { runDetachedStep, type DetachedTimers } from "./e2b-detached.js";
-import type { DevicePreset } from "./device-presets.js";
+} from "./substrates/e2b/desktop-launch.js";
+import { runDetachedStep, type DetachedTimers } from "./substrates/e2b/detached.js";
+import type { DevicePreset } from "./lab/device-presets.js";
 import {
   resolveSeatUrl,
   sharedWorldValidationReason,
@@ -101,16 +101,16 @@ import {
   type LabConfig,
   type LabDesktopBrowser,
   type LabSubjectStateCheckpoint,
-} from "./lab-config.js";
+} from "./lab/config.js";
 import { renderObserver, type ObserverResult } from "./observer/render.js";
 import { redactText } from "./redaction.js";
-import { participantAssignment } from "./participant-assignment.js";
+import { participantAssignment } from "./lab/participant-assignment.js";
 import { prepareRunArtifactPaths, validatePreparedRunArtifactPaths } from "./run-paths.js";
 import {
   writeContainedOutputFile,
   writePreparedRunLatestPointer,
 } from "./selected-output-paths.js";
-import type { LocalTreeArchive } from "./source-archive.js";
+import type { LocalTreeArchive } from "./run/source-archive.js";
 import type { DwellWindow, StopWhen } from "./stop-conditions.js";
 import {
   buildRunSource,
@@ -131,8 +131,8 @@ import {
   type SharedWorldCheckpoint,
   type SharedWorldEvidence,
   type SharedWorldTimelineEntry,
-} from "./run.js";
-import { appendSandboxReceipt } from "./sandbox-receipts.js";
+} from "./run/run.js";
+import { appendSandboxReceipt } from "./run/sandbox-receipts.js";
 import {
   estimateActorCost,
   estimateActorCostForExecution,

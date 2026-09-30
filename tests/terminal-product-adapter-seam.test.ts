@@ -29,10 +29,10 @@ import {
 // Reuse the SLICE-2/3 fake-E2B-module + mock-CLI pattern. (parseLabConfig + runTerminalProductLab +
 // verifyRun are public package surface too; imported via the deeper modules only to drive the
 // harness in-test — the ADAPTER itself uses the barrel exclusively, asserted below.)
-import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../src/lab-config.js";
+import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../src/lab/config.js";
 import { runTerminalProductLab } from "../src/e2b-terminal-lab.js";
-import type { E2BDesktopModule } from "../src/e2b-desktop-launch.js";
-import { verifyRun } from "../src/run.js";
+import type { E2BDesktopModule } from "../src/substrates/e2b/desktop-launch.js";
+import { verifyRun } from "../src/run/run.js";
 
 // =============================================================================================
 // THE THIN EXAMPLE ADAPTER — this is the ~40-line extension an adopter would write in ITS repo.

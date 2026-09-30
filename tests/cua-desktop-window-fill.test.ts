@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import type { E2BDesktopSandbox } from "../src/e2b-desktop-launch.js";
+import type { E2BDesktopSandbox } from "../src/substrates/e2b/desktop-launch.js";
 
 import {
   buildFillDesktopWindowCommand,

@@ -1,5 +1,5 @@
 import type { RunDesktopRecording } from "./desktop-recording-types.js";
-import { e2bDesktopTemplate } from "./e2b-desktop-media.js";
+import { e2bDesktopTemplate } from "./substrates/e2b/desktop-media.js";
 import type { CuaLiveMetadata } from "./computer-use.js";
 export { inboxRecipientFor, laneHasInboxRecipient } from "./cua-desktop-lane.js";
 export {
@@ -21,21 +21,21 @@ export {
   type DesktopBrowserLaunchIdentity,
   type DesktopBrowserLaunchResult,
   type SubjectPhaseEvent,
-} from "./e2b-cua-provisioning.js";
+} from "./substrates/e2b/cua-provisioning.js";
 import { prepareReceivingRun, receivingPublication } from "./comms/receiving-runtime.js";
 import type { CommsReceivingRun } from "./comms/receiving.js";
 import { laneHasInboxRecipient, type CuaDesktopLane } from "./cua-desktop-lane.js";
-import { createE2BCuaDesktopLane } from "./e2b-cua-desktop.js";
-import { isLocalBrowserLab, LOCAL_BROWSER_LIFETIME_MS } from "./local-runtime-config.js";
+import { createE2BCuaDesktopLane } from "./substrates/e2b/cua-desktop.js";
+import { isLocalBrowserLab, LOCAL_BROWSER_LIFETIME_MS } from "./substrates/local/runtime-config.js";
 import {
   DEFAULT_STATE_STEP_TIMEOUT_MS,
   commandDigestOf,
   declaredScreenForRender,
   type DesktopBrowserEvidence,
   type SubjectPhaseEvent,
-} from "./e2b-cua-provisioning.js";
-import { receivingEmailValidationReason } from "./lab-config.js";
-import { withTransientCommsSecrets } from "./run-narration-secrets.js";
+} from "./substrates/e2b/cua-provisioning.js";
+import { receivingEmailValidationReason } from "./lab/config.js";
+import { withTransientCommsSecrets } from "./run/narration-secrets.js";
 // The computer-use lab backend: a subject (an app-url the caller provisioned, or a repo the
 // lab clones AND serves in-sandbox) driven by a REGISTRY-RESOLVED computer-use actor inside a
 // hosted E2B desktop. This is the path that makes `actors[].type` load-bearing — the
@@ -70,7 +70,7 @@ import {
 } from "./analysis/automatic-completion.js";
 import { resolveAutomaticAnalysis } from "./analysis/automatic-config.js";
 import { describeMissingKeys } from "./key-resolution.js";
-import { desktopMediaValidationReason, taskProtocolValidationReason } from "./lab-config.js";
+import { desktopMediaValidationReason, taskProtocolValidationReason } from "./lab/config.js";
 
 import { pathToFileURL } from "node:url";
 import { toErrorMessage } from "./command-failure.js";
@@ -113,10 +113,10 @@ import {
   isDevicePresetName,
   resolveDevicePreset,
   type DevicePreset,
-} from "./device-presets.js";
-import { type E2BDesktopModule, type E2BDesktopSandbox } from "./e2b-desktop-launch.js";
-import { type DesktopResourceObservation } from "./e2b-desktop-resources.js";
-import { type DetachedTimers } from "./e2b-detached.js";
+} from "./lab/device-presets.js";
+import { type E2BDesktopModule, type E2BDesktopSandbox } from "./substrates/e2b/desktop-launch.js";
+import { type DesktopResourceObservation } from "./substrates/e2b/desktop-resources.js";
+import { type DetachedTimers } from "./substrates/e2b/detached.js";
 import { assertScreenshotEvidence } from "./image-evidence.js";
 import {
   MAX_CUA_LANES,
@@ -130,7 +130,7 @@ import {
   type LabConfig,
   type LabSubjectServe,
   type LabSubjectState,
-} from "./lab-config.js";
+} from "./lab/config.js";
 import { startClaudeSession } from "./local-agent-claude-session.js";
 import {
   checkHostedCodexCompatibility,
@@ -146,15 +146,15 @@ import {
   type ObserverRuntimeStreamUrl,
 } from "./observer/render.js";
 import { DEFAULT_OPENAI_CU_MODEL } from "./openai-responses-cu.js";
-import { participantAssignment } from "./participant-assignment.js";
-import { labPersonaIds, resolveCommittedPersonas } from "./persona-resolve.js";
+import { participantAssignment } from "./lab/participant-assignment.js";
+import { labPersonaIds, resolveCommittedPersonas } from "./lab/persona-resolve.js";
 import {
   personaBrief,
   scrubPersonaBrief,
   personaToDirectives,
   renderPersonaPromptSection,
   type ResolvedPersona,
-} from "./persona.js";
+} from "./lab/persona.js";
 import {
   MODEL_RATES,
   estimateActorCostForExecution,
@@ -175,7 +175,7 @@ import {
   withRunStatusScope,
   type RunLabProvenance,
   type RunStatusHandle,
-} from "./run-status.js";
+} from "./run/status.js";
 import {
   PUBLIC_TARGET_CWD,
   REVIEW_SCHEMA,
@@ -202,7 +202,7 @@ import {
   type RunStream,
   type RunSubjectProvenance,
   type RunSubjectStateStepRecord,
-} from "./run.js";
+} from "./run/run.js";
 import {
   assertPreparedSelectedOutputDirectory,
   assertSafeOutputPathSegment,
@@ -212,7 +212,7 @@ import {
   writePreparedRunLatestPointer,
   type PreparedOutputDirectory,
 } from "./selected-output-paths.js";
-import { createLocalTreeArchive, type LocalTreeArchive } from "./source-archive.js";
+import { createLocalTreeArchive, type LocalTreeArchive } from "./run/source-archive.js";
 import type { DwellWindow, StopWhen } from "./stop-conditions.js";
 import { renderTaskPrompt, type LabTask, type TaskFunnel } from "./tasks.js";
 
@@ -920,7 +920,7 @@ function laneSpecsAndPlan(
     const streamId = `stream-${String(i + 1).padStart(3, "0")}`;
     const device = resolveLaneDevice(config, lane);
     // A lane's persona FALLS BACK to actors[0].persona, matching this field's own doc comment
-    // in src/lab-config.ts and its sibling resolutions (stopWhen, reasoningEffort) two lines
+    // in src/lab/config.ts and its sibling resolutions (stopWhen, reasoningEffort) two lines
     // below. Reading only lane.persona when a roster was present meant every fan-out lane of
     // every lab that declared actors[0].persona ran with no persona at all: no personaLine in
     // the prompt, traitsApplied [], and nothing warned (#512).

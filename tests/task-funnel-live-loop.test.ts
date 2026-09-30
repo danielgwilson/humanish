@@ -20,9 +20,9 @@ import {
   type CuaTurnRequest,
 } from "../src/computer-use.js";
 import { composeLaneInstructions } from "../src/cua-actor-lab.js";
-import { DEVICE_PRESETS } from "../src/device-presets.js";
+import { DEVICE_PRESETS } from "../src/lab/device-presets.js";
 import { defaultRedactionHooks } from "../src/redaction.js";
-import { aggregateTaskFunnels, formatStudyTaskFunnel } from "../src/run.js";
+import { aggregateTaskFunnels, formatStudyTaskFunnel } from "../src/run/run.js";
 import type { LabTask, TaskFunnel } from "../src/tasks.js";
 
 const FAKE_CAPS: ActorCapabilities = {

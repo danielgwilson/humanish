@@ -21,14 +21,14 @@ import { pathToFileURL } from "node:url";
 
 import type { BrowserLabScoringContext } from "./adapter-extension.js";
 import type { TerminalProductScoringContext } from "./e2b-terminal-lab.js";
-import type { LabBackend } from "./lab-engine.js";
+import type { LabBackend } from "./lab/engine.js";
 import { digestText, redactText } from "./redaction.js";
 import type {
   RunAdapterArtifact,
   RunAdapterScore,
   RunFeedbackCandidate,
   RunScorerProvenance,
-} from "./run.js";
+} from "./run/run.js";
 import {
   prepareSelectedOutputDirectory,
   readContainedRegularFile,

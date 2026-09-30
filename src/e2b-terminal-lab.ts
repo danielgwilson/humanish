@@ -44,7 +44,7 @@ import {
   type AutomaticAnalysisHooks,
   type AutomaticAnalysisResult,
 } from "./analysis/automatic-completion.js";
-import { desktopMediaValidationReason, taskProtocolValidationReason } from "./lab-config.js";
+import { desktopMediaValidationReason, taskProtocolValidationReason } from "./lab/config.js";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { TERMINAL_NODE_BOOTSTRAP_COMMAND } from "./terminal-node-bootstrap.js";
 import { describeTokenUsage, parseTerminalTokenUsage } from "./terminal-token-usage.js";
@@ -62,8 +62,8 @@ import { isReasoningEffort } from "./reasoning-effort.js";
 import { readFile, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 
-import { resolveCommittedPersona as resolveTerminalPersona } from "./persona-resolve.js";
-export { resolveCommittedPersona as resolveTerminalPersona } from "./persona-resolve.js";
+import { resolveCommittedPersona as resolveTerminalPersona } from "./lab/persona-resolve.js";
+export { resolveCommittedPersona as resolveTerminalPersona } from "./lab/persona-resolve.js";
 
 import type {
   ActorCompletionReason,
@@ -77,7 +77,7 @@ import {
   type RunLabProvenance,
   type RunStatusHandle,
   withRunStatusScope,
-} from "./run-status.js";
+} from "./run/status.js";
 import { ACTOR_TRACE_SCHEMA, TERMINAL_AGENT_CAPABILITIES } from "./actor-contract.js";
 import { actorRegistry, isTerminalActorDescriptor } from "./actor-registry.js";
 import { toErrorMessage } from "./command-failure.js";
@@ -86,18 +86,18 @@ import {
   E2B_SYSTEM_CA_BUNDLE,
   OPENAI_EGRESS_PLACEHOLDER,
 } from "./terminal-runtime-auth.js";
-import type { LabConfig, LabScenarioCaps, LabRuntimeAuth } from "./lab-config.js";
+import type { LabConfig, LabScenarioCaps, LabRuntimeAuth } from "./lab/config.js";
 import {
   E2BDesktopStartupError,
   isSandboxNotFoundError,
   loadE2BDesktopModule,
   type E2BDesktopModule,
   type E2BDesktopSandbox,
-} from "./e2b-desktop-launch.js";
+} from "./substrates/e2b/desktop-launch.js";
 import { renderObserver, type ObserverResult } from "./observer/render.js";
-import { personaBrief, personaToDirectives, renderPersonaPromptSection } from "./persona.js";
+import { personaBrief, personaToDirectives, renderPersonaPromptSection } from "./lab/persona.js";
 import { digestText, redactedTail, redactText } from "./redaction.js";
-import { participantAssignment } from "./participant-assignment.js";
+import { participantAssignment } from "./lab/participant-assignment.js";
 import { prepareRunArtifactPaths, validatePreparedRunArtifactPaths } from "./run-paths.js";
 import {
   prepareSelectedOutputDirectory,
@@ -120,8 +120,8 @@ import {
   type RunSimulation,
   type RunSimulationStatus,
   type RunStream,
-} from "./run.js";
-import { appendSandboxReceipt } from "./sandbox-receipts.js";
+} from "./run/run.js";
+import { appendSandboxReceipt } from "./run/sandbox-receipts.js";
 import {
   applyAdapterScoreFailureToReview,
   frozenBundleView,

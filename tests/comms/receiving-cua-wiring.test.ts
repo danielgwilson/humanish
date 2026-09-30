@@ -4,13 +4,13 @@ import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { getActor } from "../../src/actor-registry.js";
 import { runCuaLane, type CuaLaneDeps, type CuaLaneSpec } from "../../src/cua-actor-lab.js";
-import { DEVICE_PRESETS } from "../../src/device-presets.js";
+import { DEVICE_PRESETS } from "../../src/lab/device-presets.js";
 import type {
   E2BDesktopCreateOptions,
   E2BDesktopModule,
   E2BDesktopSandbox,
-} from "../../src/e2b-desktop-launch.js";
-import { LAB_CONFIG_SCHEMA, parseLabConfig } from "../../src/lab-config.js";
+} from "../../src/substrates/e2b/desktop-launch.js";
+import { LAB_CONFIG_SCHEMA, parseLabConfig } from "../../src/lab/config.js";
 import type { CommsReceivingRun } from "../../src/comms/receiving.js";
 import type { ReceivingSurface } from "../../src/comms/receiving-types.js";
 import { prepareSelectedOutputDirectory } from "../../src/selected-output-paths.js";

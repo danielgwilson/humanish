@@ -1,0 +1,359 @@
+import { isLocalBrowserLab, localBrowserDefaults } from "../substrates/local/runtime-config.js";
+// The single lab engine. A lab is a config (humanish.lab.v2); runLab routes it to an execution
+// backend by COMPOSITION — subject.source x execution.target — not by a hardcoded `kind`.
+//
+// Six backends ship: synthetic, computer-use, scripted-browser, terminal-product, sequential
+// shared-world, and concurrent shared-world. runLab is the one entry
+// that maps config -> backend options. Core contributors extend the closed first-party actor union
+// and these selectors rather than adding a lab `kind`. On actor-backed routes, subject x execution
+// selects the substrate while actors[0].type selects a registered first-party actor.
+
+import { resolveAutomaticAnalysis } from "../analysis/automatic-config.js";
+import type { AutomaticAnalysisHooks } from "../analysis/automatic-completion.js";
+import path from "node:path";
+import { runCuaActorLab, type CuaActorLabHooks, type CuaActorLabResult } from "../cua-actor-lab.js";
+import {
+  runScriptedBrowserLab,
+  type ScriptedBrowserLabHooks,
+  type ScriptedBrowserLabResult,
+} from "../scripted-browser-lab.js";
+import {
+  runTerminalProductLab,
+  type TerminalProductLabHooks,
+  type TerminalProductLabResult,
+} from "../e2b-terminal-lab.js";
+import {
+  runSharedWorldLab,
+  type SharedWorldLabHooks,
+  type SharedWorldLabResult,
+} from "../shared-world-lab.js";
+import {
+  runConcurrentSharedWorld,
+  type ConcurrentSharedWorldLabResult,
+} from "../concurrent-shared-world-lab.js";
+import { withRunStatusScope, type RunLabProvenance } from "../run/status.js";
+import type { ObserverResult } from "../observer/render.js";
+import { runDryRun, type RunResult, type RunScorerProvenance } from "../run/run.js";
+import {
+  automaticAnalysisRouteReason,
+  taskProtocolValidationReason,
+  routesToComputerUse,
+  routesToConcurrentSharedWorld,
+  routesToScriptedBrowser,
+  routesToSharedWorld,
+  routesToTerminalProduct,
+  type LabConfig,
+} from "./config.js";
+
+export type LabBackend =
+  | "synthetic"
+  | "cua"
+  | "scripted"
+  | "terminal"
+  | "shared-world"
+  | "concurrent-shared-world";
+
+/** Runtime overrides from CLI flags. Each wins over the config when provided. */
+export interface RunLabOptions {
+  automaticAnalysis?: AutomaticAnalysisHooks;
+  cwd: string;
+  runId?: string;
+  /** Which manifest this run came from (#455): threaded to the backend so the run's own
+   *  status record and bundle can say which lab produced it. Absent for library callers who
+   *  hand a LabConfig directly — the run is then honestly lab-less rather than guessed. */
+  lab?: RunLabProvenance;
+  dryRun?: boolean;
+  open?: boolean;
+  /** Lane override: synthetic sims or computer-use desktop count. */
+  count?: number;
+  /** CUA fan-out only: create a new run for failed/selected lanes from a prior run. */
+  rerun?: {
+    sourceRunId: string;
+    laneIds?: string[];
+  };
+  onObserverReady?: (observer: ObserverResult & { ok: true }) => Promise<void> | void;
+  /** Computer-use route hooks: subject provisioning (library callers) + test DI seams. */
+  cuaHooks?: CuaActorLabHooks;
+  /** Scripted-browser route hooks: browser injection + test DI seams (mirror of cuaHooks). */
+  scriptedHooks?: ScriptedBrowserLabHooks;
+  /** Terminal-product route hooks: sandbox/runtime-auth DI seams (mirror of cuaHooks). */
+  terminalHooks?: TerminalProductLabHooks;
+  /** Shared-world route hooks: ONE-sandbox / runSession / checkpoint DI seams (mirror of cuaHooks). */
+  sharedWorldHooks?: SharedWorldLabHooks;
+  /**
+   * CONFIG-DECLARED scorer provenance (#316), forwarded alongside whichever hooks bag carries the
+   * loaded scorer. Its presence is the "declared" marker the terminal route reads to flip a
+   * status:"fail" verdict; the browser routes stamp it as evidence (they already flip). Core-computed
+   * (path + digest), never adopter-supplied; absent for library callers.
+   */
+  scorerProvenance?: RunScorerProvenance;
+}
+
+export type LabOutcome =
+  | { backend: "synthetic"; result: RunResult }
+  | { backend: "cua"; result: CuaActorLabResult }
+  | { backend: "scripted"; result: ScriptedBrowserLabResult }
+  | { backend: "terminal"; result: TerminalProductLabResult }
+  | { backend: "shared-world"; result: SharedWorldLabResult }
+  | { backend: "concurrent-shared-world"; result: ConcurrentSharedWorldLabResult };
+
+/**
+ * Route a lab config to its execution backend from its declared composition.
+ * subject.source x execution.target are orthogonal primitives; where both axes collide
+ * (clone x e2b-desktop hosts both the meta bootstrap AND the computer-use serve path) the
+ * actor LANE disambiguates — via routesToComputerUse, the single shared predicate.
+ */
+export function selectLabBackend(config: LabConfig): LabBackend {
+  if (routesToScriptedBrowser(config)) {
+    // app-url subjects whose first actor resolves to a registered scripted-browser actor:
+    // deterministic local replay, no model.
+    return "scripted";
+  }
+  if (routesToTerminalProduct(config) || config.subject.source === "terminal-product") {
+    // terminal-product subjects whose first actor resolves to a registered terminal actor: a real
+    // autonomous agent studying a CLI/product from public surfaces inside an E2B shell. The bare
+    // terminal-product fallback keeps library-API configs with unknown actor types routing to the
+    // terminal backend's fail-closed HUMANISH_TERMINAL_LAB_ACTOR_UNSUPPORTED.
+    return "terminal";
+  }
+  if (routesToConcurrentSharedWorld(config)) {
+    // shared-world + execution.concurrency > 1 (#164 phase 2): ONE getHost-exposed plane + N actor
+    // sandboxes driving it AT ONCE. Checked BEFORE the sequential shared-world route (the
+    // concurrency knob picks the substrate; N=1 stays sequential).
+    return "concurrent-shared-world";
+  }
+  if (routesToSharedWorld(config)) {
+    // clone × e2b-desktop × a computer-use actor that DECLARES topology: shared-world (#164): ONE
+    // provisioned plane, N role seats taking sequential turns. Checked BEFORE the cua route — the
+    // same composition without the topology declaration stays per-lane-worlds (cua).
+    return "shared-world";
+  }
+  if (config.subject.source === "desktop-cli") {
+    // A CLI studied at a desktop by someone who can see it (#495). Same lane as every other
+    // computer-use study — the difference is that the subject is a terminal window rather than a
+    // served page, so nothing is cloned and no browser is launched.
+    return "cua";
+  }
+  if (
+    routesToComputerUse(config) ||
+    config.subject.source === "app-url" ||
+    config.subject.source === "clone" ||
+    config.subject.source === "local-app" ||
+    config.subject.source === "local-tree"
+  ) {
+    // app-url subjects with a computer-use actor, local-app subjects (an already-running local
+    // dev server driven in-process via a custom executor), clone x e2b-desktop subjects whose
+    // first actor resolves to a registered computer-use actor (the lab clones AND serves the app
+    // in-sandbox), and local-tree subjects (the lab packs+uploads the working tree and serves it
+    // the same way). The bare app-url/local-app/local-tree fallback keeps library-API configs
+    // with unknown actor types routing to the cua backend's fail-closed
+    // HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED (and, for local-app without hooks,
+    // HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR) instead of silently falling through to the synthetic
+    // backend below, which would run no real actor at all against a packed tree.
+    return "cua";
+  }
+  // this-repo runs through the synthetic dry-run path (runDryRun).
+  return "synthetic";
+}
+
+/** First actor's declared lane count, if any. */
+function actorLaneCount(config: LabConfig): number | undefined {
+  return config.actors[0]?.count;
+}
+
+/** Resolve dry-run: explicit override wins, else the scenario mode, else the given fallback. */
+export function resolveLabDryRun(
+  config: LabConfig,
+  override: boolean | undefined,
+  fallback: boolean | undefined,
+): boolean | undefined {
+  if (override !== undefined) {
+    return override;
+  }
+  if (config.scenario?.mode === "live") {
+    return false;
+  }
+  if (config.scenario?.mode === "dry-run") {
+    return true;
+  }
+  return fallback;
+}
+
+/**
+ * The one seam every lab backend is dispatched through. The body runs inside a status scope so a
+ * backend that fails closed and RETURNS an error result — 18 such exits across the backends — can
+ * never leave its liveness record ticking as though the run were still going. See
+ * `withRunStatusScope`.
+ */
+export async function runLab(config: LabConfig, options: RunLabOptions): Promise<LabOutcome> {
+  return withRunStatusScope(() => runLabInScope(config, options));
+}
+
+async function runLabInScope(config: LabConfig, options: RunLabOptions): Promise<LabOutcome> {
+  config = localBrowserDefaults(config);
+  const backend = selectLabBackend(config);
+  const analysis = resolveAutomaticAnalysis(config.review?.analysis);
+  const analysisReason = analysis.ok ? automaticAnalysisRouteReason(config) : analysis.message;
+  const receivingReason =
+    String(config.comms?.email?.kind) === "real"
+      ? "Real email receiving is unsupported on this backend. Use a supported hosted computer-use study."
+      : undefined;
+  const tasksReason = analysisReason ?? taskProtocolValidationReason(config);
+  const admissionReason = receivingReason ?? tasksReason;
+  if (admissionReason && backend === "synthetic") {
+    const cwd = path.resolve(options.cwd);
+    const code = receivingReason
+      ? "HUMANISH_LAB_COMMS_UNSUPPORTED"
+      : analysisReason
+        ? analysis.ok
+          ? "HUMANISH_LAB_ANALYSIS_UNSUPPORTED"
+          : "HUMANISH_LAB_ANALYSIS_INVALID"
+        : "HUMANISH_LAB_TASKS_UNSUPPORTED";
+    const error = { code, message: admissionReason } as const;
+    return {
+      backend,
+      result: {
+        schema: "humanish.run-result.v1",
+        ok: false,
+        cwd,
+        warnings: [],
+        error,
+      },
+    };
+  }
+
+  switch (backend) {
+    case "synthetic": {
+      const result = await runDryRun({
+        ...(options.lab === undefined ? {} : { lab: options.lab }),
+        cwd: options.cwd,
+        dryRun: resolveLabDryRun(config, options.dryRun, true) ?? true,
+        simCount: options.count ?? actorLaneCount(config) ?? 4,
+        ...(options.runId === undefined ? {} : { runId: options.runId }),
+      });
+      return { backend, result };
+    }
+    case "cua": {
+      if (isLocalBrowserLab(config) && !options.cuaHooks) {
+        const { runLocalFirecrackerStudy } =
+          await import("../substrates/local/firecracker-study.js");
+        return runLocalFirecrackerStudy({ ...options, config });
+      }
+      // Spend-safe default: a computer-use lab only goes live when the config (or CLI) says so.
+      const dryRun = resolveLabDryRun(config, options.dryRun, true) ?? true;
+      const result = await runCuaActorLab({
+        ...(options.automaticAnalysis === undefined
+          ? {}
+          : { automaticAnalysis: options.automaticAnalysis }),
+        ...(options.lab === undefined ? {} : { lab: options.lab }),
+        cwd: options.cwd,
+        config,
+        dryRun,
+        // CLI --count overrides the HOMOGENEOUS fan-out lane count (ignored when a lanes roster
+        // is declared — the roster length is authoritative).
+        ...(options.count === undefined ? {} : { countOverride: options.count }),
+        ...(options.open === undefined ? {} : { open: options.open }),
+        ...(options.onObserverReady === undefined
+          ? {}
+          : { onObserverReady: options.onObserverReady }),
+        ...(options.runId === undefined ? {} : { runId: options.runId }),
+        ...(options.rerun === undefined ? {} : { rerun: options.rerun }),
+        ...(options.cuaHooks === undefined ? {} : { hooks: options.cuaHooks }),
+        ...(options.scorerProvenance === undefined
+          ? {}
+          : { scorerProvenance: options.scorerProvenance }),
+      });
+      return { backend, result };
+    }
+    case "scripted": {
+      // Same dry-run default. Provider spend is $0 on this route BY MECHANISM (no model in
+      // the loop), but `scenario.mode: live` is still the gate: a live scripted run actuates a
+      // real browser against a real running app (fills forms, clicks buttons — state-mutating
+      // effects on the operator's app), which deserves the same affirmative declaration as
+      // spend. This differs deliberately from `run --app-url`, which actuates on invocation.
+      const dryRun = resolveLabDryRun(config, options.dryRun, true) ?? true;
+      const result = await runScriptedBrowserLab({
+        ...(options.automaticAnalysis === undefined
+          ? {}
+          : { automaticAnalysis: options.automaticAnalysis }),
+        ...(options.lab === undefined ? {} : { lab: options.lab }),
+        cwd: options.cwd,
+        config,
+        dryRun,
+        ...(options.open === undefined ? {} : { open: options.open }),
+        ...(options.runId === undefined ? {} : { runId: options.runId }),
+        ...(options.scriptedHooks === undefined ? {} : { hooks: options.scriptedHooks }),
+      });
+      return { backend, result };
+    }
+    case "terminal": {
+      // Spend-safe default: the shipped live route passes a runtime key only to the in-sandbox
+      // agent command, so it goes live only when the config or CLI affirmatively says so. Dry-run
+      // emits contract evidence without creating a sandbox, reading a key, or spending.
+      const dryRun = resolveLabDryRun(config, options.dryRun, true) ?? true;
+      const result = await runTerminalProductLab({
+        ...(options.automaticAnalysis === undefined
+          ? {}
+          : { automaticAnalysis: options.automaticAnalysis }),
+        ...(options.lab === undefined ? {} : { lab: options.lab }),
+        cwd: options.cwd,
+        config,
+        dryRun,
+        ...(options.open === undefined ? {} : { open: options.open }),
+        ...(options.runId === undefined ? {} : { runId: options.runId }),
+        ...(options.terminalHooks === undefined ? {} : { hooks: options.terminalHooks }),
+        ...(options.scorerProvenance === undefined
+          ? {}
+          : { scorerProvenance: options.scorerProvenance }),
+      });
+      return { backend, result };
+    }
+    case "shared-world": {
+      // Spend-safe default: a shared-world lab provisions a real sandbox + plane on the live path,
+      // so it only goes live when the config (or CLI) affirmatively says so. The deterministic PoC
+      // proof is fully $0 via the sharedWorldHooks DI seam.
+      const dryRun = resolveLabDryRun(config, options.dryRun, true) ?? true;
+      const result = await runSharedWorldLab({
+        ...(options.automaticAnalysis === undefined
+          ? {}
+          : { automaticAnalysis: options.automaticAnalysis }),
+        ...(options.lab === undefined ? {} : { lab: options.lab }),
+        cwd: options.cwd,
+        config,
+        dryRun,
+        ...(options.open === undefined ? {} : { open: options.open }),
+        ...(options.runId === undefined ? {} : { runId: options.runId }),
+        ...(options.sharedWorldHooks === undefined ? {} : { hooks: options.sharedWorldHooks }),
+        ...(options.scorerProvenance === undefined
+          ? {}
+          : { scorerProvenance: options.scorerProvenance }),
+      });
+      return { backend, result };
+    }
+    case "concurrent-shared-world": {
+      // Spend-safe default: a concurrent shared-world run provisions a real subject sandbox + N
+      // actor sandboxes on the live path, so it only goes live when the config (or CLI) affirms it.
+      // The deterministic PoC proof is fully $0 via the sharedWorldHooks DI seam.
+      const dryRun = resolveLabDryRun(config, options.dryRun, true) ?? true;
+      const result = await runConcurrentSharedWorld({
+        ...(options.automaticAnalysis === undefined
+          ? {}
+          : { automaticAnalysis: options.automaticAnalysis }),
+        ...(options.lab === undefined ? {} : { lab: options.lab }),
+        cwd: options.cwd,
+        config,
+        dryRun,
+        ...(options.open === undefined ? {} : { open: options.open }),
+        ...(options.onObserverReady === undefined
+          ? {}
+          : { onObserverReady: options.onObserverReady }),
+        ...(options.runId === undefined ? {} : { runId: options.runId }),
+        ...(options.sharedWorldHooks === undefined ? {} : { hooks: options.sharedWorldHooks }),
+        ...(options.scorerProvenance === undefined
+          ? {}
+          : { scorerProvenance: options.scorerProvenance }),
+      });
+      return { backend, result };
+    }
+  }
+}

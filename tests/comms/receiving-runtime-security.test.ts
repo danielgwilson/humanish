@@ -7,7 +7,7 @@ import { saveCommsConnection } from "../../src/comms/connections.js";
 import { inspectCommsRecovery, type CommsReceivingRun } from "../../src/comms/receiving.js";
 import { prepareReceivingRun } from "../../src/comms/receiving-runtime.js";
 import type { ReceivingSurfaceFile } from "../../src/comms/receiving-types.js";
-import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../../src/lab-config.js";
+import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../../src/lab/config.js";
 import { prepareRunArtifactPaths, type PreparedRunArtifactPaths } from "../../src/run-paths.js";
 
 // Synthetic canaries and explicit mutations of the sanitized, live-derived wire fixtures.

@@ -5,9 +5,9 @@ import { describe, expect, it, vi } from "vitest";
 
 import * as observer from "../../src/observer/render.js";
 import * as launch from "../../src/tui/launch.js";
-import * as summaries from "../../src/lab-summary.js";
+import * as summaries from "../../src/lab/summary.js";
 import { setUserKey, userKeyStorePath } from "../../src/key-resolution.js";
-import { runDryRun } from "../../src/run.js";
+import { runDryRun } from "../../src/run/run.js";
 
 import { createProgram, type TuiRuntime } from "../../src/program.js";
 import {

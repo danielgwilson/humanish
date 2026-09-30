@@ -4,7 +4,7 @@ import path from "node:path";
 import { PNG } from "pngjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runRestrictedParticipantStudy } from "../src/restricted-codex-participant-run.js";
-import { parseLabConfig } from "../src/lab-config.js";
+import { parseLabConfig } from "../src/lab/config.js";
 import type {
   RestrictedCodexRequest,
   RestrictedCodexResult,
@@ -15,8 +15,8 @@ import {
   estimateActorCost,
   contradictsAccountBilling,
 } from "../src/pricing.js";
-import { readRunDetail } from "../src/run-detail.js";
-import { verifyRun } from "../src/run.js";
+import { readRunDetail } from "../src/run/detail.js";
+import { verifyRun } from "../src/run/run.js";
 const { session, sessionClose } = vi.hoisted(() => ({
   session: vi.fn<(request: RestrictedCodexRequest) => Promise<RestrictedCodexResult>>(),
   sessionClose: vi.fn<() => Promise<boolean>>(),

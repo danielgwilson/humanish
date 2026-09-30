@@ -1,17 +1,17 @@
 import { Box, Text } from "ink";
 import React from "react";
 
-import type { LabSummary } from "../../../src/lab-summary.js";
-import type { RunDetail } from "../../../src/run-detail.js";
-import type { RunIndexEntry } from "../../../src/run-index.js";
-import type { LabRow } from "../../../src/run-projection.js";
+import type { LabSummary } from "../../../src/lab/summary.js";
+import type { RunDetail } from "../../../src/run/detail.js";
+import type { RunIndexEntry } from "../../../src/run/run-index.js";
+import type { LabRow } from "../../../src/run/projection.js";
 import {
   expectationLine,
   formatDuration,
   labSummaryLine,
   listWindow,
   normalizeThought,
-} from "../../../src/run-projection.js";
+} from "../../../src/run/projection.js";
 import { glyphColor, gutter, verdictGlyph } from "../frame.js";
 import { PALETTE } from "../palette.js";
 import { color } from "../text-props.js";

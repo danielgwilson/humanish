@@ -13,8 +13,8 @@ import {
   verifyRunPrepared,
   participantOutcomeDetails,
   withCuaReviewProvenance,
-} from "../run.js";
-import type { RunBundle, RunFeedbackCandidate, VerifyResult } from "../run.js";
+} from "../run/run.js";
+import type { RunBundle, RunFeedbackCandidate, VerifyResult } from "../run/run.js";
 import {
   bindExistingRunArtifactPaths,
   isSafeRunIdSegment,

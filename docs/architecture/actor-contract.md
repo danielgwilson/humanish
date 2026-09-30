@@ -30,7 +30,7 @@ command-scoped runtime auth, evidence, caps, and by-id cleanup.
 An actor is the thing that drives a persona scenario and produces evidence. At
 design time Humanish had exactly one real actor: the local Codex integration in
 `src/codex-app-server.ts` (plus the `codex-exec` and `codex-tui` variants in
-`src/run.ts`). The actor selection is a hardcoded `if (actor === ...)` dispatch,
+`src/run/run.ts`). The actor selection is a hardcoded `if (actor === ...)` dispatch,
 `RunStream.codex` is Codex-shaped, and the evidence schema is
 `humanish.codex-app-server-trace.v1`.
 
@@ -367,7 +367,7 @@ for the full seam and the thin-adapter conformance proof.
 
 ## Making personas load-bearing
 
-The bug, grounded in code: `loadDryRunSelection` (`src/run.ts`) parses persona
+The bug, grounded in code: `loadDryRunSelection` (`src/run/run.ts`) parses persona
 YAML down to `{ id, name, source, sourceDigest }` and discards `summary`,
 `traits.{patience, technical_confidence, accessibility_needs}`, and `constraints`.
 The prompt builders then inject one line: `Persona: ${name}`. The persona is a
@@ -412,7 +412,7 @@ Plan:
    accessibility directives reached the actor input and that a `gave_up` run
    cites a concrete friction reason (not a turn count). "Did the persona drive
    the run" becomes a verifiable artifact, not an assertion.
-   (Status 2026-06-11: `personaToDirectives` shipped in `src/persona.ts` and
+   (Status 2026-06-11: `personaToDirectives` shipped in `src/lab/persona.ts` and
    `traitsApplied` is threaded on the codex routes, but the `persona-fidelity`
    verify check is not-yet-shipped roadmap, and the computer-use route stubs
    `persona.traitsApplied` to `[]` today — see `src/cua-actor-lab.ts`.)

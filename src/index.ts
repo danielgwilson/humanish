@@ -96,10 +96,13 @@ export type {
 } from "./computer-use.js";
 export { runCuaActorSession } from "./computer-use-actor.js";
 export type { CuaActorSessionOptions } from "./computer-use-actor.js";
-export { createE2BDesktopExecutor } from "./e2b-desktop-executor.js";
-export type { E2BDesktopExecutorOptions, E2BDesktopLike } from "./e2b-desktop-executor.js";
-export { loadE2BDesktopModule } from "./e2b-desktop-launch.js";
-export type { E2BDesktopModule, E2BDesktopSandbox } from "./e2b-desktop-launch.js";
+export { createE2BDesktopExecutor } from "./substrates/e2b/desktop-executor.js";
+export type {
+  E2BDesktopExecutorOptions,
+  E2BDesktopLike,
+} from "./substrates/e2b/desktop-executor.js";
+export { loadE2BDesktopModule } from "./substrates/e2b/desktop-launch.js";
+export type { E2BDesktopModule, E2BDesktopSandbox } from "./substrates/e2b/desktop-launch.js";
 export {
   DEFAULT_OPENAI_CU_MODEL,
   OPENAI_RESPONSES_CU_CAPABILITIES,
@@ -185,8 +188,8 @@ export {
   verifyFeedback,
 } from "./feedback/feedback.js";
 export type { FeedbackDraft, FeedbackResult } from "./feedback/feedback.js";
-export { INIT_RESPONSE_SCHEMA, runInit } from "./init.js";
-export type { InitChange, InitMode, InitOptions, InitResult } from "./init.js";
+export { INIT_RESPONSE_SCHEMA, runInit } from "./lab/init.js";
+export type { InitChange, InitMode, InitOptions, InitResult } from "./lab/init.js";
 export { OBSERVER_DATA_SCHEMA, buildObserverData, stripAnsi } from "./observer/data.js";
 export type { ObserverData, ObserverStream } from "./observer/data.js";
 export { OBSERVER_SCHEMA, openTarget, renderObserver, serveObserver } from "./observer/render.js";
@@ -223,8 +226,8 @@ export {
   readReview,
   runDryRun,
   verifyRun,
-} from "./run.js";
-export { SHARED_WORLD_SCHEMA } from "./run.js";
+} from "./run/run.js";
+export { SHARED_WORLD_SCHEMA } from "./run/run.js";
 export type {
   CleanupAdapterResult,
   CleanupResourceResult,
@@ -264,7 +267,7 @@ export type {
   SharedWorldTimelineEntry,
   SharedWorldTurn,
   VerifyResult,
-} from "./run.js";
+} from "./run/run.js";
 export {
   CUA_ACTOR_LAB_PROVIDER_METADATA,
   CUA_ACTOR_LAB_SCHEMA,
@@ -362,16 +365,20 @@ export {
   readDetachedLog,
   runDetachedStep,
   startDetachedProcess,
-} from "./e2b-detached.js";
-export type { DetachedStepOptions, DetachedStepResult, DetachedTimers } from "./e2b-detached.js";
+} from "./substrates/e2b/detached.js";
+export type {
+  DetachedStepOptions,
+  DetachedStepResult,
+  DetachedTimers,
+} from "./substrates/e2b/detached.js";
 export {
   DEFAULT_DEVICE_PRESET,
   DEVICE_PRESETS,
   DEVICE_PRESET_NAMES,
   isDevicePresetName,
   resolveDevicePreset,
-} from "./device-presets.js";
-export type { DevicePreset, DevicePresetName } from "./device-presets.js";
+} from "./lab/device-presets.js";
+export type { DevicePreset, DevicePresetName } from "./lab/device-presets.js";
 export {
   actorResolvesToTerminal,
   cuaLaneCount,
@@ -393,7 +400,7 @@ export {
   routesToTerminalProduct,
   sharedWorldValidationReason,
   subjectStateInvalidReason,
-} from "./lab-config.js";
+} from "./lab/config.js";
 export type {
   LabActor,
   LabActorLane,
@@ -413,10 +420,10 @@ export type {
   LabSubjectTopology,
   LabTerminalStdin,
   LabTerminalTransport,
-} from "./lab-config.js";
-export { resolveLabDryRun, runLab, selectLabBackend } from "./lab-engine.js";
-export type { LabBackend, LabOutcome, RunLabOptions } from "./lab-engine.js";
-export { LAB_PREFLIGHT_SCHEMA, runLabPreflight } from "./lab-preflight.js";
+} from "./lab/config.js";
+export { resolveLabDryRun, runLab, selectLabBackend } from "./lab/engine.js";
+export type { LabBackend, LabOutcome, RunLabOptions } from "./lab/engine.js";
+export { LAB_PREFLIGHT_SCHEMA, runLabPreflight } from "./lab/preflight.js";
 export type {
   LabPreflightCheck,
   LabPreflightReachabilityMode,
@@ -425,6 +432,6 @@ export type {
   LabPreflightSpend,
   LabPreflightTarget,
   RunLabPreflightOptions,
-} from "./lab-preflight.js";
+} from "./lab/preflight.js";
 export { CLI_RESPONSE_SCHEMA, createProgram } from "./program.js";
 export type { CliIo, UnexpectedErrorEnvelope } from "./program.js";

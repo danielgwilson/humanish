@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parseLabConfig } from "../src/lab-config.js";
+import { parseLabConfig } from "../src/lab/config.js";
 
 function lab(product: Record<string, unknown>): Record<string, unknown> {
   return {

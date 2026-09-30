@@ -1,4 +1,4 @@
-import { DEVICE_PRESETS } from "../src/device-presets.js";
+import { DEVICE_PRESETS } from "../src/lab/device-presets.js";
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { createServer } from "node:http";
@@ -39,11 +39,11 @@ import type {
   E2BDesktopCreateOptions,
   E2BDesktopModule,
   E2BDesktopSandbox,
-} from "../src/e2b-desktop-launch.js";
-import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../src/lab-config.js";
+} from "../src/substrates/e2b/desktop-launch.js";
+import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../src/lab/config.js";
 import { SANDBOX_CATCH_SCRIPT, externalCatchHealthy } from "../src/comms/sandbox-catch.js";
 import { recipientInboxUrl } from "../src/comms/inbox.js";
-import { runLab, selectLabBackend } from "../src/lab-engine.js";
+import { runLab, selectLabBackend } from "../src/lab/engine.js";
 import {
   renderObserver,
   serveObserver,
@@ -58,9 +58,9 @@ import type {
   RunFeedbackCandidate,
 } from "../src/index.js";
 import { containsSensitive } from "../src/redaction.js";
-import { verifyRun } from "../src/run.js";
+import { verifyRun } from "../src/run/run.js";
 import { prepareSelectedOutputDirectory } from "../src/selected-output-paths.js";
-import type { LocalTreeArchive } from "../src/source-archive.js";
+import type { LocalTreeArchive } from "../src/run/source-archive.js";
 import { freePort } from "./helpers/free-port.js";
 import { TERMINAL_NODE_BOOTSTRAP_COMMAND } from "../src/terminal-node-bootstrap.js";
 

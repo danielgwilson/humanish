@@ -27,7 +27,7 @@ import {
   type AutomaticAnalysisHooks,
   type AutomaticAnalysisResult,
 } from "./analysis/automatic-completion.js";
-import { desktopMediaValidationReason, taskProtocolValidationReason } from "./lab-config.js";
+import { desktopMediaValidationReason, taskProtocolValidationReason } from "./lab/config.js";
 import { randomBytes } from "node:crypto";
 import { describeMissingKeys } from "./key-resolution.js";
 import {
@@ -35,7 +35,7 @@ import {
   type RunLabProvenance,
   type RunStatusHandle,
   withRunStatusScope,
-} from "./run-status.js";
+} from "./run/status.js";
 import { realpath } from "node:fs/promises";
 import path from "node:path";
 
@@ -55,9 +55,9 @@ import {
   loadE2BDesktopModule,
   type E2BDesktopModule,
   type E2BDesktopSandbox,
-} from "./e2b-desktop-launch.js";
-import type { DetachedTimers } from "./e2b-detached.js";
-import type { LabConfig } from "./lab-config.js";
+} from "./substrates/e2b/desktop-launch.js";
+import type { DetachedTimers } from "./substrates/e2b/detached.js";
+import type { LabConfig } from "./lab/config.js";
 import { renderObserver, type ObserverResult } from "./observer/render.js";
 import { digestText, redactText } from "./redaction.js";
 import {
@@ -77,7 +77,7 @@ import {
   type RunStream,
   type RunSubjectProvenance,
   type RunSubjectStateStepRecord,
-} from "./run.js";
+} from "./run/run.js";
 import {
   browserSurfaces,
   normalizeLocalAppUrl,

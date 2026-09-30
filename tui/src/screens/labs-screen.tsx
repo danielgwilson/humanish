@@ -1,9 +1,9 @@
 import { Box, Text } from "ink";
 import React from "react";
 
-import type { RunIndexEntry } from "../../../src/run-index.js";
-import type { LabRow } from "../../../src/run-projection.js";
-import { formatDuration, labSummaryLine, listWindow } from "../../../src/run-projection.js";
+import type { RunIndexEntry } from "../../../src/run/run-index.js";
+import type { LabRow } from "../../../src/run/projection.js";
+import { formatDuration, labSummaryLine, listWindow } from "../../../src/run/projection.js";
 import { fitLabelToWidth } from "../fit-text.js";
 import { glyphColor, gutter, spinnerFrame } from "../frame.js";
 import { PALETTE } from "../palette.js";

@@ -9,7 +9,7 @@
 // secret-shaped rather than letting it be committed to a public repo.
 import { describe, expect, it } from "vitest";
 
-import { LAB_CONFIG_SCHEMA, parseLabConfig } from "../src/lab-config.js";
+import { LAB_CONFIG_SCHEMA, parseLabConfig } from "../src/lab/config.js";
 
 function cloneLab(subjectExtra: Record<string, unknown>) {
   return parseLabConfig({

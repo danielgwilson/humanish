@@ -7,7 +7,7 @@ import type { AnalysisFetch } from "../../src/analysis/provider.js";
 import {
   registerTransientCommsSecrets,
   withTransientCommsSecrets,
-} from "../../src/run-narration-secrets.js";
+} from "../../src/run/narration-secrets.js";
 import { prepareRunArtifactPaths, type PreparedRunArtifactPaths } from "../../src/run-paths.js";
 import { runStudyAnalysis } from "../../src/analysis/engine.js";
 import { captureStudyEvidence } from "../../src/analysis/evidence.js";

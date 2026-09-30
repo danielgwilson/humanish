@@ -12,8 +12,8 @@ import { FakeInbox } from "./fake-inbox.js";
 import { buildCommsThreadArtifact, type CommsThreadArtifact } from "./evidence.js";
 import { buildInboxSurface, type InboxRenderOptions } from "./inbox.js";
 import { DEFAULT_EMAIL_PROFILES, type EmailSendProfile } from "./email-catch.js";
-import { startDetachedProcess, type DetachedTimers } from "../e2b-detached.js";
-import type { E2BDesktopSandbox } from "../e2b-desktop-launch.js";
+import { startDetachedProcess, type DetachedTimers } from "../substrates/e2b/detached.js";
+import type { E2BDesktopSandbox } from "../substrates/e2b/desktop-launch.js";
 
 /** The default in-sandbox loopback port for the catch. Fixed (not ephemeral) so the injected base-URL
  *  env is known before `createDesktopSandbox`. 8025 is the conventional local-mail-UI port and is

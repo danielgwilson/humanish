@@ -23,7 +23,10 @@ import {
   type CuaTurn,
   type CuaTurnRequest,
 } from "../src/computer-use.js";
-import { createE2BDesktopExecutor, type E2BDesktopLike } from "../src/e2b-desktop-executor.js";
+import {
+  createE2BDesktopExecutor,
+  type E2BDesktopLike,
+} from "../src/substrates/e2b/desktop-executor.js";
 import { extractLobbyCode, runConcurrentSharedWorld } from "../src/index.js";
 import { makeChromeBrowserStateObserver } from "../src/cua-actor-lab.js";
 import {
@@ -33,17 +36,17 @@ import {
   routesToConcurrentSharedWorld,
   concurrentSharedWorldValidationReason,
   type LabConfig,
-} from "../src/lab-config.js";
-import { runLab, selectLabBackend } from "../src/lab-engine.js";
+} from "../src/lab/config.js";
+import { runLab, selectLabBackend } from "../src/lab/engine.js";
 import type { SharedWorldLabHooks } from "../src/shared-world-lab.js";
 import type {
   E2BDesktopCreateOptions,
   E2BDesktopModule,
   E2BDesktopSandbox,
-} from "../src/e2b-desktop-launch.js";
+} from "../src/substrates/e2b/desktop-launch.js";
 import { defaultRedactionHooks } from "../src/redaction.js";
 import type { RunBundle } from "../src/index.js";
-import { verifyRun } from "../src/run.js";
+import { verifyRun } from "../src/run/run.js";
 
 // ---------------------------------------------------------------------------
 // Fakes. Same N-substrate shape as the concurrent-shared-world harness, but the

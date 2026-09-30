@@ -3,7 +3,7 @@ import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { parse } from "yaml";
 import { createProgram } from "../src/program.js";
-import { parseLabConfig } from "../src/lab-config.js";
+import { parseLabConfig } from "../src/lab/config.js";
 import { parseBrowserPersonaJourneyFromScenario } from "../src/scripted-browser-actor.js";
 
 const root = resolve(import.meta.dirname, "..");

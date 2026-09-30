@@ -27,8 +27,11 @@ import {
   makeChromeBrowserStateObserver,
   makeChromeDesktopGeometryObserver,
 } from "../src/cua-actor-lab.js";
-import type { E2BDesktopSandbox } from "../src/e2b-desktop-launch.js";
-import { createE2BDesktopExecutor, type E2BDesktopLike } from "../src/e2b-desktop-executor.js";
+import type { E2BDesktopSandbox } from "../src/substrates/e2b/desktop-launch.js";
+import {
+  createE2BDesktopExecutor,
+  type E2BDesktopLike,
+} from "../src/substrates/e2b/desktop-executor.js";
 import { defaultRedactionHooks } from "../src/redaction.js";
 
 const FAKE_CAPS: ActorCapabilities = {

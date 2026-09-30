@@ -5,7 +5,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { createServeRequestHandler, createShareSafetyAdmission } from "../../src/observer/serve.js";
 import { pinDirectory } from "../../src/observer/render.js";
-import { resolveRunPath, runDryRun, verifyRun } from "../../src/run.js";
+import { resolveRunPath, runDryRun, verifyRun } from "../../src/run/run.js";
 import { captureStudyEvidence } from "../../src/analysis/evidence.js";
 import {
   writeStudyAnalysis,

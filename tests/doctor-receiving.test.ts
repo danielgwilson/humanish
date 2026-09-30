@@ -2,7 +2,7 @@ import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { doctor } from "../src/run.js";
+import { doctor } from "../src/run/run.js";
 import { saveCommsConnection } from "../src/comms/connections.js";
 import { setUserKey } from "../src/key-resolution.js";
 

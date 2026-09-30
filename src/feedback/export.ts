@@ -19,7 +19,7 @@ import {
   type ObserverExportAssets,
 } from "../observer/render.js";
 import { buildObserverData, type ObserverData } from "../observer/data.js";
-import { resolveRunPath, verifyRun, type RunBundle, type VerifyResult } from "../run.js";
+import { resolveRunPath, verifyRun, type RunBundle, type VerifyResult } from "../run/run.js";
 import { exportRedactedBundle } from "./export-bundle.js";
 import { loadStudyAnalysis } from "../analysis/store.js";
 import { studyAnalysisSharingProblems } from "../analysis/sharing.js";

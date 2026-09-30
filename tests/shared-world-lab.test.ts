@@ -18,14 +18,14 @@ import type {
   E2BDesktopCreateOptions,
   E2BDesktopModule,
   E2BDesktopSandbox,
-} from "../src/e2b-desktop-launch.js";
+} from "../src/substrates/e2b/desktop-launch.js";
 import {
   LAB_CONFIG_SCHEMA,
   parseLabConfig,
   type LabConfig,
   type LabDesktopBrowser,
-} from "../src/lab-config.js";
-import { runLab, selectLabBackend } from "../src/lab-engine.js";
+} from "../src/lab/config.js";
+import { runLab, selectLabBackend } from "../src/lab/engine.js";
 import {
   buildSeatBrowserTerminationCommand,
   runSharedWorldLab,
@@ -38,7 +38,7 @@ import type {
   RunBundle,
   SubjectPhaseEvent,
 } from "../src/index.js";
-import { verifyRun } from "../src/run.js";
+import { verifyRun } from "../src/run/run.js";
 import {
   createOpenAiResponsesProvider,
   DEFAULT_OPENAI_CU_REASONING_EFFORT,
@@ -46,9 +46,9 @@ import {
   parseOpenAiResponse,
 } from "../src/openai-responses-cu.js";
 import { estimateActorCost } from "../src/pricing.js";
-import { readRunDetail } from "../src/run-detail.js";
+import { readRunDetail } from "../src/run/detail.js";
 import { actorEnding } from "../src/actor-stop-cause.js";
-import type { LocalTreeArchive } from "../src/source-archive.js";
+import type { LocalTreeArchive } from "../src/run/source-archive.js";
 
 // ---------------------------------------------------------------------------
 // Fakes. The desktop module records create/kill BY id and exposes NO `list`

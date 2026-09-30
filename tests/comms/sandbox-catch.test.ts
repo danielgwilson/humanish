@@ -18,7 +18,7 @@ import {
   routeCapturedSends,
   type RawCapturedSend,
 } from "../../src/comms/sandbox-catch.js";
-import type { E2BDesktopSandbox } from "../../src/e2b-desktop-launch.js";
+import type { E2BDesktopSandbox } from "../../src/substrates/e2b/desktop-launch.js";
 import { freePort } from "../helpers/free-port.js";
 
 // A probe that a stranger's server cannot satisfy. CI failed this file with "expected

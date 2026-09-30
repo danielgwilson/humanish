@@ -8,12 +8,12 @@ import type { CuaLoopResult } from "../../src/computer-use.js";
 import { runCuaActorLab, type CuaActorLabHooks } from "../../src/cua-actor-lab.js";
 import { runConcurrentSharedWorld } from "../../src/concurrent-shared-world-lab.js";
 import type { SharedWorldLabHooks } from "../../src/shared-world-lab.js";
-import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../../src/lab-config.js";
+import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../../src/lab/config.js";
 import type {
   E2BDesktopCreateOptions,
   E2BDesktopModule,
   E2BDesktopSandbox,
-} from "../../src/e2b-desktop-launch.js";
+} from "../../src/substrates/e2b/desktop-launch.js";
 import type { CommsReceivingRun } from "../../src/comms/receiving.js";
 import {
   COMMS_RECEIVING_SCHEMA,

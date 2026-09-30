@@ -8,7 +8,7 @@ import {
   MAX_INLINE_IMAGES_BYTES,
 } from "./images.js";
 import { extractLinks, extractOtpCodes } from "./fake-inbox.js";
-import type { E2BDesktopSandbox } from "../e2b-desktop-launch.js";
+import type { E2BDesktopSandbox } from "../substrates/e2b/desktop-launch.js";
 import type {
   ParticipantEmail,
   ReceivingSurface,

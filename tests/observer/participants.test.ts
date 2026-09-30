@@ -8,8 +8,8 @@ import { describe, expect, it } from "vitest";
 
 import liveBundle from "../golden/labs/live.json" with { type: "json" };
 import { buildObserverData } from "../../src/observer/data.js";
-import { tallyParticipantOutcomes } from "../../src/run.js";
-import type { RunBundle } from "../../src/run.js";
+import { tallyParticipantOutcomes } from "../../src/run/run.js";
+import type { RunBundle } from "../../src/run/run.js";
 
 /** The smallest bundle buildObserverData will accept, with a review we control. */
 function bundleWith(review: Partial<RunBundle["review"]>): RunBundle {
