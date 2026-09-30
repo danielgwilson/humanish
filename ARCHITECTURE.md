@@ -34,8 +34,8 @@ step 6, and renders it as in step 7 when `RunOptions.observer` asks, as every CL
    lane's steps from the `e2b-desktop-*.ts` files beside it. `acquireE2BDesktopSandbox`
    (`src/substrates/e2b/sandbox.ts`) appends the sandbox id to `sandbox-receipts.ndjson` before it
    returns the handle. A `clone` or `local-tree` subject is provisioned through `src/subject/`,
-   which reaches the sandbox only through a `Shell` (`src/substrates/e2b/shell.ts`). An `app-url`
-   lab with `execution.target: local` runs `runLocalFirecrackerStudy`
+   which reaches the sandbox only through the `Shell` that `e2bShell` (`src/substrates/e2b/shell.ts`)
+   returns. An `app-url` lab with `execution.target: local` runs `runLocalFirecrackerStudy`
    (`src/routes/computer-use/local-vm.ts`) instead.
 5. **Participants.** `runAllCuaLanes` (`src/routes/computer-use/lanes.ts`) runs `runCuaLane` for
    each participant, at most `execution.concurrency` at a time. A lane's session is
