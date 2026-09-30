@@ -11,7 +11,7 @@ import {
 import { exportRun } from "../../src/feedback/export.js";
 import { resolveRunPath } from "../../src/run/locate.js";
 import { runDryRun } from "../../src/run/dry-run.js";
-import { verifyRun } from "../../src/run/verify.js";
+import { verifyRun } from "../../src/verify/verify.js";
 import { type RunBundle } from "../../src/run/bundle.js";
 import { captureStudyEvidence } from "../../src/analysis/evidence.js";
 import { appendStudyAnalysisCorrection, writeStudyAnalysis } from "../../src/analysis/store.js";

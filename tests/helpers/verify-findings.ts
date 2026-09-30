@@ -1,4 +1,4 @@
-import { verifyRun } from "../../src/run/verify.js";
+import { verifyRun } from "../../src/verify/verify.js";
 
 /** One run's verify result as a golden holds it: the verdict and each failing check, in report order. */
 export interface PinnedVerifyResult {

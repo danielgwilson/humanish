@@ -5,7 +5,7 @@ import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { runDryRun } from "../../src/run/dry-run.js";
-import { verifyRun } from "../../src/run/verify.js";
+import { verifyRun } from "../../src/verify/verify.js";
 import { type RunBundle } from "../../src/run/bundle.js";
 import { parseLabConfig } from "../../src/lab/config.js";
 import { type LabConfig } from "../../src/lab/types.js";

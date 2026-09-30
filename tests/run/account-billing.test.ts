@@ -13,8 +13,8 @@ import { parseLabConfig } from "../../src/lab/config.js";
 import { runLab } from "../../src/lab/engine.js";
 import { readRunDetail } from "../../src/run/detail.js";
 import { estimateActorCost, estimateActorCostForExecution } from "../../src/run/pricing.js";
-import { contradictsAccountBilling } from "../../src/run/verify-costs.js";
-import { verifyRun } from "../../src/run/verify.js";
+import { contradictsAccountBilling } from "../../src/verify/costs.js";
+import { verifyRun } from "../../src/verify/verify.js";
 
 const { session } = vi.hoisted(() => ({
   session: vi.fn<(request: RestrictedCodexRequest) => Promise<RestrictedCodexResult>>(),

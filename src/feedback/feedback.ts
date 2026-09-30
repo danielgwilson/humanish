@@ -17,7 +17,7 @@ import {
   writeContainedOutputFile,
 } from "../run/contained-output.js";
 import { loadRunBundlePrepared } from "../run/locate.js";
-import { verifyRunPrepared, type VerifyResult } from "../run/verify.js";
+import { verifyRunPrepared, type VerifyResult } from "../verify/verify.js";
 import {
   buildAnalysisDraft,
   buildDraft,

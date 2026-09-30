@@ -19,7 +19,7 @@ import { parseLabConfig } from "../../src/lab/config.js";
 import { runLab, selectLabBackend } from "../../src/lab/engine.js";
 import { createProgram } from "../../src/cli/program.js";
 import { digestText } from "../../src/evidence/redaction.js";
-import { verifyRun } from "../../src/run/verify.js";
+import { verifyRun } from "../../src/verify/verify.js";
 import { computeStats } from "../../src/run/stats.js";
 import { reclaimRunSandboxes } from "../../src/run/reclaim.js";
 import {

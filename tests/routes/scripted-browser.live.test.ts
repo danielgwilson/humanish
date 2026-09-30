@@ -10,7 +10,7 @@ import { ACTOR_TRACE_SCHEMA } from "../../src/actors/contract.js";
 import { LAB_CONFIG_SCHEMA } from "../../src/lab/types.js";
 import { parseLabConfig } from "../../src/lab/config.js";
 import { runLab } from "../../src/lab/engine.js";
-import { verifyRun } from "../../src/run/verify.js";
+import { verifyRun } from "../../src/verify/verify.js";
 
 // The single LIVE rung for the scripted-browser LAB: the committed scenario dispatched through
 // runLab to real playwright-core against an in-test loopback http.Server. Provider spend is $0

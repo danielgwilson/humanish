@@ -10,7 +10,7 @@ import type { RunBundle } from "../../src/run/bundle.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { readRunIndex } from "../../src/run/run-index.js";
 import { RUN_STATUS_FILE, type RunStatusRecord } from "../../src/run/status.js";
-import { verifyRun } from "../../src/run/verify.js";
+import { verifyRun } from "../../src/verify/verify.js";
 
 const RUN = "killed-run";
 const TAIL =

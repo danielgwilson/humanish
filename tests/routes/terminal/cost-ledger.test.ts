@@ -9,7 +9,7 @@ import { parseLabConfig } from "../../../src/lab/config.js";
 import { runTerminalProductLab } from "../../../src/routes/terminal/lab.js";
 import { type TerminalProductLabHooks } from "../../../src/routes/terminal/types.js";
 import type { E2BDesktopModule } from "../../../src/substrates/e2b/sdk.js";
-import { verifyRun } from "../../../src/run/verify.js";
+import { verifyRun } from "../../../src/verify/verify.js";
 import { estimateAllocatedDesktopCost } from "../../../src/run/pricing.js";
 
 // SLICE 3 deterministic proof ($0, NO live E2B): the cost/spend ledger + the null-vs-zero-vs-absent

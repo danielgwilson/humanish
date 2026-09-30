@@ -52,7 +52,7 @@ import {
 } from "../../../src/observer/render.js";
 import { readReview } from "../../../src/run/manage.js";
 import { reclaimRunSandboxes } from "../../../src/run/reclaim.js";
-import { verifyRun } from "../../../src/run/verify.js";
+import { verifyRun } from "../../../src/verify/verify.js";
 
 // ---------------------------------------------------------------------------
 // Fan-out fakes: a desktop module that mints a DISTINCT sandbox per create()

@@ -17,7 +17,7 @@ import {
 } from "./http.js";
 import type { ExposureErrorCode } from "./exposure.js";
 import { listRuns } from "../run/manage.js";
-import { verifyRun } from "../run/verify.js";
+import { verifyRun } from "../verify/verify.js";
 
 export const SERVE_SCHEMA = "humanish.serve-result.v1";
 

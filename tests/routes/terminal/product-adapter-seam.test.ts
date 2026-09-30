@@ -35,7 +35,7 @@ import { parseLabConfig } from "../../../src/lab/config.js";
 import { runTerminalProductLab } from "../../../src/routes/terminal/lab.js";
 import type { TerminalProductLabHooks } from "../../../src/routes/terminal/types.js";
 import type { E2BDesktopModule } from "../../../src/substrates/e2b/sdk.js";
-import { verifyRun } from "../../../src/run/verify.js";
+import { verifyRun } from "../../../src/verify/verify.js";
 
 // =============================================================================================
 // THE THIN EXAMPLE ADAPTER — this is the ~40-line extension an adopter would write in ITS repo.

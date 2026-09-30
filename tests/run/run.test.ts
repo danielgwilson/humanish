@@ -35,7 +35,7 @@ import {
 import { CLEANUP_SCHEMA } from "../../src/run/results.js";
 import { cleanupRun, listRuns, readReview } from "../../src/run/manage.js";
 import { runDryRun } from "../../src/run/dry-run.js";
-import { verifyRun } from "../../src/run/verify.js";
+import { verifyRun } from "../../src/verify/verify.js";
 import { syntheticPng1x1 } from "../image-fixtures.js";
 
 const execFileAsync = promisify(execFile);

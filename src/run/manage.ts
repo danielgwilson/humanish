@@ -35,7 +35,11 @@ import { isReviewSummary, isRunBundle } from "./guards.js";
 import { readLatest, readRunJsonIfExists, resolveRunPath } from "./locate.js";
 import { withCuaReviewProvenance } from "./outcomes.js";
 import { isNodeError, isRecord } from "./primitives.js";
-import { invalidRunStorageVerifyResult, verifyResolvedRun, type VerifyResult } from "./verify.js";
+import {
+  invalidRunStorageVerifyResult,
+  verifyResolvedRun,
+  type VerifyResult,
+} from "../verify/verify.js";
 
 const RUNS_SCHEMA = "humanish.runs-result.v1";
 

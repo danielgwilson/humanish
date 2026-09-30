@@ -16,7 +16,7 @@ import {
 } from "../run/paths.js";
 import { writeContainedOutputFile } from "../run/contained-output.js";
 import { loadRunBundlePrepared } from "../run/locate.js";
-import { verifyRunPrepared } from "../run/verify.js";
+import { verifyRunPrepared } from "../verify/verify.js";
 import { renderObserverHtml } from "./artifact.js";
 import { buildObserverData } from "./data.js";
 import { buildServeSecurityHeaders, hostAllowed, parsePublicOrigin } from "./http.js";

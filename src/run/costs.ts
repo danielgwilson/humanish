@@ -1,7 +1,7 @@
 import { round6 } from "./pricing.js";
 import { bindExistingRunArtifactPaths } from "./paths.js";
 import type { RunIndexEntry } from "./run-index.js";
-import { contradictsAccountBilling } from "./verify-costs.js";
+import { contradictsAccountBilling } from "../verify/costs.js";
 import { STUDY_EVIDENCE_LIMITS } from "../analysis/evidence.js";
 import { readBoundedStudyFile } from "./study-files.js";
 import { readAutomaticStudyAnalysisAccounting } from "../analysis/job.js";

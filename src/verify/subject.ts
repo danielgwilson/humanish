@@ -1,9 +1,9 @@
 // Subject checks for verify: the subject block's state claim against its recorded evidence, and the
 // advisory for a provisioned env with no declared state story.
 
-import type { RunBundle } from "./bundle.js";
-import { COMMAND_DIGEST_PATTERN, SUBJECT_ENV_NAME_PATTERN } from "./guards-shared-world.js";
-import { ARCHIVE_SHA256_PATTERN } from "./guards.js";
+import type { RunBundle } from "../run/bundle.js";
+import { COMMAND_DIGEST_PATTERN, SUBJECT_ENV_NAME_PATTERN } from "../run/guards-shared-world.js";
+import { ARCHIVE_SHA256_PATTERN } from "../run/guards.js";
 
 /**
  * The `subject state provenance` check (invariant 5 + invariant 4): a bundle's subject CLAIM

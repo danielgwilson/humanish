@@ -4,14 +4,14 @@
 
 import path from "node:path";
 
-import type { RunBundle } from "./bundle.js";
-import { readRunJsonIfExists, readRunTextIfExists } from "./locate.js";
-import type { PreparedRunArtifactPaths } from "./paths.js";
-import { isRecord } from "./primitives.js";
-import { RECLAIM_RECEIPT_ARTIFACT } from "./reclaim.js";
-import { runLiveness } from "./run-index.js";
-import { parseSandboxReceipts, SANDBOX_RECEIPTS_ARTIFACT } from "./sandbox-receipts.js";
-import { RUN_STATUS_FILE } from "./status.js";
+import type { RunBundle } from "../run/bundle.js";
+import { readRunJsonIfExists, readRunTextIfExists } from "../run/locate.js";
+import type { PreparedRunArtifactPaths } from "../run/paths.js";
+import { isRecord } from "../run/primitives.js";
+import { RECLAIM_RECEIPT_ARTIFACT } from "../run/reclaim.js";
+import { runLiveness } from "../run/run-index.js";
+import { parseSandboxReceipts, SANDBOX_RECEIPTS_ARTIFACT } from "../run/sandbox-receipts.js";
+import { RUN_STATUS_FILE } from "../run/status.js";
 
 /** The stable code every RUN_NOT_FINISHED warning starts with. */
 const RUN_NOT_FINISHED = "RUN_NOT_FINISHED";
