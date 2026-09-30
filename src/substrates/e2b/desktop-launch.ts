@@ -2,12 +2,11 @@
 // real @e2b/desktop Sandbox. Every desktop route launches through this one seam; the peer dep is
 // optional and lazily loaded, so it stays out of the published tarball and CI.
 //
-// E2BDesktopSandbox stays shape-compatible with what the meta path has always used (so meta is
-// unchanged); `open` is declared optional because older SDKs may lack it (the CUA lab falls
-// back to launch). The CUA executor needs the additional mouse/keyboard methods (E2BDesktopLike
-// in src/substrates/e2b/desktop-executor.ts); the live Sandbox has them, so the CUA call site
-// casts the launched sandbox to E2BDesktopLike rather than widening this interface across the
-// whole meta file.
+// E2BDesktopSandbox is the command, file, stream and launch subset the lanes use; `open` is
+// optional because older SDKs lack it (the computer-use lane then falls back to launch). The
+// mouse and keyboard methods the executor needs are on E2BDesktopLike
+// (src/substrates/e2b/desktop-executor.ts); the Sandbox has them, and the computer-use lane casts
+// the launched sandbox to that port.
 
 import { sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -16,7 +15,7 @@ import { protectDesktopScreenshotCleanup } from "./desktop-screenshot-cleanup.js
 
 export interface E2BDesktopModule {
   Sandbox: {
-    /** Default `desktop` template (no custom image). The historical, byte-stable call shape. */
+    /** The stock `desktop` template (no custom image). */
     create(options: E2BDesktopCreateOptions): Promise<E2BDesktopSandbox>;
     /**
      * Launch on a CUSTOM E2B desktop template (image) by NAME or ID — the SDK's
@@ -39,19 +38,7 @@ export interface E2BDesktopModule {
      * lack it, so callers fall back to kill()'s own boolean rather than ever calling Sandbox.list.
      */
     getInfo?(sandboxId: string, options?: { requestTimeoutMs?: number }): Promise<E2BSandboxInfo>;
-    /**
-     * ACCOUNT-WIDE enumeration. Kept only for the routes that already avoid it for cleanup
-     * (shared-world/scripted/cua/preflight kill by exact id and never call this); no cleanup
-     * proof in this codebase should call it (see src/routes/terminal/sandbox.ts teardownSandbox,
-     * which reclaims and verifies by id, never by listing).
-     */
-    list?(options: E2BSandboxListOptions): E2BSandboxPaginator;
   };
-}
-
-interface E2BSandboxListOptions {
-  metadata?: Record<string, string>;
-  requestTimeoutMs?: number;
 }
 
 interface E2BSandboxInfo {
@@ -60,11 +47,6 @@ interface E2BSandboxInfo {
   sandboxID?: string;
   sandboxId?: string;
   state?: string;
-}
-
-interface E2BSandboxPaginator {
-  hasNext: boolean;
-  nextItems(options?: { requestTimeoutMs?: number }): Promise<E2BSandboxInfo[]>;
 }
 
 /** Sandbox egress policy. Domain filtering works for HTTP on :80 (Host header) and TLS on :443
@@ -369,9 +351,8 @@ export interface TransientRetryHooks {
 export const TRANSIENT_RETRY_DELAY_MS = 3_000;
 
 /**
- * The provider errors worth exactly ONE retry, by the message the SDK throws. Measured
- * 2026-09-04: six lanes created within 100 s lost five to these three shapes, and a probe of the
- * same SDK a minute later created a sandbox, wrote 7 MB into it and killed it in 6 s.
+ * The provider errors worth one retry, by the message the SDK throws. Each is a gap that clears
+ * within seconds of sandbox creation:
  *
  * - `12: [unimplemented] HTTP 404` and `[unavailable]`: the sandbox exists but its envd is not
  *   routable yet, so the first request (the desktop SDK's Xvfb start) hits the proxy instead.

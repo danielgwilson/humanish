@@ -120,7 +120,7 @@ export function createE2BCuaDesktopLane(
     if (commsEmail.smtp.passwordEnv)
       commsEnv[commsEmail.smtp.passwordEnv] = commsEmail.smtp.password ?? "humanish";
   }
-  // Persona inbox SURFACE (#297 slice B): the loopback URL the persona opens to read captured mail; the
+  // Persona inbox surface (#297): the loopback URL the persona opens to read captured mail; the
   // origin-rewrite map (identity on this same-sandbox route, but covers localhost/0.0.0.0 alias skew + an
   // operator-declared linkOrigin); and a disposable background loop that renders the surface DURING the
   // session so the inbox is live when the persona checks. The surface uses its OWN FakeInbox + cursor,
@@ -229,8 +229,8 @@ export function createE2BCuaDesktopLane(
           laneIndex: String(spec.laneIndex),
           laneCount: String(deps.laneCount),
         },
-        // Env placement per the doctrine: the ACTOR's key never enters the sandbox (the model drives
-        // from outside). The SUBJECT's declared env NAMES are provisioned here on the clone route.
+        // The participant's model key never enters the sandbox (the model drives from outside).
+        // The subject's declared env names are provisioned here on the clone route.
         // Three sources, in precedence order: committed non-secret config (subject.envValues), then
         // secret values forwarded from the caller's environment (subject.env), then the harness's own
         // comms wiring, which must win because only it knows the catch's address.
@@ -290,9 +290,6 @@ export function createE2BCuaDesktopLane(
       });
     }
 
-    // Start the in-sandbox email catch BEFORE the subject serve, so the app's send-API base URL (injected
-    // into its env at create) resolves the moment it boots. A comms-declared lab that can't stand the
-    // catch up is a setup failure (fail closed) rather than silently sending real mail.
     if (deps.receiving) {
       const surface = await deployReceivingInbox(shell, {
         leaseId: spec.streamId,
@@ -320,6 +317,9 @@ export function createE2BCuaDesktopLane(
         throw error;
       }
     }
+    // Start the in-sandbox email catch before the subject serve, so the app's send-API base URL
+    // (injected into its env at create) resolves the moment it boots. A comms-declared lab that
+    // cannot stand the catch up fails closed rather than silently sending real mail.
     if (commsEmail && commsPort !== undefined) {
       deployedComms = await deployCommsCatch(shell, {
         port: commsPort,
@@ -602,8 +602,9 @@ export function createE2BCuaDesktopLane(
         browserWindowId = browserGeometry.browserWindowId;
         browserTargetId = browserGeometry.browserTargetId;
       }
-      // The WHOLE desktop, not one window: a person studying a terminal app opens other windows,
-      // and a stream bound to the first one would quietly stop being evidence.
+      // A browser lane streams its browser window when one was found. A CLI lane has no window id
+      // and streams the whole desktop: a person studying a terminal app opens other windows, and
+      // a stream bound to the first one would quietly stop being evidence.
       await startDesktopStream(desktop, browserWindowId);
       const candidateStreamUrl: unknown = desktop.stream.getUrl({
         authKey: desktop.stream.getAuthKey(),

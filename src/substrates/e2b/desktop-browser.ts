@@ -34,7 +34,10 @@ export interface DesktopBrowserLaunchIdentity {
   cdpPort?: number;
 }
 
-/** Runtime-only launch result. `evidence` preserves the existing public persistence policy. */
+/**
+ * Runtime-only launch result. `evidence` is what the bundle records: the requested browser and the
+ * one that launched, and only when the lab declared a browser.
+ */
 export interface DesktopBrowserLaunchResult {
   family: DesktopBrowserFamily;
   identity?: DesktopBrowserLaunchIdentity;
@@ -324,8 +327,8 @@ function desktopBrowserFamily(value: string | undefined): DesktopBrowserFamily {
 /**
  * Open a terminal window on the desktop.
  *
- * The stock template is XFCE and ships xfce4-terminal (also aliased x-terminal-emulator), verified
- * live before this route was built. `x-terminal-emulator` is tried first so a template that swaps
+ * The stock template is XFCE and ships xfce4-terminal (also aliased x-terminal-emulator).
+ * `x-terminal-emulator` is tried first so a template that swaps
  * the emulator still works; a desktop with neither is a template problem and fails closed rather
  * than handing a participant an empty screen and calling it a study.
  */

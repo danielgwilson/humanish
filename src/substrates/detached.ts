@@ -1,6 +1,5 @@
-// Detached process management over a Shell — the substrate primitive behind serving a subject
-// app in-sandbox. A foreground command deadlines on long-running work, so every consumer of the
-// pattern has historically re-implemented the same workaround. This module lands it once:
+// Detached process management over a Shell, the primitive behind serving a subject app in the
+// sandbox. A foreground command hits its deadline on long-running work, so long work runs detached:
 //
 // - Scripts are written via `writeFile`, never heredocs — which eliminates the
 //   sentinel-collision bug class (a command line that equals the heredoc terminator) by

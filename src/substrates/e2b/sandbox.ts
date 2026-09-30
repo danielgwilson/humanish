@@ -65,7 +65,7 @@ async function acquire(
   template: string | undefined,
 ): Promise<E2BSandbox> {
   const { module, options } = request;
-  // Without a template this is the historical `Sandbox.create(options)` call, byte for byte.
+  // Without a template the SDK's one-argument create chooses its stock desktop template.
   const sandbox = await withOneRetryOnTransientE2BError(
     () =>
       template === undefined

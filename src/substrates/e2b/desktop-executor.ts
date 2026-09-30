@@ -6,17 +6,14 @@ import type { CuaAction, CuaExecutor, CuaObservation } from "../../actors/comput
 import { CuaExecutorError } from "../../actors/computer-use/executor-error.js";
 import { xdotoolHeldModifiers } from "../../guest-desktop-keys.js";
 
-// The DESKTOP side of the computer-use loop: a CuaExecutor (from
-// src/actors/computer-use/loop.ts) backed by an E2B desktop sandbox. It mirrors the
-// pure-logic-plus-injectable-shim pattern used by the OpenAI provider in
-// src/actors/computer-use/openai-provider.ts: all of the executor's behavior is driven through a
-// narrow injected port (E2BDesktopLike), so the whole module is fully testable in
-// CI with a fake desktop that records calls (no SDK, no sandbox, no spend). The
-// real @e2b/desktop Sandbox is passed in at the live call site later.
+// The desktop side of the computer-use loop: a CuaExecutor (from src/actors/computer-use/loop.ts)
+// backed by an E2B desktop sandbox. All of its behavior goes through a narrow injected port
+// (E2BDesktopLike), so tests drive it with a fake desktop that records calls: no SDK, no sandbox,
+// no spend. The E2B desktop lane (src/substrates/e2b/cua-desktop.ts) passes the real Sandbox.
 //
-// E2BDesktopLike is a faithful STRUCTURAL SUBSET of the real @e2b/desktop Sandbox
-// (version 2.3.3). Each method name and signature below matches the real class so
-// a real Sandbox instance satisfies this interface with no adapter:
+// E2BDesktopLike is a structural subset of the @e2b/desktop Sandbox (peer range ^2.3.2). Each
+// method name and signature below matches the SDK class, so a Sandbox instance satisfies this
+// interface with no adapter:
 //
 //   screenshot(): Promise<Uint8Array>            // default/'bytes' overload
 //   leftClick(x?, y?): Promise<void>
@@ -32,24 +29,22 @@ import { xdotoolHeldModifiers } from "../../guest-desktop-keys.js";
 //   wait(ms): Promise<void>
 //
 // Deviations forced by the real SDK shape (vs the executor spec):
-//  - scroll is VERTICAL ONLY: scroll(direction, amount) with no coordinates, so a
-//    CuaAction scroll's dx (horizontal) is ignored and there is no cursor move
-//    before it (the SDK does not take a position). dy maps to direction + amount.
+//  - scroll is vertical only: scroll(direction, amount) takes no coordinates, so the executor
+//    moves the cursor to the action's point first, ignores dx, and maps dy to direction and
+//    amount.
 //  - drag takes two coordinate tuples (from, to), not an N-point path, so we drag
 //    from the FIRST point of action.path to the LAST and drop intermediate points.
 //  - write is the typing method (there is no `type` method); press is the key
 //    method (there is no `keyPress`), and press accepts the keys array directly.
 //
-// Public-safety: observe() returns the RAW screenshot bytes in
-// CuaObservation.screenshot. That is correct: the loop redacts every frame
-// through RedactionHooks before persisting (see runComputerUseLoop). This module
-// must NOT redact here and must NEVER log screenshots or actions (no console.*).
-// The stateSignature is a coarse, non-reversible perceptual hash, safe to expose.
+// Public-safety: observe() returns the raw screenshot bytes in CuaObservation.screenshot. The
+// loop decides what to persist (raw frames, or blurred ones when redactScreenshots is set), so
+// this module never redacts and never logs screenshots or actions. The stateSignature is a
+// coarse, non-reversible perceptual hash.
 
 /**
- * The minimal slice of the real @e2b/desktop Sandbox the executor depends on. A
- * structural subset of the real class (v2.3.3), so a real Sandbox satisfies it
- * with no adapter. Methods are typed to return `Promise<void> | void` (and the
+ * The minimal slice of the @e2b/desktop Sandbox the executor depends on: a structural subset of
+ * the SDK class (checked against 2.4.0), so a Sandbox satisfies it with no adapter. Methods are typed to return `Promise<void> | void` (and the
  * screenshot bytes likewise) so a synchronous fake also satisfies the port; the
  * executor awaits every call, which is correct for both sync and async returns.
  */
@@ -125,7 +120,7 @@ const CURSOR_READ_TIMEOUT_MS = 500;
  * The stock image's xdotool waits ~15s on a synchronized move to its current position (#681).
  * Only an exact integer match can omit that move; fractional actions keep the SDK's own
  * coordinate conversion. Read every time: another action or sequential role may move it.
- * SDK 2.3.3 getCursorPosition has no timeout/signal options. Bound our wait, observe late
+ * The SDK's getCursorPosition (2.3 through 2.4.0) takes no timeout or signal. Bound our wait, observe late
  * rejection, and leave the underlying read-only request alone; it cannot dispatch a click.
  */
 function cursorAlreadyAt(

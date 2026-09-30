@@ -22,7 +22,7 @@ const readLogs = async (id: string): Promise<string> => {
   return result.stdout + result.stderr;
 };
 
-/** Internal development assets; setup/distribution chooses these, never a participant. */
+/** The installed runtime image; `humanish runtime setup` chooses it, never a participant. */
 export interface LocalFirecrackerAssets {
   image: string;
   runtimeRevision: string;
@@ -295,7 +295,7 @@ export async function createLocalFirecrackerDesktop(options: {
   } catch (error) {
     if (container) {
       const logs = await readLogs(container).catch(() => "");
-      // Development-only diagnostics stay in the caller's private output directory.
+      // Startup diagnostics stay in the caller's private output directory.
       await writeFile(path.join(options.outputRoot, `startup-${path.basename(work)}.log`), logs, {
         mode: 0o600,
       }).catch(() => undefined);

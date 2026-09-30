@@ -32,11 +32,10 @@ const BUILD_TIMEOUT_MS = 10 * 60_000;
 const DEFAULT_READY_TIMEOUT_MS = 180_000;
 
 /**
- * Run a provisioning step and, when it fails with an EXIT CODE, run it once more (#602). A cold
- * install of 0.74.0 lost its whole first live study to one transient TLS error inside the
- * sandbox's `npm install`; the parallel install twenty seconds later passed, as had the ten
- * before it. One retry clears that class. A TIMEOUT is not retried: its budget is already spent,
- * and a second wait would double it. The retry runs under its own step name so both logs stay.
+ * Run a provisioning step and, when it fails with an exit code, run it once more (#602): a
+ * transient network error inside `npm install` is the common case. A timeout is not retried: its
+ * budget is already spent, and a second wait would double it. The retry runs under its own step
+ * name so both logs stay.
  */
 async function runProvisioningStepWithOneRetry(
   shell: Shell,
@@ -96,18 +95,6 @@ async function runProvisioningStepWithOneRetry(
 }
 
 /**
- * Shared post-populate provisioning pipeline (clone AND local-tree routes): (install) ->
- * state(before-build) -> (build) -> state(before-start) -> detached start -> readiness probe ->
- * state(after-ready). Both provisioning routes populate SUBJECT_DIR by different means (git
- * clone vs. upload+extract) and then run this identical pipeline unchanged.
- *
- * State steps run through the same detached primitive as serve steps (author-trusted, the
- * "serve commands are author-trusted" corollary) under the reserved `subject-state-<name>`
- * label prefix, so a step name can never collide with subject-clone/subject-extract/install/
- * build/start. after-ready steps complete BEFORE the caller opens the browser: the actor never
- * drives a half-seeded subject and seeding never eats the session budget.
- */
-/**
  * The longest runSubjectServePipeline can take with these budgets: the Node bootstrap and install
  * with their one retry, the package-manager step, every seed step, the build and the readiness
  * wait. Detached-step polling adds seconds on top.
@@ -134,6 +121,17 @@ export function serveProvisioningBudgetMs(
   );
 }
 
+/**
+ * The provisioning pipeline the clone and local-tree routes share once SUBJECT_DIR is populated
+ * (by git clone, or by upload and extract): install, state before-build, build, state
+ * before-start, detached start, readiness probe, state after-ready.
+ *
+ * State steps run through the same detached primitive as serve steps (both are author-trusted)
+ * under the reserved `subject-state-<name>` label prefix, so a step name can never collide with
+ * subject-clone, subject-extract, install, build or start. after-ready steps complete before the
+ * caller opens the browser: the participant never drives a half-seeded subject, and seeding never
+ * eats the session budget.
+ */
 export async function runSubjectServePipeline(
   shell: Shell,
   args: {
@@ -172,8 +170,8 @@ export async function runSubjectServePipeline(
     });
 
   // Provide the runtime the pipeline needs before running it (#371). The stock desktop template
-  // ships python3 and curl but no Node, so an `npm install` here used to die at exit 127 after the
-  // sandbox was already paid for. Probe-first, so a template that ships its own Node pays nothing.
+  // ships python3 and curl but no Node. Probe first, so a template that ships its own Node pays
+  // nothing.
   const serveCommands = [args.serve.install, args.serve.build, args.serve.start];
   if (needsNodeRuntime(serveCommands)) {
     const runtimeStartedAt = now();
