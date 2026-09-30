@@ -14,7 +14,7 @@ import {
   withCuaReviewProvenance,
 } from "../run/outcomes.js";
 import type { PreparedRunArtifactPaths } from "../run/paths.js";
-import { loadRunBundlePrepared } from "../run/verify.js";
+import { loadRunBundlePrepared } from "../run/locate.js";
 import { feedbackProofCommands, projectFeedbackAcceptanceProof } from "./proof.js";
 
 export const FEEDBACK_SCHEMA = "humanish.feedback.v1";

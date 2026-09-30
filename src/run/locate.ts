@@ -5,6 +5,7 @@ import {
   isSafeRunIdSegment,
   resolveExistingRunDirectory,
   resolveLatestRunDirectory,
+  validatePreparedRunArtifactPaths,
   type PreparedRunArtifactPaths,
 } from "./paths.js";
 import {
@@ -15,7 +16,8 @@ import {
   type PreparedSelectedOutputDirectory,
 } from "./selected-output-paths.js";
 import type { RunPointer, RunResult } from "./results.js";
-import { isRunPointer } from "./guards.js";
+import type { RunBundle } from "./bundle.js";
+import { isRunBundle, isRunPointer } from "./guards.js";
 import { isNodeError, isRecord } from "./primitives.js";
 
 async function inspectImplicitProjectPath(
@@ -248,4 +250,39 @@ export async function validateCwd(cwd: string): Promise<RunResult["error"] | nul
 
     throw error;
   }
+}
+
+export async function loadRunBundle(
+  cwdInput: string,
+  runInput: string,
+): Promise<{ bundle: RunBundle; bundlePath: string; runDir: string } | null> {
+  const cwd = path.resolve(cwdInput);
+  const runPaths = await resolveRunPath(cwd, runInput).catch(() => null);
+
+  if (!runPaths) {
+    return null;
+  }
+
+  return loadRunBundlePrepared(cwd, runPaths);
+}
+
+/** loadRunBundle for a caller that already holds prepared paths. Revalidates them first. */
+export async function loadRunBundlePrepared(
+  cwdInput: string,
+  runPaths: PreparedRunArtifactPaths,
+): Promise<{ bundle: RunBundle; bundlePath: string; runDir: string } | null> {
+  const cwd = path.resolve(cwdInput);
+  await validatePreparedRunArtifactPaths(runPaths);
+  const bundlePath = path.join(runPaths.absoluteRunRoot, "run.json");
+  const bundle = await readRunJsonIfExists(runPaths, "run.json");
+
+  if (!isRunBundle(bundle)) {
+    return null;
+  }
+
+  return {
+    bundle,
+    bundlePath: path.relative(cwd, bundlePath),
+    runDir: runPaths.absoluteRunRoot,
+  };
 }

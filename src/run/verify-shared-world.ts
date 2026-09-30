@@ -372,27 +372,3 @@ function sequentialSharedWorldFindings(bundle: RunBundle, sw: SharedWorldEvidenc
 
   return findings;
 }
-
-/**
- * Advisory (never flips ok): a LIVE clone bundle whose subject env is provisioned while its
- * state story is undeclared probably points at state the lab does not control. Emitted at
- * most ONCE per bundle (the subject block is bundle-level, never per stream). GITHUB_TOKEN
- * is mechanically excluded: the harness consumes that name for clone auth — it carries no
- * state implication.
- */
-export function undeclaredSubjectStateWarnings(bundle: RunBundle): string[] {
-  const subject = bundle.subject;
-  if (subject === undefined || bundle.mode !== "live" || subject.source !== "clone") {
-    return [];
-  }
-  if (subject.state.provenance !== "undeclared") {
-    return [];
-  }
-  const stateRelevantEnvNames = (subject.envNames ?? []).filter((name) => name !== "GITHUB_TOKEN");
-  if (stateRelevantEnvNames.length === 0) {
-    return [];
-  }
-  return [
-    `Subject env is provisioned (${stateRelevantEnvNames.join(", ")}) but no state story is declared; if any name points at external state, declare subject.state.external (recorded UNPINNED) or seed in-sandbox state with subject.state.seed.`,
-  ];
-}

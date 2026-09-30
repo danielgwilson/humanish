@@ -23,7 +23,7 @@ import type { ReasoningEffort } from "../../actors/reasoning-effort.js";
 import { digestText, redactText } from "../../evidence/redaction.js";
 import { type RunRerunLineage } from "../../run/bundle.js";
 import { type RunStream } from "../../run/streams.js";
-import { loadRunBundle } from "../../run/verify.js";
+import { loadRunBundle } from "../../run/locate.js";
 import type { DwellWindow, StopWhen } from "../../actors/stop-conditions.js";
 import { renderTaskPrompt, type LabTask } from "../../lab/tasks.js";
 import { participantAssignment } from "../../lab/participant-assignment.js";
