@@ -100,6 +100,9 @@ does not create the issue.
 
 ## Schema
 
+`humanish feedback draft --json` returns a `humanish.feedback.v1` draft with these
+fields (`FeedbackDraft` in `src/feedback/draft.ts`):
+
 ```yaml
 humanish_feedback:
   schema: humanish.feedback.v1
@@ -113,27 +116,36 @@ humanish_feedback:
   summary: "<public-safe concrete summary>"
   expected: "<public-safe expected behavior>"
   actual: "<public-safe observed behavior>"
+  source_candidate_id: "<candidate-id>" # when drafted from a participant candidate
+  source_analysis: # when drafted from an analysis finding
+    id: "<analysis-id>"
+    sha256: "<analysis digest>"
+    finding_id: "<finding-id>"
+    finding_sha256: "<finding digest>"
+    correction_id: "<correction-id>|null"
   source_bundle: "<path-or-url>"
   evidence:
     - path: "<relative artifact pointer>"
       kind: "screenshot|state|review|trace|log|filesystem"
       note: "<public-safe note>"
   redaction:
-    status: "passed|failed|not_applicable"
+    status: "passed" # drafting is blocked otherwise
     notes: "<public-safe note>"
   idempotency_key: "<stable-key>"
   proposed_next_state: "watch|adapter-hardening|target-app-setup|actor-auth|setup-quality-review|study-quality-review"
   acceptance_proof:
     - "<command or artifact that would close this>"
-  adapter:
-    namespace: "<adapter namespace>"
-    data: {}
 ```
 
-`adapter` is optional and namespaced. Adapters may place product-specific
-concepts there (for example route groups, milestone ids, product acceptance
-details, or adopter-owned rubric data). Core validates only that `namespace` is
-non-empty and `data` is a record; keys inside `data` are never core enums.
+The issue body renders `summary`, `expected` and `actual` as markdown sections.
+The other fields, except `source_analysis`, go in a `humanish_feedback` YAML block.
+
+The `adapter` block rides on the run's feedback candidates
+(`RunFeedbackCandidate.adapter` in the run bundle), not on the draft. It is
+optional and namespaced. Adapters may place product-specific concepts there (for
+example route groups, milestone ids, product acceptance details, or
+adopter-owned rubric data). Core validates only that `namespace` is non-empty
+and `data` is a record; keys inside `data` are never core enums.
 
 ## Failure Owners
 
@@ -155,7 +167,6 @@ Generating a public issue draft is blocked when:
 - redaction did not pass;
 - `shareSafety.status` is `local_only` or `blocked`;
 - any payload may contain PII, PHI, secrets, or private operational context;
-- proposed next state is `agent_ready` without a readiness block;
 - the feedback is a dry-run-only product claim;
 - idempotency key is missing.
 
