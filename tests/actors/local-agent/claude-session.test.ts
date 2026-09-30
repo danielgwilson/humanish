@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
 
 import type { CuaObservation } from "../../../src/actors/computer-use/loop.js";
@@ -10,6 +12,15 @@ import {
 
 const FRAME = Buffer.from("89504e470d0a1a0a", "hex");
 const observation = (): CuaObservation => ({ screenshot: FRAME, stateSignature: "s1" });
+
+/** A real Claude Code result message; see tests/fixtures/claude-code-stream-json/README.md. */
+const capturedResult = (): Record<string, unknown> =>
+  JSON.parse(
+    readFileSync(
+      new URL("../../fixtures/claude-code-stream-json/result-turn.json", import.meta.url),
+      "utf8",
+    ),
+  ) as Record<string, unknown>;
 
 /** A fake Claude Code session. Nothing spawns, nothing is spent, every message is recorded. */
 function fakeSession(replies: unknown[]) {
@@ -89,7 +100,7 @@ describe("one Claude Code session as the computer-use brain (#520)", () => {
     expect(textOf(sent[1]!)).toContain("Note from the harness: the page did not change");
   });
 
-  it("reads actions, done, message and the per-turn token counts off the result", () => {
+  it("reads actions, done and message off the result", () => {
     const turn = turnFromResult({
       type: "result",
       subtype: "success",
@@ -102,23 +113,32 @@ describe("one Claude Code session as the computer-use brain (#520)", () => {
           { kind: "type", text: "users" },
         ],
       }),
-      usage: {
-        input_tokens: 1500,
-        output_tokens: 60,
-        cache_read_input_tokens: 1000,
-        cache_creation_input_tokens: 200,
-      },
     });
     expect(turn.actions).toHaveLength(2);
     expect(turn.done).toBe(false);
     expect(turn.reasoning).toBe("the Add button");
-    // Counted, never priced: a subscription is not a rate card (#531).
+    expect(turn.usage).toBeUndefined();
+  });
+
+  it("counts cache reads and writes inside input, from a captured result", () => {
+    const turn = turnFromResult(capturedResult());
+    expect(turn.done).toBe(true);
+    expect(turn.message).toBe("Finished.");
+    // input_tokens (2) excludes the cache; the prompt was 2 + 30490 read + 2256 written.
     expect(turn.usage).toEqual({
-      input: 1500,
-      output: 60,
-      cachedInput: 1000,
-      cacheWriteInput: 200,
+      input: 32748,
+      output: 192,
+      cachedInput: 30490,
+      cacheWriteInput: 2256,
     });
+  });
+
+  it("leaves the cache fields absent when Claude Code does not report them", () => {
+    const turn = turnFromResult({
+      ...capturedResult(),
+      usage: { input_tokens: 12, output_tokens: 3 },
+    });
+    expect(turn.usage).toEqual({ input: 12, output: 3 });
   });
 
   it("treats a closing message with no actions as done", () => {
