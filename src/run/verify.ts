@@ -696,7 +696,8 @@ function costLabelingFindings(bundle: RunBundle): string[] {
       }
     }
     if (cost.estimatedTotalUsd !== null) {
-      if (typeof cost.ratesAsOf !== "string" || cost.ratesAsOf.length === 0) {
+      // A spend-free run's explicit zero prices nothing, so only a priced line needs a rates date.
+      if (anyKnown && (typeof cost.ratesAsOf !== "string" || cost.ratesAsOf.length === 0)) {
         findings.push(
           "run cost summary claims a number estimatedTotalUsd without a ratesAsOf date",
         );

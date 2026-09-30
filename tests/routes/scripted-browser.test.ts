@@ -20,6 +20,7 @@ import { runLab, selectLabBackend } from "../../src/lab/engine.js";
 import { createProgram } from "../../src/cli/program.js";
 import { digestText } from "../../src/evidence/redaction.js";
 import { verifyRun } from "../../src/run/verify.js";
+import { computeStats } from "../../src/run/stats.js";
 import { reclaimRunSandboxes } from "../../src/run/reclaim.js";
 import {
   parseSandboxReceipts,
@@ -153,7 +154,11 @@ function makeFakeSubjectSandbox(
  * snapshot run-dir state at the moment provisioning starts.
  */
 function makeFakeE2BModule(
-  options: { onFirstWork?: (sandboxId: string) => Promise<string> } = {},
+  options: {
+    onFirstWork?: (sandboxId: string) => Promise<string>;
+    /** What the sandbox's getInfo reports; absent leaves the size unmeasured. */
+    resources?: { cpuCount: number; memoryMB: number };
+  } = {},
 ): {
   module: E2BDesktopModule;
   created: E2BDesktopCreateOptions[];
@@ -190,7 +195,10 @@ function makeFakeE2BModule(
         templates.push(template);
         created.push(createOptions);
         sandboxes.push(sandbox);
-        return sandbox;
+        const resources = options.resources;
+        return resources === undefined
+          ? sandbox
+          : Object.assign(sandbox, { getInfo: async () => resources });
       },
       kill: async (sandboxId: string) => {
         order.push(`kill:${sandboxId}`);
@@ -553,6 +561,7 @@ describe("runScriptedBrowserLab", () => {
         const ids = (await readRunReceipts(runDir)).map((receipt) => receipt.sandboxId);
         return `receipts:${ids.join(",")}`;
       },
+      resources: { cpuCount: 8, memoryMB: 8192 },
     });
     const rawSessionUrls: string[] = [];
     const hooks: ScriptedBrowserLabHooks = {
@@ -712,6 +721,17 @@ describe("runScriptedBrowserLab", () => {
 
     const bundleText = await readFile(path.join(runDir, "run.json"), "utf8");
     const bundle = JSON.parse(bundleText);
+    // No model runs here, so the clone's desktop is the whole cost: one priced subject line.
+    expect(bundle.cost.fullyEstimated).toBe(true);
+    expect(bundle.cost.breakdown).toHaveLength(1);
+    expect(bundle.cost.breakdown[0]).toMatchObject({
+      kind: "desktop-minutes",
+      laneId: "subject",
+      desktop: { resources: { cpuCount: 8, memoryMiB: 8192 } },
+    });
+    expect(bundle.cost.breakdown[0].desktop.minutes).toBeGreaterThan(0);
+    expect(bundle.cost.estimatedTotalUsd).toBe(bundle.cost.breakdown[0].estimatedCostUsd);
+    expect(bundle.cost.estimatedTotalUsd).toBeGreaterThan(0);
     expect(bundle.subject).toMatchObject({
       source: "clone",
       repo: "repo-01",
@@ -1299,6 +1319,13 @@ describe("scripted-browser run directory goldens", () => {
       await expect(`${JSON.stringify(snapshot, null, 2)}\n`).toMatchFileSnapshot(
         "../golden/routes/scripted-live.json",
       );
+      // A spend-free live run reads as $0, never as an unmeasured cost.
+      expect((await verifyRun(cwd, runId)).ok).toBe(true);
+      const stats = await computeStats(cwd);
+      if (!("costsByRun" in stats)) throw new Error("stats failed");
+      const row = stats.costsByRun.find((entry) => entry.runId === runId);
+      expect(row?.costs.runEstimatedUsd).toBe(0);
+      expect(row?.warnings).not.toContain("RUN_COST_COMPLETENESS_UNKNOWN");
     });
   });
 });

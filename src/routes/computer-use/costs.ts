@@ -194,6 +194,23 @@ export function buildCuaCostSummary(args: {
   };
 }
 
+/** A live run that sent no model request and held no hosted desktop records an explicit zero, so
+ *  a missing cost block always means "not measured". */
+export function spendFreeCostSummary(): RunCostSummary {
+  return {
+    schema: "humanish.run-cost-summary.v1",
+    currency: "usd",
+    estimatedTotalUsd: 0,
+    ratesAsOf: null,
+    fullyEstimated: true,
+    placeholder: false,
+    breakdown: [],
+    tokenUsage: { input: 0, output: 0, total: 0 },
+    desktopMinutes: null,
+    note: "No model request and no hosted desktop: this run spent $0 by construction.",
+  };
+}
+
 // Convert a host-side desktop span (ms) into billed minutes, or undefined when no sandbox ran.
 export function desktopSpanToMinutes(desktopDurationMs: number | undefined): number | undefined {
   return desktopDurationMs === undefined ? undefined : desktopDurationMs / 60_000;

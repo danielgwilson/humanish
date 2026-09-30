@@ -241,6 +241,22 @@
       "warnings": 0
     },
     "laneGroups": [],
+    "cost": {
+      "schema": "humanish.run-cost-summary.v1",
+      "currency": "usd",
+      "estimatedTotalUsd": 0,
+      "ratesAsOf": null,
+      "fullyEstimated": true,
+      "placeholder": false,
+      "breakdown": [],
+      "tokenUsage": {
+        "input": 0,
+        "output": 0,
+        "total": 0
+      },
+      "desktopMinutes": null,
+      "note": "No model request and no hosted desktop: this run spent $0 by construction."
+    },
     "streams": [
       {
         "id": "scripted-desktop-stream",
@@ -824,7 +840,23 @@
       "summary": "Scripted-browser actor replayed scripted-first-run on 1 surface against [app-url]/: 1/1 satisfied the scenario predicate.",
       "gaps": []
     },
-    "feedbackCandidates": []
+    "feedbackCandidates": [],
+    "cost": {
+      "schema": "humanish.run-cost-summary.v1",
+      "currency": "usd",
+      "estimatedTotalUsd": 0,
+      "ratesAsOf": null,
+      "fullyEstimated": true,
+      "placeholder": false,
+      "breakdown": [],
+      "tokenUsage": {
+        "input": 0,
+        "output": 0,
+        "total": 0
+      },
+      "desktopMinutes": null,
+      "note": "No model request and no hosted desktop: this run spent $0 by construction."
+    }
   },
   "screenshots/desktop-step-01-load.png": "sha256:dc1ee8a784c37702b5b456b1657db9c8ce3fc98fd4e30c203b300aaf724eae2f",
   "screenshots/desktop-step-02-fill-email.png": "sha256:dc1ee8a784c37702b5b456b1657db9c8ce3fc98fd4e30c203b300aaf724eae2f",
@@ -840,7 +872,8 @@
     "updatedAt": "[ts]",
     "completedAt": "[ts]",
     "outcome": {
-      "verdict": "pass"
+      "verdict": "pass",
+      "estimatedCostUsd": 0
     }
   },
   "traces/desktop.json": {

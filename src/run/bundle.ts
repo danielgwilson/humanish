@@ -363,8 +363,8 @@ export interface RunBundle {
   /**
    * OPTIONAL, ADDITIVE run-level cost ESTIMATE (humanish.run-cost-summary.v1): the sum of every
    * lane's model-token estimate PLUS the E2B desktop-minute estimate, carrying the SAME
-   * null-discipline the terminal cost ledger already ships. Absent on every pre-existing bundle
-   * and on dry-runs that invent no spend (byte-stable). Every dollar figure here is an ESTIMATE,
+   * null-discipline the terminal cost ledger already ships. Absent on pre-existing bundles and
+   * dry runs; a live run that spends nothing records an explicit zero with no lines. Every dollar figure here is an ESTIMATE,
    * never an authoritative charge; verify asserts its LABELING/provenance, never its magnitude.
    */
   cost?: RunCostSummary;
@@ -416,7 +416,8 @@ export interface RunCostLine {
 export interface RunCostSummary {
   schema: "humanish.run-cost-summary.v1";
   currency: "usd";
-  /** Sum of the KNOWN (non-null) lines; null iff every applicable line is null. */
+  /** Sum of the KNOWN (non-null) lines; null iff every applicable line is null; 0 with no lines
+   *  for a spend-free run. */
   estimatedTotalUsd: number | null;
   /** Oldest asOf across contributing rates; null when nothing was priced. */
   ratesAsOf: string | null;

@@ -6,6 +6,12 @@ import type { ActorPersonaRef, ActorTrace } from "../../actors/contract.js";
 import type { ScriptedBrowserSessionResult } from "../../actors/scripted-browser/actor.js";
 import type { BrowserPersonaJourney, BrowserSurface } from "../../actors/scripted-browser/types.js";
 import { redactText } from "../../evidence/redaction.js";
+import type { DesktopResourceObservation } from "../../substrates/e2b/desktop-resources.js";
+import {
+  buildCuaCostSummary,
+  desktopSpanToMinutes,
+  spendFreeCostSummary,
+} from "../computer-use/costs.js";
 import {
   PUBLIC_TARGET_CWD,
   REVIEW_SCHEMA,
@@ -46,6 +52,12 @@ export function buildScriptedLabBundle(args: {
   sessionError?: string;
   source: RunBundle["source"];
   subject?: RunSubjectProvenance;
+  /** The provisioned clone's desktop; absent when no sandbox was created. */
+  subjectDesktop?: {
+    durationMs: number | undefined;
+    observation: DesktopResourceObservation | undefined;
+    killed: boolean;
+  };
   surfaces: BrowserSurface[];
 }): RunBundle {
   const resultBySurface = new Map(
@@ -203,6 +215,7 @@ export function buildScriptedLabBundle(args: {
   const review = buildScriptedReview(args);
   const ranLive = args.sessionResults.length > 0 || args.sessionError !== undefined;
 
+  const cost = args.dryRun ? undefined : scriptedCost(args.subjectDesktop);
   return {
     schema: RUN_BUNDLE_SCHEMA,
     runId: args.runId,
@@ -253,7 +266,32 @@ export function buildScriptedLabBundle(args: {
     feedbackCandidates: [],
     ...(args.subject === undefined ? {} : { subject: args.subject }),
     ...(args.desktopTemplate === undefined ? {} : { desktopTemplate: args.desktopTemplate }),
+    ...(cost === undefined ? {} : { cost }),
   };
+}
+
+/** No model runs on this route; the only spend is a provisioned clone's desktop. */
+function scriptedCost(
+  subjectDesktop:
+    | {
+        durationMs: number | undefined;
+        observation: DesktopResourceObservation | undefined;
+        killed: boolean;
+      }
+    | undefined,
+) {
+  if (subjectDesktop === undefined) return spendFreeCostSummary();
+  return buildCuaCostSummary({
+    lanes: [],
+    desktops: [
+      {
+        laneId: "subject",
+        minutes: desktopSpanToMinutes(subjectDesktop.durationMs),
+        observation: subjectDesktop.observation,
+        lifetimeComplete: subjectDesktop.killed,
+      },
+    ],
+  });
 }
 
 function buildScriptedReview(args: {
