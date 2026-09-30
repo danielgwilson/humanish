@@ -389,6 +389,16 @@ describe("runTerminalProductLab (dry-run)", () => {
     await rm(cwd, { recursive: true, force: true });
   });
 
+  it("refuses a run id already in use and names the actor", async () => {
+    const config = parsedTerminalConfig();
+    const first = await runTerminalProductLab({ cwd, config, dryRun: true, runId: "taken" });
+    expect(first.ok).toBe(true);
+    const second = await runTerminalProductLab({ cwd, config, dryRun: true, runId: "taken" });
+    expect(second.ok).toBe(false);
+    expect(second.error?.code).toBe("HUMANISH_RUN_ID_IN_USE");
+    expect(second.actor).toBe("codex-exec");
+  });
+
   it.each(["OPENAI_API_KEY", "CODEX_API_KEY", "E2B_API_KEY"])(
     "redacts a known %s value from dry-run assignment and study context",
     async (keyName) => {
