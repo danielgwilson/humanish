@@ -8,7 +8,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { completeAutomaticAnalysis } from "../../src/analysis/automatic-completion.js";
 import { resolveAutomaticAnalysis } from "../../src/analysis/automatic-config.js";
 import { serveObserver } from "../../src/observer/render.js";
-import { observerResultForCuaArtifacts } from "../../src/routes/computer-use/bundle.js";
+import { liveObserverResult } from "../../src/observer/live.js";
 import type { RunBundle } from "../../src/run/bundle.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { readRunIndex } from "../../src/run/run-index.js";
@@ -302,7 +302,7 @@ describe("Run.finish publishes once, in order", () => {
         liveness: "finished",
         verdict: "contract_proof_only",
       });
-      const live = observerResultForCuaArtifacts(cwd, "barrier", run.paths.absoluteRunRoot);
+      const live = liveObserverResult(cwd, "barrier", run.paths.absoluteRunRoot);
       const server = await serveObserver(live, { open: false, port: 0 });
       try {
         const served = await fetch(new URL("observer-data.json", server.url));
@@ -413,5 +413,141 @@ describe("the run's start and its token", () => {
       reason: "analysis_source_changed",
     });
     expect(run).not.toHaveBeenCalled();
+  });
+});
+
+function failFirstBundleWrite(message: string): void {
+  let failed = false;
+  vi.mocked(writeContainedOutputFile).mockImplementation(async (root, file, data, encoding) => {
+    if (file === "run.json" && !failed) {
+      failed = true;
+      throw new Error(message);
+    }
+    return actualWriters.writeContainedOutputFile(root, file, data, encoding);
+  });
+}
+
+describe("Run.writeSnapshot publishes in-progress bundles through the same queue", () => {
+  it("C2: finish waits for a held snapshot write, and the final bundle wins", async () => {
+    const atSnapshot = deferred();
+    const releaseSnapshot = deferred();
+    let held = false;
+    vi.mocked(writeContainedOutputFile).mockImplementation(async (root, file, data, encoding) => {
+      if (file === "run.json" && !held) {
+        held = true;
+        atSnapshot.resolve();
+        await releaseSnapshot.promise;
+      }
+      return actualWriters.writeContainedOutputFile(root, file, data, encoding);
+    });
+    await runScope(async (scope) => {
+      const run = await startOk(scope, "held");
+      const snapshot = run.writeSnapshot(bundleFor("held", "in progress"));
+      await atSnapshot.promise;
+      let finishSettled = false;
+      const finishing = run.finish(bundleFor("held", "final")).then(() => {
+        finishSettled = true;
+      });
+      await expect(run.writeSnapshot(bundleFor("held", "late"))).rejects.toThrow(/no snapshot/);
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(finishSettled).toBe(false);
+      releaseSnapshot.resolve();
+      await snapshot;
+      await finishing;
+    });
+    const written = await readJson(path.join(runDir("held"), "run.json"));
+    expect(written.review.gaps).toEqual(["final"]);
+  });
+
+  it("C4: a snapshot and then an early return leave the in-progress run.json and no outcome", async () => {
+    const { finished } = await runScope(async (scope) => {
+      const run = await startOk(scope, "abandoned-live");
+      await run.writeSnapshot(bundleFor("abandoned-live", "in progress"));
+      return "refused";
+    });
+    expect(finished).toBeUndefined();
+    const written = await readJson(path.join(runDir("abandoned-live"), "run.json"));
+    expect(written.review.gaps).toEqual(["in progress"]);
+    const status = await readStatus("abandoned-live");
+    expect(status.state).toBe("finished");
+    expect(status).not.toHaveProperty("outcome");
+  });
+
+  it("C7: only the first successful snapshot writes the pointer, and finish writes it again", async () => {
+    vi.mocked(writePreparedRunLatestPointer).mockRejectedValueOnce(new Error("pointer failed"));
+    await runScope(async (scope) => {
+      const run = await startOk(scope, "pointed");
+      await expect(run.writeSnapshot(bundleFor("pointed"))).rejects.toThrow("pointer failed");
+      await expect(readLatest()).rejects.toMatchObject({ code: "ENOENT" });
+      await run.writeSnapshot(bundleFor("pointed"));
+      expect((await readLatest()).runId).toBe("pointed");
+
+      // A newer run took the pointer; a later flush of this run must not take it back.
+      const latest = path.join(cwd, ".humanish", "runs", "latest.json");
+      const newer = { schema: "humanish.latest-run.v1", runId: "newer", path: "x", updatedAt: "t" };
+      await actualWriters.writePreparedRunLatestPointer(run.paths, JSON.stringify(newer), "utf8");
+      await run.writeSnapshot(bundleFor("pointed"));
+      expect(JSON.parse(await readFile(latest, "utf8")).runId).toBe("newer");
+
+      await run.finish(bundleFor("pointed"));
+    });
+    expect((await readLatest()).runId).toBe("pointed");
+  });
+
+  it("Q1: a rejected snapshot does not block the final publication", async () => {
+    failFirstBundleWrite("snapshot failed");
+    const { finished } = await runScope(async (scope) => {
+      const run = await startOk(scope, "recovered");
+      await expect(run.writeSnapshot(bundleFor("recovered"))).rejects.toThrow("snapshot failed");
+      return run.finish(bundleFor("recovered", "final"));
+    });
+    expect(finished?.runId).toBe("recovered");
+    expect((await readStatus("recovered")).outcome).toEqual({ verdict: "contract_proof_only" });
+  });
+
+  it("Q2: a throw while a snapshot rejects surfaces the original error and closes the status", async () => {
+    failFirstBundleWrite("snapshot failed");
+    const failure = new Error("route failed");
+    await expect(
+      runScope(async (scope) => {
+        const run = await startOk(scope, "doubly-failed");
+        void run.writeSnapshot(bundleFor("doubly-failed")).catch(() => undefined);
+        throw failure;
+      }),
+    ).rejects.toBe(failure);
+    const status = await readStatus("doubly-failed");
+    expect(status.state).toBe("finished");
+    expect(status).not.toHaveProperty("outcome");
+  });
+
+  it("Q3: a snapshot from a timer that fires after the scope closed writes nothing", async () => {
+    let late: Promise<unknown> | undefined;
+    await runScope(async (scope) => {
+      const run = await startOk(scope, "timer");
+      await run.writeSnapshot(bundleFor("timer", "before close"));
+      setTimeout(() => {
+        late = run.writeSnapshot(bundleFor("timer", "after close")).then(
+          () => "written",
+          (error: unknown) => error,
+        );
+      }, 10);
+    });
+    const before = await readFile(path.join(runDir("timer"), "run.json"), "utf8");
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    expect(String(await late)).toMatch(/closed/);
+    expect(await readFile(path.join(runDir("timer"), "run.json"), "utf8")).toBe(before);
+  });
+
+  it("rejects a snapshot that names another run or mode before writing", async () => {
+    await runScope(async (scope) => {
+      const run = await startOk(scope, "identity");
+      await expect(run.writeSnapshot(bundleFor("other"))).rejects.toThrow(/another run or mode/);
+      await expect(run.writeSnapshot({ ...bundleFor("identity"), mode: "live" })).rejects.toThrow(
+        /another run or mode/,
+      );
+      await expect(
+        readFile(path.join(run.paths.physicalRunRoot, "run.json")),
+      ).rejects.toMatchObject({ code: "ENOENT" });
+    });
   });
 });

@@ -1,27 +1,14 @@
-import path from "node:path";
-import { pathToFileURL } from "node:url";
 import { feedbackProofCommands } from "../../feedback/proof.js";
 import type { ActorStatus, ActorTrace } from "../../actors/contract.js";
 import type { CuaLoopResult } from "../../actors/computer-use/loop.js";
-import { buildObserverData } from "../../observer/data.js";
-import { type ObserverResult } from "../../observer/render.js";
 import { containsSensitive, redactText } from "../../evidence/redaction.js";
 import {
-  validatePreparedRunArtifactPaths,
-  type PreparedRunArtifactPaths,
-} from "../../run/paths.js";
-import {
-  PUBLIC_TARGET_CWD,
   type ReviewSummary,
   type RunBundle,
   type RunFeedbackCandidate,
   type RunProviderResource,
   type RunSubjectProvenance,
 } from "../../run/bundle.js";
-import {
-  writeContainedOutputFile,
-  writePreparedRunLatestPointer,
-} from "../../run/selected-output-paths.js";
 import { digestUrl } from "./lane-plan.js";
 import { resolveSelfReportedFriction } from "./self-report.js";
 import {
@@ -102,86 +89,6 @@ export function buildLaneSummary(
     hollow,
     concurrency: plan.concurrency,
     waves: plan.waves,
-  };
-}
-
-export async function writeCuaRunArtifacts(
-  bundle: RunBundle,
-  updatedAt: string,
-  preparedRunPaths: PreparedRunArtifactPaths,
-): Promise<void> {
-  const runPaths = await validatePreparedRunArtifactPaths(preparedRunPaths);
-  const publicBundle: RunBundle = {
-    ...bundle,
-    cwd: PUBLIC_TARGET_CWD,
-  };
-  await writeContainedOutputFile(
-    runPaths,
-    "run.json",
-    `${JSON.stringify(publicBundle, null, 2)}\n`,
-    "utf8",
-  );
-  await writeContainedOutputFile(
-    runPaths,
-    "review.json",
-    `${JSON.stringify(publicBundle.review, null, 2)}\n`,
-    "utf8",
-  );
-  await writeContainedOutputFile(
-    runPaths,
-    "review.md",
-    renderCuaReviewMarkdown(publicBundle),
-    "utf8",
-  );
-  await writeContainedOutputFile(
-    runPaths,
-    "events.ndjson",
-    `${publicBundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`,
-    "utf8",
-  );
-  await writeContainedOutputFile(
-    runPaths,
-    "observer/observer-data.json",
-    `${JSON.stringify(buildObserverData(publicBundle), null, 2)}\n`,
-    "utf8",
-  );
-  await writePreparedRunLatestPointer(
-    runPaths,
-    `${JSON.stringify(
-      {
-        schema: "humanish.latest-run.v1",
-        runId: publicBundle.runId,
-        path: runPaths.relativeRunRoot,
-        updatedAt,
-      },
-      null,
-      2,
-    )}\n`,
-    "utf8",
-  );
-}
-
-export function observerResultForCuaArtifacts(
-  cwd: string,
-  runId: string,
-  artifactRoot: string,
-  warnings: string[] = [],
-): ObserverResult & { ok: true } {
-  const observerPath = path.join(artifactRoot, "observer", "index.html");
-  const observerDataPath = path.join(artifactRoot, "observer", "observer-data.json");
-  const eventsPath = path.join(artifactRoot, "events.ndjson");
-  return {
-    schema: "humanish.observer-result.v1",
-    ok: true,
-    cwd,
-    run: runId,
-    observerPath: path.relative(cwd, observerPath),
-    observerDataPath: path.relative(cwd, observerDataPath),
-    eventsPath: path.relative(cwd, eventsPath),
-    observerUrl: pathToFileURL(observerPath).href,
-    bundlePath: path.join(artifactRoot, "run.json"),
-    opened: false,
-    warnings,
   };
 }
 
@@ -411,7 +318,7 @@ export function verdictForStatus(status: ActorStatus): ReviewSummary["verdict"] 
   }
 }
 
-function renderCuaReviewMarkdown(bundle: RunBundle): string {
+export function renderCuaReviewMarkdown(bundle: RunBundle): string {
   const trace: ActorTrace | undefined = bundle.streams[0]?.actor;
   const provenance = bundle.events.find((event) => event.type === "cua-lab.subject.provenance");
   return [

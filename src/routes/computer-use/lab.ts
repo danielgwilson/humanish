@@ -30,7 +30,7 @@ import { randomBytes } from "node:crypto";
 import { readFile, realpath, rm } from "node:fs/promises";
 import path from "node:path";
 import { completeAutomaticAnalysis } from "../../analysis/automatic-completion.js";
-import { legacyFinishedRun, markFinalizedStudyResult } from "../../run/run.js";
+import { runScope, type RunScope } from "../../run/run.js";
 import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
 import { taskProtocolValidationReason } from "../../lab/validation.js";
 import { toErrorMessage } from "../../substrates/command-failure.js";
@@ -39,16 +39,9 @@ import { applyBrowserAdapterHooks } from "../../lab/adapter-extension.js";
 import { externalInboxUrl } from "../../comms/sandbox-catch.js";
 import type { LabConfig, LabSubjectState } from "../../lab/types.js";
 import { type LocalAgentId } from "../../actors/local-agent/cli.js";
-import { renderObserver } from "../../observer/render.js";
+import { liveObserverResult } from "../../observer/live.js";
 import { DEFAULT_OPENAI_CU_MODEL } from "../../actors/computer-use/openai-provider.js";
 import { redactText, scrubLiterals } from "../../evidence/redaction.js";
-import { createRunArtifactPaths } from "../../run/paths.js";
-import {
-  beginRunStatus,
-  withRunStatusScope,
-  type RunStatusHandle,
-  runStatusOutcome,
-} from "../../run/status.js";
 import {
   buildRunSource,
   type RunSubjectProvenance,
@@ -60,7 +53,7 @@ import {
   prepareSelectedOutputDirectory,
 } from "../../run/selected-output-paths.js";
 import { createLocalTreeArchive, type LocalTreeArchive } from "../../run/source-archive.js";
-import { observerResultForCuaArtifacts, writeCuaRunArtifacts } from "./bundle.js";
+import { renderCuaReviewMarkdown } from "./bundle.js";
 import {
   defaultSessionTimeoutMs,
   emitPreflightPlan,
@@ -134,10 +127,10 @@ async function runCuaActorLabWithSecrets(
       },
     };
   const analysis = resolveAutomaticAnalysis(options.config.review?.analysis);
-  const result = await withRunStatusScope(() => runCuaActorLabInScope(options));
+  const { result, finished } = await runScope((scope) => runCuaActorLabInScope(options, scope));
   return completeAutomaticAnalysis(
     result,
-    legacyFinishedRun(result),
+    finished,
     analysis.ok ? analysis.config : undefined,
     options.automaticAnalysis,
     options.config.review?.analysis === undefined ? "default" : "explicit",
@@ -145,7 +138,10 @@ async function runCuaActorLabWithSecrets(
   );
 }
 
-async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<CuaActorLabResult> {
+async function runCuaActorLabInScope(
+  options: RunCuaActorLabOptions,
+  scope: RunScope,
+): Promise<CuaActorLabResult> {
   const { config, dryRun } = options;
   // Capture the physical project before reading or invoking any caller hook. A supported
   // symlink cwd remains valid, but retargeting that alias from a hook cannot redirect source
@@ -156,7 +152,6 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
   const hooks = options.hooks ?? {};
   const streams = trackRuntimeStreams(hooks);
   const env = hooks.env ?? process.env;
-  const render = hooks.renderObserverFn ?? renderObserver;
 
   const route = cuaRoute(config, hooks);
   const {
@@ -277,26 +272,23 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
     if (rejection) return fail(rejection.code, rejection.message, descriptor.id);
   }
 
-  const runId = options.runId ?? makeCuaRunId();
-  const created = await createRunArtifactPaths(cwd, runId);
-  if (!created.ok) return fail(created.code, created.message, descriptor.id);
-  const runPaths = created.paths;
-  // Identity + liveness on disk from the first moment (#455): anything watching the runs
-  // directory — the TUI, another terminal, an agent — can now tell which lab this is and that
-  // it is alive, without waiting for the interactive observer flush that used to be the only
-  // mid-run write. The success path finalizes it with the real outcome; the fail-closed returns
-  // below do not, so `runLab`'s status scope finalizes those with no outcome. A crash reaches
-  // neither and leaves the record stale, which reads as interrupted rather than as a lie.
-  const runStatus: RunStatusHandle = beginRunStatus(runPaths, {
-    runId,
+  // The run's status record exists from here on, so anything watching the runs directory can
+  // tell which lab this is and that it is alive. The fail-closed returns below leave it finished
+  // with no outcome when the scope closes; a crash leaves it stale, which reads as interrupted.
+  const started = await scope.startRun({
+    cwd,
+    runId: options.runId,
+    mintRunId: makeCuaRunId,
     mode: dryRun ? "dry-run" : "live",
-    ...(options.lab === undefined ? {} : { lab: options.lab }),
+    lab: options.lab,
+    renderReview: renderCuaReviewMarkdown,
+    observer: { open: options.open === true, render: hooks.renderObserverFn },
   });
-  // Before any sandbox exists: a run killed after acquiring one must still have a status record.
-  await runStatus.started;
+  if (!started.ok) return fail(started.code, started.message, descriptor.id);
+  const { run } = started;
+  const { runId, createdAt, paths: runPaths } = run;
   const artifactRoot = runPaths.absoluteRunRoot;
   const physicalArtifactRoot = runPaths.physicalRunRoot;
-  const createdAt = new Date().toISOString();
   const timeoutMs = config.execution?.timeoutMs ?? defaultSessionTimeoutMs(config);
   const requestTimeoutMs = readPositiveInt(env.HUMANISH_E2B_REQUEST_TIMEOUT_MS, 60_000);
   const redactScreenshots = config.policies?.redactScreenshots === true;
@@ -434,8 +426,8 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
       subjectProvenance: inProgressProvenance,
       inProgress: true,
     });
-    await writeCuaRunArtifacts(inProgressBundle, createdAt, runPaths);
-    const liveObserver = observerResultForCuaArtifacts(cwd, runId, artifactRoot, [
+    await run.writeSnapshot(inProgressBundle);
+    const liveObserver = liveObserverResult(cwd, runId, artifactRoot, [
       "Live CUA Observer is attached before final verification; stream auth URLs are runtime-only and are not persisted.",
     ]);
     streams.showIn(liveObserver);
@@ -443,16 +435,13 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
 
     // Incremental live flush (#441): as each lane's loop reports its recorded-so-far items,
     // rewrite the in-progress bundle with per-stream `liveActor` partials so the attached
-    // Observer's 5s poll sees the timeline grow. Throttled (one write per interval, trailing
-    // write guaranteed), serialized (never two writers), and CLOSED before the final artifact
-    // write so a stale flush can never resurrect the in-progress bundle. A flush failure is
-    // swallowed: mid-run observability must never break the run itself.
+    // Observer's 5s poll sees the timeline grow. The run refuses any snapshot once the final
+    // write began; the route stops the flush timer on every exit below.
     const liveFlush = startLiveTraceFlush({
       bundle: inProgressBundle,
       laneSpecs,
       model: config.actors[0]?.model ?? DEFAULT_OPENAI_CU_MODEL,
-      createdAt,
-      runPaths,
+      write: (bundle) => run.writeSnapshot(bundle),
     });
     flushLiveTrace = liveFlush.flush;
     stopLiveFlush = liveFlush.stop;
@@ -499,11 +488,9 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
         "Email finalization could not complete. Inspect humanish comms recover; provider cleanup remains unresolved.",
       );
     }
+    // Stop the flush timer on every exit, including a throw from the lanes.
+    await stopLiveFlush?.();
   }
-  // Close the live flush BEFORE any final artifact work: no new flush may start, and an
-  // in-flight one is awaited, so the final bundle write can never race a stale in-progress
-  // rewrite (which would resurrect `liveActor` after completion).
-  await stopLiveFlush?.();
 
   const externalCommsWarnings =
     !dryRun && externalCommsConfig && externalCommsEmail && outcomes !== undefined
@@ -563,38 +550,30 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
   });
 
   if (receiving) bundle.commsReceiving = receiving.snapshot();
-  await writeCuaRunArtifacts(bundle, createdAt, runPaths);
-  // Finalize the status record from the bundle that was just written, so the index can never
-  // claim an outcome the evidence does not carry. A run that throws before reaching here leaves
-  // its record `running` and goes stale — read as interrupted, which is the truth.
-  await runStatus.finish(runStatusOutcome(bundle));
-
-  const observer = await render(cwd, runId, { open: options.open === true });
+  const finished = await run.finish(bundle);
+  const observer = await finished.renderObserver();
   streams.attachFinal(observer);
 
-  return markFinalizedStudyResult(
-    cuaLabResult({
-      config,
-      cwd,
-      runId,
-      actorId: descriptor.id,
-      appUrl,
-      dryRun,
-      laneSpecs,
-      outcomes,
-      laneSubjects,
-      aggregateSubject,
-      plan,
-      rerunLineage,
-      bundle,
-      observer,
-      declaredVerdictFailure: scorerResult.declaredVerdictFailure,
-      receivingWarnings,
-      aggregateWarnings,
-      adapterWarnings,
-    }),
-    runPaths,
-  );
+  return cuaLabResult({
+    config,
+    cwd,
+    runId,
+    actorId: descriptor.id,
+    appUrl,
+    dryRun,
+    laneSpecs,
+    outcomes,
+    laneSubjects,
+    aggregateSubject,
+    plan,
+    rerunLineage,
+    bundle,
+    observer,
+    declaredVerdictFailure: scorerResult.declaredVerdictFailure,
+    receivingWarnings,
+    aggregateWarnings,
+    adapterWarnings,
+  });
 }
 
 /**

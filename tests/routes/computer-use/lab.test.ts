@@ -5208,8 +5208,10 @@ describe("buildCuaBundle", () => {
       const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
       const { module, created } = makeFakeModule(sandbox);
 
+      const analysis = automaticAnalysisBoundary();
       const outcome = await runLab(config, {
         cwd,
+        automaticAnalysis: { run: analysis },
         cuaHooks: {
           env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
           loadDesktopModule: async () => module,
@@ -5232,6 +5234,14 @@ describe("buildCuaBundle", () => {
       expect(outcome.result.error?.message).toContain("zero packable entries");
       expect(outcome.result.error?.message).not.toContain(["", "Users", "fake-operator"].join("/"));
       expect(created).toHaveLength(0);
+      // Packing runs after the run started: the scope closes that run with no outcome, and a
+      // refusal is never analyzed.
+      expect(analysis).not.toHaveBeenCalled();
+      const runsRoot = path.join(cwd, ".humanish", "runs");
+      const [runId] = (await readdir(runsRoot)).filter((entry) => entry !== "latest.json");
+      const status = JSON.parse(await readFile(path.join(runsRoot, runId!, "status.json"), "utf8"));
+      expect(status.state).toBe("finished");
+      expect(status).not.toHaveProperty("outcome");
     });
 
     it("subject.localTree.keep: true preserves the sandbox on a failed lane (mirrors subject.clone.keep)", async () => {
@@ -5972,6 +5982,66 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
     expect(finalBundle.streams.every((stream) => stream.status !== "running")).toBe(true);
     expect(finalBundle.streams.every((stream) => stream.liveActor === undefined)).toBe(true);
     expect(finalBundle.streams.some((stream) => (stream.actor?.items.length ?? 0) > 0)).toBe(true);
+  });
+
+  it("C3: awaits onObserverReady before any desktop is created", async () => {
+    const sandbox = makeFakeSandbox();
+    const { module, created } = makeFakeModule(sandbox);
+    let enter!: () => void;
+    const entered = new Promise<void>((resolve) => {
+      enter = resolve;
+    });
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const running = runLab(cuaConfig(), {
+      cwd,
+      onObserverReady: async () => {
+        enter();
+        await gate;
+      },
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => module,
+        runSession: async () => {
+          throw new Error("synthetic session end");
+        },
+      },
+    });
+    await entered;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(created).toHaveLength(0);
+    release();
+    await running;
+    expect(created.length).toBeGreaterThan(0);
+  });
+
+  it("C3: a throwing onObserverReady creates no desktop, closes the run and runs no analysis", async () => {
+    const sandbox = makeFakeSandbox();
+    const { module, created } = makeFakeModule(sandbox);
+    const analysis = automaticAnalysisBoundary();
+    const tunnelFailure = new Error("synthetic tunnel failure");
+    await expect(
+      runLab(cuaConfig(), {
+        cwd,
+        automaticAnalysis: { run: analysis },
+        onObserverReady: async () => {
+          throw tunnelFailure;
+        },
+        cuaHooks: {
+          env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+          loadDesktopModule: async () => module,
+        },
+      }),
+    ).rejects.toBe(tunnelFailure);
+    expect(created).toHaveLength(0);
+    expect(analysis).not.toHaveBeenCalled();
+    const runsRoot = path.join(cwd, ".humanish", "runs");
+    const [runId] = (await readdir(runsRoot)).filter((entry) => entry !== "latest.json");
+    const status = JSON.parse(await readFile(path.join(runsRoot, runId!, "status.json"), "utf8"));
+    expect(status.state).toBe("finished");
+    expect(status).not.toHaveProperty("outcome");
   });
 
   it("fires onObserverReady for a single lane and serves the LIVE in-progress bundle (incl. the stream URL) even after a timed_out run", async () => {
