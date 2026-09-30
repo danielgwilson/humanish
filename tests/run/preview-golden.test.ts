@@ -8,8 +8,9 @@ import { runDryRun } from "../../src/run/dry-run.js";
 import { runDirSnapshot } from "../helpers/run-golden.js";
 
 // Characterization: the complete run directory, latest pointer and returned result of the synthetic
-// preview run, pinned so a change to how it writes its bundle shows up as a diff. The Observer is
-// rendered by the callers of runDryRun, so no observer/index.html is expected here. Regenerate
+// preview run, pinned so a change to how it writes its bundle shows up as a diff. runDryRun renders
+// an Observer only when RunOptions.observer asks for one, so no observer/index.html is expected
+// here. Regenerate
 // with `pnpm vitest run tests/run/preview-golden.test.ts -u` and review the diff.
 describe("preview run directory golden", () => {
   let root: string;

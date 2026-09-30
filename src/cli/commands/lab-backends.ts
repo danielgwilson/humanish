@@ -32,8 +32,10 @@ import {
 import {
   exposureRequestFromOptions,
   followObserver,
-  renderAndMaybeFollowObserver,
-  renderObserverForRun,
+  type ObserverPlan,
+  planObserver,
+  showObserver,
+  staticObserverOpen,
   withObserverServer,
 } from "../observer-follow.js";
 import {
@@ -69,45 +71,49 @@ export async function runSyntheticBackend(args: {
     return;
   }
 
+  // `run` renders the Observer too, so `run` and `watch` write the same bundle and the first
+  // `export` of a run bundle finds observer/index.html (#597). A render failure is a warning on the
+  // result, never a failed run. The preview renders through its finished run, so the page shown is
+  // the run just written, never a directory swapped in under its id.
+  const openOverride = args.options.open ?? args.config.defaults?.open;
+  const plan =
+    args.mode === "watch"
+      ? planObserver({
+          command: args.command,
+          cwd: args.options.cwd,
+          io: args.io,
+          port: args.options.port ?? "0",
+          ...(args.options.detach === undefined ? {} : { detach: args.options.detach }),
+          ...(openOverride === undefined ? {} : { open: openOverride }),
+        })
+      : undefined;
+  if (plan === null) return;
   const outcome = await runLab(args.config, {
     cwd: args.options.cwd,
     ...(args.labProvenance === undefined ? {} : { lab: args.labProvenance }),
     count: simCount,
     ...(args.options.dryRun === undefined ? {} : { dryRun: args.options.dryRun }),
     ...(args.options.runId === undefined ? {} : { runId: args.options.runId }),
+    open: plan === undefined ? false : staticObserverOpen(plan),
   });
   if (outcome.backend !== "synthetic") {
     throw new Error(`Expected synthetic backend, got ${outcome.backend}.`);
   }
   const runResult = outcome.result;
 
-  if (args.mode === "run") {
-    // `run` and `watch` used to disagree about whether a bundle has observer/index.html: watch
-    // rendered it to serve it, run did not, and the first `export` of a run bundle failed (#597,
-    // found by the 0.72.0 dogfood participant). Render it here too, so the two commands write the
-    // same bundle; a render failure is a warning on the result, never a failed run.
-    await renderObserverForRun(args.options.cwd, runResult);
+  if (plan === undefined) {
     writeResult(args.command, args.io, runResult, formatRunHuman);
     args.io.setExitCode(runResult.ok ? 0 : 2);
     return;
   }
 
-  if (!runResult.ok || !runResult.runId) {
+  if (!runResult.ok || runResult.observer === undefined) {
     writeResult(args.command, args.io, runResult, formatRunHuman);
     args.io.setExitCode(2);
     return;
   }
 
-  const openOverride = args.options.open ?? args.config.defaults?.open;
-  await renderAndMaybeFollowObserver({
-    command: args.command,
-    cwd: args.options.cwd,
-    io: args.io,
-    port: args.options.port ?? "0",
-    runInput: runResult.runId,
-    ...(args.options.detach === undefined ? {} : { detach: args.options.detach }),
-    ...(openOverride === undefined ? {} : { open: openOverride }),
-  });
+  await showObserver({ command: args.command, io: args.io, plan, rendered: runResult.observer });
 }
 
 /**
@@ -201,6 +207,20 @@ export async function runCuaBackend(args: {
   }
   const plan = exposeValidation.plan;
   const exposeRequested = plan.exposed;
+  // A watch that does not follow the live run shows the Observer the route rendered through its
+  // finished run once the run ends, never a re-render by run id.
+  const finishedPlan =
+    args.mode === "watch" && !wantsMachine && !wantsFollow
+      ? planObserver({
+          command: args.command,
+          cwd: args.options.cwd,
+          io: args.io,
+          port: args.options.port ?? "0",
+          open: shouldOpen,
+          ...(args.options.detach === undefined ? {} : { detach: args.options.detach }),
+        })
+      : undefined;
+  if (finishedPlan === null) return;
 
   let server: ObserverServer | null = null;
   let attachedObserver: (ObserverResult & { ok: true }) | null = null;
@@ -214,10 +234,15 @@ export async function runCuaBackend(args: {
       automaticAnalysis: cliAutomaticAnalysisHooks(args.io),
       cwd: args.options.cwd,
       ...(args.labProvenance === undefined ? {} : { lab: args.labProvenance }),
-      // Watch mode opens the served Observer below (or prints the phone target under --expose)
-      // instead of the static render — preserved byte-for-byte from the pre-0.18 open policy so a
-      // non-follow watch (dry-run/--json) does not double-open. Run mode keeps the static open.
-      open: args.mode === "watch" ? false : shouldOpen,
+      // A followed watch opens the served Observer (or prints the phone target under --expose), so
+      // its static render never opens. A non-follow watch opens what its plan says, once. Run mode
+      // keeps the static open.
+      open:
+        args.mode === "watch"
+          ? finishedPlan === undefined
+            ? false
+            : staticObserverOpen(finishedPlan)
+          : shouldOpen,
       count,
       dryRun,
       ...(wantsFollow
@@ -333,16 +358,12 @@ export async function runCuaBackend(args: {
         return [];
       },
     });
-  } else if (args.mode === "watch" && result.ok && !wantsMachine) {
-    // Non-follow / dry-run watch keeps today's fallback: render the finished bundle and follow it.
-    await renderAndMaybeFollowObserver({
+  } else if (finishedPlan !== undefined && result.ok && result.observer !== undefined) {
+    await showObserver({
       command: args.command,
-      cwd: args.options.cwd,
       io: args.io,
-      port: args.options.port ?? "0",
-      runInput: result.runId,
-      ...(args.options.detach === undefined ? {} : { detach: args.options.detach }),
-      ...(shouldOpen === undefined ? {} : { open: shouldOpen }),
+      plan: finishedPlan,
+      rendered: result.observer,
     });
   }
 }
@@ -364,13 +385,14 @@ export async function runScriptedBackend(args: {
     mode: args.mode,
     wantsMachine,
   });
+  const finishedPlan = watchFinishedPlan(args, wantsMachine, shouldOpen);
+  if (finishedPlan === null) return;
 
   const outcome = await runLab(args.config, {
     automaticAnalysis: cliAutomaticAnalysisHooks(args.io),
     cwd: args.options.cwd,
     ...(args.labProvenance === undefined ? {} : { lab: args.labProvenance }),
-    // Watch mode opens the served Observer below instead of the static render.
-    open: args.mode === "watch" ? false : shouldOpen,
+    open: observerOpen(args.mode, finishedPlan, shouldOpen),
     ...(args.options.dryRun === undefined ? {} : { dryRun: args.options.dryRun }),
     ...(args.options.runId === undefined ? {} : { runId: args.options.runId }),
   });
@@ -381,16 +403,13 @@ export async function runScriptedBackend(args: {
   writeResult(args.command, args.io, result, formatScriptedLabHuman);
   args.io.setExitCode(result.ok && automaticAnalysisSucceeded(result) ? 0 : 2);
 
-  // Watch mode serves the freshly rendered Observer (and opens it unless told not to).
-  if (args.mode === "watch" && result.ok && !wantsMachine) {
-    await renderAndMaybeFollowObserver({
+  // Watch mode serves the Observer the route rendered through its finished run.
+  if (finishedPlan !== undefined && result.ok && result.observer !== undefined) {
+    await showObserver({
       command: args.command,
-      cwd: args.options.cwd,
       io: args.io,
-      port: args.options.port ?? "0",
-      runInput: result.runId,
-      ...(args.options.detach === undefined ? {} : { detach: args.options.detach }),
-      ...(shouldOpen === undefined ? {} : { open: shouldOpen }),
+      plan: finishedPlan,
+      rendered: result.observer,
     });
   }
 }
@@ -413,12 +432,14 @@ export async function runTerminalBackend(args: {
     mode: args.mode,
     wantsMachine,
   });
+  const finishedPlan = watchFinishedPlan(args, wantsMachine, shouldOpen);
+  if (finishedPlan === null) return;
 
   const outcome = await runLab(args.config, {
     automaticAnalysis: cliAutomaticAnalysisHooks(args.io),
     cwd: args.options.cwd,
     ...(args.labProvenance === undefined ? {} : { lab: args.labProvenance }),
-    open: args.mode === "watch" ? false : shouldOpen,
+    open: observerOpen(args.mode, finishedPlan, shouldOpen),
     ...(args.options.dryRun === undefined ? {} : { dryRun: args.options.dryRun }),
     ...(args.options.runId === undefined ? {} : { runId: args.options.runId }),
     ...(args.scorer
@@ -435,17 +456,44 @@ export async function runTerminalBackend(args: {
   writeResult(args.command, args.io, result, formatTerminalLabHuman);
   args.io.setExitCode(result.ok && automaticAnalysisSucceeded(result) ? 0 : 2);
 
-  if (args.mode === "watch" && result.ok && !wantsMachine) {
-    await renderAndMaybeFollowObserver({
+  if (finishedPlan !== undefined && result.ok && result.observer !== undefined) {
+    await showObserver({
       command: args.command,
-      cwd: args.options.cwd,
       io: args.io,
-      port: args.options.port ?? "0",
-      runInput: result.runId,
-      ...(args.options.detach === undefined ? {} : { detach: args.options.detach }),
-      ...(shouldOpen === undefined ? {} : { open: shouldOpen }),
+      plan: finishedPlan,
+      rendered: result.observer,
     });
   }
+}
+
+/**
+ * The Observer plan of a watch that shows the route's final render: undefined outside watch or in
+ * machine mode, null after an invalid --port was reported.
+ */
+function watchFinishedPlan(
+  args: { command: Command; io: CliIo; mode: "run" | "watch"; options: LabCommandOptions },
+  wantsMachine: boolean,
+  shouldOpen: boolean,
+): ObserverPlan | null | undefined {
+  if (args.mode !== "watch" || wantsMachine) return undefined;
+  return planObserver({
+    command: args.command,
+    cwd: args.options.cwd,
+    io: args.io,
+    port: args.options.port ?? "0",
+    open: shouldOpen,
+    ...(args.options.detach === undefined ? {} : { detach: args.options.detach }),
+  });
+}
+
+/** The route's static render opens only when nothing else will open the Observer. */
+function observerOpen(
+  mode: "run" | "watch",
+  finishedPlan: ObserverPlan | undefined,
+  shouldOpen: boolean,
+): boolean {
+  if (mode === "run") return shouldOpen;
+  return finishedPlan === undefined ? false : staticObserverOpen(finishedPlan);
 }
 
 export async function runConcurrentSharedWorldBackend(args: {
@@ -492,6 +540,10 @@ export async function runConcurrentSharedWorldBackend(args: {
     failConcurrent("--port must be an integer between 0 and 65535.");
     return;
   }
+  // A watch that does not follow the live run shows the Observer the route rendered through its
+  // finished run once the run ends, never a re-render by run id.
+  const finishedPlan = wantsFollow ? undefined : watchFinishedPlan(args, wantsMachine, shouldOpen);
+  if (finishedPlan === null) return;
 
   let server: ObserverServer | null = null;
   let attachedObserver: (ObserverResult & { ok: true }) | null = null;
@@ -504,7 +556,11 @@ export async function runConcurrentSharedWorldBackend(args: {
       automaticAnalysis: cliAutomaticAnalysisHooks(args.io),
       cwd: args.options.cwd,
       ...(args.labProvenance === undefined ? {} : { lab: args.labProvenance }),
-      open: wantsFollow ? false : shouldOpen,
+      open: wantsFollow
+        ? false
+        : finishedPlan === undefined
+          ? shouldOpen
+          : staticObserverOpen(finishedPlan),
       dryRun,
       ...(wantsFollow
         ? {
@@ -569,15 +625,12 @@ export async function runConcurrentSharedWorldBackend(args: {
 
   if (server && output.observer?.ok) {
     await followObserver(args.io, output.observer, server);
-  } else if (args.mode === "watch" && result.ok && !wantsMachine) {
-    await renderAndMaybeFollowObserver({
+  } else if (finishedPlan !== undefined && result.ok && result.observer !== undefined) {
+    await showObserver({
       command: args.command,
-      cwd: args.options.cwd,
       io: args.io,
-      port: args.options.port ?? "0",
-      runInput: result.runId,
-      ...(args.options.detach === undefined ? {} : { detach: args.options.detach }),
-      ...(shouldOpen === undefined ? {} : { open: shouldOpen }),
+      plan: finishedPlan,
+      rendered: result.observer,
     });
   }
 }

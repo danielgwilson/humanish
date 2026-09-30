@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { renderObserver, serveObserver } from "../observer/render.js";
+import { serveObserver } from "../observer/render.js";
 import type { ObserverResult, ObserverServer } from "../observer/render.js";
 import type { ExposureRequest } from "../observer/exposure.js";
 import type { RunResult } from "../run/results.js";
@@ -12,35 +12,26 @@ import {
   writeResult,
 } from "./io.js";
 
-/**
- * Write observer/index.html for a finished run the way `watch` does, so a bundle is the same
- * bundle whichever command produced it (#597). Never fails the run: a bundle without its Observer
- * is still evidence, and `export` can render one later.
- */
-export async function renderObserverForRun(cwd: string, result: RunResult): Promise<void> {
-  if (!result.ok || result.runId === undefined) return;
-  try {
-    const rendered = await renderObserver(cwd, result.runId, { open: false });
-    if (!rendered.ok)
-      result.warnings.push(
-        `observer/index.html was not written: ${rendered.error?.message ?? "render failed"}`,
-      );
-  } catch (error) {
-    result.warnings.push(
-      `observer/index.html was not written: ${error instanceof Error ? error.message : String(error)}`,
-    );
-  }
+/** How a command shows an Observer, decided before the run it shows starts. */
+export interface ObserverPlan {
+  port: number;
+  /** Open the page: the served URL when following, the static file otherwise. */
+  shouldOpen: boolean;
+  wantsFollow: boolean;
 }
 
-export async function renderAndMaybeFollowObserver(args: {
+/**
+ * Parse --port and decide open and follow. On an invalid port it writes the failure, sets exit
+ * code 2 and returns null, so a caller refuses before starting a run.
+ */
+export function planObserver(args: {
   command: Command;
   cwd: string;
   detach?: boolean | undefined;
   io: CliIo;
   open?: boolean | undefined;
   port: string;
-  runInput: string;
-}): Promise<void> {
+}): ObserverPlan | null {
   const port = parseObserverPort(args.port);
   if (port === null) {
     const result: RunResult = {
@@ -55,9 +46,8 @@ export async function renderAndMaybeFollowObserver(args: {
     };
     writeResult(args.command, args.io, result, formatRunHuman);
     args.io.setExitCode(2);
-    return;
+    return null;
   }
-
   const wantsMachine = wantsJson(args.command);
   const shouldOpen =
     args.open === false
@@ -65,14 +55,26 @@ export async function renderAndMaybeFollowObserver(args: {
       : args.open === true
         ? true
         : !wantsMachine && process.stdout.isTTY === true;
-  const wantsFollow = !wantsMachine && args.detach !== true;
-  const rendered = await renderObserver(args.cwd, args.runInput, {
-    open: wantsFollow ? false : shouldOpen,
-  });
+  return { port, shouldOpen, wantsFollow: !wantsMachine && args.detach !== true };
+}
+
+/** The `open` a run's static Observer render takes: a followed Observer opens its served URL. */
+export function staticObserverOpen(plan: ObserverPlan): boolean {
+  return plan.wantsFollow ? false : plan.shouldOpen;
+}
+
+/** Write a rendered Observer's result, then serve and follow it when the plan says so. */
+export async function showObserver(args: {
+  command: Command;
+  io: CliIo;
+  plan: ObserverPlan;
+  rendered: ObserverResult;
+}): Promise<void> {
+  const { plan, rendered } = args;
   let server: ObserverServer | null = null;
   let result = rendered;
-  if (rendered.ok && wantsFollow) {
-    server = await serveObserver(rendered, { open: shouldOpen, port });
+  if (rendered.ok && plan.wantsFollow) {
+    server = await serveObserver(rendered, { open: plan.shouldOpen, port: plan.port });
     result = withObserverServer(rendered, server);
   }
   writeResult(args.command, args.io, result, formatObserverHuman);

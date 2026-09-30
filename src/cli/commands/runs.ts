@@ -22,7 +22,6 @@ import {
   parsePositiveInteger,
   writeResult,
 } from "../io.js";
-import { renderObserverForRun } from "../observer-follow.js";
 
 const SCRIPTED_BROWSER_DOCS_URL =
   "https://humanish.dev/docs/lab-manifests#scripted-browser-scenarios";
@@ -132,8 +131,10 @@ export function registerRunCommand(parent: Command, io: CliIo): void {
           ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
           ...(options.runId === undefined ? {} : { runId: options.runId }),
           ...(simCount === undefined || simCount === null ? {} : { simCount }),
+          // Rendered the way `watch` renders it, so a bundle is the same bundle whichever command
+          // produced it (#597). A render failure is a warning on the result.
+          observer: { open: false },
         });
-        await renderObserverForRun(options.cwd, result);
         writeResult(command, io, result, formatRunHuman);
         io.setExitCode(result.ok ? 0 : 2);
       },

@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { realpath } from "node:fs/promises";
 import path from "node:path";
-import { runScope, type RunScope } from "./run.js";
+import type { ObserverResult } from "../observer/render.js";
+import { runScope, type FinishedRun, type RunScope } from "./run.js";
 import {
   assertPreparedSelectedOutputDirectory,
   prepareSelectedOutputDirectory,
@@ -21,7 +22,7 @@ import { createReviewSummary, renderReviewMarkdown } from "./synthetic-review.js
 
 /**
  * The synthetic dry-run backend. The run scope closes the run it started on every exit, including
- * the fail-closed ones. The preview renders no Observer; its callers do.
+ * the fail-closed ones. It renders an Observer only when `options.observer` asks for one.
  */
 export async function runDryRun(options: RunOptions): Promise<RunResult> {
   const { result } = await runScope((scope) => runDryRunInScope(options, scope));
@@ -85,6 +86,7 @@ async function runDryRunInScope(options: RunOptions, scope: RunScope): Promise<R
     mode: options.dryRun ? "dry-run" : "live",
     lab: options.lab,
     renderReview: renderReviewMarkdown,
+    ...(options.observer === undefined ? {} : { observer: { open: options.observer.open } }),
   });
   if (!started.ok) return refused(cwd, warnings, started);
   const { run } = started;
@@ -157,7 +159,9 @@ async function runDryRunInScope(options: RunOptions, scope: RunScope): Promise<R
     feedbackCandidates: [],
   };
 
-  await run.finish(bundle);
+  const finished = await run.finish(bundle);
+  const observer =
+    options.observer === undefined ? undefined : await renderPreviewObserver(finished, warnings);
 
   return {
     schema: "humanish.run-result.v1",
@@ -170,8 +174,33 @@ async function runDryRunInScope(options: RunOptions, scope: RunScope): Promise<R
     bundlePath: path.join(artifactRoot, "run.json"),
     reviewPath: path.join(artifactRoot, "review.md"),
     latestPath: runPaths.relativeLatestPointer,
+    ...(observer === undefined ? {} : { observer }),
     warnings,
   };
+}
+
+/**
+ * Render through the finished run, so a directory swapped in under the same id is never rendered.
+ * A failure is a warning: the bundle is still evidence, and `export` can render its Observer later.
+ */
+async function renderPreviewObserver(
+  finished: FinishedRun,
+  warnings: string[],
+): Promise<ObserverResult | undefined> {
+  try {
+    const rendered = await finished.renderObserver();
+    if (!rendered.ok) {
+      warnings.push(
+        `observer/index.html was not written: ${rendered.error?.message ?? "render failed"}`,
+      );
+    }
+    return rendered;
+  } catch (error) {
+    warnings.push(
+      `observer/index.html was not written: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    return undefined;
+  }
 }
 
 function buildSyntheticObserverFixtures(args: {
