@@ -74,7 +74,7 @@ with `Run.finish` as in step 7, and skips steps 3 to 6 and 9. Its callers run st
 | ---------------------- | ---------------------------------------------------------------------------- | ----------------------------------- |
 | `src/cli/`             | The commander program, with one file per command family in `commands/`       | `src/cli/program.ts`                |
 | `src/lab/`             | Lab manifest types, parsing, validation, routing and dispatch                | `src/lab/engine.ts`                 |
-| `src/routes/`          | One folder or file per route, each with its own bundle assembly              | `src/routes/computer-use/lab.ts`    |
+| `src/routes/`          | One folder per route, each with its own bundle assembly                      | `src/routes/computer-use/lab.ts`    |
 | `src/actors/`          | The actor contract, the registry and each actor's session code               | `src/actors/registry.ts`            |
 | `src/subject/`         | Subject provisioning over a `Shell`: clone, local tree, desktop CLI, serve   | `src/subject/serve.ts`              |
 | `src/substrates/`      | E2B desktops in `e2b/`, Firecracker and Lima VMs in `local/`, the `Shell`    | `src/substrates/e2b/cua-desktop.ts` |

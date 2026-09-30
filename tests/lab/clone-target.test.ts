@@ -8,7 +8,7 @@ import { parse } from "yaml";
 import { parseLabConfig } from "../../src/lab/config.js";
 import { runLab } from "../../src/lab/engine.js";
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/lab/types.js";
-import { runScriptedBrowserLab } from "../../src/routes/scripted-browser.js";
+import { runScriptedBrowserLab } from "../../src/routes/scripted-browser/lab.js";
 import type { E2BDesktopModule } from "../../src/substrates/e2b/desktop-launch.js";
 
 const repoRoot = path.resolve(import.meta.dirname, "../..");

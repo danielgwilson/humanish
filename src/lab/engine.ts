@@ -17,7 +17,7 @@ import {
   runScriptedBrowserLab,
   type ScriptedBrowserLabHooks,
   type ScriptedBrowserLabResult,
-} from "../routes/scripted-browser.js";
+} from "../routes/scripted-browser/lab.js";
 import { runTerminalProductLab } from "../routes/terminal/lab.js";
 import {
   type TerminalProductLabHooks,

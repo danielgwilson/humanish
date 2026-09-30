@@ -4,7 +4,8 @@
 // Mirrors routes/computer-use/lab.ts: the descriptor returned by the registry runs the session; this
 // backend consumes `scenario.ref` (resolves the committed scenario whose browser steps are the
 // actor's behavior), composes the per-surface sessions, persists the evidence bundle, and renders
-// the Observer.
+// the Observer. Beside it, scenario.ts resolves `scenario.ref`, session-result.ts checks each
+// session result before it is persisted, and bundle.ts assembles the bundle and review.
 //
 // Spend posture: scripted participant steps make no model requests, and their traces record
 // tokenUsage zeros. Post-run analysis has a separate model budget unless explicitly disabled. Local
@@ -20,106 +21,86 @@
 // digest instead. Provisioned clone runs persist structured commit/env-name/state provenance
 // plus a host digest while never writing the raw getHost URL or secret values into artifacts.
 
-import { resolveAutomaticAnalysis } from "../analysis/automatic-config.js";
-import {
-  completeAutomaticAnalysis,
-  type AutomaticAnalysisHooks,
-  type AutomaticAnalysisResult,
-} from "../analysis/automatic-completion.js";
-import { runScope, type RunScope } from "../run/run.js";
-import {
-  cloneTargetValidationReason,
-  desktopMediaValidationReason,
-  taskProtocolValidationReason,
-} from "../lab/validation.js";
 import { randomBytes } from "node:crypto";
-import { describeMissingKeys } from "../cli/key-resolution.js";
-import { type RunLabProvenance } from "../run/status.js";
 import { realpath } from "node:fs/promises";
 import path from "node:path";
-
-import { parse as parseYaml } from "yaml";
-
-import type {
-  ActorCompletionReason,
-  ActorPersonaRef,
-  ActorStatus,
-  ActorTrace,
-} from "../actors/contract.js";
-import { actorRegistry, isScriptedBrowserActorDescriptor } from "../actors/registry.js";
-import { toErrorMessage } from "../substrates/command-failure.js";
-import { resolveSubjectState } from "./computer-use/lab.js";
-import { provisionCloneSubject } from "../subject/clone.js";
-import { commandDigestOf } from "../subject/state.js";
-import {
-  loadE2BDesktopModule,
-  type E2BDesktopModule,
-  type E2BDesktopSandbox,
-} from "../substrates/e2b/desktop-launch.js";
-import { acquireE2BDesktopSandbox } from "../substrates/e2b/sandbox.js";
-import { e2bShell } from "../substrates/e2b/shell.js";
-import type { DetachedTimers } from "../substrates/detached.js";
-import type { LabConfig } from "../lab/types.js";
-import { renderObserver, type ObserverResult } from "../observer/render.js";
-import { digestText, redactText } from "../evidence/redaction.js";
-import { type PreparedRunArtifactPaths, validatePreparedRunArtifactPaths } from "../run/paths.js";
-import {
-  buildRunSource,
-  PUBLIC_TARGET_CWD,
-  REVIEW_SCHEMA,
-  RUN_BUNDLE_SCHEMA,
-  type ReviewSummary,
-  type RunBundle,
-  type RunEvent,
-  type RunSimulation,
-  type RunStream,
-  type RunSubjectProvenance,
-  type RunSubjectStateStepRecord,
-} from "../run/bundle.js";
-import {
-  browserSurfaces,
-  type BrowserPersonaJourney,
-  type BrowserSurface,
-  type ScriptedBrowserEvidenceUrlPolicy,
-  type ScriptedBrowserLaunchArgs,
-  type ScriptedBrowserLike,
-} from "../actors/scripted-browser/types.js";
-import { normalizeLocalAppUrl } from "../actors/scripted-browser/steps.js";
-import { parseBrowserPersonaJourneyFromScenario } from "../actors/scripted-browser/journey.js";
-import { resolveBrowserCommand } from "../actors/scripted-browser/browser-command.js";
+import type { ActorCompletionReason, ActorPersonaRef, ActorStatus } from "../../actors/contract.js";
+import { actorRegistry, isScriptedBrowserActorDescriptor } from "../../actors/registry.js";
 import {
   runScriptedBrowserSessionInPreparedRoot,
   type ScriptedBrowserSessionOptions,
   type ScriptedBrowserSessionResult,
-} from "../actors/scripted-browser/actor.js";
+} from "../../actors/scripted-browser/actor.js";
+import { resolveBrowserCommand } from "../../actors/scripted-browser/browser-command.js";
+import { normalizeLocalAppUrl } from "../../actors/scripted-browser/steps.js";
+import {
+  browserSurfaces,
+  type ScriptedBrowserEvidenceUrlPolicy,
+  type ScriptedBrowserLaunchArgs,
+  type ScriptedBrowserLike,
+} from "../../actors/scripted-browser/types.js";
+import {
+  completeAutomaticAnalysis,
+  type AutomaticAnalysisHooks,
+  type AutomaticAnalysisResult,
+} from "../../analysis/automatic-completion.js";
+import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
+import { describeMissingKeys } from "../../cli/key-resolution.js";
+import { redactText } from "../../evidence/redaction.js";
+import type { LabConfig } from "../../lab/types.js";
+import {
+  cloneTargetValidationReason,
+  desktopMediaValidationReason,
+  taskProtocolValidationReason,
+} from "../../lab/validation.js";
+import { renderObserver, type ObserverResult } from "../../observer/render.js";
+import {
+  buildRunSource,
+  type RunSubjectProvenance,
+  type RunSubjectStateStepRecord,
+} from "../../run/bundle.js";
+import { validatePreparedRunArtifactPaths } from "../../run/paths.js";
+import { runScope, type RunScope } from "../../run/run.js";
 import {
   prepareSelectedOutputDirectory,
-  readContainedRegularFile,
-  type PreparedSelectedOutputDirectory,
   writeContainedOutputFile,
-} from "../run/selected-output-paths.js";
+} from "../../run/selected-output-paths.js";
+import type { RunLabProvenance } from "../../run/status.js";
+import { provisionCloneSubject } from "../../subject/clone.js";
+import { commandDigestOf } from "../../subject/state.js";
+import { toErrorMessage } from "../../substrates/command-failure.js";
+import type { DetachedTimers } from "../../substrates/detached.js";
+import {
+  loadE2BDesktopModule,
+  type E2BDesktopModule,
+  type E2BDesktopSandbox,
+} from "../../substrates/e2b/desktop-launch.js";
+import { acquireE2BDesktopSandbox } from "../../substrates/e2b/sandbox.js";
+import { e2bShell } from "../../substrates/e2b/shell.js";
+import { resolveSubjectState } from "../computer-use/lab.js";
+import { buildScriptedLabBundle, renderScriptedReviewMarkdown } from "./bundle.js";
+import { resolveScriptedScenario } from "./scenario.js";
+import {
+  UnsafeScriptedSessionResultError,
+  existingScreenshots,
+  validateScriptedSessionResult,
+} from "./session-result.js";
 
 export const SCRIPTED_BROWSER_LAB_SCHEMA = "humanish.scripted-lab-result.v1";
 
 // Journey wall-clock budget per surface: 5 minutes. A scripted surface has zero model cost and
 // sandbox-seconds are pennies; a short default only truncated slow-loading subjects.
 const DEFAULT_SESSION_TIMEOUT_MS = 300_000;
+
 const SANDBOX_TIMEOUT_BUFFER_MS = 10 * 60_000;
+
 const SUBJECT_PROVISION_BUDGET_MS = 30 * 60_000;
+
 const DEFAULT_STATE_STEP_TIMEOUT_MS = 5 * 60_000;
+
 // Default surface roster is 1 (desktop only): the defaults-table single-lane row governs;
 // `count: 2` is the declared override that adds the mobile surface.
 const DEFAULT_SURFACE_COUNT = 1;
-// Same public-safe token shape the lab id uses; an id-style scenario.ref must match it before
-// it is interpolated into a repo path.
-const SCENARIO_REF_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
-
-class UnsafeScriptedSessionResultError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "UnsafeScriptedSessionResultError";
-  }
-}
 
 /**
  * Library-level hooks: DI seams so CI drives the full path (real engine, real projection)
@@ -702,503 +683,6 @@ async function runScriptedBrowserLabInScope(
           },
         }),
   };
-}
-
-interface ResolvedScriptedScenario {
-  ok: true;
-  journey: BrowserPersonaJourney;
-  /** Repo-relative provenance path (clamped inside the target cwd, fail-closed). */
-  source: string;
-  sourceDigest: string;
-}
-
-/**
- * Resolve and consume `scenario.ref`. Path-style refs (contain a separator or end .yaml/.yml)
- * resolve against cwd and are CLAMPED inside it — a ../../ escape is rejected, never recorded
- * as repo-relative provenance. Id-style refs must be public-safe tokens and resolve to
- * humanish/scenarios/<ref>.yaml (then .yml). Every failure mode is fail-closed.
- */
-async function resolveScriptedScenario(
-  projectRoot: PreparedSelectedOutputDirectory,
-  ref: string | undefined,
-): Promise<ResolvedScriptedScenario | { ok: false; message: string }> {
-  if (!ref || !ref.trim()) {
-    return {
-      ok: false,
-      message:
-        "scripted-browser labs require `scenario.ref` — the committed scenario's browser steps are what this actor executes.",
-    };
-  }
-  const trimmed = ref.trim();
-
-  let absolutePath: string;
-  let source: string;
-  if (scenarioRefLooksLikePath(trimmed)) {
-    absolutePath = path.resolve(projectRoot.physicalPath, trimmed);
-    const relative = path.relative(projectRoot.physicalPath, absolutePath);
-    if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) {
-      return {
-        ok: false,
-        message: `scenario.ref path must stay inside the target cwd (got "${trimmed}") — provenance is recorded repo-relative and an escaping path cannot be.`,
-      };
-    }
-    source = relative.split(path.sep).join("/");
-  } else {
-    if (!SCENARIO_REF_ID_PATTERN.test(trimmed)) {
-      return {
-        ok: false,
-        message: `scenario.ref must be a public-safe scenario id or a .yaml path inside the repo (got "${trimmed}").`,
-      };
-    }
-    const candidates = [
-      path.posix.join("humanish", "scenarios", `${trimmed}.yaml`),
-      path.posix.join("humanish", "scenarios", `${trimmed}.yml`),
-    ];
-    const found = await firstExistingFile(projectRoot, candidates);
-    if (!found) {
-      return {
-        ok: false,
-        message: `scenario.ref "${trimmed}" was not found (looked for ${candidates.join(", ")}).`,
-      };
-    }
-    source = found;
-    absolutePath = path.join(projectRoot.physicalPath, found);
-  }
-
-  const relativeScenarioPath = path.relative(projectRoot.physicalPath, absolutePath);
-  const scenarioBytes = await readContainedRegularFile(projectRoot, relativeScenarioPath);
-  if (!scenarioBytes) {
-    return { ok: false, message: `scenario.ref "${trimmed}" could not be read (${source}).` };
-  }
-  const text = scenarioBytes.toString("utf8");
-
-  let raw: unknown;
-  try {
-    raw = parseYaml(text);
-  } catch {
-    return {
-      ok: false,
-      message: `${source} could not be parsed as YAML; the scripted scenario failed closed.`,
-    };
-  }
-
-  const sourceDigest = digestText(text);
-  const parsed = parseBrowserPersonaJourneyFromScenario({
-    raw,
-    relativePath: source,
-    sourceDigest,
-  });
-  if (parsed.failure) {
-    return { ok: false, message: parsed.failure };
-  }
-  if (!parsed.journey) {
-    return {
-      ok: false,
-      message: `${source} declares no executable browser steps — the scripted-browser actor needs a scenario with browser.steps.`,
-    };
-  }
-
-  return { ok: true, journey: parsed.journey, source, sourceDigest };
-}
-
-function scenarioRefLooksLikePath(ref: string): boolean {
-  return (
-    ref.endsWith(".yaml") ||
-    ref.endsWith(".yml") ||
-    ref.includes("/") ||
-    ref.includes("\\") ||
-    ref.startsWith(".")
-  );
-}
-
-async function firstExistingFile(
-  projectRoot: PreparedSelectedOutputDirectory,
-  candidates: string[],
-): Promise<string | null> {
-  for (const candidate of candidates) {
-    if ((await readContainedRegularFile(projectRoot, candidate)) !== null) {
-      return candidate;
-    }
-  }
-  return null;
-}
-
-async function existingScreenshots(
-  runPaths: PreparedRunArtifactPaths,
-  result: ScriptedBrowserSessionResult,
-): Promise<string[]> {
-  const existing: string[] = [];
-  for (const step of result.capture.steps) {
-    // Blocked steps whose evidence is the failure itself recorded no screenshot path.
-    if (!step.screenshotPath) {
-      continue;
-    }
-    const screenshot = await readContainedRegularFile(runPaths, step.screenshotPath);
-    if (screenshot && screenshot.byteLength > 0) {
-      existing.push(step.screenshotPath);
-    }
-  }
-  return existing;
-}
-
-function validateScriptedSessionResult(
-  expectedSurface: BrowserSurface,
-  result: ScriptedBrowserSessionResult,
-): void {
-  if (
-    result.capture.surface.id !== expectedSurface.id ||
-    !isSafeOutputSegment(result.capture.surface.id)
-  ) {
-    throw new UnsafeScriptedSessionResultError(
-      "Scripted session returned an unexpected or unsafe surface id.",
-    );
-  }
-  const paths = [
-    result.capture.tracePath,
-    ...(result.capture.screenshotPath ? [result.capture.screenshotPath] : []),
-    ...result.capture.steps.flatMap((step) => (step.screenshotPath ? [step.screenshotPath] : [])),
-  ];
-  if (!paths.every(isSafeRelativeArtifactPath)) {
-    throw new UnsafeScriptedSessionResultError(
-      "Scripted session returned an unsafe artifact path.",
-    );
-  }
-}
-
-function isSafeOutputSegment(value: string): boolean {
-  return (
-    value.length > 0 &&
-    value !== "." &&
-    value !== ".." &&
-    !value.includes("/") &&
-    !value.includes("\\") &&
-    !value.includes("\0")
-  );
-}
-
-function isSafeRelativeArtifactPath(value: string): boolean {
-  if (
-    !value ||
-    value.includes("\0") ||
-    path.isAbsolute(value) ||
-    path.posix.isAbsolute(value) ||
-    path.win32.isAbsolute(value)
-  ) {
-    return false;
-  }
-  return !value
-    .replace(/\\/g, "/")
-    .split("/")
-    .some((part) => !part || part === "." || part === "..");
-}
-
-/**
- * Project the scripted lab run into a humanish.run-bundle.v1 (no schema change — a new
- * producer only). The load-bearing line is `stream.actor = result.trace`: the provider-neutral
- * ActorTrace seam the Observer renders and verifyRun's engagement check reads. Exported for
- * the bundle-builder tests.
- */
-export function buildScriptedLabBundle(args: {
-  /** Lab provenance for the bundle\'s own `lab` field (#455). */
-  lab?: RunLabProvenance;
-  actorId: string;
-  appUrl: string;
-  createdAt: string;
-  desktopTemplate?: string;
-  dryRun: boolean;
-  hostDigest?: string;
-  journey: BrowserPersonaJourney;
-  labId: string;
-  labTitle?: string;
-  persona: ActorPersonaRef;
-  runId: string;
-  scenarioSource: string;
-  scenarioSourceDigest: string;
-  screenshotsBySurface: Map<string, string[]>;
-  sessionResults: ScriptedBrowserSessionResult[];
-  sessionError?: string;
-  source: RunBundle["source"];
-  subject?: RunSubjectProvenance;
-  surfaces: BrowserSurface[];
-}): RunBundle {
-  const resultBySurface = new Map(
-    args.sessionResults.map((result) => [result.capture.surface.id, result]),
-  );
-  const simulations: RunSimulation[] = [];
-  const streams: RunStream[] = [];
-
-  args.surfaces.forEach((surface, index) => {
-    const simId = `scripted-${surface.id}`;
-    const streamId = `${simId}-stream`;
-    const result = resultBySurface.get(surface.id);
-    const screenshots = args.screenshotsBySurface.get(surface.id) ?? [];
-    const lastScreenshot = screenshots.at(-1);
-    const status = result
-      ? result.status
-      : args.sessionError
-        ? ("failed" as const)
-        : ("contract_proof_only" as const);
-    const reason =
-      result?.reason ??
-      args.sessionError ??
-      "Contract bundle only: dry-run pinned the scenario contract without launching a browser or touching the subject app.";
-
-    simulations.push({
-      id: simId,
-      index: index + 1,
-      personaId: args.persona.id,
-      scenarioId: args.journey.scenarioId,
-      status,
-      streamKind: "browser",
-      mode: "browser-sim",
-      progress: 100,
-      currentStep: reason,
-      summary: result
-        ? `Scripted-browser actor (${args.actorId}) replayed ${args.journey.scenarioId} on the ${surface.id} surface; ${result.completionReason}.`
-        : args.sessionError
-          ? `Scripted lab failed before a terminal session verdict: ${args.sessionError}`
-          : `Contract lane for the scripted-browser actor (${args.actorId}) against ${args.appUrl}.`,
-      streamIds: [streamId],
-      startedAt: args.createdAt,
-      updatedAt: result?.capture.capturedAt ?? args.createdAt,
-    });
-
-    streams.push({
-      id: streamId,
-      simId,
-      kind: "browser",
-      label: `${surface.label} — ${args.labId}`,
-      status,
-      transport: "snapshot",
-      updatedAt: result?.capture.capturedAt ?? args.createdAt,
-      embed: lastScreenshot
-        ? { kind: "screenshot", url: `../${lastScreenshot}`, title: `${surface.label} (raw)` }
-        : { kind: "placeholder", title: surface.label },
-      // REAL emulated viewport: isMobile/deviceScaleFactor genuinely render on this route
-      // (playwright emulation), unlike the e2b-desktop route's prompt-signal-only fidelity.
-      viewport: surface.viewport,
-      ui: {
-        route: args.appUrl,
-        intent: args.journey.goal,
-        state: reason,
-        ...(result ? { actorStatus: result.status } : {}),
-        ...(lastScreenshot ? { screenshotUrl: `../${lastScreenshot}` } : {}),
-      },
-      // The seam this registration exists to fill: the provider-neutral actor evidence.
-      ...(result ? { actor: result.trace } : {}),
-      artifacts: [
-        { label: "run bundle", path: "run.json", kind: "bundle" as const },
-        { label: "review", path: "review.md", kind: "review" as const },
-        { label: "events", path: "events.ndjson", kind: "events" as const },
-        ...(result
-          ? [
-              {
-                label: `${surface.id} browser trace`,
-                path: result.capture.tracePath,
-                kind: "trace" as const,
-              },
-              {
-                label: `${surface.id} actor trace`,
-                path: `actor-${surface.id}.json`,
-                kind: "trace" as const,
-              },
-            ]
-          : []),
-        ...screenshots.map((screenshot, screenshotIndex) => ({
-          label: `${surface.id} screenshot ${String(screenshotIndex + 1).padStart(2, "0")} (raw)`,
-          path: screenshot,
-          kind: "screenshot" as const,
-        })),
-      ],
-    });
-  });
-
-  const events: RunEvent[] = [
-    {
-      id: "event-000-created",
-      at: args.createdAt,
-      level: "info",
-      type: "scripted-lab.run.created",
-      message: `Created scripted-browser lab run for ${args.labId} (actor ${args.actorId}, ${args.surfaces.length} surface${args.surfaces.length === 1 ? "" : "s"}).`,
-    },
-    {
-      id: "event-001-subject",
-      at: args.createdAt,
-      level: "info",
-      type: "scripted-lab.subject.declared",
-      // Invariant 5: provenance recorded or its absence DECLARED. The lab did not provision
-      // this subject on app-url routes; clone routes carry structured subject provenance below.
-      message: args.subject
-        ? `Provisioned synthetic subject: clone of ${args.subject.repo}${args.subject.commit ? `@${args.subject.commit}` : ""}, served + getHost-exposed in-sandbox; env names: ${args.subject.envNames?.join(", ") || "none"} (values never persisted); state provenance: ${args.subject.state.provenance}; evidence host digest: ${args.hostDigest ?? "dry-run"}.`
-        : `Subject app declared at ${args.appUrl}; the lab did not provision it — subject build/commit provenance is UNPINNED; evidence binds to the scenario digest ${args.scenarioSourceDigest}.`,
-    },
-    {
-      id: "event-002-spend",
-      at: args.createdAt,
-      level: "info",
-      type: "scripted-lab.spend",
-      message: args.subject
-        ? "Scripted participant steps make no model requests; post-run analysis has a separate budget unless disabled. Live provisioned runs may spend E2B sandbox minutes to clone/serve the synthetic subject."
-        : "Scripted participant steps make no model requests and use no sandbox on this route; post-run analysis has a separate budget unless disabled. scenario.mode: live gates real browser actuation against the declared app.",
-    },
-  ];
-
-  if (args.sessionResults.length > 0) {
-    for (const result of args.sessionResults) {
-      events.push({
-        id: `event-${String(events.length).padStart(3, "0")}-session-${result.capture.surface.id}`,
-        at: result.capture.capturedAt,
-        level: result.status === "passed" ? "info" : "warn",
-        type: `scripted-lab.session.${result.completionReason}`,
-        message: `${result.capture.surface.id}: ${result.status} — ${result.reason}`,
-        simId: `scripted-${result.capture.surface.id}`,
-        streamId: `scripted-${result.capture.surface.id}-stream`,
-      });
-    }
-  } else if (args.sessionError) {
-    events.push({
-      id: "event-003-session-error",
-      at: args.createdAt,
-      level: "error",
-      type: "scripted-lab.session.error",
-      message: args.sessionError,
-    });
-  } else {
-    events.push({
-      id: "event-003-contract",
-      at: args.createdAt,
-      level: "info",
-      type: "scripted-lab.contract.ready",
-      message: `Dry-run contract bundle ready: scenario ${args.journey.scenarioId} @ ${args.scenarioSourceDigest} (${args.scenarioSource}, ${args.journey.steps.length} step${args.journey.steps.length === 1 ? "" : "s"}) parsed and digest-pinned; switch scenario.mode to live to actuate a real browser.`,
-    });
-  }
-
-  const review = buildScriptedReview(args);
-  const ranLive = args.sessionResults.length > 0 || args.sessionError !== undefined;
-
-  return {
-    schema: RUN_BUNDLE_SCHEMA,
-    runId: args.runId,
-    mode: args.dryRun ? "dry-run" : "live",
-    simCount: args.surfaces.length,
-    createdAt: args.createdAt,
-    cwd: PUBLIC_TARGET_CWD,
-    ...(args.lab === undefined ? {} : { lab: args.lab }),
-    artifactRoot: path.join(".humanish", "runs", args.runId),
-    source: args.source,
-    persona: {
-      id: args.persona.id,
-      name: `Scripted journey persona (${args.persona.id})`,
-      source: `lab:${args.labId}`,
-      sourceDigest: args.persona.promptDigest,
-    },
-    scenario: {
-      id: args.journey.scenarioId,
-      title: args.journey.scenarioTitle,
-      goal: redactText(args.journey.goal),
-      source: args.scenarioSource,
-      sourceDigest: args.scenarioSourceDigest,
-    },
-    lifecycle: [
-      {
-        at: args.createdAt,
-        event: "scripted-lab.run.created",
-        message: `Created scripted-browser lab run with ${args.surfaces.length} surface lane${args.surfaces.length === 1 ? "" : "s"} (actor ${args.actorId}).`,
-      },
-    ],
-    simulations,
-    streams,
-    events,
-    redaction: {
-      status: "passed",
-      notes: ranLive
-        ? "Scripted step URLs are sanitized to loopback origin+path (query/hash redacted) and step text passes text redaction. Screenshots are FULL-FIDELITY (raw), retained for local use in gitignored .humanish — NOT redacted for publishing; policies.redactScreenshots is not yet supported on this route."
-        : "Dry-run contract bundle: no browser ran and no screenshots were captured. The scenario contract is digest-pinned; live step text passes text redaction when a session runs.",
-    },
-    artifacts: {
-      run: "run.json",
-      reviewJson: "review.json",
-      reviewMarkdown: "review.md",
-      observerData: "observer/observer-data.json",
-      events: "events.ndjson",
-    },
-    review,
-    feedbackCandidates: [],
-    ...(args.subject === undefined ? {} : { subject: args.subject }),
-    ...(args.desktopTemplate === undefined ? {} : { desktopTemplate: args.desktopTemplate }),
-  };
-}
-
-function buildScriptedReview(args: {
-  appUrl: string;
-  journey: BrowserPersonaJourney;
-  scenarioSource: string;
-  sessionResults: ScriptedBrowserSessionResult[];
-  sessionError?: string;
-  surfaces: BrowserSurface[];
-}): ReviewSummary {
-  if (args.sessionError) {
-    return {
-      schema: REVIEW_SCHEMA,
-      verdict: "fail",
-      summary: `Scripted lab failed before a terminal session verdict: ${args.sessionError}`,
-      gaps: [],
-    };
-  }
-  if (args.sessionResults.length === 0) {
-    return {
-      schema: REVIEW_SCHEMA,
-      verdict: "contract_proof_only",
-      summary: `Dry-run contract for scenario ${args.journey.scenarioId} (${args.scenarioSource}, ${args.journey.steps.length} steps) against ${args.appUrl}: composition and scenario contract proven at $0; no browser ran.`,
-      gaps: ["Live scripted session not yet run (dry-run contract only)."],
-    };
-  }
-
-  // Worst-of across surfaces: harness/step failures outrank a timeout outranks a pass.
-  const reasons = args.sessionResults.map((result) => result.completionReason);
-  const verdict = reasons.some((reason) => reason === "harness_error" || reason === "step_failed")
-    ? ("fail" as const)
-    : reasons.some((reason) => reason === "timed_out")
-      ? ("timed_out" as const)
-      : ("pass" as const);
-  const passed = args.sessionResults.filter((result) => result.status === "passed").length;
-  return {
-    schema: REVIEW_SCHEMA,
-    verdict,
-    summary: `Scripted-browser actor replayed ${args.journey.scenarioId} on ${args.sessionResults.length} surface${args.sessionResults.length === 1 ? "" : "s"} against ${args.appUrl}: ${passed}/${args.sessionResults.length} satisfied the scenario predicate.`,
-    gaps: args.sessionResults
-      .filter((result) => result.status !== "passed")
-      .map((result) => `${result.capture.surface.id}: ${result.reason}`),
-  };
-}
-
-function renderScriptedReviewMarkdown(bundle: RunBundle): string {
-  const subject = bundle.events.find((event) => event.type === "scripted-lab.subject.declared");
-  const spend = bundle.events.find((event) => event.type === "scripted-lab.spend");
-  const traces = bundle.streams
-    .map((stream) => ({ stream, trace: stream.actor as ActorTrace | undefined }))
-    .filter(
-      (entry): entry is { stream: RunStream; trace: ActorTrace } => entry.trace !== undefined,
-    );
-  return [
-    `# ${bundle.scenario.title}`,
-    "",
-    `- run: ${bundle.runId}`,
-    `- mode: ${bundle.mode}`,
-    `- verdict: ${bundle.review.verdict}`,
-    `- summary: ${bundle.review.summary}`,
-    `- scenario: ${bundle.scenario.id} @ ${bundle.scenario.sourceDigest} (${bundle.scenario.source})`,
-    ...(subject ? [`- subject: ${subject.message}`] : []),
-    ...(spend ? [`- spend: ${spend.message}`] : []),
-    ...traces.map(
-      ({ stream, trace }) =>
-        `- ${stream.simId}: ${trace.provider} (${trace.lane}/${trace.protocol}) ${trace.status} (${trace.completionReason}); ${trace.counts.actions ?? 0} step action(s), ${trace.counts.screenshots ?? 0} raw screenshot(s)`,
-    ),
-    ...(bundle.review.gaps.length > 0
-      ? ["", "## Gaps", ...bundle.review.gaps.map((gap) => `- ${gap}`)]
-      : []),
-    "",
-  ].join("\n");
 }
 
 function makeScriptedRunId(): string {

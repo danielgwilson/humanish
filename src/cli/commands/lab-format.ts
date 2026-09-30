@@ -1,6 +1,6 @@
 import { formatCuaDiagnostics, formatCuaStopCause } from "../../routes/computer-use/diagnostics.js";
 import type { CuaActorLabResult } from "../../routes/computer-use/types.js";
-import type { ScriptedBrowserLabResult } from "../../routes/scripted-browser.js";
+import type { ScriptedBrowserLabResult } from "../../routes/scripted-browser/lab.js";
 import type { TerminalProductLabResult } from "../../routes/terminal/types.js";
 import type { ConcurrentSharedWorldLabResult } from "../../routes/shared-world/concurrent.js";
 
