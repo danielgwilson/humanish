@@ -3,6 +3,7 @@ import { PNG } from "pngjs";
 import { createRestrictedCodexParticipant } from "../../../src/actors/codex/restricted-participant.js";
 import {
   PARTICIPANT_FINAL_SCHEMA,
+  PARTICIPANT_LIMITS,
   PARTICIPANT_TOOL_SCHEMA,
   participantToolSchema,
   parseParticipantFinal,
@@ -531,5 +532,134 @@ describe("restricted participant conversation", () => {
     finish(result());
     await expect(first).resolves.toMatchObject({ done: true, outcome: "reached" });
     await h.close();
+  });
+});
+
+describe("restricted participant refusals", () => {
+  const speech = [
+    { id: "utterance-1", source: "speaker_audio" as const, text: "Hello?", durationMs: 500 },
+  ];
+  const rejected = { code: "request_rejected", receipt: { dispatched: false } };
+
+  it.each([
+    ["a non-string instruction", { ...request(), instructions: 42 }, {}],
+    [
+      "instructions over the limit",
+      { ...request(), instructions: "x".repeat(PARTICIPANT_LIMITS.instructions + 1) },
+      {},
+    ],
+    ["a non-string context hint", { ...request(), contextHint: 7 }, {}],
+    [
+      "acknowledged safety checks",
+      { ...request(), acknowledgedSafetyChecks: [{ id: "s", code: "c", message: "m" }] },
+      {},
+    ],
+    ["a frame that is not a PNG", request(Buffer.from("not a png")), {}],
+    [
+      "heard speech on a desktop without speech",
+      { ...request(), observation: { ...request().observation, heardSpeech: speech } },
+      {},
+    ],
+    [
+      "malformed heard speech",
+      { ...request(), observation: { ...request().observation, heardSpeech: [{ id: 1 }] } },
+      { speechEnabled: true },
+    ],
+    [
+      "acknowledgments with no tool call waiting",
+      { ...request(), previousExecution: { actions: [{ index: 0, status: "completed" }] } },
+      {},
+    ],
+  ])("refuses %s before launching a native turn", async (_, candidate, options) => {
+    run.mockResolvedValue(result());
+    const h = createRestrictedCodexParticipant(options);
+    await expect(
+      h.provider.nextTurn(candidate as never, new AbortController().signal),
+    ).rejects.toMatchObject(rejected);
+    expect(run).not.toHaveBeenCalled();
+    await h.close();
+  });
+
+  it("refuses acknowledgments that do not match the waiting tool call, then accepts matching ones", async () => {
+    let reply: Record<string, unknown> | undefined;
+    run.mockImplementationOnce(async () => {
+      reply = JSON.parse(
+        await nativeTool()({ narration: "Saving.", actions: [{ kind: "click", x: 1, y: 1 }] }),
+      );
+      return result();
+    });
+    const h = createRestrictedCodexParticipant();
+    const signal = new AbortController().signal;
+    await h.provider.nextTurn(request(frame(1)), signal);
+    for (const previousExecution of [
+      undefined,
+      // A one-character string has the waiting batch's length but is not an array.
+      { actions: "x" },
+      {
+        actions: [
+          { index: 0, status: "completed" },
+          { index: 1, status: "completed" },
+        ],
+      },
+      { actions: [null] },
+      { actions: [{ index: 1, status: "completed" }] },
+    ]) {
+      await expect(
+        h.provider.nextTurn(
+          { ...request(frame(2)), ...(previousExecution ? { previousExecution } : {}) } as never,
+          signal,
+        ),
+      ).rejects.toMatchObject(rejected);
+    }
+    expect(reply).toBeUndefined();
+    const terminal = await h.provider.nextTurn(
+      { ...request(frame(2)), previousExecution: { actions: [{ index: 0, status: "completed" }] } },
+      signal,
+    );
+    expect(terminal.done).toBe(true);
+    expect(reply).toMatchObject({ acknowledgments: [{ index: 0, status: "completed" }] });
+    expect(run).toHaveBeenCalledTimes(1);
+    await h.close();
+  });
+
+  it("reports a native cleanup failure in the receipt and at close", async () => {
+    run.mockResolvedValue(
+      result(null, { status: "failed", errorCode: "codex_cleanup_failed", usageComplete: false }),
+    );
+    const h = createRestrictedCodexParticipant();
+    await expect(
+      h.provider.nextTurn(request(), new AbortController().signal),
+    ).rejects.toMatchObject({ code: "cleanup_unconfirmed", receipt: { cleanup: "unconfirmed" } });
+    expect(await h.close()).toEqual({ status: "unconfirmed" });
+  });
+
+  it("fails a turn that settles after cancellation as cleanup_unconfirmed once cleanup failed", async () => {
+    let finish!: (value: RestrictedCodexResult) => void;
+    run.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    sessionClose.mockResolvedValue(false);
+    const h = createRestrictedCodexParticipant();
+    const abort = new AbortController();
+    const turn = h.provider.nextTurn(request(), abort.signal);
+    void turn.catch(() => undefined);
+    abort.abort();
+    await vi.waitFor(() => expect(sessionClose).toHaveBeenCalledTimes(1));
+    await Promise.resolve();
+    finish(result());
+    await expect(turn).rejects.toMatchObject({ code: "cleanup_unconfirmed" });
+    expect(await h.close()).toEqual({ status: "unconfirmed" });
+  });
+
+  it("stops waiting for native cleanup after the cleanup budget", async () => {
+    vi.useFakeTimers();
+    sessionClose.mockReturnValue(new Promise<boolean>(() => undefined));
+    const h = createRestrictedCodexParticipant();
+    const closing = h.close();
+    await vi.advanceTimersByTimeAsync(PARTICIPANT_LIMITS.cleanupMs + 1);
+    expect(await closing).toEqual({ status: "unconfirmed" });
   });
 });
