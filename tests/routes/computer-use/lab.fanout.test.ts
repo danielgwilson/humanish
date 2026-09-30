@@ -50,7 +50,7 @@ import {
   type ObserverResult,
   type ObserverServer,
 } from "../../../src/observer/render.js";
-import { readReview } from "../../../src/run/manage.js";
+import { readReview } from "../../../src/run/stored-runs.js";
 import { reclaimRunSandboxes } from "../../../src/run/reclaim.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 

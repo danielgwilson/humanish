@@ -11,7 +11,7 @@ import {
   tallyParticipantOutcomes,
   withCuaReviewProvenance,
 } from "../../src/run/outcomes.js";
-import { readReview } from "../../src/run/manage.js";
+import { readReview } from "../../src/run/stored-runs.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { type RunBundle } from "../../src/run/bundle.js";
 

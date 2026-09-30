@@ -19,7 +19,7 @@ import { runInit } from "../../src/lab/init.js";
 import { renderObserver, serveObserver } from "../../src/observer/render.js";
 import { createProgram } from "../../src/cli/program.js";
 import { doctor } from "../../src/cli/doctor.js";
-import { listRuns } from "../../src/run/manage.js";
+import { listRuns } from "../../src/run/stored-runs.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { prepareRunArtifactPaths, validatePreparedRunArtifactPaths } from "../../src/run/paths.js";
