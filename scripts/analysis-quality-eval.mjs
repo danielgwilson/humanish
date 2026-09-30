@@ -36,7 +36,7 @@ const mod = (name) => import(pathToFileURL(path.join(packageRoot, "dist", `${nam
 const runtime = await mod("run");
 const evidence = await mod("analysis/evidence");
 const service = await mod("analysis/service");
-const engine = await mod("analysis/engine");
+const studyAnalysis = await mod("analysis/run-study-analysis");
 const config = {
   model: "gpt-6-astra",
   question: null,
@@ -51,7 +51,7 @@ async function packagePin() {
   const metadata = await readJson(path.join(packageRoot, "package.json"));
   const files = {};
   for (const name of [
-    "analysis/engine",
+    "analysis/run-study-analysis",
     "analysis/provider",
     "analysis/validation",
     "analysis/evidence",
@@ -59,7 +59,11 @@ async function packagePin() {
   ]) {
     files[`dist/${name}.js`] = hash(await readFile(path.join(packageRoot, "dist", `${name}.js`)));
   }
-  return { version: metadata.version, promptVersion: engine.STUDY_ANALYSIS_PROMPT_VERSION, files };
+  return {
+    version: metadata.version,
+    promptVersion: studyAnalysis.STUDY_ANALYSIS_PROMPT_VERSION,
+    files,
+  };
 }
 
 if (command === "author") {

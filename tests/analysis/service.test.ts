@@ -131,7 +131,7 @@ describe("ordinary study analysis flow", () => {
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
-  it("uses real admission, engine, storage and render paths; reopening does not dispatch again", async () => {
+  it("uses real admission, analysis run, storage and render paths; reopening does not dispatch again", async () => {
     const fetch = await transport();
     const result = await analyzeStudy(
       cwd,
