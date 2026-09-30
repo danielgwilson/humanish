@@ -39,7 +39,7 @@ import {
   qualifiedCodexCliVersions,
 } from "../src/actors/codex/qualified-versions.ts";
 import { restrictedCodexConfig } from "../src/actors/codex/restricted-policy.ts";
-import { restrictedCodexNpmTarget } from "../src/actors/codex/restricted-session.ts";
+import { restrictedCodexNpmTarget } from "../src/actors/codex/restricted-executable.ts";
 import { runLoopbackProbe, summarizeProbe } from "./lib/codex-loopback-probe.mjs";
 import {
   PROBE_SCENARIOS,

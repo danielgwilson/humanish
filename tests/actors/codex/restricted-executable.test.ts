@@ -5,7 +5,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { checkRestrictedCodexAnalysisReadiness } from "../../../src/analysis/restricted-codex.js";
 import { qualifiedCodexCliVersions } from "../../../src/actors/codex/qualified-versions.js";
-import { restrictedCodexNpmTarget } from "../../../src/actors/codex/restricted-session.js";
+import { restrictedCodexNpmTarget } from "../../../src/actors/codex/restricted-executable.js";
 import type { RestrictedCodexSpawn } from "../../../src/actors/codex/restricted-transport.js";
 
 const directories: string[] = [];
