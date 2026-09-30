@@ -987,6 +987,8 @@ async function runConcurrentSharedWorldInScope(
     mode: dryRun ? "dry-run" : "live",
     ...(options.lab === undefined ? {} : { lab: options.lab }),
   });
+  // Before any sandbox exists: a run killed after acquiring one must still have a status record.
+  await runStatus.started;
   const artifactRoot = runPaths.absoluteRunRoot;
   const physicalArtifactRoot = runPaths.physicalRunRoot;
   const createdAt = new Date().toISOString();
