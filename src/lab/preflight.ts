@@ -15,7 +15,7 @@ import {
 import { isLoopbackUrl, type LabConfig } from "./config.js";
 import { selectLabBackend, type LabBackend } from "./engine.js";
 import { resolveLabManifest, type LabResolveFailure } from "./discover.js";
-import { digestText, redactText } from "../redaction.js";
+import { digestText, redactText } from "../evidence/redaction.js";
 
 export const LAB_PREFLIGHT_SCHEMA = "humanish.lab-preflight-result.v1";
 

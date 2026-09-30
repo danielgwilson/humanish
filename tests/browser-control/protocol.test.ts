@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CuaExecutorError } from "../src/cua-executor-error.js";
+import { CuaExecutorError } from "../../src/cua-executor-error.js";
 import {
   BROWSER_CONTROL_LIMITS,
   decodeBrowserControlObservation,
@@ -9,9 +9,9 @@ import {
   safeBrowserControlFailure,
   validateBrowserControlAction,
   validateBrowserControlPng,
-} from "../src/browser-control-protocol.js";
-import { observation, png, request, reply } from "./browser-control-fixture.js";
-import { DESKTOP_RECORDING_MAX_BYTES } from "../src/desktop-recording-types.js";
+} from "../../src/browser-control/protocol.js";
+import { observation, png, request, reply } from "./fixture.js";
+import { DESKTOP_RECORDING_MAX_BYTES } from "../../src/evidence/desktop-recording-types.js";
 
 describe("browser control closed v1 protocol", () => {
   it.each([

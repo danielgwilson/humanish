@@ -7,7 +7,7 @@ import { parseLabConfig, LAB_CONFIG_SCHEMA } from "../../src/lab/config.js";
 import { runLab, selectLabBackend } from "../../src/lab/engine.js";
 import { resolveLabManifest } from "../../src/lab/discover.js";
 import { parseBrowserPersonaJourneyFromScenario } from "../../src/scripted-browser-actor.js";
-import { digestText } from "../../src/redaction.js";
+import { digestText } from "../../src/evidence/redaction.js";
 
 const ROOT = process.cwd();
 const read = (rel: string) => readFileSync(path.join(ROOT, rel), "utf8");

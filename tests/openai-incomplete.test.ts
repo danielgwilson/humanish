@@ -5,7 +5,7 @@ import {
   OPENAI_RESPONSES_CU_CAPABILITIES,
   parseOpenAiResponse,
 } from "../src/openai-responses-cu.js";
-import { defaultRedactionHooks } from "../src/redaction.js";
+import { defaultRedactionHooks } from "../src/evidence/redaction.js";
 
 function captured(name: "reasoning-only" | "partial-message"): Record<string, unknown> {
   return JSON.parse(

@@ -27,7 +27,7 @@ import {
   createOpenAiResponsesProvider,
   type OpenAiResponsesProviderOptions,
 } from "./openai-responses-cu.js";
-import { defaultRedactionHooks, type RedactionHooks } from "./redaction.js";
+import { defaultRedactionHooks, type RedactionHooks } from "./evidence/redaction.js";
 import type { DwellWindow, StopWhen } from "./stop-conditions.js";
 import { estimateActorCostForExecution } from "./pricing.js";
 import type { LabTask } from "./tasks.js";

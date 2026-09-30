@@ -6,8 +6,8 @@ import {
   encodeGuestBootstrap,
   guestReadyTimeoutMs,
 } from "../src/guest-bootstrap.js";
-import { createBrowserControlClient } from "../src/browser-control-client.js";
-import { identity, pair, observation, tick } from "./browser-control-fixture.js";
+import { createBrowserControlClient } from "../src/browser-control/client.js";
+import { identity, pair, observation, tick } from "./browser-control/fixture.js";
 
 afterEach(() => vi.useRealTimers());
 function fixture() {

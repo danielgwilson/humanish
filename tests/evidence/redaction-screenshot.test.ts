@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { PNG } from "pngjs";
 
-import { redactScreenshot } from "../src/redaction.js";
+import { redactScreenshot } from "../../src/evidence/redaction.js";
 
 // redactScreenshot is the fail-closed public-safety primitive for the
 // computer-use lane: a raw desktop frame must never reach a public artifact, so

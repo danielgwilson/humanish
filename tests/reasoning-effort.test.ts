@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { defaultRedactionHooks } from "../src/redaction.js";
+import { defaultRedactionHooks } from "../src/evidence/redaction.js";
 import type { ActorCapabilities } from "../src/actor-contract.js";
 import type { CuaExecutor, CuaProvider, CuaTurn } from "../src/computer-use.js";
 import { runComputerUseLoop } from "../src/computer-use.js";

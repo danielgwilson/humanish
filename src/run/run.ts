@@ -4,7 +4,7 @@ import { isCommsReceivingEvidence } from "../comms/receiving-evidence.js";
 import {
   desktopRecordingMetadataSchema,
   type RunDesktopRecording,
-} from "../desktop-recording-types.js";
+} from "../evidence/desktop-recording-types.js";
 import { randomUUID } from "node:crypto";
 import { lstat, readdir, readFile, stat } from "node:fs/promises";
 import { existsSync } from "node:fs";
@@ -26,7 +26,10 @@ import {
   type BrowserSurfaceCapture,
 } from "../scripted-browser-actor.js";
 import { CODEX_APP_SERVER_TRACE_SCHEMA, type CodexAppServerTrace } from "../codex-app-server.js";
-import { artifactReferenceIfWritten, hasWrittenScreenshot } from "../artifact-reference.js";
+import {
+  artifactReferenceIfWritten,
+  hasWrittenScreenshot,
+} from "../evidence/artifact-reference.js";
 import {
   ACTOR_TRACE_SCHEMA,
   validActorExecutionProfile,
@@ -44,13 +47,13 @@ import {
 import { actorEnding } from "../actor-stop-cause.js";
 import type { TaskFunnel } from "../tasks.js";
 import { captureGitState, GIT_STATE_SCHEMA, type CapturedGitState } from "./git-state.js";
-import { screenshotEvidenceError } from "../image-evidence.js";
+import { screenshotEvidenceError } from "../evidence/image.js";
 import { buildObserverData } from "../observer/data.js";
 import { parseResolvedPersona, type ResolvedPersona } from "../lab/persona.js";
 import { round6 } from "../pricing.js";
 import { loadStudyAnalysis, listStudyAnalysisExecutions } from "../analysis/store.js";
 import { isStudyAnalysisRecordPath, studyAnalysisSharingProblems } from "../analysis/sharing.js";
-import { containsSensitive, digestText, redactText } from "../redaction.js";
+import { containsSensitive, digestText, redactText } from "../evidence/redaction.js";
 import type { E2BDesktopModule } from "../substrates/e2b/desktop-launch.js";
 import {
   bindExistingRunArtifactPaths,

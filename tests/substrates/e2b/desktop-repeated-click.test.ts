@@ -11,7 +11,7 @@ import {
   createE2BDesktopExecutor,
   type E2BDesktopLike,
 } from "../../../src/substrates/e2b/desktop-executor.js";
-import { defaultRedactionHooks } from "../../../src/redaction.js";
+import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
 
 function deferred<T>() {
   let resolve!: (value: T) => void;

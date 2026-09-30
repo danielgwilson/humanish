@@ -5,7 +5,7 @@ import {
   isCuaProviderError,
   type CuaProviderErrorCode,
 } from "./cua-provider-error.js";
-import { validateBrowserControlPng, validateHeardSpeech } from "./browser-control-protocol.js";
+import { validateBrowserControlPng, validateHeardSpeech } from "./browser-control/protocol.js";
 import {
   createRestrictedCodexSession,
   type RestrictedCodexSessionOptions,

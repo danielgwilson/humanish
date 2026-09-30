@@ -9,7 +9,7 @@ import {
   publicPathForTrace,
   redactText,
   redactToSecretLabel,
-} from "../src/redaction.js";
+} from "../src/evidence/redaction.js";
 
 describe("codex app-server trace redaction", () => {
   it("labels a symlinked target cwd as [target-cwd] even when the actor reports the realpath form", async () => {

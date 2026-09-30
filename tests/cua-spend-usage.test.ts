@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { runComputerUseLoop } from "../src/computer-use.js";
 import { runCuaActorSession } from "../src/computer-use-actor.js";
-import { defaultRedactionHooks } from "../src/redaction.js";
+import { defaultRedactionHooks } from "../src/evidence/redaction.js";
 import type { CuaTurn } from "../src/computer-use.js";
 import {
   OPENAI_RESPONSES_CU_CAPABILITIES,

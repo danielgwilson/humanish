@@ -35,9 +35,9 @@ import {
   type ActorTrace,
   type ActorTraceItem,
 } from "./actor-contract.js";
-import { CHROMIUM_EVIDENCE_HYGIENE_FLAGS } from "./browser-evidence-hygiene.js";
-import { assertScreenshotEvidence } from "./image-evidence.js";
-import { digestText, redactText, redactToSecretLabel } from "./redaction.js";
+import { CHROMIUM_EVIDENCE_HYGIENE_FLAGS } from "./evidence/browser-hygiene.js";
+import { assertScreenshotEvidence } from "./evidence/image.js";
+import { digestText, redactText, redactToSecretLabel } from "./evidence/redaction.js";
 import {
   assertPreparedSelectedOutputDirectory,
   assertSafeOutputPathSegment,
@@ -138,7 +138,7 @@ export interface BrowserSurfaceCapture {
    * Surface-level screenshot the producer wrote (the last step's screenshot).
    * Omitted for a blocked capture whose evidence is the failure itself, so the
    * stream never claims a screenshot embed/ui reference that does not exist.
-   * See src/artifact-reference.ts.
+   * See src/evidence/artifact-reference.ts.
    */
   screenshotPath?: string;
   steps: BrowserPersonaStepCapture[];
@@ -172,7 +172,7 @@ interface BrowserPersonaStepCapture {
    * Path to the step screenshot the producer actually wrote. Omitted for blocked
    * steps where the failure itself is the recorded evidence and no screenshot was
    * written — the bundle must not reference an artifact that does not exist (see
-   * src/artifact-reference.ts). A step that ran and attempted a screenshot keeps
+   * src/evidence/artifact-reference.ts). A step that ran and attempted a screenshot keeps
    * this even when its assertions failed, so a broken producer still fails verify.
    */
   screenshotPath?: string;
@@ -763,7 +763,7 @@ function buildBlockedBrowserPersonaSteps(args: {
   // failure IS the evidence: keep the blocked status + reason, but omit the
   // screenshot reference so the bundle never claims an artifact that does not
   // exist (otherwise verify's missingLocalEvidenceArtifacts fails closed on
-  // evidence that was never meant to exist). See src/artifact-reference.ts.
+  // evidence that was never meant to exist). See src/evidence/artifact-reference.ts.
   return args.browserJourney.steps.map((step) => ({
     action: step.action,
     completedAt: args.timestamp,
@@ -827,7 +827,7 @@ function assertScriptedSessionPathIds(options: ScriptedBrowserSessionOptions): v
  * the evidence; the shot is a bonus. Returns the relative path plus whether the
  * write actually produced a non-empty file, so the caller only references the path
  * when the file truly exists (never claim a screenshot that is not there --
- * src/artifact-reference.ts).
+ * src/evidence/artifact-reference.ts).
  */
 async function captureBlockedStepScreenshot(
   page: ScriptedPageLike | null,
@@ -854,7 +854,7 @@ async function captureBlockedStepScreenshot(
  * Surface-level screenshot path = the last step that actually wrote one. Returns
  * undefined when no step wrote a screenshot (a fully blocked capture whose evidence
  * is the failure itself), so the producer never synthesizes a path to a file it did
- * not write. See src/artifact-reference.ts.
+ * not write. See src/evidence/artifact-reference.ts.
  */
 function surfaceScreenshotPath(steps: BrowserPersonaStepCapture[]): string | undefined {
   for (let index = steps.length - 1; index >= 0; index -= 1) {

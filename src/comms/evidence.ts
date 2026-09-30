@@ -11,7 +11,7 @@
 // Net: NO raw address/subject/link/OTP text ever lands in the artifact. Same caution as the lobby code.
 
 import type { CommsMessage } from "./types.js";
-import { digestText } from "../redaction.js";
+import { digestText } from "../evidence/redaction.js";
 
 export const COMMS_THREAD_SCHEMA = "humanish.comms-thread.v1";
 

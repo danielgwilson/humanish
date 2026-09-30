@@ -6,7 +6,7 @@
 // addressed actor inbox and read back through the same CommsChannel port a real provider adapter
 // would implement. Nothing leaves the process. See types.ts for the port + public-safety notes.
 
-import { digestText } from "../redaction.js";
+import { digestText } from "../evidence/redaction.js";
 import type {
   CommsAddress,
   CommsChannel,

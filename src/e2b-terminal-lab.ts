@@ -96,7 +96,7 @@ import {
 } from "./substrates/e2b/desktop-launch.js";
 import { renderObserver, type ObserverResult } from "./observer/render.js";
 import { personaBrief, personaToDirectives, renderPersonaPromptSection } from "./lab/persona.js";
-import { digestText, redactedTail, redactText } from "./redaction.js";
+import { digestText, redactedTail, redactText } from "./evidence/redaction.js";
 import { participantAssignment } from "./lab/participant-assignment.js";
 import { prepareRunArtifactPaths, validatePreparedRunArtifactPaths } from "./run-paths.js";
 import {

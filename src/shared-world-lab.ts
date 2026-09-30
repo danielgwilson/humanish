@@ -56,7 +56,7 @@ import { actorRegistry, isCuaActorDescriptor, type CuaActorDescriptor } from "./
 import {
   CHROMIUM_EVIDENCE_HYGIENE_FLAGS,
   chromiumEvidenceProfilePreferencesJson,
-} from "./browser-evidence-hygiene.js";
+} from "./evidence/browser-hygiene.js";
 import type { CuaActorSessionOptions } from "./computer-use-actor.js";
 import type { CuaLoopResult } from "./computer-use.js";
 import { labPersonaIds, resolveCommittedPersonasForCwd } from "./lab/persona-resolve.js";
@@ -103,7 +103,7 @@ import {
   type LabSubjectStateCheckpoint,
 } from "./lab/config.js";
 import { renderObserver, type ObserverResult } from "./observer/render.js";
-import { redactText } from "./redaction.js";
+import { redactText } from "./evidence/redaction.js";
 import { participantAssignment } from "./lab/participant-assignment.js";
 import { prepareRunArtifactPaths, validatePreparedRunArtifactPaths } from "./run-paths.js";
 import {

@@ -56,7 +56,7 @@ import { resolveAutomaticAnalysis, type LabAnalysis } from "../analysis/automati
 
 import { normalizeExtraExcludeEntry } from "../run/source-archive.js";
 import { actorRegistry } from "../actor-registry.js";
-import { containsSensitive } from "../redaction.js";
+import { containsSensitive } from "../evidence/redaction.js";
 import type { LabTask } from "../tasks.js";
 import { DEVICE_PRESET_NAMES, isDevicePresetName } from "./device-presets.js";
 import type {

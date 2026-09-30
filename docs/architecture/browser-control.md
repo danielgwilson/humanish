@@ -98,8 +98,8 @@ pixel product are checked before decoding, independently of compressed size.
 
 ## Verification boundary
 
-`tests/browser-control-protocol.test.ts`, `browser-control-transport.test.ts`
-and `browser-control-client.test.ts` exercise production schemas and framing,
+`tests/browser-control/protocol.test.ts`, `transport.test.ts`
+and `client.test.ts` exercise production schemas and framing,
 all action kinds, image limits, correlation, malformed input, revocation,
 concurrency, lost acknowledgements, backpressure and cancellation. These use
 synthetic PNGs and inert paired byte streams, with no network, model or VM calls.

@@ -121,7 +121,7 @@ import {
   type ObserverResult,
   type ObserverRuntimeStreamUrl,
 } from "./observer/render.js";
-import { redactText } from "./redaction.js";
+import { redactText } from "./evidence/redaction.js";
 import { participantAssignment } from "./lab/participant-assignment.js";
 import {
   prepareRunArtifactPaths,

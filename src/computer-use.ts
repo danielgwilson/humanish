@@ -24,7 +24,7 @@ import {
   type AffordanceObservation,
 } from "./affordance.js";
 import { commandFailureInfo, isCommandExitError } from "./command-failure.js";
-import type { RedactionHooks } from "./redaction.js";
+import type { RedactionHooks } from "./evidence/redaction.js";
 import {
   evaluateStopWhen,
   type DwellWindow,

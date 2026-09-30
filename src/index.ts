@@ -124,7 +124,7 @@ export type {
 // (so an adopter types its `.mjs` scorer against `import("humanish")` alone). The loader itself is
 // CLI-internal (declared via `review.scorer.ref` / `--scorer`), not part of the library surface.
 export type { AdapterScorerModule, AdapterScoringContext } from "./adapter-scorer-loader.js";
-export type { RedactionHooks } from "./redaction.js";
+export type { RedactionHooks } from "./evidence/redaction.js";
 // Off-app comms (#297) — the LIBRARY extension surface only. The capability is driven CLI-first via a
 // lab `comms:` block (see the humanish skill + lab schema), so the catch, drain, inbox-render, and
 // origin-rewrite MACHINERY is internal to that route and intentionally NOT re-exported. What IS public:

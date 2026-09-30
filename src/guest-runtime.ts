@@ -1,6 +1,6 @@
 import type { Duplex, Readable } from "node:stream";
 import type { CuaExecutor } from "./computer-use.js";
-import { attachBrowserControlDispatcher } from "./browser-control-dispatcher.js";
+import { attachBrowserControlDispatcher } from "./browser-control/dispatcher.js";
 import {
   encodeGuestBootstrap,
   GuestBootstrapReader,
@@ -12,7 +12,7 @@ import type { GuestMediaConfig } from "./guest-media-config.js";
 import type {
   DesktopRecordingConfig,
   DesktopRecordingMetadata,
-} from "./desktop-recording-types.js";
+} from "./evidence/desktop-recording-types.js";
 
 export interface GuestRuntimeDesktop {
   executor: CuaExecutor;

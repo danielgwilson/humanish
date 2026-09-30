@@ -1,7 +1,11 @@
 import { execFileSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
 
-import { containsSensitive, redactText, redactToSecretLabel } from "../src/redaction.js";
+import {
+  containsSensitive,
+  redactText,
+  redactToSecretLabel,
+} from "../../src/evidence/redaction.js";
 
 const localPaths = [
   ["", "tmp", "synthetic-workspace"],

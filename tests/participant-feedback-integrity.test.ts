@@ -11,7 +11,7 @@ import {
   resolveSelfReportedBlocker,
   resolveSelfReportedFriction,
 } from "../src/cua-actor-lab.js";
-import { containsSensitive, defaultRedactionHooks } from "../src/redaction.js";
+import { containsSensitive, defaultRedactionHooks } from "../src/evidence/redaction.js";
 
 const REPORT = "The Save button did nothing. I used Enter and finished the task.";
 const CLEAN =

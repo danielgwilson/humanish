@@ -13,8 +13,8 @@ import type { GuestRuntimeDesktop } from "./guest-runtime.js";
 import { GUEST_BOOTSTRAP_LIMITS, validateGuestInitialUrl } from "./guest-bootstrap.js";
 import type { GuestMediaConfig } from "./guest-media-config.js";
 import { startDesktopMedia } from "./guest-desktop-media.js";
-import type { DesktopRecordingConfig } from "./desktop-recording-types.js";
-import { startDesktopRecorder, type DesktopRecorderHandle } from "./desktop-recorder.js";
+import type { DesktopRecordingConfig } from "./evidence/desktop-recording-types.js";
+import { startDesktopRecorder, type DesktopRecorderHandle } from "./evidence/desktop-recorder.js";
 
 const GUEST_RUNTIME_PATHS = Object.freeze({
   root: "/opt/humanish/control",

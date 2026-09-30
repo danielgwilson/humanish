@@ -1,7 +1,7 @@
 import type { Duplex } from "node:stream";
 import { TextDecoder } from "node:util";
-import { BROWSER_CONTROL_LIMITS } from "./browser-control-protocol.js";
-import { CuaExecutorError, type CuaExecutorErrorCode } from "./cua-executor-error.js";
+import { BROWSER_CONTROL_LIMITS } from "./protocol.js";
+import { CuaExecutorError, type CuaExecutorErrorCode } from "../cua-executor-error.js";
 
 /** Owned byte channel only. This module never discovers endpoints or reconnects. */
 export class BrowserControlTransport {

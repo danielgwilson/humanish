@@ -12,7 +12,7 @@ import {
   assertSafeOutputPathSegment,
   prepareContainedOutputFile,
   type PreparedOutputDirectory,
-} from "./selected-output-paths.js";
+} from "../selected-output-paths.js";
 
 /** Both providers stream into the same bounded artifact writer before desktop teardown. */
 export async function collectDesktopRecording(

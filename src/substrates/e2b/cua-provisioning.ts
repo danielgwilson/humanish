@@ -4,7 +4,7 @@ import path from "node:path";
 import {
   CHROMIUM_EVIDENCE_HYGIENE_FLAGS,
   chromiumEvidenceProfilePreferencesJson,
-} from "../../browser-evidence-hygiene.js";
+} from "../../evidence/browser-hygiene.js";
 import {
   chromeCdpProbeCommand,
   parseChromeCdpProbeOutput,
@@ -31,7 +31,7 @@ import {
   type LabSubjectServe,
   type LabSubjectState,
 } from "../../lab/config.js";
-import { digestText, redactText, redactedTail } from "../../redaction.js";
+import { digestText, redactText, redactedTail } from "../../evidence/redaction.js";
 import { type RunDesktopGeometry, type RunSubjectStateStepRecord } from "../../run/run.js";
 import {
   corepackCommandFor,

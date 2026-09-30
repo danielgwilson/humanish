@@ -32,7 +32,7 @@ import {
   createE2BDesktopExecutor,
   type E2BDesktopLike,
 } from "../src/substrates/e2b/desktop-executor.js";
-import { defaultRedactionHooks } from "../src/redaction.js";
+import { defaultRedactionHooks } from "../src/evidence/redaction.js";
 
 const FAKE_CAPS: ActorCapabilities = {
   headless: true,

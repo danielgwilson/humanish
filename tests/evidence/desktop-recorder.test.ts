@@ -4,8 +4,8 @@ import {
   buildDesktopRecorderProbeCommand,
   buildDesktopRecorderPulseSetupCommands,
   parseDesktopRecorderDuration,
-} from "../src/desktop-recorder.js";
-import { DESKTOP_RECORDING_MAX_BYTES } from "../src/desktop-recording-types.js";
+} from "../../src/evidence/desktop-recorder.js";
+import { DESKTOP_RECORDING_MAX_BYTES } from "../../src/evidence/desktop-recording-types.js";
 
 describe("desktop recorder command", () => {
   it("builds one fixed full-desktop H.264/AAC recipe with explicit capture points", () => {

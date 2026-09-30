@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 import readline from "node:readline";
 
-import { digestText, publicPathForTrace, redactText, tailText } from "./redaction.js";
+import { digestText, publicPathForTrace, redactText, tailText } from "./evidence/redaction.js";
 import {
   prepareContainedOutputDirectory,
   prepareContainedOutputFile,

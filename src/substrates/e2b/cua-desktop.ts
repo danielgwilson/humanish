@@ -20,8 +20,8 @@ import type {
 } from "../../cua-desktop-lane.js";
 import { inboxRecipientFor, laneHasInboxRecipient } from "../../cua-desktop-lane.js";
 import type { OwnedDesktopAllocation } from "../../desktop-session.js";
-import { collectDesktopRecording } from "../../desktop-recording-artifact.js";
-import type { RunDesktopRecording } from "../../desktop-recording-types.js";
+import { collectDesktopRecording } from "../../evidence/desktop-recording-artifact.js";
+import type { RunDesktopRecording } from "../../evidence/desktop-recording-types.js";
 import {
   BROWSER_SETTLE_MS,
   CUA_ACTOR_LAB_PROVIDER_METADATA,
@@ -52,7 +52,7 @@ import { loadE2BDesktopModule, type E2BDesktopSandbox } from "./desktop-launch.j
 import { observeDesktopResources, type DesktopResourceObservation } from "./desktop-resources.js";
 import { allocateE2BDesktopSession } from "./desktop-session.js";
 import { readDetachedLog } from "./detached.js";
-import { redactText } from "../../redaction.js";
+import { redactText } from "../../evidence/redaction.js";
 import { type RunDesktopGeometry, type RunSubjectStateStepRecord } from "../../run/run.js";
 import { appendSandboxReceipt } from "../../run/sandbox-receipts.js";
 import { writeContainedOutputFile } from "../../selected-output-paths.js";

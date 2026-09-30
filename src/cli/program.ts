@@ -35,7 +35,7 @@ import { inspectCommsRecovery, recoverCommsReceiving } from "../comms/receiving.
 import { resolveReceivingConnection } from "../comms/receiving-runtime.js";
 import { promptSecret } from "./secret-prompt.js";
 import type { EnvFileLoadResult } from "./env-file.js";
-import { redactText } from "../redaction.js";
+import { redactText } from "../evidence/redaction.js";
 import {
   draftFeedback,
   listFeedback,

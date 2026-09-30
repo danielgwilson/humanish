@@ -3,7 +3,7 @@ import {
   browserControlActionSchema,
   browserOnlyControlActionSchema,
   validateBrowserControlAction,
-} from "./browser-control-protocol.js";
+} from "./browser-control/protocol.js";
 import { validClosingReport, type CuaTurn } from "./computer-use.js";
 import type { ActorExecutionProfile, ParticipantClosingReport } from "./actor-contract.js";
 
