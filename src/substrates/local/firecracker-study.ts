@@ -2,7 +2,10 @@ import { collectDesktopRecording } from "../../evidence/desktop-recording-artifa
 import path from "node:path";
 import { runLab, type LabOutcome, type RunLabOptions } from "../../lab/engine.js";
 import type { LabConfig } from "../../lab/config.js";
-import { inboxRecipientFor, type DesktopLaneEvidence } from "../../cua-desktop-lane.js";
+import {
+  inboxRecipientFor,
+  type DesktopLaneEvidence,
+} from "../../routes/computer-use/desktop-lane.js";
 import { runCuaActorSession } from "../../actors/computer-use/actor.js";
 import {
   createLocalFirecrackerDesktop,

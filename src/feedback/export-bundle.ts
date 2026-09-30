@@ -22,7 +22,7 @@ import {
   prepareRunArtifactPaths,
   validatePreparedRunArtifactPaths,
   type PreparedRunArtifactPaths,
-} from "../run-paths.js";
+} from "../run/paths.js";
 import { isStudyAnalysisRecordPath } from "../analysis/sharing.js";
 import {
   assertPreparedSelectedOutputDirectory,
@@ -31,7 +31,7 @@ import {
   readContainedRegularFile,
   writeContainedOutputFile,
   type PreparedSelectedOutputDirectory,
-} from "../selected-output-paths.js";
+} from "../run/selected-output-paths.js";
 
 const DERIVATION_SCHEMA = "humanish.redacted-derivation.v1";
 const MAX_FILES = 10_000;

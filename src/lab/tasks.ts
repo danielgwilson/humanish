@@ -1,0 +1,204 @@
+// Tasks: the researcher's protocol, expressed as config (docs/principles/three-roles.md).
+//
+// A lab could declare a prose `mission` and nothing else. That is a brief, not a protocol — and it
+// left "where did people get stuck" answerable only from an actor's own narration, which is the one
+// source a study should not have to take on faith.
+//
+// Real usability studies are built from discrete TASKS, each with a written success criterion, and
+// the result is a funnel: how far each participant got before they stopped. That funnel is the
+// finding. A single pass/fail per participant throws it away.
+//
+// The criterion language is `stopWhen`, unchanged and already load-bearing elsewhere: a task is
+// done when an observation satisfies it. Reusing it means a task criterion is exactly as expressive
+// as a stop condition, and an author who knows one knows the other.
+//
+// A task's completion is CORROBORATED, not self-reported. The actor saying "I signed up" does not
+// complete a task; the observed URL, page text, or app state does. That distinction is the whole
+// reason to declare tasks at all.
+
+import {
+  evaluateStopWhen,
+  type StopConditionObservation,
+  type StopWhen,
+} from "../actors/stop-conditions.js";
+
+const TASK_FUNNEL_SCHEMA = "humanish.task-funnel.v1" as const;
+
+/**
+ * One task in a protocol. It has two halves that belong to two different people, and keeping them
+ * apart is the point of the type.
+ *
+ * `goal` belongs to the PARTICIPANT. It is what they are asked to do, in their language, and it is
+ * the only half that reaches the prompt.
+ *
+ * `success` belongs to the RESEARCHER. It is how the task will be measured, and the participant
+ * never sees it — a moderator does not read the success criterion aloud, because telling someone
+ * how they will be judged changes what they do. A persona told "you succeed when the URL contains
+ * /dashboard" will go find that URL, which measures the instruction rather than the product.
+ */
+export interface LabTask {
+  /** Stable id, used in evidence and in the funnel. Researcher-facing. */
+  id: string;
+  /** PARTICIPANT-FACING. What they are asked to do. The only half that reaches the prompt. */
+  goal: string;
+  /** RESEARCHER-FACING. Observation-shaped proof the task happened. Never rendered to the
+   *  participant. Absent means the task is narrative-only: it is asked for but cannot be measured,
+   *  and the funnel says so rather than quietly counting it as failed. */
+  success?: StopWhen;
+}
+
+/** When a task was first observed complete. */
+export interface TaskCompletion {
+  id: string;
+  /** Turn number on which the criterion was first satisfied. */
+  turn: number;
+  /** Which rule matched, for a reader who wants to know what counted as proof. */
+  matchedRuleIndex: number;
+  matchedKinds: string[];
+}
+
+/** The result a researcher actually wants: how far each participant got. */
+export interface TaskFunnel {
+  schema: typeof TASK_FUNNEL_SCHEMA;
+  /** Declared tasks, in order. */
+  total: number;
+  /** Tasks observed complete. */
+  completed: number;
+  /** Declared tasks with no `done` criterion — shown to the participant, never observable. */
+  unobservable: number;
+  /** The first task that was NOT observed complete: where this participant stopped. */
+  stoppedAt?: string;
+  /** Per-task, in declaration order. `inputsObserved` is false when the task declares criteria
+   *  whose inputs (url, text, appState) NEVER arrived in any observation this session, so the
+   *  task was never actually measured. Absent when the task completed or is unobservable. */
+  tasks: Array<{
+    id: string;
+    completed: boolean;
+    observable: boolean;
+    turn?: number;
+    inputsObserved?: boolean;
+  }>;
+  /** Observable tasks that were never measured, because the inputs their criteria need never
+   *  arrived. Reported SEPARATELY from failures: a task nobody could observe is a gap in our
+   *  instrument, and reporting it as 0-completed blames the participant for it (#514). */
+  unmeasured: number;
+}
+
+/**
+ * Tracks task completion across a session. Stateful on purpose: a task completes ONCE, on the first
+ * observation that satisfies it, and stays complete even if the participant navigates away — you do
+ * not un-sign-up by going back to the home page.
+ */
+export class TaskTracker {
+  private readonly completions = new Map<string, TaskCompletion>();
+  /** Which observation fields were ever populated this session. A criterion whose field never
+   *  arrived was never evaluated against anything, however many turns ran (#514). */
+  private readonly fieldsSeen = new Set<"url" | "text" | "appState">();
+
+  constructor(private readonly tasks: readonly LabTask[]) {}
+
+  /** Evaluate every still-incomplete task against one observation. Returns newly completed tasks. */
+  observe(observation: StopConditionObservation, turn: number): TaskCompletion[] {
+    if (observation.url !== undefined) this.fieldsSeen.add("url");
+    if (observation.text !== undefined) this.fieldsSeen.add("text");
+    if (observation.appState !== undefined) this.fieldsSeen.add("appState");
+    const fresh: TaskCompletion[] = [];
+    for (const task of this.tasks) {
+      if (task.success === undefined || this.completions.has(task.id)) continue;
+      const match = evaluateStopWhen(task.success, observation);
+      if (!match) continue;
+      const completion: TaskCompletion = {
+        id: task.id,
+        turn,
+        matchedRuleIndex: match.ruleIndex,
+        matchedKinds: match.kinds,
+      };
+      this.completions.set(task.id, completion);
+      fresh.push(completion);
+    }
+    return fresh;
+  }
+
+  /** Which observation fields a task's criteria actually read. A task whose rules need `url` was
+   *  never measured if no observation ever carried one. */
+  private fieldsRequiredBy(task: LabTask): Array<"url" | "text" | "appState"> {
+    const rules = task.success?.any ?? [];
+    const required = new Set<"url" | "text" | "appState">();
+    for (const rule of rules) {
+      if (rule.urlIncludes !== undefined) required.add("url");
+      if (rule.textIncludes !== undefined) required.add("text");
+      if (rule.appStatePathEquals !== undefined) required.add("appState");
+    }
+    return [...required];
+  }
+
+  /** The funnel as it stands. */
+  funnel(): TaskFunnel {
+    const tasks = this.tasks.map((task) => {
+      const completion = this.completions.get(task.id);
+      const observable = task.success !== undefined;
+      // A task counts as measured when at least ONE field its criteria read was populated by some
+      // observation. `any` semantics: any satisfiable rule needed a field we actually saw.
+      const required = observable ? this.fieldsRequiredBy(task) : [];
+      const inputsObserved =
+        required.length === 0 ? true : required.some((field) => this.fieldsSeen.has(field));
+      return {
+        id: task.id,
+        completed: completion !== undefined,
+        observable,
+        ...(completion === undefined ? {} : { turn: completion.turn }),
+        // Only interesting for an observable task that did not complete: that is the case a
+        // reader would otherwise misread as a participant failure.
+        ...(observable && completion === undefined ? { inputsObserved } : {}),
+      };
+    });
+    // Where they stopped is the first task not observed complete — the thing a researcher reads
+    // first. An unobservable task cannot be "where they stopped", because nothing could have
+    // proven otherwise; skipping it avoids blaming a participant for a gap in the protocol.
+    // A task we never measured cannot be "where they stopped" either, for the same reason an
+    // unobservable one cannot: nothing could have proven otherwise, so naming it blames the
+    // participant for our gap (#514).
+    const stoppedAt = tasks.find(
+      (task) => task.observable && !task.completed && task.inputsObserved !== false,
+    )?.id;
+    return {
+      schema: TASK_FUNNEL_SCHEMA,
+      total: tasks.length,
+      completed: tasks.filter((task) => task.completed).length,
+      unobservable: tasks.filter((task) => !task.observable).length,
+      unmeasured: tasks.filter((task) => task.inputsObserved === false).length,
+      ...(stoppedAt === undefined ? {} : { stoppedAt }),
+      tasks,
+    };
+  }
+}
+
+/**
+ * The task list as the PARTICIPANT reads it: numbered, in order, in their own language.
+ *
+ * Reads `goal` and nothing else. The success criteria are the researcher's instrument and never
+ * appear here — a participant who is told how they will be measured optimizes for the measurement,
+ * and the study stops being about the product. A test pins this, because it is the kind of leak a
+ * later convenience change makes without noticing.
+ */
+export function renderTaskPrompt(tasks: readonly LabTask[]): string | undefined {
+  if (tasks.length === 0) return undefined;
+  const lines = tasks.map((task, index) => `${index + 1}. ${task.goal}`);
+  return `Work through these in order:\n${lines.join("\n")}`;
+}
+
+/** One line a stakeholder can read, with the denominator attached. */
+export function formatTaskFunnel(funnel: TaskFunnel): string {
+  if (funnel.total === 0) return "no tasks declared";
+  const base = `${funnel.completed}/${funnel.total} tasks completed`;
+  const stopped = funnel.stoppedAt === undefined ? "" : `, stopped at "${funnel.stoppedAt}"`;
+  const unobservable =
+    funnel.unobservable === 0 ? "" : `, ${funnel.unobservable} with no completion criterion`;
+  // Named separately from failures. "0/3 completed" alone reads as "no participant managed it",
+  // which is the wrong story when the criterion was never evaluated against anything (#514).
+  const unmeasured =
+    funnel.unmeasured === 0
+      ? ""
+      : `, ${funnel.unmeasured} NEVER MEASURED (the observations their criteria read never arrived)`;
+  return `${base}${stopped}${unobservable}${unmeasured}`;
+}

@@ -259,7 +259,7 @@ export interface Actor {
   real, provider-returned charge (the codex/agent-SDK path) — a bare `costUsd`
   always means "the provider billed this". The optional `estimatedCost`
   (`humanish.actor-estimated-cost.v1`) is a SEPARATE, differently-named field: a
-  token-derived rate-table multiply from the operator-editable `src/pricing.ts`,
+  token-derived rate-table multiply from the operator-editable `src/run/pricing.ts`,
   labeled honestly as an estimate and projected up into `RunBundle.cost` (see
   [`../contracts/schemas.md`](../contracts/schemas.md) → Run Cost Summary And
   Estimated Actor Cost). The CUA lab computes and attaches `estimatedCost` at the
@@ -415,7 +415,7 @@ Plan:
    (Status 2026-06-11: `personaToDirectives` shipped in `src/lab/persona.ts` and
    `traitsApplied` is threaded on the codex routes, but the `persona-fidelity`
    verify check is not-yet-shipped roadmap, and the computer-use route stubs
-   `persona.traitsApplied` to `[]` today — see `src/cua-actor-lab.ts`.)
+   `persona.traitsApplied` to `[]` today — see `src/routes/computer-use/lab.ts`.)
 
 ## Decision: how abandonment is adjudicated
 

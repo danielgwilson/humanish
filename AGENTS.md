@@ -34,33 +34,32 @@ comment prose (`prose:check`). Lower a cap in the PR that reduces its count.
 
 ## Layout
 
-| Path                                                            | What it holds                                                                                            |
-| --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `src/cli.ts`, `src/cli/program.ts`                              | CLI entry and command registration (commander)                                                           |
-| `src/index.ts`                                                  | The package's only export surface                                                                        |
-| `src/lab/config.ts`                                             | Lab manifest (`humanish.lab.v2`) parsing and validation                                                  |
-| `src/lab/engine.ts`                                             | `runLab` and `selectLabBackend`, which picks one backend per lab                                         |
-| `src/cua-actor-lab.ts`                                          | Computer-use participants on hosted E2B desktops; `local-firecracker-study.ts` is the local VM substrate |
-| `src/concurrent-shared-world-lab.ts`, `src/shared-world-lab.ts` | N participants in one shared app                                                                         |
-| `src/e2b-terminal-lab.ts`                                       | An agent using a CLI product in an E2B shell                                                             |
-| `src/scripted-browser-lab.ts`                                   | Model-free scripted browser replay                                                                       |
-| `src/run/run.ts`                                                | Run bundle types, the synthetic dry run, `verifyRun`                                                     |
-| `observer/`, `tui/`, `site/`                                    | Workspaces: the Observer artifact, `humanish tui`, humanish.dev                                          |
-| `humanish/`                                                     | The repo's own study source: labs, personas, scenarios, fixtures                                         |
-| `runtime/`                                                      | Desktop and browser image recipes (Python build scripts)                                                 |
-| `scripts/`                                                      | Proof and release scripts run by package.json                                                            |
-| `docs/contracts/`                                               | Bundle and schema contracts; documented fields are API                                                   |
-| `tests/`                                                        | vitest suites; `tests/fixtures/` and `tests/golden/` hold inputs and expected output                     |
-
-`src/` is flat. Files share a prefix per area (`comms-*`, `guest-*`, `study-analysis-*`, `e2b-*`,
-`local-*`, `terminal-*`, `cua-*`); add a file next to its area's prefix.
+| Path                                                                        | What it holds                                                                                                                                                                     |
+| --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/cli.ts`, `src/index.ts`                                                | The package bin and its only library export surface                                                                                                                               |
+| `src/cli/`                                                                  | Command registration (`program.ts`), argv, env files, keys, telemetry                                                                                                             |
+| `src/lab/`                                                                  | Lab manifests: parsing (`config.ts`, `keys.ts`), discovery, preflight, personas, tasks, and `engine.ts`, whose `selectLabBackend` picks the route                                 |
+| `src/routes/`                                                               | One folder per route: `computer-use/`, `shared-world/`, `terminal/`, `scripted-browser.ts`                                                                                        |
+| `src/actors/`                                                               | What drives a participant: the contract and registry, `computer-use/` (loop, OpenAI provider), `codex/`, `local-agent/`, and the Claude, pi, scripted-browser and terminal actors |
+| `src/substrates/`                                                           | Where participants run: `e2b/` hosted desktops and `local/` Firecracker and Lima VMs                                                                                              |
+| `src/run/`                                                                  | Run bundles (`run.ts`: types, dry run, `verifyRun`), paths, status, index, costs, reclaim                                                                                         |
+| `src/evidence/`                                                             | Redaction, screenshots, recordings and artifact references                                                                                                                        |
+| `src/analysis/`, `src/comms/`, `src/feedback/`, `src/observer/`, `src/tui/` | Study analysis, email capture, feedback and export, the Observer's host side, the CLI side of `humanish tui`                                                                      |
+| `src/browser-control/`                                                      | The host-guest browser control protocol                                                                                                                                           |
+| `src/guest-*.ts`                                                            | The guest runtime. These stay at the root of `src/`: the guest image launches `guest-runtime-main.js` by path                                                                     |
+| `observer/`, `tui/`, `site/`                                                | Workspaces: the Observer artifact, the Ink app, humanish.dev                                                                                                                      |
+| `humanish/`                                                                 | The repo's own study source: labs, personas, scenarios, fixtures                                                                                                                  |
+| `runtime/`                                                                  | Desktop and browser image recipes (Python build scripts)                                                                                                                          |
+| `scripts/`                                                                  | Proof and release scripts run by package.json                                                                                                                                     |
+| `docs/contracts/`                                                           | Bundle and schema contracts; documented fields are API                                                                                                                            |
+| `tests/`                                                                    | vitest suites mirroring `src/`; `tests/fixtures/` and `tests/golden/` hold inputs and expected output                                                                             |
 
 ## Conventions
 
 - TypeScript ESM with strict settings. No `any`; narrow `unknown` at the boundary.
 - Keep files under about 700 lines and functions under about 150 (oxlint warns past both). Split
-  when it helps a reader; do not add to `run.ts`, `program.ts` or `lab-config.ts` when a smaller
-  module fits.
+  when it helps a reader; do not add to `run/run.ts`, `cli/program.ts` or `lab/config.ts` when a
+  smaller module fits.
 - Comments say why the code is the way it is. History, incident narratives, issue archaeology and
   PR numbers go in the commit message. `TODO(#123)` may link an open issue. No all-caps emphasis.
   `prose:check` counts violations in `src/`.

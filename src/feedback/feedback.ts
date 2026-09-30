@@ -21,12 +21,12 @@ import {
   resolveLatestRunDirectory,
   type PreparedRunArtifactPaths,
   validatePreparedRunArtifactPaths,
-} from "../run-paths.js";
+} from "../run/paths.js";
 import {
   bindExistingManagedHumanishOutputDirectory,
   readContainedRegularFile,
   writeContainedOutputFile,
-} from "../selected-output-paths.js";
+} from "../run/selected-output-paths.js";
 
 export const FEEDBACK_SCHEMA = "humanish.feedback.v1";
 export const FEEDBACK_RESULT_SCHEMA = "humanish.feedback-result.v1";

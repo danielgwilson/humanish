@@ -47,7 +47,7 @@ workflow without leaking private upstream truth into core.
 | Feedback                          | `humanish.feedback.v1`                                                                                                                                                         | `public-safe-feedback`                                                              |
 | Terminal cost ledger              | `humanish.terminal-cost-ledger.v1`                                                                                                                                             | see Terminal Cost Ledger below                                                      |
 | Terminal no-spend proof           | `humanish.terminal-no-spend-proof.v1`                                                                                                                                          | see Terminal Cost Ledger below                                                      |
-| Pricing (operator-editable rates) | `humanish.pricing.v1` (`src/pricing.ts`; dated per-model + E2B desktop rates)                                                                                                  | see Run Cost Summary And Estimated Actor Cost below                                 |
+| Pricing (operator-editable rates) | `humanish.pricing.v1` (`src/run/pricing.ts`; dated per-model + E2B desktop rates)                                                                                              | see Run Cost Summary And Estimated Actor Cost below                                 |
 | Run cost summary                  | `humanish.run-cost-summary.v1` (additive `RunBundle.cost`; estimate, never a charge)                                                                                           | see Run Cost Summary And Estimated Actor Cost below                                 |
 | Estimated actor cost              | `humanish.actor-estimated-cost.v1` (additive `ActorTrace.estimatedCost`)                                                                                                       | see Run Cost Summary And Estimated Actor Cost below                                 |
 | Model settings                    | `humanish.model-settings.v1` (additive `ActorTrace.modelSettings`; the reasoning effort the request carried)                                                                   | see Actor Trace below                                                               |
@@ -943,7 +943,7 @@ contract.
 
 ## Terminal Cost Ledger And No-Spend Proof
 
-The terminal-product lane (`src/e2b-terminal-lab.ts`) passes a real provider key
+The terminal-product lane (`src/routes/terminal/lab.ts`) passes a real provider key
 only to the in-sandbox agent command, never to sandbox-global env or metadata,
 so the no-spend claim must be REAL — derived from a ledger, never asserted. The
 live run writes both to `terminal-ledgers.json` (a `cost` block + a
@@ -1083,7 +1083,7 @@ never authoritative: every dollar figure is a rate-table multiply, labeled
 (invariant 6). Three new `.v1` schema tags ship, all additive and optional so
 `humanish.run-bundle.v1` stays v1 and every pre-existing bundle is byte-stable:
 
-- `humanish.pricing.v1` — the OPERATOR-EDITABLE rate table in `src/pricing.ts`:
+- `humanish.pricing.v1` — the OPERATOR-EDITABLE rate table in `src/run/pricing.ts`:
   dated per-model input/output USD-per-token rates and E2B CPU/GiB-second
   rates, each with a public pricing-page `source` and an `asOf`
   date. A prominent banner says these are estimates to update when providers
@@ -1185,7 +1185,7 @@ An absent threshold is uncapped. A zero threshold can still permit a paid model
 request before reported usage trips it; `maxUsd: 0` is not a no-provider-call
 mode. Use the keyless `humanish run first-run` preview or an explicit
 `humanish lab run <lab> --dry-run` for a path without provider calls. A declared
-threshold on a model `src/pricing.ts` cannot price is refused at preflight
+threshold on a model `src/run/pricing.ts` cannot price is refused at preflight
 (`HUMANISH_CUA_LAB_UNPRICED_CAP`) before sandbox allocation. This rate-availability
 check is separate from the post-response spend check.
 

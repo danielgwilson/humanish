@@ -17,7 +17,7 @@ import {
   prepareSelectedOutputDirectory,
   type PreparedOutputDirectory,
   writeContainedOutputFile,
-} from "../selected-output-paths.js";
+} from "../run/selected-output-paths.js";
 
 // This module holds both halves of the Claude adapter:
 //  - the PURE mapper (claudeSessionToActorTrace) over a locally-declared

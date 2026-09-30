@@ -15,7 +15,7 @@ import {
   declaredOutcomeFromClosingLine,
 } from "../../../src/actors/computer-use/loop.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
-import { participantFeedbackCandidates } from "../../../src/cua-actor-lab.js";
+import { participantFeedbackCandidates } from "../../../src/routes/computer-use/lab.js";
 import { formatParticipantOutcomes, tallyParticipantOutcomes } from "../../../src/run/run.js";
 
 const FAKE_CAPS: ActorCapabilities = {

@@ -2,7 +2,7 @@ import { isCommsReceivingEvidence, receivingAnalysisContext } from "../comms/rec
 import { cuaGoalSource } from "../actors/goal-source.js";
 import { createHash } from "node:crypto";
 import { screenshotEvidenceError } from "../evidence/image.js";
-import type { PreparedRunArtifactPaths } from "../run-paths.js";
+import type { PreparedRunArtifactPaths } from "../run/paths.js";
 import type { ActorTraceItem } from "../actors/contract.js";
 import type { RunBundle, RunStream } from "../run/run.js";
 import type {
@@ -20,11 +20,11 @@ import { constants } from "node:fs";
 import { lstat, open, realpath } from "node:fs/promises";
 import path from "node:path";
 
-import { isPathInside, validatePreparedRunRootIdentity } from "../run-paths.js";
+import { isPathInside, validatePreparedRunRootIdentity } from "../run/paths.js";
 import {
   assertPreparedSelectedOutputDirectory,
   type PreparedOutputRoot,
-} from "../selected-output-paths.js";
+} from "../run/selected-output-paths.js";
 
 /** Analysis inputs are retained local artifacts, never URLs or caller-selected outputs. */
 export function isStudyEvidencePath(value: string): boolean {

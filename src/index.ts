@@ -121,16 +121,16 @@ export {
   adapterScoreFailureMessage,
   applyAdapterScoreFailureToReview,
   applyBrowserAdapterHooks,
-} from "./adapter-extension.js";
+} from "./lab/adapter-extension.js";
 export type {
   BrowserAdapterBackend,
   BrowserLabAdapterHooks,
   BrowserLabScoringContext,
-} from "./adapter-extension.js";
+} from "./lab/adapter-extension.js";
 // #316 CLI-loadable adopter scorer: the adopter-facing module contract + its read-model context union
 // (so an adopter types its `.mjs` scorer against `import("humanish")` alone). The loader itself is
 // CLI-internal (declared via `review.scorer.ref` / `--scorer`), not part of the library surface.
-export type { AdapterScorerModule, AdapterScoringContext } from "./adapter-scorer-loader.js";
+export type { AdapterScorerModule, AdapterScoringContext } from "./lab/adapter-scorer-loader.js";
 export type { RedactionHooks } from "./evidence/redaction.js";
 // Off-app comms (#297) — the LIBRARY extension surface only. The capability is driven CLI-first via a
 // lab `comms:` block (see the humanish skill + lab schema), so the catch, drain, inbox-render, and
@@ -163,7 +163,7 @@ export {
   estimateActorCost,
   estimateAllocatedDesktopCost,
   estimateDesktopCost,
-} from "./pricing.js";
+} from "./run/pricing.js";
 export type {
   ActorEstimatedCost,
   DesktopCostEstimate,
@@ -171,7 +171,7 @@ export type {
   DesktopResources,
   DesktopResourceRate,
   ModelRate,
-} from "./pricing.js";
+} from "./run/pricing.js";
 export { normalizeCliArgv } from "./cli/argv.js";
 export { CODEX_APP_SERVER_UI_SCHEMA, startCodexAppServerUi } from "./actors/codex/app-server-ui.js";
 export type {
@@ -286,7 +286,7 @@ export {
   buildCuaFanoutBundle,
   resolveCuaLanePlan,
   runCuaActorLab,
-} from "./cua-actor-lab.js";
+} from "./routes/computer-use/lab.js";
 export type {
   CuaActorLabErrorCode,
   CuaActorLabHooks,
@@ -298,7 +298,7 @@ export type {
   CuaSubjectProjection,
   RunCuaActorLabOptions,
   SubjectPhaseEvent,
-} from "./cua-actor-lab.js";
+} from "./routes/computer-use/lab.js";
 export { SCRIPTED_BROWSER_PROVIDER, runScriptedBrowserSession } from "./actors/scripted-browser.js";
 export type {
   BrowserPersonaJourney,
@@ -314,18 +314,18 @@ export {
   SCRIPTED_BROWSER_LAB_SCHEMA,
   buildScriptedLabBundle,
   runScriptedBrowserLab,
-} from "./scripted-browser-lab.js";
+} from "./routes/scripted-browser.js";
 export type {
   RunScriptedBrowserLabOptions,
   ScriptedBrowserLabHooks,
   ScriptedBrowserLabResult,
   ScriptedBrowserLabSession,
-} from "./scripted-browser-lab.js";
+} from "./routes/scripted-browser.js";
 export {
   TERMINAL_PRODUCT_LAB_SCHEMA,
   buildTerminalProductBundle,
   runTerminalProductLab,
-} from "./e2b-terminal-lab.js";
+} from "./routes/terminal/lab.js";
 export type {
   CommandLogRecord,
   CostCategory,
@@ -339,20 +339,20 @@ export type {
   TerminalProductLabHooks,
   TerminalProductLabResult,
   TerminalProductScoringContext,
-} from "./e2b-terminal-lab.js";
+} from "./routes/terminal/lab.js";
 export {
   SHARED_WORLD_LAB_PROVIDER_METADATA,
   SHARED_WORLD_LAB_SCHEMA,
   buildSharedWorldBundle,
   runSharedWorldLab,
-} from "./shared-world-lab.js";
+} from "./routes/shared-world/sequential.js";
 export type {
   RunSharedWorldLabOptions,
   SharedWorldLabErrorCode,
   SharedWorldLabHooks,
   SharedWorldLabResult,
   SharedWorldRoleResult,
-} from "./shared-world-lab.js";
+} from "./routes/shared-world/sequential.js";
 export {
   CONCURRENT_ATTRIBUTION_LIMITS,
   CONCURRENT_SHARED_WORLD_LAB_SCHEMA,
@@ -362,14 +362,14 @@ export {
   buildConcurrentSharedWorldBundle,
   extractLobbyCode,
   runConcurrentSharedWorld,
-} from "./concurrent-shared-world-lab.js";
+} from "./routes/shared-world/concurrent.js";
 export type {
   ConcurrentSharedWorldLabErrorCode,
   ConcurrentSharedWorldLabResult,
   ConcurrentSharedWorldPlaneClass,
   ConcurrentSharedWorldRoleResult,
   RunConcurrentSharedWorldLabOptions,
-} from "./concurrent-shared-world-lab.js";
+} from "./routes/shared-world/concurrent.js";
 export {
   probeUrl,
   readDetachedLog,

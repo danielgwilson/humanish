@@ -6,7 +6,7 @@ import path from "node:path";
 import { renderObserver } from "../observer/render.js";
 import { containsSensitive } from "../evidence/redaction.js";
 import { loadRunBundlePrepared, resolveRunPath, verifyRunPrepared } from "../run/run.js";
-import { validatePreparedRunRootIdentity, type PreparedRunArtifactPaths } from "../run-paths.js";
+import { validatePreparedRunRootIdentity, type PreparedRunArtifactPaths } from "../run/paths.js";
 import { isRunStatusRecord, RUN_STATUS_FILE } from "../run/status.js";
 import { captureStudyEvidence, readBoundedStudyFile, STUDY_EVIDENCE_LIMITS } from "./evidence.js";
 import {

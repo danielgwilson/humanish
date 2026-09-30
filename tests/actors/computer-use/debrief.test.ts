@@ -9,7 +9,7 @@ import {
   buildCuaCostSummary,
   resolveSelfReportedBlocker,
   resolveSelfReportedFriction,
-} from "../../../src/cua-actor-lab.js";
+} from "../../../src/routes/computer-use/lab.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
 import { CuaAdmissionLimitError } from "../../../src/actors/computer-use/admission-limit.js";
 

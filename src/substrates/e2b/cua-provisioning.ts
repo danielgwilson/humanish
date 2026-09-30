@@ -10,8 +10,8 @@ import {
   parseChromeCdpProbeOutput,
   type ChromeCdpPagePreference,
   type ChromeMobileEmulationRequest,
-} from "../../chrome-cdp-probe.js";
-import { runDesktopCommandOrThrow, toErrorMessage } from "../../command-failure.js";
+} from "../../routes/computer-use/cdp-probe.js";
+import { runDesktopCommandOrThrow, toErrorMessage } from "../command-failure.js";
 import { type DevicePreset } from "../../lab/device-presets.js";
 import { withOneRetryOnTransientE2BError, type E2BDesktopSandbox } from "./desktop-launch.js";
 import {
@@ -37,8 +37,8 @@ import {
   corepackCommandFor,
   needsNodeRuntime,
   nodeBootstrapCommand,
-} from "../../subject-runtime.js";
-import { TERMINAL_NODE_BOOTSTRAP_COMMAND } from "../../terminal-node-bootstrap.js";
+} from "../../routes/subject-runtime.js";
+import { TERMINAL_NODE_BOOTSTRAP_COMMAND } from "../../routes/terminal/node-bootstrap.js";
 
 export const CUA_ACTOR_LAB_PROVIDER_METADATA = {
   mode: "cua-actor-lab",
@@ -1430,7 +1430,7 @@ export async function openDesktopTerminal(
       // LANG is set on the terminal we open, not globally: the stock image declares no locale, and
       // a study that measures our own mojibake against an unconfigured template would be measuring
       // the template. The PRODUCT-side fix (an ASCII fallback when the locale is not UTF-8) is in
-      // src/terminal-encoding.ts, and it is the one that matters for real users.
+      // src/routes/terminal/encoding.ts, and it is the one that matters for real users.
       `    (cd ${shellSingleQuote(dir)} 2>/dev/null || cd /home/user; DISPLAY=:0 LANG=C.UTF-8 LC_ALL=C.UTF-8 HUMANISH_STUDY_PARTICIPANT=1 nohup "$candidate" >/dev/null 2>&1 &)`,
       "    sleep 3",
       '    echo "humanish: opened $candidate"',

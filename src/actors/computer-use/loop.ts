@@ -23,7 +23,7 @@ import {
   summarizeAffordanceUse,
   type AffordanceObservation,
 } from "../affordance.js";
-import { commandFailureInfo, isCommandExitError } from "../../command-failure.js";
+import { commandFailureInfo, isCommandExitError } from "../../substrates/command-failure.js";
 import type { RedactionHooks } from "../../evidence/redaction.js";
 import {
   evaluateStopWhen,
@@ -32,7 +32,7 @@ import {
   type StopConditionObservation,
   type StopWhen,
 } from "../stop-conditions.js";
-import { TaskTracker, type LabTask } from "../../tasks.js";
+import { TaskTracker, type LabTask } from "../../lab/tasks.js";
 import type { ReasoningEffort } from "../reasoning-effort.js";
 import { isCuaAdmissionLimitError } from "./admission-limit.js";
 import { CuaExecutorError, isCuaExecutorError } from "./executor-error.js";

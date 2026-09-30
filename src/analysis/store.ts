@@ -1,14 +1,14 @@
 import { createHash } from "node:crypto";
 import { lstat, mkdir, opendir } from "node:fs/promises";
 import path from "node:path";
-import { validatePreparedRunRootIdentity, type PreparedRunArtifactPaths } from "../run-paths.js";
+import { validatePreparedRunRootIdentity, type PreparedRunArtifactPaths } from "../run/paths.js";
 import {
   assertPreparedSelectedOutputDirectory,
   bindExistingManagedHumanishOutputDirectory,
   prepareContainedOutputDirectoryRoot,
   writeContainedOutputFile,
   type PreparedSelectedOutputDirectory,
-} from "../selected-output-paths.js";
+} from "../run/selected-output-paths.js";
 import {
   isStudyEvidencePath,
   readBoundedStudyFile,

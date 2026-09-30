@@ -228,7 +228,7 @@ resource source, host-measured minutes, and the derived per-second rate. Older
 single aggregate desktop lines remain valid. Missing resource metadata stays
 unpriced; unconfirmed cleanup adds an unknown remaining-lifetime line. It is an
 ESTIMATE, never authoritative: every dollar is a rate-table multiply from the
-operator-editable `src/pricing.ts`, carries the pricing `ratesAsOf` date and
+operator-editable `src/run/pricing.ts`, carries the pricing `ratesAsOf` date and
 `source`, and is surfaced with the "estimated (rates as of `<date>`)" label —
 never a bare charge. It follows the same **declared-absent** discipline as the
 terminal cost ledger: an unpriceable line stays present with

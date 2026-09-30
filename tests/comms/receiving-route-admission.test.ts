@@ -4,9 +4,9 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parseLabConfig, type LabConfig } from "../../src/lab/config.js";
 import { runLab, selectLabBackend } from "../../src/lab/engine.js";
-import { runSharedWorldLab } from "../../src/shared-world-lab.js";
-import { runTerminalProductLab } from "../../src/e2b-terminal-lab.js";
-import { runScriptedBrowserLab } from "../../src/scripted-browser-lab.js";
+import { runSharedWorldLab } from "../../src/routes/shared-world/sequential.js";
+import { runTerminalProductLab } from "../../src/routes/terminal/lab.js";
+import { runScriptedBrowserLab } from "../../src/routes/scripted-browser.js";
 import * as synthetic from "../../src/run/run.js";
 
 const fixtures = JSON.parse(

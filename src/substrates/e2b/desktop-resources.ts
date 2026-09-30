@@ -1,5 +1,5 @@
 import type { E2BDesktopSandbox } from "./desktop-launch.js";
-import { isDesktopResources, type DesktopResources } from "../../pricing.js";
+import { isDesktopResources, type DesktopResources } from "../../run/pricing.js";
 
 export type DesktopResourceObservation =
   | { resources: DesktopResources; source: "e2b.getInfo" }

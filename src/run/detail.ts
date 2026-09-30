@@ -17,7 +17,7 @@ import type { AutomaticStudyAnalysisView } from "../analysis/job.js";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-import { estimateActorCostForExecution } from "../pricing.js";
+import { estimateActorCostForExecution } from "./pricing.js";
 
 import { resolveRunPath } from "./run.js";
 
@@ -162,7 +162,7 @@ function costOf(trace: ActorTraceFacts): { estimatedCostUsd?: number | null } {
   if (usage === undefined || typeof model !== "string") return {};
   try {
     const estimated = estimateActorCostForExecution(usage as never, model, trace.executionProfile);
-    // A model `src/pricing.ts` cannot price yields no figure rather than a wrong one.
+    // A model `src/run/pricing.ts` cannot price yields no figure rather than a wrong one.
     return typeof estimated?.estimatedCostUsd === "number"
       ? { estimatedCostUsd: estimated.estimatedCostUsd }
       : {};

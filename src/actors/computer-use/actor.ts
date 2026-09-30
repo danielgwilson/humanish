@@ -29,8 +29,8 @@ import {
 } from "./openai-provider.js";
 import { defaultRedactionHooks, type RedactionHooks } from "../../evidence/redaction.js";
 import type { DwellWindow, StopWhen } from "../stop-conditions.js";
-import { estimateActorCostForExecution } from "../../pricing.js";
-import type { LabTask } from "../../tasks.js";
+import { estimateActorCostForExecution } from "../../run/pricing.js";
+import type { LabTask } from "../../lab/tasks.js";
 
 export interface CuaActorSessionOptions {
   /** The composed mission (persona + scenario/lane instruction) handed to the model. */

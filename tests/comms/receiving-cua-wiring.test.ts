@@ -3,7 +3,11 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { getActor } from "../../src/actors/registry.js";
-import { runCuaLane, type CuaLaneDeps, type CuaLaneSpec } from "../../src/cua-actor-lab.js";
+import {
+  runCuaLane,
+  type CuaLaneDeps,
+  type CuaLaneSpec,
+} from "../../src/routes/computer-use/lab.js";
 import { DEVICE_PRESETS } from "../../src/lab/device-presets.js";
 import type {
   E2BDesktopCreateOptions,
@@ -13,7 +17,7 @@ import type {
 import { LAB_CONFIG_SCHEMA, parseLabConfig } from "../../src/lab/config.js";
 import type { CommsReceivingRun } from "../../src/comms/receiving.js";
 import type { ReceivingSurface } from "../../src/comms/receiving-types.js";
-import { prepareSelectedOutputDirectory } from "../../src/selected-output-paths.js";
+import { prepareSelectedOutputDirectory } from "../../src/run/selected-output-paths.js";
 
 describe("real inbox wiring through the actual CUA lane", () => {
   it.each([false, true])(

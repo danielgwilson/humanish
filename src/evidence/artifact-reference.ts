@@ -14,7 +14,7 @@
 // reference a path it knows it never wrote.
 //
 // The browser lane (src/run/run.ts + src/actors/scripted-browser.ts) imports this; the
-// terminal-product lane (src/e2b-terminal-lab.ts) inherits the same
+// terminal-product lane (src/routes/terminal/lab.ts) inherits the same
 // discipline so neither path can reintroduce the missing-artifact verify failure.
 
 /**

@@ -10,7 +10,7 @@ import {
   prepareSelectedOutputDirectory,
   type PreparedSelectedOutputDirectory,
   writeContainedOutputFile,
-} from "../../selected-output-paths.js";
+} from "../../run/selected-output-paths.js";
 
 // A public-safe re-derivation of the OpenAI Responses API computer-use provider,
 // behind the CuaProvider port from src/actors/computer-use/loop.ts. It mirrors the

@@ -24,8 +24,8 @@ import {
   resolveLatestRunDirectory,
   type PreparedRunArtifactPaths,
   validatePreparedRunArtifactPaths,
-} from "../run-paths.js";
-import { writeContainedOutputFile } from "../selected-output-paths.js";
+} from "../run/paths.js";
+import { writeContainedOutputFile } from "../run/selected-output-paths.js";
 import {
   buildArtifactSecurityHeaders,
   buildServeSecurityHeaders,

@@ -1,9 +1,9 @@
 import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { buildCuaCostSummary } from "../src/cua-actor-lab.js";
+import { buildCuaCostSummary } from "../src/routes/computer-use/lab.js";
 import { observeDesktopResources } from "../src/substrates/e2b/desktop-resources.js";
-import { estimateAllocatedDesktopCost } from "../src/pricing.js";
+import { estimateAllocatedDesktopCost } from "../src/run/pricing.js";
 
 const captured = JSON.parse(
   readFileSync(

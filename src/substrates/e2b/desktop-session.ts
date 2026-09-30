@@ -1,4 +1,4 @@
-import { ownDesktopAllocation, type OwnedDesktopAllocation } from "../../desktop-session.js";
+import { ownDesktopAllocation, type OwnedDesktopAllocation } from "../desktop-session.js";
 import {
   createDesktopSandbox,
   type E2BDesktopCreateOptions,

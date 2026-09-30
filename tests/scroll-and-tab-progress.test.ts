@@ -26,7 +26,7 @@ import {
 import {
   makeChromeBrowserStateObserver,
   makeChromeDesktopGeometryObserver,
-} from "../src/cua-actor-lab.js";
+} from "../src/routes/computer-use/lab.js";
 import type { E2BDesktopSandbox } from "../src/substrates/e2b/desktop-launch.js";
 import {
   createE2BDesktopExecutor,

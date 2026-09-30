@@ -42,7 +42,7 @@ fail-closed cross-validation, and forward-declared warnings.
 | `scenario.caps`                       | `{ maxUsd, maxJobs, maxMinutes }` — the blast-radius budget                                                                  |
 | `policies`                            | `allowPrivateRepoAccess` / `allowProviderCredentials` / `allowPaymentCredentials` / `allowGitHubMutation`, all DEFAULT FALSE |
 | `actors[0].type`                      | `codex-exec` — a registered terminal actor (`keyPlacement: in-sandbox-command-scoped`)                                       |
-| `LabBackend`                          | `terminal` → `runTerminalProductLab` ([`src/e2b-terminal-lab.ts`](../../src/e2b-terminal-lab.ts))                            |
+| `LabBackend`                          | `terminal` → `runTerminalProductLab` ([`src/routes/terminal/lab.ts`](../../src/routes/terminal/lab.ts))                      |
 
 Routing is `routesToTerminalProduct(config)` — the single source of truth that
 both `selectLabBackend` and the forward-declared-warning logic consume, mirroring

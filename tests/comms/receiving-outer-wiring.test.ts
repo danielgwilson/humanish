@@ -5,9 +5,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ACTOR_TRACE_SCHEMA } from "../../src/actors/contract.js";
 import type { CuaActorSessionOptions } from "../../src/actors/computer-use/actor.js";
 import type { CuaLoopResult } from "../../src/actors/computer-use/loop.js";
-import { runCuaActorLab, type CuaActorLabHooks } from "../../src/cua-actor-lab.js";
-import { runConcurrentSharedWorld } from "../../src/concurrent-shared-world-lab.js";
-import type { SharedWorldLabHooks } from "../../src/shared-world-lab.js";
+import { runCuaActorLab, type CuaActorLabHooks } from "../../src/routes/computer-use/lab.js";
+import { runConcurrentSharedWorld } from "../../src/routes/shared-world/concurrent.js";
+import type { SharedWorldLabHooks } from "../../src/routes/shared-world/sequential.js";
 import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../../src/lab/config.js";
 import type {
   E2BDesktopCreateOptions,
@@ -23,7 +23,7 @@ import {
 import {
   writeContainedOutputFile,
   type PreparedOutputDirectory,
-} from "../../src/selected-output-paths.js";
+} from "../../src/run/selected-output-paths.js";
 
 type Preparation = {
   participants: string[];

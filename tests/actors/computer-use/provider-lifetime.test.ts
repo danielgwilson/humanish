@@ -5,7 +5,7 @@ import {
   type CuaTurn,
   type CuaTurnRequest,
 } from "../../../src/actors/computer-use/loop.js";
-import { buildCuaCostSummary } from "../../../src/cua-actor-lab.js";
+import { buildCuaCostSummary } from "../../../src/routes/computer-use/lab.js";
 import type { ActorTokenUsage } from "../../../src/actors/contract.js";
 import { CuaProviderError } from "../../../src/actors/computer-use/provider-error.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";

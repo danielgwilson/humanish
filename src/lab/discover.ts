@@ -14,7 +14,7 @@ import {
   prepareSelectedOutputDirectory,
   readContainedRegularFile,
   type PreparedSelectedOutputDirectory,
-} from "../selected-output-paths.js";
+} from "../run/selected-output-paths.js";
 
 const LAB_LIST_SCHEMA = "humanish.lab-list.v1";
 const LAB_INSPECT_SCHEMA = "humanish.lab-inspect.v1";

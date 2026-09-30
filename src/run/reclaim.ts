@@ -6,12 +6,12 @@
 // codebase never does — an account-wide operation once destroyed unrelated infrastructure). This
 // reads one file inside the managed run dir, kills by id, and never lists anything.
 import { loadE2BDesktopModule, type E2BDesktopModule } from "../substrates/e2b/desktop-launch.js";
-import { readContainedRegularFile, writeContainedOutputFile } from "../selected-output-paths.js";
+import { readContainedRegularFile, writeContainedOutputFile } from "./selected-output-paths.js";
 import { resolveRunPath } from "./run.js";
 import { parseSandboxReceipts, SANDBOX_RECEIPTS_ARTIFACT } from "./sandbox-receipts.js";
 import path from "node:path";
 
-import { toErrorMessage } from "../command-failure.js";
+import { toErrorMessage } from "../substrates/command-failure.js";
 import { redactText } from "../evidence/redaction.js";
 
 const RECLAIM_RESULT_SCHEMA = "humanish.reclaim-result.v1";

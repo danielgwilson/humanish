@@ -9,7 +9,7 @@ import {
   prepareSelectedOutputDirectory,
   type PreparedOutputDirectory,
   writeContainedOutputFile,
-} from "../../selected-output-paths.js";
+} from "../../run/selected-output-paths.js";
 
 export const CODEX_APP_SERVER_TRACE_SCHEMA = "humanish.codex-app-server-trace.v1";
 
