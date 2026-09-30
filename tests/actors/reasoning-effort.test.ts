@@ -11,10 +11,12 @@ import { parseLabConfig } from "../../src/lab/config.js";
 import { readLabSummary } from "../../src/lab/summary.js";
 import {
   DEFAULT_OPENAI_CU_REASONING_EFFORT,
-  buildInitialRequest,
   createOpenAiResponsesProvider,
-  type OpenAiCuContext,
 } from "../../src/actors/computer-use/openai-provider.js";
+import {
+  buildInitialRequest,
+  type OpenAiCuContext,
+} from "../../src/actors/computer-use/openai-wire.js";
 import {
   REASONING_EFFORTS,
   isReasoningEffort,
