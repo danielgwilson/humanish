@@ -1,10 +1,5 @@
 import { isCommsReceivingEvidence } from "../comms/receiving-evidence.js";
-import {
-  desktopRecordingMetadataSchema,
-  type RunDesktopRecording,
-} from "../evidence/desktop-recording-types.js";
-import path from "node:path";
-import { GIT_STATE_SCHEMA, type CapturedGitState } from "./git-state.js";
+import { isCapturedGitState } from "./git-state.js";
 import {
   PUBLIC_TARGET_CWD,
   REVIEW_SCHEMA,
@@ -28,72 +23,12 @@ import {
   type CleanupResult,
   type RunPointer,
 } from "./results.js";
-import {
-  type RunDesktopGeometry,
-  type RunParticipantAssignment,
-  type RunSimulationStatus,
-  type RunStream,
-  type RunStreamKind,
-} from "./streams.js";
+import type { RunStream } from "./streams.js";
+import { isRunSimulationStatus, isRunStream, isRunStreamKind } from "./guards-streams.js";
+import { isLocalEvidenceArtifactPath } from "./paths.js";
 import { isRunFeedbackCandidate } from "./guards-feedback.js";
 import { isSharedWorldEvidence } from "./guards-shared-world.js";
-import {
-  isFiniteNumber,
-  isNonNegativeSafeInteger,
-  isPositiveFiniteNumber,
-  isPositiveSafeInteger,
-  isRecord,
-} from "./primitives.js";
-
-const SAFE_GIT_NOTES = new Set([
-  "Git command could not be started.",
-  "Git HEAD capture timed out.",
-  "Git HEAD command could not be started.",
-  "Git metadata could not be inspected safely.",
-  "Git status command could not be captured.",
-  "Git status command could not be started.",
-  "Git status could not be captured.",
-  "Git status capture timed out.",
-  "Git metadata failed containment validation.",
-  "Git ref-state capture timed out.",
-  "Git ref-state command could not be started.",
-  "Git work-tree detection timed out.",
-  "Git work tree had changes; only counts were captured, not branch names, remotes, paths, or file names.",
-  "Git work tree was clean; branch names, remotes, paths, and file names were not captured.",
-  "No git work tree was detected.",
-  "public-safe synthetic fixture",
-  // Only bundles from the removed meta-lab carry this note.
-  "public-safe synthetic OSS meta-lab fixture",
-]);
-
-const riskyPublicArtifactPathSegments = new Set([
-  ".git",
-  "Cookies",
-  "Login Data",
-  "Local Storage",
-  "Preferences",
-  "Secure Preferences",
-  "profiles",
-]);
-
-export function isRiskyPublicArtifactPath(relativePath: string): boolean {
-  return relativePath
-    .split(/[\\/]/)
-    .some((segment) => riskyPublicArtifactPathSegments.has(segment));
-}
-
-export function isLocalEvidenceArtifactPath(value: string): boolean {
-  const normalized = value.replace(/\\/g, "/");
-  return (
-    value.length > 0 &&
-    !/^\[[a-z0-9._-]+\]$/i.test(normalized) &&
-    !path.isAbsolute(normalized) &&
-    !normalized.includes("://") &&
-    !normalized.startsWith("..") &&
-    !normalized.split("/").includes("..") &&
-    !isRiskyPublicArtifactPath(normalized)
-  );
-}
+import { isNonNegativeSafeInteger, isPositiveSafeInteger, isRecord } from "./primitives.js";
 
 export function isRunBundle(value: unknown): value is RunBundle {
   return (
@@ -380,31 +315,6 @@ function isRunSource(value: unknown): value is RunBundle["source"] {
   );
 }
 
-function isCapturedGitState(value: unknown): value is CapturedGitState {
-  return (
-    isRecord(value) &&
-    value.schema === GIT_STATE_SCHEMA &&
-    (value.status === "clean" ||
-      value.status === "dirty" ||
-      value.status === "missing" ||
-      value.status === "unavailable") &&
-    typeof value.capturedAt === "string" &&
-    isRecord(value.head) &&
-    (isSafeGitShortSha(value.head.shortSha) || value.head.shortSha === null) &&
-    (value.head.refState === "attached" ||
-      value.head.refState === "detached" ||
-      value.head.refState === "unborn" ||
-      value.head.refState === "unknown") &&
-    isRecord(value.changes) &&
-    isNonNegativeSafeInteger(value.changes.staged) &&
-    isNonNegativeSafeInteger(value.changes.unstaged) &&
-    isNonNegativeSafeInteger(value.changes.untracked) &&
-    isNonNegativeSafeInteger(value.changes.total) &&
-    typeof value.note === "string" &&
-    SAFE_GIT_NOTES.has(value.note)
-  );
-}
-
 function isPersonaSummary(value: unknown): value is RunBundle["persona"] {
   return (
     isRecord(value) &&
@@ -455,166 +365,6 @@ function isRunSimulation(value: unknown): value is RunSimulation {
     value.streamIds.every((streamId) => typeof streamId === "string") &&
     typeof value.startedAt === "string" &&
     typeof value.updatedAt === "string"
-  );
-}
-
-function isRunStream(value: unknown): value is RunStream {
-  return (
-    isRecord(value) &&
-    typeof value.id === "string" &&
-    typeof value.simId === "string" &&
-    isRunStreamKind(value.kind) &&
-    typeof value.label === "string" &&
-    isRunSimulationStatus(value.status) &&
-    (value.transport === "snapshot" ||
-      value.transport === "polling" ||
-      value.transport === "sse" ||
-      value.transport === "pty" ||
-      value.transport === "app-server") &&
-    typeof value.updatedAt === "string" &&
-    (value.assignment === undefined || isRunParticipantAssignment(value.assignment)) &&
-    (value.viewport === undefined || isRunViewport(value.viewport)) &&
-    (value.desktopGeometry === undefined || isRunDesktopGeometry(value.desktopGeometry)) &&
-    (value.recording === undefined || isRunDesktopRecording(value.recording)) &&
-    hasConsistentStreamGeometry(value) &&
-    Array.isArray(value.artifacts) &&
-    value.artifacts.every(isRunStreamArtifact) &&
-    hasConsistentRecordingArtifact(value.recording, value.artifacts)
-  );
-}
-
-function hasConsistentRecordingArtifact(
-  recording: RunDesktopRecording | undefined,
-  artifacts: RunStream["artifacts"],
-): boolean {
-  const files = artifacts.filter((artifact) => artifact.kind === "recording");
-  return recording ? files.length === 1 && files[0]!.path === recording.path : files.length === 0;
-}
-
-function isRunDesktopRecording(value: unknown): value is RunDesktopRecording {
-  if (
-    !isRecord(value) ||
-    value.schema !== "humanish.desktop-recording.v1" ||
-    typeof value.path !== "string" ||
-    !isLocalEvidenceArtifactPath(value.path) ||
-    !/^recordings\/[-A-Za-z0-9_.]+\/desktop\.mp4$/.test(value.path)
-  )
-    return false;
-  const { schema: _schema, path: _path, ...metadata } = value;
-  return desktopRecordingMetadataSchema.safeParse(metadata).success;
-}
-
-function isRunParticipantAssignment(value: unknown): value is RunParticipantAssignment {
-  return (
-    isRecord(value) &&
-    Object.keys(value).every((key) => key === "mission" || key === "focus" || key === "tasks") &&
-    typeof value.mission === "string" &&
-    (value.focus === undefined || typeof value.focus === "string") &&
-    (value.tasks === undefined ||
-      (Array.isArray(value.tasks) &&
-        value.tasks.every(
-          (task) =>
-            isRecord(task) &&
-            Object.keys(task).every((key) => key === "id" || key === "goal") &&
-            typeof task.id === "string" &&
-            typeof task.goal === "string",
-        )))
-  );
-}
-
-function isRunViewport(value: unknown): value is NonNullable<RunStream["viewport"]> {
-  return (
-    isRecord(value) &&
-    isPositiveFiniteNumber(value.width) &&
-    isPositiveFiniteNumber(value.height) &&
-    (value.deviceScaleFactor === undefined || isPositiveFiniteNumber(value.deviceScaleFactor)) &&
-    (value.isMobile === undefined || typeof value.isMobile === "boolean")
-  );
-}
-
-function isRunDesktopGeometry(value: unknown): value is RunDesktopGeometry {
-  if (!isRecord(value) || !isRecord(value.screen) || !isMeasuredSize(value.screen.requested)) {
-    return false;
-  }
-  const verified = value.screen.verified;
-  if (verified !== undefined) {
-    if (!isRecord(verified)) return false;
-    const source = verified.source;
-    if (!isMeasuredSize(verified) || source !== "xdpyinfo") return false;
-  }
-  const declared = value.screen.declared;
-  if (declared !== undefined) {
-    if (!isRecord(declared)) return false;
-    // read before isMeasuredSize narrows `declared` to {width, height}
-    const preset = declared.preset;
-    if (!isMeasuredSize(declared) || typeof preset !== "string") return false;
-  }
-  const browserWindow = value.browserWindow;
-  if (
-    browserWindow !== undefined &&
-    (!isRecord(browserWindow) ||
-      !isFiniteNumber(browserWindow.x) ||
-      !isFiniteNumber(browserWindow.y) ||
-      !isPositiveFiniteNumber(browserWindow.width) ||
-      !isPositiveFiniteNumber(browserWindow.height) ||
-      (browserWindow.source !== "cdp" &&
-        browserWindow.source !== "xdotool" &&
-        browserWindow.source !== "xwininfo"))
-  ) {
-    return false;
-  }
-  const viewport = value.viewport;
-  if (
-    !(
-      viewport === undefined ||
-      (isRecord(viewport) &&
-        isPositiveFiniteNumber(viewport.width) &&
-        isPositiveFiniteNumber(viewport.height) &&
-        isPositiveFiniteNumber(viewport.deviceScaleFactor) &&
-        viewport.source === "cdp")
-    )
-  )
-    return false;
-  return (
-    value.warnings === undefined ||
-    (Array.isArray(value.warnings) &&
-      value.warnings.every((warning) => typeof warning === "string" && warning.length > 0))
-  );
-}
-
-function hasConsistentStreamGeometry(value: Record<string, unknown>): boolean {
-  if (value.desktopGeometry === undefined) return true;
-  if (!isRunDesktopGeometry(value.desktopGeometry)) return false;
-  const measured = value.desktopGeometry.viewport;
-  if (measured === undefined) return value.viewport === undefined;
-  if (!isRunViewport(value.viewport)) return false;
-  return (
-    value.viewport.width === measured.width &&
-    value.viewport.height === measured.height &&
-    value.viewport.deviceScaleFactor === measured.deviceScaleFactor
-  );
-}
-
-function isMeasuredSize(value: unknown): value is { width: number; height: number } {
-  return (
-    isRecord(value) && isPositiveFiniteNumber(value.width) && isPositiveFiniteNumber(value.height)
-  );
-}
-
-function isRunStreamArtifact(value: unknown): value is RunStream["artifacts"][number] {
-  return (
-    isRecord(value) &&
-    typeof value.label === "string" &&
-    typeof value.path === "string" &&
-    (value.kind === "bundle" ||
-      value.kind === "review" ||
-      value.kind === "observer" ||
-      value.kind === "events" ||
-      value.kind === "screenshot" ||
-      value.kind === "trace" ||
-      value.kind === "log" ||
-      value.kind === "filesystem" ||
-      value.kind === "recording")
   );
 }
 
@@ -697,40 +447,6 @@ function hasConsistentSimulationStreams(simulations: unknown[], streams: unknown
   }
 
   return streamById.size === expectedStreamSimIds.size;
-}
-
-function isRunSimulationStatus(value: unknown): value is RunSimulationStatus {
-  return (
-    value === "queued" ||
-    value === "preparing" ||
-    value === "running" ||
-    value === "passed" ||
-    // Participant outcomes (docs/principles/three-roles.md). This runtime allowlist is the actual
-    // gate — the TS union alone does not validate a bundle read back from disk.
-    value === "abandoned" ||
-    value === "incomplete" ||
-    value === "complete" ||
-    value === "blocked" ||
-    value === "timed_out" ||
-    value === "failed" ||
-    value === "contract_proof_only"
-  );
-}
-
-function isRunStreamKind(value: unknown): value is RunStreamKind {
-  return (
-    value === "ui" ||
-    value === "browser" ||
-    value === "terminal" ||
-    value === "tui" ||
-    value === "codex-ui" ||
-    value === "artifact" ||
-    value === "summary"
-  );
-}
-
-function isSafeGitShortSha(value: unknown): value is string {
-  return typeof value === "string" && /^[a-f0-9]{7,12}$/.test(value);
 }
 
 export function isReviewSummary(value: unknown): value is ReviewSummary {

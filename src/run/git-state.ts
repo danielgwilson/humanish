@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import os from "node:os";
 
 import { inspectVerifiedGitWorkspace, type VerifiedGitWorkspace } from "./git-workspace.js";
+import { isNonNegativeSafeInteger, isRecord } from "./primitives.js";
 
 export const GIT_STATE_SCHEMA = "humanish.git-state.v1";
 
@@ -351,4 +352,55 @@ function toIsoString(value: Date | string): string {
   }
 
   return date.toISOString();
+}
+
+// The notes captureGitState can write; a bundle note outside this set fails the shape guard.
+const SAFE_GIT_NOTES = new Set([
+  "Git command could not be started.",
+  "Git HEAD capture timed out.",
+  "Git HEAD command could not be started.",
+  "Git metadata could not be inspected safely.",
+  "Git status command could not be captured.",
+  "Git status command could not be started.",
+  "Git status could not be captured.",
+  "Git status capture timed out.",
+  "Git metadata failed containment validation.",
+  "Git ref-state capture timed out.",
+  "Git ref-state command could not be started.",
+  "Git work-tree detection timed out.",
+  "Git work tree had changes; only counts were captured, not branch names, remotes, paths, or file names.",
+  "Git work tree was clean; branch names, remotes, paths, and file names were not captured.",
+  "No git work tree was detected.",
+  "public-safe synthetic fixture",
+  // Only bundles from the removed meta-lab carry this note.
+  "public-safe synthetic OSS meta-lab fixture",
+]);
+
+export function isCapturedGitState(value: unknown): value is CapturedGitState {
+  return (
+    isRecord(value) &&
+    value.schema === GIT_STATE_SCHEMA &&
+    (value.status === "clean" ||
+      value.status === "dirty" ||
+      value.status === "missing" ||
+      value.status === "unavailable") &&
+    typeof value.capturedAt === "string" &&
+    isRecord(value.head) &&
+    (isSafeGitShortSha(value.head.shortSha) || value.head.shortSha === null) &&
+    (value.head.refState === "attached" ||
+      value.head.refState === "detached" ||
+      value.head.refState === "unborn" ||
+      value.head.refState === "unknown") &&
+    isRecord(value.changes) &&
+    isNonNegativeSafeInteger(value.changes.staged) &&
+    isNonNegativeSafeInteger(value.changes.unstaged) &&
+    isNonNegativeSafeInteger(value.changes.untracked) &&
+    isNonNegativeSafeInteger(value.changes.total) &&
+    typeof value.note === "string" &&
+    SAFE_GIT_NOTES.has(value.note)
+  );
+}
+
+function isSafeGitShortSha(value: unknown): value is string {
+  return typeof value === "string" && /^[a-f0-9]{7,12}$/.test(value);
 }

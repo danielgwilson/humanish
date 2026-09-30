@@ -430,3 +430,32 @@ async function assertDirectoryIdentity(directory: string, identity: FileIdentity
     throw new Error("Prepared humanish run storage identity changed.");
   }
 }
+
+const riskyPublicArtifactPathSegments = new Set([
+  ".git",
+  "Cookies",
+  "Login Data",
+  "Local Storage",
+  "Preferences",
+  "Secure Preferences",
+  "profiles",
+]);
+
+export function isRiskyPublicArtifactPath(relativePath: string): boolean {
+  return relativePath
+    .split(/[\\/]/)
+    .some((segment) => riskyPublicArtifactPathSegments.has(segment));
+}
+
+export function isLocalEvidenceArtifactPath(value: string): boolean {
+  const normalized = value.replace(/\\/g, "/");
+  return (
+    value.length > 0 &&
+    !/^\[[a-z0-9._-]+\]$/i.test(normalized) &&
+    !path.isAbsolute(normalized) &&
+    !normalized.includes("://") &&
+    !normalized.startsWith("..") &&
+    !normalized.split("/").includes("..") &&
+    !isRiskyPublicArtifactPath(normalized)
+  );
+}

@@ -3,11 +3,15 @@ import path from "node:path";
 import { screenshotEvidenceError } from "../evidence/image.js";
 import { isStudyAnalysisRecordPath } from "../analysis/sharing.js";
 import { containsSensitive } from "../evidence/redaction.js";
-import { validatePreparedRunArtifactPaths, type PreparedRunArtifactPaths } from "./paths.js";
+import {
+  isLocalEvidenceArtifactPath,
+  isRiskyPublicArtifactPath,
+  validatePreparedRunArtifactPaths,
+  type PreparedRunArtifactPaths,
+} from "./paths.js";
 import { openContainedRegularFile } from "./selected-output-paths.js";
 import type { RunBundle } from "./bundle.js";
 import type { RunStream } from "./streams.js";
-import { isLocalEvidenceArtifactPath, isRiskyPublicArtifactPath } from "./guards.js";
 import { readSafeRunArtifactBytes, readSafeRunArtifactJson } from "./locate.js";
 import { isRecord } from "./primitives.js";
 import { isZeroEventTerminalTrace, TERMINAL_EVENTS_FILE } from "./verify-actor.js";
