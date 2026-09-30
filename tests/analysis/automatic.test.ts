@@ -618,7 +618,8 @@ describe("opted-in automatic analysis ownership", () => {
         fetch: h.fetch,
         signal: controller.signal,
       });
-      await vi.waitFor(() => expect(h.fetch).toHaveBeenCalledTimes(1));
+      // The job writes its records before dispatch; under load that can outlast waitFor's 1 s default.
+      await vi.waitFor(() => expect(h.fetch).toHaveBeenCalledTimes(1), { timeout: 15_000 });
       if (kind === "marker")
         expect(await requestAutomaticStudyAnalysisCancellation(cwd, runId)).toEqual({
           requested: true,

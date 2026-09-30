@@ -7,6 +7,10 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { startCodexAppServerUi } from "../../../src/actors/codex/app-server-ui.js";
 import { runCodexAppServerSession } from "../../../src/actors/codex/app-server.js";
 
+// These tests assert containment, not timing. The session timeout only guards against a hang, so it
+// sits above vitest's 20 s test timeout, and a slow spawn under load cannot end a run early.
+const HANG_GUARD_MS = 60_000;
+
 describe("Codex app-server output containment", () => {
   let root: string;
   let project: string;
@@ -23,7 +27,7 @@ describe("Codex app-server output containment", () => {
         "import fs from 'node:fs';",
         "import readline from 'node:readline';",
         "const marker = process.argv[2];",
-        "const delay = Number(process.argv[3] || '0');",
+        "const gate = process.argv[3];",
         "if (marker) fs.writeFileSync(marker, 'started\\n');",
         "const rl = readline.createInterface({ input: process.stdin });",
         "const send = (value) => process.stdout.write(JSON.stringify(value) + '\\n');",
@@ -37,10 +41,12 @@ describe("Codex app-server output containment", () => {
         "  if (msg.method === 'turn/start') {",
         "    send({ id: msg.id, result: { turn } });",
         "    send({ method: 'turn/started', params: { threadId: thread.id, turn } });",
-        "    setTimeout(() => {",
+        "    const complete = () => {",
         "      send({ method: 'turn/completed', params: { threadId: thread.id, turn: { ...turn, status: 'completed' } } });",
         "      setTimeout(() => process.exit(0), 20);",
-        "    }, delay);",
+        "    };",
+        "    if (!gate) { complete(); return; }",
+        "    const wait = setInterval(() => { if (fs.existsSync(gate)) { clearInterval(wait); complete(); } }, 5);",
         "  }",
         "});",
       ].join("\n"),
@@ -80,7 +86,7 @@ describe("Codex app-server output containment", () => {
       cwd: project,
       prompt: "test",
       runRoot: ".humanish/codex-app-server-ui",
-      timeoutMs: 2_000,
+      timeoutMs: HANG_GUARD_MS,
     });
     const completed = await controller.completion;
     expect(completed.status).toBe("passed");
@@ -107,7 +113,7 @@ describe("Codex app-server output containment", () => {
       prompt: "test",
       runRoot,
       stateFile: "state-parent-alias/controller.json",
-      timeoutMs: 2_000,
+      timeoutMs: HANG_GUARD_MS,
     });
     await controller.completion;
     expect(await readFile(path.join(stateParent, "controller.json"), "utf8")).toContain('"schema"');
@@ -135,22 +141,26 @@ describe("Codex app-server output containment", () => {
     const second = path.join(root, "second");
     const alias = path.join(project, "run-alias");
     const marker = path.join(root, "actor-started");
+    const gate = path.join(root, "complete-turn");
     await mkdir(first);
     await mkdir(second);
     await writeFile(path.join(second, "sentinel.txt"), "unchanged\n", "utf8");
     await symlink(first, alias, "dir");
 
     const controller = await startCodexAppServerUi({
-      actorCommand: actorCommand(marker, 250),
+      // The fake server holds turn/completed until the gate exists, so the retarget always lands
+      // inside the child window however slowly this process runs.
+      actorCommand: actorCommand(marker, gate),
       cwd: project,
       keepOpen: true,
       prompt: "test",
       runRoot: "run-alias",
-      timeoutMs: 10_000,
+      timeoutMs: HANG_GUARD_MS,
     });
     await waitForFile(marker);
     await rm(alias);
     await symlink(second, alias, "dir");
+    await writeFile(gate, "");
     try {
       await expect(controller.completion).rejects.toThrow(/changed physical destination/i);
       expect(await readFile(path.join(second, "sentinel.txt"), "utf8")).toBe("unchanged\n");
@@ -173,7 +183,7 @@ describe("Codex app-server output containment", () => {
       keepOpen: true,
       prompt: "test",
       runRoot,
-      timeoutMs: 2_000,
+      timeoutMs: HANG_GUARD_MS,
     });
     await controller.completion;
     await symlink(path.join(outside, "secret.txt"), path.join(runRoot, "leaf-link.txt"));
@@ -217,7 +227,7 @@ describe("Codex app-server output containment", () => {
 
     await expect(
       runCodexAppServerSession({
-        actorCommand: [process.execPath, fakeServer, marker, "0"],
+        actorCommand: [process.execPath, fakeServer, marker],
         cwd: project,
         prompt: "test",
         runRoot: selected,
@@ -242,7 +252,7 @@ describe("Codex app-server output containment", () => {
     const hardlinkMarker = path.join(root, "direct-hardlink-actor-started");
     await expect(
       runCodexAppServerSession({
-        actorCommand: [process.execPath, fakeServer, hardlinkMarker, "0"],
+        actorCommand: [process.execPath, fakeServer, hardlinkMarker],
         cwd: project,
         prompt: "test",
         runRoot: selected,
@@ -253,8 +263,8 @@ describe("Codex app-server output containment", () => {
     expect(await readFile(path.join(outside, "sentinel.txt"), "utf8")).toBe("unchanged\n");
   });
 
-  function actorCommand(marker: string, delay = 0): string {
-    return [process.execPath, fakeServer, marker, String(delay)]
+  function actorCommand(marker: string, gate?: string): string {
+    return [process.execPath, fakeServer, marker, ...(gate === undefined ? [] : [gate])]
       .map((part) => JSON.stringify(part))
       .join(" ");
   }
