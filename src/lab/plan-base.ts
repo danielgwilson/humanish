@@ -18,7 +18,7 @@ import type { LabConfig } from "./types.js";
 
 export type Base = Omit<
   ComputerUsePlan,
-  "route" | "runner" | "concurrency" | "sessionBudgetMs" | "sandboxMs" | "caps" | "rerun"
+  "route" | "actor" | "runner" | "concurrency" | "sessionBudgetMs" | "sandboxMs" | "caps" | "rerun"
 >;
 export type Built<P extends LabPlan> = P | PlanGap;
 

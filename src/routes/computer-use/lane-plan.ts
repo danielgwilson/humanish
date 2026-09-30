@@ -28,7 +28,7 @@ import type { DwellWindow, StopWhen } from "../../actors/stop-conditions.js";
 import { renderTaskPrompt, type LabTask } from "../../lab/tasks.js";
 import { participantAssignment } from "../../lab/participant-assignment.js";
 import { labPersonaIds, resolveCommittedPersonas } from "../../lab/persona-resolve.js";
-import { MAX_CUA_LANES, participantIdAt } from "../../lab/routing.js";
+import { participantIdAt } from "../../lab/routing.js";
 import type { PreparedSelectedOutputDirectory } from "../../run/selected-output-paths.js";
 import {
   CUA_FANOUT_STRATEGY,
@@ -624,7 +624,11 @@ export async function planCuaLanes(args: {
   projectRoot: PreparedSelectedOutputDirectory;
   env: Record<string, string | undefined>;
   dryRun: boolean;
-  inProcessRoute: boolean;
+  /**
+   * planComputerUseLab's lane-cap or in-process fan-out refusal. It is returned after the persona
+   * files are read, where those checks have always run, so a persona-file error still wins.
+   */
+  refusal?: { readonly code: CuaActorLabErrorCode; readonly message: string };
   countOverride?: number;
   rerun?: RunCuaActorLabOptions["rerun"];
 }): Promise<
@@ -640,6 +644,7 @@ export async function planCuaLanes(args: {
   for (const warning of personaResolution.warnings) {
     process.stderr.write(`humanish: ${warning}\n`);
   }
+  if (args.refusal) return { ok: false, code: args.refusal.code, message: args.refusal.message };
 
   const { lanes: laneSpecs, plan } = laneSpecsAndPlan(args.config, {
     ...(args.countOverride === undefined ? {} : { countOverride: args.countOverride }),
@@ -647,21 +652,6 @@ export async function planCuaLanes(args: {
     dryRun: args.dryRun,
     personas: personaResolution.personas,
   });
-  if (laneSpecs.length > MAX_CUA_LANES) {
-    return {
-      ok: false,
-      code: "HUMANISH_CUA_LAB_FANOUT_INVALID",
-      message: `Computer-use fan-out is capped at ${MAX_CUA_LANES} lanes (resolved ${laneSpecs.length}); N concurrent paid desktops is real spend.`,
-    };
-  }
-  if (args.inProcessRoute && laneSpecs.length > 1) {
-    return {
-      ok: false,
-      code: "HUMANISH_CUA_LAB_FANOUT_INVALID",
-      message:
-        "Multi-lane fan-out is not supported on the in-process route (cuaHooks.buildExecutor) — fan-out provisions one independent E2B desktop per lane, which the in-process route deliberately skips. Run a single in-process lane, or fan out on the E2B route.",
-    };
-  }
   if (!args.rerun) return { ok: true, laneSpecs, plan };
 
   const selected = await resolveCuaRerunSelection({

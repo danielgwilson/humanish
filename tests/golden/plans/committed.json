@@ -42,6 +42,7 @@
       },
       "requirements": [],
       "route": "computer-use",
+      "actor": "openai-computer-use",
       "runner": {
         "desktop": "e2b-desktop",
         "brain": {
@@ -153,6 +154,7 @@
       },
       "requirements": [],
       "route": "computer-use",
+      "actor": "openai-computer-use",
       "runner": {
         "desktop": "e2b-desktop",
         "brain": {
@@ -241,6 +243,7 @@
       },
       "requirements": [],
       "route": "computer-use",
+      "actor": "openai-computer-use",
       "runner": {
         "desktop": "e2b-desktop",
         "brain": {
@@ -336,6 +339,7 @@
       },
       "requirements": [],
       "route": "computer-use",
+      "actor": "openai-computer-use",
       "runner": {
         "desktop": "e2b-desktop",
         "brain": {
@@ -435,6 +439,7 @@
       },
       "requirements": [],
       "route": "computer-use",
+      "actor": "openai-computer-use",
       "runner": {
         "desktop": "e2b-desktop",
         "brain": {
@@ -568,6 +573,7 @@
       },
       "requirements": [],
       "route": "computer-use",
+      "actor": "openai-computer-use",
       "runner": {
         "desktop": "e2b-desktop",
         "brain": {
@@ -682,6 +688,7 @@
       },
       "requirements": [],
       "route": "computer-use",
+      "actor": "openai-computer-use",
       "runner": {
         "desktop": "e2b-desktop",
         "brain": {
@@ -1044,6 +1051,7 @@
       },
       "requirements": [],
       "route": "computer-use",
+      "actor": "openai-computer-use",
       "runner": {
         "desktop": "e2b-desktop",
         "brain": {
@@ -1290,6 +1298,7 @@
       },
       "requirements": [],
       "route": "computer-use",
+      "actor": "openai-computer-use",
       "runner": {
         "desktop": "e2b-desktop",
         "brain": {
@@ -1397,6 +1406,7 @@
       },
       "requirements": [],
       "route": "computer-use",
+      "actor": "openai-computer-use",
       "runner": {
         "desktop": "e2b-desktop",
         "brain": {
@@ -1923,6 +1933,7 @@
       },
       "requirements": [],
       "route": "computer-use",
+      "actor": "openai-computer-use",
       "runner": {
         "desktop": "e2b-desktop",
         "brain": {
@@ -2188,6 +2199,7 @@
       },
       "requirements": [],
       "route": "computer-use",
+      "actor": "openai-computer-use",
       "runner": {
         "desktop": "e2b-desktop",
         "brain": {

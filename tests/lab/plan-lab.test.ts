@@ -1,7 +1,7 @@
 // planLab builds the plan a lab would run under, without running anything. These tests pin the
 // plan of every committed lab, compare the plan's derived numbers and key requirements with what
-// the routes and `lab doctor` compute today, and check each gap: a combination the plan types
-// cannot hold, which a route refuses today.
+// the routes and `lab doctor` compute today, and check each combination the plan types cannot
+// hold: an adopted route refuses it with its own code, and shared world still returns a gap.
 
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -121,7 +121,7 @@ describe("planLab", () => {
     }
   });
 
-  it("names the gap for each combination the plan types cannot hold", () => {
+  it("refuses each combination the plan types cannot hold", () => {
     const executor = async () => {
       throw new Error("not called");
     };
@@ -140,9 +140,9 @@ describe("planLab", () => {
       execution: { target: "local", timeoutMs: 60_000 },
     });
     expect(gap(parsed(cuApp), { cwd: ROOT, cuaHooks: { buildExecutor: executor } })).toBe(
-      "computer-use executor-without-provider",
+      "computer-use HUMANISH_CUA_LAB_EXECUTOR_NO_PROVIDER",
     );
-    expect(gap(local, { cwd: ROOT })).toBe("computer-use local-app-without-executor");
+    expect(gap(local, { cwd: ROOT })).toBe("computer-use HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR");
     expect(
       gap(local, { cwd: ROOT, cuaHooks: { buildExecutor: executor, buildProvider: provider } }),
     ).toBe("planned");
@@ -152,8 +152,10 @@ describe("planLab", () => {
         count: 2,
         cuaHooks: { buildExecutor: executor, buildProvider: provider },
       }),
-    ).toBe("computer-use in-process-fan-out");
-    expect(gap(parsed(cuApp), { cwd: ROOT, count: 17 })).toBe("computer-use participant-cap");
+    ).toBe("computer-use HUMANISH_CUA_LAB_FANOUT_INVALID");
+    expect(gap(parsed(cuApp), { cwd: ROOT, count: 17 })).toBe(
+      "computer-use HUMANISH_CUA_LAB_FANOUT_INVALID",
+    );
     expect(
       gap(parsed({ subject: { source: "this-repo" }, actors: [{ type: "synthetic-persona" }] }), {
         cwd: ROOT,
@@ -200,9 +202,11 @@ describe("planLab", () => {
       "scripted HUMANISH_SCRIPTED_LAB_SUBJECT_UNSAFE",
     );
     const unknownActor = { ...parsed(cuApp), actors: [{ type: "not-an-actor" }] } as LabConfig;
-    expect(gap(unknownActor, { cwd: ROOT })).toBe("computer-use unsupported-composition");
+    expect(gap(unknownActor, { cwd: ROOT })).toBe(
+      "computer-use HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED",
+    );
     const badAnalysis = { ...parsed(cuApp), review: { analysis: "yes" } } as unknown as LabConfig;
-    expect(gap(badAnalysis, { cwd: ROOT })).toBe("computer-use analysis-invalid");
+    expect(gap(badAnalysis, { cwd: ROOT })).toBe("computer-use HUMANISH_LAB_ANALYSIS_INVALID");
   });
 
   it("asks a live scripted run for a host browser unless the caller injects one", () => {

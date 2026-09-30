@@ -11,7 +11,12 @@ import type { ScriptedRefusal } from "../routes/scripted-browser/plan.js";
 import type { TerminalRefusal } from "../routes/terminal/plan.js";
 import type { RunLabProvenance } from "../run/status.js";
 import type { RunLabOptions } from "./engine.js";
-import type { ComputerUseParticipant, ExternalPublicSeat, ProvisionedSeat } from "./plan.js";
+import type { ComputerUseRefusal } from "../routes/computer-use/plan.js";
+import type {
+  ComputerUseParticipant,
+  ExternalPublicSeat,
+  ProvisionedSeat,
+} from "./plan-participants.js";
 import type { LabRoute } from "./plan.js";
 import type {
   LabConfig,
@@ -102,33 +107,47 @@ export interface AppUrlSubject {
   readonly publicTargets: boolean;
 }
 
-/** Supported subject and desktop pairings. */
+/** A CLI studied at a desktop. The parser requires `product`; the route runs a library config without it. */
+export interface DesktopCliSubject {
+  readonly kind: "desktop-cli";
+  readonly product?: LabSubjectProduct;
+}
+
+/**
+ * Supported subject and desktop pairings, plus two the route runs for a library caller that the
+ * parser never produces: public targets on the local VM, and an in-process executor with a
+ * provisioned or desktop-cli subject, which drives the app URL on this machine and provisions
+ * nothing.
+ */
 export type ComputerUseRunner =
   | {
       readonly desktop: "e2b-desktop";
       readonly brain: Brain;
       readonly participants: NonEmpty<ComputerUseParticipant>;
-      readonly subject:
-        | AppUrlSubject
-        | ProvisionedSubject
-        | { readonly kind: "desktop-cli"; readonly product: LabSubjectProduct };
+      readonly subject: AppUrlSubject | ProvisionedSubject | DesktopCliSubject;
     }
   | {
       readonly desktop: "local-vm";
       readonly brain: Brain;
       readonly participants: NonEmpty<ComputerUseParticipant>;
-      readonly subject: AppUrlSubject & { readonly publicTargets: false };
+      readonly subject: AppUrlSubject;
     }
   /** The caller's executor and provider together; one participant. */
   | {
       readonly desktop: "in-process";
       readonly brain: { readonly kind: "caller" };
       readonly participants: readonly [ComputerUseParticipant];
-      readonly subject: AppUrlSubject | { readonly kind: "local-app"; readonly appUrl: string };
+      readonly subject:
+        | AppUrlSubject
+        | { readonly kind: "local-app"; readonly appUrl: string }
+        | ProvisionedSubject
+        | DesktopCliSubject;
     };
 
 export interface ComputerUsePlan extends PlanBase {
   readonly route: "computer-use";
+  /** The registered computer-use actor id. */
+  readonly actor: string;
   readonly runner: ComputerUseRunner;
   /** Declared cap clamped to [1, participants]; the route may only lower it from env. */
   readonly concurrency: number;
@@ -224,13 +243,7 @@ interface PlannedLab {
  * A combination the plan types cannot hold. Each rule is refused by a route today; the route's
  * code and message move here when that route adopts planLab.
  */
-export type PlanGap =
-  | "analysis-invalid"
-  | "executor-without-provider"
-  | "local-app-without-executor"
-  | "in-process-fan-out"
-  | "participant-cap"
-  | "unsupported-composition";
+export type PlanGap = "analysis-invalid" | "unsupported-composition";
 
 /** The error codes the preview route returns before a run starts. */
 type PreviewRefusalCode =
@@ -247,6 +260,7 @@ export type PlanRefusal =
   | { readonly route: "preview"; readonly code: PreviewRefusalCode; readonly message: string }
   | TerminalRefusal
   | ScriptedRefusal
+  | ComputerUseRefusal
   | { readonly route: LabRoute; readonly gap: PlanGap };
 
 export type PlanResult =
