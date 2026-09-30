@@ -13,6 +13,7 @@ import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
 import { brainOf, capsOf, desktopRequirements, isNonEmpty, planBase } from "../../lab/plan-base.js";
 import { sharedWorldSeats } from "../../lab/plan-participants.js";
 import type { SharedWorldPlan, SharedWorldPlane } from "../../lab/plan-types.js";
+import { PUBLIC_TARGET_OWNER_PATTERN } from "../../lab/parse-subject.js";
 import { REPO_SLUG_PATTERN } from "../../lab/parse-values.js";
 import type { LabConfig } from "../../lab/types.js";
 import {
@@ -121,6 +122,15 @@ export function planSharedWorldLab(
   const repo = config.subject.repos?.[0] ?? "";
   if (config.subject.source === "clone" && !REPO_SLUG_PATTERN.test(repo))
     return refuse(invalid, `subject.repos[0] must be an owner/repo slug (got "${repo}").`, actor);
+  // The owner is recorded in the evidence as the operator's attestation, so it must be declared
+  // and public-safe; the parser requires the same.
+  const owner = config.subject.publicTarget?.owner;
+  if (externalPublic && (!owner || !PUBLIC_TARGET_OWNER_PATTERN.test(owner)))
+    return refuse(
+      invalid,
+      "`subject.publicTarget.owner` must be a public-safe operator/repo label (e.g. owner/repo); it is recorded in evidence, so it must carry no secret.",
+      actor,
+    );
 
   const plane = planeOf(config);
   if (plane === undefined)
@@ -164,10 +174,11 @@ function planeOf(config: LabConfig): SharedWorldPlane | undefined {
     const [first, second, ...rest] = seats.seats;
     if (first === undefined || second === undefined) return undefined;
     const owner = config.subject.publicTarget?.owner;
+    if (!owner) return undefined;
     return {
       kind: "external-public",
       appUrl: config.subject.appUrl ?? "",
-      ...(owner === undefined ? {} : { owner }),
+      owner,
       participants: [first, second, ...rest],
     };
   }

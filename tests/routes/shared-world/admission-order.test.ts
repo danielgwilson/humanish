@@ -77,6 +77,17 @@ const rules = new Map<string, Rule>([
     },
   ],
   ["clone without a repo slug", { mutate: (c) => (record(c, "subject").repos = ["not a slug"]) }],
+  [
+    "external plane without an owner",
+    {
+      mutate: (c) => {
+        rules.get("external plane without authorization")!.mutate(c);
+        const publicTarget = record(record(c, "subject"), "publicTarget");
+        publicTarget.authorized = true;
+        delete publicTarget.owner;
+      },
+    },
+  ],
   ["live without keys", { mutate: (c) => (record(c, "scenario").mode = "live") }],
   [
     "live external catch unreachable",
@@ -107,6 +118,8 @@ const pairs: [string, string][] = [
   ["real receiving with local-agent", "live without keys"],
   ["real receiving with local-agent", "clone without a repo slug"],
   ["clone without a repo slug", "live without keys"],
+  ["real receiving with local-agent", "external plane without an owner"],
+  ["external plane without an owner", "live without keys"],
 ];
 
 function caseOf(names: readonly string[]): {

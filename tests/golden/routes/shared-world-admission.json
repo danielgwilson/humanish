@@ -282,6 +282,30 @@
       "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
+  "external plane without an owner": {
+    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-sharedprovisioned",
+    "actor": "openai-computer-use",
+    "topology": "shared-world",
+    "topologyMode": "concurrent",
+    "roleCount": 2,
+    "concurrency": 2,
+    "dryRun": true,
+    "runId": "not-created",
+    "roles": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "message": "`subject.publicTarget.owner` must be a public-safe operator/repo label (e.g. owner/repo); it is recorded in evidence, so it must carry no secret."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
+    }
+  },
   "live without keys": {
     "schema": "humanish.concurrent-shared-world-lab-result.v1",
     "ok": false,
@@ -625,6 +649,54 @@
     "error": {
       "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
       "message": "subject.repos[0] must be an owner/repo slug (got \"not a slug\")."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE"
+    }
+  },
+  "real receiving with local-agent and external plane without an owner": {
+    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-sharedprovisioned",
+    "actor": "local-agent",
+    "topology": "shared-world",
+    "topologyMode": "concurrent",
+    "roleCount": 2,
+    "concurrency": 2,
+    "dryRun": true,
+    "runId": "not-created",
+    "roles": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "message": "Real email receiving is unavailable for local-agent: its host process does not isolate the inbox management credential. Use a hosted first-party computer-use actor."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
+    }
+  },
+  "external plane without an owner and live without keys": {
+    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-sharedprovisioned",
+    "actor": "openai-computer-use",
+    "topology": "shared-world",
+    "topologyMode": "concurrent",
+    "roleCount": 2,
+    "concurrency": 2,
+    "dryRun": false,
+    "runId": "not-created",
+    "roles": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "message": "`subject.publicTarget.owner` must be a public-safe operator/repo label (e.g. owner/repo); it is recorded in evidence, so it must carry no secret."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {

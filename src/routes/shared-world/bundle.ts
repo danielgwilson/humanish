@@ -148,7 +148,9 @@ function planeEvents(args: ConcurrentBundleArgs, external: boolean): RunEvent[] 
   // External-public plane provenance is HONESTLY different: an operator-declared, operator-OWNED
   // public deployment humanish neither provisioned nor seeded — NO getHost, NO clone, NO synthetic
   // attestation (claiming synthetic on a real site is a lie). The origin persists digest-only.
-  const externalPlaneOwner = config.subject.publicTarget?.owner ?? "(operator-declared)";
+  // planSharedWorldLab refuses an external-public plane without a declared owner; the fallback
+  // says so rather than naming one.
+  const externalPlaneOwner = config.subject.publicTarget?.owner ?? "(undeclared)";
   events.push({
     id: "event-001-plane",
     at: createdAt,

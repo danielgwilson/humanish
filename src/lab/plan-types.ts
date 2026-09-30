@@ -162,8 +162,7 @@ export type SharedWorldPlane =
   | {
       readonly kind: "external-public";
       readonly appUrl: string;
-      /** The parser requires it; the route records a placeholder for a library config without it. */
-      readonly owner?: string;
+      readonly owner: string;
       readonly participants: AtLeastTwo<ExternalPublicSeat>;
     };
 
