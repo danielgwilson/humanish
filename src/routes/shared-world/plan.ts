@@ -13,6 +13,7 @@ import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
 import { brainOf, capsOf, desktopRequirements, isNonEmpty, planBase } from "../../lab/plan-base.js";
 import { sharedWorldSeats } from "../../lab/plan-participants.js";
 import type { SharedWorldPlan, SharedWorldPlane } from "../../lab/plan-types.js";
+import { REPO_SLUG_PATTERN } from "../../lab/parse-values.js";
 import type { LabConfig } from "../../lab/types.js";
 import {
   concurrentSharedWorldValidationReason,
@@ -115,6 +116,11 @@ export function planSharedWorldLab(
   }
   const receivingReason = receivingEmailValidationReason(config);
   if (receivingReason) return refuse(invalid, receivingReason, actor);
+  // The parser requires one owner/repo slug; without it the route would clone nothing and fail
+  // after the run started.
+  const repo = config.subject.repos?.[0] ?? "";
+  if (config.subject.source === "clone" && !REPO_SLUG_PATTERN.test(repo))
+    return refuse(invalid, `subject.repos[0] must be an owner/repo slug (got "${repo}").`, actor);
 
   const plane = planeOf(config);
   if (plane === undefined)
@@ -185,7 +191,7 @@ function planeOf(config: LabConfig): SharedWorldPlane | undefined {
         ? { kind: "local-tree", serve, env, state: checkpointed }
         : {
             kind: "clone",
-            // The route clones whatever repos[0] names, so the plan keeps an empty name too.
+            // planSharedWorldLab refused a clone without an owner/repo slug.
             repo: config.subject.repos?.[0] ?? "",
             serve,
             env,

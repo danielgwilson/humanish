@@ -73,6 +73,7 @@ const rules = new Map<string, Rule>([
       },
     },
   ],
+  ["clone without a repo slug", { mutate: (c) => (record(c, "subject").repos = ["not a slug"]) }],
   ["live without keys", { mutate: (c) => (record(c, "scenario").mode = "live") }],
 ]);
 
@@ -89,6 +90,8 @@ const pairs: [string, string][] = [
   ["output limit with a custom session", "live cap on an unpriced model"],
   ["live cap on an unpriced model", "real receiving with local-agent"],
   ["real receiving with local-agent", "live without keys"],
+  ["real receiving with local-agent", "clone without a repo slug"],
+  ["clone without a repo slug", "live without keys"],
 ];
 
 function caseOf(names: readonly string[]): {
