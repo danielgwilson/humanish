@@ -1,4 +1,5 @@
 import { validCodexAnalysisConfig } from "./codex-config.js";
+import { highDetailImageTokens } from "./image-tokens.js";
 import { createHash, randomUUID } from "node:crypto";
 import { estimateActorCost, MODEL_RATES } from "../run/pricing.js";
 import { containsSensitive } from "../evidence/redaction.js";
@@ -159,10 +160,10 @@ function inputError(input: StudyAnalysisInput): string | null {
 /**
  * Local admission ESTIMATE, not a provider-enforced billed-spend guarantee. No token-count API
  * call, credential, or network access. One UTF-8 byte/token for all text/schema plus framing is
- * intentionally conservative. Explicit high-detail images on these supported model families
- * use at most 2,500 patches × 1.2 = 3,000 input tokens per image (official vision guide,
- * 2026-09-14). Unknown models/rates fail closed rather than inheriting those assumptions.
- * https://developers.openai.com/api/docs/guides/images-vision
+ * intentionally conservative. Each high-detail image is priced from its PNG size by the vision
+ * guide's patch formula (see image-tokens.ts), or at the 3,000-token ceiling when its size or the
+ * model's sizing is unknown. Unknown models/rates fail closed rather than inheriting those
+ * assumptions.
  * Known-sensitive decoded text denies admission with analysis_input_sensitive or
  * analysis_question_sensitive. Neither error includes rejected input values.
  */
@@ -229,7 +230,10 @@ export function estimateStudyAnalysisAdmission(
       }),
     ) +
     2048 +
-    input.images.length * 3000;
+    input.images.reduce(
+      (sum, image) => sum + highDetailImageTokens(config.model, image.dataUrl),
+      0,
+    );
   const long =
     rate.longContext !== undefined && inputTokenAllowance > rate.longContext.thresholdInputTokens;
   const inputRate = Math.max(
