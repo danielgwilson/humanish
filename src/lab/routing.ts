@@ -80,7 +80,7 @@ export function declaredLaneTargets(config: LabConfig): string[] {
 
 /**
  * The lane ids the computer-use engine will actually run: declared roster ids, else the generated
- * `lane-01..lane-NN` names. Mirrors the naming in cua-actor-lab.ts's laneSpecsAndPlan — a test
+ * `lane-01..lane-NN` names. Mirrors the naming in routes/computer-use/lane-plan.ts laneSpecsAndPlan — a test
  * pins the two together — so comms recipient validation can never drift from the engine (#351).
  */
 export function effectiveComputerUseLaneIds(config: LabConfig): string[] {

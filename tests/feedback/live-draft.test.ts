@@ -13,7 +13,7 @@ import { describe, expect, it } from "vitest";
 
 import type { ActorCapabilities, ActorTrace } from "../../src/actors/contract.js";
 import type { CuaLoopResult } from "../../src/actors/computer-use/loop.js";
-import { participantFeedbackCandidates } from "../../src/routes/computer-use/lab.js";
+import { participantFeedbackCandidates } from "../../src/routes/computer-use/bundle.js";
 import { draftFeedback, listFeedback } from "../../src/feedback/feedback.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { syntheticPng1x1 } from "../image-fixtures.js";

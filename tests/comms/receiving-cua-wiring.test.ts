@@ -3,11 +3,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { getActor } from "../../src/actors/registry.js";
-import {
-  runCuaLane,
-  type CuaLaneDeps,
-  type CuaLaneSpec,
-} from "../../src/routes/computer-use/lab.js";
+import { runCuaLane } from "../../src/routes/computer-use/lanes.js";
+import { type CuaLaneDeps, type CuaLaneSpec } from "../../src/routes/computer-use/types.js";
 import { DEVICE_PRESETS } from "../../src/lab/device-presets.js";
 import type {
   E2BDesktopCreateOptions,

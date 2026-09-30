@@ -10,10 +10,8 @@ import {
   createOpenAiResponsesProvider,
   OPENAI_RESPONSES_CU_CAPABILITIES,
 } from "../../../src/actors/computer-use/openai-provider.js";
-import {
-  buildCuaCostSummary,
-  participantFeedbackCandidates,
-} from "../../../src/routes/computer-use/lab.js";
+import { buildCuaCostSummary } from "../../../src/routes/computer-use/costs.js";
+import { participantFeedbackCandidates } from "../../../src/routes/computer-use/bundle.js";
 import { estimateActorCost } from "../../../src/run/pricing.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
 import { syntheticPng1x1 } from "../../image-fixtures.js";

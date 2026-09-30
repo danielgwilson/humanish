@@ -2,8 +2,8 @@ import { automaticAnalysisSucceeded } from "../../analysis/automatic-completion.
 import { Command } from "commander";
 import { runLab, resolveLabDryRun } from "../../lab/engine.js";
 import type { RunLabProvenance } from "../../run/status.js";
-import { CUA_ACTOR_LAB_SCHEMA } from "../../routes/computer-use/lab.js";
-import type { CuaActorLabErrorCode, CuaActorLabResult } from "../../routes/computer-use/lab.js";
+import { CUA_ACTOR_LAB_SCHEMA } from "../../routes/computer-use/types.js";
+import type { CuaActorLabErrorCode, CuaActorLabResult } from "../../routes/computer-use/types.js";
 import type { ConcurrentSharedWorldLabResult } from "../../routes/shared-world/concurrent.js";
 import type { LabConfig } from "../../lab/types.js";
 import { serveObserver } from "../../observer/render.js";

@@ -92,7 +92,7 @@ function makeFakeModule(opts: {
   /**
    * Throws a CommandExitError-shaped error (real-SDK-accurate: the real @e2b/desktop Sandbox
    * throws on any non-zero exit rather than returning one) for the runtime-bootstrap command.
-   * Mirrors tests/cua-actor-lab.test.ts's makeFakeSandbox convention, so the bootstrap-failure
+   * Mirrors tests/routes/computer-use/lab.test.ts's makeFakeSandbox convention, so the bootstrap-failure
    * path is covered by the THROWING shape, not just a structural non-zero return.
    */
   bootstrapThrow?: (

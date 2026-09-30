@@ -6,7 +6,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
 
 import { ACTOR_TRACE_SCHEMA, type ActorTrace } from "../../src/actors/contract.js";
 import type { CuaLoopResult } from "../../src/actors/computer-use/loop.js";
-import { buildCuaBundle } from "../../src/routes/computer-use/lab.js";
+import { buildCuaBundle } from "../../src/routes/computer-use/single-bundle.js";
 import { renderObserver } from "../../src/observer/render.js";
 import type { LibraryHistory } from "../../src/observer/library.js";
 import { serveObserverLibrary } from "../../src/observer/serve.js";

@@ -71,17 +71,12 @@ import type { ResolvedPersona } from "../../lab/persona.js";
 import type { ReasoningEffort } from "../../actors/reasoning-effort.js";
 import {
   commandDigestOf,
-  buildCuaCostSummary,
-  makeCuaRunBudget,
-  composeLaneInstructions,
   defaultPackLocalTree,
   makeChromeBrowserStateObserver,
   captureDesktopBrowserGeometry,
   inspectDesktopScreenGeometry,
-  makeLaneWriteScreenshot,
   provisionCloneSubject,
   provisionLocalTreeSubject,
-  resolveLaneDevice,
   resolveSubjectState,
   SUBJECT_DIR,
   type DesktopBrowserEvidence,
@@ -91,6 +86,13 @@ import {
   desktopBrowserFamily,
   type SubjectPhaseEvent,
 } from "../computer-use/lab.js";
+import { buildCuaCostSummary } from "../computer-use/costs.js";
+import {
+  makeCuaRunBudget,
+  composeLaneInstructions,
+  resolveLaneDevice,
+} from "../computer-use/lane-plan.js";
+import { makeLaneWriteScreenshot } from "../computer-use/lanes.js";
 import type { E2BDesktopLike } from "../../substrates/e2b/desktop-executor.js";
 import {
   createDesktopSandbox,
@@ -244,7 +246,7 @@ export interface SharedWorldLabHooks extends BrowserLabAdapterHooks {
   /**
    * Local-tree packing DI seam (tests only, no npm dependency needed to exercise the route):
    * defaults to createLocalTreeArchive(root, opts) plus a host-side read of the produced archive
-   * file into an ArrayBuffer (the SAME default cua-actor-lab.ts uses). Called ONCE per run, before
+   * file into an ArrayBuffer (the SAME default routes/computer-use/lab.ts uses). Called ONCE per run, before
    * the ONE shared-plane sandbox is created, on the live local-tree route.
    */
   packLocalTree?: (args: {
@@ -1396,7 +1398,7 @@ async function runSharedWorldLabInScope(
   // Subject provenance (invariant 5): the ONE shared plane. Local-tree carries archiveSha256 (the
   // pin - one archive, so no per-lane unanimity math is needed, unlike the cua fan-out route) plus
   // the host-side commit/dirty when the packed root was a git work tree; clone carries repo/commit
-  // as before. Mirrors laneSubjectProjection's local-tree branch in cua-actor-lab.ts.
+  // as before. Mirrors laneSubjectProjection's local-tree branch in routes/computer-use/lanes.ts.
   const subjectState = resolveSubjectState({
     declared: config.subject.state,
     dryRun,

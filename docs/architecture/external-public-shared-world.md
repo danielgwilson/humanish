@@ -37,7 +37,7 @@ reached before the getHost gate; a snapshot regression test pins the getHost pat
 ## The CDP lobby-code handoff barrier
 
 The crux — reading a seat's live URL mid-run — is ALREADY implemented: `makeChromeBrowserStateObserver`
-(`cua-actor-lab.ts`) runs an in-sandbox `node -e` script that resolves the seat's Chrome CDP port,
+(`src/substrates/e2b/cua-provisioning.ts`) runs an in-sandbox `node -e` script that resolves the seat's Chrome CDP port,
 selects the seat's page, and sends `Runtime.evaluate({ url: location.href, title, text })` over the
 page's `webSocketDebuggerUrl`. `createE2BDesktopExecutor` stamps `observation.url` from it every turn.
 `CuaObservation.url` is RUNTIME-ONLY by contract (it drives `stopWhen`/progress but is never persisted
