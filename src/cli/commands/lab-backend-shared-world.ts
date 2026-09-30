@@ -1,6 +1,6 @@
 import { automaticAnalysisSucceeded } from "../../analysis/automatic-completion.js";
 import { Command } from "commander";
-import { runLab, resolveLabDryRun } from "../../lab/engine.js";
+import { type LabOutcome, runLab, resolveLabDryRun } from "../../lab/engine.js";
 import type { RunLabProvenance } from "../../run/status.js";
 import type { ConcurrentSharedWorldLabResult } from "../../routes/shared-world/types.js";
 import type { LabConfig } from "../../lab/types.js";
@@ -23,8 +23,9 @@ import {
 } from "../observer-follow.js";
 import { formatConcurrentSharedWorldLabHuman } from "./lab-format.js";
 import { resolveBackendShouldOpen, watchFinishedPlan } from "./lab-backend-open.js";
+import type { BackendRun } from "./lab-backend-run.js";
 
-export async function runConcurrentSharedWorldBackend(args: {
+interface SharedWorldBackendArgs {
   command: Command;
   io: CliIo;
   config: LabConfig;
@@ -32,7 +33,28 @@ export async function runConcurrentSharedWorldBackend(args: {
   mode: "run" | "watch";
   options: LabCommandOptions;
   scorer?: LoadedAdapterScorer;
-}): Promise<void> {
+}
+
+export async function runConcurrentSharedWorldBackend(args: SharedWorldBackendArgs): Promise<void> {
+  const run = sharedWorldBackendRun(args);
+  if (run === undefined) return;
+  let outcome: LabOutcome;
+  try {
+    outcome = await runLab(args.config, run.options);
+  } catch (error) {
+    if (run.onRunError === undefined) throw error;
+    await run.onRunError(error);
+    return;
+  }
+  await run.present(outcome);
+}
+
+/**
+ * The shared-world backend's setup: dry run, open and follow semantics, the live Observer server
+ * the run attaches, and how it presents the outcome. Undefined when setup has already written its
+ * own result.
+ */
+function sharedWorldBackendRun(args: SharedWorldBackendArgs): BackendRun | undefined {
   const wantsMachine = wantsJson(args.command);
   const dryRun = resolveLabDryRun(args.config, args.options.dryRun, true) ?? true;
   const shouldOpen = resolveBackendShouldOpen({
@@ -66,21 +88,20 @@ export async function runConcurrentSharedWorldBackend(args: {
   };
   if (wantsFollow && port === null) {
     failConcurrent("--port must be an integer between 0 and 65535.");
-    return;
+    return undefined;
   }
   // A watch that does not follow the live run shows the Observer the route rendered through its
   // finished run once the run ends, never a re-render by run id.
   const finishedPlan = wantsFollow ? undefined : watchFinishedPlan(args, wantsMachine, shouldOpen);
-  if (finishedPlan === null) return;
+  if (finishedPlan === null) return undefined;
 
   let server: ObserverServer | null = null;
   let attachedObserver: (ObserverResult & { ok: true }) | null = null;
   // Set when the live Observer itself failed to start: an operator-side failure, reported as a
   // structured result rather than an unexpected error.
   let observerFailure: unknown;
-  let outcome: Awaited<ReturnType<typeof runLab>>;
-  try {
-    outcome = await runLab(args.config, {
+  return {
+    options: {
       ...cliAnalysisOptions(args.io),
       cwd: args.options.cwd,
       ...(args.labProvenance === undefined ? {} : { lab: args.labProvenance }),
@@ -110,55 +131,56 @@ export async function runConcurrentSharedWorldBackend(args: {
             scorerProvenance: args.scorer.provenance,
           }
         : {}),
-    });
-  } catch (error) {
-    const earlyServer = server as ObserverServer | null;
-    await earlyServer?.close().catch((cleanupError: unknown) => {
-      args.io.writeErr(
-        `watch cleanup failed: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}\n`,
-      );
-    });
-    server = null;
-    if (observerFailure !== undefined && error === observerFailure) {
-      const message = redactText(error instanceof Error ? error.message : String(error));
-      failConcurrent(
-        `The live Observer could not start, so the run stopped before its participants: ${message}`,
-        (attachedObserver as (ObserverResult & { ok: true }) | null)?.run,
-      );
-      return;
-    }
-    throw error;
-  }
-  if (outcome.backend !== "concurrent-shared-world") {
-    throw new Error(`Expected concurrent-shared-world backend, got ${outcome.backend}.`);
-  }
-  const result = outcome.result;
-  let output: ConcurrentSharedWorldLabResult = result;
-  if (server && attachedObserver) {
-    const activeServer = server as ObserverServer;
-    output = {
-      ...result,
-      observer: result.observer?.ok
-        ? withObserverServer(result.observer, activeServer)
-        : withObserverServer(attachedObserver, activeServer),
-      warnings: [
-        ...result.warnings,
-        "Live concurrent shared-world server is polling observer-data.json with no-store caching.",
-        ...(activeServer.warning ? [activeServer.warning] : []),
-      ],
-    };
-  }
-  writeResult(args.command, args.io, output, formatConcurrentSharedWorldLabHuman);
-  args.io.setExitCode(result.ok && automaticAnalysisSucceeded(result) ? 0 : 2);
+    },
+    onRunError: async (error) => {
+      await server?.close().catch((cleanupError: unknown) => {
+        args.io.writeErr(
+          `watch cleanup failed: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}\n`,
+        );
+      });
+      server = null;
+      if (observerFailure !== undefined && error === observerFailure) {
+        const message = redactText(error instanceof Error ? error.message : String(error));
+        failConcurrent(
+          `The live Observer could not start, so the run stopped before its participants: ${message}`,
+          attachedObserver?.run,
+        );
+        return;
+      }
+      throw error;
+    },
+    present: async (outcome) => {
+      if (outcome.backend !== "concurrent-shared-world") {
+        throw new Error(`Expected concurrent-shared-world backend, got ${outcome.backend}.`);
+      }
+      const result = outcome.result;
+      let output: ConcurrentSharedWorldLabResult = result;
+      if (server && attachedObserver) {
+        output = {
+          ...result,
+          observer: result.observer?.ok
+            ? withObserverServer(result.observer, server)
+            : withObserverServer(attachedObserver, server),
+          warnings: [
+            ...result.warnings,
+            "Live concurrent shared-world server is polling observer-data.json with no-store caching.",
+            ...(server.warning ? [server.warning] : []),
+          ],
+        };
+      }
+      writeResult(args.command, args.io, output, formatConcurrentSharedWorldLabHuman);
+      args.io.setExitCode(result.ok && automaticAnalysisSucceeded(result) ? 0 : 2);
 
-  if (server && output.observer?.ok) {
-    await followObserver(args.io, output.observer, server);
-  } else if (finishedPlan !== undefined && result.ok && result.observer !== undefined) {
-    await showObserver({
-      command: args.command,
-      io: args.io,
-      plan: finishedPlan,
-      rendered: result.observer,
-    });
-  }
+      if (server && output.observer?.ok) {
+        await followObserver(args.io, output.observer, server);
+      } else if (finishedPlan !== undefined && result.ok && result.observer !== undefined) {
+        await showObserver({
+          command: args.command,
+          io: args.io,
+          plan: finishedPlan,
+          rendered: result.observer,
+        });
+      }
+    },
+  };
 }

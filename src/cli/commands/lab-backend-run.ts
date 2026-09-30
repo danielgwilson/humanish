@@ -6,4 +6,6 @@ import type { LabOutcome, RunLabOptions } from "../../lab/engine.js";
 export interface BackendRun {
   readonly options: RunLabOptions;
   present(outcome: LabOutcome): Promise<void>;
+  /** Handles an error runLab threw, and rethrows any it does not handle. */
+  onRunError?(error: unknown): Promise<void>;
 }
