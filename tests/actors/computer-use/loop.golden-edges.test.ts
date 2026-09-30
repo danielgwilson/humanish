@@ -688,6 +688,22 @@ it("speech, app state, scroll, redacted frames and scrubbed narration", async ()
       ]),
       options: { noProgressSteps: 2 },
     }),
+    closingAppState: (probe) => ({
+      provider: scriptedProvider(probe, [done("Reached the goal")]),
+      executor: sequenceExecutor(probe, [
+        { stateSignature: "s0" },
+        { stateSignature: "s1", appState: { route: "/done" } },
+      ]),
+      options: {
+        tasks: [
+          {
+            id: "t",
+            goal: "Finish.",
+            success: { any: [{ appStatePathEquals: { path: "route", equals: "/done" } }] },
+          },
+        ],
+      },
+    }),
     redactedFrames: (probe) => ({
       provider: scriptedProvider(probe, [
         turn({
