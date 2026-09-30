@@ -10,7 +10,7 @@ export default defineConfig({
     // injected temp homes, and the CLI seam against an injected discovery fn.
     // The suite must never reach the adoption dataset. Before this, humanish's own CI and tests
     // were 82% of all telemetry events (4,042 of 4,932, 49 of 59 anonymous ids) in the two days
-    // after telemetry shipped. Belt and braces with the source-checkout guard in src/telemetry.ts:
+    // after telemetry shipped. Belt and braces with the source-checkout guard in src/cli/telemetry.ts:
     // a test that constructs its own cwd in a temp dir would slip past that check alone.
     env: { HUMANISH_STRICT_KEYS: "1", HUMANISH_TELEMETRY_DISABLED: "1", DO_NOT_TRACK: "1" },
     // Never let a stray scratch file (a reviewer probe, a half-written experiment) red the gate.

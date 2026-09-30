@@ -17,7 +17,7 @@ const read = (rel: string) => readFileSync(path.join(ROOT, rel), "utf8");
 // refactor would be cosmetic.
 describe("lab refactor structural necessity (rung 1)", () => {
   const labs = read("src/lab/discover.ts");
-  const program = read("src/program.ts");
+  const program = read("src/cli/program.ts");
 
   it("the LabKind enum and its guard are gone", () => {
     expect(labs).not.toMatch(/\btype\s+LabKind\b/);
@@ -39,7 +39,7 @@ describe("lab refactor structural necessity (rung 1)", () => {
     for (const rel of [
       "src/lab/discover.ts",
       "src/lab/config.ts",
-      "src/program.ts",
+      "src/cli/program.ts",
       "src/lab/init-templates.ts",
     ]) {
       expect(read(rel)).not.toContain("humanish.lab.v1");

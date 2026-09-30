@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { parse } from "yaml";
-import { createProgram } from "../src/program.js";
+import { createProgram } from "../src/cli/program.js";
 import { parseLabConfig } from "../src/lab/config.js";
 import { parseBrowserPersonaJourneyFromScenario } from "../src/scripted-browser-actor.js";
 

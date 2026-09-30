@@ -27,7 +27,7 @@ import { exportRedactedBundle } from "../../src/feedback/export-bundle.js";
 import { draftFeedback, renderIssueMarkdown, verifyFeedback } from "../../src/feedback/feedback.js";
 import { runDryRun, verifyRun, type RunBundle } from "../../src/run/run.js";
 import { computeStats } from "../../src/run/stats.js";
-import { createProgram } from "../../src/program.js";
+import { createProgram } from "../../src/cli/program.js";
 
 const RUN = "synthetic-export-study";
 const OPTIONS = { format: "bundle" as const, redactScreenshots: true, out: "shared" };

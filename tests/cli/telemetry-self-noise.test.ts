@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { disabledByEnvironment, inHumanishCheckout, isOwnCheckoutRun } from "../src/telemetry.js";
+import {
+  disabledByEnvironment,
+  inHumanishCheckout,
+  isOwnCheckoutRun,
+} from "../../src/cli/telemetry.js";
 
 // In the two days after telemetry shipped in 0.62.0, 82% of all events (4,042 of 4,932, from 49
 // of 59 anonymous ids) came from humanish's own CI and test suite. The shape gave it away: about

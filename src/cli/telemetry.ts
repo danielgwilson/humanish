@@ -11,7 +11,7 @@
 // subject is the adopter's product and often unannounced; leaking a lab id would leak a roadmap.
 // The allowlist below is the whole vocabulary — anything not on it cannot be sent by construction.
 
-import { isCuaDiagnosticCategory, isCuaDiagnosticStopCause } from "./cua-diagnostics.js";
+import { isCuaDiagnosticCategory, isCuaDiagnosticStopCause } from "../cua-diagnostics.js";
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";

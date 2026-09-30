@@ -6,7 +6,7 @@ import {
   firstRunGuidance,
   starterActorFor,
   type FirstRunEnvironment,
-} from "../first-run-path.js";
+} from "../cli/first-run-path.js";
 import { detectLocalAgents } from "../local-agent-cli.js";
 
 import {

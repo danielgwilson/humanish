@@ -69,7 +69,7 @@ import {
   type AutomaticAnalysisResult,
 } from "./analysis/automatic-completion.js";
 import { resolveAutomaticAnalysis } from "./analysis/automatic-config.js";
-import { describeMissingKeys } from "./key-resolution.js";
+import { describeMissingKeys } from "./cli/key-resolution.js";
 import { desktopMediaValidationReason, taskProtocolValidationReason } from "./lab/config.js";
 
 import { pathToFileURL } from "node:url";

@@ -36,7 +36,7 @@ comment prose (`prose:check`). Lower a cap in the PR that reduces its count.
 
 | Path                                                            | What it holds                                                                                            |
 | --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `src/cli.ts`, `src/program.ts`                                  | CLI entry and command registration (commander)                                                           |
+| `src/cli.ts`, `src/cli/program.ts`                              | CLI entry and command registration (commander)                                                           |
 | `src/index.ts`                                                  | The package's only export surface                                                                        |
 | `src/lab/config.ts`                                             | Lab manifest (`humanish.lab.v2`) parsing and validation                                                  |
 | `src/lab/engine.ts`                                             | `runLab` and `selectLabBackend`, which picks one backend per lab                                         |

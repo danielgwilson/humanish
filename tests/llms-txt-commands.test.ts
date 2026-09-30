@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { Command } from "commander";
 
-import { createProgram } from "../src/program.js";
+import { createProgram } from "../src/cli/program.js";
 
 // #513: humanish.dev/llms.txt documented four commands while the CLI shipped eighteen. The whole
 // premise of this product is that a coding agent sets it up for someone, and llms.txt is the

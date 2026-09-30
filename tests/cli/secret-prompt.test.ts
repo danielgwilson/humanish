@@ -1,6 +1,6 @@
 import { PassThrough } from "node:stream";
 import { describe, expect, it } from "vitest";
-import { promptSecret } from "../src/secret-prompt.js";
+import { promptSecret } from "../../src/cli/secret-prompt.js";
 
 function terminal() {
   const input = new PassThrough() as unknown as NodeJS.ReadStream;

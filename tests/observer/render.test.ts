@@ -16,7 +16,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { createProgram } from "../../src/program.js";
+import { createProgram } from "../../src/cli/program.js";
 import {
   attachObserverRuntimeStreamUrls,
   renderObserver,

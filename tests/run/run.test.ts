@@ -23,7 +23,7 @@ import type { CuaLoopResult } from "../../src/computer-use.js";
 import { captureGitState } from "../../src/run/git-state.js";
 import { buildCuaBundle } from "../../src/cua-actor-lab.js";
 import { renderObserver } from "../../src/observer/render.js";
-import { createProgram } from "../../src/program.js";
+import { createProgram } from "../../src/cli/program.js";
 import { startCodexAppServerUi } from "../../src/codex-app-server-ui.js";
 import {
   CLEANUP_SCHEMA,

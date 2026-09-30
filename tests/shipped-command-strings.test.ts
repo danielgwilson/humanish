@@ -3,7 +3,7 @@ import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import type { Command } from "commander";
 
-import { createProgram } from "../src/program.js";
+import { createProgram } from "../src/cli/program.js";
 
 // #516: the first Observer a new user ever saw advertised `humanish run --scenario
 // first-run-smoke`. The flag has never existed. It shipped for months because nothing checked
