@@ -221,7 +221,7 @@ enters this field; identity is digests, a sha, a boolean, and counts.
 ## Cost Estimate (advisory)
 
 `cost` is optional and additive (`humanish.run-cost-summary.v1`): the
-computer-use lane's run-level cost ESTIMATE — the sum of each lane's
+computer-use lane's run-level cost ESTIMATE: the sum of each lane's
 token-derived model cost plus E2B desktop compute lines. New independent CUA runs
 emit one line per owned desktop, keyed by public lane ID and carrying observed CPU/memory,
 resource source, host-measured minutes, and the derived per-second rate. Older
@@ -229,8 +229,8 @@ single aggregate desktop lines remain valid. Missing resource metadata stays
 unpriced; unconfirmed cleanup adds an unknown remaining-lifetime line. It is an
 ESTIMATE, never authoritative: every dollar is a rate-table multiply from the
 operator-editable `src/run/pricing.ts`, carries the pricing `ratesAsOf` date and
-`source`, and is surfaced with the "estimated (rates as of `<date>`)" label —
-never a bare charge. It follows the same **declared-absent** discipline as the
+`source`, and is surfaced with the "estimated (rates as of `<date>`)" label. It is
+never shown as a bare charge. It follows the same **declared-absent** discipline as the
 terminal cost ledger: an unpriceable line stays present with
 `estimatedCostUsd: null` + a `reason` and contributes nothing;
 `estimatedTotalUsd` is `null` iff every line is null (never coerced to `0`).
@@ -247,7 +247,7 @@ gaps across run costs and analysis attempts. See [study cost statistics](study-c
 `humanish verify` treats cost as ADVISORY on magnitude and FAIL-CLOSED on
 labeling: absence passes, but a claimed dollar figure without its `ratesAsOf`
 date + `source`, or a total that does not match its known lines, fails. Verify
-never inspects the magnitude — a correctly-labeled large estimate still passes.
+never inspects the magnitude, so a correctly-labeled large estimate still passes.
 
 ## Adapter Score
 
