@@ -9,7 +9,7 @@ import {
   withTransientCommsSecrets,
 } from "../../src/run/transient-comms-secrets.js";
 import { prepareRunArtifactPaths, type PreparedRunArtifactPaths } from "../../src/run/paths.js";
-import { runStudyAnalysis } from "../../src/analysis/engine.js";
+import { runStudyAnalysis } from "../../src/analysis/run-study-analysis.js";
 import { captureStudyEvidence } from "../../src/analysis/evidence.js";
 import { writeStudyAnalysis } from "../../src/analysis/store.js";
 import type {

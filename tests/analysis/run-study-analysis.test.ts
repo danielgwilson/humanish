@@ -7,7 +7,7 @@ import {
   preferLargerStudyAnalysisOutput,
   runStudyAnalysis,
   STUDY_ANALYSIS_PROMPT_VERSION,
-} from "../../src/analysis/engine.js";
+} from "../../src/analysis/run-study-analysis.js";
 import type {
   StudyAnalysisConfig,
   StudyAnalysisInput,
@@ -135,7 +135,7 @@ function transport(output: unknown = result()) {
   return { wire, fetchFn };
 }
 
-describe("bounded study analysis engine", () => {
+describe("bounded study analysis run", () => {
   it("expands default output space only when the original budget admits it", () => {
     const packet = input();
     const base = { ...config, model: "gpt-6-astra", maxCostUsd: 3, maxOutputTokens: 16384 };
@@ -354,7 +354,7 @@ describe("bounded study analysis engine", () => {
     },
   );
 
-  it("refuses a sensitive direct-engine researcher question before progress or transport", async () => {
+  it("refuses a sensitive researcher question from a direct runStudyAnalysis caller before progress or transport", async () => {
     const question = "Review " + "sk-" + "syntheticvalue1234567890abcdef";
     const unsafeConfig = { ...config, question };
     const packet = input();

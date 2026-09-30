@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { estimateStudyAnalysisAdmission } from "../../src/analysis/engine.js";
+import { estimateStudyAnalysisAdmission } from "../../src/analysis/run-study-analysis.js";
 import { highDetailImageTokens } from "../../src/analysis/image-tokens.js";
 import type { StudyAnalysisConfig, StudyAnalysisInput } from "../../src/analysis/study-analysis.js";
 import { digestStudyAnalysisInput } from "../../src/analysis/validation.js";

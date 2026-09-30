@@ -3,7 +3,7 @@ import {
   DEFAULT_ANALYSIS_MAX_OUTPUT_TOKENS,
   MAX_ANALYSIS_OUTPUT_TOKENS,
   isSupportedAnalysisModel,
-} from "./engine.js";
+} from "./run-study-analysis.js";
 import { containsSensitive } from "../evidence/redaction.js";
 import type { StudyAnalysisConfig } from "./study-analysis.js";
 

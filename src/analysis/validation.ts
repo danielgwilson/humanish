@@ -514,7 +514,7 @@ export function validateStudyAnalysisArtifact(value: unknown): StudyAnalysisArti
     throw new Error("ANALYSIS_STATUS_INVALID");
   if (artifact.result !== null) {
     // Concern accounting became required with revision 5. Keep the boundary stable
-    // when the engine advances; a later prompt must not regain legacy omissions.
+    // when the prompt version advances; a later prompt must not regain legacy omissions.
     const revision = /^study-evidence-(\d+)$/.exec(artifact.promptVersion)?.[1];
     if (
       revision !== undefined &&

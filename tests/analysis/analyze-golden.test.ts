@@ -10,7 +10,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { resolveAutomaticAnalysis } from "../../src/analysis/automatic-config.js";
 import { codexAnalysisIdentity } from "../../src/analysis/codex-config.js";
-import { runStudyAnalysis, type StudyAnalysisProgress } from "../../src/analysis/engine.js";
+import {
+  runStudyAnalysis,
+  type StudyAnalysisProgress,
+} from "../../src/analysis/run-study-analysis.js";
 import { captureStudyEvidence } from "../../src/analysis/evidence.js";
 import type {
   AnalysisFetch,

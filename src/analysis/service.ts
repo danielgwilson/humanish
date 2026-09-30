@@ -26,7 +26,7 @@ import {
   type StudyAnalysisAdmission,
   type StudyAnalysisProgress,
   type StudyAnalysisDispatchContext,
-} from "./engine.js";
+} from "./run-study-analysis.js";
 import {
   appendStudyAnalysisCorrection,
   assertStudyAnalysisPublicationCapacity,

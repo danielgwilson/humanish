@@ -9,7 +9,10 @@ import {
   type AnalyzeDeps,
   type AnalyzeResult,
 } from "./service.js";
-import { preferLargerStudyAnalysisOutput, STUDY_ANALYSIS_PROMPT_VERSION } from "./engine.js";
+import {
+  preferLargerStudyAnalysisOutput,
+  STUDY_ANALYSIS_PROMPT_VERSION,
+} from "./run-study-analysis.js";
 import { captureStudyEvidence } from "./evidence.js";
 import { hashStudyAnalysisValue } from "./validation.js";
 import {

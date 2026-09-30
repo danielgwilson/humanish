@@ -24,7 +24,7 @@ import {
   estimateStudyAnalysisAdmission,
   runStudyAnalysis,
   STUDY_ANALYSIS_PROMPT_VERSION,
-} from "../../src/analysis/engine.js";
+} from "../../src/analysis/run-study-analysis.js";
 import { captureStudyEvidence } from "../../src/analysis/evidence.js";
 import { codexAnalysisIdentity } from "../../src/analysis/codex-config.js";
 import { bindCodexAnalysisCliVersion } from "../../src/analysis/restricted-codex.js";

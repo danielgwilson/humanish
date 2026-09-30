@@ -35,7 +35,10 @@ import {
   studyAnalysisSharingProblems,
 } from "../../src/analysis/sharing.js";
 import { hashStudyAnalysisValue } from "../../src/analysis/validation.js";
-import { STUDY_ANALYSIS_PROMPT_VERSION, runStudyAnalysis } from "../../src/analysis/engine.js";
+import {
+  STUDY_ANALYSIS_PROMPT_VERSION,
+  runStudyAnalysis,
+} from "../../src/analysis/run-study-analysis.js";
 import { resolveRunPath } from "../../src/run/locate.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { verifyRun } from "../../src/verify/verify.js";

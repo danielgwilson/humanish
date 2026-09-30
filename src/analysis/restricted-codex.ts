@@ -12,7 +12,7 @@ import type {
 } from "../actors/codex/restricted-policy.js";
 
 /** Structurally implements StudyAnalysisProvider without importing its API transport.
- * Schema/evidence validation and transient-secret scrubbing remain in the engine. */
+ * Schema/evidence validation and transient-secret scrubbing remain in runStudyAnalysis. */
 export function createRestrictedCodexAnalysisProvider(
   options: RestrictedCodexSessionOptions = {},
 ): (request: RestrictedCodexRequest) => Promise<RestrictedCodexResult> {

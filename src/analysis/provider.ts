@@ -22,7 +22,7 @@ interface StudyAnalysisTokenUsage {
 
 export interface StudyAnalysisProviderResult {
   status: "completed" | "incomplete" | "refused" | "failed" | "cancelled" | "timed_out";
-  /** Parsed output is still untrusted. The engine must validate its schema and evidence references. */
+  /** Parsed output is still untrusted. runStudyAnalysis must validate its schema and evidence references. */
   output: unknown;
   usage: StudyAnalysisTokenUsage | null;
   /** Dispatch does not imply a known charge. A failed request can still have consumed tokens. */
