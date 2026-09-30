@@ -1308,7 +1308,9 @@ describe("the in-progress bundle on the external-public plane", () => {
     });
     try {
       let midRun: RunBundle | undefined;
-      const deadline = Date.now() + 5_000;
+      // The seat flush writes at most every 2 s; under a loaded full-suite run three traces can take
+      // longer than 5 s to reach a written snapshot. The loop still exits as soon as they do.
+      const deadline = Date.now() + 15_000;
       while (Date.now() < deadline) {
         midRun = await readFile(runJson, "utf8").then(
           (text) => JSON.parse(text) as RunBundle,
