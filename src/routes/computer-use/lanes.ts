@@ -1,8 +1,8 @@
-import type { CuaLoopResult, CuaProvider } from "../../actors/computer-use/loop.js";
+import type { CuaLoopResult } from "../../actors/computer-use/loop.js";
 import { createE2BCuaDesktopLane } from "./e2b-desktop.js";
+import { createInProcessDesktop } from "./in-process-desktop.js";
 import path from "node:path";
 import { cuaLaneDiagnostics } from "./diagnostics.js";
-import type { CuaActorSessionOptions } from "../../actors/computer-use/actor.js";
 import { mapWithConcurrency } from "../../run/concurrency.js";
 import { assertScreenshotEvidence } from "../../evidence/image.js";
 import { round6 } from "../../run/pricing.js";
@@ -24,12 +24,6 @@ import {
   startParticipantModel,
   type ParticipantModel,
 } from "./participant-model.js";
-import {
-  resolveSelfReportedBlocker,
-  resolveSelfReportedFriction,
-  sessionEnding,
-} from "./self-report.js";
-import { hollowCompletion } from "../../run/judge.js";
 import type {
   CuaLaneDeps,
   CuaLanePlan,
@@ -39,7 +33,6 @@ import type {
   CuaSubjectProvenanceArg,
   LaneRunOutcome,
 } from "./types.js";
-import { laneSpecOf } from "./legacy-lane-spec.js";
 
 /** Build a lane's writeScreenshot closure: writes under screenshots/<screenshotDir>/ and records
  *  the relative path the trace references (screenshots/<name> at N=1; screenshots/<laneId>/<name>
@@ -153,109 +146,6 @@ export async function runCuaLane(
     selfReportedBlocker,
     reportedFriction,
     harnessError,
-  };
-}
-
-/** Run the single IN-PROCESS lane (a custom executor + provider; NO E2B). Always one lane. */
-async function runInProcessLane(
-  spec: DesktopParticipantRun,
-  deps: CuaLaneDeps,
-): Promise<LaneRunOutcome> {
-  const warnings: string[] = [];
-  const screenshots: string[] = [];
-  const writeScreenshot = makeLaneWriteScreenshot(deps.artifactRoot, spec, screenshots);
-  let session: CuaLoopResult | undefined;
-  let sessionError: string | undefined;
-  let provider: CuaProvider | undefined;
-  try {
-    const executor = await deps.hooks.buildExecutor!({
-      config: deps.config,
-      actor: deps.descriptor,
-      appUrl: deps.appUrl,
-    });
-    provider = await deps.hooks.buildProvider!({
-      config: deps.config,
-      actor: deps.descriptor,
-      lane: laneSpecOf(spec),
-      laneCount: deps.laneCount,
-      executor,
-    });
-    const sessionOptions: CuaActorSessionOptions = {
-      instructions: spec.instructions,
-      persona: spec.persona,
-      timeoutMs: deps.timeoutMs,
-      provider,
-      executor,
-      redactScreenshots: deps.redactScreenshots,
-      scrubText: deps.scrubKnownValues,
-      writeScreenshot,
-      ...(deps.onTrace === undefined
-        ? {}
-        : {
-            onTrace: (items, usage, metadata) =>
-              deps.onTrace?.(spec.planned.id, items, usage, metadata),
-          }),
-      ...(spec.planned.limits.stopWhen === undefined
-        ? {}
-        : { stopWhen: spec.planned.limits.stopWhen }),
-      ...(spec.planned.limits.dwell === undefined ? {} : { dwell: spec.planned.limits.dwell }),
-      ...(spec.planned.tasks === undefined ? {} : { tasks: spec.planned.tasks }),
-    };
-    session = await deps.runSession(sessionOptions);
-  } catch (error) {
-    sessionError = redactText(deps.scrubKnownValues(toErrorMessage(error)));
-  } finally {
-    try {
-      await provider?.close?.();
-    } catch {
-      sessionError ??= "Model provider cleanup is unconfirmed.";
-    }
-  }
-
-  if (session) {
-    await writeContainedOutputFile(
-      deps.artifactRoot,
-      spec.traceArtifactPath,
-      `${JSON.stringify(session.trace, null, 2)}\n`,
-      "utf8",
-    );
-    if (session.trace.redaction.screenshots === "raw") {
-      warnings.push(
-        "Screenshots are full-fidelity (raw) for local use — the bundle stays in gitignored .humanish and nothing scans these pixels; review them before sharing anywhere. Set policies.redactScreenshots: true to blur a share-as-is bundle.",
-      );
-    }
-  }
-
-  const noEngagement = session !== undefined && hollowCompletion(sessionEnding(session));
-  if (noEngagement) {
-    warnings.push(
-      "Actor returned goal_satisfied with ZERO actions and ZERO messages — it likely saw a blank or still-loading screen and stopped without engaging. NOT counted as a pass. Check the screenshot; raise execution.timeoutMs or confirm the subject painted before the first turn.",
-    );
-  }
-  const blockerReason = resolveSelfReportedBlocker(session);
-  const selfReportedBlocker = blockerReason !== undefined;
-  const reportedFriction = resolveSelfReportedFriction(session) !== undefined;
-  if (selfReportedBlocker) {
-    warnings.push(
-      `Actor returned goal_satisfied while its final message describes a blocker or asks for missing instructions — NOT counted as a pass: ${blockerReason}`,
-    );
-  }
-
-  return {
-    spec,
-    ...(session ? { session } : {}),
-    ...(sessionError === undefined ? {} : { sessionError }),
-    killed: false,
-    streamUrlPresent: false,
-    screenshots,
-    stateStepRecords: [],
-    phaseRecords: [],
-    warnings,
-    noEngagement,
-    selfReportedBlocker,
-    reportedFriction,
-    harnessError: sessionError !== undefined || session?.completionReason === "harness_error",
-    entryKind: "local-app",
   };
 }
 
@@ -586,8 +476,14 @@ export async function runAllCuaLanes(
   plan: CuaLanePlan,
   inProcessRoute: boolean,
 ): Promise<{ outcomes: LaneRunOutcome[]; failFastReason: string | undefined }> {
-  if (inProcessRoute)
-    return { outcomes: [await runInProcessLane(laneSpecs[0]!, deps)], failFastReason: undefined };
+  if (inProcessRoute) {
+    // The caller's executor stands in for a desktop, and the shared runner drives the participant.
+    const outcome = await runCuaLane(laneSpecs[0]!, {
+      ...deps,
+      createDesktopLane: () => createInProcessDesktop(deps),
+    });
+    return { outcomes: [outcome], failFastReason: undefined };
+  }
   if (laneSpecs.length === 1)
     return { outcomes: [await runCuaLane(laneSpecs[0]!, deps)], failFastReason: undefined };
   const ran = await runCuaLanes([...laneSpecs], deps, plan.concurrency);

@@ -198,6 +198,12 @@
       "preGrantableApprovals": false,
       "inProcessTools": false,
       "license": "open"
+    },
+    "estimatedCost": {
+      "schema": "humanish.actor-estimated-cost.v1",
+      "estimatedCostUsd": null,
+      "reason": "no_token_usage",
+      "ratesAsOf": null
     }
   },
   "events.ndjson": [
@@ -294,6 +300,30 @@
       "warnings": 0
     },
     "laneGroups": [],
+    "cost": {
+      "schema": "humanish.run-cost-summary.v1",
+      "currency": "usd",
+      "estimatedTotalUsd": null,
+      "ratesAsOf": null,
+      "fullyEstimated": false,
+      "placeholder": false,
+      "breakdown": [
+        {
+          "kind": "model-tokens",
+          "laneId": "lane-01",
+          "estimatedCostUsd": null,
+          "reason": "no_token_usage",
+          "ratesAsOf": null
+        }
+      ],
+      "tokenUsage": {
+        "input": 0,
+        "output": 0,
+        "total": 0
+      },
+      "desktopMinutes": null,
+      "note": "No priced spend lines this run — every cost line is DECLARED ABSENT (unknown rate / no usage / no duration); nothing is guessed. Add a rate to src/run/pricing.ts to estimate this model."
+    },
     "streams": [
       {
         "id": "stream-001",
@@ -396,6 +426,12 @@
             "preGrantableApprovals": false,
             "inProcessTools": false,
             "license": "open"
+          },
+          "estimatedCost": {
+            "schema": "humanish.actor-estimated-cost.v1",
+            "estimatedCostUsd": null,
+            "reason": "no_token_usage",
+            "ratesAsOf": null
           }
         },
         "artifacts": [
@@ -723,6 +759,12 @@
             "preGrantableApprovals": false,
             "inProcessTools": false,
             "license": "open"
+          },
+          "estimatedCost": {
+            "schema": "humanish.actor-estimated-cost.v1",
+            "estimatedCostUsd": null,
+            "reason": "no_token_usage",
+            "ratesAsOf": null
           }
         },
         "artifacts": [
@@ -810,6 +852,30 @@
       "state": {
         "provenance": "undeclared"
       }
+    },
+    "cost": {
+      "schema": "humanish.run-cost-summary.v1",
+      "currency": "usd",
+      "estimatedTotalUsd": null,
+      "ratesAsOf": null,
+      "fullyEstimated": false,
+      "placeholder": false,
+      "breakdown": [
+        {
+          "kind": "model-tokens",
+          "laneId": "lane-01",
+          "estimatedCostUsd": null,
+          "reason": "no_token_usage",
+          "ratesAsOf": null
+        }
+      ],
+      "tokenUsage": {
+        "input": 0,
+        "output": 0,
+        "total": 0
+      },
+      "desktopMinutes": null,
+      "note": "No priced spend lines this run — every cost line is DECLARED ABSENT (unknown rate / no usage / no duration); nothing is guessed. Add a rate to src/run/pricing.ts to estimate this model."
     }
   },
   "status.json": {
@@ -827,7 +893,8 @@
         "total": 1,
         "reachedGoal": 1,
         "reportedFriction": 0
-      }
+      },
+      "estimatedCostUsd": null
     }
   }
 }

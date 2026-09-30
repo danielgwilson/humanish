@@ -5684,6 +5684,111 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
     expect(verified.checks.find((check) => check.name === "actor engagement")?.ok).toBe(true);
   });
 
+  it("builds the caller's executor and provider once, closes the provider once, and prices the trace", async () => {
+    const { module, created } = makeFakeModule(makeFakeSandbox());
+    const stateExecutor = makeStateExecutor();
+    const provider = { ...makeStateProvider(), close: vi.fn(async () => undefined) };
+    const buildExecutor = vi.fn(async () => stateExecutor);
+    const buildProvider = vi.fn(async (_context: { executor: CuaExecutor }) => provider);
+
+    const outcome = await runLab(localAppConfig(), {
+      cwd,
+      cuaHooks: { loadDesktopModule: async () => module, buildExecutor, buildProvider },
+    });
+
+    if (outcome.backend !== "cua") throw new Error("expected the cua backend");
+    expect(outcome.result.ok).toBe(true);
+    expect(buildExecutor).toHaveBeenCalledOnce();
+    expect(buildProvider).toHaveBeenCalledOnce();
+    expect(buildProvider.mock.calls[0]![0].executor).toBe(stateExecutor);
+    expect(provider.close).toHaveBeenCalledOnce();
+    expect(created).toHaveLength(0);
+    const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
+    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
+    // The trace is priced like a hosted lane's; the caller's model has no rate, so the estimate is
+    // declared unknown and the run's cost block says so.
+    expect(bundle.streams[0].actor.estimatedCost).toMatchObject({ estimatedCostUsd: null });
+    expect(bundle.cost).toMatchObject({ estimatedTotalUsd: null, fullyEstimated: false });
+  });
+
+  it.each([{ maxUsd: 0.01 }, { maxTotalUsd: 0.01 }])(
+    "stops an in-process participant under a dollar cap when its provider reports no usage (%j)",
+    async (caps) => {
+      const { module } = makeFakeModule(makeFakeSandbox());
+      const config = localAppConfig();
+      config.execution = { caps };
+
+      const outcome = await runLab(config, {
+        cwd,
+        cuaHooks: {
+          loadDesktopModule: async () => module,
+          buildExecutor: async () => makeStateExecutor(),
+          buildProvider: async () => makeStateProvider(),
+        },
+      });
+
+      if (outcome.backend !== "cua") throw new Error("expected the cua backend");
+      expect(outcome.result.session?.stopCause).toBe("usage_unreported");
+      expect(outcome.result.ok).toBe(false);
+    },
+  );
+
+  it("records an unconfirmed provider close on an in-process run as a warning and an error", async () => {
+    const { module } = makeFakeModule(makeFakeSandbox());
+    const provider = {
+      ...makeStateProvider(),
+      close: async () => {
+        throw new Error("synthetic close failure");
+      },
+    };
+
+    const outcome = await runLab(localAppConfig(), {
+      cwd,
+      cuaHooks: {
+        loadDesktopModule: async () => module,
+        buildExecutor: async () => makeStateExecutor(),
+        buildProvider: async () => provider,
+      },
+    });
+
+    if (outcome.backend !== "cua") throw new Error("expected the cua backend");
+    expect(outcome.result.ok).toBe(false);
+    expect(outcome.result.warnings).toContain("Model provider cleanup is unconfirmed.");
+    expect(outcome.result.error?.message).toContain("Model provider cleanup is unconfirmed.");
+  });
+
+  it("scrubs a known value from an in-process participant's blocker warning", async () => {
+    const { module } = makeFakeModule(makeFakeSandbox());
+    const canary = "synthetic-in-process-canary-value";
+    const provider: CuaProvider = {
+      ...makeStateProvider(),
+      nextTurn: async () => ({
+        actions: [],
+        message: `I could not save the note: the form rejected ${canary}.`,
+        outcome: "blocked",
+        pendingSafetyChecks: [],
+        done: true,
+      }),
+    };
+
+    const outcome = await runLab(localAppConfig(), {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: canary },
+        loadDesktopModule: async () => module,
+        buildExecutor: async () => makeStateExecutor(),
+        buildProvider: async () => provider,
+      },
+    });
+
+    if (outcome.backend !== "cua") throw new Error("expected the cua backend");
+    const blocker = outcome.result.warnings.find((warning) =>
+      warning.includes("describes a blocker"),
+    );
+    expect(blocker).toContain("[REDACTED_SECRET]");
+    expect(blocker).not.toContain(canary);
+  });
+
   it("a hollow in-process run (zero actions/messages) still FAILS the honesty guard + verifyRun", async () => {
     const { module, created } = makeFakeModule(makeFakeSandbox());
     const outcome = await runLab(localAppConfig(), {
