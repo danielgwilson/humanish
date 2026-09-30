@@ -10,6 +10,7 @@ import {
 } from "../../routes/computer-use/cdp-probe.js";
 import { toErrorMessage } from "../command-failure.js";
 import { shellQuote } from "../shell.js";
+import { e2bShell } from "./shell.js";
 import {
   findVisibleBrowserWindowId,
   fillDesktopBrowserWindow,
@@ -55,11 +56,11 @@ export async function inspectDesktopScreenGeometry(args: {
 }> {
   let out = "";
   try {
-    const result = await args.desktop.commands.run(
+    const result = await e2bShell(args.desktop).run(
       "xdpyinfo 2>/dev/null | grep -i dimensions || true",
       { requestTimeoutMs: args.requestTimeoutMs },
     );
-    out = (result.stdout ?? "").trim();
+    out = result.stdout.trim();
   } catch {
     return {
       warning: `Desktop screen geometry could not be measured for lane ${args.laneId}; requested geometry remains unverified.`,
@@ -104,8 +105,9 @@ export function makeChromeDesktopGeometryObserver(
 ): () => Promise<
   (Pick<RunDesktopGeometry, "browserWindow" | "viewport"> & { targetId?: string }) | undefined
 > {
+  const shell = e2bShell(desktop);
   return async () => {
-    const result = await desktop.commands.run(
+    const result = await shell.run(
       chromeCdpProbeCommand({
         ...endpoint,
         ...(targetId === undefined ? {} : { targetId }),
@@ -114,9 +116,9 @@ export function makeChromeDesktopGeometryObserver(
       }),
       { requestTimeoutMs, timeoutMs: 5_000 },
     );
-    if (result.exitCode !== undefined && result.exitCode !== 0) {
+    if (result.exitCode !== 0) {
       onUnavailable?.(
-        `probe exited ${result.exitCode}: ${failureTail(result.stderr ?? result.stdout ?? "")}`,
+        `probe exited ${result.exitCode}: ${failureTail(result.stderr || result.stdout)}`,
       );
       return undefined;
     }
@@ -181,7 +183,7 @@ async function measureBrowserWindowWithXwininfo(
   windowId: string,
   requestTimeoutMs: number,
 ): Promise<RunDesktopGeometry["browserWindow"] | undefined> {
-  const result = await desktop.commands.run(
+  const result = await e2bShell(desktop).run(
     [
       "set -euo pipefail",
       `win=${shellQuote(windowId)}`,
@@ -193,8 +195,8 @@ async function measureBrowserWindowWithXwininfo(
     ].join("\n"),
     { requestTimeoutMs, timeoutMs: 5_000 },
   );
-  if (result.exitCode !== undefined && result.exitCode !== 0) return undefined;
-  return parseXwininfoGeometry(result.stdout ?? "");
+  if (result.exitCode !== 0) return undefined;
+  return parseXwininfoGeometry(result.stdout);
 }
 
 /** Root-relative physical client bounds from xwininfo's C-locale stats. */
@@ -248,7 +250,7 @@ async function fitBrowserWindowWithinDesktop(
   requestTimeoutMs: number,
 ): Promise<RunDesktopGeometry["browserWindow"] | undefined> {
   const run = (command: string) =>
-    desktop.commands
+    e2bShell(desktop)
       .run(["set -euo pipefail", `win=${shellQuote(windowId)}`, command].join("\n"), {
         requestTimeoutMs,
         timeoutMs: 5_000,

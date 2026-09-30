@@ -1,6 +1,10 @@
 import { isCommandExitError } from "../command-failure.js";
 import type { Shell, ShellCallOptions, ShellResult } from "../shell.js";
-import { withOneRetryOnTransientE2BError, type E2BDesktopSandbox } from "./desktop-launch.js";
+import {
+  withOneRetryOnTransientE2BError,
+  type E2BCommandRunOptions,
+  type E2BDesktopSandbox,
+} from "./desktop-launch.js";
 
 /** The part of an E2B sandbox handle a Shell needs. */
 export type E2BShellHandle = Pick<E2BDesktopSandbox, "commands" | "files">;
@@ -15,7 +19,7 @@ export function e2bShell(sandbox: E2BShellHandle): Shell {
     try {
       const result = await (options === undefined
         ? sandbox.commands.run(command)
-        : sandbox.commands.run(command, options));
+        : sandbox.commands.run(command, sdkOptions(options)));
       return {
         exitCode: result.exitCode ?? 0,
         stdout: result.stdout ?? "",
@@ -45,6 +49,11 @@ export function e2bShell(sandbox: E2BShellHandle): Shell {
       else await withOneRetryOnTransientE2BError(write, options.retryOnce);
     },
   };
+}
+
+/** The SDK names the per-command environment `envs`. */
+function sdkOptions({ env, ...options }: ShellCallOptions): E2BCommandRunOptions {
+  return env === undefined ? options : { ...options, envs: { ...env } };
 }
 
 function exitResult(error: unknown): ShellResult {

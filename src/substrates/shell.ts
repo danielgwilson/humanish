@@ -15,6 +15,8 @@ export interface ShellCallOptions {
   requestTimeoutMs?: number;
   /** How long the command itself may run. */
   timeoutMs?: number;
+  /** Environment for this command only, added to the machine's own. */
+  env?: Readonly<Record<string, string>>;
 }
 
 interface ShellWriteOptions {

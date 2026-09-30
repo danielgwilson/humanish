@@ -11,7 +11,9 @@ import {
   DESKTOP_RECORDING_MAX_BYTES,
   type DesktopRecordingMetadata,
 } from "../../evidence/desktop-recording-types.js";
+import { runOrThrow, type Shell } from "../shell.js";
 import type { E2BCommandResult, E2BDesktopSandbox } from "./desktop-launch.js";
+import { e2bShell } from "./shell.js";
 
 const OUTPUT_PATH = "/tmp/humanish-desktop-recording.mp4";
 const PID_PATH = "/tmp/humanish-desktop-recording.pid";
@@ -43,7 +45,7 @@ async function settlesWithin(promise: Promise<unknown>, timeoutMs: number): Prom
 }
 
 async function preparePulse(
-  desktop: E2BDesktopSandbox,
+  shell: Shell,
   requestTimeoutMs: number,
 ): Promise<Readonly<Record<string, string>>> {
   const env = {
@@ -54,7 +56,8 @@ async function preparePulse(
     PULSE_SINK: "humanish_speaker",
   };
   try {
-    await desktop.commands.run(
+    await runOrThrow(
+      shell,
       "install -d -m 0700 /tmp/humanish-recording-runtime && " +
         "pulseaudio --daemonize=yes --exit-idle-time=-1 --log-target=stderr && " +
         "pactl load-module module-null-sink sink_name=humanish_mic sink_properties=device.description=HumanishSyntheticMicrophone >/dev/null && " +
@@ -62,15 +65,15 @@ async function preparePulse(
         "pactl load-module module-null-sink sink_name=humanish_speaker sink_properties=device.description=HumanishSyntheticSpeaker >/dev/null && " +
         "pactl set-default-source humanish_input && pactl set-default-sink humanish_speaker",
       {
-        envs: env,
+        env,
         timeoutMs: 30_000,
         requestTimeoutMs,
       },
     );
     return env;
   } catch (error) {
-    await desktop.commands
-      .run("pulseaudio --kill", { envs: env, timeoutMs: 5_000, requestTimeoutMs })
+    await shell
+      .run("pulseaudio --kill", { env, timeoutMs: 5_000, requestTimeoutMs })
       .catch(() => {});
     throw error;
   }
@@ -95,15 +98,17 @@ export async function startE2BDesktopRecording(options: {
   const audioSources: DesktopRecordingAudioSource[] = options.audio
     ? ["microphone-input", "speaker-output"]
     : [];
+  // Recorder setup and finalization fail on any non-zero exit; runOrThrow says so with the tail.
+  const shell = e2bShell(options.desktop);
   const ownsPulse = options.audio && options.pulseEnv === undefined;
   const env = options.audio
-    ? (options.pulseEnv ?? (await preparePulse(options.desktop, options.requestTimeoutMs)))
+    ? (options.pulseEnv ?? (await preparePulse(shell, options.requestTimeoutMs)))
     : baseEnv;
   const stopOwnedPulse = async (): Promise<void> => {
     if (ownsPulse)
-      await options.desktop.commands
+      await shell
         .run("pulseaudio --kill", {
-          envs: { ...env },
+          env,
           timeoutMs: 5_000,
           requestTimeoutMs: options.requestTimeoutMs,
         })
@@ -111,14 +116,11 @@ export async function startE2BDesktopRecording(options: {
   };
   try {
     for (const setup of options.audio ? buildDesktopRecorderPulseSetupCommands() : []) {
-      await options.desktop.commands.run(
-        `${quote(setup.binary)} ${setup.args.map(quote).join(" ")}`,
-        {
-          envs: { ...env },
-          timeoutMs: 5_000,
-          requestTimeoutMs: options.requestTimeoutMs,
-        },
-      );
+      await runOrThrow(shell, `${quote(setup.binary)} ${setup.args.map(quote).join(" ")}`, {
+        env,
+        timeoutMs: 5_000,
+        requestTimeoutMs: options.requestTimeoutMs,
+      });
     }
   } catch (error) {
     await stopOwnedPulse();
@@ -143,6 +145,7 @@ export async function startE2BDesktopRecording(options: {
   // the provider RPC so startup transport latency is not silently removed from the timeline.
   const startedAt = new Date(startedAtMs).toISOString();
   try {
+    // A background run returns the process handle finish() needs, so it bypasses the Shell.
     handle = await options.desktop.commands.run(launch, {
       background: true,
       envs: { ...baseEnv, ...env },
@@ -178,17 +181,15 @@ export async function startE2BDesktopRecording(options: {
     await stopOwnedPulse();
     throw new Error("E2B desktop recorder exited during startup.");
   }
-  const pidResult = await options.desktop.commands
-    .run(`cat ${quote(PID_PATH)}`, {
-      timeoutMs: 5_000,
-      requestTimeoutMs: options.requestTimeoutMs,
-    })
-    .catch(async (error) => {
-      await kill().catch(() => {});
-      await stopOwnedPulse();
-      throw error;
-    });
-  const recorderPid = Number(pidResult.stdout?.trim());
+  const pidResult = await runOrThrow(shell, `cat ${quote(PID_PATH)}`, {
+    timeoutMs: 5_000,
+    requestTimeoutMs: options.requestTimeoutMs,
+  }).catch(async (error: unknown) => {
+    await kill().catch(() => {});
+    await stopOwnedPulse();
+    throw error;
+  });
+  const recorderPid = Number(pidResult.stdout.trim());
   if (!Number.isSafeInteger(recorderPid) || recorderPid < 1) {
     await kill().catch(() => {});
     await stopOwnedPulse();
@@ -203,7 +204,7 @@ export async function startE2BDesktopRecording(options: {
         try {
           stopping = true;
           if (!exitedEarly) {
-            await options.desktop.commands.run(`kill -INT -- ${recorderPid}`, {
+            await runOrThrow(shell, `kill -INT -- ${recorderPid}`, {
               timeoutMs: 5_000,
               requestTimeoutMs: options.requestTimeoutMs,
             });
@@ -224,14 +225,15 @@ export async function startE2BDesktopRecording(options: {
               throw new Error("E2B recorder process did not stop.");
           }
           const probeCommand = buildDesktopRecorderProbeCommand(OUTPUT_PATH);
-          const probe = await options.desktop.commands.run(
+          const probe = await runOrThrow(
+            shell,
             `${quote(probeCommand.binary)} ${probeCommand.args.map(quote).join(" ")}`,
             {
               timeoutMs: 30_000,
               requestTimeoutMs: options.requestTimeoutMs,
             },
           );
-          const durationMs = parseDesktopRecorderDuration(probe.stdout ?? "");
+          const durationMs = parseDesktopRecorderDuration(probe.stdout);
           const transferSignal = AbortSignal.timeout(options.requestTimeoutMs);
           const web = await options.desktop.files.read!(OUTPUT_PATH, {
             format: "stream",

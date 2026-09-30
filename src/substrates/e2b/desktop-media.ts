@@ -5,6 +5,8 @@ import type { E2BCommandResult, E2BDesktopSandbox } from "./desktop-launch.js";
 import type { LabConfig, LabDesktopMedia } from "../../lab/types.js";
 import { failureTail } from "../../evidence/redaction.js";
 import { toErrorMessage } from "../command-failure.js";
+import { runOrThrow } from "../shell.js";
+import { e2bShell } from "./shell.js";
 
 /** Versioned public template built by runtime/browser-media/e2b-template.mjs. */
 export const E2B_SPEECH_TEMPLATE = "7409n13kr83f7g7abx5g";
@@ -46,6 +48,8 @@ export async function startE2BDesktopMedia(options: {
     onTerminal: options.onTerminal,
     transport: {
       async start(callbacks) {
+        // A background run returns a process handle and never throws on exit, so it bypasses
+        // the Shell: the worker's stdin and lifetime need the handle.
         handle = await options.desktop.commands.run(
           "node /opt/humanish/media/guest-media-worker.js",
           {
@@ -148,15 +152,16 @@ export async function prepareDesktopMedia(
   }
   const flags: string[] = [];
   let camera: DesktopMediaEvidence["camera"];
+  const shell = e2bShell(desktop);
   if (media.camera !== undefined) {
     if (media.camera.source === "synthetic") {
-      const made = await desktop.commands.run(SYNTHETIC_CAMERA_COMMAND, {
+      const made = await shell.run(SYNTHETIC_CAMERA_COMMAND, {
         requestTimeoutMs,
         timeoutMs: 60_000,
       });
-      if (made.exitCode !== undefined && made.exitCode !== 0) {
+      if (made.exitCode !== 0) {
         throw new Error(
-          `the synthetic camera feed could not be generated on this desktop image (ffmpeg exited ${made.exitCode}: ${failureTail(made.stderr ?? made.stdout ?? "")}); give execution.desktop.media.camera.source a .y4m file instead`,
+          `the synthetic camera feed could not be generated on this desktop image (ffmpeg exited ${made.exitCode}: ${failureTail(made.stderr || made.stdout)}); give execution.desktop.media.camera.source a .y4m file instead`,
         );
       }
       camera = { source: "synthetic", file: SANDBOX_CAMERA_PATH };
@@ -175,7 +180,7 @@ export async function prepareDesktopMedia(
           `execution.desktop.media.camera.source is ${bytes.length} bytes; the camera feed is capped at 64 MiB`,
         );
       }
-      await desktop.commands.run(`mkdir -p ${SANDBOX_MEDIA_DIR}`, {
+      await runOrThrow(shell, `mkdir -p ${SANDBOX_MEDIA_DIR}`, {
         requestTimeoutMs,
         timeoutMs: 15_000,
       });
@@ -183,10 +188,8 @@ export async function prepareDesktopMedia(
         bytes.byteOffset,
         bytes.byteOffset + bytes.byteLength,
       ) as ArrayBuffer;
-      await desktop.files.write(SANDBOX_CAMERA_PATH, payload, {
-        requestTimeoutMs,
-        useOctetStream: true,
-      });
+      // An ArrayBuffer goes to the machine as an octet stream.
+      await shell.writeFile(SANDBOX_CAMERA_PATH, payload, { requestTimeoutMs });
       camera = { source: "file", file: SANDBOX_CAMERA_PATH };
     }
     flags.push(

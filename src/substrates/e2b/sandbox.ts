@@ -8,8 +8,13 @@ import { redactText } from "../../evidence/redaction.js";
 import { appendSandboxReceipt } from "../../run/sandbox-receipts.js";
 import type { PreparedOutputRoot } from "../../run/selected-output-paths.js";
 import { toErrorMessage } from "../command-failure.js";
-import { ownDesktopAllocation, type OwnedDesktopAllocation } from "../desktop-session.js";
 import {
+  ownDesktopAllocation,
+  type DesktopReleaseResult,
+  type OwnedDesktopAllocation,
+} from "../desktop-session.js";
+import {
+  isSandboxNotFoundError,
   withOneRetryOnTransientE2BError,
   type E2BDesktopCreateOptions,
   type E2BDesktopModule,
@@ -91,54 +96,80 @@ async function acquire(
   return { sandbox, allocation };
 }
 
+type SandboxKill = NonNullable<E2BDesktopModule["Sandbox"]["kill"]>;
+
+/** The provider's kill method bound to its class, or undefined when the SDK has none. */
+function boundKill(module: E2BDesktopModule): SandboxKill | undefined {
+  return typeof module.Sandbox.kill === "function"
+    ? module.Sandbox.kill.bind(module.Sandbox)
+    : undefined;
+}
+
+/**
+ * Kill one sandbox by exact id and read the answer in the release vocabulary both callers share.
+ * The SDK resolves false for an id it no longer knows, and a not-found error means the same.
+ * Any other answer is an incompatible response and cannot prove release. Never list the account.
+ */
+async function killById(
+  kill: SandboxKill | undefined,
+  sandboxId: string,
+  options: { requestTimeoutMs: number },
+): Promise<Exclude<DesktopReleaseResult, { status: "retained" }>> {
+  if (kill === undefined) return { status: "unconfirmed", reason: "release_unavailable" };
+  try {
+    const result: unknown = await kill(sandboxId, options);
+    if (result === true) return { status: "released", reason: "terminated" };
+    if (result === false) return { status: "released", reason: "already_gone" };
+    return { status: "unconfirmed", reason: "invalid_result" };
+  } catch (error) {
+    if (
+      isSandboxNotFoundError(error) ||
+      /not.?found|does not exist|404/i.test(toErrorMessage(error))
+    )
+      return { status: "released", reason: "already_gone" };
+    return { status: "unconfirmed", reason: "release_failed", error };
+  }
+}
+
 function ownE2BSandbox(module: E2BDesktopModule, resourceId: string): OwnedDesktopAllocation {
   // Bind the provider method now, before any hook can replace it on the shared module.
-  const kill =
-    typeof module.Sandbox.kill === "function"
-      ? module.Sandbox.kill.bind(module.Sandbox)
-      : undefined;
+  const kill = boundKill(module);
   return ownDesktopAllocation({
     resourceId,
-    release: async () => {
-      if (kill === undefined) return { status: "unconfirmed", reason: "release_unavailable" };
-      const result = await kill(resourceId, { requestTimeoutMs: 60_000 });
-      // SDK false means 404/already absent, not an unconfirmed request. Anything else is
-      // an incompatible response and cannot prove release. Never list the account.
-      if (result === true) return { status: "released", reason: "terminated" };
-      if (result === false) return { status: "released", reason: "already_gone" };
-      return { status: "unconfirmed", reason: "invalid_result" };
-    },
+    release: () => killById(kill, resourceId, { requestTimeoutMs: 60_000 }),
   });
 }
 
+/** Reclaim's persisted outcome; run/reclaim.ts writes these strings. */
 export type E2BSandboxDestroyOutcome =
   | { state: "killed" | "already-gone" }
   | { state: "kill-failed"; detail: string };
 
 /**
- * Kill one sandbox by its exact recorded id, for reclaim. It never lists the account. A lane's own
- * release goes through its allocation instead, which also refuses a malformed kill result.
+ * Kill one sandbox by its exact recorded id, for reclaim, and map the shared release result onto
+ * reclaim's persisted outcome. It never lists the account.
  */
 export async function destroyE2BSandbox(
   module: E2BDesktopModule,
   sandboxId: string,
   options: { requestTimeoutMs: number },
 ): Promise<E2BSandboxDestroyOutcome> {
-  const kill = module.Sandbox.kill;
-  if (typeof kill !== "function") {
-    return {
-      state: "kill-failed",
-      detail:
-        "installed @e2b/desktop SDK does not expose Sandbox.kill; server-side kill-on-timeout will reclaim the sandbox",
-    };
-  }
-  try {
-    const killed = (await kill.call(module.Sandbox, sandboxId, options)) === true;
-    return { state: killed ? "killed" : "already-gone" };
-  } catch (error) {
-    const detail = redactText(toErrorMessage(error));
-    return /not.?found|does not exist|404/i.test(detail)
-      ? { state: "already-gone" }
-      : { state: "kill-failed", detail };
+  const released = await killById(boundKill(module), sandboxId, options);
+  if (released.status === "released")
+    return { state: released.reason === "terminated" ? "killed" : "already-gone" };
+  switch (released.reason) {
+    case "release_unavailable":
+      return {
+        state: "kill-failed",
+        detail:
+          "installed @e2b/desktop SDK does not expose Sandbox.kill; server-side kill-on-timeout will reclaim the sandbox",
+      };
+    case "invalid_result":
+      return {
+        state: "kill-failed",
+        detail: "Sandbox.kill returned neither true nor false, so the kill is unconfirmed",
+      };
+    case "release_failed":
+      return { state: "kill-failed", detail: redactText(toErrorMessage(released.error)) };
   }
 }
