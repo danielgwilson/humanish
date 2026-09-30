@@ -57,7 +57,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json && pnpm --filter humanish-observer build && pnpm --filter humanish-tui build && node scripts/finish-build.mjs",
-    "check": "pnpm format:check && pnpm lint && pnpm knip && pnpm prose:check && pnpm typecheck && pnpm test && pnpm tui:test && pnpm build && pnpm guest-media:startup:proof && pnpm cli:startup:test && pnpm cli:preflight:test && pnpm tui:smoke",
+    "check": "pnpm format:check && pnpm lint && pnpm knip && pnpm prose:check && pnpm vocabulary:check && pnpm typecheck && pnpm test && pnpm tui:test && pnpm build && pnpm guest-media:startup:proof && pnpm cli:startup:test && pnpm cli:preflight:test && pnpm tui:smoke",
     "cli:startup:test": "node scripts/terminal-startup-exit-proof.mjs",
     "cli:preflight:test": "node scripts/task-route-preflight-proof.mjs",
     "humanish": "tsx src/cli.ts",
@@ -89,7 +89,8 @@
     "format:check": "oxfmt --check",
     "lint": "oxlint --max-warnings=532",
     "knip": "knip",
-    "prose:check": "node scripts/check-code-prose.mjs --max-issue-refs=425 --max-fix-tags=38 --max-caps=1933"
+    "prose:check": "node scripts/check-code-prose.mjs --max-issue-refs=425 --max-fix-tags=38 --max-caps=1933",
+    "vocabulary:check": "tsx scripts/check-retired-words.ts --max-lane=2201 --max-seat=145 --max-role=191 --max-sim=230"
   },
   "dependencies": {
     "commander": "^15.0.0",
