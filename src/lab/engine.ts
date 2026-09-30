@@ -24,10 +24,8 @@ import {
   type TerminalProductLabResult,
 } from "../routes/terminal/types.js";
 import { type SharedWorldLabHooks } from "../routes/shared-world/hooks.js";
-import {
-  runConcurrentSharedWorld,
-  type ConcurrentSharedWorldLabResult,
-} from "../routes/shared-world/concurrent.js";
+import { runConcurrentSharedWorld } from "../routes/shared-world/lab.js";
+import { type ConcurrentSharedWorldLabResult } from "../routes/shared-world/types.js";
 import { type RunLabProvenance } from "../run/status.js";
 import type { ObserverResult } from "../observer/render.js";
 import { runDryRun } from "../run/dry-run.js";

@@ -25,7 +25,7 @@ import { runLabPreflight } from "../../src/lab/preflight.js";
 import { parse as parseYaml } from "yaml";
 import { runLab } from "../../src/lab/engine.js";
 import { runCuaActorLab } from "../../src/routes/computer-use/lab.js";
-import { runConcurrentSharedWorld } from "../../src/routes/shared-world/concurrent.js";
+import { runConcurrentSharedWorld } from "../../src/routes/shared-world/lab.js";
 import { runTerminalProductLab } from "../../src/routes/terminal/lab.js";
 import { runScriptedBrowserLab } from "../../src/routes/scripted-browser/lab.js";
 import { claimAutomaticStudyAnalysis } from "../../src/analysis/job.js";

@@ -1,16 +1,3 @@
-import { scrubPersonaBrief } from "../../lab/persona.js";
-import { participantIdAt } from "../../lab/routing.js";
-import { withTransientCommsSecrets } from "../../run/narration-secrets.js";
-import { prepareReceivingRun, receivingPublication } from "../../comms/receiving-runtime.js";
-import type { CommsReceivingRun } from "../../comms/receiving.js";
-import {
-  concurrentSharedWorldValidationReason,
-  desktopMediaValidationReason,
-  externalPublicSharedWorldValidationReason,
-  outputTokenLimitValidationReason,
-  receivingEmailValidationReason,
-  taskProtocolValidationReason,
-} from "../../lab/validation.js";
 // The CONCURRENT shared-world lab backend (#164 phase 2): N persona lanes drive ONE shared,
 // mutable service plane SIMULTANEOUSLY — the actual leverage of a sim. A recomposition of shipped
 // pieces + the getHost wrapper:
@@ -46,58 +33,18 @@ import {
 // requires the author attestation subject.exposure: synthetic. This is author-trust + a provenance
 // gate, NOT a no-real-data guarantee (Humanish cannot tell synthetic from real data).
 
-import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
-import {
-  completeAutomaticAnalysis,
-  type AutomaticAnalysisHooks,
-  type AutomaticAnalysisResult,
-} from "../../analysis/automatic-completion.js";
-import { runScope, type RunScope } from "../../run/run.js";
 import { randomBytes } from "node:crypto";
-import { describeMissingKeys } from "../../cli/key-resolution.js";
-import { type RunLabProvenance } from "../../run/status.js";
+import { realpath } from "node:fs/promises";
 import path from "node:path";
-
-import {
-  adapterScoreFailureMessage,
-  applyBrowserAdapterHooks,
-} from "../../lab/adapter-extension.js";
 import { DEFAULT_OPENAI_CU_MODEL } from "../../actors/computer-use/openai-provider.js";
-import { MODEL_RATES } from "../../run/pricing.js";
-import {
-  actorRegistry,
-  isCuaActorDescriptor,
-  type CuaActorDescriptor,
-} from "../../actors/registry.js";
-import { toErrorMessage } from "../../substrates/command-failure.js";
-import { mapWithConcurrency } from "../../run/concurrency.js";
-import { labPersonaIds, resolveCommittedPersonasForCwd } from "../../lab/persona-resolve.js";
-import type { ResolvedPersona } from "../../lab/persona.js";
-import {
-  defaultPackLocalTree,
-  inboxRecipientFor,
-  laneHasInboxRecipient,
-  resolveSubjectState,
-} from "../computer-use/lab.js";
-import { provisionCloneSubject } from "../../subject/clone.js";
-import { provisionLocalTreeSubject } from "../../subject/local-tree.js";
-import { commandDigestOf } from "../../subject/state.js";
-import type { SubjectPhaseEvent } from "../../subject/steps.js";
-import { declaredScreenForRender } from "../../substrates/e2b/desktop-geometry.js";
-import {
-  composeLaneInstructions,
-  resolveLaneDevice,
-  makeCuaRunBudget,
-  withInboxMission,
-} from "../computer-use/lane-plan.js";
-import { runCuaLane } from "../computer-use/lanes.js";
-import { startLiveTraceFlush, type LiveTraceFlush } from "../computer-use/live-flush.js";
-import {
-  type CuaActorLabHooks,
-  type CuaLaneDeps,
-  type CuaLaneSpec,
-  type LaneRunOutcome,
-} from "../computer-use/types.js";
+import { actorRegistry, isCuaActorDescriptor } from "../../actors/registry.js";
+import { completeAutomaticAnalysis } from "../../analysis/automatic-completion.js";
+import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
+import { describeMissingKeys } from "../../cli/key-resolution.js";
+import { FakeInbox } from "../../comms/fake-inbox.js";
+import { buildOriginMap, type OriginMap } from "../../comms/inbox.js";
+import { prepareReceivingRun } from "../../comms/receiving-runtime.js";
+import type { CommsReceivingRun } from "../../comms/receiving.js";
 import {
   DEFAULT_SANDBOX_CATCH_PORT,
   collectCommsThread,
@@ -109,9 +56,48 @@ import {
   writeInboxSurface,
   type DeployedCommsCatch,
 } from "../../comms/sandbox-catch.js";
-import { FakeInbox } from "../../comms/fake-inbox.js";
-import { buildOriginMap, type OriginMap } from "../../comms/inbox.js";
 import type { CommsAddress } from "../../comms/types.js";
+import { redactText, scrubLiterals } from "../../evidence/redaction.js";
+import {
+  adapterScoreFailureMessage,
+  applyBrowserAdapterHooks,
+} from "../../lab/adapter-extension.js";
+import { participantAssignment } from "../../lab/participant-assignment.js";
+import { labPersonaIds, resolveCommittedPersonasForCwd } from "../../lab/persona-resolve.js";
+import { scrubPersonaBrief } from "../../lab/persona.js";
+import {
+  concurrentSharedWorldValidationReason,
+  desktopMediaValidationReason,
+  externalPublicSharedWorldValidationReason,
+  outputTokenLimitValidationReason,
+  receivingEmailValidationReason,
+  taskProtocolValidationReason,
+} from "../../lab/validation.js";
+import { liveObserverResult } from "../../observer/live.js";
+import { attachObserverRuntimeStreamUrls, type ObserverResult } from "../../observer/render.js";
+import type { ObserverRuntimeStreamUrl } from "../../observer/run-routes.js";
+import {
+  buildRunSource,
+  type RunBundle,
+  type RunSubjectProvenance,
+  type RunSubjectStateStepRecord,
+} from "../../run/bundle.js";
+import { mapWithConcurrency } from "../../run/concurrency.js";
+import { withTransientCommsSecrets } from "../../run/narration-secrets.js";
+import { MODEL_RATES } from "../../run/pricing.js";
+import { runScope, type RunScope } from "../../run/run.js";
+import {
+  prepareSelectedOutputDirectory,
+  writeContainedOutputFile,
+} from "../../run/selected-output-paths.js";
+import type { SharedWorldStateSnapshot } from "../../run/shared-world-evidence.js";
+import type { LocalTreeArchive } from "../../run/source-archive.js";
+import { provisionCloneSubject } from "../../subject/clone.js";
+import { provisionLocalTreeSubject } from "../../subject/local-tree.js";
+import { commandDigestOf } from "../../subject/state.js";
+import type { SubjectPhaseEvent } from "../../subject/steps.js";
+import { toErrorMessage } from "../../substrates/command-failure.js";
+import type { DetachedTimers } from "../../substrates/detached.js";
 import {
   loadE2BDesktopModule,
   type E2BDesktopModule,
@@ -120,140 +106,62 @@ import {
 import { acquireE2BDesktopSandbox } from "../../substrates/e2b/sandbox.js";
 import { e2bShell } from "../../substrates/e2b/shell.js";
 import type { Shell } from "../../substrates/shell.js";
-import type { DetachedTimers } from "../../substrates/detached.js";
-import { type LabActorLane, type LabConfig } from "../../lab/types.js";
-import { liveObserverResult } from "../../observer/live.js";
-import { attachObserverRuntimeStreamUrls, type ObserverResult } from "../../observer/render.js";
-import type { ObserverRuntimeStreamUrl } from "../../observer/run-routes.js";
-import { redactText, scrubLiterals } from "../../evidence/redaction.js";
-import { participantAssignment } from "../../lab/participant-assignment.js";
 import {
-  prepareSelectedOutputDirectory,
-  writeContainedOutputFile,
-} from "../../run/selected-output-paths.js";
-import { realpath } from "node:fs/promises";
-import { combineCheckpointDigest, runCheckpointSnapshot, seedRecipeDigest } from "./checkpoints.js";
-import { type SharedWorldLabHooks } from "./hooks.js";
-import type { LocalTreeArchive } from "../../run/source-archive.js";
+  defaultPackLocalTree,
+  inboxRecipientFor,
+  laneHasInboxRecipient,
+  resolveSubjectState,
+} from "../computer-use/lab.js";
+import { makeCuaRunBudget, withInboxMission } from "../computer-use/lane-plan.js";
+import { runCuaLane } from "../computer-use/lanes.js";
+import { startLiveTraceFlush, type LiveTraceFlush } from "../computer-use/live-flush.js";
+import type {
+  CuaActorLabHooks,
+  CuaLaneDeps,
+  CuaLaneSpec,
+  LaneRunOutcome,
+} from "../computer-use/types.js";
 import {
-  buildRunSource,
-  PUBLIC_TARGET_CWD,
-  REVIEW_SCHEMA,
-  RUN_BUNDLE_SCHEMA,
-  type ReviewSummary,
-  type RunBundle,
-  type RunEvent,
-  type RunScorerProvenance,
-  type RunSimulation,
-  type RunSubjectProvenance,
-  type RunSubjectStateStepRecord,
-} from "../../run/bundle.js";
+  actorLanePassed,
+  actorWindowsOverlap,
+  buildConcurrentSharedWorldBundle,
+  maxSimultaneousWindows,
+  renderConcurrentReviewMarkdown,
+} from "./bundle.js";
+import { runCheckpointSnapshot, seedRecipeDigest } from "./checkpoints.js";
 import {
-  SHARED_WORLD_SCHEMA,
-  type SharedWorldEvidence,
-  type SharedWorldLaneWindow,
-  type SharedWorldOutcome,
-  type SharedWorldPlane,
-  type SharedWorldStateSnapshot,
-} from "../../run/shared-world-evidence.js";
-import { type RunSimulationStatus, type RunStream } from "../../run/streams.js";
+  extractLobbyCode,
+  extractLobbyCodeFromNarration,
+  readLobbyCodeFromFrame,
+} from "./lobby-code.js";
+import {
+  buildSubjectProvenance,
+  hostOriginDigest,
+  isTokenlessHost,
+  servePort,
+} from "./provenance.js";
+import {
+  DEFAULT_STATE_STEP_TIMEOUT_MS,
+  SANDBOX_TIMEOUT_BUFFER_MS,
+  SUBJECT_PROVISION_BUDGET_MS,
+  buildActorSpec,
+  defaultSeatSessionTimeoutMs,
+  makeBlockedFollowerOutcome,
+  resolveActorSeatUrl,
+  withLobbyCodeMission,
+} from "./seats.js";
+import {
+  CONCURRENT_SHARED_WORLD_LAB_SCHEMA,
+  CONCURRENT_SHARED_WORLD_PROVIDER_METADATA,
+  type ActorLaneResult,
+  type ConcurrentSharedWorldLabErrorCode,
+  type ConcurrentSharedWorldLabResult,
+  type ConcurrentSharedWorldPlaneClass,
+  type ConcurrentSharedWorldRoleResult,
+  type RunConcurrentSharedWorldLabOptions,
+} from "./types.js";
 
-export const CONCURRENT_SHARED_WORLD_LAB_SCHEMA = "humanish.concurrent-shared-world-lab-result.v1";
-
-export const CONCURRENT_SHARED_WORLD_PROVIDER_METADATA = {
-  mode: "concurrent-shared-world-lab",
-  tool: "humanish",
-} as const;
-
-// The verify-enforced CONCURRENT attribution ceiling (FIX-5). Mirrored in
-// run/verify-shared-world-concurrent.ts CONCURRENT_REQUIRED_LIMITS.
-export const CONCURRENT_ATTRIBUTION_LIMITS = [
-  "concurrent",
-  "best-effort-causal-attribution",
-  "non-deterministic-shared-state",
-  "window-and-snapshot-granularity",
-  "contention-observed-not-proven-safe",
-  "state-change-not-isolated-to-actors",
-] as const;
-
-// The DEFAULT per-seat session budget is DERIVED, not flat. On a provisioned route the binding
-// constraint is the SUBJECT sandbox (it must outlive every seat: timeoutMs + provisioning +
-// seeding + teardown buffer, and E2B refuses a sandbox over one hour), so the derivation hands
-// each seat the most that cap allows — capped at 15 minutes, floored at the historical 300s so a
-// seed-heavy lab never gets LESS room than it always had. App-url seats have no subject sandbox
-// and default to 30 minutes (seat sandbox: 30m + 10m buffer stays well under the hour). An
-// explicit execution.timeoutMs is never adjusted. The handoff latch scales off this (40%).
-const MAX_SANDBOX_MS = 60 * 60_000;
-const MAX_DERIVED_SEAT_SESSION_MS = 15 * 60_000;
-const MIN_DERIVED_SEAT_SESSION_MS = 300_000;
-const DEFAULT_APP_URL_SEAT_SESSION_MS = 30 * 60_000;
-function defaultSeatSessionTimeoutMs(config: LabConfig): number {
-  const provisionedRoute =
-    config.subject.source === "clone" || config.subject.source === "local-tree";
-  if (!provisionedRoute) return DEFAULT_APP_URL_SEAT_SESSION_MS;
-  const stateBudgetMs = (config.subject.state?.seed ?? []).reduce(
-    (sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS),
-    0,
-  );
-  const room =
-    MAX_SANDBOX_MS - SUBJECT_PROVISION_BUDGET_MS - stateBudgetMs - SANDBOX_TIMEOUT_BUFFER_MS;
-  return Math.max(MIN_DERIVED_SEAT_SESSION_MS, Math.min(MAX_DERIVED_SEAT_SESSION_MS, room));
-}
-const SANDBOX_TIMEOUT_BUFFER_MS = 10 * 60_000;
-const SUBJECT_PROVISION_BUDGET_MS = 30 * 60_000;
-const DEFAULT_STATE_STEP_TIMEOUT_MS = 5 * 60_000;
 const DEFAULT_PROBER_CADENCE_MS = 1000;
-
-const DEFAULT_MISSION =
-  "You are one of MANY users hitting a shared web application at the same time. The browser is already open at the app. Accomplish your role's task, then stop.";
-
-export interface RunConcurrentSharedWorldLabOptions {
-  automaticAnalysis?: AutomaticAnalysisHooks;
-  /** Which manifest produced this run (#455); threaded into the status record + bundle. */
-  lab?: RunLabProvenance;
-  cwd: string;
-  config: LabConfig;
-  /** Resolved upstream (scenario.mode + CLI override); defaults safe (dry-run). */
-  dryRun: boolean;
-  open?: boolean;
-  runId?: string;
-  onObserverReady?: (observer: ObserverResult & { ok: true }) => Promise<void> | void;
-  hooks?: SharedWorldLabHooks;
-  /** Present only when the browser-route scorer hooks were CONFIG-DECLARED and loaded by the CLI
-   *  (#316); core-stamped onto the bundle as evidence. Absent for library callers. */
-  scorerProvenance?: RunScorerProvenance;
-}
-
-export type ConcurrentSharedWorldLabErrorCode =
-  | "HUMANISH_LAB_ANALYSIS_INVALID"
-  | "HUMANISH_LAB_TASKS_UNSUPPORTED"
-  | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED"
-  | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_ACTOR_UNSUPPORTED"
-  | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID"
-  | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_KEYS_MISSING"
-  | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_SUBJECT_ENV_MISSING"
-  | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_GETHOST_UNAVAILABLE"
-  | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_HANDOFF_TIMEOUT"
-  | "HUMANISH_RUN_ID_IN_USE"
-  /** A declared adopter-hosted comms catch (#328) did not answer as a humanish catch — fail closed
-   *  BEFORE any actor spend, since the funnel would silently collect nothing. */
-  | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_CATCH_UNREACHABLE";
-
-/** The two plane classes of the concurrent shared-world route (#164 phase 2). */
-export type ConcurrentSharedWorldPlaneClass = "provisioned-getHost" | "external-public";
-
-// EXTERNAL-PUBLIC plane class: the honest-downgrade attribution ceiling. The concurrent family
-// (an honest ceiling) PLUS the mandatory external-public disclosures — mirrored in the required
-// set in run/verify-shared-world-concurrent.ts (CONCURRENT_ATTRIBUTION_LIMITS +
-// EXTERNAL_PUBLIC_EXTRA_LIMITS). Verify fails closed on a missing one.
-export const EXTERNAL_PUBLIC_ATTRIBUTION_LIMITS = [
-  ...CONCURRENT_ATTRIBUTION_LIMITS,
-  "external-public-plane",
-  "operator-attested-target-not-harness-controlled",
-  "no-synthetic-attestation",
-  "no-authoritative-shared-state-proof",
-  "concurrency-by-temporal-co-occupancy-only",
-] as const;
 
 // The FLOOR for the host-first handoff barrier deadline (ms). The host seat must surface a
 // shared-session (/lobby/CODE) URL within the deadline or the run fails closed and no follower
@@ -263,7 +171,9 @@ export const EXTERNAL_PUBLIC_ATTRIBUTION_LIMITS = [
 // gave up. So use max(FLOOR, 40% of the budget), capped at the budget. The latch resolves the
 // instant the host actually reaches /lobby, so a generous ceiling only affects the fail-closed case.
 const DEFAULT_HANDOFF_DEADLINE_MS = 120_000;
+
 const HANDOFF_DEADLINE_BUDGET_FRACTION = 0.4;
+
 // Per-seat runaway backstop for the vision-off-frame lobby-code read (used by the host to LATCH the
 // handoff code, and by each follower to independently OBSERVE its own code for the convergence proof):
 // at most this many single-frame reads before the seat is assumed to be somewhere without a code. Each
@@ -273,166 +183,12 @@ const HANDOFF_DEADLINE_BUDGET_FRACTION = 0.4;
 // instead (each read is one cheap single-frame OCR call). If this route ever runs under a strict
 // budget, fold the estimate in.
 const MAX_LOBBY_CODE_VISION_READS = 30;
+
 // Idle/no-progress backstop for the HOST lane specifically (default is 6/8). The host legitimately sits
 // on an unchanging waiting-room screen while followers provision and join; it must not give up first.
 const HOST_WAIT_IDLE_STEPS = 80;
+
 const FOLLOWER_WAIT_IDLE_STEPS = 40;
-
-/**
- * The lobby-trivia (and general "/lobby/CODE") shared-session URL matcher. A code is exactly 6 chars of
- * the [A-Z2-9] class; a locale prefix (/en/lobby/…) and a query/hash suffix are tolerated. RUNTIME-ONLY
- * input (a live location.href); only the extracted CODE is used, and it lands only as a digest.
- */
-export const LOBBY_CODE_PATTERN = /\/lobby\/([A-Z2-9]{6})(?:$|[/?#])/;
-
-/** Extract the shared-session CODE from a (runtime-only) observed URL, or undefined. Exported for the
- *  handoff regex table test — pure, no side effects, never persists its input. */
-export function extractLobbyCode(url: string | undefined): string | undefined {
-  if (typeof url !== "string") return undefined;
-  const match = url.match(LOBBY_CODE_PATTERN);
-  return match ? match[1] : undefined;
-}
-
-/**
- * Extract a lobby CODE from free-form ACTOR NARRATION (the host's reasoning/message where it states
- * the lobby URL it sees), where the /lobby/CODE is followed by arbitrary prose (a space, backtick,
- * newline) rather than end-of-string or /?# — so the strict LOBBY_CODE_PATTERN would miss it. Uses a
- * negative-lookahead boundary (exactly 6 code chars). This is the CDP-INDEPENDENT handoff path: the
- * host reads the code on screen and states it, and this reads it from the model's own text. Pure;
- * input is runtime-only; only the code is used (as a digest).
- */
-const LOBBY_CODE_IN_TEXT = /\/lobby\/([A-Z2-9]{6})(?![A-Z2-9])/;
-export function extractLobbyCodeFromNarration(text: string | undefined): string | undefined {
-  if (typeof text !== "string") return undefined;
-  const inUrl = text.match(LOBBY_CODE_IN_TEXT);
-  if (inUrl) return inUrl[1];
-  // Fallback: an explicitly-labeled bare code (e.g. "LOBBY_CODE=ABC123"), which the host may state
-  // if it copied the code rather than the URL. The label is matched case-insensitively, but the CODE
-  // itself must be UPPERCASE [A-Z2-9] — a real lobby code always renders uppercase, whereas an /i match
-  // on the code class would also grab an ordinary lowercase word after "lobby code " (e.g. "the lobby
-  // code screen") and latch a WRONG code. Precision-first, matching parseLobbyCodeReply's rationale.
-  const labeled = text.match(/lobby[ _-]?code[=:\s]+([A-Z2-9]{6})(?![A-Za-z2-9])/i);
-  return labeled && labeled[1] && /^[A-Z2-9]{6}$/.test(labeled[1]) ? labeled[1] : undefined;
-}
-
-/** Pull the assistant's plain text out of an OpenAI Responses API body (`output_text` convenience
- *  field, else the concatenated `output[].content[].text`). Tolerant of shape drift; pure. */
-export function extractResponsesOutputText(parsed: unknown): string | undefined {
-  if (typeof parsed !== "object" || parsed === null) return undefined;
-  const obj = parsed as Record<string, unknown>;
-  if (typeof obj.output_text === "string" && obj.output_text.length > 0) return obj.output_text;
-  const out = obj.output;
-  if (!Array.isArray(out)) return undefined;
-  const parts: string[] = [];
-  for (const item of out) {
-    if (typeof item !== "object" || item === null) continue;
-    const content = (item as Record<string, unknown>).content;
-    if (!Array.isArray(content)) continue;
-    for (const chunk of content) {
-      if (
-        typeof chunk === "object" &&
-        chunk !== null &&
-        typeof (chunk as Record<string, unknown>).text === "string"
-      ) {
-        parts.push((chunk as Record<string, unknown>).text as string);
-      }
-    }
-  }
-  return parts.length > 0 ? parts.join("\n") : undefined;
-}
-
-/** Parse a vision reply into a lobby CODE. PRECISION-FIRST: accept ONLY when the whole reply IS the
- *  six-character code, or when it echoes an explicit /lobby/CODE — never a bare 6-letter token buried in
- *  prose (e.g. "I see a home SCREEN"), because a wrong latch fails the entire run, whereas a miss just
- *  retries on the next frame while the host keeps waiting. NONE (the instructed "no code" reply) is
- *  rejected. Pure. */
-export function parseLobbyCodeReply(reply: string | undefined): string | undefined {
-  if (typeof reply !== "string") return undefined;
-  const up = reply.trim().toUpperCase();
-  if (up.length === 0 || /\bNONE\b/.test(up)) return undefined;
-  if (/^[A-Z2-9]{6}$/.test(up)) return up; // the well-behaved "code only" reply
-  const inUrl = up.match(/\/LOBBY\/([A-Z2-9]{6})(?![A-Z2-9])/); // model echoed the invite link
-  return inUrl ? inUrl[1] : undefined;
-}
-
-const LOBBY_CODE_VISION_PROMPT =
-  "This is a screenshot of a the example multiplayer app multiplayer lobby. If a waiting-room / invite screen is " +
-  "shown, read the 6-character lobby code (characters A-Z and 2-9 only) — it appears near a 'lobby " +
-  "code'/'room code' label or inside an invite link of the form /lobby/CODE. Your entire reply MUST be " +
-  "exactly those 6 characters in uppercase and NOTHING else (no words, no punctuation). If no lobby " +
-  "code is visible on this screen (e.g. it is the home screen or a game round), reply exactly NONE.";
-
-const LOBBY_CODE_VISION_ENDPOINT = "https://api.openai.com/v1/responses";
-// A single-frame OCR-style read. gpt-5.5 (the CU default) is used deliberately: it reliably reads the
-// 6-char code off a dense MOBILE-viewport waiting room — a smaller/cheaper model (gpt-4.1-mini) was
-// tried and could NOT read it. reasoning.effort stays "low" (minimal) and the output budget is small
-// but comfortably clear of the "incomplete on reasoning overflow" edge. Kept on the same account/key
-// as the actor; the same full-fidelity frame is already sent to this API by the CU provider, so this
-// adds no new data-exposure surface. See onScreenshot in runHostLane.
-const LOBBY_CODE_VISION_MODEL = "gpt-5.5";
-// Output-token budget for the read. The answer is 6 chars, but leave clear margin over any low-effort
-// reasoning tokens so the response never comes back status:"incomplete" with empty output.
-const LOBBY_CODE_VISION_MAX_OUTPUT_TOKENS = 64;
-// Per-read wall-clock cap. Without it a stalled fetch (Node fetch has no default timeout) would leave
-// visionInFlight pinned true and silently kill the relay for the rest of the host run.
-const LOBBY_CODE_VISION_TIMEOUT_MS = 15_000;
-
-export interface ReadLobbyCodeOptions {
-  model?: string;
-  endpoint?: string;
-  fetchFn?: typeof fetch;
-  signal?: AbortSignal;
-}
-
-/**
- * Vision-read a lobby CODE straight off a host waiting-room FRAME (the robust, CDP-independent handoff
- * relay). Fail-soft: any network/HTTP/parse problem returns undefined so the caller simply retries on
- * the next frame. The frame is runtime-only; only the extracted code is used (as a digest downstream).
- */
-export async function readLobbyCodeFromFrame(
-  frame: Buffer,
-  apiKey: string,
-  options: ReadLobbyCodeOptions = {},
-): Promise<string | undefined> {
-  if (typeof apiKey !== "string" || apiKey.length === 0 || frame.length === 0) return undefined;
-  const fetchFn = options.fetchFn ?? fetch;
-  // Default a wall-clock timeout so a stalled request can't wedge the caller's in-flight guard. An
-  // explicit signal (e.g. run abort) takes precedence when provided.
-  const signal = options.signal ?? AbortSignal.timeout(LOBBY_CODE_VISION_TIMEOUT_MS);
-  const body = {
-    model: options.model ?? LOBBY_CODE_VISION_MODEL,
-    reasoning: { effort: "low" },
-    max_output_tokens: LOBBY_CODE_VISION_MAX_OUTPUT_TOKENS,
-    input: [
-      {
-        role: "user",
-        content: [
-          { type: "input_text", text: LOBBY_CODE_VISION_PROMPT },
-          { type: "input_image", image_url: `data:image/png;base64,${frame.toString("base64")}` },
-        ],
-      },
-    ],
-  };
-  let res: Awaited<ReturnType<typeof fetch>>;
-  try {
-    res = await fetchFn(options.endpoint ?? LOBBY_CODE_VISION_ENDPOINT, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-      signal,
-    });
-  } catch {
-    return undefined; // transient network error: skip this frame, next turn retries
-  }
-  if (!res.ok) return undefined; // never read a non-ok body (it can echo the frame/input)
-  let parsed: unknown;
-  try {
-    parsed = await res.json();
-  } catch {
-    return undefined;
-  }
-  return parseLobbyCodeReply(extractResponsesOutputText(parsed));
-}
 
 interface Deferred<T> {
   promise: Promise<T>;
@@ -484,61 +240,6 @@ class ObserverGateError extends Error {
   }
 }
 
-/** One persona's OUTCOME against the contended world (the "M of N" headline). */
-export interface ConcurrentSharedWorldRoleResult {
-  id: string;
-  index: number;
-  persona: string;
-  status: string;
-  ok: boolean;
-  /** The harness-clocked [start,end] window the orchestrator measured (live). */
-  window?: { startedAt: number; endedAt: number };
-  session?: { status: string; completionReason: string; reason: string; screenshots: number };
-  /** The actor sandbox lifecycle proof (the getHost/key value is never surfaced here). */
-  sandbox?: { sandboxId: string; killed: boolean };
-  error?: { code: ConcurrentSharedWorldLabErrorCode; message: string };
-}
-
-export interface ConcurrentSharedWorldLabResult extends AutomaticAnalysisResult {
-  schema: typeof CONCURRENT_SHARED_WORLD_LAB_SCHEMA;
-  ok: boolean;
-  cwd: string;
-  labId: string;
-  actor: string;
-  topology: "shared-world";
-  topologyMode: "concurrent";
-  /** The DECLARED number of persona seats. */
-  roleCount: number;
-  /** Effective in-flight bound (execution.concurrency). */
-  concurrency: number;
-  dryRun: boolean;
-  runId: string;
-  /** The harness-minted getHost URL the actors drove (tokenless; live only). */
-  host?: string;
-  /** The ONE subject sandbox lifecycle proof. */
-  subjectSandbox?: { sandboxId: string; killed: boolean };
-  /** Whether ≥2 actor windows overlapped in time (proven concurrency; live only). */
-  overlapProven?: boolean;
-  /** Max lanes observed live at the same instant (live only) — the honest simultaneity number; a
-   *  6-lane run capped at 3 reports 3 here, never 6 (#350). */
-  maxSimultaneousLanes?: number;
-  /** Subject provenance (invariant 5): the ONE shared plane. */
-  subject?: RunSubjectProvenance;
-  roles: ConcurrentSharedWorldRoleResult[];
-  observer?: ObserverResult;
-  warnings: string[];
-  error?: { code: ConcurrentSharedWorldLabErrorCode; message: string };
-}
-
-/** One actor lane's measured run (internal). */
-interface ActorLaneResult {
-  spec: CuaLaneSpec;
-  outcome: LaneRunOutcome;
-  startedAt: number;
-  endedAt: number;
-  route: string;
-}
-
 function readPositiveInt(value: string | undefined, fallback: number): number {
   if (value === undefined) return fallback;
   const parsed = Number.parseInt(value, 10);
@@ -548,184 +249,6 @@ function readPositiveInt(value: string | undefined, fallback: number): number {
 function makeRunId(): string {
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   return `concurrent-shared-world-${stamp}-${randomBytes(4).toString("hex")}`;
-}
-
-/** Extract the in-sandbox port from the (loopback) serve.url so getHost can expose it. */
-function servePort(serveUrl: string): number {
-  const url = new URL(serveUrl);
-  if (url.port) return Number(url.port);
-  return url.protocol === "https:" ? 443 : 80;
-}
-
-/** Resolve an actor's seat URL against the harness-minted getHost base (entry is a same-origin
- *  relative path, validated at parse against serve.url). */
-function resolveActorSeatUrl(baseUrl: string, entry: string | undefined): string {
-  if (!entry) return baseUrl;
-  try {
-    return new URL(entry, baseUrl).toString();
-  } catch {
-    return baseUrl;
-  }
-}
-
-/** A getHost URL must be TOKENLESS (no userinfo, no query — no authKey; invariant 1). */
-function isTokenlessHost(value: string): boolean {
-  try {
-    const url = new URL(value);
-    return url.username === "" && url.password === "" && url.search === "";
-  } catch {
-    return false;
-  }
-}
-
-/** sha256-16 of a URL's ORIGIN — the publish-safe host identity persisted in the bundle (the raw
- *  getHost URL embeds the live sandbox id + matches the e2b-URL redaction, so it never lands raw). */
-function hostOriginDigest(url: string): string {
-  try {
-    return commandDigestOf(new URL(url).origin);
-  } catch {
-    return commandDigestOf(url);
-  }
-}
-
-/** A public-safe, human-readable route label for the bundle (host redacted to a placeholder; the
- *  entry path kept). Never contains the raw getHost URL. */
-function publicSafeRouteLabel(entry: string | undefined): string {
-  return `[provisioned-subject]${entry ?? "/"}`;
-}
-
-/**
- * Build the ONE subject sandbox's provenance (invariant 5): clone (repo + optional commit) or
- * local-tree (archiveSha256 + optional commit/dirty from the once-per-run host-packed archive -
- * archiveSha256 IS the pin; there is only ONE archive, so no per-lane unanimity math applies,
- * unlike the cua fan-out route). Used for both the in-progress and final bundle: the archive
- * never changes mid-run (packed before any sandbox exists).
- */
-function buildSubjectProvenance(args: {
-  localTreeRoute: boolean;
-  publicRepo: string;
-  subjectCommit: string | undefined;
-  localTreeArchive: LocalTreeArchive | undefined;
-  subjectEnvNames: string[];
-  state: RunSubjectProvenance["state"];
-}): RunSubjectProvenance {
-  if (args.localTreeRoute) {
-    return {
-      source: "local-tree",
-      ...(args.localTreeArchive === undefined
-        ? {}
-        : { archiveSha256: args.localTreeArchive.archiveSha256 }),
-      ...(args.subjectCommit === undefined ? {} : { commit: args.subjectCommit }),
-      ...(args.localTreeArchive?.git === undefined
-        ? {}
-        : { dirty: args.localTreeArchive.git.dirty }),
-      envNames: args.subjectEnvNames,
-      state: args.state,
-    };
-  }
-  return {
-    source: "clone",
-    repo: args.publicRepo,
-    ...(args.subjectCommit === undefined ? {} : { commit: args.subjectCommit }),
-    envNames: args.subjectEnvNames,
-    state: args.state,
-  };
-}
-
-function laneTaxonomyLabel(spec: Pick<CuaLaneSpec, "actorType" | "surface" | "caseGroup">): string {
-  const parts = [
-    spec.actorType ? `type:${spec.actorType}` : undefined,
-    spec.surface ? `surface:${spec.surface}` : undefined,
-    spec.caseGroup ? `case:${spec.caseGroup}` : undefined,
-  ].filter((part): part is string => part !== undefined);
-  return parts.length > 0 ? ` (${parts.join(" / ")})` : "";
-}
-
-/** Build one actor lane's CuaLaneSpec from a roster role (per-actor device IS honored here — each
- *  actor has its OWN desktop). */
-function buildActorSpec(
-  config: LabConfig,
-  role: LabActorLane,
-  index: number,
-  personas: Map<string, ResolvedPersona>,
-): CuaLaneSpec {
-  const mission = config.actors[0]?.mission ?? DEFAULT_MISSION;
-  const device = resolveLaneDevice(config, role);
-  // A seat without its own persona takes actors[0].persona, as independent lanes do.
-  const personaId = role.persona ?? config.actors[0]?.persona;
-  const resolvedPersona = personaId === undefined ? undefined : personas.get(personaId);
-  const composed = composeLaneInstructions({
-    mission,
-    ...(personaId === undefined ? {} : { persona: personaId }),
-    ...(resolvedPersona === undefined ? {} : { resolvedPersona }),
-    ...(role.instruction === undefined ? {} : { instruction: role.instruction }),
-    device: { name: device.name, preset: device.preset },
-  });
-  const roleId = participantIdAt(index, role.id, "seat");
-  const streamId = `stream-${String(index + 1).padStart(3, "0")}`;
-  return {
-    laneId: roleId,
-    ...(role.actorType === undefined ? {} : { actorType: role.actorType }),
-    ...(role.surface === undefined ? {} : { surface: role.surface }),
-    ...(role.caseGroup === undefined ? {} : { caseGroup: role.caseGroup }),
-    laneIndex: index,
-    simId: `sim-${String(index + 1).padStart(3, "0")}`,
-    streamId,
-    persona: composed.persona,
-    instructions: composed.instructions,
-    assignment: { mission, ...(role.instruction === undefined ? {} : { focus: role.instruction }) },
-    ...((role.reasoningEffort ?? config.actors[0]?.reasoningEffort) === undefined
-      ? {}
-      : { reasoningEffort: (role.reasoningEffort ?? config.actors[0]?.reasoningEffort)! }),
-    ...(config.actors[0]?.maxOutputTokens === undefined
-      ? {}
-      : { maxOutputTokens: config.actors[0].maxOutputTokens }),
-    ...((role.stopWhen ?? config.actors[0]?.stopWhen) === undefined
-      ? {}
-      : { stopWhen: (role.stopWhen ?? config.actors[0]?.stopWhen)! }),
-    ...((role.dwell ?? config.actors[0]?.dwell) === undefined
-      ? {}
-      : { dwell: (role.dwell ?? config.actors[0]?.dwell)! }),
-    deviceName: device.name,
-    devicePreset: device.preset,
-    resolution: device.resolution,
-    screenshotDir: roleId,
-    traceArtifactPath: `actors/${streamId}.json`,
-  };
-}
-
-/** Thread the host-yielded lobby CODE into a follower's mission at runtime (external-public route).
- *  The CODE flows into the follower's join instruction; it is persisted only as the composed prompt
- *  the model reads (never a raw bundle field), and the lab scrubs the CODE from all narration. The
- *  follower joins through the real UI (a direct /lobby/CODE visit does not auto-join a non-member). */
-function withLobbyCodeMission(spec: CuaLaneSpec, code: string): CuaLaneSpec {
-  return {
-    ...spec,
-    instructions: `${spec.instructions}\n\nThe multiplayer lobby code is ${code}. On the home screen choose Join, enter this lobby code, enter your name, and submit to join the shared game (do not open a lobby URL directly — go through the Join flow).`,
-  };
-}
-
-/** A follower blocked by an expired deadline or an ended host. It never opened a browser;
- * keep the actual reason rather than turning every upstream failure into a timeout. */
-function makeBlockedFollowerOutcome(
-  spec: CuaLaneSpec,
-  reason: string,
-  timedOut: boolean,
-): LaneRunOutcome {
-  return {
-    spec,
-    sessionError: `handoff barrier: ${reason}; this follower failed closed WITHOUT opening (no wasted turns).`,
-    killed: false,
-    streamUrlPresent: false,
-    screenshots: [],
-    stateStepRecords: [],
-    phaseRecords: [],
-    warnings: [],
-    noEngagement: true,
-    selfReportedBlocker: false,
-    harnessError: false,
-    skippedReason: timedOut ? "handoff-timeout" : "host-ended-before-handoff",
-  };
 }
 
 /**
@@ -2244,651 +1767,4 @@ async function runConcurrentSharedWorldInScope(
     warnings: [...warnings, ...adapterWarnings, ...observer.warnings],
     ...(errorResult === undefined ? {} : { error: errorResult }),
   };
-}
-
-/** Max windows live at the same instant (sweep over start/end points). The honest simultaneity
- *  count: lane COUNT says how many seats existed; this says how many ever ran at once. */
-function maxSimultaneousWindows(windows: Array<{ startedAt: number; endedAt: number }>): number {
-  const points = windows
-    .filter((w) => w.endedAt > w.startedAt)
-    .flatMap((w) => [
-      { at: w.startedAt, delta: 1 },
-      { at: w.endedAt, delta: -1 },
-    ]);
-  points.sort((a, b) => a.at - b.at || a.delta - b.delta); // end before start at the same instant
-  let live = 0;
-  let max = 0;
-  for (const point of points) {
-    live += point.delta;
-    if (live > max) max = live;
-  }
-  return max;
-}
-
-/** True when ≥2 actor windows overlap in time (the proven-concurrency signal). */
-function actorWindowsOverlap(results: ActorLaneResult[]): boolean {
-  for (let i = 0; i < results.length; i += 1) {
-    for (let j = i + 1; j < results.length; j += 1) {
-      const a = results[i]!;
-      const b = results[j]!;
-      if (a.startedAt < b.endedAt && b.startedAt < a.endedAt) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
-function actorLanePassed(result: ActorLaneResult | undefined): boolean {
-  if (!result) return false;
-  const session = result.outcome.session;
-  return (
-    session !== undefined &&
-    session.status === "passed" &&
-    session.completionReason !== "harness_error" &&
-    result.outcome.sessionError === undefined &&
-    !result.outcome.noEngagement &&
-    !result.outcome.selfReportedBlocker
-  );
-}
-
-/**
- * Keep three different claims separate in the stakeholder roll-up:
- *
- * - `outcome.ok` says the actor session passed the harness's credibility checks;
- * - `completionReason` says how the participant session ended;
- * - shared-world convergence is reported by the plane-specific summary alongside this line.
- *
- * None of those is adopter-scored proof that the mission text was completed. In particular, a
- * productive `budget_reached` session can coexist with lobby convergence without becoming a
- * `goal_satisfied` result (#364).
- */
-function formatSharedWorldActorOutcomes(
-  outcomes: SharedWorldOutcome[],
-  expectedCount: number,
-): string {
-  const passedSessions = outcomes.filter((outcome) => outcome.ok).length;
-  const goalSatisfiedSessions = outcomes.filter(
-    (outcome) => outcome.ok && outcome.completionReason === "goal_satisfied",
-  ).length;
-  const completionReasonCounts = new Map<string, number>();
-  for (const outcome of outcomes) {
-    const reason = outcome.completionReason ?? "not_recorded";
-    completionReasonCounts.set(reason, (completionReasonCounts.get(reason) ?? 0) + 1);
-  }
-  for (let missing = outcomes.length; missing < expectedCount; missing += 1) {
-    completionReasonCounts.set(
-      "not_recorded",
-      (completionReasonCounts.get("not_recorded") ?? 0) + 1,
-    );
-  }
-  const completionReasons = [...completionReasonCounts.entries()]
-    // ASCII contract tokens: compare directly so bundle text is byte-stable across host locales.
-    .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
-    .map(([reason, count]) => `${reason} ${count}/${expectedCount}`)
-    .join(", ");
-
-  return `${passedSessions}/${expectedCount} actor session(s) passed credibility checks; mission endpoint: ${goalSatisfiedSessions}/${expectedCount} ended goal_satisfied; completion reasons: ${completionReasons}`;
-}
-
-/** Project the concurrent run into a humanish.run-bundle.v1 with the CONCURRENT shared-world block. */
-export function buildConcurrentSharedWorldBundle(args: {
-  /** Lab provenance for the bundle\'s own `lab` field (#455). */
-  lab?: RunLabProvenance;
-  config: LabConfig;
-  descriptor: CuaActorDescriptor;
-  createdAt: string;
-  dryRun: boolean;
-  inProgress?: boolean;
-  runId: string;
-  source: RunBundle["source"];
-  roles: LabActorLane[];
-  actorSpecs: CuaLaneSpec[];
-  actorResults: ActorLaneResult[];
-  stateSnapshots: SharedWorldStateSnapshot[];
-  subject: RunSubjectProvenance;
-  seedDigest: string;
-  subjectCommit?: string;
-  hostDigest?: string;
-  /** Run-level digest-only comms-thread evidence path (humanish.comms-thread.v1), when a comms lab
-   *  captured mail into the subject sandbox's catch. Registered on the first persona stream (it is a
-   *  property of the ONE shared app, not of any single persona). */
-  commsArtifactPath?: string;
-  /** #164 phase 2: the plane-class discriminator (default provisioned-getHost, byte-stable). */
-  planeClass?: ConcurrentSharedWorldPlaneClass;
-  /** external-public only: sha256-16 of the OBSERVED origin the seats converged on (the convergence
-   *  proof — what the seats actually reached, tolerant of a declared->observed redirect). */
-  publicOriginDigest?: string;
-  /** external-public only: sha256-16 of the operator-DECLARED plane origin (evidence/reference only;
-   *  NOT asserted equal to the observed origin — a cross-origin redirect is normal and expected). */
-  declaredOriginDigest?: string;
-  /** external-public only: sha256-16 of the shared /lobby/CODE path all seats converged on. */
-  lobbyConvergenceDigest?: string;
-  runError?: string;
-}): RunBundle {
-  const { config, descriptor, createdAt, dryRun, actorSpecs, actorResults, roles } = args;
-  const inProgress = args.inProgress === true;
-  const external = (args.planeClass ?? "provisioned-getHost") === "external-public";
-  const simulations: RunSimulation[] = [];
-  const streams: RunStream[] = [];
-  const events: RunEvent[] = [];
-  // Public-safe label only — neither the raw getHost URL (provisioned) nor the raw public origin
-  // (external-public) lands in the bundle. The plane identity is a DIGEST (plane.hostDigest on
-  // getHost; plane.publicOriginDigest on external-public).
-  const appUrl = external ? "[external-public-plane]" : "[provisioned-subject]";
-  const planeCommit = external ? undefined : dryRun ? undefined : args.subjectCommit;
-
-  events.push({
-    id: "event-000-created",
-    at: createdAt,
-    level: "info",
-    type: "concurrent-shared-world.run.created",
-    message: `Created CONCURRENT shared-world run for ${config.id} (actor ${descriptor.id}, ${actorSpecs.length} persona(s) vs ONE shared plane, max ${config.execution?.concurrency ?? actorSpecs.length} concurrent).`,
-  });
-  // Human-readable plane label, byte-stable for the clone route. local-tree has no repo slug: it
-  // labels the packed archive instead (archiveSha256 + dirty/clean when the packed root was a git
-  // work tree).
-  const dryRunPlaneLabel =
-    args.subject.source === "local-tree" ? "packed working tree" : `clone of ${args.subject.repo}`;
-  const livePlaneLabel =
-    args.subject.source === "local-tree"
-      ? args.subject.archiveSha256
-        ? `packed working tree (archiveSha256 ${args.subject.archiveSha256}${args.subject.dirty === true ? ", dirty working tree" : args.subject.dirty === false ? ", clean working tree" : ""})`
-        : "packed working tree (archive digest unresolved; provisioning failed before resolution)"
-      : `clone of ${args.subject.repo}${args.subjectCommit ? `@${args.subjectCommit}` : ""}`;
-  // External-public plane provenance is HONESTLY different: an operator-declared, operator-OWNED
-  // public deployment humanish neither provisioned nor seeded — NO getHost, NO clone, NO synthetic
-  // attestation (claiming synthetic on a real site is a lie). The origin persists digest-only.
-  const externalPlaneOwner = config.subject.publicTarget?.owner ?? "(operator-declared)";
-  events.push({
-    id: "event-001-plane",
-    at: createdAt,
-    level: "info",
-    type: "concurrent-shared-world.plane.provenance",
-    message: external
-      ? `Shared plane: an EXTERNAL-PUBLIC deployment (operator-attested owner ${externalPlaneOwner}, authorized) used DIRECTLY as the shared plane — NO getHost, clone, subject sandbox, or seed. The harness OBSERVES that each seat reached the operator-declared origin (publicOriginDigest); it did NOT mint or control the plane. Author-trust ownership attestation, NOT a synthetic-data claim.`
-      : dryRun
-        ? `Shared plane declared: ${dryRunPlaneLabel}, served + getHost-exposed in-sandbox (dry-run contract; nothing ${args.subject.source === "local-tree" ? "packed" : "cloned"}). Seed recipe ${args.seedDigest}; SYNTHETIC subject (author-attested); env names: ${args.subject.envNames?.join(", ") || "none"} (values never persisted).`
-        : `Shared plane: ${livePlaneLabel}, served + exposed at the harness-minted getHost URL; seed recipe ${args.seedDigest}; SYNTHETIC subject (author-attested); env names: ${args.subject.envNames?.join(", ") || "none"} (values never persisted).`,
-    simId: actorSpecs[0]?.simId ?? "sim-001",
-    streamId: actorSpecs[0]?.streamId ?? "stream-001",
-  });
-
-  let eventSeq = 2;
-  const nextEventId = (suffix: string): string =>
-    `event-${String(eventSeq++).padStart(3, "0")}-${suffix}`;
-
-  actorSpecs.forEach((spec, index) => {
-    const taxonomy = laneTaxonomyLabel(spec);
-    const result = actorResults[index];
-    const outcome = result?.outcome;
-    const session = outcome?.session;
-    const screenshots = outcome?.screenshots ?? [];
-    const lastScreenshot = screenshots[screenshots.length - 1];
-    // public-safe (origin redacted): external-public seats open the public plane; getHost seats a seat path.
-    const route = external ? "[external-public-plane]" : publicSafeRouteLabel(roles[index]?.entry);
-    const status: RunSimulationStatus = session
-      ? session.status
-      : outcome?.sessionError
-        ? "failed"
-        : inProgress
-          ? "running"
-          : "contract_proof_only";
-    const reason =
-      session?.reason ??
-      outcome?.sessionError ??
-      (inProgress
-        ? "Actor desktop is running; the attached Observer hydrates the runtime stream URL without persisting it."
-        : "Contract actor only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.");
-    const traceScreenshotMode = session?.trace.redaction.screenshots;
-    // Include `declared` on the no-outcome fallback too (dry-run, skipped lane): otherwise an
-    // ABSENT declared means either "the preset rendered faithfully" or "there was no live
-    // outcome", and a dry-run bundle keeps the self-confirming shape this field exists to kill.
-    const fallbackDeclared = declaredScreenForRender(
-      spec.devicePreset,
-      spec.deviceName,
-      spec.resolution,
-    );
-    const desktopGeometry = outcome?.desktopGeometry ?? {
-      screen: {
-        requested: { width: spec.resolution[0], height: spec.resolution[1] },
-        ...(fallbackDeclared ? { declared: fallbackDeclared } : {}),
-      },
-    };
-    const screenshotMode: "raw" | "blurred" =
-      traceScreenshotMode === "raw" || traceScreenshotMode === "blurred"
-        ? traceScreenshotMode
-        : config.policies?.redactScreenshots === true
-          ? "blurred"
-          : "raw";
-
-    simulations.push({
-      id: spec.simId,
-      index: index + 1,
-      personaId: spec.persona.id,
-      scenarioId: `concurrent-shared-world-${config.id}`,
-      status,
-      streamKind: "browser",
-      mode: "browser-sim",
-      progress: inProgress ? 35 : 100,
-      currentStep: reason,
-      summary: session
-        ? `Persona ${spec.laneId}${taxonomy} (${spec.persona.id}): drove the shared plane concurrently; ${session.completionReason}.`
-        : outcome?.sessionError
-          ? `Persona ${spec.laneId}${taxonomy} failed before a terminal session verdict: ${outcome.sessionError}`
-          : inProgress
-            ? `Persona ${spec.laneId}${taxonomy} (${spec.persona.id}) is running against the shared plane.`
-            : `Contract persona ${spec.laneId}${taxonomy} (${spec.persona.id}) for ${descriptor.id} against the shared plane at ${appUrl}.`,
-      streamIds: [spec.streamId],
-      startedAt: createdAt,
-      updatedAt: createdAt,
-    });
-
-    streams.push({
-      id: spec.streamId,
-      simId: spec.simId,
-      ...(spec.assignment === undefined
-        ? {}
-        : { assignment: participantAssignment(spec.assignment) }),
-      kind: "browser",
-      label: `Concurrent persona ${spec.laneId}${taxonomy} — ${config.id}`,
-      status,
-      transport: "snapshot",
-      updatedAt: createdAt,
-      embed: lastScreenshot
-        ? {
-            kind: "screenshot",
-            url: lastScreenshot,
-            title: `Shared plane, persona ${spec.laneId} (${screenshotMode})`,
-          }
-        : { kind: "placeholder", title: `Shared plane, persona ${spec.laneId}` },
-      ...(desktopGeometry.viewport === undefined
-        ? {}
-        : {
-            viewport: {
-              width: desktopGeometry.viewport.width,
-              height: desktopGeometry.viewport.height,
-              deviceScaleFactor: desktopGeometry.viewport.deviceScaleFactor,
-              isMobile: spec.devicePreset.isMobile,
-            },
-          }),
-      desktopGeometry,
-      ui: {
-        route,
-        intent: `Watch persona ${spec.laneId}${taxonomy} (${spec.persona.id}) drive the SHARED plane concurrently with the other personas.`,
-        state: reason,
-        ...(session ? { actorStatus: session.status } : {}),
-        ...(lastScreenshot ? { screenshotUrl: lastScreenshot } : {}),
-      },
-      ...(session ? { actor: session.trace } : {}),
-      artifacts: [
-        { label: "run bundle", path: "run.json", kind: "bundle" as const },
-        { label: "review", path: "review.md", kind: "review" as const },
-        { label: "events", path: "events.ndjson", kind: "events" as const },
-        ...(session
-          ? [
-              {
-                label: `persona ${spec.laneId} actor trace`,
-                path: spec.traceArtifactPath,
-                kind: "trace" as const,
-              },
-            ]
-          : []),
-        // Run-level comms evidence belongs to the ONE shared app, not a persona — register it once, on
-        // the first stream, so the bundle's existence-verify + public-safety scan cover it without
-        // double-counting across seats.
-        ...(index === 0 && args.commsArtifactPath
-          ? [{ label: "comms thread", path: args.commsArtifactPath, kind: "log" as const }]
-          : []),
-        ...screenshots.map((screenshot, screenshotIndex) => ({
-          label: `persona ${spec.laneId} screenshot ${String(screenshotIndex + 1).padStart(2, "0")} (${screenshotMode})`,
-          path: screenshot,
-          kind: "screenshot" as const,
-        })),
-      ],
-    });
-
-    for (const warning of outcome?.warnings ?? []) {
-      events.push({
-        id: nextEventId(`warning-${spec.laneId}`),
-        at: createdAt,
-        level: "warn",
-        type: "concurrent-shared-world.actor.warning",
-        message: `Persona ${spec.laneId}: ${warning}`,
-        simId: spec.simId,
-        streamId: spec.streamId,
-      });
-    }
-
-    if (session) {
-      events.push({
-        id: nextEventId(`session-${spec.laneId}`),
-        at: createdAt,
-        level: session.status === "passed" ? "info" : "warn",
-        type: `concurrent-shared-world.session.${session.completionReason}`,
-        message: `Persona ${spec.laneId}: ${session.status} — ${session.reason}`,
-        simId: spec.simId,
-        streamId: spec.streamId,
-      });
-    } else if (outcome?.sessionError) {
-      events.push({
-        id: nextEventId(`session-error-${spec.laneId}`),
-        at: createdAt,
-        level: "error",
-        type: "concurrent-shared-world.session.error",
-        message: `Persona ${spec.laneId}: ${outcome.sessionError}`,
-        simId: spec.simId,
-        streamId: spec.streamId,
-      });
-    } else if (inProgress) {
-      events.push({
-        id: nextEventId(`running-${spec.laneId}`),
-        at: createdAt,
-        level: "info",
-        type: "actor.running",
-        message: `Persona ${spec.laneId}: desktop actor is running; live stream URL is runtime-only and not persisted.`,
-        simId: spec.simId,
-        streamId: spec.streamId,
-      });
-    } else {
-      events.push({
-        id: nextEventId(`contract-${spec.laneId}`),
-        at: createdAt,
-        level: "info",
-        type: "concurrent-shared-world.contract.ready",
-        message: `Persona ${spec.laneId}: dry-run contract actor ready; switch scenario.mode to live for a real concurrent session.`,
-        simId: spec.simId,
-        streamId: spec.streamId,
-      });
-    }
-  });
-
-  // Build the concurrent shared-world evidence block. routeHostDigest is sha256-16 of the ORIGIN each
-  // seat reached: on getHost the seat URL the actor drove (verify confirms == plane.hostDigest); on
-  // external-public the seat's CDP-OBSERVED URL origin (verify confirms == plane.publicOriginDigest).
-  const fallbackHostDigest = external
-    ? (args.publicOriginDigest ?? commandDigestOf("[external-public-plane]"))
-    : (args.hostDigest ?? commandDigestOf("[provisioned-subject]"));
-  const laneWindows: SharedWorldLaneWindow[] = actorSpecs.map((spec, index) => {
-    const result = actorResults[index];
-    const session = result?.outcome.session;
-    const routeHostDigest = result ? hostOriginDigest(result.route) : fallbackHostDigest;
-    return {
-      roleId: spec.laneId,
-      ...(spec.actorType === undefined ? {} : { actorType: spec.actorType }),
-      ...(spec.surface === undefined ? {} : { surface: spec.surface }),
-      ...(spec.caseGroup === undefined ? {} : { caseGroup: spec.caseGroup }),
-      simId: spec.simId,
-      streamId: spec.streamId,
-      startedAt: result?.startedAt ?? 0,
-      endedAt: result?.endedAt ?? 0,
-      verdict: session
-        ? session.status
-        : result?.outcome.sessionError
-          ? "failed"
-          : inProgress
-            ? "running"
-            : "contract_proof_only",
-      routeHostDigest,
-      ...(planeCommit === undefined ? {} : { commit: planeCommit }),
-      seedDigest: args.seedDigest,
-    };
-  });
-
-  // Option A (external-public): NO authoritative shared-state proof — OMIT stateSeries entirely (there
-  // is no in-sandbox filesystem to digest; concurrency is proven by temporal co-occupancy + lobby
-  // convergence). The provisioned-getHost plane keeps its authoritative in-sandbox checkpoint series.
-  const stateSeries: SharedWorldStateSnapshot[] | undefined = external
-    ? undefined
-    : dryRun
-      ? [{ timestamp: 0, digest: declaredStateDigest(config) }]
-      : [...args.stateSnapshots].sort((a, b) => a.timestamp - b.timestamp);
-
-  const outcomes: SharedWorldOutcome[] = actorSpecs.map((spec, index) => {
-    const result = actorResults[index];
-    const session = result?.outcome.session;
-    const ok = !dryRun && actorLanePassed(result);
-    return {
-      roleId: spec.laneId,
-      ...(spec.actorType === undefined ? {} : { actorType: spec.actorType }),
-      ...(spec.surface === undefined ? {} : { surface: spec.surface }),
-      ...(spec.caseGroup === undefined ? {} : { caseGroup: spec.caseGroup }),
-      simId: spec.simId,
-      streamId: spec.streamId,
-      status: session
-        ? session.status
-        : result?.outcome.sessionError
-          ? "failed"
-          : inProgress
-            ? "running"
-            : "contract_proof_only",
-      ...(session ? { completionReason: session.completionReason } : {}),
-      ok,
-    };
-  });
-
-  // The plane block is plane-class-specific. getHost: harness-minted hostDigest + synthetic
-  // attestation. external-public: operator-declared publicOriginDigest, NO hostDigest, NO exposure
-  // (claiming synthetic on a real site would be a lie — verify asserts both ABSENT there).
-  const plane: SharedWorldPlane = external
-    ? {
-        seedDigest: args.seedDigest,
-        envNames: [],
-        // publicOriginDigest is the OBSERVED convergence origin; declaredOriginDigest records the
-        // operator-declared origin for reference (a redirect makes them differ — not a failure).
-        ...(args.publicOriginDigest === undefined
-          ? {}
-          : { publicOriginDigest: args.publicOriginDigest }),
-        ...(args.declaredOriginDigest === undefined
-          ? {}
-          : { declaredOriginDigest: args.declaredOriginDigest }),
-      }
-    : {
-        ...(planeCommit === undefined ? {} : { commit: planeCommit }),
-        seedDigest: args.seedDigest,
-        envNames: args.subject.envNames ?? [],
-        ...(args.hostDigest === undefined ? {} : { hostDigest: args.hostDigest }),
-        exposure: "synthetic",
-      };
-
-  const sharedWorld: SharedWorldEvidence = {
-    schema: SHARED_WORLD_SCHEMA,
-    topology: "shared-world",
-    topologyMode: "concurrent",
-    // Byte-stable: the provisioned-getHost plane omits planeClass (absent == provisioned-getHost).
-    ...(external ? { planeClass: "external-public" as const } : {}),
-    roleCount: actorSpecs.length,
-    plane,
-    attributionLimits: external
-      ? [...EXTERNAL_PUBLIC_ATTRIBUTION_LIMITS]
-      : [...CONCURRENT_ATTRIBUTION_LIMITS],
-    laneWindows,
-    // Option A: external-public carries NO stateSeries.
-    ...(stateSeries === undefined ? {} : { stateSeries }),
-    outcomes,
-    ...(args.lobbyConvergenceDigest === undefined
-      ? {}
-      : { lobbyConvergenceDigest: args.lobbyConvergenceDigest }),
-  };
-
-  const overlaps = actorWindowsOverlap(actorResults);
-  const deltas = (stateSeries ?? []).filter(
-    (snapshot, i) => i > 0 && snapshot.digest !== (stateSeries ?? [])[i - 1]!.digest,
-  ).length;
-  const stateSeriesLabel = external
-    ? "stateSeries omitted (no authoritative shared-state proof on the external-public plane)"
-    : `stateSeries ${(stateSeries ?? []).length} snapshot(s), ${deltas} delta(s)`;
-  const convergenceLabel = external
-    ? `; lobby convergence ${args.lobbyConvergenceDigest ? "PROVEN (all seats reached one /lobby/CODE)" : "not observed"}`
-    : "";
-  // The count that matters is how many lanes were LIVE AT ONCE, not how many lanes exist — a
-  // 6-lane run capped at 3 must never read as 6-wide concurrency (#350, the field failure).
-  const capForReport = config.execution?.concurrency ?? laneWindows.length;
-  const maxLive = maxSimultaneousWindows(laneWindows);
-  events.push({
-    id: nextEventId("concurrency"),
-    at: createdAt,
-    level: "info",
-    type: "concurrent-shared-world.concurrency",
-    message: `Concurrency: ${laneWindows.length} lane(s)${dryRun ? " (dry-run contract; $0)" : `, up to ${maxLive} live at once (cap ${capForReport}), overlap ${overlaps ? "PROVEN" : "not observed"}`}; ${stateSeriesLabel}${convergenceLabel}. Attribution ceiling: ${sharedWorld.attributionLimits.join(", ")}. ${dryRun ? "This contract-only run proves no live concurrency, scale, or adoption." : "This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement."}`,
-  });
-
-  // Concurrent verdict: dryRun → contract; else every actor produced a terminal, engaged PASSED
-  // session → pass; otherwise fail. Mission endpoint and completion reasons are reported
-  // separately below; `outcomes[].ok` is not renamed into mission success (#364).
-  const verdict: ReviewSummary["verdict"] = dryRun
-    ? "contract_proof_only"
-    : inProgress
-      ? "contract_proof_only"
-      : actorResults.length === actorSpecs.length && actorResults.every(actorLanePassed)
-        ? "pass"
-        : "fail";
-  const actorOutcomeSummary = formatSharedWorldActorOutcomes(outcomes, actorSpecs.length);
-
-  const review: ReviewSummary = {
-    schema: REVIEW_SCHEMA,
-    verdict,
-    // Plane-class-aware: the external-public plane has NO getHost/clone/seed and carries NO
-    // authoritative state series, so its summary must not claim a getHost-exposed plane (dry-run) nor
-    // report "state delta(s) under load" (live) — it reports lobby convergence instead.
-    summary: dryRun
-      ? external
-        ? `Dry-run concurrent shared-world contract: ${actorSpecs.length} persona(s) declared against ONE external-public shared plane (a real public deployment used directly; no getHost/clone/seed); no sandboxes launched, $0 spend.`
-        : `Dry-run concurrent shared-world contract: ${actorSpecs.length} persona(s) declared against ONE getHost-exposed plane (${descriptor.id}); no sandboxes launched, $0 spend.`
-      : inProgress
-        ? `In-progress concurrent shared-world Observer snapshot: ${actorSpecs.length} persona(s) running against ONE shared plane; final verification is pending.`
-        : external
-          ? `Concurrent shared-world (ONE external-public plane, ${actorSpecs.length} simultaneous personas): swarm ${verdict === "pass" ? "ran coherently" : "did not run coherently"}; ${actorOutcomeSummary}; overlap ${overlaps ? "proven" : "not observed"}; ${args.lobbyConvergenceDigest ? `${actorSpecs.length} seats converged on one lobby` : "lobby convergence not observed"}.`
-          : `Concurrent shared-world (ONE plane, ${actorSpecs.length} simultaneous personas): swarm ${verdict === "pass" ? "ran coherently" : "did not run coherently"}; ${actorOutcomeSummary}; overlap ${overlaps ? "proven" : "not observed"}; ${deltas} state delta(s) under load.`,
-    gaps: dryRun
-      ? [
-          "This dry-run launched no concurrent shared-world session; it proves contract shape only, not live behavior, scale, or adopter-harness replacement.",
-        ]
-      : inProgress
-        ? [
-            "Final actor traces, screenshots, state deltas, and verification are pending; this Observer is for live watch only.",
-          ]
-        : actorResults
-            .filter(
-              (result) =>
-                result.outcome.sessionError !== undefined ||
-                result.outcome.noEngagement ||
-                result.outcome.selfReportedBlocker ||
-                result.outcome.session === undefined ||
-                result.outcome.session.status !== "passed",
-            )
-            .map(
-              (result) =>
-                `${result.spec.laneId}: ${result.outcome.sessionError ?? result.outcome.session?.reason ?? "did not pass"}`,
-            ),
-  };
-
-  const anyRaw = actorResults.some(
-    (result) => result.outcome.session?.trace.redaction.screenshots === "raw",
-  );
-  const ranLive = actorResults.some(
-    (result) => result.outcome.session !== undefined || result.outcome.sessionError !== undefined,
-  );
-
-  return {
-    schema: RUN_BUNDLE_SCHEMA,
-    ...receivingPublication(args.config, args.dryRun),
-    runId: args.runId,
-    mode: dryRun ? "dry-run" : "live",
-    simCount: actorSpecs.length,
-    createdAt,
-    cwd: PUBLIC_TARGET_CWD,
-    ...(args.lab === undefined ? {} : { lab: args.lab }),
-    artifactRoot: path.join(".humanish", "runs", args.runId),
-    source: args.source,
-    persona: {
-      id: actorSpecs[0]?.persona.id ?? "concurrent-persona",
-      name: `Concurrent shared-world swarm (${actorSpecs.length} personas)`,
-      source: `lab:${config.id}`,
-      sourceDigest: actorSpecs[0]?.persona.promptDigest ?? args.seedDigest,
-    },
-    scenario: {
-      id: `concurrent-shared-world-${config.id}`,
-      title: config.title ?? `Concurrent shared-world: ${config.id}`,
-      goal: redactText(
-        actorSpecs[0]?.evidenceInstructions ??
-          actorSpecs[0]?.instructions ??
-          "Concurrent shared-world interaction.",
-      ),
-      source: `lab:${config.id}`,
-      sourceDigest: actorSpecs[0]?.persona.promptDigest ?? args.seedDigest,
-    },
-    lifecycle: [
-      {
-        at: createdAt,
-        event: "concurrent-shared-world.run.created",
-        message: `Created concurrent shared-world run with ONE shared plane and ${actorSpecs.length} simultaneous actor seats (actor ${descriptor.id}).`,
-      },
-    ],
-    simulations,
-    streams,
-    events,
-    redaction: {
-      status: "passed",
-      notes: ranLive
-        ? anyRaw
-          ? "Typed text recorded as length only and reasoning/messages pass through text redaction. Some personas captured FULL-FIDELITY (raw) screenshots, retained for local use — NOT redacted for publishing; set policies.redactScreenshots: true to blur a share-as-is bundle. stateSeries persists digest-only."
-          : "Typed text recorded as length only and reasoning/messages pass through text redaction. Screenshots are blurred at capture (policies.redactScreenshots: true) for a share-as-is bundle. stateSeries persists digest-only."
-        : inProgress
-          ? "In-progress live Observer snapshot: runtime stream auth URLs are process-local only and are not persisted. Final typed text, traces, and screenshots are pending. stateSeries persists digest-only."
-          : "Dry-run concurrent shared-world contract bundle: no sandboxes launched and no screenshots captured. Typed text is recorded as length only and reasoning/messages pass through text redaction whenever a session runs. stateSeries persists digest-only.",
-    },
-    artifacts: {
-      run: "run.json",
-      reviewJson: "review.json",
-      reviewMarkdown: "review.md",
-      observerData: "observer/observer-data.json",
-      events: "events.ndjson",
-    },
-    review,
-    feedbackCandidates: [],
-    // Custom desktop image provenance (subject + every actor sandbox launched on it); omitted on the default.
-    ...(config.execution?.desktop?.template === undefined
-      ? {}
-      : { desktopTemplate: config.execution.desktop.template }),
-    subject: args.subject,
-    attributionClass: "shared-world",
-    sharedWorld,
-  };
-}
-
-/** The declared (dry-run) state digest: the probe RECIPE (command digests), no run. */
-function declaredStateDigest(config: LabConfig): string {
-  const probes = config.subject.state?.checkpoint ?? [];
-  return combineCheckpointDigest(
-    probes.map((probe) => `${probe.name}=${commandDigestOf(probe.command)}`),
-  );
-}
-
-function renderConcurrentReviewMarkdown(bundle: RunBundle): string {
-  const plane = bundle.events.find(
-    (event) => event.type === "concurrent-shared-world.plane.provenance",
-  );
-  const concurrency = bundle.events.find(
-    (event) => event.type === "concurrent-shared-world.concurrency",
-  );
-  const sw = bundle.sharedWorld;
-  return [
-    `# ${bundle.scenario.title}`,
-    "",
-    `- run: ${bundle.runId}`,
-    `- mode: ${bundle.mode}`,
-    `- attribution class: ${bundle.attributionClass ?? "isolated"}`,
-    `- topology: ${sw?.topology ?? "(none)"} / ${sw?.topologyMode ?? "(none)"}`,
-    `- personas: ${sw?.roleCount ?? 0}`,
-    `- verdict: ${bundle.review.verdict}`,
-    `- summary: ${bundle.review.summary}`,
-    ...(plane ? [`- plane: ${plane.message}`] : []),
-    ...(concurrency ? [`- concurrency: ${concurrency.message}`] : []),
-    ...(sw ? [`- attribution limits: ${sw.attributionLimits.join(", ")}`] : []),
-    ...(bundle.review.gaps.length > 0
-      ? ["", "## Gaps", ...bundle.review.gaps.map((gap) => `- ${gap}`)]
-      : []),
-    "",
-  ].join("\n");
 }

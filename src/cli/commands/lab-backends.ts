@@ -4,7 +4,7 @@ import { runLab, resolveLabDryRun } from "../../lab/engine.js";
 import type { RunLabProvenance } from "../../run/status.js";
 import { CUA_ACTOR_LAB_SCHEMA } from "../../routes/computer-use/types.js";
 import type { CuaActorLabErrorCode, CuaActorLabResult } from "../../routes/computer-use/types.js";
-import type { ConcurrentSharedWorldLabResult } from "../../routes/shared-world/concurrent.js";
+import type { ConcurrentSharedWorldLabResult } from "../../routes/shared-world/types.js";
 import type { LabConfig } from "../../lab/types.js";
 import { serveObserver } from "../../observer/render.js";
 import type { ObserverResult, ObserverServer } from "../../observer/render.js";

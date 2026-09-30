@@ -338,23 +338,22 @@ export type {
   TerminalProductScoringContext,
 } from "./routes/terminal/types.js";
 export type { SharedWorldLabHooks } from "./routes/shared-world/hooks.js";
+export { buildConcurrentSharedWorldBundle } from "./routes/shared-world/bundle.js";
+export { runConcurrentSharedWorld } from "./routes/shared-world/lab.js";
+export { LOBBY_CODE_PATTERN, extractLobbyCode } from "./routes/shared-world/lobby-code.js";
 export {
   CONCURRENT_ATTRIBUTION_LIMITS,
   CONCURRENT_SHARED_WORLD_LAB_SCHEMA,
   CONCURRENT_SHARED_WORLD_PROVIDER_METADATA,
   EXTERNAL_PUBLIC_ATTRIBUTION_LIMITS,
-  LOBBY_CODE_PATTERN,
-  buildConcurrentSharedWorldBundle,
-  extractLobbyCode,
-  runConcurrentSharedWorld,
-} from "./routes/shared-world/concurrent.js";
+} from "./routes/shared-world/types.js";
 export type {
   ConcurrentSharedWorldLabErrorCode,
   ConcurrentSharedWorldLabResult,
   ConcurrentSharedWorldPlaneClass,
   ConcurrentSharedWorldRoleResult,
   RunConcurrentSharedWorldLabOptions,
-} from "./routes/shared-world/concurrent.js";
+} from "./routes/shared-world/types.js";
 export {
   probeUrl,
   readDetachedLog,
