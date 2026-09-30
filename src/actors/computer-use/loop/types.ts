@@ -208,6 +208,12 @@ export interface CuaProvider {
    * docs/architecture/state-driven-executor.md.
    */
   readonly requiresFrame?: boolean;
+  /**
+   * True when a reply cut off by the output-token limit (`interruption: "output_limit"`) leaves
+   * the provider's conversation where it was, so asking again sends the same request. The loop
+   * then asks once more instead of ending the session. Absent means the session ends there.
+   */
+  readonly outputLimitRetry?: boolean;
   /** Latched uncertainty from hidden interactive attempts (for example, a transport retry).
    *  A later success or pre-dispatch refusal cannot make earlier unreported usage complete.
    *  Attempts reported through a CuaSpendGate, and attempts aborted while one was given, are

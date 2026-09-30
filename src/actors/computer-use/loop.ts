@@ -5,6 +5,7 @@ import { requestDebrief } from "./loop/debrief.js";
 import * as stops from "./loop/ending.js";
 import { declaredOutcomeOf, type Stop } from "./loop/ending.js";
 import { DesktopObserver } from "./loop/observation.js";
+import { retryAfterOutputLimit } from "./loop/output-limit.js";
 import { requestTurn } from "./loop/provider-call.js";
 import { LoopSession } from "./loop/session.js";
 import { spendStop, unknownSpendStop } from "./loop/spend.js";
@@ -106,16 +107,27 @@ async function runTurns(session: LoopSession, conversation: Conversation): Promi
   if (opening.hint !== undefined) conversation.contextHint = opening.hint;
   let backstop = startBackstop(observation);
   let turnNumber = 0;
+  // A request whose reply was cut off by the output limit, to be sent once more.
+  let resend: CuaTurnRequest | undefined;
   for (;;) {
     const halt = haltBeforeTurn(session);
     if (halt !== undefined) return halt;
 
     turnNumber += 1;
-    const request = nextRequest(session, conversation, observation);
+    const retrying = resend !== undefined;
+    const request = resend ?? nextRequest(session, conversation, observation);
+    resend = undefined;
     session.phase = `requesting provider turn ${turnNumber}`;
     const reply = await requestTurn(session, request, turnNumber);
     if ("stop" in reply) return reply.stop;
     const { turn } = reply;
+    const cutOff = retryAfterOutputLimit(session, turn, turnNumber, retrying);
+    if (cutOff === "retry") {
+      recordNarration(session, turn, turnNumber, "interrupted");
+      resend = request;
+      continue;
+    }
+    if (cutOff !== undefined) return cutOff;
     recordTurn(session, conversation, observer, request, turn);
 
     const refused = stopBeforeActing(session, turn, turnNumber);

@@ -96,9 +96,12 @@ report uses the smaller of this value and its existing 1024-token limit. The
 effective setting is recorded in the actor's `modelSettings`; omitting it keeps
 the provider's normal output behavior.
 
-A small value can end a session before it produces visible text. An explicit
-provider token-limit response is recorded as `budget_reached` / `incomplete`;
-its partial output does not establish task completion. This setting does not
+A reply cut off by this limit runs no action. Humanish sends the same request
+once more, after counting the cut-off reply's tokens against your caps, and the
+trace notes the retry. If the second reply is cut off too, the participant ends
+as `budget_reached` / `incomplete` with `provider_output_limit`; its partial
+output does not establish task completion. A small value can therefore end a
+session before it produces visible text. This setting does not
 bound input/context tokens, total requests, cumulative spend or desktop time.
 Terminal, local-agent, scripted, custom-provider/session routes and per-lane
 overrides are rejected when they declare this unsupported control.
