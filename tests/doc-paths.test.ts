@@ -10,6 +10,7 @@ import {
 const index = buildRepoIndex([
   "README.md",
   "docs/architecture/example.md",
+  "docs/ramp/README.md",
   "scripts/tui-smoke.mjs",
   "src/actors/codex/app-server-ui.ts",
   "src/guest-runtime-main.ts",
@@ -76,6 +77,29 @@ describe("doc path check", () => {
       "../../src/e2b-terminal-lab.ts",
       "../src/run/verify.ts",
       "src/run.ts",
+    ]);
+  });
+
+  it("resolves a markdown link from the file that contains it", () => {
+    const text = [
+      "Read the [ramp](docs/ramp/README.md) first.",
+      "Or the [ramp](../ramp/README.md), its [folder](../ramp/) and its [folder](../ramp).",
+      "The ramp lives at `docs/ramp/README.md`.",
+      "[gone](../ramp/missing.md#intro), [anchor](#intro), [site](/docs/cli), [web](https://example.com/docs/x.md)",
+    ].join("\n");
+    expect(findDocPathIssues("docs/principles/example.md", text, index)).toEqual([
+      {
+        file: "docs/principles/example.md",
+        line: 1,
+        path: "docs/ramp/README.md",
+        resolved: "docs/principles/docs/ramp/README.md",
+      },
+      {
+        file: "docs/principles/example.md",
+        line: 4,
+        path: "../ramp/missing.md",
+        resolved: "docs/ramp/missing.md",
+      },
     ]);
   });
 

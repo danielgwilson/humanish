@@ -215,7 +215,7 @@ persona?, device?, instruction?, target?, entry? }`. The parser expands it into
   sandbox); when absent the call
   stays the byte-stable `Sandbox.create(opts)` default (the stock template). The
   template actually used is recorded in the run bundle as `desktopTemplate`
-  (public-safe — a template name is not a secret). Inert (warned) on every route
+  (public-safe, since a template name is not a secret). Inert (warned) on every route
   that creates no desktop, incl. the in-process `local-app` cua route, so it is
   never silently ignored (invariant 6). Custom images need the
   Desktop SDK's `xdotool` input support and `xclip` or `xsel` on `PATH` for
@@ -540,8 +540,15 @@ app + one seeded DB) so their actions interact through shared state. The ONE
 subject plane is provisioned via `subject.source: clone` (a fresh `git clone`) or
 `subject.source: local-tree` (the operator's own working tree, packed on the host
 and provisioned in-sandbox in place of a clone - see `subject.localTree` above);
-both sources are accepted on the shared-world route. A
-shared-world bundle adds TWO additive, optional fields to `humanish.run-bundle.v1`
+both sources are accepted on the shared-world route.
+
+Current runs write only the CONCURRENT shape below. The SEQUENTIAL shape came from the
+sequential shared-world route, which 0.106.0 removed. Only bundles written before
+0.106.0 carry it, and `humanish verify` still checks them
+(`tests/run/legacy-sequential-shared-world.test.ts`). The SEQUENTIAL rules below apply
+to those bundles.
+
+A shared-world bundle adds TWO additive, optional fields to `humanish.run-bundle.v1`
 (absent on every other bundle, so they stay byte-stable):
 
 - `attributionClass: isolated | shared-world`: a separate attribution axis
@@ -563,7 +570,8 @@ shared-world bundle adds TWO additive, optional fields to `humanish.run-bundle.v
   - `attributionLimits: [...]`: the verify-enforced attribution ceiling (the set
     differs per `topologyMode`, below).
 
-  SEQUENTIAL shape (`topologyMode: sequential`, #164 PR1):
+  SEQUENTIAL shape (`topologyMode: sequential`, #164 PR1; only in bundles written before
+  0.106.0):
   - `sequence: [roleId, …]`: the role ids that actually took a turn, in declared order.
   - `skippedTail` (optional, live sequential only): `{ afterRoleId, roles,
 cause, maxTotalUsd?, estimatedTotalUsd? }`. Each ordered `roles` entry names
@@ -836,10 +844,16 @@ Core-owned fields:
 - `status` / `completionReason` / `reason` (`completionReason` includes
   `step_failed`: a deterministic scripted step/expectation evaluated false,
   meaning the subject failed the script while the harness executed faithfully; and
-  `budget_reached`: a computer-use session stopped by its time or estimated
-  spend budget, or an explicit provider token limit, with status `incomplete`.
-  The `reason` distinguishes these causes; none establishes that the goal was
-  reached. `timed_out` remains the zero-progress wall-clock deadline outcome)
+  `budget_reached`: a computer-use session ended by a limit. The loop
+  (`src/actors/computer-use/loop/ending.ts`) emits it when the time budget runs
+  out after at least one material action, when `execution.caps.maxUsd` or the
+  study's shared spend threshold is crossed, when the adapter reports a local
+  admission limit, or when the provider hits its output or context token limit.
+  Every `budget_reached` session has status `incomplete`
+  (`statusForCompletionReason` in `src/actors/computer-use/loop/trace.ts`), and
+  `stopCause` names the limit. Other incomplete provider responses end as
+  `harness_error`. None of these establishes that the goal was reached.
+  `timed_out` remains the zero-progress wall-clock deadline outcome)
 - `ids`, `counts`, `items[]`, optional `tokenUsage`, `capabilities`. `tokenUsage`
   may carry `cacheWriteInput` (tokens billed at the provider's cache-write rate,
   OpenAI 5.6+) and `turns[]` (per provider-request usage, the recorded fact
