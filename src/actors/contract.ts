@@ -11,9 +11,10 @@ import {
 // ActorTrace. See docs/architecture/actor-contract.md.
 //
 // The schema maps the providers and routes implemented by the closed first-party
-// registry. The broader Actor.run(input), RedactionHooks, ApprovalPolicy, and
-// ResolvedPersona contract remains design-only and is intentionally absent from
-// these runtime types.
+// registry. The broader Actor.run(input) and ApprovalPolicy contract remains
+// design-only and is intentionally absent from these runtime types. RedactionHooks
+// (src/evidence/redaction.ts) and ResolvedPersona (src/lab/persona.ts) ship in
+// their own modules.
 
 export const ACTOR_TRACE_SCHEMA = "humanish.actor-trace.v1";
 

@@ -14,8 +14,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 // THE LOAD-BEARING PROOF: the example adapter imports ONLY from the public package barrel
 // ("../src/index.js" — the exact surface published as humanish), never a deep `src/` module. If
 // the contract types it needs (RunFeedbackCandidate / RunAdapterScore / TerminalProductScoringContext
-// / TerminalLedgers / ActorTrace) were not exported, this file would not type-check — which IS the
-// fork-forcing gap acceptance #8 names.
+// / ActorTrace) were not exported, this file would not type-check — which IS the fork-forcing gap
+// acceptance #8 names. The ledger shape is reached as TerminalProductScoringContext["ledgers"].
 import {
   type ActorTrace,
   type RunAdapterScore,

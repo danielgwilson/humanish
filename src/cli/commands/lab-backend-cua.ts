@@ -303,9 +303,8 @@ async function reportCuaRun(
 ): Promise<void> {
   const { server, observer: attachedObserver } = live;
   const exposeRequested = prepared.exposure.exposed;
-  // Serving is NOT gated on result.ok: a timed_out/failed run still comes up so the operator can
-  // inspect its evidence live (and, under --expose, from a phone). budget_reached now makes a
-  // productive open-ended watch result.ok true.
+  // Serving is NOT gated on result.ok: a timed_out, incomplete or failed run still comes up so the
+  // operator can inspect its evidence live (and, under --expose, from a phone).
   let output: CuaActorLabResult = result;
   if (server && attachedObserver) {
     const attachedResult = result.observer?.ok ? result.observer : attachedObserver;

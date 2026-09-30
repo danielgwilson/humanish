@@ -8,8 +8,8 @@ import { OBSERVER_DATA_PLACEHOLDER, injectObserverData } from "../scripts/inject
 
 // The durability constraints from #426, made executable: the Observer is ONE
 // self-contained HTML file that renders from file://, offline, years later.
-// Notably, the CURRENT observer (src/observer/render.ts) fails the network scan below —
-// it links fonts.googleapis.com — which is exactly why the rebuild bakes fonts in.
+// An earlier observer linked fonts.googleapis.com, which is why the rebuild bakes fonts in;
+// the network scan below keeps remote fonts and assets out.
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const DIST = path.join(ROOT, "dist");
