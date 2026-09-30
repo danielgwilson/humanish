@@ -53,13 +53,13 @@ optional execution signal and check it before dispatching an input.
 Replace the deterministic provider if you want a model to choose actions from
 `request.observation.appState`. Keep `requiresFrame: false` for a state-only
 provider. Your replacement owns its model credentials and costs. The
-`openai-computer-use` actor id selects the registered CUA route; the injected
-`buildProvider` chooses the actual provider, so this example never invokes OpenAI.
+`openai-computer-use` actor id selects the registered CUA route; `createProvider`
+chooses the actual provider, so this example never invokes OpenAI.
 
 The runner shows both required discriminant checks: `parseLabConfig` receives
 an object containing `schema: LAB_CONFIG_SCHEMA` and is narrowed on `.ok`;
 `runLab` is narrowed on `backend === "cua"` before inspecting its result.
-Supplying both `buildExecutor` and `buildProvider` selects the library-assisted
+Supplying `inProcess.executor` and `createProvider` selects the library-assisted
 route. It is not a config-only CLI actor or an out-of-tree actor registration API.
 
 Both JavaScript files carry JSDoc types against the public `humanish` exports.

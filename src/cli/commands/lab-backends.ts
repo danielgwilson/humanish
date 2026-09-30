@@ -13,12 +13,7 @@ import { ServeTunnelError } from "../../observer/tunnel.js";
 import { redactText } from "../../evidence/redaction.js";
 import type { ServeTunnel } from "../../observer/tunnel.js";
 import type { RunResult } from "../../run/results.js";
-import {
-  browserScorerHooks,
-  cliAutomaticAnalysisHooks,
-  type LoadedAdapterScorer,
-  terminalScorerHooks,
-} from "./lab-hooks.js";
+import { cliAnalysisOptions, type LoadedAdapterScorer } from "./lab-hooks.js";
 import {
   type CliIo,
   formatRunHuman,
@@ -231,7 +226,7 @@ export async function runCuaBackend(args: {
   let outcome: Awaited<ReturnType<typeof runLab>>;
   try {
     outcome = await runLab(args.config, {
-      automaticAnalysis: cliAutomaticAnalysisHooks(args.io),
+      ...cliAnalysisOptions(args.io),
       cwd: args.options.cwd,
       ...(args.labProvenance === undefined ? {} : { lab: args.labProvenance }),
       // A followed watch opens the served Observer (or prints the phone target under --expose), so
@@ -279,7 +274,7 @@ export async function runCuaBackend(args: {
         : {}),
       ...(args.options.runId === undefined ? {} : { runId: args.options.runId }),
       ...(args.scorer
-        ? { cuaHooks: browserScorerHooks(args.scorer), scorerProvenance: args.scorer.provenance }
+        ? { scorer: args.scorer.hooks, scorerProvenance: args.scorer.provenance }
         : {}),
       ...(args.options.rerunFailedFrom === undefined
         ? {}
@@ -389,7 +384,7 @@ export async function runScriptedBackend(args: {
   if (finishedPlan === null) return;
 
   const outcome = await runLab(args.config, {
-    automaticAnalysis: cliAutomaticAnalysisHooks(args.io),
+    ...cliAnalysisOptions(args.io),
     cwd: args.options.cwd,
     ...(args.labProvenance === undefined ? {} : { lab: args.labProvenance }),
     open: observerOpen(args.mode, finishedPlan, shouldOpen),
@@ -436,7 +431,7 @@ export async function runTerminalBackend(args: {
   if (finishedPlan === null) return;
 
   const outcome = await runLab(args.config, {
-    automaticAnalysis: cliAutomaticAnalysisHooks(args.io),
+    ...cliAnalysisOptions(args.io),
     cwd: args.options.cwd,
     ...(args.labProvenance === undefined ? {} : { lab: args.labProvenance }),
     open: observerOpen(args.mode, finishedPlan, shouldOpen),
@@ -444,7 +439,7 @@ export async function runTerminalBackend(args: {
     ...(args.options.runId === undefined ? {} : { runId: args.options.runId }),
     ...(args.scorer
       ? {
-          terminalHooks: terminalScorerHooks(args.scorer),
+          scorer: args.scorer.hooks,
           scorerProvenance: args.scorer.provenance,
         }
       : {}),
@@ -553,7 +548,7 @@ export async function runConcurrentSharedWorldBackend(args: {
   let outcome: Awaited<ReturnType<typeof runLab>>;
   try {
     outcome = await runLab(args.config, {
-      automaticAnalysis: cliAutomaticAnalysisHooks(args.io),
+      ...cliAnalysisOptions(args.io),
       cwd: args.options.cwd,
       ...(args.labProvenance === undefined ? {} : { lab: args.labProvenance }),
       open: wantsFollow
@@ -578,7 +573,7 @@ export async function runConcurrentSharedWorldBackend(args: {
       ...(args.options.runId === undefined ? {} : { runId: args.options.runId }),
       ...(args.scorer
         ? {
-            sharedWorldHooks: browserScorerHooks(args.scorer),
+            scorer: args.scorer.hooks,
             scorerProvenance: args.scorer.provenance,
           }
         : {}),

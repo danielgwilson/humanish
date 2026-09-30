@@ -1,10 +1,7 @@
-import { type AutomaticAnalysisHooks } from "../../analysis/automatic-completion.js";
 import type { RunLabProvenance } from "../../run/status.js";
 import { loadAdapterScorer, type AdapterScorerModule } from "../../lab/adapter-scorer-loader.js";
-import type { LabBackend } from "../../lab/engine.js";
+import type { LabBackend, RunLabOptions } from "../../lab/engine.js";
 import type { RunScorerProvenance } from "../../run/bundle.js";
-import type { TerminalProductLabHooks } from "../../routes/terminal/types.js";
-import type { BrowserLabAdapterHooks } from "../../lab/adapter-extension.js";
 import type { LabConfig } from "../../lab/types.js";
 import type { RunResult } from "../../run/results.js";
 import type { CliIo } from "../io.js";
@@ -38,40 +35,27 @@ export async function maybeLoadAdapterScorer(args: {
   return { ok: true, scorer: { hooks: loaded.hooks, provenance: loaded.provenance } };
 }
 
-/** Terminal route hooks bag from a loaded scorer (deriveArtifacts is browser-only, dropped here). */
-export function terminalScorerHooks(scorer: LoadedAdapterScorer): TerminalProductLabHooks {
-  const { hooks } = scorer;
-  return {
-    ...(hooks.score ? { score: hooks.score } : {}),
-    ...(hooks.deriveFeedback ? { deriveFeedback: hooks.deriveFeedback } : {}),
-  };
-}
-
-/** Browser route hooks bag from a loaded scorer (score + deriveFeedback + deriveArtifacts). */
-export function browserScorerHooks(scorer: LoadedAdapterScorer): BrowserLabAdapterHooks {
-  const { hooks } = scorer;
-  return {
-    ...(hooks.score ? { score: hooks.score } : {}),
-    ...(hooks.deriveFeedback ? { deriveFeedback: hooks.deriveFeedback } : {}),
-    ...(hooks.deriveArtifacts ? { deriveArtifacts: hooks.deriveArtifacts } : {}),
-  };
-}
-
-/** Listeners exist only while post-run analysis is active; actor signal behavior is unchanged. */
-export function cliAutomaticAnalysisHooks(io: Pick<CliIo, "writeErr">): AutomaticAnalysisHooks {
+/**
+ * Post-run analysis cancellation for the CLI: while analysis runs, SIGINT, SIGTERM and SIGHUP abort
+ * it. The listeners exist only during analysis, so actor signal behavior is unchanged.
+ */
+export function cliAnalysisOptions(
+  io: Pick<CliIo, "writeErr">,
+): Pick<RunLabOptions, "onEvent" | "analysisSignal"> {
   const controller = new AbortController();
+  const cancel = (): void => {
+    controller.abort();
+  };
+  const signals = ["SIGINT", "SIGTERM", "SIGHUP"] as const;
   return {
-    deps: { signal: controller.signal },
-    onStart: () => {
-      const cancel = (): void => {
-        controller.abort();
-      };
-      const signals = ["SIGINT", "SIGTERM", "SIGHUP"] as const;
-      io.writeErr("Participants finished; preparing analysis…\n");
-      for (const signal of signals) process.on(signal, cancel);
-      return () => {
+    analysisSignal: controller.signal,
+    onEvent: (event) => {
+      if (event.type === "analysis-started") {
+        io.writeErr("Participants finished; preparing analysis…\n");
+        for (const signal of signals) process.on(signal, cancel);
+      } else if (event.type === "analysis-finished") {
         for (const signal of signals) process.off(signal, cancel);
-      };
+      }
     },
   };
 }

@@ -18,7 +18,7 @@ import {
 import { FinishedRun } from "../../src/run/run.js";
 import { asLiveRecording, publishRun } from "../helpers/finished-run.js";
 import { automaticAnalysisEnvelope, writeResult } from "../../src/cli/io.js";
-import { cliAutomaticAnalysisHooks } from "../../src/cli/commands/lab-hooks.js";
+import { cliAnalysisOptions } from "../../src/cli/commands/lab-hooks.js";
 import { createProgram } from "../../src/cli/program.js";
 import { readLabSummary } from "../../src/lab/summary.js";
 import { runLabPreflight } from "../../src/lab/preflight.js";
@@ -559,14 +559,14 @@ describe("automatic analysis admission and producer boundary", () => {
   });
   it("announces preparation before admission without claiming a provider request", () => {
     const writeErr = vi.fn();
-    const hooks = cliAutomaticAnalysisHooks({ writeErr });
-    const cleanup = hooks.onStart!();
+    const { onEvent } = cliAnalysisOptions({ writeErr });
+    void onEvent!({ type: "analysis-started" });
     try {
       expect(writeErr).toHaveBeenCalledExactlyOnceWith(
         "Participants finished; preparing analysis…\n",
       );
     } finally {
-      if (typeof cleanup === "function") cleanup();
+      void onEvent!({ type: "analysis-finished" });
     }
   });
   it.each([["run"], ["lab", "run"], ["watch"]])(
@@ -724,13 +724,13 @@ describe("automatic analysis admission and producer boundary", () => {
     async (signal) => {
       const script = `
       import { runLab } from ${JSON.stringify(new URL("../../src/lab/engine.ts", import.meta.url).href)};
-      import { cliAutomaticAnalysisHooks } from ${JSON.stringify(new URL("../../src/cli/commands/lab-hooks.ts", import.meta.url).href)};
+      import { cliAnalysisOptions } from ${JSON.stringify(new URL("../../src/cli/commands/lab-hooks.ts", import.meta.url).href)};
       const config = ${JSON.stringify(fixtures.find((row) => row.name === "cua-openai-computer-use-app-url")!.config)};
       config.review = { analysis: { maxCostUsd: 5 } };
       const timer = setInterval(() => {}, 1000);
-      const automaticAnalysis = cliAutomaticAnalysisHooks({ writeErr: text => process.stderr.write(text) });
-      automaticAnalysis.run = async () => { process.stdout.write("UNEXPECTED_ANALYSIS\\n"); return { state: "failed", reason: "synthetic" }; };
-      await runLab(config, { cwd: ${JSON.stringify(cwd)}, dryRun: false, open: false, automaticAnalysis,
+      const analysis = cliAnalysisOptions({ writeErr: text => process.stderr.write(text) });
+      const automaticAnalysis = { run: async () => { process.stdout.write("UNEXPECTED_ANALYSIS\\n"); return { state: "failed", reason: "synthetic" }; } };
+      await runLab(config, { cwd: ${JSON.stringify(cwd)}, dryRun: false, open: false, ...analysis, automaticAnalysis,
         cuaHooks: { env: { OPENAI_API_KEY: "synthetic", E2B_API_KEY: "synthetic" },
           loadDesktopModule: async () => { process.stdout.write("ACTOR_READY\\n"); await new Promise(() => {}); } } });
       clearInterval(timer);
@@ -777,15 +777,15 @@ describe("automatic analysis admission and producer boundary", () => {
   it("installs cancellation handlers only for the analysis phase and removes them afterward", () => {
     const signals = ["SIGINT", "SIGTERM", "SIGHUP"] as const;
     const counts = signals.map((signal) => process.listenerCount(signal));
-    const hooks = cliAutomaticAnalysisHooks({ writeErr: vi.fn() });
+    const { onEvent, analysisSignal } = cliAnalysisOptions({ writeErr: vi.fn() });
     expect(signals.map((signal) => process.listenerCount(signal))).toEqual(counts);
-    const cleanup = hooks.onStart!();
+    void onEvent!({ type: "analysis-started" });
     expect(signals.map((signal) => process.listenerCount(signal))).toEqual(
       counts.map((n) => n + 1),
     );
     process.emit("SIGTERM");
-    expect(hooks.deps?.signal?.aborted).toBe(true);
-    if (cleanup) cleanup();
+    expect(analysisSignal?.aborted).toBe(true);
+    void onEvent!({ type: "analysis-finished" });
     expect(signals.map((signal) => process.listenerCount(signal))).toEqual(counts);
   });
 });

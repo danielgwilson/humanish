@@ -1,6 +1,6 @@
 import { collectDesktopRecording } from "../../evidence/desktop-recording-artifact.js";
 import path from "node:path";
-import { runLab, type LabOutcome, type RunLabOptions } from "../../lab/engine.js";
+import { dispatchLab, type LabOutcome, type RunLabOptions } from "../../lab/engine.js";
 import type { LabConfig } from "../../lab/types.js";
 import {
   inboxRecipientFor,
@@ -88,7 +88,7 @@ export async function runLocalFirecrackerStudy(
   const participants: ReturnType<typeof createRestrictedCodexParticipant>[] = [];
   let cleanupUnconfirmed = false;
   try {
-    return await runLab(config, {
+    return await dispatchLab(config, {
       ...options,
       automaticAnalysis: {
         ...options.automaticAnalysis,
@@ -97,7 +97,7 @@ export async function runLocalFirecrackerStudy(
           return options.automaticAnalysis?.onStart?.();
         },
       },
-      // The caller's hooks come first so this study's desktop lane always wins: runLab reads
+      // The caller's hooks come first so this study's desktop lane always wins: dispatchLab reads
       // createDesktopLane as "desktop provided" and does not route back here.
       // The caller's bag may be a class instance, so it is wrapped rather than spread.
       cuaHooks: withHookOverrides(callerHooks, HOOK_MEMBERS.cua, {

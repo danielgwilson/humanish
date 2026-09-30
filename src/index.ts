@@ -420,6 +420,7 @@ export type {
 } from "./lab/types.js";
 export { resolveLabDryRun, runLab, selectLabBackend } from "./lab/engine.js";
 export type { LabBackend, LabOutcome, RunLabOptions } from "./lab/engine.js";
+export type { LabEvent, ProviderContext } from "./lab/run-lab-options.js";
 export { LAB_PREFLIGHT_SCHEMA, runLabPreflight } from "./lab/preflight.js";
 export type {
   LabPreflightCheck,

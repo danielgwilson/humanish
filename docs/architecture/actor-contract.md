@@ -352,7 +352,7 @@ contract (`window.app.getState()` etc.) with a custom `CuaExecutor` (screenshot 
 `appState` as the progress signal) paired with a **non-vision** `CuaProvider` (`requiresFrame`
 falsey), keeping the whole lab composition with NO E2B desktop and NO clone. See
 [`state-driven-executor.md`](./state-driven-executor.md) for the port, both entry points
-(`runComputerUseLoop` and `runLab` + `buildExecutor`/`buildProvider`), the `subject.source:
+(`runComputerUseLoop` and `runLab` + `inProcess`/`createProvider`), the `subject.source:
 local-app` config surface, the `requiresFrame` provider-authoring contract, and the
 appState-is-runtime-only stance.
 

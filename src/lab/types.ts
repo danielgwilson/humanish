@@ -15,7 +15,7 @@ export const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
  * CuaExecutor with NO clone and NO E2B desktop (`local-app`), or the operator's own local
  * working tree packed and provisioned in-sandbox in place of a clone (`local-tree`).
  * `local-app` routes to the cua backend and is library-assisted: a caller supplies
- * `cuaHooks.buildExecutor` + `buildProvider` (no built-in driver exists yet), and the engine
+ * `RunLabOptions.inProcess` + `createProvider` (no built-in driver exists yet), and the engine
  * fails closed (HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR) when run without them: a structured
  * error, never a desktop attempt. See docs/architecture/state-driven-executor.md.
  */
