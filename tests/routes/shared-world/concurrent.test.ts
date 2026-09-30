@@ -477,7 +477,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     });
     expect(analyze).toHaveBeenCalledTimes(dryRun ? 0 : 1);
     expect(result.automaticAnalysis?.reason).toBe(
-      dryRun ? "analysis_dry_run" : "synthetic_no_provider",
+      dryRun ? "AUTOMATIC_ANALYSIS_DRY_RUN" : "synthetic_no_provider",
     );
     const bundle = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),

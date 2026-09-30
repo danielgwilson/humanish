@@ -410,7 +410,7 @@ describe("the run's start and its token", () => {
     );
     expect(result.automaticAnalysis).toEqual({
       state: "failed",
-      reason: "analysis_source_changed",
+      reason: "AUTOMATIC_ANALYSIS_SOURCE_CHANGED",
     });
     expect(run).not.toHaveBeenCalled();
   });

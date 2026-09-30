@@ -111,5 +111,31 @@ findings remain visibly partial; a valid partial result can succeed, while a
 partial result with an analysis error still fails the command. Recorded task
 outcomes and the deterministic review verdict are never rewritten by analysis.
 
+`automaticAnalysis.reason` is one of these codes, in `--json` and in the human line
+`analysis: <state> (<reason>)`:
+
+| `reason`                                      | `state`                   | Meaning                                                               |
+| --------------------------------------------- | ------------------------- | --------------------------------------------------------------------- |
+| none (`null`)                                 | `complete`                | Analysis completed                                                    |
+| `AUTOMATIC_ANALYSIS_REUSED`                   | that of the reused result | An earlier analysis of this run was reused                            |
+| `AUTOMATIC_ANALYSIS_LIMITATIONS`              | `partial`                 | Analysis completed with recorded limitations                          |
+| `AUTOMATIC_ANALYSIS_ADMISSION_EXCEEDED`       | `partial`                 | Usage passed the admission estimate                                   |
+| `AUTOMATIC_ANALYSIS_FAILED`                   | `failed` or `partial`     | Analysis failed, or an unexpected error stopped it                    |
+| `AUTOMATIC_ANALYSIS_CANCELLED`                | `cancelled`               | Ctrl-C or the TUI's **Cancel analysis** stopped it                    |
+| `AUTOMATIC_ANALYSIS_DRY_RUN`                  | `skipped`                 | A dry run records no participant evidence                             |
+| `AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE`       | `skipped`                 | This invocation published no run to analyze, or the run id is invalid |
+| `AUTOMATIC_ANALYSIS_SOURCE_CHANGED`           | `failed`                  | The run directory changed after the run published its bundle          |
+| `AUTOMATIC_ANALYSIS_KEY_MISSING`              | `skipped`                 | No OpenAI API key                                                     |
+| `AUTOMATIC_ANALYSIS_NO_PARTICIPANT_EVIDENCE`  | `skipped`                 | A default analysis found no participant evidence                      |
+| `AUTOMATIC_ANALYSIS_ACTOR_CANCELLED`          | `skipped`                 | The harness cancelled the participants                                |
+| `AUTOMATIC_ANALYSIS_ALREADY_REQUESTED`        | `skipped`                 | Another request already claimed this run's analysis                   |
+| `AUTOMATIC_ANALYSIS_BUSY`                     | `skipped`                 | Another analysis is running                                           |
+| `AUTOMATIC_ANALYSIS_ADMISSION_REFUSED`        | `skipped`                 | The configuration or the cost estimate was refused before any request |
+| `AUTOMATIC_ANALYSIS_STORAGE_UNAVAILABLE`      | `skipped` or `unknown`    | Analysis history or the job record could not be read or written       |
+| `AUTOMATIC_ANALYSIS_CODEX_UNAVAILABLE`        | `failed`                  | The Codex analysis provider was unavailable                           |
+| `AUTOMATIC_ANALYSIS_PUBLICATION_FAILED`       | `failed`                  | The analysis could not be published                                   |
+| `AUTOMATIC_ANALYSIS_CANCELLATION_UNAVAILABLE` | `unknown`                 | A cancellation could not be recorded                                  |
+| `AUTOMATIC_ANALYSIS_OUTCOME_UNKNOWN`          | `unknown`                 | The outcome could not be determined                                   |
+
 See the [analysis contract](../contracts/study-analysis.md) for selection limits,
 evidence validation, actual usage, corrections and share-safe export behavior.

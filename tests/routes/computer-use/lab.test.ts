@@ -6610,7 +6610,7 @@ describe("computer-use run id reuse", () => {
         ok: false,
         runId: "older-run",
         error: { code: "HUMANISH_RUN_ID_IN_USE" },
-        automaticAnalysis: { state: "skipped", reason: "analysis_source_unavailable" },
+        automaticAnalysis: { state: "skipped", reason: "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE" },
       });
       expect(loadDesktopModule).not.toHaveBeenCalled();
       expect(analysis).not.toHaveBeenCalled();

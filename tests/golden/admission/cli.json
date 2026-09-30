@@ -35,7 +35,7 @@
       "automaticAnalysisTrigger": "default",
       "automaticAnalysis": {
         "state": "skipped",
-        "reason": "analysis_source_unavailable"
+        "reason": "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE"
       },
       "runOk": false
     },
@@ -161,7 +161,7 @@
       "automaticAnalysisTrigger": "default",
       "automaticAnalysis": {
         "state": "skipped",
-        "reason": "analysis_source_unavailable"
+        "reason": "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE"
       },
       "runOk": false
     },
@@ -193,7 +193,7 @@
       "automaticAnalysisTrigger": "default",
       "automaticAnalysis": {
         "state": "skipped",
-        "reason": "analysis_source_unavailable"
+        "reason": "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE"
       },
       "runOk": false
     },

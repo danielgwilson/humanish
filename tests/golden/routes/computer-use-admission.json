@@ -49,7 +49,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "media with firefox": {
@@ -70,7 +70,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "invalid output limit": {
@@ -91,7 +91,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "scenario dollar cap": {
@@ -112,7 +112,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "output limit with a caller provider": {
@@ -133,7 +133,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "real receiving with local-agent": {
@@ -154,7 +154,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "in-process real receiving": {
@@ -175,7 +175,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "in-process media": {
@@ -196,7 +196,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "in-process recording": {
@@ -217,7 +217,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "clone on the local target": {
@@ -238,7 +238,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "clone without serve": {
@@ -259,7 +259,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "local-tree without serve": {
@@ -280,7 +280,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "state on app-url": {
@@ -301,7 +301,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "public app url": {
@@ -322,7 +322,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "executor without provider": {
@@ -343,7 +343,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "local-app without executor": {
@@ -364,7 +364,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "local browser without a runtime": {
@@ -385,7 +385,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "lanes and count": {
@@ -406,7 +406,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "sandbox deadline": {
@@ -427,7 +427,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "shared-world topology": {
@@ -448,7 +448,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "in-process clone subject": {
@@ -469,7 +469,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "in-process desktop-cli without a product": {
@@ -490,7 +490,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "desktop-cli without a product": {
@@ -511,7 +511,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "count override above the cap": {
@@ -532,7 +532,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "in-process fan-out": {
@@ -553,7 +553,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "live without keys": {
@@ -574,7 +574,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_source_unavailable"
+      "reason": "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE"
     }
   },
   "invalid analysis and tasks on a second actor": {
@@ -627,7 +627,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "media with firefox and invalid output limit": {
@@ -648,7 +648,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "invalid output limit and scenario dollar cap": {
@@ -669,7 +669,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "scenario dollar cap and output limit with a caller provider": {
@@ -690,7 +690,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "output limit with a caller provider and in-process real receiving": {
@@ -711,7 +711,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "real receiving with local-agent and in-process real receiving": {
@@ -732,7 +732,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "in-process real receiving and in-process media": {
@@ -753,7 +753,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "in-process media and in-process recording": {
@@ -774,7 +774,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "in-process recording and clone on the local target": {
@@ -795,7 +795,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "clone on the local target and clone without serve": {
@@ -816,7 +816,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "clone without serve and public app url": {
@@ -837,7 +837,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "local-tree without serve and public app url": {
@@ -858,7 +858,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "state on app-url and public app url": {
@@ -879,7 +879,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "public app url and executor without provider": {
@@ -900,7 +900,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "executor without provider and local-app without executor": {
@@ -921,7 +921,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "local-app without executor and lanes and count": {
@@ -942,7 +942,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "local browser without a runtime and lanes and count": {
@@ -963,7 +963,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "lanes and count and sandbox deadline": {
@@ -984,7 +984,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "sandbox deadline and count override above the cap": {
@@ -1005,7 +1005,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "sandbox deadline and shared-world topology": {
@@ -1026,7 +1026,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "shared-world topology and count override above the cap": {
@@ -1047,7 +1047,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "shared-world topology and in-process clone subject": {
@@ -1068,7 +1068,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "in-process clone subject and count override above the cap": {
@@ -1089,7 +1089,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "desktop-cli without a product and count override above the cap": {
@@ -1110,7 +1110,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "count override above the cap and in-process fan-out": {
@@ -1131,7 +1131,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "in-process fan-out and live without keys": {
@@ -1152,7 +1152,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_source_unavailable"
+      "reason": "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE"
     }
   }
 }

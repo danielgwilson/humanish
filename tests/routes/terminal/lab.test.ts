@@ -2638,7 +2638,7 @@ describe("terminal run lifetime", () => {
     const before = await snapshot();
     const config: LabConfig = { ...liveConfig(), review: { analysis: { maxCostUsd: 1 } } };
     const analysis = automaticAnalysisBoundary();
-    const skipped = { state: "skipped", reason: "analysis_source_unavailable" };
+    const skipped = { state: "skipped", reason: "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE" };
 
     const keyless = await runTerminalProductLab({
       cwd,

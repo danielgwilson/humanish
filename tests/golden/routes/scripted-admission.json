@@ -65,7 +65,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "clone on the local target": {
@@ -86,7 +86,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "unregistered actor": {
@@ -107,7 +107,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "public app url": {
@@ -128,7 +128,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "clone without serve": {
@@ -149,7 +149,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "missing scenario ref": {
@@ -170,7 +170,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "live clone without an E2B key": {
@@ -191,7 +191,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_source_unavailable"
+      "reason": "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE"
     }
   },
   "real receiving and invalid analysis": {
@@ -260,7 +260,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "clone on the local target and unregistered actor": {
@@ -281,7 +281,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "unregistered actor and public app url": {
@@ -302,7 +302,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "public app url and missing scenario ref": {
@@ -323,7 +323,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "clone without serve and missing scenario ref": {
@@ -344,7 +344,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "missing scenario ref and live clone without an E2B key": {
@@ -365,7 +365,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_source_unavailable"
+      "reason": "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE"
     }
   }
 }
