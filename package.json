@@ -80,6 +80,7 @@
     "tui:connections:proof": "python3 scripts/tui-connections-proof.py",
     "guest-desktop:proof": "node scripts/guest-desktop-proof.mjs",
     "guest-media:startup:proof": "node scripts/guest-media-worker-startup-proof.mjs",
+    "comms:agentmail:contract": "node --import tsx scripts/agentmail-contract-check.mjs",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
     "lint": "oxlint --max-warnings=539",
