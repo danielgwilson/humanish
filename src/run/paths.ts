@@ -348,8 +348,7 @@ async function assertNoSymlinkDescendants(directory: string): Promise<void> {
     // `.humanish-write-*.tmp` sibling and renames it, and a run now also refreshes its own status
     // record on a cadence. An entry that vanished between readdir and lstat therefore proves
     // nothing except that it is gone, and a path that no longer exists cannot be a symlink escape:
-    // skip it rather than failing the containment check on a benign race. (Latent before the status
-    // record existed — the mid-run bundle flush had the same exposure.)
+    // skip it rather than failing the containment check on a benign race.
     let stats;
     try {
       stats = await lstat(child);

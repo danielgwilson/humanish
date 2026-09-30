@@ -2,8 +2,8 @@ import { containsSensitive } from "../evidence/redaction.js";
 import type { LoadedStudyAnalysis } from "./study-analysis.js";
 import { projectAutomaticStudyAnalysisView } from "./job.js";
 
-/** Owned file names in normalized run-relative paths, not directory ownership.
- * Legacy evidence under analysis/ still follows ordinary evidence policy. */
+/** True for the analysis record files, matched by name inside their directories. Any other file
+ * under analysis/ is ordinary evidence and follows the ordinary evidence policy. */
 export function isStudyAnalysisRecordPath(relativePath: string): boolean {
   const parts = relativePath.split("/");
   const leaf = parts.at(-1)!;

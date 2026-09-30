@@ -21,15 +21,15 @@ export function normalizeLocalActorTranscript(transcript: string): string {
     .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, "");
 }
 
+type ActorVerdict = "passed" | "blocked" | "failed";
+
 /**
  * Extract the per-run verdict from a normalized transcript: the agent must print exactly
  * `HUMANISH_ACTOR_VERDICT=<status> HUMANISH_ACTOR_NONCE=<nonce>`, and the nonce is mandatory so a
  * bare marker (echoed or replayed from untrusted text) can never forge a verdict. Pure (no IO).
- * Exported so the terminal-product lane scores its in-sandbox `codex exec` run by the SAME marker
- * — divergent verdict logic would let the two lanes disagree about what "passed" means.
+ * Exported so the terminal-product lane scores its in-sandbox `codex exec` run by the same marker;
+ * divergent verdict logic would let the two lanes disagree about what "passed" means.
  */
-type ActorVerdict = "passed" | "blocked" | "failed";
-
 export function extractLocalActorVerdict(
   transcript: string,
   verdictNonce: string,
@@ -69,13 +69,13 @@ export const TERMINAL_EVENTS_FILE = "terminal-events.ndjson";
 const TERMINAL_TRANSCRIPT_FILE = "terminal-transcript.txt";
 
 /**
- * Verifier for the terminal-product real-agent lane (issue #154, the in-sandbox command-scoped
- * key route). A LIVE terminal stream must carry the durable proof the safety contract requires,
- * and must FAIL CLOSED when any of it is missing — a blocked/failed agent run stays structurally
- * verifiable (the failure is the evidence) ONLY when the substrate/cleanup/interventions ledgers
- * are present; it must never become a hollow pass. Credential-shape leakage across every artifact
- * file is already caught by scanRunPublicSafetyArtifacts; this check enforces the STRUCTURAL
- * evidence + the proven-teardown invariant. Dry-run/contract bundles are exempt (mode !== live).
+ * Verifier for the terminal-product real-agent lane (the in-sandbox command-scoped key route). A
+ * LIVE terminal stream must carry the durable proof the safety contract requires, and must FAIL
+ * CLOSED when any of it is missing — a blocked/failed agent run stays structurally verifiable (the
+ * failure is the evidence) ONLY when the substrate/cleanup/interventions ledgers are present; it
+ * must never become a hollow pass. Credential-shape leakage across every artifact file is already
+ * caught by scanRunPublicSafetyArtifacts; this check enforces the STRUCTURAL evidence + the
+ * proven-teardown invariant. Dry-run/contract bundles are exempt (mode !== live).
  */
 export async function validateTerminalProductEvidence(
   runPaths: PreparedRunArtifactPaths,
@@ -163,7 +163,7 @@ export async function validateTerminalProductEvidence(
     }
   }
 
-  // --- SLICE 3: the cost ledger + no-spend proof must be present + internally honest. ---
+  // The cost ledger and no-spend proof must be present and consistent with each other.
   findings.push(...validateTerminalCostEvidence(ledgers));
 
   return findings;
@@ -174,9 +174,9 @@ export async function validateTerminalProductEvidence(
 const TERMINAL_COST_CATEGORIES = ["product", "media", "payment", "provider"] as const;
 
 /**
- * Verifier for the SLICE-3 cost ledger + no-spend proof (issue #154's cost/no-spend asks). A LIVE
- * terminal-product bundle MUST carry both (fail closed if absent on a live run). The load-bearing
- * honesty check: the no-spend proof may NOT claim zero on a line the ledger marks `null`
+ * Verifier for the terminal cost ledger and no-spend proof. A LIVE terminal-product bundle MUST
+ * carry both (fail closed if absent on a live run). The load-bearing honesty check: the no-spend
+ * proof may NOT claim zero on a line the ledger marks `null`
  * (UNMEASURED) — a proof can never claim more than the ledger measured. And the observed KNOWN
  * spend may not exceed the declared cap (the proof's own maxUsd) — fail-closed, not advisory.
  * The null discipline is enforced here too: a present line's `usd` must be a number OR literally
@@ -341,16 +341,15 @@ const ACTION_BEARING_ACTOR_ITEM_KINDS = new Set([
 ]);
 
 /**
- * Independent mirror of the producer-side no-engagement guard (routes/computer-use/lanes.ts): a LIVE actor
- * trace claiming goal_satisfied while carrying zero action-bearing items AND zero message items
- * is a hollow run — the actor neither did nor said anything — and must not verify as evidence
- * (invariant 4: evidence verifies fail-closed). Live-vs-dry-run is judged exactly as the
+ * Independent mirror of the producer-side no-engagement guard (routes/computer-use/lanes.ts): a
+ * LIVE actor trace claiming goal_satisfied while carrying zero action-bearing items AND zero
+ * message items is a hollow run — the actor neither did nor said anything — and must not verify as
+ * evidence (invariant 4: evidence verifies fail-closed). Live-vs-dry-run is judged exactly as the
  * producer judges it, from bundle.mode alone; dry-run/contract bundles legitimately carry no
- * actions and stay exempt. Engagement is accepted from EITHER surface — itemized trace items or
- * the producer's counts — because providers differ in what they itemize; the hollow-run
- * regression class (the 0.3.0–0.6.0 CUA parser bug) reports zero on both. The trace is read
- * defensively: isRunStream does not validate the actor seam, and verify must not throw on a
- * malformed one.
+ * actions and stay exempt. Engagement is accepted from EITHER surface — itemized trace items or the
+ * producer's counts — because providers differ in what they itemize; a hollow run reports zero on
+ * both. The trace is read defensively: isRunStream does not validate the actor seam, and verify
+ * must not throw on a malformed one.
  */
 export function noEngagementActorFindings(bundle: RunBundle): string[] {
   if (bundle.mode !== "live") {

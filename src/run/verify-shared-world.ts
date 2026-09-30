@@ -10,7 +10,7 @@ import { isRecord } from "./primitives.js";
 import { concurrentSharedWorldFindings } from "./verify-shared-world-concurrent.js";
 
 /**
- * The `shared-world evidence` check (#164; invariant 4 + invariant 6): a LIVE shared-world bundle's
+ * The `shared-world evidence` check (invariant 4 + invariant 6): a LIVE shared-world bundle's
  * interaction CLAIM must match its recorded timeline + plane provenance, and its attribution
  * ceiling must be pinned. Mirrors validateTerminalProductEvidence: live-only (dry-run contract
  * bundles are skipped, exactly like the other live-only checks). Fail-closed on every overclaim.
@@ -29,7 +29,7 @@ export function sharedWorldEvidenceFindings(bundle: RunBundle): string[] {
       ? ["attributionClass is shared-world but the sharedWorld evidence block is missing"]
       : [];
   }
-  // FIX-8: dispatch on topologyMode FIRST; unknown/missing → fail closed.
+  // Dispatch on topologyMode FIRST; unknown/missing → fail closed.
   const topologyMode = (sw as { topologyMode?: unknown }).topologyMode;
   if (topologyMode !== "sequential" && sw.skippedTail !== undefined) {
     return ["skippedTail is only valid on sequential shared-world evidence"];
@@ -216,9 +216,9 @@ function sequentialSkippedTailFindings(
 }
 
 /**
- * SEQUENTIAL branch (the PoC #164): the alternating timeline must be well-formed, single-plane,
- * digest-only, and carry the sequential attributionLimits. FIX-8: a sequential bundle must NOT
- * carry concurrent fields (laneWindows).
+ * SEQUENTIAL branch: the alternating timeline must be well-formed, single-plane, digest-only, and
+ * carry the sequential attributionLimits. A sequential bundle must NOT carry concurrent fields
+ * (laneWindows).
  */
 function sequentialSharedWorldFindings(bundle: RunBundle, sw: SharedWorldEvidence): string[] {
   const findings: string[] = sharedWorldCommonFindings(bundle, sw);

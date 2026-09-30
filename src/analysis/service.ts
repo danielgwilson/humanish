@@ -43,7 +43,7 @@ export interface AnalyzeOptions {
   config: StudyAnalysisConfig;
   dryRun?: boolean;
   rerun?: boolean;
-  /** Internal/default policy; explicit token limits are always used exactly. */
+  /** Set when the output limit was defaulted; an explicit limit is always used exactly. */
   preferLargerOutput?: boolean;
 }
 export interface AnalyzeResult {
@@ -63,15 +63,15 @@ export interface AnalyzeResult {
 }
 export interface AnalyzeDeps {
   apiKey?: string;
-  /** Internal request-boundary seam; evidence, source identity and publication remain enforced. */
+  /** Test hook for the Codex provider call; evidence, source identity and publication still run. */
   codexProvider?: StudyAnalysisProvider;
   signal?: AbortSignal;
   onProgress?: (progress: StudyAnalysisProgress) => void;
   /** Request boundary only: evidence capture, admission, validation and writes remain real. */
   fetch?: AnalysisFetch;
-  /** Internal producer pin: use this original run identity without resolving a replacement. */
+  /** Set by automatic analysis: analyze this prepared run instead of resolving `run` again. */
   expectedRun?: PreparedRunArtifactPaths;
-  /** Internal post-run orchestration; never populated from an Observer request. */
+  /** Set by automatic analysis to its job attempt id; never from an Observer request. */
   analysisId?: string;
   beforeDispatch?: (context: StudyAnalysisDispatchContext) => Promise<void>;
 }
@@ -215,7 +215,7 @@ export async function withStudyAnalysisLock<T>(
   }
 }
 
-/** Internal completion gate shared with the opt-in post-run owner. */
+/** The completion gate: the run verifies, is live and finished, and has participants. */
 export async function readCompletedStudyAnalysisSource(
   cwd: string,
   prepared: PreparedRunArtifactPaths,

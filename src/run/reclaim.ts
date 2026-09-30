@@ -1,10 +1,8 @@
-// `humanish reclaim` (#358 salvage tier): kill an interrupted run's sandboxes by the EXACT ids the
-// run journaled at create time (sandbox-receipts.ndjson), and say honestly what happened to each.
-// The lane loop lives in the operator's local process, so a sleeping laptop or a crash orphans
-// every sandbox with the ids trapped in dead memory; before this command the only remedies were
-// the server-side create-time TTL (slow, spend keeps burning) or account enumeration (which this
-// codebase never does — an account-wide operation once destroyed unrelated infrastructure). This
-// reads one file inside the managed run dir, kills by id, and never lists anything.
+// `humanish reclaim`: kill an interrupted run's sandboxes by the EXACT ids the run journaled at
+// create time (sandbox-receipts.ndjson), and report what happened to each. It reads one file inside
+// the managed run dir, kills by id, and never lists the account: an account-wide operation once
+// destroyed unrelated infrastructure. Without it, orphaned sandboxes run until the server-side
+// create-time TTL.
 import { loadE2BDesktopModule, type E2BDesktopModule } from "../substrates/e2b/desktop-launch.js";
 import {
   containedPathAbsent,

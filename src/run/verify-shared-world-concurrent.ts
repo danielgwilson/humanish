@@ -7,9 +7,9 @@ import {
 } from "./guards-shared-world.js";
 import { isRecord } from "./primitives.js";
 
-// CONCURRENT (#164 phase 2, FIX-5): the REQUIRED set (all must be present) AND a FORBIDDEN set (any
-// present == a sequential claim leaking into a concurrent bundle == overclaim). verify needs BOTH
-// checks — presence-only would let an incoherent union pass.
+// CONCURRENT: the REQUIRED set (all must be present) AND a FORBIDDEN set (any present == a
+// sequential claim leaking into a concurrent bundle == overclaim). verify needs BOTH checks —
+// presence-only would let an incoherent union pass.
 const CONCURRENT_REQUIRED_LIMITS = [
   "concurrent",
   "best-effort-causal-attribution",
@@ -21,9 +21,9 @@ const CONCURRENT_REQUIRED_LIMITS = [
 
 const CONCURRENT_FORBIDDEN_LIMITS = ["sequential-only", "no-concurrent-races"] as const;
 
-// EXTERNAL-PUBLIC plane class (#164 phase 2): the honest-downgrade required set. Keeps the concurrent
-// family (an honest ceiling) AND adds the mandatory disclosures for a plane the harness does NOT own:
-// the operator-attested (not harness-controlled) target, the ABSENCE of a synthetic attestation (you
+// EXTERNAL-PUBLIC plane class: the honest-downgrade required set. Keeps the concurrent family (an
+// honest ceiling) AND adds the mandatory disclosures for a plane the harness does NOT own: the
+// operator-attested (not harness-controlled) target, the ABSENCE of a synthetic attestation (you
 // cannot claim synthetic on a real site), the ABSENCE of an authoritative shared-state proof (no
 // in-sandbox filesystem to digest), and concurrency evidenced by temporal co-occupancy ONLY. Verify
 // FAILS CLOSED if any is missing (an absent honest-downgrade limit overclaims) — invariant 5.
@@ -45,21 +45,21 @@ const EXTERNAL_PUBLIC_FORBIDDEN_LIMITS = [
 ] as const;
 
 /**
- * CONCURRENT branch (#164 phase 2): N personas drove ONE getHost-exposed plane at once. Verify
- * fail-closed: the shape (laneWindows + stateSeries + outcomes, NO timeline — FIX-8); the
- * corrected required + forbidden attributionLimits (FIX-5); the harness-minted getHost target every
- * actor drove (FIX-2); the synthetic-subject provenance gate (FIX-3); digest-only state series with
- * the allowed-keys tripwire (FIX-7); single-plane provenance; and the concurrency-on-pass gate
- * (genuine overlap + a state delta AT/AFTER an overlap start — FIX-6).
+ * CONCURRENT branch: N personas drove ONE getHost-exposed plane at once. Verify fail-closed: the
+ * shape (laneWindows + stateSeries + outcomes, NO timeline); the required and forbidden
+ * attributionLimits; the harness-minted getHost target every actor drove; the synthetic-subject
+ * provenance gate; digest-only state series with the allowed-keys tripwire; single-plane
+ * provenance; and the concurrency-on-pass gate (genuine overlap and a state delta at or after an
+ * overlap start).
  */
 export function concurrentSharedWorldFindings(
   bundle: RunBundle,
   sw: SharedWorldEvidence,
 ): string[] {
-  // The PLANE-class discriminator (#164 phase 2). Absent == the historical provisioned-getHost plane
-  // (byte-stable). EVERY getHost-specific assertion (hostDigest, exposure: synthetic, seeded
-  // provenance, state-delta on pass) is gated on this — it never leaks onto the external-public class,
-  // and the external-public assertions never leak onto getHost.
+  // The PLANE-class discriminator. Absent means the provisioned-getHost plane. EVERY
+  // getHost-specific assertion (hostDigest, exposure: synthetic, seeded provenance, state-delta on
+  // pass) is gated on this — it never leaks onto the external-public class, and the external-public
+  // assertions never leak onto getHost.
   const planeClass = (sw as { planeClass?: unknown }).planeClass;
   if (planeClass === "external-public") {
     return externalPublicConcurrentFindings(bundle, sw);
@@ -74,10 +74,9 @@ export function concurrentSharedWorldFindings(
 }
 
 /**
- * PROVISIONED-getHost concurrent branch (the historical plane; #164 phase 2): a clone/local-tree
- * subject served + getHost-exposed in-sandbox — the harness MINTED the host, so it asserts the
- * synthetic-seeded attestation, the harness-minted host identity, and an authoritative in-sandbox
- * checkpoint state-delta on pass. UNCHANGED from the pre-external-public verify (byte-stable).
+ * PROVISIONED-getHost concurrent branch: a clone/local-tree subject served and getHost-exposed
+ * in-sandbox. The harness MINTED the host, so this asserts the synthetic-seeded attestation, the
+ * harness-minted host identity, and an authoritative in-sandbox checkpoint state-delta on pass.
  */
 function provisionedGetHostConcurrentFindings(
   bundle: RunBundle,
@@ -85,7 +84,7 @@ function provisionedGetHostConcurrentFindings(
 ): string[] {
   const findings: string[] = sharedWorldCommonFindings(bundle, sw);
 
-  // FIX-8: shape coherence — concurrent carries laneWindows/stateSeries/outcomes, NOT a timeline.
+  // Shape coherence: concurrent carries laneWindows/stateSeries/outcomes, NOT a timeline.
   if (Array.isArray((sw as { timeline?: unknown }).timeline)) {
     findings.push(
       "a concurrent shared-world bundle must NOT carry a sequential timeline (topologyMode mismatch)",
@@ -107,7 +106,7 @@ function provisionedGetHostConcurrentFindings(
     return findings; // can't reason further without the core series
   }
 
-  // FIX-5: required limits all present AND forbidden limits all absent.
+  // Required limits all present AND forbidden limits all absent.
   const limits = Array.isArray(sw.attributionLimits) ? sw.attributionLimits : [];
   for (const required of CONCURRENT_REQUIRED_LIMITS) {
     if (!limits.includes(required)) {
@@ -163,7 +162,7 @@ function provisionedGetHostConcurrentFindings(
     }
   }
 
-  // FIX-2: the harness-minted getHost target. plane.hostDigest present (sha256-16) + every actor's
+  // The harness-minted getHost target. plane.hostDigest present (sha256-16) + every actor's
   // routeHostDigest equals it (every actor drove EXACTLY the harness-minted host — invariant 2).
   const plane: Record<string, unknown> = isRecord(sw.plane) ? sw.plane : {};
   const hostDigest = typeof plane.hostDigest === "string" ? plane.hostDigest : undefined;
@@ -182,8 +181,8 @@ function provisionedGetHostConcurrentFindings(
     }
   }
 
-  // FIX-3: synthetic-subject provenance gate (a getHost URL is internet-reachable; real/external
-  // data behind it is the hazard). Author attestation + a seeded provenance check.
+  // Synthetic-subject provenance gate (a getHost URL is internet-reachable; real/external data
+  // behind it is the hazard). Author attestation + a seeded provenance check.
   if (plane.exposure !== "synthetic") {
     findings.push(
       'sharedWorld.plane.exposure must be "synthetic" — the getHost route requires the author attestation that the subject is synthetic seeded data (author-trust + provenance gate, not a no-real-data guarantee)',
@@ -217,7 +216,7 @@ function provisionedGetHostConcurrentFindings(
     }
   }
 
-  // FIX-7: stateSeries is DIGEST-ONLY with the allowed-keys tripwire (no per-delta→actor field).
+  // stateSeries is DIGEST-ONLY with the allowed-keys tripwire (no per-delta→actor field).
   for (const snapshot of stateSeries) {
     if (typeof snapshot.timestamp !== "number") {
       findings.push("a stateSeries snapshot must carry a numeric timestamp");
@@ -236,10 +235,10 @@ function provisionedGetHostConcurrentFindings(
     }
   }
 
-  // The concurrency-on-pass gate (FIX-6): a PASSED concurrent run MUST show genuine overlap (≥2
-  // laneWindows overlapping in time) AND a stateSeries delta whose timestamp is AT/AFTER the start
-  // of an overlap interval — otherwise it was not actually concurrent, or the world never changed
-  // under contention (a hollow concurrent claim).
+  // The concurrency-on-pass gate: a PASSED concurrent run MUST show genuine overlap (≥2 laneWindows
+  // overlapping in time) AND a stateSeries delta whose timestamp is AT/AFTER the start of an
+  // overlap interval — otherwise it was not actually concurrent, or the world never changed under
+  // contention (a hollow concurrent claim).
   if (bundle.review.verdict === "pass") {
     const overlapStarts: number[] = [];
     for (let i = 0; i < laneWindows.length; i += 1) {
@@ -297,15 +296,15 @@ function provisionedGetHostConcurrentFindings(
 }
 
 /**
- * EXTERNAL-PUBLIC concurrent branch (#164 phase 2): N seats drove ONE real operator-owned public
- * deployment at once. The honest evidence class for a plane the harness does NOT own. Verify
- * fail-closed on the honest DOWNGRADES (asserted-absent, never silently dropped): provenance is
- * "external-public" (NOT seeded), exposure is ABSENT (claiming synthetic on a real site is a lie),
- * plane control is operator-attested (publicOriginDigest, not a harness-minted hostDigest), there is
- * NO authoritative shared-state proof (stateSeries omitted — option A), and concurrency is proven by
- * temporal co-occupancy ONLY (relaxed concurrency-on-pass: ≥2 overlapping windows, no state delta).
- * Every getHost-only claim (exposure: synthetic / plane.hostDigest / seeded / synthetic limit)
- * appearing here FAILS CLOSED.
+ * EXTERNAL-PUBLIC concurrent branch: N seats drove ONE real operator-owned public deployment at
+ * once. The honest evidence class for a plane the harness does NOT own. Verify fail-closed on the
+ * honest DOWNGRADES (asserted-absent, never silently dropped): provenance is "external-public" (NOT
+ * seeded), exposure is ABSENT (claiming synthetic on a real site is a lie), plane control is
+ * operator-attested (publicOriginDigest, not a harness-minted hostDigest), there is NO
+ * authoritative shared-state proof (stateSeries omitted), and concurrency is proven by temporal
+ * co-occupancy ONLY (relaxed concurrency-on-pass: ≥2 overlapping windows, no state delta). Every
+ * getHost-only claim (exposure: synthetic / plane.hostDigest / seeded / synthetic limit) appearing
+ * here FAILS CLOSED.
  */
 function externalPublicConcurrentFindings(bundle: RunBundle, sw: SharedWorldEvidence): string[] {
   const findings: string[] = sharedWorldCommonFindings(bundle, sw);
@@ -324,8 +323,8 @@ function externalPublicConcurrentFindings(bundle: RunBundle, sw: SharedWorldEvid
   if (laneWindows === null)
     findings.push("an external-public concurrent bundle must carry laneWindows");
   if (outcomes === null) findings.push("an external-public concurrent bundle must carry outcomes");
-  // Option A: NO authoritative shared-state proof — a non-empty stateSeries would falsely imply the
-  // harness digested the plane's backend state (it cannot; there is no in-sandbox filesystem).
+  // NO authoritative shared-state proof: a non-empty stateSeries would falsely imply the harness
+  // digested the plane's backend state (it cannot; there is no in-sandbox filesystem).
   const stateSeries = (sw as { stateSeries?: unknown }).stateSeries;
   if (Array.isArray(stateSeries) && stateSeries.length > 0) {
     findings.push(
@@ -454,7 +453,7 @@ function externalPublicConcurrentFindings(bundle: RunBundle, sw: SharedWorldEvid
       "sharedWorld.plane.hostDigest must be ABSENT on the external-public plane class — a harness-minted host identity is a getHost claim; this plane is operator-attested, not harness-minted",
     );
   }
-  // Provenance is the NEW external-public marker — NOT seeded (nothing was seeded), NOT unpinned.
+  // Provenance is the external-public marker: NOT seeded (nothing was seeded), NOT unpinned.
   if (bundle.subject?.state.provenance !== "external-public") {
     findings.push(
       `the external-public plane class requires subject.state.provenance == "external-public" (got "${bundle.subject?.state.provenance ?? "absent"}") — a seeded/unpinned/undeclared claim on an operator-owned public deployment is dishonest`,

@@ -3,13 +3,13 @@
 // Every dollar figure humanish derives from this table is surfaced/persisted as an ESTIMATE,
 // labeled "estimated (rates as of <asOf>)", and is NEVER presented as an exact charge.
 //
-// This module is PURE (node builtins only, no deps) and deterministic: the two estimator
-// functions take an OPTIONAL injected rate table/rate so tests drive assertions with a fake
-// sheet and never depend on the live numbers below. An UNKNOWN model/desktop rate yields a
-// DECLARED-ABSENT estimate (estimatedCostUsd: null + a reason), NEVER a guessed or silent-zero
-// cost (invariant 5). A bare `costUsd` elsewhere in the contract means a provider actually
-// billed that amount; the token-derived estimate here always lives under `estimatedCostUsd`
-// so a reader can never confuse an estimate for an authoritative charge (invariant 6).
+// This module is PURE (node builtins only, no deps) and deterministic: the estimator functions take
+// an OPTIONAL injected rate table/rate so tests drive assertions with a fake sheet and never depend
+// on the live numbers below. An UNKNOWN model/desktop rate yields a DECLARED-ABSENT estimate
+// (estimatedCostUsd: null + a reason), NEVER a guessed or silent-zero cost (invariant 5). A bare
+// `costUsd` elsewhere in the contract means a provider actually billed that amount; the
+// token-derived estimate here always lives under `estimatedCostUsd` so a reader can never confuse
+// an estimate for an authoritative charge (invariant 6).
 
 // A type-only import — erased at compile time, so the pricing <-> src/actors/contract.ts cycle is
 // not a runtime cycle.
@@ -53,8 +53,7 @@ export interface ModelRate {
   outputUsdPerToken: number;
   /** USD per input token served from the provider's prompt cache, when the provider bills those at
    *  a reduced rate. Optional: absent means we do not model a discount and every input token is
-   *  billed at `inputUsdPerToken` — the previous behavior, kept as the fallback so a rate sheet
-   *  without this field prices exactly as it did before (#391). */
+   *  billed at `inputUsdPerToken`. */
   cachedInputUsdPerToken?: number;
   /** USD per input token newly WRITTEN to the provider's prompt cache, when the provider bills
    *  writes (OpenAI: GPT-5.6+ bills `cache_write_tokens` at 1.25x the uncached input rate, as the
@@ -64,8 +63,8 @@ export interface ModelRate {
   /** Long-context tier, when the provider re-prices the WHOLE request past an input-size
    *  threshold (OpenAI GPT-5.6: >272K input tokens => 2x input-side, 1.5x output, full request).
    *  Priced exactly only when the usage carries per-request `turns` records; totals alone cannot
-   *  say which requests crossed, so without turns the estimate stays on the short-context rate
-   *  (the historical behavior, and the under-estimate direction is called out in #334's fix). */
+   *  say which requests crossed, so without turns the estimate stays on the short-context rate,
+   *  which under-estimates a request that crossed. */
   longContext?: {
     thresholdInputTokens: number;
     inputMultiplier: number;
@@ -183,8 +182,7 @@ function gpt56Rate(
 }
 
 // gpt-5.6-sol promotional rates (live sheet 2026-09-03: $4 / $0.40 cached / $5 write / $20 out,
-// "available at least through November 21, 2026"). The 2026-08-18 pin of 5 / 0.5 / 6.25 / 30
-// over-estimated every Sol run by 25-33% for two weeks. Re-verify against the sheet after Nov 21.
+// "available at least through November 21, 2026"). Re-verify against the sheet after Nov 21.
 const GPT56_SOL_PROMO_AS_OF = "2026-09-03";
 
 // Per-model rates, keyed on the model id that lands in trace.ids.model (lookup is
@@ -241,10 +239,10 @@ export const DESKTOP_RESOURCE_RATE: DesktopResourceRate = {
   source: "e2b.dev/pricing",
 };
 
-// Planning/legacy-helper assumption only: stock desktops observed on 2026-09-05 had 8 vCPU /
-// 8 GiB. This is the largest CPU/RAM combination on that public sheet, not a provider billing
-// ceiling or a claim about custom/enterprise templates. Runtime CUA estimates use observed
-// allocation resources through estimateAllocatedDesktopCost instead of this fallback.
+// Planning assumption behind the public estimateDesktopCost helper: stock desktops observed on
+// 2026-09-05 had 8 vCPU / 8 GiB. This is the largest CPU/RAM combination on that public sheet, not
+// a provider billing ceiling or a claim about custom/enterprise templates. Runtime CUA estimates
+// use observed allocation resources through estimateAllocatedDesktopCost instead of this fallback.
 export const DESKTOP_RATE: DesktopRate = {
   usdPerMinute: 0.00888,
   asOf: "2026-09-05",
@@ -367,16 +365,16 @@ export function estimateActorCost(
   // Long-context tiering needs to know each REQUEST's input size (the provider re-prices whole
   // requests past the threshold), so it engages only when per-turn usage records exist AND their
   // input sums to the reported total — a partial turn ledger must not silently price the missing
-  // remainder at the wrong tier. Otherwise totals price on the base (short-context) rate exactly
-  // as before, which is the under-estimate direction and never trips a cap early.
+  // remainder at the wrong tier. Otherwise totals price on the base (short-context) rate, which is
+  // the under-estimate direction and never trips a cap early.
   const turns = tokenUsage.turns ?? [];
   const sumOf = (field: "input" | "output" | "cachedInput" | "cacheWriteInput"): number =>
     turns.reduce((sum, turn) => sum + (turn[field] ?? 0), 0);
   // The ledger is trusted only when it decomposes the totals EXACTLY — all four sums, not just
   // input/output. A ledger that carries request sizes but not the cache splits would otherwise
-  // price every token at the full rate while the session totals sit ignored (red-team finding:
-  // 3.5-5x overstatement, the #391 false-cap-trip direction). Inconsistent evidence falls back
-  // to the totals path, which honors the declared splits on the base tier.
+  // price every token at the full rate while the session totals sit ignored, overstating spend
+  // 3.5-5x and tripping caps early. Inconsistent evidence falls back to the totals path, which
+  // honors the declared splits on the base tier.
   const tiered =
     rate.longContext !== undefined &&
     turns.length > 0 &&
@@ -393,10 +391,10 @@ export function estimateActorCost(
 
   // Price one request's usage at one tier. Cached input is billed at a fraction of the full rate,
   // and on a session that threads provider state it is the MAJORITY of input — pricing it at the
-  // full rate overstated real spend by up to ~10x (#391). Cache WRITES bill at their own rate
-  // (1.25x on OpenAI 5.6+) as the total rate for those tokens; a sheet without a write rate
-  // prices writes as plain input (pre-5.6: writes are free-of-extra-fee, i.e. plain input).
-  // Every piece is honestly absent: no reported split means no discount and no surcharge assumed.
+  // full rate overstates real spend by up to ~10x. Cache WRITES bill at their own rate (1.25x on
+  // OpenAI 5.6+) as the total rate for those tokens; a sheet without a write rate prices writes as
+  // plain input (pre-5.6: writes are free-of-extra-fee, i.e. plain input). Every piece is honestly
+  // absent: no reported split means no discount and no surcharge assumed.
   const priceRequest = (
     usage: { input?: number; cachedInput?: number; cacheWriteInput?: number; output?: number },
     tierable: boolean,

@@ -1,10 +1,6 @@
-// What ONE run is doing right now (#455).
-//
-// The run index answers "which runs exist and are any alive" for every run in a project, cheaply
-// and without opening evidence. This answers a different question about a SINGLE run — who is in
-// it, what are they thinking, how far have they got — and it does open the bundle, because that is
-// where the answer lives. That trade is only affordable for the one run someone is looking at,
-// which is exactly when it is asked.
+// What ONE run is doing right now: who is in it, what they are thinking, how far they have got.
+// Unlike the run index, it opens the bundle, which is affordable for the one run someone is
+// looking at.
 //
 // The shape it reads from is the actor trace (`humanish.actor-trace.v1`), in two places:
 //   - `stream.liveActor` while a run is in flight (the mid-run flush), and

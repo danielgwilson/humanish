@@ -131,13 +131,13 @@ export function isRunBundle(value: unknown): value is RunBundle {
     value.redaction.status === "passed" &&
     Array.isArray(value.feedbackCandidates) &&
     value.feedbackCandidates.every(isRunFeedbackCandidate) &&
-    // Optional and additive: pre-existing bundles (and non-cua backends) carry no subject
-    // block; when present it must be well-shaped (semantics are the verify check's job).
+    // Optional: a bundle may carry no subject block; when present it must be well-shaped
+    // (semantics are the verify check's job).
     (value.subject === undefined || isRunSubjectProvenance(value.subject)) &&
     (value.desktopBrowser === undefined || isDesktopBrowserEvidence(value.desktopBrowser)) &&
     (value.rerun === undefined || isRunRerunLineage(value.rerun)) &&
-    // Optional + additive shared-world fields (#164). Tolerant SHAPE guard only — the interaction
-    // semantics (timeline well-formedness, single-plane, delta-on-pass) are the verify check's job.
+    // Optional shared-world fields. Tolerant SHAPE guard only; the interaction semantics
+    // (timeline well-formedness, single-plane, delta-on-pass) are the verify check's job.
     (value.attributionClass === undefined ||
       value.attributionClass === "isolated" ||
       value.attributionClass === "shared-world") &&
@@ -145,8 +145,8 @@ export function isRunBundle(value: unknown): value is RunBundle {
     // Optional, adapter-namespaced product score (the extension seam). When present, validate only
     // its SHAPE; core never reads the adapter's `data` payload.
     (value.adapterScore === undefined || isRunAdapterScore(value.adapterScore)) &&
-    // Optional + additive scorer provenance (#316). Tolerated-absent so pre-#316 and library-caller
-    // bundles still verify; when present it must be well-shaped.
+    // Optional scorer provenance. Library callers may omit it; when present it must be
+    // well-shaped.
     (value.scorerProvenance === undefined || isRunScorerProvenance(value.scorerProvenance)) &&
     (value.adapterArtifacts === undefined ||
       (Array.isArray(value.adapterArtifacts) &&

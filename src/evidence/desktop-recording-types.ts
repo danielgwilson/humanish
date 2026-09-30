@@ -17,7 +17,7 @@ export const desktopRecordingMetadataSchema = z.strictObject({
 
 export type DesktopRecordingMetadata = z.infer<typeof desktopRecordingMetadataSchema>;
 
-/** Capture points describe recorded signals, not delivery to another caller. */
+/** A desktop recording as recorded in run.json: its metadata and the run-relative MP4 path. */
 export interface RunDesktopRecording extends DesktopRecordingMetadata {
   schema: "humanish.desktop-recording.v1";
   path: string;

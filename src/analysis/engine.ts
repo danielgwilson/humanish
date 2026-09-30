@@ -402,12 +402,12 @@ export async function runStudyAnalysis(
   config: StudyAnalysisConfig,
   options: {
     apiKey?: string;
-    /** Internal transport injection; no manifest or CLI route can supply a provider function. */
+    /** Test hook for the Codex provider call; no manifest or CLI route can supply one. */
     codexProvider?: StudyAnalysisProvider;
     signal?: AbortSignal;
     onProgress?: (progress: StudyAnalysisProgress) => void;
     fetch?: AnalysisFetch;
-    /** Internal orchestration: bind a permanent automatic claim before any provider call. */
+    /** Set by automatic analysis to its job attempt id, claimed before any provider call. */
     analysisId?: string;
     beforeDispatch?: (context: StudyAnalysisDispatchContext) => Promise<void>;
   },
