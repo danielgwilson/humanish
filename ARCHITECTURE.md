@@ -1,7 +1,8 @@
 # Find your way around the humanish code
 
 This file describes the code on `main` and names real functions and files. `pnpm docs:check`
-fails when a path in it no longer exists. [CONTEXT.md](CONTEXT.md) defines the domain terms.
+fails when a path in it no longer exists, or when a file named beside a function or type no
+longer declares that name. [CONTEXT.md](CONTEXT.md) defines the domain terms.
 [docs/decisions/](docs/decisions/README.md) records the decisions behind the rules below.
 
 ## Follow one `humanish run <lab>` from manifest to findings
