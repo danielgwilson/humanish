@@ -8,7 +8,7 @@ import { runLab, selectLabBackend } from "../../src/lab/engine.js";
 import { runCuaActorLab } from "../../src/routes/computer-use/lab.js";
 import { runConcurrentSharedWorld } from "../../src/routes/shared-world/concurrent.js";
 import { runTerminalProductLab } from "../../src/routes/terminal/lab.js";
-import { runScriptedBrowserLab } from "../../src/routes/scripted-browser.js";
+import { runScriptedBrowserLab } from "../../src/routes/scripted-browser/lab.js";
 import * as synthetic from "../../src/run/dry-run.js";
 
 const fixtures = JSON.parse(

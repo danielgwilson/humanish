@@ -52,18 +52,11 @@ import {
   type AutomaticAnalysisHooks,
   type AutomaticAnalysisResult,
 } from "../../analysis/automatic-completion.js";
-import { legacyFinishedRun, markFinalizedStudyResult } from "../../run/run.js";
+import { runScope, type RunScope } from "../../run/run.js";
 import { randomBytes } from "node:crypto";
 import { describeMissingKeys } from "../../cli/key-resolution.js";
-import {
-  beginRunStatus,
-  type RunLabProvenance,
-  type RunStatusHandle,
-  withRunStatusScope,
-  runStatusOutcome,
-} from "../../run/status.js";
+import { type RunLabProvenance } from "../../run/status.js";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
 
 import {
   adapterScoreFailureMessage,
@@ -128,24 +121,15 @@ import { e2bShell } from "../../substrates/e2b/shell.js";
 import type { Shell } from "../../substrates/shell.js";
 import type { DetachedTimers } from "../../substrates/detached.js";
 import { type LabActorLane, type LabConfig } from "../../lab/types.js";
-import { buildObserverData } from "../../observer/data.js";
+import { liveObserverResult } from "../../observer/live.js";
 import {
   attachObserverRuntimeStreamUrls,
-  renderObserver,
   type ObserverResult,
   type ObserverRuntimeStreamUrl,
 } from "../../observer/render.js";
 import { redactText, scrubLiterals } from "../../evidence/redaction.js";
 import { participantAssignment } from "../../lab/participant-assignment.js";
-import {
-  createRunArtifactPaths,
-  validatePreparedRunArtifactPaths,
-  type PreparedRunArtifactPaths,
-} from "../../run/paths.js";
-import {
-  writeContainedOutputFile,
-  writePreparedRunLatestPointer,
-} from "../../run/selected-output-paths.js";
+import { writeContainedOutputFile } from "../../run/selected-output-paths.js";
 import { combineCheckpointDigest, runCheckpointSnapshot, seedRecipeDigest } from "./checkpoints.js";
 import { type SharedWorldLabHooks } from "./hooks.js";
 import type { LocalTreeArchive } from "../../run/source-archive.js";
@@ -484,6 +468,19 @@ class HandoffTimeoutError extends Error {
   }
 }
 
+/**
+ * A failure of the caller's `onObserverReady` gate on the provisioned plane. The gate runs inside
+ * the try that records participant failures, so it is wrapped to be told apart and rethrown: a gate
+ * failure stops the run before any participant starts, as it does on the other routes, and the
+ * teardown in that try's finally still kills the subject.
+ */
+class ObserverGateError extends Error {
+  constructor(cause: unknown) {
+    super("onObserverReady failed", { cause });
+    this.name = "ObserverGateError";
+  }
+}
+
 /** One persona's OUTCOME against the contended world (the "M of N" headline). */
 export interface ConcurrentSharedWorldRoleResult {
   id: string;
@@ -728,85 +725,6 @@ function makeBlockedFollowerOutcome(
   };
 }
 
-async function writeConcurrentRunArtifacts(
-  bundle: RunBundle,
-  preparedRunPaths: PreparedRunArtifactPaths,
-): Promise<void> {
-  const runPaths = await validatePreparedRunArtifactPaths(preparedRunPaths);
-  const publicBundle: RunBundle = {
-    ...bundle,
-    cwd: PUBLIC_TARGET_CWD,
-  };
-  await writeContainedOutputFile(
-    runPaths,
-    "run.json",
-    `${JSON.stringify(publicBundle, null, 2)}\n`,
-    "utf8",
-  );
-  await writeContainedOutputFile(
-    runPaths,
-    "review.json",
-    `${JSON.stringify(publicBundle.review, null, 2)}\n`,
-    "utf8",
-  );
-  await writeContainedOutputFile(
-    runPaths,
-    "review.md",
-    renderConcurrentReviewMarkdown(publicBundle),
-    "utf8",
-  );
-  await writeContainedOutputFile(
-    runPaths,
-    "events.ndjson",
-    `${publicBundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`,
-    "utf8",
-  );
-  await writeContainedOutputFile(
-    runPaths,
-    "observer/observer-data.json",
-    `${JSON.stringify(buildObserverData(publicBundle), null, 2)}\n`,
-    "utf8",
-  );
-  await writePreparedRunLatestPointer(
-    runPaths,
-    `${JSON.stringify(
-      {
-        schema: "humanish.latest-run.v1",
-        runId: publicBundle.runId,
-        path: runPaths.relativeRunRoot,
-        updatedAt: new Date().toISOString(),
-      },
-      null,
-      2,
-    )}\n`,
-    "utf8",
-  );
-}
-
-function observerResultForConcurrentArtifacts(
-  cwd: string,
-  runId: string,
-  artifactRoot: string,
-  warnings: string[] = [],
-): ObserverResult & { ok: true } {
-  const observerPath = path.join(artifactRoot, "observer", "index.html");
-  const observerDataPath = path.join(artifactRoot, "observer", "observer-data.json");
-  const eventsPath = path.join(artifactRoot, "events.ndjson");
-  return {
-    schema: "humanish.observer-result.v1",
-    ok: true,
-    cwd,
-    run: runId,
-    observerPath: path.relative(cwd, observerPath),
-    observerDataPath: path.relative(cwd, observerDataPath),
-    eventsPath: path.relative(cwd, eventsPath),
-    observerUrl: pathToFileURL(observerPath).href,
-    bundlePath: path.join(artifactRoot, "run.json"),
-    opened: false,
-    warnings,
-  };
-}
-
 /**
  * Wrapped so a DIRECT library caller gets the same status-record lifetime the CLI does: returning
  * from this function finalizes any record the run opened, whichever of its fail-closed exits it
@@ -824,10 +742,12 @@ async function runConcurrentSharedWorldWithSecrets(
   options: RunConcurrentSharedWorldLabOptions,
 ): Promise<ConcurrentSharedWorldLabResult> {
   const analysis = resolveAutomaticAnalysis(options.config.review?.analysis);
-  const result = await withRunStatusScope(() => runConcurrentSharedWorldInScope(options));
+  const { result, finished } = await runScope((scope) =>
+    runConcurrentSharedWorldInScope(options, scope),
+  );
   return completeAutomaticAnalysis(
     result,
-    legacyFinishedRun(result),
+    finished,
     analysis.ok ? analysis.config : undefined,
     options.automaticAnalysis,
     options.config.review?.analysis === undefined ? "default" : "explicit",
@@ -837,12 +757,12 @@ async function runConcurrentSharedWorldWithSecrets(
 
 async function runConcurrentSharedWorldInScope(
   options: RunConcurrentSharedWorldLabOptions,
+  scope: RunScope,
 ): Promise<ConcurrentSharedWorldLabResult> {
   const { config, dryRun } = options;
   const cwd = path.resolve(options.cwd);
   const hooks = options.hooks ?? {};
   const env = hooks.env ?? process.env;
-  const render = hooks.renderObserverFn ?? renderObserver;
   const actorType = config.actors[0]?.type ?? "";
   const roles = config.actors[0]?.lanes ?? [];
   // All-parallel default (#350): the parser fills concurrency for multi-seat labs, so this
@@ -976,22 +896,20 @@ async function runConcurrentSharedWorldInScope(
     }
   }
 
-  const runId = options.runId ?? makeRunId();
-  const created = await createRunArtifactPaths(cwd, runId);
-  if (!created.ok) return fail(created.code, created.message, descriptor.id);
-  const runPaths = created.paths;
-  // Identity + liveness on disk (#455): every backend writes this, so a watcher can classify any
-  // run without parsing bundles and without depending on the interactive-observer path.
-  const runStatus: RunStatusHandle = beginRunStatus(runPaths, {
-    runId,
+  const started = await scope.startRun({
+    cwd,
+    runId: options.runId,
+    mintRunId: makeRunId,
     mode: dryRun ? "dry-run" : "live",
-    ...(options.lab === undefined ? {} : { lab: options.lab }),
+    lab: options.lab,
+    renderReview: renderConcurrentReviewMarkdown,
+    observer: { open: options.open === true, render: hooks.renderObserverFn },
   });
-  // Before any sandbox exists: a run killed after acquiring one must still have a status record.
-  await runStatus.started;
+  if (!started.ok) return fail(started.code, started.message, descriptor.id);
+  const { run } = started;
+  const { runId, createdAt, paths: runPaths } = run;
   const artifactRoot = runPaths.absoluteRunRoot;
   const physicalArtifactRoot = runPaths.physicalRunRoot;
-  const createdAt = new Date().toISOString();
   const timeoutMs = config.execution?.timeoutMs ?? defaultSeatSessionTimeoutMs(config);
   const requestTimeoutMs = readPositiveInt(env.HUMANISH_E2B_REQUEST_TIMEOUT_MS, 60_000);
   const redactScreenshots = config.policies?.redactScreenshots === true;
@@ -1451,11 +1369,15 @@ async function runConcurrentSharedWorldInScope(
               : { subjectCommit: inProgressPlaneCommit }),
             hostDigest: hostOriginDigest(getHostUrl!),
           });
-          await writeConcurrentRunArtifacts(inProgressBundle, runPaths);
-          liveObserver = observerResultForConcurrentArtifacts(cwd, runId, artifactRoot, [
+          await run.writeSnapshot(inProgressBundle);
+          liveObserver = liveObserverResult(cwd, runId, artifactRoot, [
             "Live concurrent shared-world Observer is attached before final verification; stream auth URLs are runtime-only and are not persisted.",
           ]);
-          await options.onObserverReady(liveObserver);
+          try {
+            await options.onObserverReady(liveObserver);
+          } catch (error) {
+            throw new ObserverGateError(error);
+          }
         }
         proberLoop = (async () => {
           while (!proberDisposed) {
@@ -1552,6 +1474,7 @@ async function runConcurrentSharedWorldInScope(
           },
         );
       } catch (error) {
+        if (error instanceof ObserverGateError) throw error.cause;
         runError = redactText(scrubKnownValues(toErrorMessage(error)));
         warnings.push(`Concurrent shared-world run failed before completion: ${runError}`);
       } finally {
@@ -1713,8 +1636,8 @@ async function runConcurrentSharedWorldInScope(
           // is not available; surface the DECLARED origin for the live Observer's reference.
           ...(declaredOriginDigest === undefined ? {} : { declaredOriginDigest }),
         });
-        await writeConcurrentRunArtifacts(inProgressBundle, runPaths);
-        liveObserver = observerResultForConcurrentArtifacts(cwd, runId, artifactRoot, [
+        await run.writeSnapshot(inProgressBundle);
+        liveObserver = liveObserverResult(cwd, runId, artifactRoot, [
           "Live external-public concurrent shared-world Observer is attached before final verification; stream auth URLs are runtime-only and are not persisted.",
         ]);
         await options.onObserverReady(liveObserver);
@@ -2164,13 +2087,8 @@ async function runConcurrentSharedWorldInScope(
   });
 
   if (receiving) bundle.commsReceiving = receiving.snapshot();
-  await writeConcurrentRunArtifacts(bundle, runPaths);
-  // Finalize identity+liveness from the bundle just written. Deliberately here and not inside
-  // writeConcurrentRunArtifacts — that writer is shared with the mid-run in-progress flushes, and
-  // finalizing there would declare the run finished while it is still going (#455).
-  await runStatus.finish(runStatusOutcome(bundle));
-
-  const observer = await render(cwd, runId, { open: options.open === true });
+  const finished = await run.finish(bundle);
+  const observer = await finished.renderObserver();
   if (observer.ok && liveObserver) {
     attachObserverRuntimeStreamUrls(observer as ObserverResult & { ok: true }, runtimeStreamUrls);
   }
@@ -2274,33 +2192,30 @@ async function runConcurrentSharedWorldInScope(
     };
   })();
 
-  return markFinalizedStudyResult(
-    {
-      schema: CONCURRENT_SHARED_WORLD_LAB_SCHEMA,
-      ok,
-      cwd,
-      labId: config.id,
-      actor: descriptor.id,
-      topology: "shared-world",
-      topologyMode: "concurrent",
-      roleCount: roles.length,
-      concurrency,
-      dryRun,
-      runId,
-      ...(getHostUrl === undefined ? {} : { host: getHostUrl }),
-      ...(subjectSandboxId === undefined
-        ? {}
-        : { subjectSandbox: { sandboxId: subjectSandboxId, killed: subjectKilled } }),
-      ...(dryRun ? {} : { overlapProven }),
-      ...(dryRun ? {} : { maxSimultaneousLanes: maxSimultaneousWindows(actorResults) }),
-      subject,
-      roles: roleResults,
-      observer,
-      warnings: [...warnings, ...adapterWarnings, ...observer.warnings],
-      ...(errorResult === undefined ? {} : { error: errorResult }),
-    },
-    runPaths,
-  );
+  return {
+    schema: CONCURRENT_SHARED_WORLD_LAB_SCHEMA,
+    ok,
+    cwd,
+    labId: config.id,
+    actor: descriptor.id,
+    topology: "shared-world",
+    topologyMode: "concurrent",
+    roleCount: roles.length,
+    concurrency,
+    dryRun,
+    runId,
+    ...(getHostUrl === undefined ? {} : { host: getHostUrl }),
+    ...(subjectSandboxId === undefined
+      ? {}
+      : { subjectSandbox: { sandboxId: subjectSandboxId, killed: subjectKilled } }),
+    ...(dryRun ? {} : { overlapProven }),
+    ...(dryRun ? {} : { maxSimultaneousLanes: maxSimultaneousWindows(actorResults) }),
+    subject,
+    roles: roleResults,
+    observer,
+    warnings: [...warnings, ...adapterWarnings, ...observer.warnings],
+    ...(errorResult === undefined ? {} : { error: errorResult }),
+  };
 }
 
 /** Max windows live at the same instant (sweep over start/end points). The honest simultaneity

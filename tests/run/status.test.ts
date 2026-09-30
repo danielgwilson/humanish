@@ -11,10 +11,8 @@ import {
   RUN_STATUS_TOUCH_MS,
   beginRunStatus,
   classifyRunStatus,
-  inertRunStatus,
   inferLegacyLabId,
   isRunStatusRecord,
-  withRunStatusScope,
   type RunStatusRecord,
 } from "../../src/run/status.js";
 import { prepareRunArtifactPaths } from "../../src/run/paths.js";
@@ -120,101 +118,6 @@ describe("run status: identity + liveness on disk (#455)", () => {
     expect(after.state).toBe("finished");
     expect(after.outcome?.verdict).toBe("pass");
     expect(after.completedAt).toBe("2026-08-19T10:00:10.000Z");
-  });
-
-  it("a run that returns without finalizing still stops claiming to be alive", async () => {
-    // The defect this pins, found by CI on a real fail-closed path: the lab backends have 18 early
-    // `return`s between opening a status record and finalizing it (bad subject, packing failure,
-    // missing key). Each one ends the run and skips `finish()`. Before the scope, the cadence kept
-    // ticking and the record kept saying `running`, so a listing surface showed a dead run as alive
-    // for as long as the process lived — and a cleanup deleting the run directory raced a writer
-    // that was still writing into it.
-    const runPaths = await prepareRunArtifactPaths(cwd, "run-abandoned");
-    const result = await withRunStatusScope(async () => {
-      const status = beginRunStatus(runPaths, { runId: "run-abandoned", mode: "live", touchMs: 5 });
-      await status.started;
-      // The shape of every fail-closed exit: return an error result, never touch the handle again.
-      return { ok: false as const, code: "HUMANISH_SUBJECT_INVALID" };
-    });
-    expect(result.ok).toBe(false);
-
-    const record = await read("run-abandoned");
-    // Finished, because control returned: the run IS over. And with NO outcome, because the scope
-    // does not know one — an absent verdict is the honest report, not an invented pass.
-    expect(record.state).toBe("finished");
-    expect(record.completedAt).toBeDefined();
-    expect(record.outcome).toBeUndefined();
-    expect(classifyRunStatus(record, Date.now())).toBe("finished");
-
-    // And the cadence is genuinely stopped: nothing writes into the run directory any more, which
-    // is what let a concurrent cleanup fail with ENOTEMPTY.
-    const settled = (
-      await stat(path.join(cwd, ".humanish", "runs", "run-abandoned", RUN_STATUS_FILE))
-    ).mtimeMs;
-    await new Promise((resolve) => setTimeout(resolve, 60));
-    expect(
-      (await stat(path.join(cwd, ".humanish", "runs", "run-abandoned", RUN_STATUS_FILE))).mtimeMs,
-    ).toBe(settled);
-  });
-
-  it("the scope never overwrites an outcome a backend already recorded", async () => {
-    const runPaths = await prepareRunArtifactPaths(cwd, "run-proper");
-    await withRunStatusScope(async () => {
-      const status = beginRunStatus(runPaths, { runId: "run-proper", mode: "live", touchMs: 0 });
-      await status.finish({
-        verdict: "pass",
-        ok: true,
-        participants: { total: 2, reachedGoal: 2 },
-      });
-    });
-    const record = await read("run-proper");
-    expect(record.state).toBe("finished");
-    expect(record.outcome?.verdict).toBe("pass");
-    expect(record.outcome?.participants?.total).toBe(2);
-  });
-
-  it("concurrent runs in one process each clean up only their own record", async () => {
-    // Labs can run side by side in one process, so the scope is async-local rather than global:
-    // one run returning must not finalize another run that is still going.
-    const slowPaths = await prepareRunArtifactPaths(cwd, "run-slow");
-    let slowStatus: ReturnType<typeof beginRunStatus> | undefined;
-    // The slow run is held open by a gate the test opens AFTER asserting, so "still running"
-    // is a fact about ordering. A sleep here made the assertion a race against wall-clock and
-    // it lost on loaded CI runners (Node 24 job, 2026-08-31).
-    let releaseSlow!: () => void;
-    const slowHeld = new Promise<void>((resolve) => {
-      releaseSlow = resolve;
-    });
-    // The slow run signals once its record is ON DISK, and the test waits for that before reading
-    // it: `slow` is deliberately not awaited (it is held open), so without this gate the read raced
-    // the first write and lost on a loaded runner (ENOENT on run-slow/status.json, Node 22 job,
-    // 2026-09-03).
-    let slowStarted!: () => void;
-    const slowOnDisk = new Promise<void>((resolve) => {
-      slowStarted = resolve;
-    });
-    const slow = withRunStatusScope(async () => {
-      slowStatus = beginRunStatus(slowPaths, { runId: "run-slow", mode: "live", touchMs: 0 });
-      await slowStatus.started;
-      slowStarted();
-      await slowHeld;
-      await slowStatus.finish({ verdict: "pass" });
-    });
-    await slowOnDisk;
-
-    const fastPaths = await prepareRunArtifactPaths(cwd, "run-fast");
-    await withRunStatusScope(async () => {
-      const status = beginRunStatus(fastPaths, { runId: "run-fast", mode: "live", touchMs: 0 });
-      await status.started;
-    });
-
-    // The fast run finalized itself; the slow one is untouched and still running.
-    expect((await read("run-fast")).state).toBe("finished");
-    expect((await read("run-slow")).state).toBe("running");
-
-    releaseSlow();
-    await slow;
-    expect((await read("run-slow")).outcome?.verdict).toBe("pass");
   });
 
   it("classifies liveness from the record: running, stale-means-interrupted, finished", () => {
@@ -333,12 +236,5 @@ describe("run status: identity + liveness on disk (#455)", () => {
     ).toBeUndefined();
     expect(inferLegacyLabId({ persona: { source: "lab:" } })).toBeUndefined();
     expect(inferLegacyLabId({})).toBeUndefined();
-  });
-
-  it("the inert handle satisfies the interface for callers that cannot write", async () => {
-    const inert = inertRunStatus();
-    await expect(inert.touch()).resolves.toBeUndefined();
-    await expect(inert.finish()).resolves.toBeUndefined();
-    expect(() => inert.stop()).not.toThrow();
   });
 });

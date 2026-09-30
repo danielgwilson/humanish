@@ -52,8 +52,8 @@ with `Run.finish` as in step 7, and skips steps 3 to 6 and 9. Its callers run st
    `Run.finish` writes `run.json`, then the `status.json` outcome, then `review.json`,
    `review.md`, `events.ndjson` and `observer/observer-data.json`, and the
    `.humanish/runs/latest.json` pointer last. A snapshot writes the same files without the
-   status outcome and writes the pointer only until one pointer write succeeds. The terminal,
-   scripted and preview routes publish the same way; the shared-world route moves onto it next.
+   status outcome and writes the pointer only until one pointer write succeeds. Every other
+   route publishes the same way.
 8. `renderObserver` (`src/observer/render.ts`) verifies the bundle with `verifyRunPrepared`
    (`src/run/verify.ts`), builds the page data with `buildObserverData` (`src/observer/data.ts`)
    and writes `observer/index.html` with `renderObserverHtml`. `humanish verify --run latest` runs
@@ -61,9 +61,8 @@ with `Run.finish` as in step 7, and skips steps 3 to 6 and 9. Its callers run st
 9. After the route returns, `completeAutomaticAnalysis` (`src/analysis/automatic-completion.ts`)
    calls `runAutomaticStudyAnalysis` (`src/analysis/automatic.ts`). It takes the `FinishedRun`
    that `Run.finish` issued (`src/run/run.ts`) and reads the run id and paths from it, so a
-   refusal that echoes an older run's id never analyzes that run. Routes not yet on the run scope
-   pass `legacyFinishedRun(result)`. Dry runs skip analysis. A lab turns it off with
-   `review.analysis: false`.
+   refusal that echoes an older run's id never analyzes that run. Dry runs skip analysis. A lab
+   turns it off with `review.analysis: false`.
 
 [docs/architecture/project-layout.md](docs/architecture/project-layout.md) describes the
 `humanish/` and `.humanish/` folders in a project that runs studies.
@@ -74,7 +73,7 @@ with `Run.finish` as in step 7, and skips steps 3 to 6 and 9. Its callers run st
 | ---------------------- | ---------------------------------------------------------------------------- | ----------------------------------- |
 | `src/cli/`             | The commander program, with one file per command family in `commands/`       | `src/cli/program.ts`                |
 | `src/lab/`             | Lab manifest types, parsing, validation, routing and dispatch                | `src/lab/engine.ts`                 |
-| `src/routes/`          | One folder or file per route, each with its own bundle assembly              | `src/routes/computer-use/lab.ts`    |
+| `src/routes/`          | One folder per route, each with its own bundle assembly                      | `src/routes/computer-use/lab.ts`    |
 | `src/actors/`          | The actor contract, the registry and each actor's session code               | `src/actors/registry.ts`            |
 | `src/subject/`         | Subject provisioning over a `Shell`: clone, local tree, desktop CLI, serve   | `src/subject/serve.ts`              |
 | `src/substrates/`      | E2B desktops in `e2b/`, Firecracker and Lima VMs in `local/`, the `Shell`    | `src/substrates/e2b/cua-desktop.ts` |

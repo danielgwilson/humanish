@@ -10,6 +10,7 @@ import { serveObserver } from "../../observer/render.js";
 import type { ObserverResult, ObserverServer } from "../../observer/render.js";
 import { startExposedObserver, validateExposure } from "../../observer/exposure.js";
 import { ServeTunnelError } from "../../observer/tunnel.js";
+import { redactText } from "../../evidence/redaction.js";
 import type { ServeTunnel } from "../../observer/tunnel.js";
 import type { RunResult } from "../../run/bundle.js";
 import {
@@ -467,7 +468,7 @@ export async function runConcurrentSharedWorldBackend(args: {
   const wantsFollow =
     args.mode === "watch" && !wantsMachine && args.options.detach !== true && dryRun !== true;
   const port = parseObserverPort(args.options.port ?? "0");
-  if (wantsFollow && port === null) {
+  const failConcurrent = (message: string, runId?: string): void => {
     const result: ConcurrentSharedWorldLabResult = {
       schema: "humanish.concurrent-shared-world-lab-result.v1",
       ok: false,
@@ -479,21 +480,24 @@ export async function runConcurrentSharedWorldBackend(args: {
       roleCount: args.config.actors[0]?.lanes?.length ?? 0,
       concurrency: args.config.execution?.concurrency ?? 1,
       dryRun,
-      runId: args.options.runId ?? "not-created",
+      runId: runId ?? args.options.runId ?? "not-created",
       roles: [],
       warnings: [],
-      error: {
-        code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED",
-        message: "--port must be an integer between 0 and 65535.",
-      },
+      error: { code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED", message },
     };
     writeResult(args.command, args.io, result, formatConcurrentSharedWorldLabHuman);
     args.io.setExitCode(2);
+  };
+  if (wantsFollow && port === null) {
+    failConcurrent("--port must be an integer between 0 and 65535.");
     return;
   }
 
   let server: ObserverServer | null = null;
   let attachedObserver: (ObserverResult & { ok: true }) | null = null;
+  // Set when the live Observer itself failed to start: an operator-side failure, reported as a
+  // structured result rather than an unexpected error.
+  let observerFailure: unknown;
   let outcome: Awaited<ReturnType<typeof runLab>>;
   try {
     outcome = await runLab(args.config, {
@@ -506,8 +510,11 @@ export async function runConcurrentSharedWorldBackend(args: {
         ? {
             onObserverReady: async (observer) => {
               attachedObserver = observer;
-              if (!server) {
-                server = await serveObserver(observer, { open: shouldOpen, port: port ?? 0 });
+              try {
+                server ??= await serveObserver(observer, { open: shouldOpen, port: port ?? 0 });
+              } catch (error) {
+                observerFailure = error;
+                throw error;
               }
             },
           }
@@ -528,6 +535,14 @@ export async function runConcurrentSharedWorldBackend(args: {
       );
     });
     server = null;
+    if (observerFailure !== undefined && error === observerFailure) {
+      const message = redactText(error instanceof Error ? error.message : String(error));
+      failConcurrent(
+        `The live Observer could not start, so the run stopped before its participants: ${message}`,
+        (attachedObserver as (ObserverResult & { ok: true }) | null)?.run,
+      );
+      return;
+    }
     throw error;
   }
   if (outcome.backend !== "concurrent-shared-world") {

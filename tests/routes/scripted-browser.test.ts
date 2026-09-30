@@ -30,7 +30,7 @@ import { runCuaActorLab } from "../../src/routes/computer-use/lab.js";
 import {
   runScriptedBrowserLab,
   type ScriptedBrowserLabHooks,
-} from "../../src/routes/scripted-browser.js";
+} from "../../src/routes/scripted-browser/lab.js";
 import type {
   ScriptedBrowserLike,
   ScriptedLocatorLike,

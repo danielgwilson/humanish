@@ -277,21 +277,10 @@ nondeterminism candidate and does not license erasing the original red lane.
 
 ## Run-owned cleanup
 
-Live providers can record resource evidence in `run.json`.
-Stored bundle IDs are mutable evidence and do not authorize provider mutation. The
-cleanup command writes a durable inspection receipt until Humanish has a
-verified resource-lease contract. Resources already recorded as killed become
-`already_clean`; recorded live or unknown resources become `failed`, which
-makes cleanup and verification fail closed:
-
-```bash
-npx humanish cleanup --run latest
-npx humanish verify --run latest
-```
-
-Humanish does not enumerate or bulk-delete provider accounts from this command.
-Same-process teardown uses trusted in-memory provider handles. For an interrupted run, `humanish reclaim --run YOUR_RUN_ID` can stop the
-exact sandboxes recorded in that run's journal. See [recovery](/docs/budgets-and-privacy#recover-after-an-interruption).
+`npx humanish cleanup --run latest` re-checks every desktop the run recorded, and
+`npx humanish reclaim --run YOUR_RUN_ID` stops the ones an interrupted run left.
+[Knowing that cleanup happened](/docs/trust-boundaries#knowing-that-cleanup-happened)
+explains both receipts.
 
 Trust note: `serve` commands run inside the disposable sandbox with the declared
 subject env provisioned, the same trust class as a repo's package.json scripts.

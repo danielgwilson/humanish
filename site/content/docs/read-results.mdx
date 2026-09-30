@@ -46,7 +46,7 @@ Verification checks the bundle's evidence and automated public-safety gates. It 
 | `local_only`         | Valid local evidence that should not be shared as-is. Raw screenshots are one reason. |
 | `blocked`            | The bundle failed verification or a public-safety gate.                               |
 
-Full-fidelity screenshots are local-only by default. The automated scan catches secret and local-path shapes; it does **not** certify that names, personal information, or sensitive content are absent from text or pixels. Use synthetic data and review what you share. [Privacy details](/docs/budgets-and-privacy#review-evidence-before-sharing).
+Full-fidelity screenshots are local-only by default. The automated scan catches secret and local-path shapes; it does **not** certify that names, personal information, or sensitive content are absent from text or pixels. Use synthetic data and review what you share. To blur frames at capture instead, set `policies.redactScreenshots: true` ([screenshots](/docs/computer-use#screenshots-are-full-fidelity-by-default)).
 
 ## Draft an issue
 

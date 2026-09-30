@@ -17,7 +17,7 @@ import {
   runScriptedBrowserLab,
   type ScriptedBrowserLabHooks,
   type ScriptedBrowserLabResult,
-} from "../routes/scripted-browser.js";
+} from "../routes/scripted-browser/lab.js";
 import { runTerminalProductLab } from "../routes/terminal/lab.js";
 import {
   type TerminalProductLabHooks,
@@ -28,7 +28,7 @@ import {
   runConcurrentSharedWorld,
   type ConcurrentSharedWorldLabResult,
 } from "../routes/shared-world/concurrent.js";
-import { withRunStatusScope, type RunLabProvenance } from "../run/status.js";
+import { type RunLabProvenance } from "../run/status.js";
 import type { ObserverResult } from "../observer/render.js";
 import { runDryRun } from "../run/dry-run.js";
 import { type RunResult, type RunScorerProvenance } from "../run/bundle.js";
@@ -94,16 +94,10 @@ function actorLaneCount(config: LabConfig): number | undefined {
 }
 
 /**
- * The one seam every lab backend is dispatched through. The body runs inside a status scope so a
- * backend that fails closed and RETURNS an error result — 18 such exits across the backends — can
- * never leave its liveness record ticking as though the run were still going. See
- * `withRunStatusScope`.
+ * The one seam every lab backend is dispatched through. Each route closes the run it started on
+ * every exit through its own run scope (`src/run/run.ts`).
  */
 export async function runLab(config: LabConfig, options: RunLabOptions): Promise<LabOutcome> {
-  return withRunStatusScope(() => runLabInScope(config, options));
-}
-
-async function runLabInScope(config: LabConfig, options: RunLabOptions): Promise<LabOutcome> {
   config = localBrowserDefaults(config);
   const backend = selectLabBackend(config);
   const analysis = resolveAutomaticAnalysis(config.review?.analysis);
