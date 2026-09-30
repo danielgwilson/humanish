@@ -85,6 +85,7 @@ import {
 } from "./types.js";
 import {
   automaticAnalysisRouteReason,
+  cloneTargetValidationReason,
   cuaLaneValidationReason,
   desktopMediaValidationReason,
   outputTokenLimitValidationReason,
@@ -422,6 +423,12 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
         "clone scripted-browser labs require `subject.serve.start` to bind all interfaces (e.g. `-H 0.0.0.0` / `--host 0.0.0.0` / `HOST=0.0.0.0`) — getHost only routes to a 0.0.0.0-bound port; the readiness probe stays loopback.",
       );
     }
+  }
+
+  // Runs before the clone checks below, which apply only on e2b-desktop and must not be bypassed.
+  const cloneTargetReason = cloneTargetValidationReason(config);
+  if (cloneTargetReason) {
+    return invalid(cloneTargetReason);
   }
 
   // clone × e2b-desktop disambiguates on the actor lane: a computer-use actor means the lab

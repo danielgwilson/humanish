@@ -201,7 +201,10 @@ persona?, device?, instruction?, target?, entry? }`. The parser expands it into
   desktop device/resolution and timeouts. app-url subjects pair `e2b-desktop`
   with a computer-use actor, or `local` (or absent) with a scripted-browser
   actor; terminal-product subjects pair `e2b-terminal` (or absent → implied)
-  with a registered terminal actor;
+  with a registered terminal actor. clone and local-tree subjects require an
+  explicit `e2b-desktop`: any other target, or none, fails to parse, and the
+  computer-use and scripted-browser routes refuse it when a library caller skips
+  the parser;
 - `execution.desktop.template` (e2b-desktop computer-use routes): a custom E2B
   desktop TEMPLATE (image) NAME or ID the run launches on — for a subject that
   needs runtimes the stock `desktop` image lacks (e.g. node/bun/a local Postgres

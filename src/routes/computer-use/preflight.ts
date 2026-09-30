@@ -10,6 +10,7 @@ import { describeMissingKeys } from "../../cli/key-resolution.js";
 import { externalCatchHealthy } from "../../comms/sandbox-catch.js";
 import { MODEL_RATES } from "../../run/pricing.js";
 import {
+  cloneTargetValidationReason,
   cuaLaneValidationReason,
   desktopMediaValidationReason,
   outputTokenLimitValidationReason,
@@ -115,6 +116,9 @@ export function cuaLabRejection(
       message: "execution.desktop.recording is not provisioned by a caller-supplied executor.",
     };
   }
+  const cloneTargetReason = cloneTargetValidationReason(config);
+  if (cloneTargetReason)
+    return { code: "HUMANISH_CUA_LAB_SUBJECT_INVALID", message: cloneTargetReason };
   // Engine re-enforcement of the clone-route structure (library API surface).
   if (
     cloneRoute &&
