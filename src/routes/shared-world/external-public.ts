@@ -7,13 +7,19 @@
 import { liveObserverResult } from "../../observer/live.js";
 import { redactText, toErrorMessage } from "../../evidence/redaction.js";
 import { mapWithConcurrency } from "../../run/concurrency.js";
-import { buildConcurrentSharedWorldBundle } from "./bundle.js";
+import { buildConcurrentSharedWorldBundle, judgeSharedWorldRun } from "./bundle.js";
 import { drainExternalComms } from "./comms.js";
 import { LobbyHandoff, runFollowerLane, runHostLane, type HandoffSeatDeps } from "./handoff.js";
 import { readLobbyCodeFromFrame } from "./lobby-code.js";
 import { hostOriginDigest } from "./provenance.js";
 import { seatLaneDeps, startSeatFlush } from "./seats.js";
-import type { ActorLaneResult, ExternalCommsWiring, LiveSeats, PlaneContext } from "./types.js";
+import type {
+  ActorLaneResult,
+  ConcurrentBundleArgs,
+  ExternalCommsWiring,
+  LiveSeats,
+  PlaneContext,
+} from "./types.js";
 
 /** What the external-public plane hands back to the orchestrator. */
 export interface ExternalPublicPlaneOutcome {
@@ -69,7 +75,7 @@ export async function runExternalPublicPlane(
 
   // Publish the in-progress bundle and attach any live Observer before fan-out, as on the
   // provisioned path.
-  const inProgressBundle = buildConcurrentSharedWorldBundle({
+  const snapshotArgs: Omit<ConcurrentBundleArgs, "judgment"> = {
     plan,
     descriptor: ctx.descriptor,
     createdAt: ctx.createdAt,
@@ -87,6 +93,10 @@ export async function runExternalPublicPlane(
     // Pre-fan-out snapshot: no seat has observed an origin yet, so the OBSERVED publicOriginDigest
     // is not available; surface the DECLARED origin for the live Observer's reference.
     ...(declaredOriginDigest === undefined ? {} : { declaredOriginDigest }),
+  };
+  const inProgressBundle = buildConcurrentSharedWorldBundle({
+    ...snapshotArgs,
+    judgment: judgeSharedWorldRun(snapshotArgs),
   });
   await ctx.run.writeSnapshot(inProgressBundle);
   if (ctx.input.onObserverReady) {

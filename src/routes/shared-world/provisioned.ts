@@ -47,10 +47,10 @@ import {
 import { withInboxMission } from "../computer-use/lane-plan.js";
 import { planeStateOf } from "./plan.js";
 import { runCuaLane } from "../computer-use/lanes.js";
-import { buildConcurrentSharedWorldBundle } from "./bundle.js";
+import { buildConcurrentSharedWorldBundle, judgeSharedWorldRun } from "./bundle.js";
 import { runCheckpointSnapshot } from "./checkpoints.js";
 import { drainSubjectComms } from "./comms.js";
-import type { SharedWorldLabHooks } from "./types.js";
+import type { ConcurrentBundleArgs, SharedWorldLabHooks } from "./types.js";
 import {
   buildSubjectProvenance,
   hostOriginDigest,
@@ -498,7 +498,7 @@ async function publishInProgress(
       executed: setup.stateStepRecords,
     }),
   });
-  const inProgressBundle = buildConcurrentSharedWorldBundle({
+  const snapshotArgs: Omit<ConcurrentBundleArgs, "judgment"> = {
     plan,
     descriptor: ctx.descriptor,
     createdAt: ctx.createdAt,
@@ -514,6 +514,10 @@ async function publishInProgress(
     seedDigest: ctx.seedDigest,
     ...(inProgressPlaneCommit === undefined ? {} : { subjectCommit: inProgressPlaneCommit }),
     hostDigest: hostOriginDigest(plane.getHostUrl!),
+  };
+  const inProgressBundle = buildConcurrentSharedWorldBundle({
+    ...snapshotArgs,
+    judgment: judgeSharedWorldRun(snapshotArgs),
   });
   await ctx.run.writeSnapshot(inProgressBundle);
   if (input.onObserverReady) {

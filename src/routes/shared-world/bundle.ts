@@ -18,6 +18,7 @@ import {
 } from "../../run/bundle.js";
 import {
   SHARED_WORLD_SCHEMA,
+  concurrencyFacts,
   type SharedWorldEvidence,
   type SharedWorldLaneWindow,
   type SharedWorldOutcome,
@@ -28,7 +29,7 @@ import type { RunStream } from "../../run/streams.js";
 import { commandDigestOf } from "../../subject/state.js";
 import { buildRunCostSummary, desktopSpanToMinutes } from "../../run/cost-summary.js";
 import { participantFactsOf } from "../computer-use/bundle.js";
-import { participantPassed } from "../../run/judge.js";
+import { judgeSharedWorld, participantPassed, type SharedWorldJudgment } from "../../run/judge.js";
 import { combineCheckpointDigest } from "./checkpoints.js";
 import { hostOriginDigest } from "./provenance.js";
 import { seatRecords } from "./seat-records.js";
@@ -60,18 +61,33 @@ export function maxSimultaneousWindows(
   return max;
 }
 
-/** True when ≥2 actor windows overlap in time (the proven-concurrency signal). */
-export function actorWindowsOverlap(results: ActorLaneResult[]): boolean {
-  for (let i = 0; i < results.length; i += 1) {
-    for (let j = i + 1; j < results.length; j += 1) {
-      const a = results[i]!;
-      const b = results[j]!;
-      if (a.startedAt < b.endedAt && b.startedAt < a.endedAt) {
-        return true;
-      }
-    }
-  }
-  return false;
+/**
+ * The judgment for a shared-world bundle's inputs: how each seat ended, plus what the run observed
+ * about its world: overlap, a state change under overlap on the provisioned plane, and lobby
+ * convergence on the external-public plane. The bundle's verdict and the lab result's ok both read
+ * it.
+ */
+export function judgeSharedWorldRun(
+  args: Omit<ConcurrentBundleArgs, "judgment">,
+): SharedWorldJudgment {
+  const external = (args.planeClass ?? "provisioned-getHost") === "external-public";
+  return judgeSharedWorld({
+    dryRun: args.dryRun,
+    inProgress: args.inProgress === true,
+    expected: args.actorSpecs.length,
+    participants: args.actorResults.map((result) => participantFactsOf(result.outcome)),
+    world: {
+      // The same windows and state series the bundle writes, read by verify's pass gate too.
+      ...concurrencyFacts(
+        args.actorSpecs.map((_spec, index) => ({
+          startedAt: args.actorResults[index]?.startedAt ?? 0,
+          endedAt: args.actorResults[index]?.endedAt ?? 0,
+        })),
+        external ? undefined : args.stateSnapshots,
+      ),
+      ...(external ? { lobbyConvergence: args.lobbyConvergenceDigest !== undefined } : {}),
+    },
+  });
 }
 
 export function actorLanePassed(result: ActorLaneResult | undefined): boolean {
@@ -297,7 +313,7 @@ function concurrencyReview(
 ): ReviewSummary {
   const { plan, descriptor, createdAt, dryRun, actorSpecs, actorResults } = args;
   const { sharedWorld, laneWindows, stateSeries, outcomes } = evidence;
-  const overlaps = actorWindowsOverlap(actorResults);
+  const overlaps = args.judgment.world.overlap;
   const deltas = (stateSeries ?? []).filter(
     (snapshot, i) => i > 0 && snapshot.digest !== (stateSeries ?? [])[i - 1]!.digest,
   ).length;
@@ -319,16 +335,10 @@ function concurrencyReview(
     message: `Concurrency: ${laneWindows.length} lane(s)${dryRun ? " (dry-run contract; $0)" : `, up to ${maxLive} live at once (cap ${capForReport}), overlap ${overlaps ? "PROVEN" : "not observed"}`}; ${stateSeriesLabel}${convergenceLabel}. Attribution ceiling: ${sharedWorld.attributionLimits.join(", ")}. ${dryRun ? "This contract-only run proves no live concurrency, scale, or adoption." : "This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement."}`,
   });
 
-  // Concurrent verdict: dryRun → contract; else every actor produced a terminal, engaged PASSED
-  // session → pass; otherwise fail. Mission endpoint and completion reasons are reported
-  // separately below; `outcomes[].ok` is not renamed into mission success (#364).
-  const verdict: ReviewSummary["verdict"] = dryRun
-    ? "contract_proof_only"
-    : inProgress
-      ? "contract_proof_only"
-      : actorResults.length === actorSpecs.length && actorResults.every(actorLanePassed)
-        ? "pass"
-        : "fail";
+  // The judge's verdict (judgeSharedWorld): every seat produced a terminal, engaged PASSED session.
+  // Mission endpoint and completion reasons are reported separately below; `outcomes[].ok` is not
+  // renamed into mission success (#364).
+  const verdict = args.judgment.verdict;
   const actorOutcomeSummary = formatSharedWorldActorOutcomes(outcomes, actorSpecs.length);
 
   const review: ReviewSummary = {

@@ -11,8 +11,8 @@ import type { RunSubjectProvenance } from "../../run/bundle.js";
 import { resolveSubjectState } from "../computer-use/lab.js";
 import {
   actorLanePassed,
-  actorWindowsOverlap,
   buildConcurrentSharedWorldBundle,
+  judgeSharedWorldRun,
   maxSimultaneousWindows,
 } from "./bundle.js";
 import { planeStateOf } from "./plan.js";
@@ -20,6 +20,7 @@ import { buildSubjectProvenance, hostOriginDigest } from "./provenance.js";
 import {
   CONCURRENT_SHARED_WORLD_LAB_SCHEMA,
   type ActorLaneResult,
+  type ConcurrentBundleArgs,
   type ConcurrentSharedWorldLabErrorCode,
   type ConcurrentSharedWorldLabResult,
   type ConcurrentSharedWorldRoleResult,
@@ -227,7 +228,7 @@ export async function finishConcurrentRun(
     warnings.push(...result.outcome.warnings);
   }
 
-  const bundle = buildConcurrentSharedWorldBundle({
+  const bundleArgs: Omit<ConcurrentBundleArgs, "judgment"> = {
     ...(plan.lab === undefined ? {} : { lab: plan.lab }),
     plan,
     descriptor,
@@ -250,7 +251,10 @@ export async function finishConcurrentRun(
     ...(commsArtifactPath === undefined ? {} : { commsArtifactPath }),
     ...(runError === undefined ? {} : { runError }),
     ...(subjectDesktop === undefined ? {} : { subjectDesktop }),
-  });
+  };
+  // One judgment for the whole run: the bundle's verdict and the result's ok both read it.
+  const judgment = judgeSharedWorldRun(bundleArgs);
+  const bundle = buildConcurrentSharedWorldBundle({ ...bundleArgs, judgment });
 
   const adapterWarnings: string[] = [];
   const scorerResult = await applyBrowserAdapterHooks({
@@ -282,17 +286,15 @@ export async function finishConcurrentRun(
   // Concurrent "ok": every actor must produce a terminal, engaged PASSED session. This is a
   // harness/session-credibility gate, not mission-completion proof; a failed actor trace cannot
   // make the route green just because the harness got a terminal.
-  const swarmRan =
-    !dryRun && actorResults.length === roles.length && actorResults.every(actorLanePassed);
   const adapterFailure = adapterScoreFailureMessage(bundle);
   const ok =
     observer.ok &&
     runError === undefined &&
-    (dryRun || swarmRan) &&
+    judgment.allPassed &&
     adapterFailure === undefined &&
     scorerResult.declaredVerdictFailure === undefined;
 
-  const overlapProven = !dryRun && actorWindowsOverlap(actorResults);
+  const overlapProven = !dryRun && judgment.world.overlap;
 
   const roleResults = concurrentRoleResults(actorSpecs, actorResults, dryRun);
 

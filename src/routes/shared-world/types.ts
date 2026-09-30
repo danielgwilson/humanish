@@ -1,6 +1,7 @@
 // The concurrent shared-world route's schema constants, attribution limits, options and result
 // types, and the per-seat result the planes collect.
 
+import type { SharedWorldJudgment } from "../../run/judge.js";
 import type { CuaActorSessionOptions } from "../../actors/computer-use/actor.js";
 import type { CuaLoopResult } from "../../actors/computer-use/loop.js";
 import type { BrowserLabAdapterHooks } from "../../lab/adapter-extension.js";
@@ -229,6 +230,8 @@ export interface ExternalCommsWiring {
 
 /** What buildConcurrentSharedWorldBundle projects into a run bundle. */
 export interface ConcurrentBundleArgs {
+  /** The run's judgment (judgeSharedWorldRun over the other fields). */
+  judgment: SharedWorldJudgment;
   /** Lab provenance for the bundle\'s own `lab` field (#455). */
   lab?: RunLabProvenance;
   plan: SharedWorldPlan;
