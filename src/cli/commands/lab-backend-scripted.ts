@@ -1,6 +1,5 @@
 import { automaticAnalysisSucceeded } from "../../analysis/automatic-completion.js";
 import { Command } from "commander";
-import { runLab } from "../../lab/engine.js";
 import type { RunLabProvenance } from "../../run/status.js";
 import type { LabConfig } from "../../lab/types.js";
 import { cliAnalysisOptions } from "./lab-hooks.js";
@@ -19,19 +18,11 @@ interface ScriptedBackendArgs {
   options: LabCommandOptions;
 }
 
-// Mirror of runCuaBackend: open semantics from defaults.open/--no-open/watch-mode, writeResult
-// with the scripted human formatter, exit code result.ok ? 0 : 2, watch-mode Observer follow.
-export async function runScriptedBackend(args: ScriptedBackendArgs): Promise<void> {
-  const run = scriptedBackendRun(args);
-  if (run === undefined) return;
-  await run.present(await runLab(args.config, run.options));
-}
-
 /**
  * The scripted backend's setup: its open semantics and runLab options, and how it presents the
  * outcome. Undefined when watch-mode setup has already written its own result.
  */
-function scriptedBackendRun(args: ScriptedBackendArgs): BackendRun | undefined {
+export function scriptedBackendRun(args: ScriptedBackendArgs): BackendRun | undefined {
   const wantsMachine = wantsJson(args.command);
   const shouldOpen = resolveBackendShouldOpen({
     optionOpen: args.options.open,

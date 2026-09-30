@@ -53,7 +53,7 @@ const cases: readonly (readonly string[])[] = [
   ["lab", "run", "adm-cu", "--port", "99999", "--json"],
   ["lab", "run", "adm-preview", "--sims", "0", "--json"],
   ["lab", "run", "adm-scripted", "--scorer", "./scorer.mjs", "--json"],
-  // The scorer loads, and its host code runs, before the count is checked (F4).
+  // The count is checked before the scorer loads, so its host code never runs (F4).
   ["lab", "run", "adm-cu", "--scorer", "./scorer.mjs", "--count", "0", "--json"],
   // Missing keys win over an unpriced cap on computer use (F3); shared world checks price first.
   ["lab", "run", "adm-cu-unpriced", "--json"],

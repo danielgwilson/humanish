@@ -1,13 +1,13 @@
 import { automaticAnalysisSucceeded } from "../../analysis/automatic-completion.js";
 import { Command } from "commander";
-import { type LabOutcome, runLab, resolveLabDryRun } from "../../lab/engine.js";
+import { resolveLabDryRun } from "../../lab/engine.js";
 import type { RunLabProvenance } from "../../run/status.js";
 import type { ConcurrentSharedWorldLabResult } from "../../routes/shared-world/types.js";
 import type { LabConfig } from "../../lab/types.js";
 import { serveObserver } from "../../observer/render.js";
 import type { ObserverResult, ObserverServer } from "../../observer/render.js";
 import { redactText } from "../../evidence/redaction.js";
-import { cliAnalysisOptions, type LoadedAdapterScorer } from "./lab-hooks.js";
+import { cliAnalysisOptions } from "./lab-hooks.js";
 import {
   type CliIo,
   type LabCommandOptions,
@@ -32,21 +32,6 @@ interface SharedWorldBackendArgs {
   labProvenance?: RunLabProvenance;
   mode: "run" | "watch";
   options: LabCommandOptions;
-  scorer?: LoadedAdapterScorer;
-}
-
-export async function runConcurrentSharedWorldBackend(args: SharedWorldBackendArgs): Promise<void> {
-  const run = sharedWorldBackendRun(args);
-  if (run === undefined) return;
-  let outcome: LabOutcome;
-  try {
-    outcome = await runLab(args.config, run.options);
-  } catch (error) {
-    if (run.onRunError === undefined) throw error;
-    await run.onRunError(error);
-    return;
-  }
-  await run.present(outcome);
 }
 
 /**
@@ -54,7 +39,7 @@ export async function runConcurrentSharedWorldBackend(args: SharedWorldBackendAr
  * the run attaches, and how it presents the outcome. Undefined when setup has already written its
  * own result.
  */
-function sharedWorldBackendRun(args: SharedWorldBackendArgs): BackendRun | undefined {
+export function sharedWorldBackendRun(args: SharedWorldBackendArgs): BackendRun | undefined {
   const wantsMachine = wantsJson(args.command);
   const dryRun = resolveLabDryRun(args.config, args.options.dryRun, true) ?? true;
   const shouldOpen = resolveBackendShouldOpen({
@@ -125,12 +110,6 @@ function sharedWorldBackendRun(args: SharedWorldBackendArgs): BackendRun | undef
           }
         : {}),
       ...(args.options.runId === undefined ? {} : { runId: args.options.runId }),
-      ...(args.scorer
-        ? {
-            scorer: args.scorer.hooks,
-            scorerProvenance: args.scorer.provenance,
-          }
-        : {}),
     },
     onRunError: async (error) => {
       await server?.close().catch((cleanupError: unknown) => {

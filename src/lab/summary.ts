@@ -9,7 +9,8 @@ import { localRuntimeStatus, type LocalRuntimeStatus } from "../substrates/local
 // Resolved analysis defaults are shown independently of declared participant caps. A cap that is not
 // declared is not "unlimited" and not "$0"; it is a line the screen does not draw.
 
-import { resolveLabDryRun, selectLabBackend } from "./engine.js";
+import { resolveLabDryRun } from "./engine.js";
+import { backendOf, routeOf } from "./plan.js";
 import { labKeyRequirements, localCodexParticipantCheck } from "./doctor.js";
 import { automaticAnalysisBudget } from "../analysis/automatic-config.js";
 import {
@@ -146,7 +147,7 @@ export async function readLabSummary(
   if (inspected === null || !inspected.ok || inspected.config === undefined) return null;
   const config = inspected.config as unknown as Record<string, unknown>;
   const actors = config.actors as { model?: string }[] | undefined;
-  const backend = selectLabBackend(inspected.config);
+  const backend = backendOf(routeOf(inspected.config));
 
   let keysReady: boolean | undefined;
   let missingKeys: string[] | undefined;

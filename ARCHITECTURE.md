@@ -19,8 +19,8 @@ step 6, and renders it as in step 7 when `RunOptions.observer` asks, as every CL
    exits with code 2 before a run id exists.
 2. **Route.** `routeOf` (`src/lab/plan.ts`) picks one of five routes from `subject.source`,
    `subject.topology`, `execution.target` and the registry lane of `actors[0].type`. `runLabCommand`
-   hands the lab to that route's CLI runner, here `runCuaBackend`
-   (`src/cli/commands/lab-backend-cua.ts`), which calls `runLab` (`src/lab/engine.ts`). `runLab`
+   runs that route's CLI setup, here `cuaBackendRun` (`src/cli/commands/lab-backend-cua.ts`), and
+   `runBackend` (`src/cli/commands/lab-backend-run.ts`) calls `runLab` (`src/lab/engine.ts`). `runLab`
    maps library options with `normalizeRunLabOptions` (`src/lab/run-lab-options.ts`) and calls the
    route, here `runCuaActorLab`. Each route folder under `src/routes/` takes its refusals and plan
    from its `plan.ts`. A run is live only when the lab declares `scenario.mode: live`; `--dry-run`

@@ -136,10 +136,10 @@
   "lab run adm-cu --scorer ./scorer.mjs --count 0 --json": {
     "exitCode": 2,
     "stdout": "",
-    "stderr": "warning: review scorer scorer.mjs (cli-flag) is executable host code loaded and run in-process — review it as code, not config.\nerror: --count/--sims must be a positive integer.\n",
+    "stderr": "error: --count/--sims must be a positive integer.\n",
     "runs": false,
     "subprocess": 0,
-    "scorerRan": true
+    "scorerRan": false
   },
   "lab run adm-cu-unpriced --json": {
     "exitCode": 2,
@@ -205,7 +205,7 @@
   "watch adm-shared-live --port 99999": {
     "exitCode": 2,
     "stdout": "humanish lab concurrent-shared-world failed\nHUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED: --port must be an integer between 0 and 65535.\nrun: not-created\nlab: adm-shared-live\nactor: openai-computer-use\ntopology: shared-world/concurrent (2 personas, concurrency 2)\n",
-    "stderr": "After live runs: default analysis · gpt-6-astra · separate $3 admission estimate limit (not a provider billing cap). Set review.analysis: false to disable.\n",
+    "stderr": "",
     "runs": false,
     "subprocess": 0,
     "scorerRan": false

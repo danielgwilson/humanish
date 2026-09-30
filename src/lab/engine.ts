@@ -103,7 +103,10 @@ export type LabResult<R extends LabRoute = LabRoute> = {
   "shared-world": ConcurrentSharedWorldLabResult;
 }[R];
 
-/** The backend a config runs on: `routeOf` in plan.ts, under its older name. */
+/**
+ * The backend a config runs on: `routeOf` in plan.ts, under its older name.
+ * @deprecated Use `routeOf`, and `backendOf` for the older backend name. This goes in the next minor.
+ */
 export function selectLabBackend(config: LabConfig): LabBackend {
   return backendOf(routeOf(config));
 }
@@ -129,7 +132,7 @@ export async function runLab(config: LabConfig, options: RunLabOptions): Promise
  */
 export async function dispatchLab(config: LabConfig, options: RunLabOptions): Promise<LabOutcome> {
   config = localBrowserDefaults(config);
-  const backend = selectLabBackend(config);
+  const backend = backendOf(routeOf(config));
   switch (backend) {
     case "synthetic":
       return { backend, result: await runPreviewLab(config, options) };

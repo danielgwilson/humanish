@@ -6,7 +6,8 @@ import path from "node:path";
 import { Command } from "commander";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { runConcurrentSharedWorldBackend } from "../../src/cli/commands/lab-backend-shared-world.js";
+import { runBackend } from "../../src/cli/commands/lab-backend-run.js";
+import { sharedWorldBackendRun } from "../../src/cli/commands/lab-backend-shared-world.js";
 import type { CliIo } from "../../src/cli/io.js";
 import { parseLabConfig } from "../../src/lab/config.js";
 import { runLab } from "../../src/lab/engine.js";
@@ -81,6 +82,19 @@ describe("the concurrent watch path's live Observer gate (W6)", () => {
   });
 
   const live = () => liveObserverResult(cwd, "gated", path.join(cwd, ".humanish", "runs", "gated"));
+  // The lab command's path for a watch: the backend's setup, then its one runLab call.
+  const runWatch = async (args: { io: CliIo; port: number }): Promise<void> => {
+    const config = liveConcurrentConfig();
+    const run = sharedWorldBackendRun({
+      command: new Command(),
+      io: args.io,
+      config,
+      mode: "watch",
+      options: { cwd, port: String(args.port) },
+    });
+    if (run === undefined) throw new Error("expected the watch setup to proceed");
+    await runBackend(config, run);
+  };
 
   it("reports an Observer that cannot start as a structured failure naming the run", async () => {
     const port = await freePort();
@@ -92,13 +106,7 @@ describe("the concurrent watch path's live Observer gate (W6)", () => {
     });
     const io = captureIo();
 
-    await runConcurrentSharedWorldBackend({
-      command: new Command(),
-      io,
-      config: liveConcurrentConfig(),
-      mode: "watch",
-      options: { cwd, port: String(port) },
-    });
+    await runWatch({ io, port });
 
     expect(io.exitCode).toBe(2);
     const printed = io.out.join("");
@@ -114,15 +122,7 @@ describe("the concurrent watch path's live Observer gate (W6)", () => {
       throw failure;
     });
 
-    await expect(
-      runConcurrentSharedWorldBackend({
-        command: new Command(),
-        io: captureIo(),
-        config: liveConcurrentConfig(),
-        mode: "watch",
-        options: { cwd, port: String(port) },
-      }),
-    ).rejects.toBe(failure);
+    await expect(runWatch({ io: captureIo(), port })).rejects.toBe(failure);
     await expect(fetch(`http://127.0.0.1:${port}/`)).rejects.toThrow(/fetch failed/);
   });
 });

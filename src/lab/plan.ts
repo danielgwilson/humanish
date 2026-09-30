@@ -1,6 +1,6 @@
 // The route decision. A lab's route follows from its composition (subject.source,
 // execution.target, the first actor's registered lane, subject.topology), never from a declared
-// kind. This is the only function that decides it; selectLabBackend maps its answer to the older
+// kind. This is the only function that decides it; backendOf maps its answer to the older
 // backend names.
 
 import { resolveAutomaticAnalysis } from "../analysis/automatic-config.js";
