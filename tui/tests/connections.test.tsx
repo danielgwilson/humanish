@@ -3,7 +3,7 @@ import path from "node:path";
 import React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { COMMS_PROVIDERS, type CommsSetupStatus } from "../../src/comms/connections.js";
-import type { TuiCapabilities, TuiOptions } from "../../src/tui-contract.js";
+import type { TuiCapabilities, TuiOptions } from "../../src/tui/contract.js";
 import type { CommsCheckResult } from "../../src/comms/setup.js";
 import type { CommsRecoveryEntry } from "../../src/comms/receiving.js";
 import { App } from "../src/app.js";

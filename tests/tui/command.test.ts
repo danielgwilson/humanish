@@ -3,20 +3,20 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
-import * as observer from "../src/observer/render.js";
-import * as launch from "../src/tui-launch.js";
-import * as summaries from "../src/lab-summary.js";
-import { setUserKey, userKeyStorePath } from "../src/key-resolution.js";
-import { runDryRun } from "../src/run.js";
+import * as observer from "../../src/observer/render.js";
+import * as launch from "../../src/tui/launch.js";
+import * as summaries from "../../src/lab-summary.js";
+import { setUserKey, userKeyStorePath } from "../../src/key-resolution.js";
+import { runDryRun } from "../../src/run.js";
 
-import { createProgram, type TuiRuntime } from "../src/program.js";
+import { createProgram, type TuiRuntime } from "../../src/program.js";
 import {
   TUI_MIN_NODE_MAJOR,
   nodeSupportsTui,
   tuiBundleUrl,
   type TuiModule,
   type TuiOptions,
-} from "../src/tui-contract.js";
+} from "../../src/tui/contract.js";
 
 interface CliResult {
   exitCode: number;

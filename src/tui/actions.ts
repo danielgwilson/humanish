@@ -1,4 +1,4 @@
-import { requestAutomaticStudyAnalysisCancellation } from "./analysis/automatic.js";
+import { requestAutomaticStudyAnalysisCancellation } from "../analysis/automatic.js";
 // The two things a run card can DO (#455 rev 8).
 //
 // The mock's run screen is an outcome CARD with actions, not a field list, and an action that does
@@ -9,11 +9,11 @@ import { requestAutomaticStudyAnalysisCancellation } from "./analysis/automatic.
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-import { RUN_STATUS_FILE, isRunStatusRecord } from "./run-status.js";
-import { resolveRunPath } from "./run.js";
-import { bindExistingRunArtifactPaths, isSafeRunIdSegment } from "./run-paths.js";
-import { openTarget } from "./observer/render.js";
-import { serveObserverLibrary, type ServeLibraryServer } from "./observer/serve.js";
+import { RUN_STATUS_FILE, isRunStatusRecord } from "../run-status.js";
+import { resolveRunPath } from "../run.js";
+import { bindExistingRunArtifactPaths, isSafeRunIdSegment } from "../run-paths.js";
+import { openTarget } from "../observer/render.js";
+import { serveObserverLibrary, type ServeLibraryServer } from "../observer/serve.js";
 
 export const TUI_ACTION_SCHEMA = "humanish.tui-action.v1";
 

@@ -8,7 +8,7 @@ import { checkCommsConnection, configureCommsLab } from "../../src/comms/setup.j
 import { AgentMailReceivingError } from "../../src/comms/agentmail.js";
 import { LAB_CONFIG_SCHEMA, parseLabConfig } from "../../src/lab-config.js";
 import { resolveLabManifest } from "../../src/labs.js";
-import { launchRun } from "../../src/tui-launch.js";
+import { launchRun } from "../../src/tui/launch.js";
 import { setUserKey } from "../../src/key-resolution.js";
 import type { ReceivingAdapter } from "../../src/comms/receiving-types.js";
 const lab = {

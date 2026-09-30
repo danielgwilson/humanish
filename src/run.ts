@@ -70,7 +70,7 @@ import {
   type RunLabProvenance,
   type RunStatusHandle,
 } from "./run-status.js";
-import { nodeSupportsTui, terminalSurfaceMessage, tuiBundleUrl } from "./tui-contract.js";
+import { nodeSupportsTui, terminalSurfaceMessage, tuiBundleUrl } from "./tui/contract.js";
 import {
   detectLocalAgents,
   localAgentDoctorMessage,

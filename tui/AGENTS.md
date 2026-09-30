@@ -6,7 +6,7 @@ that ships inside the humanish package and is loaded on demand by
 this is the one that takes the screen and waits for a person.
 
 The bundle is a VIEW LAYER. Everything humanish knows how to do is injected
-across `src/tui-contract.ts` (repo root `src/`, not this workspace), so this
+across `src/tui/contract.ts` (repo root `src/`, not this workspace), so this
 app never becomes a second implementation of "what is a run, which lab does it
 belong to, is it alive" that can drift from `humanish runs`.
 

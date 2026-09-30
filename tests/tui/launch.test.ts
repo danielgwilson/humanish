@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { isSafeLabHandle, launchRun, readLaunchLogTail } from "../src/tui-launch.js";
+import { isSafeLabHandle, launchRun, readLaunchLogTail } from "../../src/tui/launch.js";
 
 describe("starting a run from the terminal surface (#455)", () => {
   let cwd: string;

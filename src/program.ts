@@ -94,16 +94,16 @@ import { cleanupRun, doctor, listRuns, readReview, runDryRun, verifyRun } from "
 import { reclaimRunSandboxes, type ReclaimResult } from "./reclaim.js";
 import { RunIndexCache, readRunIndex } from "./run-index.js";
 import { readLabSummary } from "./lab-summary.js";
-import { readProjectState } from "./tui-project.js";
-import { createTuiObserverSession, stopRun, TUI_ACTION_SCHEMA } from "./tui-actions.js";
+import { readProjectState } from "./tui/project.js";
+import { createTuiObserverSession, stopRun, TUI_ACTION_SCHEMA } from "./tui/actions.js";
 import { readRunDetail } from "./run-detail.js";
-import { launchRun, readLaunchLogTail } from "./tui-launch.js";
+import { launchRun, readLaunchLogTail } from "./tui/launch.js";
 import {
   TUI_MIN_NODE_MAJOR,
   nodeSupportsTui,
   tuiBundleUrl,
   type TuiModule,
-} from "./tui-contract.js";
+} from "./tui/contract.js";
 import { forTerminal } from "./terminal-encoding.js";
 import { analyzeStudy, correctStudyAnalysis, showStudyAnalysis } from "./analysis/service.js";
 import { listStudyAnalyses, listStudyAnalysisExecutions } from "./analysis/store.js";

@@ -8,7 +8,7 @@
 // nothing in the user's node_modules.
 //
 // The bundle is a VIEW LAYER ONLY. Everything humanish knows how to do — reading the run index,
-// projecting it, launching runs — is injected by the CLI (see src/tui-contract.ts), so this file
+// projecting it, launching runs — is injected by the CLI (see src/tui/contract.ts), so this file
 // never becomes a second copy of the product's logic that can drift from the tested one.
 
 import { build } from "esbuild";

@@ -39,7 +39,7 @@ describe("a launched run outlives the process that started it", () => {
 
     // A parent that launches and then exits IMMEDIATELY — the surface being closed mid-run.
     const parent = path.join(dir, "parent.mjs");
-    const launchModule = path.resolve("src/tui-launch.ts");
+    const launchModule = path.resolve("src/tui/launch.ts");
     await writeFile(
       parent,
       [
