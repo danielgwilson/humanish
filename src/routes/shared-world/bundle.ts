@@ -11,6 +11,7 @@ import {
   RUN_BUNDLE_SCHEMA,
   type ReviewSummary,
   type RunBundle,
+  type RunCostSummary,
   type RunEvent,
   type RunSimulation,
 } from "../../run/bundle.js";
@@ -24,6 +25,7 @@ import {
 } from "../../run/shared-world-evidence.js";
 import type { RunStream } from "../../run/streams.js";
 import { commandDigestOf } from "../../subject/state.js";
+import { buildCuaCostSummary, desktopSpanToMinutes } from "../computer-use/costs.js";
 import { combineCheckpointDigest } from "./checkpoints.js";
 import { hostOriginDigest } from "./provenance.js";
 import { seatRecords } from "./seat-records.js";
@@ -409,6 +411,7 @@ export function buildConcurrentSharedWorldBundle(args: ConcurrentBundleArgs): Ru
     (result) => result.outcome.session !== undefined || result.outcome.sessionError !== undefined,
   );
 
+  const cost = concurrentCostSummary(args, inProgress);
   return {
     schema: RUN_BUNDLE_SCHEMA,
     ...receivingPublication(args.config, args.dryRun),
@@ -473,7 +476,51 @@ export function buildConcurrentSharedWorldBundle(args: ConcurrentBundleArgs): Ru
     subject: args.subject,
     attributionClass: "shared-world",
     sharedWorld,
+    ...(cost === undefined ? {} : { cost }),
   };
+}
+
+/**
+ * Priced like per-lane worlds: each seat's model tokens and desktop, plus the provisioned plane's
+ * desktop. Absent when nothing ran, so dry runs and in-progress snapshots stay byte-stable.
+ */
+function concurrentCostSummary(
+  args: ConcurrentBundleArgs,
+  inProgress: boolean,
+): RunCostSummary | undefined {
+  if (inProgress) return undefined;
+  const subject = args.subjectDesktop;
+  return buildCuaCostSummary({
+    lanes: args.actorResults.flatMap((result) =>
+      result.outcome.session === undefined
+        ? []
+        : [{ laneId: result.spec.laneId, trace: result.outcome.session.trace }],
+    ),
+    desktops: [
+      ...(subject === undefined
+        ? []
+        : [
+            {
+              laneId: "subject",
+              minutes: desktopSpanToMinutes(subject.durationMs),
+              observation: subject.observation,
+              lifetimeComplete: subject.killed,
+            },
+          ]),
+      ...args.actorResults.flatMap((result) =>
+        result.outcome.sandboxId === undefined
+          ? []
+          : [
+              {
+                laneId: result.spec.laneId,
+                minutes: desktopSpanToMinutes(result.outcome.desktopDurationMs),
+                observation: result.outcome.desktopResources,
+                lifetimeComplete: result.outcome.killed,
+              },
+            ],
+      ),
+    ],
+  });
 }
 
 /** The declared (dry-run) state digest: the probe RECIPE (command digests), no run. */

@@ -232,8 +232,10 @@ enters this field; identity is digests, a sha, a boolean, and counts.
 computer-use lane's run-level cost ESTIMATE: the sum of each lane's
 token-derived model cost plus E2B desktop compute lines. New independent CUA runs
 emit one line per owned desktop, keyed by public lane ID and carrying observed CPU/memory,
-resource source, host-measured minutes, and the derived per-second rate. Older
-single aggregate desktop lines remain valid. Missing resource metadata stays
+resource source, host-measured minutes, and the derived per-second rate. Concurrent
+shared-world runs carry the same lines for each seat, plus a desktop line with
+`laneId: subject` for a provisioned plane; an external-public plane is not a humanish
+desktop and has no line. Older single aggregate desktop lines remain valid. Missing resource metadata stays
 unpriced; unconfirmed cleanup adds an unknown remaining-lifetime line. It is an
 ESTIMATE, never authoritative: every dollar is a rate-table multiply from the
 operator-editable `src/run/pricing.ts`, carries the pricing `ratesAsOf` date and

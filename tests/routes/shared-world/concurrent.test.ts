@@ -46,6 +46,7 @@ import type {
 } from "../../../src/index.js";
 import { reclaimRunSandboxes } from "../../../src/run/reclaim.js";
 import { verifyRun } from "../../../src/run/verify.js";
+import { computeStats } from "../../../src/run/stats.js";
 import {
   serveObserver,
   type ObserverResult,
@@ -2223,6 +2224,78 @@ it("routes actor output limits and per-lane reasoning to concurrent provider req
   }
 });
 
+describe("concurrent shared-world run cost", () => {
+  it("prices every seat's model tokens and desktop plus the subject desktop, and stats reads it", async () => {
+    const state = { worldVersion: 0 };
+    const { hooks } = baseHooks(state, makeRendezvous(3));
+    const inner = await hooks.loadDesktopModule!();
+    const sized: E2BDesktopModule = {
+      ...inner,
+      Sandbox: {
+        ...inner.Sandbox,
+        create: async (
+          templateOrOptions: string | E2BDesktopCreateOptions,
+          maybeOptions?: E2BDesktopCreateOptions,
+        ) => {
+          const sandbox =
+            typeof templateOrOptions === "string"
+              ? await inner.Sandbox.create(templateOrOptions, maybeOptions!)
+              : await inner.Sandbox.create(templateOrOptions);
+          return Object.assign(sandbox, {
+            getInfo: async () => ({ cpuCount: 8, memoryMB: 8192 }),
+          });
+        },
+      },
+    };
+    const runSession = hooks.runSession!;
+    const result = await runConcurrentSharedWorld({
+      cwd,
+      config: concurrentConfig(3, 3),
+      dryRun: false,
+      hooks: {
+        ...hooks,
+        loadDesktopModule: async () => sized,
+        runSession: async (options) => {
+          const session = await runSession(options);
+          // A priced model id and reported usage; the seat runner turns them into the estimate.
+          session.trace.ids.model = "gpt-5.6-sol";
+          session.trace.tokenUsage = { input: 1000, output: 200, total: 1200 };
+          return session;
+        },
+      },
+    });
+    expect(result.ok).toBe(true);
+
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    );
+    const lines = bundle.cost.breakdown as Array<{
+      kind: string;
+      laneId?: string;
+      estimatedCostUsd: number | null;
+    }>;
+    expect(bundle.cost.fullyEstimated).toBe(true);
+    expect(lines.filter((line) => line.kind === "model-tokens").map((line) => line.laneId)).toEqual(
+      ["persona-01", "persona-02", "persona-03"],
+    );
+    expect(
+      lines
+        .filter((line) => line.kind === "desktop-minutes")
+        .map((line) => line.laneId)
+        .sort(),
+    ).toEqual(["persona-01", "persona-02", "persona-03", "subject"]);
+    expect(lines.every((line) => line.estimatedCostUsd !== null)).toBe(true);
+    expect(bundle.cost.estimatedTotalUsd).toBeGreaterThan(0);
+
+    const stats = await computeStats(cwd);
+    if (!("costsByRun" in stats)) throw new Error("stats failed");
+    const row = stats.costsByRun.find((entry) => entry.runId === result.runId);
+    expect(row?.costs.runEstimatedUsd).toBe(bundle.cost.estimatedTotalUsd);
+    expect(row?.warnings).not.toContain("RUN_COST_COMPLETENESS_UNKNOWN");
+    expect(row?.warnings).not.toContain("RUN_COST_PARTIAL_OR_UNKNOWN");
+  });
+});
+
 // Characterization: the complete run directory of a three-seat concurrent run on the fake E2B
 // module, pinned so a refactor of bundle assembly or artifact writing shows up as a diff.
 // Regenerate with `pnpm vitest run tests/routes/shared-world/concurrent.test.ts -u`.
@@ -2255,6 +2328,8 @@ describe("concurrent shared-world run directory goldens", () => {
         [goldenCwd, "[cwd]"],
       ],
       unorderedFiles: ["sandbox-receipts.ndjson"],
+      // Desktop minutes are host-measured wall-clock spans of the fake sandboxes.
+      maskKeys: ["minutes", "desktopMinutes"],
     });
     await expect(`${JSON.stringify(snapshot, null, 2)}\n`).toMatchFileSnapshot(
       `../../golden/routes/${golden}`,

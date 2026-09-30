@@ -38,6 +38,7 @@ export function emptyPlaneResults(): PlaneResults {
     subjectCommit: undefined,
     subjectSandboxId: undefined,
     subjectKilled: false,
+    subjectDesktop: undefined,
     getHostUrl: undefined,
     publicOriginDigest: undefined,
     lobbyConvergenceDigest: undefined,
@@ -199,7 +200,7 @@ export async function finishConcurrentRun(
   const { stateStepRecords, stateSnapshots, declaredOriginDigest } = plane;
   const { actorResults, runError, subjectCommit, subjectSandboxId, subjectKilled } = results;
   const { getHostUrl, publicOriginDigest, lobbyConvergenceDigest } = results;
-  const { handoffTimedOut, hostHandoffFailure, commsArtifactPath } = results;
+  const { handoffTimedOut, hostHandoffFailure, commsArtifactPath, subjectDesktop } = results;
 
   // Subject provenance: external-public is the operator-declared, operator-owned public deployment
   // (neither provisioned nor seeded); the provisioned path builds clone/local-tree provenance.
@@ -247,6 +248,7 @@ export async function finishConcurrentRun(
     ...(lobbyConvergenceDigest === undefined ? {} : { lobbyConvergenceDigest }),
     ...(commsArtifactPath === undefined ? {} : { commsArtifactPath }),
     ...(runError === undefined ? {} : { runError }),
+    ...(subjectDesktop === undefined ? {} : { subjectDesktop }),
   });
 
   const adapterWarnings: string[] = [];
