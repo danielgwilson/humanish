@@ -18,7 +18,7 @@ import {
   DEFAULT_OPENAI_CU_REASONING_EFFORT,
 } from "../actors/computer-use/openai-provider.js";
 import { inspectLabManifest } from "./discover.js";
-import { routesToComputerUse } from "./routing.js";
+import { isComputerUseComposition } from "./routing.js";
 import type { LabConfig } from "./types.js";
 import { probeKeySources } from "../keys/key-resolution.js";
 import { receivingRequiredKey } from "../comms/setup.js";
@@ -120,7 +120,7 @@ function participantsOf(config: Record<string, unknown>): string | undefined {
 
 /** The computer-use caps; `execution.caps` is inert on other routes, so none is drawn there. */
 function capsOf(config: LabConfig): LabCaps {
-  if (!routesToComputerUse(config)) return {};
+  if (!isComputerUseComposition(config)) return {};
   const caps = config.execution?.caps;
   return {
     ...(typeof caps?.maxUsd === "number" ? { laneUsd: caps.maxUsd } : {}),

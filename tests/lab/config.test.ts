@@ -9,7 +9,7 @@ import {
   resolveSeatUrl,
   routesToComputerUse,
   routesToConcurrentSharedWorld,
-  routesToProvisionedScriptedBrowser,
+  isProvisionedScriptedBrowserComposition,
   routesToScriptedBrowser,
   routesToSharedWorld,
 } from "../../src/lab/routing.js";
@@ -1628,7 +1628,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       expect(result.ok).toBe(true);
       if (!result.ok) return;
       expect(routesToScriptedBrowser(result.config)).toBe(true);
-      expect(routesToProvisionedScriptedBrowser(result.config)).toBe(true);
+      expect(isProvisionedScriptedBrowserComposition(result.config)).toBe(true);
       expect(selectLabBackend(result.config)).toBe("scripted");
       expect(result.warnings).toEqual([]);
     });

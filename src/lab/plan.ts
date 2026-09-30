@@ -20,10 +20,10 @@ import type {
   PreviewRefusalCode,
 } from "./plan-types.js";
 import {
-  routesToComputerUse,
-  routesToScriptedBrowser,
-  routesToSharedWorld,
-  routesToTerminalProduct,
+  isComputerUseComposition,
+  isScriptedBrowserComposition,
+  isSharedWorldComposition,
+  isTerminalProductComposition,
 } from "./routing.js";
 import type { LabConfig } from "./types.js";
 import { automaticAnalysisRouteReason, taskProtocolValidationReason } from "./validation.js";
@@ -51,20 +51,20 @@ export function backendOf(route: LabRoute): LabBackend {
 export function routeOf(config: LabConfig): LabRoute {
   const source = config.subject.source;
   // A scripted-browser actor on a loopback app or a provisioned clone replays committed steps.
-  if (routesToScriptedBrowser(config)) return "scripted";
+  if (isScriptedBrowserComposition(config)) return "scripted";
   // A terminal-product subject goes to the terminal route even with an unregistered actor, so that
   // route refuses the actor instead of another route running something else.
-  if (routesToTerminalProduct(config) || source === "terminal-product") return "terminal";
+  if (isTerminalProductComposition(config) || source === "terminal-product") return "terminal";
   // Checked before computer use: the same composition without the topology declaration runs as
   // independent lanes.
-  if (routesToSharedWorld(config)) return "shared-world";
+  if (isSharedWorldComposition(config)) return "shared-world";
   // A CLI studied at a desktop is a computer-use study whose subject is a terminal window.
   if (source === "desktop-cli") return "computer-use";
   // Every other app-url, clone, local-app or local-tree config goes to computer use, including
   // ones with an unknown actor: that route refuses the actor, where the preview route would run
   // no participant at all.
   if (
-    routesToComputerUse(config) ||
+    isComputerUseComposition(config) ||
     source === "app-url" ||
     source === "clone" ||
     source === "local-app" ||

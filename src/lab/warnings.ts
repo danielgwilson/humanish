@@ -1,9 +1,9 @@
 import {
   effectiveComputerUseLaneIds,
-  routesToComputerUse,
-  routesToScriptedBrowser,
-  routesToSharedWorld,
-  routesToTerminalProduct,
+  isComputerUseComposition,
+  isScriptedBrowserComposition,
+  isSharedWorldComposition,
+  isTerminalProductComposition,
 } from "./routing.js";
 import type { LabConfig } from "./types.js";
 
@@ -337,13 +337,13 @@ const CONFIG_ROWS: readonly InertRow<LabConfig>[] = [
 ];
 
 function routesOf(config: LabConfig): Routes {
-  const cua = routesToComputerUse(config);
-  const scripted = routesToScriptedBrowser(config);
-  const shared = routesToSharedWorld(config);
+  const cua = isComputerUseComposition(config);
+  const scripted = isScriptedBrowserComposition(config);
+  const shared = isSharedWorldComposition(config);
   return {
     cua,
     scripted,
-    terminal: routesToTerminalProduct(config),
+    terminal: isTerminalProductComposition(config),
     shared,
     externalPublic: shared && config.subject.source === "app-url",
     hostedCuaBrowser: config.execution?.target === "e2b-desktop" && cua,
