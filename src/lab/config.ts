@@ -3,6 +3,7 @@ import {
   localBrowserDefaults,
   localBrowserUnsupportedReason,
 } from "../substrates/local/runtime-config.js";
+import { findUnknownLabKey } from "./keys.js";
 import { resolveAutomaticAnalysis, type LabAnalysis } from "../analysis/automatic-config.js";
 // humanish.lab.v2 — a lab is a COMPOSITION over code primitives, not a hardcoded kind.
 //
@@ -436,7 +437,7 @@ export interface LabActorLane {
  * `lanes[]` with deterministic ids (`<group.id>-01`, `<group.id>-02`, ...). The runtime never
  * consumes this shape directly; it always sees ordinary `LabActorLane` entries.
  */
-interface LabActorRosterGroup extends Omit<LabActorLane, "id"> {
+export interface LabActorRosterGroup extends Omit<LabActorLane, "id"> {
   /** Public-safe group id; prefixes generated lane ids. */
   id: string;
   /** Number of lanes to generate for this group. */
@@ -927,6 +928,8 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
   if (raw.schema !== LAB_CONFIG_SCHEMA) {
     return invalid(`Lab schema must be ${LAB_CONFIG_SCHEMA}.`);
   }
+  const unknownKey = findUnknownLabKey(raw);
+  if (unknownKey) return invalid(unknownKey);
 
   const id = str(raw.id);
   if (!id || !ID_PATTERN.test(id)) {
@@ -977,11 +980,16 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
       "`policies.mediaPermission` must be `prompt` (the participant answers the browser's own dialog) or `granted`.",
     );
   }
-  const policies = parsePolicies(raw.policies);
-  if (policies) config.policies = policies;
+  const policiesResult = parsePolicies(raw.policies);
+  if (!policiesResult.ok) return policiesResult;
+  if (policiesResult.value) config.policies = policiesResult.value;
   const reviewResult = parseReview(raw.review);
   if (!reviewResult.ok) return reviewResult;
   if (reviewResult.value) config.review = reviewResult.value;
+  if (raw.defaults !== undefined && isRecord(raw.defaults) && raw.defaults.open !== undefined) {
+    if (typeof raw.defaults.open !== "boolean")
+      return invalid("`defaults.open` must be true or false.");
+  }
   const defaults = parseDefaults(raw.defaults);
   if (defaults) config.defaults = defaults;
   const commsResult = parseComms(raw.comms);
@@ -3061,30 +3069,6 @@ function parseLaneFocus(raw: unknown): LabActorLaneFocus | undefined {
   return Object.keys(laneFocus).length > 0 ? laneFocus : undefined;
 }
 
-// Like review fields, a declared lane distinction must not disappear silently (#343).
-// The exhaustive records make newly added interface fields require an explicit parser decision.
-const LANE_FIELDS: Record<keyof LabActorLane, true> = {
-  id: true,
-  actorType: true,
-  surface: true,
-  caseGroup: true,
-  persona: true,
-  device: true,
-  instruction: true,
-  stopWhen: true,
-  dwell: true,
-  reasoningEffort: true,
-  target: true,
-  entry: true,
-  host: true,
-};
-const ROSTER_GROUP_FIELDS: Record<keyof LabActorRosterGroup, true> = {
-  ...LANE_FIELDS,
-  count: true,
-};
-const LANE_KEYS = new Set(Object.keys(LANE_FIELDS));
-const ROSTER_GROUP_KEYS = new Set(Object.keys(ROSTER_GROUP_FIELDS));
-
 /**
  * Parse `actors[index].roster` compact groups into concrete lanes. This is authoring sugar for
  * "N users of M adapter-owned types across S surfaces"; the runtime receives only `lanes[]`.
@@ -3108,12 +3092,6 @@ function parseRosterGroups(
     if (!isRecord(entry)) {
       return invalid(
         `actors[${actorIndex}].roster[${groupIndex}] must be an object ({ id, count, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry? }).`,
-      );
-    }
-    const unknownKeys = Object.keys(entry).filter((key) => !ROSTER_GROUP_KEYS.has(key));
-    if (unknownKeys.length > 0) {
-      return invalid(
-        `Unknown \`actors[${actorIndex}].roster[${groupIndex}]\` field(s): ${unknownKeys.join(", ")}. Known roster group fields: ${[...ROSTER_GROUP_KEYS].join(", ")}.`,
       );
     }
     const groupId = str(entry.id);
@@ -3179,12 +3157,6 @@ function parseLanes(
     if (!isRecord(entry)) {
       return invalid(
         `actors[${actorIndex}].lanes[${laneIndex}] must be an object ({ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry? }).`,
-      );
-    }
-    const unknownKeys = Object.keys(entry).filter((key) => !LANE_KEYS.has(key));
-    if (unknownKeys.length > 0) {
-      return invalid(
-        `Unknown \`actors[${actorIndex}].lanes[${laneIndex}]\` field(s): ${unknownKeys.join(", ")}. Known lane fields: ${[...LANE_KEYS].join(", ")}.`,
       );
     }
     const lane: LabActorLane = {};
@@ -3795,9 +3767,26 @@ function parseCaps(
   return { ok: true, value: Object.keys(caps).length > 0 ? caps : undefined };
 }
 
-function parsePolicies(raw: unknown): LabPolicies | undefined {
+const POLICY_FLAGS = [
+  "redactRepos",
+  "redactScreenshots",
+  "allowPublicTargets",
+  "allowPrivateRepoAccess",
+  "allowProviderCredentials",
+  "allowPaymentCredentials",
+  "allowGitHubMutation",
+] as const;
+
+function parsePolicies(
+  raw: unknown,
+): { ok: true; value: LabPolicies | undefined } | LabConfigParseFailure {
   if (!isRecord(raw)) {
-    return undefined;
+    return { ok: true, value: undefined };
+  }
+  // A quoted "true" would otherwise be dropped and the policy left at its default.
+  for (const flag of POLICY_FLAGS) {
+    if (raw[flag] !== undefined && typeof raw[flag] !== "boolean")
+      return invalid(`\`policies.${flag}\` must be true or false (unquoted).`);
   }
   const policies: LabPolicies = {};
   if (typeof raw.redactRepos === "boolean") policies.redactRepos = raw.redactRepos;
@@ -3815,23 +3804,14 @@ function parsePolicies(raw: unknown): LabPolicies | undefined {
     policies.allowPaymentCredentials = raw.allowPaymentCredentials;
   if (typeof raw.allowGitHubMutation === "boolean")
     policies.allowGitHubMutation = raw.allowGitHubMutation;
-  return Object.keys(policies).length > 0 ? policies : undefined;
+  return { ok: true, value: Object.keys(policies).length > 0 ? policies : undefined };
 }
 
-// Fail-LOUD: an unrecognized `review.*` key (e.g. a `scorrer:` typo of `scorer`) is rejected rather
-// than silently dropped — a gate you think you declared must not vanish silently (#316).
 function parseReview(
   raw: unknown,
 ): { ok: true; value: LabReview | undefined } | LabConfigParseFailure {
   if (raw === undefined) return { ok: true, value: undefined };
   if (!isRecord(raw)) return invalid("`review` must be a mapping.");
-  const knownKeys = new Set(["scoring", "milestones", "vocabulary", "scorer", "analysis"]);
-  const unknownKeys = Object.keys(raw).filter((key) => !knownKeys.has(key));
-  if (unknownKeys.length > 0) {
-    return invalid(
-      `Unknown \`review\` field(s): ${unknownKeys.join(", ")}. A declared gate must not vanish silently — did you mean \`scorer\`? Known review fields: scoring, milestones, vocabulary, scorer, analysis.`,
-    );
-  }
   const analysis = resolveAutomaticAnalysis(raw.analysis);
   if (!analysis.ok) return invalid(analysis.message);
   const review: LabReview = {};
@@ -3888,12 +3868,6 @@ function parseComms(
 ): { ok: true; value: LabComms | undefined } | LabConfigParseFailure {
   if (raw === undefined) return { ok: true, value: undefined };
   if (!isRecord(raw)) return invalid("`comms` must be a mapping.");
-  const unsupported = Object.keys(raw).filter((key) => key !== "email");
-  if (unsupported.length > 0) {
-    return invalid(
-      `Unsupported comms setting(s): ${unsupported.join(", ")}. Only \`comms.email\` is currently supported; SMS is not yet available.`,
-    );
-  }
   const comms: LabComms = {};
   if (raw.email !== undefined) {
     const email = parseCommsEmail(raw.email);

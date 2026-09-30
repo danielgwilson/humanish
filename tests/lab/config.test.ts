@@ -745,7 +745,9 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
           expect(result.ok).toBe(false);
           if (result.ok) return;
           expect(result.error.code).toBe("HUMANISH_LAB_INVALID");
-          expect(result.error.message).toContain("Unknown `actors[0].lanes[0]` field(s): " + key);
+          expect(result.error.message).toContain(
+            "Unknown lab field(s) in `actors[0].lanes[0]`: " + key,
+          );
         },
       );
 
@@ -766,7 +768,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
         if (result.ok) return;
         expect(result.error.code).toBe("HUMANISH_LAB_INVALID");
         expect(result.error.message).toContain(
-          "Unknown `actors[0].roster[1]` field(s): misson, runtme",
+          "Unknown lab field(s) in `actors[0].roster[1]`: misson, runtme",
         );
         expect(result.error.message).not.toContain("lanes[2]");
       });

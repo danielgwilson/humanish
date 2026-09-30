@@ -22,7 +22,7 @@ describe("communication declarations fail explicitly", () => {
   ])("rejects unsupported channels instead of running without them: %j", (comms) => {
     const result = parseLabConfig({ ...base, comms });
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error.message).toContain("Unsupported comms setting");
+    if (!result.ok) expect(result.error.message).toContain("Unknown lab field(s) in `comms`");
   });
 
   it("retains supported email capture and absence of communications", () => {
