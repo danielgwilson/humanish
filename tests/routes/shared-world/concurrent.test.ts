@@ -1,7 +1,7 @@
 import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
 import { runDirSnapshot } from "../../helpers/run-golden.js";
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
-import { readFileSync } from "node:fs";
+import { mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
+import { readFileSync, symlinkSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -2301,5 +2301,55 @@ describe("concurrent run lifetime", () => {
       "fake-sandbox-003",
       "fake-sandbox-004",
     ]);
+  });
+});
+
+describe("concurrent shared-world project binding", () => {
+  it("pins a symlink cwd before a subject phase can retarget the alias", async () => {
+    const physicalA = path.join(cwd, "project-a");
+    const physicalB = path.join(cwd, "project-b");
+    const cwdAlias = path.join(cwd, "project-alias");
+    const decoyRuns = path.join(physicalB, ".humanish", "runs");
+    const decoyLatest = path.join(decoyRuns, "latest.json");
+    const sentinel = "outside sentinel must stay unchanged\n";
+    await mkdir(physicalA);
+    await mkdir(decoyRuns, { recursive: true });
+    await writeFile(decoyLatest, sentinel, "utf8");
+    symlinkSync(physicalA, cwdAlias, "dir");
+    const pinnedA = await realpath(physicalA);
+
+    const { hooks } = baseHooks({ worldVersion: 0 }, makeRendezvous(3));
+    const recordPhase = hooks.onPhase!;
+    let retargeted = false;
+    hooks.onPhase = (event) => {
+      if (!retargeted) {
+        retargeted = true;
+        unlinkSync(cwdAlias);
+        symlinkSync(physicalB, cwdAlias, "dir");
+      }
+      recordPhase(event);
+    };
+
+    const result = await runConcurrentSharedWorld({
+      cwd: cwdAlias,
+      config: concurrentConfig(3, 3),
+      dryRun: false,
+      hooks,
+    });
+
+    expect(retargeted).toBe(true);
+    expect(result.ok).toBe(true);
+    expect(result.cwd).toBe(pinnedA);
+    expect(result.observer?.ok).toBe(true);
+    const bundle = JSON.parse(
+      await readFile(path.join(physicalA, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    );
+    expect(bundle.runId).toBe(result.runId);
+    const latest = JSON.parse(
+      await readFile(path.join(physicalA, ".humanish", "runs", "latest.json"), "utf8"),
+    );
+    expect(latest.runId).toBe(result.runId);
+    expect(await readFile(decoyLatest, "utf8")).toBe(sentinel);
+    expect(await readdir(decoyRuns)).toEqual(["latest.json"]);
   });
 });

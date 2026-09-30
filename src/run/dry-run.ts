@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { realpath } from "node:fs/promises";
 import path from "node:path";
 import { runScope, type RunScope } from "./run.js";
 import {
@@ -45,24 +46,28 @@ function refused(
 }
 
 async function runDryRunInScope(options: RunOptions, scope: RunScope): Promise<RunResult> {
-  const cwd = path.resolve(options.cwd);
-  const cwdError = await validateCwd(cwd);
+  const requestedCwd = path.resolve(options.cwd);
+  const cwdError = await validateCwd(requestedCwd);
   const warnings: string[] = [];
 
-  if (cwdError) return refused(cwd, warnings, cwdError);
+  if (cwdError) return refused(requestedCwd, warnings, cwdError);
 
   const simCount = normalizeSimCount(options.simCount);
   if (simCount === null) {
-    return refused(cwd, warnings, {
+    return refused(requestedCwd, warnings, {
       code: "HUMANISH_INVALID_SIM_COUNT",
       message: "--sims must be a positive integer.",
     });
   }
 
-  const projectRoot = await prepareSelectedOutputDirectory(path.dirname(cwd), cwd);
+  // Bind the physical project, as the lab routes do: a symlinked cwd retargeted mid-run cannot
+  // redirect source reads or run storage into another project.
+  const physicalCwd = await realpath(requestedCwd);
+  const projectRoot = await prepareSelectedOutputDirectory(path.dirname(physicalCwd), physicalCwd);
+  const cwd = projectRoot.physicalPath;
 
   if (!options.dryRun) {
-    return refused(cwd, warnings, {
+    return refused(requestedCwd, warnings, {
       code: "HUMANISH_LIVE_RUN_UNIMPLEMENTED",
       message: "Only run --dry-run is implemented here. Run a lab for a live study.",
     });
