@@ -23,9 +23,16 @@ export function personaTitleFromId(personaId: string): string {
     .join(" ");
 }
 
+/** Where a persona id resolves, in order: a committed persona wins over a machine-local one. */
+const PERSONA_DIRECTORIES = [
+  path.posix.join("humanish", "personas"),
+  path.posix.join(".humanish", "local", "personas"),
+] as const;
+
 /**
- * Resolve ONE committed persona. Returns `null` with a warning when the id is
- * unsafe or no file exists. Invalid rich backgrounds reject the study before execution.
+ * Resolve ONE persona from `humanish/personas/`, then the ignored `.humanish/local/personas/`.
+ * Returns `null` with a warning when the id is unsafe or no file exists. Invalid rich backgrounds
+ * reject the study before execution.
  */
 export async function resolveCommittedPersona(
   projectRoot: PreparedSelectedOutputDirectory,
@@ -37,10 +44,10 @@ export async function resolveCommittedPersona(
       warnings: ["Persona id is not a safe filename; using the id only (no persona context)."],
     };
   }
-  for (const candidate of [
-    path.posix.join("humanish", "personas", `${personaId}.yaml`),
-    path.posix.join("humanish", "personas", `${personaId}.yml`),
-  ]) {
+  for (const candidate of PERSONA_DIRECTORIES.flatMap((directory) => [
+    path.posix.join(directory, `${personaId}.yaml`),
+    path.posix.join(directory, `${personaId}.yml`),
+  ])) {
     const bytes = await readContainedRegularFile(projectRoot, candidate);
     if (!bytes) continue;
     let raw: unknown;
@@ -66,7 +73,7 @@ export async function resolveCommittedPersona(
   return {
     persona: null,
     warnings: [
-      `Persona ${redactText(personaId)} has no readable file under humanish/personas; using the id only (no persona context).`,
+      `Persona ${redactText(personaId)} has no readable file under humanish/personas or .humanish/local/personas; using the id only (no persona context).`,
     ],
   };
 }

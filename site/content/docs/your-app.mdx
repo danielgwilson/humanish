@@ -130,7 +130,7 @@ For signup flows, point your test app's outgoing mail at the [local captured inb
 
 ## Give the participant a background
 
-`humanish init` writes editable profiles under `humanish/personas/`. Set the actor's `persona` to a profile's id. A profile can be a few sentences or a longer account of who this person is:
+`humanish init` writes editable profiles under `humanish/personas/`. Set the actor's `persona` to a profile's id. A profile you keep only on your machine can live in the ignored `.humanish/local/personas/`; a committed profile with the same id wins. A profile can be a few sentences or a longer account of who this person is:
 
 ```yaml title="humanish/personas/volunteer-organizer.yaml"
 schema: humanish.persona.v1

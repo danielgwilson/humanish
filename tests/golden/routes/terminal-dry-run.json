@@ -25,7 +25,7 @@
       ]
     },
     "warnings": [
-      "Persona autonomous-creative-agent has no readable file under humanish/personas; using the id only (no persona context).",
+      "Persona autonomous-creative-agent has no readable file under humanish/personas or .humanish/local/personas; using the id only (no persona context).",
       "Observer renders local contract evidence only; dry-run lanes do not claim product behavior proof.",
       "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
     ],
