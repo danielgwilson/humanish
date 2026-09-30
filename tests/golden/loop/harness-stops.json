@@ -1964,7 +1964,7 @@
             "id": "notice-011",
             "kind": "notice",
             "title": "Participant context hint",
-            "text": "No visible progress for 1 step(s). If your task calls for waiting for another participant or a pending transition, you may continue waiting. Choose whether to continue or stop based on your situation and what you observe.",
+            "text": "The study held this page under observation for 0 seconds (a declared dwell window; you took no actions in that time). Continue the mission from the current state of the page. No visible progress for 1 step(s). If your task calls for waiting for another participant or a pending transition, you may continue waiting. Choose whether to continue or stop based on your situation and what you observe.",
             "lifecycle": "completed",
             "at": "1970-01-01T00:00:00.047Z"
           },
@@ -2193,7 +2193,7 @@
             "screenshot": "[buffer 15 bytes]",
             "stateSignature": "a"
           },
-          "contextHint": "No visible progress for 1 step(s). If your task calls for waiting for another participant or a pending transition, you may continue waiting. Choose whether to continue or stop based on your situation and what you observe."
+          "contextHint": "The study held this page under observation for 0 seconds (a declared dwell window; you took no actions in that time). Continue the mission from the current state of the page. No visible progress for 1 step(s). If your task calls for waiting for another participant or a pending transition, you may continue waiting. Choose whether to continue or stop based on your situation and what you observe."
         }
       ],
       [

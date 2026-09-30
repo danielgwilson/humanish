@@ -171,7 +171,6 @@ async function runTurns(session: LoopSession, conversation: Conversation): Promi
     const checkpoint = await observer.checkpoint(turnNumber);
     if ("stop" in checkpoint) return checkpoint.stop;
     observation = checkpoint.observation;
-    if (checkpoint.hint !== undefined) conversation.contextHint = checkpoint.hint;
 
     const step = advanceBackstop(
       backstop,
@@ -179,28 +178,29 @@ async function runTurns(session: LoopSession, conversation: Conversation): Promi
       session,
     );
     backstop = step.backstop;
-    const stalled = applyBackstop(session, conversation, step, batch.rejectedActionTitle);
+    const stalled = applyBackstop(session, conversation, step, [
+      checkpoint.hint,
+      batch.rejectedActionTitle === undefined
+        ? undefined
+        : `Your action (${batch.rejectedActionTitle}) was rejected before dispatch. No input from that action or the rest of its batch was sent. Choose your next action from the fresh screenshot; do not assume the rejected action succeeded.`,
+    ]);
     if (stalled !== undefined) return stalled;
   }
 }
 
-/** Count the turn, stage recovery hints for the next request, and stop when a streak tripped. */
+/**
+ * Count the turn, stage every hint for the next request, and stop when a streak tripped. The
+ * turn's own hints (a dwell window, a rejected action) come first, then the backstop's nudges.
+ */
 function applyBackstop(
   session: LoopSession,
   conversation: Conversation,
   step: BackstopStep,
-  rejectedActionTitle: string | undefined,
+  turnHints: ReadonlyArray<string | undefined>,
 ): Stop | undefined {
   if (step.idle) session.trace.bump("idleTurns");
   if (!step.progressed) session.trace.bump("noProgressTurns");
-  const hints = [
-    ...(rejectedActionTitle === undefined
-      ? []
-      : [
-          `Your action (${rejectedActionTitle}) was rejected before dispatch. No input from that action or the rest of its batch was sent. Choose your next action from the fresh screenshot; do not assume the rejected action succeeded.`,
-        ]),
-    ...step.hints,
-  ];
+  const hints = [...turnHints.filter((hint): hint is string => hint !== undefined), ...step.hints];
   if (hints.length > 0) conversation.contextHint = hints.join(" ");
   return step.gaveUp === undefined ? undefined : gaveUp(session, step.gaveUp);
 }
