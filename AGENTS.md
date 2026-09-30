@@ -78,8 +78,9 @@ Assume this repository is public.
 
 ## Working
 
-- Start from the [ramp](docs/ramp/README.md) and the current task; read the contract for the
-  boundary you are changing. Historical plans do not authorize work.
+- Read the files in [CONTRIBUTING.md's reading order](CONTRIBUTING.md#read-these-in-order), then
+  the current task; read the contract for the boundary you are changing. Historical plans do not
+  authorize work.
 - Keep `main` clean: one worktree and branch per task, reviewable commits, squash merges.
 - Before adding a service, protocol, mode or framework, state the concrete need in the PR.
   Prefer removing an unnecessary mechanism to documenting around it.

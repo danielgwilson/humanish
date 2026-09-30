@@ -1,22 +1,16 @@
 # Humanish Ramp
 
-Status: public-safe contributor and agent ramp.
-
-The Observer is phone-usable as a stated requirement (observer/AGENTS.md); interactive primitives start from Base UI. The Observer renderer is the observer/ workspace artifact only; the legacy string-concat renderer was deleted at cutover (#426), and rollback is a version pin to `0.42.0`. The containment boundary introduced in
-`0.15.1` remains in force: managed run and output paths bind to validated
-physical filesystem identities, and stored provider IDs are evidence, not
-cleanup authority.
-
 Use this page when you are starting cold on `humanish`. It is meant to be
 useful without chat history, private notes, local machine paths, or maintainer
-context.
+context. It is the last step of the reading order in
+[CONTRIBUTING.md](../../CONTRIBUTING.md#read-these-in-order) and adds current state, how to pick
+work and the quality bar.
 
 ## First Read
 
 Start with three things:
 
-1. [`AGENTS.md`](../../AGENTS.md) for commands, conventions and public boundaries, and
-   [`ARCHITECTURE.md`](../../ARCHITECTURE.md) for the run path and the code map.
+1. The files in [CONTRIBUTING.md's reading order](../../CONTRIBUTING.md#read-these-in-order).
 2. The current task and [`docs/goals/current.md`](../goals/current.md) for current
    product status. Explicit task direction takes precedence over historical queues.
 3. Instructions in the component being changed, then its relevant contracts.
@@ -57,14 +51,7 @@ If a change does not improve one of those loops, it probably belongs elsewhere.
 [CHANGELOG.md](../../CHANGELOG.md) lists what each version changed. This section describes
 what the source supports now.
 
-Humanish has a working public package shape and a safe first-run path:
-
-```bash
-pnpm install --frozen-lockfile
-pnpm release:check
-pnpm humanish -- watch --json --no-open
-pnpm humanish -- verify --run latest --json
-```
+Humanish has a working public package shape and a safe first-run path.
 
 Implemented:
 
@@ -117,7 +104,9 @@ clone` + `serve` clones, installs, and serves a real app in-sandbox from
   a pass fails the run on the scorer-capable routes, while library callers keep
   the additive behavior (`costProbe` stays library-only); on the terminal route
   the scoring context carries the FULL normalized transcript (byte-identical to
-  the persisted `terminal-transcript.txt`) instead of the ~2KB tail projection;
+  the persisted `terminal-transcript.txt`) instead of the ~2KB tail projection. The
+  [scorer example](../../examples/scorer/README.md) attaches one from the CLI and from a
+  library caller;
 - containment checks for managed run storage, Observer and feedback reads,
   actor artifacts, lab discovery, Git metadata, and source archives;
 - cleanup inspection receipts that do not treat mutable run-bundle IDs as
@@ -125,18 +114,14 @@ clone` + `serve` clones, installs, and serves a real app in-sandbox from
 
 Still not good enough:
 
-The [current proof-roadmap checkpoint](https://github.com/danielgwilson/humanish/blob/main/docs/goals/proof-roadmap/README.md)
-supersedes implementation-status phrases in the 2026-06-10 roadmap packet
-(kept as written because it is a dated record; its README carries current status)
-without changing its success standard.
-
 - capability receipts are not adopter replacement: no first-party deletion
   branch has yet removed a bespoke generic harness while preserving
   decision-equivalent proof;
 - the five actor descriptors are a closed first-party union, not a supported
   out-of-tree actor-registration API;
-- run storage and provider-resource lifecycle logic still spans several routes
-  instead of one `RunStore` and `ResourceLease` boundary;
+- the run lifecycle (`runScope` and `Run` in `src/run/run.ts`) covers the terminal and
+  scripted routes; the computer-use and shared-world routes still write their own
+  bundles and move onto it one at a time;
 - multi-origin shared-world is an accepted design direction, but remains
   unimplemented and gated on a real adopter proving the need;
 - the README hero is the drawDB real-application study, a legible capture of a
@@ -150,16 +135,18 @@ From a clean checkout:
 ```bash
 git status --short --branch
 pnpm install --frozen-lockfile
-pnpm release:check
-pnpm humanish -- watch --json --no-open
-pnpm humanish -- runs --json
-pnpm humanish -- lab list
+pnpm humanish lab list
+pnpm humanish watch --json --no-open   # a keyless preview run
+pnpm humanish runs --json
+pnpm vitest run tests/<file>           # one test file: the fast loop
+pnpm check                             # the full local gate
+pnpm release:check                     # what CI runs; last, before a pull request
 ```
 
 For local product feel:
 
 ```bash
-pnpm humanish -- watch
+pnpm humanish watch
 ```
 
 For private/local dogfood, author an ignored lab manifest under
@@ -167,7 +154,7 @@ For private/local dogfood, author an ignored lab manifest under
 ignored env file:
 
 ```bash
-pnpm humanish -- watch .humanish/labs/local-dogfood.yaml --env-file .humanish/local/provider.env
+pnpm humanish watch .humanish/labs/local-dogfood.yaml --env-file .humanish/local/provider.env
 ```
 
 ## How To Pick Work
