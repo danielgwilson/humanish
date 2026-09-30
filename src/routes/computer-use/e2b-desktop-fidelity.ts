@@ -18,7 +18,7 @@ import {
 import { captureDesktopBrowserGeometry } from "../../substrates/e2b/desktop-geometry.js";
 import type { E2BDesktopSandbox } from "../../substrates/e2b/sdk.js";
 import { e2bShell } from "../../substrates/e2b/shell.js";
-import type { CuaLaneDeps, CuaLaneSpec } from "./types.js";
+import type { CuaLaneDeps, DesktopParticipantRun } from "./types.js";
 
 type BrowserGeometry = Awaited<ReturnType<typeof captureDesktopBrowserGeometry>>;
 
@@ -30,9 +30,9 @@ export interface LaneFidelity {
 }
 
 /** Only lanes on a mobile preset are emulated; the flags go on the browser command line. */
-export function mobileLaunchFlags(config: LabConfig, spec: CuaLaneSpec): string[] {
+export function mobileLaunchFlags(config: LabConfig, spec: DesktopParticipantRun): string[] {
   const requested = config.execution?.desktop?.fidelity;
-  if (!requested?.mobileEmulation || !spec.devicePreset.isMobile) return [];
+  if (!requested?.mobileEmulation || !spec.planned.device.preset.isMobile) return [];
   return [
     `--user-agent=${requested.userAgent ?? DEFAULT_MOBILE_USER_AGENT}`,
     ...(requested.touch === false ? [] : ["--touch-events=enabled"]),
@@ -60,7 +60,7 @@ function cdpEndpoint(
  */
 export async function applyLaneMobileFidelity(args: {
   desktop: E2BDesktopSandbox;
-  spec: CuaLaneSpec;
+  spec: DesktopParticipantRun;
   deps: CuaLaneDeps;
   targetUrl: string;
   browserFamily: DesktopBrowserFamily;
@@ -75,10 +75,10 @@ export async function applyLaneMobileFidelity(args: {
     emulatedTargetId: undefined,
     holderName: undefined,
   };
-  if (!request?.mobileEmulation || !spec.devicePreset.isMobile) return none;
+  if (!request?.mobileEmulation || !spec.planned.device.preset.isMobile) return none;
   if (args.browserFamily !== "chromium") {
     throw new Error(
-      `execution.desktop.fidelity.mobileEmulation needs Chrome or Chromium on lane ${spec.laneId}; the launched browser family is ${args.browserFamily}. Set execution.desktop.browser: chrome.`,
+      `execution.desktop.fidelity.mobileEmulation needs Chrome or Chromium on lane ${spec.planned.id}; the launched browser family is ${args.browserFamily}. Set execution.desktop.browser: chrome.`,
     );
   }
   const applied = await applyMobileEmulation(
@@ -86,9 +86,9 @@ export async function applyLaneMobileFidelity(args: {
     deps.requestTimeoutMs,
     cdpEndpoint(args.launchIdentity, args.targetUrl),
     {
-      width: spec.devicePreset.width,
-      height: spec.devicePreset.height,
-      deviceScaleFactor: request.deviceScaleFactor ?? spec.devicePreset.deviceScaleFactor,
+      width: spec.planned.device.preset.width,
+      height: spec.planned.device.preset.height,
+      deviceScaleFactor: request.deviceScaleFactor ?? spec.planned.device.preset.deviceScaleFactor,
       touch: request.touch ?? true,
       userAgent: request.userAgent ?? DEFAULT_MOBILE_USER_AGENT,
     },
@@ -105,7 +105,7 @@ export async function applyLaneMobileFidelity(args: {
 /** The Chrome observer behind URL/text stop conditions and task criteria, watching for emulation drift. */
 export function laneBrowserStateObserver(args: {
   desktop: E2BDesktopSandbox;
-  spec: CuaLaneSpec;
+  spec: DesktopParticipantRun;
   deps: CuaLaneDeps;
   targetUrl: string;
   launchIdentity: DesktopBrowserLaunchIdentity | undefined;
@@ -124,7 +124,7 @@ export function laneBrowserStateObserver(args: {
       // funnel's NEVER MEASURED count needs this line to explain itself (#514).
       onUnavailable: (reason) => {
         warnings.push(
-          `Browser-state observer unavailable for lane ${spec.laneId} (${redactText(deps.scrubKnownValues(reason))}); ` +
+          `Browser-state observer unavailable for lane ${spec.planned.id} (${redactText(deps.scrubKnownValues(reason))}); ` +
             "urlIncludes/urlPathEquals/textIncludes stop conditions and task criteria are NOT being measured this session.",
         );
       },
@@ -133,10 +133,12 @@ export function laneBrowserStateObserver(args: {
           ? undefined
           : {
               emulatedTargetId: fidelity.emulatedTargetId,
-              expectedWidth: spec.devicePreset.width,
+              expectedWidth: spec.planned.device.preset.width,
               expectTouch: fidelity.applied?.requested.touch === true,
               onDrift: (reason) => {
-                warnings.push(`Mobile emulation drift on lane ${spec.laneId}: ${reason} (#623).`);
+                warnings.push(
+                  `Mobile emulation drift on lane ${spec.planned.id}: ${reason} (#623).`,
+                );
               },
               onCovered: (coveredTargetId, read) => {
                 // A later tab the page itself reported at the phone width: evidence that
@@ -163,7 +165,7 @@ export function laneBrowserStateObserver(args: {
  */
 export async function finalLaneGeometry(args: {
   desktop: E2BDesktopSandbox;
-  spec: CuaLaneSpec;
+  spec: DesktopParticipantRun;
   deps: CuaLaneDeps;
   targetUrl: string;
   browserFamily: DesktopBrowserFamily;
@@ -182,15 +184,15 @@ export async function finalLaneGeometry(args: {
     ...(args.launchIdentity === undefined ? {} : { launchIdentity: args.launchIdentity }),
     ...(args.windowId === undefined ? {} : { browserWindowId: args.windowId }),
     ...(args.targetId === undefined ? {} : { browserTargetId: args.targetId }),
-    laneId: spec.laneId,
+    laneId: spec.planned.id,
     targetUrl: args.targetUrl,
-    requestedScreen: spec.resolution,
+    requestedScreen: spec.planned.device.resolution,
     requestTimeoutMs: deps.requestTimeoutMs,
     pagePreference: "active",
     resize: false,
   }).catch((error: unknown) => ({
     warnings: [
-      `Final browser geometry measurement failed for lane ${spec.laneId}: ${redactText(deps.scrubKnownValues(toErrorMessage(error)))}`,
+      `Final browser geometry measurement failed for lane ${spec.planned.id}: ${redactText(deps.scrubKnownValues(toErrorMessage(error)))}`,
     ],
   }));
   const chosenGeometry =

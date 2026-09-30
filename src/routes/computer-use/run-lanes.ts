@@ -94,7 +94,7 @@ export async function runLabLanes(setup: CuaRunSetup) {
         runId,
         config,
         env,
-        participants: laneSpecs.map((spec) => spec.laneId),
+        participants: laneSpecs.map((spec) => spec.planned.id),
         runPaths,
         registerSecrets: (values) => {
           for (const value of values)

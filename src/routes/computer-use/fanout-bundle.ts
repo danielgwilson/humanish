@@ -132,7 +132,7 @@ function fanoutReview(args: CuaFanoutBundleArgs, streams: RunStream[]): ReviewSu
                 )
                 .map(
                   ({ spec, outcome }) =>
-                    `${spec.laneId}: ${outcome?.skippedReason ?? outcome?.sessionError ?? outcome?.session?.reason ?? "did not pass"}`,
+                    `${spec.planned.id}: ${outcome?.skippedReason ?? outcome?.sessionError ?? outcome?.session?.reason ?? "did not pass"}`,
                 ),
     },
     streams,
@@ -165,7 +165,7 @@ function fanoutCost(args: CuaFanoutBundleArgs) {
   // trace.estimatedCost) + a desktop line per owned allocation, priced at its observed resources.
   // Per-lane worlds have no shared provisioning to double-count. Omitted on a pure dry-run.
   const costLanes = specs
-    .map((spec, index) => ({ laneId: spec.laneId, outcome: outcomes?.[index] }))
+    .map((spec, index) => ({ laneId: spec.planned.id, outcome: outcomes?.[index] }))
     .filter(
       (entry): entry is { laneId: string; outcome: LaneRunOutcome } =>
         entry.outcome?.session !== undefined,
@@ -174,7 +174,7 @@ function fanoutCost(args: CuaFanoutBundleArgs) {
   const desktops = (outcomes ?? [])
     .filter((outcome) => outcome.sandboxId !== undefined)
     .map((outcome) => ({
-      laneId: outcome.spec.laneId,
+      laneId: outcome.spec.planned.id,
       minutes: desktopSpanToMinutes(outcome.desktopDurationMs),
       observation: outcome.desktopResources,
       lifetimeComplete: outcome.killed,
@@ -196,7 +196,7 @@ function fanoutFeedbackCandidates(args: CuaFanoutBundleArgs) {
         lanes: specs.map((spec, index) => {
           const outcome = outcomes?.[index];
           return {
-            laneId: spec.laneId,
+            laneId: spec.planned.id,
             streamId: spec.streamId,
             personaId: spec.persona.id,
             ...(outcome?.session === undefined ? {} : { session: outcome.session }),
@@ -272,7 +272,7 @@ export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
       createdAt: args.createdAt,
       simId: outcome.spec.simId,
       streamId: outcome.spec.streamId,
-      laneId: outcome.spec.laneId,
+      laneId: outcome.spec.planned.id,
     }),
   );
 

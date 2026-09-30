@@ -230,7 +230,7 @@ export async function prepareConcurrentRun(
     runId,
     source: receivingSourceOf(plan.residual, subjectEnvNames),
     env,
-    participants: actorSpecs.map((spec) => spec.laneId),
+    participants: actorSpecs.map((spec) => spec.planned.id),
     runPaths,
     knownSecretValues,
     dryRun,

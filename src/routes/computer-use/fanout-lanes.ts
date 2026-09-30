@@ -7,7 +7,7 @@ import type { RunDesktopGeometry, RunSimulationStatus, RunStream } from "../../r
 import { declaredScreenForRender } from "../../substrates/e2b/desktop-geometry.js";
 import { describeSubjectState, publicSafeAppUrlLabel } from "./bundle.js";
 import { phaseEventIdSuffix } from "./lane-plan.js";
-import type { CuaFanoutBundleArgs, CuaLaneSpec } from "./types.js";
+import type { CuaFanoutBundleArgs, DesktopParticipantRun } from "./types.js";
 
 /** What every lane's records share. */
 export interface FanoutLaneContext {
@@ -16,21 +16,24 @@ export interface FanoutLaneContext {
   nextEventId: (suffix: string) => string;
 }
 
-function fanoutLaneView(args: CuaFanoutBundleArgs, spec: CuaLaneSpec, index: number) {
+function fanoutLaneView(args: CuaFanoutBundleArgs, spec: DesktopParticipantRun, index: number) {
   const { outcomes, config } = args;
   const outcome = outcomes?.[index];
-  const laneAppUrl = spec.targetUrl ?? args.appUrl;
+  const laneAppUrl = spec.planned.targetUrl ?? args.appUrl;
   const publicLaneAppUrl = publicSafeAppUrlLabel(laneAppUrl);
   const subject = args.laneSubjects[index]!;
   const session = outcome?.session;
   const fallbackDeclared = declaredScreenForRender(
-    spec.devicePreset,
-    spec.deviceName,
-    spec.resolution,
+    spec.planned.device.preset,
+    spec.planned.device.name,
+    spec.planned.device.resolution,
   );
   const desktopGeometry: RunDesktopGeometry = outcome?.desktopGeometry ?? {
     screen: {
-      requested: { width: spec.resolution[0], height: spec.resolution[1] },
+      requested: {
+        width: spec.planned.device.resolution[0],
+        height: spec.planned.device.resolution[1],
+      },
       ...(fallbackDeclared ? { declared: fallbackDeclared } : {}),
     },
   };
@@ -79,7 +82,7 @@ type FanoutLaneView = ReturnType<typeof fanoutLaneView>;
 
 function fanoutLaneSimulation(
   args: CuaFanoutBundleArgs,
-  spec: CuaLaneSpec,
+  spec: DesktopParticipantRun,
   index: number,
   view: FanoutLaneView,
 ): RunSimulation {
@@ -96,14 +99,14 @@ function fanoutLaneSimulation(
     progress: args.inProgress === true && outcome === undefined ? 20 : 100,
     currentStep: reason,
     summary: session
-      ? `Lane ${spec.laneId} (${spec.persona.id}/${spec.deviceName}): computer-use actor (${args.descriptor.id}) drove the subject app; ${session.completionReason}.`
+      ? `Lane ${spec.planned.id} (${spec.persona.id}/${spec.planned.device.name}): computer-use actor (${args.descriptor.id}) drove the subject app; ${session.completionReason}.`
       : args.inProgress === true && outcome === undefined
-        ? `Lane ${spec.laneId} (${spec.persona.id}/${spec.deviceName}): computer-use actor (${args.descriptor.id}) is driving the subject app.`
+        ? `Lane ${spec.planned.id} (${spec.persona.id}/${spec.planned.device.name}): computer-use actor (${args.descriptor.id}) is driving the subject app.`
         : outcome?.skippedReason !== undefined
-          ? `Lane ${spec.laneId} ${outcome.skippedReason}.`
+          ? `Lane ${spec.planned.id} ${outcome.skippedReason}.`
           : outcome?.sessionError
-            ? `Lane ${spec.laneId} failed before a terminal session verdict: ${outcome.sessionError}`
-            : `Contract lane ${spec.laneId} (${spec.persona.id}/${spec.deviceName}) for ${args.descriptor.id} against ${publicLaneAppUrl}.`,
+            ? `Lane ${spec.planned.id} failed before a terminal session verdict: ${outcome.sessionError}`
+            : `Contract lane ${spec.planned.id} (${spec.persona.id}/${spec.planned.device.name}) for ${args.descriptor.id} against ${publicLaneAppUrl}.`,
     streamIds: [spec.streamId],
     startedAt: args.createdAt,
     updatedAt: args.createdAt,
@@ -112,7 +115,7 @@ function fanoutLaneSimulation(
 
 function fanoutLaneStream(
   args: CuaFanoutBundleArgs,
-  spec: CuaLaneSpec,
+  spec: DesktopParticipantRun,
   view: FanoutLaneView,
 ): RunStream {
   const { config } = args;
@@ -121,15 +124,19 @@ function fanoutLaneStream(
   return {
     id: spec.streamId,
     simId: spec.simId,
-    laneId: spec.laneId,
-    ...(spec.assignment === undefined
+    laneId: spec.planned.id,
+    ...(spec.evidenceAssignment === undefined
       ? {}
-      : { assignment: participantAssignment(spec.assignment) }),
-    ...(spec.actorType === undefined ? {} : { actorType: spec.actorType }),
-    ...(spec.surface === undefined ? {} : { surface: spec.surface }),
-    ...(spec.caseGroup === undefined ? {} : { caseGroup: spec.caseGroup }),
+      : { assignment: participantAssignment(spec.evidenceAssignment) }),
+    ...(spec.planned.labels.actorType === undefined
+      ? {}
+      : { actorType: spec.planned.labels.actorType }),
+    ...(spec.planned.labels.surface === undefined ? {} : { surface: spec.planned.labels.surface }),
+    ...(spec.planned.labels.caseGroup === undefined
+      ? {}
+      : { caseGroup: spec.planned.labels.caseGroup }),
     kind: "browser",
-    label: `CUA lane ${spec.laneId} — ${config.id}`,
+    label: `CUA lane ${spec.planned.id} — ${config.id}`,
     status,
     transport: "snapshot",
     updatedAt: args.createdAt,
@@ -137,9 +144,9 @@ function fanoutLaneStream(
       ? {
           kind: "screenshot",
           url: lastScreenshot,
-          title: `CUA desktop ${spec.laneId} (${screenshotMode})`,
+          title: `CUA desktop ${spec.planned.id} (${screenshotMode})`,
         }
-      : { kind: "placeholder", title: `CUA desktop ${spec.laneId}` },
+      : { kind: "placeholder", title: `CUA desktop ${spec.planned.id}` },
     ...(desktopGeometry.viewport === undefined
       ? {}
       : {
@@ -147,14 +154,14 @@ function fanoutLaneStream(
             width: desktopGeometry.viewport.width,
             height: desktopGeometry.viewport.height,
             deviceScaleFactor: desktopGeometry.viewport.deviceScaleFactor,
-            isMobile: spec.devicePreset.isMobile,
+            isMobile: spec.planned.device.preset.isMobile,
           },
         }),
     desktopGeometry,
     ...(outcome?.recording === undefined ? {} : { recording: outcome.recording }),
     ui: {
       route: publicLaneAppUrl,
-      intent: `Watch lane ${spec.laneId} (${spec.persona.id}/${spec.deviceName}) drive the subject app in its own hosted desktop.`,
+      intent: `Watch lane ${spec.planned.id} (${spec.persona.id}/${spec.planned.device.name}) drive the subject app in its own hosted desktop.`,
       state: reason,
       ...(session ? { actorStatus: session.status } : {}),
       ...(lastScreenshot ? { screenshotUrl: lastScreenshot } : {}),
@@ -167,7 +174,7 @@ function fanoutLaneStream(
       ...(session
         ? [
             {
-              label: `lane ${spec.laneId} actor trace`,
+              label: `lane ${spec.planned.id} actor trace`,
               path: spec.traceArtifactPath,
               kind: "trace" as const,
             },
@@ -176,7 +183,7 @@ function fanoutLaneStream(
       ...(outcome?.commsArtifactPath
         ? [
             {
-              label: `lane ${spec.laneId} comms thread`,
+              label: `lane ${spec.planned.id} comms thread`,
               path: outcome.commsArtifactPath,
               kind: "log" as const,
             },
@@ -192,7 +199,7 @@ function fanoutLaneStream(
           ]
         : []),
       ...screenshots.map((screenshot, screenshotIndex) => ({
-        label: `lane ${spec.laneId} screenshot ${String(screenshotIndex + 1).padStart(2, "0")} (${screenshotMode})`,
+        label: `lane ${spec.planned.id} screenshot ${String(screenshotIndex + 1).padStart(2, "0")} (${screenshotMode})`,
         path: screenshot,
         kind: "screenshot" as const,
       })),
@@ -202,7 +209,7 @@ function fanoutLaneStream(
 
 function fanoutLaneSubjectEvent(
   ctx: FanoutLaneContext,
-  spec: CuaLaneSpec,
+  spec: DesktopParticipantRun,
   view: FanoutLaneView,
 ): RunEvent[] {
   const { args, nextEventId } = ctx;
@@ -211,11 +218,11 @@ function fanoutLaneSubjectEvent(
   // Per-lane subject provenance (invariant 5).
   if (args.cloneRoute && args.publicRepo) {
     events.push({
-      id: nextEventId(`subject-${spec.laneId}`),
+      id: nextEventId(`subject-${spec.planned.id}`),
       at: args.createdAt,
       level: "info",
       type: "cua-lab.subject.provenance",
-      message: `Lane ${spec.laneId}: ${
+      message: `Lane ${spec.planned.id}: ${
         args.dryRun
           ? `subject declared — clone of ${args.publicRepo}, served at ${publicLaneAppUrl} in-sandbox (dry-run contract; nothing cloned)`
           : subject.commit
@@ -229,11 +236,11 @@ function fanoutLaneSubjectEvent(
     });
   } else if (subject.source === "local-tree") {
     events.push({
-      id: nextEventId(`subject-${spec.laneId}`),
+      id: nextEventId(`subject-${spec.planned.id}`),
       at: args.createdAt,
       level: "info",
       type: "cua-lab.subject.provenance",
-      message: `Lane ${spec.laneId}: ${
+      message: `Lane ${spec.planned.id}: ${
         args.dryRun
           ? `subject declared: local working tree, to be packed and served at ${publicLaneAppUrl} in-sandbox (dry-run contract; nothing packed)`
           : subject.archiveSha256
@@ -247,11 +254,11 @@ function fanoutLaneSubjectEvent(
     });
   } else {
     events.push({
-      id: nextEventId(`subject-${spec.laneId}`),
+      id: nextEventId(`subject-${spec.planned.id}`),
       at: args.createdAt,
       level: "info",
       type: "cua-lab.subject.declared",
-      message: `Lane ${spec.laneId}: subject app declared at ${publicLaneAppUrl} (loopback inside the lane's own desktop sandbox).`,
+      message: `Lane ${spec.planned.id}: subject app declared at ${publicLaneAppUrl} (loopback inside the lane's own desktop sandbox).`,
       simId: spec.simId,
       streamId: spec.streamId,
     });
@@ -261,7 +268,7 @@ function fanoutLaneSubjectEvent(
 
 function fanoutLaneOutcomeEvents(
   ctx: FanoutLaneContext,
-  spec: CuaLaneSpec,
+  spec: DesktopParticipantRun,
   view: FanoutLaneView,
 ): RunEvent[] {
   const { args, nextEventId } = ctx;
@@ -270,51 +277,51 @@ function fanoutLaneOutcomeEvents(
   // Per-lane session event.
   if (session) {
     events.push({
-      id: nextEventId(`session-${spec.laneId}`),
+      id: nextEventId(`session-${spec.planned.id}`),
       at: args.createdAt,
       level: session.status === "passed" ? "info" : "warn",
       type: `cua-lab.session.${session.completionReason}`,
-      message: `Lane ${spec.laneId}: ${session.status} — ${session.reason}`,
+      message: `Lane ${spec.planned.id}: ${session.status} — ${session.reason}`,
       simId: spec.simId,
       streamId: spec.streamId,
     });
   } else if (args.inProgress === true && outcome === undefined) {
     events.push({
-      id: nextEventId(`running-${spec.laneId}`),
+      id: nextEventId(`running-${spec.planned.id}`),
       at: args.createdAt,
       level: "info",
       type: "cua-lab.session.running",
-      message: `Lane ${spec.laneId}: live computer-use session is running; terminal evidence has not been written yet.`,
+      message: `Lane ${spec.planned.id}: live computer-use session is running; terminal evidence has not been written yet.`,
       simId: spec.simId,
       streamId: spec.streamId,
     });
   } else if (outcome?.skippedReason !== undefined) {
     events.push({
-      id: nextEventId(`blocked-${spec.laneId}`),
+      id: nextEventId(`blocked-${spec.planned.id}`),
       at: args.createdAt,
       level: "warn",
       type: "cua-lab.session.blocked",
-      message: `Lane ${spec.laneId} ${outcome.skippedReason}.`,
+      message: `Lane ${spec.planned.id} ${outcome.skippedReason}.`,
       simId: spec.simId,
       streamId: spec.streamId,
     });
   } else if (outcome?.sessionError) {
     events.push({
-      id: nextEventId(`session-error-${spec.laneId}`),
+      id: nextEventId(`session-error-${spec.planned.id}`),
       at: args.createdAt,
       level: "error",
       type: "cua-lab.session.error",
-      message: `Lane ${spec.laneId}: ${outcome.sessionError}`,
+      message: `Lane ${spec.planned.id}: ${outcome.sessionError}`,
       simId: spec.simId,
       streamId: spec.streamId,
     });
   } else {
     events.push({
-      id: nextEventId(`contract-${spec.laneId}`),
+      id: nextEventId(`contract-${spec.planned.id}`),
       at: args.createdAt,
       level: "info",
       type: "cua-lab.contract.ready",
-      message: `Lane ${spec.laneId}: dry-run contract lane ready; switch scenario.mode to live for a real desktop session.`,
+      message: `Lane ${spec.planned.id}: dry-run contract lane ready; switch scenario.mode to live for a real desktop session.`,
       simId: spec.simId,
       streamId: spec.streamId,
     });
@@ -322,7 +329,7 @@ function fanoutLaneOutcomeEvents(
 
   for (const warning of desktopGeometry.warnings ?? []) {
     events.push({
-      id: nextEventId(`geometry-warning-${spec.laneId}`),
+      id: nextEventId(`geometry-warning-${spec.planned.id}`),
       at: args.createdAt,
       level: "warn",
       type: "cua-lab.geometry.warning",
@@ -336,14 +343,14 @@ function fanoutLaneOutcomeEvents(
   // boundary this lane recorded (started events never persist here; they carry no durationMs).
   for (const phase of outcome?.phaseRecords ?? []) {
     events.push({
-      id: nextEventId(`phase-${spec.laneId}-${phaseEventIdSuffix(phase.type)}`),
+      id: nextEventId(`phase-${spec.planned.id}-${phaseEventIdSuffix(phase.type)}`),
       at: phase.at,
       level: phase.ok === false ? "warn" : "info",
       type: phase.type,
       message:
         phase.durationMs === undefined
-          ? `Lane ${spec.laneId}: ${phase.message}`
-          : `Lane ${spec.laneId}: ${phase.message} (${phase.durationMs}ms)`,
+          ? `Lane ${spec.planned.id}: ${phase.message}`
+          : `Lane ${spec.planned.id}: ${phase.message} (${phase.durationMs}ms)`,
       simId: spec.simId,
       streamId: spec.streamId,
     });
@@ -354,7 +361,7 @@ function fanoutLaneOutcomeEvents(
 /** One lane's simulation, stream and events, in the order the bundle records them. */
 export function fanoutLaneRecords(
   ctx: FanoutLaneContext,
-  spec: CuaLaneSpec,
+  spec: DesktopParticipantRun,
   index: number,
 ): { simulation: RunSimulation; stream: RunStream; events: RunEvent[] } {
   const view = fanoutLaneView(ctx.args, spec, index);

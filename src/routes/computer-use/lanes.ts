@@ -34,11 +34,12 @@ import type {
   CuaLaneDeps,
   CuaLanePlan,
   CuaLaneResult,
-  CuaLaneSpec,
+  DesktopParticipantRun,
   CuaSubjectProjection,
   CuaSubjectProvenanceArg,
   LaneRunOutcome,
 } from "./types.js";
+import { laneSpecOf } from "./legacy-lane-spec.js";
 
 /** Build a lane's writeScreenshot closure: writes under screenshots/<screenshotDir>/ and records
  *  the relative path the trace references (screenshots/<name> at N=1; screenshots/<laneId>/<name>
@@ -66,7 +67,7 @@ export function makeLaneWriteScreenshot(
 }
 
 /** A blocked lane outcome (pipeline gate / fail-fast skipped it before it ran). */
-function skippedOutcome(spec: CuaLaneSpec, reason: string): LaneRunOutcome {
+function skippedOutcome(spec: DesktopParticipantRun, reason: string): LaneRunOutcome {
   return {
     spec,
     killed: false,
@@ -85,7 +86,10 @@ function skippedOutcome(spec: CuaLaneSpec, reason: string): LaneRunOutcome {
 
 /** Run one participant against a prepared desktop. The adapter owns provisioning, final
  * evidence and cleanup; this runner owns the model, trace and participant outcome. */
-export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<LaneRunOutcome> {
+export async function runCuaLane(
+  spec: DesktopParticipantRun,
+  deps: CuaLaneDeps,
+): Promise<LaneRunOutcome> {
   let model: ParticipantModel = {};
   const warnings: string[] = [];
   const screenshots: string[] = [];
@@ -153,7 +157,10 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
 }
 
 /** Run the single IN-PROCESS lane (a custom executor + provider; NO E2B). Always one lane. */
-async function runInProcessLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<LaneRunOutcome> {
+async function runInProcessLane(
+  spec: DesktopParticipantRun,
+  deps: CuaLaneDeps,
+): Promise<LaneRunOutcome> {
   const warnings: string[] = [];
   const screenshots: string[] = [];
   const writeScreenshot = makeLaneWriteScreenshot(deps.artifactRoot, spec, screenshots);
@@ -169,7 +176,7 @@ async function runInProcessLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<L
     provider = await deps.hooks.buildProvider!({
       config: deps.config,
       actor: deps.descriptor,
-      lane: spec,
+      lane: laneSpecOf(spec),
       laneCount: deps.laneCount,
       executor,
     });
@@ -186,11 +193,13 @@ async function runInProcessLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<L
         ? {}
         : {
             onTrace: (items, usage, metadata) =>
-              deps.onTrace?.(spec.laneId, items, usage, metadata),
+              deps.onTrace?.(spec.planned.id, items, usage, metadata),
           }),
-      ...(spec.stopWhen === undefined ? {} : { stopWhen: spec.stopWhen }),
-      ...(spec.dwell === undefined ? {} : { dwell: spec.dwell }),
-      ...(spec.tasks === undefined ? {} : { tasks: spec.tasks }),
+      ...(spec.planned.limits.stopWhen === undefined
+        ? {}
+        : { stopWhen: spec.planned.limits.stopWhen }),
+      ...(spec.planned.limits.dwell === undefined ? {} : { dwell: spec.planned.limits.dwell }),
+      ...(spec.planned.tasks === undefined ? {} : { tasks: spec.planned.tasks }),
     };
     session = await deps.runSession(sessionOptions);
   } catch (error) {
@@ -261,7 +270,7 @@ async function runInProcessLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<L
  * the default.
  */
 export async function runCuaLanes(
-  laneSpecs: CuaLaneSpec[],
+  laneSpecs: DesktopParticipantRun[],
   deps: Omit<CuaLaneDeps, "signalProvisioned">,
   concurrency: number,
   runParticipant: typeof runCuaLane = runCuaLane,
@@ -287,7 +296,7 @@ export async function runCuaLanes(
         } catch {
           return skippedOutcome(
             spec,
-            `skipped: lane ${laneSpecs[0]?.laneId ?? "lane-01"} failed to provision its world (pipeline gate)`,
+            `skipped: lane ${laneSpecs[0]?.planned.id ?? "lane-01"} failed to provision its world (pipeline gate)`,
           );
         }
       }
@@ -336,7 +345,7 @@ export async function runCuaLanes(
       }
       if (outcome.harnessError && !failFast.tripped) {
         failFast.tripped = true;
-        failFast.reason = `a prior lane (${outcome.spec.laneId}) ended in a harness error (fail-fast)`;
+        failFast.reason = `a prior lane (${outcome.spec.planned.id}) ended in a harness error (fail-fast)`;
       }
       return outcome;
     },
@@ -347,20 +356,24 @@ export async function runCuaLanes(
 
 /** Project one lane outcome (or a dry-run contract spec) into the public CuaLaneResult. */
 export function toLaneResult(
-  spec: CuaLaneSpec,
+  spec: DesktopParticipantRun,
   outcome: LaneRunOutcome | undefined,
   subject: CuaSubjectProjection,
   dryRun: boolean,
 ): CuaLaneResult {
   const base = {
-    id: spec.laneId,
-    ...(spec.actorType === undefined ? {} : { actorType: spec.actorType }),
-    ...(spec.surface === undefined ? {} : { surface: spec.surface }),
-    ...(spec.caseGroup === undefined ? {} : { caseGroup: spec.caseGroup }),
-    index: spec.laneIndex + 1,
+    id: spec.planned.id,
+    ...(spec.planned.labels.actorType === undefined
+      ? {}
+      : { actorType: spec.planned.labels.actorType }),
+    ...(spec.planned.labels.surface === undefined ? {} : { surface: spec.planned.labels.surface }),
+    ...(spec.planned.labels.caseGroup === undefined
+      ? {}
+      : { caseGroup: spec.planned.labels.caseGroup }),
+    index: spec.planned.index + 1,
     persona: spec.persona.id,
-    device: spec.deviceName,
-    resolution: spec.resolution,
+    device: spec.planned.device.name,
+    resolution: spec.planned.device.resolution,
     subject,
   };
   if (!outcome || dryRun) {
@@ -568,7 +581,7 @@ export function perLaneCapWarning(config: LabConfig, laneCount: number): string 
  * hosted lane runs alone; a fan-out runs at the plan's concurrency and may stop early.
  */
 export async function runAllCuaLanes(
-  laneSpecs: readonly CuaLaneSpec[],
+  laneSpecs: readonly DesktopParticipantRun[],
   deps: Omit<CuaLaneDeps, "signalProvisioned">,
   plan: CuaLanePlan,
   inProcessRoute: boolean,

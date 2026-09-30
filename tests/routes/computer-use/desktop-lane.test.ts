@@ -13,13 +13,12 @@ import type {
 import { describeQualifiedCodexCliVersions } from "../../../src/actors/codex/qualified-versions.js";
 import { runCuaActorLab } from "../../../src/routes/computer-use/lab.js";
 import { runCuaLane } from "../../../src/routes/computer-use/lanes.js";
-import { type CuaLaneDeps, type CuaLaneSpec } from "../../../src/routes/computer-use/types.js";
+import { type CuaLaneDeps } from "../../../src/routes/computer-use/types.js";
 import type {
   CuaDesktopLane,
   DesktopLaneEvidence,
 } from "../../../src/routes/computer-use/desktop-lane.js";
 import { ownDesktopAllocation } from "../../../src/substrates/desktop-session.js";
-import { DEVICE_PRESETS } from "../../../src/lab/device-presets.js";
 import { createE2BCuaDesktopLane } from "../../../src/routes/computer-use/e2b-desktop.js";
 import { E2B_SPEECH_TEMPLATE } from "../../../src/substrates/e2b/sandbox.js";
 import type { E2BDesktopModule, E2BDesktopSandbox } from "../../../src/substrates/e2b/sdk.js";
@@ -27,6 +26,8 @@ import { LAB_CONFIG_SCHEMA } from "../../../src/lab/types.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
 import { OPENAI_RESPONSES_CU_CAPABILITIES } from "../../../src/actors/computer-use/openai-provider.js";
 import { prepareSelectedOutputDirectory } from "../../../src/run/contained-output.js";
+import { participantRun } from "../../helpers/participant-run.js";
+import { laneSpecOf } from "../../../src/routes/computer-use/legacy-lane-spec.js";
 
 const restrictedParticipantFactory = vi.hoisted(() => vi.fn());
 vi.mock("../../../src/actors/codex/restricted-participant.js", async (importOriginal) => ({
@@ -47,6 +48,13 @@ afterEach(async () => {
   await Promise.all(temporary.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
 });
 
+const specFields = {
+  id: "participant-a",
+  index: 0,
+  persona: { id: "first-time-visitor", traitsApplied: [], promptDigest: "synthetic-prompt" },
+  instructions: "Save a note.",
+};
+
 async function fixture() {
   const cwd = await mkdtemp(path.join(tmpdir(), "humanish-ready-desktop-"));
   temporary.push(cwd);
@@ -62,19 +70,7 @@ async function fixture() {
     scenario: { mode: "live" },
   });
   if (!parsed.ok) throw new Error(parsed.error.message);
-  const spec: CuaLaneSpec = {
-    laneId: "participant-a",
-    laneIndex: 0,
-    simId: "sim-001",
-    streamId: "stream-001",
-    persona: { id: "first-time-visitor", traitsApplied: [], promptDigest: "synthetic-prompt" },
-    instructions: "Save a note.",
-    deviceName: "desktop",
-    devicePreset: DEVICE_PRESETS.desktop,
-    resolution: [1440, 950],
-    screenshotDir: "",
-    traceArtifactPath: "actor.json",
-  };
+  const spec = participantRun(specFields);
   const order: string[] = [];
   const loadDesktopModule = vi.fn(async () => {
     throw new Error("The alternate port must never load an E2B desktop");
@@ -202,11 +198,11 @@ describe("ready desktop lane contract", () => {
       if (expected)
         expect(create).toHaveBeenCalledWith(
           expected,
-          expect.objectContaining({ resolution: f.spec.resolution }),
+          expect.objectContaining({ resolution: f.spec.planned.device.resolution }),
         );
       else
         expect(create).toHaveBeenCalledWith(
-          expect.objectContaining({ resolution: f.spec.resolution }),
+          expect.objectContaining({ resolution: f.spec.planned.device.resolution }),
         );
       await adapter.finalize({ failed: true });
     },
@@ -312,7 +308,7 @@ describe("ready desktop lane contract", () => {
       ...f.deps.config,
       actors: [{ ...f.deps.config.actors[0]!, model: "gpt-5.6-sol" }],
     };
-    f.spec.reasoningEffort = "high";
+    f.spec = participantRun({ ...specFields, limits: { reasoningEffort: "high" } });
     f.deps.env = { PATH: "/synthetic/bin", CODEX_HOME: "/synthetic/operator-codex" };
     f.deps.runSession = runCuaActorSession;
 
@@ -374,7 +370,9 @@ describe("ready desktop lane contract", () => {
       }),
     };
     f.deps.hooks.buildProvider = vi.fn(async ({ lane }) => {
-      expect(lane).toBe(f.spec);
+      // The deprecated hook receives the flat view of the lane it runs.
+      expect(lane).toEqual(laneSpecOf(f.spec));
+      expect(lane).toMatchObject({ laneId: "participant-a", laneIndex: 0, deviceName: "desktop" });
       return provider;
     });
     f.deps.runSession = runCuaActorSession;
@@ -500,7 +498,10 @@ describe("ready desktop lane contract", () => {
         return { actions: [{ kind: "click", x: 8, y: 8 }], pendingSafetyChecks: [], done: false };
       },
     };
-    f.spec.stopWhen = { any: [{ id: "saved", textIncludes: "Saved" }] };
+    f.spec = participantRun({
+      ...specFields,
+      limits: { stopWhen: { any: [{ id: "saved", textIncludes: "Saved" }] } },
+    });
     const onTrace = vi.fn();
     const onScreenshot = vi.fn();
     f.deps.onTrace = onTrace;
@@ -524,7 +525,7 @@ describe("ready desktop lane contract", () => {
     expect(requests[0]?.instructions).toContain("Save a note.");
     expect(requests[0]?.instructions).toContain("reader@example.test");
     expect(onTrace).toHaveBeenCalled();
-    expect(onTrace.mock.calls[0]?.[0]).toBe(f.spec.laneId);
+    expect(onTrace.mock.calls[0]?.[0]).toBe(f.spec.planned.id);
     expect(onScreenshot).toHaveBeenCalled();
     const trace = JSON.parse(await readFile(path.join(f.cwd, "artifacts/actor.json"), "utf8"));
     expect(trace).toEqual(result.session?.trace);

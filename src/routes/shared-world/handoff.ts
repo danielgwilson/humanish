@@ -13,7 +13,7 @@ import { toErrorMessage } from "../../evidence/redaction.js";
 import { inboxRecipientFor, laneHasInboxRecipient } from "../computer-use/lab.js";
 import { withInboxMission } from "../computer-use/lane-plan.js";
 import { runCuaLane } from "../computer-use/lanes.js";
-import type { CuaLaneSpec, LaneRunOutcome } from "../computer-use/types.js";
+import type { DesktopParticipantRun, LaneRunOutcome } from "../computer-use/types.js";
 import { extractLobbyCode, extractLobbyCodeFromNarration } from "./lobby-code.js";
 import { hostOriginDigest } from "./provenance.js";
 import { makeBlockedFollowerOutcome, withLobbyCodeMission, type SeatLaneDeps } from "./seats.js";
@@ -279,9 +279,16 @@ export class LobbyHandoff {
 }
 
 // Adopter-hosted inbox (#387): the persona is told its address and inbox URL on THIS plane.
-function withSeatInbox(spec: CuaLaneSpec, inbox: ExternalCommsWiring | undefined): CuaLaneSpec {
-  return inbox && laneHasInboxRecipient(inbox.email, spec.laneId)
-    ? withInboxMission(spec, inbox.inboxUrl, inboxRecipientFor(inbox.email, spec.laneId)?.address)
+function withSeatInbox(
+  spec: DesktopParticipantRun,
+  inbox: ExternalCommsWiring | undefined,
+): DesktopParticipantRun {
+  return inbox && laneHasInboxRecipient(inbox.email, spec.planned.id)
+    ? withInboxMission(
+        spec,
+        inbox.inboxUrl,
+        inboxRecipientFor(inbox.email, spec.planned.id)?.address,
+      )
     : spec;
 }
 
@@ -297,7 +304,7 @@ function withSeatInbox(spec: CuaLaneSpec, inbox: ExternalCommsWiring | undefined
 export async function runHostLane(
   handoff: LobbyHandoff,
   deps: HandoffSeatDeps,
-  spec: CuaLaneSpec,
+  spec: DesktopParticipantRun,
   laneIndex: number,
 ): Promise<ActorLaneResult> {
   const onObservedUrl = handoff.makeLaneObservedUrl(laneIndex, true);
@@ -324,10 +331,12 @@ export async function runHostLane(
   // unchanging "waiting for players" screen). At the default idle backstop (6) the host would give up
   // before anyone arrives, orphaning the lobby (exactly the earlier failure). Raise the host's idle /
   // no-progress tolerance so it waits patiently; the per-seat timeout still bounds a truly stuck host.
-  const hostSpec: CuaLaneSpec = {
+  const hostSpec: DesktopParticipantRun = {
     ...withSeatInbox(spec, deps.inbox),
-    idleSteps: spec.idleSteps ?? HOST_WAIT_IDLE_STEPS,
-    noProgressSteps: spec.noProgressSteps ?? HOST_WAIT_IDLE_STEPS,
+    backstop: {
+      idleSteps: spec.backstop?.idleSteps ?? HOST_WAIT_IDLE_STEPS,
+      noProgressSteps: spec.backstop?.noProgressSteps ?? HOST_WAIT_IDLE_STEPS,
+    },
   };
   const startedAt = deps.now();
   let outcome: LaneRunOutcome | undefined;
@@ -357,7 +366,7 @@ export async function runHostLane(
 export async function runFollowerLane(
   handoff: LobbyHandoff,
   deps: HandoffSeatDeps,
-  spec: CuaLaneSpec,
+  spec: DesktopParticipantRun,
   laneIndex: number,
 ): Promise<ActorLaneResult> {
   const onObservedUrl = handoff.makeLaneObservedUrl(laneIndex, false);
@@ -382,10 +391,12 @@ export async function runFollowerLane(
   // Followers also idle-wait — in the waiting room until the host starts, and between rounds. Raise
   // their idle backstop too (less than the host's: they wait less), so a follower that joins ahead of
   // the other does not give up before the game begins. Per-seat timeout still bounds a stuck follower.
-  const followerSpec: CuaLaneSpec = {
+  const followerSpec: DesktopParticipantRun = {
     ...withLobbyCodeMission(withSeatInbox(spec, deps.inbox), code),
-    idleSteps: spec.idleSteps ?? FOLLOWER_WAIT_IDLE_STEPS,
-    noProgressSteps: spec.noProgressSteps ?? FOLLOWER_WAIT_IDLE_STEPS,
+    backstop: {
+      idleSteps: spec.backstop?.idleSteps ?? FOLLOWER_WAIT_IDLE_STEPS,
+      noProgressSteps: spec.backstop?.noProgressSteps ?? FOLLOWER_WAIT_IDLE_STEPS,
+    },
   };
   // Independently OBSERVE this follower's own lobby code by vision-reading its waiting-room frame,
   // and record it for the cross-seat convergence proof. This does NOT latch anything (followers gate

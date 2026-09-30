@@ -7,6 +7,7 @@ import type { ActorPersonaRef } from "../../actors/contract.js";
 import { recipientInboxUrl } from "../../comms/capture-surface.js";
 import type { DevicePreset } from "../../lab/device-presets.js";
 import { computerUseParticipants } from "../../lab/plan-participants.js";
+import { resolveParticipant } from "../../run/participant.js";
 import { type LabConfig } from "../../lab/types.js";
 import {
   personaBrief,
@@ -29,7 +30,7 @@ import {
   type CuaActorLabErrorCode,
   type CuaLanePlan,
   type CuaLanePlanEntry,
-  type CuaLaneSpec,
+  type DesktopParticipantRun,
   type CuaRunBudget,
   DEFAULT_APP_URL_SESSION_TIMEOUT_MS,
   type LaneSpecsAndPlan,
@@ -146,11 +147,11 @@ export function composeLaneInstructions(args: {
  *  augments only the instructions the model receives; the authored prompt + its digest are unchanged.
  *  Returns a new spec (never mutates). Shared by the CUA + concurrent shared-world routes. */
 export function withInboxMission(
-  spec: CuaLaneSpec,
+  spec: DesktopParticipantRun,
   inboxUrl: string,
   address?: string,
   receiving = false,
-): CuaLaneSpec {
+): DesktopParticipantRun {
   // No assigned identity means no participant inbox; never fall back to the shared operator view.
   if (!address?.trim()) return spec;
   // Captured mail is routed to the assigned identity. Supply that identity and inbox
@@ -235,15 +236,11 @@ function laneSpecsAndPlan(
   const participants = computerUseParticipants(config, opts.countOverride);
   const laneCount = participants.length;
 
-  const lanes: CuaLaneSpec[] = participants.map((participant) => {
-    const i = participant.index;
-    const laneId = participant.id;
-    const simId = `sim-${String(i + 1).padStart(3, "0")}`;
-    const streamId = `stream-${String(i + 1).padStart(3, "0")}`;
+  const lanes: DesktopParticipantRun[] = participants.map((participant) => {
     const mission = participant.assignment.mission ?? DEFAULT_MISSION;
     const focus = participant.assignment.focus;
     const tasks = participant.tasks;
-    const { device, labels, limits, personaId } = participant;
+    const { device, personaId } = participant;
     const resolvedPersona = personaId === undefined ? undefined : opts.personas?.get(personaId);
     const composed = composeLaneInstructions({
       mission,
@@ -254,32 +251,19 @@ function laneSpecsAndPlan(
       device: { name: device.name, preset: device.preset },
       ...(config.subject.source === "desktop-cli" ? { surface: "desktop-cli" as const } : {}),
     });
-    return {
-      laneId,
-      ...(labels.actorType === undefined ? {} : { actorType: labels.actorType }),
-      ...(labels.surface === undefined ? {} : { surface: labels.surface }),
-      ...(labels.caseGroup === undefined ? {} : { caseGroup: labels.caseGroup }),
-      laneIndex: i,
-      simId,
-      streamId,
+    const run = resolveParticipant(participant, {
       persona: composed.persona,
       instructions: composed.instructions,
-      assignment: {
+      evidenceAssignment: {
         mission,
         ...(focus === undefined ? {} : { focus }),
         ...(tasks === undefined ? {} : { tasks: tasks.map(({ id, goal }) => ({ id, goal })) }),
       },
-      ...(participant.targetUrl === undefined ? {} : { targetUrl: participant.targetUrl }),
-      ...(limits.stopWhen === undefined ? {} : { stopWhen: limits.stopWhen }),
-      ...(limits.dwell === undefined ? {} : { dwell: limits.dwell }),
-      ...(limits.reasoningEffort === undefined ? {} : { reasoningEffort: limits.reasoningEffort }),
-      ...(limits.maxOutputTokens === undefined ? {} : { maxOutputTokens: limits.maxOutputTokens }),
-      ...(tasks === undefined ? {} : { tasks: [...tasks] }),
-      deviceName: device.name,
-      devicePreset: device.preset,
-      resolution: [device.resolution[0], device.resolution[1]],
-      screenshotDir: laneCount === 1 ? "" : laneId,
-      traceArtifactPath: laneCount === 1 ? "actor.json" : `actors/${streamId}.json`,
+    });
+    return {
+      ...run,
+      screenshotDir: laneCount === 1 ? "" : participant.id,
+      traceArtifactPath: laneCount === 1 ? "actor.json" : `actors/${run.streamId}.json`,
     };
   });
 
@@ -299,18 +283,30 @@ function laneSpecsAndPlan(
     worstCaseSandboxMinutes: Math.round((laneCount * perLaneSandboxMs) / 60_000),
     dryRun: opts.dryRun === true,
     lanes: lanes.map((spec) => ({
-      id: spec.laneId,
-      ...(spec.actorType === undefined ? {} : { actorType: spec.actorType }),
-      ...(spec.surface === undefined ? {} : { surface: spec.surface }),
-      ...(spec.caseGroup === undefined ? {} : { caseGroup: spec.caseGroup }),
-      index: spec.laneIndex + 1,
+      id: spec.planned.id,
+      ...(spec.planned.labels.actorType === undefined
+        ? {}
+        : { actorType: spec.planned.labels.actorType }),
+      ...(spec.planned.labels.surface === undefined
+        ? {}
+        : { surface: spec.planned.labels.surface }),
+      ...(spec.planned.labels.caseGroup === undefined
+        ? {}
+        : { caseGroup: spec.planned.labels.caseGroup }),
+      index: spec.planned.index + 1,
       persona: spec.persona.id,
-      device: spec.deviceName,
-      resolution: spec.resolution,
+      device: spec.planned.device.name,
+      resolution: spec.planned.device.resolution,
       instructionDigest: spec.persona.promptDigest,
-      ...(spec.reasoningEffort === undefined ? {} : { reasoningEffort: spec.reasoningEffort }),
-      ...(spec.maxOutputTokens === undefined ? {} : { maxOutputTokens: spec.maxOutputTokens }),
-      ...(spec.targetUrl === undefined ? {} : { targetDigest: digestUrl(spec.targetUrl) }),
+      ...(spec.planned.limits.reasoningEffort === undefined
+        ? {}
+        : { reasoningEffort: spec.planned.limits.reasoningEffort }),
+      ...(spec.planned.limits.maxOutputTokens === undefined
+        ? {}
+        : { maxOutputTokens: spec.planned.limits.maxOutputTokens }),
+      ...(spec.planned.targetUrl === undefined
+        ? {}
+        : { targetDigest: digestUrl(spec.planned.targetUrl) }),
     })),
   };
   return { lanes, plan };
@@ -321,10 +317,10 @@ async function resolveCuaRerunSelection(args: {
   config: LabConfig;
   sourceRunId: string;
   laneIds?: string[];
-  laneSpecs: CuaLaneSpec[];
+  laneSpecs: DesktopParticipantRun[];
   plan: CuaLanePlan;
 }): Promise<
-  | { ok: true; laneSpecs: CuaLaneSpec[]; plan: CuaLanePlan; rerun: RunRerunLineage }
+  | { ok: true; laneSpecs: DesktopParticipantRun[]; plan: CuaLanePlan; rerun: RunRerunLineage }
   | { ok: false; message: string }
 > {
   const source = await loadRunBundle(args.cwd, args.sourceRunId);
@@ -373,7 +369,7 @@ async function resolveCuaRerunSelection(args: {
     };
   }
 
-  const specsById = new Map(args.laneSpecs.map((spec) => [spec.laneId, spec]));
+  const specsById = new Map(args.laneSpecs.map((spec) => [spec.planned.id, spec]));
   const missingCurrent = selectedLaneIds.filter((laneId) => !specsById.has(laneId));
   if (missingCurrent.length > 0) {
     return {
@@ -550,7 +546,12 @@ export async function planCuaLanes(args: {
   countOverride?: number;
   rerun?: RunCuaActorLabOptions["rerun"];
 }): Promise<
-  | { ok: true; laneSpecs: CuaLaneSpec[]; plan: CuaLanePlan; rerunLineage?: RunRerunLineage }
+  | {
+      ok: true;
+      laneSpecs: DesktopParticipantRun[];
+      plan: CuaLanePlan;
+      rerunLineage?: RunRerunLineage;
+    }
   | { ok: false; code: CuaActorLabErrorCode; message: string }
 > {
   // Compile any committed personas BEFORE planning, so the plan builder stays pure and each lane's
@@ -593,11 +594,12 @@ export async function planCuaLanes(args: {
 
 /** Scrub known secret values from each lane's declarative snapshot before any bundle uses it. */
 export function sanitizeLaneSpecs(
-  laneSpecs: readonly CuaLaneSpec[],
+  laneSpecs: readonly DesktopParticipantRun[],
   scrub: (text: string) => string,
 ): void {
   for (const spec of laneSpecs) {
-    if (spec.assignment) spec.assignment = participantAssignment(spec.assignment, scrub);
+    if (spec.evidenceAssignment)
+      spec.evidenceAssignment = participantAssignment(spec.evidenceAssignment, scrub);
     spec.evidenceInstructions = redactText(scrub(spec.instructions));
     spec.persona = scrubPersonaBrief(spec.persona, scrub);
   }

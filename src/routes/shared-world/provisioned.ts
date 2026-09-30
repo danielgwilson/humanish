@@ -552,11 +552,11 @@ function runSeats(
     // inbox). Only the in-sandbox catch exists on this plane; the adopter-hosted catch is the
     // external-public plane's (#387).
     const laneSpec =
-      commsEmail && plane.commsInboxUrl && laneHasInboxRecipient(commsEmail, spec.laneId)
+      commsEmail && plane.commsInboxUrl && laneHasInboxRecipient(commsEmail, spec.planned.id)
         ? withInboxMission(
             spec,
             plane.commsInboxUrl,
-            inboxRecipientFor(commsEmail, spec.laneId)?.address,
+            inboxRecipientFor(commsEmail, spec.planned.id)?.address,
           )
         : spec;
     const startedAt = now();

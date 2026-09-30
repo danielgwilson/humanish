@@ -45,8 +45,8 @@ export async function acquireLaneDesktop(
         ...CUA_ACTOR_LAB_PROVIDER_METADATA,
         labId: config.id,
         simId: spec.simId,
-        laneId: spec.laneId,
-        laneIndex: String(spec.laneIndex),
+        laneId: spec.planned.id,
+        laneIndex: String(spec.planned.index),
         laneCount: String(deps.laneCount),
       },
       // The participant's model key never enters the sandbox (the model drives from outside).
@@ -65,7 +65,7 @@ export async function acquireLaneDesktop(
             },
           }
         : {}),
-      resolution: spec.resolution,
+      resolution: spec.planned.device.resolution,
       dpi: 96,
       lifecycle: { onTimeout: "kill" },
     },
@@ -76,7 +76,7 @@ export async function acquireLaneDesktop(
       onRetry: (reason) => {
         const named = redactText(deps.scrubKnownValues(reason));
         warnings.push(
-          `Sandbox create for lane ${spec.laneId} retried once after a transient provider error (${named}).`,
+          `Sandbox create for lane ${spec.planned.id} retried once after a transient provider error (${named}).`,
         );
         ctx.onSubjectPhase({
           at: new Date(deps.now()).toISOString(),
@@ -87,7 +87,7 @@ export async function acquireLaneDesktop(
     },
     // The receipt is on disk before any work, so `humanish reclaim` can kill this lane's
     // sandbox by exact id after an interrupt.
-    receipt: { root: deps.artifactRoot, laneId: spec.laneId, now: deps.now },
+    receipt: { root: deps.artifactRoot, laneId: spec.planned.id, now: deps.now },
   });
   const desktop = acquired.sandbox;
   state.desktop = desktop;
@@ -106,8 +106,8 @@ export async function acquireLaneDesktop(
 
   if (deps.hooks.prepareDesktop) {
     await deps.hooks.prepareDesktop(desktop, {
-      laneId: spec.laneId,
-      laneIndex: spec.laneIndex,
+      laneId: spec.planned.id,
+      laneIndex: spec.planned.index,
       laneCount: deps.laneCount,
     });
   }
@@ -137,8 +137,8 @@ export async function verifyLaneScreen(
   const { spec, deps, warnings } = ctx;
   const screenGeometry = await inspectDesktopScreenGeometry({
     desktop,
-    laneId: spec.laneId,
-    requestedScreen: spec.resolution,
+    laneId: spec.planned.id,
+    requestedScreen: spec.planned.device.resolution,
     requestTimeoutMs: deps.requestTimeoutMs,
   });
   if (screenGeometry.verified) {
@@ -159,7 +159,7 @@ export async function verifyLaneScreen(
     // record-evidence policy: the bundle keeps requested vs verified as separate facts and
     // discloses the divergence instead of failing this lane's world mid-flight.
     const mismatchWarning = deps.scrubKnownValues(
-      `Lane ${spec.laneId} requested a ${spec.resolution[0]}x${spec.resolution[1]} screen but xdpyinfo reports ${screenGeometry.verified.width}x${screenGeometry.verified.height}; recording requested vs verified separately instead of failing the lane closed.`,
+      `Lane ${spec.planned.id} requested a ${spec.planned.device.resolution[0]}x${spec.planned.device.resolution[1]} screen but xdpyinfo reports ${screenGeometry.verified.width}x${screenGeometry.verified.height}; recording requested vs verified separately instead of failing the lane closed.`,
     );
     warnings.push(mismatchWarning);
     state.desktopGeometry = {

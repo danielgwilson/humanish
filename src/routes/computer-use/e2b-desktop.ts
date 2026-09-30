@@ -14,14 +14,14 @@ import {
 import { openLaneSurface, startLaneMedia, startLaneStream } from "./e2b-desktop-start.js";
 import { laneEvidence, newLaneState, type E2BLaneContext } from "./e2b-desktop-state.js";
 import { finishLane } from "./e2b-desktop-teardown.js";
-import type { CuaLaneDeps, CuaLaneSpec } from "./types.js";
+import type { CuaLaneDeps, DesktopParticipantRun } from "./types.js";
 
 export function createE2BCuaDesktopLane(
-  spec: CuaLaneSpec,
+  spec: DesktopParticipantRun,
   deps: CuaLaneDeps,
   warnings: string[],
 ): CuaDesktopLane {
-  const targetUrl = spec.targetUrl ?? deps.appUrl;
+  const targetUrl = spec.planned.targetUrl ?? deps.appUrl;
   const state = newLaneState(spec);
   const ctx: E2BLaneContext = {
     spec,
@@ -36,8 +36,8 @@ export function createE2BCuaDesktopLane(
     onSubjectPhase: (event: SubjectPhaseEvent): void => {
       if (event.ok !== undefined) state.phaseRecords.push(event);
       (deps.hooks.onPhase ?? defaultSubjectPhaseSink)(event, {
-        laneId: spec.laneId,
-        laneIndex: spec.laneIndex,
+        laneId: spec.planned.id,
+        laneIndex: spec.planned.index,
         laneCount: deps.laneCount,
       });
     },

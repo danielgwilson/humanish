@@ -45,14 +45,14 @@ import {
   type DesktopUsage,
 } from "../../run/cost-summary.js";
 import { phaseEventIdSuffix } from "./lane-plan.js";
-import type { CuaLaneSpec, CuaSubjectProvenanceArg, LaneRunOutcome } from "./types.js";
+import type { DesktopParticipantRun, CuaSubjectProvenanceArg, LaneRunOutcome } from "./types.js";
 
 /** Build the N=1 bundle via the unchanged buildCuaBundle (byte-stable). */
 export function buildSingleLaneBundle(args: {
   /** The run's verdict, from the judge. */
   verdict: Verdict;
   lab?: RunLabProvenance;
-  spec: CuaLaneSpec;
+  spec: DesktopParticipantRun;
   outcome: LaneRunOutcome | undefined;
   descriptor: CuaActorDescriptor;
   appUrl: string;
@@ -75,18 +75,22 @@ export function buildSingleLaneBundle(args: {
     ...(args.lab === undefined ? {} : { lab: args.lab }),
     actorId: args.descriptor.id,
     appUrl: args.appUrl,
-    laneId: spec.laneId,
-    ...(spec.actorType === undefined ? {} : { actorType: spec.actorType }),
-    ...(spec.surface === undefined ? {} : { surface: spec.surface }),
-    ...(spec.caseGroup === undefined ? {} : { caseGroup: spec.caseGroup }),
+    laneId: spec.planned.id,
+    ...(spec.planned.labels.actorType === undefined
+      ? {}
+      : { actorType: spec.planned.labels.actorType }),
+    ...(spec.planned.labels.surface === undefined ? {} : { surface: spec.planned.labels.surface }),
+    ...(spec.planned.labels.caseGroup === undefined
+      ? {}
+      : { caseGroup: spec.planned.labels.caseGroup }),
     createdAt: args.createdAt,
     dryRun: args.dryRun,
     labId: config.id,
     ...(config.title ? { labTitle: config.title } : {}),
     mission: spec.evidenceInstructions ?? spec.instructions,
-    ...(spec.assignment === undefined ? {} : { assignment: spec.assignment }),
+    ...(spec.evidenceAssignment === undefined ? {} : { assignment: spec.evidenceAssignment }),
     persona: spec.persona,
-    resolution: spec.resolution,
+    resolution: spec.planned.device.resolution,
     desktopRoute: !args.inProcessRoute,
     substrate: args.inProcessRoute
       ? "local-filesystem"
@@ -95,7 +99,7 @@ export function buildSingleLaneBundle(args: {
         : "e2b-desktop",
     ...(outcome?.desktopGeometry === undefined ? {} : { desktopGeometry: outcome.desktopGeometry }),
     ...(outcome?.recording === undefined ? {} : { recording: outcome.recording }),
-    isMobile: spec.devicePreset.isMobile,
+    isMobile: spec.planned.device.preset.isMobile,
     runId: args.runId,
     screenshots: outcome?.screenshots ?? [],
     captureRedaction: args.redactScreenshots ? "blurred" : "raw",
@@ -120,7 +124,7 @@ export function buildSingleLaneBundle(args: {
       createdAt: args.createdAt,
       simId: spec.simId,
       streamId: spec.streamId,
-      laneId: spec.laneId,
+      laneId: spec.planned.id,
     }),
     ...(args.localAppSubject || args.inProcessRoute ? { entryKind: "local-app" as const } : {}),
     ...(outcome?.session ? { traceArtifactPath: spec.traceArtifactPath } : {}),
@@ -134,7 +138,7 @@ export function buildSingleLaneBundle(args: {
       ? {}
       : {
           desktopUsage: {
-            laneId: spec.laneId,
+            laneId: spec.planned.id,
             minutes: desktopSpanToMinutes(outcome.desktopDurationMs),
             observation: outcome.desktopResources,
             lifetimeComplete: outcome.killed,

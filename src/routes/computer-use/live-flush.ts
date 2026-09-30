@@ -4,7 +4,7 @@ import { attachObserverRuntimeStreamUrls, type ObserverResult } from "../../obse
 import { type ObserverRuntimeStreamUrl } from "../../observer/run-routes.js";
 import type { RunBundle } from "../../run/bundle.js";
 import { HOOK_MEMBERS, withHookOverrides } from "../../lab/hook-bag.js";
-import type { CuaActorLabHooks, CuaLaneSpec } from "./types.js";
+import type { CuaActorLabHooks, DesktopParticipantRun } from "./types.js";
 
 export interface LiveTraceFlush {
   /** Record a lane's recorded-so-far items; the bundle rewrite follows on the flush schedule. */
@@ -28,14 +28,14 @@ export interface LiveTraceFlush {
  */
 export function startLiveTraceFlush(args: {
   bundle: RunBundle;
-  laneSpecs: readonly CuaLaneSpec[];
+  laneSpecs: readonly DesktopParticipantRun[];
   /** The model the running usage prices at. Usage without its model is not a cost. */
   model: string;
   /** Publishes one in-progress bundle: the run's `writeSnapshot`. */
   write: (bundle: RunBundle) => Promise<void>;
 }): LiveTraceFlush {
   const { bundle, laneSpecs, model, write } = args;
-  const streamIdByLane = new Map(laneSpecs.map((spec) => [spec.laneId, spec.streamId]));
+  const streamIdByLane = new Map(laneSpecs.map((spec) => [spec.planned.id, spec.streamId]));
   // The persona each lane is running, so the live flush can say who is in it.
   const personaByStream = new Map(
     laneSpecs

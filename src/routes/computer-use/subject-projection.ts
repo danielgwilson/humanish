@@ -7,7 +7,11 @@ import { type RunSubjectProvenance, type RunSubjectStateStepRecord } from "../..
 import { type LocalTreeArchive } from "../../run/source-archive.js";
 import { laneSubjectProjection } from "./lanes.js";
 import { type CuaRoute } from "./plan.js";
-import { type CuaLaneSpec, type CuaSubjectProjection, type LaneRunOutcome } from "./types.js";
+import {
+  type DesktopParticipantRun,
+  type CuaSubjectProjection,
+  type LaneRunOutcome,
+} from "./types.js";
 
 /**
  * Each lane's subject projection. A lane's outcome adds the subject commit it resolved and the
@@ -19,7 +23,7 @@ export function projectLaneSubjects(args: {
   route: CuaRoute;
   publicRepo?: string;
   localTreeArchive?: LocalTreeArchive;
-  laneSpecs: readonly CuaLaneSpec[];
+  laneSpecs: readonly DesktopParticipantRun[];
   outcomes: readonly LaneRunOutcome[] | undefined;
   dryRun: boolean;
 }): CuaSubjectProjection[] {

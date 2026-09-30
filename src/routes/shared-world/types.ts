@@ -31,7 +31,7 @@ import type { RunLabProvenance } from "../../run/status.js";
 import type { LiveTraceFlush } from "../computer-use/live-flush.js";
 import type {
   CuaLaneDeps,
-  CuaLaneSpec,
+  DesktopParticipantRun,
   CuaRunBudget,
   LaneRunOutcome,
 } from "../computer-use/types.js";
@@ -167,7 +167,7 @@ export interface SubjectDesktopUsage {
 
 /** One actor lane's measured run (internal). */
 export interface ActorLaneResult {
-  spec: CuaLaneSpec;
+  spec: DesktopParticipantRun;
   outcome: LaneRunOutcome;
   startedAt: number;
   endedAt: number;
@@ -205,7 +205,7 @@ export interface PlaneContext {
   now: () => number;
   source: RunBundle["source"];
   seedDigest: string;
-  actorSpecs: CuaLaneSpec[];
+  actorSpecs: DesktopParticipantRun[];
   receiving: CommsReceivingRun | undefined;
   /** The run's warnings. Planes append to it. */
   warnings: string[];
@@ -242,7 +242,7 @@ export interface ConcurrentBundleArgs {
   runId: string;
   source: RunBundle["source"];
   roles: LabActorLane[];
-  actorSpecs: CuaLaneSpec[];
+  actorSpecs: DesktopParticipantRun[];
   actorResults: ActorLaneResult[];
   stateSnapshots: SharedWorldStateSnapshot[];
   subject: RunSubjectProvenance;

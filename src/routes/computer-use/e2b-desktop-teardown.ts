@@ -12,7 +12,7 @@ import { e2bShell } from "../../substrates/e2b/shell.js";
 import { drainCommsEvidence } from "./e2b-desktop-comms.js";
 import { finalLaneGeometry } from "./e2b-desktop-fidelity.js";
 import type { E2BLaneContext, E2BLaneState } from "./e2b-desktop-state.js";
-import type { CuaLaneDeps, CuaLaneSpec } from "./types.js";
+import type { CuaLaneDeps, DesktopParticipantRun } from "./types.js";
 
 /**
  * Each route's own keep flag gates its own lane only: a clone.keep can never leak into a local-tree
@@ -27,7 +27,7 @@ function laneKeepReason(deps: CuaLaneDeps): string | undefined {
 
 /** Collect the recording and stop the speech worker; failures are warnings. */
 async function stopLaneMedia(args: {
-  spec: CuaLaneSpec;
+  spec: DesktopParticipantRun;
   deps: CuaLaneDeps;
   recording: Awaited<ReturnType<typeof startE2BDesktopRecording>> | undefined;
   speech: Awaited<ReturnType<typeof startE2BDesktopMedia>> | undefined;
@@ -38,8 +38,10 @@ async function stopLaneMedia(args: {
   let evidence: RunDesktopRecording | undefined;
   if (recording) {
     try {
-      evidence = await collectDesktopRecording(deps.artifactRoot, args.spec.laneId, (destination) =>
-        recording.finish(destination),
+      evidence = await collectDesktopRecording(
+        deps.artifactRoot,
+        args.spec.planned.id,
+        (destination) => recording.finish(destination),
       );
     } catch (error) {
       warnings.push(
@@ -130,7 +132,7 @@ export async function finishLane(
     }
     if (deps.receiving) {
       try {
-        await deps.receiving.finishParticipant(spec.laneId);
+        await deps.receiving.finishParticipant(spec.planned.id);
       } catch {
         warnings.push(
           "Real email finalization is incomplete. Inspect communication cleanup with humanish comms recover.",
@@ -178,7 +180,7 @@ export async function finishLane(
     if (state.streamUrl !== undefined) {
       try {
         await deps.hooks.onRuntimeStreamEnded?.({
-          laneId: spec.laneId,
+          laneId: spec.planned.id,
           simId: spec.simId,
           streamId: spec.streamId,
         });

@@ -7,7 +7,8 @@ import {
   type CuaDesktopLane,
   type DesktopLaneEvidence,
 } from "./desktop-lane.js";
-import type { CuaActorLabHooks, CuaLaneSpec } from "./types.js";
+import type { CuaActorLabHooks } from "./types.js";
+import type { CuaLaneSpec } from "./legacy-lane-spec.js";
 import { HOOK_MEMBERS, withHookOverrides } from "../../lab/hook-bag.js";
 import { runCuaActorSession } from "../../actors/computer-use/actor.js";
 import {

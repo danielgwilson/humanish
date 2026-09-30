@@ -29,12 +29,11 @@ import { declaredScreenForRender } from "../../../src/substrates/e2b/desktop-geo
 import { runCuaLanes } from "../../../src/routes/computer-use/lanes.js";
 import {
   type CuaActorLabHooks,
-  type CuaLaneSpec,
+  type DesktopParticipantRun,
   type LaneRunOutcome,
   type CuaLanePlan,
 } from "../../../src/routes/computer-use/types.js";
 import { getActor } from "../../../src/actors/registry.js";
-import { DEVICE_PRESETS } from "../../../src/lab/device-presets.js";
 import type {
   E2BDesktopCreateOptions,
   E2BDesktopModule,
@@ -56,6 +55,8 @@ import {
 import { readReview } from "../../../src/run/stored-runs.js";
 import { reclaimRunSandboxes } from "../../../src/run/reclaim.js";
 import { verifyRun } from "../../../src/verify/verify.js";
+import { participantRun } from "../../helpers/participant-run.js";
+import type { CuaLaneSpec } from "../../../src/routes/computer-use/legacy-lane-spec.js";
 
 // ---------------------------------------------------------------------------
 // Fan-out fakes: a desktop module that mints a DISTINCT sandbox per create()
@@ -455,33 +456,27 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
       ],
     });
     const plan = resolveCuaLanePlan(config);
-    const specs: CuaLaneSpec[] = [
-      {
-        laneId: "role-a",
-        laneIndex: 0,
+    const specs: DesktopParticipantRun[] = [
+      participantRun({
+        id: "role-a",
+        index: 0,
         simId: "sim-role-a",
         streamId: "stream-role-a",
         persona: { id: "first-time-visitor", traitsApplied: [], promptDigest: "prompt-a" },
         instructions: "Review the dashboard.",
-        deviceName: "desktop",
-        devicePreset: DEVICE_PRESETS.desktop,
-        resolution: [DEVICE_PRESETS.desktop.width, DEVICE_PRESETS.desktop.height],
         screenshotDir: "role-a",
         traceArtifactPath: "actors/stream-role-a.json",
-      },
-      {
-        laneId: "role-b",
-        laneIndex: 1,
+      }),
+      participantRun({
+        id: "role-b",
+        index: 1,
         simId: "sim-role-b",
         streamId: "stream-role-b",
         persona: { id: "power-user", traitsApplied: [], promptDigest: "prompt-b" },
         instructions: "Review the settings.",
-        deviceName: "desktop",
-        devicePreset: DEVICE_PRESETS.desktop,
-        resolution: [DEVICE_PRESETS.desktop.width, DEVICE_PRESETS.desktop.height],
         screenshotDir: "role-b",
         traceArtifactPath: "actors/stream-role-b.json",
-      },
+      }),
     ];
     const source: RunBundle["source"] = {
       packageName: "humanish",
@@ -540,19 +535,18 @@ describe("cua fan-out bundle: desktop browser provenance", () => {
       ],
     });
     config.execution = { ...config.execution, desktop: { browser: "chrome" } };
-    const specs: CuaLaneSpec[] = ["role-a", "role-b"].map((laneId, laneIndex) => ({
-      laneId,
-      laneIndex,
-      simId: `sim-${laneId}`,
-      streamId: `stream-${laneId}`,
-      persona: { id: `persona-${laneId}`, traitsApplied: [], promptDigest: `prompt-${laneId}` },
-      instructions: "Look.",
-      deviceName: "desktop",
-      devicePreset: DEVICE_PRESETS.desktop,
-      resolution: [DEVICE_PRESETS.desktop.width, DEVICE_PRESETS.desktop.height],
-      screenshotDir: laneId,
-      traceArtifactPath: `actors/stream-${laneId}.json`,
-    }));
+    const specs: DesktopParticipantRun[] = ["role-a", "role-b"].map((id, index) =>
+      participantRun({
+        id,
+        index,
+        simId: `sim-${id}`,
+        streamId: `stream-${id}`,
+        persona: { id: `persona-${id}`, traitsApplied: [], promptDigest: `prompt-${id}` },
+        instructions: "Look.",
+        screenshotDir: id,
+        traceArtifactPath: `actors/stream-${id}.json`,
+      }),
+    );
     const outcomes: LaneRunOutcome[] = specs.map((spec, index) => ({
       spec,
       killed: true,
@@ -677,6 +671,78 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     });
     await expect(`${JSON.stringify(snapshot, null, 2)}\n`).toMatchFileSnapshot(
       "../../golden/routes/computer-use-fanout-live.json",
+    );
+  });
+
+  // The deprecated cuaHooks.buildProvider keeps receiving the flat lane record (CuaLaneSpec) until
+  // the compatibility section goes; its identity and device fields match what the golden plans.
+  it("hands the deprecated buildProvider each lane's flat spec with the golden's values", async () => {
+    const golden = JSON.parse(
+      await readFile(
+        path.join(import.meta.dirname, "../../golden/routes/computer-use-fanout-live.json"),
+        "utf8",
+      ),
+    ) as {
+      "<result>": {
+        plan: {
+          lanes: {
+            id: string;
+            index: number;
+            persona: string;
+            device: string;
+            resolution: [number, number];
+            reasoningEffort?: string;
+          }[];
+        };
+      };
+    };
+    const seen: CuaLaneSpec[] = [];
+    const provider: CuaProvider = {
+      id: "synthetic-provider",
+      capabilities: OPENAI_RESPONSES_CU_CAPABILITIES,
+      nextTurn: async () => ({
+        actions: [],
+        message: "Done.",
+        outcome: "reached",
+        pendingSafetyChecks: [],
+        done: true,
+      }),
+    };
+    await runLab(fanoutConfig({ concurrency: 1 }), {
+      cwd,
+      automaticAnalysis: { run: automaticAnalysisBoundary() },
+      cuaHooks: passingHooks(makeFanoutModule(), {
+        now: () => 1_000_000,
+        buildProvider: async ({ lane }) => {
+          seen.push(lane);
+          return provider;
+        },
+      }),
+    });
+    const flat = ({
+      laneId,
+      laneIndex,
+      persona,
+      deviceName,
+      resolution,
+      reasoningEffort,
+    }: CuaLaneSpec) => ({
+      laneId,
+      laneIndex,
+      persona: persona.id,
+      deviceName,
+      resolution,
+      reasoningEffort,
+    });
+    expect(seen.map(flat)).toEqual(
+      golden["<result>"].plan.lanes.map((lane) => ({
+        laneId: lane.id,
+        laneIndex: lane.index - 1,
+        persona: lane.persona,
+        deviceName: lane.device,
+        resolution: lane.resolution,
+        reasoningEffort: lane.reasoningEffort,
+      })),
     );
   });
 
@@ -1941,20 +2007,18 @@ describe("resolveLaneDevice floors sub-500 mobile widths to the Chrome window mi
 // money, vanished evidence. These drive runCuaLanes directly with an injected lane runner so the
 // THROW path (not the already-guarded in-session error path) is what is under test.
 describe("runCuaLanes total-runner guard (#342)", () => {
-  const spec = (laneId: string, laneIndex: number): CuaLaneSpec => ({
-    laneId,
-    laneIndex,
-    simId: `sim-${laneId}`,
-    streamId: `stream-${laneId}`,
-    persona: { id: "p", traitsApplied: [], promptDigest: `prompt-${laneId}` },
-    instructions: "x",
-    deviceName: "desktop",
-    devicePreset: DEVICE_PRESETS.desktop,
-    resolution: [DEVICE_PRESETS.desktop.width, DEVICE_PRESETS.desktop.height],
-    screenshotDir: laneId,
-    traceArtifactPath: `actors/stream-${laneId}.json`,
-  });
-  const okOutcome = (s: CuaLaneSpec) => ({
+  const spec = (id: string, index: number): DesktopParticipantRun =>
+    participantRun({
+      id,
+      index,
+      simId: `sim-${id}`,
+      streamId: `stream-${id}`,
+      persona: { id: "p", traitsApplied: [], promptDigest: `prompt-${id}` },
+      instructions: "x",
+      screenshotDir: id,
+      traceArtifactPath: `actors/stream-${id}.json`,
+    });
+  const okOutcome = (s: DesktopParticipantRun) => ({
     spec: s,
     killed: true,
     streamUrlPresent: false,
@@ -1971,17 +2035,17 @@ describe("runCuaLanes total-runner guard (#342)", () => {
   it("a THROWING lane records a harness_error outcome; siblings and the aggregate stay intact", async () => {
     const specs = [spec("lane-01", 0), spec("lane-02", 1), spec("lane-03", 2)];
     const { outcomes, failFastReason } = await runCuaLanes(specs, deps, 1, async (s, laneDeps) => {
-      if (s.laneIndex === 0) {
+      if (s.planned.index === 0) {
         (laneDeps as { signalProvisioned?: (ok: boolean) => void }).signalProvisioned?.(true);
         return okOutcome(s);
       }
-      if (s.laneId === "lane-02")
+      if (s.planned.id === "lane-02")
         throw new Error("ENOSPC: no space left on device, write actors/stream-lane-02.json");
       return okOutcome(s);
     });
 
     // Every lane appears exactly once with a terminal status — nothing vanished.
-    expect(outcomes.map((o) => o.spec.laneId)).toEqual(["lane-01", "lane-02", "lane-03"]);
+    expect(outcomes.map((o) => o.spec.planned.id)).toEqual(["lane-01", "lane-02", "lane-03"]);
     expect(outcomes[0]!.harnessError).toBe(false);
     expect(outcomes[1]!.harnessError).toBe(true);
     expect(outcomes[1]!.sessionError).toContain("lane runner threw outside the session guard");
@@ -1995,7 +2059,7 @@ describe("runCuaLanes total-runner guard (#342)", () => {
   it("lane 0 throwing BEFORE it signals the provisioning gate releases the followers as blocked instead of hanging them", async () => {
     const specs = [spec("lane-01", 0), spec("lane-02", 1), spec("lane-03", 2)];
     const { outcomes } = await runCuaLanes(specs, deps, 3, async (s) => {
-      if (s.laneIndex === 0) throw new Error("world provisioning exploded before signal");
+      if (s.planned.index === 0) throw new Error("world provisioning exploded before signal");
       return okOutcome(s);
     });
     expect(outcomes).toHaveLength(3);
