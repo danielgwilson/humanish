@@ -28,5 +28,7 @@ the evidence. Everything else is a projection rebuilt from them:
 
 ## Enforced by
 
-- `verifyRun` in `src/verify/verify.ts`, which grades only the bundle and its artifacts.
+- `verifyRun` in `src/verify/verify.ts`, which grades only the bundle and its artifacts. It reads
+  `status.json` only for the `RUN_NOT_FINISHED` warning (`src/verify/liveness.ts`), which never
+  changes `ok`.
 - `tests/observer/data-contract.test.ts` for the Observer projection.

@@ -48,6 +48,20 @@ lifecycle:
   - at: "<ISO timestamp>"
     event: "run.created"
     message: "<public-safe message>"
+persona:
+  id: "<persona id>"
+  name: "<persona name>"
+  source: "<persona source>"
+  sourceDigest: "<sha256>"
+scenario:
+  id: "<scenario id>"
+  title: "<scenario title>"
+  goal: "<scenario goal>"
+  source: "<scenario source>"
+  sourceDigest: "<sha256>"
+simulations: [] # simCount entries, each paired with its streams
+streams: []
+events: []
 artifacts:
   run: "run.json"
   reviewJson: "review.json"
@@ -57,6 +71,9 @@ artifacts:
 review:
   schema: humanish.review.v1
   verdict: "contract_proof_only|pass|fail|blocked|timed_out"
+redaction:
+  status: "passed"
+  notes: "<public-safe note>"
 adapterScore:
   schema: humanish.adapter-score.v1
   namespace: "<adapter namespace>"
@@ -90,7 +107,7 @@ An actor trace may include `stopCause` alongside its unchanged `status`,
 `completionReason` and verbatim `reason`. Computer-use sessions distinguish
 `provider_output_limit`, `provider_token_limit`, `time_limit`, `spend_limit`,
 `study_spend_limit`, `adapter_limit`, `provider_incomplete`, `provider_status`,
-`provider_refused_prompt`, and `harness_aborted`. Absence means the route or
+`provider_refused_prompt`, `harness_aborted`, and `usage_unreported`. Absence means the route or
 recording did not retain this precise field; it does not mean the participant
 finished.
 
@@ -215,12 +232,12 @@ exactly; this hosted-desktop rule does not change that contract.
 ## Subject Provenance
 
 `subject` is an optional, additive top-level field: structured provenance for
-what the computer-use backend actually drove (code pin plus state story). It
+what the computer-use, shared-world or scripted-browser backend actually drove (code pin plus state story). It
 is absent on pre-existing bundles and on bundles from backends that have not
 adopted it. The field shape, its three sources (`clone`, `app-url`,
 `local-tree`), and the `humanish verify` checks that guard it are the schema doc's
 job, not this one: see the `subject` entry under
-[`schemas.md`](schemas.md#contract-schema-index). In short, `clone` carries a
+[`schemas.md`](schemas.md#run-bundle). In short, `clone` carries a
 `repo`/`commit` pin, `local-tree` carries an `archiveSha256`/`dirty` pin
 instead (a dirty working tree cannot be commit-pinned), and `app-url` carries
 no code pin at all. No path, basename, or other host-machine string ever
@@ -229,7 +246,7 @@ enters this field; identity is digests, a sha, a boolean, and counts.
 ## Cost Estimate (advisory)
 
 `cost` is optional and additive (`humanish.run-cost-summary.v1`): the
-computer-use or terminal-product run's cost ESTIMATE: the sum of each lane's
+computer-use, shared-world, scripted-browser or terminal-product run's cost ESTIMATE: the sum of each lane's
 token-derived model cost plus E2B desktop compute lines. New independent CUA runs
 emit one line per owned desktop, keyed by public lane ID and carrying observed CPU/memory,
 resource source, host-measured minutes, and the derived per-second rate. Concurrent
@@ -250,8 +267,10 @@ A local scripted run (no model request, no hosted desktop) is such a run; a scri
 a provisioned clone records the clone's desktop as a `laneId: subject` line. A live bundle
 without `cost` has an unmeasured spend. A live terminal run's `cost` prices the E2B terminal
 sandbox as a `desktop-minutes` line from its acquired-to-cleanup span and `e2b.getInfo` size.
-Its Codex `model-tokens` line stays `null` (`no_rate_for_model`, model `codex`): the lane
-does not pin Codex's model, and `terminal-ledgers.json` counts those tokens without a price.
+Its Codex `model-tokens` line stays `null` (`no_rate_for_model` with model `codex`, or
+`no_token_usage` when Codex reported none): the lane prices against its provider id `codex`
+even when `actors[0].model` is passed as `--model`, and `terminal-ledgers.json` counts those
+tokens without a price.
 So a terminal total is a lower bound (`fullyEstimated: false`), and the unpriced tokens are
 not $0. Each lane's own estimate also rides its
 `stream.actor.estimatedCost` (`humanish.actor-estimated-cost.v1`), kept distinct
@@ -274,7 +293,8 @@ its own product-specific rubric without adding product nouns to core schemas.
 Core validates only `schema`, `namespace`, `status`, `score`, `summary`, and
 that optional `data` is a record.
 
-Terminal-product runs record `adapterScore` additively. Browser/computer-use
+Terminal-product runs record a library scorer's `adapterScore` additively; a
+config-declared scorer's `status: fail` flips the verdict as below. Browser/computer-use
 runs treat `status: fail` as product-red: the route result returns `ok: false`,
 the persisted `review.verdict` becomes `fail` when it was pass-like, and a
 generic adapter gap is appended. The bundle remains valid evidence for
@@ -416,10 +436,12 @@ URLs are not part of the core layout.
 
 ## Filesystem Evidence
 
-Filesystem setup evidence is first-class when a lane asks an actor to install
-or configure humanish inside another project. It is not a repo dump.
+Filesystem setup evidence came from the removed meta-lab, which asked an actor to
+install or configure humanish inside another project. Only bundles from that lab
+carry it; no current route writes it and `src/run/bundle.ts` no longer types it. It
+was not a repo dump.
 
-The durable artifact kind is `filesystem`. The current schema is:
+The durable artifact kind was `filesystem`. Its last schema was:
 
 ```yaml
 schema: humanish.setup-quality.v1
@@ -459,14 +481,14 @@ humanish:
   gitignoreContainsRuntimeIgnore: true
 ```
 
-For public OSS runs, previews may include allowlisted setup files such as
+For public OSS runs, previews could include allowlisted setup files such as
 `package.json`, `.gitignore`, `humanish/config.ts`, and
 `humanish/labs/*.yaml` / `humanish/personas/*.yaml` /
 `humanish/scenarios/*.yaml`. For token-backed or private maintainer runs, raw
-previews are suppressed by default. Generated state, `.git`, `.env*`, `.npmrc`,
-browser profiles, `node_modules`, `.humanish/`, and arbitrary source files are
-not included. `studyQuality` is deliberately structural: it stores booleans,
-checks, and a rating so private runs can preserve the useful quality signal
+previews were suppressed by default. Generated state, `.git`, `.env*`, `.npmrc`,
+browser profiles, `node_modules`, `.humanish/`, and arbitrary source files were
+not included. `studyQuality` was deliberately structural: it stored booleans,
+checks, and a rating so private runs could preserve the useful quality signal
 without committing raw private persona, scenario, or coverage text.
 
 ## Latest Pointer
@@ -509,7 +531,7 @@ bundle is safe to promote into a public issue. Public promotion should branch on
 in-progress bundle that can pass every check. When the run is not finished,
 `warnings[]` carries one entry starting with the stable code `RUN_NOT_FINISHED`.
 `ok` and `shareSafety` do not change. Verify decides "not finished" by the run
-index's rule, which `humanish runs` and the TUI use: the run's `status.json` when
+index's rule, which the TUI and `humanish stats` use: the run's `status.json` when
 it is well formed and names the run, else a simulation still `running` in the
 bundle. A `running` record updated within the stale window reads as still
 writing; an older one reads as interrupted. The warning names what verify saw:

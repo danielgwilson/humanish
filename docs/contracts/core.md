@@ -2,8 +2,10 @@
 
 Date: 2026-06-02 (current-state note updated 2026-09-30)
 
-Status: there is no shared core module. Each route builds its run id, writes
-its bundle and moves the latest pointer itself. `src/run/paths.ts` holds the
+Status: each route mints its run id and builds its bundle, and starts the run
+through the run scope in `src/run/run.ts`. `startRun` creates
+`.humanish/runs/<id>` and begins `status.json`; the `Run` it returns publishes
+`run.json`, its projections and the latest pointer. `src/run/paths.ts` holds the
 shared path rules and `src/run/git-state.ts` captures git state. The table
 below lists the records current bundles write.
 

@@ -182,15 +182,16 @@ hosted Chrome lane a capture device: an ffmpeg test pattern generated in the san
 (`policies.mediaPermission: prompt`), because the gate is where a real person hesitates or
 refuses; `granted` bypasses it for studies about what happens after. The bundle records the
 feed and the exact launch flags under `desktopBrowser.media`. Microphone source-file injection
-is unsupported: declaring `media.microphone.source` is rejected before any spend, including
-with a custom desktop template. This does not determine whether a custom template has its own
+is unsupported: a `media.microphone.source` other than `speech` is rejected before any spend,
+including with a custom desktop template. `source: speech` requires a local-agent Codex
+participant and cannot be combined with a hosted camera. This does not determine whether a custom template has its own
 working audio devices; humanish does not deliver the declared audio file to them.
 
 | Declared media route                                                                                | Support                                          |
 | --------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
 | Independent hosted computer-use browser lanes (`app-url`, `clone`, `local-tree`) in Chrome/Chromium | Synthetic or `.y4m` camera                       |
 | Firefox, shared-world, desktop CLI, in-process `local-app`, scripted browser, terminal              | Media declarations rejected before execution     |
-| `media.microphone.source`, including custom desktop templates                                       | File injection unsupported; declaration rejected |
+| `media.microphone.source` other than `speech`, including custom desktop templates                   | File injection unsupported; declaration rejected |
 
 Camera-free studies keep their existing route behavior. A working camera does not
 establish audio, conferencing-provider, TURN or reconnection support.
