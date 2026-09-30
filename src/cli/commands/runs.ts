@@ -16,10 +16,12 @@ import {
   JSON_OPTION_DESCRIPTION,
   type LabCommandOptions,
   parsePositiveInteger,
-  parseTimeoutMs,
   writeResult,
 } from "../io.js";
 import { renderObserverForRun } from "../observer-follow.js";
+
+const SCRIPTED_BROWSER_DOCS_URL =
+  "https://humanish.dev/docs/lab-manifests#scripted-browser-scenarios";
 
 export function registerRunCommand(parent: Command, io: CliIo): void {
   parent
@@ -37,18 +39,11 @@ export function registerRunCommand(parent: Command, io: CliIo): void {
     .option("--no-open", "Render without opening a browser.")
     .option("--detach", "Render/open once and exit without an attached watch server.")
     .option("--port <port>", "Local observer server port when following.", "0")
-    .option(
-      "--app-url <url>",
-      "Capture live desktop/mobile browser evidence against a running loopback app URL.",
-    )
-    .option(
-      "--sims <count>",
-      "Simulation count. A dry run accepts any positive count; --app-url captures at most 2.",
-    )
-    .option(
-      "--timeout-ms <ms>",
-      "Per-surface --app-url capture timeout in milliseconds (default 300000).",
-    )
+    .option("--sims <count>", "Simulation count. A dry run accepts any positive count.")
+    // Agents with an older installed skill still send --app-url. Accepting it hidden lets the
+    // refusal name the replacement; commander's bare unknown-option error names nothing. Delete
+    // after 0.106.x.
+    .addOption(new Option("--app-url <url>").hideHelp())
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--env-file <path>", "Load a local env file for this run without persisting values.")
     .option("--run-id <id>", "Explicit run id for deterministic fixture tests.")
@@ -64,10 +59,25 @@ export function registerRunCommand(parent: Command, io: CliIo): void {
           json?: boolean;
           runId?: string;
           sims?: string;
-          timeoutMs?: string;
         },
         command,
       ) => {
+        if (options.appUrl !== undefined) {
+          const result: RunResult = {
+            schema: "humanish.run-result.v1",
+            ok: false,
+            cwd: options.cwd,
+            warnings: [],
+            error: {
+              code: "HUMANISH_APP_URL_REMOVED",
+              message: `--app-url was removed. To drive an app on a loopback URL, write a scripted-browser lab and run \`humanish run <lab>\`: ${SCRIPTED_BROWSER_DOCS_URL}`,
+            },
+          };
+          writeResult(command, io, result, formatRunHuman);
+          io.setExitCode(2);
+          return;
+        }
+
         if (
           !(await applyEnvFileOption({
             command,
@@ -80,23 +90,6 @@ export function registerRunCommand(parent: Command, io: CliIo): void {
         }
 
         if (lab) {
-          if (options.appUrl !== undefined) {
-            const result: RunResult = {
-              schema: "humanish.run-result.v1",
-              ok: false,
-              cwd: options.cwd,
-              warnings: [],
-              error: {
-                code: "HUMANISH_APP_URL_OPTION_CONFLICT",
-                message:
-                  "Use lab manifests with lab-compatible options only; --app-url belongs to direct `humanish run`.",
-              },
-            };
-            writeResult(command, io, result, formatRunHuman);
-            io.setExitCode(2);
-            return;
-          }
-
           await runLabCommand({
             command,
             io,
@@ -111,8 +104,6 @@ export function registerRunCommand(parent: Command, io: CliIo): void {
 
         const simCount =
           options.sims === undefined ? undefined : parsePositiveInteger(options.sims);
-        const timeoutMs =
-          options.timeoutMs === undefined ? undefined : parseTimeoutMs(options.timeoutMs);
         if (options.sims !== undefined && simCount === null) {
           const result: RunResult = {
             schema: "humanish.run-result.v1",
@@ -128,29 +119,12 @@ export function registerRunCommand(parent: Command, io: CliIo): void {
           io.setExitCode(2);
           return;
         }
-        if (options.timeoutMs !== undefined && timeoutMs === null) {
-          const result: RunResult = {
-            schema: "humanish.run-result.v1",
-            ok: false,
-            cwd: options.cwd,
-            warnings: [],
-            error: {
-              code: "HUMANISH_INVALID_TIMEOUT",
-              message: "--timeout-ms must be an integer between 1 and 3600000.",
-            },
-          };
-          writeResult(command, io, result, formatRunHuman);
-          io.setExitCode(2);
-          return;
-        }
 
         const result = await runDryRun({
           cwd: options.cwd,
-          ...(options.appUrl === undefined ? {} : { appUrl: options.appUrl }),
           ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
           ...(options.runId === undefined ? {} : { runId: options.runId }),
           ...(simCount === undefined || simCount === null ? {} : { simCount }),
-          ...(timeoutMs === undefined || timeoutMs === null ? {} : { timeoutMs }),
         });
         await renderObserverForRun(options.cwd, result);
         writeResult(command, io, result, formatRunHuman);

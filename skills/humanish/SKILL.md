@@ -388,19 +388,30 @@ The feedback command prints a public-safe Markdown draft. It must not call the
 GitHub API, require a token, update Projects, use provider credits, or claim
 product behavior proof from a dry run.
 
-When the target app can run locally, prove real browser behavior with
-`run --app-url` after starting the app on loopback:
+When the target app can run locally, prove a known browser path with a
+scripted-browser lab after starting the app on loopback. The lab replays a
+`browser.steps` scenario (see above) on a desktop surface, plus a mobile one
+with `count: 2`. The scripted steps make no model requests. Post-run analysis
+still runs by default when `OPENAI_API_KEY` is set, with a $3 cap; keep
+`review.analysis: false` to skip it. Copy the shape of
+[`humanish/labs/scripted-demo.yaml`](https://github.com/danielgwilson/humanish/blob/main/humanish/labs/scripted-demo.yaml)
+or the example in the
+[lab manifest reference](https://humanish.dev/docs/lab-manifests#scripted-browser-scenarios):
+set `subject.appUrl` to the loopback URL, `scenario.ref` to the scenario id,
+and `scenario.mode: live`. Without `mode: live` the lab is a dry run that opens
+no browser.
 
 ```bash
 # in another terminal, start the target app on 127.0.0.1 or localhost
-npx humanish run --app-url http://127.0.0.1:<port> --sims 2 --json
+npx humanish lab inspect <lab> --json
+npx humanish lab run <lab> --json --no-open
 npx humanish verify --run latest --json
 npx humanish watch --run latest --detach --no-open --json
 ```
 
-Do not use `humanish watch --sims ...` as a substitute for app-url proof.
-`watch` renders or follows Observer evidence; `run --app-url` is the command
-that captures live desktop/mobile browser evidence against a running app.
+Do not use `humanish watch --sims ...` as a substitute for a scripted-browser
+lab. `watch` renders or follows Observer evidence; a live scripted-browser lab
+captures desktop and mobile browser evidence against a running app.
 
 ## Optional Live E2B Lab
 

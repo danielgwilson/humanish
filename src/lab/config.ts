@@ -295,7 +295,7 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
       }
       if (!config.scenario?.ref) {
         return invalid(
-          "scripted-browser labs require `scenario.ref` — the committed scenario's browser steps are what this actor executes; there is no built-in fallback on the lab route.",
+          "scripted-browser labs require `scenario.ref` — the committed scenario's browser steps are what this actor executes.",
         );
       }
       if ((config.actors[0]?.count ?? 1) > 2) {
@@ -380,7 +380,7 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
     }
     if (!config.scenario?.ref) {
       return invalid(
-        "scripted-browser labs require `scenario.ref` — the committed scenario's browser steps are what this actor executes; there is no built-in fallback on the lab route.",
+        "scripted-browser labs require `scenario.ref` — the committed scenario's browser steps are what this actor executes.",
       );
     }
     if ((config.actors[0]?.count ?? 1) > 2) {

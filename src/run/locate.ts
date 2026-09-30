@@ -18,7 +18,7 @@ import type { RunPointer, RunResult } from "./bundle.js";
 import { isRunPointer } from "./guards.js";
 import { isNodeError, isRecord } from "./primitives.js";
 
-export async function inspectImplicitProjectPath(
+async function inspectImplicitProjectPath(
   projectRoot: PreparedSelectedOutputDirectory,
   relativePath: string,
 ) {

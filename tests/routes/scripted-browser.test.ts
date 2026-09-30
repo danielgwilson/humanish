@@ -780,8 +780,7 @@ describe("runScriptedBrowserLab", () => {
       if (outcome.backend !== "scripted") throw new Error("expected scripted backend");
       const result = outcome.result;
 
-      // Deliberate divergence from `run --app-url` (whose ok = journey passed): credible
-      // failure evidence is a SUCCESSFUL lab run.
+      // Credible failure evidence is a successful lab run.
       expect(result.ok).toBe(true);
       expect(result.sessions[0]?.completionReason).toBe("step_failed");
       expect(result.sessions[0]?.status).toBe("failed");
@@ -823,6 +822,98 @@ describe("runScriptedBrowserLab", () => {
         await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
       );
       expect(bundle.review.verdict).toBe("fail");
+
+      // No step ran, so the bundle references no screenshot and its evidence check passes.
+      for (const stream of bundle.streams) {
+        expect(stream.embed.kind).toBe("placeholder");
+        expect(stream.ui.screenshotUrl).toBeUndefined();
+        expect(
+          stream.artifacts.some((artifact: { kind: string }) => artifact.kind === "screenshot"),
+        ).toBe(false);
+      }
+      const verified = await verifyRun(cwd, result.runId);
+      expect(
+        verified.checks.find((check) => check.name === "local evidence artifacts exist")?.ok,
+      ).toBe(true);
+    });
+  });
+
+  it("verify fails closed when a live stream references a screenshot that is missing", async () => {
+    await writeCommittedScenario(cwd);
+    await withHttpServer(async (appUrl) => {
+      const config = scriptedConfig({ appUrl, count: 1, mode: "live" });
+      config.review = { analysis: false };
+      const outcome = await runLab(config, {
+        cwd,
+        scriptedHooks: {
+          launchBrowser: async () => makeFakeBrowser({ bodyAfterClick: "Welcome aboard" }),
+        },
+      });
+      if (outcome.backend !== "scripted") throw new Error("expected scripted backend");
+      const { runId } = outcome.result;
+      const runDir = path.join(cwd, ".humanish", "runs", runId);
+      const evidenceCheck = async () =>
+        (await verifyRun(cwd, runId)).checks.find(
+          (check) => check.name === "local evidence artifacts exist",
+        );
+      expect((await evidenceCheck())?.ok).toBe(true);
+
+      const bundlePath = path.join(runDir, "run.json");
+      const original = await readFile(bundlePath, "utf8");
+      const bundle = JSON.parse(original);
+      bundle.streams[0].embed.url = "../screenshots/missing-embed.png";
+      await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+      const missingEmbed = await evidenceCheck();
+      expect(missingEmbed?.ok).toBe(false);
+      expect(missingEmbed?.message).toContain("screenshots/missing-embed.png");
+      await writeFile(bundlePath, original, "utf8");
+
+      await rm(path.join(runDir, "screenshots", "desktop-step-02-fill-email.png"));
+      const missingStep = await evidenceCheck();
+      expect(missingStep?.ok).toBe(false);
+      expect(missingStep?.message).toContain("screenshots/desktop-step-02-fill-email.png");
+    });
+  });
+
+  it("strips userinfo, query and hash from the loopback app URL before writing evidence", async () => {
+    await writeCommittedScenario(cwd);
+    await withHttpServer(async (appUrl) => {
+      const polluted =
+        appUrl.replace("http://", "http://synthetic-user:synthetic-pass@") +
+        "?access_token=secret-token#private-fragment";
+      const config = scriptedConfig({ appUrl: polluted, count: 1, mode: "live" });
+      config.review = { analysis: false };
+      const outcome = await runLab(config, {
+        cwd,
+        scriptedHooks: {
+          launchBrowser: async () => makeFakeBrowser({ bodyAfterClick: "Welcome aboard" }),
+        },
+      });
+      if (outcome.backend !== "scripted") throw new Error("expected scripted backend");
+      expect(outcome.result.ok).toBe(true);
+      expect(outcome.result.sessions[0]?.completionReason).toBe("goal_satisfied");
+
+      const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
+      const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
+      expect(bundle.streams[0].ui.route).toBe(appUrl);
+      for (const file of [
+        "run.json",
+        "events.ndjson",
+        "review.md",
+        "actor-desktop.json",
+        "traces/desktop.json",
+      ]) {
+        const text = await readFile(path.join(runDir, file), "utf8");
+        for (const secret of [
+          "synthetic-user",
+          "synthetic-pass",
+          "access_token",
+          "secret-token",
+          "private-fragment",
+        ]) {
+          expect(text, file).not.toContain(secret);
+        }
+      }
     });
   });
 
@@ -929,6 +1020,19 @@ describe("runScriptedBrowserLab", () => {
           "steps:",
           "  - name: look around",
           "    expectation: something is visible",
+        ].join("\n"),
+      ],
+      [
+        "fill step without a selector",
+        "fill-without-selector",
+        [
+          "schema: humanish.scenario.v1",
+          "id: fill-without-selector",
+          "browser:",
+          "  steps:",
+          "    - id: missing-selector",
+          "      action: fill",
+          "      value: synthetic.user@example.test",
         ].join("\n"),
       ],
     ])(

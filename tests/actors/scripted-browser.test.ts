@@ -1,5 +1,15 @@
 import { createServer, type Server } from "node:http";
-import { access, link, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import {
+  access,
+  chmod,
+  link,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -20,6 +30,8 @@ import {
 import {
   runScriptedBrowserSession,
   browserSurfaces,
+  parseBrowserPersonaJourneyFromScenario,
+  resolveBrowserCommand,
   type BrowserPersonaJourney,
   type ScriptedBrowserLike,
   type ScriptedLocatorLike,
@@ -547,5 +559,133 @@ describe("scripted-browser registry entry", () => {
   it("the lane guard does not claim non-scripted actors", () => {
     expect(isScriptedBrowserActorDescriptor(getActor("openai-computer-use"))).toBe(false);
     expect(isScriptedBrowserActorDescriptor(getActor("codex-app-server"))).toBe(false);
+  });
+});
+
+describe("parseBrowserPersonaJourneyFromScenario", () => {
+  const parse = (raw: unknown) =>
+    parseBrowserPersonaJourneyFromScenario({
+      raw,
+      relativePath: "humanish/scenarios/app-browser.yaml",
+      sourceDigest: "synthetic-digest",
+    });
+
+  it("accepts a one-step manifest and keeps the scenario provenance", () => {
+    const parsed = parse({
+      schema: "humanish.scenario.v1",
+      id: "single-step-proof",
+      title: "Single-step browser proof",
+      goal: "Load the fixture app and verify visible copy.",
+      mode: "browser",
+      browser: {
+        startPath: "/",
+        steps: [
+          {
+            id: "open-home",
+            label: "Open fixture home",
+            action: "goto",
+            path: "/",
+            expect: { text: "browser surface proof" },
+          },
+        ],
+      },
+    });
+    expect(parsed.failure).toBeUndefined();
+    expect(parsed.journey).toEqual({
+      goal: "Load the fixture app and verify visible copy.",
+      scenarioId: "single-step-proof",
+      scenarioTitle: "Single-step browser proof",
+      source: "humanish/scenarios/app-browser.yaml",
+      sourceDigest: "synthetic-digest",
+      startPath: "/",
+      steps: [
+        {
+          action: "goto",
+          expectation: { text: "browser surface proof" },
+          id: "open-home",
+          label: "Open fixture home",
+          path: "/",
+        },
+      ],
+    });
+  });
+
+  it("fails closed on a fill step without a selector", () => {
+    const parsed = parse({
+      mode: "browser",
+      browser: {
+        steps: [{ id: "missing-selector", action: "fill", value: "synthetic.user@example.test" }],
+      },
+    });
+    expect(parsed.journey).toBeUndefined();
+    expect(parsed.failure).toContain("fill action requires selector");
+  });
+
+  it("returns neither a journey nor a failure for a scenario without browser steps", () => {
+    expect(parse({ id: "prose-only", steps: [{ name: "look around" }] })).toEqual({});
+  });
+});
+
+describe("resolveBrowserCommand", () => {
+  let binDir: string;
+  const savedCommand = process.env.HUMANISH_BROWSER_COMMAND;
+  const savedHome = process.env.HOME;
+
+  beforeEach(async () => {
+    binDir = await mkdtemp(path.join(tmpdir(), "humanish-browser-bin-"));
+  });
+
+  afterEach(async () => {
+    if (savedCommand === undefined) delete process.env.HUMANISH_BROWSER_COMMAND;
+    else process.env.HUMANISH_BROWSER_COMMAND = savedCommand;
+    if (savedHome === undefined) delete process.env.HOME;
+    else process.env.HOME = savedHome;
+    await rm(binDir, { recursive: true, force: true });
+  });
+
+  // Records its arguments so the test can see the probe, then answers like a browser would.
+  async function fakeBrowser(name: string, exitCode = 0, mode = 0o755): Promise<string> {
+    const file = path.join(binDir, name);
+    const argsFile = path.join(binDir, `${name}.args`);
+    await writeFile(
+      file,
+      `#!/bin/sh\nprintf '%s' "$*" > '${argsFile}'\necho 'Chromium 999.0.0'\nexit ${exitCode}\n`,
+    );
+    await chmod(file, mode);
+    return file;
+  }
+
+  it("returns an absolute HUMANISH_BROWSER_COMMAND that answers --version", async () => {
+    const browser = await fakeBrowser("fake-chrome");
+    process.env.HUMANISH_BROWSER_COMMAND = browser;
+
+    await expect(resolveBrowserCommand()).resolves.toBe(browser);
+    await expect(readFile(`${browser}.args`, "utf8")).resolves.toBe("--version");
+  });
+
+  it("looks a bare HUMANISH_BROWSER_COMMAND up on PATH", async () => {
+    const browser = await fakeBrowser("humanish-test-chrome");
+    // The lookup runs in a login shell, and some /etc/profile files reset PATH. A login shell
+    // reads $HOME/.profile after /etc/profile, so the fake bin dir is added there.
+    const home = path.join(binDir, "home");
+    await mkdir(home);
+    await writeFile(path.join(home, ".profile"), `export PATH='${binDir}':"$PATH"\n`);
+    process.env.HOME = home;
+    process.env.HUMANISH_BROWSER_COMMAND = "humanish-test-chrome";
+
+    await expect(resolveBrowserCommand()).resolves.toBe(browser);
+  });
+
+  it("skips a candidate that fails the --version probe or is not executable", async () => {
+    const failing = await fakeBrowser("failing-chrome", 1);
+    const plainFile = await fakeBrowser("plain-file", 0, 0o644);
+
+    for (const candidate of [failing, plainFile]) {
+      process.env.HUMANISH_BROWSER_COMMAND = candidate;
+      // A browser installed on the machine may still resolve; only the rejected candidate is pinned.
+      await expect(resolveBrowserCommand()).resolves.not.toBe(candidate);
+    }
+    await expect(readFile(`${failing}.args`, "utf8")).resolves.toBe("--version");
+    await expect(access(`${plainFile}.args`)).rejects.toThrow();
   });
 });

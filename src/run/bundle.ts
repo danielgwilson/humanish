@@ -19,11 +19,9 @@ export interface RunOptions {
   /** Which manifest produced this run (#455). */
   lab?: RunLabProvenance;
   cwd: string;
-  appUrl?: string;
   dryRun?: boolean;
   runId?: string;
   simCount?: number;
-  timeoutMs?: number;
 }
 
 export type RunStreamKind =
@@ -1096,16 +1094,13 @@ export interface RunResult {
       | "HUMANISH_LAB_ANALYSIS_UNSUPPORTED"
       | "HUMANISH_LAB_TASKS_UNSUPPORTED"
       | "HUMANISH_LAB_COMMS_UNSUPPORTED"
-      | "HUMANISH_APP_URL_OPTION_CONFLICT"
-      | "HUMANISH_BROWSER_APP_CAPTURE_FAILED"
       | "HUMANISH_LIVE_RUN_UNIMPLEMENTED"
-      | "HUMANISH_INVALID_APP_URL"
       | "HUMANISH_INVALID_CWD"
       | "HUMANISH_INVALID_SIM_COUNT"
-      | "HUMANISH_INVALID_TIMEOUT"
       | "HUMANISH_INVALID_PORT"
       | "HUMANISH_UNSUPPORTED_RERUN_FLAGS"
       | "HUMANISH_WATCH_OPTION_CONFLICT"
+      | "HUMANISH_APP_URL_REMOVED"
       // #316 CLI-loadable adopter scorer — fail-closed at load, pre-spend.
       | "HUMANISH_LAB_SCORER_BAD_REF"
       | "HUMANISH_LAB_SCORER_NOT_FOUND"
