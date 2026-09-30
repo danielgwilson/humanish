@@ -273,6 +273,27 @@ async function runCuaActorLabInScope(
     if (rejection) return fail(rejection.code, rejection.message, descriptor.id);
   }
 
+  // Pack the working tree ONCE per run, on the host, BEFORE any sandbox or provider call: every
+  // fan-out lane below uploads this SAME archive, so one archiveSha256 describes every lane's
+  // digest. Dry-run packs nothing (no fs side effects; the contract bundle carries no
+  // archiveSha256). A packing failure fails the run closed here, before any sandbox is
+  // created and before the run directory exists.
+  let localTreeArchive: LocalTreeArchive | undefined;
+  let localTreeArchiveBuffer: ArrayBuffer | undefined;
+  if (localTreeRoute && !dryRun) {
+    try {
+      const packed = await packRunLocalTree(hooks, config, cwd);
+      localTreeArchive = packed.archive;
+      localTreeArchiveBuffer = packed.buffer;
+    } catch (error) {
+      return fail(
+        "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+        `local-tree packing failed: ${redactText(scrubKnownValues(toErrorMessage(error)))}`,
+        descriptor.id,
+      );
+    }
+  }
+
   // The run's status record exists from here on, so anything watching the runs directory can
   // tell which lab this is and that it is alive. The fail-closed returns below leave it finished
   // with no outcome when the scope closes; a crash leaves it stale, which reads as interrupted.
@@ -301,27 +322,6 @@ async function runCuaActorLabInScope(
     humanishSource: "present",
     packageName: "humanish",
   });
-
-  // Pack the working tree ONCE per run, on the host, BEFORE any sandbox or provider call: every
-  // fan-out lane below uploads this SAME archive, so one archiveSha256 describes every lane's
-  // digest. Dry-run packs nothing (no fs side effects; the contract bundle carries no
-  // archiveSha256). A packing failure fails the run closed here, before any sandbox is
-  // created.
-  let localTreeArchive: LocalTreeArchive | undefined;
-  let localTreeArchiveBuffer: ArrayBuffer | undefined;
-  if (localTreeRoute && !dryRun) {
-    try {
-      const packed = await packRunLocalTree(hooks, config, cwd);
-      localTreeArchive = packed.archive;
-      localTreeArchiveBuffer = packed.buffer;
-    } catch (error) {
-      return fail(
-        "HUMANISH_CUA_LAB_SUBJECT_INVALID",
-        `local-tree packing failed: ${redactText(scrubKnownValues(toErrorMessage(error)))}`,
-        descriptor.id,
-      );
-    }
-  }
 
   // Live-trace flush seam (#441): assigned by the attached-Observer block below when a live
   // run has an in-progress bundle to grow; lanes call it through deps.onTrace. Declared here

@@ -5236,14 +5236,11 @@ describe("buildCuaBundle", () => {
       expect(outcome.result.error?.message).toContain("zero packable entries");
       expect(outcome.result.error?.message).not.toContain(["", "Users", "fake-operator"].join("/"));
       expect(created).toHaveLength(0);
-      // Packing runs after the run started: the scope closes that run with no outcome, and a
-      // refusal is never analyzed.
+      // Packing runs before the run starts: no run directory, no run id, and a refusal is never
+      // analyzed.
       expect(analysis).not.toHaveBeenCalled();
-      const runsRoot = path.join(cwd, ".humanish", "runs");
-      const [runId] = (await readdir(runsRoot)).filter((entry) => entry !== "latest.json");
-      const status = JSON.parse(await readFile(path.join(runsRoot, runId!, "status.json"), "utf8"));
-      expect(status.state).toBe("finished");
-      expect(status).not.toHaveProperty("outcome");
+      expect(outcome.result.runId).toBe("not-created");
+      expect(await readdir(path.join(cwd, ".humanish", "runs")).catch(() => [])).toEqual([]);
     });
 
     it("subject.localTree.keep: true preserves the sandbox on a failed lane (mirrors subject.clone.keep)", async () => {
