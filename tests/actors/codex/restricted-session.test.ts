@@ -1,7 +1,9 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { EventEmitter } from "node:events";
 import { mkdtemp, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { PassThrough, Writable } from "node:stream";
 import { StringDecoder } from "node:string_decoder";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -981,6 +983,36 @@ describe("restricted Codex Code Mode participant session", () => {
     expect(await session.close()).toBe(true);
   });
 
+  it("fails closed and cleans up when the host's tool getter throws after admission", async () => {
+    const f = await fixture("participant-success");
+    delete f.options.env!.NODE_OPTIONS;
+    const tool = {
+      name: "humanish_ui",
+      description: "Synthetic UI.",
+      inputSchema: { type: "object" },
+      call: async () => JSON.stringify({ ok: true }),
+    };
+    let reads = 0;
+    f.options.participant = {
+      authMode: "operator",
+      reasoningEffort: "high",
+      // run() admits the participant on the first read; the launch reads it again for thread/start.
+      get tool() {
+        if (++reads > 1) throw new Error("synthetic host getter failure");
+        return tool;
+      },
+    };
+    const session = createRestrictedCodexSession(f.options);
+    expect(await session.run({ ...request, model: undefined })).toMatchObject({
+      status: "failed",
+      errorCode: "codex_process_failed",
+      failurePhase: "thread/start",
+      dispatched: false,
+    });
+    expect(await session.close()).toBe(true);
+    expect(await readdir(f.tempRoot)).toEqual([]);
+  });
+
   it.each([
     "participant-wrong-tool",
     "participant-wrong-namespace",
@@ -1239,5 +1271,140 @@ describe("restricted Codex Code Mode participant session", () => {
     const { session, result } = await runAcrossToolResponse(700);
     expect(result).toMatchObject({ status: "timed_out", errorCode: "timeout" });
     expect(await session.close()).toBe(true);
+  });
+});
+
+// An in-memory app-server that answers from the captures, so a test decides exactly when each line
+// reaches the transport: a whole chunk is handed to the stdout listener synchronously.
+async function memorySession(stopAfterMicrotasks: number) {
+  const directory = await mkdtemp(path.join(tmpdir(), "humanish-codex-memory-"));
+  directories.push(directory);
+  const authHome = path.join(directory, "auth"),
+    tempRoot = path.join(directory, "temp");
+  await mkdir(authHome);
+  await mkdir(tempRoot);
+  await writeFile(path.join(authHome, "auth.json"), "synthetic-original-login", { mode: 0o600 });
+  const fixtures = path.dirname(fake);
+  const capture = async (name: string): Promise<Trace> =>
+    JSON.parse(await readFile(path.join(fixtures, name), "utf8")) as Trace;
+  const [init, config, account, thread, turn, mcp, events] = await Promise.all(
+    [
+      "initialize.json",
+      "effective-config.json",
+      "account-read-projection.json",
+      "thread-start.json",
+      "turn-start.json",
+      "mcp-status.json",
+      "completed-turn-and-usage.json",
+    ].map(capture),
+  );
+  const controller = new AbortController();
+  const stopLater = (left: number): void => {
+    if (left === 0) controller.abort();
+    else queueMicrotask(() => stopLater(left - 1));
+  };
+  const spawnFn: RestrictedCodexSpawn = (_file, args, settings) => {
+    const stdout = new PassThrough();
+    const deliver = (lines: unknown[]) =>
+      stdout.emit("data", Buffer.from(lines.map((line) => `${JSON.stringify(line)}\n`).join("")));
+    const closed = () =>
+      setImmediate(() => {
+        child.emit("exit", 0, null);
+        child.emit("close", 0, null);
+      });
+    const home = String(settings.env?.HOME),
+      cwd = String(settings.cwd);
+    const map = (value: unknown): Trace =>
+      JSON.parse(
+        JSON.stringify(value)
+          .replaceAll("/private/probe/home", home)
+          .replaceAll("/private/probe/cwd", cwd),
+      ) as Trace;
+    const answer = (message: Trace): void => {
+      const reply = (result: unknown) => setImmediate(() => deliver([{ id: message.id, result }]));
+      if (message.method === "initialize")
+        reply({
+          ...init,
+          codexHome: home,
+          platformOs: process.platform === "darwin" ? "macos" : "linux",
+        });
+      else if (message.method === "config/read") reply(map(config));
+      else if (message.method === "account/read") reply(account);
+      else if (message.method === "thread/start") reply(map(thread));
+      else if (message.method === "mcpServerStatus/list") reply(mcp);
+      else if (message.method === "turn/interrupt") reply({});
+      else if (message.method === "turn/start")
+        setImmediate(() => {
+          // The acknowledgment, final answer, usage and completion arrive in one chunk; the stop
+          // is queued a fixed number of microtasks behind it.
+          const find = (method: string) =>
+            map((events as unknown as Trace[]).find((event) => event.method === method));
+          deliver([
+            { id: message.id, result: map(turn) },
+            find("item/completed"),
+            find("thread/tokenUsage/updated"),
+            find("turn/completed"),
+          ]);
+          stopLater(stopAfterMicrotasks);
+        });
+    };
+    const stdin = new Writable({
+      write(chunk: Buffer, _encoding, callback) {
+        for (const line of chunk.toString("utf8").split("\n").filter(Boolean))
+          answer(JSON.parse(line) as Trace);
+        callback();
+      },
+      final(callback) {
+        closed();
+        callback();
+      },
+    });
+    const child = Object.assign(new EventEmitter(), {
+      stdin,
+      stdout,
+      stderr: new PassThrough(),
+      pid: 424242,
+      killed: false,
+      exitCode: null,
+      signalCode: null,
+      kill: () => {
+        closed();
+        return true;
+      },
+    });
+    if (args[0] === "--version")
+      setImmediate(() => {
+        stdout.emit("data", Buffer.from("codex-cli 0.157.1\n"));
+        closed();
+      });
+    return child as unknown as ChildProcessWithoutNullStreams;
+  };
+  const session = createRestrictedCodexSession({
+    executable: process.execPath,
+    authHome,
+    tempRoot,
+    spawnFn,
+    env: { HOME: directory, CODEX_HOME: authHome, PATH: process.env.PATH },
+  });
+  return { session, signal: controller.signal };
+}
+
+describe("restricted Codex session scheduling", () => {
+  // Codex's reproduction from the #1132 review: the acknowledgment, final answer, usage and
+  // completion arrive in one chunk, and a stop follows seven microtasks later. Before the execute
+  // split this completed. An extra await between the acknowledgment and the wait for the answer
+  // turned it into a cancellation that dropped the answer.
+  it("keeps a turn that completed with its acknowledgment when a stop follows seven microtasks later", async () => {
+    const { session, signal } = await memorySession(7);
+    try {
+      expect(await session.run({ ...request, signal })).toMatchObject({
+        status: "completed",
+        errorCode: null,
+        dispatched: true,
+        usageComplete: true,
+      });
+    } finally {
+      await session.close();
+    }
   });
 });
