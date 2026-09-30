@@ -5,8 +5,8 @@ import {
   runCodexAppServerSessionInPreparedRoot,
   type CodexAppServerRunOptions,
   type CodexAppServerRunResult,
-  type CodexAppServerStatus,
 } from "./app-server.js";
+import type { CodexAppServerStatus } from "./app-server-trace.js";
 import {
   prepareContainedOutputDirectory,
   prepareContainedOutputFile,

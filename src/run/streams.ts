@@ -1,7 +1,7 @@
 // The streams[] records of run.json: one live or recorded view of a participant, with its
 // completion, desktop geometry and assignment.
 
-import type { CodexAppServerTrace } from "../actors/codex/app-server.js";
+import type { CodexAppServerTrace } from "../actors/codex/app-server-trace.js";
 import type { ActorTrace, ActorTraceItem } from "../actors/contract.js";
 import type { RunDesktopRecording } from "../evidence/desktop-recording-types.js";
 

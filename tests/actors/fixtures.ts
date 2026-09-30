@@ -1,9 +1,7 @@
 // Shared fixtures for actor-trace tests (per-adapter conformance + cross-harness
 // conformance). Not a test file (no .test.ts suffix), so vitest does not run it.
-import type {
-  CodexAppServerRunResult,
-  CodexAppServerTrace,
-} from "../../src/actors/codex/app-server.js";
+import type { CodexAppServerRunResult } from "../../src/actors/codex/app-server.js";
+import type { CodexAppServerTrace } from "../../src/actors/codex/app-server-trace.js";
 import type { ActorPersonaRef } from "../../src/actors/contract.js";
 
 export const fixturePersona: ActorPersonaRef = {
