@@ -1534,7 +1534,9 @@ Core-owned fields:
 - `bundlePath`
 - check names
 - check booleans
-- `warnings` (advisory postures, e.g. raw screenshots; never flip `ok`)
+- `warnings` (advisory postures, e.g. raw screenshots; never flip `ok`). An
+  entry starting with `RUN_NOT_FINISHED` means the run did not finish; see
+  [run-bundle.md](run-bundle.md#verify-result-share-safety).
 - machine-readable error codes
 
 Adapter-owned fields:

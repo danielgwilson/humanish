@@ -169,20 +169,47 @@ interface BundleFacts {
   cost?: { estimatedTotalUsd?: number | null };
 }
 
-function entryFromBundle(runId: string, bundle: BundleFacts): RunIndexEntry {
-  // A bundle on disk USUALLY means the run reached its final write. But a live run now flushes an
-  // IN-PROGRESS bundle as it goes (so anything asking what a participant is doing has something to
-  // read), and that bundle marks its simulations `running`. Reaching this branch at all means there
-  // was no status record to classify from, so there is no freshness to judge — and the honest
-  // reading of "it started, and nothing here says it finished" is interrupted, not finished.
+/** A status record this run can be classified from: well formed and naming this run. */
+function usableStatusRecord(raw: unknown, runId: string): raw is RunStatusRecord {
+  return isRunStatusRecord(raw) && raw.runId === runId;
+}
+
+/**
+ * The bundle-only reading, for a run with no usable status record. A bundle on disk USUALLY means
+ * the run reached its final write. But a live run now flushes an IN-PROGRESS bundle as it goes (so
+ * anything asking what a participant is doing has something to read), and that bundle marks its
+ * simulations `running`. With no status record there is no freshness to judge, and the honest
+ * reading of "it started, and nothing here says it finished" is interrupted, not finished.
+ */
+function bundleLiveness(bundle: Pick<BundleFacts, "simulations">): RunLiveness {
   const inProgress = (bundle.simulations ?? []).some(
     (simulation) => simulation?.status === "running",
   );
+  return inProgress ? "interrupted" : "finished";
+}
+
+/**
+ * One run's liveness from files already read: its status record when usable, else its bundle.
+ * `readRunIndex` reads in the same order; `humanish verify` calls this with both in hand. `record`
+ * is the status record the liveness came from, when there was one.
+ */
+export function runLiveness(
+  runId: string,
+  status: unknown,
+  bundle: Pick<BundleFacts, "simulations">,
+  nowMs: number,
+): { liveness: RunLiveness; record?: RunStatusRecord } {
+  return usableStatusRecord(status, runId)
+    ? { liveness: classifyRunStatus(status, nowMs), record: status }
+    : { liveness: bundleLiveness(bundle) };
+}
+
+function entryFromBundle(runId: string, bundle: BundleFacts): RunIndexEntry {
   const legacyLabId = bundle.lab === undefined ? inferLegacyLabId(bundle) : undefined;
   return {
     runId,
     derivedFrom: "bundle",
-    liveness: inProgress ? "interrupted" : "finished",
+    liveness: bundleLiveness(bundle),
     ...(bundle.mode === "dry-run" || bundle.mode === "live" ? { mode: bundle.mode } : {}),
     ...(bundle.lab !== undefined
       ? { lab: bundle.lab }
@@ -265,7 +292,7 @@ export async function readRunIndex(
         continue;
       }
       const raw = await readJson(statusFile);
-      if (isRunStatusRecord(raw) && raw.runId === runId) {
+      if (usableStatusRecord(raw, runId)) {
         const entry = entryFromStatus(raw, nowMs);
         cache?.set(runId, statusKey, entry);
         runs.push(entry);

@@ -505,6 +505,23 @@ bundle is safe to promote into a public issue. Public promotion should branch on
 - `local_only`: keep the run local; only supported redaction-only cases can produce a shareable derivative;
 - `blocked`: fix the verification or public-safety failure first.
 
+`ok: true` also does not mean the run finished. A run killed mid-way leaves an
+in-progress bundle that can pass every check. When the run is not finished,
+`warnings[]` carries one entry starting with the stable code `RUN_NOT_FINISHED`.
+`ok` and `shareSafety` do not change. Verify decides "not finished" by the run
+index's rule, which `humanish runs` and the TUI use: the run's `status.json` when
+it is well formed and names the run, else a simulation still `running` in the
+bundle. A `running` record updated within the stale window reads as still
+writing; an older one reads as interrupted. The warning names what verify saw:
+
+- the record's state and its last `updatedAt`, or the running simulations when
+  there is no usable record;
+- how many streams are still `running`;
+- what `reclaim-receipt.json` records: how many of the run's sandboxes are gone
+  (killed or already gone), and how many journaled sandboxes it does not cover;
+- with journaled sandboxes and no reclaim receipt, the command that stops them:
+  `humanish reclaim --run <id>`.
+
 The local-evidence check includes screenshots declared only by
 `streams[].actor.items[].screenshotRef` or `streams[].liveActor.items[].screenshotRef`,
 as well as every feedback candidate's evidence. Actor frame paths are relative
