@@ -3,7 +3,8 @@
 // declared inboxes and write the digest-only thread.
 
 import { FakeInbox } from "../../comms/fake-inbox.js";
-import { prepareReceivingRun } from "../../comms/receiving-runtime.js";
+import { prepareReceivingRun, type ReceivingSource } from "../../comms/receiving-runtime.js";
+import type { SharedWorldPlan } from "../../lab/plan-types.js";
 import type { CommsReceivingRun } from "../../comms/receiving.js";
 import {
   DEFAULT_SANDBOX_CATCH_PORT,
@@ -39,7 +40,7 @@ export interface SubjectComms {
 // evidence run at subject teardown, then register run-level in the bundle. NOT available on the
 // external-public plane (the app is an operator-owned deployment the harness never provisions).
 export function subjectCommsOf(
-  config: LabConfig,
+  config: Pick<LabConfig, "comms">,
   planeClass: ConcurrentSharedWorldPlaneClass,
 ): SubjectComms {
   const commsEmail =
@@ -65,7 +66,7 @@ export function subjectCommsOf(
  * does not answer as a humanish catch.
  */
 export async function prepareExternalComms(
-  config: LabConfig,
+  config: Pick<LabConfig, "comms">,
   planeClass: ConcurrentSharedWorldPlaneClass,
   dryRun: boolean,
   warnings: string[],
@@ -205,6 +206,19 @@ export async function drainExternalComms(
   return undefined;
 }
 
+/** What receiving guards: the lab's email declaration and the subject env names and values. */
+export function receivingSourceOf(
+  residual: SharedWorldPlan["residual"],
+  env: readonly string[],
+): ReceivingSource {
+  const { comms } = residual;
+  const { envValues } = residual.subject;
+  return {
+    ...(comms === undefined ? {} : { comms }),
+    subject: { env, ...(envValues === undefined ? {} : { envValues }) },
+  };
+}
+
 /**
  * Real email receiving, when the lab declares it on a live run. It registers the connection's
  * secrets with the run's scrub before any desktop starts. Returns the message the run fails with
@@ -213,7 +227,7 @@ export async function drainExternalComms(
 export async function prepareEmailReceiving(args: {
   cwd: string;
   runId: string;
-  config: LabConfig;
+  source: ReceivingSource;
   env: Record<string, string | undefined>;
   participants: string[];
   runPaths: PlaneContext["runPaths"];
@@ -222,14 +236,14 @@ export async function prepareEmailReceiving(args: {
 }): Promise<
   { ok: true; receiving: CommsReceivingRun | undefined } | { ok: false; message: string }
 > {
-  const { config, knownSecretValues } = args;
-  if (args.dryRun || config.comms?.email?.kind !== "real")
+  const { source, knownSecretValues } = args;
+  if (args.dryRun || source.comms?.email?.kind !== "real")
     return { ok: true, receiving: undefined };
   try {
     const receiving = await prepareReceivingRun({
       cwd: args.cwd,
       runId: args.runId,
-      config,
+      config: source,
       env: args.env,
       participants: args.participants,
       runPaths: args.runPaths,

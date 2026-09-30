@@ -29,7 +29,11 @@ import {
   createE2BDesktopExecutor,
   type E2BDesktopLike,
 } from "../../../src/substrates/e2b/desktop-executor.js";
-import { runConcurrentSharedWorld } from "../../../src/routes/shared-world/lab.js";
+import {
+  runConcurrentSharedWorld,
+  runSharedWorldPlan,
+} from "../../../src/routes/shared-world/lab.js";
+import { planSharedWorldLab } from "../../../src/routes/shared-world/plan.js";
 import { extractLobbyCode } from "../../../src/routes/shared-world/lobby-code.js";
 import { makeChromeBrowserStateObserver } from "../../../src/substrates/e2b/desktop-cdp.js";
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
@@ -891,6 +895,41 @@ describe("observed-origin convergence (redirect tolerated)", () => {
 // ---------------------------------------------------------------------------
 // 4d. review.summary is plane-class-aware (external-public, not getHost).
 // ---------------------------------------------------------------------------
+describe("runSharedWorldPlan", () => {
+  it("runs a plan alone: the bundle records the plan's lab id, title and owner", async () => {
+    const config = parseExternal();
+    const planned = planSharedWorldLab(config, { dryRun: true });
+    if (!planned.ok || planned.plan.plane.kind !== "external-public")
+      throw new Error("expected an external-public shared-world plan");
+    const plan = {
+      ...planned.plan,
+      labId: "planned-lab",
+      title: "Planned title",
+      plane: { ...planned.plan.plane, owner: "planned/owner" },
+    };
+    const result = await runSharedWorldPlan(plan, { cwd }, config);
+    expect(result.ok).toBe(true);
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    ) as RunBundle;
+    expect(bundle.scenario.id).toBe("concurrent-shared-world-planned-lab");
+    expect(bundle.scenario.title).toBe("Planned title");
+    const plane = bundle.events.find(
+      (event) => event.type === "concurrent-shared-world.plane.provenance",
+    );
+    expect(plane?.message).toContain("owner planned/owner");
+  });
+
+  it("refuses subject.env on an external-public config a library caller builds", async () => {
+    const parsed = parseExternal();
+    const config: LabConfig = { ...parsed, subject: { ...parsed.subject, env: ["SUBJECT_KEY"] } };
+    const result = await runConcurrentSharedWorld({ cwd, config, dryRun: true });
+    expect(result.ok).toBe(false);
+    expect(result.error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID");
+    expect(result.runId).toBe("not-created");
+  });
+});
+
 describe("review.summary is external-public plane-aware", () => {
   it("dry-run summary names the external-public plane (no getHost/clone/seed), not a getHost-exposed plane", async () => {
     const result = await runConcurrentSharedWorld({ cwd, config: parseExternal(), dryRun: true });

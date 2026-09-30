@@ -4,6 +4,7 @@
 import { DEFAULT_OPENAI_CU_MODEL } from "../../actors/computer-use/openai-provider.js";
 import { scrubPersonaBrief, type ResolvedPersona } from "../../lab/persona.js";
 import { participantIdAt } from "../../lab/routing.js";
+import type { SharedWorldPlan } from "../../lab/plan-types.js";
 import type { LabActorLane, LabConfig } from "../../lab/types.js";
 import { attachObserverRuntimeStreamUrls } from "../../observer/render.js";
 import type { RunBundle } from "../../run/bundle.js";
@@ -36,11 +37,9 @@ const MIN_DERIVED_SEAT_SESSION_MS = 300_000;
 
 const DEFAULT_APP_URL_SEAT_SESSION_MS = 30 * 60_000;
 
-export function defaultSeatSessionTimeoutMs(config: LabConfig): number {
-  const provisionedRoute =
-    config.subject.source === "clone" || config.subject.source === "local-tree";
-  if (!provisionedRoute) return DEFAULT_APP_URL_SEAT_SESSION_MS;
-  const stateBudgetMs = (config.subject.state?.seed ?? []).reduce(
+export function defaultSeatSessionTimeoutMs(plan: SharedWorldPlan): number {
+  if (plan.plane.kind !== "provisioned") return DEFAULT_APP_URL_SEAT_SESSION_MS;
+  const stateBudgetMs = (plan.plane.subject.state.seed ?? []).reduce(
     (sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS),
     0,
   );

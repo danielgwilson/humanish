@@ -35,6 +35,7 @@ import type {
   LaneRunOutcome,
 } from "../computer-use/types.js";
 import type { ProvisionedPlaneSetup } from "./provisioned.js";
+import type { SharedWorldPlan } from "../../lab/plan-types.js";
 
 export const CONCURRENT_SHARED_WORLD_LAB_SCHEMA = "humanish.concurrent-shared-world-lab-result.v1";
 
@@ -70,6 +71,12 @@ export interface RunConcurrentSharedWorldLabOptions {
    *  (#316); core-stamped onto the bundle as evidence. Absent for library callers. */
   scorerProvenance?: RunScorerProvenance;
 }
+
+/** What a shared-world run takes besides its plan. The plan carries the config, dry run and lab. */
+export type SharedWorldRunInput = Omit<
+  RunConcurrentSharedWorldLabOptions,
+  "config" | "dryRun" | "lab"
+>;
 
 export type ConcurrentSharedWorldLabErrorCode =
   | "HUMANISH_LAB_ANALYSIS_INVALID"
@@ -170,7 +177,9 @@ type StartedRun = Extract<Awaited<ReturnType<RunScope["startRun"]>>, { ok: true 
 
 /** What a plane reads from the orchestrator. The orchestrator builds it once, after the run starts. */
 export interface PlaneContext {
-  options: RunConcurrentSharedWorldLabOptions;
+  plan: SharedWorldPlan;
+  input: SharedWorldRunInput;
+  /** Only participant building reads it (lane hooks take all of it); step 2B removes it. */
   config: LabConfig;
   descriptor: CuaActorDescriptor;
   hooks: SharedWorldLabHooks;
@@ -221,7 +230,7 @@ export interface ExternalCommsWiring {
 export interface ConcurrentBundleArgs {
   /** Lab provenance for the bundle\'s own `lab` field (#455). */
   lab?: RunLabProvenance;
-  config: LabConfig;
+  plan: SharedWorldPlan;
   descriptor: CuaActorDescriptor;
   createdAt: string;
   dryRun: boolean;

@@ -1275,6 +1275,7 @@
         ]
       },
       "concurrency": 3,
+      "sessionTimeoutMs": 420000,
       "brain": {
         "kind": "openai",
         "model": "gpt-5.6-sol"
@@ -1736,6 +1737,7 @@
         ]
       },
       "concurrency": 3,
+      "sessionTimeoutMs": 600000,
       "brain": {
         "kind": "openai",
         "model": "gpt-5.6-sol"
@@ -1905,6 +1907,7 @@
         ]
       },
       "concurrency": 3,
+      "sessionTimeoutMs": 900000,
       "brain": {
         "kind": "openai",
         "model": "gpt-5.6-sol"
@@ -1960,7 +1963,23 @@
           },
           "repos": [
             "documenso/documenso"
-          ]
+          ],
+          "envValues": {
+            "NEXT_PUBLIC_WEBAPP_URL": "http://localhost:3000",
+            "NEXT_PRIVATE_INTERNAL_WEBAPP_URL": "http://localhost:3000",
+            "NEXT_PUBLIC_UPLOAD_TRANSPORT": "database",
+            "NEXT_PRIVATE_DATABASE_URL": "postgresql://postgres@127.0.0.1:5432/documenso",
+            "NEXT_PRIVATE_DIRECT_DATABASE_URL": "postgresql://postgres@127.0.0.1:5432/documenso",
+            "NEXT_PRIVATE_SMTP_TRANSPORT": "smtp-auth",
+            "NEXT_PRIVATE_SMTP_FROM_NAME": "Documenso",
+            "NEXT_PRIVATE_SMTP_FROM_ADDRESS": "noreply@example.test",
+            "NEXT_PRIVATE_SMTP_UNSAFE_IGNORE_TLS": "true",
+            "NEXTAUTH_SECRET": "humanish-local-study-only",
+            "NEXT_PRIVATE_ENCRYPTION_KEY": "humanish-local-study-only-encryption",
+            "NEXT_PRIVATE_ENCRYPTION_SECONDARY_KEY": "humanish-local-study-only-secondary",
+            "DANGEROUS_BYPASS_RATE_LIMITS": "true",
+            "PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD": "1"
+          }
         }
       },
       "dryRun": true,

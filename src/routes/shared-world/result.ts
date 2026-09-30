@@ -15,6 +15,7 @@ import {
   buildConcurrentSharedWorldBundle,
   maxSimultaneousWindows,
 } from "./bundle.js";
+import { planeStateOf } from "./plan.js";
 import { buildSubjectProvenance, hostOriginDigest } from "./provenance.js";
 import {
   CONCURRENT_SHARED_WORLD_LAB_SCHEMA,
@@ -26,7 +27,6 @@ import {
   type LiveSeats,
   type PlaneContext,
   type PlaneResults,
-  type RunConcurrentSharedWorldLabOptions,
 } from "./types.js";
 import type { CuaLaneSpec } from "../computer-use/types.js";
 
@@ -153,32 +153,33 @@ function concurrentLabError(args: {
 
 /**
  * The refusal envelope for a run that stops before it has results: the requested cwd, no roles,
- * and the run id the caller asked for, if any.
+ * and the run id the caller asked for, if any. `actor` is the label when a refusal names none.
  */
-export function concurrentLabFailure(
-  options: RunConcurrentSharedWorldLabOptions,
-  requestedCwd: string,
-  concurrency: number,
-): (
+export function concurrentLabFailure(envelope: {
+  cwd: string;
+  labId: string;
+  actor: string;
+  participantCount: number;
+  concurrency: number;
+  dryRun: boolean;
+  runId: string | undefined;
+}): (
   code: ConcurrentSharedWorldLabErrorCode,
   message: string,
   actorLabel?: string,
 ) => ConcurrentSharedWorldLabResult {
-  const { config, dryRun } = options;
-  const actorType = config.actors[0]?.type ?? "";
-  const roles = config.actors[0]?.lanes ?? [];
   return (code, message, actorLabel) => ({
     schema: CONCURRENT_SHARED_WORLD_LAB_SCHEMA,
     ok: false,
-    cwd: requestedCwd,
-    labId: config.id,
-    actor: actorLabel ?? actorType,
+    cwd: envelope.cwd,
+    labId: envelope.labId,
+    actor: actorLabel ?? envelope.actor,
     topology: "shared-world",
     topologyMode: "concurrent",
-    roleCount: roles.length,
-    concurrency,
-    dryRun,
-    runId: options.runId ?? "not-created",
+    roleCount: envelope.participantCount,
+    concurrency: envelope.concurrency,
+    dryRun: envelope.dryRun,
+    runId: envelope.runId ?? "not-created",
     roles: [],
     warnings: [],
     error: { code, message },
@@ -192,9 +193,9 @@ export async function finishConcurrentRun(
   results: PlaneResults,
   plane: FinishFacts,
 ): Promise<ConcurrentSharedWorldLabResult> {
-  const { options, config, descriptor, hooks, roles, actorSpecs, run, runId, createdAt } = ctx;
+  const { plan, input, descriptor, hooks, roles, actorSpecs, run, runId, createdAt } = ctx;
   const { cwd, concurrency, source, seedDigest, receiving, warnings, scrubKnownValues } = ctx;
-  const dryRun = options.dryRun;
+  const { dryRun } = plan;
   const physicalArtifactRoot = ctx.runPaths.physicalRunRoot;
   const { planeClass, localTreeRoute, localTreeArchive, publicRepo, subjectEnvNames } = plane;
   const { stateStepRecords, stateSnapshots, declaredOriginDigest } = plane;
@@ -214,7 +215,7 @@ export async function finishConcurrentRun(
           localTreeArchive,
           subjectEnvNames,
           state: resolveSubjectState({
-            declared: config.subject.state,
+            declared: planeStateOf(plan),
             dryRun,
             executed: stateStepRecords,
           }),
@@ -227,8 +228,8 @@ export async function finishConcurrentRun(
   }
 
   const bundle = buildConcurrentSharedWorldBundle({
-    ...(options.lab === undefined ? {} : { lab: options.lab }),
-    config,
+    ...(plan.lab === undefined ? {} : { lab: plan.lab }),
+    plan,
     descriptor,
     createdAt,
     dryRun,
@@ -258,7 +259,7 @@ export async function finishConcurrentRun(
     context: {
       bundle,
       runDir: physicalArtifactRoot,
-      labId: config.id,
+      labId: plan.labId,
       runId,
       actor: descriptor.id,
       backend: "concurrent-shared-world",
@@ -268,9 +269,7 @@ export async function finishConcurrentRun(
     sanitize: (text) => redactText(scrubKnownValues(text)),
     warnings: adapterWarnings,
     hookLabel: "sharedWorldHooks",
-    ...(options.scorerProvenance === undefined
-      ? {}
-      : { scorerProvenance: options.scorerProvenance }),
+    ...(input.scorerProvenance === undefined ? {} : { scorerProvenance: input.scorerProvenance }),
   });
 
   if (receiving) bundle.commsReceiving = receiving.snapshot();
@@ -312,7 +311,7 @@ export async function finishConcurrentRun(
     schema: CONCURRENT_SHARED_WORLD_LAB_SCHEMA,
     ok,
     cwd,
-    labId: config.id,
+    labId: plan.labId,
     actor: descriptor.id,
     topology: "shared-world",
     topologyMode: "concurrent",

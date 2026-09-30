@@ -46,8 +46,11 @@ import { planSharedWorldLab, sharedWorldDescriptorOf } from "./plan.js";
 import { runProvisionedPlane } from "./provisioned.js";
 import { concurrentLabFailure, finishConcurrentRun } from "./result.js";
 import { prepareConcurrentRun } from "./setup.js";
+import type { SharedWorldPlan } from "../../lab/plan-types.js";
+import type { LabConfig } from "../../lab/types.js";
 import {
   type ConcurrentSharedWorldLabResult,
+  type SharedWorldRunInput,
   type ConcurrentSharedWorldPlaneClass,
   type LiveSeats,
   type PlaneContext,
@@ -72,60 +75,106 @@ export async function runConcurrentSharedWorld(
 async function runConcurrentSharedWorldWithSecrets(
   options: RunConcurrentSharedWorldLabOptions,
 ): Promise<ConcurrentSharedWorldLabResult> {
-  const analysis = resolveAutomaticAnalysis(options.config.review?.analysis);
+  const { config, dryRun, lab, ...input } = options;
+  // planSharedWorldLab makes every configuration refusal, in the order this route always has.
+  const planned = planSharedWorldLab(config, {
+    dryRun,
+    ...(lab === undefined ? {} : { lab }),
+    hooks: input.hooks ?? {},
+  });
+  if (planned.ok) return runPlanWithSecrets(planned.plan, input, config);
+
+  const declared = config.actors[0]?.lanes ?? [];
+  const fail = concurrentLabFailure({
+    cwd: path.resolve(options.cwd),
+    labId: config.id,
+    actor: config.actors[0]?.type ?? "",
+    participantCount: declared.length,
+    // The parser fills concurrency for multi-seat labs, so this fallback serves only library
+    // callers: every declared seat runs at once unless the author declared a cap (#350).
+    concurrency: config.execution?.concurrency ?? Math.max(1, declared.length),
+    dryRun,
+    runId: options.runId,
+  });
+  const { refusal } = planned;
+  // A refusal starts no run, so a declared or default analysis is recorded as skipped.
+  const analysis = resolveAutomaticAnalysis(config.review?.analysis);
+  return completeAutomaticAnalysis(
+    fail(refusal.code, refusal.message, refusal.actor),
+    undefined,
+    analysis.ok ? analysis.config : undefined,
+    options.automaticAnalysis,
+    { trigger: config.review?.analysis === undefined ? "default" : "explicit" },
+  );
+}
+
+/**
+ * Run a shared-world plan. The run scope gives a direct library caller the same status-record
+ * lifetime the CLI gets: returning finalizes any record the run opened, whichever of its
+ * fail-closed exits it took. `config` is read only to build participants: the lane runner's hooks
+ * take the whole config. Step 2B replaces it with the plan's participants.
+ */
+export async function runSharedWorldPlan(
+  plan: SharedWorldPlan,
+  input: SharedWorldRunInput,
+  config: LabConfig,
+): Promise<ConcurrentSharedWorldLabResult> {
+  return withTransientCommsSecrets(() => runPlanWithSecrets(plan, input, config));
+}
+
+async function runPlanWithSecrets(
+  plan: SharedWorldPlan,
+  input: SharedWorldRunInput,
+  config: LabConfig,
+): Promise<ConcurrentSharedWorldLabResult> {
   const { result, finished } = await runScope((scope) =>
-    runConcurrentSharedWorldInScope(options, scope),
+    runPlanInScope(plan, input, config, scope),
   );
   return completeAutomaticAnalysis(
     result,
     finished,
-    analysis.ok ? analysis.config : undefined,
-    options.automaticAnalysis,
+    plan.analysis?.config,
+    input.automaticAnalysis,
     {
-      trigger: options.config.review?.analysis === undefined ? "default" : "explicit",
-      preferLargerOutput: analysis.ok && analysis.preferLargerOutput === true,
+      ...(plan.analysis === undefined ? {} : { trigger: plan.analysis.trigger }),
+      preferLargerOutput: plan.analysis?.preferLargerOutput === true,
     },
   );
 }
 
-async function runConcurrentSharedWorldInScope(
-  options: RunConcurrentSharedWorldLabOptions,
+async function runPlanInScope(
+  plan: SharedWorldPlan,
+  input: SharedWorldRunInput,
+  config: LabConfig,
   scope: RunScope,
 ): Promise<ConcurrentSharedWorldLabResult> {
-  const { config, dryRun } = options;
-  const requestedCwd = path.resolve(options.cwd);
-  const hooks = options.hooks ?? {};
+  const { dryRun } = plan;
+  const requestedCwd = path.resolve(input.cwd);
+  const hooks = input.hooks ?? {};
   const env = hooks.env ?? process.env;
-  const actorType = config.actors[0]?.type ?? "";
-  const roles = config.actors[0]?.lanes ?? [];
-  // All-parallel default (#350): the parser fills concurrency for multi-seat labs, so this
-  // fallback serves only library callers constructing configs directly — same meaning: every
-  // declared seat runs at once unless the author declared a cap.
-  const concurrency = config.execution?.concurrency ?? Math.max(1, roles.length);
-
-  const fail = concurrentLabFailure(options, requestedCwd, concurrency);
-
-  // planSharedWorldLab makes every configuration refusal, in the order this route always has.
-  const planned = planSharedWorldLab(config, {
+  const fail = concurrentLabFailure({
+    cwd: requestedCwd,
+    labId: plan.labId,
+    actor: plan.actor,
+    participantCount: plan.plane.participants.length,
+    concurrency: plan.concurrency,
     dryRun,
-    ...(options.lab === undefined ? {} : { lab: options.lab }),
-    hooks,
+    runId: input.runId,
   });
-  if (!planned.ok)
-    return fail(planned.refusal.code, planned.refusal.message, planned.refusal.actor);
-  const descriptor = sharedWorldDescriptorOf(actorType);
+  const descriptor = sharedWorldDescriptorOf(plan.actor);
   const planeClass: ConcurrentSharedWorldPlaneClass =
-    planned.plan.plane.kind === "external-public" ? "external-public" : "provisioned-getHost";
-  const caps = config.execution?.caps;
+    plan.plane.kind === "external-public" ? "external-public" : "provisioned-getHost";
+  const { maxTotalUsd } = plan.caps;
   const runBudget =
-    !dryRun && caps?.maxTotalUsd !== undefined ? makeCuaRunBudget(caps.maxTotalUsd) : undefined;
+    !dryRun && maxTotalUsd !== undefined ? makeCuaRunBudget(maxTotalUsd) : undefined;
 
-  // provisioned-getHost fields (all absent on the external-public plane — forbidden at validation).
-  const serve = config.subject.serve;
-  const localTreeRoute = config.subject.source === "local-tree";
-  const subjectRepo = config.subject.repos?.[0] ?? "";
-  const subjectEnvNames = config.subject.env ?? [];
-  const checkpoints = config.subject.state?.checkpoint ?? [];
+  // The provisioned plane's subject; the external-public plane has none.
+  const subject = plan.plane.kind === "provisioned" ? plan.plane.subject : undefined;
+  const serve = subject?.serve;
+  const localTreeRoute = subject?.kind === "local-tree";
+  const subjectRepo = plan.residual.subject.repos?.[0] ?? "";
+  const subjectEnvNames = [...(subject?.env ?? [])];
+  const checkpoints = [...(subject?.state.checkpoint ?? [])];
   const runSession = hooks.runSession ?? descriptor.runSession;
 
   const openaiApiKey = env.OPENAI_API_KEY?.trim() ?? "";
@@ -138,7 +187,8 @@ async function runConcurrentSharedWorldInScope(
   ].filter((value) => value.length >= 4);
   const scrubKnownValues = scrubLiterals(knownSecretValues);
 
-  const redactRepoLabel = config.policies?.redactRepos ?? subjectEnvNames.includes("GITHUB_TOKEN");
+  const redactRepoLabel =
+    plan.residual.policies?.redactRepos ?? subjectEnvNames.includes("GITHUB_TOKEN");
   const publicRepo = redactRepoLabel ? "repo-01" : subjectRepo;
   const hasGithubToken = subjectEnvNames.includes("GITHUB_TOKEN");
 
@@ -166,13 +216,14 @@ async function runConcurrentSharedWorldInScope(
 
   const prepared = await prepareConcurrentRun(
     {
-      options,
+      plan,
+      input,
+      config,
       requestedCwd,
       hooks,
       env,
       descriptor,
       planeClass,
-      concurrency,
       runBudget,
       runSession,
       serve,
@@ -213,7 +264,7 @@ async function runPlane(
   results: PlaneResults,
   plane: PlaneSelection,
 ): Promise<boolean> {
-  const { dryRun } = ctx.options;
+  const { dryRun } = ctx.plan;
   try {
     if (!dryRun && plane.planeClass === "provisioned-getHost") {
       // Defense-in-depth: concurrentSharedWorldValidationReason already required serve above.

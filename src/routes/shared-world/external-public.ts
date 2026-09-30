@@ -4,7 +4,6 @@
 // seat's CDP-observed URL (onObservedUrl) and threads it into the follower missions; a follower fails
 // closed WITHOUT opening if the host never yields a code within the handoff deadline.
 
-import type { LabConfig } from "../../lab/types.js";
 import { liveObserverResult } from "../../observer/live.js";
 import { redactText, toErrorMessage } from "../../evidence/redaction.js";
 import { mapWithConcurrency } from "../../run/concurrency.js";
@@ -35,8 +34,7 @@ export interface ExternalPublicPlaneOutcome {
  * lobby-trivia.example.test 307-redirects) makes the seats' OBSERVED origin differ from the declared one, which
  * is expected and MUST NOT fail the run. Persisted digest-only (never the raw origin).
  */
-export function declaredOriginDigestOf(config: LabConfig): string | undefined {
-  const publicAppUrl = config.subject.appUrl ?? "";
+export function declaredOriginDigestOf(publicAppUrl: string): string | undefined {
   return publicAppUrl ? hostOriginDigest(publicAppUrl) : undefined;
 }
 
@@ -45,12 +43,12 @@ export async function runExternalPublicPlane(
   live: LiveSeats,
   inbox: ExternalCommsWiring | undefined,
 ): Promise<ExternalPublicPlaneOutcome> {
-  const { config, hooks, roles, actorSpecs, concurrency, warnings } = ctx;
+  const { plan, hooks, roles, actorSpecs, concurrency, warnings } = ctx;
   // publicAppUrl is the operator-declared shared plane; its ORIGIN is persisted digest-only
   // (publicOriginDigest), never raw (the raw URL + the runtime observed lobby CODE never land —
   // TENSION 3). The latch code is scrubbed from all narration.
-  const publicAppUrl = config.subject.appUrl ?? "";
-  const declaredOriginDigest = declaredOriginDigestOf(config);
+  const publicAppUrl = plan.plane.kind === "external-public" ? plan.plane.appUrl : "";
+  const declaredOriginDigest = declaredOriginDigestOf(publicAppUrl);
   const handoff = new LobbyHandoff({
     seatCount: roles.length,
     timeoutMs: ctx.timeoutMs,
@@ -72,7 +70,7 @@ export async function runExternalPublicPlane(
   // Publish the in-progress bundle and attach any live Observer before fan-out, as on the
   // provisioned path.
   const inProgressBundle = buildConcurrentSharedWorldBundle({
-    config,
+    plan,
     descriptor: ctx.descriptor,
     createdAt: ctx.createdAt,
     dryRun: false,
@@ -91,11 +89,11 @@ export async function runExternalPublicPlane(
     ...(declaredOriginDigest === undefined ? {} : { declaredOriginDigest }),
   });
   await ctx.run.writeSnapshot(inProgressBundle);
-  if (ctx.options.onObserverReady) {
+  if (ctx.input.onObserverReady) {
     live.observer = liveObserverResult(ctx.cwd, ctx.runId, ctx.artifactRoot, [
       "Live external-public concurrent shared-world Observer is attached before final verification; stream auth URLs are runtime-only and are not persisted.",
     ]);
-    await ctx.options.onObserverReady(live.observer);
+    await ctx.input.onObserverReady(live.observer);
   }
   startSeatFlush(ctx, live, inProgressBundle);
 
