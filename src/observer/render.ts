@@ -6,6 +6,8 @@ import { pathToFileURL } from "node:url";
 import { projectShareCheckedAnalysis } from "../analysis/sharing.js";
 import { loadStudyAnalysis } from "../analysis/load.js";
 import {
+  physicalCwdOf,
+  runIdOf,
   bindExistingRunArtifactPaths,
   isSafeRunIdSegment,
   resolveLatestRunDirectory,
@@ -110,10 +112,7 @@ export async function renderObserver(
   try {
     if (options.expectedRun) {
       const prepared = options.expectedRun;
-      if (
-        runInput !== path.basename(prepared.physicalRunRoot) ||
-        (await realpath(cwd)) !== path.dirname(path.dirname(prepared.physicalRunsRoot))
-      ) {
+      if (runInput !== runIdOf(prepared) || (await realpath(cwd)) !== physicalCwdOf(prepared)) {
         throw new Error("Observer source pin does not match the selected run.");
       }
       await validatePreparedRunArtifactPaths(prepared);

@@ -1,8 +1,8 @@
 import path from "node:path";
-import { renderObserver } from "../observer/render.js";
 import { resolveRunPath } from "../run/locate.js";
 import { type RunBundle } from "../run/bundle.js";
 import {
+  refreshObserver,
   analyzeStudy,
   readCompletedStudyAnalysisSource,
   resolveStudyAnalysisRun,
@@ -21,9 +21,10 @@ import {
   type AutomaticStudyAnalysisCancellation,
   type AutomaticStudyAnalysisJob,
 } from "./job.js";
-import type { StudyAnalysisConfig } from "./study-analysis.js";
-import { readStudyAnalysisExecution, readStudyAnalysisVersion } from "./store.js";
-import { resolvePhysicalCwd } from "../run/paths.js";
+import { ANALYSIS_ID_PATTERN, type StudyAnalysisConfig } from "./study-analysis.js";
+import { readStudyAnalysisVersion } from "./store.js";
+import { readStudyAnalysisExecution } from "./store-executions.js";
+import { physicalCwdOf, resolvePhysicalCwd, type PreparedRunArtifactPaths } from "../run/paths.js";
 
 export type {
   AutomaticStudyAnalysisView,
@@ -40,8 +41,7 @@ export type AutomaticStudyAnalysisDeps = Omit<AnalyzeDeps, "analysisId" | "befor
 const CANCELLATION_POLL_MS = 250;
 // Well inside AUTOMATIC_STUDY_ANALYSIS_STALE_MS, so a live owner never reads as stale.
 const HEARTBEAT_MS = 5000;
-const exactId = (runId: string): boolean =>
-  runId !== "latest" && /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(runId);
+const exactId = (runId: string): boolean => runId !== "latest" && ANALYSIS_ID_PATTERN.test(runId);
 const skipped = (reason: string): AutomaticStudyAnalysisOutcome => ({ state: "skipped", reason });
 
 function hasParticipantEvidence(bundle: RunBundle): boolean {
@@ -81,29 +81,25 @@ export async function requestAutomaticStudyAnalysisCancellation(
     : { requested: false, reason: "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE" };
 }
 
+/** The job reason for an analysis that reached a status. */
+function statusReason(result: AnalyzeResult): string | null {
+  if (result.reused) return "AUTOMATIC_ANALYSIS_REUSED";
+  if (result.status === "partial") {
+    if (result.error?.code === "analysis_admission_estimate_exceeded")
+      return "AUTOMATIC_ANALYSIS_ADMISSION_EXCEEDED";
+    return result.ok ? "AUTOMATIC_ANALYSIS_LIMITATIONS" : "AUTOMATIC_ANALYSIS_FAILED";
+  }
+  if (result.status === "failed") return "AUTOMATIC_ANALYSIS_FAILED";
+  if (result.status === "cancelled") return "AUTOMATIC_ANALYSIS_CANCELLED";
+  return null;
+}
+
 function outcomeOf(result: AnalyzeResult): AutomaticStudyAnalysisOutcome {
   if (result.error?.code === "ANALYSIS_PUBLICATION_FAILED")
     return { state: "failed", reason: "AUTOMATIC_ANALYSIS_PUBLICATION_FAILED", result };
   if (result.error?.code?.startsWith("analysis_codex_"))
     return { state: "failed", reason: "AUTOMATIC_ANALYSIS_CODEX_UNAVAILABLE", result };
-  if (result.status)
-    return {
-      state: result.status,
-      result,
-      reason: result.reused
-        ? "AUTOMATIC_ANALYSIS_REUSED"
-        : result.status === "partial"
-          ? result.error?.code === "analysis_admission_estimate_exceeded"
-            ? "AUTOMATIC_ANALYSIS_ADMISSION_EXCEEDED"
-            : result.ok
-              ? "AUTOMATIC_ANALYSIS_LIMITATIONS"
-              : "AUTOMATIC_ANALYSIS_FAILED"
-          : result.status === "failed"
-            ? "AUTOMATIC_ANALYSIS_FAILED"
-            : result.status === "cancelled"
-              ? "AUTOMATIC_ANALYSIS_CANCELLED"
-              : null,
-    };
+  if (result.status) return { state: result.status, result, reason: statusReason(result) };
   const code = result.error?.code;
   if (code === "ANALYSIS_CANCELLED")
     return { state: "cancelled", reason: "AUTOMATIC_ANALYSIS_CANCELLED", result };
@@ -122,6 +118,85 @@ function outcomeOf(result: AnalyzeResult): AutomaticStudyAnalysisOutcome {
   return { state: "unknown", reason: "AUTOMATIC_ANALYSIS_OUTCOME_UNKNOWN", result };
 }
 
+/**
+ * Read the finished source before claiming the run's one job, so a claim is never consumed while a
+ * producer is still writing. Returns a skip outcome, or the participant-evidence flag and the
+ * config the job binds (a defaulted output limit may grow within the admission budget).
+ */
+async function readAutomaticSource(
+  cwd: string,
+  prepared: PreparedRunArtifactPaths,
+  configInput: StudyAnalysisConfig,
+  deps: AutomaticStudyAnalysisDeps,
+  hasKey: boolean,
+): Promise<
+  AutomaticStudyAnalysisOutcome | { participantEvidence: boolean; config: StudyAnalysisConfig }
+> {
+  let config = configInput;
+  try {
+    const bytes = await readCompletedStudyAnalysisSource(cwd, prepared);
+    const bundle = JSON.parse(bytes.toString("utf8")) as RunBundle;
+    if (bundle.streams.some((stream) => stream.actor?.stopCause === "harness_aborted"))
+      return skipped("AUTOMATIC_ANALYSIS_ACTOR_CANCELLED");
+    const participantEvidence = hasParticipantEvidence(bundle);
+    // Bind the permanent job claim to the actual configuration before dispatch.
+    // Missing-key/no-evidence skips don't need to read captured image bytes.
+    if (
+      config.provider !== "codex" &&
+      deps.preferLargerOutput &&
+      (!deps.defaultRequest || participantEvidence) &&
+      hasKey
+    ) {
+      config = preferLargerStudyAnalysisOutput(await captureStudyEvidence(prepared, bytes), config);
+    }
+    return { participantEvidence, config };
+  } catch {
+    return skipped("AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE");
+  }
+}
+
+/**
+ * Bind the job's terminal metadata to the exact safely published execution. Reads never promote a
+ * completed-looking sidecar without rechecking these bindings. Null when storage failed.
+ */
+async function persistOutcome(
+  job: AutomaticStudyAnalysisJob,
+  prepared: PreparedRunArtifactPaths,
+  outcome: AutomaticStudyAnalysisOutcome,
+): Promise<AutomaticStudyAnalysisOutcome | null> {
+  try {
+    const analysisId = outcome.result?.analysisId;
+    const [entry, receipt] = analysisId
+      ? await Promise.all([
+          readStudyAnalysisVersion(prepared, analysisId),
+          readStudyAnalysisExecution(prepared, analysisId),
+        ])
+      : [null, null];
+    await job.update({
+      state: outcome.state,
+      reason: outcome.reason as Exclude<
+        Parameters<AutomaticStudyAnalysisJob["update"]>[0]["reason"],
+        undefined
+      >,
+      analysisId: analysisId ?? null,
+      ...(receipt === null
+        ? {}
+        : {
+            sourceRunSha256: receipt.sourceRunSha256,
+            inputDigest: receipt.inputDigest,
+            receiptSha256: hashStudyAnalysisValue(receipt),
+          }),
+      ...(entry?.analysis ? { analysisSha256: hashStudyAnalysisValue(entry.analysis) } : {}),
+    });
+    const persisted = await readAutomaticStudyAnalysisPrepared(prepared);
+    return persisted?.state === "unknown"
+      ? { ...outcome, state: "unknown", reason: persisted.reason }
+      : outcome;
+  } catch {
+    return null;
+  }
+}
+
 /** One permanent claim per completed run, consumed even when preparation/cancellation fails.
  * Only the original producer calls this after all recording writes return.
  * No file reader, restart recovery, Observer poll or export calls this function. */
@@ -135,29 +210,18 @@ export async function runAutomaticStudyAnalysis(
   let cwd = path.resolve(cwdInput);
   const prepared = await resolveStudyAnalysisRun(cwd, runId, deps.expectedRun).catch(() => null);
   if (!prepared) return skipped("AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE");
-  cwd = path.dirname(path.dirname(prepared.physicalRunsRoot));
-  let participantEvidence = false;
-  let config = structuredClone(configInput);
-  // Do not consume a future run's one claim while a producer is still writing it.
-  try {
-    const bytes = await readCompletedStudyAnalysisSource(cwd, prepared);
-    const bundle = JSON.parse(bytes.toString("utf8")) as RunBundle;
-    if (bundle.streams.some((stream) => stream.actor?.stopCause === "harness_aborted"))
-      return skipped("AUTOMATIC_ANALYSIS_ACTOR_CANCELLED");
-    participantEvidence = hasParticipantEvidence(bundle);
-    // Bind the permanent job claim to the actual configuration before dispatch.
-    // Missing-key/no-evidence skips don't need to read captured image bytes.
-    if (
-      config.provider !== "codex" &&
-      deps.preferLargerOutput &&
-      (!deps.defaultRequest || participantEvidence) &&
-      (deps.apiKey ?? process.env.OPENAI_API_KEY)?.trim()
-    ) {
-      config = preferLargerStudyAnalysisOutput(await captureStudyEvidence(prepared, bytes), config);
-    }
-  } catch {
-    return skipped("AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE");
-  }
+  cwd = physicalCwdOf(prepared);
+  const hasKey = Boolean((deps.apiKey ?? process.env.OPENAI_API_KEY)?.trim());
+  const source = await readAutomaticSource(
+    cwd,
+    prepared,
+    structuredClone(configInput),
+    deps,
+    hasKey,
+  );
+  if ("state" in source) return source;
+  const { participantEvidence } = source;
+  let config = source.config;
   // The claim digest must cover the Codex release that will run.
   if (config.provider === "codex" && (deps.detectCodexCliVersion || !deps.codexProvider))
     config = await (
@@ -208,8 +272,7 @@ export async function runAutomaticStudyAnalysis(
   let outcome: AutomaticStudyAnalysisOutcome;
   try {
     await poll();
-    const missingKey =
-      config.provider !== "codex" && !(deps.apiKey ?? process.env.OPENAI_API_KEY)?.trim();
+    const missingKey = config.provider !== "codex" && !hasKey;
     if (deps.defaultRequest === true && (missingKey || !participantEvidence)) {
       outcome = signal.aborted
         ? { state: "cancelled", reason: "AUTOMATIC_ANALYSIS_CANCELLED" }
@@ -258,56 +321,23 @@ export async function runAutomaticStudyAnalysis(
     clearInterval(cancellationTimer);
     clearInterval(heartbeat);
   }
-  try {
-    // Bind terminal metadata to the exact safely published execution. Reads never
-    // promote a completed-looking sidecar without rechecking these bindings.
-    const analysisId = outcome.result?.analysisId;
-    const [entry, receipt] = analysisId
-      ? await Promise.all([
-          readStudyAnalysisVersion(prepared, analysisId),
-          readStudyAnalysisExecution(prepared, analysisId),
-        ])
-      : [null, null];
-    await job.update({
-      state: outcome.state,
-      reason: outcome.reason as Exclude<
-        Parameters<AutomaticStudyAnalysisJob["update"]>[0]["reason"],
-        undefined
-      >,
-      analysisId: analysisId ?? null,
-      ...(receipt === null
-        ? {}
-        : {
-            sourceRunSha256: receipt.sourceRunSha256,
-            inputDigest: receipt.inputDigest,
-            receiptSha256: hashStudyAnalysisValue(receipt),
-          }),
-      ...(entry?.analysis ? { analysisSha256: hashStudyAnalysisValue(entry.analysis) } : {}),
-    });
-    const persisted = await readAutomaticStudyAnalysisPrepared(prepared);
-    if (persisted?.state === "unknown")
-      outcome = { ...outcome, state: "unknown", reason: persisted.reason };
-  } catch {
+  const persisted = await persistOutcome(job, prepared, outcome);
+  if (persisted === null)
     return { ...outcome, state: "unknown", reason: "AUTOMATIC_ANALYSIS_STORAGE_UNAVAILABLE" };
-  }
+  outcome = persisted;
   // The service may render while this owner is still running. Freeze the final
   // job projection for direct file opening too, including no-request outcomes.
   // A failed refresh must never erase the durable outcome or measured usage.
-  try {
-    const rendered = await renderObserver(cwd, runId, { open: false, expectedRun: prepared });
-    if (!rendered.ok) throw new Error("AUTOMATIC_ANALYSIS_OBSERVER_UNAVAILABLE");
-  } catch {
-    if (outcome.result)
-      outcome = {
-        ...outcome,
-        result: {
-          ...outcome.result,
-          warnings: [
-            ...outcome.result.warnings,
-            "Automatic analysis status was saved, but Observer could not be refreshed. Run humanish observe again.",
-          ],
-        },
-      };
-  }
+  if (!(await refreshObserver(cwd, runId, prepared)) && outcome.result)
+    outcome = {
+      ...outcome,
+      result: {
+        ...outcome.result,
+        warnings: [
+          ...outcome.result.warnings,
+          "Automatic analysis status was saved, but Observer could not be refreshed. Run humanish observe again.",
+        ],
+      },
+    };
   return outcome;
 }

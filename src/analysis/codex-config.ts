@@ -14,21 +14,35 @@ const CODEX_ANALYSIS_TOOL_POLICY = RESTRICTED_CODEX_ANALYSIS_IDENTITY.toolPolicy
 export const CODEX_ANALYSIS_MODEL = RESTRICTED_CODEX_ANALYSIS_MODELS[0];
 const CODEX_ANALYSIS_EFFORT = RESTRICTED_CODEX_ANALYSIS_IDENTITY.reasoningEffort;
 
+function identityFor(profile: {
+  model: string;
+  reasoningEffort: CodexAnalysisIdentity["reasoningEffort"];
+  toolPolicy: CodexAnalysisIdentity["toolPolicy"];
+  cliVersion: string;
+}): CodexAnalysisIdentity {
+  return {
+    transport: "codex-app-server",
+    authentication: "chatgpt-account",
+    billing: "account-unknown",
+    requestedModel: profile.model,
+    resolvedModel: profile.model,
+    reasoningEffort: profile.reasoningEffort,
+    toolPolicy: profile.toolPolicy,
+    cliVersion: profile.cliVersion,
+  };
+}
+
 /** Before dispatch, analysis replaces the default release with the detected one. */
 export function codexAnalysisIdentity(
   model: string,
   cliVersion: string = defaultCodexCliVersion(),
 ): CodexAnalysisIdentity {
-  return {
-    transport: "codex-app-server",
-    authentication: "chatgpt-account",
-    billing: "account-unknown",
-    requestedModel: model,
-    resolvedModel: model,
+  return identityFor({
+    model,
     reasoningEffort: CODEX_ANALYSIS_EFFORT,
     toolPolicy: CODEX_ANALYSIS_TOOL_POLICY,
     cliVersion,
-  };
+  });
 }
 
 /** Reader profiles are append-only. A new launch qualification must not invalidate a saved report. */
@@ -88,16 +102,5 @@ export function validCodexAnalysisConfig(
 
 /** Reading historical artifacts never inserts defaults or selects a launch policy. */
 export function validStoredCodexAnalysisConfig(config: StudyAnalysisConfig): boolean {
-  return storedProfiles.some((profile) =>
-    matchesProfile(config, {
-      transport: "codex-app-server",
-      authentication: "chatgpt-account",
-      billing: "account-unknown",
-      requestedModel: profile.model,
-      resolvedModel: profile.model,
-      reasoningEffort: profile.reasoningEffort,
-      toolPolicy: profile.toolPolicy,
-      cliVersion: profile.cliVersion,
-    }),
-  );
+  return storedProfiles.some((profile) => matchesProfile(config, identityFor(profile)));
 }

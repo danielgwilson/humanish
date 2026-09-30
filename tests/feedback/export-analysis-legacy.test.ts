@@ -14,11 +14,8 @@ import { runDryRun } from "../../src/run/dry-run.js";
 import { verifyRun } from "../../src/run/verify.js";
 import { type RunBundle } from "../../src/run/bundle.js";
 import { captureStudyEvidence } from "../../src/analysis/evidence.js";
-import {
-  appendStudyAnalysisCorrection,
-  writeStudyAnalysis,
-  writeStudyAnalysisExecutionReceipt,
-} from "../../src/analysis/store.js";
+import { appendStudyAnalysisCorrection, writeStudyAnalysis } from "../../src/analysis/store.js";
+import { writeStudyAnalysisExecutionReceipt } from "../../src/analysis/store-executions.js";
 import { loadStudyAnalysis } from "../../src/analysis/load.js";
 import { hashStudyAnalysisValue } from "../../src/analysis/validation.js";
 import { syntheticArtifact } from "../analysis/fixtures.js";

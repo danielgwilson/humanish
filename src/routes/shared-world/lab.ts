@@ -92,8 +92,10 @@ async function runConcurrentSharedWorldWithSecrets(
     finished,
     analysis.ok ? analysis.config : undefined,
     options.automaticAnalysis,
-    options.config.review?.analysis === undefined ? "default" : "explicit",
-    analysis.ok && analysis.preferLargerOutput === true,
+    {
+      trigger: options.config.review?.analysis === undefined ? "default" : "explicit",
+      preferLargerOutput: analysis.ok && analysis.preferLargerOutput === true,
+    },
   );
 }
 

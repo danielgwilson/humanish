@@ -22,6 +22,7 @@ import {
   type PreparedSelectedOutputDirectory,
   writeContainedOutputFile,
 } from "../../run/selected-output-paths.js";
+import { OPENAI_RESPONSES_URL } from "../openai-endpoint.js";
 
 // A public-safe re-derivation of the OpenAI Responses API computer-use provider,
 // behind the CuaProvider port from src/actors/computer-use/loop.ts. The pure wire mapping
@@ -264,8 +265,6 @@ class ZdrError extends Error {
   }
 }
 
-const DEFAULT_ENDPOINT = "https://api.openai.com/v1/responses";
-
 // A 400 whose body mentions any of these means the account/org cannot use
 // server-side response state, so we must fall back to explicit-context mode.
 function isZdrRejection(bodyText: string): boolean {
@@ -334,7 +333,7 @@ export function createOpenAiResponsesProvider(
   }
   const maxOutputTokens = options.maxOutputTokens;
   const model = options.model ?? DEFAULT_OPENAI_CU_MODEL;
-  const endpoint = options.endpoint ?? DEFAULT_ENDPOINT;
+  const endpoint = options.endpoint ?? OPENAI_RESPONSES_URL;
   const reasoningEffort = options.reasoningEffort ?? DEFAULT_OPENAI_CU_REASONING_EFFORT;
   const maxRetries = options.singleDispatch === true ? 0 : (options.maxRetries ?? 3);
   const fetchFn = options.fetchFn ?? defaultFetch();

@@ -1,5 +1,5 @@
 import path from "node:path";
-import { listStudyAnalysisExecutions } from "../analysis/store.js";
+import { listStudyAnalysisExecutions } from "../analysis/store-executions.js";
 import { loadStudyAnalysis } from "../analysis/load.js";
 import { studyAnalysisSharingProblems } from "../analysis/sharing.js";
 import { containsSensitive } from "../evidence/redaction.js";

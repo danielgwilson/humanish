@@ -1,12 +1,13 @@
-import { constants } from "node:fs";
+import { constants, type BigIntStats } from "node:fs";
 import { lstat, open, realpath } from "node:fs/promises";
 import path from "node:path";
 
-import { isPathInside, validatePreparedRunRootIdentity } from "../run/paths.js";
+import { isPathInside, validatePreparedRunRootIdentity } from "./paths.js";
 import {
   assertPreparedSelectedOutputDirectory,
   type PreparedOutputRoot,
-} from "../run/selected-output-paths.js";
+} from "./selected-output-paths.js";
+import { isNodeError } from "./primitives.js";
 
 // Reading a file from a retained run directory for analysis: the path must be a plain relative path
 // inside the run, the file a single-link regular file that stays inside it, and the read bounded.
@@ -18,7 +19,20 @@ import {
  * encoded `..` or separator cannot survive into a later decode.
  */
 export function isStudyEvidencePath(value: string): boolean {
-  if (!value || value.length > 1024) return false;
+  return decodesToPlainRelativePath(value, 1024, /[\\:\x00-\x1f\x7f]|^\//);
+}
+
+/**
+ * True when `value` (at most `maxLength` characters) stays a plain relative path through up to five
+ * rounds of percent-decoding: no round may match `unsafe`, have an empty, `.` or `..` segment, or
+ * change the segment count. A value that stops decoding is accepted once it has no escapes left.
+ */
+export function decodesToPlainRelativePath(
+  value: string,
+  maxLength: number,
+  unsafe: RegExp,
+): boolean {
+  if (!value || value.length > maxLength) return false;
   try {
     encodeURIComponent(value);
   } catch {
@@ -27,8 +41,7 @@ export function isStudyEvidencePath(value: string): boolean {
   let checked = value;
   for (let attempt = 0; attempt < 5; attempt++) {
     if (
-      /[\\:\x00-\x1f\x7f]/.test(checked) ||
-      checked.startsWith("/") ||
+      unsafe.test(checked) ||
       checked.split("/").some((part) => part === "" || part === "." || part === "..")
     )
       return false;
@@ -57,6 +70,37 @@ export async function readBoundedStudyFile(
 ): Promise<Buffer | null> {
   const result = await readBoundedStudyFileResult(root, relativePath, maxBytes);
   return result.state === "read" ? result.bytes : null;
+}
+
+/**
+ * Still the same single-link regular file, unchanged since `before`. Every recheck uses this one
+ * field set; ctime catches a chmod or link change that leaves size and mtime alone.
+ */
+function sameFile(before: BigIntStats, current: BigIntStats): boolean {
+  return (
+    current.isFile() &&
+    !current.isSymbolicLink() &&
+    current.nlink === 1n &&
+    current.dev === before.dev &&
+    current.ino === before.ino &&
+    current.size === before.size &&
+    current.mtimeNs === before.mtimeNs &&
+    current.ctimeNs === before.ctimeNs
+  );
+}
+
+/**
+ * After a bounded read returned nothing: true when the file is absent, false when something is
+ * there that could not be read. Errors other than ENOENT propagate.
+ */
+export async function pathMissing(filePath: string): Promise<boolean> {
+  try {
+    await lstat(filePath);
+    return false;
+  } catch (error) {
+    if (isNodeError(error) && error.code === "ENOENT") return true;
+    throw error;
+  }
 }
 
 export type BoundedStudyFileResult =
@@ -101,18 +145,7 @@ export async function readBoundedStudyFileResult(
     if (before.size > BigInt(maxBytes)) {
       if ((await validateRoot()) !== physicalRoot) return unavailable;
       await validateParents();
-      const final = await lstat(candidate, { bigint: true });
-      if (
-        !final.isFile() ||
-        final.isSymbolicLink() ||
-        final.nlink !== 1n ||
-        final.dev !== before.dev ||
-        final.ino !== before.ino ||
-        final.size !== before.size ||
-        final.mtimeNs !== before.mtimeNs ||
-        final.ctimeNs !== before.ctimeNs
-      )
-        return unavailable;
+      if (!sameFile(before, await lstat(candidate, { bigint: true }))) return unavailable;
       return { state: "limit", size: before.size };
     }
     // O_NONBLOCK avoids hanging if a regular leaf is raced into a special file.
@@ -121,16 +154,7 @@ export async function readBoundedStudyFileResult(
       constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
     );
     try {
-      const opened = await handle.stat({ bigint: true });
-      if (
-        !opened.isFile() ||
-        opened.nlink !== 1n ||
-        opened.dev !== before.dev ||
-        opened.ino !== before.ino ||
-        opened.size !== before.size ||
-        opened.mtimeNs !== before.mtimeNs
-      )
-        return unavailable;
+      if (!sameFile(before, await handle.stat({ bigint: true }))) return unavailable;
       const chunks: Buffer[] = [];
       let total = 0;
       while (total <= maxBytes) {
@@ -141,28 +165,11 @@ export async function readBoundedStudyFileResult(
         if (total > maxBytes) return unavailable;
         chunks.push(chunk.subarray(0, bytesRead));
       }
-      const after = await handle.stat({ bigint: true });
-      if (
-        after.size !== before.size ||
-        after.mtimeNs !== before.mtimeNs ||
-        after.ctimeNs !== before.ctimeNs ||
-        after.nlink !== 1n ||
-        total !== Number(before.size)
-      )
+      if (!sameFile(before, await handle.stat({ bigint: true })) || total !== Number(before.size))
         return unavailable;
       if ((await validateRoot()) !== physicalRoot) return unavailable;
       await validateParents();
-      const final = await lstat(candidate, { bigint: true });
-      if (
-        !final.isFile() ||
-        final.isSymbolicLink() ||
-        final.dev !== before.dev ||
-        final.ino !== before.ino ||
-        final.nlink !== 1n ||
-        final.size !== before.size ||
-        final.mtimeNs !== before.mtimeNs
-      )
-        return unavailable;
+      if (!sameFile(before, await lstat(candidate, { bigint: true }))) return unavailable;
       return { state: "read", bytes: Buffer.concat(chunks, total) };
     } finally {
       await handle.close();

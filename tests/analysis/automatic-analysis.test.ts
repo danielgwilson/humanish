@@ -148,7 +148,7 @@ describe("automatic analysis admission and producer boundary", () => {
         finished,
         { ...config, maxCostUsd: 0.000001 },
         { deps: { apiKey, fetch } },
-        trigger,
+        { trigger },
       );
       expect(result.automaticAnalysis).toMatchObject({
         state: "skipped",

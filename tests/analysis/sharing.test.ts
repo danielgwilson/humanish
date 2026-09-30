@@ -9,10 +9,8 @@ import { resolveRunPath } from "../../src/run/locate.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { verifyRun } from "../../src/run/verify.js";
 import { captureStudyEvidence } from "../../src/analysis/evidence.js";
-import {
-  writeStudyAnalysis,
-  writeStudyAnalysisExecutionReceipt,
-} from "../../src/analysis/store.js";
+import { writeStudyAnalysis } from "../../src/analysis/store.js";
+import { writeStudyAnalysisExecutionReceipt } from "../../src/analysis/store-executions.js";
 import { syntheticArtifact } from "./fixtures.js";
 
 // Constructed synthetic marker, not a credential; never output its value in assertions.

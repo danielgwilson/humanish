@@ -5,6 +5,7 @@ import { estimateActorCost, MODEL_RATES } from "../run/pricing.js";
 import { containsSensitive } from "../evidence/redaction.js";
 import { scrubTransientCommsText } from "../run/transient-comms-secrets.js";
 import {
+  ANALYSIS_ID_PATTERN,
   STUDY_ANALYSIS_SCHEMA,
   type AnalysisObservation,
   type StudyAnalysisArtifact,
@@ -13,6 +14,7 @@ import {
   type StudyAnalysisResult,
 } from "./study-analysis.js";
 import {
+  INPUT_IMAGE_DATA_URL,
   type AnalysisFetch,
   createStudyAnalysisProvider,
   type StudyAnalysisProvider,
@@ -24,9 +26,10 @@ import {
   studyAnalysisResultJsonSchema,
   validateStudyAnalysisInputMetadata,
 } from "./validation.js";
+import { STUDY_EVIDENCE_LIMITS } from "./evidence.js";
 
 export const STUDY_ANALYSIS_PROMPT_VERSION = "study-evidence-6";
-export const SUPPORTED_STUDY_ANALYSIS_MODELS = Object.freeze([
+const SUPPORTED_STUDY_ANALYSIS_MODELS = Object.freeze([
   "gpt-6-astra",
   "gpt-5.5",
   "gpt-5.6",
@@ -35,9 +38,11 @@ export const SUPPORTED_STUDY_ANALYSIS_MODELS = Object.freeze([
   "gpt-5.6-luna",
 ]);
 const SUPPORTED_MODELS = new Set(SUPPORTED_STUDY_ANALYSIS_MODELS);
-const IMAGE_DATA = /^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/]+={0,2})$/;
+export const isSupportedAnalysisModel = (model: string): boolean => SUPPORTED_MODELS.has(model);
+/** The OpenAI output limit when a lab omits maxOutputTokens, and the most it may ask for. */
+export const DEFAULT_ANALYSIS_MAX_OUTPUT_TOKENS = 16_384;
+export const MAX_ANALYSIS_OUTPUT_TOKENS = 32_768;
 const MAX_EVIDENCE_BYTES = 1024 * 1024;
-const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
 
 const INSTRUCTIONS = `You review a retained synthetic participant study. Produce evidence-linked observations, never an execution verdict or a claim about real-human population rates.
 
@@ -142,14 +147,17 @@ function inputError(input: StudyAnalysisInput): string | null {
   let imageBytes = 0;
   for (const image of input.images) {
     const evidence = captures.find((item) => item.id === image.evidenceId);
-    if (image.dataUrl.length > Math.ceil((8 * 1024 * 1024 * 4) / 3) + 64)
+    if (image.dataUrl.length > Math.ceil((STUDY_EVIDENCE_LIMITS.imageBytes * 4) / 3) + 64)
       return "analysis_input_limit";
-    const parsed = IMAGE_DATA.exec(image.dataUrl);
+    const parsed = INPUT_IMAGE_DATA_URL.exec(image.dataUrl);
     if (!evidence?.capture || !parsed || evidence.capture.mimeType !== `image/${parsed[1]}`)
       return "analysis_input_invalid";
     const bytes = Buffer.from(parsed[2]!, "base64");
     imageBytes += bytes.byteLength;
-    if (bytes.byteLength > 8 * 1024 * 1024 || imageBytes > MAX_IMAGE_BYTES)
+    if (
+      bytes.byteLength > STUDY_EVIDENCE_LIMITS.imageBytes ||
+      imageBytes > STUDY_EVIDENCE_LIMITS.totalImageBytes
+    )
       return "analysis_input_limit";
     if (createHash("sha256").update(bytes).digest("hex") !== evidence.capture.sha256)
       return "analysis_input_changed";
@@ -266,8 +274,9 @@ export function preferLargerStudyAnalysisOutput(
   input: StudyAnalysisInput,
   config: StudyAnalysisConfig,
 ): StudyAnalysisConfig {
-  if (config.provider === "codex" || config.maxOutputTokens !== 16_384) return config;
-  const expanded = { ...config, maxOutputTokens: 32_768 };
+  if (config.provider === "codex" || config.maxOutputTokens !== DEFAULT_ANALYSIS_MAX_OUTPUT_TOKENS)
+    return config;
+  const expanded = { ...config, maxOutputTokens: MAX_ANALYSIS_OUTPUT_TOKENS };
   return estimateStudyAnalysisAdmission(input, expanded).allowed ? expanded : config;
 }
 
@@ -417,10 +426,7 @@ export async function runStudyAnalysis(
   input = structuredClone(input);
   config = structuredClone(config);
   const createdAt = new Date().toISOString();
-  if (
-    options.analysisId !== undefined &&
-    !/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(options.analysisId)
-  ) {
+  if (options.analysisId !== undefined && !ANALYSIS_ID_PATTERN.test(options.analysisId)) {
     throw new Error("ANALYSIS_ID_INVALID");
   }
   validateStudyAnalysisInputMetadata(input);

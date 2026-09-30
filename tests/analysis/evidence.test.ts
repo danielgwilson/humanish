@@ -6,7 +6,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { prepareRunArtifactPaths, type PreparedRunArtifactPaths } from "../../src/run/paths.js";
-import { isStudyEvidencePath, readBoundedStudyFile } from "../../src/analysis/study-files.js";
+import { isStudyEvidencePath, readBoundedStudyFile } from "../../src/run/study-files.js";
 
 describe("bounded study evidence reads", () => {
   let cwd: string;

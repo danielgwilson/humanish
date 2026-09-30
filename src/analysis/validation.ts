@@ -1,8 +1,9 @@
 import { validStoredCodexAnalysisConfig } from "./codex-config.js";
 import { createHash } from "node:crypto";
 import { z } from "zod";
-import { ACTOR_STOP_CAUSES } from "../actors/contract.js";
+import { ACTOR_STATUSES, ACTOR_STOP_CAUSES } from "../actors/contract.js";
 import {
+  SHA256_HEX_PATTERN,
   ACTION_CAPTURE_VERSION,
   STUDY_ANALYSIS_SCHEMA,
   STUDY_ANALYSIS_CORRECTION_SCHEMA,
@@ -25,7 +26,7 @@ const id = z
   .max(128)
   .regex(/^[A-Za-z0-9][A-Za-z0-9_.-]*$/);
 const sourceId = text(256).min(1);
-const digest = z.string().regex(/^[a-f0-9]{64}$/);
+const digest = z.string().regex(SHA256_HEX_PATTERN);
 const timestamp = z.string().datetime({ offset: true });
 const sourceIds = z.array(sourceId).max(128);
 const refs = z.array(id).min(1).max(100);
@@ -157,9 +158,7 @@ const studyAnalysisEvidenceSchema = z
 
 const studyAnalysisParticipantProvenanceSchema = z
   .object({
-    actorStatus: z
-      .enum(["passed", "abandoned", "incomplete", "blocked", "timed_out", "failed"])
-      .nullable(),
+    actorStatus: z.enum(ACTOR_STATUSES).nullable(),
     completionReason: z
       .enum([
         "goal_satisfied",

@@ -17,6 +17,9 @@ export const STUDY_ANALYSIS_CORRECTION_SCHEMA = "humanish.study-analysis-correct
  */
 export const ACTION_CAPTURE_VERSION = 2 as const;
 export type CaptureVersion = typeof ACTION_CAPTURE_VERSION;
+/** Run, analysis, correction and attempt ids: safe as one path segment. */
+export const ANALYSIS_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/;
+export const SHA256_HEX_PATTERN = /^[a-f0-9]{64}$/;
 type AnalysisStatus = "complete" | "partial" | "failed" | "cancelled";
 type AnalysisOutcome = "completed" | "blocked" | "abandoned" | "interrupted" | "unknown";
 type AnalysisBasis = "visual" | "action" | "participant_statement" | "inference";

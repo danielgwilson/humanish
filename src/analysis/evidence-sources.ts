@@ -9,7 +9,7 @@ import {
   type AnalysisParticipantInput,
   type CaptureVersion,
 } from "./study-analysis.js";
-import { isStudyEvidencePath } from "./study-files.js";
+import { decodesToPlainRelativePath, isStudyEvidencePath } from "../run/study-files.js";
 
 // How a run bundle becomes analysis sources: each participant's recorded provenance and assignment,
 // the evidence entries its trace offers, and the order in which entries are admitted under the
@@ -74,30 +74,11 @@ export function boundedText(value: string, maxBytes: number): string {
 // Count the same frame declarations as Observer even when analysis omits their bytes.
 function isObserverCapturePath(value: string): boolean {
   if (/^data:image\/(?:png|jpeg|gif|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(value)) return true;
-  if (!value || value.length > 8192) return false;
-  try {
-    encodeURIComponent(value);
-  } catch {
-    return false;
-  }
-  let checked = value;
-  for (let attempt = 0; attempt < 5; attempt++) {
-    if (
-      /^[\\/]|[\\\u0000-\u001f\u007f]|^[a-z][a-z\d+.-]*:/i.test(checked) ||
-      checked.split("/").some((part) => part === "." || part === ".." || part === "")
-    )
-      return false;
-    let decoded: string;
-    try {
-      decoded = decodeURIComponent(checked);
-    } catch {
-      return !/%[0-9a-f]{2}/i.test(checked);
-    }
-    if (decoded === checked) return true;
-    if (decoded.split("/").length !== checked.split("/").length) return false;
-    checked = decoded;
-  }
-  return false;
+  return decodesToPlainRelativePath(
+    value,
+    8192,
+    /^[\\/]|[\\\u0000-\u001f\u007f]|^[a-z][a-z\d+.-]*:/i,
+  );
 }
 
 export function participantAssignment(

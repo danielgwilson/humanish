@@ -1,4 +1,5 @@
 import { Agent, fetch as undiciFetch, type Dispatcher } from "undici";
+import { OPENAI_RESPONSES_URL } from "../actors/openai-endpoint.js";
 
 /** Deliberately separate from the stateful computer-use actor: one request, no tools or retries. */
 export interface StudyAnalysisProviderRequest {
@@ -64,7 +65,8 @@ export type StudyAnalysisProvider = (
 ) => Promise<StudyAnalysisProviderResult>;
 const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
 const MAX_REQUEST_BYTES = 32 * 1024 * 1024;
-const INPUT_IMAGE = /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
+/** An input image the provider accepts; the groups are the image type and its base64 bytes. */
+export const INPUT_IMAGE_DATA_URL = /^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/]+={0,2})$/;
 const record = (value: unknown): Record<string, unknown> =>
   value !== null && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -222,7 +224,7 @@ export function createStudyAnalysisProvider(options: {
       request.timeoutMs < 1 ||
       request.timeoutMs > 600_000 ||
       request.images.length > 128 ||
-      request.images.some((image) => !INPUT_IMAGE.test(image.dataUrl))
+      request.images.some((image) => !INPUT_IMAGE_DATA_URL.test(image.dataUrl))
     ) {
       return failure("invalid_request", false);
     }
@@ -267,7 +269,7 @@ export function createStudyAnalysisProvider(options: {
     try {
       if (request.signal?.aborted) return failure("cancelled", false, "cancelled");
       dispatched = true;
-      const response = await fetchFn("https://api.openai.com/v1/responses", {
+      const response = await fetchFn(OPENAI_RESPONSES_URL, {
         method: "POST",
         redirect: "error",
         signal: controller.signal,

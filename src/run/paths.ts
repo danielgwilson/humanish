@@ -168,6 +168,16 @@ export async function resolvePhysicalCwd(cwdInput: string): Promise<string> {
   return realpath(requested).catch(() => requested);
 }
 
+/** The physical project directory of a prepared run (`<project>/.humanish/runs/<id>`). */
+export function physicalCwdOf(prepared: PreparedRunArtifactPaths): string {
+  return path.dirname(path.dirname(prepared.physicalRunsRoot));
+}
+
+/** The run id of a prepared run: its directory name. */
+export function runIdOf(prepared: PreparedRunArtifactPaths): string {
+  return path.basename(prepared.physicalRunRoot);
+}
+
 /** Cheap revalidation for repeated contained reads/writes within one prepared run. */
 export async function validatePreparedRunRootIdentity(
   prepared: PreparedRunArtifactPaths,

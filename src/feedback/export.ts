@@ -23,7 +23,7 @@ import { exportRedactedBundle } from "./export-bundle.js";
 import { loadStudyAnalysis } from "../analysis/load.js";
 import { studyAnalysisSharingProblems } from "../analysis/sharing.js";
 import { STUDY_EVIDENCE_LIMITS, validateStudyAnalysisEvidence } from "../analysis/evidence.js";
-import { readBoundedStudyFile } from "../analysis/study-files.js";
+import { readBoundedStudyFile } from "../run/study-files.js";
 import { shellQuote } from "../substrates/shell.js";
 
 const EXPORT_SCHEMA = "humanish.export-result.v1";

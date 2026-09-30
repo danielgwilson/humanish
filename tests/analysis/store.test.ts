@@ -18,12 +18,14 @@ import { captureStudyEvidence } from "../../src/analysis/evidence.js";
 import {
   appendStudyAnalysisCorrection,
   assertStudyAnalysisPublicationCapacity,
-  beginStudyAnalysisExecution,
   listStudyAnalyses,
-  listStudyAnalysisExecutions,
   writeStudyAnalysis,
-  writeStudyAnalysisExecutionReceipt,
 } from "../../src/analysis/store.js";
+import {
+  beginStudyAnalysisExecution,
+  listStudyAnalysisExecutions,
+  writeStudyAnalysisExecutionReceipt,
+} from "../../src/analysis/store-executions.js";
 import { loadStudyAnalysis } from "../../src/analysis/load.js";
 import { digestStudyAnalysisInput, hashStudyAnalysisValue } from "../../src/analysis/validation.js";
 import type {

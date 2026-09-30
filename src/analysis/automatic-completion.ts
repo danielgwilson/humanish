@@ -1,5 +1,4 @@
-import path from "node:path";
-import { validatePreparedRunRootIdentity } from "../run/paths.js";
+import { physicalCwdOf, validatePreparedRunRootIdentity } from "../run/paths.js";
 import { FinishedRun } from "../run/run.js";
 import type { StudyAnalysisConfig } from "./study-analysis.js";
 import { runAutomaticStudyAnalysis, type AutomaticStudyAnalysisDeps } from "./automatic.js";
@@ -35,8 +34,15 @@ export async function completeAutomaticAnalysis<
   finished: FinishedRun | undefined,
   config: StudyAnalysisConfig | undefined,
   hooks?: AutomaticAnalysisHooks,
-  trigger: "default" | "explicit" = "explicit",
-  preferLargerOutput = false,
+  {
+    trigger = "explicit",
+    preferLargerOutput = false,
+  }: {
+    /** "default" when the lab declared no analysis; its missing-key skip is not a failure. */
+    trigger?: "default" | "explicit";
+    /** The lab omitted an output limit, so a larger one may be used within the admission budget. */
+    preferLargerOutput?: boolean;
+  } = {},
 ): Promise<T & AutomaticAnalysisResult> {
   if (config === undefined) return result;
   const origin = trigger === "default" ? { automaticAnalysisTrigger: trigger } : {};
@@ -68,7 +74,7 @@ export async function completeAutomaticAnalysis<
         automaticAnalysis: { state: "failed", reason: "AUTOMATIC_ANALYSIS_SOURCE_CHANGED" },
       };
     }
-    const sourceCwd = path.dirname(path.dirname(prepared.physicalRunsRoot));
+    const sourceCwd = physicalCwdOf(prepared);
     const automaticAnalysis = await (hooks?.run ?? runAutomaticStudyAnalysis)(
       sourceCwd,
       finished.runId,

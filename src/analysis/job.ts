@@ -3,7 +3,12 @@ import { randomUUID } from "node:crypto";
 import { lstat, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
-import { validatePreparedRunRootIdentity, type PreparedRunArtifactPaths } from "../run/paths.js";
+import {
+  physicalCwdOf,
+  runIdOf,
+  validatePreparedRunRootIdentity,
+  type PreparedRunArtifactPaths,
+} from "../run/paths.js";
 import {
   assertPreparedSelectedOutputDirectory,
   bindExistingManagedHumanishOutputDirectory,
@@ -11,26 +16,31 @@ import {
   writeContainedOutputFile,
   type PreparedSelectedOutputDirectory,
 } from "../run/selected-output-paths.js";
-import { readBoundedStudyFile } from "./study-files.js";
+import { pathMissing, readBoundedStudyFile } from "../run/study-files.js";
 import { containsSensitive } from "../evidence/redaction.js";
-import { readStudyAnalysisExecution, readStudyAnalysisVersion } from "./store.js";
+import { readStudyAnalysisVersion } from "./store.js";
+import { readStudyAnalysisExecution } from "./store-executions.js";
 import { hashStudyAnalysisValue } from "./validation.js";
+import { ANALYSIS_ID_PATTERN, SHA256_HEX_PATTERN } from "./study-analysis.js";
 
 export const AUTOMATIC_STUDY_ANALYSIS_DIRECTORY = "analysis-automatic";
 const AUTOMATIC_STUDY_ANALYSIS_SCHEMA = "humanish.automatic-study-analysis.v1";
 export const AUTOMATIC_STUDY_ANALYSIS_STALE_MS = 15_000;
 
 /** Execution metadata only. Never a participant outcome or permission to dispatch. */
+const JOB_STATES = [
+  "queued",
+  "running",
+  "complete",
+  "partial",
+  "failed",
+  "cancelled",
+  "skipped",
+  "unknown",
+] as const;
+
 export interface AutomaticStudyAnalysisView {
-  state:
-    | "queued"
-    | "running"
-    | "complete"
-    | "partial"
-    | "failed"
-    | "cancelled"
-    | "skipped"
-    | "unknown";
+  state: (typeof JOB_STATES)[number];
   analysisId: string | null;
   /** Safe stable code, not provider text. */
   reason: string | null;
@@ -72,24 +82,15 @@ const reasons = [
   "AUTOMATIC_ANALYSIS_ACTOR_CANCELLED",
   "AUTOMATIC_ANALYSIS_NO_PARTICIPANT_EVIDENCE",
 ] as const;
-const id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/);
+const id = z.string().regex(ANALYSIS_ID_PATTERN);
 const date = z.iso.datetime();
-const digest = z.string().regex(/^[a-f0-9]{64}$/);
+const digest = z.string().regex(SHA256_HEX_PATTERN);
 const jobSchema = z.strictObject({
   schema: z.literal(AUTOMATIC_STUDY_ANALYSIS_SCHEMA),
   runId: id,
   claimId: z.uuid(),
   attemptId: id,
-  state: z.enum([
-    "queued",
-    "running",
-    "complete",
-    "partial",
-    "failed",
-    "cancelled",
-    "skipped",
-    "unknown",
-  ]),
+  state: z.enum(JOB_STATES),
   analysisId: id.nullable(),
   reason: z.enum(reasons).nullable(),
   createdAt: date,
@@ -162,11 +163,11 @@ async function bindJob(
   prepared: PreparedRunArtifactPaths,
 ): Promise<PreparedSelectedOutputDirectory | null> {
   await validatePreparedRunRootIdentity(prepared);
-  const cwd = path.dirname(path.dirname(path.dirname(prepared.absoluteRunRoot)));
+  const cwd = physicalCwdOf(prepared);
   const root = await bindExistingManagedHumanishOutputDirectory(
     cwd,
     "runs",
-    path.basename(prepared.physicalRunRoot),
+    runIdOf(prepared),
     AUTOMATIC_STUDY_ANALYSIS_DIRECTORY,
   );
   return root ? Object.freeze({ ...root, parentRun: prepared }) : null;
@@ -191,7 +192,7 @@ export async function readAutomaticStudyAnalysisAccounting(
     if (!root) return undefined;
     const bytes = await readBoundedStudyFile(root, JOB_FILE, MAX_JOB_BYTES);
     if (!bytes) return "unknown";
-    const record = parseJob(bytes, path.basename(prepared.physicalRunRoot));
+    const record = parseJob(bytes, runIdOf(prepared));
     return {
       attemptId: record.attemptId,
       analysisId: record.analysisId,
@@ -212,20 +213,14 @@ export async function readAutomaticStudyAnalysisPrepared(
   try {
     const root = await bindJob(prepared);
     if (!root) {
-      const exists = await lstat(
+      const missing = await pathMissing(
         path.join(prepared.physicalRunRoot, AUTOMATIC_STUDY_ANALYSIS_DIRECTORY),
-      ).then(
-        () => true,
-        (error: NodeJS.ErrnoException) => {
-          if (error.code === "ENOENT") return false;
-          throw error;
-        },
       );
-      return exists ? unknown() : undefined;
+      return missing ? undefined : unknown();
     }
     const bytes = await readBoundedStudyFile(root, JOB_FILE, MAX_JOB_BYTES);
     if (!bytes) return unknown();
-    const record = parseJob(bytes, path.basename(prepared.physicalRunRoot));
+    const record = parseJob(bytes, runIdOf(prepared));
     const view: AutomaticStudyAnalysisView = {
       state: record.state,
       analysisId: record.analysisId,
@@ -335,7 +330,7 @@ export async function claimAutomaticStudyAnalysis(
   const createdAt = iso();
   let record: JobRecord = {
     schema: AUTOMATIC_STUDY_ANALYSIS_SCHEMA,
-    runId: path.basename(prepared.physicalRunRoot),
+    runId: runIdOf(prepared),
     claimId: randomUUID(),
     attemptId: `analysis-${randomUUID()}`,
     state: "queued",
@@ -383,14 +378,8 @@ export async function claimAutomaticStudyAnalysis(
       await assertPreparedSelectedOutputDirectory(root);
       const bytes = await readBoundedStudyFile(root, CANCEL_FILE, MAX_CANCEL_BYTES);
       if (!bytes) {
-        const exists = await lstat(path.join(root.physicalPath, CANCEL_FILE)).then(
-          () => true,
-          (error: NodeJS.ErrnoException) => {
-            if (error.code === "ENOENT") return false;
-            throw error;
-          },
-        );
-        if (exists) throw new Error("AUTOMATIC_ANALYSIS_CANCELLATION_UNAVAILABLE");
+        if (!(await pathMissing(path.join(root.physicalPath, CANCEL_FILE))))
+          throw new Error("AUTOMATIC_ANALYSIS_CANCELLATION_UNAVAILABLE");
         return false;
       }
       const cancel = cancelSchema.parse(
@@ -412,7 +401,7 @@ export async function requestAutomaticStudyAnalysisCancellationPrepared(
     if (!root) return { requested: false, reason: "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE" };
     const bytes = await readBoundedStudyFile(root, JOB_FILE, MAX_JOB_BYTES);
     if (!bytes) throw new Error("Unavailable job.");
-    const record = parseJob(bytes, path.basename(prepared.physicalRunRoot));
+    const record = parseJob(bytes, runIdOf(prepared));
     if (!pending(record.state)) return { requested: false, reason: null };
     const cancellation = {
       schema: CANCEL_SCHEMA,

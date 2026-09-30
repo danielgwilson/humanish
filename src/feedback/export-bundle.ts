@@ -15,6 +15,7 @@ import { verifyRunPrepared } from "../run/verify.js";
 import { loadRunBundlePrepared, resolveRunPath } from "../run/locate.js";
 import { type RunBundle } from "../run/bundle.js";
 import {
+  runIdOf,
   isPathInside,
   prepareRunArtifactPaths,
   validatePreparedRunArtifactPaths,
@@ -449,7 +450,7 @@ export async function exportRedactedBundle(
     if (!runPaths)
       return failure("HUMANISH_EXPORT_RUN_NOT_FOUND", "No run resolves from the selected run id.");
     const source = await inventory(runPaths, maxBytes);
-    const runId = path.basename(runPaths.physicalRunRoot);
+    const runId = runIdOf(runPaths);
     const processStatus = source.files.find((file) => file.path === "status.json");
     if (
       processStatus &&
