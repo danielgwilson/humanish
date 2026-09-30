@@ -217,7 +217,16 @@ async function runLabInScope(config: LabConfig, options: RunLabOptions): Promise
       return { backend, result };
     }
     case "cua": {
-      if (isLocalBrowserLab(config) && !options.cuaHooks) {
+      // The config selects the local browser study. Two hooks keep a run out of it: with
+      // createDesktopLane the caller (or the study re-entering here) provides the desktop, and
+      // with buildExecutor the caller drives the app in process and needs no desktop. Every other
+      // hook, such as a scorer, travels with the study.
+      const hooks = options.cuaHooks;
+      if (
+        isLocalBrowserLab(config) &&
+        hooks?.createDesktopLane === undefined &&
+        hooks?.buildExecutor === undefined
+      ) {
         const { runLocalFirecrackerStudy } =
           await import("../substrates/local/firecracker-study.js");
         return runLocalFirecrackerStudy({ ...options, config });

@@ -6,6 +6,7 @@ import {
   inboxRecipientFor,
   type DesktopLaneEvidence,
 } from "../../routes/computer-use/desktop-lane.js";
+import type { CuaActorLabHooks } from "../../routes/computer-use/types.js";
 import { runCuaActorSession } from "../../actors/computer-use/actor.js";
 import {
   createLocalFirecrackerDesktop,
@@ -19,6 +20,23 @@ import { createRestrictedCodexParticipant } from "../../actors/codex/restricted-
 import { guestMediaConfigSchema } from "../../guest-media-config.js";
 import { startLocalCapturedInbox } from "./captured-inbox.js";
 
+// These hooks act on an E2B desktop or the local-tree upload to it. The study runs on a
+// Firecracker desktop and never calls them, so a caller relying on one gets an error up front.
+const e2bDesktopHooks = [
+  "prepareDesktop",
+  "loadDesktopModule",
+  "onRuntimeStreamReady",
+  "packLocalTree",
+] as const satisfies readonly (keyof CuaActorLabHooks)[];
+
+function refuseE2BDesktopHooks(hooks: CuaActorLabHooks | undefined): void {
+  const present = e2bDesktopHooks.filter((name) => hooks?.[name] !== undefined);
+  if (present.length === 0) return;
+  throw new Error(
+    `A local browser study runs on a Firecracker desktop and does not call ${present.map((name) => `cuaHooks.${name}`).join(", ")}. These hooks apply only to E2B desktops.`,
+  );
+}
+
 /** Local desktop/provider composition over the shared lab runner. */
 export async function runLocalFirecrackerStudy(
   options: RunLabOptions & {
@@ -30,6 +48,7 @@ export async function runLocalFirecrackerStudy(
   const config = localBrowserDefaults(options.config);
   const unsupported = localBrowserUnsupportedReason(config);
   if (unsupported) throw new Error(unsupported);
+  refuseE2BDesktopHooks(options.cuaHooks);
   const recording = config.execution?.desktop?.recording;
   const declaredMedia = config.execution?.desktop?.media;
   const media =
@@ -39,7 +58,12 @@ export async function runLocalFirecrackerStudy(
           ...declaredMedia,
           permission: config.policies?.mediaPermission ?? "prompt",
         });
-  const account = config.actors[0]?.type === "local-agent";
+  const callerHooks = options.cuaHooks;
+  // A caller-supplied provider replaces the Codex account participant, so the account is
+  // neither checked nor used.
+  const account =
+    config.actors[0]?.type === "local-agent" && callerHooks?.buildProvider === undefined;
+  const baseRunSession = callerHooks?.runSession ?? runCuaActorSession;
   let preparing: Promise<LocalFirecrackerAssets> | undefined;
   const assets = (): Promise<LocalFirecrackerAssets> =>
     (preparing ??= (async () => {
@@ -72,7 +96,10 @@ export async function runLocalFirecrackerStudy(
           return options.automaticAnalysis?.onStart?.();
         },
       },
+      // The caller's hooks come first so this study's desktop lane always wins: runLab reads
+      // createDesktopLane as "desktop provided" and does not route back here.
       cuaHooks: {
+        ...callerHooks,
         createDesktopLane(spec, warnings, artifactRoot) {
           let session: LocalFirecrackerDesktop | undefined;
           let inbox: Awaited<ReturnType<typeof startLocalCapturedInbox>> | undefined;
@@ -180,7 +207,7 @@ export async function runLocalFirecrackerStudy(
         ...(options.signal
           ? {
               runSession: (input: Parameters<typeof runCuaActorSession>[0]) =>
-                runCuaActorSession({ ...input, signal: options.signal! }),
+                baseRunSession({ ...input, signal: options.signal! }),
             }
           : {}),
       },
