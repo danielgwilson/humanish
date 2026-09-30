@@ -11,8 +11,9 @@ import {
   writeResult,
 } from "../io.js";
 import { planObserver, showObserver, staticObserverOpen } from "../observer-follow.js";
+import type { BackendRun } from "./lab-backend-run.js";
 
-export async function runSyntheticBackend(args: {
+interface SyntheticBackendArgs {
   command: Command;
   io: CliIo;
   lab: string;
@@ -20,7 +21,19 @@ export async function runSyntheticBackend(args: {
   labProvenance?: RunLabProvenance;
   mode: "run" | "watch";
   options: LabCommandOptions;
-}): Promise<void> {
+}
+
+export async function runSyntheticBackend(args: SyntheticBackendArgs): Promise<void> {
+  const run = syntheticBackendRun(args);
+  if (run === undefined) return;
+  await run.present(await runLab(args.config, run.options));
+}
+
+/**
+ * The preview backend's setup: the sim count and Observer plan, its runLab options, and how it
+ * presents the outcome. Undefined when setup has already written its own result.
+ */
+function syntheticBackendRun(args: SyntheticBackendArgs): BackendRun | undefined {
   const simCount = parseLabCount(args.options.sims, args.config.actors[0]?.count ?? 4);
   if (simCount === null) {
     const result: RunResult = {
@@ -35,7 +48,7 @@ export async function runSyntheticBackend(args: {
     };
     writeResult(args.command, args.io, result, formatRunHuman);
     args.io.setExitCode(2);
-    return;
+    return undefined;
   }
 
   // `run` renders the Observer too, so `run` and `watch` write the same bundle and the first
@@ -54,31 +67,41 @@ export async function runSyntheticBackend(args: {
           ...(openOverride === undefined ? {} : { open: openOverride }),
         })
       : undefined;
-  if (plan === null) return;
-  const outcome = await runLab(args.config, {
-    cwd: args.options.cwd,
-    ...(args.labProvenance === undefined ? {} : { lab: args.labProvenance }),
-    count: simCount,
-    ...(args.options.dryRun === undefined ? {} : { dryRun: args.options.dryRun }),
-    ...(args.options.runId === undefined ? {} : { runId: args.options.runId }),
-    open: plan === undefined ? false : staticObserverOpen(plan),
-  });
-  if (outcome.backend !== "synthetic") {
-    throw new Error(`Expected synthetic backend, got ${outcome.backend}.`);
-  }
-  const runResult = outcome.result;
+  if (plan === null) return undefined;
 
-  if (plan === undefined) {
-    writeResult(args.command, args.io, runResult, formatRunHuman);
-    args.io.setExitCode(runResult.ok ? 0 : 2);
-    return;
-  }
+  return {
+    options: {
+      cwd: args.options.cwd,
+      ...(args.labProvenance === undefined ? {} : { lab: args.labProvenance }),
+      count: simCount,
+      ...(args.options.dryRun === undefined ? {} : { dryRun: args.options.dryRun }),
+      ...(args.options.runId === undefined ? {} : { runId: args.options.runId }),
+      open: plan === undefined ? false : staticObserverOpen(plan),
+    },
+    present: async (outcome) => {
+      if (outcome.backend !== "synthetic") {
+        throw new Error(`Expected synthetic backend, got ${outcome.backend}.`);
+      }
+      const runResult = outcome.result;
 
-  if (!runResult.ok || runResult.observer === undefined) {
-    writeResult(args.command, args.io, runResult, formatRunHuman);
-    args.io.setExitCode(2);
-    return;
-  }
+      if (plan === undefined) {
+        writeResult(args.command, args.io, runResult, formatRunHuman);
+        args.io.setExitCode(runResult.ok ? 0 : 2);
+        return;
+      }
 
-  await showObserver({ command: args.command, io: args.io, plan, rendered: runResult.observer });
+      if (!runResult.ok || runResult.observer === undefined) {
+        writeResult(args.command, args.io, runResult, formatRunHuman);
+        args.io.setExitCode(2);
+        return;
+      }
+
+      await showObserver({
+        command: args.command,
+        io: args.io,
+        plan,
+        rendered: runResult.observer,
+      });
+    },
+  };
 }
