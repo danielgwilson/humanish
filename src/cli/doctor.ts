@@ -1,11 +1,12 @@
 import { readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { probeKeySources } from "../keys/key-resolution.js";
+import { probeKeySources, type KeySourceProbe } from "../keys/key-resolution.js";
 import { nodeSupportsTui, terminalSurfaceMessage, TUI_BUNDLE_URL } from "../tui/contract.js";
 import {
   detectLocalAgents,
   localAgentDoctorMessage,
+  type DetectedLocalAgent,
   type DetectLocalAgentsOptions,
 } from "../actors/local-agent/cli.js";
 import { labSetupChecks } from "../lab/doctor.js";
@@ -81,6 +82,9 @@ async function installedDesktopSdkVersion(): Promise<string | undefined> {
   }
 }
 
+type DoctorCheck = DoctorResult["checks"][number];
+type LabSetup = Awaited<ReturnType<typeof labSetupChecks>>;
+
 export async function doctor(
   cwdInput: string,
   options: { lab?: string; env?: NodeJS.ProcessEnv; localAgents?: DetectLocalAgentsOptions } = {},
@@ -90,31 +94,10 @@ export async function doctor(
     .then((error) => error === null)
     .catch(() => false);
   if (!cwdOk) {
-    const checks = [
-      {
-        name: "target cwd",
-        ok: false,
-        message: "this directory does not exist, or humanish cannot read it",
-      },
-      {
-        name: "package.json",
-        ok: false,
-        checked: false,
-        message: "not checked — the target directory could not be read",
-      },
-      {
-        name: "humanish source",
-        ok: false,
-        checked: false,
-        message: "not checked — the target directory could not be read",
-      },
-      {
-        name: "runtime ignore",
-        ok: false,
-        checked: false,
-        message: "not checked — the target directory could not be read",
-      },
-    ];
+    const checks = uncheckedProjectChecks(
+      "this directory does not exist, or humanish cannot read it",
+      "not checked — the target directory could not be read",
+    );
     return { schema: DOCTOR_SCHEMA, ok: false, cwd, checks };
   }
 
@@ -122,51 +105,16 @@ export async function doctor(
   try {
     projectRoot = await prepareSelectedOutputDirectory(path.dirname(cwd), cwd);
   } catch {
-    const checks = [
-      { name: "target cwd", ok: false, message: "target directory failed containment validation" },
-      {
-        name: "package.json",
-        ok: false,
-        checked: false,
-        message: "not checked — containment validation failed first",
-      },
-      {
-        name: "humanish source",
-        ok: false,
-        checked: false,
-        message: "not checked — containment validation failed first",
-      },
-      {
-        name: "runtime ignore",
-        ok: false,
-        checked: false,
-        message: "not checked — containment validation failed first",
-      },
-    ];
+    const checks = uncheckedProjectChecks(
+      "target directory failed containment validation",
+      "not checked — containment validation failed first",
+    );
     return { schema: DOCTOR_SCHEMA, ok: false, cwd, checks };
   }
 
-  const safeCheck = async (check: () => Promise<boolean>): Promise<boolean> => {
-    try {
-      return await check();
-    } catch {
-      return false;
-    }
-  };
   const env = options.env ?? process.env;
   const agents = await detectLocalAgents({ ...options.localAgents, env });
-  const keyNames = new Set(["OPENAI_API_KEY", "E2B_API_KEY", "GH_TOKEN", "CODEX_API_KEY"]);
-  let receivingKey: string | null = null;
-  if (options.lab) {
-    const { resolveLabManifest } = await import("../lab/discover.js");
-    const resolved = await resolveLabManifest(cwd, options.lab);
-    if (resolved.ok && resolved.config.comms?.email?.kind === "real") {
-      const { receivingRequiredKey } = await import("../comms/setup.js");
-      receivingKey = await receivingRequiredKey(cwd, resolved.config.comms.email.connection);
-      if (receivingKey) keyNames.add(receivingKey);
-    }
-  }
-  const probes = await probeKeySources([...keyNames], { cwd, env });
+  const { probes, receivingKey } = await probeDoctorKeys(cwd, env, options.lab);
   const setup = options.lab
     ? await labSetupChecks({
         cwd,
@@ -177,6 +125,54 @@ export async function doctor(
       })
     : undefined;
   const checks: DoctorResult["checks"] = [
+    ...(await projectChecks(projectRoot)),
+    await desktopSdkCheck(setup),
+    terminalSurfaceCheck(),
+    // The operator's own signed-in coding agent, reported as a CAPABILITY and never a gate: a
+    // machine with none is not broken, it just needs a provider key. This row exists because
+    // "go make an API key" is where most people trying humanish stop, and a developer very often
+    // already has one of these signed in.
+    { name: "local agents", ok: true, message: localAgentDoctorMessage(agents) },
+    ...keyChecks(probes, receivingKey, setup, agents),
+    ...(setup?.checks ?? [
+      {
+        name: "setup route",
+        ok: true,
+        message:
+          "General capabilities only. Use humanish doctor --lab <lab> for the selected participant's requirements and separate analysis readiness.",
+      },
+    ]),
+  ];
+
+  return {
+    schema: DOCTOR_SCHEMA,
+    ok: checks.every((check) => check.ok),
+    cwd,
+    checks,
+  };
+}
+
+/** The rows for a target directory doctor could not open: the failure, then three unrun checks. */
+function uncheckedProjectChecks(targetMessage: string, reason: string): DoctorCheck[] {
+  return [
+    { name: "target cwd", ok: false, message: targetMessage },
+    { name: "package.json", ok: false, checked: false, message: reason },
+    { name: "humanish source", ok: false, checked: false, message: reason },
+    { name: "runtime ignore", ok: false, checked: false, message: reason },
+  ];
+}
+
+async function safeCheck(check: () => Promise<boolean>): Promise<boolean> {
+  try {
+    return await check();
+  } catch {
+    return false;
+  }
+}
+
+/** The target directory, its package.json, the humanish/ source and the .humanish/ ignore rule. */
+async function projectChecks(projectRoot: PreparedSelectedOutputDirectory): Promise<DoctorCheck[]> {
+  return [
     {
       name: "target cwd",
       ok: true,
@@ -215,104 +211,117 @@ export async function doctor(
       ),
       message: ".gitignore safely contains .humanish/",
     },
-    // The optional peer dep every live browser and terminal lane needs (#346). `npx -y humanish`
-    // does not pull optional peers, so an adopter's FIRST live run used to fail on it — safely and
-    // at $0, but as a burned first impression on the flagship path. Answering it here means the
-    // readiness command actually answers readiness.
-    await (async () => {
-      const present = await safeCheck(async () => {
-        try {
-          await import("@e2b/desktop");
-          return true;
-        } catch {
-          return false;
-        }
-      });
-      const version = present ? await installedDesktopSdkVersion() : undefined;
-      const advisory = desktopSdkAdvisory(version);
-      return {
-        name: "e2b desktop sdk",
-        ok: present || setup?.desktop === false,
-        message: present
-          ? `optional peer @e2b/desktop ${version ?? "(version unread)"} is installed; provider access is not tested${advisory === undefined ? "" : `. ${advisory}`}`
-          : setup?.desktop === false
-            ? "optional peer @e2b/desktop is absent; not required by the selected route"
-            : "optional peer @e2b/desktop is NOT installed — dry runs work, but any live desktop lane will fail closed. Install it with `npm i -D @e2b/desktop`.",
-      };
-    })(),
-    // The stakeholder surface (#455). Reported as capability, never as a gate: the TUI is optional,
-    // and `doctor` is itself mostly run by agents through a pipe, where a TTY requirement says
-    // nothing about whether the PROJECT is ready. So this row is always ok.
-    //
-    // WHO IS READING decides the wording, and a real first-contact study
-    // (labs/first-contact.yaml) is why. An agent evaluating humanish read
-    // "`humanish tui` is available in an interactive terminal", correctly concluded it was not in
-    // one, and dropped it — then wrote a report FOR A HUMAN that never mentioned the human
-    // surface at all. Discovery worked; handoff did not. A capability described to a reader who
-    // cannot use it has to be phrased as something to PASS ON, or it reads as "not for you" and
-    // dies there.
-    (() => {
-      const supported = nodeSupportsTui();
-      const bundlePresent = existsSync(TUI_BUNDLE_URL);
-      return {
-        name: "terminal surface",
-        ok: true,
-        message: terminalSurfaceMessage({
-          supported,
-          bundlePresent,
-          interactive: process.stdout.isTTY === true,
-          nodeVersion: process.version,
-        }),
-      };
-    })(),
-    // The operator's own signed-in coding agent, reported as a CAPABILITY and never a gate: a
-    // machine with none is not broken, it just needs a provider key. This row exists because
-    // "go make an API key" is where most people trying humanish stop, and a developer very often
-    // already has one of these signed in.
-    ...(await (async () => {
-      return [{ name: "local agents", ok: true, message: localAgentDoctorMessage(agents) }];
-    })()),
-    // Provider-key discovery (#436): which source supplies each live-run key, through the same
-    // chain a live command resolves (env/--env-file, project overlay, vendor stores, the
-    // humanish user store). Values never appear; sources and fill commands do.
-    ...(await (async () => {
-      return probes.map((probe) => {
-        const present = probe.source !== null;
-        const hint =
-          probe.name === receivingKey
-            ? `provide ${probe.name} through process env or --env-file`
-            : probe.hint;
-        // GH_TOKEN is needed only for private clone subjects, so its absence is informational.
-        const required = setup
-          ? setup.keys.includes(probe.name)
-          : probe.name === "E2B_API_KEY" ||
-            (probe.name === "OPENAI_API_KEY" &&
-              !agents.some((agent) => agent.authStatus === "authenticated"));
-        return {
-          name: `key ${probe.name}`,
-          ok: present || !required,
-          message: present
-            ? `supplied by ${probe.source}; presence only, validity not tested`
-            : required
-              ? `missing from every source — ${hint}`
-              : `not required for ${setup ? "the selected participant route" : "every route"}; ${hint}`,
-        };
-      });
-    })()),
-    ...(setup?.checks ?? [
-      {
-        name: "setup route",
-        ok: true,
-        message:
-          "General capabilities only. Use humanish doctor --lab <lab> for the selected participant's requirements and separate analysis readiness.",
-      },
-    ]),
   ];
+}
 
+/**
+ * The optional peer dep every live browser and terminal lane needs (#346). `npx -y humanish` does
+ * not pull optional peers, so an adopter's FIRST live run used to fail on it — safely and at $0,
+ * but as a burned first impression on the flagship path. Answering it here means the readiness
+ * command actually answers readiness.
+ */
+async function desktopSdkCheck(setup: LabSetup | undefined): Promise<DoctorCheck> {
+  const present = await safeCheck(async () => {
+    try {
+      await import("@e2b/desktop");
+      return true;
+    } catch {
+      return false;
+    }
+  });
+  const version = present ? await installedDesktopSdkVersion() : undefined;
+  const advisory = desktopSdkAdvisory(version);
   return {
-    schema: DOCTOR_SCHEMA,
-    ok: checks.every((check) => check.ok),
-    cwd,
-    checks,
+    name: "e2b desktop sdk",
+    ok: present || setup?.desktop === false,
+    message: present
+      ? `optional peer @e2b/desktop ${version ?? "(version unread)"} is installed; provider access is not tested${advisory === undefined ? "" : `. ${advisory}`}`
+      : setup?.desktop === false
+        ? "optional peer @e2b/desktop is absent; not required by the selected route"
+        : "optional peer @e2b/desktop is NOT installed — dry runs work, but any live desktop lane will fail closed. Install it with `npm i -D @e2b/desktop`.",
   };
+}
+
+/**
+ * The stakeholder surface (#455). Reported as capability, never as a gate: the TUI is optional,
+ * and `doctor` is itself mostly run by agents through a pipe, where a TTY requirement says
+ * nothing about whether the PROJECT is ready. So this row is always ok.
+ *
+ * WHO IS READING decides the wording, and a real first-contact study
+ * (labs/first-contact.yaml) is why. An agent evaluating humanish read
+ * "`humanish tui` is available in an interactive terminal", correctly concluded it was not in
+ * one, and dropped it — then wrote a report FOR A HUMAN that never mentioned the human
+ * surface at all. Discovery worked; handoff did not. A capability described to a reader who
+ * cannot use it has to be phrased as something to PASS ON, or it reads as "not for you" and
+ * dies there.
+ */
+function terminalSurfaceCheck(): DoctorCheck {
+  const supported = nodeSupportsTui();
+  const bundlePresent = existsSync(TUI_BUNDLE_URL);
+  return {
+    name: "terminal surface",
+    ok: true,
+    message: terminalSurfaceMessage({
+      supported,
+      bundlePresent,
+      interactive: process.stdout.isTTY === true,
+      nodeVersion: process.version,
+    }),
+  };
+}
+
+/** Probes the live-run keys, plus the receiving-email key a real-comms lab names. */
+async function probeDoctorKeys(
+  cwd: string,
+  env: NodeJS.ProcessEnv,
+  lab: string | undefined,
+): Promise<{ probes: KeySourceProbe[]; receivingKey: string | null }> {
+  const keyNames = new Set(["OPENAI_API_KEY", "E2B_API_KEY", "GH_TOKEN", "CODEX_API_KEY"]);
+  let receivingKey: string | null = null;
+  if (lab) {
+    const { resolveLabManifest } = await import("../lab/discover.js");
+    const resolved = await resolveLabManifest(cwd, lab);
+    if (resolved.ok && resolved.config.comms?.email?.kind === "real") {
+      const { receivingRequiredKey } = await import("../comms/setup.js");
+      receivingKey = await receivingRequiredKey(cwd, resolved.config.comms.email.connection);
+      if (receivingKey) keyNames.add(receivingKey);
+    }
+  }
+  const probes = await probeKeySources([...keyNames], { cwd, env });
+  return { probes, receivingKey };
+}
+
+/**
+ * Provider-key discovery (#436): which source supplies each live-run key, through the same
+ * chain a live command resolves (env/--env-file, project overlay, vendor stores, the
+ * humanish user store). Values never appear; sources and fill commands do.
+ */
+function keyChecks(
+  probes: readonly KeySourceProbe[],
+  receivingKey: string | null,
+  setup: LabSetup | undefined,
+  agents: readonly DetectedLocalAgent[],
+): DoctorCheck[] {
+  return probes.map((probe) => {
+    const present = probe.source !== null;
+    const hint =
+      probe.name === receivingKey
+        ? `provide ${probe.name} through process env or --env-file`
+        : probe.hint;
+    // GH_TOKEN is needed only for private clone subjects, so its absence is informational.
+    const required = setup
+      ? setup.keys.includes(probe.name)
+      : probe.name === "E2B_API_KEY" ||
+        (probe.name === "OPENAI_API_KEY" &&
+          !agents.some((agent) => agent.authStatus === "authenticated"));
+    return {
+      name: `key ${probe.name}`,
+      ok: present || !required,
+      message: present
+        ? `supplied by ${probe.source}; presence only, validity not tested`
+        : required
+          ? `missing from every source — ${hint}`
+          : `not required for ${setup ? "the selected participant route" : "every route"}; ${hint}`,
+    };
+  });
 }
