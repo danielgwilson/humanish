@@ -35,7 +35,7 @@ execution:
 - E2B desktop time, app provisioning, and any services used by your target app are additional. Desktop estimates use dated assumptions; your provider bill is authoritative.
 - A model without a known rate cannot satisfy a fail-closed computer-use cap, so the run is refused rather than treated as free.
 
-The included `try-live` lab uses one participant and `maxUsd: 2`. It is a starting point for learning the product, not a recommended budget for every task. When `init` writes it for a signed-in ChatGPT-account Codex instead of a provider key, it has no dollar cap: account usage has no API price, so preflight refuses a dollar cap there, and the 10-minute `execution.timeoutMs` bounds the run.
+The included `try-live` lab uses one participant and `maxUsd: 2`. It is a starting point for learning the product, not a recommended budget for every task. When `init` finds no OpenAI key and a signed-in Codex or Claude Code, it writes `try-live` with a `local-agent` participant and no dollar cap: account usage has no dollar price humanish can enforce, and the 10-minute `execution.timeoutMs` bounds the run.
 
 Supported live runs also request post-run analysis by default. This sends selected
 retained text and captures to OpenAI, using `OPENAI_API_KEY`, with a separate $3

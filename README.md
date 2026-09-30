@@ -103,9 +103,9 @@ TUN; M3-or-newer Apple Silicon Macs need native ARM64 Node and Lima 2.2+.
 send one synthetic participant into the included drawDB study:
 
 ```bash
-npx humanish init --yes
 npx humanish keys set e2b
 npx humanish keys set openai
+npx humanish init --yes
 npx humanish doctor --lab try-live
 npx humanish lab preflight try-live
 npx humanish run try-live
@@ -116,8 +116,13 @@ Existing `E2B_API_KEY` and `OPENAI_API_KEY` environment variables also work.
 `doctor --lab` checks the selected route's local setup without launching a
 desktop or making a model request. It reports key presence, not remote key
 validity, model access, or quota. `lab preflight` checks manifest metadata by default.
-`try-live` clones and studies drawDB, not your project. Its **$2 cap covers
-estimated participant model spend**. Post-run analysis defaults to a separate
+`try-live` clones and studies drawDB, not your project. Set the keys before `init`:
+`init` writes `try-live` for the participant this machine can run, and it never
+overwrites an existing lab file. With an OpenAI key, from the environment or the
+`keys set` store, the participant is `openai-computer-use` and its **$2 cap covers
+estimated participant model spend**. With no OpenAI key and a signed-in Codex or
+Claude Code, it is `local-agent`, bounded by a ten-minute session limit with no
+dollar cap. Post-run analysis defaults to a separate
 **$3 admission estimate limit**; set `review.analysis: false` to disable it.
 Hosted desktop time is additional. Participant caps are checked
 between turns and are not provider billing ceilings. Allow a few minutes for

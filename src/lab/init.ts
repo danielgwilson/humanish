@@ -8,6 +8,7 @@ import {
   type FirstRunEnvironment,
 } from "../cli/first-run-path.js";
 import { detectLocalAgents } from "../actors/local-agent/cli.js";
+import { probeKeySources } from "../cli/key-resolution.js";
 
 import {
   DEFAULT_LOCAL_BROWSER_STARTER,
@@ -180,7 +181,8 @@ export async function runInit(options: InitOptions): Promise<InitResult> {
   // The starter live lab is written for the brain this machine can actually use. Shipping it as
   // openai-computer-use on a machine with no provider key but a signed-in Codex would hand someone
   // a file that asks for a credential they were just told they do not need (#505).
-  const starterActor = starterActorFor(await firstRunEnvironment(options.env ?? process.env));
+  const machine = await firstRunEnvironment(options.env ?? process.env, requestedCwd);
+  const starterActor = starterActorFor(machine);
   for (const file of starterFilesFor(starterActor, localBrowser.value)) {
     const absolutePath = path.join(cwd, file.path);
     const existing = await readTextIfExists(preparedProjectRoot, file.path);
@@ -323,9 +325,7 @@ export async function runInit(options: InitOptions): Promise<InitResult> {
     changes,
     warnings,
     // Resolved against THIS machine, because a next step that cannot work is worse than none.
-    ...(mode === "applied"
-      ? { nextSteps: await resolveFirstRunGuidance(options.env ?? process.env) }
-      : {}),
+    ...(mode === "applied" ? { nextSteps: firstRunGuidance(machine) } : {}),
   };
 }
 
@@ -363,16 +363,25 @@ function validateLocalBrowserStarter(
 }
 
 /**
- * What to tell the operator next. Local CLI status is classified without returning
- * its output or reading its credential file; provider keys are checked for presence.
+ * What this machine can run, for the starter lab and the next steps. Local CLI status is
+ * classified without returning its output or reading its credential file. Provider keys go
+ * through the same discovery chain as every other command (process env, the project overlay,
+ * `e2b auth login`, the `humanish keys set` store) and only their presence is read, never a value.
+ * Local authentication status is not a fresh provider/account-validity test.
  */
-async function resolveFirstRunGuidance(env: NodeJS.ProcessEnv): Promise<string[]> {
-  return firstRunGuidance(await firstRunEnvironment(env));
-}
-
-/** Local authentication status is not a fresh provider/account-validity test. */
-async function firstRunEnvironment(env: NodeJS.ProcessEnv): Promise<FirstRunEnvironment> {
+async function firstRunEnvironment(
+  env: NodeJS.ProcessEnv,
+  cwd: string,
+): Promise<FirstRunEnvironment> {
   const agents = await detectLocalAgents({ env }).catch(() => []);
+  const keys = await probeKeySources(["OPENAI_API_KEY", "E2B_API_KEY"], {
+    cwd,
+    env,
+    // The same home as os.homedir() for a real environment; a test's env picks its own. The gh
+    // probe is skipped because init reads no GitHub credential.
+    deps: { ...(env.HOME ? { homeDir: env.HOME } : {}), execText: async () => null },
+  }).catch(() => []);
+  const present = (name: string) => keys.some((key) => key.name === name && key.source !== null);
   let hasDesktopSdk = false;
   try {
     // Resolution from the PROJECT, not from wherever humanish itself lives.
@@ -387,8 +396,8 @@ async function firstRunEnvironment(env: NodeJS.ProcessEnv): Promise<FirstRunEnvi
   return {
     installedInProject: here.startsWith(path.join(process.cwd(), "node_modules") + path.sep),
     hasDesktopSdk,
-    hasE2bKey: (env.E2B_API_KEY ?? "").trim().length > 0,
-    hasProviderKey: (env.OPENAI_API_KEY ?? "").trim().length > 0,
+    hasE2bKey: present("E2B_API_KEY"),
+    hasProviderKey: present("OPENAI_API_KEY"),
     localAgents: agents
       .filter((agent) => agent.authStatus === "authenticated")
       .map((agent) => agent.label),

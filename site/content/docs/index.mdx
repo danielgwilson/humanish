@@ -13,10 +13,9 @@ Use Node 22.19 or newer, in a project directory:
 
 ```bash
 npm install --save-dev humanish @e2b/desktop
-npx humanish init --yes
 ```
 
-`init` writes example labs and personas under `humanish/`, ignores `.humanish/` (where runs land), and prints the next command for your machine. `@e2b/desktop` is the hosted desktop; install it in the same project, because a one-shot `npx humanish@latest` cannot see a copy installed elsewhere. The keyless preview and the local-browser route work without it.
+`@e2b/desktop` is the hosted desktop; install it in the same project, because a one-shot `npx humanish@latest` cannot see a copy installed elsewhere. The keyless preview and the local-browser route work without it.
 
 ## Add two keys
 
@@ -25,10 +24,13 @@ A live study needs a desktop and a model. The default route uses E2B for the des
 ```bash
 npx humanish keys set e2b
 npx humanish keys set openai
+npx humanish init --yes
 npx humanish doctor --lab try-live
 ```
 
 The prompts hide what you type and write to a user-level store with mode `0600`. `E2B_API_KEY` and `OPENAI_API_KEY` in the environment work too, and `--env-file <path>` loads an ignored file for one command; pass it to both `doctor` and `run`. `doctor --lab` checks that the route's keys or logins are present without creating a desktop or calling a model. It cannot check quota or whether a key is still valid.
+
+`init` writes example labs and personas under `humanish/`, ignores `.humanish/` (where runs land), and prints the next command for your machine. Run it after `keys set`: it writes the `try-live` lab for the participant it finds credentials for, and it never overwrites an existing lab file.
 
 Two alternatives, each on its own page:
 
@@ -43,7 +45,7 @@ npx humanish run try-live
 
 `try-live` is the starter lab `init` wrote. It clones drawDB, an open-source database diagram editor, builds it inside the hosted desktop, and asks one synthetic newcomer to add two tables and name them. It studies drawDB, not your project; drawDB is the application studied, not a humanish adopter or endorser.
 
-Allow a few minutes for the build and the participant. The lab caps estimated model spend at $2. Three fresh installs on September 1, 2026 finished in 108 to 111 seconds at about $0.16 of model spend each, plus a few cents of desktop time; the [receipt](https://github.com/danielgwilson/humanish/blob/main/docs/goals/computer-use-actor/receipts/cold-install-try-live-2026-09-01.md) has the run ids. Your run will differ.
+Allow a few minutes for the build and the participant. With an OpenAI key, the lab caps estimated model spend at $2. If `init` found no OpenAI key and a signed-in Codex or Claude Code, it wrote a `local-agent` participant instead, bounded by a ten-minute session limit with no dollar cap. Three fresh installs on September 1, 2026 finished in 108 to 111 seconds at about $0.16 of model spend each, plus a few cents of desktop time; the [receipt](https://github.com/danielgwilson/humanish/blob/main/docs/goals/computer-use-actor/receipts/cold-install-try-live-2026-09-01.md) has the run ids. Your run will differ.
 
 To watch the desktop while it runs, use `npx humanish watch try-live` instead.
 
@@ -69,6 +71,7 @@ A participant who gets stuck is often the useful result: it gives you a concrete
 ## Preview without keys
 
 ```bash
+npx humanish init --yes
 npx humanish run first-run
 npx humanish observe --run latest --open
 ```
