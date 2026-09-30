@@ -161,7 +161,7 @@ function parseRosterGroups(
   }
   if (!Array.isArray(raw) || raw.length === 0) {
     return invalid(
-      `actors[${actorIndex}].roster must be a non-empty array of group objects ({ id, count, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry? }) when set.`,
+      `actors[${actorIndex}].roster must be a non-empty array of group objects ({ id, count, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry?, host?, reasoningEffort?, stopWhen?, dwell? }) when set.`,
     );
   }
 
@@ -170,7 +170,7 @@ function parseRosterGroups(
   for (const [groupIndex, entry] of raw.entries()) {
     if (!isRecord(entry)) {
       return invalid(
-        `actors[${actorIndex}].roster[${groupIndex}] must be an object ({ id, count, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry? }).`,
+        `actors[${actorIndex}].roster[${groupIndex}] must be an object ({ id, count, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry?, host?, reasoningEffort?, stopWhen?, dwell? }).`,
       );
     }
     const groupId = str(entry.id);
@@ -212,7 +212,8 @@ function parseRosterGroups(
 
 /**
  * Parse `actors[index].lanes` into a fan-out roster (computer-use E2B route). Structural only:
- * each lane is `{ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry? }`.
+ * each lane is `{ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?,
+ * entry?, host?, reasoningEffort?, stopWhen?, dwell? }`.
  * Lane ids (when declared) must be public-safe path tokens and unique; lane grouping metadata
  * must be public-safe tokens; a lane device must be a known preset name. The
  * route-scoped cross-validation (lanes XOR count/laneFocus, device XOR raw resolution, cap 16)
@@ -227,7 +228,7 @@ function parseLanes(
   }
   if (!Array.isArray(raw) || raw.length === 0) {
     return invalid(
-      `actors[${actorIndex}].lanes must be a non-empty array of lane objects ({ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry? }) when set.`,
+      `actors[${actorIndex}].lanes must be a non-empty array of lane objects ({ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry?, host?, reasoningEffort?, stopWhen?, dwell? }) when set.`,
     );
   }
   const lanes: LabActorLane[] = [];
@@ -235,7 +236,7 @@ function parseLanes(
   for (const [laneIndex, entry] of raw.entries()) {
     if (!isRecord(entry)) {
       return invalid(
-        `actors[${actorIndex}].lanes[${laneIndex}] must be an object ({ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry? }).`,
+        `actors[${actorIndex}].lanes[${laneIndex}] must be an object ({ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry?, host?, reasoningEffort?, stopWhen?, dwell? }).`,
       );
     }
     const lane: LabActorLane = {};

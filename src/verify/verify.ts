@@ -373,7 +373,7 @@ async function evidenceChecks(
     findingsCheck(
       "shared-world evidence",
       valid ? sharedWorldEvidenceFindings(valid) : [],
-      "live shared-world runs either are absent or carry a well-formed alternating timeline (cp-baseline → turn → cp), single-plane provenance, digest-only checkpoints, the mandatory attributionLimits, and a checkpoint delta on a passed run",
+      "live shared-world runs either are absent or carry well-formed evidence for their mode (concurrent lane windows, state series and outcomes covering every role, or an older run's sequential timeline), single-plane provenance, digest-only checkpoints and the mandatory attributionLimits",
       "shared-world findings",
     ),
     {

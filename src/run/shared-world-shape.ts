@@ -125,8 +125,8 @@ export function isSharedWorldEvidence(value: unknown): value is SharedWorldEvide
   )
     return false;
   // Tolerant: validate the TYPE of each present field only (the coherence + topologyMode dispatch
-  // are validateSharedWorldEvidence's job — an injected value-shaped field must pass this guard so
-  // verify catches it fail-closed). A bundle must carry at least one of the two shapes.
+  // are the job of sharedWorldEvidenceFindings — an injected value-shaped field must pass this
+  // guard so verify catches it fail-closed). A bundle must carry at least one of the two shapes.
   if (
     value.sequence !== undefined &&
     !(Array.isArray(value.sequence) && value.sequence.every((id) => typeof id === "string"))
@@ -178,7 +178,7 @@ function isSharedWorldTimelineEntry(value: unknown): boolean {
 }
 
 // Tolerant shape guards for the CONCURRENT series (extra keys tolerated — the digest-only /
-// allowed-keys tripwires are validateSharedWorldEvidence's strict job).
+// allowed-keys tripwires are the strict job of sharedWorldEvidenceFindings).
 function isSharedWorldLaneWindow(value: unknown): boolean {
   return (
     isRecord(value) &&

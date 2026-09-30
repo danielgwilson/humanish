@@ -13,14 +13,14 @@ export const REVIEW_SCHEMA = "humanish.review.v1";
 export const PUBLIC_TARGET_CWD = "[target-cwd]";
 
 /**
- * A namespaced, product-agnostic score a thin adapter attaches to the bundle via the terminal-product
- * lane's `score` hook (the layer-6 extension seam, issue #154 acceptance #8). Core never reads its
- * `data` and knows none of the adopter's nouns — the `namespace` (e.g. `"acme-pixelforge"`) scopes
- * the whole record so core schemas stay product-agnostic and a future inert-field audit does not
- * misfire on a noun core never owned. The adopter's real scorecard (component weights, product
- * rubric) lives in ITS repo and is summarized into the generic status/score/summary; everything
- * product-specific rides under `data`. This is NOT a built-in product scorer — it is the SEAM the
- * adopter's scorer plugs into without forking core.
+ * A namespaced, product-agnostic score a thin adapter attaches to the bundle via a route's `score`
+ * hook, on terminal-product or a browser route (the layer-6 extension seam, issue #154 acceptance
+ * #8). Core never reads its `data` and knows none of the adopter's nouns — the `namespace` (e.g.
+ * `"acme-pixelforge"`) scopes the whole record so core schemas stay product-agnostic and a future
+ * inert-field audit does not misfire on a noun core never owned. The adopter's real scorecard
+ * (component weights, product rubric) lives in ITS repo and is summarized into the generic
+ * status/score/summary; everything product-specific rides under `data`. This is NOT a built-in
+ * product scorer — it is the SEAM the adopter's scorer plugs into without forking core.
  */
 export interface RunAdapterScore {
   schema: "humanish.adapter-score.v1";
@@ -285,7 +285,8 @@ export interface RunBundle {
   review: ReviewSummary;
   feedbackCandidates: RunFeedbackCandidate[];
   /** Structured subject provenance (invariant 5). Optional and additive: emitted by the
-   * computer-use backend; tolerated absent everywhere else. */
+   * computer-use and shared-world backends and the clone scripted-browser route; tolerated absent
+   * everywhere else. */
   subject?: RunSubjectProvenance;
   /**
    * The custom E2B desktop TEMPLATE (image) the run's sandbox(es) actually launched on, from
@@ -327,7 +328,7 @@ export interface RunBundle {
   attributionClass?: RunAttributionClass;
   /**
    * Shared-world evidence block (`humanish.shared-world.v1`). Optional + additive; present only on
-   * shared-world runs. Verified fail-closed by validateSharedWorldEvidence.
+   * shared-world runs. Verified fail-closed by sharedWorldEvidenceFindings.
    */
   sharedWorld?: SharedWorldEvidence;
   /**

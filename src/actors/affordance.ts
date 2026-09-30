@@ -46,7 +46,10 @@ export type AffordanceClass =
   | "script-execution"
   /** Developer tooling opened by keyboard shortcut. Not a human affordance. */
   | "devtools"
-  /** A browser-internal surface rather than the product: chrome://, about:, view-source:, file:. */
+  /**
+   * A browser surface rather than the product: chrome://, about:, view-source:, devtools:, file:,
+   * edge:, brave:.
+   */
   | "browser-internal"
   /** The actor observing or pausing rather than acting: screenshots, waits, pointer moves. */
   | "observation";

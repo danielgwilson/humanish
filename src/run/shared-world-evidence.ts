@@ -164,7 +164,7 @@ interface SharedWorldSkippedTail {
 export interface SharedWorldEvidence {
   schema: typeof SHARED_WORLD_SCHEMA;
   topology: "shared-world";
-  /** The substrate discriminator (FIX-8). Branched on FIRST by validateSharedWorldEvidence. */
+  /** The substrate discriminator (FIX-8). Branched on first by sharedWorldEvidenceFindings. */
   topologyMode: "sequential" | "concurrent";
   /**
    * CONCURRENT route only (#164 phase 2): the PLANE-class discriminator. Absent == the historical

@@ -158,7 +158,9 @@ export interface ActorCapabilities {
    *     invocation (never `Sandbox.create({envs})`, which is sandbox-global), the key is presumed
    *     exfiltratable, and the blast radius is bounded by key scoping + a spend budget.
    * Absent === "external". On the shipped terminal-product live route, the engine enforces this
-   * declaration before sandbox creation and passes the key only to the agent command.
+   * declaration before sandbox creation. Under `runtimeAuth: openai-env` it passes the key only to
+   * the agent command; under `openai-egress` the key stays in a host-side E2B header transform
+   * and the command gets a placeholder.
    */
   keyPlacement?: "external" | "in-sandbox-command-scoped";
 }
@@ -461,9 +463,10 @@ export interface ActorTrace {
    * ADDITIVE + OPTIONAL token-derived cost ESTIMATE for this lane (humanish.actor-estimated-cost.v1).
    * Distinct from `tokenUsage.costUsd`, which is RESERVED for a real provider-returned charge: a
    * bare `costUsd` always means "the provider billed this", while `estimatedCost.estimatedCostUsd`
-   * is a rate-table multiply named honestly as an estimate (invariant 6). Absent on codex/scripted
-   * lanes and on every pre-existing bundle — its absence is tolerated by verify (fail-open on
-   * display). A `null` estimatedCostUsd is DECLARED ABSENT (unknown rate / no usage), never 0.
+   * is a rate-table multiply named honestly as an estimate (invariant 6). Absent on the Codex
+   * app-server and scripted lanes and on every pre-existing bundle; the terminal lane records a
+   * null estimate. Its absence is tolerated by verify (fail-open on display). A `null`
+   * estimatedCostUsd is DECLARED ABSENT (unknown rate / no usage), never 0.
    */
   estimatedCost?: ActorEstimatedCost;
   capabilities: ActorCapabilities;
