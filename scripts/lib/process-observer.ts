@@ -322,16 +322,8 @@ export function observeProcesses(options: {
       for (const pid of live) {
         const stat = stats.get(pid)!;
         const key = `${pid}:${stat.start}`;
-        if (pid !== options.rootPid && !seen.has(key))
-          seen.set(key, {
-            pid,
-            ppid: stat.ppid,
-            comm: stat.comm,
-            exe: exeName(io, proc, pid),
-            args: commandLine(io, proc, pid),
-            start: stat.start,
-            via: tree.has(pid) ? "tree" : "marker",
-          });
+        if (pid !== options.rootPid)
+          recordProcess(io, proc, seen, pid, stat, tree.has(pid) ? "tree" : "marker");
         const held = socketInodes(io, proc, pid);
         if (held === DENIED) {
           // The app-server itself must stay inspectable; a refusing descendant is listed.
@@ -410,6 +402,38 @@ export function observeProcesses(options: {
       };
     },
   };
+}
+
+/**
+ * Records a process on first sight. An exec keeps the pid and start time, so a process first seen
+ * before its exec (a forked shell about to run sleep, say) is refreshed to what it runs now.
+ */
+function recordProcess(
+  io: ObserverIo,
+  proc: string,
+  seen: Map<string, ObservedProcess>,
+  pid: number,
+  stat: Stat,
+  via: ObservedProcess["via"],
+): void {
+  const key = `${pid}:${stat.start}`;
+  const entry = seen.get(key);
+  if (entry === undefined)
+    seen.set(key, {
+      pid,
+      ppid: stat.ppid,
+      comm: stat.comm,
+      exe: exeName(io, proc, pid),
+      args: commandLine(io, proc, pid),
+      start: stat.start,
+      via,
+    });
+  else if (entry.comm !== stat.comm)
+    Object.assign(entry, {
+      comm: stat.comm,
+      exe: exeName(io, proc, pid),
+      args: commandLine(io, proc, pid),
+    });
 }
 
 /** Waits for a child of `parentPid` running `exe` (the tracee under strace) and returns its pid. */
