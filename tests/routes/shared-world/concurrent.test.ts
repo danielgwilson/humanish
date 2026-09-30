@@ -30,13 +30,13 @@ import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
 import { routesToConcurrentSharedWorld } from "../../../src/lab/routing.js";
 import { runLab, selectLabBackend } from "../../../src/lab/engine.js";
+import { runConcurrentSharedWorld } from "../../../src/routes/shared-world/lab.js";
 import {
-  runConcurrentSharedWorld,
   extractLobbyCodeFromNarration,
   parseLobbyCodeReply,
   extractResponsesOutputText,
   readLobbyCodeFromFrame,
-} from "../../../src/routes/shared-world/concurrent.js";
+} from "../../../src/routes/shared-world/lobby-code.js";
 import type { SharedWorldLabHooks } from "../../../src/routes/shared-world/hooks.js";
 import type {
   BrowserLabScoringContext,

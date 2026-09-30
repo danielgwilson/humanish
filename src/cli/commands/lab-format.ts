@@ -2,7 +2,7 @@ import { formatCuaDiagnostics, formatCuaStopCause } from "../../routes/computer-
 import type { CuaActorLabResult } from "../../routes/computer-use/types.js";
 import type { ScriptedBrowserLabResult } from "../../routes/scripted-browser/lab.js";
 import type { TerminalProductLabResult } from "../../routes/terminal/types.js";
-import type { ConcurrentSharedWorldLabResult } from "../../routes/shared-world/concurrent.js";
+import type { ConcurrentSharedWorldLabResult } from "../../routes/shared-world/types.js";
 
 export function formatConcurrentSharedWorldLabHuman(
   result: ConcurrentSharedWorldLabResult,

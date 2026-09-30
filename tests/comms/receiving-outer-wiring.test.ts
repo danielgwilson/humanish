@@ -7,7 +7,7 @@ import type { CuaActorSessionOptions } from "../../src/actors/computer-use/actor
 import type { CuaLoopResult } from "../../src/actors/computer-use/loop.js";
 import { runCuaActorLab } from "../../src/routes/computer-use/lab.js";
 import { type CuaActorLabHooks } from "../../src/routes/computer-use/types.js";
-import { runConcurrentSharedWorld } from "../../src/routes/shared-world/concurrent.js";
+import { runConcurrentSharedWorld } from "../../src/routes/shared-world/lab.js";
 import type { SharedWorldLabHooks } from "../../src/routes/shared-world/hooks.js";
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/lab/types.js";
 import { parseLabConfig } from "../../src/lab/config.js";

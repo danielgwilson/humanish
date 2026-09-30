@@ -20,7 +20,7 @@ import {
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/lab/types.js";
 import { planCuaLanes } from "../../src/routes/computer-use/lane-plan.js";
 import type { CuaLaneSpec } from "../../src/routes/computer-use/types.js";
-import { runConcurrentSharedWorld } from "../../src/routes/shared-world/concurrent.js";
+import { runConcurrentSharedWorld } from "../../src/routes/shared-world/lab.js";
 import { prepareSelectedOutputDirectory } from "../../src/run/selected-output-paths.js";
 
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
