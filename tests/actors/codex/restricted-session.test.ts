@@ -31,13 +31,18 @@ const request: RestrictedCodexRequest = {
     properties: { observedCode: { type: "string" } },
   },
   maxOutputTokens: null,
-  timeoutMs: 5000,
+  // A hang guard, not a budget under test: it covers real process spawns, so it sits above the
+  // test timeout. Tests of the deadline pass their own timeoutMs on a fake clock.
+  timeoutMs: 60_000,
 };
 
 type Trace = Record<string, unknown>;
 
 // Captured before any test fakes timers, so polling the fake process keeps real time.
 const realSetTimeout = globalThis.setTimeout;
+// vi.waitFor gives up after 1 s by default. These waits follow a real child spawn, which alone can
+// take longer under load; the test timeout still bounds a hang.
+const AFTER_SPAWN = { timeout: 15_000 };
 async function untilTraced(
   entries: () => Promise<Trace[]>,
   predicate: (entry: Trace) => boolean,
@@ -362,21 +367,31 @@ describe("restricted Codex analyst session", () => {
   });
 
   it.each([
-    ["hang-version", "startup"],
-    ["hang-initialize", "initialize"],
-    ["hang-thread-start", "thread/start"],
-    ["hang-turn-start", "turn/start"],
-  ])("bounds %s and identifies the timed-out phase", async (scenario, failurePhase) => {
-    const f = await fixture(scenario),
-      start = performance.now();
-    const result = await f.run({ ...request, timeoutMs: 600 });
-    expect(result).toMatchObject({
-      status: "timed_out",
-      errorCode: "timeout",
-      failurePhase,
-      dispatched: scenario === "hang-turn-start",
-    });
-    expect(performance.now() - start).toBeLessThan(4000);
+    ["hang-version", "startup", (entry: Trace) => entry.operation === "--version"],
+    ["hang-initialize", "initialize", (entry: Trace) => entry.method === "initialize"],
+    ["hang-thread-start", "thread/start", (entry: Trace) => entry.method === "thread/start"],
+    ["hang-turn-start", "turn/start", (entry: Trace) => entry.method === "turn/start"],
+  ])("bounds %s and identifies the timed-out phase", async (scenario, failurePhase, hanging) => {
+    const f = await fixture(scenario);
+    // Only the deadline's clock is fake, and it moves once the fake process is hanging in the
+    // phase under test, so spawning under load spends none of the 600 ms budget.
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] });
+    try {
+      const start = performance.now();
+      const pending = f.run({ ...request, timeoutMs: 600 });
+      await untilTraced(f.entries, hanging);
+      vi.advanceTimersByTime(600);
+      expect(await pending).toMatchObject({
+        status: "timed_out",
+        errorCode: "timeout",
+        failurePhase,
+        dispatched: scenario === "hang-turn-start",
+      });
+      // Cleanup waited on the child, not on a timer: the run ended on 600 ms of clock time.
+      expect(performance.now() - start).toBe(600);
+    } finally {
+      vi.useRealTimers();
+    }
     expect(await readdir(f.tempRoot)).toEqual([]);
   });
 
@@ -386,8 +401,10 @@ describe("restricted Codex analyst session", () => {
       const f = await fixture(scenario),
         controller = new AbortController();
       const pending = f.run({ ...request, signal: controller.signal });
-      await vi.waitFor(async () =>
-        expect((await f.entries()).some((entry) => entry.method === "turn/start")).toBe(true),
+      await vi.waitFor(
+        async () =>
+          expect((await f.entries()).some((entry) => entry.method === "turn/start")).toBe(true),
+        AFTER_SPAWN,
       );
       const start = performance.now();
       controller.abort();
@@ -413,8 +430,10 @@ describe("restricted Codex analyst session", () => {
       controller = new AbortController();
     second.options.authHome = first.authHome;
     const pending = first.run({ ...request, signal: controller.signal });
-    await vi.waitFor(async () =>
-      expect((await first.entries()).some((entry) => entry.method === "turn/start")).toBe(true),
+    await vi.waitFor(
+      async () =>
+        expect((await first.entries()).some((entry) => entry.method === "turn/start")).toBe(true),
+      AFTER_SPAWN,
     );
     expect(await second.run(request)).toMatchObject({ status: "completed", dispatched: true });
     expect(await checkRestrictedCodexAnalysisReadiness({}, second.options)).toEqual({
@@ -498,12 +517,14 @@ describe("restricted Codex analyst session", () => {
         signal: controller.signal,
       });
       try {
-        await vi.waitFor(async () =>
-          expect(
-            stage === "version"
-              ? heldChild !== undefined
-              : (await f.entries()).some((entry) => entry.method === "turn/start"),
-          ).toBe(true),
+        await vi.waitFor(
+          async () =>
+            expect(
+              stage === "version"
+                ? heldChild !== undefined
+                : (await f.entries()).some((entry) => entry.method === "turn/start"),
+            ).toBe(true),
+          AFTER_SPAWN,
         );
         controller.abort();
         expect(await pending).toMatchObject({ errorCode: "codex_cleanup_failed", output: null });
@@ -602,13 +623,17 @@ describe("continuing restricted Codex conversation", () => {
   it("has a fresh request deadline after time spent between completed turns", async () => {
     const f = await fixture("continuing"),
       session = createRestrictedCodexSession(f.options);
+    // Only the deadline's clock is fake: startup under load spends none of the first 500 ms, and
+    // the 550 ms between turns passes on the clock the deadline reads.
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] });
     try {
-      expect(await session.run({ ...request, timeoutMs: 500 })).toMatchObject({
-        status: "completed",
-      });
-      await new Promise((resolve) => setTimeout(resolve, 550));
-      expect(await session.run(request)).toMatchObject({ status: "completed" });
+      for (const idleMs of [0, 550]) {
+        vi.advanceTimersByTime(idleMs);
+        const result = await session.run({ ...request, timeoutMs: 500 });
+        expect(result).toMatchObject({ status: "completed" });
+      }
     } finally {
+      vi.useRealTimers();
       await session.close();
     }
   });
@@ -636,8 +661,12 @@ describe("continuing restricted Codex conversation", () => {
       session = createRestrictedCodexSession(f.options);
     expect(await session.run(request)).toMatchObject({ status: "completed" });
     const pending = session.run(request);
-    await vi.waitFor(async () =>
-      expect((await f.entries()).filter((entry) => entry.method === "turn/start")).toHaveLength(2),
+    await vi.waitFor(
+      async () =>
+        expect((await f.entries()).filter((entry) => entry.method === "turn/start")).toHaveLength(
+          2,
+        ),
+      AFTER_SPAWN,
     );
     expect(await session.run(request)).toMatchObject({
       errorCode: "codex_busy",
@@ -669,7 +698,10 @@ describe("continuing restricted Codex conversation", () => {
     expect(await session.run(request)).toMatchObject({ status: "completed" });
     const entry = (await f.entries()).find((entry) => entry.operation === "app-server")!;
     process.kill(entry.pid as number, "SIGTERM");
-    await vi.waitFor(() => expect(() => process.kill(entry.pid as number, 0)).toThrow());
+    await vi.waitFor(
+      () => expect(() => process.kill(entry.pid as number, 0)).toThrow(),
+      AFTER_SPAWN,
+    );
     expect(await session.run(request)).toMatchObject({
       errorCode: "codex_process_failed",
       dispatched: false,
@@ -931,13 +963,15 @@ describe("restricted Codex Code Mode participant session", () => {
     };
     const session = createRestrictedCodexSession(f.options);
     const pending = session.run({ ...request, model: undefined });
-    await vi.waitFor(() =>
-      expect(session.pendingUsage).toEqual({
-        input: 2957,
-        output: 41,
-        cachedInput: 0,
-        cacheWriteInput: 0,
-      }),
+    await vi.waitFor(
+      () =>
+        expect(session.pendingUsage).toEqual({
+          input: 2957,
+          output: 41,
+          cachedInput: 0,
+          cacheWriteInput: 0,
+        }),
+      AFTER_SPAWN,
     );
     finishTool(
       JSON.stringify({ acknowledgments: [], imageUrl: "data:image/png;base64,c3ludGhldGlj" }),
@@ -973,7 +1007,10 @@ describe("restricted Codex Code Mode participant session", () => {
       { input: 150000, output: 100, cachedInput: 0, cacheWriteInput: 0 },
       { input: 150000, output: 100, cachedInput: 0, cacheWriteInput: 0 },
     ];
-    await vi.waitFor(() => expect(session.pendingInferenceUsage).toEqual(perInference));
+    await vi.waitFor(
+      () => expect(session.pendingInferenceUsage).toEqual(perInference),
+      AFTER_SPAWN,
+    );
     expect(session.pendingUsage).toEqual({
       input: 300000,
       output: 200,

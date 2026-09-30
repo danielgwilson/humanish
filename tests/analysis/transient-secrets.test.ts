@@ -199,9 +199,13 @@ describe("analysis scrubbing in the originating run scope", () => {
         });
       }),
     );
-    await vi.waitFor(() => {
-      for (const request of requests) expect(request).toHaveBeenCalledOnce();
-    });
+    // Both analyses prepare their packets before dispatch; under load that can outlast 1 s.
+    await vi.waitFor(
+      () => {
+        for (const request of requests) expect(request).toHaveBeenCalledOnce();
+      },
+      { timeout: 15_000 },
+    );
     release();
     const [a, b] = await Promise.all(results);
     expect(a!.result?.summary).toBe(`[REDACTED_SECRET] ${right}`);

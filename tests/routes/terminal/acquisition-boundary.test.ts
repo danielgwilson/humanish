@@ -155,16 +155,22 @@ async function killRouteAfterReceipt(
   const exited = new Promise<NodeJS.Signals | number | null>((resolve) => {
     child.on("exit", (code, signal) => resolve(signal ?? code));
   });
+  let exitedEarly = false;
+  void exited.then(() => {
+    exitedEarly = true;
+  });
   try {
-    await vi.waitFor(
-      async () => {
-        const text = await readFile(path.join(runDir, SANDBOX_RECEIPTS_ARTIFACT), "utf8").catch(
-          () => "",
-        );
-        expect(text, stderr).toContain('"sandboxId":"sb-boundary-orphan"');
-      },
-      { timeout: 15_000, interval: 50 },
-    );
+    // No clock of its own: the wait ends when the receipt lands or the route exits, and the test
+    // timeout bounds a hang, so a slow tsx start under load cannot end it early.
+    const receipts = path.join(runDir, SANDBOX_RECEIPTS_ARTIFACT);
+    const landed = async (): Promise<boolean> =>
+      (await readFile(receipts, "utf8").catch(() => "")).includes(
+        '"sandboxId":"sb-boundary-orphan"',
+      );
+    while (!(await landed())) {
+      if (exitedEarly) throw new Error(`The route exited before its receipt landed: ${stderr}`);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
   } finally {
     child.kill("SIGKILL");
   }
@@ -244,7 +250,7 @@ describe("terminal sandbox acquisition boundary", () => {
     };
     expect(status.state).toBe("running");
     expect(classifyRunStatus(status, Date.now() + RUN_STATUS_STALE_MS + 1)).toBe("interrupted");
-  }, 30_000);
+  }, 60_000);
 
   it("B3: an allocation whose id never reaches the run has no receipt and keeps its TTL", async () => {
     const provider = fakeProvider({ rejectAfterAllocate: true });
