@@ -4,12 +4,12 @@ import {
   chromeCdpProbeCommand,
   parseChromeCdpProbeOutput,
   type ChromeMobileEmulationRequest,
-} from "../../routes/computer-use/cdp-probe.js";
+} from "./cdp-probe.js";
 import { failureTail, toErrorMessage } from "../../evidence/redaction.js";
 import type { RunDesktopGeometry } from "../../run/streams.js";
 import { readDetachedLog, startDetachedProcess } from "../detached.js";
 import type { ShellResult } from "../shell.js";
-import type { E2BDesktopSandbox } from "./desktop-launch.js";
+import type { E2BDesktopSandbox } from "./sdk.js";
 import { e2bShell } from "./shell.js";
 
 /**
@@ -48,7 +48,7 @@ export interface ChromeEmulationDrift {
 
 /**
  * The URL / title / page-text / scroll observer behind stopWhen and task criteria. One probe per
- * observation, run on the sandbox's python3 (see src/routes/computer-use/cdp-probe.ts for why not
+ * observation, run on the sandbox's python3 (see src/substrates/e2b/cdp-probe.ts for why not
  * node: #514).
  *
  * "active": follow the participant to whatever tab they are driving now — never pin the state

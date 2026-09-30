@@ -3,10 +3,10 @@ import { PNG } from "pngjs";
 
 import type { CuaAction } from "../../../src/actors/computer-use/loop.js";
 import type { E2BDesktopLike } from "../../../src/substrates/e2b/desktop-executor.js";
+import { perceptualSignature } from "../../../src/evidence/frame-signature.js";
 import {
   createE2BDesktopExecutor,
   CuaTypeFallbackError,
-  perceptualSignature,
 } from "../../../src/substrates/e2b/desktop-executor.js";
 
 // A recorded desktop call: the method name and the arguments it received.

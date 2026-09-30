@@ -5,10 +5,10 @@ import {
   DESKTOP_CREATE_CLEANUP_TIMEOUT_MS,
   E2BDesktopStartupError,
   guardDesktopSandboxCreate,
-  isTransientE2BError,
   type E2BDesktopCreateOptions,
   type E2BDesktopModule,
-} from "../../../src/substrates/e2b/desktop-launch.js";
+} from "../../../src/substrates/e2b/sdk.js";
+import { isTransientE2BError } from "../../../src/substrates/e2b/sandbox.js";
 import { acquireE2BDesktopSandbox } from "../../../src/substrates/e2b/sandbox.js";
 
 // Conformance against the REAL installed desktop + base SDK. Debug mode avoids allocation;

@@ -3,14 +3,14 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { runLocalFirecrackerStudy } from "../../src/substrates/local/firecracker-study.js";
+import type { runLocalFirecrackerStudy } from "../../src/routes/computer-use/local-vm.js";
 
 const localStudy = vi.hoisted(() =>
   vi.fn<typeof runLocalFirecrackerStudy>(async () => {
     throw new Error("unexpected local study");
   }),
 );
-vi.mock("../../src/substrates/local/firecracker-study.js", () => ({
+vi.mock("../../src/routes/computer-use/local-vm.js", () => ({
   runLocalFirecrackerStudy: localStudy,
 }));
 

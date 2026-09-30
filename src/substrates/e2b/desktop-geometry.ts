@@ -7,7 +7,7 @@ import {
   chromeCdpProbeCommand,
   parseChromeCdpProbeOutput,
   type ChromeCdpPagePreference,
-} from "../../routes/computer-use/cdp-probe.js";
+} from "./cdp-probe.js";
 import { shellQuote } from "../shell.js";
 import { e2bShell } from "./shell.js";
 import {
@@ -17,7 +17,7 @@ import {
   type DesktopBrowserLaunchIdentity,
 } from "./desktop-browser.js";
 import type { ChromeCdpEndpoint } from "./desktop-cdp.js";
-import type { E2BDesktopSandbox } from "./desktop-launch.js";
+import type { E2BDesktopSandbox } from "./sdk.js";
 
 /**
  * The DECLARED preset to record alongside the rendered screen, or undefined when the preset

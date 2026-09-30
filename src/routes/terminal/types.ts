@@ -11,7 +11,7 @@ import type {
 import { type RunLabProvenance } from "../../run/status.js";
 import type { RunScope } from "../../run/run.js";
 import type { LabConfig, LabScenarioCaps } from "../../lab/types.js";
-import { type E2BDesktopModule } from "../../substrates/e2b/desktop-launch.js";
+import { type E2BDesktopModule } from "../../substrates/e2b/sdk.js";
 import { renderObserver, type ObserverResult } from "../../observer/render.js";
 import {
   type RunAdapterScore,

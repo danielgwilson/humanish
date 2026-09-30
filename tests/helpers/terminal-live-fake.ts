@@ -4,7 +4,7 @@
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/lab/types.js";
 import { parseLabConfig } from "../../src/lab/config.js";
 import type { TerminalProductLabHooks } from "../../src/routes/terminal/types.js";
-import type { E2BDesktopModule } from "../../src/substrates/e2b/desktop-launch.js";
+import type { E2BDesktopModule } from "../../src/substrates/e2b/sdk.js";
 
 const FAKE_RUNTIME_KEY = "FAKEKEY-scorer-loader-do-not-leak-1234567890";
 

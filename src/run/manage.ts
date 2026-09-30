@@ -1,7 +1,7 @@
 import { lstat, readdir } from "node:fs/promises";
 import path from "node:path";
 import { redactText } from "../evidence/redaction.js";
-import type { E2BDesktopModule } from "../substrates/e2b/desktop-launch.js";
+import type { E2BDesktopModule } from "../substrates/e2b/sdk.js";
 import {
   bindExistingRunArtifactPaths,
   RUNS_RELATIVE_ROOT,

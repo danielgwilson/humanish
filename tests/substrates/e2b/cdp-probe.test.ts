@@ -16,13 +16,10 @@ import {
   parseChromeCdpProbeOutput,
   type ChromeCdpProbeArgs,
   type ChromeCdpProbeResult,
-} from "../../../src/routes/computer-use/cdp-probe.js";
+} from "../../../src/substrates/e2b/cdp-probe.js";
 import { makeChromeBrowserStateObserver } from "../../../src/substrates/e2b/desktop-cdp.js";
 import { makeChromeDesktopGeometryObserver } from "../../../src/substrates/e2b/desktop-geometry.js";
-import type {
-  E2BCommandResult,
-  E2BDesktopSandbox,
-} from "../../../src/substrates/e2b/desktop-launch.js";
+import type { E2BCommandResult, E2BDesktopSandbox } from "../../../src/substrates/e2b/sdk.js";
 
 const execFileAsync = promisify(execFile);
 

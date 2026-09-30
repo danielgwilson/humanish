@@ -33,7 +33,7 @@ with `Run.finish` as in step 7, and skips steps 3 to 6 and 9. It runs step 8 thr
    library callers. On a live run, `liveCuaRejection` in the same file checks provider keys, the
    local agent login and subject env vars, and refuses a dollar cap it cannot price. Both run
    before any sandbox or provider call.
-4. `createE2BCuaDesktopLane` (`src/substrates/e2b/cua-desktop.ts`) calls
+4. `createE2BCuaDesktopLane` (`src/routes/computer-use/e2b-desktop.ts`) calls
    `acquireE2BDesktopSandbox` (`src/substrates/e2b/sandbox.ts`). It creates the sandbox, retries
    once on a transient provider error, and appends the id with `"provider": "e2b"` to
    `sandbox-receipts.ndjson` before it returns the handle. The lane then provisions a `clone` or
@@ -41,7 +41,7 @@ with `Run.finish` as in step 7, and skips steps 3 to 6 and 9. It runs step 8 thr
    (`src/subject/`), which reach the sandbox only through the `Shell` that `e2bShell`
    (`src/substrates/e2b/shell.ts`) builds from it. An `app-url` lab with
    `execution.target: local` goes to `runLocalFirecrackerStudy`
-   (`src/substrates/local/firecracker-study.ts`) instead.
+   (`src/routes/computer-use/local-vm.ts`) instead.
 5. `runAllCuaLanes` (`src/routes/computer-use/lanes.ts`) runs `runCuaLane` for each
    participant, at most `execution.concurrency` at a time. Each lane calls the actor's `runSession`. For
    `openai-computer-use` and `local-agent` that is `runCuaActorSession`
@@ -89,7 +89,7 @@ with `Run.finish` as in step 7, and skips steps 3 to 6 and 9. It runs step 8 thr
 | `src/routes/terminal/`         | A Codex agent in an E2B shell against a terminal product, with its ledgers             | `src/routes/terminal/lab.ts`         |
 | `src/actors/`                  | The actor contract, the registry and each actor's session code                         | `src/actors/registry.ts`             |
 | `src/subject/`                 | Subject provisioning over a `Shell`: clone, local tree, desktop CLI, serve             | `src/subject/serve.ts`               |
-| `src/substrates/`              | E2B desktops in `e2b/`, Firecracker and Lima VMs in `local/`, the `Shell`              | `src/substrates/e2b/cua-desktop.ts`  |
+| `src/substrates/`              | E2B desktops in `e2b/`, Firecracker and Lima VMs in `local/`, the `Shell`              | `src/substrates/desktop-session.ts`  |
 | `src/run/`                     | Run lifecycle, bundle types, verification, paths, status, receipts, reclaim            | `src/run/run.ts`                     |
 | `src/evidence/`                | Redaction, screenshot checks and desktop recordings                                    | `src/evidence/redaction.ts`          |
 | `src/analysis/`                | Automatic and on-demand study analysis                                                 | `src/analysis/automatic.ts`          |

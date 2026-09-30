@@ -14,7 +14,7 @@ import type {
   E2BDesktopCreateOptions,
   E2BDesktopModule,
   E2BDesktopSandbox,
-} from "../../src/substrates/e2b/desktop-launch.js";
+} from "../../src/substrates/e2b/sdk.js";
 
 // The lab preflight probe journals its sandbox under .humanish/preflight/<probe-id>/ before any
 // work, removes the journal after a confirmed kill, and `humanish reclaim --preflight` kills

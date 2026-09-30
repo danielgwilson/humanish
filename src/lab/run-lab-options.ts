@@ -15,7 +15,7 @@ import {
   TERMINAL_PRODUCT_LAB_SCHEMA,
   type TerminalProductLabHooks,
 } from "../routes/terminal/types.js";
-import type { E2BDesktopSandbox } from "../substrates/e2b/desktop-launch.js";
+import type { E2BDesktopSandbox } from "../substrates/e2b/sdk.js";
 import { isLocalBrowserLab } from "../substrates/local/runtime-config.js";
 import {
   defaultSharedWorldPhaseSink,

@@ -32,7 +32,7 @@ vi.mock("../../../src/substrates/local/firecracker-desktop.js", async (importOri
   createLocalFirecrackerDesktop: seams.createDesktop,
 }));
 
-import { runLocalFirecrackerStudy } from "../../../src/substrates/local/firecracker-study.js";
+import { runLocalFirecrackerStudy } from "../../../src/routes/computer-use/local-vm.js";
 
 const appUrl = "http://127.0.0.1:4173/";
 const assets = { image: "synthetic-image", runtimeRevision: "synthetic-revision" };

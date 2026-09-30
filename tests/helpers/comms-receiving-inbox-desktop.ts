@@ -3,7 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { dirname } from "node:path";
 import { promisify } from "node:util";
-import type { E2BDesktopSandbox } from "../../src/substrates/e2b/desktop-launch.js";
+import type { E2BDesktopSandbox } from "../../src/substrates/e2b/sdk.js";
 
 /** Runs the production surface server and publication commands locally, without any provider. */
 export function localInboxDesktop(): { desktop: E2BDesktopSandbox; files: string[] } {

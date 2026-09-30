@@ -12,7 +12,7 @@ import { routeOf } from "../../src/lab/plan.js";
 import { normalizeRunLabOptions, type LabEvent } from "../../src/lab/run-lab-options.js";
 import type { LabConfig } from "../../src/lab/types.js";
 import type { CuaLanePlan, CuaLaneSpec } from "../../src/routes/computer-use/types.js";
-import type { E2BDesktopSandbox } from "../../src/substrates/e2b/desktop-launch.js";
+import type { E2BDesktopSandbox } from "../../src/substrates/e2b/sdk.js";
 import { trackRuntimeStreams } from "../../src/routes/computer-use/live-flush.js";
 import { lab, type BaseName, type Patch } from "../admission/fixtures.js";
 

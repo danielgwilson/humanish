@@ -1,10 +1,7 @@
 import { Writable } from "node:stream";
 import { describe, expect, it, vi } from "vitest";
 import { startE2BDesktopRecording } from "../../../src/substrates/e2b/desktop-recording.js";
-import type {
-  E2BCommandResult,
-  E2BDesktopSandbox,
-} from "../../../src/substrates/e2b/desktop-launch.js";
+import type { E2BCommandResult, E2BDesktopSandbox } from "../../../src/substrates/e2b/sdk.js";
 
 function destination(chunks: Buffer[]): Writable {
   return new Writable({

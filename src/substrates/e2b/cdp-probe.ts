@@ -18,7 +18,7 @@
 // of swallowing an exit code; the TypeScript side turns that into a lane warning that names the
 // consequence ("url/text criteria will read as NEVER MEASURED").
 
-import { shellQuote } from "../../substrates/shell.js";
+import { shellQuote } from "../shell.js";
 
 /** Which target to attribute when the endpoint lists several pages. */
 export type ChromeCdpPagePreference = "pinned" | "active";
@@ -96,7 +96,7 @@ export interface ChromeCdpProbeResult {
 
 /**
  * The probe itself. Kept as one string so the shipped command is exactly what the tests execute
- * (tests/routes/computer-use/cdp-probe.test.ts runs it under the real python3 against a real
+ * (tests/substrates/e2b/cdp-probe.test.ts runs it under the real python3 against a real
  * headless Chrome).
  *
  * WebSocket is hand-rolled because python's stdlib has no client: one masked text frame out, frames

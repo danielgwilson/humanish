@@ -5,7 +5,7 @@
 // subject, composes the prompt from config, persists the evidence bundle, and tears down.
 //
 // Substrate notes:
-// - The desktop is created via the shared loader in src/substrates/e2b/desktop-launch.ts with
+// - The desktop is created via the shared loader in src/substrates/e2b/sdk.ts with
 //   kill-on-timeout lifecycle, so a dead host process can never orphan a sandbox past its
 //   server-side deadline.
 // - Env placement follows the doctrine (docs/principles/invariants-and-defaults.md): the

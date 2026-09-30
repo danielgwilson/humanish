@@ -12,7 +12,7 @@ import {
   type DesktopRecordingMetadata,
 } from "../../evidence/desktop-recording-types.js";
 import { runOrThrow, shellQuote, type Shell } from "../shell.js";
-import type { E2BCommandResult, E2BDesktopSandbox } from "./desktop-launch.js";
+import type { E2BCommandResult, E2BDesktopSandbox } from "./sdk.js";
 import { e2bShell } from "./shell.js";
 
 const OUTPUT_PATH = "/tmp/humanish-desktop-recording.mp4";

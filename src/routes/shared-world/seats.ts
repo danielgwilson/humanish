@@ -7,7 +7,7 @@ import { participantIdAt } from "../../lab/routing.js";
 import type { LabActorLane, LabConfig } from "../../lab/types.js";
 import { attachObserverRuntimeStreamUrls } from "../../observer/render.js";
 import type { RunBundle } from "../../run/bundle.js";
-import type { E2BDesktopSandbox } from "../../substrates/e2b/desktop-launch.js";
+import type { E2BDesktopSandbox } from "../../substrates/e2b/sdk.js";
 import { composeLaneInstructions, resolveLaneDevice } from "../computer-use/lane-plan.js";
 import { startLiveTraceFlush } from "../computer-use/live-flush.js";
 import type {

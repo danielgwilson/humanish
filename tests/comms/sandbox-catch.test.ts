@@ -18,7 +18,7 @@ import {
   type RawCapturedSend,
 } from "../../src/comms/sandbox-catch.js";
 import { SANDBOX_CATCH_SCRIPT } from "../../src/comms/sandbox-catch-script.js";
-import type { E2BDesktopSandbox } from "../../src/substrates/e2b/desktop-launch.js";
+import type { E2BDesktopSandbox } from "../../src/substrates/e2b/sdk.js";
 import { freePort } from "../helpers/free-port.js";
 import { e2bShell } from "../../src/substrates/e2b/shell.js";
 

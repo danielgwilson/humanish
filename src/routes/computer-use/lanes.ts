@@ -3,7 +3,7 @@ import type {
   CuaLoopResult,
   CuaProvider,
 } from "../../actors/computer-use/loop.js";
-import { createE2BCuaDesktopLane } from "../../substrates/e2b/cua-desktop.js";
+import { createE2BCuaDesktopLane } from "./e2b-desktop.js";
 import path from "node:path";
 import { cuaLaneDiagnostics } from "./diagnostics.js";
 import type { ActorTokenUsage, ActorTraceItem } from "../../actors/contract.js";
@@ -313,11 +313,13 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
 
   const harnessError = sessionError !== undefined || session?.completionReason === "harness_error";
 
+  const { released, ...desktopEvidence } = desktopLane.snapshot();
   return {
     spec,
     ...(session ? { session } : {}),
     ...(sessionError === undefined ? {} : { sessionError }),
-    ...desktopLane.snapshot(),
+    ...desktopEvidence,
+    killed: released,
     screenshots,
     warnings,
     noEngagement,

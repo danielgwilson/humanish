@@ -15,7 +15,7 @@ import type {
   E2BDesktopCreateOptions,
   E2BDesktopModule,
   E2BDesktopSandbox,
-} from "../../src/substrates/e2b/desktop-launch.js";
+} from "../../src/substrates/e2b/sdk.js";
 import type { CommsReceivingRun } from "../../src/comms/receiving.js";
 import {
   COMMS_RECEIVING_SCHEMA,
@@ -26,6 +26,7 @@ import {
   writeContainedOutputFile,
   type PreparedOutputDirectory,
 } from "../../src/run/selected-output-paths.js";
+import { inertDesktopInput } from "../helpers/inert-desktop-input.js";
 
 type Preparation = {
   participants: string[];
@@ -124,6 +125,7 @@ function desktopModule(events: string[], failCreate: boolean) {
         const [width, height] = options.resolution ?? [1440, 950];
         const desktop = {
           sandboxId: record.id,
+          ...inertDesktopInput(),
           getInfo: async () => ({ cpuCount: 2, memoryMB: 2048 }),
           commands: {
             run: async (command: string) => {

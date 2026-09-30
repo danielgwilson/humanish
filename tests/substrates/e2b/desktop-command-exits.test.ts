@@ -6,10 +6,7 @@ import { makeChromeBrowserStateObserver } from "../../../src/substrates/e2b/desk
 import { createE2BDesktopExecutor } from "../../../src/substrates/e2b/desktop-executor.js";
 import type { E2BDesktopLike } from "../../../src/substrates/e2b/desktop-executor.js";
 import { makeChromeDesktopGeometryObserver } from "../../../src/substrates/e2b/desktop-geometry.js";
-import type {
-  E2BDesktopModule,
-  E2BDesktopSandbox,
-} from "../../../src/substrates/e2b/desktop-launch.js";
+import type { E2BDesktopModule, E2BDesktopSandbox } from "../../../src/substrates/e2b/sdk.js";
 import { prepareDesktopMedia } from "../../../src/substrates/e2b/desktop-media.js";
 import {
   acquireE2BDesktopSandbox,

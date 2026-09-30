@@ -10,7 +10,7 @@ import { parseLabConfig } from "../../src/lab/config.js";
 import { runLab } from "../../src/lab/engine.js";
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/lab/types.js";
 import { RUN_STATUS_FILE } from "../../src/run/status.js";
-import type { E2BDesktopModule } from "../../src/substrates/e2b/desktop-launch.js";
+import type { E2BDesktopModule } from "../../src/substrates/e2b/sdk.js";
 
 // The first status.json write of each run lands late. A route that acquires a sandbox without
 // awaiting it reaches Sandbox.create before the record exists; under load that is what left a run

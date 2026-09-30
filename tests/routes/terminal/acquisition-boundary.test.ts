@@ -11,10 +11,7 @@ import { runTerminalProductLab } from "../../../src/routes/terminal/lab.js";
 import { reclaimRunSandboxes } from "../../../src/run/reclaim.js";
 import { SANDBOX_RECEIPTS_ARTIFACT } from "../../../src/run/sandbox-receipts.js";
 import { classifyRunStatus, RUN_STATUS_STALE_MS } from "../../../src/run/status.js";
-import type {
-  E2BDesktopCreateOptions,
-  E2BDesktopModule,
-} from "../../../src/substrates/e2b/desktop-launch.js";
+import type { E2BDesktopCreateOptions, E2BDesktopModule } from "../../../src/substrates/e2b/sdk.js";
 
 // The acquisition boundary of the shared sandbox module, exercised through the terminal route:
 // B1 the receipt write fails, B2 the process dies after the receipt lands, B3 the provider

@@ -36,7 +36,7 @@ import type {
   E2BDesktopCreateOptions,
   E2BDesktopModule,
   E2BDesktopSandbox,
-} from "../../../src/substrates/e2b/desktop-launch.js";
+} from "../../../src/substrates/e2b/sdk.js";
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
 import { runLab } from "../../../src/lab/engine.js";

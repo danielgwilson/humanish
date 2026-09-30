@@ -26,10 +26,7 @@ import { type CuaActorDescriptor } from "../../actors/registry.js";
 import { type BrowserLabAdapterHooks } from "../../lab/adapter-extension.js";
 import type { CuaActorSessionOptions } from "../../actors/computer-use/actor.js";
 import { type DevicePreset } from "../../lab/device-presets.js";
-import {
-  type E2BDesktopModule,
-  type E2BDesktopSandbox,
-} from "../../substrates/e2b/desktop-launch.js";
+import { type E2BDesktopModule, type E2BDesktopSandbox } from "../../substrates/e2b/sdk.js";
 import { type DesktopResourceObservation } from "../../substrates/e2b/desktop-resources.js";
 import { type DetachedTimers } from "../../substrates/detached.js";
 import { type LabCommsEmail, type LabConfig, type LabSubjectServe } from "../../lab/types.js";

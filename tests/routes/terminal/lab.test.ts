@@ -17,7 +17,7 @@ import {
   type E2BDesktopCreateOptions,
   type E2BDesktopModule,
   type E2BNetworkOptions,
-} from "../../../src/substrates/e2b/desktop-launch.js";
+} from "../../../src/substrates/e2b/sdk.js";
 import {
   E2B_SYSTEM_CA_BUNDLE,
   OPENAI_EGRESS_PLACEHOLDER,
@@ -30,6 +30,7 @@ import {
   runAutomaticStudyAnalysis,
 } from "../../../src/analysis/automatic.js";
 import { resolveAutomaticAnalysis } from "../../../src/analysis/automatic-config.js";
+import { inertDesktopInput } from "../../helpers/inert-desktop-input.js";
 
 // SLICE 2 deterministic safety net: drive the REAL live orchestration (dryRun:false) against a
 // FAKE E2B module + a MOCK codex CLI at zero spend. The load-bearing assertions are the
@@ -120,6 +121,7 @@ function makeFakeModule(opts: {
         const sandboxId = `fake-sandbox-${counter}`;
         return {
           sandboxId,
+          ...inertDesktopInput(),
           commands: {
             async run(
               command: string,
@@ -214,7 +216,7 @@ function makeFakeModule(opts: {
               const state = opts.getInfoState ?? "not-found";
               if (state === "not-found") {
                 // A real reclaimed sandbox: the SDK throws SandboxNotFoundError, detected by
-                // `.name` (see isSandboxNotFoundError in src/substrates/e2b/desktop-launch.ts).
+                // `.name` (see isSandboxNotFoundError in src/substrates/e2b/sdk.ts).
                 throw Object.assign(new Error(`Sandbox ${sandboxId} not found`), {
                   name: "SandboxNotFoundError",
                 });

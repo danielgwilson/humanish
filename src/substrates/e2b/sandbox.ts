@@ -12,14 +12,14 @@ import {
   type DesktopReleaseResult,
   type OwnedDesktopAllocation,
 } from "../desktop-session.js";
+import type { LabConfig } from "../../lab/types.js";
 import {
+  E2BDesktopStartupError,
   isSandboxNotFoundError,
-  withOneRetryOnTransientE2BError,
   type E2BDesktopCreateOptions,
   type E2BDesktopModule,
   type E2BDesktopSandbox,
-  type TransientRetryHooks,
-} from "./desktop-launch.js";
+} from "./sdk.js";
 
 /** Where an allocation's receipt goes: the run's prepared root, under a public-safe lane label. */
 interface E2BSandboxReceiptTarget {
@@ -170,5 +170,77 @@ export async function destroyE2BSandbox(
       };
     case "release_failed":
       return { state: "kill-failed", detail: redactText(toErrorMessage(released.error)) };
+  }
+}
+
+/** Versioned public template built by runtime/browser-media/e2b-template.mjs. */
+export const E2B_SPEECH_TEMPLATE = "7409n13kr83f7g7abx5g";
+
+/** The desktop template a lab asks for; undefined selects the SDK default. */
+export function e2bDesktopTemplate(config: LabConfig): string | undefined {
+  if (config.execution?.target === "local") return undefined;
+  return (
+    config.execution?.desktop?.template ??
+    (config.execution?.desktop?.media?.microphone?.source === "speech"
+      ? E2B_SPEECH_TEMPLATE
+      : undefined)
+  );
+}
+
+/** How a caller hears about the one retry; `sleep` is injectable so tests never wait. */
+export interface TransientRetryHooks {
+  onRetry?: (reason: string) => void;
+  sleep?: (ms: number) => Promise<void>;
+}
+
+/** Wall-clock pause before the single retry; envd routing settles within a few seconds. */
+export const TRANSIENT_RETRY_DELAY_MS = 3_000;
+
+/**
+ * The provider errors worth one retry, by the message the SDK throws. Each is a gap that clears
+ * within seconds of sandbox creation:
+ *
+ * - `12: [unimplemented] HTTP 404` and `[unavailable]`: the sandbox exists but its envd is not
+ *   routable yet, so the first request (the desktop SDK's Xvfb start) hits the proxy instead.
+ * - `Cannot read properties of undefined (reading 'envdVersion')` / `Response data is missing`:
+ *   the create API answered without a body.
+ * - `Expected to receive information about written file`: a file write the envd accepted without
+ *   describing, the same routing gap seen from the upload side.
+ * - transport resets (`fetch failed`, `ECONNRESET`, `socket hang up`, 502/503/504).
+ *
+ * NOT retried: timeouts (the budget is spent), auth (401/403), quota and rate limits (429: a burst
+ * that hit the limit should be spaced, not repeated), and anything that names the request as wrong.
+ */
+export function isTransientE2BError(error: unknown): boolean {
+  if (error instanceof E2BDesktopStartupError && error.cleanup === "unconfirmed") return false;
+  const message = error instanceof Error ? `${error.name}: ${error.message}` : String(error ?? "");
+  if (/timeout|timed out|deadline/i.test(message)) return false;
+  if (/\b(401|403|429)\b|unauthorized|forbidden|rate limit|quota/i.test(message)) return false;
+  return /\[unimplemented\]|\[unavailable\]|HTTP 404|HTTP 50[234]|\b50[234]\b|reading 'envdVersion'|Response data is missing|Expected to receive information about written file|fetch failed|ECONNRESET|ECONNREFUSED|socket hang up|UND_ERR/i.test(
+    message,
+  );
+}
+
+/**
+ * Run `attempt`; on a transient provider error, say so through `onRetry`, wait, and run it once
+ * more. A second failure, or a non-transient first one, propagates as is. The first attempt may
+ * have allocated a sandbox this process never learned the id of (the SDK throws after the API
+ * call); the provider's own `timeoutMs` on that sandbox is what reclaims it, which the caller's
+ * warning should say.
+ */
+export async function withOneRetryOnTransientE2BError<T>(
+  attempt: () => Promise<T>,
+  hooks?: TransientRetryHooks,
+): Promise<T> {
+  try {
+    return await attempt();
+  } catch (error) {
+    if (!isTransientE2BError(error)) throw error;
+    const reason = error instanceof Error ? error.message : String(error);
+    hooks?.onRetry?.(reason);
+    await (
+      hooks?.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)))
+    )(TRANSIENT_RETRY_DELAY_MS);
+    return attempt();
   }
 }

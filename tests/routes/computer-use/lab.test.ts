@@ -27,7 +27,7 @@ import type {
   CuaTurn,
 } from "../../../src/actors/computer-use/loop.js";
 import { runCuaActorLab } from "../../../src/routes/computer-use/lab.js";
-import { CUA_ACTOR_LAB_PROVIDER_METADATA } from "../../../src/substrates/e2b/cua-desktop.js";
+import { CUA_ACTOR_LAB_PROVIDER_METADATA } from "../../../src/routes/computer-use/e2b-desktop.js";
 import { makeChromeBrowserStateObserver } from "../../../src/substrates/e2b/desktop-cdp.js";
 import { buildCuaBundle } from "../../../src/routes/computer-use/single-bundle.js";
 import { buildRunCostSummary } from "../../../src/run/cost-summary.js";
@@ -46,7 +46,7 @@ import type {
   E2BDesktopCreateOptions,
   E2BDesktopModule,
   E2BDesktopSandbox,
-} from "../../../src/substrates/e2b/desktop-launch.js";
+} from "../../../src/substrates/e2b/sdk.js";
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
 import { externalCatchHealthy } from "../../../src/comms/sandbox-catch.js";

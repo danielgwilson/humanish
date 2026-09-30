@@ -2,24 +2,24 @@ import { collectDesktopRecording } from "../../evidence/desktop-recording-artifa
 import path from "node:path";
 import { dispatchLab, type LabOutcome, type RunLabOptions } from "../../lab/engine.js";
 import type { LabConfig } from "../../lab/types.js";
-import {
-  inboxRecipientFor,
-  type DesktopLaneEvidence,
-} from "../../routes/computer-use/desktop-lane.js";
-import type { CuaActorLabHooks } from "../../routes/computer-use/types.js";
+import { inboxRecipientFor, type DesktopLaneEvidence } from "./desktop-lane.js";
+import type { CuaActorLabHooks } from "./types.js";
 import { HOOK_MEMBERS, withHookOverrides } from "../../lab/hook-bag.js";
 import { runCuaActorSession } from "../../actors/computer-use/actor.js";
 import {
   createLocalFirecrackerDesktop,
   type LocalFirecrackerAssets,
   type LocalFirecrackerDesktop,
-} from "./firecracker-desktop.js";
-import { localBrowserDefaults, localBrowserUnsupportedReason } from "./runtime-config.js";
-import { prepareLocalRuntime } from "./runtime.js";
+} from "../../substrates/local/firecracker-desktop.js";
+import {
+  localBrowserDefaults,
+  localBrowserUnsupportedReason,
+} from "../../substrates/local/runtime-config.js";
+import { prepareLocalRuntime } from "../../substrates/local/runtime.js";
 import { checkRestrictedCodexAnalysisReadiness } from "../../analysis/restricted-codex.js";
 import { createRestrictedCodexParticipant } from "../../actors/codex/restricted-participant.js";
 import { guestMediaConfigSchema } from "../../guest-media-config.js";
-import { startLocalCapturedInbox } from "./captured-inbox.js";
+import { startLocalCapturedInbox } from "../../substrates/local/captured-inbox.js";
 
 // These hooks act on an E2B desktop or the local-tree upload to it. The study runs on a
 // Firecracker desktop and never calls them, so a caller relying on one gets an error up front.
@@ -109,7 +109,7 @@ export async function runLocalFirecrackerStudy(
             email?.kind === "fake" ? inboxRecipientFor(email, spec.laneId)?.address : undefined;
           let finalizing: Promise<void> | undefined;
           const evidence: DesktopLaneEvidence = {
-            killed: false,
+            released: false,
             streamUrlPresent: false,
             stateStepRecords: [],
             phaseRecords: [],
@@ -174,11 +174,11 @@ export async function runLocalFirecrackerStudy(
                   }
                 }
                 try {
-                  evidence.killed = (await session.close()).status === "released";
+                  evidence.released = (await session.close()).status === "released";
                 } catch {
-                  evidence.killed = false;
+                  evidence.released = false;
                 }
-                if (!evidence.killed) {
+                if (!evidence.released) {
                   cleanupUnconfirmed = true;
                   warnings.push("Local desktop cleanup is unconfirmed.");
                 }

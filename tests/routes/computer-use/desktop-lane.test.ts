@@ -19,12 +19,9 @@ import type {
 } from "../../../src/routes/computer-use/desktop-lane.js";
 import { ownDesktopAllocation } from "../../../src/substrates/desktop-session.js";
 import { DEVICE_PRESETS } from "../../../src/lab/device-presets.js";
-import { createE2BCuaDesktopLane } from "../../../src/substrates/e2b/cua-desktop.js";
-import { E2B_SPEECH_TEMPLATE } from "../../../src/substrates/e2b/desktop-media.js";
-import type {
-  E2BDesktopModule,
-  E2BDesktopSandbox,
-} from "../../../src/substrates/e2b/desktop-launch.js";
+import { createE2BCuaDesktopLane } from "../../../src/routes/computer-use/e2b-desktop.js";
+import { E2B_SPEECH_TEMPLATE } from "../../../src/substrates/e2b/sandbox.js";
+import type { E2BDesktopModule, E2BDesktopSandbox } from "../../../src/substrates/e2b/sdk.js";
 import { LAB_CONFIG_SCHEMA } from "../../../src/lab/types.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
 import { OPENAI_RESPONSES_CU_CAPABILITIES } from "../../../src/actors/computer-use/openai-provider.js";
@@ -126,7 +123,7 @@ async function fixture() {
   });
   const allocation = ownDesktopAllocation({ resourceId: "synthetic-memory-desktop", release });
   let evidence: DesktopLaneEvidence = {
-    killed: false,
+    released: false,
     streamUrlPresent: false,
     stateStepRecords: [],
     phaseRecords: [],
@@ -148,7 +145,7 @@ async function fixture() {
     }),
     finalize: vi.fn(async () => {
       const result = await allocation.close();
-      evidence = { ...evidence, killed: result.status === "released" };
+      evidence = { ...evidence, released: result.status === "released" };
     }),
     snapshot: () => evidence,
   };
@@ -580,7 +577,7 @@ describe("ready desktop lane contract", () => {
     expect(kill).toHaveBeenCalledExactlyOnceWith("synthetic-hosted", { requestTimeoutMs: 60_000 });
     expect(adapter.snapshot()).toMatchObject({
       sandboxId: "synthetic-hosted",
-      killed: true,
+      released: true,
       streamUrlPresent: false,
     });
     await expect(adapter.prepare()).rejects.toThrow("only start once");
@@ -593,6 +590,6 @@ describe("ready desktop lane contract", () => {
     await adapter.finalize({ failed: true });
     await expect(adapter.prepare()).rejects.toThrow("only start once");
     expect(f.loadDesktopModule).not.toHaveBeenCalled();
-    expect(adapter.snapshot().killed).toBe(false);
+    expect(adapter.snapshot().released).toBe(false);
   });
 });
