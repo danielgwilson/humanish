@@ -10,7 +10,7 @@ import type {
 } from "../../actors/contract.js";
 import { type RunLabProvenance } from "../../run/status.js";
 import type { RunScope } from "../../run/run.js";
-import type { LabConfig } from "../../lab/types.js";
+import type { LabConfig, LabScenarioCaps } from "../../lab/types.js";
 import { type E2BDesktopModule } from "../../substrates/e2b/desktop-launch.js";
 import { renderObserver, type ObserverResult } from "../../observer/render.js";
 import {
@@ -389,6 +389,8 @@ export interface RunLiveTerminalSessionArgs {
   config: LabConfig;
   descriptorId: string;
   product: NonNullable<LabConfig["subject"]["product"]>;
+  /** The live caps planTerminalLab required. */
+  caps: LabScenarioCaps & { maxUsd: number; maxMinutes: number };
   warnings: string[];
   failed: (
     code: NonNullable<TerminalProductLabResult["error"]>["code"],

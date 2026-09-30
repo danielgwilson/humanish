@@ -4,7 +4,6 @@
 // backend names.
 
 import { resolveAutomaticAnalysis } from "../analysis/automatic-config.js";
-import { DEFAULT_OPENAI_CU_MODEL } from "../actors/computer-use/openai-provider.js";
 import { browserSurfaces } from "../actors/scripted-browser/types.js";
 import type { DwellWindow, StopWhen } from "../actors/stop-conditions.js";
 import type { ReasoningEffort } from "../actors/reasoning-effort.js";
@@ -13,28 +12,32 @@ import {
   resolveLaneDevice,
   resolvePerLaneSandboxMs,
 } from "../routes/computer-use/lane-plan.js";
+import { planTerminalLab } from "../routes/terminal/plan.js";
 import { isLocalBrowserLab, localBrowserDefaults } from "../substrates/local/runtime-config.js";
 import type { DevicePreset } from "./device-presets.js";
 import type { LabBackend, RunLabOptions } from "./engine.js";
+import {
+  type Base,
+  brainOf,
+  type Built,
+  capsOf,
+  desktopRequirements,
+  isNonEmpty,
+  planBase,
+  provisionedSubject,
+} from "./plan-base.js";
 import type {
   AtLeastTwo,
-  Brain,
   ComputerUsePlan,
   ComputerUseRunner,
   LabBindings,
   LabPlan,
-  NonEmpty,
-  PlanGap,
   PlanRefusal,
   PlanResult,
-  PlannedAnalysis,
-  ProvisionedSubject,
   Requirement,
-  ResidualConfig,
   ScriptedPlan,
   SharedWorldPlane,
   SharedWorldPlan,
-  TerminalPlan,
 } from "./plan-types.js";
 import {
   actorResolvesToComputerUse,
@@ -257,95 +260,6 @@ export function resolveLabDryRun(
   return fallback;
 }
 
-type Base = Omit<
-  ComputerUsePlan,
-  "route" | "runner" | "concurrency" | "sessionBudgetMs" | "sandboxMs" | "caps" | "rerun"
->;
-type Built<P extends LabPlan> = P | PlanGap;
-
-function deepFreeze<T>(value: T): T {
-  if (typeof value === "object" && value !== null) {
-    for (const child of Object.values(value)) deepFreeze(child);
-    Object.freeze(value);
-  }
-  return value;
-}
-
-function residualOf(config: LabConfig): Readonly<ResidualConfig> {
-  const { comms, policies, personas, defaults, review } = config;
-  return deepFreeze(
-    structuredClone({
-      ...(comms === undefined ? {} : { comms }),
-      ...(policies === undefined ? {} : { policies }),
-      ...(personas === undefined ? {} : { personas }),
-      ...(defaults === undefined ? {} : { defaults }),
-      ...(review === undefined ? {} : { review }),
-      ...(config.execution?.desktop === undefined
-        ? {}
-        : { execution: { desktop: config.execution.desktop } }),
-      subject: {
-        ...(config.subject.clone === undefined ? {} : { clone: config.subject.clone }),
-        ...(config.subject.localTree === undefined ? {} : { localTree: config.subject.localTree }),
-        ...(config.subject.repos === undefined ? {} : { repos: config.subject.repos }),
-      },
-    }),
-  );
-}
-
-function isNonEmpty<T>(values: readonly T[]): values is NonEmpty<T> {
-  return values.length > 0;
-}
-
-function capsOf(config: LabConfig): ComputerUsePlan["caps"] {
-  const caps = config.execution?.caps;
-  return {
-    ...(caps?.maxUsd === undefined ? {} : { maxUsd: caps.maxUsd }),
-    ...(caps?.maxTotalUsd === undefined ? {} : { maxTotalUsd: caps.maxTotalUsd }),
-  };
-}
-
-function provisionedSubject(config: LabConfig): ProvisionedSubject | undefined {
-  const { serve, state } = config.subject;
-  const env = config.subject.env ?? [];
-  if (serve === undefined) return undefined;
-  const withState = state === undefined ? {} : { state };
-  if (config.subject.source === "local-tree")
-    return { kind: "local-tree", serve, env, ...withState };
-  const repo = config.subject.repos?.[0];
-  if (config.subject.source !== "clone" || repo === undefined) return undefined;
-  return { kind: "clone", repo, serve, env, ...withState };
-}
-
-/** Keys, env and local tools a live run checks right before it acquires anything. */
-function desktopRequirements(
-  config: LabConfig,
-  args: { e2b: boolean; brain: Brain; localVm: boolean; externalCatch: boolean },
-): Requirement[] {
-  const requirements: Requirement[] = [];
-  if (args.e2b) requirements.push({ kind: "key", name: "E2B_API_KEY" });
-  if (args.localVm) requirements.push({ kind: "local-vm" });
-  if (args.brain.kind === "openai") requirements.push({ kind: "key", name: "OPENAI_API_KEY" });
-  if (args.brain.kind === "local-agent")
-    requirements.push({ kind: "local-agent", agent: args.brain.agent });
-  const env = config.subject.source === "clone" || config.subject.source === "local-tree";
-  const names = env ? (config.subject.env ?? []) : [];
-  if (isNonEmpty(names)) requirements.push({ kind: "subject-env", names });
-  const email = config.comms?.email;
-  if (args.externalCatch && email?.kind === "fake" && email.external !== undefined)
-    requirements.push({ kind: "external-catch", url: email.external.catchBaseUrl });
-  if (email?.kind === "real")
-    requirements.push({ kind: "receiving-connection", connection: email.connection });
-  return requirements;
-}
-
-function brainOf(config: LabConfig, callerProvider: boolean): Brain {
-  const actor = config.actors[0];
-  if (callerProvider) return { kind: "caller" };
-  if (actor?.type === "local-agent")
-    return { kind: "local-agent", agent: actor.localAgent ?? "codex" };
-  return { kind: "openai", model: actor?.model ?? DEFAULT_OPENAI_CU_MODEL };
-}
-
 function planComputerUse(
   config: LabConfig,
   options: RunLabOptions,
@@ -490,45 +404,6 @@ function planSharedWorld(config: LabConfig, base: Base): Built<SharedWorldPlan> 
   };
 }
 
-function planTerminal(config: LabConfig, base: Base): Built<TerminalPlan> {
-  const product = config.subject.product;
-  const surfaces = product?.publicSurfaces ?? [];
-  if (product === undefined || !isNonEmpty(surfaces)) return "unsupported-composition";
-  const actor = config.actors[0];
-  const runtime = {
-    ...(config.execution?.runtime?.version === undefined
-      ? {}
-      : { version: config.execution.runtime.version }),
-    ...(actor?.model === undefined ? {} : { model: actor.model }),
-    ...(actor?.reasoningEffort === undefined ? {} : { reasoningEffort: actor.reasoningEffort }),
-    ...(config.execution?.runtimeAuth === undefined ? {} : { auth: config.execution.runtimeAuth }),
-  };
-  const shared = {
-    ...base,
-    route: "terminal" as const,
-    product: { ...product, publicSurfaces: surfaces },
-    ...(actor?.persona === undefined ? {} : { personaId: actor.persona }),
-    ...(actor?.mission === undefined ? {} : { mission: actor.mission }),
-    runtime,
-  };
-  const caps = config.scenario?.caps;
-  if (base.dryRun)
-    return { ...shared, dryRun: true, ...(caps === undefined ? {} : { caps }), requirements: [] };
-  const maxUsd = caps?.maxUsd;
-  const maxMinutes = caps?.maxMinutes;
-  if (caps === undefined || maxUsd === undefined || maxMinutes === undefined || maxMinutes <= 0)
-    return "live-terminal-without-caps";
-  return {
-    ...shared,
-    dryRun: false,
-    caps: { ...caps, maxUsd, maxMinutes },
-    requirements: [
-      { kind: "key", name: "E2B_API_KEY" },
-      { kind: "key-one-of", names: ["CODEX_API_KEY", "OPENAI_API_KEY"] },
-    ],
-  };
-}
-
 function planScripted(config: LabConfig, options: RunLabOptions, base: Base): Built<ScriptedPlan> {
   const scenarioRef = config.scenario?.ref;
   const surfaces = browserSurfaces.slice(0, config.actors[0]?.count ?? 1);
@@ -601,28 +476,25 @@ function previewRefusal(config: LabConfig): PlanRefusal | undefined {
 export function planLab(config: LabConfig, options: RunLabOptions): PlanResult {
   const route = routeOf(config);
   const lab = localBrowserDefaults(config);
+  const dryRun = resolveLabDryRun(lab, options.dryRun, true) ?? true;
+  const provenance = options.lab === undefined ? {} : { lab: options.lab };
+  // An adopted route's planner makes every refusal that route makes, in the route's order, so it
+  // runs before the checks planLab still makes for the other routes.
+  if (route === "terminal") {
+    const terminal = planTerminalLab(lab, {
+      dryRun,
+      ...provenance,
+      ...(options.terminalHooks === undefined ? {} : { hooks: options.terminalHooks }),
+    });
+    return terminal.ok ? planned(terminal.plan, options) : { ok: false, refusal: terminal.refusal };
+  }
   if (route === "preview") {
     const refusal = previewRefusal(lab);
     if (refusal) return { ok: false, refusal };
   }
   const analysis = resolveAutomaticAnalysis(lab.review?.analysis);
   if (!analysis.ok) return { ok: false, refusal: { route, gap: "analysis-invalid" } };
-  const planned: PlannedAnalysis | undefined =
-    analysis.config === undefined
-      ? undefined
-      : {
-          config: analysis.config,
-          trigger: lab.review?.analysis === undefined ? "default" : "explicit",
-          preferLargerOutput: analysis.preferLargerOutput === true,
-        };
-  const base: Base = {
-    labId: lab.id,
-    ...(options.lab === undefined ? {} : { lab: options.lab }),
-    residual: residualOf(lab),
-    dryRun: resolveLabDryRun(lab, options.dryRun, true) ?? true,
-    ...(planned === undefined ? {} : { analysis: planned }),
-    requirements: [],
-  };
+  const base: Base = planBase(lab, { dryRun, ...provenance, analysis });
   let plan: Built<LabPlan>;
   switch (route) {
     case "preview":
@@ -634,14 +506,16 @@ export function planLab(config: LabConfig, options: RunLabOptions): PlanResult {
     case "shared-world":
       plan = planSharedWorld(lab, base);
       break;
-    case "terminal":
-      plan = planTerminal(lab, base);
-      break;
     case "scripted":
       plan = planScripted(lab, options, base);
       break;
   }
   if (typeof plan === "string") return { ok: false, refusal: { route, gap: plan } };
+  return planned(plan, options);
+}
+
+/** The plan with the hook bags planLab read. */
+function planned(plan: LabPlan, options: RunLabOptions): PlanResult {
   const bindings: LabBindings = {
     ...(options.cuaHooks === undefined ? {} : { cuaHooks: options.cuaHooks }),
     ...(options.scriptedHooks === undefined ? {} : { scriptedHooks: options.scriptedHooks }),

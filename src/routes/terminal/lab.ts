@@ -39,18 +39,13 @@
 
 import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
 import { completeAutomaticAnalysis } from "../../analysis/automatic-completion.js";
-import {
-  desktopMediaValidationReason,
-  taskProtocolValidationReason,
-} from "../../lab/validation.js";
-import { declaredRuntimeProvenance, isExactRuntimeVersion } from "./runtime.js";
-import { isReasoningEffort } from "../../actors/reasoning-effort.js";
+import { declaredRuntimeProvenance } from "./runtime.js";
 import { realpath } from "node:fs/promises";
 import path from "node:path";
 import { resolveCommittedPersona as resolveTerminalPersona } from "../../lab/persona-resolve.js";
 import type { ActorPersonaRef } from "../../actors/contract.js";
 import { runScope, type RunScope } from "../../run/run.js";
-import { actorRegistry, isTerminalActorDescriptor } from "../../actors/registry.js";
+import { planTerminalLab } from "./plan.js";
 import {
   personaBrief,
   personaToDirectives,
@@ -102,7 +97,6 @@ async function runTerminalProductLabInScope(
   const hooks = options.hooks ?? {};
   const warnings: string[] = [];
   const actorType = config.actors[0]?.type ?? "";
-  const product = config.subject.product;
 
   const failed = (
     code: NonNullable<TerminalProductLabResult["error"]>["code"],
@@ -114,75 +108,44 @@ async function runTerminalProductLabInScope(
     cwd,
     labId: config.id,
     actor: extras?.actor ?? actorType,
-    product: extras?.product ?? product?.name ?? "",
+    product: extras?.product ?? config.subject.product?.name ?? "",
     dryRun,
     runId: options.runId ?? "not-created",
     warnings,
     error: { code, message },
   });
 
-  if (String(config.comms?.email?.kind) === "real") {
+  // planTerminalLab makes every configuration refusal, in the order this route always has.
+  const planned = planTerminalLab(config, {
+    dryRun,
+    ...(options.lab === undefined ? {} : { lab: options.lab }),
+    ...(options.hooks === undefined ? {} : { hooks: options.hooks }),
+  });
+  if (!planned.ok) {
+    const { refusal } = planned;
     return failed(
-      "HUMANISH_TERMINAL_LAB_SUBJECT_INVALID",
-      "Real email receiving is unsupported on the terminal backend. Use a supported hosted computer-use browser study.",
+      refusal.code,
+      refusal.message,
+      refusal.actor === undefined ? undefined : { actor: refusal.actor },
     );
   }
-
-  // Resolve the actor through the registry — the parse layer already validated this, but the
-  // engine fails closed rather than trusting a config that arrived through another door
-  // (runTerminalProductLab is itself exported npm surface).
-  const mediaReason = desktopMediaValidationReason(config);
-  if (mediaReason) return failed("HUMANISH_TERMINAL_LAB_SUBJECT_INVALID", mediaReason);
-
-  const analysis = resolveAutomaticAnalysis(config.review?.analysis);
-  if (!analysis.ok) return failed("HUMANISH_LAB_ANALYSIS_INVALID", analysis.message);
-  const tasksReason = taskProtocolValidationReason(config, false);
-  if (tasksReason) return failed("HUMANISH_LAB_TASKS_UNSUPPORTED", tasksReason);
-
-  const descriptor = actorRegistry[actorType as keyof typeof actorRegistry];
-  if (!descriptor || !isTerminalActorDescriptor(descriptor)) {
-    return failed(
-      "HUMANISH_TERMINAL_LAB_ACTOR_UNSUPPORTED",
-      `actors[0].type "${actorType}" is not a registered terminal actor.`,
-    );
-  }
-
-  const runtimeVersion = config.execution?.runtime?.version;
-  const actor = config.actors[0];
-  if (
-    (config.execution?.runtime !== undefined && !isExactRuntimeVersion(runtimeVersion)) ||
-    (actor?.model !== undefined &&
-      (typeof actor.model !== "string" || actor.model.trim().length === 0)) ||
-    (actor?.reasoningEffort !== undefined && !isReasoningEffort(actor.reasoningEffort))
-  ) {
-    return failed(
-      "HUMANISH_TERMINAL_LAB_FAILED",
-      "Terminal runtime settings require an exact Codex version, a nonempty model when declared, and a supported reasoning-effort value.",
-    );
-  }
-
-  // Re-enforce the subject shape at the engine (the parser rejects these too, but this is exported
-  // npm surface). A terminal-product subject MUST declare product.name + public surfaces.
-  if (!product || !product.name || product.publicSurfaces.length === 0) {
-    return failed(
-      "HUMANISH_TERMINAL_LAB_SUBJECT_INVALID",
-      "terminal-product subjects require `subject.product` with a name and at least one public surface URL.",
-      { actor: descriptor.id },
-    );
-  }
+  const { plan } = planned;
+  const product = plan.product;
+  const descriptor = { id: plan.actor };
 
   // LIVE path: the real in-sandbox agent session. A separate orchestrator owns the
   // create -> inject (command-scoped) -> run -> capture -> teardown lifecycle so the dry-run path
   // below stays a pure contract builder. It enforces the safety contract by construction (the
   // keyPlacement-routed command-scoped key, the deny-by-default allowlist, the fail-closed cap,
   // the proven cleanup) and fails closed before any sandbox/key/spend on any precondition miss.
-  if (!dryRun) {
+  if (!plan.dryRun) {
     return runLiveTerminalSession({
       options,
       cwd,
       config,
-      descriptorId: descriptor.id,
+      descriptorId: plan.actor,
       product,
+      caps: plan.caps,
       warnings,
       failed,
       scope,

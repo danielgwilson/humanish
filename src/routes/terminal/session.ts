@@ -12,7 +12,6 @@ import { readFile, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 import { resolveCommittedPersona as resolveTerminalPersona } from "../../lab/persona-resolve.js";
 import type { ActorCompletionReason, ActorPersonaRef, ActorStatus } from "../../actors/contract.js";
-import { actorRegistry } from "../../actors/registry.js";
 import { buildOpenAiEgressNetwork } from "./runtime-auth.js";
 import type { LabRuntimeAuth } from "../../lab/types.js";
 import {
@@ -71,47 +70,14 @@ export async function runLiveTerminalSession(
   args: RunLiveTerminalSessionArgs,
 ): Promise<TerminalProductLabResult> {
   const { options, cwd, config, descriptorId, product, warnings, failed, scope } = args;
+  const { caps } = args;
+  const { maxUsd, maxMinutes } = caps;
   const hooks = options.hooks ?? {};
   const env = hooks.env ?? process.env;
   const now = hooks.now ?? (() => Date.now());
   const nowIso = (): string => new Date(now()).toISOString();
 
-  // Check the registered terminal actor's default placement contract before launching. The
-  // explicit openai-egress mode overrides the resolved trace's placement to external; registry
-  // metadata continues to describe the compatible openai-env default.
-  const descriptor = actorRegistry[descriptorId as keyof typeof actorRegistry];
-  const keyPlacement = descriptor?.capabilities.keyPlacement;
-  if (keyPlacement !== "in-sandbox-command-scoped") {
-    return failed(
-      "HUMANISH_TERMINAL_LAB_KEYPLACEMENT_INVALID",
-      `Terminal actor "${descriptorId}" must declare keyPlacement "in-sandbox-command-scoped" for the live lane (got "${String(keyPlacement)}"). The engine requires this registered default before applying the declared runtime-auth mode.`,
-      { actor: descriptorId },
-    );
-  }
-
-  // --- Safety contract item 2: a fail-closed cap MUST be in force before the live key runs. ---
-  const caps = config.scenario?.caps;
-  const maxUsd = caps?.maxUsd;
-  const maxMinutes = caps?.maxMinutes;
-  if (caps === undefined || maxUsd === undefined || maxMinutes === undefined || maxMinutes <= 0) {
-    return failed(
-      "HUMANISH_TERMINAL_LAB_CAPS_MISSING",
-      "A live terminal-product run grants provider access to the in-sandbox agent and so REQUIRES a fail-closed cap: scenario.caps with maxUsd (0 = no-spend) and a positive maxMinutes (the codex command's wall-clock kill). The live key is never exercised without a cap in force.",
-      { actor: descriptorId },
-    );
-  }
-  // maxUsd is checked against the cost ledger after the session, and only KNOWN lines can trip it.
-  // Core records the Codex provider line as unpriced tokens (no rate for model `codex`) and has no
-  // product, media or payment signal, so without a costProbe every line is null and a positive
-  // maxUsd could never trip. That cap would promise a bound nothing enforces, so it is refused;
-  // maxMinutes is what bounds a live run.
-  if (maxUsd > 0 && hooks.costProbe === undefined) {
-    return failed(
-      "HUMANISH_TERMINAL_LAB_UNPRICED_CAP",
-      `scenario.caps.maxUsd=${maxUsd} cannot be enforced: the Codex participant's provider spend is recorded as unpriced tokens and no product, media or payment spend is measured, so a positive dollar cap can never trip. Set scenario.caps.maxUsd to 0 and bound the run with scenario.caps.maxMinutes, the codex command's wall-clock kill. No sandbox was created and the runtime key was not used.`,
-      { actor: descriptorId },
-    );
-  }
+  // planTerminalLab refuses a positive maxUsd without a costProbe, so one is present here.
   if (maxUsd > 0) {
     warnings.push(
       `scenario.caps.maxUsd=${maxUsd} is checked after the session against the lines the costProbe measures; lines it leaves null (unmeasured) never trip it. scenario.caps.maxMinutes bounds the run while it runs.`,
