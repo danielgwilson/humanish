@@ -170,7 +170,7 @@ export function loopResult(
       : {}),
     ...(session.declaredOutcome === undefined ? {} : { declaredOutcome: session.declaredOutcome }),
     ...(debrief === undefined ? {} : { debrief }),
-    ...(usage.interactionUsageIncomplete(session.requiresUsage)
+    ...(usage.interactionUsageIncomplete(session.capDeclared)
       ? { interactionUsageIncomplete: true as const }
       : {}),
     // The funnel is present exactly when a protocol was declared — including a session that ended

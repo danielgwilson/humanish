@@ -42,6 +42,7 @@ subject:
     url: http://127.0.0.1:3000/
 actors:
   - type: openai-computer-use
+    maxOutputTokens: 8192 # bounds a stalled request's worst case, so the capped run can retry it
     persona: synthetic-new-user # ONE persona for both lanes: effort is the only declared difference
     mission: >-
       Create a small database diagram with at least two related tables, then stop.

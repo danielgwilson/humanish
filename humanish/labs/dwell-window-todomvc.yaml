@@ -19,6 +19,7 @@ subject:
     url: http://127.0.0.1:3000/
 actors:
   - type: openai-computer-use
+    maxOutputTokens: 8192 # bounds a stalled request's worst case, so the capped run can retry it
     persona: synthetic-new-user
     mission: >-
       Add one task called "water the plants". The study will then hold the page for a while; when you are asked to continue, add a second task called "call the bank", then stop. Report what you did.

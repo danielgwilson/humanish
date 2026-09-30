@@ -39,6 +39,7 @@ subject:
     url: http://127.0.0.1:3000/
 actors:
   - type: openai-computer-use
+    maxOutputTokens: 8192 # bounds a stalled request's worst case, so the capped run can retry it
     # ONE mission for both lanes: the persona is the only declared difference, so any
     # behavioral delta is attributable to it (and any absence of delta is the finding).
     mission: >-

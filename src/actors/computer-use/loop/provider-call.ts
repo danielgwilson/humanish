@@ -10,13 +10,15 @@ import {
   type RequestScope,
 } from "./race.js";
 import type { LoopSession } from "./session.js";
+import { bookLostRequest, LostRequestRefused, spendGate } from "./spend.js";
 import { notice } from "./trace.js";
 import type { CuaTurn, CuaTurnRequest } from "./types.js";
 import { reportedCounts, settledReceipt } from "./usage.js";
 
 // Asking the provider for a turn. A provider with requestPolicy "fail_closed" owns one attempt
 // through settlement and reports a receipt; any other provider is raced against the turn bound
-// and retried once when it stalls.
+// and retried once when it stalls. Under a declared cap, a lost request is sent again only when
+// its worst case fits under the cap (spend.ts).
 
 const CUA_PROVIDER_CLEANUP_GRACE_MS = 5000;
 
@@ -49,7 +51,7 @@ export async function requestTurn(
     return {
       turn: await raceCallBound(
         `provider turn ${turnNumber}`,
-        provider.nextTurn(request, first.signal),
+        provider.nextTurn(request, first.signal, spendGate(session, turnNumber)),
         session.remaining(),
         session.turnTimeoutMs,
         signal,
@@ -59,13 +61,22 @@ export async function requestTurn(
     // Stops are concluded here, before `finally` ends the request scope, so their notices are
     // recorded before any abort listener runs.
     if (isCuaAdmissionLimitError(error)) return { stop: session.conclude(adapterLimit) };
+    if (error instanceof LostRequestRefused) return { stop: session.conclude(error.stop) };
     // A thrown request may have been billed without returning usage. Admission refusal is
     // the explicit no-dispatch exception above; strict capped routes cannot safely retry.
     if (session.requiresUsage) {
       session.usage.markUnreported();
       return { stop: session.conclude(usageUnreported) };
     }
-    if (!(error instanceof CuaStallError)) throw error;
+    if (!(error instanceof CuaStallError)) {
+      // A provider given the spend gate leaves a request that ends this way to the loop.
+      if (session.capDeclared) session.usage.markUnreported();
+      throw error;
+    }
+    if (session.capDeclared) {
+      const refused = bookLostRequest(session, turnNumber, "stalled");
+      if (refused !== undefined) return { stop: session.conclude(refused) };
+    }
     return await retryStalledTurn(session, request, turnNumber, error, first);
   } finally {
     first.end();
@@ -79,7 +90,8 @@ async function retryStalledTurn(
   stall: CuaStallError,
   stalled: RequestScope,
 ): Promise<TurnReply> {
-  session.usage.markUnreported();
+  // Under a cap the stalled request is already booked at its worst case.
+  if (!session.capDeclared) session.usage.markUnreported();
   session.trace.record("notice", () =>
     notice(
       "warn",
@@ -94,7 +106,7 @@ async function retryStalledTurn(
     return {
       turn: await raceCallBound(
         `provider turn ${turnNumber} (retry)`,
-        session.provider.nextTurn(request, retry.signal),
+        session.provider.nextTurn(request, retry.signal, spendGate(session, turnNumber)),
         session.remaining(),
         session.turnTimeoutMs,
         session.signal,
@@ -102,7 +114,12 @@ async function retryStalledTurn(
     };
   } catch (retryError) {
     if (isCuaAdmissionLimitError(retryError)) return { stop: session.conclude(adapterLimit) };
-    if (!(retryError instanceof CuaStallError)) throw retryError;
+    if (retryError instanceof LostRequestRefused)
+      return { stop: session.conclude(retryError.stop) };
+    if (!(retryError instanceof CuaStallError)) {
+      if (session.capDeclared) session.usage.markUnreported();
+      throw retryError;
+    }
     session.usage.markUnreported();
     return { stop: session.conclude(providerStalledTwice(turnNumber, retryError.afterMs)) };
   } finally {

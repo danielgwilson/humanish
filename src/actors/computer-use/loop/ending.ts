@@ -115,12 +115,17 @@ export function timeLimit(session: LoopSession): Stop {
  */
 export function spendLimit(session: LoopSession, estimate: number, maxUsd: number): Stop {
   const { materialActions, turns } = session.trace.counts;
+  const booked = session.usage.reservedRequests;
+  const spend =
+    booked === 0
+      ? `estimated spend $${estimate}`
+      : `estimated spend $${estimate}, including the worst case of ${booked} lost request(s),`;
   return {
     completionReason: "budget_reached",
     reason:
       materialActions > 0
-        ? `estimated spend $${estimate} crossed execution.caps.maxUsd=$${maxUsd} after productive activity (${materialActions} material action(s), ${turns} turn(s)); aborted fail-closed before the next model turn`
-        : `estimated spend $${estimate} crossed execution.caps.maxUsd=$${maxUsd} with no material progress; aborted fail-closed before the next model turn`,
+        ? `${spend} crossed execution.caps.maxUsd=$${maxUsd} after productive activity (${materialActions} material action(s), ${turns} turn(s)); aborted fail-closed before the next model turn`
+        : `${spend} crossed execution.caps.maxUsd=$${maxUsd} with no material progress; aborted fail-closed before the next model turn`,
     stopCause: "spend_limit",
   };
 }
@@ -168,6 +173,23 @@ export const usageUnreported: Stop = {
   stopCause: "usage_unreported",
   evidence: noticeEvidence("error", "provider usage unavailable", USAGE_UNREPORTED_REASON),
 };
+
+/**
+ * A capped session lost a request without a reply and cannot bound what it cost: no output-token
+ * limit is set, so its worst case is the model's whole output allowance.
+ */
+export function lostRequestUnbounded(turnNumber: number, lost: LostRequest): Stop {
+  const reason = `provider turn ${turnNumber} ${lost}; its usage is unknown and no maxOutputTokens bounds what it cost, so the declared model-spend cap cannot be established; no further or closing request was dispatched. Set actors[].maxOutputTokens so a capped session can book the worst case and retry.`;
+  return {
+    completionReason: "harness_error",
+    reason,
+    stopCause: "usage_unreported",
+    evidence: noticeEvidence("error", "provider usage unavailable", reason),
+  };
+}
+
+/** How a request was lost without a reply. */
+export type LostRequest = "stalled" | "failed in transit";
 
 export function providerStalledTwice(turnNumber: number, afterMs: number): Stop {
   const reason = `provider turn ${turnNumber} stalled twice (${afterMs}ms each); the model produced no turn and the lane was ended rather than left to run out its budget`;

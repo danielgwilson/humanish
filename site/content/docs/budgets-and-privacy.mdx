@@ -33,7 +33,7 @@ execution:
 - E2B desktop time, app provisioning, and any services used by your target app are additional. Desktop estimates use dated assumptions; your provider bill is authoritative.
 - A model without a known rate cannot satisfy a fail-closed computer-use cap, so the run is refused rather than treated as free.
 
-The included `try-live` lab uses one participant and `maxUsd: 2`. It is a starting point for learning the product, not a recommended budget for every task. When `init` finds no OpenAI key and a signed-in Codex or Claude Code, it writes `try-live` with a `local-agent` participant and no dollar cap: account usage has no dollar price humanish can enforce, and the 10-minute `execution.timeoutMs` bounds the run.
+The included `try-live` lab uses one participant, `maxUsd: 2` and `maxOutputTokens: 8192`. It is a starting point for learning the product, not a recommended budget for every task. When `init` finds no OpenAI key and a signed-in Codex or Claude Code, it writes `try-live` with a `local-agent` participant and no dollar cap: account usage has no dollar price humanish can enforce, and the 10-minute `execution.timeoutMs` bounds the run.
 
 The first paid step is this one participant. [Store the keys](#store-credentials) first, then run `npx humanish run try-live` against a synthetic account on the target, with the E2B console open so you can watch the desktop end. Read the bundle's `cost` block and `providerResources` before running a panel.
 
@@ -114,6 +114,17 @@ rate is available; it does not prepay or reserve the next request. An absent cap
 is uncapped. A zero threshold can still allow a paid model request before its
 reported usage triggers the stop, so `maxUsd: 0` is not a no-provider-call mode.
 Desktop provisioning can also incur charges.
+
+A cap is kept from the usage each model reply reports. If a capped participant's
+reply comes back without usage, humanish sends that participant no further
+request and records `usage_unreported`. A request that stalls or fails in transit
+may still have been billed, so humanish counts its worst case against the cap
+before sending it again: the previous request's input plus the actor's
+`maxOutputTokens`, at the model's rates. The retry happens only when that fits.
+Without `maxOutputTokens` the worst case has no bound, so a capped lab without
+`maxOutputTokens` stops on a stall instead of retrying (`usage_unreported`). The
+`try-live` lab and the capped labs in `humanish/labs/` set `maxOutputTokens: 8192`
+for that reason.
 
 The terminal route uses `scenario.caps.maxUsd` for its separate cost-ledger and
 product-spend rules; it does not use these computer-use model thresholds. The

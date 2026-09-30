@@ -464,7 +464,8 @@
                 "ms": 60000,
                 "everyMs": 10000,
                 "then": "continue"
-              }
+              },
+              "maxOutputTokens": 8192
             },
             "tasks": [
               {
@@ -585,7 +586,8 @@
               ]
             },
             "limits": {
-              "reasoningEffort": "medium"
+              "reasoningEffort": "medium",
+              "maxOutputTokens": 8192
             }
           },
           {
@@ -611,7 +613,8 @@
               ]
             },
             "limits": {
-              "reasoningEffort": "high"
+              "reasoningEffort": "high",
+              "maxOutputTokens": 8192
             }
           }
         ],
@@ -1063,7 +1066,9 @@
                 896
               ]
             },
-            "limits": {},
+            "limits": {
+              "maxOutputTokens": 8192
+            },
             "tasks": [
               {
                 "id": "reach-guide",
@@ -1306,7 +1311,9 @@
                 950
               ]
             },
-            "limits": {},
+            "limits": {
+              "maxOutputTokens": 8192
+            },
             "tasks": [
               {
                 "id": "camera-on",
@@ -1412,7 +1419,9 @@
                 950
               ]
             },
-            "limits": {}
+            "limits": {
+              "maxOutputTokens": 8192
+            }
           },
           {
             "id": "patient-newcomer",
@@ -1436,7 +1445,9 @@
                 950
               ]
             },
-            "limits": {}
+            "limits": {
+              "maxOutputTokens": 8192
+            }
           }
         ],
         "subject": {
@@ -1933,7 +1944,9 @@
                 950
               ]
             },
-            "limits": {},
+            "limits": {
+              "maxOutputTokens": 8192
+            },
             "tasks": [
               {
                 "id": "reach-signup",
@@ -1995,7 +2008,9 @@
                 950
               ]
             },
-            "limits": {},
+            "limits": {
+              "maxOutputTokens": 8192
+            },
             "tasks": [
               {
                 "id": "reach-signup",
@@ -2192,7 +2207,9 @@
                 950
               ]
             },
-            "limits": {}
+            "limits": {
+              "maxOutputTokens": 8192
+            }
           }
         ],
         "subject": {

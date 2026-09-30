@@ -16,6 +16,7 @@ subject:
     url: http://127.0.0.1:8000/
 actors:
   - type: openai-computer-use
+    maxOutputTokens: 8192 # bounds a stalled request's worst case, so the capped run can retry it
     mission: >-
       Open the guide from the link on the page. On the guide page, read the guide width, the touch points and the pixel ratio it reports, and tell me those three numbers exactly as written. Also tell me the width the first page reported. Then stop.
     tasks:

@@ -1188,9 +1188,32 @@ of those thresholds, not a guaranteed total spending ceiling.
 
 The loop checks reported usage after a model response, before dispatching that
 response's actions or requesting another turn. It does not reserve the next
-request's worst-case cost. In-flight requests, retries, concurrent lanes, and
-unreported usage can exceed or escape these estimates. These thresholds are
-not hard provider billing caps and exclude desktop and target-app charges.
+request's worst-case cost. In-flight requests and concurrent lanes can exceed
+these estimates. These thresholds are not hard provider billing caps and
+exclude desktop and target-app charges.
+
+A capped session sends a further request only while every earlier request's
+usage is known or bounded:
+
+- A reply without complete usage, or a provider that reports a dispatch whose
+  usage it could not return (`interactionUsageIncomplete`), stops the session
+  before its next request with `harness_error`, `stopCause: usage_unreported`,
+  and the label “provider usage unavailable”. The reply's own actions still
+  run, and a reply that ends the session ends it normally.
+- A request lost without a reply (it stalled, or the OpenAI provider's
+  transport threw) is booked at its worst case before it is sent again: the
+  latest reported request's input at the model's highest input rate plus
+  `actors[].maxOutputTokens` at its output rate, both from `src/run/pricing.ts`.
+  The reply to the resent request replaces that input with its own. The
+  request is sent again only when the estimate with that charge stays within
+  `maxUsd` and the study budget. Otherwise the session ends `budget_reached`
+  with the crossed threshold, and the reason counts the booked worst case.
+- Without `maxOutputTokens` a lost request has no bound, so it is not sent
+  again: the session stops with `stopCause: usage_unreported`.
+
+The trace records `interactionUsageIncomplete: true` whenever a request's usage
+is unknown, booked or not. The booked worst case counts toward the thresholds
+only; `tokenUsage` and the cost summary keep the reported usage.
 
 Crossing `maxUsd` ends `budget_reached` / `incomplete`, including when no
 material action has executed. The recorded reason distinguishes prior progress
@@ -1207,14 +1230,13 @@ threshold on a model `src/run/pricing.ts` cannot price is refused at preflight
 (`HUMANISH_CUA_LAB_UNPRICED_CAP`) before sandbox allocation. This rate-availability
 check is separate from the post-response spend check.
 
-Library callers can make a capped session fail closed on unknown spend:
+Library callers can make a capped session stricter:
 `runCuaActorSession({ requireReportedUsageForSpendCap: true })` together with
-`maxUsd` or `overRunBudget`. No built-in route enables this policy. With it, an
-otherwise completed capped interaction that returns missing or partial usage
-stops with `harness_error`, `stopCause: usage_unreported`, and the label
-“provider usage unavailable.” It is not recorded as a crossed threshold. A
-stalled or failed request with unknown spend is not retried by the CUA loop.
-The default OpenAI adapter also disables HTTP and policy-negotiation retries for
+`maxUsd` or `overRunBudget`. No built-in route enables this policy. With it, a
+reply that returns missing or partial usage is not acted on, and any failed or
+stalled request stops the session; both stop with `harness_error`,
+`stopCause: usage_unreported`, and the label “provider usage unavailable.” It is
+not recorded as a crossed threshold. The default OpenAI adapter also disables HTTP and policy-negotiation retries for
 these strict capped sessions. The loop cancels its owned request signal when a
 request ends or its timeout wins; injected providers must honor cancellation
 and remain responsible for their own internal dispatch. Known usage remains in

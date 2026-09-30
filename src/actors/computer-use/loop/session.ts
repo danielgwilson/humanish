@@ -77,6 +77,11 @@ export class LoopSession {
   readonly sleep: (ms: number) => Promise<void>;
   /** Strict capped routes stop when a request's usage is unavailable. */
   readonly requiresUsage: boolean;
+  /**
+   * A dollar cap or study budget is declared. Its estimate is built from reported usage, so a
+   * request whose usage is unknown and unbounded stops the session before the next one.
+   */
+  readonly capDeclared: boolean;
   readonly startedAtMs: number;
   readonly turnTimeoutMs: number;
   readonly observationTimeoutMs: number;
@@ -161,8 +166,8 @@ export class LoopSession {
     this.scrubText = (text) => scrubText(text);
     this.writeScreenshot = (name, bytes) => writeScreenshot(name, bytes);
     this.sleep = (ms) => sleep(ms);
-    this.requiresUsage =
-      requireReportedUsageForSpendCap && (maxUsd !== undefined || overRunBudget !== undefined);
+    this.capDeclared = maxUsd !== undefined || overRunBudget !== undefined;
+    this.requiresUsage = requireReportedUsageForSpendCap && this.capDeclared;
     this.startedAtMs = now();
     this.turnTimeoutMs = options.turnTimeoutMs ?? DEFAULT_TURN_TIMEOUT_MS;
     this.observationTimeoutMs = options.observationTimeoutMs ?? DEFAULT_OBSERVATION_TIMEOUT_MS;
