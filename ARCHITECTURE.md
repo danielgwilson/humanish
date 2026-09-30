@@ -8,7 +8,7 @@ fails when a path in it no longer exists. [CONTEXT.md](CONTEXT.md) defines the d
 
 The steps use a live computer-use lab on a hosted E2B desktop. The scripted, terminal and
 shared-world routes share steps 1, 2, 8 and 9, and each does steps 3 to 7 in its own route file.
-The synthetic route writes a fixture bundle with `runDryRun` (`src/run/dry-run.ts`) and skips
+The preview route writes a fixture bundle with `runDryRun` (`src/run/dry-run.ts`) and skips
 steps 3 to 7 and 9.
 
 1. `runLabCommand` (`src/cli/commands/lab-run.ts`) calls `resolveLabManifest`
@@ -105,23 +105,23 @@ browser row. Accepted rows have further required fields, such as `subject.serve`
 the parse error names the missing one. The computer-use actors are `openai-computer-use` and
 `local-agent`.
 
-| Route                     | `subject.source`                                 | `execution.target`       | `actors[0].type`                       | Result                                                                         |
-| ------------------------- | ------------------------------------------------ | ------------------------ | -------------------------------------- | ------------------------------------------------------------------------------ |
-| `cua`                     | `app-url`                                        | `e2b-desktop`            | a computer-use actor                   | Supported                                                                      |
-| `cua`                     | `app-url`                                        | `local`                  | a computer-use actor                   | Supported on a local Firecracker desktop, inside Lima on macOS                 |
-| `cua`                     | `clone`, `local-tree`                            | `e2b-desktop`            | a computer-use actor                   | Supported                                                                      |
-| `cua`                     | `desktop-cli`                                    | `e2b-desktop` or absent  | a computer-use actor                   | Supported                                                                      |
-| `cua`                     | `local-app`                                      | `local` or absent        | a computer-use actor                   | Library only; the CLI refuses it with `HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR` |
-| `concurrent-shared-world` | `clone`, `local-tree` + `topology: shared-world` | `e2b-desktop`            | a computer-use actor                   | Supported                                                                      |
-| `concurrent-shared-world` | `app-url` + `topology: shared-world`             | `e2b-desktop`            | a computer-use actor                   | Supported with `policies.allowPublicTargets: true`                             |
-| `scripted`                | `app-url` with a loopback URL                    | `local` or absent        | `scripted-browser`                     | Supported                                                                      |
-| `scripted`                | `clone`                                          | `e2b-desktop`            | `scripted-browser`                     | Supported                                                                      |
-| `terminal`                | `terminal-product`                               | `e2b-terminal` or absent | `codex-exec`                           | Supported                                                                      |
-| `synthetic`               | `this-repo`                                      | absent                   | not `scripted-browser` or `codex-exec` | Dry run only                                                                   |
-| none                      | any other pairing                                | any                      | any                                    | Refused at parse with `HUMANISH_LAB_INVALID`                                   |
+| Route (backend name)                       | `subject.source`                                 | `execution.target`       | `actors[0].type`                       | Result                                                                         |
+| ------------------------------------------ | ------------------------------------------------ | ------------------------ | -------------------------------------- | ------------------------------------------------------------------------------ |
+| `computer-use` (`cua`)                     | `app-url`                                        | `e2b-desktop`            | a computer-use actor                   | Supported                                                                      |
+| `computer-use` (`cua`)                     | `app-url`                                        | `local`                  | a computer-use actor                   | Supported on a local Firecracker desktop, inside Lima on macOS                 |
+| `computer-use` (`cua`)                     | `clone`, `local-tree`                            | `e2b-desktop`            | a computer-use actor                   | Supported                                                                      |
+| `computer-use` (`cua`)                     | `desktop-cli`                                    | `e2b-desktop` or absent  | a computer-use actor                   | Supported                                                                      |
+| `computer-use` (`cua`)                     | `local-app`                                      | `local` or absent        | a computer-use actor                   | Library only; the CLI refuses it with `HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR` |
+| `shared-world` (`concurrent-shared-world`) | `clone`, `local-tree` + `topology: shared-world` | `e2b-desktop`            | a computer-use actor                   | Supported                                                                      |
+| `shared-world` (`concurrent-shared-world`) | `app-url` + `topology: shared-world`             | `e2b-desktop`            | a computer-use actor                   | Supported with `policies.allowPublicTargets: true`                             |
+| `scripted`                                 | `app-url` with a loopback URL                    | `local` or absent        | `scripted-browser`                     | Supported                                                                      |
+| `scripted`                                 | `clone`                                          | `e2b-desktop`            | `scripted-browser`                     | Supported                                                                      |
+| `terminal`                                 | `terminal-product`                               | `e2b-terminal` or absent | `codex-exec`                           | Supported                                                                      |
+| `preview` (`synthetic`)                    | `this-repo`                                      | absent                   | not `scripted-browser` or `codex-exec` | Dry run only                                                                   |
+| none                                       | any other pairing                                | any                      | any                                    | Refused at parse with `HUMANISH_LAB_INVALID`                                   |
 
 The fixture's `supported` field records which routes accept declared `actors[0].tasks`. The
-`cua` labs in the fixture accept them. The other routes refuse them at parse.
+computer-use labs in the fixture accept them. The other routes refuse them at parse.
 
 ## Keep these invariants when you change code
 
