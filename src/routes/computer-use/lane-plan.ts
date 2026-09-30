@@ -5,13 +5,9 @@ import {
 import { DEFAULT_STATE_STEP_TIMEOUT_MS } from "../../subject/state.js";
 import type { ActorPersonaRef } from "../../actors/contract.js";
 import { recipientInboxUrl } from "../../comms/capture-surface.js";
-import {
-  DEFAULT_DEVICE_PRESET,
-  isDevicePresetName,
-  resolveDevicePreset,
-  type DevicePreset,
-} from "../../lab/device-presets.js";
-import { type LabActorLane, type LabConfig } from "../../lab/types.js";
+import type { DevicePreset } from "../../lab/device-presets.js";
+import { computerUseParticipants } from "../../lab/plan-participants.js";
+import { type LabConfig } from "../../lab/types.js";
 import {
   personaBrief,
   personaToDirectives,
@@ -19,16 +15,13 @@ import {
   scrubPersonaBrief,
   type ResolvedPersona,
 } from "../../lab/persona.js";
-import type { ReasoningEffort } from "../../actors/reasoning-effort.js";
 import { digestText, redactText } from "../../evidence/redaction.js";
 import { type RunRerunLineage } from "../../run/bundle.js";
 import { type RunStream } from "../../run/streams.js";
 import { loadRunBundle } from "../../run/locate.js";
-import type { DwellWindow, StopWhen } from "../../actors/stop-conditions.js";
 import { renderTaskPrompt, type LabTask } from "../../lab/tasks.js";
 import { participantAssignment } from "../../lab/participant-assignment.js";
 import { labPersonaIds, resolveCommittedPersonas } from "../../lab/persona-resolve.js";
-import { participantIdAt } from "../../lab/routing.js";
 import type { PreparedSelectedOutputDirectory } from "../../run/contained-output.js";
 import {
   CUA_FANOUT_STRATEGY,
@@ -174,64 +167,6 @@ export function withInboxMission(
   };
 }
 
-/**
- * The narrowest browser WINDOW Chrome/Chromium will render on the E2B desktop. Chrome refuses to
- * make its window narrower than this (~500 CSS px observed: a 414-wide X screen produced a 500-wide
- * window that OVERFLOWED it, clipping the right edge of the page off-screen). So the physically
- * RENDERED screen width is floored here: a sub-500 mobile preset (mobile 414, small-mobile 360,
- * narrow-mobile 320) gets a 500-wide screen the window fits exactly — no clip. The device PRESET keeps
- * its true identity (isMobile, nominal width) for the persona prompt + metadata; only the rendered
- * screen is floored. True sub-500 CSS-viewport rendering (page laid out at 414 regardless of window
- * width, via CDP device-metric emulation) is the separate #221 upgrade.
- */
-export const MIN_DESKTOP_RENDER_WIDTH = 500;
-
-/** Floor a screen resolution's WIDTH to what Chrome can actually render (see MIN_DESKTOP_RENDER_WIDTH). */
-export function floorRenderResolution(resolution: readonly [number, number]): [number, number] {
-  return [Math.max(resolution[0], MIN_DESKTOP_RENDER_WIDTH), resolution[1]];
-}
-
-/**
- * Resolve a lane's device + rendered resolution (most-specific wins, exactly as the single-lane
- * path always has): a raw execution.desktop.resolution escape hatch (only legal when no lane
- * sets a device — XOR enforced at parse) → the lane's named device → the run-wide
- * execution.desktop.device → the default preset. A raw resolution is an unnamed custom desktop
- * (non-mobile, DSF 1): we never claim a named preset's mobile/DPR for hand-set geometry. The rendered
- * `resolution` is floored to MIN_DESKTOP_RENDER_WIDTH so the browser window fits its X screen (no clip);
- * `preset` keeps the declared device identity (a mobile preset stays 414/isMobile for the prompt).
- */
-export function resolveLaneDevice(
-  config: LabConfig,
-  lane: LabActorLane | undefined,
-): {
-  name: string;
-  preset: DevicePreset;
-  resolution: [number, number];
-} {
-  const rawResolution = config.execution?.desktop?.resolution;
-  if (lane?.device === undefined && rawResolution) {
-    const preset: DevicePreset = {
-      width: rawResolution[0],
-      height: rawResolution[1],
-      isMobile: false,
-      deviceScaleFactor: 1,
-    };
-    return {
-      name: "custom",
-      preset,
-      resolution: floorRenderResolution([rawResolution[0], rawResolution[1]]),
-    };
-  }
-  const candidate = lane?.device ?? config.execution?.desktop?.device;
-  const presetName = isDevicePresetName(candidate) ? candidate : DEFAULT_DEVICE_PRESET;
-  const preset = resolveDevicePreset(presetName);
-  return {
-    name: presetName,
-    preset,
-    resolution: floorRenderResolution([preset.width, preset.height]),
-  };
-}
-
 /** Per-lane sandbox deadline (each lane owns its own desktop). Mirrors the single-lane formula
  *  verbatim so N=1 stays byte-stable: explicit sandboxTimeoutMs, else session budget + (clone
  *  or local-tree: provision budget + Σ state-step budgets) + the server-side
@@ -295,42 +230,35 @@ function laneSpecsAndPlan(
   } = {},
 ): LaneSpecsAndPlan {
   const env = opts.env ?? {};
-  const actor = config.actors[0];
-  const mission = actor?.mission ?? DEFAULT_MISSION;
-  const tasks = actor?.tasks;
-  const roster = actor?.lanes;
-  const laneCount = roster ? roster.length : Math.max(1, opts.countOverride ?? actor?.count ?? 1);
+  // Who each lane is (id, persona, focus, device, limits) comes from the planned participants;
+  // this adds what the route derives from it: the prompt, bundle ids and artifact paths.
+  const participants = computerUseParticipants(config, opts.countOverride);
+  const laneCount = participants.length;
 
-  const lanes: CuaLaneSpec[] = [];
-  for (let i = 0; i < laneCount; i += 1) {
-    const lane = roster?.[i];
-    const laneId = participantIdAt(i, lane?.id, "lane");
+  const lanes: CuaLaneSpec[] = participants.map((participant) => {
+    const i = participant.index;
+    const laneId = participant.id;
     const simId = `sim-${String(i + 1).padStart(3, "0")}`;
     const streamId = `stream-${String(i + 1).padStart(3, "0")}`;
-    const device = resolveLaneDevice(config, lane);
-    // A lane's persona FALLS BACK to actors[0].persona, matching this field's own doc comment
-    // in src/lab/types.ts and its sibling resolutions (stopWhen, reasoningEffort) two lines
-    // below. Reading only lane.persona when a roster was present meant every fan-out lane of
-    // every lab that declared actors[0].persona ran with no persona at all: no personaLine in
-    // the prompt, traitsApplied [], and nothing warned (#512).
-    const personaId = (lane?.persona ?? actor?.persona) as string | undefined;
+    const mission = participant.assignment.mission ?? DEFAULT_MISSION;
+    const focus = participant.assignment.focus;
+    const tasks = participant.tasks;
+    const { device, labels, limits, personaId } = participant;
     const resolvedPersona = personaId === undefined ? undefined : opts.personas?.get(personaId);
     const composed = composeLaneInstructions({
       mission,
       ...(tasks === undefined ? {} : { tasks }),
       ...(personaId === undefined ? {} : { persona: personaId }),
       ...(resolvedPersona === undefined ? {} : { resolvedPersona }),
-      ...((roster ? lane?.instruction : actor?.laneFocus?.instruction) === undefined
-        ? {}
-        : { instruction: (roster ? lane?.instruction : actor?.laneFocus?.instruction) as string }),
+      ...(focus === undefined ? {} : { instruction: focus }),
       device: { name: device.name, preset: device.preset },
       ...(config.subject.source === "desktop-cli" ? { surface: "desktop-cli" as const } : {}),
     });
-    lanes.push({
+    return {
       laneId,
-      ...(lane?.actorType === undefined ? {} : { actorType: lane.actorType }),
-      ...(lane?.surface === undefined ? {} : { surface: lane.surface }),
-      ...(lane?.caseGroup === undefined ? {} : { caseGroup: lane.caseGroup }),
+      ...(labels.actorType === undefined ? {} : { actorType: labels.actorType }),
+      ...(labels.surface === undefined ? {} : { surface: labels.surface }),
+      ...(labels.caseGroup === undefined ? {} : { caseGroup: labels.caseGroup }),
       laneIndex: i,
       simId,
       streamId,
@@ -338,32 +266,22 @@ function laneSpecsAndPlan(
       instructions: composed.instructions,
       assignment: {
         mission,
-        ...((roster ? lane?.instruction : actor?.laneFocus?.instruction) === undefined
-          ? {}
-          : { focus: (roster ? lane?.instruction : actor?.laneFocus?.instruction)! }),
+        ...(focus === undefined ? {} : { focus }),
         ...(tasks === undefined ? {} : { tasks: tasks.map(({ id, goal }) => ({ id, goal })) }),
       },
-      ...(lane?.target === undefined ? {} : { targetUrl: lane.target }),
-      ...((lane?.stopWhen ?? actor?.stopWhen) === undefined
-        ? {}
-        : { stopWhen: (lane?.stopWhen ?? actor?.stopWhen) as StopWhen }),
-      ...((lane?.dwell ?? actor?.dwell) === undefined
-        ? {}
-        : { dwell: (lane?.dwell ?? actor?.dwell) as DwellWindow }),
-      ...((lane?.reasoningEffort ?? actor?.reasoningEffort) === undefined
-        ? {}
-        : {
-            reasoningEffort: (lane?.reasoningEffort ?? actor?.reasoningEffort) as ReasoningEffort,
-          }),
-      ...(actor?.maxOutputTokens === undefined ? {} : { maxOutputTokens: actor.maxOutputTokens }),
-      ...(tasks === undefined ? {} : { tasks }),
+      ...(participant.targetUrl === undefined ? {} : { targetUrl: participant.targetUrl }),
+      ...(limits.stopWhen === undefined ? {} : { stopWhen: limits.stopWhen }),
+      ...(limits.dwell === undefined ? {} : { dwell: limits.dwell }),
+      ...(limits.reasoningEffort === undefined ? {} : { reasoningEffort: limits.reasoningEffort }),
+      ...(limits.maxOutputTokens === undefined ? {} : { maxOutputTokens: limits.maxOutputTokens }),
+      ...(tasks === undefined ? {} : { tasks: [...tasks] }),
       deviceName: device.name,
       devicePreset: device.preset,
-      resolution: device.resolution,
+      resolution: [device.resolution[0], device.resolution[1]],
       screenshotDir: laneCount === 1 ? "" : laneId,
       traceArtifactPath: laneCount === 1 ? "actor.json" : `actors/${streamId}.json`,
-    });
-  }
+    };
+  });
 
   const resolved = resolveCuaConcurrency(config, laneCount, env);
   const concurrency = resolved.bound;

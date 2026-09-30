@@ -3,8 +3,7 @@
 
 import type { DwellWindow, StopWhen } from "../actors/stop-conditions.js";
 import type { ReasoningEffort } from "../actors/reasoning-effort.js";
-import { resolveLaneDevice } from "../routes/computer-use/lane-plan.js";
-import type { DevicePreset } from "./device-presets.js";
+import { resolveLaneDevice, type DevicePreset } from "./device-presets.js";
 import { participantIdAt } from "./routing.js";
 import type { LabTask } from "./tasks.js";
 import type { LabActorLane, LabConfig } from "./types.js";

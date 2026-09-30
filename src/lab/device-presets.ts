@@ -1,3 +1,5 @@
+import type { LabActorLane, LabConfig } from "./types.js";
+
 // Device/screen presets — a per-persona dimension, with LITERAL values copied from mature
 // in-house ui-sim geometry tables rather than guessed. Where two independent reference sims
 // agree (mobile/small-mobile/tablet) the value is copied verbatim; where they diverge (desktop
@@ -70,4 +72,62 @@ export function isDevicePresetName(value: unknown): value is DevicePresetName {
 /** Resolve a preset name (or undefined) to its preset, falling back to the default. */
 export function resolveDevicePreset(name: DevicePresetName | undefined): DevicePreset {
   return DEVICE_PRESETS[name ?? DEFAULT_DEVICE_PRESET];
+}
+
+/**
+ * The narrowest browser WINDOW Chrome/Chromium will render on the E2B desktop. Chrome refuses to
+ * make its window narrower than this (~500 CSS px observed: a 414-wide X screen produced a 500-wide
+ * window that OVERFLOWED it, clipping the right edge of the page off-screen). So the physically
+ * RENDERED screen width is floored here: a sub-500 mobile preset (mobile 414, small-mobile 360,
+ * narrow-mobile 320) gets a 500-wide screen the window fits exactly — no clip. The device PRESET keeps
+ * its true identity (isMobile, nominal width) for the persona prompt + metadata; only the rendered
+ * screen is floored. True sub-500 CSS-viewport rendering (page laid out at 414 regardless of window
+ * width, via CDP device-metric emulation) is the separate #221 upgrade.
+ */
+export const MIN_DESKTOP_RENDER_WIDTH = 500;
+
+/** Floor a screen resolution's WIDTH to what Chrome can actually render (see MIN_DESKTOP_RENDER_WIDTH). */
+export function floorRenderResolution(resolution: readonly [number, number]): [number, number] {
+  return [Math.max(resolution[0], MIN_DESKTOP_RENDER_WIDTH), resolution[1]];
+}
+
+/**
+ * Resolve a lane's device + rendered resolution (most-specific wins, exactly as the single-lane
+ * path always has): a raw execution.desktop.resolution escape hatch (only legal when no lane
+ * sets a device — XOR enforced at parse) → the lane's named device → the run-wide
+ * execution.desktop.device → the default preset. A raw resolution is an unnamed custom desktop
+ * (non-mobile, DSF 1): we never claim a named preset's mobile/DPR for hand-set geometry. The rendered
+ * `resolution` is floored to MIN_DESKTOP_RENDER_WIDTH so the browser window fits its X screen (no clip);
+ * `preset` keeps the declared device identity (a mobile preset stays 414/isMobile for the prompt).
+ */
+export function resolveLaneDevice(
+  config: LabConfig,
+  lane: LabActorLane | undefined,
+): {
+  name: string;
+  preset: DevicePreset;
+  resolution: [number, number];
+} {
+  const rawResolution = config.execution?.desktop?.resolution;
+  if (lane?.device === undefined && rawResolution) {
+    const preset: DevicePreset = {
+      width: rawResolution[0],
+      height: rawResolution[1],
+      isMobile: false,
+      deviceScaleFactor: 1,
+    };
+    return {
+      name: "custom",
+      preset,
+      resolution: floorRenderResolution([rawResolution[0], rawResolution[1]]),
+    };
+  }
+  const candidate = lane?.device ?? config.execution?.desktop?.device;
+  const presetName = isDevicePresetName(candidate) ? candidate : DEFAULT_DEVICE_PRESET;
+  const preset = resolveDevicePreset(presetName);
+  return {
+    name: presetName,
+    preset,
+    resolution: floorRenderResolution([preset.width, preset.height]),
+  };
 }

@@ -21,9 +21,9 @@ import { judgeParticipants } from "../../../src/run/judge.js";
 import {
   floorRenderResolution,
   MIN_DESKTOP_RENDER_WIDTH,
-  resolveCuaLanePlan,
   resolveLaneDevice,
-} from "../../../src/routes/computer-use/lane-plan.js";
+} from "../../../src/lab/device-presets.js";
+import { resolveCuaLanePlan } from "../../../src/routes/computer-use/lane-plan.js";
 import { runCuaActorLab } from "../../../src/routes/computer-use/lab.js";
 import { declaredScreenForRender } from "../../../src/substrates/e2b/desktop-geometry.js";
 import { runCuaLanes } from "../../../src/routes/computer-use/lanes.js";
