@@ -1,12 +1,17 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { parse } from "yaml";
 
+import { RESTRICTED_CODEX_ANALYSIS_IDENTITY } from "../../src/actors/codex/restricted-policy.js";
+import { parseLabConfig } from "../../src/lab/config.js";
 import { runInit } from "../../src/lab/init.js";
+import { starterFilesFor } from "../../src/lab/init-templates.js";
 import { resolveLabManifest, listLabManifests } from "../../src/lab/discover.js";
-import { runLab } from "../../src/lab/engine.js";
+import { runLab, selectLabBackend } from "../../src/lab/engine.js";
+import { runCuaActorLab } from "../../src/routes/computer-use/lab.js";
 
 // The labs `humanish init` writes must actually RUN.
 //
@@ -66,4 +71,89 @@ describe("every lab `humanish init` writes is runnable", () => {
       ).not.toBe(false);
     }
   }, 180_000);
+});
+
+// Dry runs skip live admission, which is where a ChatGPT-account participant refuses a dollar cap
+// (HUMANISH_CUA_LAB_UNPRICED_CAP). So each starter set also runs the live admission for the actor
+// its computer-use labs declare, stopping at the first desktop request.
+describe.each(["openai-computer-use", "local-agent"] as const)("the %s starter set", (actor) => {
+  let cwd: string;
+  beforeEach(async () => {
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-starter-set-"));
+  });
+  afterEach(async () => {
+    await rm(cwd, { recursive: true, force: true });
+  });
+
+  it("parses, dry-runs and passes live admission for every lab it writes", async () => {
+    const files = starterFilesFor(actor);
+    for (const file of files) {
+      await mkdir(path.dirname(path.join(cwd, file.path)), { recursive: true });
+      await writeFile(path.join(cwd, file.path), file.contents, "utf8");
+    }
+    // A signed-in ChatGPT-account Codex at the qualified version, and a synthetic provider key.
+    const bin = path.join(cwd, "bin");
+    await mkdir(bin);
+    await writeFile(
+      path.join(bin, "codex"),
+      `#!${process.execPath}\nconst args = process.argv.slice(2).join(" ");\nif (args === "login status") { process.stderr.write("Logged in using ChatGPT\\n"); process.exit(0); }\nif (args === "--version") { process.stdout.write("codex-cli ${RESTRICTED_CODEX_ANALYSIS_IDENTITY.cliVersion}\\n"); process.exit(0); }\nprocess.exit(99);\n`,
+    );
+    await chmod(path.join(bin, "codex"), 0o700);
+    const env = { PATH: bin, OPENAI_API_KEY: "synthetic-starter-admission-key" };
+
+    const labs = files.filter((file) => file.path.startsWith("humanish/labs/"));
+    expect(labs.map((file) => file.path)).toContain("humanish/labs/try-live.yaml");
+    for (const file of labs) {
+      const parsed = parseLabConfig(parse(file.contents));
+      expect(parsed.ok, `${file.path} should parse`).toBe(true);
+      if (!parsed.ok) continue;
+      const config = parsed.config;
+
+      const outcome = await runLab(config, {
+        cwd,
+        dryRun: true,
+        open: false,
+        lab: { id: config.id, path: file.path, origin: "committed" },
+      });
+      const dry = outcome.result as { ok?: boolean; error?: { code?: string; message?: string } };
+      expect(
+        dry.ok ?? true,
+        `${file.path} dry run: ${dry.error?.code} ${dry.error?.message}`,
+      ).not.toBe(false);
+
+      if (selectLabBackend(config) !== "cua") continue;
+      const admitted = new Error("admission passed; no desktop is created in this test");
+      const createDesktopLane = vi.fn(() => {
+        throw admitted;
+      });
+      let refusal = "";
+      try {
+        const live = await runCuaActorLab({
+          cwd,
+          config: { ...config, scenario: { ...config.scenario, mode: "live" } },
+          dryRun: false,
+          hooks: { env, createDesktopLane },
+        });
+        refusal = `${live.error?.code} ${live.error?.message}`;
+      } catch (error) {
+        if (error !== admitted) throw error;
+      }
+      expect(
+        createDesktopLane,
+        `${file.path} (${config.actors[0]?.type}) was refused before a desktop: ${refusal}`,
+      ).toHaveBeenCalled();
+    }
+  }, 180_000);
+
+  it("carries a dollar cap only when the participant has an API price", () => {
+    const tryLive = starterFilesFor(actor).find(
+      (file) => file.path === "humanish/labs/try-live.yaml",
+    )!;
+    const parsed = parseLabConfig(parse(tryLive.contents));
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.config.actors[0]?.type).toBe(actor);
+    expect(parsed.config.execution?.timeoutMs).toBe(600_000);
+    expect(parsed.config.execution?.caps?.maxUsd).toBe(actor === "local-agent" ? undefined : 2);
+  });
 });
