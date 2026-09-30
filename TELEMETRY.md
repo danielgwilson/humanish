@@ -35,7 +35,8 @@ telemetry, humanish cannot tell whether new users reach a working first run.
 - when recorded or derivable from a typed session ending, `stop_cause` is exactly
   one of `provider_output_limit`, `provider_token_limit`, `time_limit`,
   `spend_limit`, `study_spend_limit`, `provider_incomplete`, `provider_status`,
-  `harness_aborted`, `adapter_limit`, `unspecified_limit`, `mixed`, or `unknown`.
+  `provider_refused_prompt`, `harness_aborted`, `adapter_limit`,
+  `usage_unreported`, `unspecified_limit`, `mixed`, or `unknown`.
   Older limits stay broad. Different lane endings remain mixed. No raw error
   message or lane detail is sent. Absent diagnostics stay absent.
 

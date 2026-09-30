@@ -195,7 +195,9 @@ review:
 `humanish run <lab>`, `humanish lab run <lab>`, `humanish watch <lab>`, and live
 starts in the TUI share this default. Dry runs and unsupported routes dispatch
 nothing. Without `OPENAI_API_KEY`, default analysis is skipped and a successful
-recording stays successful. Opening the TUI or Observer never starts a request.
+recording stays successful. A default analysis whose admission estimate is over
+its limit is skipped the same way, and the CLI prints the `humanish analyze`
+command that runs it. Opening the TUI or Observer never starts a request.
 See [automatic analysis](docs/product/automatic-analysis.md) for configuration,
 cancellation, and failure behavior.
 
