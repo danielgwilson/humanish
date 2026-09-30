@@ -1,6 +1,8 @@
 import { readFileSync, readdirSync } from "node:fs";
+import { mkdtemp, rm } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, onTestFinished } from "vitest";
 import { parse as parseYaml } from "yaml";
 
 import { parseLabConfig } from "../../src/lab/config.js";
@@ -125,8 +127,11 @@ describe("lab config expressiveness (rung 3)", () => {
     expect(two.ok && five.ok).toBe(true);
     if (!two.ok || !five.ok) return;
 
-    const r2 = await runLab(two.config, { cwd: ROOT, runId: "behavioral-2", dryRun: true });
-    const r5 = await runLab(five.config, { cwd: ROOT, runId: "behavioral-5", dryRun: true });
+    // Fixed run ids need a fresh project: a second run with the same id is refused.
+    const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-structural-"));
+    onTestFinished(() => rm(cwd, { force: true, recursive: true }));
+    const r2 = await runLab(two.config, { cwd, runId: "behavioral-2", dryRun: true });
+    const r5 = await runLab(five.config, { cwd, runId: "behavioral-5", dryRun: true });
     expect(r2.backend).toBe("synthetic");
     expect(r5.backend).toBe("synthetic");
     if (r2.backend !== "synthetic" || r5.backend !== "synthetic") return;

@@ -35,7 +35,10 @@ export function registerWatchCommand(parent: Command, io: CliIo): void {
       "--scorer <path>",
       "Terminal/computer-use/shared-world labs only: repo-relative adopter scorer module (.mjs). Overrides review.scorer.ref. Executable code — review it as code.",
     )
-    .option("--run-id <id>", "Explicit run id for deterministic fixture tests.")
+    .option(
+      "--run-id <id>",
+      "Explicit run id for deterministic fixture tests; refused when that run already exists.",
+    )
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--env-file <path>", "Load a local env file for this watch without persisting values.")
     .option("--open", "Open the observer in the default browser.")

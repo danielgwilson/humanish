@@ -1,6 +1,9 @@
-import { readFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { cp, mkdtemp, readFile, rm } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { promisify } from "node:util";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { runLab } from "../../src/lab/engine.js";
 import { resolveLabManifest } from "../../src/lab/discover.js";
@@ -11,8 +14,33 @@ import { resolveLabManifest } from "../../src/lab/discover.js";
 // stable placeholder, so the comparison is environment-independent.
 //
 // first-run (synthetic) is deterministic in dry-run.
+//
+// The run is written into a temporary git project holding a copy of the repo's study source, so
+// the fixed run id never collides with an earlier run and the repo's own .humanish is untouched.
 
 const ROOT = process.cwd();
+const git = (cwd: string, ...args: string[]) =>
+  promisify(execFile)(
+    "git",
+    ["-c", "user.name=golden", "-c", "user.email=golden@example.test", ...args],
+    { cwd },
+  );
+
+let project: string;
+
+beforeEach(async () => {
+  project = await mkdtemp(path.join(os.tmpdir(), "humanish-lab-golden-"));
+  await cp(path.join(ROOT, "humanish"), path.join(project, "humanish"), { recursive: true });
+  await cp(path.join(ROOT, "package.json"), path.join(project, "package.json"));
+  // The golden records a clean, attached work tree; its values are masked, its shape is not.
+  await git(project, "init", "--quiet");
+  await git(project, "add", "--all");
+  await git(project, "commit", "--quiet", "--message", "golden source");
+});
+
+afterEach(async () => {
+  await rm(project, { force: true, recursive: true });
+});
 
 // Normalize the two ambient, non-behavioral parts of a run bundle: ISO timestamps and the
 // captured git working-tree state. The git-state subtree (status/sha/refState/change-counts) is
@@ -52,7 +80,7 @@ describe("lab golden equivalence (rung 2: faithfulness)", () => {
       if (!resolved.ok) return;
 
       const outcome = await runLab(resolved.config, {
-        cwd: ROOT,
+        cwd: project,
         runId: golden.runId,
         dryRun: true,
         // The golden is captured through the real CLI, which resolves the manifest and stamps the
@@ -63,7 +91,7 @@ describe("lab golden equivalence (rung 2: faithfulness)", () => {
       expect(outcome.result.ok ?? true).not.toBe(false);
 
       const producedRaw = await readFile(
-        path.join(ROOT, ".humanish", "runs", golden.runId, "run.json"),
+        path.join(project, ".humanish", "runs", golden.runId, "run.json"),
         "utf8",
       );
       const goldenRaw = await readFile(

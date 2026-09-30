@@ -136,7 +136,7 @@ import {
 import { redactText, scrubLiterals } from "../../evidence/redaction.js";
 import { participantAssignment } from "../../lab/participant-assignment.js";
 import {
-  prepareRunArtifactPaths,
+  createRunArtifactPaths,
   validatePreparedRunArtifactPaths,
   type PreparedRunArtifactPaths,
 } from "../../run/paths.js";
@@ -245,6 +245,7 @@ export type ConcurrentSharedWorldLabErrorCode =
   | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_SUBJECT_ENV_MISSING"
   | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_GETHOST_UNAVAILABLE"
   | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_HANDOFF_TIMEOUT"
+  | "HUMANISH_RUN_ID_IN_USE"
   /** A declared adopter-hosted comms catch (#328) did not answer as a humanish catch — fail closed
    *  BEFORE any actor spend, since the funnel would silently collect nothing. */
   | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_CATCH_UNREACHABLE";
@@ -973,7 +974,9 @@ async function runConcurrentSharedWorldInScope(
   }
 
   const runId = options.runId ?? makeRunId();
-  const runPaths = await prepareRunArtifactPaths(cwd, runId);
+  const created = await createRunArtifactPaths(cwd, runId);
+  if (!created.ok) return fail(created.code, created.message, descriptor.id);
+  const runPaths = created.paths;
   // Identity + liveness on disk (#455): every backend writes this, so a watcher can classify any
   // run without parsing bundles and without depending on the interactive-observer path.
   const runStatus: RunStatusHandle = beginRunStatus(runPaths, {

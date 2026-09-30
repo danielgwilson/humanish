@@ -144,7 +144,7 @@ export function registerLabCommands(parent: Command, io: CliIo): void {
       "--lanes <lane-ids>",
       "CUA rerun only: comma-separated lane ids to rerun from the source run.",
     )
-    .option("--run-id <id>", "Explicit lab run id.")
+    .option("--run-id <id>", "Explicit lab run id; refused when that run already exists.")
     .option("--cwd <path>", "Target project directory.", ".")
     .option(
       "--scorer <path>",
