@@ -1,7 +1,6 @@
 // Execution receipts: the start record written before a provider request and the receipt
 // written after it, plus the accounting read over them and legacy analysis records.
 
-import { lstat } from "node:fs/promises";
 import path from "node:path";
 
 import { runIdOf, type PreparedRunArtifactPaths } from "../run/paths.js";
@@ -10,7 +9,7 @@ import {
   prepareContainedOutputDirectoryRoot,
   writeContainedOutputFile,
 } from "../run/selected-output-paths.js";
-import { readBoundedStudyFile } from "../run/study-files.js";
+import { pathMissing, readBoundedStudyFile } from "../run/study-files.js";
 import {
   ANALYSIS_MAX_BYTES,
   MAX_VERSIONS,
@@ -134,13 +133,8 @@ export async function beginStudyAnalysisExecution(
     }
     finalized = true;
     await assertPreparedSelectedOutputDirectory(claimed);
-    const existing = await lstat(path.join(claimed.physicalPath, "receipt.json")).catch(
-      (error: NodeJS.ErrnoException) => {
-        if (error.code === "ENOENT") return null;
-        throw error;
-      },
-    );
-    if (existing) throw new Error("ANALYSIS_ID_EXISTS");
+    if (!(await pathMissing(path.join(claimed.physicalPath, "receipt.json"))))
+      throw new Error("ANALYSIS_ID_EXISTS");
     await writeContainedOutputFile(
       claimed,
       "receipt.json",
@@ -167,13 +161,10 @@ export async function listStudyAnalysisExecutions(prepared: PreparedRunArtifactP
         MAX_EXECUTION_RECORD_BYTES,
       );
       if (!bytes) {
-        try {
-          await lstat(path.join(root.physicalPath, id, "receipt.json"));
+        if (
+          !(await pathMissing(path.join(root.physicalPath, id, "receipt.json")).catch(() => false))
+        )
           warnings.push("ANALYSIS_RECEIPT_UNREADABLE");
-        } catch (error) {
-          if (!(error instanceof Error && "code" in error && error.code === "ENOENT"))
-            warnings.push("ANALYSIS_RECEIPT_UNREADABLE");
-        }
         continue;
       }
       try {

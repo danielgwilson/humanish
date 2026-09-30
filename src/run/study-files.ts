@@ -7,6 +7,7 @@ import {
   assertPreparedSelectedOutputDirectory,
   type PreparedOutputRoot,
 } from "./selected-output-paths.js";
+import { isNodeError } from "./primitives.js";
 
 // Reading a file from a retained run directory for analysis: the path must be a plain relative path
 // inside the run, the file a single-link regular file that stays inside it, and the read bounded.
@@ -18,7 +19,20 @@ import {
  * encoded `..` or separator cannot survive into a later decode.
  */
 export function isStudyEvidencePath(value: string): boolean {
-  if (!value || value.length > 1024) return false;
+  return decodesToPlainRelativePath(value, 1024, /[\\:\x00-\x1f\x7f]|^\//);
+}
+
+/**
+ * True when `value` (at most `maxLength` characters) stays a plain relative path through up to five
+ * rounds of percent-decoding: no round may match `unsafe`, have an empty, `.` or `..` segment, or
+ * change the segment count. A value that stops decoding is accepted once it has no escapes left.
+ */
+export function decodesToPlainRelativePath(
+  value: string,
+  maxLength: number,
+  unsafe: RegExp,
+): boolean {
+  if (!value || value.length > maxLength) return false;
   try {
     encodeURIComponent(value);
   } catch {
@@ -27,8 +41,7 @@ export function isStudyEvidencePath(value: string): boolean {
   let checked = value;
   for (let attempt = 0; attempt < 5; attempt++) {
     if (
-      /[\\:\x00-\x1f\x7f]/.test(checked) ||
-      checked.startsWith("/") ||
+      unsafe.test(checked) ||
       checked.split("/").some((part) => part === "" || part === "." || part === "..")
     )
       return false;
@@ -74,6 +87,20 @@ function sameFile(before: BigIntStats, current: BigIntStats): boolean {
     current.mtimeNs === before.mtimeNs &&
     current.ctimeNs === before.ctimeNs
   );
+}
+
+/**
+ * After a bounded read returned nothing: true when the file is absent, false when something is
+ * there that could not be read. Errors other than ENOENT propagate.
+ */
+export async function pathMissing(filePath: string): Promise<boolean> {
+  try {
+    await lstat(filePath);
+    return false;
+  } catch (error) {
+    if (isNodeError(error) && error.code === "ENOENT") return true;
+    throw error;
+  }
 }
 
 export type BoundedStudyFileResult =

@@ -15,16 +15,17 @@ import {
   type PreparedSelectedOutputDirectory,
 } from "../run/selected-output-paths.js";
 import { STUDY_EVIDENCE_LIMITS, validateStudyAnalysisEvidence } from "./evidence.js";
-import { isStudyEvidencePath, readBoundedStudyFile } from "../run/study-files.js";
+import { pathMissing, isStudyEvidencePath, readBoundedStudyFile } from "../run/study-files.js";
 import {
   hashStudyAnalysisValue,
   validateStudyAnalysisArtifact,
   validateStudyAnalysisCorrection,
 } from "./validation.js";
-import type {
-  LoadedStudyAnalysis,
-  StudyAnalysisArtifact,
-  StudyAnalysisCorrection,
+import {
+  ANALYSIS_ID_PATTERN,
+  type LoadedStudyAnalysis,
+  type StudyAnalysisArtifact,
+  type StudyAnalysisCorrection,
 } from "./study-analysis.js";
 import { RUN_BUNDLE_FILE } from "../run/bundle.js";
 
@@ -34,7 +35,7 @@ export const ANALYSIS_MAX_BYTES = 4 * 1024 * 1024;
 export const MAX_VERSIONS = 256;
 const MAX_CORRECTIONS = 256;
 const MAX_CORRECTION_BYTES = 32 * 1024;
-export const safeId = (value: string): boolean => /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(value);
+export const safeId = (value: string): boolean => ANALYSIS_ID_PATTERN.test(value);
 const hashBytes = (bytes: Buffer): string => createHash("sha256").update(bytes).digest("hex");
 const empty = (
   state: LoadedStudyAnalysis["state"],
@@ -182,13 +183,9 @@ async function readVersion(
   const bytes = await readBoundedStudyFile(root, `${id}/analysis.json`, ANALYSIS_MAX_BYTES);
   // A claimed directory without a published record is an interrupted write, not a report.
   if (bytes === null) {
-    try {
-      await lstat(path.join(root.physicalPath, id, "analysis.json"));
-      return { id, state: "invalid", analysis: null, warnings: ["ANALYSIS_ARTIFACT_UNREADABLE"] };
-    } catch (error) {
-      if (error instanceof Error && "code" in error && error.code === "ENOENT") return null;
-      return { id, state: "invalid", analysis: null, warnings: ["ANALYSIS_ARTIFACT_UNREADABLE"] };
-    }
+    if (await pathMissing(path.join(root.physicalPath, id, "analysis.json")).catch(() => false))
+      return null;
+    return { id, state: "invalid", analysis: null, warnings: ["ANALYSIS_ARTIFACT_UNREADABLE"] };
   }
   let analysis: StudyAnalysisArtifact;
   try {
@@ -316,16 +313,15 @@ async function readCorrections(
       if (!bytes) {
         // An unpublished claim directory is harmless; a present record that
         // cannot be checked must not silently erase a prior review decision.
-        try {
-          await lstat(
-            path.join(root.physicalPath, analysis.id, "corrections", id, "correction.json"),
-          );
+        const correctionPath = path.join(
+          root.physicalPath,
+          analysis.id,
+          "corrections",
+          id,
+          "correction.json",
+        );
+        if (!(await pathMissing(correctionPath).catch(() => false)))
           warnings.push("ANALYSIS_CORRECTION_UNREADABLE");
-        } catch (error) {
-          if (!(error instanceof Error && "code" in error && error.code === "ENOENT")) {
-            warnings.push("ANALYSIS_CORRECTION_UNREADABLE");
-          }
-        }
         continue;
       }
       try {

@@ -1,12 +1,15 @@
 import { CODEX_ANALYSIS_MODEL, codexAnalysisIdentity } from "./codex-config.js";
-import { SUPPORTED_STUDY_ANALYSIS_MODELS } from "./engine.js";
+import {
+  DEFAULT_ANALYSIS_MAX_OUTPUT_TOKENS,
+  MAX_ANALYSIS_OUTPUT_TOKENS,
+  isSupportedAnalysisModel,
+} from "./engine.js";
 import { containsSensitive } from "../evidence/redaction.js";
 import type { StudyAnalysisConfig } from "./study-analysis.js";
 
 export const DEFAULT_ANALYSIS_TIMEOUT_MS = 600_000;
 const MAX_ANALYSIS_TIMEOUT_MS = 600_000;
 export const DEFAULT_ANALYSIS_MODEL = "gpt-6-astra";
-const DEFAULT_ANALYSIS_MAX_OUTPUT_TOKENS = 16_384;
 
 interface LabAnalysisSettings {
   model?: string;
@@ -20,7 +23,6 @@ export type LabAnalysis = LabAnalysisSettings &
     | { provider: "codex"; maxCostUsd?: null; maxOutputTokens?: null }
   );
 
-const MODELS = new Set<string>(SUPPORTED_STUDY_ANALYSIS_MODELS);
 const FIELDS = new Set([
   "provider",
   "maxCostUsd",
@@ -29,6 +31,19 @@ const FIELDS = new Set([
   "timeoutMs",
   "maxOutputTokens",
 ]);
+
+const validTimeout = (value: unknown): value is number =>
+  typeof value === "number" &&
+  Number.isSafeInteger(value) &&
+  value >= 1 &&
+  value <= MAX_ANALYSIS_TIMEOUT_MS;
+/** An absent question is valid; a present one must be a string of at most 4000 characters. */
+const validQuestion = (value: unknown): boolean =>
+  value === undefined || (typeof value === "string" && value.length <= 4000);
+const SENSITIVE_QUESTION = {
+  ok: false,
+  message: "review.analysis.question contains sensitive text and cannot be sent for analysis.",
+} as const;
 
 /** The spend cap on an analysis the lab did not declare. */
 export const DEFAULT_ANALYSIS_MAX_COST_USD = 3;
@@ -65,23 +80,15 @@ export function resolveAutomaticAnalysis(
       model !== CODEX_ANALYSIS_MODEL ||
       (value.maxCostUsd !== undefined && value.maxCostUsd !== null) ||
       (value.maxOutputTokens !== undefined && value.maxOutputTokens !== null) ||
-      typeof timeoutMs !== "number" ||
-      !Number.isSafeInteger(timeoutMs) ||
-      timeoutMs < 1 ||
-      timeoutMs > MAX_ANALYSIS_TIMEOUT_MS ||
-      (value.question !== undefined && (typeof question !== "string" || question.length > 4000))
+      !validTimeout(timeoutMs) ||
+      !validQuestion(value.question)
     ) {
       return {
         ok: false,
         message: `Codex analysis requires the qualified ${CODEX_ANALYSIS_MODEL} model and timeoutMs 1–${MAX_ANALYSIS_TIMEOUT_MS}. Dollar and output-token caps are unavailable; omit them. The optional question is limited to 4000 characters.`,
       };
     }
-    if (question !== null && containsSensitive(question as string))
-      return {
-        ok: false,
-        message:
-          "review.analysis.question contains sensitive text and cannot be sent for analysis.",
-      };
+    if (question !== null && containsSensitive(question as string)) return SENSITIVE_QUESTION;
     return {
       ok: true,
       config: {
@@ -109,28 +116,20 @@ export function resolveAutomaticAnalysis(
     maxCostUsd <= 0 ||
     maxCostUsd > 1000 ||
     typeof model !== "string" ||
-    !MODELS.has(model) ||
-    typeof timeoutMs !== "number" ||
-    !Number.isSafeInteger(timeoutMs) ||
-    timeoutMs < 1 ||
-    timeoutMs > MAX_ANALYSIS_TIMEOUT_MS ||
+    !isSupportedAnalysisModel(model) ||
+    !validTimeout(timeoutMs) ||
     typeof maxOutputTokens !== "number" ||
     !Number.isSafeInteger(maxOutputTokens) ||
     maxOutputTokens < 256 ||
-    maxOutputTokens > 32_768 ||
-    (value.question !== undefined && (typeof question !== "string" || question.length > 4000))
+    maxOutputTokens > MAX_ANALYSIS_OUTPUT_TOKENS ||
+    !validQuestion(value.question)
   ) {
     return {
       ok: false,
-      message: `review.analysis requires a positive maxCostUsd up to 1000, a supported analysis model, timeoutMs 1–${MAX_ANALYSIS_TIMEOUT_MS}, maxOutputTokens 256–32768, and an optional question of at most 4000 characters.`,
+      message: `review.analysis requires a positive maxCostUsd up to 1000, a supported analysis model, timeoutMs 1–${MAX_ANALYSIS_TIMEOUT_MS}, maxOutputTokens 256–${MAX_ANALYSIS_OUTPUT_TOKENS}, and an optional question of at most 4000 characters.`,
     };
   }
-  if (question !== null && containsSensitive(question as string)) {
-    return {
-      ok: false,
-      message: "review.analysis.question contains sensitive text and cannot be sent for analysis.",
-    };
-  }
+  if (question !== null && containsSensitive(question as string)) return SENSITIVE_QUESTION;
   return {
     ok: true,
     config: {

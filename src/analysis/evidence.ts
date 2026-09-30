@@ -36,6 +36,20 @@ export const STUDY_EVIDENCE_LIMITS = Object.freeze({
   totalImageBytes: 20 * 1024 * 1024,
   sourceBytes: 16 * 1024 * 1024,
 });
+// A second guard for direct callers. The analysis service already requires every stream to be in
+// TERMINAL_SIMULATION_STATUSES; this refuses only statuses that mean still running, so a dry-run
+// bundle's contract_proof_only streams stay capturable. The source is not shape-guarded here, so
+// the list also names statuses outside RunSimulationStatus.
+const UNFINISHED_STREAM_STATUSES: ReadonlySet<string> = new Set([
+  "running",
+  "pending",
+  "queued",
+  "starting",
+  "preparing",
+  "not_started",
+  "suspended",
+]);
+
 export type StudyEvidenceLimits = { [Key in keyof typeof STUDY_EVIDENCE_LIMITS]?: number };
 const sha256 = (bytes: Buffer): string => createHash("sha256").update(bytes).digest("hex");
 
@@ -128,17 +142,7 @@ export async function captureStudyEvidence(
   const captureVersion = ACTION_CAPTURE_VERSION;
   if (
     bundle.streams.some(
-      (stream) =>
-        stream.liveActor !== undefined ||
-        [
-          "running",
-          "pending",
-          "queued",
-          "starting",
-          "preparing",
-          "not_started",
-          "suspended",
-        ].includes(stream.status),
+      (stream) => stream.liveActor !== undefined || UNFINISHED_STREAM_STATUSES.has(stream.status),
     )
   ) {
     throw new Error("ANALYSIS_RUN_UNFINISHED");

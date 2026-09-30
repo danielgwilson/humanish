@@ -17,7 +17,7 @@ import {
 } from "../run/paths.js";
 import { isRunStatusRecord, RUN_STATUS_FILE } from "../run/status.js";
 import { captureStudyEvidence, STUDY_EVIDENCE_LIMITS } from "./evidence.js";
-import { readBoundedStudyFile } from "../run/study-files.js";
+import { pathMissing, readBoundedStudyFile } from "../run/study-files.js";
 import {
   estimateStudyAnalysisAdmission,
   preferLargerStudyAnalysisOutput,
@@ -47,6 +47,7 @@ import {
   type LoadedStudyAnalysis,
 } from "./study-analysis.js";
 import { RUN_BUNDLE_FILE } from "../run/bundle.js";
+import { TERMINAL_SIMULATION_STATUSES } from "../run/streams.js";
 
 const ANALYZE_RESULT_SCHEMA = "humanish.analyze-result.v1";
 const MAX_STATUS_BYTES = 64 * 1024;
@@ -190,6 +191,19 @@ export async function dryRunBundleRefusal(
   }
 }
 
+/** Re-render the run's Observer after an analysis write. False when it could not be refreshed. */
+export async function refreshObserver(
+  cwd: string,
+  runId: string,
+  prepared: PreparedRunArtifactPaths,
+): Promise<boolean> {
+  try {
+    return (await renderObserver(cwd, runId, { open: false, expectedRun: prepared })).ok;
+  } catch {
+    return false;
+  }
+}
+
 /** One analysis or correction writer per run. Never steal a lock based on an untrusted PID. */
 export async function withStudyAnalysisLock<T>(
   prepared: PreparedRunArtifactPaths,
@@ -246,14 +260,12 @@ export async function readCompletedStudyAnalysisSource(
   if (loaded.bundle.mode !== "live") throw new Error("ANALYSIS_REQUIRES_LIVE_RUN");
   const statusBytes = await readBoundedStudyFile(prepared, RUN_STATUS_FILE, MAX_STATUS_BYTES);
   if (!statusBytes) {
-    const statusExists = await lstat(path.join(prepared.physicalRunRoot, RUN_STATUS_FILE)).then(
-      () => true,
-      (error: unknown) => {
-        if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
+    const missing = await pathMissing(path.join(prepared.physicalRunRoot, RUN_STATUS_FILE)).catch(
+      (): never => {
         throw new Error("ANALYSIS_SOURCE_UNAVAILABLE");
       },
     );
-    if (statusExists) throw new Error("ANALYSIS_RUN_ACTIVE");
+    if (!missing) throw new Error("ANALYSIS_RUN_ACTIVE");
   }
   if (statusBytes) {
     const status: unknown = JSON.parse(statusBytes.toString("utf8"));
@@ -266,18 +278,10 @@ export async function readCompletedStudyAnalysisSource(
       throw new Error("ANALYSIS_RUN_ACTIVE");
     }
   }
-  const terminal = new Set([
-    "complete",
-    "passed",
-    "failed",
-    "blocked",
-    "timed_out",
-    "abandoned",
-    "incomplete",
-  ]);
   if (
     loaded.bundle.streams.some(
-      (stream) => !terminal.has(stream.status) || stream.liveActor !== undefined,
+      (stream) =>
+        !TERMINAL_SIMULATION_STATUSES.has(stream.status) || stream.liveActor !== undefined,
     )
   ) {
     throw new Error("ANALYSIS_RUN_ACTIVE");
@@ -455,20 +459,10 @@ export async function analyzeStudy(
           },
         };
       }
-      try {
-        const rendered = await renderObserver(cwd, input.runId, {
-          open: false,
-          expectedRun: prepared,
-        });
-        if (!rendered.ok)
-          result.warnings.push(
-            "Analysis was saved, but Observer could not be refreshed. Run humanish observe again.",
-          );
-      } catch {
+      if (!(await refreshObserver(cwd, input.runId, prepared)))
         result.warnings.push(
           "Analysis was saved, but Observer could not be refreshed. Run humanish observe again.",
         );
-      }
       return result;
     };
     return dryRun ? await execute() : await withStudyAnalysisLock(prepared, execute);
@@ -526,10 +520,7 @@ export async function correctStudyAnalysis(
       replacementClaim: options.replacementClaim ?? null,
     };
     await appendStudyAnalysisCorrection(prepared, correction);
-    await renderObserver(cwd, runIdOf(prepared), {
-      open: false,
-      expectedRun: prepared,
-    }).catch(() => null);
+    await refreshObserver(cwd, runIdOf(prepared), prepared);
     return correction;
   });
 }

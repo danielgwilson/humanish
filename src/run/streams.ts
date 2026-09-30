@@ -28,6 +28,17 @@ export type RunSimulationStatus =
   | "failed"
   | "contract_proof_only";
 
+/** Statuses a stream ends in. Analysis requires every stream of a run in one of these. */
+export const TERMINAL_SIMULATION_STATUSES: ReadonlySet<RunSimulationStatus> = new Set([
+  "complete",
+  "passed",
+  "failed",
+  "blocked",
+  "timed_out",
+  "abandoned",
+  "incomplete",
+]);
+
 interface RunStreamCompletion {
   actorLogPath?: string;
   actorLogTail?: string;

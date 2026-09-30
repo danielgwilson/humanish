@@ -1,8 +1,8 @@
 import path from "node:path";
-import { renderObserver } from "../observer/render.js";
 import { resolveRunPath } from "../run/locate.js";
 import { type RunBundle } from "../run/bundle.js";
 import {
+  refreshObserver,
   analyzeStudy,
   readCompletedStudyAnalysisSource,
   resolveStudyAnalysisRun,
@@ -21,7 +21,7 @@ import {
   type AutomaticStudyAnalysisCancellation,
   type AutomaticStudyAnalysisJob,
 } from "./job.js";
-import type { StudyAnalysisConfig } from "./study-analysis.js";
+import { ANALYSIS_ID_PATTERN, type StudyAnalysisConfig } from "./study-analysis.js";
 import { readStudyAnalysisVersion } from "./store.js";
 import { readStudyAnalysisExecution } from "./store-executions.js";
 import { physicalCwdOf, resolvePhysicalCwd } from "../run/paths.js";
@@ -41,8 +41,7 @@ export type AutomaticStudyAnalysisDeps = Omit<AnalyzeDeps, "analysisId" | "befor
 const CANCELLATION_POLL_MS = 250;
 // Well inside AUTOMATIC_STUDY_ANALYSIS_STALE_MS, so a live owner never reads as stale.
 const HEARTBEAT_MS = 5000;
-const exactId = (runId: string): boolean =>
-  runId !== "latest" && /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(runId);
+const exactId = (runId: string): boolean => runId !== "latest" && ANALYSIS_ID_PATTERN.test(runId);
 const skipped = (reason: string): AutomaticStudyAnalysisOutcome => ({ state: "skipped", reason });
 
 function hasParticipantEvidence(bundle: RunBundle): boolean {
@@ -294,21 +293,16 @@ export async function runAutomaticStudyAnalysis(
   // The service may render while this owner is still running. Freeze the final
   // job projection for direct file opening too, including no-request outcomes.
   // A failed refresh must never erase the durable outcome or measured usage.
-  try {
-    const rendered = await renderObserver(cwd, runId, { open: false, expectedRun: prepared });
-    if (!rendered.ok) throw new Error("AUTOMATIC_ANALYSIS_OBSERVER_UNAVAILABLE");
-  } catch {
-    if (outcome.result)
-      outcome = {
-        ...outcome,
-        result: {
-          ...outcome.result,
-          warnings: [
-            ...outcome.result.warnings,
-            "Automatic analysis status was saved, but Observer could not be refreshed. Run humanish observe again.",
-          ],
-        },
-      };
-  }
+  if (!(await refreshObserver(cwd, runId, prepared)) && outcome.result)
+    outcome = {
+      ...outcome,
+      result: {
+        ...outcome.result,
+        warnings: [
+          ...outcome.result.warnings,
+          "Automatic analysis status was saved, but Observer could not be refreshed. Run humanish observe again.",
+        ],
+      },
+    };
   return outcome;
 }
