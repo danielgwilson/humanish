@@ -18,13 +18,13 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
 
-import { ACTOR_TRACE_SCHEMA, type ActorTrace } from "../../src/actor-contract.js";
-import type { CuaLoopResult } from "../../src/computer-use.js";
+import { ACTOR_TRACE_SCHEMA, type ActorTrace } from "../../src/actors/contract.js";
+import type { CuaLoopResult } from "../../src/actors/computer-use/loop.js";
 import { captureGitState } from "../../src/run/git-state.js";
 import { buildCuaBundle } from "../../src/cua-actor-lab.js";
 import { renderObserver } from "../../src/observer/render.js";
 import { createProgram } from "../../src/cli/program.js";
-import { startCodexAppServerUi } from "../../src/codex-app-server-ui.js";
+import { startCodexAppServerUi } from "../../src/actors/codex/app-server-ui.js";
 import {
   CLEANUP_SCHEMA,
   PUBLIC_TARGET_CWD,

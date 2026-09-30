@@ -10,8 +10,8 @@ on:
       - src/guest-*.ts
       - src/browser-control/**
       - src/evidence/frame-signature.ts
-      - src/cua-executor-error.ts
-      - src/cua-speech.ts
+      - src/actors/computer-use/executor-error.ts
+      - src/actors/computer-use/speech.ts
       - src/evidence/desktop-recorder.ts
       - src/evidence/desktop-recording-types.ts
       - scripts/guest-runtime-*.mjs
@@ -32,8 +32,8 @@ on:
       - src/guest-*.ts
       - src/browser-control/**
       - src/evidence/frame-signature.ts
-      - src/cua-executor-error.ts
-      - src/cua-speech.ts
+      - src/actors/computer-use/executor-error.ts
+      - src/actors/computer-use/speech.ts
       - src/evidence/desktop-recorder.ts
       - src/evidence/desktop-recording-types.ts
       - scripts/guest-runtime-*.mjs

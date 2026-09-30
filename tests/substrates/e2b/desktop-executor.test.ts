@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { PNG } from "pngjs";
 
-import type { CuaAction } from "../../../src/computer-use.js";
+import type { CuaAction } from "../../../src/actors/computer-use/loop.js";
 import type { E2BDesktopLike } from "../../../src/substrates/e2b/desktop-executor.js";
 import {
   createE2BDesktopExecutor,

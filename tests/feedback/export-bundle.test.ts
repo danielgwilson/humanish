@@ -21,7 +21,7 @@ import {
   ACTOR_TRACE_SCHEMA,
   CODEX_APP_SERVER_CAPABILITIES,
   type ActorTrace,
-} from "../../src/actor-contract.js";
+} from "../../src/actors/contract.js";
 import { exportRun, formatExportHuman } from "../../src/feedback/export.js";
 import { exportRedactedBundle } from "../../src/feedback/export-bundle.js";
 import { draftFeedback, renderIssueMarkdown, verifyFeedback } from "../../src/feedback/feedback.js";

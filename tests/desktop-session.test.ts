@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { CuaExecutor } from "../src/computer-use.js";
+import type { CuaExecutor } from "../src/actors/computer-use/loop.js";
 import { ownDesktopAllocation } from "../src/desktop-session.js";
 
 function executor(): CuaExecutor {

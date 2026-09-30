@@ -236,8 +236,8 @@ Subsequent additions through 2026-06-11 included:
 
 - Playwright-backed browser proof with scripted, app-specific
   `browser.steps` authored in `humanish/scenarios/*.yaml` (`src/run/run.ts`);
-- native Codex app-server session adapter (`src/codex-app-server.ts`,
-  registered in `src/actor-registry.ts`);
+- native Codex app-server session adapter (`src/actors/codex/app-server.ts`,
+  registered in `src/actors/registry.ts`);
 - E2B desktop substrate lanes on the meta and computer-use routes;
 - computer-use bundles persist a `screenshots/` directory and the Observer
   renders the frames (`src/cua-actor-lab.ts`).

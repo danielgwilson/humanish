@@ -12,7 +12,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
 import { createBrowserControlClient } from "../dist/browser-control/client.js";
-import { runComputerUseLoop } from "../dist/computer-use.js";
+import { runComputerUseLoop } from "../dist/actors/computer-use/loop.js";
 import { defaultRedactionHooks } from "../dist/evidence/redaction.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");

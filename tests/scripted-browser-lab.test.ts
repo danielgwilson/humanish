@@ -8,7 +8,7 @@ import type { AddressInfo } from "node:net";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { ACTOR_TRACE_SCHEMA, SCRIPTED_BROWSER_CAPABILITIES } from "../src/actor-contract.js";
+import { ACTOR_TRACE_SCHEMA, SCRIPTED_BROWSER_CAPABILITIES } from "../src/actors/contract.js";
 import type {
   E2BDesktopCreateOptions,
   E2BDesktopModule,
@@ -29,7 +29,7 @@ import type {
   ScriptedBrowserSessionResult,
   ScriptedLocatorLike,
   ScriptedPageLike,
-} from "../src/scripted-browser-actor.js";
+} from "../src/actors/scripted-browser.js";
 import { syntheticPng1x1 } from "./image-fixtures.js";
 
 const ROOT = process.cwd();

@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import net from "node:net";
 import { chromium } from "playwright-core";
 import { attachBrowserControlDispatcher } from "../../dist/browser-control/dispatcher.js";
-import { CuaExecutorError } from "../../dist/cua-executor-error.js";
+import { CuaExecutorError } from "../../dist/actors/computer-use/executor-error.js";
 
 const [socketPath, profilePath, targetUrl, identityJson, mode, executablePath] =
   process.argv.slice(2);

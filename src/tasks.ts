@@ -20,7 +20,7 @@ import {
   evaluateStopWhen,
   type StopConditionObservation,
   type StopWhen,
-} from "./stop-conditions.js";
+} from "./actors/stop-conditions.js";
 
 const TASK_FUNNEL_SCHEMA = "humanish.task-funnel.v1" as const;
 

@@ -6,7 +6,7 @@ import path from "node:path";
 import { tmpdir } from "node:os";
 import { parse as parseYaml } from "yaml";
 
-import { ACTOR_TRACE_SCHEMA } from "../actor-contract.js";
+import { ACTOR_TRACE_SCHEMA } from "../actors/contract.js";
 import type { ExportFailure, ExportOptions, ExportResult } from "./export.js";
 import { renderObserver } from "../observer/render.js";
 import { buildObserverData } from "../observer/data.js";

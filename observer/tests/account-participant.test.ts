@@ -3,7 +3,7 @@ import live from "../../tests/golden/observer-data/live.json";
 import {
   validActorExecutionProfile as serverProfile,
   validActorProviderRequests as serverRequests,
-} from "../../src/actor-contract";
+} from "../../src/actors/contract";
 import {
   validActorExecutionProfile,
   validActorProviderRequests,

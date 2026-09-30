@@ -16,8 +16,8 @@ import {
   PARTICIPANT_OUTCOME_STATUSES,
   type ActorCompletionReason,
   type ActorStatus,
-} from "../src/actor-contract.js";
-import { statusForCompletionReason } from "../src/computer-use.js";
+} from "../src/actors/contract.js";
+import { statusForCompletionReason } from "../src/actors/computer-use/loop.js";
 
 describe("completion reason -> status", () => {
   const expected: Array<[ActorCompletionReason, ActorStatus]> = [

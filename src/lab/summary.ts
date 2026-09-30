@@ -15,7 +15,7 @@ import { automaticAnalysisBudget } from "../analysis/automatic-config.js";
 import {
   DEFAULT_OPENAI_CU_MODEL,
   DEFAULT_OPENAI_CU_REASONING_EFFORT,
-} from "../openai-responses-cu.js";
+} from "../actors/computer-use/openai-provider.js";
 import { inspectLabManifest } from "./discover.js";
 import { probeKeySources } from "../cli/key-resolution.js";
 import { receivingRequiredKey } from "../comms/setup.js";

@@ -4,8 +4,8 @@ import os from "node:os";
 import path from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
-import { ACTOR_TRACE_SCHEMA, type ActorTrace } from "../../src/actor-contract.js";
-import type { CuaLoopResult } from "../../src/computer-use.js";
+import { ACTOR_TRACE_SCHEMA, type ActorTrace } from "../../src/actors/contract.js";
+import type { CuaLoopResult } from "../../src/actors/computer-use/loop.js";
 import { buildCuaBundle } from "../../src/cua-actor-lab.js";
 import { renderObserver } from "../../src/observer/render.js";
 import type { LibraryHistory } from "../../src/observer/library.js";

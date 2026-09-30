@@ -1,5 +1,5 @@
 import { deriveStudyFacts } from "../src/cli/telemetry.js";
-import { CuaAdmissionLimitError } from "../src/cua-admission-limit.js";
+import { CuaAdmissionLimitError } from "../src/actors/computer-use/admission-limit.js";
 import { draftFeedback } from "../src/feedback/feedback.js";
 import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -8,7 +8,10 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { PNG } from "pngjs";
 
-import { runCuaActorSession, type CuaActorSessionOptions } from "../src/computer-use-actor.js";
+import {
+  runCuaActorSession,
+  type CuaActorSessionOptions,
+} from "../src/actors/computer-use/actor.js";
 import {
   buildCuaFanoutBundle,
   floorRenderResolution,
@@ -22,7 +25,7 @@ import {
   type CuaLaneSpec,
   type CuaLanePlan,
 } from "../src/cua-actor-lab.js";
-import { getActor } from "../src/actor-registry.js";
+import { getActor } from "../src/actors/registry.js";
 import { DEVICE_PRESETS } from "../src/lab/device-presets.js";
 import type {
   E2BDesktopCreateOptions,
@@ -31,7 +34,10 @@ import type {
 } from "../src/substrates/e2b/desktop-launch.js";
 import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../src/lab/config.js";
 import { runLab } from "../src/lab/engine.js";
-import { OPENAI_RESPONSES_CU_CAPABILITIES, type FetchLike } from "../src/openai-responses-cu.js";
+import {
+  OPENAI_RESPONSES_CU_CAPABILITIES,
+  type FetchLike,
+} from "../src/actors/computer-use/openai-provider.js";
 import type { BrowserLabScoringContext, RunAdapterScore, RunBundle } from "../src/index.js";
 import { serveObserver, type ObserverResult, type ObserverServer } from "../src/observer/render.js";
 import { readReview, verifyRun } from "../src/run/run.js";

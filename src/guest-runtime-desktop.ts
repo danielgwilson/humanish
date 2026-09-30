@@ -8,7 +8,7 @@ import { createGuestDesktopNativeTools } from "./guest-desktop-native.js";
 import { createGuestChromiumText } from "./guest-chromium-text.js";
 import { createGuestBrowserTools } from "./guest-browser-tools.js";
 import { createGuestDesktopExecutor } from "./guest-desktop-executor.js";
-import { CuaExecutorError } from "./cua-executor-error.js";
+import { CuaExecutorError } from "./actors/computer-use/executor-error.js";
 import type { GuestRuntimeDesktop } from "./guest-runtime.js";
 import { GUEST_BOOTSTRAP_LIMITS, validateGuestInitialUrl } from "./guest-bootstrap.js";
 import type { GuestMediaConfig } from "./guest-media-config.js";

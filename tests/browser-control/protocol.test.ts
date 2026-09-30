@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CuaExecutorError } from "../../src/cua-executor-error.js";
+import { CuaExecutorError } from "../../src/actors/computer-use/executor-error.js";
 import {
   BROWSER_CONTROL_LIMITS,
   decodeBrowserControlObservation,

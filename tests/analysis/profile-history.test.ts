@@ -35,7 +35,7 @@ describe("durable analyst profile reading", () => {
   it("retains the literal historical profile after the current launcher qualification changes", async () => {
     vi.resetModules();
     // A hypothetical later qualification is a policy mutation test, not a claimed supported CLI.
-    vi.doMock("../../src/restricted-codex-policy.js", () => ({
+    vi.doMock("../../src/actors/codex/restricted-policy.js", () => ({
       RESTRICTED_CODEX_ANALYSIS_IDENTITY: {
         provider: "codex",
         authMode: "chatgpt",

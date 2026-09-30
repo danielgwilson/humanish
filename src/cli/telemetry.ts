@@ -261,7 +261,7 @@ export function buildPayload(args: {
 const OWN_ERROR_CODE = /^HUMANISH_[A-Z0-9_]{1,80}$/;
 
 /**
- * The closed vocabulary an outcome may take. Actor statuses (src/actor-contract.ts), the two
+ * The closed vocabulary an outcome may take. Actor statuses (src/actors/contract.ts), the two
  * shared-world extras, a fan-out roll-up, and the two shapes a non-study command has. Anything
  * else — a provider's reason string, a scorer's verdict text — is dropped, never forwarded.
  */

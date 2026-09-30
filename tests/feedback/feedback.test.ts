@@ -15,7 +15,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { ACTOR_TRACE_SCHEMA } from "../../src/actor-contract.js";
+import { ACTOR_TRACE_SCHEMA } from "../../src/actors/contract.js";
 import {
   FEEDBACK_SCHEMA,
   draftFeedback,

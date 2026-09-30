@@ -1,5 +1,5 @@
-import type { CuaAction, CuaExecutor } from "./computer-use.js";
-import { CuaExecutorError } from "./cua-executor-error.js";
+import type { CuaAction, CuaExecutor } from "./actors/computer-use/loop.js";
+import { CuaExecutorError } from "./actors/computer-use/executor-error.js";
 
 /** Internal lifecycle contract. Provider IDs are evidence, not permission to acquire a handle. */
 export type DesktopReleaseResult =

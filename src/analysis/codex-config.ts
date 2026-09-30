@@ -1,7 +1,7 @@
 import {
   RESTRICTED_CODEX_ANALYSIS_IDENTITY,
   RESTRICTED_CODEX_ANALYSIS_MODELS,
-} from "../restricted-codex-policy.js";
+} from "../actors/codex/restricted-policy.js";
 import type { CodexAnalysisIdentity, StudyAnalysisConfig } from "./study-analysis.js";
 
 /** This account route is qualified against one CLI, model and enforced tool policy. */

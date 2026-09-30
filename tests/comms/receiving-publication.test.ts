@@ -9,7 +9,7 @@ import {
   ACTOR_TRACE_SCHEMA,
   CODEX_APP_SERVER_CAPABILITIES,
   type ActorTrace,
-} from "../../src/actor-contract.js";
+} from "../../src/actors/contract.js";
 import type { CommsReceivingEvidence } from "../../src/comms/receiving-types.js";
 import { exportRun } from "../../src/feedback/export.js";
 import { draftFeedback } from "../../src/feedback/feedback.js";

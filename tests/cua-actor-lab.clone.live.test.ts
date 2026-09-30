@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { ACTOR_TRACE_SCHEMA } from "../src/actor-contract.js";
+import { ACTOR_TRACE_SCHEMA } from "../src/actors/contract.js";
 import { LAB_CONFIG_SCHEMA, parseLabConfig } from "../src/lab/config.js";
 import { runLab } from "../src/lab/engine.js";
 
@@ -17,7 +17,7 @@ import { runLab } from "../src/lab/engine.js";
 // The subject repo is a tiny, long-stable MDN sample site (public, no build step). Asserts a
 // verified bundle with provenance and a terminal session — never task success.
 // Fixture refreshes: additionally set HUMANISH_CUA_WIRE_CAPTURE_DIR to a gitignored dir (e.g.
-// under .humanish/) to capture redacted RESPONSE wire bodies — see src/openai-responses-cu.ts.
+// under .humanish/) to capture redacted RESPONSE wire bodies — see src/actors/computer-use/openai-provider.ts.
 const LIVE =
   process.env.HUMANISH_LIVE_CUA === "1" &&
   Boolean(process.env.OPENAI_API_KEY) &&

@@ -8,7 +8,7 @@ import {
   sameBrowserControlIdentity,
   type BrowserControlIdentity,
 } from "./browser-control/protocol.js";
-import { CuaExecutorError } from "./cua-executor-error.js";
+import { CuaExecutorError } from "./actors/computer-use/executor-error.js";
 import { createBrowserControlClient } from "./browser-control/client.js";
 import { guestMediaConfigSchema, type GuestMediaConfig } from "./guest-media-config.js";
 

@@ -3,8 +3,8 @@ import type {
   ActorCompletionReason,
   ActorStopCause,
   ParticipantDeclaredOutcome,
-} from "../actor-contract.js";
-import type { CuaGoalSource } from "../actor-goal-source.js";
+} from "../actors/contract.js";
+import type { CuaGoalSource } from "../actors/goal-source.js";
 import type { AutomaticStudyAnalysisView } from "./job.js";
 
 /** Independent interpretation of retained evidence; never a participant or harness verdict. */

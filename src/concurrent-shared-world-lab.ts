@@ -58,9 +58,9 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { adapterScoreFailureMessage, applyBrowserAdapterHooks } from "./adapter-extension.js";
-import { DEFAULT_OPENAI_CU_MODEL } from "./openai-responses-cu.js";
+import { DEFAULT_OPENAI_CU_MODEL } from "./actors/computer-use/openai-provider.js";
 import { MODEL_RATES } from "./pricing.js";
-import { actorRegistry, isCuaActorDescriptor, type CuaActorDescriptor } from "./actor-registry.js";
+import { actorRegistry, isCuaActorDescriptor, type CuaActorDescriptor } from "./actors/registry.js";
 import { toErrorMessage } from "./command-failure.js";
 import { mapWithConcurrency } from "./concurrency.js";
 import { appendSandboxReceipt } from "./run/sandbox-receipts.js";

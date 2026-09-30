@@ -49,7 +49,7 @@ import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { TERMINAL_NODE_BOOTSTRAP_COMMAND } from "./terminal-node-bootstrap.js";
 import { describeTokenUsage, parseTerminalTokenUsage } from "./terminal-token-usage.js";
 import { countTerminalParticipantItems } from "./terminal-participant-activity.js";
-import type { ActorTokenUsage, ActorRuntimeProvenance } from "./actor-contract.js";
+import type { ActorTokenUsage, ActorRuntimeProvenance } from "./actors/contract.js";
 import {
   buildRuntimeExecPrefix,
   buildRuntimeVersionCommand,
@@ -58,7 +58,7 @@ import {
   parseTerminalRuntimeVersion,
   TERMINAL_RUNTIME_VERSION_TIMEOUT_MS,
 } from "./terminal-runtime.js";
-import { isReasoningEffort } from "./reasoning-effort.js";
+import { isReasoningEffort } from "./actors/reasoning-effort.js";
 import { readFile, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 
@@ -71,15 +71,15 @@ import type {
   ActorStatus,
   ActorTrace,
   ActorTraceItem,
-} from "./actor-contract.js";
+} from "./actors/contract.js";
 import {
   beginRunStatus,
   type RunLabProvenance,
   type RunStatusHandle,
   withRunStatusScope,
 } from "./run/status.js";
-import { ACTOR_TRACE_SCHEMA, TERMINAL_AGENT_CAPABILITIES } from "./actor-contract.js";
-import { actorRegistry, isTerminalActorDescriptor } from "./actor-registry.js";
+import { ACTOR_TRACE_SCHEMA, TERMINAL_AGENT_CAPABILITIES } from "./actors/contract.js";
+import { actorRegistry, isTerminalActorDescriptor } from "./actors/registry.js";
 import { toErrorMessage } from "./command-failure.js";
 import {
   buildOpenAiEgressNetwork,
@@ -127,7 +127,7 @@ import {
   frozenBundleView,
   recordDeclaredScorerVerdictFailure,
 } from "./adapter-extension.js";
-import { TERMINAL_AGENT_NOT_IMPLEMENTED_CODE } from "./terminal-agent-actor.js";
+import { TERMINAL_AGENT_NOT_IMPLEMENTED_CODE } from "./actors/terminal-agent.js";
 
 /** Provider-neutral metadata constant: the lane's non-secret tag (mirrors CUA_ACTOR_LAB_PROVIDER_METADATA). */
 const TERMINAL_PRODUCT_LAB_PROVIDER_METADATA = {
@@ -2464,7 +2464,7 @@ function buildCodexExecCommand(args: {
   runtimeAuth: LabRuntimeAuth;
   version: string;
   model?: string;
-  reasoningEffort?: import("./reasoning-effort.js").ReasoningEffort;
+  reasoningEffort?: import("./actors/reasoning-effort.js").ReasoningEffort;
 }): string {
   // The prompt is passed via a heredoc on stdin of a wrapper? NO, stdin is DISABLED (item 7), so
   // the prompt rides as the final positional arg, shell-quoted. codex exec --json runs once and

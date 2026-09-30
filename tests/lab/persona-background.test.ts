@@ -12,7 +12,7 @@ import {
 import { resolveCommittedPersonasForCwd } from "../../src/lab/persona-resolve.js";
 import { composeLaneInstructions, withInboxMission } from "../../src/cua-actor-lab.js";
 import { inspectLabManifest } from "../../src/lab/discover.js";
-import { buildInitialRequest } from "../../src/openai-responses-cu.js";
+import { buildInitialRequest } from "../../src/actors/computer-use/openai-provider.js";
 import { DEVICE_PRESETS } from "../../src/lab/device-presets.js";
 
 const fallback = { id: "organizer", name: "Organizer" };

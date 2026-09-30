@@ -5,7 +5,7 @@ import {
   type CuaLoopOptions,
   type CuaLoopResult,
   type CuaTurn,
-} from "../src/computer-use.js";
+} from "../src/actors/computer-use/loop.js";
 import {
   participantFeedbackCandidates,
   resolveSelfReportedBlocker,

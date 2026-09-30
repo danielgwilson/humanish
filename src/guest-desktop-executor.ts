@@ -1,12 +1,12 @@
 import { perceptualSignature } from "./evidence/frame-signature.js";
 import { setTimeout as delay } from "node:timers/promises";
-import type { CuaAction, CuaExecutor } from "./computer-use.js";
+import type { CuaAction, CuaExecutor } from "./actors/computer-use/loop.js";
 import {
   BROWSER_CONTROL_LIMITS,
   validateBrowserControlAction,
   validateBrowserControlPng,
 } from "./browser-control/protocol.js";
-import { CuaExecutorError, isCuaExecutorError } from "./cua-executor-error.js";
+import { CuaExecutorError, isCuaExecutorError } from "./actors/computer-use/executor-error.js";
 
 /** Internal guest port. Implementations recheck signal synchronously before native dispatch. */
 export interface GuestDesktopTools {

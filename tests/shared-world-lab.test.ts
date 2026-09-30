@@ -11,9 +11,12 @@ import {
   type ActorCompletionReason,
   type ActorStatus,
   type ActorTrace,
-} from "../src/actor-contract.js";
-import { runCuaActorSession, type CuaActorSessionOptions } from "../src/computer-use-actor.js";
-import type { CuaLoopResult, CuaTurn } from "../src/computer-use.js";
+} from "../src/actors/contract.js";
+import {
+  runCuaActorSession,
+  type CuaActorSessionOptions,
+} from "../src/actors/computer-use/actor.js";
+import type { CuaLoopResult, CuaTurn } from "../src/actors/computer-use/loop.js";
 import type {
   E2BDesktopCreateOptions,
   E2BDesktopModule,
@@ -44,10 +47,10 @@ import {
   DEFAULT_OPENAI_CU_REASONING_EFFORT,
   OPENAI_RESPONSES_CU_CAPABILITIES,
   parseOpenAiResponse,
-} from "../src/openai-responses-cu.js";
+} from "../src/actors/computer-use/openai-provider.js";
 import { estimateActorCost } from "../src/pricing.js";
 import { readRunDetail } from "../src/run/detail.js";
-import { actorEnding } from "../src/actor-stop-cause.js";
+import { actorEnding } from "../src/actors/stop-cause.js";
 import type { LocalTreeArchive } from "../src/run/source-archive.js";
 
 // ---------------------------------------------------------------------------

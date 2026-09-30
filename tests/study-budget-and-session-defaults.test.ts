@@ -8,7 +8,7 @@
 import { describe, expect, it } from "vitest";
 import { PNG } from "pngjs";
 
-import type { ActorCapabilities, ActorPersonaRef } from "../src/actor-contract.js";
+import type { ActorCapabilities, ActorPersonaRef } from "../src/actors/contract.js";
 import {
   runComputerUseLoop,
   type CuaAction,
@@ -17,7 +17,7 @@ import {
   type CuaProvider,
   type CuaTurn,
   type CuaTurnRequest,
-} from "../src/computer-use.js";
+} from "../src/actors/computer-use/loop.js";
 import { makeCuaRunBudget, resolveCuaLanePlan } from "../src/cua-actor-lab.js";
 import { parseLabConfig } from "../src/lab/config.js";
 import { defaultRedactionHooks } from "../src/evidence/redaction.js";

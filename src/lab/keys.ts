@@ -3,7 +3,7 @@
 // checks the value (scalars, lists, and mappings that check their own keys). Each level satisfies
 // the parsed type's keys, so a field added to a Lab* interface must be added here too.
 
-import type { DwellWindow, StopWhen, StopWhenRule } from "../stop-conditions.js";
+import type { DwellWindow, StopWhen, StopWhenRule } from "../actors/stop-conditions.js";
 import type { LabTask } from "../tasks.js";
 import type {
   LabActor,

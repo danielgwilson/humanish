@@ -1,7 +1,7 @@
 import { Duplex } from "node:stream";
 import { PNG } from "pngjs";
 import { vi } from "vitest";
-import type { CuaExecutor, CuaObservation } from "../../src/computer-use.js";
+import type { CuaExecutor, CuaObservation } from "../../src/actors/computer-use/loop.js";
 import { createBrowserControlClient } from "../../src/browser-control/client.js";
 import { attachBrowserControlDispatcher } from "../../src/browser-control/dispatcher.js";
 export const identity = {

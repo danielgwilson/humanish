@@ -1,5 +1,5 @@
-import type { ActorRuntimeProvenance } from "./actor-contract.js";
-import type { ReasoningEffort } from "./reasoning-effort.js";
+import type { ActorRuntimeProvenance } from "./actors/contract.js";
+import type { ReasoningEffort } from "./actors/reasoning-effort.js";
 
 const TERMINAL_RUNTIME_PACKAGE = "@openai/codex";
 export const TERMINAL_RUNTIME_VERSION_TIMEOUT_MS = 60_000;

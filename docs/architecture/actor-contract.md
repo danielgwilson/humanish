@@ -3,8 +3,8 @@
 Date: 2026-06-06 (current-state note updated 2026-07-14)
 
 Status: accepted contract with a partially open extension surface. Shipped:
-the evidence schema `humanish.actor-trace.v1` (`src/actor-contract.ts`) and a
-closed first-party registry of six descriptors (`src/actor-registry.ts`:
+the evidence schema `humanish.actor-trace.v1` (`src/actors/contract.ts`) and a
+closed first-party registry of six descriptors (`src/actors/registry.ts`:
 `codex-app-server`, `pi-agent-core`, `claude-agent-sdk`,
 `openai-computer-use`, `scripted-browser`, `codex-exec`). `actors[0].type` is a
 real dispatch key on the computer-use, scripted-browser, and terminal-product
@@ -29,7 +29,7 @@ command-scoped runtime auth, evidence, caps, and by-id cleanup.
 
 An actor is the thing that drives a persona scenario and produces evidence. At
 design time Humanish had exactly one real actor: the local Codex integration in
-`src/codex-app-server.ts` (plus the `codex-exec` and `codex-tui` variants in
+`src/actors/codex/app-server.ts` (plus the `codex-exec` and `codex-tui` variants in
 `src/run/run.ts`). The actor selection is a hardcoded `if (actor === ...)` dispatch,
 `RunStream.codex` is Codex-shaped, and the evidence schema is
 `humanish.codex-app-server-trace.v1`.
@@ -271,7 +271,7 @@ export interface Actor {
 
 `scripted-browser` is the deterministic, model-free browser-actuation lane — distinct from
 `computer-use` (raw pixels + a model deciding actions) and `app`. The registered
-`scripted-browser` actor (`src/scripted-browser-actor.ts`) replays a committed scenario's
+`scripted-browser` actor (`src/actors/scripted-browser.ts`) replays a committed scenario's
 browser steps with playwright against a loopback app; the steps ARE the behavior, so
 `byoModel: false` means there is NO model, and `tokenUsage` records zeros as an affirmative
 $0 declaration that is true by mechanism (no provider client is importable from that code
