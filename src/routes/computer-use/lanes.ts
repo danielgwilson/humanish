@@ -115,6 +115,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
         config,
         actor: deps.descriptor,
         lane: spec,
+        laneCount: deps.laneCount,
         executor: ready.executor,
       });
     } else if (deps.localAgent === "codex") {
@@ -344,6 +345,7 @@ async function runInProcessLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<L
       config: deps.config,
       actor: deps.descriptor,
       lane: spec,
+      laneCount: deps.laneCount,
       executor,
     });
     const sessionOptions: CuaActorSessionOptions = {

@@ -30,14 +30,25 @@ import { runPreviewLab } from "../routes/preview.js";
 import { type RunScorerProvenance } from "../run/bundle.js";
 import { type RunResult } from "../run/results.js";
 import { backendOf, resolveLabDryRun, routeOf } from "./plan.js";
+import {
+  normalizeRunLabOptions,
+  optionRefusalOutcome,
+  type RunLabDriving,
+  type RunLabHomes,
+} from "./run-lab-options.js";
 
 export { resolveLabDryRun };
 import { type LabConfig } from "./types.js";
 
 export type LabBackend = "synthetic" | "cua" | "scripted" | "terminal" | "concurrent-shared-world";
 
-/** Runtime overrides from CLI flags. Each wins over the config when provided. */
-export interface RunLabOptions {
+/**
+ * Runtime overrides from CLI flags, the typed homes (`RunLabHomes`, `RunLabDriving`) and the older
+ * route hook bags they replace. Each wins over the config when provided.
+ */
+export type RunLabOptions = RunLabBase & RunLabHomes & RunLabDriving;
+
+interface RunLabBase {
   automaticAnalysis?: AutomaticAnalysisHooks;
   cwd: string;
   runId?: string;
@@ -52,6 +63,8 @@ export interface RunLabOptions {
   /** CUA fan-out only: create a new run for failed/selected lanes from a prior run. */
   rerun?: {
     sourceRunId: string;
+    participantIds?: string[];
+    /** @deprecated The older name of `participantIds`. */
     laneIds?: string[];
   };
   onObserverReady?: (observer: ObserverResult & { ok: true }) => Promise<void> | void;
@@ -85,10 +98,21 @@ export function selectLabBackend(config: LabConfig): LabBackend {
 }
 
 /**
- * The one seam every lab backend is dispatched through. Each route closes the run it started on
- * every exit through its own run scope (`src/run/run.ts`).
+ * The one seam every lab backend is dispatched through. The options are checked against the route
+ * and mapped into the route's hook bags before anything runs. Each route closes the run it started
+ * on every exit through its own run scope (`src/run/run.ts`).
  */
 export async function runLab(config: LabConfig, options: RunLabOptions): Promise<LabOutcome> {
+  const lab = localBrowserDefaults(config);
+  const route = routeOf(lab);
+  const normalized = normalizeRunLabOptions(lab, route, options);
+  if (!normalized.ok) return optionRefusalOutcome(lab, route, options, normalized);
+  const outcome = await dispatchLab(config, normalized.options);
+  outcome.result.warnings.push(...normalized.warnings);
+  return outcome;
+}
+
+async function dispatchLab(config: LabConfig, options: RunLabOptions): Promise<LabOutcome> {
   config = localBrowserDefaults(config);
   const backend = selectLabBackend(config);
   switch (backend) {

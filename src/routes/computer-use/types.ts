@@ -122,7 +122,10 @@ export interface CuaActorLabHooks extends BrowserLabAdapterHooks {
    * (single-lane emission is unconditional: single-lane silence for the whole boot is the bug
    * this event stream closes). Override in tests to capture instead of writing to real stderr.
    */
-  onPhase?: (event: SubjectPhaseEvent, ctx: { laneId: string; laneCount: number }) => void;
+  onPhase?: (
+    event: SubjectPhaseEvent,
+    ctx: { laneId: string; laneIndex: number; laneCount: number },
+  ) => void;
   /**
    * Runtime-only live desktop stream callback. The URL carries an auth key and must never be
    * persisted into run artifacts; callers use it to hydrate an attached Observer server.
@@ -167,7 +170,9 @@ export interface CuaActorLabHooks extends BrowserLabAdapterHooks {
   buildProvider?: (ctx: {
     config: LabConfig;
     actor: CuaActorDescriptor;
-    lane?: CuaLaneSpec;
+    lane: CuaLaneSpec;
+    /** How many participants the run has. */
+    laneCount: number;
     executor: CuaExecutor;
   }) => Promise<CuaProvider>;
   /** Substitute desktop ownership while retaining the shared participant and evidence loop. */
@@ -321,6 +326,8 @@ export interface CuaLaneSummary {
 export type CuaActorLabErrorCode =
   | "HUMANISH_LAB_ANALYSIS_INVALID"
   | "HUMANISH_LAB_TASKS_UNSUPPORTED"
+  | "HUMANISH_LAB_OPTION_CONFLICT"
+  | "HUMANISH_LAB_OPTION_UNSUPPORTED"
   | "HUMANISH_CUA_LAB_FAILED"
   | "HUMANISH_CUA_LAB_KEYS_MISSING"
   | "HUMANISH_CUA_LAB_SUBJECT_ENV_MISSING"

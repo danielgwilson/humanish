@@ -71,3 +71,9 @@ export function defaultSubjectPhaseSink(
   const prefix = ctx.laneCount > 1 ? `humanish cua [${ctx.laneId}]` : "humanish cua";
   process.stderr.write(`${prefix}: ${event.message}${durationSuffix}\n`);
 }
+
+/** The shared-world subject's phase line: one shared plane, so no lane prefix. */
+export function defaultSharedWorldPhaseSink(event: SubjectPhaseEvent): void {
+  const durationSuffix = event.durationMs === undefined ? "" : ` (${event.durationMs}ms)`;
+  process.stderr.write(`humanish shared-world (concurrent): ${event.message}${durationSuffix}\n`);
+}

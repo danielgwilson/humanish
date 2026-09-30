@@ -219,8 +219,10 @@ describe("planLab", () => {
       scenario: { ref: "scripted-first-run" },
       execution: { target: "e2b-desktop" },
     });
-    const requirements = (config: LabConfig, options: Partial<Parameters<typeof planLab>[1]>) =>
-      planOf(planLab(config, { cwd: ROOT, dryRun: false, ...options })).requirements;
+    const requirements = (
+      config: LabConfig,
+      options: Pick<Parameters<typeof planLab>[1], "scriptedHooks">,
+    ) => planOf(planLab(config, { cwd: ROOT, dryRun: false, ...options })).requirements;
     expect(requirements(parsed(scriptedApp), {})).toEqual([{ kind: "host-browser" }]);
     expect(requirements(clone, {})).toEqual([
       { kind: "key", name: "E2B_API_KEY" },

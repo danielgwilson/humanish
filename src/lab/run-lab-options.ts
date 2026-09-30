@@ -1,0 +1,558 @@
+// The typed homes on RunLabOptions and the one place they meet the route hook bags. runLab calls
+// normalizeRunLabOptions first: it refuses an option the route cannot honor, or a new option set
+// together with the old field it replaces, and otherwise maps each new option into the bag the
+// route reads today. Old fields pass through untouched, so they keep their exact behavior.
+
+import path from "node:path";
+
+import type { CuaExecutor, CuaProvider } from "../actors/computer-use/loop.js";
+import { redactText, toErrorMessage } from "../evidence/redaction.js";
+import { CUA_ACTOR_LAB_SCHEMA, type CuaActorLabHooks } from "../routes/computer-use/types.js";
+import { SCRIPTED_BROWSER_LAB_SCHEMA } from "../routes/scripted-browser/lab.js";
+import type { SharedWorldLabHooks } from "../routes/shared-world/hooks.js";
+import { CONCURRENT_SHARED_WORLD_LAB_SCHEMA } from "../routes/shared-world/types.js";
+import {
+  TERMINAL_PRODUCT_LAB_SCHEMA,
+  type TerminalProductLabHooks,
+} from "../routes/terminal/types.js";
+import type { E2BDesktopSandbox } from "../substrates/e2b/desktop-launch.js";
+import { isLocalBrowserLab } from "../substrates/local/runtime-config.js";
+import {
+  defaultSharedWorldPhaseSink,
+  defaultSubjectPhaseSink,
+  type SubjectPhaseEvent,
+} from "../subject/steps.js";
+import type { AdapterScorerModule } from "./adapter-scorer-loader.js";
+import type { LabOutcome, RunLabOptions } from "./engine.js";
+import { computerUseParticipants, resolveLabDryRun, type LabRoute } from "./plan.js";
+import type { LabConfig } from "./types.js";
+
+/** One participant, as the options' callbacks see it. */
+interface ParticipantRef {
+  readonly id: string;
+  /** 0-based position in the roster. */
+  readonly index: number;
+  readonly count: number;
+}
+
+/** Provisioned shared world and scripted clone labs prepare the shared subject sandbox first. */
+type SetupTarget =
+  | { readonly kind: "subject" }
+  | { readonly kind: "participant"; readonly participant: ParticipantRef };
+
+/** What `createProvider` receives for each participant. */
+interface ProviderContext {
+  readonly config: LabConfig;
+  readonly participant: ParticipantRef;
+  readonly executor: CuaExecutor;
+}
+
+type ProviderFactory = (ctx: ProviderContext) => Promise<CuaProvider>;
+
+type StreamEvent =
+  /** Runtime only: `url` carries an auth key and must never be persisted. */
+  | {
+      type: "ready";
+      participantId: string;
+      sandboxId: string;
+      simId: string;
+      streamId: string;
+      url: string;
+    }
+  | { type: "ended"; participantId: string; simId: string; streamId: string };
+
+/**
+ * What a run reports while it runs. `plan` comes from computer use only; the other routes gain it
+ * when they move onto the lab plan. `subject-phase` comes from computer use (participant target)
+ * and shared world (subject target).
+ */
+export type LabEvent =
+  | {
+      type: "plan";
+      route: LabRoute;
+      participants: readonly {
+        id: string;
+        persona: string;
+        device?: string;
+        instructionDigest: string;
+      }[];
+    }
+  | {
+      type: "subject-phase";
+      target: SetupTarget;
+      name: string;
+      message: string;
+      at: string;
+      ok?: boolean;
+      durationMs?: number;
+    }
+  | { type: "analysis-started" }
+  | { type: "analysis-finished" };
+
+/** The options with a typed home, common to every route. */
+export interface RunLabHomes {
+  /** Keys and subject env for the run. Defaults to process.env. */
+  env?: Readonly<Record<string, string | undefined>>;
+  /** Scores the assembled evidence: computer use, shared world and terminal. */
+  scorer?: AdapterScorerModule;
+  /** E2B only. Runs after the sandbox exists and before provisioning, once per target. */
+  prepareDesktop?: (desktop: E2BDesktopSandbox, target: SetupTarget) => Promise<void>;
+  /**
+   * Passive. Never awaited; a throw or a rejected promise becomes a run warning. It observes and
+   * changes no output: subject phases still go to stderr.
+   */
+  onEvent?: (event: LabEvent) => void | Promise<void>;
+  /** Awaited after a participant's live stream starts, and again after its sandbox is gone. */
+  onStream?: (event: StreamEvent) => Promise<void> | void;
+  /** Cancels post-run analysis only. */
+  analysisSignal?: AbortSignal;
+}
+
+/** Brain and in-process driving. An in-process executor needs a provider: it returns no frame. */
+export type RunLabDriving =
+  | { inProcess?: undefined; createProvider?: ProviderFactory }
+  | {
+      inProcess: { executor: (ctx: { config: LabConfig; appUrl: string }) => Promise<CuaExecutor> };
+      createProvider: ProviderFactory;
+    };
+
+type Refusal = {
+  ok: false;
+  code: "HUMANISH_LAB_OPTION_CONFLICT" | "HUMANISH_LAB_OPTION_UNSUPPORTED";
+  message: string;
+};
+
+type Normalized = {
+  ok: true;
+  /** The options with every new field mapped into the old bags and removed. */
+  options: RunLabOptions;
+  /** Filled by onEvent failures while the run runs; runLab appends them to the result. */
+  warnings: string[];
+};
+
+const conflict = (home: string, old: string): Refusal => ({
+  ok: false,
+  code: "HUMANISH_LAB_OPTION_CONFLICT",
+  message: `RunLabOptions.${home} and ${old} are both set. ${old} is the older form of ${home}; set only ${home}.`,
+});
+
+const unsupported = (option: string, route: LabRoute, reason: string): Refusal => ({
+  ok: false,
+  code: "HUMANISH_LAB_OPTION_UNSUPPORTED",
+  message: `RunLabOptions.${option} is not supported on the ${route} route: ${reason}`,
+});
+
+/** The first old field set together with its new home, as [home, old field]. */
+function conflictingField(options: RunLabOptions): [string, string] | undefined {
+  const { cuaHooks: cua, scriptedHooks: scripted, terminalHooks: terminal } = options;
+  const shared = options.sharedWorldHooks;
+  const analysis = options.automaticAnalysis;
+  const pairs: [string, string, unknown][] = [
+    ["env", "cuaHooks.env", cua?.env],
+    ["env", "scriptedHooks.env", scripted?.env],
+    ["env", "terminalHooks.env", terminal?.env],
+    ["env", "sharedWorldHooks.env", shared?.env],
+    ["scorer", "cuaHooks.score", cua?.score],
+    ["scorer", "cuaHooks.deriveFeedback", cua?.deriveFeedback],
+    ["scorer", "cuaHooks.deriveArtifacts", cua?.deriveArtifacts],
+    ["scorer", "sharedWorldHooks.score", shared?.score],
+    ["scorer", "sharedWorldHooks.deriveFeedback", shared?.deriveFeedback],
+    ["scorer", "sharedWorldHooks.deriveArtifacts", shared?.deriveArtifacts],
+    ["scorer", "terminalHooks.score", terminal?.score],
+    ["scorer", "terminalHooks.deriveFeedback", terminal?.deriveFeedback],
+    ["prepareDesktop", "cuaHooks.prepareDesktop", cua?.prepareDesktop],
+    ["prepareDesktop", "scriptedHooks.prepareDesktop", scripted?.prepareDesktop],
+    ["prepareDesktop", "sharedWorldHooks.prepareDesktop", shared?.prepareDesktop],
+    ["onEvent", "cuaHooks.onPreflight", cua?.onPreflight],
+    ["onEvent", "cuaHooks.onPhase", cua?.onPhase],
+    ["onEvent", "sharedWorldHooks.onPhase", shared?.onPhase],
+    ["onEvent", "automaticAnalysis.onStart", analysis?.onStart],
+    ["onStream", "cuaHooks.onRuntimeStreamReady", cua?.onRuntimeStreamReady],
+    ["onStream", "cuaHooks.onRuntimeStreamEnded", cua?.onRuntimeStreamEnded],
+    ["onStream", "sharedWorldHooks.onRuntimeStreamReady", shared?.onRuntimeStreamReady],
+    ["onStream", "sharedWorldHooks.onRuntimeStreamEnded", shared?.onRuntimeStreamEnded],
+    ["analysisSignal", "automaticAnalysis.deps.signal", analysis?.deps?.signal],
+    ["createProvider", "cuaHooks.buildProvider", cua?.buildProvider],
+    ["inProcess", "cuaHooks.buildExecutor", cua?.buildExecutor],
+    ["rerun.participantIds", "rerun.laneIds", options.rerun?.laneIds],
+  ];
+  const home = (name: string): unknown =>
+    name === "rerun.participantIds"
+      ? options.rerun?.participantIds
+      : options[name as keyof RunLabHomes | "createProvider" | "inProcess"];
+  const found = pairs.find(([name, , old]) => old !== undefined && home(name) !== undefined);
+  return found === undefined ? undefined : [found[0], found[1]];
+}
+
+/** Why the route cannot honor an option it was given, or undefined when it can. */
+function unsupportedOption(
+  config: LabConfig,
+  route: LabRoute,
+  options: RunLabOptions,
+): Refusal | undefined {
+  const { scorer, createProvider, inProcess, prepareDesktop } = options;
+  if (inProcess !== undefined && createProvider === undefined)
+    return unsupported(
+      "inProcess",
+      route,
+      "an in-process executor returns no frame, so it needs createProvider.",
+    );
+  const participantRoute = route === "computer-use" || route === "shared-world";
+  if (scorer !== undefined && route !== "terminal" && !participantRoute)
+    return unsupported("scorer", route, "only computer use, shared world and terminal score runs.");
+  if (createProvider !== undefined && route !== "computer-use")
+    return unsupported(
+      "createProvider",
+      route,
+      route === "shared-world"
+        ? "shared-world seats run the lab's own brain."
+        : "only computer use takes a caller brain.",
+    );
+  if (route === "computer-use") {
+    const source = config.subject.source;
+    if (inProcess !== undefined) {
+      if (source !== "app-url" && source !== "local-app")
+        return unsupported("inProcess", route, "it drives an app-url or local-app subject.");
+      if (computerUseParticipants(config, options.count).length !== 1)
+        return unsupported("inProcess", route, "it drives exactly one participant.");
+    }
+    if (prepareDesktop !== undefined) {
+      if (isLocalBrowserLab(config))
+        return unsupported("prepareDesktop", route, "a local VM study has no E2B desktop.");
+      if (inProcess !== undefined || source === "local-app")
+        return unsupported("prepareDesktop", route, "an in-process run has no desktop.");
+    }
+    return undefined;
+  }
+  if (inProcess !== undefined)
+    return unsupported("inProcess", route, "only computer use drives an app in process.");
+  if (prepareDesktop === undefined || route === "shared-world") return undefined;
+  if (route === "scripted" && config.subject.source === "clone") return undefined;
+  return unsupported(
+    "prepareDesktop",
+    route,
+    route === "scripted"
+      ? "only a clone subject runs on an E2B desktop."
+      : "this route has no E2B desktop to prepare.",
+  );
+}
+
+/**
+ * Refuse what the route cannot honor, then map the new options into the old bags. Nothing here
+ * touches the filesystem, so a refusal leaves no run directory, receipt or sandbox.
+ */
+export function normalizeRunLabOptions(
+  config: LabConfig,
+  route: LabRoute,
+  options: RunLabOptions,
+): Normalized | Refusal {
+  const clash = conflictingField(options);
+  if (clash) return conflict(...clash);
+  const refused = unsupportedOption(config, route, options);
+  if (refused) return refused;
+
+  const warnings: string[] = [];
+  const {
+    env,
+    scorer,
+    prepareDesktop,
+    onEvent,
+    onStream,
+    analysisSignal,
+    createProvider,
+    inProcess,
+    ...legacy
+  } = options;
+  const emit =
+    onEvent === undefined
+      ? undefined
+      : (event: LabEvent): void => {
+          const report = (error: unknown): void => {
+            warnings.push(
+              `RunLabOptions.onEvent failed on ${event.type}: ${redactText(toErrorMessage(error))}`,
+            );
+          };
+          try {
+            const returned = onEvent(event);
+            if (returned !== undefined) Promise.resolve(returned).catch(report);
+          } catch (error) {
+            report(error);
+          }
+        };
+
+  const normalized: RunLabOptions = { ...legacy };
+  const participantIds = options.rerun?.participantIds;
+  if (options.rerun !== undefined && participantIds !== undefined) {
+    const { participantIds: _ids, ...rerun } = options.rerun;
+    normalized.rerun = { ...rerun, laneIds: participantIds };
+  }
+  if (emit !== undefined || analysisSignal !== undefined) {
+    const analysis = legacy.automaticAnalysis;
+    normalized.automaticAnalysis = {
+      ...analysis,
+      ...(analysisSignal === undefined
+        ? {}
+        : { deps: { ...analysis?.deps, signal: analysisSignal } }),
+      ...(emit === undefined
+        ? {}
+        : {
+            onStart: () => {
+              emit({ type: "analysis-started" });
+              return () => emit({ type: "analysis-finished" });
+            },
+          }),
+    };
+  }
+  const scoring = scorer === undefined ? {} : scorerHooks(scorer);
+  switch (route) {
+    case "computer-use":
+      normalized.cuaHooks = {
+        ...legacy.cuaHooks,
+        ...(env === undefined ? {} : { env: { ...env } }),
+        ...scoring,
+        ...computerUseHooks(config, { prepareDesktop, onStream, createProvider, inProcess }, emit),
+      };
+      break;
+    case "shared-world":
+      normalized.sharedWorldHooks = {
+        ...legacy.sharedWorldHooks,
+        ...(env === undefined ? {} : { env: { ...env } }),
+        ...scoring,
+        ...sharedWorldHooks({ prepareDesktop, onStream }, emit),
+      };
+      break;
+    case "terminal":
+      normalized.terminalHooks = {
+        ...legacy.terminalHooks,
+        ...(env === undefined ? {} : { env: { ...env } }),
+        ...(scorer?.score === undefined ? {} : { score: scorer.score }),
+        ...(scorer?.deriveFeedback === undefined ? {} : { deriveFeedback: scorer.deriveFeedback }),
+      } satisfies TerminalProductLabHooks;
+      break;
+    case "scripted":
+      normalized.scriptedHooks = {
+        ...legacy.scriptedHooks,
+        ...(env === undefined ? {} : { env: { ...env } }),
+        ...(prepareDesktop === undefined
+          ? {}
+          : { prepareDesktop: (desktop) => prepareDesktop(desktop, { kind: "subject" }) }),
+      };
+      break;
+    case "preview":
+      break;
+  }
+  return { ok: true, options: normalized, warnings };
+}
+
+function scorerHooks(
+  scorer: AdapterScorerModule,
+): Pick<CuaActorLabHooks, "score" | "deriveFeedback" | "deriveArtifacts"> {
+  return {
+    ...(scorer.score === undefined ? {} : { score: scorer.score }),
+    ...(scorer.deriveFeedback === undefined ? {} : { deriveFeedback: scorer.deriveFeedback }),
+    ...(scorer.deriveArtifacts === undefined ? {} : { deriveArtifacts: scorer.deriveArtifacts }),
+  };
+}
+
+type Lane = { laneId: string; laneIndex: number; laneCount: number };
+
+const participantOf = (lane: Lane): ParticipantRef => ({
+  id: lane.laneId,
+  index: lane.laneIndex,
+  count: lane.laneCount,
+});
+
+function phaseEvent(event: SubjectPhaseEvent, target: SetupTarget): LabEvent {
+  return {
+    type: "subject-phase",
+    target,
+    name: event.type,
+    message: event.message,
+    at: event.at,
+    ...(event.ok === undefined ? {} : { ok: event.ok }),
+    ...(event.durationMs === undefined ? {} : { durationMs: event.durationMs }),
+  };
+}
+
+/** The route awaits what these return, so onStream keeps the old hooks' barrier and errors. */
+function streamHooks(
+  onStream: NonNullable<RunLabHomes["onStream"]>,
+): Pick<CuaActorLabHooks, "onRuntimeStreamReady" | "onRuntimeStreamEnded"> {
+  return {
+    onRuntimeStreamReady: (stream) =>
+      onStream({
+        type: "ready",
+        participantId: stream.laneId,
+        sandboxId: stream.sandboxId,
+        simId: stream.simId,
+        streamId: stream.streamId,
+        url: stream.url,
+      }),
+    onRuntimeStreamEnded: (stream) =>
+      onStream({
+        type: "ended",
+        participantId: stream.laneId,
+        simId: stream.simId,
+        streamId: stream.streamId,
+      }),
+  };
+}
+
+function computerUseHooks(
+  config: LabConfig,
+  homes: {
+    prepareDesktop: RunLabHomes["prepareDesktop"];
+    onStream: RunLabHomes["onStream"];
+    createProvider: ProviderFactory | undefined;
+    inProcess: Extract<RunLabDriving, { inProcess: object }>["inProcess"] | undefined;
+  },
+  emit: ((event: LabEvent) => void) | undefined,
+): CuaActorLabHooks {
+  const { prepareDesktop, onStream, createProvider, inProcess } = homes;
+  // A local VM study and an in-process run start no E2B stream, and the local study refuses a
+  // stream hook outright, so onStream is left unset there: it is never called.
+  const streams = !isLocalBrowserLab(config) && inProcess === undefined;
+  return {
+    ...(prepareDesktop === undefined
+      ? {}
+      : {
+          prepareDesktop: (desktop, lane) =>
+            prepareDesktop(desktop, { kind: "participant", participant: participantOf(lane) }),
+        }),
+    ...(createProvider === undefined
+      ? {}
+      : {
+          buildProvider: ({ config: lab, lane, laneCount, executor }) =>
+            createProvider({
+              config: lab,
+              participant: participantOf({ ...lane, laneCount }),
+              executor,
+            }),
+        }),
+    ...(inProcess === undefined
+      ? {}
+      : {
+          buildExecutor: ({ config: lab, appUrl }) => inProcess.executor({ config: lab, appUrl }),
+        }),
+    ...(onStream !== undefined && streams ? streamHooks(onStream) : {}),
+    ...(emit === undefined
+      ? {}
+      : {
+          onPreflight: (plan) =>
+            emit({
+              type: "plan",
+              route: "computer-use",
+              participants: plan.lanes.map((lane) => ({
+                id: lane.id,
+                persona: lane.persona,
+                device: lane.device,
+                instructionDigest: lane.instructionDigest,
+              })),
+            }),
+          onPhase: (event, lane) => {
+            defaultSubjectPhaseSink(event, lane);
+            emit(phaseEvent(event, { kind: "participant", participant: participantOf(lane) }));
+          },
+        }),
+  };
+}
+
+function sharedWorldHooks(
+  homes: { prepareDesktop: RunLabHomes["prepareDesktop"]; onStream: RunLabHomes["onStream"] },
+  emit: ((event: LabEvent) => void) | undefined,
+): SharedWorldLabHooks {
+  const { prepareDesktop, onStream } = homes;
+  return {
+    ...(prepareDesktop === undefined
+      ? {}
+      : {
+          // The provisioned plane prepares the subject sandbox with no lane, then each seat.
+          prepareDesktop: (desktop, lane) =>
+            prepareDesktop(
+              desktop,
+              lane === undefined
+                ? { kind: "subject" }
+                : { kind: "participant", participant: participantOf(lane) },
+            ),
+        }),
+    ...(onStream === undefined ? {} : streamHooks(onStream)),
+    ...(emit === undefined
+      ? {}
+      : {
+          onPhase: (event) => {
+            defaultSharedWorldPhaseSink(event);
+            emit(phaseEvent(event, { kind: "subject" }));
+          },
+        }),
+  };
+}
+
+/** A refusal in the route's own result envelope, before any run exists. */
+export function optionRefusalOutcome(
+  config: LabConfig,
+  route: LabRoute,
+  options: RunLabOptions,
+  refusal: Refusal,
+): LabOutcome {
+  const cwd = path.resolve(options.cwd);
+  const error = { code: refusal.code, message: refusal.message };
+  const actor = config.actors[0]?.type ?? "";
+  const dryRun = resolveLabDryRun(config, options.dryRun, true) ?? true;
+  const runId = options.runId ?? "not-created";
+  const common = { ok: false, cwd, labId: config.id, actor, dryRun, runId, warnings: [], error };
+  switch (route) {
+    case "preview":
+      return {
+        backend: "synthetic",
+        result: { schema: "humanish.run-result.v1", ok: false, cwd, warnings: [], error },
+      };
+    case "computer-use":
+      return {
+        backend: "cua",
+        result: {
+          schema: CUA_ACTOR_LAB_SCHEMA,
+          ...common,
+          ok: false,
+          appUrl: config.subject.appUrl ?? config.subject.serve?.url ?? "",
+          lanes: [],
+        },
+      };
+    case "scripted":
+      return {
+        backend: "scripted",
+        result: {
+          schema: SCRIPTED_BROWSER_LAB_SCHEMA,
+          ...common,
+          ok: false,
+          appUrl: config.subject.appUrl ?? "",
+          sessions: [],
+        },
+      };
+    case "terminal":
+      return {
+        backend: "terminal",
+        result: {
+          schema: TERMINAL_PRODUCT_LAB_SCHEMA,
+          ...common,
+          ok: false,
+          product: config.subject.product?.name ?? "",
+        },
+      };
+    case "shared-world": {
+      const roleCount = config.actors[0]?.lanes?.length ?? 0;
+      return {
+        backend: "concurrent-shared-world",
+        result: {
+          schema: CONCURRENT_SHARED_WORLD_LAB_SCHEMA,
+          ...common,
+          ok: false,
+          topology: "shared-world",
+          topologyMode: "concurrent",
+          roleCount,
+          concurrency: config.execution?.concurrency ?? Math.max(1, roleCount),
+          roles: [],
+        },
+      };
+    }
+  }
+}

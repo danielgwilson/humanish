@@ -3751,7 +3751,7 @@ describe("runCuaActorLab", () => {
     const { module } = makeFakeModule(sandbox);
     const phaseEvents: Array<{ type: string; ok?: boolean; durationMs?: number; message: string }> =
       [];
-    const phaseCtxs: Array<{ laneId: string; laneCount: number }> = [];
+    const phaseCtxs: Array<{ laneId: string; laneIndex: number; laneCount: number }> = [];
 
     const outcome = await runLab(config, {
       cwd,
@@ -3815,7 +3815,7 @@ describe("runCuaActorLab", () => {
 
     // Single lane: every sink call names lane-01 with laneCount 1 (no fan-out prefixing).
     for (const ctx of phaseCtxs) {
-      expect(ctx).toEqual({ laneId: "lane-01", laneCount: 1 });
+      expect(ctx).toEqual({ laneId: "lane-01", laneIndex: 0, laneCount: 1 });
     }
   });
 

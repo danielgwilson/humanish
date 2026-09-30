@@ -24,7 +24,7 @@ import type { SharedWorldStateSnapshot } from "../../run/shared-world-evidence.j
 import type { LocalTreeArchive } from "../../run/source-archive.js";
 import { provisionCloneSubject } from "../../subject/clone.js";
 import { provisionLocalTreeSubject } from "../../subject/local-tree.js";
-import type { SubjectPhaseEvent } from "../../subject/steps.js";
+import { defaultSharedWorldPhaseSink } from "../../subject/steps.js";
 import type { DetachedTimers } from "../../substrates/detached.js";
 import {
   loadE2BDesktopModule,
@@ -264,13 +264,7 @@ class SubjectPlane {
     const { config, hooks, requestTimeoutMs, scrubKnownValues } = this.ctx;
     const { serve, timers, stateStepRecords } = this.setup;
     const subjectShell = this.subjectShell!;
-    const onSubjectPhase =
-      hooks.onPhase ??
-      ((event: SubjectPhaseEvent) => {
-        process.stderr.write(
-          `humanish shared-world (concurrent): ${event.message}${event.durationMs === undefined ? "" : ` (${event.durationMs}ms)`}\n`,
-        );
-      });
+    const onSubjectPhase = hooks.onPhase ?? defaultSharedWorldPhaseSink;
     if (this.setup.localTreeRoute) {
       await provisionLocalTreeSubject(subjectShell, {
         archiveBuffer: this.setup.localTreeArchiveBuffer!,

@@ -156,6 +156,7 @@ export function createE2BCuaDesktopLane(
     }
     (deps.hooks.onPhase ?? defaultSubjectPhaseSink)(event, {
       laneId: spec.laneId,
+      laneIndex: spec.laneIndex,
       laneCount: deps.laneCount,
     });
   };

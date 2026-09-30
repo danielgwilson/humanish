@@ -2541,3 +2541,38 @@ describe("the subject state prober", () => {
     expect(bundle.sharedWorld?.stateSeries?.length).toBeGreaterThan(2);
   });
 });
+
+describe("RunLabOptions homes on the concurrent route", () => {
+  it("prepareDesktop sees the subject, then each seat; onStream sees each seat's stream start and end", async () => {
+    const { hooks } = baseHooks({ worldVersion: 0 }, makeRendezvous(3));
+    const targets: unknown[] = [];
+    const streams: string[] = [];
+    const outcome = await runLab(concurrentConfig(3, 3), {
+      cwd,
+      dryRun: false,
+      sharedWorldHooks: hooks,
+      prepareDesktop: async (_desktop, target) => {
+        targets.push(target);
+      },
+      onStream: (event) => {
+        streams.push(`${event.type}:${event.participantId}`);
+      },
+    });
+
+    expect(outcome.result.ok).toBe(true);
+    expect(targets[0]).toEqual({ kind: "subject" });
+    const seats = ["persona-01", "persona-02", "persona-03"];
+    expect(targets.slice(1)).toHaveLength(3);
+    expect(targets.slice(1)).toEqual(
+      expect.arrayContaining(
+        seats.map((id, index) => ({ kind: "participant", participant: { id, index, count: 3 } })),
+      ),
+    );
+    expect(streams.filter((entry) => entry.startsWith("ready:")).sort()).toEqual(
+      seats.map((id) => `ready:${id}`),
+    );
+    expect(streams.filter((entry) => entry.startsWith("ended:")).sort()).toEqual(
+      seats.map((id) => `ended:${id}`),
+    );
+  });
+});
