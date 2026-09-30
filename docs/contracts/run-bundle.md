@@ -451,7 +451,7 @@ not included. `studyQuality` is deliberately structural: it stores booleans,
 checks, and a rating so private runs can preserve the useful quality signal
 without committing raw private persona, scenario, or coverage text.
 
-## Latest And History
+## Latest Pointer
 
 The latest pointer is a small local index:
 
@@ -460,20 +460,6 @@ schema: humanish.latest-run.v1
 runId: "<run-id>"
 path: ".humanish/runs/<run-id>"
 updatedAt: "<ISO timestamp>"
-```
-
-History entries use:
-
-```yaml
-schema: humanish.run-history-entry.v1
-runId: "<run-id>"
-createdAt: "<ISO timestamp>"
-lab: # optional, additive: which manifest produced this run
-  id: "<lab id>"
-  path: "humanish/labs/<lab id>.yaml"
-  origin: "committed|ignored|explicit"
-mode: "dry-run|live"
-path: ".humanish/runs/<run-id>"
 ```
 
 The latest pointer may move. Run bundle directories should not.

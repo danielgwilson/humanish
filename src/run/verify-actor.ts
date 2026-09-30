@@ -170,7 +170,7 @@ export async function validateTerminalProductEvidence(
 }
 
 // The four cost categories the no-spend proof + cost ledger reason over. Kept in sync with
-// routes/terminal/ledger.ts COST_CATEGORIES (a missing category on either side is a finding).
+// src/routes/terminal/ledger.ts COST_CATEGORIES (a missing category on either side is a finding).
 const TERMINAL_COST_CATEGORIES = ["product", "media", "payment", "provider"] as const;
 
 /**

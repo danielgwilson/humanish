@@ -42,7 +42,7 @@ A fixture can be promoted only when:
 - credential policy records env var names only, never values;
 - adapter-owned nouns do not appear in core schema docs or core runtime code;
 - public feedback material states that GitHub mutation was not performed;
-- the fixture can be checked with `pnpm test tests/adapter-fixtures.test.ts`
+- the fixture can be checked with `pnpm test tests/lab/adapter-fixtures.test.ts`
   and `pnpm public-surface:scan`.
 
 ## Dry-Run Web-App Fixture Shape
@@ -77,6 +77,6 @@ This keeps terminal and feedback parity independent from browser screenshots.
 ## Proof Commands
 
 ```bash
-pnpm test tests/adapter-fixtures.test.ts
+pnpm test tests/lab/adapter-fixtures.test.ts
 pnpm public-surface:scan
 ```

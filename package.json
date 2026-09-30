@@ -72,7 +72,7 @@
     "release:dogfood": "node scripts/release-dogfood.mjs",
     "browser-control:proof": "node scripts/browser-control-proof.mjs",
     "docs:generate": "tsx scripts/generate-cli-docs.ts",
-    "docs:check": "tsx scripts/generate-cli-docs.ts --check",
+    "docs:check": "tsx scripts/generate-cli-docs.ts --check && tsx scripts/check-doc-paths.ts",
     "observer:browser:proof": "node scripts/observer-browser-proof.mjs",
     "observer:iframe:proof": "node scripts/observer-iframe-proof.mjs",
     "observer:chrome:proof": "node scripts/observer-chrome-proof.mjs",

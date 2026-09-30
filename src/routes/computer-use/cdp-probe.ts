@@ -94,7 +94,8 @@ export interface ChromeCdpProbeResult {
 
 /**
  * The probe itself. Kept as one string so the shipped command is exactly what the tests execute
- * (tests/chrome-cdp-probe.test.ts runs it under the real python3 against a real headless Chrome).
+ * (tests/routes/computer-use/cdp-probe.test.ts runs it under the real python3 against a real
+ * headless Chrome).
  *
  * WebSocket is hand-rolled because python's stdlib has no client: one masked text frame out, frames
  * in until the reply with id 1 arrives, 1.5 s budget, and NO Origin header (Chrome refuses

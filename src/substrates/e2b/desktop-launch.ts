@@ -5,9 +5,9 @@
 // E2BDesktopSandbox stays shape-compatible with what the meta path has always used (so meta is
 // unchanged); `open` is declared optional because older SDKs may lack it (the CUA lab falls
 // back to launch). The CUA executor needs the additional mouse/keyboard methods (E2BDesktopLike
-// in e2b-desktop-executor.ts); the live Sandbox has them, so the CUA call site casts the
-// launched sandbox to E2BDesktopLike rather than widening this interface across the whole
-// meta file.
+// in src/substrates/e2b/desktop-executor.ts); the live Sandbox has them, so the CUA call site
+// casts the launched sandbox to E2BDesktopLike rather than widening this interface across the
+// whole meta file.
 
 import { sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -42,8 +42,8 @@ export interface E2BDesktopModule {
     /**
      * ACCOUNT-WIDE enumeration. Kept only for the routes that already avoid it for cleanup
      * (shared-world/scripted/cua/preflight kill by exact id and never call this); no cleanup
-     * proof in this codebase should call it (see routes/terminal/sandbox.ts teardownSandbox, which
-     * reclaims and verifies by id, never by listing).
+     * proof in this codebase should call it (see src/routes/terminal/sandbox.ts teardownSandbox,
+     * which reclaims and verifies by id, never by listing).
      */
     list?(options: E2BSandboxListOptions): E2BSandboxPaginator;
   };

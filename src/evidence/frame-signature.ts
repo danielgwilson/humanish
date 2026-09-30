@@ -36,8 +36,8 @@ const SIGNATURE_FALLBACK = "unreadable";
  * ordinary widget-sized changes survive the averaging.
  *
  * This is still a coarse whole-frame hash and it is still only ONE input to the backstop — see the
- * corroboration rule in computer-use.ts, which is what keeps a blind frame from ending a run on its
- * own.
+ * corroboration rule in src/actors/computer-use/loop.ts, which is what keeps a blind frame from
+ * ending a run on its own.
  */
 export function perceptualSignature(pngBytes: Buffer | Uint8Array): string {
   let cells: number[];

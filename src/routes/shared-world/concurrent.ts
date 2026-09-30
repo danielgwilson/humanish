@@ -2435,9 +2435,9 @@ export function buildConcurrentSharedWorldBundle(args: {
     type: "concurrent-shared-world.run.created",
     message: `Created CONCURRENT shared-world run for ${config.id} (actor ${descriptor.id}, ${actorSpecs.length} persona(s) vs ONE shared plane, max ${config.execution?.concurrency ?? actorSpecs.length} concurrent).`,
   });
-  // Human-readable plane label, byte-stable for the clone route (see shared-world-lab.ts's
-  // buildSharedWorldBundle for the same pattern). local-tree has no repo slug: it labels the
-  // packed archive instead (archiveSha256 + dirty/clean when the packed root was a git work tree).
+  // Human-readable plane label, byte-stable for the clone route. local-tree has no repo slug: it
+  // labels the packed archive instead (archiveSha256 + dirty/clean when the packed root was a git
+  // work tree).
   const dryRunPlaneLabel =
     args.subject.source === "local-tree" ? "packed working tree" : `clone of ${args.subject.repo}`;
   const livePlaneLabel =

@@ -146,7 +146,7 @@ Source: [`skills/humanish/SKILL.md`](skills/humanish/SKILL.md).
 ## How It Works
 
 ```text
-humanish/     committed labs, personas, scenarios, policy, adapters
+humanish/     committed labs, personas, scenarios, coverage notes
 .humanish/   ignored run evidence, Observer output, reviews, local state
 ```
 

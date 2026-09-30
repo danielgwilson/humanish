@@ -1164,8 +1164,8 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
               return validTokenCount(value) ? [[key, value]] : [];
             }),
           ) as ActorTokenUsage | undefined);
-    // restricted-codex-session sets dispatched only after initialize/config/account/
-    // thread/MCP admission, immediately before turn/start; it is not a success claim.
+    // src/actors/codex/restricted-session.ts sets dispatched only after initialize/config/
+    // account/thread/MCP admission, immediately before turn/start; it is not a success claim.
     const settledKind = interactionRequestPending ? "interaction" : kind;
     providerRequests.push({
       ordinal: providerRequests.length + 1,

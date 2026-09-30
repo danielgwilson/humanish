@@ -1,18 +1,17 @@
 # Core Contract
 
-Date: 2026-06-02 (current-state note updated 2026-07-14)
+Date: 2026-06-02 (current-state note updated 2026-09-30)
 
-Status: the listed primitives are shipped and tested. This document does not
-claim that every producer already uses one centralized store: run identity,
-history, and provider-resource lifecycle still span route-specific code and
-remain consolidation work.
+Status: there is no shared core module. Each route builds its run id, writes
+its bundle and moves the latest pointer itself. `src/run/paths.ts` holds the
+shared path rules and `src/run/git-state.ts` captures git state. The table
+below lists the records current bundles write.
 
 ## Purpose
 
 Core is the reusable layer that makes a run bundle stable enough for agents,
-reviewers, and maintainers to trust. It owns generic run identity, artifact
-layout, source state summaries, lifecycle records, latest/history pointers, and
-timing summaries.
+reviewers, and maintainers to trust. It covers generic run identity, artifact
+layout, source state summaries, lifecycle records and the latest pointer.
 
 Core does not own product routes, personas, scenarios, app topology, provider
 setup, or repository-specific proof language.
@@ -22,25 +21,23 @@ setup, or repository-specific proof language.
 Core records must be safe to include in public run bundles by default:
 
 - artifact paths are relative;
-- ids produced by the core run-id builder contain only lowercase letters,
-  numbers, and dashes; runtime readers separately accept existing IDs that are
-  any safe single path segment;
+- route-built run ids join a route prefix, the ISO creation time with `:` and
+  `.` replaced by `-`, and random hex; runtime readers accept any id that is a
+  safe single path segment;
 - git state summarizes status without branch names, remotes, file names, file
   paths, or absolute working directories;
-- lifecycle and timing records are explicit inputs, not inferred prose;
-- latest/history pointers identify local artifacts, not hosted private logs.
+- lifecycle records are explicit inputs, not inferred prose;
+- the latest pointer identifies local artifacts, not hosted private logs.
 
 ## Primitive Set
 
-| Primitive       | Contract                                                                                                                                                                                                                                                                                  |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Run id          | The core builder is deterministic from explicit prefix, timestamp, and entropy, and emits ids matching `^[a-z0-9][a-z0-9-]{0,127}$`. Runtime artifact binding uses the broader compatibility rule in `src/run/paths.ts`: one non-empty segment, excluding `.`, `..`, separators, and NUL. |
-| Artifact layout | Builds stable relative pointers under `.humanish/runs/<run-id>/` plus `.humanish/runs/latest.json`.                                                                                                                                                                                       |
-| Latest pointer  | `{ schema, runId, path, updatedAt }` using `humanish.latest-run.v1`.                                                                                                                                                                                                                      |
-| History entry   | `{ schema, runId, createdAt, mode, path }` using `humanish.run-history-entry.v1`.                                                                                                                                                                                                         |
-| Lifecycle event | `{ at, event, message }`; event and message are required.                                                                                                                                                                                                                                 |
-| Timing summary  | `{ startedAt, endedAt, durationMs, status }`; running records have null end and duration.                                                                                                                                                                                                 |
-| Git state       | `{ schema, status, capturedAt, head, changes, note }` using `humanish.git-state.v1`.                                                                                                                                                                                                      |
+| Primitive       | Contract                                                                                                                                                                                                                                                                    |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Run id          | Routes build `<prefix>-<timestamp>-<hex>` ids, for example `cua-2026-06-02T10-00-00-000Z-1a2b3c4d`. Runtime artifact binding uses the compatibility rule in `src/run/paths.ts`: one non-empty segment, excluding `.`, `..`, separators, and NUL. `latest.json` is reserved. |
+| Artifact layout | Run bundles live under `.humanish/runs/<run-id>/`, and the latest pointer is `.humanish/runs/latest.json`.                                                                                                                                                                  |
+| Latest pointer  | `{ schema, runId, path, updatedAt }` using `humanish.latest-run.v1`.                                                                                                                                                                                                        |
+| Lifecycle event | `{ at, event, message }` entries in `run.json` `lifecycle[]`; event and message are required.                                                                                                                                                                               |
+| Git state       | `{ schema, status, capturedAt, head, changes, note }` using `humanish.git-state.v1`, captured by `src/run/git-state.ts`.                                                                                                                                                    |
 
 ## Git State Boundary
 
@@ -72,5 +69,4 @@ Core work stops if:
 - a core primitive needs a product-specific noun to make sense;
 - an artifact path can escape the run root;
 - a public record includes a raw cwd, branch name, remote, file name, diff, or
-  credential-like value;
-- a run id cannot be reproduced from explicit inputs.
+  credential-like value.
