@@ -21,6 +21,7 @@ import type { LabRuntimeAuth } from "../../lab/types.js";
 import {
   E2BDesktopStartupError,
   loadE2BDesktopModule,
+  withOneRetryOnTransientE2BError,
   type E2BDesktopModule,
   type E2BDesktopSandbox,
 } from "../../substrates/e2b/desktop-launch.js";
@@ -240,14 +241,32 @@ export async function runLiveTerminalSession(
       runtimeEnv.mode === "openai-egress"
         ? buildOpenAiEgressNetwork(runtimeEnv.keyValue, routing)
         : routing;
-    sandbox = await sandboxModule.Sandbox.create({
-      apiKey: e2bApiKey,
-      requestTimeoutMs,
-      timeoutMs: sandboxTimeoutMs,
-      metadata,
-      ...(network === undefined ? {} : { network }),
-      lifecycle: { onTimeout: "kill" },
-    });
+    const sdk = sandboxModule;
+    sandbox = await withOneRetryOnTransientE2BError(
+      () =>
+        sdk.Sandbox.create({
+          apiKey: e2bApiKey,
+          requestTimeoutMs,
+          timeoutMs: sandboxTimeoutMs,
+          metadata,
+          ...(network === undefined ? {} : { network }),
+          lifecycle: { onTimeout: "kill" },
+        }),
+      {
+        // A failed first attempt may have allocated a sandbox whose id never reached this run;
+        // its own kill-on-timeout reclaims it.
+        onRetry: (reason) => {
+          const named = sanitize(reason);
+          warnings.push(
+            `Sandbox create retried once after a transient provider error (${named}). A sandbox the failed attempt may have allocated is reclaimed by its ${sandboxTimeoutMs} ms timeout.`,
+          );
+          recordLifecycle(
+            "terminal-lab.sandbox.create.retry",
+            `sandbox create retried once (${named})`,
+          );
+        },
+      },
+    );
     await validatePreparedRunArtifactPaths(runPaths);
     sandboxId = sandbox.sandboxId;
     // #358 salvage: durable id receipt the moment the sandbox exists (reclaim by exact id).

@@ -65,6 +65,8 @@ function makeFakeModule(opts: {
   };
   creates: RecordedCreate[];
   createError?: Error;
+  /** Thrown by successive Sandbox.create calls, in order, before createError applies. */
+  createErrors?: Error[];
   runs: RecordedRun[];
   killed: string[];
   /** Records every Sandbox.list(id) call. Teardown must NEVER call it (by-id proof only, never
@@ -111,6 +113,8 @@ function makeFakeModule(opts: {
           ...(options.metadata ? { metadata: options.metadata } : {}),
           ...(options.network ? { network: options.network } : {}),
         });
+        const queued = opts.createErrors?.shift();
+        if (queued) throw queued;
         if (opts.createError) throw opts.createError;
         const sandboxId = `fake-sandbox-${counter}`;
         return {
@@ -1409,6 +1413,67 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
     },
   );
+
+  it("retries sandbox create once after a transient provider error and says so", async () => {
+    const creates: RecordedCreate[] = [];
+    const result = await runTerminalProductLab({
+      cwd,
+      config: liveConfig(),
+      dryRun: false,
+      open: false,
+      hooks: {
+        env: baseEnv(),
+        now: () => 1_000,
+        loadModule: async () =>
+          makeFakeModule({
+            creates,
+            createErrors: [new Error("12: [unimplemented] HTTP 404")],
+            runs: [],
+            killed: [],
+            codexBehavior: (cmd) => ({
+              exitCode: 0,
+              stdout: `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+            }),
+          }),
+      },
+    });
+    expect(result.ok).toBe(true);
+    expect(creates).toHaveLength(2);
+    const retryWarnings = result.warnings.filter((warning) => warning.includes("retried once"));
+    expect(retryWarnings).toHaveLength(1);
+    expect(retryWarnings[0]).toContain("[unimplemented] HTTP 404");
+    const events = await readFile(
+      path.join(cwd, ".humanish", "runs", result.runId, "events.ndjson"),
+      "utf8",
+    );
+    expect(events).toContain("terminal-lab.sandbox.create.retry");
+  });
+
+  it("does not retry sandbox create after an auth failure", async () => {
+    const creates: RecordedCreate[] = [];
+    const result = await runTerminalProductLab({
+      cwd,
+      config: liveConfig(),
+      dryRun: false,
+      open: false,
+      hooks: {
+        env: baseEnv(),
+        now: () => 1_000,
+        loadModule: async () =>
+          makeFakeModule({
+            creates,
+            createErrors: [new Error("401: Unauthorized")],
+            runs: [],
+            killed: [],
+            codexBehavior: () => {
+              throw new Error("must not execute");
+            },
+          }),
+      },
+    });
+    expect(result.ok).toBe(false);
+    expect(creates).toHaveLength(1);
+  });
 
   it("scrubs the external runtime key from a sandbox-creation failure", async () => {
     const creates: RecordedCreate[] = [];
