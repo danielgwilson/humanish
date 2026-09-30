@@ -118,13 +118,10 @@ the parse error names the missing one. The computer-use actors are `openai-compu
 | `scripted`                | `clone`                                          | `e2b-desktop`            | `scripted-browser`                     | Supported                                                                      |
 | `terminal`                | `terminal-product`                               | `e2b-terminal` or absent | `codex-exec`                           | Supported                                                                      |
 | `synthetic`               | `this-repo`                                      | absent                   | not `scripted-browser` or `codex-exec` | Dry run only                                                                   |
-| none                      | any other pairing, except the one below          | any                      | any                                    | Refused at parse with `HUMANISH_LAB_INVALID`                                   |
+| none                      | any other pairing                                | any                      | any                                    | Refused at parse with `HUMANISH_LAB_INVALID`                                   |
 
-One accepted shape fails at run time. A `clone` lab on `e2b-desktop` with `codex-app-server`,
-which was the removed meta-lab's shape, passes parse. `runCuaActorLab` then refuses it with
-`HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED`. The fixture's `supported` field records which routes
-accept declared `actors[0].tasks`. The `cua` labs in the fixture accept them. The other routes
-refuse them at parse.
+The fixture's `supported` field records which routes accept declared `actors[0].tasks`. The
+`cua` labs in the fixture accept them. The other routes refuse them at parse.
 
 ## Keep these invariants when you change code
 

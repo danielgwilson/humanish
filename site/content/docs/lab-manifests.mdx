@@ -46,15 +46,15 @@ before a run starts. For example, `runtme` produces `HUMANISH_LAB_INVALID` with 
 group or lane index; it cannot silently become a default lane. Use `instruction`
 for a lane's steer.
 
-| Subject source     | Use                                                                                     |
-| ------------------ | --------------------------------------------------------------------------------------- |
-| `clone`            | Clone and serve a repository inside a hosted desktop (`execution.target: e2b-desktop`). |
-| `local-tree`       | Package the selected local working tree and serve it inside a hosted desktop.           |
-| `app-url`          | Study a reachable app URL; a public target requires explicit policy permission.         |
-| `local-app`        | Library integration with a custom state-driven executor and provider.                   |
-| `terminal-product` | Exercise a CLI product in the terminal route.                                           |
-| `desktop-cli`      | Give a computer-use participant a hosted terminal product task.                         |
-| `this-repo`        | Contract preview; live execution is unavailable for this source.                        |
+| Subject source     | Use                                                                                                                               |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| `clone`            | Clone and serve a repository inside a hosted desktop (`execution.target: e2b-desktop`, a computer-use or scripted-browser actor). |
+| `local-tree`       | Package the selected local working tree and serve it inside a hosted desktop.                                                     |
+| `app-url`          | Study a reachable app URL; a public target requires explicit policy permission.                                                   |
+| `local-app`        | Library integration with a custom state-driven executor and provider.                                                             |
+| `terminal-product` | Exercise a CLI product in the terminal route.                                                                                     |
+| `desktop-cli`      | Give a computer-use participant a hosted terminal product task.                                                                   |
+| `this-repo`        | Contract preview; live execution is unavailable for this source.                                                                  |
 
 [Computer-use controls](/docs/computer-use) cover hosted browsers, screenshots,
 devices, stopping, and reruns. For the complete schema and route validation, read
