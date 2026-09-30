@@ -3,7 +3,7 @@
 
 /* ============================================================
    humanish.dev — "Mineral Ledger" token system.
-   Ported verbatim from the approved single-file POC (landing/poc/v1p.html).
+   Ported verbatim from the approved design prototype.
    Light is the default; dark comes from prefers-color-scheme unless the
    visitor has explicitly chosen a theme via data-theme on <html>.
    ============================================================ */

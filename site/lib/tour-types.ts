@@ -1,4 +1,4 @@
-/** Shape of lib/tour/<slug>.json, written by landing/site-redesign-0916/extract-tour.py from a run bundle. */
+/** Shape of lib/tour/<slug>.json, extracted from a run bundle by a script that is not in this repository. */
 interface TourAction {
   id: string;
   title: string;
