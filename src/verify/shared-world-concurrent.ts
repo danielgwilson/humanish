@@ -1,12 +1,12 @@
-import type { RunBundle } from "./bundle.js";
-import type { SharedWorldEvidence } from "./shared-world-evidence.js";
+import type { RunBundle } from "../run/bundle.js";
+import type { SharedWorldEvidence } from "../run/shared-world-evidence.js";
 import {
   COMMAND_DIGEST_PATTERN,
   SHARED_WORLD_STATESERIES_KEYS,
   planeProvenanceFindings,
   sharedWorldCommonFindings,
-} from "./guards-shared-world.js";
-import { isRecord } from "./primitives.js";
+} from "../run/guards-shared-world.js";
+import { isRecord } from "../run/primitives.js";
 
 // CONCURRENT: the REQUIRED set (all must be present) AND a FORBIDDEN set (any present == a
 // sequential claim leaking into a concurrent bundle == overclaim). verify needs BOTH checks —

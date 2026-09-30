@@ -4,7 +4,7 @@ Date: 2026-06-02 (current-state note updated 2026-07-14)
 
 Status: `humanish.run-bundle.v1` is the shipped evidence contract. The
 TypeScript shape in `src/run/bundle.ts` (with `streams[]` in `src/run/streams.ts` and
-`sharedWorld` in `src/run/shared-world-evidence.ts`) and fail-closed verification in `src/run/verify.ts` are
+`sharedWorld` in `src/run/shared-world-evidence.ts`) and fail-closed verification in `src/verify/verify.ts` are
 authoritative; this document explains the stable public fields and extension
 rules rather than independently versioning the runtime.
 

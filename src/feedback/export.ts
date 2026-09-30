@@ -17,7 +17,7 @@ import { renderObserver } from "../observer/render.js";
 import { renderObserverHtml, type ObserverExportAssets } from "../observer/artifact.js";
 import { buildObserverData, type ObserverData } from "../observer/data.js";
 import { resolveRunPath } from "../run/locate.js";
-import { verifyRun, type VerifyResult } from "../run/verify.js";
+import { verifyRun, type VerifyResult } from "../verify/verify.js";
 import { type RunBundle } from "../run/bundle.js";
 import { exportRedactedBundle } from "./export-bundle.js";
 import { loadStudyAnalysis } from "../analysis/load.js";

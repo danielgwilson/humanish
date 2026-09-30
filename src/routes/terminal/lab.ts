@@ -11,7 +11,7 @@
 //     orchestrator on the @e2b/desktop commands.run surface.
 //
 // THE SAFETY CONTRACT (docs/goals/terminal-product-lane/goal.md) is enforced BY CONSTRUCTION here
-// and CHECKED by the verifier (run/verify-actor.ts validateTerminalProductEvidence):
+// and CHECKED by the verifier (verify/actor.ts validateTerminalProductEvidence):
 //   1. EXPLICIT KEY PLACEMENT. openai-env (default) injects the raw runtime key command-scoped,
 //      NEVER Sandbox.create({envs}). Opt-in openai-egress sends it only in the host-side E2B
 //      header transform and passes an inert command placeholder. The proxy is spendable by every

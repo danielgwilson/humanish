@@ -6,7 +6,7 @@ import { runCuaActorLab } from "../../src/routes/computer-use/lab.js";
 import { LAB_CONFIG_SCHEMA } from "../../src/lab/types.js";
 import { parseLabConfig } from "../../src/lab/config.js";
 import { participantAssignment } from "../../src/lab/participant-assignment.js";
-import { verifyRun } from "../../src/run/verify.js";
+import { verifyRun } from "../../src/verify/verify.js";
 import { type RunBundle } from "../../src/run/bundle.js";
 
 describe("participant assignment evidence", () => {

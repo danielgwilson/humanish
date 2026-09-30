@@ -24,7 +24,7 @@ import {
 } from "../../../src/routes/terminal/runtime-auth.js";
 import { prepareSelectedOutputDirectory } from "../../../src/run/contained-output.js";
 import { reclaimRunSandboxes } from "../../../src/run/reclaim.js";
-import { verifyRun } from "../../../src/run/verify.js";
+import { verifyRun } from "../../../src/verify/verify.js";
 import {
   readAutomaticStudyAnalysis,
   runAutomaticStudyAnalysis,

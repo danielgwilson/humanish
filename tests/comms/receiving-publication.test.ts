@@ -17,7 +17,7 @@ import { createShareSafetyAdmission } from "../../src/observer/serve.js";
 import { redactScreenshot } from "../../src/evidence/redaction.js";
 import { resolveRunPath } from "../../src/run/locate.js";
 import { runDryRun } from "../../src/run/dry-run.js";
-import { verifyRun } from "../../src/run/verify.js";
+import { verifyRun } from "../../src/verify/verify.js";
 import { type RunBundle } from "../../src/run/bundle.js";
 import { captureStudyEvidence } from "../../src/analysis/evidence.js";
 
@@ -121,7 +121,7 @@ describe("receiving restrictions in retained evidence", () => {
           "tsx",
           "--input-type=module",
           "-e",
-          `import { verifyRun } from ${JSON.stringify(new URL("../../src/run/verify.ts", import.meta.url).href)}; const value = await verifyRun(process.argv[1], process.argv[2]); process.stdout.write(JSON.stringify({ ok: value.ok, shareSafety: value.shareSafety }));`,
+          `import { verifyRun } from ${JSON.stringify(new URL("../../src/verify/verify.ts", import.meta.url).href)}; const value = await verifyRun(process.argv[1], process.argv[2]); process.stdout.write(JSON.stringify({ ok: value.ok, shareSafety: value.shareSafety }));`,
           cwd,
           RUN,
         ],

@@ -1,14 +1,14 @@
-import type { RunBundle } from "./bundle.js";
-import type { SharedWorldEvidence } from "./shared-world-evidence.js";
+import type { RunBundle } from "../run/bundle.js";
+import type { SharedWorldEvidence } from "../run/shared-world-evidence.js";
 import {
   COMMAND_DIGEST_PATTERN,
   MANDATORY_ATTRIBUTION_LIMITS,
   SHARED_WORLD_CHECKPOINT_KEYS,
   planeProvenanceFindings,
   sharedWorldCommonFindings,
-} from "./guards-shared-world.js";
-import { isRecord } from "./primitives.js";
-import { concurrentSharedWorldFindings } from "./verify-shared-world-concurrent.js";
+} from "../run/guards-shared-world.js";
+import { isRecord } from "../run/primitives.js";
+import { concurrentSharedWorldFindings } from "./shared-world-concurrent.js";
 
 /**
  * The `shared-world evidence` check (invariant 4 + invariant 6): a LIVE shared-world bundle's

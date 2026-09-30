@@ -7,7 +7,7 @@ import { createServeRequestHandler, createShareSafetyAdmission } from "../../src
 import { pinDirectory } from "../../src/observer/pinned-files.js";
 import { resolveRunPath } from "../../src/run/locate.js";
 import { runDryRun } from "../../src/run/dry-run.js";
-import { verifyRun } from "../../src/run/verify.js";
+import { verifyRun } from "../../src/verify/verify.js";
 import { captureStudyEvidence } from "../../src/analysis/evidence.js";
 import { writeStudyAnalysis } from "../../src/analysis/store.js";
 import { writeStudyAnalysisExecutionReceipt } from "../../src/analysis/store-executions.js";

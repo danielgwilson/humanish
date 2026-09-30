@@ -31,7 +31,7 @@ import { runScriptedBrowserLab } from "../../src/routes/scripted-browser/lab.js"
 import { claimAutomaticStudyAnalysis } from "../../src/analysis/job.js";
 import { prepareRunArtifactPaths } from "../../src/run/paths.js";
 import { resolveRunPath } from "../../src/run/locate.js";
-import { verifyRun } from "../../src/run/verify.js";
+import { verifyRun } from "../../src/verify/verify.js";
 import { readRunDetail } from "../../src/run/detail.js";
 import { stopRun } from "../../src/tui/actions.js";
 import * as automaticJobs from "../../src/analysis/automatic.js";

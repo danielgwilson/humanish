@@ -41,7 +41,7 @@ import type { SharedWorldLabHooks } from "../../../src/routes/shared-world/hooks
 import type { BrowserLabScoringContext, RunAdapterScore, RunBundle } from "../../../src/index.js";
 import type { SubjectPhaseEvent } from "../../../src/subject/steps.js";
 import { reclaimRunSandboxes } from "../../../src/run/reclaim.js";
-import { verifyRun } from "../../../src/run/verify.js";
+import { verifyRun } from "../../../src/verify/verify.js";
 import {
   LANE_SHAPE_VARIANTS,
   pinnedVerifyResult,

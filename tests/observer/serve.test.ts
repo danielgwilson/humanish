@@ -13,7 +13,7 @@ import { serveObserverLibrary } from "../../src/observer/serve.js";
 import type { ServeLibraryOptions, ServeLibraryServer } from "../../src/observer/serve.js";
 import { buildRunSource } from "../../src/run/bundle.js";
 import { runDryRun } from "../../src/run/dry-run.js";
-import { verifyRun } from "../../src/run/verify.js";
+import { verifyRun } from "../../src/verify/verify.js";
 
 const PNG_1X1 = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADUlEQVR42mP8z8BQDwAFgwJ/lp9J1wAAAABJRU5ErkJggg==",

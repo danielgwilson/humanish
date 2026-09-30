@@ -38,7 +38,7 @@ import { hashStudyAnalysisValue } from "../../src/analysis/validation.js";
 import { STUDY_ANALYSIS_PROMPT_VERSION, runStudyAnalysis } from "../../src/analysis/engine.js";
 import { resolveRunPath } from "../../src/run/locate.js";
 import { runDryRun } from "../../src/run/dry-run.js";
-import { verifyRun } from "../../src/run/verify.js";
+import { verifyRun } from "../../src/verify/verify.js";
 import { type RunBundle } from "../../src/run/bundle.js";
 import { renderObserver } from "../../src/observer/render.js";
 import { pinDirectory } from "../../src/observer/pinned-files.js";

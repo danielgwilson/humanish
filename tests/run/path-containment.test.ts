@@ -21,7 +21,7 @@ import { createProgram } from "../../src/cli/program.js";
 import { doctor } from "../../src/cli/doctor.js";
 import { listRuns } from "../../src/run/manage.js";
 import { runDryRun } from "../../src/run/dry-run.js";
-import { verifyRun } from "../../src/run/verify.js";
+import { verifyRun } from "../../src/verify/verify.js";
 import { prepareRunArtifactPaths, validatePreparedRunArtifactPaths } from "../../src/run/paths.js";
 import { writePreparedRunLatestPointer } from "../../src/run/contained-output.js";
 

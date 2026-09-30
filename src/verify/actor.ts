@@ -1,15 +1,15 @@
 import { CODEX_APP_SERVER_TRACE_SCHEMA } from "../actors/codex/app-server-trace.js";
 import { ACTOR_TRACE_SCHEMA } from "../actors/contract.js";
-import { type PreparedRunArtifactPaths } from "./paths.js";
-import { CODEX_APP_SERVER_PROJECTED_TRACE_SCHEMA, type RunBundle } from "./bundle.js";
-import { readSafeRunArtifactBytes, readSafeRunArtifactJson } from "./locate.js";
-import { isRecord } from "./primitives.js";
+import { type PreparedRunArtifactPaths } from "../run/paths.js";
+import { CODEX_APP_SERVER_PROJECTED_TRACE_SCHEMA, type RunBundle } from "../run/bundle.js";
+import { readSafeRunArtifactBytes, readSafeRunArtifactJson } from "../run/locate.js";
+import { isRecord } from "../run/primitives.js";
 import {
   COST_CATEGORIES,
   TERMINAL_EVENTS_ARTIFACT,
   TERMINAL_LEDGERS_ARTIFACT,
   TERMINAL_TRANSCRIPT_ARTIFACT,
-} from "./terminal-contract.js";
+} from "../run/terminal-contract.js";
 
 export function isZeroEventTerminalTrace(value: unknown): boolean {
   return (

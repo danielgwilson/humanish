@@ -295,8 +295,8 @@ describe("adapter fixture parity contracts", () => {
         readFile("src/run/bundle.ts", "utf8"),
         readFile("src/run/outcomes.ts", "utf8"),
         readFile("src/run/dry-run.ts", "utf8"),
-        readFile("src/run/verify.ts", "utf8"),
-        readFile("src/run/verify-shared-world.ts", "utf8"),
+        readFile("src/verify/verify.ts", "utf8"),
+        readFile("src/verify/shared-world.ts", "utf8"),
         readFile("src/run/guards.ts", "utf8"),
       ])
     ).join("\n");

@@ -4,11 +4,11 @@ import path from "node:path";
 import { PNG } from "pngjs";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { ACTOR_TRACE_SCHEMA } from "../src/actors/contract.js";
-import { draftFeedback, verifyFeedback } from "../src/feedback/feedback.js";
-import { runDryRun } from "../src/run/dry-run.js";
-import { verifyRun } from "../src/run/verify.js";
-import { type RunBundle } from "../src/run/bundle.js";
+import { ACTOR_TRACE_SCHEMA } from "../../src/actors/contract.js";
+import { draftFeedback, verifyFeedback } from "../../src/feedback/feedback.js";
+import { runDryRun } from "../../src/run/dry-run.js";
+import { verifyRun } from "../../src/verify/verify.js";
+import { type RunBundle } from "../../src/run/bundle.js";
 
 const RUN = "declared-evidence";
 

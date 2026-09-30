@@ -11,7 +11,7 @@ import type { ExportFailure, ExportOptions, ExportResult } from "./export.js";
 import { renderObserver } from "../observer/render.js";
 import { buildObserverData } from "../observer/data.js";
 import { containsSensitive, redactScreenshot, redactText } from "../evidence/redaction.js";
-import { verifyRunPrepared, type VerifyResult } from "../run/verify.js";
+import { verifyRunPrepared, type VerifyResult } from "../verify/verify.js";
 import { loadRunBundlePrepared, resolveRunPath } from "../run/locate.js";
 import { type RunBundle } from "../run/bundle.js";
 import {

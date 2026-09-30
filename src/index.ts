@@ -13,8 +13,8 @@ export { LAB_CONFIG_SCHEMA } from "./lab/types.js";
 export type { LabConfig } from "./lab/types.js";
 
 // Read a run.
-export { verifyRun } from "./run/verify.js";
-export type { VerifyResult } from "./run/verify.js";
+export { verifyRun } from "./verify/verify.js";
+export type { VerifyResult } from "./verify/verify.js";
 export { renderObserver } from "./observer/render.js";
 export type { ObserverResult } from "./observer/render.js";
 export type { RunBundle, RunFeedbackCandidate } from "./run/bundle.js";

@@ -3,17 +3,17 @@ import { listStudyAnalysisExecutions } from "../analysis/store-executions.js";
 import { loadStudyAnalysis } from "../analysis/load.js";
 import { studyAnalysisSharingProblems } from "../analysis/sharing.js";
 import { containsSensitive } from "../evidence/redaction.js";
-import { validatePreparedRunArtifactPaths, type PreparedRunArtifactPaths } from "./paths.js";
-import { RUN_BUNDLE_FILE, RUN_BUNDLE_SCHEMA, type RunBundle } from "./bundle.js";
-import { isCleanupResult, isRunBundle } from "./guards.js";
-import { readRunJsonIfExists, readRunTextIfExists, resolveRunPath } from "./locate.js";
-import { isRecord } from "./primitives.js";
+import { validatePreparedRunArtifactPaths, type PreparedRunArtifactPaths } from "../run/paths.js";
+import { RUN_BUNDLE_FILE, RUN_BUNDLE_SCHEMA, type RunBundle } from "../run/bundle.js";
+import { isCleanupResult, isRunBundle } from "../run/guards.js";
+import { readRunJsonIfExists, readRunTextIfExists, resolveRunPath } from "../run/locate.js";
+import { isRecord } from "../run/primitives.js";
 import {
   actorVerdictConsistencyFindings,
   noEngagementActorFindings,
   validateCodexAppServerEvidence,
   validateTerminalProductEvidence,
-} from "./verify-actor.js";
+} from "./actor.js";
 import {
   invalidRunEvidenceReferences,
   MAX_REPORTED_FINDINGS,
@@ -21,12 +21,12 @@ import {
   rawScreenshotPostureWarnings,
   rawScreenshotStreamIds,
   scanRunPublicSafetyArtifacts,
-} from "./verify-artifacts.js";
-import { runNotFinishedWarnings } from "./verify-liveness.js";
-import { costAndReceiptFindings } from "./verify-costs.js";
-import { rerunLineageFindings } from "./verify-rerun.js";
-import { sharedWorldEvidenceFindings } from "./verify-shared-world.js";
-import { subjectStateFindings, undeclaredSubjectStateWarnings } from "./verify-subject.js";
+} from "./artifacts.js";
+import { runNotFinishedWarnings } from "./liveness.js";
+import { costAndReceiptFindings } from "./costs.js";
+import { rerunLineageFindings } from "./rerun.js";
+import { sharedWorldEvidenceFindings } from "./shared-world.js";
+import { subjectStateFindings, undeclaredSubjectStateWarnings } from "./subject.js";
 
 export const VERIFY_SCHEMA = "humanish.verify-result.v1";
 

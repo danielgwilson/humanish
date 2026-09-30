@@ -16,7 +16,7 @@ import {
 } from "../../../src/lab/routing.js";
 import { runLab, selectLabBackend } from "../../../src/lab/engine.js";
 import { createProgram } from "../../../src/cli/program.js";
-import { verifyRun } from "../../../src/run/verify.js";
+import { verifyRun } from "../../../src/verify/verify.js";
 import { runTerminalProductLab } from "../../../src/routes/terminal/lab.js";
 import { TERMINAL_AGENT_NOT_IMPLEMENTED_CODE } from "../../../src/actors/terminal-agent.js";
 

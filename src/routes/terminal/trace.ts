@@ -156,7 +156,7 @@ export function buildTerminalActorTrace(args: {
         ),
       ),
       // actions == executed commands; messages == 1 when the agent produced any output. The
-      // no-engagement guard (run/verify-actor.ts) reads these: a real run bumps them, a no-op is caught.
+      // no-engagement guard (verify/actor.ts) reads these: a real run bumps them, a no-op is caught.
       actions: args.commandLog.length,
       messages: args.terminalEvents.length > 0 ? 1 : 0,
       terminalEvents: args.terminalEvents.length,

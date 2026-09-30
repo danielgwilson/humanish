@@ -12,7 +12,7 @@ import { runTerminalProductLab } from "../../src/routes/terminal/lab.js";
 import { applyBrowserAdapterHooks } from "../../src/lab/adapter-extension.js";
 import { LAB_CONFIG_SCHEMA } from "../../src/lab/types.js";
 import { parseLabConfig } from "../../src/lab/config.js";
-import { verifyRun } from "../../src/run/verify.js";
+import { verifyRun } from "../../src/verify/verify.js";
 import { passingHooks, terminalConfig } from "../helpers/terminal-live-fake.js";
 import type { BrowserLabScoringContext, RunAdapterScore, RunBundle } from "../../src/index.js";
 

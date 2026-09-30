@@ -2,9 +2,9 @@
 // totals match their known lines, and account-billed participants never acquire a price.
 
 import { validActorExecutionProfile, validActorProviderRequests } from "../actors/contract.js";
-import type { RunBundle } from "./bundle.js";
-import { round6 } from "./pricing.js";
-import type { RunStream } from "./streams.js";
+import type { RunBundle } from "../run/bundle.js";
+import { round6 } from "../run/pricing.js";
+import type { RunStream } from "../run/streams.js";
 
 /** Account lanes must never acquire a price through an aggregate or ambiguous model line. */
 export function contradictsAccountBilling(

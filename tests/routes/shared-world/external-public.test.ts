@@ -48,7 +48,7 @@ import type {
 } from "../../../src/substrates/e2b/sdk.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
 import type { RunBundle } from "../../../src/index.js";
-import { verifyRun } from "../../../src/run/verify.js";
+import { verifyRun } from "../../../src/verify/verify.js";
 import {
   LANE_SHAPE_VARIANTS,
   pinnedVerifyResult,

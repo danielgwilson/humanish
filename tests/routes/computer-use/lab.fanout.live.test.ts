@@ -8,7 +8,7 @@ import { ACTOR_TRACE_SCHEMA } from "../../../src/actors/contract.js";
 import { LAB_CONFIG_SCHEMA } from "../../../src/lab/types.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
 import { runLab } from "../../../src/lab/engine.js";
-import { verifyRun } from "../../../src/run/verify.js";
+import { verifyRun } from "../../../src/verify/verify.js";
 
 // The single LIVE rung for multi-lane FAN-OUT (#163). WRITTEN, gated, and NOT run in the
 // deterministic suite — it is a separately-authorized paid receipt (see the goal packet's

@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
 import { runTerminalProductLab } from "../../../src/routes/terminal/lab.js";
-import { verifyRun } from "../../../src/run/verify.js";
+import { verifyRun } from "../../../src/verify/verify.js";
 
 // The LIVE rung for the terminal-product lane (#154 SLICE 2): a REAL E2B shell sandbox + a REAL
 // `codex exec` agent studying a neutral public surface, command-scoped runtime auth, capped at

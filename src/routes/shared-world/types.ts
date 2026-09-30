@@ -39,7 +39,7 @@ export const CONCURRENT_SHARED_WORLD_PROVIDER_METADATA = {
 } as const;
 
 // The verify-enforced CONCURRENT attribution ceiling (FIX-5). Mirrored in
-// run/verify-shared-world-concurrent.ts CONCURRENT_REQUIRED_LIMITS.
+// verify/shared-world-concurrent.ts CONCURRENT_REQUIRED_LIMITS.
 export const CONCURRENT_ATTRIBUTION_LIMITS = [
   "concurrent",
   "best-effort-causal-attribution",
@@ -88,7 +88,7 @@ export type ConcurrentSharedWorldPlaneClass = "provisioned-getHost" | "external-
 
 // EXTERNAL-PUBLIC plane class: the honest-downgrade attribution ceiling. The concurrent family
 // (an honest ceiling) PLUS the mandatory external-public disclosures — mirrored in the required
-// set in run/verify-shared-world-concurrent.ts (CONCURRENT_ATTRIBUTION_LIMITS +
+// set in verify/shared-world-concurrent.ts (CONCURRENT_ATTRIBUTION_LIMITS +
 // EXTERNAL_PUBLIC_EXTRA_LIMITS). Verify fails closed on a missing one.
 export const EXTERNAL_PUBLIC_ATTRIBUTION_LIMITS = [
   ...CONCURRENT_ATTRIBUTION_LIMITS,

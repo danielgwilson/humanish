@@ -3,7 +3,7 @@ import { computeStats, formatStatsHuman } from "../../run/stats.js";
 import { DEFAULT_EXPORT_MAX_BYTES, exportRun, formatExportHuman } from "../../feedback/export.js";
 import { cleanupRun, listRuns, readReview } from "../../run/manage.js";
 import { runDryRun } from "../../run/dry-run.js";
-import { verifyRun } from "../../run/verify.js";
+import { verifyRun } from "../../verify/verify.js";
 import {
   reclaimPreflightSandboxes,
   reclaimRunSandboxes,
@@ -11,7 +11,7 @@ import {
 } from "../../run/reclaim.js";
 import type { CleanupResult, RunResult } from "../../run/results.js";
 import type { RunsResult } from "../../run/manage.js";
-import type { VerifyResult } from "../../run/verify.js";
+import type { VerifyResult } from "../../verify/verify.js";
 import { runLabCommand } from "./lab-run.js";
 import {
   applyEnvFileOption,
