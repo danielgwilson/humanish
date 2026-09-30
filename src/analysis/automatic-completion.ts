@@ -34,8 +34,15 @@ export async function completeAutomaticAnalysis<
   finished: FinishedRun | undefined,
   config: StudyAnalysisConfig | undefined,
   hooks?: AutomaticAnalysisHooks,
-  trigger: "default" | "explicit" = "explicit",
-  preferLargerOutput = false,
+  {
+    trigger = "explicit",
+    preferLargerOutput = false,
+  }: {
+    /** "default" when the lab declared no analysis; its missing-key skip is not a failure. */
+    trigger?: "default" | "explicit";
+    /** The lab omitted an output limit, so a larger one may be used within the admission budget. */
+    preferLargerOutput?: boolean;
+  } = {},
 ): Promise<T & AutomaticAnalysisResult> {
   if (config === undefined) return result;
   const origin = trigger === "default" ? { automaticAnalysisTrigger: trigger } : {};

@@ -4,6 +4,7 @@ import { screenshotEvidenceError } from "../evidence/image.js";
 import { runIdOf, type PreparedRunArtifactPaths } from "../run/paths.js";
 import { isRecord } from "../run/primitives.js";
 import { RUN_BUNDLE_FILE, type RunBundle } from "../run/bundle.js";
+import type { RunStream } from "../run/streams.js";
 import {
   ACTION_CAPTURE_VERSION,
   type AnalysisEvidence,
@@ -152,7 +153,6 @@ export async function captureStudyEvidence(
   const images: StudyAnalysisInput["images"] = [];
   const omissions = new Set<string>();
   let textBytes = 0;
-  let imageBytes = 0;
   const participants = selected.map((stream) => {
     const participant = participantSource(stream, captureVersion);
     const assignment = participantAssignment(stream, captureVersion);
@@ -183,6 +183,76 @@ export async function captureStudyEvidence(
       reservationBlocked: false,
     }))
     .sort((a, b) => (a.stream.id < b.stream.id ? -1 : a.stream.id > b.stream.id ? 1 : 0));
+  const sel = planCaptureSelection(lanes, limits);
+  await selectCaptures(prepared, lanes, sel, omissions);
+  recordCaptureOmissions(lanes, sel, omissions);
+  const textByEntry = boundEvidenceText(lanes, limits.textBytes - textBytes, omissions);
+  packEvidence(selected, lanes, textByEntry, evidence, images);
+  const omittedStreamIds = bundle.streams.slice(limits.participants).map((stream) => stream.id);
+  const coverage = {
+    includedStreamIds: selected.map((stream) => stream.id),
+    omittedStreamIds,
+    evidenceCount: evidence.length,
+    captureCount: images.length,
+    complete: omittedStreamIds.length === 0 && omissions.size === 0,
+    omissions: [...omissions],
+  };
+  const result = {
+    captureVersion,
+    runId: bundle.runId,
+    sourceRunSha256: sha256(bundleBytes),
+    inputDigest: "",
+    participants,
+    coverage,
+    evidence,
+    images,
+  };
+  result.inputDigest = digestStudyAnalysisInput(result);
+  validateStudyAnalysisInputMetadata(result);
+  const after = await readBoundedStudyFile(prepared, RUN_BUNDLE_FILE, limits.sourceBytes);
+  if (!after || !after.equals(bundleBytes)) throw new Error("ANALYSIS_SOURCE_CHANGED");
+  return result;
+}
+
+interface Lane {
+  stream: RunStream;
+  entries: SourceEntry[];
+  captures: Map<SourceEntry, Buffer>;
+  admitted: Set<SourceEntry>;
+  captureCursor: number;
+  attempts: number;
+  readBytes: number;
+  imageBytes: number;
+  reservationBlocked: boolean;
+}
+
+/** The per-lane shares and overall budgets of one capture selection, and what it has spent. */
+interface CaptureSelection {
+  readonly limits: Required<StudyEvidenceLimits>;
+  readonly evidenceShares: number[];
+  readonly captureOrders: SourceEntry[][];
+  readonly captureShares: number[];
+  readonly attemptShares: number[];
+  readonly readShares: number[];
+  readonly imageShares: number[];
+  readonly maxAttempts: number;
+  readonly readBudget: number;
+  captureCount: number;
+  attemptedReads: number;
+  returnedImageBytes: number;
+  imageBytes: number;
+  reserved: boolean;
+}
+
+function planCaptureSelection(
+  lanes: readonly Lane[],
+  limits: Required<StudyEvidenceLimits>,
+): CaptureSelection {
+  // Missing/invalid files cannot turn selection into an exhaustive file scan.
+  // At most 2 * captures bounded reads, each at most imageBytes; successfully
+  // returned bytes (including invalid PNGs) also stop at 2 * totalImageBytes.
+  const maxAttempts = 2 * limits.captures;
+  const readBudget = 2 * limits.totalImageBytes;
   const evidenceShares = fairShares(
     limits.evidence,
     lanes.map((lane) => lane.entries.length),
@@ -194,48 +264,65 @@ export async function captureStudyEvidence(
   );
   const attemptShares = captureShares.map((share) => 2 * share);
   const readShares = fairShares(
-    2 * limits.totalImageBytes,
+    readBudget,
     attemptShares.map((share) => share * limits.imageBytes),
   );
   const imageShares = fairShares(
     limits.totalImageBytes,
     captureShares.map((share) => share * limits.imageBytes),
   );
-  let captureCount = 0;
-  let attemptedReads = 0;
-  let returnedImageBytes = 0;
-  let reserved = true;
-  // Missing/invalid files cannot turn selection into an exhaustive file scan.
-  // At most 2 * captures bounded reads, each at most imageBytes; successfully
-  // returned bytes (including invalid PNGs) also stop at 2 * totalImageBytes.
-  const maxAttempts = 2 * limits.captures;
+  return {
+    limits,
+    evidenceShares,
+    captureOrders,
+    captureShares,
+    attemptShares,
+    readShares,
+    imageShares,
+    maxAttempts,
+    readBudget,
+    captureCount: 0,
+    attemptedReads: 0,
+    returnedImageBytes: 0,
+    imageBytes: 0,
+    reserved: true,
+  };
+}
+
+async function selectCaptures(
+  prepared: PreparedRunArtifactPaths,
+  lanes: Lane[],
+  sel: CaptureSelection,
+  omissions: Set<string>,
+): Promise<void> {
+  const { limits } = sel;
   while (
-    attemptedReads < maxAttempts &&
-    captureCount < limits.captures &&
-    imageBytes < limits.totalImageBytes &&
-    returnedImageBytes < 2 * limits.totalImageBytes
+    sel.attemptedReads < sel.maxAttempts &&
+    sel.captureCount < limits.captures &&
+    sel.imageBytes < limits.totalImageBytes &&
+    sel.returnedImageBytes < sel.readBudget
   ) {
     let attempted = false;
     for (const [index, lane] of lanes.entries()) {
       if (
-        lane.captures.size >= captureShares[index]! ||
-        lane.attempts >= attemptShares[index]! ||
-        lane.captureCursor >= captureOrders[index]!.length ||
-        attemptedReads >= maxAttempts ||
-        (reserved && lane.reservationBlocked)
+        lane.captures.size >= sel.captureShares[index]! ||
+        lane.attempts >= sel.attemptShares[index]! ||
+        lane.captureCursor >= sel.captureOrders[index]!.length ||
+        sel.attemptedReads >= sel.maxAttempts ||
+        (sel.reserved && lane.reservationBlocked)
       )
         continue;
-      if (imageBytes >= limits.totalImageBytes || returnedImageBytes >= 2 * limits.totalImageBytes)
+      if (sel.imageBytes >= limits.totalImageBytes || sel.returnedImageBytes >= sel.readBudget)
         break;
-      const readAllowance = reserved
-        ? readShares[index]! - lane.readBytes
-        : 2 * limits.totalImageBytes - returnedImageBytes;
-      const imageAllowance = reserved
-        ? imageShares[index]! - lane.imageBytes
-        : limits.totalImageBytes - imageBytes;
+      const readAllowance = sel.reserved
+        ? sel.readShares[index]! - lane.readBytes
+        : sel.readBudget - sel.returnedImageBytes;
+      const imageAllowance = sel.reserved
+        ? sel.imageShares[index]! - lane.imageBytes
+        : limits.totalImageBytes - sel.imageBytes;
       const allowance = Math.min(
         limits.imageBytes,
-        limits.totalImageBytes - imageBytes,
+        limits.totalImageBytes - sel.imageBytes,
         imageAllowance,
         readAllowance,
       );
@@ -245,14 +332,14 @@ export async function captureStudyEvidence(
       }
       attempted = true;
       lane.attempts++;
-      attemptedReads++;
-      const source = captureOrders[index]![lane.captureCursor]!;
+      sel.attemptedReads++;
+      const source = sel.captureOrders[index]![lane.captureCursor]!;
       const result = await readBoundedStudyFileResult(prepared, source.capturePath!, allowance);
       if (
         result.state === "limit" &&
         result.size <= BigInt(limits.imageBytes) &&
-        result.size <= BigInt(limits.totalImageBytes - imageBytes) &&
-        reserved
+        result.size <= BigInt(limits.totalImageBytes - sel.imageBytes) &&
+        sel.reserved
       ) {
         // This participant's reservation is too small, not its evidence unsafe.
         // Preserve the candidate for the shared pool after all reserved passes.
@@ -262,91 +349,107 @@ export async function captureStudyEvidence(
       lane.captureCursor++;
       if (result.state === "limit" && result.size <= BigInt(limits.imageBytes)) {
         omissions.add(
-          result.size > BigInt(limits.totalImageBytes - imageBytes)
+          result.size > BigInt(limits.totalImageBytes - sel.imageBytes)
             ? "Some captures were omitted by the image byte limit."
             : "Some captures were omitted by the bounded read budget.",
         );
         continue;
       }
       const bytes = result.state === "read" ? result.bytes : null;
-      returnedImageBytes += bytes?.length ?? 0;
+      sel.returnedImageBytes += bytes?.length ?? 0;
       lane.readBytes += bytes?.length ?? 0;
       if (bytes === null || screenshotEvidenceError(source.capturePath!, bytes) !== null) {
         omissions.add("Some captures were missing, unsafe, oversized, or invalid PNG evidence.");
         continue;
       }
-      imageBytes += bytes.length;
+      sel.imageBytes += bytes.length;
       lane.imageBytes += bytes.length;
-      captureCount++;
+      sel.captureCount++;
       lane.captures.set(source, bytes);
     }
-    if (!attempted) {
-      // Release unused read/admission reservations after every reserved pass.
-      // Zero-share lanes can now compete for reclaimed slots, with two attempts.
-      reserved = false;
-      attemptShares.forEach((share, index) => {
-        if (share === 0 && evidenceShares[index]! > 0) attemptShares[index] = 2;
-      });
-      const available = lanes.map((lane, index) =>
-        lane.attempts < attemptShares[index]!
-          ? Math.min(
-              evidenceShares[index]! - lane.captures.size,
-              captureOrders[index]!.length - lane.captureCursor,
-              attemptShares[index]! - lane.attempts,
-            )
-          : 0,
-      );
-      const extra = lanes.map(() => 0);
-      // Count earlier admissions when reclaiming slots: a byte-deferred lane
-      // must catch up before better-covered lanes receive additional captures.
-      for (let remaining = limits.captures - captureCount; remaining > 0; remaining--) {
-        let next = -1;
-        for (const [index, lane] of lanes.entries()) {
-          if (
-            extra[index]! < available[index]! &&
-            (next === -1 ||
-              lane.captures.size + extra[index]! < lanes[next]!.captures.size + extra[next]!)
-          )
-            next = index;
-        }
-        if (next === -1) break;
-        extra[next]!++;
-      }
-      if (
-        !extra.some((share) => share > 0) ||
-        imageBytes >= limits.totalImageBytes ||
-        returnedImageBytes >= 2 * limits.totalImageBytes ||
-        attemptedReads >= maxAttempts
-      )
-        break;
-      extra.forEach((share, index) => {
-        captureShares[index]! = lanes[index]!.captures.size + share;
-      });
-    }
+    if (!attempted && !reclaimCaptureSlots(lanes, sel)) break;
   }
+}
+
+/**
+ * Release unused read/admission reservations after a pass with no attempt. Returns false when no
+ * lane can use a reclaimed slot or a global budget is spent.
+ */
+function reclaimCaptureSlots(lanes: readonly Lane[], sel: CaptureSelection): boolean {
+  const { limits } = sel;
+  // Release unused read/admission reservations after every reserved pass.
+  // Zero-share lanes can now compete for reclaimed slots, with two attempts.
+  sel.reserved = false;
+  sel.attemptShares.forEach((share, index) => {
+    if (share === 0 && sel.evidenceShares[index]! > 0) sel.attemptShares[index] = 2;
+  });
+  const available = lanes.map((lane, index) =>
+    lane.attempts < sel.attemptShares[index]!
+      ? Math.min(
+          sel.evidenceShares[index]! - lane.captures.size,
+          sel.captureOrders[index]!.length - lane.captureCursor,
+          sel.attemptShares[index]! - lane.attempts,
+        )
+      : 0,
+  );
+  const extra = lanes.map(() => 0);
+  // Count earlier admissions when reclaiming slots: a byte-deferred lane
+  // must catch up before better-covered lanes receive additional captures.
+  for (let remaining = limits.captures - sel.captureCount; remaining > 0; remaining--) {
+    let next = -1;
+    for (const [index, lane] of lanes.entries()) {
+      if (
+        extra[index]! < available[index]! &&
+        (next === -1 ||
+          lane.captures.size + extra[index]! < lanes[next]!.captures.size + extra[next]!)
+      )
+        next = index;
+    }
+    if (next === -1) break;
+    extra[next]!++;
+  }
+  if (
+    !extra.some((share) => share > 0) ||
+    sel.imageBytes >= limits.totalImageBytes ||
+    sel.returnedImageBytes >= sel.readBudget ||
+    sel.attemptedReads >= sel.maxAttempts
+  )
+    return false;
+  extra.forEach((share, index) => {
+    sel.captureShares[index]! = lanes[index]!.captures.size + share;
+  });
+  return true;
+}
+
+function recordCaptureOmissions(
+  lanes: readonly Lane[],
+  sel: CaptureSelection,
+  omissions: Set<string>,
+): void {
+  const { limits } = sel;
   for (const [index, lane] of lanes.entries()) {
     if (!lane.stream.actor) omissions.add("Some participants have no normalized recorded trace.");
     if (hasUnmappedCaptures(lane.stream))
       omissions.add("Some declared captures have no normalized trace reference.");
     for (const source of lane.captures.keys()) lane.admitted.add(source);
     for (const source of sourceOrder(lane.entries, false)) {
-      if (lane.admitted.size >= evidenceShares[index]!) break;
+      if (lane.admitted.size >= sel.evidenceShares[index]!) break;
       lane.admitted.add(source);
     }
     if (lane.admitted.size < lane.entries.length)
       omissions.add("Some evidence was omitted by the packet size limit.");
     if (lane.entries.some((entry) => entry.capturePath !== null && !lane.captures.has(entry))) {
-      const pending = lane.captureCursor < captureOrders[index]!.length;
-      if (pending && captureCount >= limits.captures)
+      const pending = lane.captureCursor < sel.captureOrders[index]!.length;
+      if (pending && sel.captureCount >= limits.captures)
         omissions.add("Some captures were omitted by the capture count limit.");
-      if (pending && imageBytes >= limits.totalImageBytes)
+      if (pending && sel.imageBytes >= limits.totalImageBytes)
         omissions.add("Some captures were omitted by the image byte limit.");
-      if (pending && returnedImageBytes >= 2 * limits.totalImageBytes)
+      if (pending && sel.returnedImageBytes >= sel.readBudget)
         omissions.add("Some captures were omitted by the bounded read budget.");
       if (
         pending &&
-        captureCount < limits.captures &&
-        (attemptedReads >= maxAttempts || lane.attempts >= attemptShares[index]!)
+        sel.captureCount < limits.captures &&
+        (sel.attemptedReads >= sel.maxAttempts || lane.attempts >= sel.attemptShares[index]!)
       ) {
         omissions.add("Some captures were omitted by the bounded file-attempt limit.");
       }
@@ -358,8 +461,15 @@ export async function captureStudyEvidence(
       omissions.add("Some screenshot references were absent or nonlocal.");
     }
   }
+}
+
+function boundEvidenceText(
+  lanes: readonly Lane[],
+  budget: number,
+  omissions: Set<string>,
+): Map<SourceEntry, string> {
   const textShares = fairShares(
-    limits.textBytes - textBytes,
+    budget,
     lanes.map((lane) =>
       [...lane.admitted].reduce(
         (total, entry) => total + Math.min(16000, Buffer.byteLength(entry.text)),
@@ -381,6 +491,16 @@ export async function captureStudyEvidence(
       textByEntry.set(entry, text);
     }
   }
+  return textByEntry;
+}
+
+function packEvidence(
+  selected: readonly RunStream[],
+  lanes: readonly Lane[],
+  textByEntry: ReadonlyMap<SourceEntry, string>,
+  evidence: AnalysisEvidence[],
+  images: StudyAnalysisInput["images"],
+): void {
   for (const stream of selected) {
     const lane = lanes.find((candidate) => candidate.stream === stream)!;
     for (const source of lane.entries.filter((entry) => lane.admitted.has(entry))) {
@@ -413,30 +533,6 @@ export async function captureStudyEvidence(
       });
     }
   }
-  const omittedStreamIds = bundle.streams.slice(limits.participants).map((stream) => stream.id);
-  const coverage = {
-    includedStreamIds: selected.map((stream) => stream.id),
-    omittedStreamIds,
-    evidenceCount: evidence.length,
-    captureCount: images.length,
-    complete: omittedStreamIds.length === 0 && omissions.size === 0,
-    omissions: [...omissions],
-  };
-  const result = {
-    captureVersion,
-    runId: bundle.runId,
-    sourceRunSha256: sha256(bundleBytes),
-    inputDigest: "",
-    participants,
-    coverage,
-    evidence,
-    images,
-  };
-  result.inputDigest = digestStudyAnalysisInput(result);
-  validateStudyAnalysisInputMetadata(result);
-  const after = await readBoundedStudyFile(prepared, RUN_BUNDLE_FILE, limits.sourceBytes);
-  if (!after || !after.equals(bundleBytes)) throw new Error("ANALYSIS_SOURCE_CHANGED");
-  return result;
 }
 
 /** Validate exact source membership before any stored path may be read. */
