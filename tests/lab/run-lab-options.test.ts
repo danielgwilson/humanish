@@ -874,3 +874,21 @@ describe("a bag an option maps into is forwarded, not copied", () => {
     expect(() => hooks.loadDesktopModule).toThrow("accessor read during normalization");
   });
 });
+
+describe("the scrub covers the env the route received", () => {
+  it("scrubs a value the caller changed after normalization", () => {
+    const initial = "synthetic-initial-password-42";
+    const env: Record<string, string> = { APP_PASSWORD: initial };
+    const result = normalize(config("cuClone", { subject: { env: ["APP_PASSWORD"] } }), {
+      env,
+      onEvent: () => {
+        throw new Error(`login as ${initial} failed`);
+      },
+    });
+    if (!result.ok) throw new Error(result.message);
+    env.APP_PASSWORD = "synthetic-replaced-password-17";
+    expect(result.options.cuaHooks!.env!.APP_PASSWORD).toBe(initial);
+    result.options.cuaHooks!.onPreflight!({ lanes: [] } as unknown as CuaLanePlan);
+    expect(result.warnings[0]).not.toContain(initial);
+  });
+});

@@ -249,8 +249,13 @@ function unsupportedOption(
  * analysis API key. A callback can hold any of them, and its warning is appended after the route
  * sanitized its own.
  */
-function knownSecretValues(config: LabConfig, options: RunLabOptions): string[] {
+function knownSecretValues(
+  config: LabConfig,
+  options: RunLabOptions,
+  forwardedEnv: Readonly<Record<string, string | undefined>> | undefined,
+): string[] {
   const sources = [
+    forwardedEnv,
     options.env,
     options.cuaHooks?.env,
     options.scriptedHooks?.env,
@@ -295,6 +300,9 @@ export function normalizeRunLabOptions(
     inProcess,
     ...legacy
   } = options;
+  // The route gets this copy, so it is the env a warning is scrubbed against, whatever the caller
+  // does to its own object afterwards.
+  const forwardedEnv = env === undefined ? undefined : { ...env };
   const emit =
     onEvent === undefined
       ? undefined
@@ -306,7 +314,7 @@ export function normalizeRunLabOptions(
             let detail: string;
             try {
               // Read here, not up front: a run with no failing callback never touches the env.
-              const scrub = scrubLiterals(knownSecretValues(config, options));
+              const scrub = scrubLiterals(knownSecretValues(config, options, forwardedEnv));
               detail = redactText(scrub(toErrorMessage(error)));
             } catch {
               detail = "the thrown value has no message";
@@ -341,7 +349,7 @@ export function normalizeRunLabOptions(
         }),
   });
   if (analysis !== undefined) normalized.automaticAnalysis = analysis;
-  const envHome = env === undefined ? {} : { env: { ...env } };
+  const envHome = forwardedEnv === undefined ? {} : { env: forwardedEnv };
   const scoring = scorer === undefined ? {} : scorerHooks(scorer);
   switch (route) {
     case "computer-use": {
