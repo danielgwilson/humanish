@@ -21,6 +21,7 @@ import {
   type DesktopResourceObservation,
 } from "../../substrates/e2b/desktop-resources.js";
 import { acquireE2BShellSandbox } from "../../substrates/e2b/sandbox.js";
+import type { OwnedDesktopAllocation } from "../../substrates/desktop-session.js";
 import {
   E2BDesktopStartupError,
   loadE2BDesktopModule,
@@ -92,6 +93,7 @@ export class LiveTerminalSandbox {
   private readonly sandboxTimeoutMs: number;
   private sandbox: E2BDesktopSandbox | undefined;
   private module: E2BDesktopModule | undefined;
+  private allocation: OwnedDesktopAllocation | undefined;
   private startupCleanup: E2BDesktopStartupError["cleanup"] | undefined;
   // The sandbox's billed span (acquired to cleanup) and size price its compute time.
   private createdAtMs: number | undefined;
@@ -154,6 +156,7 @@ export class LiveTerminalSandbox {
     });
     const sandbox = acquired.sandbox;
     this.sandbox = sandbox;
+    this.allocation = acquired.allocation;
     const sandboxId = acquired.allocation.resourceId;
     this.sandboxId = sandboxId;
     this.createdAtMs = now();
@@ -513,8 +516,8 @@ export class LiveTerminalSandbox {
     const { requestTimeoutMs } = this;
     // --- Safety contract item 8: PROVEN cleanup, BY EXACT ID, never Sandbox.list. ---
     this.cleanup = await teardownSandbox({
+      allocation: this.allocation,
       sandboxModule: this.module,
-      sandboxId: this.sandboxId,
       ...(this.startupCleanup === undefined ? {} : { startupCleanup: this.startupCleanup }),
       requestTimeoutMs,
       sanitize,

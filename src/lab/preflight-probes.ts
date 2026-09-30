@@ -13,8 +13,9 @@ import {
   type PreflightJournal,
 } from "../run/preflight-receipts.js";
 import { probeUrl } from "../substrates/detached.js";
-import { loadE2BDesktopModule, type E2BDesktopModule } from "../substrates/e2b/sdk.js";
-import { acquireE2BDesktopSandbox } from "../substrates/e2b/sandbox.js";
+import { loadE2BDesktopModule } from "../substrates/e2b/sdk.js";
+import { acquireE2BDesktopSandbox, readE2BRelease } from "../substrates/e2b/sandbox.js";
+import type { OwnedDesktopAllocation } from "../substrates/desktop-session.js";
 import { e2bShell } from "../substrates/e2b/shell.js";
 import type { Shell } from "../substrates/shell.js";
 import { redactText } from "../evidence/redaction.js";
@@ -216,8 +217,7 @@ async function withPreflightSandbox(
   args: { e2bApiKey: string; leaseMs: number },
   callback: (shell: Shell) => Promise<void>,
 ): Promise<{ ok: true } | { ok: false; result: LabPreflightResult }> {
-  let module: E2BDesktopModule | undefined;
-  let sandboxId: string | undefined;
+  let allocation: OwnedDesktopAllocation | undefined;
   let failureMessage: string | undefined;
   // The lease is sized to the probe's work, never longer than a declared sandbox timeout (the run
   // gets no more than that either) or E2B's maximum.
@@ -237,7 +237,7 @@ async function withPreflightSandbox(
   }
   let acquired = false;
   try {
-    module = await (ctx.hooks.loadDesktopModule ?? loadE2BDesktopModule)();
+    const module = await (ctx.hooks.loadDesktopModule ?? loadE2BDesktopModule)();
     const probe = await acquireE2BDesktopSandbox({
       module,
       options: {
@@ -267,7 +267,8 @@ async function withPreflightSandbox(
       receipt: journal === undefined ? null : { root: journal.root, laneId: journal.id },
     });
     acquired = true;
-    sandboxId = probe.allocation.resourceId;
+    allocation = probe.allocation;
+    const sandboxId = probe.allocation.resourceId;
     ctx.sandbox = {
       created: true,
       timeoutMs,
@@ -281,25 +282,13 @@ async function withPreflightSandbox(
   } catch (error: unknown) {
     failureMessage = compactError(error);
   } finally {
-    if (module && sandboxId !== undefined) {
-      if (typeof module.Sandbox.kill === "function") {
-        try {
-          await module.Sandbox.kill(sandboxId, {
-            requestTimeoutMs: DEFAULT_REQUEST_TIMEOUT_MS,
-          });
-          ctx.sandbox = { ...ctx.sandbox, killed: true };
-        } catch (error: unknown) {
-          ctx.sandbox = { ...ctx.sandbox, killed: false };
-          ctx.warnings.push(
-            `Sandbox teardown failed; server-side timeout should reclaim it: ${compactError(error)}`,
-          );
-        }
-      } else {
-        ctx.sandbox = { ...ctx.sandbox, killed: false };
-        ctx.warnings.push(
-          "Installed @e2b/desktop SDK does not expose Sandbox.kill; server-side timeout should reclaim the sandbox.",
-        );
-      }
+    if (allocation !== undefined) {
+      const reading = readE2BRelease(await allocation.close(), {
+        label: "Sandbox",
+        scrub: (text) => text,
+      });
+      ctx.sandbox = { ...ctx.sandbox, killed: reading.released };
+      if (reading.warning) ctx.warnings.push(reading.warning);
     }
     await settlePreflightJournal(ctx, journal, !acquired || ctx.sandbox.killed === true);
   }

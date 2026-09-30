@@ -26,16 +26,13 @@ import { provisionCloneSubject } from "../../subject/clone.js";
 import { provisionLocalTreeSubject } from "../../subject/local-tree.js";
 import { defaultSharedWorldPhaseSink } from "../../subject/steps.js";
 import type { DetachedTimers } from "../../substrates/detached.js";
-import {
-  loadE2BDesktopModule,
-  type E2BDesktopModule,
-  type E2BDesktopSandbox,
-} from "../../substrates/e2b/sdk.js";
+import { loadE2BDesktopModule, type E2BDesktopSandbox } from "../../substrates/e2b/sdk.js";
 import {
   observeDesktopResources,
   type DesktopResourceObservation,
 } from "../../substrates/e2b/desktop-resources.js";
-import { acquireE2BDesktopSandbox } from "../../substrates/e2b/sandbox.js";
+import { acquireE2BDesktopSandbox, readE2BRelease } from "../../substrates/e2b/sandbox.js";
+import type { OwnedDesktopAllocation } from "../../substrates/desktop-session.js";
 import { e2bShell } from "../../substrates/e2b/shell.js";
 import type { Shell } from "../../substrates/shell.js";
 import {
@@ -136,7 +133,7 @@ class SubjectPlane {
   private subjectResources: DesktopResourceObservation | undefined;
   private readonly ctx: PlaneContext;
   private readonly setup: ProvisionedPlaneSetup;
-  private subjectModule: E2BDesktopModule | undefined;
+  private subjectAllocation: OwnedDesktopAllocation | undefined;
   private subjectDesktop: E2BDesktopSandbox | undefined;
   private subjectShell: Shell | undefined;
   // The in-sandbox email catch on the ONE subject sandbox (#297); drained at teardown. Undefined
@@ -184,14 +181,14 @@ class SubjectPlane {
   async acquire(): Promise<void> {
     const { plan, hooks, env, requestTimeoutMs, timeoutMs, roles } = this.ctx;
     const { subjectEnvNames, commsEnv } = this.setup;
-    this.subjectModule = await (hooks.loadDesktopModule ?? loadE2BDesktopModule)();
+    const subjectModule = await (hooks.loadDesktopModule ?? loadE2BDesktopModule)();
     // The ONE subject sandbox: headless service host (no GUI seat). The SUBJECT env is provisioned
     // HERE; the actor sandboxes get NONE of it (FIX-10). A custom desktop template (image) is
     // honored on BOTH the subject sandbox (here) and every actor sandbox (via runCuaLane, which
     // reads the same config); absent keeps the byte-stable Sandbox.create(opts) default. The
     // receipt is on disk before any work, so `humanish reclaim` can kill it by exact id.
     const subject = await acquireE2BDesktopSandbox({
-      module: this.subjectModule,
+      module: subjectModule,
       options: {
         apiKey: this.ctx.e2bApiKey,
         requestTimeoutMs,
@@ -227,6 +224,7 @@ class SubjectPlane {
     });
     this.subjectDesktop = subject.sandbox;
     this.subjectShell = e2bShell(this.subjectDesktop);
+    this.subjectAllocation = subject.allocation;
     this.subjectSandboxId = subject.allocation.resourceId;
     this.subjectCreatedAtMs = this.ctx.now();
     this.subjectResources = await observeDesktopResources(this.subjectDesktop);
@@ -439,24 +437,18 @@ class SubjectPlane {
         this.deployedComms,
       );
     }
-    if (this.subjectSandboxId !== undefined && this.subjectModule) {
-      if (typeof this.subjectModule.Sandbox.kill === "function") {
-        try {
-          await this.subjectModule.Sandbox.kill(this.subjectSandboxId, {
-            requestTimeoutMs: 60_000,
-          });
-          this.subjectKilled = true;
-        } catch (error) {
-          warnings.push(
-            `Subject sandbox teardown failed (server-side kill-on-timeout will reclaim it): ${redactText(scrubKnownValues(toErrorMessage(error)))}`,
-          );
-        }
+    if (this.subjectAllocation !== undefined) {
+      const released = await this.subjectAllocation.close();
+      const reading = readE2BRelease(released, {
+        label: "Subject sandbox",
+        scrub: scrubKnownValues,
+        costSpan: true,
+      });
+      this.subjectKilled = reading.released;
+      if (reading.warning) warnings.push(reading.warning);
+      // Without a kill method nothing ran, so there is no teardown time to record.
+      if (released.status !== "unconfirmed" || released.reason !== "release_unavailable")
         this.subjectTornDownAtMs = this.ctx.now();
-      } else {
-        warnings.push(
-          "Installed @e2b/desktop SDK does not expose Sandbox.kill; server-side kill-on-timeout will reclaim the subject sandbox.",
-        );
-      }
     }
     return commsArtifactPath;
   }

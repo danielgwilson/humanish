@@ -82,6 +82,10 @@ interface FakeProvider {
 function fakeProvider(behavior: {
   onFirstCommand?: () => Promise<void>;
   killThrows?: boolean;
+  /** Kill throws the SDK's not-found error: the sandbox was already gone. */
+  killNotFound?: boolean;
+  /** Kill resolves with an answer the real SDK does not give. */
+  killAnswer?: unknown;
 }): FakeProvider {
   const created: E2BDesktopCreateOptions[] = [];
   const killed: string[] = [];
@@ -110,8 +114,12 @@ function fakeProvider(behavior: {
       },
       kill: async (sandboxId: string) => {
         if (behavior.killThrows) throw new Error("provider unreachable");
+        if (behavior.killNotFound)
+          throw Object.assign(new Error(`Sandbox ${sandboxId} not found`), {
+            name: "SandboxNotFoundError",
+          });
         killed.push(sandboxId);
-        return true;
+        return "killAnswer" in behavior ? behavior.killAnswer : true;
       },
     },
   } as unknown as E2BDesktopModule;
@@ -301,6 +309,40 @@ describe("lab preflight receipts", () => {
       hooks: { loadDesktopModule: async () => quick.module, sleep: async () => undefined },
     });
     expect(quick.created[0]?.timeoutMs).toBe((5 + 3) * 60_000 + LEASE_BUFFER_MS);
+  });
+
+  it("reads a not-found kill error as already gone: no teardown failure, journal removed", async () => {
+    await writeFile(path.join(cwd, "humanish/labs/preview.yaml"), previewLab());
+    const gone = fakeProvider({ killNotFound: true });
+
+    const result = await runLabPreflight({
+      cwd,
+      lab: "preview",
+      reachability: "public-preview",
+      env,
+      hooks: { loadDesktopModule: async () => gone.module },
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.warnings.join("\n")).toContain("Sandbox was already absent when cleanup ran");
+    expect(await journals(cwd)).toEqual([]);
+  });
+
+  it("does not count a non-boolean kill answer as proof: teardown fails, journal kept", async () => {
+    await writeFile(path.join(cwd, "humanish/labs/preview.yaml"), previewLab());
+    const odd = fakeProvider({ killAnswer: "ok" });
+
+    const result = await runLabPreflight({
+      cwd,
+      lab: "preview",
+      reachability: "public-preview",
+      env,
+      hooks: { loadDesktopModule: async () => odd.module },
+    });
+
+    expect(result.error?.code).toBe("HUMANISH_LAB_PREFLIGHT_TEARDOWN_FAILED");
+    expect(result.warnings.join("\n")).toContain("Sandbox teardown returned an unexpected result");
+    expect(await journals(cwd)).toHaveLength(1);
   });
 
   it("keeps the journal when the kill fails, and reclaim --preflight kills it by id", async () => {

@@ -11,14 +11,14 @@ import {
 import type { RunSubjectStateStepRecord } from "../../run/bundle.js";
 import { provisionCloneSubject } from "../../subject/clone.js";
 import type { DetachedTimers } from "../../substrates/detached.js";
-import { loadE2BDesktopModule, type E2BDesktopModule } from "../../substrates/e2b/sdk.js";
+import { loadE2BDesktopModule } from "../../substrates/e2b/sdk.js";
 import {
   observeDesktopResources,
   type DesktopResourceObservation,
 } from "../../substrates/e2b/desktop-resources.js";
-import { acquireE2BDesktopSandbox } from "../../substrates/e2b/sandbox.js";
+import { acquireE2BDesktopSandbox, readE2BRelease } from "../../substrates/e2b/sandbox.js";
+import type { OwnedDesktopAllocation } from "../../substrates/desktop-session.js";
 import { e2bShell } from "../../substrates/e2b/shell.js";
-import { redactText, toErrorMessage } from "../../evidence/redaction.js";
 import type { ScriptedBrowserLabHooks } from "./types.js";
 
 const SANDBOX_TIMEOUT_BUFFER_MS = 10 * 60_000;
@@ -83,7 +83,7 @@ export class ScriptedSubject {
   hostDigest: string | undefined;
   readonly stateStepRecords: RunSubjectStateStepRecord[] = [];
   private readonly inputs: ScriptedSubjectInputs;
-  private module: E2BDesktopModule | undefined;
+  private allocation: OwnedDesktopAllocation | undefined;
   private createdAtMs: number | undefined;
   private tornDownAtMs: number | undefined;
   private resources: DesktopResourceObservation | undefined;
@@ -107,7 +107,6 @@ export class ScriptedSubject {
       ) +
       SANDBOX_TIMEOUT_BUFFER_MS;
     const subjectModule = await (hooks.loadDesktopModule ?? loadE2BDesktopModule)();
-    this.module = subjectModule;
     await validatePreparedRunArtifactPaths(runPaths);
     // The receipt is on disk before any work on the sandbox, so `humanish reclaim` can kill
     // it by exact id when this process dies mid-run; the finally block below only runs while
@@ -137,6 +136,7 @@ export class ScriptedSubject {
       receipt: { root: runPaths, laneId: "subject" },
     });
     const subjectDesktop = subject.sandbox;
+    this.allocation = subject.allocation;
     this.sandboxId = subject.allocation.resourceId;
     this.createdAtMs = now();
     this.resources = await observeDesktopResources(subjectDesktop);
@@ -179,28 +179,21 @@ export class ScriptedSubject {
     return hostUrl;
   }
 
-  /** Kills the subject by exact id, when one was acquired. */
+  /** Releases the subject by exact id, when one was acquired. An unconfirmed release is reported. */
   async teardown(): Promise<void> {
     const { warnings, scrubKnownValues, now } = this.inputs;
-    if (this.sandboxId !== undefined && this.module) {
-      if (typeof this.module.Sandbox.kill === "function") {
-        try {
-          await this.module.Sandbox.kill(this.sandboxId, {
-            requestTimeoutMs: 60_000,
-          });
-          this.killed = true;
-        } catch (error) {
-          warnings.push(
-            `Subject sandbox teardown failed (server-side kill-on-timeout will reclaim it): ${redactText(scrubKnownValues(toErrorMessage(error)))}`,
-          );
-        }
-        this.tornDownAtMs = now();
-      } else {
-        warnings.push(
-          "Installed @e2b/desktop SDK does not expose Sandbox.kill; server-side kill-on-timeout will reclaim the subject sandbox.",
-        );
-      }
-    }
+    if (this.allocation === undefined) return;
+    const released = await this.allocation.close();
+    const reading = readE2BRelease(released, {
+      label: "Subject sandbox",
+      scrub: scrubKnownValues,
+      costSpan: true,
+    });
+    this.killed = reading.released;
+    if (reading.warning) warnings.push(reading.warning);
+    // Without a kill method nothing ran, so there is no teardown time to record.
+    if (released.status !== "unconfirmed" || released.reason !== "release_unavailable")
+      this.tornDownAtMs = now();
   }
 
   /** The subject desktop's billed span and size, when one was acquired. */

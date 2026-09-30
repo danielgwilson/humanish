@@ -639,6 +639,40 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     expect(noBundle.desktopTemplate).toBeUndefined();
   });
 
+  it.each([
+    [
+      "a not-found kill error reads as already gone",
+      async (sandboxId: string): Promise<boolean> => {
+        throw Object.assign(new Error(`Sandbox ${sandboxId} not found`), {
+          name: "SandboxNotFoundError",
+        });
+      },
+      true,
+      "Subject sandbox was already absent when cleanup ran",
+    ],
+    [
+      "a non-boolean kill answer is not proof of release",
+      async () => "ok" as unknown as boolean,
+      false,
+      "Subject sandbox teardown returned an unexpected result",
+    ],
+  ] as const)("subject teardown: %s", async (_label, subjectKill, killed, warning) => {
+    const { hooks } = baseHooks({ worldVersion: 0 }, makeRendezvous(3));
+    const module = await hooks.loadDesktopModule!();
+    const seatKill = module.Sandbox.kill!;
+    // The subject is the first sandbox created; the seats keep the ordinary kill.
+    module.Sandbox.kill = async (sandboxId, options) =>
+      sandboxId === "fake-sandbox-001" ? subjectKill(sandboxId) : seatKill(sandboxId, options);
+    const result = await runConcurrentSharedWorld({
+      cwd,
+      config: concurrentConfig(3, 3),
+      dryRun: false,
+      hooks,
+    });
+    expect(result.subjectSandbox).toEqual({ sandboxId: "fake-sandbox-001", killed });
+    expect(result.warnings.join("\n")).toContain(warning);
+  });
+
   it("GOOD run: ONE subject + N actors all torn down BY id (killed==created, N+1), same getHost URL, REAL overlap, state delta, verify ok", async () => {
     const state = { worldVersion: 0 };
     const { hooks, created, killed, sandboxes } = baseHooks(state, makeRendezvous(3));

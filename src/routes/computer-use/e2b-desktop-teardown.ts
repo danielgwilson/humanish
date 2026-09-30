@@ -8,6 +8,7 @@ import { redactText, toErrorMessage } from "../../evidence/redaction.js";
 import type { OwnedDesktopAllocation } from "../../substrates/desktop-session.js";
 import type { startE2BDesktopMedia } from "../../substrates/e2b/desktop-media.js";
 import type { startE2BDesktopRecording } from "../../substrates/e2b/desktop-recording.js";
+import { readE2BRelease } from "../../substrates/e2b/sandbox.js";
 import { e2bShell } from "../../substrates/e2b/shell.js";
 import { drainCommsEvidence } from "./e2b-desktop-comms.js";
 import { finalLaneGeometry } from "./e2b-desktop-fidelity.js";
@@ -69,30 +70,19 @@ async function releaseLaneDesktop(args: {
   const { allocation, keepReason, deps, warnings } = args;
   const keepForDebug = keepReason !== undefined && args.failed;
   const released = await allocation.close({ retainForDebug: keepForDebug });
-  if (released.status === "released" && released.reason === "already_gone") {
-    warnings.push(
-      "Sandbox was already absent when cleanup ran; its exact termination time is unknown. Desktop cost uses the observed acquisition-to-cleanup span.",
-    );
-  } else if (released.status === "retained") {
+  if (released.status === "retained") {
     warnings.push(
       `Sandbox ${allocation.resourceId} kept for debugging (${keepReason} on failure); reclaim it via E2B or it will be killed on its server-side timeout.`,
     );
-  } else if (released.status === "unconfirmed") {
-    if (released.reason === "release_unavailable") {
-      warnings.push(
-        "Installed @e2b/desktop SDK does not expose Sandbox.kill; server-side kill-on-timeout will reclaim the sandbox.",
-      );
-    } else if (released.reason === "release_failed") {
-      warnings.push(
-        `Sandbox teardown failed (server-side kill-on-timeout will reclaim it): ${redactText(deps.scrubKnownValues(toErrorMessage(released.error)))}`,
-      );
-    } else {
-      warnings.push(
-        "Sandbox teardown returned an unexpected result; release is unconfirmed and server-side kill-on-timeout remains the backstop.",
-      );
-    }
+    return false;
   }
-  return released.status === "released";
+  const reading = readE2BRelease(released, {
+    label: "Sandbox",
+    scrub: deps.scrubKnownValues,
+    costSpan: true,
+  });
+  if (reading.warning) warnings.push(reading.warning);
+  return reading.released;
 }
 
 /**

@@ -1535,6 +1535,35 @@ describe("scripted run lifetime on the provisioned clone route", () => {
     });
   });
 
+  it.each([
+    [
+      "a not-found kill error reads as already gone",
+      async (sandboxId: string): Promise<boolean> => {
+        throw Object.assign(new Error(`Sandbox ${sandboxId} not found`), {
+          name: "SandboxNotFoundError",
+        });
+      },
+      true,
+      "Subject sandbox was already absent when cleanup ran",
+    ],
+    [
+      "a non-boolean kill answer is not proof of release",
+      async () => "ok" as unknown as boolean,
+      false,
+      "Subject sandbox teardown returned an unexpected result",
+    ],
+  ] as const)("subject teardown: %s", async (_label, kill, killed, warning) => {
+    const fakeE2B = makeFakeE2BModule();
+    fakeE2B.module.Sandbox.kill = kill;
+    const hooks = cloneHooks(fakeE2B.module, async () => {
+      throw new Error("synthetic session failure");
+    });
+    const outcome = await runLab(provisionedScriptedConfig(), { cwd, scriptedHooks: hooks });
+    if (outcome.backend !== "scripted") throw new Error(`unexpected backend ${outcome.backend}`);
+    expect(outcome.result.subjectSandbox).toEqual({ sandboxId: "fake-subject-001", killed });
+    expect(outcome.result.warnings.join("\n")).toContain(warning);
+  });
+
   it("S3: after a failed subject teardown, reclaim kills the receipted subject", async () => {
     const runId = "failed-teardown";
     const fakeE2B = makeFakeE2BModule();
