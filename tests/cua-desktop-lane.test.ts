@@ -14,11 +14,11 @@ import {
 } from "../src/cua-actor-lab.js";
 import type { CuaDesktopLane, DesktopLaneEvidence } from "../src/cua-desktop-lane.js";
 import { ownDesktopAllocation } from "../src/desktop-session.js";
-import { DEVICE_PRESETS } from "../src/device-presets.js";
+import { DEVICE_PRESETS } from "../src/lab/device-presets.js";
 import { createE2BCuaDesktopLane } from "../src/e2b-cua-desktop.js";
 import { E2B_SPEECH_TEMPLATE } from "../src/e2b-desktop-media.js";
 import type { E2BDesktopModule, E2BDesktopSandbox } from "../src/e2b-desktop-launch.js";
-import { LAB_CONFIG_SCHEMA, parseLabConfig } from "../src/lab-config.js";
+import { LAB_CONFIG_SCHEMA, parseLabConfig } from "../src/lab/config.js";
 import { OPENAI_RESPONSES_CU_CAPABILITIES } from "../src/openai-responses-cu.js";
 import { prepareSelectedOutputDirectory } from "../src/selected-output-paths.js";
 

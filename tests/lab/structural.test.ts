@@ -3,11 +3,11 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { parse as parseYaml } from "yaml";
 
-import { parseLabConfig, LAB_CONFIG_SCHEMA } from "../src/lab-config.js";
-import { runLab, selectLabBackend } from "../src/lab-engine.js";
-import { resolveLabManifest } from "../src/labs.js";
-import { parseBrowserPersonaJourneyFromScenario } from "../src/scripted-browser-actor.js";
-import { digestText } from "../src/redaction.js";
+import { parseLabConfig, LAB_CONFIG_SCHEMA } from "../../src/lab/config.js";
+import { runLab, selectLabBackend } from "../../src/lab/engine.js";
+import { resolveLabManifest } from "../../src/lab/discover.js";
+import { parseBrowserPersonaJourneyFromScenario } from "../../src/scripted-browser-actor.js";
+import { digestText } from "../../src/redaction.js";
 
 const ROOT = process.cwd();
 const read = (rel: string) => readFileSync(path.join(ROOT, rel), "utf8");
@@ -16,7 +16,7 @@ const read = (rel: string) => readFileSync(path.join(ROOT, rel), "utf8");
 // switch, and the three per-kind command functions must not exist — if any survived, the
 // refactor would be cosmetic.
 describe("lab refactor structural necessity (rung 1)", () => {
-  const labs = read("src/labs.ts");
+  const labs = read("src/lab/discover.ts");
   const program = read("src/program.ts");
 
   it("the LabKind enum and its guard are gone", () => {
@@ -37,10 +37,10 @@ describe("lab refactor structural necessity (rung 1)", () => {
 
   it("the v1 lab schema is gone from src (no back-compat)", () => {
     for (const rel of [
-      "src/labs.ts",
-      "src/lab-config.ts",
+      "src/lab/discover.ts",
+      "src/lab/config.ts",
       "src/program.ts",
-      "src/init-templates.ts",
+      "src/lab/init-templates.ts",
     ]) {
       expect(read(rel)).not.toContain("humanish.lab.v1");
     }

@@ -38,8 +38,8 @@ comment prose (`prose:check`). Lower a cap in the PR that reduces its count.
 | --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | `src/cli.ts`, `src/program.ts`                                  | CLI entry and command registration (commander)                                                           |
 | `src/index.ts`                                                  | The package's only export surface                                                                        |
-| `src/lab-config.ts`                                             | Lab manifest (`humanish.lab.v2`) parsing and validation                                                  |
-| `src/lab-engine.ts`                                             | `runLab` and `selectLabBackend`, which picks one backend per lab                                         |
+| `src/lab/config.ts`                                             | Lab manifest (`humanish.lab.v2`) parsing and validation                                                  |
+| `src/lab/engine.ts`                                             | `runLab` and `selectLabBackend`, which picks one backend per lab                                         |
 | `src/cua-actor-lab.ts`                                          | Computer-use participants on hosted E2B desktops; `local-firecracker-study.ts` is the local VM substrate |
 | `src/concurrent-shared-world-lab.ts`, `src/shared-world-lab.ts` | N participants in one shared app                                                                         |
 | `src/e2b-terminal-lab.ts`                                       | An agent using a CLI product in an E2B shell                                                             |

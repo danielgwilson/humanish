@@ -1,4 +1,4 @@
-import type { LabConfig } from "./lab-config.js";
+import type { LabConfig } from "./lab/config.js";
 
 // The runtime image enforces a 30-minute lifetime; reserve setup/teardown room.
 export const LOCAL_BROWSER_LIFETIME_MS = 30 * 60_000;

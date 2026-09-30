@@ -2,8 +2,8 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { runLab } from "../src/lab-engine.js";
-import { resolveLabManifest } from "../src/labs.js";
+import { runLab } from "../../src/lab/engine.js";
+import { resolveLabManifest } from "../../src/lab/discover.js";
 
 // RUNG 2 (faithfulness): the v2 config + one-engine path must reproduce the pre-refactor run
 // bundles captured by scripts/capture-lab-goldens.mjs. We pin the same run-id as the golden so

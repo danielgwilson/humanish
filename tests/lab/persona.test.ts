@@ -7,7 +7,7 @@ import {
   parseResolvedPersona,
   personaToDirectives,
   renderPersonaPromptSection,
-} from "../src/persona.js";
+} from "../../src/lab/persona.js";
 
 async function loadCommittedPersona(file: string) {
   const raw = parseYaml(await readFile(path.resolve("humanish/personas", file), "utf8"));

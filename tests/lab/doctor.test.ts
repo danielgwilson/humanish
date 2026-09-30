@@ -1,14 +1,14 @@
 import { createServer } from "node:http";
-import { labSetupChecks } from "../src/doctor-lab.js";
+import { labSetupChecks } from "../../src/lab/doctor.js";
 import { chmod, mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { doctor } from "../src/run.js";
-import type { DetectLocalAgentsOptions } from "../src/local-agent-cli.js";
-import { runLabPreflight } from "../src/lab-preflight.js";
-import { resolveLabManifest } from "../src/labs.js";
-import { runLab } from "../src/lab-engine.js";
+import { doctor } from "../../src/run.js";
+import type { DetectLocalAgentsOptions } from "../../src/local-agent-cli.js";
+import { runLabPreflight } from "../../src/lab/preflight.js";
+import { resolveLabManifest } from "../../src/lab/discover.js";
+import { runLab } from "../../src/lab/engine.js";
 
 const noAgents: DetectLocalAgentsOptions = { which: async () => undefined };
 const keyless = { HUMANISH_STRICT_KEYS: "1", PATH: "" };
@@ -117,7 +117,7 @@ describe("selected lab setup without paid dispatch", () => {
     });
   });
   it("uses the doctor's selected environment for the restricted account readiness check", async () => {
-    const launcher = await import("../src/analysis/restricted-codex.js");
+    const launcher = await import("../../src/analysis/restricted-codex.js");
     const readiness = vi
       .spyOn(launcher, "checkRestrictedCodexAnalysisReadiness")
       .mockResolvedValue({ ready: false, errorCode: "codex_login_required" });

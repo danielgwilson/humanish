@@ -13,8 +13,8 @@
 // It also makes the UI testable without a terminal: a test hands `startTui` a fake index and reads
 // the frames back.
 
-import type { LabListResult } from "../labs.js";
-import type { LabSummary, ReadLabSummaryOptions } from "../lab-summary.js";
+import type { LabListResult } from "../lab/discover.js";
+import type { LabSummary, ReadLabSummaryOptions } from "../lab/summary.js";
 import type { RunDetail } from "../run-detail.js";
 import type { ReclaimResult } from "../reclaim.js";
 import type { TuiActionResult } from "./actions.js";

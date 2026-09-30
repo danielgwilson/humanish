@@ -5,7 +5,7 @@ import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { runDryRun, verifyRun, type RunBundle } from "../src/run.js";
-import { parseLabConfig, type LabConfig } from "../src/lab-config.js";
+import { parseLabConfig, type LabConfig } from "../src/lab/config.js";
 import { collectDesktopRecording } from "../src/desktop-recording-artifact.js";
 import { prepareRunArtifactPaths } from "../src/run-paths.js";
 import { exportRun } from "../src/feedback/export.js";

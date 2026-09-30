@@ -5,7 +5,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
 
-import { runInit } from "../src/init.js";
+import { runInit } from "../src/lab/init.js";
 import { renderObserver, serveObserver } from "../src/observer/render.js";
 import { createProgram } from "../src/program.js";
 import { doctor, listRuns, runDryRun, verifyRun } from "../src/run.js";

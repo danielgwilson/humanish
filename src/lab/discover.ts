@@ -1,20 +1,20 @@
 import { labPersonaIds, resolveCommittedPersonasForCwd } from "./persona-resolve.js";
 import { personaBrief, PersonaConfigError } from "./persona.js";
-import type { ActorPersonaRef } from "./actor-contract.js";
+import type { ActorPersonaRef } from "../actor-contract.js";
 import { constants } from "node:fs";
 import { lstat, open, readdir, realpath } from "node:fs/promises";
 import path from "node:path";
 
 import { parse } from "yaml";
 
-import { parseLabConfig, type LabConfig } from "./lab-config.js";
+import { parseLabConfig, type LabConfig } from "./config.js";
 import {
   assertPreparedSelectedOutputDirectory,
   assertSafeOutputPathSegment,
   prepareSelectedOutputDirectory,
   readContainedRegularFile,
   type PreparedSelectedOutputDirectory,
-} from "./selected-output-paths.js";
+} from "../selected-output-paths.js";
 
 const LAB_LIST_SCHEMA = "humanish.lab-list.v1";
 const LAB_INSPECT_SCHEMA = "humanish.lab-inspect.v1";

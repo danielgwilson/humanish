@@ -44,7 +44,7 @@ import {
   verifyFeedback,
 } from "./feedback/feedback.js";
 import type { FeedbackResult } from "./feedback/feedback.js";
-import { runInit } from "./init.js";
+import { runInit } from "./lab/init.js";
 import { computeStats, formatStatsHuman } from "./stats.js";
 import { PortInUseError } from "./observer/listen.js";
 import { DEFAULT_EXPORT_MAX_BYTES, exportRun, formatExportHuman } from "./feedback/export.js";
@@ -61,18 +61,18 @@ import {
   writeTelemetryState,
   isOwnCheckoutRun,
 } from "./telemetry.js";
-import type { InitChange, InitResult } from "./init.js";
-import { inspectLabManifest, listLabManifests, resolveLabManifest } from "./labs.js";
-import type { LabInspectResult, LabListResult, LabResolveFailure } from "./labs.js";
+import type { InitChange, InitResult } from "./lab/init.js";
+import { inspectLabManifest, listLabManifests, resolveLabManifest } from "./lab/discover.js";
+import type { LabInspectResult, LabListResult, LabResolveFailure } from "./lab/discover.js";
 import {
   runLabPreflight,
   type LabPreflightReachabilityMode,
   type LabPreflightResult,
-} from "./lab-preflight.js";
-import { runLab, resolveLabDryRun, selectLabBackend } from "./lab-engine.js";
+} from "./lab/preflight.js";
+import { runLab, resolveLabDryRun, selectLabBackend } from "./lab/engine.js";
 import type { RunLabProvenance } from "./run-status.js";
 import { loadAdapterScorer, type AdapterScorerModule } from "./adapter-scorer-loader.js";
-import type { LabBackend } from "./lab-engine.js";
+import type { LabBackend } from "./lab/engine.js";
 import type { RunScorerProvenance } from "./run.js";
 import { CUA_ACTOR_LAB_SCHEMA } from "./cua-actor-lab.js";
 import type { CuaActorLabErrorCode, CuaActorLabResult } from "./cua-actor-lab.js";
@@ -81,7 +81,7 @@ import type { TerminalProductLabResult, TerminalProductLabHooks } from "./e2b-te
 import type { BrowserLabAdapterHooks } from "./adapter-extension.js";
 import type { SharedWorldLabResult } from "./shared-world-lab.js";
 import type { ConcurrentSharedWorldLabResult } from "./concurrent-shared-world-lab.js";
-import type { LabConfig } from "./lab-config.js";
+import type { LabConfig } from "./lab/config.js";
 import { openTarget, renderObserver, serveObserver } from "./observer/render.js";
 import type { ObserverResult, ObserverServer } from "./observer/render.js";
 import { SERVE_SCHEMA, serveObserverLibrary } from "./observer/serve.js";
@@ -93,7 +93,7 @@ import type { ServeTunnel } from "./observer/tunnel.js";
 import { cleanupRun, doctor, listRuns, readReview, runDryRun, verifyRun } from "./run.js";
 import { reclaimRunSandboxes, type ReclaimResult } from "./reclaim.js";
 import { RunIndexCache, readRunIndex } from "./run-index.js";
-import { readLabSummary } from "./lab-summary.js";
+import { readLabSummary } from "./lab/summary.js";
 import { readProjectState } from "./tui/project.js";
 import { createTuiObserverSession, stopRun, TUI_ACTION_SCHEMA } from "./tui/actions.js";
 import { readRunDetail } from "./run-detail.js";

@@ -7,8 +7,8 @@ import type { AddressInfo } from "node:net";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { ACTOR_TRACE_SCHEMA } from "../src/actor-contract.js";
-import { LAB_CONFIG_SCHEMA, parseLabConfig } from "../src/lab-config.js";
-import { runLab } from "../src/lab-engine.js";
+import { LAB_CONFIG_SCHEMA, parseLabConfig } from "../src/lab/config.js";
+import { runLab } from "../src/lab/engine.js";
 import { verifyRun } from "../src/run.js";
 
 // The single LIVE rung for the scripted-browser LAB: the committed scenario dispatched through

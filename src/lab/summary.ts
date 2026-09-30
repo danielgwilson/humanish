@@ -1,5 +1,5 @@
-import { isLocalBrowserLab } from "./local-runtime-config.js";
-import { localRuntimeStatus, type LocalRuntimeStatus } from "./local-runtime.js";
+import { isLocalBrowserLab } from "../local-runtime-config.js";
+import { localRuntimeStatus, type LocalRuntimeStatus } from "../local-runtime.js";
 // What a lab IS, for the surface that has to describe it before you spend money (#455).
 //
 // The run index and run detail answer questions about runs. This answers a question about the LAB
@@ -9,16 +9,16 @@ import { localRuntimeStatus, type LocalRuntimeStatus } from "./local-runtime.js"
 // Resolved analysis defaults are shown independently of declared participant caps. A cap that is not
 // declared is not "unlimited" and not "$0"; it is a line the screen does not draw.
 
-import { resolveLabDryRun, selectLabBackend } from "./lab-engine.js";
-import { labKeyRequirements, localCodexParticipantCheck } from "./doctor-lab.js";
-import { automaticAnalysisBudget } from "./analysis/automatic-config.js";
+import { resolveLabDryRun, selectLabBackend } from "./engine.js";
+import { labKeyRequirements, localCodexParticipantCheck } from "./doctor.js";
+import { automaticAnalysisBudget } from "../analysis/automatic-config.js";
 import {
   DEFAULT_OPENAI_CU_MODEL,
   DEFAULT_OPENAI_CU_REASONING_EFFORT,
-} from "./openai-responses-cu.js";
-import { inspectLabManifest } from "./labs.js";
-import { probeKeySources } from "./key-resolution.js";
-import { receivingRequiredKey } from "./comms/setup.js";
+} from "../openai-responses-cu.js";
+import { inspectLabManifest } from "./discover.js";
+import { probeKeySources } from "../key-resolution.js";
+import { receivingRequiredKey } from "../comms/setup.js";
 
 export const LAB_SUMMARY_SCHEMA = "humanish.lab-summary.v1";
 

@@ -1,7 +1,7 @@
 import { collectDesktopRecording } from "./desktop-recording-artifact.js";
 import path from "node:path";
-import { runLab, type LabOutcome, type RunLabOptions } from "./lab-engine.js";
-import type { LabConfig } from "./lab-config.js";
+import { runLab, type LabOutcome, type RunLabOptions } from "./lab/engine.js";
+import type { LabConfig } from "./lab/config.js";
 import { inboxRecipientFor, type DesktopLaneEvidence } from "./cua-desktop-lane.js";
 import { runCuaActorSession } from "./computer-use-actor.js";
 import {

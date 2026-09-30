@@ -1,12 +1,12 @@
-import { isLocalBrowserLab } from "./local-runtime-config.js";
-import { localRuntimeStatus, type LocalRuntimeStatus } from "./local-runtime.js";
-import type { LabConfig } from "./lab-config.js";
-import type { LabBackend } from "./lab-engine.js";
-import type { DetectedLocalAgent } from "./local-agent-cli.js";
-import type { DoctorResult } from "./run.js";
-import { automaticAnalysisBudget } from "./analysis/automatic-config.js";
-import { externalCatchHealthy } from "./comms/sandbox-catch.js";
-import { receivingRequiredKey } from "./comms/setup.js";
+import { isLocalBrowserLab } from "../local-runtime-config.js";
+import { localRuntimeStatus, type LocalRuntimeStatus } from "../local-runtime.js";
+import type { LabConfig } from "./config.js";
+import type { LabBackend } from "./engine.js";
+import type { DetectedLocalAgent } from "../local-agent-cli.js";
+import type { DoctorResult } from "../run.js";
+import { automaticAnalysisBudget } from "../analysis/automatic-config.js";
+import { externalCatchHealthy } from "../comms/sandbox-catch.js";
+import { receivingRequiredKey } from "../comms/setup.js";
 
 type Check = DoctorResult["checks"][number];
 
@@ -18,7 +18,7 @@ export async function localCodexParticipantCheck(args: {
   const readiness = await (
     args.readiness ??
     (async (env: NodeJS.ProcessEnv) =>
-      (await import("./analysis/restricted-codex.js")).checkRestrictedCodexAnalysisReadiness(
+      (await import("../analysis/restricted-codex.js")).checkRestrictedCodexAnalysisReadiness(
         { timeoutMs: 5000 },
         { env },
       ))
@@ -45,8 +45,8 @@ export async function labSetupChecks(args: {
     env: NodeJS.ProcessEnv,
   ) => Promise<{ ready: boolean; errorCode: string | null }>;
 }): Promise<{ desktop: boolean; keys: string[]; checks: Check[] }> {
-  const { resolveLabManifest } = await import("./labs.js");
-  const { selectLabBackend, resolveLabDryRun } = await import("./lab-engine.js");
+  const { resolveLabManifest } = await import("./discover.js");
+  const { selectLabBackend, resolveLabDryRun } = await import("./engine.js");
   const resolved = await resolveLabManifest(args.cwd, args.lab);
   if (!resolved.ok)
     return {
@@ -79,7 +79,7 @@ export async function labSetupChecks(args: {
     (accountReadiness ??= (
       args.codexAnalysisReadiness ??
       (async (env: NodeJS.ProcessEnv) =>
-        (await import("./analysis/restricted-codex.js")).checkRestrictedCodexAnalysisReadiness(
+        (await import("../analysis/restricted-codex.js")).checkRestrictedCodexAnalysisReadiness(
           { timeoutMs: 5000 },
           { env },
         ))
@@ -149,7 +149,7 @@ export async function labSetupChecks(args: {
     }
   }
   if (backend === "scripted") {
-    const { resolveBrowserCommand } = await import("./scripted-browser-actor.js");
+    const { resolveBrowserCommand } = await import("../scripted-browser-actor.js");
     checks.push({
       name: "scripted browser",
       ok: !!(await resolveBrowserCommand()),

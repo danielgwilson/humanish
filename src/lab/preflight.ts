@@ -2,20 +2,20 @@ import path from "node:path";
 import {
   automaticAnalysisBudget,
   type AutomaticAnalysisBudget,
-} from "./analysis/automatic-config.js";
+} from "../analysis/automatic-config.js";
 
-import { CUA_ACTOR_LAB_PROVIDER_METADATA, provisionCloneSubject } from "./cua-actor-lab.js";
-import { probeUrl } from "./e2b-detached.js";
+import { CUA_ACTOR_LAB_PROVIDER_METADATA, provisionCloneSubject } from "../cua-actor-lab.js";
+import { probeUrl } from "../e2b-detached.js";
 import {
   createDesktopSandbox,
   loadE2BDesktopModule,
   type E2BDesktopModule,
   type E2BDesktopSandbox,
-} from "./e2b-desktop-launch.js";
-import { isLoopbackUrl, type LabConfig } from "./lab-config.js";
-import { selectLabBackend, type LabBackend } from "./lab-engine.js";
-import { resolveLabManifest, type LabResolveFailure } from "./labs.js";
-import { digestText, redactText } from "./redaction.js";
+} from "../e2b-desktop-launch.js";
+import { isLoopbackUrl, type LabConfig } from "./config.js";
+import { selectLabBackend, type LabBackend } from "./engine.js";
+import { resolveLabManifest, type LabResolveFailure } from "./discover.js";
+import { digestText, redactText } from "../redaction.js";
 
 export const LAB_PREFLIGHT_SCHEMA = "humanish.lab-preflight-result.v1";
 

@@ -12,7 +12,7 @@ import {
   parseLabConfig,
   type LabConfig,
   type LabRuntimeAuth,
-} from "../src/lab-config.js";
+} from "../src/lab/config.js";
 import {
   resolveTerminalPersona,
   runTerminalProductLab,

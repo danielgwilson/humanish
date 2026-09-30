@@ -1,7 +1,7 @@
 import { Box, Text } from "ink";
 import React from "react";
 
-import type { LabSummary } from "../../../src/lab-summary.js";
+import type { LabSummary } from "../../../src/lab/summary.js";
 import type { RunDetail } from "../../../src/run-detail.js";
 import type { RunIndexEntry } from "../../../src/run-index.js";
 import type { LabRow } from "../../../src/run-projection.js";

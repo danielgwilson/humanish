@@ -12,8 +12,8 @@ import {
   routesToScriptedBrowser,
   routesToSharedWorld,
   sharedWorldValidationReason,
-} from "../src/lab-config.js";
-import { selectLabBackend } from "../src/lab-engine.js";
+} from "../../src/lab/config.js";
+import { selectLabBackend } from "../../src/lab/engine.js";
 
 describe("parseLabConfig (humanish.lab.v2)", () => {
   it("parses an oss-meta-shaped lab (clone + e2b-desktop + codex actor)", () => {

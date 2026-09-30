@@ -1,8 +1,8 @@
-import { scrubPersonaBrief } from "./persona.js";
+import { scrubPersonaBrief } from "./lab/persona.js";
 import { withTransientCommsSecrets } from "./run-narration-secrets.js";
 import { prepareReceivingRun, receivingPublication } from "./comms/receiving-runtime.js";
 import type { CommsReceivingRun } from "./comms/receiving.js";
-import { receivingEmailValidationReason } from "./lab-config.js";
+import { receivingEmailValidationReason } from "./lab/config.js";
 // The CONCURRENT shared-world lab backend (#164 phase 2): N persona lanes drive ONE shared,
 // mutable service plane SIMULTANEOUSLY — the actual leverage of a sim. A recomposition of shipped
 // pieces + the getHost wrapper:
@@ -45,7 +45,7 @@ import {
   type AutomaticAnalysisHooks,
   type AutomaticAnalysisResult,
 } from "./analysis/automatic-completion.js";
-import { desktopMediaValidationReason, taskProtocolValidationReason } from "./lab-config.js";
+import { desktopMediaValidationReason, taskProtocolValidationReason } from "./lab/config.js";
 import { randomBytes } from "node:crypto";
 import { describeMissingKeys } from "./key-resolution.js";
 import {
@@ -64,8 +64,8 @@ import { actorRegistry, isCuaActorDescriptor, type CuaActorDescriptor } from "./
 import { toErrorMessage } from "./command-failure.js";
 import { mapWithConcurrency } from "./concurrency.js";
 import { appendSandboxReceipt } from "./sandbox-receipts.js";
-import { labPersonaIds, resolveCommittedPersonasForCwd } from "./persona-resolve.js";
-import type { ResolvedPersona } from "./persona.js";
+import { labPersonaIds, resolveCommittedPersonasForCwd } from "./lab/persona-resolve.js";
+import type { ResolvedPersona } from "./lab/persona.js";
 import {
   commandDigestOf,
   composeLaneInstructions,
@@ -113,7 +113,7 @@ import {
   externalPublicSharedWorldValidationReason,
   type LabActorLane,
   type LabConfig,
-} from "./lab-config.js";
+} from "./lab/config.js";
 import { buildObserverData } from "./observer/data.js";
 import {
   attachObserverRuntimeStreamUrls,
@@ -122,7 +122,7 @@ import {
   type ObserverRuntimeStreamUrl,
 } from "./observer/render.js";
 import { redactText } from "./redaction.js";
-import { participantAssignment } from "./participant-assignment.js";
+import { participantAssignment } from "./lab/participant-assignment.js";
 import {
   prepareRunArtifactPaths,
   validatePreparedRunArtifactPaths,

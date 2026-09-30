@@ -5,7 +5,11 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
 
-import { inspectLabManifest, listLabManifests, resolveLabManifest } from "../src/labs.js";
+import {
+  inspectLabManifest,
+  listLabManifests,
+  resolveLabManifest,
+} from "../../src/lab/discover.js";
 
 const execFileAsync = promisify(execFile);
 

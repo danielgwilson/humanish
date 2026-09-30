@@ -27,8 +27,8 @@ import {
   parseLabConfig,
   routesToConcurrentSharedWorld,
   type LabConfig,
-} from "../src/lab-config.js";
-import { runLab, selectLabBackend } from "../src/lab-engine.js";
+} from "../src/lab/config.js";
+import { runLab, selectLabBackend } from "../src/lab/engine.js";
 import {
   runConcurrentSharedWorld,
   extractLobbyCodeFromNarration,

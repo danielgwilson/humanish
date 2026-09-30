@@ -5,8 +5,8 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { ACTOR_TRACE_SCHEMA } from "../src/actor-contract.js";
-import { LAB_CONFIG_SCHEMA, parseLabConfig } from "../src/lab-config.js";
-import { runLab } from "../src/lab-engine.js";
+import { LAB_CONFIG_SCHEMA, parseLabConfig } from "../src/lab/config.js";
+import { runLab } from "../src/lab/engine.js";
 
 // The single LIVE rung for the computer-use LAB: a real lab config dispatched through runLab to
 // a real E2B desktop driven by the real OpenAI Computer Use loop. Spend-gated exactly like the

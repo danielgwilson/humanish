@@ -185,8 +185,8 @@ export {
   verifyFeedback,
 } from "./feedback/feedback.js";
 export type { FeedbackDraft, FeedbackResult } from "./feedback/feedback.js";
-export { INIT_RESPONSE_SCHEMA, runInit } from "./init.js";
-export type { InitChange, InitMode, InitOptions, InitResult } from "./init.js";
+export { INIT_RESPONSE_SCHEMA, runInit } from "./lab/init.js";
+export type { InitChange, InitMode, InitOptions, InitResult } from "./lab/init.js";
 export { OBSERVER_DATA_SCHEMA, buildObserverData, stripAnsi } from "./observer/data.js";
 export type { ObserverData, ObserverStream } from "./observer/data.js";
 export { OBSERVER_SCHEMA, openTarget, renderObserver, serveObserver } from "./observer/render.js";
@@ -370,8 +370,8 @@ export {
   DEVICE_PRESET_NAMES,
   isDevicePresetName,
   resolveDevicePreset,
-} from "./device-presets.js";
-export type { DevicePreset, DevicePresetName } from "./device-presets.js";
+} from "./lab/device-presets.js";
+export type { DevicePreset, DevicePresetName } from "./lab/device-presets.js";
 export {
   actorResolvesToTerminal,
   cuaLaneCount,
@@ -393,7 +393,7 @@ export {
   routesToTerminalProduct,
   sharedWorldValidationReason,
   subjectStateInvalidReason,
-} from "./lab-config.js";
+} from "./lab/config.js";
 export type {
   LabActor,
   LabActorLane,
@@ -413,10 +413,10 @@ export type {
   LabSubjectTopology,
   LabTerminalStdin,
   LabTerminalTransport,
-} from "./lab-config.js";
-export { resolveLabDryRun, runLab, selectLabBackend } from "./lab-engine.js";
-export type { LabBackend, LabOutcome, RunLabOptions } from "./lab-engine.js";
-export { LAB_PREFLIGHT_SCHEMA, runLabPreflight } from "./lab-preflight.js";
+} from "./lab/config.js";
+export { resolveLabDryRun, runLab, selectLabBackend } from "./lab/engine.js";
+export type { LabBackend, LabOutcome, RunLabOptions } from "./lab/engine.js";
+export { LAB_PREFLIGHT_SCHEMA, runLabPreflight } from "./lab/preflight.js";
 export type {
   LabPreflightCheck,
   LabPreflightReachabilityMode,
@@ -425,6 +425,6 @@ export type {
   LabPreflightSpend,
   LabPreflightTarget,
   RunLabPreflightOptions,
-} from "./lab-preflight.js";
+} from "./lab/preflight.js";
 export { CLI_RESPONSE_SCHEMA, createProgram } from "./program.js";
 export type { CliIo, UnexpectedErrorEnvelope } from "./program.js";

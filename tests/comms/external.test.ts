@@ -20,7 +20,7 @@ import {
   externalInboxUrl,
 } from "../../src/comms/sandbox-catch.js";
 import { FakeInbox } from "../../src/comms/fake-inbox.js";
-import { LAB_CONFIG_SCHEMA, parseLabConfig } from "../../src/lab-config.js";
+import { LAB_CONFIG_SCHEMA, parseLabConfig } from "../../src/lab/config.js";
 import { freePort } from "../helpers/free-port.js";
 
 const TOKEN = "test-token-not-a-secret";

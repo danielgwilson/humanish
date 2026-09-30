@@ -12,7 +12,7 @@ import {
   type ChromeMobileEmulationRequest,
 } from "./chrome-cdp-probe.js";
 import { runDesktopCommandOrThrow, toErrorMessage } from "./command-failure.js";
-import { type DevicePreset } from "./device-presets.js";
+import { type DevicePreset } from "./lab/device-presets.js";
 import { withOneRetryOnTransientE2BError, type E2BDesktopSandbox } from "./e2b-desktop-launch.js";
 import {
   probeUrl,
@@ -30,7 +30,7 @@ import {
   type LabStateStepWhen,
   type LabSubjectServe,
   type LabSubjectState,
-} from "./lab-config.js";
+} from "./lab/config.js";
 import { digestText, redactText, redactedTail } from "./redaction.js";
 import { type RunDesktopGeometry, type RunSubjectStateStepRecord } from "./run.js";
 import { corepackCommandFor, needsNodeRuntime, nodeBootstrapCommand } from "./subject-runtime.js";

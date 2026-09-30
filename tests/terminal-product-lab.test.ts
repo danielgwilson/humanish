@@ -14,8 +14,8 @@ import {
   routesToScriptedBrowser,
   routesToTerminalProduct,
   type LabConfig,
-} from "../src/lab-config.js";
-import { runLab, selectLabBackend } from "../src/lab-engine.js";
+} from "../src/lab/config.js";
+import { runLab, selectLabBackend } from "../src/lab/engine.js";
 import { createProgram } from "../src/program.js";
 import { verifyRun } from "../src/run.js";
 import { runTerminalProductLab } from "../src/e2b-terminal-lab.js";

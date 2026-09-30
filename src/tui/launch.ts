@@ -17,7 +17,7 @@ import { open } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { resolveLabManifest } from "../labs.js";
+import { resolveLabManifest } from "../lab/discover.js";
 import { prepareManagedHumanishOutputDirectory } from "../selected-output-paths.js";
 
 /**

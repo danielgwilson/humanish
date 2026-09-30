@@ -7,7 +7,7 @@ import {
   isDevicePresetName,
   resolveDevicePreset,
   type DevicePreset,
-} from "../src/device-presets.js";
+} from "../../src/lab/device-presets.js";
 
 describe("device presets", () => {
   // Pin the LITERAL values copied from the in-house ui-sim viewport tables so they cannot
