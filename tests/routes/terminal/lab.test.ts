@@ -2260,9 +2260,10 @@ describe("terminal persona traits (#308)", () => {
   });
 });
 
-// Characterization: the complete run directory of a passing live terminal run on the fake E2B
-// module, pinned so a refactor of bundle assembly or artifact writing shows up as a diff.
-// Regenerate with `pnpm vitest run tests/routes/terminal/lab.test.ts -u` and review the diff.
+// Characterization: the complete run directory and returned result of a passing live terminal
+// run on the fake E2B module and of a dry run, pinned so a refactor of bundle assembly or artifact
+// writing shows up as a diff. Regenerate with `pnpm vitest run tests/routes/terminal/lab.test.ts -u`
+// and review the diff.
 describe("terminal run directory golden", () => {
   let cwd: string;
   beforeEach(async () => {
@@ -2299,6 +2300,7 @@ describe("terminal run directory golden", () => {
     const nonce = nonceFrom(runs.find((run) => run.command.includes(" exec "))?.command ?? "");
     // The prompt carries a random per-run verdict nonce, so the digests over it vary.
     const snapshot = await runDirSnapshot(path.join(cwd, ".humanish", "runs", result.runId), {
+      result,
       replace: [
         [result.runId, "[run]"],
         [cwd, "[cwd]"],
@@ -2308,6 +2310,34 @@ describe("terminal run directory golden", () => {
     });
     await expect(`${JSON.stringify(snapshot, null, 2)}\n`).toMatchFileSnapshot(
       "../../golden/routes/terminal-live.json",
+    );
+  });
+
+  it("dry run that allocates nothing", async () => {
+    const result = await runTerminalProductLab({
+      cwd,
+      config: liveConfig(),
+      dryRun: true,
+      open: false,
+      automaticAnalysis: { run: automaticAnalysisBoundary() },
+      hooks: {
+        env: baseEnv(),
+        now: () => 1_000,
+        loadModule: async () => {
+          throw new Error("a dry run must not load the E2B module");
+        },
+      },
+    });
+    expect(result.ok).toBe(true);
+    const snapshot = await runDirSnapshot(path.join(cwd, ".humanish", "runs", result.runId), {
+      result,
+      replace: [
+        [result.runId, "[run]"],
+        [cwd, "[cwd]"],
+      ],
+    });
+    await expect(`${JSON.stringify(snapshot, null, 2)}\n`).toMatchFileSnapshot(
+      "../../golden/routes/terminal-dry-run.json",
     );
   });
 });

@@ -318,6 +318,7 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
     const runId = outcome.result.runId;
     if (!runId) throw new Error("the run wrote no bundle");
     const snapshot = await runDirSnapshot(path.join(cwd, ".humanish", "runs", runId), {
+      result: outcome.result,
       replace: [
         [runId, "[run]"],
         [cwd, "[cwd]"],
@@ -562,6 +563,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     const runId = outcome.result.runId;
     if (!runId) throw new Error("the run wrote no bundle");
     const snapshot = await runDirSnapshot(path.join(cwd, ".humanish", "runs", runId), {
+      result: outcome.result,
       replace: [
         [runId, "[run]"],
         [cwd, "[cwd]"],

@@ -1,4 +1,52 @@
 {
+  "<result>": {
+    "schema": "humanish.scripted-lab-result.v1",
+    "ok": true,
+    "cwd": "[cwd]",
+    "labId": "scripted-routing-proof",
+    "actor": "scripted-browser",
+    "appUrl": "http://127.0.0.1:5173/",
+    "dryRun": true,
+    "runId": "[run]",
+    "scenario": {
+      "id": "scripted-first-run",
+      "source": "humanish/scenarios/scripted-first-run.yaml",
+      "sourceDigest": "41dea98c2dc4",
+      "steps": 4
+    },
+    "sessions": [],
+    "observer": {
+      "schema": "humanish.observer-result.v1",
+      "ok": true,
+      "cwd": "[cwd]",
+      "run": "[run]",
+      "observerPath": ".humanish/runs/[run]/observer/index.html",
+      "observerDataPath": ".humanish/runs/[run]/observer/observer-data.json",
+      "eventsPath": ".humanish/runs/[run]/events.ndjson",
+      "observerUrl": "file://[cwd]/.humanish/runs/[run]/observer/index.html",
+      "bundlePath": ".humanish/runs/[run]/run.json",
+      "opened": false,
+      "warnings": [
+        "Observer renders local contract evidence only; dry-run lanes do not claim product behavior proof.",
+        "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
+      ]
+    },
+    "warnings": [
+      "Observer renders local contract evidence only; dry-run lanes do not claim product behavior proof.",
+      "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
+    ],
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "../latest.json": {
+    "schema": "humanish.latest-run.v1",
+    "runId": "[run]",
+    "path": ".humanish/runs/[run]",
+    "updatedAt": "[ts]"
+  },
   "events.ndjson": [
     {
       "id": "event-000-created",
@@ -30,8 +78,265 @@
     }
   ],
   "observer/index.html": "[observer build]",
-  "observer/observer-data.json": "[observer build]",
-  "observer/study-analysis.json": "[observer build]",
+  "observer/observer-data.json": {
+    "schema": "humanish.observer-data.v1",
+    "schemaVersion": 1,
+    "generatedAt": "[ts]",
+    "run": {
+      "runId": "[run]",
+      "mode": "dry-run",
+      "status": "contract_proof_only",
+      "title": "First-run scripted walkthrough - Scripted journey persona (synthetic-new-user)",
+      "createdAt": "[ts]",
+      "simCount": 2,
+      "persona": {
+        "id": "synthetic-new-user",
+        "name": "Scripted journey persona (synthetic-new-user)",
+        "source": "lab:scripted-routing-proof",
+        "sourceDigest": "41dea98c2dc4"
+      },
+      "scenario": {
+        "id": "scripted-first-run",
+        "title": "First-run scripted walkthrough",
+        "goal": "Load the app, submit the primary form, and confirm the success state renders.",
+        "source": "humanish/scenarios/scripted-first-run.yaml",
+        "sourceDigest": "41dea98c2dc4"
+      },
+      "packageName": "humanish",
+      "redaction": {
+        "status": "passed",
+        "notes": "Dry-run contract bundle: no browser ran and no screenshots were captured. The scenario contract is digest-pinned; live step text passes text redaction when a session runs."
+      },
+      "lifecycle": [
+        {
+          "at": "[ts]",
+          "event": "scripted-lab.run.created",
+          "message": "Created scripted-browser lab run with 2 surface lanes (actor scripted-browser)."
+        }
+      ],
+      "knownGaps": [
+        "Live scripted session not yet run (dry-run contract only)."
+      ]
+    },
+    "summary": {
+      "streams": 2,
+      "byKind": {
+        "ui": 0,
+        "browser": 2,
+        "terminal": 0,
+        "tui": 0,
+        "codex-ui": 0,
+        "artifact": 0,
+        "summary": 0
+      },
+      "active": 0,
+      "blocked": 0,
+      "warnings": 0
+    },
+    "laneGroups": [],
+    "streams": [
+      {
+        "id": "scripted-desktop-stream",
+        "simId": "scripted-desktop",
+        "kind": "browser",
+        "label": "Desktop browser surface — scripted-routing-proof",
+        "status": "contract_proof_only",
+        "transport": "snapshot",
+        "updatedAt": "[ts]",
+        "embed": {
+          "kind": "placeholder",
+          "title": "Desktop browser surface"
+        },
+        "viewport": {
+          "width": 1440,
+          "height": 960,
+          "deviceScaleFactor": 1,
+          "isMobile": false
+        },
+        "ui": {
+          "route": "http://127.0.0.1:5173/",
+          "intent": "Load the app, submit the primary form, and confirm the success state renders.",
+          "state": "Contract bundle only: dry-run pinned the scenario contract without launching a browser or touching the subject app."
+        },
+        "artifacts": [
+          {
+            "label": "run bundle",
+            "path": "run.json",
+            "kind": "bundle"
+          },
+          {
+            "label": "review",
+            "path": "review.md",
+            "kind": "review"
+          },
+          {
+            "label": "events",
+            "path": "events.ndjson",
+            "kind": "events"
+          }
+        ],
+        "sim": {
+          "id": "scripted-desktop",
+          "index": 1,
+          "personaId": "synthetic-new-user",
+          "scenarioId": "scripted-first-run",
+          "status": "contract_proof_only",
+          "streamKind": "browser",
+          "mode": "browser-sim",
+          "progress": 100,
+          "currentStep": "Contract bundle only: dry-run pinned the scenario contract without launching a browser or touching the subject app.",
+          "summary": "Contract lane for the scripted-browser actor (scripted-browser) against http://127.0.0.1:5173/.",
+          "streamIds": [
+            "scripted-desktop-stream"
+          ],
+          "startedAt": "[ts]",
+          "updatedAt": "[ts]"
+        },
+        "kindLabel": "Browser",
+        "statusLabel": "Contract proof",
+        "terminalPlain": "",
+        "timeline": []
+      },
+      {
+        "id": "scripted-mobile-stream",
+        "simId": "scripted-mobile",
+        "kind": "browser",
+        "label": "Mobile browser surface — scripted-routing-proof",
+        "status": "contract_proof_only",
+        "transport": "snapshot",
+        "updatedAt": "[ts]",
+        "embed": {
+          "kind": "placeholder",
+          "title": "Mobile browser surface"
+        },
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "deviceScaleFactor": 2,
+          "isMobile": true
+        },
+        "ui": {
+          "route": "http://127.0.0.1:5173/",
+          "intent": "Load the app, submit the primary form, and confirm the success state renders.",
+          "state": "Contract bundle only: dry-run pinned the scenario contract without launching a browser or touching the subject app."
+        },
+        "artifacts": [
+          {
+            "label": "run bundle",
+            "path": "run.json",
+            "kind": "bundle"
+          },
+          {
+            "label": "review",
+            "path": "review.md",
+            "kind": "review"
+          },
+          {
+            "label": "events",
+            "path": "events.ndjson",
+            "kind": "events"
+          }
+        ],
+        "sim": {
+          "id": "scripted-mobile",
+          "index": 2,
+          "personaId": "synthetic-new-user",
+          "scenarioId": "scripted-first-run",
+          "status": "contract_proof_only",
+          "streamKind": "browser",
+          "mode": "browser-sim",
+          "progress": 100,
+          "currentStep": "Contract bundle only: dry-run pinned the scenario contract without launching a browser or touching the subject app.",
+          "summary": "Contract lane for the scripted-browser actor (scripted-browser) against http://127.0.0.1:5173/.",
+          "streamIds": [
+            "scripted-mobile-stream"
+          ],
+          "startedAt": "[ts]",
+          "updatedAt": "[ts]"
+        },
+        "kindLabel": "Browser",
+        "statusLabel": "Contract proof",
+        "terminalPlain": "",
+        "timeline": []
+      }
+    ],
+    "events": [
+      {
+        "id": "event-000-created",
+        "at": "[ts]",
+        "level": "info",
+        "type": "scripted-lab.run.created",
+        "message": "Created scripted-browser lab run for scripted-routing-proof (actor scripted-browser, 2 surfaces)."
+      },
+      {
+        "id": "event-001-subject",
+        "at": "[ts]",
+        "level": "info",
+        "type": "scripted-lab.subject.declared",
+        "message": "Subject app declared at http://127.0.0.1:5173/; the lab did not provision it — subject build/commit provenance is UNPINNED; evidence binds to the scenario digest 41dea98c2dc4."
+      },
+      {
+        "id": "event-002-spend",
+        "at": "[ts]",
+        "level": "info",
+        "type": "scripted-lab.spend",
+        "message": "Scripted participant steps make no model requests and use no sandbox on this route; post-run analysis has a separate budget unless disabled. scenario.mode: live gates real browser actuation against the declared app."
+      },
+      {
+        "id": "event-003-contract",
+        "at": "[ts]",
+        "level": "info",
+        "type": "scripted-lab.contract.ready",
+        "message": "Dry-run contract bundle ready: scenario scripted-first-run @ 41dea98c2dc4 (humanish/scenarios/scripted-first-run.yaml, 4 steps) parsed and digest-pinned; switch scenario.mode to live to actuate a real browser."
+      }
+    ],
+    "artifactLinks": [
+      {
+        "label": "run bundle",
+        "href": "../run.json",
+        "kind": "bundle"
+      },
+      {
+        "label": "review JSON",
+        "href": "../review.json",
+        "kind": "review"
+      },
+      {
+        "label": "review Markdown",
+        "href": "../review.md",
+        "kind": "review"
+      },
+      {
+        "label": "event log",
+        "href": "../events.ndjson",
+        "kind": "events"
+      },
+      {
+        "label": "observer data",
+        "href": "observer-data.json",
+        "kind": "observer"
+      }
+    ],
+    "publicSafety": {
+      "publishable": false,
+      "note": "Observer artifacts are local evidence. Before filing a public issue, use `humanish feedback issue` so redaction and public-safety checks gate the payload.",
+      "share": {
+        "status": "share_ready",
+        "verifiedAt": "[ts]",
+        "reasons": []
+      }
+    },
+    "raw": {
+      "bundleSchema": "humanish.run-bundle.v1",
+      "artifactRoot": ".humanish/runs/[run]"
+    }
+  },
+  "observer/study-analysis.json": {
+    "state": "none",
+    "analysis": null,
+    "corrections": [],
+    "warnings": []
+  },
   "review.json": {
     "schema": "humanish.review.v1",
     "verdict": "contract_proof_only",

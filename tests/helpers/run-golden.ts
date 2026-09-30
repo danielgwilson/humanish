@@ -6,6 +6,9 @@ import path from "node:path";
 // writing process id.
 const AMBIENT_KEYS = new Set(["durationMs", "elapsedMs", "wallMs", "pid"]);
 const TEXT_EXTENSIONS = new Set([".md", ".txt", ".log", ".yaml", ".yml", ".html", ".csv"]);
+// The Observer page embeds the whole app build, which changes with every Observer edit. Its data
+// files sit next to it and are snapshotted like any other JSON.
+const OBSERVER_PAGE = path.join("observer", "index.html");
 
 // Integers in this range are epoch milliseconds (2001 to 2286), which only a clock produces.
 const isEpochMs = (value: unknown) =>
@@ -28,6 +31,12 @@ function mask(value: unknown, keys: ReadonlySet<string>): unknown {
 }
 
 export interface RunDirSnapshotOptions {
+  /**
+   * The value the route returned for this run. The CLI prints it under `--json` after adding the
+   * analysis envelope (`runOk`, overall `ok`); the snapshot holds the route's value without it.
+   * It is serialized with JSON.stringify and normalized like the bundle files.
+   */
+  result: unknown;
   /** Literals that differ per run (run id, temp cwd, local URLs) and their placeholders. */
   replace: ReadonlyArray<readonly [string, string]>;
   /** JSON keys whose values the fixture cannot hold fixed; the caller says why. */
@@ -37,10 +46,11 @@ export interface RunDirSnapshotOptions {
 }
 
 /**
- * Every file of a run directory, with the values that differ between two runs of the same
- * deterministic fixture replaced: the given literals, ISO timestamps, epoch milliseconds, UUIDs,
- * measured durations and the caller's `maskKeys`. JSON is parsed so the snapshot diffs by field;
- * binary files are pinned by digest.
+ * The route's returned result under `<result>`, the runs-root `latest.json` pointer under
+ * `../latest.json`, and every file of a run directory, with the values that differ between two
+ * runs of the same deterministic fixture replaced: the given literals, ISO timestamps, epoch
+ * milliseconds, UUIDs, measured durations and the caller's `maskKeys`. JSON is parsed so the
+ * snapshot diffs by field; binary files are pinned by digest.
  */
 export async function runDirSnapshot(
   runDir: string,
@@ -56,21 +66,26 @@ export async function runDirSnapshot(
       .replace(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z/g, "[ts]")
       .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, "[uuid]");
   };
+  const normalizeJson = (text: string) => mask(JSON.parse(replace(text)), keys);
+  const snapshot: Record<string, unknown> = {
+    "<result>": normalizeJson(JSON.stringify(options.result) ?? "null"),
+  };
+  // Every route writes the pointer; a missing one fails the snapshot.
+  snapshot["../latest.json"] = normalizeJson(
+    await readFile(path.join(path.dirname(runDir), "latest.json"), "utf8"),
+  );
   const files = (await readdir(runDir, { recursive: true, withFileTypes: true }))
     .filter((entry) => entry.isFile())
     .map((entry) => path.relative(runDir, path.join(entry.parentPath, entry.name)))
     .sort();
-  const snapshot: Record<string, unknown> = {};
   for (const file of files) {
-    // The Observer page embeds the whole app build; its data is the bundle already snapshotted.
-    if (file.startsWith(`observer${path.sep}`)) {
+    if (file === OBSERVER_PAGE) {
       snapshot[file] = "[observer build]";
       continue;
     }
     const bytes = await readFile(path.join(runDir, file));
     const extension = path.extname(file);
-    if (extension === ".json")
-      snapshot[file] = mask(JSON.parse(replace(bytes.toString("utf8"))), keys);
+    if (extension === ".json") snapshot[file] = normalizeJson(bytes.toString("utf8"));
     else if (extension === ".ndjson") {
       const records = replace(bytes.toString("utf8"))
         .split("\n")

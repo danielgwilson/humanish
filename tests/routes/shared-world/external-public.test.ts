@@ -46,6 +46,8 @@ import type {
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
 import type { RunBundle } from "../../../src/index.js";
 import { verifyRun } from "../../../src/run/verify.js";
+import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
+import { runDirSnapshot } from "../../helpers/run-golden.js";
 
 // ---------------------------------------------------------------------------
 // Fakes. Same N-substrate shape as the concurrent-shared-world harness, but the
@@ -1188,4 +1190,35 @@ it("routes actor output limits and per-lane reasoning to concurrent provider req
   } finally {
     vi.unstubAllGlobals();
   }
+});
+
+// Characterization: the complete run directory and returned result of a three-seat run on the
+// external-public plane, pinned so a refactor of bundle assembly or artifact writing shows up as a
+// diff. Regenerate with `pnpm vitest run tests/routes/shared-world/external-public.test.ts -u`.
+describe("external-public run directory goldens", () => {
+  it.each([
+    ["dry run", true, "shared-world-external-public-dry-run.json"],
+    ["live run", false, "shared-world-external-public-live.json"],
+  ] as const)("%s with three seats", async (_label, dryRun, golden) => {
+    const { hooks } = makeExternalHooks(makeExternalRunSession({ seen: [] }));
+    const result = await runConcurrentSharedWorld({
+      cwd,
+      config: parseExternal(),
+      dryRun,
+      hooks,
+      automaticAnalysis: { run: automaticAnalysisBoundary() },
+    });
+    // Seats tear down in parallel, so their sandbox receipts append in completion order.
+    const snapshot = await runDirSnapshot(path.join(cwd, ".humanish", "runs", result.runId), {
+      result,
+      replace: [
+        [result.runId, "[run]"],
+        [cwd, "[cwd]"],
+      ],
+      unorderedFiles: ["sandbox-receipts.ndjson"],
+    });
+    await expect(`${JSON.stringify(snapshot, null, 2)}\n`).toMatchFileSnapshot(
+      `../../golden/routes/${golden}`,
+    );
+  });
 });

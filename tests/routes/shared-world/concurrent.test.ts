@@ -2128,6 +2128,7 @@ describe("concurrent shared-world run directory goldens", () => {
     });
     // Seats tear down in parallel, so their sandbox receipts append in completion order.
     const snapshot = await runDirSnapshot(path.join(goldenCwd, ".humanish", "runs", result.runId), {
+      result,
       replace: [
         [result.runId, "[run]"],
         [goldenCwd, "[cwd]"],
