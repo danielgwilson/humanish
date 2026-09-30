@@ -22,6 +22,7 @@
 
 import { AsyncLocalStorage } from "node:async_hooks";
 
+import type { RunBundle } from "./bundle.js";
 import { writeContainedOutputFile, type PreparedOutputRoot } from "./selected-output-paths.js";
 
 export const RUN_STATUS_SCHEMA = "humanish.run-status.v1";
@@ -66,6 +67,27 @@ interface RunStatusOutcome {
   /** The run-level estimate, `null` when declared absent (never coerced to 0). */
   estimatedCostUsd?: number | null;
   durationMs?: number;
+}
+
+/** The outcome a finalized status record carries, read from the bundle that was just written. */
+export function runStatusOutcome(bundle: RunBundle): RunStatusOutcome {
+  return {
+    ...(bundle.review?.verdict === undefined ? {} : { verdict: bundle.review.verdict }),
+    ...(bundle.review?.participants === undefined
+      ? {}
+      : {
+          participants: {
+            total: bundle.review.participants.total,
+            reachedGoal: bundle.review.participants.reachedGoal,
+            ...(bundle.review.participants.reportedFriction === undefined
+              ? {}
+              : { reportedFriction: bundle.review.participants.reportedFriction }),
+          },
+        }),
+    ...(bundle.cost?.estimatedTotalUsd === undefined
+      ? {}
+      : { estimatedCostUsd: bundle.cost.estimatedTotalUsd }),
+  };
 }
 
 export interface RunStatusRecord {

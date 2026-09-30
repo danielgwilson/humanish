@@ -1,5 +1,10 @@
 import type { RunDesktopRecording } from "../../evidence/desktop-recording-types.js";
-import type { CuaLiveMetadata } from "../../actors/computer-use/loop.js";
+import type {
+  CuaExecutor,
+  CuaLiveMetadata,
+  CuaLoopResult,
+  CuaProvider,
+} from "../../actors/computer-use/loop.js";
 import type { CommsReceivingRun } from "../../comms/receiving.js";
 import { type CuaDesktopLane } from "./desktop-lane.js";
 import {
@@ -22,7 +27,6 @@ import type {
 import { type CuaActorDescriptor } from "../../actors/registry.js";
 import { type BrowserLabAdapterHooks } from "../../lab/adapter-extension.js";
 import type { CuaActorSessionOptions } from "../../actors/computer-use/actor.js";
-import type { CuaExecutor, CuaLoopResult, CuaProvider } from "../../actors/computer-use/loop.js";
 import { type DevicePreset } from "../../lab/device-presets.js";
 import {
   type E2BDesktopModule,

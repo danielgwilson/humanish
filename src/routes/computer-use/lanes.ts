@@ -1,17 +1,21 @@
-import type { CuaLiveMetadata } from "../../actors/computer-use/loop.js";
+import type {
+  CuaLiveMetadata,
+  CuaLoopResult,
+  CuaProvider,
+} from "../../actors/computer-use/loop.js";
 import { createE2BCuaDesktopLane } from "../../substrates/e2b/cua-desktop.js";
 import path from "node:path";
 import { toErrorMessage } from "../../substrates/command-failure.js";
 import { cuaLaneDiagnostics } from "./diagnostics.js";
 import type { ActorTokenUsage, ActorTraceItem } from "../../actors/contract.js";
 import type { CuaActorSessionOptions } from "../../actors/computer-use/actor.js";
-import type { CuaLoopResult, CuaProvider } from "../../actors/computer-use/loop.js";
 import { mapWithConcurrency } from "../../run/concurrency.js";
 import { assertScreenshotEvidence } from "../../evidence/image.js";
 import { startClaudeSession } from "../../actors/local-agent/claude-session.js";
 import { createLocalAgentProvider } from "../../actors/local-agent/cli.js";
 import { DEFAULT_OPENAI_CU_MODEL } from "../../actors/computer-use/openai-provider.js";
 import { estimateActorCostForExecution, round6 } from "../../run/pricing.js";
+import type { LabConfig } from "../../lab/types.js";
 import { redactText } from "../../evidence/redaction.js";
 import { createRestrictedCodexParticipant } from "../../actors/codex/restricted-participant.js";
 import { type RunSubjectProvenance } from "../../run/bundle.js";
@@ -30,6 +34,7 @@ import {
 } from "./self-report.js";
 import type {
   CuaLaneDeps,
+  CuaLanePlan,
   CuaLaneResult,
   CuaLaneSpec,
   CuaSubjectProjection,
@@ -323,10 +328,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
 }
 
 /** Run the single IN-PROCESS lane (a custom executor + provider; NO E2B). Always one lane. */
-export async function runInProcessLane(
-  spec: CuaLaneSpec,
-  deps: CuaLaneDeps,
-): Promise<LaneRunOutcome> {
+async function runInProcessLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<LaneRunOutcome> {
   const warnings: string[] = [];
   const screenshots: string[] = [];
   const writeScreenshot = makeLaneWriteScreenshot(deps.artifactRoot, spec, screenshots);
@@ -688,4 +690,71 @@ export function subjectProvenanceArg(
     };
   }
   return undefined;
+}
+
+/**
+ * The run-level subject for the top level and the bundle. Local-tree lanes all pack from the same
+ * once-per-run archive, so every lane already carries the identical archiveSha256/commit/dirty and
+ * the first lane's projection is the aggregate. Clone lanes each resolve their own commit; the
+ * aggregate carries it only when every lane agrees, and warns when they diverge.
+ */
+export function aggregateCuaSubject(args: {
+  laneSubjects: readonly CuaSubjectProjection[];
+  outcomes: readonly LaneRunOutcome[] | undefined;
+  laneCount: number;
+  dryRun: boolean;
+}): { subject: CuaSubjectProjection; warnings: string[] } {
+  const { laneSubjects, outcomes, laneCount, dryRun } = args;
+  const first = laneSubjects[0]!;
+  if (first.source !== "clone") return { subject: first, warnings: [] };
+  const commits = (outcomes ?? [])
+    .map((outcome) => outcome.subjectCommit)
+    .filter((commit): commit is string => commit !== undefined);
+  const unanimous = !dryRun && commits.length === laneCount && new Set(commits).size === 1;
+  const warnings =
+    !dryRun && laneCount > 1 && new Set(commits).size > 1
+      ? [
+          "Fan-out lanes resolved DIVERGENT subject commits — the top-level subject.commit is omitted; see per-lane provenance in result.lanes for each lane's pinned commit.",
+        ]
+      : [];
+  return {
+    subject: {
+      source: "clone",
+      ...(first.repo === undefined ? {} : { repo: first.repo }),
+      ...(first.envNames === undefined ? {} : { envNames: first.envNames }),
+      state: first.state,
+      ...(unanimous && commits[0] !== undefined ? { commit: commits[0] } : {}),
+    },
+    warnings,
+  };
+}
+
+/**
+ * execution.caps.maxUsd is enforced inside each lane's loop independently, so an N-lane fan-out can
+ * spend up to N × maxUsd before any lane aborts, while the run cost summary reports the larger
+ * aggregate. The warning names that ceiling, unless the study declared a shared maxTotalUsd budget.
+ */
+export function perLaneCapWarning(config: LabConfig, laneCount: number): string | undefined {
+  const perLaneCapUsd = config.execution?.caps?.maxUsd;
+  if (perLaneCapUsd === undefined || laneCount <= 1) return undefined;
+  if (config.execution?.caps?.maxTotalUsd !== undefined) return undefined;
+  return `execution.caps.maxUsd ($${perLaneCapUsd}) is a PER-LANE cap; ${laneCount} lanes may spend up to ${laneCount} × $${perLaneCapUsd} (~$${round6(perLaneCapUsd * laneCount)} total) before any lane aborts. Set execution.caps.maxTotalUsd for a shared study budget.`;
+}
+
+/**
+ * Run every lane of a live run. The in-process route drives its single lane in this process; one
+ * hosted lane runs alone; a fan-out runs at the plan's concurrency and may stop early.
+ */
+export async function runAllCuaLanes(
+  laneSpecs: readonly CuaLaneSpec[],
+  deps: Omit<CuaLaneDeps, "signalProvisioned">,
+  plan: CuaLanePlan,
+  inProcessRoute: boolean,
+): Promise<{ outcomes: LaneRunOutcome[]; failFastReason: string | undefined }> {
+  if (inProcessRoute)
+    return { outcomes: [await runInProcessLane(laneSpecs[0]!, deps)], failFastReason: undefined };
+  if (laneSpecs.length === 1)
+    return { outcomes: [await runCuaLane(laneSpecs[0]!, deps)], failFastReason: undefined };
+  const ran = await runCuaLanes([...laneSpecs], deps, plan.concurrency);
+  return { outcomes: ran.outcomes, failFastReason: ran.failFastReason };
 }
