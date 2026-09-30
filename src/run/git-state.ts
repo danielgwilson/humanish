@@ -4,7 +4,7 @@ import os from "node:os";
 import { inspectVerifiedGitWorkspace, type VerifiedGitWorkspace } from "./git-workspace.js";
 import { isNonNegativeSafeInteger, isRecord } from "./primitives.js";
 
-export const GIT_STATE_SCHEMA = "humanish.git-state.v1";
+const GIT_STATE_SCHEMA = "humanish.git-state.v1";
 
 type GitStateStatus = "clean" | "dirty" | "missing" | "unavailable";
 type GitRefState = "attached" | "detached" | "unborn" | "unknown";

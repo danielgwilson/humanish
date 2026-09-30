@@ -1,4 +1,4 @@
-import { type ActorStatus, type ActorTrace } from "../actors/contract.js";
+import { ACTOR_STATUSES, type ActorStatus, type ActorTrace } from "../actors/contract.js";
 import {
   cuaGoalSource,
   isCuaTrace,
@@ -168,11 +168,7 @@ export function participantOutcomeDetails(
     if (!isRecord(stream.actor)) return [];
     const actor = stream.actor;
     const goalSource = cuaGoalSource(actor, stream.status);
-    if (
-      !["passed", "abandoned", "incomplete", "blocked", "timed_out", "failed"].includes(
-        String(actor.status),
-      )
-    ) {
+    if (!(ACTOR_STATUSES as readonly string[]).includes(String(actor.status))) {
       return goalSource === "unavailable" ? [{ status: "passed" as const, goalSource }] : [];
     }
     const ending =

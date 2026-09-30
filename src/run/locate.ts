@@ -1,4 +1,4 @@
-import { lstat, stat } from "node:fs/promises";
+import { lstat } from "node:fs/promises";
 import path from "node:path";
 import {
   bindExistingRunArtifactPaths,
@@ -10,91 +10,14 @@ import {
 } from "./paths.js";
 import {
   assertPreparedSelectedOutputDirectory,
-  assertSafeOutputPathSegment,
   bindExistingManagedHumanishOutputDirectory,
   readContainedRegularFile,
   type PreparedSelectedOutputDirectory,
 } from "./selected-output-paths.js";
-import type { RunPointer, RunResult } from "./results.js";
-import type { RunBundle } from "./bundle.js";
+import type { RunPointer } from "./results.js";
+import { RUN_BUNDLE_FILE, type RunBundle } from "./bundle.js";
 import { isRunBundle, isRunPointer } from "./guards.js";
-import { isNodeError, isRecord } from "./primitives.js";
-
-async function inspectImplicitProjectPath(
-  projectRoot: PreparedSelectedOutputDirectory,
-  relativePath: string,
-) {
-  const segments = relativePath.replace(/\\/g, "/").split("/");
-  if (segments.length === 0 || segments.some((segment) => segment.length === 0)) {
-    throw new Error("Implicit project path must be a non-empty relative path.");
-  }
-  await assertPreparedSelectedOutputDirectory(projectRoot);
-  let current = projectRoot.physicalPath;
-  for (const [index, segment] of segments.entries()) {
-    assertSafeOutputPathSegment(segment, "Implicit project path segment");
-    current = path.join(current, segment);
-    let stats;
-    try {
-      stats = await lstat(current, { bigint: true });
-    } catch (error) {
-      if (isNodeError(error) && error.code === "ENOENT") {
-        return null;
-      }
-      throw error;
-    }
-    if (stats.isSymbolicLink()) {
-      throw new Error(`Implicit project path must not contain symbolic links: ${relativePath}`);
-    }
-    if (!stats.isDirectory() && !stats.isFile()) {
-      throw new Error(
-        `Implicit project path must contain only regular files and directories: ${relativePath}`,
-      );
-    }
-    if (stats.isFile() && stats.nlink > 1n) {
-      throw new Error(`Implicit project files must be single-link regular files: ${relativePath}`);
-    }
-    if (index < segments.length - 1 && !stats.isDirectory()) {
-      throw new Error(`Implicit project path parent must be a directory: ${relativePath}`);
-    }
-    if (index === segments.length - 1) {
-      await assertPreparedSelectedOutputDirectory(projectRoot);
-      return stats;
-    }
-  }
-  return null;
-}
-
-export async function implicitProjectDirectoryExists(
-  projectRoot: PreparedSelectedOutputDirectory,
-  relativePath: string,
-): Promise<boolean> {
-  const stats = await inspectImplicitProjectPath(projectRoot, relativePath);
-  if (!stats) {
-    return false;
-  }
-  if (!stats.isDirectory()) {
-    throw new Error(`Implicit project directory has the wrong type: ${relativePath}`);
-  }
-  return true;
-}
-
-export async function readImplicitProjectFile(
-  projectRoot: PreparedSelectedOutputDirectory,
-  relativePath: string,
-): Promise<string | null> {
-  const stats = await inspectImplicitProjectPath(projectRoot, relativePath);
-  if (!stats) {
-    return null;
-  }
-  if (!stats.isFile() || stats.nlink !== 1n) {
-    throw new Error(`Implicit project file must be a single-link regular file: ${relativePath}`);
-  }
-  const bytes = await readContainedRegularFile(projectRoot, relativePath.replace(/\\/g, "/"));
-  if (!bytes) {
-    throw new Error(`Implicit project file changed while it was being read: ${relativePath}`);
-  }
-  return bytes.toString("utf8");
-}
+import { isNodeError } from "./primitives.js";
 
 /** Resolve "latest" or an explicit run id to its prepared artifact paths. */
 export async function resolveRunPath(
@@ -158,21 +81,6 @@ export async function readLatest(
   return isRunPointer(latest) ? latest : null;
 }
 
-export async function readPackageName(
-  projectRoot: PreparedSelectedOutputDirectory,
-): Promise<string | null> {
-  const text = await readImplicitProjectFile(projectRoot, "package.json");
-  if (text === null) {
-    return null;
-  }
-  try {
-    const packageJson = JSON.parse(text) as unknown;
-    return isRecord(packageJson) && typeof packageJson.name === "string" ? packageJson.name : null;
-  } catch {
-    return null;
-  }
-}
-
 export async function readRunJsonIfExists(
   runPaths: PreparedRunArtifactPaths,
   ...segments: string[]
@@ -228,30 +136,6 @@ export async function readSafeRunArtifactJson(
   }
 }
 
-export async function validateCwd(cwd: string): Promise<RunResult["error"] | null> {
-  try {
-    const stats = await stat(cwd);
-
-    if (!stats.isDirectory()) {
-      return {
-        code: "HUMANISH_INVALID_CWD",
-        message: `Target cwd is not a directory: ${cwd}`,
-      };
-    }
-
-    return null;
-  } catch (error) {
-    if (isNodeError(error) && error.code === "ENOENT") {
-      return {
-        code: "HUMANISH_INVALID_CWD",
-        message: `Target cwd does not exist: ${cwd}`,
-      };
-    }
-
-    throw error;
-  }
-}
-
 export async function loadRunBundle(
   cwdInput: string,
   runInput: string,
@@ -273,8 +157,8 @@ export async function loadRunBundlePrepared(
 ): Promise<{ bundle: RunBundle; bundlePath: string; runDir: string } | null> {
   const cwd = path.resolve(cwdInput);
   await validatePreparedRunArtifactPaths(runPaths);
-  const bundlePath = path.join(runPaths.absoluteRunRoot, "run.json");
-  const bundle = await readRunJsonIfExists(runPaths, "run.json");
+  const bundlePath = path.join(runPaths.absoluteRunRoot, RUN_BUNDLE_FILE);
+  const bundle = await readRunJsonIfExists(runPaths, RUN_BUNDLE_FILE);
 
   if (!isRunBundle(bundle)) {
     return null;

@@ -12,6 +12,7 @@ import {
   type StudyCosts,
   type StudyCostRow,
 } from "./costs.js";
+import { round6 } from "./pricing.js";
 
 const STATS_SCHEMA = "humanish.stats.v1";
 
@@ -124,8 +125,73 @@ function entryTime(entry: RunIndexEntry): string | undefined {
   return entry.startedAt ?? entry.completedAt ?? entry.updatedAt;
 }
 
-function round(value: number): number {
-  return Math.round(value * 1_000_000) / 1_000_000;
+type LabAccumulator = StatsLabRow & { durations: number[]; runCosts: number[] };
+
+function addToLabRow(
+  labs: Map<string, LabAccumulator>,
+  entry: RunIndexEntry,
+  priced: boolean,
+  costs: StudyCosts,
+): void {
+  const labId = entry.lab?.id ?? "(no lab)";
+  let row = labs.get(labId);
+  if (row === undefined) {
+    row = {
+      lab: labId,
+      runs: 0,
+      live: 0,
+      dryRun: 0,
+      judged: 0,
+      passed: 0,
+      durationSamples: 0,
+      costSamples: 0,
+      unpricedRuns: 0,
+      participants: emptyParticipants(),
+      durations: [],
+      costs: emptyStudyCosts(),
+      runCosts: [],
+    };
+    labs.set(labId, row);
+  }
+  row.runs += 1;
+  if (entry.mode === "live") row.live += 1;
+  if (entry.mode === "dry-run") row.dryRun += 1;
+  if (entry.verdict !== undefined) {
+    row.judged += 1;
+    if (entry.verdict === "pass") row.passed += 1;
+  }
+  if (entry.mode === "live" && entry.durationMs !== undefined) row.durations.push(entry.durationMs);
+  if (priced) row.runCosts.push(entry.estimatedCostUsd as number);
+  else row.unpricedRuns += 1;
+  addParticipants(row.participants, entry);
+  addStudyCosts(row.costs, costs);
+}
+
+function addToDayRow(
+  days: Map<string, StatsDayRow>,
+  entry: RunIndexEntry,
+  priced: boolean,
+  costs: StudyCosts,
+): void {
+  const at = entryTime(entry);
+  const day = at === undefined ? "(undated)" : at.slice(0, 10);
+  let dayRow = days.get(day);
+  if (dayRow === undefined) {
+    dayRow = {
+      day,
+      runs: 0,
+      live: 0,
+      estimatedSpendUsd: 0,
+      unpricedRuns: 0,
+      costs: emptyStudyCosts(),
+    };
+    days.set(day, dayRow);
+  }
+  dayRow.runs += 1;
+  if (entry.mode === "live") dayRow.live += 1;
+  if (priced) dayRow.estimatedSpendUsd += entry.estimatedCostUsd as number;
+  else dayRow.unpricedRuns += 1;
+  addStudyCosts(dayRow.costs, costs);
 }
 
 export async function computeStats(
@@ -188,7 +254,7 @@ export async function computeStats(
     verdicts: {},
     costs: emptyStudyCosts(),
   };
-  const labs = new Map<string, StatsLabRow & { durations: number[]; runCosts: number[] }>();
+  const labs = new Map<string, LabAccumulator>();
   const days = new Map<string, StatsDayRow>();
   const costsByRun: StudyCostRow[] = [];
 
@@ -210,68 +276,17 @@ export async function computeStats(
     if (entry.verdict !== undefined)
       totals.verdicts[entry.verdict] = (totals.verdicts[entry.verdict] ?? 0) + 1;
 
-    const labId = entry.lab?.id ?? "(no lab)";
-    let row = labs.get(labId);
-    if (row === undefined) {
-      row = {
-        lab: labId,
-        runs: 0,
-        live: 0,
-        dryRun: 0,
-        judged: 0,
-        passed: 0,
-        durationSamples: 0,
-        costSamples: 0,
-        unpricedRuns: 0,
-        participants: emptyParticipants(),
-        durations: [],
-        costs: emptyStudyCosts(),
-        runCosts: [],
-      };
-      labs.set(labId, row);
-    }
-    row.runs += 1;
-    if (entry.mode === "live") row.live += 1;
-    if (entry.mode === "dry-run") row.dryRun += 1;
-    if (entry.verdict !== undefined) {
-      row.judged += 1;
-      if (entry.verdict === "pass") row.passed += 1;
-    }
-    if (entry.mode === "live" && entry.durationMs !== undefined)
-      row.durations.push(entry.durationMs);
-    if (priced) row.runCosts.push(entry.estimatedCostUsd as number);
-    else row.unpricedRuns += 1;
-    addParticipants(row.participants, entry);
-    addStudyCosts(row.costs, accounting.costs);
-
-    const at = entryTime(entry);
-    const day = at === undefined ? "(undated)" : at.slice(0, 10);
-    let dayRow = days.get(day);
-    if (dayRow === undefined) {
-      dayRow = {
-        day,
-        runs: 0,
-        live: 0,
-        estimatedSpendUsd: 0,
-        unpricedRuns: 0,
-        costs: emptyStudyCosts(),
-      };
-      days.set(day, dayRow);
-    }
-    dayRow.runs += 1;
-    if (entry.mode === "live") dayRow.live += 1;
-    if (priced) dayRow.estimatedSpendUsd += entry.estimatedCostUsd as number;
-    else dayRow.unpricedRuns += 1;
-    addStudyCosts(dayRow.costs, accounting.costs);
+    addToLabRow(labs, entry, priced, accounting.costs);
+    addToDayRow(days, entry, priced, accounting.costs);
   }
 
   const labRows: StatsLabRow[] = [...labs.values()]
     .map(({ durations, runCosts, ...row }) => ({
       ...row,
-      ...(row.judged === 0 ? {} : { passRate: round(row.passed / row.judged) }),
+      ...(row.judged === 0 ? {} : { passRate: round6(row.passed / row.judged) }),
       ...(durations.length === 0 ? {} : { medianDurationMs: Math.round(median(durations)!) }),
       durationSamples: durations.length,
-      ...(runCosts.length === 0 ? {} : { medianCostUsd: round(median(runCosts)!) }),
+      ...(runCosts.length === 0 ? {} : { medianCostUsd: round6(median(runCosts)!) }),
       costSamples: runCosts.length,
     }))
     .sort((a, b) => b.runs - a.runs || a.lab.localeCompare(b.lab));
@@ -282,10 +297,10 @@ export async function computeStats(
     cwd,
     ...(options.since === undefined ? {} : { since: options.since }),
     ...(options.lab === undefined ? {} : { lab: options.lab }),
-    totals: { ...totals, estimatedSpendUsd: round(totals.estimatedSpendUsd) },
+    totals: { ...totals, estimatedSpendUsd: round6(totals.estimatedSpendUsd) },
     labs: labRows,
     days: [...days.values()]
-      .map((row) => ({ ...row, estimatedSpendUsd: round(row.estimatedSpendUsd) }))
+      .map((row) => ({ ...row, estimatedSpendUsd: round6(row.estimatedSpendUsd) }))
       .sort((a, b) => a.day.localeCompare(b.day)),
     costsByRun,
     unreadable: index.unreadable,

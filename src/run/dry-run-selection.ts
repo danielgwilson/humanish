@@ -3,7 +3,7 @@ import { parseResolvedPersona, type ResolvedPersona } from "../lab/persona.js";
 import { digestText } from "../evidence/redaction.js";
 import type { PreparedSelectedOutputDirectory } from "./selected-output-paths.js";
 import type { RunBundle } from "./bundle.js";
-import { readImplicitProjectFile } from "./locate.js";
+import { readImplicitProjectFile } from "./project.js";
 import { escapeRegExp } from "./primitives.js";
 
 const builtinPersona = {

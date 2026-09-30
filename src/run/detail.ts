@@ -15,6 +15,7 @@ import path from "node:path";
 import { estimateActorCostForExecution } from "./pricing.js";
 
 import { resolveRunPath } from "./locate.js";
+import { RUN_BUNDLE_FILE } from "./bundle.js";
 import { readContainedRegularFile } from "./selected-output-paths.js";
 import { isPathInside, resolvePhysicalCwd } from "./paths.js";
 
@@ -186,7 +187,7 @@ export async function readRunDetail(cwdInput: string, runId: string): Promise<Ru
   let bundle: { streams?: StreamFacts[]; runId?: string };
   try {
     // A contained read: a run.json swapped for a symlink or hardlink after resolve is refused.
-    const raw = await readContainedRegularFile(runPaths, "run.json");
+    const raw = await readContainedRegularFile(runPaths, RUN_BUNDLE_FILE);
     if (raw === null) return null;
     const parsed: unknown = JSON.parse(raw.toString("utf8"));
     if (parsed === null || typeof parsed !== "object") return null;

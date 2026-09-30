@@ -1,3 +1,4 @@
+import { round6 } from "./pricing.js";
 import { bindExistingRunArtifactPaths } from "./paths.js";
 import type { RunIndexEntry } from "./run-index.js";
 import { contradictsAccountBilling } from "./verify-costs.js";
@@ -5,6 +6,7 @@ import { STUDY_EVIDENCE_LIMITS } from "../analysis/evidence.js";
 import { readBoundedStudyFile } from "../analysis/study-files.js";
 import { readAutomaticStudyAnalysisAccounting } from "../analysis/job.js";
 import { readStudyAnalysisAccountingRecords } from "../analysis/store.js";
+import { RUN_BUNDLE_FILE } from "./bundle.js";
 
 /** Additive accounting for retained attempts. Null means no estimate, never an invented zero. */
 export interface StudyCosts {
@@ -47,9 +49,8 @@ export function emptyStudyCosts(): StudyCosts {
 
 const isKnownUsd = (value: unknown): value is number =>
   typeof value === "number" && Number.isFinite(value) && value >= 0;
-const round = (value: number): number => Math.round(value * 1e6) / 1e6;
 function sumKnown(a: number | null, b: number | null): number | null {
-  return a === null && b === null ? null : round((a ?? 0) + (b ?? 0));
+  return a === null && b === null ? null : round6((a ?? 0) + (b ?? 0));
 }
 export function addStudyCosts(into: StudyCosts, next: StudyCosts): void {
   for (const key of ["estimatedTotalUsd", "runEstimatedUsd", "analysisEstimatedUsd"] as const) {
@@ -77,7 +78,7 @@ export async function readStudyCosts(cwd: string, entry: RunIndexEntry): Promise
     const prepared = await bindExistingRunArtifactPaths(cwd, entry.runId);
     const bytes = await readBoundedStudyFile(
       prepared,
-      "run.json",
+      RUN_BUNDLE_FILE,
       STUDY_EVIDENCE_LIMITS.sourceBytes,
     );
     let bundle = null;

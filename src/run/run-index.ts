@@ -26,6 +26,7 @@ import {
   type RunLiveness,
   type RunStatusRecord,
 } from "./status.js";
+import { RUN_BUNDLE_FILE } from "./bundle.js";
 
 const RUN_INDEX_SCHEMA = "humanish.run-index.v1";
 
@@ -265,7 +266,7 @@ export async function readRunIndex(
   for (const runId of runIds) {
     const runDir = path.join(runsRoot, runId);
     const statusFile = path.join(runDir, RUN_STATUS_FILE);
-    const bundleFile = path.join(runDir, "run.json");
+    const bundleFile = path.join(runDir, RUN_BUNDLE_FILE);
 
     // Cheapest source first: the status record. Its stat is the cache key, so a live run whose
     // record ticks every 5s re-reads 586 bytes and nothing else.

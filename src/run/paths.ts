@@ -1,6 +1,8 @@
 import { lstat, mkdir, readdir, realpath, rmdir } from "node:fs/promises";
 import path from "node:path";
 
+import { isNodeError } from "./primitives.js";
+
 export const RUNS_RELATIVE_ROOT = path.join(".humanish", "runs");
 const LATEST_RUN_RELATIVE_PATH = path.join(RUNS_RELATIVE_ROOT, "latest.json");
 
@@ -19,7 +21,7 @@ export interface PreparedRunArtifactPaths extends RunArtifactPaths {
   readonly runsRootIdentity: FileIdentity;
 }
 
-interface FileIdentity {
+export interface FileIdentity {
   readonly birthtimeNs: bigint;
   readonly dev: bigint;
   readonly ino: bigint;
@@ -330,16 +332,16 @@ function isSafeStorageSegment(segment: string): boolean {
   );
 }
 
-function isNodeError(error: unknown): error is NodeJS.ErrnoException {
-  return error instanceof Error && "code" in error;
-}
-
-async function assertRegularFileOrMissing(filePath: string): Promise<void> {
+/** Missing is fine; anything present must be a single-link regular file. */
+export async function assertRegularFileOrMissing(
+  filePath: string,
+  subject = "humanish storage files",
+): Promise<void> {
   try {
     const stats = await lstat(filePath);
     if (stats.isSymbolicLink() || !stats.isFile() || stats.nlink > 1) {
       throw new Error(
-        "humanish storage files must be single-link regular files, not symbolic links or hardlinks.",
+        `${subject} must be single-link regular files, not symbolic links or hardlinks.`,
       );
     }
   } catch (error) {
@@ -417,7 +419,12 @@ async function capturePreparedRunArtifactPaths(
   });
 }
 
-async function assertDirectoryIdentity(directory: string, identity: FileIdentity): Promise<void> {
+/** The directory is still the physical, non-symlink directory captured as `identity`. */
+export async function assertDirectoryIdentity(
+  directory: string,
+  identity: FileIdentity,
+  changedMessage = "Prepared humanish run storage identity changed.",
+): Promise<void> {
   const stats = await lstat(directory, { bigint: true });
   if (
     stats.isSymbolicLink() ||
@@ -427,7 +434,7 @@ async function assertDirectoryIdentity(directory: string, identity: FileIdentity
     stats.ino !== identity.ino ||
     (await realpath(directory)) !== directory
   ) {
-    throw new Error("Prepared humanish run storage identity changed.");
+    throw new Error(changedMessage);
   }
 }
 

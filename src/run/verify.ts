@@ -4,7 +4,7 @@ import { loadStudyAnalysis } from "../analysis/load.js";
 import { studyAnalysisSharingProblems } from "../analysis/sharing.js";
 import { containsSensitive } from "../evidence/redaction.js";
 import { validatePreparedRunArtifactPaths, type PreparedRunArtifactPaths } from "./paths.js";
-import { RUN_BUNDLE_SCHEMA, type RunBundle } from "./bundle.js";
+import { RUN_BUNDLE_FILE, RUN_BUNDLE_SCHEMA, type RunBundle } from "./bundle.js";
 import { isCleanupResult, isRunBundle } from "./guards.js";
 import { readRunJsonIfExists, readRunTextIfExists, resolveRunPath } from "./locate.js";
 import { isRecord } from "./primitives.js";
@@ -134,8 +134,8 @@ export async function verifyResolvedRun(
     };
   }
 
-  const bundlePath = path.join(runPaths.absoluteRunRoot, "run.json");
-  const bundle = await readRunJsonIfExists(runPaths, "run.json");
+  const bundlePath = path.join(runPaths.absoluteRunRoot, RUN_BUNDLE_FILE);
+  const bundle = await readRunJsonIfExists(runPaths, RUN_BUNDLE_FILE);
   const cleanupJson = await readRunJsonIfExists(runPaths, "cleanup.json");
   const reviewJson = await readRunJsonIfExists(runPaths, "review.json");
   const reviewMarkdown = await readRunTextIfExists(runPaths, "review.md");

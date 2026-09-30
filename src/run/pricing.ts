@@ -286,8 +286,7 @@ export function estimateAllocatedDesktopCost(
 }
 
 /** Round a USD figure to 6 decimals so a float-accumulated total never carries spurious
- *  precision. This mirrors the SPIRIT of the terminal ledger's private roundUsd (6dp) without
- *  importing it — pricing stays a standalone pure module. */
+ *  precision. */
 export function round6(n: number): number {
   return Math.round(n * 1e6) / 1e6;
 }

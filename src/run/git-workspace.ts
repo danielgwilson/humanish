@@ -2,6 +2,8 @@ import { constants } from "node:fs";
 import { lstat, open, readdir, realpath } from "node:fs/promises";
 import path from "node:path";
 
+import { isNodeError } from "./primitives.js";
+
 const GIT_METADATA_INSPECTION_FAILED_NOTE = "Git metadata could not be inspected safely.";
 const GIT_METADATA_CONTAINMENT_FAILED_NOTE = "Git metadata failed containment validation.";
 
@@ -540,8 +542,4 @@ function unsafeInspection(
   note: typeof GIT_METADATA_INSPECTION_FAILED_NOTE | typeof GIT_METADATA_CONTAINMENT_FAILED_NOTE,
 ): GitWorkspaceInspection {
   return { note, status: "unsafe", worktreeRoot };
-}
-
-function isNodeError(error: unknown): error is NodeJS.ErrnoException {
-  return error instanceof Error && "code" in error;
 }

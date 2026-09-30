@@ -5,7 +5,7 @@
 
 import { buildObserverData } from "../observer/data.js";
 import { renderObserver, type ObserverResult } from "../observer/render.js";
-import { PUBLIC_TARGET_CWD, type RunBundle } from "./bundle.js";
+import { RUN_BUNDLE_FILE, PUBLIC_TARGET_CWD, type RunBundle } from "./bundle.js";
 import { type RunPointer } from "./results.js";
 import {
   createRunArtifactPaths,
@@ -225,7 +225,7 @@ export async function runScope<T>(
     ): Promise<void> => {
       await validatePreparedRunArtifactPaths(paths);
       const publicBundle: RunBundle = { ...bundle, cwd: PUBLIC_TARGET_CWD };
-      await writeContainedOutputFile(paths, "run.json", json(publicBundle), "utf8");
+      await writeContainedOutputFile(paths, RUN_BUNDLE_FILE, json(publicBundle), "utf8");
       await afterBundle(publicBundle);
       await writeContainedOutputFile(paths, "review.json", json(publicBundle.review), "utf8");
       await writeContainedOutputFile(

@@ -1,6 +1,7 @@
 import { describeTokenUsage } from "./token-usage.js";
 import type { ActorTokenUsage } from "../../actors/contract.js";
 import type { LabScenarioCaps } from "../../lab/types.js";
+import { round6 } from "../../run/pricing.js";
 import { COST_CATEGORIES, type CostCategory } from "../../run/terminal-contract.js";
 import type { CostLine, NoSpendProof, TerminalCostLedger } from "./types.js";
 
@@ -76,7 +77,7 @@ export function buildCostLedger(args: {
     schema: "humanish.terminal-cost-ledger.v1",
     currency: "usd",
     lines,
-    knownTotalUsd: roundUsd(knownTotalUsd),
+    knownTotalUsd: round6(knownTotalUsd),
     fullyMeasured,
   };
 }
@@ -198,9 +199,4 @@ export function evaluateCapsAgainstLedger(
     }
   }
   return { ok: true };
-}
-
-/** Round a USD sum to 6 decimals so a float-accumulated total never carries spurious precision. */
-function roundUsd(value: number): number {
-  return Math.round(value * 1_000_000) / 1_000_000;
 }

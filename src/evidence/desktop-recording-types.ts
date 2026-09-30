@@ -3,13 +3,16 @@ import { z } from "zod";
 /** Leaves room for Chromium on the local guest's shared 512 MiB state disk. */
 export const DESKTOP_RECORDING_MAX_BYTES = 128 * 1024 * 1024;
 
+const DESKTOP_RECORDING_AUDIO_SOURCES = ["microphone-input", "speaker-output"] as const;
+export type DesktopRecordingAudioSource = (typeof DESKTOP_RECORDING_AUDIO_SOURCES)[number];
+
 export const desktopRecordingMetadataSchema = z.strictObject({
   mimeType: z.literal("video/mp4"),
   startedAt: z.iso.datetime(),
   durationMs: z.number().finite().positive(),
   bytes: z.number().int().positive().max(DESKTOP_RECORDING_MAX_BYTES),
   audioSources: z
-    .array(z.enum(["microphone-input", "speaker-output"]))
+    .array(z.enum(DESKTOP_RECORDING_AUDIO_SOURCES))
     .max(2)
     .refine((values) => new Set(values).size === values.length),
   complete: z.boolean(),

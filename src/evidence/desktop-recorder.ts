@@ -4,10 +4,9 @@ import { isAbsolute, normalize } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import {
   DESKTOP_RECORDING_MAX_BYTES,
+  type DesktopRecordingAudioSource,
   type DesktopRecordingMetadata,
 } from "./desktop-recording-types.js";
-
-export type DesktopRecordingAudioSource = "microphone-input" | "speaker-output";
 
 const PULSE_DEVICE: Readonly<Record<DesktopRecordingAudioSource, string>> = Object.freeze({
   "microphone-input": "humanish_mic.monitor",

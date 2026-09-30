@@ -3,7 +3,7 @@ import { realpathSync } from "node:fs";
 import path from "node:path";
 import { PNG } from "pngjs";
 
-import { SCREENSHOT_MAX_SOURCE_PIXELS, readPngDeclaredDimensions } from "./screenshot-image.js";
+import { SCREENSHOT_MAX_SOURCE_PIXELS, readPngDeclaredDimensions } from "./image.js";
 
 // Single source of truth for public-safety redaction patterns. Producers and the verify gate
 // both use these, so the denylist cannot drift between them. See docs/contracts/policy.md for
