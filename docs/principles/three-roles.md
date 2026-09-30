@@ -16,7 +16,7 @@ adjust.
 **The stakeholder** watches. In a real study they sit behind the glass in the
 viewing room; here they open Observer, `watch`, or `serve`. They want none of the
 protocol. They want to know what happened, where people got stuck, how bad it is,
-and whether anyone succeeded — moments, severity, and the denominator.
+and whether anyone succeeded: moments, severity, and the denominator.
 
 **The participant** is the persona. They have a goal, limited patience, and their
 own idea of how the product works. They are the subject of the study, never its
@@ -24,20 +24,19 @@ instrument.
 
 ## Why the distinction earns its place
 
-Two of humanish's worst bugs were category errors between these roles, not
-missing features.
+Two of humanish's worst bugs were category errors between these roles.
 
 **Fusing the participant into the harness** made abandonment look like a
-malfunction. `gave_up` mapped to a `failed` status, so a persona giving up — the
-single most valuable thing a usability study produces — dragged the run verdict
-red as though the instrument had broken. A participant abandoning a task is a
+malfunction. `gave_up` mapped to a `failed` status, so a persona giving up, which is what a
+usability study exists to catch, dragged the run verdict red as though the
+instrument had broken. A participant abandoning a task is a
 finding. The harness only fails when the harness fails.
 
 **Fusing the researcher's question with the stakeholder's** put one pass/fail
 verdict on a bundle that answers two different questions. "Is this evidence
 trustworthy?" is genuinely pass/fail: did the harness do what it claimed, with a
 real sandbox, real actions, and cost lines nobody forged. "What did we learn?" has
-no pass/fail at all — asking whether a study passed is a category error. Because
+no pass/fail at all; asking whether a study passed is a category error. Because
 there was one slot, a session that stopped early had to be called `passed`, and a
 truncated study was reported as a green one.
 
@@ -55,14 +54,14 @@ When adding a surface, a default, or a verdict, ask:
   forms conclusions from vivid moments; that is the classic failure of the viewing
   room, and it is why researchers synthesize rather than letting the room decide.
   Anything shown to a stakeholder carries its count and its confidence, or it
-  becomes a machine for manufacturing certainty from n=1.
+  invites certainty from n=1.
 - **Would a researcher recognize this as a study?** Budgets are recruiting
-  decisions made once, up front — how many participants can we afford. No
-  researcher has ever ended a session because it got expensive.
+  decisions made once, up front: how many participants can we afford. Researchers
+  do not end a session because it got expensive.
 
 ## Related
 
-- [invariants-and-defaults.md](invariants-and-defaults.md) — fail-closed rules and
+- [invariants-and-defaults.md](invariants-and-defaults.md): fail-closed rules and
   what defaults are allowed to assume
-- [actor-fidelity.md](actor-fidelity.md) — what a claim about persona realism can
+- [actor-fidelity.md](actor-fidelity.md): what a claim about persona realism can
   and cannot mean
