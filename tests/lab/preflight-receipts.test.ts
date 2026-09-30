@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
+import { existsSync, readlinkSync } from "node:fs";
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { hostname, tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -115,6 +116,56 @@ function fakeProvider(behavior: {
 
 async function journals(cwd: string): Promise<string[]> {
   return readdir(path.join(cwd, ".humanish", "preflight")).catch(() => []);
+}
+
+/** A process id that has exited. */
+async function deadPid(): Promise<number> {
+  const child = spawn(process.execPath, ["-e", ""]);
+  await new Promise((resolve) => child.on("exit", resolve));
+  return child.pid!;
+}
+
+/** A journal with one receipt and an owner record; the owner defaults to this host and namespace. */
+async function writeJournal(
+  cwd: string,
+  owner: {
+    pid: number;
+    hostname?: string;
+    pidNamespace?: string;
+    startTicks?: string;
+    createdAt?: string;
+    leaseMs?: number;
+  },
+): Promise<string> {
+  const id = `preflight-${owner.pid}-test-${Math.random().toString(16).slice(2, 10)}`;
+  const dir = path.join(cwd, ".humanish", "preflight", id);
+  await mkdir(dir, { recursive: true });
+  let namespace: string | undefined;
+  try {
+    namespace = readlinkSync("/proc/self/ns/pid");
+  } catch {
+    namespace = undefined;
+  }
+  const createdAt = owner.createdAt ?? new Date().toISOString();
+  const leaseMs = owner.leaseMs ?? 30 * 60_000;
+  await writeFile(
+    path.join(dir, "owner.json"),
+    JSON.stringify({
+      hostname: owner.hostname ?? hostname(),
+      ...((owner.pidNamespace ?? namespace) === undefined
+        ? {}
+        : { pidNamespace: owner.pidNamespace ?? namespace }),
+      pid: owner.pid,
+      ...(owner.startTicks === undefined ? {} : { startTicks: owner.startTicks }),
+      createdAt,
+      leaseMs,
+    }),
+  );
+  await writeFile(
+    path.join(dir, SANDBOX_RECEIPTS_ARTIFACT),
+    `${JSON.stringify({ at: createdAt, laneId: id, provider: "e2b", sandboxId: "sb-journaled", timeoutMs: leaseMs })}\n`,
+  );
+  return id;
 }
 
 describe("lab preflight receipts", () => {
@@ -235,13 +286,7 @@ describe("lab preflight receipts", () => {
   });
 
   it("leaves a journal alone while its probe may still be running", async () => {
-    const id = `preflight-${process.pid}-live-probe`;
-    const dir = path.join(cwd, ".humanish", "preflight", id);
-    await mkdir(dir, { recursive: true });
-    await writeFile(
-      path.join(dir, SANDBOX_RECEIPTS_ARTIFACT),
-      `${JSON.stringify({ at: "t", laneId: id, provider: "e2b", sandboxId: "sb-live" })}\n`,
-    );
+    const id = await writeJournal(cwd, { pid: process.pid });
     const provider = fakeProvider({});
 
     const reclaim = await reclaimPreflightSandboxes(cwd, {
@@ -253,6 +298,60 @@ describe("lab preflight receipts", () => {
     expect(provider.killed).toEqual([]);
     expect(await journals(cwd)).toEqual([id]);
   });
+
+  it("leaves a journal from another pid namespace alone even when its pid is not running here", async () => {
+    // A probe in a container writes its container pid; the host sees no such process.
+    const pid = await deadPid();
+    const id = await writeJournal(cwd, { pid, pidNamespace: "pid:[1]" });
+    const provider = fakeProvider({});
+
+    const reclaim = await reclaimPreflightSandboxes(cwd, {
+      loadModule: async () => provider.module,
+    });
+
+    expect(provider.killed).toEqual([]);
+    expect(reclaim.warnings.join("\n")).toContain("another host or pid namespace");
+    expect(await journals(cwd)).toEqual([id]);
+  });
+
+  it("reclaims a journal whose lease has elapsed, whoever opened it", async () => {
+    const twoHoursAgo = new Date(Date.now() - 2 * 3_600_000).toISOString();
+    await writeJournal(cwd, {
+      pid: process.pid,
+      hostname: "another-host",
+      createdAt: twoHoursAgo,
+      leaseMs: 5 * 60_000,
+    });
+    const provider = fakeProvider({});
+
+    const reclaim = await reclaimPreflightSandboxes(cwd, {
+      loadModule: async () => provider.module,
+    });
+
+    expect(provider.killed).toEqual(["sb-journaled"]);
+    expect(reclaim.ok).toBe(true);
+    expect(await journals(cwd)).toEqual([]);
+  });
+
+  it.skipIf(!existsSync("/proc/self/stat"))(
+    "reclaims a journal whose pid now belongs to another process",
+    async () => {
+      const other = spawn(process.execPath, ["-e", "setTimeout(() => {}, 30000)"]);
+      try {
+        await writeJournal(cwd, { pid: other.pid!, startTicks: "1" });
+        const provider = fakeProvider({});
+
+        const reclaim = await reclaimPreflightSandboxes(cwd, {
+          loadModule: async () => provider.module,
+        });
+
+        expect(provider.killed).toEqual(["sb-journaled"]);
+        expect(reclaim.ok).toBe(true);
+      } finally {
+        other.kill("SIGKILL");
+      }
+    },
+  );
 
   it("refuses --preflight together with --run", async () => {
     const program = createProgram({

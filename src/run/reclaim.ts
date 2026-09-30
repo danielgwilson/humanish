@@ -14,7 +14,7 @@ import {
 import {
   discardPreflightJournal,
   listPreflightJournals,
-  preflightInUse,
+  preflightReclaimDecision,
 } from "./preflight-receipts.js";
 import { resolveRunPath } from "./locate.js";
 import {
@@ -123,7 +123,7 @@ export async function reclaimRunSandboxes(
  * Kill the sandboxes left by interrupted `humanish lab preflight` probes. A probe journals under
  * .humanish/preflight/<probe-id>/ and removes the journal after a confirmed kill, so what is left
  * belongs to a probe that died or could not confirm its teardown. A journal whose probe may still
- * be running (its process is alive and it was not marked abandoned) is left alone.
+ * be running is left alone with the reason (see preflightReclaimDecision).
  */
 export async function reclaimPreflightSandboxes(
   cwd: string,
@@ -140,10 +140,9 @@ export async function reclaimPreflightSandboxes(
     );
   }
   for (const journal of journals) {
-    if (await preflightInUse(journal)) {
-      warnings.push(
-        `Preflight ${journal.id} is still running in process ${journal.pid}; left alone.`,
-      );
+    const decision = await preflightReclaimDecision(journal, Date.now());
+    if (!decision.reclaim) {
+      warnings.push(`Preflight ${journal.id} left alone: ${decision.reason}.`);
       continue;
     }
     const reclaimed = await reclaimJournal(journal.root, hooks);

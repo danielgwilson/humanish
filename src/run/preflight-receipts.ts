@@ -1,12 +1,14 @@
 // Sandbox receipts for `humanish lab preflight`. A probe has no run directory, so it journals its
 // sandbox under .humanish/preflight/<probe-id>/ before any work runs in it. A confirmed kill
 // removes the journal. A journal that stays means the probe's sandbox may still be running, and
-// `humanish reclaim --preflight` kills it by the recorded id.
+// `humanish reclaim --preflight` kills it by the recorded id once it is safe to.
 import { randomBytes } from "node:crypto";
+import { existsSync, readFileSync, readlinkSync } from "node:fs";
 import { readdir, rmdir, unlink } from "node:fs/promises";
+import { hostname } from "node:os";
 import path from "node:path";
 
-import { SANDBOX_RECEIPTS_ARTIFACT } from "./sandbox-receipts.js";
+import { parseSandboxReceipts, SANDBOX_RECEIPTS_ARTIFACT } from "./sandbox-receipts.js";
 import {
   assertPreparedSelectedOutputDirectory,
   bindExistingManagedHumanishOutputDirectory,
@@ -20,22 +22,97 @@ const PREFLIGHT_DIR = "preflight";
 // Written when the probe finished without confirming its kill: the owner no longer holds the
 // sandbox, so reclaim may act even while the owning process lives on.
 const ABANDONED_MARKER = "abandoned";
-// The owning process id is part of the name, so reclaim can leave a probe that is still running.
-const JOURNAL_NAME = /^preflight-(\d+)-[a-z0-9-]+$/;
+const OWNER_FILE = "owner.json";
+const JOURNAL_NAME = /^preflight-\d+-[a-z0-9-]+$/;
+
+/**
+ * Who opened a journal. A pid means nothing outside its host and pid namespace (a probe in a
+ * container writing to a bind-mounted checkout has a pid the host cannot see), so reclaim trusts
+ * a dead pid only when both match its own.
+ */
+interface PreflightOwner {
+  hostname: string;
+  /** `pid:[inode]` from /proc/self/ns/pid, where the platform has one. */
+  pidNamespace?: string;
+  pid: number;
+  /** Start time in clock ticks since boot (/proc/<pid>/stat), which tells a reused pid apart. */
+  startTicks?: string;
+  createdAt: string;
+  /** The probe's server-side timeout. */
+  leaseMs: number;
+}
 
 export interface PreflightJournal {
   id: string;
-  /** The process that ran the probe. */
-  pid: number;
   root: PreparedSelectedOutputDirectory;
+  /** Absent when the owner record is missing or unreadable. */
+  owner?: PreflightOwner;
 }
 
-/** Create this process's journal directory for one probe. */
-export async function openPreflightJournal(cwd: string): Promise<PreflightJournal> {
+function ownerContext(): Pick<PreflightOwner, "hostname" | "pidNamespace"> {
+  let pidNamespace: string | undefined;
+  try {
+    pidNamespace = readlinkSync("/proc/self/ns/pid");
+  } catch {
+    // No procfs: this platform has no pid namespaces to tell apart.
+  }
+  return { hostname: hostname(), ...(pidNamespace === undefined ? {} : { pidNamespace }) };
+}
+
+/** The process's start ticks; null when procfs says it is gone; undefined without procfs. */
+function startTicks(pid: number): string | null | undefined {
+  if (!existsSync("/proc/self/stat")) return undefined;
+  try {
+    const stat = readFileSync(`/proc/${pid}/stat`, "utf8");
+    // Field 22; the command name before it is parenthesized and may contain spaces.
+    return stat.slice(stat.lastIndexOf(")") + 2).split(" ")[19] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Create this process's journal directory for one probe with the given lease. */
+export async function openPreflightJournal(
+  cwd: string,
+  leaseMs: number,
+): Promise<PreflightJournal> {
   const stamp = new Date().toISOString().replace(/[:.]/g, "-").toLowerCase();
   const id = `preflight-${process.pid}-${stamp}-${randomBytes(4).toString("hex")}`;
   const root = await prepareManagedHumanishOutputDirectory(cwd, PREFLIGHT_DIR, id);
-  return { id, pid: process.pid, root };
+  const ticks = startTicks(process.pid);
+  const owner: PreflightOwner = {
+    ...ownerContext(),
+    pid: process.pid,
+    ...(typeof ticks === "string" ? { startTicks: ticks } : {}),
+    createdAt: new Date().toISOString(),
+    leaseMs,
+  };
+  await writeContainedOutputFile(root, OWNER_FILE, `${JSON.stringify(owner)}\n`, "utf8");
+  return { id, root, owner };
+}
+
+function parseOwner(bytes: Buffer | null): PreflightOwner | undefined {
+  if (bytes === null) return undefined;
+  try {
+    const value = JSON.parse(bytes.toString("utf8")) as Partial<PreflightOwner>;
+    if (
+      typeof value.hostname !== "string" ||
+      typeof value.pid !== "number" ||
+      typeof value.createdAt !== "string" ||
+      typeof value.leaseMs !== "number"
+    )
+      return undefined;
+    return {
+      hostname: value.hostname,
+      ...(typeof value.pidNamespace === "string" ? { pidNamespace: value.pidNamespace } : {}),
+      pid: value.pid,
+      ...(typeof value.startTicks === "string" ? { startTicks: value.startTicks } : {}),
+      createdAt: value.createdAt,
+      leaseMs: value.leaseMs,
+    };
+  } catch {
+    return undefined;
+  }
 }
 
 /** Every probe journal left under .humanish/preflight, oldest first. */
@@ -45,10 +122,11 @@ export async function listPreflightJournals(cwd: string): Promise<PreflightJourn
   const journals: PreflightJournal[] = [];
   const entries = await readdir(parent.physicalPath, { withFileTypes: true });
   for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
-    const match = JOURNAL_NAME.exec(entry.name);
-    if (!entry.isDirectory() || !match) continue;
+    if (!entry.isDirectory() || !JOURNAL_NAME.test(entry.name)) continue;
     const root = await bindExistingManagedHumanishOutputDirectory(cwd, PREFLIGHT_DIR, entry.name);
-    if (root) journals.push({ id: entry.name, pid: Number(match[1]), root });
+    if (!root) continue;
+    const owner = parseOwner(await readContainedRegularFile(root, OWNER_FILE));
+    journals.push({ id: entry.name, root, ...(owner === undefined ? {} : { owner }) });
   }
   return journals;
 }
@@ -58,33 +136,75 @@ export async function abandonPreflightJournal(journal: PreflightJournal): Promis
   await writeContainedOutputFile(journal.root, ABANDONED_MARKER, "", "utf8");
 }
 
+/** When the journal's sandboxes are gone by their own timeout, if that can be known. */
+function leaseEndsAt(journal: PreflightJournal, receipts: string | null): number | undefined {
+  const parsed = receipts === null ? [] : parseSandboxReceipts(receipts);
+  if (parsed.length > 0) {
+    const ends = parsed.map((receipt) =>
+      receipt.timeoutMs === undefined ? Number.NaN : Date.parse(receipt.at) + receipt.timeoutMs,
+    );
+    if (ends.every(Number.isFinite)) return Math.max(...ends);
+  }
+  if (journal.owner === undefined) return undefined;
+  const created = Date.parse(journal.owner.createdAt);
+  return Number.isFinite(created) ? created + journal.owner.leaseMs : undefined;
+}
+
 /**
- * Whether a probe may still be using its sandbox: the journal is not marked abandoned and the
- * process that opened it is alive on this machine.
+ * Whether reclaim may kill a journal's sandboxes: the journal was abandoned, its lease has fully
+ * elapsed, or its owner ran in this host and pid namespace and is gone (or its pid now belongs to
+ * another process). Anything else may be a live probe, and the reason says why it was left.
  */
-export async function preflightInUse(journal: PreflightJournal): Promise<boolean> {
-  if ((await readContainedRegularFile(journal.root, ABANDONED_MARKER)) !== null) return false;
-  if (journal.pid === process.pid) return true;
+export async function preflightReclaimDecision(
+  journal: PreflightJournal,
+  nowMs: number,
+): Promise<{ reclaim: true } | { reclaim: false; reason: string }> {
+  if ((await readContainedRegularFile(journal.root, ABANDONED_MARKER)) !== null)
+    return { reclaim: true };
+  const receipts = await readContainedRegularFile(journal.root, SANDBOX_RECEIPTS_ARTIFACT);
+  const endsAt = leaseEndsAt(journal, receipts === null ? null : receipts.toString("utf8"));
+  if (endsAt !== undefined && nowMs > endsAt) return { reclaim: true };
+  const until = endsAt === undefined ? "" : `; its lease ends at ${new Date(endsAt).toISOString()}`;
+  const owner = journal.owner;
+  if (owner === undefined)
+    return { reclaim: false, reason: `its owner record is missing or unreadable${until}` };
+  const here = ownerContext();
+  if (owner.hostname !== here.hostname || owner.pidNamespace !== here.pidNamespace)
+    return {
+      reclaim: false,
+      reason: `it was opened on host ${owner.hostname} in another host or pid namespace, where this process cannot see whether it is still running${until}`,
+    };
+  const running = `process ${owner.pid} is still running${until}`;
+  if (owner.pid === process.pid) return { reclaim: false, reason: running };
+  const ticks = startTicks(owner.pid);
+  if (ticks === null) return { reclaim: true };
+  if (typeof ticks === "string") {
+    // The pid now belongs to a different process: the owner is gone.
+    return owner.startTicks !== undefined && ticks !== owner.startTicks
+      ? { reclaim: true }
+      : { reclaim: false, reason: running };
+  }
   try {
-    process.kill(journal.pid, 0);
-    return true;
+    process.kill(owner.pid, 0);
+    return { reclaim: false, reason: running };
   } catch (error) {
     // EPERM: the process exists but belongs to someone else.
-    return (error as NodeJS.ErrnoException).code === "EPERM";
+    return (error as NodeJS.ErrnoException).code === "EPERM"
+      ? { reclaim: false, reason: running }
+      : { reclaim: true };
   }
 }
 
 /**
- * Remove a journal whose sandbox is confirmed gone. Only the receipts file and the named files
- * are removed; a directory holding anything else stays, so nothing humanish did not write there
- * is deleted.
+ * Remove a journal whose sandbox is confirmed gone. Only the files humanish writes there and the
+ * named files are removed; a directory holding anything else stays.
  */
 export async function discardPreflightJournal(
   journal: PreflightJournal,
   alsoRemove: readonly string[] = [],
 ): Promise<void> {
   await assertPreparedSelectedOutputDirectory(journal.root);
-  for (const name of [SANDBOX_RECEIPTS_ARTIFACT, ABANDONED_MARKER, ...alsoRemove]) {
+  for (const name of [SANDBOX_RECEIPTS_ARTIFACT, ABANDONED_MARKER, OWNER_FILE, ...alsoRemove]) {
     await unlink(path.join(journal.root.physicalPath, name)).catch(
       (error: NodeJS.ErrnoException) => {
         if (error.code !== "ENOENT") throw error;

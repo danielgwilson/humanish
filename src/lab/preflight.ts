@@ -422,7 +422,7 @@ async function withPreflightSandbox(
   // can kill the probe if this process dies before the finally block does.
   let journal: PreflightJournal | undefined;
   try {
-    journal = await openPreflightJournal(ctx.cwd);
+    journal = await openPreflightJournal(ctx.cwd, timeoutMs);
   } catch (error: unknown) {
     ctx.warnings.push(
       `Preflight receipt journal could not be created (${compactError(error)}); if this process dies, only the probe's ${timeoutMs} ms timeout ends its sandbox.`,
