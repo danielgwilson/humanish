@@ -5,6 +5,7 @@ import {
   agentsSection,
   firstRunGuidance,
   starterActorFor,
+  starterLocalAgentFor,
   type FirstRunEnvironment,
 } from "../cli/first-run-path.js";
 import { detectLocalAgents } from "../actors/local-agent/cli.js";
@@ -117,7 +118,7 @@ export async function runInit(options: InitOptions): Promise<InitResult> {
   await planStarterFiles(
     preparedProjectRoot,
     cwd,
-    starterFilesFor(starterActor, localBrowser.value),
+    starterFilesFor(starterActor, localBrowser.value, starterLocalAgentFor(machine)),
     options.localBrowser !== undefined,
     plan,
   );
@@ -394,7 +395,7 @@ async function firstRunEnvironment(
     hasProviderKey: present("OPENAI_API_KEY"),
     localAgents: agents
       .filter((agent) => agent.authStatus === "authenticated")
-      .map((agent) => agent.label),
+      .map((agent) => ({ id: agent.id, label: agent.label })),
     platform: process.platform,
     arch: process.arch,
   };

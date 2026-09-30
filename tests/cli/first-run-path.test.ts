@@ -8,9 +8,17 @@ import {
   agentsSection,
   firstRunSteps,
   starterActorFor,
+  starterLocalAgentFor,
+  type FirstRunEnvironment,
 } from "../../src/cli/first-run-path.js";
+import { parseLabConfig } from "../../src/lab/config.js";
+import { brainOf } from "../../src/lab/plan-base.js";
 import { setUserKey } from "../../src/keys/key-resolution.js";
 import { runInit } from "../../src/lab/init.js";
+import { parse as parseYaml } from "yaml";
+
+const CODEX = { id: "codex", label: "Codex" } as const;
+const CLAUDE = { id: "claude", label: "Claude Code" } as const;
 
 // #505: `humanish init` wrote twenty files and stopped, and the only lab that could run was a $0
 // dry run — the two live ones were templates containing `your-org/your-app`. Three independent
@@ -73,7 +81,7 @@ describe("what to do next, resolved against this machine", () => {
     const steps = firstRunSteps({
       hasE2bKey: false,
       hasProviderKey: true,
-      localAgents: ["Codex"],
+      localAgents: [CODEX],
       hasDesktopSdk: true,
       installedInProject: true,
       platform: "win32",
@@ -97,7 +105,7 @@ describe("what to do next, resolved against this machine", () => {
     const byAgent = firstRunSteps({
       hasE2bKey: true,
       hasProviderKey: false,
-      localAgents: ["Codex"],
+      localAgents: [CODEX],
       hasDesktopSdk: true,
       installedInProject: true,
     });
@@ -177,14 +185,14 @@ describe("what to do next, resolved against this machine", () => {
       {
         hasE2bKey: true,
         hasProviderKey: false,
-        localAgents: ["Codex"],
+        localAgents: [CODEX],
         hasDesktopSdk: true,
         installedInProject: true,
       },
       {
         hasE2bKey: true,
         hasProviderKey: true,
-        localAgents: ["Codex", "Claude Code"],
+        localAgents: [CODEX, CLAUDE],
         hasDesktopSdk: true,
         installedInProject: true,
       },
@@ -195,12 +203,29 @@ describe("what to do next, resolved against this machine", () => {
 });
 
 describe("the starter live lab is written for the brain this machine has", () => {
+  it("names the signed-in agent in the lab: Codex when it is signed in, else Claude Code", () => {
+    const env = (localAgents: FirstRunEnvironment["localAgents"], hasProviderKey = false) => ({
+      hasE2bKey: true,
+      hasProviderKey,
+      localAgents,
+      hasDesktopSdk: true,
+      installedInProject: true,
+    });
+    expect(starterLocalAgentFor(env([CLAUDE]))).toBe("claude");
+    expect(starterLocalAgentFor(env([CLAUDE, CODEX]))).toBe("codex");
+    expect(starterLocalAgentFor(env([CODEX]))).toBe("codex");
+    expect(starterLocalAgentFor(env([CLAUDE], true))).toBeUndefined();
+    expect(firstRunSteps(env([CLAUDE])).at(-1)?.why).toContain(
+      "using Claude Code (already signed in",
+    );
+  });
+
   it("uses the operator's signed-in agent when there is no provider key", () => {
     expect(
       starterActorFor({
         hasE2bKey: true,
         hasProviderKey: false,
-        localAgents: ["Codex"],
+        localAgents: [CODEX],
         hasDesktopSdk: true,
         installedInProject: true,
       }),
@@ -212,7 +237,7 @@ describe("the starter live lab is written for the brain this machine has", () =>
       starterActorFor({
         hasE2bKey: true,
         hasProviderKey: true,
-        localAgents: ["Codex"],
+        localAgents: [CODEX],
         hasDesktopSdk: true,
         installedInProject: true,
       }),
@@ -237,7 +262,7 @@ describe("init finds a provider key the way every other command does", () => {
   const fakeKey = "test-openai-key-not-real";
 
   /** A home, a project and a PATH that holds a Codex CLI reporting a ChatGPT login, or nothing. */
-  async function machine(options: { signedInAgent: boolean }) {
+  async function machine(options: { signedInAgent: boolean | "claude" }) {
     const root = await mkdtemp(path.join(tmpdir(), "humanish-init-keys-"));
     const home = path.join(root, "home");
     const cwd = path.join(root, "project");
@@ -245,9 +270,13 @@ describe("init finds a provider key the way every other command does", () => {
     await mkdir(home);
     await mkdir(cwd);
     await mkdir(bin);
-    if (options.signedInAgent) {
+    if (options.signedInAgent === true) {
       await writeFile(path.join(bin, "codex"), "#!/bin/sh\necho 'Logged in using ChatGPT'\n");
       await chmod(path.join(bin, "codex"), 0o755);
+    }
+    if (options.signedInAgent === "claude") {
+      await writeFile(path.join(bin, "claude"), "#!/bin/sh\necho '{\"loggedIn\": true}'\n");
+      await chmod(path.join(bin, "claude"), 0o755);
     }
     return { root, cwd, env: { HOME: home, PATH: bin } as NodeJS.ProcessEnv };
   }
@@ -280,6 +309,19 @@ describe("init finds a provider key the way every other command does", () => {
       setUserKey("OPENAI_API_KEY", fakeKey, env, { homeDir: env.HOME! });
       const lab = await initActor(cwd, env);
       expect(lab).toEqual({ actor: "openai-computer-use", capped: true });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("runs the starter lab on Claude Code when it is the only signed-in agent", async () => {
+    const { root, cwd, env } = await machine({ signedInAgent: "claude" });
+    try {
+      expect(await initActor(cwd, env)).toEqual({ actor: "local-agent", capped: false });
+      const lab = await readFile(path.join(cwd, "humanish/labs/try-live.yaml"), "utf8");
+      const parsed = parseLabConfig(parseYaml(lab));
+      if (!parsed.ok) throw new Error(parsed.error.message);
+      expect(brainOf(parsed.config, false)).toEqual({ kind: "local-agent", agent: "claude" });
     } finally {
       await rm(root, { recursive: true, force: true });
     }
