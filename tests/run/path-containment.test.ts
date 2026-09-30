@@ -428,7 +428,7 @@ describe("run path containment", () => {
       "routes/terminal/session.ts",
       "routes/scripted-browser/lab.ts",
       "run/dry-run.ts",
-      "routes/computer-use/lab.ts",
+      "routes/computer-use/setup.ts",
       "routes/shared-world/setup.ts",
     ];
     for (const producer of direct) {

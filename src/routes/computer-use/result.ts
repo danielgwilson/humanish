@@ -1,10 +1,23 @@
-import { adapterScoreFailureMessage } from "../../lab/adapter-extension.js";
+import {
+  adapterScoreFailureMessage,
+  applyBrowserAdapterHooks,
+} from "../../lab/adapter-extension.js";
+import { redactText } from "../../evidence/redaction.js";
 import type { ObserverResult } from "../../observer/render.js";
 import type { RunBundle, RunRerunLineage } from "../../run/bundle.js";
 import type { LabConfig } from "../../lab/types.js";
 import { buildLaneSummary, laneOutcomeOk } from "./bundle.js";
 import { summarizeCuaDiagnostics } from "./diagnostics.js";
-import { toLaneResult } from "./lanes.js";
+import {
+  aggregateCuaSubject,
+  perLaneCapWarning,
+  subjectProvenanceArg,
+  toLaneResult,
+} from "./lanes.js";
+import { buildCuaRunBundle } from "./assemble.js";
+import type { runLabLanes } from "./run-lanes.js";
+import type { CuaRunSetup } from "./setup.js";
+import { projectLaneSubjects } from "./subject-projection.js";
 import {
   CUA_ACTOR_LAB_SCHEMA,
   type CuaActorLabErrorCode,
@@ -20,7 +33,7 @@ import {
  * every lane passed (dry-run lanes pass as contracts), and no adapter score or declared scorer
  * verdict failed; otherwise the error names the first reason.
  */
-export function cuaLabResult(args: {
+function cuaLabResult(args: {
   config: LabConfig;
   cwd: string;
   runId: string;
@@ -171,4 +184,103 @@ export function cuaLabResult(args: {
     warnings,
     ...(errorResult === undefined ? {} : { error: errorResult }),
   };
+}
+
+/** Builds and publishes the final bundle, runs the adapter hooks, renders the Observer and returns the result. */
+export async function finishCuaRun(
+  setup: CuaRunSetup,
+  lanes: Extract<Awaited<ReturnType<typeof runLabLanes>>, { ok: true }>,
+): Promise<CuaActorLabResult> {
+  const {
+    options,
+    config,
+    dryRun,
+    cwd,
+    hooks,
+    streams,
+    appUrl,
+    descriptor,
+    laneSpecs,
+    plan,
+    rerunLineage,
+    laneCount,
+    scrubKnownValues,
+    publicRepo,
+    subjectEnvNames,
+    run,
+    runId,
+    physicalArtifactRoot,
+    subjectArgs,
+    bundleBase,
+  } = setup;
+  const { outcomes, failFastReason, receiving, receivingWarnings, externalCommsWarnings } = lanes;
+  // Per-lane subject projections (invariant 5).
+  const laneSubjects = projectLaneSubjects({ ...subjectArgs, outcomes, dryRun });
+
+  const aggregate = aggregateCuaSubject({ laneSubjects, outcomes, laneCount, dryRun });
+  const aggregateSubject = aggregate.subject;
+  const capWarning = perLaneCapWarning(config, laneCount);
+  const aggregateWarnings = [
+    ...externalCommsWarnings,
+    ...(capWarning === undefined ? [] : [capWarning]),
+    ...aggregate.warnings,
+  ];
+  const finalProvenance = subjectProvenanceArg(aggregateSubject, publicRepo, subjectEnvNames);
+
+  const bundle = buildCuaRunBundle(bundleBase, {
+    dryRun,
+    outcomes,
+    laneSubjects,
+    aggregateSubject,
+    subjectProvenance: finalProvenance,
+    ...(failFastReason === undefined ? {} : { failFastReason }),
+  });
+
+  const adapterWarnings: string[] = [];
+  const scorerResult = await applyBrowserAdapterHooks({
+    hooks,
+    bundle,
+    context: {
+      bundle,
+      runDir: physicalArtifactRoot,
+      labId: config.id,
+      runId,
+      actor: descriptor.id,
+      backend: "cua",
+      dryRun,
+      laneCount,
+    },
+    sanitize: (text) => redactText(scrubKnownValues(text)),
+    warnings: adapterWarnings,
+    hookLabel: "cuaHooks",
+    ...(options.scorerProvenance === undefined
+      ? {}
+      : { scorerProvenance: options.scorerProvenance }),
+  });
+
+  if (receiving) bundle.commsReceiving = receiving.snapshot();
+  const finished = await run.finish(bundle);
+  const observer = await finished.renderObserver();
+  streams.attachFinal(observer);
+
+  return cuaLabResult({
+    config,
+    cwd,
+    runId,
+    actorId: descriptor.id,
+    appUrl,
+    dryRun,
+    laneSpecs,
+    outcomes,
+    laneSubjects,
+    aggregateSubject,
+    plan,
+    rerunLineage,
+    bundle,
+    observer,
+    declaredVerdictFailure: scorerResult.declaredVerdictFailure,
+    receivingWarnings,
+    aggregateWarnings,
+    adapterWarnings,
+  });
 }
