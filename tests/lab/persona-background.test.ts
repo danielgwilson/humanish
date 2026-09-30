@@ -15,7 +15,7 @@ import {
   withInboxMission,
 } from "../../src/routes/computer-use/lane-plan.js";
 import { inspectLabManifest } from "../../src/lab/discover.js";
-import { buildInitialRequest } from "../../src/actors/computer-use/openai-provider.js";
+import { buildInitialRequest } from "../../src/actors/computer-use/openai-wire.js";
 import { DEVICE_PRESETS } from "../../src/lab/device-presets.js";
 
 const fallback = { id: "organizer", name: "Organizer" };

@@ -5,19 +5,21 @@ import type { CuaObservation, CuaTurnRequest } from "../../../src/actors/compute
 import {
   DEFAULT_OPENAI_CU_MODEL,
   OPENAI_RESPONSES_CU_CAPABILITIES,
-  buildCallOutput,
-  buildContinuationRequest,
-  buildInitialRequest,
   createOpenAiResponsesProvider,
   namedProviderErrorCode,
   requestRejectionDetail,
-  openAiActionToCua,
-  parseOpenAiResponse,
   RETRY_AFTER_CAP_MS,
   retryAfterMs,
   type FetchLike,
-  type OpenAiCuContext,
 } from "../../../src/actors/computer-use/openai-provider.js";
+import {
+  buildCallOutput,
+  buildContinuationRequest,
+  buildInitialRequest,
+  openAiActionToCua,
+  parseOpenAiResponse,
+  type OpenAiCuContext,
+} from "../../../src/actors/computer-use/openai-wire.js";
 
 // A tiny real PNG so buildCallOutput produces a genuine data URL.
 function tinyPng(): Buffer {
