@@ -1,11 +1,23 @@
 // Builds each seat's lane spec and mission, resolves its entry URL, derives the session and
 // sandbox time budgets, and records a follower that never received the host's lobby code.
 
+import { DEFAULT_OPENAI_CU_MODEL } from "../../actors/computer-use/openai-provider.js";
 import type { ResolvedPersona } from "../../lab/persona.js";
 import { participantIdAt } from "../../lab/routing.js";
 import type { LabActorLane, LabConfig } from "../../lab/types.js";
+import { attachObserverRuntimeStreamUrls } from "../../observer/render.js";
+import type { RunBundle } from "../../run/bundle.js";
+import type { E2BDesktopSandbox } from "../../substrates/e2b/desktop-launch.js";
 import { composeLaneInstructions, resolveLaneDevice } from "../computer-use/lane-plan.js";
-import type { CuaLaneSpec, LaneRunOutcome } from "../computer-use/types.js";
+import { startLiveTraceFlush } from "../computer-use/live-flush.js";
+import type {
+  CuaActorLabHooks,
+  CuaLaneDeps,
+  CuaLaneSpec,
+  LaneRunOutcome,
+} from "../computer-use/types.js";
+import type { SharedWorldLabHooks } from "./hooks.js";
+import type { LiveSeats, PlaneContext } from "./types.js";
 
 // The DEFAULT per-seat session budget is DERIVED, not flat. On a provisioned route the binding
 // constraint is the SUBJECT sandbox (it must outlive every seat: timeoutMs + provisioning +
@@ -150,5 +162,91 @@ export function makeBlockedFollowerOutcome(
     selfReportedBlocker: false,
     harnessError: false,
     skippedReason: timedOut ? "handoff-timeout" : "host-ended-before-handoff",
+  };
+}
+
+/** The lane deps every seat shares, on either plane. */
+export type SeatLaneDeps = Omit<CuaLaneDeps, "signalProvisioned" | "appUrl" | "onObservedUrl">;
+
+/**
+ * A live run publishes an in-progress bundle before its seats start, whether or not an Observer
+ * is attached, and the seats' live traces rewrite it as they go, as on the computer-use route. A
+ * run killed mid-way leaves that evidence on disk. The flush starts with the first snapshot.
+ */
+export function startSeatFlush(ctx: PlaneContext, live: LiveSeats, bundle: RunBundle): void {
+  live.flush = startLiveTraceFlush({
+    bundle,
+    laneSpecs: ctx.actorSpecs,
+    model: ctx.config.actors[0]?.model ?? DEFAULT_OPENAI_CU_MODEL,
+    write: (snapshot) => ctx.run.writeSnapshot(snapshot),
+  });
+}
+
+/** The caller's desktop hooks, plus the runtime stream URLs each seat reports to the live Observer. */
+function runtimeStreamHooks(hooks: SharedWorldLabHooks, live: LiveSeats): CuaActorLabHooks {
+  return {
+    ...(hooks.loadDesktopModule ? { loadDesktopModule: hooks.loadDesktopModule } : {}),
+    ...(hooks.detachedTimers ? { detachedTimers: hooks.detachedTimers } : {}),
+    ...(hooks.env ? { env: hooks.env } : {}),
+    ...(hooks.prepareDesktop
+      ? { prepareDesktop: (desktop: E2BDesktopSandbox) => hooks.prepareDesktop!(desktop) }
+      : {}),
+    onRuntimeStreamReady: (stream) => {
+      live.streamUrls.push({ streamId: stream.streamId, url: stream.url });
+      if (live.observer) {
+        attachObserverRuntimeStreamUrls(live.observer, live.streamUrls);
+      }
+    },
+    onRuntimeStreamEnded: (stream) => {
+      // Mark, never remove (#357): the tile falls back to recorded evidence and says why.
+      for (const entry of live.streamUrls) {
+        if (entry.streamId === stream.streamId) entry.ended = true;
+      }
+      if (live.observer) {
+        attachObserverRuntimeStreamUrls(live.observer, live.streamUrls);
+      }
+    },
+  };
+}
+
+/**
+ * The lane deps both planes give every seat. cloneRoute=false + subjectEnvNames=[] keep subject
+ * creds out of every actor sandbox (FIX-10). `scrubKnownValues` is the plane's scrub: the
+ * external-public plane also scrubs the latched lobby code.
+ */
+export function seatLaneDeps(
+  ctx: PlaneContext,
+  live: LiveSeats,
+  scrubKnownValues: (text: string) => string,
+): SeatLaneDeps {
+  const { config, descriptor, env, receiving, runBudget } = ctx;
+  return {
+    onTrace: (laneId, items, usage, metadata) => live.flush?.flush(laneId, items, usage, metadata),
+    config,
+    descriptor,
+    cloneRoute: false,
+    subjectEnvNames: [],
+    hasGithubToken: false,
+    env,
+    openaiApiKey: ctx.openaiApiKey,
+    e2bApiKey: ctx.e2bApiKey,
+    requestTimeoutMs: ctx.requestTimeoutMs,
+    perLaneSandboxMs: ctx.timeoutMs + SANDBOX_TIMEOUT_BUFFER_MS,
+    timeoutMs: ctx.timeoutMs,
+    laneCount: ctx.roles.length,
+    artifactRoot: ctx.runPaths,
+    labCwd: ctx.cwd,
+    redactScreenshots: ctx.redactScreenshots,
+    scrubKnownValues,
+    runSession: ctx.runSession,
+    ...(receiving ? { receiving } : {}),
+    now: ctx.now,
+    hooks: runtimeStreamHooks(ctx.hooks, live),
+    ...(runBudget === undefined ? {} : { runBudget }),
+    // Concurrent lanes are independent evidence seats: a requested-vs-verified screen
+    // mismatch is recorded as separate facts + a warning instead of failing the lane's
+    // device claim closed, so one seat's window-manager drift cannot abort the whole
+    // live multi-actor world (the single-lane/fan-out routes keep fail-closed).
+    screenMismatchPolicy: "record-evidence",
   };
 }

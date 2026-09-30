@@ -1,5 +1,7 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { readFileSync } from "node:fs";
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -46,6 +48,7 @@ import type {
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
 import type { RunBundle } from "../../../src/index.js";
 import { verifyRun } from "../../../src/run/verify.js";
+import * as observerRender from "../../../src/observer/render.js";
 import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
 import { runDirSnapshot } from "../../helpers/run-golden.js";
 
@@ -1331,6 +1334,118 @@ describe("the in-progress bundle on the external-public plane", () => {
     } finally {
       releaseHost();
       await runPromise.catch(() => undefined);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// What the plane hands each seat: the lobby-code scrub, the runtime stream hooks and the
+// adopter-hosted drain.
+// ---------------------------------------------------------------------------
+describe("external-public seat wiring", () => {
+  async function runDirText(runId: string): Promise<string> {
+    const root = path.join(cwd, ".humanish", "runs", runId);
+    const entries = await readdir(root, { recursive: true, withFileTypes: true });
+    const texts = await Promise.all(
+      entries
+        .filter((entry) => entry.isFile() && /\.(json|jsonl|md)$/.test(entry.name))
+        .map((entry) => readFile(path.join(entry.parentPath, entry.name), "utf8")),
+    );
+    return texts.join("\n");
+  }
+
+  it("scrubs the latched lobby code from a seat's persisted narration", async () => {
+    const seen: CuaActorSessionOptions[] = [];
+    const base = makeExternalRunSession({ seen });
+    const narrating = async (options: CuaActorSessionOptions): Promise<CuaLoopResult> => {
+      const result = await base(options);
+      // The loop scrubs narration with the scrub its lane hands it; this fake does the same.
+      const raw = "The lobby code on screen is AB2CD9.";
+      const text = options.scrubText ? options.scrubText(raw) : raw;
+      return {
+        ...result,
+        trace: {
+          ...result.trace,
+          items: result.trace.items.map((item) =>
+            item.kind === "message" ? { ...item, text } : item,
+          ),
+        },
+      };
+    };
+    const { hooks } = makeExternalHooks(narrating);
+    const result = await runConcurrentSharedWorld({
+      cwd,
+      config: parseExternal(),
+      dryRun: false,
+      hooks,
+    });
+
+    expect(result.ok).toBe(true);
+    const persisted = await runDirText(result.runId);
+    expect(persisted).toContain("[REDACTED_LOBBY_CODE]");
+    expect(persisted).not.toContain("AB2CD9");
+  });
+
+  it("marks every seat's runtime stream ended on the attached Observer", async () => {
+    const attach = vi.spyOn(observerRender, "attachObserverRuntimeStreamUrls");
+    try {
+      const { hooks } = makeExternalHooks(makeExternalRunSession({ seen: [] }));
+      const result = await runConcurrentSharedWorld({
+        cwd,
+        config: parseExternal(),
+        dryRun: false,
+        hooks,
+        onObserverReady: () => undefined,
+      });
+
+      expect(result.ok).toBe(true);
+      const streams = attach.mock.calls.at(-1)?.[1] ?? [];
+      expect(streams).toHaveLength(3);
+      expect(streams.every((stream) => stream.ended === true)).toBe(true);
+    } finally {
+      attach.mockRestore();
+    }
+  });
+
+  it("drains the adopter-hosted catch after the seats finish", async () => {
+    const requests: string[] = [];
+    const server = createServer((request, response) => {
+      requests.push(request.url ?? "");
+      if (request.url === "/health") {
+        response.setHeader("content-type", "application/json");
+        response.end(
+          JSON.stringify({
+            ok: true,
+            service: "humanish-comms-catch",
+            capabilities: ["recipient-inbox-v1"],
+          }),
+        );
+        return;
+      }
+      response.end("");
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    try {
+      const { port } = server.address() as AddressInfo;
+      const input = externalPublicConfig() as Record<string, unknown>;
+      const parsed = parseLabConfig({
+        ...input,
+        comms: { email: { external: { catchBaseUrl: `http://127.0.0.1:${port}` } } },
+      });
+      if (!parsed.ok) throw new Error(parsed.error.message);
+      const { hooks } = makeExternalHooks(makeExternalRunSession({ seen: [] }));
+      const result = await runConcurrentSharedWorld({
+        cwd,
+        config: parsed.config,
+        dryRun: false,
+        hooks,
+      });
+
+      expect(result.ok).toBe(true);
+      expect(requests).toContain("/health");
+      expect(requests).toContain("/deliveries");
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
     }
   });
 });
