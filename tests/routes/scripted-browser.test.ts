@@ -375,6 +375,136 @@ describe("lab routing (app-url × scripted-browser → scripted)", () => {
   });
 });
 
+/**
+ * Hooks for a live scripted run on a fake provisioned clone. The injected session writes synthetic
+ * captures instead of launching a browser, and one monotonic clock drives every provisioned poll.
+ */
+function provisionedCloneHooks(module: E2BDesktopModule): {
+  hooks: ScriptedBrowserLabHooks;
+  rawSessionUrls: string[];
+} {
+  let clock = Date.parse("2026-09-04T00:00:00.000Z");
+  const rawSessionUrls: string[] = [];
+  const hooks: ScriptedBrowserLabHooks = {
+    env: {
+      E2B_API_KEY: "fake-e2b-key-for-test",
+      GITHUB_TOKEN: "github-token-test",
+    },
+    loadDesktopModule: async () => module,
+    // The injected session writes synthetic captures; it does not launch a host browser.
+    browserCommand: "/synthetic/browser",
+    runSession: async (options) => {
+      rawSessionUrls.push(options.appUrl);
+      expect(options.evidenceAppUrl).toBe("[provisioned-subject]");
+      expect(options.urlPolicy).toEqual({
+        kind: "provisioned-subject",
+        evidenceOrigin: "[provisioned-subject]",
+      });
+      const capturedAt = "2026-06-19T00:00:00.000Z";
+      const screenshotPath = `screenshots/${options.surface.id}-step-01-load.png`;
+      const tracePath = `traces/${options.surface.id}.json`;
+      await mkdir(path.join(options.artifactRoot, "screenshots"), { recursive: true });
+      await mkdir(path.join(options.artifactRoot, "traces"), { recursive: true });
+      await writeFile(path.join(options.artifactRoot, screenshotPath), PNG_1X1);
+      const reason = `${options.surface.label} completed 1/1 scripted browser steps from [provisioned-subject] with HTTP 200.`;
+      const capture = {
+        capturedAt,
+        durationMs: 1,
+        httpStatus: 200,
+        ok: true,
+        reason,
+        screenshotPath,
+        steps: [
+          {
+            action: "goto" as const,
+            completedAt: capturedAt,
+            durationMs: 1,
+            id: "step-01-load",
+            label: "Load landing page",
+            reason: "goto completed for Load landing page.",
+            screenshotPath,
+            status: "passed" as const,
+            url: "[provisioned-subject]/",
+          },
+        ],
+        surface: options.surface,
+        tracePath,
+      };
+      await writeFile(
+        path.join(options.artifactRoot, tracePath),
+        `${JSON.stringify(
+          {
+            schema: "humanish.browser-persona-trace.v1",
+            capturedAt,
+            appUrl: "[provisioned-subject]",
+            browserCommand: "injected-browser",
+            durationMs: 1,
+            httpStatus: 200,
+            ok: true,
+            reason,
+            screenshotPath,
+            steps: capture.steps,
+            surface: options.surface,
+            redaction: "passed",
+          },
+          null,
+          2,
+        )}\n`,
+      );
+      return {
+        status: "passed",
+        completionReason: "goal_satisfied",
+        reason,
+        capture,
+        trace: {
+          schema: ACTOR_TRACE_SCHEMA,
+          provider: "browser-persona",
+          protocol: "scripted-steps",
+          lane: "scripted-browser",
+          persona: options.persona,
+          redaction: {
+            status: "passed",
+            screenshots: "raw",
+            notes: "fake provisioned scripted trace",
+          },
+          startedAt: capturedAt,
+          completedAt: capturedAt,
+          durationMs: 1,
+          status: "passed",
+          completionReason: "goal_satisfied",
+          reason,
+          ids: {},
+          counts: { steps: 1, actions: 1, assertions: 0, blocked: 0, screenshots: 1 },
+          items: [
+            {
+              id: "step-01-load",
+              kind: "ui_action",
+              lifecycle: "completed",
+              status: "passed",
+              title: "Load landing page",
+              screenshotRef: { path: screenshotPath, redaction: "none" },
+            },
+          ],
+          tokenUsage: { input: 0, output: 0, total: 0, costUsd: 0 },
+          capabilities: SCRIPTED_BROWSER_CAPABILITIES,
+        },
+      };
+    },
+    // An injected monotonic clock (#276): every poll loop on the provisioned path (install, build,
+    // readiness, seed steps) computes its deadline from `now()` and advances only through
+    // `sleep()`, so no wall-clock deadline can decide this case on a loaded runner. The earlier
+    // `now: Date.now` with a no-op sleep let a real 15 s budget expire twice on CI (2026-07 and
+    // 2026-09-03) while three local runs passed in under a second.
+    detachedTimers: {
+      now: () => clock,
+      sleep: async (ms) => {
+        clock += ms;
+      },
+    },
+  };
+  return { hooks, rawSessionUrls };
+}
+
 describe("runScriptedBrowserLab", () => {
   let cwd: string;
 
@@ -559,7 +689,6 @@ describe("runScriptedBrowserLab", () => {
   );
 
   it("live provisioned clone: provisions one synthetic subject, drives getHost, and persists only public-safe URL labels", async () => {
-    let clock = Date.parse("2026-09-04T00:00:00.000Z");
     await writeCommittedScenario(cwd);
     const runId = "scripted-provisioned-clone";
     const runDir = path.join(cwd, ".humanish", "runs", runId);
@@ -570,124 +699,7 @@ describe("runScriptedBrowserLab", () => {
       },
       resources: { cpuCount: 8, memoryMB: 8192 },
     });
-    const rawSessionUrls: string[] = [];
-    const hooks: ScriptedBrowserLabHooks = {
-      env: {
-        E2B_API_KEY: "fake-e2b-key-for-test",
-        GITHUB_TOKEN: "github-token-test",
-      },
-      loadDesktopModule: async () => fakeE2B.module,
-      // The injected session writes synthetic captures; it does not launch a host browser.
-      browserCommand: "/synthetic/browser",
-      runSession: async (options) => {
-        rawSessionUrls.push(options.appUrl);
-        expect(options.evidenceAppUrl).toBe("[provisioned-subject]");
-        expect(options.urlPolicy).toEqual({
-          kind: "provisioned-subject",
-          evidenceOrigin: "[provisioned-subject]",
-        });
-        const capturedAt = "2026-06-19T00:00:00.000Z";
-        const screenshotPath = `screenshots/${options.surface.id}-step-01-load.png`;
-        const tracePath = `traces/${options.surface.id}.json`;
-        await mkdir(path.join(options.artifactRoot, "screenshots"), { recursive: true });
-        await mkdir(path.join(options.artifactRoot, "traces"), { recursive: true });
-        await writeFile(path.join(options.artifactRoot, screenshotPath), PNG_1X1);
-        const reason = `${options.surface.label} completed 1/1 scripted browser steps from [provisioned-subject] with HTTP 200.`;
-        const capture = {
-          capturedAt,
-          durationMs: 1,
-          httpStatus: 200,
-          ok: true,
-          reason,
-          screenshotPath,
-          steps: [
-            {
-              action: "goto" as const,
-              completedAt: capturedAt,
-              durationMs: 1,
-              id: "step-01-load",
-              label: "Load landing page",
-              reason: "goto completed for Load landing page.",
-              screenshotPath,
-              status: "passed" as const,
-              url: "[provisioned-subject]/",
-            },
-          ],
-          surface: options.surface,
-          tracePath,
-        };
-        await writeFile(
-          path.join(options.artifactRoot, tracePath),
-          `${JSON.stringify(
-            {
-              schema: "humanish.browser-persona-trace.v1",
-              capturedAt,
-              appUrl: "[provisioned-subject]",
-              browserCommand: "injected-browser",
-              durationMs: 1,
-              httpStatus: 200,
-              ok: true,
-              reason,
-              screenshotPath,
-              steps: capture.steps,
-              surface: options.surface,
-              redaction: "passed",
-            },
-            null,
-            2,
-          )}\n`,
-        );
-        return {
-          status: "passed",
-          completionReason: "goal_satisfied",
-          reason,
-          capture,
-          trace: {
-            schema: ACTOR_TRACE_SCHEMA,
-            provider: "browser-persona",
-            protocol: "scripted-steps",
-            lane: "scripted-browser",
-            persona: options.persona,
-            redaction: {
-              status: "passed",
-              screenshots: "raw",
-              notes: "fake provisioned scripted trace",
-            },
-            startedAt: capturedAt,
-            completedAt: capturedAt,
-            durationMs: 1,
-            status: "passed",
-            completionReason: "goal_satisfied",
-            reason,
-            ids: {},
-            counts: { steps: 1, actions: 1, assertions: 0, blocked: 0, screenshots: 1 },
-            items: [
-              {
-                id: "step-01-load",
-                kind: "ui_action",
-                lifecycle: "completed",
-                status: "passed",
-                title: "Load landing page",
-                screenshotRef: { path: screenshotPath, redaction: "none" },
-              },
-            ],
-            tokenUsage: { input: 0, output: 0, total: 0, costUsd: 0 },
-            capabilities: SCRIPTED_BROWSER_CAPABILITIES,
-          },
-        };
-      },
-      // An injected monotonic clock (#276): every poll loop on the provisioned path (install, build,
-      // readiness, seed steps) computes its deadline from `now()` and advances only through
-      // `sleep()`, so no wall-clock deadline can decide this case on a loaded runner. The earlier
-      // `now: Date.now` with a no-op sleep let a real 15 s budget expire twice on CI (2026-07 and
-      // 2026-09-03) while three local runs passed in under a second.
-      detachedTimers: {
-        now: () => clock,
-        sleep: async (ms) => {
-          clock += ms;
-        },
-      },
-    };
+    const { hooks, rawSessionUrls } = provisionedCloneHooks(fakeE2B.module);
 
     const outcome = await runLab(provisionedScriptedConfig(), {
       cwd,
@@ -1334,6 +1346,34 @@ describe("scripted-browser run directory goldens", () => {
       expect(row?.costs.runEstimatedUsd).toBe(0);
       expect(row?.warnings).not.toContain("RUN_COST_COMPLETENESS_UNKNOWN");
     });
+  });
+
+  it("live journey on a provisioned clone", async () => {
+    const runId = "scripted-clone-golden";
+    const fakeE2B = makeFakeE2BModule({ resources: { cpuCount: 8, memoryMB: 8192 } });
+    // The subject sandbox's create and teardown read this clock, so its desktop minutes and cost
+    // are fixed instead of measured.
+    let clock = 0;
+    const outcome = await runLab(provisionedScriptedConfig(), {
+      cwd,
+      runId,
+      automaticAnalysis: { run: automaticAnalysisBoundary() },
+      scriptedHooks: {
+        ...provisionedCloneHooks(fakeE2B.module).hooks,
+        now: () => (clock += 60_000),
+      },
+    });
+    expect(outcome.result.ok).toBe(true);
+    const snapshot = await runDirSnapshot(path.join(cwd, ".humanish", "runs", runId), {
+      result: outcome.result,
+      replace: [
+        [runId, "[run]"],
+        [cwd, "[cwd]"],
+      ],
+    });
+    await expect(`${JSON.stringify(snapshot, null, 2)}\n`).toMatchFileSnapshot(
+      "../golden/routes/scripted-clone-live.json",
+    );
   });
 });
 

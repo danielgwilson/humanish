@@ -1,0 +1,863 @@
+{
+  "<result>": {
+    "schema": "humanish.scripted-lab-result.v1",
+    "ok": true,
+    "cwd": "[cwd]",
+    "labId": "provisioned-scripted-routing-proof",
+    "actor": "scripted-browser",
+    "appUrl": "[provisioned-subject]",
+    "dryRun": false,
+    "runId": "[run]",
+    "subject": {
+      "source": "clone",
+      "repo": "repo-01",
+      "commit": "abc123def4567890abc1",
+      "envNames": [
+        "GITHUB_TOKEN"
+      ],
+      "state": {
+        "provenance": "seeded",
+        "seed": [
+          {
+            "name": "seed",
+            "when": "before-start",
+            "commandDigest": "e2546dbfec30e232",
+            "ok": true,
+            "exitCode": 0,
+            "durationMs": "[durationMs]"
+          }
+        ]
+      }
+    },
+    "subjectSandbox": {
+      "sandboxId": "fake-subject-001",
+      "killed": true
+    },
+    "hostDigest": "8d9b4d09db938d38",
+    "scenario": {
+      "id": "scripted-first-run",
+      "source": "humanish/scenarios/scripted-first-run.yaml",
+      "sourceDigest": "41dea98c2dc4",
+      "steps": 4
+    },
+    "sessions": [
+      {
+        "surface": "desktop",
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "Desktop browser surface completed 1/1 scripted browser steps from [provisioned-subject] with HTTP 200.",
+        "screenshots": 1
+      }
+    ],
+    "observer": {
+      "schema": "humanish.observer-result.v1",
+      "ok": true,
+      "cwd": "[cwd]",
+      "run": "[run]",
+      "observerPath": ".humanish/runs/[run]/observer/index.html",
+      "observerDataPath": ".humanish/runs/[run]/observer/observer-data.json",
+      "eventsPath": ".humanish/runs/[run]/events.ndjson",
+      "observerUrl": "file://[cwd]/.humanish/runs/[run]/observer/index.html",
+      "bundlePath": ".humanish/runs/[run]/run.json",
+      "opened": false,
+      "warnings": [
+        "Observer renders verified local evidence artifacts; runtime stream auth URLs are not persisted.",
+        "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
+      ]
+    },
+    "warnings": [
+      "Screenshots are full-fidelity (raw) for local use — the bundle stays in gitignored .humanish and nothing scans these pixels; review them before sharing anywhere. policies.redactScreenshots is not yet supported on the scripted route.",
+      "Observer renders verified local evidence artifacts; runtime stream auth URLs are not persisted.",
+      "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
+    ],
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "synthetic_no_provider"
+    }
+  },
+  "../latest.json": {
+    "schema": "humanish.latest-run.v1",
+    "runId": "[run]",
+    "path": ".humanish/runs/[run]",
+    "updatedAt": "[ts]"
+  },
+  "actor-desktop.json": {
+    "schema": "humanish.actor-trace.v1",
+    "provider": "browser-persona",
+    "protocol": "scripted-steps",
+    "lane": "scripted-browser",
+    "persona": {
+      "id": "synthetic-provider",
+      "traitsApplied": [],
+      "promptDigest": "41dea98c2dc4"
+    },
+    "redaction": {
+      "status": "passed",
+      "screenshots": "raw",
+      "notes": "fake provisioned scripted trace"
+    },
+    "startedAt": "[ts]",
+    "completedAt": "[ts]",
+    "durationMs": "[durationMs]",
+    "status": "passed",
+    "completionReason": "goal_satisfied",
+    "reason": "Desktop browser surface completed 1/1 scripted browser steps from [provisioned-subject] with HTTP 200.",
+    "ids": {},
+    "counts": {
+      "steps": 1,
+      "actions": 1,
+      "assertions": 0,
+      "blocked": 0,
+      "screenshots": 1
+    },
+    "items": [
+      {
+        "id": "step-01-load",
+        "kind": "ui_action",
+        "lifecycle": "completed",
+        "status": "passed",
+        "title": "Load landing page",
+        "screenshotRef": {
+          "path": "screenshots/desktop-step-01-load.png",
+          "redaction": "none"
+        }
+      }
+    ],
+    "tokenUsage": {
+      "input": 0,
+      "output": 0,
+      "total": 0,
+      "costUsd": 0
+    },
+    "capabilities": {
+      "headless": true,
+      "structuredTrace": true,
+      "lanes": [
+        "scripted-browser"
+      ],
+      "producesScreenshots": true,
+      "byoModel": false,
+      "preGrantableApprovals": false,
+      "inProcessTools": false,
+      "license": "open"
+    }
+  },
+  "events.ndjson": [
+    {
+      "id": "event-000-created",
+      "at": "[ts]",
+      "level": "info",
+      "type": "scripted-lab.run.created",
+      "message": "Created scripted-browser lab run for provisioned-scripted-routing-proof (actor scripted-browser, 1 surface)."
+    },
+    {
+      "id": "event-001-subject",
+      "at": "[ts]",
+      "level": "info",
+      "type": "scripted-lab.subject.declared",
+      "message": "Provisioned synthetic subject: clone of repo-01@abc123def4567890abc1, served + getHost-exposed in-sandbox; env names: GITHUB_TOKEN (values never persisted); state provenance: seeded; evidence host digest: 8d9b4d09db938d38."
+    },
+    {
+      "id": "event-002-spend",
+      "at": "[ts]",
+      "level": "info",
+      "type": "scripted-lab.spend",
+      "message": "Scripted participant steps make no model requests; post-run analysis has a separate budget unless disabled. Live provisioned runs may spend E2B sandbox minutes to clone/serve the synthetic subject."
+    },
+    {
+      "id": "event-003-session-desktop",
+      "at": "[ts]",
+      "level": "info",
+      "type": "scripted-lab.session.goal_satisfied",
+      "message": "desktop: passed — Desktop browser surface completed 1/1 scripted browser steps from [provisioned-subject] with HTTP 200.",
+      "simId": "scripted-desktop",
+      "streamId": "scripted-desktop-stream"
+    }
+  ],
+  "observer/index.html": "[observer build]",
+  "observer/observer-data.json": {
+    "schema": "humanish.observer-data.v1",
+    "schemaVersion": 1,
+    "generatedAt": "[ts]",
+    "run": {
+      "runId": "[run]",
+      "mode": "live",
+      "status": "pass",
+      "title": "First-run scripted walkthrough - Scripted journey persona (synthetic-provider)",
+      "createdAt": "[ts]",
+      "simCount": 1,
+      "persona": {
+        "id": "synthetic-provider",
+        "name": "Scripted journey persona (synthetic-provider)",
+        "source": "lab:provisioned-scripted-routing-proof",
+        "sourceDigest": "41dea98c2dc4"
+      },
+      "scenario": {
+        "id": "scripted-first-run",
+        "title": "First-run scripted walkthrough",
+        "goal": "Load the app, submit the primary form, and confirm the success state renders.",
+        "source": "humanish/scenarios/scripted-first-run.yaml",
+        "sourceDigest": "41dea98c2dc4"
+      },
+      "packageName": "humanish",
+      "redaction": {
+        "status": "passed",
+        "notes": "Scripted step URLs are sanitized to loopback origin+path (query/hash redacted) and step text passes text redaction. Screenshots are FULL-FIDELITY (raw), retained for local use in gitignored .humanish — NOT redacted for publishing; policies.redactScreenshots is not yet supported on this route."
+      },
+      "lifecycle": [
+        {
+          "at": "[ts]",
+          "event": "scripted-lab.run.created",
+          "message": "Created scripted-browser lab run with 1 surface lane (actor scripted-browser)."
+        }
+      ],
+      "knownGaps": []
+    },
+    "summary": {
+      "streams": 1,
+      "byKind": {
+        "ui": 0,
+        "browser": 1,
+        "terminal": 0,
+        "tui": 0,
+        "codex-ui": 0,
+        "artifact": 0,
+        "summary": 0
+      },
+      "active": 0,
+      "blocked": 0,
+      "warnings": 0
+    },
+    "laneGroups": [],
+    "cost": {
+      "schema": "humanish.run-cost-summary.v1",
+      "currency": "usd",
+      "estimatedTotalUsd": 0.00888,
+      "ratesAsOf": "2026-09-05",
+      "fullyEstimated": true,
+      "placeholder": false,
+      "breakdown": [
+        {
+          "kind": "desktop-minutes",
+          "laneId": "subject",
+          "estimatedCostUsd": 0.00888,
+          "ratesAsOf": "2026-09-05",
+          "source": "e2b.dev/pricing",
+          "desktop": {
+            "minutes": 1,
+            "durationBasis": "host-acquired-to-cleanup",
+            "resources": {
+              "cpuCount": 8,
+              "memoryMiB": 8192
+            },
+            "resourceSource": "e2b.getInfo",
+            "usdPerSecond": 0.000148
+          }
+        }
+      ],
+      "tokenUsage": {
+        "input": 0,
+        "output": 0,
+        "total": 0
+      },
+      "desktopMinutes": 1,
+      "note": "Estimated 0.00888 USD total. Every figure is an ESTIMATE (rates as of 2026-09-05 — the OLDEST contributing rate, since an aggregate is only as fresh as its stalest input), a rate-table multiply, NOT an authoritative provider charge. Desktop compute uses observed CPU/RAM and a host-acquired-to-cleanup span where available; pre-handle startup, plan fees, credits, and negotiated pricing are excluded."
+    },
+    "streams": [
+      {
+        "id": "scripted-desktop-stream",
+        "simId": "scripted-desktop",
+        "kind": "browser",
+        "label": "Desktop browser surface — provisioned-scripted-routing-proof",
+        "status": "passed",
+        "transport": "snapshot",
+        "updatedAt": "[ts]",
+        "embed": {
+          "kind": "screenshot",
+          "url": "../screenshots/desktop-step-01-load.png",
+          "title": "Desktop browser surface (raw)"
+        },
+        "viewport": {
+          "width": 1440,
+          "height": 960,
+          "deviceScaleFactor": 1,
+          "isMobile": false
+        },
+        "ui": {
+          "route": "[provisioned-subject]",
+          "intent": "Load the app, submit the primary form, and confirm the success state renders.",
+          "state": "Desktop browser surface completed 1/1 scripted browser steps from [provisioned-subject] with HTTP 200.",
+          "actorStatus": "passed",
+          "screenshotUrl": "../screenshots/desktop-step-01-load.png"
+        },
+        "actor": {
+          "schema": "humanish.actor-trace.v1",
+          "provider": "browser-persona",
+          "protocol": "scripted-steps",
+          "lane": "scripted-browser",
+          "persona": {
+            "id": "synthetic-provider",
+            "traitsApplied": [],
+            "promptDigest": "41dea98c2dc4"
+          },
+          "redaction": {
+            "status": "passed",
+            "screenshots": "raw",
+            "notes": "fake provisioned scripted trace"
+          },
+          "startedAt": "[ts]",
+          "completedAt": "[ts]",
+          "durationMs": "[durationMs]",
+          "status": "passed",
+          "completionReason": "goal_satisfied",
+          "reason": "Desktop browser surface completed 1/1 scripted browser steps from [provisioned-subject] with HTTP 200.",
+          "ids": {},
+          "counts": {
+            "steps": 1,
+            "actions": 1,
+            "assertions": 0,
+            "blocked": 0,
+            "screenshots": 1
+          },
+          "items": [
+            {
+              "id": "step-01-load",
+              "kind": "ui_action",
+              "lifecycle": "completed",
+              "status": "passed",
+              "title": "Load landing page",
+              "screenshotRef": {
+                "path": "screenshots/desktop-step-01-load.png",
+                "redaction": "none"
+              }
+            }
+          ],
+          "tokenUsage": {
+            "input": 0,
+            "output": 0,
+            "total": 0,
+            "costUsd": 0
+          },
+          "capabilities": {
+            "headless": true,
+            "structuredTrace": true,
+            "lanes": [
+              "scripted-browser"
+            ],
+            "producesScreenshots": true,
+            "byoModel": false,
+            "preGrantableApprovals": false,
+            "inProcessTools": false,
+            "license": "open"
+          }
+        },
+        "artifacts": [
+          {
+            "label": "run bundle",
+            "path": "run.json",
+            "kind": "bundle"
+          },
+          {
+            "label": "review",
+            "path": "review.md",
+            "kind": "review"
+          },
+          {
+            "label": "events",
+            "path": "events.ndjson",
+            "kind": "events"
+          },
+          {
+            "label": "desktop browser trace",
+            "path": "traces/desktop.json",
+            "kind": "trace"
+          },
+          {
+            "label": "desktop actor trace",
+            "path": "actor-desktop.json",
+            "kind": "trace"
+          },
+          {
+            "label": "desktop screenshot 01 (raw)",
+            "path": "screenshots/desktop-step-01-load.png",
+            "kind": "screenshot"
+          }
+        ],
+        "sim": {
+          "id": "scripted-desktop",
+          "index": 1,
+          "personaId": "synthetic-provider",
+          "scenarioId": "scripted-first-run",
+          "status": "passed",
+          "streamKind": "browser",
+          "mode": "browser-sim",
+          "progress": 100,
+          "currentStep": "Desktop browser surface completed 1/1 scripted browser steps from [provisioned-subject] with HTTP 200.",
+          "summary": "Scripted-browser actor (scripted-browser) replayed scripted-first-run on the desktop surface; goal_satisfied.",
+          "streamIds": [
+            "scripted-desktop-stream"
+          ],
+          "startedAt": "[ts]",
+          "updatedAt": "[ts]"
+        },
+        "kindLabel": "Browser",
+        "statusLabel": "Passed",
+        "terminalPlain": "",
+        "timeline": [
+          {
+            "id": "event-003-session-desktop",
+            "at": "[ts]",
+            "level": "info",
+            "type": "scripted-lab.session.goal_satisfied",
+            "message": "desktop: passed — Desktop browser surface completed 1/1 scripted browser steps from [provisioned-subject] with HTTP 200.",
+            "simId": "scripted-desktop",
+            "streamId": "scripted-desktop-stream"
+          }
+        ]
+      }
+    ],
+    "events": [
+      {
+        "id": "event-000-created",
+        "at": "[ts]",
+        "level": "info",
+        "type": "scripted-lab.run.created",
+        "message": "Created scripted-browser lab run for provisioned-scripted-routing-proof (actor scripted-browser, 1 surface)."
+      },
+      {
+        "id": "event-001-subject",
+        "at": "[ts]",
+        "level": "info",
+        "type": "scripted-lab.subject.declared",
+        "message": "Provisioned synthetic subject: clone of repo-01@abc123def4567890abc1, served + getHost-exposed in-sandbox; env names: GITHUB_TOKEN (values never persisted); state provenance: seeded; evidence host digest: 8d9b4d09db938d38."
+      },
+      {
+        "id": "event-002-spend",
+        "at": "[ts]",
+        "level": "info",
+        "type": "scripted-lab.spend",
+        "message": "Scripted participant steps make no model requests; post-run analysis has a separate budget unless disabled. Live provisioned runs may spend E2B sandbox minutes to clone/serve the synthetic subject."
+      },
+      {
+        "id": "event-003-session-desktop",
+        "at": "[ts]",
+        "level": "info",
+        "type": "scripted-lab.session.goal_satisfied",
+        "message": "desktop: passed — Desktop browser surface completed 1/1 scripted browser steps from [provisioned-subject] with HTTP 200.",
+        "simId": "scripted-desktop",
+        "streamId": "scripted-desktop-stream"
+      }
+    ],
+    "artifactLinks": [
+      {
+        "label": "run bundle",
+        "href": "../run.json",
+        "kind": "bundle"
+      },
+      {
+        "label": "review JSON",
+        "href": "../review.json",
+        "kind": "review"
+      },
+      {
+        "label": "review Markdown",
+        "href": "../review.md",
+        "kind": "review"
+      },
+      {
+        "label": "event log",
+        "href": "../events.ndjson",
+        "kind": "events"
+      },
+      {
+        "label": "observer data",
+        "href": "observer-data.json",
+        "kind": "observer"
+      }
+    ],
+    "publicSafety": {
+      "publishable": false,
+      "note": "Observer artifacts are local evidence. Before filing a public issue, use `humanish feedback issue` so redaction and public-safety checks gate the payload.",
+      "share": {
+        "status": "local_only",
+        "verifiedAt": "[ts]",
+        "reasons": [
+          "RAW_SCREENSHOTS"
+        ]
+      }
+    },
+    "raw": {
+      "bundleSchema": "humanish.run-bundle.v1",
+      "artifactRoot": ".humanish/runs/[run]"
+    }
+  },
+  "observer/study-analysis.json": {
+    "state": "none",
+    "analysis": null,
+    "corrections": [],
+    "warnings": []
+  },
+  "review.json": {
+    "schema": "humanish.review.v1",
+    "verdict": "pass",
+    "summary": "Scripted-browser actor replayed scripted-first-run on 1 surface against [provisioned-subject]: 1/1 satisfied the scenario predicate.",
+    "gaps": []
+  },
+  "review.md": "# First-run scripted walkthrough\n\n- run: [run]\n- mode: live\n- verdict: pass\n- summary: Scripted-browser actor replayed scripted-first-run on 1 surface against [provisioned-subject]: 1/1 satisfied the scenario predicate.\n- scenario: scripted-first-run @ 41dea98c2dc4 (humanish/scenarios/scripted-first-run.yaml)\n- subject: Provisioned synthetic subject: clone of repo-01@abc123def4567890abc1, served + getHost-exposed in-sandbox; env names: GITHUB_TOKEN (values never persisted); state provenance: seeded; evidence host digest: 8d9b4d09db938d38.\n- spend: Scripted participant steps make no model requests; post-run analysis has a separate budget unless disabled. Live provisioned runs may spend E2B sandbox minutes to clone/serve the synthetic subject.\n- scripted-desktop: browser-persona (scripted-browser/scripted-steps) passed (goal_satisfied); 1 step action(s), 1 raw screenshot(s)\n",
+  "run.json": {
+    "schema": "humanish.run-bundle.v1",
+    "runId": "[run]",
+    "mode": "live",
+    "simCount": 1,
+    "createdAt": "[ts]",
+    "cwd": "[target-cwd]",
+    "artifactRoot": ".humanish/runs/[run]",
+    "source": {
+      "packageName": "humanish",
+      "humanishSource": "present",
+      "git": {
+        "schema": "humanish.git-state.v1",
+        "status": "missing",
+        "capturedAt": "[ts]",
+        "head": {
+          "shortSha": null,
+          "refState": "unknown"
+        },
+        "changes": {
+          "staged": 0,
+          "unstaged": 0,
+          "untracked": 0,
+          "total": 0
+        },
+        "note": "No git work tree was detected."
+      }
+    },
+    "persona": {
+      "id": "synthetic-provider",
+      "name": "Scripted journey persona (synthetic-provider)",
+      "source": "lab:provisioned-scripted-routing-proof",
+      "sourceDigest": "41dea98c2dc4"
+    },
+    "scenario": {
+      "id": "scripted-first-run",
+      "title": "First-run scripted walkthrough",
+      "goal": "Load the app, submit the primary form, and confirm the success state renders.",
+      "source": "humanish/scenarios/scripted-first-run.yaml",
+      "sourceDigest": "41dea98c2dc4"
+    },
+    "lifecycle": [
+      {
+        "at": "[ts]",
+        "event": "scripted-lab.run.created",
+        "message": "Created scripted-browser lab run with 1 surface lane (actor scripted-browser)."
+      }
+    ],
+    "simulations": [
+      {
+        "id": "scripted-desktop",
+        "index": 1,
+        "personaId": "synthetic-provider",
+        "scenarioId": "scripted-first-run",
+        "status": "passed",
+        "streamKind": "browser",
+        "mode": "browser-sim",
+        "progress": 100,
+        "currentStep": "Desktop browser surface completed 1/1 scripted browser steps from [provisioned-subject] with HTTP 200.",
+        "summary": "Scripted-browser actor (scripted-browser) replayed scripted-first-run on the desktop surface; goal_satisfied.",
+        "streamIds": [
+          "scripted-desktop-stream"
+        ],
+        "startedAt": "[ts]",
+        "updatedAt": "[ts]"
+      }
+    ],
+    "streams": [
+      {
+        "id": "scripted-desktop-stream",
+        "simId": "scripted-desktop",
+        "kind": "browser",
+        "label": "Desktop browser surface — provisioned-scripted-routing-proof",
+        "status": "passed",
+        "transport": "snapshot",
+        "updatedAt": "[ts]",
+        "embed": {
+          "kind": "screenshot",
+          "url": "../screenshots/desktop-step-01-load.png",
+          "title": "Desktop browser surface (raw)"
+        },
+        "viewport": {
+          "width": 1440,
+          "height": 960,
+          "deviceScaleFactor": 1,
+          "isMobile": false
+        },
+        "ui": {
+          "route": "[provisioned-subject]",
+          "intent": "Load the app, submit the primary form, and confirm the success state renders.",
+          "state": "Desktop browser surface completed 1/1 scripted browser steps from [provisioned-subject] with HTTP 200.",
+          "actorStatus": "passed",
+          "screenshotUrl": "../screenshots/desktop-step-01-load.png"
+        },
+        "actor": {
+          "schema": "humanish.actor-trace.v1",
+          "provider": "browser-persona",
+          "protocol": "scripted-steps",
+          "lane": "scripted-browser",
+          "persona": {
+            "id": "synthetic-provider",
+            "traitsApplied": [],
+            "promptDigest": "41dea98c2dc4"
+          },
+          "redaction": {
+            "status": "passed",
+            "screenshots": "raw",
+            "notes": "fake provisioned scripted trace"
+          },
+          "startedAt": "[ts]",
+          "completedAt": "[ts]",
+          "durationMs": "[durationMs]",
+          "status": "passed",
+          "completionReason": "goal_satisfied",
+          "reason": "Desktop browser surface completed 1/1 scripted browser steps from [provisioned-subject] with HTTP 200.",
+          "ids": {},
+          "counts": {
+            "steps": 1,
+            "actions": 1,
+            "assertions": 0,
+            "blocked": 0,
+            "screenshots": 1
+          },
+          "items": [
+            {
+              "id": "step-01-load",
+              "kind": "ui_action",
+              "lifecycle": "completed",
+              "status": "passed",
+              "title": "Load landing page",
+              "screenshotRef": {
+                "path": "screenshots/desktop-step-01-load.png",
+                "redaction": "none"
+              }
+            }
+          ],
+          "tokenUsage": {
+            "input": 0,
+            "output": 0,
+            "total": 0,
+            "costUsd": 0
+          },
+          "capabilities": {
+            "headless": true,
+            "structuredTrace": true,
+            "lanes": [
+              "scripted-browser"
+            ],
+            "producesScreenshots": true,
+            "byoModel": false,
+            "preGrantableApprovals": false,
+            "inProcessTools": false,
+            "license": "open"
+          }
+        },
+        "artifacts": [
+          {
+            "label": "run bundle",
+            "path": "run.json",
+            "kind": "bundle"
+          },
+          {
+            "label": "review",
+            "path": "review.md",
+            "kind": "review"
+          },
+          {
+            "label": "events",
+            "path": "events.ndjson",
+            "kind": "events"
+          },
+          {
+            "label": "desktop browser trace",
+            "path": "traces/desktop.json",
+            "kind": "trace"
+          },
+          {
+            "label": "desktop actor trace",
+            "path": "actor-desktop.json",
+            "kind": "trace"
+          },
+          {
+            "label": "desktop screenshot 01 (raw)",
+            "path": "screenshots/desktop-step-01-load.png",
+            "kind": "screenshot"
+          }
+        ]
+      }
+    ],
+    "events": [
+      {
+        "id": "event-000-created",
+        "at": "[ts]",
+        "level": "info",
+        "type": "scripted-lab.run.created",
+        "message": "Created scripted-browser lab run for provisioned-scripted-routing-proof (actor scripted-browser, 1 surface)."
+      },
+      {
+        "id": "event-001-subject",
+        "at": "[ts]",
+        "level": "info",
+        "type": "scripted-lab.subject.declared",
+        "message": "Provisioned synthetic subject: clone of repo-01@abc123def4567890abc1, served + getHost-exposed in-sandbox; env names: GITHUB_TOKEN (values never persisted); state provenance: seeded; evidence host digest: 8d9b4d09db938d38."
+      },
+      {
+        "id": "event-002-spend",
+        "at": "[ts]",
+        "level": "info",
+        "type": "scripted-lab.spend",
+        "message": "Scripted participant steps make no model requests; post-run analysis has a separate budget unless disabled. Live provisioned runs may spend E2B sandbox minutes to clone/serve the synthetic subject."
+      },
+      {
+        "id": "event-003-session-desktop",
+        "at": "[ts]",
+        "level": "info",
+        "type": "scripted-lab.session.goal_satisfied",
+        "message": "desktop: passed — Desktop browser surface completed 1/1 scripted browser steps from [provisioned-subject] with HTTP 200.",
+        "simId": "scripted-desktop",
+        "streamId": "scripted-desktop-stream"
+      }
+    ],
+    "redaction": {
+      "status": "passed",
+      "notes": "Scripted step URLs are sanitized to loopback origin+path (query/hash redacted) and step text passes text redaction. Screenshots are FULL-FIDELITY (raw), retained for local use in gitignored .humanish — NOT redacted for publishing; policies.redactScreenshots is not yet supported on this route."
+    },
+    "artifacts": {
+      "run": "run.json",
+      "reviewJson": "review.json",
+      "reviewMarkdown": "review.md",
+      "observerData": "observer/observer-data.json",
+      "events": "events.ndjson"
+    },
+    "review": {
+      "schema": "humanish.review.v1",
+      "verdict": "pass",
+      "summary": "Scripted-browser actor replayed scripted-first-run on 1 surface against [provisioned-subject]: 1/1 satisfied the scenario predicate.",
+      "gaps": []
+    },
+    "feedbackCandidates": [],
+    "subject": {
+      "source": "clone",
+      "repo": "repo-01",
+      "commit": "abc123def4567890abc1",
+      "envNames": [
+        "GITHUB_TOKEN"
+      ],
+      "state": {
+        "provenance": "seeded",
+        "seed": [
+          {
+            "name": "seed",
+            "when": "before-start",
+            "commandDigest": "e2546dbfec30e232",
+            "ok": true,
+            "exitCode": 0,
+            "durationMs": "[durationMs]"
+          }
+        ]
+      }
+    },
+    "desktopTemplate": "adopter-ui-sim-base",
+    "cost": {
+      "schema": "humanish.run-cost-summary.v1",
+      "currency": "usd",
+      "estimatedTotalUsd": 0.00888,
+      "ratesAsOf": "2026-09-05",
+      "fullyEstimated": true,
+      "placeholder": false,
+      "breakdown": [
+        {
+          "kind": "desktop-minutes",
+          "laneId": "subject",
+          "estimatedCostUsd": 0.00888,
+          "ratesAsOf": "2026-09-05",
+          "source": "e2b.dev/pricing",
+          "desktop": {
+            "minutes": 1,
+            "durationBasis": "host-acquired-to-cleanup",
+            "resources": {
+              "cpuCount": 8,
+              "memoryMiB": 8192
+            },
+            "resourceSource": "e2b.getInfo",
+            "usdPerSecond": 0.000148
+          }
+        }
+      ],
+      "tokenUsage": {
+        "input": 0,
+        "output": 0,
+        "total": 0
+      },
+      "desktopMinutes": 1,
+      "note": "Estimated 0.00888 USD total. Every figure is an ESTIMATE (rates as of 2026-09-05 — the OLDEST contributing rate, since an aggregate is only as fresh as its stalest input), a rate-table multiply, NOT an authoritative provider charge. Desktop compute uses observed CPU/RAM and a host-acquired-to-cleanup span where available; pre-handle startup, plan fees, credits, and negotiated pricing are excluded."
+    }
+  },
+  "sandbox-receipts.ndjson": [
+    {
+      "at": "[ts]",
+      "laneId": "subject",
+      "provider": "e2b",
+      "sandboxId": "fake-subject-001",
+      "timeoutMs": 2730000
+    }
+  ],
+  "screenshots/desktop-step-01-load.png": "sha256:dc1ee8a784c37702b5b456b1657db9c8ce3fc98fd4e30c203b300aaf724eae2f",
+  "status.json": {
+    "schema": "humanish.run-status.v1",
+    "runId": "[run]",
+    "state": "finished",
+    "mode": "live",
+    "pid": "[pid]",
+    "startedAt": "[ts]",
+    "updatedAt": "[ts]",
+    "completedAt": "[ts]",
+    "outcome": {
+      "verdict": "pass",
+      "estimatedCostUsd": 0.00888
+    }
+  },
+  "traces/desktop.json": {
+    "schema": "humanish.browser-persona-trace.v1",
+    "capturedAt": "[ts]",
+    "appUrl": "[provisioned-subject]",
+    "browserCommand": "injected-browser",
+    "durationMs": "[durationMs]",
+    "httpStatus": 200,
+    "ok": true,
+    "reason": "Desktop browser surface completed 1/1 scripted browser steps from [provisioned-subject] with HTTP 200.",
+    "screenshotPath": "screenshots/desktop-step-01-load.png",
+    "steps": [
+      {
+        "action": "goto",
+        "completedAt": "[ts]",
+        "durationMs": "[durationMs]",
+        "id": "step-01-load",
+        "label": "Load landing page",
+        "reason": "goto completed for Load landing page.",
+        "screenshotPath": "screenshots/desktop-step-01-load.png",
+        "status": "passed",
+        "url": "[provisioned-subject]/"
+      }
+    ],
+    "surface": {
+      "id": "desktop",
+      "label": "Desktop browser surface",
+      "viewport": {
+        "width": 1440,
+        "height": 960,
+        "deviceScaleFactor": 1,
+        "isMobile": false
+      }
+    },
+    "redaction": "passed"
+  }
+}
