@@ -309,17 +309,15 @@ export type {
   ScriptedBrowserSessionOptions,
   ScriptedBrowserSessionResult,
 } from "./actors/scripted-browser/actor.js";
-export {
-  SCRIPTED_BROWSER_LAB_SCHEMA,
-  runScriptedBrowserLab,
-} from "./routes/scripted-browser/lab.js";
+export { runScriptedBrowserLab } from "./routes/scripted-browser/lab.js";
+export { SCRIPTED_BROWSER_LAB_SCHEMA } from "./routes/scripted-browser/types.js";
 export { buildScriptedLabBundle } from "./routes/scripted-browser/bundle.js";
 export type {
   RunScriptedBrowserLabOptions,
   ScriptedBrowserLabHooks,
   ScriptedBrowserLabResult,
   ScriptedBrowserLabSession,
-} from "./routes/scripted-browser/lab.js";
+} from "./routes/scripted-browser/types.js";
 export { TERMINAL_PRODUCT_LAB_SCHEMA } from "./routes/terminal/types.js";
 export { buildTerminalProductBundle } from "./routes/terminal/bundle.js";
 export { runTerminalProductLab } from "./routes/terminal/lab.js";
