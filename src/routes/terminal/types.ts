@@ -221,6 +221,7 @@ export interface TerminalProductLabResult extends AutomaticAnalysisResult {
       | "HUMANISH_TERMINAL_LAB_CAPS_EXCEEDED"
       | "HUMANISH_TERMINAL_LAB_CREDENTIAL_DENIED"
       | "HUMANISH_TERMINAL_LAB_CLEANUP_UNPROVEN"
+      | "HUMANISH_RUN_ID_IN_USE"
       | typeof TERMINAL_AGENT_NOT_IMPLEMENTED_CODE;
     message: string;
   };

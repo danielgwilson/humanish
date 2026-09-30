@@ -98,6 +98,45 @@ export async function prepareRunArtifactPaths(
   return validatePreparedRunArtifactPaths(await capturePreparedRunArtifactPaths(paths, prepared));
 }
 
+/** A new run's id names a directory that already exists. */
+export interface RunIdInUse {
+  ok: false;
+  code: "HUMANISH_RUN_ID_IN_USE";
+  message: string;
+}
+
+/**
+ * Create and bind the directory of a new run. The run directory is made with one non-recursive
+ * mkdir, so of two starts with the same id exactly one gets it. Any existing entry under that id
+ * (a finished run, an interrupted one that left only sandbox receipts, a symlink) refuses the
+ * start before anything is written, so a caller-supplied id can never overwrite another run's
+ * status or evidence. Code that reads or appends to an existing run binds it with
+ * `bindExistingRunArtifactPaths` instead.
+ */
+export async function createRunArtifactPaths(
+  cwdInput: string,
+  runId: string,
+): Promise<{ ok: true; paths: PreparedRunArtifactPaths } | RunIdInUse> {
+  const paths = resolveRunArtifactPaths(cwdInput, runId);
+  const runsRoot = await prepareHumanishStorageDirectory(cwdInput, "runs");
+  if (runsRoot !== path.dirname(paths.absoluteRunRoot)) {
+    throw new Error("Run directory resolved outside the expected storage root.");
+  }
+  try {
+    await mkdir(path.join(await realpath(runsRoot), runId));
+  } catch (error) {
+    if (isNodeError(error) && error.code === "EEXIST") {
+      return {
+        ok: false,
+        code: "HUMANISH_RUN_ID_IN_USE",
+        message: `Run id ${runId} is already in use: ${paths.relativeRunRoot} exists. Choose a new run id, or omit it to mint one.`,
+      };
+    }
+    throw error;
+  }
+  return { ok: true, paths: await prepareRunArtifactPaths(cwdInput, runId) };
+}
+
 export async function validatePreparedRunArtifactPaths(
   prepared: PreparedRunArtifactPaths,
 ): Promise<PreparedRunArtifactPaths> {

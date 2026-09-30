@@ -227,7 +227,7 @@ humanish run [options] [lab]
 | `--sims <count>` | Simulation count. A dry run accepts any positive count. |
 | `--cwd <path>` | Target project directory. (default: ".") |
 | `--env-file <path>` | Load a local env file for this run without persisting values. |
-| `--run-id <id>` | Explicit run id for deterministic fixture tests. |
+| `--run-id <id>` | Explicit run id for deterministic fixture tests; refused when that run already exists. |
 | `--json` | Print a machine-readable JSON response. |
 | `-h, --help` | display help for command |
 
@@ -618,7 +618,7 @@ humanish watch [options] [lab]
 | `--sims <count>` | Start a fresh synthetic run with this many sims before rendering. Defaults to 4 when --run is omitted. |
 | `--count <count>` | Lab only: override headed desktop lane count. |
 | `--scorer <path>` | Terminal/computer-use/shared-world labs only: repo-relative adopter scorer module (.mjs). Overrides review.scorer.ref. Executable code — review it as code. |
-| `--run-id <id>` | Explicit run id for deterministic fixture tests. |
+| `--run-id <id>` | Explicit run id for deterministic fixture tests; refused when that run already exists. |
 | `--cwd <path>` | Target project directory. (default: ".") |
 | `--env-file <path>` | Load a local env file for this watch without persisting values. |
 | `--open` | Open the observer in the default browser. |
@@ -805,7 +805,7 @@ humanish lab run [options] <lab>
 | `--count <count>` | Computer-use only: override headed desktop lane count. |
 | `--rerun-failed-from <run>` | CUA fan-out only: create a new run for failed lanes from a prior run. |
 | `--lanes <lane-ids>` | CUA rerun only: comma-separated lane ids to rerun from the source run. |
-| `--run-id <id>` | Explicit lab run id. |
+| `--run-id <id>` | Explicit lab run id; refused when that run already exists. |
 | `--cwd <path>` | Target project directory. (default: ".") |
 | `--scorer <path>` | Terminal/computer-use/shared-world labs only: repo-relative adopter scorer module (.mjs). Overrides review.scorer.ref. Executable code — review it as code. |
 | `--json` | Print a machine-readable JSON response. |

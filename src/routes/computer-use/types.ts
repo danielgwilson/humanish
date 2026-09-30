@@ -335,6 +335,7 @@ export type CuaActorLabErrorCode =
   | "HUMANISH_CUA_LAB_FANOUT_INVALID"
   | "HUMANISH_CUA_LAB_RERUN_INVALID"
   | "HUMANISH_CUA_LAB_DEVICE_GEOMETRY"
+  | "HUMANISH_RUN_ID_IN_USE"
   // A fail-closed spend cap (execution.caps.maxUsd) was set but src/run/pricing.ts has no rate for the
   // resolved model, so the cap could not be enforced. Refused at preflight (before any sandbox)
   // rather than run uncapped — an unenforceable cap is more dangerous than none.

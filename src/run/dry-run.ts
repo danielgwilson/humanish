@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
-import { prepareRunArtifactPaths } from "./paths.js";
+import { createRunArtifactPaths } from "./paths.js";
 import { beginRunStatus, withRunStatusScope, type RunStatusHandle } from "./status.js";
 import {
   assertPreparedSelectedOutputDirectory,
@@ -33,48 +33,42 @@ export async function runDryRun(options: RunOptions): Promise<RunResult> {
   return withRunStatusScope(() => runDryRunInScope(options));
 }
 
+function refused(
+  cwd: string,
+  warnings: string[],
+  error: NonNullable<RunResult["error"]>,
+): RunResult {
+  return {
+    schema: "humanish.run-result.v1",
+    ok: false,
+    cwd,
+    warnings,
+    error: { code: error.code, message: error.message },
+  };
+}
+
 async function runDryRunInScope(options: RunOptions): Promise<RunResult> {
   const cwd = path.resolve(options.cwd);
   const cwdError = await validateCwd(cwd);
   const warnings: string[] = [];
 
-  if (cwdError) {
-    return {
-      schema: "humanish.run-result.v1",
-      ok: false,
-      cwd,
-      warnings,
-      error: cwdError,
-    };
-  }
+  if (cwdError) return refused(cwd, warnings, cwdError);
 
   const simCount = normalizeSimCount(options.simCount);
   if (simCount === null) {
-    return {
-      schema: "humanish.run-result.v1",
-      ok: false,
-      cwd,
-      warnings,
-      error: {
-        code: "HUMANISH_INVALID_SIM_COUNT",
-        message: "--sims must be a positive integer.",
-      },
-    };
+    return refused(cwd, warnings, {
+      code: "HUMANISH_INVALID_SIM_COUNT",
+      message: "--sims must be a positive integer.",
+    });
   }
 
   const projectRoot = await prepareSelectedOutputDirectory(path.dirname(cwd), cwd);
 
   if (!options.dryRun) {
-    return {
-      schema: "humanish.run-result.v1",
-      ok: false,
-      cwd,
-      warnings,
-      error: {
-        code: "HUMANISH_LIVE_RUN_UNIMPLEMENTED",
-        message: "Only run --dry-run is implemented here. Run a lab for a live study.",
-      },
-    };
+    return refused(cwd, warnings, {
+      code: "HUMANISH_LIVE_RUN_UNIMPLEMENTED",
+      message: "Only run --dry-run is implemented here. Run a lab for a live study.",
+    });
   }
 
   const now = new Date();
@@ -88,7 +82,9 @@ async function runDryRunInScope(options: RunOptions): Promise<RunResult> {
   const source = await buildRunSource({ cwd, capturedAt: createdAt, humanishSource, packageName });
   const selection = await loadDryRunSelection(projectRoot, humanishSource);
   await assertPreparedSelectedOutputDirectory(projectRoot);
-  const runPaths = await prepareRunArtifactPaths(cwd, runId);
+  const created = await createRunArtifactPaths(cwd, runId);
+  if (!created.ok) return refused(cwd, warnings, created);
+  const runPaths = created.paths;
   // Identity + liveness on disk (#455): uniform across every route, so a reader classifies any
   // run from one small file instead of parsing bundles.
   const runStatus: RunStatusHandle = beginRunStatus(runPaths, {

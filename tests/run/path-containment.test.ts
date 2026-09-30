@@ -1,4 +1,14 @@
-import { access, link, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import {
+  access,
+  link,
+  mkdir,
+  mkdtemp,
+  readFile,
+  readdir,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { execFile } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
@@ -87,14 +97,18 @@ describe("run path containment", () => {
     },
   );
 
-  it("preserves safe legacy ids, explicit latest, and same-id overwrite", async () => {
+  it("preserves safe legacy ids and explicit latest, and refuses a second run with the same id", async () => {
     await withTempProject(async (cwd) => {
       for (const runId of ["UPPER_ID.v1", "café.v2_under", "..safe", "repeat--dash", "latest"]) {
         const first = await runDryRun({ cwd, dryRun: true, runId });
         expect(first.ok).toBe(true);
         expect(first.runId).toBe(runId);
+        const bundle = path.join(cwd, ".humanish", "runs", runId, "run.json");
+        const before = await readFile(bundle, "utf8");
         const second = await runDryRun({ cwd, dryRun: true, runId });
-        expect(second.ok).toBe(true);
+        expect(second.ok).toBe(false);
+        expect(second.error?.code).toBe("HUMANISH_RUN_ID_IN_USE");
+        expect(await readFile(bundle, "utf8")).toBe(before);
         expect((await verifyRun(cwd, "latest")).ok).toBe(true);
         expect((await verifyRun(cwd, runId === "latest" ? "latest" : runId)).ok).toBe(true);
       }
@@ -201,9 +215,10 @@ describe("run path containment", () => {
       await mkdir(outside);
       await mkdir(path.join(cwd, ".humanish", "runs"), { recursive: true });
       await symlink(outside, path.join(cwd, ".humanish", "runs", "blocked"));
-      await expect(runDryRun({ cwd, dryRun: true, runId: "blocked" })).rejects.toThrow(
-        /symbolic link/i,
-      );
+      // Any existing entry under the id refuses the start, a symlink included; nothing follows it.
+      const refused = await runDryRun({ cwd, dryRun: true, runId: "blocked" });
+      expect(refused.error?.code).toBe("HUMANISH_RUN_ID_IN_USE");
+      expect(await readdir(outside)).toEqual([]);
     });
 
     await withTempProject(async (cwd, root) => {
@@ -215,9 +230,8 @@ describe("run path containment", () => {
         path.join(cwd, ".humanish", "runs", "existing", "run.json"),
         "utf8",
       );
-      await expect(runDryRun({ cwd, dryRun: true, runId: "existing" })).rejects.toThrow(
-        /symbolic link/i,
-      );
+      const refused = await runDryRun({ cwd, dryRun: true, runId: "existing" });
+      expect(refused.error?.code).toBe("HUMANISH_RUN_ID_IN_USE");
       expect(
         await readFile(path.join(cwd, ".humanish", "runs", "existing", "run.json"), "utf8"),
       ).toBe(before);
@@ -405,17 +419,19 @@ describe("run path containment", () => {
     });
   });
 
-  it("wires every direct run producer through the shared path guard", async () => {
+  it("wires every direct run producer through the exclusive run directory guard", async () => {
     const producers = [
       "run/dry-run.ts",
       "routes/computer-use/lab.ts",
       "routes/shared-world/concurrent.ts",
       "routes/scripted-browser.ts",
       "routes/terminal/lab.ts",
+      "routes/terminal/session.ts",
     ];
     for (const producer of producers) {
       const source = await readFile(path.resolve("src", producer), "utf8");
-      expect(source, producer).toContain("prepareRunArtifactPaths");
+      expect(source, producer).toContain("createRunArtifactPaths");
+      expect(source, producer).not.toContain("prepareRunArtifactPaths");
     }
   });
 });

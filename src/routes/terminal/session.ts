@@ -31,7 +31,7 @@ import {
   renderPersonaPromptSection,
 } from "../../lab/persona.js";
 import { digestText, redactText, scrubLiterals } from "../../evidence/redaction.js";
-import { prepareRunArtifactPaths, validatePreparedRunArtifactPaths } from "../../run/paths.js";
+import { createRunArtifactPaths, validatePreparedRunArtifactPaths } from "../../run/paths.js";
 import { prepareSelectedOutputDirectory } from "../../run/selected-output-paths.js";
 import { buildRunSource } from "../../run/bundle.js";
 import { extractLocalActorVerdict, normalizeLocalActorTranscript } from "../../run/verify-actor.js";
@@ -162,7 +162,9 @@ export async function runLiveTerminalSession(
   };
 
   const runId = options.runId ?? makeTerminalRunId();
-  const runPaths = await prepareRunArtifactPaths(physicalCwd, runId);
+  const created = await createRunArtifactPaths(physicalCwd, runId);
+  if (!created.ok) return failed(created.code, created.message, { actor: descriptorId });
+  const runPaths = created.paths;
   // Identity + liveness on disk (#455): every backend writes this, so a watcher can classify any
   // run without parsing bundles and without depending on the interactive-observer path.
   const runStatus: RunStatusHandle = beginRunStatus(runPaths, {

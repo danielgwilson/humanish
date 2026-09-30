@@ -44,7 +44,7 @@ import { type LocalAgentId } from "../../actors/local-agent/cli.js";
 import { renderObserver } from "../../observer/render.js";
 import { DEFAULT_OPENAI_CU_MODEL } from "../../actors/computer-use/openai-provider.js";
 import { redactText, scrubLiterals } from "../../evidence/redaction.js";
-import { prepareRunArtifactPaths } from "../../run/paths.js";
+import { createRunArtifactPaths } from "../../run/paths.js";
 import {
   beginRunStatus,
   withRunStatusScope,
@@ -293,7 +293,9 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
   }
 
   const runId = options.runId ?? makeCuaRunId();
-  const runPaths = await prepareRunArtifactPaths(cwd, runId);
+  const created = await createRunArtifactPaths(cwd, runId);
+  if (!created.ok) return fail(created.code, created.message, descriptor.id);
+  const runPaths = created.paths;
   // Identity + liveness on disk from the first moment (#455): anything watching the runs
   // directory — the TUI, another terminal, an agent — can now tell which lab this is and that
   // it is alive, without waiting for the interactive observer flush that used to be the only

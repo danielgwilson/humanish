@@ -62,7 +62,7 @@ import type { LabConfig } from "../lab/types.js";
 import { renderObserver, type ObserverResult } from "../observer/render.js";
 import { digestText, redactText } from "../evidence/redaction.js";
 import {
-  prepareRunArtifactPaths,
+  createRunArtifactPaths,
   type PreparedRunArtifactPaths,
   validatePreparedRunArtifactPaths,
 } from "../run/paths.js";
@@ -204,7 +204,8 @@ export interface ScriptedBrowserLabResult extends AutomaticAnalysisResult {
       | "HUMANISH_SCRIPTED_LAB_BROWSER_MISSING"
       | "HUMANISH_SCRIPTED_LAB_KEYS_MISSING"
       | "HUMANISH_SCRIPTED_LAB_SUBJECT_ENV_MISSING"
-      | "HUMANISH_SCRIPTED_LAB_GETHOST_UNAVAILABLE";
+      | "HUMANISH_SCRIPTED_LAB_GETHOST_UNAVAILABLE"
+      | "HUMANISH_RUN_ID_IN_USE";
     message: string;
   };
 }
@@ -410,7 +411,11 @@ async function runScriptedBrowserLabInScope(
   }
 
   const runId = options.runId ?? makeScriptedRunId();
-  const runPaths = await prepareRunArtifactPaths(physicalCwd, runId);
+  const created = await createRunArtifactPaths(physicalCwd, runId);
+  if (!created.ok) {
+    return failed(created.code, created.message, { actor: descriptor.id, appUrl: evidenceAppUrl });
+  }
+  const runPaths = created.paths;
   // Identity + liveness on disk (#455): every backend writes this, so a watcher can classify any
   // run without parsing bundles and without depending on the interactive-observer path.
   const runStatus: RunStatusHandle = beginRunStatus(runPaths, {

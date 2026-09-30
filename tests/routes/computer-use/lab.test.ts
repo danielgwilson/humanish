@@ -6511,6 +6511,51 @@ describe("adopter-hosted comms on the app-url route (#380)", () => {
   }, 60_000);
 });
 
+describe("computer-use run id reuse", () => {
+  it("refuses a live run whose run id names an existing run, before any sandbox or analysis", async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-run-id-"));
+    try {
+      const older = await runLab(cuaConfig(), { cwd, dryRun: true, runId: "older-run" });
+      expect(older.result.ok).toBe(true);
+      const runsRoot = path.join(cwd, ".humanish", "runs");
+      const snapshot = async () => ({
+        files: (await readdir(path.join(runsRoot, "older-run"), { recursive: true })).sort(),
+        run: await readFile(path.join(runsRoot, "older-run", "run.json"), "utf8"),
+        status: await readFile(path.join(runsRoot, "older-run", "status.json"), "utf8"),
+        latest: await readFile(path.join(runsRoot, "latest.json"), "utf8"),
+      });
+      const before = await snapshot();
+      const loadDesktopModule = vi.fn(async () => {
+        throw new Error("no sandbox may be created for a refused run id");
+      });
+      const analysis = automaticAnalysisBoundary();
+
+      const outcome = await runLab(cuaConfig(), {
+        cwd,
+        dryRun: false,
+        runId: "older-run",
+        automaticAnalysis: { run: analysis },
+        cuaHooks: {
+          env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
+          loadDesktopModule,
+        },
+      });
+
+      expect(outcome.result).toMatchObject({
+        ok: false,
+        runId: "older-run",
+        error: { code: "HUMANISH_RUN_ID_IN_USE" },
+        automaticAnalysis: { state: "skipped", reason: "analysis_source_unavailable" },
+      });
+      expect(loadDesktopModule).not.toHaveBeenCalled();
+      expect(analysis).not.toHaveBeenCalled();
+      expect(await snapshot()).toEqual(before);
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+});
+
 // Characterization: the complete run directory and returned result of a single-lane computer-use
 // run, on the fake E2B module with a scripted provider transport and on the in-process route with
 // a state executor, pinned so a refactor of bundle assembly or artifact writing shows up as a

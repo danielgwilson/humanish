@@ -7,7 +7,7 @@
 // durations) happens identically in the test on both sides, so the committed fixture stays
 // human-diffable.
 import { execFileSync } from "node:child_process";
-import { mkdirSync, copyFileSync, existsSync } from "node:fs";
+import { mkdirSync, copyFileSync, existsSync, rmSync } from "node:fs";
 import path from "node:path";
 
 const root = process.cwd();
@@ -26,6 +26,8 @@ const LABS = [
 
 for (const lab of LABS) {
   console.log(`[golden] capturing ${lab.id} ...`);
+  // A run id can be used once; clear this script's previous capture of the fixed id.
+  rmSync(path.join(root, ".humanish", "runs", lab.runId), { recursive: true, force: true });
   execFileSync(
     "pnpm",
     [

@@ -46,7 +46,10 @@ export function registerRunCommand(parent: Command, io: CliIo): void {
     .addOption(new Option("--app-url <url>").hideHelp())
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--env-file <path>", "Load a local env file for this run without persisting values.")
-    .option("--run-id <id>", "Explicit run id for deterministic fixture tests.")
+    .option(
+      "--run-id <id>",
+      "Explicit run id for deterministic fixture tests; refused when that run already exists.",
+    )
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(
       async (
