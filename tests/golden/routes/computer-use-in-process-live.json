@@ -310,7 +310,7 @@
         },
         "ui": {
           "route": "http://localhost:5173/",
-          "intent": "Watch the computer-use actor drive the subject app in a hosted desktop browser.",
+          "intent": "Watch the computer-use actor drive the subject app in process, with no desktop.",
           "state": "Reached the goal via getState().",
           "actorStatus": "passed"
         },
@@ -427,7 +427,7 @@
           "mode": "browser-sim",
           "progress": 100,
           "currentStep": "Reached the goal via getState().",
-          "summary": "Computer-use actor (openai-computer-use) drove the subject app in a hosted desktop browser; goal_satisfied.",
+          "summary": "Computer-use actor (openai-computer-use) drove the subject app in process, with no desktop; goal_satisfied.",
           "streamIds": [
             "stream-001"
           ],
@@ -610,7 +610,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "Reached the goal via getState().",
-        "summary": "Computer-use actor (openai-computer-use) drove the subject app in a hosted desktop browser; goal_satisfied.",
+        "summary": "Computer-use actor (openai-computer-use) drove the subject app in process, with no desktop; goal_satisfied.",
         "streamIds": [
           "stream-001"
         ],
@@ -637,7 +637,7 @@
         },
         "ui": {
           "route": "http://localhost:5173/",
-          "intent": "Watch the computer-use actor drive the subject app in a hosted desktop browser.",
+          "intent": "Watch the computer-use actor drive the subject app in process, with no desktop.",
           "state": "Reached the goal via getState().",
           "actorStatus": "passed"
         },
