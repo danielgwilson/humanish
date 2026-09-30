@@ -73,9 +73,10 @@ A lab is a composition over code primitives, not a hardcoded kind:
   in place of a clone; see below), `app-url`
   (loopback unless `policies.allowPublicTargets` declares an owned deployment),
   `local-app` (an already-running LOCAL dev server driven IN-PROCESS via a
-  custom `CuaExecutor`, NO clone and NO E2B desktop, always loopback), or
+  custom `CuaExecutor`, NO clone and NO E2B desktop, always loopback),
   `terminal-product` (a CLI/product a real autonomous terminal agent studies
-  from PUBLIC surfaces only; see below). A
+  from PUBLIC surfaces only; see below), or `desktop-cli` (a computer-use
+  participant using a CLI in a terminal on a hosted desktop). A
   `local-app` subject pairs a computer-use actor with `execution.target: local`
   (or absent) and is library-assisted: the caller supplies
   `RunLabOptions.inProcess.executor` + `createProvider`; with neither the engine fails
@@ -98,8 +99,9 @@ A lab is a composition over code primitives, not a hardcoded kind:
   is a git work tree (`git ls-files --cached --others --exclude-standard`,
   honoring `.gitignore`) or a denylist-only recursive walk otherwise; an
   always-on denylist (`.git`, `node_modules`, `.humanish`, `.env*`, key/cert
-  file patterns, and common credential-shaped names; the authoritative list
-  is `LOCAL_TREE_DENYLIST_BASENAME_PATTERNS` in `src/run/source-archive.ts`)
+  file patterns, and common credential-shaped names; the authoritative lists
+  are `LOCAL_TREE_DENYLIST_PATH_SEGMENTS` and `LOCAL_TREE_DENYLIST_BASENAME_PATTERNS` in
+  `src/run/source-archive.ts`)
   applies in both modes and is not overridable. The denylist matches names,
   not contents; a secret in a file it does not name packs like any other
   file, so review the pack summary line and use `localTree.exclude`. The lab packs
@@ -139,7 +141,7 @@ before-start | after-ready, timeoutMs }`) executed in-sandbox around the
   lane (no E2B to fan out);
 - `actors[0].lanes[]` (computer-use E2B route): a DIFFERENTIATED fan-out roster,
   each `{ id?, actorType?, surface?, caseGroup?, persona?, device?,
-instruction?, target?, entry? }` becoming one independent E2B desktop (or, on the
+instruction?, target?, entry?, host?, reasoningEffort?, stopWhen?, dwell? }` becoming one independent E2B desktop (or, on the
   shared-world routes, one role/seat against the shared plane). `actorType`,
   `surface`, and `caseGroup` are adapter-owned public-safe labels for grouping
   simulated users; they are not core enums, and `actorType` is deliberately
@@ -147,9 +149,9 @@ instruction?, target?, entry? }` becoming one independent E2B desktop (or, on th
   `count` (declare a roster OR a homogeneous count) and XOR with
   `actors[0].laneFocus` (a roster's per-lane `instruction` is the steer);
   `lanes[].device` is XOR with a raw `execution.desktop.resolution`. Lane ids
-  default `lane-01`..`lane-NN`, must be unique, and name per-lane evidence paths
-  (`actors/<streamId>.json`, `screenshots/<laneId>/`). Cap 16 lanes. On every
-  non-cua route `lanes` is inert (warned). `subject.clone.fanout` is REJECTED on
+  default `lane-01`..`lane-NN` (`role-01`..`role-NN` for shared-world seats), must be unique, and name per-lane evidence paths
+  (`actors/<streamId>.json`, `screenshots/<laneId>/`). Cap 16 lanes. On other
+  routes `lanes` is inert (warned), except the scripted-browser route, which rejects it. `subject.clone.fanout` is REJECTED on
   the cua, shared-world and scripted-browser routes (declare fan-out via
   `count`/`lanes`). No current route reads `clone.fanout`;
 - `actors[0].lanes[].target` (app-url × computer-use E2B route only): an
@@ -162,7 +164,8 @@ instruction?, target?, entry? }` becoming one independent E2B desktop (or, on th
   browser target; `entry` is a shared-world same-origin seat path;
 - `actors[0].roster[]` (computer-use E2B route): compact authoring sugar for
   repeated lane groups, each `{ id, count, actorType?, surface?, caseGroup?,
-persona?, device?, instruction?, target?, entry? }`. The parser expands it into
+persona?, device?, instruction?, target?, entry?, host?, reasoningEffort?, stopWhen?,
+dwell? }`. The parser expands it into
   deterministic `lanes[]` before the engine runs (`viewer-01`, `viewer-02`,
   ...), so the runtime and run bundle keep one normalized lane shape. `roster`
   is XOR with explicit `lanes`, homogeneous `count`, and `laneFocus`;
@@ -193,20 +196,20 @@ persona?, device?, instruction?, target?, entry? }`. The parser expands it into
   deployment (`source: app-url` + `topology: shared-world` + `allowPublicTargets` +
   `concurrency > 1`) is used directly as the shared plane. The harness neither
   provisions nor exposes the target, so it cannot attest synthetic data; the operator
-  MUST attest they own/operate it. Author-trust (unverifiable); rejected on every other
-  route. `actors[0].lanes[].host: true` marks the single designated host seat there;
+  MUST attest they own/operate it. Author-trust (unverifiable); rejected on non-app-url
+  subjects and inert (warned) on other app-url routes. `actors[0].lanes[].host: true` marks the single designated host seat there;
 - `subject.appUrl`: a loopback http(s) URL a computer-use actor drives, OR (on the
   external-public shared-world route) the non-loopback public deployment used as the
   shared plane (with `publicTarget` + `allowPublicTargets`);
 - `execution`: where it runs (`local`, `e2b-desktop`, or `e2b-terminal`), plus
   desktop device/resolution and timeouts. app-url subjects pair `e2b-desktop`
-  with a computer-use actor, or `local` (or absent) with a scripted-browser
-  actor; terminal-product subjects pair `e2b-terminal` (or absent → implied)
+  or `local` with a computer-use actor, or `local` (or absent) with a
+  scripted-browser actor; terminal-product subjects pair `e2b-terminal` (or absent → implied)
   with a registered terminal actor. clone and local-tree subjects require an
   explicit `e2b-desktop`: any other target, or none, fails to parse, and the
   computer-use and scripted-browser routes refuse it when a library caller skips
   the parser;
-- `execution.desktop.template` (e2b-desktop computer-use routes): a custom E2B
+- `execution.desktop.template` (e2b-desktop computer-use and clone scripted-browser routes): a custom E2B
   desktop TEMPLATE (image) NAME or ID the run launches on, for a subject that
   needs runtimes the stock `desktop` image lacks (e.g. node/bun/a local Postgres
   baked into an adopter-maintained image). Any non-empty string is a valid
@@ -240,12 +243,14 @@ persona?, device?, instruction?, target?, entry? }`. The parser expands it into
   an interactive PTY would overstate the mechanism (invariant 6; a true duplex
   PTY transport does not ship). `terminal.stdin` defaults to `disabled`
   (`sent`/assisted input is rejected until the interventions ledger + a
-  non-comparable marker exist). `runtimeAuth: openai-env` declares the agent's
-  runtime-auth channel, recorded as NAMES ONLY. On a live run, the engine
+  non-comparable marker exist). `runtimeAuth` (`openai-env`, the default, or `openai-egress`)
+  declares the agent's runtime-auth channel, recorded as NAMES ONLY. On a live run, the engine
   resolves the registered terminal descriptor and requires
-  `keyPlacement: in-sandbox-command-scoped` before creating a sandbox. The key
-  is passed only to the agent command, never to `Sandbox.create` or metadata;
-  a dry-run neither reads nor injects it;
+  `keyPlacement: in-sandbox-command-scoped` before creating a sandbox. With `openai-env`
+  the key is passed only to the agent command, never to `Sandbox.create` or
+  metadata; with `openai-egress` it stays in the host-side E2B header transform
+  set at sandbox creation, and the agent gets a placeholder. A dry-run neither
+  reads nor injects it;
 - `scenario`: `mode: dry-run` (contract evidence, no spend) or `live`.
   `scenario.ref` is CONSUMED (and REQUIRED) on the scripted-browser route: it
   resolves a committed scenario (`humanish/scenarios/<ref>.yaml` or a repo
@@ -269,7 +274,8 @@ persona?, device?, instruction?, target?, entry? }`. The parser expands it into
   `scenario.caps.maxUsd` or `scenario.caps.maxTotalUsd` on a computer-use lab
   is a parse error naming the matching `execution.caps` field, which is what
   that route enforces;
-- `policies`: `redactRepos`, `redactScreenshots`, `allowPublicTargets`, and the
+- `policies`: `redactRepos`, `redactScreenshots`, `allowPublicTargets`,
+  `mediaPermission` (`prompt` | `granted`), and the
   terminal-product credential-boundary booleans `allowPrivateRepoAccess`,
   `allowProviderCredentials`, `allowPaymentCredentials`, `allowGitHubMutation`
   (all DEFAULT FALSE, deny-by-default; only the runtime LLM key enters, and
@@ -283,13 +289,13 @@ persona?, device?, instruction?, target?, entry? }`. The parser expands it into
   configuration rejects `comms.sms` and unknown channel names; message-bus SMS
   types do not imply a supported SMS execution route. SMTP capture is supported
   on per-lane provisioned routes and rejected for shared-world studies.
-  `comms.email` = `{ kind: fake, injectEnv?, port?, recipients?, linkOrigin?, external? }`.
+  `comms.email` = `{ kind: fake, injectEnv?, port?, smtp?, recipients?, linkOrigin?, external? }`.
   `injectEnv` is the ADOPTER-NAMED env var the app reads for its email-API base
   URL (e.g. `RESEND_API_URL`); the harness sets it to an in-sandbox catch (so it
   is NOT declared in `subject.env`) that captures the app's sends without touching
   the internet. Verify the app actually reads that variable, because a run whose
   catch captured zero sends warns at teardown for exactly that. `kind` must be
-  `fake` (`real`/provider-backed is rejected until implemented); `port` ≤ 65534
+  `fake`; a real inbox names a saved `comms.email.connection` instead; `port` ≤ 65534
   (the catch reserves `port+1` for the read-only inbox listener the shared-world
   route getHost-exposes). `recipients[]` = `{ lane, address? }`: OMIT the list
   and the parser fills one deterministic address per lane
@@ -368,19 +374,22 @@ run local-only regardless of screenshot redaction. See the
 
 Lab backends report results in their own schemas (`humanish.run-result.v1`,
 `humanish.cua-lab-result.v2`, `humanish.scripted-lab-result.v1`,
-`humanish.terminal-lab-result.v1`); the evidence record stays
+`humanish.terminal-lab-result.v1`,
+`humanish.concurrent-shared-world-lab-result.v1`); the evidence record stays
 `humanish.run-bundle.v1` in every case. The computer-use result bumped to v2 for
 fan-out: it carries `plan` (the pre-flight lane table: concurrency, waves,
 per-lane session budget, worst-case sandbox-minutes), `lanes[]` (ALWAYS present,
 length 1 at N=1; per-lane status/session/sandbox/subject), and `laneSummary`
-(passed/skipped/harnessError/hollow counts). The top-level `session`/`sandbox`
+(passed/skipped/harnessErrors/hollow counts). The top-level `session`/`sandbox`
 mirror the first lane and `subject.commit` is unanimity-gated across lanes
 (omitted with a divergence warning when lanes resolve different commits). At N=1
 the run bundle is byte-stable with the pre-fan-out output; only the result
 projection changed. A fan-out run records a `cua-lab.fanout.plan` bundle event
 (and a `cua-lab.fanout.fail-fast` event when a harness error skips queued lanes);
-`ok = observer.ok ∧ no skipped lane ∧ all lanes terminal ∧ no harness error ∧ no
-hollow lane`.
+`ok = observer.ok ∧ every lane ok ∧ no failed adapter or declared-scorer verdict`,
+where a dry-run lane is ok as contract evidence and a live lane must pass
+`participantPassed` (`src/run/judge.ts`): not skipped, status `passed`, no harness
+error, engaged, and no self-reported blocker.
 
 Explicit failed-lane reruns are supported on the CUA fan-out route via
 `humanish lab run <lab> --rerun-failed-from <run-id> [--lanes lane-a,lane-b]`.
@@ -428,6 +437,7 @@ Core-owned fields:
 - `mode`
 - `simCount`
 - `createdAt`
+- `cwd` (always `[target-cwd]`)
 - `artifactRoot`
 - `source.git`
 - `lifecycle`
@@ -449,10 +459,10 @@ Core-owned fields:
 - `subject` (optional, additive): structured subject provenance,
   `{ source: clone | app-url | local-tree, repo?, commit?, archiveSha256?,
 dirty?, envNames?, state }` where `state` is `{ provenance: seeded |
-unpinned | declared-not-run | undeclared, seed?: [{ name, when,
+unpinned | declared-not-run | undeclared | external-public, seed?: [{ name, when,
 commandDigest, ok?, exitCode?, timedOut?, durationMs? }], externalEnvNames?
-}`. Emitted by the computer-use backend; absent on pre-existing and other
-  backends' bundles. `repo`/`commit` are clone-route fields; `archiveSha256`
+}`. Emitted by the computer-use and shared-world backends and the clone
+  scripted-browser route; absent on pre-existing and other bundles. `repo`/`commit` are clone-route fields; `archiveSha256`
   (64-hex sha256, the local-tree provenance pin) and `dirty` (host git
   porcelain status at pack time) are local-tree-route fields, additive under
   `humanish.run-bundle.v1`: a dirty working tree cannot be commit-pinned, so
@@ -484,7 +494,7 @@ Adapter-owned fields:
 - `scenario`
 - target-specific stream labels and public-safe summaries
 
-Synthetic fixture:
+Abbreviated synthetic fixture (omits `cwd`, `simulations`, `streams` and `events`):
 
 ```yaml
 schema: humanish.run-bundle.v1
@@ -564,12 +574,12 @@ A shared-world bundle adds TWO additive, optional fields to `humanish.run-bundle
   ("how well did the run attribute INTERACTION?"), distinct from the persona-sampling
   evidence classes ("how representative is the actor?"). Absent == `isolated`.
 - `sharedWorld` (`humanish.shared-world.v1`): TWO variants discriminated by
-  `topologyMode: "sequential" | "concurrent"` (validateSharedWorldEvidence branches on
+  `topologyMode: "sequential" | "concurrent"` (`sharedWorldEvidenceFindings` in `src/verify/shared-world.ts` branches on
   it FIRST; unknown/missing or a mismatched shape fails closed). Common fields:
   - `topology: shared-world`
   - `topologyMode: sequential | concurrent`
   - `roleCount`: the DECLARED number of role/persona seats.
-  - `plane: { commit?, seedDigest, envNames, hostDigest?, exposure?, publicOriginDigest? }`: the ONE
+  - `plane: { commit?, seedDigest, envNames, hostDigest?, exposure?, publicOriginDigest?, declaredOriginDigest? }`: the ONE
     shared-plane provenance. `seedDigest` is the sha256-16 of the ordered seed-step
     command digests (the seed RECIPE identity, not the runtime state); `envNames` are
     NAMES only. `hostDigest`/`exposure` are CONCURRENT provisioned-getHost-only, and
@@ -640,8 +650,8 @@ end on a checkpoint, turn order == sequence, sequence length == roleCount == tur
 count, no `laneWindows`); every turn's simId/streamId resolves; every checkpoint digest
 is sha256-16 with NO value-shaped field; all turns share ONE plane provenance; the
 mandatory limits are present; and a PASSED run shows ≥1 checkpoint `deltaFromPrev` (the
-delta-on-pass gate). CONCURRENT: no `timeline`; laneWindows + stateSeries + outcomes
-cover exactly roleCount; the required limits are present AND the forbidden ones absent;
+delta-on-pass gate). CONCURRENT: no `timeline`; laneWindows and outcomes each
+cover exactly roleCount and stateSeries is present; the required limits are present AND the forbidden ones absent;
 `plane.hostDigest` present and every `routeHostDigest` equals it (invariant 2);
 `plane.exposure == synthetic` AND `subject.state.provenance == seeded` (the
 synthetic-subject gate); stateSeries snapshots are digest-only (allowed-keys tripwire);
@@ -687,9 +697,10 @@ claim can never leak onto the external-public class (or vice versa).
   analog of `exposure: synthetic`: you cannot attest synthetic on a real site, but you MUST attest
   you own/operate it; author-trust, unverifiable by the harness). Evidence deltas, all
   asserted-absent (never silently dropped):
-  - `plane.publicOriginDigest`: sha256-16 of the operator-DECLARED origin. Every
+  - `plane.publicOriginDigest`: sha256-16 of the one OBSERVED origin the seats converged on. Every
     `laneWindow.routeHostDigest` (computed from that seat's CDP-OBSERVED final-URL origin) equals it.
-    This proves inter-seat CONVERGENCE on one declared origin, NOT harness control of the plane
+    `plane.declaredOriginDigest` records the operator-declared origin as evidence only; a redirect
+    can make the two differ. This proves inter-seat CONVERGENCE on one origin, NOT harness control of the plane
     (WEAKER than getHost's `hostDigest`, and disclosed).
   - `plane.exposure` is ABSENT (verify fails closed if `synthetic` appears, since that
     attestation would be false on a real site);
@@ -906,7 +917,8 @@ Core-owned fields:
   `costUsd` is RESERVED for a real provider-returned charge, while
   `estimatedCost.estimatedCostUsd` is a rate-table multiply, named honestly as
   an estimate so a reader can never confuse the two (invariant 6). Absent on
-  codex/scripted lanes and on every pre-existing bundle; a `null`
+  the Codex app-server and scripted lanes and on every pre-existing bundle; the
+  terminal lane records a `null` estimate. A `null`
   `estimatedCostUsd` is DECLARED ABSENT (unknown rate / no usage), never 0.
 
 Unexpected actor-loop diagnostics live inside `items[]` as
@@ -951,7 +963,7 @@ items: []
 Reserved: `humanish.substrate.v1` is named here for layering intent but has
 never shipped; no code emits or validates it. Substrate truth today lives
 inside run bundles (per-stream transport and status) and lab execution config
-(`execution.target: local | e2b-desktop`). Do not emit this schema.
+(`execution.target: local | e2b-desktop | e2b-terminal`). Do not emit this schema.
 
 ## Serve Result And Reserved Control-Plane Namespace
 
@@ -980,9 +992,11 @@ contract.
 
 ## Terminal Cost Ledger And No-Spend Proof
 
-The terminal-product lane (`src/routes/terminal/lab.ts`) passes a real provider key
-only to the in-sandbox agent command, never to sandbox-global env or metadata,
-so the no-spend claim must be derived from a ledger, never asserted. The
+The terminal-product lane (`src/routes/terminal/lab.ts`), under the default
+`runtimeAuth: openai-env`, passes a real provider key only to the in-sandbox agent
+command; `openai-egress` gives the command a placeholder and keeps the key in an
+external E2B header transform. Neither mode puts it in sandbox-global env or
+metadata, so the no-spend claim must be derived from a ledger, never asserted. The
 live run writes both to `terminal-ledgers.json` (a `cost` block + a
 `noSpendProof` block, additive to `humanish.terminal-ledgers.v1`).
 
@@ -1098,7 +1112,7 @@ judge, and nothing in it says the run finished.
 `humanish.run-detail.v1` is the watching projection, for ONE run. Who is in it
 and what they are thinking: `{ runId, participants: [{ id, label, personaId?,
 traits, status?, completionReason?, thought?, turns?, actions?, thoughts?,
-estimatedCostUsd? }], observerPath? }`. It reads the actor trace from
+estimatedCostUsd? }], observerPath?, automaticAnalysis? }`. It reads the actor trace from
 `stream.liveActor` while a run is in flight and `stream.actor` once it has
 finished, preferring the live one, so a single screen renders a run the whole
 way through. A reasoning item still being written is skipped rather than quoted
@@ -1113,7 +1127,7 @@ only because it is asked for the one run being watched.
 check could not catch: `codex exec` allocates a PTY for the commands it runs, so
 both streams are terminals and the surface used to open. A study watched an
 agent move through the labs list and start a run it did not mean to start
-(labs/handed-a-human-surface.yaml). The refusal names the environment variable
+(humanish/labs/handed-a-human-surface.yaml). The refusal names the environment variable
 that identified the runner, so the reader can check the claim, and `--force` is
 the escape for a person who really is at that keyboard. Every other
 command is built for an agent to drive; this one takes the screen and waits for
@@ -1144,7 +1158,7 @@ never authoritative: every dollar figure is a rate-table multiply, labeled
   (`estimatedCostUsd: null` + a `reason`), never guessed.
 - `humanish.actor-estimated-cost.v1` (`ActorTrace.estimatedCost`): one lane's
   token-derived model cost, with `estimatedCostUsd` (or `null` + `reason`
-  `no_rate_for_model`/`no_token_usage`), `ratesAsOf`, `source`, `modelId`,
+  `no_rate_for_model`/`no_token_usage`/`account_billing_unknown`), `ratesAsOf`, `source`, `modelId`,
   optional `placeholder`, and a `breakdown`.
 - `humanish.run-cost-summary.v1` (`RunBundle.cost`): the sum of every lane's
   `model-tokens` lines PLUS `desktop-minutes` lines. New independent CUA runs
@@ -1179,7 +1193,7 @@ keeps its own true `asOf`). `desktopMinutes` is a HOST-SIDE
 acquired-handle→cleanup span, excluding allocation/startup before handle acquisition.
 It approximates E2B's server-side billed lifetime. Plan fees, credits, and negotiated
 prices are excluded; unknown remaining lifetime makes `fullyEstimated` false.
-Shared-world, scripted-browser, and terminal routes do not yet emit these desktop lines.
+Scripted-browser runs add a `laneId: subject` line for a provisioned clone.
 
 ```yaml
 schema: humanish.run-cost-summary.v1
@@ -1210,12 +1224,13 @@ note: "Estimated 11.60167 USD total…"
 ```
 
 `verifyRun` asserts LABELING/provenance, never MAGNITUDE. Absence PASSES
-(fail-open on display): a bundle with no cost, a null estimate, or a lane without
-`estimatedCost` verifies fine. A CLAIMED number FAILS closed when it lacks its
+(fail-open on display): a bundle with no cost, a null estimate that carries a
+`reason` and a null `ratesAsOf`, or a lane without `estimatedCost` verifies fine. A CLAIMED number FAILS closed when it lacks its
 `ratesAsOf` date or `source`, or when `estimatedTotalUsd` does not equal the
 rounded sum of its non-null lines (a null line coerced to 0 is a mechanism
 mismatch). A correctly-labeled huge estimate still passes. Cost is neither a
-secret nor a share-blocker, so it never affects `shareSafety`.
+secret nor a share-blocker: its magnitude never affects `shareSafety`. A labeling
+failure fails verify, which blocks sharing like any other failed check.
 
 **Computer-use spend thresholds.** `execution.caps.maxUsd` applies independently
 to each lane. `execution.caps.maxTotalUsd` shares an estimated model-spend ledger
@@ -1312,15 +1327,16 @@ These computer-use rules do not replace the terminal route's separate
 `humanish.affordance-use.v1` (additive `ActorTrace.affordanceUse`) records WHICH
 KIND of route an actor took, per dispatched action, as counts by class:
 
-| Class              | What it covers                                                                |
-| ------------------ | ----------------------------------------------------------------------------- |
-| `pointer`          | click, double-click, drag, scroll: interaction with what is rendered          |
-| `keyboard`         | typed text and key presses into the page                                      |
-| `url-navigation`   | typing a URL (the `nav` subset); a HUMAN affordance, see below                |
-| `script-execution` | a `javascript:` or `data:` URL; not a human affordance                        |
-| `devtools`         | developer tooling opened by keyboard chord                                    |
-| `browser-internal` | `chrome://`, `about:`, `view-source:`, `file:` (the browser, not the product) |
-| `observation`      | screenshots, waits, bare pointer moves: the actor looking rather than acting  |
+| Class              | What it covers                                                                                                |
+| ------------------ | ------------------------------------------------------------------------------------------------------------- |
+| `pointer`          | click, double-click, drag, scroll: interaction with what is rendered                                          |
+| `keyboard`         | typed text and key presses into the page                                                                      |
+| `speech`           | spoken input from a `speak` action                                                                            |
+| `url-navigation`   | typing a URL (the `nav` subset); a HUMAN affordance, see below                                                |
+| `script-execution` | a `javascript:` or `data:` URL; not a human affordance                                                        |
+| `devtools`         | developer tooling opened by keyboard chord                                                                    |
+| `browser-internal` | `chrome://`, `about:`, `view-source:`, `devtools:`, `file:`, `edge:`, `brave:` (the browser, not the product) |
+| `observation`      | screenshots, waits, bare pointer moves: the actor looking rather than acting                                  |
 
 `counts` omits classes that never occurred; `total` is the denominator for any
 rate; `shortcutTotal` rolls up `script-execution` + `devtools` +
@@ -1391,7 +1407,8 @@ use emits one `DeprecationWarning` (code `HUMANISH_RUN_LAB_OPTION_DEPRECATED`) p
 
 | Old field                                                                                          | New home               |
 | -------------------------------------------------------------------------------------------------- | ---------------------- |
-| `score`, `deriveFeedback`, `deriveArtifacts` on `cuaHooks`, `sharedWorldHooks` or `terminalHooks`  | `scorer`               |
+| `score`, `deriveFeedback` on `cuaHooks`, `sharedWorldHooks` or `terminalHooks`                     | `scorer`               |
+| `deriveArtifacts` on `cuaHooks` or `sharedWorldHooks`                                              | `scorer`               |
 | `cuaHooks.buildProvider`                                                                           | `createProvider`       |
 | `cuaHooks.buildExecutor`                                                                           | `inProcess.executor`   |
 | `prepareDesktop` on `cuaHooks`, `scriptedHooks` or `sharedWorldHooks`                              | `prepareDesktop`       |
@@ -1473,8 +1490,11 @@ adapter:
 
 Acceptance semantics are route-specific:
 
-- Terminal-product runs keep the mission-based `review` verdict unchanged; the
-  adapter score is additive because the route is a public-product study lane.
+- Terminal-product runs keep the mission-based `review` verdict unchanged for a
+  library `scorer`; the adapter score is additive. A config-declared scorer
+  (`--scorer` or the lab's `review.scorer.ref`) that returns `status: fail`,
+  throws, or returns a malformed score turns a pass-like verdict into `fail` and
+  fails the run result.
 - Browser/computer-use runs treat `adapterScore.status: fail` as product-red:
   the bundle keeps the adapter score, `review.verdict` becomes `fail` when it
   was pass-like, a generic adapter gap is appended, and the route result returns
@@ -1593,9 +1613,8 @@ shareSafety:
 
 Policy names boundaries before an actor runs or feedback is promoted.
 `humanish.policy.v1` exists today only as an adapter fixture shape
-(`adapters/fixtures/`); the engine does not validate it. The committed policy
-source files scaffolded by `humanish init` use `humanish.redaction-policy.v1`,
-`humanish.network-policy.v1`, and `humanish.credentials-policy.v1`.
+(`adapters/fixtures/`); the engine does not validate it. `humanish init`
+scaffolds no policy files.
 
 Core-owned fields:
 

@@ -13,9 +13,9 @@ npx humanish tui
 
 Arrow keys move, Enter opens, Esc goes back, q quits. There are six screens. Three are the main path: all labs, one lab, one run. The row below the last lab opens **all runs**, every participant working now across every lab. `?` shows the keys, and `c` opens **connections**, the email catch and provider key setup. A run you are watching updates in place, from running to its verdict, without the screen jumping.
 
-- **labs**: every lab in the project, with the ones running now listed first. Each row shows what a live run of it usually takes. A lab with no live history says `no live runs yet`; dry runs spend nothing and take no time, so they are not averaged.
+- **labs**: every lab in the project, with the ones running now listed first. Each row shows what a live run of it usually takes. A lab that has never run says `never run`, and one with only dry runs says `<n> runs, none live`; dry runs spend nothing and take no time, so they are not averaged.
 - **lab**: that lab's history and two ways to start it. A dry run starts on one keypress because it costs nothing. A live run takes two, with the cost shown between them.
-- **run**: who is in the run, what each participant is doing now, and how far along it is, with time and money underneath. A terminal cannot show screenshots, so the run's Observer file is named for you to open.
+- **run**: who is in the run, what each participant is doing now, and how far along it is, with time and money underneath. A terminal cannot show screenshots, so when the run has an Observer file, the run screen's **Open in Observer** action opens it in your browser.
 
 A run started from the TUI is detached: it keeps going if you quit, and it survives a dropped SSH session. The TUI follows it by reading `.humanish/runs/<id>/status.json` and holds no handle on it, so you can quit mid-run, reopen, and find it still there.
 
@@ -144,7 +144,7 @@ requires edge auth; `--safe` is a `serve` library filter and is rejected on watc
 run (its history lists just that run and every other run id 404s), so a remote
 viewer can never reach your other runs' raw evidence.
 
-Live E2B desktop stream URLs are served only on `watch --expose`, and only behind
-edge auth; `serve` never injects them (remote viewers of the library see only
+Live E2B desktop stream URLs reach a remote viewer only on `watch --expose`, and only
+behind edge auth; `serve` never injects them (remote viewers of the library see only
 persisted evidence: screenshots, events, terminal tails). See
 [Serve architecture](https://github.com/danielgwilson/humanish/blob/main/docs/architecture/serve.md).
