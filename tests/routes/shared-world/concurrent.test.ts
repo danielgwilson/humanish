@@ -2422,3 +2422,23 @@ describe("concurrent shared-world project binding", () => {
     expect(await readdir(decoyRuns)).toEqual(["latest.json"]);
   });
 });
+
+describe("the subject state prober", () => {
+  it("snapshots the subject on its cadence while the seats run", async () => {
+    const state = { worldVersion: 0 };
+    const { hooks } = baseHooks(state, makeRendezvous(3));
+    const result = await runConcurrentSharedWorld({
+      cwd,
+      config: concurrentConfig(),
+      dryRun: false,
+      hooks: { ...hooks, proberCadenceMs: 1 },
+    });
+
+    expect(result.ok).toBe(true);
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    ) as RunBundle;
+    // The baseline and the teardown snapshot are taken either way; a third means the cadence fired.
+    expect(bundle.sharedWorld?.stateSeries?.length).toBeGreaterThan(2);
+  });
+});
