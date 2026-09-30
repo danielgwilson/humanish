@@ -15,8 +15,6 @@ export class CuaStallError extends Error {
   }
 }
 
-export const neverAbort: AbortSignal = new AbortController().signal;
-
 /**
  * raceSettle with a second, tighter clock: the call's own bound. When the tighter clock wins the
  * result is a CuaStallError (the caller decides whether to retry); when the session clock wins it
