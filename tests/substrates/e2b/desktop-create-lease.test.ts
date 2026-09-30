@@ -2,7 +2,6 @@ import { Sandbox as SdkDesktop } from "@e2b/desktop";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
-  createDesktopSandbox,
   DESKTOP_CREATE_CLEANUP_TIMEOUT_MS,
   E2BDesktopStartupError,
   guardDesktopSandboxCreate,
@@ -10,6 +9,7 @@ import {
   type E2BDesktopCreateOptions,
   type E2BDesktopModule,
 } from "../../../src/substrates/e2b/desktop-launch.js";
+import { acquireE2BDesktopSandbox } from "../../../src/substrates/e2b/sandbox.js";
 
 // Conformance against the REAL installed desktop + base SDK. Debug mode avoids allocation;
 // only SDK command/kill methods are replaced with local fault ports. No provider HTTP response
@@ -114,7 +114,12 @@ describe("desktop allocation ownership survives startup failure (#581)", () => {
     "keeps successful create options and desktop behavior (%s)",
     async (template) => {
       const probe = sdkProbe();
-      const desktop = await createDesktopSandbox(probe.module, options, template);
+      const { sandbox: desktop } = await acquireE2BDesktopSandbox({
+        module: probe.module,
+        options,
+        template,
+        receipt: null,
+      });
       expect(desktop).toBeInstanceOf(SdkDesktop);
       expect(desktop).toBeInstanceOf(probe.ProbeSandbox);
       expect(desktop).toBeInstanceOf(probe.module.Sandbox);
@@ -136,11 +141,16 @@ describe("desktop allocation ownership survives startup failure (#581)", () => {
       },
     });
     const reasons: string[] = [];
-    const desktop = await createDesktopSandbox(probe.module, options, undefined, {
-      sleep: async () => undefined,
-      onRetry: (reason) => {
-        probe.events.push("retry");
-        reasons.push(reason);
+    const { sandbox: desktop } = await acquireE2BDesktopSandbox({
+      module: probe.module,
+      options,
+      receipt: null,
+      retry: {
+        sleep: async () => undefined,
+        onRetry: (reason) => {
+          probe.events.push("retry");
+          reasons.push(reason);
+        },
       },
     });
     expect(desktop).toBe(probe.instances[1]);
@@ -214,9 +224,14 @@ describe("desktop allocation ownership survives startup failure (#581)", () => {
       },
     });
     const retry = vi.fn();
-    const error = await createDesktopSandbox(probe.module, options, undefined, {
-      onRetry: retry,
-      sleep: async () => undefined,
+    const error = await acquireE2BDesktopSandbox({
+      module: probe.module,
+      options,
+      receipt: null,
+      retry: {
+        onRetry: retry,
+        sleep: async () => undefined,
+      },
     }).catch((value: unknown) => value);
     expect(error).toBeInstanceOf(E2BDesktopStartupError);
     expect(error).toMatchObject({ cleanup: "unconfirmed" });
@@ -243,9 +258,14 @@ describe("desktop allocation ownership survives startup failure (#581)", () => {
       },
     });
     const retry = vi.fn();
-    const pending = createDesktopSandbox(probe.module, options, undefined, {
-      onRetry: retry,
-      sleep: async () => undefined,
+    const pending = acquireE2BDesktopSandbox({
+      module: probe.module,
+      options,
+      receipt: null,
+      retry: {
+        onRetry: retry,
+        sleep: async () => undefined,
+      },
     }).catch((value: unknown) => value);
     await vi.advanceTimersByTimeAsync(DESKTOP_CREATE_CLEANUP_TIMEOUT_MS);
     expect(await pending).toMatchObject({ cleanup: "unconfirmed" });

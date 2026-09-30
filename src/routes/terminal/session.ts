@@ -21,10 +21,10 @@ import type { LabRuntimeAuth } from "../../lab/types.js";
 import {
   E2BDesktopStartupError,
   loadE2BDesktopModule,
-  withOneRetryOnTransientE2BError,
   type E2BDesktopModule,
   type E2BDesktopSandbox,
 } from "../../substrates/e2b/desktop-launch.js";
+import { acquireE2BShellSandbox } from "../../substrates/e2b/sandbox.js";
 import {
   personaBrief,
   personaToDirectives,
@@ -35,7 +35,6 @@ import { createRunArtifactPaths, validatePreparedRunArtifactPaths } from "../../
 import { prepareSelectedOutputDirectory } from "../../run/selected-output-paths.js";
 import { buildRunSource } from "../../run/bundle.js";
 import { extractLocalActorVerdict, normalizeLocalActorTranscript } from "../../run/verify-actor.js";
-import { appendSandboxReceipt } from "../../run/sandbox-receipts.js";
 import { applyAdapterExtensionSeam } from "./adapter.js";
 import { buildLiveTerminalProductBundle } from "./bundle.js";
 import { buildRuntimeAuth, buildSandboxMetadata } from "./credentials.js";
@@ -243,18 +242,17 @@ export async function runLiveTerminalSession(
       runtimeEnv.mode === "openai-egress"
         ? buildOpenAiEgressNetwork(runtimeEnv.keyValue, routing)
         : routing;
-    const sdk = sandboxModule;
-    sandbox = await withOneRetryOnTransientE2BError(
-      () =>
-        sdk.Sandbox.create({
-          apiKey: e2bApiKey,
-          requestTimeoutMs,
-          timeoutMs: sandboxTimeoutMs,
-          metadata,
-          ...(network === undefined ? {} : { network }),
-          lifecycle: { onTimeout: "kill" },
-        }),
-      {
+    const acquired = await acquireE2BShellSandbox({
+      module: sandboxModule,
+      options: {
+        apiKey: e2bApiKey,
+        requestTimeoutMs,
+        timeoutMs: sandboxTimeoutMs,
+        metadata,
+        ...(network === undefined ? {} : { network }),
+        lifecycle: { onTimeout: "kill" },
+      },
+      retry: {
         // A failed first attempt may have allocated a sandbox whose id never reached this run;
         // its own kill-on-timeout reclaims it.
         onRetry: (reason) => {
@@ -268,16 +266,12 @@ export async function runLiveTerminalSession(
           );
         },
       },
-    );
-    await validatePreparedRunArtifactPaths(runPaths);
-    sandboxId = sandbox.sandboxId;
-    // #358 salvage: durable id receipt the moment the sandbox exists (reclaim by exact id).
-    await appendSandboxReceipt(runPaths, {
-      at: nowIso(),
-      laneId: "terminal",
-      sandboxId,
-      timeoutMs: sandboxTimeoutMs,
+      // The receipt is on disk the moment the sandbox exists, so reclaim can kill it by exact id.
+      receipt: { root: runPaths, laneId: "terminal", now },
     });
+    sandbox = acquired.sandbox;
+    sandboxId = acquired.allocation.resourceId;
+    await validatePreparedRunArtifactPaths(runPaths);
     recordLifecycle(
       "terminal-lab.sandbox.created",
       `E2B shell sandbox ${sandboxId} created with positive-allowlist metadata and kill-on-timeout; NO sandbox-global env.`,

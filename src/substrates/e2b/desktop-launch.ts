@@ -359,30 +359,6 @@ export function isSandboxNotFoundError(error: unknown): boolean {
   );
 }
 
-/**
- * Create an E2B desktop sandbox, optionally on a CUSTOM template (image). The ONE seam every
- * desktop-creating route calls so the default and custom-template paths are decided in a single
- * place.
- *
- * When `template` is undefined (the default — no `execution.desktop.template` configured), this is
- * BYTE-STABLE with the historical `Sandbox.create(options)` call: the stock `desktop` template, the
- * options object passed as the sole argument. When `template` is a non-empty name/id, it selects
- * the SDK's `Sandbox.create(template, options)` overload so the lab runs on an adopter's image.
- * The template (when set) is a public-safe label, never a secret.
- */
-export async function createDesktopSandbox(
-  module: E2BDesktopModule,
-  options: E2BDesktopCreateOptions,
-  template?: string,
-  retry?: TransientRetryHooks,
-): Promise<E2BDesktopSandbox> {
-  const create = () =>
-    template === undefined
-      ? module.Sandbox.create(options)
-      : module.Sandbox.create(template, options);
-  return withOneRetryOnTransientE2BError(create, retry);
-}
-
 /** How a caller hears about the one retry; `sleep` is injectable so tests never wait. */
 export interface TransientRetryHooks {
   onRetry?: (reason: string) => void;

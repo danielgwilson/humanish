@@ -77,7 +77,6 @@ import {
 } from "../../actors/registry.js";
 import { toErrorMessage } from "../../substrates/command-failure.js";
 import { mapWithConcurrency } from "../../run/concurrency.js";
-import { appendSandboxReceipt } from "../../run/sandbox-receipts.js";
 import { labPersonaIds, resolveCommittedPersonasForCwd } from "../../lab/persona-resolve.js";
 import type { ResolvedPersona } from "../../lab/persona.js";
 import {
@@ -119,11 +118,11 @@ import { FakeInbox } from "../../comms/fake-inbox.js";
 import { buildOriginMap, type OriginMap } from "../../comms/inbox.js";
 import type { CommsAddress } from "../../comms/types.js";
 import {
-  createDesktopSandbox,
   loadE2BDesktopModule,
   type E2BDesktopModule,
   type E2BDesktopSandbox,
 } from "../../substrates/e2b/desktop-launch.js";
+import { acquireE2BDesktopSandbox } from "../../substrates/e2b/sandbox.js";
 import type { DetachedTimers } from "../../substrates/e2b/detached.js";
 import { type LabActorLane, type LabConfig } from "../../lab/types.js";
 import { buildObserverData } from "../../observer/data.js";
@@ -1217,10 +1216,11 @@ async function runConcurrentSharedWorldInScope(
         // The ONE subject sandbox: headless service host (no GUI seat). The SUBJECT env is provisioned
         // HERE; the actor sandboxes get NONE of it (FIX-10). A custom desktop template (image) is
         // honored on BOTH the subject sandbox (here) and every actor sandbox (via runCuaLane, which
-        // reads the same config); absent keeps the byte-stable Sandbox.create(opts) default.
-        subjectDesktop = await createDesktopSandbox(
-          subjectModule,
-          {
+        // reads the same config); absent keeps the byte-stable Sandbox.create(opts) default. The
+        // receipt is on disk before any work, so `humanish reclaim` can kill it by exact id.
+        const subject = await acquireE2BDesktopSandbox({
+          module: subjectModule,
+          options: {
             apiKey: e2bApiKey,
             requestTimeoutMs,
             timeoutMs:
@@ -1252,15 +1252,11 @@ async function runConcurrentSharedWorldInScope(
             dpi: 96,
             lifecycle: { onTimeout: "kill" },
           },
-          config.execution?.desktop?.template,
-        );
-        subjectSandboxId = subjectDesktop.sandboxId;
-        // #358 salvage: durable id receipt the moment the subject sandbox exists.
-        await appendSandboxReceipt(runPaths, {
-          at: new Date().toISOString(),
-          laneId: "subject",
-          sandboxId: subjectSandboxId,
+          template: config.execution?.desktop?.template,
+          receipt: { root: runPaths, laneId: "subject" },
         });
+        subjectDesktop = subject.sandbox;
+        subjectSandboxId = subject.allocation.resourceId;
 
         if (hooks.prepareDesktop) {
           await hooks.prepareDesktop(subjectDesktop);
@@ -1612,10 +1608,10 @@ async function runConcurrentSharedWorldInScope(
             );
           }
         }
-        if (subjectDesktop && subjectModule) {
+        if (subjectSandboxId !== undefined && subjectModule) {
           if (typeof subjectModule.Sandbox.kill === "function") {
             try {
-              await subjectModule.Sandbox.kill(subjectDesktop.sandboxId, {
+              await subjectModule.Sandbox.kill(subjectSandboxId, {
                 requestTimeoutMs: 60_000,
               });
               subjectKilled = true;

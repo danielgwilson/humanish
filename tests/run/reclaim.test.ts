@@ -1,8 +1,8 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // #358 salvage tier: interrupted runs fail cheap. The run journals every created sandbox id to
 // disk the moment create returns; `humanish reclaim` kills by those EXACT recorded ids — never by
@@ -76,8 +76,75 @@ describe("sandbox receipts + humanish reclaim (#358 salvage)", () => {
   it("parseSandboxReceipts keeps valid lines and drops a torn final line", () => {
     const text = `${JSON.stringify({ at: "t", laneId: "lane-01", sandboxId: "sb-1", timeoutMs: 5 })}\n{"laneId":"lane-02","sandbo`;
     expect(parseSandboxReceipts(text)).toEqual([
-      { at: "t", laneId: "lane-01", sandboxId: "sb-1", timeoutMs: 5 },
+      { at: "t", laneId: "lane-01", provider: "e2b", sandboxId: "sb-1", timeoutMs: 5 },
     ]);
+  });
+
+  it("parseSandboxReceipts keeps a recorded provider, including one it does not know", () => {
+    const lines = [
+      { at: "t1", laneId: "lane-01", provider: "e2b", sandboxId: "sb-1" },
+      { at: "t2", laneId: "lane-02", provider: "example-cloud", sandboxId: "sb-2" },
+      { at: "t3", laneId: "lane-03", provider: 7, sandboxId: "sb-3" },
+    ];
+    expect(parseSandboxReceipts(lines.map((line) => JSON.stringify(line)).join("\n"))).toEqual([
+      { at: "t1", laneId: "lane-01", provider: "e2b", sandboxId: "sb-1" },
+      { at: "t2", laneId: "lane-02", provider: "example-cloud", sandboxId: "sb-2" },
+    ]);
+  });
+
+  it("reports a receipt from an unknown provider without loading or calling E2B", async () => {
+    const run = await runTerminalProductLab({
+      cwd,
+      config: dryRunConfig(),
+      dryRun: true,
+      open: false,
+    });
+    expect(run.ok).toBe(true);
+    const runPaths = await resolveRunPath(cwd, "latest");
+    await writeFile(
+      path.join(runPaths!.absoluteRunRoot, SANDBOX_RECEIPTS_ARTIFACT),
+      `${JSON.stringify({ at: "t1", laneId: "lane-01", provider: "example-cloud", sandboxId: "sb-elsewhere" })}\n`,
+    );
+    const loadModule = vi.fn(async () => fakeModule({}, []));
+
+    const result = await reclaimRunSandboxes(cwd, "latest", { loadModule });
+
+    expect(loadModule).not.toHaveBeenCalled();
+    expect(result.ok).toBe(false);
+    expect(result.outcomes).toEqual([
+      {
+        sandboxId: "sb-elsewhere",
+        laneId: "lane-01",
+        state: "unsupported-provider",
+        detail: expect.stringContaining('"example-cloud"'),
+      },
+    ]);
+  });
+
+  it("kills an old receipt with no provider and a new e2b one through the same E2B path", async () => {
+    const run = await runTerminalProductLab({
+      cwd,
+      config: dryRunConfig(),
+      dryRun: true,
+      open: false,
+    });
+    expect(run.ok).toBe(true);
+    const runPaths = await resolveRunPath(cwd, "latest");
+    await appendSandboxReceipt(runPaths!, { at: "t1", laneId: "lane-01", sandboxId: "sb-old" });
+    await appendSandboxReceipt(runPaths!, {
+      at: "t2",
+      laneId: "lane-02",
+      provider: "e2b",
+      sandboxId: "sb-new",
+    });
+    const killedIds: string[] = [];
+
+    const result = await reclaimRunSandboxes(cwd, "latest", {
+      loadModule: async () => fakeModule({ "sb-old": "ok", "sb-new": "ok" }, killedIds),
+    });
+
+    expect(killedIds).toEqual(["sb-old", "sb-new"]);
+    expect(result.ok).toBe(true);
   });
 
   it("reclaims by recorded exact id: kills the living, reports the gone, fails loud on a provider error, dedupes racing receipts", async () => {

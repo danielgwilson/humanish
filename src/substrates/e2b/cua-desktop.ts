@@ -57,11 +57,10 @@ import { e2bDesktopTemplate, startE2BDesktopMedia } from "./desktop-media.js";
 import { startE2BDesktopRecording } from "./desktop-recording.js";
 import { loadE2BDesktopModule, type E2BDesktopSandbox } from "./desktop-launch.js";
 import { observeDesktopResources, type DesktopResourceObservation } from "./desktop-resources.js";
-import { allocateE2BDesktopSession } from "./desktop-session.js";
+import { acquireE2BDesktopSandbox } from "./sandbox.js";
 import { readDetachedLog } from "./detached.js";
 import { redactText } from "../../evidence/redaction.js";
 import { type RunDesktopGeometry, type RunSubjectStateStepRecord } from "../../run/bundle.js";
-import { appendSandboxReceipt } from "../../run/sandbox-receipts.js";
 import { writeContainedOutputFile } from "../../run/selected-output-paths.js";
 
 function optionalAddress(address: string | undefined): { address?: string } {
@@ -205,9 +204,9 @@ export function createE2BCuaDesktopLane(
     const desktopModule = await (deps.hooks.loadDesktopModule ?? loadE2BDesktopModule)();
     // An explicit template wins. Speech gets the versioned media image; ordinary
     // browser studies retain the SDK default desktop.
-    const acquired = await allocateE2BDesktopSession(
-      desktopModule,
-      {
+    const acquired = await acquireE2BDesktopSandbox({
+      module: desktopModule,
+      options: {
         apiKey: deps.e2bApiKey,
         requestTimeoutMs: deps.requestTimeoutMs,
         timeoutMs: deps.perLaneSandboxMs,
@@ -239,8 +238,8 @@ export function createE2BCuaDesktopLane(
         dpi: 96,
         lifecycle: { onTimeout: "kill" },
       },
-      e2bDesktopTemplate(config),
-      {
+      template: e2bDesktopTemplate(config),
+      retry: {
         // The default loader reclaims an acquired handle before retrying failed desktop startup.
         // Its error names the cleanup outcome; pre-construction allocation failures remain unowned.
         onRetry: (reason) => {
@@ -255,18 +254,13 @@ export function createE2BCuaDesktopLane(
           });
         },
       },
-    );
-    desktop = acquired.desktop;
+      // The receipt is on disk before any work, so `humanish reclaim` can kill this lane's
+      // sandbox by exact id after an interrupt.
+      receipt: { root: deps.artifactRoot, laneId: spec.laneId, now: deps.now },
+    });
+    desktop = acquired.sandbox;
     allocation = acquired.allocation;
     sandboxId = allocation.resourceId;
-    // #358 salvage: journal the id to disk before any work — an interrupted run reclaims by
-    // exact recorded id (`humanish reclaim`), never by enumerating the account.
-    await appendSandboxReceipt(deps.artifactRoot, {
-      at: new Date(deps.now()).toISOString(),
-      laneId: spec.laneId,
-      sandboxId,
-      timeoutMs: deps.perLaneSandboxMs,
-    });
     // The billed span starts the instant the sandbox exists.
     sandboxCreatedAtMs = deps.now();
     desktopResources = await observeDesktopResources(desktop);

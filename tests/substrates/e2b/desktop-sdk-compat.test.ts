@@ -1,7 +1,6 @@
 import { Sandbox as SdkDesktop } from "@e2b/desktop";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  createDesktopSandbox,
   DESKTOP_CREATE_CLEANUP_TIMEOUT_MS,
   E2BDesktopStartupError,
   guardDesktopSandboxCreate,
@@ -9,6 +8,7 @@ import {
   type E2BDesktopCreateOptions,
   type E2BDesktopModule,
 } from "../../../src/substrates/e2b/desktop-launch.js";
+import { acquireE2BDesktopSandbox } from "../../../src/substrates/e2b/sandbox.js";
 
 // Execute the installed SDK's real constructor/create/_start paths without HTTP.
 // Method-port faults do not claim to be captured provider wire responses.
@@ -137,9 +137,14 @@ describe("installed desktop SDK cleanup compatibility", () => {
     });
     const retry = vi.fn();
     let settled = false;
-    const pending = createDesktopSandbox(p.module, options, undefined, {
-      onRetry: retry,
-      sleep: async () => undefined,
+    const pending = acquireE2BDesktopSandbox({
+      module: p.module,
+      options,
+      receipt: null,
+      retry: {
+        onRetry: retry,
+        sleep: async () => undefined,
+      },
     })
       .then(
         () => undefined,

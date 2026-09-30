@@ -1,11 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
-  createDesktopSandbox,
   isTransientE2BError,
   TRANSIENT_RETRY_DELAY_MS,
   withOneRetryOnTransientE2BError,
-  type E2BDesktopModule,
-  type E2BDesktopSandbox,
 } from "../../../src/substrates/e2b/desktop-launch.js";
 
 // The three shapes measured on 2026-09-04 (five of six lanes created within 100 s), plus the
@@ -98,61 +95,5 @@ describe("withOneRetryOnTransientE2BError", () => {
     ).rejects.toThrow("401");
     expect(calls).toBe(1);
     expect(reasons).toEqual([]);
-  });
-});
-
-describe("createDesktopSandbox: the one seam every desktop route calls", () => {
-  function moduleFailingOnce(message: string): { module: E2BDesktopModule; created: unknown[][] } {
-    const created: unknown[][] = [];
-    let calls = 0;
-    const module = {
-      Sandbox: {
-        create: async (...args: unknown[]) => {
-          created.push(args);
-          calls += 1;
-          if (calls === 1) throw new Error(message);
-          return { sandboxId: `sbx-${calls}` } as unknown as E2BDesktopSandbox;
-        },
-      },
-    } as unknown as E2BDesktopModule;
-    return { module, created };
-  }
-
-  it("retries a create whose first attempt hit an envd that was not routable yet, with the same options and template", async () => {
-    const { module, created } = moduleFailingOnce("12: [unimplemented] HTTP 404");
-    const reasons: string[] = [];
-    const options = { apiKey: "k", timeoutMs: 1_000 } as Parameters<typeof createDesktopSandbox>[1];
-    const sandbox = await createDesktopSandbox(module, options, "custom-image", {
-      onRetry: (reason) => reasons.push(reason),
-      sleep: async () => undefined,
-    });
-    expect(sandbox.sandboxId).toBe("sbx-2");
-    expect(created).toEqual([
-      ["custom-image", options],
-      ["custom-image", options],
-    ]);
-    expect(reasons).toEqual(["12: [unimplemented] HTTP 404"]);
-  });
-
-  it("the default-template call stays byte-stable: options as the sole argument, on both attempts", async () => {
-    const { module, created } = moduleFailingOnce(
-      "Cannot read properties of undefined (reading 'envdVersion')",
-    );
-    const options = { apiKey: "k" } as Parameters<typeof createDesktopSandbox>[1];
-    await createDesktopSandbox(module, options, undefined, { sleep: async () => undefined });
-    expect(created).toEqual([[options], [options]]);
-  });
-
-  it("an auth failure is not retried", async () => {
-    const { module, created } = moduleFailingOnce("401 Unauthorized");
-    await expect(
-      createDesktopSandbox(
-        module,
-        { apiKey: "k" } as Parameters<typeof createDesktopSandbox>[1],
-        undefined,
-        { sleep: async () => undefined },
-      ),
-    ).rejects.toThrow("401");
-    expect(created).toHaveLength(1);
   });
 });

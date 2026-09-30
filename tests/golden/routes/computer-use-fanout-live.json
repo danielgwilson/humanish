@@ -3807,24 +3807,28 @@
     {
       "at": "[ts]",
       "laneId": "mobile-newcomer",
+      "provider": "e2b",
       "sandboxId": "fake-sandbox-01",
       "timeoutMs": 660000
     },
     {
       "at": "[ts]",
       "laneId": "small-skimmer",
+      "provider": "e2b",
       "sandboxId": "fake-sandbox-02",
       "timeoutMs": 660000
     },
     {
       "at": "[ts]",
       "laneId": "desktop-power",
+      "provider": "e2b",
       "sandboxId": "fake-sandbox-03",
       "timeoutMs": 660000
     },
     {
       "at": "[ts]",
       "laneId": "wide-researcher",
+      "provider": "e2b",
       "sandboxId": "fake-sandbox-04",
       "timeoutMs": 660000
     }

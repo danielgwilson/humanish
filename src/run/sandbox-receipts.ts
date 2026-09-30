@@ -12,13 +12,27 @@ import { prepareContainedOutputFile, type PreparedOutputRoot } from "./selected-
 
 export const SANDBOX_RECEIPTS_ARTIFACT = "sandbox-receipts.ndjson";
 
+/** The providers humanish allocates sandboxes from. Reclaim dispatches on this id. */
+export type SandboxProviderId = "e2b";
+
 export interface SandboxReceipt {
   at: string;
   /** The lane/role/subject label the sandbox belongs to (public-safe token). */
   laneId: string;
+  /** Who allocated the sandbox. Receipts written before this field existed have none. */
+  provider?: SandboxProviderId;
   sandboxId: string;
   /** The create-time sandbox TTL (ms), when known — how long the server-side backstop runs. */
   timeoutMs?: number;
+}
+
+/**
+ * A receipt read back from disk. An absent provider reads as "e2b", the only provider before the
+ * field existed. A receipt written by a newer humanish may name a provider this version does not
+ * know, so the type keeps the raw string for reclaim to report.
+ */
+export interface ParsedSandboxReceipt extends Omit<SandboxReceipt, "provider"> {
+  provider: string;
 }
 
 /**
@@ -40,21 +54,23 @@ export async function appendSandboxReceipt(
 }
 
 /** Parse a receipts file leniently: a torn final line (crash mid-append) drops, valid lines keep. */
-export function parseSandboxReceipts(text: string): SandboxReceipt[] {
-  const receipts: SandboxReceipt[] = [];
+export function parseSandboxReceipts(text: string): ParsedSandboxReceipt[] {
+  const receipts: ParsedSandboxReceipt[] = [];
   for (const line of text.split("\n")) {
     const trimmed = line.trim();
     if (!trimmed) continue;
     try {
-      const parsed = JSON.parse(trimmed) as Partial<SandboxReceipt>;
+      const parsed = JSON.parse(trimmed) as Partial<Record<keyof SandboxReceipt, unknown>>;
       if (
         typeof parsed.sandboxId === "string" &&
         parsed.sandboxId.length > 0 &&
-        typeof parsed.laneId === "string"
+        typeof parsed.laneId === "string" &&
+        (parsed.provider === undefined || typeof parsed.provider === "string")
       ) {
         receipts.push({
           at: typeof parsed.at === "string" ? parsed.at : "",
           laneId: parsed.laneId,
+          provider: parsed.provider ?? "e2b",
           sandboxId: parsed.sandboxId,
           ...(typeof parsed.timeoutMs === "number" ? { timeoutMs: parsed.timeoutMs } : {}),
         });

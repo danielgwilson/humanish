@@ -16,7 +16,7 @@ import { startDetachedProcess, type DetachedTimers } from "../substrates/e2b/det
 import type { E2BDesktopSandbox } from "../substrates/e2b/desktop-launch.js";
 
 /** The default in-sandbox loopback port for the catch. Fixed (not ephemeral) so the injected base-URL
- *  env is known before `createDesktopSandbox`. 8025 is the conventional local-mail-UI port and is
+ *  env is known before the sandbox is created. 8025 is the conventional local-mail-UI port and is
  *  unlikely to collide with a subject app; override via config if it does. */
 export const DEFAULT_SANDBOX_CATCH_PORT = 8025;
 const DEFAULT_CATCH_DIR = "/tmp/humanish-comms";
