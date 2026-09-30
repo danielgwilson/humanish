@@ -48,8 +48,8 @@ export const SANDBOX_TIMEOUT_BUFFER_MS = 5 * 60_000;
 
 export const DEFAULT_REQUEST_TIMEOUT_MS = 60_000;
 
-// Allow the pinned runtime download and install enough time while retaining a finite deadline.
-export const RUNTIME_BOOTSTRAP_TIMEOUT_MS = 300_000;
+// The product's own setup command (subject.product.install) gets a finite deadline.
+export const PRODUCT_SETUP_TIMEOUT_MS = 300_000;
 
 // How much of a captured stream / log tail rides a (redacted) message field.
 export const TAIL_CHARS = 2000;

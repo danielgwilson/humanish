@@ -29,27 +29,6 @@ export function needsNodeRuntime(commands: readonly (string | undefined)[]): boo
   return commands.some((command) => (command ? pattern.test(command) : false));
 }
 
-/** Major Node version installed when the template has none. Matches the terminal lane's choice. */
-export const BOOTSTRAP_NODE_MAJOR = 22;
-
-/**
- * The bootstrap command. Idempotent and cheap when Node is already present: it probes first and
- * exits 0 without touching apt, so a custom template that ships its own runtime is untouched.
- *
- * `sudo -n` (non-interactive) matches the terminal lane — the desktop user has passwordless sudo,
- * and failing fast is better than hanging on a password prompt nobody can answer.
- */
-export function nodeBootstrapCommand(major: number = BOOTSTRAP_NODE_MAJOR): string {
-  return [
-    "if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1; then",
-    '  echo "humanish: node $(node --version) already present; skipping bootstrap";',
-    "else",
-    `  curl -fsSL https://deb.nodesource.com/setup_${major}.x | sudo -n -E bash - &&`,
-    "  sudo -n apt-get install -y nodejs;",
-    "fi",
-  ].join("\n");
-}
-
 /**
  * Package managers that need their own install step after Node exists. npm and npx arrive with
  * Node; pnpm, yarn and bun do not, and `corepack enable` is the supported way to get the first two

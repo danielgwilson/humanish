@@ -5,15 +5,15 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
-  TERMINAL_NODE_BOOTSTRAP_COMMAND,
-  TERMINAL_NODE_NPM_PREFIX_SCRIPT,
+  NODE_BOOTSTRAP_COMMAND,
+  NODE_NPM_PREFIX_SCRIPT,
 } from "../../src/subject/node-bootstrap.js";
 
 const execFileAsync = promisify(execFile);
 
 // Exercise the actual shell command without networking or privilege. These are local executable
 // stand-ins, not vendor response fixtures. Real sha256sum rejects the synthetic corrupt download.
-describe("terminal Node bootstrap", () => {
+describe("Node bootstrap", () => {
   let root: string;
   beforeEach(async () => {
     root = await mkdtemp(path.join(tmpdir(), "humanish-node-bootstrap-"));
@@ -66,8 +66,8 @@ describe("terminal Node bootstrap", () => {
     );
     try {
       const command = options.failingExitHook
-        ? `exit() { builtin exit 73; };\n${TERMINAL_NODE_BOOTSTRAP_COMMAND}`
-        : TERMINAL_NODE_BOOTSTRAP_COMMAND;
+        ? `exit() { builtin exit 73; };\n${NODE_BOOTSTRAP_COMMAND}`
+        : NODE_BOOTSTRAP_COMMAND;
       const result = await execFileAsync("/bin/bash", ["-c", command], {
         env: {
           PATH: options.missingPrerequisite ? root : `${root}:/usr/bin:/bin`,
@@ -91,14 +91,14 @@ describe("terminal Node bootstrap", () => {
     const config = path.join(root, "npmrc");
     const original = "fund=false\naudit=false";
     await writeFile(config, original);
-    await execFileAsync(process.execPath, ["-e", TERMINAL_NODE_NPM_PREFIX_SCRIPT, config]);
-    await execFileAsync(process.execPath, ["-e", TERMINAL_NODE_NPM_PREFIX_SCRIPT, config]);
+    await execFileAsync(process.execPath, ["-e", NODE_NPM_PREFIX_SCRIPT, config]);
+    await execFileAsync(process.execPath, ["-e", NODE_NPM_PREFIX_SCRIPT, config]);
     expect(await readFile(config, "utf8")).toBe(`${original}\nprefix=/usr/local\n`);
   });
 
   it("creates a missing built-in config without requiring a user/global config file", async () => {
     const config = path.join(root, "npmrc");
-    await execFileAsync(process.execPath, ["-e", TERMINAL_NODE_NPM_PREFIX_SCRIPT, config]);
+    await execFileAsync(process.execPath, ["-e", NODE_NPM_PREFIX_SCRIPT, config]);
     expect(await readFile(config, "utf8")).toBe("\nprefix=/usr/local\n");
   });
 
@@ -106,14 +106,14 @@ describe("terminal Node bootstrap", () => {
     const config = path.join(root, "npmrc");
     const original = "# distribution settings\n\t prefix = /custom/distribution\nfund=false\n";
     await writeFile(config, original);
-    await execFileAsync(process.execPath, ["-e", TERMINAL_NODE_NPM_PREFIX_SCRIPT, config]);
+    await execFileAsync(process.execPath, ["-e", NODE_NPM_PREFIX_SCRIPT, config]);
     expect(await readFile(config, "utf8")).toBe(original);
   });
 
   it("does not treat a commented prefix as an active distribution default", async () => {
     const config = path.join(root, "npmrc");
     await writeFile(config, "# prefix=/old/example\n");
-    await execFileAsync(process.execPath, ["-e", TERMINAL_NODE_NPM_PREFIX_SCRIPT, config]);
+    await execFileAsync(process.execPath, ["-e", NODE_NPM_PREFIX_SCRIPT, config]);
     expect(await readFile(config, "utf8")).toContain("\nprefix=/usr/local\n");
   });
 
@@ -173,7 +173,7 @@ describe("terminal Node bootstrap", () => {
   it("names a missing prerequisite before network or privilege", async () => {
     const result = await run({ missingPrerequisite: true });
     expect(result.code).not.toBe(0);
-    expect(result.stderr).toContain("bootstrap requires sha256sum");
+    expect(result.stderr).toContain("Node bootstrap requires sha256sum");
     expect(await stat(path.join(root, "curl-args.txt")).catch(() => undefined)).toBeUndefined();
     await neverPrivileged();
   });

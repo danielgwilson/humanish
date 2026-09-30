@@ -71,7 +71,7 @@ import { verifyRun } from "../../../src/run/verify.js";
 import { prepareSelectedOutputDirectory } from "../../../src/run/selected-output-paths.js";
 import type { LocalTreeArchive } from "../../../src/run/source-archive.js";
 import { freePort } from "../../helpers/free-port.js";
-import { TERMINAL_NODE_BOOTSTRAP_COMMAND } from "../../../src/subject/node-bootstrap.js";
+import { NODE_BOOTSTRAP_COMMAND } from "../../../src/subject/node-bootstrap.js";
 
 // ---------------------------------------------------------------------------
 // Fakes. The desktop module fake serves BOTH faces of the sandbox: the
@@ -565,7 +565,7 @@ describe("desktop-cli runtime prerequisites (#515)", () => {
         expect(runtimeIndex).toBeLessThan(terminalIndex);
         // Use the same checksum-pinned archive and global npm prefix already shell-tested by the
         // terminal route, including its mutation-free fast path for a working custom runtime.
-        expect(sandbox.calls[runtimeIndex]?.[2]).toContain(TERMINAL_NODE_BOOTSTRAP_COMMAND);
+        expect(sandbox.calls[runtimeIndex]?.[2]).toContain(NODE_BOOTSTRAP_COMMAND);
       } else {
         expect(runtimeIndex).toBe(-1);
       }

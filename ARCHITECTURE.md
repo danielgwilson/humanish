@@ -174,7 +174,8 @@ plus five minutes. A clone probe's timeout is `cloneProvisioningBudgetMs`
 (`src/subject/clone.ts`), the longest its clone and serve steps can take with the lab's declared
 or default budgets and retries, plus five minutes. A declared `sandboxTimeoutMs`, or E2B's
 60-minute maximum, caps both. Without a declared timeout a clone probe gets 13 minutes (clone and
-serve as-is) up to 60 (a Node app that installs and builds), where it used to get 10.
+serve as-is), 53 for an npm app that installs and builds, and the 60-minute cap once pnpm or yarn
+adds its step, where it used to get 10.
 
 ## Make your first change
 
