@@ -2,6 +2,7 @@
   "comms-email-demo": {
     "dry": {
       "labId": "comms-email-demo",
+      "title": "Email-gated signup with the in-sandbox catch (deterministic dry-run)",
       "residual": {
         "comms": {
           "email": {
@@ -131,6 +132,7 @@
   "detect-taskly-clean": {
     "dry": {
       "labId": "detect-taskly-clean",
+      "title": "Taskly detection benchmark, clean arm",
       "residual": {
         "policies": {
           "allowPrivateRepoAccess": false,
@@ -220,6 +222,7 @@
   "detect-taskly-planted": {
     "dry": {
       "labId": "detect-taskly-planted",
+      "title": "Taskly detection benchmark, planted arm",
       "residual": {
         "policies": {
           "allowPrivateRepoAccess": false,
@@ -309,6 +312,7 @@
   "detect-todomvc": {
     "dry": {
       "labId": "detect-todomvc",
+      "title": "Detection benchmark, real third-party app (TodoMVC javascript-es6)",
       "residual": {
         "policies": {
           "allowPrivateRepoAccess": false,
@@ -406,6 +410,7 @@
   "dwell-window-todomvc": {
     "dry": {
       "labId": "dwell-window-todomvc",
+      "title": "A declared observation window on TodoMVC (#510): hold for a minute after the first task lands, then continue",
       "residual": {
         "policies": {
           "allowPrivateRepoAccess": false,
@@ -546,6 +551,7 @@
   "effort-contrast-demo": {
     "dry": {
       "labId": "effort-contrast-demo",
+      "title": "Is the effort axis load-bearing? (one persona, one mission, two reasoning efforts)",
       "residual": {
         "defaults": {
           "open": false
@@ -671,6 +677,7 @@
   "fanout-demo": {
     "dry": {
       "labId": "fanout-demo",
+      "title": "Multi-lane computer-use fan-out (per-lane worlds, deterministic dry-run)",
       "residual": {
         "subject": {}
       },
@@ -820,6 +827,7 @@
   "first-contact": {
     "dry": {
       "labId": "first-contact",
+      "title": "A coding agent meets humanish for the first time (self-study, terminal lane)",
       "residual": {
         "policies": {
           "allowPrivateRepoAccess": false,
@@ -848,6 +856,7 @@
       "runtime": {
         "auth": "openai-egress"
       },
+      "stdin": "disabled",
       "caps": {
         "maxUsd": 0,
         "maxJobs": 0,
@@ -873,6 +882,7 @@
   "first-run": {
     "dry": {
       "labId": "first-run",
+      "title": "First-run synthetic Observer",
       "residual": {
         "defaults": {
           "open": true
@@ -902,6 +912,7 @@
   "handed-a-human-surface": {
     "dry": {
       "labId": "handed-a-human-surface",
+      "title": "A person asks their coding agent to use a surface only a person can use",
       "residual": {
         "policies": {
           "allowPrivateRepoAccess": false,
@@ -939,6 +950,7 @@
       "runtime": {
         "auth": "openai-env"
       },
+      "stdin": "disabled",
       "caps": {
         "maxUsd": 0,
         "maxJobs": 0,
@@ -964,6 +976,7 @@
   "last-mile": {
     "dry": {
       "labId": "last-mile",
+      "title": "How far a coding agent gets toward a real study, with no keys (self-study, terminal lane)",
       "residual": {
         "policies": {
           "allowPrivateRepoAccess": false,
@@ -992,6 +1005,26 @@
       "runtime": {
         "auth": "openai-egress"
       },
+      "egressAllow": [
+        "8.8.8.8",
+        "8.8.4.4",
+        "1.1.1.1",
+        "deb.debian.org",
+        "security.debian.org",
+        "archive.ubuntu.com",
+        "security.ubuntu.com",
+        "deb.nodesource.com",
+        "registry.npmjs.org",
+        "*.npmjs.org",
+        "api.openai.com",
+        "chatgpt.com",
+        "github.com",
+        "*.github.com",
+        "*.githubusercontent.com",
+        "nodejs.org",
+        "*.nodejs.org"
+      ],
+      "stdin": "disabled",
       "caps": {
         "maxUsd": 0,
         "maxJobs": 0,
@@ -1017,6 +1050,7 @@
   "later-tab-emulation": {
     "dry": {
       "labId": "later-tab-emulation",
+      "title": "Mobile emulation follows the participant into a tab that opens later (#623)",
       "residual": {
         "policies": {
           "allowPrivateRepoAccess": false,
@@ -1133,6 +1167,7 @@
   "lobby-trivia-3player": {
     "dry": {
       "labId": "lobby-trivia-3player",
+      "title": "Multiplayer 3-player mobile lobby (external-public shared world; deterministic dry-run)",
       "residual": {
         "policies": {
           "allowPublicTargets": true
@@ -1262,6 +1297,7 @@
   "participant-camera": {
     "dry": {
       "labId": "participant-camera",
+      "title": "A participant with a camera (#509): the browser's own permission prompt, then a synthetic feed",
       "residual": {
         "policies": {
           "mediaPermission": "prompt",
@@ -1380,6 +1416,7 @@
   "persona-contrast-demo": {
     "dry": {
       "labId": "persona-contrast-demo",
+      "title": "Is the persona axis load-bearing? (two contrasting personas, one app, one mission)",
       "residual": {
         "defaults": {
           "open": false
@@ -1503,6 +1540,7 @@
   "scripted-demo": {
     "dry": {
       "labId": "scripted-demo",
+      "title": "Scripted browser journey (deterministic, zero provider spend)",
       "residual": {
         "review": {
           "analysis": false
@@ -1554,6 +1592,7 @@
   "shared-world-concurrent-demo": {
     "dry": {
       "labId": "shared-world-concurrent-demo",
+      "title": "Concurrent shared-world (N personas vs ONE service at once; deterministic dry-run)",
       "residual": {
         "subject": {
           "clone": {
@@ -1725,6 +1764,7 @@
   "shared-world-concurrent-live": {
     "dry": {
       "labId": "shared-world-concurrent-live",
+      "title": "Concurrent shared-world live rung (synthetic shared task board)",
       "residual": {
         "subject": {
           "clone": {
@@ -1887,6 +1927,7 @@
   "signup-email-verify": {
     "dry": {
       "labId": "signup-email-verify",
+      "title": "Can a persona complete an email-gated signup end to end?",
       "residual": {
         "comms": {
           "email": {
@@ -2112,6 +2153,7 @@
   "terminal-product-demo": {
     "dry": {
       "labId": "terminal-product-demo",
+      "title": "Terminal-product real-agent study (dry-run contract; neutral mock CLI)",
       "residual": {
         "policies": {
           "allowPrivateRepoAccess": false,
@@ -2149,6 +2191,7 @@
       "runtime": {
         "auth": "openai-env"
       },
+      "stdin": "disabled",
       "caps": {
         "maxUsd": 0,
         "maxJobs": 0,
@@ -2174,6 +2217,7 @@
   "tui-self-study": {
     "dry": {
       "labId": "tui-self-study",
+      "title": "Can a developer get an answer out of the humanish TUI? (self-study, desktop)",
       "residual": {
         "defaults": {
           "open": false

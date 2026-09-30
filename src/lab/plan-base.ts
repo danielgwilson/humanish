@@ -117,6 +117,7 @@ export function planBase(
   const analysis = input.analysis?.config;
   return {
     labId: config.id,
+    ...(config.title === undefined ? {} : { title: config.title }),
     ...(input.lab === undefined ? {} : { lab: input.lab }),
     residual: residualOf(config),
     dryRun: input.dryRun,

@@ -29,10 +29,10 @@ import { finishLiveTerminalSession } from "./live-finish.js";
 export async function runLiveTerminalSession(
   args: RunLiveTerminalSessionArgs,
 ): Promise<TerminalProductLabResult> {
-  const { options, cwd, config, descriptorId, product, warnings, failed, scope } = args;
-  const { caps } = args;
-  const { maxUsd, maxMinutes } = caps;
-  const hooks = options.hooks ?? {};
+  const { plan, input, cwd, warnings, failed, scope } = args;
+  const { actor, product } = plan;
+  const { maxUsd, maxMinutes } = plan.caps;
+  const hooks = input.hooks ?? {};
   const env = hooks.env ?? process.env;
   const now = hooks.now ?? (() => Date.now());
   const nowIso = (): string => new Date(now()).toISOString();
@@ -45,27 +45,27 @@ export async function runLiveTerminalSession(
   }
 
   // --- Safety contract item 4: deny-by-default credentials; build the command-scoped allowlist. ---
-  const runtimeEnv = buildRuntimeAuth({ runtimeAuth: config.execution?.runtimeAuth, env });
+  const runtimeEnv = buildRuntimeAuth({ runtimeAuth: plan.runtime.auth, env });
   if (!runtimeEnv.ok) {
-    return failed(runtimeEnv.code, runtimeEnv.message, { actor: descriptorId });
+    return failed(runtimeEnv.code, runtimeEnv.message);
   }
 
-  const prepared = await prepareLivePrompt({ config, product, cwd, runtimeEnv, env, warnings });
+  const prepared = await prepareLivePrompt({ plan, cwd, runtimeEnv, env, warnings });
   const { mission, physicalCwd, persona, composedPrompt, verdictNonce } = prepared;
   const { knownSecretValues, sanitize } = prepared;
 
   const started = await scope.startRun({
     cwd: physicalCwd,
-    runId: options.runId,
+    runId: input.runId,
     mintRunId: makeTerminalRunId,
     // This entry point is the live terminal route; its dry-run sibling is a separate function.
     mode: "live",
-    lab: options.lab,
+    lab: plan.lab,
     renderReview: renderTerminalReviewMarkdown,
-    observer: { open: options.open === true, render: hooks.renderObserverFn },
+    observer: { open: input.open === true, render: hooks.renderObserverFn },
     now,
   });
-  if (!started.ok) return failed(started.code, started.message, { actor: descriptorId });
+  if (!started.ok) return failed(started.code, started.message);
   const { run } = started;
   const { runId, createdAt, paths: runPaths } = run;
   const source = await buildRunSource({
@@ -79,23 +79,20 @@ export async function runLiveTerminalSession(
 
   // The ledgers + capture buffers, mutated through the live lifecycle.
   const recorder = createTerminalRecorder({ nowIso, sanitize, knownSecretValues });
+  const { version, model, reasoningEffort } = plan.runtime;
   const runtime = declaredRuntimeProvenance({
-    ...(config.execution?.runtime?.version === undefined
-      ? {}
-      : { version: config.execution.runtime.version }),
-    ...(config.actors[0]?.model === undefined ? {} : { model: sanitize(config.actors[0].model) }),
-    ...(config.actors[0]?.reasoningEffort === undefined
-      ? {}
-      : { reasoningEffort: config.actors[0].reasoningEffort }),
+    ...(version === undefined ? {} : { version }),
+    ...(model === undefined ? {} : { model: sanitize(model) }),
+    ...(reasoningEffort === undefined ? {} : { reasoningEffort }),
   });
 
   recorder.recordLifecycle(
     "terminal-lab.run.created",
-    `Created live terminal-product run ${runId} (actor ${descriptorId}, product ${product.name}). Caps: maxUsd=${maxUsd}, maxMinutes=${maxMinutes}. Subject provenance UNPINNED (public surfaces only).`,
+    `Created live terminal-product run ${runId} (actor ${actor}, product ${product.name}). Caps: maxUsd=${maxUsd}, maxMinutes=${maxMinutes}. Subject provenance UNPINNED (public surfaces only).`,
   );
 
   const session = new LiveTerminalSandbox({
-    config,
+    plan,
     cwd,
     hooks,
     now,
@@ -108,7 +105,7 @@ export async function runLiveTerminalSession(
     maxMinutes,
     e2bApiKey,
     runPaths,
-    metadata: buildSandboxMetadata({ labId: config.id, simId: "sim-001", runId }),
+    metadata: buildSandboxMetadata({ labId: plan.labId, simId: "sim-001", runId }),
     warnings,
     recorder,
   });
@@ -130,12 +127,9 @@ export async function runLiveTerminalSession(
   }
 
   return finishLiveTerminalSession({
-    options,
+    plan,
+    input,
     cwd,
-    config,
-    descriptorId,
-    product,
-    caps,
     hooks,
     sanitize,
     nowIso,
@@ -157,19 +151,19 @@ export async function runLiveTerminalSession(
  * nonce, and the literal-scrub of every known secret value.
  */
 async function prepareLivePrompt(args: {
-  config: RunLiveTerminalSessionArgs["config"];
-  product: RunLiveTerminalSessionArgs["product"];
+  plan: RunLiveTerminalSessionArgs["plan"];
   cwd: string;
   runtimeEnv: LiveSandboxInputs["runtimeEnv"];
   env: Record<string, string | undefined>;
   warnings: string[];
 }) {
-  const { config, product, cwd, runtimeEnv, env, warnings } = args;
+  const { plan, cwd, runtimeEnv, env, warnings } = args;
+  const { product } = plan;
   // Compose the prompt from PUBLIC surfaces + the author mission ONLY (safety contract item 3).
   // Inject a per-run verdict nonce: the agent echoes HUMANISH_ACTOR_VERDICT=<status>
   // HUMANISH_ACTOR_NONCE=<nonce>; the scorer verifies the nonce so replayed text cannot forge it.
-  const mission = config.actors[0]?.mission ?? defaultMission(product.name);
-  const personaId = config.actors[0]?.persona ?? "autonomous-terminal-agent";
+  const mission = plan.mission ?? defaultMission(product.name);
+  const personaId = plan.personaId ?? "autonomous-terminal-agent";
   const physicalCwd = await realpath(cwd);
   // Resolve the committed persona so its traits actually shape the agent prompt (#308); fail-safe to
   // the bare persona id (no traits applied) when no persona file is committed.
@@ -226,7 +220,7 @@ function composeLivePrompt(args: {
   mission: string;
   personaLine: string;
   productName: string;
-  publicSurfaces: string[];
+  publicSurfaces: readonly string[];
   verdictNonce: string;
 }): string {
   return [

@@ -11,7 +11,8 @@ import type {
 import { type RunLabProvenance } from "../../run/status.js";
 import type { CostCategory } from "../../run/terminal-contract.js";
 import type { RunScope } from "../../run/run.js";
-import type { LabConfig, LabScenarioCaps } from "../../lab/types.js";
+import type { TerminalPlan } from "../../lab/plan-types.js";
+import type { LabConfig } from "../../lab/types.js";
 import { type E2BDesktopModule } from "../../substrates/e2b/sdk.js";
 import { renderObserver, type ObserverResult } from "../../observer/render.js";
 import {
@@ -373,19 +374,20 @@ export interface TerminalLedgers {
   noSpendProof: NoSpendProof;
 }
 
+/** What a terminal run takes besides its plan. The plan carries the config, dry run and lab. */
+export type TerminalRunInput = Omit<RunTerminalProductLabOptions, "config" | "dryRun" | "lab">;
+
+/** A live terminal plan: its caps are the fail-closed ones planTerminalLab required. */
+export type LiveTerminalPlan = Extract<TerminalPlan, { readonly dryRun: false }>;
+
 export interface RunLiveTerminalSessionArgs {
-  options: RunTerminalProductLabOptions;
+  plan: LiveTerminalPlan;
+  input: TerminalRunInput;
   cwd: string;
-  config: LabConfig;
-  descriptorId: string;
-  product: NonNullable<LabConfig["subject"]["product"]>;
-  /** The live caps planTerminalLab required. */
-  caps: LabScenarioCaps & { maxUsd: number; maxMinutes: number };
   warnings: string[];
   failed: (
     code: NonNullable<TerminalProductLabResult["error"]>["code"],
     message: string,
-    extras?: { actor?: string; product?: string },
   ) => TerminalProductLabResult;
   /** The lab's run scope; the live session starts its run in it. */
   scope: RunScope;

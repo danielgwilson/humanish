@@ -2,7 +2,6 @@
 // and its caps check, the evidence files, the bundle, and the lab result.
 import { buildRunCostSummary } from "../../run/cost-summary.js";
 import type { ActorPersonaRef } from "../../actors/contract.js";
-import type { LabConfig } from "../../lab/types.js";
 import type { RunBundle } from "../../run/bundle.js";
 import type { RunScope } from "../../run/run.js";
 import { validatePreparedRunArtifactPaths } from "../../run/paths.js";
@@ -34,12 +33,9 @@ type StartedRun = Extract<Awaited<ReturnType<RunScope["startRun"]>>, { ok: true 
 
 /** What the finish reads from the run. */
 export interface LiveFinishInputs {
-  options: RunLiveTerminalSessionArgs["options"];
+  plan: RunLiveTerminalSessionArgs["plan"];
+  input: RunLiveTerminalSessionArgs["input"];
   cwd: string;
-  config: LabConfig;
-  descriptorId: string;
-  product: RunLiveTerminalSessionArgs["product"];
-  caps: RunLiveTerminalSessionArgs["caps"];
   hooks: TerminalProductLabHooks;
   sanitize: (text: string) => string;
   nowIso: () => string;
@@ -61,7 +57,8 @@ function buildLiveTrace(inputs: LiveFinishInputs): {
   normalizedTranscript: string;
   trace: ReturnType<typeof buildTerminalActorTrace>;
 } {
-  const { persona, product, sanitize, nowIso, runtimeEnv, runtime, knownSecretValues } = inputs;
+  const { persona, sanitize, nowIso, runtimeEnv, runtime, knownSecretValues } = inputs;
+  const { product } = inputs.plan;
   const { session } = inputs;
   const { createdAt } = inputs.run;
   const { terminalEvents, commandLog, discardedPrefixes } = inputs.recorder;
@@ -108,7 +105,8 @@ async function settleLiveLedgers(
   capsExceeded: boolean;
   ledgers: TerminalLedgers;
 }> {
-  const { hooks, caps, runtime, session } = inputs;
+  const { hooks, runtime, session } = inputs;
+  const { caps } = inputs.plan;
   const { maxUsd } = caps;
   const runPaths = inputs.run.paths;
   const { recordLifecycle, lifecycle, commandLog, interventions, terminalEvents } = inputs.recorder;
@@ -184,7 +182,9 @@ export async function finishLiveTerminalSession(
     trace,
     normalizedTranscript,
   );
-  const { options, cwd, config, descriptorId, product, caps, hooks, sanitize } = inputs;
+  const { plan, input, cwd, hooks, sanitize } = inputs;
+  const { product, caps } = plan;
+  const policies = plan.residual.policies;
   const { runtimeEnv, persona, mission, run, source, warnings, session } = inputs;
   const { runId, createdAt, paths: runPaths } = run;
 
@@ -198,11 +198,11 @@ export async function finishLiveTerminalSession(
   });
 
   const bundle = buildLiveTerminalProductBundle({
-    ...(options.lab === undefined ? {} : { lab: options.lab }),
-    actorId: descriptorId,
+    ...(plan.lab === undefined ? {} : { lab: plan.lab }),
+    actorId: plan.actor,
     createdAt,
-    labId: config.id,
-    ...(config.title ? { labTitle: config.title } : {}),
+    labId: plan.labId,
+    ...(plan.title ? { labTitle: plan.title } : {}),
     mission: sanitize(mission),
     persona,
     productName: product.name,
@@ -211,10 +211,10 @@ export async function finishLiveTerminalSession(
     runtimeAuthKeyName: runtimeEnv.keyName,
     runtimeAuth: runtimeEnv.mode,
     policies: {
-      allowPrivateRepoAccess: config.policies?.allowPrivateRepoAccess ?? false,
-      allowProviderCredentials: config.policies?.allowProviderCredentials ?? false,
-      allowPaymentCredentials: config.policies?.allowPaymentCredentials ?? false,
-      allowGitHubMutation: config.policies?.allowGitHubMutation ?? false,
+      allowPrivateRepoAccess: policies?.allowPrivateRepoAccess ?? false,
+      allowProviderCredentials: policies?.allowProviderCredentials ?? false,
+      allowPaymentCredentials: policies?.allowPaymentCredentials ?? false,
+      allowGitHubMutation: policies?.allowGitHubMutation ?? false,
     },
     runId,
     source,
@@ -240,13 +240,11 @@ export async function finishLiveTerminalSession(
     ledgers,
     transcript: normalizedTranscript,
     product: product.name,
-    labId: config.id,
+    labId: plan.labId,
     runId,
     sanitize,
     warnings,
-    ...(options.scorerProvenance === undefined
-      ? {}
-      : { scorerProvenance: options.scorerProvenance }),
+    ...(input.scorerProvenance === undefined ? {} : { scorerProvenance: input.scorerProvenance }),
   });
   await validatePreparedRunArtifactPaths(runPaths);
 
@@ -256,8 +254,8 @@ export async function finishLiveTerminalSession(
 
   return terminalLabResult({
     cwd,
-    labId: config.id,
-    actorId: descriptorId,
+    labId: plan.labId,
+    actorId: plan.actor,
     productName: product.name,
     runId,
     sessionStatus: session.status,

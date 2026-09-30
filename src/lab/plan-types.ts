@@ -20,6 +20,7 @@ import type {
 } from "./plan-participants.js";
 import type {
   LabConfig,
+  LabExecutionTerminal,
   LabRuntimeAuth,
   LabScenarioCaps,
   LabSubjectProduct,
@@ -62,6 +63,8 @@ export interface PlannedAnalysis {
 
 interface PlanBase {
   readonly labId: string;
+  /** The lab's declared title, which bundles record. */
+  readonly title?: string;
   readonly lab?: RunLabProvenance;
   /** A frozen copy owned by the plan. */
   readonly residual: Readonly<ResidualConfig>;
@@ -191,6 +194,10 @@ export type TerminalPlan = PlanBase & {
     readonly reasoningEffort?: ReasoningEffort;
     readonly auth?: LabRuntimeAuth;
   };
+  /** The declared egress routing allowlist; without one the sandbox egress is unrestricted. */
+  readonly egressAllow?: readonly string[];
+  /** The declared operator stdin posture; the route defaults to "disabled". */
+  readonly stdin?: NonNullable<LabExecutionTerminal["stdin"]>;
 } & (
     | { readonly dryRun: true; readonly caps?: LabScenarioCaps }
     | {

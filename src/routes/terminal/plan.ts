@@ -97,6 +97,8 @@ export function planTerminalLab(
     ...(input.lab === undefined ? {} : { lab: input.lab }),
     analysis,
   });
+  const egressAllow = config.execution?.egressAllow;
+  const stdin = config.execution?.terminal?.stdin;
   const shared = {
     ...base,
     route: "terminal" as const,
@@ -112,6 +114,8 @@ export function planTerminalLab(
         ? {}
         : { auth: config.execution.runtimeAuth }),
     },
+    ...(egressAllow === undefined ? {} : { egressAllow }),
+    ...(stdin === undefined ? {} : { stdin }),
   };
   const caps = config.scenario?.caps;
   if (input.dryRun)

@@ -17,7 +17,8 @@ import {
 import { runLab, selectLabBackend } from "../../../src/lab/engine.js";
 import { createProgram } from "../../../src/cli/program.js";
 import { verifyRun } from "../../../src/verify/verify.js";
-import { runTerminalProductLab } from "../../../src/routes/terminal/lab.js";
+import { runTerminalPlan, runTerminalProductLab } from "../../../src/routes/terminal/lab.js";
+import { planTerminalLab } from "../../../src/routes/terminal/plan.js";
 import { TERMINAL_AGENT_NOT_IMPLEMENTED_CODE } from "../../../src/actors/terminal-agent.js";
 
 const ROOT = process.cwd();
@@ -397,6 +398,30 @@ describe("runTerminalProductLab (dry-run)", () => {
     expect(second.ok).toBe(false);
     expect(second.error?.code).toBe("HUMANISH_RUN_ID_IN_USE");
     expect(second.actor).toBe("codex-exec");
+  });
+
+  it("runs a plan alone: the bundle records the plan's title, mission, stdin and runtime auth", async () => {
+    const planned = planTerminalLab(parsedTerminalConfig(), { dryRun: true });
+    if (!planned.ok || !planned.plan.dryRun) throw new Error("expected a dry terminal plan");
+    const plan = {
+      ...planned.plan,
+      title: "Planned title",
+      mission: "Planned mission.",
+      stdin: "planned" as const,
+      runtime: { ...planned.plan.runtime, auth: "openai-egress" as const },
+    };
+    const result = await runTerminalPlan(plan, { cwd });
+    expect(result.ok).toBe(true);
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    );
+    expect(bundle.scenario.title).toBe("Planned title");
+    expect(bundle.streams[0].assignment).toEqual({ mission: "Planned mission." });
+    expect(bundle.streams[0].terminal.stdin).toBe("planned");
+    const credentials = bundle.events.find(
+      (event: { type: string }) => event.type === "terminal-lab.credentials.declared",
+    );
+    expect(credentials.message).toContain("openai-egress");
   });
 
   it.each(["OPENAI_API_KEY", "CODEX_API_KEY", "E2B_API_KEY"])(
