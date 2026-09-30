@@ -142,46 +142,67 @@ const unsupported = (option: string, route: LabRoute, reason: string): Refusal =
   message: `RunLabOptions.${option} is not supported on the ${route} route: ${reason}`,
 });
 
-/** The first old field set together with its new home, as [home, old field]. */
+/**
+ * Whether a caller's bag sets `key`, from its property descriptors: a data property counts when its
+ * value is defined, an accessor counts without being called. Nothing the caller defined runs.
+ */
+function hasMember(bag: object | undefined, key: string): boolean {
+  for (
+    let source: object | null = bag ?? null;
+    source !== null && source !== Object.prototype;
+    source = Object.getPrototypeOf(source) as object | null
+  ) {
+    const descriptor = Object.getOwnPropertyDescriptor(source, key);
+    if (descriptor !== undefined)
+      return "value" in descriptor ? descriptor.value !== undefined : true;
+  }
+  return false;
+}
+
+/**
+ * The first old field set together with its new home, as [home, old field]. The new option is
+ * checked first, so a legacy-only call never looks at its bags.
+ */
 function conflictingField(options: RunLabOptions): [string, string] | undefined {
-  const { cuaHooks: cua, scriptedHooks: scripted, terminalHooks: terminal } = options;
-  const shared = options.sharedWorldHooks;
-  const analysis = options.automaticAnalysis;
-  const pairs: [string, string, unknown][] = [
-    ["env", "cuaHooks.env", cua?.env],
-    ["env", "scriptedHooks.env", scripted?.env],
-    ["env", "terminalHooks.env", terminal?.env],
-    ["env", "sharedWorldHooks.env", shared?.env],
-    ["scorer", "cuaHooks.score", cua?.score],
-    ["scorer", "cuaHooks.deriveFeedback", cua?.deriveFeedback],
-    ["scorer", "cuaHooks.deriveArtifacts", cua?.deriveArtifacts],
-    ["scorer", "sharedWorldHooks.score", shared?.score],
-    ["scorer", "sharedWorldHooks.deriveFeedback", shared?.deriveFeedback],
-    ["scorer", "sharedWorldHooks.deriveArtifacts", shared?.deriveArtifacts],
-    ["scorer", "terminalHooks.score", terminal?.score],
-    ["scorer", "terminalHooks.deriveFeedback", terminal?.deriveFeedback],
-    ["prepareDesktop", "cuaHooks.prepareDesktop", cua?.prepareDesktop],
-    ["prepareDesktop", "scriptedHooks.prepareDesktop", scripted?.prepareDesktop],
-    ["prepareDesktop", "sharedWorldHooks.prepareDesktop", shared?.prepareDesktop],
-    ["onEvent", "cuaHooks.onPreflight", cua?.onPreflight],
-    ["onEvent", "cuaHooks.onPhase", cua?.onPhase],
-    ["onEvent", "sharedWorldHooks.onPhase", shared?.onPhase],
-    ["onEvent", "automaticAnalysis.onStart", analysis?.onStart],
-    ["onStream", "cuaHooks.onRuntimeStreamReady", cua?.onRuntimeStreamReady],
-    ["onStream", "cuaHooks.onRuntimeStreamEnded", cua?.onRuntimeStreamEnded],
-    ["onStream", "sharedWorldHooks.onRuntimeStreamReady", shared?.onRuntimeStreamReady],
-    ["onStream", "sharedWorldHooks.onRuntimeStreamEnded", shared?.onRuntimeStreamEnded],
-    ["analysisSignal", "automaticAnalysis.deps.signal", analysis?.deps?.signal],
-    ["createProvider", "cuaHooks.buildProvider", cua?.buildProvider],
-    ["inProcess", "cuaHooks.buildExecutor", cua?.buildExecutor],
-    ["rerun.participantIds", "rerun.laneIds", options.rerun?.laneIds],
+  const pairs: [home: string, bag: string, member: string][] = [
+    ["env", "cuaHooks", "env"],
+    ["env", "scriptedHooks", "env"],
+    ["env", "terminalHooks", "env"],
+    ["env", "sharedWorldHooks", "env"],
+    ["scorer", "cuaHooks", "score"],
+    ["scorer", "cuaHooks", "deriveFeedback"],
+    ["scorer", "cuaHooks", "deriveArtifacts"],
+    ["scorer", "sharedWorldHooks", "score"],
+    ["scorer", "sharedWorldHooks", "deriveFeedback"],
+    ["scorer", "sharedWorldHooks", "deriveArtifacts"],
+    ["scorer", "terminalHooks", "score"],
+    ["scorer", "terminalHooks", "deriveFeedback"],
+    ["prepareDesktop", "cuaHooks", "prepareDesktop"],
+    ["prepareDesktop", "scriptedHooks", "prepareDesktop"],
+    ["prepareDesktop", "sharedWorldHooks", "prepareDesktop"],
+    ["onEvent", "cuaHooks", "onPreflight"],
+    ["onEvent", "cuaHooks", "onPhase"],
+    ["onEvent", "sharedWorldHooks", "onPhase"],
+    ["onEvent", "automaticAnalysis", "onStart"],
+    ["onStream", "cuaHooks", "onRuntimeStreamReady"],
+    ["onStream", "cuaHooks", "onRuntimeStreamEnded"],
+    ["onStream", "sharedWorldHooks", "onRuntimeStreamReady"],
+    ["onStream", "sharedWorldHooks", "onRuntimeStreamEnded"],
+    ["analysisSignal", "automaticAnalysis.deps", "signal"],
+    ["createProvider", "cuaHooks", "buildProvider"],
+    ["inProcess", "cuaHooks", "buildExecutor"],
+    ["rerun.participantIds", "rerun", "laneIds"],
   ];
-  const home = (name: string): unknown =>
+  const home = (name: string): boolean =>
     name === "rerun.participantIds"
-      ? options.rerun?.participantIds
-      : options[name as keyof RunLabHomes | "createProvider" | "inProcess"];
-  const found = pairs.find(([name, , old]) => old !== undefined && home(name) !== undefined);
-  return found === undefined ? undefined : [found[0], found[1]];
+      ? options.rerun?.participantIds !== undefined
+      : options[name as keyof RunLabHomes | "createProvider" | "inProcess"] !== undefined;
+  const bagOf = (name: string): object | undefined =>
+    name === "automaticAnalysis.deps"
+      ? options.automaticAnalysis?.deps
+      : (options[name as keyof RunLabOptions] as object | undefined);
+  const found = pairs.find(([name, bag, member]) => home(name) && hasMember(bagOf(bag), member));
+  return found === undefined ? undefined : [found[0], `${found[1]}.${found[2]}`];
 }
 
 /** Why the route cannot honor an option it was given, or undefined when it can. */
@@ -223,7 +244,7 @@ function unsupportedOption(
       // cuaHooks.buildExecutor. Either way no desktop exists to prepare.
       if (
         inProcess !== undefined ||
-        options.cuaHooks?.buildExecutor !== undefined ||
+        hasMember(options.cuaHooks, "buildExecutor") ||
         source === "local-app"
       )
         return unsupported("prepareDesktop", route, "an in-process run has no desktop.");
@@ -363,7 +384,7 @@ export function normalizeRunLabOptions(
             onStream,
             createProvider,
             inProcess,
-            legacyInProcess: legacy.cuaHooks?.buildExecutor !== undefined,
+            legacyInProcess: hasMember(legacy.cuaHooks, "buildExecutor"),
           },
           emit,
         ),

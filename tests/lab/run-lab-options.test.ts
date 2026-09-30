@@ -892,3 +892,37 @@ describe("the scrub covers the env the route received", () => {
     expect(result.warnings[0]).not.toContain(initial);
   });
 });
+
+describe("a legacy-only call never reads the bag's accessors", () => {
+  class LateHooks {
+    #ready = false;
+    onPreflight(): void {
+      this.#ready = true;
+    }
+    get score(): () => never {
+      if (!this.#ready) throw new Error("score read before onPreflight");
+      return () => {
+        throw new Error("unused");
+      };
+    }
+    get buildExecutor(): undefined {
+      throw new Error("buildExecutor read during normalization");
+    }
+  }
+
+  it("normalizes { cwd, cuaHooks } without evaluating a getter", () => {
+    const bag = new LateHooks();
+    const result = normalize(config("cuAppUrl"), { cuaHooks: bag as never });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.options.cuaHooks).toBe(bag);
+  });
+
+  it("reads no legacy getter for a new option that is not its replacement", () => {
+    const result = normalize(config("cuAppUrl"), {
+      cuaHooks: new LateHooks() as never,
+      onStream: () => undefined,
+      analysisSignal: AbortSignal.abort(),
+    });
+    expect(result.ok).toBe(true);
+  });
+});
