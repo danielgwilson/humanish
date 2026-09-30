@@ -15,9 +15,10 @@ steps 3 to 7 and 9.
    (`src/lab/discover.ts`). It reads the YAML and calls `parseLabConfig` (`src/lab/config.ts`),
    which rejects unknown keys and every refused composition in the support matrix below. A
    refusal exits with code 2 before a run id exists.
-2. `selectLabBackend` (`src/lab/engine.ts`) picks one of five routes from `subject.source`,
+2. `routeOf` (`src/lab/plan.ts`) picks one of five routes from `subject.source`,
    `subject.topology`, `execution.target` and the registry lane of `actors[0].type`. The
-   predicates live in `src/lab/routing.ts`. `runLab` in the same file dispatches to
+   predicates live in `src/lab/routing.ts`, and `selectLabBackend` (`src/lab/engine.ts`) maps the
+   route to its backend name. `runLab` in `src/lab/engine.ts` dispatches to
    `runCuaActorLab`, `runScriptedBrowserLab`, `runTerminalProductLab`,
    `runConcurrentSharedWorld` or `runDryRun`. A run is live only when the lab declares
    `scenario.mode: live`. The `--dry-run` flag forces a dry run.
