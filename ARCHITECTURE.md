@@ -97,8 +97,9 @@ steps 3 to 7 and 9.
 
 ## Check which compositions a lab can declare
 
-`parseLabConfig` (`src/lab/config.ts`) enforces this matrix with the predicates in
-`src/lab/routing.ts` and the reasons in `src/lab/validation.ts`. The route entries check it again
+`parseLabConfig` (`src/lab/config.ts`) enforces this matrix through `compositionReason`
+(`src/lab/composition-rules.ts`), which uses the predicates in `src/lab/routing.ts` and the reasons
+in `src/lab/validation.ts`. The route entries check it again
 for library callers. `tests/fixtures/task-route-preflight/labs.json` holds one lab for each
 accepted row except the local browser row. `tests/lab/task-route-preflight.test.ts` checks that
 each of those labs routes as shown. `tests/lab/engine-local-substrate.test.ts` covers the local
