@@ -1,0 +1,3545 @@
+{
+  "dwellTrigger": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "dwell window complete (103ms held after turn 1)",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "n/a",
+          "notes": "no screenshots captured"
+        },
+        "startedAt": "1970-01-01T00:00:00.001Z",
+        "completedAt": "1970-01-01T00:00:00.119Z",
+        "durationMs": 118,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "dwell window complete (103ms held after turn 1)",
+        "ids": {
+          "model": "golden-1",
+          "turnId": "previous"
+        },
+        "counts": {
+          "turns": 1,
+          "actions": 1,
+          "materialActions": 1,
+          "screenshots": 0,
+          "reasonings": 0,
+          "messages": 1,
+          "idleTurns": 0,
+          "noProgressTurns": 0,
+          "debriefCalls": 1
+        },
+        "items": [
+          {
+            "id": "ui_action-001",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "keypress ENTER",
+            "at": "1970-01-01T00:00:00.006Z"
+          },
+          {
+            "id": "notice-002",
+            "kind": "notice",
+            "lifecycle": "started",
+            "title": "dwell window started",
+            "text": "its condition matched at turn 1: holding 100ms, a frame every 50ms, no actions, no model turns",
+            "at": "1970-01-01T00:00:00.010Z"
+          },
+          {
+            "id": "notice-003",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "matched",
+            "title": "dwell window complete",
+            "text": "2 frame(s) over 103ms; no model turn was requested during the window",
+            "at": "1970-01-01T00:00:00.113Z"
+          },
+          {
+            "id": "message-004",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "participant closing report",
+            "text": "I renamed the item.\n\nThe Save button did nothing.",
+            "at": "1970-01-01T00:00:00.117Z"
+          },
+          {
+            "id": "notice-005",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "ok",
+            "title": "participant debrief completed",
+            "text": "one read-only report; no additional desktop actions; original stop and task outcomes preserved",
+            "at": "1970-01-01T00:00:00.118Z"
+          }
+        ],
+        "affordanceUse": {
+          "schema": "humanish.affordance-use.v1",
+          "counts": {
+            "keyboard": 1
+          },
+          "total": 1,
+          "shortcutTotal": 0
+        },
+        "debrief": {
+          "trigger": "dwell",
+          "status": "completed",
+          "reason": "one read-only report; no additional desktop actions; original stop and task outcomes preserved",
+          "usageReported": true,
+          "report": {
+            "summary": "I renamed the item.",
+            "frictionReports": [
+              "The Save button did nothing."
+            ]
+          },
+          "messageId": "message-004"
+        },
+        "tokenUsage": {
+          "input": 30,
+          "output": 15,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            },
+            {
+              "input": 20,
+              "output": 10
+            }
+          ],
+          "total": 45
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onTrace",
+        0,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "stateSignature": "0",
+            "text": "editing"
+          }
+        }
+      ],
+      [
+        "executor.execute",
+        {
+          "kind": "keypress",
+          "keys": [
+            "ENTER"
+          ]
+        }
+      ],
+      [
+        "executor.observe",
+        1
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onTrace",
+        1,
+        {
+          "input": 10,
+          "output": 5,
+          "cachedInput": 0,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            }
+          ]
+        },
+        {}
+      ],
+      [
+        "executor.observe",
+        2
+      ],
+      [
+        "onTrace",
+        2,
+        {
+          "input": 10,
+          "output": 5,
+          "cachedInput": 0,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            }
+          ]
+        },
+        {}
+      ],
+      [
+        "executor.observe",
+        3
+      ],
+      [
+        "onTrace",
+        2,
+        {
+          "input": 10,
+          "output": 5,
+          "cachedInput": 0,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            }
+          ]
+        },
+        {}
+      ],
+      [
+        "executor.observe",
+        4
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "provider.debrief",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "stateSignature": "1",
+            "text": "saved"
+          },
+          "previousResponseId": "previous",
+          "contextHint": "The interactive session has ended. Return a closing account with summary and frictionReports. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task."
+        }
+      ],
+      [
+        "onTrace",
+        5,
+        {
+          "input": 30,
+          "output": 15,
+          "cachedInput": 0,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            },
+            {
+              "input": 20,
+              "output": 10
+            }
+          ]
+        },
+        {}
+      ]
+    ]
+  },
+  "noDebriefSupport": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "stopWhen matched hidden-rule (textIncludes)",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "n/a",
+          "notes": "no screenshots captured"
+        },
+        "startedAt": "1970-01-01T00:00:00.001Z",
+        "completedAt": "1970-01-01T00:00:00.010Z",
+        "durationMs": 9,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "stopWhen matched hidden-rule (textIncludes)",
+        "ids": {
+          "model": "golden-1",
+          "turnId": "previous"
+        },
+        "counts": {
+          "turns": 1,
+          "actions": 1,
+          "materialActions": 1,
+          "screenshots": 0,
+          "reasonings": 0,
+          "messages": 0,
+          "idleTurns": 0,
+          "noProgressTurns": 0
+        },
+        "items": [
+          {
+            "id": "ui_action-001",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "keypress ENTER",
+            "at": "1970-01-01T00:00:00.006Z"
+          },
+          {
+            "id": "notice-002",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "matched",
+            "title": "stopWhen matched: hidden-rule",
+            "text": "Harness stop condition matched rule hidden-rule using textIncludes. Raw observed URL/text/appState were runtime-only and were not persisted; when a screenshot was available, the immediately preceding screenshot item is the visual evidence for the matched surface.",
+            "at": "1970-01-01T00:00:00.008Z"
+          },
+          {
+            "id": "notice-003",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "warn",
+            "title": "participant debrief skipped",
+            "text": "this provider does not support read-only closing reports",
+            "at": "1970-01-01T00:00:00.009Z"
+          }
+        ],
+        "affordanceUse": {
+          "schema": "humanish.affordance-use.v1",
+          "counts": {
+            "keyboard": 1
+          },
+          "total": 1,
+          "shortcutTotal": 0
+        },
+        "debrief": {
+          "trigger": "stop_when",
+          "status": "skipped",
+          "reason": "this provider does not support read-only closing reports"
+        },
+        "tokenUsage": {
+          "input": 10,
+          "output": 5,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            }
+          ],
+          "total": 15
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onTrace",
+        0,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "stateSignature": "0",
+            "text": "editing"
+          }
+        }
+      ],
+      [
+        "executor.execute",
+        {
+          "kind": "keypress",
+          "keys": [
+            "ENTER"
+          ]
+        }
+      ],
+      [
+        "executor.observe",
+        1
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onTrace",
+        1,
+        {
+          "input": 10,
+          "output": 5,
+          "cachedInput": 0,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            }
+          ]
+        },
+        {}
+      ],
+      [
+        "onTrace",
+        3,
+        {
+          "input": 10,
+          "output": 5,
+          "cachedInput": 0,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            }
+          ]
+        },
+        {}
+      ]
+    ]
+  },
+  "requestsActions": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "stopWhen matched hidden-rule (textIncludes)",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "n/a",
+          "notes": "no screenshots captured"
+        },
+        "startedAt": "1970-01-01T00:00:00.001Z",
+        "completedAt": "1970-01-01T00:00:00.012Z",
+        "durationMs": 11,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "stopWhen matched hidden-rule (textIncludes)",
+        "ids": {
+          "model": "golden-1",
+          "turnId": "previous"
+        },
+        "counts": {
+          "turns": 1,
+          "actions": 1,
+          "materialActions": 1,
+          "screenshots": 0,
+          "reasonings": 0,
+          "messages": 0,
+          "idleTurns": 0,
+          "noProgressTurns": 0,
+          "debriefCalls": 1
+        },
+        "items": [
+          {
+            "id": "ui_action-001",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "keypress ENTER",
+            "at": "1970-01-01T00:00:00.006Z"
+          },
+          {
+            "id": "notice-002",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "matched",
+            "title": "stopWhen matched: hidden-rule",
+            "text": "Harness stop condition matched rule hidden-rule using textIncludes. Raw observed URL/text/appState were runtime-only and were not persisted; when a screenshot was available, the immediately preceding screenshot item is the visual evidence for the matched surface.",
+            "at": "1970-01-01T00:00:00.008Z"
+          },
+          {
+            "id": "notice-003",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "warn",
+            "title": "participant debrief failed",
+            "text": "the closing response requested actions or safety checks; none were executed and its report was not accepted",
+            "at": "1970-01-01T00:00:00.011Z"
+          }
+        ],
+        "affordanceUse": {
+          "schema": "humanish.affordance-use.v1",
+          "counts": {
+            "keyboard": 1
+          },
+          "total": 1,
+          "shortcutTotal": 0
+        },
+        "debrief": {
+          "trigger": "stop_when",
+          "status": "failed",
+          "reason": "the closing response requested actions or safety checks; none were executed and its report was not accepted",
+          "usageReported": true
+        },
+        "tokenUsage": {
+          "input": 30,
+          "output": 15,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            },
+            {
+              "input": 20,
+              "output": 10
+            }
+          ],
+          "total": 45
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onTrace",
+        0,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "stateSignature": "0",
+            "text": "editing"
+          }
+        }
+      ],
+      [
+        "executor.execute",
+        {
+          "kind": "keypress",
+          "keys": [
+            "ENTER"
+          ]
+        }
+      ],
+      [
+        "executor.observe",
+        1
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onTrace",
+        1,
+        {
+          "input": 10,
+          "output": 5,
+          "cachedInput": 0,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            }
+          ]
+        },
+        {}
+      ],
+      [
+        "provider.debrief",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "stateSignature": "1",
+            "text": "saved"
+          },
+          "previousResponseId": "previous",
+          "contextHint": "The interactive session has ended. Return a closing account with summary and frictionReports. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task."
+        }
+      ],
+      [
+        "onTrace",
+        3,
+        {
+          "input": 30,
+          "output": 15,
+          "cachedInput": 0,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            },
+            {
+              "input": 20,
+              "output": 10
+            }
+          ]
+        },
+        {}
+      ]
+    ]
+  },
+  "invalidReport": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "stopWhen matched hidden-rule (textIncludes)",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "n/a",
+          "notes": "no screenshots captured"
+        },
+        "startedAt": "1970-01-01T00:00:00.001Z",
+        "completedAt": "1970-01-01T00:00:00.012Z",
+        "durationMs": 11,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "stopWhen matched hidden-rule (textIncludes)",
+        "ids": {
+          "model": "golden-1",
+          "turnId": "previous"
+        },
+        "counts": {
+          "turns": 1,
+          "actions": 1,
+          "materialActions": 1,
+          "screenshots": 0,
+          "reasonings": 0,
+          "messages": 0,
+          "idleTurns": 0,
+          "noProgressTurns": 0,
+          "debriefCalls": 1
+        },
+        "items": [
+          {
+            "id": "ui_action-001",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "keypress ENTER",
+            "at": "1970-01-01T00:00:00.006Z"
+          },
+          {
+            "id": "notice-002",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "matched",
+            "title": "stopWhen matched: hidden-rule",
+            "text": "Harness stop condition matched rule hidden-rule using textIncludes. Raw observed URL/text/appState were runtime-only and were not persisted; when a screenshot was available, the immediately preceding screenshot item is the visual evidence for the matched surface.",
+            "at": "1970-01-01T00:00:00.008Z"
+          },
+          {
+            "id": "notice-003",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "warn",
+            "title": "participant debrief failed",
+            "text": "the closing response did not contain a valid structured participant report",
+            "at": "1970-01-01T00:00:00.011Z"
+          }
+        ],
+        "affordanceUse": {
+          "schema": "humanish.affordance-use.v1",
+          "counts": {
+            "keyboard": 1
+          },
+          "total": 1,
+          "shortcutTotal": 0
+        },
+        "debrief": {
+          "trigger": "stop_when",
+          "status": "failed",
+          "reason": "the closing response did not contain a valid structured participant report",
+          "usageReported": true
+        },
+        "tokenUsage": {
+          "input": 30,
+          "output": 15,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            },
+            {
+              "input": 20,
+              "output": 10
+            }
+          ],
+          "total": 45
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onTrace",
+        0,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "stateSignature": "0",
+            "text": "editing"
+          }
+        }
+      ],
+      [
+        "executor.execute",
+        {
+          "kind": "keypress",
+          "keys": [
+            "ENTER"
+          ]
+        }
+      ],
+      [
+        "executor.observe",
+        1
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onTrace",
+        1,
+        {
+          "input": 10,
+          "output": 5,
+          "cachedInput": 0,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            }
+          ]
+        },
+        {}
+      ],
+      [
+        "provider.debrief",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "stateSignature": "1",
+            "text": "saved"
+          },
+          "previousResponseId": "previous",
+          "contextHint": "The interactive session has ended. Return a closing account with summary and frictionReports. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task."
+        }
+      ],
+      [
+        "onTrace",
+        3,
+        {
+          "input": 30,
+          "output": 15,
+          "cachedInput": 0,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            },
+            {
+              "input": 20,
+              "output": 10
+            }
+          ]
+        },
+        {}
+      ]
+    ]
+  },
+  "partialUsage": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "stopWhen matched hidden-rule (textIncludes)",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "n/a",
+          "notes": "no screenshots captured"
+        },
+        "startedAt": "1970-01-01T00:00:00.001Z",
+        "completedAt": "1970-01-01T00:00:00.013Z",
+        "durationMs": 12,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "stopWhen matched hidden-rule (textIncludes)",
+        "ids": {
+          "model": "golden-1",
+          "turnId": "previous"
+        },
+        "counts": {
+          "turns": 1,
+          "actions": 1,
+          "materialActions": 1,
+          "screenshots": 0,
+          "reasonings": 0,
+          "messages": 1,
+          "idleTurns": 0,
+          "noProgressTurns": 0,
+          "debriefCalls": 1
+        },
+        "items": [
+          {
+            "id": "ui_action-001",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "keypress ENTER",
+            "at": "1970-01-01T00:00:00.006Z"
+          },
+          {
+            "id": "notice-002",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "matched",
+            "title": "stopWhen matched: hidden-rule",
+            "text": "Harness stop condition matched rule hidden-rule using textIncludes. Raw observed URL/text/appState were runtime-only and were not persisted; when a screenshot was available, the immediately preceding screenshot item is the visual evidence for the matched surface.",
+            "at": "1970-01-01T00:00:00.008Z"
+          },
+          {
+            "id": "message-003",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "participant closing report",
+            "text": "I renamed the item.\n\nThe Save button did nothing.",
+            "at": "1970-01-01T00:00:00.011Z"
+          },
+          {
+            "id": "notice-004",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "ok",
+            "title": "participant debrief completed",
+            "text": "one read-only report; no additional desktop actions; original stop and task outcomes preserved",
+            "at": "1970-01-01T00:00:00.012Z"
+          }
+        ],
+        "affordanceUse": {
+          "schema": "humanish.affordance-use.v1",
+          "counts": {
+            "keyboard": 1
+          },
+          "total": 1,
+          "shortcutTotal": 0
+        },
+        "debrief": {
+          "trigger": "stop_when",
+          "status": "completed",
+          "reason": "one read-only report; no additional desktop actions; original stop and task outcomes preserved",
+          "usageReported": false,
+          "report": {
+            "summary": "I renamed the item.",
+            "frictionReports": [
+              "The Save button did nothing."
+            ]
+          },
+          "messageId": "message-003"
+        },
+        "tokenUsage": {
+          "input": 30,
+          "output": 5,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            },
+            {
+              "input": 20
+            }
+          ],
+          "total": 35
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onTrace",
+        0,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "stateSignature": "0",
+            "text": "editing"
+          }
+        }
+      ],
+      [
+        "executor.execute",
+        {
+          "kind": "keypress",
+          "keys": [
+            "ENTER"
+          ]
+        }
+      ],
+      [
+        "executor.observe",
+        1
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onTrace",
+        1,
+        {
+          "input": 10,
+          "output": 5,
+          "cachedInput": 0,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            }
+          ]
+        },
+        {}
+      ],
+      [
+        "provider.debrief",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "stateSignature": "1",
+            "text": "saved"
+          },
+          "previousResponseId": "previous",
+          "contextHint": "The interactive session has ended. Return a closing account with summary and frictionReports. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task."
+        }
+      ],
+      [
+        "onTrace",
+        4,
+        {
+          "input": 30,
+          "output": 5,
+          "cachedInput": 0,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            },
+            {
+              "input": 20
+            }
+          ]
+        },
+        {}
+      ]
+    ]
+  },
+  "admissionRefused": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "stopWhen matched hidden-rule (textIncludes)",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "n/a",
+          "notes": "no screenshots captured"
+        },
+        "startedAt": "1970-01-01T00:00:00.001Z",
+        "completedAt": "1970-01-01T00:00:00.012Z",
+        "durationMs": 11,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "stopWhen matched hidden-rule (textIncludes)",
+        "ids": {
+          "model": "golden-1",
+          "turnId": "previous"
+        },
+        "counts": {
+          "turns": 1,
+          "actions": 1,
+          "materialActions": 1,
+          "screenshots": 0,
+          "reasonings": 0,
+          "messages": 0,
+          "idleTurns": 0,
+          "noProgressTurns": 0,
+          "debriefCalls": 1
+        },
+        "items": [
+          {
+            "id": "ui_action-001",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "keypress ENTER",
+            "at": "1970-01-01T00:00:00.006Z"
+          },
+          {
+            "id": "notice-002",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "matched",
+            "title": "stopWhen matched: hidden-rule",
+            "text": "Harness stop condition matched rule hidden-rule using textIncludes. Raw observed URL/text/appState were runtime-only and were not persisted; when a screenshot was available, the immediately preceding screenshot item is the visual evidence for the matched surface.",
+            "at": "1970-01-01T00:00:00.008Z"
+          },
+          {
+            "id": "notice-003",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "warn",
+            "title": "participant debrief skipped",
+            "text": "the adapter reported a local admission limit before provider dispatch; no closing request was sent",
+            "at": "1970-01-01T00:00:00.011Z"
+          }
+        ],
+        "affordanceUse": {
+          "schema": "humanish.affordance-use.v1",
+          "counts": {
+            "keyboard": 1
+          },
+          "total": 1,
+          "shortcutTotal": 0
+        },
+        "debrief": {
+          "trigger": "stop_when",
+          "status": "skipped",
+          "reason": "the adapter reported a local admission limit before provider dispatch; no closing request was sent"
+        },
+        "tokenUsage": {
+          "input": 10,
+          "output": 5,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            }
+          ],
+          "total": 15
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onTrace",
+        0,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "stateSignature": "0",
+            "text": "editing"
+          }
+        }
+      ],
+      [
+        "executor.execute",
+        {
+          "kind": "keypress",
+          "keys": [
+            "ENTER"
+          ]
+        }
+      ],
+      [
+        "executor.observe",
+        1
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onTrace",
+        1,
+        {
+          "input": 10,
+          "output": 5,
+          "cachedInput": 0,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            }
+          ]
+        },
+        {}
+      ],
+      [
+        "provider.debrief",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "stateSignature": "1",
+            "text": "saved"
+          },
+          "previousResponseId": "previous",
+          "contextHint": "The interactive session has ended. Return a closing account with summary and frictionReports. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task."
+        }
+      ],
+      [
+        "onTrace",
+        3,
+        {
+          "input": 10,
+          "output": 5,
+          "cachedInput": 0,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            }
+          ]
+        },
+        {}
+      ]
+    ]
+  },
+  "thrownError": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "stopWhen matched hidden-rule (textIncludes)",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "n/a",
+          "notes": "no screenshots captured"
+        },
+        "startedAt": "1970-01-01T00:00:00.001Z",
+        "completedAt": "1970-01-01T00:00:00.012Z",
+        "durationMs": 11,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "stopWhen matched hidden-rule (textIncludes)",
+        "ids": {
+          "model": "golden-1",
+          "turnId": "previous"
+        },
+        "counts": {
+          "turns": 1,
+          "actions": 1,
+          "materialActions": 1,
+          "screenshots": 0,
+          "reasonings": 0,
+          "messages": 0,
+          "idleTurns": 0,
+          "noProgressTurns": 0,
+          "debriefCalls": 1
+        },
+        "items": [
+          {
+            "id": "ui_action-001",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "keypress ENTER",
+            "at": "1970-01-01T00:00:00.006Z"
+          },
+          {
+            "id": "notice-002",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "matched",
+            "title": "stopWhen matched: hidden-rule",
+            "text": "Harness stop condition matched rule hidden-rule using textIncludes. Raw observed URL/text/appState were runtime-only and were not persisted; when a screenshot was available, the immediately preceding screenshot item is the visual evidence for the matched surface.",
+            "at": "1970-01-01T00:00:00.008Z"
+          },
+          {
+            "id": "notice-003",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "warn",
+            "title": "participant debrief failed",
+            "text": "provider unavailable; closing request usage is unreported",
+            "at": "1970-01-01T00:00:00.011Z"
+          }
+        ],
+        "affordanceUse": {
+          "schema": "humanish.affordance-use.v1",
+          "counts": {
+            "keyboard": 1
+          },
+          "total": 1,
+          "shortcutTotal": 0
+        },
+        "debrief": {
+          "trigger": "stop_when",
+          "status": "failed",
+          "reason": "provider unavailable; closing request usage is unreported",
+          "usageReported": false
+        },
+        "tokenUsage": {
+          "input": 10,
+          "output": 5,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            }
+          ],
+          "total": 15
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onTrace",
+        0,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "stateSignature": "0",
+            "text": "editing"
+          }
+        }
+      ],
+      [
+        "executor.execute",
+        {
+          "kind": "keypress",
+          "keys": [
+            "ENTER"
+          ]
+        }
+      ],
+      [
+        "executor.observe",
+        1
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onTrace",
+        1,
+        {
+          "input": 10,
+          "output": 5,
+          "cachedInput": 0,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            }
+          ]
+        },
+        {}
+      ],
+      [
+        "provider.debrief",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "stateSignature": "1",
+            "text": "saved"
+          },
+          "previousResponseId": "previous",
+          "contextHint": "The interactive session has ended. Return a closing account with summary and frictionReports. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task."
+        }
+      ],
+      [
+        "onTrace",
+        3,
+        {
+          "input": 10,
+          "output": 5,
+          "cachedInput": 0,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            }
+          ]
+        },
+        {}
+      ]
+    ]
+  },
+  "hungUntilDeadline": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "stopWhen matched hidden-rule (textIncludes)",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "n/a",
+          "notes": "no screenshots captured"
+        },
+        "startedAt": "1970-01-01T00:00:00.001Z",
+        "completedAt": "1970-01-01T00:00:00.012Z",
+        "durationMs": 11,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "stopWhen matched hidden-rule (textIncludes)",
+        "ids": {
+          "model": "golden-1",
+          "turnId": "previous"
+        },
+        "counts": {
+          "turns": 1,
+          "actions": 1,
+          "materialActions": 1,
+          "screenshots": 0,
+          "reasonings": 0,
+          "messages": 0,
+          "idleTurns": 0,
+          "noProgressTurns": 0,
+          "debriefCalls": 1
+        },
+        "items": [
+          {
+            "id": "ui_action-001",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "keypress ENTER",
+            "at": "1970-01-01T00:00:00.006Z"
+          },
+          {
+            "id": "notice-002",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "matched",
+            "title": "stopWhen matched: hidden-rule",
+            "text": "Harness stop condition matched rule hidden-rule using textIncludes. Raw observed URL/text/appState were runtime-only and were not persisted; when a screenshot was available, the immediately preceding screenshot item is the visual evidence for the matched surface.",
+            "at": "1970-01-01T00:00:00.008Z"
+          },
+          {
+            "id": "notice-003",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "warn",
+            "title": "participant debrief failed",
+            "text": "closing report deadline reached; closing request usage is unreported",
+            "at": "1970-01-01T00:00:00.011Z"
+          }
+        ],
+        "affordanceUse": {
+          "schema": "humanish.affordance-use.v1",
+          "counts": {
+            "keyboard": 1
+          },
+          "total": 1,
+          "shortcutTotal": 0
+        },
+        "debrief": {
+          "trigger": "stop_when",
+          "status": "failed",
+          "reason": "closing report deadline reached; closing request usage is unreported",
+          "usageReported": false
+        },
+        "tokenUsage": {
+          "input": 10,
+          "output": 5,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            }
+          ],
+          "total": 15
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onTrace",
+        0,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "stateSignature": "0",
+            "text": "editing"
+          }
+        }
+      ],
+      [
+        "executor.execute",
+        {
+          "kind": "keypress",
+          "keys": [
+            "ENTER"
+          ]
+        }
+      ],
+      [
+        "executor.observe",
+        1
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onTrace",
+        1,
+        {
+          "input": 10,
+          "output": 5,
+          "cachedInput": 0,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            }
+          ]
+        },
+        {}
+      ],
+      [
+        "provider.debrief",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "stateSignature": "1",
+            "text": "saved"
+          },
+          "previousResponseId": "previous",
+          "contextHint": "The interactive session has ended. Return a closing account with summary and frictionReports. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task."
+        }
+      ],
+      [
+        "onTrace",
+        3,
+        {
+          "input": 10,
+          "output": 5,
+          "cachedInput": 0,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            }
+          ]
+        },
+        {}
+      ]
+    ]
+  },
+  "estimateAtCap": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "stopWhen matched hidden-rule (textIncludes)",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "n/a",
+          "notes": "no screenshots captured"
+        },
+        "startedAt": "1970-01-01T00:00:00.001Z",
+        "completedAt": "1970-01-01T00:00:00.011Z",
+        "durationMs": 10,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "stopWhen matched hidden-rule (textIncludes)",
+        "ids": {
+          "model": "golden-1",
+          "turnId": "previous"
+        },
+        "counts": {
+          "turns": 1,
+          "actions": 1,
+          "materialActions": 1,
+          "screenshots": 0,
+          "reasonings": 0,
+          "messages": 0,
+          "idleTurns": 0,
+          "noProgressTurns": 0
+        },
+        "items": [
+          {
+            "id": "ui_action-001",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "keypress ENTER",
+            "at": "1970-01-01T00:00:00.006Z"
+          },
+          {
+            "id": "notice-002",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "matched",
+            "title": "stopWhen matched: hidden-rule",
+            "text": "Harness stop condition matched rule hidden-rule using textIncludes. Raw observed URL/text/appState were runtime-only and were not persisted; when a screenshot was available, the immediately preceding screenshot item is the visual evidence for the matched surface.",
+            "at": "1970-01-01T00:00:00.008Z"
+          },
+          {
+            "id": "notice-003",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "warn",
+            "title": "participant debrief skipped",
+            "text": "the estimated model budget was reached",
+            "at": "1970-01-01T00:00:00.010Z"
+          }
+        ],
+        "affordanceUse": {
+          "schema": "humanish.affordance-use.v1",
+          "counts": {
+            "keyboard": 1
+          },
+          "total": 1,
+          "shortcutTotal": 0
+        },
+        "debrief": {
+          "trigger": "stop_when",
+          "status": "skipped",
+          "reason": "the estimated model budget was reached"
+        },
+        "tokenUsage": {
+          "input": 10,
+          "output": 5,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            }
+          ],
+          "total": 15
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onTrace",
+        0,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "stateSignature": "0",
+            "text": "editing"
+          }
+        }
+      ],
+      [
+        "executor.execute",
+        {
+          "kind": "keypress",
+          "keys": [
+            "ENTER"
+          ]
+        }
+      ],
+      [
+        "executor.observe",
+        1
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onTrace",
+        1,
+        {
+          "input": 10,
+          "output": 5,
+          "cachedInput": 0,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            }
+          ]
+        },
+        {}
+      ],
+      [
+        "onTrace",
+        3,
+        {
+          "input": 10,
+          "output": 5,
+          "cachedInput": 0,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            }
+          ]
+        },
+        {}
+      ]
+    ]
+  },
+  "nullEstimate": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "stopWhen matched hidden-rule (textIncludes)",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "n/a",
+          "notes": "no screenshots captured"
+        },
+        "startedAt": "1970-01-01T00:00:00.001Z",
+        "completedAt": "1970-01-01T00:00:00.011Z",
+        "durationMs": 10,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "stopWhen matched hidden-rule (textIncludes)",
+        "ids": {
+          "model": "golden-1",
+          "turnId": "previous"
+        },
+        "counts": {
+          "turns": 1,
+          "actions": 1,
+          "materialActions": 1,
+          "screenshots": 0,
+          "reasonings": 0,
+          "messages": 0,
+          "idleTurns": 0,
+          "noProgressTurns": 0
+        },
+        "items": [
+          {
+            "id": "ui_action-001",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "keypress ENTER",
+            "at": "1970-01-01T00:00:00.006Z"
+          },
+          {
+            "id": "notice-002",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "matched",
+            "title": "stopWhen matched: hidden-rule",
+            "text": "Harness stop condition matched rule hidden-rule using textIncludes. Raw observed URL/text/appState were runtime-only and were not persisted; when a screenshot was available, the immediately preceding screenshot item is the visual evidence for the matched surface.",
+            "at": "1970-01-01T00:00:00.008Z"
+          },
+          {
+            "id": "notice-003",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "warn",
+            "title": "participant debrief skipped",
+            "text": "remaining model budget could not be established",
+            "at": "1970-01-01T00:00:00.010Z"
+          }
+        ],
+        "affordanceUse": {
+          "schema": "humanish.affordance-use.v1",
+          "counts": {
+            "keyboard": 1
+          },
+          "total": 1,
+          "shortcutTotal": 0
+        },
+        "debrief": {
+          "trigger": "stop_when",
+          "status": "skipped",
+          "reason": "remaining model budget could not be established"
+        },
+        "tokenUsage": {
+          "input": 10,
+          "output": 5,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            }
+          ],
+          "total": 15
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onTrace",
+        0,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "stateSignature": "0",
+            "text": "editing"
+          }
+        }
+      ],
+      [
+        "executor.execute",
+        {
+          "kind": "keypress",
+          "keys": [
+            "ENTER"
+          ]
+        }
+      ],
+      [
+        "executor.observe",
+        1
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onTrace",
+        1,
+        {
+          "input": 10,
+          "output": 5,
+          "cachedInput": 0,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            }
+          ]
+        },
+        {}
+      ],
+      [
+        "onTrace",
+        3,
+        {
+          "input": 10,
+          "output": 5,
+          "cachedInput": 0,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            }
+          ]
+        },
+        {}
+      ]
+    ]
+  },
+  "priorUsageUnknown": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "stopWhen matched hidden-rule (textIncludes)",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "n/a",
+          "notes": "no screenshots captured"
+        },
+        "startedAt": "1970-01-01T00:00:00.001Z",
+        "completedAt": "1970-01-01T00:00:00.011Z",
+        "durationMs": 10,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "stopWhen matched hidden-rule (textIncludes)",
+        "ids": {
+          "model": "golden-1",
+          "turnId": "previous"
+        },
+        "counts": {
+          "turns": 1,
+          "actions": 1,
+          "materialActions": 1,
+          "screenshots": 0,
+          "reasonings": 0,
+          "messages": 0,
+          "idleTurns": 0,
+          "noProgressTurns": 0
+        },
+        "items": [
+          {
+            "id": "ui_action-001",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "keypress ENTER",
+            "at": "1970-01-01T00:00:00.006Z"
+          },
+          {
+            "id": "notice-002",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "matched",
+            "title": "stopWhen matched: hidden-rule",
+            "text": "Harness stop condition matched rule hidden-rule using textIncludes. Raw observed URL/text/appState were runtime-only and were not persisted; when a screenshot was available, the immediately preceding screenshot item is the visual evidence for the matched surface.",
+            "at": "1970-01-01T00:00:00.008Z"
+          },
+          {
+            "id": "notice-003",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "warn",
+            "title": "participant debrief skipped",
+            "text": "remaining model budget is unknown because an earlier participant turn did not report complete usage",
+            "at": "1970-01-01T00:00:00.010Z"
+          }
+        ],
+        "affordanceUse": {
+          "schema": "humanish.affordance-use.v1",
+          "counts": {
+            "keyboard": 1
+          },
+          "total": 1,
+          "shortcutTotal": 0
+        },
+        "debrief": {
+          "trigger": "stop_when",
+          "status": "skipped",
+          "reason": "remaining model budget is unknown because an earlier participant turn did not report complete usage"
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onTrace",
+        0,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "stateSignature": "0",
+            "text": "editing"
+          }
+        }
+      ],
+      [
+        "executor.execute",
+        {
+          "kind": "keypress",
+          "keys": [
+            "ENTER"
+          ]
+        }
+      ],
+      [
+        "executor.observe",
+        1
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onTrace",
+        1,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "onTrace",
+        3,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ]
+    ]
+  },
+  "studyBudgetCrossedByReport": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "stopWhen matched hidden-rule (textIncludes)",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "n/a",
+          "notes": "no screenshots captured"
+        },
+        "startedAt": "1970-01-01T00:00:00.001Z",
+        "completedAt": "1970-01-01T00:00:00.014Z",
+        "durationMs": 13,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "stopWhen matched hidden-rule (textIncludes)",
+        "ids": {
+          "model": "golden-1",
+          "turnId": "previous"
+        },
+        "counts": {
+          "turns": 1,
+          "actions": 1,
+          "materialActions": 1,
+          "screenshots": 0,
+          "reasonings": 0,
+          "messages": 1,
+          "idleTurns": 0,
+          "noProgressTurns": 0,
+          "debriefCalls": 1
+        },
+        "items": [
+          {
+            "id": "ui_action-001",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "keypress ENTER",
+            "at": "1970-01-01T00:00:00.006Z"
+          },
+          {
+            "id": "notice-002",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "matched",
+            "title": "stopWhen matched: hidden-rule",
+            "text": "Harness stop condition matched rule hidden-rule using textIncludes. Raw observed URL/text/appState were runtime-only and were not persisted; when a screenshot was available, the immediately preceding screenshot item is the visual evidence for the matched surface.",
+            "at": "1970-01-01T00:00:00.008Z"
+          },
+          {
+            "id": "notice-003",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "warn",
+            "title": "model budget reached during closing report",
+            "text": "The closing request crossed an estimated budget; no further requests or actions followed. Task completion is unchanged.",
+            "at": "1970-01-01T00:00:00.011Z"
+          },
+          {
+            "id": "message-004",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "participant closing report",
+            "text": "I renamed the item.\n\nThe Save button did nothing.",
+            "at": "1970-01-01T00:00:00.012Z"
+          },
+          {
+            "id": "notice-005",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "ok",
+            "title": "participant debrief completed",
+            "text": "one read-only report; no additional desktop actions; original stop and task outcomes preserved",
+            "at": "1970-01-01T00:00:00.013Z"
+          }
+        ],
+        "affordanceUse": {
+          "schema": "humanish.affordance-use.v1",
+          "counts": {
+            "keyboard": 1
+          },
+          "total": 1,
+          "shortcutTotal": 0
+        },
+        "debrief": {
+          "trigger": "stop_when",
+          "status": "completed",
+          "reason": "one read-only report; no additional desktop actions; original stop and task outcomes preserved",
+          "usageReported": true,
+          "report": {
+            "summary": "I renamed the item.",
+            "frictionReports": [
+              "The Save button did nothing."
+            ]
+          },
+          "messageId": "message-004"
+        },
+        "tokenUsage": {
+          "input": 30,
+          "output": 15,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            },
+            {
+              "input": 20,
+              "output": 10
+            }
+          ],
+          "total": 45
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onTrace",
+        0,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "stateSignature": "0",
+            "text": "editing"
+          }
+        }
+      ],
+      [
+        "estimateTurnCostUsd",
+        {
+          "input": 10,
+          "output": 5,
+          "cachedInput": 0,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            }
+          ]
+        },
+        0.5
+      ],
+      [
+        "overRunBudget",
+        {
+          "input": 10,
+          "output": 5,
+          "cachedInput": 0,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            }
+          ]
+        },
+        null
+      ],
+      [
+        "executor.execute",
+        {
+          "kind": "keypress",
+          "keys": [
+            "ENTER"
+          ]
+        }
+      ],
+      [
+        "executor.observe",
+        1
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onTrace",
+        1,
+        {
+          "input": 10,
+          "output": 5,
+          "cachedInput": 0,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            }
+          ]
+        },
+        {}
+      ],
+      [
+        "estimateTurnCostUsd",
+        {
+          "input": 10,
+          "output": 5,
+          "cachedInput": 0,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            }
+          ]
+        },
+        0.5
+      ],
+      [
+        "overRunBudget",
+        {
+          "input": 10,
+          "output": 5,
+          "cachedInput": 0,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            }
+          ]
+        },
+        null
+      ],
+      [
+        "provider.debrief",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "stateSignature": "1",
+            "text": "saved"
+          },
+          "previousResponseId": "previous",
+          "contextHint": "The interactive session has ended. Return a closing account with summary and frictionReports. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task."
+        }
+      ],
+      [
+        "overRunBudget",
+        {
+          "input": 30,
+          "output": 15,
+          "cachedInput": 0,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            },
+            {
+              "input": 20,
+              "output": 10
+            }
+          ]
+        },
+        "spent"
+      ],
+      [
+        "estimateTurnCostUsd",
+        {
+          "input": 30,
+          "output": 15,
+          "cachedInput": 0,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            },
+            {
+              "input": 20,
+              "output": 10
+            }
+          ]
+        },
+        1.5
+      ],
+      [
+        "onTrace",
+        5,
+        {
+          "input": 30,
+          "output": 15,
+          "cachedInput": 0,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            },
+            {
+              "input": 20,
+              "output": 10
+            }
+          ]
+        },
+        {}
+      ]
+    ]
+  },
+  "failClosedError": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "stopWhen matched hidden-rule (textIncludes)",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerRequests": [
+          {
+            "ordinal": 1,
+            "kind": "interaction",
+            "dispatched": true,
+            "usageComplete": true,
+            "cleanup": "confirmed",
+            "profileVerified": false,
+            "usage": {
+              "input": 10,
+              "output": 5
+            }
+          },
+          {
+            "ordinal": 2,
+            "kind": "debrief",
+            "dispatched": true,
+            "usageComplete": true,
+            "cleanup": "confirmed",
+            "profileVerified": false,
+            "errorCode": "invalid_response",
+            "usage": {
+              "input": 4,
+              "output": 2
+            }
+          }
+        ],
+        "historyTurnsOmitted": 0,
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "n/a",
+          "notes": "no screenshots captured"
+        },
+        "startedAt": "1970-01-01T00:00:00.001Z",
+        "completedAt": "1970-01-01T00:00:00.013Z",
+        "durationMs": 12,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "stopWhen matched hidden-rule (textIncludes)",
+        "ids": {
+          "model": "golden-1",
+          "turnId": "previous"
+        },
+        "counts": {
+          "turns": 1,
+          "actions": 1,
+          "materialActions": 1,
+          "screenshots": 0,
+          "reasonings": 0,
+          "messages": 0,
+          "idleTurns": 0,
+          "noProgressTurns": 0,
+          "debriefCalls": 1
+        },
+        "items": [
+          {
+            "id": "ui_action-001",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "keypress ENTER",
+            "at": "1970-01-01T00:00:00.006Z"
+          },
+          {
+            "id": "notice-002",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "matched",
+            "title": "stopWhen matched: hidden-rule",
+            "text": "Harness stop condition matched rule hidden-rule using textIncludes. Raw observed URL/text/appState were runtime-only and were not persisted; when a screenshot was available, the immediately preceding screenshot item is the visual evidence for the matched surface.",
+            "at": "1970-01-01T00:00:00.008Z"
+          },
+          {
+            "id": "notice-003",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "warn",
+            "title": "participant debrief failed",
+            "text": "Participant provider: invalid_response; closing request usage is reported",
+            "at": "1970-01-01T00:00:00.012Z"
+          }
+        ],
+        "affordanceUse": {
+          "schema": "humanish.affordance-use.v1",
+          "counts": {
+            "keyboard": 1
+          },
+          "total": 1,
+          "shortcutTotal": 0
+        },
+        "debrief": {
+          "trigger": "stop_when",
+          "status": "failed",
+          "reason": "Participant provider: invalid_response; closing request usage is reported",
+          "usageReported": true
+        },
+        "tokenUsage": {
+          "input": 14,
+          "output": 7,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            },
+            {
+              "input": 4,
+              "output": 2
+            }
+          ],
+          "total": 21
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onTrace",
+        0,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {
+          "providerRequests": [],
+          "historyTurnsOmitted": 0
+        }
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "stateSignature": "0",
+            "text": "editing"
+          }
+        }
+      ],
+      [
+        "executor.execute",
+        {
+          "kind": "keypress",
+          "keys": [
+            "ENTER"
+          ]
+        }
+      ],
+      [
+        "executor.observe",
+        1
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onTrace",
+        1,
+        {
+          "input": 10,
+          "output": 5,
+          "cachedInput": 0,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            }
+          ]
+        },
+        {
+          "providerRequests": [
+            {
+              "ordinal": 1,
+              "kind": "interaction",
+              "dispatched": true,
+              "usageComplete": true,
+              "cleanup": "confirmed",
+              "profileVerified": false,
+              "usage": {
+                "input": 10,
+                "output": 5
+              }
+            }
+          ],
+          "historyTurnsOmitted": 0
+        }
+      ],
+      [
+        "provider.debrief",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "stateSignature": "1",
+            "text": "saved"
+          },
+          "previousExecution": {
+            "actions": [
+              {
+                "index": 0,
+                "status": "completed"
+              }
+            ]
+          },
+          "previousResponseId": "previous",
+          "contextHint": "The interactive session has ended. Return a closing account with summary and frictionReports. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task."
+        }
+      ],
+      [
+        "onTrace",
+        3,
+        {
+          "input": 14,
+          "output": 7,
+          "cachedInput": 0,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            },
+            {
+              "input": 4,
+              "output": 2
+            }
+          ]
+        },
+        {
+          "providerRequests": [
+            {
+              "ordinal": 1,
+              "kind": "interaction",
+              "dispatched": true,
+              "usageComplete": true,
+              "cleanup": "confirmed",
+              "profileVerified": false,
+              "usage": {
+                "input": 10,
+                "output": 5
+              }
+            },
+            {
+              "ordinal": 2,
+              "kind": "debrief",
+              "dispatched": true,
+              "usageComplete": true,
+              "cleanup": "confirmed",
+              "profileVerified": false,
+              "errorCode": "invalid_response",
+              "usage": {
+                "input": 4,
+                "output": 2
+              }
+            }
+          ],
+          "historyTurnsOmitted": 0
+        }
+      ]
+    ]
+  },
+  "failClosedCleanupUnconfirmed": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "stopWhen matched hidden-rule (textIncludes)",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerRequests": [
+          {
+            "ordinal": 1,
+            "kind": "interaction",
+            "dispatched": true,
+            "usageComplete": true,
+            "cleanup": "confirmed",
+            "profileVerified": false,
+            "usage": {
+              "input": 10,
+              "output": 5
+            }
+          },
+          {
+            "ordinal": 2,
+            "kind": "debrief",
+            "dispatched": true,
+            "usageComplete": false,
+            "cleanup": "unconfirmed",
+            "profileVerified": false,
+            "errorCode": "cleanup_unconfirmed",
+            "usage": {
+              "input": 4
+            }
+          }
+        ],
+        "historyTurnsOmitted": 0,
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "n/a",
+          "notes": "no screenshots captured"
+        },
+        "startedAt": "1970-01-01T00:00:00.001Z",
+        "completedAt": "1970-01-01T00:00:00.014Z",
+        "durationMs": 13,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "stopWhen matched hidden-rule (textIncludes)",
+        "ids": {
+          "model": "golden-1",
+          "turnId": "previous"
+        },
+        "counts": {
+          "turns": 1,
+          "actions": 1,
+          "materialActions": 1,
+          "screenshots": 0,
+          "reasonings": 0,
+          "messages": 0,
+          "idleTurns": 0,
+          "noProgressTurns": 0,
+          "debriefCalls": 1
+        },
+        "items": [
+          {
+            "id": "ui_action-001",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "keypress ENTER",
+            "at": "1970-01-01T00:00:00.006Z"
+          },
+          {
+            "id": "notice-002",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "matched",
+            "title": "stopWhen matched: hidden-rule",
+            "text": "Harness stop condition matched rule hidden-rule using textIncludes. Raw observed URL/text/appState were runtime-only and were not persisted; when a screenshot was available, the immediately preceding screenshot item is the visual evidence for the matched surface.",
+            "at": "1970-01-01T00:00:00.008Z"
+          },
+          {
+            "id": "notice-003",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "error",
+            "title": "participant request cleanup unconfirmed",
+            "text": "The request did not confirm cleanup within the settlement boundary. No further participant request or action is admitted.",
+            "at": "1970-01-01T00:00:00.012Z"
+          },
+          {
+            "id": "notice-004",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "warn",
+            "title": "participant debrief failed",
+            "text": "Participant provider: cleanup_unconfirmed; closing request usage is unreported",
+            "at": "1970-01-01T00:00:00.013Z"
+          }
+        ],
+        "affordanceUse": {
+          "schema": "humanish.affordance-use.v1",
+          "counts": {
+            "keyboard": 1
+          },
+          "total": 1,
+          "shortcutTotal": 0
+        },
+        "debrief": {
+          "trigger": "stop_when",
+          "status": "failed",
+          "reason": "Participant provider: cleanup_unconfirmed; closing request usage is unreported",
+          "usageReported": false
+        },
+        "tokenUsage": {
+          "input": 14,
+          "output": 5,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            },
+            {
+              "input": 4
+            }
+          ],
+          "total": 19
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onTrace",
+        0,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {
+          "providerRequests": [],
+          "historyTurnsOmitted": 0
+        }
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "stateSignature": "0",
+            "text": "editing"
+          }
+        }
+      ],
+      [
+        "executor.execute",
+        {
+          "kind": "keypress",
+          "keys": [
+            "ENTER"
+          ]
+        }
+      ],
+      [
+        "executor.observe",
+        1
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onTrace",
+        1,
+        {
+          "input": 10,
+          "output": 5,
+          "cachedInput": 0,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            }
+          ]
+        },
+        {
+          "providerRequests": [
+            {
+              "ordinal": 1,
+              "kind": "interaction",
+              "dispatched": true,
+              "usageComplete": true,
+              "cleanup": "confirmed",
+              "profileVerified": false,
+              "usage": {
+                "input": 10,
+                "output": 5
+              }
+            }
+          ],
+          "historyTurnsOmitted": 0
+        }
+      ],
+      [
+        "provider.debrief",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "stateSignature": "1",
+            "text": "saved"
+          },
+          "previousExecution": {
+            "actions": [
+              {
+                "index": 0,
+                "status": "completed"
+              }
+            ]
+          },
+          "previousResponseId": "previous",
+          "contextHint": "The interactive session has ended. Return a closing account with summary and frictionReports. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task."
+        }
+      ],
+      [
+        "onTrace",
+        4,
+        {
+          "input": 14,
+          "output": 5,
+          "cachedInput": 0,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            },
+            {
+              "input": 4
+            }
+          ]
+        },
+        {
+          "providerRequests": [
+            {
+              "ordinal": 1,
+              "kind": "interaction",
+              "dispatched": true,
+              "usageComplete": true,
+              "cleanup": "confirmed",
+              "profileVerified": false,
+              "usage": {
+                "input": 10,
+                "output": 5
+              }
+            },
+            {
+              "ordinal": 2,
+              "kind": "debrief",
+              "dispatched": true,
+              "usageComplete": false,
+              "cleanup": "unconfirmed",
+              "profileVerified": false,
+              "errorCode": "cleanup_unconfirmed",
+              "usage": {
+                "input": 4
+              }
+            }
+          ],
+          "historyTurnsOmitted": 0
+        }
+      ]
+    ]
+  },
+  "failClosedCompleted": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "stopWhen matched hidden-rule (textIncludes)",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerRequests": [
+          {
+            "ordinal": 1,
+            "kind": "interaction",
+            "dispatched": true,
+            "usageComplete": true,
+            "cleanup": "confirmed",
+            "profileVerified": false,
+            "usage": {
+              "input": 10,
+              "output": 5
+            }
+          },
+          {
+            "ordinal": 2,
+            "kind": "debrief",
+            "dispatched": true,
+            "usageComplete": true,
+            "cleanup": "confirmed",
+            "profileVerified": false,
+            "usage": {
+              "input": 20,
+              "output": 10
+            }
+          }
+        ],
+        "historyTurnsOmitted": 0,
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "n/a",
+          "notes": "no screenshots captured"
+        },
+        "startedAt": "1970-01-01T00:00:00.001Z",
+        "completedAt": "1970-01-01T00:00:00.014Z",
+        "durationMs": 13,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "stopWhen matched hidden-rule (textIncludes)",
+        "ids": {
+          "model": "golden-1",
+          "turnId": "previous"
+        },
+        "counts": {
+          "turns": 1,
+          "actions": 1,
+          "materialActions": 1,
+          "screenshots": 0,
+          "reasonings": 0,
+          "messages": 1,
+          "idleTurns": 0,
+          "noProgressTurns": 0,
+          "debriefCalls": 1
+        },
+        "items": [
+          {
+            "id": "ui_action-001",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "keypress ENTER",
+            "at": "1970-01-01T00:00:00.006Z"
+          },
+          {
+            "id": "notice-002",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "matched",
+            "title": "stopWhen matched: hidden-rule",
+            "text": "Harness stop condition matched rule hidden-rule using textIncludes. Raw observed URL/text/appState were runtime-only and were not persisted; when a screenshot was available, the immediately preceding screenshot item is the visual evidence for the matched surface.",
+            "at": "1970-01-01T00:00:00.008Z"
+          },
+          {
+            "id": "message-003",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "participant closing report",
+            "text": "I renamed the item.\n\nThe Save button did nothing.",
+            "at": "1970-01-01T00:00:00.012Z"
+          },
+          {
+            "id": "notice-004",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "ok",
+            "title": "participant debrief completed",
+            "text": "one read-only report; no additional desktop actions; original stop and task outcomes preserved",
+            "at": "1970-01-01T00:00:00.013Z"
+          }
+        ],
+        "affordanceUse": {
+          "schema": "humanish.affordance-use.v1",
+          "counts": {
+            "keyboard": 1
+          },
+          "total": 1,
+          "shortcutTotal": 0
+        },
+        "debrief": {
+          "trigger": "stop_when",
+          "status": "completed",
+          "reason": "one read-only report; no additional desktop actions; original stop and task outcomes preserved",
+          "usageReported": true,
+          "report": {
+            "summary": "I renamed the item.",
+            "frictionReports": [
+              "The Save button did nothing."
+            ]
+          },
+          "messageId": "message-003"
+        },
+        "tokenUsage": {
+          "input": 30,
+          "output": 15,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            },
+            {
+              "input": 20,
+              "output": 10
+            }
+          ],
+          "total": 45
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onTrace",
+        0,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {
+          "providerRequests": [],
+          "historyTurnsOmitted": 0
+        }
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "stateSignature": "0",
+            "text": "editing"
+          }
+        }
+      ],
+      [
+        "executor.execute",
+        {
+          "kind": "keypress",
+          "keys": [
+            "ENTER"
+          ]
+        }
+      ],
+      [
+        "executor.observe",
+        1
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onTrace",
+        1,
+        {
+          "input": 10,
+          "output": 5,
+          "cachedInput": 0,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            }
+          ]
+        },
+        {
+          "providerRequests": [
+            {
+              "ordinal": 1,
+              "kind": "interaction",
+              "dispatched": true,
+              "usageComplete": true,
+              "cleanup": "confirmed",
+              "profileVerified": false,
+              "usage": {
+                "input": 10,
+                "output": 5
+              }
+            }
+          ],
+          "historyTurnsOmitted": 0
+        }
+      ],
+      [
+        "provider.debrief",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "stateSignature": "1",
+            "text": "saved"
+          },
+          "previousExecution": {
+            "actions": [
+              {
+                "index": 0,
+                "status": "completed"
+              }
+            ]
+          },
+          "previousResponseId": "previous",
+          "contextHint": "The interactive session has ended. Return a closing account with summary and frictionReports. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task."
+        }
+      ],
+      [
+        "onTrace",
+        4,
+        {
+          "input": 30,
+          "output": 15,
+          "cachedInput": 0,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 10,
+              "output": 5
+            },
+            {
+              "input": 20,
+              "output": 10
+            }
+          ]
+        },
+        {
+          "providerRequests": [
+            {
+              "ordinal": 1,
+              "kind": "interaction",
+              "dispatched": true,
+              "usageComplete": true,
+              "cleanup": "confirmed",
+              "profileVerified": false,
+              "usage": {
+                "input": 10,
+                "output": 5
+              }
+            },
+            {
+              "ordinal": 2,
+              "kind": "debrief",
+              "dispatched": true,
+              "usageComplete": true,
+              "cleanup": "confirmed",
+              "profileVerified": false,
+              "usage": {
+                "input": 20,
+                "output": 10
+              }
+            }
+          ],
+          "historyTurnsOmitted": 0
+        }
+      ]
+    ]
+  }
+}

@@ -1,0 +1,1452 @@
+{
+  "safetyAcknowledged": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "done",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "raw",
+          "notes": "3 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+        },
+        "startedAt": "1970-01-01T00:00:01.000Z",
+        "completedAt": "1970-01-01T00:00:19.000Z",
+        "durationMs": 18000,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "done",
+        "ids": {
+          "model": "golden-1",
+          "turnId": "r2"
+        },
+        "counts": {
+          "turns": 3,
+          "actions": 2,
+          "materialActions": 2,
+          "screenshots": 3,
+          "reasonings": 0,
+          "messages": 1,
+          "idleTurns": 0,
+          "noProgressTurns": 0
+        },
+        "items": [
+          {
+            "id": "screenshot-001",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-00-start",
+            "screenshotRef": {
+              "path": "screenshots/turn-00-start.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:03.000Z"
+          },
+          {
+            "id": "ui_action-002",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (1, 1)",
+            "coord": {
+              "x": 1,
+              "y": 1
+            },
+            "at": "1970-01-01T00:00:07.000Z"
+          },
+          {
+            "id": "screenshot-003",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-01",
+            "screenshotRef": {
+              "path": "screenshots/turn-01.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:09.000Z"
+          },
+          {
+            "id": "ui_action-004",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (2, 2)",
+            "coord": {
+              "x": 2,
+              "y": 2
+            },
+            "at": "1970-01-01T00:00:13.000Z"
+          },
+          {
+            "id": "screenshot-005",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-02",
+            "screenshotRef": {
+              "path": "screenshots/turn-02.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:15.000Z"
+          },
+          {
+            "id": "message-006",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 3",
+            "text": "done",
+            "at": "1970-01-01T00:00:18.000Z"
+          }
+        ],
+        "affordanceUse": {
+          "schema": "humanish.affordance-use.v1",
+          "counts": {
+            "pointer": 2
+          },
+          "total": 2,
+          "shortcutTotal": 0
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "turn-00-start.png",
+        15
+      ],
+      [
+        "onTrace",
+        1,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "screenshot": "[buffer 15 bytes]",
+            "stateSignature": "s0"
+          }
+        }
+      ],
+      [
+        "executor.execute",
+        {
+          "kind": "click",
+          "x": 1,
+          "y": 1
+        }
+      ],
+      [
+        "executor.observe",
+        1
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "turn-01.png",
+        15
+      ],
+      [
+        "onTrace",
+        3,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "screenshot": "[buffer 15 bytes]",
+            "stateSignature": "s1"
+          },
+          "previousResponseId": "r1",
+          "acknowledgedSafetyChecks": [
+            {
+              "id": "sc_9",
+              "code": "malicious_instructions",
+              "message": "be careful"
+            }
+          ]
+        }
+      ],
+      [
+        "executor.execute",
+        {
+          "kind": "click",
+          "x": 2,
+          "y": 2
+        }
+      ],
+      [
+        "executor.observe",
+        2
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "turn-02.png",
+        15
+      ],
+      [
+        "onTrace",
+        5,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "screenshot": "[buffer 15 bytes]",
+            "stateSignature": "s2"
+          },
+          "previousResponseId": "r2"
+        }
+      ],
+      [
+        "onMessage",
+        "done"
+      ]
+    ]
+  },
+  "safetyBlocked": {
+    "result": {
+      "status": "blocked",
+      "completionReason": "blocked_approval",
+      "reason": "paused on model safety check(s): malicious_instructions; not acknowledged",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "raw",
+          "notes": "1 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+        },
+        "startedAt": "1970-01-01T00:00:01.000Z",
+        "completedAt": "1970-01-01T00:00:07.000Z",
+        "durationMs": 6000,
+        "status": "blocked",
+        "completionReason": "blocked_approval",
+        "reason": "paused on model safety check(s): malicious_instructions; not acknowledged",
+        "ids": {
+          "model": "golden-1"
+        },
+        "counts": {
+          "turns": 1,
+          "actions": 0,
+          "materialActions": 0,
+          "screenshots": 1,
+          "reasonings": 0,
+          "messages": 0,
+          "idleTurns": 0,
+          "noProgressTurns": 0
+        },
+        "items": [
+          {
+            "id": "screenshot-001",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-00-start",
+            "screenshotRef": {
+              "path": "screenshots/turn-00-start.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:03.000Z"
+          },
+          {
+            "id": "approval-002",
+            "kind": "approval",
+            "lifecycle": "completed",
+            "status": "blocked",
+            "title": "safety check: malicious_instructions",
+            "at": "1970-01-01T00:00:06.000Z"
+          }
+        ],
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "turn-00-start.png",
+        15
+      ],
+      [
+        "onTrace",
+        1,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "screenshot": "[buffer 15 bytes]",
+            "stateSignature": "s0"
+          }
+        }
+      ]
+    ]
+  },
+  "stopWhenBeforeFirstTurn": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "stopWhen matched done-route (appStatePathEquals)",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "n/a",
+          "notes": "no screenshots captured. App state was observed each turn to drive progress detection (a state-driven executor) and was NOT written to the trace — it is a runtime-only progress input, never persisted as evidence in this slice."
+        },
+        "startedAt": "1970-01-01T00:00:01.000Z",
+        "completedAt": "1970-01-01T00:00:05.000Z",
+        "durationMs": 4000,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "stopWhen matched done-route (appStatePathEquals)",
+        "ids": {
+          "model": "golden-1"
+        },
+        "counts": {
+          "turns": 0,
+          "actions": 0,
+          "materialActions": 0,
+          "screenshots": 0,
+          "reasonings": 0,
+          "messages": 0,
+          "idleTurns": 0,
+          "noProgressTurns": 0
+        },
+        "items": [
+          {
+            "id": "notice-001",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "matched",
+            "title": "stopWhen matched: done-route",
+            "text": "Harness stop condition matched rule done-route using appStatePathEquals. Raw observed URL/text/appState were runtime-only and were not persisted; when a screenshot was available, the immediately preceding screenshot item is the visual evidence for the matched surface.",
+            "at": "1970-01-01T00:00:03.000Z"
+          },
+          {
+            "id": "notice-002",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "warn",
+            "title": "participant debrief skipped",
+            "text": "the study stopped before any participant turn",
+            "at": "1970-01-01T00:00:04.000Z"
+          }
+        ],
+        "debrief": {
+          "trigger": "stop_when",
+          "status": "skipped",
+          "reason": "the study stopped before any participant turn"
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onTrace",
+        0,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "onTrace",
+        2,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ]
+    ]
+  },
+  "stopWhenAfterAction": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "stopWhen matched thanks (urlPathEquals+textIncludes)",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "raw",
+          "notes": "2 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+        },
+        "startedAt": "1970-01-01T00:00:01.000Z",
+        "completedAt": "1970-01-01T00:00:12.000Z",
+        "durationMs": 11000,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "stopWhen matched thanks (urlPathEquals+textIncludes)",
+        "ids": {
+          "model": "golden-1"
+        },
+        "counts": {
+          "turns": 1,
+          "actions": 1,
+          "materialActions": 1,
+          "screenshots": 2,
+          "reasonings": 0,
+          "messages": 0,
+          "idleTurns": 0,
+          "noProgressTurns": 0
+        },
+        "items": [
+          {
+            "id": "screenshot-001",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-00-start",
+            "screenshotRef": {
+              "path": "screenshots/turn-00-start.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:03.000Z"
+          },
+          {
+            "id": "ui_action-002",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (1, 1)",
+            "coord": {
+              "x": 1,
+              "y": 1
+            },
+            "at": "1970-01-01T00:00:07.000Z"
+          },
+          {
+            "id": "screenshot-003",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-01",
+            "screenshotRef": {
+              "path": "screenshots/turn-01.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:09.000Z"
+          },
+          {
+            "id": "notice-004",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "matched",
+            "title": "stopWhen matched: thanks",
+            "text": "Harness stop condition matched rule thanks using urlPathEquals, textIncludes. Raw observed URL/text/appState were runtime-only and were not persisted; when a screenshot was available, the immediately preceding screenshot item is the visual evidence for the matched surface.",
+            "at": "1970-01-01T00:00:10.000Z"
+          },
+          {
+            "id": "notice-005",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "warn",
+            "title": "participant debrief skipped",
+            "text": "this provider does not support read-only closing reports",
+            "at": "1970-01-01T00:00:11.000Z"
+          }
+        ],
+        "affordanceUse": {
+          "schema": "humanish.affordance-use.v1",
+          "counts": {
+            "pointer": 1
+          },
+          "total": 1,
+          "shortcutTotal": 0
+        },
+        "debrief": {
+          "trigger": "stop_when",
+          "status": "skipped",
+          "reason": "this provider does not support read-only closing reports"
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        "https://app.test/start"
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "turn-00-start.png",
+        15
+      ],
+      [
+        "onTrace",
+        1,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "screenshot": "[buffer 15 bytes]",
+            "stateSignature": "a",
+            "url": "https://app.test/start",
+            "text": "x"
+          }
+        }
+      ],
+      [
+        "executor.execute",
+        {
+          "kind": "click",
+          "x": 1,
+          "y": 1
+        }
+      ],
+      [
+        "executor.observe",
+        1
+      ],
+      [
+        "onObservedUrl",
+        "https://app.test/done?x=1"
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "turn-01.png",
+        15
+      ],
+      [
+        "onTrace",
+        3,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "onTrace",
+        5,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ]
+    ]
+  },
+  "dwellContinue": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "Finished.",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "raw",
+          "notes": "6 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+        },
+        "startedAt": "1970-01-01T00:00:00.001Z",
+        "completedAt": "1970-01-01T00:00:00.123Z",
+        "durationMs": 122,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "Finished.",
+        "ids": {
+          "model": "golden-1"
+        },
+        "counts": {
+          "turns": 2,
+          "actions": 1,
+          "materialActions": 1,
+          "screenshots": 6,
+          "reasonings": 0,
+          "messages": 1,
+          "idleTurns": 0,
+          "noProgressTurns": 0
+        },
+        "items": [
+          {
+            "id": "screenshot-001",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-00-start",
+            "screenshotRef": {
+              "path": "screenshots/turn-00-start.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:00.003Z"
+          },
+          {
+            "id": "ui_action-002",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (1, 1)",
+            "coord": {
+              "x": 1,
+              "y": 1
+            },
+            "at": "1970-01-01T00:00:00.007Z"
+          },
+          {
+            "id": "screenshot-003",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-01",
+            "screenshotRef": {
+              "path": "screenshots/turn-01.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:00.009Z"
+          },
+          {
+            "id": "notice-004",
+            "kind": "notice",
+            "lifecycle": "started",
+            "title": "dwell window started",
+            "text": "its condition matched at turn 1: holding 100ms, a frame every 40ms, no actions, no model turns",
+            "at": "1970-01-01T00:00:00.012Z"
+          },
+          {
+            "id": "screenshot-005",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "dwell-01",
+            "screenshotRef": {
+              "path": "screenshots/dwell-01.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:00.056Z"
+          },
+          {
+            "id": "screenshot-006",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "dwell-02",
+            "screenshotRef": {
+              "path": "screenshots/dwell-02.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:00.100Z"
+          },
+          {
+            "id": "screenshot-007",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "dwell-03",
+            "screenshotRef": {
+              "path": "screenshots/dwell-03.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:00.113Z"
+          },
+          {
+            "id": "notice-008",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "ok",
+            "title": "dwell window complete",
+            "text": "3 frame(s) over 104ms; no model turn was requested during the window",
+            "at": "1970-01-01T00:00:00.116Z"
+          },
+          {
+            "id": "screenshot-009",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-01-after-dwell",
+            "screenshotRef": {
+              "path": "screenshots/turn-01-after-dwell.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:00.118Z"
+          },
+          {
+            "id": "notice-010",
+            "kind": "notice",
+            "title": "Participant context hint",
+            "text": "The study held this page under observation for 0 seconds (a declared dwell window; you took no actions in that time). Continue the mission from the current state of the page.",
+            "lifecycle": "completed",
+            "at": "1970-01-01T00:00:00.121Z"
+          },
+          {
+            "id": "message-011",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 2",
+            "text": "Finished.",
+            "at": "1970-01-01T00:00:00.122Z"
+          }
+        ],
+        "affordanceUse": {
+          "schema": "humanish.affordance-use.v1",
+          "counts": {
+            "pointer": 1
+          },
+          "total": 1,
+          "shortcutTotal": 0
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "turn-00-start.png",
+        15
+      ],
+      [
+        "onTrace",
+        1,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "screenshot": "[buffer 15 bytes]",
+            "stateSignature": "a",
+            "text": "intro"
+          }
+        }
+      ],
+      [
+        "executor.execute",
+        {
+          "kind": "click",
+          "x": 1,
+          "y": 1
+        }
+      ],
+      [
+        "executor.observe",
+        1
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "turn-01.png",
+        15
+      ],
+      [
+        "onTrace",
+        3,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "executor.observe",
+        2
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "dwell-01.png",
+        15
+      ],
+      [
+        "onTrace",
+        5,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "executor.observe",
+        3
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "dwell-02.png",
+        15
+      ],
+      [
+        "onTrace",
+        6,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "executor.observe",
+        4
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "dwell-03.png",
+        15
+      ],
+      [
+        "onTrace",
+        7,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "executor.observe",
+        5
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "turn-01-after-dwell.png",
+        15
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "screenshot": "[buffer 15 bytes]",
+            "stateSignature": "b",
+            "text": "video playing"
+          },
+          "contextHint": "The study held this page under observation for 0 seconds (a declared dwell window; you took no actions in that time). Continue the mission from the current state of the page."
+        }
+      ],
+      [
+        "onMessage",
+        "Finished."
+      ]
+    ]
+  },
+  "dwellStopAtStart": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "dwell window complete (64ms held at the start)",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "raw",
+          "notes": "4 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+        },
+        "startedAt": "1970-01-01T00:00:00.001Z",
+        "completedAt": "1970-01-01T00:00:00.074Z",
+        "durationMs": 73,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "dwell window complete (64ms held at the start)",
+        "ids": {
+          "model": "golden-1"
+        },
+        "counts": {
+          "turns": 0,
+          "actions": 0,
+          "materialActions": 0,
+          "screenshots": 4,
+          "reasonings": 0,
+          "messages": 0,
+          "idleTurns": 0,
+          "noProgressTurns": 0
+        },
+        "items": [
+          {
+            "id": "screenshot-001",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-00-start",
+            "screenshotRef": {
+              "path": "screenshots/turn-00-start.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:00.003Z"
+          },
+          {
+            "id": "notice-002",
+            "kind": "notice",
+            "lifecycle": "started",
+            "title": "dwell window started",
+            "text": "at the start at turn 0: holding 60ms, a frame every 30ms, no actions, no model turns",
+            "at": "1970-01-01T00:00:00.006Z"
+          },
+          {
+            "id": "screenshot-003",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "dwell-01",
+            "screenshotRef": {
+              "path": "screenshots/dwell-01.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:00.040Z"
+          },
+          {
+            "id": "screenshot-004",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "dwell-02",
+            "screenshotRef": {
+              "path": "screenshots/dwell-02.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:00.067Z"
+          },
+          {
+            "id": "notice-005",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "matched",
+            "title": "dwell window complete",
+            "text": "2 frame(s) over 64ms; no model turn was requested during the window",
+            "at": "1970-01-01T00:00:00.070Z"
+          },
+          {
+            "id": "screenshot-006",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-00-after-dwell",
+            "screenshotRef": {
+              "path": "screenshots/turn-00-after-dwell.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:00.072Z"
+          },
+          {
+            "id": "notice-007",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "warn",
+            "title": "participant debrief skipped",
+            "text": "the study stopped before any participant turn",
+            "at": "1970-01-01T00:00:00.073Z"
+          }
+        ],
+        "debrief": {
+          "trigger": "dwell",
+          "status": "skipped",
+          "reason": "the study stopped before any participant turn"
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "turn-00-start.png",
+        15
+      ],
+      [
+        "onTrace",
+        1,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "executor.observe",
+        1
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "dwell-01.png",
+        15
+      ],
+      [
+        "onTrace",
+        3,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "executor.observe",
+        2
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "dwell-02.png",
+        15
+      ],
+      [
+        "onTrace",
+        4,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "executor.observe",
+        3
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "turn-00-after-dwell.png",
+        15
+      ],
+      [
+        "onTrace",
+        7,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ]
+    ]
+  },
+  "dwellSkipped": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "Finished.",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "raw",
+          "notes": "1 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+        },
+        "startedAt": "1970-01-01T00:00:00.001Z",
+        "completedAt": "1970-01-01T00:00:00.010Z",
+        "durationMs": 9,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "Finished.",
+        "ids": {
+          "model": "golden-1"
+        },
+        "counts": {
+          "turns": 1,
+          "actions": 0,
+          "materialActions": 0,
+          "screenshots": 1,
+          "reasonings": 0,
+          "messages": 1,
+          "idleTurns": 0,
+          "noProgressTurns": 0
+        },
+        "items": [
+          {
+            "id": "screenshot-001",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-00-start",
+            "screenshotRef": {
+              "path": "screenshots/turn-00-start.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:00.003Z"
+          },
+          {
+            "id": "notice-002",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "warn",
+            "title": "dwell window skipped",
+            "text": "at the start at turn 0, but only 46ms of session budget remained for a 500ms window",
+            "at": "1970-01-01T00:00:00.006Z"
+          },
+          {
+            "id": "message-003",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 1",
+            "text": "Finished.",
+            "at": "1970-01-01T00:00:00.009Z"
+          }
+        ],
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "turn-00-start.png",
+        15
+      ],
+      [
+        "onTrace",
+        1,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "screenshot": "[buffer 15 bytes]",
+            "stateSignature": "a"
+          }
+        }
+      ],
+      [
+        "onMessage",
+        "Finished."
+      ]
+    ]
+  }
+}

@@ -1,0 +1,854 @@
+{
+  "speechHeard": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "Done after replying.",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "raw",
+          "notes": "3 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+        },
+        "startedAt": "1970-01-01T00:00:01.000Z",
+        "completedAt": "1970-01-01T00:00:20.000Z",
+        "durationMs": 19000,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "Done after replying.",
+        "ids": {
+          "model": "golden-1"
+        },
+        "counts": {
+          "turns": 3,
+          "actions": 2,
+          "materialActions": 1,
+          "screenshots": 3,
+          "reasonings": 0,
+          "messages": 1,
+          "idleTurns": 1,
+          "noProgressTurns": 0
+        },
+        "items": [
+          {
+            "id": "screenshot-001",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-00-start",
+            "screenshotRef": {
+              "path": "screenshots/turn-00-start.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:03.000Z"
+          },
+          {
+            "id": "ui_action-002",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "wait 1ms",
+            "at": "1970-01-01T00:00:07.000Z"
+          },
+          {
+            "id": "notice-003",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "ok",
+            "title": "speech heard",
+            "text": "My code is [scrubbed]",
+            "at": "1970-01-01T00:00:09.000Z"
+          },
+          {
+            "id": "screenshot-004",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-01",
+            "screenshotRef": {
+              "path": "screenshots/turn-01.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:10.000Z"
+          },
+          {
+            "id": "ui_action-005",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "speak [13 chars]",
+            "text": "Hello [scrubbed]",
+            "at": "1970-01-01T00:00:14.000Z"
+          },
+          {
+            "id": "screenshot-006",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-02",
+            "screenshotRef": {
+              "path": "screenshots/turn-02.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:16.000Z"
+          },
+          {
+            "id": "message-007",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 3",
+            "text": "Done after replying.",
+            "at": "1970-01-01T00:00:19.000Z"
+          }
+        ],
+        "affordanceUse": {
+          "schema": "humanish.affordance-use.v1",
+          "counts": {
+            "observation": 1,
+            "speech": 1
+          },
+          "total": 2,
+          "shortcutTotal": 0
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "turn-00-start.png",
+        15
+      ],
+      [
+        "onTrace",
+        1,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "screenshot": "[buffer 15 bytes]",
+            "stateSignature": "same"
+          }
+        }
+      ],
+      [
+        "executor.execute",
+        {
+          "kind": "wait",
+          "ms": 1
+        }
+      ],
+      [
+        "executor.observe",
+        1
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "turn-01.png",
+        15
+      ],
+      [
+        "onTrace",
+        4,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "screenshot": "[buffer 15 bytes]",
+            "stateSignature": "same",
+            "heardSpeech": [
+              {
+                "id": "u1",
+                "source": "speaker_audio",
+                "text": "My code is PRIVATE",
+                "durationMs": 700
+              }
+            ]
+          }
+        }
+      ],
+      [
+        "executor.execute",
+        {
+          "kind": "speak",
+          "text": "Hello PRIVATE"
+        }
+      ],
+      [
+        "executor.observe",
+        2
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "turn-02.png",
+        15
+      ],
+      [
+        "onTrace",
+        6,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "screenshot": "[buffer 15 bytes]",
+            "stateSignature": "same"
+          }
+        }
+      ],
+      [
+        "onMessage",
+        "Done after replying."
+      ]
+    ]
+  },
+  "stateExecutor": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "done (exhausted)",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "n/a",
+          "notes": "no screenshots captured. App state was observed each turn to drive progress detection (a state-driven executor) and was NOT written to the trace — it is a runtime-only progress input, never persisted as evidence in this slice."
+        },
+        "startedAt": "1970-01-01T00:00:01.000Z",
+        "completedAt": "1970-01-01T00:00:28.000Z",
+        "durationMs": 27000,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "done (exhausted)",
+        "ids": {
+          "model": "golden-1"
+        },
+        "modelSettings": {
+          "reasoningEffort": "low",
+          "maxOutputTokens": 2048
+        },
+        "counts": {
+          "turns": 5,
+          "actions": 4,
+          "materialActions": 4,
+          "screenshots": 0,
+          "reasonings": 0,
+          "messages": 1,
+          "idleTurns": 0,
+          "noProgressTurns": 2
+        },
+        "items": [
+          {
+            "id": "ui_action-001",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (1, 1)",
+            "coord": {
+              "x": 1,
+              "y": 1
+            },
+            "at": "1970-01-01T00:00:06.000Z"
+          },
+          {
+            "id": "ui_action-002",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (1, 1)",
+            "coord": {
+              "x": 1,
+              "y": 1
+            },
+            "at": "1970-01-01T00:00:11.000Z"
+          },
+          {
+            "id": "notice-003",
+            "kind": "notice",
+            "title": "Participant context hint",
+            "text": "No visible progress for 1 step(s). If your task calls for waiting for another participant or a pending transition, you may continue waiting. Choose whether to continue or stop based on your situation and what you observe.",
+            "lifecycle": "completed",
+            "at": "1970-01-01T00:00:15.000Z"
+          },
+          {
+            "id": "ui_action-004",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (1, 1)",
+            "coord": {
+              "x": 1,
+              "y": 1
+            },
+            "at": "1970-01-01T00:00:17.000Z"
+          },
+          {
+            "id": "ui_action-005",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (1, 1)",
+            "coord": {
+              "x": 1,
+              "y": 1
+            },
+            "at": "1970-01-01T00:00:22.000Z"
+          },
+          {
+            "id": "notice-006",
+            "kind": "notice",
+            "title": "Participant context hint",
+            "text": "No visible progress for 1 step(s). If your task calls for waiting for another participant or a pending transition, you may continue waiting. Choose whether to continue or stop based on your situation and what you observe.",
+            "lifecycle": "completed",
+            "at": "1970-01-01T00:00:26.000Z"
+          },
+          {
+            "id": "message-007",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 5",
+            "text": "done (exhausted)",
+            "at": "1970-01-01T00:00:27.000Z"
+          }
+        ],
+        "affordanceUse": {
+          "schema": "humanish.affordance-use.v1",
+          "counts": {
+            "pointer": 4
+          },
+          "total": 4,
+          "shortcutTotal": 0
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onTrace",
+        0,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "stateSignature": "c",
+            "appState": {
+              "b": 1,
+              "a": {
+                "route": "/one"
+              }
+            }
+          }
+        }
+      ],
+      [
+        "executor.execute",
+        {
+          "kind": "click",
+          "x": 1,
+          "y": 1
+        }
+      ],
+      [
+        "executor.observe",
+        1
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onTrace",
+        1,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "stateSignature": "c",
+            "appState": {
+              "a": {
+                "route": "/two"
+              },
+              "b": 1
+            }
+          }
+        }
+      ],
+      [
+        "executor.execute",
+        {
+          "kind": "click",
+          "x": 1,
+          "y": 1
+        }
+      ],
+      [
+        "executor.observe",
+        2
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onTrace",
+        2,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "stateSignature": "c",
+            "appState": {
+              "b": 1,
+              "a": {
+                "route": "/two"
+              }
+            }
+          },
+          "contextHint": "No visible progress for 1 step(s). If your task calls for waiting for another participant or a pending transition, you may continue waiting. Choose whether to continue or stop based on your situation and what you observe."
+        }
+      ],
+      [
+        "executor.execute",
+        {
+          "kind": "click",
+          "x": 1,
+          "y": 1
+        }
+      ],
+      [
+        "executor.observe",
+        3
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onTrace",
+        4,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "stateSignature": "c",
+            "appState": {
+              "b": 1,
+              "a": {
+                "route": "/two"
+              }
+            },
+            "scrollY": 450
+          }
+        }
+      ],
+      [
+        "executor.execute",
+        {
+          "kind": "click",
+          "x": 1,
+          "y": 1
+        }
+      ],
+      [
+        "executor.observe",
+        4
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onTrace",
+        5,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "stateSignature": "c",
+            "appState": {
+              "b": 1,
+              "a": {
+                "route": "/two"
+              }
+            },
+            "scrollY": 460
+          },
+          "contextHint": "No visible progress for 1 step(s). If your task calls for waiting for another participant or a pending transition, you may continue waiting. Choose whether to continue or stop based on your situation and what you observe."
+        }
+      ],
+      [
+        "onMessage",
+        "done (exhausted)"
+      ]
+    ]
+  },
+  "redactedFrames": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "Finished with [scrubbed].",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "blurred",
+          "notes": "2 screenshot(s) redacted to blurred thumbnails via RedactionHooks"
+        },
+        "startedAt": "1970-01-01T00:00:01.000Z",
+        "completedAt": "1970-01-01T00:00:16.000Z",
+        "durationMs": 15000,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "Finished with [scrubbed].",
+        "ids": {
+          "model": "golden-1"
+        },
+        "counts": {
+          "turns": 2,
+          "actions": 2,
+          "materialActions": 2,
+          "screenshots": 2,
+          "reasonings": 1,
+          "messages": 1,
+          "idleTurns": 0,
+          "noProgressTurns": 0
+        },
+        "items": [
+          {
+            "id": "screenshot-001",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-00-start",
+            "screenshotRef": {
+              "path": "screenshots/turn-00-start.png",
+              "redaction": "blurred"
+            },
+            "at": "1970-01-01T00:00:03.000Z"
+          },
+          {
+            "id": "reasoning-002",
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 1",
+            "text": "The token is [scrubbed]",
+            "at": "1970-01-01T00:00:06.000Z"
+          },
+          {
+            "id": "ui_action-003",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "double-click (3, 4)",
+            "coord": {
+              "x": 3,
+              "y": 4
+            },
+            "at": "1970-01-01T00:00:08.000Z"
+          },
+          {
+            "id": "ui_action-004",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "move (5, 6)",
+            "at": "1970-01-01T00:00:10.000Z"
+          },
+          {
+            "id": "screenshot-005",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-01",
+            "screenshotRef": {
+              "path": "screenshots/turn-01.png",
+              "redaction": "blurred"
+            },
+            "at": "1970-01-01T00:00:12.000Z"
+          },
+          {
+            "id": "message-006",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 2",
+            "text": "Finished with [scrubbed].",
+            "at": "1970-01-01T00:00:15.000Z"
+          }
+        ],
+        "affordanceUse": {
+          "schema": "humanish.affordance-use.v1",
+          "counts": {
+            "pointer": 1,
+            "observation": 1
+          },
+          "total": 2,
+          "shortcutTotal": 0
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onScreenshot",
+        155
+      ],
+      [
+        "writeScreenshot",
+        "turn-00-start.png",
+        178
+      ],
+      [
+        "onTrace",
+        1,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "screenshot": "[buffer 155 bytes]",
+            "stateSignature": "a"
+          }
+        }
+      ],
+      [
+        "onMessage",
+        "The token is PROVISIONED-VALUE-123"
+      ],
+      [
+        "executor.execute",
+        {
+          "kind": "double_click",
+          "x": 3,
+          "y": 4
+        }
+      ],
+      [
+        "executor.execute",
+        {
+          "kind": "move",
+          "x": 5,
+          "y": 6
+        }
+      ],
+      [
+        "executor.observe",
+        1
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onScreenshot",
+        155
+      ],
+      [
+        "writeScreenshot",
+        "turn-01.png",
+        178
+      ],
+      [
+        "onTrace",
+        5,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "screenshot": "[buffer 155 bytes]",
+            "stateSignature": "b"
+          }
+        }
+      ],
+      [
+        "onMessage",
+        "Finished with PROVISIONED-VALUE-123."
+      ]
+    ]
+  }
+}

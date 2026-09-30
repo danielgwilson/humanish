@@ -83,9 +83,9 @@
     "comms:agentmail:contract": "node --import tsx scripts/agentmail-contract-check.mjs",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
-    "lint": "oxlint --max-warnings=535",
+    "lint": "oxlint --max-warnings=532",
     "knip": "knip",
-    "prose:check": "node scripts/check-code-prose.mjs --max-issue-refs=427 --max-fix-tags=38 --max-caps=1937"
+    "prose:check": "node scripts/check-code-prose.mjs --max-issue-refs=426 --max-fix-tags=38 --max-caps=1934"
   },
   "dependencies": {
     "commander": "^15.0.0",

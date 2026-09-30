@@ -1,0 +1,1636 @@
+{
+  "commandExitSkipped": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "Zoom failed but I finished.",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "raw",
+          "notes": "2 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+        },
+        "startedAt": "1970-01-01T00:00:01.000Z",
+        "completedAt": "1970-01-01T00:00:15.000Z",
+        "durationMs": 14000,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "Zoom failed but I finished.",
+        "ids": {
+          "model": "golden-1"
+        },
+        "counts": {
+          "turns": 2,
+          "actions": 2,
+          "materialActions": 1,
+          "screenshots": 2,
+          "reasonings": 0,
+          "messages": 1,
+          "idleTurns": 0,
+          "noProgressTurns": 0
+        },
+        "items": [
+          {
+            "id": "screenshot-001",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-00-start",
+            "screenshotRef": {
+              "path": "screenshots/turn-00-start.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:03.000Z"
+          },
+          {
+            "id": "notice-002",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "error",
+            "title": "action skipped: desktop command failed",
+            "text": "action: keypress Control+-; exit code: 2; stderr: zoom failed",
+            "at": "1970-01-01T00:00:07.000Z"
+          },
+          {
+            "id": "ui_action-003",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (4, 4)",
+            "coord": {
+              "x": 4,
+              "y": 4
+            },
+            "at": "1970-01-01T00:00:09.000Z"
+          },
+          {
+            "id": "screenshot-004",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-01",
+            "screenshotRef": {
+              "path": "screenshots/turn-01.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:11.000Z"
+          },
+          {
+            "id": "message-005",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 2",
+            "text": "Zoom failed but I finished.",
+            "at": "1970-01-01T00:00:14.000Z"
+          }
+        ],
+        "affordanceUse": {
+          "schema": "humanish.affordance-use.v1",
+          "counts": {
+            "keyboard": 1,
+            "pointer": 1
+          },
+          "total": 2,
+          "shortcutTotal": 0
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "turn-00-start.png",
+        15
+      ],
+      [
+        "onTrace",
+        1,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "screenshot": "[buffer 15 bytes]",
+            "stateSignature": "s0"
+          }
+        }
+      ],
+      [
+        "executor.execute",
+        {
+          "kind": "keypress",
+          "keys": [
+            "Control",
+            "-"
+          ]
+        }
+      ],
+      [
+        "executor.execute",
+        {
+          "kind": "click",
+          "x": 4,
+          "y": 4
+        }
+      ],
+      [
+        "executor.observe",
+        1
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "turn-01.png",
+        15
+      ],
+      [
+        "onTrace",
+        4,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "screenshot": "[buffer 15 bytes]",
+            "stateSignature": "s1"
+          }
+        }
+      ],
+      [
+        "onMessage",
+        "Zoom failed but I finished."
+      ]
+    ]
+  },
+  "everyActionFails": {
+    "result": {
+      "status": "abandoned",
+      "completionReason": "gave_up",
+      "reason": "gave up: 3 consecutive turns with no change to the UI state",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "raw",
+          "notes": "5 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+        },
+        "startedAt": "1970-01-01T00:00:01.000Z",
+        "completedAt": "1970-01-01T00:00:30.000Z",
+        "durationMs": 29000,
+        "status": "abandoned",
+        "completionReason": "gave_up",
+        "reason": "gave up: 3 consecutive turns with no change to the UI state",
+        "ids": {
+          "model": "golden-1"
+        },
+        "counts": {
+          "turns": 4,
+          "actions": 4,
+          "materialActions": 0,
+          "screenshots": 5,
+          "reasonings": 0,
+          "messages": 0,
+          "idleTurns": 0,
+          "noProgressTurns": 3
+        },
+        "items": [
+          {
+            "id": "screenshot-001",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-00-start",
+            "screenshotRef": {
+              "path": "screenshots/turn-00-start.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:03.000Z"
+          },
+          {
+            "id": "notice-002",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "error",
+            "title": "action skipped: desktop command failed",
+            "text": "action: keypress Control+-; exit code: 2; stderr: zoom failed",
+            "at": "1970-01-01T00:00:07.000Z"
+          },
+          {
+            "id": "screenshot-003",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-01",
+            "screenshotRef": {
+              "path": "screenshots/turn-01.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:09.000Z"
+          },
+          {
+            "id": "notice-004",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "error",
+            "title": "action skipped: desktop command failed",
+            "text": "action: keypress Control+-; exit code: 2; stderr: zoom failed",
+            "at": "1970-01-01T00:00:13.000Z"
+          },
+          {
+            "id": "screenshot-005",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-02",
+            "screenshotRef": {
+              "path": "screenshots/turn-02.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:15.000Z"
+          },
+          {
+            "id": "notice-006",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "error",
+            "title": "action skipped: desktop command failed",
+            "text": "action: keypress Control+-; exit code: 2; stderr: zoom failed",
+            "at": "1970-01-01T00:00:19.000Z"
+          },
+          {
+            "id": "screenshot-007",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-03",
+            "screenshotRef": {
+              "path": "screenshots/turn-03.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:21.000Z"
+          },
+          {
+            "id": "notice-008",
+            "kind": "notice",
+            "title": "Participant context hint",
+            "text": "No visible progress for 2 step(s). If your task calls for waiting for another participant or a pending transition, you may continue waiting. Choose whether to continue or stop based on your situation and what you observe.",
+            "lifecycle": "completed",
+            "at": "1970-01-01T00:00:24.000Z"
+          },
+          {
+            "id": "notice-009",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "error",
+            "title": "action skipped: desktop command failed",
+            "text": "action: keypress Control+-; exit code: 2; stderr: zoom failed",
+            "at": "1970-01-01T00:00:26.000Z"
+          },
+          {
+            "id": "screenshot-010",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-04",
+            "screenshotRef": {
+              "path": "screenshots/turn-04.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:28.000Z"
+          },
+          {
+            "id": "notice-011",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "blocked",
+            "title": "computer-use backstop gave up",
+            "text": "reason: gave up: 3 consecutive turns with no change to the UI state; last material action: none; recent actions: keypress Control+- -> keypress Control+- -> keypress Control+- -> keypress Control+-",
+            "screenshotRef": {
+              "path": "screenshots/turn-04.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:29.000Z"
+          }
+        ],
+        "affordanceUse": {
+          "schema": "humanish.affordance-use.v1",
+          "counts": {
+            "keyboard": 4
+          },
+          "total": 4,
+          "shortcutTotal": 0
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "turn-00-start.png",
+        15
+      ],
+      [
+        "onTrace",
+        1,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "screenshot": "[buffer 15 bytes]",
+            "stateSignature": "constant"
+          }
+        }
+      ],
+      [
+        "executor.execute",
+        {
+          "kind": "keypress",
+          "keys": [
+            "Control",
+            "-"
+          ]
+        }
+      ],
+      [
+        "executor.observe",
+        1
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "turn-01.png",
+        15
+      ],
+      [
+        "onTrace",
+        3,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "screenshot": "[buffer 15 bytes]",
+            "stateSignature": "constant"
+          }
+        }
+      ],
+      [
+        "executor.execute",
+        {
+          "kind": "keypress",
+          "keys": [
+            "Control",
+            "-"
+          ]
+        }
+      ],
+      [
+        "executor.observe",
+        2
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "turn-02.png",
+        15
+      ],
+      [
+        "onTrace",
+        5,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "screenshot": "[buffer 15 bytes]",
+            "stateSignature": "constant"
+          }
+        }
+      ],
+      [
+        "executor.execute",
+        {
+          "kind": "keypress",
+          "keys": [
+            "Control",
+            "-"
+          ]
+        }
+      ],
+      [
+        "executor.observe",
+        3
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "turn-03.png",
+        15
+      ],
+      [
+        "onTrace",
+        7,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "screenshot": "[buffer 15 bytes]",
+            "stateSignature": "constant"
+          },
+          "contextHint": "No visible progress for 2 step(s). If your task calls for waiting for another participant or a pending transition, you may continue waiting. Choose whether to continue or stop based on your situation and what you observe."
+        }
+      ],
+      [
+        "executor.execute",
+        {
+          "kind": "keypress",
+          "keys": [
+            "Control",
+            "-"
+          ]
+        }
+      ],
+      [
+        "executor.observe",
+        4
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "turn-04.png",
+        15
+      ],
+      [
+        "onTrace",
+        10,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ]
+    ]
+  },
+  "actionRejected": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "Recovered.",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "raw",
+          "notes": "2 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+        },
+        "startedAt": "1970-01-01T00:00:01.000Z",
+        "completedAt": "1970-01-01T00:00:14.000Z",
+        "durationMs": 13000,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "Recovered.",
+        "ids": {
+          "model": "golden-1"
+        },
+        "counts": {
+          "turns": 2,
+          "actions": 1,
+          "materialActions": 0,
+          "screenshots": 2,
+          "reasonings": 0,
+          "messages": 1,
+          "idleTurns": 0,
+          "noProgressTurns": 0
+        },
+        "items": [
+          {
+            "id": "screenshot-001",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-00-start",
+            "screenshotRef": {
+              "path": "screenshots/turn-00-start.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:03.000Z"
+          },
+          {
+            "id": "notice-002",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "warn",
+            "title": "action rejected before dispatch",
+            "text": "action: click (7, 7); code: action_rejected; disposition: not_dispatched; remaining batch actions not dispatched: 1",
+            "at": "1970-01-01T00:00:07.000Z"
+          },
+          {
+            "id": "screenshot-003",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-01",
+            "screenshotRef": {
+              "path": "screenshots/turn-01.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:09.000Z"
+          },
+          {
+            "id": "notice-004",
+            "kind": "notice",
+            "title": "Participant context hint",
+            "text": "Your action (click (7, 7)) was rejected before dispatch. No input from that action or the rest of its batch was sent. Choose your next action from the fresh screenshot; do not assume the rejected action succeeded.",
+            "lifecycle": "completed",
+            "at": "1970-01-01T00:00:12.000Z"
+          },
+          {
+            "id": "message-005",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 2",
+            "text": "Recovered.",
+            "at": "1970-01-01T00:00:13.000Z"
+          }
+        ],
+        "affordanceUse": {
+          "schema": "humanish.affordance-use.v1",
+          "counts": {
+            "pointer": 1
+          },
+          "total": 1,
+          "shortcutTotal": 0
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "turn-00-start.png",
+        15
+      ],
+      [
+        "onTrace",
+        1,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "screenshot": "[buffer 15 bytes]",
+            "stateSignature": "s0"
+          }
+        }
+      ],
+      [
+        "executor.execute",
+        {
+          "kind": "click",
+          "x": 7,
+          "y": 7
+        }
+      ],
+      [
+        "executor.observe",
+        1
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "turn-01.png",
+        15
+      ],
+      [
+        "onTrace",
+        3,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "screenshot": "[buffer 15 bytes]",
+            "stateSignature": "s0"
+          },
+          "contextHint": "Your action (click (7, 7)) was rejected before dispatch. No input from that action or the rest of its batch was sent. Choose your next action from the fresh screenshot; do not assume the rejected action succeeded."
+        }
+      ],
+      [
+        "onMessage",
+        "Recovered."
+      ]
+    ]
+  },
+  "executorUncertain": {
+    "result": {
+      "status": "failed",
+      "completionReason": "harness_error",
+      "reason": "desktop executor error: transport_failed; disposition: outcome_uncertain",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "raw",
+          "notes": "1 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+        },
+        "startedAt": "1970-01-01T00:00:01.000Z",
+        "completedAt": "1970-01-01T00:00:08.000Z",
+        "durationMs": 7000,
+        "status": "failed",
+        "completionReason": "harness_error",
+        "reason": "desktop executor error: transport_failed; disposition: outcome_uncertain",
+        "ids": {
+          "model": "golden-1"
+        },
+        "counts": {
+          "turns": 1,
+          "actions": 1,
+          "materialActions": 1,
+          "screenshots": 1,
+          "reasonings": 0,
+          "messages": 0,
+          "idleTurns": 0,
+          "noProgressTurns": 0
+        },
+        "items": [
+          {
+            "id": "screenshot-001",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-00-start",
+            "screenshotRef": {
+              "path": "screenshots/turn-00-start.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:03.000Z"
+          },
+          {
+            "id": "notice-002",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "error",
+            "title": "desktop executor error",
+            "text": "phase: executing type [3 chars]; code: transport_failed; disposition: outcome_uncertain; last action: type [3 chars]",
+            "screenshotRef": {
+              "path": "screenshots/turn-00-start.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:07.000Z"
+          }
+        ],
+        "affordanceUse": {
+          "schema": "humanish.affordance-use.v1",
+          "counts": {
+            "keyboard": 1
+          },
+          "total": 1,
+          "shortcutTotal": 0
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "turn-00-start.png",
+        15
+      ],
+      [
+        "onTrace",
+        1,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "screenshot": "[buffer 15 bytes]",
+            "stateSignature": "s0"
+          }
+        }
+      ],
+      [
+        "executor.execute",
+        {
+          "kind": "type",
+          "text": "abc"
+        }
+      ]
+    ]
+  },
+  "executeCrash": {
+    "result": {
+      "status": "failed",
+      "completionReason": "actor_error",
+      "reason": "computer-use loop error: pointer driver exploded",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "raw",
+          "notes": "1 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+        },
+        "startedAt": "1970-01-01T00:00:01.000Z",
+        "completedAt": "1970-01-01T00:00:08.000Z",
+        "durationMs": 7000,
+        "status": "failed",
+        "completionReason": "actor_error",
+        "reason": "computer-use loop error: pointer driver exploded",
+        "ids": {
+          "model": "golden-1"
+        },
+        "counts": {
+          "turns": 1,
+          "actions": 1,
+          "materialActions": 1,
+          "screenshots": 1,
+          "reasonings": 0,
+          "messages": 0,
+          "idleTurns": 0,
+          "noProgressTurns": 0
+        },
+        "items": [
+          {
+            "id": "screenshot-001",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-00-start",
+            "screenshotRef": {
+              "path": "screenshots/turn-00-start.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:03.000Z"
+          },
+          {
+            "id": "notice-002",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "error",
+            "title": "computer-use loop error",
+            "text": "phase: executing click (9, 9); error: TypeError; message: pointer driver exploded; last action: click (9, 9)",
+            "screenshotRef": {
+              "path": "screenshots/turn-00-start.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:07.000Z"
+          }
+        ],
+        "affordanceUse": {
+          "schema": "humanish.affordance-use.v1",
+          "counts": {
+            "pointer": 1
+          },
+          "total": 1,
+          "shortcutTotal": 0
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "turn-00-start.png",
+        15
+      ],
+      [
+        "onTrace",
+        1,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "screenshot": "[buffer 15 bytes]",
+            "stateSignature": "s0"
+          }
+        }
+      ],
+      [
+        "executor.execute",
+        {
+          "kind": "click",
+          "x": 9,
+          "y": 9
+        }
+      ]
+    ]
+  },
+  "providerCrash": {
+    "result": {
+      "status": "failed",
+      "completionReason": "actor_error",
+      "reason": "computer-use loop error: model narrated [scrubbed] then crashed",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "raw",
+          "notes": "1 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+        },
+        "startedAt": "1970-01-01T00:00:01.000Z",
+        "completedAt": "1970-01-01T00:00:07.000Z",
+        "durationMs": 6000,
+        "status": "failed",
+        "completionReason": "actor_error",
+        "reason": "computer-use loop error: model narrated [scrubbed] then crashed",
+        "ids": {
+          "model": "golden-1"
+        },
+        "counts": {
+          "turns": 0,
+          "actions": 0,
+          "materialActions": 0,
+          "screenshots": 1,
+          "reasonings": 0,
+          "messages": 0,
+          "idleTurns": 0,
+          "noProgressTurns": 0
+        },
+        "items": [
+          {
+            "id": "screenshot-001",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-00-start",
+            "screenshotRef": {
+              "path": "screenshots/turn-00-start.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:03.000Z"
+          },
+          {
+            "id": "notice-002",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "error",
+            "title": "computer-use loop error",
+            "text": "phase: requesting provider turn 1; error: Error; message: model narrated [scrubbed] then crashed",
+            "screenshotRef": {
+              "path": "screenshots/turn-00-start.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:06.000Z"
+          }
+        ],
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "turn-00-start.png",
+        15
+      ],
+      [
+        "onTrace",
+        1,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "screenshot": "[buffer 15 bytes]",
+            "stateSignature": "s0"
+          }
+        }
+      ]
+    ]
+  },
+  "observeFailsAfterAction": {
+    "result": {
+      "status": "failed",
+      "completionReason": "harness_error",
+      "reason": "desktop executor error: invalid_response; disposition: outcome_uncertain",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "raw",
+          "notes": "1 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+        },
+        "startedAt": "1970-01-01T00:00:01.000Z",
+        "completedAt": "1970-01-01T00:00:10.000Z",
+        "durationMs": 9000,
+        "status": "failed",
+        "completionReason": "harness_error",
+        "reason": "desktop executor error: invalid_response; disposition: outcome_uncertain",
+        "ids": {
+          "model": "golden-1"
+        },
+        "counts": {
+          "turns": 1,
+          "actions": 1,
+          "materialActions": 1,
+          "screenshots": 1,
+          "reasonings": 0,
+          "messages": 0,
+          "idleTurns": 0,
+          "noProgressTurns": 0
+        },
+        "items": [
+          {
+            "id": "screenshot-001",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-00-start",
+            "screenshotRef": {
+              "path": "screenshots/turn-00-start.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:03.000Z"
+          },
+          {
+            "id": "ui_action-002",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (1, 2)",
+            "coord": {
+              "x": 1,
+              "y": 2
+            },
+            "at": "1970-01-01T00:00:07.000Z"
+          },
+          {
+            "id": "notice-003",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "error",
+            "title": "desktop executor error",
+            "text": "phase: observing UI state after turn 1; code: invalid_response; disposition: outcome_uncertain; last action: click (1, 2)",
+            "screenshotRef": {
+              "path": "screenshots/turn-00-start.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:09.000Z"
+          }
+        ],
+        "affordanceUse": {
+          "schema": "humanish.affordance-use.v1",
+          "counts": {
+            "pointer": 1
+          },
+          "total": 1,
+          "shortcutTotal": 0
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "turn-00-start.png",
+        15
+      ],
+      [
+        "onTrace",
+        1,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "screenshot": "[buffer 15 bytes]",
+            "stateSignature": "s0"
+          }
+        }
+      ],
+      [
+        "executor.execute",
+        {
+          "kind": "click",
+          "x": 1,
+          "y": 2
+        }
+      ],
+      [
+        "executor.observe",
+        1
+      ]
+    ]
+  },
+  "closingObserveFails": {
+    "result": {
+      "status": "failed",
+      "completionReason": "harness_error",
+      "reason": "desktop executor error: session_revoked; disposition: outcome_uncertain",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "n/a",
+          "notes": "no screenshots captured"
+        },
+        "startedAt": "1970-01-01T00:00:01.000Z",
+        "completedAt": "1970-01-01T00:00:08.000Z",
+        "durationMs": 7000,
+        "status": "failed",
+        "completionReason": "harness_error",
+        "reason": "desktop executor error: session_revoked; disposition: outcome_uncertain",
+        "ids": {
+          "model": "golden-1"
+        },
+        "counts": {
+          "turns": 1,
+          "actions": 0,
+          "materialActions": 0,
+          "screenshots": 0,
+          "reasonings": 0,
+          "messages": 1,
+          "idleTurns": 0,
+          "noProgressTurns": 0
+        },
+        "items": [
+          {
+            "id": "message-001",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 1",
+            "text": "Reached the goal",
+            "at": "1970-01-01T00:00:05.000Z"
+          },
+          {
+            "id": "notice-002",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "error",
+            "title": "desktop executor error",
+            "text": "phase: observing closing task state; code: session_revoked; disposition: outcome_uncertain",
+            "at": "1970-01-01T00:00:07.000Z"
+          }
+        ],
+        "declaredOutcome": "reached",
+        "taskFunnel": {
+          "schema": "humanish.task-funnel.v1",
+          "total": 1,
+          "completed": 0,
+          "unobservable": 0,
+          "unmeasured": 0,
+          "stoppedAt": "t",
+          "tasks": [
+            {
+              "id": "t",
+              "completed": false,
+              "observable": true,
+              "inputsObserved": true
+            }
+          ]
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onTrace",
+        0,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "stateSignature": "s0",
+            "text": "start"
+          }
+        }
+      ],
+      [
+        "onMessage",
+        "Reached the goal"
+      ],
+      [
+        "executor.observe",
+        1
+      ]
+    ]
+  },
+  "closingObserveBestEffort": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "Reached the goal",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "n/a",
+          "notes": "no screenshots captured"
+        },
+        "startedAt": "1970-01-01T00:00:01.000Z",
+        "completedAt": "1970-01-01T00:00:07.000Z",
+        "durationMs": 6000,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "Reached the goal",
+        "ids": {
+          "model": "golden-1"
+        },
+        "counts": {
+          "turns": 1,
+          "actions": 0,
+          "materialActions": 0,
+          "screenshots": 0,
+          "reasonings": 0,
+          "messages": 1,
+          "idleTurns": 0,
+          "noProgressTurns": 0
+        },
+        "items": [
+          {
+            "id": "message-001",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 1",
+            "text": "Reached the goal",
+            "at": "1970-01-01T00:00:05.000Z"
+          }
+        ],
+        "declaredOutcome": "reached",
+        "taskFunnel": {
+          "schema": "humanish.task-funnel.v1",
+          "total": 1,
+          "completed": 0,
+          "unobservable": 0,
+          "unmeasured": 0,
+          "stoppedAt": "t",
+          "tasks": [
+            {
+              "id": "t",
+              "completed": false,
+              "observable": true,
+              "inputsObserved": true
+            }
+          ]
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onTrace",
+        0,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "stateSignature": "s0",
+            "text": "start"
+          }
+        }
+      ],
+      [
+        "onMessage",
+        "Reached the goal"
+      ],
+      [
+        "executor.observe",
+        1
+      ]
+    ]
+  }
+}

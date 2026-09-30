@@ -1,0 +1,202 @@
+import type { ActorStopCause, ActorTraceItem, ParticipantDeclaredOutcome } from "../../contract.js";
+import type { AffordanceObservation } from "../../affordance.js";
+import { TaskTracker } from "../../../lab/tasks.js";
+import type { ClosingTrigger, Stop } from "./ending.js";
+import { TraceRecorder } from "./trace.js";
+import type { CuaExecutor, CuaLoopOptions, CuaProvider, CuaSafetyCheck } from "./types.js";
+import { UsageLedger } from "./usage.js";
+
+// The state one loop session shares across its phases: the options as read at entry, the session
+// clock, the trace being recorded, the usage ledger, and what the participant has done so far.
+
+// Waiting is a legitimate strategy, not idleness. A persona told to sign up and verify by email
+// polls its inbox — screenshot, wait, screenshot, wait — and at 6 steps that ended the session as
+// `gave_up`/`failed` in well under a minute, before the mail could plausibly arrive. The concurrent
+// shared-world route already overrode these to 80/40 for exactly this reason; the knowledge existed
+// in the codebase and never reached the default every other route uses.
+const DEFAULT_IDLE_STEPS = 24;
+// The no-progress signal is much stronger since #383 (a stale frame alone no longer counts — the
+// actor must also be repeating itself), so this needs less headroom than the raw idle count.
+const DEFAULT_NO_PROGRESS_STEPS = 20;
+const DEFAULT_TURN_TIMEOUT_MS = 180_000;
+const DEFAULT_OBSERVATION_TIMEOUT_MS = 60_000;
+
+export type ScreenshotRef = NonNullable<ActorTraceItem["screenshotRef"]>;
+
+/** Options passed through unchanged, as read once at entry. Callers destructure hooks to call them. */
+export type LoopSettings = {
+  readonly [
+    K in
+      | "instructions"
+      | "persona"
+      | "redaction"
+      | "stopWhen"
+      | "dwell"
+      | "tasks"
+      | "maxUsd"
+      | "overRunBudget"
+      | "estimateTurnCostUsd"
+      | "onObservedUrl"
+      | "onMessage"
+      | "onScreenshot"
+      | "onTrace"
+  ]: CuaLoopOptions[K];
+};
+
+/** The participant's dispatched actions, as the backstop and failure notices describe them. */
+export interface Activity {
+  lastActionTitle: string | undefined;
+  lastMaterialActionTitle: string | undefined;
+  readonly recentActionTitles: string[];
+  // Affordance classification (#369): WHICH route the actor took, recorded per dispatched action.
+  // Collected here because the typed text exists only at dispatch — describeCuaAction deliberately
+  // destroys it before it can reach the trace. Only the CLASS (and a scheme-shaped signal) is kept.
+  readonly affordances: AffordanceObservation[];
+  /** The loop stopped waiting on an action before the executor acknowledged it. */
+  interruptedActionOutcome: boolean;
+}
+
+export class LoopSession {
+  readonly settings: LoopSettings;
+  readonly provider: CuaProvider;
+  readonly executor: CuaExecutor;
+  readonly signal: AbortSignal | undefined;
+  readonly timeoutMs: number;
+  readonly idleSteps: number;
+  readonly noProgressSteps: number;
+  readonly redactScreenshots: boolean;
+  // Injected functions are wrapped so they are called without a receiver, as plain functions.
+  readonly now: () => number;
+  readonly acknowledgeSafetyChecks: (checks: CuaSafetyCheck[]) => CuaSafetyCheck[] | null;
+  readonly writeScreenshot: (name: string, bytes: Buffer) => Promise<string>;
+  readonly sleep: (ms: number) => Promise<void>;
+  /** Strict capped routes stop when a request's usage is unavailable. */
+  readonly requiresUsage: boolean;
+  readonly startedAtMs: number;
+  readonly turnTimeoutMs: number;
+  readonly observationTimeoutMs: number;
+  readonly trace: TraceRecorder;
+  readonly usage: UsageLedger;
+  // The funnel is recorded, never consulted: task completion does not steer the loop.
+  readonly taskTracker: TaskTracker | undefined;
+  readonly activity: Activity = {
+    lastActionTitle: undefined,
+    lastMaterialActionTitle: undefined,
+    recentActionTitles: [],
+    affordances: [],
+    interruptedActionOutcome: false,
+  };
+  /** What the loop was doing, for failure notices. */
+  phase = "initializing computer-use loop";
+  lastScreenshotRef: ScreenshotRef | undefined;
+  lastResponseId: string | undefined;
+  // Whether any observation this run surfaced structured appState (a non-vision/state executor).
+  // RUNTIME-ONLY signal: used solely to self-describe in redaction.notes that app state drove
+  // progress detection and was NOT written to the trace — the appState itself never persists.
+  observedAppState = false;
+  declaredOutcome: ParticipantDeclaredOutcome | undefined;
+  /** Set by a structured stop; the closing request follows it even if the session then failed. */
+  closing: ClosingTrigger | undefined;
+  private stopCause: ActorStopCause | undefined;
+  private readonly scrubText: (text: string) => string;
+
+  constructor(options: CuaLoopOptions) {
+    // Read once, in this order: a caller mutating its options object mid-run changes nothing.
+    const {
+      instructions,
+      provider,
+      executor,
+      persona,
+      redaction,
+      timeoutMs,
+      now,
+      signal,
+      idleSteps = DEFAULT_IDLE_STEPS,
+      noProgressSteps = DEFAULT_NO_PROGRESS_STEPS,
+      acknowledgeSafetyChecks = () => null,
+      redactScreenshots = false,
+      scrubText = (text) => text,
+      writeScreenshot = async (name) => `screenshots/${name}`,
+      stopWhen,
+      dwell,
+      sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)),
+      tasks,
+      maxUsd,
+      overRunBudget,
+      estimateTurnCostUsd,
+      requireReportedUsageForSpendCap = false,
+      onObservedUrl,
+      onMessage,
+      onScreenshot,
+      onTrace,
+    } = options;
+    this.settings = {
+      instructions,
+      persona,
+      redaction,
+      stopWhen,
+      dwell,
+      tasks,
+      maxUsd,
+      overRunBudget,
+      estimateTurnCostUsd,
+      onObservedUrl,
+      onMessage,
+      onScreenshot,
+      onTrace,
+    };
+    this.provider = provider;
+    this.executor = executor;
+    this.signal = signal;
+    this.timeoutMs = timeoutMs;
+    this.idleSteps = idleSteps;
+    this.noProgressSteps = noProgressSteps;
+    this.redactScreenshots = redactScreenshots;
+    this.now = () => now();
+    this.acknowledgeSafetyChecks = (checks) => acknowledgeSafetyChecks(checks);
+    this.scrubText = (text) => scrubText(text);
+    this.writeScreenshot = (name, bytes) => writeScreenshot(name, bytes);
+    this.sleep = (ms) => sleep(ms);
+    this.requiresUsage =
+      requireReportedUsageForSpendCap && (maxUsd !== undefined || overRunBudget !== undefined);
+    this.startedAtMs = now();
+    this.turnTimeoutMs = options.turnTimeoutMs ?? DEFAULT_TURN_TIMEOUT_MS;
+    this.observationTimeoutMs = options.observationTimeoutMs ?? DEFAULT_OBSERVATION_TIMEOUT_MS;
+    this.trace = new TraceRecorder(this.now);
+    this.usage = new UsageLedger(provider);
+    this.taskTracker = tasks !== undefined && tasks.length > 0 ? new TaskTracker(tasks) : undefined;
+  }
+
+  remaining(): number {
+    return this.timeoutMs - (this.now() - this.startedAtMs);
+  }
+
+  // Model-authored narration: literal-scrub known provisioned values, THEN pattern-redact.
+  // A value the model transcribes (a DB password it read on screen) has no shape, so redactText
+  // alone cannot catch it — the lab's scrubKnownValues, injected as scrubText, closes that.
+  redactNarration(text: string): string {
+    return this.settings.redaction.redactText(this.scrubText(text));
+  }
+
+  /** Hand a watcher the trace so far with the running usage, without waiting on it. */
+  flush(): void {
+    const { onTrace } = this.settings;
+    onTrace?.(this.trace.items.slice(), this.usage.running(), this.usage.liveMetadata());
+  }
+
+  /**
+   * Commit a stop where it is decided: its closing trigger and stop cause first, then its trace
+   * evidence. A failure while recording the evidence ends the session as an error that keeps
+   * both. Returns the stop without evidence, so concluding it again records nothing.
+   */
+  conclude(stop: Stop): Stop {
+    this.closing = stop.closing ?? this.closing;
+    this.stopCause = stop.stopCause ?? this.stopCause;
+    if (stop.evidence !== undefined) this.trace.record(stop.evidence.kind, stop.evidence.body);
+    return {
+      completionReason: stop.completionReason,
+      reason: stop.reason,
+      ...(this.stopCause === undefined ? {} : { stopCause: this.stopCause }),
+    };
+  }
+}
