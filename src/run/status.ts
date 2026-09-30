@@ -20,8 +20,6 @@
 // Deliberately NOT the hostname or any user/path identity — this file sits inside a run directory
 // that an operator may share, so it must carry nothing a share-safety gate would have to strip.
 
-import { AsyncLocalStorage } from "node:async_hooks";
-
 import type { RunBundle } from "./bundle.js";
 import { writeContainedOutputFile, type PreparedOutputRoot } from "./selected-output-paths.js";
 
@@ -108,8 +106,9 @@ export interface RunStatusRecord {
 
 export interface RunStatusHandle {
   /** Resolves once the initial record has landed on disk, and never rejects: a failed write is
-   *  swallowed, so a run is never failed by its own index. Routes await it before acquiring a
-   *  sandbox, so a run killed after its sandbox receipt lands still has a record to classify. */
+   *  swallowed, so a run is never failed by its own index. `startRun` (`src/run/run.ts`) awaits
+   *  it before a route can acquire a sandbox, so a run killed after its sandbox receipt lands
+   *  still has a record to classify. */
   readonly started: Promise<void>;
   /** Write `updatedAt` now. Called by the internal cadence; exposed for tests and for backends
    *  that want to mark a phase boundary. Never throws. */
@@ -138,52 +137,6 @@ export interface BeginRunStatusOptions {
   pid?: number;
   /** Cadence override; 0 disables the interval entirely (tests drive `touch()` themselves). */
   touchMs?: number;
-}
-
-/** A no-op handle, so a caller that cannot write status still has a uniform interface. */
-export function inertRunStatus(): RunStatusHandle {
-  return {
-    started: Promise.resolve(),
-    touch: async () => {},
-    finish: async () => {},
-    stop: async () => {},
-  };
-}
-
-/**
- * The set of handles opened inside the currently-running run, so the run's own return finalizes
- * them. Scoped rather than global: labs can run concurrently in one process, and each must clean up
- * only what it opened.
- */
-const runStatusScope = new AsyncLocalStorage<Set<RunStatusHandle>>();
-
-/**
- * Bind a run's status records to the lifetime of the run itself.
- *
- * WHY THIS IS NOT A `finally` AT EACH BACKEND. A run function does not have one exit — the lab
- * backends have 18 early `return`s between opening the record and finalizing it, every one of them
- * a fail-closed path (bad subject, packing failure, missing key). Relying on each of those to
- * remember the record is the same per-call-site discipline that already failed once on this
- * contract, and the failure is silent: the run is over, the cadence keeps ticking, and the record
- * keeps saying `running` — a listing surface then shows a dead run as alive for as long as the
- * process lives. CI caught it as a deleted run directory racing a still-live writer.
- *
- * So the scope owns the lifetime. Control returning from the run function IS the run ending,
- * whatever path it took, and any record still open at that moment is finalized with NO outcome:
- * the run ended and we have no verdict to report. That is honest and it is different from both
- * neighbours — a backend that finalized properly carries its real outcome, and a process that
- * CRASHED never reaches here at all, leaving a `running` record to go stale and read as
- * `interrupted`, which is exactly what happened.
- */
-export async function withRunStatusScope<T>(fn: () => Promise<T>): Promise<T> {
-  const scope = new Set<RunStatusHandle>();
-  try {
-    return await runStatusScope.run(scope, fn);
-  } finally {
-    // `finish` swallows its own write errors and is idempotent, so this can neither throw over the
-    // run's own error nor overwrite an outcome a backend already recorded.
-    await Promise.all([...scope].map((handle) => handle.finish()));
-  }
 }
 
 /**
@@ -249,7 +202,6 @@ export function beginRunStatus(
     return writing.catch(() => undefined);
   };
 
-  const scope = runStatusScope.getStore();
   const handle: RunStatusHandle = {
     started,
     async touch() {
@@ -260,7 +212,6 @@ export function beginRunStatus(
       if (finished) return;
       finished = true;
       void stop();
-      scope?.delete(handle);
       const completedAt = iso();
       await write({
         ...base,
@@ -270,14 +221,8 @@ export function beginRunStatus(
         ...(outcome === undefined ? {} : { outcome }),
       });
     },
-    stop() {
-      scope?.delete(handle);
-      return stop();
-    },
+    stop,
   };
-  // The enclosing run now owns this record's lifetime; see `withRunStatusScope`. A caller outside a
-  // scope (a direct library import) simply gets the old behavior.
-  scope?.add(handle);
   return handle;
 }
 
