@@ -1833,7 +1833,7 @@
         "redaction": {
           "status": "passed",
           "screenshots": "n/a",
-          "notes": "no screenshots captured"
+          "notes": "no screenshots captured. App state was observed each turn to drive progress detection (a state-driven executor) and was NOT written to the trace — it is a runtime-only progress input, never persisted as evidence in this slice."
         },
         "startedAt": "1970-01-01T00:00:00.001Z",
         "completedAt": "1970-01-01T00:00:00.034Z",

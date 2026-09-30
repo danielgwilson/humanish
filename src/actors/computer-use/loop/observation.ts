@@ -99,8 +99,16 @@ export class DesktopObserver {
     const { onObservedUrl, onScreenshot } = this.session.settings;
     onObservedUrl?.(observation.url);
     if (observation.screenshot !== undefined) onScreenshot?.(observation.screenshot);
-    if (observation.appState !== undefined) this.session.observedAppState = true;
+    this.noteAppState(observation);
     return observation;
+  }
+
+  /**
+   * Every observation that carried app state counts, including dwell frames no turn receives:
+   * they feed the task funnel, and the trace notes must say app state was observed.
+   */
+  private noteAppState(observation: CuaObservation): void {
+    if (observation.appState !== undefined) this.session.observedAppState = true;
   }
 
   /** The provider received the pending speech; collect afresh for the next observation. */
@@ -274,6 +282,7 @@ export class DesktopObserver {
       );
       frames += 1;
       if (frameObservation.screenshot !== undefined) onScreenshot?.(frameObservation.screenshot);
+      this.noteAppState(frameObservation);
       await this.recordScreenshot(frameObservation, `dwell-${pad(frames)}`);
       session.flush();
       this.observeTasks(frameObservation, turnNumber);
