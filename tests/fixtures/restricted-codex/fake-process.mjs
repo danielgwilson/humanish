@@ -41,6 +41,16 @@ if (operation === "--version") {
   if (scenario === "participant-raw-wrong-function")
     participantTool.afterResponse.find(event => event.params?.item?.type === "function_call").params.item.name = "unexpected_function";
   let participantDuplicateSent = false;
+  // participant-deadline-reset holds the tool request and the turn completion until the test
+  // creates a gate file. The test advances a fake clock in between, so this process never waits
+  // on wall time and machine load cannot change what the test measures.
+  const afterGate = (name, next) => {
+    const poll = setInterval(() => {
+      if (!fs.existsSync(`${trace}.${name}`)) return;
+      clearInterval(poll);
+      next();
+    }, 5);
+  };
   if (scenario === "system-config") config.layers.find(layer => layer.name.type === "system").config = { notify: ["synthetic-command"] };
   if (scenario === "mcp-config") config.config.mcp_servers = { synthetic: { command: "synthetic-command" } };
   if (scenario === "instructions-config") config.config.instructions = "SYNTHETIC_UNTRUSTED_INSTRUCTIONS";
@@ -78,7 +88,7 @@ if (operation === "--version") {
         for (const event of participantTool.afterResponse) emit(event);
         emit(answer); emit(usage); emit(completion);
       };
-      if (scenario === "participant-deadline-reset") setTimeout(finishParticipant, 500);
+      if (scenario === "participant-deadline-reset") afterGate("finish", finishParticipant);
       else finishParticipant();
       return;
     }
@@ -127,7 +137,7 @@ if (operation === "--version") {
           emit(participantTool.request);
           if (scenario === "participant-premature-completion") emit(completion);
         };
-        if (scenario === "participant-deadline-reset") setTimeout(requestParticipantTool, 350);
+        if (scenario === "participant-deadline-reset") afterGate("request-tool", requestParticipantTool);
         else requestParticipantTool();
         return;
       }

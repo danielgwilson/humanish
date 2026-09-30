@@ -35,6 +35,16 @@ const request: RestrictedCodexRequest = {
 };
 
 type Trace = Record<string, unknown>;
+
+// Captured before any test fakes timers, so polling the fake process keeps real time.
+const realSetTimeout = globalThis.setTimeout;
+async function untilTraced(
+  entries: () => Promise<Trace[]>,
+  predicate: (entry: Trace) => boolean,
+): Promise<void> {
+  while (!(await entries()).some(predicate))
+    await new Promise((resolve) => realSetTimeout(resolve, 5));
+}
 async function fixture(scenario = "success") {
   const directory = await mkdtemp(path.join(tmpdir(), "humanish-codex-test-"));
   directories.push(directory);
@@ -694,7 +704,8 @@ describe("restricted Codex Code Mode participant session", () => {
         },
         call: async (args) => {
           calls.push(args);
-          await new Promise((resolve) => setTimeout(resolve, 900));
+          // The tool runs for 900 ms on the deadline's clock, past the 800 ms budget.
+          vi.advanceTimersByTime(900);
           return JSON.stringify({
             acknowledgments: [],
             imageUrl: "data:image/png;base64,c3ludGhldGlj",
@@ -702,16 +713,22 @@ describe("restricted Codex Code Mode participant session", () => {
         },
       },
     };
-    const session = createRestrictedCodexSession(f.options),
-      start = performance.now();
+    const session = createRestrictedCodexSession(f.options);
     try {
-      const result = await session.run({ ...request, model: undefined, timeoutMs: 800 });
+      // Only the deadline's clock is fake, and only the tool call advances it, so process startup
+      // under load spends none of the budget.
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] });
+      const start = performance.now();
+      const [result, elapsed] = await session
+        .run({ ...request, model: undefined, timeoutMs: 800 })
+        .then((value) => [value, performance.now() - start] as const)
+        .finally(() => vi.useRealTimers());
       expect(result).toMatchObject({
         status: "completed",
         output: { observedCode: "BLUE-4821" },
         errorCode: null,
       });
-      expect(performance.now() - start).toBeGreaterThanOrEqual(850);
+      expect(elapsed).toBe(900);
       expect(calls).toEqual([{ kind: "observe" }]);
       const appServer = f.spawns.find((entry) => entry.args[0] === "app-server")!;
       expect(appServer.env).toMatchObject({
@@ -997,7 +1014,10 @@ describe("restricted Codex Code Mode participant session", () => {
     expect(await session.close()).toBe(true);
   });
 
-  it("starts a fresh inference deadline after a successful host tool response", async () => {
+  // Only the deadline's clock is fake. The fake app-server waits for a gate file before the tool
+  // request and before completing, so model time is exactly what the test advances: 600 ms before
+  // the tool call and `afterToolMs` after it, against a 700 ms deadline.
+  async function runAcrossToolResponse(afterToolMs: number) {
     const f = await fixture("participant-deadline-reset");
     delete f.options.env!.NODE_OPTIONS;
     f.options.participant = {
@@ -1007,20 +1027,38 @@ describe("restricted Codex Code Mode participant session", () => {
         name: "humanish_ui",
         description: "Synthetic UI.",
         inputSchema: { type: "object" },
-        call: async () => {
-          await new Promise((resolve) => setTimeout(resolve, 200));
-          return JSON.stringify({
+        call: async () =>
+          JSON.stringify({
             acknowledgments: [],
             imageUrl: "data:image/png;base64,c3ludGhldGlj",
-          });
-        },
+          }),
       },
     };
     const session = createRestrictedCodexSession(f.options);
-    expect(await session.run({ ...request, model: undefined, timeoutMs: 700 })).toMatchObject({
-      status: "completed",
-      errorCode: null,
-    });
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] });
+    try {
+      const pending = session.run({ ...request, model: undefined, timeoutMs: 700 });
+      await untilTraced(f.entries, (entry) => entry.method === "turn/start");
+      vi.advanceTimersByTime(600);
+      await writeFile(`${f.trace}.request-tool`, "");
+      await untilTraced(f.entries, (entry) => "toolResponse" in entry);
+      vi.advanceTimersByTime(afterToolMs);
+      await writeFile(`${f.trace}.finish`, "");
+      return { session, result: await pending };
+    } finally {
+      vi.useRealTimers();
+    }
+  }
+
+  it("starts a fresh inference deadline after a successful host tool response", async () => {
+    const { session, result } = await runAcrossToolResponse(600);
+    expect(result).toMatchObject({ status: "completed", errorCode: null });
+    expect(await session.close()).toBe(true);
+  });
+
+  it("still enforces the fresh deadline after a host tool response", async () => {
+    const { session, result } = await runAcrossToolResponse(700);
+    expect(result).toMatchObject({ status: "timed_out", errorCode: "timeout" });
     expect(await session.close()).toBe(true);
   });
 });

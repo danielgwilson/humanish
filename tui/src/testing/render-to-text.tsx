@@ -24,6 +24,12 @@ export interface RenderedFrames {
   last: string;
   /** Send a keystroke, then wait for the frame it produces. Keys are in `KEY`. */
   press(input: string, until?: (frame: string) => boolean, timeoutMs?: number): Promise<string>;
+  /**
+   * Wait for a matching frame without sending input, searching every frame written so far and any
+   * still to come. A render caused by data loading can land before or after the caller looks, so
+   * waiting only for frames after a keypress races it.
+   */
+  waitFor(until: (frame: string) => boolean, timeoutMs?: number): Promise<string>;
   unmount(): void;
 }
 
@@ -137,6 +143,7 @@ export async function renderToText(
     predicate: (frame: string) => boolean,
     from: number,
     timeoutMs?: number,
+    since = "after the keypress ",
   ): Promise<string> => {
     const limit = Date.now() + (timeoutMs ?? options.timeoutMs ?? 2_000);
     for (;;) {
@@ -144,7 +151,7 @@ export async function renderToText(
       if (found !== undefined) return found;
       if (Date.now() > limit) {
         throw new Error(
-          `renderToText: no frame after the keypress matched. Frames since:\n${frames
+          `renderToText: no frame ${since}matched. Frames since:\n${frames
             .slice(from)
             .map((frame, index) => `--- ${index} ---\n${frame}`)
             .join("\n")}`,
@@ -164,6 +171,7 @@ export async function renderToText(
       // default waits for any non-blank frame written after the key — Ink re-renders on input.
       return waitForFrame(until ?? ((frame) => frame.trim().length > 0), from, timeoutMs);
     },
+    waitFor: (until, timeoutMs) => waitForFrame(until, 0, timeoutMs, ""),
     unmount: () => instance.unmount(),
   };
 }
