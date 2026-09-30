@@ -20,6 +20,7 @@ import { ACTOR_TRACE_SCHEMA, type ActorTrace } from "../../src/actors/contract.j
 import type { CuaLoopResult } from "../../src/actors/computer-use/loop.js";
 import { captureGitState } from "../../src/run/git-state.js";
 import { buildCuaBundle } from "../../src/routes/computer-use/single-bundle.js";
+import { verdictForStatus } from "../../src/run/judge.js";
 import { renderObserver } from "../../src/observer/render.js";
 import { createProgram } from "../../src/cli/program.js";
 import { startCodexAppServerUi } from "../../src/actors/codex/app-server-ui.js";
@@ -1019,6 +1020,7 @@ async function writeCuaRunFixture(
       }
     : undefined;
   const bundle = buildCuaBundle({
+    verdict: session ? verdictForStatus(session.status) : "contract_proof_only",
     actorId: "openai-computer-use",
     appUrl: "http://127.0.0.1:3000/",
     createdAt: "2026-01-01T00:00:00.000Z",

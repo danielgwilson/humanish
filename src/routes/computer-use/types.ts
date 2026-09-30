@@ -1,3 +1,4 @@
+import type { Verdict } from "../../run/judge.js";
 import type { RunDesktopRecording } from "../../evidence/desktop-recording-types.js";
 import type {
   CuaExecutor,
@@ -643,6 +644,8 @@ export interface LaneRunOutcome {
 
 /** What buildCuaFanoutBundle projects into a fan-out run bundle. */
 export interface CuaFanoutBundleArgs {
+  /** The run's verdict, from the judge. */
+  verdict: Verdict;
   /** Lab provenance for the bundle's own `lab` field (#455). */
   lab?: RunLabProvenance;
   specs: CuaLaneSpec[];

@@ -3,7 +3,6 @@ import type { ActorTrace } from "../../actors/contract.js";
 import type { CuaLoopResult } from "../../actors/computer-use/loop.js";
 import { containsSensitive, redactText } from "../../evidence/redaction.js";
 import {
-  type ReviewSummary,
   type RunBundle,
   type RunFeedbackCandidate,
   type RunProviderResource,
@@ -36,22 +35,6 @@ export function participantFactsOf(outcome: LaneRunOutcome): ParticipantFacts {
 export function laneOutcomeOk(outcome: LaneRunOutcome | undefined, dryRun: boolean): boolean {
   if (dryRun) return true;
   return outcome !== undefined && participantPassed(participantFactsOf(outcome));
-}
-
-export function fanoutReviewVerdict(args: {
-  dryRun: boolean;
-  expectedLaneCount: number;
-  outcomes: LaneRunOutcome[] | undefined;
-}): ReviewSummary["verdict"] {
-  if (args.dryRun) return "contract_proof_only";
-  const outcomes = args.outcomes ?? [];
-  if (outcomes.length !== args.expectedLaneCount) return "fail";
-  if (outcomes.some((outcome) => !laneOutcomeOk(outcome, false))) {
-    return outcomes.some((outcome) => outcome.session?.status === "timed_out")
-      ? "timed_out"
-      : "fail";
-  }
-  return "pass";
 }
 
 /** Aggregate lane counts for the result projection. */

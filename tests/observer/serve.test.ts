@@ -7,6 +7,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
 import { ACTOR_TRACE_SCHEMA, type ActorTrace } from "../../src/actors/contract.js";
 import type { CuaLoopResult } from "../../src/actors/computer-use/loop.js";
 import { buildCuaBundle } from "../../src/routes/computer-use/single-bundle.js";
+import { verdictForStatus } from "../../src/run/judge.js";
 import { renderObserver } from "../../src/observer/render.js";
 import type { LibraryHistory } from "../../src/observer/library.js";
 import { serveObserverLibrary } from "../../src/observer/serve.js";
@@ -236,6 +237,7 @@ async function writeLocalOnlyRun(cwd: string, runId: string): Promise<void> {
     trace,
   };
   const bundle = buildCuaBundle({
+    verdict: verdictForStatus(session.status),
     actorId: "openai-computer-use",
     appUrl: "http://127.0.0.1:3000/",
     createdAt: "2026-01-01T00:00:00.000Z",
@@ -900,6 +902,7 @@ describe("serve library: labeled cost estimate", () => {
       trace,
     };
     const bundle = buildCuaBundle({
+      verdict: verdictForStatus(session.status),
       actorId: "openai-computer-use",
       appUrl: "http://127.0.0.1:3000/",
       createdAt: "2026-01-01T00:00:00.000Z",

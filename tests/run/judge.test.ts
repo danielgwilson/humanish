@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import { ACTOR_STATUSES } from "../../src/actors/contract.js";
 import {
   hollowCompletion,
+  judgeOneParticipant,
+  judgeParticipants,
   participantPassed,
   participantStatus,
   selfReportedBlocker,
@@ -137,5 +139,78 @@ describe("verdictForStatus", () => {
           "timed_out": "timed_out",
         }
       `);
+  });
+});
+
+describe("judgeOneParticipant", () => {
+  const judge = (participant: ParticipantFacts | undefined, dryRun = false, inProgress = false) =>
+    judgeOneParticipant({ dryRun, inProgress, participant });
+
+  it("takes the verdict from the tallied status and ok from the pass rule", () => {
+    expect(judge(passed())).toEqual({ verdict: "pass", allPassed: true });
+    expect(judge(passed({ noEngagement: true }))).toEqual({ verdict: "fail", allPassed: false });
+    expect(judge(passed({ selfReportedBlocker: true }))).toEqual({
+      verdict: "blocked",
+      allPassed: false,
+    });
+    expect(judge(passed({ status: "timed_out", completionReason: "timed_out" }))).toEqual({
+      verdict: "timed_out",
+      allPassed: false,
+    });
+    expect(judge(passed({ status: "failed", completionReason: "actor_error" }))).toEqual({
+      verdict: "fail",
+      allPassed: false,
+    });
+  });
+
+  it("fails a run whose harness failed before a session, and holds a dry run as a contract", () => {
+    const noSession = { skipped: false, noEngagement: false, selfReportedBlocker: false };
+    expect(judge({ ...noSession, sessionError: "desktop create failed" })).toEqual({
+      verdict: "fail",
+      allPassed: false,
+    });
+    expect(judge(undefined, true)).toEqual({ verdict: "contract_proof_only", allPassed: true });
+  });
+
+  it("holds a run in progress as a contract", () => {
+    expect(judge(passed(), false, true).verdict).toBe("contract_proof_only");
+  });
+});
+
+describe("judgeParticipants", () => {
+  const judge = (participants: ParticipantFacts[], expected = participants.length) =>
+    judgeParticipants({ dryRun: false, inProgress: false, expected, participants });
+
+  it("passes only when every expected participant passed", () => {
+    expect(judge([passed(), passed()])).toEqual({ verdict: "pass", allPassed: true });
+    expect(judge([passed()], 2)).toEqual({ verdict: "fail", allPassed: false });
+  });
+
+  it("fails on any participant that did not pass, unless one of them timed out", () => {
+    for (const other of [
+      passed({ noEngagement: true }),
+      passed({ selfReportedBlocker: true }),
+      passed({ skipped: true }),
+      passed({ status: "failed", completionReason: "actor_error" }),
+    ])
+      expect(judge([passed(), other])).toEqual({ verdict: "fail", allPassed: false });
+    expect(
+      judge([passed(), passed({ status: "timed_out", completionReason: "timed_out" })]),
+    ).toEqual({ verdict: "timed_out", allPassed: false });
+  });
+
+  it("does not call a run with a missing participant timed out", () => {
+    expect(judge([passed({ status: "timed_out", completionReason: "timed_out" })], 2).verdict).toBe(
+      "fail",
+    );
+  });
+
+  it("holds dry and in-progress runs as contracts", () => {
+    expect(
+      judgeParticipants({ dryRun: true, inProgress: false, expected: 2, participants: [] }),
+    ).toEqual({ verdict: "contract_proof_only", allPassed: true });
+    expect(
+      judgeParticipants({ dryRun: false, inProgress: true, expected: 2, participants: [] }).verdict,
+    ).toBe("contract_proof_only");
   });
 });

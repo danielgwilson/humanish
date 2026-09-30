@@ -6,6 +6,7 @@ import { redactText } from "../../evidence/redaction.js";
 import type { ObserverResult } from "../../observer/render.js";
 import type { RunBundle, RunRerunLineage } from "../../run/bundle.js";
 import type { LabConfig } from "../../lab/types.js";
+import type { Judgment } from "../../run/judge.js";
 import { buildLaneSummary, laneOutcomeOk } from "./bundle.js";
 import { summarizeCuaDiagnostics } from "./diagnostics.js";
 import {
@@ -14,7 +15,7 @@ import {
   subjectProvenanceArg,
   toLaneResult,
 } from "./lanes.js";
-import { buildCuaRunBundle } from "./assemble.js";
+import { buildCuaRunBundle, judgeComputerUseRun } from "./assemble.js";
 import type { runLabLanes } from "./run-lanes.js";
 import type { CuaRunSetup } from "./setup.js";
 import { projectLaneSubjects } from "./subject-projection.js";
@@ -47,6 +48,8 @@ function cuaLabResult(args: {
   plan: CuaLanePlan;
   rerunLineage: RunRerunLineage | undefined;
   bundle: RunBundle;
+  /** The run's judgment; ok requires every participant to have passed. */
+  judgment: Judgment;
   observer: ObserverResult;
   declaredVerdictFailure: string | undefined;
   receivingWarnings: string[];
@@ -74,11 +77,10 @@ function cuaLabResult(args: {
   const laneCount = laneSpecs.length;
   // Lane-level pass: dry-run lanes are contract-ok; live lanes need a passed, engaged session.
   const laneOk = (outcome: LaneRunOutcome | undefined): boolean => laneOutcomeOk(outcome, dryRun);
-  const allLanesOk = laneSpecs.every((_, index) => laneOk(outcomes?.[index]));
   const adapterFailure = adapterScoreFailureMessage(bundle);
   const ok =
     observer.ok &&
-    allLanesOk &&
+    args.judgment.allPassed &&
     adapterFailure === undefined &&
     args.declaredVerdictFailure === undefined;
 
@@ -227,7 +229,10 @@ export async function finishCuaRun(
   ];
   const finalProvenance = subjectProvenanceArg(aggregateSubject, publicRepo, subjectEnvNames);
 
+  // One judgment for the whole run: the bundle's verdict and the result's ok both read it.
+  const judgment = judgeComputerUseRun(bundleBase, { dryRun, outcomes });
   const bundle = buildCuaRunBundle(bundleBase, {
+    judgment,
     dryRun,
     outcomes,
     laneSubjects,
@@ -277,6 +282,7 @@ export async function finishCuaRun(
     plan,
     rerunLineage,
     bundle,
+    judgment,
     observer,
     declaredVerdictFailure: scorerResult.declaredVerdictFailure,
     receivingWarnings,

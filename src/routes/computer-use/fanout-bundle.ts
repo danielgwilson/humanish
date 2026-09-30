@@ -23,7 +23,6 @@ import {
 } from "../../run/outcomes.js";
 import type { TaskFunnel } from "../../lab/tasks.js";
 import {
-  fanoutReviewVerdict,
   participantFactsOf,
   participantFeedbackCandidates,
   providerResourcesForOutcome,
@@ -57,15 +56,8 @@ function fanoutPlanEvents(args: CuaFanoutBundleArgs): RunEvent[] {
 
 function fanoutReview(args: CuaFanoutBundleArgs, streams: RunStream[]): ReviewSummary {
   const { specs, outcomes } = args;
-  // Worst-of review verdict across lanes; live fan-out must prove every lane.
-  const verdict =
-    args.inProgress === true
-      ? "contract_proof_only"
-      : fanoutReviewVerdict({
-          dryRun: args.dryRun,
-          expectedLaneCount: specs.length,
-          outcomes,
-        });
+  // The judge's verdict: live fan-out must prove every lane (judgeParticipants).
+  const verdict = args.verdict;
 
   const passedLanes = (outcomes ?? []).filter((outcome) =>
     participantPassed(participantFactsOf(outcome)),

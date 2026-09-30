@@ -4,6 +4,7 @@ import { ACTOR_TRACE_SCHEMA, type ActorTrace } from "../../../src/actors/contrac
 import type { CuaLoopResult } from "../../../src/actors/computer-use/loop.js";
 import { buildRunSource, type RunBundle } from "../../../src/run/bundle.js";
 import { buildCuaBundle } from "../../../src/routes/computer-use/single-bundle.js";
+import { verdictForStatus } from "../../../src/run/judge.js";
 
 // The single-lane bundle says where the participant's browser ran. That place comes from the
 // lane's runner (its substrate), so a local VM run is not described as a hosted desktop.
@@ -46,6 +47,7 @@ type Runner = "e2b-desktop" | "local-desktop" | "local-filesystem";
 
 async function bundle(runner: Runner, state: "finished" | "running"): Promise<RunBundle> {
   return buildCuaBundle({
+    verdict: state === "finished" ? verdictForStatus(session.status) : "contract_proof_only",
     actorId: "openai-computer-use",
     appUrl: "http://127.0.0.1:3000/",
     createdAt: "2026-01-01T00:00:00.000Z",
