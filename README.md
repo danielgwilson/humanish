@@ -27,12 +27,13 @@ in a small task app: 15 of 15 across three live runs
 ([benchmark](bench/RESULTS-2026-09-04-0.76.0.md)). Precision on apps the
 maintainer did not write: TodoMVC 5 of 6 findings confirmed against the source,
 drawDB 11 of 12, none invented
-([TodoMVC](bench/RESULTS-TODOMVC-2026-09-01.md)). Cold install to a live study:
-9 of 9 fresh directories in under three minutes at $0.16 to $0.35 each
-([receipt](docs/goals/computer-use-actor/receipts/cold-install-try-live-2026-09-01.md)).
-Same mission, different personas: keyboard-first participants blocked at drawDB's
-database modal 5 of 5 times and at TodoMVC's rename 6 of 6; mouse newcomers 0 of 5
-and 0 of 6 ([receipt](docs/goals/computer-use-actor/receipts/persona-axis-phone-2026-09-03.md)).
+([TodoMVC](bench/RESULTS-TODOMVC-2026-09-01.md), [drawDB](bench/RESULTS-DRAWDB-2026-09-01.md)).
+Cold install to a live study: 9 of 9 fresh directories reached the goal in 108 to 200 seconds;
+the five on the API route cost $0.16 to $0.35 each, and the four on Codex or Claude Code are
+unpriced ([receipt](docs/goals/computer-use-actor/receipts/cold-install-try-live-2026-09-01.md)).
+Same mission, different personas: keyboard-first participants reported drawDB's
+database modal 5 of 5 times and TodoMVC's mouse-only rename 6 of 6; mouse newcomers
+reported them 0 of 5 and 0 of 6 ([receipt](docs/goals/computer-use-actor/receipts/persona-axis-phone-2026-09-03.md)).
 Planted defects are more legible than real ones and the largest cell is six runs;
 read these as what the machinery found, not as rates for your users.
 
