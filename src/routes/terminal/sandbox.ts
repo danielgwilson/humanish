@@ -3,7 +3,6 @@ import {
   E2BDesktopStartupError,
   isSandboxNotFoundError,
   type E2BDesktopModule,
-  type E2BDesktopSandbox,
 } from "../../substrates/e2b/desktop-launch.js";
 import type { TerminalLedgers } from "./types.js";
 
@@ -18,7 +17,8 @@ import type { TerminalLedgers } from "./types.js";
  */
 export async function teardownSandbox(args: {
   sandboxModule: E2BDesktopModule | undefined;
-  sandbox: E2BDesktopSandbox | undefined;
+  /** The id captured when the sandbox was acquired, never re-read from the mutable handle. */
+  sandboxId: string | undefined;
   startupCleanup?: E2BDesktopStartupError["cleanup"];
   requestTimeoutMs: number;
   sanitize: (text: string) => string;
@@ -27,14 +27,14 @@ export async function teardownSandbox(args: {
 }): Promise<TerminalLedgers["cleanup"]> {
   const {
     sandboxModule,
-    sandbox,
+    sandboxId,
     startupCleanup,
     requestTimeoutMs,
     sanitize,
     recordLifecycle,
     warnings,
   } = args;
-  if (!sandbox || !sandboxModule) {
+  if (sandboxId === undefined || !sandboxModule) {
     // create() can reject AFTER its constructor acquired a handle. The default loader retains
     // that authority and reclaims it before rejecting; the lane itself never receives its ID.
     if (startupCleanup === "killed" || startupCleanup === "already_gone") {
@@ -60,8 +60,7 @@ export async function teardownSandbox(args: {
 
   let killResult = false;
   try {
-    killResult =
-      (await sandboxModule.Sandbox.kill(sandbox.sandboxId, { requestTimeoutMs })) === true;
+    killResult = (await sandboxModule.Sandbox.kill(sandboxId, { requestTimeoutMs })) === true;
   } catch (error) {
     const sanitizedError = sanitize(toErrorMessage(error));
     warnings.push(
@@ -69,7 +68,7 @@ export async function teardownSandbox(args: {
     );
     recordLifecycle(
       "terminal-lab.cleanup.kill_error",
-      `Sandbox ${sandbox.sandboxId} kill(id) failed: ${sanitizedError}`,
+      `Sandbox ${sandboxId} kill(id) failed: ${sanitizedError}`,
     );
     return {
       killed: false,
@@ -91,7 +90,7 @@ export async function teardownSandbox(args: {
   if (typeof sandboxModule.Sandbox.getInfo !== "function") {
     recordLifecycle(
       "terminal-lab.cleanup.killed",
-      `Sandbox ${sandbox.sandboxId} reclaimed: ${killNote}; the installed SDK has no getInfo(id) to re-verify, so kill(id)'s own result is the proof.`,
+      `Sandbox ${sandboxId} reclaimed: ${killNote}; the installed SDK has no getInfo(id) to re-verify, so kill(id)'s own result is the proof.`,
     );
     return {
       killed: true,
@@ -101,11 +100,11 @@ export async function teardownSandbox(args: {
   }
 
   try {
-    const info = await sandboxModule.Sandbox.getInfo(sandbox.sandboxId, { requestTimeoutMs });
+    const info = await sandboxModule.Sandbox.getInfo(sandboxId, { requestTimeoutMs });
     const state = info.state ?? "unknown";
     recordLifecycle(
       "terminal-lab.cleanup.unconfirmed",
-      `Sandbox ${sandbox.sandboxId} ${killNote}, but getInfo(id) still reports state=${state} (not confirmed reclaimed by id).`,
+      `Sandbox ${sandboxId} ${killNote}, but getInfo(id) still reports state=${state} (not confirmed reclaimed by id).`,
     );
     return {
       killed: true,
@@ -116,7 +115,7 @@ export async function teardownSandbox(args: {
     if (isSandboxNotFoundError(error)) {
       recordLifecycle(
         "terminal-lab.cleanup.verified",
-        `Sandbox ${sandbox.sandboxId} reclaimed; getInfo(id) confirms it no longer exists (SandboxNotFoundError) -- by exact id, never re-listed.`,
+        `Sandbox ${sandboxId} reclaimed; getInfo(id) confirms it no longer exists (SandboxNotFoundError) -- by exact id, never re-listed.`,
       );
       return {
         killed: true,
@@ -130,7 +129,7 @@ export async function teardownSandbox(args: {
     const sanitizedError = sanitize(toErrorMessage(error));
     recordLifecycle(
       "terminal-lab.cleanup.killed",
-      `Sandbox ${sandbox.sandboxId} reclaimed: ${killNote}; getInfo(id) re-verification errored (${sanitizedError}), so kill(id)'s resolved result is the proof.`,
+      `Sandbox ${sandboxId} reclaimed: ${killNote}; getInfo(id) re-verification errored (${sanitizedError}), so kill(id)'s resolved result is the proof.`,
     );
     return {
       killed: true,

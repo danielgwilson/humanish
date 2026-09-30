@@ -587,7 +587,7 @@ export async function runLiveTerminalSession(
     // --- Safety contract item 8: PROVEN cleanup, BY EXACT ID, never Sandbox.list. ---
     cleanup = await teardownSandbox({
       sandboxModule,
-      sandbox,
+      sandboxId,
       ...(startupCleanup === undefined ? {} : { startupCleanup }),
       requestTimeoutMs,
       sanitize,

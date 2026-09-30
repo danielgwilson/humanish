@@ -63,6 +63,8 @@ interface FakeProvider {
 function fakeProvider(behavior: {
   afterAllocate?: (sandboxId: string) => Promise<void>;
   rejectAfterAllocate?: boolean;
+  /** The first command rewrites the handle's id, as a misbehaving hook or SDK could. */
+  rewriteHandleId?: boolean;
 }): FakeProvider {
   const allocated: FakeProvider["allocated"] = [];
   const killed: string[] = [];
@@ -74,11 +76,17 @@ function fakeProvider(behavior: {
         await behavior.afterAllocate?.(sandboxId);
         if (behavior.rejectAfterAllocate)
           throw new Error("provider response lost after allocation");
-        return {
+        const handle = {
           sandboxId,
-          commands: { run: async () => ({ exitCode: 1, stdout: "", stderr: "synthetic failure" }) },
+          commands: {
+            run: async () => {
+              if (behavior.rewriteHandleId) handle.sandboxId = "sb-unrelated";
+              return { exitCode: 1, stdout: "", stderr: "synthetic failure" };
+            },
+          },
           files: { write: async () => undefined },
         };
+        return handle;
       },
       async kill(sandboxId: string) {
         killed.push(sandboxId);
@@ -87,6 +95,80 @@ function fakeProvider(behavior: {
     },
   } as unknown as E2BDesktopModule;
   return { module, allocated, killed };
+}
+
+/**
+ * Run the live terminal route in a child process whose every exec hangs, wait until the sandbox
+ * receipt lands, then SIGKILL the child. Resolves with how the child exited.
+ */
+async function killRouteAfterReceipt(
+  cwd: string,
+  runDir: string,
+): Promise<NodeJS.Signals | number | null> {
+  const root = fileURLToPath(new URL("../../../", import.meta.url));
+  const script = `
+    const { runTerminalProductLab } = await import(${JSON.stringify(path.join(root, "src/routes/terminal/lab.ts"))});
+    const { parseLabConfig } = await import(${JSON.stringify(path.join(root, "src/lab/config.ts"))});
+    const parsed = parseLabConfig(JSON.parse(process.env.BOUNDARY_LAB));
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    const module = {
+      Sandbox: {
+        async create() {
+          return {
+            sandboxId: "sb-boundary-orphan",
+            // Every exec hangs on an open handle, as a stuck provider socket would, so the run
+            // is inside the sandbox when it is killed.
+            commands: { run: () => new Promise(() => setInterval(() => {}, 60_000)) },
+            files: { write: async () => undefined },
+          };
+        },
+        async kill() { return true; },
+      },
+    };
+    await runTerminalProductLab({
+      cwd: process.env.BOUNDARY_CWD,
+      config: parsed.config,
+      dryRun: false,
+      open: false,
+      runId: process.env.BOUNDARY_RUN_ID,
+      hooks: { loadModule: async () => module, env: ${JSON.stringify(env)} },
+    });
+  `;
+  const child = spawn(
+    process.execPath,
+    ["--import", "tsx", "--input-type=module", "--eval", script],
+    {
+      cwd: root,
+      env: {
+        ...process.env,
+        BOUNDARY_CWD: cwd,
+        BOUNDARY_RUN_ID: RUN_ID,
+        BOUNDARY_LAB: JSON.stringify(labInput),
+      },
+      stdio: ["ignore", "ignore", "pipe"],
+    },
+  );
+  let stderr = "";
+  child.stderr.on("data", (chunk: Buffer) => {
+    stderr += chunk.toString("utf8");
+  });
+  const exited = new Promise<NodeJS.Signals | number | null>((resolve) => {
+    child.on("exit", (code, signal) => resolve(signal ?? code));
+  });
+  try {
+    await vi.waitFor(
+      async () => {
+        const text = await readFile(path.join(runDir, SANDBOX_RECEIPTS_ARTIFACT), "utf8").catch(
+          () => "",
+        );
+        expect(text, stderr).toContain('"sandboxId":"sb-boundary-orphan"');
+      },
+      { timeout: 15_000, interval: 50 },
+    );
+  } finally {
+    child.kill("SIGKILL");
+  }
+  return exited;
 }
 
 describe("terminal sandbox acquisition boundary", () => {
@@ -129,88 +211,30 @@ describe("terminal sandbox acquisition boundary", () => {
     expect(loadModule).not.toHaveBeenCalled();
   });
 
-  it("B2: after the receipt lands and the process dies, reclaim kills the recorded id", async () => {
-    const root = fileURLToPath(new URL("../../../", import.meta.url));
-    const script = `
-      const { runTerminalProductLab } = await import(${JSON.stringify(path.join(root, "src/routes/terminal/lab.ts"))});
-      const { parseLabConfig } = await import(${JSON.stringify(path.join(root, "src/lab/config.ts"))});
-      const parsed = parseLabConfig(JSON.parse(process.env.BOUNDARY_LAB));
-      if (!parsed.ok) throw new Error(parsed.error.message);
-      const module = {
-        Sandbox: {
-          async create() {
-            return {
-              sandboxId: "sb-boundary-orphan",
-              // Every exec hangs on an open handle, as a stuck provider socket would, so the run
-              // is inside the sandbox when it is killed.
-              commands: { run: () => new Promise(() => setInterval(() => {}, 60_000)) },
-              files: { write: async () => undefined },
-            };
-          },
-          async kill() { return true; },
-        },
-      };
-      await runTerminalProductLab({
-        cwd: process.env.BOUNDARY_CWD,
-        config: parsed.config,
-        dryRun: false,
-        open: false,
-        runId: process.env.BOUNDARY_RUN_ID,
-        hooks: { loadModule: async () => module, env: ${JSON.stringify(env)} },
-      });
-    `;
-    const child = spawn(
-      process.execPath,
-      ["--import", "tsx", "--input-type=module", "--eval", script],
-      {
-        cwd: root,
-        env: {
-          ...process.env,
-          BOUNDARY_CWD: cwd,
-          BOUNDARY_RUN_ID: RUN_ID,
-          BOUNDARY_LAB: JSON.stringify(labInput),
-        },
-        stdio: ["ignore", "ignore", "pipe"],
-      },
-    );
-    let stderr = "";
-    child.stderr.on("data", (chunk: Buffer) => {
-      stderr += chunk.toString("utf8");
-    });
-    const exited = new Promise<NodeJS.Signals | number | null>((resolve) => {
-      child.on("exit", (code, signal) => resolve(signal ?? code));
-    });
-    try {
-      await vi.waitFor(
-        async () => {
-          const text = await readFile(path.join(runDir, SANDBOX_RECEIPTS_ARTIFACT), "utf8").catch(
-            () => "",
-          );
-          expect(text, stderr).toContain('"sandboxId":"sb-boundary-orphan"');
-        },
-        { timeout: 15_000, interval: 50 },
-      );
-    } finally {
-      child.kill("SIGKILL");
-    }
-    expect(await exited).toBe("SIGKILL");
+  it("tears down the id captured at create, not whatever the handle says later", async () => {
+    const provider = fakeProvider({ rewriteHandleId: true });
 
-    const killed: string[] = [];
-    const reclaim = await reclaimRunSandboxes(cwd, RUN_ID, {
-      loadModule: async () =>
-        ({
-          Sandbox: {
-            create: async () => {
-              throw new Error("reclaim never creates sandboxes");
-            },
-            kill: async (sandboxId: string) => {
-              killed.push(sandboxId);
-              return true;
-            },
-          },
-        }) as unknown as E2BDesktopModule,
+    await runTerminalProductLab({
+      cwd,
+      config: labConfig(),
+      dryRun: false,
+      open: false,
+      runId: RUN_ID,
+      hooks: { loadModule: async () => provider.module, env },
     });
-    expect(killed).toEqual(["sb-boundary-orphan"]);
+
+    expect(provider.killed).toEqual(["sb-boundary-1"]);
+  });
+
+  it("B2: after the receipt lands and the process dies, reclaim kills the recorded id", async () => {
+    expect(await killRouteAfterReceipt(cwd, runDir)).toBe("SIGKILL");
+
+    const provider = fakeProvider({});
+    const reclaim = await reclaimRunSandboxes(cwd, RUN_ID, {
+      loadModule: async () => provider.module,
+    });
+    expect(provider.allocated).toEqual([]);
+    expect(provider.killed).toEqual(["sb-boundary-orphan"]);
     expect(reclaim.outcomes).toEqual([
       { sandboxId: "sb-boundary-orphan", laneId: "terminal", state: "killed" },
     ]);

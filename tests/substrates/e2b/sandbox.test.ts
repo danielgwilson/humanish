@@ -252,6 +252,32 @@ describe("E2B sandbox receipts", () => {
     ]);
   });
 
+  it.each([
+    [
+      "desktop",
+      "a throwing clock",
+      acquireE2BDesktopSandbox,
+      () => {
+        throw new Error("synthetic clock failure");
+      },
+    ],
+    ["shell", "an invalid clock", acquireE2BShellSandbox, () => Number.NaN],
+  ])(
+    "releases the %s sandbox when %s fails the receipt after create",
+    async (_kind, _clock, acquireSandbox, now) => {
+      const f = fixture();
+      const error = await acquireSandbox({
+        module: f.module,
+        options: { apiKey: "synthetic" },
+        receipt: { root, laneId: "lane-01", now },
+      }).catch((value: unknown) => value);
+      expect(error).toBeInstanceOf(Error);
+      expect(f.create).toHaveBeenCalledOnce();
+      expect(f.kill).toHaveBeenCalledExactlyOnceWith("owned-desktop", { requestTimeoutMs: 60_000 });
+      expect(f.list).not.toHaveBeenCalled();
+    },
+  );
+
   it("still returns the handle when the receipt cannot be written", async () => {
     await mkdir(path.join(cwd, "run", SANDBOX_RECEIPTS_ARTIFACT));
     const f = fixture();

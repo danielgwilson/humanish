@@ -69,17 +69,24 @@ async function acquire(
     request.retry,
   );
   const allocation = ownE2BSandbox(module, sandbox.sandboxId);
-  if (request.receipt !== null) {
-    const { root, laneId, now = Date.now } = request.receipt;
-    // Best effort by contract: a failed write leaves the TTL as the only backstop and never
-    // fails the lane.
-    await appendSandboxReceipt(root, {
-      at: new Date(now()).toISOString(),
-      laneId,
-      provider: "e2b",
-      sandboxId: allocation.resourceId,
-      ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
-    });
+  try {
+    if (request.receipt !== null) {
+      const { root, laneId, now = Date.now } = request.receipt;
+      // Best effort by contract: a failed write leaves the TTL as the only backstop and never
+      // fails the lane.
+      await appendSandboxReceipt(root, {
+        at: new Date(now()).toISOString(),
+        laneId,
+        provider: "e2b",
+        sandboxId: allocation.resourceId,
+        ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
+      });
+    }
+  } catch (error) {
+    // The caller never receives this sandbox, so release it here. A throwing or invalid injected
+    // clock is the known case.
+    await allocation.close();
+    throw error;
   }
   return { sandbox, allocation };
 }
