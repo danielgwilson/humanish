@@ -129,7 +129,11 @@ import {
 } from "../../observer/render.js";
 import { redactText, scrubLiterals } from "../../evidence/redaction.js";
 import { participantAssignment } from "../../lab/participant-assignment.js";
-import { writeContainedOutputFile } from "../../run/selected-output-paths.js";
+import {
+  prepareSelectedOutputDirectory,
+  writeContainedOutputFile,
+} from "../../run/selected-output-paths.js";
+import { realpath } from "node:fs/promises";
 import { combineCheckpointDigest, runCheckpointSnapshot, seedRecipeDigest } from "./checkpoints.js";
 import { type SharedWorldLabHooks } from "./hooks.js";
 import type { LocalTreeArchive } from "../../run/source-archive.js";
@@ -760,7 +764,7 @@ async function runConcurrentSharedWorldInScope(
   scope: RunScope,
 ): Promise<ConcurrentSharedWorldLabResult> {
   const { config, dryRun } = options;
-  const cwd = path.resolve(options.cwd);
+  const requestedCwd = path.resolve(options.cwd);
   const hooks = options.hooks ?? {};
   const env = hooks.env ?? process.env;
   const actorType = config.actors[0]?.type ?? "";
@@ -777,7 +781,7 @@ async function runConcurrentSharedWorldInScope(
   ): ConcurrentSharedWorldLabResult => ({
     schema: CONCURRENT_SHARED_WORLD_LAB_SCHEMA,
     ok: false,
-    cwd,
+    cwd: requestedCwd,
     labId: config.id,
     actor: actorLabel ?? actorType,
     topology: "shared-world",
@@ -896,6 +900,12 @@ async function runConcurrentSharedWorldInScope(
     }
   }
 
+  // Bind the physical project before the run starts, as the computer-use route does. Everything
+  // below (run storage, source and persona reads, local-tree packing, comms, the Observer) uses it,
+  // so retargeting a symlinked cwd from a hook cannot redirect any of it into another project.
+  const physicalCwd = await realpath(requestedCwd);
+  const cwd = (await prepareSelectedOutputDirectory(path.dirname(physicalCwd), physicalCwd))
+    .physicalPath;
   const started = await scope.startRun({
     cwd,
     runId: options.runId,
