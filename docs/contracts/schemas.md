@@ -998,10 +998,11 @@ Core meters only the `provider` line, populated from the actor trace's
 `tokenUsage.costUsd` when present (else `null`); `product`/`media`/`payment`
 remain `null` unless an adapter supplies those signals through the shipped
 cost-probe seam. The terminal lane records the model as `codex` and does not pin Codex's
-model, so a measured token count stays `usd: null` with `source: unpriced-token-usage`. E2B
-time for the terminal sandbox has no line, and the run bundle carries no `cost` block, so
-`knownTotalUsd: 0` with `fullyMeasured: false` means no line was priced and the run's spend
-is unknown.
+model, so a measured token count stays `usd: null` with `source: unpriced-token-usage`, and
+`knownTotalUsd: 0` with `fullyMeasured: false` means no line of this ledger was priced. E2B
+time for the terminal sandbox is not a line of this ledger, whose lines are checked against
+`scenario.caps.maxUsd`. The run bundle's `cost` summary prices it as a `desktop-minutes`
+line (see Run Cost Summary And Estimated Actor Cost below).
 
 ```yaml
 schema: humanish.terminal-cost-ledger.v1
@@ -1151,6 +1152,12 @@ never authoritative: every dollar figure is a rate-table multiply, labeled
   Failed metadata reads record `resourceUnavailableReason`; no resource guess is used.
   Resource metadata and missing/unsupported rates produce a null line. A kept or
   unconfirmed allocation adds `desktop_lifetime_incomplete` as a second null line.
+  Live terminal-product runs emit the same summary: one `desktop-minutes` line for
+  the E2B shell sandbox (its acquired-to-cleanup span and `e2b.getInfo` size) and
+  one `model-tokens` line for the Codex participant, which stays `null` with
+  `no_rate_for_model` (model `codex`) or `no_token_usage`. The terminal trace
+  records that same null `estimatedCost`. The sandbox line is not part of the
+  terminal cost ledger, whose lines are checked against `scenario.caps.maxUsd`.
 
 The summary follows the SAME null discipline as the terminal cost ledger above.
 `estimatedTotalUsd` sums ONLY the non-null `breakdown` lines and is `null` iff

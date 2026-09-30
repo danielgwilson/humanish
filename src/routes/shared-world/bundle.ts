@@ -25,7 +25,7 @@ import {
 } from "../../run/shared-world-evidence.js";
 import type { RunStream } from "../../run/streams.js";
 import { commandDigestOf } from "../../subject/state.js";
-import { buildCuaCostSummary, desktopSpanToMinutes } from "../computer-use/costs.js";
+import { buildRunCostSummary, desktopSpanToMinutes } from "../../run/cost-summary.js";
 import { combineCheckpointDigest } from "./checkpoints.js";
 import { hostOriginDigest } from "./provenance.js";
 import { seatRecords } from "./seat-records.js";
@@ -490,7 +490,7 @@ function concurrentCostSummary(
 ): RunCostSummary | undefined {
   if (inProgress) return undefined;
   const subject = args.subjectDesktop;
-  return buildCuaCostSummary({
+  return buildRunCostSummary({
     lanes: args.actorResults.flatMap((result) =>
       result.outcome.session === undefined
         ? []

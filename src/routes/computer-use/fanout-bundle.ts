@@ -40,7 +40,7 @@ import {
   providerResourcesForOutcome,
   publicSafeAppUrlLabel,
 } from "./bundle.js";
-import { buildCuaCostSummary, desktopSpanToMinutes } from "./costs.js";
+import { buildRunCostSummary, desktopSpanToMinutes } from "../../run/cost-summary.js";
 import { formatLanePlanEntry, phaseEventIdSuffix } from "./lane-plan.js";
 import type { CuaLanePlan, CuaLaneSpec, CuaSubjectProjection, LaneRunOutcome } from "./types.js";
 
@@ -539,7 +539,7 @@ export function buildCuaFanoutBundle(args: {
       observation: outcome.desktopResources,
       lifetimeComplete: outcome.killed,
     }));
-  const cost = buildCuaCostSummary({ lanes: costLanes, desktops });
+  const cost = buildRunCostSummary({ lanes: costLanes, desktops });
 
   return {
     schema: RUN_BUNDLE_SCHEMA,

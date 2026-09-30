@@ -5,7 +5,7 @@ import {
   type CuaTurn,
   type CuaTurnRequest,
 } from "../../../src/actors/computer-use/loop.js";
-import { buildCuaCostSummary } from "../../../src/routes/computer-use/costs.js";
+import { buildRunCostSummary } from "../../../src/run/cost-summary.js";
 import type { ActorTokenUsage } from "../../../src/actors/contract.js";
 import { CuaProviderError } from "../../../src/actors/computer-use/provider-error.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
@@ -192,7 +192,7 @@ describe("single-dispatch participant request lifetime", () => {
     expect(s.execute).not.toHaveBeenCalled();
     expect(snapshots.at(-1)).not.toHaveProperty("output");
     expect(snapshots.at(-1)).not.toHaveProperty("total");
-    const summary = buildCuaCostSummary({ lanes: [{ laneId: "synthetic", trace: r.trace }] });
+    const summary = buildRunCostSummary({ lanes: [{ laneId: "synthetic", trace: r.trace }] });
     expect(summary?.tokenUsage).toEqual({ input: 7 });
     expect(summary?.fullyEstimated).toBe(false);
   });

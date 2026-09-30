@@ -23,6 +23,12 @@ import {
 import { acquireE2BShellSandbox } from "../../substrates/e2b/sandbox.js";
 import { shellQuote } from "../../substrates/shell.js";
 import {
+  observeDesktopResources,
+  type DesktopResourceObservation,
+} from "../../substrates/e2b/desktop-resources.js";
+import { buildRunCostSummary, desktopSpanToMinutes } from "../../run/cost-summary.js";
+import { estimateActorCost } from "../../run/pricing.js";
+import {
   personaBrief,
   personaToDirectives,
   renderPersonaPromptSection,
@@ -181,6 +187,10 @@ export async function runLiveTerminalSession(
   let sandbox: E2BDesktopSandbox | undefined;
   let sandboxModule: E2BDesktopModule | undefined;
   let sandboxId: string | undefined;
+  // The sandbox's billed span (acquired to cleanup) and size price its compute time.
+  let sandboxCreatedAtMs: number | undefined;
+  let sandboxTornDownAtMs: number | undefined;
+  let sandboxResources: DesktopResourceObservation | undefined;
   let sessionStatus: ActorStatus = "failed";
   let completionReason: ActorCompletionReason = "harness_error";
   let sessionReason = "live terminal-product session did not start";
@@ -248,11 +258,18 @@ export async function runLiveTerminalSession(
     });
     sandbox = acquired.sandbox;
     sandboxId = acquired.allocation.resourceId;
+    sandboxCreatedAtMs = now();
     await validatePreparedRunArtifactPaths(runPaths);
     recordLifecycle(
       "terminal-lab.sandbox.created",
       `E2B shell sandbox ${sandboxId} created with positive-allowlist metadata and kill-on-timeout; NO sandbox-global env.`,
     );
+    sandboxResources = await observeDesktopResources(sandbox);
+    if ("reason" in sandboxResources) {
+      warnings.push(
+        `Sandbox resource size unavailable (${sandboxResources.reason}); its compute cost remains unpriced.`,
+      );
+    }
     // The allowlist is evidence: a reader of the ledger can see exactly what the participant was
     // able to reach, without the ledger carrying any secret.
     recordLifecycle(
@@ -571,6 +588,7 @@ export async function runLiveTerminalSession(
       recordLifecycle,
       warnings,
     });
+    if (sandboxCreatedAtMs !== undefined) sandboxTornDownAtMs = now();
   }
 
   // Prefix reconciliation may cut through a known key. Scrub literal values across the retained
@@ -601,6 +619,8 @@ export async function runLiveTerminalSession(
     runtime,
     ...(terminalTokenUsage === undefined ? {} : { tokenUsage: terminalTokenUsage }),
   });
+  // Codex tokens stay unpriced: the lane records its model as `codex`, which has no rate.
+  trace.estimatedCost = estimateActorCost(trace.tokenUsage, trace.provider);
 
   // --- Spend ledger + no-spend proof + full caps enforcement (fail-closed). ---
   // The cost ledger is DERIVED, with the null discipline: provider spend from the trace's
@@ -663,6 +683,28 @@ export async function runLiveTerminalSession(
 
   await writeTerminalEvidence(runPaths, { terminalEvents, normalizedTranscript, ledgers, trace });
 
+  // The run cost summary, as the computer-use route records it: the sandbox's compute time from
+  // its span and observed size, and the participant's tokens (unpriced for Codex). It is not part
+  // of the cap ledger above, whose lines sum against scenario.caps.maxUsd.
+  const runCost = buildRunCostSummary({
+    lanes: [{ trace }],
+    ...(sandboxCreatedAtMs === undefined
+      ? {}
+      : {
+          desktops: [
+            {
+              minutes: desktopSpanToMinutes(
+                sandboxTornDownAtMs === undefined
+                  ? undefined
+                  : Math.max(0, sandboxTornDownAtMs - sandboxCreatedAtMs),
+              ),
+              observation: sandboxResources,
+              lifetimeComplete: cleanup.remaining === 0,
+            },
+          ],
+        }),
+  });
+
   const bundle = buildLiveTerminalProductBundle({
     ...(options.lab === undefined ? {} : { lab: options.lab }),
     actorId: descriptorId,
@@ -686,6 +728,7 @@ export async function runLiveTerminalSession(
     source,
     trace,
     ledgers,
+    ...(runCost === undefined ? {} : { cost: runCost }),
     ...(sandboxId ? { sandboxId } : {}),
     ...(sessionError ? { sessionError } : {}),
     sessionReason: sanitize(sessionReason),

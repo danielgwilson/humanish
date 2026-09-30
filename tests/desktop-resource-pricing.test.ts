@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { buildCuaCostSummary } from "../src/routes/computer-use/costs.js";
+import { buildRunCostSummary } from "../src/run/cost-summary.js";
 import { observeDesktopResources } from "../src/substrates/e2b/desktop-resources.js";
 import { estimateAllocatedDesktopCost } from "../src/run/pricing.js";
 
@@ -24,7 +24,7 @@ describe("observed desktop resources", () => {
         lifetimeComplete: true,
       })),
     );
-    const cost = buildCuaCostSummary({ lanes: [], desktops })!;
+    const cost = buildRunCostSummary({ lanes: [], desktops })!;
     expect(cost.estimatedTotalUsd).toBe(0.01776);
     expect(cost.desktopMinutes).toBe(2);
     expect(cost.fullyEstimated).toBe(true);
@@ -46,7 +46,7 @@ describe("observed desktop resources", () => {
 
   it("prices mixed custom sizes per allocation and keeps unknown lanes out of the known subtotal", async () => {
     const observed = await observeDesktopResources({ getInfo: async () => captured[0]! });
-    const cost = buildCuaCostSummary({
+    const cost = buildRunCostSummary({
       lanes: [],
       desktops: [
         { laneId: "stock", minutes: 2, observation: observed, lifetimeComplete: true },
@@ -79,7 +79,7 @@ describe("observed desktop resources", () => {
   });
 
   it("keeps the observed span but records unknown remaining lifetime after unconfirmed cleanup", () => {
-    const cost = buildCuaCostSummary({
+    const cost = buildRunCostSummary({
       lanes: [],
       desktops: [
         {
@@ -119,8 +119,8 @@ describe("observed desktop resources", () => {
   });
 
   it("keeps no-allocation previews absent and a legacy helper assumption labeled", () => {
-    expect(buildCuaCostSummary({ lanes: [], desktops: [] })).toBeUndefined();
-    const legacy = buildCuaCostSummary({ lanes: [], desktopMinutes: 1 })!;
+    expect(buildRunCostSummary({ lanes: [], desktops: [] })).toBeUndefined();
+    const legacy = buildRunCostSummary({ lanes: [], desktopMinutes: 1 })!;
     expect(legacy.estimatedTotalUsd).toBe(0.00888);
     expect(legacy.placeholder).toBe(true);
     expect(legacy.breakdown[0]!.source).toContain("planning assumption");

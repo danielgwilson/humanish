@@ -5,7 +5,7 @@ import {
   type CuaProvider,
   type CuaTurn,
 } from "../../../src/actors/computer-use/loop.js";
-import { buildCuaCostSummary } from "../../../src/routes/computer-use/costs.js";
+import { buildRunCostSummary } from "../../../src/run/cost-summary.js";
 import {
   resolveSelfReportedBlocker,
   resolveSelfReportedFriction,
@@ -124,7 +124,7 @@ describe("read-only participant debrief", () => {
       ratesAsOf: "2026-09-03",
       modelId: "internal-fixture",
     };
-    const cost = buildCuaCostSummary({ lanes: [{ trace: result.trace }] });
+    const cost = buildRunCostSummary({ lanes: [{ trace: result.trace }] });
     expect(cost?.fullyEstimated).toBe(true);
     expect(cost?.breakdown).toHaveLength(1);
     expect(cost?.breakdown[0]?.estimatedCostUsd).toBe(0.02);
@@ -312,7 +312,7 @@ describe("read-only participant debrief", () => {
       ratesAsOf: "2026-09-03",
       modelId: "internal-fixture",
     };
-    const cost = buildCuaCostSummary({
+    const cost = buildRunCostSummary({
       lanes: [{ laneId: "lane-1", trace: result.trace }],
       desktopMinutes: undefined,
     });
@@ -372,7 +372,7 @@ describe("read-only participant debrief", () => {
       expect(result.trace.debrief?.usageReported).toBe(false);
       expect(Number.isFinite(result.trace.tokenUsage?.input)).toBe(true);
       expect(Number.isFinite(result.trace.tokenUsage?.output)).toBe(true);
-      const cost = buildCuaCostSummary({
+      const cost = buildRunCostSummary({
         lanes: [{ trace: result.trace }],
         desktopMinutes: undefined,
       });

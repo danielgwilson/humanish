@@ -229,7 +229,7 @@ enters this field; identity is digests, a sha, a boolean, and counts.
 ## Cost Estimate (advisory)
 
 `cost` is optional and additive (`humanish.run-cost-summary.v1`): the
-computer-use lane's run-level cost ESTIMATE: the sum of each lane's
+computer-use or terminal-product run's cost ESTIMATE: the sum of each lane's
 token-derived model cost plus E2B desktop compute lines. New independent CUA runs
 emit one line per owned desktop, keyed by public lane ID and carrying observed CPU/memory,
 resource source, host-measured minutes, and the derived per-second rate. Concurrent
@@ -248,10 +248,12 @@ Dry runs omit `cost`. A live run that spends nothing records an explicit zero: n
 `breakdown` lines, `estimatedTotalUsd: 0`, `ratesAsOf: null` and `fullyEstimated: true`.
 A local scripted run (no model request, no hosted desktop) is such a run; a scripted run on
 a provisioned clone records the clone's desktop as a `laneId: subject` line. A live bundle
-without `cost` has an unmeasured spend. Terminal runs write no `cost` block: their
-`terminal-ledgers.json` counts Codex tokens but cannot price them, because the lane does not
-pin Codex's model, and E2B time for the terminal sandbox is not measured. Neither missing
-number is $0. Each lane's own estimate also rides its
+without `cost` has an unmeasured spend. A live terminal run's `cost` prices the E2B terminal
+sandbox as a `desktop-minutes` line from its acquired-to-cleanup span and `e2b.getInfo` size.
+Its Codex `model-tokens` line stays `null` (`no_rate_for_model`, model `codex`): the lane
+does not pin Codex's model, and `terminal-ledgers.json` counts those tokens without a price.
+So a terminal total is a lower bound (`fullyEstimated: false`), and the unpriced tokens are
+not $0. Each lane's own estimate also rides its
 `stream.actor.estimatedCost` (`humanish.actor-estimated-cost.v1`), kept distinct
 from the reserved provider-returned `tokenUsage.costUsd`. See
 [`schemas.md`](schemas.md) → Run Cost Summary And Estimated Actor Cost.

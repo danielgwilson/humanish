@@ -57,6 +57,7 @@
     },
     "warnings": [
       "Persona autonomous-creative-agent has no readable file under humanish/personas; using the id only (no persona context).",
+      "Sandbox resource size unavailable (metadata_unavailable); its compute cost remains unpriced.",
       "Observer renders verified local evidence artifacts; runtime stream auth URLs are not persisted.",
       "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
     ],
@@ -143,6 +144,12 @@
       "inProcessTools": false,
       "license": "open",
       "keyPlacement": "in-sandbox-command-scoped"
+    },
+    "estimatedCost": {
+      "schema": "humanish.actor-estimated-cost.v1",
+      "estimatedCostUsd": null,
+      "reason": "no_token_usage",
+      "ratesAsOf": null
     }
   },
   "events.ndjson": [
@@ -362,6 +369,40 @@
       "warnings": 0
     },
     "laneGroups": [],
+    "cost": {
+      "schema": "humanish.run-cost-summary.v1",
+      "currency": "usd",
+      "estimatedTotalUsd": null,
+      "ratesAsOf": null,
+      "fullyEstimated": false,
+      "placeholder": false,
+      "breakdown": [
+        {
+          "kind": "model-tokens",
+          "estimatedCostUsd": null,
+          "reason": "no_token_usage",
+          "ratesAsOf": null
+        },
+        {
+          "kind": "desktop-minutes",
+          "estimatedCostUsd": null,
+          "reason": "no_desktop_resources",
+          "ratesAsOf": null,
+          "desktop": {
+            "minutes": 0,
+            "durationBasis": "host-acquired-to-cleanup",
+            "resourceUnavailableReason": "metadata_unavailable"
+          }
+        }
+      ],
+      "tokenUsage": {
+        "input": 0,
+        "output": 0,
+        "total": 0
+      },
+      "desktopMinutes": 0,
+      "note": "No priced spend lines this run — every cost line is DECLARED ABSENT (unknown rate / no usage / no duration); nothing is guessed. Add a rate to src/run/pricing.ts to estimate this model. Desktop compute is unmeasured: no allocation CPU/RAM observation is available."
+    },
     "streams": [
       {
         "id": "stream-001",
@@ -459,6 +500,12 @@
             "inProcessTools": false,
             "license": "open",
             "keyPlacement": "in-sandbox-command-scoped"
+          },
+          "estimatedCost": {
+            "schema": "humanish.actor-estimated-cost.v1",
+            "estimatedCostUsd": null,
+            "reason": "no_token_usage",
+            "ratesAsOf": null
           }
         },
         "artifacts": [
@@ -1010,6 +1057,12 @@
             "inProcessTools": false,
             "license": "open",
             "keyPlacement": "in-sandbox-command-scoped"
+          },
+          "estimatedCost": {
+            "schema": "humanish.actor-estimated-cost.v1",
+            "estimatedCostUsd": null,
+            "reason": "no_token_usage",
+            "ratesAsOf": null
           }
         },
         "artifacts": [
@@ -1180,7 +1233,41 @@
         "No-spend proof not established for maxUsd=0: no spend line was measured. Not measured (null, not claimed zero): product, media, payment, provider. An adapter may supply the missing signals through costProbe."
       ]
     },
-    "feedbackCandidates": []
+    "feedbackCandidates": [],
+    "cost": {
+      "schema": "humanish.run-cost-summary.v1",
+      "currency": "usd",
+      "estimatedTotalUsd": null,
+      "ratesAsOf": null,
+      "fullyEstimated": false,
+      "placeholder": false,
+      "breakdown": [
+        {
+          "kind": "model-tokens",
+          "estimatedCostUsd": null,
+          "reason": "no_token_usage",
+          "ratesAsOf": null
+        },
+        {
+          "kind": "desktop-minutes",
+          "estimatedCostUsd": null,
+          "reason": "no_desktop_resources",
+          "ratesAsOf": null,
+          "desktop": {
+            "minutes": 0,
+            "durationBasis": "host-acquired-to-cleanup",
+            "resourceUnavailableReason": "metadata_unavailable"
+          }
+        }
+      ],
+      "tokenUsage": {
+        "input": 0,
+        "output": 0,
+        "total": 0
+      },
+      "desktopMinutes": 0,
+      "note": "No priced spend lines this run — every cost line is DECLARED ABSENT (unknown rate / no usage / no duration); nothing is guessed. Add a rate to src/run/pricing.ts to estimate this model. Desktop compute is unmeasured: no allocation CPU/RAM observation is available."
+    }
   },
   "sandbox-receipts.ndjson": [
     {
@@ -1201,7 +1288,8 @@
     "updatedAt": "[ts]",
     "completedAt": "[ts]",
     "outcome": {
-      "verdict": "pass"
+      "verdict": "pass",
+      "estimatedCostUsd": null
     }
   },
   "terminal-events.ndjson": [

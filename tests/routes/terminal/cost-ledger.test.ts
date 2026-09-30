@@ -10,6 +10,7 @@ import { runTerminalProductLab } from "../../../src/routes/terminal/lab.js";
 import { type TerminalProductLabHooks } from "../../../src/routes/terminal/types.js";
 import type { E2BDesktopModule } from "../../../src/substrates/e2b/desktop-launch.js";
 import { verifyRun } from "../../../src/run/verify.js";
+import { estimateAllocatedDesktopCost } from "../../../src/run/pricing.js";
 
 // SLICE 3 deterministic proof ($0, NO live E2B): the cost/spend ledger + the null-vs-zero-vs-absent
 // discipline + the no-spend proof DERIVED from the ledger + FULL caps enforcement (fail-closed).
@@ -21,6 +22,8 @@ const FAKE_RUNTIME_KEY = "FAKEKEY-terminal-slice3-do-not-leak-1234567890";
 function makeFakeModule(opts: {
   codexBehavior: (cmd: string) => { exitCode: number; stdout?: string };
   killed: string[];
+  /** The size an instance getInfo() reports; absent means the sandbox has no getInfo. */
+  size?: { cpuCount: number; memoryMB: number };
 }): E2BDesktopModule {
   let counter = 0;
   return {
@@ -57,6 +60,7 @@ function makeFakeModule(opts: {
           async screenshot() {
             return new Uint8Array();
           },
+          ...(opts.size === undefined ? {} : { getInfo: async () => ({ ...opts.size }) }),
           stream: {
             getAuthKey: () => "fake-auth",
             getUrl: () => "https://fake-stream",
@@ -440,5 +444,105 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
     expect(ledgers.cost.knownTotalUsd).toBe(0.5);
     expect(result.warnings.some((w) => /costProbe measures/.test(w))).toBe(true);
     expect(killed).toHaveLength(1);
+  });
+});
+
+describe("the terminal sandbox's compute time in the run cost summary", () => {
+  let cwd: string;
+  beforeEach(async () => {
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-tp-sandbox-cost-"));
+  });
+  afterEach(async () => {
+    await rm(cwd, { recursive: true, force: true });
+  });
+
+  // One turn of Codex usage, so the model line is unpriced for want of a rate, not of usage.
+  const codexWithUsage = (cmd: string) => ({
+    exitCode: 0,
+    stdout:
+      '{"type":"turn.completed","usage":{"input_tokens":1000,"cached_input_tokens":0,"output_tokens":100}}\n' +
+      `done\nHUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}`,
+  });
+
+  async function run(size?: { cpuCount: number; memoryMB: number }) {
+    const killed: string[] = [];
+    let clock = 1_000_000;
+    const result = await runTerminalProductLab({
+      cwd,
+      config: liveConfig({ maxUsd: 0, maxJobs: 0, maxMinutes: 10 }),
+      dryRun: false,
+      open: false,
+      hooks: {
+        env: baseEnv(),
+        // Each reading is one second later, so the sandbox span is positive.
+        now: () => (clock += 1_000),
+        loadModule: async () =>
+          makeFakeModule({
+            killed,
+            codexBehavior: codexWithUsage,
+            ...(size === undefined ? {} : { size }),
+          }),
+      },
+    });
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
+    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
+    const ledgers = JSON.parse(await readFile(path.join(runDir, "terminal-ledgers.json"), "utf8"));
+    return { result, cost: bundle.cost, ledgers };
+  }
+
+  it("prices a sized sandbox's span and leaves Codex tokens unpriced", async () => {
+    const { result, cost, ledgers } = await run({ cpuCount: 2, memoryMB: 2048 });
+    expect(result.ok).toBe(true);
+    const desktop = cost.breakdown.find(
+      (line: { kind: string }) => line.kind === "desktop-minutes",
+    );
+    expect(desktop.desktop).toMatchObject({
+      durationBasis: "host-acquired-to-cleanup",
+      resources: { cpuCount: 2, memoryMiB: 2048 },
+      resourceSource: "e2b.getInfo",
+    });
+    expect(desktop.desktop.minutes).toBeGreaterThan(0);
+    const expected = estimateAllocatedDesktopCost(desktop.desktop.minutes, {
+      cpuCount: 2,
+      memoryMiB: 2048,
+    });
+    expect(desktop.estimatedCostUsd).toBe(expected.estimatedCostUsd);
+    expect(desktop.estimatedCostUsd).toBeGreaterThan(0);
+    expect(cost.breakdown).toContainEqual({
+      kind: "model-tokens",
+      modelId: "codex",
+      estimatedCostUsd: null,
+      reason: "no_rate_for_model",
+      ratesAsOf: null,
+    });
+    expect(cost.estimatedTotalUsd).toBe(desktop.estimatedCostUsd);
+    expect(cost.fullyEstimated).toBe(false);
+    // The sandbox line is not part of the cap ledger: a maxUsd 0 run still passes its cap.
+    expect(Object.keys(ledgers.cost.lines).sort()).toEqual([
+      "media",
+      "payment",
+      "product",
+      "provider",
+    ]);
+    expect(ledgers.noSpendProof.satisfied).toBe(true);
+    const verified = await verifyRun(cwd, result.runId);
+    expect(verified.checks.find((c) => c.name === "cost estimate labeling")?.ok).toBe(true);
+  });
+
+  it("records an unsized sandbox's span as unpriced and says why", async () => {
+    const { result, cost } = await run();
+    expect(result.ok).toBe(true);
+    expect(result.warnings).toContain(
+      "Sandbox resource size unavailable (metadata_unavailable); its compute cost remains unpriced.",
+    );
+    const desktop = cost.breakdown.find(
+      (line: { kind: string }) => line.kind === "desktop-minutes",
+    );
+    expect(desktop).toMatchObject({
+      estimatedCostUsd: null,
+      reason: "no_desktop_resources",
+      desktop: { resourceUnavailableReason: "metadata_unavailable" },
+    });
+    expect(cost.estimatedTotalUsd).toBeNull();
   });
 });
