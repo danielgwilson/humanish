@@ -110,6 +110,12 @@ function asPoint(value: unknown): { x: number; y: number } {
   return { x: asNumber(point.x), y: asNumber(point.y) };
 }
 
+/** The keys a pointer action holds (`keys` on click, double_click, drag, move and scroll). */
+function heldKeysOf(record: Record<string, unknown>): { heldKeys?: string[] } {
+  const keys = asArray(record.keys).filter((key): key is string => typeof key === "string");
+  return keys.length === 0 ? {} : { heldKeys: keys };
+}
+
 /**
  * Map an OpenAI computer action object to a provider-neutral CuaAction, or null
  * for an unknown type. Every coordinate and field is read defensively so a
@@ -124,8 +130,10 @@ export function openAiActionToCua(action: unknown): CuaAction | null {
       // The API names the middle button `wheel`. Its back and forward buttons navigate the
       // browser's history wherever the pointer is, so they run as the same keyboard shortcuts;
       // the executors have no mouse button 8 or 9.
-      if (button === "back") return { kind: "keypress", keys: ["ALT", "LEFT"] };
-      if (button === "forward") return { kind: "keypress", keys: ["ALT", "RIGHT"] };
+      // Held keys join the shortcut, so a held key the shortcut repeats is refused, not dropped.
+      const held = heldKeysOf(record).heldKeys ?? [];
+      if (button === "back") return { kind: "keypress", keys: [...held, "ALT", "LEFT"] };
+      if (button === "forward") return { kind: "keypress", keys: [...held, "ALT", "RIGHT"] };
       return {
         kind: "click",
         x: asNumber(record.x),
@@ -136,12 +144,18 @@ export function openAiActionToCua(action: unknown): CuaAction | null {
             : button === "wheel" || button === "middle"
               ? "middle"
               : "left",
+        ...heldKeysOf(record),
       };
     }
     case "double_click":
-      return { kind: "double_click", x: asNumber(record.x), y: asNumber(record.y) };
+      return {
+        kind: "double_click",
+        x: asNumber(record.x),
+        y: asNumber(record.y),
+        ...heldKeysOf(record),
+      };
     case "move":
-      return { kind: "move", x: asNumber(record.x), y: asNumber(record.y) };
+      return { kind: "move", x: asNumber(record.x), y: asNumber(record.y), ...heldKeysOf(record) };
     case "scroll":
       return {
         kind: "scroll",
@@ -149,6 +163,7 @@ export function openAiActionToCua(action: unknown): CuaAction | null {
         y: asNumber(record.y),
         dx: asNumber(record.scroll_x),
         dy: asNumber(record.scroll_y),
+        ...heldKeysOf(record),
       };
     case "type":
       return { kind: "type", text: asString(record.text) };
@@ -158,7 +173,7 @@ export function openAiActionToCua(action: unknown): CuaAction | null {
         keys: asArray(record.keys).filter((key): key is string => typeof key === "string"),
       };
     case "drag":
-      return { kind: "drag", path: asArray(record.path).map(asPoint) };
+      return { kind: "drag", path: asArray(record.path).map(asPoint), ...heldKeysOf(record) };
     case "wait":
       return { kind: "wait" };
     case "screenshot":

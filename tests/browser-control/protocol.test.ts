@@ -32,6 +32,18 @@ describe("browser control closed v1 protocol", () => {
     { kind: "wait" },
     { kind: "speak", text: "Hello there." },
     { kind: "screenshot" },
+    { kind: "click", x: 1, y: 2, heldKeys: ["SHIFT"] },
+    { kind: "double_click", x: 1, y: 2, heldKeys: ["CTRL"] },
+    { kind: "move", x: 1, y: 2, heldKeys: ["ALT"] },
+    { kind: "scroll", x: 1, y: 2, dx: 0, dy: 1, heldKeys: ["CTRL", "SHIFT"] },
+    {
+      kind: "drag",
+      path: [
+        { x: 0, y: 0 },
+        { x: 1, y: 1 },
+      ],
+      heldKeys: ["SHIFT"],
+    },
   ])("preserves admitted action exactly: $kind", (action) =>
     expect(validateBrowserControlAction(action)).toEqual(action),
   );
@@ -50,6 +62,10 @@ describe("browser control closed v1 protocol", () => {
     { kind: "speak", text: "   " },
     { kind: "speak", text: "x".repeat(401) },
     { kind: "screenshot", args: [] },
+    { kind: "click", x: 1, y: 2, heldKeys: [] },
+    { kind: "click", x: 1, y: 2, heldKeys: Array(17).fill("SHIFT") },
+    { kind: "type", text: "a", heldKeys: ["SHIFT"] },
+    { kind: "keypress", keys: ["A"], heldKeys: ["SHIFT"] },
   ])("rejects invalid or over-limit action $kind", (action) =>
     expect(() => validateBrowserControlAction(action)).toThrow(CuaExecutorError),
   );

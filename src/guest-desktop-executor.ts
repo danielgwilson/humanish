@@ -7,6 +7,7 @@ import {
   validateBrowserControlPng,
 } from "./browser-control/protocol.js";
 import { CuaExecutorError, isCuaExecutorError } from "./actors/computer-use/executor-error.js";
+import { xdotoolChord, xdotoolHeldModifiers } from "./substrates/xdotool-keys.js";
 
 /** Internal guest port. Implementations recheck signal synchronously before native dispatch. */
 export interface GuestDesktopTools {
@@ -16,66 +17,6 @@ export interface GuestDesktopTools {
     text: string,
     signal: AbortSignal,
   ): Promise<{ paste(): Promise<void>; close(): Promise<void> }>;
-}
-
-const keyNames: Readonly<Record<string, string>> = Object.freeze({
-  CTRL: "ctrl",
-  CONTROL: "ctrl",
-  ALT: "alt",
-  SHIFT: "shift",
-  META: "super",
-  SUPER: "super",
-  CMD: "super",
-  ENTER: "Return",
-  RETURN: "Return",
-  TAB: "Tab",
-  ESC: "Escape",
-  ESCAPE: "Escape",
-  SPACE: "space",
-  " ": "space",
-  BACKSPACE: "BackSpace",
-  DELETE: "Delete",
-  INSERT: "Insert",
-  HOME: "Home",
-  END: "End",
-  PAGEUP: "Prior",
-  PAGEDOWN: "Next",
-  ARROWUP: "Up",
-  ARROWDOWN: "Down",
-  ARROWLEFT: "Left",
-  ARROWRIGHT: "Right",
-  UP: "Up",
-  DOWN: "Down",
-  LEFT: "Left",
-  RIGHT: "Right",
-  "+": "plus",
-  "-": "minus",
-  "=": "equal",
-  ",": "comma",
-  ".": "period",
-  "/": "slash",
-  "\\": "backslash",
-  ";": "semicolon",
-  "'": "apostrophe",
-  "[": "bracketleft",
-  "]": "bracketright",
-  "`": "grave",
-});
-
-/** xdotool has a command language: never send an unchecked key name to it. */
-export function guestDesktopChord(keys: readonly string[]): string {
-  const normalized = keys.map((key) => {
-    if (/^[a-z0-9]$/i.test(key)) return key.toLowerCase();
-    if (/^F(?:[1-9]|1[0-2])$/i.test(key)) return key.toUpperCase();
-    const name = Object.hasOwn(keyNames, key.toUpperCase())
-      ? keyNames[key.toUpperCase()]
-      : undefined;
-    if (!name) throw new CuaExecutorError("action_rejected", "not_dispatched");
-    return name;
-  });
-  if (new Set(normalized).size !== normalized.length)
-    throw new CuaExecutorError("action_rejected", "not_dispatched");
-  return normalized.join("+");
 }
 
 export interface GuestDesktopExecutorOptions {
@@ -129,7 +70,15 @@ export function createGuestDesktopExecutor(options: GuestDesktopExecutorOptions)
       String(Math.min(height - 1, Math.round(y))),
     ];
   }
+  /** The pointer input for an action, wrapped in keydown/keyup when it holds modifiers. */
   function plan(action: CuaAction): string[][] {
+    const commands = input(action);
+    const held = "heldKeys" in action ? xdotoolHeldModifiers(action.heldKeys) : undefined;
+    return held === undefined || commands.length === 0
+      ? commands
+      : [["keydown", held], ...commands, ["keyup", held]];
+  }
+  function input(action: CuaAction): string[][] {
     switch (action.kind) {
       case "move":
         return [["mousemove", ...point(action.x, action.y)]];
@@ -144,7 +93,7 @@ export function createGuestDesktopExecutor(options: GuestDesktopExecutorOptions)
           ["click", "--repeat", "2", "--delay", "100", "1"],
         ];
       case "keypress":
-        return [["key", "--clearmodifiers", guestDesktopChord(action.keys)]];
+        return [["key", "--clearmodifiers", xdotoolChord(action.keys)]];
       case "type": {
         // Text transports require exact UTF-8; NUL truncation and lone surrogates
         // must be refused instead of silently changing the requested text.
@@ -215,6 +164,7 @@ export function createGuestDesktopExecutor(options: GuestDesktopExecutorOptions)
       begin(signal);
       let dispatched = false;
       let preparing = false;
+      let keysHeld: string | undefined;
       let text: Awaited<ReturnType<GuestDesktopTools["prepareText"]>> | undefined;
       try {
         const action = validateBrowserControlAction(value);
@@ -239,10 +189,22 @@ export function createGuestDesktopExecutor(options: GuestDesktopExecutorOptions)
           assertOpen(signal, dispatched);
           // No await between authority check and the native port invocation.
           dispatched = true;
+          // A keydown can press some keys before it fails; a failed keyup is not retried.
+          if (command[0] === "keydown") keysHeld = command[1];
+          if (command[0] === "keyup") keysHeld = undefined;
           await tools.input(command, signal);
         }
         assertOpen(signal, dispatched);
       } catch (error) {
+        // A failed pointer input still releases its modifiers. After revocation nothing more is
+        // sent, as for the mouse button below.
+        if (keysHeld !== undefined && !signal.aborted) {
+          try {
+            await tools.input(["keyup", keysHeld], signal);
+          } catch {
+            // The session ends below either way.
+          }
+        }
         if (
           (preparing &&
             !(
