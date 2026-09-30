@@ -150,8 +150,9 @@ describe("declared per-response output limit", () => {
     expect(result.trace.modelSettings).toEqual({ reasoningEffort: "medium", maxOutputTokens: 16 });
     expect(result.status).toBe("incomplete");
     expect(result.completionReason).toBe("budget_reached");
-    expect(result.trace.tokenUsage?.output).toBe(16);
-    expect(calls).toBe(1);
+    // A cut-off reply is asked for once more; both replies are cut off, so the session stops.
+    expect(result.trace.tokenUsage?.output).toBe(32);
+    expect(calls).toBe(2);
     expect(actions).toBe(0);
   });
 });

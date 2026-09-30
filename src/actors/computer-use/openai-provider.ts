@@ -581,9 +581,13 @@ export function createOpenAiResponsesProvider(
     }
 
     const parsed = parseOpenAiResponse(raw);
-    if (parsed.turn.responseId !== undefined) lastResponseId = parsed.turn.responseId;
-    pendingCallIds = parsed.callIds;
-    lastOutputItems = parsed.outputItems;
+    // A reply cut off by the output limit is set aside, so the next request is this one again
+    // (outputLimitRetry). Its actions are never run, so no call output is owed for them.
+    if (closing || parsed.turn.interruption !== "output_limit") {
+      if (parsed.turn.responseId !== undefined) lastResponseId = parsed.turn.responseId;
+      pendingCallIds = parsed.callIds;
+      lastOutputItems = parsed.outputItems;
+    }
     if (closing) {
       // Refusals, incomplete output, malformed JSON, and invalid shapes remain no-report results.
       // Never promote raw JSON or a fallback paragraph into a structured finding.
@@ -613,6 +617,7 @@ export function createOpenAiResponsesProvider(
     // it cannot reason over a screenshot-less observation. The loop reads this to fail closed
     // (harness_error) when a state-only executor is paired with it (provider-authoring contract).
     requiresFrame: true,
+    outputLimitRetry: true,
     get interactionUsageIncomplete() {
       return interactionUsageIncomplete;
     },

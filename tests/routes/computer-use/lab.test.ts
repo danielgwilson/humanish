@@ -690,7 +690,8 @@ describe("runCuaActorLab", () => {
     });
     expect(created).toHaveLength(1);
     expect(killed).toHaveLength(1);
-    expect(requests).toBe(1);
+    // The cut-off reply is asked for once more; the second is cut off too.
+    expect(requests).toBe(2);
     expect(result.session?.status).toBe("incomplete");
     expect(result.session?.stopCause).toBe("provider_output_limit");
     expect(result.lanes?.[0]?.session?.stopCause).toBe("provider_output_limit");

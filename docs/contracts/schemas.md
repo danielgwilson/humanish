@@ -884,6 +884,12 @@ Core-owned fields:
   change. Closing reports use `min(maxOutputTokens, 1024)`. Unsupported routes,
   custom provider/session hooks, and per-lane overrides fail before allocation.
   This is an output-token limit, not an input-token, request-count or billing cap.
+  A reply cut off by it runs no action. The first-party OpenAI provider sets that
+  reply aside, and the loop sends the same request once more after booking the
+  cut-off reply's usage and checking the spend caps; the trace records a
+  “provider reply cut off by the output limit; asking again” notice. A second
+  cut-off reply to the same request ends the session with
+  `stopCause: provider_output_limit`.
 - optional `affordanceUse` (`humanish.affordance-use.v1`): which KIND of route this
   actor took (see Affordance Use below)
 - optional `estimatedCost` (`humanish.actor-estimated-cost.v1`): a token-derived
