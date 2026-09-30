@@ -19,7 +19,9 @@ const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 
 async function committedLabs(): Promise<[string, LabConfig][]> {
   const labs: [string, LabConfig][] = [];
-  for (const lab of (await listLabManifests(ROOT)).labs) {
+  for (const lab of (await listLabManifests(ROOT)).labs.filter(
+    (lab) => lab.origin === "committed",
+  )) {
     const resolved = await resolveLabManifest(ROOT, lab.id);
     if (!resolved.ok) throw new Error(`${lab.id}: ${resolved.error.message}`);
     labs.push([lab.id, resolved.config]);

@@ -94,7 +94,9 @@ describe("lab routing", () => {
 
   it("pins the route of every committed lab", async () => {
     const committed: Record<string, string> = {};
-    for (const lab of (await listLabManifests(ROOT)).labs) {
+    for (const lab of (await listLabManifests(ROOT)).labs.filter(
+      (lab) => lab.origin === "committed",
+    )) {
       const resolved = await resolveLabManifest(ROOT, lab.id);
       if (!resolved.ok) throw new Error(`${lab.id}: ${resolved.error.message}`);
       committed[lab.id] = describeRouting(resolved.config);
