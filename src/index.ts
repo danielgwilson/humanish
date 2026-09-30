@@ -304,15 +304,15 @@ export type {
 } from "./actors/scripted-browser/actor.js";
 export {
   SCRIPTED_BROWSER_LAB_SCHEMA,
-  buildScriptedLabBundle,
   runScriptedBrowserLab,
-} from "./routes/scripted-browser.js";
+} from "./routes/scripted-browser/lab.js";
+export { buildScriptedLabBundle } from "./routes/scripted-browser/bundle.js";
 export type {
   RunScriptedBrowserLabOptions,
   ScriptedBrowserLabHooks,
   ScriptedBrowserLabResult,
   ScriptedBrowserLabSession,
-} from "./routes/scripted-browser.js";
+} from "./routes/scripted-browser/lab.js";
 export { TERMINAL_PRODUCT_LAB_SCHEMA } from "./routes/terminal/types.js";
 export { buildTerminalProductBundle } from "./routes/terminal/bundle.js";
 export { runTerminalProductLab } from "./routes/terminal/lab.js";
