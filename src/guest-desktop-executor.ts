@@ -7,7 +7,7 @@ import {
   validateBrowserControlPng,
 } from "./browser-control/protocol.js";
 import { CuaExecutorError, isCuaExecutorError } from "./actors/computer-use/executor-error.js";
-import { xdotoolChord, xdotoolHeldModifiers } from "./substrates/xdotool-keys.js";
+import { xdotoolChord, xdotoolHeldModifiers } from "./guest-desktop-keys.js";
 
 /** Internal guest port. Implementations recheck signal synchronously before native dispatch. */
 export interface GuestDesktopTools {

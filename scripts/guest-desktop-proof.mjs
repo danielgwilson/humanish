@@ -30,6 +30,7 @@ await cp(join(root, "scripts/guest-desktop-proof-child.mjs"), join(payload, "pro
 await writeFile(join(payload, "package.json"), '{"type":"module"}');
 const driverModules = [
   "guest-desktop-executor",
+  "guest-desktop-keys",
   "guest-desktop-native",
   "guest-browser-tools",
   "guest-chromium-text",
@@ -113,6 +114,7 @@ const expectedCases = [
   "reject bad key without input",
   "modal dialog rejects text without accepting or filling it",
   "revocation during drag sends no release",
+  "held modifiers reach the click and are released after it",
 ];
 let container;
 let failure;

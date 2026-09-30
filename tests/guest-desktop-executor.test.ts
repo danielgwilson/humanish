@@ -4,7 +4,7 @@ import {
   createGuestDesktopExecutor,
   type GuestDesktopTools,
 } from "../src/guest-desktop-executor.js";
-import { xdotoolChord } from "../src/substrates/xdotool-keys.js";
+import { xdotoolChord } from "../src/guest-desktop-keys.js";
 
 function fixture(overrides: Partial<GuestDesktopTools> = {}) {
   const authority = new AbortController();

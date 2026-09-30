@@ -4,7 +4,7 @@ export { perceptualSignature } from "../../evidence/frame-signature.js";
 import { commandFailureInfo, tailOf } from "../command-failure.js";
 import type { CuaAction, CuaExecutor, CuaObservation } from "../../actors/computer-use/loop.js";
 import { CuaExecutorError } from "../../actors/computer-use/executor-error.js";
-import { xdotoolHeldModifiers } from "../xdotool-keys.js";
+import { xdotoolHeldModifiers } from "../../guest-desktop-keys.js";
 
 // The DESKTOP side of the computer-use loop: a CuaExecutor (from
 // src/actors/computer-use/loop.ts) backed by an E2B desktop sandbox. It mirrors the
