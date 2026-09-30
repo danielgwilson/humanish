@@ -9,6 +9,7 @@ import type { LabConfig } from "../../lab/types.js";
 import { serveObserver } from "../../observer/render.js";
 import type { ObserverResult, ObserverServer } from "../../observer/render.js";
 import { startExposedObserver, validateExposure } from "../../observer/exposure.js";
+import type { ExposurePlan } from "../../observer/exposure.js";
 import { ServeTunnelError } from "../../observer/tunnel.js";
 import { redactText } from "../../evidence/redaction.js";
 import type { ServeTunnel } from "../../observer/tunnel.js";
@@ -139,6 +140,74 @@ export async function runCuaBackend(args: {
   options: LabCommandOptions;
   scorer?: LoadedAdapterScorer;
 }): Promise<void> {
+  const settings = resolveCuaSettings(args);
+  if (settings === undefined) return;
+  const prepared = prepareCuaWatch(args, settings);
+  if (prepared === undefined) return;
+  const live: CuaLiveAttachment = {
+    server: null,
+    observer: null,
+    tunnel: undefined,
+    exposeWarnings: [],
+    publicTarget: undefined,
+  };
+  const result = await runCuaLab(args, settings, prepared, live);
+  if (result === undefined) return;
+  await reportCuaRun(args, prepared, result, live);
+}
+
+type CuaBackendArgs = Parameters<typeof runCuaBackend>[0];
+
+/** Parsed options for one CUA lab invocation. */
+interface CuaRunSettings {
+  wantsMachine: boolean;
+  shouldOpen: boolean;
+  laneIds: string[];
+  count: number;
+  dryRun: boolean;
+  port: number;
+  wantsFollow: boolean;
+}
+
+interface CuaWatchPlan {
+  exposure: ExposurePlan;
+  /** Set for a watch that shows the finished run's Observer instead of following it live. */
+  finishedPlan: ObserverPlan | undefined;
+}
+
+/** The server, tunnel and Observer a followed watch attaches while the lab runs. */
+interface CuaLiveAttachment {
+  server: ObserverServer | null;
+  observer: (ObserverResult & { ok: true }) | null;
+  tunnel: ServeTunnel | undefined;
+  exposeWarnings: string[];
+  publicTarget: string | undefined;
+}
+
+function refuseCua(
+  args: CuaBackendArgs,
+  dryRun: boolean,
+  code: CuaActorLabErrorCode,
+  message: string,
+): void {
+  const result: CuaActorLabResult = {
+    schema: CUA_ACTOR_LAB_SCHEMA,
+    ok: false,
+    cwd: args.options.cwd,
+    labId: args.config.id,
+    actor: args.config.actors[0]?.type ?? "",
+    appUrl: "",
+    dryRun,
+    runId: args.options.runId ?? "not-created",
+    warnings: [],
+    error: { code, message },
+  };
+  writeResult(args.command, args.io, result, formatCuaLabHuman);
+  args.io.setExitCode(2);
+}
+
+/** Parses the options, or writes the refusal and returns undefined. */
+function resolveCuaSettings(args: CuaBackendArgs): CuaRunSettings | undefined {
   const wantsMachine = wantsJson(args.command);
   const shouldOpen = resolveBackendShouldOpen({
     optionOpen: args.options.open,
@@ -150,7 +219,7 @@ export async function runCuaBackend(args: {
   if (laneIds.length > 0 && !args.options.rerunFailedFrom) {
     args.io.writeErr("error: --lanes requires --rerun-failed-from.\n");
     args.io.setExitCode(2);
-    return;
+    return undefined;
   }
   const count = parseLabCount(
     args.options.count ?? args.options.sims,
@@ -159,70 +228,71 @@ export async function runCuaBackend(args: {
   if (count === null) {
     args.io.writeErr("error: --count/--sims must be a positive integer.\n");
     args.io.setExitCode(2);
-    return;
+    return undefined;
   }
 
   const dryRun = resolveLabDryRun(args.config, args.options.dryRun, true) ?? true;
   const port = parseObserverPort(args.options.port ?? "0");
   const wantsFollow =
     args.mode === "watch" && !wantsMachine && args.options.detach !== true && dryRun !== true;
-
-  const failCua = (code: CuaActorLabErrorCode, message: string): void => {
-    const result: CuaActorLabResult = {
-      schema: CUA_ACTOR_LAB_SCHEMA,
-      ok: false,
-      cwd: args.options.cwd,
-      labId: args.config.id,
-      actor: args.config.actors[0]?.type ?? "",
-      appUrl: "",
-      dryRun,
-      runId: args.options.runId ?? "not-created",
-      warnings: [],
-      error: { code, message },
-    };
-    writeResult(args.command, args.io, result, formatCuaLabHuman);
-    args.io.setExitCode(2);
-  };
-
   if (port === null) {
-    failCua("HUMANISH_WATCH_OPTION_CONFLICT", "--port must be an integer between 0 and 65535.");
-    return;
+    refuseCua(
+      args,
+      dryRun,
+      "HUMANISH_WATCH_OPTION_CONFLICT",
+      "--port must be an integer between 0 and 65535.",
+    );
+    return undefined;
   }
+  return { wantsMachine, shouldOpen, laneIds, count, dryRun, port, wantsFollow };
+}
 
+/** Validates exposure and plans the finished-run Observer, or returns undefined after refusing. */
+function prepareCuaWatch(args: CuaBackendArgs, settings: CuaRunSettings): CuaWatchPlan | undefined {
   // Validate exposure up front (fail-closed matrix), before any run/spend. A live CUA watch is the
   // one surface that serves runtime E2B stream URLs, so it MUST sit behind edge auth.
   const exposeValidation = validateExposure("watch", exposureRequestFromOptions(args.options), {
-    dryRun,
+    dryRun: settings.dryRun,
     detach: args.options.detach === true,
-    json: wantsMachine,
+    json: settings.wantsMachine,
   });
   if (!exposeValidation.ok) {
-    failCua(exposeValidation.error.code as CuaActorLabErrorCode, exposeValidation.error.message);
-    return;
+    refuseCua(
+      args,
+      settings.dryRun,
+      exposeValidation.error.code as CuaActorLabErrorCode,
+      exposeValidation.error.message,
+    );
+    return undefined;
   }
-  const plan = exposeValidation.plan;
-  const exposeRequested = plan.exposed;
   // A watch that does not follow the live run shows the Observer the route rendered through its
   // finished run once the run ends, never a re-render by run id.
   const finishedPlan =
-    args.mode === "watch" && !wantsMachine && !wantsFollow
+    args.mode === "watch" && !settings.wantsMachine && !settings.wantsFollow
       ? planObserver({
           command: args.command,
           cwd: args.options.cwd,
           io: args.io,
           port: args.options.port ?? "0",
-          open: shouldOpen,
+          open: settings.shouldOpen,
           ...(args.options.detach === undefined ? {} : { detach: args.options.detach }),
         })
       : undefined;
-  if (finishedPlan === null) return;
+  if (finishedPlan === null) return undefined;
+  return { exposure: exposeValidation.plan, finishedPlan };
+}
 
-  let server: ObserverServer | null = null;
-  let attachedObserver: (ObserverResult & { ok: true }) | null = null;
-  let tunnel: ServeTunnel | undefined;
-  let exposeWarnings: string[] = [];
-  let exposePublicTarget: string | undefined;
-
+/**
+ * Runs the lab. Resolves to undefined after reporting a tunnel startup failure; the live server
+ * and tunnel are closed before that report or any rethrow.
+ */
+async function runCuaLab(
+  args: CuaBackendArgs,
+  settings: CuaRunSettings,
+  prepared: CuaWatchPlan,
+  live: CuaLiveAttachment,
+): Promise<CuaActorLabResult | undefined> {
+  const { finishedPlan } = prepared;
   let outcome: Awaited<ReturnType<typeof runLab>>;
   try {
     outcome = await runLab(args.config, {
@@ -237,39 +307,15 @@ export async function runCuaBackend(args: {
           ? finishedPlan === undefined
             ? false
             : staticObserverOpen(finishedPlan)
-          : shouldOpen,
-      count,
-      dryRun,
-      ...(wantsFollow
+          : settings.shouldOpen,
+      count: settings.count,
+      dryRun: settings.dryRun,
+      ...(settings.wantsFollow
         ? {
             // Fires INSIDE runLab, before the actor loop and before sandbox creation, so a
             // tunnel-auth failure aborts before any spend and leaves no orphaned sandbox.
-            onObserverReady: async (observer) => {
-              attachedObserver = observer;
-              if (!server) {
-                server = await serveObserver(observer, {
-                  open: shouldOpen && !exposeRequested,
-                  port,
-                  exposed: exposeRequested,
-                });
-              }
-              if (exposeRequested) {
-                const activeServer = server as ObserverServer;
-                const exposeResult = await startExposedObserver(activeServer, plan);
-                if (exposeResult.tunnel) {
-                  tunnel = exposeResult.tunnel;
-                }
-                exposeWarnings = exposeResult.warnings;
-                const phoneTarget = exposeResult.publicUrl ?? activeServer.url;
-                exposePublicTarget = phoneTarget;
-                args.io.writeOut(
-                  `watch: exposed live desktop at ${phoneTarget} (edge-authed; open it on your phone)\n`,
-                );
-                for (const warning of exposeResult.warnings) {
-                  args.io.writeErr(`warning: ${warning}\n`);
-                }
-              }
-            },
+            onObserverReady: (observer: ObserverResult & { ok: true }) =>
+              attachLiveObserver(args.io, settings, prepared.exposure, live, observer),
           }
         : {}),
       ...(args.options.runId === undefined ? {} : { runId: args.options.runId }),
@@ -281,7 +327,7 @@ export async function runCuaBackend(args: {
         : {
             rerun: {
               sourceRunId: args.options.rerunFailedFrom,
-              ...(laneIds.length === 0 ? {} : { laneIds }),
+              ...(settings.laneIds.length === 0 ? {} : { laneIds: settings.laneIds }),
             },
           }),
     });
@@ -289,20 +335,19 @@ export async function runCuaBackend(args: {
     // Tear down the loopback server and any tunnel started inside onObserverReady before rethrowing
     // (or surfacing a structured tunnel-startup failure). The sandbox is created AFTER
     // onObserverReady returns, so a tunnel failure here cannot orphan one.
-    const earlyServer = server as ObserverServer | null;
-    await earlyServer?.close().catch((cleanupError: unknown) => {
+    await live.server?.close().catch((cleanupError: unknown) => {
       args.io.writeErr(
         `watch cleanup failed: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}\n`,
       );
     });
-    server = null;
-    if (tunnel) {
-      await tunnel.close().catch(() => undefined);
-      tunnel = undefined;
+    live.server = null;
+    if (live.tunnel) {
+      await live.tunnel.close().catch(() => undefined);
+      live.tunnel = undefined;
     }
     if (error instanceof ServeTunnelError) {
-      failCua(error.code, error.message);
-      return;
+      refuseCua(args, settings.dryRun, error.code, error.message);
+      return undefined;
     }
     throw error;
   }
@@ -310,29 +355,72 @@ export async function runCuaBackend(args: {
   if (outcome.backend !== "cua") {
     throw new Error(`Expected cua backend, got ${outcome.backend}.`);
   }
-  const result = outcome.result;
+  return outcome.result;
+}
 
+/** Serves the live Observer and, under --expose, puts the planned edge in front of it. */
+async function attachLiveObserver(
+  io: CliIo,
+  settings: CuaRunSettings,
+  exposure: ExposurePlan,
+  live: CuaLiveAttachment,
+  observer: ObserverResult & { ok: true },
+): Promise<void> {
+  live.observer = observer;
+  if (!live.server) {
+    live.server = await serveObserver(observer, {
+      open: settings.shouldOpen && !exposure.exposed,
+      port: settings.port,
+      exposed: exposure.exposed,
+    });
+  }
+  if (exposure.exposed) {
+    const activeServer = live.server;
+    const exposeResult = await startExposedObserver(activeServer, exposure);
+    if (exposeResult.tunnel) {
+      live.tunnel = exposeResult.tunnel;
+    }
+    live.exposeWarnings = exposeResult.warnings;
+    const phoneTarget = exposeResult.publicUrl ?? activeServer.url;
+    live.publicTarget = phoneTarget;
+    io.writeOut(
+      `watch: exposed live desktop at ${phoneTarget} (edge-authed; open it on your phone)\n`,
+    );
+    for (const warning of exposeResult.warnings) {
+      io.writeErr(`warning: ${warning}\n`);
+    }
+  }
+}
+
+/** Writes the result, then follows the live server or shows the finished run's Observer. */
+async function reportCuaRun(
+  args: CuaBackendArgs,
+  prepared: CuaWatchPlan,
+  result: CuaActorLabResult,
+  live: CuaLiveAttachment,
+): Promise<void> {
+  const { server, observer: attachedObserver } = live;
+  const exposeRequested = prepared.exposure.exposed;
   // Serving is NOT gated on result.ok: a timed_out/failed run still comes up so the operator can
   // inspect its evidence live (and, under --expose, from a phone). budget_reached now makes a
   // productive open-ended watch result.ok true.
   let output: CuaActorLabResult = result;
   if (server && attachedObserver) {
-    const activeServer = server as ObserverServer;
     const attachedResult = result.observer?.ok ? result.observer : attachedObserver;
     output = {
       ...result,
-      observer: withObserverServer(attachedResult, activeServer),
+      observer: withObserverServer(attachedResult, server),
       warnings: [
         ...result.warnings,
         "Live CUA server is polling observer-data.json with no-store caching.",
         ...(exposeRequested
           ? [
-              `Exposed live desktop stream URLs to an edge-authenticated remote viewer${tunnel ? ` via ${tunnel.url.replace(/\/$/, "")}` : ""}.`,
-              `this live run's raw, unverified evidence (screenshots, events) is viewable by anyone who clears the edge auth at ${exposePublicTarget ?? activeServer.url}; only the run being watched is served, not your other runs`,
+              `Exposed live desktop stream URLs to an edge-authenticated remote viewer${live.tunnel ? ` via ${live.tunnel.url.replace(/\/$/, "")}` : ""}.`,
+              `this live run's raw, unverified evidence (screenshots, events) is viewable by anyone who clears the edge auth at ${live.publicTarget ?? server.url}; only the run being watched is served, not your other runs`,
             ]
           : []),
-        ...exposeWarnings,
-        ...(activeServer.warning ? [activeServer.warning] : []),
+        ...live.exposeWarnings,
+        ...(server.warning ? [server.warning] : []),
       ],
     };
   }
@@ -340,24 +428,23 @@ export async function runCuaBackend(args: {
   args.io.setExitCode(result.ok && automaticAnalysisSucceeded(result) ? 0 : 2);
 
   if (server && (result.observer?.ok || attachedObserver)) {
-    const activeServer = server as ObserverServer;
     const followResult = output.observer?.ok
       ? output.observer
-      : withObserverServer(attachedObserver!, activeServer);
-    await followObserver(args.io, followResult, activeServer, {
+      : withObserverServer(attachedObserver!, server);
+    await followObserver(args.io, followResult, server, {
       onStop: async () => {
-        if (tunnel) {
-          await tunnel.close();
+        if (live.tunnel) {
+          await live.tunnel.close();
           return ["closed ngrok tunnel"];
         }
         return [];
       },
     });
-  } else if (finishedPlan !== undefined && result.ok && result.observer !== undefined) {
+  } else if (prepared.finishedPlan !== undefined && result.ok && result.observer !== undefined) {
     await showObserver({
       command: args.command,
       io: args.io,
-      plan: finishedPlan,
+      plan: prepared.finishedPlan,
       rendered: result.observer,
     });
   }
