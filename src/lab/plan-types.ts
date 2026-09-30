@@ -6,7 +6,7 @@
 import type { StudyAnalysisConfig } from "../analysis/study-analysis.js";
 import type { LocalAgentId } from "../actors/local-agent/cli.js";
 import type { ReasoningEffort } from "../actors/reasoning-effort.js";
-import type { BrowserSurface } from "../actors/scripted-browser.js";
+import type { BrowserSurface } from "../actors/scripted-browser/types.js";
 import type { RunLabProvenance } from "../run/status.js";
 import type { RunLabOptions } from "./engine.js";
 import type { ComputerUseParticipant, ExternalPublicSeat, ProvisionedSeat } from "./plan.js";

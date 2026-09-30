@@ -5,7 +5,7 @@
 
 import { resolveAutomaticAnalysis } from "../analysis/automatic-config.js";
 import { DEFAULT_OPENAI_CU_MODEL } from "../actors/computer-use/openai-provider.js";
-import { browserSurfaces } from "../actors/scripted-browser.js";
+import { browserSurfaces } from "../actors/scripted-browser/types.js";
 import type { DwellWindow, StopWhen } from "../actors/stop-conditions.js";
 import type { ReasoningEffort } from "../actors/reasoning-effort.js";
 import {
