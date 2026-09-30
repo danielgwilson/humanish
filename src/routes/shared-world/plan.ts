@@ -15,7 +15,7 @@ import { sharedWorldSeats } from "../../lab/plan-participants.js";
 import type { SharedWorldPlan, SharedWorldPlane } from "../../lab/plan-types.js";
 import { PUBLIC_TARGET_OWNER_PATTERN } from "../../lab/parse/subject.js";
 import { REPO_SLUG_PATTERN } from "../../lab/parse/values.js";
-import type { LabConfig } from "../../lab/types.js";
+import type { LabConfig, LabSubjectState } from "../../lab/types.js";
 import {
   concurrentSharedWorldValidationReason,
   desktopMediaValidationReason,
@@ -132,6 +132,15 @@ export function planSharedWorldLab(
       actor,
     );
 
+  // The external-public plane provisions nothing, so it has no env channel. The parser refuses
+  // subject.env on an app-url subject for the same reason.
+  if (externalPublic && config.subject.env !== undefined)
+    return refuse(
+      invalid,
+      "`subject.env` applies only to clone subjects or local-tree subjects (the served app's environment channel).",
+      actor,
+    );
+
   const plane = planeOf(config);
   if (plane === undefined)
     throw new Error("shared-world validation admitted a plane it cannot plan");
@@ -150,6 +159,9 @@ export function planSharedWorldLab(
       actor,
       plane,
       concurrency: config.execution?.concurrency ?? plane.participants.length,
+      ...(config.execution?.timeoutMs === undefined
+        ? {}
+        : { sessionTimeoutMs: config.execution.timeoutMs }),
       brain,
       caps: capsOf(config),
       requirements: base.dryRun
@@ -162,6 +174,11 @@ export function planSharedWorldLab(
           }),
     },
   };
+}
+
+/** The provisioned plane's declared subject state. The external-public plane declares none. */
+export function planeStateOf(plan: SharedWorldPlan): LabSubjectState | undefined {
+  return plan.plane.kind === "provisioned" ? plan.plane.subject.state : undefined;
 }
 
 /**

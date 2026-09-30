@@ -45,10 +45,19 @@ export async function resolveReceivingConnection(
   return { connection, apiKey, adapter: createReceivingAdapter(connection, apiKey) };
 }
 
+/** What receiving reads from a lab: its email declaration and the subject env it guards. */
+export interface ReceivingSource {
+  readonly comms?: LabConfig["comms"];
+  readonly subject: {
+    readonly env?: readonly string[];
+    readonly envValues?: Readonly<Record<string, string>>;
+  };
+}
+
 export async function prepareReceivingRun(args: {
   cwd: string;
   runId: string;
-  config: LabConfig;
+  config: ReceivingSource;
   env: NodeJS.ProcessEnv;
   participants: string[];
   runPaths: PreparedRunArtifactPaths;
@@ -95,7 +104,7 @@ export async function prepareReceivingRun(args: {
 }
 
 /** The restriction survives restarts and screenshot redaction; it is not a claim of local processing. */
-export function receivingPublication(config: LabConfig, dryRun: boolean) {
+export function receivingPublication(config: Pick<LabConfig, "comms">, dryRun: boolean) {
   return !dryRun && config.comms?.email?.kind === "real"
     ? { publication: { restrictions: ["real-communications"] as ["real-communications"] } }
     : {};

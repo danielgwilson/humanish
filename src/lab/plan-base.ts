@@ -43,6 +43,7 @@ function residualOf(config: LabConfig): Readonly<ResidualConfig> {
         ...(config.subject.clone === undefined ? {} : { clone: config.subject.clone }),
         ...(config.subject.localTree === undefined ? {} : { localTree: config.subject.localTree }),
         ...(config.subject.repos === undefined ? {} : { repos: config.subject.repos }),
+        ...(config.subject.envValues === undefined ? {} : { envValues: config.subject.envValues }),
       },
     }),
   );

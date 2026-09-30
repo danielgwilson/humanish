@@ -45,6 +45,7 @@ import {
   resolveSubjectState,
 } from "../computer-use/lab.js";
 import { withInboxMission } from "../computer-use/lane-plan.js";
+import { planeStateOf } from "./plan.js";
 import { runCuaLane } from "../computer-use/lanes.js";
 import { buildConcurrentSharedWorldBundle } from "./bundle.js";
 import { runCheckpointSnapshot } from "./checkpoints.js";
@@ -181,7 +182,7 @@ class SubjectPlane {
   }
 
   async acquire(): Promise<void> {
-    const { config, hooks, env, requestTimeoutMs, timeoutMs, roles } = this.ctx;
+    const { plan, hooks, env, requestTimeoutMs, timeoutMs, roles } = this.ctx;
     const { subjectEnvNames, commsEnv } = this.setup;
     this.subjectModule = await (hooks.loadDesktopModule ?? loadE2BDesktopModule)();
     // The ONE subject sandbox: headless service host (no GUI seat). The SUBJECT env is provisioned
@@ -197,14 +198,14 @@ class SubjectPlane {
         timeoutMs:
           timeoutMs +
           SUBJECT_PROVISION_BUDGET_MS +
-          (config.subject.state?.seed ?? []).reduce(
+          (planeStateOf(plan)?.seed ?? []).reduce(
             (sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS),
             0,
           ) +
           SANDBOX_TIMEOUT_BUFFER_MS,
         metadata: {
           ...CONCURRENT_SHARED_WORLD_PROVIDER_METADATA,
-          labId: config.id,
+          labId: plan.labId,
           topology: "shared-world",
           topologyMode: "concurrent",
           role: "subject",
@@ -221,7 +222,7 @@ class SubjectPlane {
         dpi: 96,
         lifecycle: { onTimeout: "kill" },
       },
-      template: config.execution?.desktop?.template,
+      template: plan.residual.execution?.desktop?.template,
       receipt: { root: this.ctx.runPaths, laneId: "subject" },
     });
     this.subjectDesktop = subject.sandbox;
@@ -261,15 +262,16 @@ class SubjectPlane {
   // (clone route), or upload/extract the once-per-run packed archive + the SAME shared serve
   // pipeline (local-tree route).
   async provision(): Promise<void> {
-    const { config, hooks, requestTimeoutMs, scrubKnownValues } = this.ctx;
+    const { plan, hooks, requestTimeoutMs, scrubKnownValues } = this.ctx;
     const { serve, timers, stateStepRecords } = this.setup;
+    const state = planeStateOf(plan);
     const subjectShell = this.subjectShell!;
     const onSubjectPhase = hooks.onPhase ?? defaultSharedWorldPhaseSink;
     if (this.setup.localTreeRoute) {
       await provisionLocalTreeSubject(subjectShell, {
         archiveBuffer: this.setup.localTreeArchiveBuffer!,
         serve,
-        ...(config.subject.state === undefined ? {} : { state: config.subject.state }),
+        ...(state === undefined ? {} : { state }),
         requestTimeoutMs,
         scrub: scrubKnownValues,
         onStateStep: (record) => {
@@ -281,9 +283,9 @@ class SubjectPlane {
     } else {
       this.subjectCommit = await provisionCloneSubject(subjectShell, {
         repo: this.setup.subjectRepo,
-        depth: config.subject.clone?.depth ?? 1,
+        depth: plan.residual.subject.clone?.depth ?? 1,
         serve,
-        ...(config.subject.state === undefined ? {} : { state: config.subject.state }),
+        ...(state === undefined ? {} : { state }),
         hasGithubToken: this.setup.hasGithubToken,
         requestTimeoutMs,
         scrub: scrubKnownValues,
@@ -479,7 +481,7 @@ async function publishInProgress(
   live: LiveSeats,
   setup: ProvisionedPlaneSetup,
 ): Promise<void> {
-  const { config, options } = ctx;
+  const { plan, input } = ctx;
   const { localTreeRoute, localTreeArchive } = setup;
   const inProgressPlaneCommit = localTreeRoute
     ? localTreeArchive?.git?.commit
@@ -491,13 +493,13 @@ async function publishInProgress(
     localTreeArchive,
     subjectEnvNames: setup.subjectEnvNames,
     state: resolveSubjectState({
-      declared: config.subject.state,
+      declared: planeStateOf(plan),
       dryRun: false,
       executed: setup.stateStepRecords,
     }),
   });
   const inProgressBundle = buildConcurrentSharedWorldBundle({
-    config,
+    plan,
     descriptor: ctx.descriptor,
     createdAt: ctx.createdAt,
     dryRun: false,
@@ -514,12 +516,12 @@ async function publishInProgress(
     hostDigest: hostOriginDigest(plane.getHostUrl!),
   });
   await ctx.run.writeSnapshot(inProgressBundle);
-  if (options.onObserverReady) {
+  if (input.onObserverReady) {
     live.observer = liveObserverResult(ctx.cwd, ctx.runId, ctx.artifactRoot, [
       "Live concurrent shared-world Observer is attached before final verification; stream auth URLs are runtime-only and are not persisted.",
     ]);
     try {
-      await options.onObserverReady(live.observer);
+      await input.onObserverReady(live.observer);
     } catch (error) {
       throw new ObserverGateError(error);
     }
@@ -605,7 +607,7 @@ export async function runProvisionedPlane(
  */
 export async function packSubjectTree(
   cwd: string,
-  config: LabConfig,
+  config: { readonly subject: Pick<LabConfig["subject"], "localTree"> },
   hooks: SharedWorldLabHooks,
   scrubKnownValues: (text: string) => string,
 ): Promise<

@@ -4,7 +4,8 @@
 import path from "node:path";
 import { receivingPublication } from "../../comms/receiving-runtime.js";
 import { redactText } from "../../evidence/redaction.js";
-import type { LabConfig } from "../../lab/types.js";
+import type { LabSubjectState } from "../../lab/types.js";
+import { planeStateOf } from "./plan.js";
 import {
   PUBLIC_TARGET_CWD,
   REVIEW_SCHEMA,
@@ -118,14 +119,14 @@ function formatSharedWorldActorOutcomes(
 
 /** The run's first two events: its creation and the shared plane's provenance. */
 function planeEvents(args: ConcurrentBundleArgs, external: boolean): RunEvent[] {
-  const { config, descriptor, createdAt, dryRun, actorSpecs } = args;
+  const { plan, descriptor, createdAt, dryRun, actorSpecs } = args;
   const events: RunEvent[] = [];
   events.push({
     id: "event-000-created",
     at: createdAt,
     level: "info",
     type: "concurrent-shared-world.run.created",
-    message: `Created CONCURRENT shared-world run for ${config.id} (actor ${descriptor.id}, ${actorSpecs.length} persona(s) vs ONE shared plane, max ${config.execution?.concurrency ?? actorSpecs.length} concurrent).`,
+    message: `Created CONCURRENT shared-world run for ${plan.labId} (actor ${descriptor.id}, ${actorSpecs.length} persona(s) vs ONE shared plane, max ${plan.concurrency} concurrent).`,
   });
   // Human-readable plane label, byte-stable for the clone route. local-tree has no repo slug: it
   // labels the packed archive instead (archiveSha256 + dirty/clean when the packed root was a git
@@ -143,7 +144,8 @@ function planeEvents(args: ConcurrentBundleArgs, external: boolean): RunEvent[] 
   // attestation (claiming synthetic on a real site is a lie). The origin persists digest-only.
   // planSharedWorldLab refuses an external-public plane without a declared owner; the fallback
   // says so rather than naming one.
-  const externalPlaneOwner = config.subject.publicTarget?.owner ?? "(undeclared)";
+  const externalPlaneOwner =
+    plan.plane.kind === "external-public" ? plan.plane.owner : "(undeclared)";
   events.push({
     id: "event-001-plane",
     at: createdAt,
@@ -172,7 +174,7 @@ function sharedWorldEvidence(
   stateSeries: SharedWorldStateSnapshot[] | undefined;
   outcomes: SharedWorldOutcome[];
 } {
-  const { config, dryRun, actorSpecs, actorResults } = args;
+  const { plan, dryRun, actorSpecs, actorResults } = args;
   // Build the concurrent shared-world evidence block. routeHostDigest is sha256-16 of the ORIGIN each
   // seat reached: on getHost the seat URL the actor drove (verify confirms == plane.hostDigest); on
   // external-public the seat's CDP-OBSERVED URL origin (verify confirms == plane.publicOriginDigest).
@@ -211,7 +213,7 @@ function sharedWorldEvidence(
   const stateSeries: SharedWorldStateSnapshot[] | undefined = external
     ? undefined
     : dryRun
-      ? [{ timestamp: 0, digest: declaredStateDigest(config) }]
+      ? [{ timestamp: 0, digest: declaredStateDigest(planeStateOf(plan)) }]
       : [...args.stateSnapshots].sort((a, b) => a.timestamp - b.timestamp);
 
   const outcomes: SharedWorldOutcome[] = actorSpecs.map((spec, index) => {
@@ -293,7 +295,7 @@ function concurrencyReview(
   events: RunEvent[],
   nextEventId: (suffix: string) => string,
 ): ReviewSummary {
-  const { config, descriptor, createdAt, dryRun, actorSpecs, actorResults } = args;
+  const { plan, descriptor, createdAt, dryRun, actorSpecs, actorResults } = args;
   const { sharedWorld, laneWindows, stateSeries, outcomes } = evidence;
   const overlaps = actorWindowsOverlap(actorResults);
   const deltas = (stateSeries ?? []).filter(
@@ -307,7 +309,7 @@ function concurrencyReview(
     : "";
   // The count that matters is how many lanes were LIVE AT ONCE, not how many lanes exist — a
   // 6-lane run capped at 3 must never read as 6-wide concurrency (#350, the field failure).
-  const capForReport = config.execution?.concurrency ?? laneWindows.length;
+  const capForReport = plan.concurrency;
   const maxLive = maxSimultaneousWindows(laneWindows);
   events.push({
     id: nextEventId("concurrency"),
@@ -371,7 +373,7 @@ function concurrencyReview(
 
 /** Project the concurrent run into a humanish.run-bundle.v1 with the CONCURRENT shared-world block. */
 export function buildConcurrentSharedWorldBundle(args: ConcurrentBundleArgs): RunBundle {
-  const { config, descriptor, createdAt, dryRun, actorSpecs, actorResults } = args;
+  const { plan, descriptor, createdAt, dryRun, actorSpecs, actorResults } = args;
   const inProgress = args.inProgress === true;
   const external = (args.planeClass ?? "provisioned-getHost") === "external-public";
   const simulations: RunSimulation[] = [];
@@ -409,7 +411,7 @@ export function buildConcurrentSharedWorldBundle(args: ConcurrentBundleArgs): Ru
   const cost = concurrentCostSummary(args, inProgress);
   return {
     schema: RUN_BUNDLE_SCHEMA,
-    ...receivingPublication(args.config, args.dryRun),
+    ...receivingPublication(plan.residual, args.dryRun),
     runId: args.runId,
     mode: dryRun ? "dry-run" : "live",
     simCount: actorSpecs.length,
@@ -421,18 +423,18 @@ export function buildConcurrentSharedWorldBundle(args: ConcurrentBundleArgs): Ru
     persona: {
       id: actorSpecs[0]?.persona.id ?? "concurrent-persona",
       name: `Concurrent shared-world swarm (${actorSpecs.length} personas)`,
-      source: `lab:${config.id}`,
+      source: `lab:${plan.labId}`,
       sourceDigest: actorSpecs[0]?.persona.promptDigest ?? args.seedDigest,
     },
     scenario: {
-      id: `concurrent-shared-world-${config.id}`,
-      title: config.title ?? `Concurrent shared-world: ${config.id}`,
+      id: `concurrent-shared-world-${plan.labId}`,
+      title: plan.title ?? `Concurrent shared-world: ${plan.labId}`,
       goal: redactText(
         actorSpecs[0]?.evidenceInstructions ??
           actorSpecs[0]?.instructions ??
           "Concurrent shared-world interaction.",
       ),
-      source: `lab:${config.id}`,
+      source: `lab:${plan.labId}`,
       sourceDigest: actorSpecs[0]?.persona.promptDigest ?? args.seedDigest,
     },
     lifecycle: [
@@ -465,9 +467,9 @@ export function buildConcurrentSharedWorldBundle(args: ConcurrentBundleArgs): Ru
     review,
     feedbackCandidates: [],
     // Custom desktop image provenance (subject + every actor sandbox launched on it); omitted on the default.
-    ...(config.execution?.desktop?.template === undefined
+    ...(plan.residual.execution?.desktop?.template === undefined
       ? {}
-      : { desktopTemplate: config.execution.desktop.template }),
+      : { desktopTemplate: plan.residual.execution.desktop.template }),
     subject: args.subject,
     attributionClass: "shared-world",
     sharedWorld,
@@ -519,8 +521,8 @@ function concurrentCostSummary(
 }
 
 /** The declared (dry-run) state digest: the probe RECIPE (command digests), no run. */
-function declaredStateDigest(config: LabConfig): string {
-  const probes = config.subject.state?.checkpoint ?? [];
+function declaredStateDigest(state: LabSubjectState | undefined): string {
+  const probes = state?.checkpoint ?? [];
   return combineCheckpointDigest(
     probes.map((probe) => `${probe.name}=${commandDigestOf(probe.command)}`),
   );

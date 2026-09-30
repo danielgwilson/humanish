@@ -77,7 +77,7 @@ function seatView(ctx: SeatRecordContext, spec: CuaLaneSpec, index: number): Sea
   const screenshotMode: "raw" | "blurred" =
     traceScreenshotMode === "raw" || traceScreenshotMode === "blurred"
       ? traceScreenshotMode
-      : args.config.policies?.redactScreenshots === true
+      : args.plan.residual.policies?.redactScreenshots === true
         ? "blurred"
         : "raw";
   return {
@@ -106,7 +106,7 @@ function seatSimulation(
     id: spec.simId,
     index: index + 1,
     personaId: spec.persona.id,
-    scenarioId: `concurrent-shared-world-${args.config.id}`,
+    scenarioId: `concurrent-shared-world-${args.plan.labId}`,
     status: view.status,
     streamKind: "browser",
     mode: "browser-sim",
@@ -140,7 +140,7 @@ function seatStream(
       ? {}
       : { assignment: participantAssignment(spec.assignment) }),
     kind: "browser",
-    label: `Concurrent persona ${spec.laneId}${taxonomy} — ${args.config.id}`,
+    label: `Concurrent persona ${spec.laneId}${taxonomy} — ${args.plan.labId}`,
     status: view.status,
     transport: "snapshot",
     updatedAt: args.createdAt,

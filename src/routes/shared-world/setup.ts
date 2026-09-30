@@ -4,7 +4,7 @@
 import { randomBytes } from "node:crypto";
 import { realpath } from "node:fs/promises";
 import type { CuaActorDescriptor } from "../../actors/registry.js";
-import type { LabSubjectServe, LabSubjectStateCheckpoint } from "../../lab/types.js";
+import type { LabConfig, LabSubjectServe, LabSubjectStateCheckpoint } from "../../lab/types.js";
 import { buildRunSource, type RunSubjectStateStepRecord } from "../../run/bundle.js";
 import type { RunScope } from "../../run/run.js";
 import { prepareSelectedOutputDirectory } from "../../run/contained-output.js";
@@ -15,6 +15,7 @@ import { seedRecipeDigest } from "./checkpoints.js";
 import {
   prepareEmailReceiving,
   prepareExternalComms,
+  receivingSourceOf,
   subjectCommsOf,
   type SubjectComms,
 } from "./comms.js";
@@ -31,9 +32,11 @@ import type {
   PlaneContext,
   PlaneResults,
   PlaneSelection,
-  RunConcurrentSharedWorldLabOptions,
   SharedWorldLabHooks,
+  SharedWorldRunInput,
 } from "./types.js";
+import type { SharedWorldPlan } from "../../lab/plan-types.js";
+import { planeStateOf } from "./plan.js";
 import path from "node:path";
 
 const DEFAULT_PROBER_CADENCE_MS = 1000;
@@ -51,13 +54,15 @@ function makeRunId(): string {
 
 /** What validation derived from the lab, which setup reads. */
 interface AdmittedLab {
-  options: RunConcurrentSharedWorldLabOptions;
+  plan: SharedWorldPlan;
+  input: SharedWorldRunInput;
+  /** Only participant building reads it (lane hooks take all of it); step 2B removes it. */
+  config: LabConfig;
   requestedCwd: string;
   hooks: SharedWorldLabHooks;
   env: Record<string, string | undefined>;
   descriptor: CuaActorDescriptor;
   planeClass: ConcurrentSharedWorldPlaneClass;
-  concurrency: number;
   runBudget: PlaneContext["runBudget"];
   runSession: PlaneContext["runSession"];
   serve: LabSubjectServe | undefined;
@@ -120,19 +125,19 @@ async function bindPhysicalProject(requestedCwd: string): Promise<string> {
 }
 
 function startConcurrentRun(
-  options: RunConcurrentSharedWorldLabOptions,
+  lab: AdmittedLab,
   cwd: string,
-  hooks: SharedWorldLabHooks,
   scope: RunScope,
 ): ReturnType<RunScope["startRun"]> {
+  const { plan, input, hooks } = lab;
   return scope.startRun({
     cwd,
-    runId: options.runId,
+    runId: input.runId,
     mintRunId: makeRunId,
-    mode: options.dryRun ? "dry-run" : "live",
-    lab: options.lab,
+    mode: plan.dryRun ? "dry-run" : "live",
+    lab: plan.lab,
     renderReview: renderConcurrentReviewMarkdown,
-    observer: { open: options.open === true, render: hooks.renderObserverFn },
+    observer: { open: input.open === true, render: hooks.renderObserverFn },
   });
 }
 
@@ -154,16 +159,16 @@ export async function prepareConcurrentRun(
       finish: FinishFacts;
     }
 > {
-  const { options, requestedCwd, hooks, env, descriptor, planeClass, concurrency, fail } = lab;
+  const { plan, input, config, requestedCwd, hooks, env, descriptor, planeClass, fail } = lab;
   const { runBudget, runSession, localTreeRoute, subjectEnvNames, publicRepo } = lab;
   const { openaiApiKey, e2bApiKey, knownSecretValues, scrubKnownValues } = lab;
-  const { config, dryRun } = options;
+  const { dryRun, concurrency } = plan;
   const roles = config.actors[0]?.lanes ?? [];
   const cwd = await bindPhysicalProject(requestedCwd);
   const warnings: string[] = [];
   // The comms catch and the packed tree are checked before the run starts, so a refusal leaves
   // no run directory. Neither spends: the probe is one request and packing runs on the host.
-  const externalComms = await prepareExternalComms(config, planeClass, dryRun, warnings);
+  const externalComms = await prepareExternalComms(plan.residual, planeClass, dryRun, warnings);
   if (!externalComms.ok) {
     return {
       ok: false,
@@ -177,7 +182,7 @@ export async function prepareConcurrentRun(
   // failure fails the run closed without sandbox cost. Dry-run packs nothing.
   const packed =
     localTreeRoute && !dryRun
-      ? await packSubjectTree(cwd, config, hooks, scrubKnownValues)
+      ? await packSubjectTree(cwd, plan.residual, hooks, scrubKnownValues)
       : { ok: true as const, archive: undefined, buffer: undefined };
   if (!packed.ok) {
     return {
@@ -188,18 +193,18 @@ export async function prepareConcurrentRun(
   const localTreeArchive = packed.archive;
   const localTreeArchiveBuffer = packed.buffer;
 
-  const started = await startConcurrentRun(options, cwd, hooks, scope);
+  const started = await startConcurrentRun(lab, cwd, scope);
   if (!started.ok) return { ok: false, result: fail(started.code, started.message, descriptor.id) };
   const { run } = started;
   const { runId, createdAt, paths: runPaths } = run;
   const artifactRoot = runPaths.absoluteRunRoot;
-  const timeoutMs = config.execution?.timeoutMs ?? defaultSeatSessionTimeoutMs(config);
+  const timeoutMs = plan.sessionTimeoutMs ?? defaultSeatSessionTimeoutMs(plan);
   const requestTimeoutMs = readPositiveInt(env.HUMANISH_E2B_REQUEST_TIMEOUT_MS, 60_000);
-  const redactScreenshots = config.policies?.redactScreenshots === true;
+  const redactScreenshots = plan.residual.policies?.redactScreenshots === true;
   const timers: DetachedTimers = hooks.detachedTimers ?? {};
   const now = hooks.now ?? Date.now;
   const proberCadenceMs = hooks.proberCadenceMs ?? DEFAULT_PROBER_CADENCE_MS;
-  const seedDigest = seedRecipeDigest(config);
+  const seedDigest = seedRecipeDigest(planeStateOf(plan));
 
   const source = await buildRunSource({
     capturedAt: createdAt,
@@ -214,15 +219,15 @@ export async function prepareConcurrentRun(
   const results = emptyPlaneResults();
   const live: LiveSeats = { streamUrls: [] };
 
-  const subjectComms = subjectCommsOf(config, planeClass);
+  const subjectComms = subjectCommsOf(plan.residual, planeClass);
 
   const declaredOriginDigest =
-    planeClass === "external-public" ? declaredOriginDigestOf(config) : undefined;
+    plan.plane.kind === "external-public" ? declaredOriginDigestOf(plan.plane.appUrl) : undefined;
 
   const email = await prepareEmailReceiving({
     cwd,
     runId,
-    config,
+    source: receivingSourceOf(plan.residual, subjectEnvNames),
     env,
     participants: actorSpecs.map((spec) => spec.laneId),
     runPaths,
@@ -242,7 +247,8 @@ export async function prepareConcurrentRun(
   const receiving = email.receiving;
   if (receiving) results.commsArtifactPath = "comms/receiving.json";
   const ctx: PlaneContext = {
-    options,
+    plan,
+    input,
     config,
     descriptor,
     hooks,

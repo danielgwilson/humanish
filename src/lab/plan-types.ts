@@ -51,7 +51,7 @@ export type ResidualConfig = Pick<
   "comms" | "policies" | "personas" | "defaults" | "review"
 > & {
   readonly execution?: Pick<NonNullable<LabConfig["execution"]>, "desktop">;
-  readonly subject: Pick<LabConfig["subject"], "clone" | "localTree" | "repos">;
+  readonly subject: Pick<LabConfig["subject"], "clone" | "localTree" | "repos" | "envValues">;
 };
 
 export interface PlannedAnalysis {
@@ -176,6 +176,8 @@ export interface SharedWorldPlan extends PlanBase {
   readonly plane: SharedWorldPlane;
   /** At least 2. */
   readonly concurrency: number;
+  /** The declared seat session timeout; the route supplies its default. */
+  readonly sessionTimeoutMs?: number;
   readonly brain: Extract<Brain, { kind: "openai" | "local-agent" }>;
   readonly caps: { readonly maxUsd?: number; readonly maxTotalUsd?: number };
 }
