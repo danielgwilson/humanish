@@ -3,7 +3,7 @@ import type { LabSubjectServe, LabSubjectState } from "../lab/types.js";
 import type { RunSubjectStateStepRecord } from "../run/bundle.js";
 import { runDetachedStep, type DetachedTimers } from "../substrates/detached.js";
 import { runOrThrow, type Shell } from "../substrates/shell.js";
-import { runSubjectServePipeline } from "./serve.js";
+import { runSubjectServePipeline, serveProvisioningBudgetMs } from "./serve.js";
 import {
   CLONE_TIMEOUT_MS,
   emitPhaseCompleted,
@@ -24,6 +24,14 @@ import {
  * appears in the script text, the process argv beyond the transient git call, the clone URL,
  * or .git/config.
  */
+/** The longest provisionCloneSubject can take with the lab's budgets: the clone, then serving. */
+export function cloneProvisioningBudgetMs(
+  serve: LabSubjectServe,
+  state: LabSubjectState | undefined,
+): number {
+  return CLONE_TIMEOUT_MS + serveProvisioningBudgetMs(serve, state);
+}
+
 export async function provisionCloneSubject(
   shell: Shell,
   args: {

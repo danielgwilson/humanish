@@ -43,7 +43,7 @@ function previewLab(extra: string[] = []): string {
   ].join("\n");
 }
 
-function cloneLab(): string {
+function cloneLab(options: { serve?: string[]; seed?: boolean; desktop?: string[] } = {}): string {
   return [
     "schema: humanish.lab.v2",
     "id: clone-probe",
@@ -52,16 +52,20 @@ function cloneLab(): string {
     "  repos:",
     "    - example/notes",
     "  serve:",
-    "    install: npm ci",
-    "    start: npm start",
+    ...(options.serve ?? ["    install: npm ci", "    start: npm start"]),
     "    url: http://127.0.0.1:3000/",
-    "  state:",
-    "    seed:",
-    "      - name: seed-notes",
-    "        command: npm run seed",
-    "        timeoutMs: 120000",
+    ...(options.seed === false
+      ? []
+      : [
+          "  state:",
+          "    seed:",
+          "      - name: seed-notes",
+          "        command: npm run seed",
+          "        timeoutMs: 120000",
+        ]),
     "execution:",
     "  target: e2b-desktop",
+    ...(options.desktop ?? []),
     "actors:",
     "  - type: openai-computer-use",
     "scenario:",
@@ -238,7 +242,9 @@ describe("lab preflight receipts", () => {
     expect(previewResult.sandbox.timeoutMs).toBe(PROBE_TIMEOUT_MS + LEASE_BUFFER_MS);
     // A clone probe gets the run's provisioning allowance plus its declared seed steps.
     expect(cloneResult.ok).toBe(true);
-    expect(clone.created[0]?.timeoutMs).toBe(30 * 60_000 + 120_000 + LEASE_BUFFER_MS);
+    // clone 5 min, Node bootstrap 2 x 10 min, install 2 x 10 min, the seed step's 2 min,
+    // readiness 3 min, plus the buffer.
+    expect(clone.created[0]?.timeoutMs).toBe((5 + 20 + 20 + 2 + 3) * 60_000 + LEASE_BUFFER_MS);
 
     await writeFile(
       path.join(cwd, "humanish/labs/preview.yaml"),
@@ -253,6 +259,48 @@ describe("lab preflight receipts", () => {
       hooks: { loadDesktopModule: async () => capped.module },
     });
     expect(capped.created[0]?.timeoutMs).toBe(120_000);
+  });
+
+  it("gives a clone probe what the run's provisioning may use, up to the declared timeout", async () => {
+    // A 50-minute build under a declared 60-minute sandbox: the run may provision for the full
+    // hour, so the probe must not be cut off earlier.
+    await writeFile(
+      path.join(cwd, "humanish/labs/clone-probe.yaml"),
+      cloneLab({
+        serve: [
+          "    install: npm ci",
+          "    build: npm run build",
+          "    buildTimeoutMs: 3000000",
+          "    start: npm start",
+        ],
+        seed: false,
+        desktop: ["  desktop:", "    sandboxTimeoutMs: 3600000"],
+      }),
+    );
+    const slow = fakeProvider({});
+    await runLabPreflight({
+      cwd,
+      lab: "clone-probe",
+      reachability: "sandbox-loopback",
+      env,
+      hooks: { loadDesktopModule: async () => slow.module, sleep: async () => undefined },
+    });
+    expect(slow.created[0]?.timeoutMs).toBe(3_600_000);
+
+    // A clone served as-is needs only the clone and readiness budgets.
+    await writeFile(
+      path.join(cwd, "humanish/labs/clone-probe.yaml"),
+      cloneLab({ serve: ["    start: python3 -m http.server 3000"], seed: false }),
+    );
+    const quick = fakeProvider({});
+    await runLabPreflight({
+      cwd,
+      lab: "clone-probe",
+      reachability: "sandbox-loopback",
+      env,
+      hooks: { loadDesktopModule: async () => quick.module, sleep: async () => undefined },
+    });
+    expect(quick.created[0]?.timeoutMs).toBe((5 + 3) * 60_000 + LEASE_BUFFER_MS);
   });
 
   it("keeps the journal when the kill fails, and reclaim --preflight kills it by id", async () => {

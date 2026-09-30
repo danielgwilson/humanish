@@ -151,11 +151,14 @@ the error reaches the caller. The lab preflight probe has no run directory, so
 `runLabPreflight` (`src/lab/preflight.ts`) journals its receipt in
 `.humanish/preflight/<probe-id>/` and removes the journal after a confirmed kill.
 `humanish reclaim --preflight` (`reclaimPreflightSandboxes`, `src/run/reclaim.ts`) kills what a
-killed or failed probe left, and skips a journal whose probe may still be running. The probe's
-timeout is sized to its work: each public-preview target's readiness budget, or a run's
-provisioning allowance plus seed steps for a clone probe, plus five minutes, never above a
-declared `sandboxTimeoutMs`. Without that declaration a clone probe's timeout is 35 minutes, up
-from 10; the journal is what ends a leaked probe early.
+killed or failed probe left. It acts on a journal only when the probe marked it abandoned, its
+lease has elapsed, or its owner ran on this host in this pid namespace and is gone; otherwise it
+says why it left the journal. A public-preview probe's timeout is each target's readiness budget
+plus five minutes. A clone probe's timeout is `cloneProvisioningBudgetMs`
+(`src/subject/clone.ts`), the longest its clone and serve steps can take with the lab's declared
+or default budgets and retries, plus five minutes. A declared `sandboxTimeoutMs`, or E2B's
+60-minute maximum, caps both. Without a declared timeout a clone probe gets 13 minutes (clone and
+serve as-is) up to 60 (a Node app that installs and builds), where it used to get 10.
 
 ## Make your first change
 

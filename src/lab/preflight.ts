@@ -4,15 +4,14 @@ import {
   type AutomaticAnalysisBudget,
 } from "../analysis/automatic-config.js";
 
-import { provisionCloneSubject } from "../subject/clone.js";
+import { cloneProvisioningBudgetMs, provisionCloneSubject } from "../subject/clone.js";
 import { CUA_ACTOR_LAB_PROVIDER_METADATA } from "../substrates/e2b/cua-desktop.js";
 import { probeUrl } from "../substrates/detached.js";
 import { loadE2BDesktopModule, type E2BDesktopModule } from "../substrates/e2b/desktop-launch.js";
 import { acquireE2BDesktopSandbox } from "../substrates/e2b/sandbox.js";
 import { e2bShell } from "../substrates/e2b/shell.js";
 import type { Shell } from "../substrates/shell.js";
-import { DEFAULT_STATE_STEP_TIMEOUT_MS } from "../subject/state.js";
-import { SUBJECT_PROVISION_BUDGET_MS } from "../routes/computer-use/types.js";
+import { MAX_SANDBOX_MS } from "../routes/computer-use/types.js";
 import {
   abandonPreflightJournal,
   discardPreflightJournal,
@@ -364,13 +363,10 @@ async function runSandboxLoopbackPreflight(ctx: PreflightContext): Promise<LabPr
   }
 
   let subjectCommitDigest: string | undefined;
-  // The same provisioning allowance a run gives its subject sandbox, so a preflight that passes
-  // means the run's provisioning fits too.
-  const stateBudgetMs = (ctx.config.subject.state?.seed ?? []).reduce(
-    (sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS),
-    0,
-  );
-  const leaseMs = SUBJECT_PROVISION_BUDGET_MS + stateBudgetMs + PREFLIGHT_LEASE_BUFFER_MS;
+  // The longest the clone and serve steps can take with the lab's own budgets, so the probe is
+  // never cut off where the run's provisioning would still be allowed to finish.
+  const leaseMs =
+    cloneProvisioningBudgetMs(serve, ctx.config.subject.state) + PREFLIGHT_LEASE_BUFFER_MS;
   const probe = await withPreflightSandbox(ctx, { e2bApiKey, leaseMs }, async (shell) => {
     const subjectEnvNames = ctx.config.subject.env ?? [];
     await provisionCloneSubject(shell, {
@@ -414,10 +410,12 @@ async function withPreflightSandbox(
   let module: E2BDesktopModule | undefined;
   let sandboxId: string | undefined;
   let failureMessage: string | undefined;
-  // The lease is sized to the probe's work, never longer than a declared sandbox timeout.
-  const declaredTimeoutMs = ctx.config.execution?.desktop?.sandboxTimeoutMs;
-  const timeoutMs =
-    declaredTimeoutMs === undefined ? args.leaseMs : Math.min(args.leaseMs, declaredTimeoutMs);
+  // The lease is sized to the probe's work, never longer than a declared sandbox timeout (the run
+  // gets no more than that either) or E2B's maximum.
+  const timeoutMs = Math.min(
+    args.leaseMs,
+    ctx.config.execution?.desktop?.sandboxTimeoutMs ?? MAX_SANDBOX_MS,
+  );
   // The receipt goes to a journal under .humanish/preflight, so `humanish reclaim --preflight`
   // can kill the probe if this process dies before the finally block does.
   let journal: PreflightJournal | undefined;
