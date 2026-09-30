@@ -82,3 +82,22 @@ export class CuaProviderError extends Error {
 }
 export const isCuaProviderError = (value: unknown): value is CuaProviderError =>
   typeof value === "object" && value !== null && errors.has(value);
+
+const refusals = new WeakSet<object>();
+/**
+ * The model provider refused the request under its usage policy (OpenAI `invalid_prompt`). A
+ * refusal is the provider's decision about this prompt, so it is not a harness fault, and sending
+ * the same prompt again is not a recovery path. `providerCode` is the provider's identifier only;
+ * the provider's message can echo the prompt and is never attached.
+ */
+export class CuaPromptRefusedError extends Error {
+  readonly providerCode: string;
+  constructor(provider: string, providerCode: string) {
+    super(`${provider} refused the prompt under its usage policy (${providerCode})`);
+    this.name = "CuaPromptRefusedError";
+    this.providerCode = providerCode;
+    refusals.add(this);
+  }
+}
+export const isCuaPromptRefusedError = (value: unknown): value is CuaPromptRefusedError =>
+  typeof value === "object" && value !== null && refusals.has(value);

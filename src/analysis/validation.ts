@@ -1,7 +1,7 @@
 import { validStoredCodexAnalysisConfig } from "./codex-config.js";
 import { createHash } from "node:crypto";
 import { z } from "zod";
-
+import { ACTOR_STOP_CAUSES } from "../actors/contract.js";
 import {
   STUDY_ANALYSIS_SCHEMA,
   STUDY_ANALYSIS_CORRECTION_SCHEMA,
@@ -172,19 +172,7 @@ const studyAnalysisParticipantProvenanceSchema = z
         "harness_error",
       ])
       .nullable(),
-    stopCause: z
-      .enum([
-        "provider_output_limit",
-        "provider_token_limit",
-        "time_limit",
-        "spend_limit",
-        "study_spend_limit",
-        "adapter_limit",
-        "provider_incomplete",
-        "provider_status",
-        "harness_aborted",
-      ])
-      .nullable(),
+    stopCause: z.enum(ACTOR_STOP_CAUSES).nullable(),
     goalSource: z.enum(["participant_report", "condition_matched", "unavailable"]).nullable(),
     declaredOutcome: z.enum(["reached", "not_reached", "blocked"]).nullable(),
     taskOutcomes: z

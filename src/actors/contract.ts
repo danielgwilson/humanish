@@ -61,18 +61,24 @@ export type ParticipantDeclaredOutcome = "reached" | "not_reached" | "blocked";
  *  because a persona gave up. */
 export const PARTICIPANT_OUTCOME_STATUSES: readonly ActorStatus[] = ["abandoned", "incomplete"];
 
-/** Optional precise interruption cause; completionReason and status retain their original meaning. */
-export type ActorStopCause =
-  | "provider_output_limit"
-  | "provider_token_limit"
-  | "time_limit"
-  | "spend_limit"
-  | "study_spend_limit"
-  | "adapter_limit"
-  | "provider_incomplete"
-  | "provider_status"
-  | "harness_aborted"
-  | "usage_unreported";
+/** Optional precise interruption cause; completionReason and status retain their original meaning.
+ *  One list, so the analysis schema and the diagnostics projection cannot drift from the trace. */
+export const ACTOR_STOP_CAUSES = [
+  "provider_output_limit",
+  "provider_token_limit",
+  "time_limit",
+  "spend_limit",
+  "study_spend_limit",
+  "adapter_limit",
+  "provider_incomplete",
+  "provider_status",
+  // The model provider refused the prompt under its usage policy (OpenAI `invalid_prompt`). The
+  // session ends without a retry; resending the same prompt is not a fix.
+  "provider_refused_prompt",
+  "harness_aborted",
+  "usage_unreported",
+] as const;
+export type ActorStopCause = (typeof ACTOR_STOP_CAUSES)[number];
 
 export type ActorCompletionReason =
   | "goal_satisfied"

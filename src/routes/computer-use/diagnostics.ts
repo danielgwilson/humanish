@@ -1,5 +1,10 @@
 import { actorStopCauseLabel } from "../../actors/stop-cause.js";
-import type { ActorCompletionReason, ActorStatus, ActorStopCause } from "../../actors/contract.js";
+import {
+  ACTOR_STOP_CAUSES,
+  type ActorCompletionReason,
+  type ActorStatus,
+  type ActorStopCause,
+} from "../../actors/contract.js";
 
 /** Diagnostic categories describe the instrument's result, never prove a target-app defect. */
 const CUA_DIAGNOSTIC_CATEGORIES = [
@@ -15,16 +20,7 @@ export type CuaDiagnosticCategory = (typeof CUA_DIAGNOSTIC_CATEGORIES)[number];
 
 /** Closed at both projection and telemetry boundaries. No provider messages are classified. */
 const CUA_DIAGNOSTIC_STOP_CAUSES = [
-  "provider_output_limit",
-  "provider_token_limit",
-  "time_limit",
-  "spend_limit",
-  "study_spend_limit",
-  "provider_incomplete",
-  "provider_status",
-  "harness_aborted",
-  "adapter_limit",
-  "usage_unreported",
+  ...ACTOR_STOP_CAUSES,
   "unspecified_limit",
   "mixed",
   "unknown",
