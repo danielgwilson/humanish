@@ -2,6 +2,11 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { runComputerUseLoop } from "../src/actors/computer-use/loop.js";
 import { runCuaActorSession } from "../src/actors/computer-use/actor.js";
+import {
+  createOpenAiResponsesProvider as publicProvider,
+  defaultRedactionHooks as publicRedaction,
+  runComputerUseLoop as publicLoop,
+} from "../src/index.js";
 import { defaultRedactionHooks } from "../src/evidence/redaction.js";
 import type { CuaTurn } from "../src/actors/computer-use/loop.js";
 import {
@@ -116,34 +121,70 @@ describe("sequential cap policy requires reported usage", () => {
   });
 });
 
-describe("strict capped sessions own actual OpenAI dispatch and cancellation", () => {
-  const frame = Buffer.from(
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lXcAAAAASUVORK5CYII=",
-    "base64",
-  );
-  async function session(
-    fetchFn: FetchLike,
-    options: { capped?: boolean; timeoutMs?: number; signal?: AbortSignal } = {},
-  ) {
-    let actions = 0;
-    const result = await runCuaActorSession({
-      instructions: "Synthetic budget transport proof.",
-      persona: { id: "synthetic", traitsApplied: [], promptDigest: "fixture" },
-      timeoutMs: options.timeoutMs ?? 1000,
-      requireReportedUsageForSpendCap: true,
-      ...(options.capped === false ? {} : { maxUsd: 1, estimateTurnCostUsd: () => 0 }),
-      ...(options.signal === undefined ? {} : { signal: options.signal }),
-      openai: { apiKey: "synthetic-key", model: "gpt-5.6-sol", fetchFn, delayFn: async () => {} },
-      executor: {
-        observe: async () => ({ screenshot: frame, stateSignature: "synthetic" }),
-        execute: async () => {
-          actions++;
-        },
-      },
-    });
-    return { ...result, actions };
-  }
+type SessionOptions = { capped?: boolean; timeoutMs?: number; signal?: AbortSignal };
+const frame = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lXcAAAAASUVORK5CYII=",
+  "base64",
+);
 
+/** A strict capped session through the deprecated wrapper, which sets singleDispatch itself. */
+async function wrapperSession(fetchFn: FetchLike, options: SessionOptions = {}) {
+  let actions = 0;
+  const result = await runCuaActorSession({
+    instructions: "Synthetic budget transport proof.",
+    persona: { id: "synthetic", traitsApplied: [], promptDigest: "fixture" },
+    timeoutMs: options.timeoutMs ?? 1000,
+    requireReportedUsageForSpendCap: true,
+    ...(options.capped === false ? {} : { maxUsd: 1, estimateTurnCostUsd: () => 0 }),
+    ...(options.signal === undefined ? {} : { signal: options.signal }),
+    openai: { apiKey: "synthetic-key", model: "gpt-5.6-sol", fetchFn, delayFn: async () => {} },
+    executor: {
+      observe: async () => ({ screenshot: frame, stateSignature: "synthetic" }),
+      execute: async () => {
+        actions++;
+      },
+    },
+  });
+  return { ...result, actions };
+}
+
+/**
+ * The same session composed from public exports, as docs/contracts/schemas.md documents it: the
+ * loop, the default redaction, and the OpenAI provider with singleDispatch under a strict cap.
+ */
+async function composedSession(fetchFn: FetchLike, options: SessionOptions = {}) {
+  let actions = 0;
+  const capped = options.capped !== false;
+  const result = await publicLoop({
+    instructions: "Synthetic budget transport proof.",
+    persona: { id: "synthetic", traitsApplied: [], promptDigest: "fixture" },
+    timeoutMs: options.timeoutMs ?? 1000,
+    now: Date.now,
+    redaction: publicRedaction,
+    requireReportedUsageForSpendCap: true,
+    ...(capped ? { maxUsd: 1, estimateTurnCostUsd: () => 0 } : {}),
+    ...(options.signal === undefined ? {} : { signal: options.signal }),
+    provider: publicProvider({
+      apiKey: "synthetic-key",
+      model: "gpt-5.6-sol",
+      fetchFn,
+      delayFn: async () => {},
+      ...(capped ? { singleDispatch: true } : {}),
+    }),
+    executor: {
+      observe: async () => ({ screenshot: frame, stateSignature: "synthetic" }),
+      execute: async () => {
+        actions++;
+      },
+    },
+  });
+  return { ...result, actions };
+}
+
+describe.each([
+  ["runCuaActorSession", wrapperSession],
+  ["the strict-spend composition", composedSession],
+])("strict capped sessions own actual OpenAI dispatch and cancellation: %s", (_name, session) => {
   it.each([
     [0, "network"],
     [503, "unavailable"],
