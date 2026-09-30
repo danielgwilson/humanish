@@ -10,7 +10,7 @@ import {
   PERSONA_BACKGROUND_MAX_BYTES,
 } from "../../src/lab/persona.js";
 import { resolveCommittedPersonasForCwd } from "../../src/lab/persona-resolve.js";
-import { composeLaneInstructions, withInboxMission } from "../../src/cua-actor-lab.js";
+import { composeLaneInstructions, withInboxMission } from "../../src/routes/computer-use/lab.js";
 import { inspectLabManifest } from "../../src/lab/discover.js";
 import { buildInitialRequest } from "../../src/actors/computer-use/openai-provider.js";
 import { DEVICE_PRESETS } from "../../src/lab/device-presets.js";

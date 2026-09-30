@@ -11,7 +11,7 @@ import path from "node:path";
 
 import { RUN_STATUS_FILE, isRunStatusRecord } from "../run/status.js";
 import { resolveRunPath } from "../run/run.js";
-import { bindExistingRunArtifactPaths, isSafeRunIdSegment } from "../run-paths.js";
+import { bindExistingRunArtifactPaths, isSafeRunIdSegment } from "../run/paths.js";
 import { openTarget } from "../observer/render.js";
 import { serveObserverLibrary, type ServeLibraryServer } from "../observer/serve.js";
 

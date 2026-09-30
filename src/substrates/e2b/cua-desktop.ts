@@ -1,5 +1,5 @@
 // E2B owns provisioning and final evidence; the participant runner only uses the ready port.
-import { toErrorMessage } from "../../command-failure.js";
+import { toErrorMessage } from "../command-failure.js";
 import { FakeInbox } from "../../comms/fake-inbox.js";
 import { buildOriginMap } from "../../comms/inbox.js";
 import { deployReceivingInbox } from "../../comms/receiving-inbox.js";
@@ -12,14 +12,21 @@ import {
   type DeployedCommsCatch,
 } from "../../comms/sandbox-catch.js";
 import type { CommsAddress } from "../../comms/types.js";
-import type { CuaActorLabErrorCode, CuaLaneDeps, CuaLaneSpec } from "../../cua-actor-lab.js";
+import type {
+  CuaActorLabErrorCode,
+  CuaLaneDeps,
+  CuaLaneSpec,
+} from "../../routes/computer-use/lab.js";
 import type {
   CuaDesktopLane,
   DesktopLaneEvidence,
   ReadyCuaDesktop,
-} from "../../cua-desktop-lane.js";
-import { inboxRecipientFor, laneHasInboxRecipient } from "../../cua-desktop-lane.js";
-import type { OwnedDesktopAllocation } from "../../desktop-session.js";
+} from "../../routes/computer-use/desktop-lane.js";
+import {
+  inboxRecipientFor,
+  laneHasInboxRecipient,
+} from "../../routes/computer-use/desktop-lane.js";
+import type { OwnedDesktopAllocation } from "../desktop-session.js";
 import { collectDesktopRecording } from "../../evidence/desktop-recording-artifact.js";
 import type { RunDesktopRecording } from "../../evidence/desktop-recording-types.js";
 import {
@@ -55,7 +62,7 @@ import { readDetachedLog } from "./detached.js";
 import { redactText } from "../../evidence/redaction.js";
 import { type RunDesktopGeometry, type RunSubjectStateStepRecord } from "../../run/run.js";
 import { appendSandboxReceipt } from "../../run/sandbox-receipts.js";
-import { writeContainedOutputFile } from "../../selected-output-paths.js";
+import { writeContainedOutputFile } from "../../run/selected-output-paths.js";
 
 function optionalAddress(address: string | undefined): { address?: string } {
   return address === undefined ? {} : { address };

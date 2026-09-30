@@ -8,7 +8,7 @@ import {
   type CuaProvider,
   type CuaTurn,
 } from "../../../src/actors/computer-use/loop.js";
-import { estimateActorCost } from "../../../src/pricing.js";
+import { estimateActorCost } from "../../../src/run/pricing.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
 
 const capabilities: ActorCapabilities = {

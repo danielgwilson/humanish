@@ -10,7 +10,7 @@ import {
   participantFeedbackCandidates,
   resolveSelfReportedBlocker,
   resolveSelfReportedFriction,
-} from "../src/cua-actor-lab.js";
+} from "../src/routes/computer-use/lab.js";
 import { containsSensitive, defaultRedactionHooks } from "../src/evidence/redaction.js";
 
 const REPORT = "The Save button did nothing. I used Enter and finished the task.";

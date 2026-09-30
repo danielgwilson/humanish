@@ -10,7 +10,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 // REAL run-dir resolution chain (a $0 dry-run creates the managed dir + latest pointer) with a
 // fake @e2b/desktop module, so the containment discipline is exercised, not mocked away.
 import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../../src/lab/config.js";
-import { runTerminalProductLab } from "../../src/e2b-terminal-lab.js";
+import { runTerminalProductLab } from "../../src/routes/terminal/lab.js";
 import { resolveRunPath } from "../../src/run/run.js";
 import {
   appendSandboxReceipt,

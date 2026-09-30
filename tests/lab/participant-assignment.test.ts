@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { runCuaActorLab } from "../../src/cua-actor-lab.js";
+import { runCuaActorLab } from "../../src/routes/computer-use/lab.js";
 import { LAB_CONFIG_SCHEMA, parseLabConfig } from "../../src/lab/config.js";
 import { participantAssignment } from "../../src/lab/participant-assignment.js";
 import { verifyRun, type RunBundle } from "../../src/run/run.js";

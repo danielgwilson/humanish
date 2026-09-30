@@ -17,7 +17,7 @@ import {
   withRunStatusScope,
   type RunStatusRecord,
 } from "../../src/run/status.js";
-import { prepareRunArtifactPaths } from "../../src/run-paths.js";
+import { prepareRunArtifactPaths } from "../../src/run/paths.js";
 
 describe("run status: identity + liveness on disk (#455)", () => {
   let cwd: string;

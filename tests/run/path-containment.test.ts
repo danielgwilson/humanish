@@ -9,8 +9,8 @@ import { runInit } from "../../src/lab/init.js";
 import { renderObserver, serveObserver } from "../../src/observer/render.js";
 import { createProgram } from "../../src/cli/program.js";
 import { doctor, listRuns, runDryRun, verifyRun } from "../../src/run/run.js";
-import { prepareRunArtifactPaths, validatePreparedRunArtifactPaths } from "../../src/run-paths.js";
-import { writePreparedRunLatestPointer } from "../../src/selected-output-paths.js";
+import { prepareRunArtifactPaths, validatePreparedRunArtifactPaths } from "../../src/run/paths.js";
+import { writePreparedRunLatestPointer } from "../../src/run/selected-output-paths.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -410,11 +410,11 @@ describe("run path containment", () => {
   it("wires every direct run producer through the shared path guard", async () => {
     const producers = [
       "run/run.ts",
-      "cua-actor-lab.ts",
-      "shared-world-lab.ts",
-      "concurrent-shared-world-lab.ts",
-      "scripted-browser-lab.ts",
-      "e2b-terminal-lab.ts",
+      "routes/computer-use/lab.ts",
+      "routes/shared-world/sequential.ts",
+      "routes/shared-world/concurrent.ts",
+      "routes/scripted-browser.ts",
+      "routes/terminal/lab.ts",
     ];
     for (const producer of producers) {
       const source = await readFile(path.resolve("src", producer), "utf8");

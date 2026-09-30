@@ -3,7 +3,7 @@ import path from "node:path";
 import os from "node:os";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { computeStats, formatStatsHuman } from "../../src/run/stats.js";
-import { bindExistingRunArtifactPaths } from "../../src/run-paths.js";
+import { bindExistingRunArtifactPaths } from "../../src/run/paths.js";
 import {
   beginStudyAnalysisExecution,
   writeStudyAnalysisExecutionReceipt,

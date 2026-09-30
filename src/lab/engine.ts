@@ -11,26 +11,30 @@ import { isLocalBrowserLab, localBrowserDefaults } from "../substrates/local/run
 import { resolveAutomaticAnalysis } from "../analysis/automatic-config.js";
 import type { AutomaticAnalysisHooks } from "../analysis/automatic-completion.js";
 import path from "node:path";
-import { runCuaActorLab, type CuaActorLabHooks, type CuaActorLabResult } from "../cua-actor-lab.js";
+import {
+  runCuaActorLab,
+  type CuaActorLabHooks,
+  type CuaActorLabResult,
+} from "../routes/computer-use/lab.js";
 import {
   runScriptedBrowserLab,
   type ScriptedBrowserLabHooks,
   type ScriptedBrowserLabResult,
-} from "../scripted-browser-lab.js";
+} from "../routes/scripted-browser.js";
 import {
   runTerminalProductLab,
   type TerminalProductLabHooks,
   type TerminalProductLabResult,
-} from "../e2b-terminal-lab.js";
+} from "../routes/terminal/lab.js";
 import {
   runSharedWorldLab,
   type SharedWorldLabHooks,
   type SharedWorldLabResult,
-} from "../shared-world-lab.js";
+} from "../routes/shared-world/sequential.js";
 import {
   runConcurrentSharedWorld,
   type ConcurrentSharedWorldLabResult,
-} from "../concurrent-shared-world-lab.js";
+} from "../routes/shared-world/concurrent.js";
 import { withRunStatusScope, type RunLabProvenance } from "../run/status.js";
 import type { ObserverResult } from "../observer/render.js";
 import { runDryRun, type RunResult, type RunScorerProvenance } from "../run/run.js";

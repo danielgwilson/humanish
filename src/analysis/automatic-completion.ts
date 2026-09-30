@@ -1,5 +1,5 @@
 import path from "node:path";
-import { validatePreparedRunRootIdentity, type PreparedRunArtifactPaths } from "../run-paths.js";
+import { validatePreparedRunRootIdentity, type PreparedRunArtifactPaths } from "../run/paths.js";
 import type { StudyAnalysisConfig } from "./study-analysis.js";
 import { runAutomaticStudyAnalysis, type AutomaticStudyAnalysisDeps } from "./automatic.js";
 import type { AutomaticStudyAnalysisOutcome } from "./job.js";

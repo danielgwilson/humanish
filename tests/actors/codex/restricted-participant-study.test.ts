@@ -14,7 +14,7 @@ import {
   estimateActorCostForExecution,
   estimateActorCost,
   contradictsAccountBilling,
-} from "../../../src/pricing.js";
+} from "../../../src/run/pricing.js";
 import { readRunDetail } from "../../../src/run/detail.js";
 import { verifyRun } from "../../../src/run/run.js";
 const { session, sessionClose } = vi.hoisted(() => ({

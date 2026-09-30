@@ -57,7 +57,7 @@ import { resolveAutomaticAnalysis, type LabAnalysis } from "../analysis/automati
 import { normalizeExtraExcludeEntry } from "../run/source-archive.js";
 import { actorRegistry } from "../actors/registry.js";
 import { containsSensitive } from "../evidence/redaction.js";
-import type { LabTask } from "../tasks.js";
+import type { LabTask } from "./tasks.js";
 import { DEVICE_PRESET_NAMES, isDevicePresetName } from "./device-presets.js";
 import type {
   DwellWindow,
@@ -70,7 +70,7 @@ import {
   reasoningEffortNames,
   type ReasoningEffort,
 } from "../actors/reasoning-effort.js";
-import { isExactRuntimeVersion } from "../terminal-runtime.js";
+import { isExactRuntimeVersion } from "../routes/terminal/runtime.js";
 import { isMaxOutputTokens } from "../actors/output-token-limit.js";
 
 export const LAB_CONFIG_SCHEMA = "humanish.lab.v2";
@@ -474,7 +474,7 @@ export interface LabActor {
    *
    * The two halves belong to different people. `goal` reaches the participant's prompt; `success`
    * never does — a moderator does not read the success criterion aloud, because telling someone how
-   * they will be judged changes what they do. See src/tasks.ts.
+   * they will be judged changes what they do. See src/lab/tasks.ts.
    * Supported only on the first actor of per-lane CUA routes; other routes fail preflight.
    */
   tasks?: LabTask[];
@@ -634,7 +634,7 @@ interface LabExecution {
   /**
    * Blast-radius budget for the computer-use lane. CONSUMED on the CUA route: `caps.maxUsd`, when
    * set, is a FAIL-CLOSED abort — the session stops the moment its running ESTIMATED spend crosses
-   * it (the runaway-retry guard), and a cap on a model src/pricing.ts cannot price is REFUSED at
+   * it (the runaway-retry guard), and a cap on a model src/run/pricing.ts cannot price is REFUSED at
    * preflight rather than run uncapped. It is a PER-LANE cap: enforced inside each lane's loop, so
    * an N-lane fan-out can spend up to N × maxUsd before any lane aborts (the run warns with the
    * true ~N × cap ceiling). `caps.maxTotalUsd` is the shared STUDY budget (#299): one ledger

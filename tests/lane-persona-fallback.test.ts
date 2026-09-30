@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { LAB_CONFIG_SCHEMA, parseLabConfig } from "../src/lab/config.js";
-import { resolveCuaLanePlan } from "../src/cua-actor-lab.js";
+import { resolveCuaLanePlan } from "../src/routes/computer-use/lab.js";
 
 // #512: with a `lanes` roster present, lane persona resolution read ONLY `lane.persona`. Every
 // fan-out lane of every lab that declared `actors[0].persona` therefore ran with no persona:
@@ -55,7 +55,7 @@ describe("lane persona resolution (#512)", () => {
   });
 
   it("uses the documented default when neither the lane nor the actor names one", () => {
-    // src/cua-actor-lab.ts falls back to `cua-operator`. Asserted so the fallback CHAIN is
+    // src/routes/computer-use/lab.ts falls back to `cua-operator`. Asserted so the fallback CHAIN is
     // pinned end to end: lane, then actor, then the built-in default.
     const plan = planFor({
       type: "openai-computer-use",

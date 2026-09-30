@@ -10,7 +10,7 @@ import { connect, createServer, type Socket } from "node:net";
 import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { connectGuestBootstrap, validateGuestInitialUrl } from "../../guest-bootstrap.js";
-import { ownDesktopAllocation, type DesktopSession } from "../../desktop-session.js";
+import { ownDesktopAllocation, type DesktopSession } from "../desktop-session.js";
 import { runtimeDocker, runtimeExec, usesLima } from "./runtime-host.js";
 import { openLimaTunnel } from "./runtime-ssh.js";
 import { guestMediaConfigSchema, type GuestMediaConfig } from "../../guest-media-config.js";

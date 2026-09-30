@@ -18,7 +18,7 @@ import {
   type PreparedSelectedOutputFile,
   writeContainedOutputFile,
   writePreparedSelectedOutputFile,
-} from "../../selected-output-paths.js";
+} from "../../run/selected-output-paths.js";
 
 export const CODEX_APP_SERVER_UI_SCHEMA = "humanish.codex-app-server-ui.v1";
 

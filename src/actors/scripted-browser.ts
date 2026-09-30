@@ -47,7 +47,7 @@ import {
   readContainedRegularFile,
   type PreparedOutputDirectory,
   writeContainedOutputFile,
-} from "../selected-output-paths.js";
+} from "../run/selected-output-paths.js";
 
 const execFileAsync = promisify(execFile);
 

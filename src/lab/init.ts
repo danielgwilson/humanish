@@ -23,7 +23,7 @@ import {
   readContainedRegularFile,
   type PreparedSelectedOutputDirectory,
   writeContainedOutputFile,
-} from "../selected-output-paths.js";
+} from "../run/selected-output-paths.js";
 
 export const INIT_RESPONSE_SCHEMA = "humanish.init-result.v1";
 

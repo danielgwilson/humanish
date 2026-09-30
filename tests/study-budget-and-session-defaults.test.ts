@@ -18,7 +18,7 @@ import {
   type CuaTurn,
   type CuaTurnRequest,
 } from "../src/actors/computer-use/loop.js";
-import { makeCuaRunBudget, resolveCuaLanePlan } from "../src/cua-actor-lab.js";
+import { makeCuaRunBudget, resolveCuaLanePlan } from "../src/routes/computer-use/lab.js";
 import { parseLabConfig } from "../src/lab/config.js";
 import { defaultRedactionHooks } from "../src/evidence/redaction.js";
 

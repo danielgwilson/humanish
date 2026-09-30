@@ -1,6 +1,6 @@
 import { validCodexAnalysisConfig } from "./codex-config.js";
 import { createHash, randomUUID } from "node:crypto";
-import { estimateActorCost, MODEL_RATES } from "../pricing.js";
+import { estimateActorCost, MODEL_RATES } from "../run/pricing.js";
 import { containsSensitive } from "../evidence/redaction.js";
 import { scrubTransientCommsText } from "../run/narration-secrets.js";
 import {

@@ -9,7 +9,7 @@ import {
   type AutomaticAnalysisHooks,
   type AutomaticAnalysisResult,
 } from "../analysis/automatic-completion.js";
-import { formatCuaDiagnostics, formatCuaStopCause } from "../cua-diagnostics.js";
+import { formatCuaDiagnostics, formatCuaStopCause } from "../routes/computer-use/diagnostics.js";
 import { existsSync, readFileSync } from "node:fs";
 import { formatOrientationHuman, readOrientation } from "./orientation.js";
 import { readFile } from "node:fs/promises";
@@ -71,16 +71,16 @@ import {
 } from "../lab/preflight.js";
 import { runLab, resolveLabDryRun, selectLabBackend } from "../lab/engine.js";
 import type { RunLabProvenance } from "../run/status.js";
-import { loadAdapterScorer, type AdapterScorerModule } from "../adapter-scorer-loader.js";
+import { loadAdapterScorer, type AdapterScorerModule } from "../lab/adapter-scorer-loader.js";
 import type { LabBackend } from "../lab/engine.js";
 import type { RunScorerProvenance } from "../run/run.js";
-import { CUA_ACTOR_LAB_SCHEMA } from "../cua-actor-lab.js";
-import type { CuaActorLabErrorCode, CuaActorLabResult } from "../cua-actor-lab.js";
-import type { ScriptedBrowserLabResult } from "../scripted-browser-lab.js";
-import type { TerminalProductLabResult, TerminalProductLabHooks } from "../e2b-terminal-lab.js";
-import type { BrowserLabAdapterHooks } from "../adapter-extension.js";
-import type { SharedWorldLabResult } from "../shared-world-lab.js";
-import type { ConcurrentSharedWorldLabResult } from "../concurrent-shared-world-lab.js";
+import { CUA_ACTOR_LAB_SCHEMA } from "../routes/computer-use/lab.js";
+import type { CuaActorLabErrorCode, CuaActorLabResult } from "../routes/computer-use/lab.js";
+import type { ScriptedBrowserLabResult } from "../routes/scripted-browser.js";
+import type { TerminalProductLabResult, TerminalProductLabHooks } from "../routes/terminal/lab.js";
+import type { BrowserLabAdapterHooks } from "../lab/adapter-extension.js";
+import type { SharedWorldLabResult } from "../routes/shared-world/sequential.js";
+import type { ConcurrentSharedWorldLabResult } from "../routes/shared-world/concurrent.js";
 import type { LabConfig } from "../lab/config.js";
 import { openTarget, renderObserver, serveObserver } from "../observer/render.js";
 import type { ObserverResult, ObserverServer } from "../observer/render.js";
@@ -104,7 +104,7 @@ import {
   tuiBundleUrl,
   type TuiModule,
 } from "../tui/contract.js";
-import { forTerminal } from "../terminal-encoding.js";
+import { forTerminal } from "../routes/terminal/encoding.js";
 import { analyzeStudy, correctStudyAnalysis, showStudyAnalysis } from "../analysis/service.js";
 import { listStudyAnalyses, listStudyAnalysisExecutions } from "../analysis/store.js";
 import { resolveRunPath } from "../run/run.js";
@@ -207,7 +207,7 @@ interface CodexAppServerUiCliResult {
 
 // Transcode ONLY for a terminal. A pipe carries bytes to another program — mangling those would
 // corrupt a JSON payload for a reader that handles UTF-8 perfectly well — while a TTY carries them
-// to a font, through a locale that may not decode them. See src/terminal-encoding.ts for what a
+// to a font, through a locale that may not decode them. See src/routes/terminal/encoding.ts for what a
 // participant actually read back off the screen.
 const forStream = (stream: NodeJS.WriteStream, text: string): string =>
   stream.isTTY === true ? forTerminal(text) : text;

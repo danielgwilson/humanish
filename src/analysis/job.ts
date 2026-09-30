@@ -3,14 +3,14 @@ import { randomUUID } from "node:crypto";
 import { lstat, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
-import { validatePreparedRunRootIdentity, type PreparedRunArtifactPaths } from "../run-paths.js";
+import { validatePreparedRunRootIdentity, type PreparedRunArtifactPaths } from "../run/paths.js";
 import {
   assertPreparedSelectedOutputDirectory,
   bindExistingManagedHumanishOutputDirectory,
   prepareContainedOutputDirectoryRoot,
   writeContainedOutputFile,
   type PreparedSelectedOutputDirectory,
-} from "../selected-output-paths.js";
+} from "../run/selected-output-paths.js";
 import { readBoundedStudyFile } from "./evidence.js";
 import { containsSensitive } from "../evidence/redaction.js";
 import { readStudyAnalysisExecution, readStudyAnalysisVersion } from "./store.js";

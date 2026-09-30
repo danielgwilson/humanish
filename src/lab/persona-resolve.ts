@@ -7,7 +7,7 @@ import {
   prepareSelectedOutputDirectory,
   readContainedRegularFile,
   type PreparedSelectedOutputDirectory,
-} from "../selected-output-paths.js";
+} from "../run/selected-output-paths.js";
 import { digestText, redactText } from "../evidence/redaction.js";
 import { realpath } from "node:fs/promises";
 

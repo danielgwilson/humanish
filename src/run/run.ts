@@ -1,4 +1,4 @@
-import { contradictsAccountBilling } from "../pricing.js";
+import { contradictsAccountBilling } from "./pricing.js";
 import type { CommsReceivingEvidence } from "../comms/receiving-types.js";
 import { isCommsReceivingEvidence } from "../comms/receiving-evidence.js";
 import {
@@ -48,12 +48,12 @@ import {
   type CuaGoalSource,
 } from "../actors/goal-source.js";
 import { actorEnding } from "../actors/stop-cause.js";
-import type { TaskFunnel } from "../tasks.js";
+import type { TaskFunnel } from "../lab/tasks.js";
 import { captureGitState, GIT_STATE_SCHEMA, type CapturedGitState } from "./git-state.js";
 import { screenshotEvidenceError } from "../evidence/image.js";
 import { buildObserverData } from "../observer/data.js";
 import { parseResolvedPersona, type ResolvedPersona } from "../lab/persona.js";
-import { round6 } from "../pricing.js";
+import { round6 } from "./pricing.js";
 import { loadStudyAnalysis, listStudyAnalysisExecutions } from "../analysis/store.js";
 import { isStudyAnalysisRecordPath, studyAnalysisSharingProblems } from "../analysis/sharing.js";
 import { containsSensitive, digestText, redactText } from "../evidence/redaction.js";
@@ -68,7 +68,7 @@ import {
   resolveRunsRoot,
   validatePreparedRunArtifactPaths,
   type PreparedRunArtifactPaths,
-} from "../run-paths.js";
+} from "./paths.js";
 import { probeKeySources } from "../cli/key-resolution.js";
 import {
   beginRunStatus,
@@ -95,7 +95,7 @@ import {
   type PreparedSelectedOutputDirectory,
   writeContainedOutputFile,
   writePreparedRunLatestPointer,
-} from "../selected-output-paths.js";
+} from "./selected-output-paths.js";
 
 export const RUN_BUNDLE_SCHEMA = "humanish.run-bundle.v1";
 export const SHARED_WORLD_SCHEMA = "humanish.shared-world.v1";
@@ -2394,7 +2394,7 @@ function streamTransport(kind: RunStreamKind): RunStream["transport"] {
 
 /**
  * Strip ANSI/control noise from a captured terminal transcript into stable, scannable text.
- * Pure (no IO). Exported so the terminal-product lane (src/e2b-terminal-lab.ts) normalizes its
+ * Pure (no IO). Exported so the terminal-product lane (src/routes/terminal/lab.ts) normalizes its
  * captured exec stream EXACTLY as the local-actor lanes do — the verdict-nonce scorer is only
  * sound against the same normalization the marker is matched on, so the logic must not diverge.
  */
@@ -2982,7 +2982,7 @@ export async function listRuns(cwdInput: string): Promise<RunsResult> {
   // other readdir failure (e.g. permission denied) is a real I/O failure and must
   // not be swallowed into a false "no runs" report.
   let entries: string[];
-  let runsRoot: import("../selected-output-paths.js").PreparedSelectedOutputDirectory | null = null;
+  let runsRoot: import("./selected-output-paths.js").PreparedSelectedOutputDirectory | null = null;
   try {
     runsRoot = await bindExistingManagedHumanishOutputDirectory(cwd, "runs");
     entries = runsRoot ? await readdir(runsRoot.physicalPath) : [];
@@ -3729,7 +3729,7 @@ export async function resolveRunPath(
 }
 
 async function readLatest(
-  runsRoot: import("../selected-output-paths.js").PreparedSelectedOutputDirectory,
+  runsRoot: import("./selected-output-paths.js").PreparedSelectedOutputDirectory,
 ): Promise<RunPointer | null> {
   const latestPath = path.join(runsRoot.physicalPath, "latest.json");
   let latestStats;
@@ -4117,7 +4117,7 @@ function invalidRunEvidenceReferences(bundle: RunBundle): string[] {
   return findings.slice(0, 50);
 }
 
-// The fixed artifact filenames the terminal-product lane (src/e2b-terminal-lab.ts) persists.
+// The fixed artifact filenames the terminal-product lane (src/routes/terminal/lab.ts) persists.
 // Kept in sync with TERMINAL_LEDGERS_ARTIFACT / TERMINAL_EVENTS_ARTIFACT / TERMINAL_TRANSCRIPT_ARTIFACT.
 const TERMINAL_LEDGERS_FILE = "terminal-ledgers.json";
 const TERMINAL_EVENTS_FILE = "terminal-events.ndjson";

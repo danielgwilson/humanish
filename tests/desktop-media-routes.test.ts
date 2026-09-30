@@ -9,11 +9,11 @@ import {
   sharedWorldValidationReason,
   type LabConfig,
 } from "../src/lab/config.js";
-import { runCuaActorLab } from "../src/cua-actor-lab.js";
-import { runSharedWorldLab } from "../src/shared-world-lab.js";
-import { runConcurrentSharedWorld } from "../src/concurrent-shared-world-lab.js";
-import { runScriptedBrowserLab } from "../src/scripted-browser-lab.js";
-import { runTerminalProductLab } from "../src/e2b-terminal-lab.js";
+import { runCuaActorLab } from "../src/routes/computer-use/lab.js";
+import { runSharedWorldLab } from "../src/routes/shared-world/sequential.js";
+import { runConcurrentSharedWorld } from "../src/routes/shared-world/concurrent.js";
+import { runScriptedBrowserLab } from "../src/routes/scripted-browser.js";
+import { runTerminalProductLab } from "../src/routes/terminal/lab.js";
 
 const base: LabConfig = {
   schema: "humanish.lab.v2",

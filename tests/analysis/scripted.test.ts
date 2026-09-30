@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { PNG } from "pngjs";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { prepareRunArtifactPaths, type PreparedRunArtifactPaths } from "../../src/run-paths.js";
+import { prepareRunArtifactPaths, type PreparedRunArtifactPaths } from "../../src/run/paths.js";
 import { captureStudyEvidence } from "../../src/analysis/evidence.js";
 import {
   listStudyAnalysisExecutions,

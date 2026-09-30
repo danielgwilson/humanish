@@ -8,7 +8,7 @@ import { inspectCommsRecovery, type CommsReceivingRun } from "../../src/comms/re
 import { prepareReceivingRun } from "../../src/comms/receiving-runtime.js";
 import type { ReceivingSurfaceFile } from "../../src/comms/receiving-types.js";
 import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../../src/lab/config.js";
-import { prepareRunArtifactPaths, type PreparedRunArtifactPaths } from "../../src/run-paths.js";
+import { prepareRunArtifactPaths, type PreparedRunArtifactPaths } from "../../src/run/paths.js";
 
 // Synthetic canaries and explicit mutations of the sanitized, live-derived wire fixtures.
 // No test discovers host credentials or sends network requests.

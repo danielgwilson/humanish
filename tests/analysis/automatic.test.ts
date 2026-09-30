@@ -39,7 +39,7 @@ import { resolveRunPath, runDryRun, verifyRun, type RunBundle } from "../../src/
 import { pinDirectory, renderObserver, serveRunPath } from "../../src/observer/render.js";
 import * as observer from "../../src/observer/render.js";
 import { exportRun } from "../../src/feedback/export.js";
-import type { PreparedRunArtifactPaths } from "../../src/run-paths.js";
+import type { PreparedRunArtifactPaths } from "../../src/run/paths.js";
 import type { StudyAnalysisConfig, StudyAnalysisInput } from "../../src/analysis/study-analysis.js";
 import { syntheticResult } from "./fixtures.js";
 

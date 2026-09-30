@@ -6,7 +6,7 @@ import {
   buildFillDesktopWindowCommand,
   captureDesktopBrowserGeometry,
   parseXwininfoGeometry,
-} from "../src/cua-actor-lab.js";
+} from "../src/routes/computer-use/lab.js";
 
 const measuredMaximized = readFileSync(
   new URL("./fixtures/desktop-geometry/xwininfo-maximized.txt", import.meta.url),

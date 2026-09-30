@@ -3,7 +3,7 @@ import React from "react";
 
 import { PALETTE } from "./palette.js";
 import { color } from "./text-props.js";
-import { terminalRendersUnicode } from "../../src/terminal-encoding.js";
+import { terminalRendersUnicode } from "../../src/routes/terminal/encoding.js";
 
 /**
  * The chrome every screen sits in (#455 rev 8).

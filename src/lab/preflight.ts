@@ -4,7 +4,10 @@ import {
   type AutomaticAnalysisBudget,
 } from "../analysis/automatic-config.js";
 
-import { CUA_ACTOR_LAB_PROVIDER_METADATA, provisionCloneSubject } from "../cua-actor-lab.js";
+import {
+  CUA_ACTOR_LAB_PROVIDER_METADATA,
+  provisionCloneSubject,
+} from "../routes/computer-use/lab.js";
 import { probeUrl } from "../substrates/e2b/detached.js";
 import {
   createDesktopSandbox,

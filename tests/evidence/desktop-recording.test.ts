@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { runDryRun, verifyRun, type RunBundle } from "../../src/run/run.js";
 import { parseLabConfig, type LabConfig } from "../../src/lab/config.js";
 import { collectDesktopRecording } from "../../src/evidence/desktop-recording-artifact.js";
-import { prepareRunArtifactPaths } from "../../src/run-paths.js";
+import { prepareRunArtifactPaths } from "../../src/run/paths.js";
 import { exportRun } from "../../src/feedback/export.js";
 import { renderObserver } from "../../src/observer/render.js";
 

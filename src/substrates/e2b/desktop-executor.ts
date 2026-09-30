@@ -1,7 +1,7 @@
 import { perceptualSignature } from "../../evidence/frame-signature.js";
 export { perceptualSignature } from "../../evidence/frame-signature.js";
 
-import { commandFailureInfo, tailOf } from "../../command-failure.js";
+import { commandFailureInfo, tailOf } from "../command-failure.js";
 import type { CuaAction, CuaExecutor, CuaObservation } from "../../actors/computer-use/loop.js";
 import { CuaExecutorError } from "../../actors/computer-use/executor-error.js";
 

@@ -5,8 +5,8 @@ import { discoverProviderKeys } from "../cli/key-resolution.js";
 import { createAgentMailReceiver } from "./agentmail.js";
 import { startCommsReceiving } from "./receiving.js";
 import { renderReceivingInbox } from "./receiving-inbox.js";
-import type { PreparedRunArtifactPaths } from "../run-paths.js";
-import { writeContainedOutputFile } from "../selected-output-paths.js";
+import type { PreparedRunArtifactPaths } from "../run/paths.js";
+import { writeContainedOutputFile } from "../run/selected-output-paths.js";
 
 /** Host-only resolution. The returned credential must never cross a desktop or UI boundary. */
 export async function resolveReceivingConnection(
