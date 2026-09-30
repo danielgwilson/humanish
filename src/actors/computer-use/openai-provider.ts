@@ -533,7 +533,49 @@ const NAMED_PROVIDER_ERROR_CODES = [
   "insufficient_quota",
   "model_not_found",
   "context_length_exceeded",
+  // 400 codes seen on /v1/responses (docs, SDK types and user reports, researched 2026-09-30).
+  "previous_response_not_found",
+  "invalid_value",
+  "invalid_type",
+  "unsupported_value",
+  "unsupported_parameter",
+  "invalid_prompt",
+  "invalid_image",
+  "invalid_image_format",
+  "invalid_base64_image",
+  "invalid_image_url",
+  "image_too_large",
+  "image_parse_error",
+  "image_content_policy_violation",
 ] as const;
+
+/** A request parameter path such as `input[3].output[1].image_url` or `reasoning.effort`. */
+const REQUEST_PARAM_PATH = /^[A-Za-z_][A-Za-z0-9_.[\]]{0,80}$/;
+
+/**
+ * What a 400 names about itself: an allowlisted `code`, else `invalid_request_error` when that is
+ * the `type` (several 400s carry `code: null`), plus the rejected parameter's path. Only these
+ * identifier-shaped fields cross over; the message can echo the input and never does.
+ */
+export function requestRejectionDetail(bodyText: string): string | undefined {
+  let error: unknown;
+  try {
+    error = (JSON.parse(bodyText) as { error?: unknown }).error;
+  } catch {
+    return namedProviderErrorCode(bodyText);
+  }
+  if (typeof error !== "object" || error === null) return undefined;
+  const { code, type, param } = error as { code?: unknown; type?: unknown; param?: unknown };
+  const named =
+    typeof code === "string" && (NAMED_PROVIDER_ERROR_CODES as readonly string[]).includes(code)
+      ? code
+      : type === "invalid_request_error"
+        ? type
+        : undefined;
+  const at = typeof param === "string" && REQUEST_PARAM_PATH.test(param) ? param : undefined;
+  if (named === undefined) return at === undefined ? undefined : `at ${at}`;
+  return at === undefined ? named : `${named} at ${at}`;
+}
 
 export function namedProviderErrorCode(bodyText: string): string | undefined {
   const match = /"code"\s*:\s*"([a-z_]+)"/.exec(bodyText);
@@ -783,7 +825,8 @@ export function createOpenAiResponsesProvider(
         if (isSummaryRejection(bodyText)) {
           throw new SummaryRejectionError();
         }
-        throw new Error("OpenAI Responses 400");
+        const detail = requestRejectionDetail(bodyText);
+        throw new Error(`OpenAI Responses 400${detail === undefined ? "" : ` ${detail}`}`);
       }
       if (res.status === 403) {
         // Misalignment monitoring (2026-09-03): the provider can stop a threaded conversation
