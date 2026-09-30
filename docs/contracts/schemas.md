@@ -215,7 +215,7 @@ persona?, device?, instruction?, target?, entry? }`. The parser expands it into
   sandbox); when absent the call
   stays the byte-stable `Sandbox.create(opts)` default (the stock template). The
   template actually used is recorded in the run bundle as `desktopTemplate`
-  (public-safe — a template name is not a secret). Inert (warned) on every route
+  (public-safe, since a template name is not a secret). Inert (warned) on every route
   that creates no desktop, incl. the in-process `local-app` cua route, so it is
   never silently ignored (invariant 6). Custom images need the
   Desktop SDK's `xdotool` input support and `xclip` or `xsel` on `PATH` for
