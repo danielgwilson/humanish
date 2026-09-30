@@ -115,8 +115,7 @@ describe("starting a run", () => {
     });
     const { surface } = await openLab(options);
     try {
-      const frame = await surface.press(
-        "",
+      const frame = await surface.waitFor(
         (candidate) =>
           candidate.includes("runtime setup") && candidate.includes("supported Codex CLI version"),
       );
