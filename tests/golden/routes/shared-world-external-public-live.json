@@ -3,7 +3,7 @@
     "schema": "humanish.concurrent-shared-world-lab-result.v1",
     "ok": true,
     "cwd": "[cwd]",
-    "labId": "concurrent-shared-world-proof",
+    "labId": "lobby-trivia-3player-test",
     "actor": "openai-computer-use",
     "topology": "shared-world",
     "topologyMode": "concurrent",
@@ -11,39 +11,41 @@
     "concurrency": 3,
     "dryRun": false,
     "runId": "[run]",
-    "host": "https://3000-fake-sandbox-001.e2b.app",
-    "subjectSandbox": {
-      "sandboxId": "fake-sandbox-001",
-      "killed": true
-    },
     "overlapProven": true,
     "maxSimultaneousLanes": 3,
     "subject": {
-      "source": "clone",
-      "repo": "example-org/collab-app",
-      "commit": "abc123def4567890abc1",
-      "envNames": [
-        "DATABASE_URL"
-      ],
+      "source": "app-url",
+      "envNames": [],
       "state": {
-        "provenance": "seeded",
-        "seed": [
-          {
-            "name": "migrate",
-            "when": "before-start",
-            "commandDigest": "867652585ad90648",
-            "ok": true,
-            "exitCode": 0,
-            "durationMs": "[durationMs]"
-          }
-        ]
+        "provenance": "external-public"
       }
     },
     "roles": [
       {
-        "id": "persona-01",
+        "id": "host",
         "index": 1,
-        "persona": "persona-1",
+        "persona": "party-host",
+        "status": "passed",
+        "ok": true,
+        "window": {
+          "startedAt": "[epoch-ms]",
+          "endedAt": "[epoch-ms]"
+        },
+        "session": {
+          "status": "passed",
+          "completionReason": "goal_satisfied",
+          "reason": "passed (goal_satisfied)",
+          "screenshots": 0
+        },
+        "sandbox": {
+          "sandboxId": "fake-sandbox-001",
+          "killed": true
+        }
+      },
+      {
+        "id": "player-2",
+        "index": 2,
+        "persona": "competitive-friend",
         "status": "passed",
         "ok": true,
         "window": {
@@ -62,9 +64,9 @@
         }
       },
       {
-        "id": "persona-02",
-        "index": 2,
-        "persona": "persona-2",
+        "id": "player-3",
+        "index": 3,
+        "persona": "casual-friend",
         "status": "passed",
         "ok": true,
         "window": {
@@ -79,27 +81,6 @@
         },
         "sandbox": {
           "sandboxId": "fake-sandbox-003",
-          "killed": true
-        }
-      },
-      {
-        "id": "persona-03",
-        "index": 3,
-        "persona": "persona-3",
-        "status": "passed",
-        "ok": true,
-        "window": {
-          "startedAt": "[epoch-ms]",
-          "endedAt": "[epoch-ms]"
-        },
-        "session": {
-          "status": "passed",
-          "completionReason": "goal_satisfied",
-          "reason": "passed (goal_satisfied)",
-          "screenshots": 0
-        },
-        "sandbox": {
-          "sandboxId": "fake-sandbox-004",
           "killed": true
         }
       }
@@ -122,8 +103,11 @@
     },
     "warnings": [
       "Desktop resource size unavailable (metadata_unavailable); compute cost remains unpriced.",
+      "Physical browser containment is unverified for lane host; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
       "Desktop resource size unavailable (metadata_unavailable); compute cost remains unpriced.",
+      "Physical browser containment is unverified for lane player-2; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
       "Desktop resource size unavailable (metadata_unavailable); compute cost remains unpriced.",
+      "Physical browser containment is unverified for lane player-3; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
       "Observer renders verified local evidence artifacts; runtime stream auth URLs are not persisted.",
       "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
     ],
@@ -145,9 +129,9 @@
     "protocol": "cua-loop",
     "lane": "computer-use",
     "persona": {
-      "id": "persona-1",
+      "id": "party-host",
       "traitsApplied": [],
-      "promptDigest": "48b083174eecbf02"
+      "promptDigest": "07e0454012db815d"
     },
     "redaction": {
       "status": "passed",
@@ -206,9 +190,9 @@
     "protocol": "cua-loop",
     "lane": "computer-use",
     "persona": {
-      "id": "persona-2",
+      "id": "competitive-friend",
       "traitsApplied": [],
-      "promptDigest": "2e5216a185664964"
+      "promptDigest": "a04d5d55d81a8655"
     },
     "redaction": {
       "status": "passed",
@@ -267,9 +251,9 @@
     "protocol": "cua-loop",
     "lane": "computer-use",
     "persona": {
-      "id": "persona-3",
+      "id": "casual-friend",
       "traitsApplied": [],
-      "promptDigest": "856019c3a4631b9f"
+      "promptDigest": "d2a455bb9992e2c5"
     },
     "redaction": {
       "status": "passed",
@@ -328,77 +312,104 @@
       "at": "[ts]",
       "level": "info",
       "type": "concurrent-shared-world.run.created",
-      "message": "Created CONCURRENT shared-world run for concurrent-shared-world-proof (actor openai-computer-use, 3 persona(s) vs ONE shared plane, max 3 concurrent)."
+      "message": "Created CONCURRENT shared-world run for lobby-trivia-3player-test (actor openai-computer-use, 3 persona(s) vs ONE shared plane, max 3 concurrent)."
     },
     {
       "id": "event-001-plane",
       "at": "[ts]",
       "level": "info",
       "type": "concurrent-shared-world.plane.provenance",
-      "message": "Shared plane: clone of example-org/collab-app@abc123def4567890abc1, served + exposed at the harness-minted getHost URL; seed recipe da2a491995d48367; SYNTHETIC subject (author-attested); env names: DATABASE_URL (values never persisted).",
+      "message": "Shared plane: an EXTERNAL-PUBLIC deployment (operator-attested owner example-operator/lobby-trivia, authorized) used DIRECTLY as the shared plane — NO getHost, clone, subject sandbox, or seed. The harness OBSERVES that each seat reached the operator-declared origin (publicOriginDigest); it did NOT mint or control the plane. Author-trust ownership attestation, NOT a synthetic-data claim.",
       "simId": "sim-001",
       "streamId": "stream-001"
     },
     {
-      "id": "event-002-warning-persona-01",
+      "id": "event-002-warning-host",
       "at": "[ts]",
       "level": "warn",
       "type": "concurrent-shared-world.actor.warning",
-      "message": "Persona persona-01: Desktop resource size unavailable (metadata_unavailable); compute cost remains unpriced.",
+      "message": "Persona host: Desktop resource size unavailable (metadata_unavailable); compute cost remains unpriced.",
       "simId": "sim-001",
       "streamId": "stream-001"
     },
     {
-      "id": "event-003-session-persona-01",
+      "id": "event-003-warning-host",
+      "at": "[ts]",
+      "level": "warn",
+      "type": "concurrent-shared-world.actor.warning",
+      "message": "Persona host: Physical browser containment is unverified for lane host; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-004-session-host",
       "at": "[ts]",
       "level": "info",
       "type": "concurrent-shared-world.session.goal_satisfied",
-      "message": "Persona persona-01: passed — passed (goal_satisfied)",
+      "message": "Persona host: passed — passed (goal_satisfied)",
       "simId": "sim-001",
       "streamId": "stream-001"
     },
     {
-      "id": "event-004-warning-persona-02",
+      "id": "event-005-warning-player-2",
       "at": "[ts]",
       "level": "warn",
       "type": "concurrent-shared-world.actor.warning",
-      "message": "Persona persona-02: Desktop resource size unavailable (metadata_unavailable); compute cost remains unpriced.",
+      "message": "Persona player-2: Desktop resource size unavailable (metadata_unavailable); compute cost remains unpriced.",
       "simId": "sim-002",
       "streamId": "stream-002"
     },
     {
-      "id": "event-005-session-persona-02",
+      "id": "event-006-warning-player-2",
       "at": "[ts]",
-      "level": "info",
-      "type": "concurrent-shared-world.session.goal_satisfied",
-      "message": "Persona persona-02: passed — passed (goal_satisfied)",
+      "level": "warn",
+      "type": "concurrent-shared-world.actor.warning",
+      "message": "Persona player-2: Physical browser containment is unverified for lane player-2; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
       "simId": "sim-002",
       "streamId": "stream-002"
     },
     {
-      "id": "event-006-warning-persona-03",
-      "at": "[ts]",
-      "level": "warn",
-      "type": "concurrent-shared-world.actor.warning",
-      "message": "Persona persona-03: Desktop resource size unavailable (metadata_unavailable); compute cost remains unpriced.",
-      "simId": "sim-003",
-      "streamId": "stream-003"
-    },
-    {
-      "id": "event-007-session-persona-03",
+      "id": "event-007-session-player-2",
       "at": "[ts]",
       "level": "info",
       "type": "concurrent-shared-world.session.goal_satisfied",
-      "message": "Persona persona-03: passed — passed (goal_satisfied)",
+      "message": "Persona player-2: passed — passed (goal_satisfied)",
+      "simId": "sim-002",
+      "streamId": "stream-002"
+    },
+    {
+      "id": "event-008-warning-player-3",
+      "at": "[ts]",
+      "level": "warn",
+      "type": "concurrent-shared-world.actor.warning",
+      "message": "Persona player-3: Desktop resource size unavailable (metadata_unavailable); compute cost remains unpriced.",
       "simId": "sim-003",
       "streamId": "stream-003"
     },
     {
-      "id": "event-008-concurrency",
+      "id": "event-009-warning-player-3",
+      "at": "[ts]",
+      "level": "warn",
+      "type": "concurrent-shared-world.actor.warning",
+      "message": "Persona player-3: Physical browser containment is unverified for lane player-3; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+      "simId": "sim-003",
+      "streamId": "stream-003"
+    },
+    {
+      "id": "event-010-session-player-3",
+      "at": "[ts]",
+      "level": "info",
+      "type": "concurrent-shared-world.session.goal_satisfied",
+      "message": "Persona player-3: passed — passed (goal_satisfied)",
+      "simId": "sim-003",
+      "streamId": "stream-003"
+    },
+    {
+      "id": "event-011-concurrency",
       "at": "[ts]",
       "level": "info",
       "type": "concurrent-shared-world.concurrency",
-      "message": "Concurrency: 3 lane(s), up to 3 live at once (cap 3), overlap PROVEN; stateSeries 2 snapshot(s), 1 delta(s). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors. This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement."
+      "message": "Concurrency: 3 lane(s), up to 3 live at once (cap 3), overlap PROVEN; stateSeries omitted (no authoritative shared-state proof on the external-public plane); lobby convergence PROVEN (all seats reached one /lobby/CODE). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only. This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement."
     }
   ],
   "observer/index.html": "[observer build]",
@@ -410,21 +421,21 @@
       "runId": "[run]",
       "mode": "live",
       "status": "pass",
-      "title": "Concurrent shared-world proof - Concurrent shared-world swarm (3 personas)",
+      "title": "the example multiplayer app 3-player external-public - Concurrent shared-world swarm (3 personas)",
       "createdAt": "[ts]",
       "simCount": 3,
       "persona": {
-        "id": "persona-1",
+        "id": "party-host",
         "name": "Concurrent shared-world swarm (3 personas)",
-        "source": "lab:concurrent-shared-world-proof",
-        "sourceDigest": "48b083174eecbf02"
+        "source": "lab:lobby-trivia-3player-test",
+        "sourceDigest": "07e0454012db815d"
       },
       "scenario": {
-        "id": "concurrent-shared-world-concurrent-shared-world-proof",
-        "title": "Concurrent shared-world proof",
-        "goal": "Persona: persona-1.\n\nYou are a desktop user (desktop, 1440x950).\n\nUse the shared app.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
-        "source": "lab:concurrent-shared-world-proof",
-        "sourceDigest": "48b083174eecbf02"
+        "id": "concurrent-shared-world-lobby-trivia-3player-test",
+        "title": "the example multiplayer app 3-player external-public",
+        "goal": "Persona: party-host.\n\nYou are a mobile user on a mobile device (414x896 @3x). Expect a mobile/touch layout.\n\nPlay the example multiplayer app with your friends.\n\nLane focus: Create a lobby, then wait; once 3 players are in, start and play.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
+        "source": "lab:lobby-trivia-3player-test",
+        "sourceDigest": "07e0454012db815d"
       },
       "packageName": "humanish",
       "redaction": {
@@ -453,35 +464,26 @@
       },
       "active": 0,
       "blocked": 0,
-      "warnings": 3
+      "warnings": 6
     },
     "laneGroups": [
       {
-        "roleId": "persona-01",
+        "roleId": "host",
         "simId": "sim-001",
         "streamId": "stream-001",
-        "status": "passed",
-        "actorType": "initiator",
-        "surface": "intake",
-        "caseGroup": "case-001"
+        "status": "passed"
       },
       {
-        "roleId": "persona-02",
+        "roleId": "player-2",
         "simId": "sim-002",
         "streamId": "stream-002",
-        "status": "passed",
-        "actorType": "collaborator",
-        "surface": "review",
-        "caseGroup": "case-001"
+        "status": "passed"
       },
       {
-        "roleId": "persona-03",
+        "roleId": "player-3",
         "simId": "sim-003",
         "streamId": "stream-003",
-        "status": "passed",
-        "actorType": "collaborator",
-        "surface": "review",
-        "caseGroup": "case-001"
+        "status": "passed"
       }
     ],
     "streams": [
@@ -489,32 +491,38 @@
         "id": "stream-001",
         "simId": "sim-001",
         "assignment": {
-          "mission": "Use the shared app."
+          "mission": "Play the example multiplayer app with your friends.",
+          "focus": "Create a lobby, then wait; once 3 players are in, start and play."
         },
         "kind": "browser",
-        "label": "Concurrent persona persona-01 (type:initiator / surface:intake / case:case-001) — concurrent-shared-world-proof",
+        "label": "Concurrent persona host — lobby-trivia-3player-test",
         "status": "passed",
         "transport": "snapshot",
         "updatedAt": "[ts]",
         "embed": {
           "kind": "placeholder",
-          "title": "Shared plane, persona persona-01"
+          "title": "Shared plane, persona host"
         },
         "viewport": {
           "width": 1440,
           "height": 817,
           "deviceScaleFactor": 1,
-          "isMobile": false
+          "isMobile": true
         },
         "desktopGeometry": {
           "screen": {
             "requested": {
-              "width": 1440,
-              "height": 950
+              "width": 500,
+              "height": 896
+            },
+            "declared": {
+              "width": 414,
+              "height": 896,
+              "preset": "mobile"
             },
             "verified": {
-              "width": 1440,
-              "height": 950,
+              "width": 500,
+              "height": 896,
               "source": "xdpyinfo"
             }
           },
@@ -523,18 +531,21 @@
             "y": 0,
             "width": 1440,
             "height": 950,
-            "source": "xwininfo"
+            "source": "cdp"
           },
           "viewport": {
             "width": 1440,
             "height": 817,
             "deviceScaleFactor": 1,
             "source": "cdp"
-          }
+          },
+          "warnings": [
+            "Physical browser containment is unverified for lane host; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility."
+          ]
         },
         "ui": {
-          "route": "[provisioned-subject]/seat-1",
-          "intent": "Watch persona persona-01 (type:initiator / surface:intake / case:case-001) (persona-1) drive the SHARED plane concurrently with the other personas.",
+          "route": "[external-public-plane]",
+          "intent": "Watch persona host (party-host) drive the SHARED plane concurrently with the other personas.",
           "state": "passed (goal_satisfied)",
           "actorStatus": "passed"
         },
@@ -544,9 +555,9 @@
           "protocol": "cua-loop",
           "lane": "computer-use",
           "persona": {
-            "id": "persona-1",
+            "id": "party-host",
             "traitsApplied": [],
-            "promptDigest": "48b083174eecbf02"
+            "promptDigest": "07e0454012db815d"
           },
           "redaction": {
             "status": "passed",
@@ -616,7 +627,7 @@
             "kind": "events"
           },
           {
-            "label": "persona persona-01 actor trace",
+            "label": "persona host actor trace",
             "path": "actors/stream-001.json",
             "kind": "trace"
           }
@@ -624,14 +635,14 @@
         "sim": {
           "id": "sim-001",
           "index": 1,
-          "personaId": "persona-1",
-          "scenarioId": "concurrent-shared-world-concurrent-shared-world-proof",
+          "personaId": "party-host",
+          "scenarioId": "concurrent-shared-world-lobby-trivia-3player-test",
           "status": "passed",
           "streamKind": "browser",
           "mode": "browser-sim",
           "progress": 100,
           "currentStep": "passed (goal_satisfied)",
-          "summary": "Persona persona-01 (type:initiator / surface:intake / case:case-001) (persona-1): drove the shared plane concurrently; goal_satisfied.",
+          "summary": "Persona host (party-host): drove the shared plane concurrently; goal_satisfied.",
           "streamIds": [
             "stream-001"
           ],
@@ -647,25 +658,34 @@
             "at": "[ts]",
             "level": "info",
             "type": "concurrent-shared-world.plane.provenance",
-            "message": "Shared plane: clone of example-org/collab-app@abc123def4567890abc1, served + exposed at the harness-minted getHost URL; seed recipe da2a491995d48367; SYNTHETIC subject (author-attested); env names: DATABASE_URL (values never persisted).",
+            "message": "Shared plane: an EXTERNAL-PUBLIC deployment (operator-attested owner example-operator/lobby-trivia, authorized) used DIRECTLY as the shared plane — NO getHost, clone, subject sandbox, or seed. The harness OBSERVES that each seat reached the operator-declared origin (publicOriginDigest); it did NOT mint or control the plane. Author-trust ownership attestation, NOT a synthetic-data claim.",
             "simId": "sim-001",
             "streamId": "stream-001"
           },
           {
-            "id": "event-002-warning-persona-01",
+            "id": "event-002-warning-host",
             "at": "[ts]",
             "level": "warn",
             "type": "concurrent-shared-world.actor.warning",
-            "message": "Persona persona-01: Desktop resource size unavailable (metadata_unavailable); compute cost remains unpriced.",
+            "message": "Persona host: Desktop resource size unavailable (metadata_unavailable); compute cost remains unpriced.",
             "simId": "sim-001",
             "streamId": "stream-001"
           },
           {
-            "id": "event-003-session-persona-01",
+            "id": "event-003-warning-host",
+            "at": "[ts]",
+            "level": "warn",
+            "type": "concurrent-shared-world.actor.warning",
+            "message": "Persona host: Physical browser containment is unverified for lane host; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+            "simId": "sim-001",
+            "streamId": "stream-001"
+          },
+          {
+            "id": "event-004-session-host",
             "at": "[ts]",
             "level": "info",
             "type": "concurrent-shared-world.session.goal_satisfied",
-            "message": "Persona persona-01: passed — passed (goal_satisfied)",
+            "message": "Persona host: passed — passed (goal_satisfied)",
             "simId": "sim-001",
             "streamId": "stream-001"
           }
@@ -675,32 +695,38 @@
         "id": "stream-002",
         "simId": "sim-002",
         "assignment": {
-          "mission": "Use the shared app."
+          "mission": "Play the example multiplayer app with your friends.",
+          "focus": "Join the lobby you're told the code for, then play."
         },
         "kind": "browser",
-        "label": "Concurrent persona persona-02 (type:collaborator / surface:review / case:case-001) — concurrent-shared-world-proof",
+        "label": "Concurrent persona player-2 — lobby-trivia-3player-test",
         "status": "passed",
         "transport": "snapshot",
         "updatedAt": "[ts]",
         "embed": {
           "kind": "placeholder",
-          "title": "Shared plane, persona persona-02"
+          "title": "Shared plane, persona player-2"
         },
         "viewport": {
           "width": 1440,
           "height": 817,
           "deviceScaleFactor": 1,
-          "isMobile": false
+          "isMobile": true
         },
         "desktopGeometry": {
           "screen": {
             "requested": {
-              "width": 1440,
-              "height": 950
+              "width": 500,
+              "height": 896
+            },
+            "declared": {
+              "width": 414,
+              "height": 896,
+              "preset": "mobile"
             },
             "verified": {
-              "width": 1440,
-              "height": 950,
+              "width": 500,
+              "height": 896,
               "source": "xdpyinfo"
             }
           },
@@ -709,18 +735,21 @@
             "y": 0,
             "width": 1440,
             "height": 950,
-            "source": "xwininfo"
+            "source": "cdp"
           },
           "viewport": {
             "width": 1440,
             "height": 817,
             "deviceScaleFactor": 1,
             "source": "cdp"
-          }
+          },
+          "warnings": [
+            "Physical browser containment is unverified for lane player-2; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility."
+          ]
         },
         "ui": {
-          "route": "[provisioned-subject]/seat-2",
-          "intent": "Watch persona persona-02 (type:collaborator / surface:review / case:case-001) (persona-2) drive the SHARED plane concurrently with the other personas.",
+          "route": "[external-public-plane]",
+          "intent": "Watch persona player-2 (competitive-friend) drive the SHARED plane concurrently with the other personas.",
           "state": "passed (goal_satisfied)",
           "actorStatus": "passed"
         },
@@ -730,9 +759,9 @@
           "protocol": "cua-loop",
           "lane": "computer-use",
           "persona": {
-            "id": "persona-2",
+            "id": "competitive-friend",
             "traitsApplied": [],
-            "promptDigest": "2e5216a185664964"
+            "promptDigest": "a04d5d55d81a8655"
           },
           "redaction": {
             "status": "passed",
@@ -802,7 +831,7 @@
             "kind": "events"
           },
           {
-            "label": "persona persona-02 actor trace",
+            "label": "persona player-2 actor trace",
             "path": "actors/stream-002.json",
             "kind": "trace"
           }
@@ -810,14 +839,14 @@
         "sim": {
           "id": "sim-002",
           "index": 2,
-          "personaId": "persona-2",
-          "scenarioId": "concurrent-shared-world-concurrent-shared-world-proof",
+          "personaId": "competitive-friend",
+          "scenarioId": "concurrent-shared-world-lobby-trivia-3player-test",
           "status": "passed",
           "streamKind": "browser",
           "mode": "browser-sim",
           "progress": 100,
           "currentStep": "passed (goal_satisfied)",
-          "summary": "Persona persona-02 (type:collaborator / surface:review / case:case-001) (persona-2): drove the shared plane concurrently; goal_satisfied.",
+          "summary": "Persona player-2 (competitive-friend): drove the shared plane concurrently; goal_satisfied.",
           "streamIds": [
             "stream-002"
           ],
@@ -829,20 +858,29 @@
         "terminalPlain": "",
         "timeline": [
           {
-            "id": "event-004-warning-persona-02",
+            "id": "event-005-warning-player-2",
             "at": "[ts]",
             "level": "warn",
             "type": "concurrent-shared-world.actor.warning",
-            "message": "Persona persona-02: Desktop resource size unavailable (metadata_unavailable); compute cost remains unpriced.",
+            "message": "Persona player-2: Desktop resource size unavailable (metadata_unavailable); compute cost remains unpriced.",
             "simId": "sim-002",
             "streamId": "stream-002"
           },
           {
-            "id": "event-005-session-persona-02",
+            "id": "event-006-warning-player-2",
+            "at": "[ts]",
+            "level": "warn",
+            "type": "concurrent-shared-world.actor.warning",
+            "message": "Persona player-2: Physical browser containment is unverified for lane player-2; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+            "simId": "sim-002",
+            "streamId": "stream-002"
+          },
+          {
+            "id": "event-007-session-player-2",
             "at": "[ts]",
             "level": "info",
             "type": "concurrent-shared-world.session.goal_satisfied",
-            "message": "Persona persona-02: passed — passed (goal_satisfied)",
+            "message": "Persona player-2: passed — passed (goal_satisfied)",
             "simId": "sim-002",
             "streamId": "stream-002"
           }
@@ -852,32 +890,38 @@
         "id": "stream-003",
         "simId": "sim-003",
         "assignment": {
-          "mission": "Use the shared app."
+          "mission": "Play the example multiplayer app with your friends.",
+          "focus": "Join the lobby you're told the code for, then play."
         },
         "kind": "browser",
-        "label": "Concurrent persona persona-03 (type:collaborator / surface:review / case:case-001) — concurrent-shared-world-proof",
+        "label": "Concurrent persona player-3 — lobby-trivia-3player-test",
         "status": "passed",
         "transport": "snapshot",
         "updatedAt": "[ts]",
         "embed": {
           "kind": "placeholder",
-          "title": "Shared plane, persona persona-03"
+          "title": "Shared plane, persona player-3"
         },
         "viewport": {
           "width": 1440,
           "height": 817,
           "deviceScaleFactor": 1,
-          "isMobile": false
+          "isMobile": true
         },
         "desktopGeometry": {
           "screen": {
             "requested": {
-              "width": 1440,
-              "height": 950
+              "width": 500,
+              "height": 740
+            },
+            "declared": {
+              "width": 360,
+              "height": 740,
+              "preset": "small-mobile"
             },
             "verified": {
-              "width": 1440,
-              "height": 950,
+              "width": 500,
+              "height": 740,
               "source": "xdpyinfo"
             }
           },
@@ -886,18 +930,21 @@
             "y": 0,
             "width": 1440,
             "height": 950,
-            "source": "xwininfo"
+            "source": "cdp"
           },
           "viewport": {
             "width": 1440,
             "height": 817,
             "deviceScaleFactor": 1,
             "source": "cdp"
-          }
+          },
+          "warnings": [
+            "Physical browser containment is unverified for lane player-3; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility."
+          ]
         },
         "ui": {
-          "route": "[provisioned-subject]/seat-3",
-          "intent": "Watch persona persona-03 (type:collaborator / surface:review / case:case-001) (persona-3) drive the SHARED plane concurrently with the other personas.",
+          "route": "[external-public-plane]",
+          "intent": "Watch persona player-3 (casual-friend) drive the SHARED plane concurrently with the other personas.",
           "state": "passed (goal_satisfied)",
           "actorStatus": "passed"
         },
@@ -907,9 +954,9 @@
           "protocol": "cua-loop",
           "lane": "computer-use",
           "persona": {
-            "id": "persona-3",
+            "id": "casual-friend",
             "traitsApplied": [],
-            "promptDigest": "856019c3a4631b9f"
+            "promptDigest": "d2a455bb9992e2c5"
           },
           "redaction": {
             "status": "passed",
@@ -979,7 +1026,7 @@
             "kind": "events"
           },
           {
-            "label": "persona persona-03 actor trace",
+            "label": "persona player-3 actor trace",
             "path": "actors/stream-003.json",
             "kind": "trace"
           }
@@ -987,14 +1034,14 @@
         "sim": {
           "id": "sim-003",
           "index": 3,
-          "personaId": "persona-3",
-          "scenarioId": "concurrent-shared-world-concurrent-shared-world-proof",
+          "personaId": "casual-friend",
+          "scenarioId": "concurrent-shared-world-lobby-trivia-3player-test",
           "status": "passed",
           "streamKind": "browser",
           "mode": "browser-sim",
           "progress": 100,
           "currentStep": "passed (goal_satisfied)",
-          "summary": "Persona persona-03 (type:collaborator / surface:review / case:case-001) (persona-3): drove the shared plane concurrently; goal_satisfied.",
+          "summary": "Persona player-3 (casual-friend): drove the shared plane concurrently; goal_satisfied.",
           "streamIds": [
             "stream-003"
           ],
@@ -1006,20 +1053,29 @@
         "terminalPlain": "",
         "timeline": [
           {
-            "id": "event-006-warning-persona-03",
+            "id": "event-008-warning-player-3",
             "at": "[ts]",
             "level": "warn",
             "type": "concurrent-shared-world.actor.warning",
-            "message": "Persona persona-03: Desktop resource size unavailable (metadata_unavailable); compute cost remains unpriced.",
+            "message": "Persona player-3: Desktop resource size unavailable (metadata_unavailable); compute cost remains unpriced.",
             "simId": "sim-003",
             "streamId": "stream-003"
           },
           {
-            "id": "event-007-session-persona-03",
+            "id": "event-009-warning-player-3",
+            "at": "[ts]",
+            "level": "warn",
+            "type": "concurrent-shared-world.actor.warning",
+            "message": "Persona player-3: Physical browser containment is unverified for lane player-3; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+            "simId": "sim-003",
+            "streamId": "stream-003"
+          },
+          {
+            "id": "event-010-session-player-3",
             "at": "[ts]",
             "level": "info",
             "type": "concurrent-shared-world.session.goal_satisfied",
-            "message": "Persona persona-03: passed — passed (goal_satisfied)",
+            "message": "Persona player-3: passed — passed (goal_satisfied)",
             "simId": "sim-003",
             "streamId": "stream-003"
           }
@@ -1032,77 +1088,104 @@
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.run.created",
-        "message": "Created CONCURRENT shared-world run for concurrent-shared-world-proof (actor openai-computer-use, 3 persona(s) vs ONE shared plane, max 3 concurrent)."
+        "message": "Created CONCURRENT shared-world run for lobby-trivia-3player-test (actor openai-computer-use, 3 persona(s) vs ONE shared plane, max 3 concurrent)."
       },
       {
         "id": "event-001-plane",
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.plane.provenance",
-        "message": "Shared plane: clone of example-org/collab-app@abc123def4567890abc1, served + exposed at the harness-minted getHost URL; seed recipe da2a491995d48367; SYNTHETIC subject (author-attested); env names: DATABASE_URL (values never persisted).",
+        "message": "Shared plane: an EXTERNAL-PUBLIC deployment (operator-attested owner example-operator/lobby-trivia, authorized) used DIRECTLY as the shared plane — NO getHost, clone, subject sandbox, or seed. The harness OBSERVES that each seat reached the operator-declared origin (publicOriginDigest); it did NOT mint or control the plane. Author-trust ownership attestation, NOT a synthetic-data claim.",
         "simId": "sim-001",
         "streamId": "stream-001"
       },
       {
-        "id": "event-002-warning-persona-01",
+        "id": "event-002-warning-host",
         "at": "[ts]",
         "level": "warn",
         "type": "concurrent-shared-world.actor.warning",
-        "message": "Persona persona-01: Desktop resource size unavailable (metadata_unavailable); compute cost remains unpriced.",
+        "message": "Persona host: Desktop resource size unavailable (metadata_unavailable); compute cost remains unpriced.",
         "simId": "sim-001",
         "streamId": "stream-001"
       },
       {
-        "id": "event-003-session-persona-01",
+        "id": "event-003-warning-host",
+        "at": "[ts]",
+        "level": "warn",
+        "type": "concurrent-shared-world.actor.warning",
+        "message": "Persona host: Physical browser containment is unverified for lane host; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-004-session-host",
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.session.goal_satisfied",
-        "message": "Persona persona-01: passed — passed (goal_satisfied)",
+        "message": "Persona host: passed — passed (goal_satisfied)",
         "simId": "sim-001",
         "streamId": "stream-001"
       },
       {
-        "id": "event-004-warning-persona-02",
+        "id": "event-005-warning-player-2",
         "at": "[ts]",
         "level": "warn",
         "type": "concurrent-shared-world.actor.warning",
-        "message": "Persona persona-02: Desktop resource size unavailable (metadata_unavailable); compute cost remains unpriced.",
+        "message": "Persona player-2: Desktop resource size unavailable (metadata_unavailable); compute cost remains unpriced.",
         "simId": "sim-002",
         "streamId": "stream-002"
       },
       {
-        "id": "event-005-session-persona-02",
+        "id": "event-006-warning-player-2",
         "at": "[ts]",
-        "level": "info",
-        "type": "concurrent-shared-world.session.goal_satisfied",
-        "message": "Persona persona-02: passed — passed (goal_satisfied)",
+        "level": "warn",
+        "type": "concurrent-shared-world.actor.warning",
+        "message": "Persona player-2: Physical browser containment is unverified for lane player-2; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
         "simId": "sim-002",
         "streamId": "stream-002"
       },
       {
-        "id": "event-006-warning-persona-03",
-        "at": "[ts]",
-        "level": "warn",
-        "type": "concurrent-shared-world.actor.warning",
-        "message": "Persona persona-03: Desktop resource size unavailable (metadata_unavailable); compute cost remains unpriced.",
-        "simId": "sim-003",
-        "streamId": "stream-003"
-      },
-      {
-        "id": "event-007-session-persona-03",
+        "id": "event-007-session-player-2",
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.session.goal_satisfied",
-        "message": "Persona persona-03: passed — passed (goal_satisfied)",
+        "message": "Persona player-2: passed — passed (goal_satisfied)",
+        "simId": "sim-002",
+        "streamId": "stream-002"
+      },
+      {
+        "id": "event-008-warning-player-3",
+        "at": "[ts]",
+        "level": "warn",
+        "type": "concurrent-shared-world.actor.warning",
+        "message": "Persona player-3: Desktop resource size unavailable (metadata_unavailable); compute cost remains unpriced.",
         "simId": "sim-003",
         "streamId": "stream-003"
       },
       {
-        "id": "event-008-concurrency",
+        "id": "event-009-warning-player-3",
+        "at": "[ts]",
+        "level": "warn",
+        "type": "concurrent-shared-world.actor.warning",
+        "message": "Persona player-3: Physical browser containment is unverified for lane player-3; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+        "simId": "sim-003",
+        "streamId": "stream-003"
+      },
+      {
+        "id": "event-010-session-player-3",
+        "at": "[ts]",
+        "level": "info",
+        "type": "concurrent-shared-world.session.goal_satisfied",
+        "message": "Persona player-3: passed — passed (goal_satisfied)",
+        "simId": "sim-003",
+        "streamId": "stream-003"
+      },
+      {
+        "id": "event-011-concurrency",
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.concurrency",
-        "message": "Concurrency: 3 lane(s), up to 3 live at once (cap 3), overlap PROVEN; stateSeries 2 snapshot(s), 1 delta(s). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors. This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement."
+        "message": "Concurrency: 3 lane(s), up to 3 live at once (cap 3), overlap PROVEN; stateSeries omitted (no authoritative shared-state proof on the external-public plane); lobby convergence PROVEN (all seats reached one /lobby/CODE). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only. This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement."
       }
     ],
     "artifactLinks": [
@@ -1155,10 +1238,10 @@
   "review.json": {
     "schema": "humanish.review.v1",
     "verdict": "pass",
-    "summary": "Concurrent shared-world (ONE plane, 3 simultaneous personas): swarm ran coherently; 3/3 actor session(s) passed credibility checks; mission endpoint: 3/3 ended goal_satisfied; completion reasons: goal_satisfied 3/3; overlap proven; 1 state delta(s) under load.",
+    "summary": "Concurrent shared-world (ONE external-public plane, 3 simultaneous personas): swarm ran coherently; 3/3 actor session(s) passed credibility checks; mission endpoint: 3/3 ended goal_satisfied; completion reasons: goal_satisfied 3/3; overlap proven; 3 seats converged on one lobby.",
     "gaps": []
   },
-  "review.md": "# Concurrent shared-world proof\n\n- run: [run]\n- mode: live\n- attribution class: shared-world\n- topology: shared-world / concurrent\n- personas: 3\n- verdict: pass\n- summary: Concurrent shared-world (ONE plane, 3 simultaneous personas): swarm ran coherently; 3/3 actor session(s) passed credibility checks; mission endpoint: 3/3 ended goal_satisfied; completion reasons: goal_satisfied 3/3; overlap proven; 1 state delta(s) under load.\n- plane: Shared plane: clone of example-org/collab-app@abc123def4567890abc1, served + exposed at the harness-minted getHost URL; seed recipe da2a491995d48367; SYNTHETIC subject (author-attested); env names: DATABASE_URL (values never persisted).\n- concurrency: Concurrency: 3 lane(s), up to 3 live at once (cap 3), overlap PROVEN; stateSeries 2 snapshot(s), 1 delta(s). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors. This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement.\n- attribution limits: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors\n",
+  "review.md": "# the example multiplayer app 3-player external-public\n\n- run: [run]\n- mode: live\n- attribution class: shared-world\n- topology: shared-world / concurrent\n- personas: 3\n- verdict: pass\n- summary: Concurrent shared-world (ONE external-public plane, 3 simultaneous personas): swarm ran coherently; 3/3 actor session(s) passed credibility checks; mission endpoint: 3/3 ended goal_satisfied; completion reasons: goal_satisfied 3/3; overlap proven; 3 seats converged on one lobby.\n- plane: Shared plane: an EXTERNAL-PUBLIC deployment (operator-attested owner example-operator/lobby-trivia, authorized) used DIRECTLY as the shared plane — NO getHost, clone, subject sandbox, or seed. The harness OBSERVES that each seat reached the operator-declared origin (publicOriginDigest); it did NOT mint or control the plane. Author-trust ownership attestation, NOT a synthetic-data claim.\n- concurrency: Concurrency: 3 lane(s), up to 3 live at once (cap 3), overlap PROVEN; stateSeries omitted (no authoritative shared-state proof on the external-public plane); lobby convergence PROVEN (all seats reached one /lobby/CODE). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only. This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement.\n- attribution limits: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -1188,17 +1271,17 @@
       }
     },
     "persona": {
-      "id": "persona-1",
+      "id": "party-host",
       "name": "Concurrent shared-world swarm (3 personas)",
-      "source": "lab:concurrent-shared-world-proof",
-      "sourceDigest": "48b083174eecbf02"
+      "source": "lab:lobby-trivia-3player-test",
+      "sourceDigest": "07e0454012db815d"
     },
     "scenario": {
-      "id": "concurrent-shared-world-concurrent-shared-world-proof",
-      "title": "Concurrent shared-world proof",
-      "goal": "Persona: persona-1.\n\nYou are a desktop user (desktop, 1440x950).\n\nUse the shared app.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
-      "source": "lab:concurrent-shared-world-proof",
-      "sourceDigest": "48b083174eecbf02"
+      "id": "concurrent-shared-world-lobby-trivia-3player-test",
+      "title": "the example multiplayer app 3-player external-public",
+      "goal": "Persona: party-host.\n\nYou are a mobile user on a mobile device (414x896 @3x). Expect a mobile/touch layout.\n\nPlay the example multiplayer app with your friends.\n\nLane focus: Create a lobby, then wait; once 3 players are in, start and play.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
+      "source": "lab:lobby-trivia-3player-test",
+      "sourceDigest": "07e0454012db815d"
     },
     "lifecycle": [
       {
@@ -1211,14 +1294,14 @@
       {
         "id": "sim-001",
         "index": 1,
-        "personaId": "persona-1",
-        "scenarioId": "concurrent-shared-world-concurrent-shared-world-proof",
+        "personaId": "party-host",
+        "scenarioId": "concurrent-shared-world-lobby-trivia-3player-test",
         "status": "passed",
         "streamKind": "browser",
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "passed (goal_satisfied)",
-        "summary": "Persona persona-01 (type:initiator / surface:intake / case:case-001) (persona-1): drove the shared plane concurrently; goal_satisfied.",
+        "summary": "Persona host (party-host): drove the shared plane concurrently; goal_satisfied.",
         "streamIds": [
           "stream-001"
         ],
@@ -1228,14 +1311,14 @@
       {
         "id": "sim-002",
         "index": 2,
-        "personaId": "persona-2",
-        "scenarioId": "concurrent-shared-world-concurrent-shared-world-proof",
+        "personaId": "competitive-friend",
+        "scenarioId": "concurrent-shared-world-lobby-trivia-3player-test",
         "status": "passed",
         "streamKind": "browser",
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "passed (goal_satisfied)",
-        "summary": "Persona persona-02 (type:collaborator / surface:review / case:case-001) (persona-2): drove the shared plane concurrently; goal_satisfied.",
+        "summary": "Persona player-2 (competitive-friend): drove the shared plane concurrently; goal_satisfied.",
         "streamIds": [
           "stream-002"
         ],
@@ -1245,14 +1328,14 @@
       {
         "id": "sim-003",
         "index": 3,
-        "personaId": "persona-3",
-        "scenarioId": "concurrent-shared-world-concurrent-shared-world-proof",
+        "personaId": "casual-friend",
+        "scenarioId": "concurrent-shared-world-lobby-trivia-3player-test",
         "status": "passed",
         "streamKind": "browser",
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "passed (goal_satisfied)",
-        "summary": "Persona persona-03 (type:collaborator / surface:review / case:case-001) (persona-3): drove the shared plane concurrently; goal_satisfied.",
+        "summary": "Persona player-3 (casual-friend): drove the shared plane concurrently; goal_satisfied.",
         "streamIds": [
           "stream-003"
         ],
@@ -1265,32 +1348,38 @@
         "id": "stream-001",
         "simId": "sim-001",
         "assignment": {
-          "mission": "Use the shared app."
+          "mission": "Play the example multiplayer app with your friends.",
+          "focus": "Create a lobby, then wait; once 3 players are in, start and play."
         },
         "kind": "browser",
-        "label": "Concurrent persona persona-01 (type:initiator / surface:intake / case:case-001) — concurrent-shared-world-proof",
+        "label": "Concurrent persona host — lobby-trivia-3player-test",
         "status": "passed",
         "transport": "snapshot",
         "updatedAt": "[ts]",
         "embed": {
           "kind": "placeholder",
-          "title": "Shared plane, persona persona-01"
+          "title": "Shared plane, persona host"
         },
         "viewport": {
           "width": 1440,
           "height": 817,
           "deviceScaleFactor": 1,
-          "isMobile": false
+          "isMobile": true
         },
         "desktopGeometry": {
           "screen": {
             "requested": {
-              "width": 1440,
-              "height": 950
+              "width": 500,
+              "height": 896
+            },
+            "declared": {
+              "width": 414,
+              "height": 896,
+              "preset": "mobile"
             },
             "verified": {
-              "width": 1440,
-              "height": 950,
+              "width": 500,
+              "height": 896,
               "source": "xdpyinfo"
             }
           },
@@ -1299,18 +1388,21 @@
             "y": 0,
             "width": 1440,
             "height": 950,
-            "source": "xwininfo"
+            "source": "cdp"
           },
           "viewport": {
             "width": 1440,
             "height": 817,
             "deviceScaleFactor": 1,
             "source": "cdp"
-          }
+          },
+          "warnings": [
+            "Physical browser containment is unverified for lane host; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility."
+          ]
         },
         "ui": {
-          "route": "[provisioned-subject]/seat-1",
-          "intent": "Watch persona persona-01 (type:initiator / surface:intake / case:case-001) (persona-1) drive the SHARED plane concurrently with the other personas.",
+          "route": "[external-public-plane]",
+          "intent": "Watch persona host (party-host) drive the SHARED plane concurrently with the other personas.",
           "state": "passed (goal_satisfied)",
           "actorStatus": "passed"
         },
@@ -1320,9 +1412,9 @@
           "protocol": "cua-loop",
           "lane": "computer-use",
           "persona": {
-            "id": "persona-1",
+            "id": "party-host",
             "traitsApplied": [],
-            "promptDigest": "48b083174eecbf02"
+            "promptDigest": "07e0454012db815d"
           },
           "redaction": {
             "status": "passed",
@@ -1392,7 +1484,7 @@
             "kind": "events"
           },
           {
-            "label": "persona persona-01 actor trace",
+            "label": "persona host actor trace",
             "path": "actors/stream-001.json",
             "kind": "trace"
           }
@@ -1402,32 +1494,38 @@
         "id": "stream-002",
         "simId": "sim-002",
         "assignment": {
-          "mission": "Use the shared app."
+          "mission": "Play the example multiplayer app with your friends.",
+          "focus": "Join the lobby you're told the code for, then play."
         },
         "kind": "browser",
-        "label": "Concurrent persona persona-02 (type:collaborator / surface:review / case:case-001) — concurrent-shared-world-proof",
+        "label": "Concurrent persona player-2 — lobby-trivia-3player-test",
         "status": "passed",
         "transport": "snapshot",
         "updatedAt": "[ts]",
         "embed": {
           "kind": "placeholder",
-          "title": "Shared plane, persona persona-02"
+          "title": "Shared plane, persona player-2"
         },
         "viewport": {
           "width": 1440,
           "height": 817,
           "deviceScaleFactor": 1,
-          "isMobile": false
+          "isMobile": true
         },
         "desktopGeometry": {
           "screen": {
             "requested": {
-              "width": 1440,
-              "height": 950
+              "width": 500,
+              "height": 896
+            },
+            "declared": {
+              "width": 414,
+              "height": 896,
+              "preset": "mobile"
             },
             "verified": {
-              "width": 1440,
-              "height": 950,
+              "width": 500,
+              "height": 896,
               "source": "xdpyinfo"
             }
           },
@@ -1436,18 +1534,21 @@
             "y": 0,
             "width": 1440,
             "height": 950,
-            "source": "xwininfo"
+            "source": "cdp"
           },
           "viewport": {
             "width": 1440,
             "height": 817,
             "deviceScaleFactor": 1,
             "source": "cdp"
-          }
+          },
+          "warnings": [
+            "Physical browser containment is unverified for lane player-2; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility."
+          ]
         },
         "ui": {
-          "route": "[provisioned-subject]/seat-2",
-          "intent": "Watch persona persona-02 (type:collaborator / surface:review / case:case-001) (persona-2) drive the SHARED plane concurrently with the other personas.",
+          "route": "[external-public-plane]",
+          "intent": "Watch persona player-2 (competitive-friend) drive the SHARED plane concurrently with the other personas.",
           "state": "passed (goal_satisfied)",
           "actorStatus": "passed"
         },
@@ -1457,9 +1558,9 @@
           "protocol": "cua-loop",
           "lane": "computer-use",
           "persona": {
-            "id": "persona-2",
+            "id": "competitive-friend",
             "traitsApplied": [],
-            "promptDigest": "2e5216a185664964"
+            "promptDigest": "a04d5d55d81a8655"
           },
           "redaction": {
             "status": "passed",
@@ -1529,7 +1630,7 @@
             "kind": "events"
           },
           {
-            "label": "persona persona-02 actor trace",
+            "label": "persona player-2 actor trace",
             "path": "actors/stream-002.json",
             "kind": "trace"
           }
@@ -1539,32 +1640,38 @@
         "id": "stream-003",
         "simId": "sim-003",
         "assignment": {
-          "mission": "Use the shared app."
+          "mission": "Play the example multiplayer app with your friends.",
+          "focus": "Join the lobby you're told the code for, then play."
         },
         "kind": "browser",
-        "label": "Concurrent persona persona-03 (type:collaborator / surface:review / case:case-001) — concurrent-shared-world-proof",
+        "label": "Concurrent persona player-3 — lobby-trivia-3player-test",
         "status": "passed",
         "transport": "snapshot",
         "updatedAt": "[ts]",
         "embed": {
           "kind": "placeholder",
-          "title": "Shared plane, persona persona-03"
+          "title": "Shared plane, persona player-3"
         },
         "viewport": {
           "width": 1440,
           "height": 817,
           "deviceScaleFactor": 1,
-          "isMobile": false
+          "isMobile": true
         },
         "desktopGeometry": {
           "screen": {
             "requested": {
-              "width": 1440,
-              "height": 950
+              "width": 500,
+              "height": 740
+            },
+            "declared": {
+              "width": 360,
+              "height": 740,
+              "preset": "small-mobile"
             },
             "verified": {
-              "width": 1440,
-              "height": 950,
+              "width": 500,
+              "height": 740,
               "source": "xdpyinfo"
             }
           },
@@ -1573,18 +1680,21 @@
             "y": 0,
             "width": 1440,
             "height": 950,
-            "source": "xwininfo"
+            "source": "cdp"
           },
           "viewport": {
             "width": 1440,
             "height": 817,
             "deviceScaleFactor": 1,
             "source": "cdp"
-          }
+          },
+          "warnings": [
+            "Physical browser containment is unverified for lane player-3; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility."
+          ]
         },
         "ui": {
-          "route": "[provisioned-subject]/seat-3",
-          "intent": "Watch persona persona-03 (type:collaborator / surface:review / case:case-001) (persona-3) drive the SHARED plane concurrently with the other personas.",
+          "route": "[external-public-plane]",
+          "intent": "Watch persona player-3 (casual-friend) drive the SHARED plane concurrently with the other personas.",
           "state": "passed (goal_satisfied)",
           "actorStatus": "passed"
         },
@@ -1594,9 +1704,9 @@
           "protocol": "cua-loop",
           "lane": "computer-use",
           "persona": {
-            "id": "persona-3",
+            "id": "casual-friend",
             "traitsApplied": [],
-            "promptDigest": "856019c3a4631b9f"
+            "promptDigest": "d2a455bb9992e2c5"
           },
           "redaction": {
             "status": "passed",
@@ -1666,7 +1776,7 @@
             "kind": "events"
           },
           {
-            "label": "persona persona-03 actor trace",
+            "label": "persona player-3 actor trace",
             "path": "actors/stream-003.json",
             "kind": "trace"
           }
@@ -1679,77 +1789,104 @@
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.run.created",
-        "message": "Created CONCURRENT shared-world run for concurrent-shared-world-proof (actor openai-computer-use, 3 persona(s) vs ONE shared plane, max 3 concurrent)."
+        "message": "Created CONCURRENT shared-world run for lobby-trivia-3player-test (actor openai-computer-use, 3 persona(s) vs ONE shared plane, max 3 concurrent)."
       },
       {
         "id": "event-001-plane",
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.plane.provenance",
-        "message": "Shared plane: clone of example-org/collab-app@abc123def4567890abc1, served + exposed at the harness-minted getHost URL; seed recipe da2a491995d48367; SYNTHETIC subject (author-attested); env names: DATABASE_URL (values never persisted).",
+        "message": "Shared plane: an EXTERNAL-PUBLIC deployment (operator-attested owner example-operator/lobby-trivia, authorized) used DIRECTLY as the shared plane — NO getHost, clone, subject sandbox, or seed. The harness OBSERVES that each seat reached the operator-declared origin (publicOriginDigest); it did NOT mint or control the plane. Author-trust ownership attestation, NOT a synthetic-data claim.",
         "simId": "sim-001",
         "streamId": "stream-001"
       },
       {
-        "id": "event-002-warning-persona-01",
+        "id": "event-002-warning-host",
         "at": "[ts]",
         "level": "warn",
         "type": "concurrent-shared-world.actor.warning",
-        "message": "Persona persona-01: Desktop resource size unavailable (metadata_unavailable); compute cost remains unpriced.",
+        "message": "Persona host: Desktop resource size unavailable (metadata_unavailable); compute cost remains unpriced.",
         "simId": "sim-001",
         "streamId": "stream-001"
       },
       {
-        "id": "event-003-session-persona-01",
+        "id": "event-003-warning-host",
+        "at": "[ts]",
+        "level": "warn",
+        "type": "concurrent-shared-world.actor.warning",
+        "message": "Persona host: Physical browser containment is unverified for lane host; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-004-session-host",
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.session.goal_satisfied",
-        "message": "Persona persona-01: passed — passed (goal_satisfied)",
+        "message": "Persona host: passed — passed (goal_satisfied)",
         "simId": "sim-001",
         "streamId": "stream-001"
       },
       {
-        "id": "event-004-warning-persona-02",
+        "id": "event-005-warning-player-2",
         "at": "[ts]",
         "level": "warn",
         "type": "concurrent-shared-world.actor.warning",
-        "message": "Persona persona-02: Desktop resource size unavailable (metadata_unavailable); compute cost remains unpriced.",
+        "message": "Persona player-2: Desktop resource size unavailable (metadata_unavailable); compute cost remains unpriced.",
         "simId": "sim-002",
         "streamId": "stream-002"
       },
       {
-        "id": "event-005-session-persona-02",
+        "id": "event-006-warning-player-2",
         "at": "[ts]",
-        "level": "info",
-        "type": "concurrent-shared-world.session.goal_satisfied",
-        "message": "Persona persona-02: passed — passed (goal_satisfied)",
+        "level": "warn",
+        "type": "concurrent-shared-world.actor.warning",
+        "message": "Persona player-2: Physical browser containment is unverified for lane player-2; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
         "simId": "sim-002",
         "streamId": "stream-002"
       },
       {
-        "id": "event-006-warning-persona-03",
-        "at": "[ts]",
-        "level": "warn",
-        "type": "concurrent-shared-world.actor.warning",
-        "message": "Persona persona-03: Desktop resource size unavailable (metadata_unavailable); compute cost remains unpriced.",
-        "simId": "sim-003",
-        "streamId": "stream-003"
-      },
-      {
-        "id": "event-007-session-persona-03",
+        "id": "event-007-session-player-2",
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.session.goal_satisfied",
-        "message": "Persona persona-03: passed — passed (goal_satisfied)",
+        "message": "Persona player-2: passed — passed (goal_satisfied)",
+        "simId": "sim-002",
+        "streamId": "stream-002"
+      },
+      {
+        "id": "event-008-warning-player-3",
+        "at": "[ts]",
+        "level": "warn",
+        "type": "concurrent-shared-world.actor.warning",
+        "message": "Persona player-3: Desktop resource size unavailable (metadata_unavailable); compute cost remains unpriced.",
         "simId": "sim-003",
         "streamId": "stream-003"
       },
       {
-        "id": "event-008-concurrency",
+        "id": "event-009-warning-player-3",
+        "at": "[ts]",
+        "level": "warn",
+        "type": "concurrent-shared-world.actor.warning",
+        "message": "Persona player-3: Physical browser containment is unverified for lane player-3; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+        "simId": "sim-003",
+        "streamId": "stream-003"
+      },
+      {
+        "id": "event-010-session-player-3",
+        "at": "[ts]",
+        "level": "info",
+        "type": "concurrent-shared-world.session.goal_satisfied",
+        "message": "Persona player-3: passed — passed (goal_satisfied)",
+        "simId": "sim-003",
+        "streamId": "stream-003"
+      },
+      {
+        "id": "event-011-concurrency",
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.concurrency",
-        "message": "Concurrency: 3 lane(s), up to 3 live at once (cap 3), overlap PROVEN; stateSeries 2 snapshot(s), 1 delta(s). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors. This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement."
+        "message": "Concurrency: 3 lane(s), up to 3 live at once (cap 3), overlap PROVEN; stateSeries omitted (no authoritative shared-state proof on the external-public plane); lobby convergence PROVEN (all seats reached one /lobby/CODE). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only. This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement."
       }
     ],
     "redaction": {
@@ -1766,29 +1903,15 @@
     "review": {
       "schema": "humanish.review.v1",
       "verdict": "pass",
-      "summary": "Concurrent shared-world (ONE plane, 3 simultaneous personas): swarm ran coherently; 3/3 actor session(s) passed credibility checks; mission endpoint: 3/3 ended goal_satisfied; completion reasons: goal_satisfied 3/3; overlap proven; 1 state delta(s) under load.",
+      "summary": "Concurrent shared-world (ONE external-public plane, 3 simultaneous personas): swarm ran coherently; 3/3 actor session(s) passed credibility checks; mission endpoint: 3/3 ended goal_satisfied; completion reasons: goal_satisfied 3/3; overlap proven; 3 seats converged on one lobby.",
       "gaps": []
     },
     "feedbackCandidates": [],
     "subject": {
-      "source": "clone",
-      "repo": "example-org/collab-app",
-      "commit": "abc123def4567890abc1",
-      "envNames": [
-        "DATABASE_URL"
-      ],
+      "source": "app-url",
+      "envNames": [],
       "state": {
-        "provenance": "seeded",
-        "seed": [
-          {
-            "name": "migrate",
-            "when": "before-start",
-            "commandDigest": "867652585ad90648",
-            "ok": true,
-            "exitCode": 0,
-            "durationMs": "[durationMs]"
-          }
-        ]
+        "provenance": "external-public"
       }
     },
     "attributionClass": "shared-world",
@@ -1796,15 +1919,13 @@
       "schema": "humanish.shared-world.v1",
       "topology": "shared-world",
       "topologyMode": "concurrent",
+      "planeClass": "external-public",
       "roleCount": 3,
       "plane": {
-        "commit": "abc123def4567890abc1",
-        "seedDigest": "da2a491995d48367",
-        "envNames": [
-          "DATABASE_URL"
-        ],
-        "hostDigest": "3b73160561f5f0d1",
-        "exposure": "synthetic"
+        "seedDigest": "e3b0c44298fc1c14",
+        "envNames": [],
+        "publicOriginDigest": "3e38c933ea57479e",
+        "declaredOriginDigest": "3e38c933ea57479e"
       },
       "attributionLimits": [
         "concurrent",
@@ -1812,68 +1933,48 @@
         "non-deterministic-shared-state",
         "window-and-snapshot-granularity",
         "contention-observed-not-proven-safe",
-        "state-change-not-isolated-to-actors"
+        "state-change-not-isolated-to-actors",
+        "external-public-plane",
+        "operator-attested-target-not-harness-controlled",
+        "no-synthetic-attestation",
+        "no-authoritative-shared-state-proof",
+        "concurrency-by-temporal-co-occupancy-only"
       ],
       "laneWindows": [
         {
-          "roleId": "persona-01",
-          "actorType": "initiator",
-          "surface": "intake",
-          "caseGroup": "case-001",
+          "roleId": "host",
           "simId": "sim-001",
           "streamId": "stream-001",
           "startedAt": "[epoch-ms]",
           "endedAt": "[epoch-ms]",
           "verdict": "passed",
-          "routeHostDigest": "3b73160561f5f0d1",
-          "commit": "abc123def4567890abc1",
-          "seedDigest": "da2a491995d48367"
+          "routeHostDigest": "3e38c933ea57479e",
+          "seedDigest": "e3b0c44298fc1c14"
         },
         {
-          "roleId": "persona-02",
-          "actorType": "collaborator",
-          "surface": "review",
-          "caseGroup": "case-001",
+          "roleId": "player-2",
           "simId": "sim-002",
           "streamId": "stream-002",
           "startedAt": "[epoch-ms]",
           "endedAt": "[epoch-ms]",
           "verdict": "passed",
-          "routeHostDigest": "3b73160561f5f0d1",
-          "commit": "abc123def4567890abc1",
-          "seedDigest": "da2a491995d48367"
+          "routeHostDigest": "3e38c933ea57479e",
+          "seedDigest": "e3b0c44298fc1c14"
         },
         {
-          "roleId": "persona-03",
-          "actorType": "collaborator",
-          "surface": "review",
-          "caseGroup": "case-001",
+          "roleId": "player-3",
           "simId": "sim-003",
           "streamId": "stream-003",
           "startedAt": "[epoch-ms]",
           "endedAt": "[epoch-ms]",
           "verdict": "passed",
-          "routeHostDigest": "3b73160561f5f0d1",
-          "commit": "abc123def4567890abc1",
-          "seedDigest": "da2a491995d48367"
-        }
-      ],
-      "stateSeries": [
-        {
-          "timestamp": "[epoch-ms]",
-          "digest": "59787677753f4f78"
-        },
-        {
-          "timestamp": "[epoch-ms]",
-          "digest": "e6cb6b30245c84bd"
+          "routeHostDigest": "3e38c933ea57479e",
+          "seedDigest": "e3b0c44298fc1c14"
         }
       ],
       "outcomes": [
         {
-          "roleId": "persona-01",
-          "actorType": "initiator",
-          "surface": "intake",
-          "caseGroup": "case-001",
+          "roleId": "host",
           "simId": "sim-001",
           "streamId": "stream-001",
           "status": "passed",
@@ -1881,10 +1982,7 @@
           "ok": true
         },
         {
-          "roleId": "persona-02",
-          "actorType": "collaborator",
-          "surface": "review",
-          "caseGroup": "case-001",
+          "roleId": "player-2",
           "simId": "sim-002",
           "streamId": "stream-002",
           "status": "passed",
@@ -1892,42 +1990,35 @@
           "ok": true
         },
         {
-          "roleId": "persona-03",
-          "actorType": "collaborator",
-          "surface": "review",
-          "caseGroup": "case-001",
+          "roleId": "player-3",
           "simId": "sim-003",
           "streamId": "stream-003",
           "status": "passed",
           "completionReason": "goal_satisfied",
           "ok": true
         }
-      ]
+      ],
+      "lobbyConvergenceDigest": "9b782607bd5b367e"
     }
   },
   "sandbox-receipts.ndjson": [
     {
       "at": "[ts]",
-      "laneId": "persona-01",
+      "laneId": "host",
+      "sandboxId": "fake-sandbox-001",
+      "timeoutMs": 660000
+    },
+    {
+      "at": "[ts]",
+      "laneId": "player-2",
       "sandboxId": "fake-sandbox-002",
       "timeoutMs": 660000
     },
     {
       "at": "[ts]",
-      "laneId": "persona-02",
+      "laneId": "player-3",
       "sandboxId": "fake-sandbox-003",
       "timeoutMs": 660000
-    },
-    {
-      "at": "[ts]",
-      "laneId": "persona-03",
-      "sandboxId": "fake-sandbox-004",
-      "timeoutMs": 660000
-    },
-    {
-      "at": "[ts]",
-      "laneId": "subject",
-      "sandboxId": "fake-sandbox-001"
     }
   ],
   "status.json": {

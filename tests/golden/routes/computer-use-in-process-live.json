@@ -1,0 +1,830 @@
+{
+  "<result>": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": true,
+    "cwd": "[cwd]",
+    "labId": "downstream-local-app-state",
+    "actor": "openai-computer-use",
+    "appUrl": "http://localhost:5173/",
+    "dryRun": false,
+    "runId": "[run]",
+    "session": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "Reached the goal via getState().",
+      "screenshots": 0
+    },
+    "subject": {
+      "source": "app-url",
+      "state": {
+        "provenance": "undeclared"
+      }
+    },
+    "plan": {
+      "strategy": "per-lane-worlds",
+      "laneCount": 1,
+      "concurrency": 1,
+      "waves": 1,
+      "perLaneSessionBudgetMs": 1800000,
+      "worstCaseSandboxMinutes": 40,
+      "dryRun": false,
+      "lanes": [
+        {
+          "id": "lane-01",
+          "index": 1,
+          "persona": "pixel-pat",
+          "device": "desktop",
+          "resolution": [
+            1440,
+            950
+          ],
+          "instructionDigest": "447585e3031f1518"
+        }
+      ]
+    },
+    "lanes": [
+      {
+        "id": "lane-01",
+        "index": 1,
+        "persona": "pixel-pat",
+        "device": "desktop",
+        "resolution": [
+          1440,
+          950
+        ],
+        "subject": {
+          "source": "app-url",
+          "state": {
+            "provenance": "undeclared"
+          }
+        },
+        "status": "passed",
+        "ok": true,
+        "diagnostics": {
+          "category": "participant_outcome"
+        },
+        "session": {
+          "status": "passed",
+          "completionReason": "goal_satisfied",
+          "reason": "Reached the goal via getState().",
+          "screenshots": 0
+        }
+      }
+    ],
+    "diagnostics": {
+      "category": "participant_outcome"
+    },
+    "laneSummary": {
+      "strategy": "per-lane-worlds",
+      "total": 1,
+      "passed": 1,
+      "skipped": 0,
+      "harnessErrors": 0,
+      "hollow": 0,
+      "concurrency": 1,
+      "waves": 1
+    },
+    "observer": {
+      "schema": "humanish.observer-result.v1",
+      "ok": true,
+      "cwd": "[cwd]",
+      "run": "[run]",
+      "observerPath": ".humanish/runs/[run]/observer/index.html",
+      "observerDataPath": ".humanish/runs/[run]/observer/observer-data.json",
+      "eventsPath": ".humanish/runs/[run]/events.ndjson",
+      "observerUrl": "file://[cwd]/.humanish/runs/[run]/observer/index.html",
+      "bundlePath": ".humanish/runs/[run]/run.json",
+      "opened": false,
+      "warnings": [
+        "Observer renders verified local evidence artifacts; runtime stream auth URLs are not persisted.",
+        "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
+      ]
+    },
+    "warnings": [
+      "Observer renders verified local evidence artifacts; runtime stream auth URLs are not persisted.",
+      "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
+    ],
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "synthetic_no_provider"
+    }
+  },
+  "../latest.json": {
+    "schema": "humanish.latest-run.v1",
+    "runId": "[run]",
+    "path": ".humanish/runs/[run]",
+    "updatedAt": "[ts]"
+  },
+  "actor.json": {
+    "schema": "humanish.actor-trace.v1",
+    "provider": "fake-state-brain",
+    "providerVersion": "0.1.0",
+    "protocol": "cua-loop",
+    "lane": "computer-use",
+    "persona": {
+      "id": "pixel-pat",
+      "traitsApplied": [],
+      "promptDigest": "447585e3031f1518"
+    },
+    "redaction": {
+      "status": "passed",
+      "screenshots": "n/a",
+      "notes": "no screenshots captured. App state was observed each turn to drive progress detection (a state-driven executor) and was NOT written to the trace — it is a runtime-only progress input, never persisted as evidence in this slice."
+    },
+    "startedAt": "[ts]",
+    "completedAt": "[ts]",
+    "durationMs": "[durationMs]",
+    "status": "passed",
+    "completionReason": "goal_satisfied",
+    "reason": "Reached the goal via getState().",
+    "ids": {
+      "model": "0.1.0"
+    },
+    "counts": {
+      "turns": 2,
+      "actions": 1,
+      "materialActions": 1,
+      "screenshots": 0,
+      "reasonings": 1,
+      "messages": 1,
+      "idleTurns": 0,
+      "noProgressTurns": 0
+    },
+    "items": [
+      {
+        "id": "reasoning-001",
+        "kind": "reasoning",
+        "lifecycle": "completed",
+        "title": "reasoning turn 1",
+        "text": "state looks right",
+        "at": "[ts]"
+      },
+      {
+        "id": "ui_action-002",
+        "kind": "ui_action",
+        "lifecycle": "completed",
+        "title": "type [5 chars]",
+        "at": "[ts]"
+      },
+      {
+        "id": "message-003",
+        "kind": "message",
+        "lifecycle": "completed",
+        "title": "message turn 2",
+        "text": "Reached the goal via getState().",
+        "at": "[ts]"
+      }
+    ],
+    "affordanceUse": {
+      "schema": "humanish.affordance-use.v1",
+      "counts": {
+        "keyboard": 1
+      },
+      "total": 1,
+      "shortcutTotal": 0
+    },
+    "capabilities": {
+      "headless": true,
+      "structuredTrace": true,
+      "lanes": [
+        "computer-use"
+      ],
+      "producesScreenshots": false,
+      "byoModel": true,
+      "preGrantableApprovals": false,
+      "inProcessTools": false,
+      "license": "open"
+    }
+  },
+  "events.ndjson": [
+    {
+      "id": "event-000-created",
+      "at": "[ts]",
+      "level": "info",
+      "type": "cua-lab.run.created",
+      "message": "Created computer-use lab run for downstream-local-app-state (actor openai-computer-use)."
+    },
+    {
+      "id": "event-001-subject",
+      "at": "[ts]",
+      "level": "info",
+      "type": "cua-lab.subject.declared",
+      "message": "Subject app declared at http://localhost:5173/ (already-running LOCAL dev server driven in-process; NO clone, NO E2B desktop). Provenance: caller-provisioned and UNPINNED — a running dev server cannot be commit-pinned.",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-002-session",
+      "at": "[ts]",
+      "level": "info",
+      "type": "cua-lab.session.goal_satisfied",
+      "message": "passed: Reached the goal via getState().",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    }
+  ],
+  "observer/index.html": "[observer build]",
+  "observer/observer-data.json": {
+    "schema": "humanish.observer-data.v1",
+    "schemaVersion": 1,
+    "generatedAt": "[ts]",
+    "run": {
+      "runId": "[run]",
+      "mode": "live",
+      "status": "pass",
+      "title": "State-driven local app - Computer-use operator (pixel-pat)",
+      "createdAt": "[ts]",
+      "simCount": 1,
+      "persona": {
+        "id": "pixel-pat",
+        "name": "Computer-use operator (pixel-pat)",
+        "source": "lab:downstream-local-app-state",
+        "sourceDigest": "447585e3031f1518"
+      },
+      "scenario": {
+        "id": "cua-downstream-local-app-state",
+        "title": "State-driven local app",
+        "goal": "Persona: pixel-pat.\n\nYou are a desktop user (desktop, 1440x950).\n\nDrive the app via its state contract.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
+        "source": "lab:downstream-local-app-state",
+        "sourceDigest": "447585e3031f1518"
+      },
+      "packageName": "humanish",
+      "redaction": {
+        "status": "passed",
+        "notes": "No screenshots captured. Typed text is recorded as length only and reasoning/messages pass through text redaction whenever a session runs."
+      },
+      "lifecycle": [
+        {
+          "at": "[ts]",
+          "event": "cua-lab.run.created",
+          "message": "Created computer-use lab run with one desktop browser lane (actor openai-computer-use)."
+        }
+      ],
+      "knownGaps": [
+        "Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate."
+      ],
+      "participants": {
+        "total": 1,
+        "reachedGoal": 1,
+        "abandoned": 0,
+        "ranOut": 0,
+        "blocked": 0,
+        "harnessFailed": 0,
+        "reportedFriction": 0
+      },
+      "participantsLine": "1/1 reported reaching the goal"
+    },
+    "summary": {
+      "streams": 1,
+      "byKind": {
+        "ui": 0,
+        "browser": 1,
+        "terminal": 0,
+        "tui": 0,
+        "codex-ui": 0,
+        "artifact": 0,
+        "summary": 0
+      },
+      "active": 0,
+      "blocked": 0,
+      "warnings": 0
+    },
+    "laneGroups": [],
+    "streams": [
+      {
+        "id": "stream-001",
+        "simId": "sim-001",
+        "laneId": "lane-01",
+        "assignment": {
+          "mission": "Drive the app via its state contract."
+        },
+        "kind": "browser",
+        "label": "CUA browser — downstream-local-app-state",
+        "status": "passed",
+        "transport": "snapshot",
+        "updatedAt": "[ts]",
+        "embed": {
+          "kind": "placeholder",
+          "title": "CUA desktop"
+        },
+        "ui": {
+          "route": "http://localhost:5173/",
+          "intent": "Watch the computer-use actor drive the subject app in a hosted desktop browser.",
+          "state": "Reached the goal via getState().",
+          "actorStatus": "passed"
+        },
+        "actor": {
+          "schema": "humanish.actor-trace.v1",
+          "provider": "fake-state-brain",
+          "providerVersion": "0.1.0",
+          "protocol": "cua-loop",
+          "lane": "computer-use",
+          "persona": {
+            "id": "pixel-pat",
+            "traitsApplied": [],
+            "promptDigest": "447585e3031f1518"
+          },
+          "redaction": {
+            "status": "passed",
+            "screenshots": "n/a",
+            "notes": "no screenshots captured. App state was observed each turn to drive progress detection (a state-driven executor) and was NOT written to the trace — it is a runtime-only progress input, never persisted as evidence in this slice."
+          },
+          "startedAt": "[ts]",
+          "completedAt": "[ts]",
+          "durationMs": "[durationMs]",
+          "status": "passed",
+          "completionReason": "goal_satisfied",
+          "reason": "Reached the goal via getState().",
+          "ids": {
+            "model": "0.1.0"
+          },
+          "counts": {
+            "turns": 2,
+            "actions": 1,
+            "materialActions": 1,
+            "screenshots": 0,
+            "reasonings": 1,
+            "messages": 1,
+            "idleTurns": 0,
+            "noProgressTurns": 0
+          },
+          "items": [
+            {
+              "id": "reasoning-001",
+              "kind": "reasoning",
+              "lifecycle": "completed",
+              "title": "reasoning turn 1",
+              "text": "state looks right",
+              "at": "[ts]"
+            },
+            {
+              "id": "ui_action-002",
+              "kind": "ui_action",
+              "lifecycle": "completed",
+              "title": "type [5 chars]",
+              "at": "[ts]"
+            },
+            {
+              "id": "message-003",
+              "kind": "message",
+              "lifecycle": "completed",
+              "title": "message turn 2",
+              "text": "Reached the goal via getState().",
+              "at": "[ts]"
+            }
+          ],
+          "affordanceUse": {
+            "schema": "humanish.affordance-use.v1",
+            "counts": {
+              "keyboard": 1
+            },
+            "total": 1,
+            "shortcutTotal": 0
+          },
+          "capabilities": {
+            "headless": true,
+            "structuredTrace": true,
+            "lanes": [
+              "computer-use"
+            ],
+            "producesScreenshots": false,
+            "byoModel": true,
+            "preGrantableApprovals": false,
+            "inProcessTools": false,
+            "license": "open"
+          }
+        },
+        "artifacts": [
+          {
+            "label": "run bundle",
+            "path": "run.json",
+            "kind": "bundle"
+          },
+          {
+            "label": "review",
+            "path": "review.md",
+            "kind": "review"
+          },
+          {
+            "label": "events",
+            "path": "events.ndjson",
+            "kind": "events"
+          },
+          {
+            "label": "actor trace",
+            "path": "actor.json",
+            "kind": "trace"
+          }
+        ],
+        "sim": {
+          "id": "sim-001",
+          "index": 1,
+          "personaId": "pixel-pat",
+          "scenarioId": "cua-downstream-local-app-state",
+          "status": "passed",
+          "streamKind": "browser",
+          "mode": "browser-sim",
+          "progress": 100,
+          "currentStep": "Reached the goal via getState().",
+          "summary": "Computer-use actor (openai-computer-use) drove the subject app in a hosted desktop browser; goal_satisfied.",
+          "streamIds": [
+            "stream-001"
+          ],
+          "startedAt": "[ts]",
+          "updatedAt": "[ts]"
+        },
+        "kindLabel": "Browser",
+        "statusLabel": "Reported complete",
+        "terminalPlain": "",
+        "timeline": [
+          {
+            "id": "event-001-subject",
+            "at": "[ts]",
+            "level": "info",
+            "type": "cua-lab.subject.declared",
+            "message": "Subject app declared at http://localhost:5173/ (already-running LOCAL dev server driven in-process; NO clone, NO E2B desktop). Provenance: caller-provisioned and UNPINNED — a running dev server cannot be commit-pinned.",
+            "simId": "sim-001",
+            "streamId": "stream-001"
+          },
+          {
+            "id": "event-002-session",
+            "at": "[ts]",
+            "level": "info",
+            "type": "cua-lab.session.goal_satisfied",
+            "message": "passed: Reached the goal via getState().",
+            "simId": "sim-001",
+            "streamId": "stream-001"
+          }
+        ]
+      }
+    ],
+    "events": [
+      {
+        "id": "event-000-created",
+        "at": "[ts]",
+        "level": "info",
+        "type": "cua-lab.run.created",
+        "message": "Created computer-use lab run for downstream-local-app-state (actor openai-computer-use)."
+      },
+      {
+        "id": "event-001-subject",
+        "at": "[ts]",
+        "level": "info",
+        "type": "cua-lab.subject.declared",
+        "message": "Subject app declared at http://localhost:5173/ (already-running LOCAL dev server driven in-process; NO clone, NO E2B desktop). Provenance: caller-provisioned and UNPINNED — a running dev server cannot be commit-pinned.",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-002-session",
+        "at": "[ts]",
+        "level": "info",
+        "type": "cua-lab.session.goal_satisfied",
+        "message": "passed: Reached the goal via getState().",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      }
+    ],
+    "artifactLinks": [
+      {
+        "label": "run bundle",
+        "href": "../run.json",
+        "kind": "bundle"
+      },
+      {
+        "label": "review JSON",
+        "href": "../review.json",
+        "kind": "review"
+      },
+      {
+        "label": "review Markdown",
+        "href": "../review.md",
+        "kind": "review"
+      },
+      {
+        "label": "event log",
+        "href": "../events.ndjson",
+        "kind": "events"
+      },
+      {
+        "label": "observer data",
+        "href": "observer-data.json",
+        "kind": "observer"
+      }
+    ],
+    "publicSafety": {
+      "publishable": false,
+      "note": "Observer artifacts are local evidence. Before filing a public issue, use `humanish feedback issue` so redaction and public-safety checks gate the payload.",
+      "share": {
+        "status": "share_ready",
+        "verifiedAt": "[ts]",
+        "reasons": []
+      }
+    },
+    "raw": {
+      "bundleSchema": "humanish.run-bundle.v1",
+      "artifactRoot": ".humanish/runs/[run]"
+    }
+  },
+  "observer/study-analysis.json": {
+    "state": "none",
+    "analysis": null,
+    "corrections": [],
+    "warnings": []
+  },
+  "review.json": {
+    "schema": "humanish.review.v1",
+    "verdict": "pass",
+    "participants": {
+      "total": 1,
+      "reachedGoal": 1,
+      "abandoned": 0,
+      "ranOut": 0,
+      "blocked": 0,
+      "harnessFailed": 0,
+      "reportedFriction": 0
+    },
+    "summary": "Run gate: pass. Participants: 1/1 reported reaching the goal. Recorded summary: Reached the goal via getState().",
+    "gaps": [
+      "Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate."
+    ]
+  },
+  "review.md": "# State-driven local app\n\n- run: [run]\n- mode: live\n- run gate: pass\n- summary: Run gate: pass. Participants: 1/1 reported reaching the goal. Recorded summary: Reached the goal via getState().\n- actor: fake-state-brain (computer-use/cua-loop)\n- evidence: 3 trace item(s), 0 screenshot(s)\n\n## Gaps\n- Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate.\n",
+  "run.json": {
+    "schema": "humanish.run-bundle.v1",
+    "runId": "[run]",
+    "mode": "live",
+    "simCount": 1,
+    "createdAt": "[ts]",
+    "cwd": "[target-cwd]",
+    "artifactRoot": ".humanish/runs/[run]",
+    "source": {
+      "packageName": "humanish",
+      "humanishSource": "present",
+      "git": {
+        "schema": "humanish.git-state.v1",
+        "status": "missing",
+        "capturedAt": "[ts]",
+        "head": {
+          "shortSha": null,
+          "refState": "unknown"
+        },
+        "changes": {
+          "staged": 0,
+          "unstaged": 0,
+          "untracked": 0,
+          "total": 0
+        },
+        "note": "No git work tree was detected."
+      }
+    },
+    "persona": {
+      "id": "pixel-pat",
+      "name": "Computer-use operator (pixel-pat)",
+      "source": "lab:downstream-local-app-state",
+      "sourceDigest": "447585e3031f1518"
+    },
+    "scenario": {
+      "id": "cua-downstream-local-app-state",
+      "title": "State-driven local app",
+      "goal": "Persona: pixel-pat.\n\nYou are a desktop user (desktop, 1440x950).\n\nDrive the app via its state contract.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
+      "source": "lab:downstream-local-app-state",
+      "sourceDigest": "447585e3031f1518"
+    },
+    "lifecycle": [
+      {
+        "at": "[ts]",
+        "event": "cua-lab.run.created",
+        "message": "Created computer-use lab run with one desktop browser lane (actor openai-computer-use)."
+      }
+    ],
+    "simulations": [
+      {
+        "id": "sim-001",
+        "index": 1,
+        "personaId": "pixel-pat",
+        "scenarioId": "cua-downstream-local-app-state",
+        "status": "passed",
+        "streamKind": "browser",
+        "mode": "browser-sim",
+        "progress": 100,
+        "currentStep": "Reached the goal via getState().",
+        "summary": "Computer-use actor (openai-computer-use) drove the subject app in a hosted desktop browser; goal_satisfied.",
+        "streamIds": [
+          "stream-001"
+        ],
+        "startedAt": "[ts]",
+        "updatedAt": "[ts]"
+      }
+    ],
+    "streams": [
+      {
+        "id": "stream-001",
+        "simId": "sim-001",
+        "laneId": "lane-01",
+        "assignment": {
+          "mission": "Drive the app via its state contract."
+        },
+        "kind": "browser",
+        "label": "CUA browser — downstream-local-app-state",
+        "status": "passed",
+        "transport": "snapshot",
+        "updatedAt": "[ts]",
+        "embed": {
+          "kind": "placeholder",
+          "title": "CUA desktop"
+        },
+        "ui": {
+          "route": "http://localhost:5173/",
+          "intent": "Watch the computer-use actor drive the subject app in a hosted desktop browser.",
+          "state": "Reached the goal via getState().",
+          "actorStatus": "passed"
+        },
+        "actor": {
+          "schema": "humanish.actor-trace.v1",
+          "provider": "fake-state-brain",
+          "providerVersion": "0.1.0",
+          "protocol": "cua-loop",
+          "lane": "computer-use",
+          "persona": {
+            "id": "pixel-pat",
+            "traitsApplied": [],
+            "promptDigest": "447585e3031f1518"
+          },
+          "redaction": {
+            "status": "passed",
+            "screenshots": "n/a",
+            "notes": "no screenshots captured. App state was observed each turn to drive progress detection (a state-driven executor) and was NOT written to the trace — it is a runtime-only progress input, never persisted as evidence in this slice."
+          },
+          "startedAt": "[ts]",
+          "completedAt": "[ts]",
+          "durationMs": "[durationMs]",
+          "status": "passed",
+          "completionReason": "goal_satisfied",
+          "reason": "Reached the goal via getState().",
+          "ids": {
+            "model": "0.1.0"
+          },
+          "counts": {
+            "turns": 2,
+            "actions": 1,
+            "materialActions": 1,
+            "screenshots": 0,
+            "reasonings": 1,
+            "messages": 1,
+            "idleTurns": 0,
+            "noProgressTurns": 0
+          },
+          "items": [
+            {
+              "id": "reasoning-001",
+              "kind": "reasoning",
+              "lifecycle": "completed",
+              "title": "reasoning turn 1",
+              "text": "state looks right",
+              "at": "[ts]"
+            },
+            {
+              "id": "ui_action-002",
+              "kind": "ui_action",
+              "lifecycle": "completed",
+              "title": "type [5 chars]",
+              "at": "[ts]"
+            },
+            {
+              "id": "message-003",
+              "kind": "message",
+              "lifecycle": "completed",
+              "title": "message turn 2",
+              "text": "Reached the goal via getState().",
+              "at": "[ts]"
+            }
+          ],
+          "affordanceUse": {
+            "schema": "humanish.affordance-use.v1",
+            "counts": {
+              "keyboard": 1
+            },
+            "total": 1,
+            "shortcutTotal": 0
+          },
+          "capabilities": {
+            "headless": true,
+            "structuredTrace": true,
+            "lanes": [
+              "computer-use"
+            ],
+            "producesScreenshots": false,
+            "byoModel": true,
+            "preGrantableApprovals": false,
+            "inProcessTools": false,
+            "license": "open"
+          }
+        },
+        "artifacts": [
+          {
+            "label": "run bundle",
+            "path": "run.json",
+            "kind": "bundle"
+          },
+          {
+            "label": "review",
+            "path": "review.md",
+            "kind": "review"
+          },
+          {
+            "label": "events",
+            "path": "events.ndjson",
+            "kind": "events"
+          },
+          {
+            "label": "actor trace",
+            "path": "actor.json",
+            "kind": "trace"
+          }
+        ]
+      }
+    ],
+    "events": [
+      {
+        "id": "event-000-created",
+        "at": "[ts]",
+        "level": "info",
+        "type": "cua-lab.run.created",
+        "message": "Created computer-use lab run for downstream-local-app-state (actor openai-computer-use)."
+      },
+      {
+        "id": "event-001-subject",
+        "at": "[ts]",
+        "level": "info",
+        "type": "cua-lab.subject.declared",
+        "message": "Subject app declared at http://localhost:5173/ (already-running LOCAL dev server driven in-process; NO clone, NO E2B desktop). Provenance: caller-provisioned and UNPINNED — a running dev server cannot be commit-pinned.",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-002-session",
+        "at": "[ts]",
+        "level": "info",
+        "type": "cua-lab.session.goal_satisfied",
+        "message": "passed: Reached the goal via getState().",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      }
+    ],
+    "redaction": {
+      "status": "passed",
+      "notes": "No screenshots captured. Typed text is recorded as length only and reasoning/messages pass through text redaction whenever a session runs."
+    },
+    "artifacts": {
+      "run": "run.json",
+      "reviewJson": "review.json",
+      "reviewMarkdown": "review.md",
+      "observerData": "observer/observer-data.json",
+      "events": "events.ndjson"
+    },
+    "review": {
+      "schema": "humanish.review.v1",
+      "verdict": "pass",
+      "participants": {
+        "total": 1,
+        "reachedGoal": 1,
+        "abandoned": 0,
+        "ranOut": 0,
+        "blocked": 0,
+        "harnessFailed": 0,
+        "reportedFriction": 0
+      },
+      "summary": "Run gate: pass. Participants: 1/1 reported reaching the goal. Recorded summary: Reached the goal via getState().",
+      "gaps": [
+        "Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate."
+      ]
+    },
+    "feedbackCandidates": [],
+    "subject": {
+      "source": "app-url",
+      "state": {
+        "provenance": "undeclared"
+      }
+    }
+  },
+  "status.json": {
+    "schema": "humanish.run-status.v1",
+    "runId": "[run]",
+    "state": "finished",
+    "mode": "live",
+    "pid": "[pid]",
+    "startedAt": "[ts]",
+    "updatedAt": "[ts]",
+    "completedAt": "[ts]",
+    "outcome": {
+      "verdict": "pass",
+      "participants": {
+        "total": 1,
+        "reachedGoal": 1,
+        "reportedFriction": 0
+      }
+    }
+  }
+}

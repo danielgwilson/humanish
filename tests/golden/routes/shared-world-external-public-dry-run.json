@@ -3,7 +3,7 @@
     "schema": "humanish.concurrent-shared-world-lab-result.v1",
     "ok": true,
     "cwd": "[cwd]",
-    "labId": "concurrent-shared-world-proof",
+    "labId": "lobby-trivia-3player-test",
     "actor": "openai-computer-use",
     "topology": "shared-world",
     "topologyMode": "concurrent",
@@ -12,41 +12,31 @@
     "dryRun": true,
     "runId": "[run]",
     "subject": {
-      "source": "clone",
-      "repo": "example-org/collab-app",
-      "envNames": [
-        "DATABASE_URL"
-      ],
+      "source": "app-url",
+      "envNames": [],
       "state": {
-        "provenance": "declared-not-run",
-        "seed": [
-          {
-            "name": "migrate",
-            "when": "before-start",
-            "commandDigest": "867652585ad90648"
-          }
-        ]
+        "provenance": "external-public"
       }
     },
     "roles": [
       {
-        "id": "persona-01",
+        "id": "host",
         "index": 1,
-        "persona": "persona-1",
+        "persona": "party-host",
         "status": "contract_proof_only",
         "ok": true
       },
       {
-        "id": "persona-02",
+        "id": "player-2",
         "index": 2,
-        "persona": "persona-2",
+        "persona": "competitive-friend",
         "status": "contract_proof_only",
         "ok": true
       },
       {
-        "id": "persona-03",
+        "id": "player-3",
         "index": 3,
-        "persona": "persona-3",
+        "persona": "casual-friend",
         "status": "contract_proof_only",
         "ok": true
       }
@@ -89,41 +79,41 @@
       "at": "[ts]",
       "level": "info",
       "type": "concurrent-shared-world.run.created",
-      "message": "Created CONCURRENT shared-world run for concurrent-shared-world-proof (actor openai-computer-use, 3 persona(s) vs ONE shared plane, max 3 concurrent)."
+      "message": "Created CONCURRENT shared-world run for lobby-trivia-3player-test (actor openai-computer-use, 3 persona(s) vs ONE shared plane, max 3 concurrent)."
     },
     {
       "id": "event-001-plane",
       "at": "[ts]",
       "level": "info",
       "type": "concurrent-shared-world.plane.provenance",
-      "message": "Shared plane declared: clone of example-org/collab-app, served + getHost-exposed in-sandbox (dry-run contract; nothing cloned). Seed recipe da2a491995d48367; SYNTHETIC subject (author-attested); env names: DATABASE_URL (values never persisted).",
+      "message": "Shared plane: an EXTERNAL-PUBLIC deployment (operator-attested owner example-operator/lobby-trivia, authorized) used DIRECTLY as the shared plane — NO getHost, clone, subject sandbox, or seed. The harness OBSERVES that each seat reached the operator-declared origin (publicOriginDigest); it did NOT mint or control the plane. Author-trust ownership attestation, NOT a synthetic-data claim.",
       "simId": "sim-001",
       "streamId": "stream-001"
     },
     {
-      "id": "event-002-contract-persona-01",
+      "id": "event-002-contract-host",
       "at": "[ts]",
       "level": "info",
       "type": "concurrent-shared-world.contract.ready",
-      "message": "Persona persona-01: dry-run contract actor ready; switch scenario.mode to live for a real concurrent session.",
+      "message": "Persona host: dry-run contract actor ready; switch scenario.mode to live for a real concurrent session.",
       "simId": "sim-001",
       "streamId": "stream-001"
     },
     {
-      "id": "event-003-contract-persona-02",
+      "id": "event-003-contract-player-2",
       "at": "[ts]",
       "level": "info",
       "type": "concurrent-shared-world.contract.ready",
-      "message": "Persona persona-02: dry-run contract actor ready; switch scenario.mode to live for a real concurrent session.",
+      "message": "Persona player-2: dry-run contract actor ready; switch scenario.mode to live for a real concurrent session.",
       "simId": "sim-002",
       "streamId": "stream-002"
     },
     {
-      "id": "event-004-contract-persona-03",
+      "id": "event-004-contract-player-3",
       "at": "[ts]",
       "level": "info",
       "type": "concurrent-shared-world.contract.ready",
-      "message": "Persona persona-03: dry-run contract actor ready; switch scenario.mode to live for a real concurrent session.",
+      "message": "Persona player-3: dry-run contract actor ready; switch scenario.mode to live for a real concurrent session.",
       "simId": "sim-003",
       "streamId": "stream-003"
     },
@@ -132,7 +122,7 @@
       "at": "[ts]",
       "level": "info",
       "type": "concurrent-shared-world.concurrency",
-      "message": "Concurrency: 3 lane(s) (dry-run contract; $0); stateSeries 1 snapshot(s), 0 delta(s). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors. This contract-only run proves no live concurrency, scale, or adoption."
+      "message": "Concurrency: 3 lane(s) (dry-run contract; $0); stateSeries omitted (no authoritative shared-state proof on the external-public plane); lobby convergence not observed. Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only. This contract-only run proves no live concurrency, scale, or adoption."
     }
   ],
   "observer/index.html": "[observer build]",
@@ -144,21 +134,21 @@
       "runId": "[run]",
       "mode": "dry-run",
       "status": "contract_proof_only",
-      "title": "Concurrent shared-world proof - Concurrent shared-world swarm (3 personas)",
+      "title": "the example multiplayer app 3-player external-public - Concurrent shared-world swarm (3 personas)",
       "createdAt": "[ts]",
       "simCount": 3,
       "persona": {
-        "id": "persona-1",
+        "id": "party-host",
         "name": "Concurrent shared-world swarm (3 personas)",
-        "source": "lab:concurrent-shared-world-proof",
-        "sourceDigest": "48b083174eecbf02"
+        "source": "lab:lobby-trivia-3player-test",
+        "sourceDigest": "07e0454012db815d"
       },
       "scenario": {
-        "id": "concurrent-shared-world-concurrent-shared-world-proof",
-        "title": "Concurrent shared-world proof",
-        "goal": "Persona: persona-1.\n\nYou are a desktop user (desktop, 1440x950).\n\nUse the shared app.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
-        "source": "lab:concurrent-shared-world-proof",
-        "sourceDigest": "48b083174eecbf02"
+        "id": "concurrent-shared-world-lobby-trivia-3player-test",
+        "title": "the example multiplayer app 3-player external-public",
+        "goal": "Persona: party-host.\n\nYou are a mobile user on a mobile device (414x896 @3x). Expect a mobile/touch layout.\n\nPlay the example multiplayer app with your friends.\n\nLane focus: Create a lobby, then wait; once 3 players are in, start and play.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
+        "source": "lab:lobby-trivia-3player-test",
+        "sourceDigest": "07e0454012db815d"
       },
       "packageName": "humanish",
       "redaction": {
@@ -193,31 +183,22 @@
     },
     "laneGroups": [
       {
-        "roleId": "persona-01",
+        "roleId": "host",
         "simId": "sim-001",
         "streamId": "stream-001",
-        "status": "contract_proof_only",
-        "actorType": "initiator",
-        "surface": "intake",
-        "caseGroup": "case-001"
+        "status": "contract_proof_only"
       },
       {
-        "roleId": "persona-02",
+        "roleId": "player-2",
         "simId": "sim-002",
         "streamId": "stream-002",
-        "status": "contract_proof_only",
-        "actorType": "collaborator",
-        "surface": "review",
-        "caseGroup": "case-001"
+        "status": "contract_proof_only"
       },
       {
-        "roleId": "persona-03",
+        "roleId": "player-3",
         "simId": "sim-003",
         "streamId": "stream-003",
-        "status": "contract_proof_only",
-        "actorType": "collaborator",
-        "surface": "review",
-        "caseGroup": "case-001"
+        "status": "contract_proof_only"
       }
     ],
     "streams": [
@@ -225,28 +206,34 @@
         "id": "stream-001",
         "simId": "sim-001",
         "assignment": {
-          "mission": "Use the shared app."
+          "mission": "Play the example multiplayer app with your friends.",
+          "focus": "Create a lobby, then wait; once 3 players are in, start and play."
         },
         "kind": "browser",
-        "label": "Concurrent persona persona-01 (type:initiator / surface:intake / case:case-001) — concurrent-shared-world-proof",
+        "label": "Concurrent persona host — lobby-trivia-3player-test",
         "status": "contract_proof_only",
         "transport": "snapshot",
         "updatedAt": "[ts]",
         "embed": {
           "kind": "placeholder",
-          "title": "Shared plane, persona persona-01"
+          "title": "Shared plane, persona host"
         },
         "desktopGeometry": {
           "screen": {
             "requested": {
-              "width": 1440,
-              "height": 950
+              "width": 500,
+              "height": 896
+            },
+            "declared": {
+              "width": 414,
+              "height": 896,
+              "preset": "mobile"
             }
           }
         },
         "ui": {
-          "route": "[provisioned-subject]/seat-1",
-          "intent": "Watch persona persona-01 (type:initiator / surface:intake / case:case-001) (persona-1) drive the SHARED plane concurrently with the other personas.",
+          "route": "[external-public-plane]",
+          "intent": "Watch persona host (party-host) drive the SHARED plane concurrently with the other personas.",
           "state": "Contract actor only: dry-run produced the evidence shape without launching a desktop or spending provider tokens."
         },
         "artifacts": [
@@ -269,14 +256,14 @@
         "sim": {
           "id": "sim-001",
           "index": 1,
-          "personaId": "persona-1",
-          "scenarioId": "concurrent-shared-world-concurrent-shared-world-proof",
+          "personaId": "party-host",
+          "scenarioId": "concurrent-shared-world-lobby-trivia-3player-test",
           "status": "contract_proof_only",
           "streamKind": "browser",
           "mode": "browser-sim",
           "progress": 100,
           "currentStep": "Contract actor only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.",
-          "summary": "Contract persona persona-01 (type:initiator / surface:intake / case:case-001) (persona-1) for openai-computer-use against the shared plane at [provisioned-subject].",
+          "summary": "Contract persona host (party-host) for openai-computer-use against the shared plane at [external-public-plane].",
           "streamIds": [
             "stream-001"
           ],
@@ -292,16 +279,16 @@
             "at": "[ts]",
             "level": "info",
             "type": "concurrent-shared-world.plane.provenance",
-            "message": "Shared plane declared: clone of example-org/collab-app, served + getHost-exposed in-sandbox (dry-run contract; nothing cloned). Seed recipe da2a491995d48367; SYNTHETIC subject (author-attested); env names: DATABASE_URL (values never persisted).",
+            "message": "Shared plane: an EXTERNAL-PUBLIC deployment (operator-attested owner example-operator/lobby-trivia, authorized) used DIRECTLY as the shared plane — NO getHost, clone, subject sandbox, or seed. The harness OBSERVES that each seat reached the operator-declared origin (publicOriginDigest); it did NOT mint or control the plane. Author-trust ownership attestation, NOT a synthetic-data claim.",
             "simId": "sim-001",
             "streamId": "stream-001"
           },
           {
-            "id": "event-002-contract-persona-01",
+            "id": "event-002-contract-host",
             "at": "[ts]",
             "level": "info",
             "type": "concurrent-shared-world.contract.ready",
-            "message": "Persona persona-01: dry-run contract actor ready; switch scenario.mode to live for a real concurrent session.",
+            "message": "Persona host: dry-run contract actor ready; switch scenario.mode to live for a real concurrent session.",
             "simId": "sim-001",
             "streamId": "stream-001"
           }
@@ -311,28 +298,34 @@
         "id": "stream-002",
         "simId": "sim-002",
         "assignment": {
-          "mission": "Use the shared app."
+          "mission": "Play the example multiplayer app with your friends.",
+          "focus": "Join the lobby you're told the code for, then play."
         },
         "kind": "browser",
-        "label": "Concurrent persona persona-02 (type:collaborator / surface:review / case:case-001) — concurrent-shared-world-proof",
+        "label": "Concurrent persona player-2 — lobby-trivia-3player-test",
         "status": "contract_proof_only",
         "transport": "snapshot",
         "updatedAt": "[ts]",
         "embed": {
           "kind": "placeholder",
-          "title": "Shared plane, persona persona-02"
+          "title": "Shared plane, persona player-2"
         },
         "desktopGeometry": {
           "screen": {
             "requested": {
-              "width": 1440,
-              "height": 950
+              "width": 500,
+              "height": 896
+            },
+            "declared": {
+              "width": 414,
+              "height": 896,
+              "preset": "mobile"
             }
           }
         },
         "ui": {
-          "route": "[provisioned-subject]/seat-2",
-          "intent": "Watch persona persona-02 (type:collaborator / surface:review / case:case-001) (persona-2) drive the SHARED plane concurrently with the other personas.",
+          "route": "[external-public-plane]",
+          "intent": "Watch persona player-2 (competitive-friend) drive the SHARED plane concurrently with the other personas.",
           "state": "Contract actor only: dry-run produced the evidence shape without launching a desktop or spending provider tokens."
         },
         "artifacts": [
@@ -355,14 +348,14 @@
         "sim": {
           "id": "sim-002",
           "index": 2,
-          "personaId": "persona-2",
-          "scenarioId": "concurrent-shared-world-concurrent-shared-world-proof",
+          "personaId": "competitive-friend",
+          "scenarioId": "concurrent-shared-world-lobby-trivia-3player-test",
           "status": "contract_proof_only",
           "streamKind": "browser",
           "mode": "browser-sim",
           "progress": 100,
           "currentStep": "Contract actor only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.",
-          "summary": "Contract persona persona-02 (type:collaborator / surface:review / case:case-001) (persona-2) for openai-computer-use against the shared plane at [provisioned-subject].",
+          "summary": "Contract persona player-2 (competitive-friend) for openai-computer-use against the shared plane at [external-public-plane].",
           "streamIds": [
             "stream-002"
           ],
@@ -374,11 +367,11 @@
         "terminalPlain": "",
         "timeline": [
           {
-            "id": "event-003-contract-persona-02",
+            "id": "event-003-contract-player-2",
             "at": "[ts]",
             "level": "info",
             "type": "concurrent-shared-world.contract.ready",
-            "message": "Persona persona-02: dry-run contract actor ready; switch scenario.mode to live for a real concurrent session.",
+            "message": "Persona player-2: dry-run contract actor ready; switch scenario.mode to live for a real concurrent session.",
             "simId": "sim-002",
             "streamId": "stream-002"
           }
@@ -388,28 +381,34 @@
         "id": "stream-003",
         "simId": "sim-003",
         "assignment": {
-          "mission": "Use the shared app."
+          "mission": "Play the example multiplayer app with your friends.",
+          "focus": "Join the lobby you're told the code for, then play."
         },
         "kind": "browser",
-        "label": "Concurrent persona persona-03 (type:collaborator / surface:review / case:case-001) — concurrent-shared-world-proof",
+        "label": "Concurrent persona player-3 — lobby-trivia-3player-test",
         "status": "contract_proof_only",
         "transport": "snapshot",
         "updatedAt": "[ts]",
         "embed": {
           "kind": "placeholder",
-          "title": "Shared plane, persona persona-03"
+          "title": "Shared plane, persona player-3"
         },
         "desktopGeometry": {
           "screen": {
             "requested": {
-              "width": 1440,
-              "height": 950
+              "width": 500,
+              "height": 740
+            },
+            "declared": {
+              "width": 360,
+              "height": 740,
+              "preset": "small-mobile"
             }
           }
         },
         "ui": {
-          "route": "[provisioned-subject]/seat-3",
-          "intent": "Watch persona persona-03 (type:collaborator / surface:review / case:case-001) (persona-3) drive the SHARED plane concurrently with the other personas.",
+          "route": "[external-public-plane]",
+          "intent": "Watch persona player-3 (casual-friend) drive the SHARED plane concurrently with the other personas.",
           "state": "Contract actor only: dry-run produced the evidence shape without launching a desktop or spending provider tokens."
         },
         "artifacts": [
@@ -432,14 +431,14 @@
         "sim": {
           "id": "sim-003",
           "index": 3,
-          "personaId": "persona-3",
-          "scenarioId": "concurrent-shared-world-concurrent-shared-world-proof",
+          "personaId": "casual-friend",
+          "scenarioId": "concurrent-shared-world-lobby-trivia-3player-test",
           "status": "contract_proof_only",
           "streamKind": "browser",
           "mode": "browser-sim",
           "progress": 100,
           "currentStep": "Contract actor only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.",
-          "summary": "Contract persona persona-03 (type:collaborator / surface:review / case:case-001) (persona-3) for openai-computer-use against the shared plane at [provisioned-subject].",
+          "summary": "Contract persona player-3 (casual-friend) for openai-computer-use against the shared plane at [external-public-plane].",
           "streamIds": [
             "stream-003"
           ],
@@ -451,11 +450,11 @@
         "terminalPlain": "",
         "timeline": [
           {
-            "id": "event-004-contract-persona-03",
+            "id": "event-004-contract-player-3",
             "at": "[ts]",
             "level": "info",
             "type": "concurrent-shared-world.contract.ready",
-            "message": "Persona persona-03: dry-run contract actor ready; switch scenario.mode to live for a real concurrent session.",
+            "message": "Persona player-3: dry-run contract actor ready; switch scenario.mode to live for a real concurrent session.",
             "simId": "sim-003",
             "streamId": "stream-003"
           }
@@ -468,41 +467,41 @@
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.run.created",
-        "message": "Created CONCURRENT shared-world run for concurrent-shared-world-proof (actor openai-computer-use, 3 persona(s) vs ONE shared plane, max 3 concurrent)."
+        "message": "Created CONCURRENT shared-world run for lobby-trivia-3player-test (actor openai-computer-use, 3 persona(s) vs ONE shared plane, max 3 concurrent)."
       },
       {
         "id": "event-001-plane",
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.plane.provenance",
-        "message": "Shared plane declared: clone of example-org/collab-app, served + getHost-exposed in-sandbox (dry-run contract; nothing cloned). Seed recipe da2a491995d48367; SYNTHETIC subject (author-attested); env names: DATABASE_URL (values never persisted).",
+        "message": "Shared plane: an EXTERNAL-PUBLIC deployment (operator-attested owner example-operator/lobby-trivia, authorized) used DIRECTLY as the shared plane — NO getHost, clone, subject sandbox, or seed. The harness OBSERVES that each seat reached the operator-declared origin (publicOriginDigest); it did NOT mint or control the plane. Author-trust ownership attestation, NOT a synthetic-data claim.",
         "simId": "sim-001",
         "streamId": "stream-001"
       },
       {
-        "id": "event-002-contract-persona-01",
+        "id": "event-002-contract-host",
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.contract.ready",
-        "message": "Persona persona-01: dry-run contract actor ready; switch scenario.mode to live for a real concurrent session.",
+        "message": "Persona host: dry-run contract actor ready; switch scenario.mode to live for a real concurrent session.",
         "simId": "sim-001",
         "streamId": "stream-001"
       },
       {
-        "id": "event-003-contract-persona-02",
+        "id": "event-003-contract-player-2",
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.contract.ready",
-        "message": "Persona persona-02: dry-run contract actor ready; switch scenario.mode to live for a real concurrent session.",
+        "message": "Persona player-2: dry-run contract actor ready; switch scenario.mode to live for a real concurrent session.",
         "simId": "sim-002",
         "streamId": "stream-002"
       },
       {
-        "id": "event-004-contract-persona-03",
+        "id": "event-004-contract-player-3",
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.contract.ready",
-        "message": "Persona persona-03: dry-run contract actor ready; switch scenario.mode to live for a real concurrent session.",
+        "message": "Persona player-3: dry-run contract actor ready; switch scenario.mode to live for a real concurrent session.",
         "simId": "sim-003",
         "streamId": "stream-003"
       },
@@ -511,7 +510,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.concurrency",
-        "message": "Concurrency: 3 lane(s) (dry-run contract; $0); stateSeries 1 snapshot(s), 0 delta(s). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors. This contract-only run proves no live concurrency, scale, or adoption."
+        "message": "Concurrency: 3 lane(s) (dry-run contract; $0); stateSeries omitted (no authoritative shared-state proof on the external-public plane); lobby convergence not observed. Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only. This contract-only run proves no live concurrency, scale, or adoption."
       }
     ],
     "artifactLinks": [
@@ -564,12 +563,12 @@
   "review.json": {
     "schema": "humanish.review.v1",
     "verdict": "contract_proof_only",
-    "summary": "Dry-run concurrent shared-world contract: 3 persona(s) declared against ONE getHost-exposed plane (openai-computer-use); no sandboxes launched, $0 spend.",
+    "summary": "Dry-run concurrent shared-world contract: 3 persona(s) declared against ONE external-public shared plane (a real public deployment used directly; no getHost/clone/seed); no sandboxes launched, $0 spend.",
     "gaps": [
       "This dry-run launched no concurrent shared-world session; it proves contract shape only, not live behavior, scale, or adopter-harness replacement."
     ]
   },
-  "review.md": "# Concurrent shared-world proof\n\n- run: [run]\n- mode: dry-run\n- attribution class: shared-world\n- topology: shared-world / concurrent\n- personas: 3\n- verdict: contract_proof_only\n- summary: Dry-run concurrent shared-world contract: 3 persona(s) declared against ONE getHost-exposed plane (openai-computer-use); no sandboxes launched, $0 spend.\n- plane: Shared plane declared: clone of example-org/collab-app, served + getHost-exposed in-sandbox (dry-run contract; nothing cloned). Seed recipe da2a491995d48367; SYNTHETIC subject (author-attested); env names: DATABASE_URL (values never persisted).\n- concurrency: Concurrency: 3 lane(s) (dry-run contract; $0); stateSeries 1 snapshot(s), 0 delta(s). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors. This contract-only run proves no live concurrency, scale, or adoption.\n- attribution limits: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors\n\n## Gaps\n- This dry-run launched no concurrent shared-world session; it proves contract shape only, not live behavior, scale, or adopter-harness replacement.\n",
+  "review.md": "# the example multiplayer app 3-player external-public\n\n- run: [run]\n- mode: dry-run\n- attribution class: shared-world\n- topology: shared-world / concurrent\n- personas: 3\n- verdict: contract_proof_only\n- summary: Dry-run concurrent shared-world contract: 3 persona(s) declared against ONE external-public shared plane (a real public deployment used directly; no getHost/clone/seed); no sandboxes launched, $0 spend.\n- plane: Shared plane: an EXTERNAL-PUBLIC deployment (operator-attested owner example-operator/lobby-trivia, authorized) used DIRECTLY as the shared plane — NO getHost, clone, subject sandbox, or seed. The harness OBSERVES that each seat reached the operator-declared origin (publicOriginDigest); it did NOT mint or control the plane. Author-trust ownership attestation, NOT a synthetic-data claim.\n- concurrency: Concurrency: 3 lane(s) (dry-run contract; $0); stateSeries omitted (no authoritative shared-state proof on the external-public plane); lobby convergence not observed. Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only. This contract-only run proves no live concurrency, scale, or adoption.\n- attribution limits: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only\n\n## Gaps\n- This dry-run launched no concurrent shared-world session; it proves contract shape only, not live behavior, scale, or adopter-harness replacement.\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -599,17 +598,17 @@
       }
     },
     "persona": {
-      "id": "persona-1",
+      "id": "party-host",
       "name": "Concurrent shared-world swarm (3 personas)",
-      "source": "lab:concurrent-shared-world-proof",
-      "sourceDigest": "48b083174eecbf02"
+      "source": "lab:lobby-trivia-3player-test",
+      "sourceDigest": "07e0454012db815d"
     },
     "scenario": {
-      "id": "concurrent-shared-world-concurrent-shared-world-proof",
-      "title": "Concurrent shared-world proof",
-      "goal": "Persona: persona-1.\n\nYou are a desktop user (desktop, 1440x950).\n\nUse the shared app.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
-      "source": "lab:concurrent-shared-world-proof",
-      "sourceDigest": "48b083174eecbf02"
+      "id": "concurrent-shared-world-lobby-trivia-3player-test",
+      "title": "the example multiplayer app 3-player external-public",
+      "goal": "Persona: party-host.\n\nYou are a mobile user on a mobile device (414x896 @3x). Expect a mobile/touch layout.\n\nPlay the example multiplayer app with your friends.\n\nLane focus: Create a lobby, then wait; once 3 players are in, start and play.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
+      "source": "lab:lobby-trivia-3player-test",
+      "sourceDigest": "07e0454012db815d"
     },
     "lifecycle": [
       {
@@ -622,14 +621,14 @@
       {
         "id": "sim-001",
         "index": 1,
-        "personaId": "persona-1",
-        "scenarioId": "concurrent-shared-world-concurrent-shared-world-proof",
+        "personaId": "party-host",
+        "scenarioId": "concurrent-shared-world-lobby-trivia-3player-test",
         "status": "contract_proof_only",
         "streamKind": "browser",
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "Contract actor only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.",
-        "summary": "Contract persona persona-01 (type:initiator / surface:intake / case:case-001) (persona-1) for openai-computer-use against the shared plane at [provisioned-subject].",
+        "summary": "Contract persona host (party-host) for openai-computer-use against the shared plane at [external-public-plane].",
         "streamIds": [
           "stream-001"
         ],
@@ -639,14 +638,14 @@
       {
         "id": "sim-002",
         "index": 2,
-        "personaId": "persona-2",
-        "scenarioId": "concurrent-shared-world-concurrent-shared-world-proof",
+        "personaId": "competitive-friend",
+        "scenarioId": "concurrent-shared-world-lobby-trivia-3player-test",
         "status": "contract_proof_only",
         "streamKind": "browser",
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "Contract actor only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.",
-        "summary": "Contract persona persona-02 (type:collaborator / surface:review / case:case-001) (persona-2) for openai-computer-use against the shared plane at [provisioned-subject].",
+        "summary": "Contract persona player-2 (competitive-friend) for openai-computer-use against the shared plane at [external-public-plane].",
         "streamIds": [
           "stream-002"
         ],
@@ -656,14 +655,14 @@
       {
         "id": "sim-003",
         "index": 3,
-        "personaId": "persona-3",
-        "scenarioId": "concurrent-shared-world-concurrent-shared-world-proof",
+        "personaId": "casual-friend",
+        "scenarioId": "concurrent-shared-world-lobby-trivia-3player-test",
         "status": "contract_proof_only",
         "streamKind": "browser",
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "Contract actor only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.",
-        "summary": "Contract persona persona-03 (type:collaborator / surface:review / case:case-001) (persona-3) for openai-computer-use against the shared plane at [provisioned-subject].",
+        "summary": "Contract persona player-3 (casual-friend) for openai-computer-use against the shared plane at [external-public-plane].",
         "streamIds": [
           "stream-003"
         ],
@@ -676,28 +675,34 @@
         "id": "stream-001",
         "simId": "sim-001",
         "assignment": {
-          "mission": "Use the shared app."
+          "mission": "Play the example multiplayer app with your friends.",
+          "focus": "Create a lobby, then wait; once 3 players are in, start and play."
         },
         "kind": "browser",
-        "label": "Concurrent persona persona-01 (type:initiator / surface:intake / case:case-001) — concurrent-shared-world-proof",
+        "label": "Concurrent persona host — lobby-trivia-3player-test",
         "status": "contract_proof_only",
         "transport": "snapshot",
         "updatedAt": "[ts]",
         "embed": {
           "kind": "placeholder",
-          "title": "Shared plane, persona persona-01"
+          "title": "Shared plane, persona host"
         },
         "desktopGeometry": {
           "screen": {
             "requested": {
-              "width": 1440,
-              "height": 950
+              "width": 500,
+              "height": 896
+            },
+            "declared": {
+              "width": 414,
+              "height": 896,
+              "preset": "mobile"
             }
           }
         },
         "ui": {
-          "route": "[provisioned-subject]/seat-1",
-          "intent": "Watch persona persona-01 (type:initiator / surface:intake / case:case-001) (persona-1) drive the SHARED plane concurrently with the other personas.",
+          "route": "[external-public-plane]",
+          "intent": "Watch persona host (party-host) drive the SHARED plane concurrently with the other personas.",
           "state": "Contract actor only: dry-run produced the evidence shape without launching a desktop or spending provider tokens."
         },
         "artifacts": [
@@ -722,28 +727,34 @@
         "id": "stream-002",
         "simId": "sim-002",
         "assignment": {
-          "mission": "Use the shared app."
+          "mission": "Play the example multiplayer app with your friends.",
+          "focus": "Join the lobby you're told the code for, then play."
         },
         "kind": "browser",
-        "label": "Concurrent persona persona-02 (type:collaborator / surface:review / case:case-001) — concurrent-shared-world-proof",
+        "label": "Concurrent persona player-2 — lobby-trivia-3player-test",
         "status": "contract_proof_only",
         "transport": "snapshot",
         "updatedAt": "[ts]",
         "embed": {
           "kind": "placeholder",
-          "title": "Shared plane, persona persona-02"
+          "title": "Shared plane, persona player-2"
         },
         "desktopGeometry": {
           "screen": {
             "requested": {
-              "width": 1440,
-              "height": 950
+              "width": 500,
+              "height": 896
+            },
+            "declared": {
+              "width": 414,
+              "height": 896,
+              "preset": "mobile"
             }
           }
         },
         "ui": {
-          "route": "[provisioned-subject]/seat-2",
-          "intent": "Watch persona persona-02 (type:collaborator / surface:review / case:case-001) (persona-2) drive the SHARED plane concurrently with the other personas.",
+          "route": "[external-public-plane]",
+          "intent": "Watch persona player-2 (competitive-friend) drive the SHARED plane concurrently with the other personas.",
           "state": "Contract actor only: dry-run produced the evidence shape without launching a desktop or spending provider tokens."
         },
         "artifacts": [
@@ -768,28 +779,34 @@
         "id": "stream-003",
         "simId": "sim-003",
         "assignment": {
-          "mission": "Use the shared app."
+          "mission": "Play the example multiplayer app with your friends.",
+          "focus": "Join the lobby you're told the code for, then play."
         },
         "kind": "browser",
-        "label": "Concurrent persona persona-03 (type:collaborator / surface:review / case:case-001) — concurrent-shared-world-proof",
+        "label": "Concurrent persona player-3 — lobby-trivia-3player-test",
         "status": "contract_proof_only",
         "transport": "snapshot",
         "updatedAt": "[ts]",
         "embed": {
           "kind": "placeholder",
-          "title": "Shared plane, persona persona-03"
+          "title": "Shared plane, persona player-3"
         },
         "desktopGeometry": {
           "screen": {
             "requested": {
-              "width": 1440,
-              "height": 950
+              "width": 500,
+              "height": 740
+            },
+            "declared": {
+              "width": 360,
+              "height": 740,
+              "preset": "small-mobile"
             }
           }
         },
         "ui": {
-          "route": "[provisioned-subject]/seat-3",
-          "intent": "Watch persona persona-03 (type:collaborator / surface:review / case:case-001) (persona-3) drive the SHARED plane concurrently with the other personas.",
+          "route": "[external-public-plane]",
+          "intent": "Watch persona player-3 (casual-friend) drive the SHARED plane concurrently with the other personas.",
           "state": "Contract actor only: dry-run produced the evidence shape without launching a desktop or spending provider tokens."
         },
         "artifacts": [
@@ -817,41 +834,41 @@
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.run.created",
-        "message": "Created CONCURRENT shared-world run for concurrent-shared-world-proof (actor openai-computer-use, 3 persona(s) vs ONE shared plane, max 3 concurrent)."
+        "message": "Created CONCURRENT shared-world run for lobby-trivia-3player-test (actor openai-computer-use, 3 persona(s) vs ONE shared plane, max 3 concurrent)."
       },
       {
         "id": "event-001-plane",
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.plane.provenance",
-        "message": "Shared plane declared: clone of example-org/collab-app, served + getHost-exposed in-sandbox (dry-run contract; nothing cloned). Seed recipe da2a491995d48367; SYNTHETIC subject (author-attested); env names: DATABASE_URL (values never persisted).",
+        "message": "Shared plane: an EXTERNAL-PUBLIC deployment (operator-attested owner example-operator/lobby-trivia, authorized) used DIRECTLY as the shared plane — NO getHost, clone, subject sandbox, or seed. The harness OBSERVES that each seat reached the operator-declared origin (publicOriginDigest); it did NOT mint or control the plane. Author-trust ownership attestation, NOT a synthetic-data claim.",
         "simId": "sim-001",
         "streamId": "stream-001"
       },
       {
-        "id": "event-002-contract-persona-01",
+        "id": "event-002-contract-host",
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.contract.ready",
-        "message": "Persona persona-01: dry-run contract actor ready; switch scenario.mode to live for a real concurrent session.",
+        "message": "Persona host: dry-run contract actor ready; switch scenario.mode to live for a real concurrent session.",
         "simId": "sim-001",
         "streamId": "stream-001"
       },
       {
-        "id": "event-003-contract-persona-02",
+        "id": "event-003-contract-player-2",
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.contract.ready",
-        "message": "Persona persona-02: dry-run contract actor ready; switch scenario.mode to live for a real concurrent session.",
+        "message": "Persona player-2: dry-run contract actor ready; switch scenario.mode to live for a real concurrent session.",
         "simId": "sim-002",
         "streamId": "stream-002"
       },
       {
-        "id": "event-004-contract-persona-03",
+        "id": "event-004-contract-player-3",
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.contract.ready",
-        "message": "Persona persona-03: dry-run contract actor ready; switch scenario.mode to live for a real concurrent session.",
+        "message": "Persona player-3: dry-run contract actor ready; switch scenario.mode to live for a real concurrent session.",
         "simId": "sim-003",
         "streamId": "stream-003"
       },
@@ -860,7 +877,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.concurrency",
-        "message": "Concurrency: 3 lane(s) (dry-run contract; $0); stateSeries 1 snapshot(s), 0 delta(s). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors. This contract-only run proves no live concurrency, scale, or adoption."
+        "message": "Concurrency: 3 lane(s) (dry-run contract; $0); stateSeries omitted (no authoritative shared-state proof on the external-public plane); lobby convergence not observed. Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only. This contract-only run proves no live concurrency, scale, or adoption."
       }
     ],
     "redaction": {
@@ -877,27 +894,17 @@
     "review": {
       "schema": "humanish.review.v1",
       "verdict": "contract_proof_only",
-      "summary": "Dry-run concurrent shared-world contract: 3 persona(s) declared against ONE getHost-exposed plane (openai-computer-use); no sandboxes launched, $0 spend.",
+      "summary": "Dry-run concurrent shared-world contract: 3 persona(s) declared against ONE external-public shared plane (a real public deployment used directly; no getHost/clone/seed); no sandboxes launched, $0 spend.",
       "gaps": [
         "This dry-run launched no concurrent shared-world session; it proves contract shape only, not live behavior, scale, or adopter-harness replacement."
       ]
     },
     "feedbackCandidates": [],
     "subject": {
-      "source": "clone",
-      "repo": "example-org/collab-app",
-      "envNames": [
-        "DATABASE_URL"
-      ],
+      "source": "app-url",
+      "envNames": [],
       "state": {
-        "provenance": "declared-not-run",
-        "seed": [
-          {
-            "name": "migrate",
-            "when": "before-start",
-            "commandDigest": "867652585ad90648"
-          }
-        ]
+        "provenance": "external-public"
       }
     },
     "attributionClass": "shared-world",
@@ -905,13 +912,12 @@
       "schema": "humanish.shared-world.v1",
       "topology": "shared-world",
       "topologyMode": "concurrent",
+      "planeClass": "external-public",
       "roleCount": 3,
       "plane": {
-        "seedDigest": "da2a491995d48367",
-        "envNames": [
-          "DATABASE_URL"
-        ],
-        "exposure": "synthetic"
+        "seedDigest": "e3b0c44298fc1c14",
+        "envNames": [],
+        "declaredOriginDigest": "3e38c933ea57479e"
       },
       "attributionLimits": [
         "concurrent",
@@ -919,81 +925,62 @@
         "non-deterministic-shared-state",
         "window-and-snapshot-granularity",
         "contention-observed-not-proven-safe",
-        "state-change-not-isolated-to-actors"
+        "state-change-not-isolated-to-actors",
+        "external-public-plane",
+        "operator-attested-target-not-harness-controlled",
+        "no-synthetic-attestation",
+        "no-authoritative-shared-state-proof",
+        "concurrency-by-temporal-co-occupancy-only"
       ],
       "laneWindows": [
         {
-          "roleId": "persona-01",
-          "actorType": "initiator",
-          "surface": "intake",
-          "caseGroup": "case-001",
+          "roleId": "host",
           "simId": "sim-001",
           "streamId": "stream-001",
           "startedAt": 0,
           "endedAt": 0,
           "verdict": "contract_proof_only",
-          "routeHostDigest": "ac8498bf4b9671ea",
-          "seedDigest": "da2a491995d48367"
+          "routeHostDigest": "4bbb3c186bbfed32",
+          "seedDigest": "e3b0c44298fc1c14"
         },
         {
-          "roleId": "persona-02",
-          "actorType": "collaborator",
-          "surface": "review",
-          "caseGroup": "case-001",
+          "roleId": "player-2",
           "simId": "sim-002",
           "streamId": "stream-002",
           "startedAt": 0,
           "endedAt": 0,
           "verdict": "contract_proof_only",
-          "routeHostDigest": "ac8498bf4b9671ea",
-          "seedDigest": "da2a491995d48367"
+          "routeHostDigest": "4bbb3c186bbfed32",
+          "seedDigest": "e3b0c44298fc1c14"
         },
         {
-          "roleId": "persona-03",
-          "actorType": "collaborator",
-          "surface": "review",
-          "caseGroup": "case-001",
+          "roleId": "player-3",
           "simId": "sim-003",
           "streamId": "stream-003",
           "startedAt": 0,
           "endedAt": 0,
           "verdict": "contract_proof_only",
-          "routeHostDigest": "ac8498bf4b9671ea",
-          "seedDigest": "da2a491995d48367"
-        }
-      ],
-      "stateSeries": [
-        {
-          "timestamp": 0,
-          "digest": "bada0489f38a81a6"
+          "routeHostDigest": "4bbb3c186bbfed32",
+          "seedDigest": "e3b0c44298fc1c14"
         }
       ],
       "outcomes": [
         {
-          "roleId": "persona-01",
-          "actorType": "initiator",
-          "surface": "intake",
-          "caseGroup": "case-001",
+          "roleId": "host",
           "simId": "sim-001",
           "streamId": "stream-001",
           "status": "contract_proof_only",
           "ok": false
         },
         {
-          "roleId": "persona-02",
-          "actorType": "collaborator",
-          "surface": "review",
-          "caseGroup": "case-001",
+          "roleId": "player-2",
           "simId": "sim-002",
           "streamId": "stream-002",
           "status": "contract_proof_only",
           "ok": false
         },
         {
-          "roleId": "persona-03",
-          "actorType": "collaborator",
-          "surface": "review",
-          "caseGroup": "case-001",
+          "roleId": "player-3",
           "simId": "sim-003",
           "streamId": "stream-003",
           "status": "contract_proof_only",

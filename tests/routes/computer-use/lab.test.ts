@@ -6511,9 +6511,10 @@ describe("adopter-hosted comms on the app-url route (#380)", () => {
   }, 60_000);
 });
 
-// Characterization: the complete run directory of a single-lane computer-use run on the fake E2B
-// module and a scripted provider transport, pinned so a refactor of bundle assembly or artifact
-// writing shows up as a diff. Regenerate with `pnpm vitest run tests/routes/computer-use/lab.test.ts -u`.
+// Characterization: the complete run directory and returned result of a single-lane computer-use
+// run, on the fake E2B module with a scripted provider transport and on the in-process route with
+// a state executor, pinned so a refactor of bundle assembly or artifact writing shows up as a
+// diff. Regenerate with `pnpm vitest run tests/routes/computer-use/lab.test.ts -u`.
 describe("computer-use run directory goldens", () => {
   let goldenCwd: string;
   beforeEach(async () => {
@@ -6547,6 +6548,7 @@ describe("computer-use run directory goldens", () => {
     const runId = outcome.result.runId;
     if (!runId) throw new Error("the run wrote no bundle");
     const snapshot = await runDirSnapshot(path.join(goldenCwd, ".humanish", "runs", runId), {
+      result: outcome.result,
       replace: [
         [runId, "[run]"],
         [goldenCwd, "[cwd]"],
@@ -6554,6 +6556,36 @@ describe("computer-use run directory goldens", () => {
     });
     await expect(`${JSON.stringify(snapshot, null, 2)}\n`).toMatchFileSnapshot(
       `../../golden/routes/${golden}`,
+    );
+  });
+
+  it("in-process local-app run with a state executor", async () => {
+    const { module, created } = makeFakeModule(makeFakeSandbox());
+    let clock = 0;
+    const outcome = await runLab(localAppConfig(), {
+      cwd: goldenCwd,
+      automaticAnalysis: { run: automaticAnalysisBoundary() },
+      cuaHooks: {
+        // The in-process route needs no keys; an empty env keeps the operator's env out of the result.
+        env: {},
+        loadDesktopModule: async () => module,
+        now: () => (clock += 30_000),
+        buildExecutor: async () => makeStateExecutor(),
+        buildProvider: async () => makeStateProvider(),
+      },
+    });
+    expect(created).toHaveLength(0);
+    const runId = outcome.result.runId;
+    if (!runId) throw new Error("the run wrote no bundle");
+    const snapshot = await runDirSnapshot(path.join(goldenCwd, ".humanish", "runs", runId), {
+      result: outcome.result,
+      replace: [
+        [runId, "[run]"],
+        [goldenCwd, "[cwd]"],
+      ],
+    });
+    await expect(`${JSON.stringify(snapshot, null, 2)}\n`).toMatchFileSnapshot(
+      "../../golden/routes/computer-use-in-process-live.json",
     );
   });
 });
