@@ -1,10 +1,11 @@
 import { createServer, type Server } from "node:http";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import type { AddressInfo } from "node:net";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { retainLiveRuns } from "../../helpers/live-retention.js";
 
 import type { ActorCapabilities } from "../../../src/actors/contract.js";
 import { ACTOR_TRACE_SCHEMA } from "../../../src/actors/contract.js";
@@ -135,7 +136,7 @@ describe.skipIf(!LIVE)(
 
     afterEach(async () => {
       await new Promise<void>((resolve) => server.close(() => resolve()));
-      await rm(cwd, { recursive: true, force: true });
+      await retainLiveRuns(cwd, "cua-state-executor");
     });
 
     it(

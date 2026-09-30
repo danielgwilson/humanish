@@ -1,10 +1,11 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile } from "node:fs/promises";
 import { readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { parse } from "yaml";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { retainLiveRuns } from "../../helpers/live-retention.js";
 
 import { parseLabConfig } from "../../../src/lab/config.js";
 import { runLab } from "../../../src/lab/engine.js";
@@ -41,7 +42,7 @@ describe.skipIf(!LIVE)(
     });
 
     afterEach(async () => {
-      await rm(cwd, { recursive: true, force: true });
+      await retainLiveRuns(cwd, "shared-world-concurrent");
     });
 
     it(
