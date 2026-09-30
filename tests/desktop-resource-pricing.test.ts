@@ -122,6 +122,7 @@ describe("observed desktop resources", () => {
     expect(buildRunCostSummary({ lanes: [], desktops: [] })).toBeUndefined();
     const legacy = buildRunCostSummary({ lanes: [], desktopMinutes: 1 })!;
     expect(legacy.estimatedTotalUsd).toBe(0.00888);
+    expect(legacy.desktopMinutes).toBe(1);
     expect(legacy.placeholder).toBe(true);
     expect(legacy.breakdown[0]!.source).toContain("planning assumption");
   });
