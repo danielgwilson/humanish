@@ -540,8 +540,15 @@ app + one seeded DB) so their actions interact through shared state. The ONE
 subject plane is provisioned via `subject.source: clone` (a fresh `git clone`) or
 `subject.source: local-tree` (the operator's own working tree, packed on the host
 and provisioned in-sandbox in place of a clone - see `subject.localTree` above);
-both sources are accepted on the shared-world route. A
-shared-world bundle adds TWO additive, optional fields to `humanish.run-bundle.v1`
+both sources are accepted on the shared-world route.
+
+Current runs write only the CONCURRENT shape below. The SEQUENTIAL shape came from the
+sequential shared-world route, which 0.106.0 removed. Only bundles written before
+0.106.0 carry it, and `humanish verify` still checks them
+(`tests/run/legacy-sequential-shared-world.test.ts`). The SEQUENTIAL rules below apply
+to those bundles.
+
+A shared-world bundle adds TWO additive, optional fields to `humanish.run-bundle.v1`
 (absent on every other bundle, so they stay byte-stable):
 
 - `attributionClass: isolated | shared-world`: a separate attribution axis
@@ -563,7 +570,8 @@ shared-world bundle adds TWO additive, optional fields to `humanish.run-bundle.v
   - `attributionLimits: [...]`: the verify-enforced attribution ceiling (the set
     differs per `topologyMode`, below).
 
-  SEQUENTIAL shape (`topologyMode: sequential`, #164 PR1):
+  SEQUENTIAL shape (`topologyMode: sequential`, #164 PR1; only in bundles written before
+  0.106.0):
   - `sequence: [roleId, …]`: the role ids that actually took a turn, in declared order.
   - `skippedTail` (optional, live sequential only): `{ afterRoleId, roles,
 cause, maxTotalUsd?, estimatedTotalUsd? }`. Each ordered `roles` entry names
