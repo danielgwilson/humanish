@@ -3733,17 +3733,32 @@
     },
     "runner": {
       "runner": "cua",
-      "runs": true,
+      "runs": false,
+      "calls": {
+        "desktop": 0,
+        "executor": 0,
+        "provider": 0,
+        "subprocess": 0
+      },
       "result": {
-        "ok": true,
-        "plan": {
-          "laneCount": 2,
-          "concurrency": 2,
-          "waves": 1,
-          "lanes": [
-            "author",
-            "reviewer"
-          ]
+        "schema": "humanish.cua-lab-result.v2",
+        "ok": false,
+        "cwd": "[cwd]",
+        "labId": "adm-sharedprovisioned",
+        "actor": "openai-computer-use",
+        "appUrl": "http://127.0.0.1:3000/",
+        "dryRun": true,
+        "runId": "not-created",
+        "lanes": [],
+        "warnings": [],
+        "error": {
+          "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+          "message": "subject.topology: shared-world labs run every seat against one shared app on the shared-world route; runCuaActorLab runs independent lanes. Run the lab with runLab or runConcurrentSharedWorld."
+        },
+        "automaticAnalysisTrigger": "default",
+        "automaticAnalysis": {
+          "state": "skipped",
+          "reason": "analysis_dry_run"
         }
       }
     }

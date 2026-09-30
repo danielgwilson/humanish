@@ -430,6 +430,27 @@
       "reason": "analysis_dry_run"
     }
   },
+  "shared-world topology": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "subject.topology: shared-world labs run every seat against one shared app on the shared-world route; runCuaActorLab runs independent lanes. Run the lab with runLab or runConcurrentSharedWorld."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
   "count override above the cap": {
     "schema": "humanish.cua-lab-result.v2",
     "ok": false,
@@ -917,6 +938,48 @@
     "error": {
       "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
       "message": "execution.timeoutMs 55m derives a 65m sandbox deadline, and a sandbox may not live longer than 60m. The deadline is the session budget plus 10m of provisioning and teardown headroom. Lower execution.timeoutMs to at most 50m, or set execution.desktop.sandboxTimeoutMs explicitly."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "sandbox deadline and shared-world topology": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "execution.timeoutMs 55m derives a 65m sandbox deadline, and a sandbox may not live longer than 60m. The deadline is the session budget plus 10m of provisioning and teardown headroom. Lower execution.timeoutMs to at most 50m, or set execution.desktop.sandboxTimeoutMs explicitly."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "shared-world topology and count override above the cap": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "subject.topology: shared-world labs run every seat against one shared app on the shared-world route; runCuaActorLab runs independent lanes. Run the lab with runLab or runConcurrentSharedWorld."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {

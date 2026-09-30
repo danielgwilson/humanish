@@ -136,6 +136,7 @@ const rules = new Map<string, Rule>([
     },
   ],
   ["sandbox deadline", { mutate: (c) => (record(c, "execution").timeoutMs = 3_300_000) }],
+  ["shared-world topology", { mutate: (c) => (record(c, "subject").topology = "shared-world") }],
   ["count override above the cap", { mutate: () => undefined, countOverride: 17 }],
   ["in-process fan-out", { mutate: (c) => (actor(c).count = 2), ...inProcess }],
   ["live without keys", { mutate: (c) => (record(c, "scenario").mode = "live") }],
@@ -165,6 +166,8 @@ const pairs: [string, string][] = [
   ["local browser without a runtime", "lanes and count"],
   ["lanes and count", "sandbox deadline"],
   ["sandbox deadline", "count override above the cap"],
+  ["sandbox deadline", "shared-world topology"],
+  ["shared-world topology", "count override above the cap"],
   ["count override above the cap", "in-process fan-out"],
   ["in-process fan-out", "live without keys"],
 ];

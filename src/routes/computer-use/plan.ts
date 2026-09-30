@@ -335,6 +335,16 @@ export function planComputerUseLab(
   const actor = descriptor.id;
   const rejection = cuaLabRejection(config, hooks, cuaRoute(config, hooks));
   if (rejection) return refuse("in-scope", rejection.code, rejection.message, actor);
+  // A shared world runs every seat against one app; this route would run them as separate lanes.
+  // It comes after the rules above, so a shared-world config that breaks one of them, which runLab
+  // sends here, still gets that rule's message.
+  if (config.subject.topology === "shared-world")
+    return refuse(
+      "in-scope",
+      "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "subject.topology: shared-world labs run every seat against one shared app on the shared-world route; runCuaActorLab runs independent lanes. Run the lab with runLab or runConcurrentSharedWorld.",
+      actor,
+    );
 
   const participants = computerUseParticipants(config, input.countOverride);
   if (participants.length > MAX_CUA_LANES)
