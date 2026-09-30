@@ -22,7 +22,7 @@ const ROOT = process.cwd();
 const git = (cwd: string, ...args: string[]) =>
   promisify(execFile)(
     "git",
-    ["-c", "user.name=golden", "-c", "user.email=golden@example.invalid", ...args],
+    ["-c", "user.name=golden", "-c", "user.email=golden@example.test", ...args],
     { cwd },
   );
 
