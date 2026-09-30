@@ -674,3 +674,36 @@ describe("a hook bag that is a class instance keeps its methods", () => {
     }
   });
 });
+
+describe("an onEvent failure never escapes", () => {
+  const plan = { lanes: [] } as unknown as CuaLanePlan;
+  const fallback = "RunLabOptions.onEvent failed on plan: the thrown value has no message";
+
+  it("a thrown value with no string form becomes a warning", () => {
+    const result = normalize(config("cuAppUrl"), {
+      onEvent: () => {
+        throw Object.create(null);
+      },
+    });
+    if (!result.ok) throw new Error(result.message);
+    expect(() => result.options.cuaHooks!.onPreflight!(plan)).not.toThrow();
+    expect(result.warnings).toEqual([fallback]);
+  });
+
+  it("a rejection with no string form is caught and becomes a warning", async () => {
+    const unhandled = vi.fn();
+    process.on("unhandledRejection", unhandled);
+    try {
+      const result = normalize(config("cuAppUrl"), {
+        onEvent: () => Promise.reject(Object.create(null)),
+      });
+      if (!result.ok) throw new Error(result.message);
+      result.options.cuaHooks!.onPreflight!(plan);
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(unhandled).not.toHaveBeenCalled();
+      expect(result.warnings).toEqual([fallback]);
+    } finally {
+      process.off("unhandledRejection", unhandled);
+    }
+  });
+});

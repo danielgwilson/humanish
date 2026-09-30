@@ -289,14 +289,19 @@ export function normalizeRunLabOptions(
     onEvent === undefined
       ? undefined
       : (event: LabEvent): void => {
+          // Total: a thrown value can refuse to become a string, and nothing may escape from here.
           const report = (error: unknown): void => {
-            warnings.push(
-              `RunLabOptions.onEvent failed on ${event.type}: ${redactText(scrubKnownValues(toErrorMessage(error)))}`,
-            );
+            let detail: string;
+            try {
+              detail = redactText(scrubKnownValues(toErrorMessage(error)));
+            } catch {
+              detail = "the thrown value has no message";
+            }
+            warnings.push(`RunLabOptions.onEvent failed on ${event.type}: ${detail}`);
           };
           try {
             const returned = onEvent(event);
-            if (returned !== undefined) Promise.resolve(returned).catch(report);
+            if (returned !== undefined) Promise.resolve(returned).then(undefined, report);
           } catch (error) {
             report(error);
           }
