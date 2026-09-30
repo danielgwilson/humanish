@@ -19,19 +19,14 @@ import {
   type ReviewSummary,
   type RunBundle,
   type RunEvent,
-  type RunSimulation,
   type RunSubjectProvenance,
 } from "../../run/bundle.js";
 import { type RunStream } from "../../run/streams.js";
 import type { RunLabProvenance } from "../../run/status.js";
+import { scriptedSurfaceRecords } from "./surface-records.js";
 
-/**
- * Project the scripted lab run into a humanish.run-bundle.v1 (no schema change — a new
- * producer only). The load-bearing line is `stream.actor = result.trace`: the provider-neutral
- * ActorTrace seam the Observer renders and verifyRun's engagement check reads. Exported for
- * the bundle-builder tests.
- */
-export function buildScriptedLabBundle(args: {
+/** What the scripted lab's bundle is built from. */
+interface ScriptedBundleArgs {
   /** Lab provenance for the bundle\'s own `lab` field (#455). */
   lab?: RunLabProvenance;
   actorId: string;
@@ -59,99 +54,89 @@ export function buildScriptedLabBundle(args: {
     killed: boolean;
   };
   surfaces: readonly BrowserSurface[];
-}): RunBundle {
+}
+
+/**
+ * Project the scripted lab run into a humanish.run-bundle.v1 (no schema change — a new
+ * producer only). The load-bearing line is `stream.actor = result.trace`: the provider-neutral
+ * ActorTrace seam the Observer renders and verifyRun's engagement check reads. Exported for
+ * the bundle-builder tests.
+ */
+export function buildScriptedLabBundle(args: ScriptedBundleArgs): RunBundle {
   const resultBySurface = new Map(
     args.sessionResults.map((result) => [result.capture.surface.id, result]),
   );
-  const simulations: RunSimulation[] = [];
-  const streams: RunStream[] = [];
+  const records = args.surfaces.map((surface, index) =>
+    scriptedSurfaceRecords(
+      args,
+      surface,
+      index,
+      resultBySurface.get(surface.id),
+      args.screenshotsBySurface.get(surface.id) ?? [],
+    ),
+  );
 
-  args.surfaces.forEach((surface, index) => {
-    const simId = `scripted-${surface.id}`;
-    const streamId = `${simId}-stream`;
-    const result = resultBySurface.get(surface.id);
-    const screenshots = args.screenshotsBySurface.get(surface.id) ?? [];
-    const lastScreenshot = screenshots.at(-1);
-    const status = result
-      ? result.status
-      : args.sessionError
-        ? ("failed" as const)
-        : ("contract_proof_only" as const);
-    const reason =
-      result?.reason ??
-      args.sessionError ??
-      "Contract bundle only: dry-run pinned the scenario contract without launching a browser or touching the subject app.";
+  const events = scriptedEvents(args);
+  const review = buildScriptedReview(args);
+  const ranLive = args.sessionResults.length > 0 || args.sessionError !== undefined;
 
-    simulations.push({
-      id: simId,
-      index: index + 1,
-      personaId: args.persona.id,
-      scenarioId: args.journey.scenarioId,
-      status,
-      streamKind: "browser",
-      mode: "browser-sim",
-      progress: 100,
-      currentStep: reason,
-      summary: result
-        ? `Scripted-browser actor (${args.actorId}) replayed ${args.journey.scenarioId} on the ${surface.id} surface; ${result.completionReason}.`
-        : args.sessionError
-          ? `Scripted lab failed before a terminal session verdict: ${args.sessionError}`
-          : `Contract lane for the scripted-browser actor (${args.actorId}) against ${args.appUrl}.`,
-      streamIds: [streamId],
-      startedAt: args.createdAt,
-      updatedAt: result?.capture.capturedAt ?? args.createdAt,
-    });
-
-    streams.push({
-      id: streamId,
-      simId,
-      kind: "browser",
-      label: `${surface.label} — ${args.labId}`,
-      status,
-      transport: "snapshot",
-      updatedAt: result?.capture.capturedAt ?? args.createdAt,
-      embed: lastScreenshot
-        ? { kind: "screenshot", url: `../${lastScreenshot}`, title: `${surface.label} (raw)` }
-        : { kind: "placeholder", title: surface.label },
-      // REAL emulated viewport: isMobile/deviceScaleFactor genuinely render on this route
-      // (playwright emulation), unlike the e2b-desktop route's prompt-signal-only fidelity.
-      viewport: surface.viewport,
-      ui: {
-        route: args.appUrl,
-        intent: args.journey.goal,
-        state: reason,
-        ...(result ? { actorStatus: result.status } : {}),
-        ...(lastScreenshot ? { screenshotUrl: `../${lastScreenshot}` } : {}),
+  const cost = args.dryRun ? undefined : scriptedCost(args.subjectDesktop);
+  return {
+    schema: RUN_BUNDLE_SCHEMA,
+    runId: args.runId,
+    mode: args.dryRun ? "dry-run" : "live",
+    simCount: args.surfaces.length,
+    createdAt: args.createdAt,
+    cwd: PUBLIC_TARGET_CWD,
+    ...(args.lab === undefined ? {} : { lab: args.lab }),
+    artifactRoot: path.join(".humanish", "runs", args.runId),
+    source: args.source,
+    persona: {
+      id: args.persona.id,
+      name: `Scripted journey persona (${args.persona.id})`,
+      source: `lab:${args.labId}`,
+      sourceDigest: args.persona.promptDigest,
+    },
+    scenario: {
+      id: args.journey.scenarioId,
+      title: args.journey.scenarioTitle,
+      goal: redactText(args.journey.goal),
+      source: args.scenarioSource,
+      sourceDigest: args.scenarioSourceDigest,
+    },
+    lifecycle: [
+      {
+        at: args.createdAt,
+        event: "scripted-lab.run.created",
+        message: `Created scripted-browser lab run with ${args.surfaces.length} surface lane${args.surfaces.length === 1 ? "" : "s"} (actor ${args.actorId}).`,
       },
-      // The seam this registration exists to fill: the provider-neutral actor evidence.
-      ...(result ? { actor: result.trace } : {}),
-      artifacts: [
-        { label: "run bundle", path: "run.json", kind: "bundle" as const },
-        { label: "review", path: "review.md", kind: "review" as const },
-        { label: "events", path: "events.ndjson", kind: "events" as const },
-        ...(result
-          ? [
-              {
-                label: `${surface.id} browser trace`,
-                path: result.capture.tracePath,
-                kind: "trace" as const,
-              },
-              {
-                label: `${surface.id} actor trace`,
-                path: `actor-${surface.id}.json`,
-                kind: "trace" as const,
-              },
-            ]
-          : []),
-        ...screenshots.map((screenshot, screenshotIndex) => ({
-          label: `${surface.id} screenshot ${String(screenshotIndex + 1).padStart(2, "0")} (raw)`,
-          path: screenshot,
-          kind: "screenshot" as const,
-        })),
-      ],
-    });
-  });
+    ],
+    simulations: records.map((record) => record.simulation),
+    streams: records.map((record) => record.stream),
+    events,
+    redaction: {
+      status: "passed",
+      notes: ranLive
+        ? "Scripted step URLs are sanitized to loopback origin+path (query/hash redacted) and step text passes text redaction. Screenshots are FULL-FIDELITY (raw), retained for local use in gitignored .humanish — NOT redacted for publishing; policies.redactScreenshots is not yet supported on this route."
+        : "Dry-run contract bundle: no browser ran and no screenshots were captured. The scenario contract is digest-pinned; live step text passes text redaction when a session runs.",
+    },
+    artifacts: {
+      run: "run.json",
+      reviewJson: "review.json",
+      reviewMarkdown: "review.md",
+      observerData: "observer/observer-data.json",
+      events: "events.ndjson",
+    },
+    review,
+    feedbackCandidates: [],
+    ...(args.subject === undefined ? {} : { subject: args.subject }),
+    ...(args.desktopTemplate === undefined ? {} : { desktopTemplate: args.desktopTemplate }),
+    ...(cost === undefined ? {} : { cost }),
+  };
+}
 
+/** The created, subject and spend events, then one event per session or the run's outcome. */
+function scriptedEvents(args: ScriptedBundleArgs): RunEvent[] {
   const events: RunEvent[] = [
     {
       id: "event-000-created",
@@ -211,63 +196,7 @@ export function buildScriptedLabBundle(args: {
       message: `Dry-run contract bundle ready: scenario ${args.journey.scenarioId} @ ${args.scenarioSourceDigest} (${args.scenarioSource}, ${args.journey.steps.length} step${args.journey.steps.length === 1 ? "" : "s"}) parsed and digest-pinned; switch scenario.mode to live to actuate a real browser.`,
     });
   }
-
-  const review = buildScriptedReview(args);
-  const ranLive = args.sessionResults.length > 0 || args.sessionError !== undefined;
-
-  const cost = args.dryRun ? undefined : scriptedCost(args.subjectDesktop);
-  return {
-    schema: RUN_BUNDLE_SCHEMA,
-    runId: args.runId,
-    mode: args.dryRun ? "dry-run" : "live",
-    simCount: args.surfaces.length,
-    createdAt: args.createdAt,
-    cwd: PUBLIC_TARGET_CWD,
-    ...(args.lab === undefined ? {} : { lab: args.lab }),
-    artifactRoot: path.join(".humanish", "runs", args.runId),
-    source: args.source,
-    persona: {
-      id: args.persona.id,
-      name: `Scripted journey persona (${args.persona.id})`,
-      source: `lab:${args.labId}`,
-      sourceDigest: args.persona.promptDigest,
-    },
-    scenario: {
-      id: args.journey.scenarioId,
-      title: args.journey.scenarioTitle,
-      goal: redactText(args.journey.goal),
-      source: args.scenarioSource,
-      sourceDigest: args.scenarioSourceDigest,
-    },
-    lifecycle: [
-      {
-        at: args.createdAt,
-        event: "scripted-lab.run.created",
-        message: `Created scripted-browser lab run with ${args.surfaces.length} surface lane${args.surfaces.length === 1 ? "" : "s"} (actor ${args.actorId}).`,
-      },
-    ],
-    simulations,
-    streams,
-    events,
-    redaction: {
-      status: "passed",
-      notes: ranLive
-        ? "Scripted step URLs are sanitized to loopback origin+path (query/hash redacted) and step text passes text redaction. Screenshots are FULL-FIDELITY (raw), retained for local use in gitignored .humanish — NOT redacted for publishing; policies.redactScreenshots is not yet supported on this route."
-        : "Dry-run contract bundle: no browser ran and no screenshots were captured. The scenario contract is digest-pinned; live step text passes text redaction when a session runs.",
-    },
-    artifacts: {
-      run: "run.json",
-      reviewJson: "review.json",
-      reviewMarkdown: "review.md",
-      observerData: "observer/observer-data.json",
-      events: "events.ndjson",
-    },
-    review,
-    feedbackCandidates: [],
-    ...(args.subject === undefined ? {} : { subject: args.subject }),
-    ...(args.desktopTemplate === undefined ? {} : { desktopTemplate: args.desktopTemplate }),
-    ...(cost === undefined ? {} : { cost }),
-  };
+  return events;
 }
 
 /** No model runs on this route; the only spend is a provisioned clone's desktop. */
