@@ -5,8 +5,8 @@ import { isNonNegativeSafeInteger, isRecord } from "./primitives.js";
 // digest cannot pin "same recipe" across bundles, so verify treats it as a hollow claim.
 export const COMMAND_DIGEST_PATTERN = /^[0-9a-f]{16}$/;
 
-// Env var NAME shape (mirrors lab-config's ENV_NAME_PATTERN). externalEnvNames must hold
-// NAMES only — a value sneaking into the list trips this check (a free secret tripwire).
+// Env var NAME shape (mirrors ENV_NAME_PATTERN in src/lab/parse-values.ts). externalEnvNames
+// must hold NAMES only — a value sneaking into the list trips this check (a free secret tripwire).
 export const SUBJECT_ENV_NAME_PATTERN = /^[A-Z][A-Z0-9_]*$/;
 
 // SEQUENTIAL: the three disclosures a sequential shared-world bundle MUST pin (verify fails closed

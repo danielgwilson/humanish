@@ -376,8 +376,8 @@ function isDenylistedSegment(relPath: string): boolean {
  * produces (no leading "./", no trailing "/"). Absolute paths and glob syntax
  * are REJECTED, not silently no-op'd: an exclude the author believed in but
  * that never matches anything is a leak vector, so unusable shapes fail
- * closed at the packing boundary (and, for lab-config callers, already at
- * parse time).
+ * closed at the packing boundary (and, for lab manifests, already at parse
+ * time in src/lab/parse-subject.ts).
  */
 export function normalizeExtraExcludeEntry(entry: string): string {
   const trimmed = entry.trim();

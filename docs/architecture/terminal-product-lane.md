@@ -275,7 +275,7 @@ the adopter's repo):
 The seam is fail-closed: the lane scrubs+redacts the returned payloads and DROPS
 any malformed score/candidate with a warning, and `verifyRun` re-checks the
 surviving shapes — a bad extension never poisons a verifiable bundle. Proven by
-`tests/terminal-product-adapter-seam.test.ts` (a thin in-repo example adapter
+`tests/routes/terminal/product-adapter-seam.test.ts` (a thin in-repo example adapter
 typing against the barrel only, registering a scorer, attaching namespaced nouns,
 emitting a candidate; the bundle verifies). At SLICE 4 this was contract proof,
 not a live rung; the later end-to-end lane receipt is linked from the status

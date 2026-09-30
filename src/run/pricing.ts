@@ -11,8 +11,8 @@
 // billed that amount; the token-derived estimate here always lives under `estimatedCostUsd`
 // so a reader can never confuse an estimate for an authoritative charge (invariant 6).
 
-// A type-only import — erased at compile time, so the pricing <-> actor-contract cycle is not a
-// runtime cycle.
+// A type-only import — erased at compile time, so the pricing <-> src/actors/contract.ts cycle is
+// not a runtime cycle.
 import type { ActorTokenUsage } from "../actors/contract.js";
 
 export const PRICING_SCHEMA = "humanish.pricing.v1";

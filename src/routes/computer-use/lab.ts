@@ -5,8 +5,9 @@
 // subject, composes the prompt from config, persists the evidence bundle, and tears down.
 //
 // Substrate notes:
-// - The desktop is created via the shared loader in e2b-desktop-launch.ts with kill-on-timeout
-//   lifecycle, so a dead host process can never orphan a sandbox past its server-side deadline.
+// - The desktop is created via the shared loader in src/substrates/e2b/desktop-launch.ts with
+//   kill-on-timeout lifecycle, so a dead host process can never orphan a sandbox past its
+//   server-side deadline.
 // - Env placement follows the doctrine (docs/principles/invariants-and-defaults.md): the
 //   ACTOR's key never enters the sandbox (the model drives from outside via the provider API);
 //   the SUBJECT's declared env NAMES are provisioned in on the clone route — values come from

@@ -140,7 +140,7 @@ export function registerCodexCommands(parent: Command, io: CliIo): void {
           try {
             // Local hardening for the known double-envelope path: the "running"
             // envelope above has already reached stdout, so a rejection here
-            // (codex-app-server-ui.ts's persistState() write can fail on either
+            // (src/actors/codex/app-server-ui.ts's persistState() write can fail on either
             // branch of session completion) must not go through the
             // command-boundary catch-all's --json branch, which would otherwise
             // append a second JSON document to stdout. Handling it here directly

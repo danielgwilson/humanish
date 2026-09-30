@@ -104,7 +104,7 @@ export interface ObserverRuntimeStreamUrl {
   ended?: boolean;
 }
 
-/** internal: consumed by observer-serve */
+/** internal: consumed by src/observer/serve.ts */
 export interface PinnedDirectory {
   readonly birthtimeNs: bigint;
   readonly dev: bigint;
@@ -780,7 +780,7 @@ async function readObserverAnalysis(runRoot: PinnedDirectory): Promise<LoadedStu
   }
 }
 
-/** internal: consumed by observer-serve */
+/** internal: consumed by src/observer/serve.ts */
 export async function serveRunPath(
   runRoot: PinnedDirectory,
   relativePath: string,
@@ -962,7 +962,7 @@ async function withLocalRunStatus(
   }
 }
 
-/** internal: exported for the #357 lifecycle tests (consumed by observer-serve). */
+/** internal: exported for the #357 lifecycle tests. */
 export function withRuntimeStreamUrls(
   data: ObserverData,
   runtimeStreamUrls: ObserverRuntimeStreamUrl[],
@@ -1008,7 +1008,7 @@ function runtimeDesktopUrl(value: string): string | null {
   }
 }
 
-/** internal: consumed by observer-serve */
+/** internal: consumed by src/observer/serve.ts */
 export async function buildHistoryIndex(proofRoot: PinnedDirectory): Promise<{
   latestRunId: string | null;
   runs: Array<{
@@ -1054,7 +1054,7 @@ export async function buildHistoryIndex(proofRoot: PinnedDirectory): Promise<{
   };
 }
 
-/** internal: consumed by observer-serve */
+/** internal: consumed by src/observer/serve.ts */
 export function matchRunRoute(pathname: string): { runId: string; relativePath: string } | null {
   const match = pathname.match(/^\/_humanish\/runs\/([^/]+)(?:\/(.*))?$/);
   if (!match) return null;
@@ -1242,7 +1242,7 @@ async function inspectContainedRegularFile(
   return fileIdentity;
 }
 
-/** internal: consumed by observer-serve */
+/** internal: consumed by src/observer/serve.ts */
 export async function pinDirectory(directoryInput: string): Promise<PinnedDirectory> {
   const physicalPath = await realpath(path.resolve(directoryInput));
   const stats = await lstat(physicalPath, { bigint: true });
@@ -1257,7 +1257,7 @@ export async function pinDirectory(directoryInput: string): Promise<PinnedDirect
   });
 }
 
-/** internal: consumed by observer-serve */
+/** internal: consumed by src/observer/serve.ts */
 export async function pinDirectChildDirectory(
   root: PinnedDirectory,
   name: string,

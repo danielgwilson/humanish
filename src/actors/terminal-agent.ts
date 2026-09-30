@@ -1,7 +1,7 @@
 // Registry contract for the terminal-product lane. The shipped live implementation is
-// intentionally route-owned by `runTerminalProductLab` in `routes/terminal/lab.ts`: that route must
-// coordinate sandbox creation, command-scoped runtime auth, caps, evidence capture, and by-id
-// cleanup as one fail-closed lifecycle.
+// intentionally route-owned by `runTerminalProductLab` in `src/routes/terminal/lab.ts`: that
+// route must coordinate sandbox creation, command-scoped runtime auth, caps, evidence capture,
+// and by-id cleanup as one fail-closed lifecycle.
 //
 // `runTerminalAgentSession` remains exported because it was part of the public actor-descriptor
 // shape before the route-owned lifecycle shipped. Its options cannot carry the host/provider

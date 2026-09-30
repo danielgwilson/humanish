@@ -253,15 +253,14 @@ Intentionally still adapter work:
 
 The renderer is the `observer/` workspace: a Vite single-file build on the
 `@humanish` registry tokens, frozen against `humanish.observer-data.v1`
-(`tests/observer-data-contract.test.ts`). The root build copies the workspace
+(`tests/observer/data-contract.test.ts`). The root build copies the workspace
 artifact to `dist/observer-app.html`; in a repo checkout a missing or stale
 artifact auto-builds, and an unconditional preflight at CLI startup makes a
 broken artifact cost seconds, never a completed session. `renderObserverHtml`
 — the one choke point every surface (observe, watch, serve, labs) funnels
 through — injects the run's snapshot into the artifact
-(`tests/observer-artifact.test.ts` pins the path, cold, so CI exercises the
-auto-build every run). The legacy string-concat renderer
-(`src/observer-assets.ts`) was deleted at cutover; there is no flag and no
-fallback — rollback is a version pin. The workspace's own tests pin the
-durability constraints (self-contained single file, fonts inlined, no network
-references).
+(`tests/observer/artifact.test.ts` pins the path, cold, so CI exercises the
+auto-build every run). The legacy string-concat renderer was deleted at
+cutover; there is no flag and no fallback — rollback is a version pin. The
+workspace's own tests pin the durability constraints (self-contained single
+file, fonts inlined, no network references).

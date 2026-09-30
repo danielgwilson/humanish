@@ -26,5 +26,5 @@ flag; rolling back means pinning an older package version.
 ## Enforced by
 
 - The observer workspace tests (single file, inlined fonts, no network references).
-- `tests/observer-artifact.test.ts` for the artifact path and the cold auto-build.
-- `tests/observer-data-contract.test.ts` for the data schema.
+- `tests/observer/artifact.test.ts` for the artifact path and the cold auto-build.
+- `tests/observer/data-contract.test.ts` for the data schema.

@@ -39,12 +39,12 @@ deferred approaches; link evidence rather than repeating its chronology.
 Humanish is a persona simulation harness for apps, CLIs, and agent-facing product
 flows.
 
-- `humanish/` is committed source: personas, scenarios, policy, adapters, and
-  lab manifests.
+- `humanish/` is committed source: lab manifests, personas, scenarios and
+  coverage notes.
 - `.humanish/` is ignored runtime state: runs, Observer output, transcripts,
   reviews, temporary clones, and local evidence.
-- Humanish source uses `.yaml` for human-authored simulation intent, `.ts` for
-  executable integration, and JSON/NDJSON for generated artifacts.
+- Humanish source uses `.yaml` for human-authored simulation intent and
+  JSON/NDJSON for generated artifacts.
 - A run bundle is the source of truth.
 - The Observer is the projection that makes that truth reviewable.
 - Feedback commands turn verified evidence into public-safe issue drafts.

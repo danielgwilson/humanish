@@ -255,7 +255,7 @@ function reportUnexpectedActionError(command: Command, io: CliIo, error: unknown
       // Some result already went to stdout for this invocation before the
       // failure landed -- e.g. `codex app-server --keep-open --json` writes its
       // "running" envelope via writeResult, then a later `await` can still
-      // reject (codex-app-server-ui.ts's persistState() write can fail on
+      // reject (src/actors/codex/app-server-ui.ts's persistState() write can fail on
       // either branch of that command's completion handling). Appending a
       // second JSON document to stdout would break every JSON.parse(stdout)
       // consumer, so this failure goes to stderr instead, same as the non-json

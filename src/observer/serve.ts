@@ -26,9 +26,6 @@ import { verifyRun } from "../run/verify.js";
 
 export const SERVE_SCHEMA = "humanish.serve-result.v1";
 
-// Re-exported for compat: these hardening primitives now live in serve-http.js so the live Observer
-// server can share them without a module cycle.
-
 export type ServeErrorCode =
   | "HUMANISH_INVALID_PORT"
   | "HUMANISH_SERVE_PORT_IN_USE"

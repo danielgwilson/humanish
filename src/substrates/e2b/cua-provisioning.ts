@@ -194,10 +194,11 @@ const ERROR_TAIL_CHARS = 2000;
 /**
  * One phase-boundary event from the shared subject provisioning pipeline (clone or local-tree
  * route): started/completed pairs at each named boundary, never per poll tick (the detached
- * primitive in e2b-detached.ts already polls every 1.5-3s internally; only the boundary itself
- * is surfaced here). Message text is public-safe by construction: no URLs beyond the existing
- * publicAppUrl convention, no paths, no command text. Completed events carry `ok` and
- * `durationMs`; started events (and the fire-and-forget `subject.serve.started`) carry neither.
+ * primitive in src/substrates/e2b/detached.ts already polls every 1.5-3s internally; only the
+ * boundary itself is surfaced here). Message text is public-safe by construction: no URLs beyond
+ * the existing publicAppUrl convention, no paths, no command text. Completed events carry `ok`
+ * and `durationMs`; started events (and the fire-and-forget `subject.serve.started`) carry
+ * neither.
  */
 export interface SubjectPhaseEvent {
   at: string;
@@ -690,7 +691,8 @@ export interface ChromeCdpEndpoint {
 
 /**
  * The URL / title / page-text / scroll observer behind stopWhen and task criteria. One probe per
- * observation, run on the sandbox's python3 (see chrome-cdp-probe.ts for why not node: #514).
+ * observation, run on the sandbox's python3 (see src/routes/computer-use/cdp-probe.ts for why not
+ * node: #514).
  *
  * "active": follow the participant to whatever tab they are driving now — never pin the state
  * observer to the launch tab (a verification link that opened in a NEW tab left a pinned observer
