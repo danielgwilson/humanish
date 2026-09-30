@@ -38,7 +38,7 @@ import {
   publicSafeAppUrlLabel,
   subjectProvenanceMessage,
 } from "./bundle.js";
-import { participantStatus as participantStatusFor, verdictForStatus } from "../../run/judge.js";
+import { participantStatus as participantStatusFor, type Verdict } from "../../run/judge.js";
 import {
   buildRunCostSummary,
   desktopSpanToMinutes,
@@ -49,6 +49,8 @@ import type { CuaLaneSpec, CuaSubjectProvenanceArg, LaneRunOutcome } from "./typ
 
 /** Build the N=1 bundle via the unchanged buildCuaBundle (byte-stable). */
 export function buildSingleLaneBundle(args: {
+  /** The run's verdict, from the judge. */
+  verdict: Verdict;
   lab?: RunLabProvenance;
   spec: CuaLaneSpec;
   outcome: LaneRunOutcome | undefined;
@@ -68,6 +70,7 @@ export function buildSingleLaneBundle(args: {
   const { spec, outcome, config } = args;
   const desktopTemplate = e2bDesktopTemplate(config);
   return buildCuaBundle({
+    verdict: args.verdict,
     realEmail: config.comms?.email?.kind === "real",
     ...(args.lab === undefined ? {} : { lab: args.lab }),
     actorId: args.descriptor.id,
@@ -450,14 +453,7 @@ function laneReview(args: CuaBundleArgs, view: LaneView, stream: RunStream): Rev
   const review: ReviewSummary = withCuaReviewProvenance(
     {
       schema: REVIEW_SCHEMA,
-      verdict:
-        args.inProgress === true
-          ? "contract_proof_only"
-          : participantStatus !== undefined
-            ? verdictForStatus(participantStatus)
-            : args.sessionError
-              ? "fail"
-              : "contract_proof_only",
+      verdict: args.verdict,
       // One lane is still a study with a denominator of one, and saying so keeps a single-lane
       // result from being read as though it generalized.
       ...(participantStatus !== undefined && args.inProgress !== true
@@ -483,6 +479,8 @@ function laneReview(args: CuaBundleArgs, view: LaneView, stream: RunStream): Rev
 }
 
 export function buildCuaBundle(args: {
+  /** The run's verdict, from the judge. */
+  verdict: Verdict;
   realEmail?: boolean;
   /** Lab provenance for the bundle's own `lab` field (#455). */
   lab?: RunLabProvenance;

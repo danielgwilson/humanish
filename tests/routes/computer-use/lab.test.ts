@@ -37,7 +37,10 @@ import {
   resolveSelfReportedFriction,
 } from "../../../src/routes/computer-use/self-report.js";
 import { type CuaActorLabHooks } from "../../../src/routes/computer-use/types.js";
-import { participantStatus as participantStatusForCredibility } from "../../../src/run/judge.js";
+import {
+  judgeOneParticipant,
+  participantStatus as participantStatusForCredibility,
+} from "../../../src/run/judge.js";
 import {
   CLOSING_LINE_DIRECTIVE,
   composeLaneInstructions,
@@ -5325,6 +5328,8 @@ describe("buildCuaBundle", () => {
 
   it("dry-run bundle shape: contract verdict, no actor seam, public cwd", () => {
     const bundle = buildCuaBundle({
+      verdict: judgeOneParticipant({ dryRun: true, inProgress: false, participant: undefined })
+        .verdict,
       actorId: "openai-computer-use",
       appUrl: "http://127.0.0.1:3000/",
       createdAt: "2026-01-01T00:00:00.000Z",
@@ -5369,6 +5374,7 @@ describe("buildCuaBundle", () => {
   it("keeps sensitive public target URLs out of persisted bundle text while preserving lane metadata", () => {
     const rawUrl = "https://3000-example-sandbox.e2b.app/bootstrap/session";
     const bundle = buildCuaBundle({
+      verdict: "contract_proof_only",
       actorId: "openai-computer-use",
       actorType: "reviewer",
       surface: "inbox",
@@ -5411,6 +5417,8 @@ describe("buildCuaBundle", () => {
     // A session can throw after frames were already written: no trace exists to testify, so
     // the labels fall back to the capture-time policy the lab actually ran with.
     const base = {
+      // No session and a session error: the judge fails the run (judgeOneParticipant).
+      verdict: "fail" as const,
       actorId: "openai-computer-use",
       appUrl: "http://127.0.0.1:3000/",
       createdAt: "2026-01-01T00:00:00.000Z",

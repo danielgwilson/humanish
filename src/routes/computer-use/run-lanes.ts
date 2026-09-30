@@ -8,7 +8,7 @@ import { DEFAULT_OPENAI_CU_MODEL } from "../../actors/computer-use/openai-provid
 import { runAllCuaLanes } from "./lanes.js";
 import { startLiveTraceFlush } from "./live-flush.js";
 import { drainExternalComms } from "./external-comms.js";
-import { buildCuaRunBundle } from "./assemble.js";
+import { buildCuaRunBundle, judgeComputerUseRun } from "./assemble.js";
 import { type LaneRunOutcome } from "./types.js";
 import type { CuaRunSetup } from "./setup.js";
 
@@ -52,6 +52,11 @@ export async function runLabLanes(setup: CuaRunSetup) {
   // callback below stays conditional, the writing does not.
   if (!dryRun) {
     const inProgressBundle = buildCuaRunBundle(bundleBase, {
+      judgment: judgeComputerUseRun(bundleBase, {
+        dryRun: false,
+        outcomes: undefined,
+        inProgress: true,
+      }),
       dryRun: false,
       outcomes: undefined,
       laneSubjects: inProgressLaneSubjects,

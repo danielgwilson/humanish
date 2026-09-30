@@ -14,7 +14,10 @@ import {
   runCuaActorSession,
   type CuaActorSessionOptions,
 } from "../../../src/actors/computer-use/actor.js";
+import type { CuaProvider } from "../../../src/actors/computer-use/loop.js";
 import { buildCuaFanoutBundle } from "../../../src/routes/computer-use/fanout-bundle.js";
+import { participantFactsOf } from "../../../src/routes/computer-use/bundle.js";
+import { judgeParticipants } from "../../../src/run/judge.js";
 import {
   floorRenderResolution,
   MIN_DESKTOP_RENDER_WIDTH,
@@ -135,6 +138,8 @@ async function waitForCondition(
 interface FanoutModuleOptions {
   /** Override the geometry a given sandbox reports (laneIndex from metadata). Default: matches. */
   geometryOverride?: (laneIndex: number, requested: [number, number]) => [number, number];
+  /** Every kill by id throws, as when the provider cannot be reached at teardown. */
+  killFails?: boolean;
 }
 
 interface FanoutModuleHandle {
@@ -237,6 +242,7 @@ function makeFanoutModule(options: FanoutModuleOptions = {}): FanoutModuleHandle
         return makeSandbox(id, createOptions);
       },
       kill: async (sandboxId) => {
+        if (options.killFails) throw new Error("synthetic kill failure");
         killed.push(sandboxId);
         live -= 1;
         return true;
@@ -495,6 +501,13 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
     };
 
     const bundle = buildCuaFanoutBundle({
+      // No lane produced an outcome: the judge fails a live fan-out that proved no lane.
+      verdict: judgeParticipants({
+        dryRun: false,
+        inProgress: false,
+        expected: specs.length,
+        participants: [],
+      }).verdict,
       specs,
       outcomes: [],
       laneSubjects: [subject, subject],
@@ -556,6 +569,12 @@ describe("cua fan-out bundle: desktop browser provenance", () => {
     }));
     const subject = { source: "app-url" as const, state: { provenance: "undeclared" as const } };
     return buildCuaFanoutBundle({
+      verdict: judgeParticipants({
+        dryRun: false,
+        inProgress: false,
+        expected: specs.length,
+        participants: outcomes.map(participantFactsOf),
+      }).verdict,
       specs,
       outcomes,
       laneSubjects: [subject, subject],
@@ -1292,6 +1311,108 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       expect(handle.killed.sort()).toEqual(handle.createdIds.sort());
     },
   );
+
+  // One judgment decides the bundle's verdict and the result's ok, and status.json repeats the
+  // bundle's verdict. Each lane's session runs the real loop with a scripted provider.
+  type Ending = "pass" | "hollow" | "blocker" | "error";
+  const scriptedEnding = (ending: Ending): CuaProvider => {
+    let turn = 0;
+    return {
+      id: `synthetic-${ending}`,
+      capabilities: OPENAI_RESPONSES_CU_CAPABILITIES,
+      nextTurn: async () => {
+        turn += 1;
+        if (ending === "error") throw new Error("synthetic provider failure");
+        // A hollow completion claims the goal on the first turn without acting or speaking.
+        if (ending === "hollow") return { actions: [], pendingSafetyChecks: [], done: true };
+        if (turn === 1)
+          return {
+            actions: [{ kind: "click", x: 10, y: 20 }],
+            pendingSafetyChecks: [],
+            done: false,
+          };
+        return {
+          actions: [],
+          pendingSafetyChecks: [],
+          done: true,
+          message:
+            ending === "blocker"
+              ? "I could not complete the task; the save button was disabled."
+              : "Reached the goal: the note is saved.",
+        };
+      },
+    };
+  };
+  it.each<[Ending[], RunBundle["review"]["verdict"], boolean]>([
+    [["pass"], "pass", true],
+    [["hollow"], "fail", false],
+    [["blocker"], "blocked", false],
+    [["error"], "fail", false],
+    [["pass", "pass"], "pass", true],
+    [["pass", "hollow"], "fail", false],
+    [["pass", "blocker"], "fail", false],
+    [["pass", "error"], "fail", false],
+  ])(
+    "agrees across bundle, result and status for lanes ending %j",
+    async (endings, verdict, ok) => {
+      const handle = makeFanoutModule();
+      const config = fanoutConfig({
+        concurrency: 1,
+        lanes: endings.map((_, index) => ({
+          id: `participant-${index + 1}`,
+          persona: "first-time-visitor",
+        })),
+      });
+      let lane = 0;
+      const outcome = await runLab(config, {
+        cwd,
+        cuaHooks: {
+          ...passingHooks(handle),
+          runSession: async (options) =>
+            runCuaActorSession({ ...options, provider: scriptedEnding(endings[lane++]!) }),
+        },
+      });
+      if (outcome.backend !== "cua") throw new Error("expected the computer-use route");
+      const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
+      const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
+      const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8")) as {
+        outcome?: { verdict?: string };
+      };
+      expect(bundle.review.verdict).toBe(verdict);
+      expect(status.outcome?.verdict).toBe(bundle.review.verdict);
+      expect(outcome.result.ok).toBe(ok);
+    },
+  );
+
+  it("keeps the verdict when the sandbox kill fails: cleanup does not judge", async () => {
+    const handle = makeFanoutModule({ killFails: true });
+    const config = fanoutConfig({
+      concurrency: 1,
+      lanes: [{ id: "participant-1", persona: "first-time-visitor" }],
+    });
+    const outcome = await runLab(config, {
+      cwd,
+      cuaHooks: {
+        ...passingHooks(handle),
+        runSession: async (options) =>
+          runCuaActorSession({ ...options, provider: scriptedEnding("pass") }),
+      },
+    });
+    if (outcome.backend !== "cua") throw new Error("expected the computer-use route");
+    const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
+    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
+    const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8")) as {
+      outcome?: { verdict?: string };
+    };
+    // No route's verdict reads cleanup today: the failed teardown is a warning, and the pass stands.
+    expect(bundle.review.verdict).toBe("pass");
+    expect(status.outcome?.verdict).toBe("pass");
+    expect(outcome.result.ok).toBe(true);
+    expect(handle.killed).toEqual([]);
+    expect(outcome.result.warnings).toContain(
+      "Sandbox teardown failed (server-side kill-on-timeout will reclaim it): synthetic kill failure",
+    );
+  });
 
   it("projects each recorded interruption through real lane orchestration and summarizes divergent causes", async () => {
     const handle = makeFanoutModule();

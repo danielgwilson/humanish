@@ -2,6 +2,8 @@ import type { CuaActorDescriptor } from "../../actors/registry.js";
 import type { LabConfig } from "../../lab/types.js";
 import type { RunBundle, RunRerunLineage } from "../../run/bundle.js";
 import type { RunLabProvenance } from "../../run/status.js";
+import { judgeOneParticipant, judgeParticipants, type Judgment } from "../../run/judge.js";
+import { participantFactsOf } from "./bundle.js";
 import { buildCuaFanoutBundle } from "./fanout-bundle.js";
 import { buildSingleLaneBundle } from "./single-bundle.js";
 import type {
@@ -33,6 +35,37 @@ export interface CuaRunBundleBase {
   subjectEnvNames: string[];
 }
 
+/** One participant without a rerun keeps the single-participant bundle shape and its rule. */
+function isOneParticipantRun(base: Pick<CuaRunBundleBase, "laneSpecs" | "rerun">): boolean {
+  return base.laneSpecs.length === 1 && base.rerun === undefined;
+}
+
+/**
+ * The judgment for the current state of a computer-use run, by the rule for its shape: one
+ * participant (its tallied status is the verdict) or several (every lane must pass). The bundle's
+ * verdict and the lab result's ok both come from it.
+ */
+export function judgeComputerUseRun(
+  base: Pick<CuaRunBundleBase, "laneSpecs" | "rerun">,
+  state: { dryRun: boolean; outcomes: LaneRunOutcome[] | undefined; inProgress?: true },
+): Judgment {
+  const inProgress = state.inProgress === true;
+  if (isOneParticipantRun(base)) {
+    const outcome = state.outcomes?.[0];
+    return judgeOneParticipant({
+      dryRun: state.dryRun,
+      inProgress,
+      participant: outcome === undefined ? undefined : participantFactsOf(outcome),
+    });
+  }
+  return judgeParticipants({
+    dryRun: state.dryRun,
+    inProgress,
+    expected: base.laneSpecs.length,
+    participants: (state.outcomes ?? []).map(participantFactsOf),
+  });
+}
+
 /**
  * The run bundle for the current state of a computer-use run. One lane without a rerun keeps the
  * single-lane shape; a fan-out or a rerun uses the fan-out shape, which carries the plan and each
@@ -41,6 +74,7 @@ export interface CuaRunBundleBase {
 export function buildCuaRunBundle(
   base: CuaRunBundleBase,
   state: {
+    judgment: Judgment;
     dryRun: boolean;
     outcomes: LaneRunOutcome[] | undefined;
     laneSubjects: CuaSubjectProjection[];
@@ -52,9 +86,10 @@ export function buildCuaRunBundle(
 ): RunBundle {
   const lab = base.lab === undefined ? {} : { lab: base.lab };
   const inProgress = state.inProgress === undefined ? {} : { inProgress: true };
-  if (base.laneSpecs.length === 1 && base.rerun === undefined) {
+  if (isOneParticipantRun(base)) {
     const spec = base.laneSpecs[0]!;
     return buildSingleLaneBundle({
+      verdict: state.judgment.verdict,
       ...lab,
       spec,
       outcome: state.outcomes?.[0],
@@ -75,6 +110,7 @@ export function buildCuaRunBundle(
     });
   }
   return buildCuaFanoutBundle({
+    verdict: state.judgment.verdict,
     ...lab,
     specs: base.laneSpecs,
     ...(state.outcomes === undefined ? {} : { outcomes: state.outcomes }),

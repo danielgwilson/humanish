@@ -118,3 +118,59 @@ export function verdictForStatus(status: ActorStatus): Verdict {
       return "fail";
   }
 }
+
+/** A run's judgment: the review verdict, and whether every expected participant passed. */
+export interface Judgment {
+  verdict: Verdict;
+  /** Every expected participant passed. A dry run's participants pass as contracts. */
+  allPassed: boolean;
+}
+
+/**
+ * A run with one participant: its tallied status is the verdict, so a hollow pass fails and a
+ * self-reported blocker reads as blocked. Without a session, a harness failure fails the run and
+ * a dry run is a contract. A run still in progress is a contract until it finishes.
+ */
+export function judgeOneParticipant(args: {
+  dryRun: boolean;
+  inProgress: boolean;
+  participant: ParticipantFacts | undefined;
+}): Judgment {
+  const { participant } = args;
+  const verdict: Verdict = args.inProgress
+    ? "contract_proof_only"
+    : participant?.status !== undefined
+      ? verdictForStatus(participantStatus(participant.status, participant))
+      : participant?.sessionError
+        ? "fail"
+        : "contract_proof_only";
+  return {
+    verdict,
+    allPassed: args.dryRun || (participant !== undefined && participantPassed(participant)),
+  };
+}
+
+/**
+ * A run with several participants: it passes only when every expected participant passed. When
+ * one did not, a timeout among them makes the run timed_out; otherwise it fails. A dry run and a
+ * run still in progress are contracts.
+ */
+export function judgeParticipants(args: {
+  dryRun: boolean;
+  inProgress: boolean;
+  expected: number;
+  participants: ParticipantFacts[];
+}): Judgment {
+  const { participants } = args;
+  const complete = participants.length === args.expected;
+  const allPassed = complete && participants.every(participantPassed);
+  const verdict: Verdict =
+    args.inProgress || args.dryRun
+      ? "contract_proof_only"
+      : allPassed
+        ? "pass"
+        : complete && participants.some((participant) => participant.status === "timed_out")
+          ? "timed_out"
+          : "fail";
+  return { verdict, allPassed: args.dryRun || allPassed };
+}
