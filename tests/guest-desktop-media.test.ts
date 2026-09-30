@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { CuaAction, CuaExecutor, CuaObservation } from "../src/computer-use.js";
+import type { CuaAction, CuaExecutor, CuaObservation } from "../src/actors/computer-use/loop.js";
 import { startDesktopMedia, type DesktopMediaWorkerTransport } from "../src/guest-desktop-media.js";
 
 class FakeTransport implements DesktopMediaWorkerTransport {

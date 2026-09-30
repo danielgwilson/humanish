@@ -1,6 +1,6 @@
 import type { Duplex, Writable } from "node:stream";
-import type { CuaAction, CuaExecutor, CuaObservation } from "../computer-use.js";
-import { CuaExecutorError } from "../cua-executor-error.js";
+import type { CuaAction, CuaExecutor, CuaObservation } from "../actors/computer-use/loop.js";
+import { CuaExecutorError } from "../actors/computer-use/executor-error.js";
 import {
   BROWSER_CONTROL_LIMITS,
   BROWSER_CONTROL_VERSION,

@@ -2,17 +2,17 @@ import {
   checkRestrictedCodexSessionReadiness,
   runRestrictedCodexSession,
   type RestrictedCodexSessionOptions,
-} from "../restricted-codex-session.js";
+} from "../actors/codex/restricted-session.js";
 import type {
   RestrictedCodexAnalysisErrorCode,
   RestrictedCodexRequest,
   RestrictedCodexResult,
-} from "../restricted-codex-policy.js";
+} from "../actors/codex/restricted-policy.js";
 export {
   RESTRICTED_CODEX_ANALYSIS_IDENTITY,
   RESTRICTED_CODEX_ANALYSIS_MODELS,
-} from "../restricted-codex-policy.js";
-export type { RestrictedCodexAnalysisErrorCode } from "../restricted-codex-policy.js";
+} from "../actors/codex/restricted-policy.js";
+export type { RestrictedCodexAnalysisErrorCode } from "../actors/codex/restricted-policy.js";
 
 /** Structurally implements StudyAnalysisProvider without importing its API transport.
  * Schema/evidence validation and transient-secret scrubbing remain in the engine. */

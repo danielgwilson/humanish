@@ -2,7 +2,7 @@ import { isLocalBrowserLab } from "../substrates/local/runtime-config.js";
 import { localRuntimeStatus, type LocalRuntimeStatus } from "../substrates/local/runtime.js";
 import type { LabConfig } from "./config.js";
 import type { LabBackend } from "./engine.js";
-import type { DetectedLocalAgent } from "../local-agent-cli.js";
+import type { DetectedLocalAgent } from "../actors/local-agent/cli.js";
 import type { DoctorResult } from "../run/run.js";
 import { automaticAnalysisBudget } from "../analysis/automatic-config.js";
 import { externalCatchHealthy } from "../comms/sandbox-catch.js";
@@ -149,7 +149,7 @@ export async function labSetupChecks(args: {
     }
   }
   if (backend === "scripted") {
-    const { resolveBrowserCommand } = await import("../scripted-browser-actor.js");
+    const { resolveBrowserCommand } = await import("../actors/scripted-browser.js");
     checks.push({
       name: "scripted browser",
       ok: !!(await resolveBrowserCommand()),

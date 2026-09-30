@@ -1,6 +1,6 @@
 import { labPersonaIds, resolveCommittedPersonasForCwd } from "./persona-resolve.js";
 import { personaBrief, PersonaConfigError } from "./persona.js";
-import type { ActorPersonaRef } from "../actor-contract.js";
+import type { ActorPersonaRef } from "../actors/contract.js";
 import { constants } from "node:fs";
 import { lstat, open, readdir, realpath } from "node:fs/promises";
 import path from "node:path";

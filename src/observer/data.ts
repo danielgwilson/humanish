@@ -1,4 +1,4 @@
-import { actorEnding, type ActorEnding } from "../actor-stop-cause.js";
+import { actorEnding, type ActorEnding } from "../actors/stop-cause.js";
 import { isCommsReceivingEvidence, receivingAnalysisContext } from "../comms/receiving-evidence.js";
 import {
   formatParticipantOutcomes,
@@ -6,7 +6,7 @@ import {
   participantOutcomeDetails,
   withCuaReviewProvenance,
 } from "../run/run.js";
-import { cuaGoalSource, CUA_COMPLETION_NOTE } from "../actor-goal-source.js";
+import { cuaGoalSource, CUA_COMPLETION_NOTE } from "../actors/goal-source.js";
 import type {
   RunBundle,
   RunCostSummary,

@@ -1,14 +1,14 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { runComputerUseLoop } from "../src/computer-use.js";
-import { runCuaActorSession } from "../src/computer-use-actor.js";
+import { runComputerUseLoop } from "../src/actors/computer-use/loop.js";
+import { runCuaActorSession } from "../src/actors/computer-use/actor.js";
 import { defaultRedactionHooks } from "../src/evidence/redaction.js";
-import type { CuaTurn } from "../src/computer-use.js";
+import type { CuaTurn } from "../src/actors/computer-use/loop.js";
 import {
   OPENAI_RESPONSES_CU_CAPABILITIES,
   parseOpenAiResponse,
   type FetchLike,
-} from "../src/openai-responses-cu.js";
+} from "../src/actors/computer-use/openai-provider.js";
 
 const captured = parseOpenAiResponse(
   JSON.parse(

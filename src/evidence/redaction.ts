@@ -6,7 +6,7 @@ import { PNG } from "pngjs";
 import { SCREENSHOT_MAX_SOURCE_PIXELS, readPngDeclaredDimensions } from "./screenshot-image.js";
 
 // Single source of truth for public-safety redaction patterns. Both the Codex
-// actor trace (src/codex-app-server.ts) and the run-bundle scanner/redactor
+// actor trace (src/actors/codex/app-server.ts) and the run-bundle scanner/redactor
 // (src/run/run.ts) use these so the denylist cannot drift between producers and the
 // verify gate. See docs/contracts/policy.md for the enforcement-scope policy.
 

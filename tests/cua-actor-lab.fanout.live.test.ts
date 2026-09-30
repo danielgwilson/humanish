@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { ACTOR_TRACE_SCHEMA } from "../src/actor-contract.js";
+import { ACTOR_TRACE_SCHEMA } from "../src/actors/contract.js";
 import { LAB_CONFIG_SCHEMA, parseLabConfig } from "../src/lab/config.js";
 import { runLab } from "../src/lab/engine.js";
 import { verifyRun } from "../src/run/run.js";

@@ -3,9 +3,9 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { PNG } from "pngjs";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getActor } from "../src/actor-registry.js";
-import { runCuaActorSession } from "../src/computer-use-actor.js";
-import type { CuaExecutor, CuaProvider, CuaTurnRequest } from "../src/computer-use.js";
+import { getActor } from "../src/actors/registry.js";
+import { runCuaActorSession } from "../src/actors/computer-use/actor.js";
+import type { CuaExecutor, CuaProvider, CuaTurnRequest } from "../src/actors/computer-use/loop.js";
 import {
   runCuaActorLab,
   runCuaLane,
@@ -19,12 +19,12 @@ import { createE2BCuaDesktopLane } from "../src/substrates/e2b/cua-desktop.js";
 import { E2B_SPEECH_TEMPLATE } from "../src/substrates/e2b/desktop-media.js";
 import type { E2BDesktopModule, E2BDesktopSandbox } from "../src/substrates/e2b/desktop-launch.js";
 import { LAB_CONFIG_SCHEMA, parseLabConfig } from "../src/lab/config.js";
-import { OPENAI_RESPONSES_CU_CAPABILITIES } from "../src/openai-responses-cu.js";
+import { OPENAI_RESPONSES_CU_CAPABILITIES } from "../src/actors/computer-use/openai-provider.js";
 import { prepareSelectedOutputDirectory } from "../src/selected-output-paths.js";
 
 const restrictedParticipantFactory = vi.hoisted(() => vi.fn());
-vi.mock("../src/restricted-codex-participant.js", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../src/restricted-codex-participant.js")>()),
+vi.mock("../src/actors/codex/restricted-participant.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/actors/codex/restricted-participant.js")>()),
   createRestrictedCodexParticipant: restrictedParticipantFactory,
 }));
 

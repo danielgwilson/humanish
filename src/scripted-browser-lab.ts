@@ -46,8 +46,8 @@ import type {
   ActorPersonaRef,
   ActorStatus,
   ActorTrace,
-} from "./actor-contract.js";
-import { actorRegistry, isScriptedBrowserActorDescriptor } from "./actor-registry.js";
+} from "./actors/contract.js";
+import { actorRegistry, isScriptedBrowserActorDescriptor } from "./actors/registry.js";
 import { toErrorMessage } from "./command-failure.js";
 import { commandDigestOf, provisionCloneSubject, resolveSubjectState } from "./cua-actor-lab.js";
 import {
@@ -91,7 +91,7 @@ import {
   type ScriptedBrowserLike,
   type ScriptedBrowserSessionOptions,
   type ScriptedBrowserSessionResult,
-} from "./scripted-browser-actor.js";
+} from "./actors/scripted-browser.js";
 import {
   prepareSelectedOutputDirectory,
   readContainedRegularFile,

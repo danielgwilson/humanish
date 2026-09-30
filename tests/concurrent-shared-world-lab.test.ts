@@ -13,9 +13,9 @@ import {
   type ActorCompletionReason,
   type ActorStatus,
   type ActorTrace,
-} from "../src/actor-contract.js";
-import type { CuaActorSessionOptions } from "../src/computer-use-actor.js";
-import type { CuaLoopResult } from "../src/computer-use.js";
+} from "../src/actors/contract.js";
+import type { CuaActorSessionOptions } from "../src/actors/computer-use/actor.js";
+import type { CuaLoopResult } from "../src/actors/computer-use/loop.js";
 import type {
   E2BDesktopCreateOptions,
   E2BDesktopModule,

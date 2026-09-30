@@ -46,22 +46,22 @@ import type {
   ActorPersonaRef,
   ActorStatus,
   ActorTokenUsage,
-} from "./actor-contract.js";
+} from "./actors/contract.js";
 import {
   adapterScoreFailureMessage,
   applyBrowserAdapterHooks,
   type BrowserLabAdapterHooks,
 } from "./adapter-extension.js";
-import { actorRegistry, isCuaActorDescriptor, type CuaActorDescriptor } from "./actor-registry.js";
+import { actorRegistry, isCuaActorDescriptor, type CuaActorDescriptor } from "./actors/registry.js";
 import {
   CHROMIUM_EVIDENCE_HYGIENE_FLAGS,
   chromiumEvidenceProfilePreferencesJson,
 } from "./evidence/browser-hygiene.js";
-import type { CuaActorSessionOptions } from "./computer-use-actor.js";
-import type { CuaLoopResult } from "./computer-use.js";
+import type { CuaActorSessionOptions } from "./actors/computer-use/actor.js";
+import type { CuaLoopResult } from "./actors/computer-use/loop.js";
 import { labPersonaIds, resolveCommittedPersonasForCwd } from "./lab/persona-resolve.js";
 import type { ResolvedPersona } from "./lab/persona.js";
-import type { ReasoningEffort } from "./reasoning-effort.js";
+import type { ReasoningEffort } from "./actors/reasoning-effort.js";
 import {
   commandDigestOf,
   buildCuaCostSummary,
@@ -111,7 +111,7 @@ import {
   writePreparedRunLatestPointer,
 } from "./selected-output-paths.js";
 import type { LocalTreeArchive } from "./run/source-archive.js";
-import type { DwellWindow, StopWhen } from "./stop-conditions.js";
+import type { DwellWindow, StopWhen } from "./actors/stop-conditions.js";
 import {
   buildRunSource,
   PUBLIC_TARGET_CWD,
@@ -139,7 +139,7 @@ import {
   MODEL_RATES,
   round6,
 } from "./pricing.js";
-import { DEFAULT_OPENAI_CU_MODEL } from "./openai-responses-cu.js";
+import { DEFAULT_OPENAI_CU_MODEL } from "./actors/computer-use/openai-provider.js";
 
 export const SHARED_WORLD_LAB_SCHEMA = "humanish.shared-world-lab-result.v1";
 

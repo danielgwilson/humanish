@@ -16,7 +16,7 @@ import { PNG } from "pngjs";
 import { describe, expect, it } from "vitest";
 
 import { perceptualSignature } from "../src/substrates/e2b/desktop-executor.js";
-import { actionFingerprint, type CuaAction } from "../src/computer-use.js";
+import { actionFingerprint, type CuaAction } from "../src/actors/computer-use/loop.js";
 
 /**
  * A light-themed app frame at desktop resolution: near-white page, a grey sidebar, and `rows`

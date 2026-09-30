@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { parse } from "yaml";
 import { createProgram } from "../src/cli/program.js";
 import { parseLabConfig } from "../src/lab/config.js";
-import { parseBrowserPersonaJourneyFromScenario } from "../src/scripted-browser-actor.js";
+import { parseBrowserPersonaJourneyFromScenario } from "../src/actors/scripted-browser.js";
 
 const root = resolve(import.meta.dirname, "..");
 const names = readdirSync(resolve(root, "site/content/docs"))

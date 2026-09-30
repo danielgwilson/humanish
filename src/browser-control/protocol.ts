@@ -1,12 +1,12 @@
 import { PNG } from "pngjs";
 import { z } from "zod";
-import type { CuaAction, CuaObservation } from "../computer-use.js";
-import { CUA_SPEECH_LIMITS, type HeardSpeech } from "../cua-speech.js";
+import type { CuaAction, CuaObservation } from "../actors/computer-use/loop.js";
+import { CUA_SPEECH_LIMITS, type HeardSpeech } from "../actors/computer-use/speech.js";
 import {
   CuaExecutorError,
   isCuaExecutorError,
   type CuaExecutorErrorCode,
-} from "../cua-executor-error.js";
+} from "../actors/computer-use/executor-error.js";
 import { desktopRecordingMetadataSchema } from "../evidence/desktop-recording-types.js";
 
 export const BROWSER_CONTROL_VERSION = 1;

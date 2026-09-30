@@ -1,9 +1,9 @@
 import { isCommsReceivingEvidence, receivingAnalysisContext } from "../comms/receiving-evidence.js";
-import { cuaGoalSource } from "../actor-goal-source.js";
+import { cuaGoalSource } from "../actors/goal-source.js";
 import { createHash } from "node:crypto";
 import { screenshotEvidenceError } from "../evidence/image.js";
 import type { PreparedRunArtifactPaths } from "../run-paths.js";
-import type { ActorTraceItem } from "../actor-contract.js";
+import type { ActorTraceItem } from "../actors/contract.js";
 import type { RunBundle, RunStream } from "../run/run.js";
 import type {
   AnalysisEvidence,

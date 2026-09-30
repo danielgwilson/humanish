@@ -2,13 +2,13 @@ import { perceptualSignature } from "../../evidence/frame-signature.js";
 export { perceptualSignature } from "../../evidence/frame-signature.js";
 
 import { commandFailureInfo, tailOf } from "../../command-failure.js";
-import type { CuaAction, CuaExecutor, CuaObservation } from "../../computer-use.js";
-import { CuaExecutorError } from "../../cua-executor-error.js";
+import type { CuaAction, CuaExecutor, CuaObservation } from "../../actors/computer-use/loop.js";
+import { CuaExecutorError } from "../../actors/computer-use/executor-error.js";
 
 // The DESKTOP side of the computer-use loop: a CuaExecutor (from
-// src/computer-use.ts) backed by an E2B desktop sandbox. It mirrors the
+// src/actors/computer-use/loop.ts) backed by an E2B desktop sandbox. It mirrors the
 // pure-logic-plus-injectable-shim pattern used by the OpenAI provider in
-// src/openai-responses-cu.ts: all of the executor's behavior is driven through a
+// src/actors/computer-use/openai-provider.ts: all of the executor's behavior is driven through a
 // narrow injected port (E2BDesktopLike), so the whole module is fully testable in
 // CI with a fake desktop that records calls (no SDK, no sandbox, no spend). The
 // real @e2b/desktop Sandbox is passed in at the live call site later.

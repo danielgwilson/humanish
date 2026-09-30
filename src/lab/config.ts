@@ -55,7 +55,7 @@ import { resolveAutomaticAnalysis, type LabAnalysis } from "../analysis/automati
 // bump the version honestly.
 
 import { normalizeExtraExcludeEntry } from "../run/source-archive.js";
-import { actorRegistry } from "../actor-registry.js";
+import { actorRegistry } from "../actors/registry.js";
 import { containsSensitive } from "../evidence/redaction.js";
 import type { LabTask } from "../tasks.js";
 import { DEVICE_PRESET_NAMES, isDevicePresetName } from "./device-presets.js";
@@ -64,14 +64,14 @@ import type {
   StopConditionPrimitive,
   StopWhen,
   StopWhenRule,
-} from "../stop-conditions.js";
+} from "../actors/stop-conditions.js";
 import {
   isReasoningEffort,
   reasoningEffortNames,
   type ReasoningEffort,
-} from "../reasoning-effort.js";
+} from "../actors/reasoning-effort.js";
 import { isExactRuntimeVersion } from "../terminal-runtime.js";
-import { isMaxOutputTokens } from "../output-token-limit.js";
+import { isMaxOutputTokens } from "../actors/output-token-limit.js";
 
 export const LAB_CONFIG_SCHEMA = "humanish.lab.v2";
 
@@ -494,7 +494,7 @@ export interface LabActor {
    * How hard the model is asked to think, per turn. Lane-level `reasoningEffort` overrides this.
    *
    * Absent means the PROVIDER's default, and absence is recorded as absence: a run that did not
-   * declare an effort does not claim one. Support is model-dependent (see src/reasoning-effort.ts),
+   * declare an effort does not claim one. Support is model-dependent (see src/actors/reasoning-effort.ts),
    * so a level a model does not accept fails on the first turn rather than being downgraded.
    *
    * This is a recruiting decision, not a tuning knob: it changes who the participant IS, the same

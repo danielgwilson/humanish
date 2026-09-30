@@ -806,11 +806,11 @@ separate dispatch, usage, or cleanup evidence, and does not establish the cause
 of a timeout. Participant outcome text includes the phase when available.
 
 Actors execute or simulate the trial. Actor evidence is the provider-neutral
-`humanish.actor-trace.v1` (`src/actor-contract.ts`): Codex app-server items,
+`humanish.actor-trace.v1` (`src/actors/contract.ts`): Codex app-server items,
 Claude Agent SDK blocks, pi events, computer-use cycles, scripted browser
 steps, and in-sandbox terminal-agent exec output all map onto one `ActorTrace`.
 Registered actors live in
-`src/actor-registry.ts` (`codex-app-server`, `pi-agent-core`,
+`src/actors/registry.ts` (`codex-app-server`, `pi-agent-core`,
 `claude-agent-sdk`, `openai-computer-use`, `scripted-browser`, `codex-exec`).
 There is no `humanish.actor.v1`; that name never shipped.
 
@@ -883,7 +883,7 @@ Adapter-owned fields:
 - the prompt, mission, persona text, and lane focus that produced the trace
 - product-specific acceptance notes
 
-Synthetic fixture (abridged; see `src/actor-contract.ts` for the full type):
+Synthetic fixture (abridged; see `src/actors/contract.ts` for the full type):
 
 ```yaml
 schema: humanish.actor-trace.v1

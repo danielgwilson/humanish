@@ -6,7 +6,7 @@ import { parse as parseYaml } from "yaml";
 import { parseLabConfig, LAB_CONFIG_SCHEMA } from "../../src/lab/config.js";
 import { runLab, selectLabBackend } from "../../src/lab/engine.js";
 import { resolveLabManifest } from "../../src/lab/discover.js";
-import { parseBrowserPersonaJourneyFromScenario } from "../../src/scripted-browser-actor.js";
+import { parseBrowserPersonaJourneyFromScenario } from "../../src/actors/scripted-browser.js";
 import { digestText } from "../../src/evidence/redaction.js";
 
 const ROOT = process.cwd();

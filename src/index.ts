@@ -44,7 +44,7 @@ export {
   TERMINAL_AGENT_CAPABILITIES,
   codexResultToActorTrace,
   codexStatusToCompletionReason,
-} from "./actor-contract.js";
+} from "./actors/contract.js";
 export type {
   ActorCapabilities,
   ActorCompletionReason,
@@ -59,30 +59,34 @@ export type {
   ActorTraceItem,
   ActorTraceItemKind,
   ParticipantClosingReport,
-} from "./actor-contract.js";
+} from "./actors/contract.js";
 export {
   actorRegistry,
   getActor,
   isCuaActorDescriptor,
   isScriptedBrowserActorDescriptor,
   isTerminalActorDescriptor,
-} from "./actor-registry.js";
+} from "./actors/registry.js";
 export type {
   ActorDescriptor,
   ActorId,
   CuaActorDescriptor,
   ScriptedBrowserActorDescriptor,
   TerminalActorDescriptor,
-} from "./actor-registry.js";
+} from "./actors/registry.js";
 export {
   TERMINAL_AGENT_NOT_IMPLEMENTED_CODE,
   runTerminalAgentSession,
-} from "./terminal-agent-actor.js";
+} from "./actors/terminal-agent.js";
 export type {
   TerminalAgentSessionOptions,
   TerminalAgentSessionResult,
-} from "./terminal-agent-actor.js";
-export { describeCuaAction, runComputerUseLoop, stableProgressKey } from "./computer-use.js";
+} from "./actors/terminal-agent.js";
+export {
+  describeCuaAction,
+  runComputerUseLoop,
+  stableProgressKey,
+} from "./actors/computer-use/loop.js";
 export type {
   CuaAction,
   CuaExecutor,
@@ -93,9 +97,9 @@ export type {
   CuaSafetyCheck,
   CuaTurn,
   CuaTurnRequest,
-} from "./computer-use.js";
-export { runCuaActorSession } from "./computer-use-actor.js";
-export type { CuaActorSessionOptions } from "./computer-use-actor.js";
+} from "./actors/computer-use/loop.js";
+export { runCuaActorSession } from "./actors/computer-use/actor.js";
+export type { CuaActorSessionOptions } from "./actors/computer-use/actor.js";
 export { createE2BDesktopExecutor } from "./substrates/e2b/desktop-executor.js";
 export type {
   E2BDesktopExecutorOptions,
@@ -107,9 +111,12 @@ export {
   DEFAULT_OPENAI_CU_MODEL,
   OPENAI_RESPONSES_CU_CAPABILITIES,
   createOpenAiResponsesProvider,
-} from "./openai-responses-cu.js";
-export type { FetchLike, OpenAiResponsesProviderOptions } from "./openai-responses-cu.js";
-export { CuaAdmissionLimitError } from "./cua-admission-limit.js";
+} from "./actors/computer-use/openai-provider.js";
+export type {
+  FetchLike,
+  OpenAiResponsesProviderOptions,
+} from "./actors/computer-use/openai-provider.js";
+export { CuaAdmissionLimitError } from "./actors/computer-use/admission-limit.js";
 export {
   adapterScoreFailureMessage,
   applyAdapterScoreFailureToReview,
@@ -166,18 +173,21 @@ export type {
   ModelRate,
 } from "./pricing.js";
 export { normalizeCliArgv } from "./cli/argv.js";
-export { CODEX_APP_SERVER_UI_SCHEMA, startCodexAppServerUi } from "./codex-app-server-ui.js";
+export { CODEX_APP_SERVER_UI_SCHEMA, startCodexAppServerUi } from "./actors/codex/app-server-ui.js";
 export type {
   CodexAppServerUiController,
   CodexAppServerUiOptions,
   CodexAppServerUiState,
-} from "./codex-app-server-ui.js";
-export { CODEX_APP_SERVER_TRACE_SCHEMA, runCodexAppServerSession } from "./codex-app-server.js";
+} from "./actors/codex/app-server-ui.js";
+export {
+  CODEX_APP_SERVER_TRACE_SCHEMA,
+  runCodexAppServerSession,
+} from "./actors/codex/app-server.js";
 export type {
   CodexAppServerRunOptions,
   CodexAppServerRunResult,
   CodexAppServerTrace,
-} from "./codex-app-server.js";
+} from "./actors/codex/app-server.js";
 export {
   FEEDBACK_RESULT_SCHEMA,
   FEEDBACK_SCHEMA,
@@ -289,7 +299,7 @@ export type {
   RunCuaActorLabOptions,
   SubjectPhaseEvent,
 } from "./cua-actor-lab.js";
-export { SCRIPTED_BROWSER_PROVIDER, runScriptedBrowserSession } from "./scripted-browser-actor.js";
+export { SCRIPTED_BROWSER_PROVIDER, runScriptedBrowserSession } from "./actors/scripted-browser.js";
 export type {
   BrowserPersonaJourney,
   BrowserSurface,
@@ -299,7 +309,7 @@ export type {
   ScriptedBrowserSessionResult,
   ScriptedLocatorLike,
   ScriptedPageLike,
-} from "./scripted-browser-actor.js";
+} from "./actors/scripted-browser.js";
 export {
   SCRIPTED_BROWSER_LAB_SCHEMA,
   buildScriptedLabBundle,

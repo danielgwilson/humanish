@@ -82,7 +82,7 @@ Implemented:
   ignored `.humanish/labs/*.yaml` overlays — `humanish.lab.v2` compositions
   (`src/lab/config.ts`), one engine, no hardcoded lab kinds;
 - a first-party actor registry with seven registered descriptors
-  (`src/actor-registry.ts`); `actors[0].type` is a real dispatch key on the
+  (`src/actors/registry.ts`); `actors[0].type` is a real dispatch key on the
   computer-use, scripted-browser, and terminal-product routes;
 - a computer-use route and clone subject provider: `subject.source: app-url`
   drives a lab-owner loopback app in a hosted desktop, and `subject.source:

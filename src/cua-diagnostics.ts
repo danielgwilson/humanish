@@ -1,5 +1,5 @@
-import { actorStopCauseLabel } from "./actor-stop-cause.js";
-import type { ActorCompletionReason, ActorStatus, ActorStopCause } from "./actor-contract.js";
+import { actorStopCauseLabel } from "./actors/stop-cause.js";
+import type { ActorCompletionReason, ActorStatus, ActorStopCause } from "./actors/contract.js";
 
 /** Diagnostic categories describe the instrument's result, never prove a target-app defect. */
 const CUA_DIAGNOSTIC_CATEGORIES = [

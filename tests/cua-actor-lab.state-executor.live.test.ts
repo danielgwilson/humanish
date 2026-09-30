@@ -6,15 +6,15 @@ import type { AddressInfo } from "node:net";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import type { ActorCapabilities } from "../src/actor-contract.js";
-import { ACTOR_TRACE_SCHEMA } from "../src/actor-contract.js";
+import type { ActorCapabilities } from "../src/actors/contract.js";
+import { ACTOR_TRACE_SCHEMA } from "../src/actors/contract.js";
 import type {
   CuaAction,
   CuaObservation,
   CuaProvider,
   CuaTurn,
   CuaExecutor,
-} from "../src/computer-use.js";
+} from "../src/actors/computer-use/loop.js";
 import { LAB_CONFIG_SCHEMA, parseLabConfig } from "../src/lab/config.js";
 import { runLab } from "../src/lab/engine.js";
 import { verifyRun } from "../src/run/run.js";

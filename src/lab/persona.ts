@@ -1,5 +1,5 @@
 import { digestText, redactText } from "../evidence/redaction.js";
-import type { ActorPersonaRef } from "../actor-contract.js";
+import type { ActorPersonaRef } from "../actors/contract.js";
 
 type PersonaLevel = "low" | "medium" | "high";
 export const PERSONA_BACKGROUND_MAX_BYTES = 32 * 1024;

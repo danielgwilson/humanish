@@ -6,7 +6,7 @@ import {
   type CuaAction,
   type CuaExecutor,
   type CuaProvider,
-} from "../../../src/computer-use.js";
+} from "../../../src/actors/computer-use/loop.js";
 import {
   createE2BDesktopExecutor,
   type E2BDesktopLike,

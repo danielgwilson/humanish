@@ -6,7 +6,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import liveBundle from "../../tests/golden/labs/live.json";
 import { buildObserverData } from "../../src/observer/data";
 import { tallyParticipantOutcomes, type RunBundle } from "../../src/run/run";
-import type { ActorStopCause } from "../../src/actor-contract";
+import type { ActorStopCause } from "../../src/actors/contract";
 import firstRun from "../../tests/golden/observer-data/first-run.json";
 import { App } from "../app";
 import { Sidebar } from "../components/sidebar";

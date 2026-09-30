@@ -3,7 +3,7 @@ import path from "node:path";
 import { runLab, type LabOutcome, type RunLabOptions } from "../../lab/engine.js";
 import type { LabConfig } from "../../lab/config.js";
 import { inboxRecipientFor, type DesktopLaneEvidence } from "../../cua-desktop-lane.js";
-import { runCuaActorSession } from "../../computer-use-actor.js";
+import { runCuaActorSession } from "../../actors/computer-use/actor.js";
 import {
   createLocalFirecrackerDesktop,
   type LocalFirecrackerAssets,
@@ -12,7 +12,7 @@ import {
 import { localBrowserDefaults, localBrowserUnsupportedReason } from "./runtime-config.js";
 import { prepareLocalRuntime } from "./runtime.js";
 import { checkRestrictedCodexAnalysisReadiness } from "../../analysis/restricted-codex.js";
-import { createRestrictedCodexParticipant } from "../../restricted-codex-participant.js";
+import { createRestrictedCodexParticipant } from "../../actors/codex/restricted-participant.js";
 import { guestMediaConfigSchema } from "../../guest-media-config.js";
 import { startLocalCapturedInbox } from "./captured-inbox.js";
 

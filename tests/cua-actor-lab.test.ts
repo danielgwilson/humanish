@@ -10,9 +10,12 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PNG } from "pngjs";
 
-import type { ActorCapabilities, ActorTrace } from "../src/actor-contract.js";
-import { ACTOR_TRACE_SCHEMA } from "../src/actor-contract.js";
-import { runCuaActorSession, type CuaActorSessionOptions } from "../src/computer-use-actor.js";
+import type { ActorCapabilities, ActorTrace } from "../src/actors/contract.js";
+import { ACTOR_TRACE_SCHEMA } from "../src/actors/contract.js";
+import {
+  runCuaActorSession,
+  type CuaActorSessionOptions,
+} from "../src/actors/computer-use/actor.js";
 import type {
   CuaAction,
   CuaExecutor,
@@ -20,7 +23,7 @@ import type {
   CuaObservation,
   CuaProvider,
   CuaTurn,
-} from "../src/computer-use.js";
+} from "../src/actors/computer-use/loop.js";
 import {
   CUA_ACTOR_LAB_PROVIDER_METADATA,
   buildCuaBundle,
@@ -50,7 +53,7 @@ import {
   type ObserverResult,
   type ObserverServer,
 } from "../src/observer/render.js";
-import type { FetchLike } from "../src/openai-responses-cu.js";
+import type { FetchLike } from "../src/actors/computer-use/openai-provider.js";
 import type {
   BrowserLabScoringContext,
   RunAdapterScore,

@@ -1,10 +1,10 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { runComputerUseLoop, type CuaTurn } from "../src/computer-use.js";
+import { runComputerUseLoop, type CuaTurn } from "../src/actors/computer-use/loop.js";
 import {
   OPENAI_RESPONSES_CU_CAPABILITIES,
   parseOpenAiResponse,
-} from "../src/openai-responses-cu.js";
+} from "../src/actors/computer-use/openai-provider.js";
 import { defaultRedactionHooks } from "../src/evidence/redaction.js";
 
 function captured(name: "reasoning-only" | "partial-message"): Record<string, unknown> {

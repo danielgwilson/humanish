@@ -5,8 +5,8 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { TERMINAL_AGENT_CAPABILITIES } from "../src/actor-contract.js";
-import { actorRegistry, isTerminalActorDescriptor } from "../src/actor-registry.js";
+import { TERMINAL_AGENT_CAPABILITIES } from "../src/actors/contract.js";
+import { actorRegistry, isTerminalActorDescriptor } from "../src/actors/registry.js";
 import {
   LAB_CONFIG_SCHEMA,
   parseLabConfig,
@@ -19,7 +19,7 @@ import { runLab, selectLabBackend } from "../src/lab/engine.js";
 import { createProgram } from "../src/cli/program.js";
 import { verifyRun } from "../src/run/run.js";
 import { runTerminalProductLab } from "../src/e2b-terminal-lab.js";
-import { TERMINAL_AGENT_NOT_IMPLEMENTED_CODE } from "../src/terminal-agent-actor.js";
+import { TERMINAL_AGENT_NOT_IMPLEMENTED_CODE } from "../src/actors/terminal-agent.js";
 
 const ROOT = process.cwd();
 

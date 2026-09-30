@@ -1,4 +1,4 @@
-import type { CuaExecutor } from "./computer-use.js";
+import type { CuaExecutor } from "./actors/computer-use/loop.js";
 import type { LaneRunOutcome } from "./cua-actor-lab.js";
 import type { LabCommsEmail, LabCommsRecipient } from "./lab/config.js";
 

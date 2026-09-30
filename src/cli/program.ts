@@ -18,8 +18,8 @@ import { fileURLToPath } from "node:url";
 
 import { Command, Option } from "commander";
 
-import { startCodexAppServerUi } from "../codex-app-server-ui.js";
-import type { CodexAppServerUiState } from "../codex-app-server-ui.js";
+import { startCodexAppServerUi } from "../actors/codex/app-server-ui.js";
+import type { CodexAppServerUiState } from "../actors/codex/app-server-ui.js";
 import { loadEnvFile } from "./env-file.js";
 import {
   discoverProviderKeys,
@@ -108,7 +108,7 @@ import { forTerminal } from "../terminal-encoding.js";
 import { analyzeStudy, correctStudyAnalysis, showStudyAnalysis } from "../analysis/service.js";
 import { listStudyAnalyses, listStudyAnalysisExecutions } from "../analysis/store.js";
 import { resolveRunPath } from "../run/run.js";
-import { detectAgentSession } from "../agent-session.js";
+import { detectAgentSession } from "../actors/agent-session.js";
 import { runCommsCatchHost } from "../comms/catch-host.js";
 import { DEFAULT_SANDBOX_CATCH_PORT } from "../comms/sandbox-catch.js";
 import type {

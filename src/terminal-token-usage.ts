@@ -15,7 +15,7 @@
 // real model id to price against (it records `model: "codex"`), so the honest output is
 // tokens-known-rate-unknown rather than a guessed dollar figure.
 
-import type { ActorTokenUsage } from "./actor-contract.js";
+import type { ActorTokenUsage } from "./actors/contract.js";
 
 /** One `turn.completed` usage record as codex emits it. Every field is optional: a provider that
  *  omits one must leave it undefined rather than reporting 0 (0 and unknown price differently). */

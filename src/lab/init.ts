@@ -7,7 +7,7 @@ import {
   starterActorFor,
   type FirstRunEnvironment,
 } from "../cli/first-run-path.js";
-import { detectLocalAgents } from "../local-agent-cli.js";
+import { detectLocalAgents } from "../actors/local-agent/cli.js";
 
 import {
   DEFAULT_LOCAL_BROWSER_STARTER,

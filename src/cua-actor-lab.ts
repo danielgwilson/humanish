@@ -1,6 +1,6 @@
 import type { RunDesktopRecording } from "./evidence/desktop-recording-types.js";
 import { e2bDesktopTemplate } from "./substrates/e2b/desktop-media.js";
-import type { CuaLiveMetadata } from "./computer-use.js";
+import type { CuaLiveMetadata } from "./actors/computer-use/loop.js";
 export { inboxRecipientFor, laneHasInboxRecipient } from "./cua-desktop-lane.js";
 export {
   CUA_ACTOR_LAB_PROVIDER_METADATA,
@@ -89,9 +89,9 @@ import type {
   ActorTokenUsage,
   ActorTrace,
   ActorTraceItem,
-} from "./actor-contract.js";
-import { actorRegistry, isCuaActorDescriptor, type CuaActorDescriptor } from "./actor-registry.js";
-import { actorEnding } from "./actor-stop-cause.js";
+} from "./actors/contract.js";
+import { actorRegistry, isCuaActorDescriptor, type CuaActorDescriptor } from "./actors/registry.js";
+import { actorEnding } from "./actors/stop-cause.js";
 import {
   adapterScoreFailureMessage,
   applyBrowserAdapterHooks,
@@ -105,8 +105,8 @@ import {
   externalInboxUrl,
 } from "./comms/sandbox-catch.js";
 import type { CommsAddress } from "./comms/types.js";
-import type { CuaActorSessionOptions } from "./computer-use-actor.js";
-import type { CuaExecutor, CuaLoopResult, CuaProvider } from "./computer-use.js";
+import type { CuaActorSessionOptions } from "./actors/computer-use/actor.js";
+import type { CuaExecutor, CuaLoopResult, CuaProvider } from "./actors/computer-use/loop.js";
 import { mapWithConcurrency } from "./concurrency.js";
 import {
   DEFAULT_DEVICE_PRESET,
@@ -131,13 +131,13 @@ import {
   type LabSubjectServe,
   type LabSubjectState,
 } from "./lab/config.js";
-import { startClaudeSession } from "./local-agent-claude-session.js";
+import { startClaudeSession } from "./actors/local-agent/claude-session.js";
 import {
   checkHostedCodexCompatibility,
   createLocalAgentProvider,
   detectLocalAgents,
   type LocalAgentId,
-} from "./local-agent-cli.js";
+} from "./actors/local-agent/cli.js";
 import { buildObserverData } from "./observer/data.js";
 import {
   attachObserverRuntimeStreamUrls,
@@ -145,7 +145,7 @@ import {
   type ObserverResult,
   type ObserverRuntimeStreamUrl,
 } from "./observer/render.js";
-import { DEFAULT_OPENAI_CU_MODEL } from "./openai-responses-cu.js";
+import { DEFAULT_OPENAI_CU_MODEL } from "./actors/computer-use/openai-provider.js";
 import { participantAssignment } from "./lab/participant-assignment.js";
 import { labPersonaIds, resolveCommittedPersonas } from "./lab/persona-resolve.js";
 import {
@@ -162,9 +162,9 @@ import {
   estimateDesktopCost,
   round6,
 } from "./pricing.js";
-import type { ReasoningEffort } from "./reasoning-effort.js";
+import type { ReasoningEffort } from "./actors/reasoning-effort.js";
 import { containsSensitive, digestText, redactText } from "./evidence/redaction.js";
-import { createRestrictedCodexParticipant } from "./restricted-codex-participant.js";
+import { createRestrictedCodexParticipant } from "./actors/codex/restricted-participant.js";
 import {
   prepareRunArtifactPaths,
   validatePreparedRunArtifactPaths,
@@ -213,7 +213,7 @@ import {
   type PreparedOutputDirectory,
 } from "./selected-output-paths.js";
 import { createLocalTreeArchive, type LocalTreeArchive } from "./run/source-archive.js";
-import type { DwellWindow, StopWhen } from "./stop-conditions.js";
+import type { DwellWindow, StopWhen } from "./actors/stop-conditions.js";
 import { renderTaskPrompt, type LabTask, type TaskFunnel } from "./tasks.js";
 
 export const CUA_ACTOR_LAB_SCHEMA = "humanish.cua-lab-result.v2";

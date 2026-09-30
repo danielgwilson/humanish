@@ -13,7 +13,7 @@
 
 // A type-only import — erased at compile time, so the pricing <-> actor-contract cycle is not a
 // runtime cycle.
-import type { ActorTokenUsage } from "./actor-contract.js";
+import type { ActorTokenUsage } from "./actors/contract.js";
 
 export const PRICING_SCHEMA = "humanish.pricing.v1";
 export const ACTOR_ESTIMATED_COST_SCHEMA = "humanish.actor-estimated-cost.v1";

@@ -2,7 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { getActor } from "../../src/actor-registry.js";
+import { getActor } from "../../src/actors/registry.js";
 import { runCuaLane, type CuaLaneDeps, type CuaLaneSpec } from "../../src/cua-actor-lab.js";
 import { DEVICE_PRESETS } from "../../src/lab/device-presets.js";
 import type {

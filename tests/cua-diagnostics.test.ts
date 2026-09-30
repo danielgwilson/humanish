@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ActorCompletionReason, ActorStatus, ActorStopCause } from "../src/actor-contract.js";
+import type { ActorCompletionReason, ActorStatus, ActorStopCause } from "../src/actors/contract.js";
 import {
   cuaLaneDiagnostics,
   formatCuaStopCause,
