@@ -24,10 +24,11 @@ import {
 import type { TaskFunnel } from "../../lab/tasks.js";
 import {
   fanoutReviewVerdict,
+  participantFactsOf,
   participantFeedbackCandidates,
-  participantStatusForCredibility,
   providerResourcesForOutcome,
 } from "./bundle.js";
+import { participantPassed, participantStatus } from "../../run/judge.js";
 import { buildRunCostSummary, desktopSpanToMinutes } from "../../run/cost-summary.js";
 import { formatLanePlanEntry } from "./lane-plan.js";
 import type { CuaFanoutBundleArgs, LaneRunOutcome } from "./types.js";
@@ -66,15 +67,8 @@ function fanoutReview(args: CuaFanoutBundleArgs, streams: RunStream[]): ReviewSu
           outcomes,
         });
 
-  const passedLanes = (outcomes ?? []).filter(
-    (outcome) =>
-      outcome.skippedReason === undefined &&
-      outcome.session !== undefined &&
-      outcome.session.status === "passed" &&
-      outcome.session.completionReason !== "harness_error" &&
-      outcome.sessionError === undefined &&
-      !outcome.noEngagement &&
-      !outcome.selfReportedBlocker,
+  const passedLanes = (outcomes ?? []).filter((outcome) =>
+    participantPassed(participantFactsOf(outcome)),
   ).length;
   // What happened to the PARTICIPANTS, with the denominator attached. The verdict above has to
   // collapse the run to one word; this does not (docs/principles/three-roles.md).
@@ -91,7 +85,7 @@ function fanoutReview(args: CuaFanoutBundleArgs, streams: RunStream[]): ReviewSu
           // "not a passed lane" AND "1/1 reached the goal". The headline number a researcher reads
           // first was the dishonest one. Found by a provider bug that ended a study on turn one.
           terminalOutcomes.map((outcome) =>
-            participantStatusForCredibility(outcome.session.status, {
+            participantStatus(outcome.session.status, {
               noEngagement: outcome.noEngagement === true,
               selfReportedBlocker: outcome.selfReportedBlocker === true,
             }),

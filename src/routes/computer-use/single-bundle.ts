@@ -34,12 +34,11 @@ import {
 import {
   describeSubjectState,
   participantFeedbackCandidates,
-  participantStatusForCredibility,
   providerResourcesForOutcome,
   publicSafeAppUrlLabel,
   subjectProvenanceMessage,
-  verdictForStatus,
 } from "./bundle.js";
+import { participantStatus as participantStatusFor, verdictForStatus } from "../../run/judge.js";
 import {
   buildRunCostSummary,
   desktopSpanToMinutes,
@@ -441,7 +440,7 @@ function laneReview(args: CuaBundleArgs, view: LaneView, stream: RunStream): Rev
   const participantStatus: ActorStatus | undefined =
     args.session === undefined
       ? undefined
-      : participantStatusForCredibility(args.session.status, args.credibility);
+      : participantStatusFor(args.session.status, args.credibility);
   const credibilityNote =
     args.session === undefined || participantStatus === args.session.status
       ? undefined

@@ -1,4 +1,5 @@
 import type { CuaLoopResult } from "../../actors/computer-use/loop.js";
+import { selfReportedBlocker, type BlockerFacts, type SessionEnding } from "../../run/judge.js";
 
 // "can't" followed by a PERCEPTION verb describes what the screen showed, not an inability to
 // proceed: "the canvas truncates it so you can't even read the whole thing", "I can't tell from
@@ -214,7 +215,7 @@ function stripQuotedSpans(text: string): string {
     .replace(/^\s*>.*$/gm, " ");
 }
 
-export function traceHasStopWhenMatch(session: CuaLoopResult): boolean {
+function traceHasStopWhenMatch(session: CuaLoopResult): boolean {
   return session.trace.items.some(
     (item) =>
       item.kind === "notice" &&
@@ -234,19 +235,33 @@ export function traceHasStopWhenMatch(session: CuaLoopResult): boolean {
  * when the lane is a clean pass. Exported for testing.
  */
 export function resolveSelfReportedBlocker(session: CuaLoopResult | undefined): string | undefined {
-  // The participant's own word wins when it gave one (#570): a declared "reached" is not re-read
-  // for blocker-shaped phrases, and a declared "blocked" is a blocker whatever the paragraph says.
-  const declared = session?.trace.declaredOutcome;
-  if (session !== undefined && declared !== undefined) {
-    return declared === "blocked" && session.completionReason === "goal_satisfied"
-      ? session.reason
-      : undefined;
-  }
-  return session?.completionReason === "goal_satisfied" &&
-    completionReasonBlocksVerdict(session.reason) &&
-    !traceHasStopWhenMatch(session)
+  return session !== undefined && selfReportedBlocker(blockerFacts(session))
     ? session.reason
     : undefined;
+}
+
+/**
+ * A session's ending, reduced to what the judge's blocker rule reads. The closing report is read
+ * here, where the participant's language is understood; the rule stays in judge.
+ */
+function blockerFacts(session: CuaLoopResult): BlockerFacts {
+  return {
+    completionReason: session.completionReason,
+    stopConditionMatched: traceHasStopWhenMatch(session),
+    ...(session.trace.declaredOutcome === undefined
+      ? {}
+      : { declaredOutcome: session.trace.declaredOutcome }),
+    closingReportReadsBlocked: completionReasonBlocksVerdict(session.reason),
+  };
+}
+
+/** A session's ending, reduced to what the judge's engagement and blocker rules read. */
+export function sessionEnding(session: CuaLoopResult): SessionEnding {
+  return {
+    ...blockerFacts(session),
+    actions: session.trace.counts.actions ?? 0,
+    messages: session.trace.counts.messages ?? 0,
+  };
 }
 
 /**

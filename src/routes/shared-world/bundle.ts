@@ -26,6 +26,8 @@ import {
 import type { RunStream } from "../../run/streams.js";
 import { commandDigestOf } from "../../subject/state.js";
 import { buildRunCostSummary, desktopSpanToMinutes } from "../../run/cost-summary.js";
+import { participantFactsOf } from "../computer-use/bundle.js";
+import { participantPassed } from "../../run/judge.js";
 import { combineCheckpointDigest } from "./checkpoints.js";
 import { hostOriginDigest } from "./provenance.js";
 import { seatRecords } from "./seat-records.js";
@@ -72,16 +74,7 @@ export function actorWindowsOverlap(results: ActorLaneResult[]): boolean {
 }
 
 export function actorLanePassed(result: ActorLaneResult | undefined): boolean {
-  if (!result) return false;
-  const session = result.outcome.session;
-  return (
-    session !== undefined &&
-    session.status === "passed" &&
-    session.completionReason !== "harness_error" &&
-    result.outcome.sessionError === undefined &&
-    !result.outcome.noEngagement &&
-    !result.outcome.selfReportedBlocker
-  );
+  return result !== undefined && participantPassed(participantFactsOf(result.outcome));
 }
 
 /**

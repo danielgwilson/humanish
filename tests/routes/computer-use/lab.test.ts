@@ -37,7 +37,7 @@ import {
   resolveSelfReportedFriction,
 } from "../../../src/routes/computer-use/self-report.js";
 import { type CuaActorLabHooks } from "../../../src/routes/computer-use/types.js";
-import { participantStatusForCredibility } from "../../../src/routes/computer-use/bundle.js";
+import { participantStatus as participantStatusForCredibility } from "../../../src/run/judge.js";
 import {
   CLOSING_LINE_DIRECTIVE,
   composeLaneInstructions,
