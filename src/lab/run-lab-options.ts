@@ -279,7 +279,6 @@ export function normalizeRunLabOptions(
   if (refused) return refused;
 
   const warnings: string[] = [];
-  const scrubKnownValues = scrubLiterals(knownSecretValues(config, route, options));
   const {
     env,
     scorer,
@@ -301,7 +300,9 @@ export function normalizeRunLabOptions(
           const report = (error: unknown): void => {
             let detail: string;
             try {
-              detail = redactText(scrubKnownValues(toErrorMessage(error)));
+              // Read here, not up front: a run with no failing callback never touches the env.
+              const scrub = scrubLiterals(knownSecretValues(config, route, options));
+              detail = redactText(scrub(toErrorMessage(error)));
             } catch {
               detail = "the thrown value has no message";
             }

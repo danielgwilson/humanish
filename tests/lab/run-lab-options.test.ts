@@ -775,3 +775,35 @@ describe("an onEvent callback that rewrites its event", () => {
     }
   });
 });
+
+describe("secret values are read only when a warning needs them", () => {
+  const throwingEnv = (): Record<string, string | undefined> =>
+    Object.defineProperty({}, "CODEX_API_KEY", {
+      enumerable: true,
+      get() {
+        throw new Error("env getter read");
+      },
+    }) as Record<string, string | undefined>;
+
+  it("normalizes a legacy bag whose env has a throwing getter when no onEvent is set", () => {
+    const result = normalize(config("cuAppUrl"), {
+      cuaHooks: { env: throwingEnv() },
+      scorer,
+    });
+    expect(result.ok).toBe(true);
+  });
+
+  it("falls back to a fixed warning when reading the values throws", () => {
+    const result = normalize(config("cuAppUrl"), {
+      cuaHooks: { env: throwingEnv() },
+      onEvent: () => {
+        throw new Error("handler failed");
+      },
+    });
+    if (!result.ok) throw new Error(result.message);
+    result.options.cuaHooks!.onPreflight!({ lanes: [] } as unknown as CuaLanePlan);
+    expect(result.warnings).toEqual([
+      "RunLabOptions.onEvent failed on plan: the thrown value has no message",
+    ]);
+  });
+});
