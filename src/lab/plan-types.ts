@@ -12,12 +12,12 @@ import type { TerminalRefusal } from "../routes/terminal/plan.js";
 import type { RunLabProvenance } from "../run/status.js";
 import type { RunLabOptions } from "./engine.js";
 import type { ComputerUseRefusal } from "../routes/computer-use/plan.js";
+import type { SharedWorldRefusal } from "../routes/shared-world/plan.js";
 import type {
   ComputerUseParticipant,
   ExternalPublicSeat,
   ProvisionedSeat,
 } from "./plan-participants.js";
-import type { LabRoute } from "./plan.js";
 import type {
   LabConfig,
   LabRuntimeAuth,
@@ -29,7 +29,7 @@ import type {
 } from "./types.js";
 
 export type NonEmpty<T> = readonly [T, ...T[]];
-export type AtLeastTwo<T> = readonly [T, T, ...T[]];
+type AtLeastTwo<T> = readonly [T, T, ...T[]];
 
 /** Something a route checks right before acquisition. Doctor, the TUI and preflight list the same set. */
 export type Requirement =
@@ -168,6 +168,8 @@ export type SharedWorldPlane =
 
 export interface SharedWorldPlan extends PlanBase {
   readonly route: "shared-world";
+  /** The registered computer-use actor id. */
+  readonly actor: string;
   readonly plane: SharedWorldPlane;
   /** At least 2. */
   readonly concurrency: number;
@@ -230,29 +232,20 @@ interface PlannedLab {
   readonly bindings: LabBindings;
 }
 
-/**
- * A combination the plan types cannot hold. Each rule is refused by a route today; the route's
- * code and message move here when that route adopts planLab.
- */
-export type PlanGap = "analysis-invalid" | "unsupported-composition";
-
 /** The error codes the preview route returns before a run starts. */
-type PreviewRefusalCode =
+export type PreviewRefusalCode =
   | "HUMANISH_LAB_COMMS_UNSUPPORTED"
   | "HUMANISH_LAB_ANALYSIS_INVALID"
   | "HUMANISH_LAB_ANALYSIS_UNSUPPORTED"
   | "HUMANISH_LAB_TASKS_UNSUPPORTED";
 
-/**
- * Why planLab refused. A route that runs on the plan gets its own code and message; a route that
- * has not moved onto the plan yet gets the gap.
- */
+/** Why planLab refused: the route's own code and message, as its runner returns them. */
 export type PlanRefusal =
   | { readonly route: "preview"; readonly code: PreviewRefusalCode; readonly message: string }
   | TerminalRefusal
   | ScriptedRefusal
   | ComputerUseRefusal
-  | { readonly route: LabRoute; readonly gap: PlanGap };
+  | SharedWorldRefusal;
 
 export type PlanResult =
   | { readonly ok: true; readonly planned: PlannedLab }

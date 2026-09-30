@@ -1,0 +1,707 @@
+{
+  "recording": {
+    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-sharedprovisioned",
+    "actor": "openai-computer-use",
+    "topology": "shared-world",
+    "topologyMode": "concurrent",
+    "roleCount": 2,
+    "concurrency": 2,
+    "dryRun": true,
+    "runId": "not-created",
+    "roles": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "message": "execution.desktop.recording is supported only on independent computer-use desktop lanes. Remove the declaration or select a supported route."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
+    }
+  },
+  "invalid analysis": {
+    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-sharedprovisioned",
+    "actor": "openai-computer-use",
+    "topology": "shared-world",
+    "topologyMode": "concurrent",
+    "roleCount": 2,
+    "concurrency": 2,
+    "dryRun": true,
+    "runId": "not-created",
+    "roles": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_LAB_ANALYSIS_INVALID",
+      "message": "review.analysis must be false or a mapping containing only provider, maxCostUsd, model, question, timeoutMs and maxOutputTokens."
+    }
+  },
+  "tasks": {
+    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-sharedprovisioned",
+    "actor": "openai-computer-use",
+    "topology": "shared-world",
+    "topologyMode": "concurrent",
+    "roleCount": 2,
+    "concurrency": 2,
+    "dryRun": true,
+    "runId": "not-created",
+    "roles": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_LAB_TASKS_UNSUPPORTED",
+      "message": "actors[0].tasks is unsupported on this execution path. Task protocols require a per-lane computer-use route; shared-world, terminal-product, scripted-browser and synthetic routes do not consume them. Remove tasks only if a mission-only study is intended."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
+    }
+  },
+  "unregistered actor": {
+    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-sharedprovisioned",
+    "actor": "not-an-actor",
+    "topology": "shared-world",
+    "topologyMode": "concurrent",
+    "roleCount": 2,
+    "concurrency": 2,
+    "dryRun": true,
+    "runId": "not-created",
+    "roles": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_ACTOR_UNSUPPORTED",
+      "message": "actors[0].type \"not-an-actor\" is not a registered computer-use actor."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
+    }
+  },
+  "invalid output limit": {
+    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-sharedprovisioned",
+    "actor": "openai-computer-use",
+    "topology": "shared-world",
+    "topologyMode": "concurrent",
+    "roleCount": 2,
+    "concurrency": 2,
+    "dryRun": true,
+    "runId": "not-created",
+    "roles": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "message": "actors[0].maxOutputTokens must be a positive safe integer."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
+    }
+  },
+  "scenario dollar cap": {
+    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-sharedprovisioned",
+    "actor": "openai-computer-use",
+    "topology": "shared-world",
+    "topologyMode": "concurrent",
+    "roleCount": 2,
+    "concurrency": 2,
+    "dryRun": true,
+    "runId": "not-created",
+    "roles": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "message": "scenario.caps.maxUsd (1) does not cap a computer-use lab: this route stops on execution.caps.maxUsd. Move the value to execution.caps.maxUsd; scenario.caps applies only to terminal-product labs."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
+    }
+  },
+  "provisioned plane concurrency 1": {
+    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-sharedprovisioned",
+    "actor": "openai-computer-use",
+    "topology": "shared-world",
+    "topologyMode": "concurrent",
+    "roleCount": 2,
+    "concurrency": 1,
+    "dryRun": true,
+    "runId": "not-created",
+    "roles": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "message": "shared-world studies need `execution.concurrency` of at least 2 (got 1). Sequential shared-world turns (concurrency 1) were removed in 0.106.0: omit execution.concurrency to run every participant at once, or set it to 2 or more. A provisioned subject also needs `subject.exposure: synthetic` and a `serve.start` that binds 0.0.0.0."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
+    }
+  },
+  "external plane without authorization": {
+    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-sharedprovisioned",
+    "actor": "openai-computer-use",
+    "topology": "shared-world",
+    "topologyMode": "concurrent",
+    "roleCount": 2,
+    "concurrency": 2,
+    "dryRun": true,
+    "runId": "not-created",
+    "roles": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "message": "the external-public shared-world route requires `subject.publicTarget: { owner, authorized: true }` — you must attest you own/operate the public deployment used as the shared plane (author-trust; the harness cannot verify ownership)."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
+    }
+  },
+  "output limit with a custom session": {
+    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-sharedprovisioned",
+    "actor": "openai-computer-use",
+    "topology": "shared-world",
+    "topologyMode": "concurrent",
+    "roleCount": 2,
+    "concurrency": 2,
+    "dryRun": true,
+    "runId": "not-created",
+    "roles": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "message": "maxOutputTokens cannot be enforced by a custom runSession."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
+    }
+  },
+  "live cap on an unpriced model": {
+    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-sharedprovisioned",
+    "actor": "openai-computer-use",
+    "topology": "shared-world",
+    "topologyMode": "concurrent",
+    "roleCount": 2,
+    "concurrency": 2,
+    "dryRun": false,
+    "runId": "not-created",
+    "roles": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "message": "The declared spend cap cannot be enforced for unpriced model \"unpriced-model\"."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE"
+    }
+  },
+  "real receiving with local-agent": {
+    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-sharedprovisioned",
+    "actor": "local-agent",
+    "topology": "shared-world",
+    "topologyMode": "concurrent",
+    "roleCount": 2,
+    "concurrency": 2,
+    "dryRun": true,
+    "runId": "not-created",
+    "roles": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "message": "Real email receiving is unavailable for local-agent: its host process does not isolate the inbox management credential. Use a hosted first-party computer-use actor."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
+    }
+  },
+  "clone without a repo slug": {
+    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-sharedprovisioned",
+    "actor": "openai-computer-use",
+    "topology": "shared-world",
+    "topologyMode": "concurrent",
+    "roleCount": 2,
+    "concurrency": 2,
+    "dryRun": true,
+    "runId": "not-created",
+    "roles": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "message": "subject.repos[0] must be an owner/repo slug (got \"not a slug\")."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
+    }
+  },
+  "external plane without an owner": {
+    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-sharedprovisioned",
+    "actor": "openai-computer-use",
+    "topology": "shared-world",
+    "topologyMode": "concurrent",
+    "roleCount": 2,
+    "concurrency": 2,
+    "dryRun": true,
+    "runId": "not-created",
+    "roles": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "message": "`subject.publicTarget.owner` must be a public-safe operator/repo label (e.g. owner/repo); it is recorded in evidence, so it must carry no secret."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
+    }
+  },
+  "live without keys": {
+    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-sharedprovisioned",
+    "actor": "openai-computer-use",
+    "topology": "shared-world",
+    "topologyMode": "concurrent",
+    "roleCount": 2,
+    "concurrency": 2,
+    "dryRun": false,
+    "runId": "not-created",
+    "roles": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_KEYS_MISSING",
+      "message": "Live concurrent shared-world labs need OPENAI_API_KEY and E2B_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: OPENAI_API_KEY: run `humanish keys set openai`; E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE"
+    }
+  },
+  "live external catch unreachable": {
+    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-sharedprovisioned",
+    "actor": "openai-computer-use",
+    "topology": "shared-world",
+    "topologyMode": "concurrent",
+    "roleCount": 2,
+    "concurrency": 2,
+    "dryRun": false,
+    "runId": "not-created",
+    "roles": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_CATCH_UNREACHABLE",
+      "message": "The external comms catch or inbox is unreachable or incompatible (GET /health must identify humanish-comms-catch and advertise recipient-inbox-v1). Update humanish on the catch host and restart it with `humanish comms catch` on that host, or drop comms.email to run without the inbox funnel."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE"
+    }
+  },
+  "recording and invalid analysis": {
+    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-sharedprovisioned",
+    "actor": "openai-computer-use",
+    "topology": "shared-world",
+    "topologyMode": "concurrent",
+    "roleCount": 2,
+    "concurrency": 2,
+    "dryRun": true,
+    "runId": "not-created",
+    "roles": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "message": "execution.desktop.recording is supported only on independent computer-use desktop lanes. Remove the declaration or select a supported route."
+    }
+  },
+  "invalid analysis and tasks": {
+    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-sharedprovisioned",
+    "actor": "openai-computer-use",
+    "topology": "shared-world",
+    "topologyMode": "concurrent",
+    "roleCount": 2,
+    "concurrency": 2,
+    "dryRun": true,
+    "runId": "not-created",
+    "roles": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_LAB_ANALYSIS_INVALID",
+      "message": "review.analysis must be false or a mapping containing only provider, maxCostUsd, model, question, timeoutMs and maxOutputTokens."
+    }
+  },
+  "tasks and unregistered actor": {
+    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-sharedprovisioned",
+    "actor": "not-an-actor",
+    "topology": "shared-world",
+    "topologyMode": "concurrent",
+    "roleCount": 2,
+    "concurrency": 2,
+    "dryRun": true,
+    "runId": "not-created",
+    "roles": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_LAB_TASKS_UNSUPPORTED",
+      "message": "actors[0].tasks is unsupported on this execution path. Task protocols require a per-lane computer-use route; shared-world, terminal-product, scripted-browser and synthetic routes do not consume them. Remove tasks only if a mission-only study is intended."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
+    }
+  },
+  "unregistered actor and invalid output limit": {
+    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-sharedprovisioned",
+    "actor": "not-an-actor",
+    "topology": "shared-world",
+    "topologyMode": "concurrent",
+    "roleCount": 2,
+    "concurrency": 2,
+    "dryRun": true,
+    "runId": "not-created",
+    "roles": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_ACTOR_UNSUPPORTED",
+      "message": "actors[0].type \"not-an-actor\" is not a registered computer-use actor."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
+    }
+  },
+  "invalid output limit and scenario dollar cap": {
+    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-sharedprovisioned",
+    "actor": "openai-computer-use",
+    "topology": "shared-world",
+    "topologyMode": "concurrent",
+    "roleCount": 2,
+    "concurrency": 2,
+    "dryRun": true,
+    "runId": "not-created",
+    "roles": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "message": "actors[0].maxOutputTokens must be a positive safe integer."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
+    }
+  },
+  "scenario dollar cap and provisioned plane concurrency 1": {
+    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-sharedprovisioned",
+    "actor": "openai-computer-use",
+    "topology": "shared-world",
+    "topologyMode": "concurrent",
+    "roleCount": 2,
+    "concurrency": 1,
+    "dryRun": true,
+    "runId": "not-created",
+    "roles": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "message": "scenario.caps.maxUsd (1) does not cap a computer-use lab: this route stops on execution.caps.maxUsd. Move the value to execution.caps.maxUsd; scenario.caps applies only to terminal-product labs."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
+    }
+  },
+  "provisioned plane concurrency 1 and output limit with a custom session": {
+    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-sharedprovisioned",
+    "actor": "openai-computer-use",
+    "topology": "shared-world",
+    "topologyMode": "concurrent",
+    "roleCount": 2,
+    "concurrency": 1,
+    "dryRun": true,
+    "runId": "not-created",
+    "roles": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "message": "shared-world studies need `execution.concurrency` of at least 2 (got 1). Sequential shared-world turns (concurrency 1) were removed in 0.106.0: omit execution.concurrency to run every participant at once, or set it to 2 or more. A provisioned subject also needs `subject.exposure: synthetic` and a `serve.start` that binds 0.0.0.0."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
+    }
+  },
+  "external plane without authorization and output limit with a custom session": {
+    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-sharedprovisioned",
+    "actor": "openai-computer-use",
+    "topology": "shared-world",
+    "topologyMode": "concurrent",
+    "roleCount": 2,
+    "concurrency": 2,
+    "dryRun": true,
+    "runId": "not-created",
+    "roles": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "message": "the external-public shared-world route requires `subject.publicTarget: { owner, authorized: true }` — you must attest you own/operate the public deployment used as the shared plane (author-trust; the harness cannot verify ownership)."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
+    }
+  },
+  "output limit with a custom session and live cap on an unpriced model": {
+    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-sharedprovisioned",
+    "actor": "openai-computer-use",
+    "topology": "shared-world",
+    "topologyMode": "concurrent",
+    "roleCount": 2,
+    "concurrency": 2,
+    "dryRun": false,
+    "runId": "not-created",
+    "roles": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "message": "maxOutputTokens cannot be enforced by a custom runSession."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE"
+    }
+  },
+  "live cap on an unpriced model and real receiving with local-agent": {
+    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-sharedprovisioned",
+    "actor": "local-agent",
+    "topology": "shared-world",
+    "topologyMode": "concurrent",
+    "roleCount": 2,
+    "concurrency": 2,
+    "dryRun": false,
+    "runId": "not-created",
+    "roles": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "message": "The declared spend cap cannot be enforced for unpriced model \"unpriced-model\"."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE"
+    }
+  },
+  "real receiving with local-agent and live without keys": {
+    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-sharedprovisioned",
+    "actor": "local-agent",
+    "topology": "shared-world",
+    "topologyMode": "concurrent",
+    "roleCount": 2,
+    "concurrency": 2,
+    "dryRun": false,
+    "runId": "not-created",
+    "roles": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "message": "Real email receiving is unavailable for local-agent: its host process does not isolate the inbox management credential. Use a hosted first-party computer-use actor."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE"
+    }
+  },
+  "real receiving with local-agent and clone without a repo slug": {
+    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-sharedprovisioned",
+    "actor": "local-agent",
+    "topology": "shared-world",
+    "topologyMode": "concurrent",
+    "roleCount": 2,
+    "concurrency": 2,
+    "dryRun": true,
+    "runId": "not-created",
+    "roles": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "message": "Real email receiving is unavailable for local-agent: its host process does not isolate the inbox management credential. Use a hosted first-party computer-use actor."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
+    }
+  },
+  "clone without a repo slug and live without keys": {
+    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-sharedprovisioned",
+    "actor": "openai-computer-use",
+    "topology": "shared-world",
+    "topologyMode": "concurrent",
+    "roleCount": 2,
+    "concurrency": 2,
+    "dryRun": false,
+    "runId": "not-created",
+    "roles": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "message": "subject.repos[0] must be an owner/repo slug (got \"not a slug\")."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE"
+    }
+  },
+  "real receiving with local-agent and external plane without an owner": {
+    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-sharedprovisioned",
+    "actor": "local-agent",
+    "topology": "shared-world",
+    "topologyMode": "concurrent",
+    "roleCount": 2,
+    "concurrency": 2,
+    "dryRun": true,
+    "runId": "not-created",
+    "roles": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "message": "Real email receiving is unavailable for local-agent: its host process does not isolate the inbox management credential. Use a hosted first-party computer-use actor."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
+    }
+  },
+  "external plane without an owner and live without keys": {
+    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-sharedprovisioned",
+    "actor": "openai-computer-use",
+    "topology": "shared-world",
+    "topologyMode": "concurrent",
+    "roleCount": 2,
+    "concurrency": 2,
+    "dryRun": false,
+    "runId": "not-created",
+    "roles": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "message": "`subject.publicTarget.owner` must be a public-safe operator/repo label (e.g. owner/repo); it is recorded in evidence, so it must carry no secret."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE"
+    }
+  }
+}
