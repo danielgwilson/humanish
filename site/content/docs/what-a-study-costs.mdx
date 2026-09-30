@@ -49,7 +49,7 @@ A six-participant, ten-minute study on the hosted route therefore lands between 
 
 ## What the caps do
 
-`execution.caps.maxUsd` stops a participant and `maxTotalUsd` stops the study when the _estimate_ reaches the number. Both are checked after each model response reports usage, so an in-flight request and concurrent participants can cross the line before stopping; they do not reserve the next request and they are not a provider billing limit. Desktop time and analysis have their own limits: a session ends at `timeoutMs` and humanish then closes its desktop, the sandbox deadline stops a desktop humanish could not close, and analysis is refused when its estimate exceeds its admission limit. `maxUsd: 0` still permits one paid request. The [budgets page](/docs/budgets-and-privacy#set-a-study-budget) has the exact rules.
+`execution.caps.maxUsd` stops a participant and `maxTotalUsd` stops the study when the _estimate_ reaches the number; neither is a provider billing limit. [Set a study budget](/docs/budgets-and-privacy#set-a-study-budget) has the exact rules, including what the caps leave out.
 
 ## What is not in these numbers
 

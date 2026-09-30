@@ -58,13 +58,6 @@ npx humanish stats --lab try-live --json
 
 Inspect the run's estimated model and desktop costs, rates, and missing-usage fields. An unknown amount means unknown, never zero. A `budget_reached` computer-use session is `incomplete`; reaching a threshold does not establish task completion.
 
-After `humanish init`, use the keyless first-run path or an explicit lab dry run for a preview that makes no provider calls:
-
-```bash
-npx humanish run first-run
-npx humanish lab run try-live --dry-run
-```
-
 ## How cost estimates work
 
 Computer-use bundles carry a per-participant model estimate and an aggregate
@@ -129,14 +122,7 @@ terminal study budget. Check route warnings before relying on a field.
 
 ## Store credentials
 
-```bash
-npx humanish keys set e2b
-npx humanish keys set openai
-npx humanish keys list
-npx humanish doctor
-```
-
-The hidden prompts write keys to the Humanish user store with mode `0600`. `keys list` prints names only. Environment variables work too: `E2B_API_KEY` and `OPENAI_API_KEY` for the default live path. An explicit ignored env file can be passed through `--env-file` on commands that support it.
+`npx humanish keys set e2b` and `npx humanish keys set openai` store the two keys. [Add two keys](/docs#add-two-keys) covers the store, environment variables and `--env-file`.
 
 Keep env files and credentials out of version control. Humanish records provisioned variable names, not their values, and scrubs known secret values from persisted text. The computer-use model's API key stays on the host; the desktop receives actions, not that key.
 
@@ -146,54 +132,16 @@ For terminal studies, `execution.runtimeAuth: openai-egress` keeps the raw OpenA
 
 ## Use a signed-in coding agent
 
-The computer-use route can use a locally signed-in Codex or Claude Code as the participant's model by setting `actors[0].type: local-agent`. `humanish doctor` reports installed and signed-in local agents.
-
-That uses your existing plan and its limits. It is slower than a direct model API call, and model usage can be unpriced in the evidence. E2B still needs its own key and still bills for desktops. Do not carry a priced API-model cap over and assume it bounds subscription usage.
-
-Read the [local-agent setup and limitations](/docs/local-agents) before choosing this route.
+`actors[0].type: local-agent` runs the participant on your signed-in Codex or Claude Code plan. E2B still bills for desktops, and a dollar cap does not bound plan usage. [Use a local coding agent](/docs/local-agents) has the setup and limits.
 
 ## Review evidence before sharing
 
-Run evidence lives under gitignored `.humanish/`. No feedback command publishes it for you. Live screenshots are full fidelity by default and can contain anything the app displayed.
-
-Use synthetic accounts and data. Keep private targets and local experiments in ignored lab files. Before sharing an artifact, run `verify` and review the actual content, including pixels.
-
-`verify` detects secret and path patterns. Free-form personal or sensitive information is not fully detected. A `share_ready` grade makes a bundle eligible for feedback; it does not remove the need for human review.
-
-For a study intended to produce share-as-is screenshots, `policies.redactScreenshots: true` blurs persisted frames at capture. That trades visual detail for safer evidence and is not a universal sensitive-data detector. See the [public-safety boundary](https://github.com/danielgwilson/humanish/blob/main/README.md#public-safety-boundary).
-
-To keep readable local evidence and share a copy afterward, use `humanish export --run YOUR_RUN_ID --format bundle --redact-screenshots --out ./shared-study`. This creates a separately verified workspace with blurred PNG screenshots and a derivation receipt. It preserves the original, refuses unsupported or invalid evidence, and makes no provider calls. Review the copied text and findings before sharing; blur is not a personal-information detector. [Complete workflow](/docs/read-results#draft-an-issue).
+Run evidence stays in gitignored `.humanish/`, and no command publishes it. Use synthetic accounts and data, and keep private targets in ignored lab files. Run `npx humanish verify --run latest --json` and read the pixels before sharing anything. [Verify before sharing](/docs/read-results#verify-before-sharing) explains the `shareSafety` grades and the redacted export.
 
 ## Recover after an interruption
 
-After a crash, inspect the interrupted run and its resource receipt:
-
-```bash
-npx humanish runs
-npx humanish cleanup --run latest --json
-```
-
-Once you have identified the interrupted run, reclaim its sandboxes:
-
-```bash
-npx humanish reclaim --run YOUR_RUN_ID --json
-```
-
-A `humanish lab preflight` probe that was interrupted leaves its receipt under `.humanish/preflight/`; `npx humanish reclaim --preflight --json` stops those sandboxes.
-
-A preflight sandbox also stops on its own. A `public-preview` probe gets each target's readiness budget plus five minutes. A `sandbox-loopback` probe gets the longest its clone and serve steps can take with your lab's `serve` and seed-step budgets, including the one retry of the runtime and install steps, plus five minutes, so a preflight does not time out where the run would finish provisioning. A declared `execution.desktop.sandboxTimeoutMs`, or E2B's 60-minute maximum, caps both. Without a declared timeout, a clone probe gets 13 minutes (a clone served as-is) up to 60 minutes (a Node app that installs and builds), where earlier versions gave 10; the receipt is what lets you stop it sooner.
-
-`reclaim` immediately attempts to stop the sandboxes recorded for that run. `reclaim` uses journaled exact IDs and needs `E2B_API_KEY`; it does not sweep unrelated resources in your provider account. See [`reclaim`](/docs/cli#humanish-reclaim) for the full flags.
-
-`humanish cleanup` writes an inspection receipt. It does not itself authorize provider-resource deletion. Check your provider console if cleanup cannot be confirmed.
+After a crash, run `npx humanish runs`, then `npx humanish cleanup --run YOUR_RUN_ID`, then `npx humanish reclaim --run YOUR_RUN_ID`. For an interrupted `humanish lab preflight` probe, run `npx humanish reclaim --preflight --json`. [Knowing that cleanup happened](/docs/trust-boundaries#knowing-that-cleanup-happened) explains each receipt and how long a preflight sandbox lives.
 
 ## Choose telemetry
 
-Humanish collects anonymous command usage by default, including finite CUA result categories and session stop causes when available. These can distinguish a preview, interruption, execution error or invalid evidence without sending raw errors or lane details. It does not send labs, subjects, personas, paths, or evidence.
-
-```bash
-npx humanish telemetry status
-npx humanish telemetry disable
-```
-
-`DO_NOT_TRACK=1` also disables telemetry. The [telemetry document](https://github.com/danielgwilson/humanish/blob/main/TELEMETRY.md) describes the collected fields.
+Telemetry is on by default and never sends labs, subjects, personas, paths or evidence. `npx humanish telemetry disable` or `DO_NOT_TRACK=1` turns it off; [TELEMETRY.md](https://github.com/danielgwilson/humanish/blob/main/TELEMETRY.md) lists every field.

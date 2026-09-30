@@ -60,12 +60,11 @@ Participants and Findings share one Observer workspace. The participant grid,
 recordings and original feedback remain available while you review ranked
 observations and follow their evidence links.
 
-Supported live studies generate analysis after the recording finishes by default,
-using `gpt-6-astra` with a separate $3 admission estimate limit. Set
-`review.analysis: false` in the lab to disable it, or configure
-`review.analysis.maxCostUsd` to choose another analysis budget.
-
-For an existing recording, inspect the local admission estimate, then generate:
+Supported live studies request analysis by default when the recording finishes;
+`review.analysis: false` in the lab turns it off.
+[Automatic analysis](https://github.com/danielgwilson/humanish/blob/main/docs/product/automatic-analysis.md)
+has the model, the $3 admission limit and the failure behavior. For an existing
+recording, inspect the admission estimate, then generate:
 
 ```bash
 npx humanish analyze --run latest --max-cost 3 --dry-run --json
@@ -74,10 +73,9 @@ npx humanish observe --run latest
 ```
 
 Generation sends selected retained text and captures to OpenAI and requires
-`OPENAI_API_KEY`. The cost ceiling applies to a conservative admission estimate,
-not an exact bill. Opening Observer does not start analysis. The review covers
-intent, outcome, friction, recovery and participant feedback; each finding links
-to original evidence. Coverage limits and missing evidence remain visible.
+`OPENAI_API_KEY`; opening Observer never starts it. The review covers intent,
+outcome, friction, recovery and participant feedback; each finding links to
+original evidence. Coverage limits and missing evidence remain visible.
 
 **Concerns considered** shows material concerns reviewed in the analysis,
 including reasons for leaving some out of the ranked findings. Follow those
@@ -129,13 +127,10 @@ safe observer: no login, but only runs whose `humanish verify` shareSafety is
 trusts an edge you already secure (Cloudflare Access, Tailscale, a proxy you own)
 and just binds loopback behind it.
 
-In every mode the server binds `127.0.0.1`. Remote access requires an edge
-forwarding to that loopback port; public access without authentication is
-available only for the `--safe` library filter. Exposure is fail-closed:
-`--expose` always needs a reachable public origin (a `--tunnel` or a `--public-url`,
-even under `--safe`), and then requires either edge auth (`--oauth` on the tunnel,
-or a `--public-url` you secure) or `--safe`. `--oauth google` with no allow rule
-lets any Google account in and warns loudly.
+In every mode the server binds `127.0.0.1`. `--expose` is refused before binding
+unless it has a reachable origin and either edge auth or `--safe`; the
+[exposure matrix](https://github.com/danielgwilson/humanish/blob/main/docs/architecture/serve.md#fail-closed-exposure-matrix)
+lists each combination and its error code.
 
 ## Watch a live run from your phone
 
