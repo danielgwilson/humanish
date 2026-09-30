@@ -40,8 +40,8 @@ read these as what the machinery found, not as rates for your users.
 
 An earlier study, kept here because the image ships in the npm package: four
 personas on [drawDB](https://github.com/drawdb-io/drawdb), a public open-source
-database diagram editor, driven against a commit-pinned local checkout. Every lane
-is a real computer-use session on a hosted desktop; the captions are each persona's
+database diagram editor, driven against a commit-pinned local checkout. Every participant
+ran a real computer-use session on a hosted desktop; the captions are each persona's
 own final report. drawDB is the application studied; it is not a Humanish adopter or endorser.
 
 [Quickstart](https://humanish.dev/docs) · [Study your app](https://humanish.dev/docs/your-app) · [What a study costs](https://humanish.dev/docs/what-a-study-costs) · [Trust boundaries](https://humanish.dev/docs/trust-boundaries) · [CLI reference](https://humanish.dev/docs/cli) · [Limits and evidence](https://humanish.dev/failure-modes)
@@ -61,7 +61,7 @@ preview and local-browser setup need only `humanish`.
 
 Choose how the participant runs:
 
-| Route                                                             | Participant authentication            | Desktop                                              | Automatic findings                               |
+| Setup                                                             | Participant authentication            | Desktop                                              | Automatic findings                               |
 | ----------------------------------------------------------------- | ------------------------------------- | ---------------------------------------------------- | ------------------------------------------------ |
 | `first-run` preview                                               | None; synthetic evidence only         | None                                                 | No model analysis                                |
 | [Local browser study](docs/architecture/local-browser-runtime.md) | Codex ChatGPT login; remote inference | Linux x64 + Docker/KVM or M3+ Mac + Lima; no E2B key | Separate Codex account analyst by default        |
@@ -154,6 +154,8 @@ Source: [`skills/humanish/SKILL.md`](skills/humanish/SKILL.md).
 humanish/     committed labs, personas, scenarios, coverage notes
 .humanish/   ignored run evidence, Observer output, reviews, local state
 ```
+
+[ARCHITECTURE.md](ARCHITECTURE.md) traces `humanish run <lab>` through the code.
 
 After a run, read its findings and verification grade:
 
@@ -280,43 +282,32 @@ interactive stdin/stdout, and refuses detected coding-agent sessions even with
 a TTY. Agents should use `lab list --json`, `lab inspect <lab> --json`, and
 `runs --json`. Read [TUI behavior and JSON alternatives](https://humanish.dev/docs/review-surfaces#for-coding-agents-and-scripts).
 
-Press **c** for Connections, then choose **Add API key** to enter an AgentMail
-key with input hidden. Humanish saves the key in its user-level store (shared
-across your projects) and non-secret connection metadata in
-`.humanish/local/comms.yaml`. Ctrl+C cancels entry and returns to the TUI.
-Existing environment or project keys take precedence over the saved key.
-Saving a key runs a read-only authentication check. Choose **Configure a lab**
-to preview a local copy that gives each participant a fresh real inbox. Email
-is hosted by AgentMail and may be processed by actor/analysis models; these
-recordings require local review. [Setup, tradeoffs and recovery](docs/architecture/real-email-receiving.md).
+Its Connections screen (**c**) adds an AgentMail key for
+[real email receiving](docs/architecture/real-email-receiving.md), which gives each participant a
+fresh hosted inbox.
 
-## Serve the Library
+## Find more guides
 
-`humanish serve` serves your run library on loopback. The [Observer and terminal guide](https://humanish.dev/docs/review-surfaces#serve-the-run-library)
-covers local viewing, authenticated remote access, and share-safe public exposure.
-
-### Watch a live run from your phone
-
-See [authenticated live viewing](https://humanish.dev/docs/review-surfaces#watch-a-live-run-from-your-phone).
-
-## Lab Manifests
-
-See the [lab manifest reference](https://humanish.dev/docs/lab-manifests) for
-source directories, route selection, and ignored private labs.
-
-### Computer-Use Labs
-
-The [computer-use reference](https://humanish.dev/docs/computer-use) covers
-subjects, screenshots, devices, mobile emulation, stop rules, dwell windows,
-and failed-lane reruns. The [cost model](https://humanish.dev/docs/budgets-and-privacy#how-cost-estimates-work)
-explains model selection, dated estimates, and study/per-participant caps.
+- [Lab manifests](https://humanish.dev/docs/lab-manifests): source directories, route selection,
+  ignored private labs and
+  [scripted browser scenarios](https://humanish.dev/docs/lab-manifests#scripted-browser-scenarios).
+- [Computer use](https://humanish.dev/docs/computer-use): subjects, screenshots, devices, mobile
+  emulation, stop rules, dwell windows and reruns of failed participants. The
+  [cost model](https://humanish.dev/docs/budgets-and-privacy#how-cost-estimates-work) explains
+  model selection, dated estimates, and study and per-participant caps.
+- [A signed-in coding agent](https://humanish.dev/docs/local-agents): Codex or Claude Code supplies
+  the participant's model on your existing plan. E2B still needs a key and bills for desktops.
+- [The run library](https://humanish.dev/docs/review-surfaces#serve-the-run-library): `humanish serve`
+  serves your runs on loopback, with authenticated remote access,
+  [live viewing from a phone](https://humanish.dev/docs/review-surfaces#watch-a-live-run-from-your-phone)
+  and share-safe public exposure.
 
 Mobile viewport and touch flags do not certify gesture equivalence. The
 [2026-09-05 input-conformance correction](docs/goals/computer-use-actor/receipts/mobile-input-conformance-2026-09-05.md)
-qualifies the historical phone-lane results: they describe Humanish's measured input path,
-not established physical-device app behavior.
+qualifies the historical results from phone-sized participants: they describe Humanish's
+measured input path, not established physical-device app behavior.
 
-#### Drive an already-running local app
+## Drive an already-running local app
 
 Use a custom executor and non-vision provider to drive your app's state contract
 without E2B. The [runnable npm example](examples/participant/README.md)
@@ -329,17 +320,6 @@ node node_modules/humanish/examples/participant/run.mjs
 Run it after installing `humanish`. It makes no model calls; it proves the
 integration, not persona behavior. See [state-driven local adapters](https://humanish.dev/docs/computer-use#state-driven-local-adapters)
 for the supported library seam.
-
-## Browser Scenario Manifests
-
-See [scripted browser scenarios](https://humanish.dev/docs/lab-manifests#scripted-browser-scenarios)
-for executable steps against a running local app.
-
-## A First Live Run Without a Provider API Key
-
-A [signed-in local Codex or Claude Code](https://humanish.dev/docs/local-agents)
-can supply the participant's model. It consumes your existing plan; E2B still
-requires a key and bills for desktops.
 
 ## Three Roles
 
@@ -355,6 +335,9 @@ personas, paths, and evidence. `humanish telemetry disable` or `DO_NOT_TRACK=1`
 turns it off. See [TELEMETRY.md](TELEMETRY.md) for the exact fields.
 
 ## Development
+
+Contributors: read [CONTRIBUTING.md](CONTRIBUTING.md) first. It gives the reading order, the
+commands CI runs and what a pull request needs.
 
 ```bash
 pnpm install
@@ -376,6 +359,7 @@ pnpm humanish lab list
 
 - [User guides and generated CLI reference](https://humanish.dev/docs)
 - [Current safety state and goals](docs/goals/current.md)
+- [Contributing: reading order, commands and pull requests](CONTRIBUTING.md)
 - [Contributor and agent ramp](docs/ramp/README.md)
 - [Architecture: the run path, code map, support matrix and invariants](ARCHITECTURE.md)
 - [Project layout: the `humanish/` and `.humanish/` folders](docs/architecture/project-layout.md)
