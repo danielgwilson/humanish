@@ -91,8 +91,25 @@ describe("openAiActionToCua", () => {
     });
   });
 
-  it("defaults an unknown or missing button to left", () => {
+  it("runs the wheel button as a middle click and back/forward as history shortcuts", () => {
+    expect(openAiActionToCua({ type: "click", x: 5, y: 6, button: "wheel" })).toEqual({
+      kind: "click",
+      x: 5,
+      y: 6,
+      button: "middle",
+    });
     expect(openAiActionToCua({ type: "click", x: 1, y: 2, button: "back" })).toEqual({
+      kind: "keypress",
+      keys: ["ALT", "LEFT"],
+    });
+    expect(openAiActionToCua({ type: "click", x: 1, y: 2, button: "forward" })).toEqual({
+      kind: "keypress",
+      keys: ["ALT", "RIGHT"],
+    });
+  });
+
+  it("defaults an unknown or missing button to left", () => {
+    expect(openAiActionToCua({ type: "click", x: 1, y: 2, button: "sideways" })).toEqual({
       kind: "click",
       x: 1,
       y: 2,
