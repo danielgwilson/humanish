@@ -56,51 +56,99 @@ const speechText = z
   );
 const coordinate = z.number().finite().min(-1_000_000).max(1_000_000);
 const point = { x: coordinate, y: coordinate };
+const keyName = z.string().min(1).max(BROWSER_CONTROL_LIMITS.keyCharacters);
+const chord = z.array(keyName).min(1).max(BROWSER_CONTROL_LIMITS.chordKeys);
+const clickAction = z.strictObject({
+  kind: z.literal("click"),
+  ...point,
+  button: z.enum(["left", "right", "middle"]).optional(),
+});
+const doubleClickAction = z.strictObject({ kind: z.literal("double_click"), ...point });
+const moveAction = z.strictObject({ kind: z.literal("move"), ...point });
+const scrollAction = z.strictObject({
+  kind: z.literal("scroll"),
+  ...point,
+  dx: coordinate,
+  dy: coordinate,
+});
+const dragAction = z.strictObject({
+  kind: z.literal("drag"),
+  path: z.array(z.strictObject(point)).min(1).max(BROWSER_CONTROL_LIMITS.dragPoints),
+});
+const typeAction = z.strictObject({ kind: z.literal("type"), text });
+const keypressAction = z.strictObject({ kind: z.literal("keypress"), keys: chord });
+const waitAction = z.strictObject({
+  kind: z.literal("wait"),
+  ms: z.number().finite().min(0).max(BROWSER_CONTROL_LIMITS.waitMs).optional(),
+});
+const screenshotAction = z.strictObject({ kind: z.literal("screenshot") });
+const speakAction = z.strictObject({ kind: z.literal("speak"), text: speechText });
 const browserActionSchemas = [
-  z.strictObject({
-    kind: z.literal("click"),
-    ...point,
-    button: z.enum(["left", "right", "middle"]).optional(),
-  }),
-  z.strictObject({ kind: z.literal("double_click"), ...point }),
-  z.strictObject({ kind: z.literal("move"), ...point }),
-  z.strictObject({ kind: z.literal("scroll"), ...point, dx: coordinate, dy: coordinate }),
-  z.strictObject({ kind: z.literal("type"), text }),
-  z.strictObject({
-    kind: z.literal("keypress"),
-    keys: z
-      .array(z.string().min(1).max(BROWSER_CONTROL_LIMITS.keyCharacters))
-      .min(1)
-      .max(BROWSER_CONTROL_LIMITS.chordKeys),
-  }),
-  z.strictObject({
-    kind: z.literal("drag"),
-    path: z.array(z.strictObject(point)).min(1).max(BROWSER_CONTROL_LIMITS.dragPoints),
-  }),
-  z.strictObject({
-    kind: z.literal("wait"),
-    ms: z.number().finite().min(0).max(BROWSER_CONTROL_LIMITS.waitMs).optional(),
-  }),
-  z.strictObject({ kind: z.literal("screenshot") }),
+  clickAction,
+  doubleClickAction,
+  moveAction,
+  scrollAction,
+  typeAction,
+  keypressAction,
+  dragAction,
+  waitAction,
+  screenshotAction,
 ] as const;
+// The Codex participant's tool schema: no held keys, so its tool surface stays as published.
 export const browserOnlyControlActionSchema = z.discriminatedUnion("kind", browserActionSchemas);
 export const browserControlActionSchema = z
-  .discriminatedUnion("kind", [
-    ...browserActionSchemas,
-    z.strictObject({ kind: z.literal("speak"), text: speechText }),
-  ])
-  .transform((action): CuaAction => {
-    if (action.kind === "click")
+  .discriminatedUnion("kind", [...browserActionSchemas, speakAction])
+  .transform(toCuaAction);
+// What crosses the host-guest wire: the participant actions plus held keys on pointer actions,
+// which the OpenAI provider maps from its computer tool.
+const held = { heldKeys: chord.optional() };
+const wireActions = z.discriminatedUnion("kind", [
+  clickAction.extend(held),
+  doubleClickAction.extend(held),
+  moveAction.extend(held),
+  scrollAction.extend(held),
+  typeAction,
+  keypressAction,
+  dragAction.extend(held),
+  waitAction,
+  screenshotAction,
+  speakAction,
+]);
+const wireActionSchema = wireActions.transform(toCuaAction);
+
+/** Drop absent optional fields, which the CuaAction type does not allow as `undefined`. */
+function toCuaAction(action: z.output<typeof wireActions>): CuaAction {
+  const heldKeys =
+    "heldKeys" in action && action.heldKeys !== undefined ? { heldKeys: action.heldKeys } : {};
+  switch (action.kind) {
+    case "click":
       return {
         kind: action.kind,
         x: action.x,
         y: action.y,
         ...(action.button !== undefined ? { button: action.button } : {}),
+        ...heldKeys,
       };
-    if (action.kind === "wait")
+    case "double_click":
+    case "move":
+      return { kind: action.kind, x: action.x, y: action.y, ...heldKeys };
+    case "scroll":
+      return {
+        kind: action.kind,
+        x: action.x,
+        y: action.y,
+        dx: action.dx,
+        dy: action.dy,
+        ...heldKeys,
+      };
+    case "drag":
+      return { kind: action.kind, path: action.path, ...heldKeys };
+    case "wait":
       return { kind: action.kind, ...(action.ms !== undefined ? { ms: action.ms } : {}) };
-    return action;
-  });
+    default:
+      return action;
+  }
+}
 const heardSpeechSchema = z.strictObject({
   id: token,
   source: z.literal("speaker_audio"),
@@ -141,7 +189,7 @@ const requestSchema = z.discriminatedUnion("operation", [
     type: z.literal("request"),
     operation: z.literal("EXECUTE"),
     actionId: token,
-    action: browserControlActionSchema,
+    action: wireActionSchema,
   }),
   z.strictObject({
     ...common,
@@ -227,7 +275,7 @@ export function parseBrowserControlReply(value: unknown): BrowserControlReply {
   return reply;
 }
 export function validateBrowserControlAction(value: unknown): CuaAction {
-  const parsed = browserControlActionSchema.safeParse(value);
+  const parsed = wireActionSchema.safeParse(value);
   if (!parsed.success) throw new CuaExecutorError("invalid_request", "not_dispatched");
   return parsed.data;
 }

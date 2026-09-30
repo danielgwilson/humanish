@@ -54,14 +54,17 @@ import type {
 } from "../actors/contract.js";
 import { actorRegistry, isScriptedBrowserActorDescriptor } from "../actors/registry.js";
 import { toErrorMessage } from "../substrates/command-failure.js";
-import { commandDigestOf, provisionCloneSubject, resolveSubjectState } from "./computer-use/lab.js";
+import { resolveSubjectState } from "./computer-use/lab.js";
+import { provisionCloneSubject } from "../subject/clone.js";
+import { commandDigestOf } from "../subject/state.js";
 import {
   loadE2BDesktopModule,
   type E2BDesktopModule,
   type E2BDesktopSandbox,
 } from "../substrates/e2b/desktop-launch.js";
 import { acquireE2BDesktopSandbox } from "../substrates/e2b/sandbox.js";
-import type { DetachedTimers } from "../substrates/e2b/detached.js";
+import { e2bShell } from "../substrates/e2b/shell.js";
+import type { DetachedTimers } from "../substrates/detached.js";
 import type { LabConfig } from "../lab/types.js";
 import { renderObserver, type ObserverResult } from "../observer/render.js";
 import { digestText, redactText } from "../evidence/redaction.js";
@@ -500,7 +503,7 @@ async function runScriptedBrowserLabInScope(
           await validatePreparedRunArtifactPaths(runPaths);
         }
 
-        subjectCommit = await provisionCloneSubject(subjectDesktop, {
+        subjectCommit = await provisionCloneSubject(e2bShell(subjectDesktop), {
           repo: subjectRepo!,
           depth: config.subject.clone?.depth ?? 1,
           serve: serve!,

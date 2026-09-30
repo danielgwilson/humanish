@@ -26,11 +26,9 @@ import type {
   CuaProvider,
   CuaTurn,
 } from "../../../src/actors/computer-use/loop.js";
-import {
-  CUA_ACTOR_LAB_PROVIDER_METADATA,
-  makeChromeBrowserStateObserver,
-  runCuaActorLab,
-} from "../../../src/routes/computer-use/lab.js";
+import { runCuaActorLab } from "../../../src/routes/computer-use/lab.js";
+import { CUA_ACTOR_LAB_PROVIDER_METADATA } from "../../../src/substrates/e2b/cua-desktop.js";
+import { makeChromeBrowserStateObserver } from "../../../src/substrates/e2b/desktop-cdp.js";
 import { buildCuaBundle } from "../../../src/routes/computer-use/single-bundle.js";
 import { buildCuaCostSummary } from "../../../src/routes/computer-use/costs.js";
 import { makeLaneWriteScreenshot } from "../../../src/routes/computer-use/lanes.js";
@@ -439,42 +437,39 @@ describe("lab routing (app-url → cua)", () => {
       subject: { source: "this-repo" },
       actors: [{ type: "synthetic-persona" }],
     });
-    const clone = parseLabConfig({
-      schema: LAB_CONFIG_SCHEMA,
-      id: "c",
-      subject: { source: "clone", repos: ["example-org/example-app"] },
-      actors: [{ type: "humanish-setup" }],
-      execution: { target: "e2b-desktop" },
-    });
-    const meta = parseLabConfig({
-      schema: LAB_CONFIG_SCHEMA,
-      id: "m",
-      subject: { source: "clone", repos: ["example-org/example-app"] },
-      actors: [{ type: "codex-app-server" }],
-      execution: { target: "e2b-desktop" },
-    });
-    if (!synthetic.ok || !clone.ok || !meta.ok) throw new Error("fixture configs must parse");
+    if (!synthetic.ok) throw new Error("fixture config must parse");
     expect(selectLabBackend(synthetic.config)).toBe("synthetic");
-    expect(selectLabBackend(clone.config)).toBe("cua");
-    expect(selectLabBackend(meta.config)).toBe("cua");
+    // A clone lab without a computer-use or scripted actor no longer parses; a library caller that
+    // skips the parser still routes to cua.
+    for (const type of ["humanish-setup", "codex-app-server"]) {
+      const clone = {
+        schema: LAB_CONFIG_SCHEMA,
+        id: "c",
+        subject: { source: "clone", repos: ["example-org/example-app"] },
+        actors: [{ type }],
+        execution: { target: "e2b-desktop" },
+      } as const;
+      expect(parseLabConfig(clone).ok).toBe(false);
+      expect(selectLabBackend(clone as unknown as LabConfig)).toBe("cua");
+    }
   });
 
   it("routes every clone subject to cua, where a non-computer-use actor fails closed", async () => {
     expect(selectLabBackend(cloneCuaConfig())).toBe("cua");
     // A non-computer-use actor also routes to cua, whose actor gate refuses it before any
     // sandbox or filesystem work.
-    const meta = parseLabConfig({
+    // The parser refuses this config now; runLab is reached by a library caller that skips it.
+    const meta = {
       schema: LAB_CONFIG_SCHEMA,
       id: "m2",
       subject: { source: "clone", repos: ["example-org/example-app"] },
       actors: [{ type: "codex-app-server" }],
       execution: { target: "e2b-desktop" },
-    });
-    if (!meta.ok) throw new Error("fixture must parse");
-    expect(selectLabBackend(meta.config)).toBe("cua");
+    } as unknown as LabConfig;
+    expect(selectLabBackend(meta)).toBe("cua");
     const cwd = await mkdtemp(path.join(tmpdir(), "humanish-clone-actor-"));
     try {
-      const outcome = await runLab(meta.config, { cwd, dryRun: true });
+      const outcome = await runLab(meta, { cwd, dryRun: true });
       expect(outcome.backend).toBe("cua");
       expect(outcome.result.ok).toBe(false);
       expect(outcome.result.error?.code).toBe("HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED");

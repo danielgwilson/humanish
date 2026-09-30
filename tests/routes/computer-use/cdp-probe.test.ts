@@ -17,10 +17,8 @@ import {
   type ChromeCdpProbeArgs,
   type ChromeCdpProbeResult,
 } from "../../../src/routes/computer-use/cdp-probe.js";
-import {
-  makeChromeBrowserStateObserver,
-  makeChromeDesktopGeometryObserver,
-} from "../../../src/routes/computer-use/lab.js";
+import { makeChromeBrowserStateObserver } from "../../../src/substrates/e2b/desktop-cdp.js";
+import { makeChromeDesktopGeometryObserver } from "../../../src/substrates/e2b/desktop-geometry.js";
 import type {
   E2BCommandResult,
   E2BDesktopSandbox,

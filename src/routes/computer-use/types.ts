@@ -7,10 +7,8 @@ import type {
 } from "../../actors/computer-use/loop.js";
 import type { CommsReceivingRun } from "../../comms/receiving.js";
 import { type CuaDesktopLane } from "./desktop-lane.js";
-import {
-  type DesktopBrowserEvidence,
-  type SubjectPhaseEvent,
-} from "../../substrates/e2b/cua-provisioning.js";
+import type { SubjectPhaseEvent } from "../../subject/steps.js";
+import type { DesktopBrowserEvidence } from "../../substrates/e2b/desktop-browser.js";
 import {
   type AutomaticAnalysisHooks,
   type AutomaticAnalysisResult,
@@ -33,7 +31,7 @@ import {
   type E2BDesktopSandbox,
 } from "../../substrates/e2b/desktop-launch.js";
 import { type DesktopResourceObservation } from "../../substrates/e2b/desktop-resources.js";
-import { type DetachedTimers } from "../../substrates/e2b/detached.js";
+import { type DetachedTimers } from "../../substrates/detached.js";
 import { type LabCommsEmail, type LabConfig, type LabSubjectServe } from "../../lab/types.js";
 import { type LocalAgentId } from "../../actors/local-agent/cli.js";
 import { renderObserver, type ObserverResult } from "../../observer/render.js";

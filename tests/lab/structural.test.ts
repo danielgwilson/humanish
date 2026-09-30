@@ -59,7 +59,7 @@ describe("lab refactor structural necessity (rung 1)", () => {
 // actually CONSUME the config, not merely route a label (otherwise a "3 kinds in disguise"
 // engine would pass an expressiveness test that never executes).
 describe("lab config expressiveness (rung 3)", () => {
-  it("a brand-new clone+e2b migration-style composition parses and routes config-only", () => {
+  it("a clone+e2b composition with a free-form actor label is refused at parse", () => {
     const result = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
       id: "migration-rehearsal",
@@ -69,10 +69,8 @@ describe("lab config expressiveness (rung 3)", () => {
         repos: ["example-org/private-app"],
         clone: { depth: 1, fanout: 1 },
       },
-      // A free-form (non-registered) actor label on the clone+e2b route stays a label and routes
-      // to meta. (codex-exec is now a REGISTERED terminal actor — it would be a mis-config here, so
-      // this expressiveness test uses a generic migrator label to keep its point: clone+e2b config
-      // routes config-only with the mission forward-declared.)
+      // No route runs a free-form actor label on a clone lab; it used to parse and then fail at
+      // run start, so the parser refuses it and names the actors that can run a clone lab.
       actors: [
         {
           type: "codex-migrator",
@@ -82,12 +80,9 @@ describe("lab config expressiveness (rung 3)", () => {
       execution: { target: "e2b-desktop" },
       policies: { redactRepos: true },
     });
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    // Routes to the E2B desktop backend purely from config — no new engine code.
-    expect(selectLabBackend(result.config)).toBe("cua");
-    // The mission is forward-declared today and surfaced as a warning, never silently consumed.
-    expect(result.warnings.join(" ")).toContain("actors[0].mission");
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.message).toContain('Got "codex-migrator"');
   });
 
   it("the COMMITTED scripted-demo lab parses with zero warnings, routes to the scripted backend, and its scenario.ref resolves to executable committed steps", async () => {

@@ -165,6 +165,23 @@ describe("describeCuaAction", () => {
       "keypress Control+a",
     );
   });
+
+  it("names the keys a pointer action holds", () => {
+    expect(describeCuaAction({ kind: "click", x: 3, y: 4, heldKeys: ["SHIFT"] })).toBe(
+      "click (3, 4) holding SHIFT",
+    );
+    expect(
+      describeCuaAction({
+        kind: "drag",
+        path: [
+          { x: 0, y: 0 },
+          { x: 5, y: 5 },
+        ],
+        heldKeys: ["CTRL", "ALT"],
+      }),
+    ).toBe("drag 2 points holding CTRL+ALT");
+    expect(describeCuaAction({ kind: "move", x: 3, y: 4, heldKeys: [] })).toBe("move (3, 4)");
+  });
 });
 
 describe("runComputerUseLoop", () => {

@@ -171,12 +171,12 @@ from your own state, pair it with a non-vision `CuaProvider`, and call
 
 The supported library path keeps personas, the Observer, the evidence bundle,
 redaction, and the friction loop, while skipping E2B entirely. Start with the
-[complete runnable example](examples/state-driven-local-app/README.md), which
+[complete runnable example](../../examples/participant/README.md), which
 ships in the npm package:
 
 ```bash
 npm install humanish
-node node_modules/humanish/docs/architecture/examples/state-driven-local-app/runner.mjs
+node node_modules/humanish/examples/participant/run.mjs
 ```
 
 The example includes a real loopback app, HTTP state/action bridge, full config

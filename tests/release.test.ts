@@ -45,6 +45,7 @@ describe("release readiness", () => {
       "docs/ramp",
       "docs/release",
       "docs/roadmap",
+      "examples",
       "skills",
       "README.md",
       "LICENSE",
@@ -56,8 +57,9 @@ describe("release readiness", () => {
     expect(packageJson.scripts["public-surface:scan"]).toBe("node scripts/public-surface-scan.mjs");
     expect(packageJson.scripts["skill:check"]).toBe("DISABLE_TELEMETRY=1 npx skills add . --list");
     expect(packageJson.scripts["pack:dry-run"]).toBe("npm pack --dry-run");
+    expect(packageJson.scripts["api:proof"]).toBe("node scripts/public-api-proof.mjs");
     expect(packageJson.scripts["release:check"]).toBe(
-      "pnpm check && pnpm public-surface:scan && pnpm skill:check && npm pack --dry-run",
+      "pnpm check && pnpm api:proof && pnpm public-surface:scan && pnpm skill:check && npm pack --dry-run",
     );
   });
 
@@ -125,7 +127,9 @@ describe("release readiness", () => {
     expect(packedScreenshot.size).toBe(screenshot.size);
     expect(packedScreenshot.size).toBeGreaterThan(50_000);
   }, 45_000);
+});
 
+describe("npm publishing", () => {
   it("publishes dependency ranges npm can install", async () => {
     // publish.yml runs `npm publish`, which ships package.json as written; npm cannot resolve
     // pnpm's catalog: or workspace: protocols, so an installed package would fail to resolve.

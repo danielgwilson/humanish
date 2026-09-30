@@ -4,17 +4,13 @@ import {
   type AutomaticAnalysisBudget,
 } from "../analysis/automatic-config.js";
 
-import {
-  CUA_ACTOR_LAB_PROVIDER_METADATA,
-  provisionCloneSubject,
-} from "../routes/computer-use/lab.js";
-import { probeUrl } from "../substrates/e2b/detached.js";
-import {
-  loadE2BDesktopModule,
-  type E2BDesktopModule,
-  type E2BDesktopSandbox,
-} from "../substrates/e2b/desktop-launch.js";
+import { provisionCloneSubject } from "../subject/clone.js";
+import { CUA_ACTOR_LAB_PROVIDER_METADATA } from "../substrates/e2b/cua-desktop.js";
+import { probeUrl } from "../substrates/detached.js";
+import { loadE2BDesktopModule, type E2BDesktopModule } from "../substrates/e2b/desktop-launch.js";
 import { acquireE2BDesktopSandbox } from "../substrates/e2b/sandbox.js";
+import { e2bShell } from "../substrates/e2b/shell.js";
+import type { Shell } from "../substrates/shell.js";
 import { isLoopbackUrl } from "./parse-subject.js";
 import { type LabConfig } from "./types.js";
 import { selectLabBackend, type LabBackend } from "./engine.js";
@@ -268,9 +264,9 @@ async function runPublicPreviewPreflight(ctx: PreflightContext): Promise<LabPref
     );
   }
 
-  const probe = await withPreflightSandbox(ctx, { e2bApiKey }, async (desktop) => {
+  const probe = await withPreflightSandbox(ctx, { e2bApiKey }, async (shell) => {
     for (const target of publicTargets) {
-      const reachable = await probeUrl(desktop, targetUrlFor(ctx.config, target), {
+      const reachable = await probeUrl(shell, targetUrlFor(ctx.config, target), {
         timeoutMs: ctx.timeoutMs,
         requestTimeoutMs: DEFAULT_REQUEST_TIMEOUT_MS,
         ...(ctx.hooks.now === undefined ? {} : { now: ctx.hooks.now }),
@@ -355,9 +351,9 @@ async function runSandboxLoopbackPreflight(ctx: PreflightContext): Promise<LabPr
   }
 
   let subjectCommitDigest: string | undefined;
-  const probe = await withPreflightSandbox(ctx, { e2bApiKey }, async (desktop) => {
+  const probe = await withPreflightSandbox(ctx, { e2bApiKey }, async (shell) => {
     const subjectEnvNames = ctx.config.subject.env ?? [];
-    await provisionCloneSubject(desktop, {
+    await provisionCloneSubject(shell, {
       repo,
       depth: ctx.config.subject.clone?.depth ?? 1,
       serve,
@@ -393,7 +389,7 @@ async function runSandboxLoopbackPreflight(ctx: PreflightContext): Promise<LabPr
 async function withPreflightSandbox(
   ctx: PreflightContext,
   args: { e2bApiKey: string },
-  callback: (desktop: E2BDesktopSandbox) => Promise<void>,
+  callback: (shell: Shell) => Promise<void>,
 ): Promise<{ ok: true } | { ok: false; result: LabPreflightResult }> {
   let module: E2BDesktopModule | undefined;
   let sandboxId: string | undefined;
@@ -440,7 +436,7 @@ async function withPreflightSandbox(
         : {}),
     };
 
-    await callback(probe.sandbox);
+    await callback(e2bShell(probe.sandbox));
   } catch (error: unknown) {
     failureMessage = compactError(error);
   } finally {

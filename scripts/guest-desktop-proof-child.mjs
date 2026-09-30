@@ -117,7 +117,7 @@ try {
   const html = `<!doctype html><meta charset="utf-8"><title>NoteShelf native input proof</title>
 <style>body{font:20px system-ui;margin:28px;background:#f7f8fb}textarea{width:780px;height:100px;font:20px monospace}button{font-size:20px;padding:10px}#pad{width:400px;height:130px;background:#dbeafe;margin-top:24px}#spacer{height:1600px}</style>
 <h1>NoteShelf</h1><label for="note">Draft</label><br><textarea id="note" autofocus></textarea><br><button id="save">Save note</button><p id="count">Saved 0</p><div id="pad">Pointer test area</div><div id="spacer"></div><p>End of page</p>
-<script>window.proof={saves:0,downs:0,ups:0,moves:0,double:0,savedText:null};save.onclick=()=>{proof.saves++;proof.savedText=note.value;count.textContent='Saved '+proof.saves};pad.onmousedown=()=>proof.downs++;pad.onmouseup=()=>proof.ups++;pad.onmousemove=()=>proof.moves++;pad.ondblclick=()=>proof.double++;</script>`;
+<script>window.proof={saves:0,downs:0,ups:0,moves:0,double:0,savedText:null,clicks:[]};save.onclick=()=>{proof.saves++;proof.savedText=note.value;count.textContent='Saved '+proof.saves};pad.onmousedown=()=>proof.downs++;pad.onmouseup=()=>proof.ups++;pad.onmousemove=()=>proof.moves++;pad.ondblclick=()=>proof.double++;pad.onclick=(e)=>proof.clicks.push({shift:e.shiftKey,ctrl:e.ctrlKey,alt:e.altKey});</script>`;
   server = createServer((req, res) => {
     res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
     res.end(html);
@@ -521,6 +521,19 @@ try {
     assert.equal(after.ups, before.ups);
     assert.deepEqual(sent, ["mousemove", "mousedown"]);
     return { sent, before, after };
+  });
+  await test("held modifiers reach the click and are released after it", async () => {
+    const point = await target("#pad");
+    const before = await page.evaluate(() => proof.clicks.length);
+    await action({ kind: "click", ...point, heldKeys: ["SHIFT", "CTRL"] });
+    await action({ kind: "click", ...point });
+    await page.waitForFunction((count) => proof.clicks.length === count + 2, before);
+    const clicks = (await page.evaluate(() => proof.clicks)).slice(before);
+    assert.deepEqual(clicks, [
+      { shift: true, ctrl: true, alt: false },
+      { shift: false, ctrl: false, alt: false },
+    ]);
+    return { clicks };
   });
   result.browser = context.browser()?.version();
   result.chromiumSandbox = true;

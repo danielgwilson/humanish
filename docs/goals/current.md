@@ -110,7 +110,7 @@ Source and tests establish observed behavior. Resolve conflicts with requirement
 explicitly; neither stale status prose nor a passing test makes a bug correct.
 
 The library-assisted `local-app` route now includes a
-[runnable npm example](../architecture/examples/state-driven-local-app/README.md).
+[runnable npm example](../../examples/participant/README.md).
 Its deterministic provider demonstrates the integration with a real loopback
 app; it does not establish persona effectiveness or independent adoption.
 

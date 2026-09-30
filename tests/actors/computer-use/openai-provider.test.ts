@@ -189,6 +189,46 @@ describe("openAiActionToCua", () => {
     });
   });
 
+  it("keeps held keys on click, double_click, drag, move and scroll", () => {
+    const keys = ["SHIFT", 7, "CTRL"];
+    expect(openAiActionToCua({ type: "click", x: 1, y: 2, button: "left", keys })).toEqual({
+      kind: "click",
+      x: 1,
+      y: 2,
+      button: "left",
+      heldKeys: ["SHIFT", "CTRL"],
+    });
+    expect(openAiActionToCua({ type: "double_click", x: 1, y: 2, keys })).toMatchObject({
+      heldKeys: ["SHIFT", "CTRL"],
+    });
+    expect(openAiActionToCua({ type: "move", x: 1, y: 2, keys })).toMatchObject({
+      heldKeys: ["SHIFT", "CTRL"],
+    });
+    expect(
+      openAiActionToCua({ type: "scroll", x: 1, y: 2, scroll_x: 0, scroll_y: 3, keys }),
+    ).toMatchObject({ heldKeys: ["SHIFT", "CTRL"] });
+    expect(
+      openAiActionToCua({
+        type: "drag",
+        path: [
+          { x: 1, y: 2 },
+          { x: 3, y: 4 },
+        ],
+        keys,
+      }),
+    ).toMatchObject({ heldKeys: ["SHIFT", "CTRL"] });
+    // Absent, null and empty keys leave the field off.
+    for (const empty of [undefined, null, []]) {
+      expect(openAiActionToCua({ type: "click", x: 1, y: 2, keys: empty })).not.toHaveProperty(
+        "heldKeys",
+      );
+    }
+    // A history button with held keys folds them into its shortcut.
+    expect(
+      openAiActionToCua({ type: "click", x: 1, y: 2, button: "back", keys: ["SHIFT"] }),
+    ).toEqual({ kind: "keypress", keys: ["SHIFT", "ALT", "LEFT"] });
+  });
+
   it("returns null for an unknown type or a non-object", () => {
     expect(openAiActionToCua({ type: "teleport" })).toBeNull();
     expect(openAiActionToCua(null)).toBeNull();

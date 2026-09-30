@@ -1,6 +1,6 @@
 import { e2bDesktopTemplate } from "../../substrates/e2b/desktop-media.js";
 import { receivingPublication } from "../../comms/receiving-runtime.js";
-import { declaredScreenForRender } from "../../substrates/e2b/cua-provisioning.js";
+import { declaredScreenForRender } from "../../substrates/e2b/desktop-geometry.js";
 import path from "node:path";
 import type { ActorStatus } from "../../actors/contract.js";
 import { type CuaActorDescriptor } from "../../actors/registry.js";
