@@ -4,7 +4,7 @@ Date: 2026-08-02
 
 Status: shipped — `loopback`, `exposed` (edge-authed), and `share-safe-open`
 modes (`src/observer/serve.ts`, `src/observer/library.ts`, `src/observer/http.ts`,
-`src/observer/exposure.ts`, `src/observer/tunnel.ts`; CLI wiring in `src/cli/program.ts`).
+`src/observer/exposure.ts`, `src/observer/tunnel.ts`; CLI wiring in `src/cli/commands/observe.ts`).
 The `/_humanish/api/*` control-plane namespace is reserved and answers `501`; no
 mutating route ships.
 

@@ -15,11 +15,9 @@ import {
   markFinalizedStudyResult,
   automaticAnalysisSucceeded,
 } from "../../src/analysis/automatic-completion.js";
-import {
-  automaticAnalysisEnvelope,
-  cliAutomaticAnalysisHooks,
-  createProgram,
-} from "../../src/cli/program.js";
+import { automaticAnalysisEnvelope } from "../../src/cli/io.js";
+import { cliAutomaticAnalysisHooks } from "../../src/cli/commands/lab-hooks.js";
+import { createProgram } from "../../src/cli/program.js";
 import { readLabSummary } from "../../src/lab/summary.js";
 import { runLabPreflight } from "../../src/lab/preflight.js";
 import { parse as parseYaml } from "yaml";
@@ -647,7 +645,7 @@ describe("automatic analysis admission and producer boundary", () => {
     async (signal) => {
       const script = `
       import { runLab } from ${JSON.stringify(new URL("../../src/lab/engine.ts", import.meta.url).href)};
-      import { cliAutomaticAnalysisHooks } from ${JSON.stringify(new URL("../../src/cli/program.ts", import.meta.url).href)};
+      import { cliAutomaticAnalysisHooks } from ${JSON.stringify(new URL("../../src/cli/commands/lab-hooks.ts", import.meta.url).href)};
       const config = ${JSON.stringify(fixtures.find((row) => row.name === "cua-openai-computer-use-app-url")!.config)};
       config.review = { analysis: { maxCostUsd: 5 } };
       const timer = setInterval(() => {}, 1000);

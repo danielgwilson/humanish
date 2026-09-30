@@ -1,0 +1,265 @@
+import { formatAutomaticAnalysisBudget } from "../../analysis/automatic-config.js";
+import { resolve } from "node:path";
+import { Command, Option } from "commander";
+import { inspectLabManifest, listLabManifests } from "../../lab/discover.js";
+import type { LabInspectResult, LabListResult } from "../../lab/discover.js";
+import {
+  runLabPreflight,
+  type LabPreflightReachabilityMode,
+  type LabPreflightResult,
+} from "../../lab/preflight.js";
+import { runLabCommand } from "./lab-run.js";
+import {
+  applyEnvFileOption,
+  type CliIo,
+  JSON_OPTION_DESCRIPTION,
+  type LabCommandOptions,
+  parsePositiveInteger,
+  writeResult,
+} from "../io.js";
+
+export function registerLabCommands(parent: Command, io: CliIo): void {
+  const lab = parent
+    .command("lab")
+    .description("List, inspect, and run Humanish lab manifests.")
+    .summary("List, inspect, and run Humanish lab manifests.");
+
+  lab
+    .command("list")
+    .description("List committed and ignored Humanish lab manifests.")
+    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--json", JSON_OPTION_DESCRIPTION)
+    .action(async (options: { cwd: string; json?: boolean }, command) => {
+      const result = await listLabManifests(options.cwd);
+      writeResult(command, io, result, formatLabListHuman);
+      io.setExitCode(0);
+    });
+
+  lab
+    .command("inspect")
+    .argument("<lab>", "Lab id or .yaml path.")
+    .description("Inspect a Humanish lab manifest without running it.")
+    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--json", JSON_OPTION_DESCRIPTION)
+    .action(async (labName: string, options: { cwd: string; json?: boolean }, command) => {
+      const result = await inspectLabManifest(options.cwd, labName);
+      writeResult(command, io, result, formatLabInspectHuman);
+      io.setExitCode(result.ok ? 0 : 2);
+    });
+
+  lab
+    .command("preflight")
+    .argument("<lab>", "Lab id or .yaml path.")
+    .description(
+      "Check lab metadata or explicitly probe reachability. Metadata mode does not verify setup; use doctor --lab <lab> first.",
+    )
+    .option("--cwd <path>", "Target project directory.", ".")
+    .addOption(
+      new Option("--reachability <mode>", "Reachability mode.")
+        .choices(["metadata", "public-preview", "sandbox-loopback", "prepared-host"])
+        .default("metadata"),
+    )
+    .option("--timeout-ms <ms>", "Target reachability timeout.", String(30_000))
+    .option(
+      "--env-file <path>",
+      "Load a local env file for this preflight without persisting values.",
+    )
+    .option("--json", JSON_OPTION_DESCRIPTION)
+    .action(
+      async (
+        labName: string,
+        options: {
+          cwd: string;
+          envFile?: string;
+          json?: boolean;
+          reachability: LabPreflightReachabilityMode;
+          timeoutMs: string;
+        },
+        command,
+      ) => {
+        if (
+          !(await applyEnvFileOption({
+            command,
+            cwd: options.cwd,
+            envFile: options.envFile,
+            io,
+          }))
+        ) {
+          return;
+        }
+
+        const timeoutMs = parsePositiveInteger(options.timeoutMs);
+        if (timeoutMs === null) {
+          const result: LabPreflightResult = {
+            schema: "humanish.lab-preflight-result.v1",
+            ok: false,
+            cwd: resolve(options.cwd),
+            lab: labName,
+            reachability: options.reachability,
+            checks: [
+              { name: "timeout", ok: false, message: "--timeout-ms must be a positive integer." },
+            ],
+            targets: [],
+            sandbox: { created: false },
+            spend: { e2bDesktop: false, model: false },
+            warnings: [],
+            error: {
+              code: "HUMANISH_LAB_PREFLIGHT_INVALID_OPTION",
+              message: "--timeout-ms must be a positive integer.",
+            },
+          };
+          writeResult(command, io, result, formatLabPreflightHuman);
+          io.setExitCode(2);
+          return;
+        }
+
+        const result = await runLabPreflight({
+          cwd: options.cwd,
+          lab: labName,
+          reachability: options.reachability,
+          timeoutMs,
+        });
+        writeResult(command, io, result, formatLabPreflightHuman);
+        io.setExitCode(result.ok ? 0 : 2);
+      },
+    );
+
+  lab
+    .command("run")
+    .argument("<lab>", "Lab id or .yaml path.")
+    .description("Run a Humanish lab manifest. Same as `humanish run <lab>`, grouped under `lab`.")
+    .option("--env-file <path>", "Load a local env file for this lab without persisting values.")
+    .option("--dry-run", "Render contract evidence without live provider spend.")
+    .option("--open", "Open the observer in the default browser.")
+    .option("--no-open", "Render without opening a browser.")
+    .option("--detach", "Render/open once and exit without attached watch server.")
+    .option("--port <port>", "Local observer server port when following.", "0")
+    .option("--sims <count>", "Override synthetic sims or headed desktop lanes.")
+    .option("--count <count>", "Computer-use only: override headed desktop lane count.")
+    .option(
+      "--rerun-failed-from <run>",
+      "CUA fan-out only: create a new run for failed lanes from a prior run.",
+    )
+    .option(
+      "--lanes <lane-ids>",
+      "CUA rerun only: comma-separated lane ids to rerun from the source run.",
+    )
+    .option("--run-id <id>", "Explicit lab run id.")
+    .option("--cwd <path>", "Target project directory.", ".")
+    .option(
+      "--scorer <path>",
+      "Terminal/computer-use/shared-world labs only: repo-relative adopter scorer module (.mjs). Overrides review.scorer.ref. Executable code — review it as code.",
+    )
+    .option("--json", JSON_OPTION_DESCRIPTION)
+    .addHelpText(
+      "after",
+      [
+        "",
+        "Examples:",
+        "  humanish lab run first-run",
+        "  humanish lab run fanout-demo --rerun-failed-from latest --lanes lane-02,lane-04",
+        "  humanish lab run my-terminal-lab --scorer scorers/product.mjs",
+        "  humanish lab run .humanish/labs/private-dogfood.yaml --env-file .humanish/local/provider.env",
+        "",
+        "Human watch path:",
+        "  humanish watch first-run",
+        "  humanish watch --lab .humanish/labs/local.yaml",
+      ].join("\n"),
+    )
+    .action(async (labName: string, options: LabCommandOptions, command) => {
+      if (
+        !(await applyEnvFileOption({
+          command,
+          cwd: options.cwd,
+          envFile: options.envFile,
+          io,
+        }))
+      ) {
+        return;
+      }
+
+      await runLabCommand({
+        command,
+        io,
+        lab: labName,
+        mode: "run",
+        options,
+      });
+    });
+}
+
+function formatLabListHuman(result: LabListResult): string {
+  if (result.labs.length === 0) {
+    return (
+      [
+        `No Humanish labs found in ${result.cwd}`,
+        "Create one under humanish/labs/*.yaml, .humanish/labs/*.yaml, or pass a .yaml path.",
+        ...result.warnings.map((warning) => `warning: ${warning}`),
+      ].join("\n") + "\n"
+    );
+  }
+
+  return (
+    [
+      "humanish labs",
+      ...result.labs.map(
+        (lab) =>
+          `- ${lab.id} ${lab.source} ${lab.origin} ${lab.path}${lab.title ? ` (${lab.title})` : ""}`,
+      ),
+      ...result.warnings.map((warning) => `warning: ${warning}`),
+    ].join("\n") + "\n"
+  );
+}
+
+function formatLabInspectHuman(result: LabInspectResult): string {
+  if (!result.ok || !result.config) {
+    return `${result.error?.code}: ${result.error?.message}\n`;
+  }
+
+  const config = result.config;
+  return (
+    [
+      "humanish lab",
+      `id: ${config.id}`,
+      `subject: ${config.subject.source}`,
+      ...(config.execution?.target ? [`execution: ${config.execution.target}`] : []),
+      `actors: ${config.actors.map((actor) => actor.type).join(", ")}`,
+      ...(config.title ? [`title: ${config.title}`] : []),
+      ...(config.description ? [`description: ${config.description}`] : []),
+      ...(result.path ? [`path: ${result.path}`] : []),
+      ...(result.origin ? [`origin: ${result.origin}`] : []),
+      ...(config.subject.repos?.length ? [`repos: ${config.subject.repos.join(", ")}`] : []),
+      ...(result.personas ?? []).map(
+        (persona) =>
+          `persona ${persona.id}: ${persona.brief ? `authored context (before runtime additions)\n${persona.brief.text}` : "unresolved; id only"}`,
+      ),
+      ...result.warnings.map((warning) => `warning: ${warning}`),
+    ].join("\n") + "\n"
+  );
+}
+
+function formatLabPreflightHuman(result: LabPreflightResult): string {
+  const checkedTargets = result.targets.filter((target) => target.checked);
+  const reachableTargets = checkedTargets.filter((target) => target.reachable === true);
+  const blockedTargets = result.targets.filter((target) => target.status === "blocked");
+  return (
+    [
+      `humanish lab preflight ${result.ok ? "passed" : "failed"}`,
+      `lab: ${result.labId ?? result.lab}`,
+      ...(result.backend ? [`backend: ${result.backend}`] : []),
+      `reachability: ${result.reachability}`,
+      `targets: ${checkedTargets.length ? `${reachableTargets.length}/${checkedTargets.length} reachable` : `${result.targets.length} declared, not checked`}`,
+      ...(blockedTargets.length ? [`blocked-targets: ${blockedTargets.length}`] : []),
+      `spend: ${result.spend.e2bDesktop ? "one e2b desktop, no model calls" : "none"}`,
+      ...(result.analysis ? [formatAutomaticAnalysisBudget(result.analysis)] : []),
+      ...(result.sandbox.created
+        ? [`sandbox: created=yes killed=${result.sandbox.killed === true ? "yes" : "no"}`]
+        : []),
+      ...result.checks.map(
+        (check) => `- ${check.ok ? "ok" : "fail"} ${check.name}: ${check.message}`,
+      ),
+      ...(result.error ? [`error: ${result.error.code}: ${result.error.message}`] : []),
+      ...result.warnings.map((warning) => `warning: ${warning}`),
+    ].join("\n") + "\n"
+  );
+}

@@ -22,6 +22,12 @@ if (typeof startTui !== "function") {
   throw new Error("tui bundle does not export startTui — the build produced the wrong shape.");
 }
 
+// `humanish tui` and doctor find the bundle through TUI_BUNDLE_URL; it must name this file.
+const { TUI_BUNDLE_URL } = await import(pathToFileURL(path.resolve("dist/tui/contract.js")).href);
+if (TUI_BUNDLE_URL.href !== bundle.href) {
+  throw new Error(`TUI_BUNDLE_URL is ${TUI_BUNDLE_URL.href}, not the built bundle ${bundle.href}.`);
+}
+
 // Ink enables raw mode on mount, so the fake stdin has to look like a real TTY or `useInput`
 // refuses. This is exactly the surface the command guarantees before it ever loads the bundle.
 const stdin = new PassThrough();

@@ -432,5 +432,7 @@ export type {
   LabPreflightTarget,
   RunLabPreflightOptions,
 } from "./lab/preflight.js";
-export { CLI_RESPONSE_SCHEMA, createProgram } from "./cli/program.js";
-export type { CliIo, UnexpectedErrorEnvelope } from "./cli/program.js";
+export { CLI_RESPONSE_SCHEMA } from "./cli/io.js";
+export { createProgram } from "./cli/program.js";
+export type { CliIo } from "./cli/io.js";
+export type { UnexpectedErrorEnvelope } from "./cli/program.js";
