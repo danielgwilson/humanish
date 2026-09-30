@@ -1,0 +1,23 @@
+{
+  "comms-email-demo": "cua computerUse",
+  "detect-taskly-clean": "cua computerUse",
+  "detect-taskly-planted": "cua computerUse",
+  "detect-todomvc": "cua computerUse",
+  "dwell-window-todomvc": "cua computerUse",
+  "effort-contrast-demo": "cua computerUse",
+  "fanout-demo": "cua computerUse",
+  "first-contact": "terminal terminalProduct",
+  "first-run": "synthetic",
+  "handed-a-human-surface": "terminal terminalProduct",
+  "last-mile": "terminal terminalProduct",
+  "later-tab-emulation": "cua computerUse",
+  "lobby-trivia-3player": "concurrent-shared-world computerUse sharedWorld externalPublicSharedWorld concurrentSharedWorld",
+  "participant-camera": "cua computerUse",
+  "persona-contrast-demo": "cua computerUse",
+  "scripted-demo": "scripted scriptedBrowser",
+  "shared-world-concurrent-demo": "concurrent-shared-world computerUse sharedWorld provisionedSharedWorld concurrentSharedWorld",
+  "shared-world-concurrent-live": "concurrent-shared-world computerUse sharedWorld provisionedSharedWorld concurrentSharedWorld",
+  "signup-email-verify": "cua computerUse",
+  "terminal-product-demo": "terminal terminalProduct",
+  "tui-self-study": "cua computerUse"
+}

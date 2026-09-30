@@ -33,12 +33,7 @@ import type { ObserverResult } from "../observer/render.js";
 import { runDryRun } from "../run/dry-run.js";
 import { type RunResult, type RunScorerProvenance } from "../run/bundle.js";
 import { automaticAnalysisRouteReason, taskProtocolValidationReason } from "./validation.js";
-import {
-  routesToComputerUse,
-  routesToScriptedBrowser,
-  routesToSharedWorld,
-  routesToTerminalProduct,
-} from "./routing.js";
+import { backendOf, routeOf } from "./plan.js";
 import { type LabConfig } from "./types.js";
 
 export type LabBackend = "synthetic" | "cua" | "scripted" | "terminal" | "concurrent-shared-world";
@@ -86,57 +81,9 @@ export type LabOutcome =
   | { backend: "terminal"; result: TerminalProductLabResult }
   | { backend: "concurrent-shared-world"; result: ConcurrentSharedWorldLabResult };
 
-/**
- * Route a lab config to its execution backend from its declared composition.
- * subject.source x execution.target are orthogonal primitives; where both axes collide
- * (clone x e2b-desktop runs the scripted-browser, shared-world and computer-use routes) the
- * actor lane and subject.topology pick one, through the predicates in routing.ts.
- */
+/** The backend a config runs on: `routeOf` in plan.ts, under its older name. */
 export function selectLabBackend(config: LabConfig): LabBackend {
-  if (routesToScriptedBrowser(config)) {
-    // app-url subjects whose first actor resolves to a registered scripted-browser actor:
-    // deterministic local replay, no model.
-    return "scripted";
-  }
-  if (routesToTerminalProduct(config) || config.subject.source === "terminal-product") {
-    // terminal-product subjects whose first actor resolves to a registered terminal actor: a real
-    // autonomous agent studying a CLI/product from public surfaces inside an E2B shell. The bare
-    // terminal-product fallback keeps library-API configs with unknown actor types routing to the
-    // terminal backend's fail-closed HUMANISH_TERMINAL_LAB_ACTOR_UNSUPPORTED.
-    return "terminal";
-  }
-  if (routesToSharedWorld(config)) {
-    // A computer-use actor that DECLARES topology: shared-world (#164): ONE plane (a getHost-exposed
-    // subject sandbox or a public deployment) + N actor sandboxes driving it at once. Checked BEFORE
-    // the cua route: the same composition without the topology declaration stays per-lane-worlds.
-    return "concurrent-shared-world";
-  }
-  if (config.subject.source === "desktop-cli") {
-    // A CLI studied at a desktop by someone who can see it (#495). Same lane as every other
-    // computer-use study — the difference is that the subject is a terminal window rather than a
-    // served page, so nothing is cloned and no browser is launched.
-    return "cua";
-  }
-  if (
-    routesToComputerUse(config) ||
-    config.subject.source === "app-url" ||
-    config.subject.source === "clone" ||
-    config.subject.source === "local-app" ||
-    config.subject.source === "local-tree"
-  ) {
-    // app-url subjects with a computer-use actor, local-app subjects (an already-running local
-    // dev server driven in-process via a custom executor), clone x e2b-desktop subjects whose
-    // first actor resolves to a registered computer-use actor (the lab clones AND serves the app
-    // in-sandbox), and local-tree subjects (the lab packs+uploads the working tree and serves it
-    // the same way). The bare app-url/local-app/local-tree fallback keeps library-API configs
-    // with unknown actor types routing to the cua backend's fail-closed
-    // HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED (and, for local-app without hooks,
-    // HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR) instead of silently falling through to the synthetic
-    // backend below, which would run no real actor at all against a packed tree.
-    return "cua";
-  }
-  // this-repo runs through the synthetic dry-run path (runDryRun).
-  return "synthetic";
+  return backendOf(routeOf(config));
 }
 
 /** First actor's declared lane count, if any. */
