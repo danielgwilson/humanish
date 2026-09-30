@@ -1299,3 +1299,105 @@ describe("scripted-browser run directory goldens", () => {
     });
   });
 });
+
+describe("scripted run lifetime on the provisioned clone route", () => {
+  let cwd: string;
+  beforeEach(async () => {
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-scripted-lifetime-"));
+    await writeCommittedScenario(cwd);
+  });
+  afterEach(async () => {
+    await rm(cwd, { recursive: true, force: true });
+  });
+
+  function cloneHooks(
+    module: E2BDesktopModule,
+    runSession: ScriptedBrowserLabHooks["runSession"],
+  ): ScriptedBrowserLabHooks {
+    let clock = Date.parse("2026-09-30T00:00:00.000Z");
+    return {
+      env: { E2B_API_KEY: "fake-e2b-key-for-test", GITHUB_TOKEN: "github-token-test" },
+      loadDesktopModule: async () => module,
+      browserCommand: "/synthetic/browser",
+      ...(runSession === undefined ? {} : { runSession }),
+      detachedTimers: {
+        now: () => clock,
+        sleep: async (ms) => {
+          clock += ms;
+        },
+      },
+    };
+  }
+
+  it("S2: an unsafe session result after start kills the subject, closes the run and runs no analysis", async () => {
+    const runId = "unsafe-after-start";
+    const runDir = path.join(cwd, ".humanish", "runs", runId);
+    const fakeE2B = makeFakeE2BModule();
+    const analysis = automaticAnalysisBoundary();
+    const hooks = cloneHooks(
+      fakeE2B.module,
+      async (options) =>
+        ({
+          status: "passed",
+          completionReason: "goal_satisfied",
+          reason: "synthetic unsafe result",
+          capture: {
+            capturedAt: "2026-09-30T00:00:00.000Z",
+            durationMs: 1,
+            ok: true,
+            reason: "synthetic unsafe result",
+            steps: [],
+            surface: options.surface,
+            tracePath: "../../outside.txt",
+          },
+        }) as unknown as ScriptedBrowserSessionResult,
+    );
+
+    await expect(
+      runLab(provisionedScriptedConfig(), {
+        cwd,
+        runId,
+        scriptedHooks: hooks,
+        automaticAnalysis: { run: analysis },
+      }),
+    ).rejects.toThrow(/unsafe artifact path/i);
+
+    expect(fakeE2B.killed).toEqual(["fake-subject-001"]);
+    const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8"));
+    expect(status.state).toBe("finished");
+    expect(status).not.toHaveProperty("outcome");
+    await expect(stat(path.join(runDir, "run.json"))).rejects.toMatchObject({ code: "ENOENT" });
+    expect(analysis).not.toHaveBeenCalled();
+  });
+
+  it("S3: after a failed subject teardown, reclaim kills the receipted subject", async () => {
+    const runId = "failed-teardown";
+    const fakeE2B = makeFakeE2BModule();
+    const kill = fakeE2B.module.Sandbox.kill!;
+    fakeE2B.module.Sandbox.kill = async (sandboxId, options) => {
+      await kill(sandboxId, options);
+      throw new Error("synthetic kill failure");
+    };
+    const hooks = cloneHooks(fakeE2B.module, async () => {
+      throw new Error("synthetic session failure");
+    });
+
+    const outcome = await runLab(provisionedScriptedConfig(), { cwd, runId, scriptedHooks: hooks });
+    if (outcome.backend !== "scripted") throw new Error(`unexpected backend ${outcome.backend}`);
+    expect(outcome.result.subjectSandbox).toEqual({ sandboxId: "fake-subject-001", killed: false });
+
+    const reclaimed: string[] = [];
+    await reclaimRunSandboxes(cwd, runId, {
+      loadModule: async () =>
+        ({
+          Sandbox: {
+            async kill(sandboxId: string) {
+              reclaimed.push(sandboxId);
+              return true;
+            },
+          },
+        }) as unknown as E2BDesktopModule,
+    });
+    expect(reclaimed).toEqual(["fake-subject-001"]);
+  });
+});

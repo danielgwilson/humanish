@@ -26,7 +26,7 @@ import {
   type AutomaticAnalysisHooks,
   type AutomaticAnalysisResult,
 } from "../analysis/automatic-completion.js";
-import { legacyFinishedRun, markFinalizedStudyResult } from "../run/run.js";
+import { runScope, type RunScope } from "../run/run.js";
 import {
   cloneTargetValidationReason,
   desktopMediaValidationReason,
@@ -34,13 +34,7 @@ import {
 } from "../lab/validation.js";
 import { randomBytes } from "node:crypto";
 import { describeMissingKeys } from "../cli/key-resolution.js";
-import {
-  beginRunStatus,
-  type RunLabProvenance,
-  type RunStatusHandle,
-  withRunStatusScope,
-  runStatusOutcome,
-} from "../run/status.js";
+import { type RunLabProvenance } from "../run/status.js";
 import { realpath } from "node:fs/promises";
 import path from "node:path";
 
@@ -65,11 +59,7 @@ import type { DetachedTimers } from "../substrates/e2b/detached.js";
 import type { LabConfig } from "../lab/types.js";
 import { renderObserver, type ObserverResult } from "../observer/render.js";
 import { digestText, redactText } from "../evidence/redaction.js";
-import {
-  createRunArtifactPaths,
-  type PreparedRunArtifactPaths,
-  validatePreparedRunArtifactPaths,
-} from "../run/paths.js";
+import { type PreparedRunArtifactPaths, validatePreparedRunArtifactPaths } from "../run/paths.js";
 import {
   buildRunSource,
   PUBLIC_TARGET_CWD,
@@ -102,7 +92,6 @@ import {
   readContainedRegularFile,
   type PreparedSelectedOutputDirectory,
   writeContainedOutputFile,
-  writePreparedRunLatestPointer,
 } from "../run/selected-output-paths.js";
 
 export const SCRIPTED_BROWSER_LAB_SCHEMA = "humanish.scripted-lab-result.v1";
@@ -265,10 +254,12 @@ export async function runScriptedBrowserLab(
       },
     };
   const analysis = resolveAutomaticAnalysis(options.config.review?.analysis);
-  const result = await withRunStatusScope(() => runScriptedBrowserLabInScope(options));
+  const { result, finished } = await runScope((scope) =>
+    runScriptedBrowserLabInScope(options, scope),
+  );
   return completeAutomaticAnalysis(
     result,
-    legacyFinishedRun(result),
+    finished,
     analysis.ok ? analysis.config : undefined,
     options.automaticAnalysis,
     options.config.review?.analysis === undefined ? "default" : "explicit",
@@ -278,13 +269,13 @@ export async function runScriptedBrowserLab(
 
 async function runScriptedBrowserLabInScope(
   options: RunScriptedBrowserLabOptions,
+  scope: RunScope,
 ): Promise<ScriptedBrowserLabResult> {
   const { config, dryRun } = options;
   const cwd = path.resolve(options.cwd);
   const physicalCwd = await realpath(cwd);
   const projectRoot = await prepareSelectedOutputDirectory(path.dirname(physicalCwd), physicalCwd);
   const hooks = options.hooks ?? {};
-  const render = hooks.renderObserverFn ?? renderObserver;
   const warnings: string[] = [];
   const actorType = config.actors[0]?.type ?? "";
 
@@ -416,21 +407,21 @@ async function runScriptedBrowserLabInScope(
     browserCommand = resolved;
   }
 
-  const runId = options.runId ?? makeScriptedRunId();
-  const created = await createRunArtifactPaths(physicalCwd, runId);
-  if (!created.ok) {
-    return failed(created.code, created.message, { actor: descriptor.id, appUrl: evidenceAppUrl });
-  }
-  const runPaths = created.paths;
-  // Identity + liveness on disk (#455): every backend writes this, so a watcher can classify any
-  // run without parsing bundles and without depending on the interactive-observer path.
-  const runStatus: RunStatusHandle = beginRunStatus(runPaths, {
-    runId,
+  const started = await scope.startRun({
+    cwd: physicalCwd,
+    runId: options.runId,
+    mintRunId: makeScriptedRunId,
     mode: dryRun ? "dry-run" : "live",
-    ...(options.lab === undefined ? {} : { lab: options.lab }),
+    lab: options.lab,
+    renderReview: renderScriptedReviewMarkdown,
+    observer: { open: options.open === true, render: hooks.renderObserverFn },
   });
+  if (!started.ok) {
+    return failed(started.code, started.message, { actor: descriptor.id, appUrl: evidenceAppUrl });
+  }
+  const { run } = started;
+  const { runId, createdAt, paths: runPaths } = run;
   const artifactRoot = runPaths.physicalRunRoot;
-  const createdAt = new Date().toISOString();
   const source = await buildRunSource({
     capturedAt: createdAt,
     cwd: physicalCwd,
@@ -644,48 +635,7 @@ async function runScriptedBrowserLabInScope(
     ...(hostDigest === undefined ? {} : { hostDigest }),
   });
 
-  await writeContainedOutputFile(
-    runPaths,
-    "run.json",
-    `${JSON.stringify(bundle, null, 2)}\n`,
-    "utf8",
-  );
-  // Finalize identity+liveness from the bundle just written; a throw before this leaves the record
-  // stale, which reads as interrupted rather than as a false outcome (#455).
-  await runStatus.finish(runStatusOutcome(bundle));
-  await writeContainedOutputFile(
-    runPaths,
-    "review.json",
-    `${JSON.stringify(bundle.review, null, 2)}\n`,
-    "utf8",
-  );
-  await writeContainedOutputFile(
-    runPaths,
-    "review.md",
-    renderScriptedReviewMarkdown(bundle),
-    "utf8",
-  );
-  await writeContainedOutputFile(
-    runPaths,
-    "events.ndjson",
-    `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`,
-    "utf8",
-  );
-  // Keep `verify --run latest` honest: point it at THIS run (the RunPointer shape in run/bundle.ts).
-  await writePreparedRunLatestPointer(
-    runPaths,
-    `${JSON.stringify(
-      {
-        schema: "humanish.latest-run.v1",
-        runId,
-        path: runPaths.relativeRunRoot,
-        updatedAt: createdAt,
-      },
-      null,
-      2,
-    )}\n`,
-    "utf8",
-  );
+  const finished = await run.finish(bundle);
 
   // Surface the local-fidelity posture so the operator knows the bundle is not publish-safe as-is.
   if (sessionResults.some((result) => result.trace.redaction.screenshots === "raw")) {
@@ -694,7 +644,7 @@ async function runScriptedBrowserLabInScope(
     );
   }
 
-  const observer = await render(physicalCwd, runId, { open: options.open === true });
+  const observer = await finished.renderObserver();
   await validatePreparedRunArtifactPaths(runPaths);
 
   const harnessError = sessionResults.some((result) => result.completionReason === "harness_error");
@@ -703,53 +653,50 @@ async function runScriptedBrowserLabInScope(
     sessionError === undefined &&
     (dryRun || (sessionResults.length === surfaces.length && !harnessError));
 
-  return markFinalizedStudyResult(
-    {
-      schema: SCRIPTED_BROWSER_LAB_SCHEMA,
-      ok,
-      cwd,
-      labId: config.id,
-      actor: descriptor.id,
-      appUrl: evidenceAppUrl,
-      dryRun,
-      runId,
-      ...(subject === undefined ? {} : { subject }),
-      ...(subjectSandboxId === undefined
-        ? {}
-        : { subjectSandbox: { sandboxId: subjectSandboxId, killed: subjectKilled } }),
-      ...(hostDigest === undefined ? {} : { hostDigest }),
-      scenario: {
-        id: journey.scenarioId,
-        source: scenario.source,
-        sourceDigest: scenario.sourceDigest,
-        steps: journey.steps.length,
-      },
-      sessions: sessionResults.map((result) => ({
-        surface: result.capture.surface.id,
-        status: result.status,
-        completionReason: result.completionReason,
-        reason: result.reason,
-        screenshots: screenshotsBySurface.get(result.capture.surface.id)?.length ?? 0,
-      })),
-      observer,
-      warnings: [...warnings, ...observer.warnings],
-      ...(ok
-        ? {}
-        : {
-            error: {
-              code: "HUMANISH_SCRIPTED_LAB_FAILED" as const,
-              message:
-                sessionError ??
-                (observer.ok
-                  ? harnessError
-                    ? `Scripted session ended with a harness error: ${sessionResults.find((result) => result.completionReason === "harness_error")?.reason ?? "unknown"}`
-                    : "Scripted lab did not produce terminal sessions for every surface."
-                  : (observer.error?.message ?? "Observer failed for the scripted lab run.")),
-            },
-          }),
+  return {
+    schema: SCRIPTED_BROWSER_LAB_SCHEMA,
+    ok,
+    cwd,
+    labId: config.id,
+    actor: descriptor.id,
+    appUrl: evidenceAppUrl,
+    dryRun,
+    runId,
+    ...(subject === undefined ? {} : { subject }),
+    ...(subjectSandboxId === undefined
+      ? {}
+      : { subjectSandbox: { sandboxId: subjectSandboxId, killed: subjectKilled } }),
+    ...(hostDigest === undefined ? {} : { hostDigest }),
+    scenario: {
+      id: journey.scenarioId,
+      source: scenario.source,
+      sourceDigest: scenario.sourceDigest,
+      steps: journey.steps.length,
     },
-    runPaths,
-  );
+    sessions: sessionResults.map((result) => ({
+      surface: result.capture.surface.id,
+      status: result.status,
+      completionReason: result.completionReason,
+      reason: result.reason,
+      screenshots: screenshotsBySurface.get(result.capture.surface.id)?.length ?? 0,
+    })),
+    observer,
+    warnings: [...warnings, ...observer.warnings],
+    ...(ok
+      ? {}
+      : {
+          error: {
+            code: "HUMANISH_SCRIPTED_LAB_FAILED" as const,
+            message:
+              sessionError ??
+              (observer.ok
+                ? harnessError
+                  ? `Scripted session ended with a harness error: ${sessionResults.find((result) => result.completionReason === "harness_error")?.reason ?? "unknown"}`
+                  : "Scripted lab did not produce terminal sessions for every surface."
+                : (observer.error?.message ?? "Observer failed for the scripted lab run.")),
+          },
+        }),
+  };
 }
 
 interface ResolvedScriptedScenario {
