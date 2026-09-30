@@ -65,10 +65,12 @@ interface PlanBase {
   readonly requirements: readonly Requirement[];
 }
 
-/** An executable preview is always a dry run; a live preview is refused. */
-export interface PreviewPlan extends PlanBase {
+/**
+ * The synthetic preview. runDryRun still checks the project directory, the sim count and a live
+ * request, in that order, so the plan carries both values unchecked.
+ */
+interface PreviewPlan extends PlanBase {
   readonly route: "preview";
-  readonly dryRun: true;
   readonly simCount: number;
 }
 
@@ -221,7 +223,6 @@ interface PlannedLab {
  */
 export type PlanGap =
   | "analysis-invalid"
-  | "live-preview"
   | "executor-without-provider"
   | "local-app-without-executor"
   | "in-process-fan-out"
@@ -229,6 +230,21 @@ export type PlanGap =
   | "live-terminal-without-caps"
   | "unsupported-composition";
 
+/** The error codes the preview route returns before a run starts. */
+type PreviewRefusalCode =
+  | "HUMANISH_LAB_COMMS_UNSUPPORTED"
+  | "HUMANISH_LAB_ANALYSIS_INVALID"
+  | "HUMANISH_LAB_ANALYSIS_UNSUPPORTED"
+  | "HUMANISH_LAB_TASKS_UNSUPPORTED";
+
+/**
+ * Why planLab refused. A route that runs on the plan gets its own code and message; a route that
+ * has not moved onto the plan yet gets the gap.
+ */
+export type PlanRefusal =
+  | { readonly route: "preview"; readonly code: PreviewRefusalCode; readonly message: string }
+  | { readonly route: LabRoute; readonly gap: PlanGap };
+
 export type PlanResult =
   | { readonly ok: true; readonly planned: PlannedLab }
-  | { readonly ok: false; readonly route: LabRoute; readonly gap: PlanGap };
+  | { readonly ok: false; readonly refusal: PlanRefusal };

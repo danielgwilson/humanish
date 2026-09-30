@@ -8,9 +8,7 @@ import { isLocalBrowserLab, localBrowserDefaults } from "../substrates/local/run
 // and these selectors rather than adding a lab `kind`. On actor-backed routes, subject x execution
 // selects the substrate while actors[0].type selects a registered first-party actor.
 
-import { resolveAutomaticAnalysis } from "../analysis/automatic-config.js";
 import type { AutomaticAnalysisHooks } from "../analysis/automatic-completion.js";
-import path from "node:path";
 import { runCuaActorLab } from "../routes/computer-use/lab.js";
 import { type CuaActorLabHooks, type CuaActorLabResult } from "../routes/computer-use/types.js";
 import {
@@ -28,10 +26,9 @@ import { runConcurrentSharedWorld } from "../routes/shared-world/lab.js";
 import { type ConcurrentSharedWorldLabResult } from "../routes/shared-world/types.js";
 import { type RunLabProvenance } from "../run/status.js";
 import type { ObserverResult } from "../observer/render.js";
-import { runDryRun } from "../run/dry-run.js";
+import { runPreviewLab } from "../routes/preview.js";
 import { type RunScorerProvenance } from "../run/bundle.js";
 import { type RunResult } from "../run/results.js";
-import { automaticAnalysisRouteReason, taskProtocolValidationReason } from "./validation.js";
 import { backendOf, resolveLabDryRun, routeOf } from "./plan.js";
 
 export { resolveLabDryRun };
@@ -87,11 +84,6 @@ export function selectLabBackend(config: LabConfig): LabBackend {
   return backendOf(routeOf(config));
 }
 
-/** First actor's declared lane count, if any. */
-function actorLaneCount(config: LabConfig): number | undefined {
-  return config.actors[0]?.count;
-}
-
 /**
  * The one seam every lab backend is dispatched through. Each route closes the run it started on
  * every exit through its own run scope (`src/run/run.ts`).
@@ -99,47 +91,9 @@ function actorLaneCount(config: LabConfig): number | undefined {
 export async function runLab(config: LabConfig, options: RunLabOptions): Promise<LabOutcome> {
   config = localBrowserDefaults(config);
   const backend = selectLabBackend(config);
-  const analysis = resolveAutomaticAnalysis(config.review?.analysis);
-  const analysisReason = analysis.ok ? automaticAnalysisRouteReason(config) : analysis.message;
-  const receivingReason =
-    String(config.comms?.email?.kind) === "real"
-      ? "Real email receiving is unsupported on this backend. Use a supported hosted computer-use study."
-      : undefined;
-  const tasksReason = analysisReason ?? taskProtocolValidationReason(config);
-  const admissionReason = receivingReason ?? tasksReason;
-  if (admissionReason && backend === "synthetic") {
-    const cwd = path.resolve(options.cwd);
-    const code = receivingReason
-      ? "HUMANISH_LAB_COMMS_UNSUPPORTED"
-      : analysisReason
-        ? analysis.ok
-          ? "HUMANISH_LAB_ANALYSIS_UNSUPPORTED"
-          : "HUMANISH_LAB_ANALYSIS_INVALID"
-        : "HUMANISH_LAB_TASKS_UNSUPPORTED";
-    const error = { code, message: admissionReason } as const;
-    return {
-      backend,
-      result: {
-        schema: "humanish.run-result.v1",
-        ok: false,
-        cwd,
-        warnings: [],
-        error,
-      },
-    };
-  }
-
   switch (backend) {
-    case "synthetic": {
-      const result = await runDryRun({
-        ...(options.lab === undefined ? {} : { lab: options.lab }),
-        cwd: options.cwd,
-        dryRun: resolveLabDryRun(config, options.dryRun, true) ?? true,
-        simCount: options.count ?? actorLaneCount(config) ?? 4,
-        ...(options.runId === undefined ? {} : { runId: options.runId }),
-      });
-      return { backend, result };
-    }
+    case "synthetic":
+      return { backend, result: await runPreviewLab(config, options) };
     case "cua": {
       // The config selects the local browser study. Two hooks keep a run out of it: with
       // createDesktopLane the caller (or the study re-entering here) provides the desktop, and

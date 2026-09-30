@@ -13,7 +13,6 @@ import type {
 import type {
   AppUrlSubject,
   ComputerUseRunner,
-  PreviewPlan,
   ProvisionedSubject,
   SharedWorldPlane,
   TerminalPlan,
@@ -25,7 +24,6 @@ declare const provisionedSeat: ProvisionedSeat;
 declare const externalSeat: ExternalPublicSeat;
 declare const serve: LabSubjectServe;
 declare const appUrl: AppUrlSubject;
-declare const preview: PreviewPlan;
 declare const liveTerminal: Extract<TerminalPlan, { dryRun: false }>;
 
 // Never called: the declared values above exist only for the type checker.
@@ -56,7 +54,6 @@ export function refusedShapes(): unknown[] {
   const seatWithTasks = { ...provisionedSeat, tasks: [{ id: "t", goal: "g" }] };
   const externalWithEntry = { ...externalSeat, entry: "/x" };
   const cloneWithoutRepo = { kind: "clone", serve, env: [] } as const;
-  const livePreview = { ...preview, dryRun: false } as const;
   const inProcessOpenai = {
     desktop: "in-process",
     brain: openai,
@@ -88,8 +85,6 @@ export function refusedShapes(): unknown[] {
     { ...externalSeat, entry: "/x" } satisfies ExternalPublicSeat,
     // @ts-expect-error 6. a provisioned clone names its repo
     cloneWithoutRepo satisfies ProvisionedSubject,
-    // @ts-expect-error 7. a preview is always a dry run
-    livePreview satisfies PreviewPlan,
     // @ts-expect-error 8. in process, the caller's provider is the brain
     inProcessOpenai satisfies ComputerUseRunner,
     // @ts-expect-error 9. live terminal caps need maxMinutes
