@@ -18,6 +18,7 @@
 // the next action comes from.
 
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { mkdtemp, rm, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -25,6 +26,7 @@ import readline from "node:readline";
 
 import type { ActorCapabilities } from "../contract.js";
 import type { CuaProvider, CuaTurn, CuaTurnRequest } from "../computer-use/loop.js";
+import { CuaProviderError } from "../computer-use/provider-error.js";
 import {
   declaredOutcomeOf,
   parseAgentJson,
@@ -38,25 +40,168 @@ type JsonObject = Record<string, unknown>;
 
 /** The transport, injected so tests drive a fake session with no CLI and no spend. */
 export interface ClaudeStreamTransport {
-  /** Write one NDJSON message to the session. */
-  send(message: JsonObject): void;
-  /** Resolves with the next `result` message; rejects if the session ends first or the clock runs out. */
-  awaitResult(timeoutMs: number, signal?: AbortSignal): Promise<JsonObject>;
+  /**
+   * Send one user turn and resolve with the `result` that answers it. Rejects when the session
+   * ends, `timeoutMs` passes or `signal` aborts. A turn given up that way is interrupted, and its
+   * late result reaches no later turn.
+   */
+  turn(message: JsonObject, timeoutMs: number, signal?: AbortSignal): Promise<JsonObject>;
   close(): void;
 }
 
-/** NDJSON over the child's stdio. Everything that is not a `result` is a progress line and is ignored. */
+/** How long Claude Code may take to acknowledge an interrupt before the session is ended. */
+const INTERRUPT_RECEIPT_TIMEOUT_MS = 5_000;
+
+/** Results can no longer be paired with the turns that asked for them. */
+class ClaudeSessionDesyncError extends Error {}
+
+/** The user messages a `result` answers. Claude Code 2.1.285 names them; older versions may not. */
+function answeredMessageIds(result: JsonObject): string[] {
+  const many = result.user_message_uuids;
+  if (Array.isArray(many)) return many.filter((id): id is string => typeof id === "string");
+  return typeof result.user_message_uuid === "string" ? [result.user_message_uuid] : [];
+}
+
+interface WaitingTurn {
+  resolve: (value: JsonObject) => void;
+  reject: (error: Error) => void;
+}
+
+/**
+ * Register turn `id` in `waiting` and settle when its result arrives. On timeout or abort the
+ * turn leaves `waiting` and `onGiveUp` runs before the rejection.
+ */
+function waitForTurn(
+  waiting: Map<string, WaitingTurn>,
+  id: string,
+  timeoutMs: number,
+  signal: AbortSignal | undefined,
+  onGiveUp: () => void,
+): Promise<JsonObject> {
+  return new Promise<JsonObject>((resolve, reject) => {
+    const finish = (): void => {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", onAbort);
+    };
+    const giveUp = (error: Error): void => {
+      if (!waiting.delete(id)) return;
+      finish();
+      onGiveUp();
+      reject(error);
+    };
+    const timer = setTimeout(
+      () => giveUp(new Error(`Claude Code produced no result within ${timeoutMs}ms`)),
+      timeoutMs,
+    );
+    const onAbort = (): void => giveUp(new Error("run stopped"));
+    signal?.addEventListener("abort", onAbort, { once: true });
+    waiting.set(id, {
+      resolve: (value) => {
+        finish();
+        resolve(value);
+      },
+      reject: (error) => {
+        finish();
+        reject(error);
+      },
+    });
+  });
+}
+
+/**
+ * NDJSON over the child's stdio. Each user message carries a fresh `uuid`, and a `result` goes
+ * only to the turn whose uuid it names. A turn given up on is interrupted with a control request,
+ * and the next user message waits for the interrupt's receipt, so its `cancel_queued` cancels an
+ * abandoned message still in the queue but never the message sent after it. Every other message
+ * is a progress line and is ignored.
+ */
 function stdioClaudeTransport(child: ChildProcessWithoutNullStreams): ClaudeStreamTransport {
   const rl = readline.createInterface({ input: child.stdout });
-  let waiter: { resolve: (value: JsonObject) => void; reject: (error: Error) => void } | undefined;
+  const waiting = new Map<string, WaitingTurn>();
+  // Given-up turns whose result may still arrive; it must reach nobody.
+  const abandoned = new Set<string>();
+  const receipts = new Map<string, () => void>();
+  let acknowledged: Promise<void> = Promise.resolve();
+  let interrupts = 0;
   let stderrTail = "";
-  let exited: string | undefined;
+  let ended: Error | undefined;
 
-  const fail = (error: Error): void => {
-    const pending = waiter;
-    waiter = undefined;
-    pending?.reject(error);
+  const write = (message: JsonObject): void => {
+    child.stdin.write(`${JSON.stringify(message)}\n`);
   };
+  const end = (error: Error): void => {
+    if (ended !== undefined) return;
+    ended = error;
+    for (const turn of waiting.values()) turn.reject(error);
+    waiting.clear();
+    for (const settle of receipts.values()) settle();
+    receipts.clear();
+  };
+  const stop = (): void => {
+    rl.close();
+    child.stdin.end();
+    child.kill();
+  };
+  const desynchronize = (reason: string): void => {
+    end(new ClaudeSessionDesyncError(reason));
+    stop();
+  };
+
+  const abandon = (id: string): void => {
+    abandoned.add(id);
+    if (ended !== undefined) return;
+    interrupts += 1;
+    const requestId = `humanish-interrupt-${interrupts}`;
+    const receipt = new Promise<void>((resolve) => {
+      const timer = setTimeout(() => {
+        receipts.delete(requestId);
+        desynchronize(
+          `Claude Code did not acknowledge an interrupt within ${INTERRUPT_RECEIPT_TIMEOUT_MS}ms`,
+        );
+        resolve();
+      }, INTERRUPT_RECEIPT_TIMEOUT_MS);
+      receipts.set(requestId, () => {
+        clearTimeout(timer);
+        resolve();
+      });
+    });
+    acknowledged = acknowledged.then(() => receipt);
+    write({
+      type: "control_request",
+      request_id: requestId,
+      request: { subtype: "interrupt", cancel_queued: true },
+    });
+  };
+
+  const deliver = (result: JsonObject): void => {
+    const ids = answeredMessageIds(result);
+    if (ids.length === 0) {
+      // Without a named message, pairing is certain only while one turn waits and none was given up.
+      const [only, ...others] = waiting.keys();
+      if (only !== undefined && others.length === 0 && abandoned.size === 0) {
+        const turn = waiting.get(only);
+        waiting.delete(only);
+        turn?.resolve(result);
+      } else {
+        desynchronize("a result named no user message while another turn could still answer");
+      }
+      return;
+    }
+    let known = false;
+    for (const id of ids) {
+      if (abandoned.delete(id)) {
+        known = true;
+        continue;
+      }
+      const turn = waiting.get(id);
+      if (turn === undefined) continue;
+      waiting.delete(id);
+      turn.resolve(result);
+      known = true;
+    }
+    if (!known) desynchronize("a result answered a user message this session did not send");
+  };
+
   rl.on("line", (line: string) => {
     let message: JsonObject;
     try {
@@ -64,53 +209,45 @@ function stdioClaudeTransport(child: ChildProcessWithoutNullStreams): ClaudeStre
     } catch {
       return; // never a reason to end a run
     }
-    if (message.type !== "result") return;
-    const pending = waiter;
-    waiter = undefined;
-    pending?.resolve(message);
+    if (message.type === "result") {
+      deliver(message);
+    } else if (message.type === "control_response") {
+      const response = message.response as JsonObject | undefined;
+      const requestId = response?.request_id;
+      const settle = typeof requestId === "string" ? receipts.get(requestId) : undefined;
+      if (typeof requestId !== "string" || settle === undefined) return;
+      receipts.delete(requestId);
+      settle();
+      if (response?.subtype !== "success") desynchronize("Claude Code refused an interrupt");
+    }
   });
   child.stderr.on("data", (chunk: Buffer) => {
     stderrTail = (stderrTail + chunk.toString("utf8")).slice(-400);
   });
   child.on("close", (code, signal) => {
-    exited = `Claude Code exited ${code ?? `on ${signal ?? "a signal"}`}${stderrTail.trim() ? `: ${stderrTail.trim()}` : ""}`;
     // Fail loud with the CLI's own words: a rate-limited plan says so here, which is a sentence
     // the operator can act on, unlike "turn failed".
-    fail(new Error(exited));
+    end(
+      new Error(
+        `Claude Code exited ${code ?? `on ${signal ?? "a signal"}`}${stderrTail.trim() ? `: ${stderrTail.trim()}` : ""}`,
+      ),
+    );
   });
 
   return {
-    send(message) {
-      if (exited !== undefined) throw new Error(exited);
-      child.stdin.write(`${JSON.stringify(message)}\n`);
-    },
-    awaitResult(timeoutMs, signal) {
-      if (exited !== undefined) return Promise.reject(new Error(exited));
-      return new Promise<JsonObject>((resolve, reject) => {
-        const timer = setTimeout(
-          () => fail(new Error(`Claude Code produced no result within ${timeoutMs}ms`)),
-          timeoutMs,
-        );
-        const onAbort = (): void => fail(new Error("run stopped"));
-        signal?.addEventListener("abort", onAbort, { once: true });
-        waiter = {
-          resolve: (value) => {
-            clearTimeout(timer);
-            signal?.removeEventListener("abort", onAbort);
-            resolve(value);
-          },
-          reject: (error) => {
-            clearTimeout(timer);
-            signal?.removeEventListener("abort", onAbort);
-            reject(error);
-          },
-        };
-      });
+    async turn(message, timeoutMs, signal) {
+      if (ended !== undefined) throw ended;
+      await acknowledged;
+      if (ended !== undefined) throw ended;
+      if (signal?.aborted) throw new Error("run stopped");
+      const id = randomUUID();
+      const result = waitForTurn(waiting, id, timeoutMs, signal, () => abandon(id));
+      write({ ...message, uuid: id });
+      return result;
     },
     close() {
-      rl.close();
-      child.stdin.end();
-      child.kill();
+      end(new Error("Claude Code session closed"));
+      stop();
     },
   };
 }
@@ -180,12 +317,18 @@ export async function startClaudeSession(
 
   let turnIndex = 0;
   let previousShot: string | undefined;
+  // A turn that delivered no result of its own spent tokens that no delivered turn reports. Its
+  // late result is discarded rather than added to another turn, so the usage stays unknown.
+  let usageIncomplete = false;
   const provider: CuaProvider = {
     id: "local-agent-claude-session",
     version: options.model ?? "claude (local, operator-authenticated, one session per run)",
     modelSettings: { reasoningEffort: effort },
     capabilities: CLAUDE_SESSION_CAPABILITIES,
     requiresFrame: true,
+    get interactionUsageIncomplete() {
+      return usageIncomplete;
+    },
     async nextTurn(request: CuaTurnRequest, signal?: AbortSignal): Promise<CuaTurn> {
       const frame = request.observation.screenshot;
       if (frame === undefined) {
@@ -209,8 +352,21 @@ export async function startClaudeSession(
             "Same participant, same task: decide what to do next. " +
             "Reply with ONLY a JSON object of the same shape as before." +
             hint;
-      transport!.send(userMessage(text));
-      const result = await transport!.awaitResult(timeoutMs, signal);
+      let result: JsonObject;
+      try {
+        result = await transport!.turn(userMessage(text), timeoutMs, signal);
+      } catch (error) {
+        usageIncomplete = true;
+        if (error instanceof ClaudeSessionDesyncError) {
+          // The stream no longer pairs results with turns, so no later turn can trust it.
+          throw new CuaProviderError("protocol_error", {
+            dispatched: "unknown",
+            usageComplete: false,
+            cleanup: "unconfirmed",
+          });
+        }
+        throw error;
+      }
       // The frame it already looked at is not needed on disk; the conversation remembers it.
       if (previousShot !== undefined) await unlink(previousShot).catch(() => undefined);
       previousShot = shot;
