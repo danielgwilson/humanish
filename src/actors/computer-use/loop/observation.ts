@@ -4,6 +4,7 @@ import { CUA_SPEECH_LIMITS, type HeardSpeech } from "../speech.js";
 import { dwellCompleted, missingFrame, stopWhenMatched, type Stop } from "./ending.js";
 import { CuaAbortError, CuaStallError, raceBounded } from "./race.js";
 import type { LoopSession } from "./session.js";
+import { notice } from "./trace.js";
 import type { CuaObservation } from "./types.js";
 
 // Observing the desktop: bounded observe calls, speech the participant heard, persisted frames,
@@ -48,7 +49,7 @@ export class DesktopObserver {
    */
   async checkpoint(turnNumber: number): Promise<Checkpoint> {
     const { session } = this;
-    const { onObservedUrl, onScreenshot, stopWhen } = session.options;
+    const { onObservedUrl, onScreenshot, stopWhen } = session.settings;
     const opening = turnNumber === 0;
     if (opening) session.phase = "observing initial UI state";
     else {
@@ -135,10 +136,12 @@ export class DesktopObserver {
         // The owning session will close it; this loop must not send a replacement request.
         throw new CuaExecutorError("deadline_exceeded", "outcome_uncertain");
       }
-      session.trace.notice(
-        "warn",
-        "observation stalled; retrying once",
-        `${error.what} produced nothing within ${error.afterMs}ms; asking the desktop again`,
+      session.trace.record("notice", () =>
+        notice(
+          "warn",
+          "observation stalled; retrying once",
+          `${error.what} produced nothing within ${error.afterMs}ms; asking the desktop again`,
+        ),
       );
       return await raceBounded(
         `observe (${label}, retry)`,
@@ -156,7 +159,9 @@ export class DesktopObserver {
       this.seenSpeechIds.add(utterance.id);
       this.pendingHeardSpeech.push(utterance);
       this.heardNewSpeech = true;
-      this.session.trace.notice("ok", "speech heard", this.session.redactNarration(utterance.text));
+      this.session.trace.record("notice", () =>
+        notice("ok", "speech heard", this.session.redactNarration(utterance.text)),
+      );
     }
     if (this.pendingHeardSpeech.length > CUA_SPEECH_LIMITS.utterances) {
       throw new CuaExecutorError("invalid_response", "outcome_uncertain");
@@ -177,19 +182,18 @@ export class DesktopObserver {
     // Default: persist the raw frame (full fidelity, local-only). redactScreenshots flips to the
     // publish-safe blurred thumbnail. Either way the bytes the model already saw were raw.
     const { bytes, method } = session.redactScreenshots
-      ? await session.options.redaction
+      ? await session.settings.redaction
           .redactScreenshot(frame, { label })
           .then((r) => ({ bytes: r.buffer, method: r.method }))
       : { bytes: frame, method: "none" as const };
     const path = await session.writeScreenshot(`${label}.png`, bytes);
     const screenshotRef = { path, redaction: method };
     session.lastScreenshotRef = screenshotRef;
-    session.trace.record({
-      kind: "screenshot",
+    session.trace.record("screenshot", () => ({
       lifecycle: "completed",
       title: label,
       screenshotRef,
-    });
+    }));
     session.trace.bump("screenshots");
   }
 
@@ -201,11 +205,13 @@ export class DesktopObserver {
     for (const completion of taskTracker.observe(stopObservationOf(observation), turn)) {
       // The id is researcher-authored config and the kinds are rule-type names; the matched VALUES
       // (a URL, page text) never appear here — the same discipline as the stopWhen notice.
-      this.session.trace.notice(
-        "matched",
-        `task completed: ${this.session.redactNarration(completion.id)}`,
-        this.session.redactNarration(
-          `turn ${turn}; matched rule ${completion.matchedRuleIndex} (${completion.matchedKinds.join("+")})`,
+      this.session.trace.record("notice", () =>
+        notice(
+          "matched",
+          `task completed: ${this.session.redactNarration(completion.id)}`,
+          this.session.redactNarration(
+            `turn ${turn}; matched rule ${completion.matchedRuleIndex} (${completion.matchedKinds.join("+")})`,
+          ),
         ),
       );
     }
@@ -219,7 +225,7 @@ export class DesktopObserver {
     turnNumber: number,
   ): Promise<DwellEnd | undefined> {
     const { session } = this;
-    const { dwell, onScreenshot } = session.options;
+    const { dwell, onScreenshot } = session.settings;
     if (dwell === undefined || this.dwellDone) return undefined;
     if (
       dwell.when !== undefined &&
@@ -230,20 +236,21 @@ export class DesktopObserver {
     const trigger = dwell.when === undefined ? "at the start" : "its condition matched";
     const budget = Math.min(dwell.ms, Math.max(0, session.remaining() - dwell.everyMs));
     if (budget < dwell.everyMs) {
-      session.trace.notice(
-        "warn",
-        "dwell window skipped",
-        `${trigger} at turn ${turnNumber}, but only ${Math.max(0, session.remaining())}ms of session budget remained for a ${dwell.ms}ms window`,
+      session.trace.record("notice", () =>
+        notice(
+          "warn",
+          "dwell window skipped",
+          `${trigger} at turn ${turnNumber}, but only ${Math.max(0, session.remaining())}ms of session budget remained for a ${dwell.ms}ms window`,
+        ),
       );
       return undefined;
     }
     const dwellStartedAtMs = session.now();
-    session.trace.record({
-      kind: "notice",
+    session.trace.record("notice", () => ({
       lifecycle: "started",
       title: "dwell window started",
       text: `${trigger} at turn ${turnNumber}: holding ${budget}ms, a frame every ${dwell.everyMs}ms, no actions, no model turns`,
-    });
+    }));
     let frames = 0;
     while (session.now() - dwellStartedAtMs < budget) {
       if (session.signal?.aborted) throw new CuaAbortError();
@@ -259,12 +266,14 @@ export class DesktopObserver {
       this.observeTasks(frameObservation, turnNumber);
     }
     const heldMs = session.now() - dwellStartedAtMs;
-    session.trace.notice(
-      // A window that ENDS the session is structured, harness-owned completion evidence, the
-      // same class as a matched stopWhen, and the verdict resolver reads it that way.
-      dwell.then === "stop" ? "matched" : "ok",
-      "dwell window complete",
-      `${frames} frame(s) over ${heldMs}ms; no model turn was requested during the window`,
+    session.trace.record("notice", () =>
+      notice(
+        // A window that ENDS the session is structured, harness-owned completion evidence, the
+        // same class as a matched stopWhen, and the verdict resolver reads it that way.
+        dwell.then === "stop" ? "matched" : "ok",
+        "dwell window complete",
+        `${frames} frame(s) over ${heldMs}ms; no model turn was requested during the window`,
+      ),
     );
     return { next: dwell.then, heldMs };
   }

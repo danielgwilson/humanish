@@ -1,6 +1,5 @@
 import type {
   ActorCompletionReason,
-  ActorStatus,
   ActorStopCause,
   ParticipantDeclaredOutcome,
 } from "../../contract.js";
@@ -8,12 +7,14 @@ import type { StopConditionMatch } from "../../stop-conditions.js";
 import { isCuaExecutorError } from "../executor-error.js";
 import { isCuaProviderError } from "../provider-error.js";
 import { CuaAbortError, CuaDeadlineError } from "./race.js";
-import type { LoopSession, TraceDraft } from "./session.js";
+import type { LoopSession } from "./session.js";
+import { notice, type Evidence } from "./trace.js";
 import type { CuaObservation, CuaTurn } from "./types.js";
 
 // How a loop session ends. Every ending is one Stop value: the completion reason, its public
-// reason text, the structured cause when there is one, the trace evidence the driver records
-// once, and whether the stop earns a read-only closing request.
+// reason text, the structured cause when there is one, the trace evidence to record, and whether
+// the stop earns a read-only closing request. LoopSession.conclude commits a stop where it is
+// decided.
 
 /** A harness-observed completion after which the participant is asked for a closing account. */
 export interface ClosingTrigger {
@@ -26,38 +27,9 @@ export interface Stop {
   readonly completionReason: ActorCompletionReason;
   readonly reason: string;
   readonly stopCause?: ActorStopCause;
-  /** Trace evidence for this stop, recorded when the session ends. */
-  readonly evidence?: TraceDraft;
+  /** Trace evidence for this stop, recorded when the stop is concluded. */
+  readonly evidence?: Evidence;
   readonly closing?: ClosingTrigger;
-}
-
-/** Exported so the participant-vs-harness distinction is pinned directly, not inferred from a run. */
-export function statusForCompletionReason(reason: ActorCompletionReason): ActorStatus {
-  switch (reason) {
-    case "goal_satisfied":
-    case "turn_completed": // turn_completed is a Codex-lane reason; this loop emits goal_satisfied
-      return "passed";
-    // A session that ran out of time or budget did not reach its goal, whatever it achieved along
-    // the way. Calling that `passed` is how a truncated study came to be reported as a green one —
-    // and why "raise the timeout" kept landing on the operator instead of on the tool. This switch
-    // is exhaustive with no default, so a new completion reason forces a compile error here.
-    case "budget_reached":
-      return "incomplete";
-    case "timed_out":
-      return "timed_out";
-    case "blocked_approval":
-      return "blocked";
-    // A participant who stopped trying is the single most valuable thing a usability study
-    // produces. Recording it as `failed` said the instrument broke, which is a different claim and
-    // a false one — see docs/principles/three-roles.md.
-    case "gave_up":
-      return "abandoned";
-    // Only the harness failing is a harness failure.
-    case "actor_error":
-    case "step_failed": // step_failed is the scripted-browser lane's reason; this loop never emits it
-    case "harness_error":
-      return "failed";
-  }
 }
 
 /**
@@ -81,6 +53,11 @@ export function declaredOutcomeFromClosingLine(
   return undefined;
 }
 
+/** The participant's own word for how it ended: a schema field first, then the closing line (#570). */
+export function declaredOutcomeOf(turn: CuaTurn): ParticipantDeclaredOutcome | undefined {
+  return turn.outcome ?? declaredOutcomeFromClosingLine(turn.message);
+}
+
 /**
  * The participant reported a natural endpoint. "not_reached" is a participant who stopped without
  * finishing: gave_up, which tallies as abandoned. "blocked" keeps goal_satisfied here (the actor
@@ -89,19 +66,15 @@ export function declaredOutcomeFromClosingLine(
  */
 export function participantEnded(
   turn: CuaTurn,
+  declaredOutcome: ParticipantDeclaredOutcome | undefined,
   redactNarration: (text: string) => string,
-): { stop: Stop; declaredOutcome: ParticipantDeclaredOutcome | undefined } {
-  // A schema field first; failing that, the fixed first line the prompt asks for (#570).
-  const declaredOutcome = turn.outcome ?? declaredOutcomeFromClosingLine(turn.message);
+): Stop {
   const summary = turn.message?.trim();
   return {
-    declaredOutcome,
-    stop: {
-      completionReason: declaredOutcome === "not_reached" ? "gave_up" : "goal_satisfied",
-      reason: summary
-        ? redactNarration(summary)
-        : "model reported a natural endpoint with no further action",
-    },
+    completionReason: declaredOutcome === "not_reached" ? "gave_up" : "goal_satisfied",
+    reason: summary
+      ? redactNarration(summary)
+      : "model reported a natural endpoint with no further action",
   };
 }
 
@@ -175,12 +148,9 @@ export const accountBilledCaps: Stop = {
     "Codex is using a ChatGPT account; API dollar caps cannot bound account usage. Use a finite timeout or the OpenAI API participant.",
 };
 
-const notice = (status: string, title: string, text: string): TraceDraft => ({
+const noticeEvidence = (status: string, title: string, text: string): Evidence => ({
   kind: "notice",
-  lifecycle: "completed",
-  status,
-  title,
-  text,
+  body: () => notice(status, title, text),
 });
 
 const ADAPTER_LIMIT_REASON =
@@ -189,7 +159,7 @@ export const adapterLimit: Stop = {
   completionReason: "budget_reached",
   reason: ADAPTER_LIMIT_REASON,
   stopCause: "adapter_limit",
-  evidence: notice("warn", "adapter admission limit reached", ADAPTER_LIMIT_REASON),
+  evidence: noticeEvidence("warn", "adapter admission limit reached", ADAPTER_LIMIT_REASON),
 };
 
 const USAGE_UNREPORTED_REASON =
@@ -198,7 +168,7 @@ export const usageUnreported: Stop = {
   completionReason: "harness_error",
   reason: USAGE_UNREPORTED_REASON,
   stopCause: "usage_unreported",
-  evidence: notice("error", "provider usage unavailable", USAGE_UNREPORTED_REASON),
+  evidence: noticeEvidence("error", "provider usage unavailable", USAGE_UNREPORTED_REASON),
 };
 
 export function providerStalledTwice(turnNumber: number, afterMs: number): Stop {
@@ -206,7 +176,7 @@ export function providerStalledTwice(turnNumber: number, afterMs: number): Stop 
   return {
     completionReason: "harness_error",
     reason,
-    evidence: notice("error", "provider turn stalled twice", reason),
+    evidence: noticeEvidence("error", "provider turn stalled twice", reason),
   };
 }
 
@@ -234,7 +204,7 @@ export function providerInterrupted(interruption: NonNullable<CuaTurn["interrupt
           : unexpectedStatus
             ? "provider_status"
             : "provider_incomplete",
-    evidence: notice(
+    evidence: noticeEvidence(
       tokenLimit ? "warn" : "error",
       tokenLimit
         ? "provider token limit reached"
@@ -256,9 +226,7 @@ export function blockedOnSafetyChecks(checks: string): Stop {
     reason: `paused on model safety check(s): ${checks}; not acknowledged`,
     evidence: {
       kind: "approval",
-      lifecycle: "completed",
-      status: "blocked",
-      title: `safety check: ${checks}`,
+      body: () => ({ lifecycle: "completed", status: "blocked", title: `safety check: ${checks}` }),
     },
   };
 }
@@ -288,12 +256,14 @@ export function stopWhenMatched(
     reason: `stopWhen matched ${match.id} (${match.kinds.join("+")})`,
     evidence: {
       kind: "notice",
-      lifecycle: "completed",
-      status: "matched",
-      title: `stopWhen matched: ${match.id}`,
-      text: redactNarration(
-        `Harness stop condition matched rule ${match.id} using ${match.kinds.join(", ")}. Raw observed URL/text/appState were runtime-only and were not persisted; when a screenshot was available, the immediately preceding screenshot item is the visual evidence for the matched surface.`,
-      ),
+      body: () =>
+        notice(
+          "matched",
+          `stopWhen matched: ${match.id}`,
+          redactNarration(
+            `Harness stop condition matched rule ${match.id} using ${match.kinds.join(", ")}. Raw observed URL/text/appState were runtime-only and were not persisted; when a screenshot was available, the immediately preceding screenshot item is the visual evidence for the matched surface.`,
+          ),
+        ),
     },
     closing: { trigger: "stop_when", observation },
   };
@@ -310,36 +280,41 @@ export function dwellCompleted(heldMs: number, when: string, observation: CuaObs
 /** The friction backstop tripped: cite the reason, the last material action and recent actions. */
 export function gaveUp(session: LoopSession, reason: string): Stop {
   const { lastMaterialActionTitle, recentActionTitles } = session.activity;
-  const details = [
-    `reason: ${reason}`,
-    lastMaterialActionTitle === undefined
-      ? "last material action: none"
-      : `last material action: ${lastMaterialActionTitle}`,
-    recentActionTitles.length === 0
-      ? "recent actions: none"
-      : `recent actions: ${recentActionTitles.join(" -> ")}`,
-  ];
   const screenshotRef = session.lastScreenshotRef;
+  const details = (): string =>
+    [
+      `reason: ${reason}`,
+      lastMaterialActionTitle === undefined
+        ? "last material action: none"
+        : `last material action: ${lastMaterialActionTitle}`,
+      recentActionTitles.length === 0
+        ? "recent actions: none"
+        : `recent actions: ${recentActionTitles.join(" -> ")}`,
+    ].join("; ");
   return {
     completionReason: "gave_up",
     reason,
     evidence: {
       kind: "notice",
-      lifecycle: "completed",
-      status: "blocked",
-      title: "computer-use backstop gave up",
-      text: session.redactNarration(details.join("; ")),
-      ...(screenshotRef === undefined ? {} : { screenshotRef }),
+      body: () => ({
+        ...notice("blocked", "computer-use backstop gave up", session.redactNarration(details())),
+        ...(screenshotRef === undefined ? {} : { screenshotRef }),
+      }),
     },
   };
 }
 
-/** Classify an error that ended the session, with the diagnostics a reader needs to place it. */
+/**
+ * Classify an error that ended the session, with the diagnostics a reader needs to place it.
+ * A stop cause committed by an earlier stop that failed to record is kept.
+ */
 export function stopForError(error: unknown, session: LoopSession): Stop {
   if (error instanceof CuaDeadlineError) return timeLimit(session);
   if (error instanceof CuaAbortError) return harnessAborted;
   const redact = (text: string): string => session.redactNarration(text);
   const { lastActionTitle } = session.activity;
+  const lastAction = (): string | undefined =>
+    lastActionTitle === undefined ? undefined : `last action: ${redact(lastActionTitle)}`;
   const screenshot =
     session.lastScreenshotRef === undefined ? {} : { screenshotRef: session.lastScreenshotRef };
   if (isCuaProviderError(error)) {
@@ -347,40 +322,46 @@ export function stopForError(error: unknown, session: LoopSession): Stop {
     return {
       completionReason: "harness_error",
       reason,
-      evidence: notice("error", "participant provider error", reason),
+      evidence: noticeEvidence("error", "participant provider error", reason),
     };
   }
   if (isCuaExecutorError(error)) {
-    const detail = [
-      `phase: ${redact(session.phase)}`,
-      `code: ${error.code}`,
-      `disposition: ${error.disposition}`,
-      lastActionTitle === undefined ? undefined : `last action: ${redact(lastActionTitle)}`,
-    ];
+    const detail = (): string =>
+      [
+        `phase: ${redact(session.phase)}`,
+        `code: ${error.code}`,
+        `disposition: ${error.disposition}`,
+        lastAction(),
+      ]
+        .filter(Boolean)
+        .join("; ");
     return {
       completionReason: "harness_error",
       reason: `desktop executor error: ${error.code}; disposition: ${error.disposition}`,
       evidence: {
-        ...notice("error", "desktop executor error", detail.filter(Boolean).join("; ")),
-        ...screenshot,
+        kind: "notice",
+        body: () => ({ ...notice("error", "desktop executor error", detail()), ...screenshot }),
       },
     };
   }
   const rawMessage = error instanceof Error ? error.message : String(error);
   const message = redact(rawMessage);
   const reason = redact(`computer-use loop error: ${rawMessage}`);
-  const detail = [
-    `phase: ${redact(session.phase)}`,
-    error instanceof Error && error.name ? `error: ${redact(error.name)}` : undefined,
-    `message: ${message}`,
-    lastActionTitle === undefined ? undefined : `last action: ${redact(lastActionTitle)}`,
-  ];
+  const detail = (): string =>
+    [
+      `phase: ${redact(session.phase)}`,
+      error instanceof Error && error.name ? `error: ${redact(error.name)}` : undefined,
+      `message: ${message}`,
+      lastAction(),
+    ]
+      .filter(Boolean)
+      .join("; ");
   return {
     completionReason: "actor_error",
     reason,
     evidence: {
-      ...notice("error", "computer-use loop error", detail.filter(Boolean).join("; ")),
-      ...screenshot,
+      kind: "notice",
+      body: () => ({ ...notice("error", "computer-use loop error", detail()), ...screenshot }),
     },
   };
 }

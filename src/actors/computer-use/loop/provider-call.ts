@@ -3,6 +3,7 @@ import { CuaProviderError, isCuaProviderError } from "../provider-error.js";
 import { adapterLimit, providerStalledTwice, usageUnreported, type Stop } from "./ending.js";
 import { CuaAbortError, CuaDeadlineError, CuaStallError, neverAbort, raceBounded } from "./race.js";
 import type { LoopSession } from "./session.js";
+import { notice } from "./trace.js";
 import type { CuaTurn, CuaTurnRequest } from "./types.js";
 import { reportedCounts, settledReceipt } from "./usage.js";
 
@@ -13,6 +14,9 @@ import { reportedCounts, settledReceipt } from "./usage.js";
 const CUA_PROVIDER_CLEANUP_GRACE_MS = 5000;
 
 export type TurnReply = { readonly turn: CuaTurn } | { readonly stop: Stop };
+
+// Stops decided here are concluded before the `finally` releases the request signal, so their
+// notices are recorded before any abort listener runs.
 
 /**
  * Bounded per call (#469): one hung request used to be indistinguishable from thinking and cost
@@ -56,12 +60,12 @@ export async function requestTurn(
       ),
     };
   } catch (error) {
-    if (isCuaAdmissionLimitError(error)) return { stop: adapterLimit };
+    if (isCuaAdmissionLimitError(error)) return { stop: session.conclude(adapterLimit) };
     // A thrown request may have been billed without returning usage. Admission refusal is
     // the explicit no-dispatch exception above; strict capped routes cannot safely retry.
     if (session.requiresUsage) {
       session.usage.markUnreported();
-      return { stop: usageUnreported };
+      return { stop: session.conclude(usageUnreported) };
     }
     if (!(error instanceof CuaStallError)) throw error;
     return await retryStalledTurn(session, request, turnNumber, error);
@@ -78,10 +82,12 @@ async function retryStalledTurn(
   stall: CuaStallError,
 ): Promise<TurnReply> {
   session.usage.markUnreported();
-  session.trace.notice(
-    "warn",
-    "provider turn stalled; retrying once",
-    `${stall.what} produced nothing within ${stall.afterMs}ms; sending the same observation again`,
+  session.trace.record("notice", () =>
+    notice(
+      "warn",
+      "provider turn stalled; retrying once",
+      `${stall.what} produced nothing within ${stall.afterMs}ms; sending the same observation again`,
+    ),
   );
   try {
     return {
@@ -94,10 +100,10 @@ async function retryStalledTurn(
       ),
     };
   } catch (retryError) {
-    if (isCuaAdmissionLimitError(retryError)) return { stop: adapterLimit };
+    if (isCuaAdmissionLimitError(retryError)) return { stop: session.conclude(adapterLimit) };
     if (!(retryError instanceof CuaStallError)) throw retryError;
     session.usage.markUnreported();
-    return { stop: providerStalledTwice(turnNumber, retryError.afterMs) };
+    return { stop: session.conclude(providerStalledTwice(turnNumber, retryError.afterMs)) };
   }
 }
 
@@ -176,10 +182,12 @@ export async function singleDispatch(
   const usage = rawUsage === undefined ? undefined : reportedCounts(rawUsage);
   const settledKind = session.usage.settle(kind, receipt, usage, typed);
   if (receipt.cleanup !== "confirmed") {
-    session.trace.notice(
-      "error",
-      "participant request cleanup unconfirmed",
-      "The request did not confirm cleanup within the settlement boundary. No further participant request or action is admitted.",
+    session.trace.record("notice", () =>
+      notice(
+        "error",
+        "participant request cleanup unconfirmed",
+        "The request did not confirm cleanup within the settlement boundary. No further participant request or action is admitted.",
+      ),
     );
   }
   if (!("error" in outcome)) return outcome.turn;

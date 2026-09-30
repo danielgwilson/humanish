@@ -5,6 +5,7 @@ import { requestClosingAccount } from "./loop/closing.js";
 import {
   accountBilledCaps,
   blockedOnSafetyChecks,
+  declaredOutcomeOf,
   gaveUp,
   harnessAborted,
   nonFiniteEstimate,
@@ -45,7 +46,8 @@ export type {
 export { actionFingerprint, describeCuaAction } from "./loop/actions.js";
 export { stableProgressKey } from "./loop/backstop.js";
 export { validClosingReport } from "./loop/closing.js";
-export { declaredOutcomeFromClosingLine, statusForCompletionReason } from "./loop/ending.js";
+export { declaredOutcomeFromClosingLine } from "./loop/ending.js";
+export { statusForCompletionReason } from "./loop/trace.js";
 
 // The computer-use (CUA) loop engine.
 //
@@ -101,13 +103,13 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
   };
   let stop: Stop;
   try {
-    stop = await runTurns(session, conversation);
+    stop = session.conclude(await runTurns(session, conversation));
   } catch (error) {
-    stop = stopForError(error, session);
+    stop = session.conclude(stopForError(error, session));
   }
-  if (stop.evidence !== undefined) session.trace.record(stop.evidence);
+  // A structured stop earns the closing request even if recording its evidence then failed.
   const debrief =
-    stop.closing === undefined
+    session.closing === undefined
       ? undefined
       : await requestClosingAccount(
           session,
@@ -116,7 +118,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
             previousExecution: conversation.previousExecution,
             acknowledgedSafetyChecks: conversation.pendingAcks,
           },
-          stop.closing,
+          session.closing,
         );
   return loopResult(session, stop, debrief);
 }
@@ -155,10 +157,13 @@ async function runTurns(session: LoopSession, conversation: Conversation): Promi
     const blocked = reviewSafetyChecks(session, conversation, turn);
     if (blocked !== undefined) return blocked;
     if (turn.done || turn.actions.length === 0) {
-      const ended = participantEnded(turn, (text) => session.redactNarration(text));
-      session.declaredOutcome = ended.declaredOutcome;
+      // The declared outcome is kept even if redacting the participant's summary fails.
+      session.declaredOutcome = declaredOutcomeOf(turn);
+      const ended = participantEnded(turn, session.declaredOutcome, (text) =>
+        session.redactNarration(text),
+      );
       await observer.observeClosingTasks(turnNumber);
-      return ended.stop;
+      return ended;
     }
 
     const batch = await runActionBatch(session, turn.actions);
@@ -229,7 +234,7 @@ function nextRequest(
   observation: CuaObservation,
 ): CuaTurnRequest {
   const request: CuaTurnRequest = {
-    instructions: session.options.instructions,
+    instructions: session.settings.instructions,
     observation,
     ...(session.provider.requestPolicy !== "fail_closed" ||
     conversation.previousExecution === undefined
@@ -253,13 +258,13 @@ function acceptTurn(
   request: CuaTurnRequest,
   turn: CuaTurn,
 ): void {
-  if (request.contextHint)
-    session.trace.record({
-      kind: "notice",
+  const hint = request.contextHint;
+  if (hint)
+    session.trace.record("notice", () => ({
       title: "Participant context hint",
-      text: session.redactNarration(request.contextHint),
+      text: session.redactNarration(hint),
       lifecycle: "completed",
-    });
+    }));
   session.trace.bump("turns");
   observer.speechDelivered();
   conversation.previousResponseId = turn.responseId ?? conversation.previousResponseId;
@@ -269,7 +274,7 @@ function acceptTurn(
 
 /** Stops for a reply that must not be acted on: account billing, interruption, unknown usage. */
 function refuseTurn(session: LoopSession, turn: CuaTurn, turnNumber: number): Stop | undefined {
-  const { maxUsd, overRunBudget, estimateTurnCostUsd } = session.options;
+  const { maxUsd, overRunBudget, estimateTurnCostUsd } = session.settings;
   if (
     session.provider.executionProfile?.billing === "account-unknown" &&
     (maxUsd !== undefined || overRunBudget !== undefined || estimateTurnCostUsd !== undefined)
@@ -295,7 +300,7 @@ function refuseTurn(session: LoopSession, turn: CuaTurn, turnNumber: number): St
  * in memory; only an extracted code is used (and only as a digest).
  */
 function shareNarration(session: LoopSession, turn: CuaTurn): void {
-  const { onMessage } = session.options;
+  const { onMessage } = session.settings;
   const narration = [turn.reasoning, turn.message]
     .filter((t): t is string => typeof t === "string" && t.length > 0)
     .join("\n");
@@ -309,7 +314,7 @@ function shareNarration(session: LoopSession, turn: CuaTurn): void {
  * cannot trip it (preflight guaranteed a rate). The study budget (#299) is checked next.
  */
 function spendStop(session: LoopSession): Stop | undefined {
-  const { maxUsd, overRunBudget, estimateTurnCostUsd } = session.options;
+  const { maxUsd, overRunBudget, estimateTurnCostUsd } = session.settings;
   if (maxUsd !== undefined && estimateTurnCostUsd) {
     const running = estimateTurnCostUsd(session.usage.running());
     if (running !== null && !Number.isFinite(running)) return nonFiniteEstimate;
@@ -330,24 +335,23 @@ function recordNarration(
 ): void {
   const prefix = interrupted ? "incomplete " : "";
   const status = interrupted ? { status: "warn" } : {};
-  if (turn.reasoning) {
-    session.trace.record({
-      kind: "reasoning",
+  const { reasoning, message } = turn;
+  if (reasoning) {
+    session.trace.record("reasoning", () => ({
       lifecycle: "completed",
       ...status,
       title: `${prefix}reasoning turn ${turnNumber}`,
-      text: session.redactNarration(turn.reasoning),
-    });
+      text: session.redactNarration(reasoning),
+    }));
     session.trace.bump("reasonings");
   }
-  if (turn.message) {
-    session.trace.record({
-      kind: "message",
+  if (message) {
+    session.trace.record("message", () => ({
       lifecycle: "completed",
       ...status,
       title: `${prefix}message turn ${turnNumber}`,
-      text: session.redactNarration(turn.message),
-    });
+      text: session.redactNarration(message),
+    }));
     session.trace.bump("messages");
   }
 }
@@ -363,7 +367,7 @@ function reviewSafetyChecks(
   const acks = acknowledgeSafetyChecks(turn.pendingSafetyChecks);
   if (acks === null || acks.length === 0) {
     return blockedOnSafetyChecks(
-      session.options.redaction.redactText(
+      session.settings.redaction.redactText(
         turn.pendingSafetyChecks.map((check) => check.code).join(", "),
       ),
     );

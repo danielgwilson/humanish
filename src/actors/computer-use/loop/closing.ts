@@ -4,6 +4,7 @@ import type { ClosingTrigger } from "./ending.js";
 import { singleDispatch } from "./provider-call.js";
 import { CuaDeadlineError, CuaStallError, raceBounded } from "./race.js";
 import type { LoopSession } from "./session.js";
+import { notice } from "./trace.js";
 import type { CuaProvider, CuaTurn, CuaTurnRequest } from "./types.js";
 import { isCompleteTurnUsage } from "./usage.js";
 
@@ -65,10 +66,12 @@ export async function requestClosingAccount(
       reason: session.redactNarration(detail),
       ...(usageReported === undefined ? {} : { usageReported }),
     };
-    session.trace.notice(
-      status === "completed" ? "ok" : "warn",
-      `participant debrief ${status}`,
-      session.redactNarration(detail),
+    session.trace.record("notice", () =>
+      notice(
+        status === "completed" ? "ok" : "warn",
+        `participant debrief ${status}`,
+        session.redactNarration(detail),
+      ),
     );
     return debrief;
   };
@@ -84,7 +87,7 @@ async function closingOutcome(
   record: RecordDebrief,
 ): Promise<Debrief> {
   const { provider, signal, usage } = session;
-  const { maxUsd, overRunBudget, estimateTurnCostUsd } = session.options;
+  const { maxUsd, overRunBudget, estimateTurnCostUsd } = session.settings;
   if (session.trace.counts.turns === 0)
     return record("skipped", "the study stopped before any participant turn");
   if (!supportsDebrief(provider))
@@ -142,7 +145,7 @@ async function closingExchange(
   session.trace.bump("debriefCalls");
   try {
     const request: CuaTurnRequest = {
-      instructions: session.options.instructions,
+      instructions: session.settings.instructions,
       observation: closing.observation,
       ...(provider.requestPolicy !== "fail_closed" || context.previousExecution === undefined
         ? {}
@@ -205,7 +208,7 @@ async function closingExchange(
 }
 
 function acceptClosingTurn(session: LoopSession, turn: CuaTurn, record: RecordDebrief): Debrief {
-  const { maxUsd, overRunBudget, estimateTurnCostUsd } = session.options;
+  const { maxUsd, overRunBudget, estimateTurnCostUsd } = session.settings;
   session.usage.record(turn, false);
   session.lastResponseId = turn.responseId ?? session.lastResponseId;
   // Refresh a shared budget with all reported usage, without changing the completed task.
@@ -216,10 +219,12 @@ function acceptClosingTurn(session: LoopSession, turn: CuaTurn, record: RecordDe
     sharedStop != null ||
     (maxUsd !== undefined && finalEstimate != null && finalEstimate > maxUsd)
   ) {
-    session.trace.notice(
-      "warn",
-      "model budget reached during closing report",
-      "The closing request crossed an estimated budget; no further requests or actions followed. Task completion is unchanged.",
+    session.trace.record("notice", () =>
+      notice(
+        "warn",
+        "model budget reached during closing report",
+        "The closing request crossed an estimated budget; no further requests or actions followed. Task completion is unchanged.",
+      ),
     );
   }
   const usageReported =
@@ -246,12 +251,11 @@ function acceptClosingTurn(session: LoopSession, turn: CuaTurn, record: RecordDe
       ),
     ],
   };
-  const messageId = session.trace.record({
-    kind: "message",
+  const messageId = session.trace.record("message", () => ({
     lifecycle: "completed",
     title: "participant closing report",
     text: [report.summary, ...report.frictionReports].join("\n\n"),
-  });
+  }));
   session.trace.bump("messages");
   const debrief = record(
     "completed",

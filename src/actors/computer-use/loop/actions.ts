@@ -3,6 +3,7 @@ import { commandFailureInfo, isCommandExitError } from "../../../substrates/comm
 import { CuaExecutorError, isCuaExecutorError } from "../executor-error.js";
 import { CuaAbortError, CuaDeadlineError, CuaStallError, raceBounded, raceSettle } from "./race.js";
 import type { LoopSession } from "./session.js";
+import { notice } from "./trace.js";
 import type { CuaAction, CuaTurnRequest } from "./types.js";
 
 // The participant's actions: their public labels, what counts as a material action, and how one
@@ -151,11 +152,13 @@ export async function runActionBatch(
         for (let later = index + 1; later < actions.length; later++) {
           execution.actions.push({ index: later, status: "not_dispatched" });
         }
-        trace.notice(
-          "warn",
-          "action rejected before dispatch",
-          session.redactNarration(
-            `action: ${title}; code: action_rejected; disposition: not_dispatched; remaining batch actions not dispatched: ${actions.length - index - 1}`,
+        trace.record("notice", () =>
+          notice(
+            "warn",
+            "action rejected before dispatch",
+            session.redactNarration(
+              `action: ${title}; code: action_rejected; disposition: not_dispatched; remaining batch actions not dispatched: ${actions.length - index - 1}`,
+            ),
           ),
         );
         return { execution, rejectedActionTitle: title };
@@ -169,8 +172,7 @@ export async function runActionBatch(
     }
     execution.actions.push({ index, status });
     countAttempt(session, action, title, status);
-    trace.record({
-      kind: "ui_action",
+    trace.record("ui_action", () => ({
       lifecycle: "completed",
       title,
       ...(action.kind === "speak" ? { text: session.redactNarration(action.text) } : {}),
@@ -179,7 +181,7 @@ export async function runActionBatch(
       ...(action.kind === "click" || action.kind === "double_click"
         ? { coord: { x: action.x, y: action.y } }
         : {}),
-    });
+    }));
   }
   return { execution, rejectedActionTitle: undefined };
 }
@@ -215,10 +217,12 @@ async function dispatchAction(
     return "completed";
   } catch (error) {
     if (!(error instanceof CuaStallError)) throw error;
-    session.trace.notice(
-      "warn",
-      "observation action stalled; skipped",
-      `${error.what} produced nothing within ${error.afterMs}ms; the desktop was not asked again and the next screenshot decides`,
+    session.trace.record("notice", () =>
+      notice(
+        "warn",
+        "observation action stalled; skipped",
+        `${error.what} produced nothing within ${error.afterMs}ms; the desktop was not asked again and the next screenshot decides`,
+      ),
     );
     return "skipped";
   }
@@ -247,11 +251,13 @@ async function executeAction(
       // The loop's deadline/abort may win before the executor can report whether its
       // write reached the desktop. Cancellation alone does not establish rollback.
       session.activity.interruptedActionOutcome = true;
-      session.trace.notice(
-        "warn",
-        "action outcome uncertain",
-        session.redactNarration(
-          `action: ${title}; disposition: outcome_uncertain; the loop stopped waiting before execution was acknowledged; the action was not retried`,
+      session.trace.record("notice", () =>
+        notice(
+          "warn",
+          "action outcome uncertain",
+          session.redactNarration(
+            `action: ${title}; disposition: outcome_uncertain; the loop stopped waiting before execution was acknowledged; the action was not retried`,
+          ),
         ),
       );
     }
@@ -266,20 +272,22 @@ async function executeAction(
 
 function recordCommandFailure(session: LoopSession, title: string, error: unknown): void {
   const { exitCode, stderrTail } = commandFailureInfo(error);
-  session.trace.notice(
-    "error",
-    "action skipped: desktop command failed",
-    // Public-safe: describeCuaAction never includes raw typed text, the exit code is a number,
-    // and the tail is only the substrate's own stderr (tailed+whitespace-collapsed); the whole
-    // line is still run through redactNarration (scrubKnownValues + pattern redaction).
-    session.redactNarration(
-      [
-        `action: ${title}`,
-        exitCode === undefined ? undefined : `exit code: ${exitCode}`,
-        stderrTail.length > 0 ? `stderr: ${stderrTail}` : undefined,
-      ]
-        .filter(Boolean)
-        .join("; "),
+  session.trace.record("notice", () =>
+    notice(
+      "error",
+      "action skipped: desktop command failed",
+      // Public-safe: describeCuaAction never includes raw typed text, the exit code is a number,
+      // and the tail is only the substrate's own stderr (tailed+whitespace-collapsed); the whole
+      // line is still run through redactNarration (scrubKnownValues + pattern redaction).
+      session.redactNarration(
+        [
+          `action: ${title}`,
+          exitCode === undefined ? undefined : `exit code: ${exitCode}`,
+          stderrTail.length > 0 ? `stderr: ${stderrTail}` : undefined,
+        ]
+          .filter(Boolean)
+          .join("; "),
+      ),
     ),
   );
 }
