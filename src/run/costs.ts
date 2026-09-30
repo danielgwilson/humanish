@@ -1,7 +1,8 @@
 import { bindExistingRunArtifactPaths } from "./paths.js";
 import type { RunIndexEntry } from "./run-index.js";
 import { contradictsAccountBilling } from "./pricing.js";
-import { readBoundedStudyFile, STUDY_EVIDENCE_LIMITS } from "../analysis/evidence.js";
+import { STUDY_EVIDENCE_LIMITS } from "../analysis/evidence.js";
+import { readBoundedStudyFile } from "../analysis/study-files.js";
 import { readAutomaticStudyAnalysisAccounting } from "../analysis/job.js";
 import { readStudyAnalysisAccountingRecords } from "../analysis/store.js";
 
