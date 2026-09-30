@@ -90,10 +90,19 @@ steps 3 to 7 and 9.
 | `tui/`                 | The Ink terminal app                                                         | `tui/AGENTS.md`                     |
 | `site/`                | humanish.dev and its user docs in `site/content/docs/`                       | `site/AGENTS.md`                    |
 | `humanish/`            | This repo's own labs, personas, scenarios, fixtures and coverage notes       | `humanish/labs/first-run.yaml`      |
+| `examples/`            | Library examples shipped in the npm package: a participant and a scorer      | `examples/README.md`                |
+| `adapters/`            | Adapter fixture sets that `tests/lab/adapter-fixtures.test.ts` checks        | `adapters/fixtures/README.md`       |
+| `bench/`               | Benchmark apps with planted defects and their dated results                  | `bench/DEFECTS.md`                  |
+| `fixtures/`            | Synthetic apps and cases that tests and scripts copy                         | `fixtures/minimal-app/README.md`    |
+| `skills/`              | The companion agent skill that `npx skills add` installs                     | `skills/humanish/SKILL.md`          |
 | `runtime/`             | Desktop and browser image recipes                                            | `runtime/browser-guest/README.md`   |
 | `scripts/`             | Proof, release and check scripts that `package.json` runs                    | `scripts/check-doc-paths.ts`        |
 | `docs/contracts/`      | Bundle and schema contracts, whose documented fields are API                 | `docs/contracts/run-bundle.md`      |
 | `tests/`               | Vitest suites that mirror `src/`, plus `tests/fixtures/` and `tests/golden/` | `tests/helpers/run-golden.ts`       |
+
+Three folders hold fixtures. `tests/fixtures/` holds test inputs, `humanish/fixtures/` holds the
+synthetic apps this repo's own labs start, and the root `fixtures/` holds synthetic apps and cases
+that several tests and scripts copy, such as `fixtures/minimal-app/`.
 
 ## Check which compositions a lab can declare
 
@@ -171,3 +180,5 @@ Common changes touch these tests and contracts:
 | An actor                  | `tests/actors/`, `tests/actors/conformance.test.ts`                          | `docs/architecture/actor-contract.md`                              |
 | Redaction or share safety | `tests/evidence/`, `tests/run/narration-secrets.test.ts`                     | `docs/contracts/policy.md`                                         |
 | Study analysis            | `tests/analysis/`                                                            | `docs/contracts/study-analysis.md`                                 |
+| A public export           | `pnpm build` and `pnpm api:proof` (`--update` to accept)                     | `tests/golden/public-api.json`                                     |
+| An example                | `pnpm build` and `pnpm api:proof`, which runs every example                  | `examples/README.md`                                               |
