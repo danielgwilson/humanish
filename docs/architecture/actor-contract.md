@@ -2,18 +2,19 @@
 
 Date: 2026-06-06 (current-state note updated 2026-09-30)
 
-Status: accepted contract with a partially open extension surface. Shipped:
-the evidence schema `humanish.actor-trace.v1` (`src/actors/contract.ts`) and a
-closed first-party registry of five descriptors (`src/actors/registry.ts`:
-`codex-app-server`, `openai-computer-use`, `local-agent`, `scripted-browser`,
-`codex-exec`). `actors[0].type` is a
-real dispatch key on the computer-use, scripted-browser, and terminal-product
-routes. Product scoring, feedback, and artifact hooks are extension seams, but
-public out-of-tree actor registration and its conformance certification are not
-shipped. Also not shipped: the full `Actor.run(input)` interface,
-`RedactionHooks` injection, `ApprovalPolicy`, `StagehandCuaActor`, and the
-`persona-fidelity` verify check. Decision 6's capture-time screenshot stance
-was recanted in 0.6.0; see the inline notes and the capture-vs-publish rule in
+Status: accepted contract with a partially open extension surface. Shipped: the evidence
+schema `humanish.actor-trace.v1` (`src/actors/contract.ts`) and a closed first-party
+registry of five descriptors (`src/actors/registry.ts`: `codex-app-server`,
+`openai-computer-use`, `local-agent`, `scripted-browser`, `codex-exec`). `actors[0].type`
+is a real dispatch key on the computer-use, scripted-browser, and terminal-product routes.
+Product scoring, feedback, and artifact hooks are extension seams, but public out-of-tree
+actor registration and its conformance certification are not shipped. Also not shipped: the
+full `Actor.run(input)` interface, `ApprovalPolicy`, `StagehandCuaActor`, and the
+`persona-fidelity` verify check. `RedactionHooks` ships in `src/evidence/redaction.ts`, and
+the computer-use loop takes it; the other adapters do not take it yet. The registry refuses
+a dispatch by lane only: `producesScreenshots` and the other capabilities are declared but
+not checked. Decision 6's capture-time screenshot stance was recanted in 0.6.0; see the
+inline notes and the capture-vs-publish rule in
 [`docs/principles/invariants-and-defaults.md`](../principles/invariants-and-defaults.md).
 
 `codex-exec` is a real dispatch key for terminal-product labs, but the exported
@@ -22,10 +23,10 @@ owned by `runTerminalProductLab`, which coordinates sandbox creation,
 command-scoped runtime auth, evidence, caps, and by-id cleanup.
 
 The `pi-agent-core` and `claude-agent-sdk` descriptors, the `app` lane and the
-`in-process-sdk` protocol were removed. No lab route dispatched either
-descriptor, and a lab that names one now fails to parse. A signed-in Claude
-Code drives computer-use studies through `local-agent`, which plugs into the
-provider-neutral `CuaProvider` port in `src/actors/computer-use/loop.ts`.
+`in-process-sdk` protocol were removed. No lab route dispatched either descriptor, and a
+lab that names one now fails to parse. A signed-in Claude Code drives computer-use studies
+through `local-agent`, which plugs into the provider-neutral `CuaProvider` port
+(`src/actors/computer-use/loop/types.ts`, re-exported from `loop.ts`).
 
 ## Context
 
@@ -70,14 +71,15 @@ API surface.
    typed `items[]`. `humanish.codex-app-server-trace.v1` remains a back-compat
    alias during migration.
 
-3. **A run is multi-turn within one trace; it stops on goal, abandonment,
-   unrecoverable failure, or a wall-clock safety timeout, never on a turn cap.**
-   Turn count is explicitly rejected as a stop signal: many turns usually means
-   legitimate complex progress, so a turn budget truncates real work and rewards
-   early quitting (it is a proxy for "too complex," not for "this user would
-   quit"). Patience is modeled as **friction tolerance**, not a budget (see
-   Persona section). The only hard runaway guard is the existing `timeoutMs`.
-   One `ActorRunResult` covers a multi-step scenario.
+3. **A run is multi-turn within one trace; it stops on goal, abandonment, unrecoverable
+   failure, or a wall-clock safety timeout, never on a turn cap.** Turn count is explicitly
+   rejected as a stop signal: many turns usually means legitimate complex progress, so a
+   turn budget truncates real work and rewards early quitting (it is a proxy for "too
+   complex," not for "this user would quit"). Patience is modeled as **friction
+   tolerance**, not a budget (see Persona section). The only hard runaway guard is the
+   existing `timeoutMs`. One `ActorRunResult` covers a multi-step scenario. (Since then,
+   declared spend caps also end a computer-use session with `budget_reached`; neither guard
+   counts turns.)
 
 4. **Redaction is injected once, never re-implemented per adapter.** Every
    adapter receives `RedactionHooks` (the shared secret/path/prompt-digest
@@ -111,7 +113,13 @@ authoritative.
 ```ts
 export const ACTOR_TRACE_SCHEMA = "humanish.actor-trace.v1";
 
-export type ActorStatus = "passed" | "failed" | "blocked" | "timed_out";
+export type ActorStatus =
+  | "passed"
+  | "abandoned" // the participant gave up in character
+  | "incomplete" // time or a budget ended the session before the goal
+  | "blocked"
+  | "timed_out"
+  | "failed"; // the HARNESS failed
 
 export type ActorCompletionReason =
   | "goal_satisfied" // scenario success predicate met
@@ -119,9 +127,9 @@ export type ActorCompletionReason =
   | "gave_up" // persona abandoned in character: friction exceeded its tolerance
   | "blocked_approval" // an action was auto-declined and the actor could not proceed
   | "timed_out" // wall-clock deadline hit with ZERO material progress → still a FAILURE
-  | "budget_reached" // wall-clock time budget hit AFTER productive activity (>=1 material
-  // action) → ActorStatus "passed", a NON-FAILURE open-ended-watch
-  // completion; distinct from goal_satisfied (no goal was claimed)
+  | "budget_reached" // a time, spend, adapter or token limit ended the session before a
+  // natural endpoint → ActorStatus "incomplete", even after productive
+  // activity; distinct from goal_satisfied (no goal was claimed)
   | "actor_error"
   | "step_failed" // a deterministic scripted step/expectation evaluated false: the
   // SUBJECT failed the script; the harness executed faithfully
@@ -199,12 +207,12 @@ export interface ApprovalPolicy {
 }
 
 export interface RedactionHooks {
-  redactText(s: string): string;
-  publicPath(p: string, root: string): string;
+  redactText(text: string): string;
+  publicPath(value: string, rootCwd: string): string;
   redactScreenshot(
-    buf: Buffer,
-    meta: ScreenshotMeta,
-  ): Promise<{ buf: Buffer; method: "blurred" | "ocr_scrubbed" }>;
+    buffer: Buffer | Uint8Array,
+    meta?: ScreenshotMeta,
+  ): Promise<{ buffer: Buffer; method: "blurred" | "ocr_scrubbed" }>;
   promptForLog(raw: string): { placeholder: string; digest: string; length: number };
 }
 
@@ -247,9 +255,11 @@ export interface Actor {
   turn input, drive a bounded turn loop honoring `timeoutMs` and `signal`, emit a
   single explicit `completionReason`, tear down. No adapter may block waiting on a
   human.
-- **Evidence.** Write the same three artifacts (`events.ndjson` redacted
-  envelopes, `summary.json` = `ActorTrace`, `transcript.txt` human view) so the
-  run-bundle wiring is provider-agnostic.
+- **Evidence.** Write redacted events, the `ActorTrace` and a human transcript so the
+  run-bundle wiring is provider-agnostic. The artifact names differ by lane: the Codex
+  app-server adapter writes `events.ndjson`, `summary.json` and `transcript.txt`; a
+  computer-use lane writes its trace to `actor.json` or `actors/<streamId>.json`; the
+  terminal lane writes `terminal-events.ndjson` and `terminal-transcript.txt`.
 - **Approvals.** Call `approval.onRequest`; never embed adapter-local decline
   strings. Every call is recorded as an `items[kind=approval]`.
 - **Redaction.** Use the injected `RedactionHooks`. Never re-implement redaction
@@ -259,8 +269,8 @@ export interface Actor {
   public-safe: redacted message, coarse loop phase, last normalized UI action,
   and last screenshot reference only. Do not persist raw stacks, env values,
   target URLs, or unredacted provider payloads in the trace.
-- **Capabilities.** Declare them honestly; the registry uses them to refuse
-  unsuitable dispatch.
+- **Capabilities.** Declare them honestly. The registry is meant to use them to refuse
+  unsuitable dispatch; today it refuses by lane only.
 - **Cost (estimate vs. charge).** `tokenUsage.costUsd` stays RESERVED for a
   real, provider-returned charge (the codex path); a bare `costUsd`
   always means "the provider billed this". The optional `estimatedCost`
@@ -285,11 +295,11 @@ path). Its trace keeps the concrete driver name `provider: "browser-persona"` (m
 native `humanish.browser-persona-trace.v1` it also emits) with `protocol: "scripted-steps"`.
 
 Completion semantics: `goal_satisfied` means the scenario's `expect` blocks (the success
-predicate) all held ("the app still affords this exact flow", nothing about user
-behavior); `step_failed` means a deterministic step or expectation evaluated false (the
-subject failed the script; the harness ran faithfully); `timed_out` is the run's wall-clock
-budget hit with NO material progress (still a failure); `harness_error` is a browser that could
-not launch. `gave_up` and `blocked_approval` are unreachable, because a deterministic replay
+predicate) all held ("the app still affords this exact flow", nothing about user behavior);
+`step_failed` means a deterministic step or expectation evaluated false (the subject failed
+the script; the harness ran faithfully); `timed_out` is the replay hitting its wall-clock
+budget, however many steps ran (a failure); `harness_error` is a browser that could not
+launch. `gave_up` and `blocked_approval` are unreachable, because a deterministic replay
 has no persona patience and no approvals.
 
 ### The time budget vs. a stuck timeout (`budget_reached`)
@@ -298,21 +308,21 @@ has no persona patience and no approvals.
 "watch it play" session has no success predicate, because productive play is the outcome. So
 the computer-use loop distinguishes two ways to hit the cap:
 
-- **`budget_reached`**: the deadline was reached AFTER at least one material (non-idle) action.
-  This maps to `ActorStatus: "passed"`: a non-failure completion, `laneOutcomeOk` returns true,
-  the verdict is `pass`, and the CLI exits `0`. It stays a distinct `completionReason` (never
-  `goal_satisfied`), and the trace `reason` says it reached the budget after productive activity,
-  so a reviewer of a strictly goal-directed lab sees it hit the cap rather than reaching a goal
-  (goal-directed labs should set a tight `timeoutMs`).
+- **`budget_reached`**: the deadline was reached AFTER at least one material (non-idle)
+  action, or a spend, adapter or token limit ended the session. This maps to `ActorStatus:
+"incomplete"`: the participant did not reach the goal, and the harness did not fail.
+  `laneOutcomeOk` is false, the verdict is `fail`, and the CLI exits `2`. The trace
+  `reason` and optional `stopCause` say which limit ended the session.
 - **`timed_out`**: the deadline was reached with ZERO material actions (a hung provider, an
   idle-only stall). This maps to `ActorStatus: "timed_out"`, `laneOutcomeOk` is false, the
-  verdict is `fail`, and the CLI exits `2`. "Made zero progress then timed out" stays a failure.
+  verdict is `timed_out`, and the CLI exits `2`.
 
-`ActorStatus` intentionally gains no new member. The distinction lives in
-`completionReason`/`reason`, which keeps the change from rippling through ~10 provider mappers.
-`statusForCompletion` is an exhaustive switch with no default, so a new completion reason forces a
-compile-time decision about its status. ~30 min (`1_800_000`) is a reasonable default for
-open-ended watch; the persona still stops early on `goal_satisfied`/`gave_up`/`stopWhen`.
+Earlier, `budget_reached` mapped to `passed` and `ActorStatus` had four members. It gained
+`abandoned` and `incomplete` so participant outcomes are not reported as harness failures.
+`statusForCompletionReason` (`src/actors/computer-use/loop/trace.ts`) is an exhaustive
+switch with no default, so a new completion reason forces a compile-time decision about its
+status. ~30 min (`1_800_000`) is a reasonable default for open-ended watch; the persona
+still stops early on `goal_satisfied`/`gave_up`/`stopWhen`.
 
 Actuation-vs-spend gate: on the scripted lab route `scenario.mode: live` is still required
 even though provider spend is $0 by mechanism. The gate's justification there is actuation,
@@ -358,32 +368,33 @@ appState-is-runtime-only stance.
 
 ## The product-adapter extension seam (shipped in the terminal-product lane, layer 6)
 
-The terminal-product lane carries the proof-roadmap layer-6 deliverable: a product
-adopter attaches product-specific scoring + feedback as a THIN in-repo extension
-WITHOUT forking core. The seam is exported contract types (`RunBundle`,
-`RunFeedbackCandidate`, `RunAdapterScore`, `RunMeaningfulUseScore`, `ActorTrace`,
-the terminal-lane `TerminalProductScoringContext` / `TerminalLedgers` / ...) plus a
-registrable `score` / `deriveFeedback` DI hook on `TerminalProductLabHooks` (mirror
-of the `CuaActorLabHooks` DI seam). The adapter records its product nouns ONLY under
-an adapter-NAMESPACED block (`RunFeedbackCandidate.adapter` /
-`RunAdapterScore.{namespace,data}`), so core's enums stay product-agnostic: no
-adopter noun is hardcoded into a core enum. Default (no hook) behavior is unchanged.
-See [`terminal-product-lane.md`](./terminal-product-lane.md#slice-4-the-product-adapter-extension-seam-layer-6)
+The terminal-product lane carries the proof-roadmap layer-6 deliverable: a product adopter
+attaches product-specific scoring + feedback as a THIN in-repo extension WITHOUT forking
+core. The seam is exported contract types (`RunBundle`, `RunFeedbackCandidate`,
+`RunAdapterScore`, `ActorTrace`, `AdapterScorerModule` and the terminal-lane
+`TerminalProductScoringContext`) plus a registrable scorer module, `RunLabOptions.scorer`,
+with optional `score` and `deriveFeedback`. The older `score` / `deriveFeedback` members of
+`terminalHooks` and `cuaHooks` are deprecated. The adapter records its product nouns ONLY
+under an adapter-NAMESPACED block (`RunFeedbackCandidate.adapter` /
+`RunAdapterScore.{namespace,data}`), so core's enums stay product-agnostic: no adopter noun
+is hardcoded into a core enum. Default (no hook) behavior is unchanged. See
+[`terminal-product-lane.md`](./terminal-product-lane.md#slice-4-the-product-adapter-extension-seam-layer-6)
 for the full seam and the thin-adapter conformance proof.
 
 ## Making personas load-bearing
 
-The bug, grounded in code: `loadDryRunSelection` (`src/run/dry-run-selection.ts`) parses persona
-YAML down to `{ id, name, source, sourceDigest }` and discards `summary`,
-`traits.{patience, technical_confidence, accessibility_needs}`, and `constraints`.
-The prompt builders then inject one line: `Persona: ${name}`. The persona is a
-label.
+The original bug, now fixed: `loadDryRunSelection` (`src/run/dry-run-selection.ts`) parsed
+persona YAML down to `{ id, name, source, sourceDigest }` and discarded `summary`,
+`traits.{patience, technical_confidence, accessibility_needs}`, and `constraints`. The
+prompt builders then injected one line: `Persona: ${name}`. The persona was a label. It now
+returns the full `resolvedPersona` from `parseResolvedPersona`.
 
 Plan:
 
-1. **Parse the whole persona** into a `ResolvedPersona`:
-   `{ id, name, summary, goals[], traits: { patience, skill, accessibilityNeeds? }, constraints[], sourceDigest }`
-   (map `technical_confidence` to `skill`).
+1. **Parse the whole persona** into a `ResolvedPersona`: `{ id, name, summary, goals[],
+traits: { patience, skill, accessibilityNeeds? }, constraints[], sourceDigest }` (map
+   `technical_confidence` to `skill`). The shipped shape in `src/lab/persona.ts` has no
+   `goals`, adds `background`, and makes every trait optional.
 2. **Compile traits into actor-neutral directives**, not prose, via a pure
    `personaToDirectives(p)`:
    - patience -> `frictionTolerance`: how much failure, dead-end, or
@@ -400,28 +411,27 @@ Plan:
    - goals + constraints become explicit success / forbidden lists for the
      scenario predicate.
 3. **Abandonment is persona-judged, harness-corroborated, never a counter.** The
-   persona-actor (an LLM embodying that user) decides in character when the
-   friction is no longer worth it and stops with `completionReason: "gave_up"`,
-   citing the specific friction. The harness corroborates with objective signals
-   it already sees in the stream (consecutive failed/blocked actions,
-   repeated-identical-action looping, no progress toward the success predicate)
-   and annotates the abandonment friction as a feedback candidate. The harness
-   imposes no turn cap; its only hard stop is the wall-clock `timeoutMs`.
+   persona-actor (an LLM embodying that user) decides in character when the friction is no
+   longer worth it and stops with `completionReason: "gave_up"`, citing the specific
+   friction. The harness corroborates with objective signals it already sees in the stream
+   (consecutive failed/blocked actions, repeated-identical-action looping, no progress
+   toward the success predicate) and annotates the abandonment friction as a feedback
+   candidate. The harness imposes no turn cap; its hard stops are the wall-clock
+   `timeoutMs` and declared spend caps.
 4. **Bind the same directives per harness**: pi (`systemPrompt` +
    `beforeToolCall` allow rules), Claude (`system_prompt`/`--append-system-prompt`
    - `allowedTools`), Codex (prepend to `turn/start` input), Stagehand (agent
      context + action policy). Each binds the friction-tolerance, skill, and
      accessibility directives identically; none uses a `max_turns`-style cap as the
      persona stop condition.
-5. **Prove it.** `ActorTrace.persona.traitsApplied` lists the injected
-   directives; a `persona-fidelity` verify check asserts that the friction and
-   accessibility directives reached the actor input and that a `gave_up` run
-   cites a concrete friction reason (not a turn count). "Did the persona drive
-   the run" becomes a verifiable artifact.
-   (Status 2026-06-11: `personaToDirectives` shipped in `src/lab/persona.ts` and
-   `traitsApplied` is threaded on the codex routes, but the `persona-fidelity`
-   verify check is not-yet-shipped roadmap. The computer-use route records
-   `persona.traitsApplied` from the resolved persona in `src/routes/computer-use/lane-plan.ts`.)
+5. **Prove it.** `ActorTrace.persona.traitsApplied` lists the injected directives; a
+   `persona-fidelity` verify check asserts that the friction and accessibility directives
+   reached the actor input and that a `gave_up` run cites a concrete friction reason (not a
+   turn count). "Did the persona drive the run" becomes a verifiable artifact. (Status
+   2026-06-11: `personaToDirectives` shipped in `src/lab/persona.ts` and `traitsApplied` is
+   threaded on the codex-exec terminal route, but the `persona-fidelity` verify check is
+   not-yet-shipped roadmap. The computer-use route records `persona.traitsApplied` from the
+   resolved persona in `src/routes/computer-use/lane-plan.ts`.)
 
 ## Decision: how abandonment is adjudicated
 

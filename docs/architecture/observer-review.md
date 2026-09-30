@@ -12,11 +12,11 @@ that owns a hosted desktop can offer its live stream while it runs. `--no-open`
 keeps that attachment without launching a browser. `--json` is the machine-result
 path and does not keep an interactive stream server attached.
 
-`humanish observe --run <id>` opens an existing study without starting another.
-The TUI's **Open Observer** action does the same through its session-owned
-loopback library. These entry points follow saved captures; they cannot recover
-live desktop credentials owned by another process. Keep the owning CLI or TUI
-open while using its viewer. Exported HTML is an independent offline recording.
+`humanish observe --run <id>` opens an existing study without starting another. The
+TUI's **Open in Observer** action does the same through its session-owned loopback
+library. These entry points follow saved captures; they cannot recover live desktop
+credentials owned by another process. Keep the owning CLI or TUI open while using its
+viewer. Exported HTML is an independent offline recording.
 
 ## Read status without guessing
 
@@ -81,8 +81,8 @@ following. A missing addressed moment is reported instead of silently replaced.
 
 Screenshot playback is sparse evidence, not a video recording. Capture gaps stay
 visible. **Skip waits** compresses intervals associated with recorded waits and
-reports the skipped duration. **Next action**, **Next finding**, activity filters
-and grouped waits make long traces easier to inspect without deleting events.
+reports the skipped duration. **Next action**, **Next flagged frame**, activity
+filters and grouped waits make long traces easier to inspect without deleting events.
 Older unstamped recordings use labeled estimated pacing. Long feeds, filmstrips,
 terminal output and event lists stay bounded while earlier/later content remains
 reachable.

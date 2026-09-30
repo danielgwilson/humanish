@@ -9,16 +9,17 @@ implemented and proven. A config-only deterministic lane and a
 
 ## What this is
 
-The computer-use (CUA) loop in [`src/actors/computer-use/loop.ts`](../../src/actors/computer-use/loop.ts)
-is provider- and substrate-agnostic by design: the model lives behind a
-`CuaProvider` port and the thing being driven lives behind a `CuaExecutor` port.
-You do not have to drive a screen with a vision model. You can point the loop at
-**an already-running local app** and drive it through that app's **in-process
-JavaScript automation contract** (e.g. `window.app.getState()`,
-`sendChat(text)`, `dispatch(action)`, `navigate(target)`), using `getState()` as
-the progress signal instead of a quantized screenshot. humanish's composition
-stays in place (personas, the Observer, the normalized `ActorTrace` evidence
-bundle, redaction, and the friction / no-progress loop).
+The computer-use (CUA) loop in
+[`src/actors/computer-use/loop.ts`](../../src/actors/computer-use/loop.ts) is provider- and
+substrate-agnostic by design: the model lives behind a `CuaProvider` port and the thing
+being driven lives behind a `CuaExecutor` port. Both ports are declared in
+`src/actors/computer-use/loop/types.ts`. You do not have to drive a screen with a vision
+model. You can point the loop at **an already-running local app** and drive it through that
+app's **in-process JavaScript automation contract** (e.g. `window.app.getState()`,
+`sendChat(text)`, `dispatch(action)`, `navigate(target)`), using `getState()` as the
+progress signal instead of a quantized screenshot. humanish's composition stays in place
+(personas, the Observer, the normalized `ActorTrace` evidence bundle, redaction, and the
+friction / no-progress loop).
 
 This is the "plural harnesses / transport-agnostic" intent of
 [`actor-contract.md`](./actor-contract.md), made into a supported seam.
@@ -83,14 +84,18 @@ nothing to do with the run's health (a `Ctrl+Minus` zoom keypress exiting `2` wa
 the reproduced case). The loop treats one such failure as a **recoverable skipped
 action**, not a fatal error:
 
-- The per-action `execute()` call is wrapped at the loop boundary (so the recovery
-  covers every action kind uniformly). When the caught error
-  `isCommandExitError` (`command-failure.ts`; it matches the SDK class name or any
-  object carrying a numeric `exitCode`), the loop records a `notice` item
-  (`status: "error"`, title `action skipped: desktop command failed`, text = the
-  public-safe action label + exit code + a redacted `stderrTail`), does **not**
-  count the action as a material action, and **continues**. The next `observe()`
-  hands the model a fresh screenshot/state to adapt to.
+- The per-action `execute()` call is wrapped at the loop boundary, in `runActionBatch`
+  (`src/actors/computer-use/loop/actions.ts`), so the recovery covers every action kind
+  uniformly. When the caught error `isCommandExitError`
+  (`src/substrates/command-failure.ts`; it matches the SDK class name or any object carrying
+  a numeric `exitCode`), the loop records a `notice` item (`status: "error"`, title `action
+skipped: desktop command failed`, text = the public-safe action label + exit code + a
+  redacted `stderrTail`), does **not** count the action as a material action, and
+  **continues**. The next `observe()` hands the model a fresh screenshot/state to adapt to.
+- An executor error declared as `action_rejected` with disposition `not_dispatched` also
+  does not end the session. The loop marks the rest of the batch `not_dispatched`, records
+  an `action rejected before dispatch` notice, and sends the model a hint with the next
+  observation.
 - **Every other error is re-thrown**, byte-identically preserving the existing
   fatal handling: a `raceSessionDeadline` deadline still classifies as `timed_out` (or
   `budget_reached` after material progress), a `CuaAbortError` as `harness_error`,
@@ -117,17 +122,17 @@ reasons over app state).
 
 **Provider-authoring contract:**
 
-- A **vision** provider MUST set `requiresFrame: true` (the OpenAI provider does).
-  When a `requiresFrame: true` provider is handed a screenshot-less observation,
-  the loop fails closed with a structured `harness_error` per turn. It neither
-  crashes silently nor passes falsely.
+- A **vision** provider MUST set `requiresFrame: true` (the OpenAI provider does). When a
+  `requiresFrame: true` provider is handed a screenshot-less observation, the loop ends the
+  session with a structured `harness_error` (`missingFrame` in
+  `src/actors/computer-use/loop/ending.ts`). It neither crashes silently nor passes falsely.
 - A **state-reasoning** provider omits `requiresFrame` (defaults falsey) and reads
   `req.observation.appState`.
 
-`requiresFrame` defaulting to falsey is a known third-party-author footgun (a
-vision provider that forgets to set it would get a blank-frame crash instead of a
-clean verdict). This slice accepts it because only one vision provider exists
-today, and records it here.
+`requiresFrame` defaulting to falsey is a known third-party-author footgun (a vision
+provider that forgets to set it would get a blank-frame crash instead of a clean verdict).
+This slice accepts it because every in-tree vision provider sets it: OpenAI computer use,
+the local-agent Codex and Claude sessions, and the restricted Codex participant.
 
 ## `appState` is RUNTIME-ONLY (not evidence, in this slice)
 
@@ -197,15 +202,16 @@ undefined, so `result.sandbox` is omitted. That omission is the verifiable
 "no E2B SDK call" proof.
 
 Fail-closed guards, all BEFORE any key check, so a CLI invocation never sees a misleading
-`KEYS_MISSING` first:
+`HUMANISH_CUA_LAB_KEYS_MISSING` first:
 
 - `HUMANISH_LAB_OPTION_UNSUPPORTED`: `inProcess` without `createProvider` (from JavaScript,
   where the type does not stop it), on a subject other than `app-url` or `local-app`, or with
   more than one participant. `createProvider` alone is allowed; that is a model swap on the
   normal E2B route.
 - `HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR`: a `subject.source: local-app` config run without
-  `inProcess` (there is no built-in in-process driver yet). A structured error, never a desktop
-  attempt.
+  `inProcess` (there is no built-in in-process driver yet). A structured error, never a
+  desktop attempt. The same code refuses an `app-url` lab with `execution.target: local`
+  when no local desktop runtime is configured.
 - `HUMANISH_CUA_LAB_EXECUTOR_NO_PROVIDER`: the deprecated `cuaHooks.buildExecutor` without
   `cuaHooks.buildProvider`.
 

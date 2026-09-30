@@ -3,11 +3,12 @@
 Date: 2026-08-02
 
 Status: shipped. The `loopback`, `exposed` (edge-authed) and `share-safe-open`
-modes live in `src/observer/serve.ts`, `src/observer/library.ts`, `src/observer/http.ts`,
-`src/observer/exposure.ts` and `src/observer/tunnel.ts`. The CLI wiring is in
-`src/cli/commands/observe.ts`.
-The `/_humanish/api/*` control-plane namespace is reserved and answers `501`; no
-mutating route ships.
+modes live in `src/observer/serve.ts`, `src/observer/library.ts`,
+`src/observer/http.ts`, `src/observer/exposure.ts` and `src/observer/tunnel.ts`,
+with per-run routes and the history index in `src/observer/run-routes.ts` and the
+loopback bind in `src/observer/listen.ts`. The CLI wiring is in
+`src/cli/commands/observe.ts`. The `/_humanish/api/*` control-plane namespace is
+reserved and answers `501`; no mutating route ships.
 
 Exposure auth is **tunnel-edge only**. As of 0.18.0 humanish carries NO
 in-process auth: the hand-rolled capability-link (cookie/token/TTL, the whole
@@ -56,17 +57,18 @@ neither is a wide-open public URL to local bundles and is refused.
 | yes        | no         | yes       | no             | any      | **REFUSED** `HUMANISH_SERVE_OAUTH_REQUIRES_TUNNEL`                                            |
 | yes        | yes        | yes       | yes            | any      | **REFUSED** `HUMANISH_SERVE_OPTION_CONFLICT` (tunnel + public-url)                            |
 
-Guard order (all before any bind/spawn): `--allow-email`/`--allow-domain`
-without `--oauth` → `HUMANISH_SERVE_ALLOW_REQUIRES_OAUTH`; `--oauth` without
-`--tunnel` → `HUMANISH_SERVE_OAUTH_REQUIRES_TUNNEL`; `--tunnel`+`--public-url` →
-conflict; `--tunnel-domain` without `--tunnel` → conflict; `--expose` with no
-tunnel and no `--public-url` (even under `--safe`) →
+Guard order (all before any bind/spawn): `--allow-email`/`--allow-domain` without
+`--oauth` → `HUMANISH_SERVE_ALLOW_REQUIRES_OAUTH`; `--oauth` without `--tunnel` →
+`HUMANISH_SERVE_OAUTH_REQUIRES_TUNNEL`; `--tunnel`+`--public-url` → conflict;
+`--tunnel-domain` without `--tunnel` → conflict; a `--public-url` that is not an
+http(s) origin → conflict; a tunnel/public-url without `--expose` →
+`HUMANISH_SERVE_TUNNEL_REQUIRES_EXPOSE`/conflict; `--expose` with no tunnel and
+no `--public-url` (even under `--safe`) →
 `HUMANISH_SERVE_EXPOSE_REQUIRES_ORIGIN`; `--expose` with an origin but without
 edge auth and without `--safe` →
-`HUMANISH_SERVE_EXPOSE_REQUIRES_EDGE_AUTH_OR_SAFE`; a tunnel/public-url without
-`--expose` → `HUMANISH_SERVE_TUNNEL_REQUIRES_EXPOSE`/conflict. `--oauth google`
-with NO allow rule is ALLOWED (any Google account authenticates) but pushes a
-prominent warning recommending at least one `--allow-email`/`--allow-domain`.
+`HUMANISH_SERVE_EXPOSE_REQUIRES_EDGE_AUTH_OR_SAFE`. `--oauth google` with NO
+allow rule is ALLOWED (any Google account authenticates) but pushes a prominent
+warning recommending at least one `--allow-email`/`--allow-domain`.
 
 The `watch` surface reuses the same validator but is stricter: a live,
 in-progress run is never `share_ready` (raw, unverified screenshots), so `--safe`
@@ -81,10 +83,10 @@ reach any prior run's raw evidence (loopback watch still serves the full library
 
 ## ngrok edge OAuth
 
-`startNgrokTunnel` builds `ngrok http <port> [--url <domain>] [--oauth google
-[--oauth-allow-email <addr>]… [--oauth-allow-domain <domain>]…] --log stdout
---log-format json`. ngrok authenticates the viewer at its edge before any request
-reaches the loopback port; the stdout JSON parser skips every line except
+`startNgrokTunnel` builds `ngrok http --log stdout --log-format json [--url
+<domain>] [--oauth google [--oauth-allow-email <addr>]… [--oauth-allow-domain
+<domain>]…] <port>`. ngrok authenticates the viewer at its edge before any
+request reaches the loopback port; the stdout JSON parser skips every line except
 `msg:"started tunnel"`, so ngrok's `--oauth has been deprecated` info line (it is
 still accepted and functional on ngrok 3.39.x) is ignored automatically. The
 forward-compatible path if ngrok removes the flags is a Traffic Policy YAML. That
@@ -99,18 +101,21 @@ served by humanish; the operator's edge owns authentication and session
 lifetime.
 
 **DNS rebinding and the strict Host allowlist.** A malicious page can point an
-attacker-controlled DNS name at 127.0.0.1 and read a permissive local server
-from the victim's browser. Serve keeps a strict Host allowlist in all modes
-(loopback names plus the declared tunnel/public origin only) and answers `421
-Misdirected Request` otherwise. Even the unauthenticated loopback default never
-trusts an arbitrary Host header. The live `serveObserver` server gains the same
-allowlist + security headers under its new `exposed` option (see observer.md), so
-`watch --expose` is not a header-less, rebinding-vulnerable surface.
+attacker-controlled DNS name at 127.0.0.1 and read a permissive local server from
+the victim's browser. Serve keeps a strict Host allowlist in all modes (loopback
+names plus the declared tunnel/public origin only) and answers `421 Misdirected
+Request` otherwise. Even the unauthenticated loopback default never trusts an
+arbitrary Host header. The live `serveObserver` server applies the same Host
+allowlist under its `exposed` option and sends the security headers below in
+every mode (see observer.md), so `watch --expose` is not a header-less,
+rebinding-vulnerable surface.
 
 **Security headers.** Every response carries `cache-control: no-store`,
 `referrer-policy: no-referrer`, `x-content-type-options: nosniff`,
-`x-frame-options: DENY`, and `x-robots-tag: noindex, nofollow`
-(`buildServeSecurityHeaders`).
+`x-frame-options: DENY`, `content-security-policy: frame-ancestors 'none'`, and
+`x-robots-tag: noindex, nofollow` (`buildServeSecurityHeaders` in
+`src/observer/http.ts`). Raw run artifacts get `buildArtifactSecurityHeaders`,
+which adds `sandbox allow-scripts` to that policy.
 
 ## Mode-to-boundary mapping
 
@@ -186,12 +191,7 @@ where accounts, org membership, and durable sessions actually exist.
 
 - **Traffic Policy for ngrok.** Migrate off the deprecated `--oauth*` flags to a
   generated Traffic Policy YAML once ngrok requires it (the `yaml` dep is already
-  available); pin the behavior in `serve-tunnel` tests first.
-- **Google Fonts inlining for per-run observer pages.** The library index is
-  self-contained; the per-run observer HTML still references remote Google Fonts,
-  which degrade gracefully offline but should be inlined (or dropped) so a served
-  run page makes no third-party requests from a viewer's browser.
+  available); pin the behavior in `tests/observer/tunnel.test.ts` first.
 - **Shipped in 0.18.0: `watch --expose`.** Remote LIVE following of a run,
   including its live E2B desktop stream, behind the same edge auth. It is the one
-  surface that deliberately serves runtime stream URLs. See observer.md and
-  live_watch_wiring.
+  surface that deliberately serves runtime stream URLs. See observer.md.

@@ -1,9 +1,9 @@
 # Headed browser guest components
 
-These internal components implement native input and full-desktop captures for a
-maintained browser-only guest. They do not enable a public local-runtime mode.
-The VM owner, control transport, app network policy, installed setup and complete
-study flow require separate qualification.
+These internal components implement native input and full-desktop captures for the browser guest
+that [local browser studies](local-browser-runtime.md) run in a Firecracker VM. This page covers
+the guest driver and its container proof; the local browser page covers the VM, its network
+policy and the installed study.
 
 The driver uses the existing `CuaExecutor` contract behind
 [browser control](browser-control.md). Coordinates refer to the complete Xvfb
@@ -83,8 +83,9 @@ attempts, full-frame captures, synthetic app readback and exact-container cleanu
 under ignored `.humanish/guest-desktop-proof/`.
 
 The proof covers visible browser chrome, address-bar navigation, Unicode and
-rapid/large/stalled-renderer text insertion, page/focus rejection, pointer and
-keyboard input, native scrolling and cancellation. CI reruns this proof for
-changes to the guest driver, image recipe, protocol or dependency lockfile. Its deterministic fixture is not a model participant,
-a run bundle, a host network policy, an independent watchdog or a Linux/Mac
-installed study. Those remain separate gates before local runtime support.
+rapid/large/stalled-renderer text insertion, page/focus rejection, pointer and keyboard input,
+native scrolling and cancellation. CI reruns this proof for changes to the guest driver, image
+recipe, protocol or dependency lockfile. Its deterministic fixture is not a model participant, a
+run bundle, a host network policy, an independent watchdog or a Linux/Mac installed study. The
+local browser runtime is qualified separately; see [local browser
+studies](local-browser-runtime.md).

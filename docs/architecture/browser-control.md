@@ -2,23 +2,26 @@
 
 The browser-control client implements the existing `CuaExecutor` over an
 already-owned Node `Duplex`. The matching dispatcher invokes an owner-supplied
-executor. This is a preparatory internal boundary, not a managed-local runtime,
-CLI mode, browser launcher, VM isolation claim, or installer.
+executor. Local Firecracker desktops use it as their host-to-guest control
+channel: `src/guest-bootstrap.ts` creates the client and `src/guest-runtime.ts`
+attaches the dispatcher. This page covers only the protocol; it is not itself a
+runtime, CLI mode, browser launcher, VM isolation claim, or installer.
 
 ## Ownership and admission
 
-`createBrowserControlClient({ transport, identity, requestTimeoutMs? })` returns
-`{ executor, ready(), close() }`. `ready()` performs a lazy handshake; the first
-observation/action also performs it when needed. The owner closes the client
-when its session ends. The client never discovers endpoints, opens sockets,
-spawns processes, reconnects, retries, or replays a mutation.
+`createBrowserControlClient({ transport, identity, requestTimeoutMs?,
+speechEnabled? })` returns `{ executor, ready(), finishRecording(destination),
+close() }`. `ready()` performs a lazy handshake; the first observation/action
+also performs it when needed. The owner closes the client when its session ends.
+The client never discovers endpoints, opens sockets, spawns processes,
+reconnects, retries, or replays a mutation.
 
 `attachBrowserControlDispatcher({ transport, identity, executor, isAuthorized,
-authoritySignal })` returns `{ close() }`. The authority signal is required.
-The owner establishes the channel and authority independently; the identity's
-`generation`, `challenge`, and `runtimeRevision` only check consistency.
-Each is a bounded ASCII token. A matching string does not prove a lease or
-authenticate executable bytes.
+authoritySignal, finishRecording? })` returns `{ close() }`. The authority signal
+is required. The owner establishes the channel and authority independently; the
+identity's `generation`, `challenge`, and `runtimeRevision` only check
+consistency. Each is a bounded ASCII token. A matching string does not prove a
+lease or authenticate executable bytes.
 
 The dispatcher checks current authorization immediately before invoking browser
 I/O. It passes a signal combining owner revocation, channel loss, and its request
@@ -47,13 +50,16 @@ JSON. The parser allocates its bounded payload only after validating the length;
 it handles fragmented and coalesced input without repeatedly concatenating it.
 A partially received frame has a nonrenewing 35-second assembly deadline.
 
-Version 1 has only `HELLO`, `OBSERVE`, and `EXECUTE`. Both directions carry the
-version, operation, identity, strictly increasing sequence and `request-N`
-correlation ID. Execute also carries the distinct `action-N` ID.
-Unknown fields, methods, versions, stale identity, duplicates, missing or wrong
-correlation, malformed UTF-8/JSON and oversized frames close admission. There is
-no generic CDP, command, file, navigation-management, or runtime-management method.
-Initial target navigation remains an adapter-owned operation.
+Version 1 has `HELLO`, `OBSERVE`, `EXECUTE` and `FINISH_RECORDING`. An ok
+`FINISH_RECORDING` reply hands the channel to one bounded raw recording transfer
+(`src/browser-control/recording-transfer.ts`), after which the channel closes.
+Both directions carry the version, operation, identity, strictly increasing
+sequence and `request-N` correlation ID. Execute also carries the distinct
+`action-N` ID. Unknown fields, methods, versions, stale identity, duplicates,
+missing or wrong correlation, malformed UTF-8/JSON and oversized frames close
+admission. There is no generic CDP, command, file, navigation-management, or
+runtime-management method. Initial target navigation remains an adapter-owned
+operation.
 
 Replies acknowledge completion or contain a finite `CuaExecutorError` code and
 `not_dispatched` / `outcome_uncertain` disposition. They never include raw
@@ -70,25 +76,27 @@ failure. No exactly-once or rollback guarantee is implied by sequence IDs.
 
 ## Finite bounds
 
-| Input                                | Version 1 bound                                       |
-| ------------------------------------ | ----------------------------------------------------- |
-| Framed JSON                          | 12 MiB                                                |
-| PNG bytes                            | 8 MiB                                                 |
-| Image dimensions                     | 4096 per side, at most 16,000,000 pixels              |
-| Typed text and each observed string  | 64 KiB UTF-8                                          |
-| Key chord                            | 16 keys, 64 characters per key                        |
-| Held keys on a pointer action        | Same bound as a key chord, at least one key           |
-| Drag                                 | 1–1024 points                                         |
-| Coordinates, deltas, scroll position | Finite, within ±1,000,000; fractions preserved        |
-| Wait                                 | 0–30 seconds, fractions preserved                     |
-| Client request                       | 35 seconds by default; caller may choose 1–60 seconds |
-| Dispatcher request                   | 35 seconds including acknowledgement write            |
+| Input                                | Version 1 bound                                     |
+| ------------------------------------ | --------------------------------------------------- |
+| Framed JSON                          | 12 MiB                                              |
+| PNG bytes                            | 8 MiB                                               |
+| Image dimensions                     | 4096 per side, at most 16,000,000 pixels            |
+| Typed text and each observed string  | 64 KiB UTF-8                                        |
+| Key chord                            | 16 keys, 64 characters per key                      |
+| Held keys on a pointer action        | Same bound as a key chord, at least one key         |
+| Drag                                 | 1–1024 points                                       |
+| Coordinates, deltas, scroll position | Finite, within ±1,000,000; fractions preserved      |
+| Wait                                 | 0–30 seconds, fractions preserved                   |
+| Spoken text and each heard utterance | 400 characters, 1600 bytes                          |
+| Heard speech per observation         | 4 utterances, each at most 120 seconds              |
+| Client request                       | 35 seconds by default; caller may choose up to 60 s |
+| Dispatcher request                   | 35 seconds including acknowledgement write          |
 
 Observation requires a PNG and state signature. It may include bounded URL,
-title, text, and fractional scroll position; those remain runtime-only under the
-existing loop contract. Arbitrary `appState` is refused because v1 has no closed
-schema for it. The protocol does not truncate strings, round coordinates, or
-silently drop unsupported state.
+title, text, fractional scroll position and heard speech; those remain
+runtime-only under the existing loop contract. Arbitrary `appState` is refused
+because v1 has no closed schema for it. The protocol does not truncate strings,
+round coordinates, or silently drop unsupported state.
 
 Click, double-click, move, scroll and drag may carry `heldKeys`, which the
 OpenAI provider maps from its computer tool's `keys`. The Codex participant's

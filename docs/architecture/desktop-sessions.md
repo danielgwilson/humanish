@@ -1,9 +1,10 @@
 # Owned desktop sessions
 
-Independent hosted computer-use lanes acquire an owned desktop allocation before
-subject setup, then bind its executor after browser setup. The participant loop
-still consumes `CuaExecutor`; provisioning commands stay in the hosted adapter.
-This internal interface is not a public runtime plugin API.
+Independent computer-use lanes, on hosted E2B desktops and local Firecracker
+desktops, acquire an owned desktop allocation before subject setup, then bind its
+executor after browser setup. The participant loop still consumes `CuaExecutor`;
+provisioning commands stay in the desktop adapter. This internal interface is not
+a public runtime plugin API.
 
 `desktop-session.ts` holds the lifecycle contract. The allocation captures a
 resource ID and a release closure. Its ID is a record of acquisition, not
@@ -50,9 +51,13 @@ span, not a provider billing measurement.
    preparation or participant failure. Repeated calls share one finalization.
 6. `snapshot()` supplies the desktop facts for the existing lane outcome.
 
-The E2B implementation lives in `src/routes/computer-use/e2b-desktop.ts`. Browser
-launch is in `src/substrates/e2b/desktop-browser.ts`, DevTools reads and mobile
-emulation in `src/substrates/e2b/desktop-cdp.ts`, geometry in
+The E2B lane is composed in `src/routes/computer-use/e2b-desktop.ts`, with its
+steps in the `e2b-desktop-*.ts` files beside it; acquisition and release are in
+`src/substrates/e2b/sandbox.ts`. The local lane is `createLocalDesktopLane` in
+`src/routes/computer-use/local-vm.ts`, over
+`src/substrates/local/firecracker-desktop.ts`. Browser launch is in
+`src/substrates/e2b/desktop-browser.ts`, DevTools reads and mobile emulation in
+`src/substrates/e2b/desktop-cdp.ts`, geometry in
 `src/substrates/e2b/desktop-geometry.ts` and media in
 `src/substrates/e2b/desktop-media.ts`. Subject provisioning lives in
 `src/subject/` and reaches the sandbox only through a `Shell`
@@ -63,22 +68,23 @@ runtime.
 The runner owns instructions, model execution, spend guards, screenshots, trace
 persistence and participant outcome interpretation. It does not invoke desktop
 shell commands or manufacture E2B objects for an alternate executor. The internal
-`CuaLaneDeps.createDesktopLane` seam is for construction and contract testing;
-it does not add a user-facing runtime option or bypass CLI admission checks.
+`createDesktopLane` seam (`CuaLaneDeps` and `CuaActorLabHooks`) is how local
+Firecracker studies supply their lane and how contract tests inject one; it does
+not add a user-facing runtime option or bypass CLI admission checks.
 
 Final evidence errors cannot skip desktop release. Existing bundle fields and
 desktop lifetime accounting retain their meanings; unconfirmed or retained
 desktops do not become confirmed cleanup. Provider facts remain absent when the
 adapter cannot establish them.
 
-This change supplies an internal boundary for future runtime adapters. Managed
-local execution, artifact installation, controller-death leases, capability
-admission and new media support require separate implementations and proofs.
-Independent hosted browser and terminal lanes, plus shared-world seats that use
-`runCuaLane`, use this boundary.
+Independent hosted browser and terminal lanes, local Firecracker lanes, and
+shared-world seats that use `runCuaLane` use this boundary. Local execution is
+described in [local browser studies](local-browser-runtime.md).
 
 The independent lane's `runSession` testing hook now receives a constructed
 `executor` instead of `desktop`/`executorOptions`. A hook should consume the
 normal `CuaActorSessionOptions` executor or delegate to `runCuaActorSession`.
 Library calls directly using `runCuaActorSession({ desktop, executorOptions })`
-remain supported; the custom in-process `buildExecutor` route is unchanged.
+still work but warn as deprecated; use `runComputerUseLoop`. A custom in-process
+executor now goes through `RunLabOptions.inProcess`, which replaces the
+deprecated `cuaHooks.buildExecutor`.

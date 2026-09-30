@@ -29,30 +29,33 @@ npx humanish doctor --lab local-browser
 npx humanish lab run local-browser
 ```
 
-`init` also writes `humanish/labs/local-browser.yaml` with safe defaults when
-the two options are omitted. The options provide the normal setup path for the
-app URL and mission on first setup. If the file already exists, `init` preserves
-it and warns that these options were skipped; edit the existing manifest to
-change its URL or mission. The resulting lab has this shape:
+`init` also writes `humanish/labs/local-browser.yaml` with safe defaults when the
+two options are omitted. The options provide the normal setup path for the app
+URL and mission on first setup. If the file already exists, `init` preserves it
+and warns that these options were skipped; edit the existing manifest to change
+its URL or mission. The commands above write this lab (its `description` is
+omitted here):
 
 ```yaml
 schema: humanish.lab.v2
 id: local-browser
-title: Review the note editor
+title: Local browser · your app · Codex account
 subject:
   source: app-url
-  appUrl: http://127.0.0.1:3000
+  appUrl: "http://127.0.0.1:3000"
 actors:
   - type: local-agent
     localAgent: codex
-    count: 2
-    mission: Create a note and explain anything confusing about saving it.
-scenario:
-  mode: live
+    persona: synthetic-new-user
+    mission: "Create a note and explain anything confusing about saving it"
 execution:
   target: local
-  concurrency: 2
+  concurrency: 1
   timeoutMs: 120000
+scenario:
+  mode: live
+defaults:
+  open: true
 ```
 
 ```sh

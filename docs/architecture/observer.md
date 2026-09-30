@@ -67,17 +67,18 @@ the same fresh evidence without browser open or a long-running process.
 
 ### Reopening a run
 
-The TUI's **Open Observer** action opens an HTTP view that follows saved captures
-as the run writes them. One loopback evidence server is shared by the session's
-browser tabs; exiting the TUI closes it, including when the UI fails. Opening a
-run does not launch a study. The URL is always shown for manual opening or SSH
-port forwarding, and only contained run paths in the TUI's project are accepted.
+The TUI's **Open in Observer** action opens an HTTP view of the selected run's saved
+captures. The TUI offers it once a run has ended, and while the run's automatic
+analysis is queued or running. One loopback evidence server is shared by the
+session's browser tabs; exiting the TUI closes it, including when the UI fails.
+Opening a run does not launch a study. The URL is always shown for manual opening or
+SSH port forwarding, and only contained run paths in the TUI's project are accepted.
 
 | Entry point              | What updates                                                              | Lifetime                         |
 | ------------------------ | ------------------------------------------------------------------------- | -------------------------------- |
 | `watch` during a study   | Saved evidence and available in-memory desktop streams                    | Until the attached command exits |
 | `observe --run <id>`     | Saved evidence from the selected run                                      | Until the command exits          |
-| TUI Open Observer        | Saved evidence in the selected run; shares the project's evidence library | Until the TUI exits              |
+| TUI Open in Observer     | Saved evidence in the selected run; shares the project's evidence library | Until the TUI exits              |
 | `serve`                  | Saved evidence across the project's library                               | Until the server command exits   |
 | Static HTML or `file://` | The exported snapshot                                                     | Independent of a server          |
 
@@ -183,7 +184,8 @@ The Observer shell has:
 
 - a persistent study library and a compact study header;
 - Participants and Findings views that share the same shell geometry;
-- stream filters for UI, CLI, TUI, and Codex UI lanes;
+- status and participant-kind filters, where kind is the stream kind (`ui`,
+  `terminal`, `tui`, `codex-ui` and others);
 - grid mode with one tile per sim stream;
 - focus mode with left stream rail, center stage, and right tabs;
 - terminal/TUI transcript stage;
@@ -238,7 +240,7 @@ Subsequent additions through 2026-06-11 included:
   `browser.steps` authored in `humanish/scenarios/*.yaml` (`src/actors/scripted-browser/`);
 - native Codex app-server session adapter (`src/actors/codex/app-server.ts`,
   registered in `src/actors/registry.ts`);
-- E2B desktop substrate lanes on the meta and computer-use routes;
+- E2B desktop substrate lanes on the computer-use and shared-world routes;
 - computer-use bundles persist a `screenshots/` directory and the Observer
   renders the frames (`src/routes/computer-use/lanes.ts` writes them).
 

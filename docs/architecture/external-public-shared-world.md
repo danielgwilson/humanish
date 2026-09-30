@@ -27,51 +27,62 @@ dropped: `plane.exposure` MUST be absent (claiming synthetic on a real site is a
 external-public honest-downgrade limits are REQUIRED.
 
 Why the getHost synthetic gate is deliberately NOT reachable from the app-url branch: that gate
-(`concurrentSharedWorldValidationReason` → `plane.exposure == synthetic` + a `0.0.0.0` bind +
-`subject.state.provenance == seeded`, `src/run/verify-shared-world-concurrent.ts`) exists because a getHost URL is
-internet-reachable AND harness-owned; real data behind a harness-exposed URL is the hazard. A public
-site the harness neither provisioned nor exposed has NEITHER property, so the gate's hazard does not
-exist there. The app-url branch is validated by `externalPublicSharedWorldValidationReason` and is
-reached before the getHost gate; a snapshot regression test pins the getHost path byte-unchanged.
+(`concurrentSharedWorldValidationReason` in `src/lab/validation.ts` requires `subject.exposure:
+synthetic`, a `0.0.0.0` bind and no `keep`; verify's `getHostPlaneFindings` in
+`src/run/verify-shared-world-concurrent.ts` then requires `plane.exposure == synthetic` and
+`subject.state.provenance == seeded`) exists because a getHost URL is internet-reachable AND
+harness-owned; real data behind a harness-exposed URL is the hazard. A public site the harness
+neither provisioned nor exposed has NEITHER property, so the gate's hazard does not exist there. The
+app-url branch is validated by `externalPublicSharedWorldValidationReason` (`src/lab/validation.ts`)
+and is reached before the getHost gate; a snapshot regression test pins the getHost path
+byte-unchanged.
 
 ## The CDP lobby-code handoff barrier
 
 Reading a seat's live URL mid-run is already implemented: `makeChromeBrowserStateObserver`
-(`src/substrates/e2b/desktop-cdp.ts`) runs an in-sandbox `node -e` script that resolves the seat's Chrome CDP port,
-selects the seat's page, and sends `Runtime.evaluate({ url: location.href, title, text })` over the
-page's `webSocketDebuggerUrl`. `createE2BDesktopExecutor` stamps `observation.url` from it every turn.
-`CuaObservation.url` is RUNTIME-ONLY by contract (it drives `stopWhen`/progress but is never persisted
-raw into the trace).
+(`src/substrates/e2b/desktop-cdp.ts`) runs an in-sandbox python3 probe
+(`src/substrates/e2b/cdp-probe.ts`) that resolves the seat's Chrome CDP port, selects the seat's
+page, and sends `Runtime.evaluate({ url: location.href, title, text })` over the page's
+`webSocketDebuggerUrl`. `createE2BDesktopExecutor` stamps `observation.url` from it every turn.
+`CuaObservation.url` is RUNTIME-ONLY by contract (it drives `stopWhen`/progress but is never
+persisted raw into the trace).
 
 The 0.20.0 delta is a single surgical callback: `CuaLoopOptions.onObservedUrl?(url)`, invoked right
 after every `executor.observe()` (the initial observe and each loop observe) with `observation.url`,
 threaded through `CuaActorSessionOptions` → `CuaLaneDeps` → the concurrent orchestrator. No new CDP
-code; no lobby-trivia change.
+code; no lobby-trivia change. The CDP URL read later proved unreliable on E2B desktops, so the
+host's code can now also come from its narration or its screen (step 2).
 
 Flow, a host-first barrier inside `runConcurrentSharedWorld`'s fan-out:
 
 1. **Designated host.** Exactly one roster lane carries `host: true` (validated). Its mission = create
    the shared lobby; its browser opens `subject.appUrl`.
-2. **Latch.** The orchestrator creates `lobbyCodeLatch = deferred<string>()` before fan-out. The host
-   lane's `onObservedUrl` matches `/\/lobby\/([A-Z2-9]{6})(?:$|[/?#])/` (a locale prefix
-   `/en/lobby/CODE` and a query/hash suffix are tolerated), extracts CODE, and resolves the latch. The
-   host KEEPS PLAYING after resolving, so its window overlaps the followers'.
+2. **Latch.** `LobbyHandoff` (`src/routes/shared-world/handoff.ts`) creates a private latch before
+   fan-out. The first of three reads of the host seat resolves it: its `onObservedUrl` URL matching
+   `/\/lobby\/([A-Z2-9]{6})(?:$|[/?#])/` (a locale prefix `/en/lobby/CODE` and a query/hash suffix
+   are tolerated), a lobby code in its narration (`extractLobbyCodeFromNarration`), or a vision read
+   of its screenshot (`readLobbyCodeFromFrame`). The vision reads are out-of-band OpenAI calls, at
+   most 30 per seat, and are not counted against `execution.caps.maxUsd`. The host KEEPS PLAYING
+   after resolving, so its window overlaps the followers'.
 3. **Barrier.** Follower lanes (`host` absent) do NOT compose a mission or open their target until
-   `await Promise.race([lobbyCodeLatch.promise, timeout(HANDOFF_DEADLINE_MS)])`. On resolve, CODE is
-   threaded into each follower's mission ("…choose Join, enter lobby code {CODE}…"). It is not a raw
-   URL navigation, because a direct `/lobby/CODE` visit does not auto-join a non-member (lobby-trivia's
-   lobby page redirects unknown/non-member sessions home); the follower goes through the real Join
-   flow.
-4. **Convergence confirmation.** Each follower's own `onObservedUrl` confirms it reached `/lobby/CODE`;
-   this observed convergence becomes the `lobbyConvergenceDigest`, the pass signal that the handoff
-   LANDED rather than merely being instructed. Recorded only when EVERY seat converged on ONE code.
-5. **Fail-closed timeout.** If the host never yields a `/lobby/CODE` within `HANDOFF_DEADLINE_MS`
-   (default 120s, capped by `execution.timeoutMs`; injectable in tests), the latch rejects; every
-   follower fails closed WITHOUT opening (no wasted turns against a codeless home page); the run
-   returns `HUMANISH_CONCURRENT_SHARED_WORLD_LAB_HANDOFF_TIMEOUT` and the bundle records the host
-   window + a handoff-failed outcome for followers. A host that reaches the lobby but whose followers
-   fail to JOIN is a normal per-lane non-pass (the concurrency-on-pass gate then simply won't see ≥2
-   overlap, and the verdict stays non-pass, honestly), not a whole-run abort.
+   the latch resolves or the handoff deadline passes. On resolve, CODE is threaded into each
+   follower's mission ("…choose Join, enter lobby code {CODE}…"). It is not a raw URL navigation,
+   because a direct `/lobby/CODE` visit does not auto-join a non-member (lobby-trivia's lobby page
+   redirects unknown/non-member sessions home); the follower goes through the real Join flow.
+4. **Convergence confirmation.** Each follower's own `onObservedUrl`, or a vision read of its own
+   frame, confirms it reached `/lobby/CODE`; this observed convergence becomes the
+   `lobbyConvergenceDigest`, the pass signal that the handoff LANDED rather than merely being
+   instructed. Recorded only when EVERY seat converged on ONE code.
+5. **Fail-closed timeout.** If the host never yields a `/lobby/CODE` within the handoff deadline
+   (`min(execution.timeoutMs, max(120 s, 40% of execution.timeoutMs))`; injectable in tests), the
+   latch rejects; every follower fails closed WITHOUT opening (no wasted turns against a codeless
+   home page); the run returns `HUMANISH_CONCURRENT_SHARED_WORLD_LAB_HANDOFF_TIMEOUT` and the bundle
+   records the host window + a handoff-failed outcome for followers. If the host seat ends without a
+   code before the deadline, `releaseFollowersIfUnlatched` releases the followers at once and the
+   run returns `HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED` with the host's reason. A host that
+   reaches the lobby but whose followers fail to JOIN is a normal per-lane non-pass (the
+   concurrency-on-pass gate then simply won't see ≥2 overlap, and the verdict stays non-pass,
+   honestly), not a whole-run abort.
 
 > **Temporary shim (tracked by #296).** This CDP URL-relay handoff — reading the host's `/lobby/CODE`
 > off its own browser and threading it into the follower missions — is a TEMPORARY coordination shim.
@@ -101,20 +112,21 @@ e2b-URL / host-digest redaction discipline.
 
 ## Mobile fidelity caveat
 
-The example roster runs mobile-LAYOUT seats (`device: mobile` 414×896, `small-mobile` 360×740). On the
-E2B-desktop route the rendered WIDTH is floored to `MIN_DESKTOP_RENDER_WIDTH` (500) because Chrome
-refuses a narrower window and a narrower X screen clipped the page (0.20.3, #304), so both presets
-render at 500 wide and are identical in layout; only HEIGHT renders as declared.
+The example roster runs mobile-LAYOUT seats (`device: mobile` 414×896, `small-mobile` 360×740). On
+the E2B-desktop route the rendered WIDTH is floored to `MIN_DESKTOP_RENDER_WIDTH` (500) because
+Chrome refuses a narrower window and a narrower X screen clipped the page (0.20.3, #304), so both
+presets render at 500 wide and are identical in layout; only HEIGHT renders as declared.
 `desktopGeometry.screen.verified` compares the floored number with itself, so it does not attest the
 preset width. There is NO touch input, and `isMobile`/DPR are prompt-signal + metadata (DPR renders
 only via the CDP geometry path). "3 mobile personas" = 3 mobile-LAYOUT desktop-Chromium seats, not
-touch devices. Do not over-read the results as true mobile-device coverage. True sub-500 rendering is
-the #221 upgrade.
+touch devices. Do not over-read the results as true mobile-device coverage. That describes the
+default. With `execution.desktop.fidelity.mobileEmulation: true` (#221), Chromium seats on a mobile
+preset get a DevTools device-metrics override at the preset width, plus DPR, touch emulation and a
+mobile user agent. That is still not physical-device fidelity.
 
 ## Watch-from-phone
 
-Ship the run + evidence here; native live-desktop `--expose` on the concurrent path is a clean,
-separable 0.20.1 fast-follow (its whole diff is "reuse `startExposedObserver` on the concurrent
-observer server"). Today, watch it from a phone via `humanish serve --expose --tunnel … --oauth …`
-against the run directory's Observer (the concurrent path writes artifacts continuously and attaches
-per-seat runtime stream URLs to the live Observer).
+Native live-desktop `--expose` is not supported on the concurrent path; only the computer-use
+backend live-serves a run (`src/cli/io.ts`). Today, watch it from a phone via `humanish serve
+--expose --tunnel … --oauth …` against the run directory's Observer (the concurrent path writes
+artifacts continuously and attaches per-seat runtime stream URLs to the live Observer).

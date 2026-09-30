@@ -19,11 +19,13 @@ with `Run.finish` as in step 7, and skips steps 3 to 6 and 9. It runs step 8 thr
 2. `routeOf` (`src/lab/plan.ts`) picks one of five routes from `subject.source`,
    `subject.topology`, `execution.target` and the registry lane of `actors[0].type`. The
    predicates live in `src/lab/routing.ts`, and `selectLabBackend` (`src/lab/engine.ts`) maps the
-   route to its backend name. `runLab` in `src/lab/engine.ts` first calls
-   `normalizeRunLabOptions` (`src/lab/run-lab-options.ts`). It refuses a library option the route
-   cannot honor, or a new option set together with the hook-bag field it replaces, and maps the
-   other new options into the route's hook bags. `runLab` then dispatches to `runCuaActorLab`,
-   `runScriptedBrowserLab`, `runTerminalProductLab`, `runConcurrentSharedWorld` or `runPreviewLab`
+   route to its backend name. `runLabCommand` hands the lab to that backend's runner, such as
+   `runCuaBackend` (`src/cli/commands/lab-backend-cua.ts`), which calls `runLab`. `runLab` in
+   `src/lab/engine.ts` first calls `normalizeRunLabOptions` (`src/lab/run-lab-options.ts`). It
+   refuses a library option the route cannot honor, or a new option set together with the
+   hook-bag field it replaces, and maps the other new options into the route's hook bags.
+   `runLab` then dispatches to `runCuaActorLab`, `runScriptedBrowserLab`,
+   `runTerminalProductLab`, `runConcurrentSharedWorld` or `runPreviewLab`
    (`src/routes/preview.ts`), which takes its sim count and admission from `planLab` and then
    calls `runDryRun`. `runTerminalProductLab` takes its configuration refusals and plan from
    `planTerminalLab` (`src/routes/terminal/plan.ts`), `runScriptedBrowserLab` from
@@ -35,15 +37,16 @@ with `Run.finish` as in step 7, and skips steps 3 to 6 and 9. It runs step 8 thr
    `liveCuaRejection` (`src/routes/computer-use/preflight.ts`) checks provider keys, the local
    agent login and subject env vars, and refuses a dollar cap it cannot price. Both run before
    any sandbox or provider call.
-4. `createE2BCuaDesktopLane` (`src/routes/computer-use/e2b-desktop.ts`) calls
-   `acquireE2BDesktopSandbox` (`src/substrates/e2b/sandbox.ts`). It creates the sandbox, retries
-   once on a transient provider error, and appends the id with `"provider": "e2b"` to
-   `sandbox-receipts.ndjson` before it returns the handle. The lane then provisions a `clone` or
-   `local-tree` subject with `provisionCloneSubject` or `provisionLocalTreeSubject`
-   (`src/subject/`), which reach the sandbox only through the `Shell` that `e2bShell`
-   (`src/substrates/e2b/shell.ts`) builds from it. An `app-url` lab with
-   `execution.target: local` goes to `runLocalFirecrackerStudy`
-   (`src/routes/computer-use/local-vm.ts`) instead.
+4. `createE2BCuaDesktopLane` (`src/routes/computer-use/e2b-desktop.ts`) runs the lane's steps
+   from `e2b-desktop-prepare.ts`, `e2b-desktop-start.ts` and `e2b-desktop-teardown.ts` in that
+   folder. `acquireLaneDesktop` calls `acquireE2BDesktopSandbox`
+   (`src/substrates/e2b/sandbox.ts`). It creates the sandbox, retries once on a transient
+   provider error, and appends the id with `"provider": "e2b"` to `sandbox-receipts.ndjson`
+   before it returns the handle. `provisionLaneSubject` then provisions a `clone` or `local-tree`
+   subject with `provisionCloneSubject` or `provisionLocalTreeSubject` (`src/subject/`), which
+   reach the sandbox only through the `Shell` that `e2bShell` (`src/substrates/e2b/shell.ts`)
+   builds from it. An `app-url` lab with `execution.target: local` goes to
+   `runLocalFirecrackerStudy` (`src/routes/computer-use/local-vm.ts`) instead.
 5. `runAllCuaLanes` (`src/routes/computer-use/lanes.ts`) runs `runCuaLane` for each
    participant, at most `execution.concurrency` at a time. Each lane calls the actor's `runSession`. For
    `openai-computer-use` and `local-agent` that is `runCuaActorSession`
@@ -157,9 +160,9 @@ computer-use labs in the fixture accept them. The other routes refuse them at pa
 | Invariant                                                               | Enforced by                                                                                                                                                                                                                                                                                         | Pinned by                                                                                                                                                                                                  |
 | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | The run bundle is the source of truth, and the Observer derives from it | `verifyRun` reads only `run.json` and its artifacts (`src/run/verify.ts`); `buildObserverData` takes the bundle (`src/observer/data.ts`)                                                                                                                                                            | `tests/observer/data-contract.test.ts`, `docs/decisions/0001-run-bundle-is-the-source-of-truth.md`                                                                                                         |
-| Unsupported execution is refused before side effects                    | `parseLabConfig`, `taskProtocolValidationReason` (`src/lab/validation.ts`), `planComputerUseLab`                                                                                                                                                                                                    | `tests/lab/task-route-preflight.test.ts`; `pnpm cli:preflight:test` runs `scripts/task-route-preflight-proof.mjs` with `tests/fixtures/task-route-preflight/deny-side-effects.mjs` preloaded               |
+| Unsupported execution is refused before side effects                    | `parseLabConfig` (`src/lab/config.ts`), `taskProtocolValidationReason` (`src/lab/validation.ts`), `planComputerUseLab` (`src/routes/computer-use/plan.ts`)                                                                                                                                          | `tests/lab/task-route-preflight.test.ts`; `pnpm cli:preflight:test` runs `scripts/task-route-preflight-proof.mjs` with `tests/fixtures/task-route-preflight/deny-side-effects.mjs` preloaded               |
 | A sandbox id is recorded before any work runs in it                     | `acquireE2BDesktopSandbox` and `acquireE2BShellSandbox` (`src/substrates/e2b/sandbox.ts`) write the receipt before they return the handle, and every route that creates a sandbox calls them; `reclaimRunSandboxes` (`src/run/reclaim.ts`) switches on the receipt's provider and kills by exact id | `tests/substrates/e2b/sandbox.test.ts`, `tests/routes/terminal/acquisition-boundary.test.ts`, `tests/run/reclaim.test.ts`; `tests/routes/scripted-browser.test.ts` checks create, receipt, then first work |
-| Bundles carry no secrets                                                | `redactText` and `scrubLiterals` (`src/evidence/redaction.ts`); `scanRunPublicSafetyArtifacts` (`src/run/verify-artifacts.ts`); `buildShareSafety` grades `share_ready`, `local_only` or `blocked`                                                                                                  | `tests/evidence/redaction-hooks.test.ts`, `tests/run/transient-comms-secrets.test.ts`, `tests/verify-evidence-refs.test.ts`                                                                                |
+| Bundles carry no secrets                                                | `redactText` and `scrubLiterals` (`src/evidence/redaction.ts`); `scanRunPublicSafetyArtifacts` (`src/run/verify-artifacts.ts`); `buildShareSafety` (`src/run/verify.ts`) grades `share_ready`, `local_only` or `blocked`                                                                            | `tests/evidence/redaction-hooks.test.ts`, `tests/run/transient-comms-secrets.test.ts`, `tests/verify-evidence-refs.test.ts`                                                                                |
 | Goldens pin route output                                                | `runDirSnapshot` (`tests/helpers/run-golden.ts`) snapshots a whole run folder                                                                                                                                                                                                                       | `tests/golden/routes/`, `tests/golden/observer-data/`, `tests/golden/labs/`                                                                                                                                |
 | A run is closed on every exit, and only a published run is analyzed     | `runScope` and `FinishedRun` (`src/run/run.ts`); `completeAutomaticAnalysis` requires an issued `FinishedRun` for the result's run                                                                                                                                                                  | `tests/run/run-lifecycle.test.ts`, `tests/analysis/automatic-analysis.test.ts`                                                                                                                             |
 

@@ -38,7 +38,9 @@ before printing an issue body or issue URL.
 
 ## Command Shape
 
-Likely v0 commands:
+There are five feedback commands. Each takes `--run` and `--cwd`. All but `list`
+also take `--candidate`, or `--analysis` with `--finding`, to choose what to
+draft:
 
 ```bash
 humanish feedback list --run latest
@@ -71,18 +73,22 @@ produce a high-quality issue draft and clear filing instructions.
 
 ## Feedback States
 
-| State         | Meaning                               | GitHub action                                       |
-| ------------- | ------------------------------------- | --------------------------------------------------- |
-| `watch`       | Useful observation, not yet work      | Keep as bundle-local feedback or low-priority issue |
-| `needs_spec`  | Real signal, scope unclear            | Create issue with spec task                         |
-| `spec_ready`  | Docs/spec work can clarify it         | Create issue with docs-only authority               |
-| `agent_ready` | Narrow enough for autonomous PR draft | Include readiness block for maintainers             |
-| `blocked`     | Needs human/operator input            | Create or update issue with blocker                 |
-| `wontfix`     | Accounted for and rejected            | Keep in review packet; no issue by default          |
+A draft's `proposed_next_state` is one of six values (`RunFeedbackCandidate` in
+`src/run/bundle.ts`). Maintainer triage beyond it, such as spec or agent
+readiness, uses the labels and the `humanish_swarm` block below.
+
+- `watch`: the dry-run contract-proof draft; the observation is not work yet.
+- `study-quality-review`: the live-run summary draft and every analysis-finding
+  draft (`src/feedback/draft.ts`).
+- `adapter-hardening`, `target-app-setup`, `actor-auth` and
+  `setup-quality-review`: feedback candidates that an adapter adds to the
+  bundle. `src/lab/adapter-extension.ts` checks the value.
 
 ## Issue Body Contract
 
-Promoted feedback should use this stable body shape:
+Promoted feedback uses this body shape. [The feedback
+contract](../contracts/feedback.md) has the full block, including its optional
+fields:
 
 ```yaml
 humanish_feedback:
@@ -94,17 +100,23 @@ humanish_feedback:
   actor: "<actor-runtime>"
   substrate: "<substrate>"
   failure_owner: "harness|target-app|actor|environment|unknown"
+  source_candidate_id: "<candidate-id>" # only when drafted from a candidate
   source_bundle: "<path-or-url>"
   evidence:
-    - "<relative artifact pointer>"
+    - path: "<relative artifact pointer>"
+      kind: "screenshot|state|review|trace|log|filesystem"
+      note: "<public-safe note>"
   redaction:
     status: passed
     notes: "no sensitive data promoted"
   idempotency_key: "<stable-key>"
-  proposed_next_state: "watch|needs_spec|spec_ready|agent_ready|blocked"
+  proposed_next_state: "watch|adapter-hardening|target-app-setup|actor-auth|setup-quality-review|study-quality-review"
+  acceptance_proof:
+    - "<command or artifact that would close this>"
 ```
 
-For maintainer/agent-ready work, the issue can also include:
+For maintainer/agent-ready work, the issue can also include this block from the
+agent-ready issue template (`.github/ISSUE_TEMPLATE/agent-ready-work.yml`):
 
 ```yaml
 humanish_swarm:
@@ -140,7 +152,7 @@ mirror it, but they do not replace it.
 
 ## Labels
 
-Initial label taxonomy:
+Label taxonomy, from `.github/labels.yml`:
 
 | Label              | Meaning                                                |
 | ------------------ | ------------------------------------------------------ |
@@ -149,8 +161,9 @@ Initial label taxonomy:
 | `needs-spec`       | Requires scope or acceptance criteria before mutation  |
 | `agent-ready`      | Has valid readiness block and narrow write scope       |
 | `proof-required`   | Cannot close without run bundle or command proof       |
-| `harness`          | Harness/core/observer/review work                      |
-| `adapter`          | Product adapter work                                   |
+| `area:core`        | Core run, artifact, lifecycle and verification work    |
+| `area:observer`    | Observer work                                          |
+| `area:adapters`    | Product adapter work; `adapter:*` names the adapter    |
 | `feedback-loop`    | Feedback, issue-draft, or queue plumbing               |
 | `privacy-boundary` | Public/PII/PHI/secret-safety concern                   |
 
@@ -173,7 +186,7 @@ exists.
 ## Issue Draft Rules
 
 - Capture generously, execute rigorously.
-- Vague feedback can become `watch`; it cannot become `agent_ready`.
+- Vague feedback can become `watch`; it cannot get the `agent-ready` label.
 - A GitHub issue may say `contributes to` broader goals, but should not say
   `closes` without product proof.
 - The issue draft includes an idempotency key so maintainers can dedupe.
