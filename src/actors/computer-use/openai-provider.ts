@@ -564,7 +564,7 @@ export function createOpenAiResponsesProvider(
 
     let raw: unknown;
     if (isFirstTurn) {
-      raw = await attempt((ctx) => buildInitialRequest(ctx));
+      raw = await attempt((ctx) => buildInitialRequest(ctx, req.observation.screenshot));
     } else {
       const callOutputs = pendingCallIds.map((id) =>
         buildCallOutput(id, req.observation.screenshot, req.acknowledgedSafetyChecks),

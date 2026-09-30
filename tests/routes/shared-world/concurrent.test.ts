@@ -2186,7 +2186,8 @@ describe("lobby-code handoff relays (CDP-independent: narration + vision-off-fra
 // output-limit contract. The response is a retained wire fixture; no network or paid compute.
 it("routes actor output limits and per-lane reasoning to concurrent provider requests", async () => {
   const config = concurrentConfig();
-  config.actors[0]!.maxOutputTokens = 8192;
+  // Below the first request's own 1024 cap, so the first request carries the declared value.
+  config.actors[0]!.maxOutputTokens = 512;
   config.actors[0]!.reasoningEffort = "low";
   config.actors[0]!.lanes![1]!.reasoningEffort = "high";
   const { hooks } = baseHooks({ worldVersion: 0 }, makeRendezvous(3));
@@ -2215,7 +2216,7 @@ it("routes actor output limits and per-lane reasoning to concurrent provider req
   try {
     const result = await runConcurrentSharedWorld({ cwd, config, dryRun: false, hooks });
     expect(bodies).toHaveLength(3);
-    expect(bodies.map((body) => body.max_output_tokens)).toEqual([8192, 8192, 8192]);
+    expect(bodies.map((body) => body.max_output_tokens)).toEqual([512, 512, 512]);
     expect(bodies.map((body) => body.reasoning?.effort).sort()).toEqual(["high", "low", "low"]);
     expect(result.roles).toHaveLength(3);
   } finally {

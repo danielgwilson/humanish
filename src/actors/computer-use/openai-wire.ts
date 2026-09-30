@@ -321,11 +321,44 @@ function sharedRequestFields(ctx: OpenAiCuContext): Record<string, unknown> {
   };
 }
 
-/** Build the first-turn request body: instructions + an initial user text input. */
-export function buildInitialRequest(ctx: OpenAiCuContext): Record<string, unknown> {
+/**
+ * The first request's output limit. A first request can spend its whole allowance inside an
+ * unfinished computer_call; this bound ends that within seconds while leaving several times the
+ * room a completed first turn uses (a screenshot request of a few dozen tokens).
+ */
+const FIRST_TURN_OUTPUT_LIMIT = 1024;
+
+/**
+ * Build the first-turn request body: the instructions and the first screen, so the first decision
+ * is made with the page in view. Its output limit is FIRST_TURN_OUTPUT_LIMIT, or the declared
+ * limit when that is lower.
+ */
+export function buildInitialRequest(
+  ctx: OpenAiCuContext,
+  screenshot?: Buffer,
+): Record<string, unknown> {
+  const maxOutputTokens = Math.min(
+    ctx.maxOutputTokens ?? FIRST_TURN_OUTPUT_LIMIT,
+    FIRST_TURN_OUTPUT_LIMIT,
+  );
   return {
-    ...sharedRequestFields(ctx),
-    input: [{ role: "user", content: [{ type: "input_text", text: ctx.instructions }] }],
+    ...sharedRequestFields({ ...ctx, maxOutputTokens }),
+    input: [
+      {
+        role: "user",
+        content: [
+          { type: "input_text", text: ctx.instructions },
+          ...(screenshot === undefined
+            ? []
+            : [
+                {
+                  type: "input_image",
+                  image_url: `data:image/png;base64,${screenshot.toString("base64")}`,
+                },
+              ]),
+        ],
+      },
+    ],
   };
 }
 
