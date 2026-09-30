@@ -1399,6 +1399,8 @@ describe("external-public seat wiring", () => {
       });
 
       expect(result.ok).toBe(true);
+      // The last attach hands the final Observer every stream, each marked ended.
+      expect(attach.mock.calls.at(-1)?.[0]).toBe(result.observer);
       const streams = attach.mock.calls.at(-1)?.[1] ?? [];
       expect(streams).toHaveLength(3);
       expect(streams.every((stream) => stream.ended === true)).toBe(true);

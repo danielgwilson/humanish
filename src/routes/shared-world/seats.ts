@@ -2,7 +2,7 @@
 // sandbox time budgets, and records a follower that never received the host's lobby code.
 
 import { DEFAULT_OPENAI_CU_MODEL } from "../../actors/computer-use/openai-provider.js";
-import type { ResolvedPersona } from "../../lab/persona.js";
+import { scrubPersonaBrief, type ResolvedPersona } from "../../lab/persona.js";
 import { participantIdAt } from "../../lab/routing.js";
 import type { LabActorLane, LabConfig } from "../../lab/types.js";
 import { attachObserverRuntimeStreamUrls } from "../../observer/render.js";
@@ -18,6 +18,9 @@ import type {
 } from "../computer-use/types.js";
 import type { SharedWorldLabHooks } from "./hooks.js";
 import type { LiveSeats, PlaneContext } from "./types.js";
+import { labPersonaIds, resolveCommittedPersonasForCwd } from "../../lab/persona-resolve.js";
+import { participantAssignment } from "../../lab/participant-assignment.js";
+import { redactText } from "../../evidence/redaction.js";
 
 // The DEFAULT per-seat session budget is DERIVED, not flat. On a provisioned route the binding
 // constraint is the SUBJECT sandbox (it must outlive every seat: timeoutMs + provisioning +
@@ -80,7 +83,7 @@ export function laneTaxonomyLabel(
 
 /** Build one actor lane's CuaLaneSpec from a roster role (per-actor device IS honored here — each
  *  actor has its OWN desktop). */
-export function buildActorSpec(
+function buildActorSpec(
   config: LabConfig,
   role: LabActorLane,
   index: number,
@@ -249,4 +252,27 @@ export function seatLaneDeps(
     // live multi-actor world (the single-lane/fan-out routes keep fail-closed).
     screenMismatchPolicy: "record-evidence",
   };
+}
+
+/**
+ * Each seat's lane spec, with committed personas compiled in so each seat's prompt carries real
+ * behavioral directives (#381). Evidence copies of the assignment, instructions and persona are
+ * scrubbed of the run's known secret values.
+ */
+export async function buildSeatSpecs(
+  config: LabConfig,
+  roles: LabActorLane[],
+  cwd: string,
+  scrubKnownValues: (text: string) => string,
+): Promise<CuaLaneSpec[]> {
+  const personaResolution = await resolveCommittedPersonasForCwd(cwd, labPersonaIds(config));
+  const actorSpecs = roles.map((role, i) =>
+    buildActorSpec(config, role, i, personaResolution.personas),
+  );
+  for (const spec of actorSpecs) {
+    if (spec.assignment) spec.assignment = participantAssignment(spec.assignment, scrubKnownValues);
+    spec.evidenceInstructions = redactText(scrubKnownValues(spec.instructions));
+    spec.persona = scrubPersonaBrief(spec.persona, scrubKnownValues);
+  }
+  return actorSpecs;
 }
