@@ -10,7 +10,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const worker = join(root, "dist/guest-media-worker.js");
 const preload = join(root, "tests/fixtures/guest-media-worker/process-preload.mjs");
 
-async function run(mode) {
+async function run(mode, startupDelayMs = 0) {
   const runtime = await mkdtemp(join(tmpdir(), "humanish-media-worker-"));
   try {
     const child = spawn(
@@ -26,6 +26,7 @@ async function run(mode) {
           HUMANISH_MEDIA_CAMERA: "1",
           HUMANISH_MEDIA_MICROPHONE: "1",
           HUMANISH_MEDIA_PROOF_MODE: mode,
+          HUMANISH_MEDIA_PROOF_STARTUP_DELAY_MS: String(startupDelayMs),
         },
       },
     );
@@ -65,10 +66,17 @@ async function run(mode) {
 
 const healthy = await run("healthy");
 assert.deepEqual(healthy, { code: 0, signal: null, ready: true, stderr: "" });
-const failed = await run("early-camera-exit");
-assert.equal(failed.code, 1, failed.stderr);
-assert.equal(failed.signal, null);
-assert.equal(failed.ready, false, "worker announced ready after its required camera exited");
+// The delayed run starts the worker 500 ms late, as a loaded machine does.
+for (const startupDelayMs of [0, 500]) {
+  const failed = await run("early-camera-exit", startupDelayMs);
+  assert.equal(failed.code, 1, failed.stderr);
+  assert.equal(failed.signal, null);
+  assert.equal(
+    failed.ready,
+    false,
+    `worker announced ready after its required camera exited (startup delay ${startupDelayMs} ms)`,
+  );
+}
 console.log(
   "guest media startup: healthy worker ready; early required-child exit failed before ready",
 );

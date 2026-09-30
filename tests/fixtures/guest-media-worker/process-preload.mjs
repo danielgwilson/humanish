@@ -5,7 +5,14 @@ import net from "node:net";
 import { PassThrough, Writable } from "node:stream";
 
 const mode = process.env.HUMANISH_MEDIA_PROOF_MODE;
-const startedAt = Date.now();
+// Set when the synthetic camera dies. The synthetic whisper port stays closed until then, so the
+// worker can reach ready in early-camera-exit mode only by ignoring the camera's exit. Ordering by
+// this event keeps the proof independent of how loaded the machine is.
+let cameraExited = false;
+
+// Models a loaded machine: the worker module starts this long after the process does.
+const startupDelayMs = Number(process.env.HUMANISH_MEDIA_PROOF_STARTUP_DELAY_MS ?? 0);
+if (startupDelayMs > 0) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, startupDelayMs);
 
 class SyntheticChild extends EventEmitter {
   constructor({ stdin = false, stdout = false } = {}) {
@@ -38,7 +45,10 @@ childProcess.spawn = function (binary, _args, options = {}) {
   if (binary.endsWith("paplay")) child.stdin?.once("finish", () => setImmediate(() => child.finish()));
   if (binary.endsWith("parec")) setImmediate(() => child.stdout.write(Buffer.alloc(6400)));
   if (binary.endsWith("ffmpeg") && mode === "early-camera-exit") {
-    setTimeout(() => child.finish(1), 300);
+    setTimeout(() => {
+      cameraExited = true;
+      child.finish(1);
+    }, 300);
   }
   return child;
 };
@@ -47,7 +57,7 @@ net.createConnection = function () {
   const socket = new EventEmitter();
   socket.destroy = () => {};
   setImmediate(() => {
-    if (mode === "early-camera-exit" && Date.now() - startedAt < 450) socket.emit("error", new Error("synthetic not ready"));
+    if (mode === "early-camera-exit" && !cameraExited) socket.emit("error", new Error("synthetic not ready"));
     else socket.emit("connect");
   });
   return socket;
