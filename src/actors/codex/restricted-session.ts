@@ -678,22 +678,13 @@ export function createRestrictedCodexSession(
     return launched;
   }
 
-  /** Turn dispatch: sends turn/start with the evidence and images, then acknowledges its reply. */
-  async function startTurn(
-    active: RestrictedCodexTransport,
+  /** Turn dispatch: the turn/start request for the evidence and image input. */
+  function turnStartParams(
     request: RestrictedCodexRequest,
-    turn: RestrictedCodexTurn,
-    deadline: RestrictedCodexDeadline,
+    input: Record<string, unknown>[],
     model: string,
-  ): Promise<void> {
-    const input: Record<string, unknown>[] = [
-      { type: "text", text: request.evidence, text_elements: [] },
-      ...(await writeEvidenceImages(scratch, request.images, deadline)),
-    ];
-    deadline.check();
-    // Even a lost acknowledgment may have dispatched the request. Never claim zero cost.
-    turn.dispatched = true;
-    const reply = await active.rpc("turn/start", {
+  ): Record<string, unknown> {
+    return {
       threadId,
       cwd,
       approvalPolicy: "never",
@@ -704,8 +695,7 @@ export function createRestrictedCodexSession(
       model,
       outputSchema: request.schema,
       input,
-    });
-    turn.acknowledge(codexRecord(reply.turn).id);
+    };
   }
 
   async function execute(
@@ -751,7 +741,20 @@ export function createRestrictedCodexSession(
       else {
         phase = "turn/start";
         if (participant) transport.onRequest = turn.onRequest;
-        await startTurn(transport, request, turn, deadline, selectedModel!);
+        const input: Record<string, unknown>[] = [
+          { type: "text", text: request.evidence, text_elements: [] },
+          ...(await writeEvidenceImages(scratch, request.images, deadline)),
+        ];
+        deadline.check();
+        // Even a lost acknowledgment may have dispatched the request. Never claim zero cost.
+        turn.dispatched = true;
+        const reply = await transport.rpc(
+          "turn/start",
+          turnStartParams(request, input, selectedModel!),
+        );
+        // acknowledge() and deadline.wait() run in one microtask, so a completion delivered with
+        // the acknowledgment wins over a stop queued close behind it.
+        turn.acknowledge(codexRecord(reply.turn).id);
         phase = "response";
         result = await deadline.wait(turn.finished);
         deadline.check();
