@@ -7,11 +7,11 @@ import { buildObserverData, type ObserverData } from "../../src/observer/data.js
 import {
   attachObserverRuntimeStreamUrls,
   renderObserver,
-  renderObserverHtml,
   serveObserver,
-  withRuntimeStreamUrls,
   type ObserverServer,
 } from "../../src/observer/render.js";
+import { renderObserverHtml } from "../../src/observer/artifact.js";
+import { withRuntimeStreamUrls } from "../../src/observer/run-routes.js";
 import { serveObserverLibrary, type ServeLibraryServer } from "../../src/observer/serve.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { RUN_STATUS_SCHEMA } from "../../src/run/status.js";

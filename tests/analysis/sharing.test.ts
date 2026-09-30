@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { createServeRequestHandler, createShareSafetyAdmission } from "../../src/observer/serve.js";
-import { pinDirectory } from "../../src/observer/render.js";
+import { pinDirectory } from "../../src/observer/pinned-files.js";
 import { resolveRunPath } from "../../src/run/locate.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { verifyRun } from "../../src/run/verify.js";

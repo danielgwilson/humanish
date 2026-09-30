@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest";
 // #357: a finished/cleaned-up lane must fall back to recorded evidence, never render the dead
 // stream. The overlay is where that decision lives: an ENDED runtime entry stops injecting its
 // live URL and marks the stream so the page can say why the live view changed.
-import { withRuntimeStreamUrls, type ObserverRuntimeStreamUrl } from "../../src/observer/render.js";
+import {
+  withRuntimeStreamUrls,
+  type ObserverRuntimeStreamUrl,
+} from "../../src/observer/run-routes.js";
 import type { ObserverData } from "../../src/observer/data.js";
 
 function observerData(): ObserverData {

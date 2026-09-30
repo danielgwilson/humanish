@@ -13,11 +13,8 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import path from "node:path";
 
-import {
-  renderObserver,
-  renderObserverHtml,
-  type ObserverExportAssets,
-} from "../observer/render.js";
+import { renderObserver } from "../observer/render.js";
+import { renderObserverHtml, type ObserverExportAssets } from "../observer/artifact.js";
 import { buildObserverData, type ObserverData } from "../observer/data.js";
 import { resolveRunPath } from "../run/locate.js";
 import { verifyRun, type VerifyResult } from "../run/verify.js";

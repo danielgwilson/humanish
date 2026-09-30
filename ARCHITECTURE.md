@@ -56,8 +56,8 @@ with `Run.finish` as in step 7, and skips steps 3 to 6 and 9. Its callers run st
    route publishes the same way.
 8. `renderObserver` (`src/observer/render.ts`) verifies the bundle with `verifyRunPrepared`
    (`src/run/verify.ts`), builds the page data with `buildObserverData` (`src/observer/data.ts`)
-   and writes `observer/index.html` with `renderObserverHtml`. `humanish verify --run latest` runs
-   `verifyRun` from the same file on demand.
+   and writes `observer/index.html` with `renderObserverHtml` (`src/observer/artifact.ts`).
+   `humanish verify --run latest` runs `verifyRun` from `src/run/verify.ts` on demand.
 9. After the route returns, `completeAutomaticAnalysis` (`src/analysis/automatic-completion.ts`)
    calls `runAutomaticStudyAnalysis` (`src/analysis/automatic.ts`). It takes the `FinishedRun`
    that `Run.finish` issued (`src/run/run.ts`) and reads the run id and paths from it, so a

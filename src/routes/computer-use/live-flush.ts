@@ -1,10 +1,7 @@
 import type { ActorTokenUsage, ActorTraceItem } from "../../actors/contract.js";
 import type { CuaLiveMetadata } from "../../actors/computer-use/loop.js";
-import {
-  attachObserverRuntimeStreamUrls,
-  type ObserverResult,
-  type ObserverRuntimeStreamUrl,
-} from "../../observer/render.js";
+import { attachObserverRuntimeStreamUrls, type ObserverResult } from "../../observer/render.js";
+import { type ObserverRuntimeStreamUrl } from "../../observer/run-routes.js";
 import type { RunBundle } from "../../run/bundle.js";
 import type { CuaActorLabHooks, CuaLaneSpec } from "./types.js";
 
