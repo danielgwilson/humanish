@@ -179,7 +179,8 @@ type StartedRun = Extract<Awaited<ReturnType<RunScope["startRun"]>>, { ok: true 
 export interface PlaneContext {
   plan: SharedWorldPlan;
   input: SharedWorldRunInput;
-  /** Only participant building reads it (lane hooks take all of it); step 2B removes it. */
+  /** Read for the raw seat roster and by the computer-use lane runner, whose hooks and desktop
+   *  setup take the whole config. Seat specs come from the plan's participants. */
   config: LabConfig;
   descriptor: CuaActorDescriptor;
   hooks: SharedWorldLabHooks;
