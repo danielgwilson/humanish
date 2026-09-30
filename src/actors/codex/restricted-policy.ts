@@ -420,3 +420,27 @@ export function restrictedCodexFailure(
     errorCode,
   };
 }
+
+/**
+ * The tool policy each app-server event must pass: raw items of an allowed type only, `exec` as
+ * the only custom tool, `wait` as the only function, and no agent message that delivers
+ * asynchronously or asks the user a question. True means the request stops with codex_tool_call.
+ */
+export function toolPolicyViolation(
+  method: string,
+  item: Record<string, unknown>,
+  allowedRawItemTypes: readonly string[],
+): boolean {
+  if (method === "rawResponseItem/completed")
+    return (
+      !allowedRawItemTypes.includes(String(item.type)) ||
+      (item.type === "custom_tool_call" && item.name !== "exec") ||
+      (item.type === "function_call" && item.name !== "wait")
+    );
+  if (method === "item/started" || method === "item/completed")
+    return (
+      item.type === "agentMessage" &&
+      (item.delivery === "async" || (Array.isArray(item.questions) && item.questions.length > 0))
+    );
+  return false;
+}

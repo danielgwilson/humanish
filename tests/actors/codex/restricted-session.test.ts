@@ -942,6 +942,46 @@ describe("restricted Codex Code Mode participant session", () => {
     }
   });
 
+  // One case per toolPolicyViolation rule. Each offending event arrives after the turn/start
+  // reply, where the session used to repeat the check; onNotification is now the only one.
+  it.each([
+    ["a raw item type the profile does not allow", "analyst-raw-exec", false],
+    ["a custom tool other than exec", "participant-raw-wrong-custom-tool", true],
+    ["a function other than wait", "participant-raw-wrong-function", true],
+    ["an asynchronous agent message", "async-question", false],
+    ["an agent message that asks a question", "questions-without-async", false],
+  ] as const)(
+    "refuses %s through the single tool-policy check",
+    async (_rule, scenario, participant) => {
+      const f = await fixture(scenario);
+      if (participant) {
+        delete f.options.env!.NODE_OPTIONS;
+        f.options.participant = {
+          authMode: "operator",
+          reasoningEffort: "high",
+          tool: {
+            name: "humanish_ui",
+            description: "Synthetic UI.",
+            inputSchema: { type: "object" },
+            call: async () => JSON.stringify({ ok: true }),
+          },
+        };
+      }
+      const session = createRestrictedCodexSession(f.options);
+      try {
+        expect(
+          await session.run(participant ? { ...request, model: undefined } : request),
+        ).toMatchObject({
+          status: "failed",
+          errorCode: "codex_tool_call",
+          dispatched: true,
+        });
+      } finally {
+        await session.close();
+      }
+    },
+  );
+
   it("cancels while a host callback is pending without waiting for that callback", async () => {
     const f = await fixture("participant-success"),
       controller = new AbortController();
