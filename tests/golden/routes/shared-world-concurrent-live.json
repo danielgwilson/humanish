@@ -1,0 +1,1058 @@
+{
+  "actors/stream-001.json": {
+    "schema": "humanish.actor-trace.v1",
+    "provider": "fake-cua",
+    "protocol": "cua-loop",
+    "lane": "computer-use",
+    "persona": {
+      "id": "persona-1",
+      "traitsApplied": [],
+      "promptDigest": "48b083174eecbf02"
+    },
+    "redaction": {
+      "status": "passed",
+      "screenshots": "n/a",
+      "notes": "fake trace (no frames captured)"
+    },
+    "startedAt": "[ts]",
+    "completedAt": "[ts]",
+    "durationMs": "[durationMs]",
+    "status": "passed",
+    "completionReason": "goal_satisfied",
+    "reason": "passed (goal_satisfied)",
+    "ids": {},
+    "counts": {
+      "actions": 1,
+      "messages": 1,
+      "screenshots": 0
+    },
+    "items": [
+      {
+        "id": "i-msg",
+        "kind": "message",
+        "lifecycle": "completed",
+        "title": "message",
+        "text": "did my task"
+      },
+      {
+        "id": "i-act",
+        "kind": "ui_action",
+        "lifecycle": "completed",
+        "title": "click"
+      }
+    ],
+    "capabilities": {
+      "headless": true,
+      "structuredTrace": true,
+      "lanes": [
+        "computer-use"
+      ],
+      "producesScreenshots": true,
+      "byoModel": false,
+      "preGrantableApprovals": false,
+      "inProcessTools": false,
+      "license": "proprietary"
+    },
+    "estimatedCost": {
+      "schema": "humanish.actor-estimated-cost.v1",
+      "estimatedCostUsd": null,
+      "reason": "no_token_usage",
+      "ratesAsOf": null
+    }
+  },
+  "actors/stream-002.json": {
+    "schema": "humanish.actor-trace.v1",
+    "provider": "fake-cua",
+    "protocol": "cua-loop",
+    "lane": "computer-use",
+    "persona": {
+      "id": "persona-2",
+      "traitsApplied": [],
+      "promptDigest": "2e5216a185664964"
+    },
+    "redaction": {
+      "status": "passed",
+      "screenshots": "n/a",
+      "notes": "fake trace (no frames captured)"
+    },
+    "startedAt": "[ts]",
+    "completedAt": "[ts]",
+    "durationMs": "[durationMs]",
+    "status": "passed",
+    "completionReason": "goal_satisfied",
+    "reason": "passed (goal_satisfied)",
+    "ids": {},
+    "counts": {
+      "actions": 1,
+      "messages": 1,
+      "screenshots": 0
+    },
+    "items": [
+      {
+        "id": "i-msg",
+        "kind": "message",
+        "lifecycle": "completed",
+        "title": "message",
+        "text": "did my task"
+      },
+      {
+        "id": "i-act",
+        "kind": "ui_action",
+        "lifecycle": "completed",
+        "title": "click"
+      }
+    ],
+    "capabilities": {
+      "headless": true,
+      "structuredTrace": true,
+      "lanes": [
+        "computer-use"
+      ],
+      "producesScreenshots": true,
+      "byoModel": false,
+      "preGrantableApprovals": false,
+      "inProcessTools": false,
+      "license": "proprietary"
+    },
+    "estimatedCost": {
+      "schema": "humanish.actor-estimated-cost.v1",
+      "estimatedCostUsd": null,
+      "reason": "no_token_usage",
+      "ratesAsOf": null
+    }
+  },
+  "actors/stream-003.json": {
+    "schema": "humanish.actor-trace.v1",
+    "provider": "fake-cua",
+    "protocol": "cua-loop",
+    "lane": "computer-use",
+    "persona": {
+      "id": "persona-3",
+      "traitsApplied": [],
+      "promptDigest": "856019c3a4631b9f"
+    },
+    "redaction": {
+      "status": "passed",
+      "screenshots": "n/a",
+      "notes": "fake trace (no frames captured)"
+    },
+    "startedAt": "[ts]",
+    "completedAt": "[ts]",
+    "durationMs": "[durationMs]",
+    "status": "passed",
+    "completionReason": "goal_satisfied",
+    "reason": "passed (goal_satisfied)",
+    "ids": {},
+    "counts": {
+      "actions": 1,
+      "messages": 1,
+      "screenshots": 0
+    },
+    "items": [
+      {
+        "id": "i-msg",
+        "kind": "message",
+        "lifecycle": "completed",
+        "title": "message",
+        "text": "did my task"
+      },
+      {
+        "id": "i-act",
+        "kind": "ui_action",
+        "lifecycle": "completed",
+        "title": "click"
+      }
+    ],
+    "capabilities": {
+      "headless": true,
+      "structuredTrace": true,
+      "lanes": [
+        "computer-use"
+      ],
+      "producesScreenshots": true,
+      "byoModel": false,
+      "preGrantableApprovals": false,
+      "inProcessTools": false,
+      "license": "proprietary"
+    },
+    "estimatedCost": {
+      "schema": "humanish.actor-estimated-cost.v1",
+      "estimatedCostUsd": null,
+      "reason": "no_token_usage",
+      "ratesAsOf": null
+    }
+  },
+  "events.ndjson": [
+    {
+      "id": "event-000-created",
+      "at": "[ts]",
+      "level": "info",
+      "type": "concurrent-shared-world.run.created",
+      "message": "Created CONCURRENT shared-world run for concurrent-shared-world-proof (actor openai-computer-use, 3 persona(s) vs ONE shared plane, max 3 concurrent)."
+    },
+    {
+      "id": "event-001-plane",
+      "at": "[ts]",
+      "level": "info",
+      "type": "concurrent-shared-world.plane.provenance",
+      "message": "Shared plane: clone of example-org/collab-app@abc123def4567890abc1, served + exposed at the harness-minted getHost URL; seed recipe da2a491995d48367; SYNTHETIC subject (author-attested); env names: DATABASE_URL (values never persisted).",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-002-warning-persona-01",
+      "at": "[ts]",
+      "level": "warn",
+      "type": "concurrent-shared-world.actor.warning",
+      "message": "Persona persona-01: Desktop resource size unavailable (metadata_unavailable); compute cost remains unpriced.",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-003-session-persona-01",
+      "at": "[ts]",
+      "level": "info",
+      "type": "concurrent-shared-world.session.goal_satisfied",
+      "message": "Persona persona-01: passed — passed (goal_satisfied)",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-004-warning-persona-02",
+      "at": "[ts]",
+      "level": "warn",
+      "type": "concurrent-shared-world.actor.warning",
+      "message": "Persona persona-02: Desktop resource size unavailable (metadata_unavailable); compute cost remains unpriced.",
+      "simId": "sim-002",
+      "streamId": "stream-002"
+    },
+    {
+      "id": "event-005-session-persona-02",
+      "at": "[ts]",
+      "level": "info",
+      "type": "concurrent-shared-world.session.goal_satisfied",
+      "message": "Persona persona-02: passed — passed (goal_satisfied)",
+      "simId": "sim-002",
+      "streamId": "stream-002"
+    },
+    {
+      "id": "event-006-warning-persona-03",
+      "at": "[ts]",
+      "level": "warn",
+      "type": "concurrent-shared-world.actor.warning",
+      "message": "Persona persona-03: Desktop resource size unavailable (metadata_unavailable); compute cost remains unpriced.",
+      "simId": "sim-003",
+      "streamId": "stream-003"
+    },
+    {
+      "id": "event-007-session-persona-03",
+      "at": "[ts]",
+      "level": "info",
+      "type": "concurrent-shared-world.session.goal_satisfied",
+      "message": "Persona persona-03: passed — passed (goal_satisfied)",
+      "simId": "sim-003",
+      "streamId": "stream-003"
+    },
+    {
+      "id": "event-008-concurrency",
+      "at": "[ts]",
+      "level": "info",
+      "type": "concurrent-shared-world.concurrency",
+      "message": "Concurrency: 3 lane(s), up to 3 live at once (cap 3), overlap PROVEN; stateSeries 2 snapshot(s), 1 delta(s). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors. This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement."
+    }
+  ],
+  "observer/index.html": "[observer build]",
+  "observer/observer-data.json": "[observer build]",
+  "observer/study-analysis.json": "[observer build]",
+  "review.json": {
+    "schema": "humanish.review.v1",
+    "verdict": "pass",
+    "summary": "Concurrent shared-world (ONE plane, 3 simultaneous personas): swarm ran coherently; 3/3 actor session(s) passed credibility checks; mission endpoint: 3/3 ended goal_satisfied; completion reasons: goal_satisfied 3/3; overlap proven; 1 state delta(s) under load.",
+    "gaps": []
+  },
+  "review.md": "# Concurrent shared-world proof\n\n- run: [run]\n- mode: live\n- attribution class: shared-world\n- topology: shared-world / concurrent\n- personas: 3\n- verdict: pass\n- summary: Concurrent shared-world (ONE plane, 3 simultaneous personas): swarm ran coherently; 3/3 actor session(s) passed credibility checks; mission endpoint: 3/3 ended goal_satisfied; completion reasons: goal_satisfied 3/3; overlap proven; 1 state delta(s) under load.\n- plane: Shared plane: clone of example-org/collab-app@abc123def4567890abc1, served + exposed at the harness-minted getHost URL; seed recipe da2a491995d48367; SYNTHETIC subject (author-attested); env names: DATABASE_URL (values never persisted).\n- concurrency: Concurrency: 3 lane(s), up to 3 live at once (cap 3), overlap PROVEN; stateSeries 2 snapshot(s), 1 delta(s). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors. This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement.\n- attribution limits: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors\n",
+  "run.json": {
+    "schema": "humanish.run-bundle.v1",
+    "runId": "[run]",
+    "mode": "live",
+    "simCount": 3,
+    "createdAt": "[ts]",
+    "cwd": "[target-cwd]",
+    "artifactRoot": ".humanish/runs/[run]",
+    "source": {
+      "packageName": "humanish",
+      "humanishSource": "present",
+      "git": {
+        "schema": "humanish.git-state.v1",
+        "status": "missing",
+        "capturedAt": "[ts]",
+        "head": {
+          "shortSha": null,
+          "refState": "unknown"
+        },
+        "changes": {
+          "staged": 0,
+          "unstaged": 0,
+          "untracked": 0,
+          "total": 0
+        },
+        "note": "No git work tree was detected."
+      }
+    },
+    "persona": {
+      "id": "persona-1",
+      "name": "Concurrent shared-world swarm (3 personas)",
+      "source": "lab:concurrent-shared-world-proof",
+      "sourceDigest": "48b083174eecbf02"
+    },
+    "scenario": {
+      "id": "concurrent-shared-world-concurrent-shared-world-proof",
+      "title": "Concurrent shared-world proof",
+      "goal": "Persona: persona-1.\n\nYou are a desktop user (desktop, 1440x950).\n\nUse the shared app.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
+      "source": "lab:concurrent-shared-world-proof",
+      "sourceDigest": "48b083174eecbf02"
+    },
+    "lifecycle": [
+      {
+        "at": "[ts]",
+        "event": "concurrent-shared-world.run.created",
+        "message": "Created concurrent shared-world run with ONE shared plane and 3 simultaneous actor seats (actor openai-computer-use)."
+      }
+    ],
+    "simulations": [
+      {
+        "id": "sim-001",
+        "index": 1,
+        "personaId": "persona-1",
+        "scenarioId": "concurrent-shared-world-concurrent-shared-world-proof",
+        "status": "passed",
+        "streamKind": "browser",
+        "mode": "browser-sim",
+        "progress": 100,
+        "currentStep": "passed (goal_satisfied)",
+        "summary": "Persona persona-01 (type:initiator / surface:intake / case:case-001) (persona-1): drove the shared plane concurrently; goal_satisfied.",
+        "streamIds": [
+          "stream-001"
+        ],
+        "startedAt": "[ts]",
+        "updatedAt": "[ts]"
+      },
+      {
+        "id": "sim-002",
+        "index": 2,
+        "personaId": "persona-2",
+        "scenarioId": "concurrent-shared-world-concurrent-shared-world-proof",
+        "status": "passed",
+        "streamKind": "browser",
+        "mode": "browser-sim",
+        "progress": 100,
+        "currentStep": "passed (goal_satisfied)",
+        "summary": "Persona persona-02 (type:collaborator / surface:review / case:case-001) (persona-2): drove the shared plane concurrently; goal_satisfied.",
+        "streamIds": [
+          "stream-002"
+        ],
+        "startedAt": "[ts]",
+        "updatedAt": "[ts]"
+      },
+      {
+        "id": "sim-003",
+        "index": 3,
+        "personaId": "persona-3",
+        "scenarioId": "concurrent-shared-world-concurrent-shared-world-proof",
+        "status": "passed",
+        "streamKind": "browser",
+        "mode": "browser-sim",
+        "progress": 100,
+        "currentStep": "passed (goal_satisfied)",
+        "summary": "Persona persona-03 (type:collaborator / surface:review / case:case-001) (persona-3): drove the shared plane concurrently; goal_satisfied.",
+        "streamIds": [
+          "stream-003"
+        ],
+        "startedAt": "[ts]",
+        "updatedAt": "[ts]"
+      }
+    ],
+    "streams": [
+      {
+        "id": "stream-001",
+        "simId": "sim-001",
+        "assignment": {
+          "mission": "Use the shared app."
+        },
+        "kind": "browser",
+        "label": "Concurrent persona persona-01 (type:initiator / surface:intake / case:case-001) — concurrent-shared-world-proof",
+        "status": "passed",
+        "transport": "snapshot",
+        "updatedAt": "[ts]",
+        "embed": {
+          "kind": "placeholder",
+          "title": "Shared plane, persona persona-01"
+        },
+        "viewport": {
+          "width": 1440,
+          "height": 817,
+          "deviceScaleFactor": 1,
+          "isMobile": false
+        },
+        "desktopGeometry": {
+          "screen": {
+            "requested": {
+              "width": 1440,
+              "height": 950
+            },
+            "verified": {
+              "width": 1440,
+              "height": 950,
+              "source": "xdpyinfo"
+            }
+          },
+          "browserWindow": {
+            "x": 0,
+            "y": 0,
+            "width": 1440,
+            "height": 950,
+            "source": "xwininfo"
+          },
+          "viewport": {
+            "width": 1440,
+            "height": 817,
+            "deviceScaleFactor": 1,
+            "source": "cdp"
+          }
+        },
+        "ui": {
+          "route": "[provisioned-subject]/seat-1",
+          "intent": "Watch persona persona-01 (type:initiator / surface:intake / case:case-001) (persona-1) drive the SHARED plane concurrently with the other personas.",
+          "state": "passed (goal_satisfied)",
+          "actorStatus": "passed"
+        },
+        "actor": {
+          "schema": "humanish.actor-trace.v1",
+          "provider": "fake-cua",
+          "protocol": "cua-loop",
+          "lane": "computer-use",
+          "persona": {
+            "id": "persona-1",
+            "traitsApplied": [],
+            "promptDigest": "48b083174eecbf02"
+          },
+          "redaction": {
+            "status": "passed",
+            "screenshots": "n/a",
+            "notes": "fake trace (no frames captured)"
+          },
+          "startedAt": "[ts]",
+          "completedAt": "[ts]",
+          "durationMs": "[durationMs]",
+          "status": "passed",
+          "completionReason": "goal_satisfied",
+          "reason": "passed (goal_satisfied)",
+          "ids": {},
+          "counts": {
+            "actions": 1,
+            "messages": 1,
+            "screenshots": 0
+          },
+          "items": [
+            {
+              "id": "i-msg",
+              "kind": "message",
+              "lifecycle": "completed",
+              "title": "message",
+              "text": "did my task"
+            },
+            {
+              "id": "i-act",
+              "kind": "ui_action",
+              "lifecycle": "completed",
+              "title": "click"
+            }
+          ],
+          "capabilities": {
+            "headless": true,
+            "structuredTrace": true,
+            "lanes": [
+              "computer-use"
+            ],
+            "producesScreenshots": true,
+            "byoModel": false,
+            "preGrantableApprovals": false,
+            "inProcessTools": false,
+            "license": "proprietary"
+          },
+          "estimatedCost": {
+            "schema": "humanish.actor-estimated-cost.v1",
+            "estimatedCostUsd": null,
+            "reason": "no_token_usage",
+            "ratesAsOf": null
+          }
+        },
+        "artifacts": [
+          {
+            "label": "run bundle",
+            "path": "run.json",
+            "kind": "bundle"
+          },
+          {
+            "label": "review",
+            "path": "review.md",
+            "kind": "review"
+          },
+          {
+            "label": "events",
+            "path": "events.ndjson",
+            "kind": "events"
+          },
+          {
+            "label": "persona persona-01 actor trace",
+            "path": "actors/stream-001.json",
+            "kind": "trace"
+          }
+        ]
+      },
+      {
+        "id": "stream-002",
+        "simId": "sim-002",
+        "assignment": {
+          "mission": "Use the shared app."
+        },
+        "kind": "browser",
+        "label": "Concurrent persona persona-02 (type:collaborator / surface:review / case:case-001) — concurrent-shared-world-proof",
+        "status": "passed",
+        "transport": "snapshot",
+        "updatedAt": "[ts]",
+        "embed": {
+          "kind": "placeholder",
+          "title": "Shared plane, persona persona-02"
+        },
+        "viewport": {
+          "width": 1440,
+          "height": 817,
+          "deviceScaleFactor": 1,
+          "isMobile": false
+        },
+        "desktopGeometry": {
+          "screen": {
+            "requested": {
+              "width": 1440,
+              "height": 950
+            },
+            "verified": {
+              "width": 1440,
+              "height": 950,
+              "source": "xdpyinfo"
+            }
+          },
+          "browserWindow": {
+            "x": 0,
+            "y": 0,
+            "width": 1440,
+            "height": 950,
+            "source": "xwininfo"
+          },
+          "viewport": {
+            "width": 1440,
+            "height": 817,
+            "deviceScaleFactor": 1,
+            "source": "cdp"
+          }
+        },
+        "ui": {
+          "route": "[provisioned-subject]/seat-2",
+          "intent": "Watch persona persona-02 (type:collaborator / surface:review / case:case-001) (persona-2) drive the SHARED plane concurrently with the other personas.",
+          "state": "passed (goal_satisfied)",
+          "actorStatus": "passed"
+        },
+        "actor": {
+          "schema": "humanish.actor-trace.v1",
+          "provider": "fake-cua",
+          "protocol": "cua-loop",
+          "lane": "computer-use",
+          "persona": {
+            "id": "persona-2",
+            "traitsApplied": [],
+            "promptDigest": "2e5216a185664964"
+          },
+          "redaction": {
+            "status": "passed",
+            "screenshots": "n/a",
+            "notes": "fake trace (no frames captured)"
+          },
+          "startedAt": "[ts]",
+          "completedAt": "[ts]",
+          "durationMs": "[durationMs]",
+          "status": "passed",
+          "completionReason": "goal_satisfied",
+          "reason": "passed (goal_satisfied)",
+          "ids": {},
+          "counts": {
+            "actions": 1,
+            "messages": 1,
+            "screenshots": 0
+          },
+          "items": [
+            {
+              "id": "i-msg",
+              "kind": "message",
+              "lifecycle": "completed",
+              "title": "message",
+              "text": "did my task"
+            },
+            {
+              "id": "i-act",
+              "kind": "ui_action",
+              "lifecycle": "completed",
+              "title": "click"
+            }
+          ],
+          "capabilities": {
+            "headless": true,
+            "structuredTrace": true,
+            "lanes": [
+              "computer-use"
+            ],
+            "producesScreenshots": true,
+            "byoModel": false,
+            "preGrantableApprovals": false,
+            "inProcessTools": false,
+            "license": "proprietary"
+          },
+          "estimatedCost": {
+            "schema": "humanish.actor-estimated-cost.v1",
+            "estimatedCostUsd": null,
+            "reason": "no_token_usage",
+            "ratesAsOf": null
+          }
+        },
+        "artifacts": [
+          {
+            "label": "run bundle",
+            "path": "run.json",
+            "kind": "bundle"
+          },
+          {
+            "label": "review",
+            "path": "review.md",
+            "kind": "review"
+          },
+          {
+            "label": "events",
+            "path": "events.ndjson",
+            "kind": "events"
+          },
+          {
+            "label": "persona persona-02 actor trace",
+            "path": "actors/stream-002.json",
+            "kind": "trace"
+          }
+        ]
+      },
+      {
+        "id": "stream-003",
+        "simId": "sim-003",
+        "assignment": {
+          "mission": "Use the shared app."
+        },
+        "kind": "browser",
+        "label": "Concurrent persona persona-03 (type:collaborator / surface:review / case:case-001) — concurrent-shared-world-proof",
+        "status": "passed",
+        "transport": "snapshot",
+        "updatedAt": "[ts]",
+        "embed": {
+          "kind": "placeholder",
+          "title": "Shared plane, persona persona-03"
+        },
+        "viewport": {
+          "width": 1440,
+          "height": 817,
+          "deviceScaleFactor": 1,
+          "isMobile": false
+        },
+        "desktopGeometry": {
+          "screen": {
+            "requested": {
+              "width": 1440,
+              "height": 950
+            },
+            "verified": {
+              "width": 1440,
+              "height": 950,
+              "source": "xdpyinfo"
+            }
+          },
+          "browserWindow": {
+            "x": 0,
+            "y": 0,
+            "width": 1440,
+            "height": 950,
+            "source": "xwininfo"
+          },
+          "viewport": {
+            "width": 1440,
+            "height": 817,
+            "deviceScaleFactor": 1,
+            "source": "cdp"
+          }
+        },
+        "ui": {
+          "route": "[provisioned-subject]/seat-3",
+          "intent": "Watch persona persona-03 (type:collaborator / surface:review / case:case-001) (persona-3) drive the SHARED plane concurrently with the other personas.",
+          "state": "passed (goal_satisfied)",
+          "actorStatus": "passed"
+        },
+        "actor": {
+          "schema": "humanish.actor-trace.v1",
+          "provider": "fake-cua",
+          "protocol": "cua-loop",
+          "lane": "computer-use",
+          "persona": {
+            "id": "persona-3",
+            "traitsApplied": [],
+            "promptDigest": "856019c3a4631b9f"
+          },
+          "redaction": {
+            "status": "passed",
+            "screenshots": "n/a",
+            "notes": "fake trace (no frames captured)"
+          },
+          "startedAt": "[ts]",
+          "completedAt": "[ts]",
+          "durationMs": "[durationMs]",
+          "status": "passed",
+          "completionReason": "goal_satisfied",
+          "reason": "passed (goal_satisfied)",
+          "ids": {},
+          "counts": {
+            "actions": 1,
+            "messages": 1,
+            "screenshots": 0
+          },
+          "items": [
+            {
+              "id": "i-msg",
+              "kind": "message",
+              "lifecycle": "completed",
+              "title": "message",
+              "text": "did my task"
+            },
+            {
+              "id": "i-act",
+              "kind": "ui_action",
+              "lifecycle": "completed",
+              "title": "click"
+            }
+          ],
+          "capabilities": {
+            "headless": true,
+            "structuredTrace": true,
+            "lanes": [
+              "computer-use"
+            ],
+            "producesScreenshots": true,
+            "byoModel": false,
+            "preGrantableApprovals": false,
+            "inProcessTools": false,
+            "license": "proprietary"
+          },
+          "estimatedCost": {
+            "schema": "humanish.actor-estimated-cost.v1",
+            "estimatedCostUsd": null,
+            "reason": "no_token_usage",
+            "ratesAsOf": null
+          }
+        },
+        "artifacts": [
+          {
+            "label": "run bundle",
+            "path": "run.json",
+            "kind": "bundle"
+          },
+          {
+            "label": "review",
+            "path": "review.md",
+            "kind": "review"
+          },
+          {
+            "label": "events",
+            "path": "events.ndjson",
+            "kind": "events"
+          },
+          {
+            "label": "persona persona-03 actor trace",
+            "path": "actors/stream-003.json",
+            "kind": "trace"
+          }
+        ]
+      }
+    ],
+    "events": [
+      {
+        "id": "event-000-created",
+        "at": "[ts]",
+        "level": "info",
+        "type": "concurrent-shared-world.run.created",
+        "message": "Created CONCURRENT shared-world run for concurrent-shared-world-proof (actor openai-computer-use, 3 persona(s) vs ONE shared plane, max 3 concurrent)."
+      },
+      {
+        "id": "event-001-plane",
+        "at": "[ts]",
+        "level": "info",
+        "type": "concurrent-shared-world.plane.provenance",
+        "message": "Shared plane: clone of example-org/collab-app@abc123def4567890abc1, served + exposed at the harness-minted getHost URL; seed recipe da2a491995d48367; SYNTHETIC subject (author-attested); env names: DATABASE_URL (values never persisted).",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-002-warning-persona-01",
+        "at": "[ts]",
+        "level": "warn",
+        "type": "concurrent-shared-world.actor.warning",
+        "message": "Persona persona-01: Desktop resource size unavailable (metadata_unavailable); compute cost remains unpriced.",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-003-session-persona-01",
+        "at": "[ts]",
+        "level": "info",
+        "type": "concurrent-shared-world.session.goal_satisfied",
+        "message": "Persona persona-01: passed — passed (goal_satisfied)",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-004-warning-persona-02",
+        "at": "[ts]",
+        "level": "warn",
+        "type": "concurrent-shared-world.actor.warning",
+        "message": "Persona persona-02: Desktop resource size unavailable (metadata_unavailable); compute cost remains unpriced.",
+        "simId": "sim-002",
+        "streamId": "stream-002"
+      },
+      {
+        "id": "event-005-session-persona-02",
+        "at": "[ts]",
+        "level": "info",
+        "type": "concurrent-shared-world.session.goal_satisfied",
+        "message": "Persona persona-02: passed — passed (goal_satisfied)",
+        "simId": "sim-002",
+        "streamId": "stream-002"
+      },
+      {
+        "id": "event-006-warning-persona-03",
+        "at": "[ts]",
+        "level": "warn",
+        "type": "concurrent-shared-world.actor.warning",
+        "message": "Persona persona-03: Desktop resource size unavailable (metadata_unavailable); compute cost remains unpriced.",
+        "simId": "sim-003",
+        "streamId": "stream-003"
+      },
+      {
+        "id": "event-007-session-persona-03",
+        "at": "[ts]",
+        "level": "info",
+        "type": "concurrent-shared-world.session.goal_satisfied",
+        "message": "Persona persona-03: passed — passed (goal_satisfied)",
+        "simId": "sim-003",
+        "streamId": "stream-003"
+      },
+      {
+        "id": "event-008-concurrency",
+        "at": "[ts]",
+        "level": "info",
+        "type": "concurrent-shared-world.concurrency",
+        "message": "Concurrency: 3 lane(s), up to 3 live at once (cap 3), overlap PROVEN; stateSeries 2 snapshot(s), 1 delta(s). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors. This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement."
+      }
+    ],
+    "redaction": {
+      "status": "passed",
+      "notes": "Typed text recorded as length only and reasoning/messages pass through text redaction. Screenshots are blurred at capture (policies.redactScreenshots: true) for a share-as-is bundle. stateSeries persists digest-only."
+    },
+    "artifacts": {
+      "run": "run.json",
+      "reviewJson": "review.json",
+      "reviewMarkdown": "review.md",
+      "observerData": "observer/observer-data.json",
+      "events": "events.ndjson"
+    },
+    "review": {
+      "schema": "humanish.review.v1",
+      "verdict": "pass",
+      "summary": "Concurrent shared-world (ONE plane, 3 simultaneous personas): swarm ran coherently; 3/3 actor session(s) passed credibility checks; mission endpoint: 3/3 ended goal_satisfied; completion reasons: goal_satisfied 3/3; overlap proven; 1 state delta(s) under load.",
+      "gaps": []
+    },
+    "feedbackCandidates": [],
+    "subject": {
+      "source": "clone",
+      "repo": "example-org/collab-app",
+      "commit": "abc123def4567890abc1",
+      "envNames": [
+        "DATABASE_URL"
+      ],
+      "state": {
+        "provenance": "seeded",
+        "seed": [
+          {
+            "name": "migrate",
+            "when": "before-start",
+            "commandDigest": "867652585ad90648",
+            "ok": true,
+            "exitCode": 0,
+            "durationMs": "[durationMs]"
+          }
+        ]
+      }
+    },
+    "attributionClass": "shared-world",
+    "sharedWorld": {
+      "schema": "humanish.shared-world.v1",
+      "topology": "shared-world",
+      "topologyMode": "concurrent",
+      "roleCount": 3,
+      "plane": {
+        "commit": "abc123def4567890abc1",
+        "seedDigest": "da2a491995d48367",
+        "envNames": [
+          "DATABASE_URL"
+        ],
+        "hostDigest": "3b73160561f5f0d1",
+        "exposure": "synthetic"
+      },
+      "attributionLimits": [
+        "concurrent",
+        "best-effort-causal-attribution",
+        "non-deterministic-shared-state",
+        "window-and-snapshot-granularity",
+        "contention-observed-not-proven-safe",
+        "state-change-not-isolated-to-actors"
+      ],
+      "laneWindows": [
+        {
+          "roleId": "persona-01",
+          "actorType": "initiator",
+          "surface": "intake",
+          "caseGroup": "case-001",
+          "simId": "sim-001",
+          "streamId": "stream-001",
+          "startedAt": "[epoch-ms]",
+          "endedAt": "[epoch-ms]",
+          "verdict": "passed",
+          "routeHostDigest": "3b73160561f5f0d1",
+          "commit": "abc123def4567890abc1",
+          "seedDigest": "da2a491995d48367"
+        },
+        {
+          "roleId": "persona-02",
+          "actorType": "collaborator",
+          "surface": "review",
+          "caseGroup": "case-001",
+          "simId": "sim-002",
+          "streamId": "stream-002",
+          "startedAt": "[epoch-ms]",
+          "endedAt": "[epoch-ms]",
+          "verdict": "passed",
+          "routeHostDigest": "3b73160561f5f0d1",
+          "commit": "abc123def4567890abc1",
+          "seedDigest": "da2a491995d48367"
+        },
+        {
+          "roleId": "persona-03",
+          "actorType": "collaborator",
+          "surface": "review",
+          "caseGroup": "case-001",
+          "simId": "sim-003",
+          "streamId": "stream-003",
+          "startedAt": "[epoch-ms]",
+          "endedAt": "[epoch-ms]",
+          "verdict": "passed",
+          "routeHostDigest": "3b73160561f5f0d1",
+          "commit": "abc123def4567890abc1",
+          "seedDigest": "da2a491995d48367"
+        }
+      ],
+      "stateSeries": [
+        {
+          "timestamp": "[epoch-ms]",
+          "digest": "59787677753f4f78"
+        },
+        {
+          "timestamp": "[epoch-ms]",
+          "digest": "e6cb6b30245c84bd"
+        }
+      ],
+      "outcomes": [
+        {
+          "roleId": "persona-01",
+          "actorType": "initiator",
+          "surface": "intake",
+          "caseGroup": "case-001",
+          "simId": "sim-001",
+          "streamId": "stream-001",
+          "status": "passed",
+          "completionReason": "goal_satisfied",
+          "ok": true
+        },
+        {
+          "roleId": "persona-02",
+          "actorType": "collaborator",
+          "surface": "review",
+          "caseGroup": "case-001",
+          "simId": "sim-002",
+          "streamId": "stream-002",
+          "status": "passed",
+          "completionReason": "goal_satisfied",
+          "ok": true
+        },
+        {
+          "roleId": "persona-03",
+          "actorType": "collaborator",
+          "surface": "review",
+          "caseGroup": "case-001",
+          "simId": "sim-003",
+          "streamId": "stream-003",
+          "status": "passed",
+          "completionReason": "goal_satisfied",
+          "ok": true
+        }
+      ]
+    }
+  },
+  "sandbox-receipts.ndjson": [
+    {
+      "at": "[ts]",
+      "laneId": "persona-01",
+      "sandboxId": "fake-sandbox-002",
+      "timeoutMs": 660000
+    },
+    {
+      "at": "[ts]",
+      "laneId": "persona-02",
+      "sandboxId": "fake-sandbox-003",
+      "timeoutMs": 660000
+    },
+    {
+      "at": "[ts]",
+      "laneId": "persona-03",
+      "sandboxId": "fake-sandbox-004",
+      "timeoutMs": 660000
+    },
+    {
+      "at": "[ts]",
+      "laneId": "subject",
+      "sandboxId": "fake-sandbox-001"
+    }
+  ],
+  "status.json": {
+    "schema": "humanish.run-status.v1",
+    "runId": "[run]",
+    "state": "finished",
+    "mode": "live",
+    "pid": "[pid]",
+    "startedAt": "[ts]",
+    "updatedAt": "[ts]",
+    "completedAt": "[ts]",
+    "outcome": {
+      "verdict": "pass"
+    }
+  }
+}

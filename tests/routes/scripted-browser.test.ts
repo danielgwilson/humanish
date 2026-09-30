@@ -31,6 +31,7 @@ import type {
   ScriptedPageLike,
 } from "../../src/actors/scripted-browser.js";
 import { syntheticPng1x1 } from "../image-fixtures.js";
+import { runDirSnapshot } from "../helpers/run-golden.js";
 
 const ROOT = process.cwd();
 const PNG_1X1 = syntheticPng1x1();
@@ -1066,5 +1067,59 @@ describe("humanish lab run scripted-demo (CLI)", () => {
     expect(result.stdout).toContain("subject: http://127.0.0.1:5173/");
     expect(result.stdout).toContain("scenario: scripted-first-run @");
     expect(result.stdout).toContain("(humanish/scenarios/scripted-first-run.yaml, 4 steps)");
+  });
+});
+
+// Characterization: the complete run directory of each deterministic scripted run, pinned so a
+// refactor of bundle assembly or artifact writing shows up as a diff. Regenerate with
+// `pnpm vitest run tests/routes/scripted-browser.test.ts -u` and review the golden diff.
+describe("scripted-browser run directory goldens", () => {
+  let cwd: string;
+  beforeEach(async () => {
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-scripted-golden-"));
+    await writeCommittedScenario(cwd);
+  });
+  afterEach(async () => {
+    await rm(cwd, { recursive: true, force: true });
+  });
+
+  it("dry run with two surfaces", async () => {
+    const outcome = await runLab(scriptedConfig({ count: 2 }), { cwd, dryRun: true });
+    const runId = outcome.result.runId;
+    if (!runId) throw new Error("the run wrote no bundle");
+    const snapshot = await runDirSnapshot(path.join(cwd, ".humanish", "runs", runId), {
+      replace: [
+        [runId, "[run]"],
+        [cwd, "[cwd]"],
+      ],
+    });
+    await expect(`${JSON.stringify(snapshot, null, 2)}\n`).toMatchFileSnapshot(
+      "../golden/routes/scripted-dry-run.json",
+    );
+  });
+
+  it("live journey that passes on a fake browser", async () => {
+    await withHttpServer(async (appUrl) => {
+      const outcome = await runLab(scriptedConfig({ appUrl, count: 1, mode: "live" }), {
+        cwd,
+        automaticAnalysis: { run: automaticAnalysisBoundary() },
+        scriptedHooks: {
+          launchBrowser: async () => makeFakeBrowser({ bodyAfterClick: "Welcome aboard" }),
+        },
+      });
+      const runId = outcome.result.runId;
+      if (!runId) throw new Error("the run wrote no bundle");
+      const snapshot = await runDirSnapshot(path.join(cwd, ".humanish", "runs", runId), {
+        replace: [
+          [runId, "[run]"],
+          [cwd, "[cwd]"],
+          [appUrl, "[app-url]/"],
+          [new URL(appUrl).host, "[app-host]"],
+        ],
+      });
+      await expect(`${JSON.stringify(snapshot, null, 2)}\n`).toMatchFileSnapshot(
+        "../golden/routes/scripted-live.json",
+      );
+    });
   });
 });

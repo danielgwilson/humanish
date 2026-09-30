@@ -1,0 +1,225 @@
+{
+  "events.ndjson": [
+    {
+      "id": "event-000-created",
+      "at": "[ts]",
+      "level": "info",
+      "type": "cua-lab.run.created",
+      "message": "Created computer-use lab run for cua-routing-proof (actor openai-computer-use)."
+    },
+    {
+      "id": "event-001-subject",
+      "at": "[ts]",
+      "level": "info",
+      "type": "cua-lab.subject.declared",
+      "message": "Subject app declared at http://127.0.0.1:3000/ (loopback inside the desktop sandbox).",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-002-contract",
+      "at": "[ts]",
+      "level": "info",
+      "type": "cua-lab.contract.ready",
+      "message": "Dry-run contract bundle ready; switch scenario.mode to live for a real desktop session.",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    }
+  ],
+  "observer/index.html": "[observer build]",
+  "observer/observer-data.json": "[observer build]",
+  "observer/study-analysis.json": "[observer build]",
+  "review.json": {
+    "schema": "humanish.review.v1",
+    "verdict": "contract_proof_only",
+    "summary": "Contract bundle only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.",
+    "gaps": [
+      "Live desktop session not yet run (dry-run contract only)."
+    ]
+  },
+  "review.md": "# CUA routing proof\n\n- run: [run]\n- mode: dry-run\n- run gate: contract_proof_only\n- summary: Contract bundle only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.\n\n## Gaps\n- Live desktop session not yet run (dry-run contract only).\n",
+  "run.json": {
+    "schema": "humanish.run-bundle.v1",
+    "runId": "[run]",
+    "mode": "dry-run",
+    "simCount": 1,
+    "createdAt": "[ts]",
+    "cwd": "[target-cwd]",
+    "artifactRoot": ".humanish/runs/[run]",
+    "source": {
+      "packageName": "humanish",
+      "humanishSource": "present",
+      "git": {
+        "schema": "humanish.git-state.v1",
+        "status": "missing",
+        "capturedAt": "[ts]",
+        "head": {
+          "shortSha": null,
+          "refState": "unknown"
+        },
+        "changes": {
+          "staged": 0,
+          "unstaged": 0,
+          "untracked": 0,
+          "total": 0
+        },
+        "note": "No git work tree was detected."
+      }
+    },
+    "persona": {
+      "id": "first-time-visitor",
+      "name": "Computer-use operator (first-time-visitor)",
+      "source": "lab:cua-routing-proof",
+      "sourceDigest": "aef52cb8e81a1192"
+    },
+    "scenario": {
+      "id": "cua-cua-routing-proof",
+      "title": "CUA routing proof",
+      "goal": "Persona: first-time-visitor.\n\nYou are a desktop user (custom, 1280x800).\n\nExplore the app and stop.\n\nLane focus: Focus on the landing page.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
+      "source": "lab:cua-routing-proof",
+      "sourceDigest": "aef52cb8e81a1192"
+    },
+    "lifecycle": [
+      {
+        "at": "[ts]",
+        "event": "cua-lab.run.created",
+        "message": "Created computer-use lab run with one desktop browser lane (actor openai-computer-use)."
+      }
+    ],
+    "simulations": [
+      {
+        "id": "sim-001",
+        "index": 1,
+        "personaId": "first-time-visitor",
+        "scenarioId": "cua-cua-routing-proof",
+        "status": "contract_proof_only",
+        "streamKind": "browser",
+        "mode": "browser-sim",
+        "progress": 100,
+        "currentStep": "Contract bundle only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.",
+        "summary": "Contract lane for the computer-use actor (openai-computer-use) against http://127.0.0.1:3000/.",
+        "streamIds": [
+          "stream-001"
+        ],
+        "startedAt": "[ts]",
+        "updatedAt": "[ts]"
+      }
+    ],
+    "streams": [
+      {
+        "id": "stream-001",
+        "simId": "sim-001",
+        "laneId": "lane-01",
+        "assignment": {
+          "mission": "Explore the app and stop.",
+          "focus": "Focus on the landing page."
+        },
+        "kind": "browser",
+        "label": "CUA browser — cua-routing-proof",
+        "status": "contract_proof_only",
+        "transport": "snapshot",
+        "updatedAt": "[ts]",
+        "embed": {
+          "kind": "placeholder",
+          "title": "CUA desktop"
+        },
+        "desktopGeometry": {
+          "screen": {
+            "requested": {
+              "width": 1280,
+              "height": 800
+            }
+          }
+        },
+        "ui": {
+          "route": "http://127.0.0.1:3000/",
+          "intent": "Watch the computer-use actor drive the subject app in a hosted desktop browser.",
+          "state": "Contract bundle only: dry-run produced the evidence shape without launching a desktop or spending provider tokens."
+        },
+        "artifacts": [
+          {
+            "label": "run bundle",
+            "path": "run.json",
+            "kind": "bundle"
+          },
+          {
+            "label": "review",
+            "path": "review.md",
+            "kind": "review"
+          },
+          {
+            "label": "events",
+            "path": "events.ndjson",
+            "kind": "events"
+          }
+        ]
+      }
+    ],
+    "events": [
+      {
+        "id": "event-000-created",
+        "at": "[ts]",
+        "level": "info",
+        "type": "cua-lab.run.created",
+        "message": "Created computer-use lab run for cua-routing-proof (actor openai-computer-use)."
+      },
+      {
+        "id": "event-001-subject",
+        "at": "[ts]",
+        "level": "info",
+        "type": "cua-lab.subject.declared",
+        "message": "Subject app declared at http://127.0.0.1:3000/ (loopback inside the desktop sandbox).",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-002-contract",
+        "at": "[ts]",
+        "level": "info",
+        "type": "cua-lab.contract.ready",
+        "message": "Dry-run contract bundle ready; switch scenario.mode to live for a real desktop session.",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      }
+    ],
+    "redaction": {
+      "status": "passed",
+      "notes": "No screenshots captured. Typed text is recorded as length only and reasoning/messages pass through text redaction whenever a session runs."
+    },
+    "artifacts": {
+      "run": "run.json",
+      "reviewJson": "review.json",
+      "reviewMarkdown": "review.md",
+      "observerData": "observer/observer-data.json",
+      "events": "events.ndjson"
+    },
+    "review": {
+      "schema": "humanish.review.v1",
+      "verdict": "contract_proof_only",
+      "summary": "Contract bundle only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.",
+      "gaps": [
+        "Live desktop session not yet run (dry-run contract only)."
+      ]
+    },
+    "feedbackCandidates": [],
+    "subject": {
+      "source": "app-url",
+      "state": {
+        "provenance": "undeclared"
+      }
+    }
+  },
+  "status.json": {
+    "schema": "humanish.run-status.v1",
+    "runId": "[run]",
+    "state": "finished",
+    "mode": "dry-run",
+    "pid": "[pid]",
+    "startedAt": "[ts]",
+    "updatedAt": "[ts]",
+    "completedAt": "[ts]",
+    "outcome": {
+      "verdict": "contract_proof_only"
+    }
+  }
+}

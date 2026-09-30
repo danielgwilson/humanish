@@ -1,4 +1,5 @@
 import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
+import { runDirSnapshot } from "../../helpers/run-golden.js";
 import { PNG } from "pngjs";
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -2288,5 +2289,41 @@ describe("verifyRun fails closed on each injected shared-world overclaim", () =>
       stream.actor!.items = [];
     });
     expect(ok).toBe(false);
+  });
+});
+
+// Characterization: the complete run directory of a two-seat turn-taking run on the fake E2B
+// module, pinned so a refactor of bundle assembly or artifact writing shows up as a diff.
+// Regenerate with `pnpm vitest run tests/routes/shared-world/sequential.test.ts -u`.
+describe("sequential shared-world run directory goldens", () => {
+  let goldenCwd: string;
+  beforeEach(async () => {
+    goldenCwd = await mkdtemp(path.join(tmpdir(), "humanish-sw-golden-"));
+  });
+  afterEach(async () => {
+    await rm(goldenCwd, { recursive: true, force: true });
+  });
+
+  it.each([
+    ["dry run", true, "shared-world-sequential-dry-run.json"],
+    ["live run", false, "shared-world-sequential-live.json"],
+  ] as const)("%s with two seats", async (_label, dryRun, golden) => {
+    const { hooks } = baseHooks({ worldVersion: 0 });
+    const result = await runSharedWorldLab({
+      cwd: goldenCwd,
+      config: sharedWorldConfig(),
+      dryRun,
+      hooks,
+      automaticAnalysis: { run: automaticAnalysisBoundary() },
+    });
+    const snapshot = await runDirSnapshot(path.join(goldenCwd, ".humanish", "runs", result.runId), {
+      replace: [
+        [result.runId, "[run]"],
+        [goldenCwd, "[cwd]"],
+      ],
+    });
+    await expect(`${JSON.stringify(snapshot, null, 2)}\n`).toMatchFileSnapshot(
+      `../../golden/routes/${golden}`,
+    );
   });
 });
