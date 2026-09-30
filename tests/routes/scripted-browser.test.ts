@@ -312,7 +312,7 @@ describe("lab routing (app-url × scripted-browser → scripted)", () => {
     expect(selectLabBackend(scriptedConfig({ target: undefined }))).toBe("scripted");
   });
 
-  it("REGRESSION: app-url × e2b-desktop × openai-computer-use still routes to cua, and the other three backends are untouched", () => {
+  it("REGRESSION: app-url × e2b-desktop × openai-computer-use still routes to cua, and the other routes are untouched", () => {
     const cua = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
       id: "cua",
@@ -326,12 +326,6 @@ describe("lab routing (app-url × scripted-browser → scripted)", () => {
       subject: { source: "this-repo" },
       actors: [{ type: "synthetic-persona" }],
     });
-    const smoke = parseLabConfig({
-      schema: LAB_CONFIG_SCHEMA,
-      id: "c",
-      subject: { source: "clone", repos: ["example-org/example-app"] },
-      actors: [{ type: "humanish-setup" }],
-    });
     const meta = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
       id: "m",
@@ -339,11 +333,9 @@ describe("lab routing (app-url × scripted-browser → scripted)", () => {
       actors: [{ type: "codex-app-server" }],
       execution: { target: "e2b-desktop" },
     });
-    if (!cua.ok || !synthetic.ok || !smoke.ok || !meta.ok)
-      throw new Error("fixture configs must parse");
+    if (!cua.ok || !synthetic.ok || !meta.ok) throw new Error("fixture configs must parse");
     expect(selectLabBackend(cua.config)).toBe("cua");
     expect(selectLabBackend(synthetic.config)).toBe("synthetic");
-    expect(selectLabBackend(smoke.config)).toBe("cua");
     expect(selectLabBackend(meta.config)).toBe("cua");
   });
 

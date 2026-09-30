@@ -27,7 +27,11 @@ import {
   type AutomaticAnalysisHooks,
   type AutomaticAnalysisResult,
 } from "../analysis/automatic-completion.js";
-import { desktopMediaValidationReason, taskProtocolValidationReason } from "../lab/validation.js";
+import {
+  cloneTargetValidationReason,
+  desktopMediaValidationReason,
+  taskProtocolValidationReason,
+} from "../lab/validation.js";
 import { randomBytes } from "node:crypto";
 import { describeMissingKeys } from "../cli/key-resolution.js";
 import {
@@ -306,6 +310,8 @@ async function runScriptedBrowserLabInScope(
   // (runScriptedBrowserLab is itself exported npm surface).
   const mediaReason = desktopMediaValidationReason(config);
   if (mediaReason) return failed("HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID", mediaReason);
+  const cloneTargetReason = cloneTargetValidationReason(config);
+  if (cloneTargetReason) return failed("HUMANISH_SCRIPTED_LAB_SUBJECT_UNSAFE", cloneTargetReason);
 
   const descriptor = actorRegistry[actorType as keyof typeof actorRegistry];
   if (!descriptor || !isScriptedBrowserActorDescriptor(descriptor)) {

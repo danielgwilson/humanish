@@ -444,6 +444,7 @@ describe("lab routing (app-url → cua)", () => {
       id: "c",
       subject: { source: "clone", repos: ["example-org/example-app"] },
       actors: [{ type: "humanish-setup" }],
+      execution: { target: "e2b-desktop" },
     });
     const meta = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
@@ -481,15 +482,15 @@ describe("lab routing (app-url → cua)", () => {
     } finally {
       await rm(cwd, { recursive: true, force: true });
     }
-    // A computer-use actor without the desktop target also routes to cua.
-    const smoke = parseLabConfig({
+    // A computer-use clone lab without the desktop target no longer parses; it would still have
+    // routed to cua and run on a hosted desktop.
+    const untargeted = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
       id: "s2",
       subject: { source: "clone", repos: ["example-org/example-app"] },
       actors: [{ type: "openai-computer-use" }],
     });
-    if (!smoke.ok) throw new Error("fixture must parse");
-    expect(selectLabBackend(smoke.config)).toBe("cua");
+    expect(untargeted.ok).toBe(false);
   });
 });
 

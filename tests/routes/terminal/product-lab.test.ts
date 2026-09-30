@@ -222,7 +222,7 @@ describe("terminal-product parse matrix", () => {
       execution: { target: "e2b-terminal" },
     });
     expect(viaAppUrl.ok).toBe(false);
-    // A clone subject hits the dedicated terminal-substrate guard.
+    // A clone subject is refused by the clone target guard, which names the target it needs.
     const viaClone = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
       id: "wrong-substrate-clone",
@@ -232,7 +232,9 @@ describe("terminal-product parse matrix", () => {
     });
     expect(viaClone.ok).toBe(false);
     if (viaClone.ok) return;
-    expect(viaClone.error.message).toContain("requires `subject.source: terminal-product`");
+    expect(viaClone.error.message).toContain(
+      "clone subjects require `execution.target: e2b-desktop`",
+    );
   });
 
   it("rejects a terminal actor on a non-terminal-product subject", () => {
