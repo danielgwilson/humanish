@@ -2,6 +2,7 @@ import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { mkdtemp, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { StringDecoder } from "node:string_decoder";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
@@ -50,6 +51,15 @@ async function untilTraced(
   while (!(await entries()).some(predicate))
     await new Promise((resolve) => realSetTimeout(resolve, 5));
 }
+/**
+ * Waits until the launcher has handled a line the fake process wrote. The check runs on a timer
+ * tick, after the `data` event that delivered the line and the microtasks it queued, so the
+ * launcher's transport has handled that line by then.
+ */
+async function untilDelivered(delivered: readonly string[], line: string): Promise<void> {
+  do await new Promise((resolve) => realSetTimeout(resolve, 5));
+  while (!delivered.includes(line));
+}
 async function fixture(scenario = "success") {
   const directory = await mkdtemp(path.join(tmpdir(), "humanish-codex-test-"));
   directories.push(directory);
@@ -61,6 +71,9 @@ async function fixture(scenario = "success") {
   await writeFile(path.join(authHome, "auth.json"), "synthetic-original-login", { mode: 0o600 });
   await writeFile(path.join(authHome, "config.toml"), "SYNTHETIC_HOST_CONFIG_MUST_NOT_BE_IMPORTED");
   const spawns: { args: string[]; env: NodeJS.ProcessEnv; cwd: string; detached: boolean }[] = [];
+  // What the fake process wrote to the launcher, one entry per complete line: a notification's
+  // method, or "turn/start reply" for the response that carries the turn id.
+  const delivered: string[] = [];
   const spawnFn: RestrictedCodexSpawn = (_file, args, settings) => {
     spawns.push({
       args,
@@ -68,7 +81,24 @@ async function fixture(scenario = "success") {
       cwd: String(settings.cwd),
       detached: settings.detached,
     });
-    return spawn(process.execPath, [fake, scenario, trace, ...args], settings);
+    const child = spawn(process.execPath, [fake, scenario, trace, ...args], settings);
+    const decoder = new StringDecoder("utf8");
+    let partial = "";
+    child.stdout.on("data", (chunk: Buffer) => {
+      const lines = (partial + decoder.write(chunk)).split("\n");
+      partial = lines.pop() ?? "";
+      for (const line of lines) {
+        try {
+          const message = JSON.parse(line) as Trace;
+          if (typeof message.method === "string") delivered.push(message.method);
+          else if (typeof (message.result as Trace | undefined)?.turn === "object")
+            delivered.push("turn/start reply");
+        } catch {
+          // Not a protocol line.
+        }
+      }
+    });
+    return child;
   };
   const options: RestrictedCodexSessionOptions = {
     executable: process.execPath,
@@ -105,6 +135,7 @@ async function fixture(scenario = "success") {
     options,
     spawns,
     entries,
+    delivered,
     run: createRestrictedCodexAnalysisProvider(options),
   };
 }
@@ -401,10 +432,12 @@ describe("restricted Codex analyst session", () => {
       const f = await fixture(scenario),
         controller = new AbortController();
       const pending = f.run({ ...request, signal: controller.signal });
-      await vi.waitFor(
-        async () =>
-          expect((await f.entries()).some((entry) => entry.method === "turn/start")).toBe(true),
-        AFTER_SPAWN,
+      // The launcher can interrupt only once it holds the turn id: from the turn/start reply, or
+      // from turn/started when that reply never comes. Aborting as soon as the fake logged
+      // turn/start raced that delivery under load.
+      await untilDelivered(
+        f.delivered,
+        scenario === "lost-turn-ack" ? "turn/started" : "turn/start reply",
       );
       const start = performance.now();
       controller.abort();
@@ -416,8 +449,7 @@ describe("restricted Codex analyst session", () => {
       });
       expect(performance.now() - start).toBeLessThan(4000);
       const entries = await f.entries();
-      if (scenario === "lost-turn-ack")
-        expect(entries.some((entry) => entry.method === "turn/interrupt")).toBe(true);
+      expect(entries.some((entry) => entry.method === "turn/interrupt")).toBe(true);
       for (const entry of entries.filter((entry) => typeof entry.pid === "number"))
         expect(() => process.kill(entry.pid as number, 0)).toThrow();
       expect(await readdir(f.tempRoot)).toEqual([]);
