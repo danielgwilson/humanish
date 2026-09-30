@@ -4,6 +4,7 @@ import path from "node:path";
 import { parse, stringify } from "yaml";
 import { listUserKeys, probeKeySources, type KeyResolutionDeps } from "../cli/key-resolution.js";
 import type { CommsCheckResult } from "./setup.js";
+import { COMMS_PROVIDERS, isReceivingProviderId, type ReceivingProviderId } from "./providers.js";
 import {
   assertPreparedSelectedOutputDirectory,
   bindExistingManagedHumanishOutputDirectory,
@@ -14,23 +15,9 @@ import {
 
 const COMMS_CONNECTIONS_SCHEMA = "humanish.comms-connections.v1";
 export const COMMS_CONFIG_PATH = ".humanish/local/comms.yaml";
-export const COMMS_PROVIDERS = [
-  {
-    id: "agentmail",
-    label: "AgentMail",
-    channel: "email",
-    keyEnv: "AGENTMAIL_API_KEY",
-    setupAvailable: true,
-    receivingAvailable: true,
-    description: "A hosted email service with real inbox addresses.",
-    setupUrl: "https://console.agentmail.to",
-    limitation:
-      "Fresh real inboxes for supported computer-use studies. Hosted processing; local evidence review only. Provider charges are separate.",
-  },
-] as const;
-
+export { COMMS_PROVIDERS };
 export interface CommsConnection {
-  provider: "agentmail";
+  provider: ReceivingProviderId;
   apiKeyEnv: string;
 }
 export interface CommsConnections {
@@ -43,7 +30,7 @@ export interface CommsSetupStatus {
   ok: boolean;
   configPath: string;
   providers: typeof COMMS_PROVIDERS;
-  connections: { name: string; provider: "agentmail"; apiKeyEnv: string }[];
+  connections: { name: string; provider: ReceivingProviderId; apiKeyEnv: string }[];
   credential: {
     present: boolean;
     source: string | null;
@@ -88,13 +75,13 @@ function parseConnections(raw: unknown): CommsConnections {
     if (
       !validName(name) ||
       !record(value) ||
-      value.provider !== "agentmail" ||
+      !isReceivingProviderId(value.provider) ||
       typeof value.apiKeyEnv !== "string" ||
       !/^[A-Z][A-Z0-9_]{0,99}$/.test(value.apiKeyEnv) ||
       Object.keys(value).some((key) => key !== "provider" && key !== "apiKeyEnv")
     )
       throw new Error("Invalid connection configuration.");
-    connections[name] = { provider: "agentmail", apiKeyEnv: value.apiKeyEnv };
+    connections[name] = { provider: value.provider, apiKeyEnv: value.apiKeyEnv };
   }
   return { schema: COMMS_CONNECTIONS_SCHEMA, connections };
 }

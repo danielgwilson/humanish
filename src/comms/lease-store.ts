@@ -4,6 +4,7 @@ import { constants } from "node:fs";
 import { lstat, mkdir, open, readdir, realpath, rename, unlink } from "node:fs/promises";
 import { homedir, hostname } from "node:os";
 import path from "node:path";
+import { isReceivingProviderId } from "./providers.js";
 import type { ReceivingIdentity, ReceivingLease } from "./receiving-types.js";
 
 const SCHEMA = "humanish.comms-lease-journal.v1";
@@ -103,7 +104,7 @@ export function sameReceivingIdentity(a: ReceivingIdentity, b: ReceivingIdentity
 export function validReceivingIdentity(value: unknown): value is ReceivingIdentity {
   return (
     plain(value) &&
-    value.provider === "agentmail" &&
+    isReceivingProviderId(value.provider) &&
     safeString(value.accountId) &&
     ["organization", "pod", "inbox"].includes(String(value.scopeType)) &&
     safeString(value.scopeId)

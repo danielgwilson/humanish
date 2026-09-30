@@ -2,7 +2,11 @@ import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promis
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createAgentMailReceiver } from "../../src/comms/agentmail.js";
+import {
+  AGENTMAIL_RECEIVING_CODES,
+  AgentMailReceivingError,
+  createAgentMailReceiver,
+} from "../../src/comms/agentmail.js";
 import {
   inspectCommsRecovery,
   recoverCommsReceiving,
@@ -56,7 +60,16 @@ function receiver() {
       return { status: "absent" };
     },
   );
-  const adapter: ReceivingAdapter = { provider: "agentmail", authenticate, acquire, read, release };
+  const adapter: ReceivingAdapter = {
+    provider: "agentmail",
+    addressing: "provisioned",
+    idempotentAcquire: true,
+    codes: AGENTMAIL_RECEIVING_CODES,
+    authenticate,
+    acquire,
+    read,
+    release,
+  };
   return { adapter, identity, resources, batch, authenticate, acquire, read, release };
 }
 function email(id: string, body = "A synthetic message"): ReceivedEmail {
@@ -451,16 +464,21 @@ describe("run-scoped real-email coordination", () => {
     ]);
   });
 
-  it.each(["pod", "inbox"] as const)(
-    "rejects unsupported %s scope before recording intents or requesting inboxes",
-    async (scopeType) => {
-      provider.authenticate.mockResolvedValue({ ...provider.identity, scopeType });
-      await expect(start()).rejects.toMatchObject({ code: "comms_scope_unsupported" });
-      expect(provider.acquire).not.toHaveBeenCalled();
-      expect(provider.release).not.toHaveBeenCalled();
-      await expect(readdir(stateDir)).rejects.toMatchObject({ code: "ENOENT" });
-    },
-  );
+  it("stops on the adapter's scope rejection before recording intents or requesting inboxes", async () => {
+    provider.authenticate.mockRejectedValue(new AgentMailReceivingError("comms_scope_unsupported"));
+    await expect(start()).rejects.toMatchObject({ code: "comms_scope_unsupported" });
+    expect(provider.acquire).not.toHaveBeenCalled();
+    expect(provider.release).not.toHaveBeenCalled();
+    await expect(readdir(stateDir)).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("passes through only the codes the adapter declares", async () => {
+    provider.authenticate.mockRejectedValue(new AgentMailReceivingError("agentmail_rate_limited"));
+    await expect(start()).rejects.toMatchObject({ code: "agentmail_rate_limited" });
+    await expect(
+      start({ adapter: { ...provider.adapter, codes: new Set<string>() } }),
+    ).rejects.toMatchObject({ code: "comms_start_failed" });
+  });
 
   it("cancellation racing creation retains the original intent instead of inventing replacement ownership", async () => {
     const controller = new AbortController();

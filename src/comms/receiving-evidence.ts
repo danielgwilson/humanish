@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { RECEIVING_PROVIDER_IDS } from "./providers.js";
 import { COMMS_RECEIVING_SCHEMA, type CommsReceivingEvidence } from "./receiving-types.js";
 
 const localId = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,159}$/);
@@ -9,7 +10,7 @@ const commsReceivingEvidenceSchema = z
   .object({
     schema: z.literal(COMMS_RECEIVING_SCHEMA),
     channel: z.literal("email"),
-    provider: z.literal("agentmail"),
+    provider: z.literal(RECEIVING_PROVIDER_IDS),
     publication: z.literal("restricted-real-communications"),
     state: z.enum(["acquiring", "running", "finished"]),
     browserConfinement: z.literal("mail-surface-only"),

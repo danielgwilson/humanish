@@ -5,8 +5,20 @@ import { discoverProviderKeys } from "../cli/key-resolution.js";
 import { createAgentMailReceiver } from "./agentmail.js";
 import { startCommsReceiving } from "./receiving.js";
 import { renderReceivingInbox } from "./receiving-inbox.js";
+import type { ReceivingAdapter } from "./receiving-types.js";
 import type { PreparedRunArtifactPaths } from "../run/paths.js";
 import { writeContainedOutputFile } from "../run/selected-output-paths.js";
+
+/** The one place a connection's provider selects its adapter. */
+export function createReceivingAdapter(
+  connection: CommsConnection,
+  apiKey: string,
+): ReceivingAdapter {
+  switch (connection.provider) {
+    case "agentmail":
+      return createAgentMailReceiver({ apiKey });
+  }
+}
 
 /** Host-only resolution. The returned credential must never cross a desktop or UI boundary. */
 export async function resolveReceivingConnection(
@@ -16,7 +28,7 @@ export async function resolveReceivingConnection(
 ): Promise<{
   connection: CommsConnection;
   apiKey: string;
-  adapter: ReturnType<typeof createAgentMailReceiver>;
+  adapter: ReceivingAdapter;
 }> {
   const connection = (await readCommsConnections(cwd)).connections[name];
   if (!connection)
@@ -30,7 +42,7 @@ export async function resolveReceivingConnection(
     throw new Error(
       "Email connection credential is missing. Add it in Connections, or provide the configured key with --env-file.",
     );
-  return { connection, apiKey, adapter: createAgentMailReceiver({ apiKey }) };
+  return { connection, apiKey, adapter: createReceivingAdapter(connection, apiKey) };
 }
 
 export async function prepareReceivingRun(args: {

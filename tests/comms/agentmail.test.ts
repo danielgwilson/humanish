@@ -5,7 +5,10 @@ import {
   AgentMailReceivingError,
   createAgentMailReceiver,
 } from "../../src/comms/agentmail.js";
-import type { ReceivingLease } from "../../src/comms/receiving-types.js";
+import {
+  RECEIVING_SCOPE_UNSUPPORTED,
+  type ReceivingLease,
+} from "../../src/comms/receiving-types.js";
 
 // Live-derived fixtures; mutations below are explicit adverse cases, not invented API contracts.
 type WireFixture = { status: number; body: Record<string, any> | null };
@@ -488,5 +491,68 @@ describe("AgentMail receiving transport", () => {
       code: "agentmail_invalid_input",
     });
     expect(calls).toHaveLength(0);
+  });
+});
+
+describe("AgentMail behind the receiving seam", () => {
+  it("declares provisioned inboxes and idempotent acquire", () => {
+    expect(queue().adapter).toMatchObject({
+      provider: "agentmail",
+      addressing: "provisioned",
+      idempotentAcquire: true,
+    });
+  });
+  it.each(["pod", "inbox"])("rejects a %s-scoped key with the scope code", async (scope) => {
+    const wire = fixture("auth");
+    wire.body!.scope_type = scope;
+    const { adapter, calls } = queue(wire);
+    await expect(adapter.authenticate()).rejects.toMatchObject({
+      code: RECEIVING_SCOPE_UNSUPPORTED,
+      message: RECEIVING_SCOPE_UNSUPPORTED,
+    });
+    expect(calls).toHaveLength(1);
+  });
+  it("declares every error and limitation code it reports", async () => {
+    const reported: string[] = [];
+    const rejection = async (operation: Promise<unknown>) => {
+      try {
+        await operation;
+        expect.fail("expected rejection");
+      } catch (error) {
+        reported.push((error as AgentMailReceivingError).code);
+      }
+    };
+    for (const status of [401, 429, 500])
+      await rejection(queue({ status, body: {} }).adapter.authenticate());
+    const scoped = fixture("auth");
+    scoped.body!.scope_type = "pod";
+    await rejection(queue(scoped).adapter.authenticate());
+    await rejection(queue().adapter.acquire("bad\nclient"));
+    const foreign = page(["one"]);
+    foreign.body!.messages[0].inbox_id = "unowned@example.test";
+    reported.push(...(await queue(foreign).adapter.read(LEASE)).limitations);
+    const bare = messageWithoutAttachment("bare");
+    bare.body!.text = "";
+    delete bare.body!.html;
+    delete bare.body!.timestamp;
+    reported.push(...(await queue(page(["bare"]), bare).adapter.read(LEASE)).limitations);
+    const pages = [1, 2, 3, 4].map((n) => page([], `token-${n}`));
+    reported.push(...(await queue(...pages).adapter.read(LEASE)).limitations);
+    const { adapter } = queue();
+    expect(reported.filter((code) => !adapter.codes.has(code))).toEqual([]);
+    expect(new Set(reported)).toEqual(
+      new Set([
+        "agentmail_auth_rejected",
+        "agentmail_rate_limited",
+        "agentmail_unavailable",
+        RECEIVING_SCOPE_UNSUPPORTED,
+        "agentmail_invalid_input",
+        "agentmail_ownership_mismatch",
+        "agentmail_content_missing",
+        "agentmail_timestamp_missing",
+        "agentmail_page_limit",
+      ]),
+    );
+    expect(adapter.codes.has("private-provider-canary")).toBe(false);
   });
 });

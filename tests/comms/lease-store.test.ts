@@ -15,6 +15,7 @@ import { once } from "node:events";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { AGENTMAIL_RECEIVING_CODES, AgentMailReceivingError } from "../../src/comms/agentmail.js";
 import { CommsLeaseStore, inspectCommsLeaseStore } from "../../src/comms/lease-store.js";
 import { recoverCommsReceiving } from "../../src/comms/receiving.js";
 import type {
@@ -67,6 +68,9 @@ describe("private communications cleanup authority", () => {
     const release = vi.fn(async (_lease: ReceivingLease) => ({ status: "absent" as const }));
     const value: ReceivingAdapter = {
       provider: "agentmail",
+      addressing: "provisioned",
+      idempotentAcquire: true,
+      codes: AGENTMAIL_RECEIVING_CODES,
       authenticate,
       acquire,
       release,
@@ -203,6 +207,32 @@ describe("private communications cleanup authority", () => {
     await mkdir(cwd);
     expect(await recoverCommsReceiving(args)).toMatchObject({ ok: false });
     expect(await inspectCommsLeaseStore({ cwd, stateDir })).toEqual([]);
+  });
+
+  it("treats a key the adapter rejects for scope as a different binding", async () => {
+    await unresolved();
+    const provider = adapter();
+    provider.authenticate.mockRejectedValue(new AgentMailReceivingError("comms_scope_unsupported"));
+    expect(await recoverCommsReceiving({ ...options(), adapter: provider.value })).toMatchObject({
+      ok: false,
+      unresolved: 1,
+      message: expect.stringContaining("does not match the recorded"),
+    });
+    expect(provider.acquire).not.toHaveBeenCalled();
+  });
+
+  it("does not replay an uncertain create through a non-idempotent adapter", async () => {
+    await unresolved();
+    const provider = adapter();
+    const value = { ...provider.value, idempotentAcquire: false };
+    expect(await recoverCommsReceiving({ ...options(), adapter: value })).toMatchObject({
+      ok: false,
+      recovered: 0,
+      unresolved: 1,
+    });
+    expect(provider.acquire).not.toHaveBeenCalled();
+    expect(provider.release).not.toHaveBeenCalled();
+    expect(await inspectCommsLeaseStore({ cwd, stateDir })).toMatchObject([{ unresolvedCount: 1 }]);
   });
 
   it("invalidates a running owner's writes and deletes when its lock or physical state directory changes", async () => {

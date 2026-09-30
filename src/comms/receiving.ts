@@ -9,8 +9,10 @@ import {
   type CommsLeaseRecord,
   type CommsRecoveryEntry,
 } from "./lease-store.js";
+import { isReceivingProviderId } from "./providers.js";
 import {
   COMMS_RECEIVING_SCHEMA,
+  RECEIVING_SCOPE_UNSUPPORTED,
   type CommsReceivingEvidence,
   type ParticipantEmail,
   type ReceivedEmail,
@@ -31,30 +33,6 @@ const EVIDENCE_MS = 5_000;
 // Match the participant renderer's bounded snapshot. Crossing its cap must not poison all later publications.
 const MAX_MESSAGES = 100;
 const MAX_CONTENT_BYTES = 16 * 1024 * 1024;
-const SAFE_PROVIDER_CODES = new Set([
-  "agentmail_auth_rejected",
-  "agentmail_rate_limited",
-  "agentmail_unavailable",
-  "agentmail_timeout",
-  "agentmail_cancelled",
-  "agentmail_invalid_response",
-  "agentmail_ownership_mismatch",
-  "agentmail_not_found",
-  "agentmail_resource_deleting",
-  "agentmail_download_blocked",
-  "agentmail_size_limit",
-  "agentmail_invalid_input",
-  "agentmail_request_limit",
-  "agentmail_content_truncated",
-  "agentmail_content_missing",
-  "agentmail_timestamp_missing",
-  "agentmail_attachment_limit",
-  "agentmail_attachment_unsupported",
-  "agentmail_attachment_unavailable",
-  "agentmail_message_unavailable",
-  "agentmail_pagination_stalled",
-  "agentmail_page_limit",
-]);
 
 class CommsReceivingError extends Error {
   constructor(readonly code: string) {
@@ -64,19 +42,19 @@ class CommsReceivingError extends Error {
     this.name = "CommsReceivingError";
   }
 }
-function errorCode(error: unknown, fallback: string): string {
+/** Adapter codes pass through only when the adapter declares them. */
+function errorCode(error: unknown, fallback: string, safe: ReadonlySet<string>): string {
   if (error instanceof CommsReceivingError) return error.code;
   if (error instanceof CommsAuthorityError) return "comms_authority_unavailable";
   const code =
     typeof error === "object" && error !== null && "code" in error ? error.code : undefined;
-  return typeof code === "string" && SAFE_PROVIDER_CODES.has(code) ? code : fallback;
+  return typeof code === "string" && safe.has(code) ? code : fallback;
 }
 function addCode(codes: string[], code: string): void {
   if (!codes.includes(code) && codes.length < 64) codes.push(code);
 }
-function providerCodes(codes: string[], values: string[]): void {
-  for (const value of values)
-    addCode(codes, SAFE_PROVIDER_CODES.has(value) ? value : "provider_coverage_limited");
+function providerCodes(codes: string[], values: string[], safe: ReadonlySet<string>): void {
+  for (const value of values) addCode(codes, safe.has(value) ? value : "provider_coverage_limited");
 }
 function now(): string {
   return new Date().toISOString();
@@ -245,7 +223,7 @@ class ReceivingRun implements CommsReceivingRun {
     this.evidence = {
       schema: COMMS_RECEIVING_SCHEMA,
       channel: "email",
-      provider: "agentmail",
+      provider: options.adapter.provider,
       publication: "restricted-real-communications",
       state: "acquiring",
       browserConfinement: "mail-surface-only",
@@ -359,7 +337,7 @@ class ReceivingRun implements CommsReceivingRun {
       if (!(await this.persist())) throw new CommsReceivingError("evidence_write_failed");
       this.options.signal?.addEventListener("abort", this.onAbort, { once: true });
     } catch (error) {
-      const code = errorCode(error, "comms_acquisition_failed");
+      const code = errorCode(error, "comms_acquisition_failed", this.options.adapter.codes);
       addCode(this.evidence.limitations, code);
       for (const participant of this.participants.values()) {
         if (participant.evidence.acquisition === "pending") {
@@ -386,7 +364,11 @@ class ReceivingRun implements CommsReceivingRun {
   private remember(participant: Participant, message: ReceivedEmail): void {
     if (!message.providerMessageId) return;
     const previous = participant.messages.get(message.providerMessageId);
-    providerCodes(participant.evidence.limitations, message.limitations);
+    providerCodes(
+      participant.evidence.limitations,
+      message.limitations,
+      this.options.adapter.codes,
+    );
     const timestamp = providerTime(message.providerTimestamp);
     if (message.providerTimestamp && !timestamp)
       addCode(participant.evidence.limitations, "provider_timestamp_invalid");
@@ -483,12 +465,19 @@ class ReceivingRun implements CommsReceivingRun {
         controller.signal,
       );
       for (const message of batch.messages) this.remember(participant, message);
-      providerCodes(participant.evidence.limitations, batch.limitations);
+      providerCodes(
+        participant.evidence.limitations,
+        batch.limitations,
+        this.options.adapter.codes,
+      );
       if (!batch.complete) addCode(participant.evidence.limitations, "provider_coverage_limited");
     } catch (error) {
       // A final bounded reconciliation follows an intentional in-flight cancellation.
       if (!(participant.finishing && !final && controller.signal.aborted))
-        addCode(participant.evidence.limitations, errorCode(error, "mail_poll_failed"));
+        addCode(
+          participant.evidence.limitations,
+          errorCode(error, "mail_poll_failed", this.options.adapter.codes),
+        );
     } finally {
       delete participant.readAbort;
     }
@@ -612,7 +601,10 @@ class ReceivingRun implements CommsReceivingRun {
         } else await this.release(participant);
       } catch (error) {
         participant.evidence.cleanup = "unresolved";
-        addCode(participant.evidence.limitations, errorCode(error, "cleanup_failed"));
+        addCode(
+          participant.evidence.limitations,
+          errorCode(error, "cleanup_failed", this.options.adapter.codes),
+        );
         try {
           await this.store.setState(participantId, "unresolved");
         } catch {
@@ -675,17 +667,16 @@ export async function startCommsReceiving(
   options: StartCommsReceivingOptions,
 ): Promise<CommsReceivingRun> {
   try {
-    if (options.adapter.provider !== "agentmail")
+    if (!isReceivingProviderId(options.adapter.provider))
       throw new CommsReceivingError("comms_provider_unsupported");
+    // The adapter rejects a credential that cannot acquire fresh inboxes.
     const identity = await bounded(
       (context) => options.adapter.authenticate(context),
       REQUEST_MS,
       options.signal,
     );
-    if (!validReceivingIdentity(identity)) throw new CommsReceivingError("comms_identity_invalid");
-    // Fresh-inbox creation is supported only for the organization-scoped route advertised by setup.
-    if (identity.scopeType !== "organization")
-      throw new CommsReceivingError("comms_scope_unsupported");
+    if (!validReceivingIdentity(identity) || identity.provider !== options.adapter.provider)
+      throw new CommsReceivingError("comms_identity_invalid");
     const store = await CommsLeaseStore.create({
       cwd: options.cwd,
       runId: options.runId,
@@ -699,7 +690,7 @@ export async function startCommsReceiving(
     await run.acquire();
     return run;
   } catch (error) {
-    throw new CommsReceivingError(errorCode(error, "comms_start_failed"));
+    throw new CommsReceivingError(errorCode(error, "comms_start_failed", options.adapter.codes));
   }
 }
 
@@ -726,7 +717,15 @@ export async function recoverCommsReceiving(options: {
   let result: { ok: boolean; recovered: number; unresolved: number; message: string };
   try {
     store = await CommsLeaseStore.recover(options);
-    const identity = await bounded((context) => options.adapter.authenticate(context), REQUEST_MS);
+    const identity = await bounded(
+      (context) => options.adapter.authenticate(context),
+      REQUEST_MS,
+    ).catch((error: unknown) => {
+      // Journals bind only credentials that could acquire, so a narrower one cannot match.
+      throw errorCode(error, "", options.adapter.codes) === RECEIVING_SCOPE_UNSUPPORTED
+        ? new CommsAuthorityError("binding_mismatch")
+        : error;
+    });
     if (
       !validReceivingIdentity(identity) ||
       !sameReceivingIdentity(store.snapshot().identity, identity)
@@ -741,6 +740,9 @@ export async function recoverCommsReceiving(options: {
         }
         await store.assertOwnership();
         // Use the recorded client ID even if no resource ID was received before the interruption.
+        // A non-idempotent replay would create a second inbox; leave the record unresolved.
+        if (!record.lease && !options.adapter.idempotentAcquire)
+          throw new CommsReceivingError("comms_replay_unsupported");
         const lease =
           record.lease ??
           (await bounded(

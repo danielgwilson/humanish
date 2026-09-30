@@ -1,12 +1,16 @@
 /** Internal receiving-only contract. Provider identifiers and content are host/runtime-only. */
+import type { ReceivingProviderId } from "./providers.js";
 import type { CommsInlineImage } from "./types.js";
+
+/** authenticate() rejects with this code when the credential cannot acquire fresh inboxes. */
+export const RECEIVING_SCOPE_UNSUPPORTED = "comms_scope_unsupported";
 
 export interface ReceivingContext {
   signal?: AbortSignal;
   timeoutMs?: number;
 }
 export interface ReceivingIdentity {
-  provider: "agentmail";
+  provider: ReceivingProviderId;
   accountId: string;
   scopeType: "organization" | "pod" | "inbox";
   scopeId: string;
@@ -34,7 +38,20 @@ export interface ReceivingBatch {
   limitations: string[];
 }
 export interface ReceivingAdapter {
-  readonly provider: "agentmail";
+  readonly provider: ReceivingProviderId;
+  /**
+   * "provisioned": acquire creates a remote inbox and release deletes it.
+   * "namespace": acquire mints an address locally and release deletes that address's messages.
+   */
+  readonly addressing: "provisioned" | "namespace";
+  /** True when a repeated acquire with the same client ID returns the original inbox. */
+  readonly idempotentAcquire: boolean;
+  /**
+   * Every code this adapter puts in an error or a limitation. The orchestration records any
+   * other value as a generic code, so provider text cannot reach evidence.
+   */
+  readonly codes: ReadonlySet<string>;
+  /** Resolves only for a credential that can acquire; otherwise rejects with a coded error. */
   authenticate(context?: ReceivingContext): Promise<ReceivingIdentity>;
   acquire(clientId: string, context?: ReceivingContext): Promise<ReceivingLease>;
   read(lease: ReceivingLease, context?: ReceivingContext): Promise<ReceivingBatch>;
@@ -92,7 +109,7 @@ export interface ReceivingParticipantEvidence {
 export interface CommsReceivingEvidence {
   schema: typeof COMMS_RECEIVING_SCHEMA;
   channel: "email";
-  provider: "agentmail";
+  provider: ReceivingProviderId;
   publication: "restricted-real-communications";
   state: "acquiring" | "running" | "finished";
   participants: ReceivingParticipantEvidence[];
