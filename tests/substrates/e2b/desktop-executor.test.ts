@@ -6,7 +6,7 @@ import type { E2BDesktopLike } from "../../../src/substrates/e2b/desktop-executo
 import { perceptualSignature } from "../../../src/evidence/frame-signature.js";
 import {
   createE2BDesktopExecutor,
-  CuaTypeFallbackError,
+  CuaTypeError,
 } from "../../../src/substrates/e2b/desktop-executor.js";
 
 // A recorded desktop call: the method name and the arguments it received.
@@ -55,7 +55,7 @@ function makeFakeDesktop(
     desktop.commands = {
       run: async (command, options) => {
         calls.push({ method: "commands.run", args: [command, options] });
-        return { exitCode: 0, stdout: "", stderr: "" };
+        return { exitCode: 0, stdout: command.includes("mktemp") ? "/tmp/humanish-type-T1" : "" };
       },
     };
   }
@@ -153,27 +153,35 @@ describe("createE2BDesktopExecutor.execute action mapping", () => {
     expect(calls).toEqual([{ method: "write", args: ["hello@example.test"] }]);
   });
 
-  it("types non-ASCII text through xdotool from a temp file, without the SDK write", async () => {
+  it("types through xdotool from a private temp file when the desktop has command and file surfaces", async () => {
     const { desktop, calls } = makeFakeDesktop(SHOT, { withCommandSurface: true });
     const executor = createE2BDesktopExecutor(desktop);
 
     await executor.execute({ kind: "type", text: "hello — with punctuation" });
 
-    expect(calls.map((call) => call.method)).toEqual(["files.write", "commands.run"]);
-    expect(calls[0]?.args[1]).toBe("hello — with punctuation");
-    expect(String(calls[1]?.args[0])).toContain("LC_ALL=C.UTF-8 xdotool type");
-    expect(String(calls[1]?.args[0])).not.toContain("hello");
+    expect(calls.map((call) => call.method)).toEqual([
+      "commands.run",
+      "files.write",
+      "commands.run",
+      "commands.run",
+    ]);
+    expect(calls[1]?.args.slice(0, 2)).toEqual([
+      "/tmp/humanish-type-T1/text",
+      "hello — with punctuation",
+    ]);
+    expect(String(calls[2]?.args[0])).toContain("LC_ALL=C.UTF-8 xdotool type");
+    expect(calls.map((call) => String(call.args[0])).join("\n")).not.toContain("hello");
   });
 
-  it("throws a structured type error when the SDK write fails and no command surface exists", async () => {
+  it("throws a phase-only type error when the SDK write fails on a desktop without surfaces", async () => {
     const { desktop } = makeFakeDesktop(SHOT, {
       writeError: new Error("exit status 1"),
     });
     const executor = createE2BDesktopExecutor(desktop);
 
     const error = await executor.execute({ kind: "type", text: "hello" }).catch((e: unknown) => e);
-    expect(error).toBeInstanceOf(CuaTypeFallbackError);
-    expect((error as CuaTypeFallbackError).phase).toBe("text-unavailable");
+    expect(error).toBeInstanceOf(CuaTypeError);
+    expect((error as CuaTypeError).message).toBe("type failed at desktop-write");
   });
 
   it("maps keypress to press(keys array)", async () => {

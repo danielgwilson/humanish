@@ -1,8 +1,6 @@
 import { shellQuote } from "../shell.js";
 import { perceptualSignature } from "../../evidence/frame-signature.js";
 
-import { commandFailureInfo } from "../command-failure.js";
-import { tailOf } from "../shell.js";
 import type { CuaAction, CuaExecutor, CuaObservation } from "../../actors/computer-use/loop.js";
 import { CuaExecutorError } from "../../actors/computer-use/executor-error.js";
 import { xdotoolHeldModifiers } from "../../guest-desktop-keys.js";
@@ -113,7 +111,7 @@ export interface E2BDesktopExecutorOptions {
 
 const DEFAULT_WAIT_MS = 500;
 const DEFAULT_SCROLL_AMOUNT_PER_TICK = 100;
-const TYPE_FALLBACK_TIMEOUT_MS = 15_000;
+const TYPE_COMMAND_TIMEOUT_MS = 15_000;
 const HELD_KEYS_TIMEOUT_MS = 15_000;
 const CURSOR_READ_TIMEOUT_MS = 500;
 
@@ -183,128 +181,83 @@ function toBuffer(bytes: Uint8Array | Buffer): Buffer {
   return Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes);
 }
 
-/**
- * The stage of typing through xdotool that failed. Public-safe (a path label, never typed text).
- * Surfaced so a run bundle can tell a missing command surface from a failed temp-file write from
- * xdotool itself failing.
- */
-export type CuaTypeFallbackPhase = "text-unavailable" | "text-tempfile" | "text-command";
+/** The stage of a `type` action that failed. */
+export type CuaTypePhase = "desktop-write" | "text-tempfile" | "text-command";
 
 /**
- * A `type` action that failed. Carries a redacted attempt chain (path labels only, never the
- * typed text), the failing phase, and a sanitized stderr/stdout tail when the substrate produced
- * one. The loop records `.name` + `.message` into the actor trace notice, so the bundle proves
- * WHERE the type stopped, not just that it did.
+ * A `type` action that failed. Typed text can be a credential (a login step typing a subject-env
+ * password), so the message names the phase only: no text, no temp-file path, no substrate
+ * output. The loop records `.name` + `.message` into the actor trace.
  */
-export class CuaTypeFallbackError extends Error {
-  readonly phase: CuaTypeFallbackPhase;
-  readonly attemptChain: readonly string[];
-  readonly stderrTail?: string;
+export class CuaTypeError extends Error {
+  readonly phase: CuaTypePhase;
 
-  constructor(
-    phase: CuaTypeFallbackPhase,
-    attemptChain: readonly string[],
-    stderrTail?: string,
-    cause?: unknown,
-  ) {
-    const chain = attemptChain.join(" -> ");
-    const suffix =
-      stderrTail !== undefined && stderrTail.length > 0 ? ` (stderr: ${stderrTail})` : "";
-    super(`type fallback failed at ${phase}: ${chain}${suffix}`);
-    this.name = "CuaTypeFallbackError";
+  constructor(phase: CuaTypePhase) {
+    super(`type failed at ${phase}`);
+    this.name = "CuaTypeError";
     this.phase = phase;
-    this.attemptChain = attemptChain;
-    if (stderrTail !== undefined && stderrTail.length > 0) this.stderrTail = stderrTail;
-    if (cause !== undefined) (this as { cause?: unknown }).cause = cause;
   }
 }
 
-type DesktopCommandResult = { exitCode?: number; stderr?: string; stdout?: string };
-
-/** The SDK write's per-character delay, kept so both paths type at the same pace. */
+/** The SDK write's per-character delay, kept so typing keeps its pace. */
 const XDOTOOL_TYPE_DELAY_MS = 75;
 
-/** Text the SDK write can type: xdotool in the desktop's C locale decodes only ASCII. */
-function isAscii(text: string): boolean {
-  return /^[\x00-\x7f]*$/.test(text);
-}
+const TYPE_DIRECTORY = /^\/tmp\/humanish-type-[A-Za-z0-9]+$/;
 
-function throwTextCommandFailure(
-  exitCode: number | undefined,
-  stderrTail: string,
-  attemptChain: string[],
-  cause?: unknown,
-): never {
-  throw new CuaTypeFallbackError(
-    "text-command",
-    [
-      ...attemptChain,
-      exitCode === undefined ? "xdotool type errored" : `xdotool type failed (exit ${exitCode})`,
-    ],
-    stderrTail,
-    cause,
-  );
+/** A desktop with the command and file surfaces typeText needs. */
+type TypingDesktop = E2BDesktopLike & Required<Pick<E2BDesktopLike, "commands" | "files">>;
+
+function canTypeText(desktop: E2BDesktopLike): desktop is TypingDesktop {
+  return desktop.commands !== undefined && desktop.files !== undefined;
 }
 
 /**
- * Type `text` with xdotool in the UTF-8 locale, reading it from a temp file. The stock desktop
- * runs commands in the C locale, where xdotool stops at the first non-ASCII character after
- * typing the ones before it; it ships no clipboard utility either. The text is transferred via
- * the temp file (never shell-quoted) and never appears in the chain or the error.
+ * Type `text` with one xdotool command in the UTF-8 locale, reading it from a file.
+ *
+ * The stock desktop runs commands in the C locale, where xdotool types the characters before the
+ * first non-ASCII one and then fails; the SDK write splits text into 25-unit chunks and fails the
+ * same way partway through. Either would leave a prefix typed, so there is one attempt and no
+ * retry. The text is written to a 0600 file in a directory `mktemp -d` makes, passed to xdotool by
+ * path (never through the shell), and the directory is removed on every exit.
  */
-async function typeUtf8Text(
-  desktop: E2BDesktopLike,
-  text: string,
-  attemptChain: string[],
-): Promise<void> {
-  const files = desktop.files;
-  const commands = desktop.commands;
-  if (!files || !commands) {
-    throw new CuaTypeFallbackError("text-unavailable", [
-      ...attemptChain,
-      "text typing unavailable (no command/file surface)",
-    ]);
-  }
-
-  const path = `/tmp/humanish-cua-type-${Date.now()}-${Math.random().toString(16).slice(2)}.txt`;
+async function typeText(desktop: TypingDesktop, text: string): Promise<void> {
+  const { commands, files } = desktop;
+  const quick = { requestTimeoutMs: TYPE_COMMAND_TIMEOUT_MS, timeoutMs: TYPE_COMMAND_TIMEOUT_MS };
+  let directory: string | undefined;
   try {
-    await files.write(path, text, { requestTimeoutMs: TYPE_FALLBACK_TIMEOUT_MS });
-  } catch (writeError) {
-    throw new CuaTypeFallbackError(
-      "text-tempfile",
-      [...attemptChain, "text temp-file write failed"],
-      undefined,
-      writeError,
+    const made = await commands.run(
+      'umask 077 && d=$(mktemp -d /tmp/humanish-type-XXXXXXXX) && : > "$d/text" && printf \'%s\' "$d"',
+      quick,
     );
+    directory = made.stdout?.trim();
+  } catch {
+    throw new CuaTypeError("text-tempfile");
   }
-
-  const typeCommand = [
-    "set -eu",
-    'export DISPLAY="${DISPLAY:-:0}"',
-    `text_path=${shellQuote(path)}`,
-    "trap 'rm -f \"$text_path\"' EXIT",
-    `LC_ALL=C.UTF-8 xdotool type --delay ${XDOTOOL_TYPE_DELAY_MS} --file "$text_path"`,
-  ].join("\n");
-  // xdotool waits the delay after every character, so a long text needs a longer command budget.
-  const timeoutMs = TYPE_FALLBACK_TIMEOUT_MS + [...text].length * XDOTOOL_TYPE_DELAY_MS;
-
-  // The real @e2b/desktop Sandbox THROWS CommandExitError on any non-zero exit
-  // (it does not return a non-zero exitCode), so the exit code + stderr must be
-  // recovered from the thrown error. A structural fake that returns a non-zero
-  // exitCode instead of throwing is also handled, so both shapes are covered.
-  let runResult: DesktopCommandResult | undefined;
+  if (directory === undefined || !TYPE_DIRECTORY.test(directory))
+    throw new CuaTypeError("text-tempfile");
+  const file = `${directory}/text`;
   try {
-    runResult = await commands.run(typeCommand, { requestTimeoutMs: timeoutMs, timeoutMs });
-  } catch (error) {
-    const detail = commandFailureInfo(error);
-    throwTextCommandFailure(detail.exitCode, detail.stderrTail, attemptChain, error);
-  }
-  if (runResult !== undefined && runResult.exitCode !== undefined && runResult.exitCode !== 0) {
-    throwTextCommandFailure(
-      runResult.exitCode,
-      tailOf(runResult.stderr ?? runResult.stdout),
-      attemptChain,
-    );
+    try {
+      await files.write(file, text, { requestTimeoutMs: TYPE_COMMAND_TIMEOUT_MS });
+    } catch {
+      throw new CuaTypeError("text-tempfile");
+    }
+    // xdotool waits the delay after every character, so a long text needs a longer budget.
+    const timeoutMs = TYPE_COMMAND_TIMEOUT_MS + [...text].length * XDOTOOL_TYPE_DELAY_MS;
+    let result: { exitCode?: number } | undefined;
+    try {
+      result = await commands.run(
+        `DISPLAY="\${DISPLAY:-:0}" LC_ALL=C.UTF-8 xdotool type --delay ${XDOTOOL_TYPE_DELAY_MS} --file ${shellQuote(file)}`,
+        { requestTimeoutMs: timeoutMs, timeoutMs },
+      );
+    } catch {
+      throw new CuaTypeError("text-command");
+    }
+    // A structural fake may return a non-zero exit instead of throwing, as the SDK does.
+    if (result?.exitCode !== undefined && result.exitCode !== 0)
+      throw new CuaTypeError("text-command");
+  } finally {
+    await commands.run(`rm -rf -- ${shellQuote(directory)}`, quick).catch(() => undefined);
   }
 }
 
@@ -388,21 +341,18 @@ export function createE2BDesktopExecutor(
         return;
       }
       case "type": {
-        const attemptChain: string[] = [];
-        // Non-ASCII text skips the SDK write: in the desktop's C locale it would type the
-        // characters before the first non-ASCII one and then fail, and a retry would type them
-        // twice. The SDK write also splits text every 25 UTF-16 units, which can cut an emoji.
-        if (isAscii(action.text)) {
-          try {
-            await desktop.write(action.text);
-            return;
-          } catch {
-            // The write error carries no diagnostics beyond "it threw"; the typed text is
-            // never recorded.
-            attemptChain.push("desktop.write failed");
-          }
+        if (canTypeText(desktop)) {
+          await typeText(desktop, action.text);
+          return;
         }
-        await typeUtf8Text(desktop, action.text, attemptChain);
+        // A desktop without command and file surfaces keeps the SDK write, with no retry: a
+        // failed write may already have typed part of the text. Its error could echo the
+        // command, and so the text, so it is replaced.
+        try {
+          await desktop.write(action.text);
+        } catch {
+          throw new CuaTypeError("desktop-write");
+        }
         return;
       }
       case "keypress":
