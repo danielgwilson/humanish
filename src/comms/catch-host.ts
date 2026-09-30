@@ -29,7 +29,7 @@ import {
 } from "./sandbox-catch.js";
 import { buildInboxSurface } from "./inbox.js";
 
-/** The CLI writer surface this command needs (structurally compatible with program.ts CliIo). */
+/** The CLI writer surface this command needs (structurally compatible with cli/io.ts CliIo). */
 interface CatchHostIo {
   writeOut(text: string): void;
   writeErr(text: string): void;

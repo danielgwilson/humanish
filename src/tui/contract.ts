@@ -122,7 +122,7 @@ export interface TuiOptions {
 export type TuiHandoff = { action: "agentmail-key" };
 export type StartTui = (options: TuiOptions) => Promise<number | TuiHandoff>;
 
-/** The shape `dist/tui-app.js` exports. Asserted at the load boundary in program.ts. */
+/** The shape `dist/tui-app.js` exports. Asserted at the load boundary in cli/commands/tui.ts. */
 export interface TuiModule {
   startTui: StartTui;
 }
@@ -140,12 +140,11 @@ export function nodeSupportsTui(versionString: string = process.version): boolea
 }
 
 /**
- * Where the bundle sits relative to the compiled CLI. Shared so the command that loads it and the
- * readiness row that reports it can never look in different places.
+ * The shipped bundle, dist/tui-app.js, one level above this module (dist/tui/contract.js). The
+ * command that loads it and the readiness row that reports it both read this constant, so moving
+ * either caller cannot change where they look. scripts/tui-smoke.mjs checks it against the build.
  */
-export function tuiBundleUrl(baseUrl: string): URL {
-  return new URL("./tui-app.js", baseUrl);
-}
+export const TUI_BUNDLE_URL = new URL("../tui-app.js", import.meta.url);
 
 /**
  * What `doctor` says about the stakeholder surface — a pure function of the machine's state and,

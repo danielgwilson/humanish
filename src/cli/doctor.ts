@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { probeKeySources } from "./key-resolution.js";
-import { nodeSupportsTui, terminalSurfaceMessage, tuiBundleUrl } from "../tui/contract.js";
+import { nodeSupportsTui, terminalSurfaceMessage, TUI_BUNDLE_URL } from "../tui/contract.js";
 import {
   detectLocalAgents,
   localAgentDoctorMessage,
@@ -253,7 +253,7 @@ export async function doctor(
     // dies there.
     (() => {
       const supported = nodeSupportsTui();
-      const bundlePresent = existsSync(tuiBundleUrl(new URL("../", import.meta.url).href));
+      const bundlePresent = existsSync(TUI_BUNDLE_URL);
       return {
         name: "terminal surface",
         ok: true,

@@ -9,11 +9,11 @@ import * as summaries from "../../src/lab/summary.js";
 import { setUserKey, userKeyStorePath } from "../../src/cli/key-resolution.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 
-import { createProgram, type TuiRuntime } from "../../src/cli/program.js";
+import { createProgram } from "../../src/cli/program.js";
+import { type TuiRuntime } from "../../src/cli/commands/tui.js";
 import {
   TUI_MIN_NODE_MAJOR,
   nodeSupportsTui,
-  tuiBundleUrl,
   type TuiModule,
   type TuiOptions,
 } from "../../src/tui/contract.js";
@@ -384,12 +384,6 @@ describe("the Node floor is stated once and read by everyone", () => {
     expect(nodeSupportsTui("v20.19.0")).toBe(false);
     expect(nodeSupportsTui("")).toBe(false);
     expect(nodeSupportsTui("banana")).toBe(false);
-  });
-
-  it("resolves the bundle beside the compiled CLI, so the loader and doctor look in one place", () => {
-    expect(tuiBundleUrl("file:///opt/humanish/dist/program.js").pathname).toBe(
-      "/opt/humanish/dist/tui-app.js",
-    );
   });
 });
 

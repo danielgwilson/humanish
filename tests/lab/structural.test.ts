@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { parse as parseYaml } from "yaml";
@@ -11,13 +11,16 @@ import { digestText } from "../../src/evidence/redaction.js";
 
 const ROOT = process.cwd();
 const read = (rel: string) => readFileSync(path.join(ROOT, rel), "utf8");
+const cliSources = readdirSync(path.join(ROOT, "src/cli"), { recursive: true, encoding: "utf8" })
+  .filter((rel) => rel.endsWith(".ts"))
+  .map((rel) => path.join("src/cli", rel));
 
 // RUNG 1 (necessity via deletion): there is exactly ONE path. The closed `kind` enum, the kind
 // switch, and the three per-kind command functions must not exist — if any survived, the
 // refactor would be cosmetic.
 describe("lab refactor structural necessity (rung 1)", () => {
   const labs = read("src/lab/discover.ts");
-  const program = read("src/cli/program.ts");
+  const program = cliSources.map(read).join("\n");
 
   it("the LabKind enum and its guard are gone", () => {
     expect(labs).not.toMatch(/\btype\s+LabKind\b/);
@@ -39,7 +42,7 @@ describe("lab refactor structural necessity (rung 1)", () => {
     for (const rel of [
       "src/lab/discover.ts",
       "src/lab/config.ts",
-      "src/cli/program.ts",
+      ...cliSources,
       "src/lab/init-templates.ts",
     ]) {
       expect(read(rel)).not.toContain("humanish.lab.v1");

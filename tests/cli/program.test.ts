@@ -6,14 +6,11 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it, afterEach } from "vitest";
 
-import {
-  createProgram,
-  formatCuaLabHuman,
-  followObserver,
-  resolveBackendShouldOpen,
-  studyFactsFor,
-  writeResult,
-} from "../../src/cli/program.js";
+import { createProgram } from "../../src/cli/program.js";
+import { formatCuaLabHuman } from "../../src/cli/commands/lab-format.js";
+import { resolveBackendShouldOpen } from "../../src/cli/commands/lab-backends.js";
+import { followObserver } from "../../src/cli/observer-follow.js";
+import { studyFactsFor, writeResult } from "../../src/cli/io.js";
 import * as humanishIndex from "../../src/index.js";
 
 // process.getuid is POSIX-only and absent under Node's typings on some platforms;
