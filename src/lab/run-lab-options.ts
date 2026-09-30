@@ -8,7 +8,7 @@ import path from "node:path";
 import type { CuaExecutor, CuaProvider } from "../actors/computer-use/loop.js";
 import { redactText, scrubLiterals, toErrorMessage } from "../evidence/redaction.js";
 import { CUA_ACTOR_LAB_SCHEMA, type CuaActorLabHooks } from "../routes/computer-use/types.js";
-import { SCRIPTED_BROWSER_LAB_SCHEMA } from "../routes/scripted-browser/lab.js";
+import { SCRIPTED_BROWSER_LAB_SCHEMA } from "../routes/scripted-browser/types.js";
 import type { SharedWorldLabHooks } from "../routes/shared-world/hooks.js";
 import { CONCURRENT_SHARED_WORLD_LAB_SCHEMA } from "../routes/shared-world/types.js";
 import {

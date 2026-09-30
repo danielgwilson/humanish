@@ -4,7 +4,7 @@
 
 import type { AutomaticAnalysisHooks } from "../analysis/automatic-completion.js";
 import type { CuaActorLabHooks } from "../routes/computer-use/types.js";
-import type { ScriptedBrowserLabHooks } from "../routes/scripted-browser/lab.js";
+import type { ScriptedBrowserLabHooks } from "../routes/scripted-browser/types.js";
 import type { SharedWorldLabHooks } from "../routes/shared-world/hooks.js";
 import type { TerminalProductLabHooks } from "../routes/terminal/types.js";
 

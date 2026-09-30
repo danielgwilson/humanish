@@ -28,10 +28,8 @@ import {
   type ParsedSandboxReceipt,
 } from "../../src/run/sandbox-receipts.js";
 import { runCuaActorLab } from "../../src/routes/computer-use/lab.js";
-import {
-  runScriptedBrowserLab,
-  type ScriptedBrowserLabHooks,
-} from "../../src/routes/scripted-browser/lab.js";
+import { runScriptedBrowserLab } from "../../src/routes/scripted-browser/lab.js";
+import { type ScriptedBrowserLabHooks } from "../../src/routes/scripted-browser/types.js";
 import type {
   ScriptedBrowserLike,
   ScriptedLocatorLike,

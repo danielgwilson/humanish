@@ -11,11 +11,11 @@ import { isLocalBrowserLab, localBrowserDefaults } from "../substrates/local/run
 import type { AutomaticAnalysisHooks } from "../analysis/automatic-completion.js";
 import { runCuaActorLab } from "../routes/computer-use/lab.js";
 import { type CuaActorLabHooks, type CuaActorLabResult } from "../routes/computer-use/types.js";
+import { runScriptedBrowserLab } from "../routes/scripted-browser/lab.js";
 import {
-  runScriptedBrowserLab,
   type ScriptedBrowserLabHooks,
   type ScriptedBrowserLabResult,
-} from "../routes/scripted-browser/lab.js";
+} from "../routes/scripted-browser/types.js";
 import { runTerminalProductLab } from "../routes/terminal/lab.js";
 import {
   type TerminalProductLabHooks,
