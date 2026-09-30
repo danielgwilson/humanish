@@ -17,7 +17,7 @@ catalog:
   tailwindcss: ^4.3.3
   typescript: ^7.0.2
   vitest: ^5.0.2
-  zod: ^4.6.5
+  zod: ^4.6.5 # the root package.json repeats this range: npm publish cannot resolve catalog:
 
 allowBuilds:
   # posthog-js pulls core-js; its postinstall only prints a funding note.

@@ -125,6 +125,23 @@ describe("release readiness", () => {
     expect(packedScreenshot.size).toBeGreaterThan(50_000);
   }, 45_000);
 
+  it("publishes dependency ranges npm can install", async () => {
+    // publish.yml runs `npm publish`, which ships package.json as written; npm cannot resolve
+    // pnpm's catalog: or workspace: protocols, so an installed package would fail to resolve.
+    const packageJson = JSON.parse(await readFile("package.json", "utf8")) as Record<
+      string,
+      Record<string, string> | undefined
+    >;
+    const workspace = await readFile("pnpm-workspace.yaml", "utf8");
+    for (const field of ["dependencies", "peerDependencies", "optionalDependencies"]) {
+      for (const [name, range] of Object.entries(packageJson[field] ?? {})) {
+        expect(range, `${field}.${name}`).not.toMatch(/^(catalog|workspace):/);
+        const catalogRange = workspace.match(new RegExp(`^  "?${name}"?: (\\S+)`, "m"))?.[1];
+        if (catalogRange) expect(range, `${field}.${name} matches the catalog`).toBe(catalogRange);
+      }
+    }
+  });
+
   it("defines tag-gated npm trusted publishing", async () => {
     const publish = await readFile(".github/workflows/publish.yml", "utf8");
     const ci = await readFile(".github/workflows/ci.yml", "utf8");
