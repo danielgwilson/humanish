@@ -51,6 +51,8 @@ export interface ReceivingAdapter {
    * other value as a generic code, so provider text cannot reach evidence.
    */
   readonly codes: ReadonlySet<string>;
+  /** The code authenticate() rejects with when the provider refuses the credential itself. */
+  readonly authRejectedCode: string;
   /** Resolves only for a credential that can acquire; otherwise rejects with a coded error. */
   authenticate(context?: ReceivingContext): Promise<ReceivingIdentity>;
   acquire(clientId: string, context?: ReceivingContext): Promise<ReceivingLease>;

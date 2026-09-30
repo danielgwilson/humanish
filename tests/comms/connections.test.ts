@@ -5,10 +5,10 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   COMMS_CONFIG_PATH,
   readCommsConnections,
-  readCommsSetup,
   saveCommsConnection,
 } from "../../src/comms/connections.js";
-import { resolveKeyName, setUserKey, userKeyStorePath } from "../../src/cli/key-resolution.js";
+import { readCommsSetup } from "../../src/comms/setup.js";
+import { resolveKeyName, setUserKey, userKeyStorePath } from "../../src/keys/key-resolution.js";
 
 describe("communication connection setup", () => {
   let cwd: string;

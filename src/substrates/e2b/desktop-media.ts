@@ -3,8 +3,7 @@ import path from "node:path";
 import { startDesktopMedia } from "../../guest-desktop-media.js";
 import type { E2BCommandResult, E2BDesktopSandbox } from "./desktop-launch.js";
 import type { LabConfig, LabDesktopMedia } from "../../lab/types.js";
-import { failureTail } from "../../evidence/redaction.js";
-import { toErrorMessage } from "../command-failure.js";
+import { failureTail, toErrorMessage } from "../../evidence/redaction.js";
 import { runOrThrow } from "../shell.js";
 import { e2bShell } from "./shell.js";
 

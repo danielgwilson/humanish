@@ -2,7 +2,8 @@ import { shellQuote } from "../shell.js";
 import { perceptualSignature } from "../../evidence/frame-signature.js";
 export { perceptualSignature } from "../../evidence/frame-signature.js";
 
-import { commandFailureInfo, tailOf } from "../command-failure.js";
+import { commandFailureInfo } from "../command-failure.js";
+import { tailOf } from "../shell.js";
 import type { CuaAction, CuaExecutor, CuaObservation } from "../../actors/computer-use/loop.js";
 import { CuaExecutorError } from "../../actors/computer-use/executor-error.js";
 import { xdotoolHeldModifiers } from "../../guest-desktop-keys.js";

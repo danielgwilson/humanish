@@ -1,5 +1,3 @@
-import { tailOf } from "./command-failure.js";
-
 // The command channel into a machine. Subject provisioning and in-sandbox comms use only this, so
 // a machine provider has to supply a Shell for them to run there. The E2B implementation is
 // src/substrates/e2b/shell.ts.
@@ -59,4 +57,9 @@ export function throwOnExit(result: ShellResult): ShellResult {
 /** Single-quote a value for a Shell command line. */
 export function shellQuote(value: string): string {
   return `'${value.replace(/'/g, "'\\''")}'`;
+}
+
+/** Sanitized, whitespace-collapsed, length-capped tail of command output. */
+export function tailOf(value: string | undefined): string {
+  return (value ?? "").trim().replace(/\s+/g, " ").slice(-240);
 }

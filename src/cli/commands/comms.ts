@@ -1,8 +1,9 @@
 import { resolve } from "node:path";
 import { Command } from "commander";
-import { COMMS_PROVIDERS, readCommsSetup, saveCommsConnection } from "../../comms/connections.js";
+import { COMMS_PROVIDERS, saveCommsConnection } from "../../comms/connections.js";
+import { readCommsSetup } from "../../comms/setup.js";
 import { checkCommsConnection, configureCommsLab } from "../../comms/setup.js";
-import { inspectCommsRecovery, recoverCommsReceiving } from "../../comms/receiving.js";
+import { inspectCommsRecovery, recoverCommsReceiving } from "../../comms/receiving-recovery.js";
 import { resolveReceivingConnection } from "../../comms/receiving-runtime.js";
 import { resolveLabManifest } from "../../lab/discover.js";
 import { runCommsCatchHost } from "../../comms/catch-host.js";

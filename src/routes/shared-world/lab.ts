@@ -40,7 +40,7 @@ import { DEFAULT_OPENAI_CU_MODEL } from "../../actors/computer-use/openai-provid
 import { actorRegistry, isCuaActorDescriptor } from "../../actors/registry.js";
 import { completeAutomaticAnalysis } from "../../analysis/automatic-completion.js";
 import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
-import { describeMissingKeys } from "../../cli/key-resolution.js";
+import { describeMissingKeys } from "../../keys/key-resolution.js";
 import { FakeInbox } from "../../comms/fake-inbox.js";
 import { buildOriginMap, type OriginMap } from "../../comms/capture-surface.js";
 import { prepareReceivingRun } from "../../comms/receiving-runtime.js";
@@ -56,7 +56,7 @@ import {
   type DeployedCommsCatch,
 } from "../../comms/sandbox-catch.js";
 import type { CommsAddress } from "../../comms/types.js";
-import { redactText, scrubLiterals } from "../../evidence/redaction.js";
+import { redactText, scrubLiterals, toErrorMessage } from "../../evidence/redaction.js";
 import {
   adapterScoreFailureMessage,
   applyBrowserAdapterHooks,
@@ -92,7 +92,6 @@ import type { LocalTreeArchive } from "../../run/source-archive.js";
 import { provisionCloneSubject } from "../../subject/clone.js";
 import { provisionLocalTreeSubject } from "../../subject/local-tree.js";
 import type { SubjectPhaseEvent } from "../../subject/steps.js";
-import { toErrorMessage } from "../../substrates/command-failure.js";
 import type { DetachedTimers } from "../../substrates/detached.js";
 import {
   loadE2BDesktopModule,

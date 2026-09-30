@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { FakeInbox, extractLinks, extractOtpCodes } from "../src/comms/fake-inbox.js";
+import { extractLinks, extractOtpCodes } from "../src/comms/extract.js";
+import { FakeInbox } from "../src/comms/fake-inbox.js";
 import { startEmailCatchServer, type EmailCatchServer } from "../src/comms/email-catch.js";
 
 // A realistic user-signup verification email (magic link + OTP) — the exact shape an app's signup

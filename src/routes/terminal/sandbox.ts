@@ -1,4 +1,4 @@
-import { toErrorMessage } from "../../substrates/command-failure.js";
+import { toErrorMessage } from "../../evidence/redaction.js";
 import {
   E2BDesktopStartupError,
   isSandboxNotFoundError,

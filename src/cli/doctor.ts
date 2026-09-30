@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { probeKeySources } from "./key-resolution.js";
+import { probeKeySources } from "../keys/key-resolution.js";
 import { nodeSupportsTui, terminalSurfaceMessage, TUI_BUNDLE_URL } from "../tui/contract.js";
 import {
   detectLocalAgents,

@@ -10,7 +10,7 @@ import { LAB_CONFIG_SCHEMA } from "../../src/lab/types.js";
 import { parseLabConfig } from "../../src/lab/config.js";
 import { resolveLabManifest } from "../../src/lab/discover.js";
 import { launchRun } from "../../src/tui/launch.js";
-import { setUserKey } from "../../src/cli/key-resolution.js";
+import { setUserKey } from "../../src/keys/key-resolution.js";
 import type { ReceivingAdapter } from "../../src/comms/receiving-types.js";
 const lab = {
   schema: LAB_CONFIG_SCHEMA,
@@ -41,6 +41,7 @@ function adapter(
     provider: "agentmail",
     addressing: "provisioned",
     idempotentAcquire: true,
+    authRejectedCode: "agentmail_auth_rejected",
     codes: AGENTMAIL_RECEIVING_CODES,
     authenticate,
     acquire: vi.fn(),

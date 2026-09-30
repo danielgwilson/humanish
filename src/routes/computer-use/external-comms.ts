@@ -1,8 +1,7 @@
-import { toErrorMessage } from "../../substrates/command-failure.js";
 import { FakeInbox } from "../../comms/fake-inbox.js";
 import { collectExternalCommsThread } from "../../comms/sandbox-catch.js";
 import type { CommsAddress } from "../../comms/types.js";
-import { redactText } from "../../evidence/redaction.js";
+import { redactText, toErrorMessage } from "../../evidence/redaction.js";
 import type { LabCommsEmail, LabCommsExternal } from "../../lab/types.js";
 import type { PreparedRunArtifactPaths } from "../../run/paths.js";
 import { writeContainedOutputFile } from "../../run/selected-output-paths.js";

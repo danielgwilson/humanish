@@ -1,23 +1,25 @@
 /** Run-scoped real-email receiving. Resource authority and message content stay on the host. */
 import {
-  CommsAuthorityError,
   CommsLeaseStore,
-  inspectCommsLeaseStore,
-  sameReceivingIdentity,
   validReceivingIdentity,
   validReceivingLease,
   type CommsLeaseRecord,
-  type CommsRecoveryEntry,
 } from "./lease-store.js";
+import {
+  CommsReceivingError,
+  errorCode,
+  releaseOwned,
+  REQUEST_MS,
+  withDeadline,
+} from "./receiving-common.js";
+import { MAX_RECEIVING_MESSAGES } from "./receiving-render.js";
 import { isReceivingProviderId } from "./providers.js";
 import {
   COMMS_RECEIVING_SCHEMA,
-  RECEIVING_SCOPE_UNSUPPORTED,
   type CommsReceivingEvidence,
   type ParticipantEmail,
   type ReceivedEmail,
   type ReceivingAdapter,
-  type ReceivingContext,
   type ReceivingLease,
   type ReceivingParticipantEvidence,
   type ReceivingSurface,
@@ -25,31 +27,11 @@ import {
 } from "./receiving-types.js";
 import { capturedInlineImages } from "./images.js";
 
-export type { CommsRecoveryEntry } from "./lease-store.js";
 const POLL_MS = 3_000;
-const REQUEST_MS = 15_000;
 const SURFACE_MS = 8_000;
 const EVIDENCE_MS = 5_000;
-// Match the participant renderer's bounded snapshot. Crossing its cap must not poison all later publications.
-const MAX_MESSAGES = 100;
 const MAX_CONTENT_BYTES = 16 * 1024 * 1024;
 
-class CommsReceivingError extends Error {
-  constructor(readonly code: string) {
-    super(
-      "Real email receiving could not complete. Inspect communications coverage and private cleanup status.",
-    );
-    this.name = "CommsReceivingError";
-  }
-}
-/** Adapter codes pass through only when the adapter declares them. */
-function errorCode(error: unknown, fallback: string, safe: ReadonlySet<string>): string {
-  if (error instanceof CommsReceivingError) return error.code;
-  if (error instanceof CommsAuthorityError) return "comms_authority_unavailable";
-  const code =
-    typeof error === "object" && error !== null && "code" in error ? error.code : undefined;
-  return typeof code === "string" && safe.has(code) ? code : fallback;
-}
 function addCode(codes: string[], code: string): void {
   if (!codes.includes(code) && codes.length < 64) codes.push(code);
 }
@@ -113,48 +95,6 @@ function visibleContent(message: ParticipantEmail): string {
     message.inlineImages,
   ]);
 }
-/** Deadlines bound even a broken injected dependency; cancellation reaches cooperative I/O. */
-function withDeadline<T>(
-  operation: (context: ReceivingContext) => Promise<T>,
-  timeoutMs: number,
-  signal?: AbortSignal,
-): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const controller = new AbortController();
-    let settled = false;
-    const finish = (error: unknown, value?: T): void => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      signal?.removeEventListener("abort", abort);
-      if (error !== undefined) reject(error);
-      else resolve(value as T);
-    };
-    const abort = (): void => {
-      controller.abort();
-      finish(new CommsReceivingError("comms_cancelled"));
-    };
-    const timer = setTimeout(() => {
-      controller.abort();
-      finish(new CommsReceivingError("comms_deadline_exceeded"));
-    }, timeoutMs);
-    if (signal?.aborted) {
-      abort();
-      return;
-    }
-    signal?.addEventListener("abort", abort, { once: true });
-    // Give cooperative dependencies time to return retained partial results before our hard
-    // cancellation. Equal timers make the earlier host timer discard the adapter's partial batch.
-    const cooperativeTimeout = Math.max(1, timeoutMs - Math.min(500, Math.floor(timeoutMs / 10)));
-    Promise.resolve()
-      .then(() => operation({ signal: controller.signal, timeoutMs: cooperativeTimeout }))
-      .then(
-        (value) => finish(undefined, value),
-        (error) => finish(error),
-      );
-  });
-}
-
 type RenderInput = {
   address: string;
   messages: ParticipantEmail[];
@@ -378,7 +318,7 @@ class ReceivingRun implements CommsReceivingRun {
     const size = contentBytes(current);
     const previousSize = previous ? contentBytes(previous) : 0;
     if (
-      (!previous && participant.messages.size >= MAX_MESSAGES) ||
+      (!previous && participant.messages.size >= MAX_RECEIVING_MESSAGES) ||
       participant.contentBytes - previousSize + size > MAX_CONTENT_BYTES
     ) {
       addCode(participant.evidence.limitations, "observation_memory_limit");
@@ -635,34 +575,6 @@ class ReceivingRun implements CommsReceivingRun {
   }
 }
 
-async function releaseOwned(
-  adapter: ReceivingAdapter,
-  lease: ReceivingLease,
-  store: CommsLeaseStore,
-): Promise<"absent" | "deleting"> {
-  // Each call has an operation deadline; the small retry count bounds asynchronous deletion.
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    await store.assertOwnership();
-    const authority = store.snapshot().leases.find((item) => item.clientId === lease.clientId);
-    if (
-      !authority ||
-      authority.ownership !== "fresh" ||
-      authority.lease?.resourceId !== lease.resourceId ||
-      authority.lease.address !== lease.address
-    ) {
-      throw new CommsReceivingError("comms_ownership_mismatch");
-    }
-    const result = await withDeadline(
-      (context) => adapter.release(structuredClone(lease), context),
-      REQUEST_MS,
-    );
-    if (result.status === "absent") return "absent";
-    if (result.status !== "deleting") throw new CommsReceivingError("cleanup_invalid_result");
-    if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 250));
-  }
-  return "deleting";
-}
-
 export async function startCommsReceiving(
   options: StartCommsReceivingOptions,
 ): Promise<CommsReceivingRun> {
@@ -692,116 +604,4 @@ export async function startCommsReceiving(
   } catch (error) {
     throw new CommsReceivingError(errorCode(error, "comms_start_failed", options.adapter.codes));
   }
-}
-
-/** Side-effect-free local inspection: does not authenticate, enumerate provider resources or replay creation. */
-export async function inspectCommsRecovery(options: {
-  cwd: string;
-  stateDir?: string;
-}): Promise<CommsRecoveryEntry[]> {
-  return inspectCommsLeaseStore(options);
-}
-
-/** Explicit mutation: may replay an uncertain original create, then immediately dispose that exact resource. */
-export async function recoverCommsReceiving(options: {
-  cwd: string;
-  runId: string;
-  connectionName: string;
-  apiKeyEnv: string;
-  adapter: ReceivingAdapter;
-  stateDir?: string;
-}): Promise<{ ok: boolean; recovered: number; unresolved: number; message: string }> {
-  let store: CommsLeaseStore | undefined;
-  let recovered = 0;
-  let unresolved = 0;
-  let result: { ok: boolean; recovered: number; unresolved: number; message: string };
-  try {
-    store = await CommsLeaseStore.recover(options);
-    const identity = await withDeadline(
-      (context) => options.adapter.authenticate(context),
-      REQUEST_MS,
-    ).catch((error: unknown) => {
-      // Journals bind only credentials that could acquire, so a narrower one cannot match.
-      throw errorCode(error, "", options.adapter.codes) === RECEIVING_SCOPE_UNSUPPORTED
-        ? new CommsAuthorityError("binding_mismatch")
-        : error;
-    });
-    if (
-      !validReceivingIdentity(identity) ||
-      !sameReceivingIdentity(store.snapshot().identity, identity)
-    )
-      throw new CommsAuthorityError("binding_mismatch");
-    for (const record of store.snapshot().leases) {
-      if (record.state === "absent" || record.state === "not-created") continue;
-      try {
-        if (record.state === "planned") {
-          await store.setState(record.participantId, "not-created");
-          continue;
-        }
-        await store.assertOwnership();
-        // Use the recorded client ID even if no resource ID was received before the interruption.
-        // A non-idempotent replay would create a second inbox; leave the record unresolved.
-        if (!record.lease && !options.adapter.idempotentAcquire)
-          throw new CommsReceivingError("comms_replay_unsupported");
-        const lease =
-          record.lease ??
-          (await withDeadline(
-            (context) => options.adapter.acquire(record.clientId, context),
-            REQUEST_MS,
-          ));
-        if (!validReceivingLease(lease, record.clientId))
-          throw new CommsAuthorityError("binding_mismatch");
-        if (!record.lease) await store.bind(record.participantId, lease);
-        await store.setState(record.participantId, "closing");
-        const status = await releaseOwned(options.adapter, lease, store);
-        await store.setState(record.participantId, status);
-        if (status === "absent") recovered += 1;
-        else unresolved += 1;
-      } catch {
-        unresolved += 1;
-        try {
-          await store.setState(record.participantId, "unresolved");
-        } catch {
-          /* Original durable intent remains. */
-        }
-      }
-    }
-    result = {
-      ok: unresolved === 0,
-      recovered,
-      unresolved,
-      message:
-        unresolved === 0
-          ? "Owned inbox cleanup is confirmed absent. This does not establish permanent provider data erasure."
-          : "Some owned inbox cleanup is unresolved. Retry explicit recovery with the same connection; no replacement identities were requested.",
-    };
-  } catch (error) {
-    unresolved =
-      store
-        ?.snapshot()
-        .leases.filter((item) => item.state !== "absent" && item.state !== "not-created").length ??
-      0;
-    result = {
-      ok: false,
-      recovered,
-      unresolved,
-      message:
-        error instanceof CommsAuthorityError
-          ? error.message
-          : "Communications recovery could not establish provider access. No unverified resource was deleted.",
-    };
-  }
-  if (store) {
-    try {
-      await store.close();
-    } catch {
-      result = {
-        ...result,
-        ok: false,
-        message:
-          "Communications authority could not be finalized. Inspect local recovery status before retrying.",
-      };
-    }
-  }
-  return result;
 }

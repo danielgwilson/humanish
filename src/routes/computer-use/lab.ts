@@ -33,7 +33,6 @@ import { completeAutomaticAnalysis } from "../../analysis/automatic-completion.j
 import { runScope, type RunScope } from "../../run/run.js";
 import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
 import { taskProtocolValidationReason } from "../../lab/validation.js";
-import { toErrorMessage } from "../../substrates/command-failure.js";
 import { actorRegistry, isCuaActorDescriptor } from "../../actors/registry.js";
 import { applyBrowserAdapterHooks } from "../../lab/adapter-extension.js";
 import { externalInboxUrl } from "../../comms/sandbox-catch.js";
@@ -41,7 +40,7 @@ import type { LabConfig, LabSubjectState } from "../../lab/types.js";
 import { type LocalAgentId } from "../../actors/local-agent/cli.js";
 import { liveObserverResult } from "../../observer/live.js";
 import { DEFAULT_OPENAI_CU_MODEL } from "../../actors/computer-use/openai-provider.js";
-import { redactText, scrubLiterals } from "../../evidence/redaction.js";
+import { redactText, scrubLiterals, toErrorMessage } from "../../evidence/redaction.js";
 import {
   buildRunSource,
   type RunSubjectProvenance,

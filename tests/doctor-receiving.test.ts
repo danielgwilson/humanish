@@ -4,7 +4,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { doctor } from "../src/cli/doctor.js";
 import { saveCommsConnection } from "../src/comms/connections.js";
-import { setUserKey } from "../src/cli/key-resolution.js";
+import { setUserKey } from "../src/keys/key-resolution.js";
 
 const noAgents = { which: async () => undefined };
 const manifest = [

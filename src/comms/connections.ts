@@ -2,9 +2,12 @@ import { constants } from "node:fs";
 import { lstat, open, unlink } from "node:fs/promises";
 import path from "node:path";
 import { parse, stringify } from "yaml";
-import { listUserKeys, probeKeySources, type KeyResolutionDeps } from "../cli/key-resolution.js";
-import type { CommsCheckResult } from "./setup.js";
-import { COMMS_PROVIDERS, isReceivingProviderId, type ReceivingProviderId } from "./providers.js";
+import {
+  COMMS_PROVIDERS,
+  DEFAULT_COMMS_PROVIDER,
+  isReceivingProviderId,
+  type ReceivingProviderId,
+} from "./providers.js";
 import {
   assertPreparedSelectedOutputDirectory,
   bindExistingManagedHumanishOutputDirectory,
@@ -23,22 +26,6 @@ export interface CommsConnection {
 export interface CommsConnections {
   schema: typeof COMMS_CONNECTIONS_SCHEMA;
   connections: Record<string, CommsConnection>;
-}
-export interface CommsSetupStatus {
-  authentication?: CommsCheckResult;
-  schema: "humanish.comms-setup.v1";
-  ok: boolean;
-  configPath: string;
-  providers: typeof COMMS_PROVIDERS;
-  connections: { name: string; provider: ReceivingProviderId; apiKeyEnv: string }[];
-  credential: {
-    present: boolean;
-    source: string | null;
-    stored: boolean;
-    strict: boolean;
-    explicitlyEmpty: boolean;
-  };
-  message: string;
 }
 export interface CommsSetupResult {
   ok: boolean;
@@ -111,13 +98,14 @@ export async function readCommsConnections(cwd: string): Promise<CommsConnection
 /** Add one exact profile. No lab mutation, network, provider resources or credential values. */
 export async function saveCommsConnection(
   cwd: string,
-  name = "agentmail",
-  apiKeyEnv = "AGENTMAIL_API_KEY",
+  name: string = DEFAULT_COMMS_PROVIDER.id,
+  apiKeyEnv: string = DEFAULT_COMMS_PROVIDER.keyEnv,
 ): Promise<CommsSetupResult> {
+  const provider = DEFAULT_COMMS_PROVIDER.id;
   try {
     parseConnections({
       schema: COMMS_CONNECTIONS_SCHEMA,
-      connections: { [name]: { provider: "agentmail", apiKeyEnv } },
+      connections: { [name]: { provider, apiKeyEnv } },
     });
     // Read before creating storage, so malformed or redirected existing configuration fails first.
     await readCommsConnections(cwd);
@@ -133,13 +121,13 @@ export async function saveCommsConnection(
       await assertPreparedSelectedOutputDirectory(root);
       const config = await readCommsConnections(cwd);
       const previous = config.connections[name];
-      if (previous && (previous.provider !== "agentmail" || previous.apiKeyEnv !== apiKeyEnv)) {
+      if (previous && (previous.provider !== provider || previous.apiKeyEnv !== apiKeyEnv)) {
         return {
           ok: false,
           message: "That connection name already uses different settings. Choose another name.",
         };
       }
-      config.connections[name] = { provider: "agentmail", apiKeyEnv };
+      config.connections[name] = { provider, apiKeyEnv };
       parseConnections(config);
       await writeContainedOutputFile(root, "comms.yaml", stringify(config), "utf8");
       return {
@@ -160,53 +148,6 @@ export async function saveCommsConnection(
         (error as NodeJS.ErrnoException).code === "EEXIST"
           ? "Connection setup is locked. Close another setup session; after an interrupted save, remove .humanish/local/.comms-setup.lock and retry."
           : "Could not save the connection. Inspect .humanish/local/comms.yaml and its directory permissions before retrying.",
-    };
-  }
-}
-
-export async function readCommsSetup(
-  cwd: string,
-  env: NodeJS.ProcessEnv,
-  deps?: KeyResolutionDeps,
-): Promise<CommsSetupStatus> {
-  const base = {
-    schema: "humanish.comms-setup.v1" as const,
-    configPath: COMMS_CONFIG_PATH,
-    providers: COMMS_PROVIDERS,
-  };
-  const credential = {
-    present: false,
-    source: null as string | null,
-    stored: false,
-    strict: env.HUMANISH_STRICT_KEYS?.trim() === "1",
-    explicitlyEmpty: env.AGENTMAIL_API_KEY !== undefined && env.AGENTMAIL_API_KEY.trim() === "",
-  };
-  try {
-    const config = await readCommsConnections(cwd);
-    const [probe] = await probeKeySources(["AGENTMAIL_API_KEY"], {
-      cwd,
-      env,
-      ...(deps ? { deps } : {}),
-    });
-    credential.source = probe?.source ?? null;
-    credential.present = credential.source !== null;
-    credential.stored = listUserKeys(env, deps).includes("AGENTMAIL_API_KEY");
-    return {
-      ...base,
-      ok: true,
-      connections: Object.entries(config.connections).map(([name, value]) => ({ name, ...value })),
-      credential,
-      message:
-        "Checks are local. Authentication, permissions, capacity and delivery have not been verified.",
-    };
-  } catch {
-    return {
-      ...base,
-      ok: false,
-      connections: [],
-      credential,
-      message:
-        "Could not read connection setup. Check .humanish/local/comms.yaml and key-store permissions. No changes were made.",
     };
   }
 }

@@ -2,12 +2,9 @@
 import { failureTail } from "../evidence/redaction.js";
 import type { LabStateStepWhen, LabSubjectServe, LabSubjectState } from "../lab/types.js";
 import type { RunSubjectStateStepRecord } from "../run/bundle.js";
+import { corepackCommandFor, needsNodeRuntime, nodeBootstrapCommand } from "./runtime.js";
 import {
-  corepackCommandFor,
-  needsNodeRuntime,
-  nodeBootstrapCommand,
-} from "../routes/subject-runtime.js";
-import {
+  detachedTimersOf,
   probeUrl,
   readDetachedLog,
   runDetachedStep,
@@ -152,10 +149,7 @@ export async function runSubjectServePipeline(
     onPhaseComplete?: () => Promise<void>;
   } & DetachedTimers,
 ): Promise<void> {
-  const timers: DetachedTimers = {
-    ...(args.now === undefined ? {} : { now: args.now }),
-    ...(args.sleep === undefined ? {} : { sleep: args.sleep }),
-  };
+  const timers = detachedTimersOf(args);
   const now = args.now ?? Date.now;
   const refresh = args.onPhaseComplete ?? ((): Promise<void> => Promise.resolve());
   const runState = (when: LabStateStepWhen): Promise<void> =>

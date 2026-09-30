@@ -1,6 +1,6 @@
 import { failureTail } from "../evidence/redaction.js";
-import { needsNodeRuntime } from "../routes/subject-runtime.js";
-import { TERMINAL_NODE_BOOTSTRAP_COMMAND } from "../routes/terminal/node-bootstrap.js";
+import { needsNodeRuntime } from "./runtime.js";
+import { TERMINAL_NODE_BOOTSTRAP_COMMAND } from "./node-bootstrap.js";
 import { runDetachedStep } from "../substrates/detached.js";
 import type { Shell } from "../substrates/shell.js";
 import {

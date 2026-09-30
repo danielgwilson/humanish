@@ -9,7 +9,7 @@ import {
   firstRunSteps,
   starterActorFor,
 } from "../../src/cli/first-run-path.js";
-import { setUserKey } from "../../src/cli/key-resolution.js";
+import { setUserKey } from "../../src/keys/key-resolution.js";
 import { runInit } from "../../src/lab/init.js";
 
 // #505: `humanish init` wrote twenty files and stopped, and the only lab that could run was a $0

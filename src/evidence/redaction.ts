@@ -442,3 +442,13 @@ export function scrubLiterals(values: readonly string[]): (text: string) => stri
   return (text) =>
     values.reduce((current, value) => current.split(value).join("[REDACTED_SECRET]"), text);
 }
+
+/**
+ * Coerce an unknown thrown value to its message string. Prefer this over the
+ * inline `error instanceof Error ? error.message : String(error)` so error
+ * stringification stays uniform. Note: this does NOT redact -- sites that emit
+ * to public-bound artifacts must run the result through `redactText` first.
+ */
+export function toErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}

@@ -29,6 +29,14 @@ export interface DetachedTimers {
   sleep?: (ms: number) => Promise<void>;
 }
 
+/** The clock and sleep a caller injected, without keys it left absent. */
+export function detachedTimersOf(options: DetachedTimers): DetachedTimers {
+  return {
+    ...(options.now === undefined ? {} : { now: options.now }),
+    ...(options.sleep === undefined ? {} : { sleep: options.sleep }),
+  };
+}
+
 export interface DetachedStepOptions extends DetachedTimers {
   /** Short [a-z0-9-] label; names the script/status/log files under /tmp. */
   name: string;

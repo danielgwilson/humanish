@@ -13,6 +13,8 @@ export const COMMS_PROVIDERS = [
       "Fresh real inboxes for supported computer-use studies. Hosted processing; local evidence review only. Provider charges are separate.",
   },
 ] as const;
+/** The provider a new connection uses; the only one installed today. */
+export const DEFAULT_COMMS_PROVIDER = COMMS_PROVIDERS[0];
 /** Persisted in connection profiles, lease journals and receiving evidence. */
 export type ReceivingProviderId = (typeof COMMS_PROVIDERS)[number]["id"];
 export const RECEIVING_PROVIDER_IDS: readonly ReceivingProviderId[] = COMMS_PROVIDERS.map(
@@ -20,4 +22,8 @@ export const RECEIVING_PROVIDER_IDS: readonly ReceivingProviderId[] = COMMS_PROV
 );
 export function isReceivingProviderId(value: unknown): value is ReceivingProviderId {
   return RECEIVING_PROVIDER_IDS.some((id) => id === value);
+}
+/** The display name of an installed provider. */
+export function commsProviderLabel(id: ReceivingProviderId): string {
+  return COMMS_PROVIDERS.find((provider) => provider.id === id)?.label ?? id;
 }

@@ -1,7 +1,7 @@
 import { failureTail } from "../evidence/redaction.js";
 import type { LabSubjectServe, LabSubjectState } from "../lab/types.js";
 import type { RunSubjectStateStepRecord } from "../run/bundle.js";
-import { runDetachedStep, type DetachedTimers } from "../substrates/detached.js";
+import { detachedTimersOf, runDetachedStep, type DetachedTimers } from "../substrates/detached.js";
 import { runOrThrow, type Shell } from "../substrates/shell.js";
 import { runSubjectServePipeline, serveProvisioningBudgetMs } from "./serve.js";
 import {
@@ -53,10 +53,7 @@ export async function provisionCloneSubject(
     onPhase?: (event: SubjectPhaseEvent) => void;
   } & DetachedTimers,
 ): Promise<string | undefined> {
-  const timers: DetachedTimers = {
-    ...(args.now === undefined ? {} : { now: args.now }),
-    ...(args.sleep === undefined ? {} : { sleep: args.sleep }),
-  };
+  const timers = detachedTimersOf(args);
   const now = args.now ?? Date.now;
   let latestCommit: string | undefined;
   const refreshCommit = async (): Promise<void> => {

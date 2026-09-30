@@ -2,7 +2,7 @@
 //
 // It runs on python3, stdlib only. It used to run on node, and that was the #514 root cause: the
 // stock E2B desktop template ships python3 and curl but NO Node, and Node only arrives when a
-// subject's serve pipeline needs it (subject-runtime.ts). So on the app-url route, and on any
+// subject's serve pipeline needs it (src/subject/runtime.ts). So on the app-url route, and on any
 // subject served by something other than Node (the taskly benchmark is `python3 -m http.server`),
 // `node -e` exited 127 on every turn, the probe degraded to `{}`, and every urlIncludes /
 // textIncludes stop condition and task criterion went blind for the whole session. The only trace

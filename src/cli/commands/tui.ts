@@ -1,14 +1,15 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { Command } from "commander";
-import { setUserKey } from "../key-resolution.js";
-import { readCommsSetup, saveCommsConnection } from "../../comms/connections.js";
+import { setUserKey } from "../../keys/key-resolution.js";
+import { saveCommsConnection } from "../../comms/connections.js";
+import { readCommsSetup } from "../../comms/setup.js";
 import {
   checkCommsConnection,
   configureCommsLab,
   type CommsCheckResult,
 } from "../../comms/setup.js";
-import { inspectCommsRecovery, recoverCommsReceiving } from "../../comms/receiving.js";
+import { inspectCommsRecovery, recoverCommsReceiving } from "../../comms/receiving-recovery.js";
 import { resolveReceivingConnection } from "../../comms/receiving-runtime.js";
 import { promptSecret } from "../secret-prompt.js";
 import { runInit } from "../../lab/init.js";

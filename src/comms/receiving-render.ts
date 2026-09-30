@@ -1,5 +1,8 @@
-/** Participant-local real email. Raw content stays in memory and the participant's desktop. */
-import { randomUUID } from "node:crypto";
+/**
+ * The participant's real-email inbox pages, rendered from the host's messages. Pure: it returns the
+ * route files that receiving-surface.ts publishes. Raw content stays in memory and on the
+ * participant's desktop.
+ */
 import { parseFragment, type DefaultTreeAdapterTypes } from "parse5";
 import {
   capturedInlineImages,
@@ -7,21 +10,23 @@ import {
   MAX_INLINE_IMAGES,
   MAX_INLINE_IMAGES_BYTES,
 } from "./images.js";
-import { extractLinks, extractOtpCodes } from "./fake-inbox.js";
-import { shellQuote, type Shell, type ShellResult } from "../substrates/shell.js";
+import { extractLinks, extractOtpCodes } from "./extract.js";
 import type {
   ParticipantEmail,
-  ReceivingSurface,
   ReceivingSurfaceFile,
   RenderedReceivingInbox,
 } from "./receiving-types.js";
 
 export const RECEIVING_INBOX_CSP =
   "default-src 'none'; script-src 'none'; connect-src 'none'; img-src data:; style-src 'unsafe-inline'; font-src 'none'; object-src 'none'; frame-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
-const MAX_SNAPSHOT_BYTES = 32 * 1024 * 1024;
+export const MAX_SNAPSHOT_BYTES = 32 * 1024 * 1024;
 const MAX_MESSAGE_BYTES = 256 * 1024;
-const ID = /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/;
-const ROUTE = /^inbox(?:\.json|\/(?:[a-zA-Z0-9][a-zA-Z0-9_-]{0,63})(?:\/plain|\.json)?)?$/;
+/** The most messages one snapshot renders. */
+export const MAX_RECEIVING_MESSAGES = 100;
+/** Three files per message, the list and its JSON, and the three `latest` aliases. */
+export const MAX_SURFACE_FILES = MAX_RECEIVING_MESSAGES * 3 + 5;
+/** A local message or lease id: safe as one path segment. */
+export const LOCAL_ID = /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/;
 const TAGS = new Set(
   "a abbr b blockquote br caption center code col colgroup dd div dl dt em h1 h2 h3 h4 h5 h6 hr i img li ol p pre s small span strong sub sup table tbody td th thead tfoot tr u ul".split(
     " ",
@@ -126,7 +131,11 @@ export function renderReceivingInbox(options: {
   allowedOrigins: string[];
   originMap?: Array<[string, string]>;
 }): RenderedReceivingInbox {
-  if (!options.address || options.address.length > 512 || options.messages.length > 100)
+  if (
+    !options.address ||
+    options.address.length > 512 ||
+    options.messages.length > MAX_RECEIVING_MESSAGES
+  )
     throw new Error("Receiving inbox input exceeds limits.");
   const allowed = new Set(options.allowedOrigins.map(origin).filter((o): o is string => !!o));
   const rewrites = (options.originMap ?? []).map(
@@ -347,7 +356,7 @@ export function renderReceivingInbox(options: {
     });
   };
   const rendered = options.messages.map((message) => {
-    if (!ID.test(message.id) || message.id === "latest" || ids.has(message.id))
+    if (!LOCAL_ID.test(message.id) || message.id === "latest" || ids.has(message.id))
       throw new Error("Receiving inbox requires unique local message IDs.");
     ids.add(message.id);
     const c = content(message);
@@ -421,176 +430,5 @@ export function renderReceivingInbox(options: {
     secrets: [...secrets].filter(Boolean),
     linkCount: allLinks.size,
     codeCount: allCodes.size,
-  };
-}
-
-// JSON route map, not a static directory server. Every request reads one atomic snapshot, so removed
-// messages cannot remain reachable. No ingress, directory listing, aggregate inbox or provider IDs.
-const SERVER = `import http.server, json, os, re, sys, socket
-from pathlib import Path
-root, port, nonce, csp = Path(sys.argv[1]), int(sys.argv[2]), sys.argv[3], sys.argv[4]
-class Handler(http.server.BaseHTTPRequestHandler):
-  def log_message(self, *args): pass
-  def end_headers(self):
-    self.send_header('Content-Security-Policy', csp)
-    self.send_header('X-Content-Type-Options', 'nosniff')
-    self.send_header('Referrer-Policy', 'no-referrer')
-    self.send_header('Cache-Control', 'no-store')
-    super().end_headers()
-  def do_HEAD(self): self.respond(False)
-  def do_GET(self): self.respond(True)
-  def do_POST(self): self.send_error(405)
-  def do_PUT(self): self.send_error(405)
-  def do_DELETE(self): self.send_error(405)
-  def respond(self, send_body):
-    route = self.path
-    if self.headers.get('Host') not in ['127.0.0.1:'+str(port), 'localhost:'+str(port)]:
-      self.send_error(421); return
-    if route == '/health': body, mime = nonce, 'text/plain; charset=utf-8'
-    else:
-      if route == '/': route = '/inbox'
-      try:
-        with (root / 'snapshot.json').open('r') as f: snapshot = json.load(f)
-        item = snapshot.get('routes', {}).get(route)
-        if item is None: self.send_error(404); return
-        body, mime = item['body'], item['contentType']
-      except Exception:
-        self.send_error(503); return
-    data = body.encode('utf-8')
-    self.send_response(200)
-    self.send_header('Content-Type', mime)
-    self.send_header('Content-Length', str(len(data)))
-    self.end_headers()
-    if send_body: self.wfile.write(data)
-class Server(http.server.HTTPServer):
-  def get_request(self):
-    connection, address = super().get_request(); connection.settimeout(2); return connection, address
-server = Server(('127.0.0.1', port), Handler)
-server.timeout = 0.2
-(root / 'pid').write_text(str(os.getpid()))
-try:
-  while not (root / 'stop').exists(): server.handle_request()
-finally: server.server_close()
-`;
-
-/** Machine shell transport only; never opens a host/public listener or sends management credentials. */
-export async function deployReceivingInbox(
-  shell: Shell,
-  options: { leaseId: string; port?: number; requestTimeoutMs?: number },
-): Promise<ReceivingSurface> {
-  const port = options.port ?? 8026,
-    timeout = options.requestTimeoutMs ?? 15000;
-  if (
-    !ID.test(options.leaseId) ||
-    !Number.isInteger(port) ||
-    port < 1024 ||
-    port > 65535 ||
-    !Number.isInteger(timeout) ||
-    timeout < 100 ||
-    timeout > 30000
-  )
-    throw new Error("Invalid receiving inbox deployment options.");
-  const nonce = randomUUID(),
-    dir = `/tmp/humanish-mail-${options.leaseId}-${nonce}`,
-    url = `http://127.0.0.1:${port}/inbox`;
-  let stopped = false,
-    generation = 0,
-    tail = Promise.resolve();
-  async function withTransportTimeout<T>(operation: Promise<T>): Promise<T> {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    try {
-      return await Promise.race([
-        operation,
-        new Promise<never>((_, reject) => {
-          timer = setTimeout(
-            () => reject(new Error("Receiving inbox transport timed out.")),
-            timeout,
-          );
-        }),
-      ]);
-    } catch {
-      throw new Error("Receiving inbox transport failed or timed out.");
-    } finally {
-      if (timer) clearTimeout(timer);
-    }
-  }
-  async function checked(call: Promise<ShellResult>): Promise<string> {
-    const result = await withTransportTimeout(call);
-    if (result.exitCode !== 0) throw new Error("Receiving inbox desktop command failed.");
-    return result.stdout;
-  }
-  const command = (cmd: string): Promise<string> =>
-    checked(shell.run(cmd, { requestTimeoutMs: timeout, timeoutMs: timeout }));
-  const write = async (path: string, data: string): Promise<void> => {
-    await withTransportTimeout(shell.writeFile(path, data, { requestTimeoutMs: timeout }));
-  };
-  const stop = async (): Promise<void> => {
-    stopped = true;
-    await tail.catch(() => undefined);
-    // The server owns its process lifetime. A file signal avoids PID-reuse deletion authority.
-    await command(
-      `python3 -c ${shellQuote("import pathlib,time,sys,shutil\np=pathlib.Path(sys.argv[1])\nif not p.exists(): sys.exit(0)\n(p/'stop').touch()\nend=time.monotonic()+4\nwhile time.monotonic()<end:\n try:\n  pid=int((p/'pid').read_text()); cmd=pathlib.Path('/proc/'+str(pid)+'/cmdline').read_bytes()\n except (FileNotFoundError,ProcessLookupError): break\n if str(p/'server.py').encode() not in cmd: break\n time.sleep(.1)\nelse: sys.exit(1)\nshutil.rmtree(p)\n")} ${shellQuote(dir)}`,
-    );
-  };
-  try {
-    await command(`mkdir -m 700 ${shellQuote(dir)}`);
-    await write(`${dir}/snapshot.json`, '{"generation":0,"routes":{}}');
-    await write(`${dir}/server.py`, SERVER);
-    await checked(
-      shell.start(
-        `python3 ${shellQuote(`${dir}/server.py`)} ${shellQuote(dir)} ${port} ${shellQuote(nonce)} ${shellQuote(RECEIVING_INBOX_CSP)}`,
-        { requestTimeoutMs: timeout, timeoutMs: timeout },
-      ),
-    );
-    const ready = await command(
-      `python3 -c ${shellQuote("import sys,time,urllib.request\nend=time.monotonic()+float(sys.argv[3])\nwhile time.monotonic()<end:\n try:\n  response=urllib.request.urlopen(sys.argv[1],timeout=.5)\n  if response.read(128).decode()==sys.argv[2]: sys.exit(0)\n except Exception: pass\n time.sleep(.1)\nsys.exit(1)\n")} ${shellQuote(`http://127.0.0.1:${port}/health`)} ${shellQuote(nonce)} ${Math.max(0.1, timeout / 1000 - 0.2)}`,
-    );
-    void ready;
-  } catch {
-    await stop().catch(() => undefined);
-    throw new Error("Receiving inbox could not start.");
-  }
-  return {
-    url,
-    publish(files) {
-      if (stopped) return Promise.reject(new Error("Receiving inbox is stopped."));
-      const routes: Record<string, ReceivingSurfaceFile> = Object.create(null) as Record<
-        string,
-        ReceivingSurfaceFile
-      >;
-      for (const file of files) {
-        if (
-          !ROUTE.test(file.path) ||
-          routes[`/${file.path}`] ||
-          !["text/html; charset=utf-8", "application/json; charset=utf-8"].includes(
-            file.contentType,
-          ) ||
-          typeof file.body !== "string"
-        )
-          return Promise.reject(new Error("Invalid receiving inbox snapshot."));
-        routes[`/${file.path}`] = { ...file };
-      }
-      const snapshot = JSON.stringify({ generation: ++generation, routes });
-      if (files.length > 305 || Buffer.byteLength(snapshot) > MAX_SNAPSHOT_BYTES)
-        return Promise.reject(new Error("Receiving inbox snapshot exceeds limits."));
-      const next = tail.then(async () => {
-        if (stopped) throw new Error("Receiving inbox is stopped.");
-        const temporary = `${dir}/snapshot-${randomUUID()}.json`;
-        try {
-          await write(temporary, snapshot);
-          if (stopped) throw new Error("Receiving inbox is stopped.");
-          // Monotonic generations also reject an SDK operation that completes after its caller's
-          // timeout. The desktop-side lock covers read/compare/rename; transport timeouts do not.
-          await command(
-            `python3 -c ${shellQuote("import fcntl,json,os,pathlib,sys,urllib.request\np=pathlib.Path(sys.argv[1]); pending=pathlib.Path(sys.argv[2])\nwith (p/'publish.lock').open('a') as lock:\n fcntl.flock(lock,fcntl.LOCK_EX)\n if (p/'stop').exists(): sys.exit(1)\n with pending.open() as f: new=json.load(f)\n with (p/'snapshot.json').open() as f: old=json.load(f)\n if new['generation']<=old['generation']: sys.exit(1)\n os.replace(pending,p/'snapshot.json')\nwith urllib.request.urlopen(sys.argv[3],timeout=2) as response:\n if response.read(128).decode()!=sys.argv[4]: sys.exit(1)\n")} ${shellQuote(dir)} ${shellQuote(temporary)} ${shellQuote(`http://127.0.0.1:${port}/health`)} ${shellQuote(nonce)}`,
-          );
-        } finally {
-          await command(`rm -f ${shellQuote(temporary)}`).catch(() => undefined);
-        }
-      });
-      tail = next.catch(() => undefined);
-      return next;
-    },
-    stop,
   };
 }

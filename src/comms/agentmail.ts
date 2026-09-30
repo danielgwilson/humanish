@@ -432,6 +432,7 @@ export function createAgentMailReceiver(options: {
     // POST /v0/inboxes with a known client_id returns the original inbox.
     idempotentAcquire: true,
     codes: AGENTMAIL_RECEIVING_CODES,
+    authRejectedCode: "agentmail_auth_rejected",
     authenticate: (context) =>
       operation(context, async (budget): Promise<ReceivingIdentity> => {
         const raw = success(await api("/v0/auth/me", "GET", budget));

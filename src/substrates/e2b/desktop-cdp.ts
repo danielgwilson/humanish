@@ -5,8 +5,7 @@ import {
   parseChromeCdpProbeOutput,
   type ChromeMobileEmulationRequest,
 } from "../../routes/computer-use/cdp-probe.js";
-import { failureTail } from "../../evidence/redaction.js";
-import { toErrorMessage } from "../command-failure.js";
+import { failureTail, toErrorMessage } from "../../evidence/redaction.js";
 import type { RunDesktopGeometry } from "../../run/streams.js";
 import { readDetachedLog, startDetachedProcess } from "../detached.js";
 import type { ShellResult } from "../shell.js";

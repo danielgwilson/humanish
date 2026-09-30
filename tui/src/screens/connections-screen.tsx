@@ -1,8 +1,11 @@
 import { Box, Text, useInput } from "ink";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import type { CommsSetupStatus } from "../../../src/comms/connections.js";
-import type { CommsCheckResult, CommsConfigureResult } from "../../../src/comms/setup.js";
-import type { CommsRecoveryEntry } from "../../../src/comms/receiving.js";
+import type {
+  CommsCheckResult,
+  CommsConfigureResult,
+  CommsSetupStatus,
+} from "../../../src/comms/setup.js";
+import type { CommsRecoveryEntry } from "../../../src/comms/receiving-recovery.js";
 import type { TuiCapabilities } from "../../../src/tui/contract.js";
 import { listWindow } from "../../../src/run/projection.js";
 import { fitLabelToWidth } from "../fit-text.js";

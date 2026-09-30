@@ -25,9 +25,8 @@ import {
 } from "./sandbox-receipts.js";
 import path from "node:path";
 
-import { toErrorMessage } from "../substrates/command-failure.js";
 import { destroyE2BSandbox } from "../substrates/e2b/sandbox.js";
-import { redactText } from "../evidence/redaction.js";
+import { redactText, toErrorMessage } from "../evidence/redaction.js";
 
 const RECLAIM_RESULT_SCHEMA = "humanish.reclaim-result.v1";
 export const RECLAIM_RECEIPT_ARTIFACT = "reclaim-receipt.json";

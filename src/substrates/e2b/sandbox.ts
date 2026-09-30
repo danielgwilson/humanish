@@ -4,10 +4,9 @@
 // the run directory before the caller gets the handle. The desktop startup guard
 // (guardDesktopSandboxCreate) is installed by loadE2BDesktopModule, so a create whose desktop
 // startup fails has already reclaimed its handle when the error reaches the retry here.
-import { redactText } from "../../evidence/redaction.js";
+import { redactText, toErrorMessage } from "../../evidence/redaction.js";
 import { appendSandboxReceipt } from "../../run/sandbox-receipts.js";
 import type { PreparedOutputRoot } from "../../run/selected-output-paths.js";
-import { toErrorMessage } from "../command-failure.js";
 import {
   ownDesktopAllocation,
   type DesktopReleaseResult,

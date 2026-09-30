@@ -1,8 +1,7 @@
-import { failureTail } from "../evidence/redaction.js";
+import { failureTail, toErrorMessage } from "../evidence/redaction.js";
 import type { LabSubjectServe, LabSubjectState } from "../lab/types.js";
 import type { RunSubjectStateStepRecord } from "../run/bundle.js";
-import { toErrorMessage } from "../substrates/command-failure.js";
-import { runDetachedStep, type DetachedTimers } from "../substrates/detached.js";
+import { detachedTimersOf, runDetachedStep, type DetachedTimers } from "../substrates/detached.js";
 import type { Shell } from "../substrates/shell.js";
 import { runSubjectServePipeline } from "./serve.js";
 import {
@@ -43,10 +42,7 @@ export async function provisionLocalTreeSubject(
     onPhase?: (event: SubjectPhaseEvent) => void;
   } & DetachedTimers,
 ): Promise<void> {
-  const timers: DetachedTimers = {
-    ...(args.now === undefined ? {} : { now: args.now }),
-    ...(args.sleep === undefined ? {} : { sleep: args.sleep }),
-  };
+  const timers = detachedTimersOf(args);
   const now = args.now ?? Date.now;
 
   const uploadStartedAt = now();
