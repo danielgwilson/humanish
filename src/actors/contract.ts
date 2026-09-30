@@ -12,9 +12,9 @@ import {
   type CuaProviderFailurePhase,
 } from "./computer-use/provider-error.js";
 
-// The provider-neutral evidence schema. Codex item/* events, Claude
-// ToolUse/ToolResult blocks, pi tool_execution_* events, and computer-use
-// cycles all map onto this one ActorTrace. See docs/architecture/actor-contract.md.
+// The provider-neutral evidence schema. Codex item/* events, computer-use cycles,
+// scripted browser steps and terminal-agent exec output all map onto this one
+// ActorTrace. See docs/architecture/actor-contract.md.
 //
 // The schema maps the providers and routes implemented by the closed first-party
 // registry. The broader Actor.run(input), RedactionHooks, ApprovalPolicy, and
@@ -92,10 +92,10 @@ export type ActorCompletionReason =
   | "harness_error";
 
 // "scripted-browser" is the deterministic, model-free browser-actuation lane — distinct from
-// "computer-use" (raw pixels + a model) and "app". "terminal" is the autonomous-agent lane: a
+// "computer-use" (raw pixels + a model). "terminal" is the autonomous-agent lane: a
 // real coding agent (Codex) driving a CLI/product from inside an E2B shell — distinct from
 // "code" (the local/app-server Codex lanes that run on the operator's machine).
-export type ActorLane = "code" | "app" | "computer-use" | "scripted-browser" | "terminal";
+export type ActorLane = "code" | "computer-use" | "scripted-browser" | "terminal";
 
 // "terminal-exec" is the captured non-interactive exec stream of an in-sandbox agent (stdin
 // disabled): `codex exec --json` launched via `commands.run`, output captured. It is NOT an
@@ -105,7 +105,6 @@ export type ActorLane = "code" | "app" | "computer-use" | "scripted-browser" | "
 export type ActorProtocol =
   | "json-rpc"
   | "json-stream"
-  | "in-process-sdk"
   | "cua-loop"
   | "scripted-steps"
   | "terminal-exec";
@@ -463,34 +462,6 @@ export const CODEX_APP_SERVER_CAPABILITIES: ActorCapabilities = {
   byoModel: false,
   preGrantableApprovals: true,
   inProcessTools: false,
-  license: "open",
-};
-
-// pi-agent-core (@earendil-works/pi-agent-core): an embeddable, provider-agnostic
-// agent loop (MIT). byoModel: 15+ providers incl. local. No confirmed pre-grant
-// approval hook today, so preGrantableApprovals is false until verified.
-export const PI_AGENT_CORE_CAPABILITIES: ActorCapabilities = {
-  headless: true,
-  structuredTrace: true,
-  lanes: ["code", "app"],
-  producesScreenshots: false,
-  byoModel: true,
-  preGrantableApprovals: false,
-  inProcessTools: true,
-  license: "open",
-};
-
-// Claude Agent SDK (@anthropic-ai/claude-agent-sdk): in-process query() stream
-// with typed SDK messages. Pre-grant approvals via permissionMode/allowedTools.
-// Anthropic-centric models (others via a proxy), so byoModel is false.
-export const CLAUDE_AGENT_SDK_CAPABILITIES: ActorCapabilities = {
-  headless: true,
-  structuredTrace: true,
-  lanes: ["code", "app"],
-  producesScreenshots: false,
-  byoModel: false,
-  preGrantableApprovals: true,
-  inProcessTools: true,
   license: "open",
 };
 

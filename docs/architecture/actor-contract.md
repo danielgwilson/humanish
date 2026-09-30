@@ -1,12 +1,12 @@
 # Actor Contract
 
-Date: 2026-06-06 (current-state note updated 2026-07-14)
+Date: 2026-06-06 (current-state note updated 2026-09-30)
 
 Status: accepted contract with a partially open extension surface. Shipped:
 the evidence schema `humanish.actor-trace.v1` (`src/actors/contract.ts`) and a
-closed first-party registry of six descriptors (`src/actors/registry.ts`:
-`codex-app-server`, `pi-agent-core`, `claude-agent-sdk`,
-`openai-computer-use`, `scripted-browser`, `codex-exec`). `actors[0].type` is a
+closed first-party registry of five descriptors (`src/actors/registry.ts`:
+`codex-app-server`, `openai-computer-use`, `local-agent`, `scripted-browser`,
+`codex-exec`). `actors[0].type` is a
 real dispatch key on the computer-use, scripted-browser, and terminal-product
 routes. Product scoring, feedback, and artifact hooks are extension seams, but
 public out-of-tree actor registration and its conformance certification are not
@@ -21,11 +21,17 @@ descriptor `runSession` is a fail-closed compatibility entry. Live execution is
 owned by `runTerminalProductLab`, which coordinates sandbox creation,
 command-scoped runtime auth, evidence, caps, and by-id cleanup.
 
+The `pi-agent-core` and `claude-agent-sdk` descriptors, the `app` lane and the
+`in-process-sdk` protocol were removed. No lab route dispatched either
+descriptor, and a lab that names one now fails to parse. A signed-in Claude
+Code drives computer-use studies through `local-agent`, which plugs into the
+provider-neutral `CuaProvider` port in `src/actors/computer-use/loop.ts`.
+
 ## Context
 
 > Historical context: this section describes the world as it stood when the
 > design was accepted (one real actor, hardcoded dispatch). The current state is
-> the six-descriptor first-party registry described in the status note above.
+> the five-descriptor first-party registry described in the status note above.
 
 An actor is the thing that drives a persona scenario and produces evidence. At
 design time Humanish had exactly one real actor: the local Codex integration in
@@ -54,8 +60,9 @@ API surface.
    subprocess protocol (Codex stdio JSON-RPC, `pi --mode rpc`, `claude -p
 --output-format stream-json`) or an in-process SDK (`pi-agent-core`, Claude
    Agent SDK, Stagehand). The existing Codex app-server integration is the
-   reference adapter; `pi-agent-core` is the first in-process-SDK adapter, chosen
-   to prove both shapes early.
+   reference adapter. `pi-agent-core` was planned as the first in-process-SDK
+   adapter to prove both shapes early; it shipped only as a trace mapper with no
+   route and has been removed.
 
 2. **One normalized evidence schema: `humanish.actor-trace.v1`.** Codex `item/*`
    events, Claude `ToolUse`/`ToolResult` blocks, pi `tool_execution_*` events,
@@ -121,8 +128,8 @@ export type ActorCompletionReason =
   // (distinct from actor_error/harness_error)
   | "harness_error";
 
-// One normalized evidence row. Codex item/*, Claude ToolUse/ToolResult,
-// pi tool_execution_*, and computer_call cycles all collapse onto this.
+// One normalized evidence row. Codex item/*, computer-use cycles, scripted
+// browser steps and terminal-agent exec output all collapse onto this.
 export interface ActorTraceItem {
   id: string;
   kind:
@@ -148,7 +155,7 @@ export interface ActorTraceItem {
 export interface ActorCapabilities {
   headless: boolean;
   structuredTrace: boolean;
-  lanes: Array<"code" | "app" | "computer-use" | "scripted-browser" | "terminal">;
+  lanes: Array<"code" | "computer-use" | "scripted-browser" | "terminal">;
   producesScreenshots: boolean;
   byoModel: boolean;
   preGrantableApprovals: boolean; // can run unattended without a human prompt
@@ -159,11 +166,10 @@ export interface ActorCapabilities {
 
 export interface ActorTrace {
   schema: typeof ACTOR_TRACE_SCHEMA;
-  provider: string; // e.g. "codex-app-server" | "pi-agent-core" | "claude-agent-sdk" | "openai-responses-cu" | "browser-persona" | "codex"
+  provider: string; // e.g. "codex-app-server" | "openai-responses-cu" | "browser-persona" | "codex"
   providerVersion?: string;
-  protocol:
-    "json-rpc" | "json-stream" | "in-process-sdk" | "cua-loop" | "scripted-steps" | "terminal-exec";
-  lane: "code" | "app" | "computer-use" | "scripted-browser" | "terminal";
+  protocol: "json-rpc" | "json-stream" | "cua-loop" | "scripted-steps" | "terminal-exec";
+  lane: "code" | "computer-use" | "scripted-browser" | "terminal";
   persona: { id: string; traitsApplied: string[]; promptDigest: string }; // proves traits were threaded
   // "raw" = full-fidelity frames retained (valid for LOCAL use; redact before
   // publishing); "blurred"/"ocr_scrubbed" = publish-safe; "n/a" = none captured.
@@ -256,7 +262,7 @@ export interface Actor {
 - **Capabilities.** Declare them honestly; the registry uses them to refuse
   unsuitable dispatch.
 - **Cost (estimate vs. charge).** `tokenUsage.costUsd` stays RESERVED for a
-  real, provider-returned charge (the codex/agent-SDK path) — a bare `costUsd`
+  real, provider-returned charge (the codex path) — a bare `costUsd`
   always means "the provider billed this". The optional `estimatedCost`
   (`humanish.actor-estimated-cost.v1`) is a SEPARATE, differently-named field: a
   token-derived rate-table multiply from the operator-editable `src/run/pricing.ts`,
@@ -270,7 +276,7 @@ export interface Actor {
 ## The scripted-browser lane (shipped)
 
 `scripted-browser` is the deterministic, model-free browser-actuation lane — distinct from
-`computer-use` (raw pixels + a model deciding actions) and `app`. The registered
+`computer-use` (raw pixels + a model deciding actions). The registered
 `scripted-browser` actor (`src/actors/scripted-browser.ts`) replays a committed scenario's
 browser steps with playwright against a loopback app; the steps ARE the behavior, so
 `byoModel: false` means there is NO model, and `tokenUsage` records zeros as an affirmative
@@ -466,8 +472,8 @@ turns as a stop signal.
 | Adapter                                                                                       | headless                     | structured trace                          | sandbox                              | BYO model               | license                   | actor fit    |
 | --------------------------------------------------------------------------------------------- | ---------------------------- | ----------------------------------------- | ------------------------------------ | ----------------------- | ------------------------- | ------------ |
 | codex-app-server (reference)                                                                  | yes (stdio JSON-RPC)         | typed item/*                              | OS Seatbelt/seccomp + approvalPolicy | OpenAI-first            | Apache-2.0                | code         |
-| pi-agent-core (first new)                                                                     | yes (SDK + rpc/json)         | event stream + session JSONL + token/cost | BYO container + hook gating          | 15+ providers, local    | MIT                       | code, app    |
-| claude-agent-sdk                                                                              | yes (SDK + `-p` stream-json) | typed ToolUse/ToolResult + cost           | OS sandbox + dontAsk/allowedTools    | Anthropic-centric       | SDK MIT (CLI proprietary) | code, app    |
+| pi-agent-core (removed)                                                                       | yes (SDK + rpc/json)         | event stream + session JSONL + token/cost | BYO container + hook gating          | 15+ providers, local    | MIT                       | code, app    |
+| claude-agent-sdk (removed)                                                                    | yes (SDK + `-p` stream-json) | typed ToolUse/ToolResult + cost           | OS sandbox + dontAsk/allowedTools    | Anthropic-centric       | SDK MIT (CLI proprietary) | code, app    |
 | stagehand-cua (roadmap, not shipped; `openai-computer-use` is the shipped computer-use actor) | yes (SDK, mode:'cua')        | structured results + replay               | Playwright/Browserbase isolation     | OpenAI/Anthropic/Google | MIT                       | computer-use |
 
 ## Sequencing
@@ -487,8 +493,10 @@ turns as a stop signal.
    is provider-neutral); then a follow-up live SDK shim behind a DI seam, deferred
    until the package identity (`@earendil-works/pi-agent-core` vs
    `@mariozechner/pi-coding-agent`) and the Node `>=22.19` vs engines `>=20` gap
-   are pinned against an installed build.
-5. `claude-agent-sdk` adapter (the `app` lane).
+   are pinned against an installed build. The live shim never landed, and the
+   mapper-only descriptor was removed because no route dispatched it.
+5. `claude-agent-sdk` adapter (the `app` lane). It shipped as a descriptor with
+   a live session but no route, and was removed along with the `app` lane.
 6. Computer-use lane. (Shipped as `openai-computer-use` — registered 0.3.0,
    lab-dispatched 0.4.0; `stagehand-cua` as a multi-provider front remains
    not-yet-shipped roadmap.)

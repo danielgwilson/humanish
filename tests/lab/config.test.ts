@@ -58,6 +58,26 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     expect(result.warnings).toEqual([]);
   });
 
+  it.each(["pi-agent-core", "claude-agent-sdk"])(
+    "rejects the unregistered actor type %s on a route that ignores actors[0].type",
+    (type) => {
+      const result = parseLabConfig({
+        schema: LAB_CONFIG_SCHEMA,
+        id: "first-run",
+        subject: { source: "this-repo" },
+        actors: [{ type }],
+        scenario: { mode: "dry-run" },
+      });
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.code).toBe("HUMANISH_LAB_INVALID");
+      expect(result.error.message).toContain(`"${type}"`);
+      expect(result.error.message).toContain("local-agent");
+      // codex-app-server is registered, but no lab route dispatches its "code" lane.
+      expect(result.error.message).not.toContain("codex-app-server");
+    },
+  );
+
   it("parses a comms:email:fake block (adopter-named injectEnv, port, declared recipients)", () => {
     const result = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,

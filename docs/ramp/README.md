@@ -81,7 +81,7 @@ Implemented:
 - first-class lab manifest resolution through `humanish/labs/*.yaml` and
   ignored `.humanish/labs/*.yaml` overlays — `humanish.lab.v2` compositions
   (`src/lab/config.ts`), one engine, no hardcoded lab kinds;
-- a first-party actor registry with seven registered descriptors
+- a first-party actor registry with five registered descriptors
   (`src/actors/registry.ts`); `actors[0].type` is a real dispatch key on the
   computer-use, scripted-browser, and terminal-product routes;
 - a computer-use route and clone subject provider: `subject.source: app-url`
@@ -132,7 +132,7 @@ without changing its success standard.
 - capability receipts are not adopter replacement: no first-party deletion
   branch has yet removed a bespoke generic harness while preserving
   decision-equivalent proof;
-- the seven actor descriptors are a closed first-party union, not a supported
+- the five actor descriptors are a closed first-party union, not a supported
   out-of-tree actor-registration API;
 - run storage and provider-resource lifecycle logic still spans several routes
   instead of one `RunStore` and `ResourceLease` boundary;

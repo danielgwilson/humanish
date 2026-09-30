@@ -19,18 +19,13 @@ import {
   type ScriptedLocatorLike,
   type ScriptedPageLike,
 } from "../../src/actors/scripted-browser.js";
-import {
-  buildClaudeSession,
-  buildCodexResult,
-  buildPiSession,
-  fixturePersona,
-} from "./fixtures.js";
+import { buildCodexResult, fixturePersona } from "./fixtures.js";
 import { syntheticPng1x1 } from "../image-fixtures.js";
 
 const PNG_1X1 = syntheticPng1x1();
 
 // The shared contract every adapter's ActorTrace must satisfy. This is what makes
-// the harnesses interchangeable (ADR step 7): one persona run through codex and pi
+// the harnesses interchangeable (ADR step 7): one persona run through any adapter
 // yields the same trace shape, completion vocabulary, and redaction status.
 const ACTOR_STATUSES = ["passed", "failed", "blocked", "timed_out"];
 const COMPLETION_REASONS = [
@@ -61,10 +56,8 @@ const ITEM_KINDS = [
 function assertConformsToActorTrace(trace: ActorTrace): void {
   expect(trace.schema).toBe(ACTOR_TRACE_SCHEMA);
   expect(typeof trace.provider).toBe("string");
-  expect(["json-rpc", "json-stream", "in-process-sdk", "cua-loop", "scripted-steps"]).toContain(
-    trace.protocol,
-  );
-  expect(["code", "app", "computer-use", "scripted-browser"]).toContain(trace.lane);
+  expect(["json-rpc", "json-stream", "cua-loop", "scripted-steps"]).toContain(trace.protocol);
+  expect(["code", "computer-use", "scripted-browser"]).toContain(trace.lane);
   expect(ACTOR_STATUSES).toContain(trace.status);
   expect(COMPLETION_REASONS).toContain(trace.completionReason);
   expect(typeof trace.reason).toBe("string");
@@ -112,55 +105,20 @@ function assertConformsToActorTrace(trace: ActorTrace): void {
   expect(JSON.stringify(trace)).not.toContain("/private/");
 }
 
-describe("cross-harness ActorTrace conformance", () => {
+describe("codex-app-server ActorTrace conformance", () => {
   const codex = getActor("codex-app-server").toActorTrace(buildCodexResult(), fixturePersona);
-  const pi = getActor("pi-agent-core").toActorTrace(buildPiSession(), fixturePersona);
-  const claude = getActor("claude-agent-sdk").toActorTrace(buildClaudeSession(), fixturePersona);
-  const traces = [
-    { name: "codex-app-server", trace: codex },
-    { name: "pi-agent-core", trace: pi },
-    { name: "claude-agent-sdk", trace: claude },
-  ];
 
-  for (const { name, trace } of traces) {
-    it(`${name} produces a conformant trace`, () => {
-      assertConformsToActorTrace(trace);
-    });
-  }
-
-  it("all adapters emit the identical envelope shape (same top-level keys)", () => {
-    const codexKeys = Object.keys(codex).sort();
-    expect(Object.keys(pi).sort()).toEqual(codexKeys);
-    expect(Object.keys(claude).sort()).toEqual(codexKeys);
+  it("produces a conformant trace", () => {
+    assertConformsToActorTrace(codex);
   });
 
-  it("all adapters thread the same persona reference identically", () => {
-    for (const { trace } of traces) {
-      expect(trace.persona).toEqual(fixturePersona);
-    }
+  it("threads the persona reference unchanged", () => {
+    expect(codex.persona).toEqual(fixturePersona);
   });
 
-  it("all adapters use the shared status and completion-reason vocabulary", () => {
-    for (const { trace } of traces) {
-      expect(ACTOR_STATUSES).toContain(trace.status);
-      expect(COMPLETION_REASONS).toContain(trace.completionReason);
-    }
-  });
-
-  it("all adapters report redaction passed", () => {
-    for (const { trace } of traces) {
-      expect(trace.redaction.status).toBe("passed");
-    }
-  });
-
-  it("each adapter declares its own distinct provider and protocol", () => {
+  it("declares its provider and protocol", () => {
     expect(codex.provider).toBe("codex-app-server");
-    expect(pi.provider).toBe("pi-agent-core");
-    expect(claude.provider).toBe("claude-agent-sdk");
     expect(codex.protocol).toBe("json-rpc");
-    expect(pi.protocol).toBe("in-process-sdk");
-    expect(claude.protocol).toBe("in-process-sdk");
-    expect(new Set(traces.map((entry) => entry.trace.provider)).size).toBe(3);
   });
 });
 

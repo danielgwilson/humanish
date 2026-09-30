@@ -806,20 +806,20 @@ of a timeout. Participant outcome text includes the phase when available.
 
 Actors execute or simulate the trial. Actor evidence is the provider-neutral
 `humanish.actor-trace.v1` (`src/actors/contract.ts`): Codex app-server items,
-Claude Agent SDK blocks, pi events, computer-use cycles, scripted browser
-steps, and in-sandbox terminal-agent exec output all map onto one `ActorTrace`.
-Registered actors live in
-`src/actors/registry.ts` (`codex-app-server`, `pi-agent-core`,
-`claude-agent-sdk`, `openai-computer-use`, `scripted-browser`, `codex-exec`).
-There is no `humanish.actor.v1`; that name never shipped.
+computer-use cycles, scripted browser steps, and in-sandbox terminal-agent exec
+output all map onto one `ActorTrace`. Registered actors live in
+`src/actors/registry.ts` (`codex-app-server`, `openai-computer-use`,
+`local-agent`, `scripted-browser`, `codex-exec`). A lab that names
+`pi-agent-core` or `claude-agent-sdk` fails to parse. There is no
+`humanish.actor.v1`; that name never shipped.
 
 Core-owned fields:
 
 - `schema`
 - `provider` / `providerVersion`
-- `protocol` (`json-rpc` | `json-stream` | `in-process-sdk` | `cua-loop` |
-  `scripted-steps` | `terminal-exec`)
-- `lane` (`code` | `app` | `computer-use` | `scripted-browser` | `terminal`)
+- `protocol` (`json-rpc` | `json-stream` | `cua-loop` | `scripted-steps` |
+  `terminal-exec`)
+- `lane` (`code` | `computer-use` | `scripted-browser` | `terminal`)
 - `persona` (`id`, `traitsApplied`, `promptDigest`)
 - `capabilities.keyPlacement` (`external` | `in-sandbox-command-scoped`): WHERE
   the actor's runtime key lives — registry metadata the engine enforces. The
