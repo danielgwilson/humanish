@@ -2302,6 +2302,75 @@ describe("concurrent run lifetime", () => {
       "fake-sandbox-004",
     ]);
   });
+
+  it("publishes the in-progress bundle and each seat's live trace with no Observer attached", async () => {
+    const state = { worldVersion: 0 };
+    const { hooks } = baseHooks(state, async () => {});
+    const runId = "concurrent-unattached-snapshot";
+    const runsRoot = path.join(cwd, ".humanish", "runs");
+    let seatsStarted = 0;
+    let releaseSeats: () => void = () => {};
+    const seatsReleased = new Promise<void>((resolve) => {
+      releaseSeats = resolve;
+    });
+    hooks.runSession = async (options: CuaActorSessionOptions): Promise<CuaLoopResult> => {
+      seatsStarted += 1;
+      options.onTrace?.(
+        [{ id: "live-click", kind: "ui_action", lifecycle: "completed", title: "click" }],
+        { input: 10, output: 2 },
+      );
+      await seatsReleased;
+      state.worldVersion += 1;
+      const trace = makeTrace({
+        persona: options.persona,
+        status: "passed",
+        completionReason: "goal_satisfied",
+        actions: 1,
+        messages: 1,
+      });
+      return { status: "passed", completionReason: "goal_satisfied", reason: trace.reason, trace };
+    };
+
+    const runPromise = runConcurrentSharedWorld({
+      cwd,
+      config: concurrentConfig(3, 3),
+      dryRun: false,
+      hooks,
+      runId,
+    });
+    try {
+      await waitForCondition("all seats started", () => seatsStarted === 3);
+      const readBundle = async (): Promise<RunBundle> =>
+        JSON.parse(await readFile(path.join(runsRoot, runId, "run.json"), "utf8")) as RunBundle;
+      await waitForCondition(
+        "every seat's live trace in run.json",
+        async () =>
+          (await readBundle()).streams.every((stream) =>
+            stream.liveActor?.items.some((item) => item.id === "live-click"),
+          ),
+        5_000,
+      );
+      const midRun = await readBundle();
+      expect(midRun.streams.map((stream) => stream.status)).toEqual([
+        "running",
+        "running",
+        "running",
+      ]);
+      expect(midRun.streams.every((stream) => stream.actor === undefined)).toBe(true);
+      const latest = JSON.parse(await readFile(path.join(runsRoot, "latest.json"), "utf8"));
+      expect(latest.runId).toBe(runId);
+
+      releaseSeats();
+      const result = await runPromise;
+      expect(result.ok).toBe(true);
+      const final = await readBundle();
+      expect(final.streams.every((stream) => stream.liveActor === undefined)).toBe(true);
+      expect((await verifyRun(cwd, runId)).ok).toBe(true);
+    } finally {
+      releaseSeats();
+      await runPromise.catch(() => undefined);
+    }
+  });
 });
 
 describe("concurrent shared-world project binding", () => {

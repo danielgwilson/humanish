@@ -1272,3 +1272,65 @@ describe("the live Observer gate on the external-public plane", () => {
     expect(analysis).not.toHaveBeenCalled();
   });
 });
+
+describe("the in-progress bundle on the external-public plane", () => {
+  it("publishes each seat's live trace with no Observer attached", async () => {
+    const inner = makeExternalRunSession({ seen: [] });
+    let seatsTraced = 0;
+    let releaseHost: () => void = () => {};
+    const hostReleased = new Promise<void>((resolve) => {
+      releaseHost = resolve;
+    });
+    const { hooks } = makeExternalHooks(async (options) => {
+      options.onTrace?.(
+        [{ id: "live-click", kind: "ui_action", lifecycle: "completed", title: "click" }],
+        { input: 10, output: 2 },
+      );
+      seatsTraced += 1;
+      const result = await inner(options);
+      // The host holds its seat open until the test has read the mid-run bundle.
+      if (options.instructions.toLowerCase().includes("create a")) await hostReleased;
+      return result;
+    });
+    const runId = "external-public-unattached-snapshot";
+    const runJson = path.join(cwd, ".humanish", "runs", runId, "run.json");
+    const runPromise = runConcurrentSharedWorld({
+      cwd,
+      config: parseExternal(),
+      dryRun: false,
+      hooks,
+      runId,
+    });
+    try {
+      let midRun: RunBundle | undefined;
+      const deadline = Date.now() + 5_000;
+      while (Date.now() < deadline) {
+        midRun = await readFile(runJson, "utf8").then(
+          (text) => JSON.parse(text) as RunBundle,
+          () => undefined,
+        );
+        const traced = midRun?.streams.every((stream) =>
+          stream.liveActor?.items.some((item) => item.id === "live-click"),
+        );
+        if (seatsTraced === 3 && traced === true) break;
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      expect(seatsTraced).toBe(3);
+      expect(midRun?.streams).toHaveLength(3);
+      expect(
+        midRun?.streams.every((stream) =>
+          stream.liveActor?.items.some((item) => item.id === "live-click"),
+        ),
+      ).toBe(true);
+
+      releaseHost();
+      const result = await runPromise;
+      expect(result.ok).toBe(true);
+      const final = JSON.parse(await readFile(runJson, "utf8")) as RunBundle;
+      expect(final.streams.every((stream) => stream.liveActor === undefined)).toBe(true);
+    } finally {
+      releaseHost();
+      await runPromise.catch(() => undefined);
+    }
+  });
+});

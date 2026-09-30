@@ -53,7 +53,8 @@ with `Run.finish` as in step 7, and skips steps 3 to 6 and 9. Its callers run st
    `review.md`, `events.ndjson` and `observer/observer-data.json`, and the
    `.humanish/runs/latest.json` pointer last. A snapshot writes the same files without the
    status outcome and writes the pointer only until one pointer write succeeds. Every other
-   route publishes the same way.
+   route publishes the same way. `runConcurrentSharedWorld` also writes a snapshot before its
+   seats start and flushes their live traces, with or without an attached Observer.
 8. `renderObserver` (`src/observer/render.ts`) verifies the bundle with `verifyRunPrepared`
    (`src/run/verify.ts`), builds the page data with `buildObserverData` (`src/observer/data.ts`)
    and writes `observer/index.html` with `renderObserverHtml` (`src/observer/artifact.ts`).
