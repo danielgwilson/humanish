@@ -143,83 +143,11 @@ export function buildSingleLaneBundle(args: {
   });
 }
 
-export function buildCuaBundle(args: {
-  realEmail?: boolean;
-  /** Lab provenance for the bundle's own `lab` field (#455). */
-  lab?: RunLabProvenance;
-  actorId: string;
-  appUrl: string;
-  laneId?: string;
-  actorType?: string;
-  surface?: string;
-  caseGroup?: string;
-  createdAt: string;
-  dryRun: boolean;
-  labId: string;
-  labTitle?: string;
-  mission: string;
-  assignment?: RunStream["assignment"];
-  persona: ActorPersonaRef;
-  resolution: [number, number];
-  /** False only for the custom in-process route, which has no hosted screen/window to claim. */
-  desktopRoute?: boolean;
-  feedbackSubstrate?: RunFeedbackCandidate["substrate"];
-  /** Runtime screen/window/viewport evidence. `viewport` inside this object must be measured. */
-  desktopGeometry?: RunDesktopGeometry;
-  recording?: RunDesktopRecording;
-  /** Device-preset touch metadata echoed on the measured stream viewport (a prompt signal on
-   *  this route, never a rendered claim); the measured width/height/DPR stay authoritative. */
-  isMobile?: boolean;
-  runId: string;
-  screenshots: string[];
-  /** Relative run-dir path of the digest-only comms-thread evidence artifact (humanish.comms-thread.v1),
-   *  when a comms lab captured mail; registered as a "log" stream artifact. */
-  commsArtifactPath?: string;
-  /**
-   * Capture-time screenshot policy ("blurred" when policies.redactScreenshots, else "raw").
-   * When a session ran, its trace's `redaction.screenshots` is the evidence-of-record and
-   * wins; this fallback keeps labels honest for frames written before a mid-session failure
-   * (no trace exists to testify then). Defaults to "raw" — the engine default.
-   */
-  captureRedaction?: "raw" | "blurred";
-  session?: CuaLoopResult;
-  sessionError?: string;
-  /**
-   * The lane's own credibility read of a goal_satisfied session (#476). The actor's status is
-   * evidence of what it CLAIMED; whether the harness counts the claim is decided by the lane
-   * (zero engagement, a final message that describes a blocker). The review has to say the same
-   * thing the lane's exit code says, or the durable bundle reports a participant reaching the
-   * goal on a run the harness refused to count.
-   */
-  credibility?: { noEngagement: boolean; selfReportedBlocker: boolean; reportedFriction: boolean };
-  source: RunBundle["source"];
-  /** Provisioned-route provenance (clone or local-tree): what the actor actually drove (names
-   * + digests only, never values or command text), including the subject's state story. */
-  subjectProvenance?: CuaSubjectProvenanceArg;
-  /**
-   * Entry kind for the non-clone subject.declared event (invariant 5 — declare what the subject
-   * WAS). "local-app": an already-running LOCAL dev server driven in-process, un-pinnable —
-   * declared honestly as caller-provisioned/unpinned with no E2B. Absent: a plain app-url entry.
-   */
-  entryKind?: "local-app";
-  /** The custom E2B desktop template (image) this lane launched on, when configured (provenance). */
-  desktopTemplate?: string;
-  /** The configured browser choice and the command that opened, when explicitly configured. */
-  desktopBrowser?: DesktopBrowserEvidence;
-  traceArtifactPath?: string;
-  providerResources?: RunProviderResource[];
-  inProgress?: boolean;
-  /** Completed subject-phase records (clone/upload/extract/install/build/ready/state groups)
-   *  to fold into bundle.events, so run.json carries real phase timing after the fact. */
-  phaseEvents?: SubjectPhaseEvent[];
-  /** Host-side E2B desktop billed span for this lane, in minutes (from LaneRunOutcome
-   *  desktopDurationMs). Absent when no sandbox ran (in-process/dry-run) → no desktop cost line. */
-  desktopMinutes?: number;
-  desktopUsage?: CuaDesktopUsage;
-}): RunBundle {
-  const publicAppUrl = publicSafeAppUrlLabel(args.appUrl);
-  // Run-level cost ESTIMATE (advisory; omitted when nothing was priced and no sandbox ran).
-  const cost = buildCuaCostSummary({
+type CuaBundleArgs = Parameters<typeof buildCuaBundle>[0];
+
+/** Run-level cost ESTIMATE (advisory; omitted when nothing was priced and no sandbox ran). */
+function laneCost(args: CuaBundleArgs): ReturnType<typeof buildCuaCostSummary> {
+  return buildCuaCostSummary({
     lanes: args.session
       ? [
           {
@@ -231,6 +159,10 @@ export function buildCuaBundle(args: {
     desktopMinutes: args.desktopMinutes,
     ...(args.desktopUsage === undefined ? {} : { desktops: [args.desktopUsage] }),
   });
+}
+
+/** The lane's status, reason, last frame, geometry and screenshot mode, shared by its records. */
+function laneView(args: CuaBundleArgs, publicAppUrl: string) {
   const status: RunSimulationStatus =
     args.inProgress === true
       ? "running"
@@ -261,8 +193,22 @@ export function buildCuaBundle(args: {
     traceScreenshotMode === "raw" || traceScreenshotMode === "blurred"
       ? traceScreenshotMode
       : (args.captureRedaction ?? "raw");
+  return {
+    publicAppUrl,
+    status,
+    reason,
+    lastScreenshot,
+    desktopGeometry,
+    traceScreenshotMode,
+    screenshotMode,
+  };
+}
 
-  const simulation: RunSimulation = {
+type LaneView = ReturnType<typeof laneView>;
+
+function laneSimulation(args: CuaBundleArgs, view: LaneView): RunSimulation {
+  const { publicAppUrl, status, reason } = view;
+  return {
     id: "sim-001",
     index: 1,
     personaId: args.persona.id,
@@ -283,8 +229,11 @@ export function buildCuaBundle(args: {
     startedAt: args.createdAt,
     updatedAt: args.createdAt,
   };
+}
 
-  const stream: RunStream = {
+function laneStream(args: CuaBundleArgs, view: LaneView): RunStream {
+  const { publicAppUrl, status, reason, lastScreenshot, desktopGeometry, screenshotMode } = view;
+  return {
     id: "stream-001",
     simId: "sim-001",
     laneId: args.laneId ?? "lane-01",
@@ -343,7 +292,10 @@ export function buildCuaBundle(args: {
       })),
     ],
   };
+}
 
+function laneEvents(args: CuaBundleArgs, view: LaneView): RunEvent[] {
+  const { publicAppUrl, desktopGeometry } = view;
   const events: RunEvent[] = [
     {
       id: "event-000-created",
@@ -450,7 +402,11 @@ export function buildCuaBundle(args: {
       streamId: "stream-001",
     });
   }
+  return events;
+}
 
+function laneReview(args: CuaBundleArgs, view: LaneView, stream: RunStream): ReviewSummary {
+  const { reason } = view;
   // A funnel with a denominator of one is still the funnel — and its absence stays honest: no
   // declared protocol (or a dry run) means no `tasks` field, never an empty one.
   const singleStudyTasks =
@@ -505,6 +461,91 @@ export function buildCuaBundle(args: {
     },
     [stream],
   );
+  return review;
+}
+
+export function buildCuaBundle(args: {
+  realEmail?: boolean;
+  /** Lab provenance for the bundle's own `lab` field (#455). */
+  lab?: RunLabProvenance;
+  actorId: string;
+  appUrl: string;
+  laneId?: string;
+  actorType?: string;
+  surface?: string;
+  caseGroup?: string;
+  createdAt: string;
+  dryRun: boolean;
+  labId: string;
+  labTitle?: string;
+  mission: string;
+  assignment?: RunStream["assignment"];
+  persona: ActorPersonaRef;
+  resolution: [number, number];
+  /** False only for the custom in-process route, which has no hosted screen/window to claim. */
+  desktopRoute?: boolean;
+  feedbackSubstrate?: RunFeedbackCandidate["substrate"];
+  /** Runtime screen/window/viewport evidence. `viewport` inside this object must be measured. */
+  desktopGeometry?: RunDesktopGeometry;
+  recording?: RunDesktopRecording;
+  /** Device-preset touch metadata echoed on the measured stream viewport (a prompt signal on
+   *  this route, never a rendered claim); the measured width/height/DPR stay authoritative. */
+  isMobile?: boolean;
+  runId: string;
+  screenshots: string[];
+  /** Relative run-dir path of the digest-only comms-thread evidence artifact (humanish.comms-thread.v1),
+   *  when a comms lab captured mail; registered as a "log" stream artifact. */
+  commsArtifactPath?: string;
+  /**
+   * Capture-time screenshot policy ("blurred" when policies.redactScreenshots, else "raw").
+   * When a session ran, its trace's `redaction.screenshots` is the evidence-of-record and
+   * wins; this fallback keeps labels honest for frames written before a mid-session failure
+   * (no trace exists to testify then). Defaults to "raw" — the engine default.
+   */
+  captureRedaction?: "raw" | "blurred";
+  session?: CuaLoopResult;
+  sessionError?: string;
+  /**
+   * The lane's own credibility read of a goal_satisfied session (#476). The actor's status is
+   * evidence of what it CLAIMED; whether the harness counts the claim is decided by the lane
+   * (zero engagement, a final message that describes a blocker). The review has to say the same
+   * thing the lane's exit code says, or the durable bundle reports a participant reaching the
+   * goal on a run the harness refused to count.
+   */
+  credibility?: { noEngagement: boolean; selfReportedBlocker: boolean; reportedFriction: boolean };
+  source: RunBundle["source"];
+  /** Provisioned-route provenance (clone or local-tree): what the actor actually drove (names
+   * + digests only, never values or command text), including the subject's state story. */
+  subjectProvenance?: CuaSubjectProvenanceArg;
+  /**
+   * Entry kind for the non-clone subject.declared event (invariant 5 — declare what the subject
+   * WAS). "local-app": an already-running LOCAL dev server driven in-process, un-pinnable —
+   * declared honestly as caller-provisioned/unpinned with no E2B. Absent: a plain app-url entry.
+   */
+  entryKind?: "local-app";
+  /** The custom E2B desktop template (image) this lane launched on, when configured (provenance). */
+  desktopTemplate?: string;
+  /** The configured browser choice and the command that opened, when explicitly configured. */
+  desktopBrowser?: DesktopBrowserEvidence;
+  traceArtifactPath?: string;
+  providerResources?: RunProviderResource[];
+  inProgress?: boolean;
+  /** Completed subject-phase records (clone/upload/extract/install/build/ready/state groups)
+   *  to fold into bundle.events, so run.json carries real phase timing after the fact. */
+  phaseEvents?: SubjectPhaseEvent[];
+  /** Host-side E2B desktop billed span for this lane, in minutes (from LaneRunOutcome
+   *  desktopDurationMs). Absent when no sandbox ran (in-process/dry-run) → no desktop cost line. */
+  desktopMinutes?: number;
+  desktopUsage?: CuaDesktopUsage;
+}): RunBundle {
+  const publicAppUrl = publicSafeAppUrlLabel(args.appUrl);
+  const cost = laneCost(args);
+  const view = laneView(args, publicAppUrl);
+  const { traceScreenshotMode, screenshotMode } = view;
+  const simulation = laneSimulation(args, view);
+  const stream = laneStream(args, view);
+  const events = laneEvents(args, view);
+  const review = laneReview(args, view, stream);
 
   return {
     schema: RUN_BUNDLE_SCHEMA,
