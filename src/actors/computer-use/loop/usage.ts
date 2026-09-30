@@ -121,19 +121,22 @@ export class UsageLedger {
   // Per model-inference usage, in order (#334): the recorded fact long-context pricing tiers
   // need. A continuing native tool interaction may contain several inference requests.
   private readonly turns: UsageTurns = [];
-  private incompleteInteraction = false;
-  private unreportedInteraction = false;
+  /** An interaction turn arrived without complete usage, or its receipt said usage is incomplete. */
+  private sawIncompleteUsage = false;
+  /** A request may have been billed without any usage reaching the ledger. */
+  private mayHaveUnreportedUsage = false;
 
   constructor(private readonly provider: CuaProvider) {}
 
-  record(turn: CuaTurn, interaction = true): void {
+  record(turn: CuaTurn, kind: "interaction" | "debrief"): void {
     if (turn.providerRequestPending === true) return;
+    const interaction = kind === "interaction";
     const raw = turn.usage;
     const turns = raw?.turns === undefined ? undefined : normalizedUsageTurns(raw);
     if (interaction && (!isCompleteTurnUsage(raw) || turn.providerRequest?.usageComplete === false))
-      this.incompleteInteraction = true;
+      this.sawIncompleteUsage = true;
     if (interaction && raw?.turns !== undefined && turns === undefined)
-      this.unreportedInteraction = true;
+      this.mayHaveUnreportedUsage = true;
     if (raw === undefined) return;
     const usage = {
       ...(validTokenCount(raw.input) ? { input: raw.input } : {}),
@@ -153,7 +156,7 @@ export class UsageLedger {
 
   /** A request may have been billed without reporting usage. */
   markUnreported(): void {
-    this.unreportedInteraction = true;
+    this.mayHaveUnreportedUsage = true;
   }
 
   /**
@@ -188,7 +191,7 @@ export class UsageLedger {
       receipt.dispatched !== false &&
       (!receipt.usageComplete || !isCompleteTurnUsage(usage))
     )
-      this.unreportedInteraction = true;
+      this.mayHaveUnreportedUsage = true;
     this.requestPending = false;
     return settledKind;
   }
@@ -243,15 +246,15 @@ export class UsageLedger {
     };
   }
 
-  hasUnreported(): boolean {
-    return this.unreportedInteraction || this.provider.interactionUsageIncomplete === true;
+  private hasUnreportedUsage(): boolean {
+    return this.mayHaveUnreportedUsage || this.provider.interactionUsageIncomplete === true;
   }
 
   /** A cap cannot be enforced when some request's usage is unknown. */
   unavailableForCap(): boolean {
     return (
-      this.incompleteInteraction ||
-      this.unreportedInteraction ||
+      this.sawIncompleteUsage ||
+      this.mayHaveUnreportedUsage ||
       (this.requestPending
         ? this.knownPending() === undefined
         : this.provider.interactionUsageIncomplete === true)
@@ -261,7 +264,7 @@ export class UsageLedger {
   /** Whether the trace must say that some interaction usage may be missing. */
   interactionUsageIncomplete(requiresUsage: boolean): boolean {
     return (
-      this.requestPending || this.hasUnreported() || (requiresUsage && this.incompleteInteraction)
+      this.requestPending || this.hasUnreportedUsage() || (requiresUsage && this.sawIncompleteUsage)
     );
   }
 

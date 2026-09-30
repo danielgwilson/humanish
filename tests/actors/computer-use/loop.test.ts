@@ -979,7 +979,7 @@ describe("runComputerUseLoop", () => {
     ).toBe(true);
   });
 
-  it("a raceSettle DEADLINE during execute() propagates (timed_out), never swallowed as a skipped action", async () => {
+  it("a raceSessionDeadline DEADLINE during execute() propagates (timed_out), never swallowed as a skipped action", async () => {
     let t = 0;
     const now = (): number => t;
     const provider: CuaProvider = {
@@ -1433,7 +1433,7 @@ describe("runComputerUseLoop", () => {
     expect(result.reason).toContain("no material progress");
   });
 
-  it("enforces the deadline on a hung provider call (raceSettle) as a zero-progress timed_out failure", async () => {
+  it("enforces the deadline on a hung provider call (raceSessionDeadline) as a zero-progress timed_out failure", async () => {
     const provider: CuaProvider = {
       id: "hang",
       version: "h",

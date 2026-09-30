@@ -1,7 +1,7 @@
 import { isCuaAdmissionLimitError } from "../admission-limit.js";
 import { CuaProviderError, isCuaProviderError } from "../provider-error.js";
 import { adapterLimit, providerStalledTwice, usageUnreported, type Stop } from "./ending.js";
-import { CuaAbortError, CuaDeadlineError, CuaStallError, raceBounded } from "./race.js";
+import { CuaAbortError, CuaDeadlineError, CuaStallError, raceCallBound } from "./race.js";
 import type { LoopSession } from "./session.js";
 import { notice } from "./trace.js";
 import type { CuaTurn, CuaTurnRequest } from "./types.js";
@@ -40,7 +40,7 @@ export async function requestTurn(
   const first = requestScope(signal);
   try {
     return {
-      turn: await raceBounded(
+      turn: await raceCallBound(
         `provider turn ${turnNumber}`,
         provider.nextTurn(request, first.signal),
         session.remaining(),
@@ -109,7 +109,7 @@ async function retryStalledTurn(
   const retry = requestScope(session.signal);
   try {
     return {
-      turn: await raceBounded(
+      turn: await raceCallBound(
         `provider turn ${turnNumber} (retry)`,
         session.provider.nextTurn(request, retry.signal),
         session.remaining(),
@@ -138,14 +138,14 @@ export async function singleDispatch(
   session: LoopSession,
   kind: "interaction" | "debrief",
   dispatch: (signal: AbortSignal) => Promise<CuaTurn>,
-  capMs: number,
+  boundMs: number,
 ): Promise<CuaTurn> {
   const { signal } = session;
   const controller = new AbortController();
   const onAbort = (): void => controller.abort();
   if (signal?.aborted) controller.abort();
   else signal?.addEventListener("abort", onAbort, { once: true });
-  const settled: { current?: Settlement } = {};
+  const settlementRef: { current?: Settlement } = {};
   const pending = Promise.resolve()
     .then(() => {
       if (controller.signal.aborted)
@@ -158,49 +158,52 @@ export async function singleDispatch(
     })
     .then(
       (turn) => {
-        settled.current = { turn };
+        settlementRef.current = { turn };
         return turn;
       },
       (error: unknown) => {
-        settled.current = { error };
+        settlementRef.current = { error };
         throw error;
       },
     );
   void pending.catch(() => undefined);
-  let outcome: { turn: CuaTurn; yielded: boolean } | { error: unknown };
+  let outcome: { turn: CuaTurn; continuing: boolean } | { error: unknown };
   try {
-    const turn = await raceBounded(
+    const turn = await raceCallBound(
       `participant ${kind}`,
       pending,
       session.remaining(),
-      capMs,
+      boundMs,
       signal,
     );
-    outcome = { turn, yielded: acceptedYield(kind, turn) };
+    outcome = { turn, continuing: isContinuingTurn(kind, turn) };
   } catch (error) {
     outcome = { error };
   } finally {
     controller.abort();
     signal?.removeEventListener("abort", onAbort);
-    if (settled.current === undefined) await cleanupGrace(pending);
+    if (settlementRef.current === undefined) await cleanupGrace(pending);
   }
-  if ("turn" in outcome && outcome.yielded) {
+  if ("turn" in outcome && outcome.continuing) {
     session.usage.requestPending = true;
     return outcome.turn;
   }
   const failure = "error" in outcome ? outcome.error : undefined;
-  const final = settled.current;
-  const typed = isCuaProviderError(failure)
+  const requestSettlement = settlementRef.current;
+  const providerError = isCuaProviderError(failure)
     ? failure
-    : final && "error" in final && isCuaProviderError(final.error)
-      ? final.error
+    : requestSettlement &&
+        "error" in requestSettlement &&
+        isCuaProviderError(requestSettlement.error)
+      ? requestSettlement.error
       : undefined;
-  const turn = final && "turn" in final ? final.turn : undefined;
-  const receipt = settledReceipt(typed?.receipt ?? turn?.providerRequest);
+  const turn =
+    requestSettlement && "turn" in requestSettlement ? requestSettlement.turn : undefined;
+  const receipt = settledReceipt(providerError?.receipt ?? turn?.providerRequest);
   const rawUsage =
-    typed?.usage ?? (turn?.providerRequestPending === true ? undefined : turn?.usage);
+    providerError?.usage ?? (turn?.providerRequestPending === true ? undefined : turn?.usage);
   const usage = rawUsage === undefined ? undefined : reportedCounts(rawUsage);
-  const settledKind = session.usage.settle(kind, receipt, usage, typed);
+  const settledKind = session.usage.settle(kind, receipt, usage, providerError);
   if (receipt.cleanup !== "confirmed") {
     session.trace.record("notice", () =>
       notice(
@@ -214,12 +217,12 @@ export async function singleDispatch(
   if (usage)
     session.usage.record(
       { actions: [], pendingSafetyChecks: [], done: false, usage, providerRequest: receipt },
-      settledKind === "interaction",
+      settledKind,
     );
   if (failure instanceof CuaAbortError || failure instanceof CuaDeadlineError) throw failure;
   if (failure instanceof CuaStallError)
-    throw new CuaProviderError("timeout", receipt, usage, typed?.failurePhase);
-  throw typed ?? new CuaProviderError("process_failed", receipt, usage);
+    throw new CuaProviderError("timeout", receipt, usage, providerError?.failurePhase);
+  throw providerError ?? new CuaProviderError("process_failed", receipt, usage);
 }
 
 /**
@@ -227,7 +230,7 @@ export async function singleDispatch(
  * CuaTurn.providerRequestPending), which carries actions only. A settled turn must carry a
  * dispatched, cleaned-up receipt.
  */
-function acceptedYield(kind: "interaction" | "debrief", turn: CuaTurn): boolean {
+function isContinuingTurn(kind: "interaction" | "debrief", turn: CuaTurn): boolean {
   if (turn.providerRequestPending === true) {
     if (
       kind !== "interaction" ||

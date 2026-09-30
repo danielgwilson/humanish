@@ -2,7 +2,7 @@ import { evaluateStopWhen, type StopConditionObservation } from "../../stop-cond
 import { CuaExecutorError, isCuaExecutorError } from "../executor-error.js";
 import { CUA_SPEECH_LIMITS, type HeardSpeech } from "../speech.js";
 import { dwellCompleted, missingFrame, stopWhenMatched, type Stop } from "./ending.js";
-import { CuaAbortError, CuaStallError, raceBounded } from "./race.js";
+import { CuaAbortError, CuaStallError, raceCallBound } from "./race.js";
 import type { LoopSession } from "./session.js";
 import { notice } from "./trace.js";
 import type { CuaObservation } from "./types.js";
@@ -56,8 +56,8 @@ export class DesktopObserver {
       if (session.signal?.aborted) throw new CuaAbortError();
       session.phase = `observing UI state after turn ${turnNumber}`;
     }
-    let observation = this.admit(
-      this.collectHeardSpeech(
+    let observation = this.handToHooks(
+      this.withHeardSpeech(
         await this.observeBounded(opening ? "initial" : `after turn ${turnNumber}`),
       ),
     );
@@ -70,7 +70,9 @@ export class DesktopObserver {
     const dwell = await this.dwellIfDue(observation, turnNumber);
     let hint: string | undefined;
     if (dwell !== undefined) {
-      observation = this.admit(this.collectHeardSpeech(await this.observeBounded("after dwell")));
+      observation = this.handToHooks(
+        this.withHeardSpeech(await this.observeBounded("after dwell")),
+      );
       await this.recordScreenshot(observation, `turn-${pad(turnNumber)}-after-dwell`);
       this.observeTasks(observation, turnNumber);
       if (dwell.next === "stop") {
@@ -95,7 +97,7 @@ export class DesktopObserver {
    * carried app state. Runtime-only: the seat's live location.href goes back to the orchestrator
    * and is never persisted.
    */
-  private admit(observation: CuaObservation): CuaObservation {
+  private handToHooks(observation: CuaObservation): CuaObservation {
     const { onObservedUrl, onScreenshot } = this.session.settings;
     onObservedUrl?.(observation.url);
     if (observation.screenshot !== undefined) onScreenshot?.(observation.screenshot);
@@ -104,7 +106,7 @@ export class DesktopObserver {
   }
 
   /**
-   * Every observation that carried app state counts, including dwell frames and the closing
+   * Every observation that carried app state counts, including dwell frames and the final task
    * observation, which no turn receives: they feed the task funnel, and the trace notes must say
    * app state was observed.
    */
@@ -125,13 +127,13 @@ export class DesktopObserver {
    * executor failure still fails the harness. No screenshot or stop check rides it, because the
    * session is already over.
    */
-  async observeClosingTasks(turnNumber: number): Promise<void> {
+  async observeFinalTasks(turnNumber: number): Promise<void> {
     if (this.session.taskTracker === undefined) return;
     try {
       this.session.phase = "observing closing task state";
-      const closing = this.collectHeardSpeech(await this.observeBounded("closing"));
-      this.noteAppState(closing);
-      this.observeTasks(closing, turnNumber);
+      const final = this.withHeardSpeech(await this.observeBounded("closing"));
+      this.noteAppState(final);
+      this.observeTasks(final, turnNumber);
     } catch (error) {
       if (isCuaExecutorError(error)) throw error;
     }
@@ -144,7 +146,7 @@ export class DesktopObserver {
     const { session } = this;
     const { executor } = session;
     try {
-      return await raceBounded(
+      return await raceCallBound(
         `observe (${label})`,
         executor.observe(),
         session.remaining(),
@@ -165,7 +167,7 @@ export class DesktopObserver {
           `${error.what} produced nothing within ${error.afterMs}ms; asking the desktop again`,
         ),
       );
-      return await raceBounded(
+      return await raceCallBound(
         `observe (${label}, retry)`,
         executor.observe(),
         session.remaining(),
@@ -175,8 +177,12 @@ export class DesktopObserver {
     }
   }
 
-  private collectHeardSpeech(value: CuaObservation): CuaObservation {
-    for (const utterance of value.heardSpeech ?? []) {
+  /**
+   * The observation with every utterance heard since the provider last saw one. New utterances are
+   * recorded as notices; too many pending utterances fail the executor as invalid_response.
+   */
+  private withHeardSpeech(observation: CuaObservation): CuaObservation {
+    for (const utterance of observation.heardSpeech ?? []) {
       if (this.seenSpeechIds.has(utterance.id)) continue;
       this.seenSpeechIds.add(utterance.id);
       this.pendingHeardSpeech.push(utterance);
@@ -189,8 +195,8 @@ export class DesktopObserver {
       throw new CuaExecutorError("invalid_response", "outcome_uncertain");
     }
     return this.pendingHeardSpeech.length === 0
-      ? value
-      : { ...value, heardSpeech: this.pendingHeardSpeech.slice() };
+      ? observation
+      : { ...observation, heardSpeech: this.pendingHeardSpeech.slice() };
   }
 
   // No frame, nothing persisted: a state-driven executor returns observations without a
@@ -221,10 +227,10 @@ export class DesktopObserver {
 
   // Evaluated BEFORE the stopWhen check each turn so a final task whose criterion coincides with
   // the stop condition still lands in the funnel of the very turn that ends the session.
-  private observeTasks(observation: CuaObservation, turn: number): void {
+  private observeTasks(observation: CuaObservation, turnNumber: number): void {
     const { taskTracker } = this.session;
     if (taskTracker === undefined) return;
-    for (const completion of taskTracker.observe(stopObservationOf(observation), turn)) {
+    for (const completion of taskTracker.observe(stopObservationOf(observation), turnNumber)) {
       // The id is researcher-authored config and the kinds are rule-type names; the matched VALUES
       // (a URL, page text) never appear here — the same discipline as the stopWhen notice.
       this.session.trace.record("notice", () =>
@@ -232,7 +238,7 @@ export class DesktopObserver {
           "matched",
           `task completed: ${this.session.redactNarration(completion.id)}`,
           this.session.redactNarration(
-            `turn ${turn}; matched rule ${completion.matchedRuleIndex} (${completion.matchedKinds.join("+")})`,
+            `turn ${turnNumber}; matched rule ${completion.matchedRuleIndex} (${completion.matchedKinds.join("+")})`,
           ),
         ),
       );
@@ -278,7 +284,7 @@ export class DesktopObserver {
       if (session.signal?.aborted) throw new CuaAbortError();
       await session.sleep(Math.min(dwell.everyMs, budget - (session.now() - dwellStartedAtMs)));
       session.phase = `dwell frame ${frames + 1}`;
-      const frameObservation = this.collectHeardSpeech(
+      const frameObservation = this.withHeardSpeech(
         await this.observeBounded(`dwell frame ${frames + 1}`),
       );
       frames += 1;

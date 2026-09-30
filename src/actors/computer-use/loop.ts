@@ -1,23 +1,9 @@
 import { CuaProviderError } from "./provider-error.js";
 import { runActionBatch } from "./loop/actions.js";
 import { advanceBackstop, startBackstop, type BackstopStep } from "./loop/backstop.js";
-import { requestClosingAccount } from "./loop/closing.js";
-import {
-  accountBilledCaps,
-  blockedOnSafetyChecks,
-  declaredOutcomeOf,
-  gaveUp,
-  harnessAborted,
-  nonFiniteEstimate,
-  participantEnded,
-  providerInterrupted,
-  spendLimit,
-  stopForError,
-  studySpendLimit,
-  timeLimit,
-  usageUnreported,
-  type Stop,
-} from "./loop/ending.js";
+import { requestDebrief } from "./loop/debrief.js";
+import * as stops from "./loop/ending.js";
+import { declaredOutcomeOf, type Stop } from "./loop/ending.js";
 import { DesktopObserver } from "./loop/observation.js";
 import { requestTurn } from "./loop/provider-call.js";
 import { LoopSession } from "./loop/session.js";
@@ -46,7 +32,7 @@ export type {
 } from "./loop/types.js";
 export { actionFingerprint, describeCuaAction } from "./loop/actions.js";
 export { stableProgressKey } from "./loop/backstop.js";
-export { validClosingReport } from "./loop/closing.js";
+export { validClosingReport } from "./loop/debrief.js";
 export { declaredOutcomeFromClosingLine } from "./loop/ending.js";
 export { statusForCompletionReason } from "./loop/trace.js";
 
@@ -65,7 +51,7 @@ export { statusForCompletionReason } from "./loop/trace.js";
 //
 // Layout: this file is the driver. src/actors/computer-use/loop/ holds the parts: the port types,
 // the session state, provider calls, observation, action dispatch, the backstop fold, the Stop
-// value every ending produces, the closing request and the trace projection.
+// value every ending produces, the debrief request and the trace projection.
 
 /** What the next provider request carries forward from the turns before it. */
 interface Conversation {
@@ -74,7 +60,7 @@ interface Conversation {
   // Acks granted for the previous turn's safety checks. They must ride the
   // NEXT request (the one carrying that call's computer_call_output), so they
   // are staged here rather than written onto the request already sent.
-  pendingAcks: CuaSafetyCheck[] | undefined;
+  acknowledgedSafetyChecks: CuaSafetyCheck[] | undefined;
   contextHint: string | undefined;
 }
 
@@ -89,28 +75,20 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
   const conversation: Conversation = {
     previousResponseId: undefined,
     previousExecution: undefined,
-    pendingAcks: undefined,
+    acknowledgedSafetyChecks: undefined,
     contextHint: undefined,
   };
   let stop: Stop;
   try {
     stop = session.conclude(await runTurns(session, conversation));
   } catch (error) {
-    stop = session.conclude(stopForError(error, session));
+    stop = session.conclude(stops.stopForError(session, error));
   }
-  // A structured stop earns the closing request even if recording its evidence then failed.
+  // A structured stop earns the debrief even if recording its evidence then failed.
   const debrief =
-    session.closing === undefined
+    session.debriefTrigger === undefined
       ? undefined
-      : await requestClosingAccount(
-          session,
-          {
-            previousResponseId: conversation.previousResponseId,
-            previousExecution: conversation.previousExecution,
-            acknowledgedSafetyChecks: conversation.pendingAcks,
-          },
-          session.closing,
-        );
+      : await requestDebrief(session, conversation, session.debriefTrigger);
   return loopResult(session, stop, debrief);
 }
 
@@ -127,33 +105,34 @@ async function runTurns(session: LoopSession, conversation: Conversation): Promi
   let { observation } = opening;
   if (opening.hint !== undefined) conversation.contextHint = opening.hint;
   let backstop = startBackstop(observation);
+  let turnNumber = 0;
   for (;;) {
     const halt = haltBeforeTurn(session);
     if (halt !== undefined) return halt;
 
-    const turnNumber = session.trace.counts.turns + 1;
+    turnNumber += 1;
     const request = nextRequest(session, conversation, observation);
     session.phase = `requesting provider turn ${turnNumber}`;
     const reply = await requestTurn(session, request, turnNumber);
     if ("stop" in reply) return reply.stop;
     const { turn } = reply;
-    acceptTurn(session, conversation, observer, request, turn);
+    recordTurn(session, conversation, observer, request, turn);
 
-    const refused = refuseTurn(session, turn, turnNumber);
+    const refused = stopBeforeActing(session, turn, turnNumber);
     if (refused !== undefined) return refused;
-    shareNarration(session, turn);
+    forwardNarration(session, turn);
     const overBudget = spendStop(session);
     if (overBudget !== undefined) return overBudget;
-    recordNarration(session, turn, turnNumber, false);
+    recordNarration(session, turn, turnNumber, "completed");
     const blocked = reviewSafetyChecks(session, conversation, turn);
     if (blocked !== undefined) return blocked;
     if (turn.done || turn.actions.length === 0) {
       // The declared outcome is kept even if redacting the participant's summary fails.
       session.declaredOutcome = declaredOutcomeOf(turn);
-      const ended = participantEnded(turn, session.declaredOutcome, (text) =>
+      const ended = stops.participantEnded(turn, session.declaredOutcome, (text) =>
         session.redactNarration(text),
       );
-      await observer.observeClosingTasks(turnNumber);
+      await observer.observeFinalTasks(turnNumber);
       return ended;
     }
 
@@ -194,7 +173,7 @@ function applyBackstop(
   if (!step.progressed) session.trace.bump("noProgressTurns");
   const hints = [...turnHints.filter((hint): hint is string => hint !== undefined), ...step.hints];
   if (hints.length > 0) conversation.contextHint = hints.join(" ");
-  return step.gaveUp === undefined ? undefined : gaveUp(session, step.gaveUp);
+  return step.tripReason === undefined ? undefined : stops.gaveUp(session, step.tripReason);
 }
 
 function refuseAccountBilledCaps(options: CuaLoopOptions): void {
@@ -208,8 +187,8 @@ function refuseAccountBilledCaps(options: CuaLoopOptions): void {
 }
 
 function haltBeforeTurn(session: LoopSession): Stop | undefined {
-  if (session.signal?.aborted) return harnessAborted;
-  if (session.now() - session.startedAtMs > session.timeoutMs) return timeLimit(session);
+  if (session.signal?.aborted) return stops.harnessAborted;
+  if (session.now() - session.startedAtMs > session.timeoutMs) return stops.timeLimit(session);
   return undefined;
 }
 
@@ -230,14 +209,14 @@ function nextRequest(
   if (conversation.previousResponseId !== undefined)
     request.previousResponseId = conversation.previousResponseId;
   if (conversation.contextHint !== undefined) request.contextHint = conversation.contextHint;
-  if (conversation.pendingAcks !== undefined)
-    request.acknowledgedSafetyChecks = conversation.pendingAcks;
+  if (conversation.acknowledgedSafetyChecks !== undefined)
+    request.acknowledgedSafetyChecks = conversation.acknowledgedSafetyChecks;
   conversation.contextHint = undefined;
-  conversation.pendingAcks = undefined;
+  conversation.acknowledgedSafetyChecks = undefined;
   return request;
 }
 
-function acceptTurn(
+function recordTurn(
   session: LoopSession,
   conversation: Conversation,
   observer: DesktopObserver,
@@ -255,34 +234,38 @@ function acceptTurn(
   observer.speechDelivered();
   conversation.previousResponseId = turn.responseId ?? conversation.previousResponseId;
   session.lastResponseId = turn.responseId ?? session.lastResponseId;
-  session.usage.record(turn);
+  session.usage.record(turn, "interaction");
 }
 
 /** Stops for a reply that must not be acted on: account billing, interruption, unknown usage. */
-function refuseTurn(session: LoopSession, turn: CuaTurn, turnNumber: number): Stop | undefined {
+function stopBeforeActing(
+  session: LoopSession,
+  turn: CuaTurn,
+  turnNumber: number,
+): Stop | undefined {
   const { overRunBudget } = session.settings;
-  if (accountBillingConflicts(session.provider, session.settings)) return accountBilledCaps;
+  if (accountBillingConflicts(session.provider, session.settings)) return stops.accountBilledCaps;
   if (turn.interruption !== undefined) {
     // Preserve usage and partial narration of an interrupted response. Its usage still counts
     // toward the study budget; when that exhausts it, sibling lanes stop, so this trace says why.
     const studyStop = overRunBudget?.(session.usage.running());
-    recordNarration(session, turn, turnNumber, true);
+    recordNarration(session, turn, turnNumber, "interrupted");
     if (studyStop != null) {
       session.trace.record("notice", () =>
         notice("warn", "study budget reached during an interrupted response", studyStop),
       );
     }
-    return providerInterrupted(turn.interruption);
+    return stops.providerInterrupted(turn.interruption);
   }
   if (session.requiresUsage && session.usage.unavailableForCap()) {
     session.usage.markUnreported();
-    return usageUnreported;
+    return stops.usageUnreported;
   }
   return undefined;
 }
 
 /** Hand the turn's narration to the onMessage hook; see CuaLoopOptions.onMessage. */
-function shareNarration(session: LoopSession, turn: CuaTurn): void {
+function forwardNarration(session: LoopSession, turn: CuaTurn): void {
   const { onMessage } = session.settings;
   const narration = [turn.reasoning, turn.message]
     .filter((t): t is string => typeof t === "string" && t.length > 0)
@@ -300,12 +283,12 @@ function spendStop(session: LoopSession): Stop | undefined {
   const { maxUsd, overRunBudget, estimateTurnCostUsd } = session.settings;
   if (maxUsd !== undefined && estimateTurnCostUsd) {
     const running = estimateTurnCostUsd(session.usage.running());
-    if (running !== null && !Number.isFinite(running)) return nonFiniteEstimate;
-    if (running !== null && running > maxUsd) return spendLimit(session, running, maxUsd);
+    if (running !== null && !Number.isFinite(running)) return stops.nonFiniteEstimate;
+    if (running !== null && running > maxUsd) return stops.spendLimit(session, running, maxUsd);
   }
   if (overRunBudget) {
     const runStop = overRunBudget(session.usage.running());
-    if (runStop !== null) return studySpendLimit(runStop);
+    if (runStop !== null) return stops.studySpendLimit(runStop);
   }
   return undefined;
 }
@@ -314,8 +297,9 @@ function recordNarration(
   session: LoopSession,
   turn: CuaTurn,
   turnNumber: number,
-  interrupted: boolean,
+  response: "completed" | "interrupted",
 ): void {
+  const interrupted = response === "interrupted";
   const prefix = interrupted ? "incomplete " : "";
   const status = interrupted ? { status: "warn" } : {};
   const { reasoning, message } = turn;
@@ -349,12 +333,12 @@ function reviewSafetyChecks(
   const { acknowledgeSafetyChecks } = session;
   const acks = acknowledgeSafetyChecks(turn.pendingSafetyChecks);
   if (acks === null || acks.length === 0) {
-    return blockedOnSafetyChecks(
+    return stops.blockedOnSafetyChecks(
       session.settings.redaction.redactText(
         turn.pendingSafetyChecks.map((check) => check.code).join(", "),
       ),
     );
   }
-  conversation.pendingAcks = acks;
+  conversation.acknowledgedSafetyChecks = acks;
   return undefined;
 }

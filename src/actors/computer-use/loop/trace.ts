@@ -165,8 +165,8 @@ export function loopResult(
         }),
     counts,
     items: recorder.items,
-    ...(session.activity.affordances.length > 0
-      ? { affordanceUse: summarizeAffordanceUse(session.activity.affordances) }
+    ...(session.actionHistory.affordances.length > 0
+      ? { affordanceUse: summarizeAffordanceUse(session.actionHistory.affordances) }
       : {}),
     ...(session.declaredOutcome === undefined ? {} : { declaredOutcome: session.declaredOutcome }),
     ...(debrief === undefined ? {} : { debrief }),

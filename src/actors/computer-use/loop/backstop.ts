@@ -146,7 +146,7 @@ export interface BackstopStep {
   /** Recovery nudges for the next request, before a streak trips. */
   readonly hints: readonly string[];
   /** The gave_up reason when a streak tripped. */
-  readonly gaveUp: string | undefined;
+  readonly tripReason: string | undefined;
 }
 
 /** Fold one acted turn and the observation after it into the backstop. */
@@ -227,7 +227,7 @@ export function advanceBackstop(
     );
   }
 
-  const gaveUp =
+  const tripReason =
     consecutiveIdle >= limits.idleSteps
       ? `gave up: ${consecutiveIdle} consecutive turns with no material UI action (only screenshot/wait)`
       : consecutiveNoProgress >= limits.noProgressSteps
@@ -244,6 +244,6 @@ export function advanceBackstop(
     idle,
     progressed,
     hints,
-    gaveUp,
+    tripReason,
   };
 }

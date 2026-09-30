@@ -1,7 +1,7 @@
 import type { ActorStopCause, ActorTraceItem, ParticipantDeclaredOutcome } from "../../contract.js";
 import type { AffordanceObservation } from "../../affordance.js";
 import { TaskTracker } from "../../../lab/tasks.js";
-import type { ClosingTrigger, Stop } from "./ending.js";
+import type { DebriefTrigger, Stop } from "./ending.js";
 import { TraceRecorder } from "./trace.js";
 import type { CuaExecutor, CuaLoopOptions, CuaProvider, CuaSafetyCheck } from "./types.js";
 import { UsageLedger } from "./usage.js";
@@ -45,7 +45,7 @@ export type LoopSettings = {
 };
 
 /** The participant's dispatched actions, as the backstop and failure notices describe them. */
-export interface Activity {
+export interface ActionHistory {
   lastActionTitle: string | undefined;
   lastMaterialActionTitle: string | undefined;
   readonly recentActionTitles: string[];
@@ -84,7 +84,7 @@ export class LoopSession {
   readonly usage: UsageLedger;
   // The funnel is recorded, never consulted: task completion does not steer the loop.
   readonly taskTracker: TaskTracker | undefined;
-  readonly activity: Activity = {
+  readonly actionHistory: ActionHistory = {
     lastActionTitle: undefined,
     lastMaterialActionTitle: undefined,
     recentActionTitles: [],
@@ -99,8 +99,8 @@ export class LoopSession {
   // itself is never persisted.
   observedAppState = false;
   declaredOutcome: ParticipantDeclaredOutcome | undefined;
-  /** Set by a structured stop; the closing request follows it even if the session then failed. */
-  closing: ClosingTrigger | undefined;
+  /** Set by a structured stop; the debrief follows it even if the session then failed. */
+  debriefTrigger: DebriefTrigger | undefined;
   private stopCause: ActorStopCause | undefined;
   private readonly scrubText: (text: string) => string;
 
@@ -189,12 +189,12 @@ export class LoopSession {
   }
 
   /**
-   * Commit a stop where it is decided: its closing trigger and stop cause first, then its trace
+   * Commit a stop where it is decided: its debrief trigger and stop cause first, then its trace
    * evidence. A failure while recording the evidence ends the session as an error that keeps
    * both. Returns the stop without evidence, so concluding it again records nothing.
    */
   conclude(stop: Stop): Stop {
-    this.closing = stop.closing ?? this.closing;
+    this.debriefTrigger = stop.debriefTrigger ?? this.debriefTrigger;
     this.stopCause = stop.stopCause ?? this.stopCause;
     if (stop.evidence !== undefined) this.trace.record(stop.evidence.kind, stop.evidence.body);
     return {

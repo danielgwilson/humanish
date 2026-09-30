@@ -18,12 +18,12 @@ export class CuaStallError extends Error {
 }
 
 /**
- * raceSettle with a second, tighter clock: the call's own bound. When the tighter clock wins the
- * result is a CuaStallError (the caller decides whether to retry); when the session clock wins it
+ * raceSessionDeadline with a second, tighter clock: the call's own bound. When the tighter clock
+ * wins the result is a CuaStallError (the caller decides whether to retry); when the session clock wins it
  * stays a CuaDeadlineError, which the loop reads as the session deadline (timed_out or
  * budget_reached).
  */
-export async function raceBounded<T>(
+export async function raceCallBound<T>(
   what: string,
   promise: Promise<T>,
   remainingMs: number,
@@ -33,7 +33,7 @@ export async function raceBounded<T>(
   const cap = Math.min(remainingMs, boundMs);
   const boundWins = boundMs < remainingMs;
   try {
-    return await raceSettle(promise, cap, signal);
+    return await raceSessionDeadline(promise, cap, signal);
   } catch (error) {
     if (error instanceof CuaDeadlineError && boundWins) throw new CuaStallError(what, cap);
     throw error;
@@ -44,7 +44,7 @@ export async function raceBounded<T>(
  * Wait on a port promise, but stop waiting if the wall-clock budget runs out or the caller
  * aborts. An already-settled promise always wins, so a fast op is never spuriously failed.
  */
-export function raceSettle<T>(
+export function raceSessionDeadline<T>(
   promise: Promise<T>,
   remainingMs: number,
   signal?: AbortSignal,
