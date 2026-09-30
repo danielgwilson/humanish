@@ -1,10 +1,10 @@
 // The registry-facing session of the deterministic scripted browser ("browser-persona"). It runs
 // the step executor, expectation evaluator, blocked-step builder and native trace writer against an
 // injected or playwright-launched browser, and projects the result into humanish.actor-trace.v1.
-// The parts live in scripted-browser/: types.ts (seams and journey types), journey.ts (the
-// scenario parser), steps.ts (the step executor) and browser-command.ts (finding Chromium).
-// actors/registry.ts (the "scripted-browser" actor) depends on this module, and the registry is
-// const-initialized, so neither this module nor scripted-browser/ may import the registry.
+// The parts live beside it: types.ts (seams and journey types), journey.ts (the scenario parser),
+// steps.ts (the step executor) and browser-command.ts (finding Chromium). actors/registry.ts (the
+// "scripted-browser" actor) depends on this module, and the registry is const-initialized, so no
+// module in this folder may import the registry.
 //
 // The step executor's `page` is typed as the narrow structural ScriptedPageLike instead of
 // playwright's Page (browserPersonaPageState already took { evaluate, url }; E2BDesktopLike is
@@ -18,8 +18,8 @@
 
 import { stat } from "node:fs/promises";
 import path from "node:path";
-import { CHROMIUM_EVIDENCE_HYGIENE_FLAGS } from "../evidence/browser-hygiene.js";
-import { redactText } from "../evidence/redaction.js";
+import { CHROMIUM_EVIDENCE_HYGIENE_FLAGS } from "../../evidence/browser-hygiene.js";
+import { redactText } from "../../evidence/redaction.js";
 import {
   assertPreparedSelectedOutputDirectory,
   assertSafeOutputPathSegment,
@@ -28,7 +28,7 @@ import {
   prepareSelectedOutputDirectory,
   writeContainedOutputFile,
   type PreparedOutputDirectory,
-} from "../run/selected-output-paths.js";
+} from "../../run/selected-output-paths.js";
 import {
   ACTOR_TRACE_SCHEMA,
   SCRIPTED_BROWSER_CAPABILITIES,
@@ -37,7 +37,7 @@ import {
   type ActorStatus,
   type ActorTrace,
   type ActorTraceItem,
-} from "./contract.js";
+} from "../contract.js";
 import {
   buildBlockedBrowserPersonaSteps,
   buildBrowserTrace,
@@ -49,7 +49,7 @@ import {
   screenshotPathForBrowserStep,
   surfaceScreenshotPath,
   tracePathForBrowserSurface,
-} from "./scripted-browser/steps.js";
+} from "./steps.js";
 import {
   LOOPBACK_EVIDENCE_URL_POLICY,
   type BrowserPersonaJourney,
@@ -60,7 +60,7 @@ import {
   type ScriptedBrowserLaunchArgs,
   type ScriptedBrowserLike,
   type ScriptedPageLike,
-} from "./scripted-browser/types.js";
+} from "./types.js";
 import type { Browser } from "playwright-core";
 
 /** Production default: lazy playwright-core import + chromium.launch, exactly as the driver

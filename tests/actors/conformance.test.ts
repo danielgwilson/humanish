@@ -12,7 +12,7 @@ import {
   type ActorTrace,
 } from "../../src/actors/contract.js";
 import { getActor } from "../../src/actors/registry.js";
-import { runScriptedBrowserSession } from "../../src/actors/scripted-browser.js";
+import { runScriptedBrowserSession } from "../../src/actors/scripted-browser/actor.js";
 import {
   browserSurfaces,
   type ScriptedBrowserLike,

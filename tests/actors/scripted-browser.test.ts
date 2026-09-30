@@ -10,7 +10,7 @@ import {
   symlink,
   writeFile,
 } from "node:fs/promises";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import type { AddressInfo } from "node:net";
@@ -27,7 +27,7 @@ import {
   isCuaActorDescriptor,
   isScriptedBrowserActorDescriptor,
 } from "../../src/actors/registry.js";
-import { runScriptedBrowserSession } from "../../src/actors/scripted-browser.js";
+import { runScriptedBrowserSession } from "../../src/actors/scripted-browser/actor.js";
 import {
   browserSurfaces,
   type BrowserPersonaJourney,
@@ -540,7 +540,11 @@ describe("runScriptedBrowserSession (completion semantics through the REAL step 
   });
 
   it("gave_up and blocked_approval are UNREACHABLE from this actor (no persona patience, no approvals)", () => {
-    const source = readFileSync(path.resolve("src/actors/scripted-browser.ts"), "utf8");
+    const dir = path.resolve("src/actors/scripted-browser");
+    const source = readdirSync(dir)
+      .filter((file) => file.endsWith(".ts"))
+      .map((file) => readFileSync(path.join(dir, file), "utf8"))
+      .join("\n");
     expect(source).not.toContain('"gave_up"');
     expect(source).not.toContain('"blocked_approval"');
   });

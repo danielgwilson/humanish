@@ -91,7 +91,7 @@ import {
   runScriptedBrowserSessionInPreparedRoot,
   type ScriptedBrowserSessionOptions,
   type ScriptedBrowserSessionResult,
-} from "../actors/scripted-browser.js";
+} from "../actors/scripted-browser/actor.js";
 import {
   prepareSelectedOutputDirectory,
   readContainedRegularFile,
