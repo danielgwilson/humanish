@@ -260,39 +260,55 @@ describe("a Claude Code session that can no longer pair results", () => {
 
 describe("a stalled Claude turn inside the computer-use loop", () => {
   it("interrupts the stalled attempt and records only the retry's answer", async () => {
-    const fake = fakeClaudeChild();
-    // Attempt 1 stalls until interrupted; the retry answers at once.
-    answerInterrupts(fake, () => fake.users()[0]?.uuid);
-    fake.messages.on("message", (message: Json) => {
-      if (message.type !== "user" || fake.users().length !== 2) return;
-      const reply = { message: "Done after the retry.", done: true, actions: [] };
-      fake.write(resultFor(message.uuid, reply, { input_tokens: 20, output_tokens: 4 }));
-    });
-    const session = await startClaudeSession({ spawnFn: fake.spawnFn });
-    let t = 0;
-    const result = await runComputerUseLoop({
-      instructions: "Finish the synthetic task.",
-      provider: session.provider,
-      executor: {
-        observe: async () => ({ screenshot: Buffer.from("frame"), stateSignature: "s" }),
-        execute: async () => undefined,
-      },
-      persona: { id: "synthetic", traitsApplied: [], promptDigest: "synthetic" },
-      redaction: defaultRedactionHooks,
-      timeoutMs: 10_000_000,
-      turnTimeoutMs: 50,
-      now: () => (t += 1),
-    });
-    await session.close();
+    // The turn deadline runs on the fake clock: attempt 1 stalls when the test advances it, and
+    // the retry, answered at once, cannot miss a deadline under machine load.
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      const fake = fakeClaudeChild();
+      // Attempt 1 stalls until interrupted; the retry answers at once.
+      answerInterrupts(fake, () => fake.users()[0]?.uuid);
+      let attemptOneSent: () => void = () => {};
+      const attemptOne = new Promise<void>((resolve) => {
+        attemptOneSent = resolve;
+      });
+      fake.messages.on("message", (message: Json) => {
+        if (message.type !== "user") return;
+        if (fake.users().length === 1) attemptOneSent();
+        if (fake.users().length !== 2) return;
+        const reply = { message: "Done after the retry.", done: true, actions: [] };
+        fake.write(resultFor(message.uuid, reply, { input_tokens: 20, output_tokens: 4 }));
+      });
+      const session = await startClaudeSession({ spawnFn: fake.spawnFn });
+      let t = 0;
+      const running = runComputerUseLoop({
+        instructions: "Finish the synthetic task.",
+        provider: session.provider,
+        executor: {
+          observe: async () => ({ screenshot: Buffer.from("frame"), stateSignature: "s" }),
+          execute: async () => undefined,
+        },
+        persona: { id: "synthetic", traitsApplied: [], promptDigest: "synthetic" },
+        redaction: defaultRedactionHooks,
+        timeoutMs: 10_000_000,
+        turnTimeoutMs: 50,
+        now: () => (t += 1),
+      });
+      await attemptOne;
+      await vi.advanceTimersByTimeAsync(50);
+      const result = await running;
+      await session.close();
 
-    expect(result.completionReason).toBe("goal_satisfied");
-    expect(result.reason).toBe("Done after the retry.");
-    expect(fake.received.map((message) => message.type)).toEqual([
-      "user",
-      "control_request",
-      "user",
-    ]);
-    expect(result.trace.tokenUsage).toMatchObject({ input: 20, output: 4 });
-    expect(result.trace.interactionUsageIncomplete).toBe(true);
+      expect(result.completionReason).toBe("goal_satisfied");
+      expect(result.reason).toBe("Done after the retry.");
+      expect(fake.received.map((message) => message.type)).toEqual([
+        "user",
+        "control_request",
+        "user",
+      ]);
+      expect(result.trace.tokenUsage).toMatchObject({ input: 20, output: 4 });
+      expect(result.trace.interactionUsageIncomplete).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
