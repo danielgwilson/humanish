@@ -20,6 +20,7 @@ import {
   TERMINAL_TRANSCRIPT_ARTIFACT,
   type TerminalLedgers,
 } from "./types.js";
+import { describeMeasuredSpend, noSpendLineMeasured, noSpendNotEstablished } from "./ledger.js";
 
 /**
  * Project the terminal-product lab run into a humanish.run-bundle.v1 (no schema change — a new
@@ -364,7 +365,7 @@ export function buildLiveTerminalProductBundle(args: {
       // green run never silently over-claims a fully-proven $0.
       ...(noSpend.unmeasuredLines.length > 0
         ? [
-            `No-spend proof is partial: ${noSpend.unmeasuredLines.join(", ")} spend was UNMEASURED for this run (recorded null, not claimed zero; an adapter may supply these signals through costProbe).`,
+            `${noSpendLineMeasured(noSpend) ? noSpendNotEstablished(noSpend.maxUsd ?? 0) : "No-spend proof is partial."} ${describeMeasuredSpend(args.ledgers.cost, args.trace.tokenUsage)} An adapter may supply the missing signals through costProbe.`,
           ]
         : []),
     ],

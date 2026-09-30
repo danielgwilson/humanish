@@ -88,9 +88,55 @@ export function buildCostLedger(args: {
   };
 }
 
+/** True when no cost line carries a dollar value, so a no-spend proof has nothing to stand on. */
+export function noSpendLineMeasured(
+  proof: Pick<NoSpendProof, "knownZeroLines" | "knownNonZeroLines">,
+): boolean {
+  return proof.knownZeroLines.length + proof.knownNonZeroLines.length === 0;
+}
+
+/**
+ * The verdict for an all-null ledger. `satisfied` stays true there (no known line exceeds the
+ * cap), so the words must say the proof was not established rather than passed.
+ */
+export function noSpendNotEstablished(maxUsd: number): string {
+  return `No-spend proof not established for maxUsd=${maxUsd}: no spend line was measured.`;
+}
+
+/**
+ * What the ledger measured, in words: the dollar lines it knows, provider tokens it counted but
+ * could not price, and the lines it has no signal for. A reader of a maxUsd=0 run must not take
+ * an all-null ledger for a proven $0.
+ */
+export function describeMeasuredSpend(
+  ledger: TerminalCostLedger,
+  tokenUsage?: ActorTokenUsage,
+): string {
+  const measured = COST_CATEGORIES.filter((c) => ledger.lines[c].usd !== null).map(
+    (c) => `${c} ${ledger.lines[c].usd} USD`,
+  );
+  const unpricedProvider = ledger.lines.provider.source === "unpriced-token-usage";
+  const unmeasured = COST_CATEGORIES.filter(
+    (c) => ledger.lines[c].usd === null && !(c === "provider" && unpricedProvider),
+  );
+  return [
+    measured.length > 0 ? `Measured: ${measured.join(", ")}.` : "",
+    unpricedProvider
+      ? `Provider tokens were consumed${tokenUsage === undefined ? "" : ` (${describeTokenUsage(tokenUsage)})`} and are unpriced, not zero.`
+      : "",
+    unmeasured.length > 0 ? `Not measured (null, not claimed zero): ${unmeasured.join(", ")}.` : "",
+  ]
+    .filter((part) => part.length > 0)
+    .join(" ");
+}
+
 /** Derive the no-spend proof from the ledger. It is HONEST: it vouches for known-zero lines and
  *  explicitly lists the unmeasured (null) lines it cannot vouch for — never claiming zero on null. */
-export function buildNoSpendProof(ledger: TerminalCostLedger, maxUsd: number | null): NoSpendProof {
+export function buildNoSpendProof(
+  ledger: TerminalCostLedger,
+  maxUsd: number | null,
+  tokenUsage?: ActorTokenUsage,
+): NoSpendProof {
   const knownZeroLines: CostCategory[] = [];
   const knownNonZeroLines: CostCategory[] = [];
   const unmeasuredLines: CostCategory[] = [];
@@ -105,25 +151,12 @@ export function buildNoSpendProof(ledger: TerminalCostLedger, maxUsd: number | n
   // separately as the proof's honest blind spot.
   const cap = maxUsd ?? 0;
   const satisfied = knownNonZeroLines.length === 0 && ledger.knownTotalUsd <= cap;
-  const statement = [
-    satisfied
-      ? `No-spend proof SATISFIED for maxUsd=${cap}: every MEASURED spend line is zero (known total ${ledger.knownTotalUsd} USD).`
-      : `No-spend proof NOT satisfied for maxUsd=${cap}: known spend total ${ledger.knownTotalUsd} USD${knownNonZeroLines.length > 0 ? ` (non-zero: ${knownNonZeroLines.join(", ")})` : ""}.`,
-    // When tokens were counted but not priced, say so IN THE STATEMENT. A reader who sees
-    // "SATISFIED for maxUsd=0" must not walk away thinking nothing was consumed (#531).
-    ledger.lines.provider.source === "unpriced-token-usage"
-      ? `Provider tokens WERE consumed on this run and are counted in the ledger; they are unpriced, not zero.`
-      : "",
-    unmeasuredLines.length > 0
-      ? `UNPRICED (null, NOT claimed zero): ${unmeasuredLines.join(", ")}. The proof does not vouch for these. ` +
-        (ledger.lines.provider.source === "unpriced-token-usage"
-          ? // provider has a signal here (a token count), it just has no rate. Saying it "carries
-            // no spend signal" one sentence after reporting its token total would contradict the
-            // line above it.
-            "Of these, provider has a measured token count but no rate; the rest carry no spend signal for this run."
-          : "They carry no spend signal for this run.")
-      : "All applicable spend lines were measured.",
-  ]
+  const verdict = !satisfied
+    ? `No-spend proof NOT satisfied for maxUsd=${cap}: known spend total ${ledger.knownTotalUsd} USD${knownNonZeroLines.length > 0 ? ` (non-zero: ${knownNonZeroLines.join(", ")})` : ""}.`
+    : noSpendLineMeasured({ knownZeroLines, knownNonZeroLines })
+      ? noSpendNotEstablished(cap)
+      : `No-spend proof SATISFIED for maxUsd=${cap} on the measured lines (known total ${ledger.knownTotalUsd} USD).`;
+  const statement = [verdict, describeMeasuredSpend(ledger, tokenUsage)]
     .filter((part) => part.length > 0)
     .join(" ");
   return {

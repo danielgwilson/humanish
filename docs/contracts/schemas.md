@@ -256,9 +256,13 @@ persona?, device?, instruction?, target?, entry? }`. The parser expands it into
   in-sandbox live key by mechanism: the live key is never exercised without a
   fail-closed cap in force. `maxMinutes` is the
   wall-clock kill; `maxUsd`/`maxJobs` are enforced fail-closed against the cost
-  ledger (a run whose KNOWN spend exceeds the cap fails closed,
-  `HUMANISH_TERMINAL_LAB_CAPS_EXCEEDED`). The no-spend proof is derived from that
-  real ledger, never asserted (see Terminal Cost Ledger And No-Spend Proof).
+  ledger after the session (a run whose KNOWN spend exceeds the cap fails closed,
+  `HUMANISH_TERMINAL_LAB_CAPS_EXCEEDED`). Core records Codex provider spend as
+  unpriced tokens, so without a cost probe no line can trip a positive `maxUsd`:
+  a live run refuses `maxUsd > 0` before creating a sandbox
+  (`HUMANISH_TERMINAL_LAB_UNPRICED_CAP`) unless the caller passes a `costProbe`
+  hook. The no-spend proof is derived from that real ledger, never asserted (see
+  Terminal Cost Ledger And No-Spend Proof).
   Inert (warned) on every other route;
 - `policies`: `redactRepos`, `redactScreenshots`, `allowPublicTargets`, and the
   terminal-product credential-boundary booleans `allowPrivateRepoAccess`,
@@ -1002,9 +1006,13 @@ The no-spend proof (`humanish.terminal-no-spend-proof.v1`) is DERIVED from the
 ledger. It vouches only for what it measured: `knownZeroLines` (proven zero),
 `knownNonZeroLines` (break `satisfied`), and `unmeasuredLines` (the `null` lines
 it explicitly CANNOT vouch for). `satisfied` is true only when every KNOWN line
-is within `maxUsd` (for a no-spend run, `maxUsd: 0` ⇒ every known line is `0`);
-unmeasured lines never make it satisfied. A proof never claims zero on a `null`
-line; verification fails closed if it does.
+is within `maxUsd` (for a no-spend run, `maxUsd: 0` ⇒ every known line is `0`).
+Unmeasured lines never break it, so a ledger whose lines are all `null` is
+`satisfied` with nothing proven. The `statement` says which case applies: it
+names the measured lines and their dollars, provider tokens that were counted
+but unpriced (with the counts), and the lines with no signal; when no line was
+measured it says the proof was not established. A proof never claims zero on a
+`null` line; verification fails closed if it does.
 
 ```yaml
 schema: humanish.terminal-no-spend-proof.v1
@@ -1014,7 +1022,7 @@ knownZeroLines: []
 knownNonZeroLines: []
 unmeasuredLines: [product, media, payment, provider]
 knownTotalUsd: 0
-statement: "No-spend proof SATISFIED for maxUsd=0: every MEASURED spend line is zero…"
+statement: "No-spend proof not established for maxUsd=0: no spend line was measured. …"
 ```
 
 **Full caps enforcement (fail-closed, not advisory).** `scenario.caps.maxUsd`

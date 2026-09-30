@@ -3645,6 +3645,45 @@
       "sameAsRunLab": true
     }
   },
+  "terminal live positive maxUsd": {
+    "parser": {
+      "ok": true
+    },
+    "runLab": {
+      "runs": false,
+      "calls": {
+        "desktop": 0,
+        "executor": 0,
+        "provider": 0,
+        "subprocess": 0
+      },
+      "result": {
+        "backend": "terminal",
+        "schema": "humanish.terminal-lab-result.v1",
+        "ok": false,
+        "cwd": "[cwd]",
+        "labId": "adm-terminal",
+        "actor": "codex-exec",
+        "product": "widgetsmith-cli",
+        "dryRun": false,
+        "runId": "not-created",
+        "warnings": [],
+        "error": {
+          "code": "HUMANISH_TERMINAL_LAB_UNPRICED_CAP",
+          "message": "scenario.caps.maxUsd=1 cannot be enforced: the Codex participant's provider spend is recorded as unpriced tokens and no product, media or payment spend is measured, so a positive dollar cap can never trip. Set scenario.caps.maxUsd to 0 and bound the run with scenario.caps.maxMinutes, the codex command's wall-clock kill. No sandbox was created and the runtime key was not used."
+        },
+        "automaticAnalysisTrigger": "default",
+        "automaticAnalysis": {
+          "state": "skipped",
+          "reason": "analysis_source_unavailable"
+        }
+      }
+    },
+    "runner": {
+      "runner": "terminal",
+      "sameAsRunLab": true
+    }
+  },
   "shared world live without keys": {
     "parser": {
       "ok": true

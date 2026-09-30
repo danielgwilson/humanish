@@ -218,12 +218,30 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
     expect(ledgers.cost.lines.provider.note).toContain("3,692 output");
     expect(ledgers.cost.lines.provider.note).not.toContain("NOT MEASURED");
 
-    // The no-spend statement must not let "SATISFIED for maxUsd=0" read as "nothing was spent",
-    // and must not call provider signal-less one sentence after counting its tokens.
+    // `satisfied` keeps its contract meaning (no KNOWN line over the cap). The statement and the
+    // lifecycle line must not read as a proven $0: nothing was measured, and the provider tokens
+    // were consumed but unpriced, with their counts.
     expect(ledgers.noSpendProof.satisfied).toBe(true);
-    expect(ledgers.noSpendProof.statement).toContain("Provider tokens WERE consumed");
-    expect(ledgers.noSpendProof.statement).toContain(
-      "provider has a measured token count but no rate",
+    const statement: string = ledgers.noSpendProof.statement;
+    expect(statement).not.toMatch(/SATISFIED/);
+    expect(statement).toMatch(
+      /^No-spend proof not established for maxUsd=0: no spend line was measured\./,
+    );
+    expect(statement).toMatch(/Provider tokens were consumed \(343,072 input[^)]*3,692 output/);
+    expect(statement).toMatch(/Not measured \(null, not claimed zero\): product, media, payment\./);
+    const costEvent = ledgers.lifecycle.find(
+      (entry: { event: string }) => entry.event === "terminal-lab.cost.measured",
+    );
+    expect(costEvent.message).not.toMatch(/No-spend proof satisfied/);
+    expect(costEvent.message).toMatch(
+      /No-spend proof not established for maxUsd=0: no spend line was measured\.$/,
+    );
+    expect(costEvent.message).toMatch(/Provider tokens were consumed .* unpriced, not zero/);
+    const review = JSON.parse(await readFile(path.join(runDir, "review.json"), "utf8"));
+    expect(review.gaps).toContainEqual(
+      expect.stringMatching(
+        /^No-spend proof not established for maxUsd=0: no spend line was measured\./,
+      ),
     );
 
     const verified = await verifyRun(cwd, result.runId);
@@ -273,6 +291,13 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
 
     // The no-spend proof reflects the distinction: product is a known-zero line it vouches for, the
     // other three are unmeasured and explicitly NOT claimed zero.
+    expect(ledgers.noSpendProof.statement).toMatch(/SATISFIED for maxUsd=0 on the measured lines/);
+    expect(ledgers.noSpendProof.statement).toMatch(/Measured: product 0 USD\./);
+    expect(ledgers.noSpendProof.statement).toMatch(/Not measured[^:]*: media, payment, provider\./);
+    const review = JSON.parse(await readFile(path.join(runDir, "review.json"), "utf8"));
+    expect(review.gaps).toContainEqual(
+      expect.stringMatching(/^No-spend proof is partial\. Measured: product 0 USD\./),
+    );
     expect(ledgers.noSpendProof.knownZeroLines).toEqual(["product"]);
     expect(ledgers.noSpendProof.unmeasuredLines.sort()).toEqual(["media", "payment", "provider"]);
     expect(ledgers.noSpendProof.satisfied).toBe(true);
@@ -359,5 +384,61 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
     const finding = verified.checks.find((c) => c.name === "terminal-product evidence");
     expect(finding?.ok).toBe(false);
     expect(finding?.message).toContain('claims zero on line "provider"');
+  });
+
+  it("(e) a positive maxUsd without a costProbe is refused before any sandbox or key use", async () => {
+    let moduleLoads = 0;
+    const killed: string[] = [];
+    const result = await runTerminalProductLab({
+      cwd,
+      config: liveConfig({ maxUsd: 2, maxJobs: 0, maxMinutes: 10 }),
+      dryRun: false,
+      open: false,
+      hooks: {
+        env: baseEnv(),
+        now: () => 1_000,
+        loadModule: async () => {
+          moduleLoads += 1;
+          return makeFakeModule({ killed, codexBehavior: passingCodex() });
+        },
+      },
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.error?.code).toBe("HUMANISH_TERMINAL_LAB_UNPRICED_CAP");
+    expect(result.error?.message).toMatch(/scenario\.caps\.maxMinutes/);
+    expect(result.error?.message).not.toContain(FAKE_RUNTIME_KEY);
+    expect(result.runId).toBe("not-created");
+    expect(moduleLoads).toBe(0);
+    expect(killed).toEqual([]);
+    await expect(readFile(path.join(cwd, ".humanish", "runs"), "utf8")).rejects.toThrow();
+  });
+
+  it("(f) a positive maxUsd with a costProbe runs, and the cap is checked against its lines", async () => {
+    const killed: string[] = [];
+    const result = await runTerminalProductLab({
+      cwd,
+      config: liveConfig({ maxUsd: 2, maxJobs: 0, maxMinutes: 10 }),
+      dryRun: false,
+      open: false,
+      hooks: {
+        env: baseEnv(),
+        now: () => 1_000,
+        loadModule: async () => makeFakeModule({ killed, codexBehavior: passingCodex() }),
+        costProbe: () => ({
+          product: { usd: 0.5, source: "no-spend-signal", note: "metered product spend" },
+        }),
+      },
+    });
+
+    // Within the $2 cap, so the run passes; the no-spend proof is not satisfied because a
+    // measured line is non-zero.
+    expect(result.ok).toBe(true);
+    expect(result.noSpend?.satisfied).toBe(false);
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
+    const ledgers = JSON.parse(await readFile(path.join(runDir, "terminal-ledgers.json"), "utf8"));
+    expect(ledgers.cost.knownTotalUsd).toBe(0.5);
+    expect(result.warnings.some((w) => /costProbe measures/.test(w))).toBe(true);
+    expect(killed).toHaveLength(1);
   });
 });

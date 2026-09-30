@@ -36,7 +36,14 @@ import { extractLocalActorVerdict, normalizeLocalActorTranscript } from "../../r
 import { applyAdapterExtensionSeam } from "./adapter.js";
 import { buildLiveTerminalProductBundle, renderTerminalReviewMarkdown } from "./bundle.js";
 import { buildRuntimeAuth, buildSandboxMetadata } from "./credentials.js";
-import { buildCostLedger, buildNoSpendProof, evaluateCapsAgainstLedger } from "./ledger.js";
+import {
+  buildCostLedger,
+  buildNoSpendProof,
+  describeMeasuredSpend,
+  evaluateCapsAgainstLedger,
+  noSpendLineMeasured,
+  noSpendNotEstablished,
+} from "./ledger.js";
 import { runWithWallClock, teardownSandbox } from "./sandbox.js";
 import { buildTerminalActorTrace, scrubSplitKnownValues, tailOf } from "./trace.js";
 import {
@@ -93,16 +100,21 @@ export async function runLiveTerminalSession(
       { actor: descriptorId },
     );
   }
-  // maxUsd is ENFORCED fail-closed against the cost ledger (evaluateCapsAgainstLedger after the
-  // session), not advisory. A positive maxUsd is permitted, but core still has no
-  // PRODUCT-spend signal (product/media/payment lines are null = unmeasured; only the provider line
-  // is measurable, from tokenUsage). So a positive budget is honestly bounded by what is MEASURED:
-  // the known total (provider, when present) must stay <= maxUsd, and the no-spend proof reports the
-  // unmeasured lines rather than guessing them zero. Warn so the operator knows a positive budget is
-  // only as strong as the (currently provider-only) spend signal.
+  // maxUsd is checked against the cost ledger after the session, and only KNOWN lines can trip it.
+  // Core records the Codex provider line as unpriced tokens (no rate for model `codex`) and has no
+  // product, media or payment signal, so without a costProbe every line is null and a positive
+  // maxUsd could never trip. That cap would promise a bound nothing enforces, so it is refused;
+  // maxMinutes is what bounds a live run.
+  if (maxUsd > 0 && hooks.costProbe === undefined) {
+    return failed(
+      "HUMANISH_TERMINAL_LAB_UNPRICED_CAP",
+      `scenario.caps.maxUsd=${maxUsd} cannot be enforced: the Codex participant's provider spend is recorded as unpriced tokens and no product, media or payment spend is measured, so a positive dollar cap can never trip. Set scenario.caps.maxUsd to 0 and bound the run with scenario.caps.maxMinutes, the codex command's wall-clock kill. No sandbox was created and the runtime key was not used.`,
+      { actor: descriptorId },
+    );
+  }
   if (maxUsd > 0) {
     warnings.push(
-      `scenario.caps.maxUsd=${maxUsd} declares a non-zero spend budget. maxUsd is enforced fail-closed against the cost ledger, but core meters only the provider line from tokenUsage; product/media/payment stay null (UNMEASURED, never guessed zero) unless an adapter supplies those signals through costProbe. The no-spend proof reports unmeasured lines honestly.`,
+      `scenario.caps.maxUsd=${maxUsd} is checked after the session against the lines the costProbe measures; lines it leaves null (unmeasured) never trip it. scenario.caps.maxMinutes bounds the run while it runs.`,
     );
   }
 
@@ -638,10 +650,16 @@ export async function runLiveTerminalSession(
     ...(trace.tokenUsage === undefined ? {} : { tokenUsage: trace.tokenUsage }),
     ...(injectedLines ? { injectedLines } : {}),
   });
-  const noSpendProof = buildNoSpendProof(cost, maxUsd ?? null);
+  const noSpendProof = buildNoSpendProof(cost, maxUsd ?? null, trace.tokenUsage);
+  const proofVerdict = !noSpendProof.satisfied
+    ? `No-spend proof NOT satisfied for maxUsd=${maxUsd ?? "null"}.`
+    : noSpendLineMeasured(noSpendProof)
+      ? noSpendNotEstablished(maxUsd ?? 0)
+      : `No-spend proof satisfied on the measured lines for maxUsd=${maxUsd ?? "null"}.`;
+  const measuredSpend = describeMeasuredSpend(cost, trace.tokenUsage);
   recordLifecycle(
     "terminal-lab.cost.measured",
-    `Cost ledger: known total ${cost.knownTotalUsd} USD${cost.fullyMeasured ? " (fully measured)" : ` (lower bound; unmeasured: ${noSpendProof.unmeasuredLines.join(", ") || "none"})`}. No-spend proof ${noSpendProof.satisfied ? "satisfied" : "NOT satisfied"} for maxUsd=${maxUsd ?? "null"}.`,
+    `Cost ledger: known total ${cost.knownTotalUsd} USD${cost.fullyMeasured ? " (fully measured)" : " (lower bound)"}.${measuredSpend.length > 0 ? ` ${measuredSpend}` : ""} ${proofVerdict}`,
   );
 
   // FULL caps enforcement (fail-closed, NOT advisory): if a KNOWN spend line exceeds maxUsd (or a
