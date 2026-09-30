@@ -407,7 +407,7 @@ function formatCleanupHuman(result: CleanupResult): string {
     [
       `humanish cleanup ${result.ok ? "passed" : "failed"}`,
       `run: ${result.runId ?? result.run}`,
-      `resources: killed ${result.summary.killed}, already-clean ${result.summary.alreadyClean}, skipped ${result.summary.skipped}, failed ${result.summary.failed}`,
+      `resources: already-clean ${result.summary.alreadyClean}, skipped ${result.summary.skipped}, failed ${result.summary.failed}`,
       ...(result.cleanupPath ? [`cleanup: ${result.cleanupPath}`] : []),
       ...result.warnings.map((warning) => `warning: ${warning}`),
     ].join("\n") + "\n"

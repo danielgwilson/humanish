@@ -64,8 +64,14 @@ export interface CleanupResourceResult {
   provider: RunProviderResource["provider"];
   kind: RunProviderResource["kind"];
   id: string;
-  status: "killed" | "already_clean" | "failed" | "skipped";
+  /** Cleanup reads recorded evidence and never kills a sandbox, so it never writes `killed`. */
+  status: "already_clean" | "failed" | "skipped";
   message: string;
+}
+
+/** A resource line as a stored cleanup.json holds it. v0.12.23 through v0.15.0 killed sandboxes. */
+export interface StoredCleanupResourceResult extends Omit<CleanupResourceResult, "status"> {
+  status: CleanupResourceResult["status"] | "killed";
 }
 
 export interface CleanupAdapterResult {
@@ -85,6 +91,7 @@ export interface CleanupResult {
   checkedAt: string;
   summary: {
     resources: number;
+    /** Always 0 now; written so readers from earlier releases still accept the file. */
     killed: number;
     alreadyClean: number;
     failed: number;
@@ -97,6 +104,11 @@ export interface CleanupResult {
     code: "HUMANISH_RUN_NOT_FOUND" | "HUMANISH_INVALID_RUN_BUNDLE";
     message: string;
   };
+}
+
+/** cleanup.json as any release wrote it; see StoredCleanupResourceResult. */
+export interface StoredCleanupResult extends Omit<CleanupResult, "resources"> {
+  resources: StoredCleanupResourceResult[];
 }
 
 export interface RunPointer {
