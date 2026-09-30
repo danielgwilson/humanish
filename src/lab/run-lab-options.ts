@@ -23,7 +23,7 @@ import {
   type SubjectPhaseEvent,
 } from "../subject/steps.js";
 import type { AdapterScorerModule } from "./adapter-scorer-loader.js";
-import { withHookOverrides } from "./hook-bag.js";
+import { HOOK_MEMBERS, withHookOverrides } from "./hook-bag.js";
 import type { LabOutcome, RunLabOptions } from "./engine.js";
 import { computerUseParticipants, resolveLabDryRun, type LabRoute } from "./plan.js";
 import type { LabConfig } from "./types.js";
@@ -357,7 +357,7 @@ export function normalizeRunLabOptions(
     const { participantIds: _ids, ...rerun } = options.rerun;
     normalized.rerun = { ...rerun, laneIds: participantIds };
   }
-  const analysis = withMapped(legacy.automaticAnalysis, {
+  const analysis = withMapped(legacy.automaticAnalysis, HOOK_MEMBERS.analysis, {
     ...(analysisSignal === undefined
       ? {}
       : { deps: { ...legacy.automaticAnalysis?.deps, signal: analysisSignal } }),
@@ -375,7 +375,7 @@ export function normalizeRunLabOptions(
   const scoring = scorer === undefined ? {} : scorerHooks(scorer);
   switch (route) {
     case "computer-use": {
-      const hooks = withMapped(legacy.cuaHooks, {
+      const hooks = withMapped(legacy.cuaHooks, HOOK_MEMBERS.cua, {
         ...envHome,
         ...scoring,
         ...computerUseHooks(
@@ -394,7 +394,7 @@ export function normalizeRunLabOptions(
       break;
     }
     case "shared-world": {
-      const hooks = withMapped(legacy.sharedWorldHooks, {
+      const hooks = withMapped(legacy.sharedWorldHooks, HOOK_MEMBERS.sharedWorld, {
         ...envHome,
         ...scoring,
         ...sharedWorldHooks({ prepareDesktop, onStream }, emit),
@@ -403,16 +403,22 @@ export function normalizeRunLabOptions(
       break;
     }
     case "terminal": {
-      const hooks = withMapped<TerminalProductLabHooks>(legacy.terminalHooks, {
-        ...envHome,
-        ...(scorer?.score === undefined ? {} : { score: scorer.score }),
-        ...(scorer?.deriveFeedback === undefined ? {} : { deriveFeedback: scorer.deriveFeedback }),
-      });
+      const hooks = withMapped<TerminalProductLabHooks>(
+        legacy.terminalHooks,
+        HOOK_MEMBERS.terminal,
+        {
+          ...envHome,
+          ...(scorer?.score === undefined ? {} : { score: scorer.score }),
+          ...(scorer?.deriveFeedback === undefined
+            ? {}
+            : { deriveFeedback: scorer.deriveFeedback }),
+        },
+      );
       if (hooks !== undefined) normalized.terminalHooks = hooks;
       break;
     }
     case "scripted": {
-      const hooks = withMapped(legacy.scriptedHooks, {
+      const hooks = withMapped(legacy.scriptedHooks, HOOK_MEMBERS.scripted, {
         ...envHome,
         ...(prepareDesktop === undefined
           ? {}
@@ -431,9 +437,13 @@ export function normalizeRunLabOptions(
 }
 
 /** A caller's bag with new options mapped into it. With nothing to map, it is the same object. */
-function withMapped<T extends object>(bag: T | undefined, mapped: Partial<T>): T | undefined {
+function withMapped<T extends object>(
+  bag: T | undefined,
+  declared: readonly string[],
+  mapped: Partial<T>,
+): T | undefined {
   if (Object.keys(mapped).length === 0) return bag;
-  return withHookOverrides(bag, mapped);
+  return withHookOverrides(bag, declared, mapped);
 }
 
 function scorerHooks(

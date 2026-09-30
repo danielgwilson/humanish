@@ -956,3 +956,35 @@ describe("a class bag keeps its methods through the routes' wrapping", () => {
     expect(tracked.onRuntimeStreamReady).toBeTypeOf("function");
   });
 });
+
+describe("the forwarding object reaches every member a bag can have", () => {
+  it("binds an own class-field function to the bag, so its private field works", async () => {
+    class FieldHooks {
+      readonly #executor = executor;
+      buildExecutor = function (this: FieldHooks) {
+        return Promise.resolve(this.#executor);
+      };
+      buildProvider = async () => provider;
+    }
+    const hooks = normalized(config("cuLocalApp"), {
+      cuaHooks: new FieldHooks() as never,
+      env: {},
+    }).cuaHooks!;
+    await expect(hooks.buildExecutor!({} as never)).resolves.toBe(executor);
+    await expect(
+      trackRuntimeStreams(new FieldHooks() as never).hooks.buildExecutor!({} as never),
+    ).resolves.toBe(executor);
+  });
+
+  it("forwards a declared member a proxy-backed bag answers without listing it", () => {
+    const onPreflight = vi.fn();
+    const bag = new Proxy(
+      {},
+      { get: (_target, key) => (key === "onPreflight" ? onPreflight : undefined) },
+    );
+    const plan = { lanes: [] } as unknown as CuaLanePlan;
+    normalized(config("cuAppUrl"), { cuaHooks: bag, env: {} }).cuaHooks!.onPreflight!(plan);
+    trackRuntimeStreams(bag).hooks.onPreflight!(plan);
+    expect(onPreflight).toHaveBeenCalledTimes(2);
+  });
+});

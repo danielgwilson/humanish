@@ -3,7 +3,7 @@ import type { CuaLiveMetadata } from "../../actors/computer-use/loop.js";
 import { attachObserverRuntimeStreamUrls, type ObserverResult } from "../../observer/render.js";
 import { type ObserverRuntimeStreamUrl } from "../../observer/run-routes.js";
 import type { RunBundle } from "../../run/bundle.js";
-import { withHookOverrides } from "../../lab/hook-bag.js";
+import { HOOK_MEMBERS, withHookOverrides } from "../../lab/hook-bag.js";
 import type { CuaActorLabHooks, CuaLaneSpec } from "./types.js";
 
 export interface LiveTraceFlush {
@@ -151,7 +151,7 @@ export function trackRuntimeStreams(hooks: CuaActorLabHooks): {
   const urls: ObserverRuntimeStreamUrl[] = [];
   return {
     // The caller's bag may be a class instance, so it is wrapped rather than spread.
-    hooks: withHookOverrides(hooks, {
+    hooks: withHookOverrides(hooks, HOOK_MEMBERS.cua, {
       onRuntimeStreamReady: async (stream) => {
         await hooks.onRuntimeStreamReady?.(stream);
         urls.push({ streamId: stream.streamId, url: stream.url });

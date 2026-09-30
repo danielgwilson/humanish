@@ -123,9 +123,17 @@ describe("local study re-entry", () => {
 
     const hooks = reentryHooks();
     expect(seams.runLab.mock.calls[0]![1].scorerProvenance).toBe(scorerProvenance);
-    expect(hooks.score).toBe(score);
-    expect(hooks.onPhase).toBe(onPhase);
-    expect(hooks.deriveArtifacts).toBe(deriveArtifacts);
+    // The study forwards the caller's members bound to the caller's bag, so each reaches the
+    // caller's function.
+    await hooks.score!({} as never);
+    hooks.onPhase!(
+      { at: "", type: "phase", message: "m" },
+      { laneId: "lane-01", laneIndex: 0, laneCount: 1 },
+    );
+    await hooks.deriveArtifacts!({} as never);
+    expect(score).toHaveBeenCalledOnce();
+    expect(onPhase).toHaveBeenCalledOnce();
+    expect(deriveArtifacts).toHaveBeenCalledOnce();
     expect(hooks.createDesktopLane).not.toBe(createDesktopLane);
     expect(hooks.buildProvider).toBeUndefined();
     expect(hooks.runSession).toBeUndefined();
@@ -162,7 +170,8 @@ describe("local study re-entry", () => {
     });
 
     const hooks = reentryHooks();
-    expect(hooks.buildProvider).toBe(buildProvider);
+    await hooks.buildProvider!({} as never);
+    expect(buildProvider).toHaveBeenCalledOnce();
     expect(seams.account).not.toHaveBeenCalled();
     expect(seams.createDesktop).toHaveBeenCalledWith(
       expect.objectContaining({ assets, appUrl, signal }),
