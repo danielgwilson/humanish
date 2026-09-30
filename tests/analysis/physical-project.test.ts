@@ -20,12 +20,14 @@ import {
 import { analyzeStudy } from "../../src/analysis/service.js";
 import {
   listStudyAnalyses,
-  listStudyAnalysisExecutions,
   loadStudyAnalysisRecord,
   readStudyAnalysisVersion,
   writeStudyAnalysis,
-  writeStudyAnalysisExecutionReceipt,
 } from "../../src/analysis/store.js";
+import {
+  listStudyAnalysisExecutions,
+  writeStudyAnalysisExecutionReceipt,
+} from "../../src/analysis/store-executions.js";
 import { captureStudyEvidence } from "../../src/analysis/evidence.js";
 import type { AnalysisFetch } from "../../src/analysis/provider.js";
 import type { StudyAnalysisConfig } from "../../src/analysis/study-analysis.js";

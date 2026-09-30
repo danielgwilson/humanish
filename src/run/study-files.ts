@@ -2,11 +2,11 @@ import { constants, type BigIntStats } from "node:fs";
 import { lstat, open, realpath } from "node:fs/promises";
 import path from "node:path";
 
-import { isPathInside, validatePreparedRunRootIdentity } from "../run/paths.js";
+import { isPathInside, validatePreparedRunRootIdentity } from "./paths.js";
 import {
   assertPreparedSelectedOutputDirectory,
   type PreparedOutputRoot,
-} from "../run/selected-output-paths.js";
+} from "./selected-output-paths.js";
 
 // Reading a file from a retained run directory for analysis: the path must be a plain relative path
 // inside the run, the file a single-link regular file that stays inside it, and the read bounded.

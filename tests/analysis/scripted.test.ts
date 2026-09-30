@@ -5,11 +5,11 @@ import { PNG } from "pngjs";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { prepareRunArtifactPaths, type PreparedRunArtifactPaths } from "../../src/run/paths.js";
 import { captureStudyEvidence } from "../../src/analysis/evidence.js";
+import { writeStudyAnalysis } from "../../src/analysis/store.js";
 import {
   listStudyAnalysisExecutions,
-  writeStudyAnalysis,
   writeStudyAnalysisExecutionReceipt,
-} from "../../src/analysis/store.js";
+} from "../../src/analysis/store-executions.js";
 import { loadStudyAnalysis } from "../../src/analysis/load.js";
 import {
   digestStudyAnalysisInput,

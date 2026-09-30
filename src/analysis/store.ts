@@ -15,13 +15,9 @@ import {
   type PreparedSelectedOutputDirectory,
 } from "../run/selected-output-paths.js";
 import { STUDY_EVIDENCE_LIMITS, validateStudyAnalysisEvidence } from "./evidence.js";
-import { isStudyEvidencePath, readBoundedStudyFile } from "./study-files.js";
+import { isStudyEvidencePath, readBoundedStudyFile } from "../run/study-files.js";
 import {
   hashStudyAnalysisValue,
-  validateStudyAnalysisExecutionReceipt,
-  studyAnalysisExecutionStartSchema,
-  type StudyAnalysisExecutionStart,
-  type StudyAnalysisExecutionReceipt,
   validateStudyAnalysisArtifact,
   validateStudyAnalysisCorrection,
 } from "./validation.js";
@@ -32,14 +28,13 @@ import type {
 } from "./study-analysis.js";
 import { RUN_BUNDLE_FILE } from "../run/bundle.js";
 
-const STUDY_ANALYSIS_DIRECTORY = "analysis";
-const ANALYSIS_MAX_BYTES = 4 * 1024 * 1024;
-const MAX_VERSIONS = 256;
+export const STUDY_ANALYSIS_DIRECTORY = "analysis";
+export const STUDY_ANALYSIS_EXECUTION_DIRECTORY = "analysis-attempts";
+export const ANALYSIS_MAX_BYTES = 4 * 1024 * 1024;
+export const MAX_VERSIONS = 256;
 const MAX_CORRECTIONS = 256;
 const MAX_CORRECTION_BYTES = 32 * 1024;
-/** receipt.json and start.json in an execution directory. */
-const MAX_EXECUTION_RECORD_BYTES = 16 * 1024;
-const safeId = (value: string): boolean => /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(value);
+export const safeId = (value: string): boolean => /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(value);
 const hashBytes = (bytes: Buffer): string => createHash("sha256").update(bytes).digest("hex");
 const empty = (
   state: LoadedStudyAnalysis["state"],
@@ -74,7 +69,7 @@ export async function assertStudyAnalysisPublicationCapacity(
   }
 }
 
-async function existingRoot(
+export async function existingRoot(
   prepared: PreparedRunArtifactPaths,
   directory = STUDY_ANALYSIS_DIRECTORY,
 ): Promise<PreparedSelectedOutputDirectory | null> {
@@ -89,7 +84,7 @@ async function existingRoot(
   return root ? Object.freeze({ ...root, parentRun: prepared }) : null;
 }
 
-async function claimDirectory(
+export async function claimDirectory(
   parent: PreparedSelectedOutputDirectory,
   id: string,
 ): Promise<PreparedSelectedOutputDirectory> {
@@ -133,7 +128,7 @@ export async function writeStudyAnalysis(
   await writeContainedOutputFile(claimed, "analysis.json", bytes);
 }
 
-async function directoryIds(
+export async function directoryIds(
   root: PreparedSelectedOutputDirectory,
   limit: number,
   ignoreLegacyFiles = false,
@@ -430,291 +425,3 @@ export async function appendStudyAnalysisCorrection(
     `${JSON.stringify(correction, null, 2)}\n`,
   );
 }
-
-export type { StudyAnalysisExecutionReceipt } from "./validation.js";
-const STUDY_ANALYSIS_EXECUTION_DIRECTORY = "analysis-attempts";
-const EXECUTION_BINDING_KEYS = [
-  "id",
-  "runId",
-  "sourceRunSha256",
-  "inputDigest",
-  "configDigest",
-  "promptVersion",
-] as const;
-
-/** Exact bounded receipt lookup for an already claimed execution, never a dispatch decision. */
-export async function readStudyAnalysisExecution(
-  prepared: PreparedRunArtifactPaths,
-  id: string,
-): Promise<StudyAnalysisExecutionReceipt | null> {
-  if (!safeId(id)) return null;
-  try {
-    const root = await existingRoot(prepared, STUDY_ANALYSIS_EXECUTION_DIRECTORY);
-    if (!root) return null;
-    const bytes = await readBoundedStudyFile(
-      root,
-      `${id}/receipt.json`,
-      MAX_EXECUTION_RECORD_BYTES,
-    );
-    if (!bytes) return null;
-    const receipt = validateStudyAnalysisExecutionReceipt(
-      JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)),
-    );
-    return receipt.id === id && receipt.runId === runIdOf(prepared) ? receipt : null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Publish accounting first. Unlike a usable report, this receipt does not claim
- * the source still matches; its digests name the exact input that was attempted.
- */
-export async function writeStudyAnalysisExecutionReceipt(
-  prepared: PreparedRunArtifactPaths,
-  value: StudyAnalysisArtifact,
-): Promise<void> {
-  const receipt = executionReceipt(value, prepared);
-  const root = await prepareContainedOutputDirectoryRoot(
-    prepared,
-    STUDY_ANALYSIS_EXECUTION_DIRECTORY,
-  );
-  const claimed = await claimDirectory(root, receipt.id);
-  await writeContainedOutputFile(claimed, "receipt.json", `${JSON.stringify(receipt, null, 2)}\n`);
-}
-
-function executionReceipt(
-  value: StudyAnalysisArtifact,
-  prepared: PreparedRunArtifactPaths,
-): StudyAnalysisExecutionReceipt {
-  const artifact = validateStudyAnalysisArtifact(value);
-  if (artifact.runId !== runIdOf(prepared)) throw new Error("ANALYSIS_ID_MISMATCH");
-  const receipt: StudyAnalysisExecutionReceipt = {
-    schema: "humanish.analysis-execution.v1",
-    model: artifact.config.model,
-    maxCostUsd: artifact.config.maxCostUsd,
-    id: artifact.id,
-    runId: artifact.runId,
-    status: artifact.status,
-    createdAt: artifact.createdAt,
-    completedAt: artifact.completedAt,
-    sourceRunSha256: artifact.sourceRunSha256,
-    inputDigest: artifact.inputDigest,
-    configDigest: artifact.configDigest,
-    promptVersion: artifact.promptVersion,
-    provider: artifact.provider,
-    usage: artifact.usage,
-    error: artifact.error,
-  };
-  return receipt;
-}
-
-/** The returned closure owns one exact directory; persisted IDs never authorize overwriting it. */
-export async function beginStudyAnalysisExecution(
-  prepared: PreparedRunArtifactPaths,
-  context: Omit<StudyAnalysisExecutionStart, "schema" | "createdAt">,
-): Promise<(value: StudyAnalysisArtifact) => Promise<void>> {
-  const start = studyAnalysisExecutionStartSchema.parse({
-    ...context,
-    schema: "humanish.analysis-execution-start.v1",
-    createdAt: new Date().toISOString(),
-  });
-  if (start.runId !== runIdOf(prepared)) throw new Error("ANALYSIS_ID_MISMATCH");
-  const root = await prepareContainedOutputDirectoryRoot(
-    prepared,
-    STUDY_ANALYSIS_EXECUTION_DIRECTORY,
-  );
-  const claimed = await claimDirectory(root, start.id);
-  await writeContainedOutputFile(claimed, "start.json", `${JSON.stringify(start, null, 2)}\n`);
-  let finalized = false;
-  return async (value) => {
-    const receipt = executionReceipt(value, prepared);
-    if (finalized || EXECUTION_BINDING_KEYS.some((key) => receipt[key] !== start[key])) {
-      throw new Error("ANALYSIS_ID_MISMATCH");
-    }
-    finalized = true;
-    await assertPreparedSelectedOutputDirectory(claimed);
-    const existing = await lstat(path.join(claimed.physicalPath, "receipt.json")).catch(
-      (error: NodeJS.ErrnoException) => {
-        if (error.code === "ENOENT") return null;
-        throw error;
-      },
-    );
-    if (existing) throw new Error("ANALYSIS_ID_EXISTS");
-    await writeContainedOutputFile(
-      claimed,
-      "receipt.json",
-      `${JSON.stringify(receipt, null, 2)}\n`,
-    );
-  };
-}
-
-export async function listStudyAnalysisExecutions(prepared: PreparedRunArtifactPaths): Promise<{
-  receipts: StudyAnalysisExecutionReceipt[];
-  warnings: string[];
-}> {
-  const receipts: StudyAnalysisExecutionReceipt[] = [];
-  const warnings: string[] = [];
-  try {
-    const root = await existingRoot(prepared, STUDY_ANALYSIS_EXECUTION_DIRECTORY);
-    if (!root) return { receipts, warnings };
-    const inventory = await directoryIds(root, MAX_VERSIONS);
-    warnings.push(...inventory.warnings);
-    for (const id of inventory.ids) {
-      const bytes = await readBoundedStudyFile(
-        root,
-        `${id}/receipt.json`,
-        MAX_EXECUTION_RECORD_BYTES,
-      );
-      if (!bytes) {
-        try {
-          await lstat(path.join(root.physicalPath, id, "receipt.json"));
-          warnings.push("ANALYSIS_RECEIPT_UNREADABLE");
-        } catch (error) {
-          if (!(error instanceof Error && "code" in error && error.code === "ENOENT"))
-            warnings.push("ANALYSIS_RECEIPT_UNREADABLE");
-        }
-        continue;
-      }
-      try {
-        const receipt = validateStudyAnalysisExecutionReceipt(
-          JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)),
-        );
-        if (receipt.id !== id || receipt.runId !== runIdOf(prepared)) {
-          warnings.push("ANALYSIS_RECEIPT_INVALID");
-          continue;
-        }
-        receipts.push(receipt);
-      } catch {
-        warnings.push("ANALYSIS_RECEIPT_INVALID");
-      }
-    }
-    receipts.sort(
-      (a, b) => Date.parse(b.completedAt) - Date.parse(a.completedAt) || b.id.localeCompare(a.id),
-    );
-  } catch {
-    warnings.push("ANALYSIS_RECEIPTS_UNAVAILABLE");
-  }
-  return { receipts, warnings: [...new Set(warnings)] };
-}
-
-export interface StudyAnalysisAccountingRecord {
-  id: string;
-  receipt: StudyAnalysisExecutionReceipt | null;
-  start: StudyAnalysisExecutionStart | null;
-  legacy: boolean;
-}
-
-/** Accounting is independent of source freshness and findings validation. No evidence is opened. */
-export async function readStudyAnalysisAccountingRecords(
-  prepared: PreparedRunArtifactPaths,
-): Promise<{
-  records: StudyAnalysisAccountingRecord[];
-  warnings: string[];
-}> {
-  const records = new Map<string, StudyAnalysisAccountingRecord>();
-  const warnings: string[] = [];
-  for (const directory of [STUDY_ANALYSIS_EXECUTION_DIRECTORY, STUDY_ANALYSIS_DIRECTORY]) {
-    try {
-      const root = await existingRoot(prepared, directory);
-      if (!root) continue;
-      const inventory = await directoryIds(
-        root,
-        MAX_VERSIONS,
-        directory === STUDY_ANALYSIS_DIRECTORY,
-      );
-      warnings.push(...inventory.warnings);
-      for (const id of inventory.ids) {
-        let record = records.get(id);
-        if (!record) {
-          record = { id, receipt: null, start: null, legacy: false };
-          records.set(id, record);
-        }
-        if (directory === STUDY_ANALYSIS_EXECUTION_DIRECTORY) {
-          const startBytes = await readBoundedStudyFile(
-            root,
-            `${id}/start.json`,
-            MAX_EXECUTION_RECORD_BYTES,
-          );
-          if (startBytes) {
-            try {
-              const start = studyAnalysisExecutionStartSchema.parse(
-                JSON.parse(startBytes.toString("utf8")),
-              );
-              if (start.id !== id || start.runId !== runIdOf(prepared)) throw new Error();
-              record.start = start;
-            } catch {
-              warnings.push("ANALYSIS_START_INVALID");
-            }
-          }
-        }
-        const legacy = directory === STUDY_ANALYSIS_DIRECTORY;
-        const bytes = await readBoundedStudyFile(
-          root,
-          `${id}/${legacy ? "analysis.json" : "receipt.json"}`,
-          legacy ? ANALYSIS_MAX_BYTES : MAX_EXECUTION_RECORD_BYTES,
-        );
-        if (!bytes) continue;
-        try {
-          const raw = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
-          if (legacy && raw.schema !== "humanish.study-analysis.v1") throw new Error();
-          // A historical report may have stale captures or invalid findings. Its strictly checked
-          // accounting metadata still records incurred usage; it never approves those findings.
-          const candidate = legacy
-            ? Object.fromEntries(
-                Object.keys(studyAnalysisExecutionReceiptKeys).map((key) => [key, raw[key]]),
-              )
-            : raw;
-          if (legacy)
-            Object.assign(candidate, {
-              schema: "humanish.analysis-execution.v1",
-              model: raw.config?.model,
-              maxCostUsd: raw.config?.maxCostUsd,
-            });
-          const receipt = validateStudyAnalysisExecutionReceipt(candidate);
-          if (receipt.id !== id || receipt.runId !== runIdOf(prepared)) throw new Error();
-          if (
-            record.receipt &&
-            hashStudyAnalysisValue(record.receipt) !== hashStudyAnalysisValue(receipt)
-          ) {
-            warnings.push("ANALYSIS_ACCOUNTING_CONFLICT");
-            record.receipt = null;
-          } else {
-            record.legacy = legacy && record.receipt === null;
-            record.receipt = receipt;
-          }
-        } catch {
-          warnings.push("ANALYSIS_ACCOUNTING_INVALID");
-        }
-      }
-    } catch {
-      warnings.push("ANALYSIS_ACCOUNTING_UNAVAILABLE");
-    }
-  }
-  for (const record of records.values()) {
-    if (
-      record.start &&
-      record.receipt &&
-      EXECUTION_BINDING_KEYS.some((key) => record.start![key] !== record.receipt![key])
-    ) {
-      warnings.push("ANALYSIS_ACCOUNTING_CONFLICT");
-      record.receipt = null;
-    }
-  }
-  return { records: [...records.values()], warnings: [...new Set(warnings)] };
-}
-
-const studyAnalysisExecutionReceiptKeys = {
-  id: true,
-  runId: true,
-  status: true,
-  createdAt: true,
-  completedAt: true,
-  sourceRunSha256: true,
-  inputDigest: true,
-  configDigest: true,
-  promptVersion: true,
-  provider: true,
-  usage: true,
-  error: true,
-};

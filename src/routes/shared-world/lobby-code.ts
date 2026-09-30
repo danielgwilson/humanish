@@ -2,6 +2,8 @@
 // a vision model call, from a seat's screenshot. The external-public plane uses it to hand the
 // host's lobby to the followers.
 
+import { OPENAI_RESPONSES_URL } from "../../actors/openai-endpoint.js";
+
 /**
  * The lobby-trivia (and general "/lobby/CODE") shared-session URL matcher. A code is exactly 6 chars of
  * the [A-Z2-9] class; a locale prefix (/en/lobby/…) and a query/hash suffix are tolerated. RUNTIME-ONLY
@@ -87,8 +89,6 @@ const LOBBY_CODE_VISION_PROMPT =
   "exactly those 6 characters in uppercase and NOTHING else (no words, no punctuation). If no lobby " +
   "code is visible on this screen (e.g. it is the home screen or a game round), reply exactly NONE.";
 
-const LOBBY_CODE_VISION_ENDPOINT = "https://api.openai.com/v1/responses";
-
 // A single-frame OCR-style read. gpt-5.5 (the CU default) is used deliberately: it reliably reads the
 // 6-char code off a dense MOBILE-viewport waiting room — a smaller/cheaper model (gpt-4.1-mini) was
 // tried and could NOT read it. reasoning.effort stays "low" (minimal) and the output budget is small
@@ -143,7 +143,7 @@ export async function readLobbyCodeFromFrame(
   };
   let res: Awaited<ReturnType<typeof fetch>>;
   try {
-    res = await fetchFn(options.endpoint ?? LOBBY_CODE_VISION_ENDPOINT, {
+    res = await fetchFn(options.endpoint ?? OPENAI_RESPONSES_URL, {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify(body),

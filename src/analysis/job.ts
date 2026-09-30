@@ -16,9 +16,10 @@ import {
   writeContainedOutputFile,
   type PreparedSelectedOutputDirectory,
 } from "../run/selected-output-paths.js";
-import { readBoundedStudyFile } from "./study-files.js";
+import { readBoundedStudyFile } from "../run/study-files.js";
 import { containsSensitive } from "../evidence/redaction.js";
-import { readStudyAnalysisExecution, readStudyAnalysisVersion } from "./store.js";
+import { readStudyAnalysisVersion } from "./store.js";
+import { readStudyAnalysisExecution } from "./store-executions.js";
 import { hashStudyAnalysisValue } from "./validation.js";
 
 export const AUTOMATIC_STUDY_ANALYSIS_DIRECTORY = "analysis-automatic";

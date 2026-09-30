@@ -9,7 +9,7 @@ import {
   type AnalysisParticipantInput,
   type CaptureVersion,
 } from "./study-analysis.js";
-import { isStudyEvidencePath } from "./study-files.js";
+import { isStudyEvidencePath } from "../run/study-files.js";
 
 // How a run bundle becomes analysis sources: each participant's recorded provenance and assignment,
 // the evidence entries its trace offers, and the order in which entries are admitted under the

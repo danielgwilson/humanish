@@ -25,7 +25,7 @@ import {
   sourceOrder,
   type SourceEntry,
 } from "./evidence-sources.js";
-import { readBoundedStudyFile, readBoundedStudyFileResult } from "./study-files.js";
+import { readBoundedStudyFile, readBoundedStudyFileResult } from "../run/study-files.js";
 
 export const STUDY_EVIDENCE_LIMITS = Object.freeze({
   participants: 16,

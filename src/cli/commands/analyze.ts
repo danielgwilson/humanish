@@ -11,7 +11,8 @@ import {
   dryRunBundleRefusal,
   showStudyAnalysis,
 } from "../../analysis/service.js";
-import { listStudyAnalyses, listStudyAnalysisExecutions } from "../../analysis/store.js";
+import { listStudyAnalyses } from "../../analysis/store.js";
+import { listStudyAnalysisExecutions } from "../../analysis/store-executions.js";
 import { resolveRunPath } from "../../run/locate.js";
 import { type CliIo, JSON_OPTION_DESCRIPTION, writeResult } from "../io.js";
 import { resolvePhysicalCwd } from "../../run/paths.js";

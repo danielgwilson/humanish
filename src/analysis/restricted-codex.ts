@@ -10,11 +10,6 @@ import type {
   RestrictedCodexRequest,
   RestrictedCodexResult,
 } from "../actors/codex/restricted-policy.js";
-export {
-  RESTRICTED_CODEX_ANALYSIS_IDENTITY,
-  RESTRICTED_CODEX_ANALYSIS_MODELS,
-} from "../actors/codex/restricted-policy.js";
-export type { RestrictedCodexAnalysisErrorCode } from "../actors/codex/restricted-policy.js";
 
 /** Structurally implements StudyAnalysisProvider without importing its API transport.
  * Schema/evidence validation and transient-secret scrubbing remain in the engine. */

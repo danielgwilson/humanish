@@ -7,7 +7,7 @@ import { bindExistingRunArtifactPaths } from "../../src/run/paths.js";
 import {
   beginStudyAnalysisExecution,
   writeStudyAnalysisExecutionReceipt,
-} from "../../src/analysis/store.js";
+} from "../../src/analysis/store-executions.js";
 import { claimAutomaticStudyAnalysis } from "../../src/analysis/job.js";
 import { digestStudyAnalysisInput, hashStudyAnalysisValue } from "../../src/analysis/validation.js";
 import { syntheticArtifact, syntheticInput } from "../analysis/fixtures.js";

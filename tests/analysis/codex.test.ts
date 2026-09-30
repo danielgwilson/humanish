@@ -30,7 +30,8 @@ import { codexAnalysisIdentity } from "../../src/analysis/codex-config.js";
 import { bindCodexAnalysisCliVersion } from "../../src/analysis/restricted-codex.js";
 import type { StudyAnalysisProvider } from "../../src/analysis/provider.js";
 import { analyzeStudy, showStudyAnalysis } from "../../src/analysis/service.js";
-import { listStudyAnalysisExecutions, writeStudyAnalysis } from "../../src/analysis/store.js";
+import { writeStudyAnalysis } from "../../src/analysis/store.js";
+import { listStudyAnalysisExecutions } from "../../src/analysis/store-executions.js";
 import {
   digestStudyAnalysisInput,
   hashStudyAnalysisValue,

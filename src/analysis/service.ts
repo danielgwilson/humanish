@@ -17,7 +17,7 @@ import {
 } from "../run/paths.js";
 import { isRunStatusRecord, RUN_STATUS_FILE } from "../run/status.js";
 import { captureStudyEvidence, STUDY_EVIDENCE_LIMITS } from "./evidence.js";
-import { readBoundedStudyFile } from "./study-files.js";
+import { readBoundedStudyFile } from "../run/study-files.js";
 import {
   estimateStudyAnalysisAdmission,
   preferLargerStudyAnalysisOutput,
@@ -30,11 +30,13 @@ import {
 import {
   appendStudyAnalysisCorrection,
   assertStudyAnalysisPublicationCapacity,
-  beginStudyAnalysisExecution,
   listStudyAnalyses,
   writeStudyAnalysis,
-  writeStudyAnalysisExecutionReceipt,
 } from "./store.js";
+import {
+  beginStudyAnalysisExecution,
+  writeStudyAnalysisExecutionReceipt,
+} from "./store-executions.js";
 import { loadStudyAnalysis } from "./load.js";
 import { hashStudyAnalysisValue } from "./validation.js";
 import {

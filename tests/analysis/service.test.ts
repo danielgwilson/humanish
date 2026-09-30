@@ -11,11 +11,8 @@ import {
   withStudyAnalysisLock,
 } from "../../src/analysis/service.js";
 import { captureStudyEvidence } from "../../src/analysis/evidence.js";
-import {
-  listStudyAnalyses,
-  listStudyAnalysisExecutions,
-  writeStudyAnalysis,
-} from "../../src/analysis/store.js";
+import { listStudyAnalyses, writeStudyAnalysis } from "../../src/analysis/store.js";
+import { listStudyAnalysisExecutions } from "../../src/analysis/store-executions.js";
 import { draftFeedback, renderIssueUrl } from "../../src/feedback/feedback.js";
 import { exportRun } from "../../src/feedback/export.js";
 import { renderObserver, serveObserver } from "../../src/observer/render.js";

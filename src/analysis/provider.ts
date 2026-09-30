@@ -1,4 +1,5 @@
 import { Agent, fetch as undiciFetch, type Dispatcher } from "undici";
+import { OPENAI_RESPONSES_URL } from "../actors/openai-endpoint.js";
 
 /** Deliberately separate from the stateful computer-use actor: one request, no tools or retries. */
 export interface StudyAnalysisProviderRequest {
@@ -267,7 +268,7 @@ export function createStudyAnalysisProvider(options: {
     try {
       if (request.signal?.aborted) return failure("cancelled", false, "cancelled");
       dispatched = true;
-      const response = await fetchFn("https://api.openai.com/v1/responses", {
+      const response = await fetchFn(OPENAI_RESPONSES_URL, {
         method: "POST",
         redirect: "error",
         signal: controller.signal,

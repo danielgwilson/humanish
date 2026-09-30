@@ -22,7 +22,8 @@ import {
   type AutomaticStudyAnalysisJob,
 } from "./job.js";
 import type { StudyAnalysisConfig } from "./study-analysis.js";
-import { readStudyAnalysisExecution, readStudyAnalysisVersion } from "./store.js";
+import { readStudyAnalysisVersion } from "./store.js";
+import { readStudyAnalysisExecution } from "./store-executions.js";
 import { physicalCwdOf, resolvePhysicalCwd } from "../run/paths.js";
 
 export type {
