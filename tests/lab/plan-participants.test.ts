@@ -1,0 +1,288 @@
+// planParticipants must produce the same participants the routes build today. Computer use is
+// compared field by field with the lane specs planCuaLanes builds. The shared-world seat builder
+// is private, so seats are compared with what a shared-world dry run records (seat ids, persona
+// ids, assignment, rendered resolution); limits, entry and host are checked directly.
+
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { afterAll, describe, expect, it } from "vitest";
+
+import { parseLabConfig } from "../../src/lab/config.js";
+import { listLabManifests, resolveLabManifest } from "../../src/lab/discover.js";
+import {
+  computerUseParticipants,
+  routeOf,
+  sharedWorldSeats,
+  type ComputerUseParticipant,
+} from "../../src/lab/plan.js";
+import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/lab/types.js";
+import { planCuaLanes } from "../../src/routes/computer-use/lane-plan.js";
+import type { CuaLaneSpec } from "../../src/routes/computer-use/types.js";
+import { runConcurrentSharedWorld } from "../../src/routes/shared-world/concurrent.js";
+import { prepareSelectedOutputDirectory } from "../../src/run/selected-output-paths.js";
+
+const ROOT = fileURLToPath(new URL("../..", import.meta.url));
+const cleanup: string[] = [];
+afterAll(async () => {
+  await Promise.all(cleanup.map((dir) => rm(dir, { recursive: true, force: true })));
+});
+
+async function tempProject(): Promise<string> {
+  const dir = await mkdtemp(path.join(tmpdir(), "humanish-plan-participants-"));
+  cleanup.push(dir);
+  return dir;
+}
+
+function parsed(raw: Record<string, unknown>): LabConfig {
+  const result = parseLabConfig({ schema: LAB_CONFIG_SCHEMA, id: "plan-participants", ...raw });
+  if (!result.ok) throw new Error(result.error.message);
+  return result.config;
+}
+
+async function committedLabs(route: string): Promise<[string, LabConfig][]> {
+  const labs: [string, LabConfig][] = [];
+  for (const lab of (await listLabManifests(ROOT)).labs) {
+    const resolved = await resolveLabManifest(ROOT, lab.id);
+    if (resolved.ok && routeOf(resolved.config) === route) labs.push([lab.id, resolved.config]);
+  }
+  return labs;
+}
+
+const stop = { any: [{ textIncludes: "Done" }] };
+const cuApp = {
+  subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
+  execution: { target: "e2b-desktop", timeoutMs: 60_000 },
+};
+
+const cuVariants: [string, LabConfig, number | undefined][] = [
+  [
+    "homogeneous count with actor-level fields",
+    parsed({
+      ...cuApp,
+      actors: [
+        {
+          type: "openai-computer-use",
+          count: 3,
+          persona: "first-time-visitor",
+          mission: "Sign up.",
+          laneFocus: { instruction: "Use the keyboard." },
+          stopWhen: stop,
+          reasoningEffort: "high",
+          maxOutputTokens: 2000,
+          tasks: [{ id: "sign-up", goal: "Create an account." }],
+        },
+      ],
+    }),
+    undefined,
+  ],
+  [
+    "roster with overrides and fallbacks",
+    parsed({
+      ...cuApp,
+      actors: [
+        {
+          type: "openai-computer-use",
+          persona: "fallback-persona",
+          stopWhen: stop,
+          reasoningEffort: "low",
+          lanes: [
+            { id: "host", persona: "own-persona", device: "small-mobile", instruction: "Host." },
+            { actorType: "viewer", surface: "feed", caseGroup: "case-1", reasoningEffort: "high" },
+            { dwell: { ms: 2000, everyMs: 1000, then: "continue" } },
+          ],
+        },
+      ],
+    }),
+    undefined,
+  ],
+  [
+    "per-lane targets",
+    parsed({
+      ...cuApp,
+      actors: [
+        {
+          type: "openai-computer-use",
+          lanes: [{ target: "http://127.0.0.1:3001/" }, { target: "http://127.0.0.1:3002/" }],
+        },
+      ],
+    }),
+    undefined,
+  ],
+  [
+    "raw resolution",
+    parsed({
+      ...cuApp,
+      execution: { ...cuApp.execution, desktop: { resolution: [1280, 800] } },
+      actors: [{ type: "openai-computer-use" }],
+    }),
+    undefined,
+  ],
+  ["count override", parsed({ ...cuApp, actors: [{ type: "openai-computer-use", count: 2 }] }), 4],
+];
+
+/** The declarative fields of a lane spec, in the participant's shape. */
+function fromSpec(spec: CuaLaneSpec) {
+  return {
+    id: spec.laneId,
+    index: spec.laneIndex,
+    personaId: spec.persona.id,
+    focus: spec.assignment?.focus,
+    labels: { actorType: spec.actorType, surface: spec.surface, caseGroup: spec.caseGroup },
+    device: { name: spec.deviceName, preset: spec.devicePreset, resolution: spec.resolution },
+    limits: {
+      stopWhen: spec.stopWhen,
+      dwell: spec.dwell,
+      reasoningEffort: spec.reasoningEffort,
+      maxOutputTokens: spec.maxOutputTokens,
+    },
+    tasks: spec.tasks,
+    targetUrl: spec.targetUrl,
+  };
+}
+
+function fromParticipant(participant: ComputerUseParticipant) {
+  return {
+    id: participant.id,
+    index: participant.index,
+    // composeLaneInstructions names a lane without a persona "cua-operator".
+    personaId: participant.personaId ?? "cua-operator",
+    focus: participant.assignment.focus,
+    labels: { ...participant.labels },
+    device: { ...participant.device },
+    limits: { ...participant.limits },
+    tasks: participant.tasks,
+    targetUrl: participant.targetUrl,
+  };
+}
+
+/** Undefined keys and absent keys compare equal. */
+const plain = (value: unknown): unknown => JSON.parse(JSON.stringify(value));
+
+describe("computerUseParticipants", () => {
+  it("matches the lane specs planCuaLanes builds, for committed labs and variants", async () => {
+    const configs: [string, LabConfig, number | undefined][] = [
+      ...(await committedLabs("computer-use")).map(
+        ([id, config]) => [id, config, undefined] as [string, LabConfig, undefined],
+      ),
+      ...cuVariants,
+    ];
+    expect(configs.length).toBeGreaterThan(cuVariants.length);
+    for (const [name, config, countOverride] of configs) {
+      const cwd = await tempProject();
+      const lanes = await planCuaLanes({
+        config,
+        cwd,
+        projectRoot: await prepareSelectedOutputDirectory(path.dirname(cwd), cwd),
+        env: {},
+        dryRun: true,
+        inProcessRoute: false,
+        ...(countOverride === undefined ? {} : { countOverride }),
+      });
+      if (!lanes.ok) throw new Error(`${name}: ${lanes.message}`);
+      const participants = computerUseParticipants(config, countOverride);
+      expect(plain(participants.map(fromParticipant)), name).toEqual(
+        plain(lanes.laneSpecs.map(fromSpec)),
+      );
+      for (const [index, participant] of participants.entries()) {
+        const declared = config.actors[0]?.mission;
+        expect(participant.assignment.mission, name).toBe(declared);
+        if (declared !== undefined)
+          expect(lanes.laneSpecs[index]?.assignment?.mission, name).toBe(declared);
+      }
+    }
+  });
+});
+
+describe("sharedWorldSeats", () => {
+  const unnamedSeats = parsed({
+    subject: {
+      source: "clone",
+      topology: "shared-world",
+      exposure: "synthetic",
+      repos: ["example-org/collab-app"],
+      serve: { start: "pnpm start -H 0.0.0.0", url: "http://127.0.0.1:3000/" },
+      state: {
+        seed: [{ name: "migrate", command: "pnpm db:migrate" }],
+        checkpoint: [{ name: "notes", command: "echo 1" }],
+      },
+    },
+    actors: [
+      {
+        type: "openai-computer-use",
+        persona: "fallback-persona",
+        mission: "Share the app.",
+        stopWhen: stop,
+        lanes: [
+          { id: "author", persona: "author", entry: "/compose", device: "small-mobile" },
+          { instruction: "Review.", reasoningEffort: "high" },
+        ],
+      },
+    ],
+    execution: { target: "e2b-desktop", timeoutMs: 60_000 },
+  });
+
+  it("matches the seats a shared-world dry run records", async () => {
+    const configs = [
+      ...(await committedLabs("shared-world")),
+      ["unnamed seats", unnamedSeats] as [string, LabConfig],
+    ];
+    for (const [name, config] of configs) {
+      const cwd = await tempProject();
+      const result = await runConcurrentSharedWorld({ cwd, config, dryRun: true });
+      if (!result.ok) throw new Error(`${name}: ${result.error?.message}`);
+      const run = JSON.parse(
+        await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+      ) as {
+        streams: {
+          assignment?: { mission?: string; focus?: string };
+          desktopGeometry?: { screen?: { requested?: { width: number; height: number } } };
+        }[];
+      };
+      const { seats } = sharedWorldSeats(config);
+      expect(
+        seats.map((seat) => ({ id: seat.id, persona: seat.personaId ?? "cua-operator" })),
+        name,
+      ).toEqual(result.roles.map((role) => ({ id: role.id, persona: role.persona })));
+      for (const [index, seat] of seats.entries()) {
+        const stream = run.streams[index];
+        expect(stream?.assignment?.focus, name).toBe(seat.assignment.focus);
+        if (seat.assignment.mission !== undefined)
+          expect(stream?.assignment?.mission, name).toBe(seat.assignment.mission);
+        expect(stream?.desktopGeometry?.screen?.requested, name).toEqual({
+          width: seat.device.resolution[0],
+          height: seat.device.resolution[1],
+        });
+      }
+    }
+  });
+
+  it("merges limits and keeps plane-specific fields", () => {
+    const provisioned = sharedWorldSeats(unnamedSeats);
+    expect(provisioned.plane).toBe("provisioned");
+    expect(provisioned.seats.map((seat) => seat.id)).toEqual(["author", "role-02"]);
+    expect(provisioned.seats.map((seat) => seat.personaId)).toEqual(["author", "fallback-persona"]);
+    expect(provisioned.plane === "provisioned" && provisioned.seats[0]?.entry).toBe("/compose");
+    expect(provisioned.seats[1]?.limits).toEqual({ stopWhen: stop, reasoningEffort: "high" });
+    expect(provisioned.seats[0]?.device.name).toBe("small-mobile");
+
+    const external = sharedWorldSeats(
+      parsed({
+        subject: {
+          source: "app-url",
+          appUrl: "https://app.example.com/",
+          topology: "shared-world",
+          publicTarget: { owner: "example-org", authorized: true },
+        },
+        actors: [{ type: "openai-computer-use", lanes: [{ id: "h", host: true }, { id: "g" }] }],
+        execution: { target: "e2b-desktop", timeoutMs: 60_000 },
+        policies: { allowPublicTargets: true },
+      }),
+    );
+    expect(external.plane).toBe("external-public");
+    expect(external.plane === "external-public" && external.seats.map((seat) => seat.host)).toEqual(
+      [true, false],
+    );
+  });
+});
