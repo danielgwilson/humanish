@@ -402,20 +402,21 @@ const readinessResult = (): RestrictedCodexResult => ({
 });
 /**
  * Receipt of a failed request: a stop's code, else the deadline's, else codex_process_failed. A
- * cleanup failure keeps its own code. Dispatch and usage are what the turn recorded.
+ * cleanup failure keeps its own code. Dispatch and usage are what the turn recorded; a request
+ * that failed before its turn existed dispatched nothing.
  */
 function failedRequest(
   error: unknown,
   deadline: RestrictedCodexDeadline,
-  turn: RestrictedCodexTurn,
+  turn: RestrictedCodexTurn | undefined,
   phase: CuaProviderFailurePhase,
 ): RestrictedCodexResult {
   const code = error instanceof RestrictedCodexStop ? error.code : "codex_process_failed";
   return {
     ...restrictedCodexFailure(
       code === "codex_cleanup_failed" ? code : (deadline.code ?? code),
-      turn.dispatched,
-      turn.usage,
+      turn?.dispatched ?? false,
+      turn?.usage ?? null,
     ),
     failurePhase: phase,
   };
@@ -424,7 +425,7 @@ function failedRequest(
 function withReceiptDetails(
   result: RestrictedCodexResult,
   phase: CuaProviderFailurePhase,
-  turn: RestrictedCodexTurn,
+  turn: RestrictedCodexTurn | undefined,
   participant: boolean,
 ): RestrictedCodexResult {
   let receipt = result;
@@ -432,6 +433,7 @@ function withReceiptDetails(
     receipt = { ...receipt, failurePhase: phase };
   if (
     participant &&
+    turn !== undefined &&
     turn.usage !== null &&
     turn.inferenceUsage !== null &&
     turn.inferenceUsage.length > 0
@@ -712,23 +714,25 @@ export function createRestrictedCodexSession(
   ): Promise<RestrictedCodexResult> {
     const deadline = new RestrictedCodexDeadline(request.timeoutMs, request.signal);
     activeDeadline = deadline;
-    const turn = new RestrictedCodexTurn({
-      deadline,
-      threadId: () => threadId,
-      tool: participant?.tool,
-      usageBaseline: previousUsage,
-      toolCallIds,
-      reportUsage: (usage, inference) => {
-        pendingUsage = usage;
-        pendingInferenceUsage = inference;
-      },
-      turnStarted: (turnId) => {
-        interrupt = { threadId: threadId!, turnId };
-      },
-    });
+    let turn: RestrictedCodexTurn | undefined;
     let result: RestrictedCodexResult = restrictedCodexFailure("codex_process_failed");
     let phase: CuaProviderFailurePhase = "startup";
     try {
+      turn = new RestrictedCodexTurn({
+        deadline,
+        threadId: () => threadId,
+        participant: participant !== undefined,
+        tool: () => participant!.tool,
+        usageBaseline: previousUsage,
+        toolCallIds,
+        reportUsage: (usage, inference) => {
+          pendingUsage = usage;
+          pendingInferenceUsage = inference;
+        },
+        turnStarted: (turnId) => {
+          interrupt = { threadId: threadId!, turnId };
+        },
+      });
       pendingUsage = undefined;
       deadline.check();
       const frameLimit = requestFrameLimit(request, participant !== undefined);
@@ -768,7 +772,11 @@ export function createRestrictedCodexSession(
         if (result.errorCode === "codex_cleanup_failed") cleanupTrusted = false;
         if (!(await dispose()))
           result = {
-            ...restrictedCodexFailure("codex_cleanup_failed", turn.dispatched, turn.usage),
+            ...restrictedCodexFailure(
+              "codex_cleanup_failed",
+              turn?.dispatched ?? false,
+              turn?.usage ?? null,
+            ),
             failurePhase: "cleanup",
           };
       }

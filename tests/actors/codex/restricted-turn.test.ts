@@ -14,23 +14,36 @@ afterEach(() => {
   for (const deadline of deadlines.splice(0)) deadline.close();
 });
 
+type Tool = { name: string; call(args: unknown): Promise<string> };
 function setup(
-  options: { analyst?: boolean; dispatched?: boolean; reply?: () => Promise<unknown> } = {},
+  options: {
+    analyst?: boolean;
+    dispatched?: boolean;
+    reply?: () => Promise<unknown>;
+    timeoutMs?: number;
+  } = {},
 ) {
-  const deadline = new RestrictedCodexDeadline(60_000);
+  const deadline = new RestrictedCodexDeadline(options.timeoutMs ?? 60_000);
   deadlines.push(deadline);
-  const call = options.reply ?? (async () => '{"ok":true}');
+  const holder: { tool: Tool } = {
+    tool: {
+      name: TOOL,
+      call: (options.reply ?? (async () => '{"ok":true}')) as Tool["call"],
+    },
+  };
+  const reported: unknown[] = [];
   const turn = new RestrictedCodexTurn({
     deadline,
     threadId: () => THREAD,
-    tool: options.analyst ? undefined : { name: TOOL, call: call as () => Promise<string> },
+    participant: !options.analyst,
+    tool: () => holder.tool,
     usageBaseline: { input: 0, output: 0, cachedInput: 0, cacheWriteInput: 0 },
     toolCallIds: new Set(),
-    reportUsage: () => undefined,
+    reportUsage: (usage, inference) => reported.push({ usage, inference }),
     turnStarted: () => undefined,
   });
   turn.dispatched = options.dispatched ?? true;
-  return { turn, deadline };
+  return { turn, deadline, holder, reported };
 }
 const event = (item: Record<string, unknown>, turnId = TURN) => ({
   threadId: THREAD,
@@ -263,5 +276,58 @@ describe("restricted Codex turn tool requests", () => {
     await expect(turn.onRequest("item/tool/call", toolRequest())).rejects.toMatchObject({
       code: "invalid_response",
     });
+  });
+});
+
+describe("restricted Codex turn review cases", () => {
+  it.each([
+    ["a non-string turn id", 5],
+    ["an empty turn id", ""],
+    ["a turn id over 200 characters", "x".repeat(201)],
+  ])("refuses a tool request with %s before the turn is known", async (_, turnId) => {
+    // No turn/started and no acknowledgment: a request that passed would wait for the turn and
+    // then time out, so the refusal code shows which check fired.
+    const { turn } = setup({ timeoutMs: 500 });
+    await expect(turn.onRequest("item/tool/call", toolRequest({ turnId }))).rejects.toMatchObject({
+      code: "codex_tool_call",
+    });
+  });
+
+  it("refuses a request and an item for a tool the host renamed mid-request", async () => {
+    const { turn, deadline, holder } = setup();
+    turn.acknowledge(TURN);
+    holder.tool = { name: "renamed_tool", call: async () => '{"ok":true}' };
+    await expect(turn.onRequest("item/tool/call", toolRequest())).rejects.toMatchObject({
+      code: "codex_tool_call",
+    });
+    turn.onNotification(
+      "item/started",
+      event({ type: "dynamicToolCall", tool: TOOL, namespace: null, status: "inProgress" }),
+    );
+    expect(deadline.code).toBe("codex_tool_call");
+  });
+
+  it("calls the tool the host holds when the request arrives", async () => {
+    const { turn, holder } = setup();
+    turn.acknowledge(TURN);
+    holder.tool = { name: TOOL, call: async () => '{"replaced":true}' };
+    await expect(turn.onRequest("item/tool/call", toolRequest())).resolves.toMatchObject({
+      contentItems: [{ type: "inputText", text: '{"replaced":true}' }],
+    });
+  });
+
+  it("keeps pending usage when a turn completes without an answer", () => {
+    const { turn, deadline, reported } = setup();
+    turn.acknowledge(TURN);
+    turn.onNotification("thread/tokenUsage/updated", {
+      threadId: THREAD,
+      turnId: TURN,
+      tokenUsage: {
+        total: { inputTokens: 10, outputTokens: 2, cachedInputTokens: 0, cacheWriteInputTokens: 0 },
+      },
+    });
+    turn.onNotification("turn/completed", completion());
+    expect(deadline.code).toBe("invalid_response");
+    expect(reported.at(-1)).toMatchObject({ usage: { input: 10, output: 2 } });
   });
 });

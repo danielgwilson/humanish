@@ -981,6 +981,36 @@ describe("restricted Codex Code Mode participant session", () => {
     expect(await session.close()).toBe(true);
   });
 
+  it("fails closed and cleans up when the host's tool getter throws after admission", async () => {
+    const f = await fixture("participant-success");
+    delete f.options.env!.NODE_OPTIONS;
+    const tool = {
+      name: "humanish_ui",
+      description: "Synthetic UI.",
+      inputSchema: { type: "object" },
+      call: async () => JSON.stringify({ ok: true }),
+    };
+    let reads = 0;
+    f.options.participant = {
+      authMode: "operator",
+      reasoningEffort: "high",
+      // run() admits the participant on the first read; the launch reads it again for thread/start.
+      get tool() {
+        if (++reads > 1) throw new Error("synthetic host getter failure");
+        return tool;
+      },
+    };
+    const session = createRestrictedCodexSession(f.options);
+    expect(await session.run({ ...request, model: undefined })).toMatchObject({
+      status: "failed",
+      errorCode: "codex_process_failed",
+      failurePhase: "thread/start",
+      dispatched: false,
+    });
+    expect(await session.close()).toBe(true);
+    expect(await readdir(f.tempRoot)).toEqual([]);
+  });
+
   it.each([
     "participant-wrong-tool",
     "participant-wrong-namespace",

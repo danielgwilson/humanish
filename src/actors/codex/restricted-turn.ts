@@ -82,8 +82,13 @@ export interface RestrictedCodexTurnContext {
   readonly deadline: RestrictedCodexDeadline;
   /** The session's thread, read when each event arrives. */
   threadId(): string | undefined;
-  /** A participant's one dynamic tool; an analyst has none. */
-  readonly tool: { name: string; call(args: unknown): Promise<string> } | undefined;
+  /** A participant session has one dynamic tool; an analyst has none. */
+  readonly participant: boolean;
+  /**
+   * The participant's tool, read at each use as the session's options hold it then, so a tool
+   * the host replaced mid-request is the one checked and called. Only read when participant.
+   */
+  tool(): { name: string; call(args: unknown): Promise<string> };
   /** Thread usage when the request began; null once an earlier turn's usage was unknown. */
   readonly usageBaseline: RestrictedCodexUsage | null;
   /** Tool call ids already answered in this session. */
@@ -122,8 +127,8 @@ export class RestrictedCodexTurn {
   private readonly turnReady: Promise<string>;
 
   constructor(private readonly context: RestrictedCodexTurnContext) {
-    this.inferenceUsage = context.tool ? [] : null;
-    this.allowedRawItemTypes = context.tool ? participantRawItemTypes : analystRawItemTypes;
+    this.inferenceUsage = context.participant ? [] : null;
+    this.allowedRawItemTypes = context.participant ? participantRawItemTypes : analystRawItemTypes;
     this.finished = new Promise((resolve) => {
       this.resolveFinished = resolve;
     });
@@ -196,17 +201,17 @@ export class RestrictedCodexTurn {
     method,
     params,
   ) => {
-    const { deadline, tool, toolCallIds } = this.context;
+    const { deadline, participant, toolCallIds } = this.context;
     const callId = params.callId;
     if (
-      !tool ||
+      !participant ||
       method !== "item/tool/call" ||
       params.threadId !== this.context.threadId() ||
       typeof params.turnId !== "string" ||
       params.turnId.length === 0 ||
       params.turnId.length > 200 ||
       params.namespace !== null ||
-      params.tool !== tool.name ||
+      params.tool !== this.context.tool().name ||
       typeof callId !== "string" ||
       callId.length === 0 ||
       callId.length > 200 ||
@@ -221,7 +226,7 @@ export class RestrictedCodexTurn {
     if (params.turnId !== activeTurnId) throw new RestrictedCodexStop("codex_tool_call");
     toolCallIds.add(callId);
     deadline.pause();
-    const text = await deadline.wait(tool.call(params.arguments));
+    const text = await deadline.wait(this.context.tool().call(params.arguments));
     if (typeof text !== "string" || Buffer.byteLength(text) > CODEX_MAX_REQUEST_BYTES)
       throw new RestrictedCodexStop("invalid_response");
     try {
@@ -291,8 +296,8 @@ export class RestrictedCodexTurn {
 
   /** The item allowlist, the participant's one dynamic tool and the final answer's shape. */
   private admitsItem(method: string, item: Record<string, unknown>): boolean {
-    const { deadline, tool } = this.context;
-    const allowedItems = tool
+    const { deadline, participant } = this.context;
+    const allowedItems = participant
       ? ["userMessage", "agentMessage", "reasoning", "contextCompaction", "dynamicToolCall"]
       : ["userMessage", "agentMessage", "reasoning", "contextCompaction"];
     if (!allowedItems.includes(String(item.type))) {
@@ -301,7 +306,7 @@ export class RestrictedCodexTurn {
     }
     if (
       item.type === "dynamicToolCall" &&
-      (item.tool !== tool?.name ||
+      (item.tool !== (participant ? this.context.tool().name : undefined) ||
         item.namespace !== null ||
         (method === "item/started" && item.status !== "inProgress") ||
         (method === "item/completed" && (item.status !== "completed" || item.success !== true)))
