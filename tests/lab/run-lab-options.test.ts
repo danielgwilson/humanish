@@ -573,3 +573,37 @@ describe("a computer-use dry run through runLab", () => {
     );
   });
 });
+
+describe("an onEvent warning carries no known secret", () => {
+  it("scrubs the literal value of a declared subject env var and of the provider keys", () => {
+    const password = "synthetic-app-password-7f3a";
+    const openaiKey = "synthetic-openai-value-91c2";
+    const labConfig = config("cuClone", { subject: { env: ["APP_PASSWORD"] } });
+    const result = normalize(labConfig, {
+      env: { APP_PASSWORD: password, OPENAI_API_KEY: openaiKey },
+      onEvent: () => {
+        throw new Error(`login as ${password} with ${openaiKey} failed`);
+      },
+    });
+    if (!result.ok) throw new Error(result.message);
+    result.options.cuaHooks!.onPreflight!({ lanes: [] } as unknown as CuaLanePlan);
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0]).not.toContain(password);
+    expect(result.warnings[0]).not.toContain(openaiKey);
+    expect(result.warnings[0]).toContain("[REDACTED_SECRET]");
+  });
+
+  it("reads the values from the route's bag when env is not set", () => {
+    const password = "synthetic-app-password-bag-11";
+    const labConfig = config("cuClone", { subject: { env: ["APP_PASSWORD"] } });
+    const result = normalize(labConfig, {
+      cuaHooks: { env: { APP_PASSWORD: password } },
+      onEvent: () => {
+        throw new Error(`login as ${password} failed`);
+      },
+    });
+    if (!result.ok) throw new Error(result.message);
+    result.options.cuaHooks!.onPreflight!({ lanes: [] } as unknown as CuaLanePlan);
+    expect(result.warnings[0]).not.toContain(password);
+  });
+});

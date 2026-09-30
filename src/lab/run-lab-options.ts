@@ -6,7 +6,7 @@
 import path from "node:path";
 
 import type { CuaExecutor, CuaProvider } from "../actors/computer-use/loop.js";
-import { redactText, toErrorMessage } from "../evidence/redaction.js";
+import { redactText, scrubLiterals, toErrorMessage } from "../evidence/redaction.js";
 import { CUA_ACTOR_LAB_SCHEMA, type CuaActorLabHooks } from "../routes/computer-use/types.js";
 import { SCRIPTED_BROWSER_LAB_SCHEMA } from "../routes/scripted-browser/lab.js";
 import type { SharedWorldLabHooks } from "../routes/shared-world/hooks.js";
@@ -238,6 +238,27 @@ function unsupportedOption(
 }
 
 /**
+ * The literal values a route scrubs from its evidence: the provider keys and the declared subject
+ * env, read from the env the route will use. A warning from onEvent is appended after the route
+ * sanitized its own, so it is scrubbed here the same way.
+ */
+function knownSecretValues(config: LabConfig, route: LabRoute, options: RunLabOptions): string[] {
+  const bagEnv =
+    route === "computer-use"
+      ? options.cuaHooks?.env
+      : route === "shared-world"
+        ? options.sharedWorldHooks?.env
+        : route === "terminal"
+          ? options.terminalHooks?.env
+          : route === "scripted"
+            ? options.scriptedHooks?.env
+            : undefined;
+  const env = options.env ?? bagEnv ?? process.env;
+  const names = ["OPENAI_API_KEY", "E2B_API_KEY", "CODEX_API_KEY", ...(config.subject.env ?? [])];
+  return names.map((name) => env[name]?.trim() ?? "").filter((value) => value.length >= 4);
+}
+
+/**
  * Refuse what the route cannot honor, then map the new options into the old bags. Nothing here
  * touches the filesystem, so a refusal leaves no run directory, receipt or sandbox.
  */
@@ -252,6 +273,7 @@ export function normalizeRunLabOptions(
   if (refused) return refused;
 
   const warnings: string[] = [];
+  const scrubKnownValues = scrubLiterals(knownSecretValues(config, route, options));
   const {
     env,
     scorer,
@@ -269,7 +291,7 @@ export function normalizeRunLabOptions(
       : (event: LabEvent): void => {
           const report = (error: unknown): void => {
             warnings.push(
-              `RunLabOptions.onEvent failed on ${event.type}: ${redactText(toErrorMessage(error))}`,
+              `RunLabOptions.onEvent failed on ${event.type}: ${redactText(scrubKnownValues(toErrorMessage(error)))}`,
             );
           };
           try {
