@@ -1,3 +1,4 @@
+import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
   cp,
@@ -14,6 +15,7 @@ import {
 } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { promisify } from "node:util";
 import { PNG } from "pngjs";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -30,6 +32,8 @@ import { verifyRun } from "../../src/run/verify.js";
 import { type RunBundle } from "../../src/run/bundle.js";
 import { computeStats } from "../../src/run/stats.js";
 import { createProgram } from "../../src/cli/program.js";
+
+const execFileAsync = promisify(execFile);
 
 const RUN = "synthetic-export-study";
 const OPTIONS = { format: "bundle" as const, redactScreenshots: true, out: "shared" };
@@ -336,13 +340,21 @@ describe("redacted bundle export", () => {
   });
 
   it("prints literal shell arguments in follow-up commands", async () => {
-    const result = await exportRun(cwd, RUN, {
-      ...OPTIONS,
-      out: "literal $(touch sentinel) ' directory",
-    });
+    const out = "literal $(touch sentinel) ' directory";
+    const result = await exportRun(cwd, RUN, { ...OPTIONS, out });
     if (!result.ok) throw new Error(result.error.message);
-    const formatted = formatExportHuman(result);
-    expect(formatted).toContain("--cwd 'literal $(touch sentinel) '\"'\"' directory'");
+    const verify = formatExportHuman(result)
+      .split("\n")
+      .find((line) => line.trim().startsWith("verify: "));
+    if (verify === undefined) throw new Error("no verify line");
+    // The shell reads the printed --cwd back as the literal path, and runs nothing inside it.
+    const command = verify.trim().slice("verify: ".length);
+    const { stdout } = await execFileAsync("sh", ["-c", `set -- ${command}; printf '%s' "$4"`], {
+      cwd,
+    });
+    expect(stdout).toBe(result.path);
+    expect(stdout).toContain(out);
+    await expect(stat(path.join(cwd, "sentinel"))).rejects.toThrow("ENOENT");
   });
 
   it.each([
