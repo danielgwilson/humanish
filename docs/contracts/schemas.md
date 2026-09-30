@@ -1265,14 +1265,36 @@ threshold on a model `src/run/pricing.ts` cannot price is refused at preflight
 (`HUMANISH_CUA_LAB_UNPRICED_CAP`) before sandbox allocation. This rate-availability
 check is separate from the post-response spend check.
 
-Library callers can make a capped session stricter:
-`runCuaActorSession({ requireReportedUsageForSpendCap: true })` together with
-`maxUsd` or `overRunBudget`. No built-in route enables this policy. With it, a
-reply that returns missing or partial usage is not acted on, and any failed or
-stalled request stops the session; both stop with `harness_error`,
-`stopCause: usage_unreported`, and the label “provider usage unavailable.” It is
-not recorded as a crossed threshold. The default OpenAI adapter also disables HTTP and policy-negotiation retries for
-these strict capped sessions. The loop cancels its owned request signal when a
+Library callers can make a capped session stricter by composing it from the loop and the default
+provider:
+
+```ts
+import { createOpenAiResponsesProvider, defaultRedactionHooks, runComputerUseLoop } from "humanish";
+
+const result = await runComputerUseLoop({
+  instructions,
+  persona,
+  executor,
+  timeoutMs,
+  // Without singleDispatch the provider may resend a request whose spend is unknown.
+  provider: createOpenAiResponsesProvider({ apiKey, model, singleDispatch: true }),
+  redaction: defaultRedactionHooks,
+  now: Date.now,
+  maxUsd,
+  estimateTurnCostUsd,
+  requireReportedUsageForSpendCap: true,
+});
+```
+
+`requireReportedUsageForSpendCap` applies together with `maxUsd` or `overRunBudget`. No built-in
+route enables this policy. With it, a reply that returns missing or partial usage is not acted
+on, and any failed or stalled request stops the session; both stop with `harness_error`,
+`stopCause: usage_unreported`, and the label “provider usage unavailable.” It is not recorded as a
+crossed threshold. `singleDispatch: true` disables the OpenAI adapter's HTTP and
+policy-negotiation retries, so each turn makes at most one request.
+`runCuaActorSession({ requireReportedUsageForSpendCap: true })` sets `singleDispatch` itself and
+is deprecated in this minor. It also attaches `trace.estimatedCost` for an injected
+account-billed provider, which the composition does not. The loop cancels its owned request signal when a
 request ends or its timeout wins; injected providers must honor cancellation
 and remain responsible for their own internal dispatch. Known usage remains in
 the trace alongside an explicit unknown. Reported zero input and output counts
