@@ -44,6 +44,7 @@ import {
   type StudyAnalysisArtifact,
   type StudyAnalysisConfig,
   type StudyAnalysisCorrection,
+  type StudyAnalysisInput,
   type LoadedStudyAnalysis,
 } from "./study-analysis.js";
 import { RUN_BUNDLE_FILE } from "../run/bundle.js";
@@ -289,6 +290,215 @@ export async function readCompletedStudyAnalysisSource(
   return bytes;
 }
 
+/** The refusal code for a configuration analyzeStudy cannot run, before any run file is read. */
+function analyzeConfigRefusal(config: StudyAnalysisConfig): string | null {
+  if (
+    config.provider === "codex"
+      ? !validCodexAnalysisConfig(config)
+      : !Number.isFinite(config.maxCostUsd) || config.maxCostUsd <= 0 || config.maxCostUsd > 1000
+  )
+    return "ANALYSIS_CONFIG_INVALID";
+  if (config.question !== null && containsSensitive(config.question))
+    return "ANALYSIS_QUESTION_UNSAFE";
+  return null;
+}
+
+/** The fields every result of an admitted attempt carries. */
+type AnalyzeBase = Omit<AnalyzeResult, "ok"> & { admission: StudyAnalysisAdmission };
+
+/** The result when admission refuses the attempt, or when a dry run stops after admission. */
+function admissionOnlyResult(base: AnalyzeBase, config: StudyAnalysisConfig): AnalyzeResult {
+  if (!base.admission.allowed)
+    return {
+      ...base,
+      ok: false,
+      error: {
+        code: base.admission.error ?? "analysis_admission_denied",
+        message:
+          base.admission.error === "analysis_budget_exceeded"
+            ? "The conservative admission estimate exceeds --max-cost. No provider request was sent."
+            : "The analysis input or configuration did not pass admission. No provider request was sent.",
+      },
+    };
+  return {
+    ...base,
+    ok: true,
+    warnings:
+      config.provider === "codex"
+        ? [
+            "Evidence and configuration admission only. Codex CLI, login, model access and account allowance were not checked; no provider request was sent.",
+          ]
+        : base.warnings,
+  };
+}
+
+/** A saved ready analysis of the same input, config and prompt, returned without a new request. */
+async function reusedAnalysisResult(
+  prepared: PreparedRunArtifactPaths,
+  input: StudyAnalysisInput,
+  config: StudyAnalysisConfig,
+  base: AnalyzeBase,
+): Promise<AnalyzeResult | undefined> {
+  const prior = (await listStudyAnalyses(prepared)).find(
+    (entry) =>
+      entry.state === "ready" &&
+      entry.analysis?.inputDigest === input.inputDigest &&
+      entry.analysis.configDigest === hashStudyAnalysisValue(config) &&
+      entry.analysis.promptVersion === STUDY_ANALYSIS_PROMPT_VERSION,
+  )?.analysis;
+  if (!prior) return undefined;
+  await validatePreparedRunRootIdentity(prepared);
+  return {
+    ...base,
+    ok: prior.error === null,
+    reused: true,
+    analysisId: prior.id,
+    status: prior.status,
+    usage: prior.usage,
+    ...(prior.error === null
+      ? {}
+      : {
+          error: {
+            code: prior.error,
+            message:
+              "The saved analysis exceeded its admission estimate. Findings and usage are retained; no new request was sent.",
+          },
+        }),
+    artifactPath: path.join(prepared.relativeRunRoot, "analysis", prior.id, "analysis.json"),
+  };
+}
+
+/** The caller's view of a finished attempt, before publication. */
+function attemptResult(base: AnalyzeBase, analysis: StudyAnalysisArtifact): AnalyzeResult {
+  return {
+    ...base,
+    ok: analysis.result !== null && analysis.error === null,
+    analysisId: analysis.id,
+    status: analysis.status,
+    usage: analysis.usage,
+    ...(analysis.error === null
+      ? {}
+      : {
+          error: {
+            code: analysis.error,
+            message:
+              codexRecovery[analysis.error] ??
+              "The attempt retained its status and any known usage. Inspect it with humanish analyze show.",
+          },
+        }),
+  };
+}
+
+/** Write the receipt, then the report, recording each path on the result; false if either fails. */
+async function publishAttempt(
+  prepared: PreparedRunArtifactPaths,
+  analysis: StudyAnalysisArtifact,
+  result: AnalyzeResult,
+  finalizeExecution: ((value: StudyAnalysisArtifact) => Promise<void>) | undefined,
+): Promise<boolean> {
+  try {
+    if (finalizeExecution) await finalizeExecution(analysis);
+    else await writeStudyAnalysisExecutionReceipt(prepared, analysis);
+    result.executionReceiptPath = path.join(
+      prepared.relativeRunRoot,
+      "analysis-attempts",
+      analysis.id,
+      "receipt.json",
+    );
+    await writeStudyAnalysis(prepared, analysis);
+    result.artifactPath = path.join(
+      prepared.relativeRunRoot,
+      "analysis",
+      analysis.id,
+      "analysis.json",
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+interface AnalyzeAttempt {
+  cwd: string;
+  run: string;
+  prepared: PreparedRunArtifactPaths;
+  config: StudyAnalysisConfig;
+  options: AnalyzeOptions;
+  deps: AnalyzeDeps;
+  dryRun: boolean;
+}
+
+/** One attempt, under the run's analysis lock unless it is a dry run. */
+async function executeAnalysis(attempt: AnalyzeAttempt): Promise<AnalyzeResult> {
+  const { cwd, run, prepared, options, deps, dryRun } = attempt;
+  let config = attempt.config;
+  if (deps.signal?.aborted) return fail(run, dryRun, "ANALYSIS_CANCELLED");
+  const bytes = await readCompletedStudyAnalysisSource(cwd, prepared);
+  const input = await captureStudyEvidence(prepared, bytes);
+  if (input.evidence.length === 0) return fail(input.runId, dryRun, "ANALYSIS_NO_PARTICIPANTS");
+  if (options.preferLargerOutput) config = preferLargerStudyAnalysisOutput(input, config);
+  const admission = estimateStudyAnalysisAdmission(input, config);
+  const base: AnalyzeBase = {
+    schema: ANALYZE_RESULT_SCHEMA as typeof ANALYZE_RESULT_SCHEMA,
+    run: input.runId,
+    dryRun,
+    reused: false,
+    admission,
+    warnings: [] as string[],
+  };
+  if (!admission.allowed || dryRun) return admissionOnlyResult(base, config);
+  // The report, its reuse key and the launcher all name the release that will run.
+  if (
+    config.provider === "codex" &&
+    !deps.codexCliVersionBound &&
+    (deps.detectCodexCliVersion || !deps.codexProvider)
+  )
+    config = await (
+      await import("./restricted-codex.js")
+    ).bindCodexAnalysisCliVersion(config, deps.detectCodexCliVersion);
+  if (!options.rerun) {
+    const reused = await reusedAnalysisResult(prepared, input, config, base);
+    if (reused) return reused;
+  }
+  // An unreadable inventory is not evidence of an absent prior result.
+  // Check readable history capacity before any new paid attempt.
+  await assertStudyAnalysisPublicationCapacity(prepared);
+  const apiKey =
+    config.provider === "codex" ? "" : (deps.apiKey ?? process.env.OPENAI_API_KEY ?? "");
+  if (config.provider !== "codex" && !apiKey.trim())
+    return { ...fail(input.runId, false, "ANALYSIS_API_KEY_MISSING"), admission };
+  let finalizeExecution: ((value: StudyAnalysisArtifact) => Promise<void>) | undefined;
+  const analysis = await runStudyAnalysis(input, config, {
+    apiKey,
+    ...(deps.codexProvider === undefined ? {} : { codexProvider: deps.codexProvider }),
+    ...(deps.analysisId === undefined ? {} : { analysisId: deps.analysisId }),
+    beforeDispatch: async (context) => {
+      await deps.beforeDispatch?.(context);
+      finalizeExecution = await beginStudyAnalysisExecution(prepared, context);
+    },
+    ...(deps.signal === undefined ? {} : { signal: deps.signal }),
+    ...(deps.onProgress === undefined ? {} : { onProgress: deps.onProgress }),
+    ...(deps.fetch === undefined ? {} : { fetch: deps.fetch }),
+  });
+  const result = attemptResult(base, analysis);
+  if (!(await publishAttempt(prepared, analysis, result, finalizeExecution)))
+    return {
+      ...result,
+      ok: false,
+      error: {
+        code: "ANALYSIS_PUBLICATION_FAILED",
+        message: result.executionReceiptPath
+          ? "The attempt's usage was saved, but changed or unsafe evidence prevented report publication."
+          : "Storage changed or became unavailable after the attempt. Usage is retained in this response; no durable receipt could be written.",
+      },
+    };
+  if (!(await refreshObserver(cwd, input.runId, prepared)))
+    result.warnings.push(
+      "Analysis was saved, but Observer could not be refreshed. Run humanish observe again.",
+    );
+  return result;
+}
+
 export async function analyzeStudy(
   cwdInput: string,
   run: string,
@@ -299,172 +509,14 @@ export async function analyzeStudy(
   const dryRun = options.dryRun === true;
   const refusal = await dryRunBundleRefusal(cwd, run, dryRun, deps.expectedRun);
   if (refusal) return refusal;
-  let config = structuredClone(options.config);
-  if (
-    config.provider === "codex"
-      ? !validCodexAnalysisConfig(config)
-      : !Number.isFinite(config.maxCostUsd) || config.maxCostUsd <= 0 || config.maxCostUsd > 1000
-  )
-    return fail(run, dryRun, "ANALYSIS_CONFIG_INVALID");
-  if (config.question !== null && containsSensitive(config.question))
-    return fail(run, dryRun, "ANALYSIS_QUESTION_UNSAFE");
+  const config = structuredClone(options.config);
+  const configRefusal = analyzeConfigRefusal(config);
+  if (configRefusal) return fail(run, dryRun, configRefusal);
   try {
     const prepared = await resolveStudyAnalysisRun(cwd, run, deps.expectedRun);
     if (!prepared) return fail(run, dryRun, "ANALYSIS_RUN_NOT_FOUND");
     if (deps.expectedRun !== undefined) cwd = physicalCwdOf(prepared);
-    const execute = async (): Promise<AnalyzeResult> => {
-      if (deps.signal?.aborted) return fail(run, dryRun, "ANALYSIS_CANCELLED");
-      const bytes = await readCompletedStudyAnalysisSource(cwd, prepared);
-      const input = await captureStudyEvidence(prepared, bytes);
-      if (input.evidence.length === 0) return fail(input.runId, dryRun, "ANALYSIS_NO_PARTICIPANTS");
-      if (options.preferLargerOutput) config = preferLargerStudyAnalysisOutput(input, config);
-      const admission = estimateStudyAnalysisAdmission(input, config);
-      const base = {
-        schema: ANALYZE_RESULT_SCHEMA as typeof ANALYZE_RESULT_SCHEMA,
-        run: input.runId,
-        dryRun,
-        reused: false,
-        admission,
-        warnings: [] as string[],
-      };
-      if (!admission.allowed)
-        return {
-          ...base,
-          ok: false,
-          error: {
-            code: admission.error ?? "analysis_admission_denied",
-            message:
-              admission.error === "analysis_budget_exceeded"
-                ? "The conservative admission estimate exceeds --max-cost. No provider request was sent."
-                : "The analysis input or configuration did not pass admission. No provider request was sent.",
-          },
-        };
-      if (dryRun)
-        return {
-          ...base,
-          ok: true,
-          warnings:
-            config.provider === "codex"
-              ? [
-                  "Evidence and configuration admission only. Codex CLI, login, model access and account allowance were not checked; no provider request was sent.",
-                ]
-              : base.warnings,
-        };
-      // The report, its reuse key and the launcher all name the release that will run.
-      if (
-        config.provider === "codex" &&
-        !deps.codexCliVersionBound &&
-        (deps.detectCodexCliVersion || !deps.codexProvider)
-      )
-        config = await (
-          await import("./restricted-codex.js")
-        ).bindCodexAnalysisCliVersion(config, deps.detectCodexCliVersion);
-      if (!options.rerun) {
-        const prior = (await listStudyAnalyses(prepared)).find(
-          (entry) =>
-            entry.state === "ready" &&
-            entry.analysis?.inputDigest === input.inputDigest &&
-            entry.analysis.configDigest === hashStudyAnalysisValue(config) &&
-            entry.analysis.promptVersion === STUDY_ANALYSIS_PROMPT_VERSION,
-        )?.analysis;
-        if (prior) {
-          await validatePreparedRunRootIdentity(prepared);
-          return {
-            ...base,
-            ok: prior.error === null,
-            reused: true,
-            analysisId: prior.id,
-            status: prior.status,
-            usage: prior.usage,
-            ...(prior.error === null
-              ? {}
-              : {
-                  error: {
-                    code: prior.error,
-                    message:
-                      "The saved analysis exceeded its admission estimate. Findings and usage are retained; no new request was sent.",
-                  },
-                }),
-            artifactPath: path.join(
-              prepared.relativeRunRoot,
-              "analysis",
-              prior.id,
-              "analysis.json",
-            ),
-          };
-        }
-      }
-      // An unreadable inventory is not evidence of an absent prior result.
-      // Check readable history capacity before any new paid attempt.
-      await assertStudyAnalysisPublicationCapacity(prepared);
-      const apiKey =
-        config.provider === "codex" ? "" : (deps.apiKey ?? process.env.OPENAI_API_KEY ?? "");
-      if (config.provider !== "codex" && !apiKey.trim())
-        return { ...fail(input.runId, false, "ANALYSIS_API_KEY_MISSING"), admission };
-      let finalizeExecution: ((value: StudyAnalysisArtifact) => Promise<void>) | undefined;
-      const analysis = await runStudyAnalysis(input, config, {
-        apiKey,
-        ...(deps.codexProvider === undefined ? {} : { codexProvider: deps.codexProvider }),
-        ...(deps.analysisId === undefined ? {} : { analysisId: deps.analysisId }),
-        beforeDispatch: async (context) => {
-          await deps.beforeDispatch?.(context);
-          finalizeExecution = await beginStudyAnalysisExecution(prepared, context);
-        },
-        ...(deps.signal === undefined ? {} : { signal: deps.signal }),
-        ...(deps.onProgress === undefined ? {} : { onProgress: deps.onProgress }),
-        ...(deps.fetch === undefined ? {} : { fetch: deps.fetch }),
-      });
-      const result: AnalyzeResult = {
-        ...base,
-        ok: analysis.result !== null && analysis.error === null,
-        analysisId: analysis.id,
-        status: analysis.status,
-        usage: analysis.usage,
-        ...(analysis.error === null
-          ? {}
-          : {
-              error: {
-                code: analysis.error,
-                message:
-                  codexRecovery[analysis.error] ??
-                  "The attempt retained its status and any known usage. Inspect it with humanish analyze show.",
-              },
-            }),
-      };
-      try {
-        if (finalizeExecution) await finalizeExecution(analysis);
-        else await writeStudyAnalysisExecutionReceipt(prepared, analysis);
-        result.executionReceiptPath = path.join(
-          prepared.relativeRunRoot,
-          "analysis-attempts",
-          analysis.id,
-          "receipt.json",
-        );
-        await writeStudyAnalysis(prepared, analysis);
-        result.artifactPath = path.join(
-          prepared.relativeRunRoot,
-          "analysis",
-          analysis.id,
-          "analysis.json",
-        );
-      } catch {
-        return {
-          ...result,
-          ok: false,
-          error: {
-            code: "ANALYSIS_PUBLICATION_FAILED",
-            message: result.executionReceiptPath
-              ? "The attempt's usage was saved, but changed or unsafe evidence prevented report publication."
-              : "Storage changed or became unavailable after the attempt. Usage is retained in this response; no durable receipt could be written.",
-          },
-        };
-      }
-      if (!(await refreshObserver(cwd, input.runId, prepared)))
-        result.warnings.push(
-          "Analysis was saved, but Observer could not be refreshed. Run humanish observe again.",
-        );
-      return result;
-    };
+    const execute = () => executeAnalysis({ cwd, run, prepared, config, options, deps, dryRun });
     return dryRun ? await execute() : await withStudyAnalysisLock(prepared, execute);
   } catch (error) {
     const code =
