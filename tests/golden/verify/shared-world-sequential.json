@@ -1,0 +1,332 @@
+{
+  "passed": {
+    "ok": true,
+    "failing": []
+  },
+  "skipped-tail": {
+    "ok": true,
+    "failing": []
+  },
+  "passed: attributionLimits missing no-concurrent-races": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: attributionLimits is missing the mandatory disclosure \"no-concurrent-races\" — an absent ceiling overclaims"
+      }
+    ]
+  },
+  "passed: a value-shaped checkpoint field": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: checkpoint \"cp-baseline\" carries an unexpected field \"rawValue\" — checkpoints persist digest-only"
+      }
+    ]
+  },
+  "passed: divergent plane provenance across turns": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: turns reference divergent plane provenance (commit/seedDigest) — a shared-world run drives ONE plane, turn \"role-author\" plane provenance diverges from sharedWorld.plane"
+      }
+    ]
+  },
+  "passed: a dropped role": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: phantom/dropped role: sequence length (1), roleCount (2), and timeline turn count (2) must all match, turn order does not match the declared sequence at position 1 (turn \"role-reviewer\" vs sequence \"undefined\")"
+      }
+    ]
+  },
+  "passed: a passed run with no checkpoint delta": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: review verdict is pass but no checkpoint shows deltaFromPrev — the interaction is hollow (no observed shared-state change)"
+      }
+    ]
+  },
+  "passed: goal_satisfied with zero engagement": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "actor engagement",
+        "message": "no-engagement findings: stream-001 live actor trace (fake-cua) claims goal_satisfied with zero actions and zero messages — a hollow run is not credible evidence"
+      }
+    ]
+  },
+  "passed: concurrent laneWindows on a sequential bundle": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: a sequential shared-world bundle must NOT carry concurrent laneWindows (topologyMode mismatch)"
+      }
+    ]
+  },
+  "skipped-tail: no explicit tail": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: phantom/dropped role: sequence length (2), roleCount (3), and timeline turn count (2) must all match"
+      }
+    ]
+  },
+  "skipped-tail: empty tail": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: skippedTail: a nonempty declared role suffix is required"
+      }
+    ]
+  },
+  "skipped-tail: wrong blocker": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: skippedTail: blocker must be the immediately preceding executed role"
+      }
+    ]
+  },
+  "skipped-tail: unknown cause": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: skippedTail: a supported typed interruption cause is required, skippedTail: budget figures require a measured study_spend_limit cause"
+      }
+    ]
+  },
+  "skipped-tail: unsupported usage cause": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: skippedTail: usage_unreported requires recorded unavailable usage, skippedTail: budget figures require a measured study_spend_limit cause"
+      }
+    ]
+  },
+  "skipped-tail: invented threshold crossing": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: skippedTail: study_spend_limit requires known prefix estimates exceeding the recorded finite threshold"
+      }
+    ]
+  },
+  "skipped-tail: invented cost": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: skippedTail: study_spend_limit requires known prefix estimates exceeding the recorded finite threshold"
+      }
+    ]
+  },
+  "skipped-tail: dropped simulation": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "run bundle shape",
+        "message": "run bundle must include source, persona, scenario, lifecycle, simulations, streams, events, artifacts, review, and feedback candidates"
+      }
+    ]
+  },
+  "skipped-tail: dropped stream": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "run bundle shape",
+        "message": "run bundle must include source, persona, scenario, lifecycle, simulations, streams, events, artifacts, review, and feedback candidates"
+      }
+    ]
+  },
+  "skipped-tail: duplicate role": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: skippedTail: declared roleId values must be nonempty and unique"
+      }
+    ]
+  },
+  "skipped-tail: duplicate sim": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: skippedTail: declared simId values must be nonempty and unique, skippedTail: ordered role, simulation and stream identities must agree"
+      }
+    ]
+  },
+  "skipped-tail: duplicate stream": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: skippedTail: declared streamId values must be nonempty and unique, skippedTail: ordered role, simulation and stream identities must agree"
+      }
+    ]
+  },
+  "skipped-tail: wrong stream mapping": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "run bundle shape",
+        "message": "run bundle must include source, persona, scenario, lifecycle, simulations, streams, events, artifacts, review, and feedback candidates"
+      }
+    ]
+  },
+  "skipped-tail: wrong simulation mapping": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "run bundle shape",
+        "message": "run bundle must include source, persona, scenario, lifecycle, simulations, streams, events, artifacts, review, and feedback candidates"
+      }
+    ]
+  },
+  "skipped-tail: missing executed actor": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: skippedTail: an executed role needs an actor or an explicit attempted-session error, skippedTail: study_spend_limit requires known prefix estimates exceeding the recorded finite threshold"
+      }
+    ]
+  },
+  "skipped-tail: blocked middle": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: skippedTail: ordered role, simulation and stream identities must agree, skippedTail: ordered role, simulation and stream identities must agree, skippedTail: study_spend_limit requires known prefix estimates exceeding the recorded finite threshold"
+      }
+    ]
+  },
+  "skipped-tail: fabricated blocked actor": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: skippedTail: an unstarted role must be blocked with a reason and no actor, trace or screenshot"
+      }
+    ]
+  },
+  "skipped-tail: fabricated live actor": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: skippedTail: an unstarted role must be blocked with a reason and no actor, trace or screenshot"
+      }
+    ]
+  },
+  "skipped-tail: fabricated blocked trace": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: skippedTail: an unstarted role must be blocked with a reason and no actor, trace or screenshot"
+      }
+    ]
+  },
+  "skipped-tail: fabricated blocked screenshot": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "local evidence artifacts exist",
+        "message": "missing local evidence artifacts: invented.png"
+      },
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: skippedTail: an unstarted role must be blocked with a reason and no actor, trace or screenshot"
+      }
+    ]
+  },
+  "skipped-tail: fabricated skipped checkpoint": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: skippedTail: each after-checkpoint must belong to its executed role, never an unstarted seat"
+      }
+    ]
+  },
+  "skipped-tail: missing blocked event": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: skippedTail: each unstarted role needs exactly one blocked session event"
+      }
+    ]
+  },
+  "skipped-tail: passed review": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "actor verdict consistency",
+        "message": "actor verdict findings: stream-002 live actor trace (captured-usage-fixture) has status incomplete under a pass review verdict: study budget reached: estimated model spend $0.05093 crossed execution.caps.maxTotalUsd=0.042442499999999994; subsequent sequential participants will not start"
+      },
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: skippedTail: blocked participants cannot accompany a passed run review"
+      }
+    ]
+  },
+  "skipped-tail: concurrent tail": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: skippedTail is only valid on sequential shared-world evidence"
+      }
+    ]
+  },
+  "skipped-tail: dry-run tail": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "subject state provenance",
+        "message": "subject state findings: state marker \"seeded\" on a dry-run bundle — a contract bundle cannot claim executed state"
+      },
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: skippedTail requires a live executed interruption"
+      }
+    ]
+  },
+  "passed: every overclaim at once": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "actor engagement",
+        "message": "no-engagement findings: stream-001 live actor trace (fake-cua) claims goal_satisfied with zero actions and zero messages — a hollow run is not credible evidence"
+      },
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: a sequential shared-world bundle must NOT carry concurrent laneWindows (topologyMode mismatch), attributionLimits is missing the mandatory disclosure \"no-concurrent-races\" — an absent ceiling overclaims, phantom/dropped role: sequence length (1), roleCount (2), and timeline turn count (2) must all match, turn order does not match the declared sequence at position 1 (turn \"role-reviewer\" vs sequence \"undefined\"), checkpoint \"cp-baseline\" carries an unexpected field \"rawValue\" — checkpoints persist digest-only, turns reference divergent plane provenance (commit/seedDigest) — a shared-world run drives ONE plane, turn \"role-author\" plane provenance diverges from sharedWorld.plane, review verdict is pass but no checkpoint shows deltaFromPrev — the interaction is hollow (no observed shared-state change)"
+      }
+    ]
+  },
+  "skipped-tail: wrong blocker, unknown cause, invented cost, duplicate role, fabricated blocked actor, fabricated skipped checkpoint, missing blocked event": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: skippedTail: declared roleId values must be nonempty and unique, skippedTail: blocker must be the immediately preceding executed role, skippedTail: an unstarted role must be blocked with a reason and no actor, trace or screenshot, skippedTail: each unstarted role needs exactly one blocked session event, skippedTail: a supported typed interruption cause is required, skippedTail: budget figures require a measured study_spend_limit cause, skippedTail: each after-checkpoint must belong to its executed role, never an unstarted seat"
+      }
+    ]
+  }
+}
