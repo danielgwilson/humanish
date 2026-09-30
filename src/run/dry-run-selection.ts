@@ -4,7 +4,7 @@ import { digestText } from "../evidence/redaction.js";
 import type { PreparedSelectedOutputDirectory } from "./contained-output.js";
 import type { RunBundle } from "./bundle.js";
 import { readImplicitProjectFile } from "./project.js";
-import { escapeRegExp } from "./primitives.js";
+import { escapeRegExp } from "./text.js";
 
 const builtinPersona = {
   id: "builtin-synthetic-new-user",

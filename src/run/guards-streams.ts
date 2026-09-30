@@ -12,7 +12,7 @@ import {
   type RunStream,
   type RunStreamKind,
 } from "./streams.js";
-import { isFiniteNumber, isPositiveFiniteNumber, isRecord } from "./primitives.js";
+import { isFiniteNumber, isPositiveFiniteNumber, isRecord } from "./type-guards.js";
 
 export function isRunStream(value: unknown): value is RunStream {
   return (

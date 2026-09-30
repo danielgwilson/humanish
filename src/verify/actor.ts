@@ -3,7 +3,7 @@ import { ACTOR_TRACE_SCHEMA } from "../actors/contract.js";
 import { type PreparedRunArtifactPaths } from "../run/paths.js";
 import { CODEX_APP_SERVER_PROJECTED_TRACE_SCHEMA, type RunBundle } from "../run/bundle.js";
 import { readSafeRunArtifactBytes, readSafeRunArtifactJson } from "../run/locate.js";
-import { isRecord } from "../run/primitives.js";
+import { isRecord } from "../run/type-guards.js";
 import {
   COST_CATEGORIES,
   TERMINAL_EVENTS_ARTIFACT,

@@ -17,7 +17,7 @@ import {
 import type { RunPointer } from "./results.js";
 import { RUN_BUNDLE_FILE, type RunBundle } from "./bundle.js";
 import { isRunBundle, isRunPointer } from "./guards.js";
-import { isNodeError } from "./primitives.js";
+import { isNodeError } from "./type-guards.js";
 
 /** Resolve "latest" or an explicit run id to its prepared artifact paths. */
 export async function resolveRunPath(

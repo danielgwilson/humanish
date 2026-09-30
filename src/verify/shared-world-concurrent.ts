@@ -6,7 +6,7 @@ import {
   planeProvenanceFindings,
   sharedWorldCommonFindings,
 } from "../run/guards-shared-world.js";
-import { isRecord } from "../run/primitives.js";
+import { isRecord } from "../run/type-guards.js";
 
 // CONCURRENT: the REQUIRED set (all must be present) AND a FORBIDDEN set (any present == a
 // sequential claim leaking into a concurrent bundle == overclaim). verify needs BOTH checks —

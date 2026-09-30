@@ -13,7 +13,7 @@ import { openContainedRegularFile } from "../run/contained-output.js";
 import type { RunBundle } from "../run/bundle.js";
 import type { RunStream } from "../run/streams.js";
 import { readSafeRunArtifactBytes, readSafeRunArtifactJson } from "../run/locate.js";
-import { isRecord } from "../run/primitives.js";
+import { isRecord } from "../run/type-guards.js";
 import { TERMINAL_EVENTS_ARTIFACT } from "../run/terminal-contract.js";
 import { isZeroEventTerminalTrace } from "./actor.js";
 

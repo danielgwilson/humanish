@@ -10,7 +10,7 @@ import {
   readContainedRegularFile,
   type PreparedSelectedOutputDirectory,
 } from "./contained-output.js";
-import { isNodeError, isRecord } from "./primitives.js";
+import { isNodeError, isRecord } from "./type-guards.js";
 
 async function inspectImplicitProjectPath(
   projectRoot: PreparedSelectedOutputDirectory,

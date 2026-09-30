@@ -34,7 +34,7 @@ import {
 import { isReviewSummary, isRunBundle } from "./guards.js";
 import { readLatest, readRunJsonIfExists, resolveRunPath } from "./locate.js";
 import { withCuaReviewProvenance } from "./outcomes.js";
-import { isNodeError, isRecord } from "./primitives.js";
+import { isNodeError, isRecord } from "./type-guards.js";
 import {
   invalidRunStorageVerifyResult,
   verifyResolvedRun,

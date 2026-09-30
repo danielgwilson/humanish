@@ -1,6 +1,6 @@
 import { type RunBundle } from "./bundle.js";
 import { SHARED_WORLD_SCHEMA, type SharedWorldEvidence } from "./shared-world-evidence.js";
-import { isNonNegativeSafeInteger, isRecord } from "./primitives.js";
+import { isNonNegativeSafeInteger, isRecord } from "./type-guards.js";
 
 // The promptDigest convention: sha256 hex, first 16 chars. A "seeded" record without a real
 // digest cannot pin "same recipe" across bundles, so verify treats it as a hollow claim.
