@@ -18,6 +18,7 @@ import {
   type AnalysisFetch,
   createStudyAnalysisProvider,
   type StudyAnalysisProvider,
+  type StudyAnalysisProviderResult,
 } from "./provider.js";
 import {
   checkAnalysisResult,
@@ -405,28 +406,25 @@ function checkProviderAnalysis(input: StudyAnalysisInput, value: unknown): Check
   }
 }
 
-/** Explicit invocation or an opted-in post-run owner; Observer readers never call this. */
-export async function runStudyAnalysis(
+interface RunStudyAnalysisOptions {
+  apiKey?: string;
+  /** Test hook for the Codex provider call; no manifest or CLI route can supply one. */
+  codexProvider?: StudyAnalysisProvider;
+  signal?: AbortSignal;
+  onProgress?: (progress: StudyAnalysisProgress) => void;
+  fetch?: AnalysisFetch;
+  /** Set by automatic analysis to its job attempt id, claimed before any provider call. */
+  analysisId?: string;
+  beforeDispatch?: (context: StudyAnalysisDispatchContext) => Promise<void>;
+}
+
+/** Check the caller's id, input metadata and admission; throw the stable code a direct caller receives. */
+function admitDirectAnalysis(
   input: StudyAnalysisInput,
   config: StudyAnalysisConfig,
-  options: {
-    apiKey?: string;
-    /** Test hook for the Codex provider call; no manifest or CLI route can supply one. */
-    codexProvider?: StudyAnalysisProvider;
-    signal?: AbortSignal;
-    onProgress?: (progress: StudyAnalysisProgress) => void;
-    fetch?: AnalysisFetch;
-    /** Set by automatic analysis to its job attempt id, claimed before any provider call. */
-    analysisId?: string;
-    beforeDispatch?: (context: StudyAnalysisDispatchContext) => Promise<void>;
-  },
-): Promise<StudyAnalysisArtifact> {
-  // Callers retain their own object references. Snapshot once so a display callback or later
-  // caller mutation cannot alter the admitted prompt, citations, or stored provenance mid-run.
-  input = structuredClone(input);
-  config = structuredClone(config);
-  const createdAt = new Date().toISOString();
-  if (options.analysisId !== undefined && !ANALYSIS_ID_PATTERN.test(options.analysisId)) {
+  analysisId: string | undefined,
+): StudyAnalysisAdmission {
+  if (analysisId !== undefined && !ANALYSIS_ID_PATTERN.test(analysisId)) {
     throw new Error("ANALYSIS_ID_INVALID");
   }
   validateStudyAnalysisInputMetadata(input);
@@ -440,9 +438,20 @@ export async function runStudyAnalysis(
   ) {
     throw new Error(admission.error.toUpperCase());
   }
-  const artifact: StudyAnalysisArtifact = {
+  return admission;
+}
+
+/** The artifact before any provider call: failed, carrying the admission error and no usage. */
+function initialArtifact(
+  input: StudyAnalysisInput,
+  config: StudyAnalysisConfig,
+  admission: StudyAnalysisAdmission,
+  id: string,
+  createdAt: string,
+): StudyAnalysisArtifact {
+  return {
     schema: STUDY_ANALYSIS_SCHEMA,
-    id: options.analysisId ?? `analysis-${randomUUID()}`,
+    id,
     runId: input.runId,
     status: "failed",
     createdAt,
@@ -471,6 +480,96 @@ export async function runStudyAnalysis(
     result: null,
     error: admission.error,
   };
+}
+
+async function analysisProvider(
+  config: StudyAnalysisConfig,
+  options: RunStudyAnalysisOptions,
+): Promise<StudyAnalysisProvider> {
+  return config.provider === "codex"
+    ? (options.codexProvider ??
+        (await import("./restricted-codex.js")).createRestrictedCodexAnalysisProvider({
+          cliVersion: config.identity.cliVersion,
+        }))
+    : createStudyAnalysisProvider({
+        apiKey: options.apiKey!,
+        ...(options.fetch === undefined ? {} : { fetchFn: options.fetch }),
+      });
+}
+
+/** Copy the provider's reported tokens onto the artifact; OpenAI usage is also priced. */
+function recordProviderUsage(
+  artifact: StudyAnalysisArtifact,
+  config: StudyAnalysisConfig,
+  response: StudyAnalysisProviderResult,
+): void {
+  artifact.usage.dispatched = response.dispatched;
+  if (!response.usage) return;
+  const priced =
+    config.provider === "codex"
+      ? { estimatedCostUsd: null, ratesAsOf: null }
+      : estimateActorCost({ ...response.usage, turns: [response.usage] }, config.model);
+  artifact.usage.inputTokens = response.usage.input;
+  artifact.usage.outputTokens = response.usage.output;
+  artifact.usage.cachedInputTokens = response.usage.cachedInput ?? null;
+  artifact.usage.cacheWriteInputTokens = response.usage.cacheWriteInput ?? null;
+  artifact.usage.usageComplete = response.usageComplete ?? config.provider !== "codex";
+  artifact.usage.estimatedCostUsd = priced.estimatedCostUsd;
+  artifact.usage.ratesAsOf = priced.ratesAsOf;
+}
+
+/**
+ * Settle a completed response. Parse the bounded shape first, then scrub and validate again.
+ * Changed exact quotes or expanded field lengths fail closed under the original validator; source
+ * bytes stay intact. Only an allowlisted stage or first rule code survives; rejected output and
+ * exceptions do not.
+ */
+function settleCompletedOutput(
+  artifact: StudyAnalysisArtifact,
+  input: StudyAnalysisInput,
+  config: StudyAnalysisConfig,
+  admission: StudyAnalysisAdmission,
+  response: StudyAnalysisProviderResult,
+): void {
+  const checked = checkProviderAnalysis(input, response.output);
+  if (!checked.ok) {
+    artifact.result = null;
+    artifact.error = checked.error;
+    return;
+  }
+  artifact.result = checked.result;
+  artifact.status = input.coverage.complete ? "complete" : "partial";
+  artifact.error = null;
+  if (
+    config.provider !== "codex" &&
+    ((response.usage?.output ?? 0) > config.maxOutputTokens ||
+      (artifact.usage.estimatedCostUsd ?? 0) > (admission.estimatedCostUsd ?? config.maxCostUsd) ||
+      (artifact.usage.estimatedCostUsd ?? 0) > config.maxCostUsd)
+  ) {
+    artifact.status = "partial";
+    artifact.error = "analysis_admission_estimate_exceeded";
+  }
+}
+
+/** Explicit invocation or an opted-in post-run owner; Observer readers never call this. */
+export async function runStudyAnalysis(
+  input: StudyAnalysisInput,
+  config: StudyAnalysisConfig,
+  options: RunStudyAnalysisOptions,
+): Promise<StudyAnalysisArtifact> {
+  // Callers retain their own object references. Snapshot once so a display callback or later
+  // caller mutation cannot alter the admitted prompt, citations, or stored provenance mid-run.
+  input = structuredClone(input);
+  config = structuredClone(config);
+  const createdAt = new Date().toISOString();
+  const admission = admitDirectAnalysis(input, config, options.analysisId);
+  const artifact = initialArtifact(
+    input,
+    config,
+    admission,
+    options.analysisId ?? `analysis-${randomUUID()}`,
+    createdAt,
+  );
   const progress = (phase: StudyAnalysisProgress["phase"]): void => {
     // A display callback is not part of provider execution; it must not turn a paid successful
     // response into a thrown error or interrupt persistence of its usage.
@@ -491,11 +590,12 @@ export async function runStudyAnalysis(
     progress("finished");
     return artifact;
   };
-  if (options.signal?.aborted) {
+  const cancel = (): StudyAnalysisArtifact => {
     artifact.status = "cancelled";
     artifact.error = "analysis_cancelled";
     return finish();
-  }
+  };
+  if (options.signal?.aborted) return cancel();
   if (!admission.allowed) return finish();
   if (config.provider !== "codex" && !options.apiKey?.trim()) {
     artifact.error = "analysis_api_key_missing";
@@ -512,22 +612,9 @@ export async function runStudyAnalysis(
     configDigest: artifact.configDigest,
     promptVersion: artifact.promptVersion,
   });
-  if (options.signal?.aborted) {
-    artifact.status = "cancelled";
-    artifact.error = "analysis_cancelled";
-    return finish();
-  }
+  if (options.signal?.aborted) return cancel();
   progress("requesting");
-  const provider =
-    config.provider === "codex"
-      ? (options.codexProvider ??
-        (await import("./restricted-codex.js")).createRestrictedCodexAnalysisProvider({
-          cliVersion: config.identity.cliVersion,
-        }))
-      : createStudyAnalysisProvider({
-          apiKey: options.apiKey!,
-          ...(options.fetch === undefined ? {} : { fetchFn: options.fetch }),
-        });
+  const provider = await analysisProvider(config, options);
   const response = await provider({
     model: config.model,
     instructions: instructions(config),
@@ -538,47 +625,13 @@ export async function runStudyAnalysis(
     timeoutMs: config.timeoutMs,
     ...(options.signal === undefined ? {} : { signal: options.signal }),
   });
-  artifact.usage.dispatched = response.dispatched;
-  if (response.usage) {
-    const priced =
-      config.provider === "codex"
-        ? { estimatedCostUsd: null, ratesAsOf: null }
-        : estimateActorCost({ ...response.usage, turns: [response.usage] }, config.model);
-    artifact.usage.inputTokens = response.usage.input;
-    artifact.usage.outputTokens = response.usage.output;
-    artifact.usage.cachedInputTokens = response.usage.cachedInput ?? null;
-    artifact.usage.cacheWriteInputTokens = response.usage.cacheWriteInput ?? null;
-    artifact.usage.usageComplete = response.usageComplete ?? config.provider !== "codex";
-    artifact.usage.estimatedCostUsd = priced.estimatedCostUsd;
-    artifact.usage.ratesAsOf = priced.ratesAsOf;
-  }
+  recordProviderUsage(artifact, config, response);
   if (response.status !== "completed") {
     artifact.status = response.status === "cancelled" ? "cancelled" : "failed";
     artifact.error = `analysis_${response.errorCode ?? "provider_failed"}`;
     return finish();
   }
   progress("validating");
-  // Parse the bounded shape first, then scrub and validate again. Changed exact quotes or
-  // expanded field lengths fail closed under the original validator; source bytes stay intact.
-  // Only an allowlisted stage or first rule code survives; rejected output and exceptions do not.
-  const checked = checkProviderAnalysis(input, response.output);
-  if (checked.ok) {
-    artifact.result = checked.result;
-    artifact.status = input.coverage.complete ? "complete" : "partial";
-    artifact.error = null;
-    if (
-      config.provider !== "codex" &&
-      ((response.usage?.output ?? 0) > config.maxOutputTokens ||
-        (artifact.usage.estimatedCostUsd ?? 0) >
-          (admission.estimatedCostUsd ?? config.maxCostUsd) ||
-        (artifact.usage.estimatedCostUsd ?? 0) > config.maxCostUsd)
-    ) {
-      artifact.status = "partial";
-      artifact.error = "analysis_admission_estimate_exceeded";
-    }
-  } else {
-    artifact.result = null;
-    artifact.error = checked.error;
-  }
+  settleCompletedOutput(artifact, input, config, admission, response);
   return finish();
 }
