@@ -15,6 +15,7 @@ import {
 } from "../run/outcomes.js";
 import type { PreparedRunArtifactPaths } from "../run/paths.js";
 import { loadRunBundlePrepared } from "../run/locate.js";
+import { isFeedbackIdempotencyKey } from "../run/feedback-shape.js";
 import { feedbackProofCommands, projectFeedbackAcceptanceProof } from "./proof.js";
 
 export const FEEDBACK_SCHEMA = "humanish.feedback.v1";
@@ -332,6 +333,7 @@ export function isUsableFeedbackCandidate(candidate: unknown): candidate is RunF
     candidate.redaction.status !== "passed" ||
     typeof candidate.summary !== "string" ||
     candidate.summary.trim().length === 0 ||
+    !isFeedbackIdempotencyKey(candidate.idempotency_key) ||
     !Array.isArray(candidate.evidence)
   ) {
     return false;

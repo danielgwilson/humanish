@@ -2,6 +2,14 @@ import path from "node:path";
 import type { RunFeedbackCandidate } from "./bundle.js";
 import { isRecord } from "./type-guards.js";
 
+/**
+ * A feedback candidate's idempotency key: the identity a filed issue is matched on, so a blank
+ * one would let every blank-keyed candidate collide or duplicate.
+ */
+export function isFeedbackIdempotencyKey(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
 export function isRunFeedbackCandidate(value: unknown): value is RunFeedbackCandidate {
   return (
     isRecord(value) &&
@@ -23,7 +31,7 @@ export function isRunFeedbackCandidate(value: unknown): value is RunFeedbackCand
     isRecord(value.redaction) &&
     value.redaction.status === "passed" &&
     typeof value.redaction.notes === "string" &&
-    typeof value.idempotency_key === "string" &&
+    isFeedbackIdempotencyKey(value.idempotency_key) &&
     isFeedbackNextState(value.proposed_next_state) &&
     Array.isArray(value.acceptance_proof) &&
     value.acceptance_proof.every((item) => typeof item === "string") &&
