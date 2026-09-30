@@ -1,4 +1,5 @@
 import { scrubPersonaBrief } from "../../lab/persona.js";
+import { participantIdAt } from "../../lab/routing.js";
 import { withTransientCommsSecrets } from "../../run/narration-secrets.js";
 import { prepareReceivingRun, receivingPublication } from "../../comms/receiving-runtime.js";
 import type { CommsReceivingRun } from "../../comms/receiving.js";
@@ -658,7 +659,7 @@ function buildActorSpec(
     ...(role.instruction === undefined ? {} : { instruction: role.instruction }),
     device: { name: device.name, preset: device.preset },
   });
-  const roleId = role.id ?? `role-${String(index + 1).padStart(2, "0")}`;
+  const roleId = participantIdAt(index, role.id, "seat");
   const streamId = `stream-${String(index + 1).padStart(3, "0")}`;
   return {
     laneId: roleId,
