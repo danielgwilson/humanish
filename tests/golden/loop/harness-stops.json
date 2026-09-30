@@ -1451,9 +1451,9 @@
   },
   "dwellFramelessAfterWindow": {
     "result": {
-      "status": "passed",
-      "completionReason": "goal_satisfied",
-      "reason": "Finished.",
+      "status": "failed",
+      "completionReason": "harness_error",
+      "reason": "provider golden-cua requires a screenshot frame but the executor returned an observation with no screenshot (vision provider against a state-only executor)",
       "trace": {
         "schema": "humanish.actor-trace.v1",
         "provider": "golden-cua",
@@ -1473,21 +1473,21 @@
           "notes": "3 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
         },
         "startedAt": "1970-01-01T00:00:00.001Z",
-        "completedAt": "1970-01-01T00:00:00.036Z",
-        "durationMs": 35,
-        "status": "passed",
-        "completionReason": "goal_satisfied",
-        "reason": "Finished.",
+        "completedAt": "1970-01-01T00:00:00.032Z",
+        "durationMs": 31,
+        "status": "failed",
+        "completionReason": "harness_error",
+        "reason": "provider golden-cua requires a screenshot frame but the executor returned an observation with no screenshot (vision provider against a state-only executor)",
         "ids": {
           "model": "golden-1"
         },
         "counts": {
-          "turns": 1,
+          "turns": 0,
           "actions": 0,
           "materialActions": 0,
           "screenshots": 3,
           "reasonings": 0,
-          "messages": 1,
+          "messages": 0,
           "idleTurns": 0,
           "noProgressTurns": 0
         },
@@ -1541,22 +1541,6 @@
             "title": "dwell window complete",
             "text": "2 frame(s) over 24ms; no model turn was requested during the window",
             "at": "1970-01-01T00:00:00.030Z"
-          },
-          {
-            "id": "notice-006",
-            "kind": "notice",
-            "title": "Participant context hint",
-            "text": "The study held this page under observation for 0 seconds (a declared dwell window; you took no actions in that time). Continue the mission from the current state of the page.",
-            "lifecycle": "completed",
-            "at": "1970-01-01T00:00:00.034Z"
-          },
-          {
-            "id": "message-007",
-            "kind": "message",
-            "lifecycle": "completed",
-            "title": "message turn 1",
-            "text": "Finished.",
-            "at": "1970-01-01T00:00:00.035Z"
           }
         ],
         "capabilities": {
@@ -1657,20 +1641,6 @@
       [
         "onObservedUrl",
         null
-      ],
-      [
-        "provider.nextTurn",
-        {
-          "instructions": "Act as the synthetic persona and finish the task.",
-          "observation": {
-            "stateSignature": "a"
-          },
-          "contextHint": "The study held this page under observation for 0 seconds (a declared dwell window; you took no actions in that time). Continue the mission from the current state of the page."
-        }
-      ],
-      [
-        "onMessage",
-        "Finished."
       ]
     ]
   },
@@ -1695,7 +1665,7 @@
         "redaction": {
           "status": "passed",
           "screenshots": "n/a",
-          "notes": "no screenshots captured"
+          "notes": "no screenshots captured. App state was observed each turn to drive progress detection (a state-driven executor) and was NOT written to the trace — it is a runtime-only progress input, never persisted as evidence in this slice."
         },
         "startedAt": "1970-01-01T00:00:00.001Z",
         "completedAt": "1970-01-01T00:00:00.034Z",
