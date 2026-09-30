@@ -16,8 +16,8 @@ You do not have to drive a screen with a vision model. You can point the loop at
 **an already-running local app** and drive it through that app's **in-process
 JavaScript automation contract** (e.g. `window.app.getState()`,
 `sendChat(text)`, `dispatch(action)`, `navigate(target)`), using `getState()` as
-the progress signal instead of a quantized screenshot — keeping humanish's
-composition (personas, the Observer, the normalized `ActorTrace` evidence
+the progress signal instead of a quantized screenshot. Humanish's composition
+stays in place (personas, the Observer, the normalized `ActorTrace` evidence
 bundle, redaction, and the friction / no-progress loop).
 
 This is the "plural harnesses / transport-agnostic" intent of
@@ -51,9 +51,9 @@ wait and does not cache a previous action's position.
   persists no screenshot that turn; `counts.screenshots` stays 0, so the trace's
   `redaction.screenshots` resolves to `"n/a"`. No fabricated `Buffer.alloc(0)`
   ever reaches disk. (A vision executor still returns a frame, exactly as before.)
-- **`stateSignature` is still required.** Derive it from your own state — e.g.
+- **`stateSignature` is still required.** Derive it from your own state, e.g.
   `stableProgressKey({ route, turn, modal })` (exported from `humanish`). It is the
-  canonical fallback progress key when `appState` is absent. It is never written
+  fallback progress key when `appState` is absent. It is never written
   to the trace as text.
 - **`appState` is the preferred progress input.** When present, the loop's
   friction / no-progress detection keys off a deterministic, sorted-key,
@@ -67,9 +67,9 @@ Either is enough on its own. `appState` is preferred because `getState()` is a
 far more reliable progress signal than a quantized screenshot signature on a
 graphically dense (pixel-art) UI. `stableProgressKey(appState)`:
 
-- sorts object keys (order-independent — shuffled keys ARE NOT progress);
+- sorts object keys, so key order never counts as progress;
 - caps depth, key count, array length, string length, and total output;
-- never throws on a cyclic or huge `appState` — it degrades to a bounded value
+- never throws on a cyclic or huge `appState`; it degrades to a bounded value
   (cycles become `"[Circular]"`, over-cap nodes become markers). This is
   correctness-load-bearing: a hostile or merely large state blob cannot crash the
   loop.
@@ -77,7 +77,7 @@ graphically dense (pixel-art) UI. `stableProgressKey(appState)`:
 ## A single desktop command failure is a recoverable skipped action
 
 `execute(action)` runs against a real substrate, and the real `@e2b/desktop`
-Sandbox **throws** `CommandExitError` on **any** non-zero exit — a `press`,
+Sandbox **throws** `CommandExitError` on **any** non-zero exit. A `press`,
 `scroll`, `drag`, `moveMouse`, or `click` can exit non-zero for reasons that have
 nothing to do with the run's health (a `Ctrl+Minus` zoom keypress exiting `2` was
 the reproduced case). The loop treats one such failure as a **recoverable skipped
@@ -85,7 +85,7 @@ action**, not a fatal error:
 
 - The per-action `execute()` call is wrapped at the loop boundary (so the recovery
   covers every action kind uniformly). When the caught error
-  `isCommandExitError` (`command-failure.ts` — matches the SDK class name or any
+  `isCommandExitError` (`command-failure.ts`; it matches the SDK class name or any
   object carrying a numeric `exitCode`), the loop records a `notice` item
   (`status: "error"`, title `action skipped: desktop command failed`, text = the
   public-safe action label + exit code + a redacted `stderrTail`), does **not**
@@ -98,13 +98,13 @@ action**, not a fatal error:
 - **No infinite loop.** A skipped action changes nothing on screen, so it is not
   progress. A run that keeps failing every action makes no progress and still
   terminates honestly through the existing idle / no-progress backstop
-  (`gave_up`) — the resilience only converts a _single flaky command_ from fatal
+  (`gave_up`). The resilience only converts a _single flaky command_ from fatal
   to survivable; it never masks a genuinely stuck run.
 
 Public-safety: the notice text carries only the substrate's own stderr (tailed +
 whitespace-collapsed) and a numeric exit code, and is still run through the loop's
 `redactNarration` (known-value scrub + pattern redaction). Raw typed text, secret
-values, and machine paths never appear — the action label comes from
+values, and machine paths never appear. The action label comes from
 `describeCuaAction`, which never includes typed text.
 
 ## You need a NON-vision provider too
@@ -119,8 +119,8 @@ reasons over app state).
 
 - A **vision** provider MUST set `requiresFrame: true` (the OpenAI provider does).
   When a `requiresFrame: true` provider is handed a screenshot-less observation,
-  the loop fails closed with a structured `harness_error` per turn — not a silent
-  crash, not a false pass.
+  the loop fails closed with a structured `harness_error` per turn. It neither
+  crashes silently nor passes falsely.
 - A **state-reasoning** provider omits `requiresFrame` (defaults falsey) and reads
   `req.observation.appState`.
 
@@ -147,13 +147,13 @@ observed each turn to drive progress detection and was NOT written to the trace.
 
 A future "appState in evidence" slice MUST route a stringified projection through
 `redaction.redactText` (and the lab's `scrubText`) AND cap / whitelist fields
-before persisting — pattern + literal redaction alone cannot sanitize an
+before persisting. Pattern + literal redaction alone cannot sanitize an
 arbitrary blob.
 
 ## Provenance is honestly UNPINNED (invariant 5)
 
 An already-running local dev server cannot be commit-pinned. The bundle does not
-silently omit a subject block — it DECLARES the absence: `subject.source:
+silently omit a subject block. It declares the absence: `subject.source:
 app-url` with `state.provenance: "undeclared"` (the app-url "absence declared"
 marker), and a `cua-lab.subject.declared` event that states the entry is a local
 dev server driven in-process, caller-provisioned and UNPINNED, with no E2B
@@ -191,16 +191,16 @@ to reconstruct them.
 When `cuaHooks.buildExecutor` is set, `runCuaActorLab` takes a branch that NEVER
 loads the E2B module, creates a sandbox, runs `prepareDesktop`, provisions a
 clone, opens a browser, or starts a stream. `sandboxId`/`streamUrl` stay
-undefined, so `result.sandbox` is omitted — the verifiable "no E2B SDK call"
-proof.
+undefined, so `result.sandbox` is omitted. That omission is the verifiable
+"no E2B SDK call" proof.
 
 Two boot-time fail-closed guards (both BEFORE any key check, so a CLI invocation
 never sees a misleading `KEYS_MISSING` first):
 
-- `HUMANISH_CUA_LAB_EXECUTOR_NO_PROVIDER` — `buildExecutor` without `buildProvider`
+- `HUMANISH_CUA_LAB_EXECUTOR_NO_PROVIDER`: `buildExecutor` without `buildProvider`
   (a state executor MUST be paired with a non-vision provider). `buildProvider`
-  ALONE is allowed — that is just a model swap on the normal E2B route.
-- `HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR` — a `subject.source: local-app` config
+  alone is allowed; that is a model swap on the normal E2B route.
+- `HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR`: a `subject.source: local-app` config
   run with no `buildExecutor` hook (there is no built-in in-process driver yet).
   A structured error, never a desktop attempt.
 
@@ -224,15 +224,15 @@ Read every optional field defensively, and spread-omit optional fields
 
 ## Deferred (tracked, not shipped here)
 
-- **PR2 — a config-only deterministic `state-contract` lane.** A registered,
+- **PR2: a config-only deterministic `state-contract` lane.** A registered,
   model-free lane driving a built-in `window.app.*` bridge over the existing
   `ScriptedPageLike.evaluate` primitive + a YAML step program, `scenario.mode:
 live` gating actuation. It would be deterministic step replay, NOT
   `runComputerUseLoop`, and must not overclaim friction-loop reuse.
-- **PR3 — a `subject.contract.ref` JS-module loader.** A config-referenced module
+- **PR3: a `subject.contract.ref` JS-module loader.** A config-referenced module
   loaded and run in-process with full harness privileges is a genuinely NEW trust
   surface with no precedent in this repo (the scripted lane loads only declarative
   YAML; serve commands run isolated inside the disposable E2B sandbox). It earns
   its place only behind its own clamping / trust / digest-pinning design.
-  the validated library consumer does not need it: a caller builds the bridge in its own
+  The validated library consumer does not need it: a caller builds the bridge in its own
   trusted code (entry point 2 above).

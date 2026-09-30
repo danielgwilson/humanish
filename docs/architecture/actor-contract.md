@@ -41,7 +41,7 @@ design time Humanish had exactly one real actor: the local Codex integration in
 `humanish.codex-app-server-trace.v1`.
 
 That is a ceiling. Humanish's value is being a public-safe harness for persona and
-agent user-studies, and the agent harnesses our users actually run are plural:
+agent user-studies, and our users actually run several agent harnesses:
 OpenAI Codex, the pi stack (`@earendil-works/pi-agent-core`, `pi-coding-agent`,
 OpenClaw), Claude Code and the Claude Agent SDK, and computer-use models that
 drive a real screen. A neutral, public-safe way to run the same persona scenario
@@ -86,8 +86,8 @@ API surface.
 
 5. **The registry refuses capability mismatches.** Each adapter declares
    `ActorCapabilities`. A scenario that needs `producesScreenshots` (a GUI
-   journey) will not be dispatched to a code-only actor that would fake success
-   via the shell. Coverage honesty over green-by-construction.
+   flow) will not be dispatched to a code-only actor that would fake success
+   via the shell.
 
 6. **Computer-use is one lane behind one adapter.** The shipped computer-use
    actor is `openai-computer-use` (fronting the OpenAI Responses adapter); a
@@ -98,7 +98,7 @@ API surface.
    enforced a default at capture-time; 0.6.0 recanted it. Current policy:
    frames are retained raw and full-fidelity by default in the gitignored
    `.humanish/` tree (never emitted by a publish command; this repo's CI
-   binary-asset scan additionally blocks them from commit), and
+   binary-asset scan also blocks them from commit), and
    `policies.redactScreenshots: true` blurs at capture for share-as-is
    bundles. See the capture-vs-publish rule in
    [`docs/principles/invariants-and-defaults.md`](../principles/invariants-and-defaults.md).
@@ -262,7 +262,7 @@ export interface Actor {
 - **Capabilities.** Declare them honestly; the registry uses them to refuse
   unsuitable dispatch.
 - **Cost (estimate vs. charge).** `tokenUsage.costUsd` stays RESERVED for a
-  real, provider-returned charge (the codex path) — a bare `costUsd`
+  real, provider-returned charge (the codex path); a bare `costUsd`
   always means "the provider billed this". The optional `estimatedCost`
   (`humanish.actor-estimated-cost.v1`) is a SEPARATE, differently-named field: a
   token-derived rate-table multiply from the operator-editable `src/run/pricing.ts`,
@@ -275,7 +275,7 @@ export interface Actor {
 
 ## The scripted-browser lane (shipped)
 
-`scripted-browser` is the deterministic, model-free browser-actuation lane — distinct from
+`scripted-browser` is the deterministic, model-free browser-actuation lane, distinct from
 `computer-use` (raw pixels + a model deciding actions). The registered
 `scripted-browser` actor (`src/actors/scripted-browser.ts`) replays a committed scenario's
 browser steps with playwright against a loopback app; the steps ARE the behavior, so
@@ -284,39 +284,39 @@ $0 declaration that is true by mechanism (no provider client is importable from 
 path). Its trace keeps the concrete driver name `provider: "browser-persona"` (matching the
 native `humanish.browser-persona-trace.v1` it also emits) with `protocol: "scripted-steps"`.
 
-Completion semantics: `goal_satisfied` means the scenario's `expect` blocks — the success
-predicate — all held ("the app still affords this exact journey", nothing about user
+Completion semantics: `goal_satisfied` means the scenario's `expect` blocks (the success
+predicate) all held ("the app still affords this exact flow", nothing about user
 behavior); `step_failed` means a deterministic step or expectation evaluated false (the
-subject failed the script; the harness ran faithfully); `timed_out` is the journey wall-clock
+subject failed the script; the harness ran faithfully); `timed_out` is the run's wall-clock
 budget hit with NO material progress (still a failure); `harness_error` is a browser that could
-not launch. `gave_up` and `blocked_approval` are unreachable — no persona patience, no
-approvals exist on a deterministic replay.
+not launch. `gave_up` and `blocked_approval` are unreachable, because a deterministic replay
+has no persona patience and no approvals.
 
 ### The time budget vs. a stuck timeout (`budget_reached`)
 
-`execution.timeoutMs` is a GENEROUS wall-clock SAFETY cap, not a goal. For an open-ended
-"watch it play" session there is no success predicate — productive play IS the outcome — so the
-computer-use loop distinguishes two ways to hit the cap:
+`execution.timeoutMs` is a GENEROUS wall-clock SAFETY cap, not a goal. An open-ended
+"watch it play" session has no success predicate, because productive play is the outcome. So
+the computer-use loop distinguishes two ways to hit the cap:
 
-- **`budget_reached`** — the deadline was reached AFTER at least one material (non-idle) action.
+- **`budget_reached`**: the deadline was reached AFTER at least one material (non-idle) action.
   This maps to `ActorStatus: "passed"`: a non-failure completion, `laneOutcomeOk` returns true,
   the verdict is `pass`, and the CLI exits `0`. It stays a distinct `completionReason` (never
   `goal_satisfied`), and the trace `reason` says it reached the budget after productive activity,
   so a reviewer of a strictly goal-directed lab sees it hit the cap rather than reaching a goal
   (goal-directed labs should set a tight `timeoutMs`).
-- **`timed_out`** — the deadline was reached with ZERO material actions (a hung provider, an
+- **`timed_out`**: the deadline was reached with ZERO material actions (a hung provider, an
   idle-only stall). This maps to `ActorStatus: "timed_out"`, `laneOutcomeOk` is false, the
   verdict is `fail`, and the CLI exits `2`. "Made zero progress then timed out" stays a failure.
 
-`ActorStatus` intentionally gains NO new member — the honest distinction lives in
-`completionReason`/`reason` — which keeps the change from rippling through ~10 provider mappers.
+`ActorStatus` intentionally gains no new member. The distinction lives in
+`completionReason`/`reason`, which keeps the change from rippling through ~10 provider mappers.
 `statusForCompletion` is an exhaustive switch with no default, so a new completion reason forces a
 compile-time decision about its status. ~30 min (`1_800_000`) is a reasonable default for
 open-ended watch; the persona still stops early on `goal_satisfied`/`gave_up`/`stopWhen`.
 
 Actuation-vs-spend gate: on the scripted lab route `scenario.mode: live` is still required
-even though provider spend is $0 by mechanism. The gate's justification there is ACTUATION,
-not cost — a live scripted run drives a real browser against a real running app
+even though provider spend is $0 by mechanism. The gate's justification there is actuation,
+not cost: a live scripted run drives a real browser against a real running app
 (state-mutating effects on the operator's app), which deserves the same affirmative
 declaration as spend. "Live" on this route must never silently come to mean "costs money";
 this paragraph is the record of that decision.
@@ -343,7 +343,7 @@ reporting because it does not retain the required session history. The
 [paired live receipt](../goals/computer-use-actor/receipts/structured-closing-report-2026-09-05.md)
 records both report recovery and control failures in the separate legacy parser.
 
-## The state-driven executor seam (shipped — the transport-agnostic intent, made real)
+## The state-driven executor seam (shipped)
 
 The `CuaExecutor` / `CuaProvider` ports are the concrete realization of the "plural harnesses /
 transport-agnostic" intent above: the computer-use loop does not require a screen or a vision
@@ -356,7 +356,7 @@ falsey), keeping the whole lab composition with NO E2B desktop and NO clone. See
 local-app` config surface, the `requiresFrame` provider-authoring contract, and the
 appState-is-runtime-only stance.
 
-## The product-adapter extension seam (shipped — terminal-product lane, layer 6)
+## The product-adapter extension seam (shipped in the terminal-product lane, layer 6)
 
 The terminal-product lane carries the proof-roadmap layer-6 deliverable: a product
 adopter attaches product-specific scoring + feedback as a THIN in-repo extension
@@ -366,9 +366,9 @@ the terminal-lane `TerminalProductScoringContext` / `TerminalLedgers` / ...) plu
 registrable `score` / `deriveFeedback` DI hook on `TerminalProductLabHooks` (mirror
 of the `CuaActorLabHooks` DI seam). The adapter records its product nouns ONLY under
 an adapter-NAMESPACED block (`RunFeedbackCandidate.adapter` /
-`RunAdapterScore.{namespace,data}`), so core's enums stay product-agnostic — no
+`RunAdapterScore.{namespace,data}`), so core's enums stay product-agnostic: no
 adopter noun is hardcoded into a core enum. Default (no hook) behavior is unchanged.
-See [`terminal-product-lane.md`](./terminal-product-lane.md#slice-4--the-product-adapter-extension-seam-layer-6)
+See [`terminal-product-lane.md`](./terminal-product-lane.md#slice-4-the-product-adapter-extension-seam-layer-6)
 for the full seam and the thin-adapter conformance proof.
 
 ## Making personas load-bearing
@@ -394,8 +394,8 @@ Plan:
      count.
    - skill -> tool/strategy bias (low-skill avoids CLI/flags and narrates
      confusion at ambiguous UI; high-skill uses shortcuts and recovery paths).
-   - accessibilityNeeds -> concrete behavior (keyboard_first navigates by
-     keyboard and fails a step that is mouse-only; clear_terminal_output flags
+   - accessibilityNeeds -> concrete behavior (keyboard_first moves through the UI
+     by keyboard and fails a step that is mouse-only; clear_terminal_output flags
      noisy output as a defect).
    - goals + constraints become explicit success / forbidden lists for the
      scenario predicate.
@@ -417,7 +417,7 @@ Plan:
    directives; a `persona-fidelity` verify check asserts that the friction and
    accessibility directives reached the actor input and that a `gave_up` run
    cites a concrete friction reason (not a turn count). "Did the persona drive
-   the run" becomes a verifiable artifact, not an assertion.
+   the run" becomes a verifiable artifact.
    (Status 2026-06-11: `personaToDirectives` shipped in `src/lab/persona.ts` and
    `traitsApplied` is threaded on the codex routes, but the `persona-fidelity`
    verify check is not-yet-shipped roadmap. The computer-use route records
@@ -426,7 +426,7 @@ Plan:
 ## Decision: how abandonment is adjudicated
 
 "When does a synthetic persona give up?" has no obvious best answer, so the
-choice is recorded here rather than left implicit and silently re-litigated.
+choice is recorded here so it is not silently re-litigated.
 
 Options considered:
 
@@ -436,9 +436,9 @@ Options considered:
    model-judged stop can also run uselessly to the wall-clock timeout.
 2. **Harness-adjudicated from objective signals only** (no-progress,
    repeated-failure, looping); the persona just sets a numeric threshold.
-   Deterministic and reproducible, but mechanical, misses the subjective "this
-   is not worth it" judgment that is the whole point of a persona, and a fixed
-   threshold quietly drifts back toward a disguised counter.
+   Deterministic and reproducible, but mechanical. It misses the subjective "this
+   is not worth it" judgment a persona exists to make, and a fixed threshold
+   quietly drifts back toward a disguised counter.
 3. **Persona-judged primary, harness-corroborated backstop.** The actor decides
    in character and emits `gave_up` with the friction; the harness independently
    tracks objective signals and (a) annotates the friction as a feedback
@@ -497,7 +497,7 @@ turns as a stop signal.
    mapper-only descriptor was removed because no route dispatched it.
 5. `claude-agent-sdk` adapter (the `app` lane). It shipped as a descriptor with
    a live session but no route, and was removed along with the `app` lane.
-6. Computer-use lane. (Shipped as `openai-computer-use` — registered 0.3.0,
+6. Computer-use lane. (Shipped as `openai-computer-use`: registered 0.3.0,
    lab-dispatched 0.4.0; `stagehand-cua` as a multi-provider front remains
    not-yet-shipped roadmap.)
 7. Cross-harness conformance test: one persona x scenario through every adapter,
@@ -513,9 +513,9 @@ turns as a stop signal.
 - Screenshot PII in the computer-use lane. Redaction binds the PUBLISH
   boundary, not capture (0.6.0): raw frames stay local in gitignored
   `.humanish/` and are never emitted by a publish command (this repo's CI
-  binary-asset scan additionally blocks them from commit);
+  binary-asset scan also blocks them from commit);
   `policies.redactScreenshots: true` blurs at capture for share-as-is
-  bundles. The earlier fail-closed redacted-thumbnail default was recanted —
+  bundles. The earlier fail-closed redacted-thumbnail default was recanted;
   see the capture-vs-publish rule in
   [`docs/principles/invariants-and-defaults.md`](../principles/invariants-and-defaults.md).
 - Persona directives regressing into decoration. Friction tolerance and

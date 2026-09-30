@@ -1,6 +1,6 @@
 # Optional participant media
 
-Media belongs to the desktop. The participant still navigates through screenshots
+Media belongs to the desktop. The participant still works through screenshots
 and the shared computer-use loop, using one continuing Codex conversation for
 clicks, listening and spoken replies.
 

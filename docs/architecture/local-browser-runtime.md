@@ -81,7 +81,7 @@ For API billing and its supported caps, use `type: openai-computer-use`, remove
 default. Neither path silently falls back to another provider or hosted desktop.
 Existing labs without `execution.target: local` retain their previous behavior.
 
-Before handing the desktop to the participant, the guest navigates to the
+Before handing the desktop to the participant, the guest opens the
 selected app and waits up to 30 seconds for the initial document's
 `DOMContentLoaded` event, then allows a bounded paint. It does not wait for app
 data, images or network idle: the app's own loading screen remains observable.
@@ -91,7 +91,7 @@ Later participant actions and observations do not use this startup wait.
 ## Current limits
 
 - Linux x64 or M3-or-newer Mac with native ARM64 Node and Lima. The installed
-  Mac journey was tested on an M5 Max; smaller machines are not capacity-qualified.
+  Mac setup was tested on an M5 Max; smaller machines are not capacity-qualified.
 - On Linux, a local Docker Engine; remote contexts, rootless Docker and Docker
   Desktop are unsupported. The Mac adapter uses Docker inside its own Lima host.
 - Loopback HTTP(S) app URLs on explicit ports above 1023. Each participant can

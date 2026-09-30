@@ -104,7 +104,7 @@ and export do not create this served-only observation.
 Watch is deliberately distinct from `humanish serve`. Watch serves ONE
 attached run, and the process that created it may inject runtime stream URLs
 (live hosted-desktop viewers) into the observer data it serves. Serve is the
-LIBRARY surface — every run under `.humanish/runs/` — and never serves runtime
+library surface (every run under `.humanish/runs/`) and never serves runtime
 stream URLs in any mode; remote viewers see persisted evidence only. See
 [Serve: the run library surface](serve.md).
 
@@ -114,7 +114,7 @@ The live `serveObserver` server binds `127.0.0.1` and, by default, is a
 local-dev server without a Host allowlist. Every response carries security
 headers, including `X-Frame-Options: DENY` and CSP `frame-ancestors 'none'`.
 Under its
-`exposed` option — set by `watch --expose` — it enforces the SAME
+`exposed` option, which `watch --expose` sets, it enforces the same
 DNS-rebinding defense as the library surface: a strict Host allowlist (loopback
 names at bind, extended by `addPublicOrigin(tunnel.url | public-url)`, `421
 Misdirected Request` otherwise) and the shared `buildServeSecurityHeaders()` on
@@ -124,16 +124,16 @@ The Host allowlist applies in exposed mode; frame-denial headers apply in both m
 Exposed mode also SCOPES the surface to the attached live run (`result.run`): the
 `/_humanish/history.json` index is filtered to that one run, and `/_humanish/runs/<id>/…`
 404s byte-identically to a nonexistent run for any other id. A remote viewer who
-clears the edge auth can therefore see only the run being watched — never enumerate
-or fetch a prior run's raw, unverified evidence. Loopback keeps the full cross-run
+clears the edge auth can therefore see only the run being watched. They can never
+enumerate or fetch a prior run's raw, unverified evidence. Loopback keeps the full cross-run
 library (history + any run by id) exactly as before.
 
 `watch --expose` is the ONE surface that DELIBERATELY streams the live E2B
 desktop to a remote viewer: the attached watch process genuinely holds the
-runtime stream URLs (in the in-memory `WeakMap`, never persisted), and streaming
-them is the whole point of watching from a phone. It is safe only because the
+runtime stream URLs (in the in-memory `WeakMap`, never persisted), and watching
+from a phone needs them. It is safe only because the
 ngrok edge (Google OAuth + allow rules) or an operator `--public-url` edge
-authenticates the viewer first — `watch --expose` therefore always requires edge
+authenticates the viewer first, so `watch --expose` always requires edge
 auth (a live run is never `share_ready`, so `--safe` alone cannot gate it). The
 attached server comes up DURING the run and survives a `timed_out`/`failed` run
 (serving is not gated on pass/fail), so a failed run's evidence stays inspectable
@@ -256,11 +256,11 @@ The renderer is the `observer/` workspace: a Vite single-file build on the
 (`tests/observer/data-contract.test.ts`). The root build copies the workspace
 artifact to `dist/observer-app.html`; in a repo checkout a missing or stale
 artifact auto-builds, and an unconditional preflight at CLI startup makes a
-broken artifact cost seconds, never a completed session. `renderObserverHtml`
-— the one choke point every surface (observe, watch, serve, labs) funnels
-through — injects the run's snapshot into the artifact
+broken artifact cost seconds, never a completed session. `renderObserverHtml`,
+the one function every surface (observe, watch, serve, labs) renders through,
+injects the run's snapshot into the artifact
 (`tests/observer/artifact.test.ts` pins the path, cold, so CI exercises the
 auto-build every run). The legacy string-concat renderer was deleted at
-cutover; there is no flag and no fallback — rollback is a version pin. The
+cutover; there is no flag and no fallback. Rollback is a version pin. The
 workspace's own tests pin the durability constraints (self-contained single
 file, fonts inlined, no network references).

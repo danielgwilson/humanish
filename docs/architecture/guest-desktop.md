@@ -3,7 +3,7 @@
 These internal components implement native input and full-desktop captures for a
 maintained browser-only guest. They do not enable a public local-runtime mode.
 The VM owner, control transport, app network policy, installed setup and complete
-study journey require separate qualification.
+study flow require separate qualification.
 
 The driver uses the existing `CuaExecutor` contract behind
 [browser control](browser-control.md). Coordinates refer to the complete Xvfb
