@@ -137,6 +137,8 @@ describe("account-billed participants", () => {
       reason: "account_billing_unknown",
     });
     expect(bundle.cost).toMatchObject({ estimatedTotalUsd: null, fullyEstimated: false });
+    // With no priced line, the note says account billing is unknown, not that a rate is missing.
+    expect(bundle.cost.note).toContain("Account billing remains unknown");
     expect(bundle.cost.breakdown).toContainEqual(
       expect.objectContaining({ reason: "account_billing_unknown", estimatedCostUsd: null }),
     );

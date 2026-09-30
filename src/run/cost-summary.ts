@@ -19,22 +19,40 @@ export interface DesktopUsage {
   lifetimeComplete: boolean;
 }
 
-export function buildRunCostSummary(args: {
-  lanes: Array<{ laneId?: string; trace: ActorTrace }>;
+type CostLane = { laneId?: string; trace: ActorTrace };
+
+interface CostArgs {
+  lanes: CostLane[];
   /** Legacy library input: uses a labeled planning assumption; live routes use desktops. */
   desktopMinutes?: number | undefined;
   desktops?: DesktopUsage[];
-}): RunCostSummary | undefined {
-  const breakdown: RunCostLine[] = [];
-  let sumInput = 0;
-  let sumOutput = 0;
+}
 
-  for (const lane of args.lanes) {
+export function buildRunCostSummary(args: CostArgs): RunCostSummary | undefined {
+  const breakdown = [...modelCostLines(args.lanes), ...desktopCostLines(args)];
+  if (breakdown.length === 0) {
+    return undefined;
+  }
+  const totals = costTotals(breakdown);
+  return {
+    schema: "humanish.run-cost-summary.v1",
+    currency: "usd",
+    estimatedTotalUsd: totals.estimatedTotalUsd,
+    ratesAsOf: totals.minRatesAsOf,
+    fullyEstimated: !totals.anyNull,
+    placeholder: totals.placeholder,
+    breakdown,
+    tokenUsage: runTokenUsage(args.lanes),
+    desktopMinutes: runDesktopMinutes(args),
+    note: costNote(args, totals),
+  };
+}
+
+/** Each participant's model-token lines: an estimate, and a null line for each unreported part. */
+function modelCostLines(lanes: CostLane[]): RunCostLine[] {
+  const breakdown: RunCostLine[] = [];
+  for (const lane of lanes) {
     const usage = lane.trace.tokenUsage;
-    if (usage) {
-      sumInput += usage.input ?? 0;
-      sumOutput += usage.output ?? 0;
-    }
     // A stalled/ambiguous interaction can remain unreported after a later successful retry.
     // Keep known token estimates and make the additional unknown explicit.
     if (lane.trace.interactionUsageIncomplete === true) {
@@ -81,6 +99,12 @@ export function buildRunCostSummary(args: {
     });
   }
 
+  return breakdown;
+}
+
+/** Each hosted sandbox's compute line, or the legacy planning line when only minutes are given. */
+function desktopCostLines(args: Pick<CostArgs, "desktopMinutes" | "desktops">): RunCostLine[] {
+  const breakdown: RunCostLine[] = [];
   for (const usage of args.desktops ?? []) {
     const observation = usage.observation;
     const resources = observation && "resources" in observation ? observation.resources : undefined;
@@ -124,11 +148,16 @@ export function buildRunCostSummary(args: {
       ...(desktop.placeholder ? { placeholder: true } : {}),
     });
   }
+  return breakdown;
+}
 
-  if (breakdown.length === 0) {
-    return undefined;
-  }
-
+/** The priced total and its freshness; a null line makes the total a lower bound. */
+function costTotals(breakdown: RunCostLine[]): {
+  estimatedTotalUsd: number | null;
+  anyNull: boolean;
+  placeholder: boolean;
+  minRatesAsOf: string | null;
+} {
   let knownSum = 0;
   let anyKnown = false;
   let anyNull = false;
@@ -149,12 +178,22 @@ export function buildRunCostSummary(args: {
       minRatesAsOf = line.ratesAsOf;
     }
   }
-  const estimatedTotalUsd = anyKnown ? round6(knownSum) : null;
+  return {
+    estimatedTotalUsd: anyKnown ? round6(knownSum) : null,
+    anyNull,
+    placeholder,
+    minRatesAsOf,
+  };
+}
+
+/** The summary's note: what the total means, then what the desktop lines measured. */
+function costNote(args: CostArgs, totals: ReturnType<typeof costTotals>): string {
+  const { estimatedTotalUsd, anyNull, placeholder, minRatesAsOf } = totals;
   const estimateNote =
     estimatedTotalUsd === null
       ? `No priced spend lines this run — every cost line is DECLARED ABSENT (unknown rate / no usage / no duration); nothing is guessed. ${args.lanes.some((lane) => lane.trace.executionProfile?.billing === "account-unknown") ? "Account billing remains unknown; API prices do not measure account spend." : "Add a rate to src/run/pricing.ts to estimate this model."}`
       : `Estimated ${estimatedTotalUsd} USD total${anyNull ? " (LOWER BOUND — some lines unmeasured/unpriced)" : ""}${placeholder ? "; includes PLACEHOLDER rate(s) — confirm before trusting the magnitude" : ""}. Every figure is an ESTIMATE (rates as of ${minRatesAsOf} — the OLDEST contributing rate, since an aggregate is only as fresh as its stalest input), a rate-table multiply, NOT an authoritative provider charge.`;
-  const note =
+  return (
     estimateNote +
     ((args.desktops?.length ?? 0) > 0
       ? args.desktops!.some(
@@ -162,47 +201,44 @@ export function buildRunCostSummary(args: {
         )
         ? " Desktop compute uses observed CPU/RAM and a host-acquired-to-cleanup span where available; pre-handle startup, plan fees, credits, and negotiated pricing are excluded."
         : " Desktop compute is unmeasured: no allocation CPU/RAM observation is available."
-      : "");
+      : "")
+  );
+}
 
-  return {
-    schema: "humanish.run-cost-summary.v1",
-    currency: "usd",
-    estimatedTotalUsd,
-    ratesAsOf: minRatesAsOf,
-    fullyEstimated: !anyNull,
-    placeholder,
-    breakdown,
-    tokenUsage: args.lanes.some(
-      (lane) => lane.trace.executionProfile?.billing === "account-unknown",
-    )
-      ? {
-          ...(args.lanes.some((lane) => lane.trace.tokenUsage?.input !== undefined)
-            ? { input: sumInput }
-            : {}),
-          ...(args.lanes.some((lane) => lane.trace.tokenUsage?.output !== undefined)
-            ? { output: sumOutput }
-            : {}),
-          ...(args.lanes.every(
-            (lane) =>
-              lane.trace.tokenUsage?.input !== undefined &&
-              lane.trace.tokenUsage?.output !== undefined &&
-              lane.trace.interactionUsageIncomplete !== true &&
-              lane.trace.debrief?.usageReported !== false &&
-              (lane.trace.executionProfile === undefined ||
-                lane.trace.providerRequests?.every((r) => r.usageComplete) === true),
-          )
-            ? { total: sumInput + sumOutput }
-            : {}),
-        }
-      : { input: sumInput, output: sumOutput, total: sumInput + sumOutput },
-    desktopMinutes:
-      args.desktops === undefined
-        ? (args.desktopMinutes ?? null)
-        : args.desktops.some((usage) => usage.minutes !== undefined)
-          ? round6(args.desktops.reduce((sum, usage) => sum + (usage.minutes ?? 0), 0))
-          : null,
-    note,
-  };
+/** Token totals across participants; an account-billed participant leaves unknown parts out. */
+function runTokenUsage(lanes: CostLane[]): RunCostSummary["tokenUsage"] {
+  const sumInput = lanes.reduce((sum, lane) => sum + (lane.trace.tokenUsage?.input ?? 0), 0);
+  const sumOutput = lanes.reduce((sum, lane) => sum + (lane.trace.tokenUsage?.output ?? 0), 0);
+  return lanes.some((lane) => lane.trace.executionProfile?.billing === "account-unknown")
+    ? {
+        ...(lanes.some((lane) => lane.trace.tokenUsage?.input !== undefined)
+          ? { input: sumInput }
+          : {}),
+        ...(lanes.some((lane) => lane.trace.tokenUsage?.output !== undefined)
+          ? { output: sumOutput }
+          : {}),
+        ...(lanes.every(
+          (lane) =>
+            lane.trace.tokenUsage?.input !== undefined &&
+            lane.trace.tokenUsage?.output !== undefined &&
+            lane.trace.interactionUsageIncomplete !== true &&
+            lane.trace.debrief?.usageReported !== false &&
+            (lane.trace.executionProfile === undefined ||
+              lane.trace.providerRequests?.every((r) => r.usageComplete) === true),
+        )
+          ? { total: sumInput + sumOutput }
+          : {}),
+      }
+    : { input: sumInput, output: sumOutput, total: sumInput + sumOutput };
+}
+
+/** Total desktop minutes, or null when no sandbox reported a span. */
+function runDesktopMinutes(args: Pick<CostArgs, "desktopMinutes" | "desktops">): number | null {
+  return args.desktops === undefined
+    ? (args.desktopMinutes ?? null)
+    : args.desktops.some((usage) => usage.minutes !== undefined)
+      ? round6(args.desktops.reduce((sum, usage) => sum + (usage.minutes ?? 0), 0))
+      : null;
 }
 
 /** A live run that sent no model request and held no hosted desktop records an explicit zero, so
