@@ -48,7 +48,6 @@ import type { CommsReceivingRun } from "../../comms/receiving.js";
 import {
   DEFAULT_SANDBOX_CATCH_PORT,
   collectCommsThread,
-  collectExternalCommsThread,
   deployCommsCatch,
   externalCatchHealthy,
   externalInboxUrl,
@@ -75,10 +74,8 @@ import {
 } from "../../lab/validation.js";
 import { liveObserverResult } from "../../observer/live.js";
 import { attachObserverRuntimeStreamUrls, type ObserverResult } from "../../observer/render.js";
-import type { ObserverRuntimeStreamUrl } from "../../observer/run-routes.js";
 import {
   buildRunSource,
-  type RunBundle,
   type RunSubjectProvenance,
   type RunSubjectStateStepRecord,
 } from "../../run/bundle.js";
@@ -94,7 +91,6 @@ import type { SharedWorldStateSnapshot } from "../../run/shared-world-evidence.j
 import type { LocalTreeArchive } from "../../run/source-archive.js";
 import { provisionCloneSubject } from "../../subject/clone.js";
 import { provisionLocalTreeSubject } from "../../subject/local-tree.js";
-import { commandDigestOf } from "../../subject/state.js";
 import type { SubjectPhaseEvent } from "../../subject/steps.js";
 import { toErrorMessage } from "../../substrates/command-failure.js";
 import type { DetachedTimers } from "../../substrates/detached.js";
@@ -114,13 +110,6 @@ import {
 } from "../computer-use/lab.js";
 import { makeCuaRunBudget, withInboxMission } from "../computer-use/lane-plan.js";
 import { runCuaLane } from "../computer-use/lanes.js";
-import { startLiveTraceFlush, type LiveTraceFlush } from "../computer-use/live-flush.js";
-import type {
-  CuaActorLabHooks,
-  CuaLaneDeps,
-  CuaLaneSpec,
-  LaneRunOutcome,
-} from "../computer-use/types.js";
 import {
   actorLanePassed,
   actorWindowsOverlap,
@@ -129,11 +118,7 @@ import {
   renderConcurrentReviewMarkdown,
 } from "./bundle.js";
 import { runCheckpointSnapshot, seedRecipeDigest } from "./checkpoints.js";
-import {
-  extractLobbyCode,
-  extractLobbyCodeFromNarration,
-  readLobbyCodeFromFrame,
-} from "./lobby-code.js";
+import { declaredOriginDigestOf, runExternalPublicPlane } from "./external-public.js";
 import {
   buildSubjectProvenance,
   hostOriginDigest,
@@ -146,9 +131,9 @@ import {
   SUBJECT_PROVISION_BUDGET_MS,
   buildActorSpec,
   defaultSeatSessionTimeoutMs,
-  makeBlockedFollowerOutcome,
   resolveActorSeatUrl,
-  withLobbyCodeMission,
+  seatLaneDeps,
+  startSeatFlush,
 } from "./seats.js";
 import {
   CONCURRENT_SHARED_WORLD_LAB_SCHEMA,
@@ -157,75 +142,13 @@ import {
   type ConcurrentSharedWorldLabErrorCode,
   type ConcurrentSharedWorldLabResult,
   type ConcurrentSharedWorldPlaneClass,
+  type LiveSeats,
+  type PlaneContext,
   type ConcurrentSharedWorldRoleResult,
   type RunConcurrentSharedWorldLabOptions,
 } from "./types.js";
 
 const DEFAULT_PROBER_CADENCE_MS = 1000;
-
-// The FLOOR for the host-first handoff barrier deadline (ms). The host seat must surface a
-// shared-session (/lobby/CODE) URL within the deadline or the run fails closed and no follower
-// opens. The effective deadline SCALES with the per-seat run budget (execution.timeoutMs): a fixed
-// 2 min is too tight for a real create-a-lobby flow on a mobile-layout seat once you subtract the
-// seat's own desktop provisioning — the host reaches /lobby/CODE, but after the followers already
-// gave up. So use max(FLOOR, 40% of the budget), capped at the budget. The latch resolves the
-// instant the host actually reaches /lobby, so a generous ceiling only affects the fail-closed case.
-const DEFAULT_HANDOFF_DEADLINE_MS = 120_000;
-
-const HANDOFF_DEADLINE_BUDGET_FRACTION = 0.4;
-
-// Per-seat runaway backstop for the vision-off-frame lobby-code read (used by the host to LATCH the
-// handoff code, and by each follower to independently OBSERVE its own code for the convergence proof):
-// at most this many single-frame reads before the seat is assumed to be somewhere without a code. Each
-// reader stops the instant it has what it needs, so in practice only a handful fire (a seat reaches its
-// /lobby within a few turns). NOTE: these reads are out-of-band OpenAI calls (external-public route
-// only) and are NOT counted against execution.caps.maxUsd — this hard cap is what bounds their spend
-// instead (each read is one cheap single-frame OCR call). If this route ever runs under a strict
-// budget, fold the estimate in.
-const MAX_LOBBY_CODE_VISION_READS = 30;
-
-// Idle/no-progress backstop for the HOST lane specifically (default is 6/8). The host legitimately sits
-// on an unchanging waiting-room screen while followers provision and join; it must not give up first.
-const HOST_WAIT_IDLE_STEPS = 80;
-
-const FOLLOWER_WAIT_IDLE_STEPS = 40;
-
-interface Deferred<T> {
-  promise: Promise<T>;
-  resolve: (value: T) => void;
-  reject: (reason: unknown) => void;
-  settled: () => boolean;
-}
-
-/** A minimal resolve-once latch for the host-first handoff barrier. */
-function deferred<T>(): Deferred<T> {
-  let resolve!: (value: T) => void;
-  let reject!: (reason: unknown) => void;
-  let done = false;
-  const promise = new Promise<T>((res, rej) => {
-    resolve = (value: T) => {
-      if (!done) {
-        done = true;
-        res(value);
-      }
-    };
-    reject = (reason: unknown) => {
-      if (!done) {
-        done = true;
-        rej(reason);
-      }
-    };
-  });
-  return { promise, resolve, reject, settled: () => done };
-}
-
-/** Marker error the host-first barrier rejects with when the deadline elapses (fail-closed). */
-class HandoffTimeoutError extends Error {
-  constructor(deadlineMs: number) {
-    super(`the host never produced a /lobby/CODE URL within the ${deadlineMs}ms handoff deadline`);
-    this.name = "HandoffTimeoutError";
-  }
-}
 
 /**
  * A failure of the caller's `onObserverReady` gate on the provisioned plane. The gate runs inside
@@ -379,9 +302,6 @@ async function runConcurrentSharedWorldInScope(
   const subjectEnvNames = config.subject.env ?? [];
   const checkpoints = config.subject.state?.checkpoint ?? [];
   const runSession = hooks.runSession ?? descriptor.runSession;
-  // The per-seat vision lobby-code reader (default: the real single-frame OpenAI read). Injectable so the
-  // barrier's handoff + convergence proof are testable without a live vision call.
-  const readLobbyCode = hooks.readLobbyCodeFromFrame ?? readLobbyCodeFromFrame;
 
   const receivingReason = receivingEmailValidationReason(config);
   if (receivingReason)
@@ -484,20 +404,7 @@ async function runConcurrentSharedWorldInScope(
   let surfaceLoop: Promise<void> | undefined;
   let runError: string | undefined;
   let snapshotIndex = 0;
-  let liveObserver: (ObserverResult & { ok: true }) | undefined;
-  const runtimeStreamUrls: ObserverRuntimeStreamUrl[] = [];
-  // A live run publishes an in-progress bundle before its seats start, whether or not an Observer
-  // is attached, and the seats' live traces rewrite it as they go, as on the computer-use route. A
-  // run killed mid-way leaves that evidence on disk. The flush starts with the first snapshot.
-  let liveFlush: LiveTraceFlush | undefined;
-  const startSeatFlush = (bundle: RunBundle): void => {
-    liveFlush = startLiveTraceFlush({
-      bundle,
-      laneSpecs: actorSpecs,
-      model: config.actors[0]?.model ?? DEFAULT_OPENAI_CU_MODEL,
-      write: (snapshot) => run.writeSnapshot(snapshot),
-    });
-  };
+  const live: LiveSeats = { streamUrls: [] };
 
   // Off-app comms (#297): on the provisioned-getHost plane the harness owns the ONE subject sandbox, so
   // it can redirect the app's email-API sends into an in-sandbox catch and evidence them. Gated ENTIRELY
@@ -548,38 +455,16 @@ async function runConcurrentSharedWorldInScope(
     }
   }
 
-  // EXTERNAL-PUBLIC plane state (#164 phase 2). publicAppUrl is the operator-declared shared plane;
-  // its ORIGIN is persisted digest-only (publicOriginDigest), never raw (the raw URL + the runtime
-  // observed lobby CODE never land — TENSION 3). The latch code is scrubbed from all narration.
-  const publicAppUrl = config.subject.appUrl ?? "";
-  // The operator-DECLARED origin (from subject.appUrl) — recorded for evidence/reference ONLY. The
-  // operator-OWNERSHIP claim rests on the subject.publicTarget.authorized attestation + this declared
-  // appUrl, NOT on digest equality (blocker 2): a normal cross-origin redirect (apex->www, http->https;
-  // lobby-trivia.example.test 307-redirects) makes the seats' OBSERVED origin differ from the declared one, which
-  // is expected and MUST NOT fail the run. Persisted digest-only (never the raw origin).
+  // External-public plane results, set by runExternalPublicPlane.
   const declaredOriginDigest =
-    planeClass === "external-public" && publicAppUrl ? hostOriginDigest(publicAppUrl) : undefined;
+    planeClass === "external-public" ? declaredOriginDigestOf(config) : undefined;
   // The OBSERVED convergence origin — computed AFTER fan-out from what the seats ACTUALLY reached (the
   // convergence proof is what the seats OBSERVED, not what was declared). Set iff every observing seat
   // agrees on ONE origin; that agreement IS the convergence proof and becomes plane.publicOriginDigest.
   let publicOriginDigest: string | undefined;
-  // Per-lane runtime-only observed state (never persisted raw): the last observed URL and the last
-  // observed /lobby/CODE per seat, fed by onObservedUrl. The URL is digested to ORIGIN for each seat's
-  // routeHostDigest (no code leaks); the codes drive the cross-seat lobby-convergence digest.
-  const observedFinalUrls: (string | undefined)[] = new Array(roles.length);
-  const observedLobbyCodes: (string | undefined)[] = new Array(roles.length);
   let lobbyConvergenceDigest: string | undefined;
   let handoffTimedOut = false;
   let hostHandoffFailure: string | undefined;
-  // A closure that scrubs the latched lobby CODE from ANY persisted narration once the host resolves
-  // it (the 6-char code has no detectable secret shape, so shape-only redaction cannot catch it).
-  let latchedLobbyCode: string | undefined;
-  const scrubKnownValuesWithLobbyCode = (text: string): string => {
-    const base = scrubKnownValues(text);
-    return latchedLobbyCode && latchedLobbyCode.length > 0
-      ? base.split(latchedLobbyCode).join("[REDACTED_LOBBY_CODE]")
-      : base;
-  };
 
   // Pack the working tree ONCE per run, on the host, BEFORE the subject sandbox is created
   // (mirrors the cua route's ordering): a packing failure fails the run
@@ -638,6 +523,35 @@ async function runConcurrentSharedWorldInScope(
       );
     }
   }
+  const ctx: PlaneContext = {
+    options,
+    config,
+    descriptor,
+    hooks,
+    env,
+    roles,
+    concurrency,
+    runBudget,
+    runSession,
+    openaiApiKey,
+    e2bApiKey,
+    scrubKnownValues,
+    cwd,
+    run,
+    runId,
+    createdAt,
+    runPaths,
+    artifactRoot,
+    timeoutMs,
+    requestTimeoutMs,
+    redactScreenshots,
+    now,
+    source,
+    seedDigest,
+    actorSpecs,
+    receiving,
+    warnings,
+  };
   try {
     if (!dryRun && planeClass === "provisioned-getHost") {
       if (!serve) {
@@ -912,16 +826,16 @@ async function runConcurrentSharedWorldInScope(
         });
         await run.writeSnapshot(inProgressBundle);
         if (options.onObserverReady) {
-          liveObserver = liveObserverResult(cwd, runId, artifactRoot, [
+          live.observer = liveObserverResult(cwd, runId, artifactRoot, [
             "Live concurrent shared-world Observer is attached before final verification; stream auth URLs are runtime-only and are not persisted.",
           ]);
           try {
-            await options.onObserverReady(liveObserver);
+            await options.onObserverReady(live.observer);
           } catch (error) {
             throw new ObserverGateError(error);
           }
         }
-        startSeatFlush(inProgressBundle);
+        startSeatFlush(ctx, live, inProgressBundle);
         proberLoop = (async () => {
           while (!proberDisposed) {
             let timer: ReturnType<typeof setTimeout> | undefined;
@@ -939,61 +853,8 @@ async function runConcurrentSharedWorldInScope(
 
         // Launch N actor sandboxes CONCURRENTLY, INDEPENDENT (FIX-11: runCuaLane + mapWithConcurrency,
         // NOT runCuaLanes — no pipeline gate / fail-fast). Each actor's window is measured on the ONE
-        // orchestrator clock (FIX-1). cloneRoute=false + subjectEnvNames=[] keep subject creds out of
-        // every actor sandbox (FIX-10).
-        const cuaHooks: CuaActorLabHooks = {
-          ...(hooks.loadDesktopModule ? { loadDesktopModule: hooks.loadDesktopModule } : {}),
-          ...(hooks.detachedTimers ? { detachedTimers: hooks.detachedTimers } : {}),
-          ...(hooks.env ? { env: hooks.env } : {}),
-          ...(hooks.prepareDesktop
-            ? { prepareDesktop: (desktop: E2BDesktopSandbox) => hooks.prepareDesktop!(desktop) }
-            : {}),
-          onRuntimeStreamReady: (stream) => {
-            runtimeStreamUrls.push({ streamId: stream.streamId, url: stream.url });
-            if (liveObserver) {
-              attachObserverRuntimeStreamUrls(liveObserver, runtimeStreamUrls);
-            }
-          },
-          onRuntimeStreamEnded: (stream) => {
-            // Mark, never remove (#357): the tile falls back to recorded evidence and says why.
-            for (const entry of runtimeStreamUrls) {
-              if (entry.streamId === stream.streamId) entry.ended = true;
-            }
-            if (liveObserver) {
-              attachObserverRuntimeStreamUrls(liveObserver, runtimeStreamUrls);
-            }
-          },
-        };
-        const baseActorDeps: Omit<CuaLaneDeps, "signalProvisioned" | "appUrl"> = {
-          onTrace: (laneId, items, usage, metadata) =>
-            liveFlush?.flush(laneId, items, usage, metadata),
-          config,
-          descriptor,
-          cloneRoute: false,
-          subjectEnvNames: [],
-          hasGithubToken: false,
-          env,
-          openaiApiKey,
-          e2bApiKey,
-          requestTimeoutMs,
-          perLaneSandboxMs: timeoutMs + SANDBOX_TIMEOUT_BUFFER_MS,
-          timeoutMs,
-          laneCount: roles.length,
-          artifactRoot: runPaths,
-          labCwd: cwd,
-          redactScreenshots,
-          scrubKnownValues,
-          runSession,
-          ...(receiving ? { receiving } : {}),
-          now,
-          hooks: cuaHooks,
-          ...(runBudget === undefined ? {} : { runBudget }),
-          // Concurrent lanes are independent evidence seats: a requested-vs-verified screen
-          // mismatch is recorded as separate facts + a warning instead of failing the lane's
-          // device claim closed, so one seat's window-manager drift cannot abort the whole
-          // live multi-actor world (the single-lane/fan-out routes keep fail-closed).
-          screenMismatchPolicy: "record-evidence",
-        };
+        // orchestrator clock (FIX-1).
+        const baseActorDeps = seatLaneDeps(ctx, live, scrubKnownValues);
 
         actorResults = await mapWithConcurrency(
           actorSpecs,
@@ -1105,455 +966,21 @@ async function runConcurrentSharedWorldInScope(
       }
     }
 
-    // EXTERNAL-PUBLIC plane (#164 phase 2): NO subject sandbox, NO getHost, NO prober. The shared plane
-    // is the operator-declared public deployment (publicAppUrl); each seat opens it directly and reaches
-    // the shared session through the real UI. A host-first barrier extracts the /lobby/CODE from the host
-    // seat's CDP-observed URL (onObservedUrl) and threads it into the follower missions; a follower fails
-    // closed WITHOUT opening if the host never yields a code within the handoff deadline.
     if (!dryRun && planeClass === "external-public") {
-      const cuaHooks: CuaActorLabHooks = {
-        ...(hooks.loadDesktopModule ? { loadDesktopModule: hooks.loadDesktopModule } : {}),
-        ...(hooks.detachedTimers ? { detachedTimers: hooks.detachedTimers } : {}),
-        ...(hooks.env ? { env: hooks.env } : {}),
-        ...(hooks.prepareDesktop
-          ? { prepareDesktop: (desktop: E2BDesktopSandbox) => hooks.prepareDesktop!(desktop) }
-          : {}),
-        onRuntimeStreamReady: (stream) => {
-          runtimeStreamUrls.push({ streamId: stream.streamId, url: stream.url });
-          if (liveObserver) {
-            attachObserverRuntimeStreamUrls(liveObserver, runtimeStreamUrls);
-          }
-        },
-        onRuntimeStreamEnded: (stream) => {
-          // Mark, never remove (#357): the tile falls back to recorded evidence and says why.
-          for (const entry of runtimeStreamUrls) {
-            if (entry.streamId === stream.streamId) entry.ended = true;
-          }
-          if (liveObserver) {
-            attachObserverRuntimeStreamUrls(liveObserver, runtimeStreamUrls);
-          }
-        },
-      };
-      const baseActorDeps: Omit<CuaLaneDeps, "signalProvisioned" | "appUrl" | "onObservedUrl"> = {
-        onTrace: (laneId, items, usage, metadata) =>
-          liveFlush?.flush(laneId, items, usage, metadata),
-        config,
-        descriptor,
-        cloneRoute: false,
-        subjectEnvNames: [],
-        hasGithubToken: false,
-        env,
-        openaiApiKey,
-        e2bApiKey,
-        requestTimeoutMs,
-        perLaneSandboxMs: timeoutMs + SANDBOX_TIMEOUT_BUFFER_MS,
-        timeoutMs,
-        laneCount: roles.length,
-        artifactRoot: runPaths,
-        labCwd: cwd,
-        redactScreenshots,
-        // Scrub the latched lobby CODE (known once the host resolves it) from ALL narration.
-        scrubKnownValues: scrubKnownValuesWithLobbyCode,
-        runSession,
-        ...(receiving ? { receiving } : {}),
-        now,
-        hooks: cuaHooks,
-        ...(runBudget === undefined ? {} : { runBudget }),
-        screenMismatchPolicy: "record-evidence",
-      };
-
-      // Publish the in-progress bundle and attach any live Observer before fan-out, as on the
-      // provisioned path.
-      const inProgressBundle = buildConcurrentSharedWorldBundle({
-        config,
-        descriptor,
-        createdAt,
-        dryRun: false,
-        inProgress: true,
-        runId,
-        source,
-        roles,
-        actorSpecs,
-        actorResults: [],
-        stateSnapshots: [],
-        subject: { source: "app-url", envNames: [], state: { provenance: "external-public" } },
-        seedDigest,
-        planeClass: "external-public",
-        // Pre-fan-out snapshot: no seat has observed an origin yet, so the OBSERVED publicOriginDigest
-        // is not available; surface the DECLARED origin for the live Observer's reference.
-        ...(declaredOriginDigest === undefined ? {} : { declaredOriginDigest }),
-      });
-      await run.writeSnapshot(inProgressBundle);
-      if (options.onObserverReady) {
-        liveObserver = liveObserverResult(cwd, runId, artifactRoot, [
-          "Live external-public concurrent shared-world Observer is attached before final verification; stream auth URLs are runtime-only and are not persisted.",
-        ]);
-        await options.onObserverReady(liveObserver);
-      }
-      startSeatFlush(inProgressBundle);
-
-      // The host-first handoff barrier.
-      //
-      // TEMPORARY SHIM (tracked by #296): this CDP URL-relay handoff — reading the host's /lobby/CODE off
-      // its own browser and threading it into the follower missions — is a temporary coordination shim.
-      // It is to be augmented/replaced by the actor message bus (fake SMS/email invite) in #297: the
-      // human-realistic version is the HOST SENDING the invite link and followers RECEIVING and tapping
-      // it, rather than the orchestrator relaying the code out-of-band.
-      const lobbyCodeLatch = deferred<string>();
-      const handoffDeadlineMs =
-        hooks.handoffDeadlineMs ??
-        Math.min(
-          timeoutMs,
-          Math.max(
-            DEFAULT_HANDOFF_DEADLINE_MS,
-            Math.floor(timeoutMs * HANDOFF_DEADLINE_BUDGET_FRACTION),
-          ),
-        );
-      let deadlineTimer: ReturnType<typeof setTimeout> | undefined;
-      const deadline = new Promise<never>((_resolve, reject) => {
-        deadlineTimer = setTimeout(
-          () => reject(new HandoffTimeoutError(handoffDeadlineMs)),
-          handoffDeadlineMs,
-        );
-      });
-      deadline.catch(() => undefined); // never an unhandled rejection
-
-      // Resolve the host->follower handoff latch from WHICHEVER path sees the code first (CDP url-read,
-      // host narration, or vision-off-frame). Idempotent: only the first code wins, and it is also stashed
-      // as latchedLobbyCode so it gets scrubbed from any later narration. The latched code and observed URLs
-      // are runtime-only and land in persisted METADATA only as digests (origin + convergence). (The code
-      // is a shareable game code, not a secret, and it still renders in the host's screenshots, which are
-      // full-fidelity unless redactScreenshots is set — the digesting is about narration/URL metadata.)
-      const latchLobbyCode = (code: string, laneIndex: number): void => {
-        if (latchedLobbyCode !== undefined) return;
-        observedLobbyCodes[laneIndex] = code;
-        latchedLobbyCode = code;
-        if (deadlineTimer) {
-          clearTimeout(deadlineTimer);
-          deadlineTimer = undefined;
-        }
-        lobbyCodeLatch.resolve(code);
-      };
-
-      // Build an onScreenshot handler that vision-reads the lobby code off THIS seat's own frame (the
-      // CDP-independent observation). `done()` short-circuits once this seat has what it needs (the host
-      // once latched; a follower once it has recorded its own observed code), `onCode` records/latches the
-      // result. One read in flight at a time, bounded by MAX_LOBBY_CODE_VISION_READS so a seat that never
-      // reaches a lobby can't rack up unbounded calls (fire-and-forget; the loop never awaits it).
-      const makeLobbyCodeVisionReader = (
-        done: () => boolean,
-        onCode: (code: string) => void,
-      ): ((frame: Buffer) => void) => {
-        let inFlight = false;
-        let reads = 0;
-        return (frame: Buffer): void => {
-          if (done() || inFlight || reads >= MAX_LOBBY_CODE_VISION_READS) return;
-          inFlight = true;
-          reads += 1;
-          void readLobbyCode(frame, openaiApiKey)
-            .then((code) => {
-              if (code !== undefined && !done()) onCode(code);
-            })
-            .catch(() => undefined)
-            .finally(() => {
-              inFlight = false;
-            });
-        };
-      };
-
-      const makeLaneObservedUrl =
-        (laneIndex: number, isHost: boolean) =>
-        (url: string | undefined): void => {
-          if (typeof url !== "string" || url.length === 0) return;
-          observedFinalUrls[laneIndex] = url; // runtime-only; digested to origin, never persisted raw
-          const code = extractLobbyCode(url);
-          if (code !== undefined) {
-            observedLobbyCodes[laneIndex] = code;
-            if (isHost) latchLobbyCode(code, laneIndex);
-          }
-        };
-
-      // The HOST lane (which yields the /lobby/CODE the followers wait on) runs on its OWN dedicated
-      // slot, and the FOLLOWERS run through a bounded pool of size concurrency-1 (blockers 1 & 4):
-      // followers block on `Promise.race([lobbyCodeLatch.promise, deadline])` while holding a worker
-      // slot, so if the host lane were scheduled INSIDE the same bounded pool it could be starved (never
-      // scheduled among the first `concurrency` workers) and the run would die with a spurious
-      // HANDOFF_TIMEOUT (e.g. lanes [p2,p3,host] with concurrency 2). Giving the host its own slot,
-      // started IMMEDIATELY and OUTSIDE the follower pool, guarantees it is ALWAYS schedulable regardless
-      // of its roster position or of concurrency vs lane count — while total in-flight paid desktops stay
-      // ≤ the declared concurrency (host + up to concurrency-1 followers), preserving the spend cap.
-      const runHostLane = async (
-        spec: CuaLaneSpec,
-        laneIndex: number,
-      ): Promise<ActorLaneResult> => {
-        const onObservedUrl = makeLaneObservedUrl(laneIndex, true);
-        // CDP-INDEPENDENT handoff paths (the E2B-desktop CDP url-read the onObservedUrl path relies on is
-        // unreliable in practice). Two backups, both resolving the SAME latch; whichever sees the code first
-        // wins, all digest-only:
-        //   (1) onMessage — scan the host's own narration IF it happens to state the lobby URL; and
-        //   (2) onScreenshot — vision-read the code straight off the host's waiting-room frame. This is the
-        //       robust one: the code is rendered on screen even when CDP fails AND when the host never
-        //       narrates it, and — crucially — the host is NOT asked to announce anything, so it keeps
-        //       running (create -> wait for players -> Start -> play) instead of ending on a stray message.
-        const onMessage = (text: string): void => {
-          if (latchedLobbyCode !== undefined) return;
-          const code = extractLobbyCodeFromNarration(text);
-          if (code !== undefined) latchLobbyCode(code, laneIndex);
-        };
-        // Vision-read the host's waiting-room frame and LATCH the code for the followers (stops once latched).
-        const onScreenshot = makeLobbyCodeVisionReader(
-          () => latchedLobbyCode !== undefined,
-          (code) => latchLobbyCode(code, laneIndex),
-        );
-        // The host's job includes a long LEGITIMATE idle wait — sitting in the waiting room while the
-        // followers provision their own desktops and walk the Join flow (easily 15-30 turns of an
-        // unchanging "waiting for players" screen). At the default idle backstop (6) the host would give up
-        // before anyone arrives, orphaning the lobby (exactly the earlier failure). Raise the host's idle /
-        // no-progress tolerance so it waits patiently; the per-seat timeout still bounds a truly stuck host.
-        // Adopter-hosted inbox (#387): the persona is told its address and inbox URL on THIS plane —
-        // previously only the provisioned plane's seats ever got the instruction, so external comms
-        // ran on no route at all.
-        const hostInboxSpec =
-          externalCommsEmail &&
-          commsInboxUrl &&
-          laneHasInboxRecipient(externalCommsEmail, spec.laneId)
-            ? withInboxMission(
-                spec,
-                commsInboxUrl,
-                inboxRecipientFor(externalCommsEmail, spec.laneId)?.address,
-              )
-            : spec;
-        const hostSpec: CuaLaneSpec = {
-          ...hostInboxSpec,
-          idleSteps: spec.idleSteps ?? HOST_WAIT_IDLE_STEPS,
-          noProgressSteps: spec.noProgressSteps ?? HOST_WAIT_IDLE_STEPS,
-        };
-        const startedAt = now();
-        let outcome: LaneRunOutcome | undefined;
-        try {
-          outcome = await runCuaLane(hostSpec, {
-            ...baseActorDeps,
-            appUrl: publicAppUrl,
-            onObservedUrl,
-            onMessage,
-            onScreenshot,
-          });
-        } finally {
-          // If the host finished without ever surfacing a code, release followers to fail closed
-          // immediately rather than wait the full deadline (a no-op if it already resolved).
-          if (!lobbyCodeLatch.settled()) {
-            const reason =
-              outcome?.sessionError ??
-              outcome?.session?.reason ??
-              "no terminal host outcome was recorded";
-            hostHandoffFailure = scrubKnownValuesWithLobbyCode(
-              `Host seat ended before producing a lobby URL: ${reason}`,
-            );
-            lobbyCodeLatch.reject(new Error(hostHandoffFailure));
-          }
-        }
-        const endedAt = now();
-        return {
-          spec,
-          outcome,
-          startedAt,
-          endedAt,
-          route: observedFinalUrls[laneIndex] ?? publicAppUrl,
-        };
-      };
-      const runFollowerLane = async (
-        spec: CuaLaneSpec,
-        laneIndex: number,
-      ): Promise<ActorLaneResult> => {
-        const onObservedUrl = makeLaneObservedUrl(laneIndex, false);
-        // FOLLOWER: do NOT compose a mission or open the target until the host yields a lobby code.
-        let code: string;
-        try {
-          code = await Promise.race([lobbyCodeLatch.promise, deadline]);
-        } catch (error) {
-          // An ended host is not a deadline expiry. Preserve its actual failure.
-          const timedOut = error instanceof HandoffTimeoutError;
-          handoffTimedOut ||= timedOut;
-          const reason = scrubKnownValuesWithLobbyCode(toErrorMessage(error));
-          const at = now();
-          return {
-            spec,
-            outcome: makeBlockedFollowerOutcome(spec, reason, timedOut),
-            startedAt: at,
-            endedAt: at,
-            route: publicAppUrl,
-          };
-        }
-        // Followers also idle-wait — in the waiting room until the host starts, and between rounds. Raise
-        // their idle backstop too (less than the host's: they wait less), so a follower that joins ahead of
-        // the other does not give up before the game begins. Per-seat timeout still bounds a stuck follower.
-        const followerInboxSpec =
-          externalCommsEmail &&
-          commsInboxUrl &&
-          laneHasInboxRecipient(externalCommsEmail, spec.laneId)
-            ? withInboxMission(
-                spec,
-                commsInboxUrl,
-                inboxRecipientFor(externalCommsEmail, spec.laneId)?.address,
-              )
-            : spec;
-        const followerSpec: CuaLaneSpec = {
-          ...withLobbyCodeMission(followerInboxSpec, code),
-          idleSteps: spec.idleSteps ?? FOLLOWER_WAIT_IDLE_STEPS,
-          noProgressSteps: spec.noProgressSteps ?? FOLLOWER_WAIT_IDLE_STEPS,
-        };
-        // Independently OBSERVE this follower's own lobby code by vision-reading its waiting-room frame,
-        // and record it for the cross-seat convergence proof. This does NOT latch anything (followers gate
-        // on the HOST's code, not their own) — it just fills this seat's observedLobbyCodes slot from a
-        // reliable signal instead of the flaky CDP url-read, so lobbyConvergenceDigest can prove all seats
-        // reached the SAME /lobby/CODE. If a follower somehow joined a DIFFERENT lobby, it reads a different
-        // code and convergence correctly fails (no false proof); if it never reads one, the seat stays a
-        // hole and convergence is honestly "not observed" for that seat.
-        const onScreenshot = makeLobbyCodeVisionReader(
-          () => observedLobbyCodes[laneIndex] !== undefined,
-          (observed) => {
-            observedLobbyCodes[laneIndex] = observed;
-          },
-        );
-        const startedAt = now();
-        const outcome = await runCuaLane(followerSpec, {
-          ...baseActorDeps,
-          appUrl: publicAppUrl,
-          onObservedUrl,
-          onScreenshot,
-        });
-        const endedAt = now();
-        return {
-          spec,
-          outcome,
-          startedAt,
-          endedAt,
-          route: observedFinalUrls[laneIndex] ?? publicAppUrl,
-        };
-      };
-
-      // Split the roster into the designated host lane and the followers, preserving each follower's
-      // ORIGINAL lane index so results land back in lane order (validation guarantees EXACTLY ONE host).
-      const hostLaneIndex = roles.findIndex((role) => role.host === true);
-      const followerEntries = actorSpecs
-        .map((spec, index) => ({ spec, index }))
-        .filter(({ index }) => index !== hostLaneIndex);
-      const laneResults: ActorLaneResult[] = new Array(actorSpecs.length);
-      try {
-        const hostPromise =
-          hostLaneIndex >= 0 && actorSpecs[hostLaneIndex] !== undefined
-            ? runHostLane(actorSpecs[hostLaneIndex]!, hostLaneIndex)
-            : undefined;
-        const followerResultsPromise = mapWithConcurrency(
-          followerEntries,
-          Math.max(1, concurrency - 1),
-          ({ spec, index }) => runFollowerLane(spec, index),
-        );
-        const [hostResult, followerResults] = await Promise.all([
-          hostPromise,
-          followerResultsPromise,
-        ]);
-        if (hostResult !== undefined && hostLaneIndex >= 0) {
-          laneResults[hostLaneIndex] = hostResult;
-        }
-        followerEntries.forEach((entry, i) => {
-          laneResults[entry.index] = followerResults[i]!;
-        });
-        actorResults = laneResults;
-      } catch (error) {
-        runError = redactText(scrubKnownValuesWithLobbyCode(toErrorMessage(error)));
-        warnings.push(
-          `External-public concurrent shared-world run failed before completion: ${runError}`,
-        );
-      } finally {
-        if (deadlineTimer) {
-          clearTimeout(deadlineTimer);
-          deadlineTimer = undefined;
-        }
-        // Adopter-hosted drain (#328/#387): same routing and digest-only artifact as the in-sandbox
-        // catch — only the transport differs (HTTP GET /deliveries against the catch the operator
-        // runs). In the finally so the evidence survives a failed run; a drain error never masks
-        // the run's own outcome.
-        if (externalComms && externalCommsEmail) {
-          try {
-            const commsChannel = new FakeInbox();
-            const commsInboxes: CommsAddress[] = [];
-            for (const recipient of externalCommsEmail.recipients ?? []) {
-              if (recipient.address !== undefined) {
-                commsInboxes.push(
-                  await commsChannel.provisionAddress(recipient.lane, recipient.address),
-                );
-              }
-            }
-            const authToken =
-              externalComms.authTokenEnv === undefined
-                ? undefined
-                : env[externalComms.authTokenEnv];
-            const collected = await collectExternalCommsThread({
-              external: { ...externalComms, ...(authToken === undefined ? {} : { authToken }) },
-              channel: commsChannel,
-              inboxes: commsInboxes,
-            });
-            if (collected.artifact) {
-              const path = "comms/thread.json";
-              await writeContainedOutputFile(
-                runPaths,
-                path,
-                `${JSON.stringify(collected.artifact, null, 2)}\n`,
-                "utf8",
-              );
-              commsArtifactPath = path;
-            } else if (collected.captured > 0) {
-              warnings.push(
-                `Comms catch captured ${collected.captured} email send(s) but none matched a declared recipient inbox — no comms evidence written. Declare comms.email.recipients[].address to match the address the app sends to.`,
-              );
-            } else {
-              warnings.push(
-                `Comms catch captured ZERO email sends — your app never delivered mail through the catch at ${externalComms.catchBaseUrl}. Verify the app's email-API base URL points at it and that the flow reached an email step.`,
-              );
-            }
-          } catch (error) {
-            warnings.push(
-              `Comms evidence collection failed against the adopter-hosted catch (run continues): ${redactText(toErrorMessage(error))}`,
-            );
-          }
-        }
-      }
-
-      // Observed-origin convergence proof (blocker 2): the convergence claim is about what the seats
-      // OBSERVED, not what was DECLARED. Digest each observing seat's origin and require they AGREE on
-      // ONE — that agreement IS the convergence proof and becomes plane.publicOriginDigest. A normal
-      // cross-origin redirect (declared apex -> observed www) is therefore tolerated: the seats still
-      // converge on ONE observed origin. Leave it undefined (verify fails closed) only if the seats did
-      // not converge on a single observed origin (or none observed one).
-      const observedOriginDigests = observedFinalUrls
-        .filter((url): url is string => typeof url === "string" && url.length > 0)
-        .map((url) => hostOriginDigest(url));
-      const distinctObservedOrigins = new Set(observedOriginDigests);
-      publicOriginDigest =
-        distinctObservedOrigins.size === 1
-          ? [...distinctObservedOrigins][0]
-          : // NOTHING observed (e.g. a handoff-timeout run where no seat ever navigated): fall back to the
-            // DECLARED origin so a FAILED run's bundle stays structurally valid (every seat's route then
-            // digests to the declared origin too). The run still fails closed for its own reason (HANDOFF_
-            // TIMEOUT / no lobby convergence / no overlap-on-pass). GENUINE divergence (≥2 distinct observed
-            // origins) leaves it undefined so verify fails closed on the non-convergence.
-            distinctObservedOrigins.size === 0
-            ? declaredOriginDigest
-            : undefined;
-
-      // Lobby-convergence proof: a digest of the shared /lobby/CODE path iff EVERY seat converged on the
-      // SAME code (a follower stuck on "/" yields no code → no false convergence). Digest-only. NOTE:
-      // observedLobbyCodes may be a SPARSE array (a seat that never observed a code leaves a hole), and
-      // Array.prototype.every SKIPS holes — so count the DEFINED codes explicitly, never rely on every().
-      const definedCodes = observedLobbyCodes.filter((code): code is string => code !== undefined);
-      const distinctCodes = new Set(definedCodes);
-      if (distinctCodes.size === 1 && definedCodes.length === roles.length) {
-        lobbyConvergenceDigest = commandDigestOf(`/lobby/${[...distinctCodes][0]}`);
-      }
-      if (handoffTimedOut && runError === undefined) {
-        runError = `The host seat never produced a /lobby/CODE URL within the ${handoffDeadlineMs}ms handoff deadline; follower seats failed closed without opening.`;
-      }
+      const outcome = await runExternalPublicPlane(
+        ctx,
+        live,
+        externalComms && externalCommsEmail && commsInboxUrl
+          ? { external: externalComms, email: externalCommsEmail, inboxUrl: commsInboxUrl }
+          : undefined,
+      );
+      actorResults = outcome.actorResults;
+      runError = outcome.runError;
+      publicOriginDigest = outcome.publicOriginDigest;
+      lobbyConvergenceDigest = outcome.lobbyConvergenceDigest;
+      handoffTimedOut = outcome.handoffTimedOut;
+      hostHandoffFailure = outcome.hostHandoffFailure;
+      if (outcome.commsArtifactPath !== undefined) commsArtifactPath = outcome.commsArtifactPath;
     }
   } finally {
     try {
@@ -1564,7 +991,7 @@ async function runConcurrentSharedWorldInScope(
       );
     }
     // Stop the seats' flush timer on every exit, before the final write.
-    await liveFlush?.stop();
+    await live.flush?.stop();
   }
 
   // Subject provenance: external-public is the operator-declared, operator-owned public deployment
@@ -1640,8 +1067,8 @@ async function runConcurrentSharedWorldInScope(
   if (receiving) bundle.commsReceiving = receiving.snapshot();
   const finished = await run.finish(bundle);
   const observer = await finished.renderObserver();
-  if (observer.ok && liveObserver) {
-    attachObserverRuntimeStreamUrls(observer as ObserverResult & { ok: true }, runtimeStreamUrls);
+  if (observer.ok && live.observer) {
+    attachObserverRuntimeStreamUrls(observer as ObserverResult & { ok: true }, live.streamUrls);
   }
 
   const roleOk = (result: ActorLaneResult | undefined): boolean => {

@@ -5,11 +5,21 @@ import type {
   AutomaticAnalysisHooks,
   AutomaticAnalysisResult,
 } from "../../analysis/automatic-completion.js";
-import type { LabConfig } from "../../lab/types.js";
+import type { CuaActorDescriptor } from "../../actors/registry.js";
+import type { CommsReceivingRun } from "../../comms/receiving.js";
+import type { LabActorLane, LabCommsEmail, LabCommsExternal, LabConfig } from "../../lab/types.js";
 import type { ObserverResult } from "../../observer/render.js";
-import type { RunScorerProvenance, RunSubjectProvenance } from "../../run/bundle.js";
+import type { ObserverRuntimeStreamUrl } from "../../observer/run-routes.js";
+import type { RunBundle, RunScorerProvenance, RunSubjectProvenance } from "../../run/bundle.js";
+import type { RunScope } from "../../run/run.js";
 import type { RunLabProvenance } from "../../run/status.js";
-import type { CuaLaneSpec, LaneRunOutcome } from "../computer-use/types.js";
+import type { LiveTraceFlush } from "../computer-use/live-flush.js";
+import type {
+  CuaLaneDeps,
+  CuaLaneSpec,
+  CuaRunBudget,
+  LaneRunOutcome,
+} from "../computer-use/types.js";
 import type { SharedWorldLabHooks } from "./hooks.js";
 
 export const CONCURRENT_SHARED_WORLD_LAB_SCHEMA = "humanish.concurrent-shared-world-lab-result.v1";
@@ -131,4 +141,55 @@ export interface ActorLaneResult {
   startedAt: number;
   endedAt: number;
   route: string;
+}
+
+type StartedRun = Extract<Awaited<ReturnType<RunScope["startRun"]>>, { ok: true }>["run"];
+
+/** What a plane reads from the orchestrator. The orchestrator builds it once, after the run starts. */
+export interface PlaneContext {
+  options: RunConcurrentSharedWorldLabOptions;
+  config: LabConfig;
+  descriptor: CuaActorDescriptor;
+  hooks: SharedWorldLabHooks;
+  env: Record<string, string | undefined>;
+  roles: LabActorLane[];
+  concurrency: number;
+  runBudget: CuaRunBudget | undefined;
+  runSession: CuaLaneDeps["runSession"];
+  openaiApiKey: string;
+  e2bApiKey: string;
+  scrubKnownValues: (text: string) => string;
+  cwd: string;
+  run: StartedRun;
+  runId: string;
+  createdAt: string;
+  runPaths: StartedRun["paths"];
+  artifactRoot: string;
+  timeoutMs: number;
+  requestTimeoutMs: number;
+  redactScreenshots: boolean;
+  now: () => number;
+  source: RunBundle["source"];
+  seedDigest: string;
+  actorSpecs: CuaLaneSpec[];
+  receiving: CommsReceivingRun | undefined;
+  /** The run's warnings. Planes append to it. */
+  warnings: string[];
+}
+
+/**
+ * What the seats feed while they run. A plane sets the attached Observer and starts the trace
+ * flush; the runtime stream hooks append stream URLs; the orchestrator reads all three at finish.
+ */
+export interface LiveSeats {
+  observer?: ObserverResult & { ok: true };
+  flush?: LiveTraceFlush;
+  readonly streamUrls: ObserverRuntimeStreamUrl[];
+}
+
+/** An adopter-hosted comms catch (#328) and the inbox its personas open. */
+export interface ExternalCommsWiring {
+  external: LabCommsExternal;
+  email: LabCommsEmail;
+  inboxUrl: string;
 }
