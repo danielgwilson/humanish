@@ -6,11 +6,11 @@ import {
   buildDesktopRecorderProbeCommand,
   parseDesktopRecorderDuration,
   type DesktopRecordingAudioSource,
-} from "../../desktop-recorder.js";
+} from "../../evidence/desktop-recorder.js";
 import {
   DESKTOP_RECORDING_MAX_BYTES,
   type DesktopRecordingMetadata,
-} from "../../desktop-recording-types.js";
+} from "../../evidence/desktop-recording-types.js";
 import type { E2BCommandResult, E2BDesktopSandbox } from "./desktop-launch.js";
 
 const OUTPUT_PATH = "/tmp/humanish-desktop-recording.mp4";

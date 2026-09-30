@@ -59,7 +59,7 @@ import {
 import type { DetachedTimers } from "./substrates/e2b/detached.js";
 import type { LabConfig } from "./lab/config.js";
 import { renderObserver, type ObserverResult } from "./observer/render.js";
-import { digestText, redactText } from "./redaction.js";
+import { digestText, redactText } from "./evidence/redaction.js";
 import {
   prepareRunArtifactPaths,
   type PreparedRunArtifactPaths,

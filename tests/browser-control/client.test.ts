@@ -1,19 +1,10 @@
 import { Duplex, Readable, Writable } from "node:stream";
 import { describe, expect, it, vi } from "vitest";
-import { createBrowserControlClient } from "../src/browser-control-client.js";
-import { attachBrowserControlDispatcher } from "../src/browser-control-dispatcher.js";
-import { BrowserControlTransport } from "../src/browser-control-transport.js";
-import { CuaExecutorError } from "../src/cua-executor-error.js";
-import {
-  frame,
-  identity,
-  observation,
-  pair,
-  reply,
-  request,
-  setup,
-  tick,
-} from "./browser-control-fixture.js";
+import { createBrowserControlClient } from "../../src/browser-control/client.js";
+import { attachBrowserControlDispatcher } from "../../src/browser-control/dispatcher.js";
+import { BrowserControlTransport } from "../../src/browser-control/transport.js";
+import { CuaExecutorError } from "../../src/cua-executor-error.js";
+import { frame, identity, observation, pair, reply, request, setup, tick } from "./fixture.js";
 
 const click = { kind: "click" as const, x: 12.125, y: 15.75 };
 const recording = {

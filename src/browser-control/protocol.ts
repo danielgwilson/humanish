@@ -1,13 +1,13 @@
 import { PNG } from "pngjs";
 import { z } from "zod";
-import type { CuaAction, CuaObservation } from "./computer-use.js";
-import { CUA_SPEECH_LIMITS, type HeardSpeech } from "./cua-speech.js";
+import type { CuaAction, CuaObservation } from "../computer-use.js";
+import { CUA_SPEECH_LIMITS, type HeardSpeech } from "../cua-speech.js";
 import {
   CuaExecutorError,
   isCuaExecutorError,
   type CuaExecutorErrorCode,
-} from "./cua-executor-error.js";
-import { desktopRecordingMetadataSchema } from "./desktop-recording-types.js";
+} from "../cua-executor-error.js";
+import { desktopRecordingMetadataSchema } from "../evidence/desktop-recording-types.js";
 
 export const BROWSER_CONTROL_VERSION = 1;
 export const BROWSER_CONTROL_LIMITS = Object.freeze({

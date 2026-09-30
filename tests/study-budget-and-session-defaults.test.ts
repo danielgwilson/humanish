@@ -20,7 +20,7 @@ import {
 } from "../src/computer-use.js";
 import { makeCuaRunBudget, resolveCuaLanePlan } from "../src/cua-actor-lab.js";
 import { parseLabConfig } from "../src/lab/config.js";
-import { defaultRedactionHooks } from "../src/redaction.js";
+import { defaultRedactionHooks } from "../src/evidence/redaction.js";
 
 const FAKE_CAPS: ActorCapabilities = {
   headless: true,

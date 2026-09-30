@@ -14,7 +14,7 @@ import {
   type CuaProvider,
   type CuaTurn,
 } from "../src/computer-use.js";
-import { defaultRedactionHooks } from "../src/redaction.js";
+import { defaultRedactionHooks } from "../src/evidence/redaction.js";
 
 function provider(actions: CuaAction[] = []): CuaProvider {
   return {

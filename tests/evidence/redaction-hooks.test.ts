@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { PNG } from "pngjs";
 
-import { defaultRedactionHooks, digestText, promptForLog } from "../src/redaction.js";
+import { defaultRedactionHooks, digestText, promptForLog } from "../../src/evidence/redaction.js";
 
 function tinyPng(width: number, height: number): Buffer {
   const png = new PNG({ width, height });

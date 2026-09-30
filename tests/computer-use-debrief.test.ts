@@ -10,7 +10,7 @@ import {
   resolveSelfReportedBlocker,
   resolveSelfReportedFriction,
 } from "../src/cua-actor-lab.js";
-import { defaultRedactionHooks } from "../src/redaction.js";
+import { defaultRedactionHooks } from "../src/evidence/redaction.js";
 import { CuaAdmissionLimitError } from "../src/cua-admission-limit.js";
 
 const report = "The Save button did nothing. I used Enter and finished the task.";

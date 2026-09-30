@@ -3,7 +3,7 @@ import { constants } from "node:fs";
 import { mkdtemp, open, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { CuaExecutorError } from "./cua-executor-error.js";
-import { BROWSER_CONTROL_LIMITS } from "./browser-control-protocol.js";
+import { BROWSER_CONTROL_LIMITS } from "./browser-control/protocol.js";
 import type { GuestDesktopTools } from "./guest-desktop-executor.js";
 
 /** Private owner port; never expose its command array to a participant. */

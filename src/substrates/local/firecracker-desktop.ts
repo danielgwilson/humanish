@@ -3,7 +3,7 @@ import {
   desktopRecordingConfigSchema,
   type DesktopRecordingConfig,
   type DesktopRecordingMetadata,
-} from "../../desktop-recording-types.js";
+} from "../../evidence/desktop-recording-types.js";
 import { randomUUID } from "node:crypto";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { connect, createServer, type Socket } from "node:net";

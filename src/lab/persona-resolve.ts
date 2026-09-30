@@ -8,7 +8,7 @@ import {
   readContainedRegularFile,
   type PreparedSelectedOutputDirectory,
 } from "../selected-output-paths.js";
-import { digestText, redactText } from "../redaction.js";
+import { digestText, redactText } from "../evidence/redaction.js";
 import { realpath } from "node:fs/promises";
 
 /** Persona ids are file-name segments, never paths: the same grammar the terminal lane enforces. */

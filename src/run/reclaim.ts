@@ -12,7 +12,7 @@ import { parseSandboxReceipts, SANDBOX_RECEIPTS_ARTIFACT } from "./sandbox-recei
 import path from "node:path";
 
 import { toErrorMessage } from "../command-failure.js";
-import { redactText } from "../redaction.js";
+import { redactText } from "../evidence/redaction.js";
 
 const RECLAIM_RESULT_SCHEMA = "humanish.reclaim-result.v1";
 export const RECLAIM_RECEIPT_ARTIFACT = "reclaim-receipt.json";

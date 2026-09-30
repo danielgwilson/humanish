@@ -1,6 +1,6 @@
 import { CODEX_ANALYSIS_MODEL, codexAnalysisIdentity } from "./codex-config.js";
 import { SUPPORTED_STUDY_ANALYSIS_MODELS } from "./engine.js";
-import { containsSensitive } from "../redaction.js";
+import { containsSensitive } from "../evidence/redaction.js";
 import type { StudyAnalysisConfig } from "./study-analysis.js";
 
 export const DEFAULT_ANALYSIS_TIMEOUT_MS = 600_000;

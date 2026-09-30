@@ -1,4 +1,4 @@
-import { containsSensitive } from "../redaction.js";
+import { containsSensitive } from "../evidence/redaction.js";
 import type { LoadedStudyAnalysis } from "./study-analysis.js";
 import { projectAutomaticStudyAnalysisView } from "./job.js";
 

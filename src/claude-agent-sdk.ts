@@ -10,7 +10,7 @@ import {
   type ActorTrace,
   type ActorTraceItem,
 } from "./actor-contract.js";
-import { redactText } from "./redaction.js";
+import { redactText } from "./evidence/redaction.js";
 import {
   prepareContainedOutputDirectory,
   prepareContainedOutputFile,

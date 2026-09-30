@@ -14,7 +14,7 @@ import {
   type CuaTurnRequest,
   declaredOutcomeFromClosingLine,
 } from "../src/computer-use.js";
-import { defaultRedactionHooks } from "../src/redaction.js";
+import { defaultRedactionHooks } from "../src/evidence/redaction.js";
 import { participantFeedbackCandidates } from "../src/cua-actor-lab.js";
 import { formatParticipantOutcomes, tallyParticipantOutcomes } from "../src/run/run.js";
 

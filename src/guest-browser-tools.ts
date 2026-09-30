@@ -1,4 +1,4 @@
-import { BROWSER_CONTROL_LIMITS } from "./browser-control-protocol.js";
+import { BROWSER_CONTROL_LIMITS } from "./browser-control/protocol.js";
 import { CuaExecutorError, isCuaExecutorError } from "./cua-executor-error.js";
 import type { GuestDesktopTools } from "./guest-desktop-executor.js";
 import type { GuestDesktopNativeTools } from "./guest-desktop-native.js";

@@ -1,6 +1,6 @@
 import type { Duplex, Writable } from "node:stream";
-import type { CuaAction, CuaExecutor, CuaObservation } from "./computer-use.js";
-import { CuaExecutorError } from "./cua-executor-error.js";
+import type { CuaAction, CuaExecutor, CuaObservation } from "../computer-use.js";
+import { CuaExecutorError } from "../cua-executor-error.js";
 import {
   BROWSER_CONTROL_LIMITS,
   BROWSER_CONTROL_VERSION,
@@ -12,10 +12,10 @@ import {
   type BrowserControlIdentity,
   type BrowserControlReply,
   type BrowserControlRequest,
-} from "./browser-control-protocol.js";
-import { BrowserControlTransport } from "./browser-control-transport.js";
-import { receiveBrowserControlRecording } from "./browser-control-recording-transfer.js";
-import type { DesktopRecordingMetadata } from "./desktop-recording-types.js";
+} from "./protocol.js";
+import { BrowserControlTransport } from "./transport.js";
+import { receiveBrowserControlRecording } from "./recording-transfer.js";
+import type { DesktopRecordingMetadata } from "../evidence/desktop-recording-types.js";
 
 export interface BrowserControlClientOptions {
   transport: Duplex;

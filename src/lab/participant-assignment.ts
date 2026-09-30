@@ -1,4 +1,4 @@
-import { redactText } from "../redaction.js";
+import { redactText } from "../evidence/redaction.js";
 import type { RunParticipantAssignment } from "../run/run.js";
 
 /** Project only authored participant-facing fields. Never pass runtime-composed instructions:

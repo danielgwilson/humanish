@@ -8,7 +8,7 @@ import type {
   CuaTurn,
   CuaTurnRequest,
 } from "./computer-use.js";
-import { redactText } from "./redaction.js";
+import { redactText } from "./evidence/redaction.js";
 import type { ReasoningEffort } from "./reasoning-effort.js";
 import { isMaxOutputTokens } from "./output-token-limit.js";
 import {
@@ -52,7 +52,7 @@ import {
 //    instructions and are NEVER captured; non-ok response bodies can echo the
 //    request and are never captured either;
 //  - REDACTED: every string field (keys and values) passes through the shared
-//    redactText (src/redaction.ts) before writing, so a secret-shaped echo in a
+//    redactText (src/evidence/redaction.ts) before writing, so a secret-shaped echo in a
 //    response cannot persist to disk.
 // Point the env var at a gitignored path (e.g. under .humanish/): raw captures must
 // never be committed — fixtures derived from them must be minimal, hand-reviewed

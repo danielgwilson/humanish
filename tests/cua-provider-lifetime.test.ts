@@ -8,7 +8,7 @@ import {
 import { buildCuaCostSummary } from "../src/cua-actor-lab.js";
 import type { ActorTokenUsage } from "../src/actor-contract.js";
 import { CuaProviderError } from "../src/cua-provider-error.js";
-import { defaultRedactionHooks } from "../src/redaction.js";
+import { defaultRedactionHooks } from "../src/evidence/redaction.js";
 import { PARTICIPANT_PROFILE } from "../src/restricted-codex-participant-policy.js";
 
 const receipt = { dispatched: true, usageComplete: true, cleanup: "confirmed" } as const;

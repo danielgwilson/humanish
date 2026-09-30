@@ -9,7 +9,7 @@ import {
   type CuaTurn,
 } from "../src/computer-use.js";
 import { estimateActorCost } from "../src/pricing.js";
-import { defaultRedactionHooks } from "../src/redaction.js";
+import { defaultRedactionHooks } from "../src/evidence/redaction.js";
 
 const capabilities: ActorCapabilities = {
   headless: true,

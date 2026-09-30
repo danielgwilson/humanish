@@ -5,7 +5,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { createHash, randomUUID } from "node:crypto";
 import { chmod, cp, mkdir, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
-import { resolve, join } from "node:path";
+import { dirname, resolve, join } from "node:path";
 const exec = promisify(execFile);
 const root = resolve(import.meta.dirname, "..");
 const image = process.env.HUMANISH_GUEST_IMAGE;
@@ -33,13 +33,14 @@ const driverModules = [
   "guest-desktop-native",
   "guest-browser-tools",
   "guest-chromium-text",
-  "browser-control-protocol",
-  "desktop-recording-types",
+  "browser-control/protocol",
+  "evidence/desktop-recording-types",
   "cua-executor-error",
   "cua-speech",
-  "frame-signature",
+  "evidence/frame-signature",
 ];
 for (const name of driverModules) {
+  await mkdir(dirname(join(payload, "dist", name + ".js")), { recursive: true });
   await cp(join(root, "dist", name + ".js"), join(payload, "dist", name + ".js"));
 }
 for (const name of ["playwright-core", "pngjs", "zod"])

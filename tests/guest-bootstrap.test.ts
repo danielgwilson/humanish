@@ -6,7 +6,7 @@ import {
   connectGuestBootstrap,
   GUEST_BOOTSTRAP_LIMITS,
 } from "../src/guest-bootstrap.js";
-import { identity, pair, tick } from "./browser-control-fixture.js";
+import { identity, pair, tick } from "./browser-control/fixture.js";
 import { execFileSync } from "node:child_process";
 import { runGuestRuntime } from "../src/guest-runtime.js";
 

@@ -1,4 +1,4 @@
-import type { RunDesktopRecording } from "./desktop-recording-types.js";
+import type { RunDesktopRecording } from "./evidence/desktop-recording-types.js";
 import { e2bDesktopTemplate } from "./substrates/e2b/desktop-media.js";
 import type { CuaLiveMetadata } from "./computer-use.js";
 export { inboxRecipientFor, laneHasInboxRecipient } from "./cua-desktop-lane.js";
@@ -117,7 +117,7 @@ import {
 import { type E2BDesktopModule, type E2BDesktopSandbox } from "./substrates/e2b/desktop-launch.js";
 import { type DesktopResourceObservation } from "./substrates/e2b/desktop-resources.js";
 import { type DetachedTimers } from "./substrates/e2b/detached.js";
-import { assertScreenshotEvidence } from "./image-evidence.js";
+import { assertScreenshotEvidence } from "./evidence/image.js";
 import {
   MAX_CUA_LANES,
   cuaLaneValidationReason,
@@ -163,7 +163,7 @@ import {
   round6,
 } from "./pricing.js";
 import type { ReasoningEffort } from "./reasoning-effort.js";
-import { containsSensitive, digestText, redactText } from "./redaction.js";
+import { containsSensitive, digestText, redactText } from "./evidence/redaction.js";
 import { createRestrictedCodexParticipant } from "./restricted-codex-participant.js";
 import {
   prepareRunArtifactPaths,

@@ -22,7 +22,7 @@ import { pathToFileURL } from "node:url";
 import type { BrowserLabScoringContext } from "./adapter-extension.js";
 import type { TerminalProductScoringContext } from "./e2b-terminal-lab.js";
 import type { LabBackend } from "./lab/engine.js";
-import { digestText, redactText } from "./redaction.js";
+import { digestText, redactText } from "./evidence/redaction.js";
 import type {
   RunAdapterArtifact,
   RunAdapterScore,

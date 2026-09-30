@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { PassThrough, Writable } from "node:stream";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { BROWSER_CONTROL_LIMITS } from "../src/browser-control-protocol.js";
+import { BROWSER_CONTROL_LIMITS } from "../src/browser-control/protocol.js";
 import { createGuestDesktopNativeTools } from "../src/guest-desktop-native.js";
 
 const { spawnMock } = vi.hoisted(() => ({ spawnMock: vi.fn() }));

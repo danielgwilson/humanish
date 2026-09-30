@@ -1,6 +1,6 @@
 import type { Duplex, Readable } from "node:stream";
-import type { CuaExecutor } from "./computer-use.js";
-import { CuaExecutorError } from "./cua-executor-error.js";
+import type { CuaExecutor } from "../computer-use.js";
+import { CuaExecutorError } from "../cua-executor-error.js";
 import {
   BROWSER_CONTROL_LIMITS,
   BROWSER_CONTROL_VERSION,
@@ -12,13 +12,13 @@ import {
   type BrowserControlIdentity,
   type BrowserControlReply,
   type BrowserControlRequest,
-} from "./browser-control-protocol.js";
-import { BrowserControlTransport } from "./browser-control-transport.js";
-import { sendBrowserControlRecording } from "./browser-control-recording-transfer.js";
+} from "./protocol.js";
+import { BrowserControlTransport } from "./transport.js";
+import { sendBrowserControlRecording } from "./recording-transfer.js";
 import {
   desktopRecordingMetadataSchema,
   type DesktopRecordingMetadata,
-} from "./desktop-recording-types.js";
+} from "../evidence/desktop-recording-types.js";
 
 export interface BrowserControlDispatcherOptions {
   transport: Duplex;

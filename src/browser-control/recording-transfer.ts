@@ -1,7 +1,7 @@
 import { Transform, type Duplex, type Readable, type Writable } from "node:stream";
 import { pipeline } from "node:stream/promises";
-import { CuaExecutorError } from "./cua-executor-error.js";
-import { DESKTOP_RECORDING_MAX_BYTES } from "./desktop-recording-types.js";
+import { CuaExecutorError } from "../cua-executor-error.js";
+import { DESKTOP_RECORDING_MAX_BYTES } from "../evidence/desktop-recording-types.js";
 
 const BROWSER_CONTROL_RECORDING_TRANSFER_TIMEOUT_MS = 120_000;
 

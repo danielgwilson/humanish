@@ -1,4 +1,4 @@
-import { digestText, redactText } from "../redaction.js";
+import { digestText, redactText } from "../evidence/redaction.js";
 import type { ActorPersonaRef } from "../actor-contract.js";
 
 type PersonaLevel = "low" | "medium" | "high";

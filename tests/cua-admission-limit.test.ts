@@ -8,7 +8,7 @@ import {
 } from "../src/openai-responses-cu.js";
 import { buildCuaCostSummary, participantFeedbackCandidates } from "../src/cua-actor-lab.js";
 import { estimateActorCost } from "../src/pricing.js";
-import { defaultRedactionHooks } from "../src/redaction.js";
+import { defaultRedactionHooks } from "../src/evidence/redaction.js";
 import { syntheticPng1x1 } from "./image-fixtures.js";
 
 const screenshot = syntheticPng1x1();

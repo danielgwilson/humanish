@@ -1,15 +1,15 @@
 import { Duplex } from "node:stream";
 import { execFileSync } from "node:child_process";
 import { describe, expect, it, vi } from "vitest";
-import { BrowserControlTransport } from "../src/browser-control-transport.js";
-import { BROWSER_CONTROL_LIMITS } from "../src/browser-control-protocol.js";
-import { frame, pair, tick } from "./browser-control-fixture.js";
+import { BrowserControlTransport } from "../../src/browser-control/transport.js";
+import { BROWSER_CONTROL_LIMITS } from "../../src/browser-control/protocol.js";
+import { frame, pair, tick } from "./fixture.js";
 
 describe("browser control byte framing", () => {
   it("contains queued native errors from rejected streams without crashing Node or retaining listeners", () => {
     // No uncaughtException/error handler in the subprocess: the old constructor
     // crashes after ready() has already returned its safe rejection.
-    const source = new URL("../src/browser-control-client.ts", import.meta.url).href;
+    const source = new URL("../../src/browser-control/client.ts", import.meta.url).href;
     const output = execFileSync(
       process.execPath,
       [

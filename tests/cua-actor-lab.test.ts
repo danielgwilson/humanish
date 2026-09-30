@@ -57,7 +57,7 @@ import type {
   RunBundle,
   RunFeedbackCandidate,
 } from "../src/index.js";
-import { containsSensitive } from "../src/redaction.js";
+import { containsSensitive } from "../src/evidence/redaction.js";
 import { verifyRun } from "../src/run/run.js";
 import { prepareSelectedOutputDirectory } from "../src/selected-output-paths.js";
 import type { LocalTreeArchive } from "../src/run/source-archive.js";

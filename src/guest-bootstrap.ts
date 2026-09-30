@@ -1,15 +1,15 @@
 import {
   desktopRecordingConfigSchema,
   type DesktopRecordingConfig,
-} from "./desktop-recording-types.js";
+} from "./evidence/desktop-recording-types.js";
 import type { Duplex } from "node:stream";
 import {
   validateBrowserControlIdentity,
   sameBrowserControlIdentity,
   type BrowserControlIdentity,
-} from "./browser-control-protocol.js";
+} from "./browser-control/protocol.js";
 import { CuaExecutorError } from "./cua-executor-error.js";
-import { createBrowserControlClient } from "./browser-control-client.js";
+import { createBrowserControlClient } from "./browser-control/client.js";
 import { guestMediaConfigSchema, type GuestMediaConfig } from "./guest-media-config.js";
 
 export const GUEST_BOOTSTRAP_VERSION = 1;

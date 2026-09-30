@@ -44,7 +44,7 @@ import type {
   E2BDesktopModule,
   E2BDesktopSandbox,
 } from "../src/substrates/e2b/desktop-launch.js";
-import { defaultRedactionHooks } from "../src/redaction.js";
+import { defaultRedactionHooks } from "../src/evidence/redaction.js";
 import type { RunBundle } from "../src/index.js";
 import { verifyRun } from "../src/run/run.js";
 

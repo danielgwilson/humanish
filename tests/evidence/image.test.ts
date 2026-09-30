@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { PNG } from "pngjs";
 
-import { assertScreenshotEvidence, screenshotEvidenceError } from "../src/image-evidence.js";
+import { assertScreenshotEvidence, screenshotEvidenceError } from "../../src/evidence/image.js";
 
 function encodePng(width = 2, height = 2): Buffer {
   const png = new PNG({ width, height });

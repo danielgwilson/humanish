@@ -6,7 +6,7 @@ import type {
 } from "./codex-app-server.js";
 import type { ActorEstimatedCost } from "./pricing.js";
 import type { TaskFunnel } from "./tasks.js";
-import { redactText } from "./redaction.js";
+import { redactText } from "./evidence/redaction.js";
 import { isCuaProviderFailurePhase, type CuaProviderFailurePhase } from "./cua-provider-error.js";
 
 // The provider-neutral evidence schema. Codex item/* events, Claude

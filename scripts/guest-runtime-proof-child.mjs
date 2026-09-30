@@ -11,7 +11,7 @@ import {
   GuestBootstrapReader,
   encodeGuestBootstrap,
 } from "/opt/humanish/control/guest-bootstrap.js";
-import { createBrowserControlClient } from "/opt/humanish/control/browser-control-client.js";
+import { createBrowserControlClient } from "/opt/humanish/control/browser-control/client.js";
 import { GUEST_RUNTIME_REVISION } from "/opt/humanish/control/guest-runtime-revision.js";
 
 const mode = process.argv[2];
