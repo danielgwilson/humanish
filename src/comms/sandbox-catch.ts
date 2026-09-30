@@ -13,7 +13,7 @@ import { buildCommsThreadArtifact, type CommsThreadArtifact } from "./evidence.j
 import { buildInboxSurface, type InboxRenderOptions } from "./inbox.js";
 import { DEFAULT_EMAIL_PROFILES, type EmailSendProfile } from "./email-catch.js";
 import { startDetachedProcess, type DetachedTimers } from "../substrates/e2b/detached.js";
-import type { E2BDesktopSandbox } from "../substrates/e2b/desktop-launch.js";
+import { runOrThrow, type Shell } from "../substrates/shell.js";
 
 /** The default in-sandbox loopback port for the catch. Fixed (not ephemeral) so the injected base-URL
  *  env is known before the sandbox is created. 8025 is the conventional local-mail-UI port and is
@@ -399,7 +399,7 @@ export interface DeployedCommsCatch {
 /** Readiness probe that asserts OUR service marker in the /health body (not merely any 2xx) — so a
  *  process squatting on the fixed port cannot produce a false "ready" while the app's sends bypass us. */
 async function catchHealthy(
-  desktop: E2BDesktopSandbox,
+  shell: Shell,
   port: number,
   options: { timeoutMs: number; requestTimeoutMs: number } & DetachedTimers,
 ): Promise<boolean> {
@@ -408,12 +408,12 @@ async function catchHealthy(
     options.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
   const deadline = now() + options.timeoutMs;
   for (;;) {
-    const result = await desktop.commands
+    const result = await shell
       .run(`curl -s --max-time 5 http://127.0.0.1:${port}/health 2>/dev/null || true`, {
         requestTimeoutMs: options.requestTimeoutMs,
       })
       .catch(() => ({ stdout: "" }));
-    if ((result.stdout ?? "").includes("humanish-comms-catch")) return true;
+    if (result.stdout.includes("humanish-comms-catch")) return true;
     if (now() >= deadline) return false;
     await sleep(1000);
   }
@@ -431,7 +431,7 @@ export interface RawCapturedSend {
  * is created and BEFORE the subject app's serve.start, so the base URL resolves at the app's boot.
  */
 export async function deployCommsCatch(
-  desktop: E2BDesktopSandbox,
+  shell: Shell,
   options: DeployCommsCatchOptions = {},
 ): Promise<DeployedCommsCatch> {
   // Validate the port to an integer before it reaches the shell command (defense-in-depth: a future
@@ -467,9 +467,9 @@ export async function deployCommsCatch(
   const deliveriesPath = `${dir}/deliveries.ndjson`;
   const surfaceDir = `${dir}/surface`;
 
-  await desktop.commands.run(`mkdir -p ${shq(dir)} ${shq(surfaceDir)}`, { requestTimeoutMs });
-  await desktop.files.write(scriptPath, SANDBOX_CATCH_SCRIPT);
-  await startDetachedProcess(desktop, {
+  await runOrThrow(shell, `mkdir -p ${shq(dir)} ${shq(surfaceDir)}`, { requestTimeoutMs });
+  await shell.writeFile(scriptPath, SANDBOX_CATCH_SCRIPT);
+  await startDetachedProcess(shell, {
     name,
     command: [
       "python3",
@@ -489,10 +489,10 @@ export async function deployCommsCatch(
     requestTimeoutMs,
     ...options.timers,
   };
-  const ready = await catchHealthy(desktop, port, probe);
+  const ready = await catchHealthy(shell, port, probe);
   // Confirm the read-only inbox listener bound too (loopback-reachable at its own port), when requested —
   // else a getHost-exposed inbox would 502. Fail closed by folding it into `ready`.
-  const inboxReady = inboxPort === undefined ? true : await catchHealthy(desktop, inboxPort, probe);
+  const inboxReady = inboxPort === undefined ? true : await catchHealthy(shell, inboxPort, probe);
   return {
     port,
     baseUrl: `http://127.0.0.1:${port}`,
@@ -509,16 +509,17 @@ export async function deployCommsCatch(
  * sends and the new cursor. Cheap `cat` over commands.run; NDJSON is small for a run.
  */
 export async function drainCommsCatch(
-  desktop: E2BDesktopSandbox,
+  shell: Shell,
   deployed: Pick<DeployedCommsCatch, "deliveriesPath">,
   cursor = 0,
   requestTimeoutMs = 30_000,
 ): Promise<{ sends: RawCapturedSend[]; cursor: number }> {
-  const result = await desktop.commands.run(
+  const result = await runOrThrow(
+    shell,
     `cat ${shq(deployed.deliveriesPath)} 2>/dev/null || true`,
     { requestTimeoutMs },
   );
-  const stdout = result.stdout ?? "";
+  const stdout = result.stdout;
   let lines = stdout.split("\n").filter((line) => line.trim().length > 0);
   // If the file doesn't end in a newline, the last line may be a PARTIAL append (the host `cat` raced
   // an in-sandbox append of a large body). Drop it and don't advance the cursor past it — it re-reads
@@ -689,7 +690,7 @@ export interface CommsThreadCollection {
  * teardown.
  */
 export async function collectCommsThread(args: {
-  desktop: E2BDesktopSandbox;
+  shell: Shell;
   deployed: Pick<DeployedCommsCatch, "deliveriesPath">;
   channel: CommsChannel;
   /** The inboxes provisioned for this run (declared recipients). Only mail to these is evidenced. */
@@ -697,7 +698,7 @@ export async function collectCommsThread(args: {
   profiles?: EmailSendProfile[];
   requestTimeoutMs?: number;
 }): Promise<CommsThreadCollection> {
-  const { sends } = await drainCommsCatch(args.desktop, args.deployed, 0, args.requestTimeoutMs);
+  const { sends } = await drainCommsCatch(args.shell, args.deployed, 0, args.requestTimeoutMs);
   if (sends.length === 0) return { captured: 0, matched: 0 };
   await routeCapturedSends(sends, args.channel, args.profiles);
   const seen = new Set<string>();
@@ -862,7 +863,7 @@ export async function collectExternalCommsThread(args: {
  * sandbox only (runtime-only, served to the in-sandbox browser); nothing here persists to the bundle.
  */
 export async function writeInboxSurface(
-  desktop: E2BDesktopSandbox,
+  shell: Shell,
   surfaceDir: string,
   messages: CommsMessage[],
   options: InboxRenderOptions & { requestTimeoutMs?: number } = {},
@@ -874,11 +875,11 @@ export async function writeInboxSurface(
     const slash = file.path.lastIndexOf("/");
     if (slash > 0) dirs.add(`${surfaceDir}/${file.path.slice(0, slash)}`);
   }
-  await desktop.commands.run(`mkdir -p ${[...dirs].map(shq).join(" ")}`, {
+  await runOrThrow(shell, `mkdir -p ${[...dirs].map(shq).join(" ")}`, {
     requestTimeoutMs: options.requestTimeoutMs ?? 30_000,
   });
   for (const file of files) {
-    await desktop.files.write(`${surfaceDir}/${file.path}`, file.body);
+    await shell.writeFile(`${surfaceDir}/${file.path}`, file.body);
   }
   return files.length;
 }
@@ -903,20 +904,20 @@ export interface InboxSurfaceRecipient {
  * also cursor 0) — no evidence is lost or altered. The NDJSON is small for a run, so re-reading it is cheap.
  */
 export async function refreshInboxSurface(args: {
-  desktop: E2BDesktopSandbox;
+  shell: Shell;
   deployed: Pick<DeployedCommsCatch, "deliveriesPath" | "surfaceDir">;
   recipients: InboxSurfaceRecipient[];
   sinceCount?: number;
   originMap?: InboxRenderOptions["originMap"];
   requestTimeoutMs?: number;
 }): Promise<{ count: number; rendered: boolean }> {
-  const { sends } = await drainCommsCatch(args.desktop, args.deployed, 0, args.requestTimeoutMs);
+  const { sends } = await drainCommsCatch(args.shell, args.deployed, 0, args.requestTimeoutMs);
   if (sends.length === 0) return { count: 0, rendered: false };
   if (args.sinceCount !== undefined && sends.length <= args.sinceCount)
     return { count: sends.length, rendered: false };
   const messages = await inboxMessagesFrom(sends, args.recipients);
   if (messages.length === 0) return { count: sends.length, rendered: false };
-  await writeInboxSurface(args.desktop, args.deployed.surfaceDir, messages, {
+  await writeInboxSurface(args.shell, args.deployed.surfaceDir, messages, {
     recipients: args.recipients.map((recipient) => recipient.address),
     ...(args.originMap === undefined ? {} : { originMap: args.originMap }),
     ...(args.requestTimeoutMs === undefined ? {} : { requestTimeoutMs: args.requestTimeoutMs }),

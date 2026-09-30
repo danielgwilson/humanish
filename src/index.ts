@@ -352,6 +352,9 @@ export type {
   DetachedStepResult,
   DetachedTimers,
 } from "./substrates/e2b/detached.js";
+// The detached-step primitives take a Shell; e2bShell adapts an E2B desktop handle to one.
+export { e2bShell } from "./substrates/e2b/shell.js";
+export type { Shell, ShellResult } from "./substrates/shell.js";
 export {
   DEFAULT_DEVICE_PRESET,
   DEVICE_PRESETS,

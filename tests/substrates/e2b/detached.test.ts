@@ -6,6 +6,7 @@ import {
   runDetachedStep,
   startDetachedProcess,
 } from "../../../src/substrates/e2b/detached.js";
+import { e2bShell } from "../../../src/substrates/e2b/shell.js";
 
 // A scripted sandbox: every commands.run is recorded; the handler decides stdout per call.
 function makeScriptedDesktop(
@@ -54,7 +55,7 @@ describe("runDetachedStep", () => {
       return undefined;
     });
 
-    const result = await runDetachedStep(desktop, {
+    const result = await runDetachedStep(e2bShell(desktop), {
       name: "subject-build",
       command: "pnpm build",
       cwd: "/home/user/subject",
@@ -83,7 +84,7 @@ describe("runDetachedStep", () => {
       if (command.includes("tail -c")) return { stdout: "ERR something broke" };
       return undefined;
     });
-    const result = await runDetachedStep(desktop, {
+    const result = await runDetachedStep(e2bShell(desktop), {
       name: "subject-install",
       command: "pnpm install",
       timeoutMs: 60_000,
@@ -101,7 +102,7 @@ describe("runDetachedStep", () => {
       if (command.includes("tail -c")) return { stdout: "still building…" };
       return undefined;
     });
-    const result = await runDetachedStep(desktop, {
+    const result = await runDetachedStep(e2bShell(desktop), {
       name: "subject-build",
       command: "sleep forever",
       timeoutMs: 10_000,
@@ -117,7 +118,7 @@ describe("runDetachedStep", () => {
   it("rejects unsafe step names before touching the sandbox", async () => {
     const { desktop, commands } = makeScriptedDesktop();
     await expect(
-      runDetachedStep(desktop, {
+      runDetachedStep(e2bShell(desktop), {
         name: "bad name; rm -rf /",
         command: "true",
         timeoutMs: 1000,
@@ -131,7 +132,7 @@ describe("runDetachedStep", () => {
 describe("startDetachedProcess", () => {
   it("writes and launches the script without polling for completion", async () => {
     const { desktop, commands, files } = makeScriptedDesktop();
-    await startDetachedProcess(desktop, {
+    await startDetachedProcess(e2bShell(desktop), {
       name: "subject-start",
       command: "pnpm start",
       cwd: "/home/user/subject",
@@ -157,7 +158,7 @@ describe("probeUrl", () => {
       }
       return undefined;
     });
-    const ready = await probeUrl(desktop, "http://127.0.0.1:3000/", {
+    const ready = await probeUrl(e2bShell(desktop), "http://127.0.0.1:3000/", {
       timeoutMs: 60_000,
       ...fakeTimers(),
     });
@@ -169,7 +170,7 @@ describe("probeUrl", () => {
     const { desktop } = makeScriptedDesktop((command) =>
       command.includes("curl") ? { stdout: "WAIT" } : undefined,
     );
-    const ready = await probeUrl(desktop, "http://127.0.0.1:3000/", {
+    const ready = await probeUrl(e2bShell(desktop), "http://127.0.0.1:3000/", {
       timeoutMs: 5000,
       intervalMs: 1500,
       ...fakeTimers(),

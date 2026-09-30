@@ -61,6 +61,7 @@ import {
   type E2BDesktopSandbox,
 } from "../substrates/e2b/desktop-launch.js";
 import { acquireE2BDesktopSandbox } from "../substrates/e2b/sandbox.js";
+import { e2bShell } from "../substrates/e2b/shell.js";
 import type { DetachedTimers } from "../substrates/e2b/detached.js";
 import type { LabConfig } from "../lab/types.js";
 import { renderObserver, type ObserverResult } from "../observer/render.js";
@@ -500,7 +501,7 @@ async function runScriptedBrowserLabInScope(
           await validatePreparedRunArtifactPaths(runPaths);
         }
 
-        subjectCommit = await provisionCloneSubject(subjectDesktop, {
+        subjectCommit = await provisionCloneSubject(e2bShell(subjectDesktop), {
           repo: subjectRepo!,
           depth: config.subject.clone?.depth ?? 1,
           serve: serve!,

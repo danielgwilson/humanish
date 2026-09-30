@@ -1,5 +1,5 @@
 import { commandDigestOf, SUBJECT_DIR } from "../computer-use/lab.js";
-import { type E2BDesktopSandbox } from "../../substrates/e2b/desktop-launch.js";
+import type { Shell } from "../../substrates/shell.js";
 import { runDetachedStep, type DetachedTimers } from "../../substrates/e2b/detached.js";
 import { type LabConfig, type LabSubjectStateCheckpoint } from "../../lab/types.js";
 import { redactText } from "../../evidence/redaction.js";
@@ -21,7 +21,7 @@ export function combineCheckpointDigest(parts: string[]): string {
  * stale-status reuse across snapshots.
  */
 export async function runCheckpointSnapshot(args: {
-  desktop: E2BDesktopSandbox;
+  shell: Shell;
   snapshotIndex: number;
   name: string;
   checkpoints: LabSubjectStateCheckpoint[];
@@ -32,7 +32,7 @@ export async function runCheckpointSnapshot(args: {
 }): Promise<SharedWorldCheckpoint> {
   const parts: string[] = [];
   for (const probe of args.checkpoints) {
-    const result = await runDetachedStep(args.desktop, {
+    const result = await runDetachedStep(args.shell, {
       name: `checkpoint-${args.snapshotIndex}-${probe.name}`,
       command: probe.command,
       cwd: SUBJECT_DIR,

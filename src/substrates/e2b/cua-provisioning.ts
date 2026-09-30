@@ -13,7 +13,9 @@ import {
 } from "../../routes/computer-use/cdp-probe.js";
 import { runDesktopCommandOrThrow, toErrorMessage } from "../command-failure.js";
 import { type DevicePreset } from "../../lab/device-presets.js";
-import { withOneRetryOnTransientE2BError, type E2BDesktopSandbox } from "./desktop-launch.js";
+import { type E2BDesktopSandbox } from "./desktop-launch.js";
+import { e2bShell } from "./shell.js";
+import { runOrThrow, type Shell } from "../shell.js";
 import {
   probeUrl,
   readDetachedLog,
@@ -244,7 +246,7 @@ function isoNow(now: () => number): string {
  * and a second wait would double it. The retry runs under its own step name so both logs stay.
  */
 async function runProvisioningStepWithOneRetry(
-  desktop: E2BDesktopSandbox,
+  shell: Shell,
   args: {
     name: string;
     command: string;
@@ -259,7 +261,7 @@ async function runProvisioningStepWithOneRetry(
     now: () => number;
   },
 ): Promise<DetachedStepResult & { attempts: 1 | 2; firstExitCode?: number }> {
-  const first = await runDetachedStep(desktop, {
+  const first = await runDetachedStep(shell, {
     name: args.name,
     command: args.command,
     cwd: args.cwd,
@@ -275,7 +277,7 @@ async function runProvisioningStepWithOneRetry(
     args.retryPhase,
     `${args.retryMessage} (first attempt exited ${first.exitCode ?? "null"}; retrying once)`,
   );
-  const second = await runDetachedStep(desktop, {
+  const second = await runDetachedStep(shell, {
     name: `${args.name}-retry`,
     command: args.command,
     cwd: args.cwd,
@@ -915,7 +917,8 @@ export async function applyMobileEmulation(
   // applier stays attached for the lane's whole life as a detached process; the sandbox teardown
   // ends it. Its first stdout line says what was applied.
   const holderName = `mobile-emulation-${Date.now().toString(36)}`;
-  await startDetachedProcess(desktop, {
+  const shell = e2bShell(desktop);
+  await startDetachedProcess(shell, {
     name: holderName,
     command: command("hold"),
     requestTimeoutMs,
@@ -923,7 +926,7 @@ export async function applyMobileEmulation(
   let announced: ReturnType<typeof parseChromeCdpProbeOutput> | undefined;
   for (let attempt = 0; attempt < 30 && announced === undefined; attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, 500));
-    const log = await readDetachedLog(desktop, holderName, requestTimeoutMs).catch(() => "");
+    const log = await readDetachedLog(shell, holderName, requestTimeoutMs).catch(() => "");
     const line = log.split("\n").find((candidate) => candidate.trim().startsWith("{"));
     if (line !== undefined) announced = parseChromeCdpProbeOutput(line);
   }
@@ -1346,7 +1349,7 @@ function shellSingleQuote(value: string): string {
  * harness prerequisite so the participant can follow the product's public npm instructions.
  */
 export async function provisionDesktopCli(
-  desktop: E2BDesktopSandbox,
+  shell: Shell,
   args: {
     product: string;
     install?: string;
@@ -1360,7 +1363,7 @@ export async function provisionDesktopCli(
   if (install === undefined || needsNodeRuntime([install])) {
     const startedAt = now();
     emitPhaseStarted(args.onPhase, now, "runtime", "providing Node/npm for the desktop CLI study");
-    const bootstrap = await runDetachedStep(desktop, {
+    const bootstrap = await runDetachedStep(shell, {
       name: "desktop-cli-runtime-node",
       command: TERMINAL_NODE_BOOTSTRAP_COMMAND,
       cwd: "/home/user",
@@ -1382,7 +1385,7 @@ export async function provisionDesktopCli(
   if (install === undefined) return;
   const startedAt = now();
   emitPhaseStarted(args.onPhase, now, "install", `installing ${args.product} on the desktop`);
-  const result = await runDetachedStep(desktop, {
+  const result = await runDetachedStep(shell, {
     name: "desktop-cli-install",
     command: install,
     cwd: "/home/user",
@@ -1424,7 +1427,7 @@ export async function openDesktopTerminal(
   workdir: string | undefined,
 ): Promise<void> {
   const dir = workdir ?? "/home/user";
-  const result = await runDetachedStep(desktop, {
+  const result = await runDetachedStep(e2bShell(desktop), {
     name: "desktop-cli-terminal",
     command: [
       "for candidate in x-terminal-emulator xfce4-terminal gnome-terminal konsole xterm; do",
@@ -1480,7 +1483,7 @@ export async function startDesktopStream(
  * drives a half-seeded subject and seeding never eats the session budget.
  */
 async function runSubjectServePipeline(
-  desktop: E2BDesktopSandbox,
+  shell: Shell,
   args: {
     serve: LabSubjectServe;
     /** Declared subject state (seed steps; external declaration is provenance-only). */
@@ -1523,7 +1526,7 @@ async function runSubjectServePipeline(
     for (const step of steps) {
       const stepTimeoutMs = step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS;
       const startedAt = now();
-      const result = await runDetachedStep(desktop, {
+      const result = await runDetachedStep(shell, {
         name: `subject-state-${step.name}`,
         command: step.command,
         cwd: SUBJECT_DIR,
@@ -1580,7 +1583,7 @@ async function runSubjectServePipeline(
       "runtime",
       "providing the Node runtime the serve pipeline needs",
     );
-    const bootstrap = await runProvisioningStepWithOneRetry(desktop, {
+    const bootstrap = await runProvisioningStepWithOneRetry(shell, {
       name: "subject-runtime-node",
       command: nodeBootstrapCommand(),
       cwd: SUBJECT_DIR,
@@ -1595,7 +1598,7 @@ async function runSubjectServePipeline(
     let ok = bootstrap.ok;
     const corepack = ok ? corepackCommandFor(serveCommands) : undefined;
     if (corepack) {
-      const pm = await runDetachedStep(desktop, {
+      const pm = await runDetachedStep(shell, {
         name: "subject-runtime-pm",
         command: corepack,
         cwd: SUBJECT_DIR,
@@ -1623,7 +1626,7 @@ async function runSubjectServePipeline(
   if (args.serve.install) {
     const installStartedAt = now();
     emitPhaseStarted(args.onPhase, now, "install", "installing subject dependencies");
-    const install = await runProvisioningStepWithOneRetry(desktop, {
+    const install = await runProvisioningStepWithOneRetry(shell, {
       name: "subject-install",
       command: args.serve.install,
       cwd: SUBJECT_DIR,
@@ -1669,7 +1672,7 @@ async function runSubjectServePipeline(
   if (args.serve.build) {
     const buildStartedAt = now();
     emitPhaseStarted(args.onPhase, now, "build", "building subject");
-    const build = await runDetachedStep(desktop, {
+    const build = await runDetachedStep(shell, {
       name: "subject-build",
       command: args.serve.build,
       cwd: SUBJECT_DIR,
@@ -1699,7 +1702,7 @@ async function runSubjectServePipeline(
   await runStateSteps("before-start");
   await refresh();
 
-  await startDetachedProcess(desktop, {
+  await startDetachedProcess(shell, {
     name: "subject-start",
     command: args.serve.start,
     cwd: SUBJECT_DIR,
@@ -1716,7 +1719,7 @@ async function runSubjectServePipeline(
 
   const readyStartedAt = now();
   emitPhaseStarted(args.onPhase, now, "ready", "waiting for subject to become ready");
-  const ready = await probeUrl(desktop, args.serve.url, {
+  const ready = await probeUrl(shell, args.serve.url, {
     timeoutMs: args.serve.readyTimeoutMs ?? DEFAULT_READY_TIMEOUT_MS,
     requestTimeoutMs: args.requestTimeoutMs,
     ...timers,
@@ -1730,7 +1733,7 @@ async function runSubjectServePipeline(
     ready ? "subject is ready" : "subject did not become ready in time",
   );
   if (!ready) {
-    const startLog = await readDetachedLog(desktop, "subject-start", args.requestTimeoutMs).catch(
+    const startLog = await readDetachedLog(shell, "subject-start", args.requestTimeoutMs).catch(
       () => "",
     );
     throw new Error(
@@ -1758,7 +1761,7 @@ async function runSubjectServePipeline(
  * or .git/config.
  */
 export async function provisionCloneSubject(
-  desktop: E2BDesktopSandbox,
+  shell: Shell,
   args: {
     repo: string;
     depth: number;
@@ -1785,11 +1788,12 @@ export async function provisionCloneSubject(
   const now = args.now ?? Date.now;
   let latestCommit: string | undefined;
   const refreshCommit = async (): Promise<void> => {
-    const head = await desktop.commands.run(
+    const head = await runOrThrow(
+      shell,
       `git -C ${SUBJECT_DIR} rev-parse HEAD 2>/dev/null || true`,
       { requestTimeoutMs: args.requestTimeoutMs },
     );
-    const commit = (head.stdout ?? "").trim() || undefined;
+    const commit = head.stdout.trim() || undefined;
     if (commit) {
       latestCommit = commit;
       args.onCommit?.(commit);
@@ -1802,7 +1806,7 @@ export async function provisionCloneSubject(
 
   const cloneStartedAt = now();
   emitPhaseStarted(args.onPhase, now, "clone", "cloning subject repository");
-  const clone = await runDetachedStep(desktop, {
+  const clone = await runDetachedStep(shell, {
     name: "subject-clone",
     command: cloneCommand,
     timeoutMs: CLONE_TIMEOUT_MS,
@@ -1825,7 +1829,7 @@ export async function provisionCloneSubject(
 
   await refreshCommit();
 
-  await runSubjectServePipeline(desktop, {
+  await runSubjectServePipeline(shell, {
     serve: args.serve,
     ...(args.state === undefined ? {} : { state: args.state }),
     requestTimeoutMs: args.requestTimeoutMs,
@@ -1848,7 +1852,7 @@ export async function provisionCloneSubject(
  * resolved in-sandbox.
  */
 export async function provisionLocalTreeSubject(
-  desktop: E2BDesktopSandbox,
+  shell: Shell,
   args: {
     /** The once-per-run packed archive bytes (shared byte-identically across every lane). */
     archiveBuffer: ArrayBuffer;
@@ -1874,13 +1878,9 @@ export async function provisionLocalTreeSubject(
   const uploadStartedAt = now();
   emitPhaseStarted(args.onPhase, now, "upload", "uploading packed local-tree archive");
   try {
-    await withOneRetryOnTransientE2BError(
-      () =>
-        desktop.files.write(LOCAL_TREE_REMOTE_ARCHIVE_PATH, args.archiveBuffer, {
-          requestTimeoutMs: args.requestTimeoutMs,
-          useOctetStream: true,
-        }),
-      {
+    await shell.writeFile(LOCAL_TREE_REMOTE_ARCHIVE_PATH, args.archiveBuffer, {
+      requestTimeoutMs: args.requestTimeoutMs,
+      retryOnce: {
         onRetry: (reason) =>
           emitPhaseStarted(
             args.onPhase,
@@ -1890,7 +1890,7 @@ export async function provisionLocalTreeSubject(
           ),
         ...(args.sleep === undefined ? {} : { sleep: args.sleep }),
       },
-    );
+    });
   } catch (error) {
     emitPhaseCompleted(
       args.onPhase,
@@ -1914,7 +1914,7 @@ export async function provisionLocalTreeSubject(
   const extractCommand = `rm -rf ${SUBJECT_DIR} && mkdir -p ${SUBJECT_DIR} && tar -xzf ${LOCAL_TREE_REMOTE_ARCHIVE_PATH} -C ${SUBJECT_DIR} && rm -f ${LOCAL_TREE_REMOTE_ARCHIVE_PATH}`;
   const extractStartedAt = now();
   emitPhaseStarted(args.onPhase, now, "extract", "extracting local-tree archive");
-  const extract = await runDetachedStep(desktop, {
+  const extract = await runDetachedStep(shell, {
     name: "subject-extract",
     command: extractCommand,
     timeoutMs: CLONE_TIMEOUT_MS,
@@ -1935,7 +1935,7 @@ export async function provisionLocalTreeSubject(
     );
   }
 
-  await runSubjectServePipeline(desktop, {
+  await runSubjectServePipeline(shell, {
     serve: args.serve,
     ...(args.state === undefined ? {} : { state: args.state }),
     requestTimeoutMs: args.requestTimeoutMs,
