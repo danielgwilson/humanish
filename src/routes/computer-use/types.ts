@@ -38,6 +38,7 @@ import { renderObserver, type ObserverResult } from "../../observer/render.js";
 import type { ReasoningEffort } from "../../actors/reasoning-effort.js";
 import { type RunLabProvenance } from "../../run/status.js";
 import {
+  type RunBundle,
   type RunRerunLineage,
   type RunScorerProvenance,
   type RunSubjectProvenance,
@@ -642,17 +643,27 @@ export interface LaneRunOutcome {
   commsArtifactPath?: string;
 }
 
-/**
- * Project a computer-use session into a humanish.run-bundle.v1. The load-bearing line is
- * `stream.actor = session.trace` — the provider-neutral ActorTrace seam the Observer renders.
- * Exported for the bundle-builder tests.
- */
-/**
- * Assemble the run-level cost ESTIMATE from each lane's persisted per-actor estimate
- * (trace.estimatedCost, set at the lab boundary) plus each observed E2B allocation's resources/span.
- * Returns undefined (cost OMITTED) when nothing was priceable AND no sandbox ran — a pure dry-run
- * or an in-process lane (no trace.estimatedCost, no desktop) stays byte-stable with no cost block.
- * The null-discipline mirrors the terminal ledger: a present-but-unpriceable line is null + a
- * reason and contributes NOTHING to estimatedTotalUsd (never coerced to 0); an all-null summary
- * has a null total. Every non-null figure carries its ratesAsOf date + source (invariant 6).
- */
+/** What buildCuaFanoutBundle projects into a fan-out run bundle. */
+export interface CuaFanoutBundleArgs {
+  /** Lab provenance for the bundle's own `lab` field (#455). */
+  lab?: RunLabProvenance;
+  specs: CuaLaneSpec[];
+  outcomes?: LaneRunOutcome[];
+  laneSubjects: CuaSubjectProjection[];
+  aggregateSubject: CuaSubjectProjection;
+  descriptor: CuaActorDescriptor;
+  appUrl: string;
+  createdAt: string;
+  dryRun: boolean;
+  config: LabConfig;
+  runId: string;
+  source: RunBundle["source"];
+  plan: CuaLanePlan;
+  rerun?: RunRerunLineage;
+  failFastReason?: string;
+  cloneRoute: boolean;
+  localTreeRoute?: boolean;
+  publicRepo?: string;
+  subjectEnvNames: string[];
+  inProgress?: boolean;
+}

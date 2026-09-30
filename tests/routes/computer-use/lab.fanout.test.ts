@@ -27,6 +27,7 @@ import { runCuaLanes } from "../../../src/routes/computer-use/lanes.js";
 import {
   type CuaActorLabHooks,
   type CuaLaneSpec,
+  type LaneRunOutcome,
   type CuaLanePlan,
 } from "../../../src/routes/computer-use/types.js";
 import { getActor } from "../../../src/actors/registry.js";
@@ -512,6 +513,86 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
     expect(bundle.review.verdict).toBe("fail");
     expect(bundle.review.summary).toContain("0/2");
     expect(bundle.review.gaps).toEqual(["role-a: did not pass", "role-b: did not pass"]);
+  });
+});
+
+describe("cua fan-out bundle: desktop browser provenance", () => {
+  function twoLaneInputs(resolved: [string, string]) {
+    const config = fanoutConfig({
+      lanes: [
+        { id: "role-a", persona: "first-time-visitor", device: "desktop", instruction: "Look." },
+        { id: "role-b", persona: "power-user", device: "desktop", instruction: "Look." },
+      ],
+    });
+    config.execution = { ...config.execution, desktop: { browser: "chrome" } };
+    const specs: CuaLaneSpec[] = ["role-a", "role-b"].map((laneId, laneIndex) => ({
+      laneId,
+      laneIndex,
+      simId: `sim-${laneId}`,
+      streamId: `stream-${laneId}`,
+      persona: { id: `persona-${laneId}`, traitsApplied: [], promptDigest: `prompt-${laneId}` },
+      instructions: "Look.",
+      deviceName: "desktop",
+      devicePreset: DEVICE_PRESETS.desktop,
+      resolution: [DEVICE_PRESETS.desktop.width, DEVICE_PRESETS.desktop.height],
+      screenshotDir: laneId,
+      traceArtifactPath: `actors/stream-${laneId}.json`,
+    }));
+    const outcomes: LaneRunOutcome[] = specs.map((spec, index) => ({
+      spec,
+      killed: true,
+      streamUrlPresent: false,
+      screenshots: [],
+      stateStepRecords: [],
+      phaseRecords: [],
+      warnings: [],
+      noEngagement: false,
+      selfReportedBlocker: false,
+      harnessError: false,
+      sessionError: "synthetic lane error",
+      desktopBrowser: { requested: "chrome", resolved: resolved[index]! },
+    }));
+    const subject = { source: "app-url" as const, state: { provenance: "undeclared" as const } };
+    return buildCuaFanoutBundle({
+      specs,
+      outcomes,
+      laneSubjects: [subject, subject],
+      aggregateSubject: subject,
+      descriptor: getActor("openai-computer-use"),
+      appUrl: "http://127.0.0.1:3000/",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      dryRun: false,
+      config,
+      runId: "browser-provenance-proof",
+      source: {
+        packageName: "humanish",
+        humanishSource: "present",
+        git: {
+          schema: "humanish.git-state.v1",
+          status: "clean",
+          capturedAt: "2026-01-01T00:00:00.000Z",
+          head: { shortSha: "abc1234", refState: "attached" },
+          changes: { staged: 0, unstaged: 0, untracked: 0, total: 0 },
+          note: "test fixture",
+        },
+      },
+      plan: resolveCuaLanePlan(config),
+      cloneRoute: false,
+      subjectEnvNames: [],
+    });
+  }
+
+  it("records the resolved browser when every lane resolved the same one", () => {
+    expect(twoLaneInputs(["google-chrome", "google-chrome"]).desktopBrowser).toEqual({
+      requested: "chrome",
+      resolved: "google-chrome",
+    });
+  });
+
+  it("records only the request when lanes resolved different browsers", () => {
+    expect(twoLaneInputs(["google-chrome", "chromium"]).desktopBrowser).toEqual({
+      requested: "chrome",
+    });
   });
 });
 
