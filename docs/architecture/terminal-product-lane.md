@@ -33,7 +33,7 @@ fail-closed cross-validation, and forward-declared warnings.
 | Axis                                  | Value                                                                                                                        |
 | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `subject.source`                      | `terminal-product`                                                                                                           |
-| `subject.product`                     | `{ name, publicSurfaces[] }`: the only world the agent sees                                                                  |
+| `subject.product`                     | `{ name, publicSurfaces[], install?, workdir?, upload? }`: the only world the agent sees                                     |
 | `execution.target`                    | `e2b-terminal` (or absent → implied)                                                                                         |
 | `execution.terminal`                  | `{ transport: exec-stream, stdin: disabled }`                                                                                |
 | `execution.runtimeAuth`               | `openai-env` (default) or opt-in `openai-egress`; names-only durable evidence                                                |
@@ -44,9 +44,9 @@ fail-closed cross-validation, and forward-declared warnings.
 | `actors[0].type`                      | `codex-exec`: a registered terminal actor (`keyPlacement: in-sandbox-command-scoped`)                                        |
 | `LabBackend`                          | `terminal` → `runTerminalProductLab` ([`src/routes/terminal/lab.ts`](../../src/routes/terminal/lab.ts))                      |
 
-Routing is `routesToTerminalProduct(config)`, the one predicate that both
-`selectLabBackend` and the forward-declared-warning logic consume, mirroring
-`routesToComputerUse` / `routesToScriptedBrowser`.
+Routing is `routeOf` (`src/lab/plan.ts`). It sends every `terminal-product` subject to
+this route, even with an unregistered actor, so this route refuses the actor.
+`routesToTerminalProduct(config)` also feeds the forward-declared warnings.
 
 ## Repeating a terminal study with the same runtime
 
@@ -109,13 +109,13 @@ an unauthenticated CA. The sandbox receives no raw runtime key in command env, s
 files, metadata, or captured evidence. The host still scrubs the actual key from
 output and errors, including errors during sandbox creation.
 
-This mode supports the default OpenAI endpoint only. humanish explicitly sets
-Codex's built-in `openai` provider and `openai_base_url` to
-`https://api.openai.com/v1` for that invocation. It does not support a custom
-provider, proxy base URL, or regional endpoint under this mode. `openai-env`
-retains its existing command behavior. E2B header rules are a public-beta
-capability; the local contract is checked against the installed Desktop SDK
-(`@e2b/desktop` 2.3.3, resolving `e2b` 2.46.1).
+This mode supports the default OpenAI endpoint only. humanish explicitly sets Codex's
+built-in `openai` provider and `openai_base_url` to `https://api.openai.com/v1` for
+that invocation. It does not support a custom provider, proxy base URL, or regional
+endpoint under this mode. `openai-env` retains its existing command behavior. E2B
+header rules are a public-beta capability;
+`tests/routes/terminal/runtime-auth.test.ts` checks the local contract against the
+installed Desktop SDK (the lockfile has `@e2b/desktop` 2.4.0, resolving `e2b` 2.49.0).
 
 **The sandbox still has a spendable OpenAI proxy capability.** Every process can
 make authenticated requests to that host from sandbox creation until teardown,
@@ -183,12 +183,14 @@ check stop the lane before Codex. Downloads have finite connection, transfer, an
 retry bounds within the existing five-minute bootstrap deadline.
 
 The `desktop-cli` computer-use route uses this same Node/npm prerequisite when
-`subject.product.install` is omitted or declares a Node command. With install
-omitted, the participant arrives at an open terminal with Node/npm available;
-the product remains uninstalled for them to discover and install from its public
-surfaces. Runtime setup runs unkeyed and a failed bootstrap stops before the
-participant starts. A declared non-Node install keeps its existing runtime
-behavior. The desktop route retains its ten-minute runtime step deadline.
+`subject.product.install` is omitted or declares a Node command. With install omitted,
+the participant arrives at an open terminal with Node/npm available; the product
+remains uninstalled for them to discover and install from its public surfaces. Runtime
+setup runs unkeyed and a failed bootstrap stops before the participant starts. A
+declared non-Node install keeps its existing runtime behavior. The desktop route's
+runtime step has the same five-minute bootstrap deadline (`NODE_BOOTSTRAP_TIMEOUT_MS`,
+`src/subject/node-bootstrap.ts`); a declared install step keeps its ten-minute
+deadline.
 
 ## The original command-scoped safety contract
 
@@ -235,10 +237,12 @@ At SLICE 1, a non-dry-run call returned a structured
 `HUMANISH_TERMINAL_AGENT_NOT_IMPLEMENTED` failure before launch or spend.
 SLICE 2 implemented the real session.
 
-The DI seams SLICE 2 needs (`loadModule`, `buildSandbox`, `runtimeAuthEnv`,
-`detachedTimers`) are declared on `TerminalProductLabHooks` and threaded through
-`RunLabOptions.terminalHooks`, mirroring `cuaHooks` / `scriptedHooks`; only the
-dry-run path was implemented in that slice.
+SLICE 1 declared the DI seams SLICE 2 needed (`loadModule`, `buildSandbox`,
+`runtimeAuthEnv`, `detachedTimers`) on `TerminalProductLabHooks`; only the dry-run
+path was implemented in that slice. The hook bag now carries `loadModule`, `env`,
+`renderObserverFn`, `now`, `costProbe`, `score` and `deriveFeedback`
+(`src/routes/terminal/types.ts`), and `TerminalProductLabHooks` itself is deprecated
+in favor of `RunLabOptions`.
 
 ## SLICE 4: the product-adapter extension seam (layer 6)
 
@@ -247,21 +251,23 @@ scoring + feedback as a THIN in-repo extension WITHOUT forking core. SLICE 4
 ships the SEAM. Core ships no built-in product scorer; the adopter's scorecard
 lives in the adopter's repo:
 
-- **Exported contract types** a thin adapter types against from the package
-  barrel (`humanish`) alone, never through a deep `src/` import: `RunBundle`,
-  `RunFeedbackCandidate`, `RunAdapterScore`, `RunMeaningfulUseScore`
-  (+ `RunMeaningfulUseComponentId`), `ActorTrace`, and the terminal-lane
-  `TerminalProductScoringContext` / `TerminalLedgers` / `TerminalCostLedger` /
-  `NoSpendProof` / `CostLine` / record types. Before this slice these were not
-  exported, which forced a fork (a thin adapter could not type against the
-  bundle), the gap issue #154 acceptance #8 names.
-- **A registrable scorer / feedback DI hook** on `TerminalProductLabHooks`:
-  `score?(ctx: TerminalProductScoringContext) => RunAdapterScore | Promise<…>`
-  and `deriveFeedback?(ctx) => RunFeedbackCandidate[] | Promise<…>`. The lane
-  calls the hooks over the FULLY-ASSEMBLED, redacted evidence and attaches the
-  results (`bundle.adapterScore`, appended `bundle.feedbackCandidates`) WITHOUT
-  core knowing any product noun. Default (no hook) behavior is unchanged: the
-  mission-based verdict stands alone.
+- **Exported contract types** a thin adapter types against from the package barrel
+  (`humanish`) alone, never through a deep `src/` import: `RunBundle`,
+  `RunFeedbackCandidate`, `RunAdapterScore`, `RunAdapterArtifact`, `ActorTrace`,
+  `AdapterScorerModule` and `TerminalProductScoringContext`. The ledger, cost and
+  no-spend shapes are reached through that context's fields, as
+  `TerminalProductScoringContext["ledgers"]`. Before this slice these were not
+  exported, which forced a fork (a thin adapter could not type against the bundle),
+  the gap issue #154 acceptance #8 names.
+- **A registrable scorer / feedback module**, `RunLabOptions.scorer` (an
+  `AdapterScorerModule`): `score?(ctx) => RunAdapterScore | Promise<…>` and
+  `deriveFeedback?(ctx) => RunFeedbackCandidate[] | Promise<…>`, where this route's
+  `ctx` is a `TerminalProductScoringContext`. The older `terminalHooks.score` and
+  `terminalHooks.deriveFeedback` still work and warn as deprecated. The lane calls the
+  hooks over the FULLY-ASSEMBLED, redacted evidence and attaches the results
+  (`bundle.adapterScore`, appended `bundle.feedbackCandidates`) WITHOUT core knowing
+  any product noun. Default (no hook) behavior is unchanged: the mission-based verdict
+  stands alone.
 - **Adapter-namespaced product nouns.** Product-specific concepts (public
   CLI/product command observed, hosted product success-or-blocker, feedback
   id/draft, media/job/asset ids, no-media/no-provider-spend proof,

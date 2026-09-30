@@ -65,20 +65,18 @@ Codex manages context compaction. humanish does not replace it with a rolling
 history window or restart a failed conversation without its memory. Participant
 threads never share conversation state with each other or the analyst.
 
-An unresolved child process blocks new sessions until its exit is confirmed.
-Limits and deadlines apply to each request, including startup on the first turn.
-Thread-cumulative token usage is converted to per-turn usage before accounting.
-CLI 0.154.0 omitted compaction requests from its thread totals, and later releases
-were not re-measured. A turn that
-compacts therefore retains known counts but records incomplete usage.
-Evidence is not silently downselected: at most 128 images, 20 MiB decoded image data, and 32 MiB serialized
-request data are admitted. Generated report text is limited to 2 MiB. Raw input
-notifications echo image data URLs, so their frame budget is the larger of 2 MiB
-or the admitted serialized packet plus 1 MiB; total stdout is bounded separately
-at the larger of 8 MiB or twice that frame budget plus 4 MiB. Stderr is bounded at
-2 MiB and is not retained. Notifications are limited to 65,536; aggregate
-generated assistant-text deltas are independently limited to 2 MiB, regardless
-of the input-image wire budget. The request's
+An unresolved child process blocks new sessions until its exit is confirmed. Limits and
+deadlines apply to each request, including startup on the first turn. Thread-cumulative token
+usage is converted to per-turn usage before accounting. CLI 0.154.0 omitted compaction
+requests from its thread totals, and later releases were not re-measured. A turn that compacts
+therefore retains known counts but records incomplete usage. Evidence is not silently
+downselected: at most 128 images, 20 MiB decoded image data, and 32 MiB serialized request
+data are admitted. Generated report text is limited to 2 MiB. Raw input notifications echo
+image data URLs, so their frame budget is the larger of 2 MiB (32 MiB for participant
+requests) or the admitted serialized packet plus 1 MiB; total stdout is bounded separately at
+the larger of 8 MiB or twice that frame budget plus 4 MiB. Stderr is bounded at 2 MiB and is
+not retained. Notifications are limited to 65,536; aggregate generated assistant-text deltas
+are independently limited to 2 MiB, regardless of the input-image wire budget. The request's
 deadline includes startup; individual RPCs also have a 15-second ceiling.
 
 Account analysis has unknown dollar cost and no supported generated-token cap.
@@ -145,10 +143,11 @@ can show that an honest new release does nothing new in those scenarios; it cann
 binary built to evade it is safe. Pair that with the attestation limit above: the launcher
 admits by release string and does not pin the executable.
 
-Then commit the release in `QUALIFIED_CODEX_CLI_VERSIONS` for that host, in
-`RECORDED_CODEX_CLI_VERSIONS` (`src/actors/contract.ts`) and in the Observer's copy
-(`observer/lib/actor-execution-profile.ts`). If any check fails, change no code and record what
-differs.
+Then commit the release in `QUALIFIED_CODEX_CLI_VERSIONS`
+(`src/actors/codex/qualified-versions.ts`) for that host, in `RECORDED_CODEX_CLI_VERSIONS`
+(`src/actors/contract.ts`) and in the Observer's copy
+(`observer/lib/actor-execution-profile.ts`). If any check fails, change no code and record
+what differs.
 
 ### The qualifier
 
