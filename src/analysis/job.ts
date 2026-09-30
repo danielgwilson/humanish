@@ -11,7 +11,7 @@ import {
   writeContainedOutputFile,
   type PreparedSelectedOutputDirectory,
 } from "../run/selected-output-paths.js";
-import { readBoundedStudyFile } from "./evidence.js";
+import { readBoundedStudyFile } from "./study-files.js";
 import { containsSensitive } from "../evidence/redaction.js";
 import { readStudyAnalysisExecution, readStudyAnalysisVersion } from "./store.js";
 import { hashStudyAnalysisValue } from "./validation.js";

@@ -9,7 +9,8 @@ import { loadRunBundlePrepared, verifyRunPrepared } from "../run/verify.js";
 import { resolveRunPath } from "../run/locate.js";
 import { validatePreparedRunRootIdentity, type PreparedRunArtifactPaths } from "../run/paths.js";
 import { isRunStatusRecord, RUN_STATUS_FILE } from "../run/status.js";
-import { captureStudyEvidence, readBoundedStudyFile, STUDY_EVIDENCE_LIMITS } from "./evidence.js";
+import { captureStudyEvidence, STUDY_EVIDENCE_LIMITS } from "./evidence.js";
+import { readBoundedStudyFile } from "./study-files.js";
 import {
   estimateStudyAnalysisAdmission,
   preferLargerStudyAnalysisOutput,
