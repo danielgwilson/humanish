@@ -123,7 +123,7 @@ assignment:
 `mission` is the authored mission, or the runner's default when omitted. `focus` is the
 original lane/role instruction when one was supplied. `tasks` contains only the IDs and
 goals actually composed into participant instructions; hidden success criteria are excluded.
-Computer-use single/fan-out, sequential/concurrent shared-world, and terminal-product
+Computer-use single/fan-out, shared-world, and terminal-product
 runners record assignments in dry-run and live bundles. Current shared-world and terminal
 prompts do not consume task protocols, so their assignments omit `tasks`.
 

@@ -2177,7 +2177,8 @@ function validSharedWorld(overrides?: {
       topology: "shared-world",
       repos: ["example-org/collab-app"],
       env: ["DATABASE_URL"],
-      serve: { start: "pnpm start", url: "http://127.0.0.1:3000/" },
+      exposure: "synthetic",
+      serve: { start: "pnpm start -H 0.0.0.0", url: "http://127.0.0.1:3000/" },
       state: {
         seed: [{ name: "migrate", command: "pnpm db:migrate" }],
         checkpoint: [{ name: "notes-count", command: "echo count" }],
@@ -2210,8 +2211,7 @@ function validSharedWorld(overrides?: {
         ],
       },
     ],
-    // Sequential PoC fixtures: explicit concurrency 1 (#350 — omitted now means all seats live).
-    execution: overrides?.execution ?? { target: "e2b-desktop", timeoutMs: 60000, concurrency: 1 },
+    execution: overrides?.execution ?? { target: "e2b-desktop", timeoutMs: 60000 },
   };
 }
 
@@ -2230,7 +2230,8 @@ function validSharedWorldLocalTree(overrides?: {
       source: "local-tree",
       topology: "shared-world",
       env: ["DATABASE_URL"],
-      serve: { start: "pnpm start", url: "http://127.0.0.1:3000/" },
+      exposure: "synthetic",
+      serve: { start: "pnpm start -H 0.0.0.0", url: "http://127.0.0.1:3000/" },
       state: {
         seed: [{ name: "migrate", command: "pnpm db:migrate" }],
         checkpoint: [{ name: "notes-count", command: "echo count" }],
@@ -2263,8 +2264,7 @@ function validSharedWorldLocalTree(overrides?: {
         ],
       },
     ],
-    // Sequential PoC fixtures: explicit concurrency 1 (#350 — omitted now means all seats live).
-    execution: overrides?.execution ?? { target: "e2b-desktop", timeoutMs: 60000, concurrency: 1 },
+    execution: overrides?.execution ?? { target: "e2b-desktop", timeoutMs: 60000 },
   };
 }
 
@@ -2275,7 +2275,7 @@ describe("shared-world topology routing + cross-validation (#164)", () => {
     if (!result.ok) return;
     expect(result.config.subject.topology).toBe("shared-world");
     expect(routesToSharedWorld(result.config)).toBe(true);
-    expect(selectLabBackend(result.config)).toBe("shared-world");
+    expect(selectLabBackend(result.config)).toBe("concurrent-shared-world");
     expect(sharedWorldValidationReason(result.config)).toBeNull();
     expect(result.warnings).toEqual([]);
     // The roster IS the role roster (no parallel roles[] field).
@@ -2301,7 +2301,7 @@ describe("shared-world topology routing + cross-validation (#164)", () => {
     expect(result.config.subject.source).toBe("local-tree");
     expect(result.config.subject.topology).toBe("shared-world");
     expect(routesToSharedWorld(result.config)).toBe(true);
-    expect(selectLabBackend(result.config)).toBe("shared-world");
+    expect(selectLabBackend(result.config)).toBe("concurrent-shared-world");
     expect(sharedWorldValidationReason(result.config)).toBeNull();
     expect(result.warnings).toEqual([]);
   });
@@ -2334,20 +2334,19 @@ describe("shared-world topology routing + cross-validation (#164)", () => {
     if (!withClone.ok) expect(withClone.error.message).toContain("subject.clone");
   });
 
-  it("execution.desktop.browser parses on sequential shared-world with zero warnings", () => {
+  it("execution.desktop.browser parses on shared-world with zero warnings", () => {
     const result = parseLabConfig(
       validSharedWorld({
         execution: {
           target: "e2b-desktop",
           timeoutMs: 60000,
-          concurrency: 1,
           desktop: { browser: "chrome" },
         },
       }),
     );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(selectLabBackend(result.config)).toBe("shared-world");
+    expect(selectLabBackend(result.config)).toBe("concurrent-shared-world");
     expect(result.config.execution?.desktop?.browser).toBe("chrome");
     expect(result.warnings).toEqual([]);
   });
@@ -2707,20 +2706,19 @@ describe("concurrent shared-world routing + cross-validation (#164 phase 2)", ()
     expect(result.warnings).toEqual([]);
   });
 
-  it("explicit concurrency 1 is the SEQUENTIAL choice; an OMITTED concurrency runs all seats (concurrent)", () => {
+  it("refuses explicit concurrency 1 with a migration message; an OMITTED concurrency runs all seats", () => {
+    // The sequential shared-world route was removed in 0.106.0. A lab that still declares
+    // concurrency 1 must fail at parse with the fix, never silently run concurrently.
     const seq1 = parseLabConfig(
       validConcurrent({ execution: { target: "e2b-desktop", timeoutMs: 60000, concurrency: 1 } }),
     );
-    expect(seq1.ok).toBe(true);
-    if (seq1.ok) {
-      expect(routesToConcurrentSharedWorld(seq1.config)).toBe(false);
-      expect(selectLabBackend(seq1.config)).toBe("shared-world");
-      // exposure is inert on the sequential route → warns.
-      expect(seq1.warnings.join("\n")).toContain("subject.exposure");
+    expect(seq1.ok).toBe(false);
+    if (!seq1.ok) {
+      expect(seq1.error.message).toContain("at least 2 (got 1)");
+      expect(seq1.error.message).toContain("omit execution.concurrency");
     }
     // All-parallel default (#350): omitting concurrency means every seat lives at once — the
-    // parser fills concurrency = seat count, so a multi-seat shared-world lab routes CONCURRENT
-    // unless the author explicitly chose the sequential PoC with concurrency: 1.
+    // parser fills concurrency = seat count.
     const allParallel = parseLabConfig(
       validConcurrent({ execution: { target: "e2b-desktop", timeoutMs: 60000 } }),
     );

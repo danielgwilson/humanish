@@ -14,7 +14,6 @@ import {
   runConcurrentSharedWorldBackend,
   runCuaBackend,
   runScriptedBackend,
-  runSharedWorldBackend,
   runSyntheticBackend,
   runTerminalBackend,
 } from "./lab-backends.js";
@@ -127,14 +126,6 @@ export async function runLabCommand(args: {
       return;
     case "terminal":
       await runTerminalBackend({
-        ...args,
-        config,
-        labProvenance: lab,
-        ...(scorer ? { scorer } : {}),
-      });
-      return;
-    case "shared-world":
-      await runSharedWorldBackend({
         ...args,
         config,
         labProvenance: lab,

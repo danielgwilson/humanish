@@ -85,10 +85,8 @@ import {
 } from "./types.js";
 import {
   automaticAnalysisRouteReason,
-  concurrentSharedWorldValidationReason,
   cuaLaneValidationReason,
   desktopMediaValidationReason,
-  externalPublicSharedWorldValidationReason,
   outputTokenLimitValidationReason,
   receivingEmailValidationReason,
   sharedWorldValidationReason,
@@ -191,9 +189,8 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
   // execution.concurrency runs EVERY seat at once — the declared field is a cap the author chose,
   // never a mode. A throttle default silently turned "N actors live" into waves of 3 in the field;
   // total sessions and spend are identical either way, only simultaneity differs, so the default
-  // follows the author's roster. Resolved here at parse time so routing (sequential vs concurrent
-  // shared-world), validation, warnings, and both engines all see one explicit number. The
-  // sequential shared-world PoC stays available as an explicit choice: `execution.concurrency: 1`.
+  // follows the author's roster. Resolved here at parse time so routing, validation, warnings,
+  // and both engines all see one explicit number.
   {
     const seats = config.actors[0]?.lanes?.length ?? config.actors[0]?.count ?? 1;
     if (seats > 1 && config.execution?.concurrency === undefined && routesToComputerUse(config)) {
@@ -484,18 +481,12 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
 
   // Shared-world topology cross-validation (#164). Runs whenever shared-world is DECLARED (not just
   // when it routes), so a half-declared shared-world fails closed with a precise reason rather than
-  // silently downgrading to a per-lane-worlds cua run. With `execution.concurrency > 1` the
-  // concurrent extras (synthetic-subject attestation, 0.0.0.0 serve bind, no clone.keep) also apply.
+  // silently downgrading to a per-lane-worlds cua run.
   if (config.subject.topology === "shared-world") {
-    const reason =
-      config.subject.source === "app-url"
-        ? // The external-public plane (a real public deployment as the shared plane): NEVER the getHost
-          // synthetic gate — that gate exists because getHost is internet-reachable AND harness-owned; a
-          // public site the harness neither provisioned nor exposed has neither property.
-          externalPublicSharedWorldValidationReason(config)
-        : (config.execution?.concurrency ?? 1) > 1
-          ? concurrentSharedWorldValidationReason(config)
-          : sharedWorldValidationReason(config);
+    // The external-public plane (a real public deployment as the shared plane) never takes the
+    // getHost synthetic gate: that gate exists because getHost is internet-reachable and
+    // harness-owned, and a public site the harness neither provisioned nor exposed is neither.
+    const reason = sharedWorldValidationReason(config);
     if (reason) {
       return invalid(reason);
     }

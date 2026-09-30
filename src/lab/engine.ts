@@ -2,8 +2,8 @@ import { isLocalBrowserLab, localBrowserDefaults } from "../substrates/local/run
 // The single lab engine. A lab is a config (humanish.lab.v2); runLab routes it to an execution
 // backend by COMPOSITION — subject.source x execution.target — not by a hardcoded `kind`.
 //
-// Six backends ship: synthetic, computer-use, scripted-browser, terminal-product, sequential
-// shared-world, and concurrent shared-world. runLab is the one entry
+// Five backends ship: synthetic, computer-use, scripted-browser, terminal-product and shared
+// world. runLab is the one entry
 // that maps config -> backend options. Core contributors extend the closed first-party actor union
 // and these selectors rather than adding a lab `kind`. On actor-backed routes, subject x execution
 // selects the substrate while actors[0].type selects a registered first-party actor.
@@ -23,11 +23,7 @@ import {
   type TerminalProductLabHooks,
   type TerminalProductLabResult,
 } from "../routes/terminal/types.js";
-import {
-  runSharedWorldLab,
-  type SharedWorldLabHooks,
-  type SharedWorldLabResult,
-} from "../routes/shared-world/sequential.js";
+import { type SharedWorldLabHooks } from "../routes/shared-world/hooks.js";
 import {
   runConcurrentSharedWorld,
   type ConcurrentSharedWorldLabResult,
@@ -39,20 +35,13 @@ import { type RunResult, type RunScorerProvenance } from "../run/bundle.js";
 import { automaticAnalysisRouteReason, taskProtocolValidationReason } from "./validation.js";
 import {
   routesToComputerUse,
-  routesToConcurrentSharedWorld,
   routesToScriptedBrowser,
   routesToSharedWorld,
   routesToTerminalProduct,
 } from "./routing.js";
 import { type LabConfig } from "./types.js";
 
-export type LabBackend =
-  | "synthetic"
-  | "cua"
-  | "scripted"
-  | "terminal"
-  | "shared-world"
-  | "concurrent-shared-world";
+export type LabBackend = "synthetic" | "cua" | "scripted" | "terminal" | "concurrent-shared-world";
 
 /** Runtime overrides from CLI flags. Each wins over the config when provided. */
 export interface RunLabOptions {
@@ -79,7 +68,7 @@ export interface RunLabOptions {
   scriptedHooks?: ScriptedBrowserLabHooks;
   /** Terminal-product route hooks: sandbox/runtime-auth DI seams (mirror of cuaHooks). */
   terminalHooks?: TerminalProductLabHooks;
-  /** Shared-world route hooks: ONE-sandbox / runSession / checkpoint DI seams (mirror of cuaHooks). */
+  /** Shared-world route hooks: sandbox / runSession / checkpoint DI seams (mirror of cuaHooks). */
   sharedWorldHooks?: SharedWorldLabHooks;
   /**
    * CONFIG-DECLARED scorer provenance (#316), forwarded alongside whichever hooks bag carries the
@@ -95,7 +84,6 @@ export type LabOutcome =
   | { backend: "cua"; result: CuaActorLabResult }
   | { backend: "scripted"; result: ScriptedBrowserLabResult }
   | { backend: "terminal"; result: TerminalProductLabResult }
-  | { backend: "shared-world"; result: SharedWorldLabResult }
   | { backend: "concurrent-shared-world"; result: ConcurrentSharedWorldLabResult };
 
 /**
@@ -117,17 +105,11 @@ export function selectLabBackend(config: LabConfig): LabBackend {
     // terminal backend's fail-closed HUMANISH_TERMINAL_LAB_ACTOR_UNSUPPORTED.
     return "terminal";
   }
-  if (routesToConcurrentSharedWorld(config)) {
-    // shared-world + execution.concurrency > 1 (#164 phase 2): ONE getHost-exposed plane + N actor
-    // sandboxes driving it AT ONCE. Checked BEFORE the sequential shared-world route (the
-    // concurrency knob picks the substrate; N=1 stays sequential).
-    return "concurrent-shared-world";
-  }
   if (routesToSharedWorld(config)) {
-    // clone × e2b-desktop × a computer-use actor that DECLARES topology: shared-world (#164): ONE
-    // provisioned plane, N role seats taking sequential turns. Checked BEFORE the cua route — the
-    // same composition without the topology declaration stays per-lane-worlds (cua).
-    return "shared-world";
+    // A computer-use actor that DECLARES topology: shared-world (#164): ONE plane (a getHost-exposed
+    // subject sandbox or a public deployment) + N actor sandboxes driving it at once. Checked BEFORE
+    // the cua route: the same composition without the topology declaration stays per-lane-worlds.
+    return "concurrent-shared-world";
   }
   if (config.subject.source === "desktop-cli") {
     // A CLI studied at a desktop by someone who can see it (#495). Same lane as every other
@@ -303,28 +285,6 @@ async function runLabInScope(config: LabConfig, options: RunLabOptions): Promise
         ...(options.open === undefined ? {} : { open: options.open }),
         ...(options.runId === undefined ? {} : { runId: options.runId }),
         ...(options.terminalHooks === undefined ? {} : { hooks: options.terminalHooks }),
-        ...(options.scorerProvenance === undefined
-          ? {}
-          : { scorerProvenance: options.scorerProvenance }),
-      });
-      return { backend, result };
-    }
-    case "shared-world": {
-      // Spend-safe default: a shared-world lab provisions a real sandbox + plane on the live path,
-      // so it only goes live when the config (or CLI) affirmatively says so. The deterministic PoC
-      // proof is fully $0 via the sharedWorldHooks DI seam.
-      const dryRun = resolveLabDryRun(config, options.dryRun, true) ?? true;
-      const result = await runSharedWorldLab({
-        ...(options.automaticAnalysis === undefined
-          ? {}
-          : { automaticAnalysis: options.automaticAnalysis }),
-        ...(options.lab === undefined ? {} : { lab: options.lab }),
-        cwd: options.cwd,
-        config,
-        dryRun,
-        ...(options.open === undefined ? {} : { open: options.open }),
-        ...(options.runId === undefined ? {} : { runId: options.runId }),
-        ...(options.sharedWorldHooks === undefined ? {} : { hooks: options.sharedWorldHooks }),
         ...(options.scorerProvenance === undefined
           ? {}
           : { scorerProvenance: options.scorerProvenance }),

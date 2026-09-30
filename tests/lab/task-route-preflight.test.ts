@@ -6,7 +6,6 @@ import { parseLabConfig } from "../../src/lab/config.js";
 import { type LabConfig } from "../../src/lab/types.js";
 import { runLab, selectLabBackend } from "../../src/lab/engine.js";
 import { runCuaActorLab } from "../../src/routes/computer-use/lab.js";
-import { runSharedWorldLab } from "../../src/routes/shared-world/sequential.js";
 import { runConcurrentSharedWorld } from "../../src/routes/shared-world/concurrent.js";
 import { runTerminalProductLab } from "../../src/routes/terminal/lab.js";
 import { runScriptedBrowserLab } from "../../src/routes/scripted-browser.js";
@@ -102,7 +101,6 @@ describe("declared task protocol admission", () => {
   );
 
   it.each([
-    ["shared-world", runSharedWorldLab],
     ["concurrent-shared-world", runConcurrentSharedWorld],
     ["terminal", runTerminalProductLab],
     ["scripted", runScriptedBrowserLab],

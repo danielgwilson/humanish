@@ -72,7 +72,6 @@ export type AdapterScorerLoadResult =
 const SCORER_CAPABLE_BACKENDS: ReadonlySet<LabBackend> = new Set<LabBackend>([
   "terminal",
   "cua",
-  "shared-world",
   "concurrent-shared-world",
 ]);
 

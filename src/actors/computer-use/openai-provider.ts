@@ -569,7 +569,8 @@ export interface OpenAiResponsesProviderOptions {
   fetchFn?: FetchLike;
   maxRetries?: number;
   /** Internal strict-accounting policy: one HTTP dispatch, including policy negotiation.
-   * Used by capped sequential sessions; missing usage must stop before another paid request. */
+   * Used by sessions with requireReportedUsageForSpendCap; missing usage must stop before another
+   * paid request. */
   singleDispatch?: boolean;
   delayFn?: (ms: number) => Promise<void>;
   zeroDataRetention?: boolean;

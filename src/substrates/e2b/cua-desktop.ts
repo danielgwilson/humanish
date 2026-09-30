@@ -626,8 +626,8 @@ export function createE2BCuaDesktopLane(
     }
 
     // This is outside the stream's best-effort catch: unusable geometry is a harness failure,
-    // never a participant finding about missing controls. Both per-lane and concurrent seats
-    // use this route; sequential seats enforce the same capture result in shared-world-lab.
+    // never a participant finding about missing controls. Both per-lane and shared-world seats
+    // use this route.
     if (initialBrowserGeometry?.unusable !== undefined) {
       failureCode = "HUMANISH_CUA_LAB_DEVICE_GEOMETRY";
       throw new Error(

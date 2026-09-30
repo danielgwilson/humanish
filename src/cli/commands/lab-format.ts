@@ -2,37 +2,7 @@ import { formatCuaDiagnostics, formatCuaStopCause } from "../../routes/computer-
 import type { CuaActorLabResult } from "../../routes/computer-use/types.js";
 import type { ScriptedBrowserLabResult } from "../../routes/scripted-browser.js";
 import type { TerminalProductLabResult } from "../../routes/terminal/types.js";
-import type { SharedWorldLabResult } from "../../routes/shared-world/sequential.js";
 import type { ConcurrentSharedWorldLabResult } from "../../routes/shared-world/concurrent.js";
-
-export function formatSharedWorldLabHuman(result: SharedWorldLabResult): string {
-  return (
-    [
-      `humanish lab shared-world ${result.ok ? (result.dryRun ? "dry-run" : "live") : "failed"}`,
-      ...(result.error ? [`${result.error.code}: ${result.error.message}`] : []),
-      `run: ${result.runId}`,
-      `lab: ${result.labId}`,
-      `actor: ${result.actor}`,
-      `topology: ${result.topology} (${result.roleCount} role${result.roleCount === 1 ? "" : "s"})`,
-      `sequence: ${result.sequence.join(" -> ") || "(none)"}`,
-      ...(result.subject?.commit
-        ? [`plane: ${result.subject.repo}@${result.subject.commit.slice(0, 12)}`]
-        : []),
-      ...result.roles.map(
-        (role) =>
-          `role ${role.id} (${role.persona}): ${role.status}${role.session ? ` (${role.session.completionReason})` : ""}${role.skippedReason ? ` · ${role.skippedReason}` : ""}`,
-      ),
-      ...(result.sandbox
-        ? [`sandbox: ${result.sandbox.sandboxId} killed=${result.sandbox.killed ? "yes" : "no"}`]
-        : []),
-      ...(result.observer?.observerPath ? [`observer: ${result.observer.observerPath}`] : []),
-      ...(result.observer?.opened === undefined
-        ? []
-        : [`opened: ${result.observer.opened ? "yes" : "no"}`]),
-      ...result.warnings.map((warning) => `warning: ${warning}`),
-    ].join("\n") + "\n"
-  );
-}
 
 export function formatConcurrentSharedWorldLabHuman(
   result: ConcurrentSharedWorldLabResult,

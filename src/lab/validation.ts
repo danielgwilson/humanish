@@ -9,7 +9,6 @@ import {
   registeredComputerUseActors,
   resolveSeatUrl,
   routesToComputerUse,
-  routesToConcurrentSharedWorld,
   routesToScriptedBrowser,
   routesToSharedWorld,
   routesToTerminalProduct,
@@ -114,14 +113,24 @@ function laneRosterStructuralValidationReason(config: LabConfig): string | null 
 
 /**
  * Cross-validate a `topology: shared-world` declaration (#164). Returns the failure message, or
- * null when valid. Enforced at parse AND re-enforced in the engine (runSharedWorldLab is exported
- * npm surface). The shared-world override REQUIRES: a clone or local-tree source + e2b-desktop
+ * null when the one shared-world route can run it: the external-public checks for an app-url
+ * subject, the provisioned checks otherwise. Enforced at parse and again by the route, since
+ * runConcurrentSharedWorld is exported.
+ */
+export function sharedWorldValidationReason(config: LabConfig): string | null {
+  return config.subject.source === "app-url"
+    ? externalPublicSharedWorldValidationReason(config)
+    : concurrentSharedWorldValidationReason(config);
+}
+
+/**
+ * The structural checks every provisioned shared world shares. It REQUIRES: a clone or local-tree source + e2b-desktop
  * target + a computer-use actor + a `subject.serve` block + an `actors[0].lanes` roster of ≥2 roles (the
  * roster IS the role roster — no parallel roles[] field), and every role `entry` must resolve
  * same-origin (loopback) with serve.url. Fail-closed: a half-declared shared-world is rejected,
  * never silently downgraded.
  */
-export function sharedWorldValidationReason(config: LabConfig): string | null {
+function provisionedSharedWorldStructureReason(config: LabConfig): string | null {
   const structuralReason = laneRosterStructuralValidationReason(config);
   if (structuralReason) {
     return structuralReason;
@@ -144,7 +153,7 @@ export function sharedWorldValidationReason(config: LabConfig): string | null {
     return "`subject.topology: shared-world` requires an `actors[0].lanes` roster of at least 2 roles (the roster IS the role roster — declare ≥2 lanes; a single-role shared world proves no interaction).";
   }
   if (!config.subject.state?.checkpoint || config.subject.state.checkpoint.length === 0) {
-    return "`subject.topology: shared-world` requires `subject.state.checkpoint` (≥1 read-only digest probe) — the checkpoint timeline IS the interaction-attribution mechanism; without it the run cannot prove role B acted on role A's mutation.";
+    return "`subject.topology: shared-world` requires `subject.state.checkpoint` (≥1 read-only digest probe) — the checkpoint series is how the run shows the shared state changing; without it the run cannot show that participants changed the shared app.";
   }
   for (const lane of lanes) {
     if (lane.entry !== undefined && resolveSeatUrl(serve.url, lane.entry) === null) {
@@ -218,9 +227,6 @@ export function receivingEmailValidationReason(config: LabConfig): string | unde
   if (config.actors.some((actor) => actor.type === "local-agent")) {
     return "Real email receiving is unavailable for local-agent: its host process does not isolate the inbox management credential. Use a hosted first-party computer-use actor.";
   }
-  if (config.subject.topology === "shared-world" && (config.execution?.concurrency ?? 1) <= 1) {
-    return "Real email receiving is unsupported for sequential shared-world studies. Use concurrent shared-world or independent participant desktops.";
-  }
   return undefined;
 }
 
@@ -259,6 +265,20 @@ export function outputTokenLimitValidationReason(config: LabConfig): string | nu
 }
 
 /**
+ * Shared-world participants share one live app, so at least two must be live at once. The
+ * sequential shared-world route (`execution.concurrency: 1`) was removed in 0.106.0; the parser
+ * fills an omitted concurrency with the participant count.
+ */
+function sharedWorldConcurrencyReason(config: LabConfig): string | null {
+  // Direct library callers skip the parser, so an omitted value defaults here exactly as the
+  // route does: to the participant count.
+  const participants = config.actors[0]?.lanes?.length ?? config.actors[0]?.count ?? 1;
+  const concurrency = config.execution?.concurrency ?? participants;
+  if (concurrency >= 2) return null;
+  return `shared-world studies need \`execution.concurrency\` of at least 2 (got ${concurrency}). Sequential shared-world turns (concurrency 1) were removed in 0.106.0: omit execution.concurrency to run every participant at once, or set it to 2 or more. A provisioned subject also needs \`subject.exposure: synthetic\` and a \`serve.start\` that binds 0.0.0.0.`;
+}
+
+/**
  * Cross-validate a CONCURRENT shared-world declaration (#164 phase 2). Returns the failure message,
  * or null when valid. Includes the base shared-world checks PLUS the concurrent extras: a synthetic
  * subject attestation (FIX-3), a 0.0.0.0 serve bind (FIX-4 — getHost only routes to a port bound on
@@ -267,13 +287,12 @@ export function outputTokenLimitValidationReason(config: LabConfig): string | nu
  * is exported npm surface).
  */
 export function concurrentSharedWorldValidationReason(config: LabConfig): string | null {
-  const base = sharedWorldValidationReason(config);
+  const base = provisionedSharedWorldStructureReason(config);
   if (base) {
     return base;
   }
-  if ((config.execution?.concurrency ?? 1) <= 1) {
-    return "the concurrent shared-world route requires `execution.concurrency > 1` (N concurrent actor seats); concurrency 1 is the sequential PoC.";
-  }
+  const sharedWorldConcurrency = sharedWorldConcurrencyReason(config);
+  if (sharedWorldConcurrency) return sharedWorldConcurrency;
   if (config.subject.exposure !== "synthetic") {
     return "the concurrent shared-world route requires `subject.exposure: synthetic` — the subject is exposed on an internet-reachable getHost URL for the run, so the author must attest it is synthetic seeded data (no real/external data behind a getHost URL).";
   }
@@ -296,7 +315,7 @@ export function concurrentSharedWorldValidationReason(config: LabConfig): string
  * it FORBIDS every provisioned-subject field (serve/state.seed/state.checkpoint/exposure/clone/repos
  * are inert with no sandbox — fail closed, never silently ignored, per invariant 6), and REQUIRES a
  * non-loopback appUrl + allowPublicTargets + the operator-ownership attestation subject.publicTarget +
- * concurrency > 1 + an actors[0].lanes roster of ≥2 with EXACTLY ONE host lane. The getHost synthetic
+ * concurrency >= 2 + an actors[0].lanes roster of ≥2 with EXACTLY ONE host lane. The getHost synthetic
  * gate is deliberately unreachable here (there is no internet-reachable harness-owned URL to attest).
  * Enforced at parse AND re-enforced in the engine (runConcurrentSharedWorld is exported npm surface).
  */
@@ -314,9 +333,8 @@ export function externalPublicSharedWorldValidationReason(config: LabConfig): st
   if (!actorResolvesToComputerUse(config.actors[0]?.type)) {
     return `the external-public shared-world route requires a registered computer-use actor (one of: ${registeredComputerUseActors().join(", ")}) — each role seat runs a computer-use session.`;
   }
-  if ((config.execution?.concurrency ?? 1) <= 1) {
-    return "the external-public shared-world route requires `execution.concurrency > 1` (N concurrent seats sharing ONE public plane); concurrency 1 proves no shared world.";
-  }
+  const sharedWorldConcurrency = sharedWorldConcurrencyReason(config);
+  if (sharedWorldConcurrency) return sharedWorldConcurrency;
   if (config.policies?.allowPublicTargets !== true) {
     return "the external-public shared-world route requires `policies.allowPublicTargets: true` — the shared plane is a real non-loopback public deployment.";
   }
@@ -370,7 +388,6 @@ export function automaticAnalysisRouteReason(config: LabConfig): string | undefi
     routesToScriptedBrowser(config) ||
     routesToTerminalProduct(config) ||
     routesToSharedWorld(config) ||
-    routesToConcurrentSharedWorld(config) ||
     ["app-url", "local-app", "local-tree", "desktop-cli", "terminal-product"].includes(
       config.subject.source,
     )

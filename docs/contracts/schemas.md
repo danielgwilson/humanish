@@ -172,10 +172,10 @@ persona?, device?, instruction?, target?, entry? }`. The parser expands it into
   labs) — total sessions and spend are identical either way; only wall-clock
   and simultaneity differ. Declaring a value below the seat count runs seats in
   waves and emits a warning saying so, because a green waved run is otherwise
-  indistinguishable from the all-live run the author meant. On shared-world
-  labs this field is also the sequential/concurrent selector: `concurrency: 1`
-  is the sequential turn-taking PoC; anything higher (including the filled
-  default) is the concurrent substrate. The env override
+  indistinguishable from the all-live run the author meant. Shared-world labs
+  need at least 2 (the host and a follower are live together); `concurrency: 1`
+  there is refused at parse, since the sequential turn-taking route was removed
+  in 0.106.0. The env override
   `HUMANISH_CUA_MAX_CONCURRENCY` may only LOWER the effective bound, never
   raise concurrent paid desktops (invariant 3), and a lowering is recorded on
   the plan (`envLoweredConcurrencyFrom`). Inert (warned) on other routes.
@@ -208,8 +208,8 @@ persona?, device?, instruction?, target?, entry? }`. The parser expands it into
   baked into an adopter-maintained image). Any non-empty string is a valid
   name/id (no allowlist); a blank/whitespace value is rejected. Threaded to the
   SDK's `Sandbox.create(template, opts)` on EVERY desktop-creating route (the
-  single-lane + fan-out cua lanes, the sequential shared-world plane, and the
-  concurrent shared-world subject AND every actor sandbox); when absent the call
+  single-lane + fan-out cua lanes, and the shared-world subject AND every actor
+  sandbox); when absent the call
   stays the byte-stable `Sandbox.create(opts)` default (the stock template). The
   template actually used is recorded in the run bundle as `desktopTemplate`
   (public-safe — a template name is not a secret). Inert (warned) on every route
@@ -220,7 +220,7 @@ persona?, device?, instruction?, target?, entry? }`. The parser expands it into
   absent, recovery fails with `clipboard-utility-missing`; a dry-run does not
   inspect the image's installed tools;
 - `execution.desktop.browser` (e2b-desktop computer-use/fan-out routes, plus
-  sequential and concurrent shared-world actor seats): optional browser family
+  shared-world actor seats): optional browser family
   preference: `default`, `chrome`, `chromium`, or `firefox`. Absent/default
   preserves the historical desktop opener behavior. A concrete value means
   launch that browser or fail closed; when configured, the bundle records
@@ -265,9 +265,8 @@ persona?, device?, instruction?, target?, entry? }`. The parser expands it into
   `redactScreenshots: true` (blur unimplemented there) and
   `allowPublicTargets: true` fail-closed rather than ignoring them.
 - `comms` (#297; hosted on the clone/local-tree computer-use lanes and the
-  concurrent shared-world getHost plane, or connected to an external catch on
-  app-url/operator-provided subjects; unwired on sequential `concurrency: 1`
-  shared worlds): off-app
+  shared-world getHost plane, or connected to an external catch on
+  app-url/operator-provided subjects): off-app
   email the app itself sends, made a persona-driven testable surface. Lab
   configuration rejects `comms.sms` and unknown channel names; message-bus SMS
   types do not imply a supported SMS execution route. SMTP capture is supported
@@ -536,7 +535,7 @@ app + one seeded DB) so their actions interact through shared state. The ONE
 subject plane is provisioned via `subject.source: clone` (a fresh `git clone`) or
 `subject.source: local-tree` (the operator's own working tree, packed on the host
 and provisioned in-sandbox in place of a clone - see `subject.localTree` above);
-both sources are accepted on the sequential AND concurrent shared-world routes. A
+both sources are accepted on the shared-world route. A
 shared-world bundle adds TWO additive, optional fields to `humanish.run-bundle.v1`
 (absent on every other bundle, so they stay byte-stable):
 
@@ -1189,40 +1188,21 @@ threshold on a model `src/run/pricing.ts` cannot price is refused at preflight
 (`HUMANISH_CUA_LAB_UNPRICED_CAP`) before sandbox allocation. This rate-availability
 check is separate from the post-response spend check.
 
-Sequential shared-world studies (`subject.topology: shared-world` with
-`execution.concurrency: 1`, using clone or local-tree subjects) enforce these
-same per-participant and shared model thresholds. Final reported usage,
-including a closing request, is reconciled before admitting the next participant.
-After the aggregate threshold is crossed, later participants are `blocked` with
-a recorded skip reason; they make no model requests and add no executed turn to
-the checkpoint timeline. An unpriced model with a declared threshold fails
-before allocation with `HUMANISH_SHARED_WORLD_LAB_INVALID`.
-
-On this sequential route, an otherwise completed capped interaction that returns
-missing or partial usage stops with `harness_error`, `stopCause: usage_unreported`, and the label
+Library callers can make a capped session fail closed on unknown spend:
+`runCuaActorSession({ requireReportedUsageForSpendCap: true })` together with
+`maxUsd` or `overRunBudget`. No built-in route enables this policy. With it, an
+otherwise completed capped interaction that returns missing or partial usage
+stops with `harness_error`, `stopCause: usage_unreported`, and the label
 “provider usage unavailable.” It is not recorded as a crossed threshold. A
 stalled or failed request with unknown spend is not retried by the CUA loop.
 The default OpenAI adapter also disables HTTP and policy-negotiation retries for
 these strict capped sessions. The loop cancels its owned request signal when a
 request ends or its timeout wins; injected providers must honor cancellation
-and remain responsible for their own internal dispatch. Known usage remains in the
-trace alongside an explicit unknown; subsequent participants do not start when
-the shared budget cannot be established. Reported zero input and output counts
-remain valid zero usage. This stricter unknown-usage policy is specific to
-sequential capped studies; other routes retain their existing behavior. An
-explicitly incomplete provider response retains its original interruption cause
-first, with any missing usage still recorded as unknown.
-
-Sequential traces persist dated model estimates. Their run cost summary marks
-desktop compute as unmeasured, so the displayed model subtotal is a lower bound.
-The sequential route does not provide a running Observer usage stream; its final
-CLI and Observer projections read these persisted estimates.
-
-A capped custom session must return the declared model identity on its trace.
-A mismatch fails orchestration and blocks later participants while preserving
-the participant's original outcome and the estimate for its returned model.
-This check does not establish which model an arbitrary custom runner actually
-called or retrospectively enforce a runner that ignored its cap options.
+and remain responsible for their own internal dispatch. Known usage remains in
+the trace alongside an explicit unknown. Reported zero input and output counts
+remain valid zero usage. An explicitly incomplete provider response retains its
+original interruption cause first, with any missing usage still recorded as
+unknown.
 
 These computer-use rules do not replace the terminal route's separate
 `scenario.caps` cost-ledger and product-spend rules described above.
@@ -1274,7 +1254,7 @@ product-specific scoring + feedback as a THIN in-repo extension WITHOUT forking
 core. The seam is the EXPORTED contract types plus DI hooks:
 `TerminalProductLabHooks` for terminal-product runs, and the browser adapter
 hooks inherited by `CuaActorLabHooks` / `SharedWorldLabHooks` for CUA,
-sequential shared-world, and concurrent shared-world runs. This is never a
+and shared-world runs. This is never a
 built-in product scorer (the adopter's scorecard lives in the adopter's repo).
 
 Three product-agnostic carriers keep core's nouns closed while letting the adapter

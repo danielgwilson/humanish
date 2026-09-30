@@ -103,17 +103,11 @@ export {
   captureDesktopBrowserGeometry,
   commandDigestOf,
   declaredScreenForRender,
-  desktopBrowserFamily,
-  inspectDesktopScreenGeometry,
   makeChromeBrowserStateObserver,
   makeChromeDesktopGeometryObserver,
   parseXwininfoGeometry,
   provisionCloneSubject,
   provisionLocalTreeSubject,
-  type DesktopBrowserEvidence,
-  type DesktopBrowserFamily,
-  type DesktopBrowserLaunchIdentity,
-  type DesktopBrowserLaunchResult,
   type SubjectPhaseEvent,
 } from "../../substrates/e2b/cua-provisioning.js";
 

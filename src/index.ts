@@ -323,19 +323,7 @@ export type {
   TerminalProductLabResult,
   TerminalProductScoringContext,
 } from "./routes/terminal/types.js";
-export {
-  SHARED_WORLD_LAB_PROVIDER_METADATA,
-  SHARED_WORLD_LAB_SCHEMA,
-  buildSharedWorldBundle,
-  runSharedWorldLab,
-} from "./routes/shared-world/sequential.js";
-export type {
-  RunSharedWorldLabOptions,
-  SharedWorldLabErrorCode,
-  SharedWorldLabHooks,
-  SharedWorldLabResult,
-  SharedWorldRoleResult,
-} from "./routes/shared-world/sequential.js";
+export type { SharedWorldLabHooks } from "./routes/shared-world/hooks.js";
 export {
   CONCURRENT_ATTRIBUTION_LIMITS,
   CONCURRENT_SHARED_WORLD_LAB_SCHEMA,

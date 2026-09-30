@@ -5,18 +5,17 @@ participant; hidden success criteria go only to the observation tracker. A route
 that cannot carry both halves refuses the declaration before execution. Removing
 `tasks` is an explicit choice to run a mission-only study, not an automatic fallback.
 
-| Execution path                                          | Task support | Mechanism                                                                     |
-| ------------------------------------------------------- | ------------ | ----------------------------------------------------------------------------- |
-| CUA, app-url, single or per-lane fan-out                | Supported    | Lane composer renders goals; the CUA loop tracks observations                 |
-| CUA, provisioned clone or local-tree, per-lane worlds   | Supported    | Same lane composer and loop                                                   |
-| CUA, local-app with caller executor/provider            | Supported    | Same loop; the caller supplies observations                                   |
-| CUA, desktop-cli                                        | Supported    | Same prompt and tracker; unavailable criterion inputs remain unmeasured       |
-| Sequential shared-world, clone or local-tree            | Rejected     | Seat composer and session do not forward tasks                                |
-| Concurrent shared-world, provisioned or external-public | Rejected     | Actor specs omit the protocol before CUA session dispatch                     |
-| Terminal-product                                        | Rejected     | Terminal prompt and result contract do not implement tasks                    |
-| Scripted-browser, local or provisioned                  | Rejected     | Scenario steps drive the participant; no task protocol is consumed            |
-| Synthetic, smoke, meta                                  | Rejected     | Lab dispatch does not pass task declarations to these engines                 |
-| Any second or later `actors[]` entry                    | Rejected     | Current runners consume only the first actor; use supported first-actor lanes |
+| Execution path                                        | Task support | Mechanism                                                                     |
+| ----------------------------------------------------- | ------------ | ----------------------------------------------------------------------------- |
+| CUA, app-url, single or per-lane fan-out              | Supported    | Lane composer renders goals; the CUA loop tracks observations                 |
+| CUA, provisioned clone or local-tree, per-lane worlds | Supported    | Same lane composer and loop                                                   |
+| CUA, local-app with caller executor/provider          | Supported    | Same loop; the caller supplies observations                                   |
+| CUA, desktop-cli                                      | Supported    | Same prompt and tracker; unavailable criterion inputs remain unmeasured       |
+| Shared-world, provisioned or external-public          | Rejected     | Actor specs omit the protocol before CUA session dispatch                     |
+| Terminal-product                                      | Rejected     | Terminal prompt and result contract do not implement tasks                    |
+| Scripted-browser, local or provisioned                | Rejected     | Scenario steps drive the participant; no task protocol is consumed            |
+| Synthetic, smoke, meta                                | Rejected     | Lab dispatch does not pass task declarations to these engines                 |
+| Any second or later `actors[]` entry                  | Rejected     | Current runners consume only the first actor; use supported first-actor lanes |
 
 Both registered CUA actors (`openai-computer-use` and `local-agent`) share the CUA
 session loop. Their task support does not depend on which provider chooses actions.

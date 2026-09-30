@@ -694,8 +694,9 @@ export interface SharedWorldSkippedTail {
  * The shared-world evidence block (`humanish.shared-world.v1`). TWO variants discriminated by
  * `topologyMode` (FIX-8 — renamed off `RunBundle.mode` to avoid the dry-run|live collision):
  *
- * - SEQUENTIAL (`topologyMode: "sequential"`, the PoC): `sequence` + an alternating `timeline`
- *   (cp-baseline → turn → cp → … → cp); limits `sequential-only` etc.
+ * - SEQUENTIAL (`topologyMode: "sequential"`): `sequence` + an alternating `timeline`
+ *   (cp-baseline → turn → cp → … → cp); limits `sequential-only` etc. No route writes it since
+ *   0.106.0; verify still reads it so older bundles keep verifying.
  * - CONCURRENT (`topologyMode: "concurrent"`, #164 phase 2): `laneWindows` + `stateSeries` +
  *   `outcomes`; limits `concurrent` etc. NO `timeline`.
  *

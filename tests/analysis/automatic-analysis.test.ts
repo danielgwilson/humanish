@@ -24,7 +24,6 @@ import { runLabPreflight } from "../../src/lab/preflight.js";
 import { parse as parseYaml } from "yaml";
 import { runLab } from "../../src/lab/engine.js";
 import { runCuaActorLab } from "../../src/routes/computer-use/lab.js";
-import { runSharedWorldLab } from "../../src/routes/shared-world/sequential.js";
 import { runConcurrentSharedWorld } from "../../src/routes/shared-world/concurrent.js";
 import { runTerminalProductLab } from "../../src/routes/terminal/lab.js";
 import { runScriptedBrowserLab } from "../../src/routes/scripted-browser.js";
@@ -242,35 +241,32 @@ describe("automatic analysis admission and producer boundary", () => {
       expect(await readdir(cwd)).toEqual([]);
     },
   );
-  it.each([
-    runCuaActorLab,
-    runScriptedBrowserLab,
-    runTerminalProductLab,
-    runSharedWorldLab,
-    runConcurrentSharedWorld,
-  ])("validates direct producer config before hooks", async (runner) => {
-    const base = fixtures.find((row) => row.backend === "cua")!.config;
-    const forbidden = vi.fn(async () => {
-      throw new Error("forbidden hook");
-    });
-    const result = await runner({
-      cwd: path.join(cwd, "absent"),
-      config: { ...base, review: { analysis: { maxCostUsd: 0 } } },
-      dryRun: false,
-      hooks: {
-        env: {},
-        loadDesktopModule: forbidden,
-        runSession: forbidden,
-        buildExecutor: forbidden,
-        buildProvider: forbidden,
-        renderObserverFn: forbidden,
-      },
-    });
-    expect(result.error?.code).toBe("HUMANISH_LAB_ANALYSIS_INVALID");
-    expect(forbidden).not.toHaveBeenCalled();
-    await expect(access(path.join(cwd, "absent"))).rejects.toMatchObject({ code: "ENOENT" });
-  });
-  it.each(["cua", "scripted", "terminal", "shared-world", "concurrent-shared-world"])(
+  it.each([runCuaActorLab, runScriptedBrowserLab, runTerminalProductLab, runConcurrentSharedWorld])(
+    "validates direct producer config before hooks",
+    async (runner) => {
+      const base = fixtures.find((row) => row.backend === "cua")!.config;
+      const forbidden = vi.fn(async () => {
+        throw new Error("forbidden hook");
+      });
+      const result = await runner({
+        cwd: path.join(cwd, "absent"),
+        config: { ...base, review: { analysis: { maxCostUsd: 0 } } },
+        dryRun: false,
+        hooks: {
+          env: {},
+          loadDesktopModule: forbidden,
+          runSession: forbidden,
+          buildExecutor: forbidden,
+          buildProvider: forbidden,
+          renderObserverFn: forbidden,
+        },
+      });
+      expect(result.error?.code).toBe("HUMANISH_LAB_ANALYSIS_INVALID");
+      expect(forbidden).not.toHaveBeenCalled();
+      await expect(access(path.join(cwd, "absent"))).rejects.toMatchObject({ code: "ENOENT" });
+    },
+  );
+  it.each(["cua", "scripted", "terminal", "concurrent-shared-world"])(
     "runLab %s dry-run skips post-run spend exactly once",
     async (backend) => {
       const base = fixtures.find((row) => row.backend === backend)!.config;

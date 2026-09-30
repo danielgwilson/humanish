@@ -1,0 +1,6 @@
+{
+  "schema": "humanish.review.v1",
+  "verdict": "pass",
+  "summary": "Shared-world run (ONE plane, sequential): 2/2 role(s) reached a terminal, engaged verdict; 2 checkpoint delta(s) observed.",
+  "gaps": []
+}

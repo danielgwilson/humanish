@@ -265,9 +265,8 @@ warnings for fields the engine does not consume yet.
 - **Per-lane worlds vs one shared world.** A plain multi-lane computer-use lab
   gives each actor its OWN app instance (independent studies in parallel). Add
   `subject.topology: shared-world` for N actors in ONE world (a lobby, a shared
-  DB, actors seeing each other's changes). `execution.concurrency: 1` on a
-  shared-world lab is the sequential turn-taking variant — one actor at a time,
-  and note comms/email has no wiring there.
+  DB, actors seeing each other's changes). Shared-world participants run at
+  once; `execution.concurrency` must be at least 2 there.
 - **Watching it:** each live lane is its own Observer tile/stream; lanes beyond
   a declared cap start when a slot frees, which on a capped run looks like idle
   tiles — another reason to leave the cap out unless you need it.
@@ -302,8 +301,8 @@ Choose the transport to match the app:
 - **Real AgentMail receiving**: use `comms.email: { connection: agentmail }`.
   Humanish acquires one fresh hosted inbox per participant before desktops start.
   The app sends normally. Requires a configured organization-scoped key and
-  app-url/clone/local-tree hosted computer-use participants; concurrent shared
-  worlds work, sequential shared worlds and local-agent do not. Do not combine
+  app-url/clone/local-tree hosted computer-use participants; shared worlds
+  work, local-agent does not. Do not combine
   connection with capture settings or substitute fresh addresses for existing
   account identities. `allowedOrigins` can name additional trusted link origins.
 
@@ -359,8 +358,7 @@ For app-url/operator-provided subjects, run `humanish comms catch` on a reachabl
 host, point the app's email sends at that catch, and declare
 `comms.email.external.catchBaseUrl` (plus `inboxBaseUrl` if different). A declared
 `authTokenEnv` is an environment variable name, never a credential value.
-Sequential `concurrency: 1` shared-world email remains unwired; do not silently
-change study concurrency to work around that limitation. The in-sandbox catch
+The in-sandbox catch
 needs `python3` (the stock E2B desktop has it).
 Evidence is digest-only (`humanish.comms-thread.v1` — counts and digests, never
 raw mail); the _readable_ proof a persona saw the email is its screenshots of the

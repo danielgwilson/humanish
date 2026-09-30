@@ -1,58 +1,5 @@
 [
   {
-    "name": "shared-clone-sequential",
-    "config": {
-      "schema": "humanish.lab.v2",
-      "id": "task-route-preflight",
-      "scenario": {
-        "mode": "live"
-      },
-      "subject": {
-        "source": "clone",
-        "topology": "shared-world",
-        "repos": [
-          "example-org/collab-app"
-        ],
-        "serve": {
-          "install": "pnpm install",
-          "start": "pnpm start --host 0.0.0.0",
-          "url": "http://127.0.0.1:3000/"
-        },
-        "state": {
-          "checkpoint": [
-            {
-              "name": "state",
-              "command": "printf synthetic-state"
-            }
-          ]
-        }
-      },
-      "actors": [
-        {
-          "type": "openai-computer-use",
-          "mission": "Explore the synthetic study fixture.",
-          "lanes": [
-            {
-              "id": "author",
-              "instruction": "Create a note."
-            },
-            {
-              "id": "reviewer",
-              "instruction": "Review the note."
-            }
-          ]
-        }
-      ],
-      "execution": {
-        "target": "e2b-desktop",
-        "timeoutMs": 60000,
-        "concurrency": 1
-      }
-    },
-    "supported": false,
-    "backend": "shared-world"
-  },
-  {
     "name": "shared-clone-concurrent",
     "config": {
       "schema": "humanish.lab.v2",
@@ -105,56 +52,6 @@
     },
     "supported": false,
     "backend": "concurrent-shared-world"
-  },
-  {
-    "name": "shared-local-tree-sequential",
-    "config": {
-      "schema": "humanish.lab.v2",
-      "id": "task-route-preflight",
-      "scenario": {
-        "mode": "live"
-      },
-      "subject": {
-        "source": "local-tree",
-        "topology": "shared-world",
-        "serve": {
-          "install": "pnpm install",
-          "start": "pnpm start --host 0.0.0.0",
-          "url": "http://127.0.0.1:3000/"
-        },
-        "state": {
-          "checkpoint": [
-            {
-              "name": "state",
-              "command": "printf synthetic-state"
-            }
-          ]
-        }
-      },
-      "actors": [
-        {
-          "type": "openai-computer-use",
-          "mission": "Explore the synthetic study fixture.",
-          "lanes": [
-            {
-              "id": "author",
-              "instruction": "Create a note."
-            },
-            {
-              "id": "reviewer",
-              "instruction": "Review the note."
-            }
-          ]
-        }
-      ],
-      "execution": {
-        "target": "e2b-desktop",
-        "timeoutMs": 60000,
-        "concurrency": 1
-      }
-    },
-    "supported": false,
-    "backend": "shared-world"
   },
   {
     "name": "shared-local-tree-concurrent",
