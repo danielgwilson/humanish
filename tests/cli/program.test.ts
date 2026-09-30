@@ -19,7 +19,7 @@ import { describe, expect, it, afterEach } from "vitest";
 
 import { createProgram } from "../../src/cli/program.js";
 import { formatCuaLabHuman } from "../../src/cli/commands/lab-format.js";
-import { resolveBackendShouldOpen } from "../../src/cli/commands/lab-backends.js";
+import { resolveBackendShouldOpen } from "../../src/cli/commands/lab-backend-open.js";
 import { followObserver } from "../../src/cli/observer-follow.js";
 import { studyFactsFor, writeResult } from "../../src/cli/io.js";
 import * as humanishIndex from "../../src/index.js";
