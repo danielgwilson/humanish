@@ -33,7 +33,7 @@ import {
   type RunSubjectStateStepRecord,
 } from "../../src/run/bundle.js";
 import { CLEANUP_SCHEMA } from "../../src/run/results.js";
-import { cleanupRun, listRuns, readReview } from "../../src/run/manage.js";
+import { cleanupRun, listRuns, readReview } from "../../src/run/stored-runs.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { syntheticPng1x1 } from "../image-fixtures.js";
