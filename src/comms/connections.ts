@@ -2,7 +2,7 @@ import { constants } from "node:fs";
 import { lstat, open, unlink } from "node:fs/promises";
 import path from "node:path";
 import { parse, stringify } from "yaml";
-import { listUserKeys, probeKeySources, type KeyResolutionDeps } from "../key-resolution.js";
+import { listUserKeys, probeKeySources, type KeyResolutionDeps } from "../cli/key-resolution.js";
 import type { CommsCheckResult } from "./setup.js";
 import {
   assertPreparedSelectedOutputDirectory,

@@ -4,7 +4,7 @@ import path from "node:path";
 import { Command } from "commander";
 import { describe, expect, it } from "vitest";
 
-import { withSiblingFlagHint } from "../src/program.js";
+import { withSiblingFlagHint } from "../src/cli/program.js";
 import { doctor } from "../src/run/run.js";
 import { terminalSurfaceMessage } from "../src/tui/contract.js";
 

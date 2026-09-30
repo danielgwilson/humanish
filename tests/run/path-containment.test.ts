@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 
 import { runInit } from "../../src/lab/init.js";
 import { renderObserver, serveObserver } from "../../src/observer/render.js";
-import { createProgram } from "../../src/program.js";
+import { createProgram } from "../../src/cli/program.js";
 import { doctor, listRuns, runDryRun, verifyRun } from "../../src/run/run.js";
 import { prepareRunArtifactPaths, validatePreparedRunArtifactPaths } from "../../src/run-paths.js";
 import { writePreparedRunLatestPointer } from "../../src/selected-output-paths.js";

@@ -13,8 +13,8 @@ import {
   resolveBackendShouldOpen,
   studyFactsFor,
   writeResult,
-} from "../src/program.js";
-import * as humanishIndex from "../src/index.js";
+} from "../../src/cli/program.js";
+import * as humanishIndex from "../../src/index.js";
 
 // process.getuid is POSIX-only and absent under Node's typings on some platforms;
 // treat "no getuid" the same as "not root" (permission fault injection still works).
@@ -1885,7 +1885,7 @@ describe("HUMANISH_DEBUG_HANDLES (#581)", () => {
 
 describe("a taken port at the command boundary (#484)", () => {
   it("is HUMANISH_PORT_IN_USE in the JSON envelope and on stderr, never HUMANISH_UNEXPECTED", async () => {
-    const { PortInUseError } = await import("../src/observer/listen.js");
+    const { PortInUseError } = await import("../../src/observer/listen.js");
     const stdout: string[] = [];
     const stderr: string[] = [];
     const io = {

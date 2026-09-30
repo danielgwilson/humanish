@@ -8,7 +8,7 @@ import {
   readCommsSetup,
   saveCommsConnection,
 } from "../../src/comms/connections.js";
-import { resolveKeyName, setUserKey, userKeyStorePath } from "../../src/key-resolution.js";
+import { resolveKeyName, setUserKey, userKeyStorePath } from "../../src/cli/key-resolution.js";
 
 describe("communication connection setup", () => {
   let cwd: string;

@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { loadEnvFile } from "../src/env-file.js";
+import { loadEnvFile } from "../../src/cli/env-file.js";
 
 describe("env-file loader", () => {
   it("loads env var names without exposing values or overriding existing env", async () => {

@@ -9,7 +9,11 @@ import path from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { formatOrientationHuman, readOrientation, ORIENTATION_SCHEMA } from "../src/orientation.js";
+import {
+  formatOrientationHuman,
+  readOrientation,
+  ORIENTATION_SCHEMA,
+} from "../../src/cli/orientation.js";
 
 let dir: string | undefined;
 afterEach(async () => {

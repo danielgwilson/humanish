@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createProgram } from "../src/program.js";
+import { createProgram } from "../../src/cli/program.js";
 
 // CLIG.dev, "Subcommands": be consistent across subcommands, and do not have ambiguous or
 // similarly-named commands. `humanish run <lab>` and `humanish lab run <lab>` are the SAME

@@ -9,7 +9,7 @@ import { AgentMailReceivingError } from "../../src/comms/agentmail.js";
 import { LAB_CONFIG_SCHEMA, parseLabConfig } from "../../src/lab/config.js";
 import { resolveLabManifest } from "../../src/lab/discover.js";
 import { launchRun } from "../../src/tui/launch.js";
-import { setUserKey } from "../../src/key-resolution.js";
+import { setUserKey } from "../../src/cli/key-resolution.js";
 import type { ReceivingAdapter } from "../../src/comms/receiving-types.js";
 const lab = {
   schema: LAB_CONFIG_SCHEMA,

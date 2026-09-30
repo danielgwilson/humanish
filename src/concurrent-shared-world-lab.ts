@@ -47,7 +47,7 @@ import {
 } from "./analysis/automatic-completion.js";
 import { desktopMediaValidationReason, taskProtocolValidationReason } from "./lab/config.js";
 import { randomBytes } from "node:crypto";
-import { describeMissingKeys } from "./key-resolution.js";
+import { describeMissingKeys } from "./cli/key-resolution.js";
 import {
   beginRunStatus,
   type RunLabProvenance,

@@ -17,7 +17,7 @@ import {
   DEFAULT_OPENAI_CU_REASONING_EFFORT,
 } from "../openai-responses-cu.js";
 import { inspectLabManifest } from "./discover.js";
-import { probeKeySources } from "../key-resolution.js";
+import { probeKeySources } from "../cli/key-resolution.js";
 import { receivingRequiredKey } from "../comms/setup.js";
 
 export const LAB_SUMMARY_SCHEMA = "humanish.lab-summary.v1";

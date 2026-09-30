@@ -63,7 +63,7 @@ import {
   validatePreparedRunArtifactPaths,
   type PreparedRunArtifactPaths,
 } from "../run-paths.js";
-import { probeKeySources } from "../key-resolution.js";
+import { probeKeySources } from "../cli/key-resolution.js";
 import {
   beginRunStatus,
   withRunStatusScope,

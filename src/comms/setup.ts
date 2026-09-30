@@ -4,7 +4,7 @@ import { lstat, open, unlink } from "node:fs/promises";
 import path from "node:path";
 import { parse, stringify } from "yaml";
 import { readCommsConnections } from "./connections.js";
-import { discoverProviderKeys } from "../key-resolution.js";
+import { discoverProviderKeys } from "../cli/key-resolution.js";
 import { AgentMailReceivingError, createAgentMailReceiver } from "./agentmail.js";
 import type { ReceivingAdapter } from "./receiving-types.js";
 import { parseLabConfig } from "../lab/config.js";

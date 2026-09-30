@@ -14,7 +14,7 @@ import {
   telemetryStatePath,
   writeTelemetryState,
   TELEMETRY_NOTICE,
-} from "../src/telemetry.js";
+} from "../../src/cli/telemetry.js";
 
 // Default-on collection is only honest if the promises are enforced rather than written down.
 // humanish is stricter than the Next.js/Vercel convention it follows, because a lab id can name an

@@ -165,7 +165,7 @@ export type {
   DesktopResourceRate,
   ModelRate,
 } from "./pricing.js";
-export { normalizeCliArgv } from "./argv.js";
+export { normalizeCliArgv } from "./cli/argv.js";
 export { CODEX_APP_SERVER_UI_SCHEMA, startCodexAppServerUi } from "./codex-app-server-ui.js";
 export type {
   CodexAppServerUiController,
@@ -433,5 +433,5 @@ export type {
   LabPreflightTarget,
   RunLabPreflightOptions,
 } from "./lab/preflight.js";
-export { CLI_RESPONSE_SCHEMA, createProgram } from "./program.js";
-export type { CliIo, UnexpectedErrorEnvelope } from "./program.js";
+export { CLI_RESPONSE_SCHEMA, createProgram } from "./cli/program.js";
+export type { CliIo, UnexpectedErrorEnvelope } from "./cli/program.js";

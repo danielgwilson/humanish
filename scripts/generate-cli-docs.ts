@@ -3,7 +3,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Command } from "commander";
-import { createProgram } from "../src/program.js";
+import { createProgram } from "../src/cli/program.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const referencePath = resolve(root, "site/content/docs/cli.mdx");

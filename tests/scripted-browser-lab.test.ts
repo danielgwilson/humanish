@@ -16,7 +16,7 @@ import type {
 } from "../src/substrates/e2b/desktop-launch.js";
 import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../src/lab/config.js";
 import { runLab, selectLabBackend } from "../src/lab/engine.js";
-import { createProgram } from "../src/program.js";
+import { createProgram } from "../src/cli/program.js";
 import { digestText } from "../src/redaction.js";
 import { verifyRun } from "../src/run/run.js";
 import { runCuaActorLab } from "../src/cua-actor-lab.js";

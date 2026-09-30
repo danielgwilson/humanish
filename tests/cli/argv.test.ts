@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { normalizeCliArgv } from "../src/argv.js";
+import { normalizeCliArgv } from "../../src/cli/argv.js";
 
 describe("CLI argv normalization", () => {
   it("supports pnpm script proof commands with a literal separator", () => {

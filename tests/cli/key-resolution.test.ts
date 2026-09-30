@@ -14,7 +14,7 @@ import {
   setUserKey,
   unsetUserKey,
   userKeyStorePath,
-} from "../src/key-resolution.js";
+} from "../../src/cli/key-resolution.js";
 
 describe("provider-key discovery (#436)", () => {
   let cwd: string;

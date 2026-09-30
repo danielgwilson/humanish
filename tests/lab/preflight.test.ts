@@ -9,7 +9,7 @@ import type {
   E2BDesktopSandbox,
 } from "../../src/substrates/e2b/desktop-launch.js";
 import { runLabPreflight, type LabPreflightResult } from "../../src/lab/preflight.js";
-import { createProgram } from "../../src/program.js";
+import { createProgram } from "../../src/cli/program.js";
 
 interface CliResult {
   exitCode: number;

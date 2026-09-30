@@ -13,8 +13,8 @@
 // terminal gets prose and an offer to set things up; an agent gets the same facts as stable text,
 // or as JSON with `--json`. Neither is a special case of the other bolted on afterwards.
 
-import { listLabManifests } from "./lab/discover.js";
-import { listRuns } from "./run/run.js";
+import { listLabManifests } from "../lab/discover.js";
+import { listRuns } from "../run/run.js";
 
 export const ORIENTATION_SCHEMA = "humanish.orientation.v1" as const;
 

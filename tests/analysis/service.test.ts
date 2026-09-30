@@ -3,7 +3,7 @@ import path from "node:path";
 import os from "node:os";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AnalysisFetch } from "../../src/analysis/provider.js";
-import { createProgram } from "../../src/program.js";
+import { createProgram } from "../../src/cli/program.js";
 import {
   analyzeStudy,
   correctStudyAnalysis,
