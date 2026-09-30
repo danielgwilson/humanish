@@ -72,7 +72,10 @@ export function addStudyCosts(into: StudyCosts, next: StudyCosts): void {
 /** A read-only, bounded accounting pass. Never validates findings, dispatches, repairs or writes. */
 export async function readStudyCosts(cwd: string, entry: RunIndexEntry): Promise<StudyCostRow> {
   const costs = emptyStudyCosts();
-  const warnings: string[] = [];
+  // Run-cost and analysis-history warnings stay apart: only the second kind makes the history
+  // uncertain, whatever a run-cost warning is named.
+  const runWarnings: string[] = [];
+  const analysisWarnings: string[] = [];
   costs.runEstimatedUsd = isKnownUsd(entry.estimatedCostUsd) ? entry.estimatedCostUsd : null;
   try {
     const prepared = await bindExistingRunArtifactPaths(cwd, entry.runId);
@@ -85,12 +88,12 @@ export async function readStudyCosts(cwd: string, entry: RunIndexEntry): Promise
     try {
       bundle = bytes ? JSON.parse(bytes.toString("utf8")) : null;
     } catch {
-      warnings.push("RUN_COST_SOURCE_UNREADABLE");
+      runWarnings.push("RUN_COST_SOURCE_UNREADABLE");
     }
     if (bundle?.runId !== undefined && bundle.runId !== entry.runId) {
       bundle = null;
       costs.runEstimatedUsd = null;
-      warnings.push("RUN_COST_ID_MISMATCH");
+      runWarnings.push("RUN_COST_ID_MISMATCH");
     }
     if (bundle?.cost !== undefined) {
       costs.runEstimatedUsd = isKnownUsd(bundle.cost?.estimatedTotalUsd)
@@ -98,27 +101,27 @@ export async function readStudyCosts(cwd: string, entry: RunIndexEntry): Promise
         : null;
       if (bundle.cost?.fullyEstimated !== true || costs.runEstimatedUsd === null) {
         costs.incompleteRunEstimates = 1;
-        warnings.push("RUN_COST_PARTIAL_OR_UNKNOWN");
+        runWarnings.push("RUN_COST_PARTIAL_OR_UNKNOWN");
       }
       if (Array.isArray(bundle.streams) && contradictsAccountBilling(bundle.streams, bundle.cost)) {
         costs.runEstimatedUsd = null;
         costs.incompleteRunEstimates = 1;
-        warnings.push("RUN_ACCOUNT_COST_CONTRADICTION");
+        runWarnings.push("RUN_ACCOUNT_COST_CONTRADICTION");
       }
     } else if (entry.mode !== "dry-run" || costs.runEstimatedUsd !== 0) {
       costs.incompleteRunEstimates = 1;
-      warnings.push("RUN_COST_COMPLETENESS_UNKNOWN");
+      runWarnings.push("RUN_COST_COMPLETENESS_UNKNOWN");
     }
 
     const [history, automatic] = await Promise.all([
       readStudyAnalysisAccountingRecords(prepared),
       readAutomaticStudyAnalysisAccounting(prepared),
     ]);
-    warnings.push(...history.warnings);
+    analysisWarnings.push(...history.warnings);
     const records = new Map(history.records.map((record) => [record.id, record]));
-    if (automatic === "unknown") warnings.push("AUTOMATIC_ANALYSIS_ACCOUNTING_UNKNOWN");
+    if (automatic === "unknown") analysisWarnings.push("AUTOMATIC_ANALYSIS_ACCOUNTING_UNKNOWN");
     else if (automatic) {
-      if (automatic.uncertain) warnings.push("AUTOMATIC_ANALYSIS_ACCOUNTING_UNKNOWN");
+      if (automatic.uncertain) analysisWarnings.push("AUTOMATIC_ANALYSIS_ACCOUNTING_UNKNOWN");
       const id = automatic.reused ? automatic.analysisId : automatic.attemptId;
       if (id && (automatic.started || automatic.analysisId !== null) && !records.has(id)) {
         records.set(id, { id, receipt: null, start: null, legacy: false });
@@ -126,7 +129,7 @@ export async function readStudyCosts(cwd: string, entry: RunIndexEntry): Promise
     }
     for (const record of records.values()) {
       costs.analysisAttempts += 1;
-      if (record.legacy) warnings.push("ANALYSIS_LEGACY_REPORT_ACCOUNTING");
+      if (record.legacy) analysisWarnings.push("ANALYSIS_LEGACY_REPORT_ACCOUNTING");
       const usage = record.receipt?.usage;
       if (!usage) {
         costs.analysisUnpricedAttempts += 1;
@@ -147,17 +150,17 @@ export async function readStudyCosts(cwd: string, entry: RunIndexEntry): Promise
     }
     // A skipped/queued automatic job says nothing about historical manual requests.
     // Only final no-dispatch receipts contribute a supported zero to recorded attempts.
-    if (records.size === 0) warnings.push("ANALYSIS_HISTORY_NOT_RECORDED");
-    costs.analysisHistoryUncertainRuns = warnings.some(
-      (warning) => !warning.startsWith("RUN_COST_"),
-    )
-      ? 1
-      : 0;
+    if (records.size === 0) analysisWarnings.push("ANALYSIS_HISTORY_NOT_RECORDED");
+    costs.analysisHistoryUncertainRuns = analysisWarnings.length > 0 ? 1 : 0;
   } catch {
     costs.incompleteRunEstimates = 1;
     costs.analysisHistoryUncertainRuns = 1;
-    warnings.push("STUDY_COST_ACCOUNTING_UNAVAILABLE");
+    analysisWarnings.push("STUDY_COST_ACCOUNTING_UNAVAILABLE");
   }
   costs.estimatedTotalUsd = sumKnown(costs.runEstimatedUsd, costs.analysisEstimatedUsd);
-  return { runId: entry.runId, costs, warnings: [...new Set(warnings)] };
+  return {
+    runId: entry.runId,
+    costs,
+    warnings: [...new Set([...runWarnings, ...analysisWarnings])],
+  };
 }

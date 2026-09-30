@@ -318,6 +318,28 @@ describe("retained study cost accounting", () => {
     }
   });
 
+  it("keeps an account-billing contradiction a run-cost warning, not analysis-history uncertainty", async () => {
+    const prepared = await study();
+    await writeStudyAnalysisExecutionReceipt(prepared, artifact("study-a", "analysis-a", 0.5));
+    // A recorded, priced attempt: the analysis history is certain before the run cost changes.
+    expect((await stats()).totals.costs.analysisHistoryUncertainRuns).toBe(0);
+
+    const file = path.join(prepared.physicalRunRoot, "run.json");
+    const bundle = JSON.parse(await readFile(file, "utf8"));
+    bundle.streams = [
+      { id: "lane-01", actor: { executionProfile: { billing: "account-unknown" } } },
+    ];
+    await writeFile(file, JSON.stringify(bundle));
+    const result = await stats();
+    expect(result.costsByRun[0]?.warnings).toContain("RUN_ACCOUNT_COST_CONTRADICTION");
+    expect(result.totals.costs).toMatchObject({
+      runEstimatedUsd: null,
+      incompleteRunEstimates: 1,
+      analysisEstimatedUsd: 0.5,
+      analysisHistoryUncertainRuns: 0,
+    });
+  });
+
   it("does not treat a copied source bundle's mismatched identity as known run spend", async () => {
     const prepared = await study();
     const file = path.join(prepared.physicalRunRoot, "run.json");
