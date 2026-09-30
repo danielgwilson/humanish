@@ -9,8 +9,8 @@ import {
   isCuaActorDescriptor,
   type CuaActorDescriptor,
 } from "../../actors/registry.js";
-import { isHttpUrl, isLoopbackUrl } from "../../lab/parse-subject.js";
-import { subjectStateInvalidReason } from "../../lab/parse-subject-state.js";
+import { isHttpUrl, isLoopbackUrl } from "../../lab/parse/subject.js";
+import { subjectStateInvalidReason } from "../../lab/parse/subject-state.js";
 import {
   brainOf,
   capsOf,

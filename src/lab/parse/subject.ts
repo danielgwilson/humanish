@@ -1,6 +1,6 @@
-import { normalizeExtraExcludeEntry } from "../run/source-archive.js";
-import { ENV_NAME_PATTERN, invalid, isRecord, posInt, str, strList } from "./parse-values.js";
-import { parseEnvValues, parseState, subjectStateInvalidReason } from "./parse-subject-state.js";
+import { normalizeExtraExcludeEntry } from "../../run/source-archive.js";
+import { ENV_NAME_PATTERN, invalid, isRecord, posInt, str, strList } from "./values.js";
+import { parseEnvValues, parseState, subjectStateInvalidReason } from "./subject-state.js";
 import type {
   LabConfigParseFailure,
   LabSubject,
@@ -8,7 +8,7 @@ import type {
   LabSubjectLocalTree,
   LabSubjectProduct,
   LabSubjectServe,
-} from "./types.js";
+} from "../types.js";
 
 export function parseSubject(
   raw: unknown,

@@ -1,6 +1,6 @@
 import type { ActorCapabilities } from "../actors/contract.js";
 import { actorRegistry } from "../actors/registry.js";
-import { isLoopbackUrl } from "./parse-subject.js";
+import { isLoopbackUrl } from "./parse/subject.js";
 import type { LabConfig } from "./types.js";
 
 // Hard cap on fan-out lanes (per the ratified design). No HUMANISH_MAX_LANES escape above this

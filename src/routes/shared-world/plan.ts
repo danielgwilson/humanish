@@ -13,8 +13,8 @@ import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
 import { brainOf, capsOf, desktopRequirements, isNonEmpty, planBase } from "../../lab/plan-base.js";
 import { sharedWorldSeats } from "../../lab/plan-participants.js";
 import type { SharedWorldPlan, SharedWorldPlane } from "../../lab/plan-types.js";
-import { PUBLIC_TARGET_OWNER_PATTERN } from "../../lab/parse-subject.js";
-import { REPO_SLUG_PATTERN } from "../../lab/parse-values.js";
+import { PUBLIC_TARGET_OWNER_PATTERN } from "../../lab/parse/subject.js";
+import { REPO_SLUG_PATTERN } from "../../lab/parse/values.js";
 import type { LabConfig } from "../../lab/types.js";
 import {
   concurrentSharedWorldValidationReason,
