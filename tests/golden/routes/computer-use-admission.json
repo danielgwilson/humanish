@@ -1,0 +1,1158 @@
+{
+  "invalid analysis": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "dryRun": true,
+    "runId": "not-created",
+    "appUrl": "http://127.0.0.1:3000/",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_LAB_ANALYSIS_INVALID",
+      "message": "review.analysis must be false or a mapping containing only provider, maxCostUsd, model, question, timeoutMs and maxOutputTokens."
+    }
+  },
+  "tasks on a second actor": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "dryRun": true,
+    "runId": "not-created",
+    "appUrl": "http://127.0.0.1:3000/",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_LAB_TASKS_UNSUPPORTED",
+      "message": "actors[1].tasks is unsupported: current runners consume only actors[0]. Use the first actor's supported CUA lanes for a task protocol."
+    }
+  },
+  "unregistered actor": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "not-an-actor",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED",
+      "message": "actors[0].type \"not-an-actor\" is not a registered computer-use actor."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "media with firefox": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "execution.desktop.media requires Chrome or Chromium; Firefox cannot receive the declared synthetic capture device. Set execution.desktop.browser: chrome or chromium."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "invalid output limit": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "actors[0].maxOutputTokens must be a positive safe integer."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "scenario dollar cap": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "scenario.caps.maxUsd (1) does not cap a computer-use lab: this route stops on execution.caps.maxUsd. Move the value to execution.caps.maxUsd; scenario.caps applies only to terminal-product labs."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "output limit with a caller provider": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "maxOutputTokens cannot be enforced by a custom runSession/provider/executor route."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "real receiving with local-agent": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "local-agent",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "Real email receiving is unavailable for local-agent: its host process does not isolate the inbox management credential. Use a hosted first-party computer-use actor."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "in-process real receiving": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "Real email receiving requires hosted participant desktops."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "in-process media": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "execution.desktop.media is not provisioned by a caller-supplied executor. Remove the declaration or use a hosted computer-use browser lane."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "in-process recording": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "execution.desktop.recording is not provisioned by a caller-supplied executor."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "clone on the local target": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "clone subjects require `execution.target: e2b-desktop` (got \"local\"): the lab clones and serves the repo inside a hosted desktop sandbox. `execution.target: local` applies to app-url and local-app subjects."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "clone without serve": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "clone subjects on the computer-use route require `subject.serve` (start + url) — the lab serves the app in-sandbox."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "local-tree without serve": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "local-tree subjects on the computer-use route require `subject.serve` (start + url): the lab packs and serves the working tree in-sandbox."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "state on app-url": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "`subject.state` applies only to clone subjects or local-tree subjects (the lab seeds the state it serves)."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "public app url": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "https://example.com/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_UNSAFE",
+      "message": "subject.appUrl and any actors[0].lanes[].target entries must be loopback (127.0.0.1 or localhost) unless policies.allowPublicTargets is set for an app-url subject."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "executor without provider": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_EXECUTOR_NO_PROVIDER",
+      "message": "cuaHooks.buildExecutor requires cuaHooks.buildProvider — a state-driven executor returns no screenshot, so it must be paired with a NON-vision provider (the default OpenAI computer-use provider is vision-based and would fail closed)."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "local-app without executor": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR",
+      "message": "subject.source: local-app requires a library caller to supply cuaHooks.buildExecutor + buildProvider; there is no built-in driver for an in-process JS contract. (Drive the app via runLab(..., { cuaHooks: { buildExecutor, buildProvider } }).)"
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "local browser without a runtime": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR",
+      "message": "Local browser studies require a configured local desktop runtime."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "lanes and count": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_FANOUT_INVALID",
+      "message": "Declare EITHER actors[0].count (a homogeneous lane count) OR actors[0].lanes (a differentiated roster), not both."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "sandbox deadline": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "execution.timeoutMs 55m derives a 65m sandbox deadline, and a sandbox may not live longer than 60m. The deadline is the session budget plus 10m of provisioning and teardown headroom. Lower execution.timeoutMs to at most 50m, or set execution.desktop.sandboxTimeoutMs explicitly."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "shared-world topology": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "subject.topology: shared-world labs run every seat against one shared app on the shared-world route; runCuaActorLab runs independent lanes. Run the lab with runLab or runConcurrentSharedWorld."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "in-process clone subject": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "cuaHooks.buildExecutor drives subject.appUrl in this process, and a clone subject needs the hosted desktop the in-process route never creates. Use an app-url or local-app subject with buildExecutor, or remove buildExecutor to run on a hosted desktop."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "in-process desktop-cli without a product": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "cuaHooks.buildExecutor drives subject.appUrl in this process, and a desktop-cli subject needs the hosted desktop the in-process route never creates. Use an app-url or local-app subject with buildExecutor, or remove buildExecutor to run on a hosted desktop."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "desktop-cli without a product": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "desktop-cli subjects need `subject.product.name` — the CLI the participant is being asked to use."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "count override above the cap": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_FANOUT_INVALID",
+      "message": "Computer-use fan-out is capped at 16 lanes (resolved 17); N concurrent paid desktops is real spend."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "in-process fan-out": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_FANOUT_INVALID",
+      "message": "Multi-lane fan-out is not supported on the in-process route (cuaHooks.buildExecutor) — fan-out provisions one independent E2B desktop per lane, which the in-process route deliberately skips. Run a single in-process lane, or fan out on the E2B route."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "live without keys": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": false,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_KEYS_MISSING",
+      "message": "Live computer-use labs need OPENAI_API_KEY and E2B_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: OPENAI_API_KEY: run `humanish keys set openai`; E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_source_unavailable"
+    }
+  },
+  "invalid analysis and tasks on a second actor": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "dryRun": true,
+    "runId": "not-created",
+    "appUrl": "http://127.0.0.1:3000/",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_LAB_ANALYSIS_INVALID",
+      "message": "review.analysis must be false or a mapping containing only provider, maxCostUsd, model, question, timeoutMs and maxOutputTokens."
+    }
+  },
+  "tasks on a second actor and unregistered actor": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "not-an-actor",
+    "dryRun": true,
+    "runId": "not-created",
+    "appUrl": "http://127.0.0.1:3000/",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_LAB_TASKS_UNSUPPORTED",
+      "message": "actors[1].tasks is unsupported: current runners consume only actors[0]. Use the first actor's supported CUA lanes for a task protocol."
+    }
+  },
+  "unregistered actor and media with firefox": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "not-an-actor",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED",
+      "message": "actors[0].type \"not-an-actor\" is not a registered computer-use actor."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "media with firefox and invalid output limit": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "execution.desktop.media requires Chrome or Chromium; Firefox cannot receive the declared synthetic capture device. Set execution.desktop.browser: chrome or chromium."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "invalid output limit and scenario dollar cap": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "actors[0].maxOutputTokens must be a positive safe integer."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "scenario dollar cap and output limit with a caller provider": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "scenario.caps.maxUsd (1) does not cap a computer-use lab: this route stops on execution.caps.maxUsd. Move the value to execution.caps.maxUsd; scenario.caps applies only to terminal-product labs."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "output limit with a caller provider and in-process real receiving": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "maxOutputTokens cannot be enforced by a custom runSession/provider/executor route."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "real receiving with local-agent and in-process real receiving": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "local-agent",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "Real email receiving is unavailable for local-agent: its host process does not isolate the inbox management credential. Use a hosted first-party computer-use actor."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "in-process real receiving and in-process media": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "Real email receiving requires hosted participant desktops."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "in-process media and in-process recording": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "execution.desktop.media is not provisioned by a caller-supplied executor. Remove the declaration or use a hosted computer-use browser lane."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "in-process recording and clone on the local target": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "execution.desktop.recording is supported only on independent computer-use desktop lanes. Remove the declaration or select a supported route."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "clone on the local target and clone without serve": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "clone subjects require `execution.target: e2b-desktop` (got \"local\"): the lab clones and serves the repo inside a hosted desktop sandbox. `execution.target: local` applies to app-url and local-app subjects."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "clone without serve and public app url": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "clone subjects on the computer-use route require `subject.serve` (start + url) — the lab serves the app in-sandbox."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "local-tree without serve and public app url": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "local-tree subjects on the computer-use route require `subject.serve` (start + url): the lab packs and serves the working tree in-sandbox."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "state on app-url and public app url": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "https://example.com/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "`subject.state` applies only to clone subjects or local-tree subjects (the lab seeds the state it serves)."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "public app url and executor without provider": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "https://example.com/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_UNSAFE",
+      "message": "subject.appUrl and any actors[0].lanes[].target entries must be loopback (127.0.0.1 or localhost) unless policies.allowPublicTargets is set for an app-url subject."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "executor without provider and local-app without executor": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_EXECUTOR_NO_PROVIDER",
+      "message": "cuaHooks.buildExecutor requires cuaHooks.buildProvider — a state-driven executor returns no screenshot, so it must be paired with a NON-vision provider (the default OpenAI computer-use provider is vision-based and would fail closed)."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "local-app without executor and lanes and count": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR",
+      "message": "subject.source: local-app requires a library caller to supply cuaHooks.buildExecutor + buildProvider; there is no built-in driver for an in-process JS contract. (Drive the app via runLab(..., { cuaHooks: { buildExecutor, buildProvider } }).)"
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "local browser without a runtime and lanes and count": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR",
+      "message": "Local browser studies require a configured local desktop runtime."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "lanes and count and sandbox deadline": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_FANOUT_INVALID",
+      "message": "Declare EITHER actors[0].count (a homogeneous lane count) OR actors[0].lanes (a differentiated roster), not both."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "sandbox deadline and count override above the cap": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "execution.timeoutMs 55m derives a 65m sandbox deadline, and a sandbox may not live longer than 60m. The deadline is the session budget plus 10m of provisioning and teardown headroom. Lower execution.timeoutMs to at most 50m, or set execution.desktop.sandboxTimeoutMs explicitly."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "sandbox deadline and shared-world topology": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "execution.timeoutMs 55m derives a 65m sandbox deadline, and a sandbox may not live longer than 60m. The deadline is the session budget plus 10m of provisioning and teardown headroom. Lower execution.timeoutMs to at most 50m, or set execution.desktop.sandboxTimeoutMs explicitly."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "shared-world topology and count override above the cap": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "subject.topology: shared-world labs run every seat against one shared app on the shared-world route; runCuaActorLab runs independent lanes. Run the lab with runLab or runConcurrentSharedWorld."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "shared-world topology and in-process clone subject": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "subject.topology: shared-world labs run every seat against one shared app on the shared-world route; runCuaActorLab runs independent lanes. Run the lab with runLab or runConcurrentSharedWorld."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "in-process clone subject and count override above the cap": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "cuaHooks.buildExecutor drives subject.appUrl in this process, and a clone subject needs the hosted desktop the in-process route never creates. Use an app-url or local-app subject with buildExecutor, or remove buildExecutor to run on a hosted desktop."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "desktop-cli without a product and count override above the cap": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "desktop-cli subjects need `subject.product.name` — the CLI the participant is being asked to use."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "count override above the cap and in-process fan-out": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_FANOUT_INVALID",
+      "message": "Computer-use fan-out is capped at 16 lanes (resolved 17); N concurrent paid desktops is real spend."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "in-process fan-out and live without keys": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": false,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_FANOUT_INVALID",
+      "message": "Multi-lane fan-out is not supported on the in-process route (cuaHooks.buildExecutor) — fan-out provisions one independent E2B desktop per lane, which the in-process route deliberately skips. Run a single in-process lane, or fan out on the E2B route."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_source_unavailable"
+    }
+  }
+}

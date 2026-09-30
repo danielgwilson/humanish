@@ -2577,17 +2577,33 @@
       "message": "`subject.product.name` must be a public-safe token starting with a letter or digit (/^[A-Za-z0-9][A-Za-z0-9_.-]*$/)."
     },
     "runLab": {
-      "runs": true,
+      "runs": false,
+      "calls": {
+        "desktop": 0,
+        "executor": 0,
+        "provider": 0,
+        "subprocess": 0
+      },
       "result": {
         "backend": "cua",
-        "ok": true,
-        "plan": {
-          "laneCount": 1,
-          "concurrency": 1,
-          "waves": 1,
-          "lanes": [
-            "lane-01"
-          ]
+        "schema": "humanish.cua-lab-result.v2",
+        "ok": false,
+        "cwd": "[cwd]",
+        "labId": "adm-cudesktopcli",
+        "actor": "openai-computer-use",
+        "appUrl": "",
+        "dryRun": true,
+        "runId": "not-created",
+        "lanes": [],
+        "warnings": [],
+        "error": {
+          "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+          "message": "desktop-cli subjects need `subject.product.name` — the CLI the participant is being asked to use."
+        },
+        "automaticAnalysisTrigger": "default",
+        "automaticAnalysis": {
+          "state": "skipped",
+          "reason": "analysis_dry_run"
         }
       }
     },
@@ -3733,17 +3749,32 @@
     },
     "runner": {
       "runner": "cua",
-      "runs": true,
+      "runs": false,
+      "calls": {
+        "desktop": 0,
+        "executor": 0,
+        "provider": 0,
+        "subprocess": 0
+      },
       "result": {
-        "ok": true,
-        "plan": {
-          "laneCount": 2,
-          "concurrency": 2,
-          "waves": 1,
-          "lanes": [
-            "author",
-            "reviewer"
-          ]
+        "schema": "humanish.cua-lab-result.v2",
+        "ok": false,
+        "cwd": "[cwd]",
+        "labId": "adm-sharedprovisioned",
+        "actor": "openai-computer-use",
+        "appUrl": "http://127.0.0.1:3000/",
+        "dryRun": true,
+        "runId": "not-created",
+        "lanes": [],
+        "warnings": [],
+        "error": {
+          "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+          "message": "subject.topology: shared-world labs run every seat against one shared app on the shared-world route; runCuaActorLab runs independent lanes. Run the lab with runLab or runConcurrentSharedWorld."
+        },
+        "automaticAnalysisTrigger": "default",
+        "automaticAnalysis": {
+          "state": "skipped",
+          "reason": "analysis_dry_run"
         }
       }
     }
@@ -3895,8 +3926,8 @@
         "ok": true,
         "plan": {
           "laneCount": 3,
-          "concurrency": 2,
-          "waves": 2,
+          "concurrency": 3,
+          "waves": 1,
           "lanes": [
             "lane-01",
             "lane-02",

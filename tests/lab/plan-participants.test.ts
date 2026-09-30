@@ -10,12 +10,12 @@ import { fileURLToPath } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
 
 import { parseLabConfig } from "../../src/lab/config.js";
+import { routeOf } from "../../src/lab/plan.js";
 import {
   computerUseParticipants,
-  routeOf,
   sharedWorldSeats,
   type ComputerUseParticipant,
-} from "../../src/lab/plan.js";
+} from "../../src/lab/plan-participants.js";
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/lab/types.js";
 import { planCuaLanes } from "../../src/routes/computer-use/lane-plan.js";
 import type { CuaLaneSpec } from "../../src/routes/computer-use/types.js";
@@ -172,7 +172,6 @@ describe("computerUseParticipants", () => {
         projectRoot: await prepareSelectedOutputDirectory(path.dirname(cwd), cwd),
         env: {},
         dryRun: true,
-        inProcessRoute: false,
         ...(countOverride === undefined ? {} : { countOverride }),
       });
       if (!lanes.ok) throw new Error(`${name}: ${lanes.message}`);

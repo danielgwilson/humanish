@@ -32,8 +32,6 @@ import path from "node:path";
 import { completeAutomaticAnalysis } from "../../analysis/automatic-completion.js";
 import { runScope, type RunScope } from "../../run/run.js";
 import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
-import { taskProtocolValidationReason } from "../../lab/validation.js";
-import { actorRegistry, isCuaActorDescriptor } from "../../actors/registry.js";
 import { applyBrowserAdapterHooks } from "../../lab/adapter-extension.js";
 import { externalInboxUrl } from "../../comms/sandbox-catch.js";
 import type { LabConfig, LabSubjectState } from "../../lab/types.js";
@@ -69,7 +67,14 @@ import {
   runAllCuaLanes,
   subjectProvenanceArg,
 } from "./lanes.js";
-import { cuaLabRejection, cuaRoute, liveCuaRejection, type CuaRoute } from "./preflight.js";
+import { liveCuaRejection } from "./preflight.js";
+import {
+  cuaDescriptorOf,
+  cuaRoute,
+  planComputerUseLab,
+  type ComputerUseRefusal,
+  type CuaRoute,
+} from "./plan.js";
 import { startLiveTraceFlush, trackRuntimeStreams, type LiveTraceFlush } from "./live-flush.js";
 import { drainExternalComms } from "./external-comms.js";
 import { buildCuaRunBundle, type CuaRunBundleBase } from "./assemble.js";
@@ -102,11 +107,16 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
 async function runCuaActorLabWithSecrets(
   options: RunCuaActorLabOptions,
 ): Promise<CuaActorLabResult> {
-  const analysisReason = resolveAutomaticAnalysis(options.config.review?.analysis);
-  const tasksReason = analysisReason.ok
-    ? taskProtocolValidationReason(options.config, true)
-    : analysisReason.message;
-  if (tasksReason)
+  // planComputerUseLab makes every configuration refusal, in the order this route always has.
+  const planned = planComputerUseLab(options.config, {
+    dryRun: options.dryRun,
+    ...(options.lab === undefined ? {} : { lab: options.lab }),
+    ...(options.hooks === undefined ? {} : { hooks: options.hooks }),
+    ...(options.countOverride === undefined ? {} : { countOverride: options.countOverride }),
+    ...(options.rerun === undefined ? {} : { rerun: options.rerun }),
+  });
+  const refusal = planned.ok ? undefined : planned.refusal;
+  if (refusal?.stage === "before-scope")
     return {
       schema: CUA_ACTOR_LAB_SCHEMA,
       ok: false,
@@ -118,15 +128,12 @@ async function runCuaActorLabWithSecrets(
       appUrl: options.config.subject.appUrl ?? options.config.subject.serve?.url ?? "",
       lanes: [],
       warnings: [],
-      error: {
-        code: analysisReason.ok
-          ? "HUMANISH_LAB_TASKS_UNSUPPORTED"
-          : "HUMANISH_LAB_ANALYSIS_INVALID",
-        message: tasksReason,
-      },
+      error: { code: refusal.code, message: refusal.message },
     };
   const analysis = resolveAutomaticAnalysis(options.config.review?.analysis);
-  const { result, finished } = await runScope((scope) => runCuaActorLabInScope(options, scope));
+  const { result, finished } = await runScope((scope) =>
+    runCuaActorLabInScope(options, refusal, scope),
+  );
   return completeAutomaticAnalysis(
     result,
     finished,
@@ -139,6 +146,7 @@ async function runCuaActorLabWithSecrets(
 
 async function runCuaActorLabInScope(
   options: RunCuaActorLabOptions,
+  refusal: ComputerUseRefusal | undefined,
   scope: RunScope,
 ): Promise<CuaActorLabResult> {
   const { config, dryRun } = options;
@@ -185,18 +193,12 @@ async function runCuaActorLabInScope(
     error: { code, message },
   });
 
-  // Resolve the actor through the registry — the parse layer validated this, but the engine fails
-  // closed rather than trusting a config that arrived through another door.
-  const descriptor = actorRegistry[actorType as keyof typeof actorRegistry];
-  if (!descriptor || !isCuaActorDescriptor(descriptor)) {
-    return fail(
-      "HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED",
-      `actors[0].type "${actorType}" is not a registered computer-use actor.`,
-    );
-  }
+  // The other refusals come back from inside the run scope, after the cwd checks. The lane cap and
+  // in-process fan-out wait until planCuaLanes has read the committed personas.
+  if (refusal !== undefined && refusal.stage !== "after-personas")
+    return fail(refusal.code, refusal.message, refusal.actor);
+  const descriptor = cuaDescriptorOf(actorType);
   const runSession = hooks.runSession ?? descriptor.runSession;
-  const rejection = cuaLabRejection(config, hooks, route);
-  if (rejection) return fail(rejection.code, rejection.message, descriptor.id);
   // Adopter-hosted comms plane on the app-url route (#380): humanish provisions no subject here,
   // so it cannot host a catch — the OPERATOR runs one, and humanish still does every other part
   // of the funnel: tells each persona its address and inbox URL, drains the catch over HTTP after
@@ -212,7 +214,7 @@ async function runCuaActorLabInScope(
     projectRoot,
     env,
     dryRun,
-    inProcessRoute,
+    ...(refusal === undefined ? {} : { refusal }),
     ...(options.countOverride === undefined ? {} : { countOverride: options.countOverride }),
     ...(options.rerun === undefined ? {} : { rerun: options.rerun }),
   });
@@ -271,6 +273,27 @@ async function runCuaActorLabInScope(
     if (rejection) return fail(rejection.code, rejection.message, descriptor.id);
   }
 
+  // Pack the working tree ONCE per run, on the host, BEFORE any sandbox or provider call: every
+  // fan-out lane below uploads this SAME archive, so one archiveSha256 describes every lane's
+  // digest. Dry-run packs nothing (no fs side effects; the contract bundle carries no
+  // archiveSha256). A packing failure fails the run closed here, before any sandbox is
+  // created and before the run directory exists.
+  let localTreeArchive: LocalTreeArchive | undefined;
+  let localTreeArchiveBuffer: ArrayBuffer | undefined;
+  if (localTreeRoute && !dryRun) {
+    try {
+      const packed = await packRunLocalTree(hooks, config, cwd);
+      localTreeArchive = packed.archive;
+      localTreeArchiveBuffer = packed.buffer;
+    } catch (error) {
+      return fail(
+        "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+        `local-tree packing failed: ${redactText(scrubKnownValues(toErrorMessage(error)))}`,
+        descriptor.id,
+      );
+    }
+  }
+
   // The run's status record exists from here on, so anything watching the runs directory can
   // tell which lab this is and that it is alive. The fail-closed returns below leave it finished
   // with no outcome when the scope closes; a crash leaves it stale, which reads as interrupted.
@@ -299,27 +322,6 @@ async function runCuaActorLabInScope(
     humanishSource: "present",
     packageName: "humanish",
   });
-
-  // Pack the working tree ONCE per run, on the host, BEFORE any sandbox or provider call: every
-  // fan-out lane below uploads this SAME archive, so one archiveSha256 describes every lane's
-  // digest. Dry-run packs nothing (no fs side effects; the contract bundle carries no
-  // archiveSha256). A packing failure fails the run closed here, before any sandbox is
-  // created.
-  let localTreeArchive: LocalTreeArchive | undefined;
-  let localTreeArchiveBuffer: ArrayBuffer | undefined;
-  if (localTreeRoute && !dryRun) {
-    try {
-      const packed = await packRunLocalTree(hooks, config, cwd);
-      localTreeArchive = packed.archive;
-      localTreeArchiveBuffer = packed.buffer;
-    } catch (error) {
-      return fail(
-        "HUMANISH_CUA_LAB_SUBJECT_INVALID",
-        `local-tree packing failed: ${redactText(scrubKnownValues(toErrorMessage(error)))}`,
-        descriptor.id,
-      );
-    }
-  }
 
   // Live-trace flush seam (#441): assigned by the attached-Observer block below when a live
   // run has an in-progress bundle to grow; lanes call it through deps.onTrace. Declared here
@@ -466,11 +468,15 @@ async function runCuaActorLabInScope(
       if (receiving) deps.receiving = receiving;
     } catch {
       await stopLiveFlush?.();
-      return fail(
-        "HUMANISH_CUA_LAB_SUBJECT_INVALID",
-        "Real email setup failed before desktop allocation. Run humanish comms check --online and humanish comms recover to inspect authentication and pending cleanup.",
-        descriptor.id,
-      );
+      // The run exists by now, so the refusal names it rather than "not-created".
+      return {
+        ...fail(
+          "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+          "Real email setup failed before desktop allocation. Run humanish comms check --online and humanish comms recover to inspect authentication and pending cleanup.",
+          descriptor.id,
+        ),
+        runId,
+      };
     }
   }
   // Run lanes (dry-run runs none). In-process is always one lane.

@@ -25,7 +25,8 @@ import {
 import type { AdapterScorerModule } from "./adapter-scorer-loader.js";
 import { HOOK_MEMBERS, withHookOverrides } from "./hook-bag.js";
 import type { LabOutcome, RunLabOptions } from "./engine.js";
-import { computerUseParticipants, resolveLabDryRun, type LabRoute } from "./plan.js";
+import { resolveLabDryRun, type LabRoute } from "./plan.js";
+import { computerUseParticipants } from "./plan-participants.js";
 import type { LabConfig } from "./types.js";
 
 /** One participant, as the options' callbacks see it. */

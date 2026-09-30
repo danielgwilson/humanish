@@ -66,7 +66,11 @@ import {
 } from "./parse-execution.js";
 import { parseSubject } from "./parse-subject.js";
 import { invalid, isRecord, optionalStr, str } from "./parse-values.js";
-import { effectiveComputerUseLaneIds, routesToComputerUse } from "./routing.js";
+import {
+  effectiveComputerUseLaneIds,
+  routesToComputerUse,
+  routesToSharedWorld,
+} from "./routing.js";
 import {
   ID_PATTERN,
   LAB_CONFIG_SCHEMA,
@@ -176,15 +180,14 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
   const scenarioCapsReason = scenarioCapsValidationReason(config);
   if (scenarioCapsReason) return invalid(scenarioCapsReason);
 
-  // All-parallel default (#350): a multi-seat computer-use lab that does not declare
-  // execution.concurrency runs EVERY seat at once — the declared field is a cap the author chose,
-  // never a mode. A throttle default silently turned "N actors live" into waves of 3 in the field;
-  // total sessions and spend are identical either way, only simultaneity differs, so the default
-  // follows the author's roster. Resolved here at parse time so routing, validation, warnings,
-  // and both engines all see one explicit number.
+  // All-parallel default (#350): a multi-seat lab that does not declare execution.concurrency runs
+  // every seat at once; the declared field is a cap the author chose, never a mode. Independent
+  // computer-use lanes resolve that default from the final seat count when they plan, after any
+  // --count override, so the parser leaves it unset for them. A shared world's roster is fixed, so
+  // its default is filled here for the envelopes and warnings that read the parsed config.
   {
     const seats = config.actors[0]?.lanes?.length ?? config.actors[0]?.count ?? 1;
-    if (seats > 1 && config.execution?.concurrency === undefined && routesToComputerUse(config)) {
+    if (seats > 1 && config.execution?.concurrency === undefined && routesToSharedWorld(config)) {
       config.execution = { ...config.execution, concurrency: seats };
     }
   }

@@ -9,7 +9,7 @@ import type {
   ComputerUseParticipant,
   ExternalPublicSeat,
   ProvisionedSeat,
-} from "../../src/lab/plan.js";
+} from "../../src/lab/plan-participants.js";
 import type {
   AppUrlSubject,
   ComputerUseRunner,

@@ -93,6 +93,8 @@ describe("computer-use email receiving setup failure", () => {
     expect(analysis).not.toHaveBeenCalled();
     const runsRoot = path.join(cwd, ".humanish", "runs");
     const [runId] = (await readdir(runsRoot)).filter((entry) => entry !== "latest.json");
+    // The refusal names the run it left behind.
+    expect(result.runId).toBe(runId);
     const runDir = path.join(runsRoot, runId!);
     const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8"));
     expect(status.state).toBe("finished");
