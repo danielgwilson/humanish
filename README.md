@@ -3,7 +3,7 @@
 Synthetic user research for apps, CLIs, and agent-facing product flows.
 Open-source and public-safe.
 
-Humanish runs studies. Realistic synthetic participants, each with its own
+humanish runs studies. Realistic synthetic participants, each with its own
 goals, patience, and skill, actually use your product on isolated desktops while
 you watch. A study leaves verifiable evidence: screenshots, action traces,
 per-task completion funnels, participant outcomes with the denominator
@@ -36,13 +36,13 @@ and 0 of 6 ([receipt](docs/goals/computer-use-actor/receipts/persona-axis-phone-
 Planted defects are more legible than real ones and the largest cell is six runs;
 read these as what the machinery found, not as rates for your users.
 
-![Humanish Observer grid of a live four-persona drawDB study: four completed lanes, each showing its final full-desktop screenshot and outcome](https://unpkg.com/humanish@0.16.0/docs/assets/humanish-drawdb-hero.png)
+![humanish Observer grid of a live four-persona drawDB study: four completed lanes, each showing its final full-desktop screenshot and outcome](https://unpkg.com/humanish@0.16.0/docs/assets/humanish-drawdb-hero.png)
 
 An earlier study, kept here because the image ships in the npm package: four
 personas on [drawDB](https://github.com/drawdb-io/drawdb), a public open-source
 database diagram editor, driven against a commit-pinned local checkout. Every participant
 ran a real computer-use session on a hosted desktop; the captions are each persona's
-own final report. drawDB is the application studied; it is not a Humanish adopter or endorser.
+own final report. drawDB is the application studied; it is not a humanish adopter or endorser.
 
 [Quickstart](https://humanish.dev/docs) · [Study your app](https://humanish.dev/docs/your-app) · [What a study costs](https://humanish.dev/docs/what-a-study-costs) · [Trust boundaries](https://humanish.dev/docs/trust-boundaries) · [CLI reference](https://humanish.dev/docs/cli) · [Limits and evidence](https://humanish.dev/failure-modes)
 
@@ -55,7 +55,7 @@ npm install --save-dev humanish
 ```
 
 `@e2b/desktop` is the optional peer for live hosted desktops. Install it alongside
-Humanish when choosing that route (`npm install --save-dev @e2b/desktop`) so the
+humanish when choosing that route (`npm install --save-dev @e2b/desktop`) so the
 CLI can resolve it; a one-shot `npx humanish@latest` can miss the peer. The keyless
 preview and local-browser setup need only `humanish`.
 
@@ -69,7 +69,7 @@ Choose how the participant runs:
 | [`local-agent`](https://humanish.dev/docs/local-agents)           | Codex or Claude Code's own login      | `E2B_API_KEY` + desktop SDK                          | Still needs `OPENAI_API_KEY`; skipped without it |
 
 A Codex ChatGPT login can power a `local-agent` participant. It does not
-authenticate Humanish's OpenAI API requests. Choose the actor explicitly in
+authenticate humanish's OpenAI API requests. Choose the actor explicitly in
 your lab; installing Codex does not change an `openai-computer-use` lab.
 
 For local browsers, install only `humanish` and follow the
@@ -205,7 +205,7 @@ cancellation, and failure behavior.
 
 ## Public-Safety Boundary
 
-Humanish is designed for public repositories and public issue queues. The
+humanish is designed for public repositories and public issue queues. The
 boundary is three planks, each enforced where it actually holds:
 
 **1. This repo and the published package are kept public-safe by CI.** Every
@@ -214,7 +214,7 @@ allowlist, over both tracked files and the packed npm payload) plus a
 full-history gitleaks scan. That protects what we ship; it does not scan your
 repo.
 
-**2. Persisted text is scrubbed for known values and secret patterns.** Humanish
+**2. Persisted text is scrubbed for known values and secret patterns.** humanish
 uses literal matching for provisioned secret values and pattern redaction for
 secret-shaped text in logs, errors, and model narration. Environment provenance
 records variable names. These checks have coverage limits: unknown values,
@@ -272,7 +272,7 @@ from the shipped CLI in the [command reference](https://humanish.dev/docs/cli).
 | ------- | ----------------------------------------------------------------------------------------- |
 | `0`     | Success.                                                                                  |
 | `1`     | Commander usage error: unknown command, unknown option, or a missing/invalid argument.    |
-| `2`     | Humanish domain or validation failure. Check the JSON envelope's `error.code` for detail. |
+| `2`     | humanish domain or validation failure. Check the JSON envelope's `error.code` for detail. |
 | `128+N` | Terminated by signal `N`: `130` for SIGINT, `143` for SIGTERM, `129` for SIGHUP.          |
 
 ## The Terminal Surface
@@ -304,7 +304,7 @@ fresh hosted inbox.
 
 Mobile viewport and touch flags do not certify gesture equivalence. The
 [2026-09-05 input-conformance correction](docs/goals/computer-use-actor/receipts/mobile-input-conformance-2026-09-05.md)
-qualifies the historical results from phone-sized participants: they describe Humanish's
+qualifies the historical results from phone-sized participants: they describe humanish's
 measured input path, not established physical-device app behavior.
 
 ## Drive an already-running local app
@@ -330,7 +330,7 @@ show a completed two-participant study and a reported keyboard-accessibility fin
 
 ## Telemetry
 
-Humanish collects anonymous command usage by default, excluding labs, subjects,
+humanish collects anonymous command usage by default, excluding labs, subjects,
 personas, paths, and evidence. `humanish telemetry disable` or `DO_NOT_TRACK=1`
 turns it off. See [TELEMETRY.md](TELEMETRY.md) for the exact fields.
 

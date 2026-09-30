@@ -1,6 +1,6 @@
 ---
 title: Trust boundaries and threat model
-description: Who sees what during a study, what Humanish protects, what it does not, and the threats worth planning for.
+description: Who sees what during a study, what humanish protects, what it does not, and the threats worth planning for.
 ---
 
 A study moves your app's screen through several parties. This page names them, says what each receives, and lists the threats the design does and does not cover. Where a behaviour is enforced by code, the sentence links the command or document that proves it; where it depends on a provider's terms, it says so.
@@ -16,18 +16,18 @@ A study moves your app's screen through several parties. This page names them, s
 | Codex or Claude Code, local-agent route | The same screenshots and prompts, through your signed-in agent                                                  | `actors[0].type: local-agent`                              | Your plan's terms; the bundle marks usage unpriced                                                                                                                                           |
 | Local browser runtime                   | Nothing leaves your machine except your agent's own traffic                                                     | Firecracker guest on Linux, Lima on an M3+ Mac             | The guest is disposable; Docker removes it after the run                                                                                                                                     |
 | Your target app                         | Real requests from the desktop's network address, real records the participant creates                          | Every live study                                           | Use synthetic accounts and data; public targets need `policies.allowPublicTargets` and an owner attestation                                                                                  |
-| Humanish telemetry                      | Command name, version, OS, outcome category, error code                                                         | Default on                                                 | `npx humanish telemetry disable` or `DO_NOT_TRACK=1`; [every field](https://github.com/danielgwilson/humanish/blob/main/TELEMETRY.md)                                                        |
+| humanish telemetry                      | Command name, version, OS, outcome category, error code                                                         | Default on                                                 | `npx humanish telemetry disable` or `DO_NOT_TRACK=1`; [every field](https://github.com/danielgwilson/humanish/blob/main/TELEMETRY.md)                                                        |
 
 No command publishes a bundle, and `feedback issue` renders a draft and makes no GitHub API call.
 
 ## Provider terms
 
-Humanish does not control what a provider keeps. These are the providers' own statements, read on 2026-09-29, with the humanish behaviour that decides what reaches them.
+humanish does not control what a provider keeps. These are the providers' own statements, read on 2026-09-29, with the humanish behaviour that decides what reaches them.
 
 - **OpenAI (participant model and analyst).** Each step sends the current screenshot, the persona, the mission and the actions so far; `humanish analyze` sends selected text and captures from a finished bundle. OpenAI's [data controls page](https://developers.openai.com/api/docs/guides/your-data) states that data sent to the API is not used to train or improve OpenAI models unless you opt in, that abuse-monitoring logs are retained for up to 30 days, that approved customers can exclude content from those logs under Zero Data Retention, and that regional processing is available on request. `humanish doctor` cannot tell whether your organization has those controls; check your OpenAI organization settings.
 - **E2B (hosted desktop).** Each participant gets its own sandbox, created with a timeout and killed by id when the lane ends; humanish never pauses a sandbox, and E2B's docs say only paused sandboxes are kept. E2B's [privacy policy](https://e2b.dev/privacy) governs what it retains about your account and traffic; it does not state a retention period for a killed sandbox's filesystem, so treat anything placed in a desktop as visible to E2B for as long as their policy allows.
-- **Codex or Claude Code (local-agent route).** The same screenshots and prompts flow through your signed-in agent under that plan's terms. Humanish records that the usage is unpriced and nothing else about the account.
-- **Humanish telemetry.** [TELEMETRY.md](https://github.com/danielgwilson/humanish/blob/main/TELEMETRY.md) lists every field sent and every field excluded; `npx humanish telemetry disable` or `DO_NOT_TRACK=1` stops it.
+- **Codex or Claude Code (local-agent route).** The same screenshots and prompts flow through your signed-in agent under that plan's terms. The bundle records that the usage is unpriced and nothing else about the account.
+- **humanish telemetry.** [TELEMETRY.md](https://github.com/danielgwilson/humanish/blob/main/TELEMETRY.md) lists every field sent and every field excluded; `npx humanish telemetry disable` or `DO_NOT_TRACK=1` stops it.
 
 ## The key store
 
@@ -65,19 +65,19 @@ The CLI requires Node 22.19 or newer (`engines` in `package.json`). The project 
 ## What it does not protect
 
 - **Free-form sensitive content in pixels or text.** `verify` finds patterns, not meaning. A screenshot can contain anything your app displayed; review it before sharing.
-- **Provider retention and training use.** Screenshots and prompts reach OpenAI, E2B or your agent's provider under their terms. Humanish does not control retention, region or training use; [provider terms](#provider-terms) above lists what each states.
+- **Provider retention and training use.** Screenshots and prompts reach OpenAI, E2B or your agent's provider under their terms. Retention, region and training use are outside humanish's control; [provider terms](#provider-terms) above lists what each states.
 - **Egress from the hosted desktop.** The desktop has internet access; the participant can reach any site the mission or the page leads it to.
 - **Billing limits.** Caps act on estimates after usage is reported. Your provider dashboard is the only hard limit.
 - **The safety of the released code.** Every npm release from 0.15.0 on carries two registry attestations, and `npm audit signatures` verifies them. The npm publish attestation covers the package name, version and registry. The SLSA provenance v1 attestation binds the tarball's sha512 to a run of `.github/workflows/publish.yml` in `danielgwilson/humanish` at the release tag, on a GitHub-hosted runner. Together they show which commit and workflow built the tarball; they say nothing about whether that code is safe.
 
 ## Threats worth planning for
 
-1. **Prompt injection from the page under test.** The participant reads the screen and follows it. A hostile page can steer it. Humanish does not detect injection. The blast radius is what the desktop holds: no credentials on the computer-use route by default, a timeout, a spend cap, and a desktop that is destroyed afterwards. Do not place credentials in a desktop that will visit pages you do not control; on terminal studies prefer `openai-egress`.
+1. **Prompt injection from the page under test.** The participant reads the screen and follows it. A hostile page can steer it. Nothing in humanish detects injection. The blast radius is what the desktop holds: no credentials on the computer-use route by default, a timeout, a spend cap, and a desktop that is destroyed afterwards. Do not place credentials in a desktop that will visit pages you do not control; on terminal studies prefer `openai-egress`.
 2. **Sensitive data captured into evidence.** Use synthetic accounts; enable `redactScreenshots` for studies meant to be shared as-is; keep private labs in ignored files; verify and read before sharing.
 3. **A leaked key.** Keys come from the `0600` store, the environment, or an explicitly ignored env file, never from the lab. Values are scrubbed from persisted text. Rotate at the provider if a bundle ever shows one.
 4. **Runaway spend.** Set both caps and a timeout; they stop on the estimate, so budget the panel with the [worksheet](/docs/what-a-study-costs) and watch the first live run.
 5. **An orphaned desktop.** After a crash, `runs`, then `cleanup --run <id>`, then `reclaim --run <id>`. If cleanup cannot be confirmed, the receipt says so and you check the E2B console.
-6. **A study that is not what it claims.** Every number in a bundle carries its denominator and its rates' date; subjects cloned from a repository are pinned to a commit; public targets carry an owner attestation. Studies published on this site name the Humanish version they ran on.
+6. **A study that is not what it claims.** Every number in a bundle carries its denominator and its rates' date; subjects cloned from a repository are pinned to a commit; public targets carry an owner attestation. Studies published on this site name the humanish version they ran on.
 
 ## Reporting a vulnerability
 

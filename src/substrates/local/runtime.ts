@@ -124,7 +124,7 @@ export async function localRuntimeStatus(
       ok: false,
       installed: false,
       message: lima
-        ? "Docker is unavailable inside the Humanish Lima host. Check limactl shell humanish-runtime -- sudo systemctl status docker; Docker Desktop is not used."
+        ? "Docker is unavailable inside the humanish Lima host. Check limactl shell humanish-runtime -- sudo systemctl status docker; Docker Desktop is not used."
         : "Docker is unavailable. Install/start Docker Engine and give your account access, then run humanish runtime setup.",
     };
   }
@@ -170,7 +170,7 @@ export async function localRuntimeStatus(
     return {
       ok: false,
       installed: false,
-      message: "The cached image is not a compatible Humanish local browser runtime.",
+      message: "The cached image is not a compatible humanish local browser runtime.",
     };
   }
   return {

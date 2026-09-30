@@ -478,7 +478,7 @@ describe("init path containment", () => {
       expect(result.ok).toBe(true);
       expect(result.cwd).toBe(path.resolve(linkedProject));
       expect(await readFile(path.join(realProject, "humanish", "README.md"), "utf8")).toContain(
-        "# Humanish",
+        "# humanish",
       );
     } finally {
       await rm(root, { force: true, recursive: true });

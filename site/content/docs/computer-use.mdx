@@ -66,7 +66,7 @@ it does not inspect the tools installed in your image.
 
 When a flow is gated behind an email or
 SMS the app itself sends (a signup verification link, a one-time code, a magic link),
-add a `comms:` block to the lab. Humanish redirects the app's email-API sends (via
+add a `comms:` block to the lab. The run then redirects the app's email-API sends (via
 one adopter-named env var: with the official Resend SDK it is `RESEND_BASE_URL`,
 which the SDK reads on its own, so nothing in the app has to change; other providers
 need the app to actually pass the env through, and a run whose catch captures zero
@@ -133,9 +133,9 @@ responsive-viewport study whatever its preset is called.
 When touch is enabled, desktop pointer input is converted to touch. Correct viewport and
 touch flags do not prove equivalent gesture behavior: in two hosted conformance probes,
 the SDK double click produced two single clicks while direct touch opened the original
-TodoMVC editor in both. **From Humanish 0.81.0**, these lanes carry a run warning to confirm
+TodoMVC editor in both. **From humanish 0.81.0**, these lanes carry a run warning to confirm
 gesture failures with direct or native touch before attributing them to the app. The earlier
-phone-lane outcomes remain observations of the measured Humanish input path. See the
+phone-lane outcomes remain observations of the measured humanish input path. See the
 [dated input-conformance receipt](https://github.com/danielgwilson/humanish/blob/main/docs/goals/computer-use-actor/receipts/mobile-input-conformance-2026-09-05.md)
 for the method and limits; physical-device behavior was not tested.
 
@@ -184,7 +184,7 @@ refuses; `granted` bypasses it for studies about what happens after. The bundle 
 feed and the exact launch flags under `desktopBrowser.media`. Microphone source-file injection
 is unsupported: declaring `media.microphone.source` is rejected before any spend, including
 with a custom desktop template. This does not determine whether a custom template has its own
-working audio devices; Humanish does not deliver the declared audio file to them.
+working audio devices; humanish does not deliver the declared audio file to them.
 
 | Declared media route                                                                                | Support                                          |
 | --------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
@@ -235,7 +235,7 @@ ends setup before participant dispatch.
 
 ## Closing reports after an automatic stop
 
-**From Humanish 0.81.0.** After a `stopWhen` match or `dwell` with `then: stop`, a provider that supports
+**From humanish 0.81.0.** After a `stopWhen` match or `dwell` with `then: stop`, a provider that supports
 closing reports can make one read-only request using the final observation.
 The OpenAI provider and a local Codex participant support this; Claude Code does not.
 There is no extra CLI flag. Desktop interaction has already stopped, and any

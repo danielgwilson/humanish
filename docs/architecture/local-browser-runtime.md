@@ -15,7 +15,7 @@ version supporting nested virtualization; see [Mac setup](#apple-silicon-macs).
 Docker Desktop is unnecessary. See
 [Codex account setup](restricted-codex-analysis.md) for the qualified version
 and account restrictions. Docker access is an administrative capability.
-Humanish does not install Docker on Linux or change host permissions. On Mac,
+humanish does not install Docker on Linux or change host permissions. On Mac,
 setup installs Docker only inside the dedicated Lima host.
 
 Configure the starter while initializing the project, then start your app on
@@ -157,7 +157,7 @@ Status and doctor do not create or start Lima. Explicit setup/first live use
 starts the owned host; closing a study removes its participant containers and
 volumes, but keeps the reusable Lima host running. Stop it with
 `limactl stop humanish-runtime` when no studies are running. An interrupted
-first provision remains inspectable through Lima and can be retried. Humanish
+first provision remains inspectable through Lima and can be retried. humanish
 does not replace a conflicting instance or stop unrelated instances.
 
 Normal close, cancellation and controller death were exercised on established

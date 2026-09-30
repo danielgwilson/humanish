@@ -32,8 +32,8 @@ interface CodexAppServerUiCliResult {
 export function registerCodexCommands(parent: Command, io: CliIo): void {
   const codex = parent
     .command("codex")
-    .description("Run Codex-native Humanish integration surfaces.")
-    .summary("Run Codex-native Humanish integration surfaces.");
+    .description("Run Codex-native humanish integration surfaces.")
+    .summary("Run Codex-native humanish integration surfaces.");
 
   codex
     .command("app-server")

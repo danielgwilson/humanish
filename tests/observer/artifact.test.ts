@@ -37,7 +37,7 @@ describe("the Observer artifact render path", () => {
       const html = await readFile(path.join(cwd, result.observerPath ?? ""), "utf8");
       expect(html).not.toContain("__HUMANISH_OBSERVER_DATA__");
       expect(html).toContain(`"schema":"${OBSERVER_DATA_SCHEMA}"`);
-      expect(html).toContain("<title>Humanish Observer — observer-proof</title>");
+      expect(html).toContain("<title>humanish Observer — observer-proof</title>");
       // The durability property the rebuild exists for: no network references.
       expect(html).not.toContain("fonts.googleapis");
       // The auto-build must produce a production artifact even under a preset

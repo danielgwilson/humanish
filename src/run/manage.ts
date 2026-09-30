@@ -280,7 +280,7 @@ export async function listRuns(cwdInput: string): Promise<RunsResult> {
       (!entryStats.isDirectory() && !entryStats.isFile()) ||
       (entryStats.isFile() && entryStats.nlink > 1n)
     ) {
-      return runsUnavailableResult(cwd, new Error(`Unsafe Humanish runs entry: ${entryName}`));
+      return runsUnavailableResult(cwd, new Error(`Unsafe humanish runs entry: ${entryName}`));
     }
     if (!entryStats.isDirectory()) {
       continue;
@@ -294,7 +294,7 @@ export async function listRuns(cwdInput: string): Promise<RunsResult> {
     if (runsRoot && entryRunPaths.physicalRunsRoot !== runsRoot.physicalPath) {
       return runsUnavailableResult(
         cwd,
-        new Error("Humanish runs root changed physical destination."),
+        new Error("humanish runs root changed physical destination."),
       );
     }
     const bundle = await readRunJsonIfExists(entryRunPaths, "run.json");

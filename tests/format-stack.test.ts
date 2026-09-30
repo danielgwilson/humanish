@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { starterFiles } from "../src/lab/init-templates.js";
 
-describe("Humanish format stack", () => {
-  it("scaffolds Humanish-owned authored source as .yaml, not .yml", () => {
+describe("humanish format stack", () => {
+  it("scaffolds humanish-owned authored source as .yaml, not .yml", () => {
     const authoredSourcePrefixes = ["humanish/personas/", "humanish/scenarios/", "humanish/labs/"];
 
     const authoredSourcePaths = starterFiles

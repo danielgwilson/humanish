@@ -30,7 +30,7 @@ const LIVE =
 const PROOF_HTML = [
   "<!doctype html><html><head><meta charset=utf-8></head>",
   '<body style="font-family:system-ui;padding:48px;background:#fff">',
-  '<h1 style="font-size:48px">Humanish Fan-out Live Proof</h1>',
+  '<h1 style="font-size:48px">humanish Fan-out Live Proof</h1>',
   '<p style="font-size:24px">Served from loopback inside THIS lane\'s own sandbox (per-lane worlds).</p>',
   "</body></html>",
 ].join("");

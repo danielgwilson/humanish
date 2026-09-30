@@ -328,7 +328,7 @@ function parseResolvedLab(args: {
   const warnings = [...args.warnings, ...parsed.warnings];
   if (args.path.endsWith(".yml")) {
     warnings.push(
-      "Prefer .yaml for Humanish-authored lab source; .yml is accepted for compatibility only.",
+      "Prefer .yaml for humanish-authored lab source; .yml is accepted for compatibility only.",
     );
   }
 

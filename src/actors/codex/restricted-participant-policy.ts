@@ -54,7 +54,7 @@ export const PARTICIPANT_FINAL_SCHEMA = {
     },
   },
 };
-/** Humanish tool arguments, validated before the shared executor sees a batch. */
+/** humanish tool arguments, validated before the shared executor sees a batch. */
 export function parseParticipantTool(value: unknown, speechEnabled = false): CuaTurn {
   if (Buffer.byteLength(JSON.stringify(value) ?? "") > PARTICIPANT_LIMITS.output)
     throw new Error("invalid_response");

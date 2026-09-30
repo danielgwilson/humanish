@@ -133,7 +133,7 @@ export const starterFiles: StarterFile[] = [
   {
     path: "humanish/README.md",
     plane: "source",
-    contents: `# Humanish
+    contents: `# humanish
 
 This directory is the committed source of persona simulation intent for this app.
 
@@ -154,9 +154,9 @@ Labs:
 
 Format standard:
 
-- human-authored Humanish source uses .yaml;
+- human-authored humanish source uses .yaml;
 - generated artifacts, synthetic fixtures, and event streams use .json or .ndjson;
-- .yml is reserved for outside ecosystem files such as GitHub Actions, not Humanish source.
+- .yml is reserved for outside ecosystem files such as GitHub Actions, not humanish source.
 `,
   },
   {

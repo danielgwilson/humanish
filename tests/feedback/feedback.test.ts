@@ -330,7 +330,7 @@ describe("feedback issue drafts", () => {
           substrate: "e2b-desktop",
           failure_owner: "actor",
           summary: "Fixture setup needs review",
-          expected: "The actor should create a complete Humanish setup.",
+          expected: "The actor should create a complete humanish setup.",
           actual: "The package script was missing.",
           evidence: [
             {

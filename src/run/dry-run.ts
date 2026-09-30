@@ -244,7 +244,7 @@ function buildSyntheticObserverFixtures(args: {
       currentStep: "Terminal UI frame contract captured",
       summary:
         "TUI lane reserved for PTY bytes, ANSI rendering, focus replay, and optional assisted attach.",
-      tail: "\u001b[2mHumanish TUI frame\u001b[0m\n> persona: skeptical-power-user\n> scenario: onboarding-regression\nstatus: awaiting live PTY transport",
+      tail: "\u001b[2mhumanish TUI frame\u001b[0m\n> persona: skeptical-power-user\n> scenario: onboarding-regression\nstatus: awaiting live PTY transport",
       viewport: undefined,
     },
     {

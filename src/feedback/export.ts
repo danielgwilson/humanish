@@ -266,7 +266,7 @@ export async function exportRun(
     }
   }
   const mediaOmission =
-    "Continuous video/audio is excluded from this HTML export. Open the original run in Humanish to play it.";
+    "Continuous video/audio is excluded from this HTML export. Open the original run in humanish to play it.";
   if (omittedRecording) warnings.push(mediaOmission);
   const cache = new Map<string, Promise<string>>();
   const assets: ObserverExportAssets = {};

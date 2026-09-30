@@ -2,7 +2,7 @@
 
 ## Public-Safety Boundary
 
-Humanish must not contain or emit PII, PHI, secrets, keys, tokens, raw private
+humanish must not contain or emit PII, PHI, secrets, keys, tokens, raw private
 transcripts, private screenshots, private customer data, private patient data,
 or private source snippets.
 

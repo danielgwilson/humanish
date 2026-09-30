@@ -57,7 +57,7 @@ function resolveRunDirectory(cwdInput: string, runId: string): string {
   const runsRoot = resolveRunsRoot(cwdInput);
   const runRoot = path.resolve(runsRoot, runId);
   if (!isPathInside(runsRoot, runRoot) || path.dirname(runRoot) !== runsRoot) {
-    throw new Error("Run directory must stay inside the Humanish runs root.");
+    throw new Error("Run directory must stay inside the humanish runs root.");
   }
 
   return runRoot;
@@ -168,7 +168,7 @@ export async function validatePreparedRunRootIdentity(
     lexicalRunsRoot !== prepared.physicalRunsRoot ||
     lexicalRunRoot !== prepared.physicalRunRoot
   ) {
-    throw new Error("Prepared Humanish run storage changed physical destination.");
+    throw new Error("Prepared humanish run storage changed physical destination.");
   }
   await Promise.all([
     assertDirectoryIdentity(prepared.physicalRunsRoot, prepared.runsRootIdentity),
@@ -185,7 +185,7 @@ export async function bindExistingRunArtifactPaths(
   const paths = resolveRunArtifactPaths(cwdInput, runId);
   const existing = await resolveExistingRunDirectory(cwdInput, runId);
   if (!existing || existing !== paths.absoluteRunRoot) {
-    throw new Error("Run directory is not an existing Humanish run directory.");
+    throw new Error("Run directory is not an existing humanish run directory.");
   }
   await assertNoSymlinkDescendants(existing);
   await assertRegularFileOrMissing(paths.absoluteLatestPointer);
@@ -228,7 +228,7 @@ export async function prepareHumanishStorageDirectory(
 ): Promise<string> {
   const prepared = await walkHumanishStorage(cwdInput, segments, true);
   if (!prepared) {
-    throw new Error("Humanish storage directory could not be created.");
+    throw new Error("humanish storage directory could not be created.");
   }
   return prepared;
 }
@@ -293,10 +293,10 @@ async function walkHumanishStorage(
     }
 
     if (stats.isSymbolicLink()) {
-      throw new Error("Humanish storage directories must not be symbolic links.");
+      throw new Error("humanish storage directories must not be symbolic links.");
     }
     if (!stats.isDirectory()) {
-      throw new Error("ENOTDIR: Humanish storage path must be a directory.");
+      throw new Error("ENOTDIR: humanish storage path must be a directory.");
     }
   }
 
@@ -305,7 +305,7 @@ async function walkHumanishStorage(
 
 function assertSafeStorageSegments(segments: string[]): void {
   if (!segments.every(isSafeStorageSegment)) {
-    throw new Error("Humanish storage paths must use non-empty path segments.");
+    throw new Error("humanish storage paths must use non-empty path segments.");
   }
 }
 
@@ -329,7 +329,7 @@ async function assertRegularFileOrMissing(filePath: string): Promise<void> {
     const stats = await lstat(filePath);
     if (stats.isSymbolicLink() || !stats.isFile() || stats.nlink > 1) {
       throw new Error(
-        "Humanish storage files must be single-link regular files, not symbolic links or hardlinks.",
+        "humanish storage files must be single-link regular files, not symbolic links or hardlinks.",
       );
     }
   } catch (error) {
@@ -359,13 +359,13 @@ async function assertNoSymlinkDescendants(directory: string): Promise<void> {
       throw error;
     }
     if (stats.isSymbolicLink()) {
-      throw new Error("Humanish run directories must not contain symbolic links.");
+      throw new Error("humanish run directories must not contain symbolic links.");
     }
     if (stats.isDirectory()) {
       await assertNoSymlinkDescendants(child);
     } else if (!stats.isFile() || stats.nlink > 1) {
       throw new Error(
-        "Humanish run leaves must be single-link regular files, not hardlinks or special files.",
+        "humanish run leaves must be single-link regular files, not hardlinks or special files.",
       );
     }
   }
@@ -387,7 +387,7 @@ async function capturePreparedRunArtifactPaths(
     !runsStats.isDirectory() ||
     runsStats.isSymbolicLink()
   ) {
-    throw new Error("Prepared Humanish run storage must use physical directories.");
+    throw new Error("Prepared humanish run storage must use physical directories.");
   }
   return Object.freeze({
     ...paths,
@@ -417,6 +417,6 @@ async function assertDirectoryIdentity(directory: string, identity: FileIdentity
     stats.ino !== identity.ino ||
     (await realpath(directory)) !== directory
   ) {
-    throw new Error("Prepared Humanish run storage identity changed.");
+    throw new Error("Prepared humanish run storage identity changed.");
   }
 }

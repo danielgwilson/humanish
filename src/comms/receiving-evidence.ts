@@ -61,7 +61,7 @@ export function receivingAnalysisContext(
   const participants = evidence.participants.filter((p) => p.participantId === laneId);
   const selected = participants.length ? participants : evidence.participants;
   return [
-    "Real email was supplied by the Humanish harness. Provider receipt, inbox publication and a participant reading/using the email are separate observations.",
+    "Real email was supplied by the humanish harness. Provider receipt, inbox publication and a participant reading/using the email are separate observations.",
     "A missing email does not establish that the target app failed to send. Blocked assets/links and publication or collection failures are harness limitations, not target defects.",
     ...selected.map(
       (p) =>

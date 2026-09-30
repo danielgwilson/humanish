@@ -1,6 +1,6 @@
 # Invariants and Defaults
 
-Humanish's safety and honesty rules come in exactly two strengths. Confusing them causes
+humanish's safety and honesty rules come in exactly two strengths. Confusing them causes
 two failures: a route-scoped default gets written down as if it held on every route, then the
 next legitimate use case looks like a violation and either gets blocked (capability loss) or
 waved through ad hoc (safety loss). This page draws the line between the two.

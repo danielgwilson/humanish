@@ -72,7 +72,7 @@ export default function Study() {
           unchanged, and the backstop of that version ended the lane. Since 2026-08-08 the backstop
           also requires the participant to repeat a recent action.
         </p>
-        <p>Excalidraw is the application studied; it is not a Humanish adopter or endorser.</p>
+        <p>Excalidraw is the application studied; it is not a humanish adopter or endorser.</p>
       </div>
     </section>
   );

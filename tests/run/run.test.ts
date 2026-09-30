@@ -800,7 +800,7 @@ describe("dry-run bundles", () => {
     });
   });
 
-  it("rejects local nested Humanish proof references when the artifact is missing", async () => {
+  it("rejects local nested humanish proof references when the artifact is missing", async () => {
     await withFixtureCopy(async (cwd) => {
       const run = await runDryRun({
         cwd,

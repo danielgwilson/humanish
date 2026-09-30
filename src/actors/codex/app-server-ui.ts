@@ -289,7 +289,7 @@ function renderCodexAppServerUiHtml(): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Humanish Codex App-Server</title>
+  <title>humanish Codex App-Server</title>
   <style>
     :root {
       --bg: #080a0d;
@@ -349,7 +349,7 @@ function renderCodexAppServerUiHtml(): string {
       <div class="mark">CT</div>
       <div class="title">
         <h1>Codex App-Server Actor</h1>
-        <p id="subtitle">Connecting to Humanish state...</p>
+        <p id="subtitle">Connecting to humanish state...</p>
       </div>
       <div class="pill" id="status" data-status="starting">STARTING</div>
     </header>

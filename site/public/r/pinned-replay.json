@@ -2,7 +2,7 @@
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "pinned-replay",
   "title": "Pinned replay",
-  "description": "The scroll-pinned run walkthrough from humanish.dev: a tall track pins a step rail and stage; scroll advances discrete panels (brief, lanes, evidence ledger, verify terminal) with an idle-snap that centers the nearest step. Below 1024px — or without JavaScript — panels stack as a readable list. Ships the Excalidraw study's metadata as demo data; the screenshots are not included, so point LANES[].img at your own captures. Excalidraw is the application studied in the demo data; it is not a Humanish adopter or endorser.",
+  "description": "The scroll-pinned run walkthrough from humanish.dev: a tall track pins a step rail and stage; scroll advances discrete panels (brief, lanes, evidence ledger, verify terminal) with an idle-snap that centers the nearest step. Below 1024px — or without JavaScript — panels stack as a readable list. Ships the Excalidraw study's metadata as demo data; the screenshots are not included, so point LANES[].img at your own captures. Excalidraw is the application studied in the demo data; it is not a humanish adopter or endorser.",
   "registryDependencies": [
     "https://humanish.dev/r/humanish-tokens.json",
     "https://humanish.dev/r/terminal-cast.json",

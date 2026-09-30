@@ -7,7 +7,7 @@ export function createReviewSummary(): ReviewSummary {
     schema: REVIEW_SCHEMA,
     verdict: "contract_proof_only",
     summary:
-      "Synthetic dry-run bundle was generated. This proves Humanish artifact plumbing, not product behavior.",
+      "Synthetic dry-run bundle was generated. This proves humanish artifact plumbing, not product behavior.",
     gaps: [
       "No browser was launched.",
       "No product state was verified.",
@@ -17,7 +17,7 @@ export function createReviewSummary(): ReviewSummary {
 }
 
 export function renderReviewMarkdown(bundle: RunBundle): string {
-  return `# Humanish Run Review
+  return `# humanish Run Review
 
 Run: ${bundle.runId}
 

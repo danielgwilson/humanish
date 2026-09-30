@@ -378,7 +378,7 @@ export function createProgram(
         "  humanish verify --run latest --json",
         "",
         "Public-safety boundary:",
-        "  Humanish must not commit or emit PII, PHI, secrets, keys, raw private transcripts,",
+        "  humanish must not commit or emit PII, PHI, secrets, keys, raw private transcripts,",
         "  private screenshots, or private upstream artifacts.",
       ].join("\n"),
     );

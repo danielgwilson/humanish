@@ -261,11 +261,11 @@ describe("humanish CLI scaffold", () => {
       verify: "Validate a run bundle and public-safety gates.",
       cleanup: "Write a resource cleanup inspection receipt.",
       review: "Build a review packet from verified run evidence.",
-      runs: "List local Humanish runs and latest pointers.",
+      runs: "List local humanish runs and latest pointers.",
       watch: "Run sims, open the observer, keep the shell attached.",
       observe: "Follow a run's saved evidence over loopback http.",
-      codex: "Run Codex-native Humanish integration surfaces.",
-      lab: "List, inspect, and run Humanish lab manifests.",
+      codex: "Run Codex-native humanish integration surfaces.",
+      lab: "List, inspect, and run humanish lab manifests.",
       feedback: "Create public-safe feedback drafts, no GitHub API.",
     };
 

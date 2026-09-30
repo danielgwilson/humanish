@@ -242,7 +242,7 @@ export function registerServeCommand(parent: Command, io: CliIo): void {
         "",
         "The server always binds 127.0.0.1; exposure only ever happens through an authenticated",
         "edge (ngrok --oauth google, or an operator --public-url you secure) forwarding to the",
-        "loopback port. humanish carries no in-process auth — the gate lives at the edge. Live",
+        "loopback port. The server carries no in-process auth; the gate lives at the edge. Live",
         "desktop stream URLs are never served here; remote viewers see persisted evidence only.",
         "--safe composes with any exposure for defense in depth.",
       ].join("\n"),

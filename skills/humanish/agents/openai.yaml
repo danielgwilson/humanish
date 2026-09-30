@@ -1,7 +1,7 @@
 interface:
-  display_name: "Humanish CLI"
+  display_name: "humanish CLI"
   short_description: "Set up public-safe persona simulation"
-  default_prompt: "Use $humanish to install Humanish in this repo, scaffold synthetic personas and scenarios, run the safe Observer proof, and report the public-safe artifacts. If the app can run locally, start it on loopback and run a live scripted-browser lab (see https://humanish.dev/docs/lab-manifests#scripted-browser-scenarios; set `scenario.mode: live` and keep `review.analysis: false`) before rendering Observer with `humanish watch --run latest`; do not treat `watch --sims` as app behavior proof."
+  default_prompt: "Use $humanish to install humanish in this repo, scaffold synthetic personas and scenarios, run the safe Observer proof, and report the public-safe artifacts. If the app can run locally, start it on loopback and run a live scripted-browser lab (see https://humanish.dev/docs/lab-manifests#scripted-browser-scenarios; set `scenario.mode: live` and keep `review.analysis: false`) before rendering Observer with `humanish watch --run latest`; do not treat `watch --sims` as app behavior proof."
 
 policy:
   allow_implicit_invocation: true

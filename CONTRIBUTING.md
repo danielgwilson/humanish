@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for helping make Humanish better.
+Thanks for helping make humanish better.
 
 ## Read these in order
 

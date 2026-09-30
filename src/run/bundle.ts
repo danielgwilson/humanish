@@ -98,7 +98,7 @@ export interface RunFeedbackCandidate {
 
 /**
  * Optional, adapter-namespaced artifact references. These let a thin in-repo
- * adapter attach product/state proof outputs to the Humanish evidence packet
+ * adapter attach product/state proof outputs to the humanish evidence packet
  * without teaching core product nouns or inventing fake streams.
  */
 export interface RunAdapterArtifact {

@@ -5,7 +5,7 @@ This page describes local capture. For fresh hosted inboxes, see
 parsed renderer, strict remote-asset blocking and private lease lifecycle.
 
 The catch captures application mail without sending it to an external recipient.
-Humanish gives each participant an address and a matching
+humanish gives each participant an address and a matching
 `/inbox/for/<address-digest>` URL. The same address scope applies to list, message,
 plain view, latest-message and JSON routes. Going back from a missing message
 stays in that scope. An unknown scope is empty; it never falls back to all mail.
@@ -39,7 +39,7 @@ humanish comms catch --port 8025 --dir .humanish/mail-catch
 
 Configure your **app's** email transport to send to `http://127.0.0.1:8025`
 using its supported HTTP send configuration, or add `--smtp-port 1025` and
-point its SMTP transport at `127.0.0.1:1025`. Humanish does not change an
+point its SMTP transport at `127.0.0.1:1025`. humanish does not change an
 already-running app's environment. No real mailbox-provider credentials are
 needed. This captures mail sent by that app; it does not receive arbitrary
 internet email.
@@ -71,7 +71,7 @@ retains its separate hosted-route and management-credential requirements.
 
 ## Existing external catches
 
-Upgrade the Humanish installation that runs `humanish comms catch` and **restart that
+Upgrade the humanish installation that runs `humanish comms catch` and **restart that
 catch process**, as well as upgrading the installation that starts the study. Updating
 only the study client leaves an older catch without participant routes.
 
@@ -95,7 +95,7 @@ data URL. This is not a full image decoder; malformed raster content can still f
 in the browser. Inline data URLs receive the same per-image checks. SVG, arbitrary
 attachment URLs and local paths are not fetched or converted.
 
-HTTP(S) images remain browser loads with `no-referrer`. Humanish does not fetch or
+HTTP(S) images remain browser loads with `no-referrer`. humanish does not fetch or
 proxy them server-side. Relative image URLs use the existing declared origin-rewrite
 map when available; otherwise they receive an explicit placeholder. Remote URLs that
 return errors retain the browser's alt-text fallback. The renderer does not claim to

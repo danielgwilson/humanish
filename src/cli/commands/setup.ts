@@ -85,7 +85,7 @@ export function registerInitCommand(parent: Command, io: CliIo): void {
 export function registerDoctorCommand(parent: Command, io: CliIo): void {
   parent
     .command("doctor")
-    .description("Explain project readiness and missing Humanish setup.")
+    .description("Explain project readiness and missing humanish setup.")
     .summary("Explain project readiness and missing setup.")
     .option("--cwd <path>", "Target project directory.", ".")
     .option(

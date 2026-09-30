@@ -34,13 +34,13 @@ provider-neutral `CuaProvider` port in `src/actors/computer-use/loop.ts`.
 > the five-descriptor first-party registry described in the status note above.
 
 An actor is the thing that drives a persona scenario and produces evidence. At
-design time Humanish had exactly one real actor: the local Codex integration in
+design time humanish had exactly one real actor: the local Codex integration in
 `src/actors/codex/app-server.ts` (plus the `codex-exec` and `codex-tui` variants in
 `src/run/`). The actor selection is a hardcoded `if (actor === ...)` dispatch,
 `RunStream.codex` is Codex-shaped, and the evidence schema is
 `humanish.codex-app-server-trace.v1`.
 
-That is a ceiling. Humanish's value is being a public-safe harness for persona and
+That is a ceiling. humanish's value is being a public-safe harness for persona and
 agent user-studies, and our users actually run several agent harnesses:
 OpenAI Codex, the pi stack (`@earendil-works/pi-agent-core`, `pi-coding-agent`,
 OpenClaw), Claude Code and the Claude Agent SDK, and computer-use models that

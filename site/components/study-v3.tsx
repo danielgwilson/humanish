@@ -182,7 +182,7 @@ export default function StudyV3() {
           as-is. These captures were reviewed by hand before publication.
         </p>
         <p>
-          drawDB, TodoMVC and Excalidraw are the applications studied; none is a Humanish adopter or
+          drawDB, TodoMVC and Excalidraw are the applications studied; none is a humanish adopter or
           endorser. The lobby game is the maintainer&rsquo;s own.
         </p>
       </div>

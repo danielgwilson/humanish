@@ -1,6 +1,6 @@
 # Minimal Synthetic App Fixture
 
-This is a public-safe target app fixture for Humanish CLI tests.
+This is a public-safe target app fixture for humanish CLI tests.
 
 It intentionally contains:
 

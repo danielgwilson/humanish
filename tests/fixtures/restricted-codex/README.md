@@ -40,7 +40,7 @@ reasoning effort. The synthetic image contained a blue rectangle and the code
   envelope. A private fixture lowered the compaction threshold to 5,000 tokens;
   production keeps the CLI default. Recall continued after two compactions.
   Their separate raw response usage was absent from the CLI's cumulative thread
-  counters, so Humanish marks affected turns' known counts as incomplete.
+  counters, so humanish marks affected turns' known counts as incomplete.
 - `participant-code-mode-tool-turn` is a selected-field projection of the
   2026-09-25 CLI 0.154.0 Code Mode probe. It retains the confirmed `exec` raw
   items, `dynamicToolCall` lifecycle, `item/tool/call` request, and JSON text

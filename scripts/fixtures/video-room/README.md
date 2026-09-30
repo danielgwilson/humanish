@@ -1,7 +1,7 @@
 # Disposable video-room fixture
 
 This synthetic two-person room exercises the camera-permission, preview, join,
-receive-video and leave flow. It is a proof target for Humanish, not a conferencing
+receive-video and leave flow. It is a proof target for humanish, not a conferencing
 integration or production room server. No participant or counterpart accounts
 are needed. Run only on isolated, disposable infrastructure with an unpredictable
 room path, synthetic video, and explicit resource cleanup.

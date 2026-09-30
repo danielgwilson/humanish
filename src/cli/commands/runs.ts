@@ -281,8 +281,8 @@ export function registerStatsCommand(parent: Command, io: CliIo): void {
 export function registerRunsCommand(parent: Command, io: CliIo): void {
   parent
     .command("runs")
-    .description("List local Humanish runs and latest pointers.")
-    .summary("List local Humanish runs and latest pointers.")
+    .description("List local humanish runs and latest pointers.")
+    .summary("List local humanish runs and latest pointers.")
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (options: { cwd: string; json?: boolean }, command) => {
@@ -420,7 +420,7 @@ function formatRunsHuman(result: RunsResult): string {
   }
 
   if (result.runs.length === 0) {
-    return `No Humanish runs found in ${result.cwd}\n`;
+    return `No humanish runs found in ${result.cwd}\n`;
   }
 
   return (

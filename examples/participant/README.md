@@ -2,7 +2,7 @@
 
 This complete library example starts a synthetic loopback HTTP app, reads its
 state with a `CuaExecutor`, sends a greeting through its action endpoint, and
-verifies the resulting Humanish run. It uses a deterministic `CuaProvider` with
+verifies the resulting humanish run. It uses a deterministic `CuaProvider` with
 no model calls, API keys, browser, screenshots or E2B resources. It demonstrates
 the integration; it does not test persona behavior or the quality of an app's UI.
 

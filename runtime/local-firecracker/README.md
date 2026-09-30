@@ -84,7 +84,7 @@ python3 runtime/local-firecracker/sources.py \
 The collector matches guest and runner packages to the retained Debian source
 indices, verifies each source download, and includes the kernel source/config,
 Firecracker source and license notices. Include a `git archive` of the matching
-Humanish source commit for its build scripts and guest control code. Large source
+humanish source commit for its build scripts and guest control code. Large source
 archives can be split into numbered parts below GitHub's per-asset limit; include
 checksums and exact concatenation/extraction instructions in the release.
 Review the distributable inputs, never publish local run bundles or build logs.

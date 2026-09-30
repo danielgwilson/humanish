@@ -1,6 +1,6 @@
 # Coverage Map
 
-This map keeps Humanish honest as its own first target app.
+This map keeps humanish honest as its own first target app.
 
 ## In Scope For V0 Dogfood
 

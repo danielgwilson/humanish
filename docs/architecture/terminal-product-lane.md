@@ -62,7 +62,7 @@ execution:
 ```
 
 An explicit version must be exact semver; tags, ranges, URLs, and extra runtime
-fields fail at parsing. Before the keyed actor command, Humanish runs an unkeyed
+fields fail at parsing. Before the keyed actor command, humanish runs an unkeyed
 `npx @openai/codex@<selector> --version` command with a 60-second deadline.
 A malformed result, nonzero exit, or requested/observed mismatch fails the lane
 and reclaims its owned sandbox. When the version is omitted, the probe resolves
@@ -72,12 +72,12 @@ and reclaims its owned sandbox. When the version is omitted, the probe resolves
 `humanish.actor-runtime.v1`: requested and observed versions, verification status,
 declared model/effort, and the usage granularity. The observed executable version
 also appears as `providerVersion`. An undeclared model stays explicitly
-`runtime_default_unobserved`; Humanish does not label the runtime name as a model.
+`runtime_default_unobserved`; humanish does not label the runtime name as a model.
 Dry runs record declarations only, in a `terminal-lab.runtime.declared` event.
 
 These settings make a study's request reproducible, but do not attest the actual
 provider model or add a provider spending limit. Codex `turn.completed` usage can
-aggregate several model requests, so Humanish does not use a declared model to
+aggregate several model requests, so humanish does not use a declared model to
 infer per-request pricing tiers or fill in unknown costs. Runtime-token costs
 and the studied product's no-spend boundary still need separate interpretation.
 
@@ -104,12 +104,12 @@ execution:
 Codex command receives the nonsecret value `humanish-egress-auth-placeholder`
 under `CODEX_API_KEY`, plus `CODEX_CA_CERTIFICATE` pointing at E2B's existing
 system CA bundle (`/etc/ssl/certs/ca-certificates.crt`) so TLS verification trusts
-the platform's proxy CA. Humanish does not disable TLS verification or download
+the platform's proxy CA. humanish does not disable TLS verification or download
 an unauthenticated CA. The sandbox receives no raw runtime key in command env, sandbox env,
 files, metadata, or captured evidence. The host still scrubs the actual key from
 output and errors, including errors during sandbox creation.
 
-This mode supports the default OpenAI endpoint only. Humanish explicitly sets
+This mode supports the default OpenAI endpoint only. humanish explicitly sets
 Codex's built-in `openai` provider and `openai_base_url` to
 `https://api.openai.com/v1` for that invocation. It does not support a custom
 provider, proxy base URL, or regional endpoint under this mode. `openai-env`

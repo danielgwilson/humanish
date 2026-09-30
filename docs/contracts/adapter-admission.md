@@ -20,7 +20,7 @@ const provider = createOpenAiResponsesProvider({
 ```
 
 The example's admission check, local receipt and transport belong to the caller.
-The error accepts no message or payload. Import it from the same Humanish
+The error accepts no message or payload. Import it from the same humanish
 installation as the provider and loop: a plain error with the same name or text
 does not activate the contract. Do not use it for invalid configuration, a
 provider rejection, or an already dispatched request with unknown outcome or
@@ -51,7 +51,7 @@ is `skipped` and `debrief.usageReported` is absent, because this declaration say
 no provider request was sent. This does not invent zero usage or settle any
 earlier unknown cost.
 
-Humanish records the adapter's declaration; it does not independently attest
+humanish records the adapter's declaration; it does not independently attest
 transport behavior or provider billing. Retain local limit/admission receipts
 when auditing those facts. Keep credentials, request bodies and provider URLs
 out of such receipts. The contract does not add a manifest request-count cap,

@@ -36,7 +36,7 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const page = docsSource.getPage((await params).slug);
   if (!page) notFound();
-  const title = `${page.data.title} · Humanish docs`;
+  const title = `${page.data.title} · humanish docs`;
   const description = page.data.description;
   const url = `https://humanish.dev${page.url}`;
   return {

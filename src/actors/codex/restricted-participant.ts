@@ -62,7 +62,7 @@ function deferred<T>() {
   return { promise, resolve, reject };
 }
 const toolDescription = (speechEnabled: boolean): string =>
-  `Act on the participant's browser through Humanish. Submit one to four UI actions${speechEnabled ? ", including speak when you need to reply aloud," : ""} and a short public comment; never private reasoning. Humanish returns a JSON STRING with execution acknowledgments${speechEnabled ? ", speech heard from the actual participant speaker sink," : ""} and a fresh screenshot. In Code Mode use: const r = JSON.parse(await tools.humanish_ui({narration: "...", actions: [...]})); text({acknowledgments: r.acknowledgments${speechEnabled ? ", heardSpeech: r.heardSpeech" : ""}, contextHint: r.contextHint, closing: r.closing}); image(r.imageUrl). Call serially and inspect each returned screenshot${speechEnabled ? " and heardSpeech array" : ""} before deciding what to do next.${speechEnabled ? " Use speak only after the visible UI shows that you joined the call and your microphone is unmuted; it sends audio into that call." : ""} Acknowledged input does not prove an application outcome. If closing is true, stop calling tools and give your final account.`;
+  `Act on the participant's browser through humanish. Submit one to four UI actions${speechEnabled ? ", including speak when you need to reply aloud," : ""} and a short public comment; never private reasoning. humanish returns a JSON STRING with execution acknowledgments${speechEnabled ? ", speech heard from the actual participant speaker sink," : ""} and a fresh screenshot. In Code Mode use: const r = JSON.parse(await tools.humanish_ui({narration: "...", actions: [...]})); text({acknowledgments: r.acknowledgments${speechEnabled ? ", heardSpeech: r.heardSpeech" : ""}, contextHint: r.contextHint, closing: r.closing}); image(r.imageUrl). Call serially and inspect each returned screenshot${speechEnabled ? " and heardSpeech array" : ""} before deciding what to do next.${speechEnabled ? " Use speak only after the visible UI shows that you joined the call and your microphone is unmuted; it sends audio into that call." : ""} Acknowledged input does not prove an application outcome. If closing is true, stop calling tools and give your final account.`;
 
 /** One native tool-calling conversation; the existing CUA loop owns every input. */
 export function createRestrictedCodexParticipant(options: RestrictedParticipantOptions = {}): {
@@ -293,7 +293,7 @@ export function createRestrictedCodexParticipant(options: RestrictedParticipantO
       return await nextEvent();
     } finally {
       // The shared loop aborts each request's signal after it yields. The native
-      // turn must remain alive while Humanish executes and records its actions.
+      // turn must remain alive while humanish executes and records its actions.
       signal.removeEventListener("abort", onAbort);
     }
   }

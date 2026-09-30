@@ -5,7 +5,7 @@ separate from participant feedback and the recorded study verdict.
 
 The default is `gpt-6-astra` with high reasoning effort, a separate $3 admission
 estimate limit and a 600-second timeout. When no output limit is specified,
-Humanish selects 32,768 tokens if the exact input's admission estimate fits that
+humanish selects 32,768 tokens if the exact input's admission estimate fits that
 budget; otherwise it keeps the established 16,384-token allowance. This preserves
 previously admitted studies without increasing their spending limit. To customize it:
 
@@ -31,7 +31,7 @@ the estimate and selected token allowance before deliberately choosing a larger 
 includes reasoning as well as the report; exhausting it does not produce a usable
 report and never starts an automatic retry. Analysis
 sends selected retained text and captures to OpenAI using `OPENAI_API_KEY`.
-Analysis runs in the Humanish runner using its credentials. This setting adds no
+Analysis runs in the humanish runner using its credentials. This setting adds no
 credential channel to the target application; each participant backend retains
 its existing authentication boundary. Review the separate analysis budget before running a manifest live; an actor's
 zero-dollar cap does not cap post-run analysis. The bundled first-contact

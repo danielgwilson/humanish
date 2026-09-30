@@ -10,7 +10,7 @@ yet. Do not emit a reserved schema.
 
 ## Purpose
 
-This document names the core Humanish contracts before more implementation
+This document names the core humanish contracts before more implementation
 lands. It is intentionally public-safe: examples use synthetic ids, local
 relative artifact paths, env var names without values, and redacted evidence
 notes.
@@ -382,7 +382,7 @@ hollow lane`.
 
 Explicit failed-lane reruns are supported on the CUA fan-out route via
 `humanish lab run <lab> --rerun-failed-from <run-id> [--lanes lane-a,lane-b]`.
-The source run must be a live CUA fan-out bundle. Humanish creates a NEW run for
+The source run must be a live CUA fan-out bundle. humanish creates a NEW run for
 the selected failed/blocked/timed-out/hollow lanes (or explicit lane ids), leaves
 the source verdict unchanged, and records lineage as `run.rerun` plus a
 `cua-lab.fanout.rerun` event: source run id, selected lane ids, and previous lane

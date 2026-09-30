@@ -156,7 +156,7 @@ describe("installed desktop SDK cleanup compatibility", () => {
       });
     await vi.advanceTimersByTimeAsync(DESKTOP_CREATE_CLEANUP_TIMEOUT_MS + 1);
     try {
-      expect(settled, "SDK-internal kill must not bypass Humanish's cleanup deadline").toBe(true);
+      expect(settled, "SDK-internal kill must not bypass humanish's cleanup deadline").toBe(true);
       expect(await pending).toMatchObject({ cleanup: "unconfirmed" });
       expect(retry).not.toHaveBeenCalled();
       expect(p.constructed()).toBe(1);

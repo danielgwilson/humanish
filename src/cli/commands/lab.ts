@@ -21,12 +21,12 @@ import {
 export function registerLabCommands(parent: Command, io: CliIo): void {
   const lab = parent
     .command("lab")
-    .description("List, inspect, and run Humanish lab manifests.")
-    .summary("List, inspect, and run Humanish lab manifests.");
+    .description("List, inspect, and run humanish lab manifests.")
+    .summary("List, inspect, and run humanish lab manifests.");
 
   lab
     .command("list")
-    .description("List committed and ignored Humanish lab manifests.")
+    .description("List committed and ignored humanish lab manifests.")
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (options: { cwd: string; json?: boolean }, command) => {
@@ -38,7 +38,7 @@ export function registerLabCommands(parent: Command, io: CliIo): void {
   lab
     .command("inspect")
     .argument("<lab>", "Lab id or .yaml path.")
-    .description("Inspect a Humanish lab manifest without running it.")
+    .description("Inspect a humanish lab manifest without running it.")
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (labName: string, options: { cwd: string; json?: boolean }, command) => {
@@ -127,7 +127,7 @@ export function registerLabCommands(parent: Command, io: CliIo): void {
   lab
     .command("run")
     .argument("<lab>", "Lab id or .yaml path.")
-    .description("Run a Humanish lab manifest. Same as `humanish run <lab>`, grouped under `lab`.")
+    .description("Run a humanish lab manifest. Same as `humanish run <lab>`, grouped under `lab`.")
     .option("--env-file <path>", "Load a local env file for this lab without persisting values.")
     .option("--dry-run", "Render contract evidence without live provider spend.")
     .option("--open", "Open the observer in the default browser.")
@@ -192,7 +192,7 @@ function formatLabListHuman(result: LabListResult): string {
   if (result.labs.length === 0) {
     return (
       [
-        `No Humanish labs found in ${result.cwd}`,
+        `No humanish labs found in ${result.cwd}`,
         "Create one under humanish/labs/*.yaml, .humanish/labs/*.yaml, or pass a .yaml path.",
         ...result.warnings.map((warning) => `warning: ${warning}`),
       ].join("\n") + "\n"

@@ -7,11 +7,11 @@ const html = `<!doctype html>
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Humanish Synthetic Fixture</title>
+    <title>humanish Synthetic Fixture</title>
   </head>
   <body>
     <main>
-      <h1>Humanish Synthetic Fixture</h1>
+      <h1>humanish Synthetic Fixture</h1>
       <p data-testid="state">first-visible-state</p>
       <form aria-label="Synthetic onboarding">
         <label>

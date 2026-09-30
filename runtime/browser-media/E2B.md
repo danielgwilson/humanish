@@ -5,7 +5,7 @@ E2B speech uses the same guest media worker, PulseAudio devices, synthetic
 runtime. It extends E2B's maintained `desktop` template; the default browser
 template remains unchanged.
 
-Humanish selects its versioned public speech template automatically when a lab
+humanish selects its versioned public speech template automatically when a lab
 requests `media.microphone.source: speech`. No custom template build is needed.
 `execution.desktop.template` can override that default.
 
@@ -28,4 +28,4 @@ does not publish the template. Maintainers can publish a qualified build with
 [E2B's `template publish` command](https://e2b.dev/docs/sdk-reference/cli/v1.0.9/template#e2b-template-publish),
 verify public visibility, and verify launch by the exact template ID. Use a new
 versioned template for an update; do not overwrite the template used by a released
-Humanish version.
+humanish version.
