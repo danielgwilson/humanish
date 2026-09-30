@@ -21,8 +21,8 @@ import { type RunSubjectProvenance } from "../../run/bundle.js";
 import {
   assertSafeOutputPathSegment,
   writeContainedOutputFile,
-  type PreparedOutputDirectory,
-} from "../../run/selected-output-paths.js";
+  type PreparedOutputRoot,
+} from "../../run/contained-output.js";
 import { type LocalTreeArchive } from "../../run/source-archive.js";
 import { laneOutcomeOk } from "./bundle.js";
 import { withInboxMission } from "./lane-plan.js";
@@ -45,7 +45,7 @@ import type {
  *  the relative path the trace references (screenshots/<name> at N=1; screenshots/<laneId>/<name>
  *  at N>1). */
 export function makeLaneWriteScreenshot(
-  artifactRoot: PreparedOutputDirectory,
+  artifactRoot: PreparedOutputRoot,
   spec: { screenshotDir: string },
   screenshots: string[],
 ): (name: string, bytes: Buffer) => Promise<string> {

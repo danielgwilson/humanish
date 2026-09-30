@@ -16,7 +16,7 @@ import { estimateActorCostForExecution } from "./pricing.js";
 
 import { resolveRunPath } from "./locate.js";
 import { RUN_BUNDLE_FILE } from "./bundle.js";
-import { readContainedRegularFile } from "./selected-output-paths.js";
+import { readContainedRegularFile } from "./contained-output.js";
 import { isPathInside, resolvePhysicalCwd } from "./paths.js";
 
 const RUN_DETAIL_SCHEMA = "humanish.run-detail.v1";

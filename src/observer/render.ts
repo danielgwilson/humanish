@@ -14,7 +14,7 @@ import {
   validatePreparedRunArtifactPaths,
   type PreparedRunArtifactPaths,
 } from "../run/paths.js";
-import { writeContainedOutputFile } from "../run/selected-output-paths.js";
+import { writeContainedOutputFile } from "../run/contained-output.js";
 import { loadRunBundlePrepared } from "../run/locate.js";
 import { verifyRunPrepared } from "../run/verify.js";
 import { renderObserverHtml } from "./artifact.js";

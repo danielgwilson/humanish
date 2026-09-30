@@ -10,7 +10,7 @@ import {
   renderPersonaPromptSection,
 } from "../../lab/persona.js";
 import { digestText, redactText, scrubLiterals } from "../../evidence/redaction.js";
-import { prepareSelectedOutputDirectory } from "../../run/selected-output-paths.js";
+import { prepareSelectedOutputDirectory } from "../../run/contained-output.js";
 import { buildRunSource } from "../../run/bundle.js";
 import { renderTerminalReviewMarkdown } from "./bundle.js";
 import { buildRuntimeAuth, buildSandboxMetadata } from "./credentials.js";

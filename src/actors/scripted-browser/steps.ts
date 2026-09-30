@@ -14,8 +14,8 @@ import {
   prepareSelectedOutputDirectory,
   readContainedRegularFile,
   writeContainedOutputFile,
-  type PreparedOutputDirectory,
-} from "../../run/selected-output-paths.js";
+  type PreparedOutputRoot,
+} from "../../run/contained-output.js";
 import {
   LOOPBACK_EVIDENCE_URL_POLICY,
   type BrowserPersonaAssertionCapture,
@@ -28,7 +28,7 @@ import {
 } from "./types.js";
 
 export async function executeBrowserPersonaStep(args: {
-  absoluteArtifactRoot: PreparedOutputDirectory;
+  absoluteArtifactRoot: PreparedOutputRoot;
   appUrl: string;
   browserJourney: BrowserPersonaJourney;
   page: ScriptedPageLike;
@@ -259,7 +259,7 @@ export function tracePathForBrowserSurface(surface: BrowserSurface): string {
  */
 export async function captureBlockedStepScreenshot(
   page: ScriptedPageLike | null,
-  artifactRoot: PreparedOutputDirectory,
+  artifactRoot: PreparedOutputRoot,
   surface: BrowserSurface,
   step: BrowserPersonaStepManifest,
 ): Promise<{ screenshotPath: string; written: boolean }> {

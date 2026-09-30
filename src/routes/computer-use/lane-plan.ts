@@ -29,7 +29,7 @@ import { renderTaskPrompt, type LabTask } from "../../lab/tasks.js";
 import { participantAssignment } from "../../lab/participant-assignment.js";
 import { labPersonaIds, resolveCommittedPersonas } from "../../lab/persona-resolve.js";
 import { participantIdAt } from "../../lab/routing.js";
-import type { PreparedSelectedOutputDirectory } from "../../run/selected-output-paths.js";
+import type { PreparedSelectedOutputDirectory } from "../../run/contained-output.js";
 import {
   CUA_FANOUT_STRATEGY,
   CUA_MAX_CONCURRENCY_ENV,

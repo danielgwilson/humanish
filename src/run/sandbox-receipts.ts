@@ -3,7 +3,7 @@
 // kill loses every in-memory id; this append-only file keeps them for `humanish reclaim`.
 import { appendFile } from "node:fs/promises";
 
-import { prepareContainedOutputFile, type PreparedOutputRoot } from "./selected-output-paths.js";
+import { prepareContainedOutputFile, type PreparedOutputRoot } from "./contained-output.js";
 
 export const SANDBOX_RECEIPTS_ARTIFACT = "sandbox-receipts.ndjson";
 

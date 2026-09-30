@@ -10,7 +10,7 @@ import { digestText } from "../../evidence/redaction.js";
 import {
   readContainedRegularFile,
   type PreparedSelectedOutputDirectory,
-} from "../../run/selected-output-paths.js";
+} from "../../run/contained-output.js";
 
 // Same public-safe token shape the lab id uses; an id-style scenario.ref must match it before
 // it is interpolated into a repo path.

@@ -9,7 +9,7 @@ import {
   assertSafeOutputPathSegment,
   readContainedRegularFile,
   type PreparedSelectedOutputDirectory,
-} from "./selected-output-paths.js";
+} from "./contained-output.js";
 import { isNodeError, isRecord } from "./primitives.js";
 
 async function inspectImplicitProjectPath(

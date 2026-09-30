@@ -14,7 +14,7 @@ import {
   prepareManagedHumanishOutputDirectory,
   readContainedRegularFile,
   writeContainedOutputFile,
-} from "../run/selected-output-paths.js";
+} from "../run/contained-output.js";
 
 const COMMS_CONNECTIONS_SCHEMA = "humanish.comms-connections.v1";
 export const COMMS_CONFIG_PATH = ".humanish/local/comms.yaml";

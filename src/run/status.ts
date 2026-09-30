@@ -11,7 +11,7 @@
 // operator may share the run directory, so a share-safety gate must have nothing to strip here.
 
 import type { RunBundle } from "./bundle.js";
-import { writeContainedOutputFile, type PreparedOutputRoot } from "./selected-output-paths.js";
+import { writeContainedOutputFile, type PreparedOutputRoot } from "./contained-output.js";
 
 export const RUN_STATUS_SCHEMA = "humanish.run-status.v1";
 

@@ -29,7 +29,7 @@ Separately, an account-wide provider operation once destroyed unrelated infrastr
 
 ## Enforced by
 
-- `src/run/paths.ts` and `src/run/selected-output-paths.ts`, with `tests/run/path-containment.test.ts`.
+- `src/run/paths.ts` and `src/run/contained-output.ts`, with `tests/run/path-containment.test.ts`.
 - `src/run/git-workspace.ts`, with `tests/run/git-state.test.ts`.
 - `src/run/reclaim.ts`, with `tests/run/reclaim.test.ts`.
 - Invariant 7 in [invariants and defaults](../principles/invariants-and-defaults.md).

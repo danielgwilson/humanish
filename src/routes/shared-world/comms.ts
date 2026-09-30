@@ -16,7 +16,7 @@ import {
 import type { CommsAddress } from "../../comms/types.js";
 import { redactText, toErrorMessage } from "../../evidence/redaction.js";
 import type { LabCommsEmail, LabConfig } from "../../lab/types.js";
-import { writeContainedOutputFile } from "../../run/selected-output-paths.js";
+import { writeContainedOutputFile } from "../../run/contained-output.js";
 import type { Shell } from "../../substrates/shell.js";
 import type {
   ConcurrentSharedWorldPlaneClass,

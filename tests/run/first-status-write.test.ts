@@ -16,8 +16,8 @@ import type { E2BDesktopModule } from "../../src/substrates/e2b/sdk.js";
 // awaiting it reaches Sandbox.create before the record exists; under load that is what left a run
 // killed after its sandbox receipt with no status record.
 const delayed = vi.hoisted(() => ({ roots: new WeakSet<object>(), ms: 1_000 }));
-vi.mock("../../src/run/selected-output-paths.js", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../src/run/selected-output-paths.js")>();
+vi.mock("../../src/run/contained-output.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/run/contained-output.js")>();
   return {
     ...actual,
     writeContainedOutputFile: async (

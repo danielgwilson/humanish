@@ -26,7 +26,7 @@ import {
   prepareSelectedOutputDirectory,
   readContainedRegularFile,
   writeContainedOutputFile,
-} from "../run/selected-output-paths.js";
+} from "../run/contained-output.js";
 
 export interface CommsCheckResult {
   schema: "humanish.comms-check.v1";

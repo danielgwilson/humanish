@@ -7,7 +7,7 @@ import type { CuaActorDescriptor } from "../../actors/registry.js";
 import type { LabSubjectServe, LabSubjectStateCheckpoint } from "../../lab/types.js";
 import { buildRunSource, type RunSubjectStateStepRecord } from "../../run/bundle.js";
 import type { RunScope } from "../../run/run.js";
-import { prepareSelectedOutputDirectory } from "../../run/selected-output-paths.js";
+import { prepareSelectedOutputDirectory } from "../../run/contained-output.js";
 import type { SharedWorldStateSnapshot } from "../../run/shared-world-evidence.js";
 import type { DetachedTimers } from "../../substrates/detached.js";
 import { renderConcurrentReviewMarkdown } from "./bundle.js";

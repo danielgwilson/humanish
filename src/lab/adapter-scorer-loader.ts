@@ -32,7 +32,7 @@ import type {
 import {
   prepareSelectedOutputDirectory,
   readContainedRegularFile,
-} from "../run/selected-output-paths.js";
+} from "../run/contained-output.js";
 
 /** The read-model context a loaded scorer sees — the terminal or browser scoring context. The module
  *  narrows it at runtime (`"product" in ctx` ⇒ terminal; `"backend" in ctx` ⇒ browser). */

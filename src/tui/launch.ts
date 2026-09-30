@@ -18,7 +18,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { resolveLabManifest } from "../lab/discover.js";
-import { prepareManagedHumanishOutputDirectory } from "../run/selected-output-paths.js";
+import { prepareManagedHumanishOutputDirectory } from "../run/contained-output.js";
 
 /**
  * A lab handle is the manifest FILENAME, which is what `humanish lab run` resolves. Restricted to

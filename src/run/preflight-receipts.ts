@@ -16,7 +16,7 @@ import {
   readContainedRegularFile,
   writeContainedOutputFile,
   type PreparedSelectedOutputDirectory,
-} from "./selected-output-paths.js";
+} from "./contained-output.js";
 
 const PREFLIGHT_DIR = "preflight";
 // Written when the probe finished without confirming its kill: the owner no longer holds the

@@ -42,7 +42,7 @@ import {
   type RunSubjectStateStepRecord,
 } from "../../run/bundle.js";
 import { type RunDesktopGeometry, type RunStream } from "../../run/streams.js";
-import { type PreparedOutputDirectory } from "../../run/selected-output-paths.js";
+import { type PreparedOutputRoot } from "../../run/contained-output.js";
 import { type LocalTreeArchive } from "../../run/source-archive.js";
 import type { DwellWindow, StopWhen } from "../../actors/stop-conditions.js";
 import { type LabTask } from "../../lab/tasks.js";
@@ -177,7 +177,7 @@ export interface CuaActorLabHooks extends BrowserLabAdapterHooks {
   createDesktopLane?: (
     spec: CuaLaneSpec,
     warnings: string[],
-    artifactRoot: PreparedOutputDirectory,
+    artifactRoot: PreparedOutputRoot,
   ) => CuaDesktopLane;
   env?: Record<string, string | undefined>;
   renderObserverFn?: typeof renderObserver;
@@ -521,7 +521,7 @@ export interface CuaLaneDeps {
   createDesktopLane?: (
     spec: CuaLaneSpec,
     warnings: string[],
-    artifactRoot: PreparedOutputDirectory,
+    artifactRoot: PreparedOutputRoot,
   ) => CuaDesktopLane;
   config: LabConfig;
   descriptor: CuaActorDescriptor;
@@ -548,7 +548,7 @@ export interface CuaLaneDeps {
   perLaneSandboxMs: number;
   timeoutMs: number;
   laneCount: number;
-  artifactRoot: PreparedOutputDirectory;
+  artifactRoot: PreparedOutputRoot;
   /** The lab's resolution directory: relative paths in the config (a camera .y4m) resolve here. */
   labCwd: string;
   redactScreenshots: boolean;

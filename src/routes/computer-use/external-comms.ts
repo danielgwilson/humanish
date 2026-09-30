@@ -4,7 +4,7 @@ import type { CommsAddress } from "../../comms/types.js";
 import { redactText, toErrorMessage } from "../../evidence/redaction.js";
 import type { LabCommsEmail, LabCommsExternal } from "../../lab/types.js";
 import type { PreparedRunArtifactPaths } from "../../run/paths.js";
-import { writeContainedOutputFile } from "../../run/selected-output-paths.js";
+import { writeContainedOutputFile } from "../../run/contained-output.js";
 import { laneHasInboxRecipient } from "./desktop-lane.js";
 import type { CuaLaneSpec, LaneRunOutcome } from "./types.js";
 

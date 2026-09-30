@@ -11,12 +11,12 @@ import {
 import {
   assertSafeOutputPathSegment,
   prepareContainedOutputFile,
-  type PreparedOutputDirectory,
-} from "../run/selected-output-paths.js";
+  type PreparedOutputRoot,
+} from "../run/contained-output.js";
 
 /** Both providers stream into the same bounded artifact writer before desktop teardown. */
 export async function collectDesktopRecording(
-  root: PreparedOutputDirectory,
+  root: PreparedOutputRoot,
   laneId: string,
   receive: (destination: Writable) => Promise<DesktopRecordingMetadata>,
 ): Promise<RunDesktopRecording> {

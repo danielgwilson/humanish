@@ -17,11 +17,11 @@ import {
   prepareSelectedOutputDirectory,
   prepareSelectedOutputFile,
   readContainedRegularFile,
-  type PreparedOutputDirectory,
+  type PreparedOutputRoot,
   type PreparedSelectedOutputFile,
   writeContainedOutputFile,
   writePreparedSelectedOutputFile,
-} from "../../run/selected-output-paths.js";
+} from "../../run/contained-output.js";
 
 const CODEX_APP_SERVER_UI_SCHEMA = "humanish.codex-app-server-ui.v1";
 
@@ -217,7 +217,7 @@ export async function startCodexAppServerUi(
 async function serveArtifact(args: {
   requestPath: string;
   response: ServerResponse;
-  runRoot: PreparedOutputDirectory;
+  runRoot: PreparedOutputRoot;
 }): Promise<void> {
   const body = await readContainedRegularFile(args.runRoot, args.requestPath);
   if (body) {

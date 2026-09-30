@@ -17,7 +17,7 @@ import {
   readContainedRegularFile,
   type PreparedSelectedOutputDirectory,
   writeContainedOutputFile,
-} from "./selected-output-paths.js";
+} from "./contained-output.js";
 import {
   RUN_BUNDLE_FILE,
   PUBLIC_TARGET_CWD,

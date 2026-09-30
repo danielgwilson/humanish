@@ -4,7 +4,7 @@
 
 import path from "node:path";
 import { humanishScripts } from "./init-templates.js";
-import type { PreparedSelectedOutputDirectory } from "../run/selected-output-paths.js";
+import type { PreparedSelectedOutputDirectory } from "../run/contained-output.js";
 import { readTextIfExists } from "./init-paths.js";
 import type { InitChange, InitResult } from "./init.js";
 

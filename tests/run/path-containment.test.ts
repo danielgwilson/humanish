@@ -23,7 +23,7 @@ import { listRuns } from "../../src/run/manage.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { verifyRun } from "../../src/run/verify.js";
 import { prepareRunArtifactPaths, validatePreparedRunArtifactPaths } from "../../src/run/paths.js";
-import { writePreparedRunLatestPointer } from "../../src/run/selected-output-paths.js";
+import { writePreparedRunLatestPointer } from "../../src/run/contained-output.js";
 
 const execFileAsync = promisify(execFile);
 

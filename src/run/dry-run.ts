@@ -6,7 +6,7 @@ import { runScope, type FinishedRun, type RunScope } from "./run.js";
 import {
   assertPreparedSelectedOutputDirectory,
   prepareSelectedOutputDirectory,
-} from "./selected-output-paths.js";
+} from "./contained-output.js";
 import {
   RUN_BUNDLE_FILE,
   buildRunSource,
