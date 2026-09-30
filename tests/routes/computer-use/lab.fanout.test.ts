@@ -550,10 +550,12 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
   // bundle assembly or artifact writing shows up as a diff. Regenerate with -u.
   it("live run directory matches its golden", async () => {
     const handle = makeFanoutModule();
-    const outcome = await runLab(fanoutConfig(), {
+    // One lane at a time. Overlapping lanes reach sandbox creation and append their receipts in
+    // whatever order the scheduler gives them, which changed the snapshot once under full-suite
+    // load. The concurrency behavior has its own tests in this file.
+    const outcome = await runLab(fanoutConfig({ concurrency: 1 }), {
       cwd,
       automaticAnalysis: { run: automaticAnalysisBoundary() },
-      // Lanes overlap, so a stepped clock would be read in a different order each run.
       cuaHooks: passingHooks(handle, { now: () => 1_000_000 }),
     });
     const runId = outcome.result.runId;
