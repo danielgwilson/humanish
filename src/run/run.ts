@@ -297,22 +297,3 @@ export async function runScope<T>(
   }
   return { result: outcome.result, finished };
 }
-
-// Routes not yet on runScope mark their final result here. Deleted when the last one migrates.
-const legacyFinalizedResults = new WeakMap<object, PreparedRunArtifactPaths>();
-
-/** Legacy producer receipt: call only after final source publication, never for a refusal. */
-export function markFinalizedStudyResult<T extends object>(
-  result: T,
-  prepared: PreparedRunArtifactPaths,
-): T {
-  legacyFinalizedResults.set(result, prepared);
-  return result;
-}
-
-/** The FinishedRun of a result a legacy route marked, or undefined for any other result. */
-export function legacyFinishedRun(result: { runId?: string | undefined }): FinishedRun | undefined {
-  const prepared = legacyFinalizedResults.get(result);
-  if (prepared === undefined || !result.runId) return undefined;
-  return new FinishedRun(issueKey, result.runId, prepared, undefined);
-}
