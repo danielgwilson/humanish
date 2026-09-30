@@ -82,6 +82,29 @@ export function reportedCounts(raw: ActorTokenUsage): ActorTokenUsage {
   return usage;
 }
 
+/**
+ * Whether an account-billed provider was given a limit it cannot honor. Dollar caps and spend
+ * estimators price API tokens, which account usage is not billed by, and the account path sends
+ * no output-token limit (src/actors/codex/restricted-policy.ts refuses one). Checked before the
+ * run and again after each turn, since a provider may learn its billing class during startup.
+ */
+export function accountBillingConflicts(
+  provider: CuaProvider,
+  limits: {
+    readonly maxUsd?: number | undefined;
+    readonly overRunBudget?: unknown;
+    readonly estimateTurnCostUsd?: unknown;
+  },
+): boolean {
+  return (
+    provider.executionProfile?.billing === "account-unknown" &&
+    (limits.maxUsd !== undefined ||
+      limits.overRunBudget !== undefined ||
+      limits.estimateTurnCostUsd !== undefined ||
+      provider.modelSettings?.maxOutputTokens !== undefined)
+  );
+}
+
 export class UsageLedger {
   /** Settled single-dispatch requests, in order: the trace's providerRequests. */
   readonly requests: ActorProviderRequest[] = [];

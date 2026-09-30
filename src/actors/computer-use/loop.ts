@@ -21,6 +21,7 @@ import {
 import { DesktopObserver } from "./loop/observation.js";
 import { requestTurn } from "./loop/provider-call.js";
 import { LoopSession } from "./loop/session.js";
+import { accountBillingConflicts } from "./loop/usage.js";
 import { loopResult } from "./loop/trace.js";
 import type {
   CuaLoopOptions,
@@ -206,13 +207,7 @@ function applyBackstop(
 }
 
 function refuseAccountBilledCaps(options: CuaLoopOptions): void {
-  if (
-    options.provider.executionProfile?.billing === "account-unknown" &&
-    (options.maxUsd !== undefined ||
-      options.overRunBudget !== undefined ||
-      options.estimateTurnCostUsd !== undefined ||
-      options.provider.modelSettings?.maxOutputTokens !== undefined)
-  ) {
+  if (accountBillingConflicts(options.provider, options)) {
     throw new CuaProviderError("request_rejected", {
       dispatched: false,
       usageComplete: false,
@@ -274,13 +269,8 @@ function acceptTurn(
 
 /** Stops for a reply that must not be acted on: account billing, interruption, unknown usage. */
 function refuseTurn(session: LoopSession, turn: CuaTurn, turnNumber: number): Stop | undefined {
-  const { maxUsd, overRunBudget, estimateTurnCostUsd } = session.settings;
-  if (
-    session.provider.executionProfile?.billing === "account-unknown" &&
-    (maxUsd !== undefined || overRunBudget !== undefined || estimateTurnCostUsd !== undefined)
-  ) {
-    return accountBilledCaps;
-  }
+  const { overRunBudget } = session.settings;
+  if (accountBillingConflicts(session.provider, session.settings)) return accountBilledCaps;
   if (turn.interruption !== undefined) {
     // Preserve usage and partial narration of an interrupted response.
     overRunBudget?.(session.usage.running());
