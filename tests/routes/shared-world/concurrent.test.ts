@@ -1706,16 +1706,11 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
     expect(result.error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED");
     expect(result.error?.message).toContain("zero packable entries");
     expect(created).toHaveLength(0);
-    // Packing runs after the run started: the scope closes that run with no outcome and no
-    // snapshot, and a refusal is never analyzed.
+    // Packing runs before the run starts: no run directory, no run id, and a refusal is never
+    // analyzed.
     expect(analysis).not.toHaveBeenCalled();
-    const runsRoot = path.join(cwd, ".humanish", "runs");
-    const [runId] = (await readdir(runsRoot)).filter((entry) => entry !== "latest.json");
-    const runDir = path.join(runsRoot, runId!);
-    const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8"));
-    expect(status.state).toBe("finished");
-    expect(status).not.toHaveProperty("outcome");
-    expect(await readdir(runDir)).not.toContain("run.json");
+    expect(result.runId).toBe("not-created");
+    expect(await readdir(path.join(cwd, ".humanish", "runs")).catch(() => [])).toEqual([]);
   });
 
   it("engine re-enforcement (library API surface, bypassing the parser): a local-tree config missing subject.serve fails closed", async () => {

@@ -110,19 +110,22 @@ function provisionedSetup(
 
 /**
  * Binds the physical project before the run starts, as the computer-use route does. Everything
- * after it (run storage, source and persona reads, local-tree packing, comms, the Observer) uses
+ * after it (local-tree packing, run storage, source and persona reads, comms, the Observer) uses
  * it, so retargeting a symlinked cwd from a hook cannot redirect any of it into another project.
  */
-async function startInPhysicalProject(
+async function bindPhysicalProject(requestedCwd: string): Promise<string> {
+  const physicalCwd = await realpath(requestedCwd);
+  return (await prepareSelectedOutputDirectory(path.dirname(physicalCwd), physicalCwd))
+    .physicalPath;
+}
+
+function startConcurrentRun(
   options: RunConcurrentSharedWorldLabOptions,
-  requestedCwd: string,
+  cwd: string,
   hooks: SharedWorldLabHooks,
   scope: RunScope,
-): Promise<{ cwd: string; started: Awaited<ReturnType<RunScope["startRun"]>> }> {
-  const physicalCwd = await realpath(requestedCwd);
-  const cwd = (await prepareSelectedOutputDirectory(path.dirname(physicalCwd), physicalCwd))
-    .physicalPath;
-  const started = await scope.startRun({
+): ReturnType<RunScope["startRun"]> {
+  return scope.startRun({
     cwd,
     runId: options.runId,
     mintRunId: makeRunId,
@@ -131,7 +134,6 @@ async function startInPhysicalProject(
     renderReview: renderConcurrentReviewMarkdown,
     observer: { open: options.open === true, render: hooks.renderObserverFn },
   });
-  return { cwd, started };
 }
 
 /**
@@ -157,7 +159,36 @@ export async function prepareConcurrentRun(
   const { openaiApiKey, e2bApiKey, knownSecretValues, scrubKnownValues } = lab;
   const { config, dryRun } = options;
   const roles = config.actors[0]?.lanes ?? [];
-  const { cwd, started } = await startInPhysicalProject(options, requestedCwd, hooks, scope);
+  const cwd = await bindPhysicalProject(requestedCwd);
+  const warnings: string[] = [];
+  // The comms catch and the packed tree are checked before the run starts, so a refusal leaves
+  // no run directory. Neither spends: the probe is one request and packing runs on the host.
+  const externalComms = await prepareExternalComms(config, planeClass, dryRun, warnings);
+  if (!externalComms.ok) {
+    return {
+      ok: false,
+      result: fail(
+        "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_CATCH_UNREACHABLE",
+        externalComms.message,
+      ),
+    };
+  }
+  // Pack the working tree once per run, on the host, before any sandbox exists: a packing
+  // failure fails the run closed without sandbox cost. Dry-run packs nothing.
+  const packed =
+    localTreeRoute && !dryRun
+      ? await packSubjectTree(cwd, config, hooks, scrubKnownValues)
+      : { ok: true as const, archive: undefined, buffer: undefined };
+  if (!packed.ok) {
+    return {
+      ok: false,
+      result: fail("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED", packed.message, descriptor.id),
+    };
+  }
+  const localTreeArchive = packed.archive;
+  const localTreeArchiveBuffer = packed.buffer;
+
+  const started = await startConcurrentRun(options, cwd, hooks, scope);
   if (!started.ok) return { ok: false, result: fail(started.code, started.message, descriptor.id) };
   const { run } = started;
   const { runId, createdAt, paths: runPaths } = run;
@@ -177,7 +208,6 @@ export async function prepareConcurrentRun(
     packageName: "humanish",
   });
 
-  const warnings: string[] = [];
   const stateStepRecords: RunSubjectStateStepRecord[] = [];
   const stateSnapshots: SharedWorldStateSnapshot[] = [];
   const actorSpecs = await buildSeatSpecs(config, roles, cwd, scrubKnownValues);
@@ -185,35 +215,9 @@ export async function prepareConcurrentRun(
   const live: LiveSeats = { streamUrls: [] };
 
   const subjectComms = subjectCommsOf(config, planeClass);
-  const externalComms = await prepareExternalComms(config, planeClass, dryRun, warnings);
-  if (!externalComms.ok) {
-    return {
-      ok: false,
-      result: fail(
-        "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_CATCH_UNREACHABLE",
-        externalComms.message,
-      ),
-    };
-  }
 
   const declaredOriginDigest =
     planeClass === "external-public" ? declaredOriginDigestOf(config) : undefined;
-
-  // Pack the working tree ONCE per run, on the host, BEFORE the subject sandbox is created
-  // (mirrors the cua route's ordering): a packing failure fails the run
-  // closed here, never spending sandbox cost. Dry-run packs nothing.
-  const packed =
-    localTreeRoute && !dryRun
-      ? await packSubjectTree(cwd, config, hooks, scrubKnownValues)
-      : { ok: true as const, archive: undefined, buffer: undefined };
-  if (!packed.ok) {
-    return {
-      ok: false,
-      result: fail("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED", packed.message, descriptor.id),
-    };
-  }
-  const localTreeArchive = packed.archive;
-  const localTreeArchiveBuffer = packed.buffer;
 
   const email = await prepareEmailReceiving({
     cwd,

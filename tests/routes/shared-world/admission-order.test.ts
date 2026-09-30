@@ -1,6 +1,7 @@
 // Every configuration refusal the shared-world runner makes before a run starts, alone and paired
 // with a later rule in its chain, so a change to which refusal wins shows up as a golden diff. The
-// last rule (a live run without keys) is checked by the route itself after the chain.
+// last two rules (a live run without keys, an unreachable external comms catch) are checked by the
+// route itself after the chain; the catch is probed before the run starts.
 
 import { mkdtemp, readdir, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -22,6 +23,8 @@ interface Rule {
   readonly mutate: (config: Raw) => void;
   /** A caller-supplied session runner (never called). */
   readonly runSession?: true;
+  /** Provider keys in the environment, so the route's own key check passes. */
+  readonly keys?: true;
 }
 
 const record = (config: Raw, key: string): Raw => (config[key] ??= {}) as Raw;
@@ -75,6 +78,18 @@ const rules = new Map<string, Rule>([
   ],
   ["clone without a repo slug", { mutate: (c) => (record(c, "subject").repos = ["not a slug"]) }],
   ["live without keys", { mutate: (c) => (record(c, "scenario").mode = "live") }],
+  [
+    "live external catch unreachable",
+    {
+      mutate: (c) => {
+        rules.get("external plane without authorization")!.mutate(c);
+        record(record(c, "subject"), "publicTarget").authorized = true;
+        record(c, "scenario").mode = "live";
+        c.comms = { email: { kind: "fake", external: { catchBaseUrl: "http://127.0.0.1:9/" } } };
+      },
+      keys: true,
+    },
+  ],
 ]);
 
 // Each rule paired with a later one that can hold at the same time.
@@ -106,7 +121,9 @@ function caseOf(names: readonly string[]): {
     throw new Error("admission cases must not reach a caller hook");
   };
   const hooks: SharedWorldLabHooks = {
-    env: {},
+    env: selected.some((rule) => rule.keys)
+      ? { OPENAI_API_KEY: "sk-test-openai", E2B_API_KEY: "e2b-test-key" }
+      : {},
     loadDesktopModule: never,
     ...(selected.some((rule) => rule.runSession) ? { runSession: never } : {}),
   };

@@ -306,6 +306,30 @@
       "reason": "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE"
     }
   },
+  "live external catch unreachable": {
+    "schema": "humanish.concurrent-shared-world-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-sharedprovisioned",
+    "actor": "openai-computer-use",
+    "topology": "shared-world",
+    "topologyMode": "concurrent",
+    "roleCount": 2,
+    "concurrency": 2,
+    "dryRun": false,
+    "runId": "not-created",
+    "roles": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_CATCH_UNREACHABLE",
+      "message": "The external comms catch or inbox is unreachable or incompatible (GET /health must identify humanish-comms-catch and advertise recipient-inbox-v1). Update humanish on the catch host and restart it with `humanish comms catch` on that host, or drop comms.email to run without the inbox funnel."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE"
+    }
+  },
   "recording and invalid analysis": {
     "schema": "humanish.concurrent-shared-world-lab-result.v1",
     "ok": false,
