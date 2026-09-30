@@ -807,3 +807,36 @@ describe("secret values are read only when a warning needs them", () => {
     ]);
   });
 });
+
+describe("the scrub covers every env the run could read", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("scrubs a declared name's value from process.env when env is also given", () => {
+    const hostPassword = "synthetic-host-password-5d1e";
+    vi.stubEnv("APP_PASSWORD", hostPassword);
+    const result = normalize(config("cuClone", { subject: { env: ["APP_PASSWORD"] } }), {
+      env: { APP_PASSWORD: "synthetic-route-password-8a2f" },
+      onEvent: () => {
+        throw new Error(`fell back to ${hostPassword}`);
+      },
+    });
+    if (!result.ok) throw new Error(result.message);
+    result.options.cuaHooks!.onPreflight!({ lanes: [] } as unknown as CuaLanePlan);
+    expect(result.warnings[0]).not.toContain(hostPassword);
+  });
+
+  it("scrubs the analysis API key", () => {
+    const analysisKey = "synthetic-analysis-key-2c7b";
+    const result = normalize(config("cuAppUrl"), {
+      automaticAnalysis: { deps: { apiKey: analysisKey } },
+      onEvent: () => {
+        throw new Error(`analysis rejected ${analysisKey}`);
+      },
+    });
+    if (!result.ok) throw new Error(result.message);
+    result.options.cuaHooks!.onPreflight!({ lanes: [] } as unknown as CuaLanePlan);
+    expect(result.warnings[0]).not.toContain(analysisKey);
+  });
+});

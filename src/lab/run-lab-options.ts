@@ -244,24 +244,29 @@ function unsupportedOption(
 }
 
 /**
- * The literal values a route scrubs from its evidence: the provider keys and the declared subject
- * env, read from the env the route will use. A warning from onEvent is appended after the route
- * sanitized its own, so it is scrubbed here the same way.
+ * The literal values to scrub from an onEvent warning: the provider keys and the declared subject
+ * env from every env the run could read (the `env` option, each bag's env, process.env), and the
+ * analysis API key. A callback can hold any of them, and its warning is appended after the route
+ * sanitized its own.
  */
-function knownSecretValues(config: LabConfig, route: LabRoute, options: RunLabOptions): string[] {
-  const bagEnv =
-    route === "computer-use"
-      ? options.cuaHooks?.env
-      : route === "shared-world"
-        ? options.sharedWorldHooks?.env
-        : route === "terminal"
-          ? options.terminalHooks?.env
-          : route === "scripted"
-            ? options.scriptedHooks?.env
-            : undefined;
-  const env = options.env ?? bagEnv ?? process.env;
+function knownSecretValues(config: LabConfig, options: RunLabOptions): string[] {
+  const sources = [
+    options.env,
+    options.cuaHooks?.env,
+    options.scriptedHooks?.env,
+    options.terminalHooks?.env,
+    options.sharedWorldHooks?.env,
+    process.env,
+  ];
   const names = ["OPENAI_API_KEY", "E2B_API_KEY", "CODEX_API_KEY", ...(config.subject.env ?? [])];
-  return names.map((name) => env[name]?.trim() ?? "").filter((value) => value.length >= 4);
+  const values = new Set<string>();
+  const add = (value: string | undefined): void => {
+    const trimmed = value?.trim() ?? "";
+    if (trimmed.length >= 4) values.add(trimmed);
+  };
+  for (const env of sources) for (const name of names) add(env?.[name]);
+  add(options.automaticAnalysis?.deps?.apiKey);
+  return [...values];
 }
 
 /**
@@ -301,7 +306,7 @@ export function normalizeRunLabOptions(
             let detail: string;
             try {
               // Read here, not up front: a run with no failing callback never touches the env.
-              const scrub = scrubLiterals(knownSecretValues(config, route, options));
+              const scrub = scrubLiterals(knownSecretValues(config, options));
               detail = redactText(scrub(toErrorMessage(error)));
             } catch {
               detail = "the thrown value has no message";
