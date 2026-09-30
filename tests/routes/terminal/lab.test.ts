@@ -1,6 +1,6 @@
 import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
 import { runDirSnapshot } from "../../helpers/run-golden.js";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -100,6 +100,10 @@ function makeFakeModule(opts: {
     command: string,
   ) => { exitCode?: number; stderr?: string; message?: string } | undefined;
   versionProbe?: { exitCode: number; stdout: string } | Error;
+  /** Throws a CommandExitError-shaped error for the declared product install command. */
+  productInstallThrows?: boolean;
+  /** Records the path of every files.write call. */
+  writes?: string[];
 }) {
   let counter = 0;
   return {
@@ -173,13 +177,20 @@ function makeFakeModule(opts: {
                 }
                 return { exitCode: 0, stdout: "" };
               }
+              if (opts.productInstallThrows && command.includes(PRODUCT_INSTALL)) {
+                throw Object.assign(new Error("exit status 1"), {
+                  name: "CommandExitError",
+                  exitCode: 1,
+                });
+              }
               // readiness probe
               if (runOptions?.onStdout) runOptions.onStdout("HUMANISH_SHELL_READY\n");
               return { exitCode: 0, stdout: "HUMANISH_SHELL_READY\n" };
             },
           },
           files: {
-            async write() {
+            async write(filePath: string) {
+              opts.writes?.push(filePath);
               return undefined;
             },
           },
@@ -239,6 +250,9 @@ function makeFakeModule(opts: {
     },
   };
 }
+
+/** The product install command the product-setup tests declare. */
+const PRODUCT_INSTALL = "synthetic-product-install --yes";
 
 // Extract the per-run verdict nonce the lab embedded in the codex command, so the mock can echo
 // a NONCE-VERIFIED marker exactly as a real agent would (the scorer rejects a bare marker).
@@ -736,6 +750,197 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       expect(actor.providerVersion).toBeUndefined();
     },
   );
+
+  it("runs the declared product install unkeyed and before the keyed exec", async () => {
+    const creates: RecordedCreate[] = [],
+      runs: RecordedRun[] = [],
+      killed: string[] = [];
+    const config = liveConfig();
+    config.subject.product!.install = PRODUCT_INSTALL;
+    const result = await runTerminalProductLab({
+      cwd,
+      config,
+      dryRun: false,
+      open: false,
+      hooks: {
+        env: baseEnv(),
+        now: () => 1_000,
+        loadModule: async () =>
+          makeFakeModule({
+            creates,
+            runs,
+            killed,
+            codexBehavior: (cmd) => ({
+              exitCode: 0,
+              stdout: `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+            }),
+          }),
+      },
+    });
+    expect(result.ok, JSON.stringify(result.error)).toBe(true);
+    const install = runs.findIndex((r) => r.command.includes(PRODUCT_INSTALL));
+    const exec = runs.findIndex((r) => r.command.includes("HUMANISH_ACTOR_NONCE"));
+    expect(install).toBeGreaterThan(-1);
+    expect(exec).toBeGreaterThan(install);
+    expect(runs[install]?.envs).toEqual({ HUMANISH_STUDY_PARTICIPANT: "1" });
+  });
+
+  it("fails closed without a keyed exec when the product install fails", async () => {
+    const creates: RecordedCreate[] = [],
+      runs: RecordedRun[] = [],
+      killed: string[] = [];
+    const config = liveConfig();
+    config.subject.product!.install = PRODUCT_INSTALL;
+    const result = await runTerminalProductLab({
+      cwd,
+      config,
+      dryRun: false,
+      open: false,
+      hooks: {
+        env: baseEnv(),
+        now: () => 1_000,
+        loadModule: async () =>
+          makeFakeModule({
+            creates,
+            runs,
+            killed,
+            productInstallThrows: true,
+            codexBehavior: () => {
+              throw new Error("must not execute");
+            },
+          }),
+      },
+    });
+    expect(result.ok).toBe(false);
+    expect(killed).toEqual(["fake-sandbox-1"]);
+    expect(runs.some((r) => r.command.includes("HUMANISH_ACTOR_NONCE"))).toBe(false);
+    const actor = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "actor.json"), "utf8"),
+    );
+    expect(actor.status).toBe("failed");
+    expect(actor.reason).toMatch(/^subject\.product\.install could not prepare the world/);
+  });
+
+  it("uploads the declared product file and names it to the install command", async () => {
+    const creates: RecordedCreate[] = [],
+      runs: RecordedRun[] = [],
+      killed: string[] = [],
+      writes: string[] = [];
+    await writeFile(path.join(cwd, "widgetsmith-0.1.0.tgz"), "synthetic package bytes");
+    const config = liveConfig();
+    config.subject.product!.upload = "widgetsmith-0.1.0.tgz";
+    config.subject.product!.install = PRODUCT_INSTALL;
+    const result = await runTerminalProductLab({
+      cwd,
+      config,
+      dryRun: false,
+      open: false,
+      hooks: {
+        env: baseEnv(),
+        now: () => 1_000,
+        loadModule: async () =>
+          makeFakeModule({
+            creates,
+            runs,
+            killed,
+            writes,
+            codexBehavior: (cmd) => ({
+              exitCode: 0,
+              stdout: `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+            }),
+          }),
+      },
+    });
+    expect(result.ok, JSON.stringify(result.error)).toBe(true);
+    expect(writes).toHaveLength(1);
+    expect(writes[0]).toMatch(/\/\.humanish-upload\/widgetsmith-0\.1\.0\.tgz$/);
+    const install = runs.find((r) => r.command.includes(PRODUCT_INSTALL));
+    expect(install?.command).toContain(`export HUMANISH_PRODUCT_UPLOAD='${writes[0]}'; `);
+  });
+
+  it("fails closed without a keyed exec when the upload resolves outside the project", async () => {
+    const creates: RecordedCreate[] = [],
+      runs: RecordedRun[] = [],
+      killed: string[] = [],
+      writes: string[] = [];
+    const outside = await mkdtemp(path.join(tmpdir(), "humanish-tp-upload-outside-"));
+    try {
+      await writeFile(path.join(outside, "escape.tgz"), "outside bytes");
+      await symlink(path.join(outside, "escape.tgz"), path.join(cwd, "escape.tgz"));
+      const config = liveConfig();
+      config.subject.product!.upload = "escape.tgz";
+      config.subject.product!.install = PRODUCT_INSTALL;
+      const result = await runTerminalProductLab({
+        cwd,
+        config,
+        dryRun: false,
+        open: false,
+        hooks: {
+          env: baseEnv(),
+          now: () => 1_000,
+          loadModule: async () =>
+            makeFakeModule({
+              creates,
+              runs,
+              killed,
+              writes,
+              codexBehavior: () => {
+                throw new Error("must not execute");
+              },
+            }),
+        },
+      });
+      expect(result.ok).toBe(false);
+      expect(writes).toEqual([]);
+      expect(killed).toEqual(["fake-sandbox-1"]);
+      expect(runs.some((r) => r.command.includes(PRODUCT_INSTALL))).toBe(false);
+      expect(runs.some((r) => r.command.includes("HUMANISH_ACTOR_NONCE"))).toBe(false);
+      expect(result.error?.message).toMatch(/resolved outside the project/);
+    } finally {
+      await rm(outside, { recursive: true, force: true });
+    }
+  });
+
+  it("records a codex exec that outlasts the maxMinutes wall clock as timed out", async () => {
+    const creates: RecordedCreate[] = [],
+      runs: RecordedRun[] = [],
+      killed: string[] = [];
+    let clock = 1_000;
+    const result = await runTerminalProductLab({
+      cwd,
+      config: liveConfig(),
+      dryRun: false,
+      open: false,
+      hooks: {
+        env: baseEnv(),
+        now: () => clock,
+        loadModule: async () =>
+          makeFakeModule({
+            creates,
+            runs,
+            killed,
+            codexBehavior: (cmd) => {
+              // The exec returns a verdict, but the clock passes the 10-minute bound while it
+              // runs. A microtask advances it after runWithWallClock has read its start time.
+              queueMicrotask(() => {
+                clock += 11 * 60_000;
+              });
+              return {
+                exitCode: 0,
+                stdout: `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+              };
+            },
+          }),
+      },
+    });
+    expect(killed).toEqual(["fake-sandbox-1"]);
+    expect(result.session?.status).toBe("timed_out");
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
+    const actor = JSON.parse(await readFile(path.join(runDir, "actor.json"), "utf8"));
+    expect(actor.completionReason).toBe("timed_out");
+    const ledgers = JSON.parse(await readFile(path.join(runDir, "terminal-ledgers.json"), "utf8"));
+    expect(ledgers.commandLog[0]).toMatchObject({ label: "codex-exec", timedOut: true });
+  });
 
   it("rejects a bad pin at the exported engine before loading or allocating", async () => {
     const config = liveConfig();
