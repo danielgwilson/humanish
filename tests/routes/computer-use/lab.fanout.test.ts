@@ -21,7 +21,8 @@ import {
   resolveCuaLanePlan,
   resolveLaneDevice,
 } from "../../../src/routes/computer-use/lane-plan.js";
-import { declaredScreenForRender, runCuaActorLab } from "../../../src/routes/computer-use/lab.js";
+import { runCuaActorLab } from "../../../src/routes/computer-use/lab.js";
+import { declaredScreenForRender } from "../../../src/substrates/e2b/desktop-geometry.js";
 import { runCuaLanes } from "../../../src/routes/computer-use/lanes.js";
 import {
   type CuaActorLabHooks,

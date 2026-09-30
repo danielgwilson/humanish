@@ -4,11 +4,9 @@ import {
   type AutomaticAnalysisBudget,
 } from "../analysis/automatic-config.js";
 
-import {
-  CUA_ACTOR_LAB_PROVIDER_METADATA,
-  provisionCloneSubject,
-} from "../routes/computer-use/lab.js";
-import { probeUrl } from "../substrates/e2b/detached.js";
+import { provisionCloneSubject } from "../subject/clone.js";
+import { CUA_ACTOR_LAB_PROVIDER_METADATA } from "../substrates/e2b/cua-desktop.js";
+import { probeUrl } from "../substrates/detached.js";
 import { loadE2BDesktopModule, type E2BDesktopModule } from "../substrates/e2b/desktop-launch.js";
 import { acquireE2BDesktopSandbox } from "../substrates/e2b/sandbox.js";
 import { e2bShell } from "../substrates/e2b/shell.js";

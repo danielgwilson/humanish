@@ -1,6 +1,7 @@
-import { commandDigestOf, SUBJECT_DIR } from "../computer-use/lab.js";
+import { commandDigestOf } from "../../subject/state.js";
+import { SUBJECT_DIR } from "../../subject/steps.js";
 import type { Shell } from "../../substrates/shell.js";
-import { runDetachedStep, type DetachedTimers } from "../../substrates/e2b/detached.js";
+import { runDetachedStep, type DetachedTimers } from "../../substrates/detached.js";
 import { type LabConfig, type LabSubjectStateCheckpoint } from "../../lab/types.js";
 import { redactText } from "../../evidence/redaction.js";
 import { type SharedWorldCheckpoint } from "../../run/bundle.js";

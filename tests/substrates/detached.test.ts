@@ -1,12 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import type { E2BDesktopSandbox } from "../../../src/substrates/e2b/desktop-launch.js";
-import {
-  probeUrl,
-  runDetachedStep,
-  startDetachedProcess,
-} from "../../../src/substrates/e2b/detached.js";
-import { e2bShell } from "../../../src/substrates/e2b/shell.js";
+import type { E2BDesktopSandbox } from "../../src/substrates/e2b/desktop-launch.js";
+import { probeUrl, runDetachedStep, startDetachedProcess } from "../../src/substrates/detached.js";
+import { e2bShell } from "../../src/substrates/e2b/shell.js";
 
 // A scripted sandbox: every commands.run is recorded; the handler decides stdout per call.
 function makeScriptedDesktop(

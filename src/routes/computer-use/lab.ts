@@ -24,7 +24,7 @@
 
 import { prepareReceivingRun } from "../../comms/receiving-runtime.js";
 import type { CommsReceivingRun } from "../../comms/receiving.js";
-import { commandDigestOf } from "../../substrates/e2b/cua-provisioning.js";
+import { commandDigestOf } from "../../subject/state.js";
 import { withTransientCommsSecrets } from "../../run/narration-secrets.js";
 import { randomBytes } from "node:crypto";
 import { readFile, realpath, rm } from "node:fs/promises";
@@ -95,20 +95,6 @@ import {
 } from "./types.js";
 
 export { inboxRecipientFor, laneHasInboxRecipient } from "./desktop-lane.js";
-export {
-  CUA_ACTOR_LAB_PROVIDER_METADATA,
-  SUBJECT_DIR,
-  buildFillDesktopWindowCommand,
-  captureDesktopBrowserGeometry,
-  commandDigestOf,
-  declaredScreenForRender,
-  makeChromeBrowserStateObserver,
-  makeChromeDesktopGeometryObserver,
-  parseXwininfoGeometry,
-  provisionCloneSubject,
-  provisionLocalTreeSubject,
-  type SubjectPhaseEvent,
-} from "../../substrates/e2b/cua-provisioning.js";
 
 /**
  * Wrapped so a DIRECT library caller gets the same status-record lifetime the CLI does: returning

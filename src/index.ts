@@ -267,7 +267,8 @@ export type {
 export type { DoctorResult } from "./cli/doctor.js";
 export type { RunCleanupHooks, RunsResult } from "./run/manage.js";
 export type { VerifyResult } from "./run/verify.js";
-export { CUA_ACTOR_LAB_PROVIDER_METADATA, runCuaActorLab } from "./routes/computer-use/lab.js";
+export { runCuaActorLab } from "./routes/computer-use/lab.js";
+export { CUA_ACTOR_LAB_PROVIDER_METADATA } from "./substrates/e2b/cua-desktop.js";
 export { CUA_ACTOR_LAB_SCHEMA, CUA_FANOUT_STRATEGY } from "./routes/computer-use/types.js";
 export { buildCuaBundle } from "./routes/computer-use/single-bundle.js";
 export { buildCuaFanoutBundle } from "./routes/computer-use/fanout-bundle.js";
@@ -283,7 +284,7 @@ export type {
   CuaSubjectProjection,
   RunCuaActorLabOptions,
 } from "./routes/computer-use/types.js";
-export type { SubjectPhaseEvent } from "./routes/computer-use/lab.js";
+export type { SubjectPhaseEvent } from "./subject/steps.js";
 export { SCRIPTED_BROWSER_PROVIDER, runScriptedBrowserSession } from "./actors/scripted-browser.js";
 export type {
   BrowserPersonaJourney,
@@ -346,12 +347,12 @@ export {
   readDetachedLog,
   runDetachedStep,
   startDetachedProcess,
-} from "./substrates/e2b/detached.js";
+} from "./substrates/detached.js";
 export type {
   DetachedStepOptions,
   DetachedStepResult,
   DetachedTimers,
-} from "./substrates/e2b/detached.js";
+} from "./substrates/detached.js";
 // The detached-step primitives take a Shell; e2bShell adapts an E2B desktop handle to one.
 export { e2bShell } from "./substrates/e2b/shell.js";
 export type { Shell, ShellResult } from "./substrates/shell.js";

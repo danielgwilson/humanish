@@ -81,16 +81,16 @@ import { mapWithConcurrency } from "../../run/concurrency.js";
 import { labPersonaIds, resolveCommittedPersonasForCwd } from "../../lab/persona-resolve.js";
 import type { ResolvedPersona } from "../../lab/persona.js";
 import {
-  commandDigestOf,
   defaultPackLocalTree,
-  provisionCloneSubject,
-  provisionLocalTreeSubject,
-  declaredScreenForRender,
   inboxRecipientFor,
   laneHasInboxRecipient,
   resolveSubjectState,
-  type SubjectPhaseEvent,
 } from "../computer-use/lab.js";
+import { provisionCloneSubject } from "../../subject/clone.js";
+import { provisionLocalTreeSubject } from "../../subject/local-tree.js";
+import { commandDigestOf } from "../../subject/state.js";
+import type { SubjectPhaseEvent } from "../../subject/steps.js";
+import { declaredScreenForRender } from "../../substrates/e2b/desktop-geometry.js";
 import {
   composeLaneInstructions,
   resolveLaneDevice,
@@ -126,7 +126,7 @@ import {
 import { acquireE2BDesktopSandbox } from "../../substrates/e2b/sandbox.js";
 import { e2bShell } from "../../substrates/e2b/shell.js";
 import type { Shell } from "../../substrates/shell.js";
-import type { DetachedTimers } from "../../substrates/e2b/detached.js";
+import type { DetachedTimers } from "../../substrates/detached.js";
 import { type LabActorLane, type LabConfig } from "../../lab/types.js";
 import { buildObserverData } from "../../observer/data.js";
 import {

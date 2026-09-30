@@ -15,7 +15,7 @@
 // Log tails are returned RAW; callers must pass them through redaction before persisting
 // (build output can echo env values and paths).
 
-import { runOrThrow, throwOnExit, type Shell } from "../shell.js";
+import { runOrThrow, throwOnExit, type Shell } from "./shell.js";
 
 const WORK_ROOT = "/tmp/humanish-subject";
 const DEFAULT_POLL_INTERVAL_MS = 3000;

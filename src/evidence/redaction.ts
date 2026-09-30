@@ -332,6 +332,18 @@ export function redactedTail(text: string, maxChars: number): string {
   return trimmed.length > maxChars ? `…${trimmed.slice(-maxChars)}` : trimmed || "(no output)";
 }
 
+/** How much of a failing step's output rides its (redacted) error message. */
+const FAILURE_TAIL_CHARS = 2000;
+
+/**
+ * The redacted tail of a failing step's output for its error message. Callers literal-scrub
+ * known provisioned values first. The in-sandbox `tail -c` upstream already caps the log, so
+ * nothing before it can be redacted here.
+ */
+export function failureTail(text: string): string {
+  return redactedTail(text, FAILURE_TAIL_CHARS);
+}
+
 /**
  * A log-safe reference to a raw prompt: a placeholder string, a stable digest,
  * and the length. Proves which prompt was used without persisting its text.

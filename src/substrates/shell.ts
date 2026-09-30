@@ -53,3 +53,8 @@ export function throwOnExit(result: ShellResult): ShellResult {
   const tail = tailOf(result.stderr || result.stdout);
   throw new Error(`command exited ${result.exitCode}${tail ? `: ${tail}` : ""}`);
 }
+
+/** Single-quote a value for a Shell command line. */
+export function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, "'\\''")}'`;
+}

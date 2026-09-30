@@ -12,7 +12,7 @@ import { FakeInbox } from "./fake-inbox.js";
 import { buildCommsThreadArtifact, type CommsThreadArtifact } from "./evidence.js";
 import { buildInboxSurface, type InboxRenderOptions } from "./inbox.js";
 import { DEFAULT_EMAIL_PROFILES, type EmailSendProfile } from "./email-catch.js";
-import { startDetachedProcess, type DetachedTimers } from "../substrates/e2b/detached.js";
+import { startDetachedProcess, type DetachedTimers } from "../substrates/detached.js";
 import { runOrThrow, type Shell } from "../substrates/shell.js";
 
 /** The default in-sandbox loopback port for the catch. Fixed (not ephemeral) so the injected base-URL

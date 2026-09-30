@@ -29,36 +29,36 @@ import {
 import type { OwnedDesktopAllocation } from "../desktop-session.js";
 import { collectDesktopRecording } from "../../evidence/desktop-recording-artifact.js";
 import type { RunDesktopRecording } from "../../evidence/desktop-recording-types.js";
+import { provisionCloneSubject } from "../../subject/clone.js";
+import { provisionDesktopCli } from "../../subject/desktop-cli.js";
+import { provisionLocalTreeSubject } from "../../subject/local-tree.js";
+import { defaultSubjectPhaseSink, type SubjectPhaseEvent } from "../../subject/steps.js";
 import {
   BROWSER_SETTLE_MS,
-  CUA_ACTOR_LAB_PROVIDER_METADATA,
-  DEFAULT_MOBILE_USER_AGENT,
-  INBOX_SURFACE_CADENCE_MS,
-  applyMobileEmulation,
-  captureDesktopBrowserGeometry,
-  declaredScreenForRender,
-  defaultSubjectPhaseSink,
-  inspectDesktopScreenGeometry,
-  makeChromeBrowserStateObserver,
   openDesktopBrowserTarget,
   openDesktopTerminal,
-  prepareDesktopMedia,
-  provisionCloneSubject,
-  provisionDesktopCli,
-  provisionLocalTreeSubject,
   startDesktopStream,
   type DesktopBrowserEvidence,
   type DesktopBrowserFamily,
   type DesktopBrowserLaunchIdentity,
-  type SubjectPhaseEvent,
-} from "./cua-provisioning.js";
+} from "./desktop-browser.js";
+import {
+  applyMobileEmulation,
+  DEFAULT_MOBILE_USER_AGENT,
+  makeChromeBrowserStateObserver,
+} from "./desktop-cdp.js";
+import {
+  captureDesktopBrowserGeometry,
+  declaredScreenForRender,
+  inspectDesktopScreenGeometry,
+} from "./desktop-geometry.js";
 import { createE2BDesktopExecutor, type E2BDesktopLike } from "./desktop-executor.js";
-import { e2bDesktopTemplate, startE2BDesktopMedia } from "./desktop-media.js";
+import { e2bDesktopTemplate, prepareDesktopMedia, startE2BDesktopMedia } from "./desktop-media.js";
 import { startE2BDesktopRecording } from "./desktop-recording.js";
 import { loadE2BDesktopModule, type E2BDesktopSandbox } from "./desktop-launch.js";
 import { observeDesktopResources, type DesktopResourceObservation } from "./desktop-resources.js";
 import { acquireE2BDesktopSandbox } from "./sandbox.js";
-import { readDetachedLog } from "./detached.js";
+import { readDetachedLog } from "../detached.js";
 import { e2bShell } from "./shell.js";
 import { redactText } from "../../evidence/redaction.js";
 import { type RunDesktopGeometry, type RunSubjectStateStepRecord } from "../../run/bundle.js";
@@ -67,6 +67,15 @@ import { writeContainedOutputFile } from "../../run/selected-output-paths.js";
 function optionalAddress(address: string | undefined): { address?: string } {
   return address === undefined ? {} : { address };
 }
+
+export const CUA_ACTOR_LAB_PROVIDER_METADATA = {
+  mode: "cua-actor-lab",
+  tool: "humanish",
+} as const;
+
+/** Mid-run inbox-surface render cadence (ms). Coarse enough that the per-tick `cat` + file writes stay
+ *  cheap; fine enough that a verification email is visible seconds after the app sends it. */
+const INBOX_SURFACE_CADENCE_MS = 2500;
 
 export function createE2BCuaDesktopLane(
   spec: CuaLaneSpec,
