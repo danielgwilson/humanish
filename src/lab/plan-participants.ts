@@ -71,6 +71,9 @@ export type SharedWorldSeats =
   | { readonly plane: "provisioned"; readonly seats: readonly ProvisionedSeat[] }
   | { readonly plane: "external-public"; readonly seats: readonly ExternalPublicSeat[] };
 
+/** One shared-world participant on either plane. */
+export type SharedWorldParticipant = ProvisionedSeat | ExternalPublicSeat;
+
 function desktopParticipant(
   config: LabConfig,
   lane: LabActorLane | undefined,
@@ -134,18 +137,21 @@ export function computerUseParticipants(
 /** The seats of a shared-world lab, one per roster entry, typed by the plane they share. */
 export function sharedWorldSeats(config: LabConfig): SharedWorldSeats {
   const roster = config.actors[0]?.lanes ?? [];
-  const seat = (lane: LabActorLane, index: number): DesktopParticipant =>
+  const participantAt = (lane: LabActorLane, index: number): DesktopParticipant =>
     desktopParticipant(config, lane, index, "seat", lane.instruction);
   if (config.subject.source === "app-url") {
     return {
       plane: "external-public",
-      seats: roster.map((lane, index) => ({ ...seat(lane, index), host: lane.host === true })),
+      seats: roster.map((lane, index) => ({
+        ...participantAt(lane, index),
+        host: lane.host === true,
+      })),
     };
   }
   return {
     plane: "provisioned",
     seats: roster.map((lane, index) => ({
-      ...seat(lane, index),
+      ...participantAt(lane, index),
       ...(lane.entry === undefined ? {} : { entry: lane.entry }),
     })),
   };

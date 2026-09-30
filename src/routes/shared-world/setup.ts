@@ -56,7 +56,8 @@ function makeRunId(): string {
 interface AdmittedLab {
   plan: SharedWorldPlan;
   input: SharedWorldRunInput;
-  /** Only participant building reads it (lane hooks take all of it); step 2B removes it. */
+  /** Read for the raw seat roster and by the computer-use lane runner, whose hooks and desktop
+   *  setup take the whole config. Seat specs come from the plan's participants. */
   config: LabConfig;
   requestedCwd: string;
   hooks: SharedWorldLabHooks;
@@ -215,7 +216,7 @@ export async function prepareConcurrentRun(
 
   const stateStepRecords: RunSubjectStateStepRecord[] = [];
   const stateSnapshots: SharedWorldStateSnapshot[] = [];
-  const actorSpecs = await buildSeatSpecs(config, roles, cwd, scrubKnownValues);
+  const actorSpecs = await buildSeatSpecs(plan.plane.participants, cwd, scrubKnownValues);
   const results = emptyPlaneResults();
   const live: LiveSeats = { streamUrls: [] };
 

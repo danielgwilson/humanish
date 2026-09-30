@@ -111,8 +111,9 @@ async function runConcurrentSharedWorldWithSecrets(
 /**
  * Run a shared-world plan. The run scope gives a direct library caller the same status-record
  * lifetime the CLI gets: returning finalizes any record the run opened, whichever of its
- * fail-closed exits it took. `config` is read only to build participants: the lane runner's hooks
- * take the whole config. Step 2B replaces it with the plan's participants.
+ * fail-closed exits it took. Seat specs come from the plan's participants. `config` is still read
+ * for the raw seat roster and by the computer-use lane runner, whose hooks and desktop setup take
+ * the whole config.
  */
 export async function runSharedWorldPlan(
   plan: SharedWorldPlan,

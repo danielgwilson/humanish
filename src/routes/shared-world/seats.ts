@@ -3,13 +3,11 @@
 
 import { DEFAULT_OPENAI_CU_MODEL } from "../../actors/computer-use/openai-provider.js";
 import { scrubPersonaBrief, type ResolvedPersona } from "../../lab/persona.js";
-import { participantIdAt } from "../../lab/routing.js";
 import type { SharedWorldPlan } from "../../lab/plan-types.js";
-import type { LabActorLane, LabConfig } from "../../lab/types.js";
+import type { SharedWorldParticipant } from "../../lab/plan-participants.js";
 import { attachObserverRuntimeStreamUrls } from "../../observer/render.js";
 import type { RunBundle } from "../../run/bundle.js";
 import type { E2BDesktopSandbox } from "../../substrates/e2b/sdk.js";
-import { resolveLaneDevice } from "../../lab/device-presets.js";
 import { composeLaneInstructions } from "../computer-use/lane-plan.js";
 import { startLiveTraceFlush } from "../computer-use/live-flush.js";
 import type {
@@ -19,7 +17,7 @@ import type {
   LaneRunOutcome,
 } from "../computer-use/types.js";
 import type { LiveSeats, PlaneContext, SharedWorldLabHooks } from "./types.js";
-import { labPersonaIds, resolveCommittedPersonasForCwd } from "../../lab/persona-resolve.js";
+import { resolveCommittedPersonasForCwd } from "../../lab/persona-resolve.js";
 import { participantAssignment } from "../../lab/participant-assignment.js";
 import { redactText } from "../../evidence/redaction.js";
 
@@ -80,54 +78,43 @@ export function laneTaxonomyLabel(
   return parts.length > 0 ? ` (${parts.join(" / ")})` : "";
 }
 
-/** Build one actor lane's CuaLaneSpec from a roster role (per-actor device IS honored here — each
- *  actor has its OWN desktop). */
+/** Build one participant's CuaLaneSpec from its plan (each participant has its own desktop, so
+ *  its own device). */
 function buildActorSpec(
-  config: LabConfig,
-  role: LabActorLane,
-  index: number,
+  participant: SharedWorldParticipant,
   personas: Map<string, ResolvedPersona>,
 ): CuaLaneSpec {
-  const mission = config.actors[0]?.mission ?? DEFAULT_MISSION;
-  const device = resolveLaneDevice(config, role);
-  // A seat without its own persona takes actors[0].persona, as independent lanes do.
-  const personaId = role.persona ?? config.actors[0]?.persona;
+  const mission = participant.assignment.mission ?? DEFAULT_MISSION;
+  const focus = participant.assignment.focus;
+  const { device, labels, limits, personaId } = participant;
   const resolvedPersona = personaId === undefined ? undefined : personas.get(personaId);
   const composed = composeLaneInstructions({
     mission,
     ...(personaId === undefined ? {} : { persona: personaId }),
     ...(resolvedPersona === undefined ? {} : { resolvedPersona }),
-    ...(role.instruction === undefined ? {} : { instruction: role.instruction }),
+    ...(focus === undefined ? {} : { instruction: focus }),
     device: { name: device.name, preset: device.preset },
   });
-  const roleId = participantIdAt(index, role.id, "seat");
-  const streamId = `stream-${String(index + 1).padStart(3, "0")}`;
+  const roleId = participant.id;
+  const streamId = `stream-${String(participant.index + 1).padStart(3, "0")}`;
   return {
     laneId: roleId,
-    ...(role.actorType === undefined ? {} : { actorType: role.actorType }),
-    ...(role.surface === undefined ? {} : { surface: role.surface }),
-    ...(role.caseGroup === undefined ? {} : { caseGroup: role.caseGroup }),
-    laneIndex: index,
-    simId: `sim-${String(index + 1).padStart(3, "0")}`,
+    ...(labels.actorType === undefined ? {} : { actorType: labels.actorType }),
+    ...(labels.surface === undefined ? {} : { surface: labels.surface }),
+    ...(labels.caseGroup === undefined ? {} : { caseGroup: labels.caseGroup }),
+    laneIndex: participant.index,
+    simId: `sim-${String(participant.index + 1).padStart(3, "0")}`,
     streamId,
     persona: composed.persona,
     instructions: composed.instructions,
-    assignment: { mission, ...(role.instruction === undefined ? {} : { focus: role.instruction }) },
-    ...((role.reasoningEffort ?? config.actors[0]?.reasoningEffort) === undefined
-      ? {}
-      : { reasoningEffort: (role.reasoningEffort ?? config.actors[0]?.reasoningEffort)! }),
-    ...(config.actors[0]?.maxOutputTokens === undefined
-      ? {}
-      : { maxOutputTokens: config.actors[0].maxOutputTokens }),
-    ...((role.stopWhen ?? config.actors[0]?.stopWhen) === undefined
-      ? {}
-      : { stopWhen: (role.stopWhen ?? config.actors[0]?.stopWhen)! }),
-    ...((role.dwell ?? config.actors[0]?.dwell) === undefined
-      ? {}
-      : { dwell: (role.dwell ?? config.actors[0]?.dwell)! }),
+    assignment: { mission, ...(focus === undefined ? {} : { focus }) },
+    ...(limits.reasoningEffort === undefined ? {} : { reasoningEffort: limits.reasoningEffort }),
+    ...(limits.maxOutputTokens === undefined ? {} : { maxOutputTokens: limits.maxOutputTokens }),
+    ...(limits.stopWhen === undefined ? {} : { stopWhen: limits.stopWhen }),
+    ...(limits.dwell === undefined ? {} : { dwell: limits.dwell }),
     deviceName: device.name,
     devicePreset: device.preset,
-    resolution: device.resolution,
+    resolution: [device.resolution[0], device.resolution[1]],
     screenshotDir: roleId,
     traceArtifactPath: `actors/${streamId}.json`,
   };
@@ -267,14 +254,18 @@ export function seatLaneDeps(
  * scrubbed of the run's known secret values.
  */
 export async function buildSeatSpecs(
-  config: LabConfig,
-  roles: LabActorLane[],
+  participants: readonly SharedWorldParticipant[],
   cwd: string,
   scrubKnownValues: (text: string) => string,
 ): Promise<CuaLaneSpec[]> {
-  const personaResolution = await resolveCommittedPersonasForCwd(cwd, labPersonaIds(config));
-  const actorSpecs = roles.map((role, i) =>
-    buildActorSpec(config, role, i, personaResolution.personas),
+  // Only the personas the participants use: an actors[0].persona that every seat overrides is
+  // never applied, so it is not read.
+  const personaResolution = await resolveCommittedPersonasForCwd(
+    cwd,
+    participants.map((participant) => participant.personaId),
+  );
+  const actorSpecs = participants.map((participant) =>
+    buildActorSpec(participant, personaResolution.personas),
   );
   for (const spec of actorSpecs) {
     if (spec.assignment) spec.assignment = participantAssignment(spec.assignment, scrubKnownValues);
