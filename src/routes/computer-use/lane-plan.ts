@@ -6,7 +6,11 @@ import { DEFAULT_STATE_STEP_TIMEOUT_MS } from "../../subject/state.js";
 import type { ActorPersonaRef } from "../../actors/contract.js";
 import { recipientInboxUrl } from "../../comms/capture-surface.js";
 import type { DevicePreset } from "../../lab/device-presets.js";
-import { computerUseParticipants } from "../../lab/plan-participants.js";
+import {
+  computerUseParticipants,
+  type ComputerUseParticipant,
+} from "../../lab/plan-participants.js";
+import type { ComputerUsePlan } from "../../lab/plan-types.js";
 import { resolveParticipant } from "../../run/participant.js";
 import { type LabConfig } from "../../lab/types.js";
 import {
@@ -22,7 +26,7 @@ import { type RunStream } from "../../run/streams.js";
 import { loadRunBundle } from "../../run/locate.js";
 import { renderTaskPrompt, type LabTask } from "../../lab/tasks.js";
 import { participantAssignment } from "../../lab/participant-assignment.js";
-import { labPersonaIds, resolveCommittedPersonas } from "../../lab/persona-resolve.js";
+import { resolveCommittedPersonas } from "../../lab/persona-resolve.js";
 import type { PreparedSelectedOutputDirectory } from "../../run/contained-output.js";
 import {
   CUA_FANOUT_STRATEGY,
@@ -35,7 +39,6 @@ import {
   DEFAULT_APP_URL_SESSION_TIMEOUT_MS,
   type ParticipantRunsAndPlan,
   MIN_DERIVED_SESSION_TIMEOUT_MS,
-  type RunCuaActorLabOptions,
 } from "./types.js";
 import {
   MAX_SANDBOX_MS,
@@ -197,46 +200,74 @@ export function resolveParticipantSandboxMs(config: LabConfig): number {
 }
 
 /**
- * Effective in-flight lane bound. Defaults to laneCount — every declared seat runs at once,
- * because a throttle nobody asked for silently turns "N actors live" into waves (#350); total
- * session count and spend are the same either way, only wall-clock and simultaneity differ. A
- * declared execution.concurrency is a CAP, clamped to [1, participantCount]; the env override may only
- * LOWER it (never raise concurrent paid desktops — invariant 3), and a lowering is reported via
- * envLoweredFrom so the plan never silently disagrees with the manifest. Pure given
- * (config, participantCount, env).
+ * The in-flight participant bound a lab declares. Defaults to the participant count — every
+ * declared participant runs at once, because a throttle nobody asked for silently turns "N actors
+ * live" into waves (#350); total session count and spend are the same either way, only wall-clock
+ * and simultaneity differ. A declared execution.concurrency is a CAP, clamped to [1, participants].
+ * The planner records it; the route may only lower it from the environment.
  */
-function resolveCuaConcurrency(
-  config: LabConfig,
+export function boundedConcurrency(declared: number | undefined, participantCount: number): number {
+  return Math.max(
+    1,
+    declared === undefined ? participantCount : Math.min(Math.max(1, declared), participantCount),
+  );
+}
+
+/**
+ * The planned bound, lowered by the env override. The override may only LOWER it (never raise
+ * concurrent paid desktops — invariant 3), and a lowering is reported via envLoweredFrom so the
+ * plan never silently disagrees with the manifest.
+ */
+function envLoweredConcurrency(
+  planned: number,
   participantCount: number,
   env: Record<string, string | undefined>,
 ): { bound: number; envLoweredFrom?: number } {
-  const declared = config.execution?.concurrency;
-  const base = Math.max(
-    1,
-    declared !== undefined ? Math.min(Math.max(1, declared), participantCount) : participantCount,
-  );
   const envLower = readPositiveInt(env[CUA_MAX_CONCURRENCY_ENV], 0);
-  if (envLower > 0 && envLower < base) {
-    return { bound: Math.max(1, Math.min(base, envLower, participantCount)), envLoweredFrom: base };
+  if (envLower > 0 && envLower < planned) {
+    return {
+      bound: Math.max(1, Math.min(planned, envLower, participantCount)),
+      envLoweredFrom: planned,
+    };
   }
-  return { bound: base };
+  return { bound: planned };
 }
 
-/** Build the lane specs AND the public plan from a config (pure). countOverride is the CLI
- *  --count for homogeneous fan-out (ignored when a `lanes` roster is declared). */
+/** What the participant table is built from: the plan's participants, bound and budgets. */
+interface PlannedParticipants {
+  readonly participants: readonly ComputerUseParticipant[];
+  readonly concurrency: number;
+  readonly sessionBudgetMs: number;
+  readonly sandboxMs: number;
+  /** A desktop-cli subject gives each prompt the terminal-surface wording. */
+  readonly desktopCli: boolean;
+}
+
+/** The same inputs from a config, for callers that have no plan. */
+function plannedParticipantsOf(config: LabConfig, countOverride?: number): PlannedParticipants {
+  const participants = computerUseParticipants(config, countOverride);
+  return {
+    participants,
+    concurrency: boundedConcurrency(config.execution?.concurrency, participants.length),
+    sessionBudgetMs: config.execution?.timeoutMs ?? defaultSessionTimeoutMs(config),
+    sandboxMs: resolveParticipantSandboxMs(config),
+    desktopCli: config.subject.source === "desktop-cli",
+  };
+}
+
+/** Build the participant runs AND the public plan from the planned participants (pure). */
 function participantRunsAndPlan(
-  config: LabConfig,
+  planned: PlannedParticipants,
   opts: {
-    countOverride?: number;
     env?: Record<string, string | undefined>;
     dryRun?: boolean;
     personas?: Map<string, ResolvedPersona>;
   } = {},
 ): ParticipantRunsAndPlan {
   const env = opts.env ?? {};
-  // Who each lane is (id, persona, focus, device, limits) comes from the planned participants;
-  // this adds what the route derives from it: the prompt, bundle ids and artifact paths.
-  const participants = computerUseParticipants(config, opts.countOverride);
+  // Who each participant is (id, persona, focus, device, limits) comes from the plan; this adds
+  // what the route derives from it: the prompt, bundle ids and artifact paths.
+  const { participants } = planned;
   const participantCount = participants.length;
 
   const runs: DesktopParticipantRun[] = participants.map((participant) => {
@@ -252,7 +283,7 @@ function participantRunsAndPlan(
       ...(resolvedPersona === undefined ? {} : { resolvedPersona }),
       ...(focus === undefined ? {} : { instruction: focus }),
       device: { name: device.name, preset: device.preset },
-      ...(config.subject.source === "desktop-cli" ? { surface: "desktop-cli" as const } : {}),
+      ...(planned.desktopCli ? { surface: "desktop-cli" as const } : {}),
     });
     const run = resolveParticipant(participant, {
       persona: composed.persona,
@@ -270,10 +301,9 @@ function participantRunsAndPlan(
     };
   });
 
-  const resolved = resolveCuaConcurrency(config, participantCount, env);
+  const resolved = envLoweredConcurrency(planned.concurrency, participantCount, env);
   const concurrency = resolved.bound;
-  const sessionBudgetMs = config.execution?.timeoutMs ?? defaultSessionTimeoutMs(config);
-  const sandboxMs = resolveParticipantSandboxMs(config);
+  const { sessionBudgetMs, sandboxMs } = planned;
   const plan: CuaLanePlan = {
     strategy: CUA_FANOUT_STRATEGY,
     laneCount: participantCount,
@@ -317,7 +347,8 @@ function participantRunsAndPlan(
 
 async function resolveCuaRerunSelection(args: {
   cwd: string;
-  config: LabConfig;
+  labId: string;
+  sandboxMs: number;
   sourceRunId: string;
   participantIds?: string[];
   participantRuns: DesktopParticipantRun[];
@@ -382,7 +413,7 @@ async function resolveCuaRerunSelection(args: {
   if (missingCurrent.length > 0) {
     return {
       ok: false,
-      message: `selected lane id(s) are not present in the current lab config ${args.config.id}: ${missingCurrent.join(", ")}`,
+      message: `selected lane id(s) are not present in the current lab config ${args.labId}: ${missingCurrent.join(", ")}`,
     };
   }
 
@@ -395,9 +426,7 @@ async function resolveCuaRerunSelection(args: {
     laneCount: selectedSpecs.length,
     concurrency,
     waves: Math.ceil(selectedSpecs.length / concurrency),
-    worstCaseSandboxMinutes: Math.round(
-      (selectedSpecs.length * resolveParticipantSandboxMs(args.config)) / 60_000,
-    ),
+    worstCaseSandboxMinutes: Math.round((selectedSpecs.length * args.sandboxMs) / 60_000),
     lanes: selectedPlanEntries,
   };
 
@@ -476,7 +505,8 @@ export function resolveCuaParticipantPlan(
     personas?: Map<string, ResolvedPersona>;
   } = {},
 ): CuaLanePlan {
-  return participantRunsAndPlan(config, opts).plan;
+  const { countOverride, ...rest } = opts;
+  return participantRunsAndPlan(plannedParticipantsOf(config, countOverride), rest).plan;
 }
 
 /** Print the lane plan to stderr BEFORE any sandbox/provider call (public-safe: ids, devices,
@@ -532,23 +562,32 @@ export function digestUrl(url: string): string {
 }
 
 /**
- * The lanes a computer-use run drives, resolved before anything is created: committed personas
- * compiled, the pure lane table built (the same for dry-run and live), the lane cap enforced, and
- * a rerun narrowed to its selected lanes.
+ * Compile the committed persona files the participants use, printing a warning for each one that
+ * is missing. A refusal that comes after this step reads them first, so a persona-file error still
+ * wins over it.
+ */
+export async function compileParticipantPersonas(
+  projectRoot: PreparedSelectedOutputDirectory,
+  personaIds: readonly (string | undefined)[],
+): Promise<Map<string, ResolvedPersona>> {
+  const resolution = await resolveCommittedPersonas(projectRoot, personaIds);
+  for (const warning of resolution.warnings) {
+    process.stderr.write(`humanish: ${warning}\n`);
+  }
+  return resolution.personas;
+}
+
+/**
+ * The participants a computer-use run drives, resolved from its plan before anything is created:
+ * committed personas compiled, the pure participant table built from the plan's participants,
+ * bound and budgets (the same for dry-run and live), and a rerun narrowed to its selected
+ * participants.
  */
 export async function planCuaParticipants(args: {
-  config: LabConfig;
+  plan: ComputerUsePlan;
   cwd: string;
   projectRoot: PreparedSelectedOutputDirectory;
   env: Record<string, string | undefined>;
-  dryRun: boolean;
-  /**
-   * planComputerUseLab's lane-cap or in-process fan-out refusal. It is returned after the persona
-   * files are read, where those checks have always run, so a persona-file error still wins.
-   */
-  refusal?: { readonly code: CuaActorLabErrorCode; readonly message: string };
-  countOverride?: number;
-  rerun?: RunCuaActorLabOptions["rerun"];
 }): Promise<
   | {
       ok: true;
@@ -558,30 +597,33 @@ export async function planCuaParticipants(args: {
     }
   | { ok: false; code: CuaActorLabErrorCode; message: string }
 > {
+  const routePlan = args.plan;
+  const { participants } = routePlan.runner;
   // Compile any committed personas BEFORE planning, so the plan builder stays pure and each lane's
   // prompt carries real behavioral directives rather than a bare `Persona: <id>.` label (#381).
-  const personaResolution = await resolveCommittedPersonas(
+  const personas = await compileParticipantPersonas(
     args.projectRoot,
-    labPersonaIds(args.config),
+    participants.map((participant) => participant.personaId),
   );
-  for (const warning of personaResolution.warnings) {
-    process.stderr.write(`humanish: ${warning}\n`);
-  }
-  if (args.refusal) return { ok: false, code: args.refusal.code, message: args.refusal.message };
-
-  const { runs: participantRuns, plan } = participantRunsAndPlan(args.config, {
-    ...(args.countOverride === undefined ? {} : { countOverride: args.countOverride }),
-    env: args.env,
-    dryRun: args.dryRun,
-    personas: personaResolution.personas,
-  });
-  if (!args.rerun) return { ok: true, participantRuns, plan };
+  const { runs: participantRuns, plan } = participantRunsAndPlan(
+    {
+      participants,
+      concurrency: routePlan.concurrency,
+      sessionBudgetMs: routePlan.sessionBudgetMs,
+      sandboxMs: routePlan.sandboxMs,
+      desktopCli: routePlan.runner.subject.kind === "desktop-cli",
+    },
+    { env: args.env, dryRun: routePlan.dryRun, personas },
+  );
+  const rerun = routePlan.rerun;
+  if (!rerun) return { ok: true, participantRuns, plan };
 
   const selected = await resolveCuaRerunSelection({
     cwd: args.cwd,
-    config: args.config,
-    sourceRunId: args.rerun.sourceRunId,
-    ...(args.rerun.laneIds === undefined ? {} : { participantIds: args.rerun.laneIds }),
+    labId: routePlan.labId,
+    sandboxMs: routePlan.sandboxMs,
+    sourceRunId: rerun.sourceRunId,
+    ...(rerun.participantIds === undefined ? {} : { participantIds: [...rerun.participantIds] }),
     participantRuns,
     plan,
   });
