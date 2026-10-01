@@ -95,7 +95,9 @@ anywhere. `humanish export --run <id> --format bundle --redact-screenshots` writ
 blurred copy as a new bundle workspace and leaves the original unchanged. The frame
 sent to the model is always full-resolution regardless. See the [capture and sharing policy](https://github.com/danielgwilson/humanish/blob/main/docs/principles/invariants-and-defaults.md). `humanish verify` reports
 raw-screenshot bundles as `shareSafety.status: local_only`; `humanish feedback issue`
-refuses them until the run is share-ready.
+refuses them until the run is share-ready. A frame counts as blurred only when the
+trace marks it blurred and it is a thumbnail the redactor wrote (at most 128 px wide,
+image data only); any other frame counts as raw.
 
 ## Device presets
 
@@ -125,7 +127,10 @@ mobile user agent (`userAgent` replaces the default iPhone Safari string). The r
 and `resolved`: what the page itself reported afterwards (`navigator.userAgent`,
 `devicePixelRatio`, `innerWidth`, `maxTouchPoints`, coarse pointer). A page without a viewport
 meta lays out at 980 px, as it would on a phone, and the bundle says so. Firefox cannot be
-emulated, so the lane fails closed instead of shipping a desktop run labelled mobile. The
+emulated, so the lane fails closed instead of shipping a desktop run labelled mobile.
+The lane waits up to 30 seconds after launch for Chrome's DevTools port and records the
+wait as a timed phase; if Chrome exits or never answers, a mobile-emulated lane fails
+with the reason and the last line of the browser log. The
 emulation holder also applies the settings to new page targets. Later observations
 record the page's fidelity and warn if it drifts from the requested settings. A bundle without a `fidelity` block is a
 responsive-viewport study whatever its preset is called.
