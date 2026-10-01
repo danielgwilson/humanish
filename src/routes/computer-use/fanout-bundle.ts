@@ -35,14 +35,14 @@ import { fanoutLaneRecords } from "./fanout-lanes.js";
 
 /** The run's first two events: its creation and the fan-out plan. */
 function fanoutPlanEvents(args: CuaFanoutBundleArgs): RunEvent[] {
-  const { specs, config } = args;
+  const { specs, routePlan } = args;
   const events: RunEvent[] = [];
   events.push({
     id: "event-000-created",
     at: args.createdAt,
     level: "info",
     type: "cua-lab.run.created",
-    message: `Created computer-use fan-out run for ${config.id} (actor ${args.descriptor.id}, ${specs.length} lanes, per-lane worlds).`,
+    message: `Created computer-use fan-out run for ${routePlan.labId} (actor ${args.descriptor.id}, ${specs.length} lanes, per-lane worlds).`,
   });
   events.push({
     id: "event-001-fanout-plan",
@@ -142,8 +142,8 @@ function fanoutReview(args: CuaFanoutBundleArgs, streams: RunStream[]): ReviewSu
 
 /** The configured browser and, when every lane resolved the same one, that browser. */
 function fanoutDesktopBrowser(args: CuaFanoutBundleArgs) {
-  const { outcomes, config } = args;
-  const configuredBrowser = config.execution?.desktop?.browser;
+  const { outcomes, routePlan } = args;
+  const configuredBrowser = routePlan.residual.execution?.desktop?.browser;
   const resolvedBrowsers = (outcomes ?? [])
     .map((outcome) => outcome.desktopBrowser?.resolved)
     .filter((value): value is string => value !== undefined);
@@ -184,15 +184,16 @@ function fanoutCost(args: CuaFanoutBundleArgs) {
 }
 
 function fanoutFeedbackCandidates(args: CuaFanoutBundleArgs) {
-  const { specs, outcomes, config } = args;
+  const { specs, outcomes, routePlan } = args;
   return args.dryRun || args.inProgress === true
     ? []
     : participantFeedbackCandidates({
         runId: args.runId,
-        scenarioId: `cua-${config.id}`,
-        adapterId: config.id,
+        scenarioId: `cua-${routePlan.labId}`,
+        adapterId: routePlan.labId,
         goal: redactText(specs[0]!.evidenceInstructions ?? specs[0]!.instructions),
-        substrate: config.execution?.target === "local" ? "local-desktop" : "e2b-desktop",
+        substrate:
+          routePlan.residual.execution?.target === "local" ? "local-desktop" : "e2b-desktop",
         lanes: specs.map((spec, index) => {
           const outcome = outcomes?.[index];
           return {
@@ -220,7 +221,7 @@ function fanoutFeedbackCandidates(args: CuaFanoutBundleArgs) {
  * streams. The N=1 path NEVER reaches here (buildCuaBundle owns it, byte-stable).
  */
 export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
-  const { specs, outcomes, config } = args;
+  const { specs, outcomes, routePlan } = args;
   const simulations: RunSimulation[] = [];
   const streams: RunStream[] = [];
   const events = fanoutPlanEvents(args);
@@ -264,7 +265,7 @@ export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
   const ranLive = (outcomes ?? []).some(
     (outcome) => outcome.session !== undefined || outcome.sessionError !== undefined,
   );
-  const desktopTemplate = e2bDesktopTemplate(config);
+  const desktopTemplate = e2bDesktopTemplate(routePlan.residual);
   const desktopBrowser = fanoutDesktopBrowser(args);
   const providerResources = (outcomes ?? []).flatMap((outcome) =>
     providerResourcesForOutcome({
@@ -280,7 +281,7 @@ export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
 
   return {
     schema: RUN_BUNDLE_SCHEMA,
-    ...receivingPublication(args.config, args.dryRun),
+    ...receivingPublication(args.routePlan.residual, args.dryRun),
     runId: args.runId,
     mode: args.dryRun ? "dry-run" : "live",
     simCount: specs.length,
@@ -292,12 +293,12 @@ export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
     persona: {
       id: specs[0]!.persona.id,
       name: `Computer-use fan-out (${specs.length} lanes)`,
-      source: `lab:${config.id}`,
+      source: `lab:${routePlan.labId}`,
       sourceDigest: specs[0]!.persona.promptDigest,
     },
     scenario: {
-      id: `cua-${config.id}`,
-      title: config.title ?? `Computer-use fan-out: ${config.id}`,
+      id: `cua-${routePlan.labId}`,
+      title: routePlan.title ?? `Computer-use fan-out: ${routePlan.labId}`,
       // Redacted at WRITE time, like every other raw-text surface in the bundle. Lane records are
       // digest-only by design, but scenario.goal keeps one lane's composed instructions verbatim —
       // and an adopter whose authored lane text must name a runtime world URL (an inbox on a route
@@ -307,7 +308,7 @@ export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
       //
       // The instructions the model actually receives are untouched; only the persisted copy changes.
       goal: redactText(specs[0]!.evidenceInstructions ?? specs[0]!.instructions),
-      source: `lab:${config.id}`,
+      source: `lab:${routePlan.labId}`,
       sourceDigest: specs[0]!.persona.promptDigest,
     },
     lifecycle: [

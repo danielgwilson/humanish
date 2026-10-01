@@ -6,7 +6,7 @@ import path from "node:path";
 import type { ActorPersonaRef, ActorStatus } from "../../actors/contract.js";
 import { type CuaActorDescriptor } from "../../actors/registry.js";
 import type { CuaLoopResult } from "../../actors/computer-use/loop.js";
-import { type LabConfig } from "../../lab/types.js";
+import type { ComputerUsePlan } from "../../lab/plan-types.js";
 import { participantAssignment } from "../../lab/participant-assignment.js";
 import { redactText } from "../../evidence/redaction.js";
 import { type RunLabProvenance } from "../../run/status.js";
@@ -58,7 +58,7 @@ export function buildSingleLaneBundle(args: {
   appUrl: string;
   createdAt: string;
   dryRun: boolean;
-  config: LabConfig;
+  routePlan: ComputerUsePlan;
   runId: string;
   source: RunBundle["source"];
   redactScreenshots: boolean;
@@ -67,11 +67,11 @@ export function buildSingleLaneBundle(args: {
   localAppSubject: boolean;
   inProgress?: boolean;
 }): RunBundle {
-  const { spec, outcome, config } = args;
-  const desktopTemplate = e2bDesktopTemplate(config);
+  const { spec, outcome, routePlan } = args;
+  const desktopTemplate = e2bDesktopTemplate(routePlan.residual);
   return buildCuaBundle({
     verdict: args.verdict,
-    realEmail: config.comms?.email?.kind === "real",
+    realEmail: routePlan.residual.comms?.email?.kind === "real",
     ...(args.lab === undefined ? {} : { lab: args.lab }),
     actorId: args.descriptor.id,
     appUrl: args.appUrl,
@@ -85,8 +85,8 @@ export function buildSingleLaneBundle(args: {
       : { caseGroup: spec.planned.labels.caseGroup }),
     createdAt: args.createdAt,
     dryRun: args.dryRun,
-    labId: config.id,
-    ...(config.title ? { labTitle: config.title } : {}),
+    labId: routePlan.labId,
+    ...(routePlan.title ? { labTitle: routePlan.title } : {}),
     mission: spec.evidenceInstructions ?? spec.instructions,
     ...(spec.evidenceAssignment === undefined ? {} : { assignment: spec.evidenceAssignment }),
     persona: spec.persona,
@@ -94,7 +94,7 @@ export function buildSingleLaneBundle(args: {
     desktopRoute: !args.inProcessRoute,
     substrate: args.inProcessRoute
       ? "local-filesystem"
-      : args.config.execution?.target === "local"
+      : routePlan.residual.execution?.target === "local"
         ? "local-desktop"
         : "e2b-desktop",
     ...(outcome?.desktopGeometry === undefined ? {} : { desktopGeometry: outcome.desktopGeometry }),

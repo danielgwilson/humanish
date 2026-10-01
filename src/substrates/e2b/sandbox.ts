@@ -223,7 +223,9 @@ export async function destroyE2BSandbox(
 export const E2B_SPEECH_TEMPLATE = "7409n13kr83f7g7abx5g";
 
 /** The desktop template a lab asks for; undefined selects the SDK default. */
-export function e2bDesktopTemplate(config: LabConfig): string | undefined {
+export function e2bDesktopTemplate(config: {
+  readonly execution?: Pick<NonNullable<LabConfig["execution"]>, "target" | "desktop">;
+}): string | undefined {
   if (config.execution?.target === "local") return undefined;
   return (
     config.execution?.desktop?.template ??

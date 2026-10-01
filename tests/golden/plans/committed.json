@@ -23,6 +23,9 @@
         "defaults": {
           "open": false
         },
+        "execution": {
+          "target": "e2b-desktop"
+        },
         "subject": {
           "repos": [
             "example-org/user-app"
@@ -140,6 +143,9 @@
           "allowPaymentCredentials": false,
           "allowGitHubMutation": false
         },
+        "execution": {
+          "target": "e2b-desktop"
+        },
         "subject": {}
       },
       "dryRun": true,
@@ -230,6 +236,9 @@
           "allowPaymentCredentials": false,
           "allowGitHubMutation": false
         },
+        "execution": {
+          "target": "e2b-desktop"
+        },
         "subject": {}
       },
       "dryRun": true,
@@ -319,6 +328,9 @@
           "allowProviderCredentials": false,
           "allowPaymentCredentials": false,
           "allowGitHubMutation": false
+        },
+        "execution": {
+          "target": "e2b-desktop"
         },
         "subject": {
           "clone": {
@@ -420,6 +432,9 @@
         },
         "defaults": {
           "open": false
+        },
+        "execution": {
+          "target": "e2b-desktop"
         },
         "subject": {
           "clone": {
@@ -556,6 +571,9 @@
         "defaults": {
           "open": false
         },
+        "execution": {
+          "target": "e2b-desktop"
+        },
         "subject": {
           "clone": {
             "depth": 1
@@ -679,6 +697,9 @@
       "labId": "fanout-demo",
       "title": "Multi-lane computer-use fan-out (per-lane worlds, deterministic dry-run)",
       "residual": {
+        "execution": {
+          "target": "e2b-desktop"
+        },
         "subject": {}
       },
       "dryRun": true,
@@ -838,6 +859,9 @@
         "review": {
           "analysis": false
         },
+        "execution": {
+          "target": "e2b-terminal"
+        },
         "subject": {}
       },
       "dryRun": true,
@@ -920,6 +944,9 @@
           "allowPaymentCredentials": false,
           "allowGitHubMutation": false
         },
+        "execution": {
+          "target": "e2b-terminal"
+        },
         "subject": {}
       },
       "dryRun": true,
@@ -986,6 +1013,9 @@
         },
         "review": {
           "analysis": false
+        },
+        "execution": {
+          "target": "e2b-terminal"
         },
         "subject": {}
       },
@@ -1067,7 +1097,8 @@
             "fidelity": {
               "mobileEmulation": true
             }
-          }
+          },
+          "target": "e2b-desktop"
         },
         "subject": {}
       },
@@ -1174,6 +1205,9 @@
         },
         "defaults": {
           "open": true
+        },
+        "execution": {
+          "target": "e2b-desktop"
         },
         "subject": {}
       },
@@ -1318,7 +1352,8 @@
                 "source": "synthetic"
               }
             }
-          }
+          },
+          "target": "e2b-desktop"
         },
         "subject": {}
       },
@@ -1421,6 +1456,9 @@
       "residual": {
         "defaults": {
           "open": false
+        },
+        "execution": {
+          "target": "e2b-desktop"
         },
         "subject": {
           "clone": {
@@ -1546,6 +1584,9 @@
         "review": {
           "analysis": false
         },
+        "execution": {
+          "target": "local"
+        },
         "subject": {}
       },
       "dryRun": true,
@@ -1595,6 +1636,9 @@
       "labId": "shared-world-concurrent-demo",
       "title": "Concurrent shared-world (N personas vs ONE service at once; deterministic dry-run)",
       "residual": {
+        "execution": {
+          "target": "e2b-desktop"
+        },
         "subject": {
           "clone": {
             "depth": 1
@@ -1768,6 +1812,9 @@
       "labId": "shared-world-concurrent-live",
       "title": "Concurrent shared-world live rung (synthetic shared task board)",
       "residual": {
+        "execution": {
+          "target": "e2b-desktop"
+        },
         "subject": {
           "clone": {
             "depth": 1
@@ -1956,6 +2003,9 @@
         },
         "defaults": {
           "open": false
+        },
+        "execution": {
+          "target": "e2b-desktop"
         },
         "subject": {
           "clone": {
@@ -2180,6 +2230,9 @@
           "allowPaymentCredentials": false,
           "allowGitHubMutation": false
         },
+        "execution": {
+          "target": "e2b-terminal"
+        },
         "subject": {}
       },
       "dryRun": true,
@@ -2247,7 +2300,8 @@
               1440,
               950
             ]
-          }
+          },
+          "target": "e2b-desktop"
         },
         "subject": {}
       },

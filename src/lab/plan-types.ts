@@ -50,7 +50,7 @@ export type ResidualConfig = Pick<
   LabConfig,
   "comms" | "policies" | "personas" | "defaults" | "review"
 > & {
-  readonly execution?: Pick<NonNullable<LabConfig["execution"]>, "desktop">;
+  readonly execution?: Pick<NonNullable<LabConfig["execution"]>, "desktop" | "target">;
   readonly subject: Pick<LabConfig["subject"], "clone" | "localTree" | "repos" | "envValues">;
 };
 

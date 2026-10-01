@@ -21,7 +21,7 @@ import {
 import { computerUseParticipants } from "../../lab/plan-participants.js";
 import type { AppUrlSubject, ComputerUsePlan, ComputerUseRunner } from "../../lab/plan-types.js";
 import { MAX_CUA_LANES } from "../../lab/routing.js";
-import type { LabConfig, LabSubjectServe } from "../../lab/types.js";
+import type { LabConfig, LabSubjectServe, LabSubjectState } from "../../lab/types.js";
 import {
   cloneTargetValidationReason,
   cuaLaneValidationReason,
@@ -107,6 +107,12 @@ export function cuaRoute(config: LabConfig, hooks: CuaActorLabHooks): CuaRoute {
     subjectRepo: cloneRoute ? (config.subject.repos?.[0] ?? "") : undefined,
     subjectEnvNames: provisionedRoute ? (config.subject.env ?? []) : [],
   };
+}
+
+/** The state a planned run's provisioned subject declares. Other subjects declare none. */
+export function cuaDeclaredState(plan: ComputerUsePlan): LabSubjectState | undefined {
+  const { subject } = plan.runner;
+  return subject.kind === "clone" || subject.kind === "local-tree" ? subject.state : undefined;
 }
 
 /** The route facts a planned run takes: its runner's desktop and subject. */

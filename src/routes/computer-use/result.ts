@@ -5,7 +5,6 @@ import {
 import { redactText } from "../../evidence/redaction.js";
 import type { ObserverResult } from "../../observer/render.js";
 import type { RunBundle, RunRerunLineage } from "../../run/bundle.js";
-import type { LabConfig } from "../../lab/types.js";
 import type { Judgment } from "../../run/judge.js";
 import { buildLaneSummary, laneOutcomeOk } from "./bundle.js";
 import { summarizeCuaDiagnostics } from "./diagnostics.js";
@@ -35,7 +34,7 @@ import {
  * verdict failed; otherwise the error names the first reason.
  */
 function cuaLabResult(args: {
-  config: LabConfig;
+  labId: string;
   cwd: string;
   runId: string;
   actorId: string;
@@ -57,7 +56,7 @@ function cuaLabResult(args: {
   adapterWarnings: string[];
 }): CuaActorLabResult {
   const {
-    config,
+    labId,
     cwd,
     runId,
     appUrl,
@@ -145,7 +144,7 @@ function cuaLabResult(args: {
     schema: CUA_ACTOR_LAB_SCHEMA,
     ok,
     cwd,
-    labId: config.id,
+    labId,
     actor: args.actorId,
     appUrl,
     dryRun,
@@ -268,7 +267,7 @@ export async function finishCuaRun(
   streams.attachFinal(observer);
 
   return cuaLabResult({
-    config,
+    labId: routePlan.labId,
     cwd,
     runId,
     actorId: descriptor.id,

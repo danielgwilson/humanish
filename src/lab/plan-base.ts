@@ -36,9 +36,18 @@ function residualOf(config: LabConfig): Readonly<ResidualConfig> {
       ...(personas === undefined ? {} : { personas }),
       ...(defaults === undefined ? {} : { defaults }),
       ...(review === undefined ? {} : { review }),
-      ...(config.execution?.desktop === undefined
+      ...(config.execution?.desktop === undefined && config.execution?.target === undefined
         ? {}
-        : { execution: { desktop: config.execution.desktop } }),
+        : {
+            execution: {
+              ...(config.execution?.desktop === undefined
+                ? {}
+                : { desktop: config.execution.desktop }),
+              ...(config.execution?.target === undefined
+                ? {}
+                : { target: config.execution.target }),
+            },
+          }),
       subject: {
         ...(config.subject.clone === undefined ? {} : { clone: config.subject.clone }),
         ...(config.subject.localTree === undefined ? {} : { localTree: config.subject.localTree }),
