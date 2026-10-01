@@ -21,7 +21,7 @@ describe("local browser lab configuration", () => {
       review: { analysis: { provider: "codex" } },
       execution: { desktop: { resolution: [960, 720] } },
     });
-    expect(labKeyRequirements(parsed.config, "cua", false, () => false)).toEqual({
+    expect(labKeyRequirements(parsed.config, "computer-use", false, () => false)).toEqual({
       desktop: false,
       keys: [],
     });
@@ -29,7 +29,7 @@ describe("local browser lab configuration", () => {
   it("requires only the model API key for local API participants", () => {
     const parsed = parseLabConfig({ ...base, actors: [{ type: "openai-computer-use" }] });
     if (!parsed.ok) throw new Error(parsed.error.message);
-    expect(labKeyRequirements(parsed.config, "cua", false, () => false)).toEqual({
+    expect(labKeyRequirements(parsed.config, "computer-use", false, () => false)).toEqual({
       desktop: false,
       keys: ["OPENAI_API_KEY"],
     });
@@ -42,7 +42,7 @@ describe("local browser lab configuration", () => {
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
     expect(parsed.config.comms?.email?.kind).toBe("fake");
-    expect(labKeyRequirements(parsed.config, "cua", false, () => false).keys).toEqual([]);
+    expect(labKeyRequirements(parsed.config, "computer-use", false, () => false).keys).toEqual([]);
     for (const email of [
       { injectEnv: "MAIL_BASE_URL" },
       { kind: "real", connection: "agentmail" },
@@ -55,7 +55,7 @@ describe("local browser lab configuration", () => {
     const parsed = parseLabConfig({ ...base, execution: { target: "local", desktop: { media } } });
     if (!parsed.ok) throw new Error(parsed.error.message);
     expect(parsed.config.execution?.desktop?.media).toEqual(media);
-    expect(labKeyRequirements(parsed.config, "cua", false, () => false)).toEqual({
+    expect(labKeyRequirements(parsed.config, "computer-use", false, () => false)).toEqual({
       desktop: false,
       keys: [],
     });
@@ -84,7 +84,7 @@ describe("local browser lab configuration", () => {
     if (!hosted.ok) throw new Error(hosted.error.message);
     expect(hosted.config.review?.analysis).toBeUndefined();
     expect(hosted.config.execution?.desktop).toBeUndefined();
-    expect(labKeyRequirements(hosted.config, "cua", false, () => false).keys).toEqual([
+    expect(labKeyRequirements(hosted.config, "computer-use", false, () => false).keys).toEqual([
       "E2B_API_KEY",
     ]);
   });

@@ -21,7 +21,7 @@ import { pathToFileURL } from "node:url";
 
 import type { BrowserLabScoringContext } from "./adapter-extension.js";
 import type { TerminalProductScoringContext } from "../routes/terminal/types.js";
-import type { LabBackend } from "./engine.js";
+import { backendOf, type LabRoute } from "./plan.js";
 import { digestText, redactText } from "../evidence/redaction.js";
 import type {
   RunAdapterArtifact,
@@ -67,12 +67,12 @@ export type AdapterScorerLoadResult =
   | { ok: true; hooks: AdapterScorerModule; provenance: RunScorerProvenance }
   | { ok: false; error: { code: AdapterScorerLoadErrorCode; message: string } };
 
-/** The backends whose hooks bag can carry the loaded scorer. A declared scorer on ANY other backend
- *  (scripted or synthetic) aborts at load — a gate that cannot run must never green-pass. */
-const SCORER_CAPABLE_BACKENDS: ReadonlySet<LabBackend> = new Set<LabBackend>([
+/** The routes whose hooks bag can carry the loaded scorer. A declared scorer on ANY other route
+ *  (scripted or preview) aborts at load — a gate that cannot run must never green-pass. */
+const SCORER_CAPABLE_ROUTES: ReadonlySet<LabRoute> = new Set<LabRoute>([
   "terminal",
-  "cua",
-  "concurrent-shared-world",
+  "computer-use",
+  "shared-world",
 ]);
 
 /** `.mjs` is required-canonical; `.js`/`.cjs` accepted but the module system is the adopter repo's
@@ -87,20 +87,20 @@ const SCORER_EXTENSIONS: ReadonlySet<string> = new Set([".mjs", ".js", ".cjs"]);
 export async function loadAdapterScorer(args: {
   cwd: string;
   ref: string;
-  backend: LabBackend;
+  route: LabRoute;
   source: "manifest" | "cli-flag";
 }): Promise<AdapterScorerLoadResult> {
-  const { backend, source } = args;
+  const { route, source } = args;
   const fail = (code: AdapterScorerLoadErrorCode, message: string): AdapterScorerLoadResult => ({
     ok: false,
     error: { code, message },
   });
 
   // A declared gate that cannot run on this backend must ABORT (never silently green-pass).
-  if (!SCORER_CAPABLE_BACKENDS.has(backend)) {
+  if (!SCORER_CAPABLE_ROUTES.has(route)) {
     return fail(
       "HUMANISH_LAB_SCORER_UNSUPPORTED_BACKEND",
-      `review.scorer.ref is declared but this lab resolves to the ${backend} backend, which has no adopter-scorer seam. A declared scorer that cannot run must fail closed rather than pass silently — declare it on a terminal, cua, shared-world, or concurrent-shared-world lab.`,
+      `review.scorer.ref is declared but this lab resolves to the ${backendOf(route)} backend, which has no adopter-scorer seam. A declared scorer that cannot run must fail closed rather than pass silently — declare it on a terminal, cua, shared-world, or concurrent-shared-world lab.`,
     );
   }
 
@@ -186,7 +186,7 @@ export async function loadAdapterScorer(args: {
   // recorded (a scorer that exported ONLY deriveArtifacts there wires nothing and fails closed below,
   // never a silent no-op).
   const picked = (mod.default ?? mod) as Record<string, unknown>;
-  const terminalRoute = backend === "terminal";
+  const terminalRoute = route === "terminal";
   const hooks: AdapterScorerModule = {};
   const exports: RunScorerProvenance["exports"] = [];
   if (typeof picked.score === "function") {

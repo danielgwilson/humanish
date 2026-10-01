@@ -1,6 +1,7 @@
 import type { RunLabProvenance } from "../../run/status.js";
 import { loadAdapterScorer, type AdapterScorerModule } from "../../lab/adapter-scorer-loader.js";
-import type { LabBackend, RunLabOptions } from "../../lab/engine.js";
+import type { RunLabOptions } from "../../lab/engine.js";
+import type { LabRoute } from "../../lab/plan.js";
 import type { RunScorerProvenance } from "../../run/bundle.js";
 import type { LabConfig } from "../../lab/types.js";
 import type { RunResult } from "../../run/results.js";
@@ -22,7 +23,7 @@ export async function maybeLoadAdapterScorer(args: {
   cwd: string;
   config: LabConfig;
   labProvenance?: RunLabProvenance;
-  backend: LabBackend;
+  route: LabRoute;
   flag: string | undefined;
 }): Promise<
   { ok: true; scorer?: LoadedAdapterScorer } | { ok: false; error: NonNullable<RunResult["error"]> }
@@ -30,7 +31,7 @@ export async function maybeLoadAdapterScorer(args: {
   const ref = args.flag ?? args.config.review?.scorer?.ref;
   if (ref === undefined) return { ok: true };
   const source = args.flag !== undefined ? "cli-flag" : "manifest";
-  const loaded = await loadAdapterScorer({ cwd: args.cwd, ref, backend: args.backend, source });
+  const loaded = await loadAdapterScorer({ cwd: args.cwd, ref, route: args.route, source });
   if (!loaded.ok) return { ok: false, error: loaded.error };
   return { ok: true, scorer: { hooks: loaded.hooks, provenance: loaded.provenance } };
 }

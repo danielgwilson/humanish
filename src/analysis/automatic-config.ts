@@ -1,3 +1,4 @@
+import type { LabRoute } from "../lab/plan.js";
 import { CODEX_ANALYSIS_MODEL, codexAnalysisIdentity } from "./codex-config.js";
 import {
   DEFAULT_ANALYSIS_MAX_OUTPUT_TOKENS,
@@ -155,10 +156,10 @@ export interface AutomaticAnalysisBudget {
 /** Metadata only: resolving the future live-run budget never reads keys or dispatches. */
 export function automaticAnalysisBudget(
   raw: unknown,
-  backend: string,
+  route: LabRoute,
 ): AutomaticAnalysisBudget | undefined {
-  if (!["cua", "scripted", "terminal", "shared-world", "concurrent-shared-world"].includes(backend))
-    return undefined;
+  // The synthetic preview has no participants, so nothing is analyzed after it.
+  if (route === "preview") return undefined;
   const resolved = resolveAutomaticAnalysis(raw);
   return resolved.ok && resolved.config
     ? {

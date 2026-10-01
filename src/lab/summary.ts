@@ -10,7 +10,7 @@ import { localRuntimeStatus, type LocalRuntimeStatus } from "../substrates/local
 // declared is not "unlimited" and not "$0"; it is a line the screen does not draw.
 
 import { resolveLabDryRun } from "./engine.js";
-import { backendOf, routeOf } from "./plan.js";
+import { routeOf } from "./plan.js";
 import { labKeyRequirements, localCodexParticipantCheck } from "./doctor.js";
 import { automaticAnalysisBudget } from "../analysis/automatic-config.js";
 import {
@@ -147,7 +147,7 @@ export async function readLabSummary(
   if (inspected === null || !inspected.ok || inspected.config === undefined) return null;
   const config = inspected.config as unknown as Record<string, unknown>;
   const actors = config.actors as { model?: string }[] | undefined;
-  const backend = backendOf(routeOf(inspected.config));
+  const route = routeOf(inspected.config);
 
   let keysReady: boolean | undefined;
   let missingKeys: string[] | undefined;
@@ -172,7 +172,7 @@ export async function readLabSummary(
     const present = new Set(
       probes.filter((probe) => probe.source !== null).map((probe) => probe.name),
     );
-    const required = labKeyRequirements(inspected.config, backend, dryRun, (name) =>
+    const required = labKeyRequirements(inspected.config, route, dryRun, (name) =>
       present.has(name),
     );
     const missing = [
@@ -184,7 +184,7 @@ export async function readLabSummary(
   }
 
   // Computed once: a test-then-use pair reads as though the two calls could differ.
-  const analysis = automaticAnalysisBudget(inspected.config.review?.analysis, backend);
+  const analysis = automaticAnalysisBudget(inspected.config.review?.analysis, route);
   const subject = subjectOf(config);
   const participants = participantsOf(config);
   const runtime =

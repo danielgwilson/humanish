@@ -74,7 +74,7 @@ describe("loadAdapterScorer — resolution", () => {
     const result = await loadAdapterScorer({
       cwd,
       ref: "./scorer.mjs",
-      backend: "terminal",
+      route: "terminal",
       source: "manifest",
     });
     expect(result.ok).toBe(true);
@@ -90,7 +90,7 @@ describe("loadAdapterScorer — resolution", () => {
     const result = await loadAdapterScorer({
       cwd,
       ref: "scorers/s.js",
-      backend: "cua",
+      route: "computer-use",
       source: "manifest",
     });
     expect(result.ok).toBe(true);
@@ -102,7 +102,7 @@ describe("loadAdapterScorer — resolution", () => {
     const result = await loadAdapterScorer({
       cwd,
       ref: "../evil.mjs",
-      backend: "terminal",
+      route: "terminal",
       source: "manifest",
     });
     expect(result.ok).toBe(false);
@@ -114,7 +114,7 @@ describe("loadAdapterScorer — resolution", () => {
     const result = await loadAdapterScorer({
       cwd,
       ref: "../node_modules/evil.mjs",
-      backend: "terminal",
+      route: "terminal",
       source: "manifest",
     });
     expect(result.ok).toBe(false);
@@ -128,7 +128,7 @@ describe("loadAdapterScorer — resolution", () => {
     const result = await loadAdapterScorer({
       cwd,
       ref: abs,
-      backend: "terminal",
+      route: "terminal",
       source: "manifest",
     });
     expect(result.ok).toBe(false);
@@ -141,7 +141,7 @@ describe("loadAdapterScorer — resolution", () => {
     const result = await loadAdapterScorer({
       cwd,
       ref: "scorer.ts",
-      backend: "terminal",
+      route: "terminal",
       source: "manifest",
     });
     expect(result.ok).toBe(false);
@@ -154,7 +154,7 @@ describe("loadAdapterScorer — resolution", () => {
     const result = await loadAdapterScorer({
       cwd,
       ref: "myscorer",
-      backend: "terminal",
+      route: "terminal",
       source: "manifest",
     });
     expect(result.ok).toBe(false);
@@ -168,7 +168,7 @@ describe("loadAdapterScorer — resolution", () => {
     const result = await loadAdapterScorer({
       cwd,
       ref: "s-link.mjs",
-      backend: "terminal",
+      route: "terminal",
       source: "manifest",
     });
     expect(result.ok).toBe(false);
@@ -182,7 +182,7 @@ describe("loadAdapterScorer — resolution", () => {
     const result = await loadAdapterScorer({
       cwd,
       ref: "hard.mjs",
-      backend: "terminal",
+      route: "terminal",
       source: "manifest",
     });
     expect(result.ok).toBe(false);
@@ -196,13 +196,13 @@ describe("loadAdapterScorer — resolution", () => {
     const a = await loadAdapterScorer({
       cwd,
       ref: "a.mjs",
-      backend: "terminal",
+      route: "terminal",
       source: "manifest",
     });
     const b = await loadAdapterScorer({
       cwd,
       ref: "b.mjs",
-      backend: "terminal",
+      route: "terminal",
       source: "manifest",
     });
     expect(a.ok && b.ok).toBe(true);
@@ -225,7 +225,7 @@ describe("loadAdapterScorer — load + whitelist", () => {
     const result = await loadAdapterScorer({
       cwd,
       ref: "named.mjs",
-      backend: "terminal",
+      route: "terminal",
       source: "manifest",
     });
     expect(result.ok).toBe(true);
@@ -242,7 +242,7 @@ describe("loadAdapterScorer — load + whitelist", () => {
     const result = await loadAdapterScorer({
       cwd,
       ref: "def.mjs",
-      backend: "terminal",
+      route: "terminal",
       source: "manifest",
     });
     expect(result.ok).toBe(true);
@@ -260,7 +260,7 @@ describe("loadAdapterScorer — load + whitelist", () => {
     const result = await loadAdapterScorer({
       cwd,
       ref: "broken-import.mjs",
-      backend: "terminal",
+      route: "terminal",
       source: "manifest",
     });
     expect(result.ok).toBe(false);
@@ -273,7 +273,7 @@ describe("loadAdapterScorer — load + whitelist", () => {
     const result = await loadAdapterScorer({
       cwd,
       ref: "syntax.mjs",
-      backend: "terminal",
+      route: "terminal",
       source: "manifest",
     });
     expect(result.ok).toBe(false);
@@ -286,7 +286,7 @@ describe("loadAdapterScorer — load + whitelist", () => {
     const result = await loadAdapterScorer({
       cwd,
       ref: "empty.mjs",
-      backend: "terminal",
+      route: "terminal",
       source: "manifest",
     });
     expect(result.ok).toBe(false);
@@ -303,7 +303,7 @@ describe("loadAdapterScorer — load + whitelist", () => {
     const result = await loadAdapterScorer({
       cwd,
       ref: "artifacts-only.mjs",
-      backend: "terminal",
+      route: "terminal",
       source: "manifest",
     });
     expect(result.ok).toBe(false);
@@ -317,7 +317,7 @@ describe("loadAdapterScorer — load + whitelist", () => {
     const result = await loadAdapterScorer({
       cwd,
       ref: "artifacts.mjs",
-      backend: "cua",
+      route: "computer-use",
       source: "manifest",
     });
     expect(result.ok).toBe(true);
@@ -339,7 +339,7 @@ export const env = {};
     const result = await loadAdapterScorer({
       cwd,
       ref: "extra.mjs",
-      backend: "terminal",
+      route: "terminal",
       source: "manifest",
     });
     expect(result.ok).toBe(true);
@@ -361,14 +361,14 @@ describe("loadAdapterScorer — route guards (declared gate that cannot run must
     await rm(cwd, { recursive: true, force: true });
   });
 
-  it.each(["scripted", "synthetic"] as const)(
-    "fails closed on the %s backend (UNSUPPORTED_BACKEND)",
-    async (backend) => {
+  it.each(["scripted", "preview"] as const)(
+    "fails closed on the %s route (UNSUPPORTED_BACKEND)",
+    async (route) => {
       await writeScorer(cwd, "scorer.mjs", PASS_SCORER);
       const result = await loadAdapterScorer({
         cwd,
         ref: "scorer.mjs",
-        backend,
+        route,
         source: "manifest",
       });
       expect(result.ok).toBe(false);
@@ -389,7 +389,7 @@ describe("wiring + provenance inheritance (terminal, live fake, $0)", () => {
 
   it("attaches the loaded score AND records scorerProvenance {ref,digest,source,exports}; the bundle verifies", async () => {
     const ref = await writeScorer(cwd, "scorers/product.mjs", PASS_SCORER);
-    const loaded = await loadAdapterScorer({ cwd, ref, backend: "terminal", source: "cli-flag" });
+    const loaded = await loadAdapterScorer({ cwd, ref, route: "terminal", source: "cli-flag" });
     expect(loaded.ok).toBe(true);
     if (!loaded.ok) return;
 
@@ -422,13 +422,13 @@ describe("wiring + provenance inheritance (terminal, live fake, $0)", () => {
     const first = await loadAdapterScorer({
       cwd,
       ref: "s.mjs",
-      backend: "terminal",
+      route: "terminal",
       source: "manifest",
     });
     const second = await loadAdapterScorer({
       cwd,
       ref: "s.mjs",
-      backend: "terminal",
+      route: "terminal",
       source: "manifest",
     });
     expect(first.ok && second.ok).toBe(true);
@@ -439,7 +439,7 @@ describe("wiring + provenance inheritance (terminal, live fake, $0)", () => {
     const edited = await loadAdapterScorer({
       cwd,
       ref: "s.mjs",
-      backend: "terminal",
+      route: "terminal",
       source: "manifest",
     });
     expect(edited.ok).toBe(true);
@@ -740,7 +740,7 @@ describe("provenance verify (tolerated-absent, rejected-when-malformed)", () => 
 
   it("a bundle with a MALFORMED scorerProvenance digest fails verification (fail-closed guard)", async () => {
     const ref = await writeScorer(cwd, "s.mjs", PASS_SCORER);
-    const loaded = await loadAdapterScorer({ cwd, ref, backend: "terminal", source: "manifest" });
+    const loaded = await loadAdapterScorer({ cwd, ref, route: "terminal", source: "manifest" });
     expect(loaded.ok).toBe(true);
     if (!loaded.ok) return;
     const hooks = passingHooks(loaded.hooks.score ? { score: loaded.hooks.score } : {});

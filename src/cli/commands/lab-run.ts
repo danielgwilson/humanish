@@ -59,14 +59,13 @@ export async function runLabCommand(args: {
   // starter lab `first-run` went unnamed in telemetry while the computer-use ones were named.
   noteStudyFacts(args.command, deriveStudyFacts({ labId: config.id }));
   const route = routeOf(config);
-  const backend = backendOf(route);
-  if (backend !== "cua" && labRerunFlagsRequested(args.options)) {
-    writeUnsupportedRerunFlagsResult(args, backend);
+  if (route !== "computer-use" && labRerunFlagsRequested(args.options)) {
+    writeUnsupportedRerunFlagsResult(args, backendOf(route));
     return;
   }
   // Exposure serves a live desktop, which only the computer-use backend produces. Refuse it on any
   // other backend rather than silently ignoring it.
-  if (backend !== "cua" && watchExposeRequested(args.options)) {
+  if (route !== "computer-use" && watchExposeRequested(args.options)) {
     const result: RunResult = {
       schema: "humanish.run-result.v1",
       ok: false,
@@ -74,7 +73,7 @@ export async function runLabCommand(args: {
       warnings: [],
       error: {
         code: "HUMANISH_WATCH_OPTION_CONFLICT",
-        message: `--expose/--tunnel/--oauth stream a live desktop and apply only to computer-use labs; this lab resolved to ${backend}.`,
+        message: `--expose/--tunnel/--oauth stream a live desktop and apply only to computer-use labs; this lab resolved to ${backendOf(route)}.`,
       },
     };
     writeResult(args.command, args.io, result, formatRunHuman);
@@ -83,7 +82,7 @@ export async function runLabCommand(args: {
   }
   // A live run is never share_ready, so watch --safe admits nothing. The computer-use backend
   // refuses it through validateExposure; refuse it here for the others.
-  if (backend !== "cua" && args.options.safe === true) {
+  if (route !== "computer-use" && args.options.safe === true) {
     const result: RunResult = {
       schema: "humanish.run-result.v1",
       ok: false,
@@ -112,7 +111,7 @@ export async function runLabCommand(args: {
     const scorerLoad = await maybeLoadAdapterScorer({
       cwd: args.options.cwd,
       config,
-      backend,
+      route,
       flag: args.options.scorer,
     });
     if (!scorerLoad.ok) {
@@ -135,7 +134,7 @@ export async function runLabCommand(args: {
         `warning: review scorer ${scorer.provenance.ref} (${scorer.provenance.source}) is executable host code loaded and run in-process — review it as code, not config.\n`,
       );
     }
-    const analysisBudget = automaticAnalysisBudget(config.review?.analysis, backend);
+    const analysisBudget = automaticAnalysisBudget(config.review?.analysis, route);
     if (analysisBudget && resolveLabDryRun(config, args.options.dryRun, true) === false) {
       args.io.writeErr(`${formatAutomaticAnalysisBudget(analysisBudget)}\n`);
     }
