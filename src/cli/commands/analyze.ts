@@ -14,7 +14,7 @@ import {
 import { listAnalyses } from "../../analysis/store.js";
 import { listStudyAnalysisExecutions } from "../../analysis/store-executions.js";
 import { resolveRunPath } from "../../run/locate.js";
-import { type CliIo, JSON_OPTION_DESCRIPTION, writeResult } from "../io.js";
+import { type CliIo, discoverCliKeys, JSON_OPTION_DESCRIPTION, writeResult } from "../io.js";
 import { resolvePhysicalCwd } from "../../run/paths.js";
 
 /** Commander may collect a shared flag on the parent; only explicit values override leaf defaults. */
@@ -175,6 +175,10 @@ async function handleAnalyze(
     io.setExitCode(2);
     return;
   }
+  // Only a live OpenAI analysis sends OPENAI_API_KEY. A dry run and the Codex account analyst
+  // read no provider key, so they skip discovery and its `gh auth token` spawn.
+  if (options.dryRun !== true && selected.config.provider !== "codex")
+    await discoverCliKeys({ io, cwd: options.cwd });
   const controller = new AbortController();
   const cancel = (): void => controller.abort();
   process.once("SIGINT", cancel);
