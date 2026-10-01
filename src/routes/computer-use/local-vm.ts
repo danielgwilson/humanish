@@ -6,9 +6,10 @@ import {
   inboxRecipientFor,
   type ParticipantDesktop,
   type ParticipantDesktopEvidence,
+  PARTICIPANT_DESKTOP,
+  type HooksWithParticipantDesktop,
 } from "./participant-desktop.js";
-import type { CuaActorLabHooks } from "./types.js";
-import type { CuaLaneSpec } from "./legacy-lane-spec.js";
+import type { CuaActorLabHooks, DesktopParticipantRun } from "./types.js";
 import { HOOK_MEMBERS, withHookOverrides } from "../../lab/hook-bag.js";
 import { runCuaActorSession } from "../../actors/computer-use/actor.js";
 import {
@@ -126,7 +127,7 @@ function mediaEvidence(
 /** One lane's Firecracker desktop and optional captured inbox, released in finalize. */
 function createLocalParticipantDesktop(
   context: LocalLaneContext,
-  spec: CuaLaneSpec,
+  run: DesktopParticipantRun,
   warnings: string[],
   artifactRoot: PreparedOutputRoot,
 ): ParticipantDesktop {
@@ -135,7 +136,7 @@ function createLocalParticipantDesktop(
   let inbox: Awaited<ReturnType<typeof startLocalCapturedInbox>> | undefined;
   const email = config.comms?.email;
   const address =
-    email?.kind === "fake" ? inboxRecipientFor(email, spec.laneId)?.address : undefined;
+    email?.kind === "fake" ? inboxRecipientFor(email, run.planned.id)?.address : undefined;
   let finalizing: Promise<void> | undefined;
   const evidence: ParticipantDesktopEvidence = {
     released: false,
@@ -153,7 +154,7 @@ function createLocalParticipantDesktop(
         ...(inbox ? { inboxUrl: inbox.url } : {}),
         ...(media === undefined ? {} : { media }),
         ...(recording === undefined ? {} : { recording }),
-        appUrl: spec.targetUrl ?? config.subject.appUrl!,
+        appUrl: run.planned.targetUrl ?? config.subject.appUrl!,
         outputRoot: path.join(context.cwd, ".humanish", "local-runtime"),
         ...(context.signal === undefined ? {} : { signal: context.signal }),
       });
@@ -181,7 +182,7 @@ function createLocalParticipantDesktop(
           try {
             evidence.recording = await collectDesktopRecording(
               artifactRoot,
-              spec.laneId,
+              run.planned.id,
               (destination) => desktop.finishRecording(destination),
             );
           } catch {
@@ -273,9 +274,9 @@ export function prepareLocalVmStudy(options: LocalStudyOptions): LocalVmStudy {
       // The caller's hooks come first so this study's desktop lane always wins: runLab reads
       // createDesktopLane as "desktop provided" and plans the computer-use run with these hooks.
       // The caller's bag may be a class instance, so it is wrapped rather than spread.
-      cuaHooks: withHookOverrides(callerHooks, HOOK_MEMBERS.cua, {
-        createDesktopLane: (spec, warnings, artifactRoot) =>
-          createLocalParticipantDesktop(context, spec, warnings, artifactRoot),
+      cuaHooks: withHookOverrides<HooksWithParticipantDesktop>(callerHooks, HOOK_MEMBERS.cua, {
+        [PARTICIPANT_DESKTOP]: (run, warnings, artifactRoot) =>
+          createLocalParticipantDesktop(context, run, warnings, artifactRoot),
         ...(account ? accountProvider(state) : {}),
         ...(options.signal
           ? {

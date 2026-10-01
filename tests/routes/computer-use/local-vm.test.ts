@@ -7,7 +7,12 @@ import type { LabConfig } from "../../../src/lab/types.js";
 import type { createLocalFirecrackerDesktop } from "../../../src/substrates/local/firecracker-desktop.js";
 import type { CuaActorSessionOptions } from "../../../src/actors/computer-use/actor.js";
 import type { CuaLoopResult, CuaProvider } from "../../../src/actors/computer-use/loop.js";
-import type { CuaLaneSpec } from "../../../src/routes/computer-use/legacy-lane-spec.js";
+import {
+  participantDesktopOf,
+  PARTICIPANT_DESKTOP,
+  type HooksWithParticipantDesktop,
+} from "../../../src/routes/computer-use/participant-desktop.js";
+import { participantRun } from "../../helpers/participant-run.js";
 import type { PreparedOutputRoot } from "../../../src/run/contained-output.js";
 import type { RunScorerProvenance } from "../../../src/run/bundle.js";
 
@@ -43,8 +48,8 @@ function localLab(type: "openai-computer-use" | "local-agent"): LabConfig {
 }
 
 function studyHooks(study: ReturnType<typeof prepareLocalVmStudy>) {
-  const hooks = study.options.cuaHooks;
-  expect(hooks?.createDesktopLane).toBeTypeOf("function");
+  const hooks = study.options.cuaHooks as HooksWithParticipantDesktop | undefined;
+  expect(hooks?.[PARTICIPANT_DESKTOP]).toBeTypeOf("function");
   return hooks!;
 }
 
@@ -152,7 +157,8 @@ describe("local study bindings", () => {
     expect(score).toHaveBeenCalledOnce();
     expect(onPhase).toHaveBeenCalledOnce();
     expect(deriveArtifacts).toHaveBeenCalledOnce();
-    expect(hooks.createDesktopLane).not.toBe(createDesktopLane);
+    // The study's own desktop wins over a caller's createDesktopLane.
+    expect(participantDesktopOf(hooks)).toBe(hooks[PARTICIPANT_DESKTOP]);
     expect(hooks.buildProvider).toBeUndefined();
     expect(hooks.runSession).toBeUndefined();
   });
@@ -177,8 +183,14 @@ describe("local study bindings", () => {
       cuaHooks: { buildProvider, runSession },
     });
     const hooks = studyHooks(study);
-    const spec: Partial<CuaLaneSpec> = { laneId: "lane-1", targetUrl: appUrl };
-    await hooks.createDesktopLane!(spec as CuaLaneSpec, [], {} as PreparedOutputRoot).prepare();
+    const run = participantRun({
+      id: "lane-1",
+      index: 0,
+      persona: { id: "synthetic-persona", traitsApplied: [], promptDigest: "synthetic" },
+      instructions: "Save a synthetic note.",
+      targetUrl: appUrl,
+    });
+    await participantDesktopOf(hooks)!(run, [], {} as PreparedOutputRoot).prepare();
     await study.close();
 
     await hooks.buildProvider!({} as never);

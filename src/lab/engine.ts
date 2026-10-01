@@ -49,6 +49,7 @@ import {
 
 export { resolveLabDryRun };
 import { type LabConfig } from "./types.js";
+import { participantDesktopOf } from "../routes/computer-use/participant-desktop.js";
 
 export type LabBackend = "synthetic" | "cua" | "scripted" | "terminal" | "concurrent-shared-world";
 
@@ -153,7 +154,7 @@ export async function prepareLab(config: LabConfig, options: RunLabOptions): Pro
   const hooks = normalized.options.cuaHooks;
   const localVm =
     isLocalBrowserLab(lab) &&
-    hooks?.createDesktopLane === undefined &&
+    (hooks === undefined || participantDesktopOf(hooks) === undefined) &&
     hooks?.buildExecutor === undefined
       ? (await import("../routes/computer-use/local-vm.js")).prepareLocalVmStudy
       : undefined;

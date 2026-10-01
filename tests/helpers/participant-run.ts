@@ -17,6 +17,7 @@ export function participantRun(fields: {
   screenshotDir?: string;
   traceArtifactPath?: string;
   limits?: ComputerUseParticipant["limits"];
+  targetUrl?: string;
 }): DesktopParticipantRun {
   const ordinal = String(fields.index + 1).padStart(3, "0");
   return {
@@ -32,6 +33,7 @@ export function participantRun(fields: {
         resolution: [DEVICE_PRESETS.desktop.width, DEVICE_PRESETS.desktop.height],
       },
       limits: fields.limits ?? {},
+      ...(fields.targetUrl === undefined ? {} : { targetUrl: fields.targetUrl }),
     },
     simId: fields.simId ?? `sim-${ordinal}`,
     streamId: fields.streamId ?? `stream-${ordinal}`,

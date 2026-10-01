@@ -11,6 +11,7 @@ import { externalCatchHealthy } from "../../comms/sandbox-catch.js";
 import { MODEL_RATES } from "../../run/pricing.js";
 import type { CuaActorLabErrorCode, CuaActorLabHooks } from "./types.js";
 import { describeQualifiedCodexCliVersions } from "../../actors/codex/qualified-versions.js";
+import { participantDesktopOf } from "./participant-desktop.js";
 
 /**
  * The first reason a live computer-use run cannot start on this machine: missing keys, a missing
@@ -45,7 +46,7 @@ export async function liveCuaRejection(args: {
   } = args;
   const missingKeys = [
     ...(openaiApiKey || localAgentRoute || hooks.buildProvider ? [] : ["OPENAI_API_KEY"]),
-    ...(e2bApiKey || hooks.createDesktopLane ? [] : ["E2B_API_KEY"]),
+    ...(e2bApiKey || participantDesktopOf(hooks) !== undefined ? [] : ["E2B_API_KEY"]),
   ];
   if (missingKeys.length > 0) {
     // The moment someone new actually hits the wall. If a signed-in coding agent is sitting

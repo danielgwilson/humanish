@@ -48,8 +48,8 @@ import {
   type ComputerUseRunInput,
   type RunCuaActorLabOptions,
 } from "./types.js";
-import { laneSpecOf } from "./legacy-lane-spec.js";
 import { labPersonaIds } from "../../lab/persona-resolve.js";
+import { participantDesktopOf } from "./participant-desktop.js";
 
 /**
  * Plans the run and starts it. Returns the refusal, with the envelope the route always used, or
@@ -467,15 +467,11 @@ function cuaParticipantDeps(
   const { appUrl, cloneRoute, desktopCliRoute, localTreeRoute, serve, subjectRepo } = planned.route;
   const { subjectEnvNames } = planned.route;
   const { runPaths, redactScreenshots, liveTrace } = run;
+  const createDesktop = participantDesktopOf(hooks);
   const timeoutMs = routePlan.sessionBudgetMs;
   const requestTimeoutMs = e2bRequestTimeoutMs(env);
   return {
-    ...(hooks.createDesktopLane
-      ? {
-          createDesktop: (run, warnings, root) =>
-            hooks.createDesktopLane!(laneSpecOf(run), warnings, root),
-        }
-      : {}),
+    ...(createDesktop === undefined ? {} : { createDesktop }),
     onTrace: (participantId, items, usage, metadata) =>
       liveTrace.flush?.(participantId, items, usage, metadata),
     config,
