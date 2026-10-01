@@ -657,9 +657,6 @@ export interface CuaFanoutBundleArgs {
   participantPlan: CuaParticipantPlan;
   rerun?: RunRerunLineage;
   failFastReason?: string;
-  cloneRoute: boolean;
-  localTreeRoute?: boolean;
   publicRepo?: string;
-  subjectEnvNames: string[];
   inProgress?: boolean;
 }

@@ -366,9 +366,9 @@ export async function runAllCuaParticipants(
   runs: readonly DesktopParticipantRun[],
   deps: Omit<CuaParticipantDeps, "signalProvisioned">,
   participantPlan: CuaParticipantPlan,
-  inProcessRoute: boolean,
+  inProcess: boolean,
 ): Promise<{ outcomes: ParticipantRunOutcome[]; failFastReason: string | undefined }> {
-  if (inProcessRoute) {
+  if (inProcess) {
     // The caller's executor stands in for a desktop, and the shared runner drives the participant.
     const outcome = await runCuaParticipant(runs[0]!, {
       ...deps,

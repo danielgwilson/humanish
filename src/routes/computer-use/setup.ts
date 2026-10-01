@@ -27,13 +27,7 @@ import {
 import { makeCuaRunBudget } from "./participant-model.js";
 import { e2bRequestTimeoutMs } from "../../substrates/e2b/lifetime.js";
 import { liveCuaRejection } from "./preflight.js";
-import {
-  cuaDescriptorOf,
-  cuaSubjectRoute,
-  cuaSubjectRouteOf,
-  type ComputerUseRefusal,
-  type CuaSubjectRoute,
-} from "./plan.js";
+import { cuaDescriptorOf, declaredAppUrl, plannedAppUrl, type ComputerUseRefusal } from "./plan.js";
 import type { ComputerUsePlan } from "../../lab/plan-types.js";
 import { trackRuntimeStreams, type LiveTraceFlush } from "./live-flush.js";
 import { type CuaRunBundleBase } from "./bundle.js";
@@ -51,6 +45,7 @@ import {
   type CuaSubjectProvenanceArg,
   type ComputerUseRunInput,
   type RunCuaActorLabOptions,
+  participantSubjectEnv,
 } from "./types.js";
 import { labPersonaIds } from "../../lab/persona-resolve.js";
 import { participantDesktopOf } from "./participant-desktop.js";
@@ -74,7 +69,6 @@ export async function refuseCuaLab(
 ): Promise<CuaActorLabResult> {
   const { config, dryRun } = options;
   const projectRoot = await bindProject(options.cwd);
-  const hooks = options.hooks ?? {};
   // The committed personas are read before the refusal returns, so a persona-file error wins.
   if (refusal.stage === "after-personas")
     await compileParticipantPersonas(projectRoot, labPersonaIds(config));
@@ -84,7 +78,7 @@ export async function refuseCuaLab(
     cwd: projectRoot.physicalPath,
     labId: config.id,
     actor: refusal.actor ?? config.actors[0]?.type ?? "",
-    appUrl: cuaSubjectRoute(config, hooks).appUrl,
+    appUrl: declaredAppUrl(config),
     dryRun,
     runId: options.runId ?? "not-created",
     lanes: [],
@@ -109,7 +103,6 @@ export interface CuaRunSetup {
   /** The physical project root. */
   cwd: string;
   descriptor: CuaActorDescriptor;
-  subjectRoute: CuaSubjectRoute;
   run: StartedRun;
   streams: ReturnType<typeof trackRuntimeStreams>;
   participantRuns: DesktopParticipantRun[];
@@ -169,9 +162,10 @@ export async function admitCuaRun(
   const streams = trackRuntimeStreams(hooks);
   const env = hooks.env ?? process.env;
 
-  const subjectRoute = cuaSubjectRouteOf(plan);
-  const { cloneRoute, localTreeRoute, inProcessRoute, appUrl, subjectRepo, subjectEnvNames } =
-    subjectRoute;
+  const { subject, desktop } = plan.runner;
+  const inProcess = desktop === "in-process";
+  const appUrl = plannedAppUrl(subject);
+  const subjectEnvNames = [...participantSubjectEnv(subject)];
 
   const fail = (
     code: CuaActorLabErrorCode,
@@ -204,7 +198,9 @@ export async function admitCuaRun(
   // nothing on this route (and, per #387, on every other) while its docs said otherwise.
   const comms = plan.residual.comms;
   const externalCommsConfig =
-    !cloneRoute && !localTreeRoute && !inProcessRoute ? comms?.email?.external : undefined;
+    subject.kind !== "clone" && subject.kind !== "local-tree" && !inProcess
+      ? comms?.email?.external
+      : undefined;
   const externalCommsEmail = externalCommsConfig ? comms?.email : undefined;
 
   const participants = await loadCuaParticipants({ plan, cwd, projectRoot, env });
@@ -239,11 +235,11 @@ export async function admitCuaRun(
   const redactRepoLabel =
     plan.residual.policies?.redactRepos ?? subjectEnvNames.includes("GITHUB_TOKEN");
   const publicRepo =
-    cloneRoute && subjectRepo ? (redactRepoLabel ? "repo-01" : subjectRepo) : undefined;
+    subject.kind === "clone" ? (redactRepoLabel ? "repo-01" : subject.repo) : undefined;
 
   // Key-gating is route-aware: the in-process route uses the caller's OWN model + executor, and
   // the local-agent route uses a CLI the operator has already signed in to.
-  if (!dryRun && !inProcessRoute) {
+  if (!dryRun && !inProcess) {
     const rejection = await liveCuaRejection({
       caps: plan.caps,
       brain: plan.runner.brain,
@@ -262,7 +258,7 @@ export async function admitCuaRun(
   // created and before the run directory exists.
   let localTreeArchive: LocalTreeArchive | undefined;
   let localTreeArchiveBuffer: ArrayBuffer | undefined;
-  if (localTreeRoute && !dryRun) {
+  if (subject.kind === "local-tree" && !dryRun) {
     try {
       const packed = await packRunLocalTree(hooks, plan.residual, cwd);
       localTreeArchive = packed.archive;
@@ -285,7 +281,7 @@ export async function admitCuaRun(
       hooks,
       streams,
       env,
-      subjectRoute,
+      appUrl,
       fail,
       refuse,
       descriptor,
@@ -316,8 +312,7 @@ export async function startCuaRun(
 ): Promise<PreparedCuaRun> {
   const { config, dryRun, cwd, hooks, descriptor, participantRuns, participantPlan, publicRepo } =
     admitted;
-  const { appUrl, inProcessRoute, localAppSubject, cloneRoute, localTreeRoute, subjectEnvNames } =
-    admitted.subjectRoute;
+  const { appUrl } = admitted;
   // The run's status record exists from here on, so anything watching the runs directory can
   // tell which lab this is and that it is alive. The fail-closed returns below leave it finished
   // with no outcome when the scope closes; a crash leaves it stale, which reads as interrupted.
@@ -355,7 +350,6 @@ export async function startCuaRun(
 
   const subjectArgs = {
     plan,
-    subjectRoute: admitted.subjectRoute,
     ...(publicRepo === undefined ? {} : { publicRepo }),
     ...(admitted.localTreeArchive === undefined
       ? {}
@@ -368,11 +362,9 @@ export async function startCuaRun(
     dryRun: false,
   });
   const inProgressAggregateSubject = inProgressSubjects[0]!;
-  const inProgressProvenance = subjectProvenanceArg(
-    inProgressAggregateSubject,
-    publicRepo,
-    subjectEnvNames,
-  );
+  const inProgressProvenance = subjectProvenanceArg(inProgressAggregateSubject, publicRepo, [
+    ...participantSubjectEnv(plan.runner.subject),
+  ]);
 
   const bundleBase: CuaRunBundleBase = {
     ...(plan.lab === undefined ? {} : { lab: plan.lab }),
@@ -386,12 +378,7 @@ export async function startCuaRun(
     participantPlan,
     ...(admitted.rerunLineage === undefined ? {} : { rerun: admitted.rerunLineage }),
     redactScreenshots,
-    inProcessRoute,
-    localAppSubject,
-    cloneRoute,
-    localTreeRoute,
     ...(publicRepo === undefined ? {} : { publicRepo }),
-    subjectEnvNames,
   };
 
   const { externalCommsConfig, externalCommsEmail } = admitted;
@@ -403,7 +390,6 @@ export async function startCuaRun(
       config,
       cwd,
       descriptor,
-      subjectRoute: admitted.subjectRoute,
       run,
       streams: admitted.streams,
       participantRuns,
@@ -447,7 +433,7 @@ function cuaParticipantDeps(
   const { localTreeArchiveBuffer } = admitted;
   const { openaiApiKey, e2bApiKey, scrubKnownValues } = admitted;
   const { externalCommsConfig, externalCommsEmail } = admitted;
-  const { appUrl } = admitted.subjectRoute;
+  const { appUrl } = admitted;
   const { runPaths, redactScreenshots, liveTrace } = run;
   const createDesktop = participantDesktopOf(hooks);
   const timeoutMs = plan.sessionBudgetMs;

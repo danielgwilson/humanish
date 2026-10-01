@@ -42,7 +42,9 @@ import {
   type DesktopParticipantRun,
   type CuaSubjectProjection,
   type ParticipantRunOutcome,
+  participantSubjectEnv,
 } from "./types.js";
+import { plannedAppUrl } from "./plan.js";
 
 /** Aggregate participant counts for the result projection. */
 function buildParticipantSummary(
@@ -308,11 +310,12 @@ export async function finishCuaRun(
   finish: CuaFinishFacts,
   ran: Extract<Awaited<ReturnType<typeof runLabParticipants>>, { ok: true }>,
 ): Promise<CuaActorLabResult> {
-  const { plan, input, config, cwd, streams, descriptor, subjectRoute, run } = setup;
+  const { plan, input, config, cwd, streams, descriptor, run } = setup;
   const { participantRuns, participantPlan, scrubKnownValues, bundleBase } = setup;
   const { hooks, rerunLineage, publicRepo, subjectArgs } = finish;
   const { dryRun } = plan;
-  const { appUrl, subjectEnvNames } = subjectRoute;
+  const appUrl = plannedAppUrl(plan.runner.subject);
+  const subjectEnvNames = [...participantSubjectEnv(plan.runner.subject)];
   const { runId } = run;
   const participantCount = participantRuns.length;
   const { outcomes, failFastReason, receiving, receivingWarnings, externalCommsWarnings } = ran;

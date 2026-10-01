@@ -585,8 +585,6 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
       runId: "missing-outcomes-proof",
       source,
       participantPlan,
-      cloneRoute: false,
-      subjectEnvNames: [],
     });
 
     expect(bundle.mode).toBe("live");
@@ -669,8 +667,6 @@ describe("cua fan-out bundle: desktop browser provenance", () => {
         },
       },
       participantPlan: resolveCuaParticipantPlan(config),
-      cloneRoute: false,
-      subjectEnvNames: [],
     });
   }
 
