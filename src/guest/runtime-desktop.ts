@@ -1,22 +1,33 @@
-import { spawn, type ChildProcess } from "node:child_process";
-import { createHash, randomBytes } from "node:crypto";
-import { constants } from "node:fs";
+import { randomBytes, createHash } from "node:crypto";
+import { constants, type Stats } from "node:fs";
 import { lstat, mkdir, open, rm } from "node:fs/promises";
 import { setTimeout as delay } from "node:timers/promises";
+import type { Readable } from "node:stream";
 import { chromium, type BrowserContext, type Page } from "playwright-core";
-import { createGuestDesktopNativeTools } from "./desktop-native.js";
-import { createGuestChromiumText } from "./chromium-text.js";
+import { createGuestDesktopNativeTools, type GuestDesktopNativeTools } from "./desktop-native.js";
+import { createGuestChromiumText, type GuestChromiumText } from "./chromium-text.js";
 import { createGuestBrowserTools } from "./browser-tools.js";
 import { createGuestDesktopExecutor } from "./desktop-executor.js";
 import { CuaExecutorError } from "../actors/computer-use/executor-error.js";
+import type { CuaExecutor } from "../actors/computer-use/loop.js";
 import type { GuestRuntimeDesktop } from "./runtime.js";
 import { GUEST_BOOTSTRAP_LIMITS, validateGuestInitialUrl } from "./bootstrap.js";
 import type { GuestMediaConfig } from "./media-config.js";
-import { startDesktopMedia } from "./desktop-media.js";
-import type { DesktopRecordingConfig } from "../evidence/desktop-recording-types.js";
+import {
+  startDesktopMedia,
+  type GuestDesktopMedia,
+  type GuestDesktopMediaOptions,
+} from "./desktop-media.js";
+import type {
+  DesktopRecordingAudioSource,
+  DesktopRecordingConfig,
+  DesktopRecordingMetadata,
+} from "../evidence/desktop-recording-types.js";
 import { startDesktopRecorder, type DesktopRecorderHandle } from "../evidence/desktop-recorder.js";
+import { createGuestProcesses, setupFailed, type GuestProcesses } from "./runtime-processes.js";
 
-const GUEST_RUNTIME_PATHS = Object.freeze({
+/** The guest image's fixed layout. Tests derive guest paths from it rather than spelling them. */
+export const GUEST_RUNTIME_PATHS = Object.freeze({
   root: "/opt/humanish/control",
   run: "/run/humanish",
   home: "/home/humanish",
@@ -35,8 +46,19 @@ const GUEST_RUNTIME_ENV = Object.freeze({
   XDG_CONFIG_HOME: "/home/humanish/.config",
   TMPDIR: "/tmp",
 });
-const bad = (): CuaExecutorError => new CuaExecutorError("execution_failed", "not_dispatched");
 const CONFIG_SHA = "4ae1c52eab748a3624b3948ce792647be258caba70c8c72038b9a43be6459552";
+const XVFB_ARGS = Object.freeze([
+  ":0",
+  "-screen",
+  "0",
+  "960x720x24",
+  "-nolisten",
+  "tcp",
+  "-auth",
+  GUEST_RUNTIME_ENV.XAUTHORITY,
+]);
+const SANDBOX_FEATURES = ["PID namespaces", "Network namespaces", "Seccomp-BPF sandbox"];
+const RECORDING_PATH = `${GUEST_RUNTIME_PATHS.home}/desktop-recording.mp4`;
 export type GuestRuntimePhase =
   | "layout"
   | "xauthority"
@@ -78,6 +100,338 @@ export async function navigateGuestInitialPage(
   signal.throwIfAborted();
 }
 
+/** /run/humanish and /home/humanish: real directories private to the guest user. */
+export function isPrivateGuestDirectory(
+  stat: Pick<Stats, "isDirectory" | "isSymbolicLink" | "uid" | "gid" | "mode">,
+): boolean {
+  return (
+    stat.isDirectory() &&
+    !stat.isSymbolicLink() &&
+    stat.uid === 1000 &&
+    stat.gid === 1000 &&
+    (stat.mode & 0o777) === 0o700
+  );
+}
+
+/** The window manager config: a small, read-only, single-link file owned by root. */
+export function isPinnedOpenboxConfig(
+  stat: Pick<Stats, "isFile" | "uid" | "gid" | "nlink" | "size" | "mode">,
+): boolean {
+  return (
+    stat.isFile() &&
+    stat.uid === 0 &&
+    stat.gid === 0 &&
+    stat.nlink === 1 &&
+    stat.size <= 4096 &&
+    (stat.mode & 0o777) === 0o444
+  );
+}
+
+/** chrome://sandbox must report every namespace and seccomp feature and the overall verdict. */
+export function isAdequatelySandboxed(report: string): boolean {
+  return (
+    SANDBOX_FEATURES.every((label) => new RegExp(label + "\\s+Yes").test(report)) &&
+    report.includes("You are adequately sandboxed")
+  );
+}
+
+export function chromiumLaunchArgs(media: GuestMediaConfig | undefined): string[] {
+  return [
+    "--window-size=960,680",
+    "--window-position=0,20",
+    "--disable-background-networking",
+    "--disable-component-update",
+    "--no-first-run",
+    ...(media?.permission === "granted" ? ["--use-fake-ui-for-media-stream"] : []),
+  ];
+}
+
+/** The devices to start; the permission policy only changes Chromium's flags. */
+export function desktopMediaRequest(media: GuestMediaConfig): GuestDesktopMediaOptions["media"] {
+  return {
+    ...(media.camera === undefined ? {} : { camera: media.camera }),
+    ...(media.microphone === undefined ? {} : { microphone: media.microphone }),
+  };
+}
+
+/** Audio needs Pulse, which only the microphone path starts. */
+export function recorderAudio(
+  recording: DesktopRecordingConfig,
+  media: GuestMediaConfig | undefined,
+): { audioSources: DesktopRecordingAudioSource[]; pulseReady: boolean } {
+  return {
+    audioSources: recording.audio ? ["microphone-input", "speaker-output"] : [],
+    pulseReady: recording.audio && media?.microphone !== undefined,
+  };
+}
+
+/** What setup has acquired so far. Teardown reads whichever fields are set. */
+interface GuestDesktopState {
+  context?: BrowserContext;
+  pendingContext?: Promise<BrowserContext>;
+  content?: GuestChromiumText;
+  media?: GuestDesktopMedia;
+  recorder?: DesktopRecorderHandle | undefined;
+  stopping: boolean;
+  closing?: Promise<{ complete: boolean }>;
+}
+
+async function verifyGuestLayout(check: () => void): Promise<void> {
+  if (process.getuid?.() !== 1000 || process.getgid?.() !== 1000) throw setupFailed();
+  for (const path of [GUEST_RUNTIME_PATHS.run, GUEST_RUNTIME_PATHS.home]) {
+    const stat = await lstat(path);
+    check();
+    if (!isPrivateGuestDirectory(stat)) throw setupFailed();
+  }
+  const configuration = await open(
+    `${GUEST_RUNTIME_PATHS.root}/openbox.xml`,
+    constants.O_RDONLY | constants.O_NOFOLLOW,
+  );
+  let config: Buffer;
+  try {
+    if (!isPinnedOpenboxConfig(await configuration.stat())) throw setupFailed();
+    config = await configuration.readFile();
+  } finally {
+    await configuration.close();
+  }
+  if (createHash("sha256").update(config).digest("hex") !== CONFIG_SHA) throw setupFailed();
+  for (const path of [
+    `${GUEST_RUNTIME_PATHS.run}/xdg`,
+    `${GUEST_RUNTIME_PATHS.run}/capture`,
+    `${GUEST_RUNTIME_PATHS.home}/.cache`,
+    `${GUEST_RUNTIME_PATHS.home}/.config`,
+  ]) {
+    check();
+    await mkdir(path, { mode: 0o700 });
+  }
+}
+
+async function authorizeDisplay(processes: GuestProcesses, check: () => void): Promise<void> {
+  const auth = await open(
+    GUEST_RUNTIME_ENV.XAUTHORITY,
+    constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW,
+    0o600,
+  );
+  await auth.close();
+  check();
+  await processes.spawn(
+    "/usr/bin/xauth",
+    ["-f", GUEST_RUNTIME_ENV.XAUTHORITY, "source", "-"],
+    `add :0 . ${randomBytes(16).toString("hex")}\n`,
+  ).done;
+  check();
+}
+
+async function waitForDisplay(
+  processes: GuestProcesses,
+  signal: AbortSignal,
+  check: () => void,
+): Promise<void> {
+  for (let attempt = 0; attempt < 100; attempt++) {
+    check();
+    try {
+      await processes.spawn("/usr/bin/xdpyinfo", []).done;
+      return;
+    } catch {
+      await delay(50, undefined, { signal });
+    }
+  }
+  throw setupFailed();
+}
+
+/** A recorder that fails to start leaves the desktop usable; finishRecording reports it. */
+async function startGuestRecorder(
+  recording: DesktopRecordingConfig,
+  media: GuestMediaConfig | undefined,
+  env: Readonly<Record<string, string>>,
+  signal: AbortSignal,
+): Promise<DesktopRecorderHandle | undefined> {
+  try {
+    return await startDesktopRecorder({
+      display: ":0",
+      width: 960,
+      height: 720,
+      outputPath: RECORDING_PATH,
+      env,
+      signal,
+      ...recorderAudio(recording, media),
+    });
+  } catch {
+    return undefined;
+  }
+}
+
+async function launchGuestBrowser(
+  state: GuestDesktopState,
+  media: GuestMediaConfig | undefined,
+  check: () => void,
+): Promise<{ context: BrowserContext; page: Page }> {
+  state.pendingContext = chromium.launchPersistentContext(`${GUEST_RUNTIME_PATHS.home}/browser`, {
+    executablePath: "/usr/bin/chromium",
+    headless: false,
+    chromiumSandbox: true,
+    viewport: null,
+    env: state.recorder?.env ?? state.media?.env ?? GUEST_RUNTIME_ENV,
+    timeout: 25_000,
+    args: chromiumLaunchArgs(media),
+  });
+  // A browser that finishes launching after the stop is closed here; teardown may not see it.
+  void state.pendingContext.then(
+    (browser) => {
+      if (state.stopping) void browser.close().catch(() => {});
+    },
+    () => {},
+  );
+  const context = (state.context = await state.pendingContext);
+  check();
+  context.setDefaultTimeout(5000);
+  context.setDefaultNavigationTimeout(5000);
+  const page = context.pages()[0];
+  if (!page || context.pages().length !== 1) throw setupFailed();
+  return { context, page };
+}
+
+async function verifyBrowserSandbox(
+  context: BrowserContext,
+  page: Page,
+  check: () => void,
+): Promise<string> {
+  const diagnostic = await context.newPage();
+  check();
+  await diagnostic.goto("chrome://sandbox");
+  check();
+  const report = await diagnostic.locator("body").innerText();
+  if (!isAdequatelySandboxed(report)) throw setupFailed();
+  await diagnostic.close();
+  check();
+  await page.bringToFront();
+  check();
+  return report;
+}
+
+/** Text actions run only while the browser window that setup saw still has focus. */
+function focusGuard(
+  native: GuestDesktopNativeTools,
+  window: string,
+): (actionSignal: AbortSignal) => Promise<void> {
+  return async (actionSignal) => {
+    if ((await native.activeWindowId(actionSignal)) !== window)
+      throw new CuaExecutorError("action_rejected", "not_dispatched");
+  };
+}
+
+async function createGuestExecutorFor(
+  state: GuestDesktopState,
+  browser: { context: BrowserContext; page: Page },
+  signal: AbortSignal,
+  onTerminal: () => void,
+  check: () => void,
+): Promise<CuaExecutor> {
+  const native = createGuestDesktopNativeTools({
+    display: ":0",
+    temporaryDirectory: `${GUEST_RUNTIME_PATHS.run}/capture`,
+    xauthority: GUEST_RUNTIME_ENV.XAUTHORITY,
+  });
+  const window = await native.activeWindowId(signal);
+  check();
+  state.content = createGuestChromiumText({
+    ...browser,
+    assertFocusedWindow: focusGuard(native, window),
+  });
+  return createGuestDesktopExecutor({
+    width: 960,
+    height: 720,
+    tools: createGuestBrowserTools(native, state.content),
+    authoritySignal: signal,
+    onTerminal,
+  });
+}
+
+async function openGuestFixture(page: Page, check: () => void): Promise<void> {
+  await page.goto(`file://${GUEST_RUNTIME_PATHS.root}/neutral.html`);
+  check();
+  await page.locator("#note").waitFor();
+  check();
+}
+
+async function finishGuestRecording(
+  recorder: DesktopRecorderHandle | undefined,
+): Promise<{ metadata: DesktopRecordingMetadata; stream: Readable }> {
+  try {
+    if (!recorder) throw new Error();
+    const result = await recorder.finish();
+    const file = await open(result.outputPath, constants.O_RDONLY | constants.O_NOFOLLOW);
+    try {
+      const fileStat = await file.stat();
+      if (!fileStat.isFile() || fileStat.size !== result.metadata.bytes) throw new Error();
+      return { metadata: result.metadata, stream: file.createReadStream({ autoClose: true }) };
+    } catch (error) {
+      await file.close().catch(() => {});
+      throw error;
+    }
+  } catch {
+    throw new Error("Desktop recording failed.");
+  }
+}
+
+/** Closes in a fixed order within 4 s; a failed step other than the recording marks it incomplete. */
+function closeGuestRuntimeDesktop(
+  state: GuestDesktopState,
+  processes: GuestProcesses,
+  controller: AbortController,
+  detach: () => void,
+): Promise<{ complete: boolean }> {
+  if (state.closing) return state.closing;
+  state.stopping = true;
+  state.closing = Promise.resolve().then(async () => {
+    let complete = true,
+      timer: NodeJS.Timeout | undefined;
+    const work = async (): Promise<void> => {
+      try {
+        await state.content?.close();
+      } catch {
+        complete = false;
+      }
+      try {
+        await state.recorder?.finish();
+      } catch {
+        /* Recording evidence is optional to desktop teardown. */
+      }
+      try {
+        await state.media?.close();
+      } catch {
+        complete = false;
+      }
+      try {
+        const browser = state.context ?? (await state.pendingContext?.catch(() => undefined));
+        if (browser) await browser.close();
+      } catch {
+        complete = false;
+      }
+      processes.killRunning();
+      await processes.closed();
+    };
+    try {
+      await Promise.race([
+        work(),
+        new Promise<void>((resolve) => {
+          timer = setTimeout(() => {
+            complete = false;
+            resolve();
+          }, 4000);
+        }),
+      ]);
+    } finally {
+      clearTimeout(timer);
+      if (processes.killRunning()) complete = false;
+      detach();
+    }
+    return { complete };
+  });
+  controller.abort();
+  return state.closing;
+}
+
 /** Fixed guest layout with an optional admitted initial loopback app URL. */
 export async function createGuestRuntimeDesktop(options: {
   signal: AbortSignal;
@@ -99,231 +453,40 @@ export async function createGuestRuntimeDesktop(options: {
   if (options.initialUrl !== undefined) validateGuestInitialUrl(options.initialUrl);
   const controller = new AbortController();
   const signal = AbortSignal.any([options.signal, controller.signal]);
-  const children: { child: ChildProcess; closed: Promise<void>; exited: boolean }[] = [];
-  let context: BrowserContext | undefined;
-  let pendingContext: Promise<BrowserContext> | undefined;
-  let content: ReturnType<typeof createGuestChromiumText> | undefined;
-  let media: Awaited<ReturnType<typeof startDesktopMedia>> | undefined;
-  let recorder: DesktopRecorderHandle | undefined;
-  let recordingFailed = false;
-  let closing: Promise<{ complete: boolean }> | undefined;
-  let stopping = false;
+  const state: GuestDesktopState = { stopping: false };
   let phase: GuestRuntimePhase = "layout";
   const progress = (next: GuestRuntimePhase): void => {
     phase = next;
     options.onPhase?.(next);
   };
-  function check(): void {
-    if (signal.aborted || stopping) throw bad();
-  }
-  function child(
-    binary: string,
-    args: string[],
-    input?: string,
-    persistent = false,
-  ): { done: Promise<void>; child: ChildProcess } {
-    check();
-    const process = spawn(binary, args, {
-      env: GUEST_RUNTIME_ENV,
-      cwd: GUEST_RUNTIME_PATHS.home,
-      stdio: ["pipe", "ignore", "pipe"],
-    });
-    let finish!: () => void;
-    const record = {
-      child: process,
-      closed: new Promise<void>((resolve) => {
-        finish = resolve;
-      }),
-      exited: false,
-    };
-    children.push(record);
-    const done = new Promise<void>((resolve, reject) => {
-      let count = 0,
-        failed = false;
-      const fail = (): void => {
-        failed = true;
-        if (!record.exited) process.kill("SIGKILL");
-        if (persistent && !stopping) options.onTerminal();
-      };
-      const timer = persistent ? undefined : setTimeout(fail, 2000);
-      // Fixed helpers communicate success through exit status. In particular,
-      // xdpyinfo's normal display inventory is large and is not an error log.
-      const consume = (data: Buffer): void => {
-        count += data.length;
-        if (count > 16_384) fail();
-      };
-      process.stderr!.on("data", consume);
-      process.on("error", fail);
-      process.stdin!.on("error", fail);
-      process.once("exit", () => {
-        record.exited = true;
-        if (persistent && !stopping) options.onTerminal();
-      });
-      process.once("close", (code) => {
-        record.exited = true;
-        clearTimeout(timer);
-        signal.removeEventListener("abort", fail);
-        finish();
-        if (persistent && !stopping) options.onTerminal();
-        if (failed || code !== 0) reject(bad());
-        else resolve();
-      });
-      signal.addEventListener("abort", fail, { once: true });
-      process.stdin!.end(input);
-      if (signal.aborted) fail();
-    });
-    void done.catch(() => {});
-    return { done, child: process };
-  }
-  function close(): Promise<{ complete: boolean }> {
-    if (closing) return closing;
-    stopping = true;
-    closing = Promise.resolve().then(async () => {
-      let complete = true,
-        timer: NodeJS.Timeout | undefined;
-      const work = async (): Promise<void> => {
-        try {
-          await content?.close();
-        } catch {
-          complete = false;
-        }
-        try {
-          await recorder?.finish();
-        } catch {
-          /* Recording evidence is optional to desktop teardown. */
-        }
-        try {
-          await media?.close();
-        } catch {
-          complete = false;
-        }
-        try {
-          const browser = context ?? (await pendingContext?.catch(() => undefined));
-          if (browser) await browser.close();
-        } catch {
-          complete = false;
-        }
-        for (const record of children) if (!record.exited) record.child.kill("SIGKILL");
-        await Promise.all(children.map((record) => record.closed));
-      };
-      try {
-        await Promise.race([
-          work(),
-          new Promise<void>((resolve) => {
-            timer = setTimeout(() => {
-              complete = false;
-              resolve();
-            }, 4000);
-          }),
-        ]);
-      } finally {
-        clearTimeout(timer);
-        for (const record of children)
-          if (!record.exited) {
-            complete = false;
-            record.child.kill("SIGKILL");
-          }
-        options.signal.removeEventListener("abort", abort);
-      }
-      return { complete };
-    });
-    controller.abort();
-    return closing;
-  }
-  const abort = (): void => {
-    void close();
+  const check = (): void => {
+    if (signal.aborted || state.stopping) throw setupFailed();
   };
+  const processes = createGuestProcesses({
+    env: GUEST_RUNTIME_ENV,
+    cwd: GUEST_RUNTIME_PATHS.home,
+    signal,
+    check,
+    isStopping: () => state.stopping,
+    onTerminal: options.onTerminal,
+  });
+  const abort = (): void => void close();
+  const close = (): Promise<{ complete: boolean }> =>
+    closeGuestRuntimeDesktop(state, processes, controller, () =>
+      options.signal.removeEventListener("abort", abort),
+    );
   options.signal.addEventListener("abort", abort, { once: true });
   try {
     progress("layout");
     check();
-    if (process.getuid?.() !== 1000 || process.getgid?.() !== 1000) throw bad();
-    for (const path of [GUEST_RUNTIME_PATHS.run, GUEST_RUNTIME_PATHS.home]) {
-      const stat = await lstat(path);
-      check();
-      if (
-        !stat.isDirectory() ||
-        stat.isSymbolicLink() ||
-        stat.uid !== 1000 ||
-        stat.gid !== 1000 ||
-        (stat.mode & 0o777) !== 0o700
-      )
-        throw bad();
-    }
-    const configuration = await open(
-      `${GUEST_RUNTIME_PATHS.root}/openbox.xml`,
-      constants.O_RDONLY | constants.O_NOFOLLOW,
-    );
-    let config: Buffer;
-    try {
-      const stat = await configuration.stat();
-      if (
-        !stat.isFile() ||
-        stat.uid !== 0 ||
-        stat.gid !== 0 ||
-        stat.nlink !== 1 ||
-        stat.size > 4096 ||
-        (stat.mode & 0o777) !== 0o444
-      )
-        throw bad();
-      config = await configuration.readFile();
-    } finally {
-      await configuration.close();
-    }
-    if (createHash("sha256").update(config).digest("hex") !== CONFIG_SHA) throw bad();
-    for (const path of [
-      `${GUEST_RUNTIME_PATHS.run}/xdg`,
-      `${GUEST_RUNTIME_PATHS.run}/capture`,
-      `${GUEST_RUNTIME_PATHS.home}/.cache`,
-      `${GUEST_RUNTIME_PATHS.home}/.config`,
-    ]) {
-      check();
-      await mkdir(path, { mode: 0o700 });
-    }
+    await verifyGuestLayout(check);
     progress("xauthority");
-    const auth = await open(
-      GUEST_RUNTIME_ENV.XAUTHORITY,
-      constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW,
-      0o600,
-    );
-    await auth.close();
-    check();
-    await child(
-      "/usr/bin/xauth",
-      ["-f", GUEST_RUNTIME_ENV.XAUTHORITY, "source", "-"],
-      `add :0 . ${randomBytes(16).toString("hex")}\n`,
-    ).done;
-    check();
+    await authorizeDisplay(processes, check);
     progress("display");
-    child(
-      "/usr/bin/Xvfb",
-      [
-        ":0",
-        "-screen",
-        "0",
-        "960x720x24",
-        "-nolisten",
-        "tcp",
-        "-auth",
-        GUEST_RUNTIME_ENV.XAUTHORITY,
-      ],
-      undefined,
-      true,
-    );
-    let displayReady = false;
-    for (let attempt = 0; attempt < 100; attempt++) {
-      check();
-      try {
-        await child("/usr/bin/xdpyinfo", []).done;
-        displayReady = true;
-        break;
-      } catch {
-        await delay(50, undefined, { signal });
-      }
-    }
-    if (!displayReady) throw bad();
+    processes.spawn("/usr/bin/Xvfb", XVFB_ARGS, undefined, true);
+    await waitForDisplay(processes, signal, check);
     progress("window_manager");
-    child(
+    processes.spawn(
       "/usr/bin/openbox",
       ["--config-file", `${GUEST_RUNTIME_PATHS.root}/openbox.xml`],
       undefined,
@@ -332,13 +495,8 @@ export async function createGuestRuntimeDesktop(options: {
     check();
     if (options.media !== undefined) {
       progress("media");
-      media = await startDesktopMedia({
-        media: {
-          ...(options.media.camera === undefined ? {} : { camera: options.media.camera }),
-          ...(options.media.microphone === undefined
-            ? {}
-            : { microphone: options.media.microphone }),
-        },
+      state.media = await startDesktopMedia({
+        media: desktopMediaRequest(options.media),
         env: GUEST_RUNTIME_ENV,
         signal,
         onTerminal: options.onTerminal,
@@ -347,139 +505,44 @@ export async function createGuestRuntimeDesktop(options: {
     }
     if (options.recording !== undefined) {
       progress("recording");
-      try {
-        recorder = await startDesktopRecorder({
-          display: ":0",
-          width: 960,
-          height: 720,
-          outputPath: `${GUEST_RUNTIME_PATHS.home}/desktop-recording.mp4`,
-          env: media?.env ?? GUEST_RUNTIME_ENV,
-          signal,
-          audioSources: options.recording.audio ? ["microphone-input", "speaker-output"] : [],
-          pulseReady: options.recording.audio && options.media?.microphone !== undefined,
-        });
-      } catch {
-        recordingFailed = true;
-      }
+      const env = state.media?.env ?? GUEST_RUNTIME_ENV;
+      state.recorder = await startGuestRecorder(options.recording, options.media, env, signal);
       check();
     }
     progress("browser");
-    pendingContext = chromium.launchPersistentContext(`${GUEST_RUNTIME_PATHS.home}/browser`, {
-      executablePath: "/usr/bin/chromium",
-      headless: false,
-      chromiumSandbox: true,
-      viewport: null,
-      env: recorder?.env ?? media?.env ?? GUEST_RUNTIME_ENV,
-      timeout: 25_000,
-      args: [
-        "--window-size=960,680",
-        "--window-position=0,20",
-        "--disable-background-networking",
-        "--disable-component-update",
-        "--no-first-run",
-        ...(options.media?.permission === "granted" ? ["--use-fake-ui-for-media-stream"] : []),
-      ],
-    });
-    void pendingContext.then(
-      (browser) => {
-        if (stopping) void browser.close().catch(() => {});
-      },
-      () => {},
-    );
-    context = await pendingContext;
-    check();
-    context.setDefaultTimeout(5000);
-    context.setDefaultNavigationTimeout(5000);
-    const page = context.pages()[0];
-    if (!page || context.pages().length !== 1) throw bad();
+    const browser = await launchGuestBrowser(state, options.media, check);
     progress("sandbox");
-    const diagnostic = await context.newPage();
-    check();
-    await diagnostic.goto("chrome://sandbox");
-    check();
-    const sandboxReport = await diagnostic.locator("body").innerText();
-    if (
-      !["PID namespaces", "Network namespaces", "Seccomp-BPF sandbox"].every((label) =>
-        new RegExp(label + "\\s+Yes").test(sandboxReport),
-      ) ||
-      !sandboxReport.includes("You are adequately sandboxed")
-    )
-      throw bad();
-    await diagnostic.close();
-    check();
-    await page.bringToFront();
-    check();
+    const sandboxReport = await verifyBrowserSandbox(browser.context, browser.page, check);
     progress("focus");
-    const native = createGuestDesktopNativeTools({
-      display: ":0",
-      temporaryDirectory: `${GUEST_RUNTIME_PATHS.run}/capture`,
-      xauthority: GUEST_RUNTIME_ENV.XAUTHORITY,
-    });
-    const window = await native.activeWindowId(signal);
-    check();
-    content = createGuestChromiumText({
-      context,
-      page,
-      assertFocusedWindow: async (actionSignal) => {
-        if ((await native.activeWindowId(actionSignal)) !== window)
-          throw new CuaExecutorError("action_rejected", "not_dispatched");
-      },
-    });
-    const tools = createGuestBrowserTools(native, content);
-    const executor = createGuestDesktopExecutor({
-      width: 960,
-      height: 720,
-      tools,
-      authoritySignal: signal,
-      onTerminal: options.onTerminal,
-    });
+    const executor = await createGuestExecutorFor(
+      state,
+      browser,
+      signal,
+      options.onTerminal,
+      check,
+    );
     if (options.initialUrl !== undefined) {
       progress("navigation");
-      await navigateGuestInitialPage(page, options.initialUrl, signal);
+      await navigateGuestInitialPage(browser.page, options.initialUrl, signal);
       check();
     } else {
       progress("fixture");
-      await page.goto(`file://${GUEST_RUNTIME_PATHS.root}/neutral.html`);
-      check();
-      await page.locator("#note").waitFor();
-      check();
+      await openGuestFixture(browser.page, check);
     }
-    const finishRecording =
-      options.recording === undefined
-        ? undefined
-        : async () => {
-            try {
-              if (recordingFailed || !recorder) throw new Error();
-              const result = await recorder.finish();
-              const file = await open(result.outputPath, constants.O_RDONLY | constants.O_NOFOLLOW);
-              try {
-                const fileStat = await file.stat();
-                if (!fileStat.isFile() || fileStat.size !== result.metadata.bytes)
-                  throw new Error();
-                return {
-                  metadata: result.metadata,
-                  stream: file.createReadStream({ autoClose: true }),
-                };
-              } catch (error) {
-                await file.close().catch(() => {});
-                throw error;
-              }
-            } catch {
-              throw new Error("Desktop recording failed.");
-            }
-          };
     return {
-      executor: media?.wrap(executor) ?? executor,
+      executor: state.media?.wrap(executor) ?? executor,
       close,
-      ...(finishRecording ? { finishRecording } : {}),
-      owner: { context, page, sandboxReport, configSha256: CONFIG_SHA },
+      ...(options.recording === undefined
+        ? {}
+        : { finishRecording: () => finishGuestRecording(state.recorder) }),
+      owner: { ...browser, sandboxReport, configSha256: CONFIG_SHA },
     };
   } catch {
     await close();
-    throw Object.assign(bad(), { phase });
+    throw Object.assign(setupFailed(), { phase });
   } finally {
     // The fresh private state belongs to the guest owner. No recursive home removal.
-    if (stopping && children.every((record) => record.exited))
+    if (state.stopping && processes.allExited())
       await rm(`${GUEST_RUNTIME_PATHS.run}/capture`, { recursive: true, force: true }).catch(
         () => {},
       );
