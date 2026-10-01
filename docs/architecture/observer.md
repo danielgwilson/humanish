@@ -35,16 +35,16 @@ event stream contract that live adapters update while a run is active.
 
 ## Stream Model
 
-Streams are the central abstraction. A stream is one watchable persona lane,
+Streams are the central abstraction. A stream is one watchable view of a persona,
 regardless of substrate:
 
-- `ui`: browser/VNC style UI simulation lane;
-- `browser`: browser-specific lane when the app and actor are separate;
-- `terminal`: CLI persona lane with stdout/stderr evidence;
-- `tui`: PTY/ANSI terminal UI lane;
-- `codex-ui`: Codex-style app-server session lane;
-- `artifact`: artifact-only evidence lane;
-- `summary`: run-level synthesis lane.
+- `ui`: browser/VNC style UI simulation stream;
+- `browser`: browser-specific stream when the app and actor are separate;
+- `terminal`: CLI persona stream with stdout/stderr evidence;
+- `tui`: PTY/ANSI terminal UI stream;
+- `codex-ui`: Codex-style app-server session stream;
+- `artifact`: artifact-only evidence stream;
+- `summary`: run-level synthesis stream.
 
 Each stream points back to a simulation and carries its own transport,
 terminal tail, UI state, artifact links, event timeline, and public-safe
@@ -54,7 +54,7 @@ metadata.
 
 `humanish watch` now:
 
-1. creates a fresh four-lane synthetic run bundle;
+1. creates a fresh four-participant synthetic run bundle;
 2. writes `observer-data.json` and `events.ndjson`;
 3. starts a localhost Observer server;
 4. opens the served Observer URL;
@@ -187,7 +187,7 @@ The Observer shell has:
 - Participants and Findings views that share the same shell geometry;
 - status and participant-kind filters, where kind is the stream kind (`ui`,
   `terminal`, `tui`, `codex-ui` and others);
-- grid mode with one tile per sim stream;
+- grid mode with one tile per participant stream;
 - focus mode with left stream rail, center stage, and right tabs;
 - terminal/TUI transcript stage;
 - right evidence rail for events, artifacts, and known gaps.
@@ -202,8 +202,8 @@ the source event rather than inventing a playback frame.
 
 The participant grid uses equal-height previews whose widths follow each screen's
 aspect ratio. A 44px identity/source/outcome caption sits below the captured pixels;
-no badges or controls cover the screen. Generated computer-use lane labels display
-the recorded persona identity; repeated identities gain a lane or stream qualifier.
+no badges or controls cover the screen. Generated computer-use participant labels display
+the recorded persona identity; repeated identities gain a participant or stream qualifier.
 A stable details button opens labeled Pin/Compare actions, recorded notices, final
 messages, dimensions, duration and exact identifiers. Exceptional outcomes remain
 in the caption. Icon controls have visible hover/focus hints and touch-sized targets. Search, preview size and monitor mode
@@ -228,7 +228,7 @@ A host adapter may provide:
 - public-safe artifact links.
 
 If no embed URL exists, the Observer still renders the Codex-style timeline and
-session contract instead of failing the lane.
+session contract instead of failing the stream.
 
 ## Historical slice and remaining gaps
 
@@ -241,7 +241,7 @@ Subsequent additions through 2026-06-11 included:
   `browser.steps` authored in `humanish/scenarios/*.yaml` (`src/actors/scripted-browser/`);
 - native Codex app-server session adapter (`src/actors/codex/app-server.ts`,
   registered in `src/actors/registry.ts`);
-- E2B desktop substrate lanes on the computer-use and shared-world routes;
+- E2B desktop participants on the computer-use and shared-world routes;
 - computer-use bundles persist a `screenshots/` directory and the Observer
   renders the frames (`src/routes/computer-use/lanes.ts` writes them).
 

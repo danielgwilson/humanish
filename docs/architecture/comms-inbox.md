@@ -9,7 +9,7 @@ humanish gives each participant an address and a matching
 `/inbox/for/<address-digest>` URL. The same address scope applies to list, message,
 plain view, latest-message and JSON routes. Going back from a missing message
 stays in that scope. An unknown scope is empty; it never falls back to all mail.
-A lane without an assigned address receives no inbox instruction.
+A participant without an assigned address receives no inbox instruction.
 
 This works with separate participant worlds, shared worlds, and an external catch.
 Sharing an application world does not require sharing an inbox. If a lab deliberately
@@ -54,7 +54,7 @@ comms:
 ```
 
 Then run `humanish doctor --lab <lab>` and `humanish run <lab>`. Omit
-`recipients` to assign an address per lane automatically, or declare explicit
+`recipients` to assign an address per participant automatically, or declare explicit
 `{ lane, address }` entries for an existing roster. The participant receives its
 address and inbox URL in its mission. Verification links keep their original
 app origin; ensure they target the loopback app port selected by the lab.

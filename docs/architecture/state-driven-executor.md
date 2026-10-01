@@ -4,7 +4,7 @@ Date: 2026-06-15
 
 Status: shipped (PR1 of issue #148). The library path (a custom executor + a
 non-vision provider, driven through the lab with NO E2B and NO vision) is
-implemented and proven. A config-only deterministic lane and a
+implemented and proven. A config-only deterministic route and a
 `subject.contract.ref` JS-module loader are deferred (see "Deferred", below).
 
 ## What this is
@@ -214,7 +214,7 @@ Fail-closed guards, all BEFORE any key check, so a CLI invocation never sees a m
   without `inProcess` (there is no built-in in-process driver yet). A structured error,
   never a desktop attempt.
 - `HUMANISH_CUA_LAB_LOCAL_DESKTOP_MISSING`: an `app-url` lab with `execution.target: local`
-  and no local desktop lane. `runLab` gives a local browser study its lane; a direct route
+  and no local desktop. `runLab` gives a local browser study its desktop; a direct route
   call or an in-process executor on the same lab has none.
 - `HUMANISH_CUA_LAB_EXECUTOR_NO_PROVIDER`: the deprecated `cuaHooks.buildExecutor` without
   `cuaHooks.buildProvider`.
@@ -239,14 +239,14 @@ Read every optional field defensively, and spread-omit optional fields
 
 ## Deferred (tracked, not shipped here)
 
-- **PR2: a config-only deterministic `state-contract` lane.** A registered,
-  model-free lane driving a built-in `window.app.*` bridge over the existing
+- **PR2: a config-only deterministic `state-contract` route.** A registered,
+  model-free route driving a built-in `window.app.*` bridge over the existing
   `ScriptedPageLike.evaluate` primitive + a YAML step program, `scenario.mode:
 live` gating actuation. It would be deterministic step replay, NOT
   `runComputerUseLoop`, and must not overclaim friction-loop reuse.
 - **PR3: a `subject.contract.ref` JS-module loader.** A config-referenced module
   loaded and run in-process with full harness privileges is a genuinely NEW trust
-  surface with no precedent in this repo (the scripted lane loads only declarative
+  surface with no precedent in this repo (the scripted route loads only declarative
   YAML; serve commands run isolated inside the disposable E2B sandbox). It earns
   its place only behind its own clamping / trust / digest-pinning design.
   The validated library consumer does not need it: a caller builds the bridge in its own
