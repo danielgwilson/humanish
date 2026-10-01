@@ -1,7 +1,10 @@
 // Which subject, target and actor compositions a lab may declare. Each rule returns the refusal
 // message for the first thing its composition gets wrong, or null. compositionReason runs them in
-// the parser's order; parseLabConfig calls it after the structural parse, and the planLab design
-// has library callers go through the same function.
+// the parser's order, and only parseLabConfig calls it. planLab does not: each route planner checks
+// a library caller's config itself, under its route's error codes. The planners call the shared
+// checks in lab/validation.ts and desktopCliProductReason below. The other subject rules here have
+// planner counterparts whose conditions and wording differ (clone serve and repo, local-tree
+// target, in-process fan-out, loopback targets, scripted scenario.ref).
 
 import { isLoopbackUrl } from "./parse/subject.js";
 import { REPO_SLUG_PATTERN } from "./parse/values.js";
@@ -255,11 +258,17 @@ function localTreeValidationReason(config: LabConfig): string | null {
 //
 // Fail-closed on the pairing (invariant 6): a hosted desktop and a computer-use actor, because
 // "watch a person use a terminal" is not something the other substrates can do.
+/** A desktop-cli subject with no product to study. The computer-use planner checks this too. */
+export function desktopCliProductReason(config: LabConfig): string | null {
+  return config.subject.source === "desktop-cli" && config.subject.product?.name === undefined
+    ? "desktop-cli subjects need `subject.product.name` — the CLI the participant is being asked to use."
+    : null;
+}
+
 function desktopCliValidationReason(config: LabConfig): string | null {
-  if (config.subject.source === "desktop-cli") {
-    if (config.subject.product?.name === undefined) {
-      return "desktop-cli subjects need `subject.product.name` — the CLI the participant is being asked to use.";
-    }
+  const productReason = desktopCliProductReason(config);
+  if (productReason) return productReason;
+  if (config.subject.source === "desktop-cli" && config.subject.product !== undefined) {
     if (config.execution?.target !== undefined && config.execution.target !== "e2b-desktop") {
       return "desktop-cli subjects are studied at a hosted desktop — set `execution.target: e2b-desktop` or omit it.";
     }

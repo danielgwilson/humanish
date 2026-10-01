@@ -37,6 +37,7 @@ import {
   scenarioCapsValidationReason,
   taskProtocolValidationReason,
 } from "../../lab/validation.js";
+import { desktopCliProductReason } from "../../lab/composition-rules.js";
 import type { RunLabProvenance } from "../../run/status.js";
 import { isLocalBrowserLab } from "../../substrates/local/runtime-config.js";
 import {
@@ -383,14 +384,10 @@ export function planComputerUseLab(
       `cuaHooks.buildExecutor drives subject.appUrl in this process, and a ${source} subject needs the hosted desktop the in-process route never creates. Use an app-url or local-app subject with buildExecutor, or remove buildExecutor to run on a hosted desktop.`,
       actor,
     );
-  // The parser refuses this too; without a product the desktop study fails later.
-  if (source === "desktop-cli" && config.subject.product?.name === undefined)
-    return refuse(
-      "in-scope",
-      "HUMANISH_CUA_LAB_SUBJECT_INVALID",
-      "desktop-cli subjects need `subject.product.name` — the CLI the participant is being asked to use.",
-      actor,
-    );
+  // The parser's rule; without a product the desktop study fails later.
+  const productReason = desktopCliProductReason(config);
+  if (productReason)
+    return refuse("in-scope", "HUMANISH_CUA_LAB_SUBJECT_INVALID", productReason, actor);
 
   const participants = computerUseParticipants(config, input.countOverride);
   if (participants.length > MAX_CUA_LANES)
