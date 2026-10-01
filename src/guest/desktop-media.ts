@@ -39,7 +39,8 @@ export interface GuestDesktopMedia {
   close(): Promise<void>;
 }
 
-function validText(value: unknown): value is string {
+/** Speech text the worker may speak or report: non-blank, valid UTF-8, within the limits. */
+export function isSpeakableText(value: unknown): value is string {
   return (
     typeof value === "string" &&
     value.trim().length > 0 &&
@@ -49,7 +50,8 @@ function validText(value: unknown): value is string {
   );
 }
 
-function heard(value: unknown): HeardSpeech | undefined {
+/** A heard utterance from the worker, or undefined when any field is out of contract. */
+export function parseHeardSpeech(value: unknown): HeardSpeech | undefined {
   if (!value || typeof value !== "object") return undefined;
   const item = value as Partial<HeardSpeech>;
   if (
@@ -57,7 +59,7 @@ function heard(value: unknown): HeardSpeech | undefined {
     !/^[-A-Za-z0-9._]+$/.test(item.id) ||
     item.id.length > 128 ||
     item.source !== "speaker_audio" ||
-    !validText(item.text) ||
+    !isSpeakableText(item.text) ||
     !Number.isSafeInteger(item.durationMs) ||
     item.durationMs! < 1 ||
     item.durationMs! > CUA_SPEECH_LIMITS.durationMs
@@ -110,275 +112,403 @@ class ChildMediaWorkerTransport implements DesktopMediaWorkerTransport {
   }
 }
 
-/** Starts optional native guest media before Chromium and later decorates its finite executor. */
-export async function startDesktopMedia(
-  options: GuestDesktopMediaOptions,
-): Promise<GuestDesktopMedia> {
-  if (options.media.camera !== undefined && options.media.camera.source !== "synthetic") {
-    throw new CuaExecutorError("invalid_request", "not_dispatched");
-  }
-  if (options.media.microphone !== undefined && options.media.microphone.source !== "speech") {
-    throw new CuaExecutorError("invalid_request", "not_dispatched");
-  }
-  if (options.media.camera === undefined && options.media.microphone === undefined) {
-    throw new CuaExecutorError("invalid_request", "not_dispatched");
-  }
-  options.signal.throwIfAborted();
-  const pulse = options.media.microphone !== undefined;
-  const pulseServer = `unix:${options.env.XDG_RUNTIME_DIR ?? "/run/humanish/xdg"}/pulse/native`;
-  const env = {
-    ...options.env,
-    HUMANISH_MEDIA_CAMERA: options.media.camera === undefined ? "0" : "1",
+type MediaDeclaration = GuestDesktopMediaOptions["media"];
+
+/** The guest has a synthetic camera and a speech microphone, and a declaration needs at least one. */
+export function isSupportedMediaDeclaration(media: MediaDeclaration): boolean {
+  return (
+    (media.camera === undefined || media.camera.source === "synthetic") &&
+    (media.microphone === undefined || media.microphone.source === "speech") &&
+    (media.camera !== undefined || media.microphone !== undefined)
+  );
+}
+
+/** The worker's env: device switches, plus Pulse routing when the microphone is on. */
+export function desktopMediaEnv(
+  env: Readonly<Record<string, string>>,
+  media: MediaDeclaration,
+): Readonly<Record<string, string>> {
+  const pulse = media.microphone !== undefined;
+  return {
+    ...env,
+    HUMANISH_MEDIA_CAMERA: media.camera === undefined ? "0" : "1",
     HUMANISH_MEDIA_MICROPHONE: pulse ? "1" : "0",
     ...(pulse
       ? {
-          PULSE_SERVER: pulseServer,
+          PULSE_SERVER: `unix:${env.XDG_RUNTIME_DIR ?? "/run/humanish/xdg"}/pulse/native`,
           PULSE_SOURCE: "humanish_input",
           PULSE_SINK: "humanish_speaker",
         }
       : {}),
   };
-  const transport =
-    options.transport ??
-    new ChildMediaWorkerTransport(
-      options.workerPath ?? "/opt/humanish/media/guest-media-worker.js",
-    );
-  let buffer = Buffer.alloc(0),
-    ready = false,
-    closed = false,
-    expectedExit = false,
-    wrapped = false,
-    nextCommand = 1;
-  let resolveReady!: () => void, rejectReady!: (error: Error) => void;
-  const readiness = new Promise<void>((resolve, reject) => {
-    resolveReady = resolve;
-    rejectReady = reject;
-  });
-  void readiness.catch(() => {});
-  let closing: Promise<void> | undefined;
-  const queue: HeardSpeech[] = [],
-    pending = new Map<
-      string,
-      { resolve(): void; reject(error: CuaExecutorError): void; timer: NodeJS.Timeout }
-    >();
-  const terminal = (): void => {
-    if (closed || expectedExit) return;
-    closed = true;
-    const error = new CuaExecutorError("execution_failed", "outcome_uncertain");
-    rejectReady(error);
-    for (const command of pending.values()) {
-      clearTimeout(command.timer);
-      command.reject(error);
-    }
-    pending.clear();
-    try {
-      options.onTerminal();
-    } catch {
-      /* The media owner remains terminal. */
-    }
-  };
-  const message = (value: unknown): void => {
-    if (!value || typeof value !== "object") {
-      terminal();
+}
+
+/** Checked once per received chunk: buffered bytes with no newline past the limit can't form a line. */
+export function workerBufferOverflow(buffer: Buffer): boolean {
+  return buffer.length > WORKER_LINE_BYTES && !buffer.includes(10);
+}
+
+/** The next newline-terminated line, or why there is none. A partial tail stays incomplete. */
+export function nextWorkerLine(
+  buffer: Buffer,
+): { line: Buffer; rest: Buffer } | "incomplete" | "overflow" {
+  const end = buffer.indexOf(10);
+  if (end < 0) return "incomplete";
+  if (end > WORKER_LINE_BYTES) return "overflow";
+  return { line: buffer.subarray(0, end), rest: buffer.subarray(end + 1) };
+}
+
+export type WorkerMessage =
+  | { kind: "ready" }
+  | { kind: "heard"; utterance: HeardSpeech }
+  | { kind: "reply"; id: string; ok: boolean }
+  | { kind: "terminal" };
+
+/** What one worker message means. Before the first `ready`, anything else breaks the protocol. */
+export function classifyWorkerMessage(value: unknown, ready: boolean): WorkerMessage {
+  if (!value || typeof value !== "object") return { kind: "terminal" };
+  const item = value as { type?: unknown; id?: unknown; ok?: unknown; utterance?: unknown };
+  if (item.type === "ready" && !ready) return { kind: "ready" };
+  if (!ready) return { kind: "terminal" };
+  if (item.type === "heard") {
+    const utterance = parseHeardSpeech(item.utterance);
+    return utterance ? { kind: "heard", utterance } : { kind: "terminal" };
+  }
+  if (item.type === "reply" && typeof item.id === "string" && typeof item.ok === "boolean")
+    return { kind: "reply", id: item.id, ok: item.ok };
+  return { kind: "terminal" };
+}
+
+/** Once a speak command is written, its outcome is unknown unless the worker replies. */
+export function dispositionAfterWrite(written: boolean): "outcome_uncertain" | "not_dispatched" {
+  return written ? "outcome_uncertain" : "not_dispatched";
+}
+
+/** A failed speak keeps its own executor error; anything else is an execution failure. */
+export function speakFailure(error: unknown, written: boolean): CuaExecutorError {
+  return error instanceof CuaExecutorError
+    ? error
+    : new CuaExecutorError("execution_failed", dispositionAfterWrite(written));
+}
+
+interface PendingCommand {
+  resolve(): void;
+  reject(error: CuaExecutorError): void;
+  timer: NodeJS.Timeout;
+}
+
+/** What changes after setup: the read buffer, lifecycle flags, queued speech and commands in flight. */
+interface MediaWorkerState {
+  buffer: Buffer;
+  ready: boolean;
+  closed: boolean;
+  expectedExit: boolean;
+  wrapped: boolean;
+  nextCommand: number;
+  closing?: Promise<void>;
+  readonly heard: HeardSpeech[];
+  readonly pending: Map<string, PendingCommand>;
+}
+
+interface Readiness {
+  readonly promise: Promise<void>;
+  resolve(): void;
+  reject(error: Error): void;
+}
+
+/** What the speak path needs besides the state: the transport, the owner and the shared close. */
+interface SpeechChannel {
+  readonly pulse: boolean;
+  readonly transport: DesktopMediaWorkerTransport;
+  readonly ownerSignal: AbortSignal;
+  close(): Promise<void>;
+}
+
+function rejectPending(state: MediaWorkerState, error: CuaExecutorError): void {
+  for (const command of state.pending.values()) {
+    clearTimeout(command.timer);
+    command.reject(error);
+  }
+  state.pending.clear();
+}
+
+/** The worker failed or broke protocol: fail readiness and commands in flight, then tell the owner once. */
+function terminateMedia(
+  state: MediaWorkerState,
+  readiness: Readiness,
+  onTerminal: () => void,
+): void {
+  if (state.closed || state.expectedExit) return;
+  state.closed = true;
+  const error = new CuaExecutorError("execution_failed", "outcome_uncertain");
+  readiness.reject(error);
+  rejectPending(state, error);
+  try {
+    onTerminal();
+  } catch {
+    /* The media owner remains terminal. */
+  }
+}
+
+function applyWorkerMessage(
+  state: MediaWorkerState,
+  value: unknown,
+  readiness: Readiness,
+  terminate: () => void,
+): void {
+  const message = classifyWorkerMessage(value, state.ready);
+  switch (message.kind) {
+    case "ready":
+      state.ready = true;
+      readiness.resolve();
       return;
-    }
-    const item = value as { type?: unknown; id?: unknown; ok?: unknown; utterance?: unknown };
-    if (item.type === "ready" && !ready) {
-      ready = true;
-      resolveReady();
-      return;
-    }
-    if (!ready) {
-      terminal();
-      return;
-    }
-    if (item.type === "heard") {
-      const utterance = heard(item.utterance);
-      if (!utterance) {
-        terminal();
+    case "heard":
+      if (state.heard.length === HEARD_QUEUE) {
+        terminate();
         return;
       }
-      if (queue.length === HEARD_QUEUE) {
-        terminal();
-        return;
-      }
-      queue.push(utterance);
+      state.heard.push(message.utterance);
       return;
-    }
-    if (item.type === "reply" && typeof item.id === "string" && typeof item.ok === "boolean") {
-      const command = pending.get(item.id);
+    case "reply": {
+      const command = state.pending.get(message.id);
       if (!command) {
-        terminal();
+        terminate();
         return;
       }
-      pending.delete(item.id);
+      state.pending.delete(message.id);
       clearTimeout(command.timer);
-      if (item.ok) command.resolve();
+      if (message.ok) command.resolve();
       else command.reject(new CuaExecutorError("execution_failed", "outcome_uncertain"));
       return;
     }
-    terminal();
-  };
-  try {
-    await transport.start({
-      env,
-      data(bytes) {
-        if (closed) return;
-        buffer = Buffer.concat([buffer, bytes]);
-        if (buffer.length > WORKER_LINE_BYTES && !buffer.includes(10)) {
-          terminal();
-          return;
-        }
-        for (;;) {
-          const end = buffer.indexOf(10);
-          if (end < 0) break;
-          if (end > WORKER_LINE_BYTES) {
-            terminal();
-            return;
-          }
-          const line = buffer.subarray(0, end);
-          buffer = buffer.subarray(end + 1);
-          try {
-            message(JSON.parse(line.toString("utf8")));
-          } catch {
-            terminal();
-            return;
-          }
-        }
-      },
-      exit: terminal,
-    });
-    options.signal.throwIfAborted();
-  } catch (error) {
-    expectedExit = true;
-    closed = true;
-    await transport.close().catch(() => {});
-    throw error;
+    case "terminal":
+      terminate();
   }
-  const readyTimer = setTimeout(
-    () => rejectReady(new CuaExecutorError("deadline_exceeded", "not_dispatched")),
-    READY_TIMEOUT_MS,
-  );
-  const abort = (): void => {
-    void close();
-  };
-  options.signal.addEventListener("abort", abort, { once: true });
-  const close = async (): Promise<void> => {
-    if (closing) return closing;
-    expectedExit = true;
-    closed = true;
-    clearTimeout(readyTimer);
-    options.signal.removeEventListener("abort", abort);
-    const error = new CuaExecutorError("session_revoked", "outcome_uncertain");
-    for (const command of pending.values()) {
-      clearTimeout(command.timer);
-      command.reject(error);
+}
+
+/** Frames worker stdout into JSON lines. Runs synchronously for every chunk. */
+function receiveWorkerBytes(
+  state: MediaWorkerState,
+  bytes: Buffer,
+  onMessage: (value: unknown) => void,
+  terminate: () => void,
+): void {
+  if (state.closed) return;
+  state.buffer = Buffer.concat([state.buffer, bytes]);
+  if (workerBufferOverflow(state.buffer)) {
+    terminate();
+    return;
+  }
+  for (;;) {
+    const next = nextWorkerLine(state.buffer);
+    if (next === "incomplete") break;
+    if (next === "overflow") {
+      terminate();
+      return;
     }
-    pending.clear();
-    closing = Promise.resolve().then(() => transport.close());
-    return closing;
-  };
+    state.buffer = next.rest;
+    try {
+      onMessage(JSON.parse(next.line.toString("utf8")));
+    } catch {
+      terminate();
+      return;
+    }
+  }
+}
+
+/** Expected stop: commands in flight are revoked, no terminal is reported, the worker closes once. */
+async function closeDesktopMedia(
+  state: MediaWorkerState,
+  transport: DesktopMediaWorkerTransport,
+  detach: () => void,
+): Promise<void> {
+  if (state.closing) return state.closing;
+  state.expectedExit = true;
+  state.closed = true;
+  detach();
+  rejectPending(state, new CuaExecutorError("session_revoked", "outcome_uncertain"));
+  state.closing = Promise.resolve().then(() => transport.close());
+  return state.closing;
+}
+
+async function awaitWorkerReady(
+  readiness: Readiness,
+  signal: AbortSignal,
+  close: () => Promise<void>,
+  readyTimer: NodeJS.Timeout,
+): Promise<void> {
   const readinessAbort = (): void => {
-    rejectReady(new CuaExecutorError("session_revoked", "not_dispatched"));
+    readiness.reject(new CuaExecutorError("session_revoked", "not_dispatched"));
   };
-  options.signal.addEventListener("abort", readinessAbort, { once: true });
+  signal.addEventListener("abort", readinessAbort, { once: true });
   try {
-    await readiness;
+    await readiness.promise;
   } catch (error) {
     await close();
     throw error;
   } finally {
     clearTimeout(readyTimer);
-    options.signal.removeEventListener("abort", readinessAbort);
+    signal.removeEventListener("abort", readinessAbort);
   }
-  return {
-    env,
-    close,
-    wrap(executor) {
-      if (wrapped) throw new CuaExecutorError("invalid_request", "not_dispatched");
-      wrapped = true;
-      const result = {
-        ...executor,
-        speechEnabled: pulse,
-        async observe(): Promise<CuaObservation> {
-          if (closed) throw new CuaExecutorError("execution_failed", "not_dispatched");
-          const observation = await executor.observe();
-          if (closed) throw new CuaExecutorError("execution_failed", "not_dispatched");
-          const items = queue.splice(0, HEARD_PER_OBSERVATION);
-          return items.length ? { ...observation, heardSpeech: items } : observation;
-        },
-        async execute(
-          action: Parameters<CuaExecutor["execute"]>[0],
-          signal?: AbortSignal,
-        ): Promise<void> {
-          if (closed) throw new CuaExecutorError("execution_failed", "not_dispatched");
-          const candidate = action as { kind?: unknown; text?: unknown };
-          if (candidate.kind !== "speak") return executor.execute(action, signal);
-          if (
-            !pulse ||
-            !validText(candidate.text) ||
-            closed ||
-            options.signal.aborted ||
-            signal?.aborted
-          ) {
-            throw new CuaExecutorError("action_rejected", "not_dispatched");
-          }
-          const id = `speak-${nextCommand++}`;
-          const combined = signal ? AbortSignal.any([options.signal, signal]) : options.signal;
-          let written = false;
-          const operation = new Promise<void>((resolve, reject) => {
-            const timer = setTimeout(() => {
-              pending.delete(id);
-              reject(
-                new CuaExecutorError(
-                  "deadline_exceeded",
-                  written ? "outcome_uncertain" : "not_dispatched",
-                ),
-              );
-              void close().catch(() => {});
-            }, SPEAK_TIMEOUT_MS);
-            pending.set(id, { resolve, reject, timer });
-          });
-          void operation.catch(() => {});
-          const cancelled = (): void => {
-            const command = pending.get(id);
-            if (!command) return;
-            pending.delete(id);
-            clearTimeout(command.timer);
-            command.reject(
-              new CuaExecutorError(
-                "session_revoked",
-                written ? "outcome_uncertain" : "not_dispatched",
-              ),
-            );
-            void close().catch(() => {});
-          };
-          combined.addEventListener("abort", cancelled, { once: true });
-          try {
-            written = true;
-            await transport.write(
-              Buffer.from(JSON.stringify({ id, operation: "speak", text: candidate.text }) + "\n"),
-            );
-            await operation;
-          } catch (error) {
-            if (written) await close();
-            throw error instanceof CuaExecutorError
-              ? error
-              : new CuaExecutorError(
-                  "execution_failed",
-                  written ? "outcome_uncertain" : "not_dispatched",
-                );
-          } finally {
-            combined.removeEventListener("abort", cancelled);
-            const command = pending.get(id);
-            if (command) {
-              pending.delete(id);
-              clearTimeout(command.timer);
-            }
-          }
-        },
-      };
-      return result;
-    },
+}
+
+/** Adds queued heard speech to each observation, at most HEARD_PER_OBSERVATION at a time. */
+async function observeWithHeardSpeech(
+  state: MediaWorkerState,
+  executor: CuaExecutor,
+): Promise<CuaObservation> {
+  if (state.closed) throw new CuaExecutorError("execution_failed", "not_dispatched");
+  const observation = await executor.observe();
+  if (state.closed) throw new CuaExecutorError("execution_failed", "not_dispatched");
+  const items = state.heard.splice(0, HEARD_PER_OBSERVATION);
+  return items.length ? { ...observation, heardSpeech: items } : observation;
+}
+
+/** Passes every action but `speak` to the executor; `speak` goes to the worker and waits for its reply. */
+async function executeWithSpeech(
+  state: MediaWorkerState,
+  executor: CuaExecutor,
+  channel: SpeechChannel,
+  action: Parameters<CuaExecutor["execute"]>[0],
+  signal?: AbortSignal,
+): Promise<void> {
+  if (state.closed) throw new CuaExecutorError("execution_failed", "not_dispatched");
+  const candidate = action as { kind?: unknown; text?: unknown };
+  if (candidate.kind !== "speak") return executor.execute(action, signal);
+  if (
+    !channel.pulse ||
+    !isSpeakableText(candidate.text) ||
+    state.closed ||
+    channel.ownerSignal.aborted ||
+    signal?.aborted
+  ) {
+    throw new CuaExecutorError("action_rejected", "not_dispatched");
+  }
+  const id = `speak-${state.nextCommand++}`;
+  const combined = signal ? AbortSignal.any([channel.ownerSignal, signal]) : channel.ownerSignal;
+  let written = false;
+  const operation = new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      state.pending.delete(id);
+      reject(new CuaExecutorError("deadline_exceeded", dispositionAfterWrite(written)));
+      void channel.close().catch(() => {});
+    }, SPEAK_TIMEOUT_MS);
+    state.pending.set(id, { resolve, reject, timer });
+  });
+  void operation.catch(() => {});
+  const cancelled = (): void => {
+    const command = state.pending.get(id);
+    if (!command) return;
+    state.pending.delete(id);
+    clearTimeout(command.timer);
+    command.reject(new CuaExecutorError("session_revoked", dispositionAfterWrite(written)));
+    void channel.close().catch(() => {});
   };
+  combined.addEventListener("abort", cancelled, { once: true });
+  try {
+    written = true;
+    await channel.transport.write(
+      Buffer.from(JSON.stringify({ id, operation: "speak", text: candidate.text }) + "\n"),
+    );
+    await operation;
+  } catch (error) {
+    if (written) await channel.close();
+    throw speakFailure(error, written);
+  } finally {
+    combined.removeEventListener("abort", cancelled);
+    const command = state.pending.get(id);
+    if (command) {
+      state.pending.delete(id);
+      clearTimeout(command.timer);
+    }
+  }
+}
+
+function wrapMediaExecutor(
+  state: MediaWorkerState,
+  executor: CuaExecutor,
+  channel: SpeechChannel,
+): CuaExecutor {
+  if (state.wrapped) throw new CuaExecutorError("invalid_request", "not_dispatched");
+  state.wrapped = true;
+  const wrapped = {
+    ...executor,
+    speechEnabled: channel.pulse,
+    observe: () => observeWithHeardSpeech(state, executor),
+    execute: (action: Parameters<CuaExecutor["execute"]>[0], signal?: AbortSignal) =>
+      executeWithSpeech(state, executor, channel, action, signal),
+  };
+  return wrapped;
+}
+
+/** Starts optional native guest media before Chromium and later decorates its finite executor. */
+export async function startDesktopMedia(
+  options: GuestDesktopMediaOptions,
+): Promise<GuestDesktopMedia> {
+  if (!isSupportedMediaDeclaration(options.media))
+    throw new CuaExecutorError("invalid_request", "not_dispatched");
+  options.signal.throwIfAborted();
+  const env = desktopMediaEnv(options.env, options.media);
+  const transport =
+    options.transport ??
+    new ChildMediaWorkerTransport(
+      options.workerPath ?? "/opt/humanish/media/guest-media-worker.js",
+    );
+  const state: MediaWorkerState = {
+    buffer: Buffer.alloc(0),
+    ready: false,
+    closed: false,
+    expectedExit: false,
+    wrapped: false,
+    nextCommand: 1,
+    heard: [],
+    pending: new Map(),
+  };
+  let resolveReady!: () => void, rejectReady!: (error: Error) => void;
+  const readiness: Readiness = {
+    promise: new Promise<void>((resolve, reject) => {
+      resolveReady = resolve;
+      rejectReady = reject;
+    }),
+    resolve: () => resolveReady(),
+    reject: (error) => rejectReady(error),
+  };
+  void readiness.promise.catch(() => {});
+  const terminate = (): void => terminateMedia(state, readiness, options.onTerminal);
+  const onMessage = (value: unknown): void =>
+    applyWorkerMessage(state, value, readiness, terminate);
+  try {
+    await transport.start({
+      env,
+      data: (bytes) => receiveWorkerBytes(state, bytes, onMessage, terminate),
+      exit: terminate,
+    });
+    options.signal.throwIfAborted();
+  } catch (error) {
+    state.expectedExit = true;
+    state.closed = true;
+    await transport.close().catch(() => {});
+    throw error;
+  }
+  const readyTimer = setTimeout(
+    () => readiness.reject(new CuaExecutorError("deadline_exceeded", "not_dispatched")),
+    READY_TIMEOUT_MS,
+  );
+  const abort = (): void => {
+    void close();
+  };
+  const close = (): Promise<void> =>
+    closeDesktopMedia(state, transport, () => {
+      clearTimeout(readyTimer);
+      options.signal.removeEventListener("abort", abort);
+    });
+  options.signal.addEventListener("abort", abort, { once: true });
+  await awaitWorkerReady(readiness, options.signal, close, readyTimer);
+  const channel: SpeechChannel = {
+    pulse: options.media.microphone !== undefined,
+    transport,
+    ownerSignal: options.signal,
+    close,
+  };
+  return { env, close, wrap: (executor) => wrapMediaExecutor(state, executor, channel) };
 }
