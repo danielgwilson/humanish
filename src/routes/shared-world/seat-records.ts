@@ -48,7 +48,7 @@ function seatView(ctx: SeatRecordContext, spec: DesktopParticipantRun, index: nu
     : publicSafeRouteLabel(args.plan.plane.participants[index]?.entry);
   const status: RunSimulationStatus = session
     ? session.status
-    : outcome?.sessionError
+    : outcome?.sessionError !== undefined
       ? "failed"
       : inProgress
         ? "running"
@@ -117,7 +117,7 @@ function seatSimulation(
     currentStep: view.reason,
     summary: session
       ? `Persona ${spec.planned.id}${taxonomy} (${spec.persona.id}): drove the shared plane concurrently; ${session.completionReason}.`
-      : outcome?.sessionError
+      : outcome?.sessionError !== undefined
         ? `Persona ${spec.planned.id}${taxonomy} failed before a terminal session verdict: ${outcome.sessionError}`
         : inProgress
           ? `Persona ${spec.planned.id}${taxonomy} (${spec.persona.id}) is running against the shared plane.`
@@ -232,7 +232,7 @@ function seatEvents(
       simId: spec.simId,
       streamId: spec.streamId,
     });
-  } else if (outcome?.sessionError) {
+  } else if (outcome?.sessionError !== undefined) {
     events.push({
       id: nextEventId(`session-error-${spec.planned.id}`),
       at: createdAt,

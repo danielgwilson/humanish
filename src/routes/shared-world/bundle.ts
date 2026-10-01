@@ -223,7 +223,7 @@ function sharedWorldEvidence(
       endedAt: result?.endedAt ?? 0,
       verdict: session
         ? session.status
-        : result?.outcome.sessionError
+        : result?.outcome.sessionError !== undefined
           ? "failed"
           : inProgress
             ? "running"
@@ -262,7 +262,7 @@ function sharedWorldEvidence(
       streamId: spec.streamId,
       status: session
         ? session.status
-        : result?.outcome.sessionError
+        : result?.outcome.sessionError !== undefined
           ? "failed"
           : inProgress
             ? "running"

@@ -1502,6 +1502,34 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     );
   });
 
+  it("fails a live lane whose session threw an error with an empty message", async () => {
+    const handle = makeFanoutModule();
+    const config = fanoutConfig({
+      concurrency: 1,
+      lanes: [{ id: "participant-1", persona: "first-time-visitor" }],
+    });
+    const outcome = await runLab(config, {
+      cwd,
+      cuaHooks: {
+        ...passingHooks(handle),
+        runSession: async () => {
+          throw new Error("");
+        },
+      },
+    });
+    if (outcome.backend !== "cua") throw new Error("expected the computer-use route");
+    const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
+    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
+    const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8")) as {
+      outcome?: { verdict?: string };
+    };
+    expect(bundle.mode).toBe("live");
+    expect(bundle.review.verdict).toBe("fail");
+    expect(bundle.simulations[0]?.status).toBe("failed");
+    expect(status.outcome?.verdict).toBe("fail");
+    expect(outcome.result.ok).toBe(false);
+  });
+
   it("keeps the verdict when the sandbox kill fails: cleanup does not judge", async () => {
     const handle = makeFanoutModule({ killFails: true });
     const config = fanoutConfig({

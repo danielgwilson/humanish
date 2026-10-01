@@ -46,7 +46,7 @@ function fanoutLaneView(args: CuaFanoutBundleArgs, spec: DesktopParticipantRun, 
         ? "blocked"
         : session
           ? session.status
-          : outcome?.sessionError
+          : outcome?.sessionError !== undefined
             ? "failed"
             : "contract_proof_only";
   const reason =
@@ -104,7 +104,7 @@ function fanoutLaneSimulation(
         ? `Lane ${spec.planned.id} (${spec.persona.id}/${spec.planned.device.name}): computer-use actor (${args.descriptor.id}) is driving the subject app.`
         : outcome?.skippedReason !== undefined
           ? `Lane ${spec.planned.id} ${outcome.skippedReason}.`
-          : outcome?.sessionError
+          : outcome?.sessionError !== undefined
             ? `Lane ${spec.planned.id} failed before a terminal session verdict: ${outcome.sessionError}`
             : `Contract lane ${spec.planned.id} (${spec.persona.id}/${spec.planned.device.name}) for ${args.descriptor.id} against ${publicLaneAppUrl}.`,
     streamIds: [spec.streamId],
@@ -305,7 +305,7 @@ function fanoutLaneOutcomeEvents(
       simId: spec.simId,
       streamId: spec.streamId,
     });
-  } else if (outcome?.sessionError) {
+  } else if (outcome?.sessionError !== undefined) {
     events.push({
       id: nextEventId(`session-error-${spec.planned.id}`),
       at: args.createdAt,

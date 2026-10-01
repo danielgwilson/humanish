@@ -43,7 +43,7 @@ export function scriptedSurfaceRecords(
   const lastScreenshot = screenshots.at(-1);
   const status = result
     ? result.status
-    : context.sessionError
+    : context.sessionError !== undefined
       ? ("failed" as const)
       : ("contract_proof_only" as const);
   const reason =
@@ -61,7 +61,7 @@ export function scriptedSurfaceRecords(
     currentStep: reason,
     summary: result
       ? `Scripted-browser actor (${context.actorId}) replayed ${context.journey.scenarioId} on the ${surface.id} surface; ${result.completionReason}.`
-      : context.sessionError
+      : context.sessionError !== undefined
         ? `Scripted lab failed before a terminal session verdict: ${context.sessionError}`
         : `Contract lane for the scripted-browser actor (${context.actorId}) against ${context.appUrl}.`,
     startedAt: context.createdAt,
