@@ -2,9 +2,10 @@
 // once. Two facts come out: what the participants experienced (the verdict, which the bundle and
 // status.json show) and whether the run worked as an execution. The result's ok reads both under
 // the route's policy. The file reads in the order a run is judged:
-//   1. session and participant predicates (hollowCompletion, selfReportedBlocker, participantPassed,
-//      participantHarnessFailed);
-//   2. the judgment shapes (Judgment, SharedWorldJudgment, ExecutionOutcome, OutcomePolicy);
+//   1. session and participant predicates (hollowCompletion, selfReportedBlocker, judgedStatus,
+//      participantPassed, participantHarnessFailed);
+//   2. the judgment shapes (Judgment and judgmentOf, SharedWorldJudgment, ExecutionOutcome,
+//      OutcomePolicy);
 //   3. one judge per route: computer-use calls judgeOneParticipant (one lane, no rerun) or
 //      judgeParticipants, shared-world calls judgeSharedWorld, terminal calls judgeTerminal,
 //      scripted calls judgeScripted and preview calls judgePreview;
@@ -81,16 +82,23 @@ export interface ParticipantFacts {
   selfReportedBlocker: boolean;
 }
 
+/**
+ * The status a participant is judged under. A harness failure is failed, and a skipped participant
+ * is blocked, as the fan-out bundle and the result write it. Otherwise it is the tallied
+ * participantStatus of its session, or undefined when no session reached a terminal status.
+ * participantPassed and judgeOneParticipant's verdict both read it, so the two cannot disagree.
+ */
+export function judgedStatus(participant: ParticipantFacts): ActorStatus | undefined {
+  if (participantHarnessFailed(participant)) return "failed";
+  if (participant.skipped) return "blocked";
+  return participant.status === undefined
+    ? undefined
+    : participantStatus(participant.status, participant);
+}
+
 /** A participant passed: its session passed without a harness error, engaged, and reported no blocker. */
 export function participantPassed(participant: ParticipantFacts): boolean {
-  return (
-    !participant.skipped &&
-    participant.status === "passed" &&
-    participant.completionReason !== "harness_error" &&
-    participant.sessionError === undefined &&
-    !participant.noEngagement &&
-    !participant.selfReportedBlocker
-  );
+  return judgedStatus(participant) === "passed";
 }
 
 /**
@@ -137,14 +145,26 @@ export function verdictForStatus(status: ActorStatus): Verdict {
   }
 }
 
-/** A run's judgment: the review verdict, and whether the run met its route's pass rule. */
+declare const judged: unique symbol;
+
+/**
+ * A run's judgment: the review verdict, and whether the run met its route's pass rule. Only
+ * judgmentOf builds one, so passed always follows from the verdict.
+ */
 export interface Judgment {
-  verdict: Verdict;
+  readonly verdict: Verdict;
   /**
    * The run met its route's pass rule: every expected participant passed and, on shared-world,
    * the seats showed the concurrency verify requires. A dry run passes as a contract.
    */
-  passed: boolean;
+  readonly passed: boolean;
+  /** A type-only mark that judgmentOf made this judgment; it does not exist at runtime. */
+  readonly [judged]: true;
+}
+
+/** The judgment for a verdict: a run passes when its verdict is pass, and a dry run passes. */
+export function judgmentOf(verdict: Verdict, dryRun: boolean): Judgment {
+  return { verdict, passed: dryRun || verdict === "pass" } as Judgment;
 }
 
 /** What kind of execution failure a run recorded. */
@@ -221,18 +241,10 @@ export function judgeOneParticipant(args: {
   inProgress: boolean;
   participant: ParticipantFacts | undefined;
 }): Judgment {
-  const { participant } = args;
-  const verdict: Verdict = args.inProgress
-    ? "contract_proof_only"
-    : participant?.status !== undefined
-      ? verdictForStatus(participantStatus(participant.status, participant))
-      : participant?.sessionError !== undefined
-        ? "fail"
-        : "contract_proof_only";
-  return {
-    verdict,
-    passed: args.dryRun || (participant !== undefined && participantPassed(participant)),
-  };
+  const status = args.participant === undefined ? undefined : judgedStatus(args.participant);
+  const verdict: Verdict =
+    args.inProgress || status === undefined ? "contract_proof_only" : verdictForStatus(status);
+  return judgmentOf(verdict, args.dryRun);
 }
 
 /**
@@ -257,7 +269,7 @@ export function judgeParticipants(args: {
         : complete && participants.some((participant) => participant.status === "timed_out")
           ? "timed_out"
           : "fail";
-  return { verdict, passed: args.dryRun || passed };
+  return judgmentOf(verdict, args.dryRun);
 }
 
 /**
@@ -293,7 +305,7 @@ export function judgeSharedWorld(args: {
     sharedWorldShortfall(args.world) === undefined;
   const verdict: Verdict =
     args.dryRun || args.inProgress ? "contract_proof_only" : passed ? "pass" : "fail";
-  return { verdict, passed: args.dryRun || passed, world: args.world };
+  return { ...judgmentOf(verdict, args.dryRun), world: args.world };
 }
 
 /**
@@ -313,8 +325,9 @@ export function judgeTerminal(args: {
 
 /**
  * A scripted run: the worst surface decides the verdict. A harness error or a failed step fails
- * the run, then a timeout makes it timed_out, and otherwise it passes. A session error fails it
- * and a run with no surface results is a contract. It passes when every expected surface passed.
+ * the run, then a timeout makes it timed_out. Otherwise it passes when every expected surface
+ * passed, and fails when one did not. A session error fails it and a run with no surface results
+ * is a contract.
  */
 export function judgeScripted(args: {
   dryRun: boolean;
@@ -324,6 +337,10 @@ export function judgeScripted(args: {
 }): Judgment {
   const { surfaces } = args;
   const reasons = surfaces.map((surface) => surface.completionReason);
+  const passed =
+    args.sessionError === undefined &&
+    surfaces.length === args.expected &&
+    surfaces.every(participantPassed);
   const verdict: Verdict =
     args.sessionError !== undefined
       ? "fail"
@@ -333,20 +350,15 @@ export function judgeScripted(args: {
           ? "fail"
           : reasons.some((reason) => reason === "timed_out")
             ? "timed_out"
-            : "pass";
-  return {
-    verdict,
-    passed:
-      args.dryRun ||
-      (args.sessionError === undefined &&
-        surfaces.length === args.expected &&
-        surfaces.every(participantPassed)),
-  };
+            : passed
+              ? "pass"
+              : "fail";
+  return judgmentOf(verdict, args.dryRun);
 }
 
 /** The preview: a synthetic contract with no participants. */
 export function judgePreview(): Judgment {
-  return { verdict: "contract_proof_only", passed: true };
+  return judgmentOf("contract_proof_only", true);
 }
 
 /**
