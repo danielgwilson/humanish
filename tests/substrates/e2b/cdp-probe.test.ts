@@ -316,6 +316,20 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
     },
   );
 
+  // Chrome may answer /json/close before it drops the target, and "active" reads the first page in
+  // /json/list, so a tab a test opened must be gone from the list before the next test probes.
+  const closeTarget = async (id: string): Promise<boolean> => {
+    await fetch(`http://127.0.0.1:${cdpPort}/json/close/${id}`).catch(() => undefined);
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      const listed = (await fetch(`http://127.0.0.1:${cdpPort}/json/list`)
+        .then((response) => response.json())
+        .catch(() => [])) as Array<{ id?: string }>;
+      if (!listed.some((target) => target.id === id)) return true;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    return false;
+  };
+
   // The launch page reloads under an earlier case's holder and can be mid-navigation (no http
   // target for a moment) when the next case starts: wait until it reads at its URL again, so a
   // loaded runner does not turn that moment into "no http page among N CDP targets".
@@ -511,6 +525,8 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
         holderErrors += chunk.toString("utf8");
       });
       const lines = () => announced.split("\n").filter((candidate) => candidate.startsWith("{"));
+      let openedTab: string | undefined;
+      let tabClosed = true;
       try {
         for (
           let attempt = 0;
@@ -534,6 +550,7 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
         ).json()) as { id?: string };
         expect(typeof created.id, JSON.stringify(created)).toBe("string");
         const secondId = created.id as string;
+        openedTab = secondId;
         // The page's own read-back on THAT target: the phone viewport, DPR and touch, never inherited
         // from the window (the launch page is emulated by its own session).
         let read = await runProbe({
@@ -588,10 +605,11 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
           true,
         );
         expect(lines().filter((line) => line.includes("replyError"))).toEqual([]);
-        await fetch(`http://127.0.0.1:${cdpPort}/json/close/${secondId}`).catch(() => undefined);
       } finally {
         holder.kill("SIGKILL");
+        if (openedTab !== undefined) tabClosed = await closeTarget(openedTab);
       }
+      expect(tabClosed, `tab ${openedTab} still listed 5 s after /json/close`).toBe(true);
     },
     45_000,
   );

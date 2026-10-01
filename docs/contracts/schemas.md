@@ -396,13 +396,18 @@ where a dry-run participant is ok as contract evidence and a live participant mu
 error, engaged, and no self-reported blocker.
 
 Explicit failed-participant reruns are supported on the CUA fan-out route via
-`humanish lab run <lab> --rerun-failed-from <run-id> [--lanes lane-a,lane-b]`.
+`humanish lab run <lab> --rerun-failed-from <run-id> [--lanes <participant-ids>]`, where a
+participant id is a declared `actors[0].lanes[].id`, or `lane-01`, `lane-02`, … by position.
 The source run must be a live CUA fan-out bundle. humanish creates a NEW run for
 the selected failed/blocked/timed-out/hollow participants (or explicit participant ids), leaves
 the source verdict unchanged, and records lineage as `run.rerun` plus a
 `cua-lab.fanout.rerun` event: source run id, selected participant ids, and previous participant
 statuses/reasons. This is intentionally not automatic retry; a passing rerun is a
 nondeterminism candidate for human/product scoring, not a rewrite of the old run.
+Without `--lanes`, a participant is selected when its stream's `judgedStatus` is not `passed`.
+That field is the judge's status (`judgedStatus` in `src/run/judge.ts`), so a goal_satisfied
+session that reported a blocker counts as blocked. A source bundle without `judgedStatus` falls back
+to the stream's trace status, its actor status and completion reason, and a zero-action check.
 
 Manifests are human-authored `.yaml` source under `humanish/labs/*.yaml` for
 committed public-safe labs, or ignored `.humanish/labs/*.yaml` /
