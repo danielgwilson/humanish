@@ -171,7 +171,7 @@ export async function finishE2BDesktop(
       try {
         await deps.hooks.onRuntimeStreamEnded?.({
           laneId: spec.planned.id,
-          simId: spec.simId,
+          simId: spec.recordId,
           streamId: spec.streamId,
         });
       } catch {

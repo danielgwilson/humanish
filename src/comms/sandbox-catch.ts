@@ -286,7 +286,7 @@ export async function inboxMessagesFrom(
   const channel = new FakeInbox();
   const inboxes: CommsAddress[] = [];
   for (const recipient of recipients)
-    inboxes.push(await channel.provisionAddress(recipient.lane, recipient.address));
+    inboxes.push(await channel.provisionAddress(recipient.participantId, recipient.address));
   await routeCapturedSends([...sends], channel);
   const seen = new Set<string>();
   const messages: CommsMessage[] = [];
@@ -553,9 +553,10 @@ export async function writeInboxSurface(
   return files.length;
 }
 
-/** A declared inbox recipient the surface renders for (lane + the literal address the app sends to). */
+/** A declared inbox recipient the surface renders for: the participant and the literal address the
+ *  app sends to. */
 export interface InboxSurfaceRecipient {
-  lane: string;
+  participantId: string;
   address: string;
 }
 

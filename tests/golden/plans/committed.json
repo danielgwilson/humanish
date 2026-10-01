@@ -927,7 +927,7 @@
       },
       "requirements": [],
       "route": "preview",
-      "simCount": 4
+      "participantCount": 4
     },
     "live": {
       "requirements": []

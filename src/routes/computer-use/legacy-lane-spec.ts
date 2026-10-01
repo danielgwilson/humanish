@@ -75,7 +75,7 @@ export function legacyHookSpecOf(run: DesktopParticipantRun): CuaLaneSpec {
     ...(labels.surface === undefined ? {} : { surface: labels.surface }),
     ...(labels.caseGroup === undefined ? {} : { caseGroup: labels.caseGroup }),
     laneIndex: planned.index,
-    simId: run.simId,
+    simId: run.recordId,
     streamId: run.streamId,
     persona: run.persona,
     instructions: run.instructions,

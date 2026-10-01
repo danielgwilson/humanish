@@ -87,7 +87,7 @@ export async function renderInboxSurfaceLocally(args: {
       ? args.recipients
       : capturedRecipientAddresses(sends);
   const recipients: InboxSurfaceRecipient[] = addresses.map((address, index) => ({
-    lane: `catch-${String(index + 1).padStart(2, "0")}`,
+    participantId: `catch-${String(index + 1).padStart(2, "0")}`,
     address,
   }));
   const messages = await inboxMessagesFrom(sends, recipients);

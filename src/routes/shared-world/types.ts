@@ -113,7 +113,7 @@ export const EXTERNAL_PUBLIC_ATTRIBUTION_LIMITS = [
 ] as const;
 
 /** One persona's OUTCOME against the contended world (the "M of N" headline). */
-export interface ConcurrentSharedWorldRoleResult {
+export interface ConcurrentSharedWorldParticipantResult {
   id: string;
   index: number;
   persona: string;
@@ -152,7 +152,7 @@ export interface ConcurrentSharedWorldLabResult extends AutomaticAnalysisResult 
   maxSimultaneousLanes?: number;
   /** Subject provenance (invariant 5): the ONE shared plane. */
   subject?: RunSubjectProvenance;
-  roles: ConcurrentSharedWorldRoleResult[];
+  roles: ConcurrentSharedWorldParticipantResult[];
   observer?: ObserverResult;
   warnings: string[];
   error?: { code: ConcurrentSharedWorldLabErrorCode; message: string };

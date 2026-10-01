@@ -27,8 +27,8 @@ interface PreviewRouteArgs {
  * presents the outcome. Undefined when setup has already written its own result.
  */
 export function previewRouteRun(args: PreviewRouteArgs): RouteRun | undefined {
-  const simCount = parseLabCount(args.options.sims, args.config.actors[0]?.count ?? 4);
-  if (simCount === null) {
+  const participantCount = parseLabCount(args.options.sims, args.config.actors[0]?.count ?? 4);
+  if (participantCount === null) {
     const result: RunResult = {
       schema: "humanish.run-result.v1",
       ok: false,
@@ -66,7 +66,7 @@ export function previewRouteRun(args: PreviewRouteArgs): RouteRun | undefined {
     options: {
       cwd: args.options.cwd,
       ...(args.labProvenance === undefined ? {} : { lab: args.labProvenance }),
-      count: simCount,
+      count: participantCount,
       ...(args.options.dryRun === undefined ? {} : { dryRun: args.options.dryRun }),
       ...(args.options.runId === undefined ? {} : { runId: args.options.runId }),
       open: plan === undefined ? false : staticObserverOpen(plan),

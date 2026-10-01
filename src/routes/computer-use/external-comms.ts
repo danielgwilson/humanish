@@ -7,6 +7,7 @@ import type { PreparedRunArtifactPaths } from "../../run/paths.js";
 import { writeContainedOutputFile } from "../../run/contained-output.js";
 import { participantHasInboxRecipient } from "./participant-desktop.js";
 import type { DesktopParticipantRun, ParticipantRunOutcome } from "./types.js";
+import { addressedRecipients } from "../../lab/parse/comms.js";
 
 /**
  * Adopter-hosted drain (#380): once per RUN, after every lane finished — the catch is one
@@ -38,10 +39,10 @@ export async function drainExternalComms(args: {
   try {
     const commsChannel = new FakeInbox();
     const commsInboxes: CommsAddress[] = [];
-    for (const recipient of externalCommsEmail.recipients ?? []) {
-      if (recipient.address !== undefined) {
-        commsInboxes.push(await commsChannel.provisionAddress(recipient.lane, recipient.address));
-      }
+    for (const recipient of addressedRecipients(externalCommsEmail)) {
+      commsInboxes.push(
+        await commsChannel.provisionAddress(recipient.participantId, recipient.address),
+      );
     }
     const authToken =
       externalCommsConfig.authTokenEnv === undefined

@@ -7,30 +7,33 @@ import type { LabConfig } from "./types.js";
 // until a reference panel demands it — N concurrent paid desktops is real money.
 export const MAX_CUA_LANES = 16;
 
-type ActorLane = ActorCapabilities["lanes"][number];
+type ActorRunKind = ActorCapabilities["lanes"][number];
 
-// Lanes whose evidence is the participant's screenshots. An actor that declares it produces none
+// Run kinds whose evidence is the participant's screenshots. An actor that declares it produces none
 // cannot run on them: a code-only actor would claim a GUI flow it only reached through a shell.
-const SCREENSHOT_LANES: ReadonlySet<ActorLane> = new Set(["computer-use", "scripted-browser"]);
+const SCREENSHOT_RUN_KINDS: ReadonlySet<ActorRunKind> = new Set([
+  "computer-use",
+  "scripted-browser",
+]);
 
-function runsOnLane(capabilities: ActorCapabilities, lane: ActorLane): boolean {
+function runsOn(capabilities: ActorCapabilities, kind: ActorRunKind): boolean {
   return (
-    capabilities.lanes.includes(lane) &&
-    (!SCREENSHOT_LANES.has(lane) || capabilities.producesScreenshots)
+    capabilities.lanes.includes(kind) &&
+    (!SCREENSHOT_RUN_KINDS.has(kind) || capabilities.producesScreenshots)
   );
 }
 
-function actorResolvesTo(type: string | undefined, lane: ActorLane): boolean {
+function actorResolvesTo(type: string | undefined, kind: ActorRunKind): boolean {
   if (!type) return false;
   const descriptor = (
     actorRegistry as Record<string, (typeof actorRegistry)[keyof typeof actorRegistry] | undefined>
   )[type];
-  return descriptor !== undefined && runsOnLane(descriptor.capabilities, lane);
+  return descriptor !== undefined && runsOn(descriptor.capabilities, kind);
 }
 
-function registeredActorsOn(lane: ActorLane): string[] {
+function registeredActorsOn(kind: ActorRunKind): string[] {
   return Object.values(actorRegistry)
-    .filter((entry) => runsOnLane(entry.capabilities, lane))
+    .filter((entry) => runsOn(entry.capabilities, kind))
     .map((entry) => entry.id);
 }
 

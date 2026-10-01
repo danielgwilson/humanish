@@ -98,7 +98,7 @@ export type ActorCompletionReason =
 // "computer-use" (raw pixels + a model). "terminal" is the autonomous-agent lane: a
 // real coding agent (Codex) driving a CLI/product from inside an E2B shell — distinct from
 // "code" (the local/app-server Codex lanes that run on the operator's machine).
-type ActorLane = "code" | "computer-use" | "scripted-browser" | "terminal";
+type ActorRunKind = "code" | "computer-use" | "scripted-browser" | "terminal";
 
 // "terminal-exec" is the captured non-interactive exec stream of an in-sandbox agent (stdin
 // disabled): `codex exec --json` launched via `commands.run`, output captured. It is NOT an
@@ -141,7 +141,7 @@ export interface ActorTraceItem {
 export interface ActorCapabilities {
   headless: boolean;
   structuredTrace: boolean;
-  lanes: ActorLane[];
+  lanes: ActorRunKind[];
   producesScreenshots: boolean;
   byoModel: boolean;
   preGrantableApprovals: boolean;
@@ -385,7 +385,7 @@ export interface ActorTrace {
   historyTurnsOmitted?: number;
   runtime?: ActorRuntimeProvenance;
   protocol: ActorProtocol;
-  lane: ActorLane;
+  lane: ActorRunKind;
   persona: ActorPersonaRef;
   // status: "passed" means the trace conforms to its declared redaction policy and carries no
   // secret VALUES in text. screenshots: "raw" = full-fidelity frames retained (valid for LOCAL

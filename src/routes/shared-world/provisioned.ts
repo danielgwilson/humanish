@@ -67,6 +67,7 @@ import {
   type LiveParticipants,
   type PlaneContext,
 } from "./types.js";
+import { addressedRecipients } from "../../lab/parse/comms.js";
 
 /** What the provisioned plane needs besides the shared plane context. */
 export interface ProvisionedPlaneSetup {
@@ -345,12 +346,7 @@ class SubjectPlane {
       reachableBaseUrl: this.getHostUrl!,
       ...(commsEmail.linkOrigin === undefined ? {} : { linkOrigin: commsEmail.linkOrigin }),
     });
-    const surfaceRecipients = (commsEmail.recipients ?? [])
-      .filter(
-        (recipient): recipient is { lane: string; address: string } =>
-          recipient.address !== undefined,
-      )
-      .map((recipient) => ({ lane: recipient.lane, address: recipient.address }));
+    const surfaceRecipients = addressedRecipients(commsEmail);
     await writeInboxSurface(subjectShell, deployedComms.surfaceDir, [], {
       originMap: this.commsOriginMap,
       requestTimeoutMs,

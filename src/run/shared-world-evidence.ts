@@ -125,7 +125,7 @@ export function sharedWorldParticipantKeys(
     ...(labels.actorType === undefined ? {} : { actorType: labels.actorType }),
     ...(labels.surface === undefined ? {} : { surface: labels.surface }),
     ...(labels.caseGroup === undefined ? {} : { caseGroup: labels.caseGroup }),
-    simId: ids.simId,
+    simId: ids.recordId,
     streamId: ids.streamId,
   };
 }

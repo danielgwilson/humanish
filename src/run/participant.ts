@@ -11,7 +11,7 @@ export interface ResolvedParticipant<P extends Participant = Participant> {
   /** Identity, persona id, mission and focus, labels and the route's own fields, from the plan. */
   readonly planned: P;
   /** Bundle ids from `planned.index`: `sim-NNN` and `stream-NNN`. */
-  readonly simId: string;
+  readonly recordId: string;
   readonly streamId: string;
   /** The compiled persona brief. Evidence scrubbing replaces it before any bundle is written. */
   persona: ActorPersonaRef;
@@ -35,7 +35,7 @@ export function resolveParticipant<P extends Participant>(
   const ordinal = String(planned.index + 1).padStart(3, "0");
   return {
     planned,
-    simId: `sim-${ordinal}`,
+    recordId: `sim-${ordinal}`,
     streamId: `stream-${ordinal}`,
     persona: resolved.persona,
     instructions: resolved.instructions,

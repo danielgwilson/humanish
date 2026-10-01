@@ -33,7 +33,7 @@ import {
   type ConcurrentBundleArgs,
   type ConcurrentSharedWorldLabErrorCode,
   type ConcurrentSharedWorldLabResult,
-  type ConcurrentSharedWorldRoleResult,
+  type ConcurrentSharedWorldParticipantResult,
   type FinishFacts,
   type LiveParticipants,
   type PlaneContext,
@@ -64,7 +64,7 @@ function concurrentParticipantResults(
   actorSpecs: DesktopParticipantRun[],
   actorResults: ActorRunResult[],
   dryRun: boolean,
-): ConcurrentSharedWorldRoleResult[] {
+): ConcurrentSharedWorldParticipantResult[] {
   const participantOk = (result: ActorRunResult | undefined): boolean => {
     if (dryRun) return true;
     return actorRunPassed(result);
@@ -123,7 +123,7 @@ function concurrentLabError(args: {
   observer: ObserverResult;
   runError: string | undefined;
   adapterFailure: string | undefined;
-  participantResults: ConcurrentSharedWorldRoleResult[];
+  participantResults: ConcurrentSharedWorldParticipantResult[];
   participantCount: number;
   shortfall: string | undefined;
   /** The first execution failure, named when every seat passed and the world had no shortfall. */

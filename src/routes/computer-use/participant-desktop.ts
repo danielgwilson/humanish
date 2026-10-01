@@ -3,6 +3,7 @@ import type { CuaActorLabHooks, DesktopParticipantRun, ParticipantRunOutcome } f
 import type { LabCommsEmail, LabCommsRecipient } from "../../lab/types.js";
 import type { PreparedOutputRoot } from "../../run/contained-output.js";
 import { legacyHookSpecOf } from "./legacy-lane-spec.js";
+import { recipientParticipantId } from "../../lab/parse/comms.js";
 
 /** A prepared desktop supplies only participant input/observation and its inbox location. */
 export interface ReadyParticipantDesktop {
@@ -91,7 +92,8 @@ export function inboxRecipientFor(
   participantId: string,
 ): LabCommsRecipient | undefined {
   return (commsEmail.recipients ?? []).find(
-    (recipient) => recipient.lane === participantId && recipient.address !== undefined,
+    (recipient) =>
+      recipientParticipantId(recipient) === participantId && recipient.address !== undefined,
   );
 }
 

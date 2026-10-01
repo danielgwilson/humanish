@@ -224,7 +224,7 @@ export async function startParticipantStream(
       await deps.hooks.onRuntimeStreamReady?.({
         laneId: spec.planned.id,
         sandboxId: desktop.sandboxId,
-        simId: spec.simId,
+        simId: spec.recordId,
         streamId: spec.streamId,
         url: candidateStreamUrl,
       });
