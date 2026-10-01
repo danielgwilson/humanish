@@ -14,7 +14,7 @@ import {
 } from "../../run/judge.js";
 import type { ObserverResult } from "../../observer/render.js";
 import { validatePreparedRunArtifactPaths } from "../../run/paths.js";
-import { resolveSubjectState } from "../computer-use/route.js";
+import { resolveSubjectState } from "../computer-use/subject-projection.js";
 import { buildScriptedLabBundle } from "./bundle.js";
 import { existingScreenshots } from "./session-result.js";
 import type { ScriptedSubject } from "./subject.js";

@@ -1,14 +1,22 @@
 // Finishing a live terminal session: the actor trace from the captured stream, the spend ledger
 // and its caps check, the evidence files, the bundle, and the lab result.
 import { buildRunCostSummary } from "../../run/cost-summary.js";
-import type { ActorPersonaRef } from "../../actors/contract.js";
+import type { ActorPersonaRef, ActorTrace } from "../../actors/contract.js";
 import type { RunBundle } from "../../run/bundle.js";
 import type { RunScope } from "../../run/run.js";
-import { validatePreparedRunArtifactPaths } from "../../run/paths.js";
+import { writeContainedOutputFile } from "../../run/contained-output.js";
+import {
+  validatePreparedRunArtifactPaths,
+  type PreparedRunArtifactPaths,
+} from "../../run/paths.js";
 import { estimateActorCost } from "../../run/pricing.js";
-import { normalizeLocalActorTranscript } from "../../run/terminal-contract.js";
+import {
+  normalizeLocalActorTranscript,
+  TERMINAL_EVENTS_ARTIFACT,
+  TERMINAL_LEDGERS_ARTIFACT,
+  TERMINAL_TRANSCRIPT_ARTIFACT,
+} from "../../run/terminal-contract.js";
 import { applyAdapterExtensionSeam } from "./adapter.js";
-import { writeTerminalEvidence } from "./artifacts.js";
 import { buildLiveTerminalProductBundle } from "./bundle.js";
 import {
   buildCostLedger,
@@ -34,6 +42,7 @@ import { parseTerminalTokenUsage } from "./token-usage.js";
 import { buildTerminalActorTrace, scrubSplitKnownValues, tailOf } from "./trace.js";
 import type {
   RunLiveTerminalSessionArgs,
+  TerminalEventRecord,
   TerminalLedgers,
   TerminalProductLabHooks,
   TerminalProductLabResult,
@@ -296,4 +305,41 @@ export async function finishLiveTerminalSession(
   });
   await finished.recordOutcome({ ok: result.ok, execution });
   return result;
+}
+
+/** Persist the terminal evidence: redacted events, normalized transcript, ledgers, actor trace. */
+async function writeTerminalEvidence(
+  runPaths: PreparedRunArtifactPaths,
+  evidence: {
+    terminalEvents: readonly TerminalEventRecord[];
+    normalizedTranscript: string;
+    ledgers: TerminalLedgers;
+    trace: ActorTrace;
+  },
+): Promise<void> {
+  const { terminalEvents, normalizedTranscript, ledgers, trace } = evidence;
+  await writeContainedOutputFile(
+    runPaths,
+    TERMINAL_EVENTS_ARTIFACT,
+    `${terminalEvents.map((e) => JSON.stringify(e)).join("\n")}${terminalEvents.length > 0 ? "\n" : ""}`,
+    "utf8",
+  );
+  await writeContainedOutputFile(
+    runPaths,
+    TERMINAL_TRANSCRIPT_ARTIFACT,
+    `${normalizedTranscript}\n`,
+    "utf8",
+  );
+  await writeContainedOutputFile(
+    runPaths,
+    TERMINAL_LEDGERS_ARTIFACT,
+    `${JSON.stringify(ledgers, null, 2)}\n`,
+    "utf8",
+  );
+  await writeContainedOutputFile(
+    runPaths,
+    "actor.json",
+    `${JSON.stringify(trace, null, 2)}\n`,
+    "utf8",
+  );
 }

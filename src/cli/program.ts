@@ -315,6 +315,17 @@ export function withSiblingFlagHint(text: string, root: Command): string {
   return `${text.replace(/\n+$/, "")}\n${match[1]} is an option of ${list}${tail}, not of this command.\n`;
 }
 
+/** Drop the literal `--` that `pnpm <script> -- <args>` puts before the CLI's own arguments. */
+export function normalizeCliArgv(argv: string[]): string[] {
+  const [runtime, entrypoint, separator, ...rest] = argv;
+
+  if (runtime && entrypoint && separator === "--") {
+    return [runtime, entrypoint, ...rest];
+  }
+
+  return argv;
+}
+
 export function createProgram(
   io: Partial<CliIo> & { tuiRuntime?: Partial<TuiRuntime> } = {},
 ): Command {

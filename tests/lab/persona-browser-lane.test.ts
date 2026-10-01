@@ -17,8 +17,10 @@ import { DEVICE_PRESETS } from "../../src/lab/device-presets.js";
 import {
   labPersonaIds,
   personaTitleFromId,
+  resolveCommittedPersona,
   resolveCommittedPersonasForCwd,
 } from "../../src/lab/persona-resolve.js";
+import { prepareSelectedOutputDirectory } from "../../src/run/contained-output.js";
 import { parseResolvedPersona, personaToDirectives } from "../../src/lab/persona.js";
 
 const DEVICE = { name: "desktop", preset: DEVICE_PRESETS.desktop } as const;
@@ -128,6 +130,23 @@ describe("committed persona resolution", () => {
       expect(resolved.warnings).toEqual([]);
       expect(resolved.personas.get("local-only")?.traits.patience).toBe("low");
       expect(resolved.personas.get("both-places")?.traits.patience).toBe("high");
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it("warns and falls back on a persona file that is not valid YAML", async () => {
+    const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-broken-persona-"));
+    try {
+      await mkdir(path.join(cwd, "humanish", "personas"), { recursive: true });
+      await writeFile(
+        path.join(cwd, "humanish", "personas", "broken.yaml"),
+        "traits: {patience: low",
+      );
+      const projectRoot = await prepareSelectedOutputDirectory(path.dirname(cwd), cwd);
+      const { persona, warnings } = await resolveCommittedPersona(projectRoot, "broken");
+      expect(persona).toBeNull();
+      expect(warnings.join(" ")).toContain("could not be parsed as YAML");
     } finally {
       await rm(cwd, { recursive: true, force: true });
     }

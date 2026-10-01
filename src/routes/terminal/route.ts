@@ -42,7 +42,7 @@ import { completeAutomaticAnalysis } from "../../analysis/automatic-completion.j
 import { declaredRuntimeProvenance } from "./runtime.js";
 import { realpath } from "node:fs/promises";
 import path from "node:path";
-import { resolveCommittedPersona as resolveTerminalPersona } from "../../lab/persona-resolve.js";
+import { resolveCommittedPersona } from "../../lab/persona-resolve.js";
 import type { ActorPersonaRef } from "../../actors/contract.js";
 import { runScope, type RunScope } from "../../run/run.js";
 import { planTerminalLab, type TerminalRefusal } from "./plan.js";
@@ -67,8 +67,6 @@ import {
   type TerminalProductLabResult,
   type TerminalRunInput,
 } from "./types.js";
-
-export { resolveCommittedPersona as resolveTerminalPersona } from "../../lab/persona-resolve.js";
 
 /**
  * The config-taking entry point. It plans, returns a refusal with the same envelope and analysis
@@ -306,7 +304,7 @@ async function prepareDryPersona(args: {
   // Resolve the committed persona so its traits actually shape the agent prompt (#308); fail-safe to
   // the bare persona id (no traits applied) when no persona file is committed.
   const projectRoot = await prepareSelectedOutputDirectory(path.dirname(physicalCwd), physicalCwd);
-  const resolvedPersona = await resolveTerminalPersona(projectRoot, personaId);
+  const resolvedPersona = await resolveCommittedPersona(projectRoot, personaId);
   warnings.push(...resolvedPersona.warnings);
   const personaLine = resolvedPersona.persona
     ? renderPersonaPromptSection(resolvedPersona.persona)
