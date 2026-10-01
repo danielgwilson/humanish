@@ -208,7 +208,13 @@ export interface ActorTokenUsage {
  * Codex CLI releases a recorded account profile may name. Append-only: a release can leave the
  * launch lists in codex/qualified-versions.ts, but saved bundles naming it stay readable.
  */
-export const RECORDED_CODEX_CLI_VERSIONS = ["0.154.0", "0.157.1", "0.159.2", "0.159.3"] as const;
+export const RECORDED_CODEX_CLI_VERSIONS = [
+  "0.154.0",
+  "0.157.1",
+  "0.159.2",
+  "0.159.3",
+  "0.160.0",
+] as const;
 export type RecordedCodexCliVersion = (typeof RECORDED_CODEX_CLI_VERSIONS)[number];
 export function isRecordedCodexCliVersion(value: unknown): value is RecordedCodexCliVersion {
   return RECORDED_CODEX_CLI_VERSIONS.some((version) => version === value);

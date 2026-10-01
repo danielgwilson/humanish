@@ -13,8 +13,10 @@ Linux x64 accepts 0.154.0, 0.157.1
 ([receipt](https://github.com/danielgwilson/humanish/blob/main/docs/goals/computer-use-actor/receipts/codex-cli-0.157.1-requalification-2026-09-30.md))
 0.159.2
 ([receipt](https://github.com/danielgwilson/humanish/blob/main/docs/goals/computer-use-actor/receipts/codex-cli-0.159.2-qualification-2026-09-30.md))
-and 0.159.3
-([receipt](https://github.com/danielgwilson/humanish/blob/main/docs/goals/computer-use-actor/receipts/codex-cli-0.159.3-qualification-2026-10-01.md)).
+0.159.3
+([receipt](https://github.com/danielgwilson/humanish/blob/main/docs/goals/computer-use-actor/receipts/codex-cli-0.159.3-qualification-2026-10-01.md))
+and 0.160.0
+([receipt](https://github.com/danielgwilson/humanish/blob/main/docs/goals/computer-use-actor/receipts/codex-cli-0.160.0-qualification-2026-10-01.md)).
 Apple Silicon accepts 0.154.0, which passed installed participant/analysis studies and the
 native dispatch restriction check on an M5 Max; later releases need the same check on a Mac.
 Hosted participants on Linux arm64 and Intel macOS keep 0.154.0 as a pre-existing admission,
