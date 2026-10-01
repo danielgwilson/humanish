@@ -34,6 +34,7 @@ import {
   cuaSubjectRoute,
   cuaSubjectRouteOf,
   type ComputerUseRefusal,
+  type CuaSubjectRoute,
 } from "./plan.js";
 import type { ComputerUsePlan } from "../../lab/plan-types.js";
 import { trackRuntimeStreams, type LiveTraceFlush } from "./live-flush.js";
@@ -58,14 +59,14 @@ import { participantDesktopOf } from "./participant-desktop.js";
 
 /**
  * Admits the run and starts it. Returns the refusal, with the envelope the route always used, or
- * everything runLabParticipants and finishCuaRun read.
+ * what runLabParticipants and finishCuaRun read: both read setup, and each reads its own group.
  */
 export async function prepareCuaRun(
   plan: ComputerUsePlan,
   input: ComputerUseRunInput,
   config: LabConfig,
   scope: RunScope,
-): Promise<{ ok: false; result: CuaActorLabResult } | { ok: true; setup: CuaRunSetup }> {
+): Promise<PreparedCuaRun> {
   const admission = await admitCuaRun(plan, input, config);
   if (!admission.ok) return admission;
   return startCuaRun(plan, input, admission.admitted, scope);
@@ -112,48 +113,57 @@ export async function refuseCuaLab(
 type AdmittedCuaRun = Extract<Awaited<ReturnType<typeof admitCuaRun>>, { ok: true }>["admitted"];
 type StartedRun = Extract<Awaited<ReturnType<RunScope["startRun"]>>, { ok: true }>["run"];
 
-/** What the setup hands to runLabParticipants and finishCuaRun. */
+/** What runLabParticipants and finishCuaRun both read. */
 export interface CuaRunSetup {
   plan: ComputerUsePlan;
   input: ComputerUseRunInput;
-  /** Read only to build participants and by the lane runner, whose hooks take the whole config. */
+  /** Read only to build participants and by the participant runner, whose hooks take the whole
+   *  config. */
   config: LabConfig;
-  dryRun: boolean;
+  /** The physical project root. */
   cwd: string;
-  hooks: CuaActorLabHooks;
-  streams: ReturnType<typeof trackRuntimeStreams>;
-  env: Record<string, string | undefined>;
-  appUrl: string;
-  inProcessRoute: boolean;
-  /** The refusal envelope, for a run that stops before its bundle. */
-  fail: (code: CuaActorLabErrorCode, message: string, actorLabel?: string) => CuaActorLabResult;
   descriptor: CuaActorDescriptor;
-  /** The operator-hosted inbox on the app-url route, when declared. */
-  externalCommsConfig: LabCommsExternal | undefined;
-  externalCommsEmail: LabCommsEmail | undefined;
+  subjectRoute: CuaSubjectRoute;
+  run: StartedRun;
+  streams: ReturnType<typeof trackRuntimeStreams>;
   participantRuns: DesktopParticipantRun[];
   participantPlan: CuaParticipantPlan;
-  rerunLineage: RunRerunLineage | undefined;
-  participantCount: number;
-  /** Every known secret value; email setup adds its own before the lanes run. */
-  knownSecretValues: string[];
   scrubKnownValues: (text: string) => string;
-  publicRepo: string | undefined;
-  subjectEnvNames: string[];
-  run: StartedRun;
-  runId: string;
-  artifactRoot: string;
-  physicalArtifactRoot: string;
-  runPaths: StartedRun["paths"];
+  bundleBase: CuaRunBundleBase;
+}
+
+/** What only runLabParticipants reads. */
+export interface CuaParticipantsSetup {
+  env: Record<string, string | undefined>;
+  /** The array scrubKnownValues reads at each call. Email receiving appends the values it
+   *  provisions before the participants run. */
+  knownSecretValues: string[];
   deps: Omit<CuaParticipantDeps, "signalProvisioned">;
   /** Filled by runLabParticipants on a live run; deps.onTrace reads it. */
   liveTrace: { flush?: LiveTraceFlush["flush"]; stop?: LiveTraceFlush["stop"] };
-  subjectArgs: Omit<Parameters<typeof projectParticipantSubjects>[0], "outcomes" | "dryRun">;
-  inProgressSubjects: CuaSubjectProjection[];
-  inProgressAggregateSubject: CuaSubjectProjection;
-  inProgressProvenance: CuaSubjectProvenanceArg | undefined;
-  bundleBase: CuaRunBundleBase;
+  /** The operator-hosted inbox on the app-url route, when declared. */
+  externalComms: { config: LabCommsExternal; email: LabCommsEmail } | undefined;
+  /** The subjects of the in-progress bundle, written before any participant starts. */
+  inProgress: {
+    subjects: CuaSubjectProjection[];
+    aggregateSubject: CuaSubjectProjection;
+    provenance: CuaSubjectProvenanceArg | undefined;
+  };
+  /** The refusal envelope, for a run that stops before its bundle. */
+  fail: (code: CuaActorLabErrorCode, message: string, actorLabel?: string) => CuaActorLabResult;
 }
+
+/** What only finishCuaRun reads besides the participants' outcomes. */
+export interface CuaFinishFacts {
+  hooks: CuaActorLabHooks;
+  rerunLineage: RunRerunLineage | undefined;
+  publicRepo: string | undefined;
+  subjectArgs: Omit<Parameters<typeof projectParticipantSubjects>[0], "outcomes" | "dryRun">;
+}
+
+type PreparedCuaRun =
+  | { ok: false; result: CuaActorLabResult }
+  | { ok: true; setup: CuaRunSetup; participants: CuaParticipantsSetup; finish: CuaFinishFacts };
 
 /**
  * Everything before the run starts: the physical project, the route, the participant plan and
@@ -322,13 +332,13 @@ async function admitCuaRun(plan: ComputerUsePlan, input: ComputerUseRunInput, co
   };
 }
 
-/** Starts the run and builds what the lanes and the finish share: the lane deps and the bundle base. */
+/** Starts the run and builds what the participants and the finish read: the deps and the bundle base. */
 async function startCuaRun(
   plan: ComputerUsePlan,
   input: ComputerUseRunInput,
   admitted: AdmittedCuaRun,
   scope: RunScope,
-): Promise<{ ok: false; result: CuaActorLabResult } | { ok: true; setup: CuaRunSetup }> {
+): Promise<PreparedCuaRun> {
   const { config, dryRun, cwd, hooks, descriptor, participantRuns, participantPlan, publicRepo } =
     admitted;
   const { appUrl, inProcessRoute, localAppSubject, cloneRoute, localTreeRoute, subjectEnvNames } =
@@ -348,8 +358,6 @@ async function startCuaRun(
   if (!started.ok) return admitted.refuse(started.code, started.message, descriptor.id);
   const { run } = started;
   const { runId, createdAt, paths: runPaths } = run;
-  const artifactRoot = runPaths.absoluteRunRoot;
-  const physicalArtifactRoot = runPaths.physicalRunRoot;
   const redactScreenshots = plan.residual.policies?.redactScreenshots === true;
 
   await prepareContainedOutputDirectory(runPaths, "screenshots");
@@ -411,44 +419,40 @@ async function startCuaRun(
     subjectEnvNames,
   };
 
+  const { externalCommsConfig, externalCommsEmail } = admitted;
   return {
     ok: true as const,
     setup: {
       plan,
       input,
       config,
-      dryRun,
       cwd,
-      hooks,
-      streams: admitted.streams,
-      env: admitted.env,
-      appUrl,
-      inProcessRoute,
-      fail: admitted.fail,
       descriptor,
-      externalCommsConfig: admitted.externalCommsConfig,
-      externalCommsEmail: admitted.externalCommsEmail,
+      subjectRoute: admitted.subjectRoute,
+      run,
+      streams: admitted.streams,
       participantRuns,
       participantPlan,
-      rerunLineage: admitted.rerunLineage,
-      participantCount: admitted.participantCount,
-      knownSecretValues: admitted.knownSecretValues,
       scrubKnownValues: admitted.scrubKnownValues,
-      publicRepo,
-      subjectEnvNames,
-      run,
-      runId,
-      artifactRoot,
-      physicalArtifactRoot,
-      runPaths,
-      deps,
-      liveTrace,
-      subjectArgs,
-      inProgressSubjects,
-      inProgressAggregateSubject,
-      inProgressProvenance,
       bundleBase,
     },
+    participants: {
+      env: admitted.env,
+      knownSecretValues: admitted.knownSecretValues,
+      deps,
+      liveTrace,
+      externalComms:
+        externalCommsConfig === undefined || externalCommsEmail === undefined
+          ? undefined
+          : { config: externalCommsConfig, email: externalCommsEmail },
+      inProgress: {
+        subjects: inProgressSubjects,
+        aggregateSubject: inProgressAggregateSubject,
+        provenance: inProgressProvenance,
+      },
+      fail: admitted.fail,
+    },
+    finish: { hooks, rerunLineage: admitted.rerunLineage, publicRepo, subjectArgs },
   };
 }
 
@@ -460,7 +464,7 @@ function cuaParticipantDeps(
   run: {
     runPaths: StartedRun["paths"];
     redactScreenshots: boolean;
-    liveTrace: CuaRunSetup["liveTrace"];
+    liveTrace: CuaParticipantsSetup["liveTrace"];
   },
 ): Omit<CuaParticipantDeps, "signalProvisioned"> {
   const { config, dryRun, hooks, streams, env, descriptor, runSession, participantCount } =

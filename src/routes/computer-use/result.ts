@@ -25,7 +25,7 @@ import {
 } from "./lanes.js";
 import { buildCuaRunBundle, judgeComputerUseRun } from "./assemble.js";
 import type { runLabParticipants } from "./run-lanes.js";
-import type { CuaRunSetup } from "./setup.js";
+import type { CuaFinishFacts, CuaRunSetup } from "./setup.js";
 import { projectParticipantSubjects } from "./subject-projection.js";
 import {
   CUA_ACTOR_LAB_SCHEMA,
@@ -240,31 +240,16 @@ function computerUseExecutionFailures(
 /** Builds and publishes the final bundle, runs the adapter hooks, renders the Observer and returns the result. */
 export async function finishCuaRun(
   setup: CuaRunSetup,
+  finish: CuaFinishFacts,
   ran: Extract<Awaited<ReturnType<typeof runLabParticipants>>, { ok: true }>,
 ): Promise<CuaActorLabResult> {
-  const {
-    plan,
-    input,
-    config,
-    dryRun,
-    cwd,
-    hooks,
-    streams,
-    appUrl,
-    descriptor,
-    participantRuns,
-    participantPlan,
-    rerunLineage,
-    participantCount,
-    scrubKnownValues,
-    publicRepo,
-    subjectEnvNames,
-    run,
-    runId,
-    physicalArtifactRoot,
-    subjectArgs,
-    bundleBase,
-  } = setup;
+  const { plan, input, config, cwd, streams, descriptor, subjectRoute, run } = setup;
+  const { participantRuns, participantPlan, scrubKnownValues, bundleBase } = setup;
+  const { hooks, rerunLineage, publicRepo, subjectArgs } = finish;
+  const { dryRun } = plan;
+  const { appUrl, subjectEnvNames } = subjectRoute;
+  const { runId } = run;
+  const participantCount = participantRuns.length;
   const { outcomes, failFastReason, receiving, receivingWarnings, externalCommsWarnings } = ran;
   // Per-lane subject projections (invariant 5).
   const subjects = projectParticipantSubjects({ ...subjectArgs, outcomes, dryRun });
@@ -297,7 +282,7 @@ export async function finishCuaRun(
     bundle,
     context: {
       bundle,
-      runDir: physicalArtifactRoot,
+      runDir: run.paths.physicalRunRoot,
       labId: plan.labId,
       runId,
       actor: descriptor.id,

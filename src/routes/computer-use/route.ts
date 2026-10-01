@@ -148,7 +148,7 @@ async function runPlanInScope(
 ): Promise<CuaActorLabResult> {
   const prepared = await prepareCuaRun(plan, input, config, scope);
   if (!prepared.ok) return prepared.result;
-  const ran = await runLabParticipants(prepared.setup);
+  const ran = await runLabParticipants(prepared.setup, prepared.participants);
   if (!ran.ok) return ran.result;
-  return finishCuaRun(prepared.setup, ran);
+  return finishCuaRun(prepared.setup, prepared.finish, ran);
 }
