@@ -8,13 +8,13 @@ import type { RunStream } from "./streams.js";
 
 /** The ids a participant's saved records carry: its record id and its stream id. */
 export interface ParticipantIds {
-  readonly simId: string;
+  readonly recordId: string;
   readonly streamId: string;
 }
 
 /** Ids a route chose itself, for routes whose ids are not the `sim-NNN` default. */
 export function participantIdsOf(recordId: string, streamId: string): ParticipantIds {
-  return { simId: recordId, streamId };
+  return { recordId, streamId };
 }
 
 /** The default ids of the participant at a 0-based position: `sim-001` and `stream-001` first. */
@@ -30,7 +30,7 @@ export function participantRecord(
   fields: Omit<RunSimulation, "id" | "index" | "streamIds">,
 ): RunSimulation {
   return {
-    id: ids.simId,
+    id: ids.recordId,
     index: place,
     personaId: fields.personaId,
     scenarioId: fields.scenarioId,
@@ -57,7 +57,7 @@ export function participantStream(
 ): RunStream {
   return {
     id: ids.streamId,
-    simId: ids.simId,
+    simId: ids.recordId,
     ...(participantId === undefined ? {} : { laneId: participantId }),
     ...fields,
   };
@@ -68,7 +68,7 @@ export function participantEvent(
   ids: ParticipantIds,
   event: Omit<RunEvent, "simId" | "streamId">,
 ): RunEvent {
-  return { ...event, simId: ids.simId, streamId: ids.streamId };
+  return { ...event, simId: ids.recordId, streamId: ids.streamId };
 }
 
 /** The ids a provider resource saves for the participant whose sandbox it is. */
@@ -76,7 +76,7 @@ export function participantResourceIds(
   ids: ParticipantIds,
   participantId: string,
 ): Required<Pick<RunProviderResource, "simId" | "streamId" | "laneId">> {
-  return { simId: ids.simId, streamId: ids.streamId, laneId: participantId };
+  return { simId: ids.recordId, streamId: ids.streamId, laneId: participantId };
 }
 
 /** The record id a saved stream belongs to. */

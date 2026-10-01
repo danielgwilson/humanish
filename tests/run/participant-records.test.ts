@@ -27,10 +27,10 @@ describe("participant records (bundle write)", () => {
   };
 
   it("numbers the default ids from a 0-based position, and keeps a route's own ids", () => {
-    expect(participantIds(0)).toEqual({ simId: "sim-001", streamId: "stream-001" });
-    expect(participantIds(11)).toEqual({ simId: "sim-012", streamId: "stream-012" });
+    expect(participantIds(0)).toEqual({ recordId: "sim-001", streamId: "stream-001" });
+    expect(participantIds(11)).toEqual({ recordId: "sim-012", streamId: "stream-012" });
     expect(participantIdsOf("scripted-desktop", "scripted-desktop-stream")).toEqual({
-      simId: "scripted-desktop",
+      recordId: "scripted-desktop",
       streamId: "scripted-desktop-stream",
     });
   });

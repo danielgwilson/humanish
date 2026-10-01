@@ -6,6 +6,7 @@ import {
 } from "./routing.js";
 import type { LabConfig } from "./types.js";
 import { declaredParticipantIds } from "./plan-participants.js";
+import { addressedRecipients } from "./parse/comms.js";
 
 /** Which routes a config takes, computed once for every row below. */
 interface Routes {
@@ -390,14 +391,14 @@ export function forwardDeclaredWarnings(config: LabConfig): string[] {
   // Partial email coverage is legal but loud (#351): a lane without an addressed recipient never
   // hears an inbox exists, so an email-gated flow on that seat dead-ends by construction.
   if (routes.cua && config.comms?.email?.recipients) {
-    const laneIds = declaredParticipantIds(config);
+    const participantIds = declaredParticipantIds(config);
     const covered = new Set(
-      config.comms.email.recipients.filter((r) => r.address !== undefined).map((r) => r.lane),
+      addressedRecipients(config.comms.email).map((recipient) => recipient.participantId),
     );
-    const uncovered = laneIds.filter((id) => !covered.has(id));
-    if (covered.size > 0 && uncovered.length > 0 && laneIds.length > 1) {
+    const uncovered = participantIds.filter((id) => !covered.has(id));
+    if (covered.size > 0 && uncovered.length > 0 && participantIds.length > 1) {
       warnings.push(
-        `comms.email covers ${covered.size} of ${laneIds.length} lanes; the uncovered lane(s) get no inbox and are never told one exists: ${uncovered.join(", ")}. Add addressed recipients for them if their flows need email.`,
+        `comms.email covers ${covered.size} of ${participantIds.length} lanes; the uncovered lane(s) get no inbox and are never told one exists: ${uncovered.join(", ")}. Add addressed recipients for them if their flows need email.`,
       );
     }
   }

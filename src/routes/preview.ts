@@ -32,7 +32,7 @@ export function runPreviewPlan(
     ...(plan.lab === undefined ? {} : { lab: plan.lab }),
     cwd: input.cwd,
     dryRun: plan.dryRun,
-    simCount: plan.simCount,
+    simCount: plan.participantCount,
     ...(input.runId === undefined ? {} : { runId: input.runId }),
     ...(input.open === undefined ? {} : { observer: { open: input.open } }),
   });

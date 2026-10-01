@@ -12,7 +12,7 @@ export function participantRun(fields: {
   index: number;
   persona: ActorPersonaRef;
   instructions: string;
-  simId?: string;
+  recordId?: string;
   streamId?: string;
   screenshotDir?: string;
   traceArtifactPath?: string;
@@ -35,7 +35,7 @@ export function participantRun(fields: {
       limits: fields.limits ?? {},
       ...(fields.targetUrl === undefined ? {} : { targetUrl: fields.targetUrl }),
     },
-    simId: fields.simId ?? `sim-${ordinal}`,
+    recordId: fields.recordId ?? `sim-${ordinal}`,
     streamId: fields.streamId ?? `stream-${ordinal}`,
     persona: fields.persona,
     instructions: fields.instructions,

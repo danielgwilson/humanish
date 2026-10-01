@@ -24,6 +24,7 @@ import type {
   ExternalCommsWiring,
   PlaneContext,
 } from "./types.js";
+import { addressedRecipients } from "../../lab/parse/comms.js";
 
 /** The in-sandbox email catch a provisioned plane deploys, when the lab declares one. */
 export interface SubjectComms {
@@ -114,10 +115,10 @@ export async function drainSubjectComms(
   try {
     const commsChannel = new FakeInbox();
     const commsInboxes: CommsAddress[] = [];
-    for (const recipient of commsEmail.recipients ?? []) {
-      if (recipient.address !== undefined) {
-        commsInboxes.push(await commsChannel.provisionAddress(recipient.lane, recipient.address));
-      }
+    for (const recipient of addressedRecipients(commsEmail)) {
+      commsInboxes.push(
+        await commsChannel.provisionAddress(recipient.participantId, recipient.address),
+      );
     }
     const collected = await collectCommsThread({
       shell: subjectShell,
@@ -168,10 +169,10 @@ export async function drainExternalComms(
   try {
     const commsChannel = new FakeInbox();
     const commsInboxes: CommsAddress[] = [];
-    for (const recipient of externalCommsEmail.recipients ?? []) {
-      if (recipient.address !== undefined) {
-        commsInboxes.push(await commsChannel.provisionAddress(recipient.lane, recipient.address));
-      }
+    for (const recipient of addressedRecipients(externalCommsEmail)) {
+      commsInboxes.push(
+        await commsChannel.provisionAddress(recipient.participantId, recipient.address),
+      );
     }
     const authToken =
       externalComms.authTokenEnv === undefined ? undefined : env[externalComms.authTokenEnv];

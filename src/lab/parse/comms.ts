@@ -250,6 +250,22 @@ function parseCatchPort(raw: unknown): Parsed<number> {
   return { ok: true, value: port };
 }
 
+/** The participant a declared inbox recipient belongs to. The manifest spells it `lane`. */
+export function recipientParticipantId(recipient: LabCommsRecipient): string {
+  return recipient.lane;
+}
+
+/** The declared recipients that name an address, in declaration order, by participant id. */
+export function addressedRecipients(
+  email: Pick<LabCommsEmail, "recipients">,
+): { participantId: string; address: string }[] {
+  return (email.recipients ?? []).flatMap((recipient) =>
+    recipient.address === undefined
+      ? []
+      : [{ participantId: recipient.lane, address: recipient.address }],
+  );
+}
+
 /** `comms.email.recipients`: which lane each captured address belongs to. */
 function parseRecipients(raw: unknown): Parsed<LabCommsRecipient[]> {
   if (raw === undefined) return { ok: true, value: undefined };

@@ -44,7 +44,7 @@ export async function acquireParticipantDesktop(
       metadata: {
         ...CUA_ACTOR_LAB_PROVIDER_METADATA,
         labId: config.id,
-        simId: spec.simId,
+        simId: spec.recordId,
         laneId: spec.planned.id,
         laneIndex: String(spec.planned.index),
         laneCount: String(deps.participantCount),

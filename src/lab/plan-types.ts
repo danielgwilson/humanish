@@ -79,7 +79,7 @@ interface PlanBase {
  */
 interface PreviewPlan extends PlanBase {
   readonly route: "preview";
-  readonly simCount: number;
+  readonly participantCount: number;
 }
 
 /** The model driving a desktop participant. `caller` is the library caller's buildProvider. */

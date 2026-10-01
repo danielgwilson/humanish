@@ -564,10 +564,10 @@ export interface CuaParticipantDeps {
   /** RUNTIME-ONLY per-turn raw-frame callback; see CuaLoopOptions.onScreenshot. The concurrent
    * shared-world barrier passes a host-seat vision reader here to latch the lobby code off-screen. */
   onScreenshot?: (frame: Buffer) => void;
-  /** Per-turn trace snapshot from a lane's loop (#441), keyed by lane. The live path wires the
-   * incremental in-progress flush here so the attached Observer's timeline grows mid-run. */
+  /** Per-turn trace snapshot from a participant's loop (#441), keyed by participant. The live path
+   * wires the incremental in-progress flush here so the attached Observer's timeline grows mid-run. */
   onTrace?: (
-    laneId: string,
+    participantId: string,
     items: readonly ActorTraceItem[],
     usage?: ActorTokenUsage,
     metadata?: CuaLiveMetadata,

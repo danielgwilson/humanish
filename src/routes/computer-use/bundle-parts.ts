@@ -23,14 +23,14 @@ import {
 /** Aggregate lane counts for the result projection. */
 export function buildParticipantSummary(
   outcomes: ParticipantRunOutcome[] | undefined,
-  laneCount: number,
+  participantCount: number,
   participantPlan: CuaParticipantPlan,
   dryRun: boolean,
 ): CuaParticipantSummary {
   if (dryRun || !outcomes) {
     return {
       strategy: CUA_FANOUT_STRATEGY,
-      total: laneCount,
+      total: participantCount,
       passed: 0,
       skipped: 0,
       harnessErrors: 0,
@@ -54,7 +54,7 @@ export function buildParticipantSummary(
   }
   return {
     strategy: CUA_FANOUT_STRATEGY,
-    total: laneCount,
+    total: participantCount,
     passed,
     skipped,
     harnessErrors,

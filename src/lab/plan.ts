@@ -127,7 +127,7 @@ function planPreview(
     plan: {
       ...planBase(config, { ...input, analysis }),
       route: "preview",
-      simCount: options.count ?? config.actors[0]?.count ?? 4,
+      participantCount: options.count ?? config.actors[0]?.count ?? 4,
     },
   };
 }

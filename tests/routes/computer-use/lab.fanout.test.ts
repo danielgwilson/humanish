@@ -524,7 +524,7 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
       participantRun({
         id: "role-a",
         index: 0,
-        simId: "sim-role-a",
+        recordId: "sim-role-a",
         streamId: "stream-role-a",
         persona: { id: "first-time-visitor", traitsApplied: [], promptDigest: "prompt-a" },
         instructions: "Review the dashboard.",
@@ -534,7 +534,7 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
       participantRun({
         id: "role-b",
         index: 1,
-        simId: "sim-role-b",
+        recordId: "sim-role-b",
         streamId: "stream-role-b",
         persona: { id: "power-user", traitsApplied: [], promptDigest: "prompt-b" },
         instructions: "Review the settings.",
@@ -610,7 +610,7 @@ describe("cua fan-out bundle: desktop browser provenance", () => {
       participantRun({
         id,
         index,
-        simId: `sim-${id}`,
+        recordId: `sim-${id}`,
         streamId: `stream-${id}`,
         persona: { id: `persona-${id}`, traitsApplied: [], promptDigest: `prompt-${id}` },
         instructions: "Look.",
@@ -2300,7 +2300,7 @@ describe("runCuaParticipants total-runner guard (#342)", () => {
     participantRun({
       id,
       index,
-      simId: `sim-${id}`,
+      recordId: `sim-${id}`,
       streamId: `stream-${id}`,
       persona: { id: "p", traitsApplied: [], promptDigest: `prompt-${id}` },
       instructions: "x",

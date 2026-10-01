@@ -55,7 +55,7 @@ import {
 import { compositionReason } from "./composition-rules.js";
 import { findUnknownLabKey } from "./keys.js";
 import { parseActors } from "./parse/actors.js";
-import { parseComms } from "./parse/comms.js";
+import { parseComms, recipientParticipantId } from "./parse/comms.js";
 import {
   parseDefaults,
   parseExecution,
@@ -211,11 +211,11 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
       }));
     } else {
       const unknown = email.recipients.filter(
-        (recipient) => !participantIds.includes(recipient.lane),
+        (recipient) => !participantIds.includes(recipientParticipantId(recipient)),
       );
       if (unknown.length > 0) {
         return invalid(
-          `comms.email.recipients name lane(s) that do not exist: ${unknown.map((r) => `"${r.lane}"`).join(", ")}. This lab's lane ids are: ${participantIds.join(", ")}. A recipient's lane must match one of them exactly — the inbox instruction is injected per lane, and a mismatch disables the email funnel for that seat.`,
+          `comms.email.recipients name lane(s) that do not exist: ${unknown.map((r) => `"${recipientParticipantId(r)}"`).join(", ")}. This lab's lane ids are: ${participantIds.join(", ")}. A recipient's lane must match one of them exactly — the inbox instruction is injected per lane, and a mismatch disables the email funnel for that seat.`,
         );
       }
       if (!email.recipients.some((recipient) => recipient.address !== undefined)) {

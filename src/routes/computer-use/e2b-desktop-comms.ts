@@ -22,6 +22,7 @@ import type { Shell } from "../../substrates/shell.js";
 import type { ReadyParticipantDesktop } from "./participant-desktop.js";
 import { inboxRecipientFor, participantHasInboxRecipient } from "./participant-desktop.js";
 import type { CuaParticipantDeps, DesktopParticipantRun } from "./types.js";
+import { addressedRecipients } from "../../lab/parse/comms.js";
 
 /** Mid-run inbox-surface render cadence (ms). Coarse enough that the per-tick `cat` + file writes stay
  *  cheap; fine enough that a verification email is visible seconds after the app sends it. */
@@ -35,7 +36,7 @@ export interface ParticipantComms {
   /** The loopback URL the persona opens to read captured mail. */
   readonly inboxUrl: string;
   readonly originMap: OriginMap;
-  readonly surfaceRecipients: { lane: string; address: string }[];
+  readonly surfaceRecipients: { participantId: string; address: string }[];
 }
 
 /**
@@ -66,12 +67,7 @@ export function planParticipantComms(
       reachableBaseUrl: targetUrl,
       ...(email.linkOrigin === undefined ? {} : { linkOrigin: email.linkOrigin }),
     }),
-    surfaceRecipients: (email.recipients ?? [])
-      .filter(
-        (recipient): recipient is { lane: string; address: string } =>
-          recipient.address !== undefined,
-      )
-      .map((recipient) => ({ lane: recipient.lane, address: recipient.address })),
+    surfaceRecipients: addressedRecipients(email),
   };
 }
 
@@ -254,10 +250,10 @@ export async function drainCommsEvidence(args: {
   try {
     const commsChannel = new FakeInbox();
     const commsInboxes: CommsAddress[] = [];
-    for (const recipient of comms.email.recipients ?? []) {
-      if (recipient.address !== undefined) {
-        commsInboxes.push(await commsChannel.provisionAddress(recipient.lane, recipient.address));
-      }
+    for (const recipient of addressedRecipients(comms.email)) {
+      commsInboxes.push(
+        await commsChannel.provisionAddress(recipient.participantId, recipient.address),
+      );
     }
     const collected = await collectCommsThread({
       shell: args.shell,

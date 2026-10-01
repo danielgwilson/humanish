@@ -463,7 +463,7 @@ describe("comms-sandbox-catch: collectCommsThread (whole-run evidence collect)",
 });
 
 describe("comms-sandbox-catch: refreshInboxSurface (mid-run full rebuild)", () => {
-  const recipients = [{ lane: "user", address: "user-07@example.test" }];
+  const recipients = [{ participantId: "user", address: "user-07@example.test" }];
   const captured =
     JSON.stringify({
       t: 1,
