@@ -8,6 +8,14 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixes
+
+- `humanish lab run --rerun-failed-from` selects a fan-out participant whose session ended
+  goal_satisfied but reported a blocker (#1341). The review counted that participant as blocked,
+  but rerun selection read the trace status, `passed`, and answered that nothing needed a rerun.
+  Fan-out bundles now record each participant's judged status as `streams[].judgedStatus`, and
+  rerun selection reads it; an older bundle without it keeps the previous rule.
+
 ## 0.106.1: Codex CLI 0.160.0 and reclaim in E2B debug mode (2026-10-01)
 
 Codex participants, Codex-account analysis and `humanish doctor` admit Codex CLI 0.160.0 (published
