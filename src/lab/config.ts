@@ -52,6 +52,7 @@ import {
   localBrowserDefaults,
   localBrowserUnsupportedReason,
 } from "../substrates/local/runtime-config.js";
+import { isRecord } from "../run/type-guards.js";
 import { compositionReason } from "./composition-rules.js";
 import { findUnknownLabKey } from "./keys.js";
 import { parseActors, rosterOf } from "./parse/actors.js";
@@ -65,7 +66,7 @@ import {
   parseScenario,
 } from "./parse/execution.js";
 import { parseSubject } from "./parse/subject.js";
-import { invalid, isRecord, optionalStr, str } from "./parse/values.js";
+import { invalid, optionalStr, str } from "./parse/values.js";
 import { isComputerUseComposition, isSharedWorldComposition } from "./routing.js";
 import { declaredParticipantIds } from "./plan-participants.js";
 import {

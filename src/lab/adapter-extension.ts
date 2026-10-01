@@ -8,6 +8,7 @@ import type {
   RunScorerProvenance,
 } from "../run/bundle.js";
 import { isFeedbackIdempotencyKey } from "../run/feedback-shape.js";
+import { isRecord } from "../run/type-guards.js";
 
 type BrowserAdapterBackend = "cua" | "shared-world" | "concurrent-shared-world";
 
@@ -283,10 +284,6 @@ function isAdapterArtifactShape(value: unknown): value is RunAdapterArtifact {
     typeof artifact.note === "string" &&
     artifact.note.trim().length > 0
   );
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function isSafeRelativeArtifactPath(value: string): boolean {

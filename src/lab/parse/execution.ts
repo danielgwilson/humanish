@@ -1,7 +1,7 @@
 import { resolveAutomaticAnalysis, type LabAnalysis } from "../../analysis/automatic-config.js";
 import { DEVICE_PRESET_NAMES, isDevicePresetName } from "../device-presets.js";
 import { isExactRuntimeVersion } from "../../routes/terminal/runtime.js";
-import { invalid, isRecord, nonNegNumber, posInt, str } from "./values.js";
+import { invalid, nonNegNumber, posInt, str } from "./values.js";
 import type {
   LabConfigParseFailure,
   LabDefaults,
@@ -15,6 +15,7 @@ import type {
   LabScenario,
   LabScenarioCaps,
 } from "../types.js";
+import { isRecord } from "../../run/type-guards.js";
 
 export function parseExecution(
   raw: unknown,

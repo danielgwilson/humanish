@@ -4,6 +4,7 @@ import { constants } from "node:fs";
 import { lstat, mkdir, open, readdir, realpath, rename, unlink } from "node:fs/promises";
 import { homedir, hostname } from "node:os";
 import path from "node:path";
+import { isRecord } from "../run/type-guards.js";
 import { isReceivingProviderId } from "./providers.js";
 import type { ReceivingIdentity, ReceivingLease } from "./receiving-types.js";
 
@@ -81,8 +82,6 @@ function fail(code: CommsAuthorityError["code"] = "authority_unavailable"): neve
 }
 const digest = (value: string): string => createHash("sha256").update(value).digest("hex");
 const clone = <T>(value: T): T => structuredClone(value);
-const plain = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
 const safeString = (value: unknown, max = 512): value is string =>
   typeof value === "string" &&
   value.length > 0 &&
@@ -103,7 +102,7 @@ export function sameReceivingIdentity(a: ReceivingIdentity, b: ReceivingIdentity
 }
 export function validReceivingIdentity(value: unknown): value is ReceivingIdentity {
   return (
-    plain(value) &&
+    isRecord(value) &&
     isReceivingProviderId(value.provider) &&
     safeString(value.accountId) &&
     ["organization", "pod", "inbox"].includes(String(value.scopeType)) &&
@@ -112,7 +111,7 @@ export function validReceivingIdentity(value: unknown): value is ReceivingIdenti
 }
 export function validReceivingLease(value: unknown, clientId: string): value is ReceivingLease {
   return (
-    plain(value) &&
+    isRecord(value) &&
     value.clientId === clientId &&
     safeString(value.resourceId) &&
     safeString(value.address, 320) &&
@@ -138,7 +137,7 @@ function ownerLiveness(owner: Owner): boolean | null {
 }
 function validateOwner(value: unknown): value is Owner {
   return (
-    plain(value) &&
+    isRecord(value) &&
     Number.isSafeInteger(value.pid) &&
     (value.pid as number) > 0 &&
     safeString(value.host) &&
@@ -155,9 +154,9 @@ function parseJournal(text: string): CommsLeaseJournal {
     return fail();
   }
   if (
-    !plain(value) ||
+    !isRecord(value) ||
     value.schema !== SCHEMA ||
-    !plain(value.project) ||
+    !isRecord(value.project) ||
     !safeString(value.project.path, 4096) ||
     !path.isAbsolute(value.project.path) ||
     !Number.isSafeInteger(value.project.dev) ||
@@ -185,7 +184,7 @@ function parseJournal(text: string): CommsLeaseJournal {
   const resources = new Set<string>();
   for (const item of value.leases) {
     if (
-      !plain(item) ||
+      !isRecord(item) ||
       typeof item.participantId !== "string" ||
       !LOCAL_ID.test(item.participantId) ||
       participants.has(item.participantId) ||

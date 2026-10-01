@@ -15,6 +15,7 @@ import {
   readContainedRegularFile,
   writeContainedOutputFile,
 } from "../run/contained-output.js";
+import { isRecord } from "../run/type-guards.js";
 
 const COMMS_CONNECTIONS_SCHEMA = "humanish.comms-connections.v1";
 export const COMMS_CONFIG_PATH = ".humanish/local/comms.yaml";
@@ -32,8 +33,6 @@ export interface CommsSetupResult {
   message: string;
 }
 
-const record = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
 const validName = (name: string): boolean =>
   /^[a-z][a-z0-9-]{0,47}$/.test(name) && name !== "constructor" && name !== "prototype";
 const empty = (): CommsConnections => ({ schema: COMMS_CONNECTIONS_SCHEMA, connections: {} });
@@ -50,9 +49,9 @@ async function exists(file: string): Promise<boolean> {
 
 function parseConnections(raw: unknown): CommsConnections {
   if (
-    !record(raw) ||
+    !isRecord(raw) ||
     raw.schema !== COMMS_CONNECTIONS_SCHEMA ||
-    !record(raw.connections) ||
+    !isRecord(raw.connections) ||
     Object.keys(raw).some((key) => key !== "schema" && key !== "connections") ||
     Object.keys(raw.connections).length > 32
   )
@@ -61,7 +60,7 @@ function parseConnections(raw: unknown): CommsConnections {
   for (const [name, value] of Object.entries(raw.connections)) {
     if (
       !validName(name) ||
-      !record(value) ||
+      !isRecord(value) ||
       !isReceivingProviderId(value.provider) ||
       typeof value.apiKeyEnv !== "string" ||
       !/^[A-Z][A-Z0-9_]{0,99}$/.test(value.apiKeyEnv) ||
