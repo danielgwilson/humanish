@@ -52,7 +52,7 @@ import {
   type ConcurrentSharedWorldLabResult,
   type SharedWorldRunInput,
   type ConcurrentSharedWorldPlaneClass,
-  type LiveSeats,
+  type LiveParticipants,
   type PlaneContext,
   type PlaneResults,
   type RunConcurrentSharedWorldLabOptions,
@@ -266,7 +266,7 @@ async function runPlanInScope(
  */
 async function runPlane(
   ctx: PlaneContext,
-  live: LiveSeats,
+  live: LiveParticipants,
   results: PlaneResults,
   plane: PlaneSelection,
 ): Promise<boolean> {

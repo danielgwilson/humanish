@@ -16,8 +16,12 @@ import { runCuaLane } from "../computer-use/lanes.js";
 import type { DesktopParticipantRun, LaneRunOutcome } from "../computer-use/types.js";
 import { extractLobbyCode, extractLobbyCodeFromNarration } from "./lobby-code.js";
 import { hostOriginDigest } from "./provenance.js";
-import { makeBlockedFollowerOutcome, withLobbyCodeMission, type SeatLaneDeps } from "./seats.js";
-import type { ActorLaneResult, ExternalCommsWiring } from "./types.js";
+import {
+  makeBlockedFollowerOutcome,
+  withLobbyCodeMission,
+  type ParticipantRunDeps,
+} from "./seats.js";
+import type { ActorRunResult, ExternalCommsWiring } from "./types.js";
 
 // The FLOOR for the host-first handoff barrier deadline (ms). The host seat must surface a
 // shared-session (/lobby/CODE) URL within the deadline or the run fails closed and no follower
@@ -84,8 +88,8 @@ class HandoffTimeoutError extends Error {
 }
 
 /** What the host and follower lanes need besides the handoff. */
-export interface HandoffSeatDeps {
-  laneDeps: SeatLaneDeps;
+export interface HandoffParticipantDeps {
+  runDeps: ParticipantRunDeps;
   publicAppUrl: string;
   inbox: ExternalCommsWiring | undefined;
   now: () => number;
@@ -117,15 +121,15 @@ export class LobbyHandoff {
   private deadlineTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(options: {
-    seatCount: number;
+    participantCount: number;
     timeoutMs: number;
     deadlineMs: number | undefined;
     scrubKnownValues: (text: string) => string;
     readLobbyCode: (frame: Buffer, apiKey: string) => Promise<string | undefined>;
     openaiApiKey: string;
   }) {
-    this.observedFinalUrls = new Array(options.seatCount);
-    this.observedLobbyCodes = new Array(options.seatCount);
+    this.observedFinalUrls = new Array(options.participantCount);
+    this.observedLobbyCodes = new Array(options.participantCount);
     this.deadlineMs =
       options.deadlineMs ??
       Math.min(
@@ -172,9 +176,9 @@ export class LobbyHandoff {
   // Resolve the host->follower handoff latch from WHICHEVER path sees the code first (CDP url-read,
   // host narration, or vision-off-frame). Idempotent: only the first code wins, and it is also stashed
   // as latchedLobbyCode so it gets scrubbed from any later narration.
-  latchLobbyCode(code: string, laneIndex: number): void {
+  latchLobbyCode(code: string, participantIndex: number): void {
     if (this.latchedLobbyCode !== undefined) return;
-    this.observedLobbyCodes[laneIndex] = code;
+    this.observedLobbyCodes[participantIndex] = code;
     this.latchedLobbyCode = code;
     this.stopDeadline();
     this.lobbyCodeLatch.resolve(code);
@@ -206,14 +210,14 @@ export class LobbyHandoff {
     };
   }
 
-  makeLaneObservedUrl(laneIndex: number, isHost: boolean): (url: string | undefined) => void {
+  makeObservedUrl(participantIndex: number, isHost: boolean): (url: string | undefined) => void {
     return (url: string | undefined): void => {
       if (typeof url !== "string" || url.length === 0) return;
-      this.observedFinalUrls[laneIndex] = url; // runtime-only; digested to origin, never persisted raw
+      this.observedFinalUrls[participantIndex] = url; // runtime-only; digested to origin, never persisted raw
       const code = extractLobbyCode(url);
       if (code !== undefined) {
-        this.observedLobbyCodes[laneIndex] = code;
-        if (isHost) this.latchLobbyCode(code, laneIndex);
+        this.observedLobbyCodes[participantIndex] = code;
+        if (isHost) this.latchLobbyCode(code, participantIndex);
       }
     };
   }
@@ -279,7 +283,7 @@ export class LobbyHandoff {
 }
 
 // Adopter-hosted inbox (#387): the persona is told its address and inbox URL on THIS plane.
-function withSeatInbox(
+function withParticipantInbox(
   spec: DesktopParticipantRun,
   inbox: ExternalCommsWiring | undefined,
 ): DesktopParticipantRun {
@@ -301,13 +305,13 @@ function withSeatInbox(
 // the follower pool, guarantees it is ALWAYS schedulable regardless of its roster position or of
 // concurrency vs lane count — while total in-flight paid desktops stay ≤ the declared concurrency
 // (host + up to concurrency-1 followers), preserving the spend cap.
-export async function runHostLane(
+export async function runHost(
   handoff: LobbyHandoff,
-  deps: HandoffSeatDeps,
+  deps: HandoffParticipantDeps,
   spec: DesktopParticipantRun,
-  laneIndex: number,
-): Promise<ActorLaneResult> {
-  const onObservedUrl = handoff.makeLaneObservedUrl(laneIndex, true);
+  participantIndex: number,
+): Promise<ActorRunResult> {
+  const onObservedUrl = handoff.makeObservedUrl(participantIndex, true);
   // CDP-INDEPENDENT handoff paths (the E2B-desktop CDP url-read the onObservedUrl path relies on is
   // unreliable in practice). Two backups, both resolving the SAME latch; whichever sees the code first
   // wins, all digest-only:
@@ -319,12 +323,12 @@ export async function runHostLane(
   const onMessage = (text: string): void => {
     if (handoff.latchedLobbyCode !== undefined) return;
     const code = extractLobbyCodeFromNarration(text);
-    if (code !== undefined) handoff.latchLobbyCode(code, laneIndex);
+    if (code !== undefined) handoff.latchLobbyCode(code, participantIndex);
   };
   // Vision-read the host's waiting-room frame and LATCH the code for the followers (stops once latched).
   const onScreenshot = handoff.makeLobbyCodeVisionReader(
     () => handoff.latchedLobbyCode !== undefined,
-    (code) => handoff.latchLobbyCode(code, laneIndex),
+    (code) => handoff.latchLobbyCode(code, participantIndex),
   );
   // The host's job includes a long LEGITIMATE idle wait — sitting in the waiting room while the
   // followers provision their own desktops and walk the Join flow (easily 15-30 turns of an
@@ -332,7 +336,7 @@ export async function runHostLane(
   // before anyone arrives, orphaning the lobby (exactly the earlier failure). Raise the host's idle /
   // no-progress tolerance so it waits patiently; the per-seat timeout still bounds a truly stuck host.
   const hostSpec: DesktopParticipantRun = {
-    ...withSeatInbox(spec, deps.inbox),
+    ...withParticipantInbox(spec, deps.inbox),
     backstop: {
       idleSteps: spec.backstop?.idleSteps ?? HOST_WAIT_IDLE_STEPS,
       noProgressSteps: spec.backstop?.noProgressSteps ?? HOST_WAIT_IDLE_STEPS,
@@ -342,7 +346,7 @@ export async function runHostLane(
   let outcome: LaneRunOutcome | undefined;
   try {
     outcome = await runCuaLane(hostSpec, {
-      ...deps.laneDeps,
+      ...deps.runDeps,
       appUrl: deps.publicAppUrl,
       onObservedUrl,
       onMessage,
@@ -359,17 +363,17 @@ export async function runHostLane(
     outcome,
     startedAt,
     endedAt,
-    route: handoff.observedFinalUrls[laneIndex] ?? deps.publicAppUrl,
+    route: handoff.observedFinalUrls[participantIndex] ?? deps.publicAppUrl,
   };
 }
 
-export async function runFollowerLane(
+export async function runFollower(
   handoff: LobbyHandoff,
-  deps: HandoffSeatDeps,
+  deps: HandoffParticipantDeps,
   spec: DesktopParticipantRun,
-  laneIndex: number,
-): Promise<ActorLaneResult> {
-  const onObservedUrl = handoff.makeLaneObservedUrl(laneIndex, false);
+  participantIndex: number,
+): Promise<ActorRunResult> {
+  const onObservedUrl = handoff.makeObservedUrl(participantIndex, false);
   // FOLLOWER: do NOT compose a mission or open the target until the host yields a lobby code.
   let code: string;
   try {
@@ -392,7 +396,7 @@ export async function runFollowerLane(
   // their idle backstop too (less than the host's: they wait less), so a follower that joins ahead of
   // the other does not give up before the game begins. Per-seat timeout still bounds a stuck follower.
   const followerSpec: DesktopParticipantRun = {
-    ...withLobbyCodeMission(withSeatInbox(spec, deps.inbox), code),
+    ...withLobbyCodeMission(withParticipantInbox(spec, deps.inbox), code),
     backstop: {
       idleSteps: spec.backstop?.idleSteps ?? FOLLOWER_WAIT_IDLE_STEPS,
       noProgressSteps: spec.backstop?.noProgressSteps ?? FOLLOWER_WAIT_IDLE_STEPS,
@@ -406,14 +410,14 @@ export async function runFollowerLane(
   // code and convergence correctly fails (no false proof); if it never reads one, the seat stays a
   // hole and convergence is honestly "not observed" for that seat.
   const onScreenshot = handoff.makeLobbyCodeVisionReader(
-    () => handoff.observedLobbyCodes[laneIndex] !== undefined,
+    () => handoff.observedLobbyCodes[participantIndex] !== undefined,
     (observed) => {
-      handoff.observedLobbyCodes[laneIndex] = observed;
+      handoff.observedLobbyCodes[participantIndex] = observed;
     },
   );
   const startedAt = deps.now();
   const outcome = await runCuaLane(followerSpec, {
-    ...deps.laneDeps,
+    ...deps.runDeps,
     appUrl: deps.publicAppUrl,
     onObservedUrl,
     onScreenshot,
@@ -424,6 +428,6 @@ export async function runFollowerLane(
     outcome,
     startedAt,
     endedAt,
-    route: handoff.observedFinalUrls[laneIndex] ?? deps.publicAppUrl,
+    route: handoff.observedFinalUrls[participantIndex] ?? deps.publicAppUrl,
   };
 }

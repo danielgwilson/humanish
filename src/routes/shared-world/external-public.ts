@@ -9,21 +9,21 @@ import { redactText, toErrorMessage } from "../../evidence/redaction.js";
 import { mapWithConcurrency } from "../../run/concurrency.js";
 import { buildConcurrentSharedWorldBundle, judgeSharedWorldRun } from "./bundle.js";
 import { drainExternalComms } from "./comms.js";
-import { LobbyHandoff, runFollowerLane, runHostLane, type HandoffSeatDeps } from "./handoff.js";
+import { LobbyHandoff, runFollower, runHost, type HandoffParticipantDeps } from "./handoff.js";
 import { readLobbyCodeFromFrame } from "./lobby-code.js";
 import { hostOriginDigest } from "./provenance.js";
-import { seatLaneDeps, startSeatFlush } from "./seats.js";
+import { participantRunDeps, startParticipantFlush } from "./seats.js";
 import type {
-  ActorLaneResult,
+  ActorRunResult,
   ConcurrentBundleArgs,
   ExternalCommsWiring,
-  LiveSeats,
+  LiveParticipants,
   PlaneContext,
 } from "./types.js";
 
 /** What the external-public plane hands back to the orchestrator. */
 export interface ExternalPublicPlaneOutcome {
-  actorResults: ActorLaneResult[];
+  actorResults: ActorRunResult[];
   runError: string | undefined;
   publicOriginDigest: string | undefined;
   lobbyConvergenceDigest: string | undefined;
@@ -46,7 +46,7 @@ export function declaredOriginDigestOf(publicAppUrl: string): string | undefined
 
 export async function runExternalPublicPlane(
   ctx: PlaneContext,
-  live: LiveSeats,
+  live: LiveParticipants,
   inbox: ExternalCommsWiring | undefined,
 ): Promise<ExternalPublicPlaneOutcome> {
   const { plan, hooks, actorSpecs, concurrency, warnings } = ctx;
@@ -57,7 +57,7 @@ export async function runExternalPublicPlane(
   const publicAppUrl = plan.plane.kind === "external-public" ? plan.plane.appUrl : "";
   const declaredOriginDigest = declaredOriginDigestOf(publicAppUrl);
   const handoff = new LobbyHandoff({
-    seatCount: participants.length,
+    participantCount: participants.length,
     timeoutMs: ctx.timeoutMs,
     deadlineMs: hooks.handoffDeadlineMs,
     scrubKnownValues: ctx.scrubKnownValues,
@@ -66,9 +66,9 @@ export async function runExternalPublicPlane(
     readLobbyCode: hooks.readLobbyCodeFromFrame ?? readLobbyCodeFromFrame,
     openaiApiKey: ctx.openaiApiKey,
   });
-  const deps: HandoffSeatDeps = {
+  const deps: HandoffParticipantDeps = {
     // Scrub the latched lobby CODE (known once the host resolves it) from ALL narration.
-    laneDeps: seatLaneDeps(ctx, live, handoff.scrub),
+    runDeps: participantRunDeps(ctx, live, handoff.scrub),
     publicAppUrl,
     inbox,
     now: ctx.now,
@@ -105,38 +105,38 @@ export async function runExternalPublicPlane(
     ]);
     await ctx.input.onObserverReady(live.observer);
   }
-  startSeatFlush(ctx, live, inProgressBundle);
+  startParticipantFlush(ctx, live, inProgressBundle);
 
   // The host-first handoff barrier.
   handoff.startDeadline();
-  let actorResults: ActorLaneResult[] = [];
+  let actorResults: ActorRunResult[] = [];
   let runError: string | undefined;
   let commsArtifactPath: string | undefined;
-  // Split the roster into the designated host lane and the followers, preserving each follower's
-  // ORIGINAL lane index so results land back in lane order (validation guarantees EXACTLY ONE host).
-  const hostLaneIndex = participants.findIndex((participant) => participant.host === true);
+  // Split the roster into the designated host and the followers, preserving each follower's
+  // ORIGINAL plan index so results land back in plan order (validation guarantees EXACTLY ONE host).
+  const hostIndex = participants.findIndex((participant) => participant.host === true);
   const followerEntries = actorSpecs
     .map((spec, index) => ({ spec, index }))
-    .filter(({ index }) => index !== hostLaneIndex);
-  const laneResults: ActorLaneResult[] = new Array(actorSpecs.length);
+    .filter(({ index }) => index !== hostIndex);
+  const orderedResults: ActorRunResult[] = new Array(actorSpecs.length);
   try {
     const hostPromise =
-      hostLaneIndex >= 0 && actorSpecs[hostLaneIndex] !== undefined
-        ? runHostLane(handoff, deps, actorSpecs[hostLaneIndex]!, hostLaneIndex)
+      hostIndex >= 0 && actorSpecs[hostIndex] !== undefined
+        ? runHost(handoff, deps, actorSpecs[hostIndex]!, hostIndex)
         : undefined;
     const followerResultsPromise = mapWithConcurrency(
       followerEntries,
       Math.max(1, concurrency - 1),
-      ({ spec, index }) => runFollowerLane(handoff, deps, spec, index),
+      ({ spec, index }) => runFollower(handoff, deps, spec, index),
     );
     const [hostResult, followerResults] = await Promise.all([hostPromise, followerResultsPromise]);
-    if (hostResult !== undefined && hostLaneIndex >= 0) {
-      laneResults[hostLaneIndex] = hostResult;
+    if (hostResult !== undefined && hostIndex >= 0) {
+      orderedResults[hostIndex] = hostResult;
     }
     followerEntries.forEach((entry, i) => {
-      laneResults[entry.index] = followerResults[i]!;
+      orderedResults[entry.index] = followerResults[i]!;
     });
-    actorResults = laneResults;
+    actorResults = orderedResults;
   } catch (error) {
     runError = redactText(handoff.scrub(toErrorMessage(error)));
     warnings.push(

@@ -94,7 +94,7 @@ const LOBBY_CODE_VISION_PROMPT =
 // tried and could NOT read it. reasoning.effort stays "low" (minimal) and the output budget is small
 // but comfortably clear of the "incomplete on reasoning overflow" edge. Kept on the same account/key
 // as the actor; the same full-fidelity frame is already sent to this API by the CU provider, so this
-// adds no new data-exposure surface. See onScreenshot in runHostLane.
+// adds no new data-exposure surface. See onScreenshot in runHost.
 const LOBBY_CODE_VISION_MODEL = "gpt-5.5";
 
 // Output-token budget for the read. The answer is 6 chars, but leave clear margin over any low-effort

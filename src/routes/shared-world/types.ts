@@ -165,8 +165,8 @@ export interface SubjectDesktopUsage {
   killed: boolean;
 }
 
-/** One actor lane's measured run (internal). */
-export interface ActorLaneResult {
+/** One actor's measured run (internal). */
+export interface ActorRunResult {
   spec: DesktopParticipantRun;
   outcome: LaneRunOutcome;
   startedAt: number;
@@ -214,7 +214,7 @@ export interface PlaneContext {
  * What the seats feed while they run. A plane sets the attached Observer and starts the trace
  * flush; the runtime stream hooks append stream URLs; the orchestrator reads all three at finish.
  */
-export interface LiveSeats {
+export interface LiveParticipants {
   observer?: ObserverResult & { ok: true };
   flush?: LiveTraceFlush;
   readonly streamUrls: ObserverRuntimeStreamUrl[];
@@ -241,7 +241,7 @@ export interface ConcurrentBundleArgs {
   runId: string;
   source: RunBundle["source"];
   actorSpecs: DesktopParticipantRun[];
-  actorResults: ActorLaneResult[];
+  actorResults: ActorRunResult[];
   stateSnapshots: SharedWorldStateSnapshot[];
   subject: RunSubjectProvenance;
   seedDigest: string;
@@ -268,7 +268,7 @@ export interface ConcurrentBundleArgs {
 
 /** What the plane that ran reports to the finish. A plane leaves the fields it has no part in unset. */
 export interface PlaneResults {
-  actorResults: ActorLaneResult[];
+  actorResults: ActorRunResult[];
   runError: string | undefined;
   subjectCommit: string | undefined;
   subjectSandboxId: string | undefined;
