@@ -8,6 +8,7 @@ import {
 } from "../../lab/adapter-extension.js";
 import { attachObserverRuntimeStreamUrls, type ObserverResult } from "../../observer/render.js";
 import type { RunSubjectProvenance } from "../../run/bundle.js";
+import { sharedWorldShortfall } from "../../run/judge.js";
 import { resolveSubjectState } from "../computer-use/lab.js";
 import {
   actorLanePassed,
@@ -115,6 +116,7 @@ function concurrentLabError(args: {
   adapterFailure: string | undefined;
   roleResults: ConcurrentSharedWorldRoleResult[];
   roleCount: number;
+  shortfall: string | undefined;
 }): ConcurrentSharedWorldLabResult["error"] | undefined {
   const { ok, handoffTimedOut, hostHandoffFailure, observer, runError, adapterFailure } = args;
   const { roleResults, roleCount } = args;
@@ -146,6 +148,12 @@ function concurrentLabError(args: {
     return { code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED", message: adapterFailure };
   }
   const passed = roleResults.filter((role) => role.ok).length;
+  if (passed === roleCount && args.shortfall !== undefined) {
+    return {
+      code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED",
+      message: `Concurrent shared-world run did not run coherently. ${args.shortfall}`,
+    };
+  }
   return {
     code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED",
     message: `Concurrent shared-world run did not run coherently: ${passed}/${roleCount} actor(s) reached a terminal, engaged passed session.`,
@@ -283,7 +291,8 @@ export async function finishConcurrentRun(
     attachObserverRuntimeStreamUrls(observer as ObserverResult & { ok: true }, live.streamUrls);
   }
 
-  // Concurrent "ok": every actor must produce a terminal, engaged PASSED session. This is a
+  // Concurrent "ok": every actor must produce a terminal, engaged PASSED session, and the seats
+  // must show the concurrency verify requires of a pass (judgeSharedWorld). This is a
   // harness/session-credibility gate, not mission-completion proof; a failed actor trace cannot
   // make the route green just because the harness got a terminal.
   const adapterFailure = adapterScoreFailureMessage(bundle);
@@ -307,6 +316,7 @@ export async function finishConcurrentRun(
     adapterFailure,
     roleResults,
     roleCount: participantCount,
+    shortfall: dryRun ? undefined : sharedWorldShortfall(judgment.world),
   });
 
   return {

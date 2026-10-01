@@ -15,9 +15,11 @@ import {
   participantPassed,
   participantStatus,
   selfReportedBlocker,
+  sharedWorldShortfall,
   verdictForStatus,
   type ParticipantFacts,
   type SessionEnding,
+  type SharedWorldFacts,
 } from "../../src/run/judge.js";
 
 const ending = (overrides: Partial<SessionEnding> = {}): SessionEnding => ({
@@ -314,17 +316,44 @@ describe("judgeSharedWorld", () => {
     expect(judge([passed()], 2)).toMatchObject({ verdict: "fail", allPassed: false });
   });
 
-  it("records the world facts without reading them for the verdict", () => {
-    const quiet = { overlap: false, lobbyConvergence: false };
-    expect(
-      judgeSharedWorld({
-        dryRun: false,
-        inProgress: false,
-        expected: 1,
-        participants: [passed()],
-        world: quiet,
-      }),
-    ).toEqual({ verdict: "pass", allPassed: true, world: quiet });
+  // What verify's shared-world check requires of a pass, per plane: provisioned needs overlap and a
+  // state change under it; external-public needs overlap only. Lobby convergence is not read.
+  it.each<[string, SharedWorldFacts, boolean]>([
+    [
+      "provisioned overlap with a state change",
+      { overlap: true, stateChangedUnderOverlap: true },
+      true,
+    ],
+    [
+      "provisioned overlap without a state change",
+      { overlap: true, stateChangedUnderOverlap: false },
+      false,
+    ],
+    [
+      "provisioned seats that never overlapped",
+      { overlap: false, stateChangedUnderOverlap: false },
+      false,
+    ],
+    [
+      "external overlap without lobby convergence",
+      { overlap: true, lobbyConvergence: false },
+      true,
+    ],
+    ["external seats that never overlapped", { overlap: false, lobbyConvergence: true }, false],
+  ])("gates a pass on the world facts: %s", (_name, facts, passes) => {
+    const judgment = judgeSharedWorld({
+      dryRun: false,
+      inProgress: false,
+      expected: 2,
+      participants: [passed(), passed()],
+      world: facts,
+    });
+    expect(judgment).toEqual({
+      verdict: passes ? "pass" : "fail",
+      allPassed: passes,
+      world: facts,
+    });
+    expect(sharedWorldShortfall(facts) === undefined).toBe(passes);
   });
 
   it("holds dry and in-progress runs as contracts", () => {

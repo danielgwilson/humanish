@@ -122,7 +122,10 @@ export function verdictForStatus(status: ActorStatus): Verdict {
 /** A run's judgment: the review verdict, and whether every expected participant passed. */
 export interface Judgment {
   verdict: Verdict;
-  /** Every expected participant passed. A dry run's participants pass as contracts. */
+  /**
+   * Every expected participant passed; on shared-world the seats also showed the concurrency
+   * verify requires. A dry run's participants pass as contracts.
+   */
   allPassed: boolean;
 }
 
@@ -251,9 +254,24 @@ export interface SharedWorldJudgment extends Judgment {
 }
 
 /**
- * A shared-world run: it passes only when every expected seat passed, and otherwise fails (this
- * route has no timed_out verdict). A dry run and a run still in progress are contracts. The world
- * facts are recorded with the verdict; the verdict does not read them.
+ * Why a shared-world run whose seats all passed still fails, or undefined when its world facts
+ * meet what verify's shared-world check requires of a pass: two seats live at the same time and,
+ * on the provisioned plane, a shared-state change at or after the first overlap started.
+ */
+export function sharedWorldShortfall(world: SharedWorldFacts): string | undefined {
+  if (!world.overlap) {
+    return "No two seats were live at the same time, so the run shows no concurrency.";
+  }
+  if (world.stateChangedUnderOverlap === false) {
+    return "The shared state did not change after the seats started overlapping.";
+  }
+  return undefined;
+}
+
+/**
+ * A shared-world run: it passes only when every expected seat passed and the world facts have no
+ * shortfall, and otherwise fails (this route has no timed_out verdict). A dry run and a run still
+ * in progress are contracts. Lobby convergence is recorded but not read.
  */
 export function judgeSharedWorld(args: {
   dryRun: boolean;
@@ -262,9 +280,11 @@ export function judgeSharedWorld(args: {
   participants: ParticipantFacts[];
   world: SharedWorldFacts;
 }): SharedWorldJudgment {
-  const allPassed =
-    args.participants.length === args.expected && args.participants.every(participantPassed);
+  const passed =
+    args.participants.length === args.expected &&
+    args.participants.every(participantPassed) &&
+    sharedWorldShortfall(args.world) === undefined;
   const verdict: Verdict =
-    args.dryRun || args.inProgress ? "contract_proof_only" : allPassed ? "pass" : "fail";
-  return { verdict, allPassed: args.dryRun || allPassed, world: args.world };
+    args.dryRun || args.inProgress ? "contract_proof_only" : passed ? "pass" : "fail";
+  return { verdict, allPassed: args.dryRun || passed, world: args.world };
 }

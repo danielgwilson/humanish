@@ -18,6 +18,10 @@ real public app possible without any persona-to-persona messaging.
 | Concurrency-on-pass | ≥2 overlapping windows AND a state delta at/after an overlap start   | ≥2 overlapping windows ONLY (temporal co-occupancy)                                        |
 | Extra proof         | none                                                                 | `lobbyConvergenceDigest` (all seats on one `/lobby/CODE`)                                  |
 
+The run's own verdict applies the same concurrency-on-pass rule per plane (`judgeSharedWorld` in
+`src/run/judge.ts`), so a run whose seats all passed but missed it reads fail and the lab exits
+non-zero.
+
 In short: getHost = harness-minted host + synthetic-seeded attestation + authoritative
 in-sandbox checkpoint `stateSeries`. external-public = operator-attested public origin + NO synthetic
 claim + NO authoritative shared-state proof (concurrency evidenced by temporal co-occupancy +
