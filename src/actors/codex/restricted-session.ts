@@ -7,8 +7,6 @@ import {
   readdir,
   realpath,
   rm,
-  stat,
-  symlink,
   unlink,
   writeFile,
 } from "node:fs/promises";
@@ -18,14 +16,16 @@ import type { CuaProviderFailurePhase } from "../computer-use/provider-error.js"
 import type { ReasoningEffort } from "../reasoning-effort.js";
 import { admittedCodexCliVersions } from "./qualified-versions.js";
 import {
+  launchAdmittedAppServer,
+  type LaunchSettings,
+  type LaunchState,
+} from "./restricted-launch.js";
+import {
   CODEX_IMAGE,
   CODEX_MAX_OUTPUT_BYTES,
   CODEX_MAX_REQUEST_BYTES,
   RESTRICTED_CODEX_ANALYSIS_MODELS,
-  admitsRestrictedCodexConfig,
-  admitsRestrictedCodexThread,
   codexRecord,
-  restrictedCodexConfig,
   restrictedCodexFailure,
   restrictedCodexRequestError,
   type RestrictedCodexAnalysisErrorCode,
@@ -38,7 +38,6 @@ import {
   RestrictedCodexStop,
   RestrictedCodexTransport,
   hasUnclosedChildren,
-  ownCodexProcess,
   retainUnclosedChild,
   type RestrictedCodexSpawn,
 } from "./restricted-transport.js";
@@ -78,13 +77,6 @@ export interface RestrictedCodexSessionOptions {
       call(args: unknown): Promise<string>;
     };
   };
-}
-
-function configArguments(overrides: Record<string, unknown>): string[] {
-  return Object.entries(overrides).flatMap(([key, value]) => [
-    "-c",
-    `${key}=${JSON.stringify(value)}`,
-  ]);
 }
 
 function validParticipant(options: RestrictedCodexSessionOptions["participant"]): boolean {
@@ -193,23 +185,6 @@ async function writeEvidenceImages(
   return input;
 }
 
-/** The host's Codex auth.json, which a private home links to instead of copying. */
-async function hostAuthFile(
-  options: RestrictedCodexSessionOptions,
-  sourceEnv: NodeJS.ProcessEnv,
-): Promise<string> {
-  const authHome =
-    options.authHome ?? sourceEnv.CODEX_HOME ?? path.join(sourceEnv.HOME ?? homedir(), ".codex");
-  if (!path.isAbsolute(authHome)) throw new RestrictedCodexStop("codex_unsupported_auth");
-  try {
-    const authFile = await realpath(path.join(authHome, "auth.json"));
-    if (!(await stat(authFile)).isFile()) throw new Error();
-    return authFile;
-  } catch {
-    throw new RestrictedCodexStop("codex_login_required");
-  }
-}
-
 /** The transport's frame limit: the output or request cap, or this request's payload plus 1 MiB. */
 function requestFrameLimit(request: RestrictedCodexRequest, participant: boolean): number {
   return Math.max(
@@ -287,375 +262,300 @@ export interface RestrictedCodexSession {
   close(): Promise<boolean>;
 }
 
+/** What a session reads and never changes once it is created. */
+interface SessionSettings extends LaunchSettings {
+  readonly options: RestrictedCodexSessionOptions;
+  readonly arch: string;
+  readonly participant: RestrictedCodexSessionOptions["participant"];
+}
+
+/**
+ * What changes after a session is created and more than one of its functions reads: what the
+ * launch records (LaunchState, restricted-launch.ts), and what each request carries forward.
+ */
+interface SessionState extends LaunchState {
+  /** What the last completed turn reported, the next turn's usage baseline (request to request). */
+  previousUsage: RestrictedCodexUsage | null;
+  /** Tool-call ids already answered, carried across turns (each request's turn). */
+  toolCallIds: Set<string>;
+  /** The request in flight's usage so far (its turn; the session's getters). */
+  pendingUsage: RestrictedCodexUsage | undefined;
+  pendingInferenceUsage: RestrictedCodexUsage[] | undefined;
+  /** The request in flight's deadline (each request; close stops it). */
+  activeDeadline: RestrictedCodexDeadline | undefined;
+  /** The started turn teardown interrupts (each request; teardown). */
+  interrupt: { threadId: string; turnId: string } | undefined;
+  /** Set by close and teardown; admission refuses every later request. */
+  closed: boolean;
+  /** False once a request reported codex_cleanup_failed (each request; teardown). */
+  cleanupTrusted: boolean;
+}
+
+/** Teardown: close the app-server, unlink the auth link and remove the task directory. */
+async function disposeSession(settings: SessionSettings, state: SessionState): Promise<boolean> {
+  // Each field is read at its use, after the awaits before it, as the session always has.
+  let cleaned = state.cleanupTrusted;
+  if (state.transport) {
+    cleaned = (await state.transport.close(state.interrupt).catch(() => false)) && cleaned;
+    if (!cleaned) retainUnclosedChild(state.transport!.owned.closed);
+  }
+  let authReplaced = false;
+  if (state.authLink && cleaned) {
+    try {
+      authReplaced = !(await lstat(state.authLink)).isSymbolicLink();
+      if (!authReplaced) await unlink(state.authLink!);
+    } catch (error) {
+      if (codexRecord(error).code !== "ENOENT") cleaned = false;
+    }
+  }
+  // Preserve unexpected login rotation for private recovery, never overwrite host auth.
+  if (authReplaced) {
+    cleaned = false;
+    if (state.work)
+      await preserveUnexpectedAuth(state.work, settings.sourceEnv).catch(() => undefined);
+  }
+  if (state.work && cleaned)
+    await rm(state.work, { recursive: true, force: true }).catch(() => {
+      cleaned = false;
+    });
+  if (state.work && !cleaned && !authReplaced)
+    await writeRecoveryMarker(state.work, settings.sourceEnv, "process_cleanup_unconfirmed").catch(
+      () => undefined,
+    );
+  return cleaned;
+}
+
+/** Turn dispatch: the turn/start request for the evidence and image input. */
+function turnStartParams(
+  settings: SessionSettings,
+  state: SessionState,
+  request: RestrictedCodexRequest,
+  input: Record<string, unknown>[],
+  model: string,
+): Record<string, unknown> {
+  return {
+    threadId: state.threadId,
+    cwd: state.cwd,
+    approvalPolicy: "never",
+    sandboxPolicy: { type: "readOnly" },
+    environments: [],
+    runtimeWorkspaceRoots: [],
+    effort: settings.reasoningEffort,
+    model,
+    outputSchema: request.schema,
+    input,
+  };
+}
+
+/** The request's turn: it reports usage to the session's getters and records the started turn. */
+function newTurn(
+  settings: SessionSettings,
+  state: SessionState,
+  deadline: RestrictedCodexDeadline,
+): RestrictedCodexTurn {
+  const participant = settings.participant;
+  return new RestrictedCodexTurn({
+    deadline,
+    threadId: () => state.threadId,
+    participant: participant !== undefined,
+    tool: () => participant!.tool,
+    usageBaseline: state.previousUsage,
+    toolCallIds: state.toolCallIds,
+    reportUsage: (usage, inference) => {
+      state.pendingUsage = usage;
+      state.pendingInferenceUsage = inference;
+    },
+    turnStarted: (turnId) => {
+      state.interrupt = { threadId: state.threadId!, turnId };
+    },
+  });
+}
+
+/** After a request: the turn's handlers come off the transport. */
+function detachTurn(transport: RestrictedCodexTransport | undefined): void {
+  if (transport) transport.onNotification = () => undefined;
+  if (transport) transport.onRequest = undefined;
+  if (transport) transport.onRequestComplete = undefined;
+}
+
+/** Request dispatch: launch on the first request, then one turn; a failed request tears down. */
+async function runTurn(
+  settings: SessionSettings,
+  state: SessionState,
+  dispose: () => Promise<boolean>,
+  request: RestrictedCodexRequest,
+  readinessOnly: boolean,
+): Promise<RestrictedCodexResult> {
+  const participant = settings.participant;
+  const deadline = new RestrictedCodexDeadline(request.timeoutMs, request.signal);
+  state.activeDeadline = deadline;
+  let turn: RestrictedCodexTurn | undefined;
+  let result: RestrictedCodexResult = restrictedCodexFailure("codex_process_failed");
+  let phase: CuaProviderFailurePhase = "startup";
+  try {
+    turn = newTurn(settings, state, deadline);
+    state.pendingUsage = undefined;
+    deadline.check();
+    const frameLimit = requestFrameLimit(request, participant !== undefined);
+    let selectedModel = state.identity?.model;
+    if (!state.transport) {
+      state.transport = await launchAdmittedAppServer(
+        settings,
+        state,
+        request,
+        deadline,
+        frameLimit,
+        (next) => {
+          phase = next;
+        },
+      );
+      selectedModel = state.identity!.model;
+    } else state.transport.beginRequest(deadline, frameLimit);
+    // onNotification ignores events before dispatch and onRequestComplete follows only a host
+    // callback, so wiring both after the first launch's handshake loses nothing.
+    state.transport!.onNotification = turn.onNotification;
+    state.transport!.onRequestComplete = turn.onRequestComplete;
+    if (readinessOnly) result = readinessResult();
+    else {
+      phase = "turn/start";
+      if (participant) state.transport!.onRequest = turn.onRequest;
+      const input: Record<string, unknown>[] = [
+        { type: "text", text: request.evidence, text_elements: [] },
+        ...(await writeEvidenceImages(state.scratch, request.images, deadline)),
+      ];
+      deadline.check();
+      // Even a lost acknowledgment may have dispatched the request. Never claim zero cost.
+      turn.dispatched = true;
+      const reply = await state.transport!.rpc(
+        "turn/start",
+        turnStartParams(settings, state, request, input, selectedModel!),
+      );
+      // acknowledge() and deadline.wait() run in one microtask, so a completion delivered with
+      // the acknowledgment wins over a stop queued close behind it.
+      turn.acknowledge(codexRecord(reply.turn).id);
+      phase = "response";
+      result = await deadline.wait(turn.finished);
+      deadline.check();
+      state.previousUsage = turn.latestUsage;
+      state.interrupt = undefined;
+    }
+  } catch (error) {
+    result = failedRequest(error, deadline, turn, phase);
+  } finally {
+    state.pendingUsage = undefined;
+    state.pendingInferenceUsage = undefined;
+    deadline.close();
+    state.activeDeadline = undefined;
+    detachTurn(state.transport);
+    if (result.errorCode !== null) {
+      if (result.errorCode === "codex_cleanup_failed") state.cleanupTrusted = false;
+      if (!(await dispose()))
+        result = {
+          ...restrictedCodexFailure(
+            "codex_cleanup_failed",
+            turn?.dispatched ?? false,
+            turn?.usage ?? null,
+          ),
+          failurePhase: "cleanup",
+        };
+    }
+  }
+  return withReceiptDetails(result, phase, turn, participant !== undefined);
+}
+
+/** Admission: the refusal a request gets before anything runs, in this order, or none. */
+function refusedRun(
+  settings: SessionSettings,
+  state: SessionState,
+  request: RestrictedCodexRequest,
+  busy: () => boolean,
+): RestrictedCodexResult | undefined {
+  const { operatorAuth, platform, arch } = settings;
+  const error = restrictedCodexRequestError(request, operatorAuth);
+  if (error) return restrictedCodexFailure(error);
+  if (!validParticipant(settings.participant)) return restrictedCodexFailure("invalid_request");
+  const identity = state.identity;
+  if (
+    state.closed ||
+    (identity &&
+      (identity.requestedModel !== request.model || identity.instructions !== request.instructions))
+  )
+    return restrictedCodexFailure("invalid_request");
+  if (busy() || hasUnclosedChildren()) return restrictedCodexFailure("codex_busy");
+  const supportedPlatform = operatorAuth
+    ? restrictedCodexNpmTarget(platform, arch) !== undefined
+    : (platform === "linux" && arch === "x64") || (platform === "darwin" && arch === "arm64");
+  if (!supportedPlatform) return restrictedCodexFailure("codex_unsupported_platform");
+  return undefined;
+}
+
 export function createRestrictedCodexSession(
   options: RestrictedCodexSessionOptions = {},
 ): RestrictedCodexSession {
+  // Option reads keep their old order: platform, arch, env, participant, spawnFn, cliVersions.
   const platform = options.platform ?? process.platform,
     arch = options.arch ?? process.arch;
   const sourceEnv = options.env ?? process.env;
-  const participant = options.participant,
-    operatorAuth = participant?.authMode === "operator";
-  const reasoningEffort = participant?.reasoningEffort ?? "low";
-  const spawnFn: RestrictedCodexSpawn =
-    options.spawnFn ?? ((file, args, settings) => spawn(file, args, settings));
-  let work: string | undefined,
-    authLink: string | undefined,
-    transport: RestrictedCodexTransport | undefined;
-  let threadId: string | undefined,
-    cwd = "",
-    scratch = "";
-  let identity:
-    | { requestedModel: string | undefined; model: string; instructions: string }
-    | undefined;
-  let previousUsage: RestrictedCodexUsage | null = {
-    input: 0,
-    output: 0,
-    cachedInput: 0,
-    cacheWriteInput: 0,
+  const participant = options.participant;
+  const settings: SessionSettings = {
+    options,
+    platform,
+    arch,
+    sourceEnv,
+    participant,
+    operatorAuth: participant?.authMode === "operator",
+    reasoningEffort: participant?.reasoningEffort ?? "low",
+    spawnFn: options.spawnFn ?? ((file, args, spawnOptions) => spawn(file, args, spawnOptions)),
+    admittedVersions: options.cliVersions ?? admittedCodexCliVersions(platform, arch),
   };
-  let pendingUsage: RestrictedCodexUsage | undefined;
-  let pendingInferenceUsage: RestrictedCodexUsage[] | undefined;
-  let resolvedModel: string | undefined;
-  let authentication: "chatgpt-account" | "api-key" | undefined;
-  let cliVersion: string | undefined;
-  const admittedVersions = options.cliVersions ?? admittedCodexCliVersions(platform, arch);
-  let activeDeadline: RestrictedCodexDeadline | undefined;
-  let interrupt: { threadId: string; turnId: string } | undefined;
-  let closed = false,
-    cleanupTrusted = true;
+  const state: SessionState = {
+    work: undefined,
+    authLink: undefined,
+    transport: undefined,
+    threadId: undefined,
+    cwd: "",
+    scratch: "",
+    identity: undefined,
+    previousUsage: { input: 0, output: 0, cachedInput: 0, cacheWriteInput: 0 },
+    toolCallIds: new Set<string>(),
+    pendingUsage: undefined,
+    pendingInferenceUsage: undefined,
+    resolvedModel: undefined,
+    authentication: undefined,
+    cliVersion: undefined,
+    activeDeadline: undefined,
+    interrupt: undefined,
+    closed: false,
+    cleanupTrusted: true,
+  };
   let pending: Promise<RestrictedCodexResult> | undefined,
     closing: Promise<boolean> | undefined,
     disposing: Promise<boolean> | undefined;
-  const toolCallIds = new Set<string>();
-
   const dispose = (): Promise<boolean> => {
-    closed = true;
-    return (disposing ??= (async () => {
-      let cleaned = cleanupTrusted;
-      if (transport) {
-        cleaned = (await transport.close(interrupt).catch(() => false)) && cleaned;
-        if (!cleaned) retainUnclosedChild(transport.owned.closed);
-      }
-      let authReplaced = false;
-      if (authLink && cleaned) {
-        try {
-          authReplaced = !(await lstat(authLink)).isSymbolicLink();
-          if (!authReplaced) await unlink(authLink);
-        } catch (error) {
-          if (codexRecord(error).code !== "ENOENT") cleaned = false;
-        }
-      }
-      // Preserve unexpected login rotation for private recovery, never overwrite host auth.
-      if (authReplaced) {
-        cleaned = false;
-        if (work) await preserveUnexpectedAuth(work, sourceEnv).catch(() => undefined);
-      }
-      if (work && cleaned)
-        await rm(work, { recursive: true, force: true }).catch(() => {
-          cleaned = false;
-        });
-      if (work && !cleaned && !authReplaced)
-        await writeRecoveryMarker(work, sourceEnv, "process_cleanup_unconfirmed").catch(
-          () => undefined,
-        );
-      return cleaned;
-    })());
+    state.closed = true;
+    return (disposing ??= disposeSession(settings, state));
   };
-
-  /**
-   * The session's one-time launch: a private home, the auth link, the version check and the
-   * spawn, then initialize, config, account, thread and MCP admission. Each piece of state lands
-   * on the session as soon as it exists, so dispose cleans up a launch that fails partway.
-   */
-  async function launchAdmittedAppServer(
-    request: RestrictedCodexRequest,
-    deadline: RestrictedCodexDeadline,
-    frameLimit: number,
-    enter: (phase: CuaProviderFailurePhase) => void,
-  ): Promise<RestrictedCodexTransport> {
-    const file = await resolveExecutable(options, sourceEnv);
-    deadline.check();
-    work = await mkdtemp(path.join(options.tempRoot ?? tmpdir(), "humanish-codex-analysis-"));
-    await chmod(work, 0o700);
-    work = await realpath(work);
-    const home = path.join(work, "home");
-    cwd = path.join(work, "cwd");
-    scratch = path.join(work, "scratch");
-    for (const directory of [home, cwd, scratch]) await mkdir(directory, { mode: 0o700 });
-    const env = childEnvironment(sourceEnv, home, scratch);
-    cliVersion = await checkVersion(
-      file,
-      env,
-      cwd,
-      spawnFn,
-      deadline,
-      admittedVersions,
-      options.cliVersion,
-    );
-    const configMode = {
-      participantCodeMode: participant !== undefined,
-      reasoningEffort,
-      operatorAuth,
-    };
-    const config = restrictedCodexConfig(request.model, configMode),
-      configPath = path.join(home, "config.toml");
-    if (!operatorAuth) {
-      await writeFile(configPath, config.toml, { mode: 0o600, flag: "wx" });
-      const authFile = await hostAuthFile(options, sourceEnv);
-      deadline.check();
-      authLink = path.join(home, "auth.json");
-      await symlink(authFile, authLink);
-    }
-    deadline.check();
-    const appServerArgs = [
-      "app-server",
-      "--strict-config",
-      ...(operatorAuth ? configArguments(config.overrides) : []),
-    ];
-    const owned = ownCodexProcess(
-      spawnFn(file, appServerArgs, {
-        cwd,
-        env: operatorAuth ? { ...sourceEnv } : env,
-        detached: false,
-        stdio: ["pipe", "pipe", "pipe"],
-      }),
-    );
-    const launched = new RestrictedCodexTransport(owned, deadline, frameLimit);
-    transport = launched;
-    enter("initialize");
-    const initialize = await launched.rpc("initialize", {
-      clientInfo: { name: "humanish_analysis", version: "1.0.0" },
-      capabilities: { experimentalApi: true },
-    });
-    if (
-      typeof initialize.userAgent !== "string" ||
-      !initialize.userAgent.includes(`/${cliVersion} `) ||
-      (!operatorAuth && initialize.codexHome !== home) ||
-      initialize.platformOs !== (platform === "darwin" ? "macos" : "linux") ||
-      initialize.platformFamily !== "unix"
-    )
-      throw new RestrictedCodexStop("codex_unsupported_version");
-    launched.notify("initialized", {});
-    enter("config/read");
-    const effective = await launched.rpc("config/read", { includeLayers: true, cwd });
-    if (!admitsRestrictedCodexConfig(effective, configPath, request.model, configMode))
-      throw new RestrictedCodexStop("codex_unsafe_configuration");
-    const configuredModel = codexRecord(effective.config).model;
-    const selectedModel = typeof configuredModel === "string" ? configuredModel : undefined;
-    enter("account/read");
-    const account = await launched.rpc("account/read", { refreshToken: false });
-    if (account.account === null) throw new RestrictedCodexStop("codex_login_required");
-    const accountType = codexRecord(account.account).type;
-    if (
-      (!operatorAuth && accountType !== "chatgpt") ||
-      (operatorAuth && !["chatgpt", "apiKey"].includes(String(accountType))) ||
-      account.requiresOpenaiAuth !== true
-    )
-      throw new RestrictedCodexStop("codex_unsupported_auth");
-    authentication = accountType === "apiKey" ? "api-key" : "chatgpt-account";
-    const mcpServers = codexRecord(codexRecord(effective.config).mcp_servers);
-    const mcpNames = Object.keys(mcpServers);
-    // Request overrides are split literally on dots by Codex. Limit names to
-    // TOML bare-key characters so each override targets the inherited entry.
-    if (mcpNames.length > 100 || mcpNames.some((name) => !/^[A-Za-z0-9_-]{1,200}$/.test(name)))
-      throw new RestrictedCodexStop("codex_unsafe_configuration");
-    const threadConfig = { ...config.overrides };
-    for (const name of mcpNames) threadConfig[`mcp_servers.${name}.enabled`] = false;
-    enter("thread/start");
-    const thread = await launched.rpc("thread/start", {
-      cwd,
-      ephemeral: true,
-      experimentalRawEvents: true,
-      approvalPolicy: "never",
-      sandbox: "read-only",
-      model: selectedModel,
-      modelProvider: "openai",
-      allowProviderModelFallback: false,
-      environments: [],
-      runtimeWorkspaceRoots: [],
-      dynamicTools: participant
-        ? [
-            {
-              type: "function",
-              name: participant.tool.name,
-              description: participant.tool.description,
-              inputSchema: participant.tool.inputSchema,
-            },
-          ]
-        : [],
-      baseInstructions: request.instructions,
-      config: threadConfig,
-    });
-    const returnedModel = codexRecord(thread.thread).model;
-    if (
-      typeof returnedModel !== "string" ||
-      returnedModel.length === 0 ||
-      returnedModel.length > 200 ||
-      (selectedModel !== undefined && returnedModel !== selectedModel) ||
-      !admitsRestrictedCodexThread(thread, returnedModel, cwd, reasoningEffort, cliVersion)
-    )
-      throw new RestrictedCodexStop("codex_unsafe_configuration");
-    resolvedModel = returnedModel;
-    threadId = String(codexRecord(thread.thread).id);
-    if (!operatorAuth) {
-      enter("mcpServerStatus/list");
-      const mcp = await launched.rpc("mcpServerStatus/list", { limit: 100 });
-      if (!Array.isArray(mcp.data) || mcp.data.length !== 0 || mcp.nextCursor !== null)
-        throw new RestrictedCodexStop("codex_unsafe_configuration");
-    }
-    identity = {
-      requestedModel: request.model,
-      model: returnedModel,
-      instructions: request.instructions,
-    };
-    return launched;
-  }
-
-  /** Turn dispatch: the turn/start request for the evidence and image input. */
-  function turnStartParams(
-    request: RestrictedCodexRequest,
-    input: Record<string, unknown>[],
-    model: string,
-  ): Record<string, unknown> {
-    return {
-      threadId,
-      cwd,
-      approvalPolicy: "never",
-      sandboxPolicy: { type: "readOnly" },
-      environments: [],
-      runtimeWorkspaceRoots: [],
-      effort: reasoningEffort,
-      model,
-      outputSchema: request.schema,
-      input,
-    };
-  }
-
-  async function runTurn(
-    request: RestrictedCodexRequest,
-    readinessOnly: boolean,
-  ): Promise<RestrictedCodexResult> {
-    const deadline = new RestrictedCodexDeadline(request.timeoutMs, request.signal);
-    activeDeadline = deadline;
-    let turn: RestrictedCodexTurn | undefined;
-    let result: RestrictedCodexResult = restrictedCodexFailure("codex_process_failed");
-    let phase: CuaProviderFailurePhase = "startup";
-    try {
-      turn = new RestrictedCodexTurn({
-        deadline,
-        threadId: () => threadId,
-        participant: participant !== undefined,
-        tool: () => participant!.tool,
-        usageBaseline: previousUsage,
-        toolCallIds,
-        reportUsage: (usage, inference) => {
-          pendingUsage = usage;
-          pendingInferenceUsage = inference;
-        },
-        turnStarted: (turnId) => {
-          interrupt = { threadId: threadId!, turnId };
-        },
-      });
-      pendingUsage = undefined;
-      deadline.check();
-      const frameLimit = requestFrameLimit(request, participant !== undefined);
-      let selectedModel = identity?.model;
-      if (!transport) {
-        transport = await launchAdmittedAppServer(request, deadline, frameLimit, (next) => {
-          phase = next;
-        });
-        selectedModel = identity!.model;
-      } else transport.beginRequest(deadline, frameLimit);
-      // onNotification ignores events before dispatch and onRequestComplete follows only a host
-      // callback, so wiring both after the first launch's handshake loses nothing.
-      transport.onNotification = turn.onNotification;
-      transport.onRequestComplete = turn.onRequestComplete;
-      if (readinessOnly) result = readinessResult();
-      else {
-        phase = "turn/start";
-        if (participant) transport.onRequest = turn.onRequest;
-        const input: Record<string, unknown>[] = [
-          { type: "text", text: request.evidence, text_elements: [] },
-          ...(await writeEvidenceImages(scratch, request.images, deadline)),
-        ];
-        deadline.check();
-        // Even a lost acknowledgment may have dispatched the request. Never claim zero cost.
-        turn.dispatched = true;
-        const reply = await transport.rpc(
-          "turn/start",
-          turnStartParams(request, input, selectedModel!),
-        );
-        // acknowledge() and deadline.wait() run in one microtask, so a completion delivered with
-        // the acknowledgment wins over a stop queued close behind it.
-        turn.acknowledge(codexRecord(reply.turn).id);
-        phase = "response";
-        result = await deadline.wait(turn.finished);
-        deadline.check();
-        previousUsage = turn.latestUsage;
-        interrupt = undefined;
-      }
-    } catch (error) {
-      result = failedRequest(error, deadline, turn, phase);
-    } finally {
-      pendingUsage = undefined;
-      pendingInferenceUsage = undefined;
-      deadline.close();
-      activeDeadline = undefined;
-      if (transport) transport.onNotification = () => undefined;
-      if (transport) transport.onRequest = undefined;
-      if (transport) transport.onRequestComplete = undefined;
-      if (result.errorCode !== null) {
-        if (result.errorCode === "codex_cleanup_failed") cleanupTrusted = false;
-        if (!(await dispose()))
-          result = {
-            ...restrictedCodexFailure(
-              "codex_cleanup_failed",
-              turn?.dispatched ?? false,
-              turn?.usage ?? null,
-            ),
-            failurePhase: "cleanup",
-          };
-      }
-    }
-    return withReceiptDetails(result, phase, turn, participant !== undefined);
-  }
 
   return {
     get pendingUsage() {
-      return pendingUsage;
+      return state.pendingUsage;
     },
     get pendingInferenceUsage() {
-      return pendingInferenceUsage?.map((item) => ({ ...item }));
+      return state.pendingInferenceUsage?.map((item) => ({ ...item }));
     },
     get resolvedModel() {
-      return resolvedModel;
+      return state.resolvedModel;
     },
     get authentication() {
-      return authentication;
+      return state.authentication;
     },
     get cliVersion() {
-      return cliVersion;
+      return state.cliVersion;
     },
     run(request, readinessOnly = false) {
-      const error = restrictedCodexRequestError(request, operatorAuth);
-      if (error) return Promise.resolve(restrictedCodexFailure(error));
-      if (!validParticipant(participant))
-        return Promise.resolve(restrictedCodexFailure("invalid_request"));
-      if (
-        closed ||
-        (identity &&
-          (identity.requestedModel !== request.model ||
-            identity.instructions !== request.instructions))
-      )
-        return Promise.resolve(restrictedCodexFailure("invalid_request"));
-      if (pending || hasUnclosedChildren())
-        return Promise.resolve(restrictedCodexFailure("codex_busy"));
-      const supportedPlatform = operatorAuth
-        ? restrictedCodexNpmTarget(platform, arch) !== undefined
-        : (platform === "linux" && arch === "x64") || (platform === "darwin" && arch === "arm64");
-      if (!supportedPlatform)
-        return Promise.resolve(restrictedCodexFailure("codex_unsupported_platform"));
-      const task = runTurn(request, readinessOnly);
+      const refusal = refusedRun(settings, state, request, () => pending !== undefined);
+      if (refusal) return Promise.resolve(refusal);
+      const task = runTurn(settings, state, dispose, request, readinessOnly);
       pending = task;
       void task
         .finally(() => {
@@ -665,8 +565,8 @@ export function createRestrictedCodexSession(
       return task;
     },
     close() {
-      closed = true;
-      activeDeadline?.stop("cancelled");
+      state.closed = true;
+      state.activeDeadline?.stop("cancelled");
       return (closing ??= (async () => {
         await pending;
         return dispose();
