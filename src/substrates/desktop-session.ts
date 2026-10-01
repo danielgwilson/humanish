@@ -9,6 +9,8 @@ export type DesktopReleaseResult =
       status: "unconfirmed";
       reason: "release_unavailable" | "invalid_result" | "release_failed";
       error?: unknown;
+      /** Why release is unavailable, when it is not the missing kill method. */
+      detail?: string;
     };
 
 export interface DesktopSession {

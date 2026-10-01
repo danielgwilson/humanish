@@ -14,7 +14,9 @@ import {
 } from "../desktop-session.js";
 import type { LabConfig } from "../../lab/types.js";
 import {
+  E2B_DEBUG_KILL_DETAIL,
   E2BDesktopStartupError,
+  e2bDebugMode,
   isSandboxNotFoundError,
   type E2BDesktopCreateOptions,
   type E2BDesktopModule,
@@ -110,7 +112,8 @@ function boundKill(module: E2BDesktopModule): SandboxKill | undefined {
  * The SDK resolves false for an id it no longer knows (a 404), and a SandboxNotFoundError,
  * recognized by type, means the same. Every other throw is unconfirmed, whatever its message
  * says: the SDK answers a 404 with false before it throws, so "not found" or "404" in a thrown
- * message comes from some other failure, such as a trace id. Never list the account.
+ * message comes from some other failure, such as a trace id. A true in debug mode sent no
+ * request, so it confirms nothing. Never list the account.
  */
 async function killById(
   kill: SandboxKill | undefined,
@@ -118,8 +121,16 @@ async function killById(
   options: { requestTimeoutMs: number },
 ): Promise<Exclude<DesktopReleaseResult, { status: "retained" }>> {
   if (kill === undefined) return { status: "unconfirmed", reason: "release_unavailable" };
+  // The SDK reads the variable when the call starts, so read it at the same point.
+  const debug = e2bDebugMode();
   try {
     const result: unknown = await kill(sandboxId, options);
+    if (result === true && debug)
+      return {
+        status: "unconfirmed",
+        reason: "release_unavailable",
+        detail: E2B_DEBUG_KILL_DETAIL,
+      };
     if (result === true) return { status: "released", reason: "terminated" };
     if (result === false) return { status: "released", reason: "already_gone" };
     return { status: "unconfirmed", reason: "invalid_result" };
@@ -169,7 +180,10 @@ export function readE2BRelease(
     case "release_unavailable":
       return {
         released: false,
-        warning: `Installed @e2b/desktop SDK does not expose Sandbox.kill; server-side kill-on-timeout will reclaim the ${label.toLowerCase()}.`,
+        warning:
+          result.detail === undefined
+            ? `Installed @e2b/desktop SDK does not expose Sandbox.kill; server-side kill-on-timeout will reclaim the ${label.toLowerCase()}.`
+            : `${label} release is unconfirmed: ${result.detail}. If it exists, server-side kill-on-timeout will reclaim it.`,
       };
     case "release_failed":
       return {
@@ -182,6 +196,13 @@ export function readE2BRelease(
         warning: `${label} teardown returned an unexpected result; release is unconfirmed and server-side kill-on-timeout remains the backstop.`,
       };
   }
+}
+
+/** A release_unavailable result as one lowercase line, for routes and reclaim that report it. */
+export function releaseUnavailableDetail(detail: string | undefined): string {
+  return detail === undefined
+    ? "installed @e2b/desktop SDK does not expose Sandbox.kill; server-side kill-on-timeout will reclaim the sandbox"
+    : `${detail}; if the sandbox exists, server-side kill-on-timeout will reclaim it`;
 }
 
 /** Reclaim's persisted outcome; run/reclaim.ts writes these strings. */
@@ -203,11 +224,7 @@ export async function destroyE2BSandbox(
     return { state: released.reason === "terminated" ? "killed" : "already-gone" };
   switch (released.reason) {
     case "release_unavailable":
-      return {
-        state: "kill-failed",
-        detail:
-          "installed @e2b/desktop SDK does not expose Sandbox.kill; server-side kill-on-timeout will reclaim the sandbox",
-      };
+      return { state: "kill-failed", detail: releaseUnavailableDetail(released.detail) };
     case "invalid_result":
       return {
         state: "kill-failed",

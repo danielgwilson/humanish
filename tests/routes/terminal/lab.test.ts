@@ -390,6 +390,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
   });
   afterEach(async () => {
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
     await rm(cwd, { recursive: true, force: true });
   });
 
@@ -466,6 +467,34 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     );
     expect(ledgers.cleanup).toMatchObject({ killed: false, remaining: -1 });
     expect((await verifyRun(cwd, result.runId)).ok).toBe(false);
+  });
+
+  it("records guarded startup cleanup unconfirmed when E2B_DEBUG makes kill return true", async () => {
+    vi.stubEnv("E2B_DEBUG", "true");
+    const probe = guardedStartupFailure("Xvfb", true);
+    const result = await runTerminalProductLab({
+      cwd,
+      config: liveConfig(),
+      dryRun: false,
+      open: false,
+      hooks: {
+        env: baseEnv(),
+        loadModule: async () => probe.module,
+      },
+    });
+    expect(result.error?.code).toBe("HUMANISH_TERMINAL_LAB_CLEANUP_UNPROVEN");
+    expect(probe.killed).toEqual([1]);
+    const ledgers = JSON.parse(
+      await readFile(
+        path.join(cwd, ".humanish", "runs", result.runId, "terminal-ledgers.json"),
+        "utf8",
+      ),
+    );
+    expect(ledgers.cleanup).toMatchObject({ killed: false, remaining: -1 });
+    expect(ledgers.cleanup.reason).toContain("E2B_DEBUG=true");
+    const events = JSON.stringify(ledgers.lifecycle);
+    expect(events).toContain("terminal-lab.cleanup.unconfirmed");
+    expect(events).not.toContain("terminal-lab.cleanup.killed");
   });
 
   it("does not infer allocation absence when create rejects before returning a handle", async () => {

@@ -12,10 +12,11 @@ import {
   prepareSelectedOutputDirectory,
   type PreparedOutputRoot,
 } from "../../../src/run/contained-output.js";
-import type {
-  E2BDesktopCreateOptions,
-  E2BDesktopModule,
-  E2BDesktopSandbox,
+import {
+  e2bDebugMode,
+  type E2BDesktopCreateOptions,
+  type E2BDesktopModule,
+  type E2BDesktopSandbox,
 } from "../../../src/substrates/e2b/sdk.js";
 import {
   acquireE2BDesktopSandbox,
@@ -437,5 +438,60 @@ describe("E2B sandbox creation", () => {
       if (/\bSandbox\.create\s*\(/.test(code)) callers.push(path.join("src", file));
     }
     expect(callers).toEqual([path.join("src", "substrates", "e2b", "sandbox.ts")]);
+  });
+});
+
+// In debug mode the SDK's Sandbox.kill returns true without sending a request (e2b 2.49.0).
+describe("E2B debug mode", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it.each([
+    ["true", true],
+    ["TRUE", true],
+    ["True", true],
+    ["false", false],
+    ["1", false],
+    ["", false],
+  ])("reads E2B_DEBUG=%j the way the SDK does", (value, debug) => {
+    expect(e2bDebugMode({ E2B_DEBUG: value })).toBe(debug);
+  });
+
+  it("is off when E2B_DEBUG is unset", () => {
+    expect(e2bDebugMode({})).toBe(false);
+  });
+
+  it("reads a true kill as unconfirmed, naming the variable", async () => {
+    const f = fixture(true);
+    const acquired = await acquire(f.module, { apiKey: "synthetic" });
+    vi.stubEnv("E2B_DEBUG", "true");
+    expect(await acquired.allocation.close()).toEqual({
+      status: "unconfirmed",
+      reason: "release_unavailable",
+      detail: expect.stringContaining("E2B_DEBUG=true"),
+    });
+    expect(f.kill).toHaveBeenCalledTimes(1);
+  });
+
+  it("records a true kill as kill-failed for reclaim", async () => {
+    vi.stubEnv("E2B_DEBUG", "true");
+    const module = { Sandbox: { create: vi.fn(), kill: async () => true } };
+    expect(
+      await destroyE2BSandbox(module as unknown as E2BDesktopModule, "sb-1", {
+        requestTimeoutMs: 5_000,
+      }),
+    ).toEqual({ state: "kill-failed", detail: expect.stringContaining("E2B_DEBUG=true") });
+  });
+
+  it("warns that the release is unconfirmed and why", () => {
+    const reading = readE2BRelease(
+      { status: "unconfirmed", reason: "release_unavailable", detail: "E2B_DEBUG=true detail" },
+      { label: "Subject sandbox", scrub: (text) => text },
+    );
+    expect(reading.released).toBe(false);
+    expect(reading.warning).toMatch(
+      /^Subject sandbox release is unconfirmed: E2B_DEBUG=true detail\./,
+    );
   });
 });

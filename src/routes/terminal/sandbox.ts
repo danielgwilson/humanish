@@ -5,6 +5,7 @@ import {
   isSandboxNotFoundError,
   type E2BDesktopModule,
 } from "../../substrates/e2b/sdk.js";
+import { releaseUnavailableDetail } from "../../substrates/e2b/sandbox.js";
 import type { TerminalLedgers } from "./types.js";
 
 /**
@@ -23,6 +24,8 @@ export async function teardownSandbox(args: {
   /** For the Sandbox.getInfo(id) re-check only. */
   sandboxModule: E2BDesktopModule | undefined;
   startupCleanup?: E2BDesktopStartupError["cleanup"];
+  /** Why the startup guard's cleanup is unconfirmed, when it knows. */
+  startupCleanupDetail?: string | undefined;
   requestTimeoutMs: number;
   sanitize: (text: string) => string;
   recordLifecycle: (event: string, message: string) => void;
@@ -32,6 +35,7 @@ export async function teardownSandbox(args: {
     allocation,
     sandboxModule,
     startupCleanup,
+    startupCleanupDetail,
     requestTimeoutMs,
     sanitize,
     recordLifecycle,
@@ -47,7 +51,7 @@ export async function teardownSandbox(args: {
     }
     const reason =
       startupCleanup === "unconfirmed"
-        ? "desktop startup guard could not confirm cleanup of its acquired sandbox; provider timeout remains the backstop"
+        ? `desktop startup guard could not confirm cleanup of its acquired sandbox${startupCleanupDetail === undefined ? "" : ` (${startupCleanupDetail})`}; provider timeout remains the backstop`
         : "create did not return a sandbox; the participant has no acquired handle and cannot establish allocation or cleanup";
     recordLifecycle("terminal-lab.cleanup.unconfirmed", reason);
     return { killed: false, remaining: -1, reason };
@@ -56,12 +60,7 @@ export async function teardownSandbox(args: {
   const released = await allocation.close();
   if (released.status !== "released") {
     if (released.status === "unconfirmed" && released.reason === "release_unavailable") {
-      return {
-        killed: false,
-        remaining: -1,
-        reason:
-          "installed @e2b/desktop SDK does not expose Sandbox.kill; server-side kill-on-timeout will reclaim the sandbox",
-      };
+      return { killed: false, remaining: -1, reason: releaseUnavailableDetail(released.detail) };
     }
     if (released.status === "unconfirmed" && released.reason === "release_failed") {
       const sanitizedError = sanitize(toErrorMessage(released.error));

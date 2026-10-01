@@ -79,6 +79,7 @@ function probe(
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
+  vi.unstubAllEnvs();
 });
 
 describe("installed desktop SDK cleanup compatibility", () => {
@@ -231,5 +232,26 @@ describe("installed desktop SDK cleanup compatibility", () => {
     expect(await desktop.kill(teardownOptions)).toBe(false);
     expect(calls).toEqual([teardownOptions]);
     expect(allocation).not.toHaveBeenCalled();
+  });
+});
+
+describe("installed desktop SDK cleanup in E2B debug mode", () => {
+  it("reads the SDK's debug-mode true as unconfirmed cleanup, naming E2B_DEBUG", async () => {
+    vi.stubEnv("E2B_DEBUG", "true");
+    const p = probe({
+      command: async () => {
+        throw new Error("HTTP 503 synthetic startup failure");
+      },
+      // The installed SDK's own kill, which in debug mode returns true before any request.
+      kill: (_call, opts) => SdkDesktop.kill("sbx-debug", opts),
+    });
+    const error = await p.module.Sandbox.create(options).catch((value: unknown) => value);
+    expect(error).toMatchObject({
+      cleanup: "unconfirmed",
+      cleanupDetail: expect.stringContaining("E2B_DEBUG=true"),
+    });
+    expect(isTransientE2BError(error)).toBe(false);
+    expect(p.killCalls).toHaveLength(1);
+    expect(p.allocation).not.toHaveBeenCalled();
   });
 });
