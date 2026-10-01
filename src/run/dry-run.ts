@@ -135,7 +135,7 @@ async function runDryRunInScope(options: RunOptions, scope: RunScope): Promise<R
       {
         at: createdAt,
         event: "run.created",
-        message: `Synthetic dry-run contract bundle created with ${participants} sim${participants === 1 ? "" : "s"}.`,
+        message: `Synthetic dry-run contract bundle created with ${participants} simulated participant${participants === 1 ? "" : "s"}.`,
       },
       {
         at: createdAt,
@@ -270,7 +270,7 @@ const SYNTHETIC_STREAM_TEMPLATES = [
     label: "UI journey",
     currentStep: "Route and viewport contract captured",
     summary:
-      "Browser lane reserved for VNC playback, screenshots, route state, and interaction trace.",
+      "Simulated browser participant reserved for VNC playback, screenshots, route state, and interaction trace.",
     tail: "open target app\nresolve first-run route\ncapture viewport state\nrecord interaction trace",
     viewport: { width: 1440, height: 960, deviceScaleFactor: 1 },
   },
@@ -280,7 +280,7 @@ const SYNTHETIC_STREAM_TEMPLATES = [
     label: "CLI actor",
     currentStep: "Command transcript contract captured",
     summary:
-      "CLI lane reserved for command-by-command persona runs with stdout/stderr and artifact links.",
+      "Simulated CLI participant reserved for command-by-command persona runs with stdout/stderr and artifact links.",
     // Every command in a shipped sample tail must be one the CLI actually accepts: participants
     // read and run them. tests/surface/shipped-command-strings.test.ts checks this against the
     // command table.
@@ -293,7 +293,7 @@ const SYNTHETIC_STREAM_TEMPLATES = [
     label: "TUI actor",
     currentStep: "Terminal UI frame contract captured",
     summary:
-      "TUI lane reserved for PTY bytes, ANSI rendering, focus replay, and optional assisted attach.",
+      "Simulated TUI participant reserved for PTY bytes, ANSI rendering, focus replay, and optional assisted attach.",
     tail: "\u001b[2mhumanish TUI frame\u001b[0m\n> persona: skeptical-power-user\n> scenario: onboarding-regression\nstatus: awaiting live PTY transport",
     viewport: undefined,
   },
@@ -303,7 +303,7 @@ const SYNTHETIC_STREAM_TEMPLATES = [
     label: "Codex UI",
     currentStep: "App-server embed contract captured",
     summary:
-      "Codex UI lane reserved for app-server sessions that can be watched beside terminal evidence.",
+      "Simulated Codex UI participant reserved for app-server sessions that can be watched beside terminal evidence.",
     tail: "codex-app-server session contract\nstate: not_connected\nembed: pending provider URL\nreceipts: planned",
     viewport: { width: 1280, height: 900, deviceScaleFactor: 1 },
   },

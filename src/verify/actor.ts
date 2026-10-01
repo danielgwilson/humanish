@@ -113,7 +113,7 @@ export async function validateTerminalProductEvidence(
     const tracePath = traceArtifact?.path ?? "actor.json";
     const trace = await readSafeRunArtifactJson(runPaths, tracePath);
     if (!isRecord(trace) || trace.lane !== "terminal") {
-      findings.push(`${stream.id} missing terminal-lane actor trace`);
+      findings.push(`${stream.id} missing the terminal participant's actor trace`);
       continue;
     }
     if (!isRecord(trace.redaction) || trace.redaction.status !== "passed") {

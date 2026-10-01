@@ -393,7 +393,7 @@ async function evidenceChecks(
     findingsCheck(
       "shared-world evidence",
       valid ? sharedWorldEvidenceFindings(valid) : [],
-      "live shared-world runs either are absent or carry well-formed evidence for their mode (concurrent lane windows, state series and outcomes covering every role, or an older run's sequential timeline), single-plane provenance, digest-only checkpoints and the mandatory attributionLimits",
+      "live shared-world runs either are absent or carry well-formed evidence for their mode (concurrent participant windows, state series and outcomes covering every role, or an older run's sequential timeline), single-plane provenance, digest-only checkpoints and the mandatory attributionLimits",
       "shared-world findings",
     ),
     {
@@ -409,7 +409,7 @@ async function evidenceChecks(
     findingsCheck(
       "rerun lineage",
       valid ? rerunLineageFindings(valid) : [],
-      "rerun bundles either are absent or link selected lanes to prior lane status and a fan-out rerun event",
+      "rerun bundles either are absent or link selected participants to their prior status and a fan-out rerun event",
       "rerun lineage findings",
     ),
     // Cost is ADVISORY on magnitude, FAIL-CLOSED on labeling/provenance (claims match mechanism).

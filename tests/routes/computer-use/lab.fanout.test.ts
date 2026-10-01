@@ -1262,10 +1262,10 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     );
     expect(selectedMismatchCheck?.ok).toBe(false);
     expect(selectedMismatchCheck?.message).toContain(
-      "selected lane ghost-lane is missing prior status",
+      "selected participant ghost-lane is missing prior status",
     );
     expect(selectedMismatchCheck?.message).toContain(
-      "selected lane ghost-lane is missing from current streams",
+      "selected participant ghost-lane is missing from current streams",
     );
   });
 

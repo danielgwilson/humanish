@@ -31,7 +31,7 @@
       {
         "at": "2026-08-19T07:38:06.016Z",
         "event": "run.created",
-        "message": "Synthetic dry-run contract bundle created with 4 sims."
+        "message": "Synthetic dry-run contract bundle created with 4 simulated participants."
       },
       {
         "at": "2026-08-19T07:38:06.016Z",
@@ -97,7 +97,7 @@
       },
       "ui": {
         "route": "/first-run",
-        "intent": "Browser lane reserved for VNC playback, screenshots, route state, and interaction trace.",
+        "intent": "Simulated browser participant reserved for VNC playback, screenshots, route state, and interaction trace.",
         "state": "contract-only"
       },
       "artifacts": [
@@ -127,7 +127,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "Route and viewport contract captured",
-        "summary": "Browser lane reserved for VNC playback, screenshots, route state, and interaction trace.",
+        "summary": "Simulated browser participant reserved for VNC playback, screenshots, route state, and interaction trace.",
         "streamIds": [
           "sim-01-ui"
         ],
@@ -203,7 +203,7 @@
         "mode": "cli-sim",
         "progress": 100,
         "currentStep": "Command transcript contract captured",
-        "summary": "CLI lane reserved for command-by-command persona runs with stdout/stderr and artifact links.",
+        "summary": "Simulated CLI participant reserved for command-by-command persona runs with stdout/stderr and artifact links.",
         "streamIds": [
           "sim-02-terminal"
         ],
@@ -279,7 +279,7 @@
         "mode": "tui-sim",
         "progress": 100,
         "currentStep": "Terminal UI frame contract captured",
-        "summary": "TUI lane reserved for PTY bytes, ANSI rendering, focus replay, and optional assisted attach.",
+        "summary": "Simulated TUI participant reserved for PTY bytes, ANSI rendering, focus replay, and optional assisted attach.",
         "streamIds": [
           "sim-03-tui"
         ],
@@ -335,7 +335,7 @@
       },
       "ui": {
         "route": "/codex/session",
-        "intent": "Codex UI lane reserved for app-server sessions that can be watched beside terminal evidence.",
+        "intent": "Simulated Codex UI participant reserved for app-server sessions that can be watched beside terminal evidence.",
         "state": "contract-only"
       },
       "codex": {
@@ -370,7 +370,7 @@
         "mode": "codex-app-sim",
         "progress": 100,
         "currentStep": "App-server embed contract captured",
-        "summary": "Codex UI lane reserved for app-server sessions that can be watched beside terminal evidence.",
+        "summary": "Simulated Codex UI participant reserved for app-server sessions that can be watched beside terminal evidence.",
         "streamIds": [
           "sim-04-codex-ui"
         ],
