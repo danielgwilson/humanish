@@ -2905,12 +2905,15 @@ describe("terminal judgment agreement (bundle verdict, status outcome, result ok
       verdict: bundle.review.verdict,
       statusVerdict: status.outcome?.verdict,
       statusOk: status.outcome?.ok,
+      failureKinds: (status.outcome?.execution?.failures ?? []).map(
+        (failure: { kind: string }) => failure.kind,
+      ),
       ok: result.ok,
       code: result.error?.code,
     };
   }
 
-  it.each<[string, Case, { verdict: string; ok: boolean; code?: string }]>([
+  it.each<[string, Case, { verdict: string; ok: boolean; code?: string; failures?: string[] }]>([
     ["a passed marker", {}, { verdict: "pass", ok: true }],
     // The failure is the evidence: an agent that ended blocked, failed or timed out still leaves
     // an ok result. Only a harness error, a blown cap or unproven cleanup fails it.
@@ -2932,13 +2935,21 @@ describe("terminal judgment agreement (bundle verdict, status outcome, result ok
       { verdict: "fail", ok: false, code: "HUMANISH_TERMINAL_LAB_FAILED" },
     ],
     [
+      // The agent wrote a passing marker before the cap check found the spend: its verdict stays
+      // pass, the run fails closed, and status.json lists the cap. Verify fails closed on known
+      // spend over the declared cap, so the Observer does not render either.
       "a known spend over the cap",
       {
         costProbe: () => ({
           product: { usd: 0.5, source: "no-spend-signal", note: "metered product spend" },
         }),
       },
-      { verdict: "fail", ok: false, code: "HUMANISH_TERMINAL_LAB_CAPS_EXCEEDED" },
+      {
+        verdict: "pass",
+        ok: false,
+        code: "HUMANISH_TERMINAL_LAB_CAPS_EXCEEDED",
+        failures: ["cap", "evidence"],
+      },
     ],
     [
       "a sandbox teardown it cannot prove",
@@ -2956,6 +2967,7 @@ describe("terminal judgment agreement (bundle verdict, status outcome, result ok
     expect(outcome.verdict).toBe(expected.verdict);
     expect(outcome.statusVerdict).toBe(outcome.verdict);
     expect(outcome.statusOk).toBe(outcome.ok);
+    if (expected.failures !== undefined) expect(outcome.failureKinds).toEqual(expected.failures);
     expect(outcome.ok).toBe(expected.ok);
     expect(outcome.code).toBe(expected.code);
   });

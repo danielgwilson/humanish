@@ -112,7 +112,8 @@ async function settleLiveLedgers(
 ): Promise<{
   cost: TerminalLedgers["cost"];
   noSpendProof: TerminalLedgers["noSpendProof"];
-  capsExceeded: boolean;
+  /** The cap check's message when known spend or jobs exceeded the caps. */
+  capFailure: string | undefined;
   ledgers: TerminalLedgers;
 }> {
   const { hooks, runtime, session } = inputs;
@@ -147,24 +148,14 @@ async function settleLiveLedgers(
   );
 
   // FULL caps enforcement (fail-closed, NOT advisory): if a KNOWN spend line exceeds maxUsd (or a
-  // known job count exceeds maxJobs), the run fails closed — never a green pass. Unknowns (null) do
-  // NOT trip the cap (we cannot claim a violation we did not measure) but never grant a pass either
-  // (the no-spend proof reports them as unmeasured). maxMinutes is already wall-clock-enforced above.
+  // known job count exceeds maxJobs), the run fails closed — never a green result. Unknowns (null)
+  // do NOT trip the cap (we cannot claim a violation we did not measure) but never grant a pass
+  // either (the no-spend proof reports them as unmeasured). maxMinutes is already wall-clock-
+  // enforced above. A blown cap is an execution failure: the agent's own status stays the
+  // verdict, and the result's ok is false.
   const capCheck = evaluateCapsAgainstLedger(cost, caps);
-  let capsExceeded = false;
-  if (!capCheck.ok) {
-    capsExceeded = true;
-    session.status = "failed";
-    session.completionReason = "harness_error";
-    session.error = capCheck.message;
-    session.reason = capCheck.message;
-    recordLifecycle("terminal-lab.caps.exceeded", capCheck.message);
-    // Reflect the fail-closed verdict in the trace the bundle/observer reads (so the run cannot show
-    // a passing agent verdict while the cap was blown).
-    trace.status = "failed";
-    trace.completionReason = "harness_error";
-    trace.reason = capCheck.message;
-  }
+  const capFailure = capCheck.ok ? undefined : capCheck.message;
+  if (capFailure !== undefined) recordLifecycle("terminal-lab.caps.exceeded", capFailure);
 
   // Assemble + persist the ledgers (now carrying the cost block + no-spend proof), the redacted
   // event stream, the normalized transcript, the actor trace, and the run bundle.
@@ -180,14 +171,14 @@ async function settleLiveLedgers(
   };
 
   await writeTerminalEvidence(runPaths, { terminalEvents, normalizedTranscript, ledgers, trace });
-  return { cost, noSpendProof, capsExceeded, ledgers };
+  return { cost, noSpendProof, capFailure, ledgers };
 }
 
 export async function finishLiveTerminalSession(
   inputs: LiveFinishInputs,
 ): Promise<TerminalProductLabResult> {
   const { normalizedTranscript, trace } = buildLiveTrace(inputs);
-  const { cost, noSpendProof, capsExceeded, ledgers } = await settleLiveLedgers(
+  const { cost, noSpendProof, capFailure, ledgers } = await settleLiveLedgers(
     inputs,
     trace,
     normalizedTranscript,
@@ -237,6 +228,7 @@ export async function finishLiveTerminalSession(
     ...(runCost === undefined ? {} : { cost: runCost }),
     sessionReason: sanitize(session.reason),
     verdict: judgment.verdict,
+    ...(capFailure === undefined ? {} : { capFailure }),
   });
 
   // --- THE LAYER-6 EXTENSION SEAM (issue #154 acceptance #8). ---
@@ -274,7 +266,7 @@ export async function finishLiveTerminalSession(
   const execution = judgeExecution(
     terminalExecutionFailures({
       participant,
-      capsExceeded,
+      capFailure,
       sessionReason: sanitize(session.reason),
       cleanup: session.cleanup,
       observer,
@@ -295,7 +287,7 @@ export async function finishLiveTerminalSession(
     cleanup: session.cleanup,
     cost,
     noSpendProof,
-    capsExceeded,
+    capFailure,
     declaredScorerFailure: scorer.failures[0],
     judgment,
     execution,

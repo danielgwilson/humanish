@@ -126,6 +126,8 @@ function concurrentLabError(args: {
   participantResults: ConcurrentSharedWorldRoleResult[];
   participantCount: number;
   shortfall: string | undefined;
+  /** The first execution failure, named when every seat passed and the world had no shortfall. */
+  executionFailure: string | undefined;
 }): ConcurrentSharedWorldLabResult["error"] | undefined {
   const { ok, handoffTimedOut, hostHandoffFailure, observer, runError, adapterFailure } = args;
   const { participantResults, participantCount } = args;
@@ -161,6 +163,12 @@ function concurrentLabError(args: {
     return {
       code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED",
       message: `Concurrent shared-world run did not run coherently. ${args.shortfall}`,
+    };
+  }
+  if (passed === participantCount && args.executionFailure !== undefined) {
+    return {
+      code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED",
+      message: `Concurrent shared-world run failed as an execution. ${args.executionFailure}`,
     };
   }
   return {
@@ -222,6 +230,16 @@ function sharedWorldExecutionFailures(args: {
         kind: "harness" as const,
         message: `${result.spec.planned.id}: ${result.outcome.sessionError ?? result.outcome.session?.reason ?? "harness error"}`,
       })),
+    ...actorResults.flatMap((result) =>
+      result.outcome.providerCleanupError === undefined
+        ? []
+        : [
+            {
+              kind: "provider-cleanup" as const,
+              message: `${result.spec.planned.id}: ${result.outcome.providerCleanupError}`,
+            },
+          ],
+    ),
     ...(observer.ok
       ? []
       : [
@@ -358,6 +376,7 @@ export async function finishConcurrentRun(
     participantResults,
     participantCount,
     shortfall: dryRun ? undefined : sharedWorldShortfall(judgment.world),
+    executionFailure: execution.failures[0]?.message,
   });
 
   const result: ConcurrentSharedWorldLabResult = {

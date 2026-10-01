@@ -1633,6 +1633,58 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     expect(status.outcome?.ok).toBe(outcome.result.ok);
   });
 
+  // A lane whose session passed but whose provider cleanup is unconfirmed is a passed participant
+  // and an execution failure: the fan-out's verdict is pass, and its ok is false.
+  it("passes a fan-out whose lane could not confirm its provider's cleanup, and fails the run", async () => {
+    const handle = makeFanoutModule();
+    const config = fanoutConfig({
+      concurrency: 1,
+      lanes: [
+        { id: "participant-1", persona: "first-time-visitor" },
+        { id: "participant-2", persona: "first-time-visitor" },
+      ],
+    });
+    let built = 0;
+    const outcome = await runLab(config, {
+      cwd,
+      cuaHooks: {
+        ...passingHooks(handle),
+        buildProvider: async () => {
+          const cleanupFails = built++ === 1;
+          return {
+            ...scriptedEnding("pass"),
+            close: async () => {
+              if (cleanupFails) throw new Error("synthetic provider close failure");
+            },
+          };
+        },
+        runSession: async (options) =>
+          runCuaActorSession({ ...options, provider: scriptedEnding("pass") }),
+      },
+    });
+    if (outcome.backend !== "cua") throw new Error("expected the computer-use route");
+    const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
+    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
+    const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8")) as {
+      outcome?: {
+        verdict?: string;
+        ok?: boolean;
+        execution?: { failures: Array<{ kind: string; message: string }> };
+      };
+    };
+    expect(bundle.review.verdict).toBe("pass");
+    expect(status.outcome?.verdict).toBe("pass");
+    expect(outcome.result.ok).toBe(false);
+    expect(status.outcome?.ok).toBe(false);
+    expect(status.outcome?.execution?.failures).toEqual([
+      {
+        kind: "provider-cleanup",
+        message: "participant-2: Model provider cleanup is unconfirmed.",
+      },
+    ]);
+    expect(outcome.result.error?.message).toContain("Model provider cleanup is unconfirmed.");
+  });
+
   it("keeps the verdict when the sandbox kill fails: cleanup does not judge", async () => {
     const handle = makeFanoutModule({ killFails: true });
     const config = fanoutConfig({

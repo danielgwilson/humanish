@@ -89,6 +89,7 @@ export async function runCuaLane(
   const writeScreenshot = makeParticipantWriteScreenshot(deps.artifactRoot, spec, screenshots);
   let session: CuaLoopResult | undefined;
   let sessionError: string | undefined;
+  let providerCleanupError: string | undefined;
   let provisioned = false;
   let signaled = false;
   const signal = (ok: boolean): void => {
@@ -115,13 +116,18 @@ export async function runCuaLane(
   } catch (error) {
     sessionError = redactText(deps.scrubKnownValues(toErrorMessage(error)));
   } finally {
+    // A provider whose cleanup is unconfirmed fails the run as an execution, apart from how the
+    // session ended: a session that passed stays a passed participant.
     if (await closeParticipantModel(model, warnings)) {
-      sessionError ??= "Model provider cleanup is unconfirmed.";
+      providerCleanupError = "Model provider cleanup is unconfirmed.";
     }
     try {
       if (!provisioned) signal(false);
     } finally {
-      await desktop.finalize({ failed: sessionError !== undefined || session === undefined });
+      await desktop.finalize({
+        failed:
+          sessionError !== undefined || providerCleanupError !== undefined || session === undefined,
+      });
     }
   }
   if (session) await recordParticipantTrace(spec, deps, session, warnings);
@@ -131,13 +137,18 @@ export async function runCuaLane(
     warnings,
   );
 
-  const harnessError = sessionError !== undefined || session?.completionReason === "harness_error";
+  // A provider-cleanup failure still trips fail-fast and counts in the lane summary's harness errors.
+  const harnessError =
+    sessionError !== undefined ||
+    providerCleanupError !== undefined ||
+    session?.completionReason === "harness_error";
 
   const { released, ...desktopEvidence } = desktop.snapshot();
   return {
     spec,
     ...(session ? { session } : {}),
     ...(sessionError === undefined ? {} : { sessionError }),
+    ...(providerCleanupError === undefined ? {} : { providerCleanupError }),
     ...desktopEvidence,
     killed: released,
     screenshots,

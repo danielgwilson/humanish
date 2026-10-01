@@ -354,8 +354,11 @@ describe("ready desktop lane contract", () => {
 
     const result = await runCuaLane(f.spec, f.deps);
 
+    // An unconfirmed provider cleanup is an execution failure apart from the session: it still
+    // trips fail-fast (harnessError) but leaves the session's own ending alone.
     expect(result.harnessError).toBe(true);
-    expect(result.sessionError).toBe("Model provider cleanup is unconfirmed.");
+    expect(result.providerCleanupError).toBe("Model provider cleanup is unconfirmed.");
+    expect(result.sessionError).toBeUndefined();
     expect(f.order.slice(-2)).toEqual(["model-close-unconfirmed", "release"]);
   });
 
@@ -434,8 +437,11 @@ describe("ready desktop lane contract", () => {
     });
     f.deps.runSession = runCuaActorSession;
     const result = await runCuaLane(f.spec, f.deps);
+    // An unconfirmed provider cleanup is an execution failure apart from the session: it still
+    // trips fail-fast (harnessError) but leaves the session's own ending alone.
     expect(result.harnessError).toBe(true);
-    expect(result.sessionError).toBe("Model provider cleanup is unconfirmed.");
+    expect(result.providerCleanupError).toBe("Model provider cleanup is unconfirmed.");
+    expect(result.sessionError).toBeUndefined();
     expect(f.release).toHaveBeenCalledOnce();
   });
 

@@ -320,7 +320,7 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
     expect(verified.ok).toBe(true);
   });
 
-  it("(c) a ledger showing KNOWN spend > maxUsd trips fail-closed (no green pass)", async () => {
+  it("(c) a ledger showing KNOWN spend > maxUsd fails the run closed and keeps the agent's verdict", async () => {
     const killed: string[] = [];
     const hooks: TerminalProductLabHooks = {
       env: baseEnv(),
@@ -348,9 +348,22 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
     expect(result.error?.code).toBe("HUMANISH_TERMINAL_LAB_CAPS_EXCEEDED");
     // The sandbox was still torn down (cleanup runs in finally before the cap evaluation).
     expect(killed.length).toBe(1);
-    // The agent's own verdict does NOT survive as a green pass — the cap blew the run.
-    expect(result.session?.status).toBe("failed");
+    // A blown cap is an execution failure: the agent's own status stays the verdict, the result
+    // fails closed, and the review and status.json both name the cap. Verify fails closed on known
+    // spend over the declared cap, so the Observer does not render either.
+    expect(result.session?.status).toBe("passed");
     expect(result.noSpend?.satisfied).toBe(false);
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
+    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
+    const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8"));
+    expect(bundle.review.verdict).toBe("pass");
+    expect(
+      bundle.review.gaps.some((gap: string) => gap.includes("exceeds scenario.caps.maxUsd=1")),
+    ).toBe(true);
+    expect(status.outcome.ok).toBe(false);
+    expect(
+      status.outcome.execution.failures.map((failure: { kind: string }) => failure.kind),
+    ).toEqual(["cap", "evidence"]);
 
     // The bundle records the breach, and verify ALSO fails closed (known spend > declared cap).
     const verified = await verifyRun(cwd, result.runId);
