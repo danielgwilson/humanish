@@ -16,19 +16,31 @@ in [account analysis](../../docs/architecture/restricted-codex-analysis.md).
 Building the kernel requires approximately 8 GiB of available memory and several
 minutes; this is a source build, not the intended end-user installation path.
 
-From the repository root:
+From the repository root, build the runtime image and point the CLI at it:
 
 ```sh
 pnpm install --frozen-lockfile
 pnpm build
 python3 runtime/local-firecracker/build.py --output .humanish/local-assets
-node scripts/local-firecracker-study.mjs .humanish/local-assets/assets.json
+export HUMANISH_LOCAL_RUNTIME_IMAGE="$(python3 -c 'import json; print(json.load(open(".humanish/local-assets/assets.json"))["image"])')"
+humanish="$PWD/dist/cli.js"
 ```
 
-The study consumes account quota; dollar cost remains unknown. It serves a
-synthetic note app on loopback, asks two participants to save different notes,
-checks the app's actual saves, runs analysis, and verifies the normal run bundle.
-The final output identifies its Observer page. Runtime evidence stays under
+Then start your app on `http://127.0.0.1:3000` and run a study from a separate
+project directory:
+
+```sh
+cd "$(mktemp -d)"
+node "$humanish" init --yes --local-browser http://127.0.0.1:3000 --local-mission "Create a note and explain anything confusing about saving it"
+node "$humanish" doctor --lab local-browser
+node "$humanish" lab run local-browser --no-open
+node "$humanish" verify
+```
+
+A `--media` build sets `HUMANISH_LOCAL_MEDIA_RUNTIME_IMAGE` instead. The study
+consumes account quota; dollar cost remains unknown. It runs the participant in a
+Firecracker desktop from the image above, runs automatic analysis and writes the
+normal run bundle and Observer page. Runtime evidence stays under
 `.humanish/`; raw screenshots are local-only under the existing sharing rules.
 Build directories must be new. The builder retains source/provenance, logs and
 Docker images for reuse; it does not install a host service or publish images.
