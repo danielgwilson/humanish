@@ -5,6 +5,7 @@ import {
   findDocPathIssues,
   isCheckedDoc,
   isCheckedSource,
+  markdownAnchors,
 } from "../../../scripts/lib/doc-paths.js";
 
 const index = buildRepoIndex([
@@ -154,6 +155,58 @@ describe("doc path check", () => {
       "https://github.com/example/other/blob/main/src/missing.ts",
     ].join("\n");
     expect(findDocPathIssues("docs/contracts/run.md", text, index)).toEqual([]);
+  });
+});
+
+describe("doc anchor check", () => {
+  const target = [
+    "# Find the code: `src/` and **more**",
+    "## Run `pnpm check`!",
+    "## Ground Rules",
+    "## Ground Rules",
+    "## Ground Rules",
+    "## Two  spaces, a [link](https://example.com) and snake_case",
+    "```md",
+    "## Inside a fence",
+    "```",
+    '<a id="explicit-anchor"></a>',
+  ].join("\n");
+
+  it("slugs headings the way GitHub does", () => {
+    expect([...markdownAnchors(target)]).toEqual([
+      "find-the-code-src-and-more",
+      "run-pnpm-check",
+      "ground-rules",
+      "ground-rules-1",
+      "ground-rules-2",
+      "two--spaces-a-link-and-snake_case",
+      "explicit-anchor",
+    ]);
+  });
+
+  it("reports a fragment that names no heading in the linked or the same Markdown file", () => {
+    const anchors = (path: string) =>
+      path === "docs/ramp/README.md"
+        ? markdownAnchors(target)
+        : path === "docs/architecture/example.md"
+          ? markdownAnchors("## Local heading")
+          : undefined;
+    const doc = [
+      "[a](../ramp/README.md#run-pnpm-check) [b](../ramp/README.md#ground-rules-2)",
+      "[c](../ramp/README.md#inside-a-fence) [d](../ramp/README.md#Ground-Rules)",
+      "[e](#local-heading) [f](#missing) [g](../ramp/README.md#explicit-anchor)",
+      "[h](../../README.md#unchecked) [i](../ramp/missing.md#gone)",
+    ].join("\n");
+    expect(
+      findDocPathIssues("docs/architecture/example.md", doc, index, anchors).map(
+        ({ line, anchor, resolved }) => `${line} ${resolved} ${anchor ?? "(path)"}`,
+      ),
+    ).toEqual([
+      "2 docs/ramp/README.md inside-a-fence",
+      "2 docs/ramp/README.md Ground-Rules",
+      "3 docs/architecture/example.md missing",
+      "4 docs/ramp/missing.md (path)",
+    ]);
   });
 });
 
