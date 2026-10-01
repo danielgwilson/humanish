@@ -25,7 +25,7 @@ import {
   participantFactsOf,
   participantFeedbackCandidates,
   providerResourcesForOutcome,
-} from "./bundle.js";
+} from "./bundle-parts.js";
 import { participantPassed, participantStatus } from "../../run/judge.js";
 import { buildRunCostSummary, desktopSpanToMinutes } from "../../run/cost-summary.js";
 import { formatParticipantPlanEntry } from "./lane-plan.js";

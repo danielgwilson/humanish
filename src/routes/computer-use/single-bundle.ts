@@ -36,7 +36,7 @@ import {
   providerResourcesForOutcome,
   publicSafeAppUrlLabel,
   subjectProvenanceMessage,
-} from "./bundle.js";
+} from "./bundle-parts.js";
 import { participantStatus as participantStatusFor, type Verdict } from "../../run/judge.js";
 import {
   buildRunCostSummary,

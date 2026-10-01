@@ -16,7 +16,7 @@ import {
 } from "../../../src/actors/computer-use/actor.js";
 import type { CuaProvider } from "../../../src/actors/computer-use/loop.js";
 import { buildCuaFanoutBundle } from "../../../src/routes/computer-use/fanout-bundle.js";
-import { participantFactsOf } from "../../../src/routes/computer-use/bundle.js";
+import { participantFactsOf } from "../../../src/routes/computer-use/bundle-parts.js";
 import { judgeParticipants } from "../../../src/run/judge.js";
 import {
   floorRenderResolution,

@@ -28,7 +28,7 @@ import {
 import type { RunStream } from "../../run/streams.js";
 import { commandDigestOf } from "../../subject/state.js";
 import { buildRunCostSummary, desktopSpanToMinutes } from "../../run/cost-summary.js";
-import { participantFactsOf } from "../computer-use/bundle.js";
+import { participantFactsOf } from "../computer-use/bundle-parts.js";
 import {
   judgeSharedWorld,
   participantPassed,
