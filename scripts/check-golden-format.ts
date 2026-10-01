@@ -1,8 +1,9 @@
 /**
  * Checks a golden format change: applies the current format to each golden as it was at a git ref
  * and compares the result with the golden in the working tree. Equal means the new format pins
- * the same values as the old one. It covers run-directory goldens (bundle copies as markers) and
- * loop goldens, whose layout (one line per logged call) must leave the value unchanged.
+ * the same values as the old one. It covers run-directory goldens (bundle copies as markers),
+ * loop goldens (one line per logged call, which must leave the value unchanged) and analysis
+ * goldens (a file repeated from an earlier scenario as a reference).
  * Usage: tsx scripts/check-golden-format.ts <ref>
  */
 import { execFileSync } from "node:child_process";
@@ -10,6 +11,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 
+import { referenceRepeatedFiles } from "../tests/helpers/analysis-golden-files.js";
 import { dedupeProjections } from "../tests/helpers/run-golden-projections.js";
 
 const ref = process.argv[2];
@@ -37,13 +39,15 @@ for (const file of goldens) {
   } catch {
     continue;
   }
-  // Run-directory goldens hold a run.json; loop goldens live in tests/golden/loop/.
+  // Run-directory goldens hold a run.json; loop and analysis goldens have their own folders.
   const format =
     typeof before === "object" && before !== null && "run.json" in before
       ? dedupeProjections
       : file.startsWith(join("tests/golden", "loop"))
         ? (value: unknown) => value
-        : undefined;
+        : file.startsWith(join("tests/golden", "analysis"))
+          ? referenceRepeatedFiles
+          : undefined;
   if (format === undefined) continue;
   compared += 1;
   const after = JSON.parse(readFileSync(file, "utf8")) as unknown;
@@ -51,7 +55,7 @@ for (const file of goldens) {
 }
 
 process.stdout.write(
-  `${compared} run-directory and loop goldens at ${ref}; ${compared - different.length} equal the working tree after the format change.\n`,
+  `${compared} run-directory, loop and analysis goldens at ${ref}; ${compared - different.length} equal the working tree after the format change.\n`,
 );
 for (const file of different) process.stdout.write(`different: ${file}\n`);
 if (different.length > 0 || compared === 0) process.exitCode = 1;
