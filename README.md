@@ -307,8 +307,8 @@ fills from sources 2 to 4, never the value:
 
 A dry run reads no provider key, so `run`, `lab run` and `watch` consult sources 2 to 4 only
 for a live lab. `lab preflight`, `doctor`, `tui` and the `comms` commands still consult them.
-`humanish analyze` reads `OPENAI_API_KEY` from the process environment only, so a key saved
-with `keys set` must also be exported before you run it.
+`humanish analyze` consults them for a live OpenAI analysis, and not for `--dry-run` or the
+Codex analyst.
 `HUMANISH_STRICT_KEYS=1` turns off sources 2 to 4. `init` and `doctor` also run
 `codex login status` and `claude auth status` to see which agent is signed in. A live
 computer-use or shared-world run with a `local-agent` participant runs them too, and a live
