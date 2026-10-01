@@ -170,7 +170,7 @@ Suggested scripts:
 | `humanish run --dry-run`          | Prove contract without app/browser/keys | Write synthetic run bundle                                                                            |
 | `humanish verify`                 | Validate bundle and public-safety gates | Fail closed on schema/evidence/redaction errors                                                       |
 | `humanish review`                 | Build review packet from evidence       | Summarize verdicts without inventing product proof                                                    |
-| `humanish watch`                  | Run sims and watch the observer         | Create a fresh four-lane bundle, render Observer, open it, and keep the shell attached                |
+| `humanish watch`                  | Run synthetic participants and watch    | Create a fresh four-participant bundle, render Observer, open it, and keep the shell attached         |
 | `humanish watch [lab]`            | Run a named lab and watch it            | Resolve committed or ignored `.yaml` lab manifests, then open/follow Observer                         |
 | `humanish watch --json --no-open` | Agent/CI proof path                     | Create the same bundle and Observer artifacts without browser open or attached watch server           |
 | `humanish lab list`               | Discover available labs                 | List committed labs and ignored local labs with origin labels                                         |

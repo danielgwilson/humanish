@@ -32,7 +32,7 @@ operable.
 WebLINX built its action space from 2,337 real human demonstrations; `load(url)`
 appears in 2,324 of them (99.4%, roughly 1.6 times per session)
 ([arXiv 2402.05930](https://arxiv.org/abs/2402.05930)). Treating address-bar
-navigation as non-human would make a human-declared lane _less_ faithful.
+navigation as non-human would make a human-declared participant _less_ faithful.
 The anomalous class is script execution and developer tooling, not URL entry.
 BrowserGym already factors these apart: its `nav` subset is exactly
 `{goto, go_back, go_forward}`, separate from everything else
@@ -136,7 +136,7 @@ a green run proves nothing.
    receipt or adherence. Repeated decision controls can establish a narrow effect;
    correspondence with real people requires relevant human evidence.
 
-6. **Fail closed only on harness integrity, never on product semantics.** A lane that
+6. **Fail closed only on harness integrity, never on product semantics.** A participant that
    cannot report what it did is a broken instrument, which is a different thing from
    an actor that behaved unexpectedly.
 

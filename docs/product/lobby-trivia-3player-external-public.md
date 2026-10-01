@@ -8,16 +8,16 @@ a public deployment YOU own/operate.
 ## What it does
 
 - The public site is the shared plane DIRECTLY: no clone, no getHost, no subject sandbox, no seed.
-- A host-first barrier: the `host: true` seat creates the lobby; the orchestrator reads the
+- A host-first barrier: the `host: true` participant creates the lobby; the orchestrator reads the
   `/lobby/CODE` from the host's CDP-observed URL and threads it into the follower Join missions.
   Followers go through the real Join flow (a direct `/lobby/CODE` visit does not auto-join a
   non-member).
-- Convergence (all three seats reaching one `/lobby/CODE`) is the pass signal (a digest-only
-  `lobbyConvergenceDigest`), plus temporal co-occupancy of the three seats' windows.
+- Convergence (all three participants reaching one `/lobby/CODE`) is the pass signal (a digest-only
+  `lobbyConvergenceDigest`), plus temporal co-occupancy of the three participants' windows.
 
 ## Mobile fidelity caveat (read before over-reading the results)
 
-The seats are `device: mobile` (414×896) and `device: small-mobile` (360×740). On the E2B-desktop
+The participants are `device: mobile` (414×896) and `device: small-mobile` (360×740). On the E2B-desktop
 route the rendered WIDTH is floored to `MIN_DESKTOP_RENDER_WIDTH` (500): Chrome refuses a window
 narrower than ~500 CSS px, and a narrower X screen let the window overflow and clip the page
 (0.20.3, #304). So both presets render at **500 wide**, `mobile` and `small-mobile` are identical in
@@ -29,8 +29,8 @@ Note that `desktopGeometry.screen.verified` checks the FLOORED number against it
 in `device-presets.ts` if you need to know.
 
 There is NO touch input, and isMobile/DPR are prompt-signal + metadata (DPR renders only via the CDP
-geometry path). So "3 mobile personas" means 3 mobile-LAYOUT desktop-Chromium seats, NOT touch
-devices. If a flow needs true touch/tap semantics, these seats will not exercise it. True sub-500
+geometry path). So "3 mobile personas" means 3 mobile-LAYOUT desktop-Chromium participants, NOT touch
+devices. If a flow needs true touch/tap semantics, these participants will not exercise it. True sub-500
 CSS-viewport rendering is the #221 CDP-device-emulation upgrade.
 
 ## Run it
@@ -41,7 +41,7 @@ Dry-run (the default, $0; proves the plumbing + the honesty contract, with no sa
 humanish lab run lobby-trivia-3player          # or: humanish watch lobby-trivia-3player
 ```
 
-Live (opens 3 real mobile-layout seats against the public app):
+Live (opens 3 real mobile-layout participants against the public app):
 
 ```
 # flip scenario.mode to live in the lab (or override), then:
@@ -62,7 +62,7 @@ the evolving Observer artifacts) is a 0.20.1 fast-follow.
 This is a real public-application study of a deployment the operator attests they own/operate
 (`subject.publicTarget: { owner, authorized: true }`; this is author trust, which the harness cannot
 verify).
-Attribution stays `shared-world` (N seats, ONE plane), but every strength claim degrades honestly and
+Attribution stays `shared-world` (N participants, ONE plane), but every strength claim degrades honestly and
 is asserted-absent by verify: provenance `external-public` (not seeded); NO synthetic attestation (you
 cannot claim synthetic on a real site); plane control is operator-attested, not harness-controlled; NO
 authoritative shared-state proof; concurrency by temporal co-occupancy + observed lobby convergence.

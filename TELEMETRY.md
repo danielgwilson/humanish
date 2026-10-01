@@ -37,8 +37,8 @@ telemetry, humanish cannot tell whether new users reach a working first run.
   `spend_limit`, `study_spend_limit`, `provider_incomplete`, `provider_status`,
   `provider_refused_prompt`, `harness_aborted`, `adapter_limit`,
   `usage_unreported`, `unspecified_limit`, `mixed`, or `unknown`.
-  Older limits stay broad. Different lane endings remain mixed. No raw error
-  message or lane detail is sent. Absent diagnostics stay absent.
+  Older limits stay broad. Different participant endings remain mixed. No raw
+  error message or participant detail is sent. Absent diagnostics stay absent.
 
 Successful CUA previews report `contract_proof_only`; no participant was run.
 Failed previews report `error`. Live `all_passed`/`some_passed`/`none_passed`
