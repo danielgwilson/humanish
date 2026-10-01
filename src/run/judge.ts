@@ -1,6 +1,12 @@
-// How humanish judges a participant. A route reduces what happened to plain facts and asks these
-// predicates, so "did this participant pass?" has one answer on every route. The routes' verdict
-// folds and the scorer's come here next.
+// How humanish judges a run. A route reduces what happened to plain facts and judges them here
+// once, and its bundle's verdict and its result's ok both read that judgment. The file reads in
+// the order a run is judged:
+//   1. session and participant predicates (hollowCompletion, selfReportedBlocker, participantPassed);
+//   2. the judgment shapes (Judgment, HarnessJudgment, SharedWorldJudgment);
+//   3. one judge per route: computer-use calls judgeOneParticipant (one lane, no rerun) or
+//      judgeParticipants, shared-world calls judgeSharedWorld, terminal calls judgeTerminal and
+//      scripted calls judgeScripted;
+//   4. foldScorerFailures, which every route with a scorer applies last, before the run finishes.
 
 import type {
   ActorCompletionReason,
@@ -111,7 +117,7 @@ export function verdictForStatus(status: ActorStatus): Verdict {
       return "blocked";
     case "timed_out":
       return "timed_out";
-    // A participant who abandoned, or a session that ran out before the goal, did not pass — but the
+    // A participant who abandoned, or a session that ran out before the goal, did not pass, but the
     // harness did not fail either. The run reports what happened rather than a verdict on the tool.
     case "abandoned":
     case "incomplete":
@@ -119,20 +125,46 @@ export function verdictForStatus(status: ActorStatus): Verdict {
   }
 }
 
-/** A run's judgment: the review verdict, and whether every expected participant passed. */
+/** A run's judgment: the review verdict, and whether the run met its route's pass rule. */
 export interface Judgment {
   verdict: Verdict;
   /**
-   * Every expected participant passed; on shared-world the seats also showed the concurrency
-   * verify requires. A dry run's participants pass as contracts.
+   * The run met its route's pass rule: every expected participant passed and, on shared-world,
+   * the seats showed the concurrency verify requires. A dry run passes as a contract.
    */
-  allPassed: boolean;
+  passed: boolean;
+}
+
+/**
+ * The judgment of a route whose result reads harnessFailed: terminal and scripted. A participant
+ * that ended failed, blocked or timed out is still evidence there, and only a harness failure
+ * fails the result.
+ */
+export interface HarnessJudgment {
+  verdict: Verdict;
+  harnessFailed: boolean;
+}
+
+/** What a shared-world run observed about its one world, beside how each seat ended. */
+export interface SharedWorldFacts {
+  /** Two or more seats were live at the same time. */
+  overlap: boolean;
+  /** Provisioned plane only: the shared state changed at or after the first overlap started. */
+  stateChangedUnderOverlap?: boolean;
+  /** External-public plane only: every seat reached one lobby. */
+  lobbyConvergence?: boolean;
+}
+
+/** A shared-world run's judgment, with the world facts its review and result also report. */
+export interface SharedWorldJudgment extends Judgment {
+  world: SharedWorldFacts;
 }
 
 /**
  * A run with one participant: its tallied status is the verdict, so a hollow pass fails and a
  * self-reported blocker reads as blocked. Without a session, a harness failure fails the run and
- * a dry run is a contract. A run still in progress is a contract until it finishes.
+ * a dry run is a contract. A run still in progress is a contract until it finishes. Computer-use
+ * calls it for one lane with no rerun, and terminal calls it through judgeTerminal.
  */
 export function judgeOneParticipant(args: {
   dryRun: boolean;
@@ -149,62 +181,14 @@ export function judgeOneParticipant(args: {
         : "contract_proof_only";
   return {
     verdict,
-    allPassed: args.dryRun || (participant !== undefined && participantPassed(participant)),
+    passed: args.dryRun || (participant !== undefined && participantPassed(participant)),
   };
-}
-
-/**
- * A judgment whose lab result reads harnessFailed, not allPassed: a participant that ended failed,
- * blocked or timed out is still evidence, and only a harness failure fails the result.
- */
-export interface HarnessJudgment extends Judgment {
-  harnessFailed: boolean;
-}
-
-/**
- * A terminal run: one agent session judged as a one-participant run. It has no engagement or
- * blocker rule; the agent's nonce-verified marker is its declared outcome.
- */
-export function judgeTerminal(args: {
-  dryRun: boolean;
-  participant: ParticipantFacts | undefined;
-}): HarnessJudgment {
-  return {
-    ...judgeOneParticipant({
-      dryRun: args.dryRun,
-      inProgress: false,
-      participant: args.participant,
-    }),
-    harnessFailed: args.participant?.completionReason === "harness_error",
-  };
-}
-
-/**
- * The run's final review after scoring. Each scorer failure is recorded as a gap, and the first
- * turns a pass or a contract into a fail with that failure as the summary. Every other verdict
- * stays as it was, so scoring can never improve a verdict. No failures returns the review as is.
- */
-export function foldScorerFailures(
-  review: ReviewSummary,
-  failures: readonly string[],
-): ReviewSummary {
-  let folded = review;
-  for (const failure of failures) {
-    folded = {
-      ...folded,
-      ...(folded.verdict === "pass" || folded.verdict === "contract_proof_only"
-        ? { verdict: "fail" as const, summary: failure }
-        : {}),
-      gaps: folded.gaps.includes(failure) ? folded.gaps : [...folded.gaps, failure],
-    };
-  }
-  return folded;
 }
 
 /**
  * A run with several participants: it passes only when every expected participant passed. When
  * one did not, a timeout among them makes the run timed_out; otherwise it fails. A dry run and a
- * run still in progress are contracts.
+ * run still in progress are contracts. Computer-use calls it for a fan-out or a rerun.
  */
 export function judgeParticipants(args: {
   dryRun: boolean;
@@ -214,65 +198,16 @@ export function judgeParticipants(args: {
 }): Judgment {
   const { participants } = args;
   const complete = participants.length === args.expected;
-  const allPassed = complete && participants.every(participantPassed);
+  const passed = complete && participants.every(participantPassed);
   const verdict: Verdict =
     args.inProgress || args.dryRun
       ? "contract_proof_only"
-      : allPassed
+      : passed
         ? "pass"
         : complete && participants.some((participant) => participant.status === "timed_out")
           ? "timed_out"
           : "fail";
-  return { verdict, allPassed: args.dryRun || allPassed };
-}
-
-/**
- * A scripted run: the worst surface decides the verdict. A harness error or a failed step fails
- * the run, then a timeout makes it timed_out, and otherwise it passes. A session error fails it
- * and a run with no surface results is a contract. The harness failed when the session erred, a
- * live surface never returned, or a surface ended in a harness error.
- */
-export function judgeScripted(args: {
-  dryRun: boolean;
-  sessionError: string | undefined;
-  expected: number;
-  surfaces: ParticipantFacts[];
-}): HarnessJudgment {
-  const { surfaces } = args;
-  const reasons = surfaces.map((surface) => surface.completionReason);
-  const verdict: Verdict = args.sessionError
-    ? "fail"
-    : surfaces.length === 0
-      ? "contract_proof_only"
-      : reasons.some((reason) => reason === "harness_error" || reason === "step_failed")
-        ? "fail"
-        : reasons.some((reason) => reason === "timed_out")
-          ? "timed_out"
-          : "pass";
-  const complete = surfaces.length === args.expected;
-  return {
-    verdict,
-    allPassed:
-      args.dryRun ||
-      (args.sessionError === undefined && complete && surfaces.every(participantPassed)),
-    harnessFailed:
-      args.sessionError !== undefined ||
-      (!args.dryRun && (!complete || reasons.includes("harness_error"))),
-  };
-}
-
-/** What a shared-world run observed about its one world, beside how each seat ended. */
-export interface SharedWorldFacts {
-  /** Two or more seats were live at the same time. */
-  overlap: boolean;
-  /** Provisioned plane only: the shared state changed at or after the first overlap started. */
-  stateChangedUnderOverlap?: boolean;
-  /** External-public plane only: every seat reached one lobby. */
-  lobbyConvergence?: boolean;
-}
-
-export interface SharedWorldJudgment extends Judgment {
-  world: SharedWorldFacts;
+  return { verdict, passed: args.dryRun || passed };
 }
 
 /**
@@ -308,5 +243,77 @@ export function judgeSharedWorld(args: {
     sharedWorldShortfall(args.world) === undefined;
   const verdict: Verdict =
     args.dryRun || args.inProgress ? "contract_proof_only" : passed ? "pass" : "fail";
-  return { verdict, allPassed: args.dryRun || passed, world: args.world };
+  return { verdict, passed: args.dryRun || passed, world: args.world };
+}
+
+/**
+ * A terminal run: one agent session judged as a one-participant run. It has no engagement or
+ * blocker rule; the agent's nonce-verified marker is its declared outcome.
+ */
+export function judgeTerminal(args: {
+  dryRun: boolean;
+  participant: ParticipantFacts | undefined;
+}): HarnessJudgment {
+  return {
+    verdict: judgeOneParticipant({
+      dryRun: args.dryRun,
+      inProgress: false,
+      participant: args.participant,
+    }).verdict,
+    harnessFailed: args.participant?.completionReason === "harness_error",
+  };
+}
+
+/**
+ * A scripted run: the worst surface decides the verdict. A harness error or a failed step fails
+ * the run, then a timeout makes it timed_out, and otherwise it passes. A session error fails it
+ * and a run with no surface results is a contract. The harness failed when the session erred, a
+ * live surface never returned, or a surface ended in a harness error.
+ */
+export function judgeScripted(args: {
+  dryRun: boolean;
+  sessionError: string | undefined;
+  expected: number;
+  surfaces: ParticipantFacts[];
+}): HarnessJudgment {
+  const { surfaces } = args;
+  const reasons = surfaces.map((surface) => surface.completionReason);
+  const verdict: Verdict = args.sessionError
+    ? "fail"
+    : surfaces.length === 0
+      ? "contract_proof_only"
+      : reasons.some((reason) => reason === "harness_error" || reason === "step_failed")
+        ? "fail"
+        : reasons.some((reason) => reason === "timed_out")
+          ? "timed_out"
+          : "pass";
+  const complete = surfaces.length === args.expected;
+  return {
+    verdict,
+    harnessFailed:
+      args.sessionError !== undefined ||
+      (!args.dryRun && (!complete || reasons.includes("harness_error"))),
+  };
+}
+
+/**
+ * The run's final review after scoring. Each scorer failure is recorded as a gap, and the first
+ * turns a pass or a contract into a fail with that failure as the summary. Every other verdict
+ * stays as it was, so scoring can never improve a verdict. No failures returns the review as is.
+ */
+export function foldScorerFailures(
+  review: ReviewSummary,
+  failures: readonly string[],
+): ReviewSummary {
+  let folded = review;
+  for (const failure of failures) {
+    folded = {
+      ...folded,
+      ...(folded.verdict === "pass" || folded.verdict === "contract_proof_only"
+        ? { verdict: "fail" as const, summary: failure }
+        : {}),
+      gaps: folded.gaps.includes(failure) ? folded.gaps : [...folded.gaps, failure],
+    };
+  }
+  return folded;
 }

@@ -158,19 +158,19 @@ describe("judgeOneParticipant", () => {
     judgeOneParticipant({ dryRun, inProgress, participant });
 
   it("takes the verdict from the tallied status and ok from the pass rule", () => {
-    expect(judge(passed())).toEqual({ verdict: "pass", allPassed: true });
-    expect(judge(passed({ noEngagement: true }))).toEqual({ verdict: "fail", allPassed: false });
+    expect(judge(passed())).toEqual({ verdict: "pass", passed: true });
+    expect(judge(passed({ noEngagement: true }))).toEqual({ verdict: "fail", passed: false });
     expect(judge(passed({ selfReportedBlocker: true }))).toEqual({
       verdict: "blocked",
-      allPassed: false,
+      passed: false,
     });
     expect(judge(passed({ status: "timed_out", completionReason: "timed_out" }))).toEqual({
       verdict: "timed_out",
-      allPassed: false,
+      passed: false,
     });
     expect(judge(passed({ status: "failed", completionReason: "actor_error" }))).toEqual({
       verdict: "fail",
-      allPassed: false,
+      passed: false,
     });
   });
 
@@ -178,9 +178,9 @@ describe("judgeOneParticipant", () => {
     const noSession = { skipped: false, noEngagement: false, selfReportedBlocker: false };
     expect(judge({ ...noSession, sessionError: "desktop create failed" })).toEqual({
       verdict: "fail",
-      allPassed: false,
+      passed: false,
     });
-    expect(judge(undefined, true)).toEqual({ verdict: "contract_proof_only", allPassed: true });
+    expect(judge(undefined, true)).toEqual({ verdict: "contract_proof_only", passed: true });
   });
 
   it("holds a run in progress as a contract", () => {
@@ -193,20 +193,17 @@ describe("judgeTerminal", () => {
     judgeTerminal({ dryRun, participant });
 
   it("takes the verdict from the agent's status, as the one-participant rule does", () => {
-    expect(judge(passed())).toEqual({ verdict: "pass", allPassed: true, harnessFailed: false });
+    expect(judge(passed())).toEqual({ verdict: "pass", harnessFailed: false });
     expect(judge(passed({ status: "blocked", completionReason: "blocked_approval" }))).toEqual({
       verdict: "blocked",
-      allPassed: false,
       harnessFailed: false,
     });
     expect(judge(passed({ status: "timed_out", completionReason: "timed_out" }))).toEqual({
       verdict: "timed_out",
-      allPassed: false,
       harnessFailed: false,
     });
     expect(judge(passed({ status: "failed", completionReason: "gave_up" }))).toEqual({
       verdict: "fail",
-      allPassed: false,
       harnessFailed: false,
     });
   });
@@ -220,13 +217,12 @@ describe("judgeTerminal", () => {
           sessionError: "known spend over the cap",
         }),
       ),
-    ).toEqual({ verdict: "fail", allPassed: false, harnessFailed: true });
+    ).toEqual({ verdict: "fail", harnessFailed: true });
   });
 
   it("holds a dry run as a contract with no harness failure", () => {
     expect(judge(undefined, true)).toEqual({
       verdict: "contract_proof_only",
-      allPassed: true,
       harnessFailed: false,
     });
   });
@@ -237,8 +233,8 @@ describe("judgeParticipants", () => {
     judgeParticipants({ dryRun: false, inProgress: false, expected, participants });
 
   it("passes only when every expected participant passed", () => {
-    expect(judge([passed(), passed()])).toEqual({ verdict: "pass", allPassed: true });
-    expect(judge([passed()], 2)).toEqual({ verdict: "fail", allPassed: false });
+    expect(judge([passed(), passed()])).toEqual({ verdict: "pass", passed: true });
+    expect(judge([passed()], 2)).toEqual({ verdict: "fail", passed: false });
   });
 
   it("fails on any participant that did not pass, unless one of them timed out", () => {
@@ -248,10 +244,10 @@ describe("judgeParticipants", () => {
       passed({ skipped: true }),
       passed({ status: "failed", completionReason: "actor_error" }),
     ])
-      expect(judge([passed(), other])).toEqual({ verdict: "fail", allPassed: false });
+      expect(judge([passed(), other])).toEqual({ verdict: "fail", passed: false });
     expect(
       judge([passed(), passed({ status: "timed_out", completionReason: "timed_out" })]),
-    ).toEqual({ verdict: "timed_out", allPassed: false });
+    ).toEqual({ verdict: "timed_out", passed: false });
   });
 
   it("does not call a run with a missing participant timed out", () => {
@@ -263,7 +259,7 @@ describe("judgeParticipants", () => {
   it("holds dry and in-progress runs as contracts", () => {
     expect(
       judgeParticipants({ dryRun: true, inProgress: false, expected: 2, participants: [] }),
-    ).toEqual({ verdict: "contract_proof_only", allPassed: true });
+    ).toEqual({ verdict: "contract_proof_only", passed: true });
     expect(
       judgeParticipants({ dryRun: false, inProgress: true, expected: 2, participants: [] }).verdict,
     ).toBe("contract_proof_only");
@@ -294,10 +290,10 @@ describe("judgeScripted", () => {
     expect(judge(surfaces, sessionError)).toMatchObject({ verdict, harnessFailed });
   });
 
-  it("holds a dry run as a contract that passes", () => {
+  it("holds a dry run as a contract with no harness failure", () => {
     expect(
       judgeScripted({ dryRun: true, sessionError: undefined, expected: 2, surfaces: [] }),
-    ).toEqual({ verdict: "contract_proof_only", allPassed: true, harnessFailed: false });
+    ).toEqual({ verdict: "contract_proof_only", harnessFailed: false });
   });
 });
 
@@ -307,15 +303,15 @@ describe("judgeSharedWorld", () => {
     judgeSharedWorld({ dryRun: false, inProgress: false, expected, participants, world });
 
   it("passes only when every expected seat passed, and has no timed_out verdict", () => {
-    expect(judge([passed(), passed()])).toEqual({ verdict: "pass", allPassed: true, world });
+    expect(judge([passed(), passed()])).toEqual({ verdict: "pass", passed: true, world });
     for (const other of [
       passed({ status: "timed_out", completionReason: "timed_out" }),
       passed({ noEngagement: true }),
       passed({ selfReportedBlocker: true }),
       passed({ sessionError: "provider exploded" }),
     ])
-      expect(judge([passed(), other])).toMatchObject({ verdict: "fail", allPassed: false });
-    expect(judge([passed()], 2)).toMatchObject({ verdict: "fail", allPassed: false });
+      expect(judge([passed(), other])).toMatchObject({ verdict: "fail", passed: false });
+    expect(judge([passed()], 2)).toMatchObject({ verdict: "fail", passed: false });
   });
 
   // What verify's shared-world check requires of a pass, per plane: provisioned needs overlap and a
@@ -352,7 +348,7 @@ describe("judgeSharedWorld", () => {
     });
     expect(judgment).toEqual({
       verdict: passes ? "pass" : "fail",
-      allPassed: passes,
+      passed: passes,
       world: facts,
     });
     expect(sharedWorldShortfall(facts) === undefined).toBe(passes);
@@ -361,7 +357,7 @@ describe("judgeSharedWorld", () => {
   it("holds dry and in-progress runs as contracts", () => {
     expect(
       judgeSharedWorld({ dryRun: true, inProgress: false, expected: 2, participants: [], world }),
-    ).toMatchObject({ verdict: "contract_proof_only", allPassed: true });
+    ).toMatchObject({ verdict: "contract_proof_only", passed: true });
     expect(
       judgeSharedWorld({ dryRun: false, inProgress: true, expected: 2, participants: [], world })
         .verdict,
