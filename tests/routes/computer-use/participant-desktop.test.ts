@@ -24,7 +24,10 @@ import { E2B_SPEECH_TEMPLATE } from "../../../src/substrates/e2b/sandbox.js";
 import type { E2BDesktopModule, E2BDesktopSandbox } from "../../../src/substrates/e2b/sdk.js";
 import { LAB_CONFIG_SCHEMA } from "../../../src/lab/types.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
-import { OPENAI_RESPONSES_CU_CAPABILITIES } from "../../../src/actors/computer-use/openai-provider.js";
+import {
+  DEFAULT_OPENAI_CU_MODEL,
+  OPENAI_RESPONSES_CU_CAPABILITIES,
+} from "../../../src/actors/computer-use/openai-provider.js";
 import { prepareSelectedOutputDirectory } from "../../../src/run/contained-output.js";
 import { participantRun } from "../../helpers/participant-run.js";
 import { legacyHookSpecOf } from "../../../src/routes/computer-use/legacy-lane-spec.js";
@@ -84,6 +87,7 @@ async function fixture() {
   const deps: CuaParticipantDeps = {
     config: parsed.config,
     descriptor: getActor("openai-computer-use"),
+    brain: { kind: "openai", model: DEFAULT_OPENAI_CU_MODEL },
     appUrl: "http://127.0.0.1:3000/",
     cloneRoute: false,
     subjectEnvNames: [],
@@ -309,11 +313,7 @@ describe("ready desktop lane contract", () => {
       return { status: "confirmed" as const };
     });
     restrictedParticipantFactory.mockReturnValue({ provider, close });
-    f.deps.localAgent = "codex";
-    f.deps.config = {
-      ...f.deps.config,
-      actors: [{ ...f.deps.config.actors[0]!, model: "gpt-5.6-sol" }],
-    };
+    f.deps.brain = { kind: "local-agent", agent: "codex", declaredModel: "gpt-5.6-sol" };
     f.spec = participantRun({ ...specFields, limits: { reasoningEffort: "high" } });
     f.deps.env = { PATH: "/synthetic/bin", CODEX_HOME: "/synthetic/operator-codex" };
     f.deps.runSession = runCuaActorSession;
@@ -349,7 +349,7 @@ describe("ready desktop lane contract", () => {
       return { status: "unconfirmed" as const };
     });
     restrictedParticipantFactory.mockReturnValue({ provider, close });
-    f.deps.localAgent = "codex";
+    f.deps.brain = { kind: "local-agent", agent: "codex" };
     f.deps.runSession = runCuaActorSession;
 
     const result = await runCuaParticipant(f.spec, f.deps);
@@ -408,7 +408,7 @@ describe("ready desktop lane contract", () => {
       f.order.push("model-closed");
     });
     claudeSessionFactory.mockResolvedValue({ provider, close });
-    f.deps.localAgent = "claude";
+    f.deps.brain = { kind: "local-agent", agent: "claude" };
     f.deps.runSession = runCuaActorSession;
 
     const result = await runCuaParticipant(f.spec, f.deps);

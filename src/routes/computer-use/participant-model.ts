@@ -12,7 +12,7 @@ import type { ActorTokenUsage, ActorTraceItem } from "../../actors/contract.js";
 import type { CuaActorSessionOptions } from "../../actors/computer-use/actor.js";
 import { startClaudeSession } from "../../actors/local-agent/claude-session.js";
 import { createLocalAgentProvider } from "../../actors/local-agent/cli.js";
-import { DEFAULT_OPENAI_CU_MODEL } from "../../actors/computer-use/openai-provider.js";
+import { pricedModel } from "../../lab/plan-base.js";
 import { estimateActorCostForExecution, round6 } from "../../run/pricing.js";
 import { redactText } from "../../evidence/redaction.js";
 import { createRestrictedCodexParticipant } from "../../actors/codex/restricted-participant.js";
@@ -41,7 +41,7 @@ export async function startParticipantModel(
   deps: CuaParticipantDeps,
   executor: CuaExecutor,
 ): Promise<ParticipantModel> {
-  const { config, env } = deps;
+  const { config, env, brain } = deps;
   if (deps.hooks.buildProvider) {
     return {
       provider: await deps.hooks.buildProvider({
@@ -53,7 +53,8 @@ export async function startParticipantModel(
       }),
     };
   }
-  if (deps.localAgent === "codex") {
+  const localAgent = brain.kind === "local-agent" ? brain.agent : undefined;
+  if (localAgent === "codex") {
     // Hosted local-agent studies use the same native participant engine as local desktops.
     // Operator auth deliberately retains the operator's Codex home, config and supported auth
     // stores instead of applying the isolated restricted-account profile used by local studies.
@@ -62,13 +63,13 @@ export async function startParticipantModel(
       ...(spec.planned.limits.reasoningEffort === undefined
         ? {}
         : { reasoningEffort: spec.planned.limits.reasoningEffort }),
-      ...(config.actors[0]?.model === undefined ? {} : { model: config.actors[0].model }),
+      ...(brain.declaredModel === undefined ? {} : { model: brain.declaredModel }),
       ...(executor.speechEnabled === true ? { speechEnabled: true } : {}),
       session: { env },
     });
     return { provider: codexParticipant.provider, codexParticipant };
   }
-  if (deps.localAgent === "claude") {
+  if (localAgent === "claude") {
     // One session for the whole run, like the codex thread above (#520). The one-shot
     // provider (createLocalAgentProvider) spawned `claude -p` per turn, and every turn
     // started with no memory of the last. HUMANISH_LOCAL_AGENT_ONE_SHOT=1 keeps that path
@@ -86,7 +87,7 @@ export async function startParticipantModel(
           ...(spec.planned.limits.reasoningEffort === undefined
             ? {}
             : { reasoningEffort: spec.planned.limits.reasoningEffort }),
-          ...(config.actors[0]?.model === undefined ? {} : { model: config.actors[0].model }),
+          ...(brain.declaredModel === undefined ? {} : { model: brain.declaredModel }),
         }),
       };
     }
@@ -94,7 +95,7 @@ export async function startParticipantModel(
       ...(spec.planned.limits.reasoningEffort === undefined
         ? {}
         : { reasoningEffort: spec.planned.limits.reasoningEffort }),
-      ...(config.actors[0]?.model === undefined ? {} : { model: config.actors[0].model }),
+      ...(brain.declaredModel === undefined ? {} : { model: brain.declaredModel }),
     });
     return { provider: claudeSession.provider, claudeSession };
   }
@@ -115,7 +116,7 @@ export function participantSessionOptions(
   // injected pure per-turn estimator keyed on the resolved model. Preflight already refused a
   // cap on an unpriced model, so the estimate is measurable whenever a cap is in force. The
   // model id here matches provider.version (openai-responses-cu resolves the default when unset).
-  const capModelId = config.actors[0]?.model ?? DEFAULT_OPENAI_CU_MODEL;
+  const capModelId = pricedModel(deps.brain);
   const maxUsd = config.execution?.caps?.maxUsd;
   return {
     instructions: inbox
@@ -129,7 +130,7 @@ export function participantSessionOptions(
     ...(provider === undefined ? {} : { provider: provider }),
     openai: {
       apiKey: deps.openaiApiKey,
-      ...(config.actors[0]?.model ? { model: config.actors[0]!.model } : {}),
+      ...(deps.brain.declaredModel ? { model: deps.brain.declaredModel } : {}),
       // Per-LANE, not per-actor: two lanes at different efforts is the control this exists for.
       ...(spec.planned.limits.reasoningEffort === undefined
         ? {}

@@ -1,7 +1,7 @@
 // Builds each participant's actor spec and mission, resolves its entry URL, derives the session
 // and sandbox time budgets, and records a follower that never received the host's lobby code.
 
-import { DEFAULT_OPENAI_CU_MODEL } from "../../actors/computer-use/openai-provider.js";
+import { pricedModel } from "../../lab/plan-base.js";
 import { scrubPersonaBrief, type ResolvedPersona } from "../../lab/persona.js";
 import type { SharedWorldPlan } from "../../lab/plan-types.js";
 import type { Participant, SharedWorldParticipant } from "../../lab/plan-participants.js";
@@ -160,7 +160,7 @@ export function startParticipantFlush(
   live.flush = startLiveTraceFlush({
     bundle,
     participantRuns: ctx.actorSpecs,
-    model: ctx.config.actors[0]?.model ?? DEFAULT_OPENAI_CU_MODEL,
+    model: pricedModel(ctx.plan.brain),
     write: (snapshot) => ctx.run.writeSnapshot(snapshot),
   });
 }
@@ -232,7 +232,7 @@ export function participantRunDeps(
     scrubKnownValues,
     runSession: ctx.runSession,
     // A local-agent brain runs each seat on the operator's signed-in agent, as on computer use.
-    ...(ctx.plan.brain.kind === "local-agent" ? { localAgent: ctx.plan.brain.agent } : {}),
+    brain: ctx.plan.brain,
     ...(receiving ? { receiving } : {}),
     now: ctx.now,
     hooks: runtimeStreamHooks(ctx.hooks, live),

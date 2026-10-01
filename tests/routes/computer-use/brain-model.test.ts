@@ -21,10 +21,12 @@ import {
 import { createRestrictedCodexParticipant } from "../../../src/actors/codex/restricted-participant.js";
 import { startClaudeSession } from "../../../src/actors/local-agent/claude-session.js";
 import { createLocalAgentProvider } from "../../../src/actors/local-agent/cli.js";
+import type { Brain, ComputerUsePlan } from "../../../src/lab/plan-types.js";
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
 import { startLiveTraceFlush } from "../../../src/routes/computer-use/live-flush.js";
 import type { ParticipantDesktop } from "../../../src/routes/computer-use/participant-desktop.js";
-import { runCuaActorLab } from "../../../src/routes/computer-use/route.js";
+import { planComputerUseLab } from "../../../src/routes/computer-use/plan.js";
+import { runComputerUsePlan, runCuaActorLab } from "../../../src/routes/computer-use/route.js";
 import type { CuaActorLabHooks } from "../../../src/routes/computer-use/types.js";
 import { estimateActorCostForExecution } from "../../../src/run/pricing.js";
 import { ownDesktopAllocation } from "../../../src/substrates/desktop-session.js";
@@ -323,4 +325,95 @@ describe("computer-use participant model, local-agent brain", () => {
       else expect(options.model).toBe(model);
     },
   );
+});
+
+describe("computer-use participant model, the plan's brain, over the config", () => {
+  /** Plans `config`, swaps in `brain`, and runs that plan with the same config and hooks. */
+  async function runWithBrain(config: LabConfig, brain: Brain, hooks: CuaActorLabHooks) {
+    const planned = planComputerUseLab(config, { dryRun: false, hooks });
+    if (!planned.ok) throw new Error(planned.refusal.message);
+    const plan: ComputerUsePlan = {
+      ...planned.plan,
+      runner: { ...planned.plan.runner, brain } as ComputerUsePlan["runner"],
+    };
+    return runComputerUsePlan(plan, { cwd, hooks }, config);
+  }
+
+  it("gives the session, the cap estimator and the flush label the plan's declared model", async () => {
+    const sessions: CuaActorSessionOptions[] = [];
+    const result = await runWithBrain(
+      labConfig({ actor: OPENAI_ACTOR, model: undefined, maxUsd: 5 }),
+      { kind: "openai", model: NON_DEFAULT_MODEL, declaredModel: NON_DEFAULT_MODEL },
+      {
+        env: { OPENAI_API_KEY: "synthetic-openai-key" },
+        createDesktopLane: () => fakeDesktop(),
+        runSession: async (options) => {
+          sessions.push(options);
+          return runCuaActorSession({ ...options, provider: doneProvider("synthetic-openai") });
+        },
+      },
+    );
+    expect(result.ok).toBe(true);
+    expect(sessions[0]!.openai!.model).toBe(NON_DEFAULT_MODEL);
+    expectPricedAt(sessions[0]!, NON_DEFAULT_MODEL);
+    expect(vi.mocked(startLiveTraceFlush).mock.calls.map(([args]) => args.model)).toEqual([
+      NON_DEFAULT_MODEL,
+    ]);
+  });
+
+  it("starts the plan's local agent with the plan's declared model", async () => {
+    vi.mocked(startClaudeSession).mockResolvedValue({
+      provider: doneProvider("claude-session"),
+      close: async () => undefined,
+    } as unknown as Awaited<ReturnType<typeof startClaudeSession>>);
+    const result = await runWithBrain(
+      labConfig({ actor: CODEX_ACTOR, model: undefined }),
+      { kind: "local-agent", agent: "claude", declaredModel: "synthetic-claude-model" },
+      {
+        env: {},
+        createDesktopLane: () => fakeDesktop(),
+        runSession: async (options) => runCuaActorSession(options),
+      },
+    );
+    expect(result.ok).toBe(true);
+    expect(createRestrictedCodexParticipant).not.toHaveBeenCalled();
+    expect(vi.mocked(startClaudeSession).mock.calls[0]![0]?.model).toBe("synthetic-claude-model");
+  });
+
+  it("gives hosted Codex the plan's declared model", async () => {
+    vi.mocked(createRestrictedCodexParticipant).mockReturnValue({
+      provider: doneProvider("restricted-codex-participant"),
+      close: async () => ({ status: "confirmed" as const }),
+    } as unknown as ReturnType<typeof createRestrictedCodexParticipant>);
+    const result = await runWithBrain(
+      labConfig({ actor: CODEX_ACTOR, model: undefined }),
+      { kind: "local-agent", agent: "codex", declaredModel: "synthetic-codex-model" },
+      {
+        env: {},
+        createDesktopLane: () => fakeDesktop(),
+        runSession: async (options) => runCuaActorSession(options),
+      },
+    );
+    expect(result.ok).toBe(true);
+    expect(vi.mocked(createRestrictedCodexParticipant).mock.calls[0]![0]?.model).toBe(
+      "synthetic-codex-model",
+    );
+  });
+
+  it("gives the one-shot Claude provider the plan's declared model", async () => {
+    vi.mocked(createLocalAgentProvider).mockReturnValue(doneProvider("claude-one-shot"));
+    const result = await runWithBrain(
+      labConfig({ actor: CLAUDE_ACTOR, model: undefined }),
+      { kind: "local-agent", agent: "claude", declaredModel: "synthetic-claude-model" },
+      {
+        env: { HUMANISH_LOCAL_AGENT_ONE_SHOT: "1" },
+        createDesktopLane: () => fakeDesktop(),
+        runSession: async (options) => runCuaActorSession(options),
+      },
+    );
+    expect(result.ok).toBe(true);
+    expect(vi.mocked(createLocalAgentProvider).mock.calls[0]![0].model).toBe(
+      "synthetic-claude-model",
+    );
+  });
 });

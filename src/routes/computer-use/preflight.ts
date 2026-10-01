@@ -1,7 +1,7 @@
-import type { ComputerUsePlan } from "../../lab/plan-types.js";
+import type { Brain, ComputerUsePlan } from "../../lab/plan-types.js";
+import { pricedModel } from "../../lab/plan-base.js";
 import type { LabCommsExternal } from "../../lab/types.js";
-import { DEFAULT_OPENAI_CU_MODEL } from "../../actors/computer-use/openai-provider.js";
-import { detectLocalAgents, type LocalAgentId } from "../../actors/local-agent/cli.js";
+import { detectLocalAgents } from "../../actors/local-agent/cli.js";
 import { localAgentRefusal, type LocalAgentRefusal } from "../../actors/local-agent/readiness.js";
 import { describeMissingKeys } from "../../keys/key-resolution.js";
 import { externalCatchHealthy } from "../../comms/sandbox-catch.js";
@@ -25,31 +25,22 @@ const LOCAL_AGENT_REFUSAL_CODES = {
  */
 export async function liveCuaRejection(args: {
   caps: ComputerUsePlan["caps"];
-  /** The declared participant model; a spend cap needs its price. */
-  model: string | undefined;
+  /** The plan's brain: whether a local agent drives the participant, and the model a cap prices. */
+  brain: Brain;
   hooks: CuaActorLabHooks;
   env: Record<string, string | undefined>;
   openaiApiKey: string;
   e2bApiKey: string;
-  localAgentRoute: boolean;
-  preferredLocalAgent: LocalAgentId;
   subjectEnvNames: string[];
   externalCommsConfig: LabCommsExternal | undefined;
 }): Promise<{ code: CuaActorLabErrorCode; message: string } | undefined> {
-  const {
-    caps,
-    model,
-    hooks,
-    env,
-    openaiApiKey,
-    e2bApiKey,
-    localAgentRoute,
-    preferredLocalAgent,
-    subjectEnvNames,
-    externalCommsConfig,
-  } = args;
+  const { caps, brain, hooks, env, openaiApiKey, e2bApiKey, subjectEnvNames, externalCommsConfig } =
+    args;
+  // The operator's own signed-in coding agent is the brain, so there is no provider key to ask
+  // for. E2B is still required: the persona needs a machine.
+  const localAgent = brain.kind === "local-agent" ? brain.agent : undefined;
   const missingKeys = [
-    ...(openaiApiKey || localAgentRoute || hooks.buildProvider ? [] : ["OPENAI_API_KEY"]),
+    ...(openaiApiKey || localAgent || hooks.buildProvider ? [] : ["OPENAI_API_KEY"]),
     ...(e2bApiKey || participantDesktopOf(hooks) !== undefined ? [] : ["E2B_API_KEY"]),
   ];
   if (missingKeys.length > 0) {
@@ -72,10 +63,10 @@ export async function liveCuaRejection(args: {
       message: `Live computer-use labs need ${missingKeys.join(" and ")} in the environment (values are never persisted). ${describeMissingKeys(missingKeys, env)}${suggestion}`,
     };
   }
-  if (localAgentRoute && !hooks.buildProvider) {
+  if (localAgent && !hooks.buildProvider) {
     // Refuse HERE, before a sandbox exists. "codex is not installed" discovered after the
     // machine is paid for is the same information delivered at the worst possible moment.
-    const refusal = await localAgentRefusal({ agent: preferredLocalAgent, env, caps });
+    const refusal = await localAgentRefusal({ agent: localAgent, env, caps });
     if (refusal) return { code: LOCAL_AGENT_REFUSAL_CODES[refusal.kind], message: refusal.message };
   }
   const missingSubjectEnv = subjectEnvNames.filter((name) => !env[name]?.trim());
@@ -92,11 +83,12 @@ export async function liveCuaRejection(args: {
   // uncapped: an unenforceable cap is more dangerous than none. The operator adds a rate to
   // src/run/pricing.ts (the honest place) or removes the cap.
   if (caps.maxUsd !== undefined || caps.maxTotalUsd !== undefined) {
-    const capModelId = (model ?? DEFAULT_OPENAI_CU_MODEL).trim().toLowerCase();
+    const model = pricedModel(brain);
+    const capModelId = model.trim().toLowerCase();
     if (!MODEL_RATES[capModelId]) {
       return {
         code: "HUMANISH_CUA_LAB_UNPRICED_CAP",
-        message: `execution.caps declares a spend cap (maxUsd/maxTotalUsd) but src/run/pricing.ts has no rate for model "${model ?? DEFAULT_OPENAI_CU_MODEL}"; add a rate or remove the cap — an unenforceable cap is refused rather than run uncapped.`,
+        message: `execution.caps declares a spend cap (maxUsd/maxTotalUsd) but src/run/pricing.ts has no rate for model "${model}"; add a rate or remove the cap — an unenforceable cap is refused rather than run uncapped.`,
       };
     }
   }

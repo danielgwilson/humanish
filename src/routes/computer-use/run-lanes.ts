@@ -4,7 +4,7 @@
 import { prepareReceivingRun } from "../../comms/receiving-runtime.js";
 import type { CommsReceivingRun } from "../../comms/receiving.js";
 import { liveObserverResult } from "../../observer/live.js";
-import { DEFAULT_OPENAI_CU_MODEL } from "../../actors/computer-use/openai-provider.js";
+import { pricedModel } from "../../lab/plan-base.js";
 import { runAllCuaParticipants } from "./lanes.js";
 import { startLiveTraceFlush } from "./live-flush.js";
 import { drainExternalComms } from "./external-comms.js";
@@ -17,7 +17,7 @@ import type { CuaParticipantsSetup, CuaRunSetup } from "./setup.js";
  * the participant outcomes and the warnings the finish records.
  */
 export async function runLabParticipants(setup: CuaRunSetup, participants: CuaParticipantsSetup) {
-  const { plan, input, config, cwd, streams, descriptor, subjectRoute, run } = setup;
+  const { plan, input, cwd, streams, descriptor, subjectRoute, run } = setup;
   const { participantRuns, participantPlan, scrubKnownValues, bundleBase } = setup;
   const { env, knownSecretValues, deps, liveTrace, externalComms, inProgress, fail } = participants;
   const { dryRun } = plan;
@@ -57,7 +57,7 @@ export async function runLabParticipants(setup: CuaRunSetup, participants: CuaPa
     const liveFlush = startLiveTraceFlush({
       bundle: inProgressBundle,
       participantRuns: participantRuns,
-      model: config.actors[0]?.model ?? DEFAULT_OPENAI_CU_MODEL,
+      model: pricedModel(plan.runner.brain),
       write: (bundle) => run.writeSnapshot(bundle),
     });
     liveTrace.flush = liveFlush.flush;

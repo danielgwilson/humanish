@@ -28,9 +28,8 @@ import type { CuaActorSessionOptions } from "../../actors/computer-use/actor.js"
 import { type E2BDesktopModule, type E2BDesktopSandbox } from "../../substrates/e2b/sdk.js";
 import { type DesktopResourceObservation } from "../../substrates/e2b/desktop-resources.js";
 import { type DetachedTimers } from "../../substrates/detached.js";
-import type { ComputerUsePlan } from "../../lab/plan-types.js";
+import type { Brain, ComputerUsePlan } from "../../lab/plan-types.js";
 import { type LabCommsEmail, type LabConfig, type LabSubjectServe } from "../../lab/types.js";
-import { type LocalAgentId } from "../../actors/local-agent/cli.js";
 import { renderObserver, type ObserverResult } from "../../observer/render.js";
 import { type RunLabProvenance } from "../../run/status.js";
 import {
@@ -506,8 +505,8 @@ export interface CuaParticipantDeps {
   config: LabConfig;
   descriptor: CuaActorDescriptor;
   appUrl: string;
-  /** When set, the computer-use brain is this locally-signed-in CLI instead of a keyed API. */
-  localAgent?: LocalAgentId;
+  /** The plan's brain: the model and, for a local agent, which signed-in CLI drives the participant. */
+  brain: Brain;
   cloneRoute: boolean;
   /** desktop-cli (#495): a CLI studied at a desktop. Nothing is cloned and no browser is opened. */
   desktopCliRoute?: boolean;

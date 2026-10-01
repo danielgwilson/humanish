@@ -34,13 +34,11 @@ async function pathWithCodex(script: string | undefined): Promise<string> {
 function rejection(dir: string, caps: { maxUsd?: number } = {}) {
   return liveCuaRejection({
     caps,
-    model: undefined,
+    brain: { kind: "local-agent", agent: "codex" },
     hooks: {},
     env: { PATH: dir, HOME: dir, E2B_API_KEY: "e2b-test-key" },
     openaiApiKey: "",
     e2bApiKey: "e2b-test-key",
-    localAgentRoute: true,
-    preferredLocalAgent: "codex",
     subjectEnvNames: [],
     externalCommsConfig: undefined,
   });
