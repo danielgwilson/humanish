@@ -5,7 +5,7 @@ import {
 import { redactText } from "../../evidence/redaction.js";
 import type { ObserverResult } from "../../observer/render.js";
 import type { RunBundle, RunRerunLineage } from "../../run/bundle.js";
-import type { Judgment } from "../../run/judge.js";
+import { foldScorerFailures, type Judgment } from "../../run/judge.js";
 import { buildLaneSummary, laneOutcomeOk } from "./bundle.js";
 import { summarizeCuaDiagnostics } from "./diagnostics.js";
 import {
@@ -50,7 +50,8 @@ function cuaLabResult(args: {
   /** The run's judgment; ok requires every participant to have passed. */
   judgment: Judgment;
   observer: ObserverResult;
-  declaredVerdictFailure: string | undefined;
+  /** Why the scorer failed the run; already folded into the bundle's review. */
+  scorerFailures: readonly string[];
   receivingWarnings: string[];
   aggregateWarnings: string[];
   adapterWarnings: string[];
@@ -77,11 +78,7 @@ function cuaLabResult(args: {
   // Lane-level pass: dry-run lanes are contract-ok; live lanes need a passed, engaged session.
   const laneOk = (outcome: LaneRunOutcome | undefined): boolean => laneOutcomeOk(outcome, dryRun);
   const adapterFailure = adapterScoreFailureMessage(bundle);
-  const ok =
-    observer.ok &&
-    args.judgment.allPassed &&
-    adapterFailure === undefined &&
-    args.declaredVerdictFailure === undefined;
+  const ok = observer.ok && args.judgment.allPassed && args.scorerFailures.length === 0;
 
   const laneWarnings = (outcomes ?? []).flatMap((outcome) => outcome.warnings);
   const warnings = [
@@ -260,6 +257,8 @@ export async function finishCuaRun(
     hookLabel: "cuaHooks",
     ...(input.scorerProvenance === undefined ? {} : { scorerProvenance: input.scorerProvenance }),
   });
+  // The one final verdict fold: scoring can only make the judged verdict stricter.
+  bundle.review = foldScorerFailures(bundle.review, scorerResult.failures);
 
   if (receiving) bundle.commsReceiving = receiving.snapshot();
   const finished = await run.finish(bundle);
@@ -282,7 +281,7 @@ export async function finishCuaRun(
     bundle,
     judgment,
     observer,
-    declaredVerdictFailure: scorerResult.declaredVerdictFailure,
+    scorerFailures: scorerResult.failures,
     receivingWarnings,
     aggregateWarnings,
     adapterWarnings,

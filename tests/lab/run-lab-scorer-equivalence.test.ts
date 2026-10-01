@@ -127,3 +127,54 @@ describe("RunLabOptions.scorer matches the legacy scorer hook", () => {
     }
   }
 });
+
+// The route folds scorer failures into its judged verdict once, before the run finishes, so the
+// bundle, status.json and the result agree. A browser route fails on any valid fail score and on a
+// declared scorer that throws or returns a malformed value; the terminal route fails only on a
+// declared scorer. Without a failure the judged verdict stands: a contract for the dry browser
+// runs, a pass for the fake live terminal run.
+describe("scorer failures fold into one verdict the bundle, status and result agree on", () => {
+  const dirs: string[] = [];
+  afterEach(async () => {
+    await Promise.all(dirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
+  });
+
+  const judged: Record<string, string> = {
+    "computer use": "contract_proof_only",
+    "shared world": "contract_proof_only",
+    terminal: "pass",
+  };
+  const fails = (routeName: string, behavior: string, declared: boolean): boolean =>
+    routeName === "terminal"
+      ? declared && behavior !== "valid pass"
+      : behavior === "valid fail" || (declared && behavior !== "valid pass");
+
+  for (const [routeName, route] of Object.entries(routes)) {
+    for (const behavior of Object.keys(behaviors)) {
+      for (const declared of [false, true]) {
+        it(`${routeName}: ${behavior}${declared ? " with CLI provenance" : ""}`, async () => {
+          const cwd = await mkdtemp(path.join(tmpdir(), "humanish-scorer-fold-"));
+          dirs.push(cwd);
+          const outcome = await runLab(route.config(), {
+            ...route.base(),
+            scorer: { score: behaviors[behavior]! },
+            ...(declared ? { scorerProvenance: provenance } : {}),
+            cwd,
+            runId: "fold",
+          } as RunLabOptions);
+          const runDir = path.join(cwd, ".humanish", "runs", "fold");
+          const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as {
+            review: { verdict: string; gaps: string[] };
+          };
+          const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8")) as {
+            outcome?: { verdict?: string };
+          };
+          const failed = fails(routeName, behavior, declared);
+          expect(bundle.review.verdict).toBe(failed ? "fail" : judged[routeName]);
+          expect(status.outcome?.verdict).toBe(bundle.review.verdict);
+          expect(outcome.result.ok).toBe(!failed);
+        });
+      }
+    }
+  }
+});

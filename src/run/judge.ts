@@ -180,6 +180,28 @@ export function judgeTerminal(args: {
 }
 
 /**
+ * The run's final review after scoring. Each scorer failure is recorded as a gap, and the first
+ * turns a pass or a contract into a fail with that failure as the summary. Every other verdict
+ * stays as it was, so scoring can never improve a verdict. No failures returns the review as is.
+ */
+export function foldScorerFailures(
+  review: ReviewSummary,
+  failures: readonly string[],
+): ReviewSummary {
+  let folded = review;
+  for (const failure of failures) {
+    folded = {
+      ...folded,
+      ...(folded.verdict === "pass" || folded.verdict === "contract_proof_only"
+        ? { verdict: "fail" as const, summary: failure }
+        : {}),
+      gaps: folded.gaps.includes(failure) ? folded.gaps : [...folded.gaps, failure],
+    };
+  }
+  return folded;
+}
+
+/**
  * A run with several participants: it passes only when every expected participant passed. When
  * one did not, a timeout among them makes the run timed_out; otherwise it fails. A dry run and a
  * run still in progress are contracts.

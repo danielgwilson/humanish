@@ -2644,6 +2644,15 @@ describe("concurrent run lifetime", () => {
       hooks,
     });
     expect(created).toHaveLength(4);
+    // No route's verdict reads cleanup: the failed kills leave the pass and the result's ok alone.
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
+    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
+    const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8")) as {
+      outcome?: { verdict?: string };
+    };
+    expect(bundle.review.verdict).toBe("pass");
+    expect(status.outcome?.verdict).toBe("pass");
+    expect(result.ok).toBe(true);
 
     const reclaimed: string[] = [];
     await reclaimRunSandboxes(cwd, result.runId, {
