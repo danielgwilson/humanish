@@ -8,6 +8,12 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Changed
+
+- `humanish lab run --help` says what `--lanes` takes: a participant's declared
+  `actors[0].lanes[].id`, or `lane-01`, `lane-02`, … by position when the lab declares none
+  (#1336).
+
 ## 0.106.1: Codex CLI 0.160.0 and reclaim in E2B debug mode (2026-10-01)
 
 Codex participants, Codex-account analysis and `humanish doctor` admit Codex CLI 0.160.0 (published
