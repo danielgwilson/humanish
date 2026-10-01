@@ -29,7 +29,12 @@ import {
 import { e2bRequestTimeoutMs } from "../../substrates/e2b/lifetime.js";
 import { subjectProvenanceArg } from "./lanes.js";
 import { liveCuaRejection } from "./preflight.js";
-import { cuaDescriptorOf, cuaRoute, cuaRouteOf, type ComputerUseRefusal } from "./plan.js";
+import {
+  cuaDescriptorOf,
+  cuaSubjectRoute,
+  cuaSubjectRouteOf,
+  type ComputerUseRefusal,
+} from "./plan.js";
 import type { ComputerUsePlan } from "../../lab/plan-types.js";
 import { trackRuntimeStreams, type LiveTraceFlush } from "./live-flush.js";
 import { type CuaRunBundleBase } from "./assemble.js";
@@ -95,7 +100,7 @@ export async function refuseCuaLab(
     cwd: projectRoot.physicalPath,
     labId: config.id,
     actor: refusal.actor ?? config.actors[0]?.type ?? "",
-    appUrl: cuaRoute(config, hooks).appUrl,
+    appUrl: cuaSubjectRoute(config, hooks).appUrl,
     dryRun,
     runId: options.runId ?? "not-created",
     lanes: [],
@@ -167,9 +172,9 @@ async function planCuaRun(
   const streams = trackRuntimeStreams(hooks);
   const env = hooks.env ?? process.env;
 
-  const route = cuaRouteOf(routePlan);
+  const subjectRoute = cuaSubjectRouteOf(routePlan);
   const { cloneRoute, localTreeRoute, inProcessRoute, appUrl, subjectRepo, subjectEnvNames } =
-    route;
+    subjectRoute;
 
   const fail = (
     code: CuaActorLabErrorCode,
@@ -295,7 +300,7 @@ async function planCuaRun(
       hooks,
       streams,
       env,
-      route,
+      subjectRoute,
       fail,
       refuse,
       descriptor,
@@ -329,7 +334,7 @@ async function startCuaRun(
 ): Promise<{ ok: false; result: CuaActorLabResult } | { ok: true; setup: CuaRunSetup }> {
   const { config, dryRun, cwd, hooks, descriptor, participantRuns, plan, publicRepo } = planned;
   const { appUrl, inProcessRoute, localAppSubject, cloneRoute, localTreeRoute, subjectEnvNames } =
-    planned.route;
+    planned.subjectRoute;
   // The run's status record exists from here on, so anything watching the runs directory can
   // tell which lab this is and that it is alive. The fail-closed returns below leave it finished
   // with no outcome when the scope closes; a crash leaves it stale, which reads as interrupted.
@@ -369,7 +374,7 @@ async function startCuaRun(
 
   const subjectArgs = {
     routePlan,
-    route: planned.route,
+    subjectRoute: planned.subjectRoute,
     ...(publicRepo === undefined ? {} : { publicRepo }),
     ...(planned.localTreeArchive === undefined
       ? {}
@@ -464,8 +469,9 @@ function cuaParticipantDeps(
   const { localAgentRoute, preferredLocalAgent, hasGithubToken, localTreeArchiveBuffer } = planned;
   const { openaiApiKey, e2bApiKey, scrubKnownValues } = planned;
   const { externalCommsConfig, externalCommsEmail } = planned;
-  const { appUrl, cloneRoute, desktopCliRoute, localTreeRoute, serve, subjectRepo } = planned.route;
-  const { subjectEnvNames } = planned.route;
+  const { appUrl, cloneRoute, desktopCliRoute, localTreeRoute, serve, subjectRepo } =
+    planned.subjectRoute;
+  const { subjectEnvNames } = planned.subjectRoute;
   const { runPaths, redactScreenshots, liveTrace } = run;
   const createDesktop = participantDesktopOf(hooks);
   const timeoutMs = routePlan.sessionBudgetMs;

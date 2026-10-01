@@ -8,7 +8,7 @@ import { cuaDeclaredState } from "./plan.js";
 import { type RunSubjectProvenance, type RunSubjectStateStepRecord } from "../../run/bundle.js";
 import { type LocalTreeArchive } from "../../run/source-archive.js";
 import { participantSubjectProjection } from "./lanes.js";
-import { type CuaRoute } from "./plan.js";
+import { type CuaSubjectRoute } from "./plan.js";
 import {
   type DesktopParticipantRun,
   type CuaSubjectProjection,
@@ -22,27 +22,27 @@ import {
  */
 export function projectParticipantSubjects(args: {
   routePlan: ComputerUsePlan;
-  route: CuaRoute;
+  subjectRoute: CuaSubjectRoute;
   publicRepo?: string;
   localTreeArchive?: LocalTreeArchive;
   runs: readonly DesktopParticipantRun[];
   outcomes: readonly LaneRunOutcome[] | undefined;
   dryRun: boolean;
 }): CuaSubjectProjection[] {
-  const { route, publicRepo, localTreeArchive } = args;
+  const { subjectRoute, publicRepo, localTreeArchive } = args;
   const declaredState = cuaDeclaredState(args.routePlan);
   return args.runs.map((_spec, index) => {
     const outcome = args.outcomes?.[index];
     const subjectState = resolveSubjectState({
-      declared: route.provisionedRoute ? declaredState : undefined,
+      declared: subjectRoute.provisionedRoute ? declaredState : undefined,
       dryRun: args.dryRun,
       executed: outcome?.stateStepRecords ?? [],
     });
     return participantSubjectProjection({
-      cloneRoute: route.cloneRoute,
-      localTreeRoute: route.localTreeRoute,
+      cloneRoute: subjectRoute.cloneRoute,
+      localTreeRoute: subjectRoute.localTreeRoute,
       ...(publicRepo === undefined ? {} : { publicRepo }),
-      subjectEnvNames: route.subjectEnvNames,
+      subjectEnvNames: subjectRoute.subjectEnvNames,
       ...(outcome?.subjectCommit === undefined ? {} : { subjectCommit: outcome.subjectCommit }),
       ...(localTreeArchive === undefined ? {} : { localTreeArchive }),
       subjectState,
