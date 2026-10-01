@@ -103,7 +103,12 @@ function configuration(route: Route): LabConfig {
   return parsed.config;
 }
 
-function desktopModule(events: string[], failCreate: boolean) {
+/** The shared world the provisioned plane's checkpoint reads; each seat's turn bumps it. */
+interface FakeWorld {
+  turns: number;
+}
+
+function desktopModule(events: string[], failCreate: boolean, world: FakeWorld) {
   const created: Array<{
     id: string;
     options: E2BDesktopCreateOptions;
@@ -145,6 +150,9 @@ function desktopModule(events: string[], failCreate: boolean) {
                     viewport: { width, height: height - 100, deviceScaleFactor: 1 },
                   }),
                 };
+              // The checkpoint's output is read back from its log; it reports the world's turns.
+              if (command.includes("checkpoint-") && command.includes("tail -c"))
+                return { exitCode: 0, stdout: `count=${world.turns}\n` };
               if (command.includes("/status")) return { exitCode: 0, stdout: "0" };
               if (command.includes("rev-parse"))
                 return { exitCode: 0, stdout: "12".repeat(20) + "\n" };
@@ -219,7 +227,8 @@ describe("configured receiving through exported study runners", () => {
     const events: string[] = [],
       prompts: string[] = [];
     const config = configuration(route);
-    const sandbox = desktopModule(events, failCreate);
+    const world: FakeWorld = { turns: 0 };
+    const sandbox = desktopModule(events, failCreate, world);
     const addresses = new Map<string, string>();
     const attached = new Map<string, ReceivingSurface>();
     const ended = new Set<string>();
@@ -310,6 +319,8 @@ describe("configured receiving through exported study runners", () => {
       }
       options.onObservedUrl?.("https://collaboration.example.test/lobby/AB2CD9");
       await new Promise((resolve) => setTimeout(resolve, 15));
+      // Both seats are mid-turn here, so the shared world changes while they overlap.
+      world.turns += 1;
       return {
         status: "passed",
         completionReason: "goal_satisfied",
