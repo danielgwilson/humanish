@@ -30,7 +30,7 @@ step 6, and renders it as in step 7 when `RunOptions.observer` asks, as every CL
    (`src/routes/computer-use/preflight.ts`) checks provider keys, the local agent login and
    subject env vars, and refuses a dollar cap it cannot price. Both run before any sandbox or
    provider call.
-4. **Desktop.** `createE2BCuaDesktopLane` (`src/routes/computer-use/e2b-desktop.ts`) runs the
+4. **Desktop.** `createE2BParticipantDesktop` (`src/routes/computer-use/e2b-desktop.ts`) runs the
    lane's steps from the `e2b-desktop-*.ts` files beside it. `acquireE2BDesktopSandbox`
    (`src/substrates/e2b/sandbox.ts`) appends the sandbox id to `sandbox-receipts.ndjson` before it
    returns the handle. A `clone` or `local-tree` subject is provisioned through `src/subject/`,
@@ -69,13 +69,13 @@ step 6, and renders it as in step 7 when `RunOptions.observer` asks, as every CL
 | `src/keys/`                    | Provider key discovery: env files, the user key store and key-source probes            | `src/keys/key-resolution.ts`         |
 | `src/lab/`                     | Lab manifest types, parsing, validation, routing and dispatch                          | `src/lab/engine.ts`                  |
 | `src/routes/`                  | One folder per route; `routeOf` in `src/lab/plan.ts` picks it                          | `src/lab/plan.ts`                    |
-| `src/routes/computer-use/`     | A computer-use actor on hosted or local desktops: preflight, lanes and fan-out bundles | `src/routes/computer-use/lab.ts`     |
+| `src/routes/computer-use/`     | Computer-use participants and the desktops composing `src/substrates/` with route code | `src/routes/computer-use/lab.ts`     |
 | `src/routes/scripted-browser/` | Committed scenario steps replayed on a loopback app or a provisioned clone             | `src/routes/scripted-browser/lab.ts` |
 | `src/routes/shared-world/`     | Several seats on one shared plane, provisioned or external-public                      | `src/routes/shared-world/lab.ts`     |
 | `src/routes/terminal/`         | A Codex agent in an E2B shell against a terminal product, with its ledgers             | `src/routes/terminal/lab.ts`         |
 | `src/actors/`                  | The actor contract, the registry and each actor's session code                         | `src/actors/registry.ts`             |
 | `src/subject/`                 | Subject provisioning over a `Shell`: clone, local tree, desktop CLI, serve             | `src/subject/serve.ts`               |
-| `src/substrates/`              | E2B desktops in `e2b/`, Firecracker and Lima VMs in `local/`, the `Shell`              | `src/substrates/desktop-session.ts`  |
+| `src/substrates/`              | Provider primitives: E2B in `e2b/`, Firecracker and Lima VMs in `local/`, the `Shell`  | `src/substrates/desktop-session.ts`  |
 | `src/run/`                     | Run lifecycle, bundle types, bundle guards, paths, status, receipts, reclaim           | `src/run/run.ts`                     |
 | `src/verify/`                  | `humanish verify`: evidence checks, share-safety grades, cost and rerun checks         | `src/verify/verify.ts`               |
 | `src/evidence/`                | Redaction, screenshot checks and desktop recordings                                    | `src/evidence/redaction.ts`          |

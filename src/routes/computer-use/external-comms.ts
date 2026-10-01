@@ -5,7 +5,7 @@ import { redactText, toErrorMessage } from "../../evidence/redaction.js";
 import type { LabCommsEmail, LabCommsExternal } from "../../lab/types.js";
 import type { PreparedRunArtifactPaths } from "../../run/paths.js";
 import { writeContainedOutputFile } from "../../run/contained-output.js";
-import { laneHasInboxRecipient } from "./desktop-lane.js";
+import { laneHasInboxRecipient } from "./participant-desktop.js";
 import type { DesktopParticipantRun, LaneRunOutcome } from "./types.js";
 
 /**

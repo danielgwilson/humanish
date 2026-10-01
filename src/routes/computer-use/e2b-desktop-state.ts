@@ -19,7 +19,7 @@ import type { startE2BDesktopMedia } from "../../substrates/e2b/desktop-media.js
 import type { startE2BDesktopRecording } from "../../substrates/e2b/desktop-recording.js";
 import type { DesktopResourceObservation } from "../../substrates/e2b/desktop-resources.js";
 import type { E2BDesktopSandbox } from "../../substrates/e2b/sdk.js";
-import type { DesktopLaneEvidence } from "./desktop-lane.js";
+import type { ParticipantDesktopEvidence } from "./participant-desktop.js";
 import type { LaneComms, RunningCommsCatch } from "./e2b-desktop-comms.js";
 import type { LaneFidelity } from "./e2b-desktop-fidelity.js";
 import type { CuaActorLabErrorCode, CuaLaneDeps, DesktopParticipantRun } from "./types.js";
@@ -120,7 +120,7 @@ export function newLaneState(spec: DesktopParticipantRun): E2BLaneState {
 }
 
 /** The lane's outcome evidence, read from its state. */
-export function laneEvidence(state: E2BLaneState): DesktopLaneEvidence {
+export function laneEvidence(state: E2BLaneState): ParticipantDesktopEvidence {
   // Host-side approximation of the E2B desktop's billed lifetime; feeds the desktop-minute cost
   // estimate. Never negative.
   const desktopDurationMs =

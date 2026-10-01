@@ -25,7 +25,7 @@ import {
 } from "./self-report.js";
 import { hollowCompletion } from "../../run/judge.js";
 import type { CuaLaneDeps, DesktopParticipantRun } from "./types.js";
-import type { ReadyCuaDesktop } from "./desktop-lane.js";
+import type { ReadyParticipantDesktop } from "./participant-desktop.js";
 import { laneSpecOf } from "./legacy-lane-spec.js";
 
 /** The model a lane brings besides the default API client, and the handles its cleanup needs. */
@@ -105,7 +105,7 @@ export async function startParticipantModel(
 export function participantSessionOptions(
   spec: DesktopParticipantRun,
   deps: CuaLaneDeps,
-  ready: ReadyCuaDesktop,
+  ready: ReadyParticipantDesktop,
   provider: CuaProvider | undefined,
   writeScreenshot: NonNullable<CuaActorSessionOptions["writeScreenshot"]>,
 ): CuaActorSessionOptions {

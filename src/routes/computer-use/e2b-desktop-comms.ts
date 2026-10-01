@@ -19,8 +19,8 @@ import { redactText, toErrorMessage } from "../../evidence/redaction.js";
 import type { LabCommsEmail, LabConfig } from "../../lab/types.js";
 import { writeContainedOutputFile } from "../../run/contained-output.js";
 import type { Shell } from "../../substrates/shell.js";
-import type { ReadyCuaDesktop } from "./desktop-lane.js";
-import { inboxRecipientFor, laneHasInboxRecipient } from "./desktop-lane.js";
+import type { ReadyParticipantDesktop } from "./participant-desktop.js";
+import { inboxRecipientFor, laneHasInboxRecipient } from "./participant-desktop.js";
 import type { CuaLaneDeps, DesktopParticipantRun } from "./types.js";
 
 /** Mid-run inbox-surface render cadence (ms). Coarse enough that the per-tick `cat` + file writes stay
@@ -215,7 +215,7 @@ export function laneInbox(args: {
   receivingInboxUrl: string | undefined;
   comms: LaneComms | undefined;
   catchReady: boolean;
-}): ReadyCuaDesktop["inbox"] {
+}): ReadyParticipantDesktop["inbox"] {
   const { spec, deps, receivingInboxUrl, comms } = args;
   if (deps.receiving && receivingInboxUrl)
     return {

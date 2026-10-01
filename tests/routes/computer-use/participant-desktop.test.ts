@@ -15,11 +15,11 @@ import { runCuaActorLab } from "../../../src/routes/computer-use/lab.js";
 import { runCuaLane } from "../../../src/routes/computer-use/lanes.js";
 import { type CuaLaneDeps } from "../../../src/routes/computer-use/types.js";
 import type {
-  CuaDesktopLane,
-  DesktopLaneEvidence,
-} from "../../../src/routes/computer-use/desktop-lane.js";
+  ParticipantDesktop,
+  ParticipantDesktopEvidence,
+} from "../../../src/routes/computer-use/participant-desktop.js";
 import { ownDesktopAllocation } from "../../../src/substrates/desktop-session.js";
-import { createE2BCuaDesktopLane } from "../../../src/routes/computer-use/e2b-desktop.js";
+import { createE2BParticipantDesktop } from "../../../src/routes/computer-use/e2b-desktop.js";
 import { E2B_SPEECH_TEMPLATE } from "../../../src/substrates/e2b/sandbox.js";
 import type { E2BDesktopModule, E2BDesktopSandbox } from "../../../src/substrates/e2b/sdk.js";
 import { LAB_CONFIG_SCHEMA } from "../../../src/lab/types.js";
@@ -126,13 +126,13 @@ async function fixture() {
     return { status: "released" as const, reason: "terminated" as const };
   });
   const allocation = ownDesktopAllocation({ resourceId: "synthetic-memory-desktop", release });
-  let evidence: DesktopLaneEvidence = {
+  let evidence: ParticipantDesktopEvidence = {
     released: false,
     streamUrlPresent: false,
     stateStepRecords: [],
     phaseRecords: [],
   };
-  const port: CuaDesktopLane = {
+  const port: ParticipantDesktop = {
     prepare: vi.fn(async () => {
       order.push("prepare");
     }),
@@ -153,7 +153,7 @@ async function fixture() {
     }),
     snapshot: () => evidence,
   };
-  deps.createDesktopLane = () => port;
+  deps.createDesktop = () => port;
   return { cwd, spec, deps, order, port, backend, allocation, release, loadDesktopModule };
 }
 
@@ -192,7 +192,7 @@ describe("ready desktop lane contract", () => {
       });
       f.deps.hooks.loadDesktopModule = async () =>
         ({ Sandbox: { create } }) as unknown as E2BDesktopModule;
-      const adapter = createE2BCuaDesktopLane(f.spec, f.deps, []);
+      const adapter = createE2BParticipantDesktop(f.spec, f.deps, []);
       await expect(adapter.prepare()).rejects.toThrow("synthetic allocation stop");
       expect(create).toHaveBeenCalledOnce();
       if (expected)
@@ -606,7 +606,7 @@ describe("ready desktop lane contract", () => {
     f.deps.hooks.prepareDesktop = async () => {
       throw new Error("Synthetic setup interruption");
     };
-    const adapter = createE2BCuaDesktopLane(f.spec, f.deps, []);
+    const adapter = createE2BParticipantDesktop(f.spec, f.deps, []);
     await expect(adapter.openSession()).rejects.toThrow("must be prepared");
     await expect(adapter.prepare()).rejects.toThrow("Synthetic setup interruption");
     const closed = adapter.finalize({ failed: true });
@@ -624,7 +624,7 @@ describe("ready desktop lane contract", () => {
 
   it("a finalized hosted lane cannot allocate later", async () => {
     const f = await fixture();
-    const adapter = createE2BCuaDesktopLane(f.spec, f.deps, []);
+    const adapter = createE2BParticipantDesktop(f.spec, f.deps, []);
     await adapter.finalize({ failed: true });
     await expect(adapter.prepare()).rejects.toThrow("only start once");
     expect(f.loadDesktopModule).not.toHaveBeenCalled();

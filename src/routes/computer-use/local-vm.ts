@@ -4,9 +4,9 @@ import { dispatchLab, type LabOutcome, type RunLabOptions } from "../../lab/engi
 import type { LabConfig } from "../../lab/types.js";
 import {
   inboxRecipientFor,
-  type CuaDesktopLane,
-  type DesktopLaneEvidence,
-} from "./desktop-lane.js";
+  type ParticipantDesktop,
+  type ParticipantDesktopEvidence,
+} from "./participant-desktop.js";
 import type { CuaActorLabHooks } from "./types.js";
 import type { CuaLaneSpec } from "./legacy-lane-spec.js";
 import { HOOK_MEMBERS, withHookOverrides } from "../../lab/hook-bag.js";
@@ -108,7 +108,7 @@ function studyAssets(
 
 function mediaEvidence(
   media: GuestMediaConfig,
-): NonNullable<DesktopLaneEvidence["desktopBrowser"]> {
+): NonNullable<ParticipantDesktopEvidence["desktopBrowser"]> {
   return {
     requested: "chromium",
     resolved: "chromium",
@@ -124,12 +124,12 @@ function mediaEvidence(
 }
 
 /** One lane's Firecracker desktop and optional captured inbox, released in finalize. */
-function createLocalDesktopLane(
+function createLocalParticipantDesktop(
   context: LocalLaneContext,
   spec: CuaLaneSpec,
   warnings: string[],
   artifactRoot: PreparedOutputRoot,
-): CuaDesktopLane {
+): ParticipantDesktop {
   const { config, media, recording, state } = context;
   let session: LocalFirecrackerDesktop | undefined;
   let inbox: Awaited<ReturnType<typeof startLocalCapturedInbox>> | undefined;
@@ -137,7 +137,7 @@ function createLocalDesktopLane(
   const address =
     email?.kind === "fake" ? inboxRecipientFor(email, spec.laneId)?.address : undefined;
   let finalizing: Promise<void> | undefined;
-  const evidence: DesktopLaneEvidence = {
+  const evidence: ParticipantDesktopEvidence = {
     released: false,
     streamUrlPresent: false,
     stateStepRecords: [],
@@ -264,7 +264,7 @@ export async function runLocalFirecrackerStudy(options: LocalStudyOptions): Prom
       // The caller's bag may be a class instance, so it is wrapped rather than spread.
       cuaHooks: withHookOverrides(callerHooks, HOOK_MEMBERS.cua, {
         createDesktopLane: (spec, warnings, artifactRoot) =>
-          createLocalDesktopLane(context, spec, warnings, artifactRoot),
+          createLocalParticipantDesktop(context, spec, warnings, artifactRoot),
         ...(account ? accountProvider(state) : {}),
         ...(options.signal
           ? {

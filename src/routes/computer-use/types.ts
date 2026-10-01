@@ -7,7 +7,7 @@ import type {
   CuaProvider,
 } from "../../actors/computer-use/loop.js";
 import type { CommsReceivingRun } from "../../comms/receiving.js";
-import { type CuaDesktopLane } from "./desktop-lane.js";
+import { type ParticipantDesktop } from "./participant-desktop.js";
 import type { SubjectPhaseEvent } from "../../subject/steps.js";
 import type { DesktopBrowserEvidence } from "../../substrates/e2b/desktop-browser.js";
 import {
@@ -181,7 +181,7 @@ export interface CuaActorLabHooks extends BrowserLabAdapterHooks {
     spec: CuaLaneSpec,
     warnings: string[],
     artifactRoot: PreparedOutputRoot,
-  ) => CuaDesktopLane;
+  ) => ParticipantDesktop;
   env?: Record<string, string | undefined>;
   renderObserverFn?: typeof renderObserver;
   /** Injected clock (ms) for the host-side E2B desktop create->teardown span measurement that
@@ -499,11 +499,11 @@ export interface CuaRunBudget {
 /** Shared deps every lane runner needs (resolved once in the engine). */
 export interface CuaLaneDeps {
   /** Internal ready-desktop seam. The factory must not allocate; prepare owns that work. */
-  createDesktopLane?: (
+  createDesktop?: (
     spec: DesktopParticipantRun,
     warnings: string[],
     artifactRoot: PreparedOutputRoot,
-  ) => CuaDesktopLane;
+  ) => ParticipantDesktop;
   config: LabConfig;
   descriptor: CuaActorDescriptor;
   appUrl: string;

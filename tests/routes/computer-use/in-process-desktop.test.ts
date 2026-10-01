@@ -168,7 +168,7 @@ describe("in-process participant desktop", () => {
     };
     const buildProvider = vi.fn(async () => provider);
     f.deps.hooks.buildProvider = buildProvider;
-    f.deps.createDesktopLane = () => createInProcessDesktop(f.deps);
+    f.deps.createDesktop = () => createInProcessDesktop(f.deps);
 
     const result = await runCuaLane(f.spec, f.deps);
 

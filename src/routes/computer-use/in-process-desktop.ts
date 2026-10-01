@@ -4,7 +4,7 @@
 
 import type { CuaActorDescriptor } from "../../actors/registry.js";
 import type { LabConfig } from "../../lab/types.js";
-import type { CuaDesktopLane, ReadyCuaDesktop } from "./desktop-lane.js";
+import type { ParticipantDesktop, ReadyParticipantDesktop } from "./participant-desktop.js";
 import type { CuaActorLabHooks } from "./types.js";
 
 /** What an in-process desktop reads: the caller's executor hook and the arguments it receives. */
@@ -19,7 +19,7 @@ interface InProcessDesktopDeps {
  * The caller's executor as a participant desktop. prepare acquires nothing; openSession builds the
  * executor once; finalize is idempotent and has nothing to release; snapshot records no sandbox.
  */
-export function createInProcessDesktop(deps: InProcessDesktopDeps): CuaDesktopLane {
+export function createInProcessDesktop(deps: InProcessDesktopDeps): ParticipantDesktop {
   let preparationStarted = false;
   let opened = false;
   let finalization: Promise<void> | undefined;
@@ -29,7 +29,7 @@ export function createInProcessDesktop(deps: InProcessDesktopDeps): CuaDesktopLa
         throw new Error("Desktop lane preparation can only start once, before finalization.");
       preparationStarted = true;
     },
-    async openSession(): Promise<ReadyCuaDesktop> {
+    async openSession(): Promise<ReadyParticipantDesktop> {
       if (!preparationStarted || opened || finalization)
         throw new Error(
           "Desktop lane must be prepared and may only be opened once, before finalization.",

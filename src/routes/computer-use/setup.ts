@@ -479,7 +479,7 @@ function cuaLaneDeps(
   return {
     ...(hooks.createDesktopLane
       ? {
-          createDesktopLane: (run, warnings, root) =>
+          createDesktop: (run, warnings, root) =>
             hooks.createDesktopLane!(laneSpecOf(run), warnings, root),
         }
       : {}),
