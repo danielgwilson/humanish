@@ -406,7 +406,7 @@ export function createRestrictedCodexParticipant(options: RestrictedParticipantO
       }
     })();
   }
-  async function execute(
+  async function runTurn(
     req: CuaTurnRequest,
     signal: AbortSignal,
     debrief: boolean,
@@ -449,7 +449,7 @@ export function createRestrictedCodexParticipant(options: RestrictedParticipantO
     if (closed && !events.waiting)
       return Promise.reject(new CuaProviderError("request_rejected", noDispatch()));
     if (pending) return Promise.reject(new CuaProviderError("busy", noDispatch()));
-    const task = execute(req, signal, debrief);
+    const task = runTurn(req, signal, debrief);
     pending = task;
     void task
       .finally(() => {
