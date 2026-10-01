@@ -29,7 +29,7 @@ import type {
 } from "../../../src/actors/computer-use/loop.js";
 import { runComputerUsePlan, runCuaActorLab } from "../../../src/routes/computer-use/route.js";
 import { planComputerUseLab } from "../../../src/routes/computer-use/plan.js";
-import { CUA_ACTOR_LAB_PROVIDER_METADATA } from "../../../src/routes/computer-use/e2b-desktop-prepare.js";
+import { CUA_ACTOR_LAB_PROVIDER_METADATA } from "../../../src/routes/computer-use/e2b-desktop/prepare.js";
 import { makeChromeBrowserStateObserver } from "../../../src/substrates/e2b/desktop-cdp.js";
 import { buildSingleParticipantBundle } from "../../../src/routes/computer-use/single-bundle.js";
 import { buildRunCostSummary } from "../../../src/run/cost-summary.js";

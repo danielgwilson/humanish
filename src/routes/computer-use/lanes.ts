@@ -1,5 +1,5 @@
 import type { CuaLoopResult } from "../../actors/computer-use/loop.js";
-import { createE2BParticipantDesktop } from "./e2b-desktop.js";
+import { createE2BParticipantDesktop } from "./e2b-desktop/desktop.js";
 import { createInProcessDesktop } from "./in-process-desktop.js";
 import path from "node:path";
 import { cuaParticipantDiagnostics } from "./diagnostics.js";

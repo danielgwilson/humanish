@@ -3,9 +3,9 @@
 
 import { setTimeout as delay } from "node:timers/promises";
 
-import { buildOriginMap, type OriginMap } from "../../comms/capture-surface.js";
-import { FakeInbox } from "../../comms/fake-inbox.js";
-import { deployReceivingInbox } from "../../comms/receiving-surface.js";
+import { buildOriginMap, type OriginMap } from "../../../comms/capture-surface.js";
+import { FakeInbox } from "../../../comms/fake-inbox.js";
+import { deployReceivingInbox } from "../../../comms/receiving-surface.js";
 import {
   DEFAULT_SANDBOX_CATCH_PORT,
   collectCommsThread,
@@ -13,16 +13,16 @@ import {
   refreshInboxSurface,
   writeInboxSurface,
   type DeployedCommsCatch,
-} from "../../comms/sandbox-catch.js";
-import type { CommsAddress } from "../../comms/types.js";
-import { redactText, toErrorMessage } from "../../evidence/redaction.js";
-import type { LabCommsEmail, LabConfig } from "../../lab/types.js";
-import { writeContainedOutputFile } from "../../run/contained-output.js";
-import type { Shell } from "../../substrates/shell.js";
-import type { ReadyParticipantDesktop } from "./participant-desktop.js";
-import { inboxRecipientFor, participantHasInboxRecipient } from "./participant-desktop.js";
-import type { CuaParticipantDeps, DesktopParticipantRun } from "./types.js";
-import { addressedRecipients } from "../../lab/parse/comms.js";
+} from "../../../comms/sandbox-catch.js";
+import type { CommsAddress } from "../../../comms/types.js";
+import { redactText, toErrorMessage } from "../../../evidence/redaction.js";
+import type { LabCommsEmail, LabConfig } from "../../../lab/types.js";
+import { writeContainedOutputFile } from "../../../run/contained-output.js";
+import type { Shell } from "../../../substrates/shell.js";
+import type { ReadyParticipantDesktop } from "../participant-desktop.js";
+import { inboxRecipientFor, participantHasInboxRecipient } from "../participant-desktop.js";
+import type { CuaParticipantDeps, DesktopParticipantRun } from "../types.js";
+import { addressedRecipients } from "../../../lab/parse/comms.js";
 
 /** Mid-run inbox-surface render cadence (ms). Coarse enough that the per-tick `cat` + file writes stay
  *  cheap; fine enough that a verification email is visible seconds after the app sends it. */

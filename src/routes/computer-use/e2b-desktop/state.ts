@@ -1,28 +1,28 @@
 // What one E2B desktop lane records as it runs. The prepare, start and teardown steps fill one
 // record in order, and desktopEvidenceOf reads it for the lane's outcome.
 
-import type { RunDesktopRecording } from "../../evidence/desktop-recording-types.js";
-import type { RunSubjectStateStepRecord } from "../../run/bundle.js";
-import type { RunDesktopGeometry } from "../../run/streams.js";
-import type { SubjectPhaseEvent } from "../../subject/steps.js";
-import type { OwnedDesktopAllocation } from "../../substrates/desktop-session.js";
+import type { RunDesktopRecording } from "../../../evidence/desktop-recording-types.js";
+import type { RunSubjectStateStepRecord } from "../../../run/bundle.js";
+import type { RunDesktopGeometry } from "../../../run/streams.js";
+import type { SubjectPhaseEvent } from "../../../subject/steps.js";
+import type { OwnedDesktopAllocation } from "../../../substrates/desktop-session.js";
 import type {
   DesktopBrowserEvidence,
   DesktopBrowserFamily,
   DesktopBrowserLaunchIdentity,
-} from "../../substrates/e2b/desktop-browser.js";
+} from "../../../substrates/e2b/desktop-browser.js";
 import {
   declaredScreenForRender,
   type captureDesktopBrowserGeometry,
-} from "../../substrates/e2b/desktop-geometry.js";
-import type { startE2BDesktopMedia } from "../../substrates/e2b/desktop-media.js";
-import type { startE2BDesktopRecording } from "../../substrates/e2b/desktop-recording.js";
-import type { DesktopResourceObservation } from "../../substrates/e2b/desktop-resources.js";
-import type { E2BDesktopSandbox } from "../../substrates/e2b/sdk.js";
-import type { ParticipantDesktopEvidence } from "./participant-desktop.js";
-import type { ParticipantComms, RunningCommsCatch } from "./e2b-desktop-comms.js";
-import type { ParticipantFidelity } from "./e2b-desktop-fidelity.js";
-import type { CuaActorLabErrorCode, CuaParticipantDeps, DesktopParticipantRun } from "./types.js";
+} from "../../../substrates/e2b/desktop-geometry.js";
+import type { startE2BDesktopMedia } from "../../../substrates/e2b/desktop-media.js";
+import type { startE2BDesktopRecording } from "../../../substrates/e2b/desktop-recording.js";
+import type { DesktopResourceObservation } from "../../../substrates/e2b/desktop-resources.js";
+import type { E2BDesktopSandbox } from "../../../substrates/e2b/sdk.js";
+import type { ParticipantDesktopEvidence } from "../participant-desktop.js";
+import type { ParticipantComms, RunningCommsCatch } from "./comms.js";
+import type { ParticipantFidelity } from "./fidelity.js";
+import type { CuaActorLabErrorCode, CuaParticipantDeps, DesktopParticipantRun } from "../types.js";
 
 /** What every step of one lane reads: its spec, the run's dependencies and where it points. */
 export interface E2BParticipantContext {

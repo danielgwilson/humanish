@@ -2,18 +2,18 @@
 // recording and speech worker, then the sandbox is released by id (or kept for debugging), with a
 // warning for every outcome that is not a confirmed release.
 
-import { collectDesktopRecording } from "../../evidence/desktop-recording-artifact.js";
-import type { RunDesktopRecording } from "../../evidence/desktop-recording-types.js";
-import { redactText, toErrorMessage } from "../../evidence/redaction.js";
-import type { OwnedDesktopAllocation } from "../../substrates/desktop-session.js";
-import type { startE2BDesktopMedia } from "../../substrates/e2b/desktop-media.js";
-import type { startE2BDesktopRecording } from "../../substrates/e2b/desktop-recording.js";
-import { readE2BRelease } from "../../substrates/e2b/sandbox.js";
-import { e2bShell } from "../../substrates/e2b/shell.js";
-import { drainCommsEvidence } from "./e2b-desktop-comms.js";
-import { finalParticipantGeometry } from "./e2b-desktop-fidelity.js";
-import type { E2BParticipantContext, E2BParticipantState } from "./e2b-desktop-state.js";
-import type { CuaParticipantDeps, DesktopParticipantRun } from "./types.js";
+import { collectDesktopRecording } from "../../../evidence/desktop-recording-artifact.js";
+import type { RunDesktopRecording } from "../../../evidence/desktop-recording-types.js";
+import { redactText, toErrorMessage } from "../../../evidence/redaction.js";
+import type { OwnedDesktopAllocation } from "../../../substrates/desktop-session.js";
+import type { startE2BDesktopMedia } from "../../../substrates/e2b/desktop-media.js";
+import type { startE2BDesktopRecording } from "../../../substrates/e2b/desktop-recording.js";
+import { readE2BRelease } from "../../../substrates/e2b/sandbox.js";
+import { e2bShell } from "../../../substrates/e2b/shell.js";
+import { drainCommsEvidence } from "./comms.js";
+import { finalParticipantGeometry } from "./fidelity.js";
+import type { E2BParticipantContext, E2BParticipantState } from "./state.js";
+import type { CuaParticipantDeps, DesktopParticipantRun } from "../types.js";
 
 /**
  * Each route's own keep flag gates its own lane only: a clone.keep can never leak into a local-tree

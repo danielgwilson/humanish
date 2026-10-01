@@ -1,17 +1,17 @@
 // The first half of an E2B desktop lane's preparation: acquire the sandbox, verify its screen, and
 // provision the subject. Each step fills the lane's state; a step that cannot proceed throws.
 
-import { redactText } from "../../evidence/redaction.js";
-import { provisionCloneSubject } from "../../subject/clone.js";
-import { provisionDesktopCli } from "../../subject/desktop-cli.js";
-import { provisionLocalTreeSubject } from "../../subject/local-tree.js";
-import { inspectDesktopScreenGeometry } from "../../substrates/e2b/desktop-geometry.js";
-import { observeDesktopResources } from "../../substrates/e2b/desktop-resources.js";
-import { acquireE2BDesktopSandbox, e2bDesktopTemplate } from "../../substrates/e2b/sandbox.js";
-import { loadE2BDesktopModule, type E2BDesktopSandbox } from "../../substrates/e2b/sdk.js";
-import { e2bShell } from "../../substrates/e2b/shell.js";
-import { attachReceivingInbox, participantCommsEnv, startCommsCatch } from "./e2b-desktop-comms.js";
-import type { E2BParticipantContext, E2BParticipantState } from "./e2b-desktop-state.js";
+import { redactText } from "../../../evidence/redaction.js";
+import { provisionCloneSubject } from "../../../subject/clone.js";
+import { provisionDesktopCli } from "../../../subject/desktop-cli.js";
+import { provisionLocalTreeSubject } from "../../../subject/local-tree.js";
+import { inspectDesktopScreenGeometry } from "../../../substrates/e2b/desktop-geometry.js";
+import { observeDesktopResources } from "../../../substrates/e2b/desktop-resources.js";
+import { acquireE2BDesktopSandbox, e2bDesktopTemplate } from "../../../substrates/e2b/sandbox.js";
+import { loadE2BDesktopModule, type E2BDesktopSandbox } from "../../../substrates/e2b/sdk.js";
+import { e2bShell } from "../../../substrates/e2b/shell.js";
+import { attachReceivingInbox, participantCommsEnv, startCommsCatch } from "./comms.js";
+import type { E2BParticipantContext, E2BParticipantState } from "./state.js";
 
 export const CUA_ACTOR_LAB_PROVIDER_METADATA = {
   mode: "cua-actor-lab",

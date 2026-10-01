@@ -19,7 +19,7 @@ import type {
   ParticipantDesktopEvidence,
 } from "../../../src/routes/computer-use/participant-desktop.js";
 import { ownDesktopAllocation } from "../../../src/substrates/desktop-session.js";
-import { createE2BParticipantDesktop } from "../../../src/routes/computer-use/e2b-desktop.js";
+import { createE2BParticipantDesktop } from "../../../src/routes/computer-use/e2b-desktop/desktop.js";
 import { E2B_SPEECH_TEMPLATE } from "../../../src/substrates/e2b/sandbox.js";
 import type { E2BDesktopModule, E2BDesktopSandbox } from "../../../src/substrates/e2b/sdk.js";
 import { LAB_CONFIG_SCHEMA } from "../../../src/lab/types.js";
