@@ -1184,12 +1184,12 @@ describe("verify evidence class: external-public fail-closed inversions", () => 
 });
 
 describe("external-public verify findings golden", () => {
-  // Four route runs and thirteen verifies in one test, so its time scales with machine load. Alone at
-  // load 25 on 16 cores it took 6.7-11.3 s (median 7.9 s, 10 runs). At load 64 it passed the
-  // default 20 s. 60 s keeps the golden from failing on a busy machine without hiding a hang.
+  // Four route runs and thirteen verifies in one test, so its time scales with machine load. On 16
+  // cores it took 5.8-9.5 s at load 15-27, 27-34 s at load 40-47 and 54-63 s at load 60-90. 120 s
+  // holds at the loads agents have hit (43-64) with room to spare, and still fails a hang.
   it(
     "pins verify's failing checks for the good bundle, each inversion and each divergent run",
-    { timeout: 60_000 },
+    { timeout: 120_000 },
     async () => {
       const entries: Array<readonly [string, PinnedVerifyResult]> = [];
       const good = await externalPublicRun();
