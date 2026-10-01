@@ -140,4 +140,30 @@ describe("lab summary participants", () => {
       "3 × p-one",
     );
   });
+  it("probes the vendor stores through keyDeps, not the machine's own home", async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), "humanish-summary-keydeps-"));
+    try {
+      await mkdir(path.join(cwd, "humanish/labs"), { recursive: true });
+      await writeFile(path.join(cwd, "humanish/labs/key-check.yaml"), stringify(base));
+      const withLogin = path.join(cwd, "home-with-e2b");
+      await mkdir(path.join(withLogin, ".e2b"), { recursive: true });
+      await writeFile(
+        path.join(withLogin, ".e2b", "config.json"),
+        JSON.stringify({ teamApiKey: "synthetic-credential-e2b-store" }),
+      );
+      const read = (homeDir: string) =>
+        readLabSummary(cwd, "key-check", {
+          checkKeys: true,
+          env: { OPENAI_API_KEY: "synthetic-credential-model" },
+          keyDeps: { homeDir, execText: async () => null },
+        });
+      expect(await read(withLogin)).toMatchObject({ keysReady: true });
+      expect(await read(path.join(cwd, "empty-home"))).toMatchObject({
+        keysReady: false,
+        missingKeys: ["E2B_API_KEY"],
+      });
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
 });

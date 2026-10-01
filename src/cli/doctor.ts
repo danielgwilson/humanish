@@ -1,7 +1,11 @@
 import { readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { probeKeySources, type KeySourceProbe } from "../keys/key-resolution.js";
+import {
+  probeKeySources,
+  type KeyResolutionDeps,
+  type KeySourceProbe,
+} from "../keys/key-resolution.js";
 import { nodeSupportsTui, terminalSurfaceMessage, TUI_BUNDLE_URL } from "../tui/contract.js";
 import {
   detectLocalAgents,
@@ -87,7 +91,13 @@ type LabSetup = Awaited<ReturnType<typeof labSetupChecks>>;
 
 export async function doctor(
   cwdInput: string,
-  options: { lab?: string; env?: NodeJS.ProcessEnv; localAgents?: DetectLocalAgentsOptions } = {},
+  options: {
+    lab?: string;
+    env?: NodeJS.ProcessEnv;
+    localAgents?: DetectLocalAgentsOptions;
+    /** Where the key probe looks for vendor stores; tests point it at a temp home. */
+    keyDeps?: KeyResolutionDeps;
+  } = {},
 ): Promise<DoctorResult> {
   const cwd = path.resolve(cwdInput);
   const cwdOk = await validateCwd(cwd)
@@ -114,7 +124,7 @@ export async function doctor(
 
   const env = options.env ?? process.env;
   const agents = await detectLocalAgents({ ...options.localAgents, env });
-  const { probes, receivingKey } = await probeDoctorKeys(cwd, env, options.lab);
+  const { probes, receivingKey } = await probeDoctorKeys(cwd, env, options.lab, options.keyDeps);
   const setup = options.lab
     ? await labSetupChecks({
         cwd,
@@ -275,6 +285,7 @@ async function probeDoctorKeys(
   cwd: string,
   env: NodeJS.ProcessEnv,
   lab: string | undefined,
+  keyDeps: KeyResolutionDeps | undefined,
 ): Promise<{ probes: KeySourceProbe[]; receivingKey: string | null }> {
   const keyNames = new Set(["OPENAI_API_KEY", "E2B_API_KEY", "GH_TOKEN", "CODEX_API_KEY"]);
   let receivingKey: string | null = null;
@@ -287,7 +298,11 @@ async function probeDoctorKeys(
       if (receivingKey) keyNames.add(receivingKey);
     }
   }
-  const probes = await probeKeySources([...keyNames], { cwd, env });
+  const probes = await probeKeySources([...keyNames], {
+    cwd,
+    env,
+    ...(keyDeps === undefined ? {} : { deps: keyDeps }),
+  });
   return { probes, receivingKey };
 }
 

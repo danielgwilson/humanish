@@ -127,4 +127,26 @@ describe("doctor checks the selected receiving credential without contacting its
     ).toContain("not required");
     expect(result.checks.some((check) => check.name === "real email connection")).toBe(false);
   });
+  it("probes the vendor stores through keyDeps, not the machine's own home", async () => {
+    delete env.E2B_API_KEY;
+    env.HUMANISH_STRICT_KEYS = "0";
+    const withLogin = path.join(cwd, "home-with-e2b");
+    await mkdir(path.join(withLogin, ".e2b"), { recursive: true });
+    await writeFile(
+      path.join(withLogin, ".e2b", "config.json"),
+      JSON.stringify({ teamApiKey: "synthetic-e2b-store" }),
+    );
+    const e2bMessage = async (homeDir: string) => {
+      const result = await doctor(cwd, {
+        lab: "preview",
+        env,
+        localAgents: noAgents,
+        keyDeps: { homeDir, execText: async () => null },
+      });
+      expect(JSON.stringify(result)).not.toContain("synthetic-");
+      return result.checks.find((check) => check.name === "key E2B_API_KEY")?.message ?? "";
+    };
+    expect(await e2bMessage(withLogin)).toContain("supplied by ~/.e2b/config.json");
+    expect(await e2bMessage(path.join(cwd, "empty-home"))).not.toContain("supplied by");
+  });
 });
