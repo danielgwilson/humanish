@@ -69,15 +69,15 @@ export function registerLabCommands(parent: Command, io: CliIo): void {
     .option("--no-open", "Render without opening a browser.")
     .option("--detach", "Render/open once and exit without attached watch server.")
     .option("--port <port>", "Local observer server port when following.", "0")
-    .option("--sims <count>", "Override synthetic sims or headed desktop lanes.")
-    .option("--count <count>", "Computer-use only: override headed desktop lane count.")
+    .option("--sims <count>", "Override the synthetic or headed desktop participant count.")
+    .option("--count <count>", "Computer-use only: override the headed desktop participant count.")
     .option(
       "--rerun-failed-from <run>",
-      "CUA fan-out only: create a new run for failed lanes from a prior run.",
+      "CUA fan-out only: create a new run for failed participants from a prior run.",
     )
     .option(
-      "--lanes <lane-ids>",
-      "CUA rerun only: comma-separated lane ids to rerun from the source run.",
+      "--lanes <participant-ids>",
+      "CUA rerun only: comma-separated participant ids to rerun from the source run.",
     )
     .option("--run-id <id>", "Explicit lab run id; refused when that run already exists.")
     .option("--cwd <path>", "Target project directory.", ".")

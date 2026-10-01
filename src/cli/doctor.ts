@@ -238,7 +238,7 @@ async function desktopSdkCheck(setup: LabSetup | undefined): Promise<DoctorCheck
       ? `optional peer @e2b/desktop ${version ?? "(version unread)"} is installed; provider access is not tested${advisory === undefined ? "" : `. ${advisory}`}`
       : setup?.desktop === false
         ? "optional peer @e2b/desktop is absent; not required by the selected route"
-        : "optional peer @e2b/desktop is NOT installed — dry runs work, but any live desktop lane will fail closed. Install it with `npm i -D @e2b/desktop`.",
+        : "optional peer @e2b/desktop is NOT installed: dry runs work, but any live desktop participant will fail closed. Install it with `npm i -D @e2b/desktop`.",
   };
 }
 

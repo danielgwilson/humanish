@@ -263,7 +263,7 @@ describe("humanish CLI scaffold", () => {
       cleanup: "Write a resource cleanup inspection receipt.",
       review: "Build a review packet from verified run evidence.",
       runs: "List local humanish runs and latest pointers.",
-      watch: "Run sims, open the observer, keep the shell attached.",
+      watch: "Run participants, open the observer, stay attached.",
       observe: "Follow a run's saved evidence over loopback http.",
       codex: "Run Codex-native humanish integration surfaces.",
       lab: "List, inspect, and run humanish lab manifests.",
@@ -2015,9 +2015,9 @@ describe("CUA ending output", () => {
     });
     expect(output).toContain("diagnostic: mixed endings (mixed)");
     expect(output).toContain(
-      "lane lane-1: incomplete · session interrupted (provider output limit)",
+      "participant lane-1: incomplete · session interrupted (provider output limit)",
     );
-    expect(output).toContain("lane lane-2: incomplete · session interrupted (time limit)");
+    expect(output).toContain("participant lane-2: incomplete · session interrupted (time limit)");
     expect(output).not.toContain("session: incomplete");
   });
 

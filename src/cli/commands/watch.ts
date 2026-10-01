@@ -22,16 +22,16 @@ export function registerWatchCommand(parent: Command, io: CliIo): void {
   parent
     .command("watch")
     .argument("[lab]", "Optional lab id or .yaml path to run and observe.")
-    .description("Run sims, open the observer, and keep the shell attached.")
-    .summary("Run sims, open the observer, keep the shell attached.")
+    .description("Run synthetic participants, open the observer, and keep the shell attached.")
+    .summary("Run participants, open the observer, stay attached.")
     .option("--lab <id-or-path>", "Explicit lab id or .yaml path.")
     .option("--run <id>", "Watch an existing run id or latest pointer.")
     .option("--dry-run", "Lab only: render contract evidence without live provider spend.")
     .option(
       "--sims <count>",
-      "Start a fresh synthetic run with this many sims before rendering. Defaults to 4 when --run is omitted.",
+      "Start a fresh synthetic run with this many participants before rendering. Defaults to 4 when --run is omitted.",
     )
-    .option("--count <count>", "Lab only: override headed desktop lane count.")
+    .option("--count <count>", "Lab only: override the headed desktop participant count.")
     .option(
       "--scorer <path>",
       "Terminal/computer-use/shared-world labs only: repo-relative adopter scorer module (.mjs). Overrides review.scorer.ref. Executable code: review it as code.",
