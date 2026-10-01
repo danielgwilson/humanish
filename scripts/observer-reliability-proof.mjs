@@ -230,7 +230,7 @@ try {
         if (!hasDirectPin) await card.getByRole("button", { name: /Participant details/ }).click();
         const pin = hasDirectPin
           ? card.locator(".card-pin-toggle")
-          : page.getByRole("button", { name: /^Pin(?:ned)? participant Synthetic participant 2$/ });
+          : page.locator(".pop-panel").getByRole("button", { name: /^Pin(?:ned)? participant / });
         await pin.focus();
         await page.screenshot({
           path: path.join(output, `${record.id}-pin-${reduced ? "reduced" : "motion"}-before.png`),
