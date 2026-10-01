@@ -56,6 +56,9 @@ async function fixture() {
   });
   const deps: CuaParticipantDeps = {
     config: parsed.config,
+    residual: parsed.config,
+    labId: parsed.config.id,
+    caps: {},
     descriptor: getActor("openai-computer-use"),
     brain: { kind: "caller" },
     appUrl: "http://127.0.0.1:3000/",

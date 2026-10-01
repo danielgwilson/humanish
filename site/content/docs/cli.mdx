@@ -537,7 +537,7 @@ humanish comms catch [options]
 | --- | --- |
 | `--port <port>` | Port for capture + inbox (default 8025). (default: "8025") |
 | `--dir <path>` | Directory for the deliveries log and rendered inbox. (default: ".humanish/comms-catch") |
-| `--token <value>` | Require this bearer token on GET /deliveries (recommended when reachable off-host). |
+| `--token <value>` | Require this bearer token, at least 16 characters, on GET /deliveries (recommended when reachable off-host). |
 | `--smtp-port <port>` | Also capture SMTP mail on 127.0.0.1:&lt;port&gt;. Point your app's SMTP transport here. |
 | `--inbox-port <port>` | Also serve a READ-ONLY inbox listener on 0.0.0.0:&lt;port&gt;, so a persona on another machine can open /inbox. Without it the catch stays loopback-only. |
 | `--recipient <address>` | Only render mail sent to this address (repeatable). Default: render whatever the app actually mailed. |

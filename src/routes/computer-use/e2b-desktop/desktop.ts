@@ -14,7 +14,11 @@ import {
 import { openParticipantSurface, startParticipantMedia, startParticipantStream } from "./start.js";
 import { desktopEvidenceOf, newParticipantState, type E2BParticipantContext } from "./state.js";
 import { finishE2BDesktop } from "./teardown.js";
-import type { CuaParticipantDeps, DesktopParticipantRun } from "../types.js";
+import {
+  participantServeUrl,
+  type CuaParticipantDeps,
+  type DesktopParticipantRun,
+} from "../types.js";
 
 export function createE2BParticipantDesktop(
   spec: DesktopParticipantRun,
@@ -31,7 +35,8 @@ export function createE2BParticipantDesktop(
     desktopCliRoute: deps.subject.kind === "desktop-cli",
     // Off-app comms (#297): gated entirely on config.comms; no comms declared, no change.
     comms: planParticipantComms(
-      deps.config,
+      deps.residual.comms,
+      participantServeUrl(deps.subject),
       targetUrl,
       deps.subject.kind === "clone" || deps.subject.kind === "local-tree",
     ),

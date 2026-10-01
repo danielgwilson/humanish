@@ -97,9 +97,6 @@ type StartedRun = Extract<Awaited<ReturnType<RunScope["startRun"]>>, { ok: true 
 export interface CuaRunSetup {
   plan: ComputerUsePlan;
   input: ComputerUseRunInput;
-  /** Read for values the plan does not carry yet, and by the compatibility hooks, which take the
-   *  whole config. Participants come from the plan. */
-  config: LabConfig;
   /** The physical project root. */
   cwd: string;
   descriptor: CuaActorDescriptor;
@@ -310,8 +307,7 @@ export async function startCuaRun(
   admitted: AdmittedCuaRun,
   scope: RunScope,
 ): Promise<PreparedCuaRun> {
-  const { config, dryRun, cwd, hooks, descriptor, participantRuns, participantPlan, publicRepo } =
-    admitted;
+  const { dryRun, cwd, hooks, descriptor, participantRuns, participantPlan, publicRepo } = admitted;
   const { appUrl } = admitted;
   // The run's status record exists from here on, so anything watching the runs directory can
   // tell which lab this is and that it is alive. The fail-closed returns below leave it finished
@@ -387,7 +383,6 @@ export async function startCuaRun(
     setup: {
       plan,
       input,
-      config,
       cwd,
       descriptor,
       run,
@@ -443,6 +438,9 @@ function cuaParticipantDeps(
     onTrace: (participantId, items, usage, metadata) =>
       liveTrace.flush?.(participantId, items, usage, metadata),
     config,
+    residual: plan.residual,
+    labId: plan.labId,
+    caps: plan.caps,
     descriptor,
     appUrl,
     brain: plan.runner.brain,

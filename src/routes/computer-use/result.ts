@@ -6,7 +6,7 @@ import { redactText } from "../../evidence/redaction.js";
 import type { ObserverResult } from "../../observer/render.js";
 import type { RunBundle, RunRerunLineage } from "../../run/bundle.js";
 import { round6 } from "../../run/pricing.js";
-import type { LabConfig } from "../../lab/types.js";
+import type { ComputerUsePlan } from "../../lab/plan-types.js";
 import {
   foldScorerFailures,
   judgeExecution,
@@ -297,10 +297,13 @@ function computerUseExecutionFailures(
  * spend up to N × maxUsd before any lane aborts, while the run cost summary reports the larger
  * aggregate. The warning names that ceiling, unless the study declared a shared maxTotalUsd budget.
  */
-function participantCapWarning(config: LabConfig, participantCount: number): string | undefined {
-  const capUsd = config.execution?.caps?.maxUsd;
+function participantCapWarning(
+  caps: ComputerUsePlan["caps"],
+  participantCount: number,
+): string | undefined {
+  const capUsd = caps.maxUsd;
   if (capUsd === undefined || participantCount <= 1) return undefined;
-  if (config.execution?.caps?.maxTotalUsd !== undefined) return undefined;
+  if (caps.maxTotalUsd !== undefined) return undefined;
   return `execution.caps.maxUsd ($${capUsd}) is a PER-PARTICIPANT cap; ${participantCount} participants may spend up to ${participantCount} × $${capUsd} (~$${round6(capUsd * participantCount)} total) before any participant aborts. Set execution.caps.maxTotalUsd for a shared study budget.`;
 }
 
@@ -310,7 +313,7 @@ export async function finishCuaRun(
   finish: CuaFinishFacts,
   ran: Extract<Awaited<ReturnType<typeof runLabParticipants>>, { ok: true }>,
 ): Promise<CuaActorLabResult> {
-  const { plan, input, config, cwd, streams, descriptor, run } = setup;
+  const { plan, input, cwd, streams, descriptor, run } = setup;
   const { participantRuns, participantPlan, scrubKnownValues, bundleBase } = setup;
   const { hooks, rerunLineage, publicRepo, subjectArgs } = finish;
   const { dryRun } = plan;
@@ -324,7 +327,7 @@ export async function finishCuaRun(
 
   const aggregate = aggregateCuaSubject({ subjects, outcomes, participantCount, dryRun });
   const aggregateSubject = aggregate.subject;
-  const capWarning = participantCapWarning(config, participantCount);
+  const capWarning = participantCapWarning(plan.caps, participantCount);
   const aggregateWarnings = [
     ...externalCommsWarnings,
     ...(capWarning === undefined ? [] : [capWarning]),

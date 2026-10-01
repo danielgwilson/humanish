@@ -20,9 +20,10 @@ import type { CuaParticipantDeps, DesktopParticipantRun, SandboxReleaseFact } fr
  * lane's teardown decision, and vice versa.
  */
 function participantKeepReason(deps: CuaParticipantDeps): string | undefined {
-  const { config, subject } = deps;
-  if (subject.kind === "clone" && config.subject.clone?.keep === true) return "subject.clone.keep";
-  if (subject.kind === "local-tree" && config.subject.localTree?.keep === true)
+  const { residual, subject } = deps;
+  if (subject.kind === "clone" && residual.subject.clone?.keep === true)
+    return "subject.clone.keep";
+  if (subject.kind === "local-tree" && residual.subject.localTree?.keep === true)
     return "subject.localTree.keep";
   return undefined;
 }

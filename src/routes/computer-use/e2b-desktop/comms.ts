@@ -21,7 +21,11 @@ import { writeContainedOutputFile } from "../../../run/contained-output.js";
 import type { Shell } from "../../../substrates/shell.js";
 import type { ReadyParticipantDesktop } from "../participant-desktop.js";
 import { inboxRecipientFor, participantHasInboxRecipient } from "../participant-desktop.js";
-import type { CuaParticipantDeps, DesktopParticipantRun } from "../types.js";
+import {
+  participantServeUrl,
+  type CuaParticipantDeps,
+  type DesktopParticipantRun,
+} from "../types.js";
 import { addressedRecipients } from "../../../lab/parse/comms.js";
 
 /** Mid-run inbox-surface render cadence (ms). Coarse enough that the per-tick `cat` + file writes stay
@@ -45,12 +49,12 @@ export interface ParticipantComms {
  * lab declares no fake email, which leaves the lane unchanged.
  */
 export function planParticipantComms(
-  config: LabConfig,
+  comms: LabConfig["comms"],
+  serveUrl: string | undefined,
   targetUrl: string,
   inSandboxSubject: boolean,
 ): ParticipantComms | undefined {
-  const email =
-    inSandboxSubject && config.comms?.email?.kind === "fake" ? config.comms.email : undefined;
+  const email = inSandboxSubject && comms?.email?.kind === "fake" ? comms.email : undefined;
   if (email === undefined) return undefined;
   const port = email.port ?? DEFAULT_SANDBOX_CATCH_PORT;
   // The origin-rewrite map is identity on this same-sandbox route, but covers localhost/0.0.0.0
@@ -61,9 +65,7 @@ export function planParticipantComms(
     smtpPort: email.smtp?.port,
     inboxUrl: `http://127.0.0.1:${port}/inbox`,
     originMap: buildOriginMap({
-      ...(config.subject.serve?.url === undefined
-        ? {}
-        : { internalServeUrl: config.subject.serve.url }),
+      ...(serveUrl === undefined ? {} : { internalServeUrl: serveUrl }),
       reachableBaseUrl: targetUrl,
       ...(email.linkOrigin === undefined ? {} : { linkOrigin: email.linkOrigin }),
     }),
@@ -175,20 +177,18 @@ export async function attachReceivingInbox(
   deps: CuaParticipantDeps & { receiving: NonNullable<CuaParticipantDeps["receiving"]> },
   targetUrl: string,
 ): Promise<string> {
-  const { config } = deps;
+  const serveUrl = participantServeUrl(deps.subject);
   const surface = await deployReceivingInbox(shell, {
     leaseId: spec.streamId,
     requestTimeoutMs: Math.min(deps.requestTimeoutMs, 30_000),
   });
-  const email = config.comms?.email;
+  const email = deps.residual.comms?.email;
   try {
     await deps.receiving.attach(spec.planned.id, {
       surface,
       allowedOrigins: [...new Set([new URL(targetUrl).origin, ...(email?.allowedOrigins ?? [])])],
       originMap: buildOriginMap({
-        ...(config.subject.serve?.url === undefined
-          ? {}
-          : { internalServeUrl: config.subject.serve.url }),
+        ...(serveUrl === undefined ? {} : { internalServeUrl: serveUrl }),
         reachableBaseUrl: targetUrl,
         ...(email?.linkOrigin === undefined ? {} : { linkOrigin: email.linkOrigin }),
       }),
