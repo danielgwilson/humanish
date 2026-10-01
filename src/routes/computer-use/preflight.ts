@@ -1,4 +1,5 @@
-import type { LabCommsExternal, LabConfig } from "../../lab/types.js";
+import type { ComputerUsePlan } from "../../lab/plan-types.js";
+import type { LabCommsExternal } from "../../lab/types.js";
 import { DEFAULT_OPENAI_CU_MODEL } from "../../actors/computer-use/openai-provider.js";
 import {
   checkHostedCodexCompatibility,
@@ -18,7 +19,9 @@ import { describeQualifiedCodexCliVersions } from "../../actors/codex/qualified-
  * already paid for a desktop.
  */
 export async function liveCuaRejection(args: {
-  config: LabConfig;
+  caps: ComputerUsePlan["caps"];
+  /** The declared participant model; a spend cap needs its price. */
+  model: string | undefined;
   hooks: CuaActorLabHooks;
   env: Record<string, string | undefined>;
   openaiApiKey: string;
@@ -29,7 +32,8 @@ export async function liveCuaRejection(args: {
   externalCommsConfig: LabCommsExternal | undefined;
 }): Promise<{ code: CuaActorLabErrorCode; message: string } | undefined> {
   const {
-    config,
+    caps,
+    model,
     hooks,
     env,
     openaiApiKey,
@@ -98,8 +102,7 @@ export async function liveCuaRejection(args: {
       }
       if (
         chosen.billing === "account-unknown" &&
-        (config.execution?.caps?.maxUsd !== undefined ||
-          config.execution?.caps?.maxTotalUsd !== undefined)
+        (caps.maxUsd !== undefined || caps.maxTotalUsd !== undefined)
       ) {
         return {
           code: "HUMANISH_CUA_LAB_UNPRICED_CAP",
@@ -122,15 +125,12 @@ export async function liveCuaRejection(args: {
   // runaway-retry protection. Refuse at PREFLIGHT (before any sandbox/spend) rather than run
   // uncapped: an unenforceable cap is more dangerous than none. The operator adds a rate to
   // src/run/pricing.ts (the honest place) or removes the cap.
-  if (
-    config.execution?.caps?.maxUsd !== undefined ||
-    config.execution?.caps?.maxTotalUsd !== undefined
-  ) {
-    const capModelId = (config.actors[0]?.model ?? DEFAULT_OPENAI_CU_MODEL).trim().toLowerCase();
+  if (caps.maxUsd !== undefined || caps.maxTotalUsd !== undefined) {
+    const capModelId = (model ?? DEFAULT_OPENAI_CU_MODEL).trim().toLowerCase();
     if (!MODEL_RATES[capModelId]) {
       return {
         code: "HUMANISH_CUA_LAB_UNPRICED_CAP",
-        message: `execution.caps declares a spend cap (maxUsd/maxTotalUsd) but src/run/pricing.ts has no rate for model "${config.actors[0]?.model ?? DEFAULT_OPENAI_CU_MODEL}"; add a rate or remove the cap — an unenforceable cap is refused rather than run uncapped.`,
+        message: `execution.caps declares a spend cap (maxUsd/maxTotalUsd) but src/run/pricing.ts has no rate for model "${model ?? DEFAULT_OPENAI_CU_MODEL}"; add a rate or remove the cap — an unenforceable cap is refused rather than run uncapped.`,
       };
     }
   }

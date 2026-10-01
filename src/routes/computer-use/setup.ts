@@ -20,17 +20,16 @@ import {
 import { type LocalTreeArchive } from "../../run/source-archive.js";
 import { renderCuaReviewMarkdown } from "./bundle.js";
 import {
-  defaultSessionTimeoutMs,
   emitPreflightPlan,
   makeCuaRunBudget,
   planCuaLanes,
   readPositiveInt,
-  resolvePerLaneSandboxMs,
   sanitizeLaneSpecs,
 } from "./lane-plan.js";
 import { subjectProvenanceArg } from "./lanes.js";
 import { liveCuaRejection } from "./preflight.js";
-import { cuaDescriptorOf, cuaRoute, type ComputerUseRefusal } from "./plan.js";
+import { cuaDescriptorOf, cuaRoute, cuaRouteOf, type ComputerUseRefusal } from "./plan.js";
+import type { ComputerUsePlan } from "../../lab/plan-types.js";
 import { trackRuntimeStreams, type LiveTraceFlush } from "./live-flush.js";
 import { type CuaRunBundleBase } from "./assemble.js";
 import { packRunLocalTree } from "./local-tree-pack.js";
@@ -45,6 +44,7 @@ import {
   type CuaLaneSpec,
   type CuaSubjectProjection,
   type CuaSubjectProvenanceArg,
+  type ComputerUseRunInput,
   type RunCuaActorLabOptions,
 } from "./types.js";
 
@@ -53,13 +53,59 @@ import {
  * everything runLabLanes and finishCuaRun read.
  */
 export async function prepareCuaRun(
-  options: RunCuaActorLabOptions,
-  refusal: ComputerUseRefusal | undefined,
+  routePlan: ComputerUsePlan,
+  input: ComputerUseRunInput,
+  config: LabConfig,
   scope: RunScope,
 ): Promise<{ ok: false; result: CuaActorLabResult } | { ok: true; setup: CuaRunSetup }> {
-  const planned = await planCuaRun(options, refusal);
+  const planned = await planCuaRun(routePlan, input, config);
   if (!planned.ok) return planned;
-  return startCuaRun(options, planned.planned, scope);
+  return startCuaRun(routePlan, input, planned.planned, scope);
+}
+
+/** The physical project, bound before any caller hook runs. */
+async function bindProject(cwd: string) {
+  // Capture the physical project before reading or invoking any caller hook. A supported
+  // symlink cwd remains valid, but retargeting that alias from a hook cannot redirect source
+  // reads, local-tree packing, managed run storage, or Observer output into another project.
+  const physicalCwd = await realpath(path.resolve(cwd));
+  return prepareSelectedOutputDirectory(path.dirname(physicalCwd), physicalCwd);
+}
+
+/**
+ * The envelope of a refusal the plan left for after the cwd checks. The lane cap and in-process
+ * fan-out refusals come after the committed personas are read, so a persona-file error still wins.
+ */
+export async function refuseCuaLab(
+  options: RunCuaActorLabOptions,
+  refusal: ComputerUseRefusal,
+): Promise<CuaActorLabResult> {
+  const { config, dryRun } = options;
+  const projectRoot = await bindProject(options.cwd);
+  const hooks = options.hooks ?? {};
+  // The lane plan reads the committed personas before it returns the refusal.
+  if (refusal.stage === "after-personas")
+    await planCuaLanes({
+      config,
+      cwd: projectRoot.physicalPath,
+      projectRoot,
+      env: hooks.env ?? process.env,
+      dryRun,
+      refusal,
+    });
+  return {
+    schema: CUA_ACTOR_LAB_SCHEMA,
+    ok: false,
+    cwd: projectRoot.physicalPath,
+    labId: config.id,
+    actor: refusal.actor ?? config.actors[0]?.type ?? "",
+    appUrl: cuaRoute(config, hooks).appUrl,
+    dryRun,
+    runId: options.runId ?? "not-created",
+    lanes: [],
+    warnings: [],
+    error: { code: refusal.code, message: refusal.message },
+  };
 }
 
 type PlannedCuaRun = Extract<Awaited<ReturnType<typeof planCuaRun>>, { ok: true }>["planned"];
@@ -67,7 +113,9 @@ type StartedRun = Extract<Awaited<ReturnType<RunScope["startRun"]>>, { ok: true 
 
 /** What the setup hands to runLabLanes and finishCuaRun. */
 export interface CuaRunSetup {
-  options: RunCuaActorLabOptions;
+  routePlan: ComputerUsePlan;
+  input: ComputerUseRunInput;
+  /** Read only to build participants and by the lane runner, whose hooks take the whole config. */
   config: LabConfig;
   dryRun: boolean;
   cwd: string;
@@ -107,27 +155,25 @@ export interface CuaRunSetup {
 }
 
 /**
- * Everything before the run starts: the physical project, the route, the refusals the plan left
- * for after the cwd checks, the lane plan and preflight, the key and subject-env scrubber, the live
- * checks that need no sandbox, and the local-tree archive. Returns the refusal, or the plan.
+ * Everything before the run starts: the physical project, the route, the lane plan and preflight,
+ * the key and subject-env scrubber, the live checks that need no sandbox, and the local-tree
+ * archive. Returns the refusal, or the plan.
  */
-async function planCuaRun(options: RunCuaActorLabOptions, refusal: ComputerUseRefusal | undefined) {
-  const { config, dryRun } = options;
-  // Capture the physical project before reading or invoking any caller hook. A supported
-  // symlink cwd remains valid, but retargeting that alias from a hook cannot redirect source
-  // reads, local-tree packing, managed run storage, or Observer output into another project.
-  const physicalCwd = await realpath(path.resolve(options.cwd));
-  const projectRoot = await prepareSelectedOutputDirectory(path.dirname(physicalCwd), physicalCwd);
+async function planCuaRun(
+  routePlan: ComputerUsePlan,
+  input: ComputerUseRunInput,
+  config: LabConfig,
+) {
+  const { dryRun } = routePlan;
+  const projectRoot = await bindProject(input.cwd);
   const cwd = projectRoot.physicalPath;
-  const hooks = options.hooks ?? {};
+  const hooks = input.hooks ?? {};
   const streams = trackRuntimeStreams(hooks);
   const env = hooks.env ?? process.env;
 
-  const route = cuaRoute(config, hooks);
+  const route = cuaRouteOf(routePlan);
   const { cloneRoute, localTreeRoute, inProcessRoute, appUrl, subjectRepo, subjectEnvNames } =
     route;
-  const actor = config.actors[0];
-  const actorType = actor?.type ?? "";
 
   const fail = (
     code: CuaActorLabErrorCode,
@@ -137,11 +183,11 @@ async function planCuaRun(options: RunCuaActorLabOptions, refusal: ComputerUseRe
     schema: CUA_ACTOR_LAB_SCHEMA,
     ok: false,
     cwd,
-    labId: config.id,
-    actor: actorLabel ?? actorType,
+    labId: routePlan.labId,
+    actor: actorLabel ?? routePlan.actor,
     appUrl,
     dryRun,
-    runId: options.runId ?? "not-created",
+    runId: input.runId ?? "not-created",
     lanes: [],
     warnings: [],
     error: { code, message },
@@ -151,20 +197,17 @@ async function planCuaRun(options: RunCuaActorLabOptions, refusal: ComputerUseRe
     result: fail(...args),
   });
 
-  // The other refusals come back from inside the run scope, after the cwd checks. The lane cap and
-  // in-process fan-out wait until planCuaLanes has read the committed personas.
-  if (refusal !== undefined && refusal.stage !== "after-personas")
-    return refuse(refusal.code, refusal.message, refusal.actor);
-  const descriptor = cuaDescriptorOf(actorType);
+  const descriptor = cuaDescriptorOf(routePlan.actor);
   const runSession = hooks.runSession ?? descriptor.runSession;
   // Adopter-hosted comms plane on the app-url route (#380): humanish provisions no subject here,
   // so it cannot host a catch — the OPERATOR runs one, and humanish still does every other part
   // of the funnel: tells each persona its address and inbox URL, drains the catch over HTTP after
   // the lanes, and writes the same digest-only evidence. Declaring `external` previously did
   // nothing on this route (and, per #387, on every other) while its docs said otherwise.
+  const comms = routePlan.residual.comms;
   const externalCommsConfig =
-    !cloneRoute && !localTreeRoute && !inProcessRoute ? config.comms?.email?.external : undefined;
-  const externalCommsEmail = externalCommsConfig ? config.comms?.email : undefined;
+    !cloneRoute && !localTreeRoute && !inProcessRoute ? comms?.email?.external : undefined;
+  const externalCommsEmail = externalCommsConfig ? comms?.email : undefined;
 
   const lanePlan = await planCuaLanes({
     config,
@@ -172,9 +215,8 @@ async function planCuaRun(options: RunCuaActorLabOptions, refusal: ComputerUseRe
     projectRoot,
     env,
     dryRun,
-    ...(refusal === undefined ? {} : { refusal }),
-    ...(options.countOverride === undefined ? {} : { countOverride: options.countOverride }),
-    ...(options.rerun === undefined ? {} : { rerun: options.rerun }),
+    ...(input.countOverride === undefined ? {} : { countOverride: input.countOverride }),
+    ...(input.rerun === undefined ? {} : { rerun: input.rerun }),
   });
   if (!lanePlan.ok) return refuse(lanePlan.code, lanePlan.message, descriptor.id);
   const { laneSpecs, plan, rerunLineage } = lanePlan;
@@ -184,7 +226,7 @@ async function planCuaRun(options: RunCuaActorLabOptions, refusal: ComputerUseRe
   // every N (observable + testable); the stderr table prints for fan-out (N>1) so single-lane
   // runs stay as quiet as they always were.
   if (laneCount > 1) {
-    emitPreflightPlan(plan, config.id);
+    emitPreflightPlan(plan, routePlan.labId);
   }
   hooks.onPreflight?.(plan);
   await assertPreparedSelectedOutputDirectory(projectRoot);
@@ -202,7 +244,8 @@ async function planCuaRun(options: RunCuaActorLabOptions, refusal: ComputerUseRe
   const scrubKnownValues = scrubLiterals(knownSecretValues);
   sanitizeLaneSpecs(laneSpecs, scrubKnownValues);
 
-  const redactRepoLabel = config.policies?.redactRepos ?? subjectEnvNames.includes("GITHUB_TOKEN");
+  const redactRepoLabel =
+    routePlan.residual.policies?.redactRepos ?? subjectEnvNames.includes("GITHUB_TOKEN");
   const publicRepo =
     cloneRoute && subjectRepo ? (redactRepoLabel ? "repo-01" : subjectRepo) : undefined;
   const hasGithubToken = subjectEnvNames.includes("GITHUB_TOKEN");
@@ -218,7 +261,8 @@ async function planCuaRun(options: RunCuaActorLabOptions, refusal: ComputerUseRe
   // the local-agent route uses a CLI the operator has already signed in to.
   if (!dryRun && !inProcessRoute) {
     const rejection = await liveCuaRejection({
-      config,
+      caps: routePlan.caps,
+      model: config.actors[0]?.model,
       hooks,
       env,
       openaiApiKey,
@@ -240,7 +284,7 @@ async function planCuaRun(options: RunCuaActorLabOptions, refusal: ComputerUseRe
   let localTreeArchiveBuffer: ArrayBuffer | undefined;
   if (localTreeRoute && !dryRun) {
     try {
-      const packed = await packRunLocalTree(hooks, config, cwd);
+      const packed = await packRunLocalTree(hooks, routePlan.residual, cwd);
       localTreeArchive = packed.archive;
       localTreeArchiveBuffer = packed.buffer;
     } catch (error) {
@@ -288,7 +332,8 @@ async function planCuaRun(options: RunCuaActorLabOptions, refusal: ComputerUseRe
 
 /** Starts the run and builds what the lanes and the finish share: the lane deps and the bundle base. */
 async function startCuaRun(
-  options: RunCuaActorLabOptions,
+  routePlan: ComputerUsePlan,
+  input: ComputerUseRunInput,
   planned: PlannedCuaRun,
   scope: RunScope,
 ): Promise<{ ok: false; result: CuaActorLabResult } | { ok: true; setup: CuaRunSetup }> {
@@ -300,19 +345,19 @@ async function startCuaRun(
   // with no outcome when the scope closes; a crash leaves it stale, which reads as interrupted.
   const started = await scope.startRun({
     cwd,
-    runId: options.runId,
+    runId: input.runId,
     mintRunId: makeCuaRunId,
     mode: dryRun ? "dry-run" : "live",
-    lab: options.lab,
+    lab: routePlan.lab,
     renderReview: renderCuaReviewMarkdown,
-    observer: { open: options.open === true, render: hooks.renderObserverFn },
+    observer: { open: input.open === true, render: hooks.renderObserverFn },
   });
   if (!started.ok) return planned.refuse(started.code, started.message, descriptor.id);
   const { run } = started;
   const { runId, createdAt, paths: runPaths } = run;
   const artifactRoot = runPaths.absoluteRunRoot;
   const physicalArtifactRoot = runPaths.physicalRunRoot;
-  const redactScreenshots = config.policies?.redactScreenshots === true;
+  const redactScreenshots = routePlan.residual.policies?.redactScreenshots === true;
 
   await prepareContainedOutputDirectory(runPaths, "screenshots");
   const source = await buildRunSource({
@@ -326,7 +371,7 @@ async function startCuaRun(
   // to grow; lanes call it through deps.onTrace. It exists before deps so deps can reference it as
   // a stable indirection.
   const liveTrace: { flush?: LiveTraceFlush["flush"]; stop?: LiveTraceFlush["stop"] } = {};
-  const deps = cuaLaneDeps(options, planned, { runPaths, redactScreenshots, liveTrace });
+  const deps = cuaLaneDeps(routePlan, input, planned, { runPaths, redactScreenshots, liveTrace });
 
   const subjectArgs = {
     config,
@@ -350,7 +395,7 @@ async function startCuaRun(
   );
 
   const bundleBase: CuaRunBundleBase = {
-    ...(options.lab === undefined ? {} : { lab: options.lab }),
+    ...(routePlan.lab === undefined ? {} : { lab: routePlan.lab }),
     laneSpecs,
     descriptor,
     appUrl,
@@ -372,7 +417,8 @@ async function startCuaRun(
   return {
     ok: true as const,
     setup: {
-      options,
+      routePlan,
+      input,
       config,
       dryRun,
       cwd,
@@ -411,7 +457,8 @@ async function startCuaRun(
 
 /** The lane deps every lane reads: the route, keys, timeouts, scrubber, budget and hooks. */
 function cuaLaneDeps(
-  options: RunCuaActorLabOptions,
+  routePlan: ComputerUsePlan,
+  input: ComputerUseRunInput,
   planned: PlannedCuaRun,
   run: {
     runPaths: StartedRun["paths"];
@@ -426,7 +473,7 @@ function cuaLaneDeps(
   const { appUrl, cloneRoute, desktopCliRoute, localTreeRoute, serve, subjectRepo } = planned.route;
   const { subjectEnvNames } = planned.route;
   const { runPaths, redactScreenshots, liveTrace } = run;
-  const timeoutMs = config.execution?.timeoutMs ?? defaultSessionTimeoutMs(config);
+  const timeoutMs = routePlan.sessionBudgetMs;
   const requestTimeoutMs = readPositiveInt(env.HUMANISH_E2B_REQUEST_TIMEOUT_MS, 60_000);
   return {
     ...(hooks.createDesktopLane ? { createDesktopLane: hooks.createDesktopLane } : {}),
@@ -447,19 +494,19 @@ function cuaLaneDeps(
     openaiApiKey,
     e2bApiKey,
     requestTimeoutMs,
-    perLaneSandboxMs: resolvePerLaneSandboxMs(config),
+    perLaneSandboxMs: routePlan.sandboxMs,
     timeoutMs,
     laneCount,
     artifactRoot: runPaths,
-    labCwd: options.cwd,
+    labCwd: input.cwd,
     redactScreenshots,
     scrubKnownValues,
     runSession,
     // The study-level ledger exists once per RUN, shared by every lane (#299). Dry runs never
     // spend, so they carry none.
-    ...(dryRun || config.execution?.caps?.maxTotalUsd === undefined
+    ...(dryRun || routePlan.caps.maxTotalUsd === undefined
       ? {}
-      : { runBudget: makeCuaRunBudget(config.execution.caps.maxTotalUsd) }),
+      : { runBudget: makeCuaRunBudget(routePlan.caps.maxTotalUsd) }),
     ...(externalCommsConfig === undefined || externalCommsEmail === undefined
       ? {}
       : {

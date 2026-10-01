@@ -202,6 +202,12 @@ export interface CuaActorLabHooks extends BrowserLabAdapterHooks {
   }) => Promise<{ archive: LocalTreeArchive; buffer: ArrayBuffer }>;
 }
 
+/**
+ * What a computer-use run takes besides its plan and config. The count override and rerun go to
+ * participant building with the config.
+ */
+export type ComputerUseRunInput = Omit<RunCuaActorLabOptions, "config" | "dryRun" | "lab">;
+
 export interface RunCuaActorLabOptions {
   automaticAnalysis?: AutomaticAnalysisHooks;
   cwd: string;

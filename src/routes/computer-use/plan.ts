@@ -109,6 +109,25 @@ export function cuaRoute(config: LabConfig, hooks: CuaActorLabHooks): CuaRoute {
   };
 }
 
+/** The route facts a planned run takes: its runner's desktop and subject. */
+export function cuaRouteOf(plan: ComputerUsePlan): CuaRoute {
+  const { desktop, subject } = plan.runner;
+  const provisioned =
+    subject.kind === "clone" || subject.kind === "local-tree" ? subject : undefined;
+  return {
+    cloneRoute: subject.kind === "clone",
+    desktopCliRoute: subject.kind === "desktop-cli",
+    localTreeRoute: subject.kind === "local-tree",
+    provisionedRoute: provisioned !== undefined,
+    localAppSubject: subject.kind === "local-app",
+    inProcessRoute: desktop === "in-process",
+    serve: provisioned?.serve,
+    appUrl: provisioned?.serve.url ?? ("appUrl" in subject ? subject.appUrl : ""),
+    subjectRepo: subject.kind === "clone" ? subject.repo : undefined,
+    subjectEnvNames: [...(provisioned?.env ?? [])],
+  };
+}
+
 type Rejection = { code: CuaActorLabErrorCode; message: string } | undefined;
 
 const invalid = (message: string): Rejection => ({

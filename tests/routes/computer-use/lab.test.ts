@@ -27,7 +27,8 @@ import type {
   CuaProvider,
   CuaTurn,
 } from "../../../src/actors/computer-use/loop.js";
-import { runCuaActorLab } from "../../../src/routes/computer-use/lab.js";
+import { runComputerUsePlan, runCuaActorLab } from "../../../src/routes/computer-use/lab.js";
+import { planComputerUseLab } from "../../../src/routes/computer-use/plan.js";
 import { CUA_ACTOR_LAB_PROVIDER_METADATA } from "../../../src/routes/computer-use/e2b-desktop-prepare.js";
 import { makeChromeBrowserStateObserver } from "../../../src/substrates/e2b/desktop-cdp.js";
 import { buildCuaBundle } from "../../../src/routes/computer-use/single-bundle.js";
@@ -811,6 +812,32 @@ describe("runCuaActorLab", () => {
 
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
+  });
+
+  it("runs a plan alone: the result and bundle take the plan's app URL and lab provenance", async () => {
+    const config = cuaConfig();
+    const planned = planComputerUseLab(config, { dryRun: true });
+    if (!planned.ok || planned.plan.runner.subject.kind !== "app-url")
+      throw new Error("expected an app-url computer-use plan");
+    const plan = {
+      ...planned.plan,
+      lab: {
+        id: "planned-lab",
+        path: "humanish/labs/planned-lab.yaml",
+        origin: "committed" as const,
+      },
+      runner: {
+        ...planned.plan.runner,
+        subject: { ...planned.plan.runner.subject, appUrl: "http://127.0.0.1:4555/" },
+      },
+    };
+    const result = await runComputerUsePlan(plan, { cwd }, config);
+    expect(result.ok).toBe(true);
+    expect(result.appUrl).toBe("http://127.0.0.1:4555/");
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    );
+    expect(bundle.lab.id).toBe("planned-lab");
   });
 
   it("dry-run produces a verified contract bundle with no sandbox and no spend", async () => {

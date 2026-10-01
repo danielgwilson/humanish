@@ -12,7 +12,7 @@ import { type CuaActorLabHooks } from "./types.js";
  */
 export async function packRunLocalTree(
   hooks: CuaActorLabHooks,
-  config: LabConfig,
+  config: { readonly subject: Pick<LabConfig["subject"], "localTree"> },
   cwd: string,
 ): Promise<{ archive: LocalTreeArchive; buffer: ArrayBuffer }> {
   const packLocalTree = hooks.packLocalTree ?? defaultPackLocalTree;
