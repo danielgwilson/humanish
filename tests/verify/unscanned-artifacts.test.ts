@@ -275,3 +275,100 @@ describe("verify reads a run file by its bytes, not its name", () => {
     }
   });
 });
+
+const SECRET_LINE = `OPENAI_API_KEY=${SYNTHETIC_SECRET}`;
+const percentEncoded = (text: string) =>
+  [...Buffer.from(text)].map((byte) => `%${byte.toString(16).padStart(2, "0")}`).join("");
+
+// Each file holds the synthetic secret only in an encoded form. A secret the decoded text shows is
+// blocked; an archive inside base64 is unscanned.
+const ENCODED_CASES: Record<
+  string,
+  { path: string; text: string; grade: "blocked" | "local_only" }
+> = {
+  "base64 of gzip in a JSON value": {
+    path: "adapter/state.json",
+    text: JSON.stringify({ blob: gzipSync(SECRET_LINE).toString("base64") }),
+    grade: "local_only",
+  },
+  "base64 of the key line": {
+    path: "adapter/state.txt",
+    text: Buffer.from(SECRET_LINE).toString("base64"),
+    grade: "blocked",
+  },
+  "HTML entities": {
+    path: "adapter/state.html",
+    text: `<p>${[...SECRET_LINE].map((c) => `&#${c.charCodeAt(0)};`).join("")}</p>`,
+    grade: "blocked",
+  },
+  "JSON \\u escapes": {
+    path: "adapter/state.json",
+    text: `{"env":"${[...SECRET_LINE].map((c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`).join("")}"}`,
+    grade: "blocked",
+  },
+  "percent-encoding": {
+    path: "adapter/state.txt",
+    text: percentEncoded(SECRET_LINE),
+    grade: "blocked",
+  },
+  "base64 of UTF-16LE": {
+    path: "adapter/state.txt",
+    text: Buffer.from(SECRET_LINE, "utf16le").toString("base64"),
+    grade: "blocked",
+  },
+  "base64 of base64": {
+    path: "adapter/state.txt",
+    text: Buffer.from(Buffer.from(SECRET_LINE).toString("base64")).toString("base64"),
+    grade: "blocked",
+  },
+};
+
+describe("verify decodes the encodings a reader undoes", () => {
+  let cwd: string;
+  const runs = new Map<string, { runId: string; path: string }>();
+
+  beforeAll(async () => {
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-encoded-scan-"));
+    for (const [name, file] of Object.entries(ENCODED_CASES)) {
+      const { runId, runDir } = await dryRun(cwd);
+      await mkdir(path.join(runDir, "adapter"), { recursive: true });
+      await writeFile(path.join(runDir, file.path), file.text);
+      runs.set(name, { runId, path: file.path });
+    }
+  }, 60_000);
+
+  afterAll(async () => {
+    await rm(cwd, { recursive: true, force: true });
+  });
+
+  it.each(Object.entries(ENCODED_CASES))("grades %s", async (name, file) => {
+    const verified = await verifyRun(cwd, runs.get(name)!.runId);
+    expect(verified.shareSafety.status).toBe(file.grade);
+    if (file.grade === "local_only") {
+      const reason = verified.shareSafety.reasons.find((r) => r.code === "UNSCANNED_ARTIFACT");
+      expect(reason?.message).toContain(file.path);
+    }
+  });
+
+  it("serve --safe returns 404 for each of these runs", async () => {
+    const started = await serveObserverLibrary(cwd, {
+      port: 0,
+      safe: true,
+      expose: false,
+      edgeAuthed: false,
+    });
+    if (!started.ok) throw new Error(started.error.message);
+    try {
+      for (const { runId, path: file } of runs.values()) {
+        for (const route of [file, "run.json"]) {
+          const response = await fetch(
+            new URL(`/_humanish/runs/${runId}/${route}`, started.server.url),
+          );
+          expect(response.status).toBe(404);
+        }
+      }
+    } finally {
+      await started.server.close();
+    }
+  });
+});

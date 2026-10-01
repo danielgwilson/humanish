@@ -11,6 +11,7 @@ import type { ExportFailure, ExportOptions, ExportResult } from "./export.js";
 import { renderObserver } from "../observer/render.js";
 import { buildObserverData } from "../observer/data.js";
 import { containsSensitive, redactScreenshot, redactText } from "../evidence/redaction.js";
+import { decodeEscapes } from "../evidence/encoded-text.js";
 import { readPlainText } from "../evidence/plain-text.js";
 import { streamScreenshotPaths } from "../verify/artifacts.js";
 import { verifyRunPrepared, type VerifyResult } from "../verify/verify.js";
@@ -199,17 +200,9 @@ async function prospectivePhysicalPath(requested: string): Promise<string> {
 }
 
 function assertNoInlineRaster(text: string): void {
-  // Decode common JSON/YAML quoted escapes before checking. Unknown embedded bytes
-  // are refused: copying a text extension must not smuggle untransformed pixels.
-  const decoded = text
-    .replace(/\\u([0-9a-f]{4})/gi, (_, hex: string) =>
-      String.fromCharCode(Number.parseInt(hex, 16)),
-    )
-    .replace(/\\x([0-9a-f]{2})/gi, (_, hex: string) =>
-      String.fromCharCode(Number.parseInt(hex, 16)),
-    )
-    .replace(/\\\//g, "/")
-    .replace(/%([0-9a-f]{2})/gi, (_, hex: string) => String.fromCharCode(Number.parseInt(hex, 16)));
+  // Decode the escapes verify decodes (decodeEscapes) before checking. Unknown embedded bytes are
+  // refused: copying a text extension must not smuggle untransformed pixels.
+  const decoded = decodeEscapes(text);
   if (containsSensitive(text) || containsSensitive(decoded))
     throw new Error("Decoded text contains a secret-shaped value or private path; export refused.");
   if (

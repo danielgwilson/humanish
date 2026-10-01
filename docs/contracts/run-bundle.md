@@ -572,6 +572,16 @@ candidates, adapter artifacts or stream artifact entries cite. An unregistered
 `.mp4`, and a file or directory whose name contains `\`, are public-safety
 findings and block the run.
 
+Before matching, the scan undoes JSON and JS escapes, percent-encoding and HTML
+character references, the decoding bundle export applies (`decodeEscapes`). It
+also reads inside base64 runs of 16 characters or more that are not plain hex. A
+run that decodes to UTF-8 text, or to mostly-ASCII UTF-16, is scanned in turn, up
+to two levels deep. A run that decodes to an archive (gzip, zip, 7z, bzip2, xz,
+zstd), or to other binary of 128 characters or more with at least 16 distinct
+characters, contributes `UNSCANNED_ARTIFACT`. `observer/index.html` is exempt
+from that base64 rule: serve renders it from `run.json`, export regenerates it,
+and it embeds the Observer's own base64 fonts.
+
 Real email receiving adds `publication.restrictions: [real-communications]` and
 an optional `commsReceiving` projection using `humanish.comms-receiving.v2`.
 Either field contributes `REAL_COMMUNICATIONS` and keeps the run `local_only`.
