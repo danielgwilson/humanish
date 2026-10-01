@@ -194,8 +194,9 @@ export function agentsSection(): string {
     "  bundles into an issue — `humanish feedback issue` produces a redacted, share-safe draft.",
     "- `humanish tui` is a HUMAN surface and refuses to run in an agent session. Use the `--json`",
     "  commands above instead, and tell the person you are working for that `humanish tui` exists.",
-    "- A live run spends money. `execution.caps.maxUsd` in each lab is a fail-closed ceiling; do not",
-    "  raise it without asking the person you are working for.",
+    "- A live run spends money. `execution.caps.maxUsd` in each lab caps estimated model spend: the run",
+    "  stops before its next request once the estimate passes it, so the last request can go over, and",
+    "  hosted desktop time is billed on top. Do not raise it without asking the person you are working for.",
     "",
   ].join("\n");
 }

@@ -68,8 +68,9 @@ function tryLiveLab(actor: StarterActor, localAgent: LocalAgentId = "codex"): St
     ? `  WHAT IT COSTS: one participant, one small task, a few E2B desktop minutes and your Codex
   account's usage. Account usage has no dollar price humanish can enforce, so the ten-minute
   session limit below bounds the run.`
-    : `  WHAT IT COSTS: one participant, one small task, a fail-closed cap of two dollars. It will not
-  quietly become expensive.`;
+    : `  WHAT IT COSTS: one participant, one small task, and a $2 cap on estimated model spend. The
+  run stops before its next model request once the estimate passes $2, so the last request can take
+  it slightly over. Hosted desktop time is billed separately.`;
   const participant = account
     ? `  # Your machine has a coding agent signed in, so this study uses it: no provider API key,
   # only E2B. To use a provider key instead, swap to \`type: openai-computer-use\` and add
@@ -84,7 +85,7 @@ function tryLiveLab(actor: StarterActor, localAgent: LocalAgentId = "codex"): St
     ? "  timeoutMs: 600000 # bounds the run; a dollar cap cannot be enforced on account usage"
     : `  timeoutMs: 600000
   caps:
-    maxUsd: 2 # fail-closed: the run aborts rather than overspending`;
+    maxUsd: 2 # estimated model spend; the run stops before its next request once it passes this`;
   return {
     path: "humanish/labs/try-live.yaml",
     plane: "source",

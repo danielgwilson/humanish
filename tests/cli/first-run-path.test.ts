@@ -376,6 +376,25 @@ describe("init leaves instructions for the next coding agent", () => {
     }
   });
 
+  // The loop stops before the next request once the running estimate passes maxUsd
+  // (src/actors/computer-use/loop/spend.ts), so the last request can go over. The files init
+  // writes must not promise a hard ceiling.
+  it("describes the dollar cap as an estimate checked before each request", async () => {
+    const cwd = await project();
+    try {
+      await runInit({ cwd, yes: true, env: {} });
+      const lab = await readFile(path.join(cwd, "humanish/labs/try-live.yaml"), "utf8");
+      const agents = await readFile(path.join(cwd, "AGENTS.md"), "utf8");
+      for (const text of [lab, agents]) {
+        expect(text).not.toMatch(/fail-closed|ceiling|rather than overspending/i);
+        expect(text).toMatch(/estimated model spend/);
+        expect(text).toMatch(/stops before its next (model )?request/);
+      }
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+
   it("configures a local browser app and mission without YAML editing", async () => {
     const cwd = await project();
     try {
