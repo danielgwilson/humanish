@@ -103,11 +103,11 @@
     },
     "warnings": [
       "Desktop resource size unavailable (metadata_unavailable); compute cost remains unpriced.",
-      "Physical browser containment is unverified for lane host; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+      "Physical browser containment is unverified for participant host; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
       "Desktop resource size unavailable (metadata_unavailable); compute cost remains unpriced.",
-      "Physical browser containment is unverified for lane player-2; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+      "Physical browser containment is unverified for participant player-2; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
       "Desktop resource size unavailable (metadata_unavailable); compute cost remains unpriced.",
-      "Physical browser containment is unverified for lane player-3; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+      "Physical browser containment is unverified for participant player-3; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
       "Observer renders verified local evidence artifacts; runtime stream auth URLs are not persisted.",
       "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
     ],
@@ -338,7 +338,7 @@
       "at": "[ts]",
       "level": "warn",
       "type": "concurrent-shared-world.actor.warning",
-      "message": "Persona host: Physical browser containment is unverified for lane host; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+      "message": "Persona host: Physical browser containment is unverified for participant host; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
       "simId": "sim-001",
       "streamId": "stream-001"
     },
@@ -365,7 +365,7 @@
       "at": "[ts]",
       "level": "warn",
       "type": "concurrent-shared-world.actor.warning",
-      "message": "Persona player-2: Physical browser containment is unverified for lane player-2; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+      "message": "Persona player-2: Physical browser containment is unverified for participant player-2; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
       "simId": "sim-002",
       "streamId": "stream-002"
     },
@@ -392,7 +392,7 @@
       "at": "[ts]",
       "level": "warn",
       "type": "concurrent-shared-world.actor.warning",
-      "message": "Persona player-3: Physical browser containment is unverified for lane player-3; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+      "message": "Persona player-3: Physical browser containment is unverified for participant player-3; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
       "simId": "sim-003",
       "streamId": "stream-003"
     },
@@ -615,7 +615,7 @@
             "source": "cdp"
           },
           "warnings": [
-            "Physical browser containment is unverified for lane host; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility."
+            "Physical browser containment is unverified for participant host; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility."
           ]
         },
         "ui": {
@@ -751,7 +751,7 @@
             "at": "[ts]",
             "level": "warn",
             "type": "concurrent-shared-world.actor.warning",
-            "message": "Persona host: Physical browser containment is unverified for lane host; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+            "message": "Persona host: Physical browser containment is unverified for participant host; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
             "simId": "sim-001",
             "streamId": "stream-001"
           },
@@ -819,7 +819,7 @@
             "source": "cdp"
           },
           "warnings": [
-            "Physical browser containment is unverified for lane player-2; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility."
+            "Physical browser containment is unverified for participant player-2; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility."
           ]
         },
         "ui": {
@@ -946,7 +946,7 @@
             "at": "[ts]",
             "level": "warn",
             "type": "concurrent-shared-world.actor.warning",
-            "message": "Persona player-2: Physical browser containment is unverified for lane player-2; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+            "message": "Persona player-2: Physical browser containment is unverified for participant player-2; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
             "simId": "sim-002",
             "streamId": "stream-002"
           },
@@ -1014,7 +1014,7 @@
             "source": "cdp"
           },
           "warnings": [
-            "Physical browser containment is unverified for lane player-3; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility."
+            "Physical browser containment is unverified for participant player-3; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility."
           ]
         },
         "ui": {
@@ -1141,7 +1141,7 @@
             "at": "[ts]",
             "level": "warn",
             "type": "concurrent-shared-world.actor.warning",
-            "message": "Persona player-3: Physical browser containment is unverified for lane player-3; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+            "message": "Persona player-3: Physical browser containment is unverified for participant player-3; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
             "simId": "sim-003",
             "streamId": "stream-003"
           },
@@ -1188,7 +1188,7 @@
         "at": "[ts]",
         "level": "warn",
         "type": "concurrent-shared-world.actor.warning",
-        "message": "Persona host: Physical browser containment is unverified for lane host; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+        "message": "Persona host: Physical browser containment is unverified for participant host; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
         "simId": "sim-001",
         "streamId": "stream-001"
       },
@@ -1215,7 +1215,7 @@
         "at": "[ts]",
         "level": "warn",
         "type": "concurrent-shared-world.actor.warning",
-        "message": "Persona player-2: Physical browser containment is unverified for lane player-2; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+        "message": "Persona player-2: Physical browser containment is unverified for participant player-2; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
         "simId": "sim-002",
         "streamId": "stream-002"
       },
@@ -1242,7 +1242,7 @@
         "at": "[ts]",
         "level": "warn",
         "type": "concurrent-shared-world.actor.warning",
-        "message": "Persona player-3: Physical browser containment is unverified for lane player-3; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+        "message": "Persona player-3: Physical browser containment is unverified for participant player-3; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
         "simId": "sim-003",
         "streamId": "stream-003"
       },
@@ -1472,7 +1472,7 @@
             "source": "cdp"
           },
           "warnings": [
-            "Physical browser containment is unverified for lane host; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility."
+            "Physical browser containment is unverified for participant host; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility."
           ]
         },
         "ui": {
@@ -1618,7 +1618,7 @@
             "source": "cdp"
           },
           "warnings": [
-            "Physical browser containment is unverified for lane player-2; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility."
+            "Physical browser containment is unverified for participant player-2; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility."
           ]
         },
         "ui": {
@@ -1764,7 +1764,7 @@
             "source": "cdp"
           },
           "warnings": [
-            "Physical browser containment is unverified for lane player-3; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility."
+            "Physical browser containment is unverified for participant player-3; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility."
           ]
         },
         "ui": {
@@ -1889,7 +1889,7 @@
         "at": "[ts]",
         "level": "warn",
         "type": "concurrent-shared-world.actor.warning",
-        "message": "Persona host: Physical browser containment is unverified for lane host; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+        "message": "Persona host: Physical browser containment is unverified for participant host; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
         "simId": "sim-001",
         "streamId": "stream-001"
       },
@@ -1916,7 +1916,7 @@
         "at": "[ts]",
         "level": "warn",
         "type": "concurrent-shared-world.actor.warning",
-        "message": "Persona player-2: Physical browser containment is unverified for lane player-2; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+        "message": "Persona player-2: Physical browser containment is unverified for participant player-2; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
         "simId": "sim-002",
         "streamId": "stream-002"
       },
@@ -1943,7 +1943,7 @@
         "at": "[ts]",
         "level": "warn",
         "type": "concurrent-shared-world.actor.warning",
-        "message": "Persona player-3: Physical browser containment is unverified for lane player-3; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+        "message": "Persona player-3: Physical browser containment is unverified for participant player-3; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
         "simId": "sim-003",
         "streamId": "stream-003"
       },

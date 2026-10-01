@@ -3499,7 +3499,7 @@ describe("runCuaActorLab", () => {
     expect(bundle.streams[0].desktopGeometry.viewport).toBeUndefined();
     expect(bundle.streams[0].viewport).toBeUndefined();
     expect(bundle.streams[0].desktopGeometry.warnings).toEqual(
-      expect.arrayContaining([expect.stringContaining("unavailable for Firefox")]),
+      expect.arrayContaining([expect.stringContaining("unavailable in Firefox")]),
     );
   });
 
