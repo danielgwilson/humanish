@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { expandRepeatedFiles, referenceRepeatedFiles } from "../helpers/analysis-golden-files.js";
 import { loopGoldenText } from "../helpers/loop-golden-log.js";
 import { dedupeProjections, inflateProjections } from "../helpers/run-golden-projections.js";
 
@@ -125,5 +126,40 @@ describe("loop golden layout", () => {
   it("keeps the value the old layout pinned", () => {
     for (const value of [outcome, { first: outcome, second: outcome }])
       expect(JSON.parse(loopGoldenText(value))).toEqual(JSON.parse(JSON.stringify(value)));
+  });
+});
+
+describe("analysis golden repeated files", () => {
+  const receipt = { status: "completed", usage: { estimatedCostUsd: 0.25 } };
+  const scenarios = () => ({
+    completed: { result: { ok: true }, files: { "receipt.json": structuredClone(receipt) } },
+    reused: { result: { ok: true }, files: { "receipt.json": structuredClone(receipt) } },
+    rerun: {
+      result: { ok: true },
+      files: { "receipt.json": { ...structuredClone(receipt), status: "failed" } },
+    },
+    failedAgain: {
+      result: { ok: false },
+      files: { "receipt.json": { ...structuredClone(receipt), status: "failed" } },
+    },
+    refused: { result: { ok: false } },
+  });
+
+  it("references the first scenario that wrote an equal file and expands back", () => {
+    const pinned = referenceRepeatedFiles(scenarios());
+    expect(pinned).toMatchObject({
+      completed: { files: { "receipt.json": receipt } },
+      reused: { files: { "receipt.json": '[same as scenario "completed"]' } },
+      failedAgain: { files: { "receipt.json": '[same as scenario "rerun"]' } },
+      refused: { result: { ok: false } },
+    });
+    expect(expandRepeatedFiles(pinned)).toEqual(scenarios());
+  });
+
+  it("pins a file that differs from every earlier one in full", () => {
+    const pinned = referenceRepeatedFiles(scenarios());
+    expect(pinned).toMatchObject({
+      rerun: { files: { "receipt.json": { ...receipt, status: "failed" } } },
+    });
   });
 });

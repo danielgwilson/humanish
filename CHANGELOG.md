@@ -8,20 +8,15 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Fixes
+## 0.106.1: Codex CLI 0.160.0 and reclaim in E2B debug mode (2026-10-01)
 
-- `humanish reclaim` refuses with `HUMANISH_RECLAIM_E2B_DEBUG` (exit 2) when `E2B_DEBUG=true`, and
-  kills nothing (#1329). In debug mode the E2B SDK's `Sandbox.kill` returns true without
-  contacting E2B, so reclaim reported every recorded sandbox `killed` and discarded preflight
-  journals for sandboxes that may still run. A run's sandbox teardown, including the cleanup after
-  a failed desktop startup, that gets true in debug mode now reads unconfirmed, and its warning
-  names `E2B_DEBUG`.
-- Codex CLI 0.160.0, npm's `latest` since 2026-10-01, is admitted on Linux x64 (#1332). In
-  0.106.0 a plain `npm install -g @openai/codex` installed it, and Codex participants,
-  Codex-account analysis and `humanish doctor` refused it as `codex_unsupported_version`. It
-  passed `pnpm codex:qualify` against 0.159.3 and a hosted local-agent study. Doctor's recovery
-  for an unadmitted release now suggests `npm install -g @openai/codex@0.160.0`. macOS arm64
-  stays at 0.154.0.
+Codex participants, Codex-account analysis and `humanish doctor` admit Codex CLI 0.160.0 (published
+to npm 2026-10-01) on Linux x64, which 0.106.0 refused. Doctor's recovery for an unadmitted release
+suggests `npm install -g @openai/codex@0.160.0`. `humanish reclaim` refuses to run with
+`E2B_DEBUG=true`, where the E2B SDK reports kills it never sent, and a run's sandbox teardown in
+debug mode reads unconfirmed.
+
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.106.1)
 
 ## 0.106.0: Node 22.19, a smaller library API and stricter share safety (2026-10-01)
 
