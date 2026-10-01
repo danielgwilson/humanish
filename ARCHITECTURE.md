@@ -52,7 +52,7 @@ reports the first failed step.
 5. **Participants.** `runLabParticipants` (`src/routes/computer-use/run-lanes.ts`) publishes an
    in-progress bundle with `Run.writeSnapshot`, rewrites it from the lanes' live traces through
    `startLiveTraceFlush` (`src/routes/computer-use/live-flush.ts`), and calls `runAllCuaParticipants`
-   (`src/routes/computer-use/lanes.ts`). That runs `runCuaLane` for each participant, at most
+   (`src/routes/computer-use/lanes.ts`). That runs `runCuaParticipant` for each participant, at most
    `execution.concurrency` at a time. A lane prepares its desktop, runs `runCuaActorSession`
    (`src/actors/computer-use/actor.ts`), which drives `runComputerUseLoop`
    (`src/actors/computer-use/loop.ts`), and finalizes the desktop. The loop saves screenshots through

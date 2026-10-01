@@ -7,11 +7,11 @@ import { participantFactsOf } from "./bundle.js";
 import { buildCuaFanoutBundle } from "./fanout-bundle.js";
 import { buildSingleParticipantBundle } from "./single-bundle.js";
 import type {
-  CuaLanePlan,
+  CuaParticipantPlan,
   DesktopParticipantRun,
   CuaSubjectProjection,
   CuaSubjectProvenanceArg,
-  LaneRunOutcome,
+  ParticipantRunOutcome,
 } from "./types.js";
 
 /** What every bundle of one run shares, in progress or final. */
@@ -24,7 +24,7 @@ export interface CuaRunBundleBase {
   routePlan: ComputerUsePlan;
   runId: string;
   source: RunBundle["source"];
-  plan: CuaLanePlan;
+  plan: CuaParticipantPlan;
   rerun?: RunRerunLineage;
   redactScreenshots: boolean;
   inProcessRoute: boolean;
@@ -47,7 +47,7 @@ function isOneParticipantRun(base: Pick<CuaRunBundleBase, "laneSpecs" | "rerun">
  */
 export function judgeComputerUseRun(
   base: Pick<CuaRunBundleBase, "laneSpecs" | "rerun">,
-  state: { dryRun: boolean; outcomes: LaneRunOutcome[] | undefined; inProgress?: true },
+  state: { dryRun: boolean; outcomes: ParticipantRunOutcome[] | undefined; inProgress?: true },
 ): Judgment {
   const inProgress = state.inProgress === true;
   if (isOneParticipantRun(base)) {
@@ -76,8 +76,8 @@ export function buildCuaRunBundle(
   state: {
     judgment: Judgment;
     dryRun: boolean;
-    outcomes: LaneRunOutcome[] | undefined;
-    laneSubjects: CuaSubjectProjection[];
+    outcomes: ParticipantRunOutcome[] | undefined;
+    subjects: CuaSubjectProjection[];
     aggregateSubject: CuaSubjectProjection;
     subjectProvenance: CuaSubjectProvenanceArg | undefined;
     failFastReason?: string;
@@ -114,7 +114,7 @@ export function buildCuaRunBundle(
     ...lab,
     specs: base.laneSpecs,
     ...(state.outcomes === undefined ? {} : { outcomes: state.outcomes }),
-    laneSubjects: state.laneSubjects,
+    subjects: state.subjects,
     aggregateSubject: state.aggregateSubject,
     descriptor: base.descriptor,
     appUrl: base.appUrl,

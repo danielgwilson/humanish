@@ -40,14 +40,14 @@ export async function acquireLaneDesktop(
     options: {
       apiKey: deps.e2bApiKey,
       requestTimeoutMs: deps.requestTimeoutMs,
-      timeoutMs: deps.perLaneSandboxMs,
+      timeoutMs: deps.sandboxMs,
       metadata: {
         ...CUA_ACTOR_LAB_PROVIDER_METADATA,
         labId: config.id,
         simId: spec.simId,
         laneId: spec.planned.id,
         laneIndex: String(spec.planned.index),
-        laneCount: String(deps.laneCount),
+        laneCount: String(deps.participantCount),
       },
       // The participant's model key never enters the sandbox (the model drives from outside).
       // The subject's declared env names are provisioned here on the clone route.
@@ -108,7 +108,7 @@ export async function acquireLaneDesktop(
     await deps.hooks.prepareDesktop(desktop, {
       laneId: spec.planned.id,
       laneIndex: spec.planned.index,
-      laneCount: deps.laneCount,
+      laneCount: deps.participantCount,
     });
   }
 

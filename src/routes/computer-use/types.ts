@@ -105,7 +105,7 @@ export interface CuaActorLabHooks extends BrowserLabAdapterHooks {
    * AND live). The engine also prints the plan to stderr; this seam lets tests assert it without
    * scraping stderr. Identical plan in dry-run, marked $0.
    */
-  onPreflight?: (plan: CuaLanePlan) => void;
+  onPreflight?: (plan: CuaParticipantPlan) => void;
   /**
    * Live subject-provisioning phase sink: one call per started/completed boundary (clone,
    * upload/extract, install, build, serve start, ready, and each subject.state seed-step
@@ -249,7 +249,7 @@ export interface CuaParticipantPlanEntry {
 
 /** The pre-flight spend/lane plan (pure; printed to stderr + recorded as a bundle event before
  *  any sandbox or provider call; identical in dry-run, marked $0). */
-export interface CuaLanePlan {
+export interface CuaParticipantPlan {
   strategy: typeof CUA_FANOUT_STRATEGY;
   laneCount: number;
   /** Effective in-flight bound (defaults to laneCount — all seats live; a declared
@@ -271,7 +271,7 @@ export interface CuaLanePlan {
 
 /** One lane's outcome in the result projection. ALWAYS present in `result.lanes` (length 1 at
  *  N=1). A `blocked` lane is one the pipeline-gate / fail-fast skipped before it ran. */
-export interface CuaLaneResult {
+export interface CuaParticipantResult {
   id: string;
   actorType?: string;
   surface?: string;
@@ -305,7 +305,7 @@ export interface CuaLaneResult {
 }
 
 /** Aggregate counts across lanes. */
-export interface CuaLaneSummary {
+export interface CuaParticipantSummary {
   strategy: typeof CUA_FANOUT_STRATEGY;
   total: number;
   /** Lanes whose own verdict is ok (terminal, engaged, no harness error). */
@@ -431,11 +431,11 @@ export interface CuaActorLabResult extends AutomaticAnalysisResult {
    *  unanimity-gated aggregate (top-level `commit` only when every lane resolved the same one). */
   subject?: CuaSubjectProjection;
   /** The pre-flight lane plan (present once lanes resolve; absent on early validation errors). */
-  plan?: CuaLanePlan;
+  plan?: CuaParticipantPlan;
   /** Per-lane results — ALWAYS present once lanes resolve (length 1 at N=1). */
-  lanes?: CuaLaneResult[];
+  lanes?: CuaParticipantResult[];
   /** Aggregate lane counts. */
-  laneSummary?: CuaLaneSummary;
+  laneSummary?: CuaParticipantSummary;
   /** Present when this run explicitly re-executes selected lanes from a prior CUA fan-out run. */
   rerun?: RunRerunLineage;
   observer?: ObserverResult;
@@ -450,7 +450,7 @@ export interface CuaActorLabResult extends AutomaticAnalysisResult {
 /**
  * What a computer-use lane or a shared-world seat runs: the resolved participant, plus where its
  * evidence goes and any backstop override its route sets. The public projections are
- * CuaParticipantPlanEntry and CuaLaneResult.
+ * CuaParticipantPlanEntry and CuaParticipantResult.
  */
 export interface DesktopParticipantRun extends ResolvedParticipant<
   ComputerUseParticipant | SharedWorldParticipant
@@ -470,7 +470,7 @@ export interface DesktopParticipantRun extends ResolvedParticipant<
 
 export interface ParticipantRunsAndPlan {
   runs: DesktopParticipantRun[];
-  plan: CuaLanePlan;
+  plan: CuaParticipantPlan;
 }
 
 /**
@@ -487,7 +487,7 @@ export interface CuaRunBudget {
 }
 
 /** Shared deps every lane runner needs (resolved once in the engine). */
-export interface CuaLaneDeps {
+export interface CuaParticipantDeps {
   /** Internal ready-desktop seam. The factory must not allocate; prepare owns that work. */
   createDesktop?: (
     spec: DesktopParticipantRun,
@@ -502,8 +502,8 @@ export interface CuaLaneDeps {
   cloneRoute: boolean;
   /** desktop-cli (#495): a CLI studied at a desktop. Nothing is cloned and no browser is opened. */
   desktopCliRoute?: boolean;
-  /** Optional so out-of-scope callers building CuaLaneDeps directly (other engines reusing
-   *  runCuaLane) do not need to know about the local-tree route; undefined behaves as false. */
+  /** Optional so out-of-scope callers building CuaParticipantDeps directly (other engines reusing
+   *  runCuaParticipant) do not need to know about the local-tree route; undefined behaves as false. */
   localTreeRoute?: boolean;
   serve?: LabSubjectServe;
   subjectRepo?: string;
@@ -516,9 +516,9 @@ export interface CuaLaneDeps {
   openaiApiKey: string;
   e2bApiKey: string;
   requestTimeoutMs: number;
-  perLaneSandboxMs: number;
+  sandboxMs: number;
   timeoutMs: number;
-  laneCount: number;
+  participantCount: number;
   artifactRoot: PreparedOutputRoot;
   /** The lab's resolution directory: relative paths in the config (a camera .y4m) resolve here. */
   labCwd: string;
@@ -570,8 +570,8 @@ export interface CuaLaneDeps {
   ) => void;
 }
 
-/** One lane's end-to-end run outcome (internal; projected into CuaLaneResult + the bundle). */
-export interface LaneRunOutcome {
+/** One lane's end-to-end run outcome (internal; projected into CuaParticipantResult + the bundle). */
+export interface ParticipantRunOutcome {
   spec: DesktopParticipantRun;
   session?: CuaLoopResult;
   /** The harness failed before the session reached a terminal status. */
@@ -621,8 +621,8 @@ export interface CuaFanoutBundleArgs {
   /** Lab provenance for the bundle's own `lab` field (#455). */
   lab?: RunLabProvenance;
   specs: DesktopParticipantRun[];
-  outcomes?: LaneRunOutcome[];
-  laneSubjects: CuaSubjectProjection[];
+  outcomes?: ParticipantRunOutcome[];
+  subjects: CuaSubjectProjection[];
   aggregateSubject: CuaSubjectProjection;
   descriptor: CuaActorDescriptor;
   appUrl: string;
@@ -631,7 +631,7 @@ export interface CuaFanoutBundleArgs {
   routePlan: ComputerUsePlan;
   runId: string;
   source: RunBundle["source"];
-  plan: CuaLanePlan;
+  plan: CuaParticipantPlan;
   rerun?: RunRerunLineage;
   failFastReason?: string;
   cloneRoute: boolean;

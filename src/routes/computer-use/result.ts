@@ -15,7 +15,7 @@ import {
   type ExecutionOutcome,
   type Judgment,
 } from "../../run/judge.js";
-import { buildLaneSummary, laneOutcomeOk, participantFactsOf } from "./bundle.js";
+import { buildParticipantSummary, participantFactsOf, participantOutcomeOk } from "./bundle.js";
 import { summarizeCuaDiagnostics } from "./diagnostics.js";
 import {
   aggregateCuaSubject,
@@ -31,10 +31,10 @@ import {
   CUA_ACTOR_LAB_SCHEMA,
   type CuaActorLabErrorCode,
   type CuaActorLabResult,
-  type CuaLanePlan,
+  type CuaParticipantPlan,
   type DesktopParticipantRun,
   type CuaSubjectProjection,
-  type LaneRunOutcome,
+  type ParticipantRunOutcome,
 } from "./types.js";
 
 /**
@@ -50,10 +50,10 @@ function cuaLabResult(args: {
   appUrl: string;
   dryRun: boolean;
   participantRuns: DesktopParticipantRun[];
-  outcomes: LaneRunOutcome[] | undefined;
+  outcomes: ParticipantRunOutcome[] | undefined;
   subjects: CuaSubjectProjection[];
   aggregateSubject: CuaSubjectProjection;
-  plan: CuaLanePlan;
+  plan: CuaParticipantPlan;
   rerunLineage: RunRerunLineage | undefined;
   bundle: RunBundle;
   /** The run's judgment; on this gate route ok requires every participant to have passed. */
@@ -86,8 +86,8 @@ function cuaLabResult(args: {
   } = args;
   const participantCount = participantRuns.length;
   // Lane-level pass: dry-run lanes are contract-ok; live lanes need a passed, engaged session.
-  const participantOk = (outcome: LaneRunOutcome | undefined): boolean =>
-    laneOutcomeOk(outcome, dryRun);
+  const participantOk = (outcome: ParticipantRunOutcome | undefined): boolean =>
+    participantOutcomeOk(outcome, dryRun);
   const adapterFailure = adapterScoreFailureMessage(bundle);
   const ok = resultOk({
     judgment: args.judgment,
@@ -108,7 +108,7 @@ function cuaLabResult(args: {
   const participantResults = participantRuns.map((spec, index) =>
     toParticipantResult(spec, outcomes?.[index], subjects[index]!, dryRun),
   );
-  const summary = buildLaneSummary(outcomes, participantCount, plan, dryRun);
+  const summary = buildParticipantSummary(outcomes, participantCount, plan, dryRun);
   const firstOutcome = outcomes?.[0];
 
   const errorResult = ((): CuaActorLabResult["error"] | undefined => {
@@ -206,7 +206,7 @@ function cuaLabResult(args: {
  * that failed.
  */
 function computerUseExecutionFailures(
-  outcomes: readonly LaneRunOutcome[] | undefined,
+  outcomes: readonly ParticipantRunOutcome[] | undefined,
   observer: Pick<ObserverResult, "ok" | "error">,
 ): ExecutionFailure[] {
   return [
@@ -285,7 +285,7 @@ export async function finishCuaRun(
     judgment,
     dryRun,
     outcomes,
-    laneSubjects: subjects,
+    subjects,
     aggregateSubject,
     subjectProvenance: finalProvenance,
     ...(failFastReason === undefined ? {} : { failFastReason }),

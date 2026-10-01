@@ -1,5 +1,5 @@
 import type { CuaExecutor } from "../../actors/computer-use/loop.js";
-import type { CuaActorLabHooks, DesktopParticipantRun, LaneRunOutcome } from "./types.js";
+import type { CuaActorLabHooks, DesktopParticipantRun, ParticipantRunOutcome } from "./types.js";
 import type { LabCommsEmail, LabCommsRecipient } from "../../lab/types.js";
 import type { PreparedOutputRoot } from "../../run/contained-output.js";
 import { laneSpecOf } from "./legacy-lane-spec.js";
@@ -16,7 +16,7 @@ export type ParticipantDesktopEvidence = {
    *  outcome records it as `killed`. */
   released: boolean;
 } & Pick<
-  LaneRunOutcome,
+  ParticipantRunOutcome,
   | "sandboxId"
   | "desktopDurationMs"
   | "desktopResources"
@@ -98,6 +98,9 @@ export function inboxRecipientFor(
 /** True when a lane has a declared comms recipient WITH an address, so the drain can actually match the
  *  mail the persona will be told to read. Gates the inbox instruction to lanes that can receive mail —
  *  a lane told to check an inbox it can never receive into would just stall. */
-export function laneHasInboxRecipient(commsEmail: LabCommsEmail, participantId: string): boolean {
+export function participantHasInboxRecipient(
+  commsEmail: LabCommsEmail,
+  participantId: string,
+): boolean {
   return inboxRecipientFor(commsEmail, participantId) !== undefined;
 }

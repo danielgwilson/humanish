@@ -3,8 +3,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { getActor } from "../../src/actors/registry.js";
-import { runCuaLane } from "../../src/routes/computer-use/lanes.js";
-import { type CuaLaneDeps } from "../../src/routes/computer-use/types.js";
+import { runCuaParticipant } from "../../src/routes/computer-use/lanes.js";
+import { type CuaParticipantDeps } from "../../src/routes/computer-use/types.js";
 import type {
   E2BDesktopCreateOptions,
   E2BDesktopModule,
@@ -98,7 +98,7 @@ describe("real inbox wiring through the actual CUA lane", () => {
           },
           instructions: "Explore the app.",
         });
-        const deps: CuaLaneDeps & { receiving: CommsReceivingRun } = {
+        const deps: CuaParticipantDeps & { receiving: CommsReceivingRun } = {
           config: parsed.config,
           descriptor: getActor("openai-computer-use"),
           appUrl: "http://127.0.0.1:3000/",
@@ -109,9 +109,9 @@ describe("real inbox wiring through the actual CUA lane", () => {
           openaiApiKey: "synthetic-openai",
           e2bApiKey: "synthetic-e2b",
           requestTimeoutMs: 60_000,
-          perLaneSandboxMs: 60_000,
+          sandboxMs: 60_000,
           timeoutMs: 60_000,
-          laneCount: 1,
+          participantCount: 1,
           artifactRoot: await prepareSelectedOutputDirectory(cwd, "artifacts"),
           labCwd: cwd,
           redactScreenshots: true,
@@ -123,7 +123,7 @@ describe("real inbox wiring through the actual CUA lane", () => {
           now: Date.now,
           hooks: { loadDesktopModule: async () => module, onPhase: () => undefined },
         };
-        const result = await runCuaLane(spec, deps);
+        const result = await runCuaParticipant(spec, deps);
         expect(attach).toHaveBeenCalledOnce();
         expect(attach.mock.calls[0]?.[0]).toBe("participant-a");
         expect(result.sessionError).toContain("Synthetic interruption after inbox attachment");

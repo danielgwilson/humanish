@@ -9,7 +9,7 @@ import { runAllCuaParticipants } from "./lanes.js";
 import { startLiveTraceFlush } from "./live-flush.js";
 import { drainExternalComms } from "./external-comms.js";
 import { buildCuaRunBundle, judgeComputerUseRun } from "./assemble.js";
-import { type LaneRunOutcome } from "./types.js";
+import { type ParticipantRunOutcome } from "./types.js";
 import type { CuaRunSetup } from "./setup.js";
 
 /**
@@ -61,7 +61,7 @@ export async function runLabParticipants(setup: CuaRunSetup) {
       }),
       dryRun: false,
       outcomes: undefined,
-      laneSubjects: inProgressSubjects,
+      subjects: inProgressSubjects,
       aggregateSubject: inProgressAggregateSubject,
       subjectProvenance: inProgressProvenance,
       inProgress: true,
@@ -127,7 +127,7 @@ export async function runLabParticipants(setup: CuaRunSetup) {
     }
   }
   // Run lanes (dry-run runs none). In-process is always one lane.
-  let outcomes: LaneRunOutcome[] | undefined;
+  let outcomes: ParticipantRunOutcome[] | undefined;
   let failFastReason: string | undefined;
   try {
     if (!dryRun)

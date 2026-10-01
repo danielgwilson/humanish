@@ -18,7 +18,7 @@ import {
 import { captureDesktopBrowserGeometry } from "../../substrates/e2b/desktop-geometry.js";
 import type { E2BDesktopSandbox } from "../../substrates/e2b/sdk.js";
 import { e2bShell } from "../../substrates/e2b/shell.js";
-import type { CuaLaneDeps, DesktopParticipantRun } from "./types.js";
+import type { CuaParticipantDeps, DesktopParticipantRun } from "./types.js";
 
 type BrowserGeometry = Awaited<ReturnType<typeof captureDesktopBrowserGeometry>>;
 
@@ -61,7 +61,7 @@ function cdpEndpoint(
 export async function applyLaneMobileFidelity(args: {
   desktop: E2BDesktopSandbox;
   spec: DesktopParticipantRun;
-  deps: CuaLaneDeps;
+  deps: CuaParticipantDeps;
   targetUrl: string;
   browserFamily: DesktopBrowserFamily;
   launchIdentity: DesktopBrowserLaunchIdentity | undefined;
@@ -106,7 +106,7 @@ export async function applyLaneMobileFidelity(args: {
 export function laneBrowserStateObserver(args: {
   desktop: E2BDesktopSandbox;
   spec: DesktopParticipantRun;
-  deps: CuaLaneDeps;
+  deps: CuaParticipantDeps;
   targetUrl: string;
   launchIdentity: DesktopBrowserLaunchIdentity | undefined;
   targetId: string | undefined;
@@ -166,7 +166,7 @@ export function laneBrowserStateObserver(args: {
 export async function finalLaneGeometry(args: {
   desktop: E2BDesktopSandbox;
   spec: DesktopParticipantRun;
-  deps: CuaLaneDeps;
+  deps: CuaParticipantDeps;
   targetUrl: string;
   browserFamily: DesktopBrowserFamily;
   launchIdentity: DesktopBrowserLaunchIdentity | undefined;

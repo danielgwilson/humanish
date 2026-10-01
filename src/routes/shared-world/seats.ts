@@ -9,13 +9,13 @@ import { resolveParticipant } from "../../run/participant.js";
 import { attachObserverRuntimeStreamUrls } from "../../observer/render.js";
 import type { RunBundle } from "../../run/bundle.js";
 import type { E2BDesktopSandbox } from "../../substrates/e2b/sdk.js";
-import { composeLaneInstructions } from "../computer-use/lane-plan.js";
+import { composeParticipantInstructions } from "../computer-use/lane-plan.js";
 import { startLiveTraceFlush } from "../computer-use/live-flush.js";
 import type {
   CuaActorLabHooks,
-  CuaLaneDeps,
+  CuaParticipantDeps,
   DesktopParticipantRun,
-  LaneRunOutcome,
+  ParticipantRunOutcome,
 } from "../computer-use/types.js";
 import type { LiveParticipants, PlaneContext, SharedWorldLabHooks } from "./types.js";
 import { resolveCommittedPersonasForCwd } from "../../lab/persona-resolve.js";
@@ -85,7 +85,7 @@ function buildActorSpec(
   const focus = participant.assignment.focus;
   const { device, personaId } = participant;
   const resolvedPersona = personaId === undefined ? undefined : personas.get(personaId);
-  const composed = composeLaneInstructions({
+  const composed = composeParticipantInstructions({
     mission,
     ...(personaId === undefined ? {} : { persona: personaId }),
     ...(resolvedPersona === undefined ? {} : { resolvedPersona }),
@@ -124,7 +124,7 @@ export function makeBlockedFollowerOutcome(
   spec: DesktopParticipantRun,
   reason: string,
   timedOut: boolean,
-): LaneRunOutcome {
+): ParticipantRunOutcome {
   return {
     spec,
     sessionError: `handoff barrier: ${reason}; this follower failed closed WITHOUT opening (no wasted turns).`,
@@ -143,7 +143,7 @@ export function makeBlockedFollowerOutcome(
 
 /** The computer-use runner deps every participant shares, on either plane. */
 export type ParticipantRunDeps = Omit<
-  CuaLaneDeps,
+  CuaParticipantDeps,
   "signalProvisioned" | "appUrl" | "onObservedUrl"
 >;
 
@@ -223,9 +223,9 @@ export function participantRunDeps(
     openaiApiKey: ctx.openaiApiKey,
     e2bApiKey: ctx.e2bApiKey,
     requestTimeoutMs: ctx.requestTimeoutMs,
-    perLaneSandboxMs: ctx.timeoutMs + SANDBOX_TIMEOUT_BUFFER_MS,
+    sandboxMs: ctx.timeoutMs + SANDBOX_TIMEOUT_BUFFER_MS,
     timeoutMs: ctx.timeoutMs,
-    laneCount: ctx.plan.plane.participants.length,
+    participantCount: ctx.plan.plane.participants.length,
     artifactRoot: ctx.runPaths,
     labCwd: ctx.cwd,
     redactScreenshots: ctx.redactScreenshots,

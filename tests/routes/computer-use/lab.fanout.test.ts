@@ -32,8 +32,8 @@ import { runCuaParticipants } from "../../../src/routes/computer-use/lanes.js";
 import {
   type CuaActorLabHooks,
   type DesktopParticipantRun,
-  type LaneRunOutcome,
-  type CuaLanePlan,
+  type ParticipantRunOutcome,
+  type CuaParticipantPlan,
 } from "../../../src/routes/computer-use/types.js";
 import { getActor } from "../../../src/actors/registry.js";
 import type {
@@ -403,7 +403,7 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
   });
 
   it("a 4-lane roster yields ONE bundle, simCount 4, per-lane requested screens, a plan event, contract statuses; verifyRun ok", async () => {
-    const planSeen: CuaLanePlan[] = [];
+    const planSeen: CuaParticipantPlan[] = [];
     const outcome = await runLab(fanoutConfig(), {
       cwd,
       dryRun: true,
@@ -569,7 +569,7 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
       }).verdict,
       specs,
       outcomes: [],
-      laneSubjects: [subject, subject],
+      subjects: [subject, subject],
       aggregateSubject: subject,
       descriptor: getActor("openai-computer-use"),
       appUrl: "http://127.0.0.1:3000/",
@@ -618,7 +618,7 @@ describe("cua fan-out bundle: desktop browser provenance", () => {
         traceArtifactPath: `actors/stream-${id}.json`,
       }),
     );
-    const outcomes: LaneRunOutcome[] = specs.map((spec, index) => ({
+    const outcomes: ParticipantRunOutcome[] = specs.map((spec, index) => ({
       spec,
       killed: true,
       streamUrlPresent: false,
@@ -642,7 +642,7 @@ describe("cua fan-out bundle: desktop browser provenance", () => {
       }).verdict,
       specs,
       outcomes,
-      laneSubjects: [subject, subject],
+      subjects: [subject, subject],
       aggregateSubject: subject,
       descriptor: getActor("openai-computer-use"),
       appUrl: "http://127.0.0.1:3000/",
@@ -1313,7 +1313,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
         },
       ],
     });
-    const planSeen: CuaLanePlan[] = [];
+    const planSeen: CuaParticipantPlan[] = [];
     const outcome = await runLab(config, {
       cwd,
       cuaHooks: passingHooks(handle, { onPreflight: (plan) => planSeen.push(plan) }),

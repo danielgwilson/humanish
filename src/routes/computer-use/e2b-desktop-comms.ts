@@ -20,8 +20,8 @@ import type { LabCommsEmail, LabConfig } from "../../lab/types.js";
 import { writeContainedOutputFile } from "../../run/contained-output.js";
 import type { Shell } from "../../substrates/shell.js";
 import type { ReadyParticipantDesktop } from "./participant-desktop.js";
-import { inboxRecipientFor, laneHasInboxRecipient } from "./participant-desktop.js";
-import type { CuaLaneDeps, DesktopParticipantRun } from "./types.js";
+import { inboxRecipientFor, participantHasInboxRecipient } from "./participant-desktop.js";
+import type { CuaParticipantDeps, DesktopParticipantRun } from "./types.js";
 
 /** Mid-run inbox-surface render cadence (ms). Coarse enough that the per-tick `cat` + file writes stay
  *  cheap; fine enough that a verification email is visible seconds after the app sends it. */
@@ -176,7 +176,7 @@ export async function startCommsCatch(
 export async function attachReceivingInbox(
   shell: Shell,
   spec: DesktopParticipantRun,
-  deps: CuaLaneDeps & { receiving: NonNullable<CuaLaneDeps["receiving"]> },
+  deps: CuaParticipantDeps & { receiving: NonNullable<CuaParticipantDeps["receiving"]> },
   targetUrl: string,
 ): Promise<string> {
   const { config } = deps;
@@ -211,7 +211,7 @@ function optionalAddress(address: string | undefined): { address?: string } {
 /** The inbox the persona is told about: real receiving, the captured catch, or an external inbox. */
 export function laneInbox(args: {
   spec: DesktopParticipantRun;
-  deps: CuaLaneDeps;
+  deps: CuaParticipantDeps;
   receivingInboxUrl: string | undefined;
   comms: LaneComms | undefined;
   catchReady: boolean;
@@ -223,12 +223,12 @@ export function laneInbox(args: {
       address: deps.receiving.address(spec.planned.id),
       receiving: true,
     };
-  if (comms && args.catchReady && laneHasInboxRecipient(comms.email, spec.planned.id))
+  if (comms && args.catchReady && participantHasInboxRecipient(comms.email, spec.planned.id))
     return {
       url: comms.inboxUrl,
       ...optionalAddress(inboxRecipientFor(comms.email, spec.planned.id)?.address),
     };
-  if (deps.externalComms && laneHasInboxRecipient(deps.externalComms.email, spec.planned.id))
+  if (deps.externalComms && participantHasInboxRecipient(deps.externalComms.email, spec.planned.id))
     return {
       url: deps.externalComms.inboxUrl,
       ...optionalAddress(inboxRecipientFor(deps.externalComms.email, spec.planned.id)?.address),
@@ -247,7 +247,7 @@ export async function drainCommsEvidence(args: {
   comms: LaneComms;
   deployed: DeployedCommsCatch;
   spec: DesktopParticipantRun;
-  deps: CuaLaneDeps;
+  deps: CuaParticipantDeps;
   warnings: string[];
 }): Promise<string | undefined> {
   const { comms, deps, spec, warnings } = args;
@@ -268,7 +268,7 @@ export async function drainCommsEvidence(args: {
     });
     if (collected.artifact) {
       const path =
-        deps.laneCount === 1 ? "comms/thread.json" : `comms/${spec.streamId}.thread.json`;
+        deps.participantCount === 1 ? "comms/thread.json" : `comms/${spec.streamId}.thread.json`;
       await writeContainedOutputFile(
         deps.artifactRoot,
         path,

@@ -30,7 +30,7 @@ function fanoutParticipantView(
   const outcome = outcomes?.[index];
   const targetUrl = spec.planned.targetUrl ?? args.appUrl;
   const publicTargetUrl = publicSafeAppUrlLabel(targetUrl);
-  const subject = args.laneSubjects[index]!;
+  const subject = args.subjects[index]!;
   const session = outcome?.session;
   const fallbackDeclared = declaredScreenForRender(
     spec.planned.device.preset,

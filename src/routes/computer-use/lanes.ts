@@ -15,7 +15,7 @@ import {
   type PreparedOutputRoot,
 } from "../../run/contained-output.js";
 import { type LocalTreeArchive } from "../../run/source-archive.js";
-import { laneOutcomeOk } from "./bundle.js";
+import { participantOutcomeOk } from "./bundle.js";
 import {
   closeParticipantModel,
   judgeParticipantSession,
@@ -25,13 +25,13 @@ import {
   type ParticipantModel,
 } from "./participant-model.js";
 import type {
-  CuaLaneDeps,
-  CuaLanePlan,
-  CuaLaneResult,
+  CuaParticipantDeps,
+  CuaParticipantPlan,
+  CuaParticipantResult,
   DesktopParticipantRun,
   CuaSubjectProjection,
   CuaSubjectProvenanceArg,
-  LaneRunOutcome,
+  ParticipantRunOutcome,
 } from "./types.js";
 
 /** Build a lane's writeScreenshot closure: writes under screenshots/<screenshotDir>/ and records
@@ -62,7 +62,7 @@ export function makeParticipantWriteScreenshot(
 }
 
 /** A blocked lane outcome (pipeline gate / fail-fast skipped it before it ran). */
-function skippedOutcome(spec: DesktopParticipantRun, reason: string): LaneRunOutcome {
+function skippedOutcome(spec: DesktopParticipantRun, reason: string): ParticipantRunOutcome {
   return {
     spec,
     killed: false,
@@ -81,10 +81,10 @@ function skippedOutcome(spec: DesktopParticipantRun, reason: string): LaneRunOut
 
 /** Run one participant against a prepared desktop. The adapter owns provisioning, final
  * evidence and cleanup; this runner owns the model, trace and participant outcome. */
-export async function runCuaLane(
+export async function runCuaParticipant(
   spec: DesktopParticipantRun,
-  deps: CuaLaneDeps,
-): Promise<LaneRunOutcome> {
+  deps: CuaParticipantDeps,
+): Promise<ParticipantRunOutcome> {
   let model: ParticipantModel = {};
   const warnings: string[] = [];
   const screenshots: string[] = [];
@@ -174,10 +174,10 @@ export async function runCuaLane(
  */
 export async function runCuaParticipants(
   runs: DesktopParticipantRun[],
-  deps: Omit<CuaLaneDeps, "signalProvisioned">,
+  deps: Omit<CuaParticipantDeps, "signalProvisioned">,
   concurrency: number,
-  runParticipant: typeof runCuaLane = runCuaLane,
-): Promise<{ outcomes: LaneRunOutcome[]; failFastReason?: string }> {
+  runParticipant: typeof runCuaParticipant = runCuaParticipant,
+): Promise<{ outcomes: ParticipantRunOutcome[]; failFastReason?: string }> {
   const failFast: { tripped: boolean; reason: string } = { tripped: false, reason: "" };
   let resolveGate: (() => void) | undefined;
   let rejectGate: (() => void) | undefined;
@@ -192,7 +192,7 @@ export async function runCuaParticipants(
   const outcomes = await mapWithConcurrency(
     runs,
     concurrency,
-    async (spec, index): Promise<LaneRunOutcome> => {
+    async (spec, index): Promise<ParticipantRunOutcome> => {
       if (index > 0) {
         try {
           await gate;
@@ -210,7 +210,7 @@ export async function runCuaParticipants(
       // guard, one lane's late throw (e.g. its trace write hitting ENOSPC after its own sandbox was
       // already torn down) rejected the whole map while sibling workers kept launching sandboxes
       // nobody would ever record — the run spent money and then reported nothing.
-      let outcome: LaneRunOutcome;
+      let outcome: ParticipantRunOutcome;
       try {
         outcome = await runParticipant(spec, {
           ...deps,
@@ -257,13 +257,13 @@ export async function runCuaParticipants(
   return { outcomes, ...(failFast.tripped ? { failFastReason: failFast.reason } : {}) };
 }
 
-/** Project one lane outcome (or a dry-run contract spec) into the public CuaLaneResult. */
+/** Project one lane outcome (or a dry-run contract spec) into the public CuaParticipantResult. */
 export function toParticipantResult(
   spec: DesktopParticipantRun,
-  outcome: LaneRunOutcome | undefined,
+  outcome: ParticipantRunOutcome | undefined,
   subject: CuaSubjectProjection,
   dryRun: boolean,
-): CuaLaneResult {
+): CuaParticipantResult {
   const base = {
     id: spec.planned.id,
     ...(spec.planned.labels.actorType === undefined
@@ -298,8 +298,8 @@ export function toParticipantResult(
     };
   }
   const session = outcome.session;
-  const participantOk = laneOutcomeOk(outcome, dryRun);
-  const status: CuaLaneResult["status"] = session ? session.status : "failed";
+  const participantOk = participantOutcomeOk(outcome, dryRun);
+  const status: CuaParticipantResult["status"] = session ? session.status : "failed";
   return {
     ...base,
     status,
@@ -438,7 +438,7 @@ export function subjectProvenanceArg(
  */
 export function aggregateCuaSubject(args: {
   subjects: readonly CuaSubjectProjection[];
-  outcomes: readonly LaneRunOutcome[] | undefined;
+  outcomes: readonly ParticipantRunOutcome[] | undefined;
   participantCount: number;
   dryRun: boolean;
 }): { subject: CuaSubjectProjection; warnings: string[] } {
@@ -488,20 +488,20 @@ export function participantCapWarning(
  */
 export async function runAllCuaParticipants(
   runs: readonly DesktopParticipantRun[],
-  deps: Omit<CuaLaneDeps, "signalProvisioned">,
-  plan: CuaLanePlan,
+  deps: Omit<CuaParticipantDeps, "signalProvisioned">,
+  plan: CuaParticipantPlan,
   inProcessRoute: boolean,
-): Promise<{ outcomes: LaneRunOutcome[]; failFastReason: string | undefined }> {
+): Promise<{ outcomes: ParticipantRunOutcome[]; failFastReason: string | undefined }> {
   if (inProcessRoute) {
     // The caller's executor stands in for a desktop, and the shared runner drives the participant.
-    const outcome = await runCuaLane(runs[0]!, {
+    const outcome = await runCuaParticipant(runs[0]!, {
       ...deps,
       createDesktop: () => createInProcessDesktop(deps),
     });
     return { outcomes: [outcome], failFastReason: undefined };
   }
   if (runs.length === 1)
-    return { outcomes: [await runCuaLane(runs[0]!, deps)], failFastReason: undefined };
+    return { outcomes: [await runCuaParticipant(runs[0]!, deps)], failFastReason: undefined };
   const ran = await runCuaParticipants([...runs], deps, plan.concurrency);
   return { outcomes: ran.outcomes, failFastReason: ran.failFastReason };
 }

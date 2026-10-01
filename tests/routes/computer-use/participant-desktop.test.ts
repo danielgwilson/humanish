@@ -12,8 +12,8 @@ import type {
 } from "../../../src/actors/computer-use/loop.js";
 import { describeQualifiedCodexCliVersions } from "../../../src/actors/codex/qualified-versions.js";
 import { runCuaActorLab } from "../../../src/routes/computer-use/route.js";
-import { runCuaLane } from "../../../src/routes/computer-use/lanes.js";
-import { type CuaLaneDeps } from "../../../src/routes/computer-use/types.js";
+import { runCuaParticipant } from "../../../src/routes/computer-use/lanes.js";
+import { type CuaParticipantDeps } from "../../../src/routes/computer-use/types.js";
 import type {
   ParticipantDesktop,
   ParticipantDesktopEvidence,
@@ -81,7 +81,7 @@ async function fixture() {
   const loadDesktopModule = vi.fn(async () => {
     throw new Error("The alternate port must never load an E2B desktop");
   });
-  const deps: CuaLaneDeps = {
+  const deps: CuaParticipantDeps = {
     config: parsed.config,
     descriptor: getActor("openai-computer-use"),
     appUrl: "http://127.0.0.1:3000/",
@@ -92,9 +92,9 @@ async function fixture() {
     openaiApiKey: "",
     e2bApiKey: "",
     requestTimeoutMs: 60_000,
-    perLaneSandboxMs: 60_000,
+    sandboxMs: 60_000,
     timeoutMs: 60_000,
-    laneCount: 1,
+    participantCount: 1,
     artifactRoot: await prepareSelectedOutputDirectory(cwd, "artifacts"),
     labCwd: cwd,
     redactScreenshots: false,
@@ -318,7 +318,7 @@ describe("ready desktop lane contract", () => {
     f.deps.env = { PATH: "/synthetic/bin", CODEX_HOME: "/synthetic/operator-codex" };
     f.deps.runSession = runCuaActorSession;
 
-    const result = await runCuaLane(f.spec, f.deps);
+    const result = await runCuaParticipant(f.spec, f.deps);
 
     expect(result.harnessError).toBe(false);
     expect(restrictedParticipantFactory).toHaveBeenCalledExactlyOnceWith({
@@ -352,7 +352,7 @@ describe("ready desktop lane contract", () => {
     f.deps.localAgent = "codex";
     f.deps.runSession = runCuaActorSession;
 
-    const result = await runCuaLane(f.spec, f.deps);
+    const result = await runCuaParticipant(f.spec, f.deps);
 
     // An unconfirmed provider cleanup is an execution failure apart from the session: it still
     // trips fail-fast (harnessError) but leaves the session's own ending alone.
@@ -385,7 +385,7 @@ describe("ready desktop lane contract", () => {
       return provider;
     });
     f.deps.runSession = runCuaActorSession;
-    const result = await runCuaLane(f.spec, f.deps);
+    const result = await runCuaParticipant(f.spec, f.deps);
     expect(result.harnessError).toBe(false);
     expect(provider.close).toHaveBeenCalledOnce();
     expect(f.order.slice(-2)).toEqual(["model-closed", "release"]);
@@ -411,7 +411,7 @@ describe("ready desktop lane contract", () => {
     f.deps.localAgent = "claude";
     f.deps.runSession = runCuaActorSession;
 
-    const result = await runCuaLane(f.spec, f.deps);
+    const result = await runCuaParticipant(f.spec, f.deps);
 
     expect(result.harnessError).toBe(false);
     expect(claudeSessionFactory).toHaveBeenCalledOnce();
@@ -436,7 +436,7 @@ describe("ready desktop lane contract", () => {
       },
     });
     f.deps.runSession = runCuaActorSession;
-    const result = await runCuaLane(f.spec, f.deps);
+    const result = await runCuaParticipant(f.spec, f.deps);
     // An unconfirmed provider cleanup is an execution failure apart from the session: it still
     // trips fail-fast (harnessError) but leaves the session's own ending alone.
     expect(result.harnessError).toBe(true);
@@ -519,7 +519,7 @@ describe("ready desktop lane contract", () => {
     f.deps.onTrace = onTrace;
     f.deps.onScreenshot = onScreenshot;
     f.deps.runSession = (options) => runCuaActorSession({ ...options, provider });
-    const result = await runCuaLane(f.spec, f.deps);
+    const result = await runCuaParticipant(f.spec, f.deps);
     expect(result.session?.reason).toBe("stopWhen matched saved (textIncludes)");
     expect(result.harnessError).toBe(false);
     expect(result.noEngagement).toBe(false);
@@ -559,7 +559,7 @@ describe("ready desktop lane contract", () => {
       if (stage === "prepare") f.port.prepare = fail;
       else if (stage === "open") f.port.openSession = fail;
       else f.deps.runSession = fail;
-      const result = await runCuaLane(f.spec, f.deps);
+      const result = await runCuaParticipant(f.spec, f.deps);
       expect(result.harnessError).toBe(true);
       expect(result.sessionError).toBe("Synthetic failure [scrubbed]");
       expect(result.killed).toBe(true);
@@ -579,7 +579,7 @@ describe("ready desktop lane contract", () => {
     f.deps.signalProvisioned = () => {
       throw new Error("Synthetic gate failure");
     };
-    await expect(runCuaLane(f.spec, f.deps)).rejects.toThrow("Synthetic gate failure");
+    await expect(runCuaParticipant(f.spec, f.deps)).rejects.toThrow("Synthetic gate failure");
     expect(f.release).toHaveBeenCalledOnce();
   });
 
@@ -597,7 +597,7 @@ describe("ready desktop lane contract", () => {
       }),
     };
     f.deps.runSession = (options) => runCuaActorSession({ ...options, provider });
-    const result = await runCuaLane(f.spec, f.deps);
+    const result = await runCuaParticipant(f.spec, f.deps);
     expect(result.harnessError).toBe(false);
     expect(result.selfReportedBlocker).toBe(true);
     expect(result.sessionError).toBeUndefined();

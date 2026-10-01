@@ -151,7 +151,7 @@ function fromParticipant(participant: ComputerUseParticipant) {
   return {
     id: participant.id,
     index: participant.index,
-    // composeLaneInstructions names a lane without a persona "cua-operator".
+    // composeParticipantInstructions names a lane without a persona "cua-operator".
     personaId: participant.personaId ?? "cua-operator",
     focus: participant.assignment.focus,
     labels: { ...participant.labels },

@@ -11,7 +11,7 @@ import { runLab, type RunLabOptions } from "../../src/lab/engine.js";
 import { routeOf } from "../../src/lab/plan.js";
 import { normalizeRunLabOptions, type LabEvent } from "../../src/lab/run-lab-options.js";
 import type { LabConfig } from "../../src/lab/types.js";
-import type { CuaLanePlan } from "../../src/routes/computer-use/types.js";
+import type { CuaParticipantPlan } from "../../src/routes/computer-use/types.js";
 import type { CuaLaneSpec } from "../../src/routes/computer-use/legacy-lane-spec.js";
 import type { E2BDesktopSandbox } from "../../src/substrates/e2b/sdk.js";
 import { trackRuntimeStreams } from "../../src/routes/computer-use/live-flush.js";
@@ -449,7 +449,7 @@ describe("onEvent is passive", () => {
         instructionDigest: "abc",
       },
     ],
-  } as unknown as CuaLanePlan;
+  } as unknown as CuaParticipantPlan;
   const phase = {
     at: "2026-09-30T00:00:00.000Z",
     type: "cua-lab.subject.clone.completed",
@@ -592,7 +592,7 @@ describe("an onEvent warning carries no known secret", () => {
       },
     });
     if (!result.ok) throw new Error(result.message);
-    result.options.cuaHooks!.onPreflight!({ lanes: [] } as unknown as CuaLanePlan);
+    result.options.cuaHooks!.onPreflight!({ lanes: [] } as unknown as CuaParticipantPlan);
     expect(result.warnings).toHaveLength(1);
     expect(result.warnings[0]).not.toContain(password);
     expect(result.warnings[0]).not.toContain(openaiKey);
@@ -609,7 +609,7 @@ describe("an onEvent warning carries no known secret", () => {
       },
     });
     if (!result.ok) throw new Error(result.message);
-    result.options.cuaHooks!.onPreflight!({ lanes: [] } as unknown as CuaLanePlan);
+    result.options.cuaHooks!.onPreflight!({ lanes: [] } as unknown as CuaParticipantPlan);
     expect(result.warnings[0]).not.toContain(password);
   });
 });
@@ -682,7 +682,7 @@ describe("a hook bag that is a class instance keeps its methods", () => {
 });
 
 describe("an onEvent failure never escapes", () => {
-  const plan = { lanes: [] } as unknown as CuaLanePlan;
+  const plan = { lanes: [] } as unknown as CuaParticipantPlan;
   const fallback = "RunLabOptions.onEvent failed on plan: the thrown value has no message";
 
   it("a thrown value with no string form becomes a warning", () => {
@@ -738,7 +738,7 @@ describe("the in-process check sees the legacy executor too", () => {
 });
 
 describe("an onEvent callback that rewrites its event", () => {
-  const plan = { lanes: [] } as unknown as CuaLanePlan;
+  const plan = { lanes: [] } as unknown as CuaParticipantPlan;
   const poison = (event: LabEvent): void => {
     Object.defineProperty(event, "type", {
       get() {
@@ -807,7 +807,7 @@ describe("secret values are read only when a warning needs them", () => {
       },
     });
     if (!result.ok) throw new Error(result.message);
-    result.options.cuaHooks!.onPreflight!({ lanes: [] } as unknown as CuaLanePlan);
+    result.options.cuaHooks!.onPreflight!({ lanes: [] } as unknown as CuaParticipantPlan);
     expect(result.warnings).toEqual([
       "RunLabOptions.onEvent failed on plan: the thrown value has no message",
     ]);
@@ -829,7 +829,7 @@ describe("the scrub covers every env the run could read", () => {
       },
     });
     if (!result.ok) throw new Error(result.message);
-    result.options.cuaHooks!.onPreflight!({ lanes: [] } as unknown as CuaLanePlan);
+    result.options.cuaHooks!.onPreflight!({ lanes: [] } as unknown as CuaParticipantPlan);
     expect(result.warnings[0]).not.toContain(hostPassword);
   });
 
@@ -842,7 +842,7 @@ describe("the scrub covers every env the run could read", () => {
       },
     });
     if (!result.ok) throw new Error(result.message);
-    result.options.cuaHooks!.onPreflight!({ lanes: [] } as unknown as CuaLanePlan);
+    result.options.cuaHooks!.onPreflight!({ lanes: [] } as unknown as CuaParticipantPlan);
     expect(result.warnings[0]).not.toContain(analysisKey);
   });
 });
@@ -890,7 +890,7 @@ describe("the scrub covers the env the route received", () => {
     if (!result.ok) throw new Error(result.message);
     env.APP_PASSWORD = "synthetic-replaced-password-17";
     expect(result.options.cuaHooks!.env!.APP_PASSWORD).toBe(initial);
-    result.options.cuaHooks!.onPreflight!({ lanes: [] } as unknown as CuaLanePlan);
+    result.options.cuaHooks!.onPreflight!({ lanes: [] } as unknown as CuaParticipantPlan);
     expect(result.warnings[0]).not.toContain(initial);
   });
 });
@@ -983,7 +983,7 @@ describe("the forwarding object reaches every member a bag can have", () => {
       {},
       { get: (_target, key) => (key === "onPreflight" ? onPreflight : undefined) },
     );
-    const plan = { lanes: [] } as unknown as CuaLanePlan;
+    const plan = { lanes: [] } as unknown as CuaParticipantPlan;
     normalized(config("cuAppUrl"), { cuaHooks: bag, env: {} }).cuaHooks!.onPreflight!(plan);
     trackRuntimeStreams(bag).hooks.onPreflight!(plan);
     expect(onPreflight).toHaveBeenCalledTimes(2);

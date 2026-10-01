@@ -66,7 +66,7 @@ import { captureStderr, runDirSnapshot } from "../../helpers/run-golden.js";
 // ---------------------------------------------------------------------------
 // Fakes. Same N-substrate shape as the concurrent-shared-world harness, but the
 // external-public route creates NO subject sandbox — only actor sandboxes via
-// runCuaLane. The fake runSession simulates the CUA loop's onObservedUrl calls
+// runCuaParticipant. The fake runSession simulates the CUA loop's onObservedUrl calls
 // (which resolve the host-first handoff latch) and returns an engaged trace.
 // ---------------------------------------------------------------------------
 

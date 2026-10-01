@@ -11,7 +11,7 @@ import {
 } from "../../run/participant-records.js";
 import type { RunSimulationStatus, RunStream } from "../../run/streams.js";
 import { declaredScreenForRender } from "../../substrates/e2b/desktop-geometry.js";
-import type { DesktopParticipantRun, LaneRunOutcome } from "../computer-use/types.js";
+import type { DesktopParticipantRun, ParticipantRunOutcome } from "../computer-use/types.js";
 import { publicSafeRouteLabel } from "./provenance.js";
 import { participantTaxonomyLabel } from "./seats.js";
 import type { ConcurrentBundleArgs } from "./types.js";
@@ -29,14 +29,14 @@ export interface SharedWorldRecordContext {
 
 interface ParticipantView {
   taxonomy: string;
-  outcome: LaneRunOutcome | undefined;
-  session: LaneRunOutcome["session"];
+  outcome: ParticipantRunOutcome | undefined;
+  session: ParticipantRunOutcome["session"];
   screenshots: string[];
   lastScreenshot: string | undefined;
   route: string;
   status: RunSimulationStatus;
   reason: string;
-  desktopGeometry: NonNullable<LaneRunOutcome["desktopGeometry"]>;
+  desktopGeometry: NonNullable<ParticipantRunOutcome["desktopGeometry"]>;
   screenshotMode: "raw" | "blurred";
 }
 

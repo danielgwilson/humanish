@@ -38,12 +38,12 @@ import type { Shell } from "../../substrates/shell.js";
 import {
   defaultPackLocalTree,
   inboxRecipientFor,
-  laneHasInboxRecipient,
+  participantHasInboxRecipient,
   resolveSubjectState,
 } from "../computer-use/route.js";
 import { withInboxMission } from "../computer-use/lane-plan.js";
 import { planeStateOf } from "./plan.js";
-import { runCuaLane } from "../computer-use/lanes.js";
+import { runCuaParticipant } from "../computer-use/lanes.js";
 import { buildConcurrentSharedWorldBundle, judgeSharedWorldRun } from "./bundle.js";
 import { runCheckpointSnapshot } from "./checkpoints.js";
 import { drainSubjectComms } from "./comms.js";
@@ -182,7 +182,7 @@ class SubjectPlane {
     const subjectModule = await (hooks.loadDesktopModule ?? loadE2BDesktopModule)();
     // The ONE subject sandbox: headless service host (no GUI seat). The SUBJECT env is provisioned
     // HERE; the actor sandboxes get NONE of it (FIX-10). A custom desktop template (image) is
-    // honored on BOTH the subject sandbox (here) and every actor sandbox (via runCuaLane, which
+    // honored on BOTH the subject sandbox (here) and every actor sandbox (via runCuaParticipant, which
     // reads the same config); absent keeps the byte-stable Sandbox.create(opts) default. The
     // receipt is on disk before any work, so `humanish reclaim` can kill it by exact id.
     const subject = await acquireE2BDesktopSandbox({
@@ -407,7 +407,7 @@ class SubjectPlane {
 
   /**
    * FIX-9: stop the prober, take a final snapshot while the subject is still alive, then tear
-   * down the ONE subject sandbox BY id (the actor sandboxes are torn down inside runCuaLane).
+   * down the ONE subject sandbox BY id (the actor sandboxes are torn down inside runCuaParticipant).
    * Returns the comms thread's path when the drain wrote one.
    */
   async teardown(): Promise<string | undefined> {
@@ -522,7 +522,7 @@ async function publishInProgress(
   startParticipantFlush(ctx, live, inProgressBundle);
 }
 
-// Launch N actor sandboxes CONCURRENTLY, INDEPENDENT (FIX-11: runCuaLane + mapWithConcurrency,
+// Launch N actor sandboxes CONCURRENTLY, INDEPENDENT (FIX-11: runCuaParticipant + mapWithConcurrency,
 // NOT runCuaParticipants — no pipeline gate / fail-fast). Each actor's window is measured on the ONE
 // orchestrator clock (FIX-1).
 function runParticipants(
@@ -542,7 +542,7 @@ function runParticipants(
     // inbox). Only the in-sandbox catch exists on this plane; the adopter-hosted catch is the
     // external-public plane's (#387).
     const actorSpec =
-      commsEmail && plane.commsInboxUrl && laneHasInboxRecipient(commsEmail, spec.planned.id)
+      commsEmail && plane.commsInboxUrl && participantHasInboxRecipient(commsEmail, spec.planned.id)
         ? withInboxMission(
             spec,
             plane.commsInboxUrl,
@@ -550,7 +550,7 @@ function runParticipants(
           )
         : spec;
     const startedAt = now();
-    const outcome = await runCuaLane(actorSpec, { ...baseActorDeps, appUrl: route });
+    const outcome = await runCuaParticipant(actorSpec, { ...baseActorDeps, appUrl: route });
     const endedAt = now();
     return { spec, outcome, startedAt, endedAt, route };
   });
