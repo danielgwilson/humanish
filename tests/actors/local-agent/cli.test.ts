@@ -9,7 +9,6 @@ import {
   createLocalAgentProvider,
   detectLocalAgents,
   localAgentDoctorMessage,
-  localAgentTurnSchema,
   parseAgentJson,
   toCuaActions,
   type SpawnLike,
@@ -23,16 +22,7 @@ function observation(): CuaObservation {
 
 /** A CLI that answers with whatever text the test hands it. Nothing is spawned, nothing is spent. */
 function fakeCli(reply: string, code = 0): SpawnLike {
-  return async (_bin, args, _options) => {
-    // Codex writes its answer to --output-last-message; the provider reads that file back.
-    const outIndex = args.indexOf("--output-last-message");
-    if (outIndex >= 0) {
-      const { writeFile } = await import("node:fs/promises");
-      await writeFile(args[outIndex + 1]!, reply, "utf8");
-      return { code, stdout: "", stderr: "" };
-    }
-    return { code, stdout: reply, stderr: "" };
-  };
+  return async () => ({ code, stdout: reply, stderr: "" });
 }
 
 describe("the action vocabulary a local agent answers in", () => {
@@ -56,23 +46,6 @@ describe("the action vocabulary a local agent answers in", () => {
     expect(toCuaActions([{ kind: "keypress", keys: [] }])).toEqual([]);
     expect(toCuaActions([{ kind: "teleport", x: 1, y: 2 }])).toEqual([]);
   });
-
-  it("keeps the schema strict-mode legal", () => {
-    // OpenAI structured outputs reject a schema whose `required` omits any property — measured as
-    // a 400 before any thinking happened, which is how this rule was learned.
-    const schema = localAgentTurnSchema() as Record<string, any>;
-    const walk = (node: Record<string, any>): void => {
-      if (node?.type === "object") {
-        expect(Object.keys(node.properties ?? {}).sort()).toEqual(
-          [...(node.required ?? [])].sort(),
-        );
-        for (const child of Object.values(node.properties ?? {}))
-          walk(child as Record<string, any>);
-      }
-      if (node?.type === "array" && node.items) walk(node.items as Record<string, any>);
-    };
-    walk(schema);
-  });
 });
 
 describe("reading the agent's answer", () => {
@@ -93,11 +66,14 @@ describe("reading the agent's answer", () => {
 });
 
 describe("the provider", () => {
-  it("turns a codex answer into a CuaTurn", async () => {
+  it("turns a Claude Code answer into a CuaTurn", async () => {
     const provider = createLocalAgentProvider({
-      agent: "codex",
+      agent: "claude",
       spawnFn: fakeCli(
-        '{"reasoning":"menu top-left","done":false,"message":null,"actions":[{"kind":"click","x":52,"y":12,"text":null,"keys":null,"ms":null}]}',
+        JSON.stringify({
+          result:
+            '{"reasoning":"menu top-left","done":false,"message":null,"actions":[{"kind":"click","x":52,"y":12,"text":null,"keys":null,"ms":null}]}',
+        }),
       ),
     });
     const turn = await provider.nextTurn(
@@ -132,7 +108,7 @@ describe("the provider", () => {
   });
 
   it("declares that it needs a frame, and refuses a turn without one", async () => {
-    const provider = createLocalAgentProvider({ agent: "codex", spawnFn: fakeCli("{}") });
+    const provider = createLocalAgentProvider({ agent: "claude", spawnFn: fakeCli("{}") });
     expect(provider.requiresFrame).toBe(true);
     await expect(
       provider.nextTurn(
@@ -146,7 +122,7 @@ describe("the provider", () => {
     // A rate-limited plan says so here. "turn failed" would throw away the one sentence the
     // operator can act on.
     const provider = createLocalAgentProvider({
-      agent: "codex",
+      agent: "claude",
       spawnFn: async () => ({ code: 1, stdout: "", stderr: "rate limit reached for your plan" }),
     });
     await expect(
@@ -158,9 +134,8 @@ describe("the provider", () => {
   });
 
   it("records the effort it ran at, and defaults it LOW", async () => {
-    // Codex defaults to high, which timed out at 240s on a single action; low answered the same
-    // screenshot correctly in 9s, and a run is sixty of these.
-    const provider = createLocalAgentProvider({ agent: "codex", spawnFn: fakeCli("{}") });
+    // A run is sixty turns, and a high-effort answer per turn costs minutes.
+    const provider = createLocalAgentProvider({ agent: "claude", spawnFn: fakeCli("{}") });
     expect(provider.modelSettings?.reasoningEffort).toBe("low");
   });
 
@@ -170,7 +145,7 @@ describe("the provider", () => {
     const controller = new AbortController();
     let sawSignal: AbortSignal | undefined;
     const provider = createLocalAgentProvider({
-      agent: "codex",
+      agent: "claude",
       spawnFn: async (_bin, _args, options) => {
         sawSignal = options.signal;
         return {
@@ -180,8 +155,7 @@ describe("the provider", () => {
         };
       },
     });
-    // The fake never writes codex's answer file, so the turn throws after the spawn — irrelevant
-    // here: what is under test is that the run's abort signal reaches the child process.
+    // What is under test is that the run's abort signal reaches the child process.
     await provider
       .nextTurn({ instructions: "x", observation: observation() }, controller.signal)
       .catch(() => undefined);
@@ -198,14 +172,6 @@ describe("the provider", () => {
         stderr: "",
       };
     };
-    const codex = createLocalAgentProvider({ agent: "codex", spawnFn: spy });
-    await codex
-      .nextTurn({ instructions: "x", observation: observation() }, new AbortController().signal)
-      .catch(() => undefined);
-    expect(seen[0]).toContain("--sandbox");
-    expect(seen[0]).toContain("read-only");
-
-    seen.length = 0;
     const claude = createLocalAgentProvider({ agent: "claude", spawnFn: spy });
     await claude
       .nextTurn({ instructions: "x", observation: observation() }, new AbortController().signal)

@@ -1,12 +1,15 @@
-// A computer-use brain that is already installed on the operator's machine.
+// The local-agent participant's shared pieces: which signed-in coding agents this machine has
+// (Codex, Claude Code), the doctor line and hosted-Codex version check built on that, the action
+// mapping and JSON reading the two Claude Code paths share, and the one-shot Claude Code provider.
 //
-// WHY: the fastest thing humanish can do for someone new is show them a persona driving a real
-// desktop. Today that needs a provider API key before anything happens, and "go make an API key"
-// is where most people stop. But a developer trying humanish very often ALREADY has a coding agent
-// signed in — Codex on a ChatGPT plan, Claude Code on a Max plan — and those CLIs will look at a
-// screenshot and answer with the next action. Measured, not assumed: with every OPENAI_* variable
-// explicitly unset, `codex exec --image` returned a correct click on the Applications menu of a
-// real desktop screenshot, and `claude -p` independently agreed within three pixels.
+// A developer trying humanish often already has a coding agent signed in (Codex on a ChatGPT plan,
+// Claude Code on a Max plan), so `actors[0].type: local-agent` lets that agent decide the next
+// action instead of a provider API key. Codex runs as a restricted app-server participant
+// (actors/codex/restricted-participant.ts) and Claude Code as one session for the whole run
+// (claude-session.ts). The one-shot provider below spawns `claude -p` per turn, with no memory of
+// the last turn; it stays reachable through HUMANISH_LOCAL_AGENT_ONE_SHOT as a measurement switch.
+// The design started from a measurement: with every OPENAI_* variable unset, `codex exec --image`
+// returned a correct click on a real desktop screenshot and `claude -p` agreed within three pixels.
 //
 // WHAT THIS IS NOT: a way to avoid paying. Subscription usage consumes the operator's own plan,
 // which is why the cost line for these runs says "not priced" rather than $0 — $0 would be a lie.
@@ -14,7 +17,7 @@
 // hammering a plan that was sold for interactive coding.
 //
 // WHERE IT IS SAFE, and this inverts the intuitive reading: the local agent only DECIDES. humanish
-// executes the action inside the E2B sandbox, so nothing the persona chooses ever runs on the
+// executes the action inside the desktop sandbox, so nothing the persona chooses ever runs on the
 // operator's machine. The same trick on the TERMINAL lane would be the opposite — it would move
 // code execution out of the sandbox and onto a real disk — which is why this is a computer-use
 // provider and nothing else. Even so, these are coding agents with their own shell and file tools,
@@ -52,53 +55,6 @@ const LOCAL_AGENTS: readonly LocalAgentDescriptor[] = [
     credentialPath: ".claude/.credentials.json",
   },
 ];
-
-/** The action vocabulary the local agent is asked to answer in — a strict subset of CuaAction. */
-const ACTION_KINDS = [
-  "click",
-  "double_click",
-  "type",
-  "keypress",
-  "scroll",
-  "wait",
-  "done",
-] as const;
-
-/**
- * OpenAI structured outputs run in STRICT mode: every property must appear in `required`, so
- * "optional" is expressed as a nullable type. Getting this wrong is a 400 before any thinking
- * happens, which is how this shape was arrived at.
- */
-export function localAgentTurnSchema(): Record<string, unknown> {
-  return {
-    type: "object",
-    additionalProperties: false,
-    required: ["reasoning", "done", "message", "outcome", "actions"],
-    properties: {
-      reasoning: { type: "string" },
-      done: { type: "boolean" },
-      message: { type: ["string", "null"] },
-      // The participant's own word for how it ended (#570). Null until done.
-      outcome: { type: ["string", "null"], enum: ["reached", "not_reached", "blocked", null] },
-      actions: {
-        type: "array",
-        items: {
-          type: "object",
-          additionalProperties: false,
-          required: ["kind", "x", "y", "text", "keys", "ms"],
-          properties: {
-            kind: { type: "string", enum: [...ACTION_KINDS] },
-            x: { type: ["integer", "null"] },
-            y: { type: ["integer", "null"] },
-            text: { type: ["string", "null"] },
-            keys: { type: ["array", "null"], items: { type: "string" } },
-            ms: { type: ["integer", "null"] },
-          },
-        },
-      },
-    },
-  };
-}
 
 interface RawAction {
   kind?: string;
@@ -160,10 +116,9 @@ export function declaredOutcomeOf(value: unknown): ParticipantDeclaredOutcome | 
 }
 
 /**
- * Pull the JSON object out of whatever the CLI printed. Codex writes clean JSON to
- * `--output-last-message`; Claude Code wraps it in a ```json fence. Both are handled here rather
- * than in two places, and a response with no object at all is a turn error, never an empty turn —
- * an empty turn would read to the loop as "the participant chose to do nothing".
+ * Pull the JSON object out of whatever the CLI printed: clean JSON, a Claude Code envelope, or an
+ * answer wrapped in a ```json fence. A response with no object at all is a turn error, never an
+ * empty turn — an empty turn would read to the loop as "the participant chose to do nothing".
  */
 export function parseAgentJson(text: string): Record<string, unknown> {
   // ORDER MATTERS, and a test caught it: Claude Code's envelope is valid JSON whose `result`
@@ -235,13 +190,13 @@ const defaultSpawn: SpawnLike = async (bin, args, options) =>
   });
 
 export interface LocalAgentProviderOptions {
-  agent: LocalAgentId;
+  /** Only Claude Code runs one-shot; hosted Codex runs as an app-server participant. */
+  agent: "claude";
   /** Per-turn wall clock. A coding agent left to think can outlast the run. */
   timeoutMs?: number;
   /**
-   * Codex defaults to HIGH effort, which timed out at 240s on a single action; `low` answered the
-   * same screenshot correctly in 9s. A computer-use run is sixty of these, so the default here is
-   * deliberately low and the lab can raise it.
+   * Recorded in the trace's model settings. Low by default: a computer-use run is sixty turns, and
+   * a high-effort answer per turn costs minutes. The lab can raise it.
    */
   reasoningEffort?: ReasoningEffort;
   /** Model override passed to the CLI (`--model`). Absent = the CLI's own default. */
@@ -263,24 +218,19 @@ export const LOCAL_AGENT_CAPABILITIES: ActorCapabilities = {
   license: "open",
 };
 
-export function promptFor(
-  request: CuaTurnRequest,
-  screenshotPath: string,
-  agent: LocalAgentId,
-): string {
+/** The turn prompt for Claude Code: the instructions, the screenshot to read, and the reply shape. */
+export function promptFor(request: CuaTurnRequest, screenshotPath: string): string {
   const hint =
     request.contextHint === undefined ? "" : `\n\nNote from the harness: ${request.contextHint}`;
-  // Claude Code has no --output-schema, so the shape is stated in the prompt for both; codex gets
-  // it enforced as well. Saying it twice costs nothing and keeps one prompt for both adapters.
+  // Claude Code has no --output-schema, so the reply shape is stated in the prompt.
   const shape =
     '{"reasoning":string,"done":boolean,"message":string|null,"outcome":"reached"|"not_reached"|"blocked"|null,' +
     '"actions":[{"kind":"click|double_click|type|keypress|scroll|wait|done",' +
     '"x":int|null,"y":int|null,"text":string|null,"keys":[string]|null,"ms":int|null}]}';
-  const readFile = agent === "claude" ? `Read the image file ${screenshotPath}. ` : "";
   return [
     request.instructions,
     "",
-    `${readFile}That image is the CURRENT SCREEN. You are the participant: decide what to do next, ` +
+    `Read the image file ${screenshotPath}. That image is the CURRENT SCREEN. You are the participant: decide what to do next, ` +
       "as this person would. Coordinates are pixels from the top-left of the screenshot.",
     "Return between one and three actions. Set done=true ONLY when the task is finished or you are " +
       "giving up, and put your closing words in message. When done=true, set outcome: reached if " +
@@ -292,11 +242,12 @@ export function promptFor(
 }
 
 /**
- * A CuaProvider backed by a coding agent that is already signed in on this machine.
+ * A CuaProvider that spawns a signed-in Claude Code (`claude -p`) once per turn, with no memory of
+ * the last turn. The run's default is one session (claude-session.ts); this path is reached only
+ * through HUMANISH_LOCAL_AGENT_ONE_SHOT, to measure "remembers" against "does not".
  *
- * Deliberately NOT a new lane: the loop, the executor, the trace, the affordance record and the
- * Observer are all unchanged, because the only thing that differs is where the next action comes
- * from. That is also why it is honest to compare a local-agent run against an API run.
+ * The loop, the executor, the trace, the affordance record and the Observer are unchanged: the
+ * only thing that differs is where the next action comes from.
  */
 export function createLocalAgentProvider(options: LocalAgentProviderOptions): CuaProvider {
   const spawnFn = options.spawnFn ?? defaultSpawn;
@@ -325,47 +276,23 @@ export function createLocalAgentProvider(options: LocalAgentProviderOptions): Cu
       try {
         const screenshotPath = path.join(work, "screen.png");
         await writeFile(screenshotPath, frame);
-        const prompt = promptFor(request, screenshotPath, descriptor.id);
+        const prompt = promptFor(request, screenshotPath);
 
-        let args: string[];
-        if (descriptor.id === "codex") {
-          const schemaPath = path.join(work, "turn-schema.json");
-          await writeFile(schemaPath, JSON.stringify(localAgentTurnSchema()), "utf8");
-          args = [
-            "exec",
-            "--image",
-            screenshotPath,
-            "--output-schema",
-            schemaPath,
-            "--output-last-message",
-            path.join(work, "turn.json"),
-            "--skip-git-repo-check",
-            // The agent's OWN shell tools stay read-only: it is here to look at a picture, and a
-            // coding agent that decides to go exploring is exploring the operator's disk.
-            "--sandbox",
-            "read-only",
-            "-c",
-            `model_reasoning_effort=${effort}`,
-            ...(options.model === undefined ? [] : ["--model", options.model]),
-            prompt,
-          ];
-        } else {
-          args = [
-            "-p",
-            "--output-format",
-            "json",
-            // Read is the only tool it needs — the screenshot — and the only one it gets.
-            "--allowedTools",
-            "Read",
-            ...(options.model === undefined ? [] : ["--model", options.model]),
-            // `--allowedTools` takes a list, so a prompt placed right after it is read as a tool
-            // name and Claude Code exits 1 with "Input must be provided". Three of three one-shot
-            // runs failed on turn one that way on 2026-09-01 (Claude Code 2.1.257); `--` ends the
-            // options so the prompt is the prompt.
-            "--",
-            prompt,
-          ];
-        }
+        const args = [
+          "-p",
+          "--output-format",
+          "json",
+          // Read is the only tool it needs — the screenshot — and the only one it gets.
+          "--allowedTools",
+          "Read",
+          ...(options.model === undefined ? [] : ["--model", options.model]),
+          // `--allowedTools` takes a list, so a prompt placed right after it is read as a tool
+          // name and Claude Code exits 1 with "Input must be provided". Three of three one-shot
+          // runs failed on turn one that way on 2026-09-01 (Claude Code 2.1.257); `--` ends the
+          // options so the prompt is the prompt.
+          "--",
+          prompt,
+        ];
 
         const result = await spawnFn(descriptor.bin, args, {
           cwd: work,
@@ -379,16 +306,9 @@ export function createLocalAgentProvider(options: LocalAgentProviderOptions): Cu
           throw new Error(`${descriptor.label} exited ${result.code ?? "on a signal"}: ${detail}`);
         }
 
-        // Codex writes the structured answer to a file; Claude Code returns an envelope on stdout
-        // whose `result` field holds the text.
-        let payload = result.stdout;
-        if (descriptor.id === "codex") {
-          const { readFile: read } = await import("node:fs/promises");
-          payload = await read(path.join(work, "turn.json"), "utf8");
-        } else {
-          const envelope = parseAgentJson(result.stdout);
-          payload = typeof envelope.result === "string" ? envelope.result : result.stdout;
-        }
+        // Claude Code returns an envelope on stdout whose `result` field holds the text.
+        const envelope = parseAgentJson(result.stdout);
+        const payload = typeof envelope.result === "string" ? envelope.result : result.stdout;
 
         const turn = parseAgentJson(payload);
         const actions = toCuaActions(
