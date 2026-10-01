@@ -1,21 +1,26 @@
-import path from "node:path";
 import type { ActorPersonaRef, ActorTrace } from "../../actors/contract.js";
 import { type RunLabProvenance } from "../../run/status.js";
 import type { LabScenarioCaps, LabRuntimeAuth } from "../../lab/types.js";
 import { redactText } from "../../evidence/redaction.js";
 import { participantAssignment } from "../../lab/participant-assignment.js";
 import {
-  PUBLIC_TARGET_CWD,
   REVIEW_SCHEMA,
-  RUN_BUNDLE_SCHEMA,
   type ReviewSummary,
   type RunBundle,
   type RunCostSummary,
   type RunEvent,
   type RunSimulation,
+  bundleArtifacts,
+  bundleHead,
 } from "../../run/bundle.js";
 import type { Verdict } from "../../run/judge.js";
 import { type RunSimulationStatus, type RunStream } from "../../run/streams.js";
+import {
+  participantEvent,
+  participantIds,
+  participantRecord,
+  participantStream,
+} from "../../run/participant-records.js";
 import {
   TERMINAL_EVENTS_ARTIFACT,
   TERMINAL_LEDGERS_ARTIFACT,
@@ -64,7 +69,7 @@ export function buildTerminalProductBundle(args: {
   // exec output was captured, so the tail is empty and transport stays "snapshot" — NOT "pty"
   // (captured non-interactive exec output is never an interactive PTY; invariant 6 + the PTY
   // ruling). The shipped live builder fills terminal.tail from redacted exec-stream capture.
-  const { simulation, stream } = terminalLane(args, {
+  const { simulation, stream } = terminalParticipant(args, {
     status: "contract_proof_only",
     reason,
     summary: `Contract lane for the terminal agent (${args.actorId}) studying ${args.productName} from public surfaces.`,
@@ -87,7 +92,7 @@ export function buildTerminalProductBundle(args: {
       type: "terminal-lab.run.created",
       message: `Created terminal-product lab run for ${args.labId} (actor ${args.actorId}, product ${args.productName}).`,
     },
-    {
+    participantEvent(TERMINAL_IDS, {
       id: "event-001-subject",
       at: args.createdAt,
       level: "info",
@@ -96,10 +101,8 @@ export function buildTerminalProductBundle(args: {
       // not a clone, so the subject provenance is explicitly UNPINNED; evidence binds to the
       // composed-prompt digest. Public surfaces are recorded (they are public by declaration).
       message: `Subject product declared: ${args.productName}; public surfaces: ${args.publicSurfaces.join(", ")}. The lab did not provision/clone the product — subject provenance is UNPINNED (a public-surface study cannot be commit-pinned); evidence binds to the composed-prompt digest ${args.persona.promptDigest}.`,
-      simId: "sim-001",
-      streamId: "stream-001",
-    },
-    {
+    }),
+    participantEvent(TERMINAL_IDS, {
       id: "event-002-credentials",
       at: args.createdAt,
       level: "info",
@@ -107,28 +110,22 @@ export function buildTerminalProductBundle(args: {
       // Names-only evidence (invariant 1): the runtime-auth CHANNEL is declared; no value is ever
       // recorded. The deny-by-default policies are recorded so the credential posture is auditable.
       message: `Runtime auth channel: ${args.runtimeAuth ?? "none declared"} (names only; values never persist; the live engine applies the selected key placement, while this dry-run performs no injection). Credential policies (deny-by-default): allowPrivateRepoAccess=${args.policies.allowPrivateRepoAccess}, allowProviderCredentials=${args.policies.allowProviderCredentials}, allowPaymentCredentials=${args.policies.allowPaymentCredentials}, allowGitHubMutation=${args.policies.allowGitHubMutation}.`,
-      simId: "sim-001",
-      streamId: "stream-001",
-    },
-    {
+    }),
+    participantEvent(TERMINAL_IDS, {
       id: "event-003-caps",
       at: args.createdAt,
       level: "info",
       type: "terminal-lab.caps.declared",
       message: `Spend/job/time caps: ${capsText}. A live run never exercises the runtime key without a fail-closed cap; its no-spend proof is derived from the persisted cost ledger. This dry-run spends $0 by mechanism.`,
-      simId: "sim-001",
-      streamId: "stream-001",
-    },
-    {
+    }),
+    participantEvent(TERMINAL_IDS, {
       id: "event-004-contract",
       at: args.createdAt,
       level: "info",
       type: "terminal-lab.contract.ready",
       message:
         "Dry-run contract bundle ready. Switch scenario.mode to live with the required runtime auth and caps to exercise the in-sandbox agent route, captured exec stream, and declared runtime-auth placement.",
-      simId: "sim-001",
-      streamId: "stream-001",
-    },
+    }),
   ];
 
   const review: ReviewSummary = {
@@ -195,7 +192,7 @@ export function buildLiveTerminalProductBundle(args: {
   /** The run's judgment verdict (judgeTerminal). */
   verdict: Verdict;
 }): RunBundle {
-  const simStatus: RunSimulationStatus =
+  const recordStatus: RunSimulationStatus =
     args.trace.status === "passed"
       ? "passed"
       : args.trace.status === "blocked"
@@ -208,8 +205,8 @@ export function buildLiveTerminalProductBundle(args: {
 
   // transport "snapshot": the persisted tail is a redacted snapshot of the captured exec output,
   // NOT an interactive PTY (stdin disabled). The actor trace seam carries the structured evidence.
-  const { simulation, stream } = terminalLane(args, {
-    status: simStatus,
+  const { simulation, stream } = terminalParticipant(args, {
+    status: recordStatus,
     reason: args.sessionReason,
     summary: `Terminal agent (${args.actorId}) studied ${args.productName} from public surfaces (${args.trace.status}).`,
     updatedAt: args.trace.completedAt,
@@ -228,34 +225,34 @@ export function buildLiveTerminalProductBundle(args: {
   });
 
   // Substrate-lifecycle ledger -> bundle events (each already sanitized when recorded).
-  const lifecycleEvents: RunEvent[] = args.ledgers.lifecycle.map((record, index) => ({
-    id: `event-${String(index).padStart(3, "0")}-${record.event}`,
-    at: record.at,
-    level:
-      record.event.includes("error") ||
-      record.event.includes("timed_out") ||
-      record.event.includes("exceeded")
-        ? "warn"
-        : "info",
-    type: record.event,
-    message: record.message,
-    simId: "sim-001",
-    streamId: "stream-001",
-  }));
+  const lifecycleEvents: RunEvent[] = args.ledgers.lifecycle.map((record, index) =>
+    participantEvent(TERMINAL_IDS, {
+      id: `event-${String(index).padStart(3, "0")}-${record.event}`,
+      at: record.at,
+      level:
+        record.event.includes("error") ||
+        record.event.includes("timed_out") ||
+        record.event.includes("exceeded")
+          ? "warn"
+          : "info",
+      type: record.event,
+      message: record.message,
+    }),
+  );
 
   // Surface the no-spend proof as a first-class bundle event so the Observer/review can SHOW it.
   // It is DERIVED from the cost ledger (never asserted): it lists the known-zero lines it vouches
   // for AND the unmeasured (null) lines it explicitly cannot vouch for.
   const noSpend = args.ledgers.noSpendProof;
-  lifecycleEvents.push({
-    id: "event-cost-no-spend-proof",
-    at: args.trace.completedAt,
-    level: noSpend.satisfied ? "info" : "warn",
-    type: "terminal-lab.no-spend.proof",
-    message: noSpend.statement,
-    simId: "sim-001",
-    streamId: "stream-001",
-  });
+  lifecycleEvents.push(
+    participantEvent(TERMINAL_IDS, {
+      id: "event-cost-no-spend-proof",
+      at: args.trace.completedAt,
+      level: noSpend.satisfied ? "info" : "warn",
+      type: "terminal-lab.no-spend.proof",
+      message: noSpend.statement,
+    }),
+  );
 
   const review: ReviewSummary = {
     schema: REVIEW_SCHEMA,
@@ -305,10 +302,13 @@ interface TerminalBundleCommon {
   source: RunBundle["source"];
 }
 
-/** The one terminal lane: its simulation and its stream. */
-function terminalLane(
+/** The one terminal participant's saved ids. */
+const TERMINAL_IDS = participantIds(0);
+
+/** The one terminal participant: its record and its stream. */
+function terminalParticipant(
   args: TerminalBundleCommon,
-  lane: {
+  session: {
     status: RunSimulationStatus;
     reason: string;
     summary: string;
@@ -319,44 +319,39 @@ function terminalLane(
     artifacts: RunStream["artifacts"];
   },
 ): { simulation: RunSimulation; stream: RunStream } {
-  const simulation: RunSimulation = {
-    id: "sim-001",
-    index: 1,
+  const simulation = participantRecord(TERMINAL_IDS, 1, {
     personaId: args.persona.id,
     scenarioId: `terminal-${args.labId}`,
-    status: lane.status,
+    status: session.status,
     streamKind: "terminal",
     mode: "cli-sim",
     progress: 100,
-    currentStep: lane.reason,
-    summary: lane.summary,
-    streamIds: ["stream-001"],
+    currentStep: session.reason,
+    summary: session.summary,
     startedAt: args.createdAt,
-    updatedAt: lane.updatedAt,
-  };
-  const stream: RunStream = {
-    id: "stream-001",
-    simId: "sim-001",
+    updatedAt: session.updatedAt,
+  });
+  const stream = participantStream(TERMINAL_IDS, {
     assignment: participantAssignment({ mission: args.mission }),
     kind: "terminal",
     label: `Terminal agent — ${args.labId}`,
-    status: lane.status,
+    status: session.status,
     transport: "snapshot",
-    updatedAt: lane.updatedAt,
+    updatedAt: session.updatedAt,
     embed: { kind: "placeholder", title: `Terminal agent (${args.productName})` },
     terminal: {
-      title: `${args.actorId} exec (stdin ${lane.stdin})`,
+      title: `${args.actorId} exec (stdin ${session.stdin})`,
       format: "plain",
-      stdin: lane.stdin,
-      tail: lane.tail,
+      stdin: session.stdin,
+      tail: session.tail,
     },
     ui: {
       intent: `Watch the terminal agent discover and use ${args.productName} from its public surfaces.`,
-      state: lane.reason,
+      state: session.reason,
     },
-    ...(lane.actor === undefined ? {} : { actor: lane.actor }),
-    artifacts: lane.artifacts,
-  };
+    ...(session.actor === undefined ? {} : { actor: session.actor }),
+    artifacts: session.artifacts,
+  });
   return { simulation, stream };
 }
 
@@ -375,15 +370,14 @@ function terminalRunBundle(
   },
 ): RunBundle {
   return {
-    schema: RUN_BUNDLE_SCHEMA,
-    runId: args.runId,
-    mode: parts.mode,
-    simCount: 1,
-    createdAt: args.createdAt,
-    cwd: PUBLIC_TARGET_CWD,
-    ...(args.lab === undefined ? {} : { lab: args.lab }),
-    artifactRoot: path.join(".humanish", "runs", args.runId),
-    source: args.source,
+    ...bundleHead({
+      runId: args.runId,
+      mode: parts.mode,
+      participants: 1,
+      createdAt: args.createdAt,
+      ...(args.lab === undefined ? {} : { lab: args.lab }),
+      source: args.source,
+    }),
     persona: {
       id: args.persona.id,
       name: `Autonomous terminal agent (${args.persona.id})`,
@@ -405,13 +399,7 @@ function terminalRunBundle(
     streams: [parts.stream],
     events: parts.events,
     redaction: { status: "passed", notes: parts.redactionNotes },
-    artifacts: {
-      run: "run.json",
-      reviewJson: "review.json",
-      reviewMarkdown: "review.md",
-      observerData: "observer/observer-data.json",
-      events: "events.ndjson",
-    },
+    artifacts: bundleArtifacts(),
     review: parts.review,
     feedbackCandidates: [],
     ...(parts.cost === undefined ? {} : { cost: parts.cost }),

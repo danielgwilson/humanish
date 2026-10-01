@@ -10,13 +10,20 @@ import {
 import {
   RUN_BUNDLE_FILE,
   buildRunSource,
-  RUN_BUNDLE_SCHEMA,
   type RunBundle,
   type RunEvent,
   type RunSimulation,
+  bundleArtifacts,
+  bundleHead,
 } from "./bundle.js";
 import { type RunOptions, type RunResult } from "./results.js";
 import { type RunSimulationStatus, type RunStream, type RunStreamKind } from "./streams.js";
+import {
+  participantEvent,
+  participantIdsOf,
+  participantRecord,
+  participantStream,
+} from "./participant-records.js";
 import { implicitProjectDirectoryExists, readPackageName, validateCwd } from "./project.js";
 import { loadDryRunSelection } from "./dry-run-selection.js";
 import { createReviewSummary, renderReviewMarkdown } from "./synthetic-review.js";
@@ -51,8 +58,8 @@ async function runDryRunInScope(options: RunOptions, scope: RunScope): Promise<R
 
   if (cwdError) return refused(requestedCwd, warnings, cwdError);
 
-  const simCount = normalizeSimCount(options.simCount);
-  if (simCount === null) {
+  const participants = normalizeParticipantCount(options.simCount);
+  if (participants === null) {
     return refused(requestedCwd, warnings, {
       code: "HUMANISH_INVALID_SIM_COUNT",
       message: "--sims must be a positive integer.",
@@ -105,26 +112,27 @@ async function runDryRunInScope(options: RunOptions, scope: RunScope): Promise<R
     createdAt,
     personaId: selection.persona.id,
     scenarioId: selection.scenario.id,
-    simCount,
+    count: participants,
   });
 
   const bundle: RunBundle = {
-    schema: RUN_BUNDLE_SCHEMA,
-    runId,
-    mode: "dry-run",
-    simCount,
-    createdAt,
-    cwd,
-    artifactRoot,
-    ...(options.lab === undefined ? {} : { lab: options.lab }),
-    source,
+    ...bundleHead({
+      runId,
+      mode: "dry-run",
+      participants,
+      createdAt,
+      cwd,
+      artifactRoot,
+      ...(options.lab === undefined ? {} : { lab: options.lab }),
+      source,
+    }),
     persona: selection.persona,
     scenario: selection.scenario,
     lifecycle: [
       {
         at: createdAt,
         event: "run.created",
-        message: `Synthetic dry-run contract bundle created with ${simCount} sim${simCount === 1 ? "" : "s"}.`,
+        message: `Synthetic dry-run contract bundle created with ${participants} sim${participants === 1 ? "" : "s"}.`,
       },
       {
         at: createdAt,
@@ -149,13 +157,7 @@ async function runDryRunInScope(options: RunOptions, scope: RunScope): Promise<R
       status: "passed",
       notes: "Dry-run bundle contains synthetic contract proof only.",
     },
-    artifacts: {
-      run: RUN_BUNDLE_FILE,
-      reviewJson: "review.json",
-      reviewMarkdown: "review.md",
-      observerData: "observer/observer-data.json",
-      events: "events.ndjson",
-    },
+    artifacts: bundleArtifacts(),
     review: createReviewSummary(),
     feedbackCandidates: [],
   };
@@ -169,7 +171,8 @@ async function runDryRunInScope(options: RunOptions, scope: RunScope): Promise<R
     ok: true,
     runId,
     mode: "dry-run",
-    simCount,
+    // The run result's public field for how many participants the run had.
+    simCount: participants,
     cwd,
     artifactRoot,
     bundlePath: path.join(artifactRoot, RUN_BUNDLE_FILE),
@@ -255,7 +258,7 @@ function buildSyntheticObserverFixtures(args: {
   createdAt: string;
   personaId: string;
   scenarioId: string;
-  simCount: number;
+  count: number;
 }): {
   events: RunEvent[];
   simulations: RunSimulation[];
@@ -273,96 +276,92 @@ function buildSyntheticObserverFixtures(args: {
     },
   ];
 
-  for (let index = 0; index < args.simCount; index += 1) {
+  for (let index = 0; index < args.count; index += 1) {
     const template = SYNTHETIC_STREAM_TEMPLATES[index % SYNTHETIC_STREAM_TEMPLATES.length];
     if (!template) {
       throw new Error("Synthetic observer template missing.");
     }
-    const simId = `sim-${String(index + 1).padStart(2, "0")}`;
-    const streamId = `${simId}-${template.kind}`;
+    const recordId = `sim-${String(index + 1).padStart(2, "0")}`;
+    const ids = participantIdsOf(recordId, `${recordId}-${template.kind}`);
     const status: RunSimulationStatus = "contract_proof_only";
 
-    simulations.push({
-      id: simId,
-      index: index + 1,
-      personaId: args.personaId,
-      scenarioId: args.scenarioId,
-      status,
-      streamKind: template.kind,
-      mode: template.mode,
-      progress: 100,
-      currentStep: template.currentStep,
-      summary: template.summary,
-      streamIds: [streamId],
-      startedAt: args.createdAt,
-      updatedAt: args.createdAt,
-    });
+    simulations.push(
+      participantRecord(ids, index + 1, {
+        personaId: args.personaId,
+        scenarioId: args.scenarioId,
+        status,
+        streamKind: template.kind,
+        mode: template.mode,
+        progress: 100,
+        currentStep: template.currentStep,
+        summary: template.summary,
+        startedAt: args.createdAt,
+        updatedAt: args.createdAt,
+      }),
+    );
 
-    streams.push({
-      id: streamId,
-      simId,
-      kind: template.kind,
-      label: template.label,
-      status,
-      transport: streamTransport(template.kind),
-      updatedAt: args.createdAt,
-      embed: {
-        kind: template.kind === "terminal" || template.kind === "tui" ? "terminal" : "placeholder",
-        title: template.label,
-      },
-      ...(template.viewport ? { viewport: { ...template.viewport } } : {}),
-      terminal: {
-        title: template.label,
-        format: template.kind === "tui" ? "ansi" : "plain",
-        stdin: "disabled",
-        tail: template.tail,
-      },
-      ...(template.kind === "ui" || template.kind === "codex-ui"
-        ? {
-            ui: {
-              route: template.kind === "ui" ? "/first-run" : "/codex/session",
-              intent: template.summary,
-              state: "contract-only",
-            },
-          }
-        : {}),
-      ...(template.kind === "codex-ui"
-        ? {
-            codex: {
-              provider: "codex-app-server" as const,
-              state: "not_connected" as const,
-              contract:
-                "Observer accepts an app-server embed URL, session id, status feed, terminal receipt feed, and artifact links.",
-            },
-          }
-        : {}),
-      artifacts: [
-        { label: "run bundle", path: RUN_BUNDLE_FILE, kind: "bundle" },
-        { label: "review", path: "review.md", kind: "review" },
-        { label: "event log", path: "events.ndjson", kind: "events" },
-      ],
-    });
+    streams.push(
+      participantStream(ids, {
+        kind: template.kind,
+        label: template.label,
+        status,
+        transport: streamTransport(template.kind),
+        updatedAt: args.createdAt,
+        embed: {
+          kind:
+            template.kind === "terminal" || template.kind === "tui" ? "terminal" : "placeholder",
+          title: template.label,
+        },
+        ...(template.viewport ? { viewport: { ...template.viewport } } : {}),
+        terminal: {
+          title: template.label,
+          format: template.kind === "tui" ? "ansi" : "plain",
+          stdin: "disabled",
+          tail: template.tail,
+        },
+        ...(template.kind === "ui" || template.kind === "codex-ui"
+          ? {
+              ui: {
+                route: template.kind === "ui" ? "/first-run" : "/codex/session",
+                intent: template.summary,
+                state: "contract-only",
+              },
+            }
+          : {}),
+        ...(template.kind === "codex-ui"
+          ? {
+              codex: {
+                provider: "codex-app-server" as const,
+                state: "not_connected" as const,
+                contract:
+                  "Observer accepts an app-server embed URL, session id, status feed, terminal receipt feed, and artifact links.",
+              },
+            }
+          : {}),
+        artifacts: [
+          { label: "run bundle", path: RUN_BUNDLE_FILE, kind: "bundle" },
+          { label: "review", path: "review.md", kind: "review" },
+          { label: "event log", path: "events.ndjson", kind: "events" },
+        ],
+      }),
+    );
 
     events.push(
-      {
+      participantEvent(ids, {
         id: `event-${String(index + 1).padStart(3, "0")}-a`,
         at: args.createdAt,
         level: "info",
         type: "sim.contract.ready",
         message: `${template.label} stream contract ready.`,
-        simId,
-        streamId,
-      },
-      {
+      }),
+      participantEvent(ids, {
         id: `event-${String(index + 1).padStart(3, "0")}-b`,
         at: args.createdAt,
         level: "warn",
         type: "sim.live-substrate.missing",
         message:
           "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
-        simId,
-        streamId,
-      },
+      }),
     );
   }
 
@@ -376,7 +375,7 @@ function streamTransport(kind: RunStreamKind): RunStream["transport"] {
   return "snapshot";
 }
 
-function normalizeSimCount(value: number | undefined): number | null {
+function normalizeParticipantCount(value: number | undefined): number | null {
   if (value === undefined) {
     return 1;
   }

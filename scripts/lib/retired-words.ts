@@ -9,7 +9,13 @@ export type RetiredWord = (typeof RETIRED_WORDS)[number];
 
 // Paths under src/ whose identifiers may keep the contract spellings. Each translation module
 // joins this list in the PR that creates it.
-export const EXEMPT_PREFIXES = ["src/observer/"];
+export const EXEMPT_PREFIXES = [
+  "src/observer/",
+  // Bundle write: the bundle's types and the participant records the route builders call.
+  "src/run/bundle.ts",
+  "src/run/streams.ts",
+  "src/run/participant-records.ts",
+];
 
 export function isCounted(path: string): boolean {
   return (

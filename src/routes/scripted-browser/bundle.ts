@@ -1,7 +1,6 @@
 // Assemble the scripted-browser lab's run bundle from its sessions, and the review summary and
 // markdown that ship with it.
 
-import path from "node:path";
 import type { ActorPersonaRef, ActorTrace } from "../../actors/contract.js";
 import type { ScriptedBrowserSessionResult } from "../../actors/scripted-browser/actor.js";
 import type { BrowserPersonaJourney, BrowserSurface } from "../../actors/scripted-browser/types.js";
@@ -13,17 +12,18 @@ import {
   spendFreeCostSummary,
 } from "../../run/cost-summary.js";
 import {
-  PUBLIC_TARGET_CWD,
   REVIEW_SCHEMA,
-  RUN_BUNDLE_SCHEMA,
   type ReviewSummary,
   type RunBundle,
   type RunEvent,
   type RunSubjectProvenance,
+  bundleArtifacts,
+  bundleHead,
 } from "../../run/bundle.js";
 import { type RunStream } from "../../run/streams.js";
 import type { RunLabProvenance } from "../../run/status.js";
-import { scriptedSurfaceRecords } from "./surface-records.js";
+import { participantEvent, recordIdOf } from "../../run/participant-records.js";
+import { scriptedSurfaceIds, scriptedSurfaceRecords } from "./surface-records.js";
 
 /** What the scripted lab's bundle is built from. */
 interface ScriptedBundleArgs {
@@ -84,15 +84,14 @@ export function buildScriptedLabBundle(args: ScriptedBundleArgs): RunBundle {
 
   const cost = args.dryRun ? undefined : scriptedCost(args.subjectDesktop);
   return {
-    schema: RUN_BUNDLE_SCHEMA,
-    runId: args.runId,
-    mode: args.dryRun ? "dry-run" : "live",
-    simCount: args.surfaces.length,
-    createdAt: args.createdAt,
-    cwd: PUBLIC_TARGET_CWD,
-    ...(args.lab === undefined ? {} : { lab: args.lab }),
-    artifactRoot: path.join(".humanish", "runs", args.runId),
-    source: args.source,
+    ...bundleHead({
+      runId: args.runId,
+      mode: args.dryRun ? "dry-run" : "live",
+      participants: args.surfaces.length,
+      createdAt: args.createdAt,
+      ...(args.lab === undefined ? {} : { lab: args.lab }),
+      source: args.source,
+    }),
     persona: {
       id: args.persona.id,
       name: `Scripted journey persona (${args.persona.id})`,
@@ -122,13 +121,7 @@ export function buildScriptedLabBundle(args: ScriptedBundleArgs): RunBundle {
         ? "Scripted step URLs are sanitized to loopback origin+path (query/hash redacted) and step text passes text redaction. Screenshots are FULL-FIDELITY (raw), retained for local use in gitignored .humanish — NOT redacted for publishing; policies.redactScreenshots is not yet supported on this route."
         : "Dry-run contract bundle: no browser ran and no screenshots were captured. The scenario contract is digest-pinned; live step text passes text redaction when a session runs.",
     },
-    artifacts: {
-      run: "run.json",
-      reviewJson: "review.json",
-      reviewMarkdown: "review.md",
-      observerData: "observer/observer-data.json",
-      events: "events.ndjson",
-    },
+    artifacts: bundleArtifacts(),
     review,
     feedbackCandidates: [],
     ...(args.subject === undefined ? {} : { subject: args.subject }),
@@ -171,15 +164,15 @@ function scriptedEvents(args: ScriptedBundleArgs): RunEvent[] {
 
   if (args.sessionResults.length > 0) {
     for (const result of args.sessionResults) {
-      events.push({
-        id: `event-${String(events.length).padStart(3, "0")}-session-${result.capture.surface.id}`,
-        at: result.capture.capturedAt,
-        level: result.status === "passed" ? "info" : "warn",
-        type: `scripted-lab.session.${result.completionReason}`,
-        message: `${result.capture.surface.id}: ${result.status} — ${result.reason}`,
-        simId: `scripted-${result.capture.surface.id}`,
-        streamId: `scripted-${result.capture.surface.id}-stream`,
-      });
+      events.push(
+        participantEvent(scriptedSurfaceIds(result.capture.surface.id), {
+          id: `event-${String(events.length).padStart(3, "0")}-session-${result.capture.surface.id}`,
+          at: result.capture.capturedAt,
+          level: result.status === "passed" ? "info" : "warn",
+          type: `scripted-lab.session.${result.completionReason}`,
+          message: `${result.capture.surface.id}: ${result.status} — ${result.reason}`,
+        }),
+      );
     }
   } else if (args.sessionError) {
     events.push({
@@ -282,7 +275,7 @@ export function renderScriptedReviewMarkdown(bundle: RunBundle): string {
     ...(spend ? [`- spend: ${spend.message}`] : []),
     ...traces.map(
       ({ stream, trace }) =>
-        `- ${stream.simId}: ${trace.provider} (${trace.lane}/${trace.protocol}) ${trace.status} (${trace.completionReason}); ${trace.counts.actions ?? 0} step action(s), ${trace.counts.screenshots ?? 0} raw screenshot(s)`,
+        `- ${recordIdOf(stream)}: ${trace.provider} (${trace.lane}/${trace.protocol}) ${trace.status} (${trace.completionReason}); ${trace.counts.actions ?? 0} step action(s), ${trace.counts.screenshots ?? 0} raw screenshot(s)`,
     ),
     ...(bundle.review.gaps.length > 0
       ? ["", "## Gaps", ...bundle.review.gaps.map((gap) => `- ${gap}`)]

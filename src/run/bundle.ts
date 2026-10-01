@@ -1,3 +1,4 @@
+import path from "node:path";
 import type { CommsReceivingEvidence } from "../comms/receiving-types.js";
 import { captureGitState, type CapturedGitState } from "./git-state.js";
 import type { SharedWorldEvidence } from "./shared-world-evidence.js";
@@ -552,6 +553,47 @@ export interface StudyTaskFunnel {
      *  statement about our instrument, not about the participants (#514). */
     unmeasured: number;
   }>;
+}
+
+/**
+ * The fields every run bundle starts with, in the saved order. A route passes its run, mode and
+ * participant count; the public target cwd and the run's own artifact root are the defaults.
+ */
+export function bundleHead(args: {
+  runId: string;
+  mode: RunBundle["mode"];
+  participants: number;
+  createdAt: string;
+  cwd?: string;
+  artifactRoot?: string;
+  lab?: RunLabProvenance;
+  source: RunBundle["source"];
+}): Pick<
+  RunBundle,
+  "schema" | "runId" | "mode" | "simCount" | "createdAt" | "cwd" | "artifactRoot" | "lab" | "source"
+> {
+  return {
+    schema: RUN_BUNDLE_SCHEMA,
+    runId: args.runId,
+    mode: args.mode,
+    simCount: args.participants,
+    createdAt: args.createdAt,
+    cwd: args.cwd ?? PUBLIC_TARGET_CWD,
+    artifactRoot: args.artifactRoot ?? path.join(".humanish", "runs", args.runId),
+    ...(args.lab === undefined ? {} : { lab: args.lab }),
+    source: args.source,
+  };
+}
+
+/** The files every run directory holds, as the bundle names them. */
+export function bundleArtifacts(): RunBundle["artifacts"] {
+  return {
+    run: RUN_BUNDLE_FILE,
+    reviewJson: "review.json",
+    reviewMarkdown: "review.md",
+    observerData: "observer/observer-data.json",
+    events: "events.ndjson",
+  };
 }
 
 export async function buildRunSource(args: {
