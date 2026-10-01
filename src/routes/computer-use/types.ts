@@ -613,7 +613,6 @@ export interface LaneRunOutcome {
   reportedFriction?: boolean;
   harnessError: boolean;
   failureCode?: CuaActorLabErrorCode;
-  entryKind?: "local-app";
   /** Relative run-dir path of the digest-only comms-thread evidence artifact this lane wrote
    *  (humanish.comms-thread.v1), when a comms lab captured mail into its in-sandbox catch. Registered
    *  in the lane's stream artifacts. Absent when no comms lab ran or nothing was captured. */
