@@ -1135,6 +1135,25 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     ).toBe(true);
   });
 
+  it("runs no more participants at once than the env override allows, below the lab's concurrency", async () => {
+    const handle = makeFanoutModule();
+    const active = { count: 0, max: 0 };
+    const hooks = passingHooks(handle, { active });
+    const outcome = await runLab(fanoutConfig({ concurrency: 4 }), {
+      cwd,
+      cuaHooks: { ...hooks, env: { ...hooks.env, HUMANISH_CUA_MAX_CONCURRENCY: "2" } },
+    });
+    if (outcome.backend !== "cua") throw new Error(`unexpected backend ${outcome.backend}`);
+    const { result } = outcome;
+    expect(result.ok).toBe(true);
+    expect(result.plan).toMatchObject({ concurrency: 2, envLoweredConcurrencyFrom: 4, waves: 2 });
+    expect(result.laneSummary).toMatchObject({ concurrency: 2, waves: 2 });
+    // The lab declares 4. The runner must take its bound from the participant plan, which the env
+    // override lowered to 2; the route plan still says 4, and both have a concurrency field.
+    expect(active.max).toBe(2);
+    expect(handle.maxLive()).toBeLessThanOrEqual(2);
+  });
+
   it("reruns failed fan-out lanes as a new linked run without mutating the source verdict", async () => {
     const sourceHandle = makeFanoutModule();
     const sourceOutcome = await runLab(fanoutConfig({ concurrency: 4 }), {
