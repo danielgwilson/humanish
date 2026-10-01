@@ -63,12 +63,12 @@
       "bundlePath": ".humanish/runs/[run]/run.json",
       "opened": false,
       "warnings": [
-        "Observer renders local contract evidence only; dry-run lanes do not claim product behavior proof.",
+        "Observer renders local contract evidence only; dry-run participants do not claim product behavior proof.",
         "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
       ]
     },
     "warnings": [
-      "Observer renders local contract evidence only; dry-run lanes do not claim product behavior proof.",
+      "Observer renders local contract evidence only; dry-run participants do not claim product behavior proof.",
       "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
     ],
     "automaticAnalysisTrigger": "default",

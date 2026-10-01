@@ -411,7 +411,7 @@ function externalPublicPlaneFindings(
     typeof plane.publicOriginDigest === "string" ? plane.publicOriginDigest : undefined;
   if (!publicOriginDigest || !COMMAND_DIGEST_PATTERN.test(publicOriginDigest)) {
     findings.push(
-      "sharedWorld.plane.publicOriginDigest (sha256-16 of the OBSERVED origin the seats converged on) is required on the external-public plane class",
+      "sharedWorld.plane.publicOriginDigest (sha256-16 of the OBSERVED origin the participants converged on) is required on the external-public plane class",
     );
   }
   // The observed origins across seats must agree on exactly ONE (that agreement IS the convergence).
@@ -423,7 +423,7 @@ function externalPublicPlaneFindings(
   const distinctObserved = [...new Set(observedOrigins)];
   if (distinctObserved.length > 1) {
     findings.push(
-      `the seats did not converge on ONE OBSERVED origin — distinct observed origin digests: ${distinctObserved.join(", ")}`,
+      `the participants did not converge on ONE OBSERVED origin; distinct observed origin digests: ${distinctObserved.join(", ")}`,
     );
   } else if (
     publicOriginDigest &&
@@ -431,7 +431,7 @@ function externalPublicPlaneFindings(
     distinctObserved[0] !== publicOriginDigest
   ) {
     findings.push(
-      `sharedWorld.plane.publicOriginDigest (${publicOriginDigest}) must equal the single OBSERVED origin the seats converged on (${distinctObserved[0]})`,
+      `sharedWorld.plane.publicOriginDigest (${publicOriginDigest}) must equal the single OBSERVED origin the participants converged on (${distinctObserved[0]})`,
     );
   }
   // declaredOriginDigest is recorded for evidence ONLY. Validate its shape when present, but NEVER

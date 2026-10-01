@@ -152,7 +152,7 @@ function libraryClientJs(): string {
       }
       var meta = document.createElement("div");
       meta.className = "run-meta";
-      var metaBits = [run.mode || "unknown", run.streamCount + " lanes", run.createdAt || ""];
+      var metaBits = [run.mode || "unknown", run.streamCount + " participants", run.createdAt || ""];
       // Labeled cost token: ALWAYS "~$X est." (never a bare "$X"), so the library never implies an
       // authoritative charge. Null = omitted (advisory, fail-open on display).
       if (run.estimatedCostUsd != null) {

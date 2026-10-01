@@ -30,7 +30,7 @@
     "failing": [
       {
         "name": "shared-world evidence",
-        "message": "shared-world findings: the seats did not converge on ONE OBSERVED origin — distinct observed origin digests: 3e38c933ea57479e, 0000000000000000"
+        "message": "shared-world findings: the participants did not converge on ONE OBSERVED origin; distinct observed origin digests: 3e38c933ea57479e, 0000000000000000"
       }
     ]
   },
@@ -66,7 +66,7 @@
     "failing": [
       {
         "name": "shared-world evidence",
-        "message": "shared-world findings: laneWindow \"player-2\" must record a sha256-16 routeHostDigest of the origin it reached, the seats did not converge on ONE OBSERVED origin — distinct observed origin digests: 3e38c933ea57479e, not-a-digest"
+        "message": "shared-world findings: laneWindow \"player-2\" must record a sha256-16 routeHostDigest of the origin it reached, the participants did not converge on ONE OBSERVED origin; distinct observed origin digests: 3e38c933ea57479e, not-a-digest"
       }
     ]
   },
@@ -97,7 +97,7 @@
       },
       {
         "name": "shared-world evidence",
-        "message": "shared-world findings: attributionLimits is missing the mandatory external-public disclosure \"no-synthetic-attestation\" — an absent honest-downgrade ceiling overclaims, phantom/dropped role: outcomes count (2) must equal roleCount (3), laneWindow \"player-2\" must carry numeric startedAt <= endedAt on one clock, laneWindow \"player-2\" must record a sha256-16 routeHostDigest of the origin it reached, laneWindow \"player-3\" references unknown simId \"sim-999\", laneWindow \"player-3\" references unknown streamId \"stream-999\", the seats did not converge on ONE OBSERVED origin — distinct observed origin digests: 3e38c933ea57479e, not-a-digest, sharedWorld.plane.exposure must be ABSENT on the external-public plane class — the harness neither provisioned nor exposed the plane, so it cannot attest \"synthetic\" on a real site, the external-public plane class requires subject.state.provenance == \"external-public\" (got \"seeded\") — a seeded/unpinned/undeclared claim on an operator-owned public deployment is dishonest, review verdict is pass but no two laneWindows overlap in time — the external-public run was not actually concurrent (concurrency is proven by temporal co-occupancy on this class)"
+        "message": "shared-world findings: attributionLimits is missing the mandatory external-public disclosure \"no-synthetic-attestation\" — an absent honest-downgrade ceiling overclaims, phantom/dropped role: outcomes count (2) must equal roleCount (3), laneWindow \"player-2\" must carry numeric startedAt <= endedAt on one clock, laneWindow \"player-2\" must record a sha256-16 routeHostDigest of the origin it reached, laneWindow \"player-3\" references unknown simId \"sim-999\", laneWindow \"player-3\" references unknown streamId \"stream-999\", the participants did not converge on ONE OBSERVED origin; distinct observed origin digests: 3e38c933ea57479e, not-a-digest, sharedWorld.plane.exposure must be ABSENT on the external-public plane class — the harness neither provisioned nor exposed the plane, so it cannot attest \"synthetic\" on a real site, the external-public plane class requires subject.state.provenance == \"external-public\" (got \"seeded\") — a seeded/unpinned/undeclared claim on an operator-owned public deployment is dishonest, review verdict is pass but no two laneWindows overlap in time — the external-public run was not actually concurrent (concurrency is proven by temporal co-occupancy on this class)"
       }
     ]
   },
@@ -114,7 +114,7 @@
     "failing": [
       {
         "name": "shared-world evidence",
-        "message": "shared-world findings: sharedWorld.plane.publicOriginDigest (sha256-16 of the OBSERVED origin the seats converged on) is required on the external-public plane class, the seats did not converge on ONE OBSERVED origin — distinct observed origin digests: 18411940b0773353, 3e38c933ea57479e"
+        "message": "shared-world findings: sharedWorld.plane.publicOriginDigest (sha256-16 of the OBSERVED origin the participants converged on) is required on the external-public plane class, the participants did not converge on ONE OBSERVED origin; distinct observed origin digests: 18411940b0773353, 3e38c933ea57479e"
       }
     ]
   }

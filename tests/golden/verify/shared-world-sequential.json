@@ -259,7 +259,7 @@
     "failing": [
       {
         "name": "shared-world evidence",
-        "message": "shared-world findings: skippedTail: each after-checkpoint must belong to its executed role, never an unstarted seat"
+        "message": "shared-world findings: skippedTail: each after-checkpoint must belong to its executed role, never an unstarted participant"
       }
     ]
   },
@@ -325,7 +325,7 @@
     "failing": [
       {
         "name": "shared-world evidence",
-        "message": "shared-world findings: skippedTail: declared roleId values must be nonempty and unique, skippedTail: blocker must be the immediately preceding executed role, skippedTail: an unstarted role must be blocked with a reason and no actor, trace or screenshot, skippedTail: each unstarted role needs exactly one blocked session event, skippedTail: a supported typed interruption cause is required, skippedTail: budget figures require a measured study_spend_limit cause, skippedTail: each after-checkpoint must belong to its executed role, never an unstarted seat"
+        "message": "shared-world findings: skippedTail: declared roleId values must be nonempty and unique, skippedTail: blocker must be the immediately preceding executed role, skippedTail: an unstarted role must be blocked with a reason and no actor, trace or screenshot, skippedTail: each unstarted role needs exactly one blocked session event, skippedTail: a supported typed interruption cause is required, skippedTail: budget figures require a measured study_spend_limit cause, skippedTail: each after-checkpoint must belong to its executed role, never an unstarted participant"
       }
     ]
   }

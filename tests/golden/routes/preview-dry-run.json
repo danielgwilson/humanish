@@ -81,7 +81,7 @@
         {
           "at": "[ts]",
           "event": "run.created",
-          "message": "Synthetic dry-run contract bundle created with 1 sim."
+          "message": "Synthetic dry-run contract bundle created with 1 simulated participant."
         },
         {
           "at": "[ts]",
@@ -147,7 +147,7 @@
         },
         "ui": {
           "route": "/first-run",
-          "intent": "Browser lane reserved for VNC playback, screenshots, route state, and interaction trace.",
+          "intent": "Simulated browser participant reserved for VNC playback, screenshots, route state, and interaction trace.",
           "state": "contract-only"
         },
         "artifacts": [
@@ -177,7 +177,7 @@
           "mode": "browser-sim",
           "progress": 100,
           "currentStep": "Route and viewport contract captured",
-          "summary": "Browser lane reserved for VNC playback, screenshots, route state, and interaction trace.",
+          "summary": "Simulated browser participant reserved for VNC playback, screenshots, route state, and interaction trace.",
           "streamIds": [
             "sim-01-ui"
           ],
@@ -328,7 +328,7 @@
       {
         "at": "[ts]",
         "event": "run.created",
-        "message": "Synthetic dry-run contract bundle created with 1 sim."
+        "message": "Synthetic dry-run contract bundle created with 1 simulated participant."
       },
       {
         "at": "[ts]",
@@ -357,7 +357,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "Route and viewport contract captured",
-        "summary": "Browser lane reserved for VNC playback, screenshots, route state, and interaction trace.",
+        "summary": "Simulated browser participant reserved for VNC playback, screenshots, route state, and interaction trace.",
         "streamIds": [
           "sim-01-ui"
         ],
@@ -391,7 +391,7 @@
         },
         "ui": {
           "route": "/first-run",
-          "intent": "Browser lane reserved for VNC playback, screenshots, route state, and interaction trace.",
+          "intent": "Simulated browser participant reserved for VNC playback, screenshots, route state, and interaction trace.",
           "state": "contract-only"
         },
         "artifacts": [

@@ -339,7 +339,7 @@ function sequentialSharedWorldFindings(bundle: RunBundle, sw: SharedWorldEvidenc
       const checkpoint = rawTimeline[index * 2 + 2];
       if (!isRecord(checkpoint) || checkpoint.name !== `cp-after-${String(turn.roleId)}`) {
         findings.push(
-          "skippedTail: each after-checkpoint must belong to its executed role, never an unstarted seat",
+          "skippedTail: each after-checkpoint must belong to its executed role, never an unstarted participant",
         );
       }
     }

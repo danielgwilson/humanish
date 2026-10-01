@@ -19,30 +19,30 @@ export function rerunLineageFindings(bundle: RunBundle): string[] {
   const currentSet = new Set(currentConcreteIds);
 
   if (selectedSet.size !== selectedIds.length) {
-    findings.push("selectedLaneIds contains duplicate lane ids");
+    findings.push("selectedLaneIds contains duplicate participant ids");
   }
   if (previousSet.size !== previousIds.length) {
-    findings.push("previous contains duplicate lane ids");
+    findings.push("previous contains duplicate participant ids");
   }
   if (currentConcreteIds.length !== bundle.streams.length) {
     findings.push("every rerun stream must carry a laneId");
   }
   for (const id of selectedIds) {
     if (!previousSet.has(id)) {
-      findings.push(`selected lane ${id} is missing prior status`);
+      findings.push(`selected participant ${id} is missing prior status`);
     }
     if (!currentSet.has(id)) {
-      findings.push(`selected lane ${id} is missing from current streams`);
+      findings.push(`selected participant ${id} is missing from current streams`);
     }
   }
   for (const id of previousIds) {
     if (!selectedSet.has(id)) {
-      findings.push(`previous lane ${id} was not selected`);
+      findings.push(`previous participant ${id} was not selected`);
     }
   }
   for (const id of currentConcreteIds) {
     if (!selectedSet.has(id)) {
-      findings.push(`current stream lane ${id} was not selected`);
+      findings.push(`current participant ${id} was not selected`);
     }
   }
   if (!bundle.events.some((event) => event.type === "cua-lab.fanout.rerun")) {

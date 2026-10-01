@@ -133,28 +133,30 @@ function participantEstimateFindings(stream: RunStream): string[] {
   const participantLabel = stream.laneId ?? stream.id;
   if (estimate.schema !== "humanish.actor-estimated-cost.v1") {
     findings.push(
-      `lane ${participantLabel} actor estimatedCost schema is ${String(estimate.schema)}, expected humanish.actor-estimated-cost.v1`,
+      `participant ${participantLabel} actor estimatedCost schema is ${String(estimate.schema)}, expected humanish.actor-estimated-cost.v1`,
     );
   }
   if (estimate.estimatedCostUsd !== null) {
     if (typeof estimate.ratesAsOf !== "string" || estimate.ratesAsOf.length === 0) {
       findings.push(
-        `lane ${participantLabel} claims a model-token cost $${estimate.estimatedCostUsd} without a ratesAsOf date`,
+        `participant ${participantLabel} claims a model-token cost $${estimate.estimatedCostUsd} without a ratesAsOf date`,
       );
     }
     if (typeof estimate.source !== "string" || estimate.source.length === 0) {
       findings.push(
-        `lane ${participantLabel} claims a model-token cost $${estimate.estimatedCostUsd} without a pricing source`,
+        `participant ${participantLabel} claims a model-token cost $${estimate.estimatedCostUsd} without a pricing source`,
       );
     }
   } else {
     // Declared-absent honesty (invariant 5): a null estimate must say WHY and carry null ratesAsOf.
     if (estimate.reason === undefined) {
-      findings.push(`lane ${participantLabel} records a null cost estimate without a reason`);
+      findings.push(
+        `participant ${participantLabel} records a null cost estimate without a reason`,
+      );
     }
     if (estimate.ratesAsOf !== null) {
       findings.push(
-        `lane ${participantLabel} records a null cost estimate but carries a non-null ratesAsOf`,
+        `participant ${participantLabel} records a null cost estimate but carries a non-null ratesAsOf`,
       );
     }
   }
