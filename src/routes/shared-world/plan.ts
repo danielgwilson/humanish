@@ -12,7 +12,12 @@ import {
 import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
 import { brainOf, capsOf, desktopRequirements, isNonEmpty, planBase } from "../../lab/plan-base.js";
 import { sharedWorldParticipants } from "../../lab/plan-participants.js";
-import type { SharedWorldPlan, SharedWorldPlane } from "../../lab/plan-types.js";
+import type {
+  RoutePlanResult,
+  RouteRefusal,
+  SharedWorldPlan,
+  SharedWorldPlane,
+} from "../../lab/plan-types.js";
 import { PUBLIC_TARGET_OWNER_PATTERN } from "../../lab/parse/subject.js";
 import { REPO_SLUG_PATTERN } from "../../lab/parse/values.js";
 import type { LabConfig, LabSubjectState } from "../../lab/types.js";
@@ -30,17 +35,15 @@ import type { RunLabProvenance } from "../../run/status.js";
 import type { ConcurrentSharedWorldLabErrorCode } from "./types.js";
 
 /** The error a shared-world lab returns before a run starts. */
-export interface SharedWorldRefusal {
-  readonly route: "shared-world";
-  readonly code: ConcurrentSharedWorldLabErrorCode;
-  readonly message: string;
+export interface SharedWorldRefusal extends RouteRefusal<
+  "shared-world",
+  ConcurrentSharedWorldLabErrorCode
+> {
   /** The registered actor id, once the registry check has passed. */
   readonly actor?: string;
 }
 
-export type SharedWorldPlanResult =
-  | { readonly ok: true; readonly plan: SharedWorldPlan }
-  | { readonly ok: false; readonly refusal: SharedWorldRefusal };
+export type SharedWorldPlanResult = RoutePlanResult<SharedWorldPlan, SharedWorldRefusal>;
 
 /** The registered descriptor for a planned actor; planSharedWorldLab checked the registry. */
 export function sharedWorldDescriptorOf(actorType: string): CuaActorDescriptor {

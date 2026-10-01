@@ -7,7 +7,12 @@ import { normalizeLocalAppUrl } from "../../actors/scripted-browser/steps.js";
 import { browserSurfaces } from "../../actors/scripted-browser/types.js";
 import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
 import { isNonEmpty, planBase, provisionedSubject } from "../../lab/plan-base.js";
-import type { Requirement, ScriptedPlan } from "../../lab/plan-types.js";
+import type {
+  Requirement,
+  RoutePlanResult,
+  RouteRefusal,
+  ScriptedPlan,
+} from "../../lab/plan-types.js";
 import type { LabConfig } from "../../lab/types.js";
 import {
   cloneTargetValidationReason,
@@ -21,15 +26,14 @@ import type { RunLabProvenance } from "../../run/status.js";
 const DEFAULT_SURFACE_COUNT = 1;
 
 /** The error a scripted lab returns before a run starts. */
-export interface ScriptedRefusal {
-  readonly route: "scripted";
-  readonly code:
-    | "HUMANISH_LAB_ANALYSIS_INVALID"
-    | "HUMANISH_LAB_TASKS_UNSUPPORTED"
-    | "HUMANISH_SCRIPTED_LAB_ACTOR_UNSUPPORTED"
-    | "HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID"
-    | "HUMANISH_SCRIPTED_LAB_SUBJECT_UNSAFE";
-  readonly message: string;
+export interface ScriptedRefusal extends RouteRefusal<
+  "scripted",
+  | "HUMANISH_LAB_ANALYSIS_INVALID"
+  | "HUMANISH_LAB_TASKS_UNSUPPORTED"
+  | "HUMANISH_SCRIPTED_LAB_ACTOR_UNSUPPORTED"
+  | "HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID"
+  | "HUMANISH_SCRIPTED_LAB_SUBJECT_UNSAFE"
+> {
   /**
    * Set on the receiving, analysis and tasks refusals. The route returns those before it opens its
    * run scope, so their result has its own field order and no automatic-analysis record.
@@ -40,9 +44,7 @@ export interface ScriptedRefusal {
   readonly appUrl?: string;
 }
 
-export type ScriptedPlanResult =
-  | { readonly ok: true; readonly plan: ScriptedPlan }
-  | { readonly ok: false; readonly refusal: ScriptedRefusal };
+export type ScriptedPlanResult = RoutePlanResult<ScriptedPlan, ScriptedRefusal>;
 
 /** The app URL a run's evidence names: a provisioned subject's getHost URL is never persisted. */
 export function evidenceAppUrlOf(subject: ScriptedPlan["subject"]): string {

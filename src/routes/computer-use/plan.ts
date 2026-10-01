@@ -19,7 +19,13 @@ import {
   provisionedSubject,
 } from "../../lab/plan-base.js";
 import { computerUseParticipants, declaredTargets } from "../../lab/plan-participants.js";
-import type { AppUrlSubject, ComputerUsePlan, ComputerUseRunner } from "../../lab/plan-types.js";
+import type {
+  AppUrlSubject,
+  ComputerUsePlan,
+  ComputerUseRunner,
+  RoutePlanResult,
+  RouteRefusal,
+} from "../../lab/plan-types.js";
 import { MAX_CUA_LANES } from "../../lab/routing.js";
 import type { LabConfig, LabSubjectServe, LabSubjectState } from "../../lab/types.js";
 import {
@@ -47,10 +53,7 @@ import {
 import { participantDesktopOf } from "./participant-desktop.js";
 
 /** The error a computer-use lab returns before a run starts. */
-export interface ComputerUseRefusal {
-  readonly route: "computer-use";
-  readonly code: CuaActorLabErrorCode;
-  readonly message: string;
+export interface ComputerUseRefusal extends RouteRefusal<"computer-use", CuaActorLabErrorCode> {
   /**
    * Where the route returns it. "before-scope": analysis and tasks, returned before the run scope
    * with no automatic-analysis record. "in-scope": after the cwd checks. "after-personas": after
@@ -62,9 +65,7 @@ export interface ComputerUseRefusal {
   readonly actor?: string;
 }
 
-export type ComputerUsePlanResult =
-  | { readonly ok: true; readonly plan: ComputerUsePlan }
-  | { readonly ok: false; readonly refusal: ComputerUseRefusal };
+export type ComputerUsePlanResult = RoutePlanResult<ComputerUsePlan, ComputerUseRefusal>;
 
 /** The registered descriptor for a planned actor id; planComputerUseLab checked the registry. */
 export function cuaDescriptorOf(actor: string): CuaActorDescriptor {

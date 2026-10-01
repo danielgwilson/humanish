@@ -67,6 +67,11 @@ export interface ReceivingAdapter {
 export interface ParticipantEmail extends Omit<ReceivedEmail, "providerMessageId"> {
   id: string;
 }
+/**
+ * One served inbox file: a route path (no leading slash), its body and content type. The host
+ * writes each to `<servedDir>/<path>` and the catch serves `<servedDir>/<pathname>` verbatim. The
+ * captured inbox (capture-surface.ts) and the real-mail surface both publish these.
+ */
 export interface ReceivingSurfaceFile {
   path: string;
   body: string;

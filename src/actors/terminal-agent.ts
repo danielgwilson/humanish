@@ -9,12 +9,7 @@
 // fail closed. Use `runTerminalProductLab` (or `runLab` with a terminal-product config) for both
 // dry-run and live execution.
 
-import type {
-  ActorPersonaRef,
-  ActorStatus,
-  ActorCompletionReason,
-  ActorTrace,
-} from "./contract.js";
+import type { ActorPersonaRef, ActorSessionResult } from "./contract.js";
 
 /**
  * Backward-compatible fail-closed marker for the intentionally unsupported direct runner.
@@ -45,14 +40,6 @@ export interface TerminalAgentSessionOptions {
   verdictNonce: string;
 }
 
-export interface TerminalAgentSessionResult {
-  status: ActorStatus;
-  completionReason: ActorCompletionReason;
-  reason: string;
-  /** The provider-neutral evidence projection (humanish.actor-trace.v1, lane "terminal"). */
-  trace: ActorTrace;
-}
-
 /**
  * Backward-compatible registry entry. Direct execution is intentionally unsupported: only the
  * terminal-product lab route owns enough context to enforce command-scoped auth, caps, evidence
@@ -61,7 +48,7 @@ export interface TerminalAgentSessionResult {
  */
 export async function runTerminalAgentSession(
   _options: TerminalAgentSessionOptions,
-): Promise<TerminalAgentSessionResult> {
+): Promise<ActorSessionResult> {
   throw new Error(
     `${TERMINAL_AGENT_NOT_IMPLEMENTED_CODE}: direct runTerminalAgentSession calls are intentionally unsupported. Terminal execution is route-owned so the lab can enforce command-scoped runtime auth, caps, evidence capture, and by-id cleanup together. Use runLab with a terminal-product config.`,
   );

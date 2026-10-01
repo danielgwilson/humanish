@@ -6,7 +6,7 @@ import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
 import { isReasoningEffort } from "../../actors/reasoning-effort.js";
 import { actorRegistry, isTerminalActorDescriptor } from "../../actors/registry.js";
 import { isNonEmpty, planBase } from "../../lab/plan-base.js";
-import type { TerminalPlan } from "../../lab/plan-types.js";
+import type { RoutePlanResult, RouteRefusal, TerminalPlan } from "../../lab/plan-types.js";
 import type { LabConfig } from "../../lab/types.js";
 import {
   desktopMediaValidationReason,
@@ -24,16 +24,14 @@ import {
 } from "./types.js";
 
 /** The error a terminal lab returns before a run starts. `actor` names the registered actor. */
-export interface TerminalRefusal {
-  readonly route: "terminal";
-  readonly code: NonNullable<TerminalProductLabResult["error"]>["code"];
-  readonly message: string;
+export interface TerminalRefusal extends RouteRefusal<
+  "terminal",
+  NonNullable<TerminalProductLabResult["error"]>["code"]
+> {
   readonly actor?: string;
 }
 
-export type TerminalPlanResult =
-  | { readonly ok: true; readonly plan: TerminalPlan }
-  | { readonly ok: false; readonly refusal: TerminalRefusal };
+export type TerminalPlanResult = RoutePlanResult<TerminalPlan, TerminalRefusal>;
 
 /**
  * Plan a terminal-product lab. It is called for any config handed to the terminal runner, not

@@ -34,6 +34,7 @@ import {
   SCRIPTED_BROWSER_CAPABILITIES,
   type ActorCompletionReason,
   type ActorPersonaRef,
+  type ActorSessionResult,
   type ActorStatus,
   type ActorTrace,
   type ActorTraceItem,
@@ -112,14 +113,9 @@ export interface ScriptedBrowserSessionOptions {
   now?: () => number;
 }
 
-export interface ScriptedBrowserSessionResult {
-  status: ActorStatus;
-  completionReason: ActorCompletionReason;
-  reason: string;
+export interface ScriptedBrowserSessionResult extends ActorSessionResult {
   /** Native evidence incl. tracePath (humanish.browser-persona-trace.v1, written to disk). */
   capture: BrowserSurfaceCapture;
-  /** humanish.actor-trace.v1 projection. */
-  trace: ActorTrace;
 }
 
 /** Thrown between/around steps when the journey exceeds its wall-clock budget. */

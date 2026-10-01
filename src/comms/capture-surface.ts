@@ -11,6 +11,7 @@
 
 import { createHash } from "node:crypto";
 import { capturedInlineImages, inlineImageData } from "./images.js";
+import type { ReceivingSurfaceFile } from "./receiving-types.js";
 import type { CommsMessage } from "./types.js";
 
 /** [fromOrigin, toOrigin] pairs: rewrite a link/href whose origin is the app's in-sandbox origin into a
@@ -23,14 +24,6 @@ export interface InboxRenderOptions {
   recipient?: string;
   /** Declared addresses also receive empty scopes before the first delivery. */
   recipients?: string[];
-}
-
-/** One served file: a route path (no leading slash) + its body + content type. The host writes each to
- *  `<servedDir>/<path>`; the catch serves `<servedDir>/<pathname>` verbatim. */
-export interface InboxSurfaceFile {
-  path: string;
-  contentType: "text/html; charset=utf-8" | "application/json; charset=utf-8";
-  body: string;
 }
 
 export function inboxRecipientScope(address: string): string {
@@ -500,13 +493,13 @@ function inboxListJson(
 export function buildInboxSurface(
   messages: CommsMessage[],
   options: InboxRenderOptions = {},
-): InboxSurfaceFile[] {
-  const html = (path: string, body: string): InboxSurfaceFile => ({
+): ReceivingSurfaceFile[] {
+  const html = (path: string, body: string): ReceivingSurfaceFile => ({
     path,
     contentType: "text/html; charset=utf-8",
     body,
   });
-  const json = (path: string, value: unknown): InboxSurfaceFile => ({
+  const json = (path: string, value: unknown): ReceivingSurfaceFile => ({
     path,
     contentType: "application/json; charset=utf-8",
     body: JSON.stringify(value, null, 2),
@@ -520,7 +513,7 @@ export function buildInboxSurface(
         (address) => address.value.trim().toLowerCase() === options.recipient!.trim().toLowerCase(),
       ),
     );
-  const files: InboxSurfaceFile[] = [
+  const files: ReceivingSurfaceFile[] = [
     html(base + "/index", renderInboxList(messages, options)),
     json("api/" + base + "/index", inboxListJson(messages, options)),
   ];
