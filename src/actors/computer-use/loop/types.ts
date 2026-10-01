@@ -359,27 +359,31 @@ export interface CuaLoopOptions {
    */
   requireReportedUsageForSpendCap?: boolean;
   /**
-   * Runtime-only: called with `observation.url` for each observation a turn may receive (the
-   * initial one, each post-action one and the one after a dwell window), so an orchestrator can
-   * watch a seat's live `location.href` without the loop persisting it. The concurrent
-   * shared-world barrier uses it to latch a host seat's `/lobby/CODE` URL. Default: no-op.
+   * Runtime-only URL tap: called with `observation.url` for each observation a turn may receive
+   * (the initial one, each post-action one and the one after a dwell window). The loop never
+   * persists the URL. Default: no-op.
+   *
+   * Built-in caller: the external-public shared-world handoff (src/routes/shared-world/handoff.ts)
+   * latches the host participant's lobby URL and checks that each follower reached the same lobby.
    */
   onObservedUrl?: (url: string | undefined) => void;
   /**
-   * RUNTIME-ONLY per-turn actor-narration callback: invoked with the model's own reasoning+message
-   * text each turn. The concurrent shared-world host-first barrier scans it for the lobby code the
-   * host states after creating the lobby — a CDP-INDEPENDENT path to the same code, because the
-   * E2B-desktop Chrome CDP url-read the onObservedUrl path relies on is unreliable in practice. Like
-   * onObservedUrl this is in-memory only; the barrier extracts a code and persists only a digest.
-   * Default: no-op.
+   * Runtime-only narration tap: called with the turn's reasoning and message text, joined by a
+   * newline, once per completed turn before the loop acts on it. An interrupted reply, or one cut
+   * off by the output limit, is not passed. The trace records its own redacted copy; this raw text
+   * stays in memory. Default: no-op.
+   *
+   * Built-in caller: the external-public handoff scans the host's narration for the lobby code,
+   * because the E2B desktop's CDP URL read behind onObservedUrl is unreliable.
    */
   onMessage?: (text: string) => void;
   /**
-   * Runtime-only: called with each raw frame a turn may receive and each dwell-window frame, before
-   * any redaction. The concurrent shared-world barrier reads the lobby code off the host's
-   * waiting-room frame, which works even when the CDP URL read fails and the host never narrates
-   * the code. The buffer stays in memory; screenshot persistence is separate and follows
-   * redactScreenshots. Not awaited. Default: no-op.
+   * Runtime-only frame tap: called with each raw frame a turn may receive and each dwell-window
+   * frame, before any redaction. The buffer stays in memory; screenshot persistence is separate and
+   * follows redactScreenshots. Not awaited. Default: no-op.
+   *
+   * Built-in caller: the external-public handoff reads the lobby code off each participant's own
+   * frame until that participant has one: the host's latch, or a follower's convergence observation.
    */
   onScreenshot?: (frame: Buffer) => void;
   /**
