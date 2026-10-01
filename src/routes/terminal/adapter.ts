@@ -8,9 +8,11 @@ import {
 } from "../../run/bundle.js";
 import { isFeedbackIdempotencyKey } from "../../run/feedback-shape.js";
 import {
-  applyAdapterScoreFailureToReview,
+  adapterScoreFailureMessage,
+  declaredScorerThrew,
+  DECLARED_SCORER_MALFORMED,
   frozenBundleView,
-  recordDeclaredScorerVerdictFailure,
+  type ScorerOutcome,
 } from "../../lab/adapter-extension.js";
 import type {
   TerminalLedgers,
@@ -21,13 +23,13 @@ import type {
 /**
  * Run the layer-6 product-adapter extension seam (issue #154 acceptance #8) over the assembled
  * evidence and attach its results to the bundle IN PLACE — without core knowing any product noun.
+ * The review is not touched here: the returned failures are folded into it by the caller.
  *
  *  - `score`: when present, the returned namespaced `RunAdapterScore` lands on `bundle.adapterScore`.
- *    For a LIBRARY caller (no `scorerProvenance`), core's mission-based verdict (`bundle.review`) is
- *    UNCHANGED — the adapter score is additive. For a CONFIG-DECLARED scorer (#316; `scorerProvenance`
- *    present), a status:"fail" FLIPS the verdict via `applyAdapterScoreFailureToReview` (the keystone
- *    lane is the product's own definition of pass/fail), and a scorer that THROWS becomes a visible
- *    `review.gaps` entry so a crashed declared gate is never a silent green.
+ *    For a LIBRARY caller (no `scorerProvenance`), the adapter score is additive and never a
+ *    failure. For a CONFIG-DECLARED scorer (#316; `scorerProvenance` present), a status:"fail" is a
+ *    failure (the keystone lane is the product's own definition of pass/fail), and so is a scorer
+ *    that THROWS or returns a malformed value, so a crashed declared gate is never a silent green.
  *  - `deriveFeedback`: when present, the returned candidates are appended to
  *    `bundle.feedbackCandidates`; each carries its own namespaced `adapter` product-noun block.
  *
@@ -50,7 +52,7 @@ export async function applyAdapterExtensionSeam(args: {
   /** Present only when the scorer was CONFIG-DECLARED (#316) — the "declared" marker that opts the
    *  terminal route into flip-on-fail. Absent for library callers (additive, back-compat). */
   scorerProvenance?: RunScorerProvenance;
-}): Promise<string | undefined> {
+}): Promise<ScorerOutcome> {
   const {
     hooks,
     bundle,
@@ -64,7 +66,7 @@ export async function applyAdapterExtensionSeam(args: {
     warnings,
     scorerProvenance,
   } = args;
-  if (!hooks.score && !hooks.deriveFeedback) return undefined;
+  if (!hooks.score && !hooks.deriveFeedback) return { failures: [] };
   const declared = scorerProvenance !== undefined;
   // Record the loaded scorer's identity regardless of hook outcome (a throwing/invalid scorer was
   // still loaded and attempted).
@@ -92,9 +94,9 @@ export async function applyAdapterExtensionSeam(args: {
   const scrubValue = <T>(value: T): T => JSON.parse(sanitize(JSON.stringify(value))) as T;
 
   // Set for a DECLARED scorer that fails to render a PASS verdict (status:"fail", malformed, or throw).
-  // The caller fails the run RESULT on it — a declared gate that cannot pass is a fail, never a silent
-  // green. Left undefined for a library caller (additive, back-compat) and for a passing scorer.
-  let declaredVerdictFailure: string | undefined;
+  // The caller folds it into the review and fails the run RESULT on it — a declared gate that cannot
+  // pass is a fail, never a silent green. Empty for a library caller and for a passing scorer.
+  const failures: string[] = [];
 
   if (hooks.score) {
     try {
@@ -102,35 +104,25 @@ export async function applyAdapterExtensionSeam(args: {
       const cleaned = scrubValue(score);
       if (isAdapterScoreShape(cleaned)) {
         bundle.adapterScore = cleaned;
-        // A CONFIG-DECLARED terminal scorer owns the product verdict: a status:"fail" flips
-        // review.verdict (this only ever makes the verdict STRICTER) AND fails the run result. A
-        // library caller keeps the additive no-flip behavior.
-        if (declared) {
-          const message = applyAdapterScoreFailureToReview(bundle);
-          if (message !== undefined) declaredVerdictFailure = message;
-        }
+        // A CONFIG-DECLARED terminal scorer owns the product verdict: a status:"fail" fails the
+        // review and the run result. A library caller keeps the additive no-fail behavior.
+        const message = declared ? adapterScoreFailureMessage(bundle) : undefined;
+        if (message !== undefined) failures.push(message);
       } else {
         warnings.push(
           "terminalHooks.score returned a value that is not a well-formed humanish.adapter-score.v1 (non-empty namespace + status + numeric score + summary); dropped so the bundle stays verifiable.",
         );
         // A declared gate that returned a MALFORMED value never rendered a verdict — fail closed.
-        if (declared) {
-          declaredVerdictFailure =
-            "Declared product scorer returned a malformed value instead of a verdict; a declared gate that cannot render a pass is recorded as a fail, never a silent pass.";
-          recordDeclaredScorerVerdictFailure(bundle, declaredVerdictFailure);
-        }
+        if (declared) failures.push(DECLARED_SCORER_MALFORMED);
       }
     } catch (error) {
       const detail = sanitize(error instanceof Error ? error.message : String(error));
       warnings.push(
         `terminalHooks.score threw (${detail}); dropped so the bundle stays verifiable.`,
       );
-      // A crashed DECLARED gate must be visible, never a silent pass: surface it as a review gap +
-      // verdict downgrade AND fail the run result.
-      if (declared) {
-        declaredVerdictFailure = `Declared product scorer threw before returning a verdict (${detail}); a crashed declared gate is recorded as a fail, never a silent pass.`;
-        recordDeclaredScorerVerdictFailure(bundle, declaredVerdictFailure);
-      }
+      // A crashed DECLARED gate must be visible, never a silent pass: it fails the review and the
+      // run result.
+      if (declared) failures.push(declaredScorerThrew(detail));
     }
   }
 
@@ -156,7 +148,7 @@ export async function applyAdapterExtensionSeam(args: {
     }
   }
 
-  return declaredVerdictFailure;
+  return { failures };
 }
 
 /** Structural guard for an adapter-returned RunAdapterScore (mirrors run/bundle-shape.ts isRunAdapterScore, kept

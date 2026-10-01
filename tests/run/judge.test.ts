@@ -5,7 +5,9 @@ import {
   type ActorCompletionReason,
   type ActorStatus,
 } from "../../src/actors/contract.js";
+import { REVIEW_SCHEMA, type ReviewSummary } from "../../src/run/bundle.js";
 import {
+  foldScorerFailures,
   hollowCompletion,
   judgeOneParticipant,
   judgeParticipants,
@@ -364,5 +366,39 @@ describe("judgeSharedWorld", () => {
       judgeSharedWorld({ dryRun: false, inProgress: true, expected: 2, participants: [], world })
         .verdict,
     ).toBe("contract_proof_only");
+  });
+});
+
+describe("foldScorerFailures", () => {
+  const VERDICTS = ["contract_proof_only", "pass", "fail", "blocked", "timed_out"] as const;
+  const review = (verdict: (typeof VERDICTS)[number]): ReviewSummary => ({
+    schema: REVIEW_SCHEMA,
+    verdict,
+    summary: "judged",
+    gaps: ["an earlier gap"],
+  });
+
+  it("returns the judged review unchanged when the scorer found nothing", () => {
+    for (const verdict of VERDICTS) {
+      const judged = review(verdict);
+      expect(foldScorerFailures(judged, [])).toBe(judged);
+    }
+  });
+
+  // Scoring can never improve a verdict: a pass or a contract can only become a fail, and a
+  // fail, blocked or timed_out verdict stays exactly what the judge said.
+  it.each(VERDICTS)("never improves a %s verdict", (verdict) => {
+    for (const failures of [["scorer failed"], ["scorer failed", "scorer threw"]]) {
+      const folded = foldScorerFailures(review(verdict), failures);
+      const flips = verdict === "pass" || verdict === "contract_proof_only";
+      expect(folded.verdict).toBe(flips ? "fail" : verdict);
+      expect(folded.summary).toBe(flips ? "scorer failed" : "judged");
+      expect(folded.gaps).toEqual(["an earlier gap", ...failures]);
+    }
+  });
+
+  it("records a failure the review already names once", () => {
+    const judged = { ...review("fail"), gaps: ["scorer failed"] };
+    expect(foldScorerFailures(judged, ["scorer failed"]).gaps).toEqual(["scorer failed"]);
   });
 });

@@ -19,7 +19,7 @@ import {
   noSpendNotEstablished,
 } from "./ledger.js";
 import type { LiveSandboxInputs, LiveTerminalSandbox } from "./live-sandbox.js";
-import { judgeTerminal } from "../../run/judge.js";
+import { foldScorerFailures, judgeTerminal } from "../../run/judge.js";
 import { terminalLabResult, terminalParticipantFacts } from "./result.js";
 import { parseTerminalTokenUsage } from "./token-usage.js";
 import { buildTerminalActorTrace, scrubSplitKnownValues, tailOf } from "./trace.js";
@@ -241,7 +241,7 @@ export async function finishLiveTerminalSession(
   // adapter score is additive, not a replacement. The adapter payloads pass the same scrub+redact
   // the rest of the bundle does (the adapter is trusted in-repo code, but the harness never relies
   // on that for secret values) and are validated fail-closed by the bundle verifier downstream.
-  const declaredScorerFailure = await applyAdapterExtensionSeam({
+  const scorer = await applyAdapterExtensionSeam({
     hooks,
     bundle,
     trace,
@@ -254,6 +254,8 @@ export async function finishLiveTerminalSession(
     warnings,
     ...(input.scorerProvenance === undefined ? {} : { scorerProvenance: input.scorerProvenance }),
   });
+  // The one final verdict fold: scoring can only make the judged verdict stricter.
+  bundle.review = foldScorerFailures(bundle.review, scorer.failures);
   await validatePreparedRunArtifactPaths(runPaths);
 
   const finished = await run.finish(bundle);
@@ -275,7 +277,7 @@ export async function finishLiveTerminalSession(
     cost,
     noSpendProof,
     capsExceeded,
-    declaredScorerFailure,
+    declaredScorerFailure: scorer.failures[0],
     judgment,
     observer,
     warnings,

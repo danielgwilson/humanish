@@ -8,7 +8,7 @@ import {
 } from "../../lab/adapter-extension.js";
 import { attachObserverRuntimeStreamUrls, type ObserverResult } from "../../observer/render.js";
 import type { RunSubjectProvenance } from "../../run/bundle.js";
-import { sharedWorldShortfall } from "../../run/judge.js";
+import { foldScorerFailures, sharedWorldShortfall } from "../../run/judge.js";
 import { resolveSubjectState } from "../computer-use/lab.js";
 import {
   actorLanePassed,
@@ -283,6 +283,8 @@ export async function finishConcurrentRun(
     hookLabel: "sharedWorldHooks",
     ...(input.scorerProvenance === undefined ? {} : { scorerProvenance: input.scorerProvenance }),
   });
+  // The one final verdict fold: scoring can only make the judged verdict stricter.
+  bundle.review = foldScorerFailures(bundle.review, scorerResult.failures);
 
   if (receiving) bundle.commsReceiving = receiving.snapshot();
   const finished = await run.finish(bundle);
@@ -300,8 +302,7 @@ export async function finishConcurrentRun(
     observer.ok &&
     runError === undefined &&
     judgment.allPassed &&
-    adapterFailure === undefined &&
-    scorerResult.declaredVerdictFailure === undefined;
+    scorerResult.failures.length === 0;
 
   const overlapProven = !dryRun && judgment.world.overlap;
 

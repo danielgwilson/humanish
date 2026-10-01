@@ -59,6 +59,21 @@ export interface BrowserLabAdapterHooks {
   ) => RunAdapterArtifact[] | Promise<RunAdapterArtifact[]>;
 }
 
+/** What a scorer found against the run, for the route's final review fold (foldScorerFailures). */
+export interface ScorerOutcome {
+  /** Why the scorer failed the run, in order; empty when it did not. */
+  failures: string[];
+}
+
+/** A DECLARED scorer that returned a malformed value never rendered a verdict. */
+export const DECLARED_SCORER_MALFORMED =
+  "Declared product scorer returned a malformed value instead of a verdict; a declared gate that cannot render a pass is recorded as a fail, never a silent pass.";
+
+/** A DECLARED scorer that threw never rendered a verdict. `detail` is already sanitized. */
+export function declaredScorerThrew(detail: string): string {
+  return `Declared product scorer threw before returning a verdict (${detail}); a crashed declared gate is recorded as a fail, never a silent pass.`;
+}
+
 export async function applyBrowserAdapterHooks(args: {
   hooks: BrowserLabAdapterHooks | undefined;
   context: BrowserLabScoringContext;
@@ -68,16 +83,16 @@ export async function applyBrowserAdapterHooks(args: {
   hookLabel: string;
   /** Present only when the scorer was CONFIG-DECLARED (#316); core-stamped onto the bundle as
    *  evidence of which out-of-tree module was loaded. Absent for library callers. Its presence also
-   *  opts a THROWING or MALFORMED scorer into the declared-gate downgrade — a declared gate that
-   *  cannot render a pass is a fail, never a silent green. */
+   *  makes a THROWING or MALFORMED scorer a failure — a declared gate that cannot render a pass is
+   *  a fail, never a silent green. */
   scorerProvenance?: RunScorerProvenance;
-}): Promise<{ declaredVerdictFailure?: string }> {
+}): Promise<ScorerOutcome> {
   const { hooks, context, bundle, sanitize, warnings, hookLabel, scorerProvenance } = args;
-  if (!hooks?.score && !hooks?.deriveFeedback && !hooks?.deriveArtifacts) return {};
+  if (!hooks?.score && !hooks?.deriveFeedback && !hooks?.deriveArtifacts) return { failures: [] };
   const declared = scorerProvenance !== undefined;
   // Record the loaded scorer's identity regardless of hook outcome (a throwing/invalid scorer was
-  // still loaded and attempted). A VALID status:"fail" flips the review below via the pre-#316 (#165)
-  // path (library + declared); a DECLARED scorer that THROWS or returns MALFORMED also fails (below).
+  // still loaded and attempted). A VALID status:"fail" is a failure (library + declared, the
+  // pre-#316 (#165) path); a DECLARED scorer that THROWS or returns MALFORMED is one too (below).
   if (scorerProvenance) bundle.scorerProvenance = scorerProvenance;
 
   // The scorer sees a READ-ONLY view of the bundle: it cannot mutate noSpend/cost/review in place to
@@ -93,34 +108,27 @@ export async function applyBrowserAdapterHooks(args: {
     return encoded === undefined ? value : (JSON.parse(sanitize(encoded)) as T);
   };
 
-  let declaredVerdictFailure: string | undefined;
+  const failures: string[] = [];
   if (hooks.score) {
     try {
       const score = await hooks.score(scoringContext);
       const cleaned = scrubValue(score);
       if (isAdapterScoreShape(cleaned)) {
         bundle.adapterScore = cleaned;
-        const message = applyAdapterScoreFailureToReview(bundle);
-        if (declared && message !== undefined) declaredVerdictFailure = message;
+        const message = adapterScoreFailureMessage(bundle);
+        if (message !== undefined) failures.push(message);
       } else {
         warnings.push(
           `${hookLabel}.score returned a value that is not a well-formed humanish.adapter-score.v1 (non-empty namespace + status + numeric score + summary); dropped so the bundle stays verifiable.`,
         );
-        if (declared) {
-          declaredVerdictFailure =
-            "Declared product scorer returned a malformed value instead of a verdict; a declared gate that cannot render a pass is recorded as a fail, never a silent pass.";
-          recordDeclaredScorerVerdictFailure(bundle, declaredVerdictFailure);
-        }
+        if (declared) failures.push(DECLARED_SCORER_MALFORMED);
       }
     } catch (error) {
       const detail = sanitize(error instanceof Error ? error.message : String(error));
       warnings.push(
         `${hookLabel}.score threw (${detail}); dropped so the bundle stays verifiable.`,
       );
-      if (declared) {
-        declaredVerdictFailure = `Declared product scorer threw before returning a verdict (${detail}); a crashed declared gate is recorded as a fail, never a silent pass.`;
-        recordDeclaredScorerVerdictFailure(bundle, declaredVerdictFailure);
-      }
+      if (declared) failures.push(declaredScorerThrew(detail));
     }
   }
 
@@ -168,42 +176,13 @@ export async function applyBrowserAdapterHooks(args: {
     }
   }
 
-  return declaredVerdictFailure === undefined ? {} : { declaredVerdictFailure };
+  return { failures };
 }
 
 export function adapterScoreFailureMessage(bundle: RunBundle): string | undefined {
   return bundle.adapterScore?.status === "fail"
     ? `Adapter scorer failed the run: ${bundle.adapterScore.summary}`
     : undefined;
-}
-
-export function applyAdapterScoreFailureToReview(bundle: RunBundle): string | undefined {
-  const message = adapterScoreFailureMessage(bundle);
-  if (message === undefined) return undefined;
-
-  if (bundle.review.verdict === "pass" || bundle.review.verdict === "contract_proof_only") {
-    bundle.review.verdict = "fail";
-    bundle.review.summary = message;
-  }
-  if (!bundle.review.gaps.includes(message)) {
-    bundle.review.gaps = [...bundle.review.gaps, message];
-  }
-  return message;
-}
-
-/**
- * A CONFIG-DECLARED scorer (#316) that fails to render a PASS verdict — it returned status:"fail",
- * threw, or returned a malformed value — must never leave a silent green (the declared-gate invariant:
- * a gate that cannot render a pass is a fail, never a silent pass). Adds a review gap and downgrades a
- * would-be pass/contract_proof_only to fail (this ONLY ever makes the verdict STRICTER). Callers gate
- * on `declared`, so library callers are never affected.
- */
-export function recordDeclaredScorerVerdictFailure(bundle: RunBundle, reason: string): void {
-  if (!bundle.review.gaps.includes(reason)) bundle.review.gaps = [...bundle.review.gaps, reason];
-  if (bundle.review.verdict === "pass" || bundle.review.verdict === "contract_proof_only") {
-    bundle.review.verdict = "fail";
-    bundle.review.summary = reason;
-  }
 }
 
 /**

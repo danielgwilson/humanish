@@ -1459,6 +1459,49 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     },
   );
 
+  // The scorer folds into the judged verdict last, and can only make it stricter: a failing
+  // score turns a pass into a fail, a passing score cannot lift a blocked run, and a failing score
+  // leaves a blocked run blocked with the scorer's failure as a gap.
+  it.each<[Ending, "pass" | "fail", RunBundle["review"]["verdict"]]>([
+    ["pass", "pass", "pass"],
+    ["pass", "fail", "fail"],
+    ["blocker", "pass", "blocked"],
+    ["blocker", "fail", "blocked"],
+  ])("folds a %s lane and a %s score into %s", async (ending, scoreStatus, verdict) => {
+    const handle = makeFanoutModule();
+    const config = fanoutConfig({
+      concurrency: 1,
+      lanes: [{ id: "participant-1", persona: "first-time-visitor" }],
+    });
+    const outcome = await runLab(config, {
+      cwd,
+      cuaHooks: {
+        ...passingHooks(handle),
+        runSession: async (options) =>
+          runCuaActorSession({ ...options, provider: scriptedEnding(ending) }),
+        score: () => ({
+          schema: "humanish.adapter-score.v1",
+          namespace: "fold-proof",
+          status: scoreStatus,
+          score: scoreStatus === "pass" ? 90 : 10,
+          summary: `rubric ${scoreStatus}`,
+        }),
+      },
+    });
+    if (outcome.backend !== "cua") throw new Error("expected the computer-use route");
+    const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
+    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
+    const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8")) as {
+      outcome?: { verdict?: string };
+    };
+    expect(bundle.review.verdict).toBe(verdict);
+    expect(status.outcome?.verdict).toBe(verdict);
+    expect(outcome.result.ok).toBe(verdict === "pass");
+    expect(bundle.review.gaps.includes("Adapter scorer failed the run: rubric fail")).toBe(
+      scoreStatus === "fail",
+    );
+  });
+
   it("keeps the verdict when the sandbox kill fails: cleanup does not judge", async () => {
     const handle = makeFanoutModule({ killFails: true });
     const config = fanoutConfig({

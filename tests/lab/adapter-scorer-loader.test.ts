@@ -9,7 +9,11 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { loadAdapterScorer } from "../../src/lab/adapter-scorer-loader.js";
 import type { AdapterScorerModule, AdapterScoringContext } from "../../src/index.js";
 import { runTerminalProductLab } from "../../src/routes/terminal/lab.js";
-import { applyBrowserAdapterHooks } from "../../src/lab/adapter-extension.js";
+import {
+  applyBrowserAdapterHooks,
+  DECLARED_SCORER_MALFORMED,
+} from "../../src/lab/adapter-extension.js";
+import { foldScorerFailures } from "../../src/run/judge.js";
 import { LAB_CONFIG_SCHEMA } from "../../src/lab/types.js";
 import { parseLabConfig } from "../../src/lab/config.js";
 import { verifyRun } from "../../src/verify/verify.js";
@@ -587,7 +591,7 @@ describe("browser routes flip AND stamp provenance", () => {
     laneCount: 1,
   });
 
-  it("a DECLARED fail score flips the verdict, stamps provenance, and signals a run failure", async () => {
+  it("a DECLARED fail score is a failure the fold turns into a fail, and stamps provenance", async () => {
     const bundle = freshBundle();
     const res = await applyBrowserAdapterHooks({
       hooks: {
@@ -606,10 +610,12 @@ describe("browser routes flip AND stamp provenance", () => {
       hookLabel: "cuaHooks",
       scorerProvenance: provenance,
     });
-    expect(bundle.review.verdict).toBe("fail");
+    // The seam leaves the review to the route's fold.
+    expect(bundle.review.verdict).toBe("pass");
+    expect(res.failures).toEqual(["Adapter scorer failed the run: browser gate failed"]);
+    expect(foldScorerFailures(bundle.review, res.failures).verdict).toBe("fail");
     expect(bundle.adapterScore?.status).toBe("fail");
     expect(bundle.scorerProvenance).toEqual(provenance);
-    expect(res.declaredVerdictFailure).toBeDefined();
   });
 
   it("a DECLARED browser scorer that THROWS fails the run (red-team finding #2 — was a silent green)", async () => {
@@ -627,9 +633,10 @@ describe("browser routes flip AND stamp provenance", () => {
       hookLabel: "cuaHooks",
       scorerProvenance: provenance,
     });
-    expect(res.declaredVerdictFailure).toBeDefined();
-    expect(bundle.review.verdict).toBe("fail");
-    expect(bundle.review.gaps.some((g) => g.includes("threw"))).toBe(true);
+    expect(res.failures).toHaveLength(1);
+    const folded = foldScorerFailures(bundle.review, res.failures);
+    expect(folded.verdict).toBe("fail");
+    expect(folded.gaps.some((g) => g.includes("threw"))).toBe(true);
   });
 
   it("a DECLARED browser scorer returning a MALFORMED value fails the run (red-team finding #1)", async () => {
@@ -651,9 +658,9 @@ describe("browser routes flip AND stamp provenance", () => {
       hookLabel: "cuaHooks",
       scorerProvenance: provenance,
     });
-    expect(res.declaredVerdictFailure).toBeDefined();
+    expect(res.failures).toEqual([DECLARED_SCORER_MALFORMED]);
     expect(bundle.adapterScore).toBeUndefined();
-    expect(bundle.review.verdict).toBe("fail");
+    expect(foldScorerFailures(bundle.review, res.failures).verdict).toBe("fail");
   });
 
   it("a LIBRARY browser scorer that throws does NOT flip and signals no failure (back-compat)", async () => {
@@ -671,7 +678,7 @@ describe("browser routes flip AND stamp provenance", () => {
       hookLabel: "cuaHooks",
       // no scorerProvenance → library caller, additive
     });
-    expect(res.declaredVerdictFailure).toBeUndefined();
+    expect(res.failures).toEqual([]);
     expect(bundle.review.verdict).toBe("pass");
   });
 
@@ -702,8 +709,8 @@ describe("browser routes flip AND stamp provenance", () => {
       false,
     );
     // The tamper is caught and treated as a declared-gate failure — no laundered pass.
-    expect(res.declaredVerdictFailure).toBeDefined();
-    expect(bundle.review.verdict).toBe("fail");
+    expect(res.failures).toHaveLength(1);
+    expect(foldScorerFailures(bundle.review, res.failures).verdict).toBe("fail");
   });
 });
 
