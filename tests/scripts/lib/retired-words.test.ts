@@ -79,7 +79,14 @@ describe("retired vocabulary count", () => {
         "src/lab/parse/actors.ts",
         "src/run/bundle-shape.ts",
         "src/deprecated.ts",
+        // A file exemption covers that file only.
+        "src/deprecated.ts.backup.ts",
+        "src/lab/types.ts.generated.ts",
       ].filter(isCounted),
-    ).toEqual(["src/routes/computer-use/lanes.ts"]);
+    ).toEqual([
+      "src/routes/computer-use/lanes.ts",
+      "src/deprecated.ts.backup.ts",
+      "src/lab/types.ts.generated.ts",
+    ]);
   });
 });

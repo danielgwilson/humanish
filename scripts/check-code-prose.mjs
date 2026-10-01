@@ -54,6 +54,14 @@ for (const file of files) {
   }
 }
 
+for (const kind of Object.keys(hits)) {
+  const max = values[`max-${kind}`];
+  if (max !== undefined && !/^\d+$/.test(max)) {
+    process.stderr.write(`check-code-prose: --max-${kind}=${max} is not a whole number.\n`);
+    process.exit(2);
+  }
+}
+
 const rose = [];
 const fell = [];
 for (const [kind, list] of Object.entries(hits)) {

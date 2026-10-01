@@ -15,8 +15,10 @@
         "tests/fixtures/**/*.mjs",
       ],
       "project": ["src/**/*.ts", "scripts/**/*.{mjs,ts}", "tests/**/*.ts"],
-      // scripts/observer-reliability-proof.mjs loads it with require.resolve.
-      "ignoreDependencies": ["axe-core"],
+      // scripts/observer-reliability-proof.mjs loads axe-core with require.resolve.
+      // scripts/check-lint-cap.mjs runs oxlint by path, and oxlint loads oxlint-tsgolint for its
+      // type-aware rules.
+      "ignoreDependencies": ["axe-core", "oxlint", "oxlint-tsgolint"],
     },
     "observer": {
       // Vendored registry output (PROVENANCE.md): its exports are the registry item's API.

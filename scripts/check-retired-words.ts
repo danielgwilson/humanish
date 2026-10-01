@@ -35,6 +35,14 @@ for (const file of files) {
   }
 }
 
+for (const word of RETIRED_WORDS) {
+  const max = values[`max-${word}`];
+  if (typeof max === "string" && !/^\d+$/.test(max)) {
+    process.stderr.write(`check-retired-words: --max-${word}=${max} is not a whole number.\n`);
+    process.exit(2);
+  }
+}
+
 const rose: string[] = [];
 const fell: string[] = [];
 for (const [word, list] of hits) {

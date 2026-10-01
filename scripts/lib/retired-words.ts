@@ -8,9 +8,10 @@ import { parseSync } from "oxc-parser";
 export const RETIRED_WORDS = ["lane", "seat", "role", "sim", "study"] as const;
 export type RetiredWord = (typeof RETIRED_WORDS)[number];
 
-// Paths under src/ whose identifiers may keep the contract spellings. Each translation module
-// joins this list in the PR that creates it.
-export const EXEMPT_PREFIXES = [
+// Paths under src/ whose identifiers may keep the contract spellings. A path ending in / exempts
+// every file under it; any other path exempts that file only. Each translation module joins this
+// list in the PR that creates it.
+export const EXEMPT_PATHS = [
   "src/observer/",
   // Bundle write: the bundle's types and the participant records the route builders call.
   "src/run/bundle.ts",
@@ -43,7 +44,9 @@ export function isCounted(path: string): boolean {
   return (
     path.startsWith("src/") &&
     path.endsWith(".ts") &&
-    !EXEMPT_PREFIXES.some((prefix) => path.startsWith(prefix))
+    !EXEMPT_PATHS.some((exempt) =>
+      exempt.endsWith("/") ? path.startsWith(exempt) : path === exempt,
+    )
   );
 }
 

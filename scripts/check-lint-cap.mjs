@@ -1,32 +1,47 @@
 #!/usr/bin/env node
-// Reads oxlint's JSON report on stdin and holds its warning count to the cap in package.json's
-// lint script. Any error fails. A warning count above the cap fails, and so does one below it, so
-// the PR that removes warnings also lowers the cap. A missing or unreadable report fails too.
-import { readFileSync } from "node:fs";
+// Runs oxlint once and holds its warning count to the cap in package.json's lint script. Any
+// error fails. A warning count above the cap fails, and so does one below it, so the PR that
+// removes warnings also lowers the cap. oxlint runs here, not in a shell pipe, so its exit status
+// is checked: a crash, or a failing exit with no error in the report, fails too. Arguments other
+// than --max-warnings go to oxlint.
+import { spawnSync } from "node:child_process";
+import { createRequire } from "node:module";
+import { dirname, join } from "node:path";
 
 const CAP_FLAG = "--max-warnings=";
-const capArg = process.argv.slice(2).find((arg) => arg.startsWith(CAP_FLAG));
+const args = process.argv.slice(2);
+const capArg = args.find((arg) => arg.startsWith(CAP_FLAG));
 const cap = capArg === undefined ? undefined : Number(capArg.slice(CAP_FLAG.length));
 if (cap === undefined || !Number.isInteger(cap) || cap < 0) {
   process.stderr.write(`check-lint-cap: pass ${CAP_FLAG}<count>, a whole number.\n`);
   process.exit(2);
 }
 
-const input = readFileSync(0, "utf8");
+const oxlint = join(
+  dirname(createRequire(import.meta.url).resolve("oxlint/package.json")),
+  "bin",
+  "oxlint",
+);
+const run = spawnSync(
+  process.execPath,
+  [oxlint, "--format=json", ...args.filter((arg) => arg !== capArg)],
+  { encoding: "utf8", maxBuffer: 512 * 1024 * 1024, stdio: ["ignore", "pipe", "inherit"] },
+);
+const fail = (message) => {
+  process.stdout.write(run.stdout ?? "");
+  process.stderr.write(`check-lint-cap: ${message}\n`);
+  process.exit(2);
+};
+if (run.error) fail(`could not run oxlint: ${run.error.message}`);
+if (run.status === null) fail(`oxlint stopped on ${run.signal}.`);
+
 let report;
 try {
-  report = JSON.parse(input);
+  report = JSON.parse(run.stdout);
 } catch {
-  process.stdout.write(input);
-  process.stderr.write(
-    "check-lint-cap: stdin is not an oxlint JSON report (oxlint --format=json).\n",
-  );
-  process.exit(2);
+  fail(`oxlint exited ${run.status} without a JSON report.`);
 }
-if (!Array.isArray(report?.diagnostics)) {
-  process.stderr.write("check-lint-cap: the oxlint report has no diagnostics list.\n");
-  process.exit(2);
-}
+if (!Array.isArray(report?.diagnostics)) fail("the oxlint report has no diagnostics list.");
 
 const counts = { warning: 0, error: 0 };
 for (const diagnostic of report.diagnostics) {
@@ -38,6 +53,10 @@ for (const diagnostic of report.diagnostics) {
     `${at}: ${diagnostic.severity} ${diagnostic.code}: ${diagnostic.message}${help}\n`,
   );
   counts[diagnostic.severity === "error" ? "error" : "warning"] += 1;
+}
+// oxlint exits 1 when it reports an error and 0 otherwise; anything else means it did not finish.
+if (run.status !== 0 && !(run.status === 1 && counts.error > 0)) {
+  fail(`oxlint exited ${run.status} with ${counts.error} errors in its report.`);
 }
 
 const warnings = counts.warning;
