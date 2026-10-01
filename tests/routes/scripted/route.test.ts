@@ -30,12 +30,9 @@ import {
   type ParsedSandboxReceipt,
 } from "../../../src/run/sandbox-receipts.js";
 import { runCuaActorLab } from "../../../src/routes/computer-use/route.js";
-import {
-  runScriptedBrowserLab,
-  runScriptedPlan,
-} from "../../../src/routes/scripted-browser/route.js";
-import { planScriptedLab } from "../../../src/routes/scripted-browser/plan.js";
-import type { ScriptedBrowserLabHooks } from "../../../src/routes/scripted-browser/types.js";
+import { runScriptedBrowserLab, runScriptedPlan } from "../../../src/routes/scripted/route.js";
+import { planScriptedLab } from "../../../src/routes/scripted/plan.js";
+import type { ScriptedBrowserLabHooks } from "../../../src/routes/scripted/types.js";
 import type {
   ScriptedBrowserLike,
   ScriptedLocatorLike,
@@ -1454,7 +1451,7 @@ describe("humanish lab run scripted-demo (CLI)", () => {
 
 // Characterization: the complete run directory of each deterministic scripted run, pinned so a
 // refactor of bundle assembly or artifact writing shows up as a diff. Regenerate with
-// `pnpm vitest run tests/routes/scripted-browser/route.test.ts -u` and review the golden diff.
+// `pnpm vitest run tests/routes/scripted/route.test.ts -u` and review the golden diff.
 describe("scripted-browser run directory goldens", () => {
   let cwd: string;
   beforeEach(async () => {

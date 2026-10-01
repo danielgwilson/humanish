@@ -26,11 +26,11 @@ import { computerUseLabRefusal, runComputerUsePlan } from "./routes/computer-use
 import { participantDesktopOf } from "./routes/computer-use/participant-desktop.js";
 import { type CuaActorLabHooks, type CuaActorLabResult } from "./routes/computer-use/types.js";
 import { previewLabRefusal, runPreviewPlan } from "./routes/preview.js";
-import { runScriptedPlan, scriptedLabRefusal } from "./routes/scripted-browser/route.js";
+import { runScriptedPlan, scriptedLabRefusal } from "./routes/scripted/route.js";
 import {
   type ScriptedBrowserLabHooks,
   type ScriptedBrowserLabResult,
-} from "./routes/scripted-browser/types.js";
+} from "./routes/scripted/types.js";
 import { runSharedWorldPlan, sharedWorldLabRefusal } from "./routes/shared-world/route.js";
 import {
   type ConcurrentSharedWorldLabResult,

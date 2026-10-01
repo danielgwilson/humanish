@@ -5,13 +5,13 @@ import path from "node:path";
 import type { AddressInfo } from "node:net";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { retainLiveRuns } from "../helpers/live-retention.js";
+import { retainLiveRuns } from "../../helpers/live-retention.js";
 
-import { ACTOR_TRACE_SCHEMA } from "../../src/actors/contract.js";
-import { LAB_CONFIG_SCHEMA } from "../../src/lab/types.js";
-import { parseLabConfig } from "../../src/lab/config.js";
-import { runLab } from "../../src/run-lab.js";
-import { verifyRun } from "../../src/verify/verify.js";
+import { ACTOR_TRACE_SCHEMA } from "../../../src/actors/contract.js";
+import { LAB_CONFIG_SCHEMA } from "../../../src/lab/types.js";
+import { parseLabConfig } from "../../../src/lab/config.js";
+import { runLab } from "../../../src/run-lab.js";
+import { verifyRun } from "../../../src/verify/verify.js";
 
 // The single LIVE rung for the scripted-browser LAB: the committed scenario dispatched through
 // runLab to real playwright-core against an in-test loopback http.Server. Provider spend is $0

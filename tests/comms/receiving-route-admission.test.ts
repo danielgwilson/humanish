@@ -7,7 +7,7 @@ import { type LabConfig } from "../../src/lab/types.js";
 import { runLab } from "../../src/run-lab.js";
 import { selectLabBackend } from "../../src/lab/plan.js";
 import { runTerminalProductLab } from "../../src/routes/terminal/route.js";
-import { runScriptedBrowserLab } from "../../src/routes/scripted-browser/route.js";
+import { runScriptedBrowserLab } from "../../src/routes/scripted/route.js";
 import * as synthetic from "../../src/run/dry-run.js";
 
 const fixtures = JSON.parse(

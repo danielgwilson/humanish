@@ -426,7 +426,7 @@ describe("run path containment", () => {
     const scoped = [
       "routes/terminal/route.ts",
       "routes/terminal/session.ts",
-      "routes/scripted-browser/route.ts",
+      "routes/scripted/route.ts",
       "run/dry-run.ts",
       "routes/computer-use/setup.ts",
       "routes/shared-world/setup.ts",
