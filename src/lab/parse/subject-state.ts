@@ -3,8 +3,9 @@
 // parseLabConfig and the computer-use route share.
 
 import { containsSensitive } from "../../evidence/redaction.js";
-import { ENV_NAME_PATTERN, invalid, isRecord, posInt, str, strList } from "./values.js";
+import { ENV_NAME_PATTERN, invalid, posInt, str, strList } from "./values.js";
 import type { LabConfigParseFailure, LabStateStepWhen, LabSubjectState } from "../types.js";
+import { isRecord } from "../../run/type-guards.js";
 
 /**
  * LITERAL non-secret subject env. Real apps need configuration before they will boot — a public base

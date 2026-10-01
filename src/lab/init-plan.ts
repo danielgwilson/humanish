@@ -5,6 +5,7 @@
 import path from "node:path";
 import { humanishScripts } from "./init-templates.js";
 import type { PreparedSelectedOutputDirectory } from "../run/contained-output.js";
+import { isRecord } from "../run/type-guards.js";
 import { readTextIfExists } from "./init-paths.js";
 import type { InitChange, InitResult } from "./init.js";
 
@@ -199,8 +200,4 @@ export async function planPackageJson(
 
 function trimTrailingNewlines(text: string): string {
   return text.replace(/\n+$/, "");
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
