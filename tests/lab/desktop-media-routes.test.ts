@@ -60,7 +60,7 @@ const cases: Array<[string, (config: LabConfig) => void, string]> = [
         product: { name: "sample-cli", publicSurfaces: ["https://example.com/docs"] },
       };
     },
-    "computer-use browser lanes",
+    "computer-use browser participants",
   ],
   [
     "in-process app",
@@ -68,7 +68,7 @@ const cases: Array<[string, (config: LabConfig) => void, string]> = [
       c.subject.source = "local-app";
       c.execution!.target = "local";
     },
-    "computer-use browser lanes",
+    "computer-use browser participants",
   ],
   [
     "scripted browser",
@@ -77,7 +77,7 @@ const cases: Array<[string, (config: LabConfig) => void, string]> = [
       c.execution!.target = "local";
       c.scenario!.ref = "scripted-first-run";
     },
-    "computer-use browser lanes",
+    "computer-use browser participants",
   ],
   [
     "terminal",
@@ -89,7 +89,7 @@ const cases: Array<[string, (config: LabConfig) => void, string]> = [
       c.actors[0]!.type = "codex-exec";
       c.execution!.target = "e2b-terminal";
     },
-    "computer-use browser lanes",
+    "computer-use browser participants",
   ],
 ];
 

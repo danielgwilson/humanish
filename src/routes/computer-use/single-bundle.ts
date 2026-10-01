@@ -143,7 +143,7 @@ function singleSimulation(args: SingleParticipantBundleArgs, view: ParticipantVi
         ? `Computer-use actor (${args.actorId}) is driving the subject app ${browserPlace(args)}.`
         : args.sessionError !== undefined
           ? `Computer-use lab failed before a terminal session verdict: ${args.sessionError}`
-          : `Contract lane for the computer-use actor (${args.actorId}) against ${publicAppUrl}.`,
+          : `Contract participant for the computer-use actor (${args.actorId}) against ${publicAppUrl}.`,
     startedAt: args.createdAt,
     updatedAt: args.createdAt,
   });
@@ -489,7 +489,7 @@ export function buildSingleParticipantBundle(args: {
       {
         at: args.createdAt,
         event: "cua-lab.run.created",
-        message: `Created computer-use lab run with one desktop browser lane (actor ${args.actorId}).`,
+        message: `Created computer-use lab run with one participant in a desktop browser (actor ${args.actorId}).`,
       },
     ],
     simulations: [simulation],

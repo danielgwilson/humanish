@@ -187,7 +187,7 @@ export function aggregateCuaSubject(args: {
   const warnings =
     !dryRun && participantCount > 1 && new Set(commits).size > 1
       ? [
-          "Fan-out lanes resolved DIVERGENT subject commits — the top-level subject.commit is omitted; see per-lane provenance in result.lanes for each lane's pinned commit.",
+          "Fan-out participants resolved DIVERGENT subject commits, so the top-level subject.commit is omitted; see each participant's provenance in result.lanes for its pinned commit.",
         ]
       : [];
   return {

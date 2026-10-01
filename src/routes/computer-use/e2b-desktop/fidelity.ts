@@ -78,7 +78,7 @@ export async function applyParticipantMobileFidelity(args: {
   if (!request?.mobileEmulation || !spec.planned.device.preset.isMobile) return none;
   if (args.browserFamily !== "chromium") {
     throw new Error(
-      `execution.desktop.fidelity.mobileEmulation needs Chrome or Chromium on lane ${spec.planned.id}; the launched browser family is ${args.browserFamily}. Set execution.desktop.browser: chrome.`,
+      `execution.desktop.fidelity.mobileEmulation needs Chrome or Chromium for participant ${spec.planned.id}; the launched browser family is ${args.browserFamily}. Set execution.desktop.browser: chrome.`,
     );
   }
   const applied = await applyMobileEmulation(
@@ -124,7 +124,7 @@ export function participantBrowserStateObserver(args: {
       // funnel's NEVER MEASURED count needs this line to explain itself (#514).
       onUnavailable: (reason) => {
         warnings.push(
-          `Browser-state observer unavailable for lane ${spec.planned.id} (${redactText(deps.scrubKnownValues(reason))}); ` +
+          `Browser-state observer unavailable for participant ${spec.planned.id} (${redactText(deps.scrubKnownValues(reason))}); ` +
             "urlIncludes/urlPathEquals/textIncludes stop conditions and task criteria are NOT being measured this session.",
         );
       },
@@ -137,7 +137,7 @@ export function participantBrowserStateObserver(args: {
               expectTouch: fidelity.applied?.requested.touch === true,
               onDrift: (reason) => {
                 warnings.push(
-                  `Mobile emulation drift on lane ${spec.planned.id}: ${reason} (#623).`,
+                  `Mobile emulation drift for participant ${spec.planned.id}: ${reason} (#623).`,
                 );
               },
               onCovered: (coveredTargetId, read) => {
@@ -192,7 +192,7 @@ export async function finalParticipantGeometry(args: {
     resize: false,
   }).catch((error: unknown) => ({
     warnings: [
-      `Final browser geometry measurement failed for lane ${spec.planned.id}: ${redactText(deps.scrubKnownValues(toErrorMessage(error)))}`,
+      `Final browser geometry measurement failed for participant ${spec.planned.id}: ${redactText(deps.scrubKnownValues(toErrorMessage(error)))}`,
     ],
   }));
   const chosenGeometry =

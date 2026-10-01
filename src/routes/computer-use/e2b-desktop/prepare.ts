@@ -76,7 +76,7 @@ export async function acquireParticipantDesktop(
       onRetry: (reason) => {
         const named = redactText(deps.scrubKnownValues(reason));
         warnings.push(
-          `Sandbox create for lane ${spec.planned.id} retried once after a transient provider error (${named}).`,
+          `Sandbox create for participant ${spec.planned.id} retried once after a transient provider error (${named}).`,
         );
         ctx.onSubjectPhase({
           at: new Date(deps.now()).toISOString(),
@@ -159,7 +159,7 @@ export async function verifyParticipantScreen(
     // record-evidence policy: the bundle keeps requested vs verified as separate facts and
     // discloses the divergence instead of failing this lane's world mid-flight.
     const mismatchWarning = deps.scrubKnownValues(
-      `Lane ${spec.planned.id} requested a ${spec.planned.device.resolution[0]}x${spec.planned.device.resolution[1]} screen but xdpyinfo reports ${screenGeometry.verified.width}x${screenGeometry.verified.height}; recording requested vs verified separately instead of failing the lane closed.`,
+      `Participant ${spec.planned.id} requested a ${spec.planned.device.resolution[0]}x${spec.planned.device.resolution[1]} screen but xdpyinfo reports ${screenGeometry.verified.width}x${screenGeometry.verified.height}; recording requested vs verified separately instead of failing the participant closed.`,
     );
     warnings.push(mismatchWarning);
     state.desktopGeometry = {

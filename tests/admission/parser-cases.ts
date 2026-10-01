@@ -104,7 +104,7 @@ export const parserCases: readonly AdmissionCase[] = [
         email: { kind: "fake", injectEnv: "RESEND_BASE_URL", recipients: [{ lane: "lane-01" }] },
       },
     }),
-    parser: "cover no lane with an address",
+    parser: "cover no participant with an address",
   },
   {
     name: "this-repo with target",
@@ -131,7 +131,7 @@ export const parserCases: readonly AdmissionCase[] = [
   {
     name: "local-app count 2",
     raw: lab("cuLocalApp", {}, { count: 2 }),
-    parser: "Multi-lane fan-out is not supported on the in-process/local-app",
+    parser: "Fan-out to more than one participant is not supported on the in-process/local-app",
   },
   {
     name: "local-app lanes",
@@ -330,7 +330,7 @@ export const parserCases: readonly AdmissionCase[] = [
       { execution: { desktop: { resolution: [1280, 800] } } },
       { lanes: [{ id: "a", device: "small-mobile" }, { id: "b" }] },
     ),
-    parser: "a per-lane device preset",
+    parser: "a per-participant device preset",
   },
   {
     name: "lane target on clone",
@@ -367,7 +367,7 @@ export const parserCases: readonly AdmissionCase[] = [
       {},
       { lanes: [{ id: "a", target: "http://127.0.0.1:3001/" }, { id: "b" }] },
     ),
-    parser: "every lane in the roster must declare target",
+    parser: "every participant in the roster must declare target",
   },
   { name: "seventeen lanes", raw: lab("cuAppUrl", {}, { count: 17 }), parser: "capped at 16" },
   {
@@ -377,7 +377,7 @@ export const parserCases: readonly AdmissionCase[] = [
       { subject: { appUrl: "https://example.com/" }, policies: { allowPublicTargets: true } },
       { count: 2 },
     ),
-    parser: "cannot be combined with multi-lane fan-out",
+    parser: "cannot be combined with fan-out to more than one participant",
   },
   {
     name: "clone fanout on computer use",

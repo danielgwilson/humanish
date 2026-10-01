@@ -1921,7 +1921,9 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     expect(result.lanes?.slice(1).every((lane) => lane.status === "blocked")).toBe(true);
     expect(result.lanes?.[1]?.skippedReason).toContain("pipeline gate");
     // The skip names the participant whose provisioning failed.
-    expect(result.lanes?.[1]?.skippedReason).toContain("lane mobile-newcomer failed to provision");
+    expect(result.lanes?.[1]?.skippedReason).toContain(
+      "participant mobile-newcomer failed to provision",
+    );
   });
 
   it("fail-fast on a HARNESS error: in-flight lanes finish, queued lanes are blocked + a fail-fast event, run ok=false, completed evidence intact", async () => {
@@ -2342,7 +2344,9 @@ describe("runCuaParticipants total-runner guard (#342)", () => {
     expect(outcomes.map((o) => o.spec.planned.id)).toEqual(["lane-01", "lane-02", "lane-03"]);
     expect(outcomes[0]!.harnessError).toBe(false);
     expect(outcomes[1]!.harnessError).toBe(true);
-    expect(outcomes[1]!.sessionError).toContain("lane runner threw outside the session guard");
+    expect(outcomes[1]!.sessionError).toContain(
+      "participant runner threw outside the session guard",
+    );
     expect(outcomes[1]!.sessionError).toContain("ENOSPC");
     // fail-fast tripped by the harness error, so the queued lane is blocked with a pinned reason
     // rather than silently launching after the run already failed.

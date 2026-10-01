@@ -168,7 +168,7 @@
         {
           "at": "[ts]",
           "event": "cua-lab.run.created",
-          "message": "Created computer-use lab run with one desktop browser lane (actor openai-computer-use)."
+          "message": "Created computer-use lab run with one participant in a desktop browser (actor openai-computer-use)."
         }
       ],
       "knownGaps": [
@@ -249,7 +249,7 @@
           "mode": "browser-sim",
           "progress": 100,
           "currentStep": "Contract bundle only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.",
-          "summary": "Contract lane for the computer-use actor (openai-computer-use) against http://127.0.0.1:3000/.",
+          "summary": "Contract participant for the computer-use actor (openai-computer-use) against http://127.0.0.1:3000/.",
           "streamIds": [
             "stream-001"
           ],
@@ -409,7 +409,7 @@
       {
         "at": "[ts]",
         "event": "cua-lab.run.created",
-        "message": "Created computer-use lab run with one desktop browser lane (actor openai-computer-use)."
+        "message": "Created computer-use lab run with one participant in a desktop browser (actor openai-computer-use)."
       }
     ],
     "simulations": [
@@ -423,7 +423,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "Contract bundle only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.",
-        "summary": "Contract lane for the computer-use actor (openai-computer-use) against http://127.0.0.1:3000/.",
+        "summary": "Contract participant for the computer-use actor (openai-computer-use) against http://127.0.0.1:3000/.",
         "streamIds": [
           "stream-001"
         ],

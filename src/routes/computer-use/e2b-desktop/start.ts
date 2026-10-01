@@ -108,7 +108,7 @@ export async function openParticipantSurface(
         };
   if (mediaEvidence !== undefined && browserLaunch.family !== "chromium") {
     throw new Error(
-      `execution.desktop.media needs Chrome or Chromium on lane ${spec.planned.id} (the fake-device flags are Chromium's); the launched browser family is ${browserLaunch.family}. Set execution.desktop.browser: chrome.`,
+      `execution.desktop.media needs Chrome or Chromium for participant ${spec.planned.id} (the fake-device flags are Chromium's); the launched browser family is ${browserLaunch.family}. Set execution.desktop.browser: chrome.`,
     );
   }
   state.launchedBrowserFamily = browserLaunch.family;
@@ -163,7 +163,7 @@ function noteDevToolsReadiness(
   if (devTools.state === "ready") {
     if (devTools.waitedMs > SLOW_DEVTOOLS_MS) {
       warnings.push(
-        `Chrome DevTools on lane ${spec.planned.id} answered ${devTools.waitedMs} ms after launch; the browser started slowly.`,
+        `Chrome DevTools for participant ${spec.planned.id} answered ${devTools.waitedMs} ms after launch; the browser started slowly.`,
       );
     }
     return;
@@ -178,7 +178,7 @@ function noteDevToolsReadiness(
       : `Chrome DevTools did not answer on ${endpoint} within ${devTools.waitedMs} ms of launch while the browser process was still running (${log})`;
   if (emulated) throw new Error(`mobile emulation could not be applied: ${reason}`);
   warnings.push(
-    `${reason}. Browser geometry and URL/text observation on lane ${spec.planned.id} read DevTools and may be unavailable.`,
+    `${reason}. Browser geometry and URL/text observation for participant ${spec.planned.id} read DevTools and may be unavailable.`,
   );
 }
 

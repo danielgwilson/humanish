@@ -46,7 +46,10 @@ export async function resolveCuaRerunSelection(args: {
     );
   const priorById = new Map(prior.map((entry) => [entry.participantId, entry]));
   if (priorById.size < 2) {
-    return { ok: false, message: `source run ${bundle.runId} does not expose multiple lane ids.` };
+    return {
+      ok: false,
+      message: `source run ${bundle.runId} does not expose multiple participant ids.`,
+    };
   }
 
   const explicitIds = uniqueIds(args.participantIds ?? []);
@@ -57,7 +60,7 @@ export async function resolveCuaRerunSelection(args: {
   if (selectedIds.length === 0) {
     return {
       ok: false,
-      message: `source run ${bundle.runId} has no failed, blocked, timed-out, or hollow lanes to rerun.`,
+      message: `source run ${bundle.runId} has no failed, blocked, timed-out, or hollow participants to rerun.`,
     };
   }
 
@@ -65,7 +68,7 @@ export async function resolveCuaRerunSelection(args: {
   if (missingPrior.length > 0) {
     return {
       ok: false,
-      message: `selected lane id(s) were not present in source run ${bundle.runId}: ${missingPrior.join(", ")}`,
+      message: `selected participant id(s) were not present in source run ${bundle.runId}: ${missingPrior.join(", ")}`,
     };
   }
 
@@ -74,7 +77,7 @@ export async function resolveCuaRerunSelection(args: {
   if (missingCurrent.length > 0) {
     return {
       ok: false,
-      message: `selected lane id(s) are not present in the current lab config ${args.labId}: ${missingCurrent.join(", ")}`,
+      message: `selected participant id(s) are not present in the current lab config ${args.labId}: ${missingCurrent.join(", ")}`,
     };
   }
 

@@ -26,13 +26,15 @@ export function createInProcessDesktop(deps: InProcessDesktopDeps): ParticipantD
   return {
     async prepare() {
       if (preparationStarted || finalization)
-        throw new Error("Desktop lane preparation can only start once, before finalization.");
+        throw new Error(
+          "Participant desktop preparation can only start once, before finalization.",
+        );
       preparationStarted = true;
     },
     async openSession(): Promise<ReadyParticipantDesktop> {
       if (!preparationStarted || opened || finalization)
         throw new Error(
-          "Desktop lane must be prepared and may only be opened once, before finalization.",
+          "The participant desktop must be prepared and may only be opened once, before finalization.",
         );
       opened = true;
       const buildExecutor = deps.hooks.buildExecutor;

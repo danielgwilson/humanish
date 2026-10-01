@@ -197,8 +197,8 @@ export function providerResourcesForOutcome(args: {
       cleanup: {
         killed: args.outcome.killed,
         reason: args.outcome.killed
-          ? "killed during normal lane teardown"
-          : "not killed during normal lane teardown; cleanup may reclaim by exact recorded id",
+          ? "killed during normal participant teardown"
+          : "not killed during normal participant teardown; cleanup may reclaim by exact recorded id",
       },
     },
   ];
