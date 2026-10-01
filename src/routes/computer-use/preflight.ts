@@ -75,7 +75,7 @@ export async function liveCuaRejection(args: {
     const chosen = available.find((agent) => agent.id === preferredLocalAgent);
     if (chosen === undefined) {
       return {
-        code: "HUMANISH_CUA_LAB_KEYS_MISSING",
+        code: "HUMANISH_CUA_LAB_AGENT_SIGNIN_REQUIRED",
         message:
           `actors[0].type: local-agent needs the ${preferredLocalAgent} CLI on PATH and signed in. ` +
           `Install it, or set OPENAI_API_KEY and use actors[0].type: openai-computer-use instead.`,
@@ -83,7 +83,7 @@ export async function liveCuaRejection(args: {
     }
     if (chosen.authStatus !== "authenticated") {
       return {
-        code: "HUMANISH_CUA_LAB_KEYS_MISSING",
+        code: "HUMANISH_CUA_LAB_AGENT_SIGNIN_REQUIRED",
         message:
           chosen.authStatus === "unauthenticated"
             ? `${chosen.label} reports not signed in — run \`${chosen.id === "codex" ? "codex login" : "claude auth login"}\`, then retry.`
