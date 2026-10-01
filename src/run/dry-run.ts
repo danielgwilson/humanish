@@ -10,15 +10,15 @@ import {
 import {
   RUN_BUNDLE_FILE,
   buildRunSource,
-  RUN_BUNDLE_SCHEMA,
   type RunBundle,
   type RunEvent,
   type RunSimulation,
+  bundleArtifacts,
+  bundleHead,
 } from "./bundle.js";
 import { type RunOptions, type RunResult } from "./results.js";
 import { type RunSimulationStatus, type RunStream, type RunStreamKind } from "./streams.js";
 import {
-  participantCount,
   participantEvent,
   participantIdsOf,
   participantRecord,
@@ -116,15 +116,16 @@ async function runDryRunInScope(options: RunOptions, scope: RunScope): Promise<R
   });
 
   const bundle: RunBundle = {
-    schema: RUN_BUNDLE_SCHEMA,
-    runId,
-    mode: "dry-run",
-    ...participantCount(participants),
-    createdAt,
-    cwd,
-    artifactRoot,
-    ...(options.lab === undefined ? {} : { lab: options.lab }),
-    source,
+    ...bundleHead({
+      runId,
+      mode: "dry-run",
+      participants,
+      createdAt,
+      cwd,
+      artifactRoot,
+      ...(options.lab === undefined ? {} : { lab: options.lab }),
+      source,
+    }),
     persona: selection.persona,
     scenario: selection.scenario,
     lifecycle: [
@@ -156,13 +157,7 @@ async function runDryRunInScope(options: RunOptions, scope: RunScope): Promise<R
       status: "passed",
       notes: "Dry-run bundle contains synthetic contract proof only.",
     },
-    artifacts: {
-      run: RUN_BUNDLE_FILE,
-      reviewJson: "review.json",
-      reviewMarkdown: "review.md",
-      observerData: "observer/observer-data.json",
-      events: "events.ndjson",
-    },
+    artifacts: bundleArtifacts(),
     review: createReviewSummary(),
     feedbackCandidates: [],
   };

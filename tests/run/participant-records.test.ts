@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  participantCount,
   participantEvent,
   participantIds,
   participantIdsOf,
@@ -80,6 +79,5 @@ describe("participant records (bundle write)", () => {
       "simId",
       "streamId",
     ]);
-    expect(participantCount(3)).toEqual({ simCount: 3 });
   });
 });

@@ -1,23 +1,21 @@
-import path from "node:path";
 import type { ActorPersonaRef, ActorTrace } from "../../actors/contract.js";
 import { type RunLabProvenance } from "../../run/status.js";
 import type { LabScenarioCaps, LabRuntimeAuth } from "../../lab/types.js";
 import { redactText } from "../../evidence/redaction.js";
 import { participantAssignment } from "../../lab/participant-assignment.js";
 import {
-  PUBLIC_TARGET_CWD,
   REVIEW_SCHEMA,
-  RUN_BUNDLE_SCHEMA,
   type ReviewSummary,
   type RunBundle,
   type RunCostSummary,
   type RunEvent,
   type RunSimulation,
+  bundleArtifacts,
+  bundleHead,
 } from "../../run/bundle.js";
 import type { Verdict } from "../../run/judge.js";
 import { type RunSimulationStatus, type RunStream } from "../../run/streams.js";
 import {
-  participantCount,
   participantEvent,
   participantIds,
   participantRecord,
@@ -372,15 +370,14 @@ function terminalRunBundle(
   },
 ): RunBundle {
   return {
-    schema: RUN_BUNDLE_SCHEMA,
-    runId: args.runId,
-    mode: parts.mode,
-    ...participantCount(1),
-    createdAt: args.createdAt,
-    cwd: PUBLIC_TARGET_CWD,
-    ...(args.lab === undefined ? {} : { lab: args.lab }),
-    artifactRoot: path.join(".humanish", "runs", args.runId),
-    source: args.source,
+    ...bundleHead({
+      runId: args.runId,
+      mode: parts.mode,
+      participants: 1,
+      createdAt: args.createdAt,
+      ...(args.lab === undefined ? {} : { lab: args.lab }),
+      source: args.source,
+    }),
     persona: {
       id: args.persona.id,
       name: `Autonomous terminal agent (${args.persona.id})`,
@@ -402,13 +399,7 @@ function terminalRunBundle(
     streams: [parts.stream],
     events: parts.events,
     redaction: { status: "passed", notes: parts.redactionNotes },
-    artifacts: {
-      run: "run.json",
-      reviewJson: "review.json",
-      reviewMarkdown: "review.md",
-      observerData: "observer/observer-data.json",
-      events: "events.ndjson",
-    },
+    artifacts: bundleArtifacts(),
     review: parts.review,
     feedbackCandidates: [],
     ...(parts.cost === undefined ? {} : { cost: parts.cost }),
