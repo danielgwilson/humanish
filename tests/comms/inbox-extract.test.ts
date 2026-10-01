@@ -63,7 +63,7 @@ describe("FakeInbox (the in-process bus)", () => {
     // ARBITRARY declared address is honored (not just the default actor-id-keyed one).
     const a = await bus.provisionAddress("user", "user-07@example.test");
     expect(a.value).toBe("user-07@example.test");
-    expect(a.laneId).toBe("user");
+    expect(a.participantId).toBe("user");
     expect(a.digest).toMatch(/^[0-9a-f]{16}$/);
     // Idempotent by value (case-insensitive): re-declaring returns the SAME inbox (never resets its queue).
     await bus.deliverRaw({
@@ -98,7 +98,7 @@ describe("FakeInbox (the in-process bus)", () => {
       body: VERIFICATION_HTML,
     });
     expect(delivered).toHaveLength(1);
-    expect(delivered[0]!.to.map((t) => t.laneId)).toEqual(["user-07"]);
+    expect(delivered[0]!.to.map((t) => t.participantId)).toEqual(["user-07"]);
     expect(delivered[0]!.links).toEqual(["https://app.example.test/verify?token=abc123XYZ-9"]);
     expect(delivered[0]!.codes).toEqual(["481920"]);
 
@@ -121,7 +121,7 @@ describe("FakeInbox (the in-process bus)", () => {
       to: [p2.value, p3.value],
       body: "join https://app.test/lobby/ABC123",
     });
-    expect(msg!.to.map((t) => t.laneId).sort()).toEqual(["player-2", "player-3"]);
+    expect(msg!.to.map((t) => t.participantId).sort()).toEqual(["player-2", "player-3"]);
     expect((await bus.poll(p2))[0]!.links).toEqual(["https://app.test/lobby/ABC123"]);
     expect(await bus.poll(p3)).toHaveLength(1);
   });

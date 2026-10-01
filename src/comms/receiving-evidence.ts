@@ -56,9 +56,9 @@ export function isCommsReceivingEvidence(value: unknown): value is CommsReceivin
 /** Safe operational context for findings; no raw content or provider identity reaches this projection. */
 export function receivingAnalysisContext(
   evidence: CommsReceivingEvidence,
-  laneId: string | undefined,
+  participantId: string | undefined,
 ): string {
-  const participants = evidence.participants.filter((p) => p.participantId === laneId);
+  const participants = evidence.participants.filter((p) => p.participantId === participantId);
   const selected = participants.length ? participants : evidence.participants;
   return [
     "Real email was supplied by the humanish harness. Provider receipt, inbox publication and a participant reading/using the email are separate observations.",
