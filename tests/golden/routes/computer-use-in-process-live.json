@@ -206,33 +206,7 @@
       "ratesAsOf": null
     }
   },
-  "events.ndjson": [
-    {
-      "id": "event-000-created",
-      "at": "[ts]",
-      "level": "info",
-      "type": "cua-lab.run.created",
-      "message": "Created computer-use lab run for downstream-local-app-state (actor openai-computer-use)."
-    },
-    {
-      "id": "event-001-subject",
-      "at": "[ts]",
-      "level": "info",
-      "type": "cua-lab.subject.declared",
-      "message": "Subject app declared at http://localhost:5173/ (already-running LOCAL dev server driven in-process; NO clone, NO E2B desktop). Provenance: caller-provisioned and UNPINNED — a running dev server cannot be commit-pinned.",
-      "simId": "sim-001",
-      "streamId": "stream-001"
-    },
-    {
-      "id": "event-002-session",
-      "at": "[ts]",
-      "level": "info",
-      "type": "cua-lab.session.goal_satisfied",
-      "message": "passed: Reached the goal via getState().",
-      "simId": "sim-001",
-      "streamId": "stream-001"
-    }
-  ],
+  "events.ndjson": "[same as run.json events]",
   "observer/index.html": "[observer build]",
   "observer/observer-data.json": {
     "schema": "humanish.observer-data.v1",
@@ -300,231 +274,19 @@
       "warnings": 0
     },
     "laneGroups": [],
-    "cost": {
-      "schema": "humanish.run-cost-summary.v1",
-      "currency": "usd",
-      "estimatedTotalUsd": null,
-      "ratesAsOf": null,
-      "fullyEstimated": false,
-      "placeholder": false,
-      "breakdown": [
-        {
-          "kind": "model-tokens",
-          "laneId": "lane-01",
-          "estimatedCostUsd": null,
-          "reason": "no_token_usage",
-          "ratesAsOf": null
-        }
-      ],
-      "tokenUsage": {
-        "input": 0,
-        "output": 0,
-        "total": 0
-      },
-      "desktopMinutes": null,
-      "note": "No priced spend lines this run — every cost line is DECLARED ABSENT (unknown rate / no usage / no duration); nothing is guessed. Add a rate to src/run/pricing.ts to estimate this model."
-    },
+    "cost": "[same as run.json cost]",
     "streams": [
       {
+        "[same as the run.json stream]": "simId laneId assignment kind label status transport updatedAt embed ui actor artifacts",
         "id": "stream-001",
-        "simId": "sim-001",
-        "laneId": "lane-01",
-        "assignment": {
-          "mission": "Drive the app via its state contract."
-        },
-        "kind": "browser",
-        "label": "CUA browser — downstream-local-app-state",
-        "status": "passed",
-        "transport": "snapshot",
-        "updatedAt": "[ts]",
-        "embed": {
-          "kind": "placeholder",
-          "title": "CUA desktop"
-        },
-        "ui": {
-          "route": "http://localhost:5173/",
-          "intent": "Watch the computer-use actor drive the subject app in process, with no desktop.",
-          "state": "Reached the goal via getState().",
-          "actorStatus": "passed"
-        },
-        "actor": {
-          "schema": "humanish.actor-trace.v1",
-          "provider": "fake-state-brain",
-          "providerVersion": "0.1.0",
-          "protocol": "cua-loop",
-          "lane": "computer-use",
-          "persona": {
-            "id": "pixel-pat",
-            "traitsApplied": [],
-            "promptDigest": "447585e3031f1518"
-          },
-          "redaction": {
-            "status": "passed",
-            "screenshots": "n/a",
-            "notes": "no screenshots captured. App state was observed each turn to drive progress detection (a state-driven executor) and was NOT written to the trace — it is a runtime-only progress input, never persisted as evidence in this slice."
-          },
-          "startedAt": "[ts]",
-          "completedAt": "[ts]",
-          "durationMs": "[durationMs]",
-          "status": "passed",
-          "completionReason": "goal_satisfied",
-          "reason": "Reached the goal via getState().",
-          "ids": {
-            "model": "0.1.0"
-          },
-          "counts": {
-            "turns": 2,
-            "actions": 1,
-            "materialActions": 1,
-            "screenshots": 0,
-            "reasonings": 1,
-            "messages": 1,
-            "idleTurns": 0,
-            "noProgressTurns": 0
-          },
-          "items": [
-            {
-              "id": "reasoning-001",
-              "kind": "reasoning",
-              "lifecycle": "completed",
-              "title": "reasoning turn 1",
-              "text": "state looks right",
-              "at": "[ts]"
-            },
-            {
-              "id": "ui_action-002",
-              "kind": "ui_action",
-              "lifecycle": "completed",
-              "title": "type [5 chars]",
-              "at": "[ts]"
-            },
-            {
-              "id": "message-003",
-              "kind": "message",
-              "lifecycle": "completed",
-              "title": "message turn 2",
-              "text": "Reached the goal via getState().",
-              "at": "[ts]"
-            }
-          ],
-          "affordanceUse": {
-            "schema": "humanish.affordance-use.v1",
-            "counts": {
-              "keyboard": 1
-            },
-            "total": 1,
-            "shortcutTotal": 0
-          },
-          "capabilities": {
-            "headless": true,
-            "structuredTrace": true,
-            "lanes": [
-              "computer-use"
-            ],
-            "producesScreenshots": false,
-            "byoModel": true,
-            "preGrantableApprovals": false,
-            "inProcessTools": false,
-            "license": "open"
-          },
-          "estimatedCost": {
-            "schema": "humanish.actor-estimated-cost.v1",
-            "estimatedCostUsd": null,
-            "reason": "no_token_usage",
-            "ratesAsOf": null
-          }
-        },
-        "artifacts": [
-          {
-            "label": "run bundle",
-            "path": "run.json",
-            "kind": "bundle"
-          },
-          {
-            "label": "review",
-            "path": "review.md",
-            "kind": "review"
-          },
-          {
-            "label": "events",
-            "path": "events.ndjson",
-            "kind": "events"
-          },
-          {
-            "label": "actor trace",
-            "path": "actor.json",
-            "kind": "trace"
-          }
-        ],
-        "sim": {
-          "id": "sim-001",
-          "index": 1,
-          "personaId": "pixel-pat",
-          "scenarioId": "cua-downstream-local-app-state",
-          "status": "passed",
-          "streamKind": "browser",
-          "mode": "browser-sim",
-          "progress": 100,
-          "currentStep": "Reached the goal via getState().",
-          "summary": "Computer-use actor (openai-computer-use) drove the subject app in process, with no desktop; goal_satisfied.",
-          "streamIds": [
-            "stream-001"
-          ],
-          "startedAt": "[ts]",
-          "updatedAt": "[ts]"
-        },
+        "sim": "[same as run.json simulation sim-001]",
         "kindLabel": "Browser",
         "statusLabel": "Reported complete",
         "terminalPlain": "",
-        "timeline": [
-          {
-            "id": "event-001-subject",
-            "at": "[ts]",
-            "level": "info",
-            "type": "cua-lab.subject.declared",
-            "message": "Subject app declared at http://localhost:5173/ (already-running LOCAL dev server driven in-process; NO clone, NO E2B desktop). Provenance: caller-provisioned and UNPINNED — a running dev server cannot be commit-pinned.",
-            "simId": "sim-001",
-            "streamId": "stream-001"
-          },
-          {
-            "id": "event-002-session",
-            "at": "[ts]",
-            "level": "info",
-            "type": "cua-lab.session.goal_satisfied",
-            "message": "passed: Reached the goal via getState().",
-            "simId": "sim-001",
-            "streamId": "stream-001"
-          }
-        ]
+        "timeline": "[same as run.json events for this stream]"
       }
     ],
-    "events": [
-      {
-        "id": "event-000-created",
-        "at": "[ts]",
-        "level": "info",
-        "type": "cua-lab.run.created",
-        "message": "Created computer-use lab run for downstream-local-app-state (actor openai-computer-use)."
-      },
-      {
-        "id": "event-001-subject",
-        "at": "[ts]",
-        "level": "info",
-        "type": "cua-lab.subject.declared",
-        "message": "Subject app declared at http://localhost:5173/ (already-running LOCAL dev server driven in-process; NO clone, NO E2B desktop). Provenance: caller-provisioned and UNPINNED — a running dev server cannot be commit-pinned.",
-        "simId": "sim-001",
-        "streamId": "stream-001"
-      },
-      {
-        "id": "event-002-session",
-        "at": "[ts]",
-        "level": "info",
-        "type": "cua-lab.session.goal_satisfied",
-        "message": "passed: Reached the goal via getState().",
-        "simId": "sim-001",
-        "streamId": "stream-001"
-      }
-    ],
+    "events": "[same as run.json events]",
     "artifactLinks": [
       {
         "label": "run bundle",

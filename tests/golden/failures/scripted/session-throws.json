@@ -71,36 +71,7 @@
     "startedAt": null,
     "finishedAt": "[ts]"
   },
-  "events.ndjson": [
-    {
-      "id": "event-000-created",
-      "at": "[ts]",
-      "level": "info",
-      "type": "scripted-lab.run.created",
-      "message": "Created scripted-browser lab run for scripted-routing-proof (actor scripted-browser, 1 surface)."
-    },
-    {
-      "id": "event-001-subject",
-      "at": "[ts]",
-      "level": "info",
-      "type": "scripted-lab.subject.declared",
-      "message": "Subject app declared at http://127.0.0.1:5173/; the lab did not provision it — subject build/commit provenance is UNPINNED; evidence binds to the scenario digest 41dea98c2dc4."
-    },
-    {
-      "id": "event-002-spend",
-      "at": "[ts]",
-      "level": "info",
-      "type": "scripted-lab.spend",
-      "message": "Scripted participant steps make no model requests and use no sandbox on this route; post-run analysis has a separate budget unless disabled. scenario.mode: live gates real browser actuation against the declared app."
-    },
-    {
-      "id": "event-003-session-error",
-      "at": "[ts]",
-      "level": "error",
-      "type": "scripted-lab.session.error",
-      "message": "session exploded with [REDACTED_SECRET]"
-    }
-  ],
+  "events.ndjson": "[same as run.json events]",
   "observer/index.html": "[observer build]",
   "observer/observer-data.json": {
     "schema": "humanish.observer-data.v1",
@@ -156,116 +127,19 @@
       "warnings": 0
     },
     "laneGroups": [],
-    "cost": {
-      "schema": "humanish.run-cost-summary.v1",
-      "currency": "usd",
-      "estimatedTotalUsd": 0,
-      "ratesAsOf": null,
-      "fullyEstimated": true,
-      "placeholder": false,
-      "breakdown": [],
-      "tokenUsage": {
-        "input": 0,
-        "output": 0,
-        "total": 0
-      },
-      "desktopMinutes": null,
-      "note": "No model request and no hosted desktop: this run spent $0 by construction."
-    },
+    "cost": "[same as run.json cost]",
     "streams": [
       {
+        "[same as the run.json stream]": "simId kind label status transport updatedAt embed viewport ui artifacts",
         "id": "scripted-desktop-stream",
-        "simId": "scripted-desktop",
-        "kind": "browser",
-        "label": "Desktop browser surface — scripted-routing-proof",
-        "status": "failed",
-        "transport": "snapshot",
-        "updatedAt": "[ts]",
-        "embed": {
-          "kind": "placeholder",
-          "title": "Desktop browser surface"
-        },
-        "viewport": {
-          "width": 1440,
-          "height": 960,
-          "deviceScaleFactor": 1,
-          "isMobile": false
-        },
-        "ui": {
-          "route": "http://127.0.0.1:5173/",
-          "intent": "Load the app, submit the primary form, and confirm the success state renders.",
-          "state": "session exploded with [REDACTED_SECRET]"
-        },
-        "artifacts": [
-          {
-            "label": "run bundle",
-            "path": "run.json",
-            "kind": "bundle"
-          },
-          {
-            "label": "review",
-            "path": "review.md",
-            "kind": "review"
-          },
-          {
-            "label": "events",
-            "path": "events.ndjson",
-            "kind": "events"
-          }
-        ],
-        "sim": {
-          "id": "scripted-desktop",
-          "index": 1,
-          "personaId": "synthetic-new-user",
-          "scenarioId": "scripted-first-run",
-          "status": "failed",
-          "streamKind": "browser",
-          "mode": "browser-sim",
-          "progress": 100,
-          "currentStep": "session exploded with [REDACTED_SECRET]",
-          "summary": "Scripted lab failed before a terminal session verdict: session exploded with [REDACTED_SECRET]",
-          "streamIds": [
-            "scripted-desktop-stream"
-          ],
-          "startedAt": "[ts]",
-          "updatedAt": "[ts]"
-        },
+        "sim": "[same as run.json simulation scripted-desktop]",
         "kindLabel": "Browser",
         "statusLabel": "Failed",
         "terminalPlain": "",
-        "timeline": []
+        "timeline": "[same as run.json events for this stream]"
       }
     ],
-    "events": [
-      {
-        "id": "event-000-created",
-        "at": "[ts]",
-        "level": "info",
-        "type": "scripted-lab.run.created",
-        "message": "Created scripted-browser lab run for scripted-routing-proof (actor scripted-browser, 1 surface)."
-      },
-      {
-        "id": "event-001-subject",
-        "at": "[ts]",
-        "level": "info",
-        "type": "scripted-lab.subject.declared",
-        "message": "Subject app declared at http://127.0.0.1:5173/; the lab did not provision it — subject build/commit provenance is UNPINNED; evidence binds to the scenario digest 41dea98c2dc4."
-      },
-      {
-        "id": "event-002-spend",
-        "at": "[ts]",
-        "level": "info",
-        "type": "scripted-lab.spend",
-        "message": "Scripted participant steps make no model requests and use no sandbox on this route; post-run analysis has a separate budget unless disabled. scenario.mode: live gates real browser actuation against the declared app."
-      },
-      {
-        "id": "event-003-session-error",
-        "at": "[ts]",
-        "level": "error",
-        "type": "scripted-lab.session.error",
-        "message": "session exploded with [REDACTED_SECRET]"
-      }
-    ],
+    "events": "[same as run.json events]",
     "artifactLinks": [
       {
         "label": "run bundle",

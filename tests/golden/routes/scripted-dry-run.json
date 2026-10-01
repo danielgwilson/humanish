@@ -48,36 +48,7 @@
     "path": ".humanish/runs/[run]",
     "updatedAt": "[ts]"
   },
-  "events.ndjson": [
-    {
-      "id": "event-000-created",
-      "at": "[ts]",
-      "level": "info",
-      "type": "scripted-lab.run.created",
-      "message": "Created scripted-browser lab run for scripted-routing-proof (actor scripted-browser, 2 surfaces)."
-    },
-    {
-      "id": "event-001-subject",
-      "at": "[ts]",
-      "level": "info",
-      "type": "scripted-lab.subject.declared",
-      "message": "Subject app declared at http://127.0.0.1:5173/; the lab did not provision it — subject build/commit provenance is UNPINNED; evidence binds to the scenario digest 41dea98c2dc4."
-    },
-    {
-      "id": "event-002-spend",
-      "at": "[ts]",
-      "level": "info",
-      "type": "scripted-lab.spend",
-      "message": "Scripted participant steps make no model requests and use no sandbox on this route; post-run analysis has a separate budget unless disabled. scenario.mode: live gates real browser actuation against the declared app."
-    },
-    {
-      "id": "event-003-contract",
-      "at": "[ts]",
-      "level": "info",
-      "type": "scripted-lab.contract.ready",
-      "message": "Dry-run contract bundle ready: scenario scripted-first-run @ 41dea98c2dc4 (humanish/scenarios/scripted-first-run.yaml, 4 steps) parsed and digest-pinned; switch scenario.mode to live to actuate a real browser."
-    }
-  ],
+  "events.ndjson": "[same as run.json events]",
   "observer/index.html": "[observer build]",
   "observer/observer-data.json": {
     "schema": "humanish.observer-data.v1",
@@ -137,160 +108,25 @@
     "laneGroups": [],
     "streams": [
       {
+        "[same as the run.json stream]": "simId kind label status transport updatedAt embed viewport ui artifacts",
         "id": "scripted-desktop-stream",
-        "simId": "scripted-desktop",
-        "kind": "browser",
-        "label": "Desktop browser surface — scripted-routing-proof",
-        "status": "contract_proof_only",
-        "transport": "snapshot",
-        "updatedAt": "[ts]",
-        "embed": {
-          "kind": "placeholder",
-          "title": "Desktop browser surface"
-        },
-        "viewport": {
-          "width": 1440,
-          "height": 960,
-          "deviceScaleFactor": 1,
-          "isMobile": false
-        },
-        "ui": {
-          "route": "http://127.0.0.1:5173/",
-          "intent": "Load the app, submit the primary form, and confirm the success state renders.",
-          "state": "Contract bundle only: dry-run pinned the scenario contract without launching a browser or touching the subject app."
-        },
-        "artifacts": [
-          {
-            "label": "run bundle",
-            "path": "run.json",
-            "kind": "bundle"
-          },
-          {
-            "label": "review",
-            "path": "review.md",
-            "kind": "review"
-          },
-          {
-            "label": "events",
-            "path": "events.ndjson",
-            "kind": "events"
-          }
-        ],
-        "sim": {
-          "id": "scripted-desktop",
-          "index": 1,
-          "personaId": "synthetic-new-user",
-          "scenarioId": "scripted-first-run",
-          "status": "contract_proof_only",
-          "streamKind": "browser",
-          "mode": "browser-sim",
-          "progress": 100,
-          "currentStep": "Contract bundle only: dry-run pinned the scenario contract without launching a browser or touching the subject app.",
-          "summary": "Contract participant for the scripted-browser actor (scripted-browser) against http://127.0.0.1:5173/.",
-          "streamIds": [
-            "scripted-desktop-stream"
-          ],
-          "startedAt": "[ts]",
-          "updatedAt": "[ts]"
-        },
+        "sim": "[same as run.json simulation scripted-desktop]",
         "kindLabel": "Browser",
         "statusLabel": "Contract proof",
         "terminalPlain": "",
-        "timeline": []
+        "timeline": "[same as run.json events for this stream]"
       },
       {
+        "[same as the run.json stream]": "simId kind label status transport updatedAt embed viewport ui artifacts",
         "id": "scripted-mobile-stream",
-        "simId": "scripted-mobile",
-        "kind": "browser",
-        "label": "Mobile browser surface — scripted-routing-proof",
-        "status": "contract_proof_only",
-        "transport": "snapshot",
-        "updatedAt": "[ts]",
-        "embed": {
-          "kind": "placeholder",
-          "title": "Mobile browser surface"
-        },
-        "viewport": {
-          "width": 390,
-          "height": 844,
-          "deviceScaleFactor": 2,
-          "isMobile": true
-        },
-        "ui": {
-          "route": "http://127.0.0.1:5173/",
-          "intent": "Load the app, submit the primary form, and confirm the success state renders.",
-          "state": "Contract bundle only: dry-run pinned the scenario contract without launching a browser or touching the subject app."
-        },
-        "artifacts": [
-          {
-            "label": "run bundle",
-            "path": "run.json",
-            "kind": "bundle"
-          },
-          {
-            "label": "review",
-            "path": "review.md",
-            "kind": "review"
-          },
-          {
-            "label": "events",
-            "path": "events.ndjson",
-            "kind": "events"
-          }
-        ],
-        "sim": {
-          "id": "scripted-mobile",
-          "index": 2,
-          "personaId": "synthetic-new-user",
-          "scenarioId": "scripted-first-run",
-          "status": "contract_proof_only",
-          "streamKind": "browser",
-          "mode": "browser-sim",
-          "progress": 100,
-          "currentStep": "Contract bundle only: dry-run pinned the scenario contract without launching a browser or touching the subject app.",
-          "summary": "Contract participant for the scripted-browser actor (scripted-browser) against http://127.0.0.1:5173/.",
-          "streamIds": [
-            "scripted-mobile-stream"
-          ],
-          "startedAt": "[ts]",
-          "updatedAt": "[ts]"
-        },
+        "sim": "[same as run.json simulation scripted-mobile]",
         "kindLabel": "Browser",
         "statusLabel": "Contract proof",
         "terminalPlain": "",
-        "timeline": []
+        "timeline": "[same as run.json events for this stream]"
       }
     ],
-    "events": [
-      {
-        "id": "event-000-created",
-        "at": "[ts]",
-        "level": "info",
-        "type": "scripted-lab.run.created",
-        "message": "Created scripted-browser lab run for scripted-routing-proof (actor scripted-browser, 2 surfaces)."
-      },
-      {
-        "id": "event-001-subject",
-        "at": "[ts]",
-        "level": "info",
-        "type": "scripted-lab.subject.declared",
-        "message": "Subject app declared at http://127.0.0.1:5173/; the lab did not provision it — subject build/commit provenance is UNPINNED; evidence binds to the scenario digest 41dea98c2dc4."
-      },
-      {
-        "id": "event-002-spend",
-        "at": "[ts]",
-        "level": "info",
-        "type": "scripted-lab.spend",
-        "message": "Scripted participant steps make no model requests and use no sandbox on this route; post-run analysis has a separate budget unless disabled. scenario.mode: live gates real browser actuation against the declared app."
-      },
-      {
-        "id": "event-003-contract",
-        "at": "[ts]",
-        "level": "info",
-        "type": "scripted-lab.contract.ready",
-        "message": "Dry-run contract bundle ready: scenario scripted-first-run @ 41dea98c2dc4 (humanish/scenarios/scripted-first-run.yaml, 4 steps) parsed and digest-pinned; switch scenario.mode to live to actuate a real browser."
-      }
-    ],
+    "events": "[same as run.json events]",
     "artifactLinks": [
       {
         "label": "run bundle",
