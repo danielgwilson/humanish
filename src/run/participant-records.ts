@@ -46,12 +46,21 @@ export function participantRecord(
   };
 }
 
-/** A participant's stream. */
+/**
+ * A participant's stream. `participantId` is the route's own participant id (a fan-out lane's id),
+ * saved right after the record id when the route has one.
+ */
 export function participantStream(
   ids: ParticipantIds,
-  fields: Omit<RunStream, "id" | "simId">,
+  fields: Omit<RunStream, "id" | "simId" | "laneId">,
+  participantId?: string,
 ): RunStream {
-  return { id: ids.streamId, simId: ids.simId, ...fields };
+  return {
+    id: ids.streamId,
+    simId: ids.simId,
+    ...(participantId === undefined ? {} : { laneId: participantId }),
+    ...fields,
+  };
 }
 
 /** An event about one participant. */
