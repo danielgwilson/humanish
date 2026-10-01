@@ -9,11 +9,13 @@ import { REVIEW_SCHEMA, type ReviewSummary } from "../../src/run/bundle.js";
 import {
   foldScorerFailures,
   hollowCompletion,
+  judgedStatus,
   judgeOneParticipant,
   judgeParticipants,
   judgeScripted,
   judgeSharedWorld,
   judgeTerminal,
+  judgmentOf,
   participantPassed,
   participantStatus,
   selfReportedBlocker,
@@ -302,7 +304,9 @@ describe("judgeScripted", () => {
     ["a timeout", [ok, timedOut], undefined, "timed_out", false],
     ["a failed step outranks a timeout", [timedOut, stepFailed], undefined, "fail", false],
     ["a harness error", [ok, harnessError], undefined, "fail", false],
-    ["a surface that never returned", [ok], undefined, "pass", false],
+    // One of two surfaces returned. The verdict follows the pass rule: before, it read pass with
+    // passed false.
+    ["a surface that never returned", [ok], undefined, "fail", false],
     ["a session error", [], "browser pool exploded", "fail", false],
     ["a session error with an empty message", [], "", "fail", false],
   ])("%s", (_name, surfaces, sessionError, verdict, wasPassed) => {
@@ -475,7 +479,7 @@ describe("the outcome policies", () => {
     "%s: gate ok %s, evidence ok %s",
     (_name, wasPassed, succeeded, scorerFailures, gate, evidence) => {
       const args = {
-        judgment: { verdict: wasPassed ? ("pass" as const) : ("fail" as const), passed: wasPassed },
+        judgment: judgmentOf(wasPassed ? "pass" : "fail", false),
         execution: { succeeded, failures: succeeded ? [] : [failure("harness")] },
         scorerFailures,
       };
@@ -483,4 +487,152 @@ describe("the outcome policies", () => {
       expect(resultOk({ ...args, policy: OUTCOME_POLICIES.terminal })).toBe(evidence);
     },
   );
+});
+
+describe("a judgment's verdict and passed come from one value", () => {
+  // Every completion reason; `satisfies` fails to compile when the union gains one.
+  const COMPLETION_REASONS = Object.keys({
+    goal_satisfied: true,
+    turn_completed: true,
+    gave_up: true,
+    blocked_approval: true,
+    timed_out: true,
+    budget_reached: true,
+    actor_error: true,
+    step_failed: true,
+    harness_error: true,
+  } satisfies Record<ActorCompletionReason, true>) as ActorCompletionReason[];
+
+  /** Every status and completion reason, each also absent, with every flag set and unset. */
+  function* everyParticipant(): Generator<ParticipantFacts> {
+    for (const status of [undefined, ...ACTOR_STATUSES])
+      for (const completionReason of [undefined, ...COMPLETION_REASONS])
+        for (const sessionError of [undefined, "the harness threw"])
+          for (const skipped of [false, true])
+            for (const noEngagement of [false, true])
+              for (const selfReportedBlocker of [false, true])
+                yield {
+                  ...(status === undefined ? {} : { status }),
+                  ...(completionReason === undefined ? {} : { completionReason }),
+                  ...(sessionError === undefined ? {} : { sessionError }),
+                  skipped,
+                  noEngagement,
+                  selfReportedBlocker,
+                };
+  }
+
+  /** Session outcomes only: every status and completion reason, no flags. */
+  const sessions: ParticipantFacts[] = [undefined, ...ACTOR_STATUSES].flatMap((status) =>
+    [undefined, ...COMPLETION_REASONS].map((completionReason) => ({
+      ...(status === undefined ? {} : { status }),
+      ...(completionReason === undefined ? {} : { completionReason }),
+      skipped: false,
+      noEngagement: false,
+      selfReportedBlocker: false,
+    })),
+  );
+  /** Every list of up to two session outcomes. */
+  const rosters: ParticipantFacts[][] = [
+    [],
+    ...sessions.map((one) => [one]),
+    ...sessions.flatMap((one) => sessions.map((two) => [one, two])),
+  ];
+  const flags = [false, true] as const;
+
+  it("judges one participant pass exactly when it passed, for every fact combination", () => {
+    const mismatches: string[] = [];
+    for (const participant of everyParticipant())
+      for (const dryRun of flags)
+        for (const inProgress of flags) {
+          const judgment = judgeOneParticipant({ dryRun, inProgress, participant });
+          const terminal = judgeTerminal({ dryRun, participant });
+          const live = !dryRun && !inProgress;
+          if (judgment.passed !== (dryRun || judgment.verdict === "pass"))
+            mismatches.push(
+              `passed/verdict ${JSON.stringify({ participant, dryRun, inProgress })}`,
+            );
+          if (live && (judgment.verdict === "pass") !== participantPassed(participant))
+            mismatches.push(`verdict/pass rule ${JSON.stringify(participant)}`);
+          if (!inProgress && terminal.verdict !== judgment.verdict)
+            mismatches.push(`terminal ${JSON.stringify({ participant, dryRun })}`);
+        }
+    expect(mismatches).toEqual([]);
+  });
+
+  it("judges a scripted run pass exactly when every expected surface passed", () => {
+    const mismatches: string[] = [];
+    for (const surfaces of rosters)
+      for (const expected of [surfaces.length, surfaces.length + 1])
+        for (const sessionError of [undefined, "the session threw"])
+          for (const dryRun of flags) {
+            const judgment = judgeScripted({ dryRun, sessionError, expected, surfaces });
+            // A failed step or a timeout outranks the surface's status, as judgeScripted ranks them.
+            const rule =
+              sessionError === undefined &&
+              surfaces.length > 0 &&
+              surfaces.length === expected &&
+              surfaces.every(participantPassed) &&
+              !surfaces.some(
+                (surface) =>
+                  surface.completionReason === "step_failed" ||
+                  surface.completionReason === "timed_out",
+              );
+            if (judgment.passed !== (dryRun || judgment.verdict === "pass"))
+              mismatches.push(`passed/verdict ${JSON.stringify({ surfaces, expected, dryRun })}`);
+            if (!dryRun && (judgment.verdict === "pass") !== rule)
+              mismatches.push(`verdict/pass rule ${JSON.stringify({ surfaces, expected })}`);
+          }
+    expect(mismatches).toEqual([]);
+  });
+
+  it("judges a fan-out and a shared world pass exactly when every expected participant passed", () => {
+    const worlds = [
+      { overlap: false },
+      { overlap: true },
+      { overlap: true, stateChangedUnderOverlap: false },
+      { overlap: true, stateChangedUnderOverlap: true },
+    ];
+    const mismatches: string[] = [];
+    for (const participants of rosters)
+      for (const expected of [participants.length, participants.length + 1])
+        for (const dryRun of flags)
+          for (const inProgress of flags) {
+            const everyPassed =
+              participants.length === expected && participants.every(participantPassed);
+            const fanout = judgeParticipants({ dryRun, inProgress, expected, participants });
+            if (fanout.passed !== (dryRun || fanout.verdict === "pass"))
+              mismatches.push(
+                `fan-out passed/verdict ${JSON.stringify({ participants, expected })}`,
+              );
+            if (!dryRun && !inProgress && (fanout.verdict === "pass") !== everyPassed)
+              mismatches.push(
+                `fan-out verdict/pass rule ${JSON.stringify({ participants, expected })}`,
+              );
+            for (const world of worlds) {
+              const shared = judgeSharedWorld({
+                dryRun,
+                inProgress,
+                expected,
+                participants,
+                world,
+              });
+              const rule = everyPassed && sharedWorldShortfall(world) === undefined;
+              if (shared.passed !== (dryRun || shared.verdict === "pass"))
+                mismatches.push(`shared passed/verdict ${JSON.stringify({ participants, world })}`);
+              if (!dryRun && !inProgress && (shared.verdict === "pass") !== rule)
+                mismatches.push(
+                  `shared verdict/pass rule ${JSON.stringify({ participants, world })}`,
+                );
+            }
+          }
+    expect(mismatches).toEqual([]);
+  });
+
+  it("judges a skipped participant the way the bundle and result write it", () => {
+    const skipped = { skipped: true, noEngagement: false, selfReportedBlocker: false };
+    // computer-use's fail-fast skip: the fan-out stream and the result's participant say blocked.
+    expect(judgedStatus(skipped)).toBe("blocked");
+    // shared-world's handoff skip also carries a session error: its seat records say failed.
+    expect(judgedStatus({ ...skipped, sessionError: "handoff barrier: timed out" })).toBe("failed");
+  });
 });
