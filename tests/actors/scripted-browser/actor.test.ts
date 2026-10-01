@@ -21,24 +21,24 @@ import {
   ACTOR_TRACE_SCHEMA,
   SCRIPTED_BROWSER_CAPABILITIES,
   type ActorPersonaRef,
-} from "../../src/actors/contract.js";
+} from "../../../src/actors/contract.js";
 import {
   getActor,
   isCuaActorDescriptor,
   isScriptedBrowserActorDescriptor,
-} from "../../src/actors/registry.js";
-import { runScriptedBrowserSession } from "../../src/actors/scripted-browser/actor.js";
+} from "../../../src/actors/registry.js";
+import { runScriptedBrowserSession } from "../../../src/actors/scripted-browser/actor.js";
 import {
   browserSurfaces,
   type BrowserPersonaJourney,
   type ScriptedBrowserLike,
   type ScriptedLocatorLike,
   type ScriptedPageLike,
-} from "../../src/actors/scripted-browser/types.js";
-import { parseBrowserPersonaJourneyFromScenario } from "../../src/actors/scripted-browser/journey.js";
-import { resolveBrowserCommand } from "../../src/actors/scripted-browser/browser-command.js";
-import { syntheticPng1x1 } from "../image-fixtures.js";
-import { evaluatePagePredicate } from "../helpers/scripted-page-predicate.js";
+} from "../../../src/actors/scripted-browser/types.js";
+import { parseBrowserPersonaJourneyFromScenario } from "../../../src/actors/scripted-browser/journey.js";
+import { resolveBrowserCommand } from "../../../src/actors/scripted-browser/browser-command.js";
+import { syntheticPng1x1 } from "../../image-fixtures.js";
+import { evaluatePagePredicate } from "../../helpers/scripted-page-predicate.js";
 
 const PNG_1X1 = syntheticPng1x1();
 

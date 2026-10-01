@@ -1,4 +1,4 @@
-import { automaticAnalysisBoundary } from "../helpers/automatic-analysis-boundary.js";
+import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
 import { CommanderError } from "commander";
 import { createServer, type Server } from "node:http";
 import { mkdir, mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from "node:fs/promises";
@@ -8,40 +8,43 @@ import type { AddressInfo } from "node:net";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { ACTOR_TRACE_SCHEMA, SCRIPTED_BROWSER_CAPABILITIES } from "../../src/actors/contract.js";
+import { ACTOR_TRACE_SCHEMA, SCRIPTED_BROWSER_CAPABILITIES } from "../../../src/actors/contract.js";
 import type {
   E2BDesktopCreateOptions,
   E2BDesktopModule,
   E2BDesktopSandbox,
-} from "../../src/substrates/e2b/sdk.js";
-import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/lab/types.js";
-import { parseLabConfig } from "../../src/lab/config.js";
-import { runLab, selectLabBackend } from "../../src/lab/engine.js";
-import { createProgram } from "../../src/cli/program.js";
-import { digestText } from "../../src/evidence/redaction.js";
-import { verifyRun } from "../../src/verify/verify.js";
-import type { RunBundle } from "../../src/run/bundle.js";
-import { computeStats } from "../../src/run/stats.js";
-import { reclaimRunSandboxes } from "../../src/run/reclaim.js";
+} from "../../../src/substrates/e2b/sdk.js";
+import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
+import { parseLabConfig } from "../../../src/lab/config.js";
+import { runLab, selectLabBackend } from "../../../src/lab/engine.js";
+import { createProgram } from "../../../src/cli/program.js";
+import { digestText } from "../../../src/evidence/redaction.js";
+import { verifyRun } from "../../../src/verify/verify.js";
+import type { RunBundle } from "../../../src/run/bundle.js";
+import { computeStats } from "../../../src/run/stats.js";
+import { reclaimRunSandboxes } from "../../../src/run/reclaim.js";
 import {
   parseSandboxReceipts,
   SANDBOX_RECEIPTS_ARTIFACT,
   type ParsedSandboxReceipt,
-} from "../../src/run/sandbox-receipts.js";
-import { runCuaActorLab } from "../../src/routes/computer-use/route.js";
-import { runScriptedBrowserLab, runScriptedPlan } from "../../src/routes/scripted-browser/route.js";
-import { planScriptedLab } from "../../src/routes/scripted-browser/plan.js";
-import type { ScriptedBrowserLabHooks } from "../../src/routes/scripted-browser/types.js";
+} from "../../../src/run/sandbox-receipts.js";
+import { runCuaActorLab } from "../../../src/routes/computer-use/route.js";
+import {
+  runScriptedBrowserLab,
+  runScriptedPlan,
+} from "../../../src/routes/scripted-browser/route.js";
+import { planScriptedLab } from "../../../src/routes/scripted-browser/plan.js";
+import type { ScriptedBrowserLabHooks } from "../../../src/routes/scripted-browser/types.js";
 import type {
   ScriptedBrowserLike,
   ScriptedLocatorLike,
   ScriptedPageLike,
-} from "../../src/actors/scripted-browser/types.js";
-import type { ScriptedBrowserSessionResult } from "../../src/actors/scripted-browser/actor.js";
-import { syntheticPng1x1 } from "../image-fixtures.js";
-import { evaluatePagePredicate } from "../helpers/scripted-page-predicate.js";
-import { captureStderr, runDirSnapshot } from "../helpers/run-golden.js";
-import { expectFailureGolden } from "../helpers/failure-golden.js";
+} from "../../../src/actors/scripted-browser/types.js";
+import type { ScriptedBrowserSessionResult } from "../../../src/actors/scripted-browser/actor.js";
+import { syntheticPng1x1 } from "../../image-fixtures.js";
+import { evaluatePagePredicate } from "../../helpers/scripted-page-predicate.js";
+import { captureStderr, runDirSnapshot } from "../../helpers/run-golden.js";
+import { expectFailureGolden } from "../../helpers/failure-golden.js";
 
 const ROOT = process.cwd();
 const PNG_1X1 = syntheticPng1x1();
@@ -1450,7 +1453,7 @@ describe("humanish lab run scripted-demo (CLI)", () => {
 
 // Characterization: the complete run directory of each deterministic scripted run, pinned so a
 // refactor of bundle assembly or artifact writing shows up as a diff. Regenerate with
-// `pnpm vitest run tests/routes/scripted-browser.test.ts -u` and review the golden diff.
+// `pnpm vitest run tests/routes/scripted-browser/route.test.ts -u` and review the golden diff.
 describe("scripted-browser run directory goldens", () => {
   let cwd: string;
   beforeEach(async () => {
@@ -1477,7 +1480,7 @@ describe("scripted-browser run directory goldens", () => {
       ],
     });
     await expect(`${JSON.stringify(snapshot, null, 2)}\n`).toMatchFileSnapshot(
-      "../golden/routes/scripted-dry-run.json",
+      "../../golden/routes/scripted-dry-run.json",
     );
   });
 
@@ -1504,7 +1507,7 @@ describe("scripted-browser run directory goldens", () => {
         ],
       });
       await expect(`${JSON.stringify(snapshot, null, 2)}\n`).toMatchFileSnapshot(
-        "../golden/routes/scripted-live.json",
+        "../../golden/routes/scripted-live.json",
       );
       // A spend-free live run reads as $0, never as an unmeasured cost.
       expect((await verifyRun(cwd, runId)).ok).toBe(true);
@@ -1542,7 +1545,7 @@ describe("scripted-browser run directory goldens", () => {
       ],
     });
     await expect(`${JSON.stringify(snapshot, null, 2)}\n`).toMatchFileSnapshot(
-      "../golden/routes/scripted-clone-live.json",
+      "../../golden/routes/scripted-clone-live.json",
     );
   });
 });
