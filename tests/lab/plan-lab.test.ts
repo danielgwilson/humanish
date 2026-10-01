@@ -3,13 +3,15 @@
 // the routes and `lab doctor` compute today, and check that each combination the plan types
 // cannot hold is refused with its route's own code.
 
+import { existsSync } from "node:fs";
+import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { parseLabConfig } from "../../src/lab/config.js";
 import { labKeyRequirements } from "../../src/lab/doctor.js";
 import { selectLabBackend } from "../../src/lab/plan.js";
-import { planLab, routeOf } from "../../src/lab/plan.js";
+import { planLab, routeOf, type LabRoute } from "../../src/lab/plan.js";
 import type { LabPlan, PlanResult, Requirement } from "../../src/lab/plan-types.js";
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/lab/types.js";
 import { resolveCuaParticipantPlan } from "../../src/routes/computer-use/participant-runs.js";
@@ -322,4 +324,29 @@ describe("planLab on the preview route", () => {
     const result = planLab(thisRepo, { cwd: ROOT, dryRun: false, count: 0 });
     expect(result.ok ? undefined : result.refusal.code).toBe("HUMANISH_INVALID_SIM_COUNT");
   });
+});
+
+// ARCHITECTURE.md's invariant "Goldens pin route output": every route has a dry-run run-directory
+// golden from runDirSnapshot (tests/helpers/run-golden.ts). The record fails typecheck when a route
+// is added to LabRoute without an entry here, and the test fails when the golden file is missing.
+describe("route goldens", () => {
+  const dryRunGoldens = {
+    preview: ["preview-dry-run.json"],
+    "computer-use": ["computer-use-dry-run.json", "computer-use-fanout-dry-run.json"],
+    scripted: ["scripted-dry-run.json"],
+    terminal: ["terminal-dry-run.json"],
+    "shared-world": [
+      "shared-world-concurrent-dry-run.json",
+      "shared-world-external-public-dry-run.json",
+    ],
+  } satisfies Record<LabRoute, readonly string[]>;
+
+  it.each(Object.entries(dryRunGoldens))(
+    "%s has a dry-run run-directory golden",
+    (_route, files) => {
+      for (const file of files) {
+        expect(existsSync(path.join(ROOT, "tests", "golden", "routes", file)), file).toBe(true);
+      }
+    },
+  );
 });

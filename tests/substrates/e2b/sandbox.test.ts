@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -417,5 +417,25 @@ describe("readE2BRelease", () => {
       warning:
         "Sandbox was already absent when cleanup ran; its exact termination time is unknown.",
     });
+  });
+});
+
+// ARCHITECTURE.md's invariant "A sandbox id is recorded before any work runs in it" holds only if
+// every E2B sandbox comes from acquire(), which journals the receipt before returning the handle.
+describe("E2B sandbox creation", () => {
+  it("has one call site in src: acquire() in src/substrates/e2b/sandbox.ts", async () => {
+    const files = (await readdir("src", { recursive: true })).filter((file) =>
+      file.endsWith(".ts"),
+    );
+    const callers: string[] = [];
+    for (const file of files) {
+      // Comment lines describe the SDK call without making it.
+      const code = (await readFile(path.join("src", file), "utf8"))
+        .split("\n")
+        .filter((line) => !/^\s*(\/\/|\/\*|\*)/.test(line))
+        .join("\n");
+      if (/\bSandbox\.create\s*\(/.test(code)) callers.push(path.join("src", file));
+    }
+    expect(callers).toEqual([path.join("src", "substrates", "e2b", "sandbox.ts")]);
   });
 });
