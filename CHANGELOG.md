@@ -373,6 +373,10 @@ reclaim` kills sandboxes by their journaled ids.
   bundles keep their old wording. The README, the site docs, the bundled skill and the contract
   docs follow (#1293, #1294, #1295, #1297). Code that matches on message text needs the new
   wording.
+- The Observer labels each computer-use participant card with its persona, single and fan-out
+  runs alike (#1300). Fan-out cards recorded after #1290 showed `CUA participant <id>: <lab>`, and
+  single-participant cards showed `CUA browser — <lab>`. The card now reads the participant id
+  and persona from the stream, so older bundles render the same way.
 - A library `runLab` call on a preview lab (subject `this-repo`) is refused by the planner when
   `count` is not a positive integer or the run would be live, with the same codes (#1279). The live
   refusal reads "this-repo labs are dry-run only; use a clone or app-url subject for a live run."

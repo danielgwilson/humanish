@@ -207,7 +207,8 @@ try {
         const second = page.locator('[data-stream-id="lane-2"]');
         await second.getByRole("button", { name: /^Participant details:/ }).click();
         await page
-          .getByRole("button", { name: "Pin participant Synthetic participant 2", exact: true })
+          .locator(".pop-panel")
+          .getByRole("button", { name: /^Pin participant / })
           .click();
         await page.getByRole("button", { name: "Close participant details", exact: true }).click();
         assert.equal(await page.locator(".card").first().getAttribute("data-stream-id"), "lane-2");
@@ -216,10 +217,9 @@ try {
         await page.reload();
         await second.getByLabel("Pinned participant", { exact: true }).waitFor();
         await second.getByRole("button", { name: /^Participant details:/ }).click();
-        const pin = page.getByRole("button", {
-          name: "Pinned participant Synthetic participant 2",
-          exact: true,
-        });
+        const pin = page
+          .locator(".pop-panel")
+          .getByRole("button", { name: /^Pinned participant / });
         assert.equal(await pin.getAttribute("aria-pressed"), "true");
         assert.equal((await pin.textContent()).trim(), "Pinned");
         await pin.click();

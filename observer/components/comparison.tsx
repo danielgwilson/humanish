@@ -279,7 +279,11 @@ export function Comparison({
             : null;
           const failed = href !== null && failedImages.includes(href);
           return (
-            <article key={`${p.run}/${p.stream.id}`} className="compare-participant">
+            <article
+              key={`${p.run}/${p.stream.id}`}
+              className="compare-participant"
+              data-stream-id={p.stream.id}
+            >
               <h2>{p.name}</h2>
               <p className="compare-run">{p.run}</p>
               <div className="compare-stage">
