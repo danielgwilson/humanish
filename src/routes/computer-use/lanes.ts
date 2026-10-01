@@ -387,7 +387,7 @@ export function laneSubjectProjection(args: {
   return { source: "app-url", state: args.subjectState };
 }
 
-/** Narrow a resolved CuaSubjectProjection into the shape buildCuaBundle/buildSingleLaneBundle's
+/** Narrow a resolved CuaSubjectProjection into the shape buildCuaBundle/buildSingleParticipantBundle's
  *  subjectProvenance param wants (provisioned-route sources only; app-url stays undeclared, the
  *  default branch buildCuaBundle already handles). */
 export function subjectProvenanceArg(

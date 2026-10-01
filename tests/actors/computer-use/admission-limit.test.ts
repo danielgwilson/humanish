@@ -188,9 +188,9 @@ describe("explicit adapter admission limits", () => {
               adapterId: "fixture",
               goal: "Save the item.",
               substrate: "e2b-desktop",
-              lanes: [
+              participants: [
                 {
-                  laneId: "lane-1",
+                  participantId: "lane-1",
                   streamId: "stream-1",
                   personaId: persona.id,
                   session: result,

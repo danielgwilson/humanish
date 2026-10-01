@@ -109,9 +109,9 @@ function candidates(session: CuaLoopResult) {
     adapterId: "internal-fixture",
     goal: "Save an item.",
     substrate: "e2b-desktop",
-    lanes: [
+    participants: [
       {
-        laneId: "lane-1",
+        participantId: "lane-1",
         streamId: "stream-1",
         personaId: "synthetic-reviewer",
         session,

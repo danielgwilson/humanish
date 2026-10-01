@@ -3,7 +3,7 @@
 // field names; readers ask them for the ids a saved record carries. This module and run/bundle.ts
 // (its types and bundleHead) and run/streams.ts are where those contract spellings live.
 
-import type { RunEvent, RunSimulation } from "./bundle.js";
+import type { RunEvent, RunProviderResource, RunSimulation } from "./bundle.js";
 import type { RunStream } from "./streams.js";
 
 /** The ids a participant's saved records carry: its record id and its stream id. */
@@ -69,6 +69,14 @@ export function participantEvent(
   event: Omit<RunEvent, "simId" | "streamId">,
 ): RunEvent {
   return { ...event, simId: ids.simId, streamId: ids.streamId };
+}
+
+/** The ids a provider resource saves for the participant whose sandbox it is. */
+export function participantResourceIds(
+  ids: ParticipantIds,
+  participantId: string,
+): Required<Pick<RunProviderResource, "simId" | "streamId" | "laneId">> {
+  return { simId: ids.simId, streamId: ids.streamId, laneId: participantId };
 }
 
 /** The record id a saved stream belongs to. */

@@ -9,6 +9,7 @@ import {
   type RunSubjectProvenance,
 } from "../../run/bundle.js";
 import { participantPassed, type ParticipantFacts } from "../../run/judge.js";
+import { participantResourceIds, type ParticipantIds } from "../../run/participant-records.js";
 import { digestUrl } from "./lane-plan.js";
 import { resolveSelfReportedFriction } from "./self-report.js";
 import {
@@ -119,8 +120,9 @@ export function participantFeedbackCandidates(args: {
   /** The already-redacted study goal (what bundle.scenario.goal carries). */
   goal: string;
   substrate: RunFeedbackCandidate["substrate"];
-  lanes: Array<{
-    laneId: string;
+  participants: Array<{
+    /** The participant's plan id; it names the candidate and its idempotency key. */
+    participantId: string;
     streamId: string;
     personaId: string;
     session?: CuaLoopResult;
@@ -130,25 +132,25 @@ export function participantFeedbackCandidates(args: {
   }>;
 }): RunFeedbackCandidate[] {
   const candidates: RunFeedbackCandidate[] = [];
-  for (const lane of args.lanes) {
-    const session = lane.session;
+  for (const participant of args.participants) {
+    const session = participant.session;
     if (session === undefined) continue;
     const friction = resolveSelfReportedFriction(session);
     const abandoned = session.status === "abandoned";
     if (friction === undefined && !abandoned) continue;
     const summary =
       friction !== undefined
-        ? `Participant ${lane.personaId} (${lane.laneId}) reported friction on the way through the study goal`
-        : `Participant ${lane.personaId} (${lane.laneId}) stopped before completing the study goal`;
-    const lastScreenshot = lane.screenshots[lane.screenshots.length - 1];
+        ? `Participant ${participant.personaId} (${participant.participantId}) reported friction on the way through the study goal`
+        : `Participant ${participant.personaId} (${participant.participantId}) stopped before completing the study goal`;
+    const lastScreenshot = participant.screenshots[participant.screenshots.length - 1];
     candidates.push({
       schema: "humanish.feedback-candidate.v1",
-      id: `participant-report-${lane.laneId}`,
+      id: `participant-report-${participant.participantId}`,
       run_id: args.runId,
-      stream_id: lane.streamId,
+      stream_id: participant.streamId,
       adapter_id: args.adapterId,
       scenario_id: args.scenarioId,
-      persona_id: lane.personaId,
+      persona_id: participant.personaId,
       actor: "computer-use",
       substrate: args.substrate,
       // The participant is reporting on the PRODUCT: friction and abandonment are target-app
@@ -159,11 +161,11 @@ export function participantFeedbackCandidates(args: {
       expected: args.goal,
       actual: redactText(friction ?? session.reason),
       evidence: [
-        ...(lane.traceArtifactPath === undefined
+        ...(participant.traceArtifactPath === undefined
           ? []
           : [
               {
-                path: lane.traceArtifactPath,
+                path: participant.traceArtifactPath,
                 kind: "trace" as const,
                 note: "Full actor trace: turns, actions, and the participant's own report.",
               },
@@ -177,11 +179,11 @@ export function participantFeedbackCandidates(args: {
                 note: "Final screenshot at the moment the session ended.",
               },
             ]),
-        ...(lane.commsArtifactPath === undefined
+        ...(participant.commsArtifactPath === undefined
           ? []
           : [
               {
-                path: lane.commsArtifactPath,
+                path: participant.commsArtifactPath,
                 kind: "log" as const,
                 note: "Digest-only comms thread captured in-sandbox.",
               },
@@ -192,7 +194,7 @@ export function participantFeedbackCandidates(args: {
         notes:
           "Quoted participant text passed the loop's known-value scrub and pattern redaction before persisting, and redactText again here.",
       },
-      idempotency_key: `humanish:${args.runId}:${lane.laneId}:participant-report`,
+      idempotency_key: `humanish:${args.runId}:${participant.participantId}:participant-report`,
       proposed_next_state: "study-quality-review",
       acceptance_proof: [
         feedbackProofCommands(args.runId).verify,
@@ -242,9 +244,8 @@ export function subjectProvenanceMessage(
 export function providerResourcesForOutcome(args: {
   outcome: LaneRunOutcome | undefined;
   createdAt: string;
-  simId: string;
-  streamId: string;
-  laneId: string;
+  ids: ParticipantIds;
+  participantId: string;
 }): RunProviderResource[] {
   if (args.outcome?.sandboxId === undefined) {
     return [];
@@ -258,9 +259,7 @@ export function providerResourcesForOutcome(args: {
       id: args.outcome.sandboxId,
       owner: "humanish",
       status: args.outcome.killed ? "killed" : "running",
-      simId: args.simId,
-      streamId: args.streamId,
-      laneId: args.laneId,
+      ...participantResourceIds(args.ids, args.participantId),
       createdAt: args.createdAt,
       cleanup: {
         killed: args.outcome.killed,
