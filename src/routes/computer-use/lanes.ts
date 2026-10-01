@@ -1,5 +1,5 @@
 import type { CuaLoopResult } from "../../actors/computer-use/loop.js";
-import { createE2BCuaDesktopLane } from "./e2b-desktop.js";
+import { createE2BParticipantDesktop } from "./e2b-desktop.js";
 import { createInProcessDesktop } from "./in-process-desktop.js";
 import path from "node:path";
 import { cuaLaneDiagnostics } from "./diagnostics.js";
@@ -98,8 +98,8 @@ export async function runCuaLane(
     }
   };
   const desktop =
-    deps.createDesktopLane?.(spec, warnings, deps.artifactRoot) ??
-    createE2BCuaDesktopLane(spec, deps, warnings);
+    deps.createDesktop?.(spec, warnings, deps.artifactRoot) ??
+    createE2BParticipantDesktop(spec, deps, warnings);
   try {
     await desktop.prepare();
     const ready = await desktop.openSession();
@@ -480,7 +480,7 @@ export async function runAllCuaLanes(
     // The caller's executor stands in for a desktop, and the shared runner drives the participant.
     const outcome = await runCuaLane(laneSpecs[0]!, {
       ...deps,
-      createDesktopLane: () => createInProcessDesktop(deps),
+      createDesktop: () => createInProcessDesktop(deps),
     });
     return { outcomes: [outcome], failFastReason: undefined };
   }

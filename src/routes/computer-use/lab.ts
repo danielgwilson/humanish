@@ -40,7 +40,7 @@ import {
   type RunCuaActorLabOptions,
 } from "./types.js";
 
-export { inboxRecipientFor, laneHasInboxRecipient } from "./desktop-lane.js";
+export { inboxRecipientFor, laneHasInboxRecipient } from "./participant-desktop.js";
 export { defaultPackLocalTree } from "./local-tree-pack.js";
 export { resolveSubjectState } from "./subject-projection.js";
 

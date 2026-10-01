@@ -3,7 +3,7 @@
 // and fill the state record in e2b-desktop-state.ts in the order below.
 import { defaultSubjectPhaseSink, type SubjectPhaseEvent } from "../../subject/steps.js";
 import { createE2BDesktopExecutor } from "../../substrates/e2b/desktop-executor.js";
-import type { CuaDesktopLane, ReadyCuaDesktop } from "./desktop-lane.js";
+import type { ParticipantDesktop, ReadyParticipantDesktop } from "./participant-desktop.js";
 import { laneInbox, planLaneComms } from "./e2b-desktop-comms.js";
 import { laneBrowserStateObserver } from "./e2b-desktop-fidelity.js";
 import {
@@ -16,11 +16,11 @@ import { laneEvidence, newLaneState, type E2BLaneContext } from "./e2b-desktop-s
 import { finishLane } from "./e2b-desktop-teardown.js";
 import type { CuaLaneDeps, DesktopParticipantRun } from "./types.js";
 
-export function createE2BCuaDesktopLane(
+export function createE2BParticipantDesktop(
   spec: DesktopParticipantRun,
   deps: CuaLaneDeps,
   warnings: string[],
-): CuaDesktopLane {
+): ParticipantDesktop {
   const targetUrl = spec.planned.targetUrl ?? deps.appUrl;
   const state = newLaneState(spec);
   const ctx: E2BLaneContext = {
@@ -60,7 +60,7 @@ export function createE2BCuaDesktopLane(
     prepared = true;
   }
 
-  async function openSession(): Promise<ReadyCuaDesktop> {
+  async function openSession(): Promise<ReadyParticipantDesktop> {
     const { desktop, allocation } = state;
     if (!prepared || !desktop || !allocation || opened || finalization)
       throw new Error(

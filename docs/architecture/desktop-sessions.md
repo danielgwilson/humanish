@@ -38,7 +38,7 @@ Already-absent cleanup carries a warning: the exact termination time is unknown.
 As before, desktop cost is an estimate over the host's acquisition-to-cleanup
 span, not a provider billing measurement.
 
-`CuaDesktopLane` separates desktop preparation from the participant runner:
+`ParticipantDesktop` separates desktop preparation from the participant runner:
 
 1. `prepare()` acquires and prepares the desktop. Failures still leave cleanup
    authority with the adapter.
@@ -53,7 +53,7 @@ span, not a provider billing measurement.
 
 The E2B lane is composed in `src/routes/computer-use/e2b-desktop.ts`, with its
 steps in the `e2b-desktop-*.ts` files beside it; acquisition and release are in
-`src/substrates/e2b/sandbox.ts`. The local lane is `createLocalDesktopLane` in
+`src/substrates/e2b/sandbox.ts`. The local desktop is `createLocalParticipantDesktop` in
 `src/routes/computer-use/local-vm.ts`, over
 `src/substrates/local/firecracker-desktop.ts`. Browser launch is in
 `src/substrates/e2b/desktop-browser.ts`, DevTools reads and mobile emulation in
