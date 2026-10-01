@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rename, rm, symlink } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rename, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -559,5 +559,31 @@ describe("Run.writeSnapshot publishes in-progress bundles through the same queue
         readFile(path.join(run.paths.physicalRunRoot, "run.json")),
       ).rejects.toMatchObject({ code: "ENOENT" });
     });
+  });
+});
+
+// Run.finish moves .humanish/runs/latest.json after it publishes the bundle (ARCHITECTURE.md, step
+// 6). That holds only while it is the one writer: writePreparedRunLatestPointer is the only write
+// of the pointer, and only src/run/run.ts calls it.
+describe("the latest-run pointer", () => {
+  it("has one writer in src: Run.finish in src/run/run.ts", async () => {
+    const files = (await readdir("src", { recursive: true })).filter((file) =>
+      file.endsWith(".ts"),
+    );
+    const callers: string[] = [];
+    const pointerUsers: string[] = [];
+    for (const file of files) {
+      const text = await readFile(path.join("src", file), "utf8");
+      if (/\bwritePreparedRunLatestPointer\s*\(/.test(text)) callers.push(path.join("src", file));
+      if (/\bphysicalLatestPointer\b/.test(text)) pointerUsers.push(path.join("src", file));
+    }
+    // contained-output.ts declares the writer; run.ts is the only call.
+    expect(callers.sort()).toEqual(
+      [path.join("src", "run", "contained-output.ts"), path.join("src", "run", "run.ts")].sort(),
+    );
+    // Only the writer and the path preparation see the pointer's physical path.
+    expect(pointerUsers.sort()).toEqual(
+      [path.join("src", "run", "contained-output.ts"), path.join("src", "run", "paths.ts")].sort(),
+    );
   });
 });

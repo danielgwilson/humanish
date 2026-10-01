@@ -66,6 +66,30 @@ describe("verify on a run that did not finish", () => {
   const indexLiveness = async () => (await readRunIndex(cwd)).runs[0]?.liveness;
   const stopped = "2026-09-30T13:37:29.366Z";
 
+  it("reads status.json for this warning only: the grades are the same when it contradicts the bundle or is gone", async () => {
+    const graded = async () => {
+      const { warnings, ...result } = await verifyRun(cwd, RUN);
+      return {
+        result: {
+          ...result,
+          warnings: warnings.filter((warning) => !warning.startsWith("RUN_NOT_FINISHED")),
+        },
+        notFinished: warnings.some((warning) => warning.startsWith("RUN_NOT_FINISHED")),
+      };
+    };
+    const asWritten = await graded();
+    expect(asWritten.notFinished).toBe(false);
+
+    const status = await readJson<RunStatusRecord>(RUN_STATUS_FILE);
+    await writeJson(RUN_STATUS_FILE, { ...status, state: "running", updatedAt: stopped });
+    const contradicted = await graded();
+    expect(contradicted.notFinished).toBe(true);
+    expect(contradicted.result).toEqual(asWritten.result);
+
+    await rm(path.join(runDir, RUN_STATUS_FILE));
+    expect((await graded()).result).toEqual(asWritten.result);
+  });
+
   it("adds nothing to a finished run", async () => {
     await expect(notFinished()).resolves.toEqual({ ok: true, warnings: [] });
     await expect(indexLiveness()).resolves.toBe("finished");
