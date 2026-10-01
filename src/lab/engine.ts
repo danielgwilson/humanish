@@ -96,12 +96,20 @@ interface RunLabBase {
   scorerProvenance?: RunScorerProvenance;
 }
 
+/** A run's result and the route it ran on. */
+interface RouteOutcome<R extends LabRoute, B extends LabBackend, T> {
+  route: R;
+  /** @deprecated The route's older name. Use `route`; this field goes in the next minor. */
+  backend: B;
+  result: T;
+}
+
 export type LabOutcome =
-  | { backend: "synthetic"; result: RunResult }
-  | { backend: "cua"; result: CuaActorLabResult }
-  | { backend: "scripted"; result: ScriptedBrowserLabResult }
-  | { backend: "terminal"; result: TerminalProductLabResult }
-  | { backend: "concurrent-shared-world"; result: ConcurrentSharedWorldLabResult };
+  | RouteOutcome<"preview", "synthetic", RunResult>
+  | RouteOutcome<"computer-use", "cua", CuaActorLabResult>
+  | RouteOutcome<"scripted", "scripted", ScriptedBrowserLabResult>
+  | RouteOutcome<"terminal", "terminal", TerminalProductLabResult>
+  | RouteOutcome<"shared-world", "concurrent-shared-world", ConcurrentSharedWorldLabResult>;
 
 /** The result of a run on route `R`, the `result` of that route's `LabOutcome`. */
 export type LabResult<R extends LabRoute = LabRoute> = {
@@ -199,18 +207,32 @@ async function runPlan(
 ): Promise<LabOutcome> {
   switch (plan.route) {
     case "preview":
-      return { backend: "synthetic", result: await runPreviewPlan(plan, options) };
+      return {
+        route: "preview",
+        backend: "synthetic",
+        result: await runPreviewPlan(plan, options),
+      };
     case "computer-use":
       return {
+        route: "computer-use",
         backend: "cua",
         result: await runComputerUsePlan(plan, computerUseInput(options), config),
       };
     case "scripted":
-      return { backend: "scripted", result: await runScriptedPlan(plan, scriptedInput(options)) };
+      return {
+        route: "scripted",
+        backend: "scripted",
+        result: await runScriptedPlan(plan, scriptedInput(options)),
+      };
     case "terminal":
-      return { backend: "terminal", result: await runTerminalPlan(plan, terminalInput(options)) };
+      return {
+        route: "terminal",
+        backend: "terminal",
+        result: await runTerminalPlan(plan, terminalInput(options)),
+      };
     case "shared-world":
       return {
+        route: "shared-world",
         backend: "concurrent-shared-world",
         result: await runSharedWorldPlan(plan, sharedWorldInput(options), config),
       };
@@ -228,9 +250,14 @@ async function refusalOutcome(
   const lab = options.lab === undefined ? {} : { lab: options.lab };
   switch (refusal.route) {
     case "preview":
-      return { backend: "synthetic", result: previewLabRefusal(options.cwd, refusal) };
+      return {
+        route: "preview",
+        backend: "synthetic",
+        result: previewLabRefusal(options.cwd, refusal),
+      };
     case "computer-use":
       return {
+        route: "computer-use",
         backend: "cua",
         result: await computerUseLabRefusal(
           { ...computerUseInput(options), ...lab, config, dryRun },
@@ -239,6 +266,7 @@ async function refusalOutcome(
       };
     case "scripted":
       return {
+        route: "scripted",
         backend: "scripted",
         result: await scriptedLabRefusal(
           { ...scriptedInput(options), ...lab, config, dryRun },
@@ -247,6 +275,7 @@ async function refusalOutcome(
       };
     case "terminal":
       return {
+        route: "terminal",
         backend: "terminal",
         result: await terminalLabRefusal(
           { ...terminalInput(options), ...lab, config, dryRun },
@@ -255,6 +284,7 @@ async function refusalOutcome(
       };
     case "shared-world":
       return {
+        route: "shared-world",
         backend: "concurrent-shared-world",
         result: await sharedWorldLabRefusal(
           { ...sharedWorldInput(options), ...lab, config, dryRun },

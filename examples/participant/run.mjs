@@ -80,7 +80,7 @@ try {
     inProcess: { executor: async ({ appUrl }) => createAppContractExecutor(appUrl) },
     createProvider: async () => provider,
   });
-  if (outcome.backend !== "cua") throw new Error(`Unexpected backend: ${outcome.backend}`);
+  if (outcome.route !== "computer-use") throw new Error(`Unexpected route: ${outcome.route}`);
   const { result } = outcome;
   const verified = await verifyRun(process.cwd(), result.runId);
   console.log(

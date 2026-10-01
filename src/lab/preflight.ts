@@ -65,7 +65,9 @@ export interface LabPreflightResult {
   labId?: string;
   origin?: string;
   path?: string;
+  /** The route's older name; `route` is the current one. */
   backend?: LabBackend;
+  route?: LabRoute;
   reachability: LabPreflightReachabilityMode;
   checks: LabPreflightCheck[];
   targets: LabPreflightTarget[];

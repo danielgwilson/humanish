@@ -58,7 +58,7 @@ chooses the actual provider, so this example never invokes OpenAI.
 
 The runner shows both required discriminant checks: `parseLabConfig` receives
 an object containing `schema: LAB_CONFIG_SCHEMA` and is narrowed on `.ok`;
-`runLab` is narrowed on `backend === "cua"` before inspecting its result.
+`runLab` is narrowed on `route === "computer-use"` before inspecting its result.
 Supplying `inProcess.executor` and `createProvider` selects the library-assisted
 route. It is not a config-only CLI actor or an out-of-tree actor registration API.
 

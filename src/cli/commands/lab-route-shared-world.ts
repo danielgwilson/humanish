@@ -129,8 +129,8 @@ export function sharedWorldRouteRun(args: SharedWorldRouteArgs): RouteRun | unde
       throw error;
     },
     present: async (outcome) => {
-      if (outcome.backend !== "concurrent-shared-world") {
-        throw new Error(`Expected concurrent-shared-world backend, got ${outcome.backend}.`);
+      if (outcome.route !== "shared-world") {
+        throw new Error(`Expected the shared-world route, got ${outcome.route}.`);
       }
       const result = outcome.result;
       let output: ConcurrentSharedWorldLabResult = result;

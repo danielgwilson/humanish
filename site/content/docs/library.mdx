@@ -22,7 +22,7 @@ const parsed = parseLabConfig({
 if (!parsed.ok) throw new Error(parsed.error.message);
 
 const outcome = await runLab(parsed.config, { cwd: process.cwd(), dryRun: true });
-if (outcome.backend === "cua") {
+if (outcome.route === "computer-use") {
   const result: LabResult<"computer-use"> = outcome.result;
   console.log(result.runId, result.ok);
 }

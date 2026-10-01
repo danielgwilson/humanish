@@ -72,8 +72,8 @@ export function previewRouteRun(args: PreviewRouteArgs): RouteRun | undefined {
       open: plan === undefined ? false : staticObserverOpen(plan),
     },
     present: async (outcome) => {
-      if (outcome.backend !== "synthetic") {
-        throw new Error(`Expected synthetic backend, got ${outcome.backend}.`);
+      if (outcome.route !== "preview") {
+        throw new Error(`Expected the preview route, got ${outcome.route}.`);
       }
       const runResult = outcome.result;
 

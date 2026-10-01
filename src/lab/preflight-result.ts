@@ -26,6 +26,7 @@ export function finalize(
     origin: ctx.origin,
     path: ctx.path,
     backend: backendOf(ctx.route),
+    route: ctx.route,
     reachability: ctx.reachability,
     checks,
     targets: ctx.targets,
