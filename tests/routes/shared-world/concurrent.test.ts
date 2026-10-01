@@ -9,7 +9,7 @@ import path from "node:path";
 import { Command } from "commander";
 import { parse } from "yaml";
 import { PNG } from "pngjs";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   ACTOR_TRACE_SCHEMA,
@@ -1500,8 +1500,10 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     },
   );
 
-  it("gives a pass exactly where verify's shared-world check would accept one", async () => {
-    for (const [world] of WORLD_CASES) {
+  // One test per world: a route run each, so each has its own timeout under load.
+  it.each(WORLD_CASES.map(([world]) => world))(
+    "gives a pass exactly where verify's shared-world check would accept one: %s",
+    async (world) => {
       const result = await runConcurrentSharedWorld({
         cwd,
         config: concurrentConfig(3, 3),
@@ -1516,8 +1518,8 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
       expect(sharedWorldEvidenceFindings(claimingPass).length === 0, world).toBe(
         bundle.review.verdict === "pass",
       );
-    }
-  });
+    },
+  );
 
   it("exits non-zero through the CLI when every seat passed but none overlapped", async () => {
     const exitCodes: Array<number | undefined> = [];
@@ -2166,17 +2168,18 @@ const concurrentOverclaims: ReadonlyArray<readonly [string, BundleMutation]> = [
 
 async function goodConcurrentRun(
   laneOverride?: Parameters<typeof baseHooks>[2],
+  project = cwd,
 ): Promise<{ runId: string; bundlePath: string; ok: boolean }> {
   const { hooks } = baseHooks({ worldVersion: 0 }, makeRendezvous(3), laneOverride);
   const result = await runConcurrentSharedWorld({
-    cwd,
+    cwd: project,
     config: concurrentConfig(3, 3),
     dryRun: false,
     hooks,
   });
   return {
     runId: result.runId,
-    bundlePath: path.join(cwd, ".humanish", "runs", result.runId, "run.json"),
+    bundlePath: path.join(project, ".humanish", "runs", result.runId, "run.json"),
     ok: result.ok,
   };
 }
@@ -2199,40 +2202,81 @@ describe("verifyRun fails closed on each injected concurrent overclaim", () => {
 });
 
 describe("concurrent shared-world verify findings golden", () => {
-  it("pins verify's failing checks for the good bundle, each overclaim and each failing lane", async () => {
-    const entries: Array<readonly [string, PinnedVerifyResult]> = [];
-    const good = await goodConcurrentRun();
-    const original = await readFile(good.bundlePath, "utf8");
-    entries.push(["good run", await pinnedVerifyResult(cwd, good.runId)]);
-    for (const [name, mutate] of [...concurrentOverclaims, ...LANE_SHAPE_VARIANTS]) {
-      const bundle = JSON.parse(original) as Record<string, unknown>;
-      mutate(bundle);
-      await writeFile(good.bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
-      entries.push([name, await pinnedVerifyResult(cwd, good.runId)]);
-    }
+  // The golden pins verify's failing checks for the good run, each variant and each failing lane.
+  // Each case is its own test with its own timeout: run as one test, these timed out at the 20 s
+  // default at load 26-78. The variants share one good run in its own project, made by the first
+  // test that needs it, because the file's per-test cwd is removed after each test. The last test
+  // asserts the golden in this order, so it needs every case to have run.
+  let shared:
+    | Promise<{ project: string; runId: string; bundlePath: string; original: string }>
+    | undefined;
+  const goodRun = () =>
+    (shared ??= (async () => {
+      const project = await mkdtemp(path.join(tmpdir(), "humanish-concurrent-golden-"));
+      const run = await goodConcurrentRun(undefined, project);
+      return { project, ...run, original: await readFile(run.bundlePath, "utf8") };
+    })());
+  afterAll(async () => {
+    const good = await shared?.catch(() => undefined);
+    if (good) await rm(good.project, { recursive: true, force: true });
+  });
+  const variants = [...concurrentOverclaims, ...LANE_SHAPE_VARIANTS];
+  const failingLanes: ReadonlyArray<readonly [string, Parameters<typeof baseHooks>[2]]> = [
+    [
+      "lane 1 returns a terminal failed actor trace",
+      (index) => (index === 1 ? { status: "failed", completionReason: "actor_error" } : undefined),
+    ],
+    [
+      "lane 1 throws a harness error",
+      (index) => (index === 1 ? { throwMessage: "boom in actor 1" } : undefined),
+    ],
+  ];
+  const order = [
+    "good run",
+    ...variants.map(([name]) => name),
+    "every variant at once",
+    ...failingLanes.map(([name]) => name),
+  ];
+  const pinned = new Map<string, PinnedVerifyResult>();
+  async function pinBundle(name: string, text: string): Promise<PinnedVerifyResult> {
+    const good = await goodRun();
+    await writeFile(good.bundlePath, text, "utf8");
+    const result = await pinnedVerifyResult(good.project, good.runId);
+    pinned.set(name, result);
+    return result;
+  }
+  const bundleText = (bundle: Record<string, unknown>) => `${JSON.stringify(bundle, null, 2)}\n`;
+
+  it("pins verify for the good run", async () => {
+    expect((await pinBundle("good run", (await goodRun()).original)).ok).toBe(true);
+  });
+
+  it.each(variants)("pins verify's failing checks for %s", async (name, mutate) => {
+    const bundle = JSON.parse((await goodRun()).original) as Record<string, unknown>;
+    mutate(bundle);
+    expect((await pinBundle(name, bundleText(bundle))).ok).toBe(false);
+  });
+
+  it("pins verify's failing checks for every variant at once", async () => {
     // Several invariants fail at once, so the golden also pins the order across them.
-    const combined = JSON.parse(original) as Record<string, unknown>;
-    for (const [, mutate] of [...concurrentOverclaims, ...LANE_SHAPE_VARIANTS]) mutate(combined);
-    await writeFile(good.bundlePath, `${JSON.stringify(combined, null, 2)}\n`, "utf8");
-    entries.push(["every variant at once", await pinnedVerifyResult(cwd, good.runId)]);
-    const failingLanes: ReadonlyArray<readonly [string, Parameters<typeof baseHooks>[2]]> = [
-      [
-        "lane 1 returns a terminal failed actor trace",
-        (index) =>
-          index === 1 ? { status: "failed", completionReason: "actor_error" } : undefined,
-      ],
-      [
-        "lane 1 throws a harness error",
-        (index) => (index === 1 ? { throwMessage: "boom in actor 1" } : undefined),
-      ],
-    ];
-    for (const [name, laneOverride] of failingLanes) {
-      const run = await goodConcurrentRun(laneOverride);
-      entries.push([name, await pinnedVerifyResult(cwd, run.runId)]);
-    }
-    await expect(verifyGolden(entries)).toMatchFileSnapshot(
-      "../../golden/verify/shared-world-concurrent.json",
-    );
+    const combined = JSON.parse((await goodRun()).original) as Record<string, unknown>;
+    for (const [, mutate] of variants) mutate(combined);
+    expect((await pinBundle("every variant at once", bundleText(combined))).ok).toBe(false);
+  });
+
+  it.each(failingLanes)("pins verify's failing checks when %s", async (name, laneOverride) => {
+    const run = await goodConcurrentRun(laneOverride);
+    const result = await pinnedVerifyResult(cwd, run.runId);
+    pinned.set(name, result);
+    // A run that failed honestly still verifies: the golden pins that it reports no failing check.
+    expect(result.ok).toBe(true);
+  });
+
+  it("matches the golden for every case", async () => {
+    expect([...pinned.keys()].sort()).toEqual([...order].sort());
+    await expect(
+      verifyGolden(order.map((name) => [name, pinned.get(name)!] as const)),
+    ).toMatchFileSnapshot("../../golden/verify/shared-world-concurrent.json");
   });
 });
 
