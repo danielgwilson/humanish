@@ -3179,6 +3179,45 @@
       "sameAsRunLab": true
     }
   },
+  "terminal sandbox deadline too long": {
+    "parser": {
+      "ok": true
+    },
+    "runLab": {
+      "runs": false,
+      "calls": {
+        "desktop": 0,
+        "executor": 0,
+        "provider": 0,
+        "subprocess": 0
+      },
+      "result": {
+        "backend": "terminal",
+        "schema": "humanish.terminal-lab-result.v1",
+        "ok": false,
+        "cwd": "[cwd]",
+        "labId": "adm-terminal",
+        "actor": "codex-exec",
+        "product": "widgetsmith-cli",
+        "dryRun": false,
+        "runId": "not-created",
+        "warnings": [],
+        "error": {
+          "code": "HUMANISH_TERMINAL_LAB_CAPS_INVALID",
+          "message": "scenario.caps.maxMinutes 56 derives a 67m sandbox deadline, and a sandbox may not live longer than 60m. The deadline is maxMinutes plus 11m: the Node bootstrap (5m), the runtime version check (1m) and the teardown buffer (5m). Lower scenario.caps.maxMinutes to at most 49. No sandbox was created and the runtime key was not used."
+        },
+        "automaticAnalysisTrigger": "default",
+        "automaticAnalysis": {
+          "state": "skipped",
+          "reason": "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE"
+        }
+      }
+    },
+    "runner": {
+      "runner": "terminal",
+      "sameAsRunLab": true
+    }
+  },
   "terminal runtime version": {
     "parser": {
       "code": "HUMANISH_LAB_INVALID",

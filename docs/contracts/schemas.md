@@ -268,7 +268,11 @@ dwell? }`. The parser expands it into
   unpriced tokens, so without a cost probe no line can trip a positive `maxUsd`:
   a live run refuses `maxUsd > 0` before creating a sandbox
   (`HUMANISH_TERMINAL_LAB_UNPRICED_CAP`) unless the caller passes a `costProbe`
-  hook. The no-spend proof is derived from that real ledger, never asserted (see
+  hook. The sandbox's server-side timeout is the steps before the
+  codex command (Node bootstrap, runtime version check, and product setup when
+  `subject.product.install` is declared) plus `maxMinutes` plus a 5-minute
+  teardown buffer; a live run refuses a `maxMinutes` that would take it past
+  E2B's one-hour limit (`HUMANISH_TERMINAL_LAB_CAPS_INVALID`). The no-spend proof is derived from that real ledger, never asserted (see
   Terminal Cost Ledger And No-Spend Proof).
   Inert (warned) on every other route, except that a positive
   `scenario.caps.maxUsd` or `scenario.caps.maxTotalUsd` on a computer-use lab

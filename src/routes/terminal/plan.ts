@@ -13,8 +13,15 @@ import {
   taskProtocolValidationReason,
 } from "../../lab/validation.js";
 import type { RunLabProvenance } from "../../run/status.js";
-import { isExactRuntimeVersion } from "./runtime.js";
-import type { TerminalProductLabResult } from "./types.js";
+import { MAX_SANDBOX_MS } from "../../substrates/e2b/lifetime.js";
+import { NODE_BOOTSTRAP_TIMEOUT_MS } from "../../subject/node-bootstrap.js";
+import { terminalSandboxTimeoutMs } from "./lifetime.js";
+import { isExactRuntimeVersion, TERMINAL_RUNTIME_VERSION_TIMEOUT_MS } from "./runtime.js";
+import {
+  PRODUCT_SETUP_TIMEOUT_MS,
+  TERMINAL_SANDBOX_TIMEOUT_BUFFER_MS,
+  type TerminalProductLabResult,
+} from "./types.js";
 
 /** The error a terminal lab returns before a run starts. `actor` names the registered actor. */
 export interface TerminalRefusal {
@@ -150,6 +157,19 @@ export function planTerminalLab(
       `scenario.caps.maxUsd=${maxUsd} cannot be enforced: the Codex participant's provider spend is recorded as unpriced tokens and no product, media or payment spend is measured, so a positive dollar cap can never trip. Set scenario.caps.maxUsd to 0 and bound the run with scenario.caps.maxMinutes, the codex command's wall-clock kill. No sandbox was created and the runtime key was not used.`,
       descriptor.id,
     );
+  // The sandbox's timeout covers the steps before the codex command, maxMinutes and the teardown
+  // buffer, and E2B refuses a sandbox over an hour. Refuse here, with the arithmetic, rather than
+  // after the plan prints, from a provider 400 that names neither knob.
+  const productInstall = shared.product.install !== undefined;
+  const sandboxTimeoutMs = terminalSandboxTimeoutMs({ maxMinutes, productInstall });
+  if (sandboxTimeoutMs > MAX_SANDBOX_MS) {
+    const headroomMinutes = (sandboxTimeoutMs - maxMinutes * 60_000) / 60_000;
+    return refuse(
+      "HUMANISH_TERMINAL_LAB_CAPS_INVALID",
+      `scenario.caps.maxMinutes ${maxMinutes} derives a ${sandboxTimeoutMs / 60_000}m sandbox deadline, and a sandbox may not live longer than ${MAX_SANDBOX_MS / 60_000}m. The deadline is maxMinutes plus ${headroomMinutes}m: the Node bootstrap (${NODE_BOOTSTRAP_TIMEOUT_MS / 60_000}m), the runtime version check (${TERMINAL_RUNTIME_VERSION_TIMEOUT_MS / 60_000}m)${productInstall ? `, the product setup (${PRODUCT_SETUP_TIMEOUT_MS / 60_000}m)` : ""} and the teardown buffer (${TERMINAL_SANDBOX_TIMEOUT_BUFFER_MS / 60_000}m). Lower scenario.caps.maxMinutes to at most ${MAX_SANDBOX_MS / 60_000 - headroomMinutes}. No sandbox was created and the runtime key was not used.`,
+      descriptor.id,
+    );
+  }
   return {
     ok: true,
     plan: {
