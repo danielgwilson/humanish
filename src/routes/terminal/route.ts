@@ -65,6 +65,8 @@ import {
   runLiveTerminalSession,
 } from "./session.js";
 import type { TerminalPlan } from "../../lab/plan-types.js";
+import { terminalInput } from "../../lab/route-inputs.js";
+import type { AdmittedPlan } from "../../run-lab.js";
 import {
   type LiveTerminalAuth,
   type LiveTerminalPlan,
@@ -121,8 +123,8 @@ export function terminalLabRefusal(
   );
 }
 
-/** A terminal plan past its checks of this machine, with the warnings those checks wrote. */
-export type AdmittedTerminalRun =
+/** A terminal plan past its local checks, with the warnings those checks wrote. */
+type AdmittedTerminalRun =
   | { readonly plan: DryTerminalPlan; readonly warnings: string[] }
   | {
       readonly plan: LiveTerminalPlan;
@@ -141,16 +143,37 @@ export async function runTerminalPlan(
   plan: TerminalPlan,
   input: TerminalRunInput,
 ): Promise<TerminalProductLabResult> {
-  const admission = await admitTerminalPlan(plan, input);
-  return admission.ok ? runAdmittedTerminalPlan(admission.admitted, input) : admission.result;
+  const admission = await admitTerminalRun(plan, input);
+  return admission.ok ? runAdmittedTerminalRun(admission.admitted, input) : admission.result;
 }
 
 /**
- * A live plan's checks of this machine (checkLiveTerminalMachine), made before any run scope
- * opens, so prepareLab can make them before the CLI loads a declared scorer. A refusal is the
- * result runTerminalPlan returns for it, with the analysis record of a run that never started.
+ * runLab's step for a terminal plan. It runs a live plan's local checks (checkLiveTerminalMachine)
+ * before any run scope opens, so the CLI can present their refusal before it loads a declared
+ * scorer, and returns the run that continues from them.
  */
 export async function admitTerminalPlan(
+  plan: TerminalPlan,
+  input: TerminalRunInput,
+): Promise<AdmittedPlan<"terminal">> {
+  const admission = await admitTerminalRun(plan, input);
+  if (!admission.ok) return { ok: false, outcome: terminalOutcome(admission.result) };
+  return {
+    ok: true,
+    run: async (options) =>
+      terminalOutcome(await runAdmittedTerminalRun(admission.admitted, terminalInput(options))),
+  };
+}
+
+function terminalOutcome(result: TerminalProductLabResult) {
+  return { route: "terminal", backend: "terminal", result } as const;
+}
+
+/**
+ * A live plan's local checks, made outside any run scope. A refusal is the result runTerminalPlan
+ * returns for it, with the analysis record of a run that never started.
+ */
+async function admitTerminalRun(
   plan: TerminalPlan,
   input: TerminalRunInput,
 ): Promise<
@@ -166,7 +189,7 @@ export async function admitTerminalPlan(
 }
 
 /** Runs an admitted plan in its own run scope, then its automatic analysis. */
-export async function runAdmittedTerminalPlan(
+async function runAdmittedTerminalRun(
   admitted: AdmittedTerminalRun,
   input: TerminalRunInput,
 ): Promise<TerminalProductLabResult> {

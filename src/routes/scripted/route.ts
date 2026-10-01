@@ -65,6 +65,8 @@ import {
 } from "./types.js";
 import { finishScriptedRun } from "./result.js";
 import type { ScriptedPlan } from "../../lab/plan-types.js";
+import { scriptedInput } from "../../lab/route-inputs.js";
+import type { AdmittedPlan } from "../../run-lab.js";
 import path from "node:path";
 
 // Journey wall-clock budget per surface: 5 minutes. A scripted surface has zero model cost and
@@ -138,6 +140,18 @@ export async function scriptedLabRefusal(
     options.automaticAnalysis,
     { trigger: config.review?.analysis === undefined ? "default" : "explicit" },
   );
+}
+
+/** runLab's step for a scripted plan: its local checks run inside the run, so it returns the run. */
+export function admitScriptedPlan(plan: ScriptedPlan): AdmittedPlan<"scripted"> {
+  return {
+    ok: true,
+    run: async (options) => ({
+      route: "scripted",
+      backend: "scripted",
+      result: await runScriptedPlan(plan, scriptedInput(options)),
+    }),
+  };
 }
 
 /**
