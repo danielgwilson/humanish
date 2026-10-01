@@ -1,0 +1,76 @@
+// prepareLab's run carries the warnings its admitted hooks wrote, with or without a scorer that
+// joins after the route's checks. The CLI passes its scorer that way.
+
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
+import type { AdapterScorerModule } from "../../src/lab/adapter-scorer-loader.js";
+import { parseLabConfig } from "../../src/lab/config.js";
+import type { LabConfig } from "../../src/lab/types.js";
+import type { RunScorerProvenance } from "../../src/run/bundle.js";
+import { prepareLab, type RunLabOptions } from "../../src/run-lab.js";
+import { lab } from "../admission/fixtures.js";
+
+const WARNING = "RunLabOptions.onEvent failed on plan: observer down";
+
+const scorer: AdapterScorerModule = {
+  score: () => ({
+    schema: "humanish.adapter-score.v1",
+    namespace: "late",
+    status: "pass",
+    score: 1,
+    summary: "ok",
+  }),
+};
+const scorerProvenance: RunScorerProvenance = {
+  schema: "humanish.scorer-provenance.v1",
+  ref: "scorer.mjs",
+  digest: "000000000000",
+  source: "cli-flag",
+  exports: ["score"],
+};
+
+function config(): LabConfig {
+  const parsed = parseLabConfig(lab("cuAppUrl"));
+  if (!parsed.ok) throw new Error(parsed.error.message);
+  return parsed.config;
+}
+
+describe("a scorer that joins after the route's checks", () => {
+  let cwd: string;
+  beforeEach(async () => {
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-run-lab-warnings-"));
+  });
+  afterEach(async () => {
+    await rm(cwd, { recursive: true, force: true });
+  });
+
+  async function prepared(cuaHooks?: RunLabOptions["cuaHooks"]) {
+    const result = await prepareLab(config(), {
+      cwd,
+      dryRun: true,
+      onEvent: () => {
+        throw new Error("observer down");
+      },
+      ...(cuaHooks === undefined ? {} : { cuaHooks }),
+    });
+    if (!result.ok) throw new Error("the lab was refused before it ran");
+    return result;
+  }
+
+  it("keeps an onEvent failure from the checks on the run's result", async () => {
+    const outcome = await (await prepared()).run({ scorer, scorerProvenance });
+    expect(outcome.result.ok).toBe(true);
+    expect(outcome.result.warnings).toContain(WARNING);
+  });
+
+  it("keeps it on the result when the scorer is refused", async () => {
+    // The older cuaHooks.score beside a scorer is a conflict, refused when the scorer joins.
+    const late = await prepared({ score: scorer.score! });
+    const outcome = await late.run({ scorer, scorerProvenance });
+    expect(outcome.result.error?.code).toBe("HUMANISH_LAB_OPTION_CONFLICT");
+    expect(outcome.result.warnings).toContain(WARNING);
+  });
+});

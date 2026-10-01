@@ -103,19 +103,24 @@ export async function prepareLab(config: LabConfig, options: RunLabOptions): Pro
   return {
     ok: true,
     async run(scorer) {
+      // The admitted hooks report onEvent failures into normalized.warnings, so every exit from
+      // the run carries that one array.
       try {
-        let warnings = normalized.warnings;
         if (scorer !== undefined) {
           // Checks the scorer against the route and the caller's options, as if passed up front.
+          // Only its refusal is used; its options and warnings array are not.
           const withScorer = normalizeRunLabOptions(lab, route, { ...options, ...scorer });
-          if (!withScorer.ok) return optionRefusalOutcome(lab, route, options, withScorer);
-          warnings = withScorer.warnings;
+          if (!withScorer.ok) {
+            const outcome = optionRefusalOutcome(lab, route, options, withScorer);
+            outcome.result.warnings.push(...normalized.warnings);
+            return outcome;
+          }
         }
         // The route layers the scorer over the inputs it admitted, and the local study is not
         // rebuilt for it. The admitted runSession, provider and participant desktop belong to this
         // study, so a rebuilt one would leave the participants they start for no finally to close.
         const outcome = await admitted.run(scorer);
-        outcome.result.warnings.push(...warnings);
+        outcome.result.warnings.push(...normalized.warnings);
         return outcome;
       } finally {
         await study?.close();
