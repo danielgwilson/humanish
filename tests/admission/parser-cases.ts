@@ -23,8 +23,8 @@ export interface AdmissionOptions {
   readonly rerun?: { readonly sourceRunId: string };
   /** Caller hooks that change admission today. */
   readonly hooks?: "executor" | "provider" | "executor+provider";
-  /** Hook env: none (default), both hosted keys, or E2B only. */
-  readonly env?: "none" | "keys" | "e2b";
+  /** Hook env: none (default), both hosted keys, E2B only or OpenAI only. */
+  readonly env?: "none" | "keys" | "e2b" | "openai";
   /** Make browser discovery find nothing: stub PATH and HUMANISH_BROWSER_COMMAND. */
   readonly isolateBrowser?: boolean;
   /** Call this runner regardless of the config's backend. */

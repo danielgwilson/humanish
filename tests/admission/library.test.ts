@@ -56,6 +56,7 @@ async function projectDir(): Promise<string> {
 function hookEnv(env: AdmissionOptions["env"]): Record<string, string> {
   if (env === "keys") return { OPENAI_API_KEY: "sk-test-openai", E2B_API_KEY: "e2b-test-key" };
   if (env === "e2b") return { E2B_API_KEY: "e2b-test-key" };
+  if (env === "openai") return { OPENAI_API_KEY: "sk-test-openai" };
   return {};
 }
 

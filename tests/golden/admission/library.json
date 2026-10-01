@@ -3700,6 +3700,45 @@
       "sameAsRunLab": true
     }
   },
+  "terminal live without e2b key": {
+    "parser": {
+      "ok": true
+    },
+    "runLab": {
+      "runs": false,
+      "calls": {
+        "desktop": 0,
+        "executor": 0,
+        "provider": 0,
+        "subprocess": 0
+      },
+      "result": {
+        "backend": "terminal",
+        "schema": "humanish.terminal-lab-result.v1",
+        "ok": false,
+        "cwd": "[cwd]",
+        "labId": "adm-terminal",
+        "actor": "codex-exec",
+        "product": "widgetsmith-cli",
+        "dryRun": false,
+        "runId": "not-created",
+        "warnings": [],
+        "error": {
+          "code": "HUMANISH_TERMINAL_LAB_KEYS_MISSING",
+          "message": "Live terminal-product labs need E2B_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
+        },
+        "automaticAnalysisTrigger": "default",
+        "automaticAnalysis": {
+          "state": "skipped",
+          "reason": "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE"
+        }
+      }
+    },
+    "runner": {
+      "runner": "terminal",
+      "sameAsRunLab": true
+    }
+  },
   "terminal live positive maxUsd": {
     "parser": {
       "ok": true
