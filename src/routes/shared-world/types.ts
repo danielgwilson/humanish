@@ -26,7 +26,7 @@ import type {
 } from "../../run/bundle.js";
 import type { RunScope } from "../../run/run.js";
 import type { SharedWorldStateSnapshot } from "../../run/shared-world-evidence.js";
-import type { LocalTreeArchive } from "../../run/source-archive.js";
+import type { LocalTreeArchive } from "../../subject/local-tree-archive.js";
 import type { RunLabProvenance } from "../../run/status.js";
 import type { LiveTraceFlush } from "../computer-use/live-flush.js";
 import type {

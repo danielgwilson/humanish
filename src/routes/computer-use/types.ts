@@ -42,7 +42,7 @@ import {
 } from "../../run/bundle.js";
 import { type RunDesktopGeometry } from "../../run/streams.js";
 import { type PreparedOutputRoot } from "../../run/contained-output.js";
-import { type LocalTreeArchive } from "../../run/source-archive.js";
+import { type LocalTreeArchive } from "../../subject/local-tree-archive.js";
 import type {
   ComputerUseParticipant,
   SharedWorldParticipant,

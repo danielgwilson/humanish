@@ -101,7 +101,7 @@ A lab is a composition over code primitives, not a hardcoded kind:
   always-on denylist (`.git`, `node_modules`, `.humanish`, `.env*`, key/cert
   file patterns, and common credential-shaped names; the authoritative lists
   are `LOCAL_TREE_DENYLIST_PATH_SEGMENTS` and `LOCAL_TREE_DENYLIST_BASENAME_PATTERNS` in
-  `src/run/source-archive.ts`)
+  `src/subject/local-tree-archive.ts`)
   applies in both modes and is not overridable. The denylist matches names,
   not contents; a secret in a file it does not name packs like any other
   file, so review the pack summary line and use `localTree.exclude`. The lab packs
