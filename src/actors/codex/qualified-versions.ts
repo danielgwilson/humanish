@@ -91,6 +91,23 @@ function describeHost(host: CodexHost): string {
     : `${PREEXISTING_CODEX_CLI_ADMISSIONS[host as PreexistingHost].join(", ")} (pre-existing admission, not qualified)`;
 }
 
+/**
+ * doctor's recovery for an unadmitted CLI: the release it found, what this host admits, and the
+ * exact command that installs the newest admitted release.
+ */
+export function codexVersionRecovery(
+  detected: string | undefined,
+  platform: NodeJS.Platform = process.platform,
+  arch: string = process.arch,
+): string {
+  const found =
+    detected === undefined
+      ? "The installed Codex CLI did not report a recognizable version"
+      : `Found Codex CLI ${detected}`;
+  const install = `npm install -g @openai/codex@${defaultCodexCliVersion(platform, arch)}`;
+  return `${found}; ${describeQualifiedCodexCliVersions(platform, arch)}. Install the newest with \`${install}\`, then sign in with a ChatGPT account (\`codex login\`).`;
+}
+
 /** For refusal messages: the admitted releases on this host, or every host when it has none. */
 export function describeQualifiedCodexCliVersions(
   platform: NodeJS.Platform = process.platform,

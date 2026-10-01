@@ -7,28 +7,48 @@ import type { DoctorResult } from "../cli/doctor.js";
 import { automaticAnalysisBudget } from "../analysis/automatic-config.js";
 import { externalCatchHealthy } from "../comms/sandbox-catch.js";
 import { receivingRequiredKey } from "../comms/setup.js";
+import { codexVersionRecovery } from "../actors/codex/qualified-versions.js";
 
 type Check = DoctorResult["checks"][number];
+/** Read-only Codex account readiness. An unadmitted CLI also reports the release it found. */
+type CodexReadiness = { ready: boolean; errorCode: string | null; detectedCliVersion?: string };
+
+/** The account check doctor and the TUI share; the version probe runs only for an unadmitted CLI. */
+async function codexAccountReadiness(env: NodeJS.ProcessEnv): Promise<CodexReadiness> {
+  const readiness = await (
+    await import("../analysis/restricted-codex.js")
+  ).checkRestrictedCodexAnalysisReadiness({ timeoutMs: 5000 }, { env });
+  if (readiness.errorCode !== "codex_unsupported_version") return readiness;
+  const { detectRestrictedCodexCliVersion } = await import("../actors/codex/restricted-session.js");
+  const detected = await detectRestrictedCodexCliVersion({ timeoutMs: 5000 }, { env }).catch(
+    () => undefined,
+  );
+  // An admitted release here means app-server reported a different one; name what --version says.
+  const version = detected?.cliVersion ?? detected?.detectedVersion;
+  return version === undefined ? readiness : { ...readiness, detectedCliVersion: version };
+}
+
+/** What to do about a Codex readiness failure; an unadmitted CLI gets its exact install command. */
+function codexRecovery(readiness: CodexReadiness, fallback: string): string {
+  return readiness.errorCode === "codex_unsupported_version"
+    ? codexVersionRecovery(readiness.detectedCliVersion)
+    : fallback;
+}
 
 /** Shared read-only Codex account check for local participants in doctor and the TUI. */
 export async function localCodexParticipantCheck(args: {
   env: NodeJS.ProcessEnv;
-  readiness?: (env: NodeJS.ProcessEnv) => Promise<{ ready: boolean; errorCode: string | null }>;
+  readiness?: (env: NodeJS.ProcessEnv) => Promise<CodexReadiness>;
 }): Promise<Check> {
-  const readiness = await (
-    args.readiness ??
-    (async (env: NodeJS.ProcessEnv) =>
-      (await import("../analysis/restricted-codex.js")).checkRestrictedCodexAnalysisReadiness(
-        { timeoutMs: 5000 },
-        { env },
-      ))
-  )(args.env).catch(() => ({ ready: false, errorCode: "codex_unavailable" }));
+  const readiness: CodexReadiness = await (args.readiness ?? codexAccountReadiness)(args.env).catch(
+    () => ({ ready: false, errorCode: "codex_unavailable" }),
+  );
   return {
     name: "local participant authentication",
     ok: readiness.ready,
     message: readiness.ready
       ? "Qualified Codex CLI and ChatGPT login are ready for restricted local browser participants. No E2B or model API key is required; inference is remote, and model access and account quota remain untested."
-      : `Local Codex participant setup is unavailable (${readiness.errorCode}). Install the supported Codex CLI version and sign in with a ChatGPT account. No API fallback is used.`,
+      : `Local Codex participant setup is unavailable (${readiness.errorCode}). ${codexRecovery(readiness, "Install the supported Codex CLI version and sign in with a ChatGPT account.")} No API fallback is used.`,
   };
 }
 
@@ -40,12 +60,10 @@ interface LabSetupCheckArgs {
   keyPresent: (name: string) => boolean;
   /** Internal read-only qualification seam; never a participant/model request. */
   localRuntimeReadiness?: () => Promise<LocalRuntimeStatus>;
-  codexAnalysisReadiness?: (
-    env: NodeJS.ProcessEnv,
-  ) => Promise<{ ready: boolean; errorCode: string | null }>;
+  codexAnalysisReadiness?: (env: NodeJS.ProcessEnv) => Promise<CodexReadiness>;
 }
 
-type AccountReadiness = () => Promise<{ ready: boolean; errorCode: string | null }>;
+type AccountReadiness = () => Promise<CodexReadiness>;
 type AnalysisBudget = NonNullable<ReturnType<typeof automaticAnalysisBudget>>;
 
 /** Setup checks only: no model turn, browser or desktop creation. CLI startup may use the network. */
@@ -82,16 +100,11 @@ export async function labSetupChecks(
   const { desktop, keys } = labKeyRequirements(config, route, false, args.keyPresent);
   const local = isLocalBrowserLab(config);
   // One account check, shared by the local participant row and the Codex analysis row.
-  let accountReadiness: Promise<{ ready: boolean; errorCode: string | null }> | undefined;
+  let accountReadiness: Promise<CodexReadiness> | undefined;
   const checkAccount: AccountReadiness = () =>
-    (accountReadiness ??= (
-      args.codexAnalysisReadiness ??
-      (async (env: NodeJS.ProcessEnv) =>
-        (await import("../analysis/restricted-codex.js")).checkRestrictedCodexAnalysisReadiness(
-          { timeoutMs: 5000 },
-          { env },
-        ))
-    )(args.env).catch(() => ({ ready: false, errorCode: "codex_unavailable" })));
+    (accountReadiness ??= (args.codexAnalysisReadiness ?? codexAccountReadiness)(args.env).catch(
+      () => ({ ready: false, errorCode: "codex_unavailable" }),
+    ));
   if (local) checks.push(...(await localBrowserChecks(config, args)));
   if (config.comms?.email?.kind === "real")
     checks.push(await realEmailCheck(config.comms.email.connection, keys, args));
@@ -226,7 +239,10 @@ async function analysisCheck(
         ? "Use Linux x64 or the Apple Silicon Mac with a supported Codex CLI, or explicitly select provider: openai with an API key."
         : readiness.errorCode === "codex_busy"
           ? "Another restricted Codex analyst or setup check is active in this process. Wait for it to finish, then retry."
-          : "Install the qualified CLI and sign in with a ChatGPT account.";
+          : codexRecovery(
+              readiness,
+              "Install the qualified CLI and sign in with a ChatGPT account.",
+            );
     return {
       name: "post-run analysis",
       ok: readiness.ready,

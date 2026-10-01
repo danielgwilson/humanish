@@ -601,8 +601,13 @@ export async function detectRestrictedCodexCliVersion(
   input: { signal?: AbortSignal; timeoutMs?: number } = {},
   options: RestrictedCodexSessionOptions = {},
 ): Promise<
-  | { cliVersion: string; errorCode: null }
-  | { cliVersion: null; errorCode: RestrictedCodexAnalysisErrorCode }
+  | { cliVersion: string; errorCode: null; detectedVersion?: never }
+  | {
+      cliVersion: null;
+      errorCode: RestrictedCodexAnalysisErrorCode;
+      /** The release an unadmitted CLI reported, when it reported one. */
+      detectedVersion?: string;
+    }
 > {
   const platform = options.platform ?? process.platform,
     arch = options.arch ?? process.arch;
@@ -629,12 +634,15 @@ export async function detectRestrictedCodexCliVersion(
     );
     return { cliVersion, errorCode: null };
   } catch (error) {
+    const detectedVersion =
+      error instanceof RestrictedCodexStop ? error.detectedVersion : undefined;
     return {
       cliVersion: null,
       errorCode:
         error instanceof RestrictedCodexStop
           ? error.code
           : (deadline.code ?? "codex_process_failed"),
+      ...(detectedVersion === undefined ? {} : { detectedVersion }),
     };
   } finally {
     deadline.close();

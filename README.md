@@ -89,11 +89,18 @@ npx humanish init --yes \
   --local-mission "Complete the primary flow and explain anything confusing"
 npx humanish doctor --lab local-browser
 npx humanish run local-browser
+npx humanish verify
 ```
 
-Start your app before running the study. If you already initialized this project,
-edit `humanish/labs/local-browser.yaml` to change its URL or mission; `init`
+Start your app before running the study. `verify` checks the saved run bundle, and its
+share-safety line says whether the evidence can be shared as-is. If you already initialized this
+project, edit `humanish/labs/local-browser.yaml` to change its URL or mission; `init`
 preserves existing files and warns when supplied settings cannot be applied.
+
+`init` also adds `humanish:*` scripts to `package.json`. `npm run humanish:doctor` and
+`npm run humanish:verify` run those commands, and `humanish:watch` runs a study and keeps the
+Observer attached. `humanish:run` is `humanish run --dry-run`: a contract-proof dry run with no
+browser or model, not the live study above.
 
 `doctor` only inspects setup. It does not install or start the runtime, open a
 browser, or use Codex account quota. The local study needs a supported Codex CLI

@@ -26,15 +26,18 @@ npx humanish init --yes \
   --local-browser http://127.0.0.1:3000 \
   --local-mission "Create a note and explain anything confusing about saving it"
 npx humanish doctor --lab local-browser
-npx humanish lab run local-browser
+npx humanish run local-browser
+npx humanish verify
 ```
 
-`init` also writes `humanish/labs/local-browser.yaml` with safe defaults when the
-two options are omitted. The options provide the normal setup path for the app
-URL and mission on first setup. If the file already exists, `init` preserves it
-and warns that these options were skipped; edit the existing manifest to change
-its URL or mission. The commands above write this lab (its `description` is
-omitted here):
+`verify` checks the saved run bundle, and its share-safety line says whether the evidence can be
+shared as-is. `init` also adds `humanish:*` scripts to `package.json`; `humanish:run` among them
+is `humanish run --dry-run`, a contract-proof dry run rather than this live study. `init` also
+writes `humanish/labs/local-browser.yaml` with safe defaults when the two options are omitted.
+The options provide the normal setup path for the app URL and mission on first setup. If the
+file already exists, `init` preserves it and warns that these options were skipped; edit the
+existing manifest to change its URL or mission. The commands above write this lab (its
+`description` is omitted here):
 
 ```yaml
 schema: humanish.lab.v2
@@ -61,7 +64,8 @@ defaults:
 ```sh
 npx humanish runtime status --json
 npx humanish doctor --lab local-browser --json
-npx humanish lab run local-browser
+npx humanish run local-browser
+npx humanish verify
 ```
 
 The first live run downloads the pinned runtime archive (about 569 MiB on x64 or

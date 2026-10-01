@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { accessSync, constants } from "node:fs";
 import { realpath } from "node:fs/promises";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import path from "node:path";
@@ -478,22 +479,66 @@ export async function serveObserver(
 // observe, watch, serve, and the lab call sites — funnels through renderObserverHtml. The
 // legacy string-concat renderer was deleted at cutover (2026-08-16); rollback is a version pin.
 
-export function openTarget(target: string): {
+/** The host facts that decide whether a desktop browser can open a target. */
+export interface DesktopOpenerHost {
+  platform: NodeJS.Platform;
+  env: NodeJS.ProcessEnv;
+  /** Whether an executable with this name is on the host's PATH. */
+  onPath(name: string): boolean;
+}
+
+/**
+ * The command that opens a target in the desktop browser, or why this host has none. Linux needs
+ * a display and xdg-open; without them the opener would exit quietly and nothing would appear.
+ */
+export function desktopOpener(
+  target: string,
+  host: DesktopOpenerHost,
+): { command: string; args: string[] } | { reason: string } {
+  if (host.platform === "darwin") return { command: "open", args: [target] };
+  if (host.platform === "win32") return { command: "cmd", args: ["/c", "start", "", target] };
+  if (!host.env.DISPLAY && !host.env.WAYLAND_DISPLAY)
+    return { reason: "no display is available (DISPLAY and WAYLAND_DISPLAY are unset)" };
+  if (!host.onPath("xdg-open")) return { reason: "xdg-open is not installed" };
+  return { command: "xdg-open", args: [target] };
+}
+
+function onProcessPath(name: string): boolean {
+  return (process.env.PATH ?? "")
+    .split(path.delimiter)
+    .filter(Boolean)
+    .some((directory) => {
+      try {
+        accessSync(path.join(directory, name), constants.X_OK);
+        return true;
+      } catch {
+        return false;
+      }
+    });
+}
+
+export function openTarget(
+  target: string,
+  host: DesktopOpenerHost = { platform: process.platform, env: process.env, onPath: onProcessPath },
+): {
   opened: boolean;
   command?: string;
   warning?: string;
 } {
-  const command =
-    process.platform === "darwin" ? "open" : process.platform === "win32" ? "cmd" : "xdg-open";
-  const args = process.platform === "win32" ? ["/c", "start", "", target] : [target];
-
+  const opener = desktopOpener(target, host);
+  if ("reason" in opener)
+    return {
+      opened: false,
+      warning: `Could not open observer automatically: ${opener.reason}. Open ${target} in a browser.`,
+    };
+  const { command, args } = opener;
   try {
     const child = spawn(command, args, {
       detached: true,
       stdio: "ignore",
     });
-    // Missing desktop openers fail asynchronously (ENOENT), especially over SSH or in a
-    // minimal container. The served URL remains usable; an opener must never crash its server.
+    // An opener that disappears after the PATH check still fails asynchronously (ENOENT). The
+    // served URL remains usable; an opener must never crash its server.
     child.on("error", () => {});
     child.unref();
     return { opened: true, command: [command, ...args].join(" ") };

@@ -71,6 +71,12 @@ export function starterLocalAgentFor(env: FirstRunEnvironment): LocalAgentId | u
   return starterActorFor(env) === "local-agent" ? preferredAgent(env)?.id : undefined;
 }
 
+/**
+ * How each hint invokes the CLI. \`npx humanish\` works from a project install and from an npx cache;
+ * a dev-dependency install puts no \`humanish\` on PATH, so a bare name can reach a stale global one.
+ */
+const HUMANISH = "npx humanish";
+
 export interface FirstRunStep {
   /** The exact command to run. */
   command: string;
@@ -85,7 +91,7 @@ export interface FirstRunStep {
 export function firstRunSteps(env: FirstRunEnvironment): FirstRunStep[] {
   const steps: FirstRunStep[] = [
     {
-      command: "humanish run first-run",
+      command: `${HUMANISH} run first-run`,
       why: "an evidence preview: no browser or model runs, no keys, no spend",
     },
   ];
@@ -99,8 +105,8 @@ export function firstRunSteps(env: FirstRunEnvironment): FirstRunStep[] {
         ? "M3-or-newer Mac, native ARM64 Node, Lima 2.2+, and a supported signed-in Codex CLI"
         : "local rootful Docker, KVM, TUN, and a supported signed-in Codex CLI";
     steps.push({
-      command: "humanish doctor --lab local-browser",
-      why: `check the local browser lab (${prerequisites}); no resources or quota used. Run \`humanish runtime setup\` to prepare it, then start your app and run \`humanish run local-browser\`; no E2B or model API key`,
+      command: `${HUMANISH} doctor --lab local-browser`,
+      why: `check the local browser lab (${prerequisites}); no resources or quota used. Run \`${HUMANISH} runtime setup\` to prepare it, then start your app and run \`${HUMANISH} run local-browser\`; no E2B or model API key`,
     });
     return steps;
   }
@@ -111,7 +117,7 @@ export function firstRunSteps(env: FirstRunEnvironment): FirstRunStep[] {
 
   if (!env.hasE2bKey) {
     steps.push({
-      command: "humanish keys set e2b",
+      command: `${HUMANISH} keys set e2b`,
       why: `the hosted starter needs an E2B desktop.${localUnavailable}`,
     });
     return steps;
@@ -124,12 +130,12 @@ export function firstRunSteps(env: FirstRunEnvironment): FirstRunStep[] {
     // Everything the step needs, in one line. Splitting it across two commands means the second
     // one fails, which is the same dead end this guidance exists to remove.
     const command = env.hasDesktopSdk
-      ? "humanish run try-live"
+      ? `${HUMANISH} run try-live`
       : env.installedInProject
-        ? "npm i -D @e2b/desktop && humanish run try-live"
+        ? `npm i -D @e2b/desktop && ${HUMANISH} run try-live`
         : // Running from an npx cache: installing only the peer here would not be found, because
           // Node resolves it relative to humanish. Both, or neither.
-          "npm i -D humanish @e2b/desktop && npx humanish run try-live";
+          `npm i -D humanish @e2b/desktop && ${HUMANISH} run try-live`;
     steps.push({
       command,
       why:
@@ -144,7 +150,7 @@ export function firstRunSteps(env: FirstRunEnvironment): FirstRunStep[] {
   }
 
   steps.push({
-    command: "humanish keys set openai",
+    command: `${HUMANISH} keys set openai`,
     why:
       "openai-computer-use needs an API key; to use a Codex or Claude Code login instead, sign in and change the lab to actors[0].type: local-agent" +
       localUnavailable,

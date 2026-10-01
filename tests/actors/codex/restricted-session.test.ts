@@ -314,7 +314,11 @@ describe("restricted Codex analyst session", () => {
         {},
         { ...unqualified.options, platform: "linux", arch: "x64" },
       ),
-    ).toEqual({ cliVersion: null, errorCode: "codex_unsupported_version" });
+    ).toEqual({
+      cliVersion: null,
+      errorCode: "codex_unsupported_version",
+      detectedVersion: "0.158.0",
+    });
     expect(
       await detectRestrictedCodexCliVersion(
         {},
