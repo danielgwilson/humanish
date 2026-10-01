@@ -56,7 +56,7 @@ import { participantAssignment } from "../../lab/participant-assignment.js";
 import { validatePreparedRunArtifactPaths } from "../../run/paths.js";
 import { prepareSelectedOutputDirectory } from "../../run/contained-output.js";
 import { buildRunSource, type RunEvent } from "../../run/bundle.js";
-import { judgeTerminal } from "../../run/judge.js";
+import { judgeExecution, judgeTerminal, OUTCOME_POLICIES, resultOk } from "../../run/judge.js";
 import { buildTerminalProductBundle, renderTerminalReviewMarkdown } from "./bundle.js";
 import { defaultMission, makeTerminalRunId, runLiveTerminalSession } from "./session.js";
 import type { TerminalPlan } from "../../lab/plan-types.js";
@@ -244,7 +244,20 @@ async function runDryTerminalLab(args: {
   const finished = await run.finish(bundle);
   const observer = await finished.renderObserver();
   await validatePreparedRunArtifactPaths(finished.paths);
-  const ok = observer.ok && !judgment.harnessFailed;
+  const policy = OUTCOME_POLICIES.terminal;
+  const execution = judgeExecution(
+    observer.ok
+      ? []
+      : [
+          {
+            kind: "evidence",
+            message: observer.error?.message ?? "Observer failed for the terminal-product lab run.",
+          },
+        ],
+    policy,
+  );
+  const ok = resultOk({ judgment, execution, scorerFailures: [], policy });
+  await finished.recordOutcome({ ok, execution });
 
   return {
     schema: TERMINAL_PRODUCT_LAB_SCHEMA,

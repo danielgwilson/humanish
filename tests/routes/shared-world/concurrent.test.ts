@@ -1435,11 +1435,12 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
     const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8")) as {
-      outcome?: { verdict?: string };
+      outcome?: { verdict?: string; ok?: boolean };
     };
     expect(bundle.review.verdict).toBe(verdict);
     expect(status.outcome?.verdict).toBe(bundle.review.verdict);
     expect(result.ok).toBe(ok);
+    expect(status.outcome?.ok).toBe(result.ok);
     expect(result.overlapProven).toBe(true);
   });
 
@@ -1474,11 +1475,12 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
       const runDir = path.join(cwd, ".humanish", "runs", result.runId);
       const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
       const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8")) as {
-        outcome?: { verdict?: string };
+        outcome?: { verdict?: string; ok?: boolean };
       };
       expect(bundle.review.verdict).toBe(verdict);
       expect(status.outcome?.verdict).toBe(verdict);
       expect(result.ok).toBe(verdict === "pass");
+      expect(status.outcome?.ok).toBe(result.ok);
       expect(result.overlapProven).toBe(world !== "no overlap");
       expect(result.roles.every((role) => role.ok)).toBe(true);
       if (shortfall === undefined) {
@@ -2678,11 +2680,12 @@ describe("concurrent run lifetime", () => {
     const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
     const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8")) as {
-      outcome?: { verdict?: string };
+      outcome?: { verdict?: string; ok?: boolean };
     };
     expect(bundle.review.verdict).toBe("pass");
     expect(status.outcome?.verdict).toBe("pass");
     expect(result.ok).toBe(true);
+    expect(status.outcome?.ok).toBe(result.ok);
 
     const reclaimed: string[] = [];
     await reclaimRunSandboxes(cwd, result.runId, {

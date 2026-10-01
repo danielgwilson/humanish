@@ -1547,11 +1547,12 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
       const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
       const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8")) as {
-        outcome?: { verdict?: string };
+        outcome?: { verdict?: string; ok?: boolean };
       };
       expect(bundle.review.verdict).toBe(verdict);
       expect(status.outcome?.verdict).toBe(bundle.review.verdict);
       expect(outcome.result.ok).toBe(ok);
+      expect(status.outcome?.ok).toBe(outcome.result.ok);
     },
   );
 
@@ -1588,11 +1589,12 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
     const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8")) as {
-      outcome?: { verdict?: string };
+      outcome?: { verdict?: string; ok?: boolean };
     };
     expect(bundle.review.verdict).toBe(verdict);
     expect(status.outcome?.verdict).toBe(verdict);
     expect(outcome.result.ok).toBe(verdict === "pass");
+    expect(status.outcome?.ok).toBe(outcome.result.ok);
     expect(bundle.review.gaps.includes("Adapter scorer failed the run: rubric fail")).toBe(
       scoreStatus === "fail",
     );
@@ -1617,13 +1619,14 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
     const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8")) as {
-      outcome?: { verdict?: string };
+      outcome?: { verdict?: string; ok?: boolean };
     };
     expect(bundle.mode).toBe("live");
     expect(bundle.review.verdict).toBe("fail");
     expect(bundle.simulations[0]?.status).toBe("failed");
     expect(status.outcome?.verdict).toBe("fail");
     expect(outcome.result.ok).toBe(false);
+    expect(status.outcome?.ok).toBe(outcome.result.ok);
   });
 
   it("keeps the verdict when the sandbox kill fails: cleanup does not judge", async () => {
@@ -1644,12 +1647,13 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
     const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8")) as {
-      outcome?: { verdict?: string };
+      outcome?: { verdict?: string; ok?: boolean };
     };
     // No route's verdict reads cleanup today: the failed teardown is a warning, and the pass stands.
     expect(bundle.review.verdict).toBe("pass");
     expect(status.outcome?.verdict).toBe("pass");
     expect(outcome.result.ok).toBe(true);
+    expect(status.outcome?.ok).toBe(outcome.result.ok);
     expect(handle.killed).toEqual([]);
     expect(outcome.result.warnings).toContain(
       "Sandbox teardown failed (server-side kill-on-timeout will reclaim it): synthetic kill failure",

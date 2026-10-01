@@ -5,8 +5,17 @@ import {
 import { redactText } from "../../evidence/redaction.js";
 import type { ObserverResult } from "../../observer/render.js";
 import type { RunBundle, RunRerunLineage } from "../../run/bundle.js";
-import { foldScorerFailures, type Judgment } from "../../run/judge.js";
-import { buildLaneSummary, laneOutcomeOk } from "./bundle.js";
+import {
+  foldScorerFailures,
+  judgeExecution,
+  OUTCOME_POLICIES,
+  participantHarnessFailed,
+  resultOk,
+  type ExecutionFailure,
+  type ExecutionOutcome,
+  type Judgment,
+} from "../../run/judge.js";
+import { buildLaneSummary, laneOutcomeOk, participantFactsOf } from "./bundle.js";
 import { summarizeCuaDiagnostics } from "./diagnostics.js";
 import {
   aggregateCuaSubject,
@@ -47,8 +56,9 @@ function cuaLabResult(args: {
   plan: CuaLanePlan;
   rerunLineage: RunRerunLineage | undefined;
   bundle: RunBundle;
-  /** The run's judgment; ok requires every participant to have passed. */
+  /** The run's judgment; on this gate route ok requires every participant to have passed. */
   judgment: Judgment;
+  execution: ExecutionOutcome;
   observer: ObserverResult;
   /** Why the scorer failed the run; already folded into the bundle's review. */
   scorerFailures: readonly string[];
@@ -78,7 +88,12 @@ function cuaLabResult(args: {
   // Lane-level pass: dry-run lanes are contract-ok; live lanes need a passed, engaged session.
   const laneOk = (outcome: LaneRunOutcome | undefined): boolean => laneOutcomeOk(outcome, dryRun);
   const adapterFailure = adapterScoreFailureMessage(bundle);
-  const ok = observer.ok && args.judgment.passed && args.scorerFailures.length === 0;
+  const ok = resultOk({
+    judgment: args.judgment,
+    execution: args.execution,
+    scorerFailures: args.scorerFailures,
+    policy: OUTCOME_POLICIES["computer-use"],
+  });
 
   const laneWarnings = (outcomes ?? []).flatMap((outcome) => outcome.warnings);
   const warnings = [
@@ -184,6 +199,32 @@ function cuaLabResult(args: {
   };
 }
 
+/**
+ * The run's execution failures: each lane whose session failed in the harness, and an Observer
+ * that failed.
+ */
+function computerUseExecutionFailures(
+  outcomes: readonly LaneRunOutcome[] | undefined,
+  observer: Pick<ObserverResult, "ok" | "error">,
+): ExecutionFailure[] {
+  return [
+    ...(outcomes ?? [])
+      .filter((outcome) => participantHarnessFailed(participantFactsOf(outcome)))
+      .map((outcome) => ({
+        kind: "harness" as const,
+        message: `${outcome.spec.planned.id}: ${outcome.sessionError ?? outcome.session?.reason ?? "harness error"}`,
+      })),
+    ...(observer.ok
+      ? []
+      : [
+          {
+            kind: "evidence" as const,
+            message: observer.error?.message ?? "Observer failed for the computer-use lab run.",
+          },
+        ]),
+  ];
+}
+
 /** Builds and publishes the final bundle, runs the adapter hooks, renders the Observer and returns the result. */
 export async function finishCuaRun(
   setup: CuaRunSetup,
@@ -265,7 +306,11 @@ export async function finishCuaRun(
   const observer = await finished.renderObserver();
   streams.attachFinal(observer);
 
-  return cuaLabResult({
+  const execution = judgeExecution(
+    computerUseExecutionFailures(outcomes, observer),
+    OUTCOME_POLICIES["computer-use"],
+  );
+  const result = cuaLabResult({
     labId: routePlan.labId,
     cwd,
     runId,
@@ -280,10 +325,13 @@ export async function finishCuaRun(
     rerunLineage,
     bundle,
     judgment,
+    execution,
     observer,
     scorerFailures: scorerResult.failures,
     receivingWarnings,
     aggregateWarnings,
     adapterWarnings,
   });
+  await finished.recordOutcome({ ok: result.ok, execution });
+  return result;
 }

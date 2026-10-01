@@ -12,6 +12,8 @@
 
 import type { RunBundle } from "./bundle.js";
 import { writeContainedOutputFile, type PreparedOutputRoot } from "./contained-output.js";
+import type { ExecutionOutcome } from "./judge.js";
+import { redactText } from "../evidence/redaction.js";
 
 export const RUN_STATUS_SCHEMA = "humanish.run-status.v1";
 
@@ -44,8 +46,10 @@ type RunStatusState = "running" | "finished";
 interface RunStatusOutcome {
   /** `review.verdict` verbatim. */
   verdict?: string;
-  /** True when the run's own envelope reported success. */
+  /** True when the run's own envelope reported success: the result's ok, recorded after finish. */
   ok?: boolean;
+  /** Whether the run worked as an execution, apart from its verdict; recorded after finish. */
+  execution?: ExecutionOutcome;
   /** `review.participants` counts, when the run recorded any. */
   participants?: {
     total: number;
@@ -103,6 +107,9 @@ export interface RunStatusHandle {
   /** Finalize: state `finished`, `completedAt`, and the derived outcome. Stops the cadence.
    *  Idempotent — a second call is a no-op, so a backend with several exit paths is safe. */
   finish(outcome?: RunStatusOutcome): Promise<void>;
+  /** After finish, add the result's ok and execution outcome to the finished record, so status.json
+   *  and the result agree. Before finish it does nothing. */
+  settle(result: { ok: boolean; execution: ExecutionOutcome }): Promise<void>;
 }
 
 export interface BeginRunStatusOptions {
@@ -134,6 +141,7 @@ export function beginRunStatus(
   };
 
   let finished = false;
+  let finishedRecord: RunStatusRecord | undefined;
   let writing: Promise<void> = Promise.resolve();
   const write = (record: RunStatusRecord): Promise<void> => {
     // Serialized: two overlapping atomic writes of the same path would be a coin flip over which
@@ -168,13 +176,31 @@ export function beginRunStatus(
       finished = true;
       clearInterval(timer);
       const completedAt = iso();
-      await write({
+      finishedRecord = {
         ...base,
         state: "finished",
         updatedAt: completedAt,
         completedAt,
         ...(outcome === undefined ? {} : { outcome }),
-      });
+      };
+      await write(finishedRecord);
+    },
+    async settle(result) {
+      if (finishedRecord === undefined) return;
+      // The record is public-safe by construction, so each message passes the shape redaction
+      // again even though the routes scrubbed it.
+      const execution = {
+        succeeded: result.execution.succeeded,
+        failures: result.execution.failures.map((failure) => ({
+          kind: failure.kind,
+          message: redactText(failure.message),
+        })),
+      };
+      finishedRecord = {
+        ...finishedRecord,
+        outcome: { ...finishedRecord.outcome, ok: result.ok, execution },
+      };
+      await write(finishedRecord);
     },
   };
   return handle;

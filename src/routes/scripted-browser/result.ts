@@ -4,7 +4,15 @@ import type { BrowserPersonaJourney } from "../../actors/scripted-browser/types.
 import type { ScriptedPlan } from "../../lab/plan-types.js";
 import type { RunBundle, RunSubjectProvenance } from "../../run/bundle.js";
 import type { RunScope } from "../../run/run.js";
-import { judgeScripted, type ParticipantFacts } from "../../run/judge.js";
+import {
+  judgeExecution,
+  judgeScripted,
+  OUTCOME_POLICIES,
+  resultOk,
+  type ExecutionFailure,
+  type ParticipantFacts,
+} from "../../run/judge.js";
+import type { ObserverResult } from "../../observer/render.js";
 import { validatePreparedRunArtifactPaths } from "../../run/paths.js";
 import { resolveSubjectState } from "../computer-use/route.js";
 import { buildScriptedLabBundle } from "./bundle.js";
@@ -43,6 +51,50 @@ function scriptedSurfaceFacts(result: ScriptedBrowserSessionResult): Participant
     noEngagement: false,
     selfReportedBlocker: false,
   };
+}
+
+/**
+ * The scripted run's execution failures: the session's own error, a live surface that never
+ * returned, a surface that ended in a harness error, and an Observer that failed.
+ */
+export function scriptedExecutionFailures(args: {
+  dryRun: boolean;
+  sessionError: string | undefined;
+  expected: number;
+  sessionResults: readonly Pick<ScriptedBrowserSessionResult, "completionReason" | "reason">[];
+  observer: Pick<ObserverResult, "ok" | "error">;
+}): ExecutionFailure[] {
+  const { sessionError, sessionResults, observer } = args;
+  const harnessErrorSession = sessionResults.find(
+    (result) => result.completionReason === "harness_error",
+  );
+  return [
+    ...(sessionError === undefined ? [] : [{ kind: "harness" as const, message: sessionError }]),
+    ...(harnessErrorSession === undefined
+      ? []
+      : [
+          {
+            kind: "harness" as const,
+            message: `Scripted session ended with a harness error: ${harnessErrorSession.reason}`,
+          },
+        ]),
+    ...(!args.dryRun && sessionError === undefined && sessionResults.length !== args.expected
+      ? [
+          {
+            kind: "harness" as const,
+            message: "Scripted lab did not produce terminal sessions for every surface.",
+          },
+        ]
+      : []),
+    ...(observer.ok
+      ? []
+      : [
+          {
+            kind: "evidence" as const,
+            message: observer.error?.message ?? "Observer failed for the scripted lab run.",
+          },
+        ]),
+  ];
 }
 
 export async function finishScriptedRun(
@@ -127,7 +179,20 @@ export async function finishScriptedRun(
   const observer = await finished.renderObserver();
   await validatePreparedRunArtifactPaths(runPaths);
 
-  const ok = observer.ok && !judgment.harnessFailed;
+  // A failing surface is captured evidence on this route: only the execution fails ok.
+  const policy = OUTCOME_POLICIES.scripted;
+  const execution = judgeExecution(
+    scriptedExecutionFailures({
+      dryRun,
+      sessionError,
+      expected: surfaces.length,
+      sessionResults,
+      observer,
+    }),
+    policy,
+  );
+  const ok = resultOk({ judgment, execution, scorerFailures: [], policy });
+  await finished.recordOutcome({ ok, execution });
   const harnessErrorSession = sessionResults.find(
     (result) => result.completionReason === "harness_error",
   );

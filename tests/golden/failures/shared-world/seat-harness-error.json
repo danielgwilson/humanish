@@ -1942,7 +1942,17 @@
     "completedAt": "[ts]",
     "outcome": {
       "verdict": "fail",
-      "estimatedCostUsd": null
+      "estimatedCostUsd": null,
+      "ok": false,
+      "execution": {
+        "succeeded": false,
+        "failures": [
+          {
+            "kind": "harness",
+            "message": "persona-02: boom in actor 1"
+          }
+        ]
+      }
     }
   }
 }

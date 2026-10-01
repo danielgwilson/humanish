@@ -22,6 +22,12 @@ import {
   type ParticipantFacts,
   type SessionEnding,
   type SharedWorldFacts,
+  judgeExecution,
+  judgePreview,
+  OUTCOME_POLICIES,
+  participantHarnessFailed,
+  resultOk,
+  type ExecutionFailure,
 } from "../../src/run/judge.js";
 
 const ending = (overrides: Partial<SessionEnding> = {}): SessionEnding => ({
@@ -201,38 +207,42 @@ describe("judgeTerminal", () => {
     judgeTerminal({ dryRun, participant });
 
   it("takes the verdict from the agent's status, as the one-participant rule does", () => {
-    expect(judge(passed())).toEqual({ verdict: "pass", harnessFailed: false });
+    expect(judge(passed())).toEqual({ verdict: "pass", passed: true });
     expect(judge(passed({ status: "blocked", completionReason: "blocked_approval" }))).toEqual({
       verdict: "blocked",
-      harnessFailed: false,
+      passed: false,
     });
     expect(judge(passed({ status: "timed_out", completionReason: "timed_out" }))).toEqual({
       verdict: "timed_out",
-      harnessFailed: false,
+      passed: false,
     });
     expect(judge(passed({ status: "failed", completionReason: "gave_up" }))).toEqual({
       verdict: "fail",
-      harnessFailed: false,
+      passed: false,
     });
   });
 
-  it("marks a harness error, a blown cap included, as the harness failing", () => {
+  it("holds a dry run as a contract", () => {
+    expect(judge(undefined, true)).toEqual({ verdict: "contract_proof_only", passed: true });
+  });
+});
+
+describe("participantHarnessFailed", () => {
+  it("holds for a session error or a harness_error ending, a blown cap included", () => {
+    expect(participantHarnessFailed(passed())).toBe(false);
+    expect(participantHarnessFailed(passed({ sessionError: "" }))).toBe(true);
     expect(
-      judge(
+      participantHarnessFailed(
         passed({
           status: "failed",
           completionReason: "harness_error",
           sessionError: "known spend over the cap",
         }),
       ),
-    ).toEqual({ verdict: "fail", harnessFailed: true });
-  });
-
-  it("holds a dry run as a contract with no harness failure", () => {
-    expect(judge(undefined, true)).toEqual({
-      verdict: "contract_proof_only",
-      harnessFailed: false,
-    });
+    ).toBe(true);
+    expect(
+      participantHarnessFailed(passed({ status: "failed", completionReason: "gave_up" })),
+    ).toBe(false);
   });
 });
 
@@ -284,25 +294,31 @@ describe("judgeScripted", () => {
   const judge = (surfaces: ParticipantFacts[], sessionError?: string) =>
     judgeScripted({ dryRun: false, sessionError, expected: 2, surfaces });
 
-  // The worst surface decides: a harness error or failed step, then a timeout, then a pass. Only a
-  // harness failure fails the result; a failed step or a timeout is evidence.
+  // The worst surface decides: a harness error or failed step, then a timeout, then a pass. The
+  // run passed when every expected surface passed.
   it.each<[string, ParticipantFacts[], string | undefined, string, boolean]>([
-    ["every surface passed", [ok, ok], undefined, "pass", false],
+    ["every surface passed", [ok, ok], undefined, "pass", true],
     ["a failed step", [ok, stepFailed], undefined, "fail", false],
     ["a timeout", [ok, timedOut], undefined, "timed_out", false],
     ["a failed step outranks a timeout", [timedOut, stepFailed], undefined, "fail", false],
-    ["a harness error", [ok, harnessError], undefined, "fail", true],
-    ["a surface that never returned", [ok], undefined, "pass", true],
-    ["a session error", [], "browser pool exploded", "fail", true],
-    ["a session error with an empty message", [], "", "fail", true],
-  ])("%s", (_name, surfaces, sessionError, verdict, harnessFailed) => {
-    expect(judge(surfaces, sessionError)).toMatchObject({ verdict, harnessFailed });
+    ["a harness error", [ok, harnessError], undefined, "fail", false],
+    ["a surface that never returned", [ok], undefined, "pass", false],
+    ["a session error", [], "browser pool exploded", "fail", false],
+    ["a session error with an empty message", [], "", "fail", false],
+  ])("%s", (_name, surfaces, sessionError, verdict, wasPassed) => {
+    expect(judge(surfaces, sessionError)).toEqual({ verdict, passed: wasPassed });
   });
 
-  it("holds a dry run as a contract with no harness failure", () => {
+  it("holds a dry run as a contract", () => {
     expect(
       judgeScripted({ dryRun: true, sessionError: undefined, expected: 2, surfaces: [] }),
-    ).toEqual({ verdict: "contract_proof_only", harnessFailed: false });
+    ).toEqual({ verdict: "contract_proof_only", passed: true });
+  });
+});
+
+describe("judgePreview", () => {
+  it("is a contract with no participants", () => {
+    expect(judgePreview()).toEqual({ verdict: "contract_proof_only", passed: true });
   });
 });
 
@@ -406,4 +422,65 @@ describe("foldScorerFailures", () => {
     const judged = { ...review("fail"), gaps: ["scorer failed"] };
     expect(foldScorerFailures(judged, ["scorer failed"]).gaps).toEqual(["scorer failed"]);
   });
+});
+
+describe("the outcome policies", () => {
+  const failure = (kind: ExecutionFailure["kind"]): ExecutionFailure => ({ kind, message: kind });
+
+  it("names each route's policy in one table", () => {
+    expect(OUTCOME_POLICIES).toEqual({
+      "computer-use": { participants: "gate", sandboxCleanup: "warns", evidence: "fails" },
+      "shared-world": { participants: "gate", sandboxCleanup: "warns", evidence: "fails" },
+      terminal: { participants: "evidence", sandboxCleanup: "fails", evidence: "fails" },
+      scripted: { participants: "evidence", sandboxCleanup: "warns", evidence: "fails" },
+      preview: { participants: "evidence", sandboxCleanup: "warns", evidence: "warns" },
+    });
+  });
+
+  // Harness, provider-cleanup, cap and run failures always fail the execution; sandbox-cleanup and
+  // evidence fail it only where the policy says so, and are dropped where it lets them warn.
+  it.each(["harness", "provider-cleanup", "cap", "run"] as const)(
+    "always counts a %s failure",
+    (kind) => {
+      for (const policy of Object.values(OUTCOME_POLICIES)) {
+        expect(judgeExecution([failure(kind)], policy)).toEqual({
+          succeeded: false,
+          failures: [failure(kind)],
+        });
+      }
+    },
+  );
+
+  it("counts sandbox-cleanup and evidence failures as each policy says", () => {
+    const counted = (route: keyof typeof OUTCOME_POLICIES) =>
+      judgeExecution(
+        [failure("sandbox-cleanup"), failure("evidence")],
+        OUTCOME_POLICIES[route],
+      ).failures.map((entry) => entry.kind);
+    expect(counted("computer-use")).toEqual(["evidence"]);
+    expect(counted("shared-world")).toEqual(["evidence"]);
+    expect(counted("terminal")).toEqual(["sandbox-cleanup", "evidence"]);
+    expect(counted("scripted")).toEqual(["evidence"]);
+    expect(counted("preview")).toEqual([]);
+  });
+
+  // ok reads the execution and the scorer everywhere, and the participants only on a gate route:
+  // on an evidence route a participant that did not pass is captured evidence.
+  it.each<[string, boolean, boolean, string[], boolean, boolean]>([
+    ["everything passed", true, true, [], true, true],
+    ["a participant did not pass", false, true, [], false, true],
+    ["the execution failed", true, false, [], false, false],
+    ["a scorer failed", true, true, ["rubric failed"], false, false],
+  ])(
+    "%s: gate ok %s, evidence ok %s",
+    (_name, wasPassed, succeeded, scorerFailures, gate, evidence) => {
+      const args = {
+        judgment: { verdict: wasPassed ? ("pass" as const) : ("fail" as const), passed: wasPassed },
+        execution: { succeeded, failures: succeeded ? [] : [failure("harness")] },
+        scorerFailures,
+      };
+      expect(resultOk({ ...args, policy: OUTCOME_POLICIES["computer-use"] })).toBe(gate);
+      expect(resultOk({ ...args, policy: OUTCOME_POLICIES.terminal })).toBe(evidence);
+    },
+  );
 });

@@ -1,6 +1,14 @@
 import type { ObserverResult } from "../../observer/render.js";
 import type { ActorCompletionReason, ActorStatus, ActorTrace } from "../../actors/contract.js";
-import type { HarnessJudgment, ParticipantFacts } from "../../run/judge.js";
+import {
+  OUTCOME_POLICIES,
+  participantHarnessFailed,
+  resultOk,
+  type ExecutionFailure,
+  type ExecutionOutcome,
+  type Judgment,
+  type ParticipantFacts,
+} from "../../run/judge.js";
 import {
   TERMINAL_PRODUCT_LAB_SCHEMA,
   type NoSpendProof,
@@ -27,6 +35,46 @@ export function terminalParticipantFacts(
   };
 }
 
+/**
+ * The live run's execution failures: a blown spend cap or another harness error, an unproven
+ * sandbox teardown, and an Observer that failed. `participant` is read after a blown cap has
+ * overridden the session.
+ */
+export function terminalExecutionFailures(args: {
+  participant: ParticipantFacts;
+  capsExceeded: boolean;
+  /** Already scrubbed and redacted. */
+  sessionReason: string;
+  cleanup: TerminalLedgers["cleanup"];
+  observer: Pick<ObserverResult, "ok" | "error">;
+}): ExecutionFailure[] {
+  const { participant, cleanup, observer } = args;
+  const message = participant.sessionError ?? args.sessionReason;
+  return [
+    ...(args.capsExceeded
+      ? [{ kind: "cap" as const, message }]
+      : participantHarnessFailed(participant)
+        ? [{ kind: "harness" as const, message }]
+        : []),
+    ...(cleanup.killed && cleanup.remaining === 0
+      ? []
+      : [
+          {
+            kind: "sandbox-cleanup" as const,
+            message: `Sandbox teardown unproven (killed=${cleanup.killed}, remaining=${cleanup.remaining}): ${cleanup.reason}`,
+          },
+        ]),
+    ...(observer.ok
+      ? []
+      : [
+          {
+            kind: "evidence" as const,
+            message: observer.error?.message ?? "Observer failed for the terminal-product lab run.",
+          },
+        ]),
+  ];
+}
+
 /** The terminal-product lab result for a live run, from its session, cleanup and cost ledger. */
 export function terminalLabResult(args: {
   cwd: string;
@@ -45,8 +93,9 @@ export function terminalLabResult(args: {
   noSpendProof: NoSpendProof;
   capsExceeded: boolean;
   declaredScorerFailure: string | undefined;
-  /** The run's judgment; ok reads its harnessFailed, not a pass. */
-  judgment: HarnessJudgment;
+  /** The run's judgment. On this evidence route ok does not read whether the agent passed. */
+  judgment: Judgment;
+  execution: ExecutionOutcome;
   observer: ObserverResult;
   warnings: string[];
 }): TerminalProductLabResult {
@@ -67,6 +116,7 @@ export function terminalLabResult(args: {
     capsExceeded,
     declaredScorerFailure,
     judgment,
+    execution,
     observer,
     warnings,
   } = args;
@@ -79,8 +129,12 @@ export function terminalLabResult(args: {
   // A CONFIG-DECLARED scorer that failed to render a pass (status:"fail" / malformed / throw) fails the
   // run RESULT too, not just the persisted verdict — the keystone lane's declared rubric is a gate, so
   // its fail must drive exit code. Library callers never set this (additive, back-compat).
-  const ok =
-    observer.ok && !judgment.harnessFailed && cleanupProven && declaredScorerFailure === undefined;
+  const ok = resultOk({
+    judgment,
+    execution,
+    scorerFailures: declaredScorerFailure === undefined ? [] : [declaredScorerFailure],
+    policy: OUTCOME_POLICIES.terminal,
+  });
 
   return {
     schema: TERMINAL_PRODUCT_LAB_SCHEMA,

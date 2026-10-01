@@ -1317,7 +1317,12 @@
         "reachedGoal": 1,
         "reportedFriction": 0
       },
-      "estimatedCostUsd": 0.00444
+      "estimatedCostUsd": 0.00444,
+      "ok": true,
+      "execution": {
+        "succeeded": true,
+        "failures": []
+      }
     }
   }
 }

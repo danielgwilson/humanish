@@ -27,6 +27,7 @@ import {
 import { implicitProjectDirectoryExists, readPackageName, validateCwd } from "./project.js";
 import { loadDryRunSelection } from "./dry-run-selection.js";
 import { createReviewSummary, renderReviewMarkdown } from "./synthetic-review.js";
+import { judgeExecution, judgePreview, OUTCOME_POLICIES, resultOk } from "./judge.js";
 
 /**
  * The synthetic dry-run backend. The run scope closes the run it started on every exit, including
@@ -115,6 +116,7 @@ async function runDryRunInScope(options: RunOptions, scope: RunScope): Promise<R
     count: participants,
   });
 
+  const judgment = judgePreview();
   const bundle: RunBundle = {
     ...bundleHead({
       runId,
@@ -158,17 +160,28 @@ async function runDryRunInScope(options: RunOptions, scope: RunScope): Promise<R
       notes: "Dry-run bundle contains synthetic contract proof only.",
     },
     artifacts: bundleArtifacts(),
-    review: createReviewSummary(),
+    review: createReviewSummary(judgment.verdict),
     feedbackCandidates: [],
   };
 
   const finished = await run.finish(bundle);
   const observer =
     options.observer === undefined ? undefined : await renderPreviewObserver(finished, warnings);
+  // The preview's policy keeps an Observer that did not render a warning: the bundle is still
+  // evidence, and `export` can render it later.
+  const policy = OUTCOME_POLICIES.preview;
+  const execution = judgeExecution(
+    observer === undefined || observer.ok
+      ? []
+      : [{ kind: "evidence", message: observer.error?.message ?? "render failed" }],
+    policy,
+  );
+  const ok = resultOk({ judgment, execution, scorerFailures: [], policy });
+  await finished.recordOutcome({ ok, execution });
 
   return {
     schema: "humanish.run-result.v1",
-    ok: true,
+    ok,
     runId,
     mode: "dry-run",
     // The run result's public field for how many participants the run had.

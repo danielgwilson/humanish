@@ -6,6 +6,7 @@
 import { buildObserverData } from "../observer/data.js";
 import { renderObserver, type ObserverResult } from "../observer/render.js";
 import { RUN_BUNDLE_FILE, PUBLIC_TARGET_CWD, type RunBundle } from "./bundle.js";
+import type { ExecutionOutcome } from "./judge.js";
 import { type RunPointer } from "./results.js";
 import {
   createRunArtifactPaths,
@@ -94,6 +95,7 @@ const issueKey = Symbol("FinishedRun");
  */
 export class FinishedRun {
   readonly #observer: ObserverTarget | undefined;
+  readonly #status: RunStatusHandle;
   readonly runId: string;
   /** The paths created by startRun and validated at the start of `finish`. */
   readonly paths: PreparedRunArtifactPaths;
@@ -103,11 +105,13 @@ export class FinishedRun {
     runId: string,
     paths: PreparedRunArtifactPaths,
     observer: ObserverTarget | undefined,
+    status: RunStatusHandle,
   ) {
     if (key !== issueKey) throw new Error("Only Run.finish issues a FinishedRun.");
     this.runId = runId;
     this.paths = paths;
     this.#observer = observer;
+    this.#status = status;
   }
 
   static isIssued(value: unknown): value is FinishedRun {
@@ -121,6 +125,14 @@ export class FinishedRun {
       return Promise.reject(new RunLifecycleError("This run was started without an Observer."));
     }
     return target.render(target.cwd, this.runId, { open: target.open, expectedRun: this.paths });
+  }
+
+  /**
+   * Record the result's ok and execution outcome in status.json. A route calls it once, after the
+   * Observer render, with the values its result returns, so the two agree.
+   */
+  recordOutcome(result: { ok: boolean; execution: ExecutionOutcome }): Promise<void> {
+    return this.#status.settle(result);
   }
 }
 
@@ -251,7 +263,7 @@ export async function runScope<T>(
         runStatus.finish(runStatusOutcome(publicBundle)),
       );
       await writePointer();
-      return new FinishedRun(issueKey, runId, paths, observer);
+      return new FinishedRun(issueKey, runId, paths, observer, runStatus);
     };
 
     return {

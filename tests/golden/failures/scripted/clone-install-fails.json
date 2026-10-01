@@ -574,7 +574,17 @@
     "completedAt": "[ts]",
     "outcome": {
       "verdict": "fail",
-      "estimatedCostUsd": null
+      "estimatedCostUsd": null,
+      "ok": false,
+      "execution": {
+        "succeeded": false,
+        "failures": [
+          {
+            "kind": "harness",
+            "message": "subject install failed twice (exit 1, then exit 1); the sandbox could not complete serve.install: (no output)"
+          }
+        ]
+      }
     }
   }
 }

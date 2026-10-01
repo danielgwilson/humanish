@@ -1,11 +1,13 @@
 import { REVIEW_SCHEMA, type ReviewSummary, type RunBundle } from "./bundle.js";
+import type { Verdict } from "./judge.js";
 
 // The review the synthetic preview writes: it claims artifact plumbing only, never product behavior.
 
-export function createReviewSummary(): ReviewSummary {
+/** The preview's review, with the verdict judgePreview gave it. */
+export function createReviewSummary(verdict: Verdict): ReviewSummary {
   return {
     schema: REVIEW_SCHEMA,
-    verdict: "contract_proof_only",
+    verdict,
     summary:
       "Synthetic dry-run bundle was generated. This proves humanish artifact plumbing, not product behavior.",
     gaps: [

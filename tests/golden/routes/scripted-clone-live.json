@@ -823,7 +823,12 @@
     "completedAt": "[ts]",
     "outcome": {
       "verdict": "pass",
-      "estimatedCostUsd": 0.00888
+      "estimatedCostUsd": 0.00888,
+      "ok": true,
+      "execution": {
+        "succeeded": true,
+        "failures": []
+      }
     }
   },
   "traces/desktop.json": {

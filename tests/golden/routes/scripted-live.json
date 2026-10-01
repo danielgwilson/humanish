@@ -874,7 +874,12 @@
     "completedAt": "[ts]",
     "outcome": {
       "verdict": "pass",
-      "estimatedCostUsd": 0
+      "estimatedCostUsd": 0,
+      "ok": true,
+      "execution": {
+        "succeeded": true,
+        "failures": []
+      }
     }
   },
   "traces/desktop.json": {

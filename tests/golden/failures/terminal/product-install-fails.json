@@ -1219,7 +1219,17 @@
     "completedAt": "[ts]",
     "outcome": {
       "verdict": "fail",
-      "estimatedCostUsd": null
+      "estimatedCostUsd": null,
+      "ok": false,
+      "execution": {
+        "succeeded": false,
+        "failures": [
+          {
+            "kind": "harness",
+            "message": "exit status 1"
+          }
+        ]
+      }
     }
   },
   "terminal-events.ndjson": [],

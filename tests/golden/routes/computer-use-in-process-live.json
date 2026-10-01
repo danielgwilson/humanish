@@ -894,7 +894,12 @@
         "reachedGoal": 1,
         "reportedFriction": 0
       },
-      "estimatedCostUsd": null
+      "estimatedCostUsd": null,
+      "ok": true,
+      "execution": {
+        "succeeded": true,
+        "failures": []
+      }
     }
   }
 }
