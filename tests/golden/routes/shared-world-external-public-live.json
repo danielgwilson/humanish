@@ -103,11 +103,8 @@
     },
     "warnings": [
       "Desktop resource size unavailable (metadata_unavailable); compute cost remains unpriced.",
-      "Physical browser containment is unverified for participant host; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
       "Desktop resource size unavailable (metadata_unavailable); compute cost remains unpriced.",
-      "Physical browser containment is unverified for participant player-2; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
       "Desktop resource size unavailable (metadata_unavailable); compute cost remains unpriced.",
-      "Physical browser containment is unverified for participant player-3; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
       "Observer renders verified local evidence artifacts; runtime stream auth URLs are not persisted.",
       "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
     ],
@@ -360,7 +357,7 @@
       },
       "active": 0,
       "blocked": 0,
-      "warnings": 6
+      "warnings": 3
     },
     "laneGroups": [
       {
@@ -611,19 +608,16 @@
           "browserWindow": {
             "x": 0,
             "y": 0,
-            "width": 1440,
-            "height": 950,
-            "source": "cdp"
+            "width": 500,
+            "height": 896,
+            "source": "xwininfo"
           },
           "viewport": {
             "width": 1440,
             "height": 817,
             "deviceScaleFactor": 1,
             "source": "cdp"
-          },
-          "warnings": [
-            "Physical browser containment is unverified for participant host; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility."
-          ]
+          }
         },
         "ui": {
           "route": "[external-public-plane]",
@@ -757,19 +751,16 @@
           "browserWindow": {
             "x": 0,
             "y": 0,
-            "width": 1440,
-            "height": 950,
-            "source": "cdp"
+            "width": 500,
+            "height": 896,
+            "source": "xwininfo"
           },
           "viewport": {
             "width": 1440,
             "height": 817,
             "deviceScaleFactor": 1,
             "source": "cdp"
-          },
-          "warnings": [
-            "Physical browser containment is unverified for participant player-2; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility."
-          ]
+          }
         },
         "ui": {
           "route": "[external-public-plane]",
@@ -903,19 +894,16 @@
           "browserWindow": {
             "x": 0,
             "y": 0,
-            "width": 1440,
-            "height": 950,
-            "source": "cdp"
+            "width": 500,
+            "height": 740,
+            "source": "xwininfo"
           },
           "viewport": {
             "width": 1440,
             "height": 817,
             "deviceScaleFactor": 1,
             "source": "cdp"
-          },
-          "warnings": [
-            "Physical browser containment is unverified for participant player-3; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility."
-          ]
+          }
         },
         "ui": {
           "route": "[external-public-plane]",
@@ -1035,16 +1023,7 @@
         "streamId": "stream-001"
       },
       {
-        "id": "event-003-warning-host",
-        "at": "[ts]",
-        "level": "warn",
-        "type": "concurrent-shared-world.actor.warning",
-        "message": "Persona host: Physical browser containment is unverified for participant host; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
-        "simId": "sim-001",
-        "streamId": "stream-001"
-      },
-      {
-        "id": "event-004-session-host",
+        "id": "event-003-session-host",
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.session.goal_satisfied",
@@ -1053,7 +1032,7 @@
         "streamId": "stream-001"
       },
       {
-        "id": "event-005-warning-player-2",
+        "id": "event-004-warning-player-2",
         "at": "[ts]",
         "level": "warn",
         "type": "concurrent-shared-world.actor.warning",
@@ -1062,16 +1041,7 @@
         "streamId": "stream-002"
       },
       {
-        "id": "event-006-warning-player-2",
-        "at": "[ts]",
-        "level": "warn",
-        "type": "concurrent-shared-world.actor.warning",
-        "message": "Persona player-2: Physical browser containment is unverified for participant player-2; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
-        "simId": "sim-002",
-        "streamId": "stream-002"
-      },
-      {
-        "id": "event-007-session-player-2",
+        "id": "event-005-session-player-2",
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.session.goal_satisfied",
@@ -1080,7 +1050,7 @@
         "streamId": "stream-002"
       },
       {
-        "id": "event-008-warning-player-3",
+        "id": "event-006-warning-player-3",
         "at": "[ts]",
         "level": "warn",
         "type": "concurrent-shared-world.actor.warning",
@@ -1089,16 +1059,7 @@
         "streamId": "stream-003"
       },
       {
-        "id": "event-009-warning-player-3",
-        "at": "[ts]",
-        "level": "warn",
-        "type": "concurrent-shared-world.actor.warning",
-        "message": "Persona player-3: Physical browser containment is unverified for participant player-3; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
-        "simId": "sim-003",
-        "streamId": "stream-003"
-      },
-      {
-        "id": "event-010-session-player-3",
+        "id": "event-007-session-player-3",
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.session.goal_satisfied",
@@ -1107,7 +1068,7 @@
         "streamId": "stream-003"
       },
       {
-        "id": "event-011-concurrency",
+        "id": "event-008-concurrency",
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.concurrency",

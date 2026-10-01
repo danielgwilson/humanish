@@ -149,8 +149,9 @@ function makeFakeModule(commandHandler: (command: string) => { stdout?: string }
         const sandbox = makeFakeSandbox(`fake-sandbox-${String(n).padStart(3, "0")}`, (command) => {
           if (command.includes("xdpyinfo"))
             return { stdout: `dimensions: ${width}x${height} pixels\n` };
-          if (command.includes("getwindowgeometry"))
-            return { stdout: `X=0\nY=0\nWIDTH=${width}\nHEIGHT=${height}\n` };
+          // Physical client bounds are read with xwininfo (src/substrates/e2b/desktop-geometry.ts).
+          if (command.includes("xwininfo -id"))
+            return { stdout: fullScreenXwininfo(width, height) };
           return commandHandler(command);
         });
         created.push(createOptions);
@@ -166,14 +167,24 @@ function makeFakeModule(commandHandler: (command: string) => { stdout?: string }
   return { module, created, killed, sandboxes };
 }
 
+/** xwininfo -stats for a viewable window filling the screen (tests/fixtures/desktop-geometry). */
+function fullScreenXwininfo(width: number, height: number): string {
+  return [
+    `  Absolute upper-left X:  0`,
+    `  Absolute upper-left Y:  0`,
+    `  Width: ${width}`,
+    `  Height: ${height}`,
+    `  Map State: IsViewable`,
+    "",
+  ].join("\n");
+}
+
 function browserGeometryHandler(command: string): { stdout?: string } | undefined {
   if (command.includes("xdpyinfo"))
     return { stdout: "dimensions: 1440x950 pixels (381x251 millimeters)\n" };
   if (command.includes("browser_preference='default'"))
     return { stdout: "HUMANISH_BROWSER_RESOLVED=google-chrome\n" };
   if (command.includes("find_chrome_window")) return { stdout: "WINDOW_ID=424242\n" };
-  if (command.includes("getwindowgeometry"))
-    return { stdout: "X=0\nY=0\nWIDTH=1440\nHEIGHT=950\n" };
   if (command.includes("browserWindow: { x: window.screenX")) {
     return {
       stdout: JSON.stringify({
