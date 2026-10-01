@@ -24,8 +24,9 @@ import {
   sessionEnding,
 } from "./self-report.js";
 import { hollowCompletion } from "../../run/judge.js";
-import type { CuaLaneDeps, CuaLaneSpec } from "./types.js";
+import type { CuaLaneDeps, DesktopParticipantRun } from "./types.js";
 import type { ReadyCuaDesktop } from "./desktop-lane.js";
+import { laneSpecOf } from "./legacy-lane-spec.js";
 
 /** The model a lane brings besides the default API client, and the handles its cleanup needs. */
 export interface ParticipantModel {
@@ -36,7 +37,7 @@ export interface ParticipantModel {
 
 /** Starts the lane's model: a caller's provider, the operator's Codex, a Claude session, or none. */
 export async function startParticipantModel(
-  spec: CuaLaneSpec,
+  spec: DesktopParticipantRun,
   deps: CuaLaneDeps,
   executor: CuaExecutor,
 ): Promise<ParticipantModel> {
@@ -46,7 +47,7 @@ export async function startParticipantModel(
       provider: await deps.hooks.buildProvider({
         config,
         actor: deps.descriptor,
-        lane: spec,
+        lane: laneSpecOf(spec),
         laneCount: deps.laneCount,
         executor,
       }),
@@ -58,7 +59,9 @@ export async function startParticipantModel(
     // stores instead of applying the isolated restricted-account profile used by local studies.
     const codexParticipant = createRestrictedCodexParticipant({
       authMode: "operator",
-      ...(spec.reasoningEffort === undefined ? {} : { reasoningEffort: spec.reasoningEffort }),
+      ...(spec.planned.limits.reasoningEffort === undefined
+        ? {}
+        : { reasoningEffort: spec.planned.limits.reasoningEffort }),
       ...(config.actors[0]?.model === undefined ? {} : { model: config.actors[0].model }),
       ...(executor.speechEnabled === true ? { speechEnabled: true } : {}),
       session: { env },
@@ -80,13 +83,17 @@ export async function startParticipantModel(
       return {
         provider: createLocalAgentProvider({
           agent: "claude",
-          ...(spec.reasoningEffort === undefined ? {} : { reasoningEffort: spec.reasoningEffort }),
+          ...(spec.planned.limits.reasoningEffort === undefined
+            ? {}
+            : { reasoningEffort: spec.planned.limits.reasoningEffort }),
           ...(config.actors[0]?.model === undefined ? {} : { model: config.actors[0].model }),
         }),
       };
     }
     const claudeSession = await startClaudeSession({
-      ...(spec.reasoningEffort === undefined ? {} : { reasoningEffort: spec.reasoningEffort }),
+      ...(spec.planned.limits.reasoningEffort === undefined
+        ? {}
+        : { reasoningEffort: spec.planned.limits.reasoningEffort }),
       ...(config.actors[0]?.model === undefined ? {} : { model: config.actors[0].model }),
     });
     return { provider: claudeSession.provider, claudeSession };
@@ -96,7 +103,7 @@ export async function startParticipantModel(
 
 /** The options the lane's session runs with: prompt, model settings, spend caps and callbacks. */
 export function participantSessionOptions(
-  spec: CuaLaneSpec,
+  spec: DesktopParticipantRun,
   deps: CuaLaneDeps,
   ready: ReadyCuaDesktop,
   provider: CuaProvider | undefined,
@@ -124,8 +131,12 @@ export function participantSessionOptions(
       apiKey: deps.openaiApiKey,
       ...(config.actors[0]?.model ? { model: config.actors[0]!.model } : {}),
       // Per-LANE, not per-actor: two lanes at different efforts is the control this exists for.
-      ...(spec.reasoningEffort === undefined ? {} : { reasoningEffort: spec.reasoningEffort }),
-      ...(spec.maxOutputTokens === undefined ? {} : { maxOutputTokens: spec.maxOutputTokens }),
+      ...(spec.planned.limits.reasoningEffort === undefined
+        ? {}
+        : { reasoningEffort: spec.planned.limits.reasoningEffort }),
+      ...(spec.planned.limits.maxOutputTokens === undefined
+        ? {}
+        : { maxOutputTokens: spec.planned.limits.maxOutputTokens }),
     },
     ...(maxUsd === undefined
       ? {}
@@ -142,11 +153,15 @@ export function participantSessionOptions(
     redactScreenshots: deps.redactScreenshots,
     scrubText: deps.scrubKnownValues,
     writeScreenshot,
-    ...(spec.idleSteps === undefined ? {} : { idleSteps: spec.idleSteps }),
-    ...(spec.noProgressSteps === undefined ? {} : { noProgressSteps: spec.noProgressSteps }),
-    ...(spec.stopWhen === undefined ? {} : { stopWhen: spec.stopWhen }),
-    ...(spec.dwell === undefined ? {} : { dwell: spec.dwell }),
-    ...(spec.tasks === undefined ? {} : { tasks: spec.tasks }),
+    ...(spec.backstop?.idleSteps === undefined ? {} : { idleSteps: spec.backstop.idleSteps }),
+    ...(spec.backstop?.noProgressSteps === undefined
+      ? {}
+      : { noProgressSteps: spec.backstop.noProgressSteps }),
+    ...(spec.planned.limits.stopWhen === undefined
+      ? {}
+      : { stopWhen: spec.planned.limits.stopWhen }),
+    ...(spec.planned.limits.dwell === undefined ? {} : { dwell: spec.planned.limits.dwell }),
+    ...(spec.planned.tasks === undefined ? {} : { tasks: spec.planned.tasks }),
     // The STUDY budget (#299): this lane notes its own running estimate on the shared ledger
     // and stops when the RUN total crosses the cap — independent of the per-lane maxUsd above.
     ...(deps.runBudget === undefined
@@ -158,7 +173,7 @@ export function participantSessionOptions(
               provider?.version ?? capModelId,
               provider?.executionProfile,
             ).estimatedCostUsd;
-            const totalUsd = deps.runBudget!.note(spec.laneId, estimate);
+            const totalUsd = deps.runBudget!.note(spec.planned.id, estimate);
             return totalUsd > deps.runBudget!.maxTotalUsd
               ? `study budget reached: the run's estimated model spend $${round6(totalUsd)} crossed execution.caps.maxTotalUsd=$${deps.runBudget!.maxTotalUsd}; this lane stops here and sibling lanes stop at their next turn`
               : null;
@@ -176,7 +191,7 @@ export function participantSessionOptions(
             items: readonly ActorTraceItem[],
             usage: ActorTokenUsage,
             metadata?: CuaLiveMetadata,
-          ): void => deps.onTrace?.(spec.laneId, items, usage, metadata),
+          ): void => deps.onTrace?.(spec.planned.id, items, usage, metadata),
         }),
   };
 }
@@ -216,7 +231,7 @@ export async function closeParticipantModel(
 
 /** Prices the finished session's tokens onto its trace, writes the trace, and warns on raw screenshots. */
 export async function recordParticipantTrace(
-  spec: CuaLaneSpec,
+  spec: DesktopParticipantRun,
   deps: CuaLaneDeps,
   session: CuaLoopResult,
   warnings: string[],

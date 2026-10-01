@@ -202,10 +202,16 @@ function sharedWorldEvidence(
     const session = result?.outcome.session;
     const routeHostDigest = result ? hostOriginDigest(result.route) : fallbackHostDigest;
     return {
-      roleId: spec.laneId,
-      ...(spec.actorType === undefined ? {} : { actorType: spec.actorType }),
-      ...(spec.surface === undefined ? {} : { surface: spec.surface }),
-      ...(spec.caseGroup === undefined ? {} : { caseGroup: spec.caseGroup }),
+      roleId: spec.planned.id,
+      ...(spec.planned.labels.actorType === undefined
+        ? {}
+        : { actorType: spec.planned.labels.actorType }),
+      ...(spec.planned.labels.surface === undefined
+        ? {}
+        : { surface: spec.planned.labels.surface }),
+      ...(spec.planned.labels.caseGroup === undefined
+        ? {}
+        : { caseGroup: spec.planned.labels.caseGroup }),
       simId: spec.simId,
       streamId: spec.streamId,
       startedAt: result?.startedAt ?? 0,
@@ -237,10 +243,16 @@ function sharedWorldEvidence(
     const session = result?.outcome.session;
     const ok = !dryRun && actorLanePassed(result);
     return {
-      roleId: spec.laneId,
-      ...(spec.actorType === undefined ? {} : { actorType: spec.actorType }),
-      ...(spec.surface === undefined ? {} : { surface: spec.surface }),
-      ...(spec.caseGroup === undefined ? {} : { caseGroup: spec.caseGroup }),
+      roleId: spec.planned.id,
+      ...(spec.planned.labels.actorType === undefined
+        ? {}
+        : { actorType: spec.planned.labels.actorType }),
+      ...(spec.planned.labels.surface === undefined
+        ? {}
+        : { surface: spec.planned.labels.surface }),
+      ...(spec.planned.labels.caseGroup === undefined
+        ? {}
+        : { caseGroup: spec.planned.labels.caseGroup }),
       simId: spec.simId,
       streamId: spec.streamId,
       status: session
@@ -375,7 +387,7 @@ function concurrencyReview(
             )
             .map(
               (result) =>
-                `${result.spec.laneId}: ${result.outcome.sessionError ?? result.outcome.session?.reason ?? "did not pass"}`,
+                `${result.spec.planned.id}: ${result.outcome.sessionError ?? result.outcome.session?.reason ?? "did not pass"}`,
             ),
   };
   return review;
@@ -501,7 +513,7 @@ function concurrentCostSummary(
     lanes: args.actorResults.flatMap((result) =>
       result.outcome.session === undefined
         ? []
-        : [{ laneId: result.spec.laneId, trace: result.outcome.session.trace }],
+        : [{ laneId: result.spec.planned.id, trace: result.outcome.session.trace }],
     ),
     desktops: [
       ...(subject === undefined
@@ -519,7 +531,7 @@ function concurrentCostSummary(
           ? []
           : [
               {
-                laneId: result.spec.laneId,
+                laneId: result.spec.planned.id,
                 minutes: desktopSpanToMinutes(result.outcome.desktopDurationMs),
                 observation: result.outcome.desktopResources,
                 lifetimeComplete: result.outcome.killed,

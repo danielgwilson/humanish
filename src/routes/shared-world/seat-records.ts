@@ -5,7 +5,7 @@ import { participantAssignment } from "../../lab/participant-assignment.js";
 import type { RunEvent, RunSimulation } from "../../run/bundle.js";
 import type { RunSimulationStatus, RunStream } from "../../run/streams.js";
 import { declaredScreenForRender } from "../../substrates/e2b/desktop-geometry.js";
-import type { CuaLaneSpec, LaneRunOutcome } from "../computer-use/types.js";
+import type { DesktopParticipantRun, LaneRunOutcome } from "../computer-use/types.js";
 import { publicSafeRouteLabel } from "./provenance.js";
 import { laneTaxonomyLabel } from "./seats.js";
 import type { ConcurrentBundleArgs } from "./types.js";
@@ -34,9 +34,9 @@ interface SeatView {
   screenshotMode: "raw" | "blurred";
 }
 
-function seatView(ctx: SeatRecordContext, spec: CuaLaneSpec, index: number): SeatView {
+function seatView(ctx: SeatRecordContext, spec: DesktopParticipantRun, index: number): SeatView {
   const { args, external, inProgress } = ctx;
-  const taxonomy = laneTaxonomyLabel(spec);
+  const taxonomy = laneTaxonomyLabel(spec.planned.labels);
   const result = args.actorResults[index];
   const outcome = result?.outcome;
   const session = outcome?.session;
@@ -64,13 +64,16 @@ function seatView(ctx: SeatRecordContext, spec: CuaLaneSpec, index: number): Sea
   // ABSENT declared means either "the preset rendered faithfully" or "there was no live
   // outcome", and a dry-run bundle keeps the self-confirming shape this field exists to kill.
   const fallbackDeclared = declaredScreenForRender(
-    spec.devicePreset,
-    spec.deviceName,
-    spec.resolution,
+    spec.planned.device.preset,
+    spec.planned.device.name,
+    spec.planned.device.resolution,
   );
   const desktopGeometry = outcome?.desktopGeometry ?? {
     screen: {
-      requested: { width: spec.resolution[0], height: spec.resolution[1] },
+      requested: {
+        width: spec.planned.device.resolution[0],
+        height: spec.planned.device.resolution[1],
+      },
       ...(fallbackDeclared ? { declared: fallbackDeclared } : {}),
     },
   };
@@ -96,7 +99,7 @@ function seatView(ctx: SeatRecordContext, spec: CuaLaneSpec, index: number): Sea
 
 function seatSimulation(
   ctx: SeatRecordContext,
-  spec: CuaLaneSpec,
+  spec: DesktopParticipantRun,
   index: number,
   view: SeatView,
 ): RunSimulation {
@@ -113,12 +116,12 @@ function seatSimulation(
     progress: inProgress ? 35 : 100,
     currentStep: view.reason,
     summary: session
-      ? `Persona ${spec.laneId}${taxonomy} (${spec.persona.id}): drove the shared plane concurrently; ${session.completionReason}.`
+      ? `Persona ${spec.planned.id}${taxonomy} (${spec.persona.id}): drove the shared plane concurrently; ${session.completionReason}.`
       : outcome?.sessionError
-        ? `Persona ${spec.laneId}${taxonomy} failed before a terminal session verdict: ${outcome.sessionError}`
+        ? `Persona ${spec.planned.id}${taxonomy} failed before a terminal session verdict: ${outcome.sessionError}`
         : inProgress
-          ? `Persona ${spec.laneId}${taxonomy} (${spec.persona.id}) is running against the shared plane.`
-          : `Contract persona ${spec.laneId}${taxonomy} (${spec.persona.id}) for ${args.descriptor.id} against the shared plane at ${ctx.appUrl}.`,
+          ? `Persona ${spec.planned.id}${taxonomy} (${spec.persona.id}) is running against the shared plane.`
+          : `Contract persona ${spec.planned.id}${taxonomy} (${spec.persona.id}) for ${args.descriptor.id} against the shared plane at ${ctx.appUrl}.`,
     streamIds: [spec.streamId],
     startedAt: args.createdAt,
     updatedAt: args.createdAt,
@@ -127,7 +130,7 @@ function seatSimulation(
 
 function seatStream(
   ctx: SeatRecordContext,
-  spec: CuaLaneSpec,
+  spec: DesktopParticipantRun,
   index: number,
   view: SeatView,
 ): RunStream {
@@ -136,11 +139,11 @@ function seatStream(
   return {
     id: spec.streamId,
     simId: spec.simId,
-    ...(spec.assignment === undefined
+    ...(spec.evidenceAssignment === undefined
       ? {}
-      : { assignment: participantAssignment(spec.assignment) }),
+      : { assignment: participantAssignment(spec.evidenceAssignment) }),
     kind: "browser",
-    label: `Concurrent persona ${spec.laneId}${taxonomy} — ${args.plan.labId}`,
+    label: `Concurrent persona ${spec.planned.id}${taxonomy} — ${args.plan.labId}`,
     status: view.status,
     transport: "snapshot",
     updatedAt: args.createdAt,
@@ -148,9 +151,9 @@ function seatStream(
       ? {
           kind: "screenshot",
           url: lastScreenshot,
-          title: `Shared plane, persona ${spec.laneId} (${screenshotMode})`,
+          title: `Shared plane, persona ${spec.planned.id} (${screenshotMode})`,
         }
-      : { kind: "placeholder", title: `Shared plane, persona ${spec.laneId}` },
+      : { kind: "placeholder", title: `Shared plane, persona ${spec.planned.id}` },
     ...(desktopGeometry.viewport === undefined
       ? {}
       : {
@@ -158,13 +161,13 @@ function seatStream(
             width: desktopGeometry.viewport.width,
             height: desktopGeometry.viewport.height,
             deviceScaleFactor: desktopGeometry.viewport.deviceScaleFactor,
-            isMobile: spec.devicePreset.isMobile,
+            isMobile: spec.planned.device.preset.isMobile,
           },
         }),
     desktopGeometry,
     ui: {
       route: view.route,
-      intent: `Watch persona ${spec.laneId}${taxonomy} (${spec.persona.id}) drive the SHARED plane concurrently with the other personas.`,
+      intent: `Watch persona ${spec.planned.id}${taxonomy} (${spec.persona.id}) drive the SHARED plane concurrently with the other personas.`,
       state: view.reason,
       ...(session ? { actorStatus: session.status } : {}),
       ...(lastScreenshot ? { screenshotUrl: lastScreenshot } : {}),
@@ -177,7 +180,7 @@ function seatStream(
       ...(session
         ? [
             {
-              label: `persona ${spec.laneId} actor trace`,
+              label: `persona ${spec.planned.id} actor trace`,
               path: spec.traceArtifactPath,
               kind: "trace" as const,
             },
@@ -190,7 +193,7 @@ function seatStream(
         ? [{ label: "comms thread", path: args.commsArtifactPath, kind: "log" as const }]
         : []),
       ...screenshots.map((screenshot, screenshotIndex) => ({
-        label: `persona ${spec.laneId} screenshot ${String(screenshotIndex + 1).padStart(2, "0")} (${screenshotMode})`,
+        label: `persona ${spec.planned.id} screenshot ${String(screenshotIndex + 1).padStart(2, "0")} (${screenshotMode})`,
         path: screenshot,
         kind: "screenshot" as const,
       })),
@@ -198,18 +201,22 @@ function seatStream(
   };
 }
 
-function seatEvents(ctx: SeatRecordContext, spec: CuaLaneSpec, view: SeatView): RunEvent[] {
+function seatEvents(
+  ctx: SeatRecordContext,
+  spec: DesktopParticipantRun,
+  view: SeatView,
+): RunEvent[] {
   const { args, inProgress, nextEventId } = ctx;
   const createdAt = args.createdAt;
   const { outcome, session } = view;
   const events: RunEvent[] = [];
   for (const warning of outcome?.warnings ?? []) {
     events.push({
-      id: nextEventId(`warning-${spec.laneId}`),
+      id: nextEventId(`warning-${spec.planned.id}`),
       at: createdAt,
       level: "warn",
       type: "concurrent-shared-world.actor.warning",
-      message: `Persona ${spec.laneId}: ${warning}`,
+      message: `Persona ${spec.planned.id}: ${warning}`,
       simId: spec.simId,
       streamId: spec.streamId,
     });
@@ -217,41 +224,41 @@ function seatEvents(ctx: SeatRecordContext, spec: CuaLaneSpec, view: SeatView): 
 
   if (session) {
     events.push({
-      id: nextEventId(`session-${spec.laneId}`),
+      id: nextEventId(`session-${spec.planned.id}`),
       at: createdAt,
       level: session.status === "passed" ? "info" : "warn",
       type: `concurrent-shared-world.session.${session.completionReason}`,
-      message: `Persona ${spec.laneId}: ${session.status} — ${session.reason}`,
+      message: `Persona ${spec.planned.id}: ${session.status} — ${session.reason}`,
       simId: spec.simId,
       streamId: spec.streamId,
     });
   } else if (outcome?.sessionError) {
     events.push({
-      id: nextEventId(`session-error-${spec.laneId}`),
+      id: nextEventId(`session-error-${spec.planned.id}`),
       at: createdAt,
       level: "error",
       type: "concurrent-shared-world.session.error",
-      message: `Persona ${spec.laneId}: ${outcome.sessionError}`,
+      message: `Persona ${spec.planned.id}: ${outcome.sessionError}`,
       simId: spec.simId,
       streamId: spec.streamId,
     });
   } else if (inProgress) {
     events.push({
-      id: nextEventId(`running-${spec.laneId}`),
+      id: nextEventId(`running-${spec.planned.id}`),
       at: createdAt,
       level: "info",
       type: "actor.running",
-      message: `Persona ${spec.laneId}: desktop actor is running; live stream URL is runtime-only and not persisted.`,
+      message: `Persona ${spec.planned.id}: desktop actor is running; live stream URL is runtime-only and not persisted.`,
       simId: spec.simId,
       streamId: spec.streamId,
     });
   } else {
     events.push({
-      id: nextEventId(`contract-${spec.laneId}`),
+      id: nextEventId(`contract-${spec.planned.id}`),
       at: createdAt,
       level: "info",
       type: "concurrent-shared-world.contract.ready",
-      message: `Persona ${spec.laneId}: dry-run contract actor ready; switch scenario.mode to live for a real concurrent session.`,
+      message: `Persona ${spec.planned.id}: dry-run contract actor ready; switch scenario.mode to live for a real concurrent session.`,
       simId: spec.simId,
       streamId: spec.streamId,
     });
@@ -262,7 +269,7 @@ function seatEvents(ctx: SeatRecordContext, spec: CuaLaneSpec, view: SeatView): 
 /** One seat's simulation, stream and events. */
 export function seatRecords(
   ctx: SeatRecordContext,
-  spec: CuaLaneSpec,
+  spec: DesktopParticipantRun,
   index: number,
 ): { simulation: RunSimulation; stream: RunStream; events: RunEvent[] } {
   const view = seatView(ctx, spec, index);

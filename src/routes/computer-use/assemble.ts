@@ -8,7 +8,7 @@ import { buildCuaFanoutBundle } from "./fanout-bundle.js";
 import { buildSingleLaneBundle } from "./single-bundle.js";
 import type {
   CuaLanePlan,
-  CuaLaneSpec,
+  DesktopParticipantRun,
   CuaSubjectProjection,
   CuaSubjectProvenanceArg,
   LaneRunOutcome,
@@ -17,7 +17,7 @@ import type {
 /** What every bundle of one run shares, in progress or final. */
 export interface CuaRunBundleBase {
   lab?: RunLabProvenance;
-  laneSpecs: CuaLaneSpec[];
+  laneSpecs: DesktopParticipantRun[];
   descriptor: CuaActorDescriptor;
   appUrl: string;
   createdAt: string;
@@ -94,7 +94,7 @@ export function buildCuaRunBundle(
       spec,
       outcome: state.outcomes?.[0],
       descriptor: base.descriptor,
-      appUrl: spec.targetUrl ?? base.appUrl,
+      appUrl: spec.planned.targetUrl ?? base.appUrl,
       createdAt: base.createdAt,
       dryRun: state.dryRun,
       config: base.config,

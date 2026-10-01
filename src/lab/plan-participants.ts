@@ -9,7 +9,7 @@ import type { LabTask } from "./tasks.js";
 import type { LabActorLane, LabConfig } from "./types.js";
 
 /** Who one participant is. Every route with participants carries this record. */
-interface Participant {
+export interface Participant {
   /** Declared roster id, else `lane-NN` (independent lanes) or `role-NN` (shared-world seats). */
   readonly id: string;
   /** 0-based position in the roster. Bundle `sim-NNN` and `stream-NNN` ids derive from it. */
@@ -31,7 +31,7 @@ interface DesktopParticipant extends Participant {
   readonly device: {
     readonly name: string;
     readonly preset: DevicePreset;
-    readonly resolution: readonly [number, number];
+    readonly resolution: [number, number];
   };
   /** Lane value, else actor value, else absent (the provider default is recorded in the trace). */
   readonly limits: {

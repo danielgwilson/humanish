@@ -22,11 +22,11 @@ import type { E2BDesktopSandbox } from "../../substrates/e2b/sdk.js";
 import type { DesktopLaneEvidence } from "./desktop-lane.js";
 import type { LaneComms, RunningCommsCatch } from "./e2b-desktop-comms.js";
 import type { LaneFidelity } from "./e2b-desktop-fidelity.js";
-import type { CuaActorLabErrorCode, CuaLaneDeps, CuaLaneSpec } from "./types.js";
+import type { CuaActorLabErrorCode, CuaLaneDeps, DesktopParticipantRun } from "./types.js";
 
 /** What every step of one lane reads: its spec, the run's dependencies and where it points. */
 export interface E2BLaneContext {
-  readonly spec: CuaLaneSpec;
+  readonly spec: DesktopParticipantRun;
   readonly deps: CuaLaneDeps;
   readonly warnings: string[];
   readonly targetUrl: string;
@@ -73,11 +73,11 @@ export interface E2BLaneState {
   streamUrl: string | undefined;
 }
 
-export function newLaneState(spec: CuaLaneSpec): E2BLaneState {
+export function newLaneState(spec: DesktopParticipantRun): E2BLaneState {
   const declaredScreen = declaredScreenForRender(
-    spec.devicePreset,
-    spec.deviceName,
-    spec.resolution,
+    spec.planned.device.preset,
+    spec.planned.device.name,
+    spec.planned.device.resolution,
   );
   return {
     desktop: undefined,
@@ -108,7 +108,10 @@ export function newLaneState(spec: CuaLaneSpec): E2BLaneState {
     browserTargetId: undefined,
     desktopGeometry: {
       screen: {
-        requested: { width: spec.resolution[0], height: spec.resolution[1] },
+        requested: {
+          width: spec.planned.device.resolution[0],
+          height: spec.planned.device.resolution[1],
+        },
         ...(declaredScreen ? { declared: declaredScreen } : {}),
       },
     },

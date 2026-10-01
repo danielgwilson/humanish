@@ -29,7 +29,7 @@ import {
   type PlaneContext,
   type PlaneResults,
 } from "./types.js";
-import type { CuaLaneSpec } from "../computer-use/types.js";
+import type { DesktopParticipantRun } from "../computer-use/types.js";
 
 /** The results of a run whose plane did not run (a dry run) or has not reported yet. */
 export function emptyPlaneResults(): PlaneResults {
@@ -51,7 +51,7 @@ export function emptyPlaneResults(): PlaneResults {
 
 /** Each role's outcome, in lane order. */
 function concurrentRoleResults(
-  actorSpecs: CuaLaneSpec[],
+  actorSpecs: DesktopParticipantRun[],
   actorResults: ActorLaneResult[],
   dryRun: boolean,
 ): ConcurrentSharedWorldRoleResult[] {
@@ -61,7 +61,7 @@ function concurrentRoleResults(
   };
   return actorSpecs.map((spec, index) => {
     const result = actorResults[index];
-    const base = { id: spec.laneId, index: index + 1, persona: spec.persona.id };
+    const base = { id: spec.planned.id, index: index + 1, persona: spec.persona.id };
     if (dryRun || !result) {
       return { ...base, status: "contract_proof_only", ok: dryRun };
     }

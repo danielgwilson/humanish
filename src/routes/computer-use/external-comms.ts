@@ -6,7 +6,7 @@ import type { LabCommsEmail, LabCommsExternal } from "../../lab/types.js";
 import type { PreparedRunArtifactPaths } from "../../run/paths.js";
 import { writeContainedOutputFile } from "../../run/contained-output.js";
 import { laneHasInboxRecipient } from "./desktop-lane.js";
-import type { CuaLaneSpec, LaneRunOutcome } from "./types.js";
+import type { DesktopParticipantRun, LaneRunOutcome } from "./types.js";
 
 /**
  * Adopter-hosted drain (#380): once per RUN, after every lane finished — the catch is one
@@ -21,7 +21,7 @@ export async function drainExternalComms(args: {
   externalCommsEmail: LabCommsEmail;
   env: Record<string, string | undefined>;
   runPaths: PreparedRunArtifactPaths;
-  laneSpecs: readonly CuaLaneSpec[];
+  laneSpecs: readonly DesktopParticipantRun[];
   outcomes: LaneRunOutcome[];
   scrubKnownValues: (text: string) => string;
 }): Promise<string[]> {
@@ -61,7 +61,7 @@ export async function drainExternalComms(args: {
         "utf8",
       );
       for (const [index, outcome] of outcomes.entries()) {
-        const laneId = laneSpecs[index]?.laneId;
+        const laneId = laneSpecs[index]?.planned.id;
         if (
           laneId !== undefined &&
           outcome.commsArtifactPath === undefined &&

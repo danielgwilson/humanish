@@ -8,7 +8,7 @@ import type { LabConfig } from "../../../src/lab/types.js";
 import type { createLocalFirecrackerDesktop } from "../../../src/substrates/local/firecracker-desktop.js";
 import type { CuaActorSessionOptions } from "../../../src/actors/computer-use/actor.js";
 import type { CuaLoopResult, CuaProvider } from "../../../src/actors/computer-use/loop.js";
-import type { CuaLaneSpec } from "../../../src/routes/computer-use/types.js";
+import type { CuaLaneSpec } from "../../../src/routes/computer-use/legacy-lane-spec.js";
 import type { PreparedOutputRoot } from "../../../src/run/contained-output.js";
 import type { RunScorerProvenance } from "../../../src/run/bundle.js";
 

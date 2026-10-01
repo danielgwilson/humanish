@@ -38,8 +38,8 @@ export async function startLaneMedia(
     try {
       state.recording = await startE2BDesktopRecording({
         desktop,
-        width: spec.resolution[0],
-        height: spec.resolution[1],
+        width: spec.planned.device.resolution[0],
+        height: spec.planned.device.resolution[1],
         audio: requestedRecording.audio,
         ...(state.speech === undefined ? {} : { pulseEnv: state.speech.env }),
         requestTimeoutMs: deps.requestTimeoutMs,
@@ -102,7 +102,7 @@ export async function openLaneSurface(
         };
   if (mediaEvidence !== undefined && browserLaunch.family !== "chromium") {
     throw new Error(
-      `execution.desktop.media needs Chrome or Chromium on lane ${spec.laneId} (the fake-device flags are Chromium's); the launched browser family is ${browserLaunch.family}. Set execution.desktop.browser: chrome.`,
+      `execution.desktop.media needs Chrome or Chromium on lane ${spec.planned.id} (the fake-device flags are Chromium's); the launched browser family is ${browserLaunch.family}. Set execution.desktop.browser: chrome.`,
     );
   }
   state.launchedBrowserFamily = browserLaunch.family;
@@ -144,9 +144,9 @@ export async function startLaneStream(
         ...(state.browserLaunchIdentity === undefined
           ? {}
           : { launchIdentity: state.browserLaunchIdentity }),
-        laneId: spec.laneId,
+        laneId: spec.planned.id,
         targetUrl: ctx.targetUrl,
-        requestedScreen: spec.resolution,
+        requestedScreen: spec.planned.device.resolution,
         requestTimeoutMs: deps.requestTimeoutMs,
       });
       state.initialBrowserGeometry = browserGeometry;
@@ -166,7 +166,7 @@ export async function startLaneStream(
     if (typeof candidateStreamUrl === "string" && candidateStreamUrl.trim().length > 0) {
       state.streamUrl = candidateStreamUrl;
       await deps.hooks.onRuntimeStreamReady?.({
-        laneId: spec.laneId,
+        laneId: spec.planned.id,
         sandboxId: desktop.sandboxId,
         simId: spec.simId,
         streamId: spec.streamId,

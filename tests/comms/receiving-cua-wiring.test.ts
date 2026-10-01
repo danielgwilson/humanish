@@ -4,8 +4,7 @@ import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { getActor } from "../../src/actors/registry.js";
 import { runCuaLane } from "../../src/routes/computer-use/lanes.js";
-import { type CuaLaneDeps, type CuaLaneSpec } from "../../src/routes/computer-use/types.js";
-import { DEVICE_PRESETS } from "../../src/lab/device-presets.js";
+import { type CuaLaneDeps } from "../../src/routes/computer-use/types.js";
 import type {
   E2BDesktopCreateOptions,
   E2BDesktopModule,
@@ -17,6 +16,7 @@ import type { CommsReceivingRun } from "../../src/comms/receiving.js";
 import type { ReceivingSurface } from "../../src/comms/receiving-types.js";
 import { prepareSelectedOutputDirectory } from "../../src/run/contained-output.js";
 import { inertDesktopInput } from "../helpers/inert-desktop-input.js";
+import { participantRun } from "../helpers/participant-run.js";
 
 describe("real inbox wiring through the actual CUA lane", () => {
   it.each([false, true])(
@@ -88,23 +88,16 @@ describe("real inbox wiring through the actual CUA lane", () => {
           attach,
           finishParticipant,
         } as unknown as CommsReceivingRun;
-        const spec: CuaLaneSpec = {
-          laneId: "participant-a",
-          laneIndex: 0,
-          simId: "sim-001",
-          streamId: "stream-001",
+        const spec = participantRun({
+          id: "participant-a",
+          index: 0,
           persona: {
             id: "first-time-visitor",
             traitsApplied: [],
             promptDigest: "synthetic-prompt",
           },
           instructions: "Explore the app.",
-          deviceName: "desktop",
-          devicePreset: DEVICE_PRESETS.desktop,
-          resolution: [1440, 950],
-          screenshotDir: "",
-          traceArtifactPath: "actor.json",
-        };
+        });
         const deps: CuaLaneDeps & { receiving: CommsReceivingRun } = {
           config: parsed.config,
           descriptor: getActor("openai-computer-use"),

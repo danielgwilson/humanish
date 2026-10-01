@@ -18,7 +18,7 @@ import {
 } from "../../src/lab/plan-participants.js";
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/lab/types.js";
 import { planCuaLanes } from "../../src/routes/computer-use/lane-plan.js";
-import type { CuaLaneSpec } from "../../src/routes/computer-use/types.js";
+import type { DesktopParticipantRun } from "../../src/routes/computer-use/types.js";
 import { runConcurrentSharedWorld } from "../../src/routes/shared-world/lab.js";
 import { prepareSelectedOutputDirectory } from "../../src/run/contained-output.js";
 import { committedLabs } from "../helpers/committed-labs.js";
@@ -118,22 +118,30 @@ const cuVariants: [string, LabConfig, number | undefined][] = [
 ];
 
 /** The declarative fields of a lane spec, in the participant's shape. */
-function fromSpec(spec: CuaLaneSpec) {
+function fromSpec(spec: DesktopParticipantRun) {
   return {
-    id: spec.laneId,
-    index: spec.laneIndex,
+    id: spec.planned.id,
+    index: spec.planned.index,
     personaId: spec.persona.id,
-    focus: spec.assignment?.focus,
-    labels: { actorType: spec.actorType, surface: spec.surface, caseGroup: spec.caseGroup },
-    device: { name: spec.deviceName, preset: spec.devicePreset, resolution: spec.resolution },
-    limits: {
-      stopWhen: spec.stopWhen,
-      dwell: spec.dwell,
-      reasoningEffort: spec.reasoningEffort,
-      maxOutputTokens: spec.maxOutputTokens,
+    focus: spec.evidenceAssignment?.focus,
+    labels: {
+      actorType: spec.planned.labels.actorType,
+      surface: spec.planned.labels.surface,
+      caseGroup: spec.planned.labels.caseGroup,
     },
-    tasks: spec.tasks,
-    targetUrl: spec.targetUrl,
+    device: {
+      name: spec.planned.device.name,
+      preset: spec.planned.device.preset,
+      resolution: spec.planned.device.resolution,
+    },
+    limits: {
+      stopWhen: spec.planned.limits.stopWhen,
+      dwell: spec.planned.limits.dwell,
+      reasoningEffort: spec.planned.limits.reasoningEffort,
+      maxOutputTokens: spec.planned.limits.maxOutputTokens,
+    },
+    tasks: spec.planned.tasks,
+    targetUrl: spec.planned.targetUrl,
   };
 }
 
@@ -183,7 +191,7 @@ describe("computerUseParticipants", () => {
         const declared = config.actors[0]?.mission;
         expect(participant.assignment.mission, name).toBe(declared);
         if (declared !== undefined)
-          expect(lanes.laneSpecs[index]?.assignment?.mission, name).toBe(declared);
+          expect(lanes.laneSpecs[index]?.evidenceAssignment?.mission, name).toBe(declared);
       }
     }
   });

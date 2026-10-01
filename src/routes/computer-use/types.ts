@@ -17,7 +17,6 @@ import {
 import { type CuaDiagnostics } from "./diagnostics.js";
 import type {
   ActorCompletionReason,
-  ActorPersonaRef,
   ActorStatus,
   ActorStopCause,
   ActorTokenUsage,
@@ -26,14 +25,12 @@ import type {
 import { type CuaActorDescriptor } from "../../actors/registry.js";
 import { type BrowserLabAdapterHooks } from "../../lab/adapter-extension.js";
 import type { CuaActorSessionOptions } from "../../actors/computer-use/actor.js";
-import { type DevicePreset } from "../../lab/device-presets.js";
 import { type E2BDesktopModule, type E2BDesktopSandbox } from "../../substrates/e2b/sdk.js";
 import { type DesktopResourceObservation } from "../../substrates/e2b/desktop-resources.js";
 import { type DetachedTimers } from "../../substrates/detached.js";
 import { type LabCommsEmail, type LabConfig, type LabSubjectServe } from "../../lab/types.js";
 import { type LocalAgentId } from "../../actors/local-agent/cli.js";
 import { renderObserver, type ObserverResult } from "../../observer/render.js";
-import type { ReasoningEffort } from "../../actors/reasoning-effort.js";
 import { type RunLabProvenance } from "../../run/status.js";
 import {
   type RunBundle,
@@ -42,11 +39,15 @@ import {
   type RunSubjectProvenance,
   type RunSubjectStateStepRecord,
 } from "../../run/bundle.js";
-import { type RunDesktopGeometry, type RunStream } from "../../run/streams.js";
+import { type RunDesktopGeometry } from "../../run/streams.js";
 import { type PreparedOutputRoot } from "../../run/contained-output.js";
 import { type LocalTreeArchive } from "../../run/source-archive.js";
-import type { DwellWindow, StopWhen } from "../../actors/stop-conditions.js";
-import { type LabTask } from "../../lab/tasks.js";
+import type {
+  ComputerUseParticipant,
+  SharedWorldParticipant,
+} from "../../lab/plan-participants.js";
+import type { ResolvedParticipant } from "../../run/participant.js";
+import type { CuaLaneSpec } from "./legacy-lane-spec.js";
 
 export const CUA_ACTOR_LAB_SCHEMA = "humanish.cua-lab-result.v2";
 
@@ -455,58 +456,29 @@ export interface CuaActorLabResult extends AutomaticAnalysisResult {
   };
 }
 
-/** A fully-resolved fan-out lane: identity, the composed prompt, and the device geometry it
- *  renders at. Internal — the public projection is CuaLanePlanEntry / CuaLaneResult. */
-export interface CuaLaneSpec {
-  laneId: string;
-  actorType?: string;
-  surface?: string;
-  caseGroup?: string;
-  /** 0-based. */
-  laneIndex: number;
-  simId: string;
-  streamId: string;
-  persona: ActorPersonaRef;
-  instructions: string;
-  /** Redacted original composed prompt for legacy study context; execution uses instructions. */
-  evidenceInstructions?: string;
-  /** Original declarative assignment, separate from runtime-composed instructions. */
-  assignment?: RunStream["assignment"];
-  /** App-url fan-out only: this lane's explicit browser target; absent falls back to deps.appUrl. */
-  targetUrl?: string;
-  /** Deterministic harness-owned completion guard. Lane-level override, else actor default. */
-  stopWhen?: StopWhen;
-  /** A declared observation window (#510). Lane-level override, else actor default. */
-  dwell?: DwellWindow;
+/**
+ * What a computer-use lane or a shared-world seat runs: the resolved participant, plus where its
+ * evidence goes and any backstop override its route sets. The public projections are
+ * CuaLanePlanEntry and CuaLaneResult.
+ */
+export interface DesktopParticipantRun extends ResolvedParticipant<
+  ComputerUseParticipant | SharedWorldParticipant
+> {
+  /** "" for one participant (screenshots/<name>); the participant id for more
+   *  (screenshots/<id>/<name>). */
+  readonly screenshotDir: string;
+  /** "actor.json" for one participant; "actors/<streamId>.json" for more. */
+  readonly traceArtifactPath: string;
   /**
-   * How hard this lane's model is asked to think. Lane-level override, else the actor default,
-   * else absent — and absent means the provider's own default, which the trace records as the
-   * resolved value rather than as nothing (#497).
+   * Overrides of the CUA idle and no-progress backstops, for a participant whose job includes a
+   * long legitimate wait (a shared-world host in the waiting room, a follower before the game
+   * starts). Absent means the loop defaults.
    */
-  reasoningEffort?: ReasoningEffort;
-  maxOutputTokens?: number;
-  /** The lab's declared protocol (#414). Every lane runs the SAME protocol — that is what makes the
-   *  per-task rates comparable across participants. Goals are already composed into `instructions`;
-   *  this carries the full tasks so the loop can corroborate completion, and the criteria never
-   *  reach the prompt. */
-  tasks?: readonly LabTask[];
-  /** Per-lane override of the CUA idle backstop (consecutive screenshot/wait turns before gave_up).
-   *  Absent falls back to the loop default. Raised for a lane whose job includes a long LEGITIMATE
-   *  wait (e.g. a shared-world HOST idling in the waiting room while followers provision + join). */
-  idleSteps?: number;
-  /** Per-lane override of the non-idle no-progress backstop; see idleSteps. */
-  noProgressSteps?: number;
-  deviceName: string;
-  devicePreset: DevicePreset;
-  resolution: [number, number];
-  /** "" for N=1 (screenshots/<name>); the laneId for N>1 (screenshots/<laneId>/<name>). */
-  screenshotDir: string;
-  /** "actor.json" for N=1; "actors/<streamId>.json" for N>1. */
-  traceArtifactPath: string;
+  readonly backstop?: { readonly idleSteps?: number; readonly noProgressSteps?: number };
 }
 
 export interface LaneSpecsAndPlan {
-  lanes: CuaLaneSpec[];
+  lanes: DesktopParticipantRun[];
   plan: CuaLanePlan;
 }
 
@@ -527,7 +499,7 @@ export interface CuaRunBudget {
 export interface CuaLaneDeps {
   /** Internal ready-desktop seam. The factory must not allocate; prepare owns that work. */
   createDesktopLane?: (
-    spec: CuaLaneSpec,
+    spec: DesktopParticipantRun,
     warnings: string[],
     artifactRoot: PreparedOutputRoot,
   ) => CuaDesktopLane;
@@ -609,7 +581,7 @@ export interface CuaLaneDeps {
 
 /** One lane's end-to-end run outcome (internal; projected into CuaLaneResult + the bundle). */
 export interface LaneRunOutcome {
-  spec: CuaLaneSpec;
+  spec: DesktopParticipantRun;
   session?: CuaLoopResult;
   sessionError?: string;
   sandboxId?: string;
@@ -654,7 +626,7 @@ export interface CuaFanoutBundleArgs {
   verdict: Verdict;
   /** Lab provenance for the bundle's own `lab` field (#455). */
   lab?: RunLabProvenance;
-  specs: CuaLaneSpec[];
+  specs: DesktopParticipantRun[];
   outcomes?: LaneRunOutcome[];
   laneSubjects: CuaSubjectProjection[];
   aggregateSubject: CuaSubjectProjection;

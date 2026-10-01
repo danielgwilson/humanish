@@ -41,12 +41,13 @@ import {
   type CuaActorLabResult,
   type CuaLaneDeps,
   type CuaLanePlan,
-  type CuaLaneSpec,
+  type DesktopParticipantRun,
   type CuaSubjectProjection,
   type CuaSubjectProvenanceArg,
   type ComputerUseRunInput,
   type RunCuaActorLabOptions,
 } from "./types.js";
+import { laneSpecOf } from "./legacy-lane-spec.js";
 
 /**
  * Plans the run and starts it. Returns the refusal, with the envelope the route always used, or
@@ -130,7 +131,7 @@ export interface CuaRunSetup {
   /** The operator-hosted inbox on the app-url route, when declared. */
   externalCommsConfig: LabCommsExternal | undefined;
   externalCommsEmail: LabCommsEmail | undefined;
-  laneSpecs: CuaLaneSpec[];
+  laneSpecs: DesktopParticipantRun[];
   plan: CuaLanePlan;
   rerunLineage: RunRerunLineage | undefined;
   laneCount: number;
@@ -476,7 +477,12 @@ function cuaLaneDeps(
   const timeoutMs = routePlan.sessionBudgetMs;
   const requestTimeoutMs = readPositiveInt(env.HUMANISH_E2B_REQUEST_TIMEOUT_MS, 60_000);
   return {
-    ...(hooks.createDesktopLane ? { createDesktopLane: hooks.createDesktopLane } : {}),
+    ...(hooks.createDesktopLane
+      ? {
+          createDesktopLane: (run, warnings, root) =>
+            hooks.createDesktopLane!(laneSpecOf(run), warnings, root),
+        }
+      : {}),
     onTrace: (laneId, items, usage, metadata) => liveTrace.flush?.(laneId, items, usage, metadata),
     config,
     descriptor,

@@ -21,7 +21,7 @@ import { writeContainedOutputFile } from "../../run/contained-output.js";
 import type { Shell } from "../../substrates/shell.js";
 import type { ReadyCuaDesktop } from "./desktop-lane.js";
 import { inboxRecipientFor, laneHasInboxRecipient } from "./desktop-lane.js";
-import type { CuaLaneDeps, CuaLaneSpec } from "./types.js";
+import type { CuaLaneDeps, DesktopParticipantRun } from "./types.js";
 
 /** Mid-run inbox-surface render cadence (ms). Coarse enough that the per-tick `cat` + file writes stay
  *  cheap; fine enough that a verification email is visible seconds after the app sends it. */
@@ -175,7 +175,7 @@ export async function startCommsCatch(
 /** Stand up the real-email receiving surface and attach it to the lane; returns the inbox URL. */
 export async function attachReceivingInbox(
   shell: Shell,
-  spec: CuaLaneSpec,
+  spec: DesktopParticipantRun,
   deps: CuaLaneDeps & { receiving: NonNullable<CuaLaneDeps["receiving"]> },
   targetUrl: string,
 ): Promise<string> {
@@ -186,7 +186,7 @@ export async function attachReceivingInbox(
   });
   const email = config.comms?.email;
   try {
-    await deps.receiving.attach(spec.laneId, {
+    await deps.receiving.attach(spec.planned.id, {
       surface,
       allowedOrigins: [...new Set([new URL(targetUrl).origin, ...(email?.allowedOrigins ?? [])])],
       originMap: buildOriginMap({
@@ -210,7 +210,7 @@ function optionalAddress(address: string | undefined): { address?: string } {
 
 /** The inbox the persona is told about: real receiving, the captured catch, or an external inbox. */
 export function laneInbox(args: {
-  spec: CuaLaneSpec;
+  spec: DesktopParticipantRun;
   deps: CuaLaneDeps;
   receivingInboxUrl: string | undefined;
   comms: LaneComms | undefined;
@@ -220,18 +220,18 @@ export function laneInbox(args: {
   if (deps.receiving && receivingInboxUrl)
     return {
       url: receivingInboxUrl,
-      address: deps.receiving.address(spec.laneId),
+      address: deps.receiving.address(spec.planned.id),
       receiving: true,
     };
-  if (comms && args.catchReady && laneHasInboxRecipient(comms.email, spec.laneId))
+  if (comms && args.catchReady && laneHasInboxRecipient(comms.email, spec.planned.id))
     return {
       url: comms.inboxUrl,
-      ...optionalAddress(inboxRecipientFor(comms.email, spec.laneId)?.address),
+      ...optionalAddress(inboxRecipientFor(comms.email, spec.planned.id)?.address),
     };
-  if (deps.externalComms && laneHasInboxRecipient(deps.externalComms.email, spec.laneId))
+  if (deps.externalComms && laneHasInboxRecipient(deps.externalComms.email, spec.planned.id))
     return {
       url: deps.externalComms.inboxUrl,
-      ...optionalAddress(inboxRecipientFor(deps.externalComms.email, spec.laneId)?.address),
+      ...optionalAddress(inboxRecipientFor(deps.externalComms.email, spec.planned.id)?.address),
     };
   return undefined;
 }
@@ -246,7 +246,7 @@ export async function drainCommsEvidence(args: {
   shell: Shell;
   comms: LaneComms;
   deployed: DeployedCommsCatch;
-  spec: CuaLaneSpec;
+  spec: DesktopParticipantRun;
   deps: CuaLaneDeps;
   warnings: string[];
 }): Promise<string | undefined> {

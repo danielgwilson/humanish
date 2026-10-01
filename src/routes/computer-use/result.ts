@@ -24,7 +24,7 @@ import {
   type CuaActorLabErrorCode,
   type CuaActorLabResult,
   type CuaLanePlan,
-  type CuaLaneSpec,
+  type DesktopParticipantRun,
   type CuaSubjectProjection,
   type LaneRunOutcome,
 } from "./types.js";
@@ -41,7 +41,7 @@ function cuaLabResult(args: {
   actorId: string;
   appUrl: string;
   dryRun: boolean;
-  laneSpecs: CuaLaneSpec[];
+  laneSpecs: DesktopParticipantRun[];
   outcomes: LaneRunOutcome[] | undefined;
   laneSubjects: CuaSubjectProjection[];
   aggregateSubject: CuaSubjectProjection;

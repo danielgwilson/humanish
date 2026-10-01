@@ -11,9 +11,9 @@ import { parseLabConfig } from "../../../src/lab/config.js";
 import { LAB_CONFIG_SCHEMA } from "../../../src/lab/types.js";
 import { createInProcessDesktop } from "../../../src/routes/computer-use/in-process-desktop.js";
 import { runCuaLane } from "../../../src/routes/computer-use/lanes.js";
-import type { CuaLaneDeps, CuaLaneSpec } from "../../../src/routes/computer-use/types.js";
-import { DEVICE_PRESETS } from "../../../src/lab/device-presets.js";
+import type { CuaLaneDeps } from "../../../src/routes/computer-use/types.js";
 import { prepareSelectedOutputDirectory } from "../../../src/run/contained-output.js";
+import { participantRun } from "../../helpers/participant-run.js";
 
 const temporary: string[] = [];
 afterEach(async () => {
@@ -34,19 +34,12 @@ async function fixture() {
     scenario: { mode: "live" },
   });
   if (!parsed.ok) throw new Error(parsed.error.message);
-  const spec: CuaLaneSpec = {
-    laneId: "participant-a",
-    laneIndex: 0,
-    simId: "sim-001",
-    streamId: "stream-001",
+  const spec = participantRun({
+    id: "participant-a",
+    index: 0,
     persona: { id: "first-time-visitor", traitsApplied: [], promptDigest: "synthetic-prompt" },
     instructions: "Save a note.",
-    deviceName: "desktop",
-    devicePreset: DEVICE_PRESETS.desktop,
-    resolution: [1440, 950],
-    screenshotDir: "",
-    traceArtifactPath: "actor.json",
-  };
+  });
   const frame = PNG.sync.write(new PNG({ width: 16, height: 16 }));
   const executor: CuaExecutor = {
     observe: vi.fn(async () => ({

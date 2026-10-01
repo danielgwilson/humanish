@@ -4,7 +4,8 @@
 import { DEFAULT_OPENAI_CU_MODEL } from "../../actors/computer-use/openai-provider.js";
 import { scrubPersonaBrief, type ResolvedPersona } from "../../lab/persona.js";
 import type { SharedWorldPlan } from "../../lab/plan-types.js";
-import type { SharedWorldParticipant } from "../../lab/plan-participants.js";
+import type { Participant, SharedWorldParticipant } from "../../lab/plan-participants.js";
+import { resolveParticipant } from "../../run/participant.js";
 import { attachObserverRuntimeStreamUrls } from "../../observer/render.js";
 import type { RunBundle } from "../../run/bundle.js";
 import type { E2BDesktopSandbox } from "../../substrates/e2b/sdk.js";
@@ -13,7 +14,7 @@ import { startLiveTraceFlush } from "../computer-use/live-flush.js";
 import type {
   CuaActorLabHooks,
   CuaLaneDeps,
-  CuaLaneSpec,
+  DesktopParticipantRun,
   LaneRunOutcome,
 } from "../computer-use/types.js";
 import type { LiveSeats, PlaneContext, SharedWorldLabHooks } from "./types.js";
@@ -67,26 +68,24 @@ export function resolveActorSeatUrl(baseUrl: string, entry: string | undefined):
   }
 }
 
-export function laneTaxonomyLabel(
-  spec: Pick<CuaLaneSpec, "actorType" | "surface" | "caseGroup">,
-): string {
+export function laneTaxonomyLabel(labels: Participant["labels"]): string {
   const parts = [
-    spec.actorType ? `type:${spec.actorType}` : undefined,
-    spec.surface ? `surface:${spec.surface}` : undefined,
-    spec.caseGroup ? `case:${spec.caseGroup}` : undefined,
+    labels.actorType ? `type:${labels.actorType}` : undefined,
+    labels.surface ? `surface:${labels.surface}` : undefined,
+    labels.caseGroup ? `case:${labels.caseGroup}` : undefined,
   ].filter((part): part is string => part !== undefined);
   return parts.length > 0 ? ` (${parts.join(" / ")})` : "";
 }
 
-/** Build one participant's CuaLaneSpec from its plan (each participant has its own desktop, so
- *  its own device). */
+/** Build one participant's DesktopParticipantRun from its plan (each participant has its own
+ *  desktop, so its own device). */
 function buildActorSpec(
   participant: SharedWorldParticipant,
   personas: Map<string, ResolvedPersona>,
-): CuaLaneSpec {
+): DesktopParticipantRun {
   const mission = participant.assignment.mission ?? DEFAULT_MISSION;
   const focus = participant.assignment.focus;
-  const { device, labels, limits, personaId } = participant;
+  const { device, personaId } = participant;
   const resolvedPersona = personaId === undefined ? undefined : personas.get(personaId);
   const composed = composeLaneInstructions({
     mission,
@@ -95,28 +94,15 @@ function buildActorSpec(
     ...(focus === undefined ? {} : { instruction: focus }),
     device: { name: device.name, preset: device.preset },
   });
-  const roleId = participant.id;
-  const streamId = `stream-${String(participant.index + 1).padStart(3, "0")}`;
-  return {
-    laneId: roleId,
-    ...(labels.actorType === undefined ? {} : { actorType: labels.actorType }),
-    ...(labels.surface === undefined ? {} : { surface: labels.surface }),
-    ...(labels.caseGroup === undefined ? {} : { caseGroup: labels.caseGroup }),
-    laneIndex: participant.index,
-    simId: `sim-${String(participant.index + 1).padStart(3, "0")}`,
-    streamId,
+  const run = resolveParticipant(participant, {
     persona: composed.persona,
     instructions: composed.instructions,
-    assignment: { mission, ...(focus === undefined ? {} : { focus }) },
-    ...(limits.reasoningEffort === undefined ? {} : { reasoningEffort: limits.reasoningEffort }),
-    ...(limits.maxOutputTokens === undefined ? {} : { maxOutputTokens: limits.maxOutputTokens }),
-    ...(limits.stopWhen === undefined ? {} : { stopWhen: limits.stopWhen }),
-    ...(limits.dwell === undefined ? {} : { dwell: limits.dwell }),
-    deviceName: device.name,
-    devicePreset: device.preset,
-    resolution: [device.resolution[0], device.resolution[1]],
-    screenshotDir: roleId,
-    traceArtifactPath: `actors/${streamId}.json`,
+    evidenceAssignment: { mission, ...(focus === undefined ? {} : { focus }) },
+  });
+  return {
+    ...run,
+    screenshotDir: participant.id,
+    traceArtifactPath: `actors/${run.streamId}.json`,
   };
 }
 
@@ -124,7 +110,10 @@ function buildActorSpec(
  *  The CODE flows into the follower's join instruction; it is persisted only as the composed prompt
  *  the model reads (never a raw bundle field), and the lab scrubs the CODE from all narration. The
  *  follower joins through the real UI (a direct /lobby/CODE visit does not auto-join a non-member). */
-export function withLobbyCodeMission(spec: CuaLaneSpec, code: string): CuaLaneSpec {
+export function withLobbyCodeMission(
+  spec: DesktopParticipantRun,
+  code: string,
+): DesktopParticipantRun {
   return {
     ...spec,
     instructions: `${spec.instructions}\n\nThe multiplayer lobby code is ${code}. On the home screen choose Join, enter this lobby code, enter your name, and submit to join the shared game (do not open a lobby URL directly — go through the Join flow).`,
@@ -134,7 +123,7 @@ export function withLobbyCodeMission(spec: CuaLaneSpec, code: string): CuaLaneSp
 /** A follower blocked by an expired deadline or an ended host. It never opened a browser;
  * keep the actual reason rather than turning every upstream failure into a timeout. */
 export function makeBlockedFollowerOutcome(
-  spec: CuaLaneSpec,
+  spec: DesktopParticipantRun,
   reason: string,
   timedOut: boolean,
 ): LaneRunOutcome {
@@ -257,7 +246,7 @@ export async function buildSeatSpecs(
   participants: readonly SharedWorldParticipant[],
   cwd: string,
   scrubKnownValues: (text: string) => string,
-): Promise<CuaLaneSpec[]> {
+): Promise<DesktopParticipantRun[]> {
   // Only the personas the participants use: an actors[0].persona that every seat overrides is
   // never applied, so it is not read.
   const personaResolution = await resolveCommittedPersonasForCwd(
@@ -268,7 +257,8 @@ export async function buildSeatSpecs(
     buildActorSpec(participant, personaResolution.personas),
   );
   for (const spec of actorSpecs) {
-    if (spec.assignment) spec.assignment = participantAssignment(spec.assignment, scrubKnownValues);
+    if (spec.evidenceAssignment)
+      spec.evidenceAssignment = participantAssignment(spec.evidenceAssignment, scrubKnownValues);
     spec.evidenceInstructions = redactText(scrubKnownValues(spec.instructions));
     spec.persona = scrubPersonaBrief(spec.persona, scrubKnownValues);
   }
