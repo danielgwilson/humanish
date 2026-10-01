@@ -3486,7 +3486,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_KEYS_MISSING",
+          "code": "HUMANISH_CUA_LAB_AGENT_SIGNIN_REQUIRED",
           "message": "actors[0].type: local-agent needs the codex CLI on PATH and signed in. Install it, or set OPENAI_API_KEY and use actors[0].type: openai-computer-use instead."
         },
         "automaticAnalysisTrigger": "default",

@@ -331,6 +331,9 @@ export type CuaActorLabErrorCode =
   | "HUMANISH_LAB_OPTION_UNSUPPORTED"
   | "HUMANISH_CUA_LAB_FAILED"
   | "HUMANISH_CUA_LAB_KEYS_MISSING"
+  // A local-agent participant's CLI is not on PATH, reports not signed in, or could not report its
+  // sign-in status. Refused at preflight (before any sandbox); the message names the fix.
+  | "HUMANISH_CUA_LAB_AGENT_SIGNIN_REQUIRED"
   | "HUMANISH_CUA_LAB_SUBJECT_ENV_MISSING"
   | "HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED"
   | "HUMANISH_CUA_LAB_SUBJECT_INVALID"
