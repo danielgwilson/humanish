@@ -69,6 +69,21 @@ function moduleFailingOnce(message: string): { module: E2BDesktopModule; created
 const acquire = (module: E2BDesktopModule, options: E2BDesktopCreateOptions, template?: string) =>
   acquireE2BDesktopSandbox({ module, options, template, receipt: null });
 
+const THROWN_KILL_MESSAGES = [
+  "sandbox not found",
+  "500: team not found",
+  "NOTFOUND",
+  "getaddrinfo ENOTFOUND api.e2b.app",
+  "sandbox does not exist yet",
+  "404",
+  "500: internal error (trace 7c404ab1)",
+  "sandbox sbx-404abc unreachable",
+  "SandboxNotFoundError: sandbox sb-1 does not exist",
+];
+/** The SDK's own not-found error, recognized by type (its name), not by its message. */
+const sandboxNotFound = (): Error =>
+  Object.assign(new Error("sandbox is gone"), { name: "SandboxNotFoundError" });
+
 describe("E2B sandbox acquisition", () => {
   it("preserves default and template creation arguments", async () => {
     const f = fixture();
@@ -105,6 +120,26 @@ describe("E2B sandbox acquisition", () => {
     const { allocation } = await acquire(f.module, { apiKey: "synthetic" });
     expect(await allocation.close()).toEqual({ status: "released", reason: "already_gone" });
     expect(f.list).not.toHaveBeenCalled();
+  });
+
+  it.each(THROWN_KILL_MESSAGES)(
+    "reads a thrown kill as unconfirmed whatever it says: %j",
+    async (message) => {
+      const f = fixture();
+      f.kill.mockRejectedValue(new Error(message));
+      expect(
+        await (await acquire(f.module, { apiKey: "synthetic" })).allocation.close(),
+      ).toMatchObject({ status: "unconfirmed", reason: "release_failed" });
+    },
+  );
+
+  it("reads the SDK's typed not-found error as already gone", async () => {
+    const f = fixture();
+    f.kill.mockRejectedValue(sandboxNotFound());
+    expect(await (await acquire(f.module, { apiKey: "synthetic" })).allocation.close()).toEqual({
+      status: "released",
+      reason: "already_gone",
+    });
   });
 
   it("does not claim release for absent methods, malformed results or exceptions", async () => {
@@ -306,6 +341,17 @@ describe("destroyE2BSandbox", () => {
     return destroyE2BSandbox(module, "sb-1", { requestTimeoutMs: 5_000 });
   };
 
+  it.each(THROWN_KILL_MESSAGES)(
+    "records a thrown kill as kill-failed for reclaim: %j",
+    async (message) => {
+      expect(
+        await destroy(async () => {
+          throw new Error(message);
+        }),
+      ).toEqual({ state: "kill-failed", detail: message });
+    },
+  );
+
   it("maps each kill result to the reclaim outcome", async () => {
     const kill = vi.fn(async () => true);
     expect(await destroy(kill)).toEqual({ state: "killed" });
@@ -313,7 +359,7 @@ describe("destroyE2BSandbox", () => {
     expect(await destroy(async () => false)).toEqual({ state: "already-gone" });
     expect(
       await destroy(async () => {
-        throw new Error("SandboxNotFoundError: sandbox sb-1 does not exist");
+        throw sandboxNotFound();
       }),
     ).toEqual({ state: "already-gone" });
     expect(
