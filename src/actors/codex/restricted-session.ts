@@ -531,7 +531,7 @@ export function createRestrictedCodexSession(
     };
   }
 
-  async function execute(
+  async function runTurn(
     request: RestrictedCodexRequest,
     readinessOnly: boolean,
   ): Promise<RestrictedCodexResult> {
@@ -655,7 +655,7 @@ export function createRestrictedCodexSession(
         : (platform === "linux" && arch === "x64") || (platform === "darwin" && arch === "arm64");
       if (!supportedPlatform)
         return Promise.resolve(restrictedCodexFailure("codex_unsupported_platform"));
-      const task = execute(request, readinessOnly);
+      const task = runTurn(request, readinessOnly);
       pending = task;
       void task
         .finally(() => {
