@@ -8,11 +8,14 @@
 
 export type CommsChannelKind = "email" | "sms";
 
-/** One lane's inbox identity. `value` is runtime-only; `digest` is the only form meant to persist. */
+/**
+ * One participant's inbox identity. `value` is runtime-only; `digest` is the only form meant to
+ * persist.
+ */
 export interface CommsAddress {
   channel: CommsChannelKind;
-  /** Which lane owns this inbox. */
-  laneId: string;
+  /** Which participant owns this inbox. */
+  participantId: string;
   /** Runtime-only raw address, e.g. user-07@example.test | +15550137. */
   value: string;
   /** sha256-short(value) — the only form persisted (redaction.digestText). */
@@ -73,8 +76,8 @@ export interface InboundRaw {
 export interface CommsChannel {
   readonly channel: CommsChannelKind;
   readonly kind: "fake" | "real";
-  /** Mint an inbox for a lane (address generated). Idempotent per lane. */
-  provision(laneId: string): Promise<CommsAddress>;
+  /** Mint an inbox for a participant (address generated). Idempotent per participant. */
+  provision(participantId: string): Promise<CommsAddress>;
   /** Route a composed message from one actor to addressed inboxes. Returns the delivered record. */
   send(message: OutboundMessage): Promise<CommsMessage>;
   /** Route a raw ingress delivery (app-under-test → recipient strings). Returns the messages that
