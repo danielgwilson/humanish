@@ -26,7 +26,8 @@ import type {
 import { startDesktopRecorder, type DesktopRecorderHandle } from "../evidence/desktop-recorder.js";
 import { createGuestProcesses, setupFailed, type GuestProcesses } from "./runtime-processes.js";
 
-const GUEST_RUNTIME_PATHS = Object.freeze({
+/** The guest image's fixed layout. Tests derive guest paths from it rather than spelling them. */
+export const GUEST_RUNTIME_PATHS = Object.freeze({
   root: "/opt/humanish/control",
   run: "/run/humanish",
   home: "/home/humanish",

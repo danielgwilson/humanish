@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CuaExecutorError } from "../../src/actors/computer-use/executor-error.js";
 import {
   createGuestRuntimeDesktop,
+  GUEST_RUNTIME_PATHS,
   type GuestRuntimePhase,
 } from "../../src/guest/runtime-desktop.js";
 
@@ -14,7 +15,8 @@ import {
 const PINNED_CONFIG = readFileSync(
   "runtime/browser-guest/control/root/opt/humanish/control/openbox.xml",
 );
-const RECORDING_PATH = "/home/humanish/desktop-recording.mp4";
+const HOME = GUEST_RUNTIME_PATHS.home;
+const RECORDING_PATH = `${HOME}/desktop-recording.mp4`;
 const ADEQUATE =
   "PID namespaces\tYes\nNetwork namespaces\tYes\nSeccomp-BPF sandbox\tYes\nYou are adequately sandboxed.";
 
@@ -320,11 +322,11 @@ describe("guest runtime desktop setup", () => {
     expect(xauth!.args).toEqual(["-f", "/run/humanish/Xauthority", "source", "-"]);
     expect(xauth!.input).toMatch(/^add :0 \. [0-9a-f]{32}\n$/);
     expect(xauth!.options).toMatchObject({
-      cwd: "/home/humanish",
+      cwd: HOME,
       stdio: ["pipe", "ignore", "pipe"],
     });
     expect((xauth!.options as { env: Record<string, string> }).env).toMatchObject({
-      HOME: "/home/humanish",
+      HOME: HOME,
       DISPLAY: ":0",
     });
     expect(xvfb!.args).toEqual([
@@ -339,16 +341,13 @@ describe("guest runtime desktop setup", () => {
     ]);
     expect(openbox!.args).toEqual(["--config-file", "/opt/humanish/control/openbox.xml"]);
     expect(h.mkdir.map(([path, options]) => [path, options])).toEqual(
-      [
-        "/run/humanish/xdg",
-        "/run/humanish/capture",
-        "/home/humanish/.cache",
-        "/home/humanish/.config",
-      ].map((path) => [path, { mode: 0o700 }]),
+      ["/run/humanish/xdg", "/run/humanish/capture", `${HOME}/.cache`, `${HOME}/.config`].map(
+        (path) => [path, { mode: 0o700 }],
+      ),
     );
     expect(h.opened[1]).toEqual(["/run/humanish/Xauthority", expect.any(Number), 0o600]);
     expect(h.launchOptions).toMatchObject({
-      path: "/home/humanish/browser",
+      path: `${HOME}/browser`,
       executablePath: "/usr/bin/chromium",
       headless: false,
       chromiumSandbox: true,
@@ -362,7 +361,7 @@ describe("guest runtime desktop setup", () => {
         "--no-first-run",
       ],
     });
-    expect((h.launchOptions!.env as Record<string, string>).HOME).toBe("/home/humanish");
+    expect((h.launchOptions!.env as Record<string, string>).HOME).toBe(HOME);
     expect(fake.context.setDefaultTimeout).toHaveBeenCalledWith(5000);
     expect(fake.context.setDefaultNavigationTimeout).toHaveBeenCalledWith(5000);
     expect(fake.diagnostic.goto).toHaveBeenCalledWith("chrome://sandbox");
@@ -430,7 +429,7 @@ describe("guest runtime desktop setup", () => {
     h.recorder = recorder();
     await start({ recording: { audio: false } }).pending;
     expect(h.recorderOptions).toMatchObject({ audioSources: [], pulseReady: false });
-    expect((h.recorderOptions!.env as Record<string, string>).HOME).toBe("/home/humanish");
+    expect((h.recorderOptions!.env as Record<string, string>).HOME).toBe(HOME);
     await start({ recording: { audio: true } }).pending;
     expect(h.recorderOptions).toMatchObject({ pulseReady: false });
   });
