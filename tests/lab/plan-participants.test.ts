@@ -1,7 +1,8 @@
 // planParticipants must produce the same participants the routes build today. Computer use is
-// compared field by field with the lane specs planCuaParticipants builds. The shared-world seat builder
-// is private, so seats are compared with what a shared-world dry run records (seat ids, persona
-// ids, assignment, rendered resolution); limits, entry and host are checked directly.
+// compared field by field with the lane specs planCuaParticipants builds from the plan. The
+// shared-world seat builder is private, so seats are compared with what a shared-world dry run
+// records (seat ids, persona ids, assignment, rendered resolution); limits, entry and host are
+// checked directly.
 
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -18,6 +19,7 @@ import {
 } from "../../src/lab/plan-participants.js";
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/lab/types.js";
 import { planCuaParticipants } from "../../src/routes/computer-use/lane-plan.js";
+import { planComputerUseLab } from "../../src/routes/computer-use/plan.js";
 import type { DesktopParticipantRun } from "../../src/routes/computer-use/types.js";
 import { runConcurrentSharedWorld } from "../../src/routes/shared-world/lab.js";
 import { prepareSelectedOutputDirectory } from "../../src/run/contained-output.js";
@@ -174,13 +176,16 @@ describe("computerUseParticipants", () => {
     expect(configs.length).toBeGreaterThan(cuVariants.length);
     for (const [name, config, countOverride] of configs) {
       const cwd = await tempProject();
+      const planned = planComputerUseLab(config, {
+        dryRun: true,
+        ...(countOverride === undefined ? {} : { countOverride }),
+      });
+      if (!planned.ok) throw new Error(`${name}: ${planned.refusal.message}`);
       const lanes = await planCuaParticipants({
-        config,
+        plan: planned.plan,
         cwd,
         projectRoot: await prepareSelectedOutputDirectory(path.dirname(cwd), cwd),
         env: {},
-        dryRun: true,
-        ...(countOverride === undefined ? {} : { countOverride }),
       });
       if (!lanes.ok) throw new Error(`${name}: ${lanes.message}`);
       const participants = computerUseParticipants(config, countOverride);

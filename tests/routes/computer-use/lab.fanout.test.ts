@@ -24,7 +24,7 @@ import {
   resolveLaneDevice,
 } from "../../../src/lab/device-presets.js";
 import { resolveCuaParticipantPlan } from "../../../src/routes/computer-use/lane-plan.js";
-import { runCuaActorLab } from "../../../src/routes/computer-use/lab.js";
+import { runComputerUsePlan, runCuaActorLab } from "../../../src/routes/computer-use/lab.js";
 import { planComputerUseLab } from "../../../src/routes/computer-use/plan.js";
 import type { ComputerUsePlan } from "../../../src/lab/plan-types.js";
 import { declaredScreenForRender } from "../../../src/substrates/e2b/desktop-geometry.js";
@@ -59,6 +59,7 @@ import { reclaimRunSandboxes } from "../../../src/run/reclaim.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 import { participantRun } from "../../helpers/participant-run.js";
 import type { CuaLaneSpec } from "../../../src/routes/computer-use/legacy-lane-spec.js";
+import { DEVICE_PRESETS } from "../../../src/lab/device-presets.js";
 
 // ---------------------------------------------------------------------------
 // Fan-out fakes: a desktop module that mints a DISTINCT sandbox per create()
@@ -315,6 +316,60 @@ function fanoutConfig(overrides?: {
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
 }
+
+// Execution builds its participants from the plan, not from a second read of the config: a plan
+// whose participants, bound and budgets differ from what the config would rebuild runs as planned.
+describe("computer-use participants come from the plan", () => {
+  let cwd: string;
+  beforeEach(async () => {
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-plan-authority-"));
+  });
+  afterEach(async () => {
+    await rm(cwd, { recursive: true, force: true });
+  });
+
+  it("runs the plan's participants, bound and budgets", async () => {
+    const config = fanoutConfig({ concurrency: 2 });
+    const planned = planComputerUseLab(config, { dryRun: true });
+    if (!planned.ok) throw new Error(planned.refusal.message);
+    const [first, second] = planned.plan.runner.participants;
+    if (first === undefined || second === undefined) throw new Error("expected four participants");
+    // The config declares four lanes, the first as mobile-newcomer on a mobile device; the plan
+    // keeps two and renames, re-personas and re-devices the first.
+    const plan: ComputerUsePlan = {
+      ...planned.plan,
+      runner: {
+        ...planned.plan.runner,
+        participants: [
+          {
+            ...first,
+            id: "plan-only-participant",
+            personaId: "plan-only-persona",
+            device: { name: "wide", preset: DEVICE_PRESETS.wide, resolution: [1920, 1080] },
+          },
+          second,
+        ],
+      } as ComputerUsePlan["runner"],
+      concurrency: 1,
+      sessionBudgetMs: 123_000,
+      sandboxMs: 600_000,
+    };
+
+    const result = await runComputerUsePlan(plan, { cwd }, config);
+
+    expect(result.plan?.lanes.map(({ id, persona, device }) => ({ id, persona, device }))).toEqual([
+      { id: "plan-only-participant", persona: "plan-only-persona", device: "wide" },
+      { id: second.id, persona: second.personaId, device: second.device.name },
+    ]);
+    expect(result.plan).toMatchObject({
+      laneCount: 2,
+      concurrency: 1,
+      waves: 2,
+      perLaneSessionBudgetMs: 123_000,
+      worstCaseSandboxMinutes: 20,
+    });
+  });
+});
 
 describe("cua fan-out — dry-run ($0 contract bundle)", () => {
   let cwd: string;

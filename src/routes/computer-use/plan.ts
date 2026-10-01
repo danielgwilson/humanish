@@ -33,7 +33,11 @@ import {
 } from "../../lab/validation.js";
 import type { RunLabProvenance } from "../../run/status.js";
 import { isLocalBrowserLab } from "../../substrates/local/runtime-config.js";
-import { defaultSessionTimeoutMs, resolveParticipantSandboxMs } from "./lane-plan.js";
+import {
+  boundedConcurrency,
+  defaultSessionTimeoutMs,
+  resolveParticipantSandboxMs,
+} from "./lane-plan.js";
 import { MAX_SANDBOX_MS } from "../../substrates/e2b/lifetime.js";
 import {
   type CuaActorLabErrorCode,
@@ -443,7 +447,7 @@ export function planComputerUseLab(
       route: "computer-use",
       actor,
       runner,
-      concurrency: Math.max(1, declared === undefined ? n : Math.min(Math.max(1, declared), n)),
+      concurrency: boundedConcurrency(declared, n),
       sessionBudgetMs: config.execution?.timeoutMs ?? defaultSessionTimeoutMs(config),
       sandboxMs: resolveParticipantSandboxMs(config),
       caps: capsOf(config),

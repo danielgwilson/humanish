@@ -22,6 +22,7 @@ import { renderCuaReviewMarkdown } from "./bundle.js";
 import {
   emitPreflightPlan,
   makeCuaRunBudget,
+  compileParticipantPersonas,
   planCuaParticipants,
   sanitizeParticipantRuns,
 } from "./lane-plan.js";
@@ -48,6 +49,7 @@ import {
   type RunCuaActorLabOptions,
 } from "./types.js";
 import { laneSpecOf } from "./legacy-lane-spec.js";
+import { labPersonaIds } from "../../lab/persona-resolve.js";
 
 /**
  * Plans the run and starts it. Returns the refusal, with the envelope the route always used, or
@@ -84,16 +86,9 @@ export async function refuseCuaLab(
   const { config, dryRun } = options;
   const projectRoot = await bindProject(options.cwd);
   const hooks = options.hooks ?? {};
-  // The lane plan reads the committed personas before it returns the refusal.
+  // The committed personas are read before the refusal returns, so a persona-file error wins.
   if (refusal.stage === "after-personas")
-    await planCuaParticipants({
-      config,
-      cwd: projectRoot.physicalPath,
-      projectRoot,
-      env: hooks.env ?? process.env,
-      dryRun,
-      refusal,
-    });
+    await compileParticipantPersonas(projectRoot, labPersonaIds(config));
   return {
     schema: CUA_ACTOR_LAB_SCHEMA,
     ok: false,
@@ -210,15 +205,7 @@ async function planCuaRun(
     !cloneRoute && !localTreeRoute && !inProcessRoute ? comms?.email?.external : undefined;
   const externalCommsEmail = externalCommsConfig ? comms?.email : undefined;
 
-  const participantPlan = await planCuaParticipants({
-    config,
-    cwd,
-    projectRoot,
-    env,
-    dryRun,
-    ...(input.countOverride === undefined ? {} : { countOverride: input.countOverride }),
-    ...(input.rerun === undefined ? {} : { rerun: input.rerun }),
-  });
+  const participantPlan = await planCuaParticipants({ plan: routePlan, cwd, projectRoot, env });
   if (!participantPlan.ok) {
     return refuse(participantPlan.code, participantPlan.message, descriptor.id);
   }
