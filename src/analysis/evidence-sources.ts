@@ -1,4 +1,5 @@
 import { receivingAnalysisContext } from "../comms/receiving-evidence.js";
+import { eventRecordIdOf, recordIdOf, streamParticipantIdOf } from "../run/participant-records.js";
 import { cuaGoalSource } from "../actors/goal-source.js";
 import type { ActorTraceItem } from "../actors/contract.js";
 import type { RunBundle } from "../run/bundle.js";
@@ -170,7 +171,7 @@ export function sourceEntries(
     entries.push({
       eventId: `comms-receiving-${stream.id}`,
       kind: "harness:email_receiving",
-      text: receivingAnalysisContext(bundle.commsReceiving, stream.laneId),
+      text: receivingAnalysisContext(bundle.commsReceiving, streamParticipantIdOf(stream)),
       quoteEligible: false,
       at: null,
       elapsedMs: null,
@@ -214,7 +215,7 @@ export function sourceEntries(
   for (const event of bundle.events.filter(
     (entry) =>
       entry.streamId === stream.id ||
-      (entry.streamId === undefined && entry.simId === stream.simId),
+      (entry.streamId === undefined && eventRecordIdOf(entry) === recordIdOf(stream)),
   )) {
     if (runEventIds.has(event.id)) throw new Error("ANALYSIS_SOURCE_EVENT_DUPLICATE");
     runEventIds.add(event.id);

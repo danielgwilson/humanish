@@ -1,7 +1,7 @@
-// Bundle write: the run bundle's participant records. A route describes each participant (its
+// The run bundle's participant records, written and read. A route describes each participant (its
 // record and stream fields, its events) and these functions give them the bundle's saved shape and
-// field names. This module and run/bundle.ts (its types and bundleHead) and run/streams.ts are where
-// those contract spellings live; route builders call these functions instead of spelling them.
+// field names; readers ask them for the ids a saved record carries. This module and run/bundle.ts
+// (its types and bundleHead) and run/streams.ts are where those contract spellings live.
 
 import type { RunEvent, RunSimulation } from "./bundle.js";
 import type { RunStream } from "./streams.js";
@@ -65,4 +65,14 @@ export function participantEvent(
 /** The record id a saved stream belongs to. */
 export function recordIdOf(stream: RunStream): string {
   return stream.simId;
+}
+
+/** The record id a saved event names, when it names one. */
+export function eventRecordIdOf(event: RunEvent): string | undefined {
+  return event.simId;
+}
+
+/** The participant id an adapter recorded on a saved stream (a fan-out lane id), when it has one. */
+export function streamParticipantIdOf(stream: RunStream): string | undefined {
+  return stream.laneId;
 }

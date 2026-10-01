@@ -5,7 +5,9 @@ import {
   participantIdsOf,
   participantRecord,
   participantStream,
+  eventRecordIdOf,
   recordIdOf,
+  streamParticipantIdOf,
 } from "../../src/run/participant-records.js";
 
 describe("participant records (bundle write)", () => {
@@ -79,5 +81,8 @@ describe("participant records (bundle write)", () => {
       "simId",
       "streamId",
     ]);
+    expect(eventRecordIdOf(event)).toBe("sim-001");
+    expect(streamParticipantIdOf(stream)).toBeUndefined();
+    expect(streamParticipantIdOf({ ...stream, laneId: "reviewer" })).toBe("reviewer");
   });
 });
