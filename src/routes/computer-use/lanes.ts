@@ -2,7 +2,7 @@ import type { CuaLoopResult } from "../../actors/computer-use/loop.js";
 import { createE2BParticipantDesktop } from "./e2b-desktop.js";
 import { createInProcessDesktop } from "./in-process-desktop.js";
 import path from "node:path";
-import { cuaLaneDiagnostics } from "./diagnostics.js";
+import { cuaParticipantDiagnostics } from "./diagnostics.js";
 import { mapWithConcurrency } from "../../run/concurrency.js";
 import { assertScreenshotEvidence } from "../../evidence/image.js";
 import { round6 } from "../../run/pricing.js";
@@ -37,7 +37,7 @@ import type {
 /** Build a lane's writeScreenshot closure: writes under screenshots/<screenshotDir>/ and records
  *  the relative path the trace references (screenshots/<name> at N=1; screenshots/<laneId>/<name>
  *  at N>1). */
-export function makeLaneWriteScreenshot(
+export function makeParticipantWriteScreenshot(
   artifactRoot: PreparedOutputRoot,
   spec: { screenshotDir: string },
   screenshots: string[],
@@ -86,7 +86,7 @@ export async function runCuaLane(
   let model: ParticipantModel = {};
   const warnings: string[] = [];
   const screenshots: string[] = [];
-  const writeScreenshot = makeLaneWriteScreenshot(deps.artifactRoot, spec, screenshots);
+  const writeScreenshot = makeParticipantWriteScreenshot(deps.artifactRoot, spec, screenshots);
   let session: CuaLoopResult | undefined;
   let sessionError: string | undefined;
   let provisioned = false;
@@ -159,8 +159,8 @@ export async function runCuaLane(
  * THROW (the exact class the guard exists for) without a live sandbox. Production always uses
  * the default.
  */
-export async function runCuaLanes(
-  laneSpecs: DesktopParticipantRun[],
+export async function runCuaParticipants(
+  runs: DesktopParticipantRun[],
   deps: Omit<CuaLaneDeps, "signalProvisioned">,
   concurrency: number,
   runParticipant: typeof runCuaLane = runCuaLane,
@@ -177,7 +177,7 @@ export async function runCuaLanes(
   gate.catch(() => undefined);
 
   const outcomes = await mapWithConcurrency(
-    laneSpecs,
+    runs,
     concurrency,
     async (spec, index): Promise<LaneRunOutcome> => {
       if (index > 0) {
@@ -186,7 +186,7 @@ export async function runCuaLanes(
         } catch {
           return skippedOutcome(
             spec,
-            `skipped: lane ${laneSpecs[0]?.planned.id ?? "lane-01"} failed to provision its world (pipeline gate)`,
+            `skipped: lane ${runs[0]?.planned.id ?? "lane-01"} failed to provision its world (pipeline gate)`,
           );
         }
       }
@@ -245,7 +245,7 @@ export async function runCuaLanes(
 }
 
 /** Project one lane outcome (or a dry-run contract spec) into the public CuaLaneResult. */
-export function toLaneResult(
+export function toParticipantResult(
   spec: DesktopParticipantRun,
   outcome: LaneRunOutcome | undefined,
   subject: CuaSubjectProjection,
@@ -271,7 +271,7 @@ export function toLaneResult(
       ...base,
       status: "contract_proof_only",
       ok: dryRun,
-      diagnostics: cuaLaneDiagnostics({ dryRun }),
+      diagnostics: cuaParticipantDiagnostics({ dryRun }),
     };
   }
   if (outcome.skippedReason !== undefined) {
@@ -279,7 +279,7 @@ export function toLaneResult(
       ...base,
       status: "blocked",
       ok: false,
-      diagnostics: cuaLaneDiagnostics({ dryRun, skipped: true }),
+      diagnostics: cuaParticipantDiagnostics({ dryRun, skipped: true }),
       skippedReason: outcome.skippedReason,
       error: { code: "HUMANISH_CUA_LAB_FAILED", message: outcome.skippedReason },
     };
@@ -291,7 +291,7 @@ export function toLaneResult(
     ...base,
     status,
     ok: participantOk,
-    diagnostics: cuaLaneDiagnostics({
+    diagnostics: cuaParticipantDiagnostics({
       dryRun,
       executionError: outcome.sessionError !== undefined,
       noEngagement: outcome.noEngagement,
@@ -354,7 +354,7 @@ export function toLaneResult(
  *  host-packed archive, so every lane's projection carries the identical archiveSha256/
  *  commit/dirty (no per-lane divergence is possible, unlike the clone route's per-lane
  *  in-sandbox commit). */
-export function laneSubjectProjection(args: {
+export function participantSubjectProjection(args: {
   cloneRoute: boolean;
   localTreeRoute: boolean;
   publicRepo?: string;
@@ -424,20 +424,20 @@ export function subjectProvenanceArg(
  * aggregate carries it only when every lane agrees, and warns when they diverge.
  */
 export function aggregateCuaSubject(args: {
-  laneSubjects: readonly CuaSubjectProjection[];
+  subjects: readonly CuaSubjectProjection[];
   outcomes: readonly LaneRunOutcome[] | undefined;
-  laneCount: number;
+  participantCount: number;
   dryRun: boolean;
 }): { subject: CuaSubjectProjection; warnings: string[] } {
-  const { laneSubjects, outcomes, laneCount, dryRun } = args;
-  const first = laneSubjects[0]!;
+  const { subjects, outcomes, participantCount, dryRun } = args;
+  const first = subjects[0]!;
   if (first.source !== "clone") return { subject: first, warnings: [] };
   const commits = (outcomes ?? [])
     .map((outcome) => outcome.subjectCommit)
     .filter((commit): commit is string => commit !== undefined);
-  const unanimous = !dryRun && commits.length === laneCount && new Set(commits).size === 1;
+  const unanimous = !dryRun && commits.length === participantCount && new Set(commits).size === 1;
   const warnings =
-    !dryRun && laneCount > 1 && new Set(commits).size > 1
+    !dryRun && participantCount > 1 && new Set(commits).size > 1
       ? [
           "Fan-out lanes resolved DIVERGENT subject commits — the top-level subject.commit is omitted; see per-lane provenance in result.lanes for each lane's pinned commit.",
         ]
@@ -459,33 +459,36 @@ export function aggregateCuaSubject(args: {
  * spend up to N × maxUsd before any lane aborts, while the run cost summary reports the larger
  * aggregate. The warning names that ceiling, unless the study declared a shared maxTotalUsd budget.
  */
-export function perLaneCapWarning(config: LabConfig, laneCount: number): string | undefined {
-  const perLaneCapUsd = config.execution?.caps?.maxUsd;
-  if (perLaneCapUsd === undefined || laneCount <= 1) return undefined;
+export function participantCapWarning(
+  config: LabConfig,
+  participantCount: number,
+): string | undefined {
+  const capUsd = config.execution?.caps?.maxUsd;
+  if (capUsd === undefined || participantCount <= 1) return undefined;
   if (config.execution?.caps?.maxTotalUsd !== undefined) return undefined;
-  return `execution.caps.maxUsd ($${perLaneCapUsd}) is a PER-LANE cap; ${laneCount} lanes may spend up to ${laneCount} × $${perLaneCapUsd} (~$${round6(perLaneCapUsd * laneCount)} total) before any lane aborts. Set execution.caps.maxTotalUsd for a shared study budget.`;
+  return `execution.caps.maxUsd ($${capUsd}) is a PER-LANE cap; ${participantCount} lanes may spend up to ${participantCount} × $${capUsd} (~$${round6(capUsd * participantCount)} total) before any lane aborts. Set execution.caps.maxTotalUsd for a shared study budget.`;
 }
 
 /**
  * Run every lane of a live run. The in-process route drives its single lane in this process; one
  * hosted lane runs alone; a fan-out runs at the plan's concurrency and may stop early.
  */
-export async function runAllCuaLanes(
-  laneSpecs: readonly DesktopParticipantRun[],
+export async function runAllCuaParticipants(
+  runs: readonly DesktopParticipantRun[],
   deps: Omit<CuaLaneDeps, "signalProvisioned">,
   plan: CuaLanePlan,
   inProcessRoute: boolean,
 ): Promise<{ outcomes: LaneRunOutcome[]; failFastReason: string | undefined }> {
   if (inProcessRoute) {
     // The caller's executor stands in for a desktop, and the shared runner drives the participant.
-    const outcome = await runCuaLane(laneSpecs[0]!, {
+    const outcome = await runCuaLane(runs[0]!, {
       ...deps,
       createDesktop: () => createInProcessDesktop(deps),
     });
     return { outcomes: [outcome], failFastReason: undefined };
   }
-  if (laneSpecs.length === 1)
-    return { outcomes: [await runCuaLane(laneSpecs[0]!, deps)], failFastReason: undefined };
-  const ran = await runCuaLanes([...laneSpecs], deps, plan.concurrency);
+  if (runs.length === 1)
+    return { outcomes: [await runCuaLane(runs[0]!, deps)], failFastReason: undefined };
+  const ran = await runCuaParticipants([...runs], deps, plan.concurrency);
   return { outcomes: ran.outcomes, failFastReason: ran.failFastReason };
 }

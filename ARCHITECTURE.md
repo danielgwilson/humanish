@@ -49,14 +49,14 @@ reports the first failed step.
    returns. A local browser study (`execution.target: local`) runs on a local VM, which
    `prepareLocalVmStudy` (`src/routes/computer-use/local-vm.ts`) sets up while `prepareLab` plans. An
    in-process run uses `createInProcessDesktop` (`src/routes/computer-use/in-process-desktop.ts`).
-5. **Participants.** `runLabLanes` (`src/routes/computer-use/run-lanes.ts`) publishes an
+5. **Participants.** `runLabParticipants` (`src/routes/computer-use/run-lanes.ts`) publishes an
    in-progress bundle with `Run.writeSnapshot`, rewrites it from the lanes' live traces through
-   `startLiveTraceFlush` (`src/routes/computer-use/live-flush.ts`), and calls `runAllCuaLanes`
+   `startLiveTraceFlush` (`src/routes/computer-use/live-flush.ts`), and calls `runAllCuaParticipants`
    (`src/routes/computer-use/lanes.ts`). That runs `runCuaLane` for each participant, at most
    `execution.concurrency` at a time. A lane prepares its desktop, runs `runCuaActorSession`
    (`src/actors/computer-use/actor.ts`), which drives `runComputerUseLoop`
    (`src/actors/computer-use/loop.ts`), and finalizes the desktop. The loop saves screenshots through
-   `makeLaneWriteScreenshot`, which checks each image with `assertScreenshotEvidence`
+   `makeParticipantWriteScreenshot`, which checks each image with `assertScreenshotEvidence`
    (`src/evidence/image.ts`). Screenshots are blurred only when a lab sets
    `policies.redactScreenshots: true`.
 6. **Judge and publish.** `finishCuaRun` (`src/routes/computer-use/result.ts`) judges the run once

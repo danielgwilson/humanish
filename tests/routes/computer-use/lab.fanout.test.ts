@@ -28,7 +28,7 @@ import { runComputerUsePlan, runCuaActorLab } from "../../../src/routes/computer
 import { planComputerUseLab } from "../../../src/routes/computer-use/plan.js";
 import type { ComputerUsePlan } from "../../../src/lab/plan-types.js";
 import { declaredScreenForRender } from "../../../src/substrates/e2b/desktop-geometry.js";
-import { runCuaLanes } from "../../../src/routes/computer-use/lanes.js";
+import { runCuaParticipants } from "../../../src/routes/computer-use/lanes.js";
 import {
   type CuaActorLabHooks,
   type DesktopParticipantRun,
@@ -144,6 +144,8 @@ interface FanoutModuleOptions {
   geometryOverride?: (laneIndex: number, requested: [number, number]) => [number, number];
   /** Every kill by id throws, as when the provider cannot be reached at teardown. */
   killFails?: boolean;
+  /** Answers a sandbox command for one lane; undefined falls through to the default reply. */
+  commandHandler?: (laneIndex: number, command: string) => { stdout: string } | undefined;
 }
 
 interface FanoutModuleHandle {
@@ -184,6 +186,8 @@ function makeFanoutModule(options: FanoutModuleOptions = {}): FanoutModuleHandle
       getInfo: async () => ({ cpuCount: 8, memoryMB: 8192 }),
       commands: {
         run: async (command: string) => {
+          const handled = options.commandHandler?.(laneIndex, command);
+          if (handled) return { exitCode: 0, ...handled };
           if (command.includes("xdpyinfo")) {
             return {
               exitCode: 0,
@@ -1754,6 +1758,68 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     expect(verified.ok).toBe(true);
   });
 
+  describe("clone subject across two participants", () => {
+    const cloneFanoutConfig = (): LabConfig => {
+      const parsed = parseLabConfig({
+        schema: LAB_CONFIG_SCHEMA,
+        id: "clone-fanout-proof",
+        title: "Clone fan-out proof",
+        subject: {
+          source: "clone",
+          repos: ["example-org/example-app"],
+          serve: { start: "pnpm start", url: "http://127.0.0.1:3000/" },
+        },
+        actors: [
+          {
+            type: "openai-computer-use",
+            persona: "first-time-visitor",
+            mission: "Explore the app and stop.",
+            count: 2,
+          },
+        ],
+        execution: { target: "e2b-desktop", timeoutMs: 60_000, concurrency: 2 },
+        scenario: { mode: "live" },
+      });
+      if (!parsed.ok) throw new Error(parsed.error.message);
+      return parsed.config;
+    };
+    const cloneModule = (commits: readonly [string, string]) =>
+      makeFanoutModule({
+        commandHandler: (laneIndex, command) => {
+          if (command.includes("/status")) return { stdout: "0" };
+          if (command.includes("rev-parse")) return { stdout: `${commits[laneIndex]}\n` };
+          if (command.includes("curl")) return { stdout: "READY" };
+          return undefined;
+        },
+      });
+
+    it("gives each participant its own commit and omits a divergent top-level commit", async () => {
+      const commits = ["1111111111111111aaaa", "2222222222222222bbbb"] as const;
+      const outcome = await runLab(cloneFanoutConfig(), {
+        cwd,
+        cuaHooks: passingHooks(cloneModule(commits)),
+      });
+      if (outcome.backend !== "cua") throw new Error("expected cua backend");
+      const result = outcome.result;
+      expect(result.lanes?.map((entry) => entry.subject?.commit)).toEqual(commits);
+      expect(result.subject?.commit).toBeUndefined();
+      expect(result.warnings.some((warning) => warning.includes("DIVERGENT subject commits"))).toBe(
+        true,
+      );
+    });
+
+    it("carries the commit at the top level when both participants resolved the same one", async () => {
+      const commit = "3333333333333333cccc";
+      const outcome = await runLab(cloneFanoutConfig(), {
+        cwd,
+        cuaHooks: passingHooks(cloneModule([commit, commit])),
+      });
+      if (outcome.backend !== "cua") throw new Error("expected cua backend");
+      expect(outcome.result.subject?.commit).toBe(commit);
+      expect(outcome.result.warnings.some((warning) => warning.includes("DIVERGENT"))).toBe(false);
+    });
+  });
+
   it("pipeline gate: lane-1 provisioning failure ⇒ the remaining lanes never start a sandbox", async () => {
     const handle = makeFanoutModule();
     const outcome = await runLab(fanoutConfig({ concurrency: 2 }), {
@@ -1779,6 +1845,8 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     expect(result.laneSummary?.skipped).toBe(3);
     expect(result.lanes?.slice(1).every((lane) => lane.status === "blocked")).toBe(true);
     expect(result.lanes?.[1]?.skippedReason).toContain("pipeline gate");
+    // The skip names the participant whose provisioning failed.
+    expect(result.lanes?.[1]?.skippedReason).toContain("lane mobile-newcomer failed to provision");
   });
 
   it("fail-fast on a HARNESS error: in-flight lanes finish, queued lanes are blocked + a fail-fast event, run ok=false, completed evidence intact", async () => {
@@ -2180,9 +2248,9 @@ describe("resolveLaneDevice floors sub-500 mobile widths to the Chrome window mi
 // #342: the lane runner is TOTAL — every exit path records an outcome. Before the guard, one
 // lane's late throw (e.g. its post-teardown trace write hitting ENOSPC) rejected the whole
 // mapWithConcurrency while sibling workers kept launching sandboxes nobody would record: spent
-// money, vanished evidence. These drive runCuaLanes directly with an injected lane runner so the
+// money, vanished evidence. These drive runCuaParticipants directly with an injected lane runner so the
 // THROW path (not the already-guarded in-session error path) is what is under test.
-describe("runCuaLanes total-runner guard (#342)", () => {
+describe("runCuaParticipants total-runner guard (#342)", () => {
   const spec = (id: string, index: number): DesktopParticipantRun =>
     participantRun({
       id,
@@ -2206,19 +2274,24 @@ describe("runCuaLanes total-runner guard (#342)", () => {
     selfReportedBlocker: false,
     harnessError: false,
   });
-  const deps = {} as unknown as Parameters<typeof runCuaLanes>[1];
+  const deps = {} as unknown as Parameters<typeof runCuaParticipants>[1];
 
   it("a THROWING lane records a harness_error outcome; siblings and the aggregate stay intact", async () => {
     const specs = [spec("lane-01", 0), spec("lane-02", 1), spec("lane-03", 2)];
-    const { outcomes, failFastReason } = await runCuaLanes(specs, deps, 1, async (s, laneDeps) => {
-      if (s.planned.index === 0) {
-        (laneDeps as { signalProvisioned?: (ok: boolean) => void }).signalProvisioned?.(true);
+    const { outcomes, failFastReason } = await runCuaParticipants(
+      specs,
+      deps,
+      1,
+      async (s, laneDeps) => {
+        if (s.planned.index === 0) {
+          (laneDeps as { signalProvisioned?: (ok: boolean) => void }).signalProvisioned?.(true);
+          return okOutcome(s);
+        }
+        if (s.planned.id === "lane-02")
+          throw new Error("ENOSPC: no space left on device, write actors/stream-lane-02.json");
         return okOutcome(s);
-      }
-      if (s.planned.id === "lane-02")
-        throw new Error("ENOSPC: no space left on device, write actors/stream-lane-02.json");
-      return okOutcome(s);
-    });
+      },
+    );
 
     // Every lane appears exactly once with a terminal status — nothing vanished.
     expect(outcomes.map((o) => o.spec.planned.id)).toEqual(["lane-01", "lane-02", "lane-03"]);
@@ -2234,7 +2307,7 @@ describe("runCuaLanes total-runner guard (#342)", () => {
 
   it("lane 0 throwing BEFORE it signals the provisioning gate releases the followers as blocked instead of hanging them", async () => {
     const specs = [spec("lane-01", 0), spec("lane-02", 1), spec("lane-03", 2)];
-    const { outcomes } = await runCuaLanes(specs, deps, 3, async (s) => {
+    const { outcomes } = await runCuaParticipants(specs, deps, 3, async (s) => {
       if (s.planned.index === 0) throw new Error("world provisioning exploded before signal");
       return okOutcome(s);
     });

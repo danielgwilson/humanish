@@ -33,7 +33,7 @@ import { CUA_ACTOR_LAB_PROVIDER_METADATA } from "../../../src/routes/computer-us
 import { makeChromeBrowserStateObserver } from "../../../src/substrates/e2b/desktop-cdp.js";
 import { buildCuaBundle } from "../../../src/routes/computer-use/single-bundle.js";
 import { buildRunCostSummary } from "../../../src/run/cost-summary.js";
-import { makeLaneWriteScreenshot } from "../../../src/routes/computer-use/lanes.js";
+import { makeParticipantWriteScreenshot } from "../../../src/routes/computer-use/lanes.js";
 import {
   resolveSelfReportedBlocker,
   resolveSelfReportedFriction,
@@ -919,11 +919,15 @@ describe("runCuaActorLab", () => {
     await mkdir(artifactRoot);
     const preparedRoot = await prepareSelectedOutputDirectory(cwd, artifactRoot);
     const screenshots: string[] = [];
-    const writer = makeLaneWriteScreenshot(preparedRoot, { screenshotDir: "lane-01" }, screenshots);
+    const writer = makeParticipantWriteScreenshot(
+      preparedRoot,
+      { screenshotDir: "lane-01" },
+      screenshots,
+    );
     await expect(writer("../sentinel.png", makePng(1))).rejects.toThrow(/path segment/i);
     await expect(writer("nested/frame.png", makePng(1))).rejects.toThrow(/path segment/i);
     expect(() =>
-      makeLaneWriteScreenshot(preparedRoot, { screenshotDir: "../lane" }, screenshots),
+      makeParticipantWriteScreenshot(preparedRoot, { screenshotDir: "../lane" }, screenshots),
     ).toThrow(/path segment/i);
 
     const outside = path.join(cwd, "outside-frame.png");
