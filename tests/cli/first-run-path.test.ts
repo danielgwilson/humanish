@@ -349,6 +349,8 @@ describe("init finds a provider key the way every other command does", () => {
 });
 
 describe("init leaves instructions for the next coding agent", () => {
+  // Each init gets the project as its HOME. init reads the e2b login from env.HOME, so a test
+  // env without one would read the machine's own ~/.e2b/config.json.
   async function project(): Promise<string> {
     const cwd = await mkdtemp(path.join(tmpdir(), "humanish-firstrun-"));
     await writeFile(
@@ -362,7 +364,7 @@ describe("init leaves instructions for the next coding agent", () => {
   it("writes a runnable starter live lab, not a placeholder", async () => {
     const cwd = await project();
     try {
-      await runInit({ cwd, yes: true, env: {} });
+      await runInit({ cwd, yes: true, env: { HOME: cwd } });
       const lab = await readFile(path.join(cwd, "humanish/labs/try-live.yaml"), "utf8");
       // The defect this closes: `your-org/your-app` cannot be run by anyone.
       expect(lab).not.toContain("your-org/your-app");
@@ -382,7 +384,7 @@ describe("init leaves instructions for the next coding agent", () => {
   it("describes the dollar cap as an estimate checked before each request", async () => {
     const cwd = await project();
     try {
-      await runInit({ cwd, yes: true, env: {} });
+      await runInit({ cwd, yes: true, env: { HOME: cwd } });
       const lab = await readFile(path.join(cwd, "humanish/labs/try-live.yaml"), "utf8");
       const agents = await readFile(path.join(cwd, "AGENTS.md"), "utf8");
       for (const text of [lab, agents]) {
@@ -401,7 +403,7 @@ describe("init leaves instructions for the next coding agent", () => {
       const result = await runInit({
         cwd,
         yes: true,
-        env: {},
+        env: { HOME: cwd },
         localBrowser: {
           appUrl: "http://localhost:4173/app",
           mission: "Create a synthetic note and save it.",
@@ -424,7 +426,7 @@ describe("init leaves instructions for the next coding agent", () => {
       const result = await runInit({
         cwd,
         yes: true,
-        env: {},
+        env: { HOME: cwd },
         localBrowser: {
           appUrl: "https://public.example.test:4443",
         },
@@ -444,13 +446,13 @@ describe("init leaves instructions for the next coding agent", () => {
   it("preserves an existing local lab and warns when explicit setup flags could not apply", async () => {
     const cwd = await project();
     try {
-      await runInit({ cwd, yes: true, env: {} });
+      await runInit({ cwd, yes: true, env: { HOME: cwd } });
       const file = path.join(cwd, "humanish/labs/local-browser.yaml");
       const before = await readFile(file, "utf8");
       const result = await runInit({
         cwd,
         yes: true,
-        env: {},
+        env: { HOME: cwd },
         localBrowser: {
           appUrl: "http://localhost:4173",
           mission: "Use a different flow.",
@@ -461,7 +463,7 @@ describe("init leaves instructions for the next coding agent", () => {
         "Skipped --local-browser/--local-mission: humanish/labs/local-browser.yaml already exists and init never overwrites it.",
       );
 
-      const ordinaryRepeat = await runInit({ cwd, yes: true, env: {} });
+      const ordinaryRepeat = await runInit({ cwd, yes: true, env: { HOME: cwd } });
       expect(ordinaryRepeat.warnings).not.toEqual(
         expect.arrayContaining([expect.stringContaining("--local-browser")]),
       );
@@ -473,7 +475,7 @@ describe("init leaves instructions for the next coding agent", () => {
   it("creates AGENTS.md when there is none", async () => {
     const cwd = await project();
     try {
-      await runInit({ cwd, yes: true, env: {} });
+      await runInit({ cwd, yes: true, env: { HOME: cwd } });
       const agents = await readFile(path.join(cwd, "AGENTS.md"), "utf8");
       expect(agents).toContain(AGENTS_SECTION_MARKER);
       expect(agents).toContain("humanish run first-run");
@@ -492,7 +494,7 @@ describe("init leaves instructions for the next coding agent", () => {
         "# AGENTS.md\n\n## House rules\n\nUse pnpm.\n",
         "utf8",
       );
-      await runInit({ cwd, yes: true, env: {} });
+      await runInit({ cwd, yes: true, env: { HOME: cwd } });
       const agents = await readFile(path.join(cwd, "AGENTS.md"), "utf8");
       expect(agents).toContain("## House rules");
       expect(agents).toContain("Use pnpm.");
@@ -505,8 +507,8 @@ describe("init leaves instructions for the next coding agent", () => {
   it("is idempotent — a second init does not append the section twice", async () => {
     const cwd = await project();
     try {
-      await runInit({ cwd, yes: true, env: {} });
-      await runInit({ cwd, yes: true, env: {} });
+      await runInit({ cwd, yes: true, env: { HOME: cwd } });
+      await runInit({ cwd, yes: true, env: { HOME: cwd } });
       const agents = await readFile(path.join(cwd, "AGENTS.md"), "utf8");
       expect(agents.split(AGENTS_SECTION_MARKER).length - 1).toBe(1);
     } finally {
@@ -517,7 +519,7 @@ describe("init leaves instructions for the next coding agent", () => {
   it("ends by naming the next command", async () => {
     const cwd = await project();
     try {
-      const result = await runInit({ cwd, yes: true, env: {} });
+      const result = await runInit({ cwd, yes: true, env: { HOME: cwd } });
       expect(result.nextSteps?.join("\n")).toContain("humanish run first-run");
     } finally {
       await rm(cwd, { recursive: true, force: true });

@@ -64,6 +64,8 @@ export async function checkCommsConnection(args: {
   env: NodeJS.ProcessEnv;
   online?: boolean;
   makeAdapter?: (apiKey: string) => ReceivingAdapter;
+  /** Where key discovery looks for the vendor stores; tests point it at a temp home. */
+  keyDeps?: KeyResolutionDeps;
 }): Promise<CommsCheckResult> {
   const base: CommsCheckResult = {
     schema: "humanish.comms-check.v1",
@@ -93,7 +95,12 @@ export async function checkCommsConnection(args: {
       };
     label = commsProviderLabel(connection.provider);
     const env = { ...args.env };
-    await discoverProviderKeys({ cwd: args.cwd, env, announce: () => {} });
+    await discoverProviderKeys({
+      cwd: args.cwd,
+      env,
+      announce: () => {},
+      ...(args.keyDeps === undefined ? {} : { deps: args.keyDeps }),
+    });
     const key = env[connection.apiKeyEnv]?.trim();
     if (!key)
       return {

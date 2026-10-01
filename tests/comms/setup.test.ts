@@ -84,11 +84,15 @@ describe("connection authentication", () => {
     setUserKey("AGENTMAIL_API_KEY", "synthetic-saved-key", env);
     env.AGENTMAIL_API_KEY = "synthetic-environment-key";
     const makeAdapter = vi.fn(() => adapter());
-    await checkCommsConnection({ cwd, env, online: true, makeAdapter });
+    // Discovery runs here, so it gets a temp home and no gh: no real ~/.e2b login, no real gh.
+    const keyDeps = { homeDir: cwd, execText: async () => null };
+    await checkCommsConnection({ cwd, env, online: true, makeAdapter, keyDeps });
     expect(makeAdapter).toHaveBeenCalledWith("synthetic-environment-key");
     env.AGENTMAIL_API_KEY = "";
     makeAdapter.mockClear();
-    expect(await checkCommsConnection({ cwd, env, online: true, makeAdapter })).toMatchObject({
+    expect(
+      await checkCommsConnection({ cwd, env, online: true, makeAdapter, keyDeps }),
+    ).toMatchObject({
       ok: false,
       code: "credential_missing",
     });
