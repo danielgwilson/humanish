@@ -35,15 +35,17 @@ Use Node.js 22.19 or newer and pnpm 12; `packageManager` in `package.json` pins 
 
 ```bash
 pnpm install --frozen-lockfile # as CI installs
-pnpm vitest run tests/<file>   # one test file: the fast loop
+pnpm vitest run tests/<file>   # while editing: one test file, a few seconds
+pnpm docs:check                # after editing a doc: paths, anchors, symbols, the CLI reference
 pnpm format                    # oxfmt; run before every commit
-pnpm check                     # the full local gate
-pnpm docs:check                # doc paths, symbols and comments, and a current CLI reference
-pnpm release:check             # CI's test job; run it before opening a pull request
+pnpm release:check             # once before pushing: the gate CI's test job runs
 ```
 
-`release:check` runs `pnpm check`, `api:proof`, `public-surface:scan`, `skill:check` and
-`npm pack --dry-run`. `skill:check` calls `npx skills`, so it needs network access.
+`release:check` runs `pnpm check` (format, lint, knip, the prose and vocabulary caps, typecheck,
+the test suites, build and the startup proofs), then `api:proof`, `public-surface:scan`,
+`skill:check` and `npm pack --dry-run`. On a 16-core Linux machine it takes about 6 minutes, 4 of
+them in `pnpm check`. The test step prints nothing for a few minutes while it runs. `skill:check`
+calls `npx skills`, so it needs network access.
 
 CI (`.github/workflows/ci.yml`) runs six jobs on every pull request and every push to `main`:
 
@@ -68,7 +70,9 @@ Two kinds of change need one more step:
 It also caps three counts in package.json: oxlint warnings (`lint`), prose in `src/`
 comments (`prose:check`: issue references, `FIX-N` tags, all-caps emphasis), and identifiers in
 `src/` outside `src/observer/` that still say lane, seat, role or sim (`vocabulary:check`). The
-caps only go down; lower one in the PR that reduces its count. `pnpm knip` fails on unused files,
+caps only go down; lower one in the PR that reduces its count. `pnpm lint` prints the warnings
+that already exist, several hundred of them; that is expected. It fails only when the count rises
+above the `--max-warnings` cap, which is what CI checks. `pnpm knip` fails on unused files,
 dependencies and exports, and on any import cycle.
 
 ## Useful Commands
@@ -82,25 +86,30 @@ pnpm pack:dry-run
 
 ## Make your first change
 
-This walkthrough changes the persona a computer-use lane gets when neither the lane nor the actor
-names one. It runs offline and spends nothing.
+This walkthrough changes the persona id a computer-use participant gets when neither the
+participant nor its actor names one. It runs offline and spends nothing. Two tests pin the id, and
+the steps below update both.
 
-1. Change the `"cua-operator"` fallback in `composeParticipantInstructions`
-   (`src/routes/computer-use/participant-prompt.ts`).
+1. Change `FALLBACK_PERSONA_ID` (`src/routes/computer-use/participant-prompt.ts`) from
+   `"cua-operator"` to a new id.
 2. Run `pnpm vitest run tests/routes/computer-use/lane-persona-fallback.test.ts`. It fails because
    it asserts the old id. Update the assertion once the new id is what you want.
-3. Run `mkdir -p .humanish/local/labs`, then copy `humanish/labs/dwell-window-todomvc.yaml` to
+3. Run `pnpm vitest run tests/routes/computer-use/local-vm.golden.test.ts`. It fails because the
+   local VM golden, `tests/golden/routes/computer-use-local-vm-live.json`, records the persona id.
+   Rerun it with `-u` to rewrite the golden, then check with `git diff tests/golden/` that only
+   the persona id changed.
+4. Run `mkdir -p .humanish/local/labs`, then copy `humanish/labs/dwell-window-todomvc.yaml` to
    `.humanish/local/labs/walkthrough.yaml`. Change its `id` to `walkthrough` and delete its
    `persona:` line.
-4. Run `pnpm humanish run walkthrough --dry-run --no-open`. Read `.humanish/runs/latest.json` for
-   the run id, then check `persona.id` in `.humanish/runs/<runId>/run.json`.
-5. Run `pnpm humanish verify --run latest`, then `pnpm format` and `pnpm check`.
+5. Run `pnpm humanish run walkthrough --dry-run --no-open`. It prints the run id on its `run:`
+   line. Check `persona.id` in `.humanish/runs/<runId>/run.json`.
+6. Run `pnpm humanish verify --run latest`, then `pnpm format` and `pnpm release:check`.
 
 Common changes touch these tests and contracts:
 
 | Change                    | Tests                                                                                                                                                      | Contract or doc to update                                                      |
 | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| A lab manifest field      | `tests/lab/config.test.ts`, the route's tests                                                                                                              | `docs/contracts/schemas.md`, `site/content/docs/lab-manifests.mdx`             |
+| A lab manifest field      | `tests/lab/config.test.ts`, the route's tests. Its cases pin each lab's warnings, so a new warning fails cases that expect none                            | `docs/contracts/schemas.md`, `site/content/docs/lab-manifests.mdx`             |
 | A CLI option              | the command's tests under `tests/cli/`                                                                                                                     | Run `pnpm docs:generate` to update `site/content/docs/cli.mdx`                 |
 | A `run.json` field        | the route's tests; rerun them with `-u` to update `tests/golden/routes/` and `tests/golden/failures/<route>/`                                              | `docs/contracts/run-bundle.md`                                                 |
 | An actor trace field      | `tests/actors/`, `tests/actors/conformance.test.ts`, then the route goldens with `-u`                                                                      | `docs/contracts/schemas.md#actor-trace`, `docs/architecture/actor-contract.md` |
