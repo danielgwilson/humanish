@@ -240,25 +240,25 @@
       ]
     },
     "warnings": [
-      "Browser window bounds could not be measured for lane mobile-newcomer; the live stream will use the full desktop.",
-      "Physical browser containment is unverified for lane mobile-newcomer; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
-      "Browser outer bounds could not be measured for lane mobile-newcomer.",
-      "Browser CSS viewport could not be measured for lane mobile-newcomer; stream.viewport is omitted instead of copying the requested screen resolution.",
+      "Browser window bounds could not be measured for participant mobile-newcomer; the live stream will use the full desktop.",
+      "Physical browser containment is unverified for participant mobile-newcomer; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+      "Browser outer bounds could not be measured for participant mobile-newcomer.",
+      "Browser CSS viewport could not be measured for participant mobile-newcomer; stream.viewport is omitted instead of copying the requested screen resolution.",
       "Screenshots are full-fidelity (raw) for local use — the bundle stays in gitignored .humanish and nothing scans these pixels; review them before sharing anywhere. Set policies.redactScreenshots: true to blur a share-as-is bundle.",
-      "Browser window bounds could not be measured for lane small-skimmer; the live stream will use the full desktop.",
-      "Physical browser containment is unverified for lane small-skimmer; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
-      "Browser outer bounds could not be measured for lane small-skimmer.",
-      "Browser CSS viewport could not be measured for lane small-skimmer; stream.viewport is omitted instead of copying the requested screen resolution.",
+      "Browser window bounds could not be measured for participant small-skimmer; the live stream will use the full desktop.",
+      "Physical browser containment is unverified for participant small-skimmer; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+      "Browser outer bounds could not be measured for participant small-skimmer.",
+      "Browser CSS viewport could not be measured for participant small-skimmer; stream.viewport is omitted instead of copying the requested screen resolution.",
       "Screenshots are full-fidelity (raw) for local use — the bundle stays in gitignored .humanish and nothing scans these pixels; review them before sharing anywhere. Set policies.redactScreenshots: true to blur a share-as-is bundle.",
-      "Browser window bounds could not be measured for lane desktop-power; the live stream will use the full desktop.",
-      "Physical browser containment is unverified for lane desktop-power; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
-      "Browser outer bounds could not be measured for lane desktop-power.",
-      "Browser CSS viewport could not be measured for lane desktop-power; stream.viewport is omitted instead of copying the requested screen resolution.",
+      "Browser window bounds could not be measured for participant desktop-power; the live stream will use the full desktop.",
+      "Physical browser containment is unverified for participant desktop-power; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+      "Browser outer bounds could not be measured for participant desktop-power.",
+      "Browser CSS viewport could not be measured for participant desktop-power; stream.viewport is omitted instead of copying the requested screen resolution.",
       "Screenshots are full-fidelity (raw) for local use — the bundle stays in gitignored .humanish and nothing scans these pixels; review them before sharing anywhere. Set policies.redactScreenshots: true to blur a share-as-is bundle.",
-      "Browser window bounds could not be measured for lane wide-researcher; the live stream will use the full desktop.",
-      "Physical browser containment is unverified for lane wide-researcher; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
-      "Browser outer bounds could not be measured for lane wide-researcher.",
-      "Browser CSS viewport could not be measured for lane wide-researcher; stream.viewport is omitted instead of copying the requested screen resolution.",
+      "Browser window bounds could not be measured for participant wide-researcher; the live stream will use the full desktop.",
+      "Physical browser containment is unverified for participant wide-researcher; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+      "Browser outer bounds could not be measured for participant wide-researcher.",
+      "Browser CSS viewport could not be measured for participant wide-researcher; stream.viewport is omitted instead of copying the requested screen resolution.",
       "Screenshots are full-fidelity (raw) for local use — the bundle stays in gitignored .humanish and nothing scans these pixels; review them before sharing anywhere. Set policies.redactScreenshots: true to blur a share-as-is bundle.",
       "Observer renders verified local evidence artifacts; runtime stream auth URLs are not persisted.",
       "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
@@ -761,7 +761,7 @@
       "at": "[ts]",
       "level": "warn",
       "type": "cua-lab.geometry.warning",
-      "message": "Browser window bounds could not be measured for lane mobile-newcomer; the live stream will use the full desktop.",
+      "message": "Browser window bounds could not be measured for participant mobile-newcomer; the live stream will use the full desktop.",
       "simId": "sim-001",
       "streamId": "stream-001"
     },
@@ -770,7 +770,7 @@
       "at": "[ts]",
       "level": "warn",
       "type": "cua-lab.geometry.warning",
-      "message": "Physical browser containment is unverified for lane mobile-newcomer; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+      "message": "Physical browser containment is unverified for participant mobile-newcomer; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
       "simId": "sim-001",
       "streamId": "stream-001"
     },
@@ -779,7 +779,7 @@
       "at": "[ts]",
       "level": "warn",
       "type": "cua-lab.geometry.warning",
-      "message": "Browser outer bounds could not be measured for lane mobile-newcomer.",
+      "message": "Browser outer bounds could not be measured for participant mobile-newcomer.",
       "simId": "sim-001",
       "streamId": "stream-001"
     },
@@ -788,7 +788,7 @@
       "at": "[ts]",
       "level": "warn",
       "type": "cua-lab.geometry.warning",
-      "message": "Browser CSS viewport could not be measured for lane mobile-newcomer; stream.viewport is omitted instead of copying the requested screen resolution.",
+      "message": "Browser CSS viewport could not be measured for participant mobile-newcomer; stream.viewport is omitted instead of copying the requested screen resolution.",
       "simId": "sim-001",
       "streamId": "stream-001"
     },
@@ -815,7 +815,7 @@
       "at": "[ts]",
       "level": "warn",
       "type": "cua-lab.geometry.warning",
-      "message": "Browser window bounds could not be measured for lane small-skimmer; the live stream will use the full desktop.",
+      "message": "Browser window bounds could not be measured for participant small-skimmer; the live stream will use the full desktop.",
       "simId": "sim-002",
       "streamId": "stream-002"
     },
@@ -824,7 +824,7 @@
       "at": "[ts]",
       "level": "warn",
       "type": "cua-lab.geometry.warning",
-      "message": "Physical browser containment is unverified for lane small-skimmer; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+      "message": "Physical browser containment is unverified for participant small-skimmer; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
       "simId": "sim-002",
       "streamId": "stream-002"
     },
@@ -833,7 +833,7 @@
       "at": "[ts]",
       "level": "warn",
       "type": "cua-lab.geometry.warning",
-      "message": "Browser outer bounds could not be measured for lane small-skimmer.",
+      "message": "Browser outer bounds could not be measured for participant small-skimmer.",
       "simId": "sim-002",
       "streamId": "stream-002"
     },
@@ -842,7 +842,7 @@
       "at": "[ts]",
       "level": "warn",
       "type": "cua-lab.geometry.warning",
-      "message": "Browser CSS viewport could not be measured for lane small-skimmer; stream.viewport is omitted instead of copying the requested screen resolution.",
+      "message": "Browser CSS viewport could not be measured for participant small-skimmer; stream.viewport is omitted instead of copying the requested screen resolution.",
       "simId": "sim-002",
       "streamId": "stream-002"
     },
@@ -869,7 +869,7 @@
       "at": "[ts]",
       "level": "warn",
       "type": "cua-lab.geometry.warning",
-      "message": "Browser window bounds could not be measured for lane desktop-power; the live stream will use the full desktop.",
+      "message": "Browser window bounds could not be measured for participant desktop-power; the live stream will use the full desktop.",
       "simId": "sim-003",
       "streamId": "stream-003"
     },
@@ -878,7 +878,7 @@
       "at": "[ts]",
       "level": "warn",
       "type": "cua-lab.geometry.warning",
-      "message": "Physical browser containment is unverified for lane desktop-power; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+      "message": "Physical browser containment is unverified for participant desktop-power; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
       "simId": "sim-003",
       "streamId": "stream-003"
     },
@@ -887,7 +887,7 @@
       "at": "[ts]",
       "level": "warn",
       "type": "cua-lab.geometry.warning",
-      "message": "Browser outer bounds could not be measured for lane desktop-power.",
+      "message": "Browser outer bounds could not be measured for participant desktop-power.",
       "simId": "sim-003",
       "streamId": "stream-003"
     },
@@ -896,7 +896,7 @@
       "at": "[ts]",
       "level": "warn",
       "type": "cua-lab.geometry.warning",
-      "message": "Browser CSS viewport could not be measured for lane desktop-power; stream.viewport is omitted instead of copying the requested screen resolution.",
+      "message": "Browser CSS viewport could not be measured for participant desktop-power; stream.viewport is omitted instead of copying the requested screen resolution.",
       "simId": "sim-003",
       "streamId": "stream-003"
     },
@@ -923,7 +923,7 @@
       "at": "[ts]",
       "level": "warn",
       "type": "cua-lab.geometry.warning",
-      "message": "Browser window bounds could not be measured for lane wide-researcher; the live stream will use the full desktop.",
+      "message": "Browser window bounds could not be measured for participant wide-researcher; the live stream will use the full desktop.",
       "simId": "sim-004",
       "streamId": "stream-004"
     },
@@ -932,7 +932,7 @@
       "at": "[ts]",
       "level": "warn",
       "type": "cua-lab.geometry.warning",
-      "message": "Physical browser containment is unverified for lane wide-researcher; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+      "message": "Physical browser containment is unverified for participant wide-researcher; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
       "simId": "sim-004",
       "streamId": "stream-004"
     },
@@ -941,7 +941,7 @@
       "at": "[ts]",
       "level": "warn",
       "type": "cua-lab.geometry.warning",
-      "message": "Browser outer bounds could not be measured for lane wide-researcher.",
+      "message": "Browser outer bounds could not be measured for participant wide-researcher.",
       "simId": "sim-004",
       "streamId": "stream-004"
     },
@@ -950,7 +950,7 @@
       "at": "[ts]",
       "level": "warn",
       "type": "cua-lab.geometry.warning",
-      "message": "Browser CSS viewport could not be measured for lane wide-researcher; stream.viewport is omitted instead of copying the requested screen resolution.",
+      "message": "Browser CSS viewport could not be measured for participant wide-researcher; stream.viewport is omitted instead of copying the requested screen resolution.",
       "simId": "sim-004",
       "streamId": "stream-004"
     }
@@ -1172,10 +1172,10 @@
             }
           },
           "warnings": [
-            "Browser window bounds could not be measured for lane mobile-newcomer; the live stream will use the full desktop.",
-            "Physical browser containment is unverified for lane mobile-newcomer; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
-            "Browser outer bounds could not be measured for lane mobile-newcomer.",
-            "Browser CSS viewport could not be measured for lane mobile-newcomer; stream.viewport is omitted instead of copying the requested screen resolution."
+            "Browser window bounds could not be measured for participant mobile-newcomer; the live stream will use the full desktop.",
+            "Physical browser containment is unverified for participant mobile-newcomer; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+            "Browser outer bounds could not be measured for participant mobile-newcomer.",
+            "Browser CSS viewport could not be measured for participant mobile-newcomer; stream.viewport is omitted instead of copying the requested screen resolution."
           ]
         },
         "ui": {
@@ -1370,7 +1370,7 @@
             "at": "[ts]",
             "level": "warn",
             "type": "cua-lab.geometry.warning",
-            "message": "Browser window bounds could not be measured for lane mobile-newcomer; the live stream will use the full desktop.",
+            "message": "Browser window bounds could not be measured for participant mobile-newcomer; the live stream will use the full desktop.",
             "simId": "sim-001",
             "streamId": "stream-001"
           },
@@ -1379,7 +1379,7 @@
             "at": "[ts]",
             "level": "warn",
             "type": "cua-lab.geometry.warning",
-            "message": "Physical browser containment is unverified for lane mobile-newcomer; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+            "message": "Physical browser containment is unverified for participant mobile-newcomer; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
             "simId": "sim-001",
             "streamId": "stream-001"
           },
@@ -1388,7 +1388,7 @@
             "at": "[ts]",
             "level": "warn",
             "type": "cua-lab.geometry.warning",
-            "message": "Browser outer bounds could not be measured for lane mobile-newcomer.",
+            "message": "Browser outer bounds could not be measured for participant mobile-newcomer.",
             "simId": "sim-001",
             "streamId": "stream-001"
           },
@@ -1397,7 +1397,7 @@
             "at": "[ts]",
             "level": "warn",
             "type": "cua-lab.geometry.warning",
-            "message": "Browser CSS viewport could not be measured for lane mobile-newcomer; stream.viewport is omitted instead of copying the requested screen resolution.",
+            "message": "Browser CSS viewport could not be measured for participant mobile-newcomer; stream.viewport is omitted instead of copying the requested screen resolution.",
             "simId": "sim-001",
             "streamId": "stream-001"
           }
@@ -1439,10 +1439,10 @@
             }
           },
           "warnings": [
-            "Browser window bounds could not be measured for lane small-skimmer; the live stream will use the full desktop.",
-            "Physical browser containment is unverified for lane small-skimmer; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
-            "Browser outer bounds could not be measured for lane small-skimmer.",
-            "Browser CSS viewport could not be measured for lane small-skimmer; stream.viewport is omitted instead of copying the requested screen resolution."
+            "Browser window bounds could not be measured for participant small-skimmer; the live stream will use the full desktop.",
+            "Physical browser containment is unverified for participant small-skimmer; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+            "Browser outer bounds could not be measured for participant small-skimmer.",
+            "Browser CSS viewport could not be measured for participant small-skimmer; stream.viewport is omitted instead of copying the requested screen resolution."
           ]
         },
         "ui": {
@@ -1637,7 +1637,7 @@
             "at": "[ts]",
             "level": "warn",
             "type": "cua-lab.geometry.warning",
-            "message": "Browser window bounds could not be measured for lane small-skimmer; the live stream will use the full desktop.",
+            "message": "Browser window bounds could not be measured for participant small-skimmer; the live stream will use the full desktop.",
             "simId": "sim-002",
             "streamId": "stream-002"
           },
@@ -1646,7 +1646,7 @@
             "at": "[ts]",
             "level": "warn",
             "type": "cua-lab.geometry.warning",
-            "message": "Physical browser containment is unverified for lane small-skimmer; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+            "message": "Physical browser containment is unverified for participant small-skimmer; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
             "simId": "sim-002",
             "streamId": "stream-002"
           },
@@ -1655,7 +1655,7 @@
             "at": "[ts]",
             "level": "warn",
             "type": "cua-lab.geometry.warning",
-            "message": "Browser outer bounds could not be measured for lane small-skimmer.",
+            "message": "Browser outer bounds could not be measured for participant small-skimmer.",
             "simId": "sim-002",
             "streamId": "stream-002"
           },
@@ -1664,7 +1664,7 @@
             "at": "[ts]",
             "level": "warn",
             "type": "cua-lab.geometry.warning",
-            "message": "Browser CSS viewport could not be measured for lane small-skimmer; stream.viewport is omitted instead of copying the requested screen resolution.",
+            "message": "Browser CSS viewport could not be measured for participant small-skimmer; stream.viewport is omitted instead of copying the requested screen resolution.",
             "simId": "sim-002",
             "streamId": "stream-002"
           }
@@ -1701,10 +1701,10 @@
             }
           },
           "warnings": [
-            "Browser window bounds could not be measured for lane desktop-power; the live stream will use the full desktop.",
-            "Physical browser containment is unverified for lane desktop-power; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
-            "Browser outer bounds could not be measured for lane desktop-power.",
-            "Browser CSS viewport could not be measured for lane desktop-power; stream.viewport is omitted instead of copying the requested screen resolution."
+            "Browser window bounds could not be measured for participant desktop-power; the live stream will use the full desktop.",
+            "Physical browser containment is unverified for participant desktop-power; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+            "Browser outer bounds could not be measured for participant desktop-power.",
+            "Browser CSS viewport could not be measured for participant desktop-power; stream.viewport is omitted instead of copying the requested screen resolution."
           ]
         },
         "ui": {
@@ -1899,7 +1899,7 @@
             "at": "[ts]",
             "level": "warn",
             "type": "cua-lab.geometry.warning",
-            "message": "Browser window bounds could not be measured for lane desktop-power; the live stream will use the full desktop.",
+            "message": "Browser window bounds could not be measured for participant desktop-power; the live stream will use the full desktop.",
             "simId": "sim-003",
             "streamId": "stream-003"
           },
@@ -1908,7 +1908,7 @@
             "at": "[ts]",
             "level": "warn",
             "type": "cua-lab.geometry.warning",
-            "message": "Physical browser containment is unverified for lane desktop-power; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+            "message": "Physical browser containment is unverified for participant desktop-power; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
             "simId": "sim-003",
             "streamId": "stream-003"
           },
@@ -1917,7 +1917,7 @@
             "at": "[ts]",
             "level": "warn",
             "type": "cua-lab.geometry.warning",
-            "message": "Browser outer bounds could not be measured for lane desktop-power.",
+            "message": "Browser outer bounds could not be measured for participant desktop-power.",
             "simId": "sim-003",
             "streamId": "stream-003"
           },
@@ -1926,7 +1926,7 @@
             "at": "[ts]",
             "level": "warn",
             "type": "cua-lab.geometry.warning",
-            "message": "Browser CSS viewport could not be measured for lane desktop-power; stream.viewport is omitted instead of copying the requested screen resolution.",
+            "message": "Browser CSS viewport could not be measured for participant desktop-power; stream.viewport is omitted instead of copying the requested screen resolution.",
             "simId": "sim-003",
             "streamId": "stream-003"
           }
@@ -1963,10 +1963,10 @@
             }
           },
           "warnings": [
-            "Browser window bounds could not be measured for lane wide-researcher; the live stream will use the full desktop.",
-            "Physical browser containment is unverified for lane wide-researcher; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
-            "Browser outer bounds could not be measured for lane wide-researcher.",
-            "Browser CSS viewport could not be measured for lane wide-researcher; stream.viewport is omitted instead of copying the requested screen resolution."
+            "Browser window bounds could not be measured for participant wide-researcher; the live stream will use the full desktop.",
+            "Physical browser containment is unverified for participant wide-researcher; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+            "Browser outer bounds could not be measured for participant wide-researcher.",
+            "Browser CSS viewport could not be measured for participant wide-researcher; stream.viewport is omitted instead of copying the requested screen resolution."
           ]
         },
         "ui": {
@@ -2161,7 +2161,7 @@
             "at": "[ts]",
             "level": "warn",
             "type": "cua-lab.geometry.warning",
-            "message": "Browser window bounds could not be measured for lane wide-researcher; the live stream will use the full desktop.",
+            "message": "Browser window bounds could not be measured for participant wide-researcher; the live stream will use the full desktop.",
             "simId": "sim-004",
             "streamId": "stream-004"
           },
@@ -2170,7 +2170,7 @@
             "at": "[ts]",
             "level": "warn",
             "type": "cua-lab.geometry.warning",
-            "message": "Physical browser containment is unverified for lane wide-researcher; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+            "message": "Physical browser containment is unverified for participant wide-researcher; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
             "simId": "sim-004",
             "streamId": "stream-004"
           },
@@ -2179,7 +2179,7 @@
             "at": "[ts]",
             "level": "warn",
             "type": "cua-lab.geometry.warning",
-            "message": "Browser outer bounds could not be measured for lane wide-researcher.",
+            "message": "Browser outer bounds could not be measured for participant wide-researcher.",
             "simId": "sim-004",
             "streamId": "stream-004"
           },
@@ -2188,7 +2188,7 @@
             "at": "[ts]",
             "level": "warn",
             "type": "cua-lab.geometry.warning",
-            "message": "Browser CSS viewport could not be measured for lane wide-researcher; stream.viewport is omitted instead of copying the requested screen resolution.",
+            "message": "Browser CSS viewport could not be measured for participant wide-researcher; stream.viewport is omitted instead of copying the requested screen resolution.",
             "simId": "sim-004",
             "streamId": "stream-004"
           }
@@ -2233,7 +2233,7 @@
         "at": "[ts]",
         "level": "warn",
         "type": "cua-lab.geometry.warning",
-        "message": "Browser window bounds could not be measured for lane mobile-newcomer; the live stream will use the full desktop.",
+        "message": "Browser window bounds could not be measured for participant mobile-newcomer; the live stream will use the full desktop.",
         "simId": "sim-001",
         "streamId": "stream-001"
       },
@@ -2242,7 +2242,7 @@
         "at": "[ts]",
         "level": "warn",
         "type": "cua-lab.geometry.warning",
-        "message": "Physical browser containment is unverified for lane mobile-newcomer; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+        "message": "Physical browser containment is unverified for participant mobile-newcomer; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
         "simId": "sim-001",
         "streamId": "stream-001"
       },
@@ -2251,7 +2251,7 @@
         "at": "[ts]",
         "level": "warn",
         "type": "cua-lab.geometry.warning",
-        "message": "Browser outer bounds could not be measured for lane mobile-newcomer.",
+        "message": "Browser outer bounds could not be measured for participant mobile-newcomer.",
         "simId": "sim-001",
         "streamId": "stream-001"
       },
@@ -2260,7 +2260,7 @@
         "at": "[ts]",
         "level": "warn",
         "type": "cua-lab.geometry.warning",
-        "message": "Browser CSS viewport could not be measured for lane mobile-newcomer; stream.viewport is omitted instead of copying the requested screen resolution.",
+        "message": "Browser CSS viewport could not be measured for participant mobile-newcomer; stream.viewport is omitted instead of copying the requested screen resolution.",
         "simId": "sim-001",
         "streamId": "stream-001"
       },
@@ -2287,7 +2287,7 @@
         "at": "[ts]",
         "level": "warn",
         "type": "cua-lab.geometry.warning",
-        "message": "Browser window bounds could not be measured for lane small-skimmer; the live stream will use the full desktop.",
+        "message": "Browser window bounds could not be measured for participant small-skimmer; the live stream will use the full desktop.",
         "simId": "sim-002",
         "streamId": "stream-002"
       },
@@ -2296,7 +2296,7 @@
         "at": "[ts]",
         "level": "warn",
         "type": "cua-lab.geometry.warning",
-        "message": "Physical browser containment is unverified for lane small-skimmer; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+        "message": "Physical browser containment is unverified for participant small-skimmer; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
         "simId": "sim-002",
         "streamId": "stream-002"
       },
@@ -2305,7 +2305,7 @@
         "at": "[ts]",
         "level": "warn",
         "type": "cua-lab.geometry.warning",
-        "message": "Browser outer bounds could not be measured for lane small-skimmer.",
+        "message": "Browser outer bounds could not be measured for participant small-skimmer.",
         "simId": "sim-002",
         "streamId": "stream-002"
       },
@@ -2314,7 +2314,7 @@
         "at": "[ts]",
         "level": "warn",
         "type": "cua-lab.geometry.warning",
-        "message": "Browser CSS viewport could not be measured for lane small-skimmer; stream.viewport is omitted instead of copying the requested screen resolution.",
+        "message": "Browser CSS viewport could not be measured for participant small-skimmer; stream.viewport is omitted instead of copying the requested screen resolution.",
         "simId": "sim-002",
         "streamId": "stream-002"
       },
@@ -2341,7 +2341,7 @@
         "at": "[ts]",
         "level": "warn",
         "type": "cua-lab.geometry.warning",
-        "message": "Browser window bounds could not be measured for lane desktop-power; the live stream will use the full desktop.",
+        "message": "Browser window bounds could not be measured for participant desktop-power; the live stream will use the full desktop.",
         "simId": "sim-003",
         "streamId": "stream-003"
       },
@@ -2350,7 +2350,7 @@
         "at": "[ts]",
         "level": "warn",
         "type": "cua-lab.geometry.warning",
-        "message": "Physical browser containment is unverified for lane desktop-power; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+        "message": "Physical browser containment is unverified for participant desktop-power; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
         "simId": "sim-003",
         "streamId": "stream-003"
       },
@@ -2359,7 +2359,7 @@
         "at": "[ts]",
         "level": "warn",
         "type": "cua-lab.geometry.warning",
-        "message": "Browser outer bounds could not be measured for lane desktop-power.",
+        "message": "Browser outer bounds could not be measured for participant desktop-power.",
         "simId": "sim-003",
         "streamId": "stream-003"
       },
@@ -2368,7 +2368,7 @@
         "at": "[ts]",
         "level": "warn",
         "type": "cua-lab.geometry.warning",
-        "message": "Browser CSS viewport could not be measured for lane desktop-power; stream.viewport is omitted instead of copying the requested screen resolution.",
+        "message": "Browser CSS viewport could not be measured for participant desktop-power; stream.viewport is omitted instead of copying the requested screen resolution.",
         "simId": "sim-003",
         "streamId": "stream-003"
       },
@@ -2395,7 +2395,7 @@
         "at": "[ts]",
         "level": "warn",
         "type": "cua-lab.geometry.warning",
-        "message": "Browser window bounds could not be measured for lane wide-researcher; the live stream will use the full desktop.",
+        "message": "Browser window bounds could not be measured for participant wide-researcher; the live stream will use the full desktop.",
         "simId": "sim-004",
         "streamId": "stream-004"
       },
@@ -2404,7 +2404,7 @@
         "at": "[ts]",
         "level": "warn",
         "type": "cua-lab.geometry.warning",
-        "message": "Physical browser containment is unverified for lane wide-researcher; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+        "message": "Physical browser containment is unverified for participant wide-researcher; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
         "simId": "sim-004",
         "streamId": "stream-004"
       },
@@ -2413,7 +2413,7 @@
         "at": "[ts]",
         "level": "warn",
         "type": "cua-lab.geometry.warning",
-        "message": "Browser outer bounds could not be measured for lane wide-researcher.",
+        "message": "Browser outer bounds could not be measured for participant wide-researcher.",
         "simId": "sim-004",
         "streamId": "stream-004"
       },
@@ -2422,7 +2422,7 @@
         "at": "[ts]",
         "level": "warn",
         "type": "cua-lab.geometry.warning",
-        "message": "Browser CSS viewport could not be measured for lane wide-researcher; stream.viewport is omitted instead of copying the requested screen resolution.",
+        "message": "Browser CSS viewport could not be measured for participant wide-researcher; stream.viewport is omitted instead of copying the requested screen resolution.",
         "simId": "sim-004",
         "streamId": "stream-004"
       }
@@ -2649,10 +2649,10 @@
             }
           },
           "warnings": [
-            "Browser window bounds could not be measured for lane mobile-newcomer; the live stream will use the full desktop.",
-            "Physical browser containment is unverified for lane mobile-newcomer; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
-            "Browser outer bounds could not be measured for lane mobile-newcomer.",
-            "Browser CSS viewport could not be measured for lane mobile-newcomer; stream.viewport is omitted instead of copying the requested screen resolution."
+            "Browser window bounds could not be measured for participant mobile-newcomer; the live stream will use the full desktop.",
+            "Physical browser containment is unverified for participant mobile-newcomer; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+            "Browser outer bounds could not be measured for participant mobile-newcomer.",
+            "Browser CSS viewport could not be measured for participant mobile-newcomer; stream.viewport is omitted instead of copying the requested screen resolution."
           ]
         },
         "ui": {
@@ -2840,10 +2840,10 @@
             }
           },
           "warnings": [
-            "Browser window bounds could not be measured for lane small-skimmer; the live stream will use the full desktop.",
-            "Physical browser containment is unverified for lane small-skimmer; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
-            "Browser outer bounds could not be measured for lane small-skimmer.",
-            "Browser CSS viewport could not be measured for lane small-skimmer; stream.viewport is omitted instead of copying the requested screen resolution."
+            "Browser window bounds could not be measured for participant small-skimmer; the live stream will use the full desktop.",
+            "Physical browser containment is unverified for participant small-skimmer; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+            "Browser outer bounds could not be measured for participant small-skimmer.",
+            "Browser CSS viewport could not be measured for participant small-skimmer; stream.viewport is omitted instead of copying the requested screen resolution."
           ]
         },
         "ui": {
@@ -3026,10 +3026,10 @@
             }
           },
           "warnings": [
-            "Browser window bounds could not be measured for lane desktop-power; the live stream will use the full desktop.",
-            "Physical browser containment is unverified for lane desktop-power; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
-            "Browser outer bounds could not be measured for lane desktop-power.",
-            "Browser CSS viewport could not be measured for lane desktop-power; stream.viewport is omitted instead of copying the requested screen resolution."
+            "Browser window bounds could not be measured for participant desktop-power; the live stream will use the full desktop.",
+            "Physical browser containment is unverified for participant desktop-power; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+            "Browser outer bounds could not be measured for participant desktop-power.",
+            "Browser CSS viewport could not be measured for participant desktop-power; stream.viewport is omitted instead of copying the requested screen resolution."
           ]
         },
         "ui": {
@@ -3212,10 +3212,10 @@
             }
           },
           "warnings": [
-            "Browser window bounds could not be measured for lane wide-researcher; the live stream will use the full desktop.",
-            "Physical browser containment is unverified for lane wide-researcher; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
-            "Browser outer bounds could not be measured for lane wide-researcher.",
-            "Browser CSS viewport could not be measured for lane wide-researcher; stream.viewport is omitted instead of copying the requested screen resolution."
+            "Browser window bounds could not be measured for participant wide-researcher; the live stream will use the full desktop.",
+            "Physical browser containment is unverified for participant wide-researcher; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+            "Browser outer bounds could not be measured for participant wide-researcher.",
+            "Browser CSS viewport could not be measured for participant wide-researcher; stream.viewport is omitted instead of copying the requested screen resolution."
           ]
         },
         "ui": {
@@ -3406,7 +3406,7 @@
         "at": "[ts]",
         "level": "warn",
         "type": "cua-lab.geometry.warning",
-        "message": "Browser window bounds could not be measured for lane mobile-newcomer; the live stream will use the full desktop.",
+        "message": "Browser window bounds could not be measured for participant mobile-newcomer; the live stream will use the full desktop.",
         "simId": "sim-001",
         "streamId": "stream-001"
       },
@@ -3415,7 +3415,7 @@
         "at": "[ts]",
         "level": "warn",
         "type": "cua-lab.geometry.warning",
-        "message": "Physical browser containment is unverified for lane mobile-newcomer; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+        "message": "Physical browser containment is unverified for participant mobile-newcomer; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
         "simId": "sim-001",
         "streamId": "stream-001"
       },
@@ -3424,7 +3424,7 @@
         "at": "[ts]",
         "level": "warn",
         "type": "cua-lab.geometry.warning",
-        "message": "Browser outer bounds could not be measured for lane mobile-newcomer.",
+        "message": "Browser outer bounds could not be measured for participant mobile-newcomer.",
         "simId": "sim-001",
         "streamId": "stream-001"
       },
@@ -3433,7 +3433,7 @@
         "at": "[ts]",
         "level": "warn",
         "type": "cua-lab.geometry.warning",
-        "message": "Browser CSS viewport could not be measured for lane mobile-newcomer; stream.viewport is omitted instead of copying the requested screen resolution.",
+        "message": "Browser CSS viewport could not be measured for participant mobile-newcomer; stream.viewport is omitted instead of copying the requested screen resolution.",
         "simId": "sim-001",
         "streamId": "stream-001"
       },
@@ -3460,7 +3460,7 @@
         "at": "[ts]",
         "level": "warn",
         "type": "cua-lab.geometry.warning",
-        "message": "Browser window bounds could not be measured for lane small-skimmer; the live stream will use the full desktop.",
+        "message": "Browser window bounds could not be measured for participant small-skimmer; the live stream will use the full desktop.",
         "simId": "sim-002",
         "streamId": "stream-002"
       },
@@ -3469,7 +3469,7 @@
         "at": "[ts]",
         "level": "warn",
         "type": "cua-lab.geometry.warning",
-        "message": "Physical browser containment is unverified for lane small-skimmer; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+        "message": "Physical browser containment is unverified for participant small-skimmer; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
         "simId": "sim-002",
         "streamId": "stream-002"
       },
@@ -3478,7 +3478,7 @@
         "at": "[ts]",
         "level": "warn",
         "type": "cua-lab.geometry.warning",
-        "message": "Browser outer bounds could not be measured for lane small-skimmer.",
+        "message": "Browser outer bounds could not be measured for participant small-skimmer.",
         "simId": "sim-002",
         "streamId": "stream-002"
       },
@@ -3487,7 +3487,7 @@
         "at": "[ts]",
         "level": "warn",
         "type": "cua-lab.geometry.warning",
-        "message": "Browser CSS viewport could not be measured for lane small-skimmer; stream.viewport is omitted instead of copying the requested screen resolution.",
+        "message": "Browser CSS viewport could not be measured for participant small-skimmer; stream.viewport is omitted instead of copying the requested screen resolution.",
         "simId": "sim-002",
         "streamId": "stream-002"
       },
@@ -3514,7 +3514,7 @@
         "at": "[ts]",
         "level": "warn",
         "type": "cua-lab.geometry.warning",
-        "message": "Browser window bounds could not be measured for lane desktop-power; the live stream will use the full desktop.",
+        "message": "Browser window bounds could not be measured for participant desktop-power; the live stream will use the full desktop.",
         "simId": "sim-003",
         "streamId": "stream-003"
       },
@@ -3523,7 +3523,7 @@
         "at": "[ts]",
         "level": "warn",
         "type": "cua-lab.geometry.warning",
-        "message": "Physical browser containment is unverified for lane desktop-power; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+        "message": "Physical browser containment is unverified for participant desktop-power; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
         "simId": "sim-003",
         "streamId": "stream-003"
       },
@@ -3532,7 +3532,7 @@
         "at": "[ts]",
         "level": "warn",
         "type": "cua-lab.geometry.warning",
-        "message": "Browser outer bounds could not be measured for lane desktop-power.",
+        "message": "Browser outer bounds could not be measured for participant desktop-power.",
         "simId": "sim-003",
         "streamId": "stream-003"
       },
@@ -3541,7 +3541,7 @@
         "at": "[ts]",
         "level": "warn",
         "type": "cua-lab.geometry.warning",
-        "message": "Browser CSS viewport could not be measured for lane desktop-power; stream.viewport is omitted instead of copying the requested screen resolution.",
+        "message": "Browser CSS viewport could not be measured for participant desktop-power; stream.viewport is omitted instead of copying the requested screen resolution.",
         "simId": "sim-003",
         "streamId": "stream-003"
       },
@@ -3568,7 +3568,7 @@
         "at": "[ts]",
         "level": "warn",
         "type": "cua-lab.geometry.warning",
-        "message": "Browser window bounds could not be measured for lane wide-researcher; the live stream will use the full desktop.",
+        "message": "Browser window bounds could not be measured for participant wide-researcher; the live stream will use the full desktop.",
         "simId": "sim-004",
         "streamId": "stream-004"
       },
@@ -3577,7 +3577,7 @@
         "at": "[ts]",
         "level": "warn",
         "type": "cua-lab.geometry.warning",
-        "message": "Physical browser containment is unverified for lane wide-researcher; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+        "message": "Physical browser containment is unverified for participant wide-researcher; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
         "simId": "sim-004",
         "streamId": "stream-004"
       },
@@ -3586,7 +3586,7 @@
         "at": "[ts]",
         "level": "warn",
         "type": "cua-lab.geometry.warning",
-        "message": "Browser outer bounds could not be measured for lane wide-researcher.",
+        "message": "Browser outer bounds could not be measured for participant wide-researcher.",
         "simId": "sim-004",
         "streamId": "stream-004"
       },
@@ -3595,7 +3595,7 @@
         "at": "[ts]",
         "level": "warn",
         "type": "cua-lab.geometry.warning",
-        "message": "Browser CSS viewport could not be measured for lane wide-researcher; stream.viewport is omitted instead of copying the requested screen resolution.",
+        "message": "Browser CSS viewport could not be measured for participant wide-researcher; stream.viewport is omitted instead of copying the requested screen resolution.",
         "simId": "sim-004",
         "streamId": "stream-004"
       }
