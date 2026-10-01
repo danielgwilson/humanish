@@ -78,7 +78,7 @@ function cuaLabResult(args: {
   // Lane-level pass: dry-run lanes are contract-ok; live lanes need a passed, engaged session.
   const laneOk = (outcome: LaneRunOutcome | undefined): boolean => laneOutcomeOk(outcome, dryRun);
   const adapterFailure = adapterScoreFailureMessage(bundle);
-  const ok = observer.ok && args.judgment.allPassed && args.scorerFailures.length === 0;
+  const ok = observer.ok && args.judgment.passed && args.scorerFailures.length === 0;
 
   const laneWarnings = (outcomes ?? []).flatMap((outcome) => outcome.warnings);
   const warnings = [

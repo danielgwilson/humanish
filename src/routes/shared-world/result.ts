@@ -299,10 +299,7 @@ export async function finishConcurrentRun(
   // make the route green just because the harness got a terminal.
   const adapterFailure = adapterScoreFailureMessage(bundle);
   const ok =
-    observer.ok &&
-    runError === undefined &&
-    judgment.allPassed &&
-    scorerResult.failures.length === 0;
+    observer.ok && runError === undefined && judgment.passed && scorerResult.failures.length === 0;
 
   const overlapProven = !dryRun && judgment.world.overlap;
 
