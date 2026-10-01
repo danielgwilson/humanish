@@ -1,6 +1,6 @@
 // A shared-world lab with a local-agent brain runs each seat on the operator's signed-in agent:
-// the seats' runner deps name the agent, the route checks its sign-in before acquiring anything,
-// and only the external-public plane's lobby-code reader asks for OPENAI_API_KEY.
+// the seats' runner deps carry the plan's brain, the route checks its sign-in before acquiring
+// anything, and only the external-public plane's lobby-code reader asks for OPENAI_API_KEY.
 
 import { chmod, mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -56,15 +56,17 @@ function planeContext(brain: PlaneContext["plan"]["brain"]): PlaneContext {
 }
 
 describe("shared world with a local-agent brain", () => {
-  it("names the signed-in agent in each seat's runner deps, and no agent for an openai brain", () => {
+  it("hands each seat's runner the plan's brain, with its agent and declared model", () => {
     const live = { streamUrls: [] };
     const scrub = (text: string) => text;
-    expect(
-      participantRunDeps(planeContext({ kind: "local-agent", agent: "codex" }), live, scrub),
-    ).toMatchObject({ localAgent: "codex" });
-    expect(
-      participantRunDeps(planeContext({ kind: "openai", model: "gpt-6-astra" }), live, scrub),
-    ).not.toHaveProperty("localAgent");
+    const localAgent = {
+      kind: "local-agent",
+      agent: "codex",
+      declaredModel: "gpt-6-astra",
+    } as const;
+    const openai = { kind: "openai", model: "gpt-6-astra" } as const;
+    expect(participantRunDeps(planeContext(localAgent), live, scrub).brain).toBe(localAgent);
+    expect(participantRunDeps(planeContext(openai), live, scrub).brain).toBe(openai);
   });
 
   it("declares OPENAI_API_KEY only for the external-public plane's lobby-code reader", async () => {

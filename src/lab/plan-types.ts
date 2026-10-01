@@ -85,11 +85,16 @@ interface PreviewPlan extends PlanBase {
   readonly participantCount: number;
 }
 
-/** The model driving a desktop participant. `caller` is the library caller's buildProvider. */
+/**
+ * The model driving a desktop participant. `caller` is the library caller's buildProvider.
+ * `declaredModel` is actors[0].model as the lab wrote it, absent when undeclared: the providers
+ * take it as written, and spend is priced at it, else the default (pricedModel). An openai
+ * brain's `model` is the one its provider runs, with that default applied.
+ */
 export type Brain =
-  | { readonly kind: "openai"; readonly model: string }
-  | { readonly kind: "local-agent"; readonly agent: LocalAgentId }
-  | { readonly kind: "caller" };
+  | { readonly kind: "openai"; readonly model: string; readonly declaredModel?: string }
+  | { readonly kind: "local-agent"; readonly agent: LocalAgentId; readonly declaredModel?: string }
+  | { readonly kind: "caller"; readonly declaredModel?: string };
 
 export type ProvisionedSubject =
   | {
@@ -135,7 +140,7 @@ export type ComputerUseRunner =
   /** The caller's executor and provider together; one participant. */
   | {
       readonly desktop: "in-process";
-      readonly brain: { readonly kind: "caller" };
+      readonly brain: Extract<Brain, { kind: "caller" }>;
       readonly participants: readonly [ComputerUseParticipant];
       readonly subject: AppUrlSubject | { readonly kind: "local-app"; readonly appUrl: string };
     };

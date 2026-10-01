@@ -106,10 +106,26 @@ export function desktopRequirements(
 
 export function brainOf(config: LabConfig, callerProvider: boolean): Brain {
   const actor = config.actors[0];
-  if (callerProvider) return { kind: "caller" };
+  if (callerProvider) return callerBrainOf(config);
+  const declared = declaredModelOf(config);
   if (actor?.type === "local-agent")
-    return { kind: "local-agent", agent: actor.localAgent ?? "codex" };
-  return { kind: "openai", model: actor?.model ?? DEFAULT_OPENAI_CU_MODEL };
+    return { kind: "local-agent", agent: actor.localAgent ?? "codex", ...declared };
+  return { kind: "openai", model: actor?.model ?? DEFAULT_OPENAI_CU_MODEL, ...declared };
+}
+
+/** The brain of a run whose provider the library caller supplies. */
+export function callerBrainOf(config: LabConfig): Extract<Brain, { kind: "caller" }> {
+  return { kind: "caller", ...declaredModelOf(config) };
+}
+
+function declaredModelOf(config: LabConfig): { declaredModel?: string } {
+  const model = config.actors[0]?.model;
+  return model === undefined ? {} : { declaredModel: model };
+}
+
+/** The model a participant's spend is priced at when its provider reports none. */
+export function pricedModel(brain: Brain): string {
+  return brain.declaredModel ?? DEFAULT_OPENAI_CU_MODEL;
 }
 
 /** The fields every plan shares, from a config whose analysis already resolved. */

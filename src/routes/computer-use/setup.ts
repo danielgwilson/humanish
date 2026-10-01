@@ -7,7 +7,6 @@ import { realpath } from "node:fs/promises";
 import path from "node:path";
 import { type RunScope } from "../../run/run.js";
 import { externalInboxUrl } from "../../comms/sandbox-catch.js";
-import { type LocalAgentId } from "../../actors/local-agent/cli.js";
 import { redactText, scrubLiterals, toErrorMessage } from "../../evidence/redaction.js";
 import type { CuaActorDescriptor } from "../../actors/registry.js";
 import type { LabCommsEmail, LabCommsExternal, LabConfig } from "../../lab/types.js";
@@ -243,25 +242,16 @@ export async function admitCuaRun(
     cloneRoute && subjectRepo ? (redactRepoLabel ? "repo-01" : subjectRepo) : undefined;
   const hasGithubToken = subjectEnvNames.includes("GITHUB_TOKEN");
 
-  // The operator's own signed-in coding agent is the brain, so there is no provider key to ask
-  // for — the entire point of the actor. E2B is still required: the persona needs a machine.
-  const localAgentRoute = descriptor.id === "local-agent";
-  // Which local CLI, from its OWN field: `model` means the model, so that "Claude Code running
-  // Opus" is sayable. Preflight below refuses when the chosen one is missing or signed out — that
-  // news is worthless after a sandbox is paid for.
-  const preferredLocalAgent: LocalAgentId = config.actors[0]?.localAgent ?? "codex";
   // Key-gating is route-aware: the in-process route uses the caller's OWN model + executor, and
   // the local-agent route uses a CLI the operator has already signed in to.
   if (!dryRun && !inProcessRoute) {
     const rejection = await liveCuaRejection({
       caps: plan.caps,
-      model: config.actors[0]?.model,
+      brain: plan.runner.brain,
       hooks,
       env,
       openaiApiKey,
       e2bApiKey,
-      localAgentRoute,
-      preferredLocalAgent,
       subjectEnvNames,
       externalCommsConfig,
     });
@@ -315,8 +305,6 @@ export async function admitCuaRun(
       scrubKnownValues,
       publicRepo,
       hasGithubToken,
-      localAgentRoute,
-      preferredLocalAgent,
       localTreeArchive,
       localTreeArchiveBuffer,
     },
@@ -460,7 +448,7 @@ function cuaParticipantDeps(
 ): Omit<CuaParticipantDeps, "signalProvisioned"> {
   const { config, dryRun, hooks, streams, env, descriptor, runSession, participantCount } =
     admitted;
-  const { localAgentRoute, preferredLocalAgent, hasGithubToken, localTreeArchiveBuffer } = admitted;
+  const { hasGithubToken, localTreeArchiveBuffer } = admitted;
   const { openaiApiKey, e2bApiKey, scrubKnownValues } = admitted;
   const { externalCommsConfig, externalCommsEmail } = admitted;
   const { appUrl, cloneRoute, desktopCliRoute, localTreeRoute, serve, subjectRepo } =
@@ -477,7 +465,7 @@ function cuaParticipantDeps(
     config,
     descriptor,
     appUrl,
-    ...(localAgentRoute ? { localAgent: preferredLocalAgent } : {}),
+    brain: plan.runner.brain,
     cloneRoute,
     desktopCliRoute,
     localTreeRoute,

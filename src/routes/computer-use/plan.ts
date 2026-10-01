@@ -13,6 +13,7 @@ import { isHttpUrl, isLoopbackUrl } from "../../lab/parse/subject.js";
 import { subjectStateInvalidReason } from "../../lab/parse/subject-state.js";
 import {
   brainOf,
+  callerBrainOf,
   capsOf,
   desktopRequirements,
   planBase,
@@ -423,7 +424,7 @@ export function planComputerUseLab(
     hooks.buildExecutor !== undefined
       ? {
           desktop: "in-process",
-          brain: { kind: "caller" },
+          brain: callerBrainOf(config),
           participants: [first],
           subject: source === "local-app" ? { kind: "local-app", appUrl } : appUrlSubject,
         }

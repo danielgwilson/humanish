@@ -14,6 +14,7 @@ import { LAB_CONFIG_SCHEMA } from "../../src/lab/types.js";
 import { parseLabConfig } from "../../src/lab/config.js";
 import type { CommsReceivingRun } from "../../src/comms/receiving.js";
 import type { ReceivingSurface } from "../../src/comms/receiving-types.js";
+import { DEFAULT_OPENAI_CU_MODEL } from "../../src/actors/computer-use/openai-provider.js";
 import { prepareSelectedOutputDirectory } from "../../src/run/contained-output.js";
 import { inertDesktopInput } from "../helpers/inert-desktop-input.js";
 import { participantRun } from "../helpers/participant-run.js";
@@ -101,6 +102,7 @@ describe("real inbox wiring through the actual CUA lane", () => {
         const deps: CuaParticipantDeps & { receiving: CommsReceivingRun } = {
           config: parsed.config,
           descriptor: getActor("openai-computer-use"),
+          brain: { kind: "openai", model: DEFAULT_OPENAI_CU_MODEL },
           appUrl: "http://127.0.0.1:3000/",
           cloneRoute: false,
           subjectEnvNames: [],
