@@ -28,8 +28,8 @@ import type { CuaActorSessionOptions } from "../../actors/computer-use/actor.js"
 import { type E2BDesktopModule, type E2BDesktopSandbox } from "../../substrates/e2b/sdk.js";
 import { type DesktopResourceObservation } from "../../substrates/e2b/desktop-resources.js";
 import { type DetachedTimers } from "../../substrates/detached.js";
-import type { Brain, ComputerUsePlan } from "../../lab/plan-types.js";
-import { type LabCommsEmail, type LabConfig, type LabSubjectServe } from "../../lab/types.js";
+import type { Brain, ComputerUsePlan, ComputerUseRunner } from "../../lab/plan-types.js";
+import { type LabCommsEmail, type LabConfig } from "../../lab/types.js";
 import { renderObserver, type ObserverResult } from "../../observer/render.js";
 import { type RunLabProvenance } from "../../run/status.js";
 import {
@@ -494,6 +494,20 @@ export interface CuaRunBudget {
   note(participantId: string, estimateUsd: number | null): number;
 }
 
+/**
+ * The subject as a participant's desktop meets it. A computer-use participant gets the plan's
+ * subject: a clone or local tree is provisioned in its own sandbox with the declared env, a
+ * desktop-cli product is set up there, and an app-url or local-app subject is only opened. A
+ * shared-world seat gets `shared-app`: it opens the one app the plane serves, and nothing is
+ * provisioned or forwarded into its sandbox.
+ */
+export type ParticipantSubject = ComputerUseRunner["subject"] | { readonly kind: "shared-app" };
+
+/** The subject env names forwarded into a participant's sandbox: a provisioned subject's only. */
+export function participantSubjectEnv(subject: ParticipantSubject): readonly string[] {
+  return subject.kind === "clone" || subject.kind === "local-tree" ? subject.env : [];
+}
+
 /** Shared deps every lane runner needs (resolved once in the engine). */
 export interface CuaParticipantDeps {
   /** Internal ready-desktop seam. The factory must not allocate; prepare owns that work. */
@@ -507,16 +521,8 @@ export interface CuaParticipantDeps {
   appUrl: string;
   /** The plan's brain: the model and, for a local agent, which signed-in CLI drives the participant. */
   brain: Brain;
-  cloneRoute: boolean;
-  /** desktop-cli (#495): a CLI studied at a desktop. Nothing is cloned and no browser is opened. */
-  desktopCliRoute?: boolean;
-  /** Optional so out-of-scope callers building CuaParticipantDeps directly (other engines reusing
-   *  runCuaParticipant) do not need to know about the local-tree route; undefined behaves as false. */
-  localTreeRoute?: boolean;
-  serve?: LabSubjectServe;
-  subjectRepo?: string;
-  subjectEnvNames: string[];
-  hasGithubToken: boolean;
+  /** What the participant's desktop does with the subject before the participant starts. */
+  subject: ParticipantSubject;
   /** Local-tree route only: the once-per-run packed archive bytes, shared byte-identically
    *  across every fan-out lane's upload step. Absent on dry-run and every other route. */
   localTreeArchiveBuffer?: ArrayBuffer;
