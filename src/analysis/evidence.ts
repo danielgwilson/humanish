@@ -170,7 +170,7 @@ export async function captureStudyEvidence(
   if (textBytes > limits.textBytes) throw new Error("ANALYSIS_PARTICIPANT_CONTEXT_TOO_LARGE");
   // Tie-breaking uses stable participant IDs, not the order of streams in a bundle.
   // The emitted packet still preserves participant and source event order.
-  const lanes = selected
+  const packings = selected
     .map((stream) => ({
       stream,
       entries: sourceEntries(bundle, stream, captureVersion),
@@ -183,11 +183,11 @@ export async function captureStudyEvidence(
       reservationBlocked: false,
     }))
     .sort((a, b) => (a.stream.id < b.stream.id ? -1 : a.stream.id > b.stream.id ? 1 : 0));
-  const sel = planCaptureSelection(lanes, limits);
-  await selectCaptures(prepared, lanes, sel, omissions);
-  recordCaptureOmissions(lanes, sel, omissions);
-  const textByEntry = boundEvidenceText(lanes, limits.textBytes - textBytes, omissions);
-  packEvidence(selected, lanes, textByEntry, evidence, images);
+  const sel = planCaptureSelection(packings, limits);
+  await selectCaptures(prepared, packings, sel, omissions);
+  recordCaptureOmissions(packings, sel, omissions);
+  const textByEntry = boundEvidenceText(packings, limits.textBytes - textBytes, omissions);
+  packEvidence(selected, packings, textByEntry, evidence, images);
   const omittedStreamIds = bundle.streams.slice(limits.participants).map((stream) => stream.id);
   const coverage = {
     includedStreamIds: selected.map((stream) => stream.id),
@@ -214,7 +214,9 @@ export async function captureStudyEvidence(
   return result;
 }
 
-interface Lane {
+/** A participant's part of the evidence packet: its stream, its source entries, and what selection
+ * has admitted, captured and spent for it. */
+interface ParticipantPacking {
   stream: RunStream;
   entries: SourceEntry[];
   captures: Map<SourceEntry, Buffer>;
@@ -226,7 +228,7 @@ interface Lane {
   reservationBlocked: boolean;
 }
 
-/** The per-lane shares and overall budgets of one capture selection, and what it has spent. */
+/** The per-participant shares and overall budgets of one capture selection, and what it has spent. */
 interface CaptureSelection {
   readonly limits: Required<StudyEvidenceLimits>;
   readonly evidenceShares: number[];
@@ -245,7 +247,7 @@ interface CaptureSelection {
 }
 
 function planCaptureSelection(
-  lanes: readonly Lane[],
+  packings: readonly ParticipantPacking[],
   limits: Required<StudyEvidenceLimits>,
 ): CaptureSelection {
   // Missing/invalid files cannot turn selection into an exhaustive file scan.
@@ -255,12 +257,12 @@ function planCaptureSelection(
   const readBudget = 2 * limits.totalImageBytes;
   const evidenceShares = fairShares(
     limits.evidence,
-    lanes.map((lane) => lane.entries.length),
+    packings.map((packing) => packing.entries.length),
   );
-  const captureOrders = lanes.map((lane) => sourceOrder(lane.entries, true));
+  const captureOrders = packings.map((packing) => sourceOrder(packing.entries, true));
   const captureShares = fairShares(
     limits.captures,
-    lanes.map((_, index) => Math.min(evidenceShares[index]!, captureOrders[index]!.length)),
+    packings.map((_, index) => Math.min(evidenceShares[index]!, captureOrders[index]!.length)),
   );
   const attemptShares = captureShares.map((share) => 2 * share);
   const readShares = fairShares(
@@ -291,7 +293,7 @@ function planCaptureSelection(
 
 async function selectCaptures(
   prepared: PreparedRunArtifactPaths,
-  lanes: Lane[],
+  packings: ParticipantPacking[],
   sel: CaptureSelection,
   omissions: Set<string>,
 ): Promise<void> {
@@ -303,22 +305,22 @@ async function selectCaptures(
     sel.returnedImageBytes < sel.readBudget
   ) {
     let attempted = false;
-    for (const [index, lane] of lanes.entries()) {
+    for (const [index, packing] of packings.entries()) {
       if (
-        lane.captures.size >= sel.captureShares[index]! ||
-        lane.attempts >= sel.attemptShares[index]! ||
-        lane.captureCursor >= sel.captureOrders[index]!.length ||
+        packing.captures.size >= sel.captureShares[index]! ||
+        packing.attempts >= sel.attemptShares[index]! ||
+        packing.captureCursor >= sel.captureOrders[index]!.length ||
         sel.attemptedReads >= sel.maxAttempts ||
-        (sel.reserved && lane.reservationBlocked)
+        (sel.reserved && packing.reservationBlocked)
       )
         continue;
       if (sel.imageBytes >= limits.totalImageBytes || sel.returnedImageBytes >= sel.readBudget)
         break;
       const readAllowance = sel.reserved
-        ? sel.readShares[index]! - lane.readBytes
+        ? sel.readShares[index]! - packing.readBytes
         : sel.readBudget - sel.returnedImageBytes;
       const imageAllowance = sel.reserved
-        ? sel.imageShares[index]! - lane.imageBytes
+        ? sel.imageShares[index]! - packing.imageBytes
         : limits.totalImageBytes - sel.imageBytes;
       const allowance = Math.min(
         limits.imageBytes,
@@ -327,13 +329,13 @@ async function selectCaptures(
         readAllowance,
       );
       if (allowance <= 0) {
-        lane.reservationBlocked = true;
+        packing.reservationBlocked = true;
         continue;
       }
       attempted = true;
-      lane.attempts++;
+      packing.attempts++;
       sel.attemptedReads++;
-      const source = sel.captureOrders[index]![lane.captureCursor]!;
+      const source = sel.captureOrders[index]![packing.captureCursor]!;
       const result = await readBoundedStudyFileResult(prepared, source.capturePath!, allowance);
       if (
         result.state === "limit" &&
@@ -343,10 +345,10 @@ async function selectCaptures(
       ) {
         // This participant's reservation is too small, not its evidence unsafe.
         // Preserve the candidate for the shared pool after all reserved passes.
-        lane.reservationBlocked = true;
+        packing.reservationBlocked = true;
         continue;
       }
-      lane.captureCursor++;
+      packing.captureCursor++;
       if (result.state === "limit" && result.size <= BigInt(limits.imageBytes)) {
         omissions.add(
           result.size > BigInt(limits.totalImageBytes - sel.imageBytes)
@@ -357,51 +359,54 @@ async function selectCaptures(
       }
       const bytes = result.state === "read" ? result.bytes : null;
       sel.returnedImageBytes += bytes?.length ?? 0;
-      lane.readBytes += bytes?.length ?? 0;
+      packing.readBytes += bytes?.length ?? 0;
       if (bytes === null || screenshotEvidenceError(source.capturePath!, bytes) !== null) {
         omissions.add("Some captures were missing, unsafe, oversized, or invalid PNG evidence.");
         continue;
       }
       sel.imageBytes += bytes.length;
-      lane.imageBytes += bytes.length;
+      packing.imageBytes += bytes.length;
       sel.captureCount++;
-      lane.captures.set(source, bytes);
+      packing.captures.set(source, bytes);
     }
-    if (!attempted && !reclaimCaptureSlots(lanes, sel)) break;
+    if (!attempted && !reclaimCaptureSlots(packings, sel)) break;
   }
 }
 
 /**
  * Release unused read/admission reservations after a pass with no attempt. Returns false when no
- * lane can use a reclaimed slot or a global budget is spent.
+ * participant can use a reclaimed slot or a global budget is spent.
  */
-function reclaimCaptureSlots(lanes: readonly Lane[], sel: CaptureSelection): boolean {
+function reclaimCaptureSlots(
+  packings: readonly ParticipantPacking[],
+  sel: CaptureSelection,
+): boolean {
   const { limits } = sel;
   // Release unused read/admission reservations after every reserved pass.
-  // Zero-share lanes can now compete for reclaimed slots, with two attempts.
+  // Zero-share participants can now compete for reclaimed slots, with two attempts.
   sel.reserved = false;
   sel.attemptShares.forEach((share, index) => {
     if (share === 0 && sel.evidenceShares[index]! > 0) sel.attemptShares[index] = 2;
   });
-  const available = lanes.map((lane, index) =>
-    lane.attempts < sel.attemptShares[index]!
+  const available = packings.map((packing, index) =>
+    packing.attempts < sel.attemptShares[index]!
       ? Math.min(
-          sel.evidenceShares[index]! - lane.captures.size,
-          sel.captureOrders[index]!.length - lane.captureCursor,
-          sel.attemptShares[index]! - lane.attempts,
+          sel.evidenceShares[index]! - packing.captures.size,
+          sel.captureOrders[index]!.length - packing.captureCursor,
+          sel.attemptShares[index]! - packing.attempts,
         )
       : 0,
   );
-  const extra = lanes.map(() => 0);
-  // Count earlier admissions when reclaiming slots: a byte-deferred lane
-  // must catch up before better-covered lanes receive additional captures.
+  const extra = packings.map(() => 0);
+  // Count earlier admissions when reclaiming slots: a byte-deferred participant
+  // must catch up before better-covered participants receive additional captures.
   for (let remaining = limits.captures - sel.captureCount; remaining > 0; remaining--) {
     let next = -1;
-    for (const [index, lane] of lanes.entries()) {
+    for (const [index, packing] of packings.entries()) {
       if (
         extra[index]! < available[index]! &&
         (next === -1 ||
-          lane.captures.size + extra[index]! < lanes[next]!.captures.size + extra[next]!)
+          packing.captures.size + extra[index]! < packings[next]!.captures.size + extra[next]!)
       )
         next = index;
     }
@@ -416,30 +421,33 @@ function reclaimCaptureSlots(lanes: readonly Lane[], sel: CaptureSelection): boo
   )
     return false;
   extra.forEach((share, index) => {
-    sel.captureShares[index]! = lanes[index]!.captures.size + share;
+    sel.captureShares[index]! = packings[index]!.captures.size + share;
   });
   return true;
 }
 
 function recordCaptureOmissions(
-  lanes: readonly Lane[],
+  packings: readonly ParticipantPacking[],
   sel: CaptureSelection,
   omissions: Set<string>,
 ): void {
   const { limits } = sel;
-  for (const [index, lane] of lanes.entries()) {
-    if (!lane.stream.actor) omissions.add("Some participants have no normalized recorded trace.");
-    if (hasUnmappedCaptures(lane.stream))
+  for (const [index, packing] of packings.entries()) {
+    if (!packing.stream.actor)
+      omissions.add("Some participants have no normalized recorded trace.");
+    if (hasUnmappedCaptures(packing.stream))
       omissions.add("Some declared captures have no normalized trace reference.");
-    for (const source of lane.captures.keys()) lane.admitted.add(source);
-    for (const source of sourceOrder(lane.entries, false)) {
-      if (lane.admitted.size >= sel.evidenceShares[index]!) break;
-      lane.admitted.add(source);
+    for (const source of packing.captures.keys()) packing.admitted.add(source);
+    for (const source of sourceOrder(packing.entries, false)) {
+      if (packing.admitted.size >= sel.evidenceShares[index]!) break;
+      packing.admitted.add(source);
     }
-    if (lane.admitted.size < lane.entries.length)
+    if (packing.admitted.size < packing.entries.length)
       omissions.add("Some evidence was omitted by the packet size limit.");
-    if (lane.entries.some((entry) => entry.capturePath !== null && !lane.captures.has(entry))) {
-      const pending = lane.captureCursor < sel.captureOrders[index]!.length;
+    if (
+      packing.entries.some((entry) => entry.capturePath !== null && !packing.captures.has(entry))
+    ) {
+      const pending = packing.captureCursor < sel.captureOrders[index]!.length;
       if (pending && sel.captureCount >= limits.captures)
         omissions.add("Some captures were omitted by the capture count limit.");
       if (pending && sel.imageBytes >= limits.totalImageBytes)
@@ -449,7 +457,7 @@ function recordCaptureOmissions(
       if (
         pending &&
         sel.captureCount < limits.captures &&
-        (sel.attemptedReads >= sel.maxAttempts || lane.attempts >= sel.attemptShares[index]!)
+        (sel.attemptedReads >= sel.maxAttempts || packing.attempts >= sel.attemptShares[index]!)
       ) {
         omissions.add("Some captures were omitted by the bounded file-attempt limit.");
       }
@@ -457,29 +465,29 @@ function recordCaptureOmissions(
         "Captures were sampled across participants and session boundaries; omitted moments may contain other issues.",
       );
     }
-    if (lane.entries.some((entry) => entry.captureDeclared && entry.capturePath === null)) {
+    if (packing.entries.some((entry) => entry.captureDeclared && entry.capturePath === null)) {
       omissions.add("Some screenshot references were absent or nonlocal.");
     }
   }
 }
 
 function boundEvidenceText(
-  lanes: readonly Lane[],
+  packings: readonly ParticipantPacking[],
   budget: number,
   omissions: Set<string>,
 ): Map<SourceEntry, string> {
   const textShares = fairShares(
     budget,
-    lanes.map((lane) =>
-      [...lane.admitted].reduce(
+    packings.map((packing) =>
+      [...packing.admitted].reduce(
         (total, entry) => total + Math.min(16000, Buffer.byteLength(entry.text)),
         0,
       ),
     ),
   );
   const textByEntry = new Map<SourceEntry, string>();
-  for (const [index, lane] of lanes.entries()) {
-    const entries = [...lane.admitted];
+  for (const [index, packing] of packings.entries()) {
+    const entries = [...packing.admitted];
     const shares = fairShares(
       textShares[index]!,
       entries.map((entry) => Math.min(16000, Buffer.byteLength(entry.text))),
@@ -496,16 +504,16 @@ function boundEvidenceText(
 
 function packEvidence(
   selected: readonly RunStream[],
-  lanes: readonly Lane[],
+  packings: readonly ParticipantPacking[],
   textByEntry: ReadonlyMap<SourceEntry, string>,
   evidence: AnalysisEvidence[],
   images: StudyAnalysisInput["images"],
 ): void {
   for (const stream of selected) {
-    const lane = lanes.find((candidate) => candidate.stream === stream)!;
-    for (const source of lane.entries.filter((entry) => lane.admitted.has(entry))) {
+    const packing = packings.find((candidate) => candidate.stream === stream)!;
+    for (const source of packing.entries.filter((entry) => packing.admitted.has(entry))) {
       const id = `e${String(evidence.length + 1).padStart(6, "0")}`;
-      const bytes = lane.captures.get(source);
+      const bytes = packing.captures.get(source);
       const capture = bytes
         ? {
             eventId: source.eventId,
