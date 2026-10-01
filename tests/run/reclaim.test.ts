@@ -57,7 +57,9 @@ function fakeModule(
         if (mode === "ok") return true;
         if (mode === "gone") return false;
         if (mode === "not-found-throw")
-          throw new Error(`SandboxNotFoundError: sandbox ${sandboxId} does not exist`);
+          throw Object.assign(new Error(`sandbox ${sandboxId} is gone`), {
+            name: "SandboxNotFoundError",
+          });
         throw new Error("provider exploded");
       },
     },

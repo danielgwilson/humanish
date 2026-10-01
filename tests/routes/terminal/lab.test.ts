@@ -2210,40 +2210,48 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     expect(result.sandbox?.remaining).toBe(-1);
   });
 
-  it("fails closed when Sandbox.kill(id) itself throws (remaining=-1, never a re-list)", async () => {
-    const creates: RecordedCreate[] = [];
-    const runs: RecordedRun[] = [];
-    const killed: string[] = [];
-    const listCalls: string[] = [];
-    const hooks: TerminalProductLabHooks = {
-      env: baseEnv(),
-      now: () => 3_500,
-      loadModule: async () =>
-        makeFakeModule({
-          creates,
-          runs,
-          killed,
-          listCalls,
-          killThrows: () => ({ message: "provider timeout killing sandbox" }),
-          codexBehavior: (cmd) => ({
-            exitCode: 0,
-            stdout: `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+  it.each([
+    "provider timeout killing sandbox",
+    "500: internal error (trace 7c404ab1)",
+    "500: team not found",
+    "sandbox does not exist yet",
+  ])(
+    "fails closed when Sandbox.kill(id) throws %j (remaining=-1, never a re-list)",
+    async (message) => {
+      const creates: RecordedCreate[] = [];
+      const runs: RecordedRun[] = [];
+      const killed: string[] = [];
+      const listCalls: string[] = [];
+      const hooks: TerminalProductLabHooks = {
+        env: baseEnv(),
+        now: () => 3_500,
+        loadModule: async () =>
+          makeFakeModule({
+            creates,
+            runs,
+            killed,
+            listCalls,
+            killThrows: () => ({ message }),
+            codexBehavior: (cmd) => ({
+              exitCode: 0,
+              stdout: `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+            }),
           }),
-        }),
-    };
-    const result = await runTerminalProductLab({
-      cwd,
-      config: liveConfig(),
-      dryRun: false,
-      open: false,
-      hooks,
-    });
-    expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_TERMINAL_LAB_CLEANUP_UNPROVEN");
-    expect(result.sandbox?.killed).toBe(false);
-    expect(result.sandbox?.remaining).toBe(-1);
-    expect(listCalls.length).toBe(0);
-  });
+      };
+      const result = await runTerminalProductLab({
+        cwd,
+        config: liveConfig(),
+        dryRun: false,
+        open: false,
+        hooks,
+      });
+      expect(result.ok).toBe(false);
+      expect(result.error?.code).toBe("HUMANISH_TERMINAL_LAB_CLEANUP_UNPROVEN");
+      expect(result.sandbox?.killed).toBe(false);
+      expect(result.sandbox?.remaining).toBe(-1);
+      expect(listCalls.length).toBe(0);
+    },
+  );
 
   it("confirms reclamation by id when Sandbox.getInfo(id) throws SandboxNotFoundError (remaining=0, never a re-list)", async () => {
     const creates: RecordedCreate[] = [];

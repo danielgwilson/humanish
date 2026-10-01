@@ -107,8 +107,10 @@ function boundKill(module: E2BDesktopModule): SandboxKill | undefined {
 
 /**
  * Kill one sandbox by exact id and read the answer in the release vocabulary both callers share.
- * The SDK resolves false for an id it no longer knows, and a not-found error means the same.
- * Any other answer is an incompatible response and cannot prove release. Never list the account.
+ * The SDK resolves false for an id it no longer knows (a 404), and a SandboxNotFoundError,
+ * recognized by type, means the same. Every other throw is unconfirmed, whatever its message
+ * says: the SDK answers a 404 with false before it throws, so "not found" or "404" in a thrown
+ * message comes from some other failure, such as a trace id. Never list the account.
  */
 async function killById(
   kill: SandboxKill | undefined,
@@ -122,11 +124,7 @@ async function killById(
     if (result === false) return { status: "released", reason: "already_gone" };
     return { status: "unconfirmed", reason: "invalid_result" };
   } catch (error) {
-    if (
-      isSandboxNotFoundError(error) ||
-      /not.?found|does not exist|404/i.test(toErrorMessage(error))
-    )
-      return { status: "released", reason: "already_gone" };
+    if (isSandboxNotFoundError(error)) return { status: "released", reason: "already_gone" };
     return { status: "unconfirmed", reason: "release_failed", error };
   }
 }
