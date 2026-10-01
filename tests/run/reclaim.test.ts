@@ -18,6 +18,8 @@ import {
   parseSandboxReceipts,
   SANDBOX_RECEIPTS_ARTIFACT,
 } from "../../src/run/sandbox-receipts.js";
+import { createProgram } from "../../src/cli/program.js";
+import { runIdOf } from "../../src/run/paths.js";
 import { RECLAIM_RECEIPT_ARTIFACT, reclaimRunSandboxes } from "../../src/run/reclaim.js";
 import type { E2BDesktopModule } from "../../src/substrates/e2b/sdk.js";
 
@@ -263,4 +265,70 @@ describe("reclaim of unreadable receipts", () => {
       expect(killedIds).toEqual([]);
     },
   );
+});
+
+describe("reclaim with E2B_DEBUG=true", () => {
+  let cwd: string;
+  beforeEach(async () => {
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-reclaim-debug-"));
+  });
+  afterEach(async () => {
+    vi.unstubAllEnvs();
+    await rm(cwd, { recursive: true, force: true });
+  });
+
+  it("refuses before loading the SDK and keeps the receipts", async () => {
+    const run = await runTerminalProductLab({
+      cwd,
+      config: dryRunConfig(),
+      dryRun: true,
+      open: false,
+    });
+    expect(run.ok).toBe(true);
+    const runPaths = await resolveRunPath(cwd, "latest");
+    if (!runPaths) throw new Error("dry run left no run");
+    await appendSandboxReceipt(runPaths, { at: "t1", laneId: "lane-01", sandboxId: "sb-alive" });
+    vi.stubEnv("E2B_DEBUG", "true");
+    const killedIds: string[] = [];
+    const loadModule = vi.fn(async () => fakeModule({ "sb-alive": "ok" }, killedIds));
+
+    const result = await reclaimRunSandboxes(cwd, "latest", { loadModule });
+
+    expect(result.ok).toBe(false);
+    expect(result.error?.code).toBe("HUMANISH_RECLAIM_E2B_DEBUG");
+    expect(result.error?.message).toContain("E2B_DEBUG");
+    expect(result.outcomes).toEqual([]);
+    expect(loadModule).not.toHaveBeenCalled();
+    expect(killedIds).toEqual([]);
+    const runDir = path.join(cwd, ".humanish", "runs", runIdOf(runPaths));
+    await expect(readFile(path.join(runDir, RECLAIM_RECEIPT_ARTIFACT))).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+    expect(
+      parseSandboxReceipts(await readFile(path.join(runDir, SANDBOX_RECEIPTS_ARTIFACT), "utf8")),
+    ).toHaveLength(1);
+  });
+
+  it("exits 2 from the CLI with the refusal code", async () => {
+    vi.stubEnv("E2B_DEBUG", "True");
+    let out = "";
+    let exitCode: number | undefined;
+    const program = createProgram({
+      writeOut: (text) => {
+        out += text;
+      },
+      writeErr: () => undefined,
+      setExitCode: (code) => {
+        exitCode = code;
+      },
+    });
+    await program.parseAsync(["node", "humanish", "reclaim", "--cwd", cwd, "--json"], {
+      from: "node",
+    });
+    expect(exitCode).toBe(2);
+    expect(JSON.parse(out)).toMatchObject({
+      ok: false,
+      error: { code: "HUMANISH_RECLAIM_E2B_DEBUG" },
+    });
+  });
 });

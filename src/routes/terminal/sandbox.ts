@@ -5,6 +5,7 @@ import {
   isSandboxNotFoundError,
   type E2BDesktopModule,
 } from "../../substrates/e2b/sdk.js";
+import { releaseUnavailableDetail } from "../../substrates/e2b/sandbox.js";
 import type { TerminalLedgers } from "./types.js";
 
 /**
@@ -56,12 +57,7 @@ export async function teardownSandbox(args: {
   const released = await allocation.close();
   if (released.status !== "released") {
     if (released.status === "unconfirmed" && released.reason === "release_unavailable") {
-      return {
-        killed: false,
-        remaining: -1,
-        reason:
-          "installed @e2b/desktop SDK does not expose Sandbox.kill; server-side kill-on-timeout will reclaim the sandbox",
-      };
+      return { killed: false, remaining: -1, reason: releaseUnavailableDetail(released.detail) };
     }
     if (released.status === "unconfirmed" && released.reason === "release_failed") {
       const sanitizedError = sanitize(toErrorMessage(released.error));

@@ -440,7 +440,8 @@ class SubjectPlane {
       });
       this.subjectKilled = reading.released;
       if (reading.warning) warnings.push(reading.warning);
-      // Without a kill method nothing ran, so there is no teardown time to record.
+      // Without a kill method, or in E2B debug mode, no kill reached E2B, so there is no teardown
+      // time to record.
       if (released.status !== "unconfirmed" || released.reason !== "release_unavailable")
         this.subjectTornDownAtMs = this.ctx.now();
     }

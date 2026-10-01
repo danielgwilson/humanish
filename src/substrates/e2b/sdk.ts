@@ -350,3 +350,15 @@ export function isSandboxNotFoundError(error: unknown): boolean {
     value.name === "SandboxNotFoundError" || value.constructor?.name === "SandboxNotFoundError"
   );
 }
+
+/** The variable that puts the E2B SDK in debug mode. */
+export const E2B_DEBUG_ENV = "E2B_DEBUG";
+
+/**
+ * Whether the E2B SDK runs in debug mode, read the way the SDK reads it when a call starts. In
+ * debug mode `Sandbox.kill` returns true without sending a request to E2B, so a true confirms
+ * nothing.
+ */
+export function e2bDebugMode(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env[E2B_DEBUG_ENV]?.toLowerCase() === "true";
+}

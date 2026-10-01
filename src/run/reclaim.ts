@@ -3,7 +3,12 @@
 // the managed run dir, kills by id, and never lists the account: an account-wide operation once
 // destroyed unrelated infrastructure. Without it, orphaned sandboxes run until the server-side
 // create-time TTL.
-import { loadE2BDesktopModule, type E2BDesktopModule } from "../substrates/e2b/sdk.js";
+import {
+  E2B_DEBUG_ENV,
+  e2bDebugMode,
+  loadE2BDesktopModule,
+  type E2BDesktopModule,
+} from "../substrates/e2b/sdk.js";
 import {
   containedPathAbsent,
   readContainedRegularFile,
@@ -52,6 +57,7 @@ export interface ReclaimResult {
   error?: {
     code:
       | "HUMANISH_RECLAIM_RUN_NOT_FOUND"
+      | "HUMANISH_RECLAIM_E2B_DEBUG"
       | "HUMANISH_RECLAIM_MODULE_UNAVAILABLE"
       | "HUMANISH_RECLAIM_RECEIPTS_UNREADABLE";
     message: string;
@@ -78,6 +84,7 @@ export async function reclaimRunSandboxes(
     outcomes: [] as ReclaimOutcome[],
     warnings,
   } as const;
+  if (e2bDebugMode()) return { ...base, ok: false, error: E2B_DEBUG_REFUSAL };
 
   const runPaths = await resolveRunPath(cwd, runInput);
   if (!runPaths) {
@@ -143,6 +150,8 @@ export async function reclaimPreflightSandboxes(
   let receiptCount = 0;
   let unreadable = false;
   const base = { schema: RECLAIM_RESULT_SCHEMA, cwd, runId: "preflight", warnings } as const;
+  if (e2bDebugMode())
+    return { ...base, ok: false, receiptCount, outcomes, error: E2B_DEBUG_REFUSAL };
   const journals = await listPreflightJournals(cwd);
   if (journals.length === 0) {
     warnings.push(
@@ -194,6 +203,13 @@ export async function reclaimPreflightSandboxes(
   }
   return { ...base, ok: !unreadable && allGone(outcomes), receiptCount, outcomes };
 }
+
+// In debug mode the SDK returns true from Sandbox.kill without contacting E2B, so every receipt
+// would read killed and preflight journals would be discarded for sandboxes that may still run.
+const E2B_DEBUG_REFUSAL = {
+  code: "HUMANISH_RECLAIM_E2B_DEBUG",
+  message: `${E2B_DEBUG_ENV}=true puts the E2B SDK in debug mode, where Sandbox.kill reports success without contacting E2B. Nothing was killed and the receipts were kept; unset ${E2B_DEBUG_ENV} and run reclaim again.`,
+} as const;
 
 const UNREADABLE_MESSAGE =
   "sandbox-receipts.ndjson is present but could not be read safely (not a single regular file, or a read error). Nothing was killed and the receipts were kept; check the file, then run reclaim again.";

@@ -187,6 +187,7 @@ describe("lab preflight receipts", () => {
     await mkdir(path.join(cwd, "humanish", "labs"), { recursive: true });
   });
   afterEach(async () => {
+    vi.unstubAllEnvs();
     await rm(cwd, { recursive: true, force: true });
   });
 
@@ -421,6 +422,26 @@ describe("lab preflight receipts", () => {
     expect(provider.killed).toEqual(["sb-journaled"]);
     expect(reclaim.ok).toBe(true);
     expect(await journals(cwd)).toEqual([]);
+  });
+
+  it("refuses reclaim with E2B_DEBUG=true and keeps the journal", async () => {
+    const id = await writeJournal(cwd, {
+      pid: process.pid,
+      hostname: "another-host",
+      createdAt: new Date(Date.now() - 2 * 3_600_000).toISOString(),
+      leaseMs: 5 * 60_000,
+    });
+    const provider = fakeProvider({});
+    vi.stubEnv("E2B_DEBUG", "true");
+
+    const reclaim = await reclaimPreflightSandboxes(cwd, {
+      loadModule: async () => provider.module,
+    });
+
+    expect(reclaim.ok).toBe(false);
+    expect(reclaim.error?.code).toBe("HUMANISH_RECLAIM_E2B_DEBUG");
+    expect(provider.killed).toEqual([]);
+    expect(await journals(cwd)).toEqual([id]);
   });
 
   it.skipIf(!existsSync("/proc/self/stat"))(
