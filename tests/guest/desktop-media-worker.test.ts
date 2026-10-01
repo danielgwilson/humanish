@@ -178,14 +178,17 @@ describe("desktop media worker framing", () => {
     expect(onTerminal).toHaveBeenCalledOnce();
   });
 
-  it("leaves a tail over 8 KiB after a newline until the next chunk", async () => {
+  it("terminates on a tail over 8 KiB after a newline in the same chunk", async () => {
     const { settled, transport, onTerminal } = begin();
     await vi.waitFor(() => expect(transport.handlers).toBeDefined());
     transport.raw(READY + "\n" + "x".repeat(9000));
-    expect(await settled).toHaveProperty("media");
-    expect(onTerminal).not.toHaveBeenCalled();
-    transport.raw("y");
     expect(onTerminal).toHaveBeenCalledOnce();
+    expect(await settled).toHaveProperty("media");
+    const exact = await ready();
+    exact.transport.raw(
+      JSON.stringify({ type: "heard", utterance: utterance("a") }) + "\n" + "x".repeat(8192),
+    );
+    expect(exact.onTerminal).not.toHaveBeenCalled();
   });
 
   it("terminates once on invalid JSON and ignores data after it", async () => {
@@ -198,15 +201,14 @@ describe("desktop media worker framing", () => {
     await expect(media.wrap(base()).observe()).rejects.toMatchObject({ code: "execution_failed" });
   });
 
-  it("reports one terminal when more lines follow a terminal message in the same chunk", async () => {
+  it("stops reading a chunk at a terminal message", async () => {
     const { transport, onTerminal, media } = await ready();
+    const terminal = JSON.stringify({ type: "mystery" });
+    const parse = vi.spyOn(JSON, "parse");
     transport.raw(
-      JSON.stringify({ type: "mystery" }) +
-        "\n" +
-        JSON.stringify({ type: "heard", utterance: utterance("b") }) +
-        "\n" +
-        "{bad\n",
+      terminal + "\n" + JSON.stringify({ type: "heard", utterance: utterance("b") }) + "\n{bad\n",
     );
+    expect(parse.mock.calls.map(([text]) => text)).toEqual([terminal]);
     expect(onTerminal).toHaveBeenCalledOnce();
     await expect(media.wrap(base()).observe()).rejects.toMatchObject({
       code: "execution_failed",
