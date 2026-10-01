@@ -229,16 +229,16 @@ function failedRequest(
     failurePhase: phase,
   };
 }
-/** Receipt: a failure names its phase, and a participant's known usage lists each inference. */
-function withReceiptDetails(
+/**
+ * Receipt: a participant's known usage lists each inference. Every failed result already names its
+ * phase (failedRequest, or "cleanup" for an unconfirmed teardown).
+ */
+function withInferenceUsage(
   result: RestrictedCodexResult,
-  phase: CuaProviderFailurePhase,
   turn: RestrictedCodexTurn | undefined,
   participant: boolean,
 ): RestrictedCodexResult {
   let receipt = result;
-  if (receipt.errorCode !== null && receipt.failurePhase === undefined)
-    receipt = { ...receipt, failurePhase: phase };
   if (
     participant &&
     turn !== undefined &&
@@ -460,7 +460,7 @@ async function runTurn(
         };
     }
   }
-  return withReceiptDetails(result, phase, turn, participant !== undefined);
+  return withInferenceUsage(result, turn, participant !== undefined);
 }
 
 /** Admission: the refusal a request gets before anything runs, in this order, or none. */
