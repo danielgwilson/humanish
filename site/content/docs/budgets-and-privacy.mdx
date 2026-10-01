@@ -137,7 +137,11 @@ product-spend rules; it does not use these computer-use model thresholds. Its
 Codex tokens are counted but unpriced, so a live terminal run with a positive
 `maxUsd` is refused with `HUMANISH_TERMINAL_LAB_UNPRICED_CAP` unless an adapter's
 cost probe measures spend. Set `maxUsd: 0` and bound the run with
-`scenario.caps.maxMinutes`, which stops the agent command. The run's cost
+`scenario.caps.maxMinutes`, which stops the agent command. A sandbox may live at most an hour, and
+its timeout adds the setup before the agent command (up to 6 minutes, or 11 with
+`subject.product.install`) and a 5-minute teardown buffer to `maxMinutes`, so a
+live run refuses a `maxMinutes` above 49, or 44 with a product install
+(`HUMANISH_TERMINAL_LAB_CAPS_INVALID`). The run's cost
 summary prices the terminal sandbox's compute time the way it prices a
 computer-use desktop, from its span and size; that estimate is not counted
 against `maxUsd`. The computer-use route uses `execution.caps`. A positive

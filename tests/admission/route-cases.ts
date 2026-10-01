@@ -56,6 +56,11 @@ export const routeCases: readonly AdmissionCase[] = [
     parser: "accepts",
   },
   {
+    name: "terminal sandbox deadline too long",
+    raw: lab("terminal", { scenario: { mode: "live", caps: { maxUsd: 0, maxMinutes: 56 } } }),
+    parser: "accepts",
+  },
+  {
     name: "terminal runtime version",
     raw: lab("terminal", { execution: { runtime: { version: "latest" } } }),
     parser: "runtime",

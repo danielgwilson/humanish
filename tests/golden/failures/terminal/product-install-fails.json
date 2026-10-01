@@ -1205,7 +1205,7 @@
       "laneId": "terminal",
       "provider": "e2b",
       "sandboxId": "fake-sandbox-1",
-      "timeoutMs": 900000
+      "timeoutMs": 1560000
     }
   ],
   "status.json": {
