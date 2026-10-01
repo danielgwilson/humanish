@@ -1,7 +1,7 @@
-import { BROWSER_CONTROL_LIMITS } from "./browser-control/protocol.js";
-import { CuaExecutorError, isCuaExecutorError } from "./actors/computer-use/executor-error.js";
-import type { GuestDesktopTools } from "./guest-desktop-executor.js";
-import type { GuestDesktopNativeTools } from "./guest-desktop-native.js";
+import { BROWSER_CONTROL_LIMITS } from "../browser-control/protocol.js";
+import { CuaExecutorError, isCuaExecutorError } from "../actors/computer-use/executor-error.js";
+import type { GuestDesktopTools } from "./desktop-executor.js";
+import type { GuestDesktopNativeTools } from "./desktop-native.js";
 
 interface BrowserTextPort extends Pick<GuestDesktopTools, "prepareText"> {
   assertReady(signal: AbortSignal): Promise<void>;

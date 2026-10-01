@@ -4,7 +4,7 @@ import { commandFailureInfo } from "../command-failure.js";
 
 import type { CuaAction, CuaExecutor, CuaObservation } from "../../actors/computer-use/loop.js";
 import { CuaExecutorError } from "../../actors/computer-use/executor-error.js";
-import { xdotoolHeldModifiers } from "../../guest-desktop-keys.js";
+import { xdotoolHeldModifiers } from "../../guest/desktop-keys.js";
 
 // The desktop side of the computer-use loop: a CuaExecutor (from src/actors/computer-use/loop.ts)
 // backed by an E2B desktop sandbox. All of its behavior goes through a narrow injected port

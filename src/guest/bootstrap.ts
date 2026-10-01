@@ -1,16 +1,16 @@
 import {
   desktopRecordingConfigSchema,
   type DesktopRecordingConfig,
-} from "./evidence/desktop-recording-types.js";
+} from "../evidence/desktop-recording-types.js";
 import type { Duplex } from "node:stream";
 import {
   validateBrowserControlIdentity,
   sameBrowserControlIdentity,
   type BrowserControlIdentity,
-} from "./browser-control/protocol.js";
-import { CuaExecutorError } from "./actors/computer-use/executor-error.js";
-import { createBrowserControlClient } from "./browser-control/client.js";
-import { guestMediaConfigSchema, type GuestMediaConfig } from "./guest-media-config.js";
+} from "../browser-control/protocol.js";
+import { CuaExecutorError } from "../actors/computer-use/executor-error.js";
+import { createBrowserControlClient } from "../browser-control/client.js";
+import { guestMediaConfigSchema, type GuestMediaConfig } from "./media-config.js";
 
 export const GUEST_BOOTSTRAP_VERSION = 1;
 export const GUEST_BOOTSTRAP_LIMITS = Object.freeze({

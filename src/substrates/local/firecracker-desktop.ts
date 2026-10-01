@@ -9,7 +9,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { connect, createServer, type Socket } from "node:net";
 import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
-import { connectGuestBootstrap, validateGuestInitialUrl } from "../../guest-bootstrap.js";
+import { connectGuestBootstrap, validateGuestInitialUrl } from "../../guest/bootstrap.js";
 import {
   ownDesktopAllocation,
   type DesktopReleaseResult,
@@ -17,7 +17,7 @@ import {
 } from "../desktop-session.js";
 import { runtimeDocker, runtimeExec, usesLima } from "./runtime-host.js";
 import { openLimaTunnel } from "./runtime-ssh.js";
-import { guestMediaConfigSchema, type GuestMediaConfig } from "../../guest-media-config.js";
+import { guestMediaConfigSchema, type GuestMediaConfig } from "../../guest/media-config.js";
 
 const docker = async (args: string[]): Promise<string> =>
   (await runtimeDocker(args, {}, 60_000)).stdout.trim();

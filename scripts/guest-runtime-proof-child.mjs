@@ -5,12 +5,12 @@ import { createServer, createConnection } from "node:net";
 import { spawn } from "node:child_process";
 import { Duplex } from "node:stream";
 import { setTimeout as delay } from "node:timers/promises";
-import { createGuestRuntimeDesktop } from "/opt/humanish/control/guest-runtime-desktop.js";
-import { runGuestRuntime } from "/opt/humanish/control/guest-runtime.js";
+import { createGuestRuntimeDesktop } from "/opt/humanish/control/guest/runtime-desktop.js";
+import { runGuestRuntime } from "/opt/humanish/control/guest/runtime.js";
 import {
   GuestBootstrapReader,
   encodeGuestBootstrap,
-} from "/opt/humanish/control/guest-bootstrap.js";
+} from "/opt/humanish/control/guest/bootstrap.js";
 import { createBrowserControlClient } from "/opt/humanish/control/browser-control/client.js";
 import { GUEST_RUNTIME_REVISION } from "/opt/humanish/control/guest-runtime-revision.js";
 

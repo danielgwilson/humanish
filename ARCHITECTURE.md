@@ -103,7 +103,7 @@ reports the first failed step.
 | `src/feedback/`                | Feedback drafts and export bundles                                                     | `src/feedback/feedback.ts`             |
 | `src/tui/`                     | The CLI side of `humanish tui`                                                         | `src/tui/launch.ts`                    |
 | `src/browser-control/`         | The host-guest browser control protocol                                                | `src/browser-control/protocol.ts`      |
-| `src/guest-*.ts`               | The guest runtime, which the desktop image launches by path                            | `src/guest-runtime-main.ts`            |
+| `src/guest/`                   | The guest runtime that the local VM image runs: bootstrap, desktop, input and media    | `src/guest/runtime.ts`                 |
 | `observer/`                    | The Observer page, a single-file Vite build                                            | `observer/AGENTS.md`                   |
 | `tui/`                         | The Ink terminal app                                                                   | `tui/AGENTS.md`                        |
 | `site/`                        | humanish.dev and its user docs in `site/content/docs/`                                 | `site/AGENTS.md`                       |
@@ -120,6 +120,12 @@ reports the first failed step.
 
 `pnpm docs:check` fails when a folder directly under `src/` or `src/routes/` has no row here, or
 when a row names a folder that is gone. Add the row in the change that adds the folder.
+
+Three guest files stay at the `src/` root because the guest image and its packager name their
+`dist/` paths. The guest's `vsock.py` launches `guest-runtime-main.js`, and
+`scripts/guest-runtime-package.mjs` walks the payload from it. The packager also regenerates
+`guest-runtime-revision.js` by name. The packager and the `runtime/browser-media/` recipes copy
+`guest-media-worker.js` by name.
 
 Participant desktops stay in `src/routes/computer-use/`, by decision. The `ParticipantDesktop`
 interface and its three implementations (hosted E2B, local VM, in-process) each combine provider

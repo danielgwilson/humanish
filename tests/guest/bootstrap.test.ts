@@ -5,10 +5,10 @@ import {
   GuestBootstrapReader,
   connectGuestBootstrap,
   GUEST_BOOTSTRAP_LIMITS,
-} from "../src/guest-bootstrap.js";
-import { identity, pair, tick } from "./browser-control/fixture.js";
+} from "../../src/guest/bootstrap.js";
+import { identity, pair, tick } from "../browser-control/fixture.js";
 import { execFileSync } from "node:child_process";
-import { runGuestRuntime } from "../src/guest-runtime.js";
+import { runGuestRuntime } from "../../src/guest/runtime.js";
 
 afterEach(() => vi.useRealTimers());
 describe("fixed canonical guest bootstrap", () => {
@@ -300,7 +300,7 @@ describe("fixed canonical guest bootstrap", () => {
     p.right.destroy();
   });
   it("contains a native error queued in the CONNECT-to-bootstrap ownership gap", () => {
-    const module = new URL("../src/guest-bootstrap.ts", import.meta.url).href;
+    const module = new URL("../../src/guest/bootstrap.ts", import.meta.url).href;
     const output = execFileSync(
       process.execPath,
       [

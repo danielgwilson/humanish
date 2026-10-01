@@ -1,3 +1,4 @@
+// Stays at the src/ root: the packager and runtime/browser-media copy dist/guest-media-worker.js.
 import { spawn, type ChildProcess } from "node:child_process";
 import { createConnection } from "node:net";
 import { request } from "node:http";

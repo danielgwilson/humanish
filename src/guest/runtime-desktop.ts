@@ -4,17 +4,17 @@ import { constants } from "node:fs";
 import { lstat, mkdir, open, rm } from "node:fs/promises";
 import { setTimeout as delay } from "node:timers/promises";
 import { chromium, type BrowserContext, type Page } from "playwright-core";
-import { createGuestDesktopNativeTools } from "./guest-desktop-native.js";
-import { createGuestChromiumText } from "./guest-chromium-text.js";
-import { createGuestBrowserTools } from "./guest-browser-tools.js";
-import { createGuestDesktopExecutor } from "./guest-desktop-executor.js";
-import { CuaExecutorError } from "./actors/computer-use/executor-error.js";
-import type { GuestRuntimeDesktop } from "./guest-runtime.js";
-import { GUEST_BOOTSTRAP_LIMITS, validateGuestInitialUrl } from "./guest-bootstrap.js";
-import type { GuestMediaConfig } from "./guest-media-config.js";
-import { startDesktopMedia } from "./guest-desktop-media.js";
-import type { DesktopRecordingConfig } from "./evidence/desktop-recording-types.js";
-import { startDesktopRecorder, type DesktopRecorderHandle } from "./evidence/desktop-recorder.js";
+import { createGuestDesktopNativeTools } from "./desktop-native.js";
+import { createGuestChromiumText } from "./chromium-text.js";
+import { createGuestBrowserTools } from "./browser-tools.js";
+import { createGuestDesktopExecutor } from "./desktop-executor.js";
+import { CuaExecutorError } from "../actors/computer-use/executor-error.js";
+import type { GuestRuntimeDesktop } from "./runtime.js";
+import { GUEST_BOOTSTRAP_LIMITS, validateGuestInitialUrl } from "./bootstrap.js";
+import type { GuestMediaConfig } from "./media-config.js";
+import { startDesktopMedia } from "./desktop-media.js";
+import type { DesktopRecordingConfig } from "../evidence/desktop-recording-types.js";
+import { startDesktopRecorder, type DesktopRecorderHandle } from "../evidence/desktop-recorder.js";
 
 const GUEST_RUNTIME_PATHS = Object.freeze({
   root: "/opt/humanish/control",

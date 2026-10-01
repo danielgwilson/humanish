@@ -30,11 +30,11 @@ await chmod(join(payload, "output"), 0o777); // Only inside the disposable conta
 await cp(join(root, "scripts/guest-desktop-proof-child.mjs"), join(payload, "proof.mjs"));
 await writeFile(join(payload, "package.json"), '{"type":"module"}');
 const driverModules = [
-  "guest-desktop-executor",
-  "guest-desktop-keys",
-  "guest-desktop-native",
-  "guest-browser-tools",
-  "guest-chromium-text",
+  "guest/desktop-executor",
+  "guest/desktop-keys",
+  "guest/desktop-native",
+  "guest/browser-tools",
+  "guest/chromium-text",
   "browser-control/protocol",
   "evidence/desktop-recording-types",
   "actors/computer-use/executor-error",

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { BrowserContext, CDPSession, Page } from "playwright-core";
-import { CuaExecutorError, isCuaExecutorError } from "./actors/computer-use/executor-error.js";
-import type { CuaExecutorErrorCode } from "./actors/computer-use/executor-error.js";
+import { CuaExecutorError, isCuaExecutorError } from "../actors/computer-use/executor-error.js";
+import type { CuaExecutorErrorCode } from "../actors/computer-use/executor-error.js";
 
 const DEADLINE_MS = 5_000;
 

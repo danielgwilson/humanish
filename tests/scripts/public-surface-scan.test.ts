@@ -58,9 +58,9 @@ describe("public-surface commit email policy", () => {
     const guestHome = ["", "home", "humanish"].join("/");
     try {
       for (const file of [
-        "src/guest-runtime-desktop.ts",
-        "dist/guest-runtime-desktop.js",
-        "dist/guest-runtime-desktop.d.ts",
+        "src/guest/runtime-desktop.ts",
+        "dist/guest/runtime-desktop.js",
+        "dist/guest/runtime-desktop.d.ts",
         "runtime/browser-guest/control/root/opt/humanish/control/vsock.py",
       ]) {
         await mkdir(dirname(join(root, file)), { recursive: true });
@@ -69,13 +69,13 @@ describe("public-surface commit email policy", () => {
       expect(runScan(root).status).toBe(0);
       // Neither an arbitrary guest path nor a private username is exempted.
       await writeFile(
-        join(root, "src/guest-runtime-desktop.ts"),
+        join(root, "src/guest/runtime-desktop.ts"),
         `"${guestHome}/.config/private" "${["", "home", "maintainer", ".cache"].join("/")}"\n`,
       );
       const denied = runScan(root);
       expect(denied.status).toBe(1);
       expect(denied.stderr).toContain("absolute_linux_home_path");
-      await writeFile(join(root, "src/guest-runtime-desktop.ts"), "safe\n");
+      await writeFile(join(root, "src/guest/runtime-desktop.ts"), "safe\n");
       await writeFile(join(root, "unrelated.txt"), `"${guestHome}/.cache"\n`);
       expect(runScan(root).status).toBe(1);
     } finally {
