@@ -10,7 +10,7 @@ implemented and proven. A config-only deterministic lane and a
 ## What this is
 
 The computer-use (CUA) loop in
-[`src/actors/computer-use/loop.ts`](../../src/actors/computer-use/loop.ts) is provider- and
+[`src/actors/computer-use/loop.ts`](https://github.com/danielgwilson/humanish/blob/main/src/actors/computer-use/loop.ts) is provider- and
 substrate-agnostic by design: the model lives behind a `CuaProvider` port and the thing
 being driven lives behind a `CuaExecutor` port. Both ports are declared in
 `src/actors/computer-use/loop/types.ts`. You do not have to drive a screen with a vision

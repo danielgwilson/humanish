@@ -29,6 +29,7 @@
     "docs/architecture",
     "docs/assets",
     "docs/contracts",
+    "docs/decisions",
     "docs/goals/current.md",
     "docs/principles",
     "docs/product",
@@ -41,7 +42,9 @@
     "LICENSE",
     "SECURITY.md",
     "CONTRIBUTING.md",
-    "ARCHITECTURE.md"
+    "ARCHITECTURE.md",
+    "CONTEXT.md",
+    "TELEMETRY.md"
   ],
   "type": "module",
   "main": "./dist/index.js",

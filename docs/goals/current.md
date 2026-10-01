@@ -104,7 +104,7 @@ substitute for it.
 | Mobile and media      | Hosted viewport/emulation, desktop geometry checks, bounded dwell and declared camera feed; optional camera and speech passed two-person Linux and Mac conversations with validated analysis; hosted audio-only uses the same worker; optional screen/mixed-audio MP4 capture shipped with Linux/E2B and Mac acceptance              | Hosted camera+speech is unsupported; English recognition and robotic voice have fidelity limits; raw AV recording is shipped but local-only, excluded from HTML export and analysis (screenshots/text only); the reproduced recording-mix startup video gap is corrected; variable guest capture stalls, initial device/transport availability and cold audio-source delivery remain limits (#854); forced TURN, larger-cohort capacity, physical-device and touch fidelity remain unqualified |
 
 Use the [task support matrix](../architecture/task-protocol-support.md),
-[actor registry](https://github.com/danielgwilson/humanish/blob/main/src/actor-registry.ts)
+[actor registry](https://github.com/danielgwilson/humanish/blob/main/src/actors/registry.ts)
 and [CLI reference](https://humanish.dev/docs/cli) when choosing a concrete path.
 Source and tests establish observed behavior. Resolve conflicts with requirements
 explicitly; neither stale status prose nor a passing test makes a bug correct.

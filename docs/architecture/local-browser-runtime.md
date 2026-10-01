@@ -130,7 +130,7 @@ not download those archives. Updating a runtime requires a reviewed catalog
 change and a new CLI release.
 
 Source builders can use the
-[maintained recipes](../../runtime/local-firecracker/README.md) and set
+[maintained recipes](https://github.com/danielgwilson/humanish/blob/main/runtime/local-firecracker/README.md) and set
 `HUMANISH_LOCAL_RUNTIME_IMAGE` to an already-built compatible local image. An
 invalid override fails; it does not cause an implicit registry pull.
 

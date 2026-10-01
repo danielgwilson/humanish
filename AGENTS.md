@@ -4,8 +4,8 @@ humanish runs persona studies: AI participants use a target app, CLI or agent-fa
 hosted or local desktops, and every run leaves a verifiable evidence bundle. Run bundles are the
 source of truth; the Observer is their review surface.
 
-Sub-guides take precedence inside their directories: [observer/](observer/AGENTS.md),
-[tui/](tui/AGENTS.md), [site/](site/AGENTS.md). The reasoning behind the rules below is in
+Sub-guides take precedence inside their directories: [observer/](https://github.com/danielgwilson/humanish/blob/main/observer/AGENTS.md),
+[tui/](https://github.com/danielgwilson/humanish/blob/main/tui/AGENTS.md), [site/](https://github.com/danielgwilson/humanish/blob/main/site/AGENTS.md). The reasoning behind the rules below is in
 [docs/principles/engineering.md](docs/principles/engineering.md). [CONTEXT.md](CONTEXT.md) defines
 the domain terms, and [docs/decisions/](docs/decisions/README.md) records the decisions that
 shape the code.

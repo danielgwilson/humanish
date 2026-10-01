@@ -108,7 +108,7 @@ A lab is a composition over code primitives, not a hardcoded kind:
   ONCE per run and uploads the identical archive to every fan-out lane. The
   in-sandbox commit refresh clone subjects use is skipped: `.git` is never
   uploaded, so identity comes from the host-side archive digest instead. See
-  [`docs/goals/local-tree-subject/goal.md`](../goals/local-tree-subject/goal.md);
+  [`docs/goals/local-tree-subject/goal.md`](https://github.com/danielgwilson/humanish/blob/main/docs/goals/local-tree-subject/goal.md);
 - `subject.product` (terminal-product subjects): the product the agent studies.
   `product.name` is a public-safe token (committed fixtures use a NEUTRAL mock
   name); `product.publicSurfaces[]` is the list of http(s) URLs (docs, llms.txt,
