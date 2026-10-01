@@ -260,6 +260,40 @@ async function until(predicate, message, timeout = 12_000) {
   throw new Error(message);
 }
 
+// The Observer returns focus on the frame after it renders (observer/app.tsx, focus()), so a
+// check right after the finding appears can run before that frame. Wait for it, bounded.
+async function focusedFinding(page, id, timeout = 5_000) {
+  try {
+    await page.waitForFunction(
+      (expected) => document.activeElement?.getAttribute("data-finding") === expected,
+      id,
+      { timeout },
+    );
+  } catch {
+    const focused = await page.evaluate(() => {
+      const element = document.activeElement;
+      if (!element) return "nothing";
+      const finding = element.getAttribute("data-finding");
+      return `${element.tagName.toLowerCase()}${finding ? `[data-finding="${finding}"]` : ""}`;
+    });
+    assert.fail(`Focus did not return to finding ${id} within ${timeout} ms; focused: ${focused}`);
+  }
+}
+
+/** The error message on one line, with every proof line on its stack, for the CI log. */
+function failureSummary(stack) {
+  const lines = stack.split("\n");
+  const firstFrame = lines.findIndex((line) => /^\s+at /.test(line));
+  const message = (firstFrame === -1 ? lines : lines.slice(0, firstFrame))
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+  // Every proof line on the stack, innermost first, so a helper's failure also names its caller.
+  const lineNumbers = [...stack.matchAll(/observer-browser-proof\.mjs:(\d+)/g)].map((m) => m[1]);
+  const where = [...new Set(lineNumbers)].join(", ");
+  return where ? `${message} (observer-browser-proof.mjs:${where})` : message;
+}
+
 async function inspectImages(locator) {
   assert((await locator.count()) > 0, "Expected real rendered screenshot images");
   const measurements = [];
@@ -918,7 +952,7 @@ async function runCase(id, options, action) {
     await context.close();
     results.push(record);
     process.stdout.write(
-      `${record.status.toUpperCase()} ${id}${record.error ? `: ${record.error.split("\n")[0]}` : ""}\n`,
+      `${record.status.toUpperCase()} ${id}${record.error ? `: ${failureSummary(record.error)}` : ""}\n`,
     );
   }
 }
@@ -3577,10 +3611,7 @@ try {
         await page.getByRole("button", { name: "Next frame", exact: true }).click();
         await page.keyboard.press("Escape");
         await page.locator('[data-finding="F1"][aria-expanded="true"]').waitFor();
-        assert.equal(
-          await page.evaluate(() => document.activeElement?.getAttribute("data-finding")),
-          "F1",
-        );
+        await focusedFinding(page, "F1");
         await page.getByRole("link", { name: "All participants", exact: true }).click();
         await page
           .getByRole("button", { name: /^Open participant/ })
