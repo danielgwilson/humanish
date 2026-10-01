@@ -139,6 +139,52 @@ function ownE2BSandbox(module: E2BDesktopModule, resourceId: string): OwnedDeskt
   });
 }
 
+/** A route's reading of one sandbox release: whether it is gone, and the warning to record. */
+export interface E2BReleaseReading {
+  released: boolean;
+  warning?: string;
+}
+
+/**
+ * Read a release result the same way on every route. `label` names the sandbox in the warning
+ * ("Sandbox", "Subject sandbox"). `costSpan` adds that desktop cost uses the observed span when
+ * the sandbox was already gone, for routes that price its minutes. A retained sandbox is the
+ * caller's to describe.
+ */
+export function readE2BRelease(
+  result: DesktopReleaseResult,
+  options: { label: string; scrub: (text: string) => string; costSpan?: boolean },
+): E2BReleaseReading {
+  const { label, scrub } = options;
+  if (result.status === "retained") return { released: false };
+  if (result.status === "released") {
+    if (result.reason === "terminated") return { released: true };
+    return {
+      released: true,
+      warning: `${label} was already absent when cleanup ran; its exact termination time is unknown.${
+        options.costSpan ? " Desktop cost uses the observed acquisition-to-cleanup span." : ""
+      }`,
+    };
+  }
+  switch (result.reason) {
+    case "release_unavailable":
+      return {
+        released: false,
+        warning: `Installed @e2b/desktop SDK does not expose Sandbox.kill; server-side kill-on-timeout will reclaim the ${label.toLowerCase()}.`,
+      };
+    case "release_failed":
+      return {
+        released: false,
+        warning: `${label} teardown failed (server-side kill-on-timeout will reclaim it): ${redactText(scrub(toErrorMessage(result.error)))}`,
+      };
+    case "invalid_result":
+      return {
+        released: false,
+        warning: `${label} teardown returned an unexpected result; release is unconfirmed and server-side kill-on-timeout remains the backstop.`,
+      };
+  }
+}
+
 /** Reclaim's persisted outcome; run/reclaim.ts writes these strings. */
 export type E2BSandboxDestroyOutcome =
   | { state: "killed" | "already-gone" }

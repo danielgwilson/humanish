@@ -77,10 +77,12 @@ function makeFakeModule(opts: {
   listCalls?: string[];
   /** When set, Sandbox.kill(id) THROWS instead of resolving (the "kill itself failed" case ->
    *  fail-closed remaining=-1). */
-  killThrows?: (sandboxId: string) => { message?: string } | undefined;
+  killThrows?: (sandboxId: string) => { message?: string; name?: string } | undefined;
   /** Sandbox.kill(id)'s own resolved boolean ("found and killed", per the real SDK) when it does
    *  not throw. Defaults to true. */
   killResult?: boolean;
+  /** Overrides killResult with an answer the real SDK does not give, such as a string. */
+  killAnswer?: unknown;
   /**
    * Controls Sandbox.getInfo(id): "not-found" throws a SandboxNotFoundError-shaped error (the
    * by-id CONFIRMED-reclaimed case, remaining=0 -- this is the default, matching a genuinely
@@ -217,9 +219,12 @@ function makeFakeModule(opts: {
         opts.killed.push(sandboxId);
         const thrown = opts.killThrows?.(sandboxId);
         if (thrown) {
-          throw Object.assign(new Error(thrown.message ?? "kill failed"), { name: "Error" });
+          throw Object.assign(new Error(thrown.message ?? "kill failed"), {
+            name: thrown.name ?? "Error",
+          });
         }
-        return opts.killResult ?? true;
+        // killAnswer is deliberately off the SDK contract; the cast lets the fake return it.
+        return ("killAnswer" in opts ? opts.killAnswer : (opts.killResult ?? true)) as boolean;
       },
       ...(opts.noGetInfo
         ? {}
@@ -2137,6 +2142,73 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
         maskKeys: ["promptDigest", "sourceDigest", "commandDigest"],
       },
     );
+  });
+
+  it("reads a not-found kill(id) error as already gone; getInfo confirms it (remaining=0, run passes)", async () => {
+    const killed: string[] = [];
+    const listCalls: string[] = [];
+    const hooks: TerminalProductLabHooks = {
+      env: baseEnv(),
+      now: () => 3_400,
+      loadModule: async () =>
+        makeFakeModule({
+          creates: [],
+          runs: [],
+          killed,
+          listCalls,
+          // The exact sandbox is gone before kill(id) runs: the SDK throws SandboxNotFoundError.
+          killThrows: (sandboxId) => ({
+            message: `Sandbox ${sandboxId} not found`,
+            name: "SandboxNotFoundError",
+          }),
+          getInfoState: "not-found",
+          codexBehavior: (cmd) => ({
+            exitCode: 0,
+            stdout: `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+          }),
+        }),
+    };
+    const result = await runTerminalProductLab({
+      cwd,
+      config: liveConfig(),
+      dryRun: false,
+      open: false,
+      hooks,
+    });
+    expect(result.ok).toBe(true);
+    expect(result.sandbox?.killed).toBe(true);
+    expect(result.sandbox?.remaining).toBe(0);
+    expect(killed).toHaveLength(1);
+    expect(listCalls).toHaveLength(0);
+  });
+
+  it("does not count a non-boolean kill(id) answer as proof (remaining=-1, fails closed)", async () => {
+    const hooks: TerminalProductLabHooks = {
+      env: baseEnv(),
+      now: () => 3_450,
+      loadModule: async () =>
+        makeFakeModule({
+          creates: [],
+          runs: [],
+          killed: [],
+          killAnswer: "ok",
+          codexBehavior: (cmd) => ({
+            exitCode: 0,
+            stdout: `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+          }),
+        }),
+    };
+    const result = await runTerminalProductLab({
+      cwd,
+      config: liveConfig(),
+      dryRun: false,
+      open: false,
+      hooks,
+    });
+    expect(result.ok).toBe(false);
+    expect(result.error?.code).toBe("HUMANISH_TERMINAL_LAB_CLEANUP_UNPROVEN");
+    expect(result.sandbox?.killed).toBe(false);
+    expect(result.sandbox?.remaining).toBe(-1);
   });
 
   it("fails closed when Sandbox.kill(id) itself throws (remaining=-1, never a re-list)", async () => {

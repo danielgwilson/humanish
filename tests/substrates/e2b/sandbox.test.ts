@@ -21,6 +21,7 @@ import {
   acquireE2BDesktopSandbox,
   acquireE2BShellSandbox,
   destroyE2BSandbox,
+  readE2BRelease,
 } from "../../../src/substrates/e2b/sandbox.js";
 
 // A receipt write can be held open so a test can observe what the caller sees meanwhile.
@@ -323,6 +324,52 @@ describe("destroyE2BSandbox", () => {
     expect(await destroy(undefined)).toMatchObject({
       state: "kill-failed",
       detail: expect.stringContaining("does not expose Sandbox.kill"),
+    });
+  });
+});
+
+describe("readE2BRelease", () => {
+  const scrub = (text: string) => text.replace("secret-value", "[redacted]");
+  it.each([
+    [{ status: "released", reason: "terminated" }, true, undefined],
+    [
+      { status: "released", reason: "already_gone" },
+      true,
+      "Subject sandbox was already absent when cleanup ran; its exact termination time is unknown. Desktop cost uses the observed acquisition-to-cleanup span.",
+    ],
+    [
+      { status: "unconfirmed", reason: "release_unavailable" },
+      false,
+      "Installed @e2b/desktop SDK does not expose Sandbox.kill; server-side kill-on-timeout will reclaim the subject sandbox.",
+    ],
+    [
+      {
+        status: "unconfirmed",
+        reason: "release_failed",
+        error: new Error("kill refused: secret-value"),
+      },
+      false,
+      "Subject sandbox teardown failed (server-side kill-on-timeout will reclaim it): kill refused: [redacted]",
+    ],
+    [
+      { status: "unconfirmed", reason: "invalid_result" },
+      false,
+      "Subject sandbox teardown returned an unexpected result; release is unconfirmed and server-side kill-on-timeout remains the backstop.",
+    ],
+    [{ status: "retained", reason: "debug" }, false, undefined],
+  ] as const)("reads %o", (result, released, warning) => {
+    expect(readE2BRelease(result, { label: "Subject sandbox", scrub, costSpan: true })).toEqual(
+      warning === undefined ? { released } : { released, warning },
+    );
+  });
+
+  it("omits the cost note when the route prices no desktop time", () => {
+    expect(
+      readE2BRelease({ status: "released", reason: "already_gone" }, { label: "Sandbox", scrub }),
+    ).toEqual({
+      released: true,
+      warning:
+        "Sandbox was already absent when cleanup ran; its exact termination time is unknown.",
     });
   });
 });
