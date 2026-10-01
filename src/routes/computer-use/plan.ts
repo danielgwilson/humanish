@@ -462,7 +462,8 @@ export function planComputerUseLab(
         base.dryRun || runner.desktop === "in-process"
           ? []
           : desktopRequirements(config, {
-              e2b: runner.desktop === "e2b-desktop" && hooks.createDesktopLane === undefined,
+              // A caller's or study's desktop factory stands in for the hosted desktop.
+              e2b: runner.desktop === "e2b-desktop" && participantDesktopOf(hooks) === undefined,
               brain,
               localVm: runner.desktop === "local-vm",
               externalCatch: !provisioned,

@@ -12,6 +12,12 @@ import { planLab } from "../../src/lab/plan.js";
 import type { Requirement } from "../../src/lab/plan-types.js";
 import { runLab, type RunLabOptions } from "../../src/run-lab.js";
 import { lab, SCENARIO_YAML, type RawLab } from "./fixtures.js";
+import {
+  PARTICIPANT_DESKTOP,
+  type HooksWithParticipantDesktop,
+} from "../../src/routes/computer-use/participant-desktop.js";
+import { planComputerUseLab } from "../../src/routes/computer-use/plan.js";
+import { runCuaActorLab } from "../../src/routes/computer-use/route.js";
 
 const live = { scenario: { mode: "live" } };
 
@@ -298,4 +304,35 @@ describe("route obligations, independent of plan.requirements", () => {
       ).toEqual(subjectEnv);
     },
   );
+});
+
+describe("requirements with a caller's desktop and provider", () => {
+  // A study's own desktop factory (PARTICIPANT_DESKTOP) stands in for the hosted desktop, and a
+  // caller's buildProvider for the openai model, so a live app-url run needs neither key.
+  it("lists neither key, and preflight refuses neither, for a desktop factory and buildProvider", async () => {
+    const parsed = parseLabConfig(lab("cuAppUrl", live));
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    const cwd = await projectDir();
+    let desktopReached = false;
+    const hooks: HooksWithParticipantDesktop = {
+      env: {},
+      buildProvider: async () => {
+        throw new Error("the provider is not reached in this test");
+      },
+      [PARTICIPANT_DESKTOP]: () => {
+        desktopReached = true;
+        throw new Error("the caller's desktop factory was reached");
+      },
+    };
+    const planned = planComputerUseLab(parsed.config, { dryRun: false, hooks });
+    if (!planned.ok) throw new Error(planned.refusal.message);
+    expect(planned.plan.requirements.flatMap(keyNames)).toEqual([]);
+    // Past preflight, the run asks the factory for a desktop, and its throw ends the run.
+    const code = await runCuaActorLab({ cwd, config: parsed.config, dryRun: false, hooks }).then(
+      (result) => result.error?.code ?? "",
+      (error: unknown) => (error instanceof Error ? error.message : String(error)),
+    );
+    expect(code).not.toMatch(/_KEYS_MISSING$/);
+    expect(desktopReached).toBe(true);
+  });
 });
