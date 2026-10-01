@@ -1,5 +1,5 @@
 // planParticipants must produce the same participants the routes build today. Computer use is
-// compared field by field with the lane specs planCuaLanes builds. The shared-world seat builder
+// compared field by field with the lane specs planCuaParticipants builds. The shared-world seat builder
 // is private, so seats are compared with what a shared-world dry run records (seat ids, persona
 // ids, assignment, rendered resolution); limits, entry and host are checked directly.
 
@@ -17,7 +17,7 @@ import {
   type ComputerUseParticipant,
 } from "../../src/lab/plan-participants.js";
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/lab/types.js";
-import { planCuaLanes } from "../../src/routes/computer-use/lane-plan.js";
+import { planCuaParticipants } from "../../src/routes/computer-use/lane-plan.js";
 import type { DesktopParticipantRun } from "../../src/routes/computer-use/types.js";
 import { runConcurrentSharedWorld } from "../../src/routes/shared-world/lab.js";
 import { prepareSelectedOutputDirectory } from "../../src/run/contained-output.js";
@@ -164,7 +164,7 @@ function fromParticipant(participant: ComputerUseParticipant) {
 const plain = (value: unknown): unknown => JSON.parse(JSON.stringify(value));
 
 describe("computerUseParticipants", () => {
-  it("matches the lane specs planCuaLanes builds, for committed labs and variants", async () => {
+  it("matches the lane specs planCuaParticipants builds, for committed labs and variants", async () => {
     const configs: [string, LabConfig, number | undefined][] = [
       ...(await committedLabsOn("computer-use")).map(
         ([id, config]) => [id, config, undefined] as [string, LabConfig, undefined],
@@ -174,7 +174,7 @@ describe("computerUseParticipants", () => {
     expect(configs.length).toBeGreaterThan(cuVariants.length);
     for (const [name, config, countOverride] of configs) {
       const cwd = await tempProject();
-      const lanes = await planCuaLanes({
+      const lanes = await planCuaParticipants({
         config,
         cwd,
         projectRoot: await prepareSelectedOutputDirectory(path.dirname(cwd), cwd),
@@ -185,13 +185,13 @@ describe("computerUseParticipants", () => {
       if (!lanes.ok) throw new Error(`${name}: ${lanes.message}`);
       const participants = computerUseParticipants(config, countOverride);
       expect(plain(participants.map(fromParticipant)), name).toEqual(
-        plain(lanes.laneSpecs.map(fromSpec)),
+        plain(lanes.participantRuns.map(fromSpec)),
       );
       for (const [index, participant] of participants.entries()) {
         const declared = config.actors[0]?.mission;
         expect(participant.assignment.mission, name).toBe(declared);
         if (declared !== undefined)
-          expect(lanes.laneSpecs[index]?.evidenceAssignment?.mission, name).toBe(declared);
+          expect(lanes.participantRuns[index]?.evidenceAssignment?.mission, name).toBe(declared);
       }
     }
   });

@@ -17,7 +17,7 @@ import {
 import { buildCuaRunBundle, judgeComputerUseRun } from "./assemble.js";
 import type { runLabLanes } from "./run-lanes.js";
 import type { CuaRunSetup } from "./setup.js";
-import { projectLaneSubjects } from "./subject-projection.js";
+import { projectParticipantSubjects } from "./subject-projection.js";
 import {
   CUA_ACTOR_LAB_SCHEMA,
   type CuaActorLabErrorCode,
@@ -199,10 +199,10 @@ export async function finishCuaRun(
     streams,
     appUrl,
     descriptor,
-    laneSpecs,
+    participantRuns: laneSpecs,
     plan,
     rerunLineage,
-    laneCount,
+    participantCount: laneCount,
     scrubKnownValues,
     publicRepo,
     subjectEnvNames,
@@ -214,7 +214,7 @@ export async function finishCuaRun(
   } = setup;
   const { outcomes, failFastReason, receiving, receivingWarnings, externalCommsWarnings } = lanes;
   // Per-lane subject projections (invariant 5).
-  const laneSubjects = projectLaneSubjects({ ...subjectArgs, outcomes, dryRun });
+  const laneSubjects = projectParticipantSubjects({ ...subjectArgs, outcomes, dryRun });
 
   const aggregate = aggregateCuaSubject({ laneSubjects, outcomes, laneCount, dryRun });
   const aggregateSubject = aggregate.subject;

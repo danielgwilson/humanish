@@ -227,7 +227,7 @@ export interface RunCuaActorLabOptions {
 
 /** A lane's row in the pre-flight plan: identity + the device/persona it will drive. The prompt
  *  text never leaks — only a sha256-16 digest of the composed instructions. */
-export interface CuaLanePlanEntry {
+export interface CuaParticipantPlanEntry {
   id: string;
   actorType?: string;
   surface?: string;
@@ -266,7 +266,7 @@ export interface CuaLanePlan {
   worstCaseSandboxMinutes: number;
   /** True for a dry-run plan (no spend); the same table appears live. */
   dryRun: boolean;
-  lanes: CuaLanePlanEntry[];
+  lanes: CuaParticipantPlanEntry[];
 }
 
 /** One lane's outcome in the result projection. ALWAYS present in `result.lanes` (length 1 at
@@ -450,7 +450,7 @@ export interface CuaActorLabResult extends AutomaticAnalysisResult {
 /**
  * What a computer-use lane or a shared-world seat runs: the resolved participant, plus where its
  * evidence goes and any backstop override its route sets. The public projections are
- * CuaLanePlanEntry and CuaLaneResult.
+ * CuaParticipantPlanEntry and CuaLaneResult.
  */
 export interface DesktopParticipantRun extends ResolvedParticipant<
   ComputerUseParticipant | SharedWorldParticipant
@@ -468,8 +468,8 @@ export interface DesktopParticipantRun extends ResolvedParticipant<
   readonly backstop?: { readonly idleSteps?: number; readonly noProgressSteps?: number };
 }
 
-export interface LaneSpecsAndPlan {
-  lanes: DesktopParticipantRun[];
+export interface ParticipantRunsAndPlan {
+  runs: DesktopParticipantRun[];
   plan: CuaLanePlan;
 }
 
@@ -483,7 +483,7 @@ export interface CuaRunBudget {
   maxTotalUsd: number;
   /** Record this lane's latest running estimate (null = unpriceable, ignored) and return the
    *  run's current total across all lanes. */
-  note(laneId: string, estimateUsd: number | null): number;
+  note(participantId: string, estimateUsd: number | null): number;
 }
 
 /** Shared deps every lane runner needs (resolved once in the engine). */

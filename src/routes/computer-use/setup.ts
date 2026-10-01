@@ -22,8 +22,8 @@ import { renderCuaReviewMarkdown } from "./bundle.js";
 import {
   emitPreflightPlan,
   makeCuaRunBudget,
-  planCuaLanes,
-  sanitizeLaneSpecs,
+  planCuaParticipants,
+  sanitizeParticipantRuns,
 } from "./lane-plan.js";
 import { e2bRequestTimeoutMs } from "../../substrates/e2b/lifetime.js";
 import { subjectProvenanceArg } from "./lanes.js";
@@ -33,7 +33,7 @@ import type { ComputerUsePlan } from "../../lab/plan-types.js";
 import { trackRuntimeStreams, type LiveTraceFlush } from "./live-flush.js";
 import { type CuaRunBundleBase } from "./assemble.js";
 import { packRunLocalTree } from "./local-tree-pack.js";
-import { projectLaneSubjects } from "./subject-projection.js";
+import { projectParticipantSubjects } from "./subject-projection.js";
 import {
   CUA_ACTOR_LAB_SCHEMA,
   type CuaActorLabErrorCode,
@@ -86,7 +86,7 @@ export async function refuseCuaLab(
   const hooks = options.hooks ?? {};
   // The lane plan reads the committed personas before it returns the refusal.
   if (refusal.stage === "after-personas")
-    await planCuaLanes({
+    await planCuaParticipants({
       config,
       cwd: projectRoot.physicalPath,
       projectRoot,
@@ -131,10 +131,10 @@ export interface CuaRunSetup {
   /** The operator-hosted inbox on the app-url route, when declared. */
   externalCommsConfig: LabCommsExternal | undefined;
   externalCommsEmail: LabCommsEmail | undefined;
-  laneSpecs: DesktopParticipantRun[];
+  participantRuns: DesktopParticipantRun[];
   plan: CuaLanePlan;
   rerunLineage: RunRerunLineage | undefined;
-  laneCount: number;
+  participantCount: number;
   /** Every known secret value; email setup adds its own before the lanes run. */
   knownSecretValues: string[];
   scrubKnownValues: (text: string) => string;
@@ -148,8 +148,8 @@ export interface CuaRunSetup {
   deps: Omit<CuaLaneDeps, "signalProvisioned">;
   /** Filled by runLabLanes on a live run; deps.onTrace reads it. */
   liveTrace: { flush?: LiveTraceFlush["flush"]; stop?: LiveTraceFlush["stop"] };
-  subjectArgs: Omit<Parameters<typeof projectLaneSubjects>[0], "outcomes" | "dryRun">;
-  inProgressLaneSubjects: CuaSubjectProjection[];
+  subjectArgs: Omit<Parameters<typeof projectParticipantSubjects>[0], "outcomes" | "dryRun">;
+  inProgressSubjects: CuaSubjectProjection[];
   inProgressAggregateSubject: CuaSubjectProjection;
   inProgressProvenance: CuaSubjectProvenanceArg | undefined;
   bundleBase: CuaRunBundleBase;
@@ -210,7 +210,7 @@ async function planCuaRun(
     !cloneRoute && !localTreeRoute && !inProcessRoute ? comms?.email?.external : undefined;
   const externalCommsEmail = externalCommsConfig ? comms?.email : undefined;
 
-  const lanePlan = await planCuaLanes({
+  const participantPlan = await planCuaParticipants({
     config,
     cwd,
     projectRoot,
@@ -219,14 +219,16 @@ async function planCuaRun(
     ...(input.countOverride === undefined ? {} : { countOverride: input.countOverride }),
     ...(input.rerun === undefined ? {} : { rerun: input.rerun }),
   });
-  if (!lanePlan.ok) return refuse(lanePlan.code, lanePlan.message, descriptor.id);
-  const { laneSpecs, plan, rerunLineage } = lanePlan;
-  const laneCount = laneSpecs.length;
+  if (!participantPlan.ok) {
+    return refuse(participantPlan.code, participantPlan.message, descriptor.id);
+  }
+  const { participantRuns, plan, rerunLineage } = participantPlan;
+  const participantCount = participantRuns.length;
 
   // Pre-flight plan: BEFORE any sandbox or provider call (dry-run AND live). The hook fires for
   // every N (observable + testable); the stderr table prints for fan-out (N>1) so single-lane
   // runs stay as quiet as they always were.
-  if (laneCount > 1) {
+  if (participantCount > 1) {
     emitPreflightPlan(plan, routePlan.labId);
   }
   hooks.onPreflight?.(plan);
@@ -243,7 +245,7 @@ async function planCuaRun(
     ...subjectEnvNames.map((name) => env[name] ?? ""),
   ].filter((value) => value.length >= 4);
   const scrubKnownValues = scrubLiterals(knownSecretValues);
-  sanitizeLaneSpecs(laneSpecs, scrubKnownValues);
+  sanitizeParticipantRuns(participantRuns, scrubKnownValues);
 
   const redactRepoLabel =
     routePlan.residual.policies?.redactRepos ?? subjectEnvNames.includes("GITHUB_TOKEN");
@@ -313,10 +315,10 @@ async function planCuaRun(
       runSession,
       externalCommsConfig,
       externalCommsEmail,
-      laneSpecs,
+      participantRuns,
       plan,
       rerunLineage,
-      laneCount,
+      participantCount,
       openaiApiKey,
       e2bApiKey,
       knownSecretValues,
@@ -338,7 +340,7 @@ async function startCuaRun(
   planned: PlannedCuaRun,
   scope: RunScope,
 ): Promise<{ ok: false; result: CuaActorLabResult } | { ok: true; setup: CuaRunSetup }> {
-  const { config, dryRun, cwd, hooks, descriptor, laneSpecs, plan, publicRepo } = planned;
+  const { config, dryRun, cwd, hooks, descriptor, participantRuns, plan, publicRepo } = planned;
   const { appUrl, inProcessRoute, localAppSubject, cloneRoute, localTreeRoute, subjectEnvNames } =
     planned.route;
   // The run's status record exists from here on, so anything watching the runs directory can
@@ -372,7 +374,11 @@ async function startCuaRun(
   // to grow; lanes call it through deps.onTrace. It exists before deps so deps can reference it as
   // a stable indirection.
   const liveTrace: { flush?: LiveTraceFlush["flush"]; stop?: LiveTraceFlush["stop"] } = {};
-  const deps = cuaLaneDeps(routePlan, input, planned, { runPaths, redactScreenshots, liveTrace });
+  const deps = cuaParticipantDeps(routePlan, input, planned, {
+    runPaths,
+    redactScreenshots,
+    liveTrace,
+  });
 
   const subjectArgs = {
     routePlan,
@@ -381,14 +387,14 @@ async function startCuaRun(
     ...(planned.localTreeArchive === undefined
       ? {}
       : { localTreeArchive: planned.localTreeArchive }),
-    laneSpecs,
+    runs: participantRuns,
   };
-  const inProgressLaneSubjects = projectLaneSubjects({
+  const inProgressSubjects = projectParticipantSubjects({
     ...subjectArgs,
     outcomes: undefined,
     dryRun: false,
   });
-  const inProgressAggregateSubject = inProgressLaneSubjects[0]!;
+  const inProgressAggregateSubject = inProgressSubjects[0]!;
   const inProgressProvenance = subjectProvenanceArg(
     inProgressAggregateSubject,
     publicRepo,
@@ -397,7 +403,7 @@ async function startCuaRun(
 
   const bundleBase: CuaRunBundleBase = {
     ...(routePlan.lab === undefined ? {} : { lab: routePlan.lab }),
-    laneSpecs,
+    laneSpecs: participantRuns,
     descriptor,
     appUrl,
     createdAt,
@@ -432,10 +438,10 @@ async function startCuaRun(
       descriptor,
       externalCommsConfig: planned.externalCommsConfig,
       externalCommsEmail: planned.externalCommsEmail,
-      laneSpecs,
+      participantRuns,
       plan,
       rerunLineage: planned.rerunLineage,
-      laneCount: planned.laneCount,
+      participantCount: planned.participantCount,
       knownSecretValues: planned.knownSecretValues,
       scrubKnownValues: planned.scrubKnownValues,
       publicRepo,
@@ -448,7 +454,7 @@ async function startCuaRun(
       deps,
       liveTrace,
       subjectArgs,
-      inProgressLaneSubjects,
+      inProgressSubjects,
       inProgressAggregateSubject,
       inProgressProvenance,
       bundleBase,
@@ -457,7 +463,7 @@ async function startCuaRun(
 }
 
 /** The lane deps every lane reads: the route, keys, timeouts, scrubber, budget and hooks. */
-function cuaLaneDeps(
+function cuaParticipantDeps(
   routePlan: ComputerUsePlan,
   input: ComputerUseRunInput,
   planned: PlannedCuaRun,
@@ -467,7 +473,7 @@ function cuaLaneDeps(
     liveTrace: CuaRunSetup["liveTrace"];
   },
 ): Omit<CuaLaneDeps, "signalProvisioned"> {
-  const { config, dryRun, hooks, streams, env, descriptor, runSession, laneCount } = planned;
+  const { config, dryRun, hooks, streams, env, descriptor, runSession, participantCount } = planned;
   const { localAgentRoute, preferredLocalAgent, hasGithubToken, localTreeArchiveBuffer } = planned;
   const { openaiApiKey, e2bApiKey, scrubKnownValues } = planned;
   const { externalCommsConfig, externalCommsEmail } = planned;
@@ -483,7 +489,8 @@ function cuaLaneDeps(
             hooks.createDesktopLane!(laneSpecOf(run), warnings, root),
         }
       : {}),
-    onTrace: (laneId, items, usage, metadata) => liveTrace.flush?.(laneId, items, usage, metadata),
+    onTrace: (participantId, items, usage, metadata) =>
+      liveTrace.flush?.(participantId, items, usage, metadata),
     config,
     descriptor,
     appUrl,
@@ -502,7 +509,7 @@ function cuaLaneDeps(
     requestTimeoutMs,
     perLaneSandboxMs: routePlan.sandboxMs,
     timeoutMs,
-    laneCount,
+    laneCount: participantCount,
     artifactRoot: runPaths,
     labCwd: input.cwd,
     redactScreenshots,

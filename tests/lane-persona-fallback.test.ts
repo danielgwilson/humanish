@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { LAB_CONFIG_SCHEMA } from "../src/lab/types.js";
 import { parseLabConfig } from "../src/lab/config.js";
-import { resolveCuaLanePlan } from "../src/routes/computer-use/lane-plan.js";
+import { resolveCuaParticipantPlan } from "../src/routes/computer-use/lane-plan.js";
 
 // #512: with a `lanes` roster present, lane persona resolution read ONLY `lane.persona`. Every
 // fan-out lane of every lab that declared `actors[0].persona` therefore ran with no persona:
@@ -23,7 +23,7 @@ function planFor(actor: Record<string, unknown>) {
     scenario: { mode: "dry-run" },
   });
   if (!parsed.ok) throw new Error(parsed.error.message);
-  return resolveCuaLanePlan(parsed.config, { dryRun: true });
+  return resolveCuaParticipantPlan(parsed.config, { dryRun: true });
 }
 
 describe("lane persona resolution (#512)", () => {

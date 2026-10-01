@@ -23,7 +23,7 @@ import {
   MIN_DESKTOP_RENDER_WIDTH,
   resolveLaneDevice,
 } from "../../../src/lab/device-presets.js";
-import { resolveCuaLanePlan } from "../../../src/routes/computer-use/lane-plan.js";
+import { resolveCuaParticipantPlan } from "../../../src/routes/computer-use/lane-plan.js";
 import { runCuaActorLab } from "../../../src/routes/computer-use/lab.js";
 import { planComputerUseLab } from "../../../src/routes/computer-use/plan.js";
 import type { ComputerUsePlan } from "../../../src/lab/plan-types.js";
@@ -414,25 +414,28 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
     expect(verified.ok).toBe(true);
   });
 
-  it("resolveCuaLanePlan is pure: concurrency defaults to ALL lanes, env override only LOWERS (and is recorded)", () => {
+  it("resolveCuaParticipantPlan is pure: concurrency defaults to ALL lanes, env override only LOWERS (and is recorded)", () => {
     const config = fanoutConfig({
       concurrency: undefined as unknown as number,
       lanes: [{ id: "a" }, { id: "b" }, { id: "c" }, { id: "d" }, { id: "e" }],
     });
     // No declared concurrency on a 5-lane roster → every seat runs at once (#350): 5 lanes, 1 wave.
-    const planDefault = resolveCuaLanePlan({ ...config, execution: { target: "e2b-desktop" } });
+    const planDefault = resolveCuaParticipantPlan({
+      ...config,
+      execution: { target: "e2b-desktop" },
+    });
     expect(planDefault.concurrency).toBe(5);
     expect(planDefault.waves).toBe(1);
     expect(planDefault.envLoweredConcurrencyFrom).toBeUndefined();
     // Env override LOWERS to 2 — and the lowering is recorded, never silent.
-    const planLowered = resolveCuaLanePlan(
+    const planLowered = resolveCuaParticipantPlan(
       { ...config, execution: { target: "e2b-desktop" } },
       { env: { HUMANISH_CUA_MAX_CONCURRENCY: "2" } },
     );
     expect(planLowered.concurrency).toBe(2);
     expect(planLowered.envLoweredConcurrencyFrom).toBe(5);
     // Env override may NOT raise above the declared cap (clamped to laneCount + the base).
-    const planRaiseAttempt = resolveCuaLanePlan(
+    const planRaiseAttempt = resolveCuaParticipantPlan(
       { ...config, execution: { target: "e2b-desktop", concurrency: 2 } },
       { env: { HUMANISH_CUA_MAX_CONCURRENCY: "9" } },
     );
@@ -457,7 +460,7 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
         },
       ],
     });
-    const plan = resolveCuaLanePlan(config);
+    const plan = resolveCuaParticipantPlan(config);
     const specs: DesktopParticipantRun[] = [
       participantRun({
         id: "role-a",
@@ -600,7 +603,7 @@ describe("cua fan-out bundle: desktop browser provenance", () => {
           note: "test fixture",
         },
       },
-      plan: resolveCuaLanePlan(config),
+      plan: resolveCuaParticipantPlan(config),
       cloneRoute: false,
       subjectEnvNames: [],
     });
@@ -1186,6 +1189,44 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     expect(selectedMismatchCheck?.message).toContain(
       "selected lane ghost-lane is missing from current streams",
     );
+  });
+
+  it("reruns only the participants a rerun names and refuses an id the source run lacks", async () => {
+    const sourceOutcome = await runLab(fanoutConfig({ concurrency: 4 }), {
+      cwd,
+      cuaHooks: passingHooks(makeFanoutModule()),
+    });
+    expect(sourceOutcome.backend).toBe("cua");
+    if (sourceOutcome.backend !== "cua") return;
+    expect(sourceOutcome.result.ok).toBe(true);
+
+    const rerunHandle = makeFanoutModule();
+    const named = await runLab(fanoutConfig({ concurrency: 4 }), {
+      cwd,
+      runId: "fanout-named-rerun",
+      rerun: { sourceRunId: sourceOutcome.result.runId, participantIds: ["small-skimmer"] },
+      cuaHooks: passingHooks(rerunHandle),
+    });
+    expect(named.backend).toBe("cua");
+    if (named.backend !== "cua") return;
+    expect(named.result.rerun).toMatchObject({
+      selectedLaneIds: ["small-skimmer"],
+      previous: [{ laneId: "small-skimmer", status: "passed" }],
+    });
+    expect(rerunHandle.created.map((created) => created.metadata?.laneId)).toEqual([
+      "small-skimmer",
+    ]);
+
+    const ghost = await runLab(fanoutConfig({ concurrency: 4 }), {
+      cwd,
+      rerun: { sourceRunId: sourceOutcome.result.runId, participantIds: ["ghost-lane"] },
+      cuaHooks: passingHooks(makeFanoutModule()),
+    });
+    expect(ghost.backend).toBe("cua");
+    if (ghost.backend !== "cua") return;
+    expect(ghost.result.ok).toBe(false);
+    expect(ghost.result.error?.code).toBe("HUMANISH_CUA_LAB_RERUN_INVALID");
+    expect(ghost.result.error?.message).toContain("ghost-lane");
   });
 
   it("opens each lane's explicit target and records per-lane routes in the bundle", async () => {

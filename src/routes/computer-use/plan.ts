@@ -33,7 +33,7 @@ import {
 } from "../../lab/validation.js";
 import type { RunLabProvenance } from "../../run/status.js";
 import { isLocalBrowserLab } from "../../substrates/local/runtime-config.js";
-import { defaultSessionTimeoutMs, resolvePerLaneSandboxMs } from "./lane-plan.js";
+import { defaultSessionTimeoutMs, resolveParticipantSandboxMs } from "./lane-plan.js";
 import { MAX_SANDBOX_MS } from "../../substrates/e2b/lifetime.js";
 import {
   type CuaActorLabErrorCode,
@@ -295,7 +295,7 @@ function laneShapeReason(config: LabConfig): Rejection {
   // The sandbox deadline is derived from the session budget, so a lab can ask for a session that
   // cannot legally be provisioned. Show the arithmetic: the provider's own error names a limit
   // but not which knob produced it.
-  const derivedSandboxMs = resolvePerLaneSandboxMs(config);
+  const derivedSandboxMs = resolveParticipantSandboxMs(config);
   if (derivedSandboxMs <= MAX_SANDBOX_MS) return undefined;
   const provisionedRoute =
     config.subject.source === "clone" || config.subject.source === "local-tree";
@@ -445,7 +445,7 @@ export function planComputerUseLab(
       runner,
       concurrency: Math.max(1, declared === undefined ? n : Math.min(Math.max(1, declared), n)),
       sessionBudgetMs: config.execution?.timeoutMs ?? defaultSessionTimeoutMs(config),
-      sandboxMs: resolvePerLaneSandboxMs(config),
+      sandboxMs: resolveParticipantSandboxMs(config),
       caps: capsOf(config),
       ...(input.rerun === undefined
         ? {}

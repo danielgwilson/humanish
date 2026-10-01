@@ -29,11 +29,11 @@ import {
   CUA_MAX_CONCURRENCY_ENV,
   type CuaActorLabErrorCode,
   type CuaLanePlan,
-  type CuaLanePlanEntry,
+  type CuaParticipantPlanEntry,
   type DesktopParticipantRun,
   type CuaRunBudget,
   DEFAULT_APP_URL_SESSION_TIMEOUT_MS,
-  type LaneSpecsAndPlan,
+  type ParticipantRunsAndPlan,
   MIN_DERIVED_SESSION_TIMEOUT_MS,
   type RunCuaActorLabOptions,
 } from "./types.js";
@@ -177,7 +177,7 @@ export function withInboxMission(
  *  reclamation buffer. Local-tree shares the clone route's provisioning budget: it swaps a
  *  git clone for an upload+extract, but the shared install/build/state/start/probe pipeline
  *  costs the same wall-clock room either way. */
-export function resolvePerLaneSandboxMs(config: LabConfig): number {
+export function resolveParticipantSandboxMs(config: LabConfig): number {
   if (isLocalBrowserLab(config)) return LOCAL_BROWSER_LIFETIME_MS;
   const timeoutMs = config.execution?.timeoutMs ?? defaultSessionTimeoutMs(config);
   const provisionedRoute =
@@ -200,31 +200,31 @@ export function resolvePerLaneSandboxMs(config: LabConfig): number {
  * Effective in-flight lane bound. Defaults to laneCount — every declared seat runs at once,
  * because a throttle nobody asked for silently turns "N actors live" into waves (#350); total
  * session count and spend are the same either way, only wall-clock and simultaneity differ. A
- * declared execution.concurrency is a CAP, clamped to [1, laneCount]; the env override may only
+ * declared execution.concurrency is a CAP, clamped to [1, participantCount]; the env override may only
  * LOWER it (never raise concurrent paid desktops — invariant 3), and a lowering is reported via
  * envLoweredFrom so the plan never silently disagrees with the manifest. Pure given
- * (config, laneCount, env).
+ * (config, participantCount, env).
  */
 function resolveCuaConcurrency(
   config: LabConfig,
-  laneCount: number,
+  participantCount: number,
   env: Record<string, string | undefined>,
 ): { bound: number; envLoweredFrom?: number } {
   const declared = config.execution?.concurrency;
   const base = Math.max(
     1,
-    declared !== undefined ? Math.min(Math.max(1, declared), laneCount) : laneCount,
+    declared !== undefined ? Math.min(Math.max(1, declared), participantCount) : participantCount,
   );
   const envLower = readPositiveInt(env[CUA_MAX_CONCURRENCY_ENV], 0);
   if (envLower > 0 && envLower < base) {
-    return { bound: Math.max(1, Math.min(base, envLower, laneCount)), envLoweredFrom: base };
+    return { bound: Math.max(1, Math.min(base, envLower, participantCount)), envLoweredFrom: base };
   }
   return { bound: base };
 }
 
 /** Build the lane specs AND the public plan from a config (pure). countOverride is the CLI
  *  --count for homogeneous fan-out (ignored when a `lanes` roster is declared). */
-function laneSpecsAndPlan(
+function participantRunsAndPlan(
   config: LabConfig,
   opts: {
     countOverride?: number;
@@ -232,14 +232,14 @@ function laneSpecsAndPlan(
     dryRun?: boolean;
     personas?: Map<string, ResolvedPersona>;
   } = {},
-): LaneSpecsAndPlan {
+): ParticipantRunsAndPlan {
   const env = opts.env ?? {};
   // Who each lane is (id, persona, focus, device, limits) comes from the planned participants;
   // this adds what the route derives from it: the prompt, bundle ids and artifact paths.
   const participants = computerUseParticipants(config, opts.countOverride);
-  const laneCount = participants.length;
+  const participantCount = participants.length;
 
-  const lanes: DesktopParticipantRun[] = participants.map((participant) => {
+  const runs: DesktopParticipantRun[] = participants.map((participant) => {
     const mission = participant.assignment.mission ?? DEFAULT_MISSION;
     const focus = participant.assignment.focus;
     const tasks = participant.tasks;
@@ -265,27 +265,27 @@ function laneSpecsAndPlan(
     });
     return {
       ...run,
-      screenshotDir: laneCount === 1 ? "" : participant.id,
-      traceArtifactPath: laneCount === 1 ? "actor.json" : `actors/${run.streamId}.json`,
+      screenshotDir: participantCount === 1 ? "" : participant.id,
+      traceArtifactPath: participantCount === 1 ? "actor.json" : `actors/${run.streamId}.json`,
     };
   });
 
-  const resolved = resolveCuaConcurrency(config, laneCount, env);
+  const resolved = resolveCuaConcurrency(config, participantCount, env);
   const concurrency = resolved.bound;
-  const perLaneSessionBudgetMs = config.execution?.timeoutMs ?? defaultSessionTimeoutMs(config);
-  const perLaneSandboxMs = resolvePerLaneSandboxMs(config);
+  const sessionBudgetMs = config.execution?.timeoutMs ?? defaultSessionTimeoutMs(config);
+  const sandboxMs = resolveParticipantSandboxMs(config);
   const plan: CuaLanePlan = {
     strategy: CUA_FANOUT_STRATEGY,
-    laneCount,
+    laneCount: participantCount,
     concurrency,
     ...(resolved.envLoweredFrom === undefined
       ? {}
       : { envLoweredConcurrencyFrom: resolved.envLoweredFrom }),
-    waves: Math.ceil(laneCount / concurrency),
-    perLaneSessionBudgetMs,
-    worstCaseSandboxMinutes: Math.round((laneCount * perLaneSandboxMs) / 60_000),
+    waves: Math.ceil(participantCount / concurrency),
+    perLaneSessionBudgetMs: sessionBudgetMs,
+    worstCaseSandboxMinutes: Math.round((participantCount * sandboxMs) / 60_000),
     dryRun: opts.dryRun === true,
-    lanes: lanes.map((spec) => ({
+    lanes: runs.map((spec) => ({
       id: spec.planned.id,
       ...(spec.planned.labels.actorType === undefined
         ? {}
@@ -312,18 +312,23 @@ function laneSpecsAndPlan(
         : { targetDigest: digestUrl(spec.planned.targetUrl) }),
     })),
   };
-  return { lanes, plan };
+  return { runs, plan };
 }
 
 async function resolveCuaRerunSelection(args: {
   cwd: string;
   config: LabConfig;
   sourceRunId: string;
-  laneIds?: string[];
-  laneSpecs: DesktopParticipantRun[];
+  participantIds?: string[];
+  participantRuns: DesktopParticipantRun[];
   plan: CuaLanePlan;
 }): Promise<
-  | { ok: true; laneSpecs: DesktopParticipantRun[]; plan: CuaLanePlan; rerun: RunRerunLineage }
+  | {
+      ok: true;
+      participantRuns: DesktopParticipantRun[];
+      plan: CuaLanePlan;
+      rerun: RunRerunLineage;
+    }
   | { ok: false; message: string }
 > {
   const source = await loadRunBundle(args.cwd, args.sourceRunId);
@@ -343,28 +348,28 @@ async function resolveCuaRerunSelection(args: {
   }
 
   const prior = bundle.streams
-    .map(snapshotPriorCuaLane)
+    .map(snapshotPriorParticipant)
     .filter(
-      (lane): lane is ReturnType<typeof snapshotPriorCuaLane> & { laneId: string } => lane !== null,
+      (entry): entry is NonNullable<ReturnType<typeof snapshotPriorParticipant>> => entry !== null,
     );
-  const priorById = new Map(prior.map((lane) => [lane.laneId, lane]));
+  const priorById = new Map(prior.map((entry) => [entry.participantId, entry]));
   if (priorById.size < 2) {
     return { ok: false, message: `source run ${bundle.runId} does not expose multiple lane ids.` };
   }
 
-  const explicitLaneIds = uniqueLaneIds(args.laneIds ?? []);
-  const selectedLaneIds =
-    explicitLaneIds.length > 0
-      ? explicitLaneIds
-      : prior.filter((lane) => lane.rerunnable).map((lane) => lane.laneId);
-  if (selectedLaneIds.length === 0) {
+  const explicitIds = uniqueIds(args.participantIds ?? []);
+  const selectedIds =
+    explicitIds.length > 0
+      ? explicitIds
+      : prior.filter((entry) => entry.rerunnable).map((entry) => entry.participantId);
+  if (selectedIds.length === 0) {
     return {
       ok: false,
       message: `source run ${bundle.runId} has no failed, blocked, timed-out, or hollow lanes to rerun.`,
     };
   }
 
-  const missingPrior = selectedLaneIds.filter((laneId) => !priorById.has(laneId));
+  const missingPrior = selectedIds.filter((id) => !priorById.has(id));
   if (missingPrior.length > 0) {
     return {
       ok: false,
@@ -372,8 +377,8 @@ async function resolveCuaRerunSelection(args: {
     };
   }
 
-  const specsById = new Map(args.laneSpecs.map((spec) => [spec.planned.id, spec]));
-  const missingCurrent = selectedLaneIds.filter((laneId) => !specsById.has(laneId));
+  const specsById = new Map(args.participantRuns.map((spec) => [spec.planned.id, spec]));
+  const missingCurrent = selectedIds.filter((id) => !specsById.has(id));
   if (missingCurrent.length > 0) {
     return {
       ok: false,
@@ -381,9 +386,9 @@ async function resolveCuaRerunSelection(args: {
     };
   }
 
-  const selectedSpecs = selectedLaneIds.map((laneId) => specsById.get(laneId)!);
-  const selectedPlanLaneIds = new Set(selectedLaneIds);
-  const selectedPlanEntries = args.plan.lanes.filter((lane) => selectedPlanLaneIds.has(lane.id));
+  const selectedSpecs = selectedIds.map((id) => specsById.get(id)!);
+  const selectedPlanIds = new Set(selectedIds);
+  const selectedPlanEntries = args.plan.lanes.filter((entry) => selectedPlanIds.has(entry.id));
   const concurrency = Math.max(1, Math.min(args.plan.concurrency, selectedSpecs.length));
   const plan: CuaLanePlan = {
     ...args.plan,
@@ -391,39 +396,41 @@ async function resolveCuaRerunSelection(args: {
     concurrency,
     waves: Math.ceil(selectedSpecs.length / concurrency),
     worstCaseSandboxMinutes: Math.round(
-      (selectedSpecs.length * resolvePerLaneSandboxMs(args.config)) / 60_000,
+      (selectedSpecs.length * resolveParticipantSandboxMs(args.config)) / 60_000,
     ),
     lanes: selectedPlanEntries,
   };
 
-  const previous = selectedLaneIds.map((laneId) => priorById.get(laneId)!.previous);
+  const previous = selectedIds.map((id) => priorById.get(id)!.previous);
   return {
     ok: true,
-    laneSpecs: selectedSpecs,
+    participantRuns: selectedSpecs,
     plan,
     rerun: {
       sourceRunId: bundle.runId,
-      selectedLaneIds,
+      selectedLaneIds: selectedIds,
       previous,
     },
   };
 }
 
-function uniqueLaneIds(values: string[]): string[] {
+function uniqueIds(values: string[]): string[] {
   const seen = new Set<string>();
   const result: string[] = [];
   for (const value of values) {
-    const laneId = value.trim();
-    if (!laneId || seen.has(laneId)) continue;
-    seen.add(laneId);
-    result.push(laneId);
+    const id = value.trim();
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    result.push(id);
   }
   return result;
 }
 
-function snapshotPriorCuaLane(
-  stream: RunStream,
-): { laneId: string; previous: RunRerunLineage["previous"][number]; rerunnable: boolean } | null {
+function snapshotPriorParticipant(stream: RunStream): {
+  participantId: string;
+  previous: RunRerunLineage["previous"][number];
+  rerunnable: boolean;
+} | null {
   if (stream.kind !== "browser" || typeof stream.laneId !== "string" || !stream.laneId.trim()) {
     return null;
   }
@@ -441,7 +448,7 @@ function snapshotPriorCuaLane(
     completionReason === "harness_error" ||
     hollow;
   return {
-    laneId: stream.laneId,
+    participantId: stream.laneId,
     previous: {
       laneId: stream.laneId,
       streamId: stream.id,
@@ -460,7 +467,7 @@ function snapshotPriorCuaLane(
  * sandbox-minutes — BEFORE any sandbox or provider call. The same plan appears in dry-run,
  * marked $0 (dryRun: true).
  */
-export function resolveCuaLanePlan(
+export function resolveCuaParticipantPlan(
   config: LabConfig,
   opts: {
     countOverride?: number;
@@ -469,7 +476,7 @@ export function resolveCuaLanePlan(
     personas?: Map<string, ResolvedPersona>;
   } = {},
 ): CuaLanePlan {
-  return laneSpecsAndPlan(config, opts).plan;
+  return participantRunsAndPlan(config, opts).plan;
 }
 
 /** Print the lane plan to stderr BEFORE any sandbox/provider call (public-safe: ids, devices,
@@ -482,20 +489,20 @@ export function emitPreflightPlan(plan: CuaLanePlan, labId: string): void {
   lines.push(
     `  per-lane session budget ${Math.round(plan.perLaneSessionBudgetMs / 1000)}s; worst-case ~${plan.worstCaseSandboxMinutes} sandbox-minutes total${plan.dryRun ? " (dry-run: $0)" : ""}.`,
   );
-  for (const lane of plan.lanes) {
-    lines.push(`  - ${formatLanePlanEntry(lane)}`);
+  for (const entry of plan.lanes) {
+    lines.push(`  - ${formatLanePlanEntry(entry)}`);
   }
   process.stderr.write(`${lines.join("\n")}\n`);
 }
 
-export function formatLanePlanEntry(lane: CuaLanePlanEntry): string {
+export function formatLanePlanEntry(entry: CuaParticipantPlanEntry): string {
   const taxonomy = [
-    lane.actorType ? `type=${lane.actorType}` : undefined,
-    lane.surface ? `surface=${lane.surface}` : undefined,
-    lane.caseGroup ? `case=${lane.caseGroup}` : undefined,
-    lane.reasoningEffort ? `effort=${lane.reasoningEffort}` : undefined,
+    entry.actorType ? `type=${entry.actorType}` : undefined,
+    entry.surface ? `surface=${entry.surface}` : undefined,
+    entry.caseGroup ? `case=${entry.caseGroup}` : undefined,
+    entry.reasoningEffort ? `effort=${entry.reasoningEffort}` : undefined,
   ].filter((part): part is string => part !== undefined);
-  return `${lane.id}: persona=${lane.persona}${taxonomy.length > 0 ? ` ${taxonomy.join(" ")}` : ""} device=${lane.device} ${lane.resolution[0]}x${lane.resolution[1]} prompt#${lane.instructionDigest}${lane.targetDigest ? ` target#${lane.targetDigest}` : ""}`;
+  return `${entry.id}: persona=${entry.persona}${taxonomy.length > 0 ? ` ${taxonomy.join(" ")}` : ""} device=${entry.device} ${entry.resolution[0]}x${entry.resolution[1]} prompt#${entry.instructionDigest}${entry.targetDigest ? ` target#${entry.targetDigest}` : ""}`;
 }
 
 /** Short id-safe suffix for a subject-phase RunEvent: drops the shared prefix/suffix so each
@@ -508,13 +515,13 @@ export function phaseEventIdSuffix(type: string): string {
 }
 
 export function makeCuaRunBudget(maxTotalUsd: number): CuaRunBudget {
-  const laneEstimates = new Map<string, number>();
+  const participantEstimates = new Map<string, number>();
   return {
     maxTotalUsd,
-    note(laneId, estimateUsd) {
-      if (estimateUsd !== null) laneEstimates.set(laneId, estimateUsd);
+    note(participantId, estimateUsd) {
+      if (estimateUsd !== null) participantEstimates.set(participantId, estimateUsd);
       let total = 0;
-      for (const value of laneEstimates.values()) total += value;
+      for (const value of participantEstimates.values()) total += value;
       return total;
     },
   };
@@ -529,7 +536,7 @@ export function digestUrl(url: string): string {
  * compiled, the pure lane table built (the same for dry-run and live), the lane cap enforced, and
  * a rerun narrowed to its selected lanes.
  */
-export async function planCuaLanes(args: {
+export async function planCuaParticipants(args: {
   config: LabConfig;
   cwd: string;
   projectRoot: PreparedSelectedOutputDirectory;
@@ -545,7 +552,7 @@ export async function planCuaLanes(args: {
 }): Promise<
   | {
       ok: true;
-      laneSpecs: DesktopParticipantRun[];
+      participantRuns: DesktopParticipantRun[];
       plan: CuaLanePlan;
       rerunLineage?: RunRerunLineage;
     }
@@ -562,20 +569,20 @@ export async function planCuaLanes(args: {
   }
   if (args.refusal) return { ok: false, code: args.refusal.code, message: args.refusal.message };
 
-  const { lanes: laneSpecs, plan } = laneSpecsAndPlan(args.config, {
+  const { runs: participantRuns, plan } = participantRunsAndPlan(args.config, {
     ...(args.countOverride === undefined ? {} : { countOverride: args.countOverride }),
     env: args.env,
     dryRun: args.dryRun,
     personas: personaResolution.personas,
   });
-  if (!args.rerun) return { ok: true, laneSpecs, plan };
+  if (!args.rerun) return { ok: true, participantRuns, plan };
 
   const selected = await resolveCuaRerunSelection({
     cwd: args.cwd,
     config: args.config,
     sourceRunId: args.rerun.sourceRunId,
-    ...(args.rerun.laneIds === undefined ? {} : { laneIds: args.rerun.laneIds }),
-    laneSpecs,
+    ...(args.rerun.laneIds === undefined ? {} : { participantIds: args.rerun.laneIds }),
+    participantRuns,
     plan,
   });
   if (!selected.ok) {
@@ -583,18 +590,18 @@ export async function planCuaLanes(args: {
   }
   return {
     ok: true,
-    laneSpecs: selected.laneSpecs,
+    participantRuns: selected.participantRuns,
     plan: selected.plan,
     rerunLineage: selected.rerun,
   };
 }
 
 /** Scrub known secret values from each lane's declarative snapshot before any bundle uses it. */
-export function sanitizeLaneSpecs(
-  laneSpecs: readonly DesktopParticipantRun[],
+export function sanitizeParticipantRuns(
+  runs: readonly DesktopParticipantRun[],
   scrub: (text: string) => string,
 ): void {
-  for (const spec of laneSpecs) {
+  for (const spec of runs) {
     if (spec.evidenceAssignment)
       spec.evidenceAssignment = participantAssignment(spec.evidenceAssignment, scrub);
     spec.evidenceInstructions = redactText(scrub(spec.instructions));

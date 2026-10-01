@@ -30,7 +30,7 @@ export async function runLabLanes(setup: CuaRunSetup) {
     descriptor,
     externalCommsConfig,
     externalCommsEmail,
-    laneSpecs,
+    participantRuns,
     plan,
     knownSecretValues,
     scrubKnownValues,
@@ -41,7 +41,7 @@ export async function runLabLanes(setup: CuaRunSetup) {
     runPaths,
     deps,
     liveTrace,
-    inProgressLaneSubjects,
+    inProgressSubjects,
     inProgressAggregateSubject,
     inProgressProvenance,
     bundleBase,
@@ -61,7 +61,7 @@ export async function runLabLanes(setup: CuaRunSetup) {
       }),
       dryRun: false,
       outcomes: undefined,
-      laneSubjects: inProgressLaneSubjects,
+      laneSubjects: inProgressSubjects,
       aggregateSubject: inProgressAggregateSubject,
       subjectProvenance: inProgressProvenance,
       inProgress: true,
@@ -79,7 +79,7 @@ export async function runLabLanes(setup: CuaRunSetup) {
     // write began; the route stops the flush timer on every exit below.
     const liveFlush = startLiveTraceFlush({
       bundle: inProgressBundle,
-      laneSpecs,
+      laneSpecs: participantRuns,
       model: config.actors[0]?.model ?? DEFAULT_OPENAI_CU_MODEL,
       write: (bundle) => run.writeSnapshot(bundle),
     });
@@ -101,7 +101,7 @@ export async function runLabLanes(setup: CuaRunSetup) {
           subject: { env: subjectEnvNames, ...(envValues === undefined ? {} : { envValues }) },
         },
         env,
-        participants: laneSpecs.map((spec) => spec.planned.id),
+        participants: participantRuns.map((spec) => spec.planned.id),
         runPaths,
         registerSecrets: (values) => {
           for (const value of values)
@@ -131,7 +131,12 @@ export async function runLabLanes(setup: CuaRunSetup) {
   let failFastReason: string | undefined;
   try {
     if (!dryRun)
-      ({ outcomes, failFastReason } = await runAllCuaLanes(laneSpecs, deps, plan, inProcessRoute));
+      ({ outcomes, failFastReason } = await runAllCuaLanes(
+        participantRuns,
+        deps,
+        plan,
+        inProcessRoute,
+      ));
   } finally {
     try {
       await receiving?.finish();
@@ -151,7 +156,7 @@ export async function runLabLanes(setup: CuaRunSetup) {
           externalCommsEmail,
           env,
           runPaths,
-          laneSpecs,
+          laneSpecs: participantRuns,
           outcomes,
           scrubKnownValues,
         })

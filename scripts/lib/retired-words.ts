@@ -15,6 +15,8 @@ export const EXEMPT_PREFIXES = [
   "src/run/bundle.ts",
   "src/run/streams.ts",
   "src/run/participant-records.ts",
+  // The deprecated cuaHooks record (CuaLaneSpec), public until the compatibility section goes.
+  "src/routes/computer-use/legacy-lane-spec.ts",
 ];
 
 export function isCounted(path: string): boolean {
