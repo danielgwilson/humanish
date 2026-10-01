@@ -16,7 +16,7 @@ import {
   type CliIo,
   type LabCommandOptions,
   parseLabCount,
-  parseLaneIds,
+  parseParticipantIds,
   parseObserverPort,
   wantsJson,
   writeResult,
@@ -76,7 +76,7 @@ export function computerUseRouteRun(args: ComputerUseRouteArgs): RouteRun | unde
 interface CuaRunSettings {
   wantsMachine: boolean;
   shouldOpen: boolean;
-  laneIds: string[];
+  participantIds: string[];
   count: number;
   dryRun: boolean;
   port: number;
@@ -129,8 +129,8 @@ function resolveCuaSettings(args: ComputerUseRouteArgs): CuaRunSettings | undefi
     mode: args.mode,
     wantsMachine,
   });
-  const laneIds = parseLaneIds(args.options.lanes);
-  if (laneIds.length > 0 && !args.options.rerunFailedFrom) {
+  const participantIds = parseParticipantIds(args.options.lanes);
+  if (participantIds.length > 0 && !args.options.rerunFailedFrom) {
     args.io.writeErr("error: --lanes requires --rerun-failed-from.\n");
     args.io.setExitCode(2);
     return undefined;
@@ -158,7 +158,7 @@ function resolveCuaSettings(args: ComputerUseRouteArgs): CuaRunSettings | undefi
     );
     return undefined;
   }
-  return { wantsMachine, shouldOpen, laneIds, count, dryRun, port, wantsFollow };
+  return { wantsMachine, shouldOpen, participantIds, count, dryRun, port, wantsFollow };
 }
 
 /** Validates exposure and plans the finished-run Observer, or returns undefined after refusing. */
@@ -236,7 +236,7 @@ function cuaRunOptions(
       : {
           rerun: {
             sourceRunId: args.options.rerunFailedFrom,
-            ...(settings.laneIds.length === 0 ? {} : { laneIds: settings.laneIds }),
+            ...(settings.participantIds.length === 0 ? {} : { laneIds: settings.participantIds }),
           },
         }),
   };

@@ -153,19 +153,19 @@ export function parseLabCount(value: string | undefined, fallback: number): numb
   return value === undefined ? fallback : parsePositiveInteger(value);
 }
 
-export function parseLaneIds(value: string | undefined): string[] {
+export function parseParticipantIds(value: string | undefined): string[] {
   if (value === undefined) {
     return [];
   }
   const seen = new Set<string>();
-  const laneIds: string[] = [];
+  const participantIds: string[] = [];
   for (const raw of value.split(",")) {
-    const laneId = raw.trim();
-    if (!laneId || seen.has(laneId)) continue;
-    seen.add(laneId);
-    laneIds.push(laneId);
+    const participantId = raw.trim();
+    if (!participantId || seen.has(participantId)) continue;
+    seen.add(participantId);
+    participantIds.push(participantId);
   }
-  return laneIds;
+  return participantIds;
 }
 
 // Exported so tests/cli/program.test.ts can drive the command-boundary catch-all's

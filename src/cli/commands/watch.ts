@@ -207,7 +207,7 @@ async function handleWatch(
     io,
     command,
     options,
-    target.requestedSimCount,
+    target.requestedParticipantCount,
     staticOpen,
   );
   if (rendered === undefined) return;
@@ -277,15 +277,16 @@ async function watchLab(
 function resolveWatchTarget(
   options: WatchOptions,
   command: Command,
-): WatchRefusal | { requestedSimCount: number | null | undefined; port: number } {
+): WatchRefusal | { requestedParticipantCount: number | null | undefined; port: number } {
   const runOptionSource =
     typeof command.getOptionValueSource === "function"
       ? command.getOptionValueSource("run")
       : undefined;
   const runWasOmitted = runOptionSource === undefined || runOptionSource === "default";
-  const simCount = options.sims === undefined ? undefined : parsePositiveInteger(options.sims);
+  const participantCount =
+    options.sims === undefined ? undefined : parsePositiveInteger(options.sims);
   const port = parseObserverPort(options.port);
-  if (options.sims !== undefined && simCount === null) {
+  if (options.sims !== undefined && participantCount === null) {
     return { code: "HUMANISH_INVALID_SIM_COUNT", message: "--sims must be a positive integer." };
   }
   if (!runWasOmitted && options.sims !== undefined) {
@@ -307,7 +308,7 @@ function resolveWatchTarget(
       message: "--port must be an integer between 0 and 65535.",
     };
   }
-  return { requestedSimCount: simCount ?? (runWasOmitted ? 4 : undefined), port };
+  return { requestedParticipantCount: participantCount ?? (runWasOmitted ? 4 : undefined), port };
 }
 
 /** Render the evidence to show; undefined when a fresh run failed and its result was written. */
@@ -315,16 +316,16 @@ async function renderWatchEvidence(
   io: CliIo,
   command: Command,
   options: WatchOptions,
-  requestedSimCount: number | null | undefined,
+  requestedParticipantCount: number | null | undefined,
   staticOpen: boolean,
 ): Promise<ObserverResult | undefined> {
-  if (requestedSimCount !== undefined && requestedSimCount !== null) {
+  if (requestedParticipantCount !== undefined && requestedParticipantCount !== null) {
     // A fresh run renders through its finished run, so the page shown is the run just
     // written, never a directory swapped in under its id.
     const runResult = await runDryRun({
       cwd: options.cwd,
       dryRun: true,
-      simCount: requestedSimCount,
+      simCount: requestedParticipantCount,
       ...(options.runId === undefined ? {} : { runId: options.runId }),
       observer: { open: staticOpen },
     });

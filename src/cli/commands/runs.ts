@@ -108,9 +108,9 @@ export function registerRunCommand(parent: Command, io: CliIo): void {
           return;
         }
 
-        const simCount =
+        const participantCount =
           options.sims === undefined ? undefined : parsePositiveInteger(options.sims);
-        if (options.sims !== undefined && simCount === null) {
+        if (options.sims !== undefined && participantCount === null) {
           const result: RunResult = {
             schema: "humanish.run-result.v1",
             ok: false,
@@ -130,7 +130,9 @@ export function registerRunCommand(parent: Command, io: CliIo): void {
           cwd: options.cwd,
           ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
           ...(options.runId === undefined ? {} : { runId: options.runId }),
-          ...(simCount === undefined || simCount === null ? {} : { simCount }),
+          ...(participantCount === undefined || participantCount === null
+            ? {}
+            : { simCount: participantCount }),
           // Rendered the way `watch` renders it, so a bundle is the same bundle whichever command
           // produced it (#597). A render failure is a warning on the result.
           observer: { open: false },
