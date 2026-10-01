@@ -10,7 +10,7 @@ import { runBackend } from "../../src/cli/commands/lab-backend-run.js";
 import { sharedWorldBackendRun } from "../../src/cli/commands/lab-backend-shared-world.js";
 import type { CliIo } from "../../src/cli/io.js";
 import { parseLabConfig } from "../../src/lab/config.js";
-import { runLab } from "../../src/lab/engine.js";
+import { prepareLab, type RunLabOptions } from "../../src/lab/engine.js";
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/lab/types.js";
 import { liveObserverResult } from "../../src/observer/live.js";
 import { runDryRun } from "../../src/run/dry-run.js";
@@ -21,8 +21,22 @@ import { freePort } from "../helpers/free-port.js";
 // machine (a taken port) before any participant starts.
 vi.mock("../../src/lab/engine.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../src/lab/engine.js")>()),
-  runLab: vi.fn(),
+  prepareLab: vi.fn(),
 }));
+
+/** A planned lab whose run calls the watch's Observer gate, then fails. */
+function gatedRun(
+  failure: Error,
+  live: () => Parameters<NonNullable<RunLabOptions["onObserverReady"]>>[0],
+) {
+  vi.mocked(prepareLab).mockImplementation(async (_config, options) => ({
+    ok: true,
+    run: async () => {
+      await options.onObserverReady?.(live());
+      throw failure;
+    },
+  }));
+}
 
 function liveConcurrentConfig(): LabConfig {
   const lanes = [1, 2].map((n) => ({ id: `persona-0${n}`, persona: `persona-${n}` }));
@@ -77,7 +91,7 @@ describe("the concurrent watch path's live Observer gate (W6)", () => {
     sockets.clear();
     await new Promise<void>((resolve) => (blocker ? blocker.close(() => resolve()) : resolve()));
     blocker = undefined;
-    vi.mocked(runLab).mockReset();
+    vi.mocked(prepareLab).mockReset();
     await rm(cwd, { recursive: true, force: true });
   });
 
@@ -100,10 +114,7 @@ describe("the concurrent watch path's live Observer gate (W6)", () => {
     const port = await freePort();
     blocker = createServer((socket) => sockets.add(socket));
     await new Promise<void>((resolve) => blocker!.listen(port, "127.0.0.1", resolve));
-    vi.mocked(runLab).mockImplementation(async (_config, options) => {
-      await options.onObserverReady?.(live());
-      throw new Error("the route must stop when its gate fails");
-    });
+    gatedRun(new Error("the route must stop when its gate fails"), live);
     const io = captureIo();
 
     await runWatch({ io, port });
@@ -117,10 +128,7 @@ describe("the concurrent watch path's live Observer gate (W6)", () => {
   it("closes a started Observer server when the run fails after the gate", async () => {
     const port = await freePort();
     const failure = new Error("synthetic route failure");
-    vi.mocked(runLab).mockImplementation(async (_config, options) => {
-      await options.onObserverReady?.(live());
-      throw failure;
-    });
+    gatedRun(failure, live);
 
     await expect(runWatch({ io: captureIo(), port })).rejects.toBe(failure);
     await expect(fetch(`http://127.0.0.1:${port}/`)).rejects.toThrow(/fetch failed/);

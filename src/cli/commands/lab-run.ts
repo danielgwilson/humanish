@@ -99,47 +99,48 @@ export async function runLabCommand(args: {
     return;
   }
 
-  // The backend's setup refuses bad options before the scorer loads, so a refused run never
-  // imports the scorer's host code.
+  // The backend's setup refuses bad options, and runLab's plan refuses bad labs, before the scorer
+  // loads, so neither imports the scorer's host code. The route's own checks of this machine (keys,
+  // subject env, a browser, a free run id) still come after the scorer loads.
   const run = backendRunFor(route, { ...args, config, labProvenance: lab });
   if (run === undefined) return;
 
-  // #316: resolve + load a config-declared/CLI-flagged adopter scorer FAIL-CLOSED, before any spend.
-  // A declared gate that cannot load (bad ref, not found, load failure, no hooks, unsupported backend)
-  // aborts with exit 2 rather than green-passing.
-  const scorerLoad = await maybeLoadAdapterScorer({
-    cwd: args.options.cwd,
-    config,
-    backend,
-    flag: args.options.scorer,
+  // #316: resolve + load a config-declared/CLI-flagged adopter scorer FAIL-CLOSED, before any spend,
+  // and only for a plan that will run. A declared gate that cannot load (bad ref, not found, load
+  // failure, no hooks, unsupported backend) aborts with exit 2 rather than green-passing.
+  await runBackend(config, run, async () => {
+    const scorerLoad = await maybeLoadAdapterScorer({
+      cwd: args.options.cwd,
+      config,
+      backend,
+      flag: args.options.scorer,
+    });
+    if (!scorerLoad.ok) {
+      const result: RunResult = {
+        schema: "humanish.run-result.v1",
+        ok: false,
+        cwd: resolve(args.options.cwd),
+        warnings: [],
+        error: scorerLoad.error,
+      };
+      writeResult(args.command, args.io, result, formatRunHuman);
+      args.io.setExitCode(2);
+      return undefined;
+    }
+    const scorer = scorerLoad.scorer;
+    if (scorer) {
+      // Cross-repo guardrail: `humanish lab run` now import()s host JS named in the manifest.
+      // Surface it so the invoker (who may not be the manifest author) knows executable code ran.
+      args.io.writeErr(
+        `warning: review scorer ${scorer.provenance.ref} (${scorer.provenance.source}) is executable host code loaded and run in-process — review it as code, not config.\n`,
+      );
+    }
+    const analysisBudget = automaticAnalysisBudget(config.review?.analysis, backend);
+    if (analysisBudget && resolveLabDryRun(config, args.options.dryRun, true) === false) {
+      args.io.writeErr(`${formatAutomaticAnalysisBudget(analysisBudget)}\n`);
+    }
+    return scorer === undefined ? {} : { scorer };
   });
-  if (!scorerLoad.ok) {
-    const result: RunResult = {
-      schema: "humanish.run-result.v1",
-      ok: false,
-      cwd: resolve(args.options.cwd),
-      warnings: [],
-      error: scorerLoad.error,
-    };
-    writeResult(args.command, args.io, result, formatRunHuman);
-    args.io.setExitCode(2);
-    return;
-  }
-  const scorer = scorerLoad.scorer;
-  if (scorer) {
-    // Cross-repo guardrail: `humanish lab run` now import()s host JS named in the manifest. Surface it
-    // visibly so the invoker (who may not be the manifest author) knows executable code just ran.
-    args.io.writeErr(
-      `warning: review scorer ${scorer.provenance.ref} (${scorer.provenance.source}) is executable host code loaded and run in-process — review it as code, not config.\n`,
-    );
-  }
-
-  const analysisBudget = automaticAnalysisBudget(config.review?.analysis, backend);
-  if (analysisBudget && resolveLabDryRun(config, args.options.dryRun, true) === false) {
-    args.io.writeErr(`${formatAutomaticAnalysisBudget(analysisBudget)}\n`);
-  }
-
-  await runBackend(config, run, scorer);
 }
 
 /** The route's backend setup. Undefined when the setup has already written its own result. */

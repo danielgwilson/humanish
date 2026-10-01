@@ -39,10 +39,17 @@ vi.mock("../../src/lab/engine.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../src/lab/engine.js")>();
   return {
     ...actual,
-    runLab: async (...args: Parameters<typeof actual.runLab>) => {
-      const outcome = await actual.runLab(...args);
-      await swapRunDirectory(outcome.result.runId);
-      return outcome;
+    prepareLab: async (...args: Parameters<typeof actual.prepareLab>) => {
+      const prepared = await actual.prepareLab(...args);
+      if (!prepared.ok) return prepared;
+      return {
+        ok: true as const,
+        run: async (...runArgs: Parameters<typeof prepared.run>) => {
+          const outcome = await prepared.run(...runArgs);
+          await swapRunDirectory(outcome.result.runId);
+          return outcome;
+        },
+      };
     },
   };
 });

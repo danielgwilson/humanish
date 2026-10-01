@@ -32,6 +32,7 @@ const labs: Record<string, RawLab> = {
   "adm-shared-live": lab("sharedProvisioned", live),
   "adm-clone-codex-app-server": lab("cuClone", {}, { type: "codex-app-server" }),
   "adm-clone-no-serve": lab("cuClone", { subject: { serve: undefined } }),
+  "adm-cu-local-app": lab("cuLocalApp"),
 };
 
 // Writes a marker when imported, so a case can tell whether scorer host code ran.
@@ -55,6 +56,10 @@ const cases: readonly (readonly string[])[] = [
   ["lab", "run", "adm-scripted", "--scorer", "./scorer.mjs", "--json"],
   // The count is checked before the scorer loads, so its host code never runs (F4).
   ["lab", "run", "adm-cu", "--scorer", "./scorer.mjs", "--count", "0", "--json"],
+  // A plan refusal also comes before the scorer loads (F4).
+  ["lab", "run", "adm-terminal-live-no-caps", "--scorer", "./scorer.mjs", "--json"],
+  // A parse-valid local-app lab with no executor: the computer-use planner refuses it.
+  ["lab", "run", "adm-cu-local-app", "--scorer", "./scorer.mjs", "--json"],
   // Missing keys win over an unpriced cap on computer use (F3); shared world checks price first.
   ["lab", "run", "adm-cu-unpriced", "--json"],
   ["lab", "run", "adm-shared-unpriced", "--json"],
