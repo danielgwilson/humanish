@@ -5,7 +5,7 @@ import type {
   ParticipantDeclaredOutcome,
 } from "../actors/contract.js";
 import type { CuaGoalSource } from "../actors/goal-source.js";
-import type { AutomaticStudyAnalysisView } from "./job.js";
+import type { AutomaticAnalysisView } from "./job.js";
 
 /** Independent interpretation of retained evidence; never a participant or harness verdict. */
 export const STUDY_ANALYSIS_SCHEMA = "humanish.study-analysis.v1" as const;
@@ -72,7 +72,7 @@ export interface AnalysisParticipantInput {
     }> | null;
   };
 }
-export interface StudyAnalysisInput {
+export interface AnalysisInput {
   runId: string;
   sourceRunSha256: string;
   inputDigest: string;
@@ -124,7 +124,7 @@ interface AnalysisConcernReview extends AnalysisObservation {
   findingId: string | null;
   reason: string;
 }
-export interface StudyAnalysisResult {
+export interface AnalysisResult {
   summary: string;
   participants: AnalysisParticipantReview[];
   /** Absent in older reports. New analyses account for material exclusions as well as findings. */
@@ -133,7 +133,7 @@ export interface StudyAnalysisResult {
   findings: AnalysisFinding[];
   limitations: string[];
 }
-interface OpenAIStudyAnalysisConfig {
+interface OpenAIAnalysisConfig {
   provider?: "openai" | undefined;
   model: string;
   question: string | null;
@@ -154,7 +154,7 @@ export interface CodexAnalysisIdentity {
   toolPolicy: string;
   cliVersion: string;
 }
-export interface CodexStudyAnalysisConfig {
+export interface CodexAnalysisConfig {
   provider: "codex";
   model: string;
   question: string | null;
@@ -164,7 +164,7 @@ export interface CodexStudyAnalysisConfig {
   identity: CodexAnalysisIdentity;
 }
 /** Omitted provider remains the historical OpenAI API contract, including its exact hash. */
-export type StudyAnalysisConfig = OpenAIStudyAnalysisConfig | CodexStudyAnalysisConfig;
+export type AnalysisConfig = OpenAIAnalysisConfig | CodexAnalysisConfig;
 export interface AnalysisUsage {
   inputTokens: number | null;
   outputTokens: number | null;
@@ -176,7 +176,7 @@ export interface AnalysisUsage {
   ratesAsOf: string | null;
   estimatedAdmissionUsd: number | null;
 }
-export interface StudyAnalysisArtifact {
+export interface AnalysisArtifact {
   schema: typeof STUDY_ANALYSIS_SCHEMA;
   id: string;
   runId: string;
@@ -187,18 +187,18 @@ export interface StudyAnalysisArtifact {
   inputDigest: string;
   captureVersion?: CaptureVersion;
   configDigest: string;
-  config: StudyAnalysisConfig;
+  config: AnalysisConfig;
   promptVersion: string;
   provider: "openai" | "codex";
   usage: AnalysisUsage;
   participants: AnalysisParticipantInput[];
   coverage: AnalysisCoverage;
   evidence: AnalysisEvidence[];
-  result: StudyAnalysisResult | null;
+  result: AnalysisResult | null;
   /** Safe stable failure code, never a provider error payload. */
   error: string | null;
 }
-export interface StudyAnalysisCorrection {
+export interface AnalysisCorrection {
   schema: typeof STUDY_ANALYSIS_CORRECTION_SCHEMA;
   id: string;
   analysisId: string;
@@ -210,11 +210,11 @@ export interface StudyAnalysisCorrection {
   reason: string;
   replacementClaim: string | null;
 }
-export interface LoadedStudyAnalysis {
+export interface LoadedAnalysis {
   state: "none" | "ready" | "stale" | "invalid";
-  analysis: StudyAnalysisArtifact | null;
-  corrections: StudyAnalysisCorrection[];
+  analysis: AnalysisArtifact | null;
+  corrections: AnalysisCorrection[];
   warnings: string[];
   /** Independent post-run execution metadata; never changes evidence sharing grades. */
-  automatic?: AutomaticStudyAnalysisView;
+  automatic?: AutomaticAnalysisView;
 }

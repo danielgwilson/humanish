@@ -10,18 +10,15 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { resolveAutomaticAnalysis } from "../../src/analysis/automatic-config.js";
 import { codexAnalysisIdentity } from "../../src/analysis/codex-config.js";
-import {
-  runStudyAnalysis,
-  type StudyAnalysisProgress,
-} from "../../src/analysis/run-study-analysis.js";
+import { runStudyAnalysis, type AnalysisProgress } from "../../src/analysis/run-study-analysis.js";
 import { captureStudyEvidence } from "../../src/analysis/evidence.js";
 import type {
   AnalysisFetch,
-  StudyAnalysisProvider,
-  StudyAnalysisProviderRequest,
+  AnalysisProvider,
+  AnalysisProviderRequest,
 } from "../../src/analysis/provider.js";
 import { analyzeStudy, type AnalyzeDeps, type AnalyzeOptions } from "../../src/analysis/service.js";
-import type { StudyAnalysisConfig, StudyAnalysisInput } from "../../src/analysis/study-analysis.js";
+import type { AnalysisConfig, AnalysisInput } from "../../src/analysis/study-analysis.js";
 import { digestStudyAnalysisInput } from "../../src/analysis/validation.js";
 import type { RunBundle } from "../../src/run/bundle.js";
 import { runDryRun } from "../../src/run/dry-run.js";
@@ -35,7 +32,7 @@ const openai = {
   maxCostUsd: 5,
   timeoutMs: 1000,
   maxOutputTokens: 8192,
-} satisfies StudyAnalysisConfig;
+} satisfies AnalysisConfig;
 // Real captured wire envelope; only the synthetic analysis answer is replaced.
 // Provenance: fixtures/openai-closing-report/README.md.
 const wirePath = new URL(
@@ -43,7 +40,7 @@ const wirePath = new URL(
   import.meta.url,
 );
 
-function codex(): StudyAnalysisConfig {
+function codex(): AnalysisConfig {
   const selected = resolveAutomaticAnalysis({ provider: "codex", timeoutMs: 1000 });
   if (!selected.ok || selected.config?.provider !== "codex")
     throw new Error("Synthetic configuration failed");
@@ -77,7 +74,7 @@ async function finishedRun(live = true): Promise<string> {
 }
 
 /** The evidence the service will capture, so a fake answer can cite it. */
-async function capturedInput(cwd: string): Promise<StudyAnalysisInput> {
+async function capturedInput(cwd: string): Promise<AnalysisInput> {
   const prepared = await resolveRunPath(cwd, RUN);
   const bytes = await readFile(path.join(cwd, ".humanish", "runs", RUN, "run.json"));
   return captureStudyEvidence(prepared!, bytes);
@@ -87,7 +84,7 @@ async function capturedInput(cwd: string): Promise<StudyAnalysisInput> {
  * Replace what differs between two runs of the same scenario: the temp project path, timestamps,
  * UUIDs, and the source digests, which cover run.json bytes that carry both.
  */
-function normalizer(cwd: string, source?: StudyAnalysisInput): (value: unknown) => unknown {
+function normalizer(cwd: string, source?: AnalysisInput): (value: unknown) => unknown {
   const literals: Array<[string, string]> = [[cwd, "[cwd]"]];
   if (source) {
     literals.push(
@@ -134,7 +131,7 @@ async function analysisFiles(cwd: string): Promise<Record<string, unknown>> {
 }
 
 async function wireFetch(
-  input: StudyAnalysisInput,
+  input: AnalysisInput,
   requests: unknown[] = [],
   answer: unknown = syntheticResult(input),
   edit: (wire: { usage: Record<string, unknown> }) => void = () => {},
@@ -161,7 +158,7 @@ interface Recorded {
   result?: unknown;
   thrown?: string;
   requests: unknown[];
-  progress: StudyAnalysisProgress[];
+  progress: AnalysisProgress[];
   files?: Record<string, unknown>;
 }
 
@@ -170,7 +167,7 @@ async function analyze(
   options: AnalyzeOptions,
   deps: AnalyzeDeps & { requests?: unknown[] } = {},
 ): Promise<Recorded> {
-  const progress: StudyAnalysisProgress[] = [];
+  const progress: AnalysisProgress[] = [];
   const { requests = [], ...rest } = deps;
   const source = await capturedInput(cwd).catch(() => undefined);
   const result = await analyzeStudy(cwd, RUN, options, {
@@ -182,17 +179,17 @@ async function analyze(
   return {
     result: normalize(result),
     requests: hashBodies(normalize(requests) as unknown[]),
-    progress: normalize(progress) as StudyAnalysisProgress[],
+    progress: normalize(progress) as AnalysisProgress[],
     files: normalize(await analysisFiles(cwd)) as Record<string, unknown>,
   };
 }
 
 function codexProvider(
-  input: StudyAnalysisInput,
+  input: AnalysisInput,
   requests: unknown[],
-  response: Partial<Awaited<ReturnType<StudyAnalysisProvider>>> = {},
-): StudyAnalysisProvider {
-  return vi.fn<StudyAnalysisProvider>(async (request: StudyAnalysisProviderRequest) => {
+  response: Partial<Awaited<ReturnType<AnalysisProvider>>> = {},
+): AnalysisProvider {
+  return vi.fn<AnalysisProvider>(async (request: AnalysisProviderRequest) => {
     requests.push({
       model: request.model,
       maxOutputTokens: request.maxOutputTokens,
@@ -278,7 +275,7 @@ async function admissionAndReuseScenarios(scenarios: Record<string, Recorded>): 
 /** Provider failures and the dispatch guard, each on a fresh run. */
 async function providerFailureScenarios(scenarios: Record<string, Recorded>): Promise<void> {
   let cwd: string;
-  let input: StudyAnalysisInput;
+  let input: AnalysisInput;
   cwd = await finishedRun();
   scenarios["provider HTTP 503"] = await analyze(
     cwd,
@@ -338,7 +335,7 @@ async function providerFailureScenarios(scenarios: Record<string, Recorded>): Pr
 /** Storage obstacles during the request, the Codex provider, and a dry-run bundle. */
 async function storageAndCodexScenarios(scenarios: Record<string, Recorded>): Promise<void> {
   let cwd: string;
-  let input: StudyAnalysisInput;
+  let input: AnalysisInput;
   // Storage obstacles placed while the request is in flight, after the pre-dispatch checks.
   const obstacles: ReadonlyArray<readonly [string, (runRoot: string) => Promise<void>]> = [
     [
@@ -443,11 +440,11 @@ describe("runStudyAnalysis characterization golden", () => {
     input.inputDigest = digestStudyAnalysisInput(input);
     const direct = async (
       name: string,
-      config: StudyAnalysisConfig,
+      config: AnalysisConfig,
       options: Parameters<typeof runStudyAnalysis>[2],
       requests: unknown[] = [],
     ) => {
-      const progress: StudyAnalysisProgress[] = [];
+      const progress: AnalysisProgress[] = [];
       try {
         const artifact = await runStudyAnalysis(input, config, {
           ...options,

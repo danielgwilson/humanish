@@ -20,7 +20,7 @@ import { resolveRunPath } from "../../src/run/locate.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { type RunBundle } from "../../src/run/bundle.js";
-import type { StudyAnalysisConfig, StudyAnalysisInput } from "../../src/analysis/study-analysis.js";
+import type { AnalysisConfig, AnalysisInput } from "../../src/analysis/study-analysis.js";
 import { syntheticArtifact, syntheticResult } from "./fixtures.js";
 import { computeStats } from "../../src/run/stats.js";
 import {
@@ -28,7 +28,7 @@ import {
   readAutomaticStudyAnalysis,
 } from "../../src/analysis/automatic.js";
 
-const config: StudyAnalysisConfig = {
+const config: AnalysisConfig = {
   model: "gpt-5.6-sol",
   question: null,
   maxCostUsd: 5,
@@ -45,7 +45,7 @@ const wirePath = new URL(
 describe("ordinary study analysis flow", () => {
   let cwd: string;
   let runRoot: string;
-  let input: StudyAnalysisInput;
+  let input: AnalysisInput;
   let original: Buffer;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-analysis-flow-"));

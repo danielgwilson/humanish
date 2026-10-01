@@ -9,7 +9,7 @@
 // at the moment it completes.
 
 import { readAutomaticStudyAnalysis } from "../analysis/automatic.js";
-import type { AutomaticStudyAnalysisView } from "../analysis/job.js";
+import type { AutomaticAnalysisView } from "../analysis/job.js";
 import path from "node:path";
 
 import { estimateActorCostForExecution } from "./pricing.js";
@@ -61,7 +61,7 @@ export interface RunParticipant {
 }
 
 export interface RunDetail {
-  automaticAnalysis?: AutomaticStudyAnalysisView;
+  automaticAnalysis?: AutomaticAnalysisView;
   schema: typeof RUN_DETAIL_SCHEMA;
   runId: string;
   participants: RunParticipant[];

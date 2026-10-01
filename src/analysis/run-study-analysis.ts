@@ -8,17 +8,17 @@ import {
   ANALYSIS_ID_PATTERN,
   STUDY_ANALYSIS_SCHEMA,
   type AnalysisObservation,
-  type StudyAnalysisArtifact,
-  type StudyAnalysisConfig,
-  type StudyAnalysisInput,
-  type StudyAnalysisResult,
+  type AnalysisArtifact,
+  type AnalysisConfig,
+  type AnalysisInput,
+  type AnalysisResult,
 } from "./study-analysis.js";
 import {
   INPUT_IMAGE_DATA_URL,
   type AnalysisFetch,
   createStudyAnalysisProvider,
-  type StudyAnalysisProvider,
-  type StudyAnalysisProviderResult,
+  type AnalysisProvider,
+  type AnalysisProviderResult,
 } from "./provider.js";
 import {
   checkAnalysisResult,
@@ -79,7 +79,7 @@ Keep every field as qualified as its evidence. This includes headlines, summarie
 
 Order findings by observed task impact, replication among exposed participants, and recovery. Preserve severity and confidence as separate fields. Do not compute a numeric frustration score or universal priority score. Use F1, F2, and so on as local finding IDs. Explain ordering with concrete evidence. Provide a short, testable next check for each finding. Say when recovery was not observed rather than claiming it was impossible. Keep titles and summaries concise and specific. The overall summary must be grounded in participant reviews and observations, including successful outcomes and evidence limits.`;
 
-export interface StudyAnalysisAdmission {
+export interface AnalysisAdmission {
   allowed: boolean;
   error: string | null;
   inputTokenAllowance: number | null;
@@ -87,19 +87,19 @@ export interface StudyAnalysisAdmission {
   estimatedCostUsd: number | null;
   ratesAsOf: string | null;
 }
-export interface StudyAnalysisProgress {
+export interface AnalysisProgress {
   phase: "admitted" | "requesting" | "validating" | "finished";
   evidenceCount: number;
   captureCount: number;
   estimatedAdmissionUsd: number | null;
-  status?: StudyAnalysisArtifact["status"];
+  status?: AnalysisArtifact["status"];
 }
 
-function instructions(config: StudyAnalysisConfig): string {
+function instructions(config: AnalysisConfig): string {
   return `${INSTRUCTIONS}\n\nResearcher question (null means use the standard review): ${JSON.stringify(config.question)}`;
 }
 
-function evidenceText(input: StudyAnalysisInput): string {
+function evidenceText(input: AnalysisInput): string {
   // Filesystem paths and image bytes are not capabilities for the model. Images are separately
   // attached, labeled with the same packet-local evidence key that the validator resolves.
   return JSON.stringify({
@@ -113,7 +113,7 @@ function evidenceText(input: StudyAnalysisInput): string {
   });
 }
 
-function inputError(input: StudyAnalysisInput): string | null {
+function inputError(input: AnalysisInput): string | null {
   try {
     validateStudyAnalysisInputMetadata(input);
   } catch {
@@ -177,10 +177,10 @@ function inputError(input: StudyAnalysisInput): string | null {
  * analysis_question_sensitive. Neither error includes rejected input values.
  */
 export function estimateStudyAnalysisAdmission(
-  input: StudyAnalysisInput,
-  config: StudyAnalysisConfig,
-): StudyAnalysisAdmission {
-  const denied = (error: string): StudyAnalysisAdmission => ({
+  input: AnalysisInput,
+  config: AnalysisConfig,
+): AnalysisAdmission {
+  const denied = (error: string): AnalysisAdmission => ({
     allowed: false,
     error,
     inputTokenAllowance: 0,
@@ -272,22 +272,22 @@ export function estimateStudyAnalysisAdmission(
  * more reasoning/report space would refuse a study its declared budget admits.
  * This is one pre-dispatch choice, never a fallback request or a budget increase. */
 export function preferLargerStudyAnalysisOutput(
-  input: StudyAnalysisInput,
-  config: StudyAnalysisConfig,
-): StudyAnalysisConfig {
+  input: AnalysisInput,
+  config: AnalysisConfig,
+): AnalysisConfig {
   if (config.provider === "codex" || config.maxOutputTokens !== DEFAULT_ANALYSIS_MAX_OUTPUT_TOKENS)
     return config;
   const expanded = { ...config, maxOutputTokens: MAX_ANALYSIS_OUTPUT_TOKENS };
   return estimateStudyAnalysisAdmission(input, expanded).allowed ? expanded : config;
 }
 
-export type StudyAnalysisDispatchContext = Pick<
-  StudyAnalysisArtifact,
+export type AnalysisDispatchContext = Pick<
+  AnalysisArtifact,
   "id" | "runId" | "sourceRunSha256" | "inputDigest" | "configDigest" | "promptVersion"
 >;
 
 /** Scrub only generated prose. Source evidence, provenance and integrity hashes remain exact. */
-function scrubGeneratedNarrative(result: StudyAnalysisResult): StudyAnalysisResult {
+function scrubGeneratedNarrative(result: AnalysisResult): AnalysisResult {
   const scrub = scrubTransientCommsText;
   const observation = <T extends AnalysisObservation>(value: T): T => ({
     ...value,
@@ -372,16 +372,14 @@ const VALIDATION_FAILURES: Readonly<Record<string, string>> = Object.freeze({
   ANALYSIS_CONCERN_FINDING_INVALID: "analysis_validation_failed_concern_finding_invalid",
 });
 
-type CheckedProviderAnalysis =
-  | { ok: true; result: StudyAnalysisResult }
-  | { ok: false; error: string };
+type CheckedProviderAnalysis = { ok: true; result: AnalysisResult } | { ok: false; error: string };
 
-function checkProviderAnalysis(input: StudyAnalysisInput, value: unknown): CheckedProviderAnalysis {
+function checkProviderAnalysis(input: AnalysisInput, value: unknown): CheckedProviderAnalysis {
   try {
     const parsed = studyAnalysisResponseSchema.safeParse(value);
     if (!parsed.success)
       return { ok: false, error: VALIDATION_FAILURES.ANALYSIS_RESULT_SCHEMA_INVALID! };
-    let scrubbed: StudyAnalysisResult;
+    let scrubbed: AnalysisResult;
     try {
       scrubbed = scrubGeneratedNarrative(parsed.data);
     } catch (error) {
@@ -406,24 +404,24 @@ function checkProviderAnalysis(input: StudyAnalysisInput, value: unknown): Check
   }
 }
 
-interface RunStudyAnalysisOptions {
+interface RunAnalysisOptions {
   apiKey?: string;
   /** Test hook for the Codex provider call; no manifest or CLI route can supply one. */
-  codexProvider?: StudyAnalysisProvider;
+  codexProvider?: AnalysisProvider;
   signal?: AbortSignal;
-  onProgress?: (progress: StudyAnalysisProgress) => void;
+  onProgress?: (progress: AnalysisProgress) => void;
   fetch?: AnalysisFetch;
   /** Set by automatic analysis to its job attempt id, claimed before any provider call. */
   analysisId?: string;
-  beforeDispatch?: (context: StudyAnalysisDispatchContext) => Promise<void>;
+  beforeDispatch?: (context: AnalysisDispatchContext) => Promise<void>;
 }
 
 /** Check the caller's id, input metadata and admission; throw the stable code a direct caller receives. */
 function admitDirectAnalysis(
-  input: StudyAnalysisInput,
-  config: StudyAnalysisConfig,
+  input: AnalysisInput,
+  config: AnalysisConfig,
   analysisId: string | undefined,
-): StudyAnalysisAdmission {
+): AnalysisAdmission {
   if (analysisId !== undefined && !ANALYSIS_ID_PATTERN.test(analysisId)) {
     throw new Error("ANALYSIS_ID_INVALID");
   }
@@ -443,12 +441,12 @@ function admitDirectAnalysis(
 
 /** The artifact before any provider call: failed, carrying the admission error and no usage. */
 function initialArtifact(
-  input: StudyAnalysisInput,
-  config: StudyAnalysisConfig,
-  admission: StudyAnalysisAdmission,
+  input: AnalysisInput,
+  config: AnalysisConfig,
+  admission: AnalysisAdmission,
   id: string,
   createdAt: string,
-): StudyAnalysisArtifact {
+): AnalysisArtifact {
   return {
     schema: STUDY_ANALYSIS_SCHEMA,
     id,
@@ -483,9 +481,9 @@ function initialArtifact(
 }
 
 async function analysisProvider(
-  config: StudyAnalysisConfig,
-  options: RunStudyAnalysisOptions,
-): Promise<StudyAnalysisProvider> {
+  config: AnalysisConfig,
+  options: RunAnalysisOptions,
+): Promise<AnalysisProvider> {
   return config.provider === "codex"
     ? (options.codexProvider ??
         (await import("./restricted-codex.js")).createRestrictedCodexAnalysisProvider({
@@ -499,9 +497,9 @@ async function analysisProvider(
 
 /** Copy the provider's reported tokens onto the artifact; OpenAI usage is also priced. */
 function recordProviderUsage(
-  artifact: StudyAnalysisArtifact,
-  config: StudyAnalysisConfig,
-  response: StudyAnalysisProviderResult,
+  artifact: AnalysisArtifact,
+  config: AnalysisConfig,
+  response: AnalysisProviderResult,
 ): void {
   artifact.usage.dispatched = response.dispatched;
   if (!response.usage) return;
@@ -525,11 +523,11 @@ function recordProviderUsage(
  * exceptions do not.
  */
 function settleCompletedOutput(
-  artifact: StudyAnalysisArtifact,
-  input: StudyAnalysisInput,
-  config: StudyAnalysisConfig,
-  admission: StudyAnalysisAdmission,
-  response: StudyAnalysisProviderResult,
+  artifact: AnalysisArtifact,
+  input: AnalysisInput,
+  config: AnalysisConfig,
+  admission: AnalysisAdmission,
+  response: AnalysisProviderResult,
 ): void {
   const checked = checkProviderAnalysis(input, response.output);
   if (!checked.ok) {
@@ -553,10 +551,10 @@ function settleCompletedOutput(
 
 /** Explicit invocation or an opted-in post-run owner; Observer readers never call this. */
 export async function runStudyAnalysis(
-  input: StudyAnalysisInput,
-  config: StudyAnalysisConfig,
-  options: RunStudyAnalysisOptions,
-): Promise<StudyAnalysisArtifact> {
+  input: AnalysisInput,
+  config: AnalysisConfig,
+  options: RunAnalysisOptions,
+): Promise<AnalysisArtifact> {
   // Callers retain their own object references. Snapshot once so a display callback or later
   // caller mutation cannot alter the admitted prompt, citations, or stored provenance mid-run.
   input = structuredClone(input);
@@ -570,7 +568,7 @@ export async function runStudyAnalysis(
     options.analysisId ?? `analysis-${randomUUID()}`,
     createdAt,
   );
-  const progress = (phase: StudyAnalysisProgress["phase"]): void => {
+  const progress = (phase: AnalysisProgress["phase"]): void => {
     // A display callback is not part of provider execution; it must not turn a paid successful
     // response into a thrown error or interrupt persistence of its usage.
     try {
@@ -585,12 +583,12 @@ export async function runStudyAnalysis(
       /* Progress observers do not own execution or storage. */
     }
   };
-  const finish = (): StudyAnalysisArtifact => {
+  const finish = (): AnalysisArtifact => {
     artifact.completedAt = new Date().toISOString();
     progress("finished");
     return artifact;
   };
-  const cancel = (): StudyAnalysisArtifact => {
+  const cancel = (): AnalysisArtifact => {
     artifact.status = "cancelled";
     artifact.error = "analysis_cancelled";
     return finish();

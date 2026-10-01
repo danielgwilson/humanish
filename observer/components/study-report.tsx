@@ -15,7 +15,7 @@ import { StudyReportOverview } from "./study-report-overview";
 import {
   ANALYSIS_ADMISSION_EXCEEDED_DETAIL,
   automaticAnalysisNotice,
-  type AutomaticStudyAnalysisView,
+  type AutomaticAnalysisView,
 } from "@/lib/automatic-analysis";
 
 export function StudyReport({
@@ -32,7 +32,7 @@ export function StudyReport({
 }: {
   data: ObserverData;
   report: ReportData | undefined;
-  automatic?: AutomaticStudyAnalysisView;
+  automatic?: AutomaticAnalysisView;
   snapshot?: boolean;
   now?: number;
   findingId: string;

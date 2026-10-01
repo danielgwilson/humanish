@@ -49,10 +49,10 @@ import { serveRunPath } from "../../src/observer/run-routes.js";
 import * as observer from "../../src/observer/render.js";
 import { exportRun } from "../../src/feedback/export.js";
 import type { PreparedRunArtifactPaths } from "../../src/run/paths.js";
-import type { StudyAnalysisConfig, StudyAnalysisInput } from "../../src/analysis/study-analysis.js";
+import type { AnalysisConfig, AnalysisInput } from "../../src/analysis/study-analysis.js";
 import { syntheticResult } from "./fixtures.js";
 
-const config: StudyAnalysisConfig = {
+const config: AnalysisConfig = {
   model: "gpt-5.6-sol",
   question: null,
   maxCostUsd: 5,
@@ -70,7 +70,7 @@ describe("opted-in automatic analysis ownership", () => {
   let cwd: string,
     root: string,
     prepared: PreparedRunArtifactPaths,
-    input: StudyAnalysisInput,
+    input: AnalysisInput,
     original: Buffer;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-automatic-analysis-"));

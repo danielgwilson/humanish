@@ -9,9 +9,9 @@ import {
   STUDY_ANALYSIS_PROMPT_VERSION,
 } from "../../src/analysis/run-study-analysis.js";
 import type {
-  StudyAnalysisConfig,
-  StudyAnalysisInput,
-  StudyAnalysisResult,
+  AnalysisConfig,
+  AnalysisInput,
+  AnalysisResult,
 } from "../../src/analysis/study-analysis.js";
 import {
   digestStudyAnalysisInput,
@@ -28,7 +28,7 @@ const captured = JSON.parse(
     "utf8",
   ),
 );
-const config: StudyAnalysisConfig = {
+const config: AnalysisConfig = {
   model: "gpt-5.6-sol",
   question: null,
   maxCostUsd: 5,
@@ -36,8 +36,8 @@ const config: StudyAnalysisConfig = {
   maxOutputTokens: 8192,
 };
 
-function input(): StudyAnalysisInput {
-  const value: StudyAnalysisInput = {
+function input(): AnalysisInput {
+  const value: AnalysisInput = {
     runId: "synthetic-study",
     sourceRunSha256: "a".repeat(64),
     inputDigest: "",
@@ -85,7 +85,7 @@ function input(): StudyAnalysisInput {
   value.inputDigest = digestStudyAnalysisInput(value);
   return value;
 }
-function result(): StudyAnalysisResult {
+function result(): AnalysisResult {
   return {
     summary: "The participant reported a saving blocker; the recording has no visual confirmation.",
     concernReviews: [],
@@ -331,7 +331,7 @@ describe("bounded study analysis run", () => {
         .join("");
       const encoded = JSON.stringify(packet).replace(marker, escaped);
       expect(encoded).not.toContain(marker);
-      const decoded = JSON.parse(encoded) as StudyAnalysisInput;
+      const decoded = JSON.parse(encoded) as AnalysisInput;
       decoded.inputDigest = digestStudyAnalysisInput(decoded);
       const admission = estimateStudyAnalysisAdmission(decoded, config);
       expect(admission).toMatchObject({

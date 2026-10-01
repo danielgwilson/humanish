@@ -8,8 +8,8 @@ import type { RunStream } from "../run/streams.js";
 import {
   ACTION_CAPTURE_VERSION,
   type AnalysisEvidence,
-  type StudyAnalysisArtifact,
-  type StudyAnalysisInput,
+  type AnalysisArtifact,
+  type AnalysisInput,
 } from "./study-analysis.js";
 import {
   digestStudyAnalysisInput,
@@ -51,7 +51,7 @@ const UNFINISHED_STREAM_STATUSES: ReadonlySet<string> = new Set([
   "suspended",
 ]);
 
-export type StudyEvidenceLimits = { [Key in keyof typeof STUDY_EVIDENCE_LIMITS]?: number };
+export type EvidenceLimits = { [Key in keyof typeof STUDY_EVIDENCE_LIMITS]?: number };
 const sha256 = (bytes: Buffer): string => createHash("sha256").update(bytes).digest("hex");
 
 function parseSource(prepared: PreparedRunArtifactPaths, bytes: Buffer): RunBundle {
@@ -122,9 +122,9 @@ function parseSource(prepared: PreparedRunArtifactPaths, bytes: Buffer): RunBund
 export async function captureStudyEvidence(
   prepared: PreparedRunArtifactPaths,
   bundleBytes: Buffer,
-  requested: StudyEvidenceLimits = {},
-): Promise<StudyAnalysisInput> {
-  const limits: Required<StudyEvidenceLimits> = { ...STUDY_EVIDENCE_LIMITS, ...requested };
+  requested: EvidenceLimits = {},
+): Promise<AnalysisInput> {
+  const limits: Required<EvidenceLimits> = { ...STUDY_EVIDENCE_LIMITS, ...requested };
   for (const key of Object.keys(STUDY_EVIDENCE_LIMITS) as Array<
     keyof typeof STUDY_EVIDENCE_LIMITS
   >) {
@@ -150,7 +150,7 @@ export async function captureStudyEvidence(
   }
   const selected = bundle.streams.slice(0, limits.participants);
   const evidence: AnalysisEvidence[] = [];
-  const images: StudyAnalysisInput["images"] = [];
+  const images: AnalysisInput["images"] = [];
   const omissions = new Set<string>();
   let textBytes = 0;
   const participants = selected.map((stream) => {
@@ -230,7 +230,7 @@ interface ParticipantPacking {
 
 /** The per-participant shares and overall budgets of one capture selection, and what it has spent. */
 interface CaptureSelection {
-  readonly limits: Required<StudyEvidenceLimits>;
+  readonly limits: Required<EvidenceLimits>;
   readonly evidenceShares: number[];
   readonly captureOrders: SourceEntry[][];
   readonly captureShares: number[];
@@ -248,7 +248,7 @@ interface CaptureSelection {
 
 function planCaptureSelection(
   packings: readonly ParticipantPacking[],
-  limits: Required<StudyEvidenceLimits>,
+  limits: Required<EvidenceLimits>,
 ): CaptureSelection {
   // Missing/invalid files cannot turn selection into an exhaustive file scan.
   // At most 2 * captures bounded reads, each at most imageBytes; successfully
@@ -507,7 +507,7 @@ function packEvidence(
   packings: readonly ParticipantPacking[],
   textByEntry: ReadonlyMap<SourceEntry, string>,
   evidence: AnalysisEvidence[],
-  images: StudyAnalysisInput["images"],
+  images: AnalysisInput["images"],
 ): void {
   for (const stream of selected) {
     const packing = packings.find((candidate) => candidate.stream === stream)!;
@@ -546,7 +546,7 @@ function packEvidence(
 /** Validate exact source membership before any stored path may be read. */
 export async function validateStudyAnalysisEvidence(
   prepared: PreparedRunArtifactPaths,
-  artifact: StudyAnalysisArtifact,
+  artifact: AnalysisArtifact,
   bundleBytes: Buffer,
 ): Promise<void> {
   if (artifact.captureVersion !== undefined && artifact.captureVersion !== ACTION_CAPTURE_VERSION)

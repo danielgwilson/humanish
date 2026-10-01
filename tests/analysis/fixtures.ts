@@ -1,12 +1,12 @@
 import type {
-  StudyAnalysisArtifact,
-  StudyAnalysisInput,
-  StudyAnalysisResult,
+  AnalysisArtifact,
+  AnalysisInput,
+  AnalysisResult,
 } from "../../src/analysis/study-analysis.js";
 import { digestStudyAnalysisInput, hashStudyAnalysisValue } from "../../src/analysis/validation.js";
 
-export function syntheticInput(): StudyAnalysisInput {
-  const input: StudyAnalysisInput = {
+export function syntheticInput(): AnalysisInput {
+  const input: AnalysisInput = {
     runId: "synthetic-study",
     sourceRunSha256: "a".repeat(64),
     inputDigest: "",
@@ -72,7 +72,7 @@ export function syntheticInput(): StudyAnalysisInput {
   return input;
 }
 
-export function syntheticResult(input = syntheticInput()): StudyAnalysisResult {
+export function syntheticResult(input = syntheticInput()): AnalysisResult {
   const first = input.coverage.includedStreamIds[0]!;
   const firstEvidence = input.evidence.find((entry) => entry.streamId === first)!;
   return {
@@ -119,10 +119,7 @@ export function syntheticResult(input = syntheticInput()): StudyAnalysisResult {
   };
 }
 
-export function syntheticArtifact(
-  input = syntheticInput(),
-  id = "analysis-1",
-): StudyAnalysisArtifact {
+export function syntheticArtifact(input = syntheticInput(), id = "analysis-1"): AnalysisArtifact {
   const config = {
     model: "synthetic-reviewer",
     question: null,

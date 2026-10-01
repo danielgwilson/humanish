@@ -16,7 +16,7 @@ import {
   validateStudyAnalysisArtifact,
   validateStudyAnalysisInputMetadata,
 } from "../../src/analysis/validation.js";
-import type { StudyAnalysisInput } from "../../src/analysis/study-analysis.js";
+import type { AnalysisInput } from "../../src/analysis/study-analysis.js";
 import { syntheticArtifact } from "./fixtures.js";
 
 // Original synthetic actor-contract fixture. Scripted captures belong to action
@@ -203,7 +203,7 @@ describe("versioned scripted capture evidence", () => {
     const source = await save(),
       current = await captureStudyEvidence(prepared, source);
     const { captureVersion: _version, ...old } = structuredClone(current);
-    const legacy: StudyAnalysisInput = {
+    const legacy: AnalysisInput = {
       ...old,
       images: [],
       participants: old.participants.map((p) => ({ ...p, assignment: null })),
@@ -250,7 +250,7 @@ describe("versioned scripted capture evidence", () => {
       validateStudyAnalysisInputMetadata({
         ...input,
         captureVersion: 3,
-      } as unknown as StudyAnalysisInput),
+      } as unknown as AnalysisInput),
     ).toThrow("ANALYSIS_INPUT_INVALID");
   });
   it("does not turn a CUA backstop's contextual screenshot reference into another capture", async () => {

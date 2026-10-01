@@ -4,12 +4,12 @@
 import type { PreparedRunArtifactPaths } from "../run/paths.js";
 import { readAutomaticStudyAnalysisPrepared } from "./job.js";
 import { loadStudyAnalysisRecord } from "./store.js";
-import type { LoadedStudyAnalysis } from "./study-analysis.js";
+import type { LoadedAnalysis } from "./study-analysis.js";
 
 export async function loadStudyAnalysis(
   prepared: PreparedRunArtifactPaths,
   id?: string,
-): Promise<LoadedStudyAnalysis> {
+): Promise<LoadedAnalysis> {
   const [loaded, automatic] = await Promise.all([
     loadStudyAnalysisRecord(prepared, id),
     readAutomaticStudyAnalysisPrepared(prepared),

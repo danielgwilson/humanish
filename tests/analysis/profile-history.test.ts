@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { syntheticArtifact } from "./fixtures.js";
-import type { StudyAnalysisArtifact } from "../../src/analysis/study-analysis.js";
+import type { AnalysisArtifact } from "../../src/analysis/study-analysis.js";
 
 // Literal persisted profile: do not derive this historical fixture from the current launcher.
-function historical(): StudyAnalysisArtifact {
+function historical(): AnalysisArtifact {
   const artifact = syntheticArtifact();
   artifact.provider = "codex";
   artifact.config = {

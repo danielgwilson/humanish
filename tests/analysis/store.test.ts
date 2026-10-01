@@ -29,9 +29,9 @@ import {
 import { loadStudyAnalysis } from "../../src/analysis/load.js";
 import { digestStudyAnalysisInput, hashStudyAnalysisValue } from "../../src/analysis/validation.js";
 import type {
-  StudyAnalysisArtifact,
-  StudyAnalysisCorrection,
-  StudyAnalysisInput,
+  AnalysisArtifact,
+  AnalysisCorrection,
+  AnalysisInput,
 } from "../../src/analysis/study-analysis.js";
 import { syntheticArtifact } from "./fixtures.js";
 
@@ -39,8 +39,8 @@ describe("immutable study analysis store", () => {
   let cwd: string;
   let prepared: PreparedRunArtifactPaths;
   let source: Buffer;
-  let input: StudyAnalysisInput;
-  let artifact: StudyAnalysisArtifact;
+  let input: AnalysisInput;
+  let artifact: AnalysisArtifact;
   let png: Buffer;
   const artifactPath = (id = "analysis-1") =>
     path.join(prepared.physicalRunRoot, "analysis", id, "analysis.json");
@@ -300,7 +300,7 @@ describe("immutable study analysis store", () => {
     expect(await readFile(path.join(outside, "sentinel"), "utf8")).toBe("unchanged");
   });
 
-  const correction = (): StudyAnalysisCorrection => ({
+  const correction = (): AnalysisCorrection => ({
     schema: "humanish.study-analysis-correction.v1",
     id: "correction-1",
     analysisId: artifact.id,

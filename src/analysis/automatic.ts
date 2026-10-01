@@ -19,22 +19,22 @@ import {
   claimAutomaticStudyAnalysis,
   readAutomaticStudyAnalysisPrepared,
   requestAutomaticStudyAnalysisCancellationPrepared,
-  type AutomaticStudyAnalysisView,
-  type AutomaticStudyAnalysisOutcome,
-  type AutomaticStudyAnalysisCancellation,
-  type AutomaticStudyAnalysisJob,
+  type AutomaticAnalysisView,
+  type AutomaticAnalysisOutcome,
+  type AutomaticAnalysisCancellation,
+  type AutomaticAnalysisJob,
 } from "./job.js";
-import { ANALYSIS_ID_PATTERN, type StudyAnalysisConfig } from "./study-analysis.js";
+import { ANALYSIS_ID_PATTERN, type AnalysisConfig } from "./study-analysis.js";
 import { readStudyAnalysisVersion } from "./store.js";
 import { readStudyAnalysisExecution } from "./store-executions.js";
 import { physicalCwdOf, resolvePhysicalCwd, type PreparedRunArtifactPaths } from "../run/paths.js";
 
 export type {
-  AutomaticStudyAnalysisView,
-  AutomaticStudyAnalysisOutcome,
-  AutomaticStudyAnalysisCancellation,
+  AutomaticAnalysisView,
+  AutomaticAnalysisOutcome,
+  AutomaticAnalysisCancellation,
 } from "./job.js";
-export type AutomaticStudyAnalysisDeps = Omit<AnalyzeDeps, "analysisId" | "beforeDispatch"> & {
+export type AutomaticAnalysisDeps = Omit<AnalyzeDeps, "analysisId" | "beforeDispatch"> & {
   /** A missing default key records a skip before admission, preserving a successful recording. */
   defaultRequest?: boolean;
   /** Expand an omitted output limit only within the existing admission budget. */
@@ -45,7 +45,7 @@ const CANCELLATION_POLL_MS = 250;
 // Well inside AUTOMATIC_STUDY_ANALYSIS_STALE_MS, so a live owner never reads as stale.
 const HEARTBEAT_MS = 5000;
 const exactId = (runId: string): boolean => runId !== "latest" && ANALYSIS_ID_PATTERN.test(runId);
-const skipped = (reason: string): AutomaticStudyAnalysisOutcome => ({ state: "skipped", reason });
+const skipped = (reason: string): AutomaticAnalysisOutcome => ({ state: "skipped", reason });
 
 function hasParticipantEvidence(bundle: RunBundle): boolean {
   return bundle.streams.some((stream) => {
@@ -67,7 +67,7 @@ function hasParticipantEvidence(bundle: RunBundle): boolean {
 export async function readAutomaticStudyAnalysis(
   cwd: string,
   runId: string,
-): Promise<AutomaticStudyAnalysisView | undefined> {
+): Promise<AutomaticAnalysisView | undefined> {
   if (!exactId(runId)) return undefined;
   const prepared = await resolveRunPath(await resolvePhysicalCwd(cwd), runId).catch(() => null);
   return prepared ? readAutomaticStudyAnalysisPrepared(prepared) : undefined;
@@ -76,7 +76,7 @@ export async function readAutomaticStudyAnalysis(
 export async function requestAutomaticStudyAnalysisCancellation(
   cwd: string,
   runId: string,
-): Promise<AutomaticStudyAnalysisCancellation> {
+): Promise<AutomaticAnalysisCancellation> {
   if (!exactId(runId)) return { requested: false, reason: "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE" };
   const prepared = await resolveRunPath(await resolvePhysicalCwd(cwd), runId).catch(() => null);
   return prepared
@@ -97,7 +97,7 @@ function statusReason(result: AnalyzeResult): string | null {
   return null;
 }
 
-function outcomeOf(result: AnalyzeResult): AutomaticStudyAnalysisOutcome {
+function outcomeOf(result: AnalyzeResult): AutomaticAnalysisOutcome {
   if (result.error?.code === "ANALYSIS_PUBLICATION_FAILED")
     return { state: "failed", reason: "AUTOMATIC_ANALYSIS_PUBLICATION_FAILED", result };
   if (result.error?.code?.startsWith("analysis_codex_"))
@@ -129,12 +129,10 @@ function outcomeOf(result: AnalyzeResult): AutomaticStudyAnalysisOutcome {
 async function readAutomaticSource(
   cwd: string,
   prepared: PreparedRunArtifactPaths,
-  configInput: StudyAnalysisConfig,
-  deps: AutomaticStudyAnalysisDeps,
+  configInput: AnalysisConfig,
+  deps: AutomaticAnalysisDeps,
   hasKey: boolean,
-): Promise<
-  AutomaticStudyAnalysisOutcome | { participantEvidence: boolean; config: StudyAnalysisConfig }
-> {
+): Promise<AutomaticAnalysisOutcome | { participantEvidence: boolean; config: AnalysisConfig }> {
   let config = configInput;
   try {
     const bytes = await readCompletedStudyAnalysisSource(cwd, prepared);
@@ -163,10 +161,10 @@ async function readAutomaticSource(
  * completed-looking sidecar without rechecking these bindings. Null when storage failed.
  */
 async function persistOutcome(
-  job: AutomaticStudyAnalysisJob,
+  job: AutomaticAnalysisJob,
   prepared: PreparedRunArtifactPaths,
-  outcome: AutomaticStudyAnalysisOutcome,
-): Promise<AutomaticStudyAnalysisOutcome | null> {
+  outcome: AutomaticAnalysisOutcome,
+): Promise<AutomaticAnalysisOutcome | null> {
   try {
     const analysisId = outcome.result?.analysisId;
     const [entry, receipt] = analysisId
@@ -178,7 +176,7 @@ async function persistOutcome(
     await job.update({
       state: outcome.state,
       reason: outcome.reason as Exclude<
-        Parameters<AutomaticStudyAnalysisJob["update"]>[0]["reason"],
+        Parameters<AutomaticAnalysisJob["update"]>[0]["reason"],
         undefined
       >,
       analysisId: analysisId ?? null,
@@ -206,9 +204,9 @@ async function persistOutcome(
 export async function runAutomaticStudyAnalysis(
   cwdInput: string,
   runId: string,
-  configInput: StudyAnalysisConfig,
-  deps: AutomaticStudyAnalysisDeps = {},
-): Promise<AutomaticStudyAnalysisOutcome> {
+  configInput: AnalysisConfig,
+  deps: AutomaticAnalysisDeps = {},
+): Promise<AutomaticAnalysisOutcome> {
   if (!exactId(runId)) return skipped("AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE");
   let cwd = path.resolve(cwdInput);
   const prepared = await resolveStudyAnalysisRun(cwd, runId, deps.expectedRun).catch(() => null);
@@ -230,7 +228,7 @@ export async function runAutomaticStudyAnalysis(
     config = await (
       await import("./restricted-codex.js")
     ).bindCodexAnalysisCliVersion(config, deps.detectCodexCliVersion);
-  let job: AutomaticStudyAnalysisJob;
+  let job: AutomaticAnalysisJob;
   try {
     const claimed = await claimAutomaticStudyAnalysis(prepared, {
       configDigest: hashStudyAnalysisValue(config),
@@ -272,7 +270,7 @@ export async function runAutomaticStudyAnalysis(
     });
   }, HEARTBEAT_MS);
   heartbeat.unref();
-  let outcome: AutomaticStudyAnalysisOutcome;
+  let outcome: AutomaticAnalysisOutcome;
   try {
     await poll();
     const missingKey = config.provider !== "codex" && !hasKey;

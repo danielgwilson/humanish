@@ -23,9 +23,9 @@ import {
 } from "./validation.js";
 import {
   ANALYSIS_ID_PATTERN,
-  type LoadedStudyAnalysis,
-  type StudyAnalysisArtifact,
-  type StudyAnalysisCorrection,
+  type LoadedAnalysis,
+  type AnalysisArtifact,
+  type AnalysisCorrection,
 } from "./study-analysis.js";
 import { RUN_BUNDLE_FILE } from "../run/bundle.js";
 
@@ -37,15 +37,17 @@ const MAX_CORRECTIONS = 256;
 const MAX_CORRECTION_BYTES = 32 * 1024;
 export const safeId = (value: string): boolean => ANALYSIS_ID_PATTERN.test(value);
 const hashBytes = (bytes: Buffer): string => createHash("sha256").update(bytes).digest("hex");
-const empty = (
-  state: LoadedStudyAnalysis["state"],
-  warnings: string[] = [],
-): LoadedStudyAnalysis => ({ state, analysis: null, corrections: [], warnings });
+const empty = (state: LoadedAnalysis["state"], warnings: string[] = []): LoadedAnalysis => ({
+  state,
+  analysis: null,
+  corrections: [],
+  warnings,
+});
 
-export interface StudyAnalysisListEntry {
+export interface AnalysisListEntry {
   id: string;
   state: "ready" | "stale" | "invalid";
-  analysis: StudyAnalysisArtifact | null;
+  analysis: AnalysisArtifact | null;
   warnings: string[];
 }
 
@@ -105,7 +107,7 @@ export async function claimDirectory(
 /** A claimed version is never reused, including after interruption before publication. */
 export async function writeStudyAnalysis(
   prepared: PreparedRunArtifactPaths,
-  value: StudyAnalysisArtifact,
+  value: AnalysisArtifact,
 ): Promise<void> {
   const artifact = validateStudyAnalysisArtifact(value);
   const source = await readBoundedStudyFile(
@@ -177,7 +179,7 @@ async function readVersion(
   root: PreparedSelectedOutputDirectory,
   id: string,
   source: Buffer | null,
-): Promise<StudyAnalysisListEntry | null> {
+): Promise<AnalysisListEntry | null> {
   if (!safeId(id))
     return { id: "invalid", state: "invalid", analysis: null, warnings: ["ANALYSIS_ID_INVALID"] };
   const bytes = await readBoundedStudyFile(root, `${id}/analysis.json`, ANALYSIS_MAX_BYTES);
@@ -187,7 +189,7 @@ async function readVersion(
       return null;
     return { id, state: "invalid", analysis: null, warnings: ["ANALYSIS_ARTIFACT_UNREADABLE"] };
   }
-  let analysis: StudyAnalysisArtifact;
+  let analysis: AnalysisArtifact;
   try {
     analysis = validateStudyAnalysisArtifact(
       JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)),
@@ -225,7 +227,7 @@ async function readVersion(
 export async function readStudyAnalysisVersion(
   prepared: PreparedRunArtifactPaths,
   id: string,
-): Promise<StudyAnalysisListEntry | null> {
+): Promise<AnalysisListEntry | null> {
   if (!safeId(id)) return null;
   try {
     const root = await existingRoot(prepared);
@@ -244,7 +246,7 @@ export async function readStudyAnalysisVersion(
 /** Includes failed attempts; callers must not equate the newest attempt with usable findings. */
 export async function listStudyAnalyses(
   prepared: PreparedRunArtifactPaths,
-): Promise<StudyAnalysisListEntry[]> {
+): Promise<AnalysisListEntry[]> {
   try {
     const root = await existingRoot(prepared);
     if (!root) return [];
@@ -254,7 +256,7 @@ export async function listStudyAnalyses(
       RUN_BUNDLE_FILE,
       STUDY_EVIDENCE_LIMITS.sourceBytes,
     );
-    const results: StudyAnalysisListEntry[] = [];
+    const results: AnalysisListEntry[] = [];
     for (const id of inventory.ids) {
       const entry = await readVersion(prepared, root, id, source);
       if (entry) results.push(entry);
@@ -286,9 +288,9 @@ export async function listStudyAnalyses(
 async function readCorrections(
   prepared: PreparedRunArtifactPaths,
   root: PreparedSelectedOutputDirectory,
-  analysis: StudyAnalysisArtifact,
-): Promise<{ corrections: StudyAnalysisCorrection[]; warnings: string[] }> {
-  const corrections: StudyAnalysisCorrection[] = [];
+  analysis: AnalysisArtifact,
+): Promise<{ corrections: AnalysisCorrection[]; warnings: string[] }> {
+  const corrections: AnalysisCorrection[] = [];
   const warnings: string[] = [];
   try {
     const cwd = physicalCwdOf(prepared);
@@ -345,7 +347,7 @@ async function readCorrections(
 export async function loadStudyAnalysisRecord(
   prepared: PreparedRunArtifactPaths,
   id?: string,
-): Promise<LoadedStudyAnalysis> {
+): Promise<LoadedAnalysis> {
   if (id !== undefined && !safeId(id)) return empty("invalid", ["ANALYSIS_ID_INVALID"]);
   try {
     const versions = await listStudyAnalyses(prepared);
@@ -376,10 +378,7 @@ export async function loadStudyAnalysisRecord(
   }
 }
 
-function assertCorrectionBinding(
-  analysis: StudyAnalysisArtifact,
-  correction: StudyAnalysisCorrection,
-): void {
+function assertCorrectionBinding(analysis: AnalysisArtifact, correction: AnalysisCorrection): void {
   const finding = analysis.result?.findings.find((entry) => entry.id === correction.findingId);
   if (
     analysis.id !== correction.analysisId ||
@@ -393,7 +392,7 @@ function assertCorrectionBinding(
 
 export async function appendStudyAnalysisCorrection(
   prepared: PreparedRunArtifactPaths,
-  value: StudyAnalysisCorrection,
+  value: AnalysisCorrection,
 ): Promise<void> {
   const correction = validateStudyAnalysisCorrection(value);
   const loaded = await loadStudyAnalysisRecord(prepared, correction.analysisId);

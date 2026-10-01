@@ -2,7 +2,7 @@ import { Agent, fetch as undiciFetch, type Dispatcher } from "undici";
 import { OPENAI_RESPONSES_URL } from "../actors/openai-endpoint.js";
 
 /** Deliberately separate from the stateful computer-use actor: one request, no tools or retries. */
-export interface StudyAnalysisProviderRequest {
+export interface AnalysisProviderRequest {
   model: string;
   instructions: string;
   evidence: string;
@@ -13,18 +13,18 @@ export interface StudyAnalysisProviderRequest {
   signal?: AbortSignal;
 }
 
-interface StudyAnalysisTokenUsage {
+interface AnalysisTokenUsage {
   input: number;
   output: number;
   cachedInput?: number;
   cacheWriteInput?: number;
 }
 
-export interface StudyAnalysisProviderResult {
+export interface AnalysisProviderResult {
   status: "completed" | "incomplete" | "refused" | "failed" | "cancelled" | "timed_out";
   /** Parsed output is still untrusted. runStudyAnalysis must validate its schema and evidence references. */
   output: unknown;
-  usage: StudyAnalysisTokenUsage | null;
+  usage: AnalysisTokenUsage | null;
   /** Dispatch does not imply a known charge. A failed request can still have consumed tokens. */
   dispatched: boolean;
   /** Omitted preserves complete API-response accounting; account snapshots must state this. */
@@ -60,9 +60,9 @@ export interface StudyAnalysisProviderResult {
   httpStatus?: number;
 }
 
-export type StudyAnalysisProvider = (
-  request: StudyAnalysisProviderRequest,
-) => Promise<StudyAnalysisProviderResult>;
+export type AnalysisProvider = (
+  request: AnalysisProviderRequest,
+) => Promise<AnalysisProviderResult>;
 const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
 const MAX_REQUEST_BYTES = 32 * 1024 * 1024;
 /** An input image the provider accepts; the groups are the image type and its base64 bytes. */
@@ -89,8 +89,8 @@ class AnalysisAgent extends Agent {
 }
 
 /** Persist only a closed vocabulary, never an exception's prose, URL or headers. */
-function networkErrorCode(error: unknown): StudyAnalysisProviderResult["errorCode"] {
-  const codes: Record<string, StudyAnalysisProviderResult["errorCode"]> = {
+function networkErrorCode(error: unknown): AnalysisProviderResult["errorCode"] {
+  const codes: Record<string, AnalysisProviderResult["errorCode"]> = {
     UND_ERR_HEADERS_TIMEOUT: "provider_headers_timeout",
     UND_ERR_BODY_TIMEOUT: "provider_body_timeout",
     UND_ERR_CONNECT_TIMEOUT: "provider_connect_timeout",
@@ -109,7 +109,7 @@ function networkErrorCode(error: unknown): StudyAnalysisProviderResult["errorCod
   return "provider_network_error";
 }
 
-function usageOf(raw: unknown): StudyAnalysisTokenUsage | null {
+function usageOf(raw: unknown): AnalysisTokenUsage | null {
   const usage = record(record(raw).usage);
   const details = record(usage.input_tokens_details);
   const input = usage.input_tokens;
@@ -134,7 +134,7 @@ function usageOf(raw: unknown): StudyAnalysisTokenUsage | null {
 }
 
 /** Text and usage wire shapes reuse the captured closing-report contract; refusal fails closed. */
-export function parseStudyAnalysisResponse(raw: unknown): StudyAnalysisProviderResult {
+export function parseStudyAnalysisResponse(raw: unknown): AnalysisProviderResult {
   const root = record(raw);
   const usage = usageOf(raw);
   const output = Array.isArray(root.output) ? root.output : [];
@@ -198,14 +198,14 @@ export type AnalysisFetch = (
 export function createStudyAnalysisProvider(options: {
   apiKey: string;
   fetchFn?: AnalysisFetch;
-}): StudyAnalysisProvider {
+}): AnalysisProvider {
   const fetchFn = options.fetchFn ?? undiciFetch;
   return async (request) => {
     const failure = (
-      errorCode: StudyAnalysisProviderResult["errorCode"],
+      errorCode: AnalysisProviderResult["errorCode"],
       dispatched: boolean,
-      status: StudyAnalysisProviderResult["status"] = "failed",
-    ): StudyAnalysisProviderResult => ({
+      status: AnalysisProviderResult["status"] = "failed",
+    ): AnalysisProviderResult => ({
       status,
       output: null,
       usage: null,

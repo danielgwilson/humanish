@@ -4,14 +4,14 @@ import {
   runRestrictedCodexSession,
   type RestrictedCodexSessionOptions,
 } from "../actors/codex/restricted-session.js";
-import type { StudyAnalysisConfig } from "./study-analysis.js";
+import type { AnalysisConfig } from "./study-analysis.js";
 import type {
   RestrictedCodexAnalysisErrorCode,
   RestrictedCodexRequest,
   RestrictedCodexResult,
 } from "../actors/codex/restricted-policy.js";
 
-/** Structurally implements StudyAnalysisProvider without importing its API transport.
+/** Structurally implements AnalysisProvider without importing its API transport.
  * Schema/evidence validation and transient-secret scrubbing remain in runStudyAnalysis. */
 export function createRestrictedCodexAnalysisProvider(
   options: RestrictedCodexSessionOptions = {},
@@ -24,10 +24,10 @@ export function createRestrictedCodexAnalysisProvider(
  * fails, the requested identity stays and the launcher refuses that dispatch with its usual code.
  */
 export async function bindCodexAnalysisCliVersion(
-  config: StudyAnalysisConfig,
+  config: AnalysisConfig,
   detect: () => Promise<string | null> = async () =>
     (await detectRestrictedCodexCliVersion()).cliVersion,
-): Promise<StudyAnalysisConfig> {
+): Promise<AnalysisConfig> {
   if (config.provider !== "codex") return config;
   const cliVersion = await detect();
   return cliVersion === null || cliVersion === config.identity.cliVersion

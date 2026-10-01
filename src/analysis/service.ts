@@ -1,6 +1,6 @@
 import { describeQualifiedCodexCliVersions } from "../actors/codex/qualified-versions.js";
 import { validCodexAnalysisConfig } from "./codex-config.js";
-import type { AnalysisFetch, StudyAnalysisProvider } from "./provider.js";
+import type { AnalysisFetch, AnalysisProvider } from "./provider.js";
 import { randomUUID } from "node:crypto";
 import { lstat, mkdir, realpath, rmdir } from "node:fs/promises";
 import path from "node:path";
@@ -23,9 +23,9 @@ import {
   preferLargerStudyAnalysisOutput,
   runStudyAnalysis,
   STUDY_ANALYSIS_PROMPT_VERSION,
-  type StudyAnalysisAdmission,
-  type StudyAnalysisProgress,
-  type StudyAnalysisDispatchContext,
+  type AnalysisAdmission,
+  type AnalysisProgress,
+  type AnalysisDispatchContext,
 } from "./run-study-analysis.js";
 import {
   appendStudyAnalysisCorrection,
@@ -41,11 +41,11 @@ import { loadStudyAnalysis } from "./load.js";
 import { hashStudyAnalysisValue } from "./validation.js";
 import {
   STUDY_ANALYSIS_CORRECTION_SCHEMA,
-  type StudyAnalysisArtifact,
-  type StudyAnalysisConfig,
-  type StudyAnalysisCorrection,
-  type StudyAnalysisInput,
-  type LoadedStudyAnalysis,
+  type AnalysisArtifact,
+  type AnalysisConfig,
+  type AnalysisCorrection,
+  type AnalysisInput,
+  type LoadedAnalysis,
 } from "./study-analysis.js";
 import { RUN_BUNDLE_FILE } from "../run/bundle.js";
 import { TERMINAL_SIMULATION_STATUSES } from "../run/streams.js";
@@ -53,7 +53,7 @@ import { TERMINAL_SIMULATION_STATUSES } from "../run/streams.js";
 const ANALYZE_RESULT_SCHEMA = "humanish.analyze-result.v1";
 const MAX_STATUS_BYTES = 64 * 1024;
 export interface AnalyzeOptions {
-  config: StudyAnalysisConfig;
+  config: AnalysisConfig;
   dryRun?: boolean;
   rerun?: boolean;
   /** Set when the output limit was defaulted; an explicit limit is always used exactly. */
@@ -68,25 +68,25 @@ export interface AnalyzeResult {
   analysisId?: string;
   artifactPath?: string;
   executionReceiptPath?: string;
-  status?: StudyAnalysisArtifact["status"];
-  usage?: StudyAnalysisArtifact["usage"];
-  admission?: StudyAnalysisAdmission;
+  status?: AnalysisArtifact["status"];
+  usage?: AnalysisArtifact["usage"];
+  admission?: AnalysisAdmission;
   warnings: string[];
   error?: { code: string; message: string };
 }
 export interface AnalyzeDeps {
   apiKey?: string;
   /** Test hook for the Codex provider call; evidence, source identity and publication still run. */
-  codexProvider?: StudyAnalysisProvider;
+  codexProvider?: AnalysisProvider;
   signal?: AbortSignal;
-  onProgress?: (progress: StudyAnalysisProgress) => void;
+  onProgress?: (progress: AnalysisProgress) => void;
   /** Request boundary only: evidence capture, admission, validation and writes remain real. */
   fetch?: AnalysisFetch;
   /** Set by automatic analysis: analyze this prepared run instead of resolving `run` again. */
   expectedRun?: PreparedRunArtifactPaths;
   /** Set by automatic analysis to its job attempt id; never from an Observer request. */
   analysisId?: string;
-  beforeDispatch?: (context: StudyAnalysisDispatchContext) => Promise<void>;
+  beforeDispatch?: (context: AnalysisDispatchContext) => Promise<void>;
   /** Internal seam: the installed Codex CLI release, or null when it is unavailable or unqualified. */
   detectCodexCliVersion?: () => Promise<string | null>;
   /** Internal: the caller already recorded the detected release in config.identity. */
@@ -291,7 +291,7 @@ export async function readCompletedStudyAnalysisSource(
 }
 
 /** The refusal code for a configuration analyzeStudy cannot run, before any run file is read. */
-function analyzeConfigRefusal(config: StudyAnalysisConfig): string | null {
+function analyzeConfigRefusal(config: AnalysisConfig): string | null {
   if (
     config.provider === "codex"
       ? !validCodexAnalysisConfig(config)
@@ -304,10 +304,10 @@ function analyzeConfigRefusal(config: StudyAnalysisConfig): string | null {
 }
 
 /** The fields every result of an admitted attempt carries. */
-type AnalyzeBase = Omit<AnalyzeResult, "ok"> & { admission: StudyAnalysisAdmission };
+type AnalyzeBase = Omit<AnalyzeResult, "ok"> & { admission: AnalysisAdmission };
 
 /** The result when admission refuses the attempt, or when a dry run stops after admission. */
-function admissionOnlyResult(base: AnalyzeBase, config: StudyAnalysisConfig): AnalyzeResult {
+function admissionOnlyResult(base: AnalyzeBase, config: AnalysisConfig): AnalyzeResult {
   if (!base.admission.allowed)
     return {
       ...base,
@@ -335,8 +335,8 @@ function admissionOnlyResult(base: AnalyzeBase, config: StudyAnalysisConfig): An
 /** A saved ready analysis of the same input, config and prompt, returned without a new request. */
 async function reusedAnalysisResult(
   prepared: PreparedRunArtifactPaths,
-  input: StudyAnalysisInput,
-  config: StudyAnalysisConfig,
+  input: AnalysisInput,
+  config: AnalysisConfig,
   base: AnalyzeBase,
 ): Promise<AnalyzeResult | undefined> {
   const prior = (await listStudyAnalyses(prepared)).find(
@@ -369,7 +369,7 @@ async function reusedAnalysisResult(
 }
 
 /** The caller's view of a finished attempt, before publication. */
-function attemptResult(base: AnalyzeBase, analysis: StudyAnalysisArtifact): AnalyzeResult {
+function attemptResult(base: AnalyzeBase, analysis: AnalysisArtifact): AnalyzeResult {
   return {
     ...base,
     ok: analysis.result !== null && analysis.error === null,
@@ -392,9 +392,9 @@ function attemptResult(base: AnalyzeBase, analysis: StudyAnalysisArtifact): Anal
 /** Write the receipt, then the report, recording each path on the result; false if either fails. */
 async function publishAttempt(
   prepared: PreparedRunArtifactPaths,
-  analysis: StudyAnalysisArtifact,
+  analysis: AnalysisArtifact,
   result: AnalyzeResult,
-  finalizeExecution: ((value: StudyAnalysisArtifact) => Promise<void>) | undefined,
+  finalizeExecution: ((value: AnalysisArtifact) => Promise<void>) | undefined,
 ): Promise<boolean> {
   try {
     if (finalizeExecution) await finalizeExecution(analysis);
@@ -422,7 +422,7 @@ interface AnalyzeAttempt {
   cwd: string;
   run: string;
   prepared: PreparedRunArtifactPaths;
-  config: StudyAnalysisConfig;
+  config: AnalysisConfig;
   options: AnalyzeOptions;
   deps: AnalyzeDeps;
   dryRun: boolean;
@@ -467,7 +467,7 @@ async function executeAnalysis(attempt: AnalyzeAttempt): Promise<AnalyzeResult> 
     config.provider === "codex" ? "" : (deps.apiKey ?? process.env.OPENAI_API_KEY ?? "");
   if (config.provider !== "codex" && !apiKey.trim())
     return { ...fail(input.runId, false, "ANALYSIS_API_KEY_MISSING"), admission };
-  let finalizeExecution: ((value: StudyAnalysisArtifact) => Promise<void>) | undefined;
+  let finalizeExecution: ((value: AnalysisArtifact) => Promise<void>) | undefined;
   const analysis = await runStudyAnalysis(input, config, {
     apiKey,
     ...(deps.codexProvider === undefined ? {} : { codexProvider: deps.codexProvider }),
@@ -531,7 +531,7 @@ export async function showStudyAnalysis(
   cwd: string,
   run: string,
   id?: string,
-): Promise<LoadedStudyAnalysis> {
+): Promise<LoadedAnalysis> {
   const prepared = await resolveRunPath(await resolvePhysicalCwd(cwd), run).catch(() => null);
   return prepared
     ? loadStudyAnalysis(prepared, id)
@@ -544,11 +544,11 @@ export async function correctStudyAnalysis(
   options: {
     analysisId: string;
     findingId: string;
-    status: StudyAnalysisCorrection["status"];
+    status: AnalysisCorrection["status"];
     reason: string;
     replacementClaim?: string;
   },
-): Promise<StudyAnalysisCorrection> {
+): Promise<AnalysisCorrection> {
   const prepared = await resolveRunPath(await resolvePhysicalCwd(cwd), run);
   if (!prepared) throw new Error("ANALYSIS_RUN_NOT_FOUND");
   return withStudyAnalysisLock(prepared, async () => {
@@ -559,7 +559,7 @@ export async function correctStudyAnalysis(
       throw new Error("ANALYSIS_CORRECTION_SOURCE_UNAVAILABLE");
     if (containsSensitive(options.reason) || containsSensitive(options.replacementClaim ?? ""))
       throw new Error("ANALYSIS_CORRECTION_TEXT_UNSAFE");
-    const correction: StudyAnalysisCorrection = {
+    const correction: AnalysisCorrection = {
       schema: STUDY_ANALYSIS_CORRECTION_SCHEMA,
       id: `correction-${randomUUID()}`,
       analysisId: analysis.id,

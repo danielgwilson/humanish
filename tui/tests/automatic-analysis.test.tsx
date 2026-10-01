@@ -2,12 +2,12 @@ import React from "react";
 import { describe, expect, it } from "vitest";
 import { RunScreen, runActions } from "../src/screens/run-screen.js";
 import type { RunDetail } from "../../src/run/detail.js";
-import type { AutomaticStudyAnalysisView } from "../../src/analysis/job.js";
+import type { AutomaticAnalysisView } from "../../src/analysis/job.js";
 import { normalizeFrame, renderToText } from "../src/testing/render-to-text.js";
 import { NOW, RUNS } from "./fixtures.js";
 
 const run = RUNS.find((value) => value.liveness === "finished")!;
-function detail(state: AutomaticStudyAnalysisView["state"]): RunDetail {
+function detail(state: AutomaticAnalysisView["state"]): RunDetail {
   return {
     schema: "humanish.run-detail.v1",
     runId: run.runId,

@@ -1,7 +1,7 @@
 import type {
-  LoadedStudyAnalysis,
-  StudyAnalysisArtifact,
-  StudyAnalysisCorrection,
+  LoadedAnalysis,
+  AnalysisArtifact,
+  AnalysisCorrection,
 } from "../../src/analysis/study-analysis";
 import { traceItems } from "./artifact-href";
 import type { ObserverData } from "./observer-data";
@@ -11,16 +11,16 @@ import { parseAutomaticAnalysis } from "./automatic-analysis";
 import { buildPlayerModel } from "./player-model";
 import { RECORDED_CODEX_CLI_VERSIONS } from "./actor-execution-profile";
 
-export type { LoadedStudyAnalysis } from "../../src/analysis/study-analysis";
+export type { LoadedAnalysis } from "../../src/analysis/study-analysis";
 export const STUDY_ANALYSIS_SCHEMA = "humanish.study-analysis.v1";
 export const STUDY_ANALYSIS_PLACEHOLDER = ["__HUMANISH", "STUDY_ANALYSIS__"].join("_");
-export const NO_ANALYSIS: LoadedStudyAnalysis = {
+export const NO_ANALYSIS: LoadedAnalysis = {
   state: "none",
   analysis: null,
   corrections: [],
   warnings: [],
 };
-const invalid = (): LoadedStudyAnalysis => ({
+const invalid = (): LoadedAnalysis => ({
   state: "invalid",
   analysis: null,
   corrections: [],
@@ -123,7 +123,7 @@ const finding = (v: unknown) =>
   ids(v.affectedStreamIds) &&
   ids(v.exposedStreamIds) &&
   list(v.observations, observation);
-const correction = (v: unknown): v is StudyAnalysisCorrection =>
+const correction = (v: unknown): v is AnalysisCorrection =>
   object(v) &&
   v.schema === "humanish.study-analysis-correction.v1" &&
   id(v.id) &&
@@ -137,13 +137,13 @@ const correction = (v: unknown): v is StudyAnalysisCorrection =>
 
 /** Browser admission protects rendering; the producer owns filesystem/hash verification.
  * Do not reclassify a stale report as current just because its shape is readable. */
-export function parseStudyAnalysis(value: unknown, data: ObserverData): LoadedStudyAnalysis {
+export function parseStudyAnalysis(value: unknown, data: ObserverData): LoadedAnalysis {
   const selected = parseSelectedAnalysis(value, data);
   const automatic = parseAutomaticAnalysis(object(value) ? value.automatic : undefined);
   return automatic ? { ...selected, automatic } : selected;
 }
 
-function parseSelectedAnalysis(value: unknown, data: ObserverData): LoadedStudyAnalysis {
+function parseSelectedAnalysis(value: unknown, data: ObserverData): LoadedAnalysis {
   if (
     !object(value) ||
     !enumeration(value.state, ["none", "ready", "stale", "invalid"]) ||
@@ -240,7 +240,7 @@ function parseSelectedAnalysis(value: unknown, data: ObserverData): LoadedStudyA
   // selection state. Preserve that terminal status without admitting claims.
   const terminal = a.status === "failed" || a.status === "cancelled";
   if ((value.state === "invalid" && !terminal) || (terminal && a.result !== null)) return invalid();
-  const analysis = a as unknown as StudyAnalysisArtifact;
+  const analysis = a as unknown as AnalysisArtifact;
   const streams = new Set(data.streams.map((s) => s.id));
   const evidence = new Map(analysis.evidence.map((e) => [e.id, e]));
   const included = analysis.coverage.includedStreamIds;
@@ -324,21 +324,18 @@ function parseSelectedAnalysis(value: unknown, data: ObserverData): LoadedStudyA
         return invalid();
     }
   }
-  const corrections = (value.corrections as StudyAnalysisCorrection[]).filter(
+  const corrections = (value.corrections as AnalysisCorrection[]).filter(
     (c) => c.analysisId === analysis.id && result?.findings.some((f) => f.id === c.findingId),
   );
   return {
-    state: value.state as LoadedStudyAnalysis["state"],
+    state: value.state as LoadedAnalysis["state"],
     analysis,
     corrections,
     warnings: value.warnings as string[],
   };
 }
 
-export function readInlineStudyAnalysis(
-  doc: Document,
-  data: ObserverData | null,
-): LoadedStudyAnalysis {
+export function readInlineStudyAnalysis(doc: Document, data: ObserverData | null): LoadedAnalysis {
   if (!data) return NO_ANALYSIS;
   const value = doc.getElementById("study-analysis")?.textContent?.trim();
   if (!value || value === "null" || value === STUDY_ANALYSIS_PLACEHOLDER) return NO_ANALYSIS;
@@ -354,7 +351,7 @@ export async function fetchStudyAnalysis(
   fetchImpl: typeof fetch,
   data: ObserverData,
   signal: AbortSignal,
-): Promise<LoadedStudyAnalysis | null> {
+): Promise<LoadedAnalysis | null> {
   try {
     const response = await fetchImpl("study-analysis.json", { signal, cache: "no-store" });
     if (response.status === 404) return NO_ANALYSIS;
@@ -399,7 +396,7 @@ const impact = {
 };
 const outcomeLabel = (outcome: string) => outcome.charAt(0).toUpperCase() + outcome.slice(1);
 export function projectStudyAnalysis(
-  loaded: LoadedStudyAnalysis,
+  loaded: LoadedAnalysis,
   data: ObserverData,
 ): StudyReport | undefined {
   if (loaded.state === "none") return undefined;

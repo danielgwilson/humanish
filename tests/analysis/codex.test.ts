@@ -28,7 +28,7 @@ import {
 import { captureStudyEvidence } from "../../src/analysis/evidence.js";
 import { codexAnalysisIdentity } from "../../src/analysis/codex-config.js";
 import { bindCodexAnalysisCliVersion } from "../../src/analysis/restricted-codex.js";
-import type { StudyAnalysisProvider } from "../../src/analysis/provider.js";
+import type { AnalysisProvider } from "../../src/analysis/provider.js";
 import { analyzeStudy, showStudyAnalysis } from "../../src/analysis/service.js";
 import { writeStudyAnalysis } from "../../src/analysis/store.js";
 import { listStudyAnalysisExecutions } from "../../src/analysis/store-executions.js";
@@ -39,22 +39,22 @@ import {
   validateStudyAnalysisExecutionReceipt,
 } from "../../src/analysis/validation.js";
 import type {
-  CodexStudyAnalysisConfig,
-  StudyAnalysisConfig,
-  StudyAnalysisInput,
+  CodexAnalysisConfig,
+  AnalysisConfig,
+  AnalysisInput,
 } from "../../src/analysis/study-analysis.js";
 import { computeStats } from "../../src/run/stats.js";
 import { syntheticArtifact, syntheticInput, syntheticResult } from "./fixtures.js";
 
 // These are domain-provider contract tests, not fabricated Codex RPC fixtures or live claims.
 // The restricted transport owns wire-shape and process-isolation qualification separately.
-function config(): CodexStudyAnalysisConfig {
+function config(): CodexAnalysisConfig {
   const selected = resolveAutomaticAnalysis({ provider: "codex", timeoutMs: 1000 });
   if (!selected.ok || selected.config?.provider !== "codex")
     throw new Error("Synthetic configuration failed");
   return selected.config;
 }
-function packet(): StudyAnalysisInput {
+function packet(): AnalysisInput {
   const input = syntheticInput();
   input.evidence = input.evidence.filter((e) => e.capture === null);
   input.coverage.captureCount = 0;
@@ -62,8 +62,8 @@ function packet(): StudyAnalysisInput {
   input.inputDigest = digestStudyAnalysisInput(input);
   return input;
 }
-function provider(input: StudyAnalysisInput) {
-  return vi.fn<StudyAnalysisProvider>(async () => ({
+function provider(input: AnalysisInput) {
+  return vi.fn<AnalysisProvider>(async () => ({
     status: "completed",
     output: syntheticResult(input),
     usage: { input: 400, output: 80, cachedInput: 20 },
@@ -252,7 +252,7 @@ describe("explicit Codex account analysis", () => {
         throw new Error(canary);
       },
     });
-    const run = vi.fn<StudyAnalysisProvider>(async () => ({
+    const run = vi.fn<AnalysisProvider>(async () => ({
       status: "completed",
       output,
       usage: { input: 400, output: 80, cachedInput: 20 },
@@ -329,7 +329,7 @@ describe("explicit Codex account analysis", () => {
       expect(hashStudyAnalysisValue(changed)).not.toBe(hashStudyAnalysisValue(config()));
       expect(estimateStudyAnalysisAdmission(input, changed).allowed).toBe(false);
     }
-    const malformed = { ...config(), maxCostUsd: 1 } as unknown as StudyAnalysisConfig;
+    const malformed = { ...config(), maxCostUsd: 1 } as unknown as AnalysisConfig;
     await expect(runStudyAnalysis(input, malformed, { codexProvider: run })).rejects.toThrow(
       "ANALYSIS_CONFIG_INVALID",
     );
@@ -468,7 +468,7 @@ describe("explicit Codex account analysis", () => {
   it("records an actionable login failure without API fallback or damage to recordings", async () => {
     const f = await study(),
       fetch = vi.fn();
-    const run = vi.fn<StudyAnalysisProvider>(async () => ({
+    const run = vi.fn<AnalysisProvider>(async () => ({
       status: "failed",
       output: null,
       usage: null,
@@ -492,7 +492,7 @@ describe("explicit Codex account analysis", () => {
 
   it("keeps accounting but refuses publication if the source changes during account analysis", async () => {
     const f = await study();
-    const run: StudyAnalysisProvider = async () => {
+    const run: AnalysisProvider = async () => {
       await writeFile(
         f.runFile,
         JSON.stringify({ ...JSON.parse(f.original.toString()), changed: true }),

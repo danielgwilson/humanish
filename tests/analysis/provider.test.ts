@@ -4,7 +4,7 @@ import type { AnalysisFetch } from "../../src/analysis/provider.js";
 import {
   createStudyAnalysisProvider,
   parseStudyAnalysisResponse,
-  type StudyAnalysisProviderRequest,
+  type AnalysisProviderRequest,
 } from "../../src/analysis/provider.js";
 
 // Transport envelope/usage derive from the retained live closing-report response. See that
@@ -15,7 +15,7 @@ const captured = JSON.parse(
     "utf8",
   ),
 );
-const request: StudyAnalysisProviderRequest = {
+const request: AnalysisProviderRequest = {
   model: "gpt-5.6-sol",
   instructions: "Review retained evidence only.",
   evidence: "Synthetic evidence.",

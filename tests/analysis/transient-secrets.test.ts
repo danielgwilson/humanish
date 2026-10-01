@@ -13,9 +13,9 @@ import { runStudyAnalysis } from "../../src/analysis/run-study-analysis.js";
 import { captureStudyEvidence } from "../../src/analysis/evidence.js";
 import { writeStudyAnalysis } from "../../src/analysis/store.js";
 import type {
-  StudyAnalysisConfig,
-  StudyAnalysisInput,
-  StudyAnalysisResult,
+  AnalysisConfig,
+  AnalysisInput,
+  AnalysisResult,
 } from "../../src/analysis/study-analysis.js";
 import {
   validateAnalysisResult,
@@ -30,7 +30,7 @@ const captured = JSON.parse(
     "utf8",
   ),
 );
-const config: StudyAnalysisConfig = {
+const config: AnalysisConfig = {
   model: "gpt-5.6-sol",
   question: null,
   maxCostUsd: 5,
@@ -39,7 +39,7 @@ const config: StudyAnalysisConfig = {
 };
 const OTP = "743921";
 const LINK = `https://example.test/verify?code=${OTP}&proof=synthetic-value`;
-function transport(answer: StudyAnalysisResult, gate?: Promise<void>) {
+function transport(answer: AnalysisResult, gate?: Promise<void>) {
   const wire = structuredClone(captured);
   wire.output[0].content[0].text = JSON.stringify(answer);
   return vi.fn<AnalysisFetch>(async () => {
@@ -47,7 +47,7 @@ function transport(answer: StudyAnalysisResult, gate?: Promise<void>) {
     return new Response(JSON.stringify(wire));
   });
 }
-function addNarrativeCanaries(answer: StudyAnalysisResult): StudyAnalysisResult {
+function addNarrativeCanaries(answer: AnalysisResult): AnalysisResult {
   const append = (value: string) => `${value} ${OTP} ${LINK}`;
   answer.summary = append(answer.summary);
   answer.limitations = [append("Review limitation.")];
@@ -83,7 +83,7 @@ describe("analysis scrubbing in the originating run scope", () => {
   let cwd: string;
   let prepared: PreparedRunArtifactPaths;
   let source: Buffer;
-  let input: StudyAnalysisInput;
+  let input: AnalysisInput;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-analysis-secrets-"));
     prepared = await prepareRunArtifactPaths(cwd, "synthetic-study");

@@ -39,7 +39,7 @@ const JOB_STATES = [
   "unknown",
 ] as const;
 
-export interface AutomaticStudyAnalysisView {
+export interface AutomaticAnalysisView {
   state: (typeof JOB_STATES)[number];
   analysisId: string | null;
   /** Safe stable code, not provider text. */
@@ -47,13 +47,13 @@ export interface AutomaticStudyAnalysisView {
   updatedAt: string;
 }
 
-export interface AutomaticStudyAnalysisOutcome {
+export interface AutomaticAnalysisOutcome {
   state: "complete" | "partial" | "failed" | "cancelled" | "skipped" | "unknown";
   reason: string | null;
   result?: AnalyzeResult;
 }
 
-export interface AutomaticStudyAnalysisCancellation {
+export interface AutomaticAnalysisCancellation {
   requested: boolean;
   reason: string | null;
 }
@@ -111,10 +111,10 @@ const cancelSchema = z.strictObject({
   claimId: z.uuid(),
   requestedAt: date,
 });
-const pending = (state: AutomaticStudyAnalysisView["state"]): boolean =>
+const pending = (state: AutomaticAnalysisView["state"]): boolean =>
   state === "queued" || state === "running";
 const iso = (): string => new Date().toISOString();
-const unknown = (updatedAt = iso()): AutomaticStudyAnalysisView => ({
+const unknown = (updatedAt = iso()): AutomaticAnalysisView => ({
   state: "unknown",
   analysisId: null,
   reason: "AUTOMATIC_ANALYSIS_OUTCOME_UNKNOWN",
@@ -150,7 +150,7 @@ function parseJob(bytes: Buffer, runId: string): JobRecord {
 /** Also guards direct HTML projection callers, not only the contained-file reader. */
 export function projectAutomaticStudyAnalysisView(
   value: unknown,
-): AutomaticStudyAnalysisView | undefined {
+): AutomaticAnalysisView | undefined {
   if (value === undefined) return undefined;
   const parsed = jobSchema
     .pick({ state: true, analysisId: true, reason: true, updatedAt: true })
@@ -209,7 +209,7 @@ export async function readAutomaticStudyAnalysisAccounting(
 export async function readAutomaticStudyAnalysisPrepared(
   prepared: PreparedRunArtifactPaths,
   now = Date.now(),
-): Promise<AutomaticStudyAnalysisView | undefined> {
+): Promise<AutomaticAnalysisView | undefined> {
   try {
     const root = await bindJob(prepared);
     if (!root) {
@@ -221,7 +221,7 @@ export async function readAutomaticStudyAnalysisPrepared(
     const bytes = await readBoundedStudyFile(root, JOB_FILE, MAX_JOB_BYTES);
     if (!bytes) return unknown();
     const record = parseJob(bytes, runIdOf(prepared));
-    const view: AutomaticStudyAnalysisView = {
+    const view: AutomaticAnalysisView = {
       state: record.state,
       analysisId: record.analysisId,
       reason: record.reason,
@@ -280,7 +280,7 @@ async function terminalResultMatches(
   );
 }
 
-export interface AutomaticStudyAnalysisJob {
+export interface AutomaticAnalysisJob {
   readonly attemptId: string;
   /** Serialized, awaited durability boundary. A failed write must prevent dispatch. */
   update(
@@ -306,7 +306,7 @@ export interface AutomaticStudyAnalysisJob {
 export async function claimAutomaticStudyAnalysis(
   prepared: PreparedRunArtifactPaths,
   metadata: { configDigest: string; promptVersion: string },
-): Promise<AutomaticStudyAnalysisJob | null> {
+): Promise<AutomaticAnalysisJob | null> {
   await validatePreparedRunRootIdentity(prepared);
   const target = path.join(prepared.physicalRunRoot, AUTOMATIC_STUDY_ANALYSIS_DIRECTORY);
   try {
@@ -355,7 +355,7 @@ export async function claimAutomaticStudyAnalysis(
     record = next;
   };
   await write(record);
-  const update: AutomaticStudyAnalysisJob["update"] = (change) => {
+  const update: AutomaticAnalysisJob["update"] = (change) => {
     writes = writes.then(async () => {
       if (!pending(record.state)) return;
       const now = iso();
@@ -395,7 +395,7 @@ export async function claimAutomaticStudyAnalysis(
 /** A scoped cancellation request, never a PID signal and never permission to create a new job. */
 export async function requestAutomaticStudyAnalysisCancellationPrepared(
   prepared: PreparedRunArtifactPaths,
-): Promise<AutomaticStudyAnalysisCancellation> {
+): Promise<AutomaticAnalysisCancellation> {
   try {
     const root = await bindJob(prepared);
     if (!root) return { requested: false, reason: "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE" };

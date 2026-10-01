@@ -1,6 +1,6 @@
-import type { AutomaticStudyAnalysisView } from "../../src/analysis/job";
+import type { AutomaticAnalysisView } from "../../src/analysis/job";
 
-export type { AutomaticStudyAnalysisView } from "../../src/analysis/job";
+export type { AutomaticAnalysisView } from "../../src/analysis/job";
 
 // Browser-only mirror: runtime imports from the producer are forbidden. The
 // contract test pins this against AUTOMATIC_STUDY_ANALYSIS_STALE_MS.
@@ -20,7 +20,7 @@ const states = new Set([
 const code = /^[A-Za-z][A-Za-z0-9_]{0,127}$/;
 const identifier = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/;
 const timestamp = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
-const unknown = (): AutomaticStudyAnalysisView => ({
+const unknown = (): AutomaticAnalysisView => ({
   state: "unknown",
   analysisId: null,
   reason: "ANALYSIS_AUTOMATIC_INVALID",
@@ -65,7 +65,7 @@ const reasonDetails: Record<string, string> = {
 };
 
 /** Optional execution metadata cannot invalidate an otherwise readable report. */
-export function parseAutomaticAnalysis(value: unknown): AutomaticStudyAnalysisView | undefined {
+export function parseAutomaticAnalysis(value: unknown): AutomaticAnalysisView | undefined {
   if (value === undefined) return undefined;
   if (!value || typeof value !== "object" || Array.isArray(value)) return unknown();
   const v = value as Record<string, unknown>;
@@ -84,7 +84,7 @@ export function parseAutomaticAnalysis(value: unknown): AutomaticStudyAnalysisVi
   )
     return unknown();
   return {
-    state: v.state as AutomaticStudyAnalysisView["state"],
+    state: v.state as AutomaticAnalysisView["state"],
     analysisId: v.analysisId as string | null,
     reason: v.reason as string | null,
     updatedAt: v.updatedAt,
@@ -92,7 +92,7 @@ export function parseAutomaticAnalysis(value: unknown): AutomaticStudyAnalysisVi
 }
 
 export interface AutomaticAnalysisNotice {
-  state: AutomaticStudyAnalysisView["state"];
+  state: AutomaticAnalysisView["state"];
   message: string;
   detail: string;
   pending: boolean;
@@ -100,7 +100,7 @@ export interface AutomaticAnalysisNotice {
 
 /** A heartbeat is a display hint, never authority to resume or dispatch work. */
 export function automaticAnalysisNotice(
-  automatic: AutomaticStudyAnalysisView,
+  automatic: AutomaticAnalysisView,
   snapshot: boolean,
   now: number,
 ): AutomaticAnalysisNotice {
@@ -119,7 +119,7 @@ export function automaticAnalysisNotice(
     nonterminal && (updated > now || now - updated > AUTOMATIC_ANALYSIS_STALE_MS)
       ? "unknown"
       : value.state;
-  const message: Record<AutomaticStudyAnalysisView["state"], string> = {
+  const message: Record<AutomaticAnalysisView["state"], string> = {
     queued: "Analysis is queued.",
     running: "Analyzing recorded evidence…",
     complete: "Analysis finished.",

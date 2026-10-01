@@ -129,7 +129,7 @@ function exportFailure(
 }
 
 type RunPaths = NonNullable<Awaited<ReturnType<typeof resolveRunPath>>>;
-type StudyAnalysisState = Awaited<ReturnType<typeof loadStudyAnalysis>>;
+type AnalysisState = Awaited<ReturnType<typeof loadStudyAnalysis>>;
 
 export async function exportRun(
   cwdInput: string,
@@ -347,7 +347,7 @@ async function readObserverSlot(
  */
 async function currentObserverData(
   runPaths: RunPaths,
-  analysis: StudyAnalysisState,
+  analysis: AnalysisState,
   slot: string,
 ): Promise<{ value: unknown } | undefined> {
   const saved: unknown = JSON.parse(slot);
@@ -398,7 +398,7 @@ async function inlineImages(
   runPaths: RunPaths,
   runRoot: string,
   data: unknown,
-  analysis: StudyAnalysisState,
+  analysis: AnalysisState,
   options: ExportOptions,
   warnings: string[],
 ): Promise<InlinedImages> {
@@ -506,7 +506,7 @@ function makePortable(inlined: Record<string, unknown>, verified: VerifyResult):
  */
 async function recheckAnalysis(
   runPaths: RunPaths,
-  analysis: StudyAnalysisState,
+  analysis: AnalysisState,
   verified: VerifyResult,
   inlined: Record<string, unknown>,
   options: ExportOptions,
@@ -552,7 +552,7 @@ async function recheckAnalysis(
 /** The portable Observer HTML, with the local-only banner when the export is watermarked. */
 function renderExportHtml(
   inlined: Record<string, unknown>,
-  analysis: StudyAnalysisState,
+  analysis: AnalysisState,
   assets: ObserverExportAssets,
   verified: VerifyResult,
   watermarked: boolean,

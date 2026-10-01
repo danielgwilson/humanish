@@ -1,5 +1,5 @@
 import { containsSensitive } from "../evidence/redaction.js";
-import type { LoadedStudyAnalysis } from "./study-analysis.js";
+import type { LoadedAnalysis } from "./study-analysis.js";
 import { AUTOMATIC_STUDY_ANALYSIS_DIRECTORY, projectAutomaticStudyAnalysisView } from "./job.js";
 import { STUDY_ANALYSIS_DIRECTORY, STUDY_ANALYSIS_EXECUTION_DIRECTORY } from "./store.js";
 
@@ -26,7 +26,7 @@ export function isStudyAnalysisRecordPath(relativePath: string): boolean {
 }
 
 /** Check the exact in-memory snapshot being projected; a prior filesystem scan cannot approve a later write. */
-export function studyAnalysisSharingProblems(loaded: LoadedStudyAnalysis): {
+export function studyAnalysisSharingProblems(loaded: LoadedAnalysis): {
   sensitive: boolean;
   unverified: boolean;
 } {
@@ -48,7 +48,7 @@ export function studyAnalysisSharingProblems(loaded: LoadedStudyAnalysis): {
 }
 
 /** Unsafe generated text is quarantined without hiding the original recording. */
-export function projectShareCheckedAnalysis(loaded: LoadedStudyAnalysis): LoadedStudyAnalysis {
+export function projectShareCheckedAnalysis(loaded: LoadedAnalysis): LoadedAnalysis {
   const { automatic: _automatic, ...evidence } = loaded;
   const automatic = projectAutomaticStudyAnalysisView(loaded.automatic);
   const safe = automatic === undefined ? evidence : { ...evidence, automatic };

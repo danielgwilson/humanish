@@ -6,7 +6,7 @@ import {
   isSupportedAnalysisModel,
 } from "./run-study-analysis.js";
 import { containsSensitive } from "../evidence/redaction.js";
-import type { StudyAnalysisConfig } from "./study-analysis.js";
+import type { AnalysisConfig } from "./study-analysis.js";
 
 export const DEFAULT_ANALYSIS_TIMEOUT_MS = 600_000;
 const MAX_ANALYSIS_TIMEOUT_MS = 600_000;
@@ -53,7 +53,7 @@ export const DEFAULT_ANALYSIS_MAX_COST_USD = 3;
 export function resolveAutomaticAnalysis(
   raw: unknown,
 ):
-  | { ok: true; config: StudyAnalysisConfig | undefined; preferLargerOutput?: boolean }
+  | { ok: true; config: AnalysisConfig | undefined; preferLargerOutput?: boolean }
   | { ok: false; message: string } {
   if (raw === false) return { ok: true, config: undefined };
   if (raw === undefined) raw = { maxCostUsd: DEFAULT_ANALYSIS_MAX_COST_USD };
