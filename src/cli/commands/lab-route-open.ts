@@ -3,12 +3,12 @@ import type { CliIo, LabCommandOptions } from "../io.js";
 import { type ObserverPlan, planObserver, staticObserverOpen } from "../observer-follow.js";
 
 /**
- * Default browser-open policy for a lab backend run. Mirrors the observe/watch gate:
+ * Default browser-open policy for a lab route's run. Mirrors the observe/watch gate:
  * an explicit --open/--no-open wins; --json (machine mode) never auto-opens; otherwise a
  * lab-config `defaults.open` wins, and the final fallback opens only for an interactive
- * `watch` on a real TTY. Extracted so all lab backends share one gate (and one test).
+ * `watch` on a real TTY. Extracted so every route's CLI setup shares one gate (and one test).
  */
-export function resolveBackendShouldOpen(args: {
+export function resolveRouteShouldOpen(args: {
   optionOpen: boolean | undefined;
   defaultsOpen: boolean | undefined;
   mode: string;

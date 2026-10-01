@@ -21,8 +21,8 @@ reports the first failed step.
    It rejects unknown keys and every refused composition in the
    [support matrix](docs/ramp/README.md#check-which-compositions-a-lab-can-declare). A refusal
    exits with code 2 before a run id exists.
-2. **Plan.** `runLabCommand` runs the route's CLI setup, here `cuaBackendRun`
-   (`src/cli/commands/lab-backend-cua.ts`). `runBackend` (`src/cli/commands/lab-backend-run.ts`)
+2. **Plan.** `runLabCommand` runs the route's CLI setup, here `computerUseRouteRun`
+   (`src/cli/commands/lab-route-computer-use.ts`). `runRoute` (`src/cli/commands/lab-route-run.ts`)
    then calls `prepareLab` (`src/lab/engine.ts`). `prepareLab` picks one of five routes with
    `routeOf` (`src/lab/plan.ts`) from `subject.source`, `subject.topology`, `execution.target` and
    the capabilities `actorRegistry` (`src/actors/registry.ts`) lists for `actors[0].type`. It maps

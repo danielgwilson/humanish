@@ -12,12 +12,12 @@ import { backendOf, type LabRoute, routeOf } from "../../lab/plan.js";
 import type { LabConfig } from "../../lab/types.js";
 import type { RunLabProvenance } from "../../run/status.js";
 import type { RunResult } from "../../run/results.js";
-import { cuaBackendRun } from "./lab-backend-cua.js";
-import { type BackendRun, runBackend } from "./lab-backend-run.js";
-import { scriptedBackendRun } from "./lab-backend-scripted.js";
-import { sharedWorldBackendRun } from "./lab-backend-shared-world.js";
-import { syntheticBackendRun } from "./lab-backend-synthetic.js";
-import { terminalBackendRun } from "./lab-backend-terminal.js";
+import { computerUseRouteRun } from "./lab-route-computer-use.js";
+import { type RouteRun, runRoute } from "./lab-route-run.js";
+import { scriptedRouteRun } from "./lab-route-scripted.js";
+import { sharedWorldRouteRun } from "./lab-route-shared-world.js";
+import { previewRouteRun } from "./lab-route-preview.js";
+import { terminalRouteRun } from "./lab-route-terminal.js";
 import { maybeLoadAdapterScorer } from "./lab-hooks.js";
 import {
   type CliIo,
@@ -55,7 +55,7 @@ export async function runLabCommand(args: {
   // and carried into the run's status record and bundle so the filesystem can answer "which lab
   // produced this run" without the old `persona.source = "lab:<id>"` string convention.
   const lab: RunLabProvenance = { id: config.id, path: resolved.path, origin: resolved.origin };
-  // Named here, once, for every backend: a synthetic or terminal result carries no labId, so the
+  // Named here, once, for every route: a preview or terminal result carries no labId, so the
   // starter lab `first-run` went unnamed in telemetry while the computer-use ones were named.
   noteStudyFacts(args.command, deriveStudyFacts({ labId: config.id }));
   const route = routeOf(config);
@@ -63,8 +63,8 @@ export async function runLabCommand(args: {
     writeUnsupportedRerunFlagsResult(args, backendOf(route));
     return;
   }
-  // Exposure serves a live desktop, which only the computer-use backend produces. Refuse it on any
-  // other backend rather than silently ignoring it.
+  // Exposure serves a live desktop, which only the computer-use route produces. Refuse it on any
+  // other route rather than silently ignoring it.
   if (route !== "computer-use" && watchExposeRequested(args.options)) {
     const result: RunResult = {
       schema: "humanish.run-result.v1",
@@ -80,7 +80,7 @@ export async function runLabCommand(args: {
     args.io.setExitCode(2);
     return;
   }
-  // A live run is never share_ready, so watch --safe admits nothing. The computer-use backend
+  // A live run is never share_ready, so watch --safe admits nothing. The computer-use route
   // refuses it through validateExposure; refuse it here for the others.
   if (route !== "computer-use" && args.options.safe === true) {
     const result: RunResult = {
@@ -98,16 +98,16 @@ export async function runLabCommand(args: {
     return;
   }
 
-  // The backend's setup refuses bad options, and runLab's plan refuses bad labs, before the scorer
+  // The route's CLI setup refuses bad options, and runLab's plan refuses bad labs, before the scorer
   // loads, so neither imports the scorer's host code. The route's own checks of this machine (keys,
   // subject env, a browser, a free run id) still come after the scorer loads.
-  const run = backendRunFor(route, { ...args, config, labProvenance: lab });
+  const run = routeRunFor(route, { ...args, config, labProvenance: lab });
   if (run === undefined) return;
 
   // #316: resolve + load a config-declared/CLI-flagged adopter scorer FAIL-CLOSED, before any spend,
   // and only for a plan that will run. A declared gate that cannot load (bad ref, not found, load
-  // failure, no hooks, unsupported backend) aborts with exit 2 rather than green-passing.
-  await runBackend(config, run, async () => {
+  // failure, no hooks, unsupported route) aborts with exit 2 rather than green-passing.
+  await runRoute(config, run, async () => {
     const scorerLoad = await maybeLoadAdapterScorer({
       cwd: args.options.cwd,
       config,
@@ -142,8 +142,8 @@ export async function runLabCommand(args: {
   });
 }
 
-/** The route's backend setup. Undefined when the setup has already written its own result. */
-function backendRunFor(
+/** The route's CLI setup. Undefined when the setup has already written its own result. */
+function routeRunFor(
   route: LabRoute,
   args: {
     command: Command;
@@ -154,18 +154,18 @@ function backendRunFor(
     mode: "run" | "watch";
     options: LabCommandOptions;
   },
-): BackendRun | undefined {
+): RouteRun | undefined {
   switch (route) {
     case "preview":
-      return syntheticBackendRun(args);
+      return previewRouteRun(args);
     case "computer-use":
-      return cuaBackendRun(args);
+      return computerUseRouteRun(args);
     case "scripted":
-      return scriptedBackendRun(args);
+      return scriptedRouteRun(args);
     case "terminal":
-      return terminalBackendRun(args);
+      return terminalRouteRun(args);
     case "shared-world":
-      return sharedWorldBackendRun(args);
+      return sharedWorldRouteRun(args);
     default:
       // Compile-time exhaustiveness: a future route must be handled here, not silently no-op.
       throw new Error(`Unhandled lab route: ${String(route satisfies never)}`);

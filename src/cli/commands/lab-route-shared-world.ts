@@ -22,10 +22,10 @@ import {
   withObserverServer,
 } from "../observer-follow.js";
 import { formatConcurrentSharedWorldLabHuman } from "./lab-format.js";
-import { resolveBackendShouldOpen, watchFinishedPlan } from "./lab-backend-open.js";
-import type { BackendRun } from "./lab-backend-run.js";
+import { resolveRouteShouldOpen, watchFinishedPlan } from "./lab-route-open.js";
+import type { RouteRun } from "./lab-route-run.js";
 
-interface SharedWorldBackendArgs {
+interface SharedWorldRouteArgs {
   command: Command;
   io: CliIo;
   config: LabConfig;
@@ -35,14 +35,14 @@ interface SharedWorldBackendArgs {
 }
 
 /**
- * The shared-world backend's setup: dry run, open and follow semantics, the live Observer server
+ * The shared-world route's CLI setup: dry run, open and follow semantics, the live Observer server
  * the run attaches, and how it presents the outcome. Undefined when setup has already written its
  * own result.
  */
-export function sharedWorldBackendRun(args: SharedWorldBackendArgs): BackendRun | undefined {
+export function sharedWorldRouteRun(args: SharedWorldRouteArgs): RouteRun | undefined {
   const wantsMachine = wantsJson(args.command);
   const dryRun = resolveLabDryRun(args.config, args.options.dryRun, true) ?? true;
-  const shouldOpen = resolveBackendShouldOpen({
+  const shouldOpen = resolveRouteShouldOpen({
     optionOpen: args.options.open,
     defaultsOpen: args.config.defaults?.open,
     mode: args.mode,

@@ -10,9 +10,9 @@ import {
   writeResult,
 } from "../io.js";
 import { planObserver, showObserver, staticObserverOpen } from "../observer-follow.js";
-import type { BackendRun } from "./lab-backend-run.js";
+import type { RouteRun } from "./lab-route-run.js";
 
-interface SyntheticBackendArgs {
+interface PreviewRouteArgs {
   command: Command;
   io: CliIo;
   lab: string;
@@ -23,10 +23,10 @@ interface SyntheticBackendArgs {
 }
 
 /**
- * The preview backend's setup: the sim count and Observer plan, its runLab options, and how it
+ * The preview route's CLI setup: the sim count and Observer plan, its runLab options, and how it
  * presents the outcome. Undefined when setup has already written its own result.
  */
-export function syntheticBackendRun(args: SyntheticBackendArgs): BackendRun | undefined {
+export function previewRouteRun(args: PreviewRouteArgs): RouteRun | undefined {
   const simCount = parseLabCount(args.options.sims, args.config.actors[0]?.count ?? 4);
   if (simCount === null) {
     const result: RunResult = {
