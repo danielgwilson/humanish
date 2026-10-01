@@ -21,9 +21,9 @@ export const DESKTOP_SETTLE_MS = 8_000;
 export const CHROME_DEVTOOLS_PORT = 9222;
 
 /**
- * How long the launch command waits for Chrome's DevTools port to answer. A cold Chrome normally
- * answers within a few seconds; two device-emulated lanes failed when it had not answered 11 s
- * after launch, and a CI leg once waited 20 s for the port marker.
+ * How long the launch command waits for Chrome's DevTools port to answer. Six live launches on the
+ * stock desktop answered in 4.8-7.7 s; two device-emulated lanes failed when it had not answered
+ * about 11 s after launch, and a CI leg once waited 20 s for the port marker.
  */
 const CHROME_DEVTOOLS_READY_MS = 30_000;
 

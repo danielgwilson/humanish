@@ -127,8 +127,11 @@ export async function openLaneSurface(
   });
 }
 
-/** DevTools answering later than this after launch is recorded as a warning on the lane. */
-const SLOW_DEVTOOLS_MS = 5_000;
+/**
+ * DevTools answering later than this after launch is recorded as a warning on the lane. Six live
+ * launches answered in 4.8-7.7 s; the reads this wait now guards used to give up at about 11 s.
+ */
+const SLOW_DEVTOOLS_MS = 10_000;
 
 /**
  * Records how Chrome's DevTools port answered after launch, as a timed phase in the bundle. A

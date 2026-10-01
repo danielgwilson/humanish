@@ -4540,21 +4540,21 @@ describe("Chrome DevTools readiness after launch", () => {
     expect(phase).toMatchObject({ level: "warn" });
   });
 
-  it("records the DevTools wait as a timed phase, and warns only past 5 s", async () => {
+  it("records the DevTools wait as a timed phase, and warns only past 10 s", async () => {
     const slow = await runWithLaunch(
       chromeConfig("desktop"),
-      "HUMANISH_BROWSER_CDP_READY_MS=7000\n",
+      "HUMANISH_BROWSER_CDP_READY_MS=12000\n",
     );
     expect(slow.phase).toMatchObject({
       level: "info",
-      message: "Chrome DevTools answered on 127.0.0.1:9222 (7000ms)",
+      message: "Chrome DevTools answered on 127.0.0.1:9222 (12000ms)",
     });
     expect(slow.result.warnings).toContainEqual(
-      expect.stringContaining("answered 7000 ms after launch; the browser started slowly"),
+      expect.stringContaining("answered 12000 ms after launch; the browser started slowly"),
     );
     const quick = await runWithLaunch(
       chromeConfig("desktop"),
-      "HUMANISH_BROWSER_CDP_READY_MS=800\n",
+      "HUMANISH_BROWSER_CDP_READY_MS=7700\n",
     );
     expect(quick.phase).toMatchObject({ level: "info" });
     expect(quick.result.warnings.join("\n")).not.toContain("started slowly");
