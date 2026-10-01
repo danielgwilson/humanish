@@ -1,6 +1,7 @@
 // The trace a codex-app-server run writes (summary.json): its schema, the recorder that builds it
 // from app-server envelopes, and the redaction applied before anything is persisted.
 import { digestText, publicPathForTrace, redactText, tailText } from "../../evidence/redaction.js";
+import { isRecord } from "../../run/type-guards.js";
 
 export const CODEX_APP_SERVER_TRACE_SCHEMA = "humanish.codex-app-server-trace.v1";
 
@@ -616,8 +617,4 @@ function limitTranscript(value: string): string {
     return value;
   }
   return `[...sanitized transcript truncated to last ${maxChars} characters...]\n${value.slice(-maxChars)}`;
-}
-
-export function isRecord(value: unknown): value is JsonObject {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

@@ -5,12 +5,8 @@ import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import readline from "node:readline";
 
 import { redactText } from "../../evidence/redaction.js";
-import {
-  formatJsonRpcError,
-  isRecord,
-  type JsonObject,
-  type JsonRpcId,
-} from "./app-server-trace.js";
+import { isRecord } from "../../run/type-guards.js";
+import { formatJsonRpcError, type JsonObject, type JsonRpcId } from "./app-server-trace.js";
 
 export interface CodexStdioHandlers {
   /** Every message sent or received, before it is acted on. */

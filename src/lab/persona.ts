@@ -1,5 +1,6 @@
 import { digestText, redactText } from "../evidence/redaction.js";
 import type { ActorPersonaRef } from "../actors/contract.js";
+import { isRecord } from "../run/type-guards.js";
 
 type PersonaLevel = "low" | "medium" | "high";
 export const PERSONA_BACKGROUND_MAX_BYTES = 32 * 1024;
@@ -47,10 +48,6 @@ const PERSONA_FIELDS = new Set([
   "constraints",
 ]);
 const TRAIT_FIELDS = new Set(["patience", "technical_confidence", "accessibility_needs"]);
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 function cleanText(value: string): string {
   return value

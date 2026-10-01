@@ -14,13 +14,14 @@ import {
   registeredScriptedBrowserActors,
   registeredTerminalActors,
 } from "../routing.js";
-import { invalid, isRecord, posInt, str } from "./values.js";
+import { invalid, posInt, str } from "./values.js";
 import type {
   LabActor,
   LabParticipantEntry,
   LabParticipantFocus,
   LabConfigParseFailure,
 } from "../types.js";
+import { isRecord } from "../../run/type-guards.js";
 
 // A lane id interpolates into per-lane evidence paths (screenshots/<id>/, actors/<id>.json), so
 // it must be a public-safe path token, same shape as a lab id.

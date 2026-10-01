@@ -8,6 +8,12 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Changed
+
+- `humanish lab run --help` says what `--lanes` takes: a participant's declared
+  `actors[0].lanes[].id`, or `lane-01`, `lane-02`, … by position when the lab declares none
+  (#1336).
+
 ### Fixes
 
 - `humanish lab run --rerun-failed-from` selects a fan-out participant whose session ended

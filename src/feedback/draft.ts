@@ -16,6 +16,7 @@ import {
 import type { PreparedRunArtifactPaths } from "../run/paths.js";
 import { loadRunBundlePrepared } from "../run/locate.js";
 import { isFeedbackIdempotencyKey } from "../run/feedback-shape.js";
+import { isRecord } from "../run/type-guards.js";
 import { feedbackProofCommands, projectFeedbackAcceptanceProof } from "./proof.js";
 
 export const FEEDBACK_SCHEMA = "humanish.feedback.v1";
@@ -348,10 +349,6 @@ export function isUsableFeedbackCandidate(candidate: unknown): candidate is RunF
       !item.path.includes("://") &&
       !item.path.includes(".."),
   );
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 export function renderMarkdown(draft: FeedbackDraft, repo: string): string {
