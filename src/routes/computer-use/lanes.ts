@@ -14,7 +14,7 @@ import {
   writeContainedOutputFile,
   type PreparedOutputRoot,
 } from "../../run/contained-output.js";
-import { type LocalTreeArchive } from "../../run/source-archive.js";
+import { type LocalTreeArchive } from "../../subject/local-tree-archive.js";
 import { participantOutcomeOk } from "./participant-facts.js";
 import {
   closeParticipantModel,

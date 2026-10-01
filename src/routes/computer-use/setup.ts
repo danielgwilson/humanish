@@ -17,7 +17,7 @@ import {
   prepareContainedOutputDirectory,
   prepareSelectedOutputDirectory,
 } from "../../run/contained-output.js";
-import { type LocalTreeArchive } from "../../run/source-archive.js";
+import { type LocalTreeArchive } from "../../subject/local-tree-archive.js";
 import { renderCuaReviewMarkdown } from "./bundle.js";
 import {
   emitPreflightPlan,

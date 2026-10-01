@@ -60,7 +60,7 @@ import {
   type ObserverResult,
   type ObserverServer,
 } from "../../../src/observer/render.js";
-import type { LocalTreeArchive } from "../../../src/run/source-archive.js";
+import type { LocalTreeArchive } from "../../../src/subject/local-tree-archive.js";
 
 // ---------------------------------------------------------------------------
 // Fakes for the N+1 substrate. The module records create/kill BY id and exposes

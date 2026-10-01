@@ -2,7 +2,7 @@
 // digest-only host and route labels.
 
 import type { RunSubjectProvenance } from "../../run/bundle.js";
-import type { LocalTreeArchive } from "../../run/source-archive.js";
+import type { LocalTreeArchive } from "../../subject/local-tree-archive.js";
 import { commandDigestOf } from "../../subject/state.js";
 
 /** Extract the in-sandbox port from the (loopback) serve.url so getHost can expose it. */

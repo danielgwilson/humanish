@@ -6,7 +6,7 @@ import type { ComputerUsePlan } from "../../lab/plan-types.js";
 import type { LabSubjectState } from "../../lab/types.js";
 import { cuaDeclaredState } from "./plan.js";
 import { type RunSubjectProvenance, type RunSubjectStateStepRecord } from "../../run/bundle.js";
-import { type LocalTreeArchive } from "../../run/source-archive.js";
+import { type LocalTreeArchive } from "../../subject/local-tree-archive.js";
 import { participantSubjectProjection } from "./lanes.js";
 import { type CuaSubjectRoute } from "./plan.js";
 import {

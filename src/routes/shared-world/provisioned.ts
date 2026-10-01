@@ -21,7 +21,7 @@ import { liveObserverResult } from "../../observer/live.js";
 import type { RunSubjectStateStepRecord } from "../../run/bundle.js";
 import { mapWithConcurrency } from "../../run/concurrency.js";
 import type { SharedWorldStateSnapshot } from "../../run/shared-world-evidence.js";
-import type { LocalTreeArchive } from "../../run/source-archive.js";
+import type { LocalTreeArchive } from "../../subject/local-tree-archive.js";
 import { provisionCloneSubject } from "../../subject/clone.js";
 import { provisionLocalTreeSubject } from "../../subject/local-tree.js";
 import { defaultSharedWorldPhaseSink } from "../../subject/steps.js";

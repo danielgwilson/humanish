@@ -10,7 +10,7 @@ import {
   enumerateLocalTree,
   LOCAL_TREE_DENYLIST_BASENAME_PATTERNS,
   LOCAL_TREE_DENYLIST_PATH_SEGMENTS,
-} from "../../src/run/source-archive.js";
+} from "../../src/subject/local-tree-archive.js";
 
 // Deterministic author/committer identity so `git commit` never depends on
 // (or waits on) the host's global gitconfig -- no GPG signing, no missing

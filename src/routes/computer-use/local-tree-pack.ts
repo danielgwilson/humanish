@@ -3,7 +3,7 @@
 import { readFile, rm } from "node:fs/promises";
 import path from "node:path";
 import type { LabConfig } from "../../lab/types.js";
-import { createLocalTreeArchive, type LocalTreeArchive } from "../../run/source-archive.js";
+import { createLocalTreeArchive, type LocalTreeArchive } from "../../subject/local-tree-archive.js";
 import { type CuaActorLabHooks } from "./types.js";
 
 /**

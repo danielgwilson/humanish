@@ -1,4 +1,4 @@
-import { normalizeExtraExcludeEntry } from "../../run/source-archive.js";
+import { normalizeExtraExcludeEntry } from "../../subject/local-tree-archive.js";
 import { ENV_NAME_PATTERN, invalid, isRecord, posInt, str, strList } from "./values.js";
 import { parseEnvValues, parseState, subjectStateInvalidReason } from "./subject-state.js";
 import type {
