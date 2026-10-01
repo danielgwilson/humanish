@@ -20,6 +20,7 @@ import {
   missingLocalEvidenceArtifacts,
   rawScreenshotPostureWarnings,
   rawScreenshotStreamIds,
+  redactedShapeFramePaths,
   scanRunPublicSafetyArtifacts,
   streamScreenshotPaths,
 } from "./artifacts.js";
@@ -181,6 +182,9 @@ export async function verifyResolvedRun(
   const missingEvidenceArtifacts = isRunBundle(bundle)
     ? await missingLocalEvidenceArtifacts(runPaths, bundle)
     : [];
+  const redactedShapeFrames = isRunBundle(bundle)
+    ? await redactedShapeFramePaths(runPaths, bundle)
+    : new Set<string>();
   const invalidEvidenceReferences = isRunBundle(bundle) ? invalidRunEvidenceReferences(bundle) : [];
   checks.push({
     name: "local evidence artifacts exist",
@@ -205,14 +209,20 @@ export async function verifyResolvedRun(
   const ok = checks.every((check) => check.ok);
   const warnings = isRunBundle(bundle)
     ? [
-        ...rawScreenshotPostureWarnings(bundle),
+        ...rawScreenshotPostureWarnings(bundle, redactedShapeFrames),
         ...undeclaredSubjectStateWarnings(bundle),
         ...desktopGeometryWarnings(bundle),
         ...(await runNotFinishedWarnings(runPaths, bundle)),
       ]
     : [];
   const shareSafety = isRunBundle(bundle)
-    ? buildShareSafety({ ok, bundle, publicSafetyFindings, unscannedArtifacts })
+    ? buildShareSafety({
+        ok,
+        bundle,
+        publicSafetyFindings,
+        unscannedArtifacts,
+        redactedShapeFrames,
+      })
     : {
         status: "blocked" as const,
         reasons: [
@@ -426,6 +436,8 @@ function buildShareSafety(args: {
   bundle: RunBundle;
   publicSafetyFindings: string[];
   unscannedArtifacts: string[];
+  /** Declared frames whose bytes have the redactor's output shape. */
+  redactedShapeFrames: ReadonlySet<string>;
 }): VerifyResult["shareSafety"] {
   const reasons: VerifyResult["shareSafety"]["reasons"] = [];
 
@@ -467,7 +479,7 @@ function buildShareSafety(args: {
       message: `The public-safety scan cannot read ${paths.length} file(s) as text, and they are not stream screenshots under screenshots/ or registered recordings: ${shown}${more > 0 ? ` and ${more} more` : ""}. Review them before sharing.`,
     });
   }
-  const rawStreamIds = rawScreenshotStreamIds(args.bundle);
+  const rawStreamIds = rawScreenshotStreamIds(args.bundle, args.redactedShapeFrames);
   if (rawStreamIds.length > 0) {
     reasons.push({
       code: "RAW_SCREENSHOTS",

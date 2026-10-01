@@ -13,7 +13,7 @@ import { serveObserverLibrary, type ServeLibraryServer } from "../../src/observe
 import type { RunBundle } from "../../src/run/bundle.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { verifyRun } from "../../src/verify/verify.js";
-import { pngTextChunk, withPngChunk } from "../helpers/png-chunks.js";
+import { pngTextChunk, withPngChunk, withPngChunkData } from "../helpers/png-chunks.js";
 
 // Concatenated so this file never holds a secret-shaped literal; the text scan detects it.
 const SYNTHETIC_SECRET = "sk-" + "syntheticvalue1234567890abcdef";
@@ -36,6 +36,19 @@ interface FrameCase {
 
 const secretPng = (type: "tEXt" | "zTXt" | "iTXt") =>
   withPngChunk(PNG_4X4, type, pngTextChunk(type, `OPENAI_API_KEY=${SYNTHETIC_SECRET}`));
+const SECRET_BYTES = Buffer.from(`OPENAI_API_KEY=${SYNTHETIC_SECRET}`);
+// A full desktop-size frame: wider than any thumbnail the redactor writes.
+const PNG_1280X720 = PNG.sync.write(new PNG({ width: 1280, height: 720 }));
+
+/** A blurred-claim frame whose bytes carry the secret in an allowed chunk's payload. */
+const allowedChunkCase = (type: string): FrameCase => ({
+  path: "screenshots/frame.png",
+  bytes: withPngChunk(PNG_4X4, type, SECRET_BYTES),
+  claim: "blurred",
+  posture: "blurred",
+  grade: "local_only",
+  code: "RAW_SCREENSHOTS",
+});
 
 const CASES: Record<string, FrameCase> = {
   "blurred frame (control)": {
@@ -111,6 +124,58 @@ const CASES: Record<string, FrameCase> = {
     claim: undefined,
     posture: undefined,
     live: true,
+    grade: "local_only",
+    code: "RAW_SCREENSHOTS",
+  },
+  ...Object.fromEntries(
+    ["tRNS", "PLTE", "bKGD", "pHYs", "sBIT", "cHRM", "sRGB", "gAMA"].map((type) => [
+      `1207 row 1: blurred claim, secret as the ${type} payload`,
+      allowedChunkCase(type),
+    ]),
+  ),
+  "1207 row 1b: secret as the IEND payload": {
+    path: "screenshots/frame.png",
+    bytes: withPngChunkData(PNG_4X4, "IEND", SECRET_BYTES),
+    claim: "blurred",
+    posture: "blurred",
+    grade: "blocked",
+    code: "VERIFY_FAILED",
+    message: "PNG IEND chunk must be empty",
+  },
+  "1207 row 1b: secret after the 13 IHDR bytes": {
+    path: "screenshots/frame.png",
+    bytes: withPngChunkData(
+      PNG_4X4,
+      "IHDR",
+      Buffer.concat([PNG_4X4.subarray(16, 29), SECRET_BYTES]),
+    ),
+    claim: "blurred",
+    posture: "blurred",
+    grade: "blocked",
+    code: "VERIFY_FAILED",
+    message: "PNG must start with a 13-byte IHDR chunk",
+  },
+  "1207 row 2: full-size frame claiming blurred": {
+    path: "screenshots/frame.png",
+    bytes: PNG_1280X720,
+    claim: "blurred",
+    posture: "blurred",
+    grade: "local_only",
+    code: "RAW_SCREENSHOTS",
+  },
+  "1207 row 2: full-size unclaimed frame under a blurred posture": {
+    path: "screenshots/frame.png",
+    bytes: PNG_1280X720,
+    claim: undefined,
+    posture: "blurred",
+    grade: "local_only",
+    code: "RAW_SCREENSHOTS",
+  },
+  "1207 row 2: frame claiming ocr_scrubbed, which no writer produces": {
+    path: "screenshots/frame.png",
+    bytes: PNG_4X4,
+    claim: "ocr_scrubbed",
+    posture: "blurred",
     grade: "local_only",
     code: "RAW_SCREENSHOTS",
   },

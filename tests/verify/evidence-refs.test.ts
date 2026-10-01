@@ -146,14 +146,14 @@ describe("verify declared evidence references", () => {
         await save();
         const result = await verifyRun(cwd, RUN);
         expect(result.ok).toBe(true);
-        expect(result.shareSafety.status).toBe(redaction === "none" ? "local_only" : "share_ready");
+        // Only `blurred` is a redaction claim: no writer produces ocr_scrubbed.
+        const raw = redaction !== "blurred";
+        expect(result.shareSafety.status).toBe(raw ? "local_only" : "share_ready");
         expect(result.shareSafety.reasons.some((reason) => reason.code === "RAW_SCREENSHOTS")).toBe(
-          redaction === "none",
+          raw,
         );
-        expect(result.warnings.some((warning) => warning.includes("FULL-FIDELITY"))).toBe(
-          redaction === "none",
-        );
-        if (redaction === "none") expect((await draftFeedback(cwd, RUN)).ok).toBe(false);
+        expect(result.warnings.some((warning) => warning.includes("FULL-FIDELITY"))).toBe(raw);
+        if (raw) expect((await draftFeedback(cwd, RUN)).ok).toBe(false);
       },
     );
 

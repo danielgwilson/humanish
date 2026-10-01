@@ -3,7 +3,7 @@ import { realpathSync } from "node:fs";
 import path from "node:path";
 import { PNG } from "pngjs";
 
-import { SCREENSHOT_MAX_SOURCE_PIXELS, readPngDeclaredDimensions } from "./image.js";
+import { SCREENSHOT_MAX_WIDTH_CAP, pngDecodeRefusal } from "./image.js";
 
 // Single source of truth for public-safety redaction patterns. Producers and the verify gate
 // both use these, so the denylist cannot drift between them. See docs/contracts/policy.md for
@@ -140,10 +140,9 @@ export function publicPathForTrace(value: string, rootCwd: string): string {
 // ---------------------------------------------------------------------------
 
 const SCREENSHOT_MAX_WIDTH_DEFAULT = 96;
-// Hard ceiling on the emitted thumbnail width. This, not the default, is what
-// makes the output too coarse to read text off: a 1024px+ desktop frame is
+// SCREENSHOT_MAX_WIDTH_CAP (image.ts) is the hard ceiling on the emitted thumbnail width. It, not
+// the default, is what makes the output too coarse to read text off: a 1024px+ desktop frame is
 // downscaled at least ~8x. A caller can only ask for something smaller.
-const SCREENSHOT_MAX_WIDTH_CAP = 128;
 const SCREENSHOT_PLACEHOLDER_GRAY = 128;
 
 /**
@@ -191,7 +190,9 @@ export function redactScreenshot(
   );
   try {
     const source = Buffer.isBuffer(input) ? input : Buffer.from(input);
-    if (source.length === 0 || sourcePixelsExceedCap(source)) {
+    // The same pre-decode refusal as verify: an unchecked IHDR or an interlaced image can make
+    // the decoder allocate gigabytes, and export redacts frames from bundles on disk.
+    if (source.length === 0 || pngDecodeRefusal(source) !== null) {
       return placeholderScreenshot(maxWidth);
     }
     const decoded = PNG.sync.read(source);
@@ -230,11 +231,6 @@ function effectiveBlurRadius(outW: number): number {
 // the try/catch can fall back to a placeholder. A too-short or non-PNG buffer
 // returns false and falls through to PNG.sync.read, which throws and lands on the
 // placeholder.
-function sourcePixelsExceedCap(buf: Buffer): boolean {
-  const dimensions = readPngDeclaredDimensions(buf);
-  return dimensions !== null && dimensions.width * dimensions.height > SCREENSHOT_MAX_SOURCE_PIXELS;
-}
-
 function placeholderScreenshot(maxWidth: number): RedactedScreenshot {
   const width = Math.max(1, Math.min(maxWidth, SCREENSHOT_MAX_WIDTH_DEFAULT));
   const height = Math.max(1, Math.round((width * 9) / 16));

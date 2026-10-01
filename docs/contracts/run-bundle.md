@@ -553,15 +553,19 @@ may be an empty regular file, consistent with feedback verification, but that
 permission cannot relax another consumer's nonempty-file requirement. The
 qualified zero-event terminal-log exception remains unchanged.
 
-A frame counts as redacted only when its `screenshotRef.redaction` is `blurred`
-or `ocr_scrubbed`, or when it has no `redaction` and the stream's final
-`actor.redaction.screenshots` is `blurred` or `ocr_scrubbed` (bundles from before
-per-frame claims). `none`, any other value, and an unclaimed frame on a raw,
-silent or live-only trace are raw: they contribute `RAW_SCREENSHOTS` and keep
-otherwise valid evidence `local_only`. An aggregate raw declaration wins over
-every frame claim.
+A frame counts as redacted only when its bytes have the redactor's output shape
+and a redaction claim covers it. The shape is IHDR, IDAT and IEND chunks only,
+an empty IEND that ends the file, and a width of at most 128 pixels. The claim is
+`screenshotRef.redaction: blurred`, or no `redaction` while the stream's final
+`actor.redaction.screenshots` is `blurred` (bundles from before per-frame
+claims). Every other frame is raw: it contributes `RAW_SCREENSHOTS` and keeps
+otherwise valid evidence `local_only`. That includes `none`, any other value,
+an unclaimed frame on a raw, silent or live-only trace, and `ocr_scrubbed`, which
+the trace contract reserves but no writer produces. An aggregate raw declaration
+wins over every frame claim.
 
-A screenshot is a PNG holding image data only. A chunk outside IHDR, PLTE, IDAT,
+A screenshot is a non-interlaced PNG whose first chunk is a 13-byte IHDR, whose
+IEND is empty, and which holds image data only. A chunk outside IHDR, PLTE, IDAT,
 IEND, tRNS, cHRM, gAMA, sBIT, sRGB, pHYs and bKGD (text chunks, ICC profiles,
 Exif, timestamps, private chunks) fails verification. The harness writers drop
 those chunks before writing a frame.

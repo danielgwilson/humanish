@@ -1,6 +1,6 @@
 import { lstat, readdir } from "node:fs/promises";
 import path from "node:path";
-import { screenshotEvidenceError } from "../evidence/image.js";
+import { isRedactedFrameShape, screenshotEvidenceError } from "../evidence/image.js";
 import { isStudyAnalysisRecordPath } from "../analysis/sharing.js";
 import { readPlainText } from "../evidence/plain-text.js";
 import { containsSensitive } from "../evidence/redaction.js";
@@ -177,7 +177,7 @@ export function streamScreenshotPaths(bundle: RunBundle): Set<string> {
   for (const stream of bundle.streams) {
     for (const reference of declaredActorScreenshotReferences(stream)) {
       if (!isRunRootEvidenceReference(reference.path)) continue;
-      const normalized = path.posix.normalize(reference.path.replace(/\\/g, "/"));
+      const normalized = normalizedFramePath(reference.path);
       if (isHarnessScreenshotPath(normalized)) paths.add(normalized);
     }
   }
@@ -273,8 +273,11 @@ export function invalidRunEvidenceReferences(bundle: RunBundle): string[] {
  * so verify surfaces the posture as a warning in both human and JSON output. Read defensively
  * for the same reason as noEngagementActorFindings.
  */
-export function rawScreenshotPostureWarnings(bundle: RunBundle): string[] {
-  const rawStreamIds = rawScreenshotStreamIds(bundle);
+export function rawScreenshotPostureWarnings(
+  bundle: RunBundle,
+  redactedShapeFrames: ReadonlySet<string>,
+): string[] {
+  const rawStreamIds = rawScreenshotStreamIds(bundle, redactedShapeFrames);
 
   if (rawStreamIds.length === 0) {
     return [];
@@ -285,29 +288,58 @@ export function rawScreenshotPostureWarnings(bundle: RunBundle): string[] {
   ];
 }
 
-/** The per-frame claims a redacting writer records; see ActorTraceItem.screenshotRef. */
-const REDACTED_FRAME_CLAIMS = new Set<unknown>(["blurred", "ocr_scrubbed"]);
+/**
+ * The declared frames, as normalized run-root paths, whose bytes have the redactor's output shape
+ * (isRedactedFrameShape). A frame that is missing or cannot be read is not in the set.
+ */
+export async function redactedShapeFramePaths(
+  runPaths: PreparedRunArtifactPaths,
+  bundle: RunBundle,
+): Promise<Set<string>> {
+  const shaped = new Set<string>();
+  for (const stream of bundle.streams) {
+    for (const reference of declaredActorScreenshotReferences(stream)) {
+      if (!isRunRootEvidenceReference(reference.path)) continue;
+      const normalized = normalizedFramePath(reference.path);
+      if (shaped.has(normalized)) continue;
+      const bytes = await readSafeRunArtifactBytes(runPaths, normalized).catch(() => null);
+      if (bytes !== null && isRedactedFrameShape(bytes)) shaped.add(normalized);
+    }
+  }
+  return shaped;
+}
+
+function normalizedFramePath(value: string): string {
+  return path.posix.normalize(value.replace(/\\/g, "/"));
+}
 
 /**
- * The streams whose frames count as full-fidelity. A frame is redacted only when its own claim
- * says so, or when it has no claim and the stream's final trace declares a redacted posture: the
- * computer-use loop blurs every frame of a trace with that posture, and bundles from before
- * per-frame claims carry only the posture. `none`, any value outside the claim set, and an
- * unclaimed frame on a raw, silent or partial live trace are raw. An aggregate raw posture
+ * The streams whose frames count as full-fidelity. A frame is redacted only when its bytes have
+ * the redactor's output shape (`redactedShapeFrames`) and either it claims `blurred`, or it has no
+ * claim and the stream's final trace posture is `blurred`: the computer-use loop blurs every frame
+ * of such a trace, and bundles from before per-frame claims carry only the posture. Every other
+ * frame is raw, including `ocr_scrubbed`, which no writer produces. An aggregate raw posture
  * outranks every frame claim.
  */
-export function rawScreenshotStreamIds(bundle: RunBundle): string[] {
+export function rawScreenshotStreamIds(
+  bundle: RunBundle,
+  redactedShapeFrames: ReadonlySet<string>,
+): string[] {
   const rawStreamIds: string[] = [];
   for (const stream of bundle.streams) {
     const trace: unknown = stream.actor;
     const posture =
       isRecord(trace) && isRecord(trace.redaction) ? trace.redaction.screenshots : undefined;
-    const postureRedacted = posture === "blurred" || posture === "ocr_scrubbed";
-    const frameRaw = declaredActorScreenshotReferences(stream).some((reference) =>
-      reference.redaction === undefined
-        ? !postureRedacted
-        : !REDACTED_FRAME_CLAIMS.has(reference.redaction),
-    );
+    const frameRaw = declaredActorScreenshotReferences(stream).some((reference) => {
+      const claimed =
+        reference.redaction === "blurred" ||
+        (reference.redaction === undefined && posture === "blurred");
+      return !(
+        claimed &&
+        typeof reference.path === "string" &&
+        redactedShapeFrames.has(normalizedFramePath(reference.path))
+      );
+    });
     if (posture === "raw" || frameRaw) {
       rawStreamIds.push(stream.id);
     }

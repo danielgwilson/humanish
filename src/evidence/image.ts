@@ -3,9 +3,12 @@ import { PNG } from "pngjs";
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const PNG_IHDR_LENGTH = 13;
 
-// Shared by validation here and redaction so their pre-decode allocation guard
-// cannot drift.
-export const SCREENSHOT_MAX_SOURCE_PIXELS = 50_000_000;
+// The pixel cap pngDecodeRefusal applies before any decode, for verify and the redactor alike.
+const SCREENSHOT_MAX_SOURCE_PIXELS = 50_000_000;
+
+// The widest thumbnail the redactor emits. A redacted frame is at most this wide, which is what
+// makes it too coarse to read text off; see redactScreenshot.
+export const SCREENSHOT_MAX_WIDTH_CAP = 128;
 
 interface PngDimensions {
   width: number;
@@ -23,7 +26,7 @@ function hasPngSignature(bytes: Buffer): boolean {
  * Read dimensions from a structurally positioned PNG IHDR without decoding.
  * CRC and complete-file validity remain the decoder's responsibility.
  */
-export function readPngDeclaredDimensions(bytes: Buffer): PngDimensions | null {
+function readPngDeclaredDimensions(bytes: Buffer): PngDimensions | null {
   if (
     !hasPngSignature(bytes) ||
     bytes.length < 24 ||
@@ -86,11 +89,12 @@ function readPngChunks(bytes: Buffer): PngChunk[] | null {
 
 /**
  * Drops every chunk outside SCREENSHOT_PNG_CHUNKS, so a frame from any source is written with
- * image data only. Pixels and the kept chunks are copied unchanged. Bytes that are not a
- * well-formed chunk sequence are returned as they are, for the evidence check to reject.
+ * image data only. Pixels and the kept chunks are copied unchanged. Bytes over the size cap, or
+ * that are not a well-formed chunk sequence, are returned as they are, for the evidence check to
+ * reject without walking them.
  */
 export function stripPngMetadataChunks(bytes: Buffer): Buffer {
-  if (!hasPngSignature(bytes)) return bytes;
+  if (!hasPngSignature(bytes) || bytes.length > SCREENSHOT_MAX_BYTES) return bytes;
   const chunks = readPngChunks(bytes);
   if (chunks === null) return bytes;
   const kept = chunks.filter((chunk) => SCREENSHOT_PNG_CHUNKS.has(chunk.type));
@@ -101,6 +105,47 @@ export function stripPngMetadataChunks(bytes: Buffer): Buffer {
   ]);
 }
 
+/**
+ * Why a PNG must not reach the decoder, read from its header. pngjs allocates from the IHDR it
+ * finds and inflates interlaced data with no bound, so a PNG whose first chunk is not a 13-byte
+ * IHDR (its dimensions unchecked) or an interlaced one can cost gigabytes. Null when decoding is
+ * bounded by the byte and pixel caps. Every retained frame is non-interlaced with a 13-byte IHDR.
+ */
+export function pngDecodeRefusal(bytes: Buffer): string | null {
+  if (!hasPngSignature(bytes)) return "expected PNG signature";
+  if (bytes.length > SCREENSHOT_MAX_BYTES) {
+    return `PNG byte size exceeds ${SCREENSHOT_MAX_BYTES} byte limit`;
+  }
+  const dimensions = readPngDeclaredDimensions(bytes);
+  if (dimensions === null) return "PNG must start with a 13-byte IHDR chunk";
+  const dimensionsError = pngDimensionsError(dimensions.width, dimensions.height);
+  if (dimensionsError) return dimensionsError;
+  // IHDR data: width, height, bit depth, color type, compression, filter, interlace (byte 28).
+  if (bytes.length > 28 && bytes[28] !== 0) return "interlaced PNG evidence is not supported";
+  return null;
+}
+
+/**
+ * True when the bytes have exactly the shape redactScreenshot writes: IHDR, IDAT and IEND only,
+ * an empty IEND ending the file, and a width within SCREENSHOT_MAX_WIDTH_CAP. A frame claiming
+ * `blurred` counts as redacted only in this shape: the claim alone cannot show that the pixels
+ * were downscaled, and any other chunk is a place to carry bytes no one reviews.
+ */
+export function isRedactedFrameShape(bytes: Buffer): boolean {
+  if (pngDecodeRefusal(bytes) !== null) return false;
+  const chunks = readPngChunks(bytes);
+  if (chunks === null || chunks.length < 3) return false;
+  const last = chunks[chunks.length - 1]!;
+  return (
+    chunks[0]!.type === "IHDR" &&
+    chunks.slice(1, -1).every((chunk) => chunk.type === "IDAT") &&
+    last.type === "IEND" &&
+    last.end - last.start === 12 &&
+    last.end === bytes.length &&
+    bytes.readUInt32BE(16) <= SCREENSHOT_MAX_WIDTH_CAP
+  );
+}
+
 export function screenshotEvidenceError(relativePath: string, bytes: Buffer): string | null {
   const extension = relativePath.toLowerCase().split(".").pop() ?? "";
 
@@ -108,13 +153,8 @@ export function screenshotEvidenceError(relativePath: string, bytes: Buffer): st
     return `unsupported screenshot extension .${extension || "unknown"}; only decoded PNG evidence is supported`;
   }
 
-  if (!hasPngSignature(bytes)) {
-    return "expected PNG signature";
-  }
-
-  if (bytes.length > SCREENSHOT_MAX_BYTES) {
-    return `PNG byte size exceeds ${SCREENSHOT_MAX_BYTES} byte limit`;
-  }
+  const refusal = pngDecodeRefusal(bytes);
+  if (refusal) return refusal;
 
   const chunks = readPngChunks(bytes);
   const foreign = chunks?.find((chunk) => !SCREENSHOT_PNG_CHUNKS.has(chunk.type));
@@ -122,13 +162,9 @@ export function screenshotEvidenceError(relativePath: string, bytes: Buffer): st
     const name = /^[A-Za-z]{4}$/.test(foreign.type) ? foreign.type : "malformed";
     return `PNG carries a ${name} chunk; screenshot evidence may hold image data only`;
   }
-
-  const declaredDimensions = readPngDeclaredDimensions(bytes);
-  if (declaredDimensions) {
-    const dimensionsError = pngDimensionsError(declaredDimensions.width, declaredDimensions.height);
-    if (dimensionsError) {
-      return dimensionsError;
-    }
+  // pngjs reads IEND at any length, so its payload would go unchecked.
+  if (chunks?.some((chunk) => chunk.type === "IEND" && chunk.end - chunk.start !== 12)) {
+    return "PNG IEND chunk must be empty";
   }
 
   try {

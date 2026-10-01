@@ -31,3 +31,17 @@ export function pngTextChunk(type: "tEXt" | "zTXt" | "iTXt", text: string): Buff
       return Buffer.concat([keyword, Buffer.from([0, 0, 0, 0]), Buffer.from(text, "utf8")]);
   }
 }
+
+/** `png` with the data of its first chunk of `type` replaced (IHDR or IEND, for shape cases). */
+export function withPngChunkData(png: Buffer, type: "IHDR" | "IEND", data: Buffer): Buffer {
+  let offset = 8;
+  while (offset + 8 <= png.length) {
+    const length = png.readUInt32BE(offset);
+    const end = offset + 12 + length;
+    if (png.toString("latin1", offset + 4, offset + 8) === type) {
+      return Buffer.concat([png.subarray(0, offset), chunk(type, data), png.subarray(end)]);
+    }
+    offset = end;
+  }
+  throw new Error(`no ${type} chunk`);
+}
