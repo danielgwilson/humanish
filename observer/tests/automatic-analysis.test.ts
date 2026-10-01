@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AUTOMATIC_STUDY_ANALYSIS_STALE_MS } from "../../src/analysis/job";
+import { AUTOMATIC_ANALYSIS_STALE_MS as SERVER_STALE_MS } from "../../src/analysis/job";
 import {
   AUTOMATIC_ANALYSIS_STALE_MS,
   automaticAnalysisNotice,
@@ -58,7 +58,7 @@ describe("independent automatic analysis metadata", () => {
     });
   });
   it("pins the browser freshness threshold to the producer contract", () => {
-    expect(AUTOMATIC_ANALYSIS_STALE_MS).toBe(AUTOMATIC_STUDY_ANALYSIS_STALE_MS);
+    expect(AUTOMATIC_ANALYSIS_STALE_MS).toBe(SERVER_STALE_MS);
   });
   it.each(["queued", "running"] as const)(
     "never presents a stale/future %s heartbeat as live",

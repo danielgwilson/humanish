@@ -12,9 +12,9 @@ import {
   type AnalysisInput,
 } from "./study-analysis.js";
 import {
-  digestStudyAnalysisInput,
-  hashStudyAnalysisValue,
-  validateStudyAnalysisInputMetadata,
+  digestAnalysisInput,
+  hashAnalysisValue,
+  validateAnalysisInputMetadata,
 } from "./validation.js";
 import {
   boundedText,
@@ -28,7 +28,7 @@ import {
 } from "./evidence-sources.js";
 import { readBoundedStudyFile, readBoundedStudyFileResult } from "../run/study-files.js";
 
-export const STUDY_EVIDENCE_LIMITS = Object.freeze({
+export const EVIDENCE_LIMITS = Object.freeze({
   participants: 16,
   evidence: 800,
   captures: 40,
@@ -51,12 +51,11 @@ const UNFINISHED_STREAM_STATUSES: ReadonlySet<string> = new Set([
   "suspended",
 ]);
 
-export type EvidenceLimits = { [Key in keyof typeof STUDY_EVIDENCE_LIMITS]?: number };
+export type EvidenceLimits = { [Key in keyof typeof EVIDENCE_LIMITS]?: number };
 const sha256 = (bytes: Buffer): string => createHash("sha256").update(bytes).digest("hex");
 
 function parseSource(prepared: PreparedRunArtifactPaths, bytes: Buffer): RunBundle {
-  if (bytes.length > STUDY_EVIDENCE_LIMITS.sourceBytes)
-    throw new Error("ANALYSIS_SOURCE_TOO_LARGE");
+  if (bytes.length > EVIDENCE_LIMITS.sourceBytes) throw new Error("ANALYSIS_SOURCE_TOO_LARGE");
   const value: unknown = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
   if (
     !isRecord(value) ||
@@ -124,14 +123,12 @@ export async function captureStudyEvidence(
   bundleBytes: Buffer,
   requested: EvidenceLimits = {},
 ): Promise<AnalysisInput> {
-  const limits: Required<EvidenceLimits> = { ...STUDY_EVIDENCE_LIMITS, ...requested };
-  for (const key of Object.keys(STUDY_EVIDENCE_LIMITS) as Array<
-    keyof typeof STUDY_EVIDENCE_LIMITS
-  >) {
+  const limits: Required<EvidenceLimits> = { ...EVIDENCE_LIMITS, ...requested };
+  for (const key of Object.keys(EVIDENCE_LIMITS) as Array<keyof typeof EVIDENCE_LIMITS>) {
     if (
       !Number.isSafeInteger(limits[key]) ||
       limits[key] < 1 ||
-      limits[key] > STUDY_EVIDENCE_LIMITS[key]
+      limits[key] > EVIDENCE_LIMITS[key]
     ) {
       throw new Error("ANALYSIS_INPUT_LIMIT_INVALID");
     }
@@ -207,8 +204,8 @@ export async function captureStudyEvidence(
     evidence,
     images,
   };
-  result.inputDigest = digestStudyAnalysisInput(result);
-  validateStudyAnalysisInputMetadata(result);
+  result.inputDigest = digestAnalysisInput(result);
+  validateAnalysisInputMetadata(result);
   const after = await readBoundedStudyFile(prepared, RUN_BUNDLE_FILE, limits.sourceBytes);
   if (!after || !after.equals(bundleBytes)) throw new Error("ANALYSIS_SOURCE_CHANGED");
   return result;
@@ -544,7 +541,7 @@ function packEvidence(
 }
 
 /** Validate exact source membership before any stored path may be read. */
-export async function validateStudyAnalysisEvidence(
+export async function validateAnalysisEvidence(
   prepared: PreparedRunArtifactPaths,
   artifact: AnalysisArtifact,
   bundleBytes: Buffer,
@@ -576,8 +573,8 @@ export async function validateStudyAnalysisEvidence(
     const participant = context.get(stream.id);
     if (
       !participant ||
-      hashStudyAnalysisValue(participant) !==
-        hashStudyAnalysisValue(participantSource(stream, artifact.captureVersion))
+      hashAnalysisValue(participant) !==
+        hashAnalysisValue(participantSource(stream, artifact.captureVersion))
     ) {
       throw new Error("ANALYSIS_PARTICIPANT_INPUT_INVALID");
     }
@@ -638,12 +635,12 @@ export async function validateStudyAnalysisEvidence(
         const bytes = await readBoundedStudyFile(
           prepared,
           source.capturePath,
-          STUDY_EVIDENCE_LIMITS.imageBytes,
+          EVIDENCE_LIMITS.imageBytes,
         );
         if (!bytes || screenshotEvidenceError(source.capturePath, bytes) !== null)
           throw new Error("ANALYSIS_CAPTURE_UNAVAILABLE");
         checkedImageBytes += bytes.length;
-        if (checkedImageBytes > STUDY_EVIDENCE_LIMITS.totalImageBytes)
+        if (checkedImageBytes > EVIDENCE_LIMITS.totalImageBytes)
           throw new Error("ANALYSIS_IMAGE_LIMIT_EXCEEDED");
         hash = sha256(bytes);
         checkedCaptures.set(source.capturePath, hash);
@@ -662,7 +659,7 @@ export async function validateStudyAnalysisEvidence(
   const current = await readBoundedStudyFile(
     prepared,
     RUN_BUNDLE_FILE,
-    STUDY_EVIDENCE_LIMITS.sourceBytes,
+    EVIDENCE_LIMITS.sourceBytes,
   );
   if (!current?.equals(bundleBytes)) throw new Error("ANALYSIS_SOURCE_CHANGED");
 }

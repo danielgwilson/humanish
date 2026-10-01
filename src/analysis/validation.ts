@@ -5,8 +5,8 @@ import { ACTOR_STATUSES, ACTOR_STOP_CAUSES } from "../actors/contract.js";
 import {
   SHA256_HEX_PATTERN,
   ACTION_CAPTURE_VERSION,
-  STUDY_ANALYSIS_SCHEMA,
-  STUDY_ANALYSIS_CORRECTION_SCHEMA,
+  ANALYSIS_SCHEMA,
+  ANALYSIS_CORRECTION_SCHEMA,
   type AnalysisUsage,
   type AnalysisArtifact,
   type AnalysisCorrection,
@@ -40,7 +40,7 @@ const observationSchema = z
   })
   .strict();
 
-const studyAnalysisResultSchema = z
+const analysisResultSchema = z
   .object({
     summary: text(4000).min(1),
     participants: z
@@ -98,19 +98,19 @@ const studyAnalysisResultSchema = z
   .strict();
 
 /** Historical artifacts may omit concernReviews; every new provider response must supply it. */
-export const studyAnalysisResponseSchema = studyAnalysisResultSchema.required({
+export const analysisResponseSchema = analysisResultSchema.required({
   concernReviews: true,
 });
-export const studyAnalysisResultJsonSchema = z.toJSONSchema(studyAnalysisResponseSchema);
+export const analysisResultJsonSchema = z.toJSONSchema(analysisResponseSchema);
 const normalizedResult = ({
   concernReviews,
   ...result
-}: z.infer<typeof studyAnalysisResultSchema>): AnalysisResult => ({
+}: z.infer<typeof analysisResultSchema>): AnalysisResult => ({
   ...result,
   ...(concernReviews === undefined ? {} : { concernReviews }),
 });
 
-const studyAnalysisCoverageSchema = z
+const analysisCoverageSchema = z
   .object({
     includedStreamIds: sourceIds,
     omittedStreamIds: sourceIds,
@@ -133,7 +133,7 @@ const artifactPath = z
     "Invalid evidence path.",
   );
 
-const studyAnalysisEvidenceSchema = z
+const analysisEvidenceSchema = z
   .object({
     id,
     streamId: sourceId,
@@ -156,7 +156,7 @@ const studyAnalysisEvidenceSchema = z
   })
   .strict();
 
-const studyAnalysisParticipantProvenanceSchema = z
+const analysisParticipantProvenanceSchema = z
   .object({
     actorStatus: z.enum(ACTOR_STATUSES).nullable(),
     completionReason: z
@@ -196,9 +196,9 @@ const studyAnalysisParticipantProvenanceSchema = z
   })
   .strict();
 
-const studyAnalysisArtifactSchema = z
+const analysisArtifactSchema = z
   .object({
-    schema: z.literal(STUDY_ANALYSIS_SCHEMA),
+    schema: z.literal(ANALYSIS_SCHEMA),
     captureVersion: z.literal(ACTION_CAPTURE_VERSION).optional(),
     id,
     runId: sourceId,
@@ -269,14 +269,14 @@ const studyAnalysisArtifactSchema = z
             assignment: text(8000).nullable(),
             recordedStatus: text(128).min(1),
             recordedReason: text(4000).nullable(),
-            provenance: studyAnalysisParticipantProvenanceSchema,
+            provenance: analysisParticipantProvenanceSchema,
           })
           .strict(),
       )
       .max(128),
-    coverage: studyAnalysisCoverageSchema,
-    evidence: z.array(studyAnalysisEvidenceSchema).max(2000),
-    result: studyAnalysisResultSchema.nullable(),
+    coverage: analysisCoverageSchema,
+    evidence: z.array(analysisEvidenceSchema).max(2000),
+    result: analysisResultSchema.nullable(),
     error: z
       .string()
       .regex(/^[A-Za-z][A-Za-z0-9_]{0,127}$/)
@@ -284,9 +284,9 @@ const studyAnalysisArtifactSchema = z
   })
   .strict();
 
-const studyAnalysisCorrectionSchema = z
+const analysisCorrectionSchema = z
   .object({
-    schema: z.literal(STUDY_ANALYSIS_CORRECTION_SCHEMA),
+    schema: z.literal(ANALYSIS_CORRECTION_SCHEMA),
     id,
     analysisId: id,
     analysisSha256: digest,
@@ -300,7 +300,7 @@ const studyAnalysisCorrectionSchema = z
   .strict();
 
 /** Stable hashing is independent of object insertion order and excludes no fields implicitly. */
-export function hashStudyAnalysisValue(value: unknown): string {
+export function hashAnalysisValue(value: unknown): string {
   const canonical = (input: unknown): unknown => {
     if (Array.isArray(input)) return input.map(canonical);
     if (input !== null && typeof input === "object") {
@@ -317,13 +317,13 @@ export function hashStudyAnalysisValue(value: unknown): string {
     .digest("hex");
 }
 
-export function digestStudyAnalysisInput(
+export function digestAnalysisInput(
   input: Pick<
     AnalysisInput,
     "runId" | "sourceRunSha256" | "participants" | "coverage" | "evidence" | "captureVersion"
   >,
 ): string {
-  return hashStudyAnalysisValue({
+  return hashAnalysisValue({
     runId: input.runId,
     sourceRunSha256: input.sourceRunSha256,
     participants: input.participants,
@@ -339,7 +339,7 @@ export function checkAnalysisResult(
   input: AnalysisInput,
   value: unknown,
 ): { ok: true; result: AnalysisResult } | { ok: false; errors: string[] } {
-  const parsed = studyAnalysisResultSchema.safeParse(value);
+  const parsed = analysisResultSchema.safeParse(value);
   if (!parsed.success) return { ok: false, errors: ["ANALYSIS_RESULT_SCHEMA_INVALID"] };
   const result = parsed.data;
   const errors = new Set<string>();
@@ -440,8 +440,8 @@ export function validateAnalysisResult(input: AnalysisInput, value: unknown): An
   return checked.result;
 }
 
-export function validateStudyAnalysisArtifact(value: unknown): AnalysisArtifact {
-  const parsed = studyAnalysisArtifactSchema.safeParse(value);
+export function validateAnalysisArtifact(value: unknown): AnalysisArtifact {
+  const parsed = analysisArtifactSchema.safeParse(value);
   if (!parsed.success) throw new Error("ANALYSIS_ARTIFACT_SCHEMA_INVALID");
   const { captureVersion, ...fields } = parsed.data;
   const artifact: AnalysisArtifact = {
@@ -460,8 +460,8 @@ export function validateStudyAnalysisArtifact(value: unknown): AnalysisArtifact 
     throw new Error("ANALYSIS_PROVIDER_INVALID");
   }
   if (
-    artifact.configDigest !== hashStudyAnalysisValue(artifact.config) ||
-    artifact.inputDigest !== digestStudyAnalysisInput(artifact)
+    artifact.configDigest !== hashAnalysisValue(artifact.config) ||
+    artifact.inputDigest !== digestAnalysisInput(artifact)
   )
     throw new Error("ANALYSIS_DIGEST_INVALID");
   if (Date.parse(artifact.completedAt) < Date.parse(artifact.createdAt))
@@ -524,8 +524,8 @@ export function validateStudyAnalysisArtifact(value: unknown): AnalysisArtifact 
   return artifact;
 }
 
-export function validateStudyAnalysisCorrection(value: unknown): AnalysisCorrection {
-  const parsed = studyAnalysisCorrectionSchema.safeParse(value);
+export function validateAnalysisCorrection(value: unknown): AnalysisCorrection {
+  const parsed = analysisCorrectionSchema.safeParse(value);
   if (
     !parsed.success ||
     (parsed.data.status === "amended") !== (parsed.data.replacementClaim !== null)
@@ -536,7 +536,7 @@ export function validateStudyAnalysisCorrection(value: unknown): AnalysisCorrect
 }
 
 /** Accounting survives a stale source without retaining generated or participant text. */
-const studyAnalysisExecutionReceiptSchema = studyAnalysisArtifactSchema
+const analysisExecutionReceiptSchema = analysisArtifactSchema
   .pick({
     id: true,
     runId: true,
@@ -558,10 +558,10 @@ const studyAnalysisExecutionReceiptSchema = studyAnalysisArtifactSchema
   })
   .strict();
 
-export type AnalysisExecutionReceipt = z.infer<typeof studyAnalysisExecutionReceiptSchema>;
+export type AnalysisExecutionReceipt = z.infer<typeof analysisExecutionReceiptSchema>;
 
 /** Persisted before transport. It proves a request may have started, not that it was billed. */
-export const studyAnalysisExecutionStartSchema = studyAnalysisExecutionReceiptSchema
+export const analysisExecutionStartSchema = analysisExecutionReceiptSchema
   .pick({
     id: true,
     runId: true,
@@ -575,7 +575,7 @@ export const studyAnalysisExecutionStartSchema = studyAnalysisExecutionReceiptSc
     createdAt: z.iso.datetime(),
   })
   .strict();
-export type AnalysisExecutionStart = z.infer<typeof studyAnalysisExecutionStartSchema>;
+export type AnalysisExecutionStart = z.infer<typeof analysisExecutionStartSchema>;
 
 function assertAnalysisUsage(usage: AnalysisUsage): void {
   if (
@@ -595,8 +595,8 @@ function assertAnalysisUsage(usage: AnalysisUsage): void {
   }
 }
 
-export function validateStudyAnalysisExecutionReceipt(value: unknown): AnalysisExecutionReceipt {
-  const parsed = studyAnalysisExecutionReceiptSchema.safeParse(value);
+export function validateAnalysisExecutionReceipt(value: unknown): AnalysisExecutionReceipt {
+  const parsed = analysisExecutionReceiptSchema.safeParse(value);
   if (!parsed.success || Date.parse(parsed.data.completedAt) < Date.parse(parsed.data.createdAt))
     throw new Error("ANALYSIS_RECEIPT_INVALID");
   if (
@@ -612,7 +612,7 @@ export function validateStudyAnalysisExecutionReceipt(value: unknown): AnalysisE
   return parsed.data;
 }
 
-const inputMetadataSchema = studyAnalysisArtifactSchema.pick({
+const inputMetadataSchema = analysisArtifactSchema.pick({
   runId: true,
   sourceRunSha256: true,
   inputDigest: true,
@@ -623,7 +623,7 @@ const inputMetadataSchema = studyAnalysisArtifactSchema.pick({
 });
 
 /** Validate the packet before any paid request, including typed-library callers. */
-export function validateStudyAnalysisInputMetadata(input: AnalysisInput): void {
+export function validateAnalysisInputMetadata(input: AnalysisInput): void {
   const parsed = inputMetadataSchema.safeParse({
     runId: input.runId,
     sourceRunSha256: input.sourceRunSha256,
@@ -636,7 +636,7 @@ export function validateStudyAnalysisInputMetadata(input: AnalysisInput): void {
   if (!parsed.success) throw new Error("ANALYSIS_INPUT_INVALID");
   const { captureVersion, ...fields } = parsed.data;
   if (
-    digestStudyAnalysisInput({
+    digestAnalysisInput({
       ...fields,
       ...(captureVersion === undefined ? {} : { captureVersion }),
     }) !== input.inputDigest

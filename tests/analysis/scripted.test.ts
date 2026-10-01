@@ -12,9 +12,9 @@ import {
 } from "../../src/analysis/store-executions.js";
 import { loadStudyAnalysis } from "../../src/analysis/load.js";
 import {
-  digestStudyAnalysisInput,
-  validateStudyAnalysisArtifact,
-  validateStudyAnalysisInputMetadata,
+  digestAnalysisInput,
+  validateAnalysisArtifact,
+  validateAnalysisInputMetadata,
 } from "../../src/analysis/validation.js";
 import type { AnalysisInput } from "../../src/analysis/study-analysis.js";
 import { syntheticArtifact } from "./fixtures.js";
@@ -174,7 +174,7 @@ describe("versioned scripted capture evidence", () => {
       expect(input.coverage.omissions.length).toBeGreaterThan(0);
       input.coverage.complete = true;
       input.coverage.omissions = [];
-      input.inputDigest = digestStudyAnalysisInput(input);
+      input.inputDigest = digestAnalysisInput(input);
       await expect(writeStudyAnalysis(prepared, syntheticArtifact(input))).rejects.toThrow(
         "ANALYSIS_COVERAGE_INCOMPLETE",
       );
@@ -211,7 +211,7 @@ describe("versioned scripted capture evidence", () => {
       coverage: { ...old.coverage, captureCount: 0 },
       inputDigest: "",
     };
-    legacy.inputDigest = digestStudyAnalysisInput(legacy);
+    legacy.inputDigest = digestAnalysisInput(legacy);
     expect(legacy.inputDigest).not.toBe(current.inputDigest);
     const artifact = syntheticArtifact(legacy, "legacy-analysis");
     await writeStudyAnalysis(prepared, artifact);
@@ -232,7 +232,7 @@ describe("versioned scripted capture evidence", () => {
     expect(await Promise.all([readFile(artifactPath), readFile(receiptPath)])).toEqual(before);
     expect(await readFile(path.join(prepared.physicalRunRoot, "run.json"))).toEqual(source);
     const forged = { ...artifact, id: "forged-v2", captureVersion: 2 as const };
-    forged.inputDigest = digestStudyAnalysisInput(forged);
+    forged.inputDigest = digestAnalysisInput(forged);
     await expect(writeStudyAnalysis(prepared, forged)).rejects.toThrow(
       "ANALYSIS_PARTICIPANT_INPUT_INVALID",
     );
@@ -242,12 +242,12 @@ describe("versioned scripted capture evidence", () => {
     const input = await captureStudyEvidence(prepared, await save());
     const artifact = syntheticArtifact(input);
     const { captureVersion: _version, ...without } = artifact;
-    expect(() => validateStudyAnalysisArtifact(without)).toThrow("ANALYSIS_DIGEST_INVALID");
-    expect(() => validateStudyAnalysisArtifact({ ...artifact, captureVersion: 3 })).toThrow(
+    expect(() => validateAnalysisArtifact(without)).toThrow("ANALYSIS_DIGEST_INVALID");
+    expect(() => validateAnalysisArtifact({ ...artifact, captureVersion: 3 })).toThrow(
       "ANALYSIS_ARTIFACT_SCHEMA_INVALID",
     );
     expect(() =>
-      validateStudyAnalysisInputMetadata({
+      validateAnalysisInputMetadata({
         ...input,
         captureVersion: 3,
       } as unknown as AnalysisInput),

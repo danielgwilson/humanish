@@ -13,18 +13,18 @@ import { pathMissing, readBoundedStudyFile } from "../run/study-files.js";
 import {
   ANALYSIS_MAX_BYTES,
   MAX_VERSIONS,
-  STUDY_ANALYSIS_DIRECTORY,
-  STUDY_ANALYSIS_EXECUTION_DIRECTORY,
+  ANALYSIS_DIRECTORY,
+  ANALYSIS_EXECUTION_DIRECTORY,
   claimDirectory,
   directoryIds,
   existingRoot,
   safeId,
 } from "./store.js";
 import {
-  hashStudyAnalysisValue,
-  studyAnalysisExecutionStartSchema,
-  validateStudyAnalysisArtifact,
-  validateStudyAnalysisExecutionReceipt,
+  hashAnalysisValue,
+  analysisExecutionStartSchema,
+  validateAnalysisArtifact,
+  validateAnalysisExecutionReceipt,
   type AnalysisExecutionReceipt,
   type AnalysisExecutionStart,
 } from "./validation.js";
@@ -48,7 +48,7 @@ export async function readStudyAnalysisExecution(
 ): Promise<AnalysisExecutionReceipt | null> {
   if (!safeId(id)) return null;
   try {
-    const root = await existingRoot(prepared, STUDY_ANALYSIS_EXECUTION_DIRECTORY);
+    const root = await existingRoot(prepared, ANALYSIS_EXECUTION_DIRECTORY);
     if (!root) return null;
     const bytes = await readBoundedStudyFile(
       root,
@@ -56,7 +56,7 @@ export async function readStudyAnalysisExecution(
       MAX_EXECUTION_RECORD_BYTES,
     );
     if (!bytes) return null;
-    const receipt = validateStudyAnalysisExecutionReceipt(
+    const receipt = validateAnalysisExecutionReceipt(
       JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)),
     );
     return receipt.id === id && receipt.runId === runIdOf(prepared) ? receipt : null;
@@ -74,10 +74,7 @@ export async function writeStudyAnalysisExecutionReceipt(
   value: AnalysisArtifact,
 ): Promise<void> {
   const receipt = executionReceipt(value, prepared);
-  const root = await prepareContainedOutputDirectoryRoot(
-    prepared,
-    STUDY_ANALYSIS_EXECUTION_DIRECTORY,
-  );
+  const root = await prepareContainedOutputDirectoryRoot(prepared, ANALYSIS_EXECUTION_DIRECTORY);
   const claimed = await claimDirectory(root, receipt.id);
   await writeContainedOutputFile(claimed, "receipt.json", `${JSON.stringify(receipt, null, 2)}\n`);
 }
@@ -86,7 +83,7 @@ function executionReceipt(
   value: AnalysisArtifact,
   prepared: PreparedRunArtifactPaths,
 ): AnalysisExecutionReceipt {
-  const artifact = validateStudyAnalysisArtifact(value);
+  const artifact = validateAnalysisArtifact(value);
   if (artifact.runId !== runIdOf(prepared)) throw new Error("ANALYSIS_ID_MISMATCH");
   const receipt: AnalysisExecutionReceipt = {
     schema: "humanish.analysis-execution.v1",
@@ -113,16 +110,13 @@ export async function beginStudyAnalysisExecution(
   prepared: PreparedRunArtifactPaths,
   context: Omit<AnalysisExecutionStart, "schema" | "createdAt">,
 ): Promise<(value: AnalysisArtifact) => Promise<void>> {
-  const start = studyAnalysisExecutionStartSchema.parse({
+  const start = analysisExecutionStartSchema.parse({
     ...context,
     schema: "humanish.analysis-execution-start.v1",
     createdAt: new Date().toISOString(),
   });
   if (start.runId !== runIdOf(prepared)) throw new Error("ANALYSIS_ID_MISMATCH");
-  const root = await prepareContainedOutputDirectoryRoot(
-    prepared,
-    STUDY_ANALYSIS_EXECUTION_DIRECTORY,
-  );
+  const root = await prepareContainedOutputDirectoryRoot(prepared, ANALYSIS_EXECUTION_DIRECTORY);
   const claimed = await claimDirectory(root, start.id);
   await writeContainedOutputFile(claimed, "start.json", `${JSON.stringify(start, null, 2)}\n`);
   let finalized = false;
@@ -150,7 +144,7 @@ export async function listStudyAnalysisExecutions(prepared: PreparedRunArtifactP
   const receipts: AnalysisExecutionReceipt[] = [];
   const warnings: string[] = [];
   try {
-    const root = await existingRoot(prepared, STUDY_ANALYSIS_EXECUTION_DIRECTORY);
+    const root = await existingRoot(prepared, ANALYSIS_EXECUTION_DIRECTORY);
     if (!root) return { receipts, warnings };
     const inventory = await directoryIds(root, MAX_VERSIONS);
     warnings.push(...inventory.warnings);
@@ -168,7 +162,7 @@ export async function listStudyAnalysisExecutions(prepared: PreparedRunArtifactP
         continue;
       }
       try {
-        const receipt = validateStudyAnalysisExecutionReceipt(
+        const receipt = validateAnalysisExecutionReceipt(
           JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)),
         );
         if (receipt.id !== id || receipt.runId !== runIdOf(prepared)) {
@@ -205,15 +199,11 @@ export async function readStudyAnalysisAccountingRecords(
 }> {
   const records = new Map<string, AnalysisAccountingRecord>();
   const warnings: string[] = [];
-  for (const directory of [STUDY_ANALYSIS_EXECUTION_DIRECTORY, STUDY_ANALYSIS_DIRECTORY]) {
+  for (const directory of [ANALYSIS_EXECUTION_DIRECTORY, ANALYSIS_DIRECTORY]) {
     try {
       const root = await existingRoot(prepared, directory);
       if (!root) continue;
-      const inventory = await directoryIds(
-        root,
-        MAX_VERSIONS,
-        directory === STUDY_ANALYSIS_DIRECTORY,
-      );
+      const inventory = await directoryIds(root, MAX_VERSIONS, directory === ANALYSIS_DIRECTORY);
       warnings.push(...inventory.warnings);
       for (const id of inventory.ids) {
         let record = records.get(id);
@@ -221,7 +211,7 @@ export async function readStudyAnalysisAccountingRecords(
           record = { id, receipt: null, start: null, legacy: false };
           records.set(id, record);
         }
-        if (directory === STUDY_ANALYSIS_EXECUTION_DIRECTORY) {
+        if (directory === ANALYSIS_EXECUTION_DIRECTORY) {
           const startBytes = await readBoundedStudyFile(
             root,
             `${id}/start.json`,
@@ -229,7 +219,7 @@ export async function readStudyAnalysisAccountingRecords(
           );
           if (startBytes) {
             try {
-              const start = studyAnalysisExecutionStartSchema.parse(
+              const start = analysisExecutionStartSchema.parse(
                 JSON.parse(startBytes.toString("utf8")),
               );
               if (start.id !== id || start.runId !== runIdOf(prepared)) throw new Error();
@@ -239,7 +229,7 @@ export async function readStudyAnalysisAccountingRecords(
             }
           }
         }
-        const legacy = directory === STUDY_ANALYSIS_DIRECTORY;
+        const legacy = directory === ANALYSIS_DIRECTORY;
         const bytes = await readBoundedStudyFile(
           root,
           `${id}/${legacy ? "analysis.json" : "receipt.json"}`,
@@ -262,12 +252,9 @@ export async function readStudyAnalysisAccountingRecords(
               model: raw.config?.model,
               maxCostUsd: raw.config?.maxCostUsd,
             });
-          const receipt = validateStudyAnalysisExecutionReceipt(candidate);
+          const receipt = validateAnalysisExecutionReceipt(candidate);
           if (receipt.id !== id || receipt.runId !== runIdOf(prepared)) throw new Error();
-          if (
-            record.receipt &&
-            hashStudyAnalysisValue(record.receipt) !== hashStudyAnalysisValue(receipt)
-          ) {
+          if (record.receipt && hashAnalysisValue(record.receipt) !== hashAnalysisValue(receipt)) {
             warnings.push("ANALYSIS_ACCOUNTING_CONFLICT");
             record.receipt = null;
           } else {

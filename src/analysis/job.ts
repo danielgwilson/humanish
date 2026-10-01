@@ -20,12 +20,12 @@ import { pathMissing, readBoundedStudyFile } from "../run/study-files.js";
 import { containsSensitive } from "../evidence/redaction.js";
 import { readStudyAnalysisVersion } from "./store.js";
 import { readStudyAnalysisExecution } from "./store-executions.js";
-import { hashStudyAnalysisValue } from "./validation.js";
+import { hashAnalysisValue } from "./validation.js";
 import { ANALYSIS_ID_PATTERN, SHA256_HEX_PATTERN } from "./study-analysis.js";
 
-export const AUTOMATIC_STUDY_ANALYSIS_DIRECTORY = "analysis-automatic";
-const AUTOMATIC_STUDY_ANALYSIS_SCHEMA = "humanish.automatic-study-analysis.v1";
-export const AUTOMATIC_STUDY_ANALYSIS_STALE_MS = 15_000;
+export const AUTOMATIC_ANALYSIS_DIRECTORY = "analysis-automatic";
+const AUTOMATIC_ANALYSIS_SCHEMA = "humanish.automatic-study-analysis.v1";
+export const AUTOMATIC_ANALYSIS_STALE_MS = 15_000;
 
 /** Execution metadata only. Never a participant outcome or permission to dispatch. */
 const JOB_STATES = [
@@ -86,7 +86,7 @@ const id = z.string().regex(ANALYSIS_ID_PATTERN);
 const date = z.iso.datetime();
 const digest = z.string().regex(SHA256_HEX_PATTERN);
 const jobSchema = z.strictObject({
-  schema: z.literal(AUTOMATIC_STUDY_ANALYSIS_SCHEMA),
+  schema: z.literal(AUTOMATIC_ANALYSIS_SCHEMA),
   runId: id,
   claimId: z.uuid(),
   attemptId: id,
@@ -168,7 +168,7 @@ async function bindJob(
     cwd,
     "runs",
     runIdOf(prepared),
-    AUTOMATIC_STUDY_ANALYSIS_DIRECTORY,
+    AUTOMATIC_ANALYSIS_DIRECTORY,
   );
   return root ? Object.freeze({ ...root, parentRun: prepared }) : null;
 }
@@ -214,7 +214,7 @@ export async function readAutomaticStudyAnalysisPrepared(
     const root = await bindJob(prepared);
     if (!root) {
       const missing = await pathMissing(
-        path.join(prepared.physicalRunRoot, AUTOMATIC_STUDY_ANALYSIS_DIRECTORY),
+        path.join(prepared.physicalRunRoot, AUTOMATIC_ANALYSIS_DIRECTORY),
       );
       return missing ? undefined : unknown();
     }
@@ -228,10 +228,7 @@ export async function readAutomaticStudyAnalysisPrepared(
       updatedAt: record.updatedAt,
     };
     const updated = Date.parse(record.updatedAt);
-    if (
-      updated > now ||
-      (pending(record.state) && now - updated > AUTOMATIC_STUDY_ANALYSIS_STALE_MS)
-    ) {
+    if (updated > now || (pending(record.state) && now - updated > AUTOMATIC_ANALYSIS_STALE_MS)) {
       return { ...view, state: "unknown", reason: "AUTOMATIC_ANALYSIS_OUTCOME_UNKNOWN" };
     }
     if (!(await terminalResultMatches(prepared, record)))
@@ -264,7 +261,7 @@ async function terminalResultMatches(
     value.configDigest === record.configDigest &&
     value.promptVersion === record.promptVersion;
   const receipt = await readStudyAnalysisExecution(prepared, record.analysisId);
-  if (!receipt || !matches(receipt) || hashStudyAnalysisValue(receipt) !== record.receiptSha256)
+  if (!receipt || !matches(receipt) || hashAnalysisValue(receipt) !== record.receiptSha256)
     return false;
   if (record.state === "failed" && record.reason === "AUTOMATIC_ANALYSIS_PUBLICATION_FAILED")
     return true;
@@ -276,7 +273,7 @@ async function terminalResultMatches(
     entry.analysis !== null &&
     matches(entry.analysis) &&
     entry.analysis.status === record.state &&
-    hashStudyAnalysisValue(entry.analysis) === record.analysisSha256
+    hashAnalysisValue(entry.analysis) === record.analysisSha256
   );
 }
 
@@ -308,7 +305,7 @@ export async function claimAutomaticStudyAnalysis(
   metadata: { configDigest: string; promptVersion: string },
 ): Promise<AutomaticAnalysisJob | null> {
   await validatePreparedRunRootIdentity(prepared);
-  const target = path.join(prepared.physicalRunRoot, AUTOMATIC_STUDY_ANALYSIS_DIRECTORY);
+  const target = path.join(prepared.physicalRunRoot, AUTOMATIC_ANALYSIS_DIRECTORY);
   try {
     await mkdir(target, { mode: 0o700 });
   } catch (error) {
@@ -316,10 +313,7 @@ export async function claimAutomaticStudyAnalysis(
     throw error;
   }
   const identity = await lstat(target, { bigint: true });
-  const root = await prepareContainedOutputDirectoryRoot(
-    prepared,
-    AUTOMATIC_STUDY_ANALYSIS_DIRECTORY,
-  );
+  const root = await prepareContainedOutputDirectoryRoot(prepared, AUTOMATIC_ANALYSIS_DIRECTORY);
   if (
     root.identity.dev !== identity.dev ||
     root.identity.ino !== identity.ino ||
@@ -329,7 +323,7 @@ export async function claimAutomaticStudyAnalysis(
   }
   const createdAt = iso();
   let record: JobRecord = {
-    schema: AUTOMATIC_STUDY_ANALYSIS_SCHEMA,
+    schema: AUTOMATIC_ANALYSIS_SCHEMA,
     runId: runIdOf(prepared),
     claimId: randomUUID(),
     attemptId: `analysis-${randomUUID()}`,

@@ -23,7 +23,7 @@ import { runDryRun } from "../../src/run/dry-run.js";
 import {
   estimateStudyAnalysisAdmission,
   runStudyAnalysis,
-  STUDY_ANALYSIS_PROMPT_VERSION,
+  ANALYSIS_PROMPT_VERSION,
 } from "../../src/analysis/run-study-analysis.js";
 import { captureStudyEvidence } from "../../src/analysis/evidence.js";
 import { codexAnalysisIdentity } from "../../src/analysis/codex-config.js";
@@ -33,10 +33,10 @@ import { analyzeStudy, showStudyAnalysis } from "../../src/analysis/service.js";
 import { writeStudyAnalysis } from "../../src/analysis/store.js";
 import { listStudyAnalysisExecutions } from "../../src/analysis/store-executions.js";
 import {
-  digestStudyAnalysisInput,
-  hashStudyAnalysisValue,
-  validateStudyAnalysisArtifact,
-  validateStudyAnalysisExecutionReceipt,
+  digestAnalysisInput,
+  hashAnalysisValue,
+  validateAnalysisArtifact,
+  validateAnalysisExecutionReceipt,
 } from "../../src/analysis/validation.js";
 import type {
   CodexAnalysisConfig,
@@ -59,7 +59,7 @@ function packet(): AnalysisInput {
   input.evidence = input.evidence.filter((e) => e.capture === null);
   input.coverage.captureCount = 0;
   input.coverage.evidenceCount = input.evidence.length;
-  input.inputDigest = digestStudyAnalysisInput(input);
+  input.inputDigest = digestAnalysisInput(input);
   return input;
 }
 function provider(input: AnalysisInput) {
@@ -192,7 +192,7 @@ describe("explicit Codex account analysis", () => {
       timeoutMs: 1000,
     });
     expect(run.mock.calls[0]?.[0].instructions).toContain("UNTRUSTED DATA");
-    expect(validateStudyAnalysisArtifact(artifact)).toEqual(artifact);
+    expect(validateAnalysisArtifact(artifact)).toEqual(artifact);
     expect(fetch).not.toHaveBeenCalled();
   });
 
@@ -274,7 +274,7 @@ describe("explicit Codex account analysis", () => {
       },
     });
     expect(JSON.stringify(artifact)).not.toContain(canary);
-    expect(validateStudyAnalysisArtifact(artifact)).toEqual(artifact);
+    expect(validateAnalysisArtifact(artifact)).toEqual(artifact);
   });
 
   it("retains incomplete usage on cancellation without treating it as final or free", async () => {
@@ -294,7 +294,7 @@ describe("explicit Codex account analysis", () => {
       error: "analysis_cancelled",
       usage: { inputTokens: 400, outputTokens: 20, usageComplete: false, estimatedCostUsd: null },
     });
-    expect(validateStudyAnalysisArtifact(artifact)).toEqual(artifact);
+    expect(validateAnalysisArtifact(artifact)).toEqual(artifact);
   });
 
   it("refuses source-free visual findings and mismatched identity without weakening references", async () => {
@@ -326,7 +326,7 @@ describe("explicit Codex account analysis", () => {
     ] as const) {
       const changed = structuredClone(config());
       (changed.identity as unknown as Record<string, unknown>)[field] = "unqualified";
-      expect(hashStudyAnalysisValue(changed)).not.toBe(hashStudyAnalysisValue(config()));
+      expect(hashAnalysisValue(changed)).not.toBe(hashAnalysisValue(config()));
       expect(estimateStudyAnalysisAdmission(input, changed).allowed).toBe(false);
     }
     const malformed = { ...config(), maxCostUsd: 1 } as unknown as AnalysisConfig;
@@ -347,8 +347,8 @@ describe("explicit Codex account analysis", () => {
       timeoutMs: 1000,
       maxOutputTokens: 8192,
     };
-    prior.configDigest = hashStudyAnalysisValue(prior.config);
-    prior.promptVersion = STUDY_ANALYSIS_PROMPT_VERSION;
+    prior.configDigest = hashAnalysisValue(prior.config);
+    prior.promptVersion = ANALYSIS_PROMPT_VERSION;
     await writeStudyAnalysis(f.prepared, prior);
     const originalLegacy = JSON.stringify(prior);
     const first = await analyzeStudy(
@@ -373,15 +373,15 @@ describe("explicit Codex account analysis", () => {
       (r) => r.provider === "codex",
     );
     expect(receipts).toHaveLength(1);
-    expect(validateStudyAnalysisExecutionReceipt(receipts[0])).toMatchObject({
+    expect(validateAnalysisExecutionReceipt(receipts[0])).toMatchObject({
       provider: "codex",
       maxCostUsd: null,
     });
-    expect(() => validateStudyAnalysisExecutionReceipt({ ...receipts[0], maxCostUsd: 1 })).toThrow(
+    expect(() => validateAnalysisExecutionReceipt({ ...receipts[0], maxCostUsd: 1 })).toThrow(
       "ANALYSIS_RECEIPT_INVALID",
     );
     expect(() =>
-      validateStudyAnalysisExecutionReceipt({
+      validateAnalysisExecutionReceipt({
         ...receipts[0],
         usage: { ...receipts[0]!.usage, estimatedCostUsd: 0 },
       }),
@@ -446,7 +446,7 @@ describe("explicit Codex account analysis", () => {
     const saved = (await showStudyAnalysis(explicit.cwd, "codex-analysis", result.analysisId!))
       .analysis!;
     expect(saved.config.provider === "codex" && saved.config.identity.cliVersion).toBe("0.154.0");
-    expect(saved.configDigest).toBe(hashStudyAnalysisValue(saved.config));
+    expect(saved.configDigest).toBe(hashAnalysisValue(saved.config));
 
     const automatic = await study();
     const outcome = await runAutomaticStudyAnalysis(automatic.cwd, "codex-analysis", config(), {

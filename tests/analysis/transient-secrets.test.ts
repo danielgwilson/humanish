@@ -17,10 +17,7 @@ import type {
   AnalysisInput,
   AnalysisResult,
 } from "../../src/analysis/study-analysis.js";
-import {
-  validateAnalysisResult,
-  validateStudyAnalysisArtifact,
-} from "../../src/analysis/validation.js";
+import { validateAnalysisResult, validateAnalysisArtifact } from "../../src/analysis/validation.js";
 import { syntheticResult } from "./fixtures.js";
 
 // Transport shape and usage derive from the retained live response fixture; only its answer is synthetic.
@@ -167,7 +164,7 @@ describe("analysis scrubbing in the originating run scope", () => {
     expect(artifact.participants).toEqual(before.participants);
     expect(artifact.inputDigest).toBe(before.inputDigest);
     expect(artifact.sourceRunSha256).toBe(before.sourceRunSha256);
-    expect(validateStudyAnalysisArtifact(artifact)).toEqual(artifact);
+    expect(validateAnalysisArtifact(artifact)).toEqual(artifact);
     await writeStudyAnalysis(prepared, artifact);
     const saved = await readFile(
       path.join(prepared.physicalRunRoot, "analysis", artifact.id, "analysis.json"),
@@ -227,7 +224,7 @@ describe("analysis scrubbing in the originating run scope", () => {
       usage: { dispatched: true, usageComplete: true, outputTokens: 221 },
     });
     expect(JSON.stringify(artifact)).not.toContain(OTP);
-    expect(validateStudyAnalysisArtifact(artifact)).toEqual(artifact);
+    expect(validateAnalysisArtifact(artifact)).toEqual(artifact);
   });
 
   it("does not rewrite an exact source quote to make a scrubbed quotation pass validation", async () => {

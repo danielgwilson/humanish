@@ -2,7 +2,7 @@ import { round6 } from "./pricing.js";
 import { bindExistingRunArtifactPaths } from "./paths.js";
 import type { RunIndexEntry } from "./run-index.js";
 import { contradictsAccountBilling } from "../verify/costs.js";
-import { STUDY_EVIDENCE_LIMITS } from "../analysis/evidence.js";
+import { EVIDENCE_LIMITS } from "../analysis/evidence.js";
 import { readBoundedStudyFile } from "./study-files.js";
 import { readAutomaticStudyAnalysisAccounting } from "../analysis/job.js";
 import { readStudyAnalysisAccountingRecords } from "../analysis/store-executions.js";
@@ -82,7 +82,7 @@ export async function readStudyCosts(cwd: string, entry: RunIndexEntry): Promise
     const bytes = await readBoundedStudyFile(
       prepared,
       RUN_BUNDLE_FILE,
-      STUDY_EVIDENCE_LIMITS.sourceBytes,
+      EVIDENCE_LIMITS.sourceBytes,
     );
     let bundle = null;
     try {

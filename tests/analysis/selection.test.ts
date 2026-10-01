@@ -5,11 +5,8 @@ import { PNG } from "pngjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ActorTraceItem } from "../../src/actors/contract.js";
 import { prepareRunArtifactPaths, type PreparedRunArtifactPaths } from "../../src/run/paths.js";
-import {
-  captureStudyEvidence,
-  validateStudyAnalysisEvidence,
-} from "../../src/analysis/evidence.js";
-import { digestStudyAnalysisInput } from "../../src/analysis/validation.js";
+import { captureStudyEvidence, validateAnalysisEvidence } from "../../src/analysis/evidence.js";
+import { digestAnalysisInput } from "../../src/analysis/validation.js";
 import { writeStudyAnalysis } from "../../src/analysis/store.js";
 import { loadStudyAnalysis } from "../../src/analysis/load.js";
 import { syntheticArtifact } from "./fixtures.js";
@@ -115,7 +112,7 @@ describe("fair bounded study evidence selection", () => {
       "Some captures were omitted by the capture count limit.",
     );
     await expect(
-      validateStudyAnalysisEvidence(prepared, syntheticArtifact(input), source),
+      validateAnalysisEvidence(prepared, syntheticArtifact(input), source),
     ).resolves.toBeUndefined();
     expect(await fs.readFile(path.join(prepared.physicalRunRoot, "run.json"))).toEqual(source);
   });
@@ -183,7 +180,7 @@ describe("fair bounded study evidence selection", () => {
       capture: null,
     });
     await expect(
-      validateStudyAnalysisEvidence(prepared, syntheticArtifact(input), source),
+      validateAnalysisEvidence(prepared, syntheticArtifact(input), source),
     ).resolves.toBeUndefined();
   });
 
@@ -213,7 +210,7 @@ describe("fair bounded study evidence selection", () => {
       capture: { eventId: "late-77" },
     });
     await expect(
-      validateStudyAnalysisEvidence(prepared, syntheticArtifact(input), source),
+      validateAnalysisEvidence(prepared, syntheticArtifact(input), source),
     ).resolves.toBeUndefined();
   });
 
@@ -273,7 +270,7 @@ describe("fair bounded study evidence selection", () => {
       "Some evidence text was truncated by the packet size limit.",
     );
     await expect(
-      validateStudyAnalysisEvidence(prepared, syntheticArtifact(input), source),
+      validateAnalysisEvidence(prepared, syntheticArtifact(input), source),
     ).resolves.toBeUndefined();
   });
 
@@ -298,7 +295,7 @@ describe("fair bounded study evidence selection", () => {
     }
     expect(input.coverage.complete).toBe(false);
     await expect(
-      validateStudyAnalysisEvidence(prepared, syntheticArtifact(input), source),
+      validateAnalysisEvidence(prepared, syntheticArtifact(input), source),
     ).resolves.toBeUndefined();
   });
 
@@ -412,7 +409,7 @@ describe("fair bounded study evidence selection", () => {
         "Some captures were omitted by the capture count limit.",
       );
       await expect(
-        validateStudyAnalysisEvidence(prepared, syntheticArtifact(input), source),
+        validateAnalysisEvidence(prepared, syntheticArtifact(input), source),
       ).resolves.toBeUndefined();
       expect(await fs.readFile(path.join(prepared.physicalRunRoot, "run.json"))).toEqual(source);
     },
@@ -456,7 +453,7 @@ describe("fair bounded study evidence selection", () => {
       expect(imageBytes).toBeLessThanOrEqual(16 * large.length);
       expect(input.coverage.complete).toBe(false);
       await expect(
-        validateStudyAnalysisEvidence(prepared, syntheticArtifact(input), source),
+        validateAnalysisEvidence(prepared, syntheticArtifact(input), source),
       ).resolves.toBeUndefined();
       expect(await fs.readFile(path.join(prepared.physicalRunRoot, "run.json"))).toEqual(source);
     },
@@ -634,7 +631,7 @@ describe("fair bounded study evidence selection", () => {
       complete: false,
       omissions: ["Some captures were omitted by the capture count limit."],
     };
-    previous.inputDigest = digestStudyAnalysisInput(previous);
+    previous.inputDigest = digestAnalysisInput(previous);
     const current = await captureStudyEvidence(prepared, source, { captures: 2 });
     expect(current.evidence.filter((entry) => entry.capture).map((entry) => entry.frame)).toEqual([
       0, 5,
@@ -643,10 +640,10 @@ describe("fair bounded study evidence selection", () => {
       0, 1,
     ]);
     await expect(
-      validateStudyAnalysisEvidence(prepared, syntheticArtifact(previous), source),
+      validateAnalysisEvidence(prepared, syntheticArtifact(previous), source),
     ).resolves.toBeUndefined();
     await expect(
-      validateStudyAnalysisEvidence(prepared, syntheticArtifact(current), source),
+      validateAnalysisEvidence(prepared, syntheticArtifact(current), source),
     ).resolves.toBeUndefined();
     await writeStudyAnalysis(prepared, syntheticArtifact(previous, "prior-prefix"));
     await writeStudyAnalysis(prepared, syntheticArtifact(current, "current-spread"));
@@ -693,7 +690,7 @@ describe("fair bounded study evidence selection", () => {
     ]);
     expect(input.coverage.omissions).toContain("Some participants have no recorded assignment.");
     await expect(
-      validateStudyAnalysisEvidence(prepared, syntheticArtifact(input), source),
+      validateAnalysisEvidence(prepared, syntheticArtifact(input), source),
     ).resolves.toBeUndefined();
   });
 });

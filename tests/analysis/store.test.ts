@@ -27,7 +27,7 @@ import {
   writeStudyAnalysisExecutionReceipt,
 } from "../../src/analysis/store-executions.js";
 import { loadStudyAnalysis } from "../../src/analysis/load.js";
-import { digestStudyAnalysisInput, hashStudyAnalysisValue } from "../../src/analysis/validation.js";
+import { digestAnalysisInput, hashAnalysisValue } from "../../src/analysis/validation.js";
 import type {
   AnalysisArtifact,
   AnalysisCorrection,
@@ -243,7 +243,7 @@ describe("immutable study analysis store", () => {
   it("never gives a forged path authority even after its input digest is recomputed", async () => {
     await writeFile(path.join(cwd, "outside.png"), png);
     artifact.evidence[0]!.capture!.path = "outside.png";
-    artifact.inputDigest = digestStudyAnalysisInput(artifact);
+    artifact.inputDigest = digestAnalysisInput(artifact);
     await expect(writeStudyAnalysis(prepared, artifact)).rejects.toThrow(
       "ANALYSIS_CAPTURE_REFERENCE_INVALID",
     );
@@ -252,14 +252,14 @@ describe("immutable study analysis store", () => {
 
   it("rejects changed participant context and false coverage even with recomputed digests", async () => {
     artifact.participants[0]!.assignment = "A different task.";
-    artifact.inputDigest = digestStudyAnalysisInput(artifact);
+    artifact.inputDigest = digestAnalysisInput(artifact);
     await expect(writeStudyAnalysis(prepared, artifact)).rejects.toThrow(
       "ANALYSIS_PARTICIPANT_INPUT_INVALID",
     );
     artifact = syntheticArtifact(await captureStudyEvidence(prepared, source));
     artifact.evidence[1]!.text = "I could not";
     artifact.result!.participants[0]!.feedback = [];
-    artifact.inputDigest = digestStudyAnalysisInput(artifact);
+    artifact.inputDigest = digestAnalysisInput(artifact);
     await expect(writeStudyAnalysis(prepared, artifact)).rejects.toThrow(
       "ANALYSIS_COVERAGE_INCOMPLETE",
     );
@@ -304,9 +304,9 @@ describe("immutable study analysis store", () => {
     schema: "humanish.study-analysis-correction.v1",
     id: "correction-1",
     analysisId: artifact.id,
-    analysisSha256: hashStudyAnalysisValue(artifact),
+    analysisSha256: hashAnalysisValue(artifact),
     findingId: "finding-1",
-    findingSha256: hashStudyAnalysisValue(artifact.result!.findings[0]),
+    findingSha256: hashAnalysisValue(artifact.result!.findings[0]),
     createdAt: "2026-09-01T00:03:00Z",
     status: "confirmed",
     reason: "The retained capture supports the claim.",
@@ -594,7 +594,7 @@ describe("immutable study analysis store", () => {
       writeStudyAnalysisExecutionReceipt(prepared, {
         ...artifact,
         runId: "different-study",
-        inputDigest: digestStudyAnalysisInput({ ...artifact, runId: "different-study" }),
+        inputDigest: digestAnalysisInput({ ...artifact, runId: "different-study" }),
       }),
     ).rejects.toThrow("ANALYSIS_ID_MISMATCH");
     await writeStudyAnalysisExecutionReceipt(prepared, artifact);
@@ -762,7 +762,7 @@ describe("immutable study analysis store", () => {
       '"opaque-b": Rename',
       '"opaque-a": Rename',
     );
-    forged.inputDigest = digestStudyAnalysisInput(forged);
+    forged.inputDigest = digestAnalysisInput(forged);
     await expect(writeStudyAnalysis(prepared, forged)).rejects.toThrow(
       "ANALYSIS_PARTICIPANT_INPUT_INVALID",
     );
@@ -802,7 +802,7 @@ describe("immutable study analysis store", () => {
     expect(captured.participants[0]!.provenance.taskOutcomes).toEqual([]);
     const forged = syntheticArtifact(captured);
     forged.participants[0]!.provenance.declaredOutcome = "reached";
-    forged.inputDigest = digestStudyAnalysisInput(forged);
+    forged.inputDigest = digestAnalysisInput(forged);
     await expect(writeStudyAnalysis(prepared, forged)).rejects.toThrow(
       "ANALYSIS_PARTICIPANT_INPUT_INVALID",
     );

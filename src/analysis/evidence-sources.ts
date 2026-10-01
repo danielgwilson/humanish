@@ -14,7 +14,7 @@ import { decodesToPlainRelativePath, isStudyEvidencePath } from "../run/study-fi
 
 // How a run bundle becomes analysis sources: each participant's recorded provenance and assignment,
 // the evidence entries its trace offers, and the order in which entries are admitted under the
-// count and byte budgets. captureStudyEvidence selects from these, and validateStudyAnalysisEvidence
+// count and byte budgets. captureStudyEvidence selects from these, and validateAnalysisEvidence
 // re-derives them to check a stored analysis against its run.
 
 const stamp = (value: unknown): string | null =>

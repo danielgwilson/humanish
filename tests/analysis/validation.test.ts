@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
   checkAnalysisResult,
-  digestStudyAnalysisInput,
-  hashStudyAnalysisValue,
-  studyAnalysisResultJsonSchema,
-  studyAnalysisResponseSchema,
+  digestAnalysisInput,
+  hashAnalysisValue,
+  analysisResultJsonSchema,
+  analysisResponseSchema,
   validateAnalysisResult,
-  validateStudyAnalysisArtifact,
-  validateStudyAnalysisCorrection,
-  validateStudyAnalysisInputMetadata,
-  validateStudyAnalysisExecutionReceipt,
+  validateAnalysisArtifact,
+  validateAnalysisCorrection,
+  validateAnalysisInputMetadata,
+  validateAnalysisExecutionReceipt,
 } from "../../src/analysis/validation.js";
 import { syntheticArtifact, syntheticInput, syntheticResult } from "./fixtures.js";
 
@@ -18,14 +18,14 @@ describe("study analysis validation", () => {
     const legacy = syntheticArtifact();
     delete legacy.result!.concernReviews;
     legacy.promptVersion = "study-evidence-4";
-    expect(validateStudyAnalysisArtifact(legacy)).toEqual(legacy);
-    expect(studyAnalysisResponseSchema.safeParse(legacy.result).success).toBe(false);
+    expect(validateAnalysisArtifact(legacy)).toEqual(legacy);
+    expect(analysisResponseSchema.safeParse(legacy.result).success).toBe(false);
     legacy.promptVersion = "study-evidence-5";
-    expect(() => validateStudyAnalysisArtifact(legacy)).toThrow("ANALYSIS_RESULT_SCHEMA_INVALID");
+    expect(() => validateAnalysisArtifact(legacy)).toThrow("ANALYSIS_RESULT_SCHEMA_INVALID");
     legacy.promptVersion = "study-evidence-6";
-    expect(() => validateStudyAnalysisArtifact(legacy)).toThrow("ANALYSIS_RESULT_SCHEMA_INVALID");
+    expect(() => validateAnalysisArtifact(legacy)).toThrow("ANALYSIS_RESULT_SCHEMA_INVALID");
     legacy.result!.concernReviews = [];
-    expect(validateStudyAnalysisArtifact(legacy)).toEqual(legacy);
+    expect(validateAnalysisArtifact(legacy)).toEqual(legacy);
   });
   it("allows finding concern reviews to cite an exposed participant's counterexample", () => {
     const input = syntheticInput();
@@ -42,7 +42,7 @@ describe("study analysis validation", () => {
       text: "I could create the item.",
     });
     input.coverage.evidenceCount++;
-    input.inputDigest = digestStudyAnalysisInput(input);
+    input.inputDigest = digestAnalysisInput(input);
     const result = syntheticResult(input);
     result.concernReviews = [
       {
@@ -128,7 +128,7 @@ describe("study analysis validation", () => {
         Object.values(obj).forEach(visit);
       }
     };
-    visit(studyAnalysisResultJsonSchema);
+    visit(analysisResultJsonSchema);
   });
   it("rejects unknown properties, invented evidence, and unsupported visual claims", () => {
     const input = syntheticInput();
@@ -166,7 +166,7 @@ describe("study analysis validation", () => {
       input.coverage.includedStreamIds.push("participant-b");
       input.evidence.push({ ...input.evidence[1]!, id: "e000003", streamId: "participant-b" });
       input.coverage.evidenceCount++;
-      input.inputDigest = digestStudyAnalysisInput(input);
+      input.inputDigest = digestAnalysisInput(input);
       const result = syntheticResult(input);
       expect(checkAnalysisResult(input, result).ok).toBe(true);
       result.participants[0]!.evidenceIds.push(
@@ -207,26 +207,26 @@ describe("study analysis validation", () => {
     });
   });
   it("hashes participants and config canonically and rejects changed persisted content", () => {
-    expect(hashStudyAnalysisValue({ b: 1, a: 2 })).toBe(hashStudyAnalysisValue({ a: 2, b: 1 }));
+    expect(hashAnalysisValue({ b: 1, a: 2 })).toBe(hashAnalysisValue({ a: 2, b: 1 }));
     const input = syntheticInput();
     input.participants[0]!.assignment = "A different assignment.";
-    expect(digestStudyAnalysisInput(input)).not.toBe(input.inputDigest);
+    expect(digestAnalysisInput(input)).not.toBe(input.inputDigest);
     const artifact = syntheticArtifact();
-    expect(validateStudyAnalysisArtifact(artifact)).toEqual(artifact);
+    expect(validateAnalysisArtifact(artifact)).toEqual(artifact);
     artifact.config.model = "changed-reviewer";
-    expect(() => validateStudyAnalysisArtifact(artifact)).toThrow("ANALYSIS_DIGEST_INVALID");
+    expect(() => validateAnalysisArtifact(artifact)).toThrow("ANALYSIS_DIGEST_INVALID");
   });
   it("keeps failed and partial execution separate from completed findings", () => {
     const artifact = syntheticArtifact();
     artifact.status = "failed";
-    expect(() => validateStudyAnalysisArtifact(artifact)).toThrow("ANALYSIS_STATUS_INVALID");
+    expect(() => validateAnalysisArtifact(artifact)).toThrow("ANALYSIS_STATUS_INVALID");
     artifact.result = null;
     artifact.error = "analysis_provider_failed";
-    expect(validateStudyAnalysisArtifact(artifact).status).toBe("failed");
+    expect(validateAnalysisArtifact(artifact).status).toBe("failed");
     const partial = syntheticArtifact();
     partial.status = "partial";
     partial.error = "analysis_admission_estimate_exceeded";
-    expect(validateStudyAnalysisArtifact(partial).result).not.toBeNull();
+    expect(validateAnalysisArtifact(partial).result).not.toBeNull();
   });
   it("requires amended corrections to carry replacement text", () => {
     const correction = {
@@ -241,11 +241,9 @@ describe("study analysis validation", () => {
       reason: "The claim needs qualification.",
       replacementClaim: null,
     };
-    expect(() => validateStudyAnalysisCorrection(correction)).toThrow(
-      "ANALYSIS_CORRECTION_INVALID",
-    );
+    expect(() => validateAnalysisCorrection(correction)).toThrow("ANALYSIS_CORRECTION_INVALID");
     expect(
-      validateStudyAnalysisCorrection({
+      validateAnalysisCorrection({
         ...correction,
         replacementClaim: "An obstacle was observed.",
       }).status,
@@ -253,15 +251,15 @@ describe("study analysis validation", () => {
   });
   it("rejects malformed input metadata before a paid request", () => {
     const input = syntheticInput();
-    expect(() => validateStudyAnalysisInputMetadata(input)).not.toThrow();
+    expect(() => validateAnalysisInputMetadata(input)).not.toThrow();
     input.evidence[0]!.kind = "x".repeat(129);
-    input.inputDigest = digestStudyAnalysisInput(input);
-    expect(() => validateStudyAnalysisInputMetadata(input)).toThrow("ANALYSIS_INPUT_INVALID");
+    input.inputDigest = digestAnalysisInput(input);
+    expect(() => validateAnalysisInputMetadata(input)).toThrow("ANALYSIS_INPUT_INVALID");
     const duplicate = syntheticInput();
     duplicate.evidence.push({ ...duplicate.evidence[0]!, id: "e000003" });
     duplicate.coverage.evidenceCount++;
-    duplicate.inputDigest = digestStudyAnalysisInput(duplicate);
-    expect(() => validateStudyAnalysisInputMetadata(duplicate)).toThrow("ANALYSIS_INPUT_INVALID");
+    duplicate.inputDigest = digestAnalysisInput(duplicate);
+    expect(() => validateAnalysisInputMetadata(duplicate)).toThrow("ANALYSIS_INPUT_INVALID");
   });
 
   it("requires an action source for observations labeled as actions", () => {
@@ -289,7 +287,7 @@ describe("study analysis validation", () => {
       capture: null,
     });
     input.coverage.evidenceCount++;
-    input.inputDigest = digestStudyAnalysisInput(input);
+    input.inputDigest = digestAnalysisInput(input);
     const observation = result.findings[0]!.observations[0]!;
     observation.claim =
       "The harness record describes model usage, not a participant-issued service call.";
@@ -321,7 +319,7 @@ describe("study analysis validation", () => {
       maxCostUsd: artifact.config.maxCostUsd,
       usage: { ...artifact.usage, inputTokens: null },
     };
-    expect(() => validateStudyAnalysisExecutionReceipt(receipt)).toThrow("ANALYSIS_USAGE_INVALID");
+    expect(() => validateAnalysisExecutionReceipt(receipt)).toThrow("ANALYSIS_USAGE_INVALID");
   });
 
   it("bounds and validates task provenance before dispatch", () => {
@@ -344,8 +342,8 @@ describe("study analysis validation", () => {
     ]) {
       const input = syntheticInput();
       input.participants[0]!.provenance.taskOutcomes = tasks;
-      input.inputDigest = digestStudyAnalysisInput(input);
-      expect(() => validateStudyAnalysisInputMetadata(input)).toThrow("ANALYSIS_INPUT_INVALID");
+      input.inputDigest = digestAnalysisInput(input);
+      expect(() => validateAnalysisInputMetadata(input)).toThrow("ANALYSIS_INPUT_INVALID");
     }
   });
 });

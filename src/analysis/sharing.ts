@@ -1,7 +1,7 @@
 import { containsSensitive } from "../evidence/redaction.js";
 import type { LoadedAnalysis } from "./study-analysis.js";
-import { AUTOMATIC_STUDY_ANALYSIS_DIRECTORY, projectAutomaticStudyAnalysisView } from "./job.js";
-import { STUDY_ANALYSIS_DIRECTORY, STUDY_ANALYSIS_EXECUTION_DIRECTORY } from "./store.js";
+import { AUTOMATIC_ANALYSIS_DIRECTORY, projectAutomaticStudyAnalysisView } from "./job.js";
+import { ANALYSIS_DIRECTORY, ANALYSIS_EXECUTION_DIRECTORY } from "./store.js";
 
 /** True for the analysis record files, matched by name inside their directories. Any other file
  * under analysis/ is ordinary evidence and follows the ordinary evidence policy. */
@@ -10,17 +10,12 @@ export function isStudyAnalysisRecordPath(relativePath: string): boolean {
   const leaf = parts.at(-1)!;
   const directory = parts[0];
   return (
-    (directory === STUDY_ANALYSIS_DIRECTORY &&
-      ["analysis.json", "correction.json"].includes(leaf)) ||
-    (directory === STUDY_ANALYSIS_EXECUTION_DIRECTORY &&
-      ["receipt.json", "start.json"].includes(leaf)) ||
-    (directory === AUTOMATIC_STUDY_ANALYSIS_DIRECTORY &&
-      ["job.json", "cancel.json"].includes(leaf)) ||
-    ([
-      STUDY_ANALYSIS_DIRECTORY,
-      STUDY_ANALYSIS_EXECUTION_DIRECTORY,
-      AUTOMATIC_STUDY_ANALYSIS_DIRECTORY,
-    ].includes(directory!) &&
+    (directory === ANALYSIS_DIRECTORY && ["analysis.json", "correction.json"].includes(leaf)) ||
+    (directory === ANALYSIS_EXECUTION_DIRECTORY && ["receipt.json", "start.json"].includes(leaf)) ||
+    (directory === AUTOMATIC_ANALYSIS_DIRECTORY && ["job.json", "cancel.json"].includes(leaf)) ||
+    ([ANALYSIS_DIRECTORY, ANALYSIS_EXECUTION_DIRECTORY, AUTOMATIC_ANALYSIS_DIRECTORY].includes(
+      directory!,
+    ) &&
       leaf.startsWith(".humanish-write-"))
   );
 }

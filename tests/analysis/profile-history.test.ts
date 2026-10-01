@@ -68,17 +68,17 @@ describe("durable analyst profile reading", () => {
     const config = await import("../../src/analysis/codex-config.js");
     const validator = await import("../../src/analysis/validation.js");
     const artifact = historical();
-    artifact.configDigest = validator.hashStudyAnalysisValue(artifact.config);
+    artifact.configDigest = validator.hashAnalysisValue(artifact.config);
     const before = JSON.stringify(artifact);
     expect(config.validCodexAnalysisConfig(artifact.config)).toBe(false);
     expect(config.validStoredCodexAnalysisConfig(artifact.config)).toBe(true);
-    expect(validator.validateStudyAnalysisArtifact(artifact)).toEqual(artifact);
+    expect(validator.validateAnalysisArtifact(artifact)).toEqual(artifact);
     expect(JSON.stringify(artifact)).toBe(before);
     const unqualified = structuredClone(artifact);
     if (unqualified.config.provider === "codex")
       unqualified.config.identity.cliVersion = "unqualified";
-    unqualified.configDigest = validator.hashStudyAnalysisValue(unqualified.config);
-    expect(() => validator.validateStudyAnalysisArtifact(unqualified)).toThrow(
+    unqualified.configDigest = validator.hashAnalysisValue(unqualified.config);
+    expect(() => validator.validateAnalysisArtifact(unqualified)).toThrow(
       "ANALYSIS_PROVIDER_INVALID",
     );
   });

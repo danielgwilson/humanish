@@ -3,7 +3,7 @@ import type {
   AnalysisInput,
   AnalysisResult,
 } from "../../src/analysis/study-analysis.js";
-import { digestStudyAnalysisInput, hashStudyAnalysisValue } from "../../src/analysis/validation.js";
+import { digestAnalysisInput, hashAnalysisValue } from "../../src/analysis/validation.js";
 
 export function syntheticInput(): AnalysisInput {
   const input: AnalysisInput = {
@@ -68,7 +68,7 @@ export function syntheticInput(): AnalysisInput {
     ],
     images: [],
   };
-  input.inputDigest = digestStudyAnalysisInput(input);
+  input.inputDigest = digestAnalysisInput(input);
   return input;
 }
 
@@ -136,7 +136,7 @@ export function syntheticArtifact(input = syntheticInput(), id = "analysis-1"): 
     completedAt: "2026-09-01T00:02:00.000Z",
     sourceRunSha256: input.sourceRunSha256,
     inputDigest: input.inputDigest,
-    configDigest: hashStudyAnalysisValue(config),
+    configDigest: hashAnalysisValue(config),
     ...(input.captureVersion === undefined ? {} : { captureVersion: input.captureVersion }),
     config,
     promptVersion: "synthetic-v1",
