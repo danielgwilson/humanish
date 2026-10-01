@@ -44,6 +44,7 @@ import {
   type CuaActorLabHooks,
   type RunCuaActorLabOptions,
 } from "./types.js";
+import { participantDesktopOf } from "./participant-desktop.js";
 
 /** The error a computer-use lab returns before a run starts. */
 export interface ComputerUseRefusal {
@@ -280,7 +281,7 @@ function driverReason(
   if (
     config.subject.source === "app-url" &&
     config.execution?.target === "local" &&
-    !hooks.createDesktopLane
+    participantDesktopOf(hooks) === undefined
   )
     return {
       code: "HUMANISH_CUA_LAB_LOCAL_DESKTOP_MISSING",

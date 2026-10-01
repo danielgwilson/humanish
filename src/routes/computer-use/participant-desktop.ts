@@ -1,6 +1,8 @@
 import type { CuaExecutor } from "../../actors/computer-use/loop.js";
-import type { LaneRunOutcome } from "./types.js";
+import type { CuaActorLabHooks, DesktopParticipantRun, LaneRunOutcome } from "./types.js";
 import type { LabCommsEmail, LabCommsRecipient } from "../../lab/types.js";
+import type { PreparedOutputRoot } from "../../run/contained-output.js";
+import { laneSpecOf } from "./legacy-lane-spec.js";
 
 /** A prepared desktop supplies only participant input/observation and its inbox location. */
 export interface ReadyParticipantDesktop {
@@ -45,6 +47,40 @@ export interface ParticipantDesktop {
   openSession(): Promise<ReadyParticipantDesktop>;
   finalize(options: { failed: boolean }): Promise<void>;
   snapshot(): ParticipantDesktopEvidence;
+}
+
+/** Builds one participant's desktop. The factory must not acquire anything; prepare does. */
+export type ParticipantDesktopFactory = (
+  run: DesktopParticipantRun,
+  warnings: string[],
+  artifactRoot: PreparedOutputRoot,
+) => ParticipantDesktop;
+
+/**
+ * The hook-bag member a study that owns its desktops (the local VM study) sets to its factory. A
+ * symbol keeps it out of the public CuaActorLabHooks, whose deprecated createDesktopLane takes the
+ * flat lane record; withHookOverrides forwards it like any other member of the bag.
+ */
+export const PARTICIPANT_DESKTOP: unique symbol = Symbol("humanish.participantDesktop");
+
+/** A hook bag that may carry a study's own desktop factory. */
+export type HooksWithParticipantDesktop = CuaActorLabHooks & {
+  readonly [PARTICIPANT_DESKTOP]?: ParticipantDesktopFactory;
+};
+
+/**
+ * The desktop factory a run uses: the study's own, else the caller's deprecated createDesktopLane,
+ * given the flat view of each run. Undefined means the route provisions its own desktop.
+ */
+export function participantDesktopOf(
+  hooks: CuaActorLabHooks,
+): ParticipantDesktopFactory | undefined {
+  const own = (hooks as HooksWithParticipantDesktop)[PARTICIPANT_DESKTOP];
+  if (own !== undefined) return own;
+  const caller = hooks.createDesktopLane;
+  return caller === undefined
+    ? undefined
+    : (run, warnings, artifactRoot) => caller(laneSpecOf(run), warnings, artifactRoot);
 }
 
 /** The lane's addressed comms recipient, when one exists — the gate AND the address source for the

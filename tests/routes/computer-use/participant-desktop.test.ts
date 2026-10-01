@@ -28,6 +28,12 @@ import { OPENAI_RESPONSES_CU_CAPABILITIES } from "../../../src/actors/computer-u
 import { prepareSelectedOutputDirectory } from "../../../src/run/contained-output.js";
 import { participantRun } from "../../helpers/participant-run.js";
 import { laneSpecOf } from "../../../src/routes/computer-use/legacy-lane-spec.js";
+import {
+  participantDesktopOf,
+  PARTICIPANT_DESKTOP,
+  type HooksWithParticipantDesktop,
+} from "../../../src/routes/computer-use/participant-desktop.js";
+import type { PreparedOutputRoot } from "../../../src/run/contained-output.js";
 
 const restrictedParticipantFactory = vi.hoisted(() => vi.fn());
 vi.mock("../../../src/actors/codex/restricted-participant.js", async (importOriginal) => ({
@@ -629,5 +635,32 @@ describe("ready desktop lane contract", () => {
     await expect(adapter.prepare()).rejects.toThrow("only start once");
     expect(f.loadDesktopModule).not.toHaveBeenCalled();
     expect(adapter.snapshot().released).toBe(false);
+  });
+});
+
+describe("participantDesktopOf", () => {
+  const run = participantRun({
+    id: "participant-a",
+    index: 0,
+    persona: { id: "first-time-visitor", traitsApplied: [], promptDigest: "synthetic-prompt" },
+    instructions: "Save a note.",
+  });
+  const root = {} as PreparedOutputRoot;
+  const port = {} as ParticipantDesktop;
+
+  it("gives a caller's deprecated createDesktopLane the flat lane", () => {
+    const createDesktopLane = vi.fn(() => port);
+    expect(participantDesktopOf({ createDesktopLane })!(run, [], root)).toBe(port);
+    expect(createDesktopLane).toHaveBeenCalledWith(laneSpecOf(run), [], root);
+  });
+
+  it("prefers a study's own factory, which receives the run itself", () => {
+    const createDesktopLane = vi.fn(() => port);
+    const own = vi.fn(() => port);
+    const hooks: HooksWithParticipantDesktop = { createDesktopLane, [PARTICIPANT_DESKTOP]: own };
+    participantDesktopOf(hooks)!(run, [], root);
+    expect(own).toHaveBeenCalledWith(run, [], root);
+    expect(createDesktopLane).not.toHaveBeenCalled();
+    expect(participantDesktopOf({})).toBeUndefined();
   });
 });
