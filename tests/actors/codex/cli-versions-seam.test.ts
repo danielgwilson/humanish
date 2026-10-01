@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { parseSync } from "oxc-parser";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { createProgram } from "../../../src/cli/program.js";
-import type { RunLabOptions } from "../../../src/lab/engine.js";
+import type { RunLabOptions } from "../../../src/run-lab.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
 import type { CuaActorLabHooks } from "../../../src/routes/computer-use/types.js";
 

@@ -8,7 +8,7 @@ import { doctor } from "../../src/cli/doctor.js";
 import type { DetectLocalAgentsOptions } from "../../src/actors/local-agent/cli.js";
 import { runLabPreflight } from "../../src/lab/preflight.js";
 import { resolveLabManifest } from "../../src/lab/discover.js";
-import { runLab } from "../../src/lab/engine.js";
+import { runLab } from "../../src/run-lab.js";
 
 const noAgents: DetectLocalAgentsOptions = { which: async () => undefined };
 const keyless = { HUMANISH_STRICT_KEYS: "1", PATH: "" };

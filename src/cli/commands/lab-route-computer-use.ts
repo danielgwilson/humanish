@@ -1,6 +1,7 @@
 import { automaticAnalysisSucceeded } from "../../analysis/automatic-completion.js";
 import { Command } from "commander";
-import { resolveLabDryRun, type RunLabOptions } from "../../lab/engine.js";
+import { type RunLabOptions } from "../../run-lab.js";
+import { resolveLabDryRun } from "../../lab/plan.js";
 import type { RunLabProvenance } from "../../run/status.js";
 import { CUA_ACTOR_LAB_SCHEMA } from "../../routes/computer-use/types.js";
 import type { CuaActorLabErrorCode, CuaActorLabResult } from "../../routes/computer-use/types.js";
@@ -11,7 +12,7 @@ import { startExposedObserver, validateExposure } from "../../observer/exposure.
 import type { ExposurePlan } from "../../observer/exposure.js";
 import { ServeTunnelError } from "../../observer/tunnel.js";
 import type { ServeTunnel } from "../../observer/tunnel.js";
-import { cliAnalysisOptions } from "./lab-hooks.js";
+import { cliAnalysisOptions } from "./analysis-signals.js";
 import {
   type CliIo,
   type LabCommandOptions,

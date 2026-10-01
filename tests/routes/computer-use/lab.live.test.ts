@@ -8,7 +8,7 @@ import { retainLiveRuns } from "../../helpers/live-retention.js";
 import { ACTOR_TRACE_SCHEMA } from "../../../src/actors/contract.js";
 import { LAB_CONFIG_SCHEMA } from "../../../src/lab/types.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
-import { runLab } from "../../../src/lab/engine.js";
+import { runLab } from "../../../src/run-lab.js";
 
 // The single LIVE rung for the computer-use LAB: a real lab config dispatched through runLab to
 // a real E2B desktop driven by the real OpenAI Computer Use loop. Spend-gated exactly like the

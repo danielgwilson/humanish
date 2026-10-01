@@ -2,7 +2,7 @@ import { automaticAnalysisSucceeded } from "../../analysis/automatic-completion.
 import { Command } from "commander";
 import type { RunLabProvenance } from "../../run/status.js";
 import type { LabConfig } from "../../lab/types.js";
-import { cliAnalysisOptions } from "./lab-hooks.js";
+import { cliAnalysisOptions } from "./analysis-signals.js";
 import { type CliIo, type LabCommandOptions, wantsJson, writeResult } from "../io.js";
 import { showObserver } from "../observer-follow.js";
 import { formatTerminalLabHuman } from "./lab-format.js";

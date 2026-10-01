@@ -10,7 +10,7 @@ import { planSharedWorldLab } from "../routes/shared-world/plan.js";
 import { planTerminalLab } from "../routes/terminal/plan.js";
 import type { RunLabProvenance } from "../run/status.js";
 import { localBrowserDefaults } from "../substrates/local/runtime-config.js";
-import type { LabBackend, RunLabOptions } from "./engine.js";
+import type { RunLabOptions } from "../run-lab.js";
 import { planBase } from "./plan-base.js";
 import type { LabPlan, PlanRefusal, PlanResult, PreviewRefusalCode } from "./plan-types.js";
 import {
@@ -25,6 +25,9 @@ import { automaticAnalysisRouteReason, taskProtocolValidationReason } from "./va
 /** The five execution paths a lab can take. */
 export type LabRoute = "preview" | "computer-use" | "shared-world" | "terminal" | "scripted";
 
+/** A route's older name, kept in `LabOutcome.backend` and the preflight result's `backend`. */
+export type LabBackend = "synthetic" | "cua" | "scripted" | "terminal" | "concurrent-shared-world";
+
 const BACKENDS: Record<LabRoute, LabBackend> = {
   preview: "synthetic",
   "computer-use": "cua",
@@ -36,6 +39,14 @@ const BACKENDS: Record<LabRoute, LabBackend> = {
 /** The backend name older callers and wire fields use for a route. */
 export function backendOf(route: LabRoute): LabBackend {
   return BACKENDS[route];
+}
+
+/**
+ * The backend a config runs on: `routeOf`, under its older name.
+ * @deprecated Use `routeOf`, and `backendOf` for the older backend name. This goes in the next minor.
+ */
+export function selectLabBackend(config: LabConfig): LabBackend {
+  return backendOf(routeOf(config));
 }
 
 /**

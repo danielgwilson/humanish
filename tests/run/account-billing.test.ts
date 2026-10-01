@@ -10,7 +10,7 @@ import type {
   RestrictedCodexResult,
 } from "../../src/actors/codex/restricted-policy.js";
 import { parseLabConfig } from "../../src/lab/config.js";
-import { runLab } from "../../src/lab/engine.js";
+import { runLab } from "../../src/run-lab.js";
 import { readRunDetail } from "../../src/run/detail.js";
 import { estimateActorCost, estimateActorCostForExecution } from "../../src/run/pricing.js";
 import { contradictsAccountBilling } from "../../src/verify/costs.js";

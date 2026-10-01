@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { retainLiveRuns } from "../../helpers/live-retention.js";
 
 import { parseLabConfig } from "../../../src/lab/config.js";
-import { runLab } from "../../../src/lab/engine.js";
+import { runLab } from "../../../src/run-lab.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 
 // The LIVE rung for the CONCURRENT shared-world topology (#164 phase 2). WRITTEN + gated, NOT run

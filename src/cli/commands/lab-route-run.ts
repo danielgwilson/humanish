@@ -1,9 +1,9 @@
 // What a route's CLI setup hands the lab command: the runLab options it chose and how it presents
 // the outcome. runRoute plans the lab once and runs it between the two.
 
-import { type LabOutcome, prepareLab, type RunLabOptions } from "../../lab/engine.js";
+import { type LabOutcome, prepareLab, type RunLabOptions } from "../../run-lab.js";
 import type { LabConfig } from "../../lab/types.js";
-import type { LoadedAdapterScorer } from "./lab-hooks.js";
+import type { LoadedAdapterScorer } from "./lab-scorer.js";
 
 export interface RouteRun {
   readonly options: RunLabOptions;

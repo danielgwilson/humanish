@@ -3,21 +3,21 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { prepareLocalVmStudy } from "../../src/routes/computer-use/local-vm.js";
+import type { prepareLocalVmStudy } from "../src/routes/computer-use/local-vm.js";
 
 const localStudy = vi.hoisted(() =>
   vi.fn<typeof prepareLocalVmStudy>(() => {
     throw new Error("unexpected local study");
   }),
 );
-vi.mock("../../src/routes/computer-use/local-vm.js", () => ({
+vi.mock("../src/routes/computer-use/local-vm.js", () => ({
   prepareLocalVmStudy: localStudy,
 }));
 
-import { runLab } from "../../src/lab/engine.js";
-import type { LabConfig } from "../../src/lab/types.js";
-import type { RunAdapterScore, RunScorerProvenance } from "../../src/run/bundle.js";
-import type { CuaExecutor } from "../../src/actors/computer-use/loop.js";
+import { runLab } from "../src/run-lab.js";
+import type { LabConfig } from "../src/lab/types.js";
+import type { RunAdapterScore, RunScorerProvenance } from "../src/run/bundle.js";
+import type { CuaExecutor } from "../src/actors/computer-use/loop.js";
 
 const config: LabConfig = {
   schema: "humanish.lab.v2",

@@ -1,13 +1,13 @@
 import { automaticAnalysisSucceeded } from "../../analysis/automatic-completion.js";
 import { Command } from "commander";
-import { resolveLabDryRun } from "../../lab/engine.js";
+import { resolveLabDryRun } from "../../lab/plan.js";
 import type { RunLabProvenance } from "../../run/status.js";
 import type { ConcurrentSharedWorldLabResult } from "../../routes/shared-world/types.js";
 import type { LabConfig } from "../../lab/types.js";
 import { serveObserver } from "../../observer/render.js";
 import type { ObserverResult, ObserverServer } from "../../observer/render.js";
 import { redactText } from "../../evidence/redaction.js";
-import { cliAnalysisOptions } from "./lab-hooks.js";
+import { cliAnalysisOptions } from "./analysis-signals.js";
 import {
   type CliIo,
   type LabCommandOptions,

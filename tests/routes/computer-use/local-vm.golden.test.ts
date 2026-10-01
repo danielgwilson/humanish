@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CuaAction, CuaExecutor } from "../../../src/actors/computer-use/loop.js";
 import type { FetchLike } from "../../../src/actors/computer-use/openai-provider.js";
 import { runCuaActorSession } from "../../../src/actors/computer-use/actor.js";
-import { runLab } from "../../../src/lab/engine.js";
+import { runLab } from "../../../src/run-lab.js";
 import type { LabConfig } from "../../../src/lab/types.js";
 import { ownDesktopAllocation } from "../../../src/substrates/desktop-session.js";
 import type { LocalFirecrackerDesktop } from "../../../src/substrates/local/firecracker-desktop.js";

@@ -25,7 +25,7 @@ import {
   participantStream,
 } from "./participant-records.js";
 import { implicitProjectDirectoryExists, readPackageName, validateCwd } from "./project.js";
-import { loadDryRunSelection } from "./dry-run-selection.js";
+import { loadDryRunInputs } from "./dry-run-inputs.js";
 import { createReviewSummary, renderReviewMarkdown } from "./synthetic-review.js";
 import { judgeExecution, judgePreview, OUTCOME_POLICIES, resultOk } from "./judge.js";
 
@@ -86,7 +86,7 @@ async function runDryRunInScope(options: RunOptions, scope: RunScope): Promise<R
     ? "present"
     : "missing";
   const source = await buildRunSource({ cwd, capturedAt: createdAt, humanishSource, packageName });
-  const selection = await loadDryRunSelection(projectRoot, humanishSource);
+  const inputs = await loadDryRunInputs(projectRoot, humanishSource);
   await assertPreparedSelectedOutputDirectory(projectRoot);
   const started = await scope.startRun({
     cwd,
@@ -107,12 +107,12 @@ async function runDryRunInScope(options: RunOptions, scope: RunScope): Promise<R
       "Committed humanish/ source was not found; using built-in synthetic dry-run defaults.",
     );
   }
-  warnings.push(...selection.warnings);
+  warnings.push(...inputs.warnings);
 
   const observerFixtures = buildSyntheticObserverFixtures({
     createdAt,
-    personaId: selection.persona.id,
-    scenarioId: selection.scenario.id,
+    personaId: inputs.persona.id,
+    scenarioId: inputs.scenario.id,
     count: participants,
   });
 
@@ -128,8 +128,8 @@ async function runDryRunInScope(options: RunOptions, scope: RunScope): Promise<R
       ...(options.lab === undefined ? {} : { lab: options.lab }),
       source,
     }),
-    persona: selection.persona,
-    scenario: selection.scenario,
+    persona: inputs.persona,
+    scenario: inputs.scenario,
     lifecycle: [
       {
         at: createdAt,

@@ -16,7 +16,8 @@ import type {
 } from "../../../src/substrates/e2b/sdk.js";
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
-import { runLab, selectLabBackend } from "../../../src/lab/engine.js";
+import { runLab } from "../../../src/run-lab.js";
+import { selectLabBackend } from "../../../src/lab/plan.js";
 import { createProgram } from "../../../src/cli/program.js";
 import { digestText } from "../../../src/evidence/redaction.js";
 import { verifyRun } from "../../../src/verify/verify.js";

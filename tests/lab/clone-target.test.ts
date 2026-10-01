@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 
 import { parseLabConfig } from "../../src/lab/config.js";
-import { runLab } from "../../src/lab/engine.js";
+import { runLab } from "../../src/run-lab.js";
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/lab/types.js";
 import { runScriptedBrowserLab } from "../../src/routes/scripted-browser/route.js";
 import type { E2BDesktopModule } from "../../src/substrates/e2b/sdk.js";

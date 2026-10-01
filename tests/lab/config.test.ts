@@ -15,7 +15,7 @@ import {
 import { LAB_CONFIG_SCHEMA } from "../../src/lab/types.js";
 import { declaredParticipantIds } from "../../src/lab/plan-participants.js";
 import { parseLabConfig } from "../../src/lab/config.js";
-import { selectLabBackend } from "../../src/lab/engine.js";
+import { selectLabBackend } from "../../src/lab/plan.js";
 
 describe("parseLabConfig (humanish.lab.v2)", () => {
   it("refuses a clone lab whose actor can neither drive nor script the served app", () => {

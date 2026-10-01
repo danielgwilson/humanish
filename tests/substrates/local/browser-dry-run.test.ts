@@ -15,7 +15,7 @@ vi.mock("../../../src/analysis/restricted-codex.js", async (importOriginal) => (
 }));
 
 import type { LabConfig } from "../../../src/lab/types.js";
-import { runLab } from "../../../src/lab/engine.js";
+import { runLab } from "../../../src/run-lab.js";
 import type { BrowserLabScoringContext } from "../../../src/lab/adapter-extension.js";
 import type { RunAdapterScore, RunBundle } from "../../../src/run/bundle.js";
 

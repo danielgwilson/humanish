@@ -7,7 +7,7 @@ import { Command } from "commander";
 import { deriveStudyFacts } from "../telemetry.js";
 import { resolveLabManifest } from "../../lab/discover.js";
 import type { LabResolveFailure } from "../../lab/discover.js";
-import { resolveLabDryRun } from "../../lab/engine.js";
+import { resolveLabDryRun } from "../../lab/plan.js";
 import { type LabRoute, routeOf } from "../../lab/plan.js";
 import type { LabConfig } from "../../lab/types.js";
 import type { RunLabProvenance } from "../../run/status.js";
@@ -18,7 +18,7 @@ import { scriptedRouteRun } from "./lab-route-scripted.js";
 import { sharedWorldRouteRun } from "./lab-route-shared-world.js";
 import { previewRouteRun } from "./lab-route-preview.js";
 import { terminalRouteRun } from "./lab-route-terminal.js";
-import { maybeLoadAdapterScorer } from "./lab-hooks.js";
+import { maybeLoadAdapterScorer } from "./lab-scorer.js";
 import {
   type CliIo,
   formatRunHuman,

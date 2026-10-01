@@ -58,7 +58,8 @@ import { parseLabConfig } from "../../../src/lab/config.js";
 import { externalCatchHealthy } from "../../../src/comms/sandbox-catch.js";
 import { SANDBOX_CATCH_SCRIPT } from "../../../src/comms/sandbox-catch-script.js";
 import { recipientInboxUrl } from "../../../src/comms/capture-surface.js";
-import { runLab, selectLabBackend } from "../../../src/lab/engine.js";
+import { runLab } from "../../../src/run-lab.js";
+import { selectLabBackend } from "../../../src/lab/plan.js";
 import {
   renderObserver,
   serveObserver,
