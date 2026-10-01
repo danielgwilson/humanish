@@ -45,7 +45,7 @@ function seatView(ctx: SeatRecordContext, spec: DesktopParticipantRun, index: nu
   // public-safe (origin redacted): external-public seats open the public plane; getHost seats a seat path.
   const route = external
     ? "[external-public-plane]"
-    : publicSafeRouteLabel(args.roles[index]?.entry);
+    : publicSafeRouteLabel(args.plan.plane.participants[index]?.entry);
   const status: RunSimulationStatus = session
     ? session.status
     : outcome?.sessionError

@@ -194,7 +194,8 @@ export async function finishConcurrentRun(
   results: PlaneResults,
   plane: FinishFacts,
 ): Promise<ConcurrentSharedWorldLabResult> {
-  const { plan, input, descriptor, hooks, roles, actorSpecs, run, runId, createdAt } = ctx;
+  const { plan, input, descriptor, hooks, actorSpecs, run, runId, createdAt } = ctx;
+  const participantCount = plan.plane.participants.length;
   const { cwd, concurrency, source, seedDigest, receiving, warnings, scrubKnownValues } = ctx;
   const { dryRun } = plan;
   const physicalArtifactRoot = ctx.runPaths.physicalRunRoot;
@@ -236,7 +237,6 @@ export async function finishConcurrentRun(
     dryRun,
     runId,
     source,
-    roles,
     actorSpecs,
     actorResults,
     stateSnapshots,
@@ -268,7 +268,7 @@ export async function finishConcurrentRun(
       actor: descriptor.id,
       backend: "concurrent-shared-world",
       dryRun,
-      laneCount: roles.length,
+      laneCount: participantCount,
     },
     sanitize: (text) => redactText(scrubKnownValues(text)),
     warnings: adapterWarnings,
@@ -306,7 +306,7 @@ export async function finishConcurrentRun(
     runError,
     adapterFailure,
     roleResults,
-    roleCount: roles.length,
+    roleCount: participantCount,
   });
 
   return {
@@ -317,7 +317,7 @@ export async function finishConcurrentRun(
     actor: descriptor.id,
     topology: "shared-world",
     topologyMode: "concurrent",
-    roleCount: roles.length,
+    roleCount: participantCount,
     concurrency,
     dryRun,
     runId,

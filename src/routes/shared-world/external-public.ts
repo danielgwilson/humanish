@@ -49,14 +49,15 @@ export async function runExternalPublicPlane(
   live: LiveSeats,
   inbox: ExternalCommsWiring | undefined,
 ): Promise<ExternalPublicPlaneOutcome> {
-  const { plan, hooks, roles, actorSpecs, concurrency, warnings } = ctx;
+  const { plan, hooks, actorSpecs, concurrency, warnings } = ctx;
+  const participants = plan.plane.participants;
   // publicAppUrl is the operator-declared shared plane; its ORIGIN is persisted digest-only
   // (publicOriginDigest), never raw (the raw URL + the runtime observed lobby CODE never land —
   // TENSION 3). The latch code is scrubbed from all narration.
   const publicAppUrl = plan.plane.kind === "external-public" ? plan.plane.appUrl : "";
   const declaredOriginDigest = declaredOriginDigestOf(publicAppUrl);
   const handoff = new LobbyHandoff({
-    seatCount: roles.length,
+    seatCount: participants.length,
     timeoutMs: ctx.timeoutMs,
     deadlineMs: hooks.handoffDeadlineMs,
     scrubKnownValues: ctx.scrubKnownValues,
@@ -83,7 +84,6 @@ export async function runExternalPublicPlane(
     inProgress: true,
     runId: ctx.runId,
     source: ctx.source,
-    roles,
     actorSpecs,
     actorResults: [],
     stateSnapshots: [],
@@ -114,7 +114,7 @@ export async function runExternalPublicPlane(
   let commsArtifactPath: string | undefined;
   // Split the roster into the designated host lane and the followers, preserving each follower's
   // ORIGINAL lane index so results land back in lane order (validation guarantees EXACTLY ONE host).
-  const hostLaneIndex = roles.findIndex((role) => role.host === true);
+  const hostLaneIndex = participants.findIndex((participant) => participant.host === true);
   const followerEntries = actorSpecs
     .map((spec, index) => ({ spec, index }))
     .filter(({ index }) => index !== hostLaneIndex);

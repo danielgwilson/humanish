@@ -219,7 +219,7 @@ export function seatLaneDeps(
     requestTimeoutMs: ctx.requestTimeoutMs,
     perLaneSandboxMs: ctx.timeoutMs + SANDBOX_TIMEOUT_BUFFER_MS,
     timeoutMs: ctx.timeoutMs,
-    laneCount: ctx.roles.length,
+    laneCount: ctx.plan.plane.participants.length,
     artifactRoot: ctx.runPaths,
     labCwd: ctx.cwd,
     redactScreenshots: ctx.redactScreenshots,
