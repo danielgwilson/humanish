@@ -44,7 +44,7 @@ describe("what to do next, resolved against this machine", () => {
         installedInProject: true,
       },
     ]) {
-      expect(firstRunSteps(env)[0]?.command).toBe("humanish run first-run");
+      expect(firstRunSteps(env)[0]?.command).toBe("npx humanish run first-run");
     }
   });
 
@@ -58,11 +58,11 @@ describe("what to do next, resolved against this machine", () => {
       platform: "linux",
       arch: "x64",
     });
-    expect(linux.at(-1)?.command).toBe("humanish doctor --lab local-browser");
+    expect(linux.at(-1)?.command).toBe("npx humanish doctor --lab local-browser");
     expect(linux.at(-1)?.why).toContain("Docker, KVM, TUN");
     expect(linux.at(-1)?.why).toContain("no E2B or model API key");
-    expect(linux.at(-1)?.why).toContain("humanish runtime setup");
-    expect(linux.at(-1)?.why).toContain("humanish run local-browser");
+    expect(linux.at(-1)?.why).toContain("npx humanish runtime setup");
+    expect(linux.at(-1)?.why).toContain("npx humanish run local-browser");
 
     const mac = firstRunSteps({
       hasE2bKey: false,
@@ -87,7 +87,7 @@ describe("what to do next, resolved against this machine", () => {
       platform: "win32",
       arch: "x64",
     });
-    expect(steps.at(-1)?.command).toBe("humanish keys set e2b");
+    expect(steps.at(-1)?.command).toBe("npx humanish keys set e2b");
     expect(steps.at(-1)?.why).toContain("Local browsers are unavailable on this host");
   });
 
@@ -99,7 +99,7 @@ describe("what to do next, resolved against this machine", () => {
       hasDesktopSdk: true,
       installedInProject: true,
     });
-    expect(byKey.at(-1)?.command).toBe("humanish run try-live");
+    expect(byKey.at(-1)?.command).toBe("npx humanish run try-live");
     expect(byKey.at(-1)?.why).toContain("your provider key");
 
     const byAgent = firstRunSteps({
@@ -109,7 +109,7 @@ describe("what to do next, resolved against this machine", () => {
       hasDesktopSdk: true,
       installedInProject: true,
     });
-    expect(byAgent.at(-1)?.command).toBe("humanish run try-live");
+    expect(byAgent.at(-1)?.command).toBe("npx humanish run try-live");
     // The point of the local-agent route: no API key hunt before the first real run.
     expect(byAgent.at(-1)?.why).toContain("no API key needed");
   });
@@ -122,7 +122,7 @@ describe("what to do next, resolved against this machine", () => {
       hasDesktopSdk: true,
       installedInProject: true,
     });
-    expect(steps.at(-1)?.command).toBe("humanish keys set openai");
+    expect(steps.at(-1)?.command).toBe("npx humanish keys set openai");
   });
 
   it("folds the optional desktop SDK into the step when the project does not have it", () => {
@@ -136,7 +136,7 @@ describe("what to do next, resolved against this machine", () => {
       hasDesktopSdk: false,
       installedInProject: true,
     });
-    expect(missing.at(-1)?.command).toBe("npm i -D @e2b/desktop && humanish run try-live");
+    expect(missing.at(-1)?.command).toBe("npm i -D @e2b/desktop && npx humanish run try-live");
     const present = firstRunSteps({
       hasE2bKey: true,
       hasProviderKey: true,
@@ -144,7 +144,7 @@ describe("what to do next, resolved against this machine", () => {
       hasDesktopSdk: true,
       installedInProject: true,
     });
-    expect(present.at(-1)?.command).toBe("humanish run try-live");
+    expect(present.at(-1)?.command).toBe("npx humanish run try-live");
   });
 
   it("tells an npx one-shot to install humanish TOO, because the peer alone cannot be found", () => {
@@ -170,7 +170,7 @@ describe("what to do next, resolved against this machine", () => {
       hasDesktopSdk: false,
       installedInProject: true,
     });
-    expect(installed.at(-1)?.command).toBe("npm i -D @e2b/desktop && humanish run try-live");
+    expect(installed.at(-1)?.command).toBe("npm i -D @e2b/desktop && npx humanish run try-live");
   });
 
   it("stays SHORT — a list of options is the same as no guidance", () => {

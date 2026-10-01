@@ -19,7 +19,11 @@ export type RestrictedCodexSpawn = (
 
 /** No raw provider prose, stderr, path, or cause is attached to this error. */
 export class RestrictedCodexStop extends Error {
-  constructor(readonly code: RestrictedCodexAnalysisErrorCode) {
+  /** `detectedVersion`: the release an unadmitted CLI reported, so a refusal can name it. */
+  constructor(
+    readonly code: RestrictedCodexAnalysisErrorCode,
+    readonly detectedVersion?: string,
+  ) {
     super(code);
   }
 }

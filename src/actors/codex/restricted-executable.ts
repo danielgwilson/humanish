@@ -166,7 +166,7 @@ export async function checkVersion(
       !admitted.includes(version) ||
       (expected !== undefined && version !== expected)
     )
-      throw new RestrictedCodexStop("codex_unsupported_version");
+      throw new RestrictedCodexStop("codex_unsupported_version", version);
     return version;
   } finally {
     clearTimeout(timer);

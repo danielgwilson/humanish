@@ -4,6 +4,7 @@ import {
   QUALIFIED_CODEX_CLI_VERSIONS,
   admittedCodexCliVersions,
   codexHost,
+  codexVersionRecovery,
   defaultCodexCliVersion,
   describeQualifiedCodexCliVersions,
   parseCodexCliVersion,
@@ -64,5 +65,24 @@ describe("per-host Codex CLI admission", () => {
     expect(parseCodexCliVersion("codex-cli 0.157.1\n")).toBe("0.157.1");
     for (const text of ["codex-cli 0.157.1 extra", "codex 0.157.1", "codex-cli ", "0.157.1", ""])
       expect(parseCodexCliVersion(text), text).toBeUndefined();
+  });
+
+  it("names the found release, the host's admitted releases and a pinned install command", () => {
+    for (const [platform, arch] of [
+      ["linux", "x64"],
+      ["darwin", "arm64"],
+      ["linux", "arm64"],
+    ] as const) {
+      const recovery = codexVersionRecovery("0.150.0", platform, arch);
+      expect(recovery).toContain("Found Codex CLI 0.150.0");
+      for (const version of admittedCodexCliVersions(platform, arch))
+        expect(recovery).toContain(version);
+      expect(recovery).toContain(
+        `npm install -g @openai/codex@${admittedCodexCliVersions(platform, arch).at(-1)}`,
+      );
+    }
+    expect(codexVersionRecovery(undefined, "linux", "x64")).toContain(
+      "did not report a recognizable version",
+    );
   });
 });

@@ -1,5 +1,6 @@
 import { createServer } from "node:http";
 import { labSetupChecks } from "../../src/lab/doctor.js";
+import { defaultCodexCliVersion } from "../../src/actors/codex/qualified-versions.js";
 import { chmod, mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -116,6 +117,65 @@ describe("selected lab setup without paid dispatch", () => {
       expect(result.checks.some((item) => item.name === "post-run analysis")).toBe(false);
     });
   });
+  it("names the found Codex release and the pinned install command when it is not admitted", async () => {
+    const manifest =
+      lab("local-agent")
+        .replace("https://preview.example.test/", "http://localhost:3000/")
+        .replace("target: e2b-desktop", "target: local") +
+      "\nreview:\n  analysis:\n    provider: codex\n";
+    const install = `npm install -g @openai/codex@${defaultCodexCliVersion()}`;
+    await project(manifest, async (cwd) => {
+      const result = await labSetupChecks({
+        cwd,
+        lab: "preview",
+        env: keyless,
+        agents: [],
+        keyPresent: () => false,
+        localRuntimeReadiness: async () => ({ ok: true, installed: true, message: "Ready" }),
+        codexAnalysisReadiness: async () => ({
+          ready: false,
+          errorCode: "codex_unsupported_version",
+          detectedCliVersion: "0.150.0",
+        }),
+      });
+      for (const name of ["local participant authentication", "post-run analysis"]) {
+        const check = result.checks.find((item) => item.name === name)!;
+        expect(check.ok, name).toBe(false);
+        expect(check.message, name).toContain("Found Codex CLI 0.150.0");
+        expect(check.message, name).toContain(install);
+      }
+    });
+    const launcher = await import("../../src/analysis/restricted-codex.js");
+    const session = await import("../../src/actors/codex/restricted-session.js");
+    const readiness = vi
+      .spyOn(launcher, "checkRestrictedCodexAnalysisReadiness")
+      .mockResolvedValue({ ready: false, errorCode: "codex_unsupported_version" });
+    const detect = vi.spyOn(session, "detectRestrictedCodexCliVersion").mockResolvedValue({
+      cliVersion: null,
+      errorCode: "codex_unsupported_version",
+      detectedVersion: "0.150.0",
+    });
+    try {
+      await project(manifest, async (cwd) => {
+        const result = await labSetupChecks({
+          cwd,
+          lab: "preview",
+          env: keyless,
+          agents: [],
+          keyPresent: () => false,
+          localRuntimeReadiness: async () => ({ ok: true, installed: true, message: "Ready" }),
+        });
+        expect(detect).toHaveBeenCalledExactlyOnceWith({ timeoutMs: 5000 }, { env: keyless });
+        expect(result.checks.find((item) => item.name === "post-run analysis")?.message).toContain(
+          "Found Codex CLI 0.150.0",
+        );
+      });
+    } finally {
+      readiness.mockRestore();
+      detect.mockRestore();
+    }
+  });
+
   it("uses the doctor's selected environment for the restricted account readiness check", async () => {
     const launcher = await import("../../src/analysis/restricted-codex.js");
     const readiness = vi
