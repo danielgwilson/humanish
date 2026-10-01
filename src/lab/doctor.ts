@@ -1,7 +1,7 @@
 import { isLocalBrowserLab } from "../substrates/local/runtime-config.js";
 import { localRuntimeStatus, type LocalRuntimeStatus } from "../substrates/local/runtime.js";
 import type { LabConfig } from "./types.js";
-import type { LabBackend } from "./engine.js";
+import type { LabRoute } from "./plan.js";
 import type { DetectedLocalAgent } from "../actors/local-agent/cli.js";
 import type { DoctorResult } from "../cli/doctor.js";
 import { automaticAnalysisBudget } from "../analysis/automatic-config.js";
@@ -62,24 +62,24 @@ export async function labSetupChecks(
       checks: [{ name: "lab", ok: false, message: resolved.error.message }],
     };
   const config = resolved.config,
-    backend = backendOf(routeOf(config));
+    route = routeOf(config);
   const dryRun = resolveLabDryRun(config, undefined, true) === true;
   const checks: Check[] = [
     {
       name: "lab route",
       ok: true,
-      message: `${config.id}: ${config.actors[0]?.type ?? "synthetic"} / ${backend} / ${dryRun ? "dry-run (no live participant)" : "live"}`,
+      message: `${config.id}: ${config.actors[0]?.type ?? "synthetic"} / ${backendOf(route)} / ${dryRun ? "dry-run (no live participant)" : "live"}`,
     },
   ];
   if (dryRun) return { desktop: false, keys: [], checks };
-  const unsupported = unsupportedCliRoute(config, backend);
+  const unsupported = unsupportedCliRoute(config, route);
   if (unsupported)
     return {
       desktop: false,
       keys: [],
       checks: [...checks, { name: "live route", ok: false, message: unsupported }],
     };
-  const { desktop, keys } = labKeyRequirements(config, backend, false, args.keyPresent);
+  const { desktop, keys } = labKeyRequirements(config, route, false, args.keyPresent);
   const local = isLocalBrowserLab(config);
   // One account check, shared by the local participant row and the Codex analysis row.
   let accountReadiness: Promise<{ ready: boolean; errorCode: string | null }> | undefined;
@@ -95,10 +95,10 @@ export async function labSetupChecks(
   if (local) checks.push(...(await localBrowserChecks(config, args)));
   if (config.comms?.email?.kind === "real")
     checks.push(await realEmailCheck(config.comms.email.connection, keys, args));
-  checks.push(...(await participantChecks(config, backend, keys, local, args, checkAccount)));
-  if (backend === "scripted") checks.push(await scriptedBrowserCheck());
+  checks.push(...(await participantChecks(config, route, keys, local, args, checkAccount)));
+  if (route === "scripted") checks.push(await scriptedBrowserCheck());
   checks.push(...subjectEnvChecks(config, args));
-  const analysis = automaticAnalysisBudget(config.review?.analysis, backend);
+  const analysis = automaticAnalysisBudget(config.review?.analysis, route);
   if (analysis) checks.push(await analysisCheck(analysis, args, checkAccount));
   checks.push(checkScope(analysis));
   return { desktop, keys, checks };
@@ -155,13 +155,13 @@ async function realEmailCheck(
 /** How the participant authenticates: the terminal model key, or a local agent's login. */
 async function participantChecks(
   config: LabConfig,
-  backend: LabBackend,
+  route: LabRoute,
   keys: string[],
   local: boolean,
   args: LabSetupCheckArgs,
   checkAccount: AccountReadiness,
 ): Promise<Check[]> {
-  if (backend === "terminal") {
+  if (route === "terminal") {
     const key = keys.find((name) => name !== "E2B_API_KEY")!;
     return [
       {
@@ -172,7 +172,7 @@ async function participantChecks(
       },
     ];
   }
-  if (backend !== "cua" || config.actors[0]?.type !== "local-agent") return [];
+  if (route !== "computer-use" || config.actors[0]?.type !== "local-agent") return [];
   const choice = config.actors[0]?.localAgent ?? "codex";
   const agent = args.agents.find((entry) => entry.id === choice);
   if (local) return [await localCodexParticipantCheck({ env: args.env, readiness: checkAccount })];
@@ -259,35 +259,35 @@ function checkScope(analysis: ReturnType<typeof automaticAnalysisBudget>): Check
 /** Required participant provider keys, shared by doctor and the TUI. Optional analysis is separate. */
 export function labKeyRequirements(
   config: LabConfig,
-  backend: LabBackend,
+  route: LabRoute,
   dryRun: boolean,
   keyPresent: (name: string) => boolean,
 ): { desktop: boolean; keys: string[] } {
-  if (dryRun || unsupportedCliRoute(config, backend)) return { desktop: false, keys: [] };
+  if (dryRun || unsupportedCliRoute(config, route)) return { desktop: false, keys: [] };
   // This flag controls the hosted desktop SDK check as well as its API key.
   const desktop =
     !isLocalBrowserLab(config) &&
-    (backend === "cua" ||
-      backend === "terminal" ||
-      backend.includes("shared-world") ||
-      (backend === "scripted" && config.subject.source === "clone"));
+    (route === "computer-use" ||
+      route === "terminal" ||
+      route === "shared-world" ||
+      (route === "scripted" && config.subject.source === "clone"));
   const keys = desktop ? ["E2B_API_KEY"] : [];
-  if (backend === "terminal")
+  if (route === "terminal")
     keys.push(keyPresent("CODEX_API_KEY") ? "CODEX_API_KEY" : "OPENAI_API_KEY");
   else if (
-    (backend === "cua" && config.actors[0]?.type !== "local-agent") ||
-    backend.includes("shared-world")
+    (route === "computer-use" && config.actors[0]?.type !== "local-agent") ||
+    route === "shared-world"
   )
     keys.push("OPENAI_API_KEY");
   return { desktop, keys };
 }
 
-function unsupportedCliRoute(config: LabConfig, backend: LabBackend): string | undefined {
+function unsupportedCliRoute(config: LabConfig, route: LabRoute): string | undefined {
   if (config.subject.source === "local-app")
     return "local-app needs a caller-supplied executor and provider through the library API; the plain CLI cannot run it.";
-  if (backend === "synthetic")
+  if (route === "preview")
     return "This route only creates synthetic evidence. Use first-run in dry-run mode or a supported live lab.";
-  if (backend.includes("shared-world") && config.actors[0]?.type !== "openai-computer-use")
+  if (route === "shared-world" && config.actors[0]?.type !== "openai-computer-use")
     return "Shared-world currently requires openai-computer-use with OPENAI_API_KEY; local-agent is supported on independent desktop lanes.";
   return undefined;
 }

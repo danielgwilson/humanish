@@ -122,7 +122,7 @@ describe("explicit Codex account analysis", () => {
         cliVersion: defaultCodexCliVersion(),
       },
     });
-    const budget = automaticAnalysisBudget({ provider: "codex" }, "cua")!;
+    const budget = automaticAnalysisBudget({ provider: "codex" }, "computer-use")!;
     expect(formatAutomaticAnalysisBudget(budget)).toContain(
       "dollar cost and output-token ceiling are unknown",
     );

@@ -19,7 +19,7 @@ import type { OwnedDesktopAllocation } from "../substrates/desktop-session.js";
 import { e2bShell } from "../substrates/e2b/shell.js";
 import type { Shell } from "../substrates/shell.js";
 import { redactText } from "../evidence/redaction.js";
-import type { LabBackend } from "./engine.js";
+import type { LabRoute } from "./plan.js";
 import type { LabPreflightResult, LabPreflightTarget, PreflightContext } from "./preflight.js";
 import { digest, fail, finalize } from "./preflight-result.js";
 import type { LabConfig } from "./types.js";
@@ -31,7 +31,7 @@ const PREFLIGHT_LEASE_BUFFER_MS = 5 * 60_000;
 export async function runPublicPreviewPreflight(
   ctx: PreflightContext,
 ): Promise<LabPreflightResult> {
-  const routeError = publicPreviewRouteError(ctx.config, ctx.backend);
+  const routeError = publicPreviewRouteError(ctx.config, ctx.route);
   if (routeError) {
     return fail(ctx, "HUMANISH_LAB_PREFLIGHT_UNSUPPORTED_ROUTE", routeError, [
       { name: "route", ok: false, message: routeError },
@@ -128,7 +128,7 @@ export async function runPublicPreviewPreflight(
 export async function runSandboxLoopbackPreflight(
   ctx: PreflightContext,
 ): Promise<LabPreflightResult> {
-  const routeError = sandboxLoopbackRouteError(ctx.config, ctx.backend);
+  const routeError = sandboxLoopbackRouteError(ctx.config, ctx.route);
   if (routeError) {
     return fail(ctx, "HUMANISH_LAB_PREFLIGHT_UNSUPPORTED_ROUTE", routeError, [
       { name: "route", ok: false, message: routeError },
@@ -378,9 +378,9 @@ function targetUrlFor(config: LabConfig, target: LabPreflightTarget): string {
   throw new Error(`Internal preflight target lookup failed for ${target.label}.`);
 }
 
-function publicPreviewRouteError(config: LabConfig, backend: LabBackend): string | null {
+function publicPreviewRouteError(config: LabConfig, route: LabRoute): string | null {
   if (
-    backend !== "cua" ||
+    route !== "computer-use" ||
     config.subject.source !== "app-url" ||
     config.execution?.target !== "e2b-desktop"
   ) {
@@ -392,9 +392,9 @@ function publicPreviewRouteError(config: LabConfig, backend: LabBackend): string
   return null;
 }
 
-function sandboxLoopbackRouteError(config: LabConfig, backend: LabBackend): string | null {
+function sandboxLoopbackRouteError(config: LabConfig, route: LabRoute): string | null {
   if (
-    backend !== "cua" ||
+    route !== "computer-use" ||
     config.subject.source !== "clone" ||
     config.execution?.target !== "e2b-desktop"
   ) {

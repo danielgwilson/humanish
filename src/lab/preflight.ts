@@ -6,7 +6,7 @@ import { type LabConfig } from "./types.js";
 import { runPublicPreviewPreflight, runSandboxLoopbackPreflight } from "./preflight-probes.js";
 import { digest, fail, finalize, LAB_PREFLIGHT_SCHEMA } from "./preflight-result.js";
 import type { LabBackend } from "./engine.js";
-import { backendOf, routeOf } from "./plan.js";
+import { backendOf, type LabRoute, routeOf } from "./plan.js";
 import { resolveLabManifest, type LabResolveFailure } from "./discover.js";
 
 const DEFAULT_PREFLIGHT_TIMEOUT_MS = 30_000;
@@ -110,7 +110,7 @@ export interface PreflightContext {
   origin: string;
   path: string;
   config: LabConfig;
-  backend: LabBackend;
+  route: LabRoute;
   reachability: LabPreflightReachabilityMode;
   timeoutMs: number;
   env: NodeJS.ProcessEnv;
@@ -151,7 +151,7 @@ export async function runLabPreflight(
     };
   }
 
-  const backend = backendOf(routeOf(resolved.config));
+  const route = routeOf(resolved.config);
   const ctx: PreflightContext = {
     cwd,
     lab: options.lab,
@@ -159,14 +159,14 @@ export async function runLabPreflight(
     origin: resolved.origin,
     path: resolved.path,
     config: resolved.config,
-    backend,
+    route,
     reachability,
     timeoutMs,
     env: options.env ?? process.env,
     hooks: options.hooks ?? {},
     checks: [
       { name: "lab manifest", ok: true, message: `resolved ${resolved.origin} lab manifest` },
-      { name: "backend", ok: true, message: `selected ${backend}` },
+      { name: "backend", ok: true, message: `selected ${backendOf(route)}` },
     ],
     targets: collectTargets(resolved.config),
     sandbox: { created: false },

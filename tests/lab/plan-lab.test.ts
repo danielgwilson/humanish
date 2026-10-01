@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 import { parseLabConfig } from "../../src/lab/config.js";
 import { labKeyRequirements } from "../../src/lab/doctor.js";
 import { selectLabBackend } from "../../src/lab/engine.js";
-import { planLab } from "../../src/lab/plan.js";
+import { planLab, routeOf } from "../../src/lab/plan.js";
 import type { LabPlan, PlanResult, Requirement } from "../../src/lab/plan-types.js";
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/lab/types.js";
 import { resolveCuaLanePlan } from "../../src/routes/computer-use/lane-plan.js";
@@ -109,7 +109,7 @@ describe("planLab", () => {
       const result = planLab(config, { cwd: ROOT, dryRun: false });
       if (!result.ok) continue;
       const requirements = result.planned.plan.requirements;
-      const doctor = labKeyRequirements(config, selectLabBackend(config), false, () => false);
+      const doctor = labKeyRequirements(config, routeOf(config), false, () => false);
       const keys = (name: string) =>
         requirements.some(
           (requirement: Requirement) =>

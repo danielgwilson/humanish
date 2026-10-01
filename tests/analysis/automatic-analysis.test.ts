@@ -35,18 +35,12 @@ import { verifyRun } from "../../src/verify/verify.js";
 import { readRunDetail } from "../../src/run/detail.js";
 import { stopRun } from "../../src/tui/actions.js";
 import * as automaticJobs from "../../src/analysis/automatic.js";
+import { routeOf } from "../../src/lab/plan.js";
 import type { AutomaticStudyAnalysisOutcome } from "../../src/analysis/job.js";
 
 const fixtures = JSON.parse(
   await readFile(new URL("../fixtures/task-route-preflight/labs.json", import.meta.url), "utf8"),
 ) as Array<{ name: string; config: LabConfig; backend: string }>;
-const supported = new Set([
-  "cua",
-  "scripted",
-  "terminal",
-  "shared-world",
-  "concurrent-shared-world",
-]);
 const resolved = resolveAutomaticAnalysis({ maxCostUsd: 5 });
 if (!resolved.ok || !resolved.config || resolved.config.provider === "codex")
   throw new Error("invalid synthetic test config");
@@ -103,13 +97,12 @@ describe("automatic analysis admission and producer boundary", () => {
     expect(parsed.ok).toBe(true);
     if (parsed.ok) expect(parsed.config.review?.analysis).toBe(false);
   });
-  it.each(fixtures)("only describes defaults for supported live backends: $name", ({ backend }) => {
-    expect(automaticAnalysisBudget(undefined, backend)).toEqual(
-      supported.has(backend)
-        ? { model: "gpt-6-astra", maxCostUsd: 3, trigger: "default" }
-        : undefined,
+  it.each(fixtures)("only describes defaults for routes with participants: $name", ({ config }) => {
+    const route = routeOf(config);
+    expect(automaticAnalysisBudget(undefined, route)).toEqual(
+      route === "preview" ? undefined : { model: "gpt-6-astra", maxCostUsd: 3, trigger: "default" },
     );
-    expect(automaticAnalysisBudget(false, backend)).toBeUndefined();
+    expect(automaticAnalysisBudget(false, route)).toBeUndefined();
   });
   it("false bypasses every lifecycle hook even for a finalized live result", async () => {
     const original = { cwd, runId: "opted-out", dryRun: false, ok: true };
@@ -198,7 +191,7 @@ describe("automatic analysis admission and producer boundary", () => {
       await writeFile(path.join(cwd, "humanish", "labs", "budget.yaml"), JSON.stringify(manifest));
       const preflight = await runLabPreflight({ cwd, lab: "budget", env: {} });
       expect(preflight.spend).toEqual({ e2bDesktop: false, model: false });
-      expect(preflight.analysis).toEqual(automaticAnalysisBudget(setting, "cua"));
+      expect(preflight.analysis).toEqual(automaticAnalysisBudget(setting, "computer-use"));
       expect((await readLabSummary(cwd, "budget"))?.analysis).toEqual(preflight.analysis);
       let stdout = "";
       const program = createProgram({
@@ -218,15 +211,12 @@ describe("automatic analysis admission and producer boundary", () => {
       }
     },
   );
-  it.each(fixtures)(
-    "parses opt-in only on eligible producer routes: $name",
-    ({ config: base, backend }) => {
-      const parsed = parseLabConfig({ ...base, review: { analysis: { maxCostUsd: 5 } } });
-      expect(parsed.ok, JSON.stringify(parsed)).toBe(supported.has(backend));
-      if (parsed.ok) expect(parsed.config.review?.analysis).toEqual({ maxCostUsd: 5 });
-    },
-  );
-  it.each(fixtures.filter((row) => !supported.has(row.backend)))(
+  it.each(fixtures)("parses opt-in only on eligible producer routes: $name", ({ config: base }) => {
+    const parsed = parseLabConfig({ ...base, review: { analysis: { maxCostUsd: 5 } } });
+    expect(parsed.ok, JSON.stringify(parsed)).toBe(routeOf(base) !== "preview");
+    if (parsed.ok) expect(parsed.config.review?.analysis).toEqual({ maxCostUsd: 5 });
+  });
+  it.each(fixtures.filter((row) => routeOf(row.config) === "preview"))(
     "fails direct unsupported $name before filesystem effects",
     async ({ config: base }) => {
       const outcome = await runLab(

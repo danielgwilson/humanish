@@ -1,6 +1,7 @@
 // The preflight result a run returns, built from its context. preflight.ts and the probes in
 // preflight-probes.ts both finish through these, so they live below both.
 
+import { backendOf } from "./plan.js";
 import { automaticAnalysisBudget } from "../analysis/automatic-config.js";
 import { digestText } from "../evidence/redaction.js";
 import type { LabPreflightCheck, LabPreflightResult, PreflightContext } from "./preflight.js";
@@ -12,7 +13,7 @@ export function finalize(
   args?: { check?: LabPreflightCheck },
 ): LabPreflightResult {
   const checks = args?.check ? [...ctx.checks, args.check] : ctx.checks;
-  const analysis = automaticAnalysisBudget(ctx.config.review?.analysis, ctx.backend);
+  const analysis = automaticAnalysisBudget(ctx.config.review?.analysis, ctx.route);
   return {
     schema: LAB_PREFLIGHT_SCHEMA,
     ...(analysis ? { analysis } : {}),
@@ -24,7 +25,7 @@ export function finalize(
     labId: ctx.labId,
     origin: ctx.origin,
     path: ctx.path,
-    backend: ctx.backend,
+    backend: backendOf(ctx.route),
     reachability: ctx.reachability,
     checks,
     targets: ctx.targets,
