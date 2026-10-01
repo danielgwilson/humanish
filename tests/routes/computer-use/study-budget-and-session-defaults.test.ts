@@ -18,10 +18,8 @@ import {
   type CuaTurn,
   type CuaTurnRequest,
 } from "../../../src/actors/computer-use/loop.js";
-import {
-  makeCuaRunBudget,
-  resolveCuaParticipantPlan,
-} from "../../../src/routes/computer-use/lane-plan.js";
+import { makeCuaRunBudget } from "../../../src/routes/computer-use/participant-model.js";
+import { resolveCuaParticipantPlan } from "../../../src/routes/computer-use/participant-runs.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
 

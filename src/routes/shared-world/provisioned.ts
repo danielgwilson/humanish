@@ -41,7 +41,7 @@ import {
   participantHasInboxRecipient,
 } from "../computer-use/participant-desktop.js";
 import { resolveSubjectState } from "../computer-use/subject-projection.js";
-import { withInboxMission } from "../computer-use/lane-plan.js";
+import { withInboxMission } from "../computer-use/participant-prompt.js";
 import { planeStateOf } from "./plan.js";
 import { runCuaParticipant } from "../computer-use/lanes.js";
 import { buildConcurrentSharedWorldBundle, judgeSharedWorldRun } from "./bundle.js";

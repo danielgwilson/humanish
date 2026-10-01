@@ -30,12 +30,12 @@ import {
 import {
   describeSubjectState,
   participantFeedbackCandidates,
+  phaseEventIdSuffix,
   publicSafeAppUrlLabel,
   subjectProvenanceMessage,
 } from "./bundle-parts.js";
 import { participantStatus as participantStatusFor, type Verdict } from "../../run/judge.js";
 import { buildRunCostSummary, type DesktopUsage } from "../../run/cost-summary.js";
-import { phaseEventIdSuffix } from "./lane-plan.js";
 import {
   participantEvent,
   participantIds,

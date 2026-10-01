@@ -40,7 +40,7 @@ import { scrubLiterals } from "../../evidence/redaction.js";
 import { describeMissingKeys } from "../../keys/key-resolution.js";
 import { withTransientCommsSecrets } from "../../run/transient-comms-secrets.js";
 import { runScope, type RunScope } from "../../run/run.js";
-import { makeCuaRunBudget } from "../computer-use/lane-plan.js";
+import { makeCuaRunBudget } from "../computer-use/participant-model.js";
 import { runExternalPublicPlane } from "./external-public.js";
 import { planSharedWorldLab, sharedWorldDescriptorOf, type SharedWorldRefusal } from "./plan.js";
 import { runProvisionedPlane } from "./provisioned.js";

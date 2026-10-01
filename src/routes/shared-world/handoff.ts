@@ -14,7 +14,7 @@ import {
   inboxRecipientFor,
   participantHasInboxRecipient,
 } from "../computer-use/participant-desktop.js";
-import { withInboxMission } from "../computer-use/lane-plan.js";
+import { withInboxMission } from "../computer-use/participant-prompt.js";
 import { runCuaParticipant } from "../computer-use/lanes.js";
 import type { DesktopParticipantRun, ParticipantRunOutcome } from "../computer-use/types.js";
 import { extractLobbyCode, extractLobbyCodeFromNarration } from "./lobby-code.js";

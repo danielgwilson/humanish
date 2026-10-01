@@ -432,7 +432,7 @@ traits: { patience, skill, accessibilityNeeds? }, constraints[], sourceDigest }`
    2026-06-11: `personaToDirectives` shipped in `src/lab/persona.ts` and `traitsApplied` is
    threaded on the codex-exec terminal route, but the `persona-fidelity` verify check is
    not-yet-shipped roadmap. The computer-use route records `persona.traitsApplied` from the
-   resolved persona in `src/routes/computer-use/lane-plan.ts`.)
+   resolved persona in `src/routes/computer-use/participant-prompt.ts`.)
 
 ## Decision: how abandonment is adjudicated
 

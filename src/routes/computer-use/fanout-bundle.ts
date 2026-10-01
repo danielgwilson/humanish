@@ -25,7 +25,7 @@ import { participantFeedbackCandidates, providerResourcesForOutcome } from "./bu
 import { participantFactsOf } from "./participant-facts.js";
 import { participantPassed, participantStatus } from "../../run/judge.js";
 import { buildRunCostSummary, desktopSpanToMinutes } from "../../run/cost-summary.js";
-import { formatParticipantPlanEntry } from "./lane-plan.js";
+import { formatParticipantPlanEntry } from "./participant-runs.js";
 import type { CuaFanoutBundleArgs, ParticipantRunOutcome } from "./types.js";
 import { fanoutParticipantRecords } from "./fanout-lanes.js";
 
