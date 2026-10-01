@@ -17,7 +17,7 @@ import {
   sharedWorldShortfall,
   type ExecutionFailure,
 } from "../../run/judge.js";
-import { participantFactsOf } from "../computer-use/bundle.js";
+import { participantFactsOf } from "../computer-use/bundle-parts.js";
 import { resolveSubjectState } from "../computer-use/subject-projection.js";
 import {
   actorRunPassed,
