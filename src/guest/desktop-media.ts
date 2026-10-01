@@ -143,7 +143,7 @@ export function desktopMediaEnv(
   };
 }
 
-/** Checked once per received chunk: buffered bytes with no newline past the limit can't form a line. */
+/** Checked before each line is taken: buffered bytes with no newline past the limit can't form a line. */
 export function workerBufferOverflow(buffer: Buffer): boolean {
   return buffer.length > WORKER_LINE_BYTES && !buffer.includes(10);
 }
@@ -286,7 +286,7 @@ function applyWorkerMessage(
   }
 }
 
-/** Frames worker stdout into JSON lines. Runs synchronously for every chunk. */
+/** Frames worker stdout into JSON lines. Runs synchronously for every chunk and stops at a terminal. */
 function receiveWorkerBytes(
   state: MediaWorkerState,
   bytes: Buffer,
@@ -295,13 +295,13 @@ function receiveWorkerBytes(
 ): void {
   if (state.closed) return;
   state.buffer = Buffer.concat([state.buffer, bytes]);
-  if (workerBufferOverflow(state.buffer)) {
-    terminate();
-    return;
-  }
-  for (;;) {
+  while (!state.closed) {
+    if (workerBufferOverflow(state.buffer)) {
+      terminate();
+      return;
+    }
     const next = nextWorkerLine(state.buffer);
-    if (next === "incomplete") break;
+    if (next === "incomplete") return;
     if (next === "overflow") {
       terminate();
       return;
