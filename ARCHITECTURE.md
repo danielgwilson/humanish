@@ -63,7 +63,7 @@ and 8. Steps 3 to 6 are the route's run function: `runComputerUsePlan` here, `ru
 | `src/cli/`                 | The commander program, with one file per command family in `commands/`                 | `src/cli/program.ts`                |
 | `src/keys/`                | Provider key discovery: env files, the user key store and key-source probes            | `src/keys/key-resolution.ts`        |
 | `src/run-lab.ts`           | `runLab`: plan the lab once, then run the plan on its route                            | `src/run-lab.ts`                    |
-| `src/lab/`                 | Lab manifest types, parsing, validation, routing and planning                          | `src/lab/plan.ts`                   |
+| `src/lab/`                 | Manifest parsing and warnings (`config.ts`, `parse/`), types, routing and planning     | `src/lab/plan.ts` for planning      |
 | `src/routes/`              | One folder per route; `routeOf` in `src/lab/plan.ts` picks it                          | `src/lab/plan.ts`                   |
 | `src/routes/computer-use/` | Computer-use participants and the desktops composing `src/substrates/` with route code | `src/routes/computer-use/route.ts`  |
 | `src/routes/scripted/`     | Committed scenario steps replayed on a loopback app or a provisioned clone             | `src/routes/scripted/route.ts`      |

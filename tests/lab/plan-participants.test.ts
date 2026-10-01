@@ -18,6 +18,7 @@ import {
   type ComputerUseParticipant,
 } from "../../src/lab/plan-participants.js";
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/lab/types.js";
+import { FALLBACK_PERSONA_ID } from "../../src/routes/computer-use/participant-prompt.js";
 import { loadCuaParticipants } from "../../src/routes/computer-use/participant-runs.js";
 import { planComputerUseLab } from "../../src/routes/computer-use/plan.js";
 import type { DesktopParticipantRun } from "../../src/routes/computer-use/types.js";
@@ -151,8 +152,7 @@ function fromParticipant(participant: ComputerUseParticipant) {
   return {
     id: participant.id,
     index: participant.index,
-    // composeParticipantInstructions names a lane without a persona "cua-operator".
-    personaId: participant.personaId ?? "cua-operator",
+    personaId: participant.personaId ?? FALLBACK_PERSONA_ID,
     focus: participant.assignment.focus,
     labels: { ...participant.labels },
     device: { ...participant.device },
@@ -249,7 +249,7 @@ describe("sharedWorldParticipants", () => {
       };
       const { participants: seats } = sharedWorldParticipants(config);
       expect(
-        seats.map((seat) => ({ id: seat.id, persona: seat.personaId ?? "cua-operator" })),
+        seats.map((seat) => ({ id: seat.id, persona: seat.personaId ?? FALLBACK_PERSONA_ID })),
         name,
       ).toEqual(result.roles.map((role) => ({ id: role.id, persona: role.persona })));
       for (const [index, seat] of seats.entries()) {

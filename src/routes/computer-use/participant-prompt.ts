@@ -31,6 +31,9 @@ export const CLOSING_LINE_DIRECTIVE =
   "REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. " +
   "Then, from the next line, say what you did, what confused you, and where you hesitated.";
 
+/** The persona id a computer-use participant gets when neither it nor its actor names one. */
+export const FALLBACK_PERSONA_ID = "cua-operator";
+
 /** Compose one lane's actor prompt: persona line + device line + mission + per-lane steer.
  *  At N=1 (homogeneous, no roster) this reproduces the prior composeInstructions byte-for-byte. */
 export function composeParticipantInstructions(args: {
@@ -92,7 +95,7 @@ export function composeParticipantInstructions(args: {
   return {
     instructions,
     persona: {
-      id: args.persona ?? "cua-operator",
+      id: args.persona ?? FALLBACK_PERSONA_ID,
       traitsApplied,
       ...(args.resolvedPersona ? { brief: personaBrief(args.resolvedPersona) } : {}),
       promptDigest: digestText(instructions, 16),

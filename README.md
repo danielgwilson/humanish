@@ -428,20 +428,21 @@ Contributors: read [CONTRIBUTING.md](CONTRIBUTING.md) first. It gives the readin
 commands CI runs and what a pull request needs.
 
 ```bash
-pnpm install
-pnpm check
-pnpm public-surface:scan
-pnpm pack:dry-run
+pnpm install --frozen-lockfile
+pnpm vitest run tests/<file>   # while editing
+pnpm release:check             # once before pushing
 ```
 
-Local dogfood:
+Try the CLI from source:
 
 ```bash
 pnpm humanish watch
 pnpm humanish verify
-pnpm humanish feedback issue --repo danielgwilson/humanish
 pnpm humanish lab list
 ```
+
+Maintainers draft this repository's feedback issues with
+`pnpm humanish feedback issue --repo danielgwilson/humanish`. It prints a draft and posts nothing.
 
 ## Docs
 
