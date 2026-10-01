@@ -30,7 +30,7 @@ import { codexAnalysisIdentity } from "../../src/analysis/codex-config.js";
 import { bindCodexAnalysisCliVersion } from "../../src/analysis/restricted-codex.js";
 import type { AnalysisProvider } from "../../src/analysis/provider.js";
 import { analyzeRun, showAnalysis } from "../../src/analysis/service.js";
-import { writeStudyAnalysis } from "../../src/analysis/store.js";
+import { writeAnalysis } from "../../src/analysis/store.js";
 import { listStudyAnalysisExecutions } from "../../src/analysis/store-executions.js";
 import {
   digestAnalysisInput,
@@ -349,7 +349,7 @@ describe("explicit Codex account analysis", () => {
     };
     prior.configDigest = hashAnalysisValue(prior.config);
     prior.promptVersion = ANALYSIS_PROMPT_VERSION;
-    await writeStudyAnalysis(f.prepared, prior);
+    await writeAnalysis(f.prepared, prior);
     const originalLegacy = JSON.stringify(prior);
     const first = await analyzeRun(
       f.cwd,

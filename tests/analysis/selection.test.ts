@@ -7,8 +7,8 @@ import type { ActorTraceItem } from "../../src/actors/contract.js";
 import { prepareRunArtifactPaths, type PreparedRunArtifactPaths } from "../../src/run/paths.js";
 import { captureEvidence, validateAnalysisEvidence } from "../../src/analysis/evidence.js";
 import { digestAnalysisInput } from "../../src/analysis/validation.js";
-import { writeStudyAnalysis } from "../../src/analysis/store.js";
-import { loadStudyAnalysis } from "../../src/analysis/load.js";
+import { writeAnalysis } from "../../src/analysis/store.js";
+import { loadAnalysis } from "../../src/analysis/load.js";
 import { syntheticArtifact } from "./fixtures.js";
 
 vi.mock("node:fs/promises", async (importOriginal) => {
@@ -645,13 +645,13 @@ describe("fair bounded study evidence selection", () => {
     await expect(
       validateAnalysisEvidence(prepared, syntheticArtifact(current), source),
     ).resolves.toBeUndefined();
-    await writeStudyAnalysis(prepared, syntheticArtifact(previous, "prior-prefix"));
-    await writeStudyAnalysis(prepared, syntheticArtifact(current, "current-spread"));
-    expect(await loadStudyAnalysis(prepared, "prior-prefix")).toMatchObject({
+    await writeAnalysis(prepared, syntheticArtifact(previous, "prior-prefix"));
+    await writeAnalysis(prepared, syntheticArtifact(current, "current-spread"));
+    expect(await loadAnalysis(prepared, "prior-prefix")).toMatchObject({
       state: "ready",
       analysis: { inputDigest: previous.inputDigest },
     });
-    expect(await loadStudyAnalysis(prepared, "current-spread")).toMatchObject({
+    expect(await loadAnalysis(prepared, "current-spread")).toMatchObject({
       state: "ready",
       analysis: { inputDigest: current.inputDigest },
     });

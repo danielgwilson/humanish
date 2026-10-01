@@ -3,8 +3,8 @@
 // The commands that resolve the run and read or write drafts are in feedback.ts.
 
 import path from "node:path";
-import { studyAnalysisSharingProblems } from "../analysis/sharing.js";
-import { loadStudyAnalysis } from "../analysis/load.js";
+import { analysisSharingProblems } from "../analysis/sharing.js";
+import { loadAnalysis } from "../analysis/load.js";
 import { hashAnalysisValue } from "../analysis/validation.js";
 import type { RunBundle, RunFeedbackCandidate } from "../run/bundle.js";
 import {
@@ -224,10 +224,10 @@ export async function buildAnalysisDraft(
   options: FeedbackDraftOptions,
 ): Promise<FeedbackDraft | null> {
   if (!options.analysis || !options.finding || options.candidate !== undefined) return null;
-  const loaded = await loadStudyAnalysis(context.preparedRunPaths, options.analysis);
+  const loaded = await loadAnalysis(context.preparedRunPaths, options.analysis);
   const analysis = loaded.analysis;
   const finding = analysis?.result?.findings.find((item) => item.id === options.finding);
-  const sharing = studyAnalysisSharingProblems(loaded);
+  const sharing = analysisSharingProblems(loaded);
   if (loaded.state !== "ready" || sharing.sensitive || sharing.unverified || !analysis || !finding)
     return null;
   const correction = loaded.corrections.filter((item) => item.findingId === finding.id).at(-1);

@@ -20,8 +20,8 @@ import { resolveRunPath } from "../run/locate.js";
 import { verifyRun, type VerifyResult } from "../verify/verify.js";
 import { type RunBundle } from "../run/bundle.js";
 import { exportRedactedBundle } from "./export-bundle.js";
-import { loadStudyAnalysis } from "../analysis/load.js";
-import { studyAnalysisSharingProblems } from "../analysis/sharing.js";
+import { loadAnalysis } from "../analysis/load.js";
+import { analysisSharingProblems } from "../analysis/sharing.js";
 import { EVIDENCE_LIMITS, validateAnalysisEvidence } from "../analysis/evidence.js";
 import { readBoundedStudyFile } from "../run/study-files.js";
 import { shellQuote } from "../substrates/shell.js";
@@ -129,7 +129,7 @@ function exportFailure(
 }
 
 type RunPaths = NonNullable<Awaited<ReturnType<typeof resolveRunPath>>>;
-type AnalysisState = Awaited<ReturnType<typeof loadStudyAnalysis>>;
+type AnalysisState = Awaited<ReturnType<typeof loadAnalysis>>;
 
 export async function exportRun(
   cwdInput: string,
@@ -150,7 +150,7 @@ export async function exportRun(
 
   // Every string in the data that names an image file inside the run becomes an asset reference. Paths are
   // run-root-relative in the data; a path that resolves outside the run is left alone, never read.
-  const analysis = await loadStudyAnalysis(runPaths);
+  const analysis = await loadAnalysis(runPaths);
   const data = await currentObserverData(runPaths, analysis, slot);
   if (data === undefined)
     return exportFailure(
@@ -520,7 +520,7 @@ async function recheckAnalysis(
       return "changed";
     }
   }
-  const analysisSharing = studyAnalysisSharingProblems(analysis);
+  const analysisSharing = analysisSharingProblems(analysis);
   if (!analysisSharing.sensitive && !analysisSharing.unverified) return "ok";
   verified.shareSafety = {
     status: analysisSharing.sensitive ? "blocked" : "local_only",

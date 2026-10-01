@@ -5,7 +5,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { projectShareCheckedAnalysis } from "../analysis/sharing.js";
-import { loadStudyAnalysis } from "../analysis/load.js";
+import { loadAnalysis } from "../analysis/load.js";
 import {
   physicalCwdOf,
   runIdOf,
@@ -190,7 +190,7 @@ export async function renderObserver(
   }
 
   const observerPath = path.join(preparedRunPaths.physicalRunRoot, "observer", "index.html");
-  const analysis = projectShareCheckedAnalysis(await loadStudyAnalysis(preparedRunPaths));
+  const analysis = projectShareCheckedAnalysis(await loadAnalysis(preparedRunPaths));
   const observerData = buildObserverData(loaded.bundle);
   observerData.publicSafety.share = {
     status: verified.shareSafety.status,
