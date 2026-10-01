@@ -11,6 +11,8 @@ export interface PathIssue {
   path: string;
   /** For a markdown link: the repo path the link resolves to from its file. */
   resolved?: string;
+  /** For a link whose file exists: the `#fragment` that names no heading in it. */
+  anchor?: string;
 }
 
 export interface RepoIndex {
@@ -84,19 +86,38 @@ const BARE_SOURCE_NAME = /`([\w.-]+\.(?:tsx?|mts|mjs))`/g;
 // A markdown link target: `[text](target)` or `[text](<target> "title")`.
 const MARKDOWN_LINK = /\]\(\s*<?([^()\s<>]+?)>?(?:\s+"[^"]*")?\s*\)/g;
 
-export function findDocPathIssues(file: string, text: string, index: RepoIndex): PathIssue[] {
-  const issues: { offset: number; path: string; resolved?: string }[] = [];
+export function findDocPathIssues(
+  file: string,
+  text: string,
+  index: RepoIndex,
+  /** The anchors a Markdown file declares, or undefined to skip anchor checks for it. */
+  anchorsOf: (path: string) => ReadonlySet<string> | undefined = () => undefined,
+): PathIssue[] {
+  const issues: { offset: number; path: string; resolved?: string; anchor?: string }[] = [];
   // A markdown link resolves from the file that contains it. Every other path in a doc is a
   // reference written from the repo root.
   const linkSpans: [number, number][] = [];
   for (const match of text.matchAll(MARKDOWN_LINK)) {
     const target = match[1]!;
-    if (!isRelativeLinkTarget(target)) continue;
+    const sameFile = target.startsWith("#");
+    if (!sameFile && !isRelativeLinkTarget(target)) continue;
     const start = match.index + match[0].indexOf(target);
     linkSpans.push([start, start + target.length]);
-    const path = target.split("#")[0]!.split("?")[0]!;
+    const [beforeHash, fragment] = target.split("#") as [string, string | undefined];
+    const path = beforeHash.split("?")[0]!;
     const resolved = path === "" ? undefined : missingFromFile(file, path, index);
-    if (resolved !== undefined) issues.push({ offset: start, path, resolved });
+    if (resolved !== undefined) {
+      issues.push({ offset: start, path, resolved });
+      continue;
+    }
+    if (!fragment) continue;
+    const linked = sameFile
+      ? file
+      : posix.normalize(posix.join(posix.dirname(file), decodeOrSelf(path)));
+    const anchors = linked.endsWith(".md") ? anchorsOf(linked) : undefined;
+    const anchor = decodeOrSelf(fragment);
+    if (anchors && !anchors.has(anchor))
+      issues.push({ offset: start, path, resolved: linked, anchor });
   }
   for (const match of text.matchAll(DOC_REPO_PATH)) {
     if (linkSpans.some(([start, end]) => match.index >= start && match.index < end)) continue;
@@ -120,6 +141,38 @@ export function findDocPathIssues(file: string, text: string, index: RepoIndex):
   return issues
     .sort((left, right) => left.offset - right.offset)
     .map(({ offset, ...issue }) => ({ file, line: lineAt(text, offset), ...issue }));
+}
+
+/**
+ * The anchors GitHub gives a Markdown file: one per heading outside code fences, slugged as GitHub
+ * does (lowercase, punctuation other than `-` and `_` dropped, each space a hyphen, `-1`, `-2` on
+ * repeats), plus explicit `<a id>` and `<a name>` anchors.
+ */
+export function markdownAnchors(text: string): Set<string> {
+  const anchors = new Set<string>();
+  const seen = new Map<string, number>();
+  let fence: string | undefined;
+  for (const line of text.split("\n")) {
+    const marker = /^\s*(`{3,}|~{3,})/.exec(line)?.[1]?.[0];
+    if (marker !== undefined && (fence === undefined || fence === marker)) {
+      fence = fence === undefined ? marker : undefined;
+      continue;
+    }
+    if (fence !== undefined) continue;
+    for (const explicit of line.matchAll(/<a\s[^>]*\b(?:id|name)="([^"]+)"/g))
+      anchors.add(explicit[1]!);
+    const heading = /^#{1,6}\s+(.*?)(?:\s+#+)?\s*$/.exec(line)?.[1];
+    if (heading === undefined) continue;
+    const slug = heading
+      .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\p{M}\p{Pc} -]/gu, "")
+      .replace(/ /g, "-");
+    const repeats = seen.get(slug) ?? 0;
+    seen.set(slug, repeats + 1);
+    anchors.add(repeats === 0 ? slug : `${slug}-${repeats}`);
+  }
+  return anchors;
 }
 
 // URLs, site-absolute paths, same-page anchors and placeholders are not repo files.

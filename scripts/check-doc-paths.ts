@@ -12,6 +12,7 @@ import {
   findDocPathIssues,
   isCheckedDoc,
   isCheckedSource,
+  markdownAnchors,
 } from "./lib/doc-paths.js";
 import { findCodeMapIssues, requiredFolders } from "./lib/code-map.js";
 
@@ -28,17 +29,30 @@ const paths = execFileSync(
 const index = buildRepoIndex(paths);
 const read = (path: string) => readFileSync(resolve(root, path), "utf8");
 
+const anchorCache = new Map<string, Set<string>>();
+const anchorsOf = (path: string) => {
+  if (!index.files.has(path)) return undefined;
+  if (!anchorCache.has(path)) anchorCache.set(path, markdownAnchors(read(path)));
+  return anchorCache.get(path);
+};
+
 const docs = paths.filter(isCheckedDoc);
 const sources = paths.filter(isCheckedSource);
 const issues = [
-  ...docs.flatMap((path) => findDocPathIssues(path, read(path), index)),
+  ...docs.flatMap((path) => findDocPathIssues(path, read(path), index, anchorsOf)),
   ...sources.flatMap((path) => findCommentPathIssues(path, read(path), index)),
 ];
 
 const codeMapIssues = findCodeMapIssues(read("ARCHITECTURE.md"), paths);
 for (const issue of codeMapIssues) process.stderr.write(`${issue}\n`);
 
-for (const { file, line, path, resolved } of issues) {
+for (const { file, line, path, resolved, anchor } of issues) {
+  if (anchor !== undefined) {
+    process.stderr.write(
+      `${file}:${line} links to #${anchor} in ${resolved}, which has no such heading\n`,
+    );
+    continue;
+  }
   const target = resolved === undefined ? path : `${path} (${resolved} from this file)`;
   process.stderr.write(`${file}:${line} names ${target}, which does not exist\n`);
 }
