@@ -37,9 +37,10 @@ function rejection(dir: string, caps: { maxUsd?: number } = {}) {
     brain: { kind: "local-agent", agent: "codex" },
     hooks: {},
     env: { PATH: dir, HOME: dir, E2B_API_KEY: "e2b-test-key" },
-    openaiApiKey: "",
-    e2bApiKey: "e2b-test-key",
-    subjectEnvNames: [],
+    requirements: [
+      { kind: "key", name: "E2B_API_KEY" },
+      { kind: "local-agent", agent: "codex" },
+    ],
     externalCommsConfig: undefined,
   });
 }

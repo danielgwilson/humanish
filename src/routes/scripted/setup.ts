@@ -3,6 +3,7 @@
 // (the evidence URL policy, the scrubber for clone values, the persona and the session budget).
 
 import { realpath } from "node:fs/promises";
+import { missingKeys, missingSubjectEnv } from "../../lab/requirements.js";
 import path from "node:path";
 import type { ActorPersonaRef } from "../../actors/contract.js";
 import { resolveBrowserCommand } from "../../actors/scripted-browser/browser-command.js";
@@ -117,26 +118,26 @@ export async function prepareScriptedRun(
   }
   const journey = scenario.journey;
 
-  if (!dryRun && clone) {
-    if (!e2bApiKey) {
-      return {
-        ok: false,
-        result: failed(
-          "HUMANISH_SCRIPTED_LAB_KEYS_MISSING",
-          `Live clone scripted-browser labs require E2B_API_KEY (dry-run remains $0 and does not provision a subject). ${describeMissingKeys(["E2B_API_KEY"], env)}`,
-        ),
-      };
-    }
-    const missingSubjectEnv = subjectEnvNames.filter((name) => !env[name]?.trim());
-    if (missingSubjectEnv.length > 0) {
-      return {
-        ok: false,
-        result: failed(
-          "HUMANISH_SCRIPTED_LAB_SUBJECT_ENV_MISSING",
-          `Subject env values missing for live clone scripted-browser lab: ${missingSubjectEnv.join(", ")}.`,
-        ),
-      };
-    }
+  // The plan lists E2B_API_KEY and the subject env only for a live clone.
+  const missing = missingKeys(plan.requirements, env);
+  if (missing.length > 0) {
+    return {
+      ok: false,
+      result: failed(
+        "HUMANISH_SCRIPTED_LAB_KEYS_MISSING",
+        `Live clone scripted-browser labs require ${missing.join(" and ")} (dry-run remains $0 and does not provision a subject). ${describeMissingKeys(missing, env)}`,
+      ),
+    };
+  }
+  const unsetSubjectEnv = missingSubjectEnv(plan.requirements, env);
+  if (unsetSubjectEnv.length > 0) {
+    return {
+      ok: false,
+      result: failed(
+        "HUMANISH_SCRIPTED_LAB_SUBJECT_ENV_MISSING",
+        `Subject env values missing for live clone scripted-browser lab: ${unsetSubjectEnv.join(", ")}.`,
+      ),
+    };
   }
 
   const surfaces = plan.surfaces;
