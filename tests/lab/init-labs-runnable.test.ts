@@ -10,7 +10,8 @@ import { parseLabConfig } from "../../src/lab/config.js";
 import { runInit } from "../../src/lab/init.js";
 import { starterFilesFor } from "../../src/lab/init-templates.js";
 import { resolveLabManifest, listLabManifests } from "../../src/lab/discover.js";
-import { runLab, selectLabBackend } from "../../src/lab/engine.js";
+import { runLab } from "../../src/run-lab.js";
+import { selectLabBackend } from "../../src/lab/plan.js";
 import { runCuaActorLab } from "../../src/routes/computer-use/route.js";
 
 // The labs `humanish init` writes must actually RUN.

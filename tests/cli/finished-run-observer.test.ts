@@ -35,8 +35,8 @@ vi.mock("../../src/run/dry-run.js", async (importOriginal) => {
   };
 });
 
-vi.mock("../../src/lab/engine.js", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../src/lab/engine.js")>();
+vi.mock("../../src/run-lab.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/run-lab.js")>();
   return {
     ...actual,
     prepareLab: async (...args: Parameters<typeof actual.prepareLab>) => {

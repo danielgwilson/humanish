@@ -59,7 +59,7 @@ vi.mock("../../src/routes/computer-use/plan.js", async (importOriginal) => {
   };
 });
 
-import { runLab } from "../../src/lab/engine.js";
+import { runLab } from "../../src/run-lab.js";
 import { backendOf, routeOf } from "../../src/lab/plan.js";
 import { parseLabConfig } from "../../src/lab/config.js";
 import type { LabConfig } from "../../src/lab/types.js";

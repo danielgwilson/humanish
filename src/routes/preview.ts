@@ -1,7 +1,7 @@
 // The preview route: a lab whose subject is this repo runs the synthetic dry run. planLab decides
 // the sim count and refuses what a synthetic run would ignore; runPreviewPlan does the rest.
 
-import type { RunLabOptions } from "../lab/engine.js";
+import type { RunLabOptions } from "../run-lab.js";
 import type { LabPlan, PlanRefusal } from "../lab/plan-types.js";
 import type { RunResult } from "../run/results.js";
 import { runDryRun } from "../run/dry-run.js";

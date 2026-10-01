@@ -10,12 +10,8 @@ import path from "node:path";
 import { afterAll, describe, expect, it, vi } from "vitest";
 
 import { parseLabConfig } from "../../src/lab/config.js";
-import {
-  resolveLabDryRun,
-  runLab,
-  selectLabBackend,
-  type LabBackend,
-} from "../../src/lab/engine.js";
+import { runLab } from "../../src/run-lab.js";
+import { resolveLabDryRun, selectLabBackend, type LabBackend } from "../../src/lab/plan.js";
 import type { LabConfig } from "../../src/lab/types.js";
 import { runCuaActorLab } from "../../src/routes/computer-use/route.js";
 import { runScriptedBrowserLab } from "../../src/routes/scripted-browser/route.js";

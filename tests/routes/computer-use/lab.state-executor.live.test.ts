@@ -18,7 +18,7 @@ import type {
 } from "../../../src/actors/computer-use/loop.js";
 import { LAB_CONFIG_SCHEMA } from "../../../src/lab/types.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
-import { runLab } from "../../../src/lab/engine.js";
+import { runLab } from "../../../src/run-lab.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 
 // The single LIVE rung for the STATE-DRIVEN (in-process, no-E2B, no-vision) lab route — the

@@ -31,7 +31,8 @@ import {
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
 import { routesToConcurrentSharedWorld } from "../../../src/lab/routing.js";
-import { runLab, selectLabBackend } from "../../../src/lab/engine.js";
+import { runLab } from "../../../src/run-lab.js";
+import { selectLabBackend } from "../../../src/lab/plan.js";
 import { runRoute } from "../../../src/cli/commands/lab-route-run.js";
 import { sharedWorldRouteRun } from "../../../src/cli/commands/lab-route-shared-world.js";
 import { runConcurrentSharedWorld } from "../../../src/routes/shared-world/route.js";

@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CuaExecutor, CuaProvider } from "../../src/actors/computer-use/loop.js";
 import type { AdapterScorerModule } from "../../src/lab/adapter-scorer-loader.js";
 import { parseLabConfig } from "../../src/lab/config.js";
-import { runLab, type RunLabOptions } from "../../src/lab/engine.js";
+import { runLab, type RunLabOptions } from "../../src/run-lab.js";
 import { routeOf } from "../../src/lab/plan.js";
 import { normalizeRunLabOptions, type LabEvent } from "../../src/lab/run-lab-options.js";
 import type { LabConfig } from "../../src/lab/types.js";

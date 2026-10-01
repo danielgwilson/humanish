@@ -21,7 +21,7 @@ const builtinScenario = {
   sourceDigest: "builtin",
 };
 
-export async function loadDryRunSelection(
+export async function loadDryRunInputs(
   projectRoot: PreparedSelectedOutputDirectory,
   humanishSource: "present" | "missing",
 ): Promise<{

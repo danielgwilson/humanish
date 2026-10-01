@@ -43,7 +43,7 @@ import type {
 } from "../../../src/substrates/e2b/sdk.js";
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
-import { runLab } from "../../../src/lab/engine.js";
+import { runLab } from "../../../src/run-lab.js";
 import {
   OPENAI_RESPONSES_CU_CAPABILITIES,
   type FetchLike,

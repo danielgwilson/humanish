@@ -10,7 +10,7 @@ import { runRoute } from "../../src/cli/commands/lab-route-run.js";
 import { sharedWorldRouteRun } from "../../src/cli/commands/lab-route-shared-world.js";
 import type { CliIo } from "../../src/cli/io.js";
 import { parseLabConfig } from "../../src/lab/config.js";
-import { prepareLab, type RunLabOptions } from "../../src/lab/engine.js";
+import { prepareLab, type RunLabOptions } from "../../src/run-lab.js";
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/lab/types.js";
 import { liveObserverResult } from "../../src/observer/live.js";
 import { runDryRun } from "../../src/run/dry-run.js";
@@ -19,8 +19,8 @@ import { freePort } from "../helpers/free-port.js";
 // The route is replaced so the test drives the CLI's own onObserverReady against a real run
 // directory and a real Observer server, the part of the watch path that can fail on the operator's
 // machine (a taken port) before any participant starts.
-vi.mock("../../src/lab/engine.js", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../../src/lab/engine.js")>()),
+vi.mock("../../src/run-lab.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../src/run-lab.js")>()),
   prepareLab: vi.fn(),
 }));
 

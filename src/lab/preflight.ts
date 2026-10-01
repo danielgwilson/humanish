@@ -5,7 +5,7 @@ import { isLoopbackUrl } from "./parse/subject.js";
 import { type LabConfig } from "./types.js";
 import { runPublicPreviewPreflight, runSandboxLoopbackPreflight } from "./preflight-probes.js";
 import { digest, fail, finalize, LAB_PREFLIGHT_SCHEMA } from "./preflight-result.js";
-import type { LabBackend } from "./engine.js";
+import type { LabBackend } from "./plan.js";
 import { type LabRoute, routeOf } from "./plan.js";
 import { resolveLabManifest, type LabResolveFailure } from "./discover.js";
 

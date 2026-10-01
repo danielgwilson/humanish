@@ -8,7 +8,7 @@ import { retainLiveRuns } from "../../helpers/live-retention.js";
 
 import { LAB_CONFIG_SCHEMA } from "../../../src/lab/types.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
-import { runLab } from "../../../src/lab/engine.js";
+import { runLab } from "../../../src/run-lab.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 
 // The LIVE rung for subject.state: a seed step that PROVES itself through the readiness

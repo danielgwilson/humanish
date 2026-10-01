@@ -1,11 +1,9 @@
 import type { RunLabProvenance } from "../../run/status.js";
 import { loadAdapterScorer, type AdapterScorerModule } from "../../lab/adapter-scorer-loader.js";
-import type { RunLabOptions } from "../../lab/engine.js";
 import type { LabRoute } from "../../lab/plan.js";
 import type { RunScorerProvenance } from "../../run/bundle.js";
 import type { LabConfig } from "../../lab/types.js";
 import type { RunResult } from "../../run/results.js";
-import type { CliIo } from "../io.js";
 
 /** A CONFIG-DECLARED scorer that resolved + loaded fail-closed, ready to thread into a backend. */
 export interface LoadedAdapterScorer {
@@ -34,29 +32,4 @@ export async function maybeLoadAdapterScorer(args: {
   const loaded = await loadAdapterScorer({ cwd: args.cwd, ref, route: args.route, source });
   if (!loaded.ok) return { ok: false, error: loaded.error };
   return { ok: true, scorer: { hooks: loaded.hooks, provenance: loaded.provenance } };
-}
-
-/**
- * Post-run analysis cancellation for the CLI: while analysis runs, SIGINT, SIGTERM and SIGHUP abort
- * it. The listeners exist only during analysis, so actor signal behavior is unchanged.
- */
-export function cliAnalysisOptions(
-  io: Pick<CliIo, "writeErr">,
-): Pick<RunLabOptions, "onEvent" | "analysisSignal"> {
-  const controller = new AbortController();
-  const cancel = (): void => {
-    controller.abort();
-  };
-  const signals = ["SIGINT", "SIGTERM", "SIGHUP"] as const;
-  return {
-    analysisSignal: controller.signal,
-    onEvent: (event) => {
-      if (event.type === "analysis-started") {
-        io.writeErr("Participants finished; preparing analysis…\n");
-        for (const signal of signals) process.on(signal, cancel);
-      } else if (event.type === "analysis-finished") {
-        for (const signal of signals) process.off(signal, cancel);
-      }
-    },
-  };
 }

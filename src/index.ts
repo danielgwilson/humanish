@@ -3,8 +3,8 @@
 // docs/contracts/schemas.md, "Library options", and the site's library page.
 
 // Run a lab.
-export { runLab } from "./lab/engine.js";
-export type { LabOutcome, LabResult, RunLabOptions } from "./lab/engine.js";
+export { runLab } from "./run-lab.js";
+export type { LabOutcome, LabResult, RunLabOptions } from "./run-lab.js";
 export type { LabEvent, ProviderContext } from "./lab/run-lab-options.js";
 export { routeOf } from "./lab/plan.js";
 export type { LabRoute } from "./lab/plan.js";
@@ -67,8 +67,8 @@ export {
   externalPublicSharedWorldValidationReason,
   sharedWorldValidationReason,
 } from "./lab/validation.js";
-export { resolveLabDryRun, selectLabBackend } from "./lab/engine.js";
-export type { LabBackend } from "./lab/engine.js";
+export { resolveLabDryRun, selectLabBackend } from "./lab/plan.js";
+export type { LabBackend } from "./lab/plan.js";
 
 // Deprecated this minor, removed in the next.
 export {

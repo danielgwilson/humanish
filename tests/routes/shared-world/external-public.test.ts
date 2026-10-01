@@ -43,7 +43,8 @@ import {
 } from "../../../src/lab/validation.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
 import { routesToConcurrentSharedWorld } from "../../../src/lab/routing.js";
-import { runLab, selectLabBackend } from "../../../src/lab/engine.js";
+import { runLab } from "../../../src/run-lab.js";
+import { selectLabBackend } from "../../../src/lab/plan.js";
 import type { SharedWorldLabHooks } from "../../../src/routes/shared-world/types.js";
 import type {
   E2BDesktopCreateOptions,

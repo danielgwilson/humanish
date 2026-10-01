@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 
 import { parseLabConfig } from "../../src/lab/config.js";
 import { labKeyRequirements } from "../../src/lab/doctor.js";
-import { selectLabBackend } from "../../src/lab/engine.js";
+import { selectLabBackend } from "../../src/lab/plan.js";
 import { planLab, routeOf } from "../../src/lab/plan.js";
 import type { LabPlan, PlanResult, Requirement } from "../../src/lab/plan-types.js";
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/lab/types.js";

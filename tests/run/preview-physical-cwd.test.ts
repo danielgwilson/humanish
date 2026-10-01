@@ -6,13 +6,13 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { runDryRun } from "../../src/run/dry-run.js";
-import { loadDryRunSelection } from "../../src/run/dry-run-selection.js";
+import { loadDryRunInputs } from "../../src/run/dry-run-inputs.js";
 
 // The preview takes no hooks, so the alias is retargeted from inside the selection read, the last
 // step before the run starts.
-vi.mock("../../src/run/dry-run-selection.js", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../src/run/dry-run-selection.js")>();
-  return { ...actual, loadDryRunSelection: vi.fn(actual.loadDryRunSelection) };
+vi.mock("../../src/run/dry-run-inputs.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/run/dry-run-inputs.js")>();
+  return { ...actual, loadDryRunInputs: vi.fn(actual.loadDryRunInputs) };
 });
 
 describe("preview project binding", () => {
@@ -21,13 +21,13 @@ describe("preview project binding", () => {
     root = await mkdtemp(path.join(tmpdir(), "humanish-preview-cwd-"));
   });
   afterEach(async () => {
-    vi.mocked(loadDryRunSelection).mockReset();
+    vi.mocked(loadDryRunInputs).mockReset();
     await rm(root, { recursive: true, force: true });
   });
 
   it("pins a symlink cwd before the alias can be retargeted", async () => {
-    const actual = await vi.importActual<typeof import("../../src/run/dry-run-selection.js")>(
-      "../../src/run/dry-run-selection.js",
+    const actual = await vi.importActual<typeof import("../../src/run/dry-run-inputs.js")>(
+      "../../src/run/dry-run-inputs.js",
     );
     const physicalA = path.join(root, "project-a");
     const physicalB = path.join(root, "project-b");
@@ -40,10 +40,10 @@ describe("preview project binding", () => {
     await writeFile(decoyLatest, sentinel, "utf8");
     symlinkSync(physicalA, cwdAlias, "dir");
     const pinnedA = await realpath(physicalA);
-    vi.mocked(loadDryRunSelection).mockImplementation(async (...args) => {
+    vi.mocked(loadDryRunInputs).mockImplementation(async (...args) => {
       unlinkSync(cwdAlias);
       symlinkSync(physicalB, cwdAlias, "dir");
-      return actual.loadDryRunSelection(...args);
+      return actual.loadDryRunInputs(...args);
     });
 
     const result = await runDryRun({ cwd: cwdAlias, dryRun: true, runId: "pinned" });

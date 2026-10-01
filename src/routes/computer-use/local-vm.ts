@@ -1,6 +1,6 @@
 import { collectDesktopRecording } from "../../evidence/desktop-recording-artifact.js";
 import path from "node:path";
-import type { RunLabOptions } from "../../lab/engine.js";
+import type { RunLabOptions } from "../../run-lab.js";
 import type { LabConfig } from "../../lab/types.js";
 import {
   inboxRecipientFor,

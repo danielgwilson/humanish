@@ -384,7 +384,7 @@ for the full seam and the thin-adapter conformance proof.
 
 ## Making personas load-bearing
 
-The original bug, now fixed: `loadDryRunSelection` (`src/run/dry-run-selection.ts`) parsed
+The original bug, now fixed: `loadDryRunInputs` (`src/run/dry-run-inputs.ts`) parsed
 persona YAML down to `{ id, name, source, sourceDigest }` and discarded `summary`,
 `traits.{patience, technical_confidence, accessibility_needs}`, and `constraints`. The
 prompt builders then injected one line: `Persona: ${name}`. The persona was a label. It now

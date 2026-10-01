@@ -9,7 +9,7 @@ import { localRuntimeStatus, type LocalRuntimeStatus } from "../substrates/local
 // Resolved analysis defaults are shown independently of declared participant caps. A cap that is not
 // declared is not "unlimited" and not "$0"; it is a line the screen does not draw.
 
-import { resolveLabDryRun } from "./engine.js";
+import { resolveLabDryRun } from "./plan.js";
 import { routeOf } from "./plan.js";
 import { labKeyRequirements, localCodexParticipantCheck } from "./doctor.js";
 import { automaticAnalysisBudget } from "../analysis/automatic-config.js";

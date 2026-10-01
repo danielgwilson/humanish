@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
-import { runLab } from "../../src/lab/engine.js";
+import { runLab } from "../../src/run-lab.js";
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/lab/types.js";
 
 const dirs: string[] = [];

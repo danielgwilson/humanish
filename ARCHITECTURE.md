@@ -23,7 +23,7 @@ reports the first failed step.
    exits with code 2 before a run id exists.
 2. **Plan.** `runLabCommand` runs the route's CLI setup, here `computerUseRouteRun`
    (`src/cli/commands/lab-route-computer-use.ts`). `runRoute` (`src/cli/commands/lab-route-run.ts`)
-   then calls `prepareLab` (`src/lab/engine.ts`). `prepareLab` picks one of five routes with
+   then calls `prepareLab` (`src/run-lab.ts`). `prepareLab` picks one of five routes with
    `routeOf` (`src/lab/plan.ts`) from `subject.source`, `subject.topology`, `execution.target` and
    the capabilities `actorRegistry` (`src/actors/registry.ts`) lists for `actors[0].type`. It maps
    library options with `normalizeRunLabOptions` (`src/lab/run-lab-options.ts`) and plans once with
@@ -85,7 +85,8 @@ reports the first failed step.
 | ------------------------------ | -------------------------------------------------------------------------------------- | -------------------------------------- |
 | `src/cli/`                     | The commander program, with one file per command family in `commands/`                 | `src/cli/program.ts`                   |
 | `src/keys/`                    | Provider key discovery: env files, the user key store and key-source probes            | `src/keys/key-resolution.ts`           |
-| `src/lab/`                     | Lab manifest types, parsing, validation, routing and dispatch                          | `src/lab/engine.ts`                    |
+| `src/run-lab.ts`               | `runLab`: plan the lab once, then run the plan on its route                            | `src/run-lab.ts`                       |
+| `src/lab/`                     | Lab manifest types, parsing, validation, routing and planning                          | `src/lab/plan.ts`                      |
 | `src/routes/`                  | One folder per route; `routeOf` in `src/lab/plan.ts` picks it                          | `src/lab/plan.ts`                      |
 | `src/routes/computer-use/`     | Computer-use participants and the desktops composing `src/substrates/` with route code | `src/routes/computer-use/route.ts`     |
 | `src/routes/scripted-browser/` | Committed scenario steps replayed on a loopback app or a provisioned clone             | `src/routes/scripted-browser/route.ts` |

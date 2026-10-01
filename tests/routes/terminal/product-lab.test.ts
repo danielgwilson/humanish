@@ -14,7 +14,8 @@ import {
   routesToScriptedBrowser,
   routesToTerminalProduct,
 } from "../../../src/lab/routing.js";
-import { runLab, selectLabBackend } from "../../../src/lab/engine.js";
+import { runLab } from "../../../src/run-lab.js";
+import { selectLabBackend } from "../../../src/lab/plan.js";
 import { createProgram } from "../../../src/cli/program.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 import { runTerminalPlan, runTerminalProductLab } from "../../../src/routes/terminal/route.js";

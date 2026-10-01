@@ -18,12 +18,12 @@ import {
 import { FinishedRun } from "../../src/run/run.js";
 import { asLiveRecording, publishRun } from "../helpers/finished-run.js";
 import { automaticAnalysisEnvelope, writeResult } from "../../src/cli/io.js";
-import { cliAnalysisOptions } from "../../src/cli/commands/lab-hooks.js";
+import { cliAnalysisOptions } from "../../src/cli/commands/analysis-signals.js";
 import { createProgram } from "../../src/cli/program.js";
 import { readLabSummary } from "../../src/lab/summary.js";
 import { runLabPreflight } from "../../src/lab/preflight.js";
 import { parse as parseYaml } from "yaml";
-import { runLab } from "../../src/lab/engine.js";
+import { runLab } from "../../src/run-lab.js";
 import { runCuaActorLab } from "../../src/routes/computer-use/route.js";
 import { runConcurrentSharedWorld } from "../../src/routes/shared-world/route.js";
 import { runTerminalProductLab } from "../../src/routes/terminal/route.js";
@@ -719,8 +719,8 @@ describe("automatic analysis admission and producer boundary", () => {
     "%s during the real producer retains default termination and never starts analysis",
     async (signal) => {
       const script = `
-      import { runLab } from ${JSON.stringify(new URL("../../src/lab/engine.ts", import.meta.url).href)};
-      import { cliAnalysisOptions } from ${JSON.stringify(new URL("../../src/cli/commands/lab-hooks.ts", import.meta.url).href)};
+      import { runLab } from ${JSON.stringify(new URL("../../src/run-lab.ts", import.meta.url).href)};
+      import { cliAnalysisOptions } from ${JSON.stringify(new URL("../../src/cli/commands/analysis-signals.ts", import.meta.url).href)};
       const config = ${JSON.stringify(fixtures.find((row) => row.name === "cua-openai-computer-use-app-url")!.config)};
       config.review = { analysis: { maxCostUsd: 5 } };
       const timer = setInterval(() => {}, 1000);

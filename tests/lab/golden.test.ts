@@ -5,7 +5,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { runLab } from "../../src/lab/engine.js";
+import { runLab } from "../../src/run-lab.js";
 import { resolveLabManifest } from "../../src/lab/discover.js";
 
 // RUNG 2 (faithfulness): the v2 config + one-engine path must reproduce the pre-refactor run
