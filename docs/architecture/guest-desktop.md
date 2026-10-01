@@ -60,6 +60,14 @@ raw diagnostic text is never returned as an executor error. Only an acquired,
 still-live child handle authorizes termination. If capture-helper exit cannot
 be confirmed, its private files stay for runtime-owner reclamation.
 
+## Three guest files stay at the `src/` root
+
+Three guest files stay at the `src/` root because the guest image and its packager name their
+`dist/` paths. The guest's `vsock.py` launches `guest-runtime-main.js`, and
+`scripts/guest-runtime-package.mjs` walks the payload from it. The packager also regenerates
+`guest-runtime-revision.js` by name. The packager and the `runtime/browser-media/` recipes copy
+`guest-media-worker.js` by name.
+
 ## Build and proof
 
 The source-only [guest recipe](https://github.com/danielgwilson/humanish/blob/main/runtime/browser-guest/README.md) builds a

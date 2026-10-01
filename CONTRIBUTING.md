@@ -117,6 +117,14 @@ Three folders hold fixtures. `tests/fixtures/` holds test inputs, `humanish/fixt
 synthetic apps this repo's own labs start, and the root `fixtures/` holds synthetic apps and cases
 that several tests and scripts copy, such as `fixtures/minimal-app/`.
 
+### Find the test folders outside the `src/` mirror
+
+Most of `tests/` mirrors `src/`. Six folders sit outside that mirror. `tests/admission/` pins what the CLI and the
+library do when they refuse a lab before a run starts, and `tests/scripts/` tests `scripts/`.
+`tests/surface/` checks the README, the site, `site/public/llms.txt`, the agent skill and the package
+against the shipped CLI. `tests/helpers/`, `tests/fixtures/` and `tests/golden/` hold shared test
+code, inputs and goldens.
+
 ## Pull Requests
 
 PRs should include:

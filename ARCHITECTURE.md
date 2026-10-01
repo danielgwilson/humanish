@@ -8,79 +8,53 @@ longer declares that name. [CONTEXT.md](CONTEXT.md) defines the domain terms, an
 ## Follow one `humanish run <lab>` from manifest to findings
 
 The steps follow a live computer-use lab on a hosted E2B desktop. Every route shares steps 1, 2, 7
-and 8 and does steps 3 to 6 in its own run function: `runComputerUsePlan` here, and
-`runScriptedPlan` (`src/routes/scripted/route.ts`), `runTerminalPlan`
-(`src/routes/terminal/route.ts`) and `runSharedWorldPlan` (`src/routes/shared-world/route.ts`).
-`runPreviewPlan` (`src/routes/preview.ts`) writes a fixture bundle with `runDryRun`
-(`src/run/dry-run.ts`) and publishes it as in step 6. The scripted route's participant is its
-actor: `runScriptedBrowserSessionInPreparedRoot` (`src/actors/scripted-browser/actor.ts`) runs one
-surface's steps through `executeBrowserPersonaStep` (`src/actors/scripted-browser/steps.ts`) and
-reports the first failed step.
+and 8. Steps 3 to 6 are the route's run function: `runComputerUsePlan` here, `runScriptedPlan`
+(`src/routes/scripted/route.ts`), `runTerminalPlan` (`src/routes/terminal/route.ts`),
+`runSharedWorldPlan` (`src/routes/shared-world/route.ts`), and `runPreviewPlan`
+(`src/routes/preview.ts`), which publishes a fixture bundle.
 
 1. **Parse.** `runLabCommand` (`src/cli/commands/lab-run.ts`) calls `resolveLabManifest`
-   (`src/lab/discover.ts`), which reads the YAML and calls `parseLabConfig` (`src/lab/config.ts`).
-   It rejects unknown keys and every refused composition in the
-   [support matrix](docs/ramp/README.md#check-which-compositions-a-lab-can-declare). A refusal
-   exits with code 2 before a run id exists.
-2. **Plan.** `runLabCommand` runs the route's CLI setup, here `computerUseRouteRun`
-   (`src/cli/commands/lab-route-computer-use.ts`). `runRoute` (`src/cli/commands/lab-route-run.ts`)
-   then calls `prepareLab` (`src/run-lab.ts`). `prepareLab` picks one of five routes with
-   `routeOf` (`src/lab/plan.ts`) from `subject.source`, `subject.topology`, `execution.target` and
-   the capabilities `actorRegistry` (`src/actors/registry.ts`) lists for `actors[0].type`. It maps
-   library options with `normalizeRunLabOptions` (`src/lab/run-lab-options.ts`) and plans once with
-   `planLab` (`src/lab/plan.ts`), which calls the route's planner, here `planComputerUseLab`
-   (`src/routes/computer-use/plan.ts`). The planner runs on every run, CLI or library. A refusal
-   comes back before the CLI loads a declared review scorer. So does a terminal lab's refusal for a
-   missing runtime key or `E2B_API_KEY`, from `admitTerminalPlan` (`src/routes/terminal/route.ts`).
-   A plan comes back with a `run()` that takes the scorer and calls the route's run function, here
-   `runComputerUsePlan` (`src/routes/computer-use/route.ts`). `runLab` is `prepareLab` followed by
-   that `run()`. A run is live only when the lab declares `scenario.mode: live`; `--dry-run` forces
-   a dry run.
+   (`src/lab/discover.ts`), which calls `parseLabConfig` (`src/lab/config.ts`). It rejects unknown
+   keys and the compositions the
+   [support matrix](docs/ramp/README.md#check-which-compositions-a-lab-can-declare) refuses. A
+   refusal exits with code 2 before a run id exists.
+2. **Plan.** The route's CLI setup, here `computerUseRouteRun`
+   (`src/cli/commands/lab-route-computer-use.ts`), hands off to `runRoute`
+   (`src/cli/commands/lab-route-run.ts`), which calls `prepareLab` (`src/run-lab.ts`). That picks the
+   route with `routeOf` (`src/lab/plan.ts`) and plans once with `planLab` (`src/lab/plan.ts`), here
+   through `planComputerUseLab` (`src/routes/computer-use/plan.ts`). A refusal returns before a
+   declared scorer loads, and so does a terminal lab's refusal for a missing runtime key or
+   `E2B_API_KEY`, from `admitTerminalPlan` (`src/routes/terminal/route.ts`). A plan returns with a
+   `run()` that calls `runComputerUsePlan` (`src/routes/computer-use/route.ts`). `runLab` is
+   `prepareLab`, then `run()`.
 3. **Preflight.** `runComputerUsePlan` opens the run's lifetime with `runScope` (`src/run/run.ts`).
-   `prepareCuaRun` (`src/routes/computer-use/setup.ts`) plans the lanes and, on a live run, calls
-   `liveCuaRejection` (`src/routes/computer-use/preflight.ts`). That checks provider keys, the local
-   agent login and subject env vars, and refuses a dollar cap it cannot price. Only then does
-   `prepareCuaRun` start the run with `startRun` (`src/run/run.ts`), still before any sandbox or
-   provider call.
+   `prepareCuaRun` (`src/routes/computer-use/setup.ts`) calls `liveCuaRejection`
+   (`src/routes/computer-use/preflight.ts`) for keys, local-agent sign-in, subject env and caps,
+   then `startRun` (`src/run/run.ts`), all before any sandbox or provider call.
 4. **Desktop.** Each participant runs on a `ParticipantDesktop`
-   (`src/routes/computer-use/participant-desktop.ts`), which its lane prepares, opens and finalizes.
-   On a hosted desktop that is `createE2BParticipantDesktop`
-   (`src/routes/computer-use/e2b-desktop/desktop.ts`), which runs the steps in the files beside it. `acquireE2BDesktopSandbox`
-   (`src/substrates/e2b/sandbox.ts`) appends the sandbox id to `sandbox-receipts.ndjson` before it
-   returns the handle. A `clone` or `local-tree` subject is provisioned through `src/subject/`,
-   which reaches the sandbox only through the `Shell` that `e2bShell` (`src/substrates/e2b/shell.ts`)
-   returns. A local browser study (`execution.target: local`) runs on a local VM, which
-   `prepareLocalVmStudy` (`src/routes/computer-use/local-vm.ts`) sets up while `prepareLab` plans. An
-   in-process run uses `createInProcessDesktop` (`src/routes/computer-use/in-process-desktop.ts`).
+   (`src/routes/computer-use/participant-desktop.ts`): a hosted one from
+   `createE2BParticipantDesktop` (`src/routes/computer-use/e2b-desktop/desktop.ts`), a local VM
+   from `createLocalParticipantDesktop` (`src/routes/computer-use/local-vm.ts`), or
+   `createInProcessDesktop` (`src/routes/computer-use/in-process-desktop.ts`).
+   `acquireE2BDesktopSandbox` (`src/substrates/e2b/sandbox.ts`) records the sandbox id before it
+   returns. `src/subject/`
+   provisions a `clone` or `local-tree` subject over a `Shell` (`src/substrates/shell.ts`).
 5. **Participants.** `runLabParticipants` (`src/routes/computer-use/run-lanes.ts`) publishes an
-   in-progress bundle with `Run.writeSnapshot`, rewrites it from the lanes' live traces through
-   `startLiveTraceFlush` (`src/routes/computer-use/live-flush.ts`), and calls `runAllCuaParticipants`
-   (`src/routes/computer-use/lanes.ts`). That runs `runCuaParticipant` for each participant, at most
-   `execution.concurrency` at a time. A lane prepares its desktop, runs `runCuaActorSession`
-   (`src/actors/computer-use/actor.ts`), which drives `runComputerUseLoop`
-   (`src/actors/computer-use/loop.ts`), and finalizes the desktop. The loop saves screenshots through
-   `makeParticipantWriteScreenshot`, which checks each image with `assertScreenshotEvidence`
-   (`src/evidence/image.ts`). Screenshots are blurred only when a lab sets
-   `policies.redactScreenshots: true`.
-6. **Judge and publish.** `finishCuaRun` (`src/routes/computer-use/result.ts`) judges the run once
-   with `judgeComputerUseRun` (`src/routes/computer-use/bundle.ts`), whose rules are in
-   `src/run/judge.ts`, and builds the bundle from that judgment with `buildCuaRunBundle`
-   (`src/routes/computer-use/bundle.ts`). A declared scorer then scores the bundle through
-   `applyBrowserAdapterHooks` (`src/lab/adapter-extension.ts`), and `foldScorerFailures`
-   (`src/run/judge.ts`) folds its failures into the verdict, so a scorer can fail a run but never
-   pass one. `Run.finish` publishes `run.json`, then the `status.json` outcome, then `review.json`,
-   `review.md`, `events.ndjson` and `observer/observer-data.json`, and the
-   `.humanish/runs/latest.json` pointer last. Every route judges with `src/run/judge.ts` and
-   publishes the same way.
+   in-progress bundle, then calls `runAllCuaParticipants` (`src/routes/computer-use/lanes.ts`). That
+   runs `runCuaParticipant` for each participant, at most `execution.concurrency` at a time, and
+   each one drives `runComputerUseLoop` (`src/actors/computer-use/loop.ts`).
+6. **Judge and publish.** `finishCuaRun` (`src/routes/computer-use/result.ts`) judges once with
+   `judgeComputerUseRun` (`src/routes/computer-use/bundle.ts`) and builds the bundle with
+   `buildCuaRunBundle` (`src/routes/computer-use/bundle.ts`), by the rules in `src/run/judge.ts`. A
+   declared scorer's failures fold in through `foldScorerFailures` (`src/run/judge.ts`), so a scorer
+   can fail a run and never pass one. `Run.finish` publishes `run.json`, then the `status.json`
+   outcome, the review and Observer data, and `.humanish/runs/latest.json` last.
 7. **Observer.** `renderObserver` (`src/observer/render.ts`) verifies the bundle with
-   `verifyRunPrepared` (`src/verify/verify.ts`), builds the page data with `buildObserverData`
-   (`src/observer/data.ts`) and writes `observer/index.html` with `renderObserverHtml`
-   (`src/observer/artifact.ts`). `humanish verify --run latest` runs `verifyRun` on demand.
-8. **Analysis.** After the route returns, `completeAutomaticAnalysis`
-   (`src/analysis/automatic-completion.ts`) calls `runAutomaticStudyAnalysis`
-   (`src/analysis/automatic.ts`) with the `FinishedRun` that `Run.finish` issued, so a refusal
-   that echoes an older run's id never analyzes that run. Dry runs skip analysis, and a lab turns
-   it off with `review.analysis: false`.
+   `verifyRunPrepared` (`src/verify/verify.ts`) and writes `observer/index.html` from
+   `buildObserverData` (`src/observer/data.ts`).
+8. **Analysis.** `completeAutomaticAnalysis` (`src/analysis/automatic-completion.ts`) runs
+   `runAutomaticStudyAnalysis` (`src/analysis/automatic.ts`) on the `FinishedRun` that `Run.finish`
+   issued. Dry runs and labs with `review.analysis: false` skip it.
 
 ## Find the code for each part of the system
 
@@ -120,29 +94,15 @@ reports the first failed step.
 | `runtime/`                 | Desktop and browser image recipes                                                      | `runtime/browser-guest/README.md`   |
 | `scripts/`                 | Proof, release and check scripts that `package.json` runs                              | `scripts/check-doc-paths.ts`        |
 | `docs/contracts/`          | Bundle and schema contracts, whose documented fields are API                           | `docs/contracts/run-bundle.md`      |
-| `tests/`                   | Vitest suites that mirror `src/`, plus the folders named below the table               | `tests/helpers/run-golden.ts`       |
+| `tests/`                   | Vitest suites that mirror `src/`, plus six folders outside the mirror                  | `tests/helpers/run-golden.ts`       |
 
 `pnpm docs:check` fails when a folder directly under `src/` or `src/routes/` has no row here, or
-when a row names a folder that is gone. Add the row in the change that adds the folder.
-
-Three guest files stay at the `src/` root because the guest image and its packager name their
-`dist/` paths. The guest's `vsock.py` launches `guest-runtime-main.js`, and
-`scripts/guest-runtime-package.mjs` walks the payload from it. The packager also regenerates
-`guest-runtime-revision.js` by name. The packager and the `runtime/browser-media/` recipes copy
-`guest-media-worker.js` by name.
-
-Participant desktops stay in `src/routes/computer-use/`, by decision. The `ParticipantDesktop`
-interface and its three implementations (hosted E2B, local VM, in-process) each combine provider
-primitives from `src/substrates/` (the E2B sandbox, local VMs, the `Shell`) with route concerns:
-subject provisioning, comms and the participant plan. Moving only the interface to
-`src/substrates/` would split one concept across two folders, so `src/substrates/` holds only the
-primitives.
-
-Six folders in `tests/` sit outside that mirror. `tests/admission/` pins what the CLI and the
-library do when they refuse a lab before a run starts, and `tests/scripts/` tests `scripts/`.
-`tests/surface/` checks the README, the site, `site/public/llms.txt`, the agent skill and the package
-against the shipped CLI. `tests/helpers/`, `tests/fixtures/` and `tests/golden/` hold shared test
-code, inputs and goldens.
+when a row names a folder that is gone; add the row with the folder. Participant desktops stay in
+`src/routes/computer-use/` ([decision 0004](docs/decisions/0004-participant-desktops-stay-in-the-route.md)),
+three guest entry files stay at the `src/` root
+([why](docs/architecture/guest-desktop.md#three-guest-files-stay-at-the-src-root)), and six
+`tests/` folders sit outside the mirror
+([list](CONTRIBUTING.md#find-the-test-folders-outside-the-src-mirror)).
 
 ## Keep these invariants when you change code
 
