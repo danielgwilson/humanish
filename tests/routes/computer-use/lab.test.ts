@@ -4435,6 +4435,132 @@ describe("execution.desktop.template (custom E2B desktop image, single-lane cua 
   });
 });
 
+describe("Chrome DevTools readiness after launch", () => {
+  let cwd: string;
+  beforeEach(async () => {
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-devtools-"));
+  });
+  afterEach(async () => {
+    await rm(cwd, { recursive: true, force: true });
+  });
+
+  function chromeConfig(device: "mobile" | "desktop"): LabConfig {
+    const parsed = parseLabConfig({
+      schema: LAB_CONFIG_SCHEMA,
+      id: "cua-devtools-readiness",
+      title: "DevTools readiness",
+      subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
+      actors: [
+        {
+          type: "openai-computer-use",
+          persona: "first-time-visitor",
+          mission: "Explore the app and stop.",
+        },
+      ],
+      execution: {
+        target: "e2b-desktop",
+        timeoutMs: 60_000,
+        desktop: {
+          device,
+          browser: "chrome",
+          ...(device === "mobile" ? { fidelity: { mobileEmulation: true } } : {}),
+        },
+      },
+      scenario: { mode: "live" },
+    });
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    return parsed.config;
+  }
+
+  /** Runs one lane whose launch command printed `markers` after the usual identity lines. */
+  async function runWithLaunch(config: LabConfig, markers: string) {
+    const sandbox = makeFakeSandbox({
+      commandHandler: (command) =>
+        command.includes("browser_preference='chrome'")
+          ? {
+              exitCode: 0,
+              stdout: `HUMANISH_BROWSER_RESOLVED=google-chrome\nHUMANISH_BROWSER_PID=4242\nHUMANISH_BROWSER_PROFILE_DIR=/tmp/p\n${markers}`,
+            }
+          : undefined,
+    });
+    const { module } = makeFakeModule(sandbox);
+    const outcome = await runLab(config, {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
+        loadDesktopModule: async () => module,
+        onPhase: () => undefined,
+        runSession: async (options) =>
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          }),
+      },
+    });
+    if (outcome.backend !== "cua") throw new Error("expected the cua backend");
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"),
+    ) as RunBundle;
+    const phase = bundle.events.find(
+      (event) => event.type === "cua-lab.browser.devtools.completed",
+    );
+    return { sandbox, result: outcome.result, bundle, phase };
+  }
+
+  it("fails an emulated lane closed when Chrome exited before DevTools answered, before any holder starts", async () => {
+    const { sandbox, result, bundle, phase } = await runWithLaunch(
+      chromeConfig("mobile"),
+      "HUMANISH_BROWSER_CDP_NOT_READY=exited\nHUMANISH_BROWSER_CDP_WAITED_MS=900\nHUMANISH_BROWSER_LOG_TAIL=[1:1:ERROR] Missing X server or $DISPLAY\n",
+    );
+    expect(result.ok).toBe(false);
+    expect(bundle.review.summary).toContain(
+      "mobile emulation could not be applied: Chrome exited 900 ms after launch, before DevTools answered on 127.0.0.1:9222 (browser log: [1:1:ERROR] Missing X server or $DISPLAY)",
+    );
+    const holderStarted = sandbox.calls.some(
+      (call) => call[0] === "files.write" && String(call[1]).includes("mobile-emulation-"),
+    );
+    expect(holderStarted).toBe(false);
+    expect(phase).toMatchObject({
+      level: "warn",
+      message: "Chrome DevTools did not answer on 127.0.0.1:9222 (900ms)",
+    });
+  });
+
+  it("keeps a lane without emulation running, with a warning, when DevTools never answered", async () => {
+    const { result, phase } = await runWithLaunch(
+      chromeConfig("desktop"),
+      "HUMANISH_BROWSER_CDP_NOT_READY=timeout\nHUMANISH_BROWSER_CDP_WAITED_MS=30000\nHUMANISH_BROWSER_LOG_TAIL=\n",
+    );
+    expect(result.ok).toBe(true);
+    expect(result.warnings).toContainEqual(
+      expect.stringContaining(
+        "Chrome DevTools did not answer on 127.0.0.1:9222 within 30000 ms of launch while the browser process was still running (the browser log was empty).",
+      ),
+    );
+    expect(phase).toMatchObject({ level: "warn" });
+  });
+
+  it("records the DevTools wait as a timed phase, and warns only past 10 s", async () => {
+    const slow = await runWithLaunch(
+      chromeConfig("desktop"),
+      "HUMANISH_BROWSER_CDP_READY_MS=12000\n",
+    );
+    expect(slow.phase).toMatchObject({
+      level: "info",
+      message: "Chrome DevTools answered on 127.0.0.1:9222 (12000ms)",
+    });
+    expect(slow.result.warnings).toContainEqual(
+      expect.stringContaining("answered 12000 ms after launch; the browser started slowly"),
+    );
+    const quick = await runWithLaunch(
+      chromeConfig("desktop"),
+      "HUMANISH_BROWSER_CDP_READY_MS=7700\n",
+    );
+    expect(quick.phase).toMatchObject({ level: "info" });
+    expect(quick.result.warnings.join("\n")).not.toContain("started slowly");
+  });
+});
+
 describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
   let cwd: string;
 

@@ -4,10 +4,12 @@
 
 import { redactText, toErrorMessage } from "../../evidence/redaction.js";
 import {
+  CHROME_DEVTOOLS_PORT,
   DESKTOP_SETTLE_MS,
   openDesktopBrowserTarget,
   openDesktopTerminal,
   startDesktopStream,
+  type ChromeDevToolsReadiness,
 } from "../../substrates/e2b/desktop-browser.js";
 import { captureDesktopBrowserGeometry } from "../../substrates/e2b/desktop-geometry.js";
 import { prepareDesktopMedia, startE2BDesktopMedia } from "../../substrates/e2b/desktop-media.js";
@@ -84,12 +86,13 @@ export async function openLaneSurface(
           deps.labCwd,
           deps.requestTimeoutMs,
         );
+  const emulationFlags = mobileLaunchFlags(config, spec);
   const browserLaunch = await openDesktopBrowserTarget(
     desktop,
     targetUrl,
     deps.requestTimeoutMs,
     config.execution?.desktop?.browser,
-    [...mobileLaunchFlags(config, spec), ...(mediaEvidence?.flags ?? [])],
+    [...emulationFlags, ...(mediaEvidence?.flags ?? [])],
     state.speech?.env ?? state.recording?.env,
   );
   state.desktopBrowser =
@@ -108,6 +111,7 @@ export async function openLaneSurface(
   state.launchedBrowserFamily = browserLaunch.family;
   state.browserLaunchIdentity = browserLaunch.identity;
   state.browserLaunched = true;
+  noteDevToolsReadiness(ctx, browserLaunch.devTools, emulationFlags.length > 0);
   await desktop.wait(DESKTOP_SETTLE_MS).catch(() => undefined);
   // Mobile fidelity (#221) is applied outside startLaneStream's best-effort catch, so a request
   // that cannot be applied fails the lane closed.
@@ -121,6 +125,58 @@ export async function openLaneSurface(
     targetId: state.browserTargetId,
     warnings,
   });
+}
+
+/**
+ * DevTools answering later than this after launch is recorded as a warning on the lane. Six live
+ * launches answered in 4.8-7.7 s; the reads this wait now guards used to give up at about 11 s.
+ */
+const SLOW_DEVTOOLS_MS = 10_000;
+
+/**
+ * Records how Chrome's DevTools port answered after launch, as a timed phase in the bundle. A
+ * device-emulated lane fails closed when the port never answered, because emulation is applied
+ * over DevTools. Other lanes continue with a warning: their DevTools reads already degrade to
+ * warnings of their own.
+ */
+function noteDevToolsReadiness(
+  ctx: E2BLaneContext,
+  devTools: ChromeDevToolsReadiness | undefined,
+  emulated: boolean,
+): void {
+  if (devTools === undefined) return;
+  const { spec, deps, warnings } = ctx;
+  const endpoint = `127.0.0.1:${CHROME_DEVTOOLS_PORT}`;
+  ctx.onSubjectPhase({
+    at: new Date(deps.now()).toISOString(),
+    type: "cua-lab.browser.devtools.completed",
+    ok: devTools.state === "ready",
+    durationMs: devTools.waitedMs,
+    message:
+      devTools.state === "ready"
+        ? `Chrome DevTools answered on ${endpoint}`
+        : `Chrome DevTools did not answer on ${endpoint}`,
+  });
+  if (devTools.state === "ready") {
+    if (devTools.waitedMs > SLOW_DEVTOOLS_MS) {
+      warnings.push(
+        `Chrome DevTools on lane ${spec.planned.id} answered ${devTools.waitedMs} ms after launch; the browser started slowly.`,
+      );
+    }
+    return;
+  }
+  const log =
+    devTools.logTail === ""
+      ? "the browser log was empty"
+      : `browser log: ${redactText(deps.scrubKnownValues(devTools.logTail))}`;
+  const reason =
+    devTools.state === "exited"
+      ? `Chrome exited ${devTools.waitedMs} ms after launch, before DevTools answered on ${endpoint} (${log})`
+      : `Chrome DevTools did not answer on ${endpoint} within ${devTools.waitedMs} ms of launch while the browser process was still running (${log})`;
+  if (emulated) throw new Error(`mobile emulation could not be applied: ${reason}`);
+  warnings.push(
+    `${reason}. Browser geometry and URL/text observation on lane ${spec.planned.id} read DevTools and may be unavailable.`,
+  );
 }
 
 /**
