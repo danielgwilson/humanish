@@ -9,11 +9,9 @@ import {
   TERMINAL_AGENT_CAPABILITIES,
   type ActorCapabilities,
   type ActorPersonaRef,
-  type ActorSessionResult,
   type ActorTrace,
 } from "./contract.js";
 import { codexResultToActorTrace } from "./codex/app-server-actor-trace.js";
-import { runTerminalAgentSession, type TerminalAgentSessionOptions } from "./terminal-agent.js";
 import { runCuaActorSession, type CuaActorSessionOptions } from "./computer-use/actor.js";
 import { LOCAL_AGENT_CAPABILITIES } from "./local-agent/cli.js";
 import type { CuaLoopResult } from "./computer-use/loop.js";
@@ -66,13 +64,12 @@ export interface ScriptedBrowserActorDescriptor extends ActorDescriptorBase {
   runSession(options: ScriptedBrowserSessionOptions): Promise<ScriptedBrowserSessionResult>;
 }
 
-// The terminal descriptor's capabilities are load-bearing for terminal-product route selection
-// and command-scoped key-placement enforcement. Its runSession member is a fail-closed
-// compatibility entry, not the shipped live runner: live execution is route-owned by
-// runTerminalProductLab so sandbox lifecycle, caps, evidence, and by-id cleanup stay atomic.
+// The terminal descriptor has no runSession. The terminal agent runs inside runTerminalProductLab
+// (src/routes/terminal/route.ts), which creates the sandbox, enforces command-scoped runtime auth
+// and caps, captures evidence and destroys the sandbox by id as one lifecycle. The registry holds
+// its capabilities, which route selection and key-placement enforcement read.
 export interface TerminalActorDescriptor extends ActorDescriptorBase {
   id: "codex-exec";
-  runSession(options: TerminalAgentSessionOptions): Promise<ActorSessionResult>;
 }
 
 export type ActorDescriptor =
@@ -158,13 +155,11 @@ export const actorRegistry: Record<ActorId, ActorDescriptor> = {
   },
   // The ActorId names the terminal-product dispatch slot; the live route records the concrete
   // provider as "codex". keyPlacement "in-sandbox-command-scoped" is registry-declared and
-  // enforced by runTerminalProductLab before it creates a sandbox. runSession is retained only as
-  // a fail-closed compatibility entry; it is not the live route.
+  // enforced by runTerminalProductLab before it creates a sandbox, which is where this actor runs.
   "codex-exec": {
     id: "codex-exec",
     label: "Codex Exec (autonomous terminal agent, in-sandbox)",
     capabilities: TERMINAL_AGENT_CAPABILITIES,
-    runSession: runTerminalAgentSession,
   },
 };
 

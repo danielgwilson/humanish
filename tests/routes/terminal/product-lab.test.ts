@@ -20,7 +20,6 @@ import { createProgram } from "../../../src/cli/program.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 import { runTerminalPlan, runTerminalProductLab } from "../../../src/routes/terminal/route.js";
 import { planTerminalLab } from "../../../src/routes/terminal/plan.js";
-import { TERMINAL_AGENT_NOT_IMPLEMENTED_CODE } from "../../../src/actors/terminal-agent.js";
 
 const ROOT = process.cwd();
 
@@ -98,28 +97,8 @@ describe("terminal actor registration + keyPlacement metadata", () => {
     expect(TERMINAL_AGENT_CAPABILITIES.keyPlacement).toBe("in-sandbox-command-scoped");
     expect(descriptor.capabilities.keyPlacement).toBe("in-sandbox-command-scoped");
     expect(TERMINAL_AGENT_CAPABILITIES.byoModel).toBe(false);
-  });
-
-  it("keeps the descriptor's direct runner fail-closed instead of overclaiming live execution", async () => {
-    const descriptor = actorRegistry["codex-exec"];
-    if (!isTerminalActorDescriptor(descriptor))
-      throw new Error("codex-exec must remain a terminal descriptor");
-    await expect(
-      descriptor.runSession({
-        artifactRoot: ".humanish/runs/direct-terminal-descriptor",
-        prompt: "Study a synthetic public product.",
-        persona: {
-          id: "synthetic-terminal-persona",
-          traitsApplied: [],
-          promptDigest: "123456789abc",
-        },
-        publicSurfaces: ["https://example.com/product"],
-        timeoutMs: 1_000,
-        verdictNonce: "synthetic-nonce",
-      }),
-    ).rejects.toThrow(
-      `${TERMINAL_AGENT_NOT_IMPLEMENTED_CODE}: direct runTerminalAgentSession calls are intentionally unsupported`,
-    );
+    // It runs only inside runTerminalProductLab, so the registry gives it no session entry.
+    expect("runSession" in descriptor).toBe(false);
   });
 });
 
