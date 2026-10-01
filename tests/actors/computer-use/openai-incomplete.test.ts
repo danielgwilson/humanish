@@ -1,13 +1,13 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { runComputerUseLoop, type CuaTurn } from "../src/actors/computer-use/loop.js";
-import { OPENAI_RESPONSES_CU_CAPABILITIES } from "../src/actors/computer-use/openai-provider.js";
-import { parseOpenAiResponse } from "../src/actors/computer-use/openai-wire.js";
-import { defaultRedactionHooks } from "../src/evidence/redaction.js";
+import { runComputerUseLoop, type CuaTurn } from "../../../src/actors/computer-use/loop.js";
+import { OPENAI_RESPONSES_CU_CAPABILITIES } from "../../../src/actors/computer-use/openai-provider.js";
+import { parseOpenAiResponse } from "../../../src/actors/computer-use/openai-wire.js";
+import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
 
 function captured(name: "reasoning-only" | "partial-message"): Record<string, unknown> {
   return JSON.parse(
-    readFileSync(new URL(`./fixtures/openai-incomplete/${name}.json`, import.meta.url), "utf8"),
+    readFileSync(new URL(`../../fixtures/openai-incomplete/${name}.json`, import.meta.url), "utf8"),
   ) as Record<string, unknown>;
 }
 

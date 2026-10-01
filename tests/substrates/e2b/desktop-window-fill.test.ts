@@ -1,15 +1,15 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import type { E2BDesktopSandbox } from "../src/substrates/e2b/sdk.js";
+import type { E2BDesktopSandbox } from "../../../src/substrates/e2b/sdk.js";
 
-import { buildFillDesktopWindowCommand } from "../src/substrates/e2b/desktop-browser.js";
+import { buildFillDesktopWindowCommand } from "../../../src/substrates/e2b/desktop-browser.js";
 import {
   captureDesktopBrowserGeometry,
   parseXwininfoGeometry,
-} from "../src/substrates/e2b/desktop-geometry.js";
+} from "../../../src/substrates/e2b/desktop-geometry.js";
 
 const measuredMaximized = readFileSync(
-  new URL("./fixtures/desktop-geometry/xwininfo-maximized.txt", import.meta.url),
+  new URL("../../fixtures/desktop-geometry/xwininfo-maximized.txt", import.meta.url),
   "utf8",
 );
 describe("physical X client measurements", () => {

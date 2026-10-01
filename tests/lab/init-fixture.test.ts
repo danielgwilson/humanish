@@ -5,7 +5,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
 
-import { runInit } from "../src/lab/init.js";
+import { runInit } from "../../src/lab/init.js";
 
 const fixturePath = path.resolve("fixtures/minimal-app");
 const execFileAsync = promisify(execFile);

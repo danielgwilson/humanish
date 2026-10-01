@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { starterFiles } from "../src/lab/init-templates.js";
+import { starterFiles } from "../../src/lab/init-templates.js";
 
 describe("humanish format stack", () => {
   it("scaffolds humanish-owned authored source as .yaml, not .yml", () => {

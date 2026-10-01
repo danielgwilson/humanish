@@ -10,9 +10,9 @@
 // nobody should do. So the writer redacts, exactly as the terminal lane already did.
 import { describe, expect, it } from "vitest";
 
-import { buildObserverData } from "../src/observer/data.js";
-import { containsSensitive, redactText } from "../src/evidence/redaction.js";
-import type { RunBundle } from "../src/run/bundle.js";
+import { buildObserverData } from "../../src/observer/data.js";
+import { containsSensitive, redactText } from "../../src/evidence/redaction.js";
+import type { RunBundle } from "../../src/run/bundle.js";
 
 // A composed lane prompt of the shape the report describes: authored text naming a runtime inbox.
 const LANE_PROMPT = [

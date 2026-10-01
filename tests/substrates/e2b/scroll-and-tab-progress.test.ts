@@ -13,7 +13,7 @@
 import { describe, expect, it } from "vitest";
 import { PNG } from "pngjs";
 
-import type { ActorCapabilities, ActorPersonaRef } from "../src/actors/contract.js";
+import type { ActorCapabilities, ActorPersonaRef } from "../../../src/actors/contract.js";
 import {
   runComputerUseLoop,
   type CuaAction,
@@ -22,15 +22,15 @@ import {
   type CuaProvider,
   type CuaTurn,
   type CuaTurnRequest,
-} from "../src/actors/computer-use/loop.js";
-import { makeChromeBrowserStateObserver } from "../src/substrates/e2b/desktop-cdp.js";
-import { makeChromeDesktopGeometryObserver } from "../src/substrates/e2b/desktop-geometry.js";
-import type { E2BDesktopSandbox } from "../src/substrates/e2b/sdk.js";
+} from "../../../src/actors/computer-use/loop.js";
+import { makeChromeBrowserStateObserver } from "../../../src/substrates/e2b/desktop-cdp.js";
+import { makeChromeDesktopGeometryObserver } from "../../../src/substrates/e2b/desktop-geometry.js";
+import type { E2BDesktopSandbox } from "../../../src/substrates/e2b/sdk.js";
 import {
   createE2BDesktopExecutor,
   type E2BDesktopLike,
-} from "../src/substrates/e2b/desktop-executor.js";
-import { defaultRedactionHooks } from "../src/evidence/redaction.js";
+} from "../../../src/substrates/e2b/desktop-executor.js";
+import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
 
 const FAKE_CAPS: ActorCapabilities = {
   headless: true,

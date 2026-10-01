@@ -1,13 +1,13 @@
 import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { buildRunCostSummary } from "../src/run/cost-summary.js";
-import { observeDesktopResources } from "../src/substrates/e2b/desktop-resources.js";
-import { estimateAllocatedDesktopCost } from "../src/run/pricing.js";
+import { buildRunCostSummary } from "../../src/run/cost-summary.js";
+import { observeDesktopResources } from "../../src/substrates/e2b/desktop-resources.js";
+import { estimateAllocatedDesktopCost } from "../../src/run/pricing.js";
 
 const captured = JSON.parse(
   readFileSync(
-    new URL("./fixtures/e2b-desktop-resources/observed-resources.json", import.meta.url),
+    new URL("../fixtures/e2b-desktop-resources/observed-resources.json", import.meta.url),
     "utf8",
   ),
 ) as Array<{ cpuCount: number; memoryMB: number }>;
