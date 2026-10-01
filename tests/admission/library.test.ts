@@ -20,12 +20,6 @@ import { runTerminalProductLab } from "../../src/routes/terminal/route.js";
 import { lab, SCENARIO_YAML } from "./fixtures.js";
 import { parserCases, type AdmissionCase, type AdmissionOptions } from "./parser-cases.js";
 import { routeCases } from "./route-cases.js";
-import { allowDeprecationsInThisFile } from "../helpers/deprecations.js";
-
-allowDeprecationsInThisFile(
-  "HUMANISH_RUN_LAB_OPTION_DEPRECATED",
-  "This file pins runLab against the route runners, which take the same hook bags.",
-);
 
 const subprocess = vi.hoisted(() => ({ calls: 0 }));
 

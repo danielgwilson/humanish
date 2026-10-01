@@ -18,6 +18,7 @@ import type { LabPlan, PlanRefusal } from "./lab/plan-types.js";
 import {
   normalizeRunLabOptions,
   optionRefusalOutcome,
+  removedOptionRefusal,
   type RunLabDriving,
   type RunLabHomes,
 } from "./lab/run-lab-options.js";
@@ -52,9 +53,27 @@ import { isLocalBrowserLab, localBrowserDefaults } from "./substrates/local/runt
  * hook bags before anything runs. Each route closes the run it started on every exit through its
  * own run scope (`src/run/run.ts`).
  */
-export async function runLab(config: LabConfig, options: RunLabOptions): Promise<LabOutcome> {
+export async function runLab(
+  config: LabConfig,
+  options: InternalRunLabOptions,
+): Promise<LabOutcome> {
   const prepared = await prepareLab(config, options);
   return prepared.ok ? prepared.run() : prepared.outcome;
+}
+
+/**
+ * runLab as the package exports it (`src/index.ts`): the public options only. A JavaScript caller
+ * that passes a field RunLabOptions no longer has is refused in the route's own result envelope
+ * before anything runs.
+ */
+export async function runPackageLab(
+  config: LabConfig,
+  options: RunLabOptions,
+): Promise<LabOutcome> {
+  const removed = removedOptionRefusal(options);
+  if (removed === undefined) return runLab(config, options);
+  const lab = localBrowserDefaults(config);
+  return optionRefusalOutcome(lab, routeOf(lab), options, removed);
 }
 
 /** A lab planned once: the route's refusal, or the run of its plan. */
@@ -72,7 +91,10 @@ export type PreparedLab =
  * plan is made with them; with createDesktopLane the caller provides the desktop, and with
  * buildExecutor it drives the app in process and needs none.
  */
-export async function prepareLab(config: LabConfig, options: RunLabOptions): Promise<PreparedLab> {
+export async function prepareLab(
+  config: LabConfig,
+  options: InternalRunLabOptions,
+): Promise<PreparedLab> {
   const lab = localBrowserDefaults(config);
   const route = routeOf(lab);
   const normalized = normalizeRunLabOptions(lab, route, options);
@@ -132,7 +154,7 @@ export async function prepareLab(config: LabConfig, options: RunLabOptions): Pro
 /** The route's admit function for a plan, with the route's input from the run's options. */
 async function admitPlan(
   config: LabConfig,
-  options: RunLabOptions,
+  options: InternalRunLabOptions,
   plan: LabPlan,
 ): Promise<AdmittedPlan> {
   switch (plan.route) {
@@ -152,7 +174,7 @@ async function admitPlan(
 /** The refused route's own result, with the envelope and analysis record its runner returns. */
 async function refusalOutcome(
   config: LabConfig,
-  options: RunLabOptions,
+  options: InternalRunLabOptions,
   refusal: PlanRefusal,
 ): Promise<LabOutcome> {
   // Spend-safe default: a lab goes live only when the config (or CLI) says so.
@@ -205,19 +227,14 @@ async function refusalOutcome(
 }
 
 /**
- * Runtime overrides from CLI flags, the typed homes (`RunLabHomes`, `RunLabDriving`) and the older
- * route hook bags they replace. Each wins over the config when provided.
+ * What a package caller passes to runLab: the run's settings and the typed homes (`RunLabHomes`,
+ * `RunLabDriving`). Each wins over the config when provided.
  */
 export type RunLabOptions = RunLabBase & RunLabHomes & RunLabDriving;
 
 interface RunLabBase {
-  automaticAnalysis?: AutomaticAnalysisHooks;
   cwd: string;
   runId?: string;
-  /** Which manifest this run came from (#455): threaded to the route so the run's own
-   *  status record and bundle can say which lab produced it. Absent for library callers who
-   *  hand a LabConfig directly — the run is then honestly lab-less rather than guessed. */
-  lab?: RunLabProvenance;
   dryRun?: boolean;
   open?: boolean;
   /** Participant count override: preview participants or computer-use desktops. */
@@ -230,6 +247,25 @@ interface RunLabBase {
     laneIds?: string[];
   };
   onObserverReady?: (observer: ObserverResult & { ok: true }) => Promise<void> | void;
+}
+
+/** runLab's options inside the package: the public ones plus what only the CLI and tests set. */
+export type InternalRunLabOptions = RunLabOptions & RunLabInternals;
+
+interface RunLabInternals {
+  /** Which manifest this run came from (#455): threaded to the route so the run's own
+   *  status record and bundle can say which lab produced it. Absent for library callers who
+   *  hand a LabConfig directly — the run is then honestly lab-less rather than guessed. */
+  lab?: RunLabProvenance;
+  /**
+   * CONFIG-DECLARED scorer provenance (#316), forwarded alongside whichever hooks bag carries the
+   * loaded scorer. Its presence is the "declared" marker the terminal route reads to flip a
+   * status:"fail" verdict; the browser routes stamp it as evidence (they already flip). Core-computed
+   * (path + digest), never adopter-supplied; absent for library callers.
+   */
+  scorerProvenance?: RunScorerProvenance;
+  // The route hook bags: test seams, and the bags each route still reads its typed homes from.
+  automaticAnalysis?: AutomaticAnalysisHooks;
   /** Computer-use route hooks: subject provisioning (library callers) + test DI seams. */
   cuaHooks?: CuaActorLabHooks;
   /** Scripted-browser route hooks: browser injection + test DI seams (mirror of cuaHooks). */
@@ -238,13 +274,6 @@ interface RunLabBase {
   terminalHooks?: TerminalProductLabHooks;
   /** Shared-world route hooks: sandbox / runSession / checkpoint DI seams (mirror of cuaHooks). */
   sharedWorldHooks?: SharedWorldLabHooks;
-  /**
-   * CONFIG-DECLARED scorer provenance (#316), forwarded alongside whichever hooks bag carries the
-   * loaded scorer. Its presence is the "declared" marker the terminal route reads to flip a
-   * status:"fail" verdict; the browser routes stamp it as evidence (they already flip). Core-computed
-   * (path + digest), never adopter-supplied; absent for library callers.
-   */
-  scorerProvenance?: RunScorerProvenance;
 }
 
 /** A run's result and the route it ran on. */

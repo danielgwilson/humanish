@@ -24,9 +24,9 @@ reaches through `admitPlan` (`src/run-lab.ts`):
 
 `runComputerUsePlan` (`src/routes/computer-use/route.ts`), `runTerminalPlan`
 (`src/routes/terminal/route.ts`) and `runSharedWorldPlan` (`src/routes/shared-world/route.ts`)
-admit and run in one call. Only tests and the deprecated runners call them: `runCuaActorLab`
-(`src/deprecated.ts`), `runTerminalProductLab` (`src/deprecated.ts`) and `runConcurrentSharedWorld`
-(`src/deprecated.ts`), through their route modules. `runLab` and the CLI do not.
+admit and run in one call. Only tests call them, directly or through the route modules'
+`runCuaActorLab`, `runTerminalProductLab` and `runConcurrentSharedWorld`. `runLab` and the CLI do
+not.
 
 1. **Parse.** `runLabCommand` (`src/cli/commands/lab-run.ts`) calls `resolveLabManifest`
    (`src/lab/discover.ts`), which calls `parseLabConfig` (`src/lab/config.ts`). It rejects unknown

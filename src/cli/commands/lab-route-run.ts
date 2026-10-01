@@ -1,12 +1,12 @@
 // What a route's CLI setup hands the lab command: the runLab options it chose and how it presents
 // the outcome. runRoute plans the lab once and runs it between the two.
 
-import { type LabOutcome, prepareLab, type RunLabOptions } from "../../run-lab.js";
+import { type InternalRunLabOptions, type LabOutcome, prepareLab } from "../../run-lab.js";
 import type { LabConfig } from "../../lab/types.js";
 import type { LoadedAdapterScorer } from "./lab-scorer.js";
 
 export interface RouteRun {
-  readonly options: RunLabOptions;
+  readonly options: InternalRunLabOptions;
   present(outcome: LabOutcome): Promise<void>;
   /** Handles an error runLab threw, and rethrows any it does not handle. */
   onRunError?(error: unknown): Promise<void>;

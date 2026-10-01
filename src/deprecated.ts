@@ -8,8 +8,6 @@ import {
   type CuaActorSessionOptions,
 } from "./actors/computer-use/actor.js";
 import type { CuaLoopResult } from "./actors/computer-use/loop.js";
-import type { AutomaticAnalysisHooks as AnalysisHooks } from "./analysis/automatic-completion.js";
-import type { BrowserLabAdapterHooks as BrowserAdapterHooks } from "./lab/adapter-extension.js";
 import { resolveLabDryRun as labDryRun, type LabBackend as Backend } from "./lab/plan.js";
 import {
   actorResolvesToTerminal as resolvesToTerminal,
@@ -24,30 +22,10 @@ import {
   externalPublicSharedWorldValidationReason as externalPublicSharedWorldReason,
   sharedWorldValidationReason as sharedWorldReason,
 } from "./lab/validation.js";
-import { runCuaActorLab as cuaActorLab } from "./routes/computer-use/route.js";
-import type {
-  CuaActorLabHooks as CuaHooks,
-  CuaActorLabResult as CuaResult,
-  RunCuaActorLabOptions as CuaOptions,
-} from "./routes/computer-use/types.js";
-import { runScriptedBrowserLab as scriptedBrowserLab } from "./routes/scripted/route.js";
-import type {
-  RunScriptedBrowserLabOptions as ScriptedOptions,
-  ScriptedBrowserLabHooks as ScriptedHooks,
-  ScriptedBrowserLabResult as ScriptedResult,
-} from "./routes/scripted/types.js";
-import { runConcurrentSharedWorld as concurrentSharedWorld } from "./routes/shared-world/route.js";
-import type {
-  ConcurrentSharedWorldLabResult as SharedWorldResult,
-  RunConcurrentSharedWorldLabOptions as SharedWorldOptions,
-  SharedWorldLabHooks as SharedWorldHooks,
-} from "./routes/shared-world/types.js";
-import { runTerminalProductLab as terminalProductLab } from "./routes/terminal/route.js";
-import type {
-  RunTerminalProductLabOptions as TerminalOptions,
-  TerminalProductLabHooks as TerminalHooks,
-  TerminalProductLabResult as TerminalResult,
-} from "./routes/terminal/types.js";
+import type { CuaActorLabResult as CuaResult } from "./routes/computer-use/types.js";
+import type { ScriptedBrowserLabResult as ScriptedResult } from "./routes/scripted/types.js";
+import type { ConcurrentSharedWorldLabResult as SharedWorldResult } from "./routes/shared-world/types.js";
+import type { TerminalProductLabResult as TerminalResult } from "./routes/terminal/types.js";
 import { runDryRun as dryRun } from "./run/dry-run.js";
 import type { RunOptions as PreviewOptions, RunResult as PreviewResult } from "./run/results.js";
 import type { SubjectPhaseEvent as PhaseEvent } from "./subject/steps.js";
@@ -75,30 +53,6 @@ export function runCuaActorSession(options: CuaActorSessionOptions): Promise<Cua
     "runComputerUseLoop with createOpenAiResponsesProvider({ singleDispatch: true }) (the strict-spend composition in docs/contracts/schemas.md)",
   );
   return cuaActorSession(options);
-}
-
-/** @deprecated Use `runLab(config, options)`; its result is `LabResult<"computer-use">`. */
-export function runCuaActorLab(options: CuaOptions): Promise<CuaResult> {
-  deprecated("runCuaActorLab", RUN_LAB);
-  return cuaActorLab(options);
-}
-
-/** @deprecated Use `runLab(config, options)`; its result is `LabResult<"scripted">`. */
-export function runScriptedBrowserLab(options: ScriptedOptions): Promise<ScriptedResult> {
-  deprecated("runScriptedBrowserLab", RUN_LAB);
-  return scriptedBrowserLab(options);
-}
-
-/** @deprecated Use `runLab(config, options)`; its result is `LabResult<"terminal">`. */
-export function runTerminalProductLab(options: TerminalOptions): Promise<TerminalResult> {
-  deprecated("runTerminalProductLab", RUN_LAB);
-  return terminalProductLab(options);
-}
-
-/** @deprecated Use `runLab(config, options)`; its result is `LabResult<"shared-world">`. */
-export function runConcurrentSharedWorld(options: SharedWorldOptions): Promise<SharedWorldResult> {
-  deprecated("runConcurrentSharedWorld", RUN_LAB);
-  return concurrentSharedWorld(options);
 }
 
 /** @deprecated Use `runLab(config, options)` on a `this-repo` lab; its result is `LabResult<"preview">`. */
@@ -182,20 +136,12 @@ export const MAX_CUA_LANES = laneCap;
 /** @deprecated Use `LabRoute`. `LabOutcome.backend` and this type go in the next minor. */
 export type LabBackend = Backend;
 
-/** @deprecated Use `RunLabOptions` with `runLab`. */
-export type RunCuaActorLabOptions = CuaOptions;
 /** @deprecated Use `LabResult<"computer-use">`. */
 export type CuaActorLabResult = CuaResult;
-/** @deprecated Use `RunLabOptions` with `runLab`. */
-export type RunScriptedBrowserLabOptions = ScriptedOptions;
 /** @deprecated Use `LabResult<"scripted">`. */
 export type ScriptedBrowserLabResult = ScriptedResult;
-/** @deprecated Use `RunLabOptions` with `runLab`. */
-export type RunTerminalProductLabOptions = TerminalOptions;
 /** @deprecated Use `LabResult<"terminal">`. */
 export type TerminalProductLabResult = TerminalResult;
-/** @deprecated Use `RunLabOptions` with `runLab`. */
-export type RunConcurrentSharedWorldLabOptions = SharedWorldOptions;
 /** @deprecated Use `LabResult<"shared-world">`. */
 export type ConcurrentSharedWorldLabResult = SharedWorldResult;
 /** @deprecated Use `RunLabOptions` with `runLab`. */
@@ -203,17 +149,5 @@ export type RunOptions = PreviewOptions;
 /** @deprecated Use `LabResult<"preview">`. */
 export type RunResult = PreviewResult;
 
-/** @deprecated Use the typed homes on `RunLabOptions` (`scorer`, `createProvider`, `inProcess`, `prepareDesktop`, `env`, `onEvent`, `onStream`). */
-export type CuaActorLabHooks = CuaHooks;
-/** @deprecated Use the typed homes on `RunLabOptions` (`prepareDesktop`, `env`). */
-export type ScriptedBrowserLabHooks = ScriptedHooks;
-/** @deprecated Use the typed homes on `RunLabOptions` (`scorer`, `env`). */
-export type TerminalProductLabHooks = TerminalHooks;
-/** @deprecated Use the typed homes on `RunLabOptions` (`scorer`, `prepareDesktop`, `env`, `onEvent`, `onStream`). */
-export type SharedWorldLabHooks = SharedWorldHooks;
-/** @deprecated Use `RunLabOptions.scorer`, an `AdapterScorerModule`. */
-export type BrowserLabAdapterHooks = BrowserAdapterHooks;
 /** @deprecated Use the `subject-phase` `LabEvent` through `RunLabOptions.onEvent`. */
 export type SubjectPhaseEvent = PhaseEvent;
-/** @deprecated Use `RunLabOptions.onEvent` (`analysis-started`, `analysis-finished`) and `analysisSignal`. */
-export type AutomaticAnalysisHooks = AnalysisHooks;

@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
+import { mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CuaExecutor, CuaProvider } from "../../src/actors/computer-use/loop.js";
 import type { AdapterScorerModule } from "../../src/lab/adapter-scorer-loader.js";
 import { parseLabConfig } from "../../src/lab/config.js";
-import { runLab, type RunLabOptions } from "../../src/run-lab.js";
+import { runLab, type InternalRunLabOptions } from "../../src/run-lab.js";
 import { routeOf } from "../../src/lab/plan.js";
 import type { LabEvent } from "../../src/lab/run-lab-events.js";
 import { normalizeRunLabOptions } from "../../src/lab/run-lab-options.js";
@@ -15,14 +15,7 @@ import type { LabConfig } from "../../src/lab/types.js";
 import type { CuaParticipantPlan } from "../../src/routes/computer-use/types.js";
 import type { CuaLaneSpec } from "../../src/routes/computer-use/legacy-lane-spec.js";
 import type { E2BDesktopSandbox } from "../../src/substrates/e2b/sdk.js";
-import { trackRuntimeStreams } from "../../src/routes/computer-use/live-flush.js";
 import { lab, type BaseName, type Patch } from "../admission/fixtures.js";
-import { allowDeprecationsInThisFile } from "../helpers/deprecations.js";
-
-allowDeprecationsInThisFile(
-  "HUMANISH_RUN_LAB_OPTION_DEPRECATED",
-  "This file tests how runLab maps each deprecated option to its home.",
-);
 
 function config(base: BaseName, patch?: Patch): LabConfig {
   const parsed = parseLabConfig(lab(base, patch));
@@ -47,21 +40,24 @@ const scorer: AdapterScorerModule = {
 const prepareDesktop = async (): Promise<void> => undefined;
 const desktop = {} as E2BDesktopSandbox;
 
-function normalize(labConfig: LabConfig, options: Partial<RunLabOptions>) {
+function normalize(labConfig: LabConfig, options: Partial<InternalRunLabOptions>) {
   return normalizeRunLabOptions(labConfig, routeOf(labConfig), {
     cwd: "/tmp/unused",
     ...options,
-  } as RunLabOptions);
+  } as InternalRunLabOptions);
 }
 
-function normalized(labConfig: LabConfig, options: Partial<RunLabOptions>): RunLabOptions {
+function normalized(
+  labConfig: LabConfig,
+  options: Partial<InternalRunLabOptions>,
+): InternalRunLabOptions {
   const result = normalize(labConfig, options);
   if (!result.ok) throw new Error(result.message);
   return result.options;
 }
 
 describe("an option the route cannot honor is refused before anything runs", () => {
-  const cases: [string, () => LabConfig, Partial<RunLabOptions>, string | undefined][] = [
+  const cases: [string, () => LabConfig, Partial<InternalRunLabOptions>, string | undefined][] = [
     ["preview scorer", () => config("preview"), { scorer }, "scorer"],
     ["preview createProvider", () => config("preview"), { createProvider }, "createProvider"],
     ["preview inProcess", () => config("preview"), { inProcess, createProvider }, "createProvider"],
@@ -152,61 +148,15 @@ describe("an option the route cannot honor is refused before anything runs", () 
   });
 });
 
-describe("a new option set together with the field it replaces is refused", () => {
-  const onEvent = (): void => undefined;
-  const cases: [string, Partial<RunLabOptions>][] = [
-    [
-      "onStream / sharedWorldHooks.onRuntimeStreamReady",
-      { onStream: () => undefined, sharedWorldHooks: { onRuntimeStreamReady: () => undefined } },
-    ],
-    ["env / cuaHooks.env", { env: {}, cuaHooks: { env: {} } }],
-    ["env / sharedWorldHooks.env", { env: {}, sharedWorldHooks: { env: {} } }],
-    ["scorer / cuaHooks.score", { scorer, cuaHooks: { score: scorer.score! } }],
-    [
-      "scorer / terminalHooks.deriveFeedback",
-      { scorer, terminalHooks: { deriveFeedback: () => [] } },
-    ],
-    [
-      "prepareDesktop / scriptedHooks.prepareDesktop",
-      { prepareDesktop, scriptedHooks: { prepareDesktop } },
-    ],
-    ["onEvent / cuaHooks.onPhase", { onEvent, cuaHooks: { onPhase: () => undefined } }],
-    [
-      "onEvent / automaticAnalysis.onStart",
-      { onEvent, automaticAnalysis: { onStart: () => undefined } },
-    ],
-    [
-      "onStream / cuaHooks.onRuntimeStreamEnded",
-      { onStream: onEvent, cuaHooks: { onRuntimeStreamEnded: onEvent } },
-    ],
-    [
-      "analysisSignal / automaticAnalysis.deps.signal",
-      {
-        analysisSignal: AbortSignal.abort(),
-        automaticAnalysis: { deps: { signal: AbortSignal.abort() } },
-      },
-    ],
-    [
-      "createProvider / cuaHooks.buildProvider",
-      { createProvider, cuaHooks: { buildProvider: createProvider } },
-    ],
-    [
-      "inProcess / cuaHooks.buildExecutor",
-      { inProcess, createProvider, cuaHooks: { buildExecutor: inProcess.executor } },
-    ],
-    [
-      "rerun.participantIds / rerun.laneIds",
-      { rerun: { sourceRunId: "r", participantIds: ["a"], laneIds: ["a"] } },
-    ],
-  ];
-
-  it.each(cases)("%s", (name, options) => {
-    const [home, old] = name.split(" / ");
-    const result = normalize(config("cuAppUrl"), options);
+describe("rerun.laneIds set beside rerun.participantIds is refused", () => {
+  it("names both fields", () => {
+    const result = normalize(config("cuAppUrl"), {
+      rerun: { sourceRunId: "r", participantIds: ["a"], laneIds: ["a"] },
+    });
     expect(result).toMatchObject({ ok: false, code: "HUMANISH_LAB_OPTION_CONFLICT" });
     if (result.ok) return;
-    expect(result.message).toContain(`RunLabOptions.${home}`);
-    expect(result.message).toContain(old);
+    expect(result.message).toContain("RunLabOptions.rerun.participantIds");
+    expect(result.message).toContain("rerun.laneIds");
   });
 });
 
@@ -243,7 +193,7 @@ describe("runLab returns an option refusal in the route's own envelope and write
           throw new Error("no desktop in this test");
         },
       },
-    } as RunLabOptions);
+    } as InternalRunLabOptions);
 
     expect(outcome.backend).toBe(backend);
     expect(outcome.result).toMatchObject({
@@ -283,8 +233,7 @@ describe("runLab returns an option refusal in the route's own envelope and write
   it("a conflict comes back the same way", async () => {
     const outcome = await runLab(config("cuAppUrl"), {
       cwd,
-      env: {},
-      cuaHooks: { env: {} },
+      rerun: { sourceRunId: "r", participantIds: ["a"], laneIds: ["a"] },
     });
     expect(outcome.result.error).toMatchObject({ code: "HUMANISH_LAB_OPTION_CONFLICT" });
     expect(await readdir(cwd)).toEqual([]);
@@ -646,73 +595,6 @@ describe("an onEvent warning carries no known secret", () => {
   });
 });
 
-describe("a hook bag that is a class instance keeps its methods", () => {
-  class FailingScorer {
-    readonly #status = "fail" as const;
-    score() {
-      return {
-        schema: "humanish.adapter-score.v1" as const,
-        namespace: "class-bag",
-        status: this.#status,
-        score: 0,
-        summary: "failed by a class method",
-      };
-    }
-  }
-
-  it("passes a bag no new option maps into through as the same object", () => {
-    const bag = new FailingScorer();
-    expect(normalized(config("cuAppUrl"), { cuaHooks: bag }).cuaHooks).toBe(bag);
-  });
-
-  it("keeps prototype methods bound to the instance when a new option maps into the bag", () => {
-    const hooks = normalized(config("cuAppUrl"), {
-      cuaHooks: new FailingScorer(),
-      env: {},
-    }).cuaHooks!;
-    expect(hooks.env).toEqual({});
-    expect(hooks.score!({} as never)).toMatchObject({ status: "fail" });
-  });
-
-  it("keeps a class-instance automaticAnalysis when analysisSignal maps into it", async () => {
-    class Analysis {
-      readonly #calls: string[] = [];
-      async run() {
-        this.#calls.push("run");
-        return { state: "failed", reason: "synthetic" } as never;
-      }
-    }
-    const signal = AbortSignal.abort();
-    const analysis = normalized(config("cuAppUrl"), {
-      automaticAnalysis: new Analysis(),
-      analysisSignal: signal,
-    }).automaticAnalysis!;
-    expect(analysis.deps?.signal).toBe(signal);
-    const run = analysis.run as unknown as () => Promise<unknown>;
-    await expect(run()).resolves.toMatchObject({ state: "failed" });
-  });
-
-  it("a computer-use dry run keeps a class-instance scorer's fail", async () => {
-    const cwd = await mkdtemp(path.join(tmpdir(), "humanish-class-bag-"));
-    try {
-      const outcome = await runLab(config("cuAppUrl"), {
-        cwd,
-        dryRun: true,
-        runId: "class-bag",
-        cuaHooks: new FailingScorer(),
-      });
-      // A valid fail from a browser-route scorer fails the run.
-      expect(outcome.result.ok).toBe(false);
-      const bundle = JSON.parse(
-        await readFile(path.join(cwd, ".humanish", "runs", "class-bag", "run.json"), "utf8"),
-      ) as { adapterScore?: { status: string } };
-      expect(bundle.adapterScore?.status).toBe("fail");
-    } finally {
-      await rm(cwd, { recursive: true, force: true });
-    }
-  });
-});
-
 describe("an onEvent failure never escapes", () => {
   const plan = { lanes: [] } as unknown as CuaParticipantPlan;
   const fallback = "RunLabOptions.onEvent failed on plan: the thrown value has no message";
@@ -879,36 +761,6 @@ describe("the scrub covers every env the run could read", () => {
   });
 });
 
-describe("a bag an option maps into is forwarded, not copied", () => {
-  it("keeps a frozen bag's symbol state for its own methods", async () => {
-    const state = Symbol("executor");
-    const bag = Object.freeze({
-      [state]: executor,
-      buildExecutor(this: Record<symbol, CuaExecutor>) {
-        return Promise.resolve(this[state]!);
-      },
-      buildProvider: createProvider,
-    });
-    const hooks = normalized(config("cuLocalApp"), { cuaHooks: bag, env: {} }).cuaHooks!;
-    expect(hooks.env).toEqual({});
-    await expect(hooks.buildExecutor!({} as never)).resolves.toBe(executor);
-  });
-
-  it("does not read an accessor the route never asks for", () => {
-    class Hooks {
-      get loadDesktopModule(): never {
-        throw new Error("accessor read during normalization");
-      }
-    }
-    const hooks = normalized(config("cuAppUrl"), {
-      cuaHooks: new Hooks() as never,
-      env: {},
-    }).cuaHooks!;
-    expect(hooks.env).toEqual({});
-    expect(() => hooks.loadDesktopModule).toThrow("accessor read during normalization");
-  });
-});
-
 describe("the scrub covers the env the route received", () => {
   it("scrubs a value the caller changed after normalization", () => {
     const initial = "synthetic-initial-password-42";
@@ -924,100 +776,5 @@ describe("the scrub covers the env the route received", () => {
     expect(result.options.cuaHooks!.env!.APP_PASSWORD).toBe(initial);
     result.options.cuaHooks!.onPreflight!({ lanes: [] } as unknown as CuaParticipantPlan);
     expect(result.warnings[0]).not.toContain(initial);
-  });
-});
-
-describe("a legacy-only call never reads the bag's accessors", () => {
-  class LateHooks {
-    #ready = false;
-    onPreflight(): void {
-      this.#ready = true;
-    }
-    get score(): () => never {
-      if (!this.#ready) throw new Error("score read before onPreflight");
-      return () => {
-        throw new Error("unused");
-      };
-    }
-    get buildExecutor(): undefined {
-      throw new Error("buildExecutor read during normalization");
-    }
-  }
-
-  it("normalizes { cwd, cuaHooks } without evaluating a getter", () => {
-    const bag = new LateHooks();
-    const result = normalize(config("cuAppUrl"), { cuaHooks: bag as never });
-    expect(result.ok).toBe(true);
-    if (result.ok) expect(result.options.cuaHooks).toBe(bag);
-  });
-
-  it("reads no legacy getter for a new option that is not its replacement", () => {
-    const result = normalize(config("cuAppUrl"), {
-      cuaHooks: new LateHooks() as never,
-      onStream: () => undefined,
-      analysisSignal: AbortSignal.abort(),
-    });
-    expect(result.ok).toBe(true);
-  });
-});
-
-describe("a class bag keeps its methods through the routes' wrapping", () => {
-  class InProcessHooks {
-    readonly #executor = executor;
-    buildExecutor() {
-      return Promise.resolve(this.#executor);
-    }
-    buildProvider() {
-      return Promise.resolve(provider);
-    }
-  }
-
-  it("keeps them when a new option maps in and the stream tracker wraps the bag", async () => {
-    const mapped = normalized(config("cuLocalApp"), {
-      cuaHooks: new InProcessHooks() as never,
-      env: {},
-    }).cuaHooks!;
-    expect({ ...mapped }.buildExecutor).toBeTypeOf("function");
-    const tracked = trackRuntimeStreams(mapped).hooks;
-    await expect(tracked.buildExecutor!({} as never)).resolves.toBe(executor);
-    await expect(tracked.buildProvider!({} as never)).resolves.toBe(provider);
-  });
-
-  it("keeps them when the stream tracker wraps an untouched bag", async () => {
-    const tracked = trackRuntimeStreams(new InProcessHooks() as never).hooks;
-    await expect(tracked.buildExecutor!({} as never)).resolves.toBe(executor);
-    expect(tracked.onRuntimeStreamReady).toBeTypeOf("function");
-  });
-});
-
-describe("the forwarding object reaches every member a bag can have", () => {
-  it("binds an own class-field function to the bag, so its private field works", async () => {
-    class FieldHooks {
-      readonly #executor = executor;
-      buildExecutor = function (this: FieldHooks) {
-        return Promise.resolve(this.#executor);
-      };
-      buildProvider = async () => provider;
-    }
-    const hooks = normalized(config("cuLocalApp"), {
-      cuaHooks: new FieldHooks() as never,
-      env: {},
-    }).cuaHooks!;
-    await expect(hooks.buildExecutor!({} as never)).resolves.toBe(executor);
-    await expect(
-      trackRuntimeStreams(new FieldHooks() as never).hooks.buildExecutor!({} as never),
-    ).resolves.toBe(executor);
-  });
-
-  it("forwards a declared member a proxy-backed bag answers without listing it", () => {
-    const onPreflight = vi.fn();
-    const bag = new Proxy(
-      {},
-      { get: (_target, key) => (key === "onPreflight" ? onPreflight : undefined) },
-    );
-    const plan = { lanes: [] } as unknown as CuaParticipantPlan;
-    normalized(config("cuAppUrl"), { cuaHooks: bag, env: {} }).cuaHooks!.onPreflight!(plan);
-    trackRuntimeStreams(bag).hooks.onPreflight!(plan);
-    expect(onPreflight).toHaveBeenCalledTimes(2);
   });
 });

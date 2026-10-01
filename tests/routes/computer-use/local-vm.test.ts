@@ -63,66 +63,6 @@ describe("local study bindings", () => {
     await rm(cwd, { recursive: true, force: true });
   });
 
-  it("keeps a class-instance caller bag's methods on re-entry", async () => {
-    class CallerHooks {
-      readonly #phases: string[] = [];
-      onPhase(event: { message: string }) {
-        this.#phases.push(event.message);
-      }
-      phases() {
-        return this.#phases;
-      }
-    }
-    const bag = new CallerHooks();
-    const study = prepareLocalVmStudy({
-      cwd,
-      config: localLab("openai-computer-use"),
-      dryRun: true,
-      cuaHooks: bag as never,
-    });
-
-    const hooks = studyHooks(study);
-    hooks.onPhase!(
-      { at: "", type: "phase", message: "cloned" },
-      {
-        laneId: "lane-01",
-        laneIndex: 0,
-        laneCount: 1,
-      },
-    );
-    expect(bag.phases()).toEqual(["cloned"]);
-  });
-
-  it("keeps a class-instance analysis bag's methods on re-entry", async () => {
-    const skipped = { state: "skipped", reason: "AUTOMATIC_ANALYSIS_DRY_RUN" } as never;
-    class AnalysisHooks {
-      readonly #calls: string[] = [];
-      onStart() {
-        this.#calls.push("start");
-      }
-      run() {
-        this.#calls.push("run");
-        return Promise.resolve(skipped);
-      }
-      calls() {
-        return this.#calls;
-      }
-    }
-    const bag = new AnalysisHooks();
-    const study = prepareLocalVmStudy({
-      cwd,
-      config: localLab("openai-computer-use"),
-      dryRun: true,
-      automaticAnalysis: bag,
-    });
-
-    studyHooks(study);
-    const analysis = study.options.automaticAnalysis!;
-    analysis.onStart!();
-    await expect(analysis.run!({} as never, {} as never, {} as never)).resolves.toBe(skipped);
-    expect(bag.calls()).toEqual(["start", "run"]);
-  });
-
   it("keeps the caller's hooks next to its own desktop lane", async () => {
     const score = vi.fn();
     const onPhase = vi.fn();

@@ -1,16 +1,15 @@
 // What each route's run takes from runLab's options: the shared run settings, the route's own
 // hook bag, the automatic-analysis hooks and the declared scorer's provenance.
 
-import type { RunLabOptions } from "../run-lab.js";
+import type { InternalRunLabOptions } from "../run-lab.js";
 import type { RunScorerProvenance } from "../run/bundle.js";
-import { HOOK_MEMBERS, withHookOverrides } from "./bag-overrides.js";
 import { scorerHooks } from "./run-lab-options.js";
 import type { ComputerUseRunInput } from "../routes/computer-use/types.js";
 import type { ScriptedRunInput } from "../routes/scripted/types.js";
 import type { SharedWorldRunInput } from "../routes/shared-world/types.js";
 import type { TerminalRunInput } from "../routes/terminal/types.js";
 
-export function computerUseInput(options: RunLabOptions): ComputerUseRunInput {
+export function computerUseInput(options: InternalRunLabOptions): ComputerUseRunInput {
   return {
     ...analysisOf(options),
     cwd: options.cwd,
@@ -25,7 +24,7 @@ export function computerUseInput(options: RunLabOptions): ComputerUseRunInput {
   };
 }
 
-export function scriptedInput(options: RunLabOptions): ScriptedRunInput {
+export function scriptedInput(options: InternalRunLabOptions): ScriptedRunInput {
   return {
     ...analysisOf(options),
     cwd: options.cwd,
@@ -35,7 +34,7 @@ export function scriptedInput(options: RunLabOptions): ScriptedRunInput {
   };
 }
 
-export function terminalInput(options: RunLabOptions): TerminalRunInput {
+export function terminalInput(options: InternalRunLabOptions): TerminalRunInput {
   return {
     ...analysisOf(options),
     cwd: options.cwd,
@@ -46,7 +45,7 @@ export function terminalInput(options: RunLabOptions): TerminalRunInput {
   };
 }
 
-export function sharedWorldInput(options: RunLabOptions): SharedWorldRunInput {
+export function sharedWorldInput(options: InternalRunLabOptions): SharedWorldRunInput {
   return {
     ...analysisOf(options),
     cwd: options.cwd,
@@ -59,7 +58,7 @@ export function sharedWorldInput(options: RunLabOptions): SharedWorldRunInput {
 }
 
 /** A scorer the CLI loads after the route's local checks, and the provenance it stamps on the run. */
-export type LateScorer = Pick<RunLabOptions, "scorer" | "scorerProvenance">;
+export type LateScorer = Pick<InternalRunLabOptions, "scorer" | "scorerProvenance">;
 
 /** The computer-use input with a scorer loaded after admission (see withLateScorer). */
 export function computerUseInputWithScorer(
@@ -67,7 +66,7 @@ export function computerUseInputWithScorer(
   late: LateScorer | undefined,
 ): ComputerUseRunInput {
   const hooks = late?.scorer === undefined ? undefined : scorerHooks(late.scorer);
-  return withLateScorer(input, HOOK_MEMBERS.cua, hooks, late);
+  return withLateScorer(input, hooks, late);
 }
 
 /** The shared-world input with a scorer loaded after admission (see withLateScorer). */
@@ -76,7 +75,7 @@ export function sharedWorldInputWithScorer(
   late: LateScorer | undefined,
 ): SharedWorldRunInput {
   const hooks = late?.scorer === undefined ? undefined : scorerHooks(late.scorer);
-  return withLateScorer(input, HOOK_MEMBERS.sharedWorld, hooks, late);
+  return withLateScorer(input, hooks, late);
 }
 
 /** The terminal input with a scorer loaded after admission. Terminal runs take no deriveArtifacts. */
@@ -92,37 +91,34 @@ export function terminalInputWithScorer(
           ...(scorer.score === undefined ? {} : { score: scorer.score }),
           ...(scorer.deriveFeedback === undefined ? {} : { deriveFeedback: scorer.deriveFeedback }),
         };
-  return withLateScorer(input, HOOK_MEMBERS.terminal, hooks, late);
+  return withLateScorer(input, hooks, late);
 }
 
 /**
  * `input` with the scorer's hooks over its hook bag, as normalizeRunLabOptions maps a scorer the
- * caller passes up front, and the scorer's provenance. The bag is wrapped, never rebuilt, so the
- * members the route's checks already read stay the same objects.
+ * caller passes up front, and the scorer's provenance. The bag's other members stay the same
+ * objects the route's checks already read.
  */
 function withLateScorer<I extends { hooks?: object; scorerProvenance?: RunScorerProvenance }>(
   input: I,
-  declared: readonly string[],
   hooks: Partial<NonNullable<I["hooks"]>> | undefined,
   late: LateScorer | undefined,
 ): I {
   if (late === undefined) return input;
   return {
     ...input,
-    ...(hooks === undefined
-      ? {}
-      : { hooks: withHookOverrides<NonNullable<I["hooks"]>>(input.hooks, declared, hooks) }),
+    ...(hooks === undefined ? {} : { hooks: { ...input.hooks, ...hooks } }),
     ...(late.scorerProvenance === undefined ? {} : { scorerProvenance: late.scorerProvenance }),
   };
 }
 
-function analysisOf(options: RunLabOptions) {
+function analysisOf(options: InternalRunLabOptions) {
   return options.automaticAnalysis === undefined
     ? {}
     : { automaticAnalysis: options.automaticAnalysis };
 }
 
-function scorerOf(options: RunLabOptions) {
+function scorerOf(options: InternalRunLabOptions) {
   return options.scorerProvenance === undefined
     ? {}
     : { scorerProvenance: options.scorerProvenance };

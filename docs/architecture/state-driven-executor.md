@@ -195,7 +195,7 @@ to reconstruct them.
 
 Pass `inProcess: { executor }` and `createProvider` in `RunLabOptions`. The type requires
 `createProvider` beside `inProcess`: a state executor returns no frame, so it needs a non-vision
-provider. With `inProcess` set, `runCuaActorLab` takes a branch that NEVER
+provider. With `inProcess` set, the computer-use route takes a branch that NEVER
 loads the E2B module, creates a sandbox, runs `prepareDesktop`, provisions a
 clone, opens a browser, or starts a stream. `sandboxId`/`streamUrl` stay
 undefined, so `result.sandbox` is omitted. That omission is the verifiable
@@ -207,8 +207,7 @@ Fail-closed guards, all BEFORE any key check, so a CLI invocation never sees a m
 - `HUMANISH_LAB_OPTION_UNSUPPORTED`: `inProcess` without `createProvider` (from JavaScript,
   where the type does not stop it), or on a subject other than `app-url` or `local-app`.
   `createProvider` alone is allowed; that is a model swap on the normal E2B route.
-- `HUMANISH_CUA_LAB_FANOUT_INVALID`: `inProcess`, or the deprecated `cuaHooks.buildExecutor`,
-  with more than one participant. The planner refuses it, because fan-out gives each participant
+- `HUMANISH_CUA_LAB_FANOUT_INVALID`: `inProcess` with more than one participant. The planner refuses it, because fan-out gives each participant
   its own E2B desktop and the in-process route has none.
 - `HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR`: a `subject.source: local-app` config run
   without `inProcess` (there is no built-in in-process driver yet). A structured error,
@@ -216,8 +215,8 @@ Fail-closed guards, all BEFORE any key check, so a CLI invocation never sees a m
 - `HUMANISH_CUA_LAB_LOCAL_DESKTOP_MISSING`: an `app-url` lab with `execution.target: local`
   and no local desktop. `runLab` gives a local browser study its desktop; a direct route
   call or an in-process executor on the same lab has none.
-- `HUMANISH_CUA_LAB_EXECUTOR_NO_PROVIDER`: the deprecated `cuaHooks.buildExecutor` without
-  `cuaHooks.buildProvider`.
+- `HUMANISH_CUA_LAB_EXECUTOR_NO_PROVIDER`: the route's internal executor hook without its
+  provider hook. A package caller gets `HUMANISH_LAB_OPTION_UNSUPPORTED` above instead.
 
 Key gating is route-aware: the in-process route uses the caller's OWN model and
 executor, so no `OPENAI_API_KEY`/`E2B_API_KEY` is required.

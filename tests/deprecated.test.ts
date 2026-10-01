@@ -12,22 +12,6 @@ vi.mock("../src/actors/computer-use/actor.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/actors/computer-use/actor.js")>()),
   runCuaActorSession: spy("runCuaActorSession"),
 }));
-vi.mock("../src/routes/computer-use/route.js", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../src/routes/computer-use/route.js")>()),
-  runCuaActorLab: spy("runCuaActorLab"),
-}));
-vi.mock("../src/routes/scripted/route.js", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../src/routes/scripted/route.js")>()),
-  runScriptedBrowserLab: spy("runScriptedBrowserLab"),
-}));
-vi.mock("../src/routes/terminal/route.js", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../src/routes/terminal/route.js")>()),
-  runTerminalProductLab: spy("runTerminalProductLab"),
-}));
-vi.mock("../src/routes/shared-world/route.js", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../src/routes/shared-world/route.js")>()),
-  runConcurrentSharedWorld: spy("runConcurrentSharedWorld"),
-}));
 vi.mock("../src/run/dry-run.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/run/dry-run.js")>()),
   runDryRun: spy("runDryRun"),
@@ -51,14 +35,7 @@ describe("a deprecated export", () => {
   });
 
   it("warns once per process, names its replacement and delegates", async () => {
-    const functions = [
-      "runCuaActorSession",
-      "runCuaActorLab",
-      "runScriptedBrowserLab",
-      "runTerminalProductLab",
-      "runConcurrentSharedWorld",
-      "runDryRun",
-    ] as const;
+    const functions = ["runCuaActorSession", "runDryRun"] as const;
     const options = { cwd: "/tmp/unused" } as never;
     for (let round = 0; round < 2; round += 1)
       for (const name of functions)

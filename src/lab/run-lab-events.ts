@@ -5,7 +5,7 @@
 import { redactText, scrubLiterals, toErrorMessage } from "../evidence/redaction.js";
 import type { CuaParticipantPlan } from "../routes/computer-use/types.js";
 import type { SubjectPhaseEvent } from "../subject/steps.js";
-import type { RunLabOptions } from "../run-lab.js";
+import type { InternalRunLabOptions } from "../run-lab.js";
 import type { LabRoute } from "./plan.js";
 import type { LabConfig } from "./types.js";
 
@@ -58,7 +58,7 @@ export type LabEvent =
  */
 export function knownSecretValues(
   config: LabConfig,
-  options: RunLabOptions,
+  options: InternalRunLabOptions,
   forwardedEnv: Readonly<Record<string, string | undefined>> | undefined,
 ): string[] {
   const sources = [

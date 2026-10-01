@@ -11,7 +11,6 @@ import { runConcurrentSharedWorld } from "../../src/routes/shared-world/route.js
 import { runTerminalProductLab } from "../../src/routes/terminal/route.js";
 import { runScriptedBrowserLab } from "../../src/routes/scripted/route.js";
 import * as synthetic from "../../src/run/dry-run.js";
-import { allowDeprecationsInThisTest } from "../helpers/deprecations.js";
 
 const fixtures = JSON.parse(
   await readFile(new URL("../fixtures/task-route-preflight/labs.json", import.meta.url), "utf8"),
@@ -65,10 +64,6 @@ describe("declared task protocol admission", () => {
   it.each(fixtures.filter(({ supported }) => !supported))(
     "refuses live runLab $name before any runner side effect",
     async ({ config, backend }) => {
-      allowDeprecationsInThisTest(
-        "HUMANISH_RUN_LAB_OPTION_DEPRECATED",
-        "The forbidden buildExecutor and buildProvider sentinels sit in every route's bag. Their homes, inProcess and createProvider, are refused on the other routes before the tasks check this test pins.",
-      );
       const parsed = validConfig(config);
       parsed.actors[0]!.tasks = tasks; // Direct library caller bypasses parse.
       const forbidden = vi.fn(async () => {

@@ -10,7 +10,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { parseLabConfig } from "../../src/lab/config.js";
 import { planLab } from "../../src/lab/plan.js";
 import type { Requirement } from "../../src/lab/plan-types.js";
-import { runLab, type RunLabOptions } from "../../src/run-lab.js";
+import { runLab, type InternalRunLabOptions } from "../../src/run-lab.js";
 import { lab, SCENARIO_YAML, type RawLab } from "./fixtures.js";
 import {
   PARTICIPANT_DESKTOP,
@@ -81,7 +81,7 @@ function options(cwd: string, env: Record<string, string>, loads: { count: numbe
     scriptedHooks: { loadDesktopModule: load, launchBrowser },
     terminalHooks: { loadModule: load },
     sharedWorldHooks: { loadDesktopModule: load },
-  } satisfies RunLabOptions;
+  } satisfies InternalRunLabOptions;
 }
 
 describe("plan.requirements keys", () => {

@@ -69,10 +69,10 @@ The runner owns instructions, model execution, spend guards, screenshots, trace
 persistence and participant outcome interpretation. It does not invoke desktop
 shell commands or manufacture E2B objects for an alternate executor. A local
 Firecracker study supplies its desktops through the `PARTICIPANT_DESKTOP` symbol on
-the hook bag (`src/routes/computer-use/participant-desktop.ts`), which no caller
-can set by name. The public `cuaHooks.createDesktopLane` is deprecated, warns once,
-and goes in the next minor; contract tests still inject a desktop through it. Neither
-bypasses CLI admission checks.
+the internal hook bag (`src/routes/computer-use/participant-desktop.ts`), which no
+package caller can set. Contract tests inject a desktop through the bag's
+`createDesktopLane`, which left the public options with the rest of `cuaHooks`.
+Neither bypasses CLI admission checks.
 
 Final evidence errors cannot skip desktop release. Existing bundle fields and
 desktop lifetime accounting retain their meanings; unconfirmed or retained
@@ -89,4 +89,4 @@ normal `CuaActorSessionOptions` executor or delegate to `runCuaActorSession`.
 Library calls directly using `runCuaActorSession({ desktop, executorOptions })`
 still work but warn as deprecated; use `runComputerUseLoop`. A custom in-process
 executor now goes through `RunLabOptions.inProcess`, which replaces the
-deprecated `cuaHooks.buildExecutor`.
+removed `cuaHooks.buildExecutor`.

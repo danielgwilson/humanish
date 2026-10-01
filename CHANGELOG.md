@@ -8,6 +8,26 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Removed
+
+- `RunLabOptions` no longer takes the route hook bags `cuaHooks`, `scriptedHooks`,
+  `terminalHooks`, `sharedWorldHooks` and `automaticAnalysis` (#PRNUM). Use the typed options:
+  `scorer`, `createProvider`, `inProcess`, `prepareDesktop`, `env`, `onEvent`, `onStream` and
+  `analysisSignal`. `docs/contracts/schemas.md`, "Library options", maps each bag field to its
+  option. A JavaScript caller that still passes a bag gets `HUMANISH_LAB_OPTION_UNSUPPORTED`
+  before anything runs, naming the options to use. `lab` and `scorerProvenance` are refused the
+  same way; the humanish CLI sets them, and they had no deprecation warning.
+- The route runners `runCuaActorLab`, `runScriptedBrowserLab`, `runTerminalProductLab` and
+  `runConcurrentSharedWorld`, and their option types `RunCuaActorLabOptions`,
+  `RunScriptedBrowserLabOptions`, `RunTerminalProductLabOptions` and
+  `RunConcurrentSharedWorldLabOptions`. Use `runLab(config, options)` with the typed options;
+  its result is `LabResult<route>`.
+- The hook bag types `CuaActorLabHooks`, `ScriptedBrowserLabHooks`, `TerminalProductLabHooks`,
+  `SharedWorldLabHooks`, `AutomaticAnalysisHooks` and `BrowserLabAdapterHooks`. Use the typed
+  options; `AdapterScorerModule` is the scorer's type.
+- `HUMANISH_LAB_OPTION_CONFLICT` now covers only `rerun.laneIds` beside `rerun.participantIds`,
+  and only `rerun.laneIds` emits `HUMANISH_RUN_LAB_OPTION_DEPRECATED`.
+
 ### Changed
 
 - `humanish lab run --help` says what `--lanes` takes: a participant's declared
