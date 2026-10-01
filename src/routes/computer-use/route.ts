@@ -40,10 +40,6 @@ import {
   type RunCuaActorLabOptions,
 } from "./types.js";
 
-export { inboxRecipientFor, participantHasInboxRecipient } from "./participant-desktop.js";
-export { defaultPackLocalTree } from "./local-tree-pack.js";
-export { resolveSubjectState } from "./subject-projection.js";
-
 /**
  * The library entry for a computer-use lab. It plans the config with planComputerUseLab and runs
  * the plan as runComputerUsePlan does; runLab calls runComputerUsePlan directly. The

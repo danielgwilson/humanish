@@ -35,12 +35,12 @@ import { acquireE2BDesktopSandbox, readE2BRelease } from "../../substrates/e2b/s
 import type { OwnedDesktopAllocation } from "../../substrates/desktop-session.js";
 import { e2bShell } from "../../substrates/e2b/shell.js";
 import type { Shell } from "../../substrates/shell.js";
+import { defaultPackLocalTree } from "../computer-use/local-tree-pack.js";
 import {
-  defaultPackLocalTree,
   inboxRecipientFor,
   participantHasInboxRecipient,
-  resolveSubjectState,
-} from "../computer-use/route.js";
+} from "../computer-use/participant-desktop.js";
+import { resolveSubjectState } from "../computer-use/subject-projection.js";
 import { withInboxMission } from "../computer-use/lane-plan.js";
 import { planeStateOf } from "./plan.js";
 import { runCuaParticipant } from "../computer-use/lanes.js";

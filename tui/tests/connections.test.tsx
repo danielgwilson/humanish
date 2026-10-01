@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { COMMS_PROVIDERS } from "../../src/comms/connections.js";
 import type { TuiCapabilities, TuiOptions } from "../../src/tui/contract.js";
 import type { CommsCheckResult, CommsSetupStatus } from "../../src/comms/setup.js";
-import type { CommsRecoveryEntry } from "../../src/comms/receiving-recovery.js";
+import type { CommsRecoveryEntry } from "../../src/comms/lease-store.js";
 import { App } from "../src/app.js";
 import { KEY, normalizeFrame, renderToText } from "../src/testing/render-to-text.js";
 

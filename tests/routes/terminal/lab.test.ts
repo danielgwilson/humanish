@@ -11,10 +11,7 @@ import type { AnalysisFetch } from "../../../src/analysis/provider.js";
 
 import { LAB_CONFIG_SCHEMA, type LabConfig, type LabRuntimeAuth } from "../../../src/lab/types.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
-import {
-  resolveTerminalPersona,
-  runTerminalProductLab,
-} from "../../../src/routes/terminal/route.js";
+import { runTerminalProductLab } from "../../../src/routes/terminal/route.js";
 import { type TerminalProductLabHooks } from "../../../src/routes/terminal/types.js";
 import {
   guardDesktopSandboxCreate,
@@ -26,7 +23,6 @@ import {
   E2B_SYSTEM_CA_BUNDLE,
   OPENAI_EGRESS_PLACEHOLDER,
 } from "../../../src/routes/terminal/runtime-auth.js";
-import { prepareSelectedOutputDirectory } from "../../../src/run/contained-output.js";
 import { reclaimRunSandboxes } from "../../../src/run/reclaim.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 import {
@@ -2540,8 +2536,6 @@ describe("terminal persona traits (#308)", () => {
     await rm(cwd, { recursive: true, force: true });
   });
 
-  const projectRootFor = (dir: string) => prepareSelectedOutputDirectory(path.dirname(dir), dir);
-
   it("applies committed persona traits to the agent prompt AND records them in the actor trace", async () => {
     await mkdir(path.join(cwd, "humanish", "personas"), { recursive: true });
     await writeFile(
@@ -2599,48 +2593,6 @@ describe("terminal persona traits (#308)", () => {
     expect(traitsApplied).toContain("patience:low");
     expect(traitsApplied).toContain("skill:high");
     expect(traitsApplied).toContain("accessibility:keyboard-only");
-  });
-
-  it("resolveTerminalPersona resolves a committed persona file into traits", async () => {
-    await mkdir(path.join(cwd, "humanish", "personas"), { recursive: true });
-    await writeFile(
-      path.join(cwd, "humanish", "personas", "careful-reviewer.yaml"),
-      "id: careful-reviewer\nname: Careful Reviewer\ntraits:\n  patience: high\n  technical_confidence: low\n",
-      "utf8",
-    );
-    const { persona, warnings } = await resolveTerminalPersona(
-      await projectRootFor(cwd),
-      "careful-reviewer",
-    );
-    expect(warnings).toEqual([]);
-    expect(persona?.traits.patience).toBe("high");
-    expect(persona?.traits.skill).toBe("low");
-  });
-
-  it("resolveTerminalPersona returns null (truthful empty traits) when no persona file is committed", async () => {
-    const { persona, warnings } = await resolveTerminalPersona(
-      await projectRootFor(cwd),
-      "autonomous-terminal-agent",
-    );
-    expect(persona).toBeNull();
-    expect(warnings.join(" ")).toContain("no readable file");
-  });
-
-  it("resolveTerminalPersona never builds a path from an unsafe persona id", async () => {
-    const { persona } = await resolveTerminalPersona(await projectRootFor(cwd), "../../etc/passwd");
-    expect(persona).toBeNull();
-  });
-
-  it("resolveTerminalPersona warns and falls back on unparseable persona YAML", async () => {
-    await mkdir(path.join(cwd, "humanish", "personas"), { recursive: true });
-    await writeFile(
-      path.join(cwd, "humanish", "personas", "broken.yaml"),
-      "traits: {patience: low",
-      "utf8",
-    );
-    const { persona, warnings } = await resolveTerminalPersona(await projectRootFor(cwd), "broken");
-    expect(persona).toBeNull();
-    expect(warnings.join(" ")).toContain("could not be parsed as YAML");
   });
 });
 

@@ -5,7 +5,7 @@ import type {
   CommsConfigureResult,
   CommsSetupStatus,
 } from "../../../src/comms/setup.js";
-import type { CommsRecoveryEntry } from "../../../src/comms/receiving-recovery.js";
+import type { CommsRecoveryEntry } from "../../../src/comms/lease-store.js";
 import type { TuiCapabilities } from "../../../src/tui/contract.js";
 import { listWindow } from "../../../src/run/projection.js";
 import { fitLabelToWidth } from "../fit-text.js";

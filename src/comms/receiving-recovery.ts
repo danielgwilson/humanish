@@ -17,8 +17,6 @@ import {
 } from "./receiving-common.js";
 import { RECEIVING_SCOPE_UNSUPPORTED, type ReceivingAdapter } from "./receiving-types.js";
 
-export type { CommsRecoveryEntry } from "./lease-store.js";
-
 /** Side-effect-free local inspection: does not authenticate, enumerate provider resources or replay creation. */
 export async function inspectCommsRecovery(options: {
   cwd: string;

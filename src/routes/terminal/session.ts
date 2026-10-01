@@ -2,7 +2,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { declaredRuntimeProvenance } from "./runtime.js";
 import { realpath } from "node:fs/promises";
 import path from "node:path";
-import { resolveCommittedPersona as resolveTerminalPersona } from "../../lab/persona-resolve.js";
+import { resolveCommittedPersona } from "../../lab/persona-resolve.js";
 import type { ActorPersonaRef } from "../../actors/contract.js";
 import {
   personaBrief,
@@ -168,7 +168,7 @@ async function prepareLivePrompt(args: {
   // Resolve the committed persona so its traits actually shape the agent prompt (#308); fail-safe to
   // the bare persona id (no traits applied) when no persona file is committed.
   const projectRoot = await prepareSelectedOutputDirectory(path.dirname(physicalCwd), physicalCwd);
-  const resolvedPersona = await resolveTerminalPersona(projectRoot, personaId);
+  const resolvedPersona = await resolveCommittedPersona(projectRoot, personaId);
   warnings.push(...resolvedPersona.warnings);
   const personaLine = resolvedPersona.persona
     ? renderPersonaPromptSection(resolvedPersona.persona)

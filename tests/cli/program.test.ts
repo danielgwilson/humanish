@@ -17,7 +17,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it, afterEach } from "vitest";
 
-import { createProgram } from "../../src/cli/program.js";
+import { createProgram, normalizeCliArgv } from "../../src/cli/program.js";
 import { formatCuaLabHuman } from "../../src/cli/commands/lab-format.js";
 import { resolveRouteShouldOpen } from "../../src/cli/commands/lab-route-open.js";
 import { followObserver } from "../../src/cli/observer-follow.js";
@@ -2046,5 +2046,24 @@ describe("CUA ending output", () => {
       expect(verified.exitCode).toBe(0);
       expect(JSON.parse(verified.stdout).ok).toBe(true);
     });
+  });
+});
+
+describe("CLI argv normalization", () => {
+  it("supports pnpm script proof commands with a literal separator", () => {
+    expect(normalizeCliArgv(["node", "humanish", "--", "--help"])).toEqual([
+      "node",
+      "humanish",
+      "--help",
+    ]);
+  });
+
+  it("leaves normal binary invocation arguments alone", () => {
+    expect(normalizeCliArgv(["node", "humanish", "init", "--dry-run"])).toEqual([
+      "node",
+      "humanish",
+      "init",
+      "--dry-run",
+    ]);
   });
 });

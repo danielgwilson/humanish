@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { countTerminalParticipantItems } from "../../../src/routes/terminal/participant-activity.js";
+import { countTerminalParticipantItems } from "../../../src/routes/terminal/trace.js";
 
 const wire = readFileSync(
   new URL("../../fixtures/terminal-runtime/participant-items.ndjson", import.meta.url),

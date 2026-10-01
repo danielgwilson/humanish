@@ -24,7 +24,7 @@ import type { LaunchRunOptions, LaunchRunResult } from "./launch.js";
 import type { CommsSetupResult } from "../comms/connections.js";
 import type { CommsSetupStatus } from "../comms/setup.js";
 import type { CommsCheckResult, CommsConfigureResult } from "../comms/setup.js";
-import type { CommsRecoveryEntry } from "../comms/receiving-recovery.js";
+import type { CommsRecoveryEntry } from "../comms/lease-store.js";
 
 /** The humanish version string shown in the frame, so a screenshot in a bug report is datable. */
 interface TuiVersionInfo {
