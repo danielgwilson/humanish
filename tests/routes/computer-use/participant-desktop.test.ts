@@ -86,6 +86,9 @@ async function fixture() {
   });
   const deps: CuaParticipantDeps = {
     config: parsed.config,
+    residual: parsed.config,
+    labId: parsed.config.id,
+    caps: {},
     descriptor: getActor("openai-computer-use"),
     brain: { kind: "openai", model: DEFAULT_OPENAI_CU_MODEL },
     appUrl: "http://127.0.0.1:3000/",
@@ -195,6 +198,7 @@ describe("ready desktop lane contract", () => {
       expect(parsed.ok).toBe(true);
       if (!parsed.ok) return;
       f.deps.config = parsed.config;
+      f.deps.residual = parsed.config;
       const create = vi.fn(async () => {
         throw new Error("synthetic allocation stop");
       });

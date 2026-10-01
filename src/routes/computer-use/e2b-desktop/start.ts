@@ -28,7 +28,7 @@ export async function startParticipantMedia(
   desktop: E2BDesktopSandbox,
 ): Promise<void> {
   const { spec, deps, warnings } = ctx;
-  const requestedMedia = deps.config.execution?.desktop?.media;
+  const requestedMedia = deps.residual.execution?.desktop?.media;
   if (!ctx.desktopCliRoute && requestedMedia?.microphone?.source === "speech") {
     state.speech = await startE2BDesktopMedia({
       desktop,
@@ -38,7 +38,7 @@ export async function startParticipantMedia(
       requestTimeoutMs: deps.requestTimeoutMs,
     });
   }
-  const requestedRecording = deps.config.execution?.desktop?.recording;
+  const requestedRecording = deps.residual.execution?.desktop?.recording;
   if (requestedRecording) {
     try {
       state.recording = await startE2BDesktopRecording({
@@ -67,16 +67,16 @@ export async function openParticipantSurface(
   desktop: E2BDesktopSandbox,
 ): Promise<void> {
   const { spec, deps, warnings, targetUrl } = ctx;
-  const { config } = deps;
-  if (ctx.desktopCliRoute) {
+  const { residual, subject } = deps;
+  if (subject.kind === "desktop-cli") {
     // A terminal window, opened the way the browser is opened on every other route: the
     // participant arrives at a desktop with the thing they were asked to use already in front
     // of them. They can still open another from the dock — that is the point of a desktop.
-    await openDesktopTerminal(desktop, deps.requestTimeoutMs, config.subject.product?.workdir);
+    await openDesktopTerminal(desktop, deps.requestTimeoutMs, subject.product.workdir);
     await desktop.wait(DESKTOP_SETTLE_MS).catch(() => undefined);
     return;
   }
-  const requestedMedia = config.execution?.desktop?.media;
+  const requestedMedia = residual.execution?.desktop?.media;
   // A declared camera (#509) is in place before the browser starts: the feed is generated or
   // uploaded first, and a feed that cannot be produced fails the lane closed here.
   const mediaEvidence =
@@ -85,16 +85,16 @@ export async function openParticipantSurface(
       : await prepareDesktopMedia(
           desktop,
           requestedMedia,
-          config.policies?.mediaPermission ?? "prompt",
+          residual.policies?.mediaPermission ?? "prompt",
           deps.labCwd,
           deps.requestTimeoutMs,
         );
-  const emulationFlags = mobileLaunchFlags(config, spec);
+  const emulationFlags = mobileLaunchFlags(residual, spec);
   const browserLaunch = await openDesktopBrowserTarget(
     desktop,
     targetUrl,
     deps.requestTimeoutMs,
-    config.execution?.desktop?.browser,
+    residual.execution?.desktop?.browser,
     [...emulationFlags, ...(mediaEvidence?.flags ?? [])],
     state.speech?.env ?? state.recording?.env,
   );
@@ -102,7 +102,7 @@ export async function openParticipantSurface(
     mediaEvidence === undefined
       ? browserLaunch.evidence
       : {
-          requested: config.execution?.desktop?.browser ?? "default",
+          requested: residual.execution?.desktop?.browser ?? "default",
           ...browserLaunch.evidence,
           media: mediaEvidence,
         };
