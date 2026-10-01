@@ -1,11 +1,11 @@
-// What a CLI backend's setup hands the lab command: the runLab options it chose and how it presents
-// the outcome. runBackend plans the lab once and runs it between the two.
+// What a route's CLI setup hands the lab command: the runLab options it chose and how it presents
+// the outcome. runRoute plans the lab once and runs it between the two.
 
 import { type LabOutcome, prepareLab, type RunLabOptions } from "../../lab/engine.js";
 import type { LabConfig } from "../../lab/types.js";
 import type { LoadedAdapterScorer } from "./lab-hooks.js";
 
-export interface BackendRun {
+export interface RouteRun {
   readonly options: RunLabOptions;
   present(outcome: LabOutcome): Promise<void>;
   /** Handles an error runLab threw, and rethrows any it does not handle. */
@@ -13,13 +13,13 @@ export interface BackendRun {
 }
 
 /**
- * Plans the lab with a backend's options, then presents the refusal or the run. `beforeRun` runs
+ * Plans the lab with a route's options, then presents the refusal or the run. `beforeRun` runs
  * only for a plan that will run: it loads the scorer, or writes its own refusal and returns
  * undefined, so a refused lab never imports the scorer's host code.
  */
-export async function runBackend(
+export async function runRoute(
   config: LabConfig,
-  run: BackendRun,
+  run: RouteRun,
   beforeRun: () => Promise<{ scorer?: LoadedAdapterScorer } | undefined> = () =>
     Promise.resolve({}),
 ): Promise<void> {

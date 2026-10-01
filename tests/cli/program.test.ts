@@ -19,7 +19,7 @@ import { describe, expect, it, afterEach } from "vitest";
 
 import { createProgram } from "../../src/cli/program.js";
 import { formatCuaLabHuman } from "../../src/cli/commands/lab-format.js";
-import { resolveBackendShouldOpen } from "../../src/cli/commands/lab-backend-open.js";
+import { resolveRouteShouldOpen } from "../../src/cli/commands/lab-route-open.js";
 import { followObserver } from "../../src/cli/observer-follow.js";
 import { studyFactsFor, writeResult } from "../../src/cli/io.js";
 import * as humanishIndex from "../../src/index.js";
@@ -972,7 +972,7 @@ describe("humanish CLI scaffold", () => {
   });
 });
 
-describe("resolveBackendShouldOpen (shared lab-backend auto-open gate)", () => {
+describe("resolveRouteShouldOpen (shared lab-route auto-open gate)", () => {
   const origTTY = process.stdout.isTTY;
   afterEach(() => {
     process.stdout.isTTY = origTTY;
@@ -981,7 +981,7 @@ describe("resolveBackendShouldOpen (shared lab-backend auto-open gate)", () => {
   it("--no-open (open=false) never opens, even on a TTY watch", () => {
     process.stdout.isTTY = true;
     expect(
-      resolveBackendShouldOpen({
+      resolveRouteShouldOpen({
         optionOpen: false,
         defaultsOpen: undefined,
         mode: "watch",
@@ -993,7 +993,7 @@ describe("resolveBackendShouldOpen (shared lab-backend auto-open gate)", () => {
   it("--json (machine mode) only opens with an explicit --open", () => {
     process.stdout.isTTY = true;
     expect(
-      resolveBackendShouldOpen({
+      resolveRouteShouldOpen({
         optionOpen: undefined,
         defaultsOpen: undefined,
         mode: "watch",
@@ -1001,7 +1001,7 @@ describe("resolveBackendShouldOpen (shared lab-backend auto-open gate)", () => {
       }),
     ).toBe(false);
     expect(
-      resolveBackendShouldOpen({
+      resolveRouteShouldOpen({
         optionOpen: true,
         defaultsOpen: undefined,
         mode: "watch",
@@ -1013,7 +1013,7 @@ describe("resolveBackendShouldOpen (shared lab-backend auto-open gate)", () => {
   it("human watch opens on a real TTY and NOT without one (the fix)", () => {
     process.stdout.isTTY = true;
     expect(
-      resolveBackendShouldOpen({
+      resolveRouteShouldOpen({
         optionOpen: undefined,
         defaultsOpen: undefined,
         mode: "watch",
@@ -1022,7 +1022,7 @@ describe("resolveBackendShouldOpen (shared lab-backend auto-open gate)", () => {
     ).toBe(true);
     process.stdout.isTTY = false;
     expect(
-      resolveBackendShouldOpen({
+      resolveRouteShouldOpen({
         optionOpen: undefined,
         defaultsOpen: undefined,
         mode: "watch",
@@ -1034,7 +1034,7 @@ describe("resolveBackendShouldOpen (shared lab-backend auto-open gate)", () => {
   it("run mode never auto-opens by default (only watch does)", () => {
     process.stdout.isTTY = true;
     expect(
-      resolveBackendShouldOpen({
+      resolveRouteShouldOpen({
         optionOpen: undefined,
         defaultsOpen: undefined,
         mode: "run",
@@ -1046,7 +1046,7 @@ describe("resolveBackendShouldOpen (shared lab-backend auto-open gate)", () => {
   it("lab-config defaults.open wins over the TTY fallback", () => {
     process.stdout.isTTY = false;
     expect(
-      resolveBackendShouldOpen({
+      resolveRouteShouldOpen({
         optionOpen: undefined,
         defaultsOpen: true,
         mode: "run",

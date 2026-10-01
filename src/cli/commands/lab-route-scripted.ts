@@ -6,10 +6,10 @@ import { cliAnalysisOptions } from "./lab-hooks.js";
 import { type CliIo, type LabCommandOptions, wantsJson, writeResult } from "../io.js";
 import { showObserver } from "../observer-follow.js";
 import { formatScriptedLabHuman } from "./lab-format.js";
-import { observerOpen, resolveBackendShouldOpen, watchFinishedPlan } from "./lab-backend-open.js";
-import type { BackendRun } from "./lab-backend-run.js";
+import { observerOpen, resolveRouteShouldOpen, watchFinishedPlan } from "./lab-route-open.js";
+import type { RouteRun } from "./lab-route-run.js";
 
-interface ScriptedBackendArgs {
+interface ScriptedRouteArgs {
   command: Command;
   io: CliIo;
   config: LabConfig;
@@ -19,12 +19,12 @@ interface ScriptedBackendArgs {
 }
 
 /**
- * The scripted backend's setup: its open semantics and runLab options, and how it presents the
+ * The scripted route's CLI setup: its open semantics and runLab options, and how it presents the
  * outcome. Undefined when watch-mode setup has already written its own result.
  */
-export function scriptedBackendRun(args: ScriptedBackendArgs): BackendRun | undefined {
+export function scriptedRouteRun(args: ScriptedRouteArgs): RouteRun | undefined {
   const wantsMachine = wantsJson(args.command);
-  const shouldOpen = resolveBackendShouldOpen({
+  const shouldOpen = resolveRouteShouldOpen({
     optionOpen: args.options.open,
     defaultsOpen: args.config.defaults?.open,
     mode: args.mode,

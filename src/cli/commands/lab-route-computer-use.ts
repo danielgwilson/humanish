@@ -31,10 +31,10 @@ import {
   withObserverServer,
 } from "../observer-follow.js";
 import { formatCuaLabHuman } from "./lab-format.js";
-import { resolveBackendShouldOpen } from "./lab-backend-open.js";
-import type { BackendRun } from "./lab-backend-run.js";
+import { resolveRouteShouldOpen } from "./lab-route-open.js";
+import type { RouteRun } from "./lab-route-run.js";
 
-interface CuaBackendArgs {
+interface ComputerUseRouteArgs {
   command: Command;
   io: CliIo;
   config: LabConfig;
@@ -44,11 +44,11 @@ interface CuaBackendArgs {
 }
 
 /**
- * The computer-use backend's setup: its settings, the watch and exposure plan, the runLab options
+ * The computer-use route's CLI setup: its settings, the watch and exposure plan, the runLab options
  * with the live Observer hook, and how it presents the outcome or a run error. Undefined when
  * setup has already written its own result.
  */
-export function cuaBackendRun(args: CuaBackendArgs): BackendRun | undefined {
+export function computerUseRouteRun(args: ComputerUseRouteArgs): RouteRun | undefined {
   const settings = resolveCuaSettings(args);
   if (settings === undefined) return undefined;
   const prepared = prepareCuaWatch(args, settings);
@@ -99,7 +99,7 @@ interface CuaLiveAttachment {
 }
 
 function refuseCua(
-  args: CuaBackendArgs,
+  args: ComputerUseRouteArgs,
   dryRun: boolean,
   code: CuaActorLabErrorCode,
   message: string,
@@ -121,9 +121,9 @@ function refuseCua(
 }
 
 /** Parses the options, or writes the refusal and returns undefined. */
-function resolveCuaSettings(args: CuaBackendArgs): CuaRunSettings | undefined {
+function resolveCuaSettings(args: ComputerUseRouteArgs): CuaRunSettings | undefined {
   const wantsMachine = wantsJson(args.command);
-  const shouldOpen = resolveBackendShouldOpen({
+  const shouldOpen = resolveRouteShouldOpen({
     optionOpen: args.options.open,
     defaultsOpen: args.config.defaults?.open,
     mode: args.mode,
@@ -162,7 +162,10 @@ function resolveCuaSettings(args: CuaBackendArgs): CuaRunSettings | undefined {
 }
 
 /** Validates exposure and plans the finished-run Observer, or returns undefined after refusing. */
-function prepareCuaWatch(args: CuaBackendArgs, settings: CuaRunSettings): CuaWatchPlan | undefined {
+function prepareCuaWatch(
+  args: ComputerUseRouteArgs,
+  settings: CuaRunSettings,
+): CuaWatchPlan | undefined {
   // Validate exposure up front (fail-closed matrix), before any run/spend. A live CUA watch is the
   // one surface that serves runtime E2B stream URLs, so it MUST sit behind edge auth.
   const exposeValidation = validateExposure("watch", exposureRequestFromOptions(args.options), {
@@ -198,7 +201,7 @@ function prepareCuaWatch(args: CuaBackendArgs, settings: CuaRunSettings): CuaWat
 
 /** The runLab options for this invocation, with the live Observer hook for a followed watch. */
 function cuaRunOptions(
-  args: CuaBackendArgs,
+  args: ComputerUseRouteArgs,
   settings: CuaRunSettings,
   prepared: CuaWatchPlan,
   live: CuaLiveAttachment,
@@ -245,7 +248,7 @@ function cuaRunOptions(
  * tunnel failure cannot orphan one.
  */
 async function closeLiveAfterRunError(
-  args: CuaBackendArgs,
+  args: ComputerUseRouteArgs,
   settings: CuaRunSettings,
   live: CuaLiveAttachment,
   error: unknown,
@@ -303,7 +306,7 @@ async function attachLiveObserver(
 
 /** Writes the result, then follows the live server or shows the finished run's Observer. */
 async function reportCuaRun(
-  args: CuaBackendArgs,
+  args: ComputerUseRouteArgs,
   prepared: CuaWatchPlan,
   result: CuaActorLabResult,
   live: CuaLiveAttachment,

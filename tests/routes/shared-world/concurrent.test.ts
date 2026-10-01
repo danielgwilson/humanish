@@ -32,8 +32,8 @@ import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
 import { routesToConcurrentSharedWorld } from "../../../src/lab/routing.js";
 import { runLab, selectLabBackend } from "../../../src/lab/engine.js";
-import { runBackend } from "../../../src/cli/commands/lab-backend-run.js";
-import { sharedWorldBackendRun } from "../../../src/cli/commands/lab-backend-shared-world.js";
+import { runRoute } from "../../../src/cli/commands/lab-route-run.js";
+import { sharedWorldRouteRun } from "../../../src/cli/commands/lab-route-shared-world.js";
 import { runConcurrentSharedWorld } from "../../../src/routes/shared-world/route.js";
 import {
   extractLobbyCodeFromNarration,
@@ -1517,7 +1517,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
       const printed: string[] = [];
       let exitCode: number | undefined;
       // The lab command's path: the backend's setup, then its one runLab call.
-      const run = sharedWorldBackendRun({
+      const run = sharedWorldRouteRun({
         command: new Command(),
         io: {
           writeOut: (text) => printed.push(text),
@@ -1533,7 +1533,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
       if (run === undefined) throw new Error("expected the run setup to proceed");
       // The CLI sets onEvent, which refuses the older onPhase hook beside it.
       const { onPhase: _onPhase, ...hooks } = worldHooks(world);
-      await runBackend(config, { ...run, options: { ...run.options, sharedWorldHooks: hooks } });
+      await runRoute(config, { ...run, options: { ...run.options, sharedWorldHooks: hooks } });
       exitCodes.push(exitCode);
       if (world === "no overlap") {
         expect(printed.join("")).toContain("No two seats were live at the same time");
