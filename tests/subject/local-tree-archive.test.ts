@@ -1,8 +1,20 @@
 import { execFileSync } from "node:child_process";
-import { link, mkdir, mkdtemp, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
+import {
+  link,
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  stat,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
+
+import { defaultPackLocalTree } from "../../src/routes/computer-use/local-tree-pack.js";
 
 import {
   createLocalTreeArchive,
@@ -416,6 +428,46 @@ describe("fail-closed behavior", () => {
     const filePath = path.join(root, "file.txt");
     await writeFile(filePath, "hi\n");
     expect(() => createLocalTreeArchive(filePath)).toThrowError(/not a directory/);
+  });
+});
+
+describe("temp dir cleanup", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  /** Puts a `tar` running `script` first on PATH and points TMPDIR at an empty dir it returns. */
+  async function fakeTar(script: string): Promise<string> {
+    const dir = await makeTempRoot("fake-tar");
+    const bin = path.join(dir, "bin");
+    const tmp = path.join(dir, "tmp");
+    await mkdir(bin);
+    await mkdir(tmp);
+    await writeFile(path.join(bin, "tar"), `#!/bin/sh\n${script}\n`, { mode: 0o755 });
+    vi.stubEnv("PATH", `${bin}${path.delimiter}${process.env.PATH ?? ""}`);
+    vi.stubEnv("TMPDIR", tmp);
+    return tmp;
+  }
+
+  it("removes the archive dir when tar fails after writing part of the archive", async () => {
+    const root = await makeTempRoot("tar-fails");
+    await writeFile(path.join(root, "a.txt"), "hello\n");
+    const tmp = await fakeTar(
+      'while [ $# -gt 0 ]; do [ "$1" = "-czf" ] && printf partial > "$2"; shift; done; exit 2',
+    );
+
+    expect(() => createLocalTreeArchive(root)).toThrowError(/tar archive/);
+    expect(await readdir(tmp)).toEqual([]);
+  });
+
+  it("removes the archive dir when the packed archive cannot be read", async () => {
+    const root = await makeTempRoot("read-fails");
+    await writeFile(path.join(root, "a.txt"), "hello\n");
+    // Exits 0 without writing the archive, so the read after it fails.
+    const tmp = await fakeTar("exit 0");
+
+    await expect(defaultPackLocalTree({ root })).rejects.toThrow(/ENOENT/);
+    expect(await readdir(tmp)).toEqual([]);
   });
 });
 

@@ -192,12 +192,23 @@ export function createLocalTreeArchive(
 
   const { archiveSha256, totalBytes } = computeArchiveSha256(resolvedRoot, entries);
 
-  const archivePath = options.outputPath
-    ? path.resolve(options.outputPath)
-    : path.join(mkdtempSync(path.join(tmpdir(), "humanish-local-tree-")), "source.tar.gz");
+  let tempDir: string | undefined;
+  let archivePath: string;
+  if (options.outputPath) {
+    archivePath = path.resolve(options.outputPath);
+  } else {
+    tempDir = mkdtempSync(path.join(tmpdir(), "humanish-local-tree-"));
+    archivePath = path.join(tempDir, "source.tar.gz");
+  }
   mkdirSync(path.dirname(archivePath), { recursive: true });
 
-  writeTarArchive(resolvedRoot, entries, archivePath);
+  try {
+    writeTarArchive(resolvedRoot, entries, archivePath);
+  } catch (error) {
+    // A failed tar can leave a partial archive of the working tree; the temp dir is ours to remove.
+    if (tempDir !== undefined) rmSync(tempDir, { recursive: true, force: true });
+    throw error;
+  }
 
   const fileCount = entries.length;
 

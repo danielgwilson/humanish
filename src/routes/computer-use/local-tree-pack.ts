@@ -47,16 +47,19 @@ export async function defaultPackLocalTree(args: {
     ...(args.extraExclude === undefined ? {} : { extraExclude: args.extraExclude }),
     ...(args.maxArchiveBytes === undefined ? {} : { maxArchiveBytes: args.maxArchiveBytes }),
   });
-  const bytes = await readFile(archive.archivePath);
-  const buffer = bytes.buffer.slice(
-    bytes.byteOffset,
-    bytes.byteOffset + bytes.byteLength,
-  ) as ArrayBuffer;
-  // The archive was written to a fresh mkdtemp dir (no outputPath passed above); once the
-  // bytes are buffered the on-disk copy is pure residue, and a packed working tree left in
-  // the host tmpdir is itself a small leak surface. Best-effort removal.
-  await rm(path.dirname(archive.archivePath), { recursive: true, force: true }).catch(
-    () => undefined,
-  );
-  return { archive, buffer };
+  // The archive was written to a fresh mkdtemp dir (no outputPath passed above). Once the bytes
+  // are buffered, or the read fails, the on-disk copy is residue, and a packed working tree left
+  // in the host tmpdir is itself a small leak surface. Best-effort removal.
+  try {
+    const bytes = await readFile(archive.archivePath);
+    const buffer = bytes.buffer.slice(
+      bytes.byteOffset,
+      bytes.byteOffset + bytes.byteLength,
+    ) as ArrayBuffer;
+    return { archive, buffer };
+  } finally {
+    await rm(path.dirname(archive.archivePath), { recursive: true, force: true }).catch(
+      () => undefined,
+    );
+  }
 }
