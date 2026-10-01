@@ -4,7 +4,7 @@ import { createInProcessDesktop } from "./in-process-desktop.js";
 import path from "node:path";
 import { cuaParticipantDiagnostics } from "./diagnostics.js";
 import { mapWithConcurrency } from "../../run/concurrency.js";
-import { assertScreenshotEvidence } from "../../evidence/image.js";
+import { assertScreenshotEvidence, stripPngMetadataChunks } from "../../evidence/image.js";
 import { round6 } from "../../run/pricing.js";
 import type { LabConfig } from "../../lab/types.js";
 import { redactText, toErrorMessage } from "../../evidence/redaction.js";
@@ -52,8 +52,10 @@ export function makeParticipantWriteScreenshot(
   return async (name: string, bytes: Buffer): Promise<string> => {
     assertSafeOutputPathSegment(name, "Screenshot name");
     const rel = path.posix.join(relPrefix, name);
-    assertScreenshotEvidence(rel, bytes);
-    await writeContainedOutputFile(artifactRoot, path.join(...dirParts, name), bytes);
+    // Evidence holds image data only, whatever the executor's frames carried.
+    const frame = stripPngMetadataChunks(bytes);
+    assertScreenshotEvidence(rel, frame);
+    await writeContainedOutputFile(artifactRoot, path.join(...dirParts, name), frame);
     screenshots.push(rel);
     return rel;
   };

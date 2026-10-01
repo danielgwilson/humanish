@@ -1,6 +1,6 @@
 import { lstat, readdir } from "node:fs/promises";
 import path from "node:path";
-import { screenshotEvidenceError } from "../evidence/image.js";
+import { isRedactedFrameShape, screenshotEvidenceError } from "../evidence/image.js";
 import { isStudyAnalysisRecordPath } from "../analysis/sharing.js";
 import { scanEncodedText } from "../evidence/encoded-text.js";
 import { readPlainText } from "../evidence/plain-text.js";
@@ -167,19 +167,26 @@ function declaredActorScreenshotReferences(
 }
 
 /**
- * The image files that actor traces register as stream screenshots, relative to the run root.
- * RAW_SCREENSHOTS grades these, so the public-safety scan does not report them as unread.
+ * The PNG frames that actor traces register as stream screenshots, relative to the run root.
+ * RAW_SCREENSHOTS grades these, so the public-safety scan does not report them as unread. Only
+ * frames under screenshots/ count: the computer-use lane writer and the scripted-browser steps
+ * write every frame there, and nothing else in the harness does. A trace reference elsewhere (an
+ * adapter's PNG, say) stays required evidence but goes to UNSCANNED_ARTIFACT.
  */
 export function streamScreenshotPaths(bundle: RunBundle): Set<string> {
   const paths = new Set<string>();
   for (const stream of bundle.streams) {
     for (const reference of declaredActorScreenshotReferences(stream)) {
-      if (isRunRootEvidenceReference(reference.path)) {
-        paths.add(path.posix.normalize(reference.path.replace(/\\/g, "/")));
-      }
+      if (!isRunRootEvidenceReference(reference.path)) continue;
+      const normalized = normalizedFramePath(reference.path);
+      if (isHarnessScreenshotPath(normalized)) paths.add(normalized);
     }
   }
   return paths;
+}
+
+function isHarnessScreenshotPath(normalized: string): boolean {
+  return normalized.startsWith("screenshots/") && normalized.toLowerCase().endsWith(".png");
 }
 
 function isRunRootEvidenceReference(value: unknown): value is string {
@@ -267,30 +274,74 @@ export function invalidRunEvidenceReferences(bundle: RunBundle): string[] {
  * so verify surfaces the posture as a warning in both human and JSON output. Read defensively
  * for the same reason as noEngagementActorFindings.
  */
-export function rawScreenshotPostureWarnings(bundle: RunBundle): string[] {
-  const rawStreamIds = rawScreenshotStreamIds(bundle);
+export function rawScreenshotPostureWarnings(
+  bundle: RunBundle,
+  redactedShapeFrames: ReadonlySet<string>,
+): string[] {
+  const rawStreamIds = rawScreenshotStreamIds(bundle, redactedShapeFrames);
 
   if (rawStreamIds.length === 0) {
     return [];
   }
 
   return [
-    `Screenshots are FULL-FIDELITY (raw) on ${rawStreamIds.join(", ")} — supported for local use, NOT publish-safe as-is. Verify ok does not mean share-ready; set policies.redactScreenshots: true to blur a share-as-is bundle.`,
+    `Screenshots are FULL-FIDELITY (raw) or carry no redaction claim on ${rawStreamIds.join(", ")} — supported for local use, NOT publish-safe as-is. Verify ok does not mean share-ready; set policies.redactScreenshots: true to blur a share-as-is bundle.`,
   ];
 }
 
-export function rawScreenshotStreamIds(bundle: RunBundle): string[] {
+/**
+ * The declared frames, as normalized run-root paths, whose bytes have the redactor's output shape
+ * (isRedactedFrameShape). A frame that is missing or cannot be read is not in the set.
+ */
+export async function redactedShapeFramePaths(
+  runPaths: PreparedRunArtifactPaths,
+  bundle: RunBundle,
+): Promise<Set<string>> {
+  const shaped = new Set<string>();
+  for (const stream of bundle.streams) {
+    for (const reference of declaredActorScreenshotReferences(stream)) {
+      if (!isRunRootEvidenceReference(reference.path)) continue;
+      const normalized = normalizedFramePath(reference.path);
+      if (shaped.has(normalized)) continue;
+      const bytes = await readSafeRunArtifactBytes(runPaths, normalized).catch(() => null);
+      if (bytes !== null && isRedactedFrameShape(bytes)) shaped.add(normalized);
+    }
+  }
+  return shaped;
+}
+
+function normalizedFramePath(value: string): string {
+  return path.posix.normalize(value.replace(/\\/g, "/"));
+}
+
+/**
+ * The streams whose frames count as full-fidelity. A frame is redacted only when its bytes have
+ * the redactor's output shape (`redactedShapeFrames`) and either it claims `blurred`, or it has no
+ * claim and the stream's final trace posture is `blurred`: the computer-use loop blurs every frame
+ * of such a trace, and bundles from before per-frame claims carry only the posture. Every other
+ * frame is raw, including `ocr_scrubbed`, which no writer produces. An aggregate raw posture
+ * outranks every frame claim.
+ */
+export function rawScreenshotStreamIds(
+  bundle: RunBundle,
+  redactedShapeFrames: ReadonlySet<string>,
+): string[] {
   const rawStreamIds: string[] = [];
   for (const stream of bundle.streams) {
     const trace: unknown = stream.actor;
-    const aggregateRaw =
-      isRecord(trace) && isRecord(trace.redaction) && trace.redaction.screenshots === "raw";
-    // Partial live traces have no final actor summary. An explicit raw frame must also
-    // retain local-only posture, including when it contradicts an aggregate blur claim.
-    const frameRaw = declaredActorScreenshotReferences(stream).some(
-      (reference) => reference.redaction === "none",
-    );
-    if (aggregateRaw || frameRaw) {
+    const posture =
+      isRecord(trace) && isRecord(trace.redaction) ? trace.redaction.screenshots : undefined;
+    const frameRaw = declaredActorScreenshotReferences(stream).some((reference) => {
+      const claimed =
+        reference.redaction === "blurred" ||
+        (reference.redaction === undefined && posture === "blurred");
+      return !(
+        claimed &&
+        typeof reference.path === "string" &&
+        redactedShapeFrames.has(normalizedFramePath(reference.path))
+      );
+    });
+    if (posture === "raw" || frameRaw) {
       rawStreamIds.push(stream.id);
     }
   }

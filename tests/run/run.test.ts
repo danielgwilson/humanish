@@ -1301,7 +1301,7 @@ describe("verify hardening (no-engagement + screenshot posture)", () => {
       expect(verify.shareSafety.reasons.map((reason) => reason.code)).toContain("RAW_SCREENSHOTS");
       expect(
         verify.shareSafety.reasons.find((reason) => reason.code === "RAW_SCREENSHOTS")?.message,
-      ).toContain("Full-fidelity screenshots are present");
+      ).toContain("Full-fidelity screenshots, or frames with no redaction claim, are present");
 
       // The CLI must show the posture in BOTH output modes.
       const json = await runCli(["verify", "--run", "raw-posture-live", "--cwd", cwd, "--json"]);

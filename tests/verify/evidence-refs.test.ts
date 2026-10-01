@@ -146,24 +146,29 @@ describe("verify declared evidence references", () => {
         await save();
         const result = await verifyRun(cwd, RUN);
         expect(result.ok).toBe(true);
-        expect(result.shareSafety.status).toBe(redaction === "none" ? "local_only" : "share_ready");
+        // Only `blurred` is a redaction claim: no writer produces ocr_scrubbed.
+        const raw = redaction !== "blurred";
+        expect(result.shareSafety.status).toBe(raw ? "local_only" : "share_ready");
         expect(result.shareSafety.reasons.some((reason) => reason.code === "RAW_SCREENSHOTS")).toBe(
-          redaction === "none",
+          raw,
         );
-        expect(result.warnings.some((warning) => warning.includes("FULL-FIDELITY"))).toBe(
-          redaction === "none",
-        );
-        if (redaction === "none") expect((await draftFeedback(cwd, RUN)).ok).toBe(false);
+        expect(result.warnings.some((warning) => warning.includes("FULL-FIDELITY"))).toBe(raw);
+        if (raw) expect((await draftFeedback(cwd, RUN)).ok).toBe(false);
       },
     );
 
-    it.each([undefined, "legacy-unknown"])(
-      `preserves absent/unknown ${field} frame-metadata compatibility: %s`,
-      async (redaction) => {
+    // Only an absent claim defers to the final trace's posture, which a live trace does not have.
+    // A value outside the claim set is not a redaction claim.
+    it.each([
+      [undefined, field === "actor" ? "share_ready" : "local_only"],
+      ["legacy-unknown", "local_only"],
+    ] as const)(
+      `grades an absent or unknown ${field} frame claim under a blurred posture: %s`,
+      async (redaction, grade) => {
         setActor(field, [{ screenshotRef: { path: "screenshots/frame.PNG", redaction } }]);
         if (field === "actor") bundle.streams[0]!.actor!.redaction.screenshots = "blurred";
         await save();
-        expect((await verifyRun(cwd, RUN)).shareSafety.status).toBe("share_ready");
+        expect((await verifyRun(cwd, RUN)).shareSafety.status).toBe(grade);
       },
     );
   }
