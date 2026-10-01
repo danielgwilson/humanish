@@ -1,7 +1,9 @@
 /**
- * Checks a golden format change: applies the current run-directory format to each golden as it
- * was at a git ref and compares the result with the golden in the working tree. Equal means the
- * new format pins the same values as the old one. Usage: tsx scripts/check-golden-format.ts <ref>
+ * Checks a golden format change: applies the current format to each golden as it was at a git ref
+ * and compares the result with the golden in the working tree. Equal means the new format pins
+ * the same values as the old one. It covers run-directory goldens (bundle copies as markers) and
+ * loop goldens, whose layout (one line per logged call) must leave the value unchanged.
+ * Usage: tsx scripts/check-golden-format.ts <ref>
  */
 import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync } from "node:fs";
@@ -35,15 +37,21 @@ for (const file of goldens) {
   } catch {
     continue;
   }
-  // Only run-directory goldens hold a run.json.
-  if (typeof before !== "object" || before === null || !("run.json" in before)) continue;
+  // Run-directory goldens hold a run.json; loop goldens live in tests/golden/loop/.
+  const format =
+    typeof before === "object" && before !== null && "run.json" in before
+      ? dedupeProjections
+      : file.startsWith(join("tests/golden", "loop"))
+        ? (value: unknown) => value
+        : undefined;
+  if (format === undefined) continue;
   compared += 1;
   const after = JSON.parse(readFileSync(file, "utf8")) as unknown;
-  if (!isDeepStrictEqual(dedupeProjections(before), after)) different.push(file);
+  if (!isDeepStrictEqual(format(before), after)) different.push(file);
 }
 
 process.stdout.write(
-  `${compared} run-directory goldens at ${ref}; ${compared - different.length} equal the working tree after the format change.\n`,
+  `${compared} run-directory and loop goldens at ${ref}; ${compared - different.length} equal the working tree after the format change.\n`,
 );
 for (const file of different) process.stdout.write(`different: ${file}\n`);
 if (different.length > 0 || compared === 0) process.exitCode = 1;

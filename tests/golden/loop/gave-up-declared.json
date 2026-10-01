@@ -132,100 +132,20 @@
     }
   },
   "log": [
-    [
-      "executor.observe",
-      0
-    ],
-    [
-      "onObservedUrl",
-      null
-    ],
-    [
-      "onScreenshot",
-      2
-    ],
-    [
-      "writeScreenshot",
-      "turn-00-start.png",
-      2
-    ],
-    [
-      "onTrace",
-      1,
-      {
-        "input": 0,
-        "output": 0,
-        "cachedInput": 0,
-        "cacheWriteInput": 0
-      },
-      {}
-    ],
-    [
-      "provider.nextTurn",
-      {
-        "instructions": "Act as the synthetic persona and finish the task.",
-        "observation": {
-          "screenshot": "[buffer 2 bytes]",
-          "stateSignature": "s0",
-          "text": "loading"
-        }
-      }
-    ],
-    [
-      "executor.execute",
-      {
-        "kind": "click",
-        "x": 5,
-        "y": 5
-      }
-    ],
-    [
-      "executor.observe",
-      1
-    ],
-    [
-      "onObservedUrl",
-      null
-    ],
-    [
-      "onScreenshot",
-      2
-    ],
-    [
-      "writeScreenshot",
-      "turn-01.png",
-      2
-    ],
-    [
-      "onTrace",
-      3,
-      {
-        "input": 0,
-        "output": 0,
-        "cachedInput": 0,
-        "cacheWriteInput": 0
-      },
-      {}
-    ],
-    [
-      "provider.nextTurn",
-      {
-        "instructions": "Act as the synthetic persona and finish the task.",
-        "observation": {
-          "screenshot": "[buffer 2 bytes]",
-          "stateSignature": "s1",
-          "text": "still loading"
-        },
-        "previousResponseId": "r1"
-      }
-    ],
-    [
-      "onMessage",
-      "Did not reach the goal.\nThe form never loaded."
-    ],
-    [
-      "executor.observe",
-      2
-    ]
+    ["executor.observe",0],
+    ["onObservedUrl",null],
+    ["onScreenshot",2],
+    ["writeScreenshot","turn-00-start.png",2],
+    ["onTrace",1,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{}],
+    ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 2 bytes]","stateSignature":"s0","text":"loading"}}],
+    ["executor.execute",{"kind":"click","x":5,"y":5}],
+    ["executor.observe",1],
+    ["onObservedUrl",null],
+    ["onScreenshot",2],
+    ["writeScreenshot","turn-01.png",2],
+    ["onTrace",3,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{}],
+    ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 2 bytes]","stateSignature":"s1","text":"still loading"},"previousResponseId":"r1"}],
+    ["onMessage","Did not reach the goal.\nThe form never loaded."],
+    ["executor.observe",2]
   ]
 }

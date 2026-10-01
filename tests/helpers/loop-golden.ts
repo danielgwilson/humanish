@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from "node:util";
 import { expect } from "vitest";
 
 import type { ActorCapabilities, ActorTokenUsage } from "../../src/actors/contract.js";
@@ -12,6 +13,8 @@ import {
   type CuaTurnRequest,
 } from "../../src/actors/computer-use/loop.js";
 import { defaultRedactionHooks } from "../../src/evidence/redaction.js";
+
+import { loopGoldenText } from "./loop-golden-log.js";
 
 // Characterization harness for runComputerUseLoop. A scenario records every port call the loop
 // makes, in order, next to the full CuaLoopResult, so a golden diff shows what the loop did as
@@ -191,7 +194,10 @@ export async function outcome(probe: Probe, options: CuaLoopOptions) {
 }
 
 export async function expectGolden(name: string, value: unknown): Promise<void> {
-  await expect(`${JSON.stringify(value, null, 2)}\n`).toMatchFileSnapshot(
-    `../../golden/loop/${name}.json`,
-  );
+  const text = loopGoldenText(value);
+  // The layout must not change the value: the golden holds it as JSON (undefined in an array
+  // reads back as null).
+  if (!isDeepStrictEqual(JSON.parse(text), JSON.parse(JSON.stringify(value))))
+    throw new Error("loopGoldenText changed the value; see tests/helpers/loop-golden-log.ts");
+  await expect(text).toMatchFileSnapshot(`../../golden/loop/${name}.json`);
 }

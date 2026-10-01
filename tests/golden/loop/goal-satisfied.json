@@ -171,173 +171,29 @@
     }
   },
   "log": [
-    [
-      "executor.observe",
-      0
-    ],
-    [
-      "onObservedUrl",
-      null
-    ],
-    [
-      "onScreenshot",
-      15
-    ],
-    [
-      "writeScreenshot",
-      "turn-00-start.png",
-      15
-    ],
-    [
-      "onTrace",
-      1,
-      {
-        "input": 0,
-        "output": 0,
-        "cachedInput": 0,
-        "cacheWriteInput": 0
-      },
-      {}
-    ],
-    [
-      "provider.nextTurn",
-      {
-        "instructions": "Act as the synthetic persona and finish the task.",
-        "observation": {
-          "screenshot": "[buffer 15 bytes]",
-          "stateSignature": "s0"
-        }
-      }
-    ],
-    [
-      "onMessage",
-      "Looking for the booking form."
-    ],
-    [
-      "executor.execute",
-      {
-        "kind": "click",
-        "x": 10,
-        "y": 20
-      }
-    ],
-    [
-      "executor.observe",
-      1
-    ],
-    [
-      "onObservedUrl",
-      null
-    ],
-    [
-      "onScreenshot",
-      15
-    ],
-    [
-      "writeScreenshot",
-      "turn-01.png",
-      15
-    ],
-    [
-      "onTrace",
-      4,
-      {
-        "input": 100,
-        "output": 20,
-        "cachedInput": 10,
-        "cacheWriteInput": 0,
-        "turns": [
-          {
-            "input": 100,
-            "output": 20,
-            "cachedInput": 10
-          }
-        ]
-      },
-      {}
-    ],
-    [
-      "provider.nextTurn",
-      {
-        "instructions": "Act as the synthetic persona and finish the task.",
-        "observation": {
-          "screenshot": "[buffer 15 bytes]",
-          "stateSignature": "s1"
-        },
-        "previousResponseId": "r1"
-      }
-    ],
-    [
-      "onMessage",
-      "Typing the email."
-    ],
-    [
-      "executor.execute",
-      {
-        "kind": "type",
-        "text": "hello@example.test"
-      }
-    ],
-    [
-      "executor.execute",
-      {
-        "kind": "wait",
-        "ms": 50
-      }
-    ],
-    [
-      "executor.observe",
-      2
-    ],
-    [
-      "onObservedUrl",
-      null
-    ],
-    [
-      "onScreenshot",
-      15
-    ],
-    [
-      "writeScreenshot",
-      "turn-02.png",
-      15
-    ],
-    [
-      "onTrace",
-      8,
-      {
-        "input": 220,
-        "output": 50,
-        "cachedInput": 10,
-        "cacheWriteInput": 0,
-        "turns": [
-          {
-            "input": 100,
-            "output": 20,
-            "cachedInput": 10
-          },
-          {
-            "input": 120,
-            "output": 30
-          }
-        ]
-      },
-      {}
-    ],
-    [
-      "provider.nextTurn",
-      {
-        "instructions": "Act as the synthetic persona and finish the task.",
-        "observation": {
-          "screenshot": "[buffer 15 bytes]",
-          "stateSignature": "s2"
-        },
-        "previousResponseId": "r2"
-      }
-    ],
-    [
-      "onMessage",
-      "Booked the appointment."
-    ]
+    ["executor.observe",0],
+    ["onObservedUrl",null],
+    ["onScreenshot",15],
+    ["writeScreenshot","turn-00-start.png",15],
+    ["onTrace",1,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{}],
+    ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"s0"}}],
+    ["onMessage","Looking for the booking form."],
+    ["executor.execute",{"kind":"click","x":10,"y":20}],
+    ["executor.observe",1],
+    ["onObservedUrl",null],
+    ["onScreenshot",15],
+    ["writeScreenshot","turn-01.png",15],
+    ["onTrace",4,{"input":100,"output":20,"cachedInput":10,"cacheWriteInput":0,"turns":[{"input":100,"output":20,"cachedInput":10}]},{}],
+    ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"s1"},"previousResponseId":"r1"}],
+    ["onMessage","Typing the email."],
+    ["executor.execute",{"kind":"type","text":"hello@example.test"}],
+    ["executor.execute",{"kind":"wait","ms":50}],
+    ["executor.observe",2],
+    ["onObservedUrl",null],
+    ["onScreenshot",15],
+    ["writeScreenshot","turn-02.png",15],
+    ["onTrace",8,{"input":220,"output":50,"cachedInput":10,"cacheWriteInput":0,"turns":[{"input":100,"output":20,"cachedInput":10},{"input":120,"output":30}]},{}],
+    ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"s2"},"previousResponseId":"r2"}],
+    ["onMessage","Booked the appointment."]
   ]
 }
