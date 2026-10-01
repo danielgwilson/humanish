@@ -287,10 +287,12 @@ by runs made outside CI.
 
 **Codex versions are pinned.** Codex participants (local browser studies and
 `local-agent` with Codex) and the Codex account analyst accept only the Codex
-CLI versions humanish has qualified for your host, listed in
-[`qualified-versions.ts`](https://github.com/danielgwilson/humanish/blob/main/src/actors/codex/qualified-versions.ts). Any other
-version, including one Codex updated itself to, is refused with the list of
-accepted versions.
+CLI versions admitted for your host, listed in
+[`qualified-versions.ts`](https://github.com/danielgwilson/humanish/blob/main/src/actors/codex/qualified-versions.ts).
+On Linux x64 and Apple-silicon macOS those are the versions humanish has qualified. Linux arm64
+and Intel macOS keep the one version they ran before qualification began, which has not been
+qualified there. Any other version, including one Codex updated itself to, is refused with the
+list of accepted versions.
 
 **Credentials.** For each provider key a command needs, humanish uses the first
 of these sources that has it. It prints the name and source of each key it
@@ -305,20 +307,23 @@ fills from sources 2 to 4, never the value:
 
 A dry run reads no provider key, so `run`, `lab run` and `watch` consult sources 2 to 4 only
 for a live lab. `lab preflight`, `doctor`, `tui` and the `comms` commands still consult them.
-`HUMANISH_STRICT_KEYS=1` turns off sources 2 to 4. `init`, `doctor` and a live
-computer-use preflight also run `codex login status` and `claude auth status`
-to see which agent is signed in. humanish never reads the subject app's own
-`.env` files.
+`humanish analyze` reads `OPENAI_API_KEY` from the process environment only, so a key saved
+with `keys set` must also be exported before you run it.
+`HUMANISH_STRICT_KEYS=1` turns off sources 2 to 4. `init` and `doctor` also run
+`codex login status` and `claude auth status` to see which agent is signed in. A live
+computer-use or shared-world run with a `local-agent` participant runs them too, and a live
+computer-use run without `OPENAI_API_KEY` runs them to suggest a signed-in agent. humanish
+never reads the subject app's own `.env` files.
 
 **What leaves your machine.** [Trust boundaries](https://humanish.dev/docs/trust-boundaries)
 has the providers' retention terms.
 
-| Party                | What it receives                                                                                                                                                                                                                                                                                                                                            | When                                                                     |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| OpenAI               | Each step's screenshot, the persona, the mission and the actions so far; after a run, selected text and captures for analysis                                                                                                                                                                                                                               | `openai-computer-use` participants; automatic or `humanish analyze` runs |
-| Codex or Claude Code | The same screenshots and prompts, through your signed-in agent and its provider                                                                                                                                                                                                                                                                             | `local-agent` participants, local browser studies, the Codex analyst     |
-| E2B                  | A desktop or shell running your app and everything on its screen; the repository a `clone` subject names; your working tree for a `local-tree` subject, minus gitignored files, `.env*` and other secret-shaped files; the credentials you declare for the subject app; for a terminal study, your OpenAI key unless `execution.runtimeAuth: openai-egress` | Every hosted study                                                       |
-| PostHog              | Telemetry events, described [below](#telemetry)                                                                                                                                                                                                                                                                                                             | By default                                                               |
+| Party                | What it receives                                                                                                                                                                                                                                                                                                                                            | When                                                                                                                          |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| OpenAI               | Each step's screenshot, the persona, the mission and the actions so far; after a run, selected text and captures for analysis; for an external-public shared-world lab, the host participant's screen while its lobby code is read; for a terminal study, the agent's requests from the E2B sandbox                                                         | `openai-computer-use` participants; automatic or `humanish analyze` runs; external-public shared-world labs; terminal studies |
+| Codex or Claude Code | The same screenshots and prompts, through your signed-in agent and its provider                                                                                                                                                                                                                                                                             | `local-agent` participants, local browser studies, the Codex analyst                                                          |
+| E2B                  | A desktop or shell running your app and everything on its screen; the repository a `clone` subject names; your working tree for a `local-tree` subject, minus gitignored files, `.env*` and other secret-shaped files; the credentials you declare for the subject app; for a terminal study, your OpenAI key unless `execution.runtimeAuth: openai-egress` | Every hosted study                                                                                                            |
+| PostHog              | Telemetry events, described [below](#telemetry)                                                                                                                                                                                                                                                                                                             | By default                                                                                                                    |
 
 ## Commands
 
