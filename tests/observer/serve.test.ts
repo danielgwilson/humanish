@@ -273,8 +273,6 @@ async function writeLocalOnlyRun(cwd: string, runId: string): Promise<void> {
   await writeFile(path.join(runDir, "actor.json"), `${JSON.stringify(trace, null, 2)}\n`, "utf8");
 }
 
-const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
-
 describe("serve: loopback mode", () => {
   let cwd: string;
 
@@ -780,7 +778,7 @@ describe("serve: safe mode resilience", () => {
     expect((await fetch(server.url)).status).toBe(200);
   });
 
-  it("(26) caches admission per run.json identity and re-verifies when the bundle changes", async () => {
+  it("(26) caches admission per bundle inventory and re-verifies when any file changes", async () => {
     const cwd = await createProjectFixture();
     expect((await runDryRun({ cwd, dryRun: true, runId: "cache-ready" })).ok).toBe(true);
     const { originalEvents } = await writeBlockedRun(cwd, "cache-blocked");
@@ -799,22 +797,21 @@ describe("serve: safe mode resilience", () => {
       await fetch(new URL("/_humanish/history.json", server.url))
     ).json()) as LibraryHistory;
     expect(secondHistory.runs.map((run) => run.runId)).toEqual(["cache-ready"]);
+    expect(
+      (await fetch(new URL("/_humanish/runs/cache-ready/observer/index.html", server.url))).status,
+    ).toBe(200);
 
-    // One verify per run covers startup plus both history requests: the
-    // admission cache keys on the run.json stat identity.
+    // One verify per run covers startup, both history requests and the page: nothing in either
+    // run changed, and serving a page writes nothing into the run.
     expect(callsFor("cache-ready")).toBe(1);
     expect(callsFor("cache-blocked")).toBe(1);
 
-    // Clean the blocked run (restore the pre-secret event log) and touch
-    // run.json so its stat identity changes.
+    // Clean the blocked run by restoring the pre-secret event log. run.json is untouched.
     await writeFile(
       path.join(cwd, ".humanish", "runs", "cache-blocked", "events.ndjson"),
       originalEvents,
       "utf8",
     );
-    await sleep(5);
-    const bundlePath = path.join(cwd, ".humanish", "runs", "cache-blocked", "run.json");
-    await writeFile(bundlePath, await readFile(bundlePath, "utf8"), "utf8");
 
     const thirdHistory = (await (
       await fetch(new URL("/_humanish/history.json", server.url))
@@ -830,47 +827,6 @@ describe("serve: safe mode resilience", () => {
       (await fetch(new URL("/_humanish/runs/cache-blocked/observer/index.html", server.url)))
         .status,
     ).toBe(200);
-  });
-
-  it("(26b) re-verifies a stale admission after the TTL even when run.json is unchanged", async () => {
-    const cwd = await createProjectFixture();
-    expect((await runDryRun({ cwd, dryRun: true, runId: "ttl-run" })).ok).toBe(true);
-
-    // A run that verifies share_ready once, then blocked on every later verify —
-    // modelling an out-of-band artifact change that does not touch run.json, the
-    // exact fail-open the TTL closes. admit() only reads .ok and shareSafety.status.
-    const shareReady = { ok: true, shareSafety: { status: "share_ready", reasons: [] } };
-    const blocked = {
-      ok: false,
-      shareSafety: {
-        status: "blocked",
-        reasons: [{ code: "PUBLIC_SAFETY_FINDINGS", message: "x" }],
-      },
-    };
-    const verifySpy = vi.fn().mockResolvedValueOnce(shareReady).mockResolvedValue(blocked);
-
-    let clock = 1_000_000;
-    const server = await startLibrary(cwd, {
-      safe: true,
-      verifyImpl: verifySpy as unknown as typeof verifyRun,
-      now: () => clock,
-    });
-
-    const first = (await (
-      await fetch(new URL("/_humanish/history.json", server.url))
-    ).json()) as LibraryHistory;
-    expect(first.runs.map((run) => run.runId)).toEqual(["ttl-run"]);
-
-    // Advance past the 30s admission TTL without touching run.json.
-    clock += 31_000;
-    const second = (await (
-      await fetch(new URL("/_humanish/history.json", server.url))
-    ).json()) as LibraryHistory;
-    expect(second.runs).toEqual([]);
-    expect(
-      (await fetch(new URL("/_humanish/runs/ttl-run/observer/index.html", server.url))).status,
-    ).toBe(404);
-    expect(verifySpy).toHaveBeenCalledTimes(2);
   });
 });
 

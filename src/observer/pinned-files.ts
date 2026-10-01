@@ -3,6 +3,7 @@
 // single-link regular file, so a swapped or linked path cannot redirect the read.
 
 import { constants as fsConstants } from "node:fs";
+import type { BigIntStats } from "node:fs";
 import { lstat, open, realpath, type FileHandle } from "node:fs/promises";
 import path from "node:path";
 import { isPathInside, isSafeRunIdSegment } from "../run/paths.js";
@@ -13,6 +14,11 @@ export interface PinnedDirectory {
   readonly dev: bigint;
   readonly ino: bigint;
   readonly physicalPath: string;
+  /**
+   * When set, a file opens only if this accepts its root-relative path and the opened file's own
+   * stats, so a file added or changed after a check of the directory cannot be read.
+   */
+  readonly admitsFile?: (relativePath: string, stats: BigIntStats) => boolean;
 }
 
 interface PinnedFileIdentity {
@@ -28,6 +34,16 @@ export async function readContainedFile(
   if (!opened) return null;
   try {
     const body = await opened.handle.readFile();
+    // A write that landed during the read changed the file's mtime and ctime.
+    if (
+      root.admitsFile !== undefined &&
+      !root.admitsFile(
+        relativeToRoot(root, filePathInput),
+        await opened.handle.stat({ bigint: true }),
+      )
+    ) {
+      return null;
+    }
     await assertPinnedDirectory(root);
     return body;
   } catch {
@@ -54,7 +70,9 @@ export async function openContainedFile(
       !openedStats.isFile() ||
       openedStats.nlink !== 1n ||
       openedStats.dev !== expectedStats.dev ||
-      openedStats.ino !== expectedStats.ino
+      openedStats.ino !== expectedStats.ino ||
+      (root.admitsFile !== undefined &&
+        !root.admitsFile(relativeToRoot(root, filePath), openedStats))
     ) {
       await handle.close();
       return null;
@@ -74,6 +92,10 @@ export async function openContainedFile(
     if (handle) await handle.close().catch(() => undefined);
     return null;
   }
+}
+
+function relativeToRoot(root: PinnedDirectory, filePathInput: string): string {
+  return path.relative(root.physicalPath, path.resolve(filePathInput)).split(path.sep).join("/");
 }
 
 async function inspectContainedRegularFile(

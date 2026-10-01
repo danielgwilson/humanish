@@ -98,7 +98,7 @@ describe("receiving restrictions in retained evidence", () => {
         status: "local_only",
         reasons: [expect.objectContaining({ code: "REAL_COMMUNICATIONS" })],
       });
-      expect(await createShareSafetyAdmission(cwd).admit(RUN)).toBe(false);
+      expect(await createShareSafetyAdmission(cwd).admit(RUN)).toBeNull();
       expect((await draftFeedback(cwd, RUN)).error?.code).toBe(
         "HUMANISH_FEEDBACK_SHARE_SAFETY_BLOCKED",
       );

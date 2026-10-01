@@ -290,7 +290,11 @@ function runtimeDesktopUrl(value: string): string | null {
 }
 
 /** internal: consumed by src/observer/serve.ts */
-export async function buildHistoryIndex(proofRoot: PinnedDirectory): Promise<{
+export async function buildHistoryIndex(
+  proofRoot: PinnedDirectory,
+  // When set, a run is listed only if this returns a root, and its summary is read through it.
+  admitRun?: (runId: string, pinned: PinnedDirectory) => Promise<PinnedDirectory | null>,
+): Promise<{
   latestRunId: string | null;
   runs: Array<{
     runId: string;
@@ -310,7 +314,9 @@ export async function buildHistoryIndex(proofRoot: PinnedDirectory): Promise<{
   const listed = await listRuns(physicalCwd);
   const runs = await Promise.all(
     listed.runs.slice(0, 80).map(async (run) => {
-      const root = await pinDirectChildDirectory(proofRoot, run.runId);
+      const pinned = await pinDirectChildDirectory(proofRoot, run.runId);
+      const root = pinned && admitRun ? await admitRun(run.runId, pinned) : pinned;
+      if (admitRun && !root) return null;
       const data = root ? await readObserverData(root) : null;
       return {
         runId: run.runId,
@@ -331,7 +337,7 @@ export async function buildHistoryIndex(proofRoot: PinnedDirectory): Promise<{
   await assertPinnedDirectory(proofRoot);
   return {
     latestRunId: listed.latest && isSafeRunIdSegment(listed.latest) ? listed.latest : null,
-    runs,
+    runs: runs.filter((run) => run !== null),
   };
 }
 
