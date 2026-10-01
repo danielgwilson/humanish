@@ -5870,6 +5870,8 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
     },
   );
 
+  // The Codex review's case: a passed session followed by an unconfirmed provider cleanup. The
+  // participant passed, so the verdict is pass; the run failed as an execution, so ok is false.
   it("records an unconfirmed provider close on an in-process run as a warning and an error", async () => {
     const { module } = makeFakeModule(makeFakeSandbox());
     const provider = {
@@ -5892,6 +5894,21 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
     expect(outcome.result.ok).toBe(false);
     expect(outcome.result.warnings).toContain("Model provider cleanup is unconfirmed.");
     expect(outcome.result.error?.message).toContain("Model provider cleanup is unconfirmed.");
+    const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
+    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
+    const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8")) as {
+      outcome?: {
+        verdict?: string;
+        ok?: boolean;
+        execution?: { failures: Array<{ kind: string }> };
+      };
+    };
+    expect(bundle.review.verdict).toBe("pass");
+    expect(status.outcome?.verdict).toBe("pass");
+    expect(status.outcome?.ok).toBe(false);
+    expect(status.outcome?.execution?.failures.map((failure) => failure.kind)).toEqual([
+      "provider-cleanup",
+    ]);
   });
 
   it("scrubs a known value from an in-process participant's blocker warning", async () => {

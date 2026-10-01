@@ -191,6 +191,9 @@ export function buildLiveTerminalProductBundle(args: {
   sessionReason: string;
   /** The run's judgment verdict (judgeTerminal). */
   verdict: Verdict;
+  /** The cap check's message when known spend or jobs exceeded the caps: an execution failure
+   *  the review names, beside the agent's own verdict. */
+  capFailure?: string;
 }): RunBundle {
   const recordStatus: RunSimulationStatus =
     args.trace.status === "passed"
@@ -262,6 +265,7 @@ export function buildLiveTerminalProductBundle(args: {
       ...(args.trace.status === "passed"
         ? []
         : [`Agent session ended ${args.trace.status}: ${args.sessionReason}`]),
+      ...(args.capFailure === undefined ? [] : [args.capFailure]),
       // Honesty gap: the no-spend proof always declares which spend lines it could NOT measure, so a
       // green run never silently over-claims a fully-proven $0.
       ...(noSpend.unmeasuredLines.length > 0

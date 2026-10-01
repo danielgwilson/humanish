@@ -125,6 +125,7 @@ function cuaLabResult(args: {
         code: outcome?.failureCode ?? "HUMANISH_CUA_LAB_FAILED",
         message:
           outcome?.sessionError ??
+          outcome?.providerCleanupError ??
           (outcome?.noEngagement
             ? "Actor took no actions and produced no message (likely a blank/still-loading screen); not a credible goal_satisfied."
             : // The lane result (toParticipantResult) named this refusal; the N=1 envelope fell through to
@@ -148,7 +149,7 @@ function cuaLabResult(args: {
     return {
       code,
       message: observer.ok
-        ? `Fan-out run failed: ${summary.passed}/${participantCount} lane(s) passed (${summary.skipped} skipped, ${summary.harnessErrors} harness error(s), ${summary.hollow} hollow)${failing?.sessionError !== undefined ? `; first failure: ${failing.sessionError}` : ""}.`
+        ? `Fan-out run failed: ${summary.passed}/${participantCount} lane(s) passed (${summary.skipped} skipped, ${summary.harnessErrors} harness error(s), ${summary.hollow} hollow)${failing?.sessionError !== undefined ? `; first failure: ${failing.sessionError}` : failing === undefined && args.execution.failures[0] !== undefined ? `; ${args.execution.failures[0].message}` : ""}.`
         : (observer.error?.message ?? "Observer failed for the computer-use fan-out run."),
     };
   })();
@@ -215,6 +216,16 @@ function computerUseExecutionFailures(
         kind: "harness" as const,
         message: `${outcome.spec.planned.id}: ${outcome.sessionError ?? outcome.session?.reason ?? "harness error"}`,
       })),
+    ...(outcomes ?? []).flatMap((outcome) =>
+      outcome.providerCleanupError === undefined
+        ? []
+        : [
+            {
+              kind: "provider-cleanup" as const,
+              message: `${outcome.spec.planned.id}: ${outcome.providerCleanupError}`,
+            },
+          ],
+    ),
     ...(observer.ok
       ? []
       : [

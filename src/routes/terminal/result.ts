@@ -36,26 +36,24 @@ export function terminalParticipantFacts(
 }
 
 /**
- * The live run's execution failures: a blown spend cap or another harness error, an unproven
- * sandbox teardown, and an Observer that failed. `participant` is read after a blown cap has
- * overridden the session.
+ * The live run's execution failures: a harness error, a blown spend cap, an unproven sandbox
+ * teardown, and an Observer that failed.
  */
 export function terminalExecutionFailures(args: {
   participant: ParticipantFacts;
-  capsExceeded: boolean;
+  /** The cap check's message when known spend or jobs exceeded the caps. */
+  capFailure: string | undefined;
   /** Already scrubbed and redacted. */
   sessionReason: string;
   cleanup: TerminalLedgers["cleanup"];
   observer: Pick<ObserverResult, "ok" | "error">;
 }): ExecutionFailure[] {
   const { participant, cleanup, observer } = args;
-  const message = participant.sessionError ?? args.sessionReason;
   return [
-    ...(args.capsExceeded
-      ? [{ kind: "cap" as const, message }]
-      : participantHarnessFailed(participant)
-        ? [{ kind: "harness" as const, message }]
-        : []),
+    ...(participantHarnessFailed(participant)
+      ? [{ kind: "harness" as const, message: participant.sessionError ?? args.sessionReason }]
+      : []),
+    ...(args.capFailure === undefined ? [] : [{ kind: "cap" as const, message: args.capFailure }]),
     ...(cleanup.killed && cleanup.remaining === 0
       ? []
       : [
@@ -91,7 +89,8 @@ export function terminalLabResult(args: {
   cleanup: TerminalLedgers["cleanup"];
   cost: TerminalCostLedger;
   noSpendProof: NoSpendProof;
-  capsExceeded: boolean;
+  /** The cap check's message when known spend or jobs exceeded the caps. */
+  capFailure: string | undefined;
   declaredScorerFailure: string | undefined;
   /** The run's judgment. On this evidence route ok does not read whether the agent passed. */
   judgment: Judgment;
@@ -113,7 +112,7 @@ export function terminalLabResult(args: {
     cleanup,
     cost,
     noSpendProof,
-    capsExceeded,
+    capFailure,
     declaredScorerFailure,
     judgment,
     execution,
@@ -173,14 +172,18 @@ export function terminalLabResult(args: {
           error: {
             code: (!cleanupProven
               ? "HUMANISH_TERMINAL_LAB_CLEANUP_UNPROVEN"
-              : capsExceeded
+              : capFailure !== undefined
                 ? "HUMANISH_TERMINAL_LAB_CAPS_EXCEEDED"
                 : "HUMANISH_TERMINAL_LAB_FAILED") as NonNullable<
               TerminalProductLabResult["error"]
             >["code"],
             message: !cleanupProven
               ? `Live terminal-product run could not prove sandbox teardown (killed=${cleanup.killed}, remaining=${cleanup.remaining}): ${cleanup.reason}. A run that cannot prove teardown fails closed.${sessionError !== undefined ? ` Session failure: ${sessionError}` : ""}`
-              : (declaredScorerFailure ?? sessionError ?? observer.error?.message ?? sessionReason),
+              : (declaredScorerFailure ??
+                capFailure ??
+                sessionError ??
+                observer.error?.message ??
+                sessionReason),
           },
         }),
   };
