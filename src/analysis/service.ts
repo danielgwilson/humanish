@@ -29,8 +29,8 @@ import {
 } from "./execute.js";
 import {
   appendStudyAnalysisCorrection,
-  assertStudyAnalysisPublicationCapacity,
-  listStudyAnalyses,
+  assertAnalysisPublicationCapacity,
+  listAnalyses,
   writeStudyAnalysis,
 } from "./store.js";
 import {
@@ -94,7 +94,7 @@ export interface AnalyzeDeps {
 }
 
 /** A producer pin is authority for one physical project and exact run ID only. */
-export async function resolveStudyAnalysisRun(
+export async function resolveAnalysisRun(
   cwd: string,
   run: string,
   expectedRun?: PreparedRunArtifactPaths,
@@ -182,7 +182,7 @@ export async function dryRunBundleRefusal(
   expectedRun?: PreparedRunArtifactPaths,
 ): Promise<AnalyzeResult | null> {
   try {
-    const prepared = await resolveStudyAnalysisRun(cwd, run, expectedRun);
+    const prepared = await resolveAnalysisRun(cwd, run, expectedRun);
     const loaded = prepared ? await loadRunBundlePrepared(cwd, prepared) : null;
     return loaded !== null && loaded.bundle.mode !== "live"
       ? fail(run, dryRun, "ANALYSIS_REQUIRES_LIVE_RUN")
@@ -206,7 +206,7 @@ export async function refreshObserver(
 }
 
 /** One analysis or correction writer per run. Never steal a lock based on an untrusted PID. */
-export async function withStudyAnalysisLock<T>(
+export async function withAnalysisLock<T>(
   prepared: PreparedRunArtifactPaths,
   action: () => Promise<T>,
 ): Promise<T> {
@@ -244,7 +244,7 @@ export async function withStudyAnalysisLock<T>(
 }
 
 /** The completion gate: the run verifies, is live and finished, and has participants. */
-export async function readCompletedStudyAnalysisSource(
+export async function readCompletedAnalysisSource(
   cwd: string,
   prepared: PreparedRunArtifactPaths,
 ): Promise<Buffer> {
@@ -286,7 +286,7 @@ export async function readCompletedStudyAnalysisSource(
   return bytes;
 }
 
-/** The refusal code for a configuration analyzeStudy cannot run, before any run file is read. */
+/** The refusal code for a configuration analyzeRun cannot run, before any run file is read. */
 function analyzeConfigRefusal(config: AnalysisConfig): string | null {
   if (
     config.provider === "codex"
@@ -335,7 +335,7 @@ async function reusedAnalysisResult(
   config: AnalysisConfig,
   base: AnalyzeBase,
 ): Promise<AnalyzeResult | undefined> {
-  const prior = (await listStudyAnalyses(prepared)).find(
+  const prior = (await listAnalyses(prepared)).find(
     (entry) =>
       entry.state === "ready" &&
       entry.analysis?.inputDigest === input.inputDigest &&
@@ -429,7 +429,7 @@ async function executeAnalysis(attempt: AnalyzeAttempt): Promise<AnalyzeResult> 
   const { cwd, run, prepared, options, deps, dryRun } = attempt;
   let config = attempt.config;
   if (deps.signal?.aborted) return fail(run, dryRun, "ANALYSIS_CANCELLED");
-  const bytes = await readCompletedStudyAnalysisSource(cwd, prepared);
+  const bytes = await readCompletedAnalysisSource(cwd, prepared);
   const input = await captureEvidence(prepared, bytes);
   if (input.evidence.length === 0) return fail(input.runId, dryRun, "ANALYSIS_NO_PARTICIPANTS");
   if (options.preferLargerOutput) config = preferLargerAnalysisOutput(input, config);
@@ -458,7 +458,7 @@ async function executeAnalysis(attempt: AnalyzeAttempt): Promise<AnalyzeResult> 
   }
   // An unreadable inventory is not evidence of an absent prior result.
   // Check readable history capacity before any new paid attempt.
-  await assertStudyAnalysisPublicationCapacity(prepared);
+  await assertAnalysisPublicationCapacity(prepared);
   const apiKey =
     config.provider === "codex" ? "" : (deps.apiKey ?? process.env.OPENAI_API_KEY ?? "");
   if (config.provider !== "codex" && !apiKey.trim())
@@ -495,7 +495,7 @@ async function executeAnalysis(attempt: AnalyzeAttempt): Promise<AnalyzeResult> 
   return result;
 }
 
-export async function analyzeStudy(
+export async function analyzeRun(
   cwdInput: string,
   run: string,
   options: AnalyzeOptions,
@@ -509,11 +509,11 @@ export async function analyzeStudy(
   const configRefusal = analyzeConfigRefusal(config);
   if (configRefusal) return fail(run, dryRun, configRefusal);
   try {
-    const prepared = await resolveStudyAnalysisRun(cwd, run, deps.expectedRun);
+    const prepared = await resolveAnalysisRun(cwd, run, deps.expectedRun);
     if (!prepared) return fail(run, dryRun, "ANALYSIS_RUN_NOT_FOUND");
     if (deps.expectedRun !== undefined) cwd = physicalCwdOf(prepared);
     const execute = () => executeAnalysis({ cwd, run, prepared, config, options, deps, dryRun });
-    return dryRun ? await execute() : await withStudyAnalysisLock(prepared, execute);
+    return dryRun ? await execute() : await withAnalysisLock(prepared, execute);
   } catch (error) {
     const code =
       error instanceof Error && Object.hasOwn(messages, error.message)
@@ -523,18 +523,14 @@ export async function analyzeStudy(
   }
 }
 
-export async function showStudyAnalysis(
-  cwd: string,
-  run: string,
-  id?: string,
-): Promise<LoadedAnalysis> {
+export async function showAnalysis(cwd: string, run: string, id?: string): Promise<LoadedAnalysis> {
   const prepared = await resolveRunPath(await resolvePhysicalCwd(cwd), run).catch(() => null);
   return prepared
     ? loadStudyAnalysis(prepared, id)
     : { state: "invalid", analysis: null, corrections: [], warnings: ["ANALYSIS_RUN_NOT_FOUND"] };
 }
 
-export async function correctStudyAnalysis(
+export async function correctAnalysis(
   cwd: string,
   run: string,
   options: {
@@ -547,7 +543,7 @@ export async function correctStudyAnalysis(
 ): Promise<AnalysisCorrection> {
   const prepared = await resolveRunPath(await resolvePhysicalCwd(cwd), run);
   if (!prepared) throw new Error("ANALYSIS_RUN_NOT_FOUND");
-  return withStudyAnalysisLock(prepared, async () => {
+  return withAnalysisLock(prepared, async () => {
     const loaded = await loadStudyAnalysis(prepared, options.analysisId);
     const analysis = loaded.analysis;
     const finding = analysis?.result?.findings.find((item) => item.id === options.findingId);

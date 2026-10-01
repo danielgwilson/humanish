@@ -53,7 +53,7 @@ export interface AnalysisListEntry {
 
 /** Check room for both immutable publications before a new provider dispatch.
  * This is read-only; the service's dispatch lock protects ordinary concurrent writers. */
-export async function assertStudyAnalysisPublicationCapacity(
+export async function assertAnalysisPublicationCapacity(
   prepared: PreparedRunArtifactPaths,
 ): Promise<void> {
   try {
@@ -240,7 +240,7 @@ export async function readStudyAnalysisVersion(
 }
 
 /** Includes failed attempts; callers must not equate the newest attempt with usable findings. */
-export async function listStudyAnalyses(
+export async function listAnalyses(
   prepared: PreparedRunArtifactPaths,
 ): Promise<AnalysisListEntry[]> {
   try {
@@ -346,7 +346,7 @@ export async function loadStudyAnalysisRecord(
 ): Promise<LoadedAnalysis> {
   if (id !== undefined && !safeId(id)) return empty("invalid", ["ANALYSIS_ID_INVALID"]);
   try {
-    const versions = await listStudyAnalyses(prepared);
+    const versions = await listAnalyses(prepared);
     const selected =
       id === undefined
         ? (versions.find((entry) => entry.state === "ready") ??

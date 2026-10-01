@@ -1,4 +1,4 @@
-// Characterization golden for analyzeStudy and runAnalysis. Each scenario runs the real
+// Characterization golden for analyzeRun and runAnalysis. Each scenario runs the real
 // service against a fixture run with a fake provider boundary and records what a caller and the
 // run directory see: the result, each provider request, the progress events and the files the
 // attempt wrote. The golden was generated before those two functions were split into steps.
@@ -17,7 +17,7 @@ import type {
   AnalysisProvider,
   AnalysisProviderRequest,
 } from "../../src/analysis/provider.js";
-import { analyzeStudy, type AnalyzeDeps, type AnalyzeOptions } from "../../src/analysis/service.js";
+import { analyzeRun, type AnalyzeDeps, type AnalyzeOptions } from "../../src/analysis/service.js";
 import type { AnalysisConfig, AnalysisInput } from "../../src/analysis/types.js";
 import { digestAnalysisInput } from "../../src/analysis/validation.js";
 import type { RunBundle } from "../../src/run/bundle.js";
@@ -170,7 +170,7 @@ async function analyze(
   const progress: AnalysisProgress[] = [];
   const { requests = [], ...rest } = deps;
   const source = await capturedInput(cwd).catch(() => undefined);
-  const result = await analyzeStudy(cwd, RUN, options, {
+  const result = await analyzeRun(cwd, RUN, options, {
     analysisId: "analysis-golden-1",
     onProgress: (event) => progress.push(event),
     ...rest,
@@ -216,7 +216,7 @@ async function admissionAndReuseScenarios(scenarios: Record<string, Recorded>): 
   scenarios["config invalid"] = await analyze(cwd, { config: { ...openai, maxCostUsd: 0 } });
   scenarios["question unsafe"] = await analyze(cwd, { config: { ...openai, question: unsafe } });
   scenarios["run not found"] = {
-    result: normalizer(cwd)(await analyzeStudy(cwd, "no-such-run", { config: openai })),
+    result: normalizer(cwd)(await analyzeRun(cwd, "no-such-run", { config: openai })),
     requests: [],
     progress: [],
   };
@@ -408,8 +408,8 @@ async function storageAndCodexScenarios(scenarios: Record<string, Recorded>): Pr
   scenarios["dry-run bundle"] = await analyze(cwd, { config: openai });
 }
 
-describe("analyzeStudy characterization golden", () => {
-  // Every scenario runs analyzeStudy end to end in one test, so its time scales with machine load.
+describe("analyzeRun characterization golden", () => {
+  // Every scenario runs analyzeRun end to end in one test, so its time scales with machine load.
   // Measured from 4 s to 20 s on a 16-core machine as load rose; 20 s is the default test timeout.
   // 60 s keeps the golden from failing on a busy machine without hiding a hang.
   it(

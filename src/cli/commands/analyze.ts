@@ -6,12 +6,12 @@ import {
 import { Command, Option } from "commander";
 import { forTerminal } from "../../routes/terminal/encoding.js";
 import {
-  analyzeStudy,
-  correctStudyAnalysis,
+  analyzeRun,
+  correctAnalysis,
   dryRunBundleRefusal,
-  showStudyAnalysis,
+  showAnalysis,
 } from "../../analysis/service.js";
-import { listStudyAnalyses } from "../../analysis/store.js";
+import { listAnalyses } from "../../analysis/store.js";
 import { listStudyAnalysisExecutions } from "../../analysis/store-executions.js";
 import { resolveRunPath } from "../../run/locate.js";
 import { type CliIo, JSON_OPTION_DESCRIPTION, writeResult } from "../io.js";
@@ -179,7 +179,7 @@ async function handleAnalyze(
   const cancel = (): void => controller.abort();
   process.once("SIGINT", cancel);
   try {
-    const result = await analyzeStudy(
+    const result = await analyzeRun(
       options.cwd,
       options.run,
       {
@@ -237,7 +237,7 @@ async function handleAnalyzeList(
   const prepared = await resolveRunPath(await resolvePhysicalCwd(options.cwd), options.run).catch(
     () => null,
   );
-  const versions = prepared ? await listStudyAnalyses(prepared) : [];
+  const versions = prepared ? await listAnalyses(prepared) : [];
   const executions = prepared
     ? await listStudyAnalysisExecutions(prepared)
     : { receipts: [], warnings: [] };
@@ -267,7 +267,7 @@ async function handleAnalyzeShow(
   command: Command,
 ): Promise<void> {
   options = analysisSelection(options, command);
-  const result = await showStudyAnalysis(options.cwd, options.run, options.id);
+  const result = await showAnalysis(options.cwd, options.run, options.id);
   writeResult(command, io, result, (value) => forTerminal(JSON.stringify(value, null, 2) + "\n"));
   io.setExitCode(result.state === "invalid" ? 2 : 0);
 }
@@ -287,7 +287,7 @@ async function handleAnalyzeCorrect(
 ): Promise<void> {
   options = analysisSelection(options, command);
   try {
-    const correction = await correctStudyAnalysis(options.cwd, options.run, {
+    const correction = await correctAnalysis(options.cwd, options.run, {
       analysisId: options.analysis,
       findingId: options.finding,
       status: options.status,

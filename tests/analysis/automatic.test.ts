@@ -20,7 +20,7 @@ import {
   readAutomaticStudyAnalysis,
   requestAutomaticStudyAnalysisCancellation,
 } from "../../src/analysis/automatic.js";
-import { analyzeStudy, withStudyAnalysisLock } from "../../src/analysis/service.js";
+import { analyzeRun, withAnalysisLock } from "../../src/analysis/service.js";
 import * as analysisService from "../../src/analysis/service.js";
 import {
   claimAutomaticStudyAnalysis,
@@ -331,7 +331,7 @@ describe("opted-in automatic analysis ownership", () => {
 
   it("reuses an existing result without another call and never retries after reopening", async () => {
     const h = await transport();
-    const prior = await analyzeStudy(
+    const prior = await analyzeRun(
       cwd,
       runId,
       { config },
@@ -431,7 +431,7 @@ describe("opted-in automatic analysis ownership", () => {
 
   it("keeps a prior result selected when the automatic job's newer result disappears", async () => {
     const h = await transport();
-    const prior = await analyzeStudy(
+    const prior = await analyzeRun(
       cwd,
       runId,
       { config },
@@ -470,7 +470,7 @@ describe("opted-in automatic analysis ownership", () => {
             ...(kind === "cancelled" ? { signal: AbortSignal.abort() } : {}),
           },
         );
-      const result = kind === "busy" ? await withStudyAnalysisLock(prepared, call) : await call();
+      const result = kind === "busy" ? await withAnalysisLock(prepared, call) : await call();
       expect(result.state).toBe(kind === "cancelled" ? "cancelled" : "skipped");
       expect((await loadStudyAnalysis(prepared)).automatic?.state).toBe(result.state);
       expect((await verifyRun(cwd, runId)).shareSafety.status).toBe("share_ready");
@@ -747,7 +747,7 @@ describe("opted-in automatic analysis ownership", () => {
 
   it("keeps prior findings when a new automatic configuration cannot run", async () => {
     const h = await transport();
-    const prior = await analyzeStudy(
+    const prior = await analyzeRun(
       cwd,
       runId,
       { config },
@@ -777,7 +777,7 @@ describe("opted-in automatic analysis ownership", () => {
     "rejects a replaced producer directory before %s can reuse its copied report",
     async (mode) => {
       const h = await transport();
-      const prior = await analyzeStudy(
+      const prior = await analyzeRun(
         cwd,
         runId,
         { config },
@@ -795,7 +795,7 @@ describe("opted-in automatic analysis ownership", () => {
               fetch: h.fetch,
               expectedRun: prepared,
             })
-          : await analyzeStudy(
+          : await analyzeRun(
               cwd,
               runId,
               { config },
@@ -820,9 +820,9 @@ describe("opted-in automatic analysis ownership", () => {
 
   it("keeps the coordinator's original pin through the service boundary", async () => {
     const h = await transport();
-    const service = analysisService.analyzeStudy;
+    const service = analysisService.analyzeRun;
     let copiedJob: Buffer | undefined;
-    vi.spyOn(analysisService, "analyzeStudy").mockImplementation(async (...args) => {
+    vi.spyOn(analysisService, "analyzeRun").mockImplementation(async (...args) => {
       expect(args[3]?.expectedRun).toBe(prepared);
       const retained = path.join(cwd, "retained-original");
       await rename(root, retained);
@@ -858,7 +858,7 @@ describe("opted-in automatic analysis ownership", () => {
       }),
     ).toEqual({ state: "skipped", reason: "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE" });
     expect(
-      await analyzeStudy(
+      await analyzeRun(
         selectedCwd,
         selectedId,
         { config },
@@ -879,7 +879,7 @@ describe("opted-in automatic analysis ownership", () => {
     });
     expect(outcome).toMatchObject({ state: "partial", result: { reused: false } });
     expect(
-      await analyzeStudy(
+      await analyzeRun(
         alias,
         runId,
         { config },
@@ -891,7 +891,7 @@ describe("opted-in automatic analysis ownership", () => {
     await rm(alias);
     await symlink(other, alias, "dir");
     expect(
-      await analyzeStudy(
+      await analyzeRun(
         alias,
         runId,
         { config },
