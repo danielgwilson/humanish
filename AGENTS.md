@@ -44,7 +44,8 @@ the file to read first. Keep these layout rules:
 - `src/index.ts` is the package's only library export surface. `src/cli.ts` is its bin.
 - `src/guest-runtime-main.ts`, `src/guest-runtime-revision.ts` and `src/guest-media-worker.ts`
   stay at the root of `src/`. `scripts/guest-runtime-package.mjs` and the image recipes in
-  `runtime/` address their `dist/` output by file name.
+  `runtime/` address their `dist/` output by file name. The rest of the guest runtime is in
+  `src/guest/`.
 
 ## Conventions
 

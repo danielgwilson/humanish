@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Readable, Writable } from "node:stream";
-import { runGuestRuntime, type GuestRuntimeOptions } from "../src/guest-runtime.js";
+import { runGuestRuntime, type GuestRuntimeOptions } from "../../src/guest/runtime.js";
 import {
   GuestBootstrapReader,
   encodeGuestBootstrap,
   guestReadyTimeoutMs,
-} from "../src/guest-bootstrap.js";
-import { createBrowserControlClient } from "../src/browser-control/client.js";
-import { identity, pair, observation, tick } from "./browser-control/fixture.js";
+} from "../../src/guest/bootstrap.js";
+import { createBrowserControlClient } from "../../src/browser-control/client.js";
+import { identity, pair, observation, tick } from "../browser-control/fixture.js";
 
 afterEach(() => vi.useRealTimers());
 function fixture() {

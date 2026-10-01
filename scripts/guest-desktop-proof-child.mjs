@@ -8,10 +8,10 @@ import { mkdir, mkdtemp, writeFile, rm, readdir, readFile } from "node:fs/promis
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { chromium } from "playwright-core";
-import { createGuestDesktopExecutor } from "./dist/guest-desktop-executor.js";
-import { createGuestDesktopNativeTools } from "./dist/guest-desktop-native.js";
-import { createGuestBrowserTools } from "./dist/guest-browser-tools.js";
-import { createGuestChromiumText } from "./dist/guest-chromium-text.js";
+import { createGuestDesktopExecutor } from "./dist/guest/desktop-executor.js";
+import { createGuestDesktopNativeTools } from "./dist/guest/desktop-native.js";
+import { createGuestBrowserTools } from "./dist/guest/browser-tools.js";
+import { createGuestChromiumText } from "./dist/guest/chromium-text.js";
 
 async function payloadHashes(directory, prefix = "") {
   const hashes = {};

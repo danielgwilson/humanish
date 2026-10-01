@@ -1,7 +1,7 @@
 import { runInNewContext } from "node:vm";
 import type { Page } from "playwright-core";
 import { describe, expect, it, vi } from "vitest";
-import { navigateGuestInitialPage } from "../src/guest-runtime-desktop.js";
+import { navigateGuestInitialPage } from "../../src/guest/runtime-desktop.js";
 
 function fixture() {
   const dispose = vi.fn(async () => {});

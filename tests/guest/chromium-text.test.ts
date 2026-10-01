@@ -2,7 +2,7 @@ import { EventEmitter } from "node:events";
 import { runInNewContext } from "node:vm";
 import type { BrowserContext, CDPSession, Page } from "playwright-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createGuestChromiumText } from "../src/guest-chromium-text.js";
+import { createGuestChromiumText } from "../../src/guest/chromium-text.js";
 
 function deferred<T>() {
   let resolve!: (value: T) => void;

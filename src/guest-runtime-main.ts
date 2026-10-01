@@ -1,7 +1,8 @@
+// Stays at the src/ root: vsock.py runs dist/guest-runtime-main.js; the packager walks from it.
 import { writeSync } from "node:fs";
 import { Duplex } from "node:stream";
-import { runGuestRuntime } from "./guest-runtime.js";
-import { createGuestRuntimeDesktop } from "./guest-runtime-desktop.js";
+import { runGuestRuntime } from "./guest/runtime.js";
+import { createGuestRuntimeDesktop } from "./guest/runtime-desktop.js";
 import { GUEST_RUNTIME_REVISION } from "./guest-runtime-revision.js";
 
 // Fixed packaged command only. Stdout is reserved for framed protocol bytes.

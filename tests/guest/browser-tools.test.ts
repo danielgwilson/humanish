@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { createGuestBrowserTools } from "../src/guest-browser-tools.js";
-import { createGuestDesktopExecutor } from "../src/guest-desktop-executor.js";
-import type { GuestDesktopNativeTools } from "../src/guest-desktop-native.js";
-import { CuaExecutorError } from "../src/actors/computer-use/executor-error.js";
+import { createGuestBrowserTools } from "../../src/guest/browser-tools.js";
+import { createGuestDesktopExecutor } from "../../src/guest/desktop-executor.js";
+import type { GuestDesktopNativeTools } from "../../src/guest/desktop-native.js";
+import { CuaExecutorError } from "../../src/actors/computer-use/executor-error.js";
 
 const navigation = ["key", "--clearmodifiers", "ctrl+l"];
 function fixture() {

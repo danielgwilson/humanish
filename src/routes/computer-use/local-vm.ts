@@ -24,7 +24,7 @@ import {
 import { prepareLocalRuntime } from "../../substrates/local/runtime.js";
 import { checkRestrictedCodexAnalysisReadiness } from "../../analysis/restricted-codex.js";
 import { createRestrictedCodexParticipant } from "../../actors/codex/restricted-participant.js";
-import { guestMediaConfigSchema, type GuestMediaConfig } from "../../guest-media-config.js";
+import { guestMediaConfigSchema, type GuestMediaConfig } from "../../guest/media-config.js";
 import { startLocalCapturedInbox } from "../../substrates/local/captured-inbox.js";
 import type { DesktopRecordingConfig } from "../../evidence/desktop-recording-types.js";
 import type { PreparedOutputRoot } from "../../run/contained-output.js";

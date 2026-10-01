@@ -77,9 +77,9 @@ const privateResiduePatterns = [
 // the operator's home. Keep the exception limited to their implementation and
 // emitted declarations; unrelated files, users and child paths still fail.
 const guestEnvironmentFiles = new Set([
-  "src/guest-runtime-desktop.ts",
-  "dist/guest-runtime-desktop.js",
-  "dist/guest-runtime-desktop.d.ts",
+  "src/guest/runtime-desktop.ts",
+  "dist/guest/runtime-desktop.js",
+  "dist/guest/runtime-desktop.d.ts",
   "runtime/browser-guest/control/root/opt/humanish/control/vsock.py",
 ]);
 

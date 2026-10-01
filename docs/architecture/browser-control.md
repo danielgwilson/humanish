@@ -3,7 +3,7 @@
 The browser-control client implements the existing `CuaExecutor` over an
 already-owned Node `Duplex`. The matching dispatcher invokes an owner-supplied
 executor. Local Firecracker desktops use it as their host-to-guest control
-channel: `src/guest-bootstrap.ts` creates the client and `src/guest-runtime.ts`
+channel: `src/guest/bootstrap.ts` creates the client and `src/guest/runtime.ts`
 attaches the dispatcher. This page covers only the protocol; it is not itself a
 runtime, CLI mode, browser launcher, VM isolation claim, or installer.
 

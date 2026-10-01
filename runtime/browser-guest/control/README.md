@@ -47,7 +47,7 @@ Build from a frozen dependency install and current TypeScript output:
 pnpm exec tsc -p tsconfig.build.json
 node scripts/guest-runtime-package.mjs .humanish/guest-package
 python3 -B -m unittest discover -s runtime/browser-guest/control/tests -p '*test*.py'
-pnpm exec vitest run tests/guest-bootstrap.test.ts tests/guest-runtime.test.ts tests/guest-runtime-package.test.ts tests/guest-runtime-proof.test.ts
+pnpm exec vitest run tests/guest/bootstrap.test.ts tests/guest/runtime.test.ts tests/guest-runtime-package.test.ts tests/guest-runtime-proof.test.ts
 ```
 
 The packager requires a new output directory. It emits `root/` and

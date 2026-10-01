@@ -1,9 +1,9 @@
-import { CuaExecutorError } from "./actors/computer-use/executor-error.js";
+import { CuaExecutorError } from "../actors/computer-use/executor-error.js";
 
 // Key names for the xdotool-driven desktops: the guest's headed display and the E2B sandbox. Both
 // hand these strings to xdotool, which has a command language, so only names from these tables
-// ever reach it. The guest runtime ships this module, so its name keeps the guest-* prefix that
-// CI's guest-desktop job and scripts/guest-desktop-proof.mjs key on.
+// ever reach it. The guest runtime ships this module, so it lives in src/guest/, which CI's
+// guest-desktop job and scripts/guest-desktop-proof.mjs key on.
 
 /** The modifiers a pointer action may hold, keyed by the upper-cased provider name. */
 const modifierNames: Readonly<Record<string, string>> = Object.freeze({
