@@ -458,14 +458,22 @@ reclaim` kills sandboxes by their journaled ids.
 - Scripted-browser `waitForText`, `assertText` and `expect.text` steps check the page text
   (#1171). They passed on every page before: the page evaluated the predicate as an expression and
   got back the function itself, which is truthy. See Breaking.
-- When `Sandbox.kill(id)` reports the sandbox no longer exists, every route records it as already
-  gone (#1164). Before, the terminal route, the scripted and shared-world subjects, and the
+- When `Sandbox.kill(id)` answers `false` (the SDK's answer for an id it no longer knows) or throws
+  a `SandboxNotFoundError`, every route and `humanish reclaim` record the sandbox as already gone
+  (#1014, #1164, #1302). Before, the terminal route, the scripted and shared-world subjects, and the
   `lab preflight` probe recorded a failed kill: a terminal run failed with
   `HUMANISH_TERMINAL_LAB_CLEANUP_UNPROVEN`, and preflight returned
-  `HUMANISH_LAB_PREFLIGHT_TEARDOWN_FAILED` and kept its receipt journal.
-- When `Sandbox.kill(id)` answers with neither true nor false, those four teardowns record the
-  release as unconfirmed; before, they counted it as killed (#1164). The computer-use lane and
-  `humanish reclaim` already read both cases this way.
+  `HUMANISH_LAB_PREFLIGHT_TEARDOWN_FAILED` and kept its receipt journal. The computer-use lane read
+  `false` as gone but recorded a thrown `SandboxNotFoundError` as a failed release.
+- Any other error thrown by `Sandbox.kill(id)` leaves the release unconfirmed on every route and in
+  `humanish reclaim`, whatever its message says (#1302). Against v0.105.0, `humanish reclaim` now
+  reads only a `false` return or a `SandboxNotFoundError` as already gone. It used to also count a
+  thrown error whose message contained "not found", "does not exist" or "404", text that also
+  appears in unrelated failures such as a 404 inside a trace id.
+- When `Sandbox.kill(id)` answers with neither true nor false, every route and `humanish reclaim`
+  record the release as unconfirmed (#1014, #1164). Before, the terminal route, the scripted and
+  shared-world subjects and the `lab preflight` probe counted it as killed, and `humanish reclaim`
+  recorded it as already gone. The computer-use lane already read it as unconfirmed.
 - A live computer-use or scripted run whose session failed with an empty error message reads fail
   (#1188). Its verdict and `status.json` used to read `contract_proof_only` while the result had
   already failed.
