@@ -59,7 +59,7 @@ function fanoutParticipantView(
             : "contract_proof_only";
   const reason =
     args.inProgress === true && outcome === undefined
-      ? "Live computer-use lane is running; stream auth URL is available only through the attached Observer server."
+      ? "Live computer-use participant is running; stream auth URL is available only through the attached Observer server."
       : (outcome?.skippedReason ??
         session?.reason ??
         outcome?.sessionError ??
@@ -105,14 +105,14 @@ function fanoutParticipantRecord(
     progress: args.inProgress === true && outcome === undefined ? 20 : 100,
     currentStep: reason,
     summary: session
-      ? `Lane ${spec.planned.id} (${spec.persona.id}/${spec.planned.device.name}): computer-use actor (${args.descriptor.id}) drove the subject app; ${session.completionReason}.`
+      ? `Participant ${spec.planned.id} (${spec.persona.id}/${spec.planned.device.name}): computer-use actor (${args.descriptor.id}) drove the subject app; ${session.completionReason}.`
       : args.inProgress === true && outcome === undefined
-        ? `Lane ${spec.planned.id} (${spec.persona.id}/${spec.planned.device.name}): computer-use actor (${args.descriptor.id}) is driving the subject app.`
+        ? `Participant ${spec.planned.id} (${spec.persona.id}/${spec.planned.device.name}): computer-use actor (${args.descriptor.id}) is driving the subject app.`
         : outcome?.skippedReason !== undefined
-          ? `Lane ${spec.planned.id} ${outcome.skippedReason}.`
+          ? `Participant ${spec.planned.id} ${outcome.skippedReason}.`
           : outcome?.sessionError !== undefined
-            ? `Lane ${spec.planned.id} failed before a terminal session verdict: ${outcome.sessionError}`
-            : `Contract lane ${spec.planned.id} (${spec.persona.id}/${spec.planned.device.name}) for ${args.descriptor.id} against ${publicTargetUrl}.`,
+            ? `Participant ${spec.planned.id} failed before a terminal session verdict: ${outcome.sessionError}`
+            : `Contract participant ${spec.planned.id} (${spec.persona.id}/${spec.planned.device.name}) for ${args.descriptor.id} against ${publicTargetUrl}.`,
     startedAt: args.createdAt,
     updatedAt: args.createdAt,
   });
@@ -142,7 +142,7 @@ function fanoutParticipantStream(
         ? {}
         : { caseGroup: spec.planned.labels.caseGroup }),
       kind: "browser",
-      label: `CUA lane ${spec.planned.id} — ${plan.labId}`,
+      label: `CUA participant ${spec.planned.id}: ${plan.labId}`,
       status,
       transport: "snapshot",
       updatedAt: args.createdAt,
@@ -167,7 +167,7 @@ function fanoutParticipantStream(
       ...(outcome?.recording === undefined ? {} : { recording: outcome.recording }),
       ui: {
         route: publicTargetUrl,
-        intent: `Watch lane ${spec.planned.id} (${spec.persona.id}/${spec.planned.device.name}) drive the subject app in its own hosted desktop.`,
+        intent: `Watch participant ${spec.planned.id} (${spec.persona.id}/${spec.planned.device.name}) drive the subject app in its own hosted desktop.`,
         state: reason,
         ...(session ? { actorStatus: session.status } : {}),
         ...(lastScreenshot ? { screenshotUrl: lastScreenshot } : {}),
@@ -180,7 +180,7 @@ function fanoutParticipantStream(
         ...(session
           ? [
               {
-                label: `lane ${spec.planned.id} actor trace`,
+                label: `participant ${spec.planned.id} actor trace`,
                 path: spec.traceArtifactPath,
                 kind: "trace" as const,
               },
@@ -189,7 +189,7 @@ function fanoutParticipantStream(
         ...(outcome?.commsArtifactPath
           ? [
               {
-                label: `lane ${spec.planned.id} comms thread`,
+                label: `participant ${spec.planned.id} comms thread`,
                 path: outcome.commsArtifactPath,
                 kind: "log" as const,
               },
@@ -205,7 +205,7 @@ function fanoutParticipantStream(
             ]
           : []),
         ...screenshots.map((screenshot, screenshotIndex) => ({
-          label: `lane ${spec.planned.id} screenshot ${String(screenshotIndex + 1).padStart(2, "0")} (${screenshotMode})`,
+          label: `participant ${spec.planned.id} screenshot ${String(screenshotIndex + 1).padStart(2, "0")} (${screenshotMode})`,
           path: screenshot,
           kind: "screenshot" as const,
         })),
@@ -232,9 +232,9 @@ function fanoutSubjectEvents(
       at: args.createdAt,
       level: "info",
       type: "cua-lab.subject.provenance",
-      message: `Lane ${spec.planned.id}: ${
+      message: `Participant ${spec.planned.id}: ${
         args.dryRun
-          ? `subject declared — clone of ${args.publicRepo}, served at ${publicTargetUrl} in-sandbox (dry-run contract; nothing cloned)`
+          ? `subject declared: clone of ${args.publicRepo}, served at ${publicTargetUrl} in-sandbox (dry-run contract; nothing cloned)`
           : subject.commit
             ? session
               ? `subject cloned from ${args.publicRepo}@${subject.commit} and served at ${publicTargetUrl} in-sandbox`
@@ -248,7 +248,7 @@ function fanoutSubjectEvents(
       at: args.createdAt,
       level: "info",
       type: "cua-lab.subject.provenance",
-      message: `Lane ${spec.planned.id}: ${
+      message: `Participant ${spec.planned.id}: ${
         args.dryRun
           ? `subject declared: local working tree, to be packed and served at ${publicTargetUrl} in-sandbox (dry-run contract; nothing packed)`
           : subject.archiveSha256
@@ -264,7 +264,7 @@ function fanoutSubjectEvents(
       at: args.createdAt,
       level: "info",
       type: "cua-lab.subject.declared",
-      message: `Lane ${spec.planned.id}: subject app declared at ${publicTargetUrl} (loopback inside the lane's own desktop sandbox).`,
+      message: `Participant ${spec.planned.id}: subject app declared at ${publicTargetUrl} (loopback inside the participant's own desktop sandbox).`,
     });
   }
   return events;
@@ -287,7 +287,7 @@ function fanoutOutcomeEvents(
       at: args.createdAt,
       level: session.status === "passed" ? "info" : "warn",
       type: `cua-lab.session.${session.completionReason}`,
-      message: `Lane ${spec.planned.id}: ${session.status} — ${session.reason}`,
+      message: `Participant ${spec.planned.id} ${session.status}: ${session.reason}`,
     });
   } else if (args.inProgress === true && outcome === undefined) {
     record({
@@ -295,7 +295,7 @@ function fanoutOutcomeEvents(
       at: args.createdAt,
       level: "info",
       type: "cua-lab.session.running",
-      message: `Lane ${spec.planned.id}: live computer-use session is running; terminal evidence has not been written yet.`,
+      message: `Participant ${spec.planned.id}: live computer-use session is running; terminal evidence has not been written yet.`,
     });
   } else if (outcome?.skippedReason !== undefined) {
     record({
@@ -303,7 +303,7 @@ function fanoutOutcomeEvents(
       at: args.createdAt,
       level: "warn",
       type: "cua-lab.session.blocked",
-      message: `Lane ${spec.planned.id} ${outcome.skippedReason}.`,
+      message: `Participant ${spec.planned.id} ${outcome.skippedReason}.`,
     });
   } else if (outcome?.sessionError !== undefined) {
     record({
@@ -311,7 +311,7 @@ function fanoutOutcomeEvents(
       at: args.createdAt,
       level: "error",
       type: "cua-lab.session.error",
-      message: `Lane ${spec.planned.id}: ${outcome.sessionError}`,
+      message: `Participant ${spec.planned.id}: ${outcome.sessionError}`,
     });
   } else {
     record({
@@ -319,7 +319,7 @@ function fanoutOutcomeEvents(
       at: args.createdAt,
       level: "info",
       type: "cua-lab.contract.ready",
-      message: `Lane ${spec.planned.id}: dry-run contract lane ready; switch scenario.mode to live for a real desktop session.`,
+      message: `Participant ${spec.planned.id}: dry-run contract participant ready; switch scenario.mode to live for a real desktop session.`,
     });
   }
 
@@ -343,8 +343,8 @@ function fanoutOutcomeEvents(
       type: phase.type,
       message:
         phase.durationMs === undefined
-          ? `Lane ${spec.planned.id}: ${phase.message}`
-          : `Lane ${spec.planned.id}: ${phase.message} (${phase.durationMs}ms)`,
+          ? `Participant ${spec.planned.id}: ${phase.message}`
+          : `Participant ${spec.planned.id}: ${phase.message} (${phase.durationMs}ms)`,
     });
   }
   return events;

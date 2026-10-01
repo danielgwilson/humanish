@@ -38,14 +38,14 @@ function fanoutPlanEvents(args: CuaFanoutBundleArgs): RunEvent[] {
     at: args.createdAt,
     level: "info",
     type: "cua-lab.run.created",
-    message: `Created computer-use fan-out run for ${plan.labId} (actor ${args.descriptor.id}, ${specs.length} lanes, per-lane worlds).`,
+    message: `Created computer-use fan-out run for ${plan.labId} (actor ${args.descriptor.id}, ${specs.length} participants, one world each).`,
   });
   events.push({
     id: "event-001-fanout-plan",
     at: args.createdAt,
     level: "info",
     type: "cua-lab.fanout.plan",
-    message: `Fan-out plan: ${args.participantPlan.laneCount} lane(s) (${args.participantPlan.strategy}), concurrency ${args.participantPlan.concurrency}, ${args.participantPlan.waves} wave(s); per-lane session budget ${Math.round(args.participantPlan.perLaneSessionBudgetMs / 1000)}s; worst-case ~${args.participantPlan.worstCaseSandboxMinutes} sandbox-minutes${args.dryRun ? " (dry-run: $0)" : ""}. Lanes: ${args.participantPlan.lanes.map(formatParticipantPlanEntry).join(", ")}.`,
+    message: `Fan-out plan: ${args.participantPlan.laneCount} participant(s) (${args.participantPlan.strategy}), concurrency ${args.participantPlan.concurrency}, ${args.participantPlan.waves} wave(s); session budget ${Math.round(args.participantPlan.perLaneSessionBudgetMs / 1000)}s per participant; worst-case ~${args.participantPlan.worstCaseSandboxMinutes} sandbox-minutes${args.dryRun ? " (dry-run: $0)" : ""}. Participants: ${args.participantPlan.lanes.map(formatParticipantPlanEntry).join(", ")}.`,
   });
   return events;
 }
@@ -105,10 +105,10 @@ function fanoutReview(args: CuaFanoutBundleArgs, streams: RunStream[]): ReviewSu
       ...(studyTasks === undefined ? {} : { tasks: studyTasks }),
       summary:
         args.inProgress === true
-          ? `Live computer-use fan-out is running (${specs.length} per-lane worlds); terminal lane evidence has not been written yet.`
+          ? `Live computer-use fan-out is running (${specs.length} participants, one world each); terminal participant evidence has not been written yet.`
           : args.dryRun
-            ? `${args.rerun ? `Rerun contract from ${args.rerun.sourceRunId}: ` : ""}Dry-run fan-out contract: ${specs.length} per-lane-world lanes composed for ${args.descriptor.id} against ${args.appUrl}; no desktops launched, $0 spend.`
-            : `${args.rerun ? `Rerun from ${args.rerun.sourceRunId}: ` : ""}Computer-use fan-out (${specs.length} per-lane worlds): ${passedParticipants}/${specs.length} lane(s) reached a terminal, engaged verdict${participants ? ` — ${formatParticipantOutcomes(participants, participantEndings)}` : ""}${studyTasks ? `; tasks: ${formatStudyTaskFunnel(studyTasks)}` : ""}.`,
+            ? `${args.rerun ? `Rerun contract from ${args.rerun.sourceRunId}: ` : ""}Dry-run fan-out contract: ${specs.length} participants composed for ${args.descriptor.id} against ${args.appUrl}, one world each; no desktops launched, $0 spend.`
+            : `${args.rerun ? `Rerun from ${args.rerun.sourceRunId}: ` : ""}Computer-use fan-out (${specs.length} participants, one world each): ${passedParticipants}/${specs.length} participant(s) reached a terminal, engaged verdict${participants ? `: ${formatParticipantOutcomes(participants, participantEndings)}` : ""}${studyTasks ? `; tasks: ${formatStudyTaskFunnel(studyTasks)}` : ""}.`,
       gaps:
         args.inProgress === true
           ? ["Live fan-out session is still running."]
@@ -232,7 +232,7 @@ export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
       at: args.createdAt,
       level: "info",
       type: "cua-lab.fanout.rerun",
-      message: `Rerun selected ${args.rerun.selectedLaneIds.length} lane(s) from ${args.rerun.sourceRunId}: ${args.rerun.previous.map((prior) => `${prior.laneId} was ${prior.status}${prior.completionReason ? `/${prior.completionReason}` : ""}`).join(", ")}. This is a new linked run; the source run verdict is unchanged.`,
+      message: `Rerun selected ${args.rerun.selectedLaneIds.length} participant(s) from ${args.rerun.sourceRunId}: ${args.rerun.previous.map((prior) => `${prior.laneId} was ${prior.status}${prior.completionReason ? `/${prior.completionReason}` : ""}`).join(", ")}. This is a new linked run; the source run verdict is unchanged.`,
     });
   }
 
@@ -249,7 +249,7 @@ export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
       at: args.createdAt,
       level: "warn",
       type: "cua-lab.fanout.fail-fast",
-      message: `Fan-out fail-fast: ${args.failFastReason}. In-flight lanes finished; queued lanes were skipped (blocked) — completed evidence is retained.`,
+      message: `Fan-out fail-fast: ${args.failFastReason}. In-flight participants finished; queued participants were skipped (blocked); completed evidence is retained.`,
     });
   }
 
@@ -286,7 +286,7 @@ export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
     }),
     persona: {
       id: specs[0]!.persona.id,
-      name: `Computer-use fan-out (${specs.length} lanes)`,
+      name: `Computer-use fan-out (${specs.length} participants)`,
       source: `lab:${plan.labId}`,
       sourceDigest: specs[0]!.persona.promptDigest,
     },
@@ -309,7 +309,7 @@ export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
       {
         at: args.createdAt,
         event: "cua-lab.run.created",
-        message: `Created computer-use fan-out run with ${specs.length} per-lane desktop browser lanes (actor ${args.descriptor.id}).`,
+        message: `Created computer-use fan-out run with ${specs.length} participants, each in its own desktop browser (actor ${args.descriptor.id}).`,
       },
     ],
     simulations,
@@ -320,7 +320,7 @@ export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
       status: "passed",
       notes: ranLive
         ? anyRaw
-          ? "Typed text recorded as length only and reasoning/messages pass through text redaction. Some lanes captured FULL-FIDELITY (raw) screenshots, retained for local use — NOT redacted for publishing; set policies.redactScreenshots: true to blur a share-as-is bundle."
+          ? "Typed text recorded as length only and reasoning/messages pass through text redaction. Some participants captured FULL-FIDELITY (raw) screenshots, retained for local use and NOT redacted for publishing; set policies.redactScreenshots: true to blur a share-as-is bundle."
           : "Typed text recorded as length only and reasoning/messages pass through text redaction. Screenshots are blurred at capture (policies.redactScreenshots: true) for a share-as-is bundle."
         : "Dry-run fan-out contract bundle: no desktops launched and no screenshots captured. Typed text is recorded as length only and reasoning/messages pass through text redaction whenever a session runs.",
     },

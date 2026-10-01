@@ -274,8 +274,8 @@
     "humanish: Persona impatient-skimmer has no readable file under humanish/personas or .humanish/local/personas; using the id only (no persona context).",
     "humanish: Persona power-user has no readable file under humanish/personas or .humanish/local/personas; using the id only (no persona context).",
     "humanish: Persona comparison-shopper has no readable file under humanish/personas or .humanish/local/personas; using the id only (no persona context).",
-    "humanish cua fan-out plan (fanout-proof): 4 lane(s), strategy per-lane-worlds, concurrency 1, 4 wave(s).",
-    "  per-lane session budget 60s; worst-case ~44 sandbox-minutes total.",
+    "humanish cua fan-out plan (fanout-proof): 4 participant(s), strategy per-lane-worlds, concurrency 1, 4 wave(s).",
+    "  session budget 60s per participant; worst-case ~44 sandbox-minutes total.",
     "  - mobile-newcomer: persona=first-time-visitor device=mobile 500x896 prompt#9a12d26ecfc42242",
     "  - small-skimmer: persona=impatient-skimmer device=small-mobile 500x740 prompt#79b0300d675f36b8",
     "  - desktop-power: persona=power-user device=desktop 1440x950 prompt#506fda1f5dc6abc7",
@@ -729,21 +729,21 @@
       "at": "[ts]",
       "level": "info",
       "type": "cua-lab.run.created",
-      "message": "Created computer-use fan-out run for fanout-proof (actor openai-computer-use, 4 lanes, per-lane worlds)."
+      "message": "Created computer-use fan-out run for fanout-proof (actor openai-computer-use, 4 participants, one world each)."
     },
     {
       "id": "event-001-fanout-plan",
       "at": "[ts]",
       "level": "info",
       "type": "cua-lab.fanout.plan",
-      "message": "Fan-out plan: 4 lane(s) (per-lane-worlds), concurrency 1, 4 wave(s); per-lane session budget 60s; worst-case ~44 sandbox-minutes. Lanes: mobile-newcomer: persona=first-time-visitor device=mobile 500x896 prompt#9a12d26ecfc42242, small-skimmer: persona=impatient-skimmer device=small-mobile 500x740 prompt#79b0300d675f36b8, desktop-power: persona=power-user device=desktop 1440x950 prompt#506fda1f5dc6abc7, wide-researcher: persona=comparison-shopper device=wide 1920x1080 prompt#069b32833fd4b701."
+      "message": "Fan-out plan: 4 participant(s) (per-lane-worlds), concurrency 1, 4 wave(s); session budget 60s per participant; worst-case ~44 sandbox-minutes. Participants: mobile-newcomer: persona=first-time-visitor device=mobile 500x896 prompt#9a12d26ecfc42242, small-skimmer: persona=impatient-skimmer device=small-mobile 500x740 prompt#79b0300d675f36b8, desktop-power: persona=power-user device=desktop 1440x950 prompt#506fda1f5dc6abc7, wide-researcher: persona=comparison-shopper device=wide 1920x1080 prompt#069b32833fd4b701."
     },
     {
       "id": "event-002-subject-mobile-newcomer",
       "at": "[ts]",
       "level": "info",
       "type": "cua-lab.subject.declared",
-      "message": "Lane mobile-newcomer: subject app declared at http://127.0.0.1:3000/ (loopback inside the lane's own desktop sandbox).",
+      "message": "Participant mobile-newcomer: subject app declared at http://127.0.0.1:3000/ (loopback inside the participant's own desktop sandbox).",
       "simId": "sim-001",
       "streamId": "stream-001"
     },
@@ -752,7 +752,7 @@
       "at": "[ts]",
       "level": "info",
       "type": "cua-lab.session.goal_satisfied",
-      "message": "Lane mobile-newcomer: passed — Done.",
+      "message": "Participant mobile-newcomer passed: Done.",
       "simId": "sim-001",
       "streamId": "stream-001"
     },
@@ -797,7 +797,7 @@
       "at": "[ts]",
       "level": "info",
       "type": "cua-lab.subject.declared",
-      "message": "Lane small-skimmer: subject app declared at http://127.0.0.1:3000/ (loopback inside the lane's own desktop sandbox).",
+      "message": "Participant small-skimmer: subject app declared at http://127.0.0.1:3000/ (loopback inside the participant's own desktop sandbox).",
       "simId": "sim-002",
       "streamId": "stream-002"
     },
@@ -806,7 +806,7 @@
       "at": "[ts]",
       "level": "info",
       "type": "cua-lab.session.goal_satisfied",
-      "message": "Lane small-skimmer: passed — Done.",
+      "message": "Participant small-skimmer passed: Done.",
       "simId": "sim-002",
       "streamId": "stream-002"
     },
@@ -851,7 +851,7 @@
       "at": "[ts]",
       "level": "info",
       "type": "cua-lab.subject.declared",
-      "message": "Lane desktop-power: subject app declared at http://127.0.0.1:3000/ (loopback inside the lane's own desktop sandbox).",
+      "message": "Participant desktop-power: subject app declared at http://127.0.0.1:3000/ (loopback inside the participant's own desktop sandbox).",
       "simId": "sim-003",
       "streamId": "stream-003"
     },
@@ -860,7 +860,7 @@
       "at": "[ts]",
       "level": "info",
       "type": "cua-lab.session.goal_satisfied",
-      "message": "Lane desktop-power: passed — Done.",
+      "message": "Participant desktop-power passed: Done.",
       "simId": "sim-003",
       "streamId": "stream-003"
     },
@@ -905,7 +905,7 @@
       "at": "[ts]",
       "level": "info",
       "type": "cua-lab.subject.declared",
-      "message": "Lane wide-researcher: subject app declared at http://127.0.0.1:3000/ (loopback inside the lane's own desktop sandbox).",
+      "message": "Participant wide-researcher: subject app declared at http://127.0.0.1:3000/ (loopback inside the participant's own desktop sandbox).",
       "simId": "sim-004",
       "streamId": "stream-004"
     },
@@ -914,7 +914,7 @@
       "at": "[ts]",
       "level": "info",
       "type": "cua-lab.session.goal_satisfied",
-      "message": "Lane wide-researcher: passed — Done.",
+      "message": "Participant wide-researcher passed: Done.",
       "simId": "sim-004",
       "streamId": "stream-004"
     },
@@ -964,12 +964,12 @@
       "runId": "[run]",
       "mode": "live",
       "status": "pass",
-      "title": "Fan-out proof - Computer-use fan-out (4 lanes)",
+      "title": "Fan-out proof - Computer-use fan-out (4 participants)",
       "createdAt": "[ts]",
       "simCount": 4,
       "persona": {
         "id": "first-time-visitor",
-        "name": "Computer-use fan-out (4 lanes)",
+        "name": "Computer-use fan-out (4 participants)",
         "source": "lab:fanout-proof",
         "sourceDigest": "9a12d26ecfc42242"
       },
@@ -983,13 +983,13 @@
       "packageName": "humanish",
       "redaction": {
         "status": "passed",
-        "notes": "Typed text recorded as length only and reasoning/messages pass through text redaction. Some lanes captured FULL-FIDELITY (raw) screenshots, retained for local use — NOT redacted for publishing; set policies.redactScreenshots: true to blur a share-as-is bundle."
+        "notes": "Typed text recorded as length only and reasoning/messages pass through text redaction. Some participants captured FULL-FIDELITY (raw) screenshots, retained for local use and NOT redacted for publishing; set policies.redactScreenshots: true to blur a share-as-is bundle."
       },
       "lifecycle": [
         {
           "at": "[ts]",
           "event": "cua-lab.run.created",
-          "message": "Created computer-use fan-out run with 4 per-lane desktop browser lanes (actor openai-computer-use)."
+          "message": "Created computer-use fan-out run with 4 participants, each in its own desktop browser (actor openai-computer-use)."
         }
       ],
       "knownGaps": [
@@ -1145,7 +1145,7 @@
           "focus": "Sign up from a phone."
         },
         "kind": "browser",
-        "label": "CUA lane mobile-newcomer — fanout-proof",
+        "label": "CUA participant mobile-newcomer: fanout-proof",
         "status": "passed",
         "transport": "snapshot",
         "updatedAt": "[ts]",
@@ -1180,7 +1180,7 @@
         },
         "ui": {
           "route": "http://127.0.0.1:3000/",
-          "intent": "Watch lane mobile-newcomer (first-time-visitor/mobile) drive the subject app in its own hosted desktop.",
+          "intent": "Watch participant mobile-newcomer (first-time-visitor/mobile) drive the subject app in its own hosted desktop.",
           "state": "Done.",
           "actorStatus": "passed",
           "screenshotUrl": "screenshots/mobile-newcomer/turn-01.png"
@@ -1311,17 +1311,17 @@
             "kind": "events"
           },
           {
-            "label": "lane mobile-newcomer actor trace",
+            "label": "participant mobile-newcomer actor trace",
             "path": "actors/stream-001.json",
             "kind": "trace"
           },
           {
-            "label": "lane mobile-newcomer screenshot 01 (raw)",
+            "label": "participant mobile-newcomer screenshot 01 (raw)",
             "path": "screenshots/mobile-newcomer/turn-00-start.png",
             "kind": "screenshot"
           },
           {
-            "label": "lane mobile-newcomer screenshot 02 (raw)",
+            "label": "participant mobile-newcomer screenshot 02 (raw)",
             "path": "screenshots/mobile-newcomer/turn-01.png",
             "kind": "screenshot"
           }
@@ -1336,7 +1336,7 @@
           "mode": "browser-sim",
           "progress": 100,
           "currentStep": "Done.",
-          "summary": "Lane mobile-newcomer (first-time-visitor/mobile): computer-use actor (openai-computer-use) drove the subject app; goal_satisfied.",
+          "summary": "Participant mobile-newcomer (first-time-visitor/mobile): computer-use actor (openai-computer-use) drove the subject app; goal_satisfied.",
           "streamIds": [
             "stream-001"
           ],
@@ -1352,7 +1352,7 @@
             "at": "[ts]",
             "level": "info",
             "type": "cua-lab.subject.declared",
-            "message": "Lane mobile-newcomer: subject app declared at http://127.0.0.1:3000/ (loopback inside the lane's own desktop sandbox).",
+            "message": "Participant mobile-newcomer: subject app declared at http://127.0.0.1:3000/ (loopback inside the participant's own desktop sandbox).",
             "simId": "sim-001",
             "streamId": "stream-001"
           },
@@ -1361,7 +1361,7 @@
             "at": "[ts]",
             "level": "info",
             "type": "cua-lab.session.goal_satisfied",
-            "message": "Lane mobile-newcomer: passed — Done.",
+            "message": "Participant mobile-newcomer passed: Done.",
             "simId": "sim-001",
             "streamId": "stream-001"
           },
@@ -1412,7 +1412,7 @@
           "focus": "Skim and bounce."
         },
         "kind": "browser",
-        "label": "CUA lane small-skimmer — fanout-proof",
+        "label": "CUA participant small-skimmer: fanout-proof",
         "status": "passed",
         "transport": "snapshot",
         "updatedAt": "[ts]",
@@ -1447,7 +1447,7 @@
         },
         "ui": {
           "route": "http://127.0.0.1:3000/",
-          "intent": "Watch lane small-skimmer (impatient-skimmer/small-mobile) drive the subject app in its own hosted desktop.",
+          "intent": "Watch participant small-skimmer (impatient-skimmer/small-mobile) drive the subject app in its own hosted desktop.",
           "state": "Done.",
           "actorStatus": "passed",
           "screenshotUrl": "screenshots/small-skimmer/turn-01.png"
@@ -1578,17 +1578,17 @@
             "kind": "events"
           },
           {
-            "label": "lane small-skimmer actor trace",
+            "label": "participant small-skimmer actor trace",
             "path": "actors/stream-002.json",
             "kind": "trace"
           },
           {
-            "label": "lane small-skimmer screenshot 01 (raw)",
+            "label": "participant small-skimmer screenshot 01 (raw)",
             "path": "screenshots/small-skimmer/turn-00-start.png",
             "kind": "screenshot"
           },
           {
-            "label": "lane small-skimmer screenshot 02 (raw)",
+            "label": "participant small-skimmer screenshot 02 (raw)",
             "path": "screenshots/small-skimmer/turn-01.png",
             "kind": "screenshot"
           }
@@ -1603,7 +1603,7 @@
           "mode": "browser-sim",
           "progress": 100,
           "currentStep": "Done.",
-          "summary": "Lane small-skimmer (impatient-skimmer/small-mobile): computer-use actor (openai-computer-use) drove the subject app; goal_satisfied.",
+          "summary": "Participant small-skimmer (impatient-skimmer/small-mobile): computer-use actor (openai-computer-use) drove the subject app; goal_satisfied.",
           "streamIds": [
             "stream-002"
           ],
@@ -1619,7 +1619,7 @@
             "at": "[ts]",
             "level": "info",
             "type": "cua-lab.subject.declared",
-            "message": "Lane small-skimmer: subject app declared at http://127.0.0.1:3000/ (loopback inside the lane's own desktop sandbox).",
+            "message": "Participant small-skimmer: subject app declared at http://127.0.0.1:3000/ (loopback inside the participant's own desktop sandbox).",
             "simId": "sim-002",
             "streamId": "stream-002"
           },
@@ -1628,7 +1628,7 @@
             "at": "[ts]",
             "level": "info",
             "type": "cua-lab.session.goal_satisfied",
-            "message": "Lane small-skimmer: passed — Done.",
+            "message": "Participant small-skimmer passed: Done.",
             "simId": "sim-002",
             "streamId": "stream-002"
           },
@@ -1679,7 +1679,7 @@
           "focus": "Open advanced settings."
         },
         "kind": "browser",
-        "label": "CUA lane desktop-power — fanout-proof",
+        "label": "CUA participant desktop-power: fanout-proof",
         "status": "passed",
         "transport": "snapshot",
         "updatedAt": "[ts]",
@@ -1709,7 +1709,7 @@
         },
         "ui": {
           "route": "http://127.0.0.1:3000/",
-          "intent": "Watch lane desktop-power (power-user/desktop) drive the subject app in its own hosted desktop.",
+          "intent": "Watch participant desktop-power (power-user/desktop) drive the subject app in its own hosted desktop.",
           "state": "Done.",
           "actorStatus": "passed",
           "screenshotUrl": "screenshots/desktop-power/turn-01.png"
@@ -1840,17 +1840,17 @@
             "kind": "events"
           },
           {
-            "label": "lane desktop-power actor trace",
+            "label": "participant desktop-power actor trace",
             "path": "actors/stream-003.json",
             "kind": "trace"
           },
           {
-            "label": "lane desktop-power screenshot 01 (raw)",
+            "label": "participant desktop-power screenshot 01 (raw)",
             "path": "screenshots/desktop-power/turn-00-start.png",
             "kind": "screenshot"
           },
           {
-            "label": "lane desktop-power screenshot 02 (raw)",
+            "label": "participant desktop-power screenshot 02 (raw)",
             "path": "screenshots/desktop-power/turn-01.png",
             "kind": "screenshot"
           }
@@ -1865,7 +1865,7 @@
           "mode": "browser-sim",
           "progress": 100,
           "currentStep": "Done.",
-          "summary": "Lane desktop-power (power-user/desktop): computer-use actor (openai-computer-use) drove the subject app; goal_satisfied.",
+          "summary": "Participant desktop-power (power-user/desktop): computer-use actor (openai-computer-use) drove the subject app; goal_satisfied.",
           "streamIds": [
             "stream-003"
           ],
@@ -1881,7 +1881,7 @@
             "at": "[ts]",
             "level": "info",
             "type": "cua-lab.subject.declared",
-            "message": "Lane desktop-power: subject app declared at http://127.0.0.1:3000/ (loopback inside the lane's own desktop sandbox).",
+            "message": "Participant desktop-power: subject app declared at http://127.0.0.1:3000/ (loopback inside the participant's own desktop sandbox).",
             "simId": "sim-003",
             "streamId": "stream-003"
           },
@@ -1890,7 +1890,7 @@
             "at": "[ts]",
             "level": "info",
             "type": "cua-lab.session.goal_satisfied",
-            "message": "Lane desktop-power: passed — Done.",
+            "message": "Participant desktop-power passed: Done.",
             "simId": "sim-003",
             "streamId": "stream-003"
           },
@@ -1941,7 +1941,7 @@
           "focus": "Compare the plans."
         },
         "kind": "browser",
-        "label": "CUA lane wide-researcher — fanout-proof",
+        "label": "CUA participant wide-researcher: fanout-proof",
         "status": "passed",
         "transport": "snapshot",
         "updatedAt": "[ts]",
@@ -1971,7 +1971,7 @@
         },
         "ui": {
           "route": "http://127.0.0.1:3000/",
-          "intent": "Watch lane wide-researcher (comparison-shopper/wide) drive the subject app in its own hosted desktop.",
+          "intent": "Watch participant wide-researcher (comparison-shopper/wide) drive the subject app in its own hosted desktop.",
           "state": "Done.",
           "actorStatus": "passed",
           "screenshotUrl": "screenshots/wide-researcher/turn-01.png"
@@ -2102,17 +2102,17 @@
             "kind": "events"
           },
           {
-            "label": "lane wide-researcher actor trace",
+            "label": "participant wide-researcher actor trace",
             "path": "actors/stream-004.json",
             "kind": "trace"
           },
           {
-            "label": "lane wide-researcher screenshot 01 (raw)",
+            "label": "participant wide-researcher screenshot 01 (raw)",
             "path": "screenshots/wide-researcher/turn-00-start.png",
             "kind": "screenshot"
           },
           {
-            "label": "lane wide-researcher screenshot 02 (raw)",
+            "label": "participant wide-researcher screenshot 02 (raw)",
             "path": "screenshots/wide-researcher/turn-01.png",
             "kind": "screenshot"
           }
@@ -2127,7 +2127,7 @@
           "mode": "browser-sim",
           "progress": 100,
           "currentStep": "Done.",
-          "summary": "Lane wide-researcher (comparison-shopper/wide): computer-use actor (openai-computer-use) drove the subject app; goal_satisfied.",
+          "summary": "Participant wide-researcher (comparison-shopper/wide): computer-use actor (openai-computer-use) drove the subject app; goal_satisfied.",
           "streamIds": [
             "stream-004"
           ],
@@ -2143,7 +2143,7 @@
             "at": "[ts]",
             "level": "info",
             "type": "cua-lab.subject.declared",
-            "message": "Lane wide-researcher: subject app declared at http://127.0.0.1:3000/ (loopback inside the lane's own desktop sandbox).",
+            "message": "Participant wide-researcher: subject app declared at http://127.0.0.1:3000/ (loopback inside the participant's own desktop sandbox).",
             "simId": "sim-004",
             "streamId": "stream-004"
           },
@@ -2152,7 +2152,7 @@
             "at": "[ts]",
             "level": "info",
             "type": "cua-lab.session.goal_satisfied",
-            "message": "Lane wide-researcher: passed — Done.",
+            "message": "Participant wide-researcher passed: Done.",
             "simId": "sim-004",
             "streamId": "stream-004"
           },
@@ -2201,21 +2201,21 @@
         "at": "[ts]",
         "level": "info",
         "type": "cua-lab.run.created",
-        "message": "Created computer-use fan-out run for fanout-proof (actor openai-computer-use, 4 lanes, per-lane worlds)."
+        "message": "Created computer-use fan-out run for fanout-proof (actor openai-computer-use, 4 participants, one world each)."
       },
       {
         "id": "event-001-fanout-plan",
         "at": "[ts]",
         "level": "info",
         "type": "cua-lab.fanout.plan",
-        "message": "Fan-out plan: 4 lane(s) (per-lane-worlds), concurrency 1, 4 wave(s); per-lane session budget 60s; worst-case ~44 sandbox-minutes. Lanes: mobile-newcomer: persona=first-time-visitor device=mobile 500x896 prompt#9a12d26ecfc42242, small-skimmer: persona=impatient-skimmer device=small-mobile 500x740 prompt#79b0300d675f36b8, desktop-power: persona=power-user device=desktop 1440x950 prompt#506fda1f5dc6abc7, wide-researcher: persona=comparison-shopper device=wide 1920x1080 prompt#069b32833fd4b701."
+        "message": "Fan-out plan: 4 participant(s) (per-lane-worlds), concurrency 1, 4 wave(s); session budget 60s per participant; worst-case ~44 sandbox-minutes. Participants: mobile-newcomer: persona=first-time-visitor device=mobile 500x896 prompt#9a12d26ecfc42242, small-skimmer: persona=impatient-skimmer device=small-mobile 500x740 prompt#79b0300d675f36b8, desktop-power: persona=power-user device=desktop 1440x950 prompt#506fda1f5dc6abc7, wide-researcher: persona=comparison-shopper device=wide 1920x1080 prompt#069b32833fd4b701."
       },
       {
         "id": "event-002-subject-mobile-newcomer",
         "at": "[ts]",
         "level": "info",
         "type": "cua-lab.subject.declared",
-        "message": "Lane mobile-newcomer: subject app declared at http://127.0.0.1:3000/ (loopback inside the lane's own desktop sandbox).",
+        "message": "Participant mobile-newcomer: subject app declared at http://127.0.0.1:3000/ (loopback inside the participant's own desktop sandbox).",
         "simId": "sim-001",
         "streamId": "stream-001"
       },
@@ -2224,7 +2224,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "cua-lab.session.goal_satisfied",
-        "message": "Lane mobile-newcomer: passed — Done.",
+        "message": "Participant mobile-newcomer passed: Done.",
         "simId": "sim-001",
         "streamId": "stream-001"
       },
@@ -2269,7 +2269,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "cua-lab.subject.declared",
-        "message": "Lane small-skimmer: subject app declared at http://127.0.0.1:3000/ (loopback inside the lane's own desktop sandbox).",
+        "message": "Participant small-skimmer: subject app declared at http://127.0.0.1:3000/ (loopback inside the participant's own desktop sandbox).",
         "simId": "sim-002",
         "streamId": "stream-002"
       },
@@ -2278,7 +2278,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "cua-lab.session.goal_satisfied",
-        "message": "Lane small-skimmer: passed — Done.",
+        "message": "Participant small-skimmer passed: Done.",
         "simId": "sim-002",
         "streamId": "stream-002"
       },
@@ -2323,7 +2323,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "cua-lab.subject.declared",
-        "message": "Lane desktop-power: subject app declared at http://127.0.0.1:3000/ (loopback inside the lane's own desktop sandbox).",
+        "message": "Participant desktop-power: subject app declared at http://127.0.0.1:3000/ (loopback inside the participant's own desktop sandbox).",
         "simId": "sim-003",
         "streamId": "stream-003"
       },
@@ -2332,7 +2332,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "cua-lab.session.goal_satisfied",
-        "message": "Lane desktop-power: passed — Done.",
+        "message": "Participant desktop-power passed: Done.",
         "simId": "sim-003",
         "streamId": "stream-003"
       },
@@ -2377,7 +2377,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "cua-lab.subject.declared",
-        "message": "Lane wide-researcher: subject app declared at http://127.0.0.1:3000/ (loopback inside the lane's own desktop sandbox).",
+        "message": "Participant wide-researcher: subject app declared at http://127.0.0.1:3000/ (loopback inside the participant's own desktop sandbox).",
         "simId": "sim-004",
         "streamId": "stream-004"
       },
@@ -2386,7 +2386,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "cua-lab.session.goal_satisfied",
-        "message": "Lane wide-researcher: passed — Done.",
+        "message": "Participant wide-researcher passed: Done.",
         "simId": "sim-004",
         "streamId": "stream-004"
       },
@@ -2488,12 +2488,12 @@
       "harnessFailed": 0,
       "reportedFriction": 0
     },
-    "summary": "Run gate: pass. Participants: 4/4 reported reaching the goal. Recorded summary: Computer-use fan-out (4 per-lane worlds): 4/4 lane(s) reached a terminal, engaged verdict — 4/4 reported reaching the goal.",
+    "summary": "Run gate: pass. Participants: 4/4 reported reaching the goal. Recorded summary: Computer-use fan-out (4 participants, one world each): 4/4 participant(s) reached a terminal, engaged verdict: 4/4 reported reaching the goal.",
     "gaps": [
       "Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate."
     ]
   },
-  "review.md": "# Fan-out proof\n\n- run: [run]\n- mode: live\n- run gate: pass\n- summary: Run gate: pass. Participants: 4/4 reported reaching the goal. Recorded summary: Computer-use fan-out (4 per-lane worlds): 4/4 lane(s) reached a terminal, engaged verdict — 4/4 reported reaching the goal.\n- actor: openai-responses-cu (computer-use/cua-loop)\n- evidence: 4 trace item(s), 2 raw screenshot(s)\n\n## Gaps\n- Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate.\n",
+  "review.md": "# Fan-out proof\n\n- run: [run]\n- mode: live\n- run gate: pass\n- summary: Run gate: pass. Participants: 4/4 reported reaching the goal. Recorded summary: Computer-use fan-out (4 participants, one world each): 4/4 participant(s) reached a terminal, engaged verdict: 4/4 reported reaching the goal.\n- actor: openai-responses-cu (computer-use/cua-loop)\n- evidence: 4 trace item(s), 2 raw screenshot(s)\n\n## Gaps\n- Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate.\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -2524,7 +2524,7 @@
     },
     "persona": {
       "id": "first-time-visitor",
-      "name": "Computer-use fan-out (4 lanes)",
+      "name": "Computer-use fan-out (4 participants)",
       "source": "lab:fanout-proof",
       "sourceDigest": "9a12d26ecfc42242"
     },
@@ -2539,7 +2539,7 @@
       {
         "at": "[ts]",
         "event": "cua-lab.run.created",
-        "message": "Created computer-use fan-out run with 4 per-lane desktop browser lanes (actor openai-computer-use)."
+        "message": "Created computer-use fan-out run with 4 participants, each in its own desktop browser (actor openai-computer-use)."
       }
     ],
     "simulations": [
@@ -2553,7 +2553,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "Done.",
-        "summary": "Lane mobile-newcomer (first-time-visitor/mobile): computer-use actor (openai-computer-use) drove the subject app; goal_satisfied.",
+        "summary": "Participant mobile-newcomer (first-time-visitor/mobile): computer-use actor (openai-computer-use) drove the subject app; goal_satisfied.",
         "streamIds": [
           "stream-001"
         ],
@@ -2570,7 +2570,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "Done.",
-        "summary": "Lane small-skimmer (impatient-skimmer/small-mobile): computer-use actor (openai-computer-use) drove the subject app; goal_satisfied.",
+        "summary": "Participant small-skimmer (impatient-skimmer/small-mobile): computer-use actor (openai-computer-use) drove the subject app; goal_satisfied.",
         "streamIds": [
           "stream-002"
         ],
@@ -2587,7 +2587,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "Done.",
-        "summary": "Lane desktop-power (power-user/desktop): computer-use actor (openai-computer-use) drove the subject app; goal_satisfied.",
+        "summary": "Participant desktop-power (power-user/desktop): computer-use actor (openai-computer-use) drove the subject app; goal_satisfied.",
         "streamIds": [
           "stream-003"
         ],
@@ -2604,7 +2604,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "Done.",
-        "summary": "Lane wide-researcher (comparison-shopper/wide): computer-use actor (openai-computer-use) drove the subject app; goal_satisfied.",
+        "summary": "Participant wide-researcher (comparison-shopper/wide): computer-use actor (openai-computer-use) drove the subject app; goal_satisfied.",
         "streamIds": [
           "stream-004"
         ],
@@ -2622,7 +2622,7 @@
           "focus": "Sign up from a phone."
         },
         "kind": "browser",
-        "label": "CUA lane mobile-newcomer — fanout-proof",
+        "label": "CUA participant mobile-newcomer: fanout-proof",
         "status": "passed",
         "transport": "snapshot",
         "updatedAt": "[ts]",
@@ -2657,7 +2657,7 @@
         },
         "ui": {
           "route": "http://127.0.0.1:3000/",
-          "intent": "Watch lane mobile-newcomer (first-time-visitor/mobile) drive the subject app in its own hosted desktop.",
+          "intent": "Watch participant mobile-newcomer (first-time-visitor/mobile) drive the subject app in its own hosted desktop.",
           "state": "Done.",
           "actorStatus": "passed",
           "screenshotUrl": "screenshots/mobile-newcomer/turn-01.png"
@@ -2788,17 +2788,17 @@
             "kind": "events"
           },
           {
-            "label": "lane mobile-newcomer actor trace",
+            "label": "participant mobile-newcomer actor trace",
             "path": "actors/stream-001.json",
             "kind": "trace"
           },
           {
-            "label": "lane mobile-newcomer screenshot 01 (raw)",
+            "label": "participant mobile-newcomer screenshot 01 (raw)",
             "path": "screenshots/mobile-newcomer/turn-00-start.png",
             "kind": "screenshot"
           },
           {
-            "label": "lane mobile-newcomer screenshot 02 (raw)",
+            "label": "participant mobile-newcomer screenshot 02 (raw)",
             "path": "screenshots/mobile-newcomer/turn-01.png",
             "kind": "screenshot"
           }
@@ -2813,7 +2813,7 @@
           "focus": "Skim and bounce."
         },
         "kind": "browser",
-        "label": "CUA lane small-skimmer — fanout-proof",
+        "label": "CUA participant small-skimmer: fanout-proof",
         "status": "passed",
         "transport": "snapshot",
         "updatedAt": "[ts]",
@@ -2848,7 +2848,7 @@
         },
         "ui": {
           "route": "http://127.0.0.1:3000/",
-          "intent": "Watch lane small-skimmer (impatient-skimmer/small-mobile) drive the subject app in its own hosted desktop.",
+          "intent": "Watch participant small-skimmer (impatient-skimmer/small-mobile) drive the subject app in its own hosted desktop.",
           "state": "Done.",
           "actorStatus": "passed",
           "screenshotUrl": "screenshots/small-skimmer/turn-01.png"
@@ -2979,17 +2979,17 @@
             "kind": "events"
           },
           {
-            "label": "lane small-skimmer actor trace",
+            "label": "participant small-skimmer actor trace",
             "path": "actors/stream-002.json",
             "kind": "trace"
           },
           {
-            "label": "lane small-skimmer screenshot 01 (raw)",
+            "label": "participant small-skimmer screenshot 01 (raw)",
             "path": "screenshots/small-skimmer/turn-00-start.png",
             "kind": "screenshot"
           },
           {
-            "label": "lane small-skimmer screenshot 02 (raw)",
+            "label": "participant small-skimmer screenshot 02 (raw)",
             "path": "screenshots/small-skimmer/turn-01.png",
             "kind": "screenshot"
           }
@@ -3004,7 +3004,7 @@
           "focus": "Open advanced settings."
         },
         "kind": "browser",
-        "label": "CUA lane desktop-power — fanout-proof",
+        "label": "CUA participant desktop-power: fanout-proof",
         "status": "passed",
         "transport": "snapshot",
         "updatedAt": "[ts]",
@@ -3034,7 +3034,7 @@
         },
         "ui": {
           "route": "http://127.0.0.1:3000/",
-          "intent": "Watch lane desktop-power (power-user/desktop) drive the subject app in its own hosted desktop.",
+          "intent": "Watch participant desktop-power (power-user/desktop) drive the subject app in its own hosted desktop.",
           "state": "Done.",
           "actorStatus": "passed",
           "screenshotUrl": "screenshots/desktop-power/turn-01.png"
@@ -3165,17 +3165,17 @@
             "kind": "events"
           },
           {
-            "label": "lane desktop-power actor trace",
+            "label": "participant desktop-power actor trace",
             "path": "actors/stream-003.json",
             "kind": "trace"
           },
           {
-            "label": "lane desktop-power screenshot 01 (raw)",
+            "label": "participant desktop-power screenshot 01 (raw)",
             "path": "screenshots/desktop-power/turn-00-start.png",
             "kind": "screenshot"
           },
           {
-            "label": "lane desktop-power screenshot 02 (raw)",
+            "label": "participant desktop-power screenshot 02 (raw)",
             "path": "screenshots/desktop-power/turn-01.png",
             "kind": "screenshot"
           }
@@ -3190,7 +3190,7 @@
           "focus": "Compare the plans."
         },
         "kind": "browser",
-        "label": "CUA lane wide-researcher — fanout-proof",
+        "label": "CUA participant wide-researcher: fanout-proof",
         "status": "passed",
         "transport": "snapshot",
         "updatedAt": "[ts]",
@@ -3220,7 +3220,7 @@
         },
         "ui": {
           "route": "http://127.0.0.1:3000/",
-          "intent": "Watch lane wide-researcher (comparison-shopper/wide) drive the subject app in its own hosted desktop.",
+          "intent": "Watch participant wide-researcher (comparison-shopper/wide) drive the subject app in its own hosted desktop.",
           "state": "Done.",
           "actorStatus": "passed",
           "screenshotUrl": "screenshots/wide-researcher/turn-01.png"
@@ -3351,17 +3351,17 @@
             "kind": "events"
           },
           {
-            "label": "lane wide-researcher actor trace",
+            "label": "participant wide-researcher actor trace",
             "path": "actors/stream-004.json",
             "kind": "trace"
           },
           {
-            "label": "lane wide-researcher screenshot 01 (raw)",
+            "label": "participant wide-researcher screenshot 01 (raw)",
             "path": "screenshots/wide-researcher/turn-00-start.png",
             "kind": "screenshot"
           },
           {
-            "label": "lane wide-researcher screenshot 02 (raw)",
+            "label": "participant wide-researcher screenshot 02 (raw)",
             "path": "screenshots/wide-researcher/turn-01.png",
             "kind": "screenshot"
           }
@@ -3374,21 +3374,21 @@
         "at": "[ts]",
         "level": "info",
         "type": "cua-lab.run.created",
-        "message": "Created computer-use fan-out run for fanout-proof (actor openai-computer-use, 4 lanes, per-lane worlds)."
+        "message": "Created computer-use fan-out run for fanout-proof (actor openai-computer-use, 4 participants, one world each)."
       },
       {
         "id": "event-001-fanout-plan",
         "at": "[ts]",
         "level": "info",
         "type": "cua-lab.fanout.plan",
-        "message": "Fan-out plan: 4 lane(s) (per-lane-worlds), concurrency 1, 4 wave(s); per-lane session budget 60s; worst-case ~44 sandbox-minutes. Lanes: mobile-newcomer: persona=first-time-visitor device=mobile 500x896 prompt#9a12d26ecfc42242, small-skimmer: persona=impatient-skimmer device=small-mobile 500x740 prompt#79b0300d675f36b8, desktop-power: persona=power-user device=desktop 1440x950 prompt#506fda1f5dc6abc7, wide-researcher: persona=comparison-shopper device=wide 1920x1080 prompt#069b32833fd4b701."
+        "message": "Fan-out plan: 4 participant(s) (per-lane-worlds), concurrency 1, 4 wave(s); session budget 60s per participant; worst-case ~44 sandbox-minutes. Participants: mobile-newcomer: persona=first-time-visitor device=mobile 500x896 prompt#9a12d26ecfc42242, small-skimmer: persona=impatient-skimmer device=small-mobile 500x740 prompt#79b0300d675f36b8, desktop-power: persona=power-user device=desktop 1440x950 prompt#506fda1f5dc6abc7, wide-researcher: persona=comparison-shopper device=wide 1920x1080 prompt#069b32833fd4b701."
       },
       {
         "id": "event-002-subject-mobile-newcomer",
         "at": "[ts]",
         "level": "info",
         "type": "cua-lab.subject.declared",
-        "message": "Lane mobile-newcomer: subject app declared at http://127.0.0.1:3000/ (loopback inside the lane's own desktop sandbox).",
+        "message": "Participant mobile-newcomer: subject app declared at http://127.0.0.1:3000/ (loopback inside the participant's own desktop sandbox).",
         "simId": "sim-001",
         "streamId": "stream-001"
       },
@@ -3397,7 +3397,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "cua-lab.session.goal_satisfied",
-        "message": "Lane mobile-newcomer: passed — Done.",
+        "message": "Participant mobile-newcomer passed: Done.",
         "simId": "sim-001",
         "streamId": "stream-001"
       },
@@ -3442,7 +3442,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "cua-lab.subject.declared",
-        "message": "Lane small-skimmer: subject app declared at http://127.0.0.1:3000/ (loopback inside the lane's own desktop sandbox).",
+        "message": "Participant small-skimmer: subject app declared at http://127.0.0.1:3000/ (loopback inside the participant's own desktop sandbox).",
         "simId": "sim-002",
         "streamId": "stream-002"
       },
@@ -3451,7 +3451,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "cua-lab.session.goal_satisfied",
-        "message": "Lane small-skimmer: passed — Done.",
+        "message": "Participant small-skimmer passed: Done.",
         "simId": "sim-002",
         "streamId": "stream-002"
       },
@@ -3496,7 +3496,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "cua-lab.subject.declared",
-        "message": "Lane desktop-power: subject app declared at http://127.0.0.1:3000/ (loopback inside the lane's own desktop sandbox).",
+        "message": "Participant desktop-power: subject app declared at http://127.0.0.1:3000/ (loopback inside the participant's own desktop sandbox).",
         "simId": "sim-003",
         "streamId": "stream-003"
       },
@@ -3505,7 +3505,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "cua-lab.session.goal_satisfied",
-        "message": "Lane desktop-power: passed — Done.",
+        "message": "Participant desktop-power passed: Done.",
         "simId": "sim-003",
         "streamId": "stream-003"
       },
@@ -3550,7 +3550,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "cua-lab.subject.declared",
-        "message": "Lane wide-researcher: subject app declared at http://127.0.0.1:3000/ (loopback inside the lane's own desktop sandbox).",
+        "message": "Participant wide-researcher: subject app declared at http://127.0.0.1:3000/ (loopback inside the participant's own desktop sandbox).",
         "simId": "sim-004",
         "streamId": "stream-004"
       },
@@ -3559,7 +3559,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "cua-lab.session.goal_satisfied",
-        "message": "Lane wide-researcher: passed — Done.",
+        "message": "Participant wide-researcher passed: Done.",
         "simId": "sim-004",
         "streamId": "stream-004"
       },
@@ -3602,7 +3602,7 @@
     ],
     "redaction": {
       "status": "passed",
-      "notes": "Typed text recorded as length only and reasoning/messages pass through text redaction. Some lanes captured FULL-FIDELITY (raw) screenshots, retained for local use — NOT redacted for publishing; set policies.redactScreenshots: true to blur a share-as-is bundle."
+      "notes": "Typed text recorded as length only and reasoning/messages pass through text redaction. Some participants captured FULL-FIDELITY (raw) screenshots, retained for local use and NOT redacted for publishing; set policies.redactScreenshots: true to blur a share-as-is bundle."
     },
     "artifacts": {
       "run": "run.json",
@@ -3623,7 +3623,7 @@
         "harnessFailed": 0,
         "reportedFriction": 0
       },
-      "summary": "Run gate: pass. Participants: 4/4 reported reaching the goal. Recorded summary: Computer-use fan-out (4 per-lane worlds): 4/4 lane(s) reached a terminal, engaged verdict — 4/4 reported reaching the goal.",
+      "summary": "Run gate: pass. Participants: 4/4 reported reaching the goal. Recorded summary: Computer-use fan-out (4 participants, one world each): 4/4 participant(s) reached a terminal, engaged verdict: 4/4 reported reaching the goal.",
       "gaps": [
         "Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate."
       ]
