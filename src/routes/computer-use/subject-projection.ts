@@ -7,7 +7,7 @@ import type { LabSubjectState } from "../../lab/types.js";
 import { cuaDeclaredState } from "./plan.js";
 import { type RunSubjectProvenance, type RunSubjectStateStepRecord } from "../../run/bundle.js";
 import { type LocalTreeArchive } from "../../run/source-archive.js";
-import { laneSubjectProjection } from "./lanes.js";
+import { participantSubjectProjection } from "./lanes.js";
 import { type CuaRoute } from "./plan.js";
 import {
   type DesktopParticipantRun,
@@ -38,7 +38,7 @@ export function projectParticipantSubjects(args: {
       dryRun: args.dryRun,
       executed: outcome?.stateStepRecords ?? [],
     });
-    return laneSubjectProjection({
+    return participantSubjectProjection({
       cloneRoute: route.cloneRoute,
       localTreeRoute: route.localTreeRoute,
       ...(publicRepo === undefined ? {} : { publicRepo }),

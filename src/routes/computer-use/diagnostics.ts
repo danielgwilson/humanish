@@ -43,7 +43,7 @@ interface SessionEnding {
   stopCause?: ActorStopCause;
 }
 
-export function cuaLaneDiagnostics(input: {
+export function cuaParticipantDiagnostics(input: {
   dryRun: boolean;
   skipped?: boolean;
   executionError?: boolean;
@@ -84,20 +84,20 @@ export function cuaLaneDiagnostics(input: {
 export function summarizeCuaDiagnostics(input: {
   dryRun: boolean;
   evidenceInvalid: boolean;
-  lanes: readonly { status: string; ok: boolean; diagnostics?: CuaDiagnostics }[];
+  participants: readonly { status: string; ok: boolean; diagnostics?: CuaDiagnostics }[];
 }): CuaDiagnostics {
   if (input.evidenceInvalid) return { category: "evidence_invalid" };
   if (input.dryRun) return { category: "preview" };
-  if (input.lanes.length === 0) return { category: "unknown" };
-  const diagnostics = input.lanes.map(
-    (lane) => lane.diagnostics ?? { category: "unknown" as const },
+  if (input.participants.length === 0) return { category: "unknown" };
+  const diagnostics = input.participants.map(
+    (participant) => participant.diagnostics ?? { category: "unknown" as const },
   );
-  const signatures = input.lanes.map((lane, index) =>
+  const signatures = input.participants.map((participant, index) =>
     JSON.stringify([
       diagnostics[index]!.category,
       diagnostics[index]!.stopCause,
-      lane.status,
-      lane.ok,
+      participant.status,
+      participant.ok,
     ]),
   );
   const endings = new Set(signatures);

@@ -53,7 +53,7 @@ import { participantDesktopOf } from "./participant-desktop.js";
 
 /**
  * Plans the run and starts it. Returns the refusal, with the envelope the route always used, or
- * everything runLabLanes and finishCuaRun read.
+ * everything runLabParticipants and finishCuaRun read.
  */
 export async function prepareCuaRun(
   routePlan: ComputerUsePlan,
@@ -107,7 +107,7 @@ export async function refuseCuaLab(
 type PlannedCuaRun = Extract<Awaited<ReturnType<typeof planCuaRun>>, { ok: true }>["planned"];
 type StartedRun = Extract<Awaited<ReturnType<RunScope["startRun"]>>, { ok: true }>["run"];
 
-/** What the setup hands to runLabLanes and finishCuaRun. */
+/** What the setup hands to runLabParticipants and finishCuaRun. */
 export interface CuaRunSetup {
   routePlan: ComputerUsePlan;
   input: ComputerUseRunInput;
@@ -141,7 +141,7 @@ export interface CuaRunSetup {
   physicalArtifactRoot: string;
   runPaths: StartedRun["paths"];
   deps: Omit<CuaLaneDeps, "signalProvisioned">;
-  /** Filled by runLabLanes on a live run; deps.onTrace reads it. */
+  /** Filled by runLabParticipants on a live run; deps.onTrace reads it. */
   liveTrace: { flush?: LiveTraceFlush["flush"]; stop?: LiveTraceFlush["stop"] };
   subjectArgs: Omit<Parameters<typeof projectParticipantSubjects>[0], "outcomes" | "dryRun">;
   inProgressSubjects: CuaSubjectProjection[];
@@ -357,7 +357,7 @@ async function startCuaRun(
     packageName: "humanish",
   });
 
-  // Live-trace flush seam (#441): runLabLanes fills it when a live run has an in-progress bundle
+  // Live-trace flush seam (#441): runLabParticipants fills it when a live run has an in-progress bundle
   // to grow; lanes call it through deps.onTrace. It exists before deps so deps can reference it as
   // a stable indirection.
   const liveTrace: { flush?: LiveTraceFlush["flush"]; stop?: LiveTraceFlush["stop"] } = {};

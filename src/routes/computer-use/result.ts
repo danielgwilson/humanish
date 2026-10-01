@@ -10,12 +10,12 @@ import { buildLaneSummary, laneOutcomeOk } from "./bundle.js";
 import { summarizeCuaDiagnostics } from "./diagnostics.js";
 import {
   aggregateCuaSubject,
-  perLaneCapWarning,
+  participantCapWarning,
   subjectProvenanceArg,
-  toLaneResult,
+  toParticipantResult,
 } from "./lanes.js";
 import { buildCuaRunBundle, judgeComputerUseRun } from "./assemble.js";
-import type { runLabLanes } from "./run-lanes.js";
+import type { runLabParticipants } from "./run-lanes.js";
 import type { CuaRunSetup } from "./setup.js";
 import { projectParticipantSubjects } from "./subject-projection.js";
 import {
@@ -40,9 +40,9 @@ function cuaLabResult(args: {
   actorId: string;
   appUrl: string;
   dryRun: boolean;
-  laneSpecs: DesktopParticipantRun[];
+  participantRuns: DesktopParticipantRun[];
   outcomes: LaneRunOutcome[] | undefined;
-  laneSubjects: CuaSubjectProjection[];
+  subjects: CuaSubjectProjection[];
   aggregateSubject: CuaSubjectProjection;
   plan: CuaLanePlan;
   rerunLineage: RunRerunLineage | undefined;
@@ -62,9 +62,9 @@ function cuaLabResult(args: {
     runId,
     appUrl,
     dryRun,
-    laneSpecs,
+    participantRuns,
     outcomes,
-    laneSubjects,
+    subjects,
     aggregateSubject,
     plan,
     rerunLineage,
@@ -74,25 +74,26 @@ function cuaLabResult(args: {
     aggregateWarnings,
     adapterWarnings,
   } = args;
-  const laneCount = laneSpecs.length;
+  const participantCount = participantRuns.length;
   // Lane-level pass: dry-run lanes are contract-ok; live lanes need a passed, engaged session.
-  const laneOk = (outcome: LaneRunOutcome | undefined): boolean => laneOutcomeOk(outcome, dryRun);
+  const participantOk = (outcome: LaneRunOutcome | undefined): boolean =>
+    laneOutcomeOk(outcome, dryRun);
   const adapterFailure = adapterScoreFailureMessage(bundle);
   const ok = observer.ok && args.judgment.passed && args.scorerFailures.length === 0;
 
-  const laneWarnings = (outcomes ?? []).flatMap((outcome) => outcome.warnings);
+  const participantWarnings = (outcomes ?? []).flatMap((outcome) => outcome.warnings);
   const warnings = [
     ...receivingWarnings,
-    ...laneWarnings,
+    ...participantWarnings,
     ...aggregateWarnings,
     ...adapterWarnings,
     ...observer.warnings,
   ];
 
-  const laneResults = laneSpecs.map((spec, index) =>
-    toLaneResult(spec, outcomes?.[index], laneSubjects[index]!, dryRun),
+  const participantResults = participantRuns.map((spec, index) =>
+    toParticipantResult(spec, outcomes?.[index], subjects[index]!, dryRun),
   );
-  const laneSummary = buildLaneSummary(outcomes, laneCount, plan, dryRun);
+  const summary = buildLaneSummary(outcomes, participantCount, plan, dryRun);
   const firstOutcome = outcomes?.[0];
 
   const errorResult = ((): CuaActorLabResult["error"] | undefined => {
@@ -103,7 +104,7 @@ function cuaLabResult(args: {
         message: adapterFailure,
       };
     }
-    if (laneCount === 1) {
+    if (participantCount === 1) {
       const outcome = firstOutcome;
       return {
         code: outcome?.failureCode ?? "HUMANISH_CUA_LAB_FAILED",
@@ -111,7 +112,7 @@ function cuaLabResult(args: {
           outcome?.sessionError ??
           (outcome?.noEngagement
             ? "Actor took no actions and produced no message (likely a blank/still-loading screen); not a credible goal_satisfied."
-            : // The lane result (toLaneResult) named this refusal; the N=1 envelope fell through to
+            : // The lane result (toParticipantResult) named this refusal; the N=1 envelope fell through to
               // "did not produce a terminal session", which is false — it produced one and refused it.
               outcome?.selfReportedBlocker
               ? "Actor reported goal_satisfied while its final message described a blocker or asked for missing instructions; not a credible pass."
@@ -124,15 +125,15 @@ function cuaLabResult(args: {
                 : (observer.error?.message ?? "Observer failed for the computer-use lab run.")),
       };
     }
-    const failingLane = (outcomes ?? []).find((outcome) => !laneOk(outcome));
-    const geometryLane = (outcomes ?? []).find(
+    const failing = (outcomes ?? []).find((outcome) => !participantOk(outcome));
+    const geometryFailure = (outcomes ?? []).find(
       (outcome) => outcome.failureCode === "HUMANISH_CUA_LAB_DEVICE_GEOMETRY",
     );
-    const code: CuaActorLabErrorCode = geometryLane?.failureCode ?? "HUMANISH_CUA_LAB_FAILED";
+    const code: CuaActorLabErrorCode = geometryFailure?.failureCode ?? "HUMANISH_CUA_LAB_FAILED";
     return {
       code,
       message: observer.ok
-        ? `Fan-out run failed: ${laneSummary.passed}/${laneCount} lane(s) passed (${laneSummary.skipped} skipped, ${laneSummary.harnessErrors} harness error(s), ${laneSummary.hollow} hollow)${failingLane?.sessionError !== undefined ? `; first failure: ${failingLane.sessionError}` : ""}.`
+        ? `Fan-out run failed: ${summary.passed}/${participantCount} lane(s) passed (${summary.skipped} skipped, ${summary.harnessErrors} harness error(s), ${summary.hollow} hollow)${failing?.sessionError !== undefined ? `; first failure: ${failing.sessionError}` : ""}.`
         : (observer.error?.message ?? "Observer failed for the computer-use fan-out run."),
     };
   })();
@@ -170,13 +171,13 @@ function cuaLabResult(args: {
       : {}),
     subject: aggregateSubject,
     plan,
-    lanes: laneResults,
+    lanes: participantResults,
     diagnostics: summarizeCuaDiagnostics({
       dryRun,
       evidenceInvalid: !observer.ok,
-      lanes: laneResults,
+      participants: participantResults,
     }),
-    laneSummary,
+    laneSummary: summary,
     ...(rerunLineage === undefined ? {} : { rerun: rerunLineage }),
     observer,
     warnings,
@@ -187,7 +188,7 @@ function cuaLabResult(args: {
 /** Builds and publishes the final bundle, runs the adapter hooks, renders the Observer and returns the result. */
 export async function finishCuaRun(
   setup: CuaRunSetup,
-  lanes: Extract<Awaited<ReturnType<typeof runLabLanes>>, { ok: true }>,
+  ran: Extract<Awaited<ReturnType<typeof runLabParticipants>>, { ok: true }>,
 ): Promise<CuaActorLabResult> {
   const {
     routePlan,
@@ -199,10 +200,10 @@ export async function finishCuaRun(
     streams,
     appUrl,
     descriptor,
-    participantRuns: laneSpecs,
+    participantRuns,
     plan,
     rerunLineage,
-    participantCount: laneCount,
+    participantCount,
     scrubKnownValues,
     publicRepo,
     subjectEnvNames,
@@ -212,13 +213,13 @@ export async function finishCuaRun(
     subjectArgs,
     bundleBase,
   } = setup;
-  const { outcomes, failFastReason, receiving, receivingWarnings, externalCommsWarnings } = lanes;
+  const { outcomes, failFastReason, receiving, receivingWarnings, externalCommsWarnings } = ran;
   // Per-lane subject projections (invariant 5).
-  const laneSubjects = projectParticipantSubjects({ ...subjectArgs, outcomes, dryRun });
+  const subjects = projectParticipantSubjects({ ...subjectArgs, outcomes, dryRun });
 
-  const aggregate = aggregateCuaSubject({ laneSubjects, outcomes, laneCount, dryRun });
+  const aggregate = aggregateCuaSubject({ subjects, outcomes, participantCount, dryRun });
   const aggregateSubject = aggregate.subject;
-  const capWarning = perLaneCapWarning(config, laneCount);
+  const capWarning = participantCapWarning(config, participantCount);
   const aggregateWarnings = [
     ...externalCommsWarnings,
     ...(capWarning === undefined ? [] : [capWarning]),
@@ -232,7 +233,7 @@ export async function finishCuaRun(
     judgment,
     dryRun,
     outcomes,
-    laneSubjects,
+    laneSubjects: subjects,
     aggregateSubject,
     subjectProvenance: finalProvenance,
     ...(failFastReason === undefined ? {} : { failFastReason }),
@@ -250,7 +251,7 @@ export async function finishCuaRun(
       actor: descriptor.id,
       backend: "cua",
       dryRun,
-      laneCount,
+      laneCount: participantCount,
     },
     sanitize: (text) => redactText(scrubKnownValues(text)),
     warnings: adapterWarnings,
@@ -272,9 +273,9 @@ export async function finishCuaRun(
     actorId: descriptor.id,
     appUrl,
     dryRun,
-    laneSpecs,
+    participantRuns,
     outcomes,
-    laneSubjects,
+    subjects,
     aggregateSubject,
     plan,
     rerunLineage,

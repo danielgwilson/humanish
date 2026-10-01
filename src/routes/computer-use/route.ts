@@ -31,7 +31,7 @@ import type { ComputerUsePlan } from "../../lab/plan-types.js";
 import type { LabConfig } from "../../lab/types.js";
 import { planComputerUseLab, type ComputerUseRefusal } from "./plan.js";
 import { finishCuaRun } from "./result.js";
-import { runLabLanes } from "./run-lanes.js";
+import { runLabParticipants } from "./run-lanes.js";
 import { prepareCuaRun, refuseCuaLab } from "./setup.js";
 import {
   type ComputerUseRunInput,
@@ -148,7 +148,7 @@ async function runPlanInScope(
 ): Promise<CuaActorLabResult> {
   const prepared = await prepareCuaRun(plan, input, config, scope);
   if (!prepared.ok) return prepared.result;
-  const lanes = await runLabLanes(prepared.setup);
-  if (!lanes.ok) return lanes.result;
-  return finishCuaRun(prepared.setup, lanes);
+  const ran = await runLabParticipants(prepared.setup);
+  if (!ran.ok) return ran.result;
+  return finishCuaRun(prepared.setup, ran);
 }

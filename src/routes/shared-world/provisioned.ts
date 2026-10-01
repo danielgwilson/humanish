@@ -523,7 +523,7 @@ async function publishInProgress(
 }
 
 // Launch N actor sandboxes CONCURRENTLY, INDEPENDENT (FIX-11: runCuaLane + mapWithConcurrency,
-// NOT runCuaLanes — no pipeline gate / fail-fast). Each actor's window is measured on the ONE
+// NOT runCuaParticipants — no pipeline gate / fail-fast). Each actor's window is measured on the ONE
 // orchestrator clock (FIX-1).
 function runParticipants(
   plane: SubjectPlane,

@@ -5,7 +5,7 @@ import type {
   ActorStopCause,
 } from "../../../src/actors/contract.js";
 import {
-  cuaLaneDiagnostics,
+  cuaParticipantDiagnostics,
   formatCuaStopCause,
   summarizeCuaDiagnostics,
   type CuaDiagnostics,
@@ -30,7 +30,7 @@ describe("CUA diagnostic control evidence", () => {
     "adapter_limit",
   ])("preserves recorded %s", (cause) => {
     expect(
-      cuaLaneDiagnostics({
+      cuaParticipantDiagnostics({
         dryRun: false,
         session: {
           status: "incomplete",
@@ -43,13 +43,13 @@ describe("CUA diagnostic control evidence", () => {
 
   it("does not invent a provider cause for a legacy budget stop or unknown cause", () => {
     expect(
-      cuaLaneDiagnostics({
+      cuaParticipantDiagnostics({
         dryRun: false,
         session: { status: "incomplete", completionReason: "budget_reached" },
       }),
     ).toEqual({ category: "session_interrupted", stopCause: "unspecified_limit" });
     expect(
-      cuaLaneDiagnostics({
+      cuaParticipantDiagnostics({
         dryRun: false,
         session: {
           status: "incomplete",
@@ -70,7 +70,9 @@ describe("CUA diagnostic control evidence", () => {
   ] as const)(
     "distinguishes %s/%s without reading narration",
     (status, completionReason, category) => {
-      expect(cuaLaneDiagnostics({ dryRun: false, session: { status, completionReason } })).toEqual({
+      expect(
+        cuaParticipantDiagnostics({ dryRun: false, session: { status, completionReason } }),
+      ).toEqual({
         category,
       });
     },
@@ -88,9 +90,11 @@ describe("CUA diagnostic control evidence", () => {
         },
       },
     ]) {
-      expect(cuaLaneDiagnostics({ dryRun: false, ...input })).toEqual({ category: "unknown" });
+      expect(cuaParticipantDiagnostics({ dryRun: false, ...input })).toEqual({
+        category: "unknown",
+      });
     }
-    expect(cuaLaneDiagnostics({ dryRun: false, executionError: true })).toEqual({
+    expect(cuaParticipantDiagnostics({ dryRun: false, executionError: true })).toEqual({
       category: "execution_error",
     });
   });
@@ -100,8 +104,8 @@ describe("CUA diagnostic control evidence", () => {
     ok: status === "passed",
     ...(diagnostics === undefined ? {} : { diagnostics }),
   });
-  const summary = (...lanes: ReturnType<typeof lane>[]) =>
-    summarizeCuaDiagnostics({ dryRun: false, evidenceInvalid: false, lanes });
+  const summary = (...participants: ReturnType<typeof lane>[]) =>
+    summarizeCuaDiagnostics({ dryRun: false, evidenceInvalid: false, participants });
   it("never projects the first lane over divergent causes or a missing lane diagnostic", () => {
     const limited = lane("incomplete", {
       category: "session_interrupted",
@@ -127,10 +131,14 @@ describe("CUA diagnostic control evidence", () => {
   });
 
   it("separates invalid evidence and preview from participant endings", () => {
-    expect(summarizeCuaDiagnostics({ dryRun: true, evidenceInvalid: false, lanes: [] })).toEqual({
+    expect(
+      summarizeCuaDiagnostics({ dryRun: true, evidenceInvalid: false, participants: [] }),
+    ).toEqual({
       category: "preview",
     });
-    expect(summarizeCuaDiagnostics({ dryRun: true, evidenceInvalid: true, lanes: [] })).toEqual({
+    expect(
+      summarizeCuaDiagnostics({ dryRun: true, evidenceInvalid: true, participants: [] }),
+    ).toEqual({
       category: "evidence_invalid",
     });
   });

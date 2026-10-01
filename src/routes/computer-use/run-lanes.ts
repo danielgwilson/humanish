@@ -5,7 +5,7 @@ import { prepareReceivingRun } from "../../comms/receiving-runtime.js";
 import type { CommsReceivingRun } from "../../comms/receiving.js";
 import { liveObserverResult } from "../../observer/live.js";
 import { DEFAULT_OPENAI_CU_MODEL } from "../../actors/computer-use/openai-provider.js";
-import { runAllCuaLanes } from "./lanes.js";
+import { runAllCuaParticipants } from "./lanes.js";
 import { startLiveTraceFlush } from "./live-flush.js";
 import { drainExternalComms } from "./external-comms.js";
 import { buildCuaRunBundle, judgeComputerUseRun } from "./assemble.js";
@@ -16,7 +16,7 @@ import type { CuaRunSetup } from "./setup.js";
  * Runs the lanes (a dry run runs none). Returns the refusal when real email setup fails, or the
  * lane outcomes and the warnings the finish records.
  */
-export async function runLabLanes(setup: CuaRunSetup) {
+export async function runLabParticipants(setup: CuaRunSetup) {
   const {
     routePlan,
     input,
@@ -131,7 +131,7 @@ export async function runLabLanes(setup: CuaRunSetup) {
   let failFastReason: string | undefined;
   try {
     if (!dryRun)
-      ({ outcomes, failFastReason } = await runAllCuaLanes(
+      ({ outcomes, failFastReason } = await runAllCuaParticipants(
         participantRuns,
         deps,
         plan,
