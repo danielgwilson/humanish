@@ -271,8 +271,8 @@ export function prepareLocalVmStudy(options: LocalStudyOptions): LocalVmStudy {
           return options.automaticAnalysis?.onStart?.();
         },
       }),
-      // The caller's hooks come first so this study's desktop lane always wins: runLab reads
-      // createDesktopLane as "desktop provided" and plans the computer-use run with these hooks.
+      // These overrides go over the caller's hooks so this study's desktop always wins:
+      // participantDesktopOf takes [PARTICIPANT_DESKTOP] before a caller's createDesktopLane.
       // The caller's bag may be a class instance, so it is wrapped rather than spread.
       cuaHooks: withHookOverrides<HooksWithParticipantDesktop>(callerHooks, HOOK_MEMBERS.cua, {
         [PARTICIPANT_DESKTOP]: (run, warnings, artifactRoot) =>

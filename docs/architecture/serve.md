@@ -11,8 +11,8 @@ loopback bind in `src/observer/listen.ts`. The CLI wiring is in
 reserved and answers `501`; no mutating route ships.
 
 Exposure auth is **tunnel-edge only**. As of 0.18.0 humanish carries NO
-in-process auth: the hand-rolled capability-link (cookie/token/TTL, the whole
-`observer-auth.ts` module and the `serve --auth link|none` flags) was removed as
+in-process auth: the hand-rolled capability-link (cookie/token/TTL, its auth
+module and the `serve --auth link|none` flags) was removed as
 a pre-1.0 breaking change. The gate now lives entirely at the edge: ngrok
 `--oauth google` (with `--allow-email`/`--allow-domain` allow rules), or an
 operator-secured `--public-url` (Cloudflare Access, Tailscale, a reverse proxy
