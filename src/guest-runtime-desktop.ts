@@ -65,8 +65,10 @@ export async function navigateGuestInitialPage(
   signal.throwIfAborted();
   // A document event precedes compositing. Yield a paint before handing the
   // native full-desktop capture to a participant; this is not app readiness.
+  // Playwright evaluates a string predicate as an expression and never calls it,
+  // so the string is the promise itself; a function source would resolve at once.
   const painted = await page.waitForFunction(
-    `() => new Promise(resolve => {
+    `new Promise(resolve => {
     requestAnimationFrame(() => requestAnimationFrame(() => resolve(true)));
   })`,
     undefined,
