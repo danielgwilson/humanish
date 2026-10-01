@@ -1,4 +1,5 @@
 import { randomBytes, randomUUID } from "node:crypto";
+import { missingKeys } from "../../lab/requirements.js";
 import { declaredRuntimeProvenance } from "./runtime.js";
 import { digestText, redactText, scrubLiterals } from "../../evidence/redaction.js";
 import { describeMissingKeys } from "../../keys/key-resolution.js";
@@ -43,7 +44,8 @@ export function checkLiveTerminalMachine(
   const runtimeEnv = buildRuntimeAuth({ runtimeAuth: plan.runtime.auth, env });
   if (!runtimeEnv.ok) return runtimeEnv;
   // The sandbox is created with E2B_API_KEY, so a missing key is refused before the run starts.
-  if (!env.E2B_API_KEY?.trim()) {
+  // The runtime key above is the plan's `key-one-of`; E2B_API_KEY is its only `key`.
+  if (missingKeys(plan.requirements, env).length > 0) {
     return {
       ok: false,
       code: "HUMANISH_TERMINAL_LAB_KEYS_MISSING",

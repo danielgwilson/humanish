@@ -12,6 +12,12 @@ import { planLab } from "../../src/lab/plan.js";
 import type { Requirement } from "../../src/lab/plan-types.js";
 import { runLab, type RunLabOptions } from "../../src/run-lab.js";
 import { lab, SCENARIO_YAML, type RawLab } from "./fixtures.js";
+import {
+  PARTICIPANT_DESKTOP,
+  type HooksWithParticipantDesktop,
+} from "../../src/routes/computer-use/participant-desktop.js";
+import { planComputerUseLab } from "../../src/routes/computer-use/plan.js";
+import { runCuaActorLab } from "../../src/routes/computer-use/route.js";
 
 const live = { scenario: { mode: "live" } };
 
@@ -135,4 +141,198 @@ describe("plan.requirements keys", () => {
     },
     60_000,
   );
+});
+
+// What each live shape must refuse, written out by hand rather than read from plan.requirements, so
+// a requirement a planner stops listing still fails here once the routes check what the plan lists.
+// Each key group is one obligation: a run missing every name in it is refused; a terminal run needs
+// one of CODEX_API_KEY and OPENAI_API_KEY. A local-agent shape's sign-in probe refuses before its
+// subject env is checked (`agentFirst`), so its subject env refusal is not run here.
+const withEnv = { subject: { env: ["DATABASE_URL"] } };
+const obligations: Record<
+  string,
+  {
+    raw: RawLab;
+    keys: readonly (readonly string[])[];
+    subjectEnv: readonly string[];
+    agentFirst?: true;
+  }
+> = {
+  "computer-use app-url": {
+    raw: lab("cuAppUrl", live),
+    keys: [["OPENAI_API_KEY"], ["E2B_API_KEY"]],
+    subjectEnv: [],
+  },
+  "computer-use clone": {
+    raw: lab("cuClone", { ...live, ...withEnv }),
+    keys: [["OPENAI_API_KEY"], ["E2B_API_KEY"]],
+    subjectEnv: ["DATABASE_URL"],
+  },
+  "computer-use local-tree": {
+    raw: lab("cuLocalTree", { ...live, ...withEnv }),
+    keys: [["OPENAI_API_KEY"], ["E2B_API_KEY"]],
+    subjectEnv: ["DATABASE_URL"],
+  },
+  "computer-use desktop-cli": {
+    raw: lab("cuDesktopCli", live),
+    keys: [["OPENAI_API_KEY"], ["E2B_API_KEY"]],
+    subjectEnv: [],
+  },
+  "computer-use local-agent clone": {
+    raw: lab("cuClone", { ...live, ...withEnv }, localAgent),
+    keys: [["E2B_API_KEY"]],
+    subjectEnv: ["DATABASE_URL"],
+    agentFirst: true,
+  },
+  "scripted clone": {
+    raw: lab("scriptedClone", { ...live, ...withEnv }),
+    keys: [["E2B_API_KEY"]],
+    subjectEnv: ["DATABASE_URL"],
+  },
+  terminal: {
+    raw: lab("terminal", live),
+    keys: [["CODEX_API_KEY", "OPENAI_API_KEY"], ["E2B_API_KEY"]],
+    subjectEnv: [],
+  },
+  "shared-world provisioned": {
+    raw: lab("sharedProvisioned", live),
+    keys: [["OPENAI_API_KEY"], ["E2B_API_KEY"]],
+    subjectEnv: ["DATABASE_URL"],
+  },
+  "shared-world external": {
+    raw: lab("sharedExternal", live),
+    keys: [["OPENAI_API_KEY"], ["E2B_API_KEY"]],
+    subjectEnv: [],
+  },
+  "shared-world provisioned local-agent": {
+    raw: lab("sharedProvisioned", live, localAgent),
+    keys: [["E2B_API_KEY"]],
+    subjectEnv: ["DATABASE_URL"],
+    agentFirst: true,
+  },
+  "shared-world external local-agent": {
+    raw: lab("sharedExternal", live, localAgent),
+    keys: [["OPENAI_API_KEY"], ["E2B_API_KEY"]],
+    subjectEnv: [],
+    agentFirst: true,
+  },
+};
+
+/** Runs `raw` live with `env` and returns its refusal code, run directories and module loads. */
+async function liveRun(raw: RawLab, env: Record<string, string>) {
+  const parsed = parseLabConfig(raw);
+  if (!parsed.ok) throw new Error(parsed.error.message);
+  const cwd = await projectDir();
+  const loads = { count: 0 };
+  const outcome = await runLab(parsed.config, options(cwd, env, loads));
+  const runs = await readdir(path.join(cwd, ".humanish", "runs")).catch(() => []);
+  return { code: outcome.result.error?.code ?? "", runs, loads: loads.count };
+}
+
+const without = (names: readonly string[]) =>
+  Object.fromEntries(Object.entries(ALL_KEYS).filter(([name]) => !names.includes(name)));
+
+describe("route obligations, independent of plan.requirements", () => {
+  it.each(Object.entries(obligations))(
+    "%s refuses a live run missing each required key group",
+    async (_name, { raw, keys }) => {
+      for (const group of keys) {
+        const run = await liveRun(raw, without(group));
+        expect({
+          without: group,
+          ...run,
+          code: /_(KEYS|RUNTIME_AUTH)_MISSING$/.test(run.code),
+        }).toEqual({
+          without: group,
+          code: true,
+          runs: [],
+          loads: 0,
+        });
+      }
+    },
+    60_000,
+  );
+
+  it.each(
+    Object.entries(obligations).filter(
+      ([, { subjectEnv, agentFirst }]) => subjectEnv.length > 0 && agentFirst === undefined,
+    ),
+  )(
+    "%s refuses a live run missing each declared subject env name",
+    async (_name, { raw, subjectEnv }) => {
+      for (const name of subjectEnv) {
+        const run = await liveRun(raw, without([name]));
+        expect({ without: name, ...run, code: run.code.endsWith("_SUBJECT_ENV_MISSING") }).toEqual({
+          without: name,
+          code: true,
+          runs: [],
+          loads: 0,
+        });
+      }
+    },
+    60_000,
+  );
+
+  it.each(Object.entries(obligations))(
+    "%s refuses no live run for a missing key or subject env when its obligations hold",
+    async (_name, { raw, keys, subjectEnv }) => {
+      // One name per key group: a terminal run holds its runtime key with CODEX_API_KEY alone.
+      const held = new Set([...keys.map((group) => group[0]!), ...subjectEnv]);
+      const env = Object.fromEntries(Object.entries(ALL_KEYS).filter(([name]) => held.has(name)));
+      const run = await liveRun(raw, env);
+      expect(run.code).not.toMatch(/_(KEYS|RUNTIME_AUTH|SUBJECT_ENV)_MISSING$/);
+    },
+    60_000,
+  );
+
+  it.each(Object.entries(obligations))(
+    "%s lists exactly its obligations in plan.requirements",
+    async (_name, { raw, keys, subjectEnv }) => {
+      const parsed = parseLabConfig(raw);
+      if (!parsed.ok) throw new Error(parsed.error.message);
+      const planned = planLab(parsed.config, options(await projectDir(), ALL_KEYS, { count: 0 }));
+      if (!planned.ok) throw new Error(planned.refusal.message);
+      const { requirements } = planned.planned.plan;
+      expect(requirements.map(keyNames).filter((names) => names.length > 0)).toEqual(
+        expect.arrayContaining(keys.map((group) => [...group])),
+      );
+      expect(requirements.flatMap(keyNames).length).toBe(keys.flat().length);
+      expect(
+        requirements.flatMap((requirement) =>
+          requirement.kind === "subject-env" ? requirement.names : [],
+        ),
+      ).toEqual(subjectEnv);
+    },
+  );
+});
+
+describe("requirements with a caller's desktop and provider", () => {
+  // A study's own desktop factory (PARTICIPANT_DESKTOP) stands in for the hosted desktop, and a
+  // caller's buildProvider for the openai model, so a live app-url run needs neither key.
+  it("lists neither key, and preflight refuses neither, for a desktop factory and buildProvider", async () => {
+    const parsed = parseLabConfig(lab("cuAppUrl", live));
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    const cwd = await projectDir();
+    let desktopReached = false;
+    const hooks: HooksWithParticipantDesktop = {
+      env: {},
+      buildProvider: async () => {
+        throw new Error("the provider is not reached in this test");
+      },
+      [PARTICIPANT_DESKTOP]: () => {
+        desktopReached = true;
+        throw new Error("the caller's desktop factory was reached");
+      },
+    };
+    const planned = planComputerUseLab(parsed.config, { dryRun: false, hooks });
+    if (!planned.ok) throw new Error(planned.refusal.message);
+    expect(planned.plan.requirements.flatMap(keyNames)).toEqual([]);
+    // Past preflight, the run asks the factory for a desktop, and its throw ends the run.
+    const code = await runCuaActorLab({ cwd, config: parsed.config, dryRun: false, hooks }).then(
+      (result) => result.error?.code ?? "",
+      (error: unknown) => (error instanceof Error ? error.message : String(error)),
+    );
+    expect(code).not.toMatch(/_KEYS_MISSING$/);
+    expect(desktopReached).toBe(true);
+  });
 });
