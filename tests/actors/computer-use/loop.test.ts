@@ -1997,9 +1997,9 @@ describe("runComputerUseLoop fail-closed maxUsd cap", () => {
         adapterId: "internal-fixture",
         goal: "Click once.",
         substrate: "e2b-desktop",
-        lanes: [
+        participants: [
           {
-            laneId: "lane-1",
+            participantId: "lane-1",
             streamId: "stream-1",
             personaId: persona.id,
             session: result,

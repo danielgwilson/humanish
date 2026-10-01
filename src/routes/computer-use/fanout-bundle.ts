@@ -193,10 +193,10 @@ function fanoutFeedbackCandidates(args: CuaFanoutBundleArgs) {
         goal: redactText(specs[0]!.evidenceInstructions ?? specs[0]!.instructions),
         substrate:
           routePlan.residual.execution?.target === "local" ? "local-desktop" : "e2b-desktop",
-        lanes: specs.map((spec, index) => {
+        participants: specs.map((spec, index) => {
           const outcome = outcomes?.[index];
           return {
-            laneId: spec.planned.id,
+            participantId: spec.planned.id,
             streamId: spec.streamId,
             personaId: spec.persona.id,
             ...(outcome?.session === undefined ? {} : { session: outcome.session }),
@@ -270,9 +270,8 @@ export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
     providerResourcesForOutcome({
       outcome,
       createdAt: args.createdAt,
-      simId: outcome.spec.simId,
-      streamId: outcome.spec.streamId,
-      laneId: outcome.spec.planned.id,
+      ids: outcome.spec,
+      participantId: outcome.spec.planned.id,
     }),
   );
 

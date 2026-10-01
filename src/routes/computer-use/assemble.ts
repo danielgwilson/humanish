@@ -5,7 +5,7 @@ import type { RunLabProvenance } from "../../run/status.js";
 import { judgeOneParticipant, judgeParticipants, type Judgment } from "../../run/judge.js";
 import { participantFactsOf } from "./bundle.js";
 import { buildCuaFanoutBundle } from "./fanout-bundle.js";
-import { buildSingleLaneBundle } from "./single-bundle.js";
+import { buildSingleParticipantBundle } from "./single-bundle.js";
 import type {
   CuaLanePlan,
   DesktopParticipantRun,
@@ -88,7 +88,7 @@ export function buildCuaRunBundle(
   const inProgress = state.inProgress === undefined ? {} : { inProgress: true };
   if (isOneParticipantRun(base)) {
     const spec = base.laneSpecs[0]!;
-    return buildSingleLaneBundle({
+    return buildSingleParticipantBundle({
       verdict: state.judgment.verdict,
       ...lab,
       spec,

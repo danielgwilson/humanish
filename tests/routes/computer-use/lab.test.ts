@@ -5651,6 +5651,13 @@ describe("buildCuaBundle", () => {
     expect(raw.streams[0]?.artifacts.some((a) => a.label === "screenshot 01 (raw)")).toBe(true);
     expect(raw.redaction.notes).toContain("capture policy (raw)");
     expect(JSON.stringify(raw)).not.toContain("(redacted)");
+
+    // Real email restricts publication on a live run only, saved right after the schema.
+    const restricted = buildCuaBundle({ ...base, realEmail: true });
+    expect(restricted.publication).toEqual({ restrictions: ["real-communications"] });
+    expect(Object.keys(restricted).slice(0, 2)).toEqual(["schema", "publication"]);
+    expect("publication" in buildCuaBundle({ ...base, realEmail: true, dryRun: true })).toBe(false);
+    expect("publication" in raw).toBe(false);
   });
 });
 

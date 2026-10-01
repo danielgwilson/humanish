@@ -2,7 +2,6 @@ import type { RunDesktopRecording } from "../../evidence/desktop-recording-types
 import { e2bDesktopTemplate } from "../../substrates/e2b/sandbox.js";
 import type { SubjectPhaseEvent } from "../../subject/steps.js";
 import type { DesktopBrowserEvidence } from "../../substrates/e2b/desktop-browser.js";
-import path from "node:path";
 import type { ActorPersonaRef, ActorStatus } from "../../actors/contract.js";
 import { type CuaActorDescriptor } from "../../actors/registry.js";
 import type { CuaLoopResult } from "../../actors/computer-use/loop.js";
@@ -11,9 +10,9 @@ import { participantAssignment } from "../../lab/participant-assignment.js";
 import { redactText } from "../../evidence/redaction.js";
 import { type RunLabProvenance } from "../../run/status.js";
 import {
-  PUBLIC_TARGET_CWD,
   REVIEW_SCHEMA,
-  RUN_BUNDLE_SCHEMA,
+  bundleArtifacts,
+  bundleHead,
   type ReviewSummary,
   type RunBundle,
   type RunEvent,
@@ -45,10 +44,16 @@ import {
   type DesktopUsage,
 } from "../../run/cost-summary.js";
 import { phaseEventIdSuffix } from "./lane-plan.js";
+import {
+  participantEvent,
+  participantIds,
+  participantRecord,
+  participantStream,
+} from "../../run/participant-records.js";
 import type { DesktopParticipantRun, CuaSubjectProvenanceArg, LaneRunOutcome } from "./types.js";
 
 /** Build the N=1 bundle via the unchanged buildCuaBundle (byte-stable). */
-export function buildSingleLaneBundle(args: {
+export function buildSingleParticipantBundle(args: {
   /** The run's verdict, from the judge. */
   verdict: Verdict;
   lab?: RunLabProvenance;
@@ -75,7 +80,7 @@ export function buildSingleLaneBundle(args: {
     ...(args.lab === undefined ? {} : { lab: args.lab }),
     actorId: args.descriptor.id,
     appUrl: args.appUrl,
-    laneId: spec.planned.id,
+    participantId: spec.planned.id,
     ...(spec.planned.labels.actorType === undefined
       ? {}
       : { actorType: spec.planned.labels.actorType }),
@@ -122,9 +127,8 @@ export function buildSingleLaneBundle(args: {
     providerResources: providerResourcesForOutcome({
       outcome,
       createdAt: args.createdAt,
-      simId: spec.simId,
-      streamId: spec.streamId,
-      laneId: spec.planned.id,
+      ids: spec,
+      participantId: spec.planned.id,
     }),
     ...(args.localAppSubject || args.inProcessRoute ? { entryKind: "local-app" as const } : {}),
     ...(outcome?.session ? { traceArtifactPath: spec.traceArtifactPath } : {}),
@@ -150,14 +154,17 @@ export function buildSingleLaneBundle(args: {
 
 type CuaBundleArgs = Parameters<typeof buildCuaBundle>[0];
 
-/** The lane's runner: a hosted E2B desktop, a local VM desktop, or the in-process route. */
-function laneSubstrate(args: CuaBundleArgs): RunFeedbackCandidate["substrate"] {
+/** The one participant's record and stream ids: sim-001 and stream-001. */
+const SINGLE = participantIds(0);
+
+/** The participant's runner: a hosted E2B desktop, a local VM desktop, or the in-process route. */
+function runnerSubstrate(args: CuaBundleArgs): RunFeedbackCandidate["substrate"] {
   return args.substrate ?? (args.desktopRoute === false ? "local-filesystem" : "e2b-desktop");
 }
 
-/** Where the lane's browser ran, as the bundle's summary and stream intent say it. */
+/** Where the participant's browser ran, as the bundle's summary and stream intent say it. */
 function browserPlace(args: CuaBundleArgs): string {
-  switch (laneSubstrate(args)) {
+  switch (runnerSubstrate(args)) {
     case "local-desktop":
       return "in a browser on a local VM";
     case "local-filesystem":
@@ -168,12 +175,12 @@ function browserPlace(args: CuaBundleArgs): string {
 }
 
 /** Run-level cost ESTIMATE (advisory; omitted when nothing was priced and no sandbox ran). */
-function laneCost(args: CuaBundleArgs): ReturnType<typeof buildRunCostSummary> {
+function runCost(args: CuaBundleArgs): ReturnType<typeof buildRunCostSummary> {
   return buildRunCostSummary({
     lanes: args.session
       ? [
           {
-            ...(args.laneId === undefined ? {} : { laneId: args.laneId }),
+            ...(args.participantId === undefined ? {} : { laneId: args.participantId }),
             trace: args.session.trace,
           },
         ]
@@ -183,8 +190,8 @@ function laneCost(args: CuaBundleArgs): ReturnType<typeof buildRunCostSummary> {
   });
 }
 
-/** The lane's status, reason, last frame, geometry and screenshot mode, shared by its records. */
-function laneView(args: CuaBundleArgs, publicAppUrl: string) {
+/** The participant's status, reason, last frame, geometry and screenshot mode, shared by its records. */
+function participantView(args: CuaBundleArgs, publicAppUrl: string) {
   const status: RunSimulationStatus =
     args.inProgress === true
       ? "running"
@@ -226,13 +233,11 @@ function laneView(args: CuaBundleArgs, publicAppUrl: string) {
   };
 }
 
-type LaneView = ReturnType<typeof laneView>;
+type ParticipantView = ReturnType<typeof participantView>;
 
-function laneSimulation(args: CuaBundleArgs, view: LaneView): RunSimulation {
+function singleSimulation(args: CuaBundleArgs, view: ParticipantView): RunSimulation {
   const { publicAppUrl, status, reason } = view;
-  return {
-    id: "sim-001",
-    index: 1,
+  return participantRecord(SINGLE, 1, {
     personaId: args.persona.id,
     scenarioId: `cua-${args.labId}`,
     status,
@@ -247,76 +252,76 @@ function laneSimulation(args: CuaBundleArgs, view: LaneView): RunSimulation {
         : args.sessionError !== undefined
           ? `Computer-use lab failed before a terminal session verdict: ${args.sessionError}`
           : `Contract lane for the computer-use actor (${args.actorId}) against ${publicAppUrl}.`,
-    streamIds: ["stream-001"],
     startedAt: args.createdAt,
     updatedAt: args.createdAt,
-  };
+  });
 }
 
-function laneStream(args: CuaBundleArgs, view: LaneView): RunStream {
+function singleStream(args: CuaBundleArgs, view: ParticipantView): RunStream {
   const { publicAppUrl, status, reason, lastScreenshot, desktopGeometry, screenshotMode } = view;
-  return {
-    id: "stream-001",
-    simId: "sim-001",
-    laneId: args.laneId ?? "lane-01",
-    ...(args.assignment === undefined
-      ? {}
-      : { assignment: participantAssignment(args.assignment) }),
-    ...(args.actorType === undefined ? {} : { actorType: args.actorType }),
-    ...(args.surface === undefined ? {} : { surface: args.surface }),
-    ...(args.caseGroup === undefined ? {} : { caseGroup: args.caseGroup }),
-    kind: "browser",
-    label: `CUA browser — ${args.labId}`,
-    status,
-    transport: "snapshot",
-    updatedAt: args.createdAt,
-    embed: lastScreenshot
-      ? { kind: "screenshot", url: lastScreenshot, title: `CUA desktop (${screenshotMode})` }
-      : { kind: "placeholder", title: "CUA desktop" },
-    ...(desktopGeometry?.viewport === undefined
-      ? {}
-      : {
-          viewport: {
-            width: desktopGeometry.viewport.width,
-            height: desktopGeometry.viewport.height,
-            deviceScaleFactor: desktopGeometry.viewport.deviceScaleFactor,
-            ...(args.isMobile === undefined ? {} : { isMobile: args.isMobile }),
-          },
-        }),
-    ...(desktopGeometry === undefined ? {} : { desktopGeometry }),
-    ...(args.recording === undefined ? {} : { recording: args.recording }),
-    ui: {
-      route: publicAppUrl,
-      intent: `Watch the computer-use actor drive the subject app ${browserPlace(args)}.`,
-      state: reason,
-      ...(args.session ? { actorStatus: args.session.status } : {}),
-      ...(lastScreenshot ? { screenshotUrl: lastScreenshot } : {}),
+  return participantStream(
+    SINGLE,
+    {
+      ...(args.assignment === undefined
+        ? {}
+        : { assignment: participantAssignment(args.assignment) }),
+      ...(args.actorType === undefined ? {} : { actorType: args.actorType }),
+      ...(args.surface === undefined ? {} : { surface: args.surface }),
+      ...(args.caseGroup === undefined ? {} : { caseGroup: args.caseGroup }),
+      kind: "browser",
+      label: `CUA browser — ${args.labId}`,
+      status,
+      transport: "snapshot",
+      updatedAt: args.createdAt,
+      embed: lastScreenshot
+        ? { kind: "screenshot", url: lastScreenshot, title: `CUA desktop (${screenshotMode})` }
+        : { kind: "placeholder", title: "CUA desktop" },
+      ...(desktopGeometry?.viewport === undefined
+        ? {}
+        : {
+            viewport: {
+              width: desktopGeometry.viewport.width,
+              height: desktopGeometry.viewport.height,
+              deviceScaleFactor: desktopGeometry.viewport.deviceScaleFactor,
+              ...(args.isMobile === undefined ? {} : { isMobile: args.isMobile }),
+            },
+          }),
+      ...(desktopGeometry === undefined ? {} : { desktopGeometry }),
+      ...(args.recording === undefined ? {} : { recording: args.recording }),
+      ui: {
+        route: publicAppUrl,
+        intent: `Watch the computer-use actor drive the subject app ${browserPlace(args)}.`,
+        state: reason,
+        ...(args.session ? { actorStatus: args.session.status } : {}),
+        ...(lastScreenshot ? { screenshotUrl: lastScreenshot } : {}),
+      },
+      // The seam this lab exists to fill: the provider-neutral actor evidence projection.
+      ...(args.session ? { actor: args.session.trace } : {}),
+      artifacts: [
+        { label: "run bundle", path: "run.json", kind: "bundle" as const },
+        { label: "review", path: "review.md", kind: "review" as const },
+        { label: "events", path: "events.ndjson", kind: "events" as const },
+        ...(args.traceArtifactPath
+          ? [{ label: "actor trace", path: args.traceArtifactPath, kind: "trace" as const }]
+          : []),
+        ...(args.commsArtifactPath
+          ? [{ label: "comms thread", path: args.commsArtifactPath, kind: "log" as const }]
+          : []),
+        ...(args.recording
+          ? [{ label: "desktop recording", path: args.recording.path, kind: "recording" as const }]
+          : []),
+        ...args.screenshots.map((screenshot, index) => ({
+          label: `screenshot ${String(index + 1).padStart(2, "0")} (${screenshotMode})`,
+          path: screenshot,
+          kind: "screenshot" as const,
+        })),
+      ],
     },
-    // The seam this lab exists to fill: the provider-neutral actor evidence projection.
-    ...(args.session ? { actor: args.session.trace } : {}),
-    artifacts: [
-      { label: "run bundle", path: "run.json", kind: "bundle" as const },
-      { label: "review", path: "review.md", kind: "review" as const },
-      { label: "events", path: "events.ndjson", kind: "events" as const },
-      ...(args.traceArtifactPath
-        ? [{ label: "actor trace", path: args.traceArtifactPath, kind: "trace" as const }]
-        : []),
-      ...(args.commsArtifactPath
-        ? [{ label: "comms thread", path: args.commsArtifactPath, kind: "log" as const }]
-        : []),
-      ...(args.recording
-        ? [{ label: "desktop recording", path: args.recording.path, kind: "recording" as const }]
-        : []),
-      ...args.screenshots.map((screenshot, index) => ({
-        label: `screenshot ${String(index + 1).padStart(2, "0")} (${screenshotMode})`,
-        path: screenshot,
-        kind: "screenshot" as const,
-      })),
-    ],
-  };
+    args.participantId ?? "lane-01",
+  );
 }
 
-function laneEvents(args: CuaBundleArgs, view: LaneView): RunEvent[] {
+function singleEvents(args: CuaBundleArgs, view: ParticipantView): RunEvent[] {
   const { publicAppUrl, desktopGeometry } = view;
   const events: RunEvent[] = [
     {
@@ -327,17 +332,15 @@ function laneEvents(args: CuaBundleArgs, view: LaneView): RunEvent[] {
       message: `Created computer-use lab run for ${args.labId} (actor ${args.actorId}).`,
     },
     args.subjectProvenance
-      ? {
+      ? participantEvent(SINGLE, {
           id: "event-001-subject",
           at: args.createdAt,
           level: "info" as const,
           type: "cua-lab.subject.provenance",
           // HONEST WORDING: claim "cloned/packed and served" only when it actually happened.
           message: `${subjectProvenanceMessage(args.subjectProvenance, publicAppUrl, args.dryRun, args.session !== undefined)} (subject env names: ${args.subjectProvenance.envNames.length > 0 ? args.subjectProvenance.envNames.join(", ") : "none"}; values never persisted); state: ${describeSubjectState(args.subjectProvenance.state, args.dryRun)}.`,
-          simId: "sim-001",
-          streamId: "stream-001",
-        }
-      : {
+        })
+      : participantEvent(SINGLE, {
           id: "event-001-subject",
           at: args.createdAt,
           level: "info" as const,
@@ -350,54 +353,46 @@ function laneEvents(args: CuaBundleArgs, view: LaneView): RunEvent[] {
           message:
             args.entryKind === "local-app"
               ? `Subject app declared at ${publicAppUrl} (already-running LOCAL dev server driven in-process; NO clone, NO E2B desktop). Provenance: caller-provisioned and UNPINNED — a running dev server cannot be commit-pinned.`
-              : laneSubstrate(args) === "local-desktop"
+              : runnerSubstrate(args) === "local-desktop"
                 ? `Subject app declared at ${publicAppUrl} (the host's loopback, opened from a browser on a local VM).`
                 : `Subject app declared at ${publicAppUrl} (loopback inside the desktop sandbox).`,
-          simId: "sim-001",
-          streamId: "stream-001",
-        },
+        }),
     args.session
-      ? {
+      ? participantEvent(SINGLE, {
           id: "event-002-session",
           at: args.createdAt,
           level: args.session.status === "passed" ? "info" : "warn",
           type: `cua-lab.session.${args.session.completionReason}`,
           message: `${args.session.status}: ${args.session.reason}`,
-          simId: "sim-001",
-          streamId: "stream-001",
-        }
+        })
       : args.inProgress === true
-        ? {
+        ? participantEvent(SINGLE, {
             id: "event-002-running",
             at: args.createdAt,
             level: "info" as const,
             type: "cua-lab.session.running",
             message:
               "Live computer-use session is running; terminal evidence has not been written yet.",
-            simId: "sim-001",
-            streamId: "stream-001",
-          }
+          })
         : args.sessionError !== undefined
-          ? {
+          ? participantEvent(SINGLE, {
               id: "event-002-session",
               at: args.createdAt,
               level: "error" as const,
               type: "cua-lab.session.error",
               message: args.sessionError,
-              simId: "sim-001",
-              streamId: "stream-001",
-            }
-          : {
+            })
+          : participantEvent(SINGLE, {
               id: "event-002-contract",
               at: args.createdAt,
               level: "info" as const,
               type: "cua-lab.contract.ready",
               message:
                 "Dry-run contract bundle ready; switch scenario.mode to live for a real desktop session.",
-              simId: "sim-001",
-              streamId: "stream-001",
-            },
+            }),
   ];
+  const record = (event: Omit<RunEvent, "simId" | "streamId">) =>
+    events.push(participantEvent(SINGLE, event));
 
   // Persisted phase trail (real boot timing, not just a coarse provenance sentence): one
   // RunEvent per COMPLETED phase boundary (started events never persist here; they carry no
@@ -405,32 +400,32 @@ function laneEvents(args: CuaBundleArgs, view: LaneView): RunEvent[] {
   // error already becomes the terminal cua-lab.session.error event above.
   let phaseEventSeq = 3;
   for (const phase of args.phaseEvents ?? []) {
-    events.push({
+    record({
       id: `event-${String(phaseEventSeq++).padStart(3, "0")}-phase-${phaseEventIdSuffix(phase.type)}`,
       at: phase.at,
       level: phase.ok === false ? "warn" : "info",
       type: phase.type,
       message:
         phase.durationMs === undefined ? phase.message : `${phase.message} (${phase.durationMs}ms)`,
-      simId: "sim-001",
-      streamId: "stream-001",
     });
   }
   for (const warning of desktopGeometry?.warnings ?? []) {
-    events.push({
+    record({
       id: `event-${String(phaseEventSeq++).padStart(3, "0")}-geometry-warning`,
       at: args.createdAt,
       level: "warn",
       type: "cua-lab.geometry.warning",
       message: warning,
-      simId: "sim-001",
-      streamId: "stream-001",
     });
   }
   return events;
 }
 
-function laneReview(args: CuaBundleArgs, view: LaneView, stream: RunStream): ReviewSummary {
+function singleReview(
+  args: CuaBundleArgs,
+  view: ParticipantView,
+  stream: RunStream,
+): ReviewSummary {
   const { reason } = view;
   // A funnel with a denominator of one is still the funnel — and its absence stays honest: no
   // declared protocol (or a dry run) means no `tasks` field, never an empty one.
@@ -490,7 +485,8 @@ export function buildCuaBundle(args: {
   lab?: RunLabProvenance;
   actorId: string;
   appUrl: string;
-  laneId?: string;
+  /** The participant's plan id, saved as the stream's laneId ("lane-01" when absent). */
+  participantId?: string;
   actorType?: string;
   surface?: string;
   caseGroup?: string;
@@ -504,7 +500,7 @@ export function buildCuaBundle(args: {
   resolution: [number, number];
   /** False only for the custom in-process route, which has no hosted screen/window to claim. */
   desktopRoute?: boolean;
-  /** The lane's runner; see laneSubstrate for the default. */
+  /** The participant's runner; see runnerSubstrate for the default. */
   substrate?: RunFeedbackCandidate["substrate"];
   /** Runtime screen/window/viewport evidence. `viewport` inside this object must be measured. */
   desktopGeometry?: RunDesktopGeometry;
@@ -560,27 +556,26 @@ export function buildCuaBundle(args: {
   desktopUsage?: DesktopUsage;
 }): RunBundle {
   const publicAppUrl = publicSafeAppUrlLabel(args.appUrl);
-  const cost = laneCost(args);
-  const view = laneView(args, publicAppUrl);
+  const cost = runCost(args);
+  const view = participantView(args, publicAppUrl);
   const { traceScreenshotMode, screenshotMode } = view;
-  const simulation = laneSimulation(args, view);
-  const stream = laneStream(args, view);
-  const events = laneEvents(args, view);
-  const review = laneReview(args, view, stream);
+  const simulation = singleSimulation(args, view);
+  const stream = singleStream(args, view);
+  const events = singleEvents(args, view);
+  const review = singleReview(args, view, stream);
 
   return {
-    schema: RUN_BUNDLE_SCHEMA,
-    ...(args.realEmail && !args.dryRun
-      ? { publication: { restrictions: ["real-communications"] as ["real-communications"] } }
-      : {}),
-    runId: args.runId,
-    mode: args.dryRun ? "dry-run" : "live",
-    simCount: 1,
-    createdAt: args.createdAt,
-    cwd: PUBLIC_TARGET_CWD,
-    artifactRoot: path.join(".humanish", "runs", args.runId),
-    ...(args.lab === undefined ? {} : { lab: args.lab }),
-    source: args.source,
+    ...bundleHead({
+      ...(args.realEmail && !args.dryRun
+        ? { publication: { restrictions: ["real-communications"] as ["real-communications"] } }
+        : {}),
+      runId: args.runId,
+      mode: args.dryRun ? "dry-run" : "live",
+      participants: 1,
+      createdAt: args.createdAt,
+      ...(args.lab === undefined ? {} : { lab: args.lab }),
+      source: args.source,
+    }),
     persona: {
       id: args.persona.id,
       name: `Computer-use operator (${args.persona.id})`,
@@ -615,13 +610,7 @@ export function buildCuaBundle(args: {
               ? `Session ended before a trace was recorded; ${args.screenshots.length} already-written frame(s) follow the capture policy (${screenshotMode}). Typed text is recorded as length only and reasoning/messages pass through text redaction.`
               : "No screenshots captured. Typed text is recorded as length only and reasoning/messages pass through text redaction whenever a session runs.",
     },
-    artifacts: {
-      run: "run.json",
-      reviewJson: "review.json",
-      reviewMarkdown: "review.md",
-      observerData: "observer/observer-data.json",
-      events: "events.ndjson",
-    },
+    artifacts: bundleArtifacts(),
     review,
     // What the participant reported, when it reported anything (#392). Dry-run and in-progress
     // bundles carry none — there is no participant yet to quote.
@@ -633,11 +622,11 @@ export function buildCuaBundle(args: {
             scenarioId: `cua-${args.labId}`,
             adapterId: args.labId,
             goal: redactText(args.mission),
-            substrate: laneSubstrate(args),
-            lanes: [
+            substrate: runnerSubstrate(args),
+            participants: [
               {
-                laneId: args.laneId ?? "lane-01",
-                streamId: "stream-001",
+                participantId: args.participantId ?? "lane-01",
+                streamId: SINGLE.streamId,
                 personaId: args.persona.id,
                 ...(args.session === undefined ? {} : { session: args.session }),
                 ...(args.traceArtifactPath === undefined

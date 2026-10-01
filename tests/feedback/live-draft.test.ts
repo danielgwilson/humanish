@@ -63,8 +63,8 @@ function fakeSession(
   return { status, completionReason, reason, trace };
 }
 
-const LANE_BASE = {
-  laneId: "power-user",
+const PARTICIPANT_BASE = {
+  participantId: "power-user",
   streamId: "stream-002",
   personaId: "skeptical-power-user",
   traceArtifactPath: "actors/stream-002.json",
@@ -85,11 +85,13 @@ describe("participantFeedbackCandidates (#392)", () => {
       adapterId: "signup-email-verify",
       goal: "Create an account and reach the dashboard.",
       substrate: "e2b-desktop",
-      lanes: [{ ...LANE_BASE, session }],
+      participants: [{ ...PARTICIPANT_BASE, session }],
     });
 
     expect(candidates).toHaveLength(1);
     const candidate = candidates[0]!;
+    expect(candidate.id).toBe("participant-report-power-user");
+    expect(candidate.idempotency_key).toBe("humanish:run-1:power-user:participant-report");
     expect(candidate.acceptance_proof).toEqual([
       "humanish verify --run run-1 --json",
       "humanish watch --run run-1 --no-open",
@@ -114,7 +116,7 @@ describe("participantFeedbackCandidates (#392)", () => {
       adapterId: "lab",
       goal: "Complete the flow.",
       substrate: "e2b-desktop",
-      lanes: [{ ...LANE_BASE, session }],
+      participants: [{ ...PARTICIPANT_BASE, session }],
     });
     expect(candidates).toHaveLength(1);
     expect(candidates[0]!.summary).toContain("stopped before completing");
@@ -128,7 +130,9 @@ describe("participantFeedbackCandidates (#392)", () => {
         adapterId: "lab",
         goal: "Complete the flow.",
         substrate: "e2b-desktop",
-        lanes: [{ ...LANE_BASE, session: fakeSession("passed", "goal_satisfied", reason) }],
+        participants: [
+          { ...PARTICIPANT_BASE, session: fakeSession("passed", "goal_satisfied", reason) },
+        ],
       });
     for (const clean of [
       "REACHED THE GOAL. Two tables linked; nothing confusing.",
@@ -162,9 +166,9 @@ describe("participantFeedbackCandidates (#392)", () => {
       adapterId: "lab",
       goal: "Complete the flow.",
       substrate: "e2b-desktop",
-      lanes: [
-        { ...LANE_BASE, session: clean },
-        { ...LANE_BASE, laneId: "no-session", streamId: "stream-003" },
+      participants: [
+        { ...PARTICIPANT_BASE, session: clean },
+        { ...PARTICIPANT_BASE, participantId: "no-session", streamId: "stream-003" },
       ],
     });
     expect(candidates).toHaveLength(0);
@@ -265,10 +269,10 @@ describe("a multi-lane study's second finding is one flag away (#609)", () => {
         adapterId: "persona-axis",
         goal: "Create two related tables.",
         substrate: "e2b-desktop",
-        lanes: [
+        participants: [
           {
-            ...LANE_BASE,
-            laneId: "impatient-expert",
+            ...PARTICIPANT_BASE,
+            participantId: "impatient-expert",
             streamId: "stream-001",
             session: fakeSession(
               "passed",
@@ -277,8 +281,8 @@ describe("a multi-lane study's second finding is one flag away (#609)", () => {
             ),
           },
           {
-            ...LANE_BASE,
-            laneId: "phone-newcomer",
+            ...PARTICIPANT_BASE,
+            participantId: "phone-newcomer",
             streamId: "stream-003",
             personaId: "synthetic-new-user",
             session: fakeSession(
@@ -288,8 +292,8 @@ describe("a multi-lane study's second finding is one flag away (#609)", () => {
             ),
           },
           {
-            ...LANE_BASE,
-            laneId: "patient-newcomer",
+            ...PARTICIPANT_BASE,
+            participantId: "patient-newcomer",
             streamId: "stream-002",
             personaId: "synthetic-new-user",
             session: fakeSession(
