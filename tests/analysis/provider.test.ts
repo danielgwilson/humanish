@@ -2,8 +2,8 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import type { AnalysisFetch } from "../../src/analysis/provider.js";
 import {
-  createStudyAnalysisProvider,
-  parseStudyAnalysisResponse,
+  createAnalysisProvider,
+  parseAnalysisResponse,
   type AnalysisProviderRequest,
 } from "../../src/analysis/provider.js";
 
@@ -41,7 +41,7 @@ function wire(text = JSON.stringify({ summary: "The synthetic task was saved." }
 describe("study analysis provider boundary", () => {
   it("sends one stateless strict request to a fixed origin, with tools and redirects disabled", async () => {
     const fetchFn = vi.fn<AnalysisFetch>(async () => response(wire()));
-    const result = await createStudyAnalysisProvider({ apiKey: "synthetic-key", fetchFn })(request);
+    const result = await createAnalysisProvider({ apiKey: "synthetic-key", fetchFn })(request);
     expect(result).toMatchObject({
       status: "completed",
       output: { summary: "The synthetic task was saved." },
@@ -68,7 +68,7 @@ describe("study analysis provider boundary", () => {
   it("sends local image data with explicit high detail and its evidence key", async () => {
     const fetchFn = vi.fn<AnalysisFetch>(async () => response(wire()));
     const dataUrl = "data:image/png;base64,c3ludGhldGlj";
-    await createStudyAnalysisProvider({ apiKey: "synthetic-key", fetchFn })({
+    await createAnalysisProvider({ apiKey: "synthetic-key", fetchFn })({
       ...request,
       images: [{ evidenceId: "e1", dataUrl }],
     });
@@ -90,7 +90,7 @@ describe("study analysis provider boundary", () => {
     "data:image/svg+xml;base64,c3ludGhldGlj",
   ])("refuses nonlocal/unsupported image %s before dispatch", async (dataUrl) => {
     const fetchFn = vi.fn<AnalysisFetch>();
-    const result = await createStudyAnalysisProvider({ apiKey: "synthetic-key", fetchFn })({
+    const result = await createAnalysisProvider({ apiKey: "synthetic-key", fetchFn })({
       ...request,
       images: [{ evidenceId: "e1", dataUrl }],
     });
@@ -108,9 +108,7 @@ describe("study analysis provider boundary", () => {
       const fetchFn = vi.fn<AnalysisFetch>(async () =>
         response({ error: { message: "synthetic-private-payload" } }, status),
       );
-      const result = await createStudyAnalysisProvider({ apiKey: "synthetic-key", fetchFn })(
-        request,
-      );
+      const result = await createAnalysisProvider({ apiKey: "synthetic-key", fetchFn })(request);
       expect(fetchFn).toHaveBeenCalledTimes(1);
       expect(result).toMatchObject({
         status: "failed",
@@ -127,7 +125,7 @@ describe("study analysis provider boundary", () => {
     const fetchFn = vi.fn<AnalysisFetch>(async () => {
       throw new Error("synthetic-private-payload");
     });
-    const result = await createStudyAnalysisProvider({ apiKey: "synthetic-key", fetchFn })(request);
+    const result = await createAnalysisProvider({ apiKey: "synthetic-key", fetchFn })(request);
     expect(fetchFn).toHaveBeenCalledTimes(1);
     expect(result).toMatchObject({
       usage: null,
@@ -149,7 +147,7 @@ describe("study analysis provider boundary", () => {
     const fetchFn = vi.fn<AnalysisFetch>(async () => {
       throw new TypeError("synthetic-private-url", { cause });
     });
-    const result = await createStudyAnalysisProvider({ apiKey: "synthetic-key", fetchFn })(request);
+    const result = await createAnalysisProvider({ apiKey: "synthetic-key", fetchFn })(request);
     expect(result).toMatchObject({ usage: null, dispatched: true, errorCode: expected });
     expect(fetchFn).toHaveBeenCalledTimes(1);
     expect(JSON.stringify(result)).not.toContain("synthetic-private");
@@ -157,7 +155,7 @@ describe("study analysis provider boundary", () => {
 
   it("honors cancellation before dispatch", async () => {
     const fetchFn = vi.fn<AnalysisFetch>();
-    const result = await createStudyAnalysisProvider({ apiKey: "synthetic-key", fetchFn })({
+    const result = await createAnalysisProvider({ apiKey: "synthetic-key", fetchFn })({
       ...request,
       signal: AbortSignal.abort(),
     });
@@ -180,7 +178,7 @@ describe("study analysis provider boundary", () => {
             if (kind === "caller") controller.abort();
           }),
       );
-      const result = await createStudyAnalysisProvider({ apiKey: "synthetic-key", fetchFn })({
+      const result = await createAnalysisProvider({ apiKey: "synthetic-key", fetchFn })({
         ...request,
         signal: controller.signal,
         timeoutMs: 10,
@@ -196,7 +194,7 @@ describe("study analysis provider boundary", () => {
 
   it("bounds response bytes", async () => {
     const fetchFn = vi.fn<AnalysisFetch>(async () => new Response("x".repeat(2 * 1024 * 1024 + 1)));
-    const result = await createStudyAnalysisProvider({ apiKey: "synthetic-key", fetchFn })(request);
+    const result = await createAnalysisProvider({ apiKey: "synthetic-key", fetchFn })(request);
     expect(result).toMatchObject({
       status: "failed",
       errorCode: "response_too_large",
@@ -214,12 +212,12 @@ describe("study analysis provider boundary", () => {
       if (kind === "refusal")
         value.output[0].content[0] = { type: "refusal", refusal: "synthetic refusal" };
       if (kind === "incomplete-message") value.output[0].status = "incomplete";
-      expect(parseStudyAnalysisResponse(value)).toMatchObject({
+      expect(parseAnalysisResponse(value)).toMatchObject({
         output: null,
         usage: { input: 13543, output: 221 },
         dispatched: true,
       });
-      expect(parseStudyAnalysisResponse(value).status).not.toBe("completed");
+      expect(parseAnalysisResponse(value).status).not.toBe("completed");
     },
   );
 
@@ -241,6 +239,6 @@ describe("study analysis provider boundary", () => {
     if (kind === "excessive-count") value.usage.input_tokens = 1e12 + 1;
     if (kind === "invalid-cache-count")
       value.usage.input_tokens_details.cache_write_tokens = "invalid";
-    expect(parseStudyAnalysisResponse(value)).toMatchObject({ status: "completed", usage: null });
+    expect(parseAnalysisResponse(value)).toMatchObject({ status: "completed", usage: null });
   });
 });

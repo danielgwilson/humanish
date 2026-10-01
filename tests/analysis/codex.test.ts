@@ -21,11 +21,11 @@ import { createProgram } from "../../src/cli/program.js";
 import { resolveRunPath } from "../../src/run/locate.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import {
-  estimateStudyAnalysisAdmission,
-  runStudyAnalysis,
+  estimateAnalysisAdmission,
+  runAnalysis,
   ANALYSIS_PROMPT_VERSION,
-} from "../../src/analysis/run-study-analysis.js";
-import { captureStudyEvidence } from "../../src/analysis/evidence.js";
+} from "../../src/analysis/execute.js";
+import { captureEvidence } from "../../src/analysis/evidence.js";
 import { codexAnalysisIdentity } from "../../src/analysis/codex-config.js";
 import { bindCodexAnalysisCliVersion } from "../../src/analysis/restricted-codex.js";
 import type { AnalysisProvider } from "../../src/analysis/provider.js";
@@ -42,7 +42,7 @@ import type {
   CodexAnalysisConfig,
   AnalysisConfig,
   AnalysisInput,
-} from "../../src/analysis/study-analysis.js";
+} from "../../src/analysis/types.js";
 import { computeStats } from "../../src/run/stats.js";
 import { syntheticArtifact, syntheticInput, syntheticResult } from "./fixtures.js";
 
@@ -89,7 +89,7 @@ async function study() {
   await writeFile(runFile, JSON.stringify(bundle));
   await rm(path.join(prepared.physicalRunRoot, "status.json"));
   const original = await readFile(runFile);
-  const input = await captureStudyEvidence(prepared, original);
+  const input = await captureEvidence(prepared, original);
   return { cwd, prepared, runFile, original, input };
 }
 
@@ -158,7 +158,7 @@ describe("explicit Codex account analysis", () => {
     const input = packet(),
       run = provider(input),
       fetch = vi.fn();
-    expect(estimateStudyAnalysisAdmission(input, config())).toEqual({
+    expect(estimateAnalysisAdmission(input, config())).toEqual({
       allowed: true,
       error: null,
       inputTokenAllowance: null,
@@ -166,7 +166,7 @@ describe("explicit Codex account analysis", () => {
       estimatedCostUsd: null,
       ratesAsOf: null,
     });
-    const artifact = await runStudyAnalysis(input, config(), {
+    const artifact = await runAnalysis(input, config(), {
       apiKey: "unused-synthetic-key",
       codexProvider: run,
       fetch,
@@ -201,10 +201,10 @@ describe("explicit Codex account analysis", () => {
       controller = new AbortController();
     controller.abort();
     expect(
-      await runStudyAnalysis(packet(), config(), { codexProvider: run, signal: controller.signal }),
+      await runAnalysis(packet(), config(), { codexProvider: run, signal: controller.signal }),
     ).toMatchObject({ status: "cancelled", usage: { dispatched: false } });
     await expect(
-      runStudyAnalysis(packet(), config(), {
+      runAnalysis(packet(), config(), {
         codexProvider: run,
         beforeDispatch: async () => {
           throw new Error("Synthetic durable claim failure");
@@ -231,13 +231,13 @@ describe("explicit Codex account analysis", () => {
     });
     await withTransientCommsSecrets(async () => {
       registerTransientCommsSecrets([canary]);
-      const artifact = await runStudyAnalysis(input, config(), { codexProvider: run });
+      const artifact = await runAnalysis(input, config(), { codexProvider: run });
       expect(artifact.result?.summary).toContain("[REDACTED_SECRET]");
       expect(JSON.stringify(artifact)).not.toContain(canary);
       expect(artifact.evidence).toEqual(before.evidence);
       expect(input).toEqual(before);
       answer.findings[0]!.id = canary;
-      expect(await runStudyAnalysis(input, config(), { codexProvider: run })).toMatchObject({
+      expect(await runAnalysis(input, config(), { codexProvider: run })).toMatchObject({
         result: null,
         error: "analysis_validation_failed_scrub_rejected",
       });
@@ -260,7 +260,7 @@ describe("explicit Codex account analysis", () => {
       dispatched: true,
       errorCode: null,
     }));
-    const artifact = await runStudyAnalysis(packet(), config(), { codexProvider: run });
+    const artifact = await runAnalysis(packet(), config(), { codexProvider: run });
     expect(artifact).toMatchObject({
       status: "failed",
       result: null,
@@ -278,7 +278,7 @@ describe("explicit Codex account analysis", () => {
   });
 
   it("retains incomplete usage on cancellation without treating it as final or free", async () => {
-    const artifact = await runStudyAnalysis(packet(), config(), {
+    const artifact = await runAnalysis(packet(), config(), {
       codexProvider: async () => ({
         status: "cancelled",
         output: null,
@@ -310,7 +310,7 @@ describe("explicit Codex account analysis", () => {
       dispatched: true,
       errorCode: null,
     });
-    const artifact = await runStudyAnalysis(input, config(), { codexProvider: run });
+    const artifact = await runAnalysis(input, config(), { codexProvider: run });
     expect(artifact).toMatchObject({
       result: null,
       error: "analysis_validation_failed_visual_without_capture",
@@ -327,10 +327,10 @@ describe("explicit Codex account analysis", () => {
       const changed = structuredClone(config());
       (changed.identity as unknown as Record<string, unknown>)[field] = "unqualified";
       expect(hashAnalysisValue(changed)).not.toBe(hashAnalysisValue(config()));
-      expect(estimateStudyAnalysisAdmission(input, changed).allowed).toBe(false);
+      expect(estimateAnalysisAdmission(input, changed).allowed).toBe(false);
     }
     const malformed = { ...config(), maxCostUsd: 1 } as unknown as AnalysisConfig;
-    await expect(runStudyAnalysis(input, malformed, { codexProvider: run })).rejects.toThrow(
+    await expect(runAnalysis(input, malformed, { codexProvider: run })).rejects.toThrow(
       "ANALYSIS_CONFIG_INVALID",
     );
     expect(run).toHaveBeenCalledOnce();

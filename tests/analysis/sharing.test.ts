@@ -8,7 +8,7 @@ import { pinDirectory } from "../../src/observer/pinned-files.js";
 import { resolveRunPath } from "../../src/run/locate.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { verifyRun } from "../../src/verify/verify.js";
-import { captureStudyEvidence } from "../../src/analysis/evidence.js";
+import { captureEvidence } from "../../src/analysis/evidence.js";
 import { writeStudyAnalysis } from "../../src/analysis/store.js";
 import { writeStudyAnalysisExecutionReceipt } from "../../src/analysis/store-executions.js";
 import { syntheticArtifact } from "./fixtures.js";
@@ -26,7 +26,7 @@ describe("analysis sharing through a share-safety admission that misses it", () 
         await runDryRun({ cwd, dryRun: true, runId: "synthetic-study" });
         const prepared = (await resolveRunPath(cwd, "synthetic-study"))!;
         const source = await readFile(path.join(prepared.physicalRunRoot, "run.json"));
-        const input = await captureStudyEvidence(prepared, source);
+        const input = await captureEvidence(prepared, source);
         // An admission whose verify passes every bundle: the analysis projection must hold
         // even when the share-safety verdict misses the unsafe text.
         const passAll = async () => ({ ok: true, shareSafety: { status: "share_ready" } });

@@ -4,7 +4,7 @@ import path from "node:path";
 import { PNG } from "pngjs";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { prepareRunArtifactPaths, type PreparedRunArtifactPaths } from "../../src/run/paths.js";
-import { captureStudyEvidence } from "../../src/analysis/evidence.js";
+import { captureEvidence } from "../../src/analysis/evidence.js";
 import { writeStudyAnalysis } from "../../src/analysis/store.js";
 import {
   listStudyAnalysisExecutions,
@@ -16,7 +16,7 @@ import {
   validateAnalysisArtifact,
   validateAnalysisInputMetadata,
 } from "../../src/analysis/validation.js";
-import type { AnalysisInput } from "../../src/analysis/study-analysis.js";
+import type { AnalysisInput } from "../../src/analysis/types.js";
 import { syntheticArtifact } from "./fixtures.js";
 
 // Original synthetic actor-contract fixture. Scripted captures belong to action
@@ -87,7 +87,7 @@ describe("versioned scripted capture evidence", () => {
 
   it("retains every attached capture, declared task and original action without inventing timestamps or quotes", async () => {
     const source = await save(),
-      input = await captureStudyEvidence(prepared, source);
+      input = await captureEvidence(prepared, source);
     expect(input.captureVersion).toBe(2);
     expect(input.coverage).toMatchObject({
       evidenceCount: 5,
@@ -135,12 +135,12 @@ describe("versioned scripted capture evidence", () => {
   it("keeps explicit assignments authoritative and never promotes another lane's display intent", async () => {
     const bundle = fixture();
     Object.assign(bundle.streams[0]!, { assignment: { mission: "Use the explicit task." } });
-    expect(
-      (await captureStudyEvidence(prepared, await save(bundle))).participants[0]!.assignment,
-    ).toBe("Use the explicit task.");
+    expect((await captureEvidence(prepared, await save(bundle))).participants[0]!.assignment).toBe(
+      "Use the explicit task.",
+    );
     const other = fixture();
     other.streams[0]!.actor.lane = "cua";
-    const input = await captureStudyEvidence(prepared, await save(other));
+    const input = await captureEvidence(prepared, await save(other));
     expect(input.participants[0]!.assignment).toBeNull();
     expect(input.coverage.complete).toBe(false);
     expect(input.coverage.omissions).toContain("Some participants have no recorded assignment.");
@@ -148,7 +148,7 @@ describe("versioned scripted capture evidence", () => {
 
   it("retains original frame addresses when capture admission omits image bytes", async () => {
     const source = await save(),
-      input = await captureStudyEvidence(prepared, source, { captures: 2 });
+      input = await captureEvidence(prepared, source, { captures: 2 });
     expect(input.coverage).toMatchObject({ captureCount: 2, complete: false });
     expect(input.evidence.slice(0, 4).map((entry) => entry.frame)).toEqual([0, 1, 2, 3]);
     expect(input.evidence[1]!.capture).toBeNull();
@@ -169,7 +169,7 @@ describe("versioned scripted capture evidence", () => {
       if (mode === "unsafe")
         bundle.streams[0]!.actor.items[1]!.screenshotRef.path = "../outside.png";
       if (mode === "unmapped") bundle.streams[0]!.actor.items = [];
-      const input = await captureStudyEvidence(prepared, await save(bundle));
+      const input = await captureEvidence(prepared, await save(bundle));
       expect(input.coverage.complete).toBe(false);
       expect(input.coverage.omissions.length).toBeGreaterThan(0);
       input.coverage.complete = true;
@@ -188,7 +188,7 @@ describe("versioned scripted capture evidence", () => {
       if (kind === "ui") Object.assign(stream.ui, { screenshotUrl: "../screenshots/extra.png" });
       else
         Object.assign(stream, { embed: { kind: "screenshot", url: "../screenshots/extra.png" } });
-      const input = await captureStudyEvidence(prepared, await save(bundle));
+      const input = await captureEvidence(prepared, await save(bundle));
       expect(input.coverage).toMatchObject({ captureCount: 4, complete: false });
       expect(input.coverage.omissions).toContain(
         "Some declared captures have no normalized trace reference.",
@@ -201,7 +201,7 @@ describe("versioned scripted capture evidence", () => {
 
   it("validates legacy text-only artifacts and receipts under their original digest without making them v2", async () => {
     const source = await save(),
-      current = await captureStudyEvidence(prepared, source);
+      current = await captureEvidence(prepared, source);
     const { captureVersion: _version, ...old } = structuredClone(current);
     const legacy: AnalysisInput = {
       ...old,
@@ -239,7 +239,7 @@ describe("versioned scripted capture evidence", () => {
   });
 
   it("binds supported capture versions to the digest and rejects future versions", async () => {
-    const input = await captureStudyEvidence(prepared, await save());
+    const input = await captureEvidence(prepared, await save());
     const artifact = syntheticArtifact(input);
     const { captureVersion: _version, ...without } = artifact;
     expect(() => validateAnalysisArtifact(without)).toThrow("ANALYSIS_DIGEST_INVALID");
@@ -268,7 +268,7 @@ describe("versioned scripted capture evidence", () => {
       title: "computer-use backstop gave up",
       text: "No visible progress.",
     });
-    const input = await captureStudyEvidence(prepared, await save(bundle));
+    const input = await captureEvidence(prepared, await save(bundle));
     expect(input.coverage).toMatchObject({ evidenceCount: 6, captureCount: 4, complete: true });
     expect(input.evidence[4]).toMatchObject({
       eventId: "backstop",

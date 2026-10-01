@@ -12,7 +12,7 @@ import { claimAutomaticStudyAnalysis } from "../../src/analysis/job.js";
 import { digestAnalysisInput, hashAnalysisValue } from "../../src/analysis/validation.js";
 import { syntheticArtifact, syntheticInput } from "../analysis/fixtures.js";
 import { writeFixtureRun } from "../helpers/run-fixtures.js";
-import type { AnalysisArtifact } from "../../src/analysis/study-analysis.js";
+import type { AnalysisArtifact } from "../../src/analysis/types.js";
 
 describe("retained study cost accounting", () => {
   let cwd: string;

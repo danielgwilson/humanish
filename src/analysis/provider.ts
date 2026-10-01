@@ -22,7 +22,7 @@ interface AnalysisTokenUsage {
 
 export interface AnalysisProviderResult {
   status: "completed" | "incomplete" | "refused" | "failed" | "cancelled" | "timed_out";
-  /** Parsed output is still untrusted. runStudyAnalysis must validate its schema and evidence references. */
+  /** Parsed output is still untrusted. runAnalysis must validate its schema and evidence references. */
   output: unknown;
   usage: AnalysisTokenUsage | null;
   /** Dispatch does not imply a known charge. A failed request can still have consumed tokens. */
@@ -134,7 +134,7 @@ function usageOf(raw: unknown): AnalysisTokenUsage | null {
 }
 
 /** Text and usage wire shapes reuse the captured closing-report contract; refusal fails closed. */
-export function parseStudyAnalysisResponse(raw: unknown): AnalysisProviderResult {
+export function parseAnalysisResponse(raw: unknown): AnalysisProviderResult {
   const root = record(raw);
   const usage = usageOf(raw);
   const output = Array.isArray(root.output) ? root.output : [];
@@ -195,7 +195,7 @@ export type AnalysisFetch = (
 ) => Promise<{ ok: boolean; status: number; body: ReadableStream<Uint8Array> | null }>;
 
 /** No alternate endpoint or env-derived base URL: evidence and credentials have one destination. */
-export function createStudyAnalysisProvider(options: {
+export function createAnalysisProvider(options: {
   apiKey: string;
   fetchFn?: AnalysisFetch;
 }): AnalysisProvider {
@@ -307,9 +307,7 @@ export function createStudyAnalysisProvider(options: {
           timedOut ? "timed_out" : "cancelled",
         );
       try {
-        return parseStudyAnalysisResponse(
-          JSON.parse(Buffer.concat(chunks).toString("utf8")) as unknown,
-        );
+        return parseAnalysisResponse(JSON.parse(Buffer.concat(chunks).toString("utf8")) as unknown);
       } catch {
         return failure("invalid_response", true);
       }

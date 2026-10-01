@@ -4,9 +4,9 @@ import {
   DEFAULT_ANALYSIS_MAX_OUTPUT_TOKENS,
   MAX_ANALYSIS_OUTPUT_TOKENS,
   isSupportedAnalysisModel,
-} from "./run-study-analysis.js";
+} from "./execute.js";
 import { containsSensitive } from "../evidence/redaction.js";
-import type { AnalysisConfig } from "./study-analysis.js";
+import type { AnalysisConfig } from "./types.js";
 
 export const DEFAULT_ANALYSIS_TIMEOUT_MS = 600_000;
 const MAX_ANALYSIS_TIMEOUT_MS = 600_000;

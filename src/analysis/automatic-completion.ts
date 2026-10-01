@@ -1,6 +1,6 @@
 import { physicalCwdOf, validatePreparedRunRootIdentity } from "../run/paths.js";
 import { FinishedRun } from "../run/run.js";
-import type { AnalysisConfig } from "./study-analysis.js";
+import type { AnalysisConfig } from "./types.js";
 import { runAutomaticStudyAnalysis, type AutomaticAnalysisDeps } from "./automatic.js";
 import type { AutomaticAnalysisOutcome } from "./job.js";
 

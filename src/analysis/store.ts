@@ -26,7 +26,7 @@ import {
   type LoadedAnalysis,
   type AnalysisArtifact,
   type AnalysisCorrection,
-} from "./study-analysis.js";
+} from "./types.js";
 import { RUN_BUNDLE_FILE } from "../run/bundle.js";
 
 export const ANALYSIS_DIRECTORY = "analysis";

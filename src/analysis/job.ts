@@ -21,7 +21,7 @@ import { containsSensitive } from "../evidence/redaction.js";
 import { readStudyAnalysisVersion } from "./store.js";
 import { readStudyAnalysisExecution } from "./store-executions.js";
 import { hashAnalysisValue } from "./validation.js";
-import { ANALYSIS_ID_PATTERN, SHA256_HEX_PATTERN } from "./study-analysis.js";
+import { ANALYSIS_ID_PATTERN, SHA256_HEX_PATTERN } from "./types.js";
 
 export const AUTOMATIC_ANALYSIS_DIRECTORY = "analysis-automatic";
 const AUTOMATIC_ANALYSIS_SCHEMA = "humanish.automatic-study-analysis.v1";

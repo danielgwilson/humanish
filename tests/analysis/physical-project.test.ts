@@ -28,9 +28,9 @@ import {
   listStudyAnalysisExecutions,
   writeStudyAnalysisExecutionReceipt,
 } from "../../src/analysis/store-executions.js";
-import { captureStudyEvidence } from "../../src/analysis/evidence.js";
+import { captureEvidence } from "../../src/analysis/evidence.js";
 import type { AnalysisFetch } from "../../src/analysis/provider.js";
-import type { AnalysisConfig } from "../../src/analysis/study-analysis.js";
+import type { AnalysisConfig } from "../../src/analysis/types.js";
 import type { RunBundle } from "../../src/run/bundle.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { resolveRunPath } from "../../src/run/locate.js";
@@ -113,7 +113,7 @@ describe("analysis storage in a symlinked project", () => {
   it("keeps store and job records in the bound project after the alias moves", async () => {
     const decoyBefore = await decoyRunEntries();
     const source = await readFile(path.join(viaAlias.physicalRunRoot, "run.json"));
-    const artifact = syntheticArtifact(await captureStudyEvidence(viaAlias, source));
+    const artifact = syntheticArtifact(await captureEvidence(viaAlias, source));
     await writeStudyAnalysisExecutionReceipt(viaAlias, artifact);
     await writeStudyAnalysis(viaAlias, artifact);
     expect(
@@ -147,7 +147,7 @@ describe("analysis storage in a symlinked project", () => {
   it("refuses the alias-bound run and publishes the physical one after the alias moves", async () => {
     const decoyBefore = await decoyRunEntries();
     const source = await readFile(path.join(viaAlias.physicalRunRoot, "run.json"));
-    const input = await captureStudyEvidence(viaAlias, source);
+    const input = await captureEvidence(viaAlias, source);
     const wire = JSON.parse(await readFile(wirePath, "utf8"));
     wire.output[0].content[0].text = JSON.stringify(syntheticResult(input));
     const fetch = vi.fn<AnalysisFetch>(async () => new Response(JSON.stringify(wire)));

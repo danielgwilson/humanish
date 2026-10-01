@@ -4,7 +4,7 @@
 import type { PreparedRunArtifactPaths } from "../run/paths.js";
 import { readAutomaticStudyAnalysisPrepared } from "./job.js";
 import { loadStudyAnalysisRecord } from "./store.js";
-import type { LoadedAnalysis } from "./study-analysis.js";
+import type { LoadedAnalysis } from "./types.js";
 
 export async function loadStudyAnalysis(
   prepared: PreparedRunArtifactPaths,

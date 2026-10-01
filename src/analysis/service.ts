@@ -16,17 +16,17 @@ import {
   type PreparedRunArtifactPaths,
 } from "../run/paths.js";
 import { isRunStatusRecord, RUN_STATUS_FILE } from "../run/status.js";
-import { captureStudyEvidence, EVIDENCE_LIMITS } from "./evidence.js";
+import { captureEvidence, EVIDENCE_LIMITS } from "./evidence.js";
 import { pathMissing, readBoundedStudyFile } from "../run/study-files.js";
 import {
-  estimateStudyAnalysisAdmission,
-  preferLargerStudyAnalysisOutput,
-  runStudyAnalysis,
+  estimateAnalysisAdmission,
+  preferLargerAnalysisOutput,
+  runAnalysis,
   ANALYSIS_PROMPT_VERSION,
   type AnalysisAdmission,
   type AnalysisProgress,
   type AnalysisDispatchContext,
-} from "./run-study-analysis.js";
+} from "./execute.js";
 import {
   appendStudyAnalysisCorrection,
   assertStudyAnalysisPublicationCapacity,
@@ -46,7 +46,7 @@ import {
   type AnalysisCorrection,
   type AnalysisInput,
   type LoadedAnalysis,
-} from "./study-analysis.js";
+} from "./types.js";
 import { RUN_BUNDLE_FILE } from "../run/bundle.js";
 import { TERMINAL_SIMULATION_STATUSES } from "../run/streams.js";
 
@@ -430,10 +430,10 @@ async function executeAnalysis(attempt: AnalyzeAttempt): Promise<AnalyzeResult> 
   let config = attempt.config;
   if (deps.signal?.aborted) return fail(run, dryRun, "ANALYSIS_CANCELLED");
   const bytes = await readCompletedStudyAnalysisSource(cwd, prepared);
-  const input = await captureStudyEvidence(prepared, bytes);
+  const input = await captureEvidence(prepared, bytes);
   if (input.evidence.length === 0) return fail(input.runId, dryRun, "ANALYSIS_NO_PARTICIPANTS");
-  if (options.preferLargerOutput) config = preferLargerStudyAnalysisOutput(input, config);
-  const admission = estimateStudyAnalysisAdmission(input, config);
+  if (options.preferLargerOutput) config = preferLargerAnalysisOutput(input, config);
+  const admission = estimateAnalysisAdmission(input, config);
   const base: AnalyzeBase = {
     schema: ANALYZE_RESULT_SCHEMA as typeof ANALYZE_RESULT_SCHEMA,
     run: input.runId,
@@ -464,7 +464,7 @@ async function executeAnalysis(attempt: AnalyzeAttempt): Promise<AnalyzeResult> 
   if (config.provider !== "codex" && !apiKey.trim())
     return { ...fail(input.runId, false, "ANALYSIS_API_KEY_MISSING"), admission };
   let finalizeExecution: ((value: AnalysisArtifact) => Promise<void>) | undefined;
-  const analysis = await runStudyAnalysis(input, config, {
+  const analysis = await runAnalysis(input, config, {
     apiKey,
     ...(deps.codexProvider === undefined ? {} : { codexProvider: deps.codexProvider }),
     ...(deps.analysisId === undefined ? {} : { analysisId: deps.analysisId }),

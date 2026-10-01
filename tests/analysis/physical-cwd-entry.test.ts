@@ -14,10 +14,10 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { readAutomaticStudyAnalysis } from "../../src/analysis/automatic.js";
-import { captureStudyEvidence } from "../../src/analysis/evidence.js";
+import { captureEvidence } from "../../src/analysis/evidence.js";
 import type { AnalysisFetch } from "../../src/analysis/provider.js";
 import { analyzeStudy, showStudyAnalysis } from "../../src/analysis/service.js";
-import type { AnalysisConfig } from "../../src/analysis/study-analysis.js";
+import type { AnalysisConfig } from "../../src/analysis/types.js";
 import type { RunBundle } from "../../src/run/bundle.js";
 import { readRunDetail } from "../../src/run/detail.js";
 import { runDryRun } from "../../src/run/dry-run.js";
@@ -81,7 +81,7 @@ describe("analysis entry points given a symlinked project", () => {
     const decoyBefore = await decoyRunEntries();
     const prepared = (await resolveRunPath(original, runId))!;
     const source = await readFile(path.join(prepared.physicalRunRoot, "run.json"));
-    const input = await captureStudyEvidence(prepared, source);
+    const input = await captureEvidence(prepared, source);
     const wire = JSON.parse(await readFile(wirePath, "utf8"));
     wire.output[0].content[0].text = JSON.stringify(syntheticResult(input));
     const fetch = vi.fn<AnalysisFetch>(async () => {

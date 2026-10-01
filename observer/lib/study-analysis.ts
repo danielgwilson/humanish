@@ -2,7 +2,7 @@ import type {
   LoadedAnalysis,
   AnalysisArtifact,
   AnalysisCorrection,
-} from "../../src/analysis/study-analysis";
+} from "../../src/analysis/types";
 import { traceItems } from "./artifact-href";
 import type { ObserverData } from "./observer-data";
 import { participantLabels } from "./participant-label";
@@ -11,7 +11,7 @@ import { parseAutomaticAnalysis } from "./automatic-analysis";
 import { buildPlayerModel } from "./player-model";
 import { RECORDED_CODEX_CLI_VERSIONS } from "./actor-execution-profile";
 
-export type { LoadedAnalysis } from "../../src/analysis/study-analysis";
+export type { LoadedAnalysis } from "../../src/analysis/types";
 export const ANALYSIS_SCHEMA = "humanish.study-analysis.v1";
 export const STUDY_ANALYSIS_PLACEHOLDER = ["__HUMANISH", "STUDY_ANALYSIS__"].join("_");
 export const NO_ANALYSIS: LoadedAnalysis = {

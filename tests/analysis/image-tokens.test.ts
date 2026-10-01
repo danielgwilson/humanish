@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { estimateStudyAnalysisAdmission } from "../../src/analysis/run-study-analysis.js";
+import { estimateAnalysisAdmission } from "../../src/analysis/execute.js";
 import { highDetailImageTokens } from "../../src/analysis/image-tokens.js";
-import type { AnalysisConfig, AnalysisInput } from "../../src/analysis/study-analysis.js";
+import type { AnalysisConfig, AnalysisInput } from "../../src/analysis/types.js";
 import { digestAnalysisInput } from "../../src/analysis/validation.js";
 import { syntheticInput } from "./fixtures.js";
 
@@ -129,10 +129,10 @@ describe("admission estimate against billed analyses", () => {
         0,
       );
       // Pad the messages so the packet's text term equals the run's measured text term.
-      const bare = estimateStudyAnalysisAdmission(packet(images, MESSAGES), config);
+      const bare = estimateAnalysisAdmission(packet(images, MESSAGES), config);
       expect(bare.allowed).toBe(true);
       const padding = MESSAGES + textBytes - (bare.inputTokenAllowance! - imageTokens);
-      const admission = estimateStudyAnalysisAdmission(packet(images, padding), config);
+      const admission = estimateAnalysisAdmission(packet(images, padding), config);
       expect(admission.inputTokenAllowance).toBe(textBytes + imageTokens);
       expect(admission.inputTokenAllowance).toBeGreaterThanOrEqual(billedInput);
     },

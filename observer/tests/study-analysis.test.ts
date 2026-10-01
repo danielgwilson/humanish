@@ -1,7 +1,7 @@
 import { codexAnalysisIdentity } from "../../src/analysis/codex-config";
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
-import type { LoadedAnalysis } from "../../src/analysis/study-analysis";
+import type { LoadedAnalysis } from "../../src/analysis/types";
 import {
   fetchStudyAnalysis,
   NO_ANALYSIS,

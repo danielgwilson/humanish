@@ -14,7 +14,7 @@ import path from "node:path";
 import { PNG } from "pngjs";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { prepareRunArtifactPaths, type PreparedRunArtifactPaths } from "../../src/run/paths.js";
-import { captureStudyEvidence } from "../../src/analysis/evidence.js";
+import { captureEvidence } from "../../src/analysis/evidence.js";
 import {
   appendStudyAnalysisCorrection,
   assertStudyAnalysisPublicationCapacity,
@@ -32,7 +32,7 @@ import type {
   AnalysisArtifact,
   AnalysisCorrection,
   AnalysisInput,
-} from "../../src/analysis/study-analysis.js";
+} from "../../src/analysis/types.js";
 import { syntheticArtifact } from "./fixtures.js";
 
 describe("immutable study analysis store", () => {
@@ -84,7 +84,7 @@ describe("immutable study analysis store", () => {
       }),
     );
     await writeFile(path.join(prepared.physicalRunRoot, "run.json"), source);
-    input = await captureStudyEvidence(prepared, source);
+    input = await captureEvidence(prepared, source);
     artifact = syntheticArtifact(input);
   });
   afterEach(async () => {
@@ -256,7 +256,7 @@ describe("immutable study analysis store", () => {
     await expect(writeStudyAnalysis(prepared, artifact)).rejects.toThrow(
       "ANALYSIS_PARTICIPANT_INPUT_INVALID",
     );
-    artifact = syntheticArtifact(await captureStudyEvidence(prepared, source));
+    artifact = syntheticArtifact(await captureEvidence(prepared, source));
     artifact.evidence[1]!.text = "I could not";
     artifact.result!.participants[0]!.feedback = [];
     artifact.inputDigest = digestAnalysisInput(artifact);
@@ -450,7 +450,7 @@ describe("immutable study analysis store", () => {
     });
     source = Buffer.from(JSON.stringify(changed));
     await writeFile(path.join(prepared.physicalRunRoot, "run.json"), source);
-    const selected = await captureStudyEvidence(prepared, source, { captures: 1 });
+    const selected = await captureEvidence(prepared, source, { captures: 1 });
     expect(selected.coverage).toMatchObject({ complete: false, captureCount: 1, evidenceCount: 3 });
     expect(selected.evidence[0]).toMatchObject({ frame: 0, capture: null, elapsedMs: null });
     expect(selected.evidence[2]).toMatchObject({
@@ -467,12 +467,12 @@ describe("immutable study analysis store", () => {
     changed.streams[0].status = "running";
     source = Buffer.from(JSON.stringify(changed));
     await writeFile(path.join(prepared.physicalRunRoot, "run.json"), source);
-    await expect(captureStudyEvidence(prepared, source)).rejects.toThrow("ANALYSIS_RUN_UNFINISHED");
+    await expect(captureEvidence(prepared, source)).rejects.toThrow("ANALYSIS_RUN_UNFINISHED");
     changed.streams[0].status = "complete";
     changed.streams[0].actor.items[0].screenshotRef.path = "https://example.test/frame.png";
     source = Buffer.from(JSON.stringify(changed));
     await writeFile(path.join(prepared.physicalRunRoot, "run.json"), source);
-    expect(await captureStudyEvidence(prepared, source)).toMatchObject({
+    expect(await captureEvidence(prepared, source)).toMatchObject({
       images: [],
       coverage: { complete: false },
     });
@@ -624,7 +624,7 @@ describe("immutable study analysis store", () => {
     });
     source = Buffer.from(JSON.stringify(changed));
     await writeFile(path.join(prepared.physicalRunRoot, "run.json"), source);
-    const captured = await captureStudyEvidence(prepared, source);
+    const captured = await captureEvidence(prepared, source);
     expect(captured.coverage.complete).toBe(false);
     expect(captured.evidence[0]).toMatchObject({ frame: 0, capture: null });
     expect(captured.evidence[1]).toMatchObject({ frame: 1, capture: { eventId: "capture-1" } });
@@ -650,7 +650,7 @@ describe("immutable study analysis store", () => {
     for (const item of changed.streams[0].actor.items) item.lifecycle = "completed";
     source = Buffer.from(JSON.stringify(changed));
     await writeFile(path.join(prepared.physicalRunRoot, "run.json"), source);
-    const captured = await captureStudyEvidence(prepared, source);
+    const captured = await captureEvidence(prepared, source);
     expect(captured.participants[0]).toMatchObject({
       recordedStatus: "complete",
       provenance: {
@@ -709,9 +709,9 @@ describe("immutable study analysis store", () => {
     });
     source = Buffer.from(JSON.stringify(changed));
     await writeFile(path.join(prepared.physicalRunRoot, "run.json"), source);
-    expect(
-      (await captureStudyEvidence(prepared, source)).participants[0]!.provenance.goalSource,
-    ).toBe("condition_matched");
+    expect((await captureEvidence(prepared, source)).participants[0]!.provenance.goalSource).toBe(
+      "condition_matched",
+    );
     Object.assign(changed.streams[0].actor, {
       status: "incomplete",
       completionReason: "budget_reached",
@@ -720,9 +720,7 @@ describe("immutable study analysis store", () => {
     changed.streams[0].status = "incomplete";
     source = Buffer.from(JSON.stringify(changed));
     await writeFile(path.join(prepared.physicalRunRoot, "run.json"), source);
-    expect(
-      (await captureStudyEvidence(prepared, source)).participants[0]!.provenance,
-    ).toMatchObject({
+    expect((await captureEvidence(prepared, source)).participants[0]!.provenance).toMatchObject({
       actorStatus: "incomplete",
       completionReason: "budget_reached",
       stopCause: "provider_output_limit",
@@ -744,7 +742,7 @@ describe("immutable study analysis store", () => {
     };
     source = Buffer.from(JSON.stringify(changed));
     await writeFile(path.join(prepared.physicalRunRoot, "run.json"), source);
-    const captured = await captureStudyEvidence(prepared, source);
+    const captured = await captureEvidence(prepared, source);
     expect(captured.participants[0]!.assignment).toBe(
       'Create an item.\nTask "opaque-b": Rename the item.\nTask "opaque-a": Save the item.',
     );
@@ -775,7 +773,7 @@ describe("immutable study analysis store", () => {
     ];
     source = Buffer.from(JSON.stringify(changed));
     await writeFile(path.join(prepared.physicalRunRoot, "run.json"), source);
-    const captured = await captureStudyEvidence(prepared, source);
+    const captured = await captureEvidence(prepared, source);
     expect(Buffer.byteLength(captured.participants[0]!.assignment!)).toBeLessThanOrEqual(8000);
     expect(captured.coverage).toMatchObject({
       complete: false,
@@ -798,7 +796,7 @@ describe("immutable study analysis store", () => {
     changed.streams[0].actor.taskFunnel = { tasks: [] };
     source = Buffer.from(JSON.stringify(changed));
     await writeFile(path.join(prepared.physicalRunRoot, "run.json"), source);
-    const captured = await captureStudyEvidence(prepared, source);
+    const captured = await captureEvidence(prepared, source);
     expect(captured.participants[0]!.provenance.taskOutcomes).toEqual([]);
     const forged = syntheticArtifact(captured);
     forged.participants[0]!.provenance.declaredOutcome = "reached";
