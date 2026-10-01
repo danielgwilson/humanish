@@ -9,7 +9,7 @@ longer declares that name. [CONTEXT.md](CONTEXT.md) defines the domain terms, an
 
 The steps follow a live computer-use lab on a hosted E2B desktop. Every route shares steps 1, 2, 7
 and 8 and does steps 3 to 6 in its own run function: `runComputerUsePlan` here, and
-`runScriptedPlan` (`src/routes/scripted-browser/route.ts`), `runTerminalPlan`
+`runScriptedPlan` (`src/routes/scripted/route.ts`), `runTerminalPlan`
 (`src/routes/terminal/route.ts`) and `runSharedWorldPlan` (`src/routes/shared-world/route.ts`).
 `runPreviewPlan` (`src/routes/preview.ts`) writes a fixture bundle with `runDryRun`
 (`src/run/dry-run.ts`) and publishes it as in step 6. The scripted route's participant is its
@@ -82,43 +82,43 @@ reports the first failed step.
 
 ## Find the code for each part of the system
 
-| Folder                         | What it holds                                                                          | Read first                             |
-| ------------------------------ | -------------------------------------------------------------------------------------- | -------------------------------------- |
-| `src/cli/`                     | The commander program, with one file per command family in `commands/`                 | `src/cli/program.ts`                   |
-| `src/keys/`                    | Provider key discovery: env files, the user key store and key-source probes            | `src/keys/key-resolution.ts`           |
-| `src/run-lab.ts`               | `runLab`: plan the lab once, then run the plan on its route                            | `src/run-lab.ts`                       |
-| `src/lab/`                     | Lab manifest types, parsing, validation, routing and planning                          | `src/lab/plan.ts`                      |
-| `src/routes/`                  | One folder per route; `routeOf` in `src/lab/plan.ts` picks it                          | `src/lab/plan.ts`                      |
-| `src/routes/computer-use/`     | Computer-use participants and the desktops composing `src/substrates/` with route code | `src/routes/computer-use/route.ts`     |
-| `src/routes/scripted-browser/` | Committed scenario steps replayed on a loopback app or a provisioned clone             | `src/routes/scripted-browser/route.ts` |
-| `src/routes/shared-world/`     | Several seats on one shared plane, provisioned or external-public                      | `src/routes/shared-world/route.ts`     |
-| `src/routes/terminal/`         | A Codex agent in an E2B shell against a terminal product, with its ledgers             | `src/routes/terminal/route.ts`         |
-| `src/actors/`                  | The actor contract, the registry and each actor's session code                         | `src/actors/registry.ts`               |
-| `src/subject/`                 | Subject provisioning over a `Shell`: clone, local tree, desktop CLI, serve             | `src/subject/serve.ts`                 |
-| `src/substrates/`              | Provider primitives: E2B in `e2b/`, Firecracker and Lima VMs in `local/`, the `Shell`  | `src/substrates/desktop-session.ts`    |
-| `src/run/`                     | Run lifecycle, bundle types, bundle guards, paths, status, receipts, reclaim           | `src/run/run.ts`                       |
-| `src/verify/`                  | `humanish verify`: evidence checks, share-safety grades, cost and rerun checks         | `src/verify/verify.ts`                 |
-| `src/evidence/`                | Redaction, screenshot checks and desktop recordings                                    | `src/evidence/redaction.ts`            |
-| `src/analysis/`                | Automatic and on-demand study analysis                                                 | `src/analysis/automatic.ts`            |
-| `src/observer/`                | Observer data, the HTML render and the local server                                    | `src/observer/render.ts`               |
-| `src/comms/`                   | Captured and received email for participant inboxes                                    | `src/comms/types.ts`                   |
-| `src/feedback/`                | Feedback drafts and export bundles                                                     | `src/feedback/feedback.ts`             |
-| `src/tui/`                     | The CLI side of `humanish tui`                                                         | `src/tui/launch.ts`                    |
-| `src/browser-control/`         | The host-guest browser control protocol                                                | `src/browser-control/protocol.ts`      |
-| `src/guest/`                   | The guest runtime that the local VM image runs: bootstrap, desktop, input and media    | `src/guest/runtime.ts`                 |
-| `observer/`                    | The Observer page, a single-file Vite build                                            | `observer/AGENTS.md`                   |
-| `tui/`                         | The Ink terminal app                                                                   | `tui/AGENTS.md`                        |
-| `site/`                        | humanish.dev and its user docs in `site/content/docs/`                                 | `site/AGENTS.md`                       |
-| `humanish/`                    | This repo's own labs, personas, scenarios, fixtures and coverage notes                 | `humanish/labs/first-run.yaml`         |
-| `examples/`                    | Library examples shipped in the npm package: a participant and a scorer                | `examples/README.md`                   |
-| `adapters/`                    | Adapter fixture sets that `tests/lab/adapter-fixtures.test.ts` checks                  | `adapters/fixtures/README.md`          |
-| `bench/`                       | Benchmark apps with planted defects and their dated results                            | `bench/DEFECTS.md`                     |
-| `fixtures/`                    | Synthetic apps and cases that tests and scripts copy                                   | `fixtures/minimal-app/README.md`       |
-| `skills/`                      | The companion agent skill that `npx skills add` installs                               | `skills/humanish/SKILL.md`             |
-| `runtime/`                     | Desktop and browser image recipes                                                      | `runtime/browser-guest/README.md`      |
-| `scripts/`                     | Proof, release and check scripts that `package.json` runs                              | `scripts/check-doc-paths.ts`           |
-| `docs/contracts/`              | Bundle and schema contracts, whose documented fields are API                           | `docs/contracts/run-bundle.md`         |
-| `tests/`                       | Vitest suites that mirror `src/`, plus the folders named below the table               | `tests/helpers/run-golden.ts`          |
+| Folder                     | What it holds                                                                          | Read first                          |
+| -------------------------- | -------------------------------------------------------------------------------------- | ----------------------------------- |
+| `src/cli/`                 | The commander program, with one file per command family in `commands/`                 | `src/cli/program.ts`                |
+| `src/keys/`                | Provider key discovery: env files, the user key store and key-source probes            | `src/keys/key-resolution.ts`        |
+| `src/run-lab.ts`           | `runLab`: plan the lab once, then run the plan on its route                            | `src/run-lab.ts`                    |
+| `src/lab/`                 | Lab manifest types, parsing, validation, routing and planning                          | `src/lab/plan.ts`                   |
+| `src/routes/`              | One folder per route; `routeOf` in `src/lab/plan.ts` picks it                          | `src/lab/plan.ts`                   |
+| `src/routes/computer-use/` | Computer-use participants and the desktops composing `src/substrates/` with route code | `src/routes/computer-use/route.ts`  |
+| `src/routes/scripted/`     | Committed scenario steps replayed on a loopback app or a provisioned clone             | `src/routes/scripted/route.ts`      |
+| `src/routes/shared-world/` | Several seats on one shared plane, provisioned or external-public                      | `src/routes/shared-world/route.ts`  |
+| `src/routes/terminal/`     | A Codex agent in an E2B shell against a terminal product, with its ledgers             | `src/routes/terminal/route.ts`      |
+| `src/actors/`              | The actor contract, the registry and each actor's session code                         | `src/actors/registry.ts`            |
+| `src/subject/`             | Subject provisioning over a `Shell`: clone, local tree, desktop CLI, serve             | `src/subject/serve.ts`              |
+| `src/substrates/`          | Provider primitives: E2B in `e2b/`, Firecracker and Lima VMs in `local/`, the `Shell`  | `src/substrates/desktop-session.ts` |
+| `src/run/`                 | Run lifecycle, bundle types, bundle guards, paths, status, receipts, reclaim           | `src/run/run.ts`                    |
+| `src/verify/`              | `humanish verify`: evidence checks, share-safety grades, cost and rerun checks         | `src/verify/verify.ts`              |
+| `src/evidence/`            | Redaction, screenshot checks and desktop recordings                                    | `src/evidence/redaction.ts`         |
+| `src/analysis/`            | Automatic and on-demand study analysis                                                 | `src/analysis/automatic.ts`         |
+| `src/observer/`            | Observer data, the HTML render and the local server                                    | `src/observer/render.ts`            |
+| `src/comms/`               | Captured and received email for participant inboxes                                    | `src/comms/types.ts`                |
+| `src/feedback/`            | Feedback drafts and export bundles                                                     | `src/feedback/feedback.ts`          |
+| `src/tui/`                 | The CLI side of `humanish tui`                                                         | `src/tui/launch.ts`                 |
+| `src/browser-control/`     | The host-guest browser control protocol                                                | `src/browser-control/protocol.ts`   |
+| `src/guest/`               | The guest runtime that the local VM image runs: bootstrap, desktop, input and media    | `src/guest/runtime.ts`              |
+| `observer/`                | The Observer page, a single-file Vite build                                            | `observer/AGENTS.md`                |
+| `tui/`                     | The Ink terminal app                                                                   | `tui/AGENTS.md`                     |
+| `site/`                    | humanish.dev and its user docs in `site/content/docs/`                                 | `site/AGENTS.md`                    |
+| `humanish/`                | This repo's own labs, personas, scenarios, fixtures and coverage notes                 | `humanish/labs/first-run.yaml`      |
+| `examples/`                | Library examples shipped in the npm package: a participant and a scorer                | `examples/README.md`                |
+| `adapters/`                | Adapter fixture sets that `tests/lab/adapter-fixtures.test.ts` checks                  | `adapters/fixtures/README.md`       |
+| `bench/`                   | Benchmark apps with planted defects and their dated results                            | `bench/DEFECTS.md`                  |
+| `fixtures/`                | Synthetic apps and cases that tests and scripts copy                                   | `fixtures/minimal-app/README.md`    |
+| `skills/`                  | The companion agent skill that `npx skills add` installs                               | `skills/humanish/SKILL.md`          |
+| `runtime/`                 | Desktop and browser image recipes                                                      | `runtime/browser-guest/README.md`   |
+| `scripts/`                 | Proof, release and check scripts that `package.json` runs                              | `scripts/check-doc-paths.ts`        |
+| `docs/contracts/`          | Bundle and schema contracts, whose documented fields are API                           | `docs/contracts/run-bundle.md`      |
+| `tests/`                   | Vitest suites that mirror `src/`, plus the folders named below the table               | `tests/helpers/run-golden.ts`       |
 
 `pnpm docs:check` fails when a folder directly under `src/` or `src/routes/` has no row here, or
 when a row names a folder that is gone. Add the row in the change that adds the folder.
@@ -144,14 +144,14 @@ code, inputs and goldens.
 
 ## Keep these invariants when you change code
 
-| Invariant                                                               | Enforced by                                                                                                                                                                                                                                                                                         | Pinned by                                                                                                                                                                                                        |
-| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| The run bundle is the source of truth, and the Observer derives from it | `verifyRun` reads only `run.json` and its artifacts (`src/verify/verify.ts`); `buildObserverData` takes the bundle (`src/observer/data.ts`)                                                                                                                                                         | `tests/observer/data-contract.test.ts`, `docs/decisions/0001-run-bundle-is-the-source-of-truth.md`                                                                                                               |
-| Unsupported execution is refused before side effects                    | `parseLabConfig` (`src/lab/config.ts`), `taskProtocolValidationReason` (`src/lab/validation.ts`), `planComputerUseLab` (`src/routes/computer-use/plan.ts`)                                                                                                                                          | `tests/lab/task-route-preflight.test.ts`; `pnpm cli:preflight:test` runs `scripts/task-route-preflight-proof.mjs` with `tests/fixtures/task-route-preflight/deny-side-effects.mjs` preloaded                     |
-| A sandbox id is recorded before any work runs in it                     | `acquireE2BDesktopSandbox` and `acquireE2BShellSandbox` (`src/substrates/e2b/sandbox.ts`) write the receipt before they return the handle, and every route that creates a sandbox calls them; `reclaimRunSandboxes` (`src/run/reclaim.ts`) switches on the receipt's provider and kills by exact id | `tests/substrates/e2b/sandbox.test.ts`, `tests/routes/terminal/acquisition-boundary.test.ts`, `tests/run/reclaim.test.ts`; `tests/routes/scripted-browser/route.test.ts` checks create, receipt, then first work |
-| Bundles carry no secrets                                                | `redactText` and `scrubLiterals` (`src/evidence/redaction.ts`); `scanRunPublicSafetyArtifacts` (`src/verify/artifacts.ts`); `buildShareSafety` (`src/verify/verify.ts`) grades `share_ready`, `local_only` or `blocked`                                                                             | `tests/evidence/redaction-hooks.test.ts`, `tests/run/transient-comms-secrets.test.ts`, `tests/verify/evidence-refs.test.ts`                                                                                      |
-| Goldens pin route output                                                | `runDirSnapshot` (`tests/helpers/run-golden.ts`) snapshots a whole run folder                                                                                                                                                                                                                       | `tests/golden/routes/`, `tests/golden/observer-data/`, `tests/golden/labs/`                                                                                                                                      |
-| A run is closed on every exit, and only a published run is analyzed     | `runScope` and `FinishedRun` (`src/run/run.ts`); `completeAutomaticAnalysis` requires an issued `FinishedRun` for the result's run                                                                                                                                                                  | `tests/run/run-lifecycle.test.ts`, `tests/analysis/automatic-analysis.test.ts`                                                                                                                                   |
+| Invariant                                                               | Enforced by                                                                                                                                                                                                                                                                                         | Pinned by                                                                                                                                                                                                |
+| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The run bundle is the source of truth, and the Observer derives from it | `verifyRun` reads only `run.json` and its artifacts (`src/verify/verify.ts`); `buildObserverData` takes the bundle (`src/observer/data.ts`)                                                                                                                                                         | `tests/observer/data-contract.test.ts`, `docs/decisions/0001-run-bundle-is-the-source-of-truth.md`                                                                                                       |
+| Unsupported execution is refused before side effects                    | `parseLabConfig` (`src/lab/config.ts`), `taskProtocolValidationReason` (`src/lab/validation.ts`), `planComputerUseLab` (`src/routes/computer-use/plan.ts`)                                                                                                                                          | `tests/lab/task-route-preflight.test.ts`; `pnpm cli:preflight:test` runs `scripts/task-route-preflight-proof.mjs` with `tests/fixtures/task-route-preflight/deny-side-effects.mjs` preloaded             |
+| A sandbox id is recorded before any work runs in it                     | `acquireE2BDesktopSandbox` and `acquireE2BShellSandbox` (`src/substrates/e2b/sandbox.ts`) write the receipt before they return the handle, and every route that creates a sandbox calls them; `reclaimRunSandboxes` (`src/run/reclaim.ts`) switches on the receipt's provider and kills by exact id | `tests/substrates/e2b/sandbox.test.ts`, `tests/routes/terminal/acquisition-boundary.test.ts`, `tests/run/reclaim.test.ts`; `tests/routes/scripted/route.test.ts` checks create, receipt, then first work |
+| Bundles carry no secrets                                                | `redactText` and `scrubLiterals` (`src/evidence/redaction.ts`); `scanRunPublicSafetyArtifacts` (`src/verify/artifacts.ts`); `buildShareSafety` (`src/verify/verify.ts`) grades `share_ready`, `local_only` or `blocked`                                                                             | `tests/evidence/redaction-hooks.test.ts`, `tests/run/transient-comms-secrets.test.ts`, `tests/verify/evidence-refs.test.ts`                                                                              |
+| Goldens pin route output                                                | `runDirSnapshot` (`tests/helpers/run-golden.ts`) snapshots a whole run folder                                                                                                                                                                                                                       | `tests/golden/routes/`, `tests/golden/observer-data/`, `tests/golden/labs/`                                                                                                                              |
+| A run is closed on every exit, and only a published run is analyzed     | `runScope` and `FinishedRun` (`src/run/run.ts`); `completeAutomaticAnalysis` requires an issued `FinishedRun` for the result's run                                                                                                                                                                  | `tests/run/run-lifecycle.test.ts`, `tests/analysis/automatic-analysis.test.ts`                                                                                                                           |
 
 The receipt write is best-effort; the sandbox's server-side timeout ends a sandbox with no
 receipt. A lab preflight probe journals its receipt with `withPreflightSandbox`

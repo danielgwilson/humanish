@@ -16,8 +16,8 @@ vi.mock("../src/routes/computer-use/route.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/routes/computer-use/route.js")>()),
   runCuaActorLab: spy("runCuaActorLab"),
 }));
-vi.mock("../src/routes/scripted-browser/route.js", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../src/routes/scripted-browser/route.js")>()),
+vi.mock("../src/routes/scripted/route.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/routes/scripted/route.js")>()),
   runScriptedBrowserLab: spy("runScriptedBrowserLab"),
 }));
 vi.mock("../src/routes/terminal/route.js", async (importOriginal) => ({

@@ -3,7 +3,7 @@
 
 import type { RunLabOptions } from "../run-lab.js";
 import type { ComputerUseRunInput } from "../routes/computer-use/types.js";
-import type { ScriptedRunInput } from "../routes/scripted-browser/types.js";
+import type { ScriptedRunInput } from "../routes/scripted/types.js";
 import type { SharedWorldRunInput } from "../routes/shared-world/types.js";
 import type { TerminalRunInput } from "../routes/terminal/types.js";
 

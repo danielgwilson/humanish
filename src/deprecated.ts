@@ -30,12 +30,12 @@ import type {
   CuaActorLabResult as CuaResult,
   RunCuaActorLabOptions as CuaOptions,
 } from "./routes/computer-use/types.js";
-import { runScriptedBrowserLab as scriptedBrowserLab } from "./routes/scripted-browser/route.js";
+import { runScriptedBrowserLab as scriptedBrowserLab } from "./routes/scripted/route.js";
 import type {
   RunScriptedBrowserLabOptions as ScriptedOptions,
   ScriptedBrowserLabHooks as ScriptedHooks,
   ScriptedBrowserLabResult as ScriptedResult,
-} from "./routes/scripted-browser/types.js";
+} from "./routes/scripted/types.js";
 import { runConcurrentSharedWorld as concurrentSharedWorld } from "./routes/shared-world/route.js";
 import type {
   ConcurrentSharedWorldLabResult as SharedWorldResult,

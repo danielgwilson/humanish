@@ -28,8 +28,8 @@ vi.mock("../../src/routes/terminal/plan.js", async (importOriginal) => {
     },
   };
 });
-vi.mock("../../src/routes/scripted-browser/plan.js", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../src/routes/scripted-browser/plan.js")>();
+vi.mock("../../src/routes/scripted/plan.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/routes/scripted/plan.js")>();
   return {
     ...actual,
     planScriptedLab: (...args: Parameters<typeof actual.planScriptedLab>) => {

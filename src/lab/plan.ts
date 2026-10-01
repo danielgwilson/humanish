@@ -5,7 +5,7 @@
 
 import { resolveAutomaticAnalysis } from "../analysis/automatic-config.js";
 import { planComputerUseLab } from "../routes/computer-use/plan.js";
-import { planScriptedLab } from "../routes/scripted-browser/plan.js";
+import { planScriptedLab } from "../routes/scripted/plan.js";
 import { planSharedWorldLab } from "../routes/shared-world/plan.js";
 import { planTerminalLab } from "../routes/terminal/plan.js";
 import type { RunLabProvenance } from "../run/status.js";

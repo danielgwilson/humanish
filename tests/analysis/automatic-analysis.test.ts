@@ -27,7 +27,7 @@ import { runLab } from "../../src/run-lab.js";
 import { runCuaActorLab } from "../../src/routes/computer-use/route.js";
 import { runConcurrentSharedWorld } from "../../src/routes/shared-world/route.js";
 import { runTerminalProductLab } from "../../src/routes/terminal/route.js";
-import { runScriptedBrowserLab } from "../../src/routes/scripted-browser/route.js";
+import { runScriptedBrowserLab } from "../../src/routes/scripted/route.js";
 import { claimAutomaticStudyAnalysis } from "../../src/analysis/job.js";
 import { prepareRunArtifactPaths } from "../../src/run/paths.js";
 import { resolveRunPath } from "../../src/run/locate.js";

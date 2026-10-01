@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { scriptedExecutionFailures } from "../../../src/routes/scripted-browser/result.js";
+import { scriptedExecutionFailures } from "../../../src/routes/scripted/result.js";
 
 // A scripted surface that failed a step or timed out is captured evidence; these are the facts that
 // fail the run as an execution instead.

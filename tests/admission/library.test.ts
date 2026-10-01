@@ -14,7 +14,7 @@ import { runLab } from "../../src/run-lab.js";
 import { resolveLabDryRun, selectLabBackend, type LabBackend } from "../../src/lab/plan.js";
 import type { LabConfig } from "../../src/lab/types.js";
 import { runCuaActorLab } from "../../src/routes/computer-use/route.js";
-import { runScriptedBrowserLab } from "../../src/routes/scripted-browser/route.js";
+import { runScriptedBrowserLab } from "../../src/routes/scripted/route.js";
 import { runConcurrentSharedWorld } from "../../src/routes/shared-world/route.js";
 import { runTerminalProductLab } from "../../src/routes/terminal/route.js";
 import { lab, SCENARIO_YAML } from "./fixtures.js";
