@@ -794,7 +794,7 @@
     "cost": "[same as run.json cost]",
     "streams": [
       {
-        "[same as the run.json stream]": "simId laneId assignment kind label status transport updatedAt embed desktopGeometry ui actor artifacts",
+        "[same as the run.json stream]": "simId laneId assignment kind label status judgedStatus transport updatedAt embed desktopGeometry ui actor artifacts",
         "id": "stream-001",
         "sim": "[same as run.json simulation sim-001]",
         "kindLabel": "Browser",
@@ -803,7 +803,7 @@
         "timeline": "[same as run.json events for this stream]"
       },
       {
-        "[same as the run.json stream]": "simId laneId assignment kind label status transport updatedAt embed desktopGeometry ui actor artifacts",
+        "[same as the run.json stream]": "simId laneId assignment kind label status judgedStatus transport updatedAt embed desktopGeometry ui actor artifacts",
         "id": "stream-002",
         "sim": "[same as run.json simulation sim-002]",
         "kindLabel": "Browser",
@@ -812,7 +812,7 @@
         "timeline": "[same as run.json events for this stream]"
       },
       {
-        "[same as the run.json stream]": "simId laneId assignment kind label status transport updatedAt embed desktopGeometry ui actor artifacts",
+        "[same as the run.json stream]": "simId laneId assignment kind label status judgedStatus transport updatedAt embed desktopGeometry ui actor artifacts",
         "id": "stream-003",
         "sim": "[same as run.json simulation sim-003]",
         "kindLabel": "Browser",
@@ -821,7 +821,7 @@
         "timeline": "[same as run.json events for this stream]"
       },
       {
-        "[same as the run.json stream]": "simId laneId assignment kind label status transport updatedAt embed desktopGeometry ui actor artifacts",
+        "[same as the run.json stream]": "simId laneId assignment kind label status judgedStatus transport updatedAt embed desktopGeometry ui actor artifacts",
         "id": "stream-004",
         "sim": "[same as run.json simulation sim-004]",
         "kindLabel": "Browser",
@@ -1028,6 +1028,7 @@
         "kind": "browser",
         "label": "CUA participant mobile-newcomer: fanout-proof",
         "status": "passed",
+        "judgedStatus": "passed",
         "transport": "snapshot",
         "updatedAt": "[ts]",
         "embed": {
@@ -1219,6 +1220,7 @@
         "kind": "browser",
         "label": "CUA participant small-skimmer: fanout-proof",
         "status": "passed",
+        "judgedStatus": "passed",
         "transport": "snapshot",
         "updatedAt": "[ts]",
         "embed": {
@@ -1410,6 +1412,7 @@
         "kind": "browser",
         "label": "CUA participant desktop-power: fanout-proof",
         "status": "passed",
+        "judgedStatus": "passed",
         "transport": "snapshot",
         "updatedAt": "[ts]",
         "embed": {
@@ -1596,6 +1599,7 @@
         "kind": "browser",
         "label": "CUA participant wide-researcher: fanout-proof",
         "status": "passed",
+        "judgedStatus": "passed",
         "transport": "snapshot",
         "updatedAt": "[ts]",
         "embed": {
