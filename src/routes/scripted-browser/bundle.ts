@@ -23,7 +23,8 @@ import {
 } from "../../run/bundle.js";
 import { type RunStream } from "../../run/streams.js";
 import type { RunLabProvenance } from "../../run/status.js";
-import { scriptedSurfaceRecords } from "./surface-records.js";
+import { participantCount, participantEvent, recordIdOf } from "../../run/participant-records.js";
+import { scriptedSurfaceIds, scriptedSurfaceRecords } from "./surface-records.js";
 
 /** What the scripted lab's bundle is built from. */
 interface ScriptedBundleArgs {
@@ -85,7 +86,7 @@ export function buildScriptedLabBundle(args: ScriptedBundleArgs): RunBundle {
     schema: RUN_BUNDLE_SCHEMA,
     runId: args.runId,
     mode: args.dryRun ? "dry-run" : "live",
-    simCount: args.surfaces.length,
+    ...participantCount(args.surfaces.length),
     createdAt: args.createdAt,
     cwd: PUBLIC_TARGET_CWD,
     ...(args.lab === undefined ? {} : { lab: args.lab }),
@@ -169,15 +170,15 @@ function scriptedEvents(args: ScriptedBundleArgs): RunEvent[] {
 
   if (args.sessionResults.length > 0) {
     for (const result of args.sessionResults) {
-      events.push({
-        id: `event-${String(events.length).padStart(3, "0")}-session-${result.capture.surface.id}`,
-        at: result.capture.capturedAt,
-        level: result.status === "passed" ? "info" : "warn",
-        type: `scripted-lab.session.${result.completionReason}`,
-        message: `${result.capture.surface.id}: ${result.status} — ${result.reason}`,
-        simId: `scripted-${result.capture.surface.id}`,
-        streamId: `scripted-${result.capture.surface.id}-stream`,
-      });
+      events.push(
+        participantEvent(scriptedSurfaceIds(result.capture.surface.id), {
+          id: `event-${String(events.length).padStart(3, "0")}-session-${result.capture.surface.id}`,
+          at: result.capture.capturedAt,
+          level: result.status === "passed" ? "info" : "warn",
+          type: `scripted-lab.session.${result.completionReason}`,
+          message: `${result.capture.surface.id}: ${result.status} — ${result.reason}`,
+        }),
+      );
     }
   } else if (args.sessionError) {
     events.push({
@@ -286,7 +287,7 @@ export function renderScriptedReviewMarkdown(bundle: RunBundle): string {
     ...(spend ? [`- spend: ${spend.message}`] : []),
     ...traces.map(
       ({ stream, trace }) =>
-        `- ${stream.simId}: ${trace.provider} (${trace.lane}/${trace.protocol}) ${trace.status} (${trace.completionReason}); ${trace.counts.actions ?? 0} step action(s), ${trace.counts.screenshots ?? 0} raw screenshot(s)`,
+        `- ${recordIdOf(stream)}: ${trace.provider} (${trace.lane}/${trace.protocol}) ${trace.status} (${trace.completionReason}); ${trace.counts.actions ?? 0} step action(s), ${trace.counts.screenshots ?? 0} raw screenshot(s)`,
     ),
     ...(bundle.review.gaps.length > 0
       ? ["", "## Gaps", ...bundle.review.gaps.map((gap) => `- ${gap}`)]

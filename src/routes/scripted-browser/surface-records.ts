@@ -4,6 +4,12 @@ import type { ActorPersonaRef } from "../../actors/contract.js";
 import type { ScriptedBrowserSessionResult } from "../../actors/scripted-browser/actor.js";
 import type { BrowserPersonaJourney, BrowserSurface } from "../../actors/scripted-browser/types.js";
 import type { RunSimulation } from "../../run/bundle.js";
+import {
+  participantIdsOf,
+  participantRecord,
+  participantStream,
+  type ParticipantIds,
+} from "../../run/participant-records.js";
 import type { RunStream } from "../../run/streams.js";
 
 /** What each surface's records read from the bundle arguments. */
@@ -17,6 +23,11 @@ export interface ScriptedSurfaceContext {
   sessionError?: string;
 }
 
+/** A surface's saved ids: `scripted-<surface>` and its `-stream`. */
+export function scriptedSurfaceIds(surfaceId: string): ParticipantIds {
+  return participantIdsOf(`scripted-${surfaceId}`, `scripted-${surfaceId}-stream`);
+}
+
 /**
  * The simulation and stream for one surface. `result` is absent on a dry run, and on a live run
  * whose harness failed before the surface's session returned.
@@ -28,8 +39,7 @@ export function scriptedSurfaceRecords(
   result: ScriptedBrowserSessionResult | undefined,
   screenshots: string[],
 ): { simulation: RunSimulation; stream: RunStream } {
-  const simId = `scripted-${surface.id}`;
-  const streamId = `${simId}-stream`;
+  const ids = scriptedSurfaceIds(surface.id);
   const lastScreenshot = screenshots.at(-1);
   const status = result
     ? result.status
@@ -41,9 +51,7 @@ export function scriptedSurfaceRecords(
     context.sessionError ??
     "Contract bundle only: dry-run pinned the scenario contract without launching a browser or touching the subject app.";
 
-  const simulation: RunSimulation = {
-    id: simId,
-    index: index + 1,
+  const simulation = participantRecord(ids, index + 1, {
     personaId: context.persona.id,
     scenarioId: context.journey.scenarioId,
     status,
@@ -56,14 +64,11 @@ export function scriptedSurfaceRecords(
       : context.sessionError
         ? `Scripted lab failed before a terminal session verdict: ${context.sessionError}`
         : `Contract lane for the scripted-browser actor (${context.actorId}) against ${context.appUrl}.`,
-    streamIds: [streamId],
     startedAt: context.createdAt,
     updatedAt: result?.capture.capturedAt ?? context.createdAt,
-  };
+  });
 
-  const stream: RunStream = {
-    id: streamId,
-    simId,
+  const stream = participantStream(ids, {
     kind: "browser",
     label: `${surface.label} — ${context.labId}`,
     status,
@@ -85,7 +90,7 @@ export function scriptedSurfaceRecords(
     // The seam this registration exists to fill: the provider-neutral actor evidence.
     ...(result ? { actor: result.trace } : {}),
     artifacts: surfaceArtifacts(surface, result, screenshots),
-  };
+  });
   return { simulation, stream };
 }
 
