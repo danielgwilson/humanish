@@ -9,7 +9,8 @@ longer declares that name. [CONTEXT.md](CONTEXT.md) defines the domain terms, an
 
 The steps follow a live computer-use lab on a hosted E2B desktop. Every route shares steps 1, 2, 7
 and 8 and does steps 3 to 6 in its own run function: `runComputerUsePlan` here, and
-`runScriptedPlan`, `runTerminalPlan` and `runSharedWorldPlan` in their routes' `lab.ts`.
+`runScriptedPlan` (`src/routes/scripted-browser/route.ts`), `runTerminalPlan`
+(`src/routes/terminal/route.ts`) and `runSharedWorldPlan` (`src/routes/shared-world/route.ts`).
 `runPreviewPlan` (`src/routes/preview.ts`) writes a fixture bundle with `runDryRun`
 (`src/run/dry-run.ts`) and publishes it as in step 6. The scripted route's participant is its
 actor: `runScriptedBrowserSessionInPreparedRoot` (`src/actors/scripted-browser/actor.ts`) runs one

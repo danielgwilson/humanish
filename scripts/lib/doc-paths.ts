@@ -78,6 +78,9 @@ const DOC_REPO_PATH =
 // the npm package leaves out, so any repo path is checked. Links to a tag or a commit name a
 // snapshot and are left alone.
 const REPO_URL = /github\.com\/[\w.-]+\/humanish\/(?:blob|tree)\/main\/([^\s()#?"'<>`|]+)/g;
+// A source file named by its basename alone, in backticks (`route.ts`). It has to name a file that
+// exists somewhere in the repo; a rename or deletion otherwise leaves the name behind unchecked.
+const BARE_SOURCE_NAME = /`([\w.-]+\.(?:tsx?|mts|mjs))`/g;
 // A markdown link target: `[text](target)` or `[text](<target> "title")`.
 const MARKDOWN_LINK = /\]\(\s*<?([^()\s<>]+?)>?(?:\s+"[^"]*")?\s*\)/g;
 
@@ -102,6 +105,9 @@ export function findDocPathIssues(file: string, text: string, index: RepoIndex):
     const resolved = prefix ? posix.join(posix.dirname(file), prefix, path) : path;
     const known = resolved.endsWith("/") ? index.directories : index.files;
     if (!known.has(resolved)) issues.push({ offset: match.index, path: prefix + path });
+  }
+  for (const match of text.matchAll(BARE_SOURCE_NAME)) {
+    if (!index.suffixes.has(match[1]!)) issues.push({ offset: match.index, path: match[1]! });
   }
   for (const match of text.matchAll(REPO_URL)) {
     // A URL that ends a sentence carries the full stop.

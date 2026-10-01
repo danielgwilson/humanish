@@ -980,7 +980,7 @@ echo to the operator's own stdout, never persisted into any bundle), runs
 listed, computed warnings, and the `ServeErrorCode` union. Exposure auth is
 tunnel-edge only. As of 0.20.0 there are no `capabilityUrl`/`publicCapabilityUrl`
 /`ttlMinutes` fields, no `--auth`/`--ttl` flags, and no `capability-link` mode
-(the in-process `observer-auth.ts` capability-link was removed as a pre-1.0
+(the in-process capability-link auth was removed as a pre-1.0
 breaking change).
 
 Reserved: `/_humanish/api/*` is the serve control-plane namespace. Any request

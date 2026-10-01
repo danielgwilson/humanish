@@ -143,8 +143,8 @@ export async function scriptedLabRefusal(
 /**
  * Run a scripted plan. The run scope gives a direct library caller the same status-record lifetime
  * the CLI gets: returning from this function finalizes any record the run opened, whichever of its
- * fail-closed exits it took. `runLab` establishes a scope too and nesting is harmless; the inner
- * scope owns what it opened. Without this a test or an adopter calling the backend directly leaves
+ * fail-closed exits it took. Each route opens its own scope; `runLab` opens none. Without this a
+ * test or an adopter calling the route directly leaves
  * the 5s cadence ticking into a directory something else is deleting, which surfaces as an
  * unrelated ENOTEMPTY.
  */

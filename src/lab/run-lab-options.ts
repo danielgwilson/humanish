@@ -64,8 +64,8 @@ type StreamEvent =
   | { type: "ended"; participantId: string; simId: string; streamId: string };
 
 /**
- * What a run reports while it runs. `plan` comes from computer use only; the other routes gain it
- * when they move onto the lab plan. `subject-phase` comes from computer use (participant target)
+ * What a run reports while it runs. `plan` comes from computer use only; the other routes run from
+ * the lab plan but do not emit it. `subject-phase` comes from computer use (participant target)
  * and shared world (subject target).
  */
 export type LabEvent =

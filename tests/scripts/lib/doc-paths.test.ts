@@ -80,6 +80,14 @@ describe("doc path check", () => {
     ]);
   });
 
+  it("checks that a backticked bare source-file name exists somewhere in the repo", () => {
+    const text =
+      "Each route has `lab.ts`; the guest is `guest-runtime-main.ts`; `gone.ts` was removed.";
+    expect(paths(findDocPathIssues("docs/architecture/example.md", text, index))).toEqual([
+      "gone.ts",
+    ]);
+  });
+
   it("checks any path a main-branch GitHub link names, and leaves tag links alone", () => {
     const text = [
       "[folder](https://github.com/example/humanish/tree/main/docs/ramp/)",

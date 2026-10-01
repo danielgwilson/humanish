@@ -110,7 +110,10 @@ clone` + `serve` clones, installs, and serves a real app in-sandbox from
 - containment checks for managed run storage, Observer and feedback reads,
   actor artifacts, lab discovery, Git metadata, and source archives;
 - cleanup inspection receipts that do not treat mutable run-bundle IDs as
-  provider-mutation authority.
+  provider-mutation authority;
+- every route publishes through the run lifecycle (`runScope` and `Run` in
+  `src/run/run.ts`): computer-use, shared-world, scripted, terminal, and the preview's
+  `runDryRun`.
 
 Still not good enough:
 
@@ -119,9 +122,6 @@ Still not good enough:
   decision-equivalent proof;
 - the five actor descriptors are a closed first-party union, not a supported
   out-of-tree actor-registration API;
-- every route publishes through the run lifecycle (`runScope` and `Run` in
-  `src/run/run.ts`): computer-use, shared-world, scripted, terminal, and the preview's
-  `runDryRun`;
 - multi-origin shared-world is an accepted design direction, but remains
   unimplemented and gated on a real adopter proving the need;
 - the README hero is the drawDB real-application study, a legible capture of a

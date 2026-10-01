@@ -240,15 +240,12 @@ export async function finishLiveTerminalSession(
     ...(capFailure === undefined ? {} : { capFailure }),
   });
 
-  // --- THE LAYER-6 EXTENSION SEAM (issue #154 acceptance #8). ---
-  // When a thin adapter registered a scorer / feedback strategy, the lane calls it over the
-  // FULLY-ASSEMBLED, redacted evidence and attaches the results to the bundle WITHOUT knowing any
-  // product noun: the namespaced RunAdapterScore lands on bundle.adapterScore, and the derived
-  // feedback candidates (each carrying its own namespaced product-noun block) are appended to
-  // bundle.feedbackCandidates. Core's mission-based verdict (bundle.review) is left UNCHANGED — the
-  // adapter score is additive, not a replacement. The adapter payloads pass the same scrub+redact
-  // the rest of the bundle does (the adapter is trusted in-repo code, but the harness never relies
-  // on that for secret values) and are validated fail-closed by the bundle verifier downstream.
+  // The adapter extension seam. A registered scorer reads the fully assembled, redacted evidence
+  // without core knowing any product noun: its namespaced RunAdapterScore lands on
+  // bundle.adapterScore, and its feedback candidates are appended to bundle.feedbackCandidates.
+  // The score does not replace the judged verdict, but a failing or malformed scorer fails the run
+  // through foldScorerFailures below. Adapter payloads pass the same scrub and redaction as the
+  // rest of the bundle, and the bundle verifier checks them downstream.
   const scorer = await applyAdapterExtensionSeam({
     hooks,
     bundle,

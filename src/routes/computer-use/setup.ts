@@ -117,8 +117,8 @@ type StartedRun = Extract<Awaited<ReturnType<RunScope["startRun"]>>, { ok: true 
 export interface CuaRunSetup {
   plan: ComputerUsePlan;
   input: ComputerUseRunInput;
-  /** Read only to build participants and by the participant runner, whose hooks take the whole
-   *  config. */
+  /** Read for values the plan does not carry yet, and by the compatibility hooks, which take the
+   *  whole config. Participants come from the plan. */
   config: LabConfig;
   /** The physical project root. */
   cwd: string;
