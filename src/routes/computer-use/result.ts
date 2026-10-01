@@ -5,6 +5,8 @@ import {
 import { redactText } from "../../evidence/redaction.js";
 import type { ObserverResult } from "../../observer/render.js";
 import type { RunBundle, RunRerunLineage } from "../../run/bundle.js";
+import { round6 } from "../../run/pricing.js";
+import type { LabConfig } from "../../lab/types.js";
 import {
   foldScorerFailures,
   judgeExecution,
@@ -17,16 +19,15 @@ import {
 } from "../../run/judge.js";
 import { participantFactsOf, participantOutcomeOk } from "./participant-facts.js";
 import { summarizeCuaDiagnostics } from "./diagnostics.js";
-import {
-  aggregateCuaSubject,
-  participantCapWarning,
-  subjectProvenanceArg,
-  toParticipantResult,
-} from "./lanes.js";
+import { toParticipantResult } from "./lanes.js";
 import { buildCuaRunBundle, judgeComputerUseRun } from "./bundle.js";
 import type { runLabParticipants } from "./run-lanes.js";
 import type { CuaFinishFacts, CuaRunSetup } from "./setup.js";
-import { projectParticipantSubjects } from "./subject-projection.js";
+import {
+  aggregateCuaSubject,
+  projectParticipantSubjects,
+  subjectProvenanceArg,
+} from "./subject-projection.js";
 import {
   CUA_ACTOR_LAB_SCHEMA,
   CUA_FANOUT_STRATEGY,
@@ -281,6 +282,18 @@ function computerUseExecutionFailures(
           },
         ]),
   ];
+}
+
+/**
+ * execution.caps.maxUsd is enforced inside each lane's loop independently, so an N-lane fan-out can
+ * spend up to N × maxUsd before any lane aborts, while the run cost summary reports the larger
+ * aggregate. The warning names that ceiling, unless the study declared a shared maxTotalUsd budget.
+ */
+function participantCapWarning(config: LabConfig, participantCount: number): string | undefined {
+  const capUsd = config.execution?.caps?.maxUsd;
+  if (capUsd === undefined || participantCount <= 1) return undefined;
+  if (config.execution?.caps?.maxTotalUsd !== undefined) return undefined;
+  return `execution.caps.maxUsd ($${capUsd}) is a PER-LANE cap; ${participantCount} lanes may spend up to ${participantCount} × $${capUsd} (~$${round6(capUsd * participantCount)} total) before any lane aborts. Set execution.caps.maxTotalUsd for a shared study budget.`;
 }
 
 /** Builds and publishes the final bundle, runs the adapter hooks, renders the Observer and returns the result. */

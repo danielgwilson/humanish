@@ -27,7 +27,6 @@ import {
 } from "./participant-runs.js";
 import { makeCuaRunBudget } from "./participant-model.js";
 import { e2bRequestTimeoutMs } from "../../substrates/e2b/lifetime.js";
-import { subjectProvenanceArg } from "./lanes.js";
 import { liveCuaRejection } from "./preflight.js";
 import {
   cuaDescriptorOf,
@@ -40,7 +39,7 @@ import type { ComputerUsePlan } from "../../lab/plan-types.js";
 import { trackRuntimeStreams, type LiveTraceFlush } from "./live-flush.js";
 import { type CuaRunBundleBase } from "./bundle.js";
 import { packRunLocalTree } from "./local-tree-pack.js";
-import { projectParticipantSubjects } from "./subject-projection.js";
+import { projectParticipantSubjects, subjectProvenanceArg } from "./subject-projection.js";
 import {
   CUA_ACTOR_LAB_SCHEMA,
   type CuaActorLabErrorCode,

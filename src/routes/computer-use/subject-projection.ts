@@ -1,5 +1,6 @@
 // Each lane's subject projection and the subject-state marker, from the declared subject and what
-// the lanes ran.
+// the lanes ran; the run-level subject aggregated from them; and the provenance argument the
+// bundle builders take.
 
 import { commandDigestOf } from "../../subject/state.js";
 import type { ComputerUsePlan } from "../../lab/plan-types.js";
@@ -7,11 +8,11 @@ import type { LabSubjectState } from "../../lab/types.js";
 import { cuaDeclaredState } from "./plan.js";
 import { type RunSubjectProvenance, type RunSubjectStateStepRecord } from "../../run/bundle.js";
 import { type LocalTreeArchive } from "../../subject/local-tree-archive.js";
-import { participantSubjectProjection } from "./lanes.js";
 import { type CuaSubjectRoute } from "./plan.js";
 import {
   type DesktopParticipantRun,
   type CuaSubjectProjection,
+  type CuaSubjectProvenanceArg,
   type ParticipantRunOutcome,
 } from "./types.js";
 
@@ -94,5 +95,109 @@ export function resolveSubjectState(args: {
     provenance,
     ...(seed.length > 0 ? { seed } : {}),
     ...(external.length > 0 ? { externalEnvNames: external } : {}),
+  };
+}
+
+/** Build the per-lane subject projection (invariant 5). Local-tree lanes all share ONE
+ *  host-packed archive, so every lane's projection carries the identical archiveSha256/
+ *  commit/dirty (no per-lane divergence is possible, unlike the clone route's per-lane
+ *  in-sandbox commit). */
+function participantSubjectProjection(args: {
+  cloneRoute: boolean;
+  localTreeRoute: boolean;
+  publicRepo?: string;
+  subjectEnvNames: string[];
+  subjectCommit?: string;
+  localTreeArchive?: LocalTreeArchive;
+  subjectState: RunSubjectProvenance["state"];
+}): CuaSubjectProjection {
+  if (args.cloneRoute && args.publicRepo) {
+    return {
+      source: "clone",
+      repo: args.publicRepo,
+      ...(args.subjectCommit === undefined ? {} : { commit: args.subjectCommit }),
+      envNames: args.subjectEnvNames,
+      state: args.subjectState,
+    };
+  }
+  if (args.localTreeRoute) {
+    const archive = args.localTreeArchive;
+    return {
+      source: "local-tree",
+      ...(archive === undefined ? {} : { archiveSha256: archive.archiveSha256 }),
+      ...(archive?.git === undefined
+        ? {}
+        : { commit: archive.git.commit, dirty: archive.git.dirty }),
+      envNames: args.subjectEnvNames,
+      state: args.subjectState,
+    };
+  }
+  return { source: "app-url", state: args.subjectState };
+}
+
+/** Narrow a resolved CuaSubjectProjection into the shape buildSingleParticipantBundle's
+ *  subjectProvenance param wants (provisioned-route sources only; app-url stays undeclared, the
+ *  default branch that builder already handles). */
+export function subjectProvenanceArg(
+  subject: CuaSubjectProjection,
+  publicRepo: string | undefined,
+  subjectEnvNames: string[],
+): CuaSubjectProvenanceArg | undefined {
+  if (subject.source === "clone" && publicRepo) {
+    return {
+      source: "clone",
+      repo: publicRepo,
+      ...(subject.commit === undefined ? {} : { commit: subject.commit }),
+      envNames: subjectEnvNames,
+      state: subject.state,
+    };
+  }
+  if (subject.source === "local-tree") {
+    return {
+      source: "local-tree",
+      ...(subject.archiveSha256 === undefined ? {} : { archiveSha256: subject.archiveSha256 }),
+      ...(subject.commit === undefined ? {} : { commit: subject.commit }),
+      ...(subject.dirty === undefined ? {} : { dirty: subject.dirty }),
+      envNames: subjectEnvNames,
+      state: subject.state,
+    };
+  }
+  return undefined;
+}
+
+/**
+ * The run-level subject for the top level and the bundle. Local-tree lanes all pack from the same
+ * once-per-run archive, so every lane already carries the identical archiveSha256/commit/dirty and
+ * the first lane's projection is the aggregate. Clone lanes each resolve their own commit; the
+ * aggregate carries it only when every lane agrees, and warns when they diverge.
+ */
+export function aggregateCuaSubject(args: {
+  subjects: readonly CuaSubjectProjection[];
+  outcomes: readonly ParticipantRunOutcome[] | undefined;
+  participantCount: number;
+  dryRun: boolean;
+}): { subject: CuaSubjectProjection; warnings: string[] } {
+  const { subjects, outcomes, participantCount, dryRun } = args;
+  const first = subjects[0]!;
+  if (first.source !== "clone") return { subject: first, warnings: [] };
+  const commits = (outcomes ?? [])
+    .map((outcome) => outcome.subjectCommit)
+    .filter((commit): commit is string => commit !== undefined);
+  const unanimous = !dryRun && commits.length === participantCount && new Set(commits).size === 1;
+  const warnings =
+    !dryRun && participantCount > 1 && new Set(commits).size > 1
+      ? [
+          "Fan-out lanes resolved DIVERGENT subject commits — the top-level subject.commit is omitted; see per-lane provenance in result.lanes for each lane's pinned commit.",
+        ]
+      : [];
+  return {
+    subject: {
+      source: "clone",
+      ...(first.repo === undefined ? {} : { repo: first.repo }),
+      ...(first.envNames === undefined ? {} : { envNames: first.envNames }),
+      state: first.state,
+      ...(unanimous && commits[0] !== undefined ? { commit: commits[0] } : {}),
+    },
+    warnings,
   };
 }
