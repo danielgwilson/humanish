@@ -15,13 +15,13 @@ import { captureDesktopBrowserGeometry } from "../../substrates/e2b/desktop-geom
 import { prepareDesktopMedia, startE2BDesktopMedia } from "../../substrates/e2b/desktop-media.js";
 import { startE2BDesktopRecording } from "../../substrates/e2b/desktop-recording.js";
 import type { E2BDesktopSandbox } from "../../substrates/e2b/sdk.js";
-import { applyLaneMobileFidelity, mobileLaunchFlags } from "./e2b-desktop-fidelity.js";
-import type { E2BLaneContext, E2BLaneState } from "./e2b-desktop-state.js";
+import { applyParticipantMobileFidelity, mobileLaunchFlags } from "./e2b-desktop-fidelity.js";
+import type { E2BParticipantContext, E2BParticipantState } from "./e2b-desktop-state.js";
 
 /** Start the declared speech worker and screen recording. A recording that cannot start is a warning. */
-export async function startLaneMedia(
-  ctx: E2BLaneContext,
-  state: E2BLaneState,
+export async function startParticipantMedia(
+  ctx: E2BParticipantContext,
+  state: E2BParticipantState,
   desktop: E2BDesktopSandbox,
 ): Promise<void> {
   const { spec, deps, warnings } = ctx;
@@ -58,9 +58,9 @@ export async function startLaneMedia(
  * Open what the participant sees: the browser at the target, with any declared camera and mobile
  * fidelity, or a terminal window on the desktop-cli route.
  */
-export async function openLaneSurface(
-  ctx: E2BLaneContext,
-  state: E2BLaneState,
+export async function openParticipantSurface(
+  ctx: E2BParticipantContext,
+  state: E2BParticipantState,
   desktop: E2BDesktopSandbox,
 ): Promise<void> {
   const { spec, deps, warnings, targetUrl } = ctx;
@@ -113,9 +113,9 @@ export async function openLaneSurface(
   state.browserLaunched = true;
   noteDevToolsReadiness(ctx, browserLaunch.devTools, emulationFlags.length > 0);
   await desktop.wait(DESKTOP_SETTLE_MS).catch(() => undefined);
-  // Mobile fidelity (#221) is applied outside startLaneStream's best-effort catch, so a request
+  // Mobile fidelity (#221) is applied outside startParticipantStream's best-effort catch, so a request
   // that cannot be applied fails the lane closed.
-  state.fidelity = await applyLaneMobileFidelity({
+  state.fidelity = await applyParticipantMobileFidelity({
     desktop,
     spec,
     deps,
@@ -140,7 +140,7 @@ const SLOW_DEVTOOLS_MS = 10_000;
  * warnings of their own.
  */
 function noteDevToolsReadiness(
-  ctx: E2BLaneContext,
+  ctx: E2BParticipantContext,
   devTools: ChromeDevToolsReadiness | undefined,
   emulated: boolean,
 ): void {
@@ -183,9 +183,9 @@ function noteDevToolsReadiness(
  * Measure the browser window and start the live stream. A stream that cannot start is a warning;
  * unusable browser geometry fails the lane before any participant action.
  */
-export async function startLaneStream(
-  ctx: E2BLaneContext,
-  state: E2BLaneState,
+export async function startParticipantStream(
+  ctx: E2BParticipantContext,
+  state: E2BParticipantState,
   desktop: E2BDesktopSandbox,
 ): Promise<void> {
   const { spec, deps, warnings } = ctx;
@@ -200,7 +200,7 @@ export async function startLaneStream(
         ...(state.browserLaunchIdentity === undefined
           ? {}
           : { launchIdentity: state.browserLaunchIdentity }),
-        laneId: spec.planned.id,
+        participantId: spec.planned.id,
         targetUrl: ctx.targetUrl,
         requestedScreen: spec.planned.device.resolution,
         requestTimeoutMs: deps.requestTimeoutMs,

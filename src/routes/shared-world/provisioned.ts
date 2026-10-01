@@ -218,7 +218,7 @@ class SubjectPlane {
         lifecycle: { onTimeout: "kill" },
       },
       template: plan.residual.execution?.desktop?.template,
-      receipt: { root: this.ctx.runPaths, laneId: "subject" },
+      receipt: { root: this.ctx.runPaths, participantId: "subject" },
     });
     this.subjectDesktop = subject.sandbox;
     this.subjectShell = e2bShell(this.subjectDesktop);

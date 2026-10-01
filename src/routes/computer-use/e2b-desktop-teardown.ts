@@ -11,15 +11,15 @@ import type { startE2BDesktopRecording } from "../../substrates/e2b/desktop-reco
 import { readE2BRelease } from "../../substrates/e2b/sandbox.js";
 import { e2bShell } from "../../substrates/e2b/shell.js";
 import { drainCommsEvidence } from "./e2b-desktop-comms.js";
-import { finalLaneGeometry } from "./e2b-desktop-fidelity.js";
-import type { E2BLaneContext, E2BLaneState } from "./e2b-desktop-state.js";
+import { finalParticipantGeometry } from "./e2b-desktop-fidelity.js";
+import type { E2BParticipantContext, E2BParticipantState } from "./e2b-desktop-state.js";
 import type { CuaParticipantDeps, DesktopParticipantRun } from "./types.js";
 
 /**
  * Each route's own keep flag gates its own lane only: a clone.keep can never leak into a local-tree
  * lane's teardown decision, and vice versa.
  */
-function laneKeepReason(deps: CuaParticipantDeps): string | undefined {
+function participantKeepReason(deps: CuaParticipantDeps): string | undefined {
   const { config, cloneRoute, localTreeRoute } = deps;
   if (cloneRoute && config.subject.clone?.keep === true) return "subject.clone.keep";
   if (localTreeRoute && config.subject.localTree?.keep === true) return "subject.localTree.keep";
@@ -27,7 +27,7 @@ function laneKeepReason(deps: CuaParticipantDeps): string | undefined {
 }
 
 /** Collect the recording and stop the speech worker; failures are warnings. */
-async function stopLaneMedia(args: {
+async function stopParticipantMedia(args: {
   spec: DesktopParticipantRun;
   deps: CuaParticipantDeps;
   recording: Awaited<ReturnType<typeof startE2BDesktopRecording>> | undefined;
@@ -62,7 +62,7 @@ async function stopLaneMedia(args: {
  * only when the release is confirmed. A kept or unconfirmed sandbox can still accrue compute cost,
  * which the warnings say.
  */
-async function releaseLaneDesktop(args: {
+async function releaseParticipantDesktop(args: {
   allocation: OwnedDesktopAllocation;
   keepReason: string | undefined;
   failed: boolean;
@@ -91,9 +91,9 @@ async function releaseLaneDesktop(args: {
  * Finish a lane: collect its final geometry and comms evidence, then stop its media and release
  * its sandbox. Evidence failures are warnings; the release always runs.
  */
-export async function finishLane(
-  ctx: E2BLaneContext,
-  state: E2BLaneState,
+export async function finishE2BDesktop(
+  ctx: E2BParticipantContext,
+  state: E2BParticipantState,
   failed: boolean,
 ): Promise<void> {
   const { spec, deps, warnings } = ctx;
@@ -105,7 +105,7 @@ export async function finishLane(
   if (!desktop || !allocation) return;
   try {
     if (state.browserLaunched) {
-      state.desktopGeometry = await finalLaneGeometry({
+      state.desktopGeometry = await finalParticipantGeometry({
         desktop,
         spec,
         deps,
@@ -145,7 +145,7 @@ export async function finishLane(
       `Desktop final evidence collection failed: ${redactText(deps.scrubKnownValues(toErrorMessage(error)))}`,
     );
   } finally {
-    state.recordingEvidence = await stopLaneMedia({
+    state.recordingEvidence = await stopParticipantMedia({
       spec,
       deps,
       recording: state.recording,
@@ -153,9 +153,9 @@ export async function finishLane(
       mediaStop: state.mediaStop,
       warnings,
     });
-    state.released = await releaseLaneDesktop({
+    state.released = await releaseParticipantDesktop({
       allocation,
-      keepReason: laneKeepReason(deps),
+      keepReason: participantKeepReason(deps),
       failed,
       deps,
       warnings,

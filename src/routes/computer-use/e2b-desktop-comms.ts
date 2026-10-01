@@ -28,7 +28,7 @@ import type { CuaParticipantDeps, DesktopParticipantRun } from "./types.js";
 const INBOX_SURFACE_CADENCE_MS = 2500;
 
 /** A lane's captured-email wiring, decided from config before the sandbox exists. */
-export interface LaneComms {
+export interface ParticipantComms {
   readonly email: LabCommsEmail;
   readonly port: number;
   readonly smtpPort: number | undefined;
@@ -43,11 +43,11 @@ export interface LaneComms {
  * (loopback) so its verification mail is CAPTURED, not sent to the internet. Undefined when the
  * lab declares no fake email, which leaves the lane unchanged.
  */
-export function planLaneComms(
+export function planParticipantComms(
   config: LabConfig,
   targetUrl: string,
   inSandboxSubject: boolean,
-): LaneComms | undefined {
+): ParticipantComms | undefined {
   const email =
     inSandboxSubject && config.comms?.email?.kind === "fake" ? config.comms.email : undefined;
   if (email === undefined) return undefined;
@@ -76,7 +76,7 @@ export function planLaneComms(
 }
 
 /** The env the subject app reads to reach the catch, injected at sandbox create so it boots with it. */
-export function laneCommsEnv(comms: LaneComms | undefined): Record<string, string> {
+export function participantCommsEnv(comms: ParticipantComms | undefined): Record<string, string> {
   if (comms === undefined) return {};
   // injectEnv is absent on an adopter-hosted plane (#328): there is no subject env to inject
   // because the operator points their own app at their own catch.
@@ -111,7 +111,7 @@ export interface RunningCommsCatch {
  */
 export async function startCommsCatch(
   shell: Shell,
-  comms: LaneComms,
+  comms: ParticipantComms,
   requestTimeoutMs: number,
 ): Promise<RunningCommsCatch> {
   const deployed = await deployCommsCatch(shell, {
@@ -209,11 +209,11 @@ function optionalAddress(address: string | undefined): { address?: string } {
 }
 
 /** The inbox the persona is told about: real receiving, the captured catch, or an external inbox. */
-export function laneInbox(args: {
+export function participantInbox(args: {
   spec: DesktopParticipantRun;
   deps: CuaParticipantDeps;
   receivingInboxUrl: string | undefined;
-  comms: LaneComms | undefined;
+  comms: ParticipantComms | undefined;
   catchReady: boolean;
 }): ReadyParticipantDesktop["inbox"] {
   const { spec, deps, receivingInboxUrl, comms } = args;
@@ -244,7 +244,7 @@ export function laneInbox(args: {
  */
 export async function drainCommsEvidence(args: {
   shell: Shell;
-  comms: LaneComms;
+  comms: ParticipantComms;
   deployed: DeployedCommsCatch;
   spec: DesktopParticipantRun;
   deps: CuaParticipantDeps;

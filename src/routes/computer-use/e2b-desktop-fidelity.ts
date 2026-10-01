@@ -23,7 +23,7 @@ import type { CuaParticipantDeps, DesktopParticipantRun } from "./types.js";
 type BrowserGeometry = Awaited<ReturnType<typeof captureDesktopBrowserGeometry>>;
 
 /** The mobile emulation a lane applied, updated as later tabs are covered and at teardown. */
-export interface LaneFidelity {
+export interface ParticipantFidelity {
   applied: RunDesktopGeometry["fidelity"] | undefined;
   emulatedTargetId: string | undefined;
   holderName: string | undefined;
@@ -58,7 +58,7 @@ function cdpEndpoint(
  * user agent (the first live proof did exactly that to the desktop newcomer beside the phone lane).
  * Those lanes carry no fidelity block, which is honest.
  */
-export async function applyLaneMobileFidelity(args: {
+export async function applyParticipantMobileFidelity(args: {
   desktop: E2BDesktopSandbox;
   spec: DesktopParticipantRun;
   deps: CuaParticipantDeps;
@@ -67,10 +67,10 @@ export async function applyLaneMobileFidelity(args: {
   launchIdentity: DesktopBrowserLaunchIdentity | undefined;
   targetId: string | undefined;
   warnings: string[];
-}): Promise<LaneFidelity> {
+}): Promise<ParticipantFidelity> {
   const { spec, deps } = args;
   const request = deps.config.execution?.desktop?.fidelity;
-  const none: LaneFidelity = {
+  const none: ParticipantFidelity = {
     applied: undefined,
     emulatedTargetId: undefined,
     holderName: undefined,
@@ -103,14 +103,14 @@ export async function applyLaneMobileFidelity(args: {
 }
 
 /** The Chrome observer behind URL/text stop conditions and task criteria, watching for emulation drift. */
-export function laneBrowserStateObserver(args: {
+export function participantBrowserStateObserver(args: {
   desktop: E2BDesktopSandbox;
   spec: DesktopParticipantRun;
   deps: CuaParticipantDeps;
   targetUrl: string;
   launchIdentity: DesktopBrowserLaunchIdentity | undefined;
   targetId: string | undefined;
-  fidelity: LaneFidelity;
+  fidelity: ParticipantFidelity;
   warnings: string[];
 }): ReturnType<typeof makeChromeBrowserStateObserver> {
   const { spec, deps, fidelity, warnings } = args;
@@ -163,7 +163,7 @@ export function laneBrowserStateObserver(args: {
  * had (honest omission); only a final capture that measured NOTHING falls back to the launch-time
  * capture. Also reads the emulation holder's log into the fidelity block.
  */
-export async function finalLaneGeometry(args: {
+export async function finalParticipantGeometry(args: {
   desktop: E2BDesktopSandbox;
   spec: DesktopParticipantRun;
   deps: CuaParticipantDeps;
@@ -174,7 +174,7 @@ export async function finalLaneGeometry(args: {
   targetId: string | undefined;
   initial: BrowserGeometry | undefined;
   geometry: RunDesktopGeometry;
-  fidelity: LaneFidelity;
+  fidelity: ParticipantFidelity;
   warnings: string[];
 }): Promise<RunDesktopGeometry> {
   const { desktop, spec, deps, fidelity, warnings } = args;
@@ -184,7 +184,7 @@ export async function finalLaneGeometry(args: {
     ...(args.launchIdentity === undefined ? {} : { launchIdentity: args.launchIdentity }),
     ...(args.windowId === undefined ? {} : { browserWindowId: args.windowId }),
     ...(args.targetId === undefined ? {} : { browserTargetId: args.targetId }),
-    laneId: spec.planned.id,
+    participantId: spec.planned.id,
     targetUrl: args.targetUrl,
     requestedScreen: spec.planned.device.resolution,
     requestTimeoutMs: deps.requestTimeoutMs,

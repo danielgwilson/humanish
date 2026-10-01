@@ -10,8 +10,8 @@ import { observeDesktopResources } from "../../substrates/e2b/desktop-resources.
 import { acquireE2BDesktopSandbox, e2bDesktopTemplate } from "../../substrates/e2b/sandbox.js";
 import { loadE2BDesktopModule, type E2BDesktopSandbox } from "../../substrates/e2b/sdk.js";
 import { e2bShell } from "../../substrates/e2b/shell.js";
-import { attachReceivingInbox, laneCommsEnv, startCommsCatch } from "./e2b-desktop-comms.js";
-import type { E2BLaneContext, E2BLaneState } from "./e2b-desktop-state.js";
+import { attachReceivingInbox, participantCommsEnv, startCommsCatch } from "./e2b-desktop-comms.js";
+import type { E2BParticipantContext, E2BParticipantState } from "./e2b-desktop-state.js";
 
 export const CUA_ACTOR_LAB_PROVIDER_METADATA = {
   mode: "cua-actor-lab",
@@ -22,16 +22,16 @@ export const CUA_ACTOR_LAB_PROVIDER_METADATA = {
  * Create the lane's sandbox, record its resources, run the adopter's prepare hook, and attach the
  * lane's inbox and comms catch. Returns the sandbox, which the later steps drive.
  */
-export async function acquireLaneDesktop(
-  ctx: E2BLaneContext,
-  state: E2BLaneState,
+export async function acquireParticipantDesktop(
+  ctx: E2BParticipantContext,
+  state: E2BParticipantState,
 ): Promise<E2BDesktopSandbox> {
   const { spec, deps, warnings } = ctx;
   const { config, subjectEnvNames, env } = deps;
   const subjectEnvValues = config.subject.envValues ?? {};
   // Off-app comms (#297): the base-URL env is injected at sandbox create, so the app reads it at
   // boot; the catch starts right after create.
-  const commsEnv = laneCommsEnv(ctx.comms);
+  const commsEnv = participantCommsEnv(ctx.comms);
   const desktopModule = await (deps.hooks.loadDesktopModule ?? loadE2BDesktopModule)();
   // An explicit template wins. Speech gets the versioned media image; ordinary
   // browser studies retain the SDK default desktop.
@@ -87,7 +87,7 @@ export async function acquireLaneDesktop(
     },
     // The receipt is on disk before any work, so `humanish reclaim` can kill this lane's
     // sandbox by exact id after an interrupt.
-    receipt: { root: deps.artifactRoot, laneId: spec.planned.id, now: deps.now },
+    receipt: { root: deps.artifactRoot, participantId: spec.planned.id, now: deps.now },
   });
   const desktop = acquired.sandbox;
   state.desktop = desktop;
@@ -129,15 +129,15 @@ export async function acquireLaneDesktop(
  * Verify the lane's screen in the sandbox. A mismatch fails the lane closed unless the run records
  * requested and verified geometry side by side.
  */
-export async function verifyLaneScreen(
-  ctx: E2BLaneContext,
-  state: E2BLaneState,
+export async function verifyParticipantScreen(
+  ctx: E2BParticipantContext,
+  state: E2BParticipantState,
   desktop: E2BDesktopSandbox,
 ): Promise<void> {
   const { spec, deps, warnings } = ctx;
   const screenGeometry = await inspectDesktopScreenGeometry({
     desktop,
-    laneId: spec.planned.id,
+    participantId: spec.planned.id,
     requestedScreen: spec.planned.device.resolution,
     requestTimeoutMs: deps.requestTimeoutMs,
   });
@@ -170,9 +170,9 @@ export async function verifyLaneScreen(
 }
 
 /** Install a desktop CLI, or clone or unpack the subject and serve it, in the sandbox. */
-export async function provisionLaneSubject(
-  ctx: E2BLaneContext,
-  state: E2BLaneState,
+export async function provisionParticipantSubject(
+  ctx: E2BParticipantContext,
+  state: E2BParticipantState,
   desktop: E2BDesktopSandbox,
 ): Promise<void> {
   const { deps } = ctx;

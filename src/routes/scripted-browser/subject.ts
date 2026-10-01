@@ -127,7 +127,7 @@ export class ScriptedSubject {
         lifecycle: { onTimeout: "kill" },
       },
       template: plan.residual.execution?.desktop?.template,
-      receipt: { root: runPaths, laneId: "subject" },
+      receipt: { root: runPaths, participantId: "subject" },
     });
     const subjectDesktop = subject.sandbox;
     this.allocation = subject.allocation;
