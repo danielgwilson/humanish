@@ -151,13 +151,13 @@ function decodeTransferEscapes(text: string): string {
 
 export interface EncodedTextScan {
   /** A secret or private path, in the text or in a decoding of it. */
-  sensitive: boolean;
+  readonly sensitive: boolean;
   /** An encoded archive, or an encoded binary run long enough to hide one, that the scan cannot read. */
-  opaque: boolean;
+  readonly opaque: boolean;
 }
 
-const CLEAN: EncodedTextScan = { sensitive: false, opaque: false };
-const SENSITIVE: EncodedTextScan = { sensitive: true, opaque: false };
+const CLEAN: EncodedTextScan = Object.freeze({ sensitive: false, opaque: false });
+const SENSITIVE: EncodedTextScan = Object.freeze({ sensitive: true, opaque: false });
 
 function inspectDecoded(
   bytes: Buffer,
@@ -265,7 +265,8 @@ export function scanEncodedBytes(
     scanCache.set(key, cached);
     return cached;
   }
-  const result = scanEncodedText(text, options);
+  // Every caller gets the cached object, so it is frozen.
+  const result = Object.freeze({ ...scanEncodedText(text, options) });
   scanCache.set(key, result);
   if (scanCache.size > SCAN_CACHE_LIMIT) {
     const oldest = scanCache.keys().next().value;

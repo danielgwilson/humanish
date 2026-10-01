@@ -98,6 +98,11 @@ describe("scanEncodedBytes", () => {
     }
   });
 
+  it("hands out a frozen result, so no caller can change what the cache holds", () => {
+    const text = "frozen check";
+    expect(Object.isFrozen(scanEncodedBytes(Buffer.from(text), text))).toBe(true);
+  });
+
   it("keys the cache on the options as well as the bytes", () => {
     const text = binary(96).toString("base64");
     const bytes = Buffer.from(text);
