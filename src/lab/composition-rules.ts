@@ -22,6 +22,7 @@ import {
   cuaLaneValidationReason,
   sharedWorldValidationReason,
 } from "./validation.js";
+import { rosterOf } from "./parse/actors.js";
 
 /** The first composition rule a config breaks, in the parser's order, or null. */
 export function compositionReason(config: LabConfig): string | null {
@@ -78,7 +79,7 @@ function localAppValidationReason(config: LabConfig): string | null {
     if (cuaLaneCount(config) > 1) {
       return "Multi-lane fan-out is not supported on the in-process/local-app route — fan-out provisions one independent E2B desktop per lane, which the in-process route deliberately skips; set actors[0].count to 1 and drop actors[0].lanes (use an app-url or clone subject on execution.target: e2b-desktop for fan-out).";
     }
-    if (config.actors[0]?.lanes !== undefined) {
+    if (rosterOf(config.actors[0]) !== undefined) {
       return "`actors[0].lanes` (fan-out roster) is not supported on the in-process/local-app route — it provisions one E2B desktop per lane, which this route skips. Use an app-url or clone subject with execution.target: e2b-desktop.";
     }
     if (config.policies?.allowPublicTargets === true) {
@@ -173,7 +174,7 @@ function scriptedBrowserValidationReason(config: LabConfig): string | null {
     if ((config.actors[0]?.count ?? 1) > 2) {
       return "scripted-browser labs support actors[0].count of 1 (desktop surface) or 2 (desktop + mobile); larger fan-out is a later slice.";
     }
-    if (config.actors[0]?.lanes !== undefined) {
+    if (rosterOf(config.actors[0]) !== undefined) {
       return "`actors[0].lanes` is not supported on the scripted-browser route yet — use actors[0].count for the deterministic surface roster.";
     }
     if (config.policies?.redactScreenshots === true) {

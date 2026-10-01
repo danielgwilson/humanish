@@ -6,7 +6,8 @@ import type { ReasoningEffort } from "../actors/reasoning-effort.js";
 import { resolveParticipantDevice, type DevicePreset } from "./device-presets.js";
 import { isSharedWorldComposition, participantIdAt } from "./routing.js";
 import type { LabTask } from "./tasks.js";
-import type { LabActorLane, LabConfig } from "./types.js";
+import type { LabParticipantEntry, LabConfig } from "./types.js";
+import { focusOf, rosterOf } from "./parse/actors.js";
 
 /** Who one participant is. Every route with participants carries this record. */
 export interface Participant {
@@ -79,21 +80,21 @@ export type SharedWorldParticipant = ProvisionedParticipant | ExternalPublicPart
 
 function desktopParticipant(
   config: LabConfig,
-  lane: LabActorLane | undefined,
+  entry: LabParticipantEntry | undefined,
   index: number,
   kind: "lane" | "seat",
   focus: string | undefined,
 ): DesktopParticipant {
   const actor = config.actors[0];
-  const device = resolveParticipantDevice(config, lane?.device);
-  const personaId = lane?.persona ?? actor?.persona;
+  const device = resolveParticipantDevice(config, entry?.device);
+  const personaId = entry?.persona ?? actor?.persona;
   const mission = actor?.mission;
-  const stopWhen = lane?.stopWhen ?? actor?.stopWhen;
-  const dwell = lane?.dwell ?? actor?.dwell;
-  const reasoningEffort = lane?.reasoningEffort ?? actor?.reasoningEffort;
+  const stopWhen = entry?.stopWhen ?? actor?.stopWhen;
+  const dwell = entry?.dwell ?? actor?.dwell;
+  const reasoningEffort = entry?.reasoningEffort ?? actor?.reasoningEffort;
   const maxOutputTokens = actor?.maxOutputTokens;
   return {
-    id: participantIdAt(index, lane?.id, kind),
+    id: participantIdAt(index, entry?.id, kind),
     index,
     personaId,
     assignment: {
@@ -101,9 +102,9 @@ function desktopParticipant(
       ...(focus === undefined ? {} : { focus }),
     },
     labels: {
-      ...(lane?.actorType === undefined ? {} : { actorType: lane.actorType }),
-      ...(lane?.surface === undefined ? {} : { surface: lane.surface }),
-      ...(lane?.caseGroup === undefined ? {} : { caseGroup: lane.caseGroup }),
+      ...(entry?.actorType === undefined ? {} : { actorType: entry.actorType }),
+      ...(entry?.surface === undefined ? {} : { surface: entry.surface }),
+      ...(entry?.caseGroup === undefined ? {} : { caseGroup: entry.caseGroup }),
     },
     device: { name: device.name, preset: device.preset, resolution: device.resolution },
     limits: {
@@ -124,38 +125,38 @@ export function computerUseParticipants(
   countOverride?: number,
 ): ComputerUseParticipant[] {
   const actor = config.actors[0];
-  const roster = actor?.lanes;
+  const roster = rosterOf(actor);
   const count = roster ? roster.length : Math.max(1, countOverride ?? actor?.count ?? 1);
   return Array.from({ length: count }, (_, index) => {
-    const lane = roster?.[index];
-    const focus = roster ? lane?.instruction : actor?.laneFocus?.instruction;
+    const entry = roster?.[index];
+    const focus = roster ? entry?.instruction : focusOf(actor)?.instruction;
     return {
-      ...desktopParticipant(config, lane, index, "lane", focus),
+      ...desktopParticipant(config, entry, index, "lane", focus),
       ...(actor?.tasks === undefined ? {} : { tasks: actor.tasks }),
-      ...(lane?.target === undefined ? {} : { targetUrl: lane.target }),
+      ...(entry?.target === undefined ? {} : { targetUrl: entry.target }),
     };
   });
 }
 
 /** The participants of a shared-world lab, one per roster entry, typed by the plane they share. */
 export function sharedWorldParticipants(config: LabConfig): SharedWorldRoster {
-  const roster = config.actors[0]?.lanes ?? [];
-  const participantAt = (lane: LabActorLane, index: number): DesktopParticipant =>
-    desktopParticipant(config, lane, index, "seat", lane.instruction);
+  const roster = rosterOf(config.actors[0]) ?? [];
+  const participantAt = (entry: LabParticipantEntry, index: number): DesktopParticipant =>
+    desktopParticipant(config, entry, index, "seat", entry.instruction);
   if (config.subject.source === "app-url") {
     return {
       plane: "external-public",
-      participants: roster.map((lane, index) => ({
-        ...participantAt(lane, index),
-        host: lane.host === true,
+      participants: roster.map((entry, index) => ({
+        ...participantAt(entry, index),
+        host: entry.host === true,
       })),
     };
   }
   return {
     plane: "provisioned",
-    participants: roster.map((lane, index) => ({
-      ...participantAt(lane, index),
-      ...(lane.entry === undefined ? {} : { entry: lane.entry }),
+    participants: roster.map((entry, index) => ({
+      ...participantAt(entry, index),
+      ...(entry.entry === undefined ? {} : { entry: entry.entry }),
     })),
   };
 }
@@ -163,10 +164,10 @@ export function sharedWorldParticipants(config: LabConfig): SharedWorldRoster {
 /** The ids of the participants a computer-use or shared-world lab runs, in roster order. */
 export function declaredParticipantIds(config: LabConfig): string[] {
   const actor = config.actors[0];
-  const roster = actor?.lanes;
+  const roster = rosterOf(actor);
   const kind = isSharedWorldComposition(config) ? "seat" : "lane";
   if (roster && roster.length > 0) {
-    return roster.map((lane, index) => participantIdAt(index, lane.id, kind));
+    return roster.map((entry, index) => participantIdAt(index, entry.id, kind));
   }
   const count = Math.max(1, actor?.count ?? 1);
   return Array.from({ length: count }, (_, index) => participantIdAt(index, undefined, kind));
@@ -174,7 +175,7 @@ export function declaredParticipantIds(config: LabConfig): string[] {
 
 /** The entry URLs roster entries declare in place of the subject URL (computer use, app-url). */
 export function declaredTargets(config: LabConfig): string[] {
-  return (config.actors[0]?.lanes ?? [])
-    .map((lane) => lane.target)
+  return (rosterOf(config.actors[0]) ?? [])
+    .map((entry) => entry.target)
     .filter((target): target is string => target !== undefined);
 }

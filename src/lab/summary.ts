@@ -19,9 +19,10 @@ import {
 } from "../actors/computer-use/openai-provider.js";
 import { inspectLabManifest } from "./discover.js";
 import { isComputerUseComposition } from "./routing.js";
-import type { LabConfig } from "./types.js";
+import type { LabActor, LabConfig } from "./types.js";
 import { probeKeySources } from "../keys/key-resolution.js";
 import { receivingRequiredKey } from "../comms/setup.js";
+import { rosterOf } from "./parse/actors.js";
 
 export const LAB_SUMMARY_SCHEMA = "humanish.lab-summary.v1";
 
@@ -75,12 +76,10 @@ export interface LabSummary {
  * reported as the resolved value, exactly as `model` reports its default rather than hiding it.
  */
 function reasoningEffortOf(config: Record<string, unknown>): string {
-  const actors = config.actors as
-    | { reasoningEffort?: string; lanes?: { reasoningEffort?: string }[] }[]
-    | undefined;
+  const actors = config.actors as Pick<LabActor, "reasoningEffort" | "lanes">[] | undefined;
   const actor = actors?.[0];
   const fallback = actor?.reasoningEffort ?? DEFAULT_OPENAI_CU_REASONING_EFFORT;
-  const roster = actor?.lanes ?? [];
+  const roster = rosterOf(actor) ?? [];
   const resolved = new Set(roster.map((entry) => entry.reasoningEffort ?? fallback));
   if (resolved.size > 1) return "per-lane";
   return resolved.size === 1 ? [...resolved][0]! : fallback;
@@ -100,17 +99,15 @@ function subjectOf(config: Record<string, unknown>): string | undefined {
 
 /** How many participants, and who — collapsed when they are all the same persona. */
 function participantsOf(config: Record<string, unknown>): string | undefined {
-  const actors = config.actors as
-    | { count?: number; persona?: string; lanes?: { persona?: string }[] }[]
-    | undefined;
+  const actors = config.actors as Pick<LabActor, "count" | "persona" | "lanes">[] | undefined;
   const actor = actors?.[0];
   if (actor === undefined) return undefined;
-  const rosterPersonas = (actor.lanes ?? [])
+  const rosterPersonas = (rosterOf(actor) ?? [])
     .map((entry) => entry.persona)
     .filter((persona): persona is string => typeof persona === "string");
   const personas =
     rosterPersonas.length > 0 ? rosterPersonas : actor.persona === undefined ? [] : [actor.persona];
-  const count = actor.count ?? actor.lanes?.length ?? personas.length ?? 1;
+  const count = actor.count ?? rosterOf(actor)?.length ?? personas.length ?? 1;
   const unique = [...new Set(personas)];
   if (unique.length === 0) return `${count} participant${count === 1 ? "" : "s"}`;
   // Several lanes of ONE persona reads as "3 × skeptical-power-user"; genuinely different people

@@ -293,7 +293,7 @@ export interface LabSubject {
   localTree?: LabSubjectLocalTree;
 }
 
-export interface LabActorLaneFocus {
+export interface LabParticipantFocus {
   id?: string;
   label?: string;
   /** Per-lane steer appended to the actor's mission. Consumed on the app-url route. */
@@ -307,7 +307,7 @@ export interface LabActorLaneFocus {
  * defaults to `lane-01`..`lane-NN` and must be a public-safe token (it names per-lane evidence
  * paths). Consumed ONLY on the computer-use E2B route (inert/warned elsewhere).
  */
-export interface LabActorLane {
+export interface LabParticipantEntry {
   /** Public-safe lane label (interpolates into per-lane evidence paths). Default lane-NN. */
   id?: string;
   /**
@@ -369,7 +369,7 @@ export interface LabActorLane {
  * `lanes[]` with deterministic ids (`<group.id>-01`, `<group.id>-02`, ...). The runtime never
  * consumes this shape directly; it always sees ordinary `LabActorLane` entries.
  */
-export interface LabActorRosterGroup extends Omit<LabActorLane, "id"> {
+export interface LabActorRosterGroup extends Omit<LabParticipantEntry, "id"> {
   /** Public-safe group id; prefixes generated lane ids. */
   id: string;
   /** Number of lanes to generate for this group. */
@@ -392,11 +392,11 @@ export interface LabActor {
   /** Computer-use E2B route: a DIFFERENTIATED fan-out roster (per-lane worlds). XOR `count`,
    *  `roster`, and `laneFocus`. Cap 16 lanes. Consumed only on the cua E2B route
    *  (inert/warned elsewhere). */
-  lanes?: LabActorLane[];
+  lanes?: LabParticipantEntry[];
   /** Persona id/label threaded into the actor prompt. Consumed on the app-url route. */
   persona?: string;
   /** Consumed on the app-url route (laneFocus.instruction appended to the mission). XOR `lanes`. */
-  laneFocus?: LabActorLaneFocus;
+  laneFocus?: LabParticipantFocus;
   /** Free-form mission threaded into the actor prompt. Consumed on the app-url route. A mission on
    *  its own is a complete, valid lab — `tasks` is additive, never required. */
   mission?: string;

@@ -1,4 +1,5 @@
 import type { LabConfig } from "../../lab/types.js";
+import { rosterOf } from "../../lab/parse/actors.js";
 
 // The runtime image enforces a 30-minute lifetime; reserve setup/teardown room.
 export const LOCAL_BROWSER_LIFETIME_MS = 30 * 60_000;
@@ -54,7 +55,7 @@ export function localBrowserUnsupportedReason(config: LabConfig): string | undef
     desktop.resolution[1] !== 720 ||
     desktop.device !== undefined ||
     (desktop.browser !== undefined && !["default", "chromium"].includes(desktop.browser)) ||
-    actor.lanes?.some((entry) => entry.device !== undefined) ||
+    rosterOf(actor)?.some((entry) => entry.device !== undefined) ||
     desktop.template !== undefined ||
     desktop.sandboxTimeoutMs !== undefined
   ) {
@@ -73,7 +74,7 @@ export function localBrowserUnsupportedReason(config: LabConfig): string | undef
     actor.type === "local-agent" &&
     (actor.model !== "gpt-6-astra" ||
       actor.reasoningEffort !== "low" ||
-      actor.lanes?.some(
+      rosterOf(actor)?.some(
         (entry) => entry.reasoningEffort !== undefined && entry.reasoningEffort !== "low",
       ) ||
       actor.maxOutputTokens !== undefined ||
@@ -86,7 +87,7 @@ export function localBrowserUnsupportedReason(config: LabConfig): string | undef
   }
   for (const target of [
     config.subject.appUrl,
-    ...(actor.lanes ?? []).map((entry) => entry.target),
+    ...(rosterOf(actor) ?? []).map((entry) => entry.target),
   ].filter(Boolean)) {
     let url;
     try {

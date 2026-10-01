@@ -33,6 +33,7 @@ import {
   type ParticipantRef,
   type SetupTarget,
 } from "./run-lab-events.js";
+import { rosterOf } from "./parse/actors.js";
 
 /** What `createProvider` receives for each participant. */
 export interface ProviderContext {
@@ -556,7 +557,7 @@ export function optionRefusalOutcome(
         },
       };
     case "shared-world": {
-      const participantCount = config.actors[0]?.lanes?.length ?? 0;
+      const participantCount = rosterOf(config.actors[0])?.length ?? 0;
       return {
         route: "shared-world",
         backend: "concurrent-shared-world",

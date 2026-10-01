@@ -24,6 +24,7 @@ import {
 import { formatConcurrentSharedWorldLabHuman } from "./lab-format.js";
 import { resolveRouteShouldOpen, watchFinishedPlan } from "./lab-route-open.js";
 import type { RouteRun } from "./lab-route-run.js";
+import { rosterOf } from "../../lab/parse/actors.js";
 
 interface SharedWorldRouteArgs {
   command: Command;
@@ -60,7 +61,7 @@ export function sharedWorldRouteRun(args: SharedWorldRouteArgs): RouteRun | unde
       actor: args.config.actors[0]?.type ?? "",
       topology: "shared-world",
       topologyMode: "concurrent",
-      roleCount: args.config.actors[0]?.lanes?.length ?? 0,
+      roleCount: rosterOf(args.config.actors[0])?.length ?? 0,
       concurrency: args.config.execution?.concurrency ?? 1,
       dryRun,
       runId: runId ?? args.options.runId ?? "not-created",
