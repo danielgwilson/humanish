@@ -29,16 +29,13 @@ import {
 } from "../../src/analysis/job.js";
 import { listStudyAnalysisExecutions } from "../../src/analysis/store-executions.js";
 import { loadStudyAnalysis } from "../../src/analysis/load.js";
-import { captureStudyEvidence } from "../../src/analysis/evidence.js";
+import { captureEvidence } from "../../src/analysis/evidence.js";
 import {
   projectShareCheckedAnalysis,
   studyAnalysisSharingProblems,
 } from "../../src/analysis/sharing.js";
 import { hashAnalysisValue } from "../../src/analysis/validation.js";
-import {
-  ANALYSIS_PROMPT_VERSION,
-  runStudyAnalysis,
-} from "../../src/analysis/run-study-analysis.js";
+import { ANALYSIS_PROMPT_VERSION, runAnalysis } from "../../src/analysis/execute.js";
 import { resolveRunPath } from "../../src/run/locate.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { verifyRun } from "../../src/verify/verify.js";
@@ -49,7 +46,7 @@ import { serveRunPath } from "../../src/observer/run-routes.js";
 import * as observer from "../../src/observer/render.js";
 import { exportRun } from "../../src/feedback/export.js";
 import type { PreparedRunArtifactPaths } from "../../src/run/paths.js";
-import type { AnalysisConfig, AnalysisInput } from "../../src/analysis/study-analysis.js";
+import type { AnalysisConfig, AnalysisInput } from "../../src/analysis/types.js";
 import { syntheticResult } from "./fixtures.js";
 
 const config: AnalysisConfig = {
@@ -84,7 +81,7 @@ describe("opted-in automatic analysis ownership", () => {
     await writeFile(path.join(root, "run.json"), JSON.stringify(bundle) + "\n");
     await rm(path.join(root, "status.json"));
     original = await readFile(path.join(root, "run.json"));
-    input = await captureStudyEvidence(prepared, original);
+    input = await captureEvidence(prepared, original);
     expect((await verifyRun(cwd, runId)).checks.filter((check) => !check.ok)).toEqual([]);
   });
   afterEach(async () => {
@@ -191,7 +188,7 @@ describe("opted-in automatic analysis ownership", () => {
         original = Buffer.from(JSON.stringify(bundle));
         await writeFile(path.join(root, "run.json"), original);
         expect((await verifyRun(cwd, runId)).checks.filter((check) => !check.ok)).toEqual([]);
-        input = await captureStudyEvidence(prepared, original);
+        input = await captureEvidence(prepared, original);
         expect(input.coverage.complete).toBe(true);
       }
       const h = await transport();
@@ -329,7 +326,7 @@ describe("opted-in automatic analysis ownership", () => {
     });
     expect((await listStudyAnalysisExecutions(prepared)).receipts).toHaveLength(1);
     expect(await readFile(path.join(root, "run.json"))).toEqual(original);
-    expect((await captureStudyEvidence(prepared, original)).inputDigest).toBe(input.inputDigest);
+    expect((await captureEvidence(prepared, original)).inputDigest).toBe(input.inputDigest);
   });
 
   it("reuses an existing result without another call and never retries after reopening", async () => {
@@ -593,7 +590,7 @@ describe("opted-in automatic analysis ownership", () => {
   it("fails the awaited durability guard before provider transport", async () => {
     const h = await transport();
     await expect(
-      runStudyAnalysis(input, config, {
+      runAnalysis(input, config, {
         apiKey: "synthetic-key",
         fetch: h.fetch,
         beforeDispatch: async () => {

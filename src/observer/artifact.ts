@@ -7,7 +7,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } fr
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { projectShareCheckedAnalysis, studyAnalysisSharingProblems } from "../analysis/sharing.js";
-import type { LoadedAnalysis } from "../analysis/study-analysis.js";
+import type { LoadedAnalysis } from "../analysis/types.js";
 import { withObserverEndings, type ObserverData } from "./data.js";
 
 const OBSERVER_DATA_PLACEHOLDER = "__HUMANISH_OBSERVER_DATA__";

@@ -12,7 +12,7 @@ import {
   type AnalysisCorrection,
   type AnalysisInput,
   type AnalysisResult,
-} from "./study-analysis.js";
+} from "./types.js";
 
 const text = (max: number) =>
   z

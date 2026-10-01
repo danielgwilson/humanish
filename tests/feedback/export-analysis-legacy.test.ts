@@ -13,7 +13,7 @@ import { resolveRunPath } from "../../src/run/locate.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { type RunBundle } from "../../src/run/bundle.js";
-import { captureStudyEvidence } from "../../src/analysis/evidence.js";
+import { captureEvidence } from "../../src/analysis/evidence.js";
 import { appendStudyAnalysisCorrection, writeStudyAnalysis } from "../../src/analysis/store.js";
 import { writeStudyAnalysisExecutionReceipt } from "../../src/analysis/store-executions.js";
 import { loadStudyAnalysis } from "../../src/analysis/load.js";
@@ -78,7 +78,7 @@ it("redacts legacy analysis-directory evidence while omitting generated analysis
     bundle.streams[0]!.artifacts.push({ kind: "trace", label: "actor", path: "actor.json" });
     await writeFile(path.join(root, "run.json"), JSON.stringify(bundle));
     await writeFile(path.join(root, "actor.json"), JSON.stringify(actor));
-    const input = await captureStudyEvidence(prepared, await readFile(path.join(root, "run.json")));
+    const input = await captureEvidence(prepared, await readFile(path.join(root, "run.json")));
     const artifact = syntheticArtifact(input);
     await writeStudyAnalysisExecutionReceipt(prepared, artifact);
     await writeStudyAnalysis(prepared, artifact);

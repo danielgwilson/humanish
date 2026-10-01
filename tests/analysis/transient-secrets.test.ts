@@ -9,14 +9,10 @@ import {
   withTransientCommsSecrets,
 } from "../../src/run/transient-comms-secrets.js";
 import { prepareRunArtifactPaths, type PreparedRunArtifactPaths } from "../../src/run/paths.js";
-import { runStudyAnalysis } from "../../src/analysis/run-study-analysis.js";
-import { captureStudyEvidence } from "../../src/analysis/evidence.js";
+import { runAnalysis } from "../../src/analysis/execute.js";
+import { captureEvidence } from "../../src/analysis/evidence.js";
 import { writeStudyAnalysis } from "../../src/analysis/store.js";
-import type {
-  AnalysisConfig,
-  AnalysisInput,
-  AnalysisResult,
-} from "../../src/analysis/study-analysis.js";
+import type { AnalysisConfig, AnalysisInput, AnalysisResult } from "../../src/analysis/types.js";
 import { validateAnalysisResult, validateAnalysisArtifact } from "../../src/analysis/validation.js";
 import { syntheticResult } from "./fixtures.js";
 
@@ -112,7 +108,7 @@ describe("analysis scrubbing in the originating run scope", () => {
       }),
     );
     await writeFile(path.join(prepared.physicalRunRoot, "run.json"), source);
-    input = await captureStudyEvidence(prepared, source);
+    input = await captureEvidence(prepared, source);
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
@@ -125,7 +121,7 @@ describe("analysis scrubbing in the originating run scope", () => {
     const fetcher = transport(answer);
     const artifact = await withTransientCommsSecrets(async () => {
       registerTransientCommsSecrets([OTP, LINK]);
-      return runStudyAnalysis(input, config, { apiKey: "synthetic-key", fetch: fetcher });
+      return runAnalysis(input, config, { apiKey: "synthetic-key", fetch: fetcher });
     });
     expect(artifact).toMatchObject({
       status: "complete",
@@ -190,7 +186,7 @@ describe("analysis scrubbing in the originating run scope", () => {
     const results = [left, right].map((value, index) =>
       withTransientCommsSecrets(async () => {
         registerTransientCommsSecrets([value]);
-        return runStudyAnalysis(input, config, {
+        return runAnalysis(input, config, {
           apiKey: "synthetic-key",
           fetch: requests[index]!,
         });
@@ -215,7 +211,7 @@ describe("analysis scrubbing in the originating run scope", () => {
     expect(validateAnalysisResult(input, answer)).toEqual(answer);
     const artifact = await withTransientCommsSecrets(async () => {
       registerTransientCommsSecrets([OTP]);
-      return runStudyAnalysis(input, config, { apiKey: "synthetic-key", fetch: transport(answer) });
+      return runAnalysis(input, config, { apiKey: "synthetic-key", fetch: transport(answer) });
     });
     expect(artifact).toMatchObject({
       status: "failed",
@@ -232,13 +228,13 @@ describe("analysis scrubbing in the originating run scope", () => {
     raw.streams[0].actor.items[0].text = `I entered code ${OTP}.`;
     source = Buffer.from(JSON.stringify(raw));
     await writeFile(path.join(prepared.physicalRunRoot, "run.json"), source);
-    input = await captureStudyEvidence(prepared, source);
+    input = await captureEvidence(prepared, source);
     const answer = syntheticResult(input);
     expect(validateAnalysisResult(input, answer)).toEqual(answer);
     const before = structuredClone(input);
     const artifact = await withTransientCommsSecrets(async () => {
       registerTransientCommsSecrets([OTP]);
-      return runStudyAnalysis(input, config, { apiKey: "synthetic-key", fetch: transport(answer) });
+      return runAnalysis(input, config, { apiKey: "synthetic-key", fetch: transport(answer) });
     });
     expect(artifact).toMatchObject({
       status: "failed",
@@ -258,7 +254,7 @@ describe("analysis scrubbing in the originating run scope", () => {
     expect(validateAnalysisResult(input, answer)).toEqual(answer);
     const artifact = await withTransientCommsSecrets(async () => {
       registerTransientCommsSecrets([secret]);
-      return runStudyAnalysis(input, config, { apiKey: "synthetic-key", fetch: transport(answer) });
+      return runAnalysis(input, config, { apiKey: "synthetic-key", fetch: transport(answer) });
     });
     expect(artifact).toMatchObject({
       status: "failed",

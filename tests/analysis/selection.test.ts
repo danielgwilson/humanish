@@ -5,7 +5,7 @@ import { PNG } from "pngjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ActorTraceItem } from "../../src/actors/contract.js";
 import { prepareRunArtifactPaths, type PreparedRunArtifactPaths } from "../../src/run/paths.js";
-import { captureStudyEvidence, validateAnalysisEvidence } from "../../src/analysis/evidence.js";
+import { captureEvidence, validateAnalysisEvidence } from "../../src/analysis/evidence.js";
 import { digestAnalysisInput } from "../../src/analysis/validation.js";
 import { writeStudyAnalysis } from "../../src/analysis/store.js";
 import { loadStudyAnalysis } from "../../src/analysis/load.js";
@@ -97,7 +97,7 @@ describe("fair bounded study evidence selection", () => {
       Array.from({ length: 16 }, (_, index) => captures(`p${String(index).padStart(2, "0")}`, 9)),
     );
     const source = await save(streams),
-      input = await captureStudyEvidence(prepared, source);
+      input = await captureEvidence(prepared, source);
     expect(input.images).toHaveLength(40);
     for (const participant of streams) {
       const selected = input.evidence.filter(
@@ -122,7 +122,7 @@ describe("fair bounded study evidence selection", () => {
     const streams = await Promise.all([captures("host", 40), captures("guest", 36)]);
     for (const lane of streams)
       lane.actor.items.push(message("ending-account", "I reached the result."));
-    const input = await captureStudyEvidence(prepared, await save(streams));
+    const input = await captureEvidence(prepared, await save(streams));
     expect(input.images).toHaveLength(40);
     for (const lane of streams) {
       const count = lane.id === "host" ? 40 : 36;
@@ -137,7 +137,7 @@ describe("fair bounded study evidence selection", () => {
 
   it("redistributes a short session's unused capture slots and includes the long session's ending", async () => {
     const source = await save([await captures("long", 80), await captures("short", 4)]);
-    const input = await captureStudyEvidence(prepared, source);
+    const input = await captureEvidence(prepared, source);
     expect(
       input.evidence.filter((entry) => entry.streamId === "short" && entry.capture),
     ).toHaveLength(4);
@@ -167,7 +167,7 @@ describe("fair bounded study evidence selection", () => {
     });
     lane.actor.items.push(message("ending-account", "The last attempt did not complete."));
     const source = await save([lane]);
-    const input = await captureStudyEvidence(prepared, source, { captures: 4, evidence: 6 });
+    const input = await captureEvidence(prepared, source, { captures: 4, evidence: 6 });
     expect(input.evidence.filter((entry) => entry.capture).map((entry) => entry.frame)).toEqual([
       0, 76, 77, 79,
     ]);
@@ -196,7 +196,7 @@ describe("fair bounded study evidence selection", () => {
     });
     lane.actor.items.push(message("ending-account", "The last attempt did not complete."));
     const source = await save([lane]);
-    const input = await captureStudyEvidence(prepared, source, { captures: 4, evidence: 7 });
+    const input = await captureEvidence(prepared, source, { captures: 4, evidence: 7 });
     expect(input.evidence.filter((entry) => entry.capture).map((entry) => entry.frame)).toEqual([
       0, 76, 77, 79,
     ]);
@@ -216,11 +216,11 @@ describe("fair bounded study evidence selection", () => {
 
   it("keeps selection stable when participant source order changes", async () => {
     const streams = await Promise.all([captures("c", 13), captures("a", 13), captures("b", 13)]);
-    const first = await captureStudyEvidence(prepared, await save(streams), {
+    const first = await captureEvidence(prepared, await save(streams), {
       captures: 8,
       evidence: 17,
     });
-    const second = await captureStudyEvidence(prepared, await save([...streams].reverse()), {
+    const second = await captureEvidence(prepared, await save([...streams].reverse()), {
       captures: 8,
       evidence: 17,
     });
@@ -251,7 +251,7 @@ describe("fair bounded study evidence selection", () => {
     const other = await captures("b", 2);
     other.actor.items.push(message("other-ending", "The other task finished."));
     const source = await save([noisy, other]);
-    const input = await captureStudyEvidence(prepared, source);
+    const input = await captureEvidence(prepared, source);
     expect(input.evidence.find((entry) => entry.eventId === "other-ending")?.text).toBe(
       "The other task finished.",
     );
@@ -284,7 +284,7 @@ describe("fair bounded study evidence selection", () => {
       ),
     );
     const source = await save(streams),
-      input = await captureStudyEvidence(prepared, source, { evidence: 9, textBytes: 2200 });
+      input = await captureEvidence(prepared, source, { evidence: 9, textBytes: 2200 });
     for (const lane of streams) {
       const entries = input.evidence.filter((entry) => entry.streamId === lane.id);
       expect(entries).toHaveLength(3);
@@ -304,7 +304,7 @@ describe("fair bounded study evidence selection", () => {
       second = await captures("b-valid", 20);
     const source = await save([first, second]);
     const stat = vi.mocked(fs.lstat).mockClear();
-    const input = await captureStudyEvidence(prepared, source, { captures: 8 });
+    const input = await captureEvidence(prepared, source, { captures: 8 });
     const inspected = new Set(
       stat.mock.calls.map(([file]) => String(file)).filter((file) => file.endsWith(".png")),
     );
@@ -327,7 +327,7 @@ describe("fair bounded study evidence selection", () => {
         );
     }
     const opened = vi.mocked(fs.open).mockClear();
-    const input = await captureStudyEvidence(prepared, await save(streams), {
+    const input = await captureEvidence(prepared, await save(streams), {
       captures: 10,
       imageBytes: 512,
       totalImageBytes: 2048,
@@ -375,7 +375,7 @@ describe("fair bounded study evidence selection", () => {
       await fs.writeFile(path.join(prepared.physicalRunRoot, "screenshots/p00-0.png"), large);
       const source = await save(streams);
       const opened = vi.mocked(fs.open).mockClear();
-      const input = await captureStudyEvidence(prepared, source);
+      const input = await captureEvidence(prepared, source);
       expect(
         input.evidence.filter((entry) => entry.capture).map((entry) => entry.streamId),
       ).toEqual(streams.slice(0, validCount).map((lane) => lane.id));
@@ -435,7 +435,7 @@ describe("fair bounded study evidence selection", () => {
         await fs.writeFile(path.join(prepared.physicalRunRoot, item.screenshotRef!.path), large);
       }
       const source = await save(reversed ? [...streams].reverse() : streams);
-      const input = await captureStudyEvidence(prepared, source, {
+      const input = await captureEvidence(prepared, source, {
         totalImageBytes: 16 * large.length,
       });
       expect(input.images).toHaveLength(40);
@@ -462,7 +462,7 @@ describe("fair bounded study evidence selection", () => {
   it("attributes a nonzero global byte remainder to the byte limit instead of invalid evidence", async () => {
     const source = await save([await captures("a", 2)]);
     const opened = vi.mocked(fs.open).mockClear();
-    const input = await captureStudyEvidence(prepared, source, {
+    const input = await captureEvidence(prepared, source, {
       captures: 2,
       totalImageBytes: png.length + 1,
     });
@@ -490,7 +490,7 @@ describe("fair bounded study evidence selection", () => {
       await fs.writeFile(path.join(prepared.physicalRunRoot, `screenshots/${id}-0.png`), larger);
     const source = await save(streams);
     const opened = vi.mocked(fs.open).mockClear();
-    const input = await captureStudyEvidence(prepared, source, {
+    const input = await captureEvidence(prepared, source, {
       captures: 3,
       totalImageBytes: 2 * larger.length,
     });
@@ -519,7 +519,7 @@ describe("fair bounded study evidence selection", () => {
       );
     const source = await save([lane]);
     const opened = vi.mocked(fs.open).mockClear();
-    const input = await captureStudyEvidence(prepared, source, {
+    const input = await captureEvidence(prepared, source, {
       captures: 3,
       imageBytes: 512,
       totalImageBytes: 1024,
@@ -538,7 +538,7 @@ describe("fair bounded study evidence selection", () => {
   });
 
   it("does not call attempted missing files a capture-count omission", async () => {
-    const input = await captureStudyEvidence(
+    const input = await captureEvidence(
       prepared,
       await save([await captures("missing", 3, true)]),
       { captures: 5 },
@@ -555,7 +555,7 @@ describe("fair bounded study evidence selection", () => {
   it("reclaims a failed slot for a lane whose initial capture share was zero", async () => {
     const source = await save([await captures("a-missing", 1, true), await captures("b-valid", 1)]);
     const stat = vi.mocked(fs.lstat).mockClear();
-    const input = await captureStudyEvidence(prepared, source, { captures: 1 });
+    const input = await captureEvidence(prepared, source, { captures: 1 });
     expect(input.evidence.filter((entry) => entry.capture).map((entry) => entry.streamId)).toEqual([
       "b-valid",
     ]);
@@ -585,7 +585,7 @@ describe("fair bounded study evidence selection", () => {
     const source = await save([lane]);
     const stat = vi.mocked(fs.lstat).mockClear();
     const opened = vi.mocked(fs.open).mockClear();
-    const input = await captureStudyEvidence(prepared, source, { totalImageBytes: 100 });
+    const input = await captureEvidence(prepared, source, { totalImageBytes: 100 });
     expect(input.images).toHaveLength(0);
     expect(stat.mock.calls.some(([file]) => String(file).endsWith("foreign.png"))).toBe(false);
     expect(opened.mock.calls.some(([file]) => String(file).endsWith("foreign.png"))).toBe(false);
@@ -597,7 +597,7 @@ describe("fair bounded study evidence selection", () => {
   it("caps image byte reads and keeps both endings when the global byte budget fits two frames", async () => {
     const source = await save([await captures("a", 10), await captures("b", 10)]);
     const opened = vi.mocked(fs.open).mockClear();
-    const input = await captureStudyEvidence(prepared, source, {
+    const input = await captureEvidence(prepared, source, {
       captures: 8,
       totalImageBytes: png.length * 2,
     });
@@ -619,7 +619,7 @@ describe("fair bounded study evidence selection", () => {
 
   it("admits a prior v2 prefix selection without reinterpreting its original frame identities", async () => {
     const source = await save([await captures("history", 6)]),
-      original = await captureStudyEvidence(prepared, source);
+      original = await captureEvidence(prepared, source);
     const previous = structuredClone(original);
     previous.evidence.forEach((entry, index) => {
       if (index >= 2) entry.capture = null;
@@ -632,7 +632,7 @@ describe("fair bounded study evidence selection", () => {
       omissions: ["Some captures were omitted by the capture count limit."],
     };
     previous.inputDigest = digestAnalysisInput(previous);
-    const current = await captureStudyEvidence(prepared, source, { captures: 2 });
+    const current = await captureEvidence(prepared, source, { captures: 2 });
     expect(current.evidence.filter((entry) => entry.capture).map((entry) => entry.frame)).toEqual([
       0, 5,
     ]);
@@ -681,7 +681,7 @@ describe("fair bounded study evidence selection", () => {
     const source = await save([explicit, historical, scripted, blank], {
       scenario: { goal: "Never borrow the whole-study goal." },
     });
-    const input = await captureStudyEvidence(prepared, source);
+    const input = await captureEvidence(prepared, source);
     expect(input.participants.map((participant) => participant.assignment)).toEqual([
       'Inspect only the preview.\nReview keyboard access.\nTask "opaque-task": Open the menu.',
       null,

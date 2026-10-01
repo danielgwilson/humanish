@@ -3,7 +3,7 @@
 // routes refuse cannot be written down. Numeric bounds, unique ids, safe URLs and "exactly one
 // host" stay checks in planLab.
 
-import type { AnalysisConfig } from "../analysis/study-analysis.js";
+import type { AnalysisConfig } from "../analysis/types.js";
 import type { LocalAgentId } from "../actors/local-agent/cli.js";
 import type { ReasoningEffort } from "../actors/reasoning-effort.js";
 import type { BrowserSurface } from "../actors/scripted-browser/types.js";

@@ -10,7 +10,7 @@ import {
   type AnalysisEvidence,
   type AnalysisArtifact,
   type AnalysisInput,
-} from "./study-analysis.js";
+} from "./types.js";
 import {
   digestAnalysisInput,
   hashAnalysisValue,
@@ -118,7 +118,7 @@ function parseSource(prepared: PreparedRunArtifactPaths, bytes: Buffer): RunBund
 }
 
 /** Select once from retained source. Models receive no filesystem or network resolver. */
-export async function captureStudyEvidence(
+export async function captureEvidence(
   prepared: PreparedRunArtifactPaths,
   bundleBytes: Buffer,
   requested: EvidenceLimits = {},

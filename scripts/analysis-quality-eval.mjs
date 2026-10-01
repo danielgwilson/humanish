@@ -42,7 +42,7 @@ const evidence = await mod("dist/analysis/evidence.js");
 // The provider passes an undici Agent as its dispatcher, which Node's built-in fetch rejects.
 const { fetch: packageFetch } = createRequire(path.join(packageRoot, "package.json"))("undici");
 const service = await mod("dist/analysis/service.js");
-const studyAnalysis = await mod("dist/analysis/run-study-analysis.js");
+const studyAnalysis = await mod("dist/analysis/execute.js");
 const config = {
   model: "gpt-6-astra",
   question: null,
@@ -57,7 +57,7 @@ async function packagePin() {
   const metadata = await readJson(path.join(packageRoot, "package.json"));
   const files = {};
   for (const file of [
-    "dist/analysis/run-study-analysis.js",
+    "dist/analysis/execute.js",
     "dist/analysis/provider.js",
     "dist/analysis/validation.js",
     "dist/analysis/evidence.js",
@@ -294,7 +294,7 @@ if (command === "author") {
       if (!verification.ok && verification.recordingOk !== true)
         throw new Error(`Source verification failed: ${spec.id}`);
       const source = await readFile(path.join(root, "run.json"));
-      const packet = await evidence.captureStudyEvidence(prepared, source);
+      const packet = await evidence.captureEvidence(prepared, source);
       const { images, ...metadata } = packet;
       await json(path.join(caseRoot, "selected-packet.json"), metadata);
       const manifest = {
@@ -349,7 +349,7 @@ if (command === "author") {
       const prepared = await resolveRunPath(cwd, sourceCase.runId);
       const bytes = await readFile(path.join(prepared.physicalRunRoot, "run.json"));
       if (hash(bytes) !== sourceCase.sourceRunSha256) throw new Error("Source copy changed.");
-      const packet = await evidence.captureStudyEvidence(prepared, bytes);
+      const packet = await evidence.captureEvidence(prepared, bytes);
       const { images, ...metadata } = packet;
       const admission = await service.analyzeStudy(
         cwd,

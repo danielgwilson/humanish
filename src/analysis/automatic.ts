@@ -9,8 +9,8 @@ import {
   type AnalyzeDeps,
   type AnalyzeResult,
 } from "./service.js";
-import { preferLargerStudyAnalysisOutput, ANALYSIS_PROMPT_VERSION } from "./run-study-analysis.js";
-import { captureStudyEvidence } from "./evidence.js";
+import { preferLargerAnalysisOutput, ANALYSIS_PROMPT_VERSION } from "./execute.js";
+import { captureEvidence } from "./evidence.js";
 import { hashAnalysisValue } from "./validation.js";
 import {
   claimAutomaticStudyAnalysis,
@@ -21,7 +21,7 @@ import {
   type AutomaticAnalysisCancellation,
   type AutomaticAnalysisJob,
 } from "./job.js";
-import { ANALYSIS_ID_PATTERN, type AnalysisConfig } from "./study-analysis.js";
+import { ANALYSIS_ID_PATTERN, type AnalysisConfig } from "./types.js";
 import { readStudyAnalysisVersion } from "./store.js";
 import { readStudyAnalysisExecution } from "./store-executions.js";
 import { physicalCwdOf, resolvePhysicalCwd, type PreparedRunArtifactPaths } from "../run/paths.js";
@@ -145,7 +145,7 @@ async function readAutomaticSource(
       (!deps.defaultRequest || participantEvidence) &&
       hasKey
     ) {
-      config = preferLargerStudyAnalysisOutput(await captureStudyEvidence(prepared, bytes), config);
+      config = preferLargerAnalysisOutput(await captureEvidence(prepared, bytes), config);
     }
     return { participantEvidence, config };
   } catch {

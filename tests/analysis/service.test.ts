@@ -10,7 +10,7 @@ import {
   showStudyAnalysis,
   withStudyAnalysisLock,
 } from "../../src/analysis/service.js";
-import { captureStudyEvidence } from "../../src/analysis/evidence.js";
+import { captureEvidence } from "../../src/analysis/evidence.js";
 import { listStudyAnalyses, writeStudyAnalysis } from "../../src/analysis/store.js";
 import { listStudyAnalysisExecutions } from "../../src/analysis/store-executions.js";
 import { draftFeedback, renderIssueUrl } from "../../src/feedback/feedback.js";
@@ -20,7 +20,7 @@ import { resolveRunPath } from "../../src/run/locate.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { type RunBundle } from "../../src/run/bundle.js";
-import type { AnalysisConfig, AnalysisInput } from "../../src/analysis/study-analysis.js";
+import type { AnalysisConfig, AnalysisInput } from "../../src/analysis/types.js";
 import { syntheticArtifact, syntheticResult } from "./fixtures.js";
 import { computeStats } from "../../src/run/stats.js";
 import {
@@ -61,7 +61,7 @@ describe("ordinary study analysis flow", () => {
     original = await readFile(path.join(runRoot, "run.json"));
     const verified = await verifyRun(cwd, "analysis-flow");
     expect(verified.checks.filter((check) => !check.ok)).toEqual([]);
-    input = await captureStudyEvidence((await resolveRunPath(cwd, "analysis-flow"))!, original);
+    input = await captureEvidence((await resolveRunPath(cwd, "analysis-flow"))!, original);
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });

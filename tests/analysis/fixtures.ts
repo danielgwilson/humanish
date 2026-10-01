@@ -1,8 +1,4 @@
-import type {
-  AnalysisArtifact,
-  AnalysisInput,
-  AnalysisResult,
-} from "../../src/analysis/study-analysis.js";
+import type { AnalysisArtifact, AnalysisInput, AnalysisResult } from "../../src/analysis/types.js";
 import { digestAnalysisInput, hashAnalysisValue } from "../../src/analysis/validation.js";
 
 export function syntheticInput(): AnalysisInput {

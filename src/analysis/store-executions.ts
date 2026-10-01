@@ -28,7 +28,7 @@ import {
   type AnalysisExecutionReceipt,
   type AnalysisExecutionStart,
 } from "./validation.js";
-import type { AnalysisArtifact } from "./study-analysis.js";
+import type { AnalysisArtifact } from "./types.js";
 
 /** receipt.json and start.json in an execution directory. */
 const MAX_EXECUTION_RECORD_BYTES = 16 * 1024;

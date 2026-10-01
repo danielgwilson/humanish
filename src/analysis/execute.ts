@@ -12,11 +12,11 @@ import {
   type AnalysisConfig,
   type AnalysisInput,
   type AnalysisResult,
-} from "./study-analysis.js";
+} from "./types.js";
 import {
   INPUT_IMAGE_DATA_URL,
   type AnalysisFetch,
-  createStudyAnalysisProvider,
+  createAnalysisProvider,
   type AnalysisProvider,
   type AnalysisProviderResult,
 } from "./provider.js";
@@ -176,7 +176,7 @@ function inputError(input: AnalysisInput): string | null {
  * Known-sensitive decoded text denies admission with analysis_input_sensitive or
  * analysis_question_sensitive. Neither error includes rejected input values.
  */
-export function estimateStudyAnalysisAdmission(
+export function estimateAnalysisAdmission(
   input: AnalysisInput,
   config: AnalysisConfig,
 ): AnalysisAdmission {
@@ -271,14 +271,14 @@ export function estimateStudyAnalysisAdmission(
 /** Only for an omitted output limit. Preserve the established allowance when
  * more reasoning/report space would refuse a study its declared budget admits.
  * This is one pre-dispatch choice, never a fallback request or a budget increase. */
-export function preferLargerStudyAnalysisOutput(
+export function preferLargerAnalysisOutput(
   input: AnalysisInput,
   config: AnalysisConfig,
 ): AnalysisConfig {
   if (config.provider === "codex" || config.maxOutputTokens !== DEFAULT_ANALYSIS_MAX_OUTPUT_TOKENS)
     return config;
   const expanded = { ...config, maxOutputTokens: MAX_ANALYSIS_OUTPUT_TOKENS };
-  return estimateStudyAnalysisAdmission(input, expanded).allowed ? expanded : config;
+  return estimateAnalysisAdmission(input, expanded).allowed ? expanded : config;
 }
 
 export type AnalysisDispatchContext = Pick<
@@ -426,7 +426,7 @@ function admitDirectAnalysis(
     throw new Error("ANALYSIS_ID_INVALID");
   }
   validateAnalysisInputMetadata(input);
-  const admission = estimateStudyAnalysisAdmission(input, config);
+  const admission = estimateAnalysisAdmission(input, config);
   if (admission.error === "analysis_config_invalid") throw new Error("ANALYSIS_CONFIG_INVALID");
   // Do not emit progress or construct an artifact containing rejected sensitive
   // input. Direct callers receive only a stable code, as with malformed metadata.
@@ -489,7 +489,7 @@ async function analysisProvider(
         (await import("./restricted-codex.js")).createRestrictedCodexAnalysisProvider({
           cliVersion: config.identity.cliVersion,
         }))
-    : createStudyAnalysisProvider({
+    : createAnalysisProvider({
         apiKey: options.apiKey!,
         ...(options.fetch === undefined ? {} : { fetchFn: options.fetch }),
       });
@@ -550,7 +550,7 @@ function settleCompletedOutput(
 }
 
 /** Explicit invocation or an opted-in post-run owner; Observer readers never call this. */
-export async function runStudyAnalysis(
+export async function runAnalysis(
   input: AnalysisInput,
   config: AnalysisConfig,
   options: RunAnalysisOptions,

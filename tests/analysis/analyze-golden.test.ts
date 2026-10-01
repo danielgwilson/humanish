@@ -1,4 +1,4 @@
-// Characterization golden for analyzeStudy and runStudyAnalysis. Each scenario runs the real
+// Characterization golden for analyzeStudy and runAnalysis. Each scenario runs the real
 // service against a fixture run with a fake provider boundary and records what a caller and the
 // run directory see: the result, each provider request, the progress events and the files the
 // attempt wrote. The golden was generated before those two functions were split into steps.
@@ -10,15 +10,15 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { resolveAutomaticAnalysis } from "../../src/analysis/automatic-config.js";
 import { codexAnalysisIdentity } from "../../src/analysis/codex-config.js";
-import { runStudyAnalysis, type AnalysisProgress } from "../../src/analysis/run-study-analysis.js";
-import { captureStudyEvidence } from "../../src/analysis/evidence.js";
+import { runAnalysis, type AnalysisProgress } from "../../src/analysis/execute.js";
+import { captureEvidence } from "../../src/analysis/evidence.js";
 import type {
   AnalysisFetch,
   AnalysisProvider,
   AnalysisProviderRequest,
 } from "../../src/analysis/provider.js";
 import { analyzeStudy, type AnalyzeDeps, type AnalyzeOptions } from "../../src/analysis/service.js";
-import type { AnalysisConfig, AnalysisInput } from "../../src/analysis/study-analysis.js";
+import type { AnalysisConfig, AnalysisInput } from "../../src/analysis/types.js";
 import { digestAnalysisInput } from "../../src/analysis/validation.js";
 import type { RunBundle } from "../../src/run/bundle.js";
 import { runDryRun } from "../../src/run/dry-run.js";
@@ -77,7 +77,7 @@ async function finishedRun(live = true): Promise<string> {
 async function capturedInput(cwd: string): Promise<AnalysisInput> {
   const prepared = await resolveRunPath(cwd, RUN);
   const bytes = await readFile(path.join(cwd, ".humanish", "runs", RUN, "run.json"));
-  return captureStudyEvidence(prepared!, bytes);
+  return captureEvidence(prepared!, bytes);
 }
 
 /**
@@ -429,7 +429,7 @@ describe("analyzeStudy characterization golden", () => {
   );
 });
 
-describe("runStudyAnalysis characterization golden", () => {
+describe("runAnalysis characterization golden", () => {
   it("pins the artifact or the thrown code for direct callers", async () => {
     const scenarios: Record<string, Recorded> = {};
     // The Codex tests' packet: evidence without captures, digest recomputed.
@@ -441,12 +441,12 @@ describe("runStudyAnalysis characterization golden", () => {
     const direct = async (
       name: string,
       config: AnalysisConfig,
-      options: Parameters<typeof runStudyAnalysis>[2],
+      options: Parameters<typeof runAnalysis>[2],
       requests: unknown[] = [],
     ) => {
       const progress: AnalysisProgress[] = [];
       try {
-        const artifact = await runStudyAnalysis(input, config, {
+        const artifact = await runAnalysis(input, config, {
           ...options,
           onProgress: (event) => progress.push(event),
         });

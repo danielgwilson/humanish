@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { syntheticArtifact } from "./fixtures.js";
-import type { AnalysisArtifact } from "../../src/analysis/study-analysis.js";
+import type { AnalysisArtifact } from "../../src/analysis/types.js";
 
 // Literal persisted profile: do not derive this historical fixture from the current launcher.
 function historical(): AnalysisArtifact {

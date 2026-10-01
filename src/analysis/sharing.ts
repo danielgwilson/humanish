@@ -1,5 +1,5 @@
 import { containsSensitive } from "../evidence/redaction.js";
-import type { LoadedAnalysis } from "./study-analysis.js";
+import type { LoadedAnalysis } from "./types.js";
 import { AUTOMATIC_ANALYSIS_DIRECTORY, projectAutomaticStudyAnalysisView } from "./job.js";
 import { ANALYSIS_DIRECTORY, ANALYSIS_EXECUTION_DIRECTORY } from "./store.js";
 

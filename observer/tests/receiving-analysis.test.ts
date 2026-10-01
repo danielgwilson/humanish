@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { buildObserverData } from "../../src/observer/data.js";
 import { prepareRunArtifactPaths, type PreparedRunArtifactPaths } from "../../src/run/paths.js";
 import type { RunBundle } from "../../src/run/bundle.js";
-import { captureStudyEvidence } from "../../src/analysis/evidence.js";
+import { captureEvidence } from "../../src/analysis/evidence.js";
 import { parseStudyAnalysis, projectStudyAnalysis } from "../lib/study-analysis.js";
 import { reportProblem, resolveReportMoment } from "../lib/study-report.js";
 import { isObserverData } from "../lib/validate.js";
@@ -58,7 +58,7 @@ describe("receiving context in Observer analysis", () => {
   async function capture() {
     const source = Buffer.from(JSON.stringify(bundle));
     await writeFile(path.join(prepared.physicalRunRoot, "run.json"), source);
-    return captureStudyEvidence(prepared, source);
+    return captureEvidence(prepared, source);
   }
 
   it("admits captured findings and resolves the count-only context without a time, frame or participant action", async () => {

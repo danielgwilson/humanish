@@ -19,7 +19,7 @@ import { resolveRunPath } from "../../src/run/locate.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { type RunBundle } from "../../src/run/bundle.js";
-import { captureStudyEvidence } from "../../src/analysis/evidence.js";
+import { captureEvidence } from "../../src/analysis/evidence.js";
 
 const RUN = "synthetic-receiving-study";
 const execFileAsync = promisify(execFile);
@@ -208,7 +208,7 @@ describe("receiving restrictions in retained evidence", () => {
     bundle.commsReceiving = evidence();
     bundle.publication = { restrictions: ["real-communications"] };
     bundle.streams[0]!.laneId = "lane-a";
-    const input = await captureStudyEvidence((await resolveRunPath(cwd, RUN))!, await save());
+    const input = await captureEvidence((await resolveRunPath(cwd, RUN))!, await save());
     const context = input.evidence.find(
       (entry) =>
         entry.kind === "harness:email_receiving" && entry.streamId === bundle.streams[0]!.id,
@@ -242,7 +242,7 @@ describe("receiving restrictions in retained evidence", () => {
         [field]: "synthetic-private-field-canary",
       });
       await expect(
-        captureStudyEvidence((await resolveRunPath(cwd, RUN))!, await save()),
+        captureEvidence((await resolveRunPath(cwd, RUN))!, await save()),
       ).rejects.toThrow("ANALYSIS_SOURCE_INVALID");
     },
   );

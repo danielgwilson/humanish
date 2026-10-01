@@ -7,7 +7,7 @@ import {
   RESTRICTED_CODEX_ANALYSIS_IDENTITY,
   RESTRICTED_CODEX_ANALYSIS_MODELS,
 } from "../actors/codex/restricted-policy.js";
-import type { CodexAnalysisIdentity, AnalysisConfig } from "./study-analysis.js";
+import type { CodexAnalysisIdentity, AnalysisConfig } from "./types.js";
 
 /** This account route is qualified against per-host CLI releases, one model and one tool policy. */
 const CODEX_ANALYSIS_TOOL_POLICY = RESTRICTED_CODEX_ANALYSIS_IDENTITY.toolPolicy;

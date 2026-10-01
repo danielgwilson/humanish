@@ -4,7 +4,7 @@ import {
   runRestrictedCodexSession,
   type RestrictedCodexSessionOptions,
 } from "../actors/codex/restricted-session.js";
-import type { AnalysisConfig } from "./study-analysis.js";
+import type { AnalysisConfig } from "./types.js";
 import type {
   RestrictedCodexAnalysisErrorCode,
   RestrictedCodexRequest,
@@ -12,7 +12,7 @@ import type {
 } from "../actors/codex/restricted-policy.js";
 
 /** Structurally implements AnalysisProvider without importing its API transport.
- * Schema/evidence validation and transient-secret scrubbing remain in runStudyAnalysis. */
+ * Schema/evidence validation and transient-secret scrubbing remain in runAnalysis. */
 export function createRestrictedCodexAnalysisProvider(
   options: RestrictedCodexSessionOptions = {},
 ): (request: RestrictedCodexRequest) => Promise<RestrictedCodexResult> {

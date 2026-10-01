@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { Agent, fetch as undiciFetch, getGlobalDispatcher, setGlobalDispatcher } from "undici";
 import { expect, it } from "vitest";
 import {
-  createStudyAnalysisProvider,
+  createAnalysisProvider,
   type AnalysisProviderRequest,
 } from "../../src/analysis/provider.js";
 
@@ -58,7 +58,7 @@ it("survives a delayed response past the process fetch header timeout without re
     await expect(undiciFetch(server.url)).rejects.toMatchObject({
       cause: { code: "UND_ERR_HEADERS_TIMEOUT" },
     });
-    const provider = createStudyAnalysisProvider({
+    const provider = createAnalysisProvider({
       apiKey: "synthetic-key",
       fetchFn: async (url, init) => {
         expect(url).toBe("https://api.openai.com/v1/responses");
@@ -91,7 +91,7 @@ it.each(["headers", "body", "caller"])(
     const controller = new AbortController();
     const timer = kind === "caller" ? setTimeout(() => controller.abort(), 150) : undefined;
     try {
-      const result = await createStudyAnalysisProvider({
+      const result = await createAnalysisProvider({
         apiKey: "synthetic-key",
         fetchFn: (_url, init) => undiciFetch(server.url, init),
       })({ ...request, timeoutMs: kind === "caller" ? 4000 : 150, signal: controller.signal });
