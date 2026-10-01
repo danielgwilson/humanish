@@ -1989,7 +1989,7 @@
   "shared world one seat": {
     "parser": {
       "code": "HUMANISH_LAB_INVALID",
-      "message": "`subject.topology: shared-world` requires an `actors[0].lanes` roster of at least 2 roles (the roster IS the role roster — declare ≥2 lanes; a single-role shared world proves no interaction)."
+      "message": "`subject.topology: shared-world` requires an `actors[0].lanes` roster of at least 2 roles (the roster IS the role roster: declare ≥2 participants; a single-role shared world proves no interaction)."
     },
     "runLab": {
       "runs": false,
@@ -2016,7 +2016,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
-          "message": "`subject.topology: shared-world` requires an `actors[0].lanes` roster of at least 2 roles (the roster IS the role roster — declare ≥2 lanes; a single-role shared world proves no interaction)."
+          "message": "`subject.topology: shared-world` requires an `actors[0].lanes` roster of at least 2 roles (the roster IS the role roster: declare ≥2 participants; a single-role shared world proves no interaction)."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -2470,7 +2470,7 @@
   "external seat entry": {
     "parser": {
       "code": "HUMANISH_LAB_INVALID",
-      "message": "`actors[0].lanes[].entry` (the loopback same-origin seat path) is forbidden on the external-public shared-world route — there is no harness-served serve.url to resolve it against; seats open the public appUrl and reach the shared session through the real UI."
+      "message": "`actors[0].lanes[].entry` (the loopback same-origin participant path) is forbidden on the external-public shared-world route: there is no harness-served serve.url to resolve it against; participants open the public appUrl and reach the shared session through the real UI."
     },
     "runLab": {
       "runs": false,
@@ -2497,7 +2497,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
-          "message": "`actors[0].lanes[].entry` (the loopback same-origin seat path) is forbidden on the external-public shared-world route — there is no harness-served serve.url to resolve it against; seats open the public appUrl and reach the shared session through the real UI."
+          "message": "`actors[0].lanes[].entry` (the loopback same-origin participant path) is forbidden on the external-public shared-world route: there is no harness-served serve.url to resolve it against; participants open the public appUrl and reach the shared session through the real UI."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -2514,7 +2514,7 @@
   "external without host": {
     "parser": {
       "code": "HUMANISH_LAB_INVALID",
-      "message": "the external-public shared-world route requires EXACTLY ONE `host: true` lane (the designated host seat that creates the shared session; got 0). The other ≥1 lanes are followers that join it."
+      "message": "the external-public shared-world route requires EXACTLY ONE `host: true` participant (the designated host that creates the shared session; got 0). The other ≥1 participants are followers that join it."
     },
     "runLab": {
       "runs": false,
@@ -2541,7 +2541,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
-          "message": "the external-public shared-world route requires EXACTLY ONE `host: true` lane (the designated host seat that creates the shared session; got 0). The other ≥1 lanes are followers that join it."
+          "message": "the external-public shared-world route requires EXACTLY ONE `host: true` participant (the designated host that creates the shared session; got 0). The other ≥1 participants are followers that join it."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -2558,7 +2558,7 @@
   "external one seat": {
     "parser": {
       "code": "HUMANISH_LAB_INVALID",
-      "message": "the external-public shared-world route requires an `actors[0].lanes` roster of at least 2 roles (a single-seat shared world proves no shared session)."
+      "message": "the external-public shared-world route requires an `actors[0].lanes` roster of at least 2 roles (a single-participant shared world proves no shared session)."
     },
     "runLab": {
       "runs": false,
@@ -2585,7 +2585,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
-          "message": "the external-public shared-world route requires an `actors[0].lanes` roster of at least 2 roles (a single-seat shared world proves no shared session)."
+          "message": "the external-public shared-world route requires an `actors[0].lanes` roster of at least 2 roles (a single-participant shared world proves no shared session)."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -2791,7 +2791,7 @@
   "terminal count 2": {
     "parser": {
       "code": "HUMANISH_LAB_INVALID",
-      "message": "Multi-lane terminal fan-out is not supported yet; set actors[0].count to 1."
+      "message": "Terminal fan-out to more than one participant is not supported yet; set actors[0].count to 1."
     },
     "runLab": {
       "runs": true,
@@ -2808,7 +2808,7 @@
   "tasks on scripted": {
     "parser": {
       "code": "HUMANISH_LAB_INVALID",
-      "message": "actors[0].tasks is unsupported on this execution path. Task protocols require a per-lane computer-use route; shared-world, terminal-product, scripted-browser and synthetic routes do not consume them. Remove tasks only if a mission-only study is intended."
+      "message": "actors[0].tasks is unsupported on this execution path. Task protocols require the computer-use route, with one world per participant; shared-world, terminal-product, scripted-browser and synthetic routes do not consume them. Remove tasks only if a mission-only study is intended."
     },
     "runLab": {
       "runs": false,
@@ -2832,7 +2832,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_LAB_TASKS_UNSUPPORTED",
-          "message": "actors[0].tasks is unsupported on this execution path. Task protocols require a per-lane computer-use route; shared-world, terminal-product, scripted-browser and synthetic routes do not consume them. Remove tasks only if a mission-only study is intended."
+          "message": "actors[0].tasks is unsupported on this execution path. Task protocols require the computer-use route, with one world per participant; shared-world, terminal-product, scripted-browser and synthetic routes do not consume them. Remove tasks only if a mission-only study is intended."
         }
       }
     },
@@ -3914,7 +3914,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
-          "message": "the external-public shared-world route requires an `actors[0].lanes` roster of at least 2 roles (a single-seat shared world proves no shared session)."
+          "message": "the external-public shared-world route requires an `actors[0].lanes` roster of at least 2 roles (a single-participant shared world proves no shared session)."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -4167,7 +4167,7 @@
   "overlap shared world: tasks and one seat": {
     "parser": {
       "code": "HUMANISH_LAB_INVALID",
-      "message": "`subject.topology: shared-world` requires an `actors[0].lanes` roster of at least 2 roles (the roster IS the role roster — declare ≥2 lanes; a single-role shared world proves no interaction)."
+      "message": "`subject.topology: shared-world` requires an `actors[0].lanes` roster of at least 2 roles (the roster IS the role roster: declare ≥2 participants; a single-role shared world proves no interaction)."
     },
     "runLab": {
       "runs": false,
@@ -4194,7 +4194,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_LAB_TASKS_UNSUPPORTED",
-          "message": "actors[0].tasks is unsupported on this execution path. Task protocols require a per-lane computer-use route; shared-world, terminal-product, scripted-browser and synthetic routes do not consume them. Remove tasks only if a mission-only study is intended."
+          "message": "actors[0].tasks is unsupported on this execution path. Task protocols require the computer-use route, with one world per participant; shared-world, terminal-product, scripted-browser and synthetic routes do not consume them. Remove tasks only if a mission-only study is intended."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {

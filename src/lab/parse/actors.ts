@@ -339,7 +339,7 @@ function parseParticipantEntries(
     if (entry.host !== undefined) {
       if (typeof entry.host !== "boolean") {
         return invalid(
-          `actors[${actorIndex}].lanes[${entryIndex}].host must be a boolean (marks the designated host seat on the external-public shared-world route).`,
+          `actors[${actorIndex}].lanes[${entryIndex}].host must be a boolean (marks the designated host participant on the external-public shared-world route).`,
         );
       }
       if (entry.host) parsedEntry.host = true;

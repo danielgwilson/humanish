@@ -107,7 +107,7 @@ function concurrentParticipantResults(
                   : result.outcome.selfReportedBlocker
                     ? "Actor reported goal_satisfied while its final message described a blocker or asked for missing instructions; not a credible pass."
                     : session?.completionReason === "harness_error"
-                      ? `Actor seat ended with a harness error: ${session.reason}`
+                      ? `Participant ended with a harness error: ${session.reason}`
                       : "Actor did not produce a terminal session."),
             },
           }),
@@ -140,7 +140,8 @@ function concurrentLabError(args: {
     return {
       code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_HANDOFF_TIMEOUT",
       message:
-        runError ?? "The host seat never produced a /lobby/CODE URL within the handoff deadline.",
+        runError ??
+        "The host participant never produced a /lobby/CODE URL within the handoff deadline.",
     };
   }
   if (hostHandoffFailure !== undefined) {

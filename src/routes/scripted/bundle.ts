@@ -109,7 +109,7 @@ export function buildScriptedLabBundle(args: ScriptedBundleArgs): RunBundle {
       {
         at: args.createdAt,
         event: "scripted-lab.run.created",
-        message: `Created scripted-browser lab run with ${args.surfaces.length} surface lane${args.surfaces.length === 1 ? "" : "s"} (actor ${args.actorId}).`,
+        message: `Created scripted-browser lab run with ${args.surfaces.length} surface${args.surfaces.length === 1 ? "" : "s"} (actor ${args.actorId}).`,
       },
     ],
     simulations: records.map((record) => record.simulation),

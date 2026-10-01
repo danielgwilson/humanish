@@ -528,7 +528,7 @@ export const parserCases: readonly AdmissionCase[] = [
   {
     name: "terminal count 2",
     raw: lab("terminal", {}, { count: 2 }),
-    parser: "Multi-lane terminal fan-out",
+    parser: "Terminal fan-out to more than one participant",
   },
 
   // Tasks, analysis, local browser

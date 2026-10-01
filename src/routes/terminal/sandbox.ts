@@ -48,7 +48,7 @@ export async function teardownSandbox(args: {
     const reason =
       startupCleanup === "unconfirmed"
         ? "desktop startup guard could not confirm cleanup of its acquired sandbox; provider timeout remains the backstop"
-        : "create did not return a sandbox; the lane has no acquired handle and cannot establish allocation or cleanup";
+        : "create did not return a sandbox; the participant has no acquired handle and cannot establish allocation or cleanup";
     recordLifecycle("terminal-lab.cleanup.unconfirmed", reason);
     return { killed: false, remaining: -1, reason };
   }

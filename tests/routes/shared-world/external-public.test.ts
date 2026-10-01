@@ -959,7 +959,7 @@ describe("review.summary is external-public plane-aware", () => {
     ) as RunBundle;
     const summary = bundle.review.summary;
     expect(summary).not.toContain("state delta(s) under load");
-    expect(summary).toContain("seats converged on one lobby");
+    expect(summary).toContain("participants converged on one lobby");
   });
 
   it("separates lobby convergence from unfinished participant sessions (#364)", async () => {
@@ -987,7 +987,7 @@ describe("review.summary is external-public plane-aware", () => {
 
     expect(bundle.review.verdict).toBe("pass");
     const expectedSummary =
-      "Concurrent shared-world (ONE external-public plane, 3 simultaneous personas): swarm ran coherently; 3/3 actor session(s) passed credibility checks; mission endpoint: 0/3 ended goal_satisfied; completion reasons: budget_reached 3/3; overlap proven; 3 seats converged on one lobby.";
+      "Concurrent shared-world (ONE external-public plane, 3 simultaneous personas): swarm ran coherently; 3/3 actor session(s) passed credibility checks; mission endpoint: 0/3 ended goal_satisfied; completion reasons: budget_reached 3/3; overlap proven; 3 participants converged on one lobby.";
     expect(bundle.review.summary).toBe(expectedSummary);
     expect(bundle.review.summary).not.toContain("reached their goal");
     expect(reviewMarkdown).toContain("- verdict: pass");

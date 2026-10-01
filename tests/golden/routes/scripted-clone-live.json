@@ -210,7 +210,7 @@
         {
           "at": "[ts]",
           "event": "scripted-lab.run.created",
-          "message": "Created scripted-browser lab run with 1 surface lane (actor scripted-browser)."
+          "message": "Created scripted-browser lab run with 1 surface (actor scripted-browser)."
         }
       ],
       "knownGaps": []
@@ -551,7 +551,7 @@
       {
         "at": "[ts]",
         "event": "scripted-lab.run.created",
-        "message": "Created scripted-browser lab run with 1 surface lane (actor scripted-browser)."
+        "message": "Created scripted-browser lab run with 1 surface (actor scripted-browser)."
       }
     ],
     "simulations": [

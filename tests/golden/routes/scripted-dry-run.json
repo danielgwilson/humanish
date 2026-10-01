@@ -112,7 +112,7 @@
         {
           "at": "[ts]",
           "event": "scripted-lab.run.created",
-          "message": "Created scripted-browser lab run with 2 surface lanes (actor scripted-browser)."
+          "message": "Created scripted-browser lab run with 2 surfaces (actor scripted-browser)."
         }
       ],
       "knownGaps": [
@@ -186,7 +186,7 @@
           "mode": "browser-sim",
           "progress": 100,
           "currentStep": "Contract bundle only: dry-run pinned the scenario contract without launching a browser or touching the subject app.",
-          "summary": "Contract lane for the scripted-browser actor (scripted-browser) against http://127.0.0.1:5173/.",
+          "summary": "Contract participant for the scripted-browser actor (scripted-browser) against http://127.0.0.1:5173/.",
           "streamIds": [
             "scripted-desktop-stream"
           ],
@@ -248,7 +248,7 @@
           "mode": "browser-sim",
           "progress": 100,
           "currentStep": "Contract bundle only: dry-run pinned the scenario contract without launching a browser or touching the subject app.",
-          "summary": "Contract lane for the scripted-browser actor (scripted-browser) against http://127.0.0.1:5173/.",
+          "summary": "Contract participant for the scripted-browser actor (scripted-browser) against http://127.0.0.1:5173/.",
           "streamIds": [
             "scripted-mobile-stream"
           ],
@@ -392,7 +392,7 @@
       {
         "at": "[ts]",
         "event": "scripted-lab.run.created",
-        "message": "Created scripted-browser lab run with 2 surface lanes (actor scripted-browser)."
+        "message": "Created scripted-browser lab run with 2 surfaces (actor scripted-browser)."
       }
     ],
     "simulations": [
@@ -406,7 +406,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "Contract bundle only: dry-run pinned the scenario contract without launching a browser or touching the subject app.",
-        "summary": "Contract lane for the scripted-browser actor (scripted-browser) against http://127.0.0.1:5173/.",
+        "summary": "Contract participant for the scripted-browser actor (scripted-browser) against http://127.0.0.1:5173/.",
         "streamIds": [
           "scripted-desktop-stream"
         ],
@@ -423,7 +423,7 @@
         "mode": "browser-sim",
         "progress": 100,
         "currentStep": "Contract bundle only: dry-run pinned the scenario contract without launching a browser or touching the subject app.",
-        "summary": "Contract lane for the scripted-browser actor (scripted-browser) against http://127.0.0.1:5173/.",
+        "summary": "Contract participant for the scripted-browser actor (scripted-browser) against http://127.0.0.1:5173/.",
         "streamIds": [
           "scripted-mobile-stream"
         ],

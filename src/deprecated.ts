@@ -134,7 +134,7 @@ export function cuaLaneCount(config: LabConfig): number {
 export function resolveSeatUrl(serveUrl: string, entry: string | undefined): string | null {
   deprecated(
     "resolveSeatUrl",
-    "parseLabConfig, which refuses a seat entry that is not same-origin loopback",
+    "parseLabConfig, which refuses a participant entry that is not same-origin loopback",
   );
   return seatUrl(serveUrl, entry);
 }

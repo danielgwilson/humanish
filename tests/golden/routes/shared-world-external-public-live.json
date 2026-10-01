@@ -320,7 +320,7 @@
       "at": "[ts]",
       "level": "info",
       "type": "concurrent-shared-world.plane.provenance",
-      "message": "Shared plane: an EXTERNAL-PUBLIC deployment (operator-attested owner example-operator/lobby-trivia, authorized) used DIRECTLY as the shared plane — NO getHost, clone, subject sandbox, or seed. The harness OBSERVES that each seat reached the operator-declared origin (publicOriginDigest); it did NOT mint or control the plane. Author-trust ownership attestation, NOT a synthetic-data claim.",
+      "message": "Shared plane: an EXTERNAL-PUBLIC deployment (operator-attested owner example-operator/lobby-trivia, authorized) used DIRECTLY as the shared plane, with NO getHost, clone, subject sandbox, or seed. The harness OBSERVES that each participant reached the operator-declared origin (publicOriginDigest); it did NOT mint or control the plane. Author-trust ownership attestation, NOT a synthetic-data claim.",
       "simId": "sim-001",
       "streamId": "stream-001"
     },
@@ -410,7 +410,7 @@
       "at": "[ts]",
       "level": "info",
       "type": "concurrent-shared-world.concurrency",
-      "message": "Concurrency: 3 lane(s), up to 3 live at once (cap 3), overlap PROVEN; stateSeries omitted (no authoritative shared-state proof on the external-public plane); lobby convergence PROVEN (all seats reached one /lobby/CODE). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only. This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement."
+      "message": "Concurrency: 3 participant(s), up to 3 live at once (cap 3), overlap PROVEN; stateSeries omitted (no authoritative shared-state proof on the external-public plane); lobby convergence PROVEN (all participants reached one /lobby/CODE). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only. This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement."
     }
   ],
   "observer/index.html": "[observer build]",
@@ -447,7 +447,7 @@
         {
           "at": "[ts]",
           "event": "concurrent-shared-world.run.created",
-          "message": "Created concurrent shared-world run with ONE shared plane and 3 simultaneous actor seats (actor openai-computer-use)."
+          "message": "Created concurrent shared-world run with ONE shared plane and 3 simultaneous participants (actor openai-computer-use)."
         }
       ],
       "knownGaps": []
@@ -733,7 +733,7 @@
             "at": "[ts]",
             "level": "info",
             "type": "concurrent-shared-world.plane.provenance",
-            "message": "Shared plane: an EXTERNAL-PUBLIC deployment (operator-attested owner example-operator/lobby-trivia, authorized) used DIRECTLY as the shared plane — NO getHost, clone, subject sandbox, or seed. The harness OBSERVES that each seat reached the operator-declared origin (publicOriginDigest); it did NOT mint or control the plane. Author-trust ownership attestation, NOT a synthetic-data claim.",
+            "message": "Shared plane: an EXTERNAL-PUBLIC deployment (operator-attested owner example-operator/lobby-trivia, authorized) used DIRECTLY as the shared plane, with NO getHost, clone, subject sandbox, or seed. The harness OBSERVES that each participant reached the operator-declared origin (publicOriginDigest); it did NOT mint or control the plane. Author-trust ownership attestation, NOT a synthetic-data claim.",
             "simId": "sim-001",
             "streamId": "stream-001"
           },
@@ -1170,7 +1170,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.plane.provenance",
-        "message": "Shared plane: an EXTERNAL-PUBLIC deployment (operator-attested owner example-operator/lobby-trivia, authorized) used DIRECTLY as the shared plane — NO getHost, clone, subject sandbox, or seed. The harness OBSERVES that each seat reached the operator-declared origin (publicOriginDigest); it did NOT mint or control the plane. Author-trust ownership attestation, NOT a synthetic-data claim.",
+        "message": "Shared plane: an EXTERNAL-PUBLIC deployment (operator-attested owner example-operator/lobby-trivia, authorized) used DIRECTLY as the shared plane, with NO getHost, clone, subject sandbox, or seed. The harness OBSERVES that each participant reached the operator-declared origin (publicOriginDigest); it did NOT mint or control the plane. Author-trust ownership attestation, NOT a synthetic-data claim.",
         "simId": "sim-001",
         "streamId": "stream-001"
       },
@@ -1260,7 +1260,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.concurrency",
-        "message": "Concurrency: 3 lane(s), up to 3 live at once (cap 3), overlap PROVEN; stateSeries omitted (no authoritative shared-state proof on the external-public plane); lobby convergence PROVEN (all seats reached one /lobby/CODE). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only. This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement."
+        "message": "Concurrency: 3 participant(s), up to 3 live at once (cap 3), overlap PROVEN; stateSeries omitted (no authoritative shared-state proof on the external-public plane); lobby convergence PROVEN (all participants reached one /lobby/CODE). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only. This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement."
       }
     ],
     "artifactLinks": [
@@ -1313,10 +1313,10 @@
   "review.json": {
     "schema": "humanish.review.v1",
     "verdict": "pass",
-    "summary": "Concurrent shared-world (ONE external-public plane, 3 simultaneous personas): swarm ran coherently; 3/3 actor session(s) passed credibility checks; mission endpoint: 3/3 ended goal_satisfied; completion reasons: goal_satisfied 3/3; overlap proven; 3 seats converged on one lobby.",
+    "summary": "Concurrent shared-world (ONE external-public plane, 3 simultaneous personas): swarm ran coherently; 3/3 actor session(s) passed credibility checks; mission endpoint: 3/3 ended goal_satisfied; completion reasons: goal_satisfied 3/3; overlap proven; 3 participants converged on one lobby.",
     "gaps": []
   },
-  "review.md": "# the example multiplayer app 3-player external-public\n\n- run: [run]\n- mode: live\n- attribution class: shared-world\n- topology: shared-world / concurrent\n- personas: 3\n- verdict: pass\n- summary: Concurrent shared-world (ONE external-public plane, 3 simultaneous personas): swarm ran coherently; 3/3 actor session(s) passed credibility checks; mission endpoint: 3/3 ended goal_satisfied; completion reasons: goal_satisfied 3/3; overlap proven; 3 seats converged on one lobby.\n- plane: Shared plane: an EXTERNAL-PUBLIC deployment (operator-attested owner example-operator/lobby-trivia, authorized) used DIRECTLY as the shared plane — NO getHost, clone, subject sandbox, or seed. The harness OBSERVES that each seat reached the operator-declared origin (publicOriginDigest); it did NOT mint or control the plane. Author-trust ownership attestation, NOT a synthetic-data claim.\n- concurrency: Concurrency: 3 lane(s), up to 3 live at once (cap 3), overlap PROVEN; stateSeries omitted (no authoritative shared-state proof on the external-public plane); lobby convergence PROVEN (all seats reached one /lobby/CODE). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only. This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement.\n- attribution limits: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only\n",
+  "review.md": "# the example multiplayer app 3-player external-public\n\n- run: [run]\n- mode: live\n- attribution class: shared-world\n- topology: shared-world / concurrent\n- personas: 3\n- verdict: pass\n- summary: Concurrent shared-world (ONE external-public plane, 3 simultaneous personas): swarm ran coherently; 3/3 actor session(s) passed credibility checks; mission endpoint: 3/3 ended goal_satisfied; completion reasons: goal_satisfied 3/3; overlap proven; 3 participants converged on one lobby.\n- plane: Shared plane: an EXTERNAL-PUBLIC deployment (operator-attested owner example-operator/lobby-trivia, authorized) used DIRECTLY as the shared plane, with NO getHost, clone, subject sandbox, or seed. The harness OBSERVES that each participant reached the operator-declared origin (publicOriginDigest); it did NOT mint or control the plane. Author-trust ownership attestation, NOT a synthetic-data claim.\n- concurrency: Concurrency: 3 participant(s), up to 3 live at once (cap 3), overlap PROVEN; stateSeries omitted (no authoritative shared-state proof on the external-public plane); lobby convergence PROVEN (all participants reached one /lobby/CODE). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only. This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement.\n- attribution limits: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -1362,7 +1362,7 @@
       {
         "at": "[ts]",
         "event": "concurrent-shared-world.run.created",
-        "message": "Created concurrent shared-world run with ONE shared plane and 3 simultaneous actor seats (actor openai-computer-use)."
+        "message": "Created concurrent shared-world run with ONE shared plane and 3 simultaneous participants (actor openai-computer-use)."
       }
     ],
     "simulations": [
@@ -1871,7 +1871,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.plane.provenance",
-        "message": "Shared plane: an EXTERNAL-PUBLIC deployment (operator-attested owner example-operator/lobby-trivia, authorized) used DIRECTLY as the shared plane — NO getHost, clone, subject sandbox, or seed. The harness OBSERVES that each seat reached the operator-declared origin (publicOriginDigest); it did NOT mint or control the plane. Author-trust ownership attestation, NOT a synthetic-data claim.",
+        "message": "Shared plane: an EXTERNAL-PUBLIC deployment (operator-attested owner example-operator/lobby-trivia, authorized) used DIRECTLY as the shared plane, with NO getHost, clone, subject sandbox, or seed. The harness OBSERVES that each participant reached the operator-declared origin (publicOriginDigest); it did NOT mint or control the plane. Author-trust ownership attestation, NOT a synthetic-data claim.",
         "simId": "sim-001",
         "streamId": "stream-001"
       },
@@ -1961,7 +1961,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.concurrency",
-        "message": "Concurrency: 3 lane(s), up to 3 live at once (cap 3), overlap PROVEN; stateSeries omitted (no authoritative shared-state proof on the external-public plane); lobby convergence PROVEN (all seats reached one /lobby/CODE). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only. This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement."
+        "message": "Concurrency: 3 participant(s), up to 3 live at once (cap 3), overlap PROVEN; stateSeries omitted (no authoritative shared-state proof on the external-public plane); lobby convergence PROVEN (all participants reached one /lobby/CODE). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors, external-public-plane, operator-attested-target-not-harness-controlled, no-synthetic-attestation, no-authoritative-shared-state-proof, concurrency-by-temporal-co-occupancy-only. This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement."
       }
     ],
     "redaction": {
@@ -1978,7 +1978,7 @@
     "review": {
       "schema": "humanish.review.v1",
       "verdict": "pass",
-      "summary": "Concurrent shared-world (ONE external-public plane, 3 simultaneous personas): swarm ran coherently; 3/3 actor session(s) passed credibility checks; mission endpoint: 3/3 ended goal_satisfied; completion reasons: goal_satisfied 3/3; overlap proven; 3 seats converged on one lobby.",
+      "summary": "Concurrent shared-world (ONE external-public plane, 3 simultaneous personas): swarm ran coherently; 3/3 actor session(s) passed credibility checks; mission endpoint: 3/3 ended goal_satisfied; completion reasons: goal_satisfied 3/3; overlap proven; 3 participants converged on one lobby.",
       "gaps": []
     },
     "feedbackCandidates": [],

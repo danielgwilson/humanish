@@ -989,7 +989,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
         // The declared cap (2) is below the 4-seat roster: the parser says so out loud (#350) —
         // a green run in waves must never be mistaken for the all-live run the roster promises.
         expect(result.warnings).toEqual([
-          expect.stringContaining("execution.concurrency 2 caps a 4-seat roster"),
+          expect.stringContaining("execution.concurrency 2 caps a 4-participant roster"),
         ]);
       });
 
@@ -3031,7 +3031,7 @@ describe("parseLabConfig (local-tree subject - issue #261)", () => {
 // before the concurrency rule can, so no single-participant exception to that rule is reachable.
 describe("shared-world one-seat rosters and the concurrency rule", () => {
   const PROVISIONED_FLOOR = "requires an `actors[0].lanes` roster of at least 2 roles";
-  const EXTERNAL_FLOOR = "a single-seat shared world proves no shared session";
+  const EXTERNAL_FLOOR = "a single-participant shared world proves no shared session";
   const CONCURRENCY_RULE = "need `execution.concurrency` of at least 2";
 
   function oneLane(config: Record<string, unknown>): Record<string, unknown> {

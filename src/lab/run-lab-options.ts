@@ -211,7 +211,7 @@ function unsupportedOption(
       "createProvider",
       route,
       route === "shared-world"
-        ? "shared-world seats run the lab's own brain."
+        ? "shared-world participants run the lab's own brain."
         : "only computer use takes a caller brain.",
     );
   if (route === "computer-use") {

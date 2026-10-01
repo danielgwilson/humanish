@@ -148,7 +148,7 @@ export function planSharedWorldLab(
   if (plane === undefined)
     throw new Error("shared-world validation admitted a plane it cannot plan");
   const brain = brainOf(config, false);
-  if (brain.kind === "caller") throw new Error("a shared-world seat has no caller brain");
+  if (brain.kind === "caller") throw new Error("a shared-world participant has no caller brain");
   const base = planBase(config, {
     dryRun: input.dryRun,
     ...(input.lab === undefined ? {} : { lab: input.lab }),

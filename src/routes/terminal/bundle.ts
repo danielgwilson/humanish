@@ -72,7 +72,7 @@ export function buildTerminalProductBundle(args: {
   const { simulation, stream } = terminalParticipant(args, {
     status: "contract_proof_only",
     reason,
-    summary: `Contract lane for the terminal agent (${args.actorId}) studying ${args.productName} from public surfaces.`,
+    summary: `Contract participant for the terminal agent (${args.actorId}) studying ${args.productName} from public surfaces.`,
     updatedAt: args.createdAt,
     stdin: args.stdin,
     tail: "",
@@ -144,7 +144,7 @@ export function buildTerminalProductBundle(args: {
       {
         at: args.createdAt,
         event: "terminal-lab.run.created",
-        message: `Created terminal-product lab run with one in-sandbox agent lane (actor ${args.actorId}, product ${args.productName}).`,
+        message: `Created terminal-product lab run with one in-sandbox agent participant (actor ${args.actorId}, product ${args.productName}).`,
       },
     ],
     simulation,

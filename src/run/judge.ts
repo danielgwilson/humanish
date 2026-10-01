@@ -279,10 +279,10 @@ export function judgeParticipants(args: {
  */
 export function sharedWorldShortfall(world: SharedWorldFacts): string | undefined {
   if (!world.overlap) {
-    return "No two seats were live at the same time, so the run shows no concurrency.";
+    return "No two participants were live at the same time, so the run shows no concurrency.";
   }
   if (world.stateChangedUnderOverlap === false) {
-    return "The shared state did not change after the seats started overlapping.";
+    return "The shared state did not change after the participants started overlapping.";
   }
   return undefined;
 }

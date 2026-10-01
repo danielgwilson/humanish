@@ -1460,7 +1460,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
   }
   const WORLD_CASES: Array<[WorldCase, RunBundle["review"]["verdict"], string | undefined]> = [
     ["overlap", "pass", undefined],
-    ["no overlap", "fail", "No two seats were live at the same time"],
+    ["no overlap", "fail", "No two participants were live at the same time"],
     ["overlap without a state change", "fail", "The shared state did not change"],
   ];
 
@@ -1539,7 +1539,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
       await runRoute(config, { ...run, options: { ...run.options, sharedWorldHooks: hooks } });
       exitCodes.push(exitCode);
       if (world === "no overlap") {
-        expect(printed.join("")).toContain("No two seats were live at the same time");
+        expect(printed.join("")).toContain("No two participants were live at the same time");
       }
     }
     expect(exitCodes).toEqual([0, 2]);
