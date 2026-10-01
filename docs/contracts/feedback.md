@@ -65,7 +65,7 @@ the redacted closing report, a completed debrief's `frictionReports`, and
 observed-report clauses in earlier messages.
 Matching `stopWhen` or ending a dwell window does not discard an earlier
 report or change the successful completion verdict. Exact repeated reports
-appear once in the lane's candidate. Harness notices, reasoning, and observed
+appear once in the participant's candidate. Harness notices, reasoning, and observed
 page content do not become participant findings; quoted app copy and negated
 reports retain the existing exclusions. Code excerpts are treated as quoted
 material. Interim matching requires an observation-shaped clause and filters

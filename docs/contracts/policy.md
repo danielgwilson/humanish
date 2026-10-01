@@ -246,7 +246,7 @@ Examples:
 - human edits the target repo during the run;
 - human copies hidden browser state into a fixture;
 - human clicks through product UI while the actor only observes;
-- operator restarts a provider substrate lane and continues the same run;
+- operator restarts a participant's provider substrate and continues the same run;
 - support staff or private upstream context resolves the blocker.
 
 Assisted runs can produce useful observations, but they are non-comparable to

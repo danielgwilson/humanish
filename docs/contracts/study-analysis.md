@@ -134,7 +134,7 @@ New packets declare `captureVersion: 2`, bound into their input digest. They
 include captures attached to `screenshot` and scripted `ui_action` events,
 preserving the original action IDs and evidence basis. Error notices that refer
 to an earlier capture retain that context without creating another frame.
-Scripted lanes use their recorded `ui.intent` goal when no participant assignment
+Scripted participants use their recorded `ui.intent` goal when no participant assignment
 exists. Missing assignments and declared captures without supported trace
 references are explicit omissions. Artifacts without `captureVersion` continue
 to validate against the original capture mapping; previously saved selections
