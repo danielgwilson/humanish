@@ -71,14 +71,14 @@ one adopter-named env var: with the official Resend SDK it is `RESEND_BASE_URL`,
 which the SDK reads on its own, so nothing in the app has to change; other providers
 need the app to actually pass the env through, and a run whose catch captures zero
 sends warns at teardown) into a catch **inside** the sandbox, so nothing leaves the
-machine. Every lane and shared-world seat gets a deterministic inbox address
-automatically (an unnamed seat is `role-01`, `role-02` and so on), and each
+machine. Every participant, independent or shared-world, gets a deterministic inbox address
+automatically (an unnamed shared-world participant is `role-01`, `role-02` and so on), and each
 persona's prompt carries the full handoff: the address to sign up with, the inbox URL
 to open, and that waiting for an email is a next step, not a blocker. The run bundle
 gets a digest-only `humanish.comms-thread.v1` artifact (from/to/subject/link
 digests + an OTP count; no raw address, link, or code persists); the readable proof a
 persona saw the email is its inbox-page screenshots. Hosted on the clone/local-tree
-computer-use lanes and the concurrent shared-world route (warned inert elsewhere),
+computer-use route and the concurrent shared-world route (warned inert elsewhere),
 vendor-neutral (Resend/SendGrid shaped, or a custom profile).
 An app-url study can instead use an adopter-hosted catch via
 `comms.email.external`; it must already be wired into your app. See the
@@ -116,10 +116,10 @@ route. Set `actors[0].lanes[].device` to override the study preset for a partici
 
 ## Mobile emulation
 
-`execution.desktop.fidelity: { mobileEmulation: true }` turns every hosted
-Chrome/Chromium computer-use lane on a mobile preset (`mobile`, `small-mobile`, `narrow-mobile`)
-into a mobile-emulated browser before the participant arrives, and leaves desktop, tablet and
-wide lanes in the same run untouched: the lane's preset width/height become the CSS viewport (414 px for `mobile`, where the
+`execution.desktop.fidelity: { mobileEmulation: true }` gives every hosted
+Chrome/Chromium computer-use participant on a mobile preset (`mobile`, `small-mobile`, `narrow-mobile`)
+a mobile-emulated browser before its first action, and leaves desktop, tablet and
+wide participants in the same run untouched: the participant's preset width/height become the CSS viewport (414 px for `mobile`, where the
 X screen itself cannot go below 500), the preset's device pixel ratio applies (`deviceScaleFactor`
 overrides it), touch events are on (`touch: false` turns them off) and the browser presents a
 mobile user agent (`userAgent` replaces the default iPhone Safari string). The run bundle records
@@ -127,9 +127,9 @@ mobile user agent (`userAgent` replaces the default iPhone Safari string). The r
 and `resolved`: what the page itself reported afterwards (`navigator.userAgent`,
 `devicePixelRatio`, `innerWidth`, `maxTouchPoints`, coarse pointer). A page without a viewport
 meta lays out at 980 px, as it would on a phone, and the bundle says so. Firefox cannot be
-emulated, so the lane fails closed instead of shipping a desktop run labelled mobile.
-The lane waits up to 30 seconds after launch for Chrome's DevTools port and records the
-wait as a timed phase; if Chrome exits or never answers, a mobile-emulated lane fails
+emulated, so the participant fails closed instead of shipping a desktop run labelled mobile.
+humanish waits up to 30 seconds after launch for Chrome's DevTools port and records the
+wait as a timed phase; if Chrome exits or never answers, a mobile-emulated participant fails
 with the reason and the last line of the browser log. The
 emulation holder also applies the settings to new page targets. Later observations
 record the page's fidelity and warn if it drifts from the requested settings. A bundle without a `fidelity` block is a
@@ -138,15 +138,15 @@ responsive-viewport study whatever its preset is called.
 When touch is enabled, desktop pointer input is converted to touch. Correct viewport and
 touch flags do not prove equivalent gesture behavior: in two hosted conformance probes,
 the SDK double click produced two single clicks while direct touch opened the original
-TodoMVC editor in both. **From humanish 0.81.0**, these lanes carry a run warning to confirm
+TodoMVC editor in both. **From humanish 0.81.0**, these participants carry a run warning to confirm
 gesture failures with direct or native touch before attributing them to the app. The earlier
-phone-lane outcomes remain observations of the measured humanish input path. See the
+phone-preset outcomes remain observations of the measured humanish input path. See the
 [dated input-conformance receipt](https://github.com/danielgwilson/humanish/blob/main/docs/goals/computer-use-actor/receipts/mobile-input-conformance-2026-09-05.md)
 for the method and limits; physical-device behavior was not tested.
 
 ## Desktop browser choice
 
-Hosted computer-use lanes and shared-world actor seats use the
+Hosted computer-use and shared-world participants use the
 route's historical opener unless you set `execution.desktop.browser` to `chrome`, `chromium`,
 or `firefox`. A concrete value means "launch this browser or fail"; it never silently
 falls back to whatever the image prefers. When configured, run bundles record the requested
@@ -155,9 +155,9 @@ browser and the resolved in-sandbox command as `desktopBrowser`.
 ## Deterministic stop conditions
 
 Freeform computer-use actors can keep acting after the
-app has already reached the state you care about. Add `stopWhen` to the actor or a lane to
-stop immediately after a deterministic browser observation matches. Conditions inside one
-rule are ANDed together; rules under `any` are ORed. Lane-level `stopWhen` overrides the
+app has already reached the state you care about. Add `stopWhen` to the actor or to one `lanes[]`
+entry to stop immediately after a deterministic browser observation matches. Conditions inside one
+rule are ANDed together; rules under `any` are ORed. A `lanes[]` entry's `stopWhen` overrides the
 actor default.
 
 ```yaml
@@ -182,7 +182,7 @@ actors:
 ## A participant with a camera
 
 `execution.desktop.media.camera: { source: synthetic }` gives a
-hosted Chrome lane a capture device: an ffmpeg test pattern generated in the sandbox (or a
+hosted Chrome participant a capture device: an ffmpeg test pattern generated in the sandbox (or a
 `.y4m` file of yours, uploaded). The browser's own permission dialog stays in the way by default
 (`policies.mediaPermission: prompt`), because the gate is where a real person hesitates or
 refuses; `granted` bypasses it for studies about what happens after. The bundle records the
@@ -192,11 +192,11 @@ including with a custom desktop template. `source: speech` requires a local-agen
 participant and cannot be combined with a hosted camera. This does not determine whether a custom template has its own
 working audio devices; humanish does not deliver the declared audio file to them.
 
-| Declared media route                                                                                | Support                                          |
-| --------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| Independent hosted computer-use browser lanes (`app-url`, `clone`, `local-tree`) in Chrome/Chromium | Synthetic or `.y4m` camera                       |
-| Firefox, shared-world, desktop CLI, in-process `local-app`, scripted browser, terminal              | Media declarations rejected before execution     |
-| `media.microphone.source` other than `speech`, including custom desktop templates                   | File injection unsupported; declaration rejected |
+| Declared media route                                                                                       | Support                                          |
+| ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| Independent hosted computer-use browser participants (`app-url`, `clone`, `local-tree`) in Chrome/Chromium | Synthetic or `.y4m` camera                       |
+| Firefox, shared-world, desktop CLI, in-process `local-app`, scripted browser, terminal                     | Media declarations rejected before execution     |
+| `media.microphone.source` other than `speech`, including custom desktop templates                          | File injection unsupported; declaration rejected |
 
 Camera-free studies keep their existing route behavior. A working camera does not
 establish audio, conferencing-provider, TURN or reconnection support.
@@ -210,7 +210,7 @@ participant with nothing to do keeps acting, so `dwell` lets the study hold inst
 page for `ms`, captures a frame every `everyMs` (default 10 s), takes no action and requests no
 model turn, then hands control back (`then: continue`, the default) or ends the session
 (`then: stop`). The window is recorded in the trace as deliberate, and it never outlasts the
-session budget. Lane-level `dwell` overrides the actor default.
+session budget. A `lanes[]` entry's `dwell` overrides the actor default.
 
 ```yaml
 actors:
@@ -265,9 +265,9 @@ Use the [cost model and budgets](/docs/budgets-and-privacy#how-cost-estimates-wo
 Set both a study model budget (`maxTotalUsd`) and a per-participant backstop
 (`maxUsd`); desktop time is additional.
 
-## Failed-lane reruns
+## Failed-participant reruns
 
-Multi-lane CUA fan-out can be rerun surgically without mutating
+Multi-participant CUA fan-out can be rerun surgically without mutating
 the source run:
 
 ```bash
@@ -275,11 +275,11 @@ npx humanish lab run cua-browser --rerun-failed-from latest --json --no-open
 npx humanish lab run cua-browser --rerun-failed-from YOUR_RUN_ID --lanes lane-02,lane-04
 ```
 
-This creates a new linked run containing only the failed/blocked/timed-out/hollow lanes
+This creates a new linked run containing only the failed/blocked/timed-out/hollow participants
 (or the explicit `--lanes` selection). The new `run.json` records `rerun.sourceRunId`,
-selected lane ids, and previous lane statuses; the source run's verdict is left unchanged.
+selected participant ids, and previous participant statuses; the source run's verdict is left unchanged.
 This is intentionally not automatic retry; a passing rerun is evidence of a
-nondeterminism candidate and does not license erasing the original red lane.
+nondeterminism candidate and does not license erasing the original red participant.
 
 ## Run-owned cleanup
 

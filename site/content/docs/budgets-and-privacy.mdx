@@ -82,7 +82,7 @@ complete-looking total is not proof that every provider charge was observed.
 Desktop estimates exclude allocation/startup time before humanish acquired the
 handle, plan fees, credits, and negotiated enterprise prices. A desktop kept for
 debugging or with unconfirmed cleanup adds an unknown remaining-lifetime line,
-so its total is marked incomplete. Shared-world seats and their provisioned subject
+so its total is marked incomplete. Shared-world participants and their provisioned subject
 desktop, a scripted-browser clone's subject desktop, and the terminal sandbox are
 priced the same way.
 
@@ -106,7 +106,7 @@ as `budget_reached` / `incomplete` with `provider_output_limit`; its partial
 output does not establish task completion. A small value can therefore end a
 session before it produces visible text. This setting does not
 bound input/context tokens, total requests, cumulative spend or desktop time.
-Terminal, local-agent, scripted, custom-provider/session routes and per-lane
+Terminal, local-agent, scripted, custom-provider/session routes and per-participant
 overrides are rejected when they declare this unsupported control.
 
 The default computer-use model is `gpt-5.6-sol`. Set `actors[0].model` in the lab
