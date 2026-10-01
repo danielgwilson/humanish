@@ -21,7 +21,7 @@ import { pathToFileURL } from "node:url";
 
 import type { BrowserLabScoringContext } from "./adapter-extension.js";
 import type { TerminalProductScoringContext } from "../routes/terminal/types.js";
-import { backendOf, type LabRoute } from "./plan.js";
+import type { LabRoute } from "./plan.js";
 import { digestText, redactText } from "../evidence/redaction.js";
 import type {
   RunAdapterArtifact,
@@ -96,11 +96,11 @@ export async function loadAdapterScorer(args: {
     error: { code, message },
   });
 
-  // A declared gate that cannot run on this backend must ABORT (never silently green-pass).
+  // A declared gate that cannot run on this route must ABORT (never silently green-pass).
   if (!SCORER_CAPABLE_ROUTES.has(route)) {
     return fail(
       "HUMANISH_LAB_SCORER_UNSUPPORTED_BACKEND",
-      `review.scorer.ref is declared but this lab resolves to the ${backendOf(route)} backend, which has no adopter-scorer seam. A declared scorer that cannot run must fail closed rather than pass silently — declare it on a terminal, cua, shared-world, or concurrent-shared-world lab.`,
+      `review.scorer.ref is declared but this lab resolves to the ${route} route, which has no adopter-scorer seam. A declared scorer that cannot run must fail closed rather than pass silently — declare it on a terminal, computer-use or shared-world lab.`,
     );
   }
 

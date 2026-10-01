@@ -53,7 +53,7 @@ export async function labSetupChecks(
   args: LabSetupCheckArgs,
 ): Promise<{ desktop: boolean; keys: string[]; checks: Check[] }> {
   const { resolveLabManifest } = await import("./discover.js");
-  const { backendOf, resolveLabDryRun, routeOf } = await import("./plan.js");
+  const { resolveLabDryRun, routeOf } = await import("./plan.js");
   const resolved = await resolveLabManifest(args.cwd, args.lab);
   if (!resolved.ok)
     return {
@@ -68,7 +68,7 @@ export async function labSetupChecks(
     {
       name: "lab route",
       ok: true,
-      message: `${config.id}: ${config.actors[0]?.type ?? "synthetic"} / ${backendOf(route)} / ${dryRun ? "dry-run (no live participant)" : "live"}`,
+      message: `${config.id}: ${config.actors[0]?.type ?? "synthetic"} / ${route} / ${dryRun ? "dry-run (no live participant)" : "live"}`,
     },
   ];
   if (dryRun) return { desktop: false, keys: [], checks };

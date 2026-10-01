@@ -8,7 +8,7 @@ import { deriveStudyFacts } from "../telemetry.js";
 import { resolveLabManifest } from "../../lab/discover.js";
 import type { LabResolveFailure } from "../../lab/discover.js";
 import { resolveLabDryRun } from "../../lab/engine.js";
-import { backendOf, type LabRoute, routeOf } from "../../lab/plan.js";
+import { type LabRoute, routeOf } from "../../lab/plan.js";
 import type { LabConfig } from "../../lab/types.js";
 import type { RunLabProvenance } from "../../run/status.js";
 import type { RunResult } from "../../run/results.js";
@@ -60,7 +60,7 @@ export async function runLabCommand(args: {
   noteStudyFacts(args.command, deriveStudyFacts({ labId: config.id }));
   const route = routeOf(config);
   if (route !== "computer-use" && labRerunFlagsRequested(args.options)) {
-    writeUnsupportedRerunFlagsResult(args, backendOf(route));
+    writeUnsupportedRerunFlagsResult(args, route);
     return;
   }
   // Exposure serves a live desktop, which only the computer-use route produces. Refuse it on any
@@ -73,7 +73,7 @@ export async function runLabCommand(args: {
       warnings: [],
       error: {
         code: "HUMANISH_WATCH_OPTION_CONFLICT",
-        message: `--expose/--tunnel/--oauth stream a live desktop and apply only to computer-use labs; this lab resolved to ${backendOf(route)}.`,
+        message: `--expose/--tunnel/--oauth stream a live desktop and apply only to computer-use labs; this lab resolved to the ${route} route.`,
       },
     };
     writeResult(args.command, args.io, result, formatRunHuman);
@@ -182,7 +182,7 @@ function writeUnsupportedRerunFlagsResult(
     io: CliIo;
     options: LabCommandOptions;
   },
-  backend: string,
+  route: LabRoute,
 ): void {
   const result: RunResult = {
     schema: "humanish.run-result.v1",
@@ -191,7 +191,7 @@ function writeUnsupportedRerunFlagsResult(
     warnings: [],
     error: {
       code: "HUMANISH_UNSUPPORTED_RERUN_FLAGS",
-      message: `--rerun-failed-from/--lanes apply only to CUA fan-out labs; this lab resolved to ${backend}.`,
+      message: `--rerun-failed-from/--lanes apply only to computer-use fan-out labs; this lab resolved to the ${route} route.`,
     },
   };
   writeResult(args.command, args.io, result, formatRunHuman);

@@ -688,8 +688,7 @@ describe("humanish CLI scaffold", () => {
         expect(result.exitCode).toBe(2);
         expect(envelope.ok).toBe(false);
         expect(envelope.error.code).toBe("HUMANISH_UNSUPPORTED_RERUN_FLAGS");
-        expect(envelope.error.message).toContain("CUA fan-out");
-        expect(envelope.error.message).toContain("synthetic");
+        expect(envelope.error.message).toContain("the preview route");
       },
     );
   });
