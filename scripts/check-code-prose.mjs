@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Counts three kinds of prose in src/ comments that belong in issues and commit messages:
 // issue references (#123, except in TODO(#123)), red-team tags (FIX-5) and all-caps emphasis
-// (NOT, ONLY, NEVER). Each count is capped by a flag in package.json's prose:check script. The
-// caps only go down: lower one in the same PR that removes the prose.
+// (NOT, ONLY, NEVER). Each count is held to a flag in package.json's prose:check script: a count
+// above its cap fails, and so does one below it, so the PR that removes the prose lowers the cap.
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
@@ -54,21 +54,42 @@ for (const file of files) {
   }
 }
 
-let failed = false;
+for (const kind of Object.keys(hits)) {
+  const max = values[`max-${kind}`];
+  if (max !== undefined && !/^\d+$/.test(max)) {
+    process.stderr.write(`check-code-prose: --max-${kind}=${max} is not a whole number.\n`);
+    process.exit(2);
+  }
+}
+
+const rose = [];
+const fell = [];
 for (const [kind, list] of Object.entries(hits)) {
   const max = values[`max-${kind}`];
   const cap = max === undefined ? undefined : Number(max);
-  const over = cap !== undefined && list.length > cap;
-  failed ||= over;
+  const count = list.length;
+  if (cap !== undefined && count > cap) rose.push(kind);
+  if (cap !== undefined && count < cap) fell.push(`--max-${kind}=${count}`);
   const status =
-    cap === undefined ? "" : over ? ` (cap ${cap}, over by ${list.length - cap})` : ` (cap ${cap})`;
-  process.stdout.write(`${kind}: ${list.length}${status}\n`);
+    cap === undefined
+      ? ""
+      : count > cap
+        ? ` (cap ${cap}, over by ${count - cap})`
+        : count < cap
+          ? ` (cap ${cap}, under by ${cap - count})`
+          : ` (cap ${cap})`;
+  process.stdout.write(`${kind}: ${count}${status}\n`);
   if (values.list) process.stdout.write(list.map((hit) => `  ${hit}\n`).join(""));
 }
-if (failed) {
+if (rose.length > 0) {
   process.stdout.write(
     "A count rose. `node scripts/check-code-prose.mjs --list` prints every hit with its line. Move\n" +
       "history into the commit message or issue, and keep the comment to what the code does.\n",
   );
-  process.exitCode = 1;
 }
+if (fell.length > 0) {
+  process.stdout.write(
+    `A count fell. Lower the cap in package.json's prose:check script in this PR: ${fell.join(" ")}.\n`,
+  );
+}
+if (rose.length > 0 || fell.length > 0) process.exitCode = 1;

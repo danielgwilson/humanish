@@ -32,9 +32,10 @@ temporary project, compares its export names with `tests/golden/public-api.json`
 `examples/`. After an intended export change, run `pnpm api:proof --update` and review the golden
 diff.
 
-Three counts are capped in package.json and only go down: oxlint warnings (`--max-warnings`),
-comment prose (`prose:check`) and the retired participant words lane, seat, role and sim in `src/`
-identifiers (`vocabulary:check`). Lower a cap in the PR that reduces its count.
+Three counts are held to caps in package.json: oxlint warnings (`lint`, `--max-warnings`), comment
+prose (`prose:check`) and the retired words lane, seat, role, sim and study in `src/` identifiers
+(`vocabulary:check`). Each checker fails when a count is above its cap or below it, so the PR that
+reduces a count lowers its cap to the new count; the failure names the flag and the value.
 
 ## Layout
 
