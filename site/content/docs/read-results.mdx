@@ -26,6 +26,8 @@ Use a specific run ID in place of `latest` when you compare studies or save a fi
 | Install, provider, or sandbox fails      | Fix the study setup; the participant may never have reached the app.    |
 | A task was never measured                | Treat it as unknown, even if the participant said they completed it.    |
 
+The review's verdict says what the participants experienced. The run's `ok` says whether the run worked as an execution, and `.humanish/runs/<id>/status.json` records it as `outcome.ok`, with `outcome.execution.failures` naming each failure. The two can disagree. A participant whose session passed still reads `pass` when its model provider's cleanup could not be confirmed, and the run has `ok: false`. A terminal run that exceeds its spend cap keeps the agent's own verdict and fails with `HUMANISH_TERMINAL_LAB_CAPS_EXCEEDED`. A run with `ok: false` exits non-zero.
+
 Synthetic participants can miss problems or report things that do not reproduce. Confirm a finding against the app before treating it as a defect. See [known failure modes](/failure-modes) for when to recruit real people.
 
 For a worked example, read [the paired Save-button study](/docs/save-button-study): all 12 attempts saved the task, even though half used an app with a broken Save button. The comparison also exposed false feedback candidates in humanish itself.
@@ -40,13 +42,15 @@ npx humanish verify --run latest --json
 
 Verification checks the bundle's evidence and automated public-safety gates. It is not a usability score or certification that a finding is true.
 
-| `shareSafety.status` | Meaning                                                                               |
-| -------------------- | ------------------------------------------------------------------------------------- |
-| `share_ready`        | Eligible for public feedback drafts after review.                                     |
-| `local_only`         | Valid local evidence that should not be shared as-is. Raw screenshots are one reason. |
-| `blocked`            | The bundle failed verification or a public-safety gate.                               |
+| `shareSafety.status` | Meaning                                                                                                                                           |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `share_ready`        | Eligible for public feedback drafts after review.                                                                                                 |
+| `local_only`         | Valid local evidence that should not be shared as-is: full-fidelity screenshots, a file the scan cannot read as text, a recording, or real email. |
+| `blocked`            | The bundle failed verification or a public-safety gate.                                                                                           |
 
-Full-fidelity screenshots are local-only by default. The automated scan catches secret and local-path shapes; it does **not** certify that names, personal information, or sensitive content are absent from text or pixels. Use synthetic data and review what you share. To blur frames at capture instead, set `policies.redactScreenshots: true` ([screenshots](/docs/computer-use#screenshots-are-full-fidelity-by-default)).
+Full-fidelity screenshots are local-only by default. A screenshot counts as blurred only when its participant's trace marks it blurred and it is a thumbnail the redactor wrote: at most 128 px wide, holding image data only. Any other frame counts as full-fidelity, and a screenshot carrying PNG text or metadata chunks fails verification.
+
+The scan reads every other run file by its bytes. It matches secret and local-path shapes, including after undoing JSON and JS escapes, percent-encoding, quoted-printable, HTML character references, hex and base64. A file it cannot read as UTF-8 text, such as an image or archive that is not a participant's screenshot or a registered recording, keeps the run `local_only` with the reason `UNSCANNED_ARTIFACT`, which names the file. The scan does **not** certify that names, personal information, or sensitive content are absent from text or pixels. Use synthetic data and review what you share. To blur frames at capture instead, set `policies.redactScreenshots: true` ([screenshots](/docs/computer-use#screenshots-are-full-fidelity-by-default)).
 
 ## Draft an issue
 
@@ -77,7 +81,7 @@ npx humanish feedback issue --cwd ./shared-study --run YOUR_RUN_ID --repo your-o
 
 The new directory contains a standalone `.humanish/runs/YOUR_RUN_ID/` bundle. Your original keeps its readable screenshots; the copy contains blurred thumbnails and a `derivation.json` receipt. The copied study retains its identity and outcomes. It is not another participant or a new attempt in your original run history.
 
-Export rebuilds Observer and independently verifies the copy before publishing it. It refuses an existing destination, incomplete or invalid evidence, unsupported image formats and embedded image payloads. PNG screenshots are supported; the copy's text and findings still need your review before sharing. A `blocked` bundle must be corrected at its source. Do not change a stored grade to force it through.
+Export rebuilds Observer and independently verifies the copy before publishing it. It refuses an existing destination, incomplete or invalid evidence, unsupported image formats and embedded image payloads. PNG screenshots are supported; the copy's text and findings still need your review before sharing. The copy drops a PNG that nothing in `run.json` cites, and export refuses a run whose feedback, adapter or stream evidence cites an image that is not a participant's screenshot. A `blocked` bundle must be corrected at its source. Do not change a stored grade to force it through.
 
 ## Export or compare evidence
 

@@ -123,7 +123,11 @@ ngrok's edge authenticates viewers with Google OAuth (restricted to your
 `--allow-email`/`--allow-domain` allow rules) before any request reaches the
 loopback server; humanish carries no in-process auth. The third is a secretless
 safe observer: no login, but only runs whose `humanish verify` shareSafety is
-`share_ready` exist at all; everything else is absent and 404s. The fourth
+`share_ready` exist at all; everything else is absent and 404s. A run is verified
+again before it is served whenever any of its files changes, so a file added or
+rewritten after verification is not served until the run grades `share_ready`
+again. [Verify before sharing](/docs/read-results#verify-before-sharing) lists what
+keeps a run from `share_ready`. The fourth
 trusts an edge you already secure (Cloudflare Access, Tailscale, a proxy you own)
 and just binds loopback behind it.
 

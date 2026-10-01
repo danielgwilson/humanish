@@ -48,6 +48,11 @@ console.log(bundle.review.verdict, checked.shareSafety.status);
 await renderObserver(process.cwd(), checked.run, { open: false });
 ```
 
+`bundle.review.verdict` is what the participants experienced. A route result's `ok`, also
+written to the run's `status.json` as `outcome.ok`, says whether the run worked as an
+execution; `outcome.execution.failures` names each failure, such as a model provider's
+cleanup that could not be confirmed. A run can read `pass` with `ok: false`.
+
 This reads trusted local output. `RunBundle["streams"][number]` and
 `RunBundle["simulations"][number]` name a bundle's members.
 
@@ -55,7 +60,10 @@ This reads trusted local output. `RunBundle["streams"][number]` and
 
 A participant is a `CuaProvider` (the brain) driving a `CuaExecutor` (the desktop or app). Pass
 `createProvider` to `runLab` to replace the default brain on a computer-use lab, and
-`inProcess: { executor }` with it to drive an app in this process with no desktop. The
+`inProcess: { executor }` with it to drive an app in this process with no desktop. An
+in-process run uses the same participant runner as hosted lanes, so a declared
+`execution.caps.maxUsd` or `maxTotalUsd` applies: report usage from your provider, or the
+run stops at its first request with `stopCause: "usage_unreported"`. The
 [participant example](https://github.com/danielgwilson/humanish/tree/main/examples/participant)
 runs one end to end:
 
@@ -81,4 +89,5 @@ Every scoring context carries `ctx.bundle` and `ctx.runId`.
 The route runners (`runCuaActorLab`, `runScriptedBrowserLab`, `runTerminalProductLab`,
 `runConcurrentSharedWorld`, `runDryRun`), their option and result types, the hook bag types and
 `runCuaActorSession` still work in this minor and print one `DeprecationWarning` each. They are
-removed in the next minor. Use `runLab` with the options above.
+removed in the next minor. Use `runLab` with the options above. `LabOutcome.backend` is
+deprecated too; narrow on `outcome.route`.
