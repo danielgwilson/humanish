@@ -464,7 +464,7 @@ are the `HUMANISH_*` names `src/` read or returned at 0.105.0 and no longer does
   `HUMANISH_CONCURRENT_SHARED_WORLD_LAB_AGENT_SIGNIN_REQUIRED`, and a ChatGPT-account Codex with a
   dollar cap as `HUMANISH_CONCURRENT_SHARED_WORLD_LAB_UNPRICED_CAP` (new codes, #1278, #1306).
 - `humanish doctor --lab` and the TUI treat a shared-world lab with a `local-agent` actor as
-  supported (a #1278 follow-up). Doctor reported it as unsupported and listed no keys, so the TUI
+  supported (#1316, after #1278). Doctor reported it as unsupported and listed no keys, so the TUI
   could show its keys as ready. It now asks for `E2B_API_KEY`, plus `OPENAI_API_KEY` on an
   external-public plane, and shows the agent's sign-in row as it does for computer use.
 - A provisioned shared-world run whose desktop module fails to load names that failure (#1274),
