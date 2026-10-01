@@ -314,6 +314,216 @@ const participantCapabilities = (operator: boolean): ActorCapabilities => ({
   license: "proprietary",
 });
 
+/** What a participant reads and never changes once it is created. */
+interface ParticipantSettings {
+  readonly options: RestrictedParticipantOptions;
+  readonly timeoutMs: number;
+  readonly operator: boolean;
+  readonly speechEnabled: boolean;
+  readonly model: string | undefined;
+  readonly effort: ReasoningEffort;
+}
+
+/**
+ * What changes after a participant is created and more than one of its functions reads. Each
+ * field is read at its use, never copied into a local across an await.
+ */
+interface ParticipantState {
+  /** The native session and the turns it yields (constructed once; both hold changing state). */
+  session: RestrictedCodexSession;
+  readonly events: ParticipantEvents;
+  /** Set by revoke; the tool callback and start refuse after it. */
+  closed: boolean;
+  /** A native cleanup was unconfirmed (session close, a run's receipt; close and each turn read). */
+  failedCleanup: boolean;
+  /** A dispatched request's usage was incomplete (the native run; the provider's getter). */
+  incompleteUsage: boolean;
+  /** A native run is in flight (launch; the tool callback, each turn, the provider's getter). */
+  active: boolean;
+  /** The current request is the debrief (each turn; the tool callback and the native run). */
+  closingPhase: boolean;
+  /** The conversation's instructions, fixed by its first turn (each turn; the native run). */
+  instructions: string | undefined;
+  /** How many actions the waiting tool call asked for (the tool callback; each turn). */
+  lastActionCount: number | undefined;
+  /** The waiting tool call's reply (the tool callback; each turn and revoke). */
+  continuation: ReturnType<typeof deferred<string>> | undefined;
+  /** The native run (launch; close waits for it). */
+  nativeTask: Promise<void> | undefined;
+  /** The native run's abort (launch; revoke aborts it). */
+  controller: AbortController | undefined;
+  /** When revoke first ran, the start of the cleanup budget (revoke; close). */
+  abortAt: number | undefined;
+  /** The one session close, shared by revoke and close (closeParticipantSession). */
+  sessionClosing: Promise<boolean> | undefined;
+}
+
+/** The session's tool callback: one native tool call becomes the turn the loop executes. */
+async function acceptToolCall(
+  settings: ParticipantSettings,
+  state: ParticipantState,
+  args: unknown,
+): Promise<string> {
+  if (state.closed || state.closingPhase || state.continuation || !state.active)
+    throw new Error("Unexpected participant tool call");
+  const turn = parseParticipantTool(args, settings.speechEnabled);
+  const reply = deferred<string>();
+  state.continuation = reply;
+  state.lastActionCount = turn.actions.length;
+  state.events.emit({ turn });
+  return reply.promise;
+}
+
+/** Closes the native session once; an unconfirmed close marks cleanup failed. */
+function closeParticipantSession(state: ParticipantState): Promise<boolean> {
+  return (state.sessionClosing ??= Promise.resolve()
+    .then(() => state.session.close())
+    .catch(() => false)
+    .then((confirmed) => {
+      if (!confirmed) state.failedCleanup = true;
+      return confirmed;
+    }));
+}
+
+/** Stops the conversation: abort the native run, reject a waiting tool call, close the session. */
+function revokeParticipant(state: ParticipantState): void {
+  state.closed = true;
+  state.abortAt ??= performance.now();
+  state.controller?.abort();
+  state.continuation?.reject(new Error("Participant closed"));
+  state.continuation = undefined;
+  void closeParticipantSession(state);
+}
+
+/** Starts the one native run; its final turn or failure arrives as a participant event. */
+function launchNativeRun(
+  settings: ParticipantSettings,
+  state: ParticipantState,
+  req: CuaTurnRequest,
+  imageUrl: string,
+): void {
+  state.active = true;
+  const signal = (state.controller = new AbortController()).signal;
+  state.nativeTask = (async () => {
+    let receipt = noDispatch(),
+      usage: ActorTokenUsage | undefined;
+    try {
+      const result = await state.session.run(
+        participantRunRequest(req, {
+          instructions: state.instructions!,
+          closing: state.closingPhase,
+          speechEnabled: settings.speechEnabled,
+          model: settings.model,
+          imageUrl,
+          timeoutMs: settings.timeoutMs,
+          signal,
+        }),
+      );
+      receipt = runReceipt(result);
+      usage = result.usage ?? undefined;
+      if (result.dispatched && !result.usageComplete) state.incompleteUsage = true;
+      if (receipt.cleanup === "unconfirmed") state.failedCleanup = true;
+      const stopped = state.closed || signal.aborted;
+      state.events.emit({
+        turn: finalTurn(result, receipt, usage, { stopped, failedCleanup: state.failedCleanup }),
+      });
+    } catch (error) {
+      state.incompleteUsage ||= receipt.dispatched !== false && !receipt.usageComplete;
+      revokeParticipant(state);
+      state.events.emit({
+        error: isCuaProviderError(error)
+          ? error
+          : new CuaProviderError(
+              "process_failed",
+              { dispatched: "unknown", usageComplete: false, cleanup: "unconfirmed" },
+              usage,
+            ),
+      });
+    } finally {
+      state.active = false;
+    }
+  })();
+}
+
+/** One request: answer the waiting tool call, or start the native run, then yield its next turn. */
+async function runParticipantTurn(
+  settings: ParticipantSettings,
+  state: ParticipantState,
+  req: CuaTurnRequest,
+  signal: AbortSignal,
+  debrief: boolean,
+): Promise<CuaTurn> {
+  if (state.events.waiting) return state.events.next();
+  if (signal.aborted) {
+    revokeParticipant(state);
+    throw new CuaProviderError("cancelled", noDispatch());
+  }
+  const conversation = {
+    instructions: state.instructions,
+    speechEnabled: settings.speechEnabled,
+    awaitingAcknowledgments: state.continuation !== undefined,
+    lastActionCount: state.lastActionCount,
+  };
+  if (rejectsParticipantRequest(req, conversation))
+    throw new CuaProviderError("request_rejected", noDispatch());
+  const onAbort = (): void => {
+    revokeParticipant(state);
+  };
+  signal.addEventListener("abort", onAbort, { once: true });
+  try {
+    state.instructions ??= req.instructions;
+    state.closingPhase = debrief;
+    const imageUrl = `data:image/png;base64,${req.observation.screenshot!.toString("base64")}`;
+    if (state.continuation) {
+      const reply = state.continuation;
+      state.continuation = undefined;
+      reply.resolve(toolReply(req, imageUrl, settings.speechEnabled, debrief));
+    } else if (!state.active) launchNativeRun(settings, state, req, imageUrl);
+    else throw new CuaProviderError("busy", noDispatch());
+    return await state.events.next();
+  } finally {
+    // The shared loop aborts each request's signal after it yields. The native
+    // turn must remain alive while humanish executes and records its actions.
+    signal.removeEventListener("abort", onAbort);
+  }
+}
+
+/** The CuaProvider the loop drives; `start` admits one request at a time. */
+function participantProvider(
+  settings: ParticipantSettings,
+  state: ParticipantState,
+  start: (req: CuaTurnRequest, signal: AbortSignal, debrief: boolean) => Promise<CuaTurn>,
+): CuaProvider {
+  const { operator, effort } = settings;
+  return {
+    id: "codex-participant",
+    requiresFrame: true,
+    requestPolicy: "fail_closed",
+    get version() {
+      return state.session.resolvedModel ?? settings.model;
+    },
+    get executionProfile() {
+      return participantExecutionProfile(state.session, operator, effort);
+    },
+    modelSettings: { reasoningEffort: effort },
+    capabilities: participantCapabilities(operator),
+    get pendingRequestUsage() {
+      const usage = state.session.pendingUsage;
+      return usage === undefined
+        ? undefined
+        : { ...usage, turns: state.session.pendingInferenceUsage ?? [] };
+    },
+    get interactionUsageIncomplete() {
+      return state.incompleteUsage || state.active;
+    },
+    get historyTurnsOmitted() {
+      return 0;
+    },
+    nextTurn: (req, signal) => start(req, signal, false),
+    debrief: (req, signal) => start(req, signal, true),
+  };
+}
+
 /** One native tool-calling conversation; the existing CUA loop owns every input. */
 export function createRestrictedCodexParticipant(options: RestrictedParticipantOptions = {}): {
   provider: CuaProvider;
@@ -324,132 +534,41 @@ export function createRestrictedCodexParticipant(options: RestrictedParticipantO
     throw new CuaProviderError("request_rejected", noDispatch());
   const operator = options.authMode === "operator";
   const speechEnabled = options.speechEnabled === true;
-  const model = options.model ?? (operator ? undefined : PARTICIPANT_PROFILE.requestedModel);
-  const effort = options.reasoningEffort ?? "low";
-  let closed = false,
-    failedCleanup = false,
-    incompleteUsage = false,
-    active = false,
-    closingPhase = false;
-  let instructions: string | undefined, lastActionCount: number | undefined;
-  let continuation: ReturnType<typeof deferred<string>> | undefined;
-  const events = new ParticipantEvents();
-  let nativeTask: Promise<void> | undefined, pending: Promise<CuaTurn> | undefined;
-  let controller: AbortController | undefined;
-  let sessionClosing: Promise<boolean> | undefined,
-    closing: Promise<ParticipantProviderCloseResult> | undefined;
-  let abortAt: number | undefined;
-  const session = participantSession(options, speechEnabled, effort, async (args) => {
-    if (closed || closingPhase || continuation || !active)
-      throw new Error("Unexpected participant tool call");
-    const turn = parseParticipantTool(args, speechEnabled);
-    const reply = deferred<string>();
-    continuation = reply;
-    lastActionCount = turn.actions.length;
-    events.emit({ turn });
-    return reply.promise;
-  });
-  const closeSession = (): Promise<boolean> =>
-    (sessionClosing ??= Promise.resolve()
-      .then(() => session.close())
-      .catch(() => false)
-      .then((confirmed) => {
-        if (!confirmed) failedCleanup = true;
-        return confirmed;
-      }));
-  const revoke = (): void => {
-    closed = true;
-    abortAt ??= performance.now();
-    controller?.abort();
-    continuation?.reject(new Error("Participant closed"));
-    continuation = undefined;
-    void closeSession();
+  const settings: ParticipantSettings = {
+    options,
+    timeoutMs,
+    operator,
+    speechEnabled,
+    model: options.model ?? (operator ? undefined : PARTICIPANT_PROFILE.requestedModel),
+    effort: options.reasoningEffort ?? "low",
   };
-  function launch(req: CuaTurnRequest, imageUrl: string): void {
-    active = true;
-    const signal = (controller = new AbortController()).signal;
-    nativeTask = (async () => {
-      let receipt = noDispatch(),
-        usage: ActorTokenUsage | undefined;
-      try {
-        const result = await session.run(
-          participantRunRequest(req, {
-            instructions: instructions!,
-            closing: closingPhase,
-            speechEnabled,
-            model,
-            imageUrl,
-            timeoutMs,
-            signal,
-          }),
-        );
-        receipt = runReceipt(result);
-        usage = result.usage ?? undefined;
-        if (result.dispatched && !result.usageComplete) incompleteUsage = true;
-        if (receipt.cleanup === "unconfirmed") failedCleanup = true;
-        const stopped = closed || signal.aborted;
-        events.emit({ turn: finalTurn(result, receipt, usage, { stopped, failedCleanup }) });
-      } catch (error) {
-        incompleteUsage ||= receipt.dispatched !== false && !receipt.usageComplete;
-        revoke();
-        events.emit({
-          error: isCuaProviderError(error)
-            ? error
-            : new CuaProviderError(
-                "process_failed",
-                { dispatched: "unknown", usageComplete: false, cleanup: "unconfirmed" },
-                usage,
-              ),
-        });
-      } finally {
-        active = false;
-      }
-    })();
-  }
-  async function runTurn(
-    req: CuaTurnRequest,
-    signal: AbortSignal,
-    debrief: boolean,
-  ): Promise<CuaTurn> {
-    if (events.waiting) return events.next();
-    if (signal.aborted) {
-      revoke();
-      throw new CuaProviderError("cancelled", noDispatch());
-    }
-    const conversation = {
-      instructions,
-      speechEnabled,
-      awaitingAcknowledgments: continuation !== undefined,
-      lastActionCount,
-    };
-    if (rejectsParticipantRequest(req, conversation))
-      throw new CuaProviderError("request_rejected", noDispatch());
-    const onAbort = (): void => {
-      revoke();
-    };
-    signal.addEventListener("abort", onAbort, { once: true });
-    try {
-      instructions ??= req.instructions;
-      closingPhase = debrief;
-      const imageUrl = `data:image/png;base64,${req.observation.screenshot!.toString("base64")}`;
-      if (continuation) {
-        const reply = continuation;
-        continuation = undefined;
-        reply.resolve(toolReply(req, imageUrl, speechEnabled, debrief));
-      } else if (!active) launch(req, imageUrl);
-      else throw new CuaProviderError("busy", noDispatch());
-      return await events.next();
-    } finally {
-      // The shared loop aborts each request's signal after it yields. The native
-      // turn must remain alive while humanish executes and records its actions.
-      signal.removeEventListener("abort", onAbort);
-    }
-  }
+  const state: ParticipantState = {
+    // Assigned below: the session's tool callback needs this record.
+    session: undefined as unknown as RestrictedCodexSession,
+    events: new ParticipantEvents(),
+    closed: false,
+    failedCleanup: false,
+    incompleteUsage: false,
+    active: false,
+    closingPhase: false,
+    instructions: undefined,
+    lastActionCount: undefined,
+    continuation: undefined,
+    nativeTask: undefined,
+    controller: undefined,
+    abortAt: undefined,
+    sessionClosing: undefined,
+  };
+  state.session = participantSession(options, speechEnabled, settings.effort, (args) =>
+    acceptToolCall(settings, state, args),
+  );
+  let pending: Promise<CuaTurn> | undefined,
+    closing: Promise<ParticipantProviderCloseResult> | undefined;
   const start = (req: CuaTurnRequest, signal: AbortSignal, debrief: boolean): Promise<CuaTurn> => {
-    if (closed && !events.waiting)
+    if (state.closed && !state.events.waiting)
       return Promise.reject(new CuaProviderError("request_rejected", noDispatch()));
     if (pending) return Promise.reject(new CuaProviderError("busy", noDispatch()));
-    const task = runTurn(req, signal, debrief);
+    const task = runParticipantTurn(settings, state, req, signal, debrief);
     pending = task;
     void task
       .finally(() => {
@@ -458,42 +577,17 @@ export function createRestrictedCodexParticipant(options: RestrictedParticipantO
       .catch(() => undefined);
     return task;
   };
-  const provider: CuaProvider = {
-    id: "codex-participant",
-    requiresFrame: true,
-    requestPolicy: "fail_closed",
-    get version() {
-      return session.resolvedModel ?? model;
-    },
-    get executionProfile() {
-      return participantExecutionProfile(session, operator, effort);
-    },
-    modelSettings: { reasoningEffort: effort },
-    capabilities: participantCapabilities(operator),
-    get pendingRequestUsage() {
-      const usage = session.pendingUsage;
-      return usage === undefined
-        ? undefined
-        : { ...usage, turns: session.pendingInferenceUsage ?? [] };
-    },
-    get interactionUsageIncomplete() {
-      return incompleteUsage || active;
-    },
-    get historyTurnsOmitted() {
-      return 0;
-    },
-    nextTurn: (req, signal) => start(req, signal, false),
-    debrief: (req, signal) => start(req, signal, true),
-  };
   return {
-    provider,
+    provider: participantProvider(settings, state, start),
     close: () => {
       if (closing) return closing;
-      revoke();
+      revokeParticipant(state);
       closing = (async () => {
-        const work = Promise.all([nativeTask, closeSession()]).then(([, ok]) => ok);
-        if (!(await withinCleanupBudget(work, abortAt!))) failedCleanup = true;
-        return { status: failedCleanup ? "unconfirmed" : "confirmed" };
+        const work = Promise.all([state.nativeTask, closeParticipantSession(state)]).then(
+          ([, ok]) => ok,
+        );
+        if (!(await withinCleanupBudget(work, state.abortAt!))) state.failedCleanup = true;
+        return { status: state.failedCleanup ? "unconfirmed" : "confirmed" };
       })();
       return closing;
     },

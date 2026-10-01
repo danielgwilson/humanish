@@ -19,6 +19,8 @@ const { run, sessionClose, metadata } = vi.hoisted(() => ({
   metadata: {
     resolvedModel: undefined as string | undefined,
     authentication: undefined as "chatgpt-account" | "api-key" | undefined,
+    pendingUsage: undefined as { input: number; output: number } | undefined,
+    pendingInferenceUsage: undefined as { input: number; output: number }[] | undefined,
   },
   run: vi.fn<(request: RestrictedCodexRequest) => Promise<RestrictedCodexResult>>(),
   sessionClose: vi.fn<() => Promise<boolean>>(),
@@ -32,6 +34,12 @@ vi.mock("../../../src/actors/codex/restricted-session.js", () => ({
     },
     get authentication() {
       return metadata.authentication;
+    },
+    get pendingUsage() {
+      return metadata.pendingUsage;
+    },
+    get pendingInferenceUsage() {
+      return metadata.pendingInferenceUsage;
     },
   })),
 }));
@@ -86,6 +94,8 @@ beforeEach(() => {
   run.mockReset();
   metadata.resolvedModel = undefined;
   metadata.authentication = undefined;
+  metadata.pendingUsage = undefined;
+  metadata.pendingInferenceUsage = undefined;
   sessionClose.mockReset().mockResolvedValue(true);
   createSession.mockClear();
 });
@@ -661,5 +671,223 @@ describe("restricted participant refusals", () => {
     const closing = h.close();
     await vi.advanceTimersByTimeAsync(PARTICIPANT_LIMITS.cleanupMs + 1);
     expect(await closing).toEqual({ status: "unconfirmed" });
+  });
+});
+
+// Paths the participant split moved that no earlier test pinned. Each case fails if the refusal,
+// receipt or teardown it names changes.
+describe("restricted participant guards and receipts", () => {
+  const tool = { narration: "I will try Save.", actions: [{ kind: "click", x: 1, y: 1 }] };
+  /** A native run that asks for one tool call, then waits for `finish`. */
+  function oneToolCallRun() {
+    let finish!: (value: RestrictedCodexResult) => void;
+    const finished = new Promise<RestrictedCodexResult>((resolve) => {
+      finish = resolve;
+    });
+    let toolReply: Promise<string> | undefined;
+    run.mockImplementationOnce(async () => {
+      toolReply = nativeTool()(tool);
+      void toolReply.catch(() => undefined);
+      await toolReply.catch(() => undefined);
+      return finished;
+    });
+    return { finish, reply: () => toolReply! };
+  }
+
+  it("refuses a request timeout outside 1 ms to the participant limit", () => {
+    for (const requestTimeoutMs of [0, 1.5, PARTICIPANT_LIMITS.requestMs + 1])
+      expect(() => createRestrictedCodexParticipant({ requestTimeoutMs })).toThrow(
+        expect.objectContaining({ code: "request_rejected" }),
+      );
+  });
+
+  it("refuses a native tool call when no native run is active", async () => {
+    createRestrictedCodexParticipant();
+    await expect(nativeTool()(tool)).rejects.toThrow("Unexpected participant tool call");
+  });
+
+  it("refuses a second native tool call while one waits for its acknowledgments", async () => {
+    let second: Promise<string> | undefined;
+    run.mockImplementationOnce(async () => {
+      const first = nativeTool()(tool);
+      void first.catch(() => undefined);
+      second = nativeTool()(tool);
+      void second.catch(() => undefined);
+      return new Promise<RestrictedCodexResult>(() => undefined);
+    });
+    const h = createRestrictedCodexParticipant();
+    await h.provider.nextTurn(request(), new AbortController().signal);
+    await expect(second!).rejects.toThrow("Unexpected participant tool call");
+    await h.close();
+  });
+
+  it("refuses a native tool call during the debrief and after close", async () => {
+    let debriefCall: Promise<string> | undefined;
+    run.mockImplementationOnce(async () => {
+      debriefCall = nativeTool()(tool);
+      void debriefCall.catch(() => undefined);
+      return result();
+    });
+    const h = createRestrictedCodexParticipant();
+    await h.provider.debrief!(request(), new AbortController().signal);
+    await expect(debriefCall!).rejects.toThrow("Unexpected participant tool call");
+    await h.close();
+    await expect(nativeTool()(tool)).rejects.toThrow("Unexpected participant tool call");
+  });
+
+  it("refuses a native tool call after close while the native run is still active", async () => {
+    let openGate!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      openGate = resolve;
+    });
+    let lateCall: Promise<string> | undefined;
+    run.mockImplementationOnce(async () => {
+      await nativeTool()(tool);
+      await gate;
+      lateCall = nativeTool()(tool);
+      void lateCall.catch(() => undefined);
+      return result();
+    });
+    const h = createRestrictedCodexParticipant();
+    await h.provider.nextTurn(request(), new AbortController().signal);
+    const pending = h.provider.nextTurn(
+      { ...request(), previousExecution: { actions: [{ index: 0, status: "completed" }] } },
+      new AbortController().signal,
+    );
+    void pending.catch(() => undefined);
+    const closed = h.close();
+    openGate();
+    await vi.waitFor(() => expect(lateCall).toBeDefined());
+    await expect(lateCall!).rejects.toThrow("Unexpected participant tool call");
+    await expect(pending).rejects.toMatchObject({ code: "cancelled" });
+    await closed;
+  });
+
+  it("rejects the waiting tool call when the participant closes", async () => {
+    const native = oneToolCallRun();
+    const h = createRestrictedCodexParticipant();
+    await h.provider.nextTurn(request(), new AbortController().signal);
+    const closed = h.close();
+    await expect(native.reply()).rejects.toThrow("Participant closed");
+    native.finish(result());
+    await closed;
+  });
+
+  it("confirms a native cleanup that finishes inside the cleanup budget", async () => {
+    sessionClose
+      .mockReset()
+      .mockImplementation(() => new Promise((resolve) => setTimeout(() => resolve(true), 50)));
+    const h = createRestrictedCodexParticipant();
+    await expect(h.close()).resolves.toEqual({ status: "confirmed" });
+  });
+
+  it("refuses an already-aborted request as cancelled and closes the conversation", async () => {
+    const h = createRestrictedCodexParticipant();
+    const controller = new AbortController();
+    controller.abort();
+    await expect(h.provider.nextTurn(request(), controller.signal)).rejects.toMatchObject({
+      code: "cancelled",
+      receipt: { dispatched: false },
+    });
+    await expect(
+      h.provider.nextTurn(request(), new AbortController().signal),
+    ).rejects.toMatchObject({ code: "request_rejected" });
+    expect(run).not.toHaveBeenCalled();
+    await h.close();
+  });
+
+  it("keeps the conversation alive when a request's signal aborts after it yielded", async () => {
+    const native = oneToolCallRun();
+    const h = createRestrictedCodexParticipant();
+    const first = new AbortController();
+    await h.provider.nextTurn(request(), first.signal);
+    // The shared loop aborts each request's signal after the request yields.
+    first.abort();
+    const next = h.provider.nextTurn(
+      { ...request(), previousExecution: { actions: [{ index: 0, status: "completed" }] } },
+      new AbortController().signal,
+    );
+    await native.reply();
+    native.finish(result());
+    await expect(next).resolves.toMatchObject({ done: true, outcome: "reached" });
+    await h.close();
+  });
+
+  it("refuses any request as busy while one is pending, before checking its acknowledgments", async () => {
+    run.mockImplementationOnce(() => new Promise<RestrictedCodexResult>(() => undefined));
+    const h = createRestrictedCodexParticipant();
+    const signal = new AbortController().signal;
+    void h.provider.nextTurn(request(), signal).catch(() => undefined);
+    await expect(
+      h.provider.nextTurn(
+        { ...request(), previousExecution: { actions: [{ index: 0, status: "completed" }] } },
+        signal,
+      ),
+    ).rejects.toMatchObject({ code: "busy" });
+    await h.close();
+  });
+
+  it("reports usage as incomplete while a native run is active, with its pending turns", async () => {
+    const native = oneToolCallRun();
+    const h = createRestrictedCodexParticipant();
+    expect(h.provider.interactionUsageIncomplete).toBe(false);
+    await h.provider.nextTurn(request(), new AbortController().signal);
+    expect(h.provider.interactionUsageIncomplete).toBe(true);
+    metadata.pendingUsage = { input: 7, output: 2 };
+    metadata.pendingInferenceUsage = [{ input: 7, output: 2 }];
+    expect(h.provider.pendingRequestUsage).toEqual({
+      input: 7,
+      output: 2,
+      turns: [{ input: 7, output: 2 }],
+    });
+    native.finish(result());
+    await h.close();
+  });
+
+  it("keeps the conversation's instructions without rereading a later request's", async () => {
+    run.mockResolvedValueOnce(result()).mockResolvedValueOnce(result());
+    const h = createRestrictedCodexParticipant();
+    const signal = new AbortController().signal;
+    const base = request();
+    await h.provider.nextTurn(base, signal);
+    // Admission reads instructions three times; a fourth read would see the changed value.
+    let reads = 0;
+    const later = {
+      ...request(),
+      get instructions() {
+        return ++reads <= 3 ? base.instructions : "Changed after admission.";
+      },
+    };
+    await h.provider.nextTurn(later, signal);
+    const sent = run.mock.calls[1]![0].instructions;
+    expect(sent).toContain(base.instructions);
+    expect(sent).not.toContain("Changed after admission.");
+    await h.close();
+  });
+
+  it("refuses a request as busy while the native run is active and no tool call waits", async () => {
+    const native = oneToolCallRun();
+    const h = createRestrictedCodexParticipant();
+    const signal = new AbortController().signal;
+    await h.provider.nextTurn(request(), signal);
+    // Admission reads previousExecution once; the tool reply's reread throws after the waiting
+    // tool call was taken, so that request fails and the native run stays active.
+    let reads = 0;
+    const acknowledging = {
+      ...request(),
+      get previousExecution() {
+        if (++reads > 1) throw new Error("synthetic acknowledgment read failure");
+        return { actions: [{ index: 0, status: "completed" as const }] };
+      },
+    };
+    await expect(h.provider.nextTurn(acknowledging, signal)).rejects.toThrow(
+      "synthetic acknowledgment read failure",
+    );
+    await expect(h.provider.nextTurn(request(), signal)).rejects.toMatchObject({
+      code: "busy",
+      receipt: { dispatched: false, usageComplete: false, cleanup: "confirmed" },
+    });
+    native.finish(result());
+    await h.close();
   });
 });
