@@ -23,9 +23,9 @@ import {
   emitPreflightPlan,
   makeCuaRunBudget,
   planCuaLanes,
-  readPositiveInt,
   sanitizeLaneSpecs,
 } from "./lane-plan.js";
+import { e2bRequestTimeoutMs } from "../../substrates/e2b/lifetime.js";
 import { subjectProvenanceArg } from "./lanes.js";
 import { liveCuaRejection } from "./preflight.js";
 import { cuaDescriptorOf, cuaRoute, cuaRouteOf, type ComputerUseRefusal } from "./plan.js";
@@ -475,7 +475,7 @@ function cuaLaneDeps(
   const { subjectEnvNames } = planned.route;
   const { runPaths, redactScreenshots, liveTrace } = run;
   const timeoutMs = routePlan.sessionBudgetMs;
-  const requestTimeoutMs = readPositiveInt(env.HUMANISH_E2B_REQUEST_TIMEOUT_MS, 60_000);
+  const requestTimeoutMs = e2bRequestTimeoutMs(env);
   return {
     ...(hooks.createDesktopLane
       ? {

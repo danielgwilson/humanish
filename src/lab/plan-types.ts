@@ -10,7 +10,6 @@ import type { BrowserSurface } from "../actors/scripted-browser/types.js";
 import type { ScriptedRefusal } from "../routes/scripted-browser/plan.js";
 import type { TerminalRefusal } from "../routes/terminal/plan.js";
 import type { RunLabProvenance } from "../run/status.js";
-import type { RunLabOptions } from "./engine.js";
 import type { ComputerUseRefusal } from "../routes/computer-use/plan.js";
 import type { SharedWorldRefusal } from "../routes/shared-world/plan.js";
 import type {
@@ -230,15 +229,8 @@ export interface ScriptedPlan extends PlanBase {
 
 export type LabPlan = PreviewPlan | ComputerUsePlan | SharedWorldPlan | TerminalPlan | ScriptedPlan;
 
-/** The hook bags planLab read, kept with the plan so dispatch cannot pair it with other hooks. */
-export type LabBindings = Pick<
-  RunLabOptions,
-  "cuaHooks" | "scriptedHooks" | "terminalHooks" | "sharedWorldHooks"
->;
-
 interface PlannedLab {
   readonly plan: LabPlan;
-  readonly bindings: LabBindings;
 }
 
 /** The error codes the preview route returns before a run starts. */

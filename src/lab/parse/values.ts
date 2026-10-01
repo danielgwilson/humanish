@@ -40,6 +40,16 @@ export function strList(value: unknown): string[] | undefined {
   return items.length > 0 ? items : undefined;
 }
 
+/**
+ * A positive integer from an environment value, or the fallback when it is absent or not one. It
+ * reads a leading integer the way parseInt does, so "90s" reads as 90; posInt below is stricter.
+ */
+export function readPositiveInt(value: string | undefined, fallback: number): number {
+  if (value === undefined) return fallback;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
 export function posInt(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isSafeInteger(value) && value >= 1) {
     return value;

@@ -21,6 +21,12 @@ import type { LiveSeats, PlaneContext, SharedWorldLabHooks } from "./types.js";
 import { resolveCommittedPersonasForCwd } from "../../lab/persona-resolve.js";
 import { participantAssignment } from "../../lab/participant-assignment.js";
 import { redactText } from "../../evidence/redaction.js";
+import {
+  MAX_SANDBOX_MS,
+  SANDBOX_TIMEOUT_BUFFER_MS,
+  SUBJECT_PROVISION_BUDGET_MS,
+} from "../../substrates/e2b/lifetime.js";
+import { DEFAULT_STATE_STEP_TIMEOUT_MS } from "../../subject/state.js";
 
 // The DEFAULT per-seat session budget is DERIVED, not flat. On a provisioned route the binding
 // constraint is the SUBJECT sandbox (it must outlive every seat: timeoutMs + provisioning +
@@ -29,8 +35,6 @@ import { redactText } from "../../evidence/redaction.js";
 // seed-heavy lab never gets LESS room than it always had. App-url seats have no subject sandbox
 // and default to 30 minutes (seat sandbox: 30m + 10m buffer stays well under the hour). An
 // explicit execution.timeoutMs is never adjusted. The handoff latch scales off this (40%).
-const MAX_SANDBOX_MS = 60 * 60_000;
-
 const MAX_DERIVED_SEAT_SESSION_MS = 15 * 60_000;
 
 const MIN_DERIVED_SEAT_SESSION_MS = 300_000;
@@ -47,12 +51,6 @@ export function defaultSeatSessionTimeoutMs(plan: SharedWorldPlan): number {
     MAX_SANDBOX_MS - SUBJECT_PROVISION_BUDGET_MS - stateBudgetMs - SANDBOX_TIMEOUT_BUFFER_MS;
   return Math.max(MIN_DERIVED_SEAT_SESSION_MS, Math.min(MAX_DERIVED_SEAT_SESSION_MS, room));
 }
-
-export const SANDBOX_TIMEOUT_BUFFER_MS = 10 * 60_000;
-
-export const SUBJECT_PROVISION_BUDGET_MS = 30 * 60_000;
-
-export const DEFAULT_STATE_STEP_TIMEOUT_MS = 5 * 60_000;
 
 const DEFAULT_MISSION =
   "You are one of MANY users hitting a shared web application at the same time. The browser is already open at the app. Accomplish your role's task, then stop.";

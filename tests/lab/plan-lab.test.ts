@@ -241,7 +241,7 @@ describe("planLab", () => {
     );
   });
 
-  it("keeps the caller's hooks with the plan and freezes the residual config", () => {
+  it("plans a caller-provided brain from the hooks and freezes the residual config", () => {
     const cuaHooks = {
       buildProvider: async () => {
         throw new Error("not called");
@@ -255,7 +255,6 @@ describe("planLab", () => {
       { cwd: ROOT, cuaHooks },
     );
     if (!result.ok) throw new Error(`refused on ${result.refusal.route}`);
-    expect(result.planned.bindings.cuaHooks).toBe(cuaHooks);
     const plan = result.planned.plan;
     expect(plan.route === "computer-use" && plan.runner.brain).toEqual({ kind: "caller" });
     expect(Object.isFrozen(plan.residual)).toBe(true);

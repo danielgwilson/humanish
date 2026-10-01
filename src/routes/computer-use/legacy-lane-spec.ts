@@ -1,5 +1,5 @@
-// Translation module (NEXT-PHASE step 2D keeps legacy lane spellings only in modules like this
-// one). CuaActorLabHooks is public API in the deprecated compatibility section, and two of its hooks,
+// Translation module: legacy lane spellings stay only in modules like this one, so the rest of the
+// route reads participants. CuaActorLabHooks is public API in the deprecated compatibility section, and two of its hooks,
 // buildProvider and createDesktopLane, receive a lane. They keep receiving this flat record until
 // the next minor removes the section. Internally a lane is a DesktopParticipantRun.
 

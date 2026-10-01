@@ -36,8 +36,13 @@ export const SANDBOX_WORKDIR = "/home/user/study";
  *  stream something enormous into a sandbox. */
 export const UPLOAD_MAX_BYTES = 64 * 1024 * 1024;
 
-// Server-side reclamation buffer past the codex command's own wall-clock (caps.maxMinutes) kill.
-export const SANDBOX_TIMEOUT_BUFFER_MS = 5 * 60_000;
+/**
+ * Server-side reclamation buffer past the codex command's own wall-clock (caps.maxMinutes) kill.
+ * Shorter than the desktop routes' SANDBOX_TIMEOUT_BUFFER_MS (src/substrates/e2b/lifetime.ts):
+ * when #158 set it, the terminal sandbox ran nothing but the codex command, and after its kill only
+ * teardown remained.
+ */
+export const TERMINAL_SANDBOX_TIMEOUT_BUFFER_MS = 5 * 60_000;
 
 export const DEFAULT_REQUEST_TIMEOUT_MS = 60_000;
 

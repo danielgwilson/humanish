@@ -34,12 +34,15 @@ import {
   type CuaRunBudget,
   DEFAULT_APP_URL_SESSION_TIMEOUT_MS,
   type LaneSpecsAndPlan,
-  MAX_SANDBOX_MS,
   MIN_DERIVED_SESSION_TIMEOUT_MS,
   type RunCuaActorLabOptions,
+} from "./types.js";
+import {
+  MAX_SANDBOX_MS,
   SANDBOX_TIMEOUT_BUFFER_MS,
   SUBJECT_PROVISION_BUDGET_MS,
-} from "./types.js";
+} from "../../substrates/e2b/lifetime.js";
+import { readPositiveInt } from "../../lab/parse/values.js";
 
 export function defaultSessionTimeoutMs(config: LabConfig): number {
   const provisionedRoute =
@@ -519,12 +522,6 @@ export function makeCuaRunBudget(maxTotalUsd: number): CuaRunBudget {
 
 export function digestUrl(url: string): string {
   return digestText(url, 16);
-}
-
-export function readPositiveInt(value: string | undefined, fallback: number): number {
-  if (value === undefined) return fallback;
-  const parsed = Number.parseInt(value, 10);
-  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
 /**
