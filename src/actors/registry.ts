@@ -9,14 +9,11 @@ import {
   TERMINAL_AGENT_CAPABILITIES,
   type ActorCapabilities,
   type ActorPersonaRef,
+  type ActorSessionResult,
   type ActorTrace,
 } from "./contract.js";
 import { codexResultToActorTrace } from "./codex/app-server-actor-trace.js";
-import {
-  runTerminalAgentSession,
-  type TerminalAgentSessionOptions,
-  type TerminalAgentSessionResult,
-} from "./terminal-agent.js";
+import { runTerminalAgentSession, type TerminalAgentSessionOptions } from "./terminal-agent.js";
 import { runCuaActorSession, type CuaActorSessionOptions } from "./computer-use/actor.js";
 import { LOCAL_AGENT_CAPABILITIES } from "./local-agent/cli.js";
 import type { CuaLoopResult } from "./computer-use/loop.js";
@@ -75,7 +72,7 @@ export interface ScriptedBrowserActorDescriptor extends ActorDescriptorBase {
 // runTerminalProductLab so sandbox lifecycle, caps, evidence, and by-id cleanup stay atomic.
 export interface TerminalActorDescriptor extends ActorDescriptorBase {
   id: "codex-exec";
-  runSession(options: TerminalAgentSessionOptions): Promise<TerminalAgentSessionResult>;
+  runSession(options: TerminalAgentSessionOptions): Promise<ActorSessionResult>;
 }
 
 export type ActorDescriptor =

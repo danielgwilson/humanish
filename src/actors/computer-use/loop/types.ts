@@ -2,9 +2,8 @@ import type { HeardSpeech } from "../speech.js";
 import type {
   ActorCapabilities,
   ActorExecutionProfile,
-  ActorCompletionReason,
   ActorPersonaRef,
-  ActorStatus,
+  ActorSessionResult,
   ActorTokenUsage,
   ActorTrace,
   ActorTraceItem,
@@ -406,9 +405,5 @@ export type CuaLiveMetadata = Pick<
   "executionProfile" | "providerRequests" | "historyTurnsOmitted"
 >;
 
-export interface CuaLoopResult {
-  status: ActorStatus;
-  completionReason: ActorCompletionReason;
-  reason: string;
-  trace: ActorTrace;
-}
+/** What runComputerUseLoop returns; the public name for an actor session result. */
+export type CuaLoopResult = ActorSessionResult;

@@ -472,6 +472,18 @@ export interface ActorTrace {
   capabilities: ActorCapabilities;
 }
 
+/**
+ * What an actor's session returns: its status, why it ended, a one-line reason, and the
+ * provider-neutral trace (humanish.actor-trace.v1). The computer-use loop, the terminal agent and
+ * the scripted browser return this shape; the scripted browser adds its native capture.
+ */
+export interface ActorSessionResult {
+  status: ActorStatus;
+  completionReason: ActorCompletionReason;
+  reason: string;
+  trace: ActorTrace;
+}
+
 export const CODEX_APP_SERVER_CAPABILITIES: ActorCapabilities = {
   headless: true,
   structuredTrace: true,

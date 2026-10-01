@@ -233,6 +233,22 @@ interface PlannedLab {
   readonly plan: LabPlan;
 }
 
+/**
+ * The error a route returns before a run starts: the route, its error code and a message. Each
+ * route's refusal extends it with what that route adds (the registered actor, where the route
+ * returns it).
+ */
+export interface RouteRefusal<Route extends string, Code extends string> {
+  readonly route: Route;
+  readonly code: Code;
+  readonly message: string;
+}
+
+/** A route's plan, or the refusal that stopped it before a run started. */
+export type RoutePlanResult<Plan, Refusal> =
+  | { readonly ok: true; readonly plan: Plan }
+  | { readonly ok: false; readonly refusal: Refusal };
+
 /** The error codes the preview route returns before a run starts. */
 export type PreviewRefusalCode =
   | "HUMANISH_LAB_COMMS_UNSUPPORTED"
@@ -242,7 +258,7 @@ export type PreviewRefusalCode =
 
 /** Why planLab refused: the route's own code and message, as its runner returns them. */
 export type PlanRefusal =
-  | { readonly route: "preview"; readonly code: PreviewRefusalCode; readonly message: string }
+  | RouteRefusal<"preview", PreviewRefusalCode>
   | TerminalRefusal
   | ScriptedRefusal
   | ComputerUseRefusal
