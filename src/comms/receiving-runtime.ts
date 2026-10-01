@@ -1,7 +1,7 @@
 import { registerTransientCommsSecrets } from "../run/transient-comms-secrets.js";
 import type { LabConfig } from "../lab/types.js";
 import { readCommsConnections, type CommsConnection } from "./connections.js";
-import { discoverProviderKeys } from "../keys/key-resolution.js";
+import { discoverProviderKeys, type KeyResolutionDeps } from "../keys/key-resolution.js";
 import { createAgentMailReceiver } from "./agentmail.js";
 import { startCommsReceiving } from "./receiving.js";
 import { renderReceivingInbox } from "./receiving-render.js";
@@ -20,11 +20,15 @@ export function createReceivingAdapter(
   }
 }
 
-/** Host-only resolution. The returned credential must never cross a desktop or UI boundary. */
+/**
+ * Host-only resolution. The returned credential must never cross a desktop or UI boundary.
+ * `keyDeps` points key discovery's vendor stores elsewhere; tests use a temp home.
+ */
 export async function resolveReceivingConnection(
   cwd: string,
   name: string,
   env: NodeJS.ProcessEnv,
+  keyDeps?: KeyResolutionDeps,
 ): Promise<{
   connection: CommsConnection;
   apiKey: string;
@@ -36,7 +40,12 @@ export async function resolveReceivingConnection(
       "Email connection is missing. Open Connections in the TUI or run humanish comms connections add.",
     );
   const resolved = { ...env };
-  await discoverProviderKeys({ cwd, env: resolved, announce: () => {} });
+  await discoverProviderKeys({
+    cwd,
+    env: resolved,
+    announce: () => {},
+    ...(keyDeps === undefined ? {} : { deps: keyDeps }),
+  });
   const apiKey = resolved[connection.apiKeyEnv]?.trim();
   if (!apiKey)
     throw new Error(

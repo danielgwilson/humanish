@@ -20,7 +20,7 @@ import {
 import { inspectLabManifest } from "./discover.js";
 import { isComputerUseComposition } from "./routing.js";
 import type { LabActor, LabConfig } from "./types.js";
-import { probeKeySources } from "../keys/key-resolution.js";
+import { probeKeySources, type KeyResolutionDeps } from "../keys/key-resolution.js";
 import { receivingRequiredKey } from "../comms/setup.js";
 import { rosterOf } from "./parse/actors.js";
 
@@ -129,6 +129,8 @@ export interface ReadLabSummaryOptions {
   /** Skip the key probe (it touches vendor stores); the screen then shows no keys line. */
   checkKeys?: boolean;
   env?: NodeJS.ProcessEnv;
+  /** Where the key probe looks for vendor stores; tests point it at a temp home. */
+  keyDeps?: KeyResolutionDeps;
 }
 
 /**
@@ -165,7 +167,11 @@ export async function readLabSummary(
     ];
     const probes = dryRun
       ? []
-      : await probeKeySources(candidates, { cwd, env: options.env ?? process.env }).catch(() => []);
+      : await probeKeySources(candidates, {
+          cwd,
+          env: options.env ?? process.env,
+          ...(options.keyDeps === undefined ? {} : { deps: options.keyDeps }),
+        }).catch(() => []);
     const present = new Set(
       probes.filter((probe) => probe.source !== null).map((probe) => probe.name),
     );
