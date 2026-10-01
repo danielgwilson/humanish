@@ -10,6 +10,7 @@ import {
   renderPersonaPromptSection,
 } from "../../lab/persona.js";
 import { digestText, redactText, scrubLiterals } from "../../evidence/redaction.js";
+import { describeMissingKeys } from "../../keys/key-resolution.js";
 import { prepareSelectedOutputDirectory } from "../../run/contained-output.js";
 import { buildRunSource } from "../../run/bundle.js";
 import { renderTerminalReviewMarkdown } from "./bundle.js";
@@ -48,6 +49,13 @@ export async function runLiveTerminalSession(
   const runtimeEnv = buildRuntimeAuth({ runtimeAuth: plan.runtime.auth, env });
   if (!runtimeEnv.ok) {
     return failed(runtimeEnv.code, runtimeEnv.message);
+  }
+  // The sandbox is created with E2B_API_KEY, so a missing key is refused before the run starts.
+  if (!env.E2B_API_KEY?.trim()) {
+    return failed(
+      "HUMANISH_TERMINAL_LAB_KEYS_MISSING",
+      `Live terminal-product labs need E2B_API_KEY in the environment (values are never persisted). ${describeMissingKeys(["E2B_API_KEY"], env)}`,
+    );
   }
 
   const prepared = await prepareLivePrompt({ plan, cwd, runtimeEnv, env, warnings });
