@@ -170,7 +170,7 @@ function assertFinished(bundle: RunBundle): void {
     "suspended",
   ];
   if (
-    bundle.simulations.some((sim) => unfinished.includes(sim.status)) ||
+    bundle.simulations.some((record) => unfinished.includes(record.status)) ||
     bundle.streams.some(
       (stream) =>
         unfinished.includes(stream.status) ||

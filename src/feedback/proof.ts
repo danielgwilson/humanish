@@ -41,10 +41,10 @@ function isFirstPartyCandidate(bundle: RunBundle, candidate: RunFeedbackCandidat
     candidate.proposed_next_state === "study-quality-review" &&
     candidate.id.startsWith("participant-report-")
   ) {
-    const laneId = candidate.id.slice("participant-report-".length);
+    const participantId = candidate.id.slice("participant-report-".length);
     return (
-      laneId.length > 0 &&
-      candidate.idempotency_key === `humanish:${bundle.runId}:${laneId}:participant-report`
+      participantId.length > 0 &&
+      candidate.idempotency_key === `humanish:${bundle.runId}:${participantId}:participant-report`
     );
   }
 
