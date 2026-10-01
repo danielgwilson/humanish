@@ -20,9 +20,10 @@ import type { CuaParticipantDeps, DesktopParticipantRun } from "../types.js";
  * lane's teardown decision, and vice versa.
  */
 function participantKeepReason(deps: CuaParticipantDeps): string | undefined {
-  const { config, cloneRoute, localTreeRoute } = deps;
-  if (cloneRoute && config.subject.clone?.keep === true) return "subject.clone.keep";
-  if (localTreeRoute && config.subject.localTree?.keep === true) return "subject.localTree.keep";
+  const { config, subject } = deps;
+  if (subject.kind === "clone" && config.subject.clone?.keep === true) return "subject.clone.keep";
+  if (subject.kind === "local-tree" && config.subject.localTree?.keep === true)
+    return "subject.localTree.keep";
   return undefined;
 }
 

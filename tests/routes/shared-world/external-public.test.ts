@@ -61,6 +61,7 @@ import {
   type PinnedVerifyResult,
 } from "../../helpers/verify-findings.js";
 import * as observerRender from "../../../src/observer/render.js";
+import { fullScreenXwininfo } from "../../helpers/full-screen-xwininfo.js";
 import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
 import { captureStderr, runDirSnapshot } from "../../helpers/run-golden.js";
 
@@ -165,18 +166,6 @@ function makeFakeModule(commandHandler: (command: string) => { stdout?: string }
     },
   };
   return { module, created, killed, sandboxes };
-}
-
-/** xwininfo -stats for a viewable window filling the screen (tests/fixtures/desktop-geometry). */
-function fullScreenXwininfo(width: number, height: number): string {
-  return [
-    `  Absolute upper-left X:  0`,
-    `  Absolute upper-left Y:  0`,
-    `  Width: ${width}`,
-    `  Height: ${height}`,
-    `  Map State: IsViewable`,
-    "",
-  ].join("\n");
 }
 
 function browserGeometryHandler(command: string): { stdout?: string } | undefined {

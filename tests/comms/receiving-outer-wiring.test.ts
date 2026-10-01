@@ -26,6 +26,7 @@ import {
   writeContainedOutputFile,
   type PreparedOutputRoot,
 } from "../../src/run/contained-output.js";
+import { fullScreenXwininfo } from "../helpers/full-screen-xwininfo.js";
 import { inertDesktopInput } from "../helpers/inert-desktop-input.js";
 
 type Preparation = {
@@ -136,8 +137,9 @@ function desktopModule(events: string[], failCreate: boolean, world: FakeWorld) 
             run: async (command: string) => {
               if (command.includes("xdpyinfo"))
                 return { exitCode: 0, stdout: `dimensions: ${width}x${height} pixels\n` };
-              if (command.includes("getwindowgeometry"))
-                return { exitCode: 0, stdout: `X=0\nY=0\nWIDTH=${width}\nHEIGHT=${height}\n` };
+              // Physical client bounds are read with xwininfo (src/substrates/e2b/desktop-geometry.ts).
+              if (command.includes("xwininfo -id"))
+                return { exitCode: 0, stdout: fullScreenXwininfo(width, height) };
               if (command.includes("browser_preference='default'"))
                 return { exitCode: 0, stdout: "HUMANISH_BROWSER_RESOLVED=google-chrome\n" };
               if (command.includes("find_chrome_window"))
