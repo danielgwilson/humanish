@@ -3070,7 +3070,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_CUA_LAB_FANOUT_INVALID",
-          "message": "Multi-lane fan-out is not supported on the in-process route (cuaHooks.buildExecutor) — fan-out provisions one independent E2B desktop per lane, which the in-process route deliberately skips. Run a single in-process lane, or fan out on the E2B route."
+          "message": "Multi-lane fan-out is not supported on the in-process route (RunLabOptions.inProcess, or the deprecated cuaHooks.buildExecutor) — fan-out provisions one independent E2B desktop per lane, which the in-process route deliberately skips. Run a single in-process lane, or fan out on the E2B route."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
