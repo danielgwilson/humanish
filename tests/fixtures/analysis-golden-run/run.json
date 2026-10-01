@@ -1,0 +1,180 @@
+{
+  "schema": "humanish.run-bundle.v1",
+  "runId": "analysis-golden",
+  "mode": "dry-run",
+  "simCount": 1,
+  "createdAt": "2026-10-01T20:53:30.204Z",
+  "cwd": "[target-cwd]",
+  "artifactRoot": ".humanish/runs/analysis-golden",
+  "source": {
+    "packageName": "humanish-minimal-fixture-app",
+    "humanishSource": "missing",
+    "git": {
+      "schema": "humanish.git-state.v1",
+      "status": "missing",
+      "capturedAt": "2026-10-01T20:53:30.204Z",
+      "head": {
+        "shortSha": null,
+        "refState": "unknown"
+      },
+      "changes": {
+        "staged": 0,
+        "unstaged": 0,
+        "untracked": 0,
+        "total": 0
+      },
+      "note": "No git work tree was detected."
+    }
+  },
+  "persona": {
+    "id": "builtin-synthetic-new-user",
+    "name": "Built-in Synthetic New User",
+    "source": "builtin:synthetic-new-user",
+    "sourceDigest": "builtin"
+  },
+  "scenario": {
+    "id": "builtin-first-run-smoke",
+    "title": "Built-in First-Run Smoke",
+    "goal": "Create a public-safe dry-run contract bundle from built-in defaults.",
+    "source": "builtin:first-run-smoke",
+    "sourceDigest": "builtin"
+  },
+  "lifecycle": [
+    {
+      "at": "2026-10-01T20:53:30.204Z",
+      "event": "run.created",
+      "message": "Synthetic dry-run contract bundle created with 1 simulated participant."
+    },
+    {
+      "at": "2026-10-01T20:53:30.204Z",
+      "event": "persona.selected",
+      "message": "Selected public-safe synthetic persona."
+    },
+    {
+      "at": "2026-10-01T20:53:30.204Z",
+      "event": "scenario.selected",
+      "message": "Selected public-safe first-run scenario."
+    },
+    {
+      "at": "2026-10-01T20:53:30.204Z",
+      "event": "review.skeleton.created",
+      "message": "Created review skeleton without claiming product proof."
+    }
+  ],
+  "simulations": [
+    {
+      "id": "sim-01",
+      "index": 1,
+      "personaId": "builtin-synthetic-new-user",
+      "scenarioId": "builtin-first-run-smoke",
+      "status": "contract_proof_only",
+      "streamKind": "ui",
+      "mode": "browser-sim",
+      "progress": 100,
+      "currentStep": "Route and viewport contract captured",
+      "summary": "Simulated browser participant reserved for VNC playback, screenshots, route state, and interaction trace.",
+      "streamIds": [
+        "sim-01-ui"
+      ],
+      "startedAt": "2026-10-01T20:53:30.204Z",
+      "updatedAt": "2026-10-01T20:53:30.204Z"
+    }
+  ],
+  "streams": [
+    {
+      "id": "sim-01-ui",
+      "simId": "sim-01",
+      "kind": "ui",
+      "label": "UI journey",
+      "status": "contract_proof_only",
+      "transport": "polling",
+      "updatedAt": "2026-10-01T20:53:30.204Z",
+      "embed": {
+        "kind": "placeholder",
+        "title": "UI journey"
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 960,
+        "deviceScaleFactor": 1
+      },
+      "terminal": {
+        "title": "UI journey",
+        "format": "plain",
+        "stdin": "disabled",
+        "tail": "open target app\nresolve first-run route\ncapture viewport state\nrecord interaction trace"
+      },
+      "ui": {
+        "route": "/first-run",
+        "intent": "Simulated browser participant reserved for VNC playback, screenshots, route state, and interaction trace.",
+        "state": "contract-only"
+      },
+      "artifacts": [
+        {
+          "label": "run bundle",
+          "path": "run.json",
+          "kind": "bundle"
+        },
+        {
+          "label": "review",
+          "path": "review.md",
+          "kind": "review"
+        },
+        {
+          "label": "event log",
+          "path": "events.ndjson",
+          "kind": "events"
+        }
+      ]
+    }
+  ],
+  "events": [
+    {
+      "id": "event-000",
+      "at": "2026-10-01T20:53:30.204Z",
+      "level": "info",
+      "type": "observer.contract.created",
+      "message": "Created public-safe observer stream contract."
+    },
+    {
+      "id": "event-001-a",
+      "at": "2026-10-01T20:53:30.204Z",
+      "level": "info",
+      "type": "sim.contract.ready",
+      "message": "UI journey stream contract ready.",
+      "simId": "sim-01",
+      "streamId": "sim-01-ui"
+    },
+    {
+      "id": "event-001-b",
+      "at": "2026-10-01T20:53:30.204Z",
+      "level": "warn",
+      "type": "sim.live-substrate.missing",
+      "message": "No live actor launched in dry-run mode; the observer stream is ready for real substrate evidence.",
+      "simId": "sim-01",
+      "streamId": "sim-01-ui"
+    }
+  ],
+  "redaction": {
+    "status": "passed",
+    "notes": "Dry-run bundle contains synthetic contract proof only."
+  },
+  "artifacts": {
+    "run": "run.json",
+    "reviewJson": "review.json",
+    "reviewMarkdown": "review.md",
+    "observerData": "observer/observer-data.json",
+    "events": "events.ndjson"
+  },
+  "review": {
+    "schema": "humanish.review.v1",
+    "verdict": "contract_proof_only",
+    "summary": "Synthetic dry-run bundle was generated. This proves humanish artifact plumbing, not product behavior.",
+    "gaps": [
+      "No browser was launched.",
+      "No product state was verified.",
+      "No model, provider, or E2B substrate was used."
+    ]
+  },
+  "feedbackCandidates": []
+}
