@@ -1,10 +1,11 @@
-// Counts identifiers in src/ that still use the retired participant words. The code says
-// participant; lane, seat, role and sim survive only as contract spellings, which belong in the
-// modules that translate the manifest and the run bundle, and in the Observer that renders them.
-// vocabulary:check caps each word's count, and the caps only go down.
+// Counts identifiers in src/ that still use the retired words. The code says participant; lane,
+// seat, role and sim survive only as contract spellings, which belong in the modules that
+// translate the manifest and the run bundle, and in the Observer that renders them. Study gives
+// way to analysis and run; what remains spells saved or wire names, such as a stop cause, an env
+// var and a summary JSON key. vocabulary:check holds each word's count to its cap.
 import { parseSync } from "oxc-parser";
 
-export const RETIRED_WORDS = ["lane", "seat", "role", "sim"] as const;
+export const RETIRED_WORDS = ["lane", "seat", "role", "sim", "study"] as const;
 export type RetiredWord = (typeof RETIRED_WORDS)[number];
 
 // Paths under src/ whose identifiers may keep the contract spellings. Each translation module
@@ -20,6 +21,22 @@ export const EXEMPT_PREFIXES = [
   "src/run/cost-summary.ts",
   // The deprecated cuaHooks record (CuaLaneSpec), public until the compatibility section goes.
   "src/routes/computer-use/legacy-lane-spec.ts",
+  // The manifest's actors[0].lanes and laneFocus keys, which the parser reads.
+  "src/lab/parse/actors.ts",
+  // The manifest's comms recipient key, `lane`, which the parser reads.
+  "src/lab/parse/comms.ts",
+  // Every manifest key the parser accepts, including lanes, laneFocus and a recipient's lane.
+  "src/lab/keys.ts",
+  // The manifest's types, whose keys keep lanes, laneFocus and lane.
+  "src/lab/types.ts",
+  // The saved run bundle's fields (laneId, simId, simIds), checked when a bundle is read.
+  "src/run/bundle-shape.ts",
+  // The saved sharedWorld block (roleId, laneWindows, simId), checked when a bundle is read.
+  "src/run/shared-world-shape.ts",
+  // The saved stream record's simId, checked when a bundle is read.
+  "src/run/stream-shape.ts",
+  // Deprecated exports, named as they were published, until the next minor removes them.
+  "src/deprecated.ts",
 ];
 
 export function isCounted(path: string): boolean {
@@ -38,7 +55,12 @@ export function identifierWords(name: string): string[] {
 /** The retired word a single identifier word spells, singular or plural, in any case. */
 export function retiredWordOf(word: string): RetiredWord | undefined {
   const lower = word.toLowerCase();
-  const singular = lower.endsWith("s") ? lower.slice(0, -1) : lower;
+  // "studies" is the plural of "study"; the other words add a plain s.
+  const singular = lower.endsWith("ies")
+    ? `${lower.slice(0, -3)}y`
+    : lower.endsWith("s")
+      ? lower.slice(0, -1)
+      : lower;
   return (RETIRED_WORDS as readonly string[]).includes(singular)
     ? (singular as RetiredWord)
     : undefined;

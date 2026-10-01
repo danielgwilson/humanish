@@ -1,8 +1,8 @@
 /**
- * Counts the retired participant words (lane, seat, role, sim) in src/ identifiers outside the
- * exempt paths (see lib/retired-words.ts) and fails when a count rises above its cap in
- * package.json's vocabulary:check script. The caps only go down: lower one in the PR that
- * removes the words.
+ * Counts the retired words (lane, seat, role, sim, study) in src/ identifiers outside the exempt
+ * paths (see lib/retired-words.ts) and holds each count to its cap in package.json's
+ * vocabulary:check script: a count above its cap fails, and so does one below it, so the PR that
+ * removes the words lowers the cap.
  */
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
@@ -35,21 +35,34 @@ for (const file of files) {
   }
 }
 
-let failed = false;
+const rose: string[] = [];
+const fell: string[] = [];
 for (const [word, list] of hits) {
   const max = values[`max-${word}`];
   const cap = typeof max === "string" ? Number(max) : undefined;
-  const over = cap !== undefined && list.length > cap;
-  failed ||= over;
+  const count = list.length;
+  if (cap !== undefined && count > cap) rose.push(word);
+  if (cap !== undefined && count < cap) fell.push(`--max-${word}=${count}`);
   const status =
-    cap === undefined ? "" : over ? ` (cap ${cap}, over by ${list.length - cap})` : ` (cap ${cap})`;
-  process.stdout.write(`${word}: ${list.length}${status}\n`);
+    cap === undefined
+      ? ""
+      : count > cap
+        ? ` (cap ${cap}, over by ${count - cap})`
+        : count < cap
+          ? ` (cap ${cap}, under by ${cap - count})`
+          : ` (cap ${cap})`;
+  process.stdout.write(`${word}: ${count}${status}\n`);
   if (values.list) process.stdout.write(list.map((hit) => `  ${hit}\n`).join(""));
 }
-if (failed) {
+if (rose.length > 0) {
   process.stdout.write(
     "A retired word count rose. `pnpm exec tsx scripts/check-retired-words.ts --list` prints every\n" +
       "hit. Name new code for the participant, or keep the contract spelling in its translation module.\n",
   );
-  process.exitCode = 1;
 }
+if (fell.length > 0) {
+  process.stdout.write(
+    `A retired word count fell. Lower the cap in package.json's vocabulary:check script in this PR: ${fell.join(" ")}.\n`,
+  );
+}
+if (rose.length > 0 || fell.length > 0) process.exitCode = 1;

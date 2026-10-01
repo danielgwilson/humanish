@@ -67,12 +67,13 @@ Two kinds of change need one more step:
   the packed package.
 
 `pnpm format` rewrites files with oxfmt. `pnpm check` fails on unformatted files.
-It also caps three counts in package.json: oxlint warnings (`lint`), prose in `src/`
+It also holds three counts to caps in package.json: oxlint warnings (`lint`), prose in `src/`
 comments (`prose:check`: issue references, `FIX-N` tags, all-caps emphasis), and identifiers in
-`src/` outside `src/observer/` that still say lane, seat, role or sim (`vocabulary:check`). The
-caps only go down; lower one in the PR that reduces its count. `pnpm lint` prints the warnings
-that already exist, several hundred of them; that is expected. It fails only when the count rises
-above the `--max-warnings` cap, which is what CI checks. `pnpm knip` fails on unused files,
+`src/` outside the exempt contract modules that still say lane, seat, role, sim or study
+(`vocabulary:check`). Each check fails when its count rises above the cap and also when it falls
+below it, so the PR that reduces a count lowers the cap in the same commit; the failure message
+names the flag and the new value. `pnpm lint` prints the warnings that already exist, several
+hundred of them; that is expected. `pnpm knip` fails on unused files,
 dependencies and exports, and on any import cycle.
 
 ## Useful Commands

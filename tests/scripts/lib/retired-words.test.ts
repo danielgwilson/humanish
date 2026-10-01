@@ -24,6 +24,17 @@ describe("retired vocabulary count", () => {
     expect(words("sims")).toEqual(["sim"]);
   });
 
+  it("reads -ies as the plural of study", () => {
+    expect(retiredWordOf("studies")).toBe("study");
+    expect(retiredWordOf("Studies")).toBe("study");
+    expect(words("studyUsd")).toEqual(["study"]);
+    expect(words("readStudiesIndex")).toEqual(["study"]);
+    expect(words("STUDY_COST_ACCOUNTING_UNAVAILABLE")).toEqual(["study"]);
+    // Another -ies word maps to its own -y singular, which is not retired.
+    expect(retiredWordOf("entries")).toBeUndefined();
+    expect(words("studied")).toEqual([]);
+  });
+
   it("leaves words that only contain a retired word alone", () => {
     for (const name of [
       "plane",
@@ -65,6 +76,9 @@ describe("retired vocabulary count", () => {
         "observer/lib/study-analysis.ts",
         "tests/routes/computer-use/lanes.test.ts",
         "src/run/bundle.md",
+        "src/lab/parse/actors.ts",
+        "src/run/bundle-shape.ts",
+        "src/deprecated.ts",
       ].filter(isCounted),
     ).toEqual(["src/routes/computer-use/lanes.ts"]);
   });
