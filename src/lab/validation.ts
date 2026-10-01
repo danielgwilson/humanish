@@ -231,7 +231,7 @@ export function receivingEmailValidationReason(config: LabConfig): string | unde
     !isComputerUseComposition(config) ||
     !["app-url", "clone", "local-tree"].includes(config.subject.source)
   ) {
-    return "Real email receiving requires a hosted computer-use browser study with an app-url, clone, or local-tree subject. Scripted, terminal, desktop-cli and local-app routes are unsupported.";
+    return "Real email receiving requires a hosted computer-use browser lab with an app-url, clone, or local-tree subject. Scripted, terminal, desktop-cli and local-app routes are unsupported.";
   }
   if (config.actors.some((actor) => actor.type === "local-agent")) {
     return "Real email receiving is unavailable for local-agent: its host process does not isolate the inbox management credential. Use a hosted first-party computer-use actor.";
@@ -316,7 +316,7 @@ function sharedWorldConcurrencyReason(config: LabConfig): string | null {
   const participants = rosterOf(config.actors[0])?.length ?? 0;
   const concurrency = config.execution?.concurrency ?? participants;
   if (concurrency >= 2) return null;
-  return `shared-world studies need \`execution.concurrency\` of at least 2 (got ${concurrency}). Sequential shared-world turns (concurrency 1) were removed in 0.106.0: omit execution.concurrency to run every participant at once, or set it to 2 or more. A provisioned subject also needs \`subject.exposure: synthetic\` and a \`serve.start\` that binds 0.0.0.0.`;
+  return `shared-world labs need \`execution.concurrency\` of at least 2 (got ${concurrency}). Sequential shared-world turns (concurrency 1) were removed in 0.106.0: omit execution.concurrency to run every participant at once, or set it to 2 or more. A provisioned subject also needs \`subject.exposure: synthetic\` and a \`serve.start\` that binds 0.0.0.0.`;
 }
 
 /**
@@ -434,5 +434,5 @@ export function automaticAnalysisRouteReason(config: LabConfig): string | undefi
     )
   )
     return undefined;
-  return "review.analysis requires a computer-use, scripted-browser, terminal-product or shared-world study; this lab's route does not produce an eligible live recording.";
+  return "review.analysis requires a computer-use, scripted-browser, terminal-product or shared-world lab; this lab's route does not produce an eligible live recording.";
 }

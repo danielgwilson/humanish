@@ -11,7 +11,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_TERMINAL_LAB_SUBJECT_INVALID",
-      "message": "Real email receiving is unsupported on the terminal route. Use a supported hosted computer-use browser study."
+      "message": "Real email receiving is unsupported on the terminal route. Use a supported hosted computer-use browser lab."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -186,7 +186,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_TERMINAL_LAB_SUBJECT_INVALID",
-      "message": "Real email receiving is unsupported on the terminal route. Use a supported hosted computer-use browser study."
+      "message": "Real email receiving is unsupported on the terminal route. Use a supported hosted computer-use browser lab."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {

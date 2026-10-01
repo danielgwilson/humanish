@@ -100,7 +100,7 @@ export function firstRunSteps(env: FirstRunEnvironment): FirstRunStep[] {
         : "local rootful Docker, KVM, TUN, and a supported signed-in Codex CLI";
     steps.push({
       command: "humanish doctor --lab local-browser",
-      why: `check the local browser study (${prerequisites}); no resources or quota used. Run \`humanish runtime setup\` to prepare it, then start your app and run \`humanish run local-browser\`; no E2B or model API key`,
+      why: `check the local browser lab (${prerequisites}); no resources or quota used. Run \`humanish runtime setup\` to prepare it, then start your app and run \`humanish run local-browser\`; no E2B or model API key`,
     });
     return steps;
   }
@@ -178,7 +178,7 @@ export function agentsSection(): string {
     "",
     "```bash",
     "humanish doctor --lab try-live  # requirements for the selected participant and analysis",
-    "humanish lab list --json   # the studies in this project",
+    "humanish lab list --json   # the labs in this project",
     "humanish run first-run     # evidence preview only: no browser, model, keys, or spend",
     "humanish doctor --lab local-browser  # local Docker/Firecracker + Codex-account readiness",
     "humanish run local-browser # your loopback app; no E2B or model API key",
@@ -186,9 +186,9 @@ export function agentsSection(): string {
     "humanish verify --run latest --json   # is the evidence share-safe",
     "```",
     "",
-    "- Studies are declared in `humanish/labs/*.yaml`. Edit `try-live.yaml`'s `subject` to point at",
+    "- Labs are declared in `humanish/labs/*.yaml`. Edit `try-live.yaml`'s `subject` to point at",
     "  this project's own app once you have seen a run work.",
-    "- Configure the local study without editing YAML: `humanish init --yes --local-browser",
+    "- Configure the local lab without editing YAML: `humanish init --yes --local-browser",
     '  http://127.0.0.1:3000 --local-mission "Complete the primary flow"` on first setup.',
     "- Evidence lands in gitignored `.humanish/runs/`. Never commit it, and never paste raw run",
     "  bundles into an issue — `humanish feedback issue` produces a redacted, share-safe draft.",

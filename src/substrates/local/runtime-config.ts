@@ -48,7 +48,7 @@ export function localBrowserUnsupportedReason(config: LabConfig): string | undef
     !actor ||
     (actor.type === "local-agent" && actor.localAgent !== undefined && actor.localAgent !== "codex")
   ) {
-    return "Local browser studies currently support Codex local-agent or openai-computer-use participants.";
+    return "Local browser labs currently support Codex local-agent or openai-computer-use participants.";
   }
   if (
     desktop?.resolution?.[0] !== 960 ||

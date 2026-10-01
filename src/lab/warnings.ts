@@ -182,7 +182,7 @@ const CONFIG_ROWS: readonly InertRow<LabConfig>[] = [
   {
     field: "comms.email.external",
     reason:
-      "this subject is harness-provisioned, so humanish hosts the catch itself and injects its URL; an adopter-hosted catch would receive nothing. Drop `external` here, or move the study to an app-url/operator-provisioned subject",
+      "this subject is harness-provisioned, so humanish hosts the catch itself and injects its URL; an adopter-hosted catch would receive nothing. Drop `external` here, or move the lab to an app-url/operator-provisioned subject",
     applies: (config) =>
       Boolean(config.comms?.email?.external) &&
       (config.subject.source === "clone" || config.subject.source === "local-tree"),

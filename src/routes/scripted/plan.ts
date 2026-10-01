@@ -77,7 +77,7 @@ export function planScriptedLab(
   if (String(config.comms?.email?.kind) === "real")
     return refuse(
       "HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID",
-      "Real email receiving is unsupported on the scripted route. Use a supported hosted computer-use browser study.",
+      "Real email receiving is unsupported on the scripted route. Use a supported hosted computer-use browser lab.",
       beforeScope,
     );
   const analysis = resolveAutomaticAnalysis(config.review?.analysis);

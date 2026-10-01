@@ -187,7 +187,7 @@ function checkTuiSession(runtime: TuiRuntime, force: boolean): TuiRefusal | unde
         message:
           `humanish tui is a surface for a person, and ${agent.marker} says this session belongs to ${agent.runner}. ` +
           "It renders frames of escape codes into a transcript, and its keys can start runs. " +
-          "`humanish runs --json` lists runs, `humanish lab list --json` lists the studies in this project, " +
+          "`humanish runs --json` lists runs, `humanish lab list --json` lists the labs in this project, " +
           "and `humanish lab run <lab> --json` starts one. If you are a person at this keyboard, add --force.",
       },
     };
