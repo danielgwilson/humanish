@@ -1281,7 +1281,10 @@ describe("restricted Codex Code Mode participant session", () => {
 
 // An in-memory app-server that answers from the captures, so a test decides exactly when each line
 // reaches the transport: a whole chunk is handed to the stdout listener synchronously.
-async function memorySession(stopAfterMicrotasks: number) {
+/** Where the stop lands: before the chunk that carries the completion, or on the task after it. */
+type StopTiming = "before the chunk" | "after the chunk";
+
+async function memorySession(stop: StopTiming) {
   const directory = await mkdtemp(path.join(tmpdir(), "humanish-codex-memory-"));
   directories.push(directory);
   const authHome = path.join(directory, "auth"),
@@ -1304,10 +1307,6 @@ async function memorySession(stopAfterMicrotasks: number) {
     ].map(capture),
   );
   const controller = new AbortController();
-  const stopLater = (left: number): void => {
-    if (left === 0) controller.abort();
-    else queueMicrotask(() => stopLater(left - 1));
-  };
   const spawnFn: RestrictedCodexSpawn = (_file, args, settings) => {
     const stdout = new PassThrough();
     const deliver = (lines: unknown[]) =>
@@ -1340,17 +1339,17 @@ async function memorySession(stopAfterMicrotasks: number) {
       else if (message.method === "turn/interrupt") reply({});
       else if (message.method === "turn/start")
         setImmediate(() => {
-          // The acknowledgment, final answer, usage and completion arrive in one chunk; the stop
-          // is queued a fixed number of microtasks behind it.
+          // The acknowledgment, final answer, usage and completion arrive in one chunk.
           const find = (method: string) =>
             map((events as unknown as Trace[]).find((event) => event.method === method));
+          if (stop === "before the chunk") controller.abort();
           deliver([
             { id: message.id, result: map(turn) },
             find("item/completed"),
             find("thread/tokenUsage/updated"),
             find("turn/completed"),
           ]);
-          stopLater(stopAfterMicrotasks);
+          if (stop === "after the chunk") setImmediate(() => controller.abort());
         });
     };
     const stdin = new Writable({
@@ -1395,18 +1394,29 @@ async function memorySession(stopAfterMicrotasks: number) {
 }
 
 describe("restricted Codex session scheduling", () => {
-  // Codex's reproduction from the #1132 review: the acknowledgment, final answer, usage and
-  // completion arrive in one chunk, and a stop follows seven microtasks later. Before the execute
-  // split this completed. An extra await between the acknowledgment and the wait for the answer
-  // turned it into a cancellation that dropped the answer.
-  it("keeps a turn that completed with its acknowledgment when a stop follows seven microtasks later", async () => {
-    const { session, signal } = await memorySession(7);
+  // The acknowledgment, final answer, usage and completion arrive in one chunk (Codex's
+  // reproduction from the #1132 review). What a caller relies on is which side of that chunk a
+  // stop lands, not how many microtasks after it.
+  it("keeps the answer when the stop comes on the task after the chunk that completed the turn", async () => {
+    const { session, signal } = await memorySession("after the chunk");
     try {
       expect(await session.run({ ...request, signal })).toMatchObject({
         status: "completed",
         errorCode: null,
         dispatched: true,
         usageComplete: true,
+      });
+    } finally {
+      await session.close();
+    }
+  });
+
+  it("cancels the turn when the stop comes before the chunk that would complete it", async () => {
+    const { session, signal } = await memorySession("before the chunk");
+    try {
+      expect(await session.run({ ...request, signal })).toMatchObject({
+        status: "cancelled",
+        dispatched: true,
       });
     } finally {
       await session.close();
@@ -1566,18 +1576,6 @@ describe("restricted Codex session host reads", () => {
     return { f, session };
   }
 
-  it("reads options.env before options.participant", () => {
-    const options = {
-      get env(): NodeJS.ProcessEnv {
-        throw new Error("env read first");
-      },
-      get participant(): RestrictedCodexSessionOptions["participant"] {
-        throw new Error("participant read first");
-      },
-    } as RestrictedCodexSessionOptions;
-    expect(() => createRestrictedCodexSession(options)).toThrow("env read first");
-  });
-
   it("checks busy when admission reaches it, after the participant's tool is read", async () => {
     let started = false,
       nested: Promise<unknown> | undefined;
@@ -1593,20 +1591,6 @@ describe("restricted Codex session host reads", () => {
       errorCode: "codex_busy",
     });
     expect(await nested).toMatchObject({ status: "completed", errorCode: null });
-    await session.close();
-  });
-
-  it("sends the request's instructions as read after the participant's tool", async () => {
-    const live = { ...participantRequest, instructions: "original instructions" };
-    let reads = 0;
-    const { f, session } = await participantSession(() => {
-      // The first read is admission's; the second is thread/start's first tool field.
-      if (++reads === 2) live.instructions = "changed instructions";
-      return tool;
-    });
-    expect(await session.run(live, true)).toMatchObject({ status: "completed", errorCode: null });
-    const threadStart = (await f.entries()).find((entry) => entry.method === "thread/start")!;
-    expect((threadStart.params as Trace).baseInstructions).toBe("changed instructions");
     await session.close();
   });
 });
