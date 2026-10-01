@@ -262,10 +262,10 @@ reviewed in Observer without being promoted into a public issue draft.
 
 ## Know these limits before you depend on humanish
 
-**Stability.** humanish is 0.x with one maintainer, no support contract and no
-SLA. There is no written compatibility policy, and a minor release can remove
-exports and options that an earlier release deprecated. Pin the exact version
-and read [CHANGELOG.md](CHANGELOG.md) before upgrading.
+**Stability.** humanish is 0.x. There is no written compatibility policy, and
+a minor release can remove exports and options that an earlier release
+deprecated. Pin the exact version and read [CHANGELOG.md](CHANGELOG.md) before
+upgrading.
 
 **CI runs nothing live.** CI runs the offline test suite, the Observer browser
 proofs and, when guest files change, a guest-desktop container proof. It passes
