@@ -550,6 +550,36 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     expect(result.error?.message).toContain("custom runSession");
     expect(created).toHaveLength(0);
   });
+  it("saves the lab's provenance in the bundle head, after artifactRoot", async () => {
+    const lab = {
+      id: "shared-lab",
+      path: "humanish/labs/shared-lab.yaml",
+      origin: "committed" as const,
+    };
+    const result = await runConcurrentSharedWorld({
+      cwd,
+      config: concurrentConfig(),
+      dryRun: true,
+      lab,
+    });
+    expect(result.ok).toBe(true);
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    );
+    expect(bundle.lab).toEqual(lab);
+    expect(Object.keys(bundle).slice(0, 9)).toEqual([
+      "schema",
+      "runId",
+      "mode",
+      "simCount",
+      "createdAt",
+      "cwd",
+      "artifactRoot",
+      "lab",
+      "source",
+    ]);
+  });
+
   it("dry-run produces a verified contract bundle (concurrent shape + attributionClass + limits), no sandboxes", async () => {
     const result = await runConcurrentSharedWorld({
       cwd,

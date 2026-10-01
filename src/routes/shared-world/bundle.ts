@@ -1,15 +1,14 @@
 // Builds the run bundle for a concurrent shared-world run: per-seat simulations, streams and
 // events, the sharedWorld evidence block and the review summary.
 
-import path from "node:path";
 import { receivingPublication } from "../../comms/receiving-runtime.js";
 import { redactText } from "../../evidence/redaction.js";
 import type { LabSubjectState } from "../../lab/types.js";
 import { planeStateOf } from "./plan.js";
 import {
-  PUBLIC_TARGET_CWD,
   REVIEW_SCHEMA,
-  RUN_BUNDLE_SCHEMA,
+  bundleArtifacts,
+  bundleHead,
   type ReviewSummary,
   type RunBundle,
   type RunCostSummary,
@@ -429,16 +428,15 @@ export function buildConcurrentSharedWorldBundle(args: ConcurrentBundleArgs): Ru
 
   const cost = concurrentCostSummary(args, inProgress);
   return {
-    schema: RUN_BUNDLE_SCHEMA,
-    ...receivingPublication(plan.residual, args.dryRun),
-    runId: args.runId,
-    mode: dryRun ? "dry-run" : "live",
-    simCount: actorSpecs.length,
-    createdAt,
-    cwd: PUBLIC_TARGET_CWD,
-    ...(args.lab === undefined ? {} : { lab: args.lab }),
-    artifactRoot: path.join(".humanish", "runs", args.runId),
-    source: args.source,
+    ...bundleHead({
+      ...receivingPublication(plan.residual, args.dryRun),
+      runId: args.runId,
+      mode: dryRun ? "dry-run" : "live",
+      participants: actorSpecs.length,
+      createdAt,
+      ...(args.lab === undefined ? {} : { lab: args.lab }),
+      source: args.source,
+    }),
     persona: {
       id: actorSpecs[0]?.persona.id ?? "concurrent-persona",
       name: `Concurrent shared-world swarm (${actorSpecs.length} personas)`,
@@ -476,13 +474,7 @@ export function buildConcurrentSharedWorldBundle(args: ConcurrentBundleArgs): Ru
           ? "In-progress live Observer snapshot: runtime stream auth URLs are process-local only and are not persisted. Final typed text, traces, and screenshots are pending. stateSeries persists digest-only."
           : "Dry-run concurrent shared-world contract bundle: no sandboxes launched and no screenshots captured. Typed text is recorded as length only and reasoning/messages pass through text redaction whenever a session runs. stateSeries persists digest-only.",
     },
-    artifacts: {
-      run: "run.json",
-      reviewJson: "review.json",
-      reviewMarkdown: "review.md",
-      observerData: "observer/observer-data.json",
-      events: "events.ndjson",
-    },
+    artifacts: bundleArtifacts(),
     review,
     feedbackCandidates: [],
     // Custom desktop image provenance (subject + every actor sandbox launched on it); omitted on the default.
