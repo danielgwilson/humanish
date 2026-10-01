@@ -41,8 +41,8 @@ reports the first failed step.
    provider call.
 4. **Desktop.** Each participant runs on a `ParticipantDesktop`
    (`src/routes/computer-use/participant-desktop.ts`), which its lane prepares, opens and finalizes.
-   On a hosted desktop that is `createE2BParticipantDesktop` (`src/routes/computer-use/e2b-desktop.ts`),
-   which runs the steps in the `e2b-desktop-*.ts` files beside it. `acquireE2BDesktopSandbox`
+   On a hosted desktop that is `createE2BParticipantDesktop`
+   (`src/routes/computer-use/e2b-desktop/desktop.ts`), which runs the steps in the files beside it. `acquireE2BDesktopSandbox`
    (`src/substrates/e2b/sandbox.ts`) appends the sandbox id to `sandbox-receipts.ndjson` before it
    returns the handle. A `clone` or `local-tree` subject is provisioned through `src/subject/`,
    which reaches the sandbox only through the `Shell` that `e2bShell` (`src/substrates/e2b/shell.ts`)

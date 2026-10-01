@@ -51,8 +51,8 @@ span, not a provider billing measurement.
    preparation or participant failure. Repeated calls share one finalization.
 6. `snapshot()` supplies the desktop facts for the existing lane outcome.
 
-The E2B lane is composed in `src/routes/computer-use/e2b-desktop.ts`, with its
-steps in the `e2b-desktop-*.ts` files beside it; acquisition and release are in
+The E2B lane is composed in `src/routes/computer-use/e2b-desktop/desktop.ts`, with
+its steps in the files beside it; acquisition and release are in
 `src/substrates/e2b/sandbox.ts`. The local desktop is `createLocalParticipantDesktop` in
 `src/routes/computer-use/local-vm.ts`, over
 `src/substrates/local/firecracker-desktop.ts`. Browser launch is in

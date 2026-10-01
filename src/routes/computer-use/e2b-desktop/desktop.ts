@@ -1,28 +1,20 @@
 // E2B owns provisioning and final evidence; the participant runner only uses the ready port. The
-// lane's steps live in e2b-desktop-prepare.ts, e2b-desktop-start.ts and e2b-desktop-teardown.ts,
-// and fill the state record in e2b-desktop-state.ts in the order below.
-import { defaultSubjectPhaseSink, type SubjectPhaseEvent } from "../../subject/steps.js";
-import { createE2BDesktopExecutor } from "../../substrates/e2b/desktop-executor.js";
-import type { ParticipantDesktop, ReadyParticipantDesktop } from "./participant-desktop.js";
-import { participantInbox, planParticipantComms } from "./e2b-desktop-comms.js";
-import { participantBrowserStateObserver } from "./e2b-desktop-fidelity.js";
+// lane's steps live in prepare.ts, start.ts and teardown.ts beside this file, and fill the state
+// record in state.ts in the order below.
+import { defaultSubjectPhaseSink, type SubjectPhaseEvent } from "../../../subject/steps.js";
+import { createE2BDesktopExecutor } from "../../../substrates/e2b/desktop-executor.js";
+import type { ParticipantDesktop, ReadyParticipantDesktop } from "../participant-desktop.js";
+import { participantInbox, planParticipantComms } from "./comms.js";
+import { participantBrowserStateObserver } from "./fidelity.js";
 import {
   acquireParticipantDesktop,
   provisionParticipantSubject,
   verifyParticipantScreen,
-} from "./e2b-desktop-prepare.js";
-import {
-  openParticipantSurface,
-  startParticipantMedia,
-  startParticipantStream,
-} from "./e2b-desktop-start.js";
-import {
-  desktopEvidenceOf,
-  newParticipantState,
-  type E2BParticipantContext,
-} from "./e2b-desktop-state.js";
-import { finishE2BDesktop } from "./e2b-desktop-teardown.js";
-import type { CuaParticipantDeps, DesktopParticipantRun } from "./types.js";
+} from "./prepare.js";
+import { openParticipantSurface, startParticipantMedia, startParticipantStream } from "./start.js";
+import { desktopEvidenceOf, newParticipantState, type E2BParticipantContext } from "./state.js";
+import { finishE2BDesktop } from "./teardown.js";
+import type { CuaParticipantDeps, DesktopParticipantRun } from "../types.js";
 
 export function createE2BParticipantDesktop(
   spec: DesktopParticipantRun,

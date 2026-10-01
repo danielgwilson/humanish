@@ -1,24 +1,24 @@
 // Device fidelity for one E2B desktop lane: mobile emulation beyond viewport size (#221), the
 // browser-state observer that watches it for drift (#623), and the final browser geometry.
 
-import { redactText, toErrorMessage } from "../../evidence/redaction.js";
-import type { LabConfig } from "../../lab/types.js";
-import type { RunDesktopGeometry } from "../../run/streams.js";
-import { readDetachedLog } from "../../substrates/detached.js";
+import { redactText, toErrorMessage } from "../../../evidence/redaction.js";
+import type { LabConfig } from "../../../lab/types.js";
+import type { RunDesktopGeometry } from "../../../run/streams.js";
+import { readDetachedLog } from "../../../substrates/detached.js";
 import type {
   DesktopBrowserFamily,
   DesktopBrowserLaunchIdentity,
-} from "../../substrates/e2b/desktop-browser.js";
+} from "../../../substrates/e2b/desktop-browser.js";
 import {
   applyMobileEmulation,
   DEFAULT_MOBILE_USER_AGENT,
   makeChromeBrowserStateObserver,
   type ChromeCdpEndpoint,
-} from "../../substrates/e2b/desktop-cdp.js";
-import { captureDesktopBrowserGeometry } from "../../substrates/e2b/desktop-geometry.js";
-import type { E2BDesktopSandbox } from "../../substrates/e2b/sdk.js";
-import { e2bShell } from "../../substrates/e2b/shell.js";
-import type { CuaParticipantDeps, DesktopParticipantRun } from "./types.js";
+} from "../../../substrates/e2b/desktop-cdp.js";
+import { captureDesktopBrowserGeometry } from "../../../substrates/e2b/desktop-geometry.js";
+import type { E2BDesktopSandbox } from "../../../substrates/e2b/sdk.js";
+import { e2bShell } from "../../../substrates/e2b/shell.js";
+import type { CuaParticipantDeps, DesktopParticipantRun } from "../types.js";
 
 type BrowserGeometry = Awaited<ReturnType<typeof captureDesktopBrowserGeometry>>;
 

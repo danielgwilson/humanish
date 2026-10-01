@@ -2,7 +2,7 @@
 // recording, then the browser or terminal the participant sees, then the live stream. Each step
 // fills the lane's state.
 
-import { redactText, toErrorMessage } from "../../evidence/redaction.js";
+import { redactText, toErrorMessage } from "../../../evidence/redaction.js";
 import {
   CHROME_DEVTOOLS_PORT,
   DESKTOP_SETTLE_MS,
@@ -10,13 +10,16 @@ import {
   openDesktopTerminal,
   startDesktopStream,
   type ChromeDevToolsReadiness,
-} from "../../substrates/e2b/desktop-browser.js";
-import { captureDesktopBrowserGeometry } from "../../substrates/e2b/desktop-geometry.js";
-import { prepareDesktopMedia, startE2BDesktopMedia } from "../../substrates/e2b/desktop-media.js";
-import { startE2BDesktopRecording } from "../../substrates/e2b/desktop-recording.js";
-import type { E2BDesktopSandbox } from "../../substrates/e2b/sdk.js";
-import { applyParticipantMobileFidelity, mobileLaunchFlags } from "./e2b-desktop-fidelity.js";
-import type { E2BParticipantContext, E2BParticipantState } from "./e2b-desktop-state.js";
+} from "../../../substrates/e2b/desktop-browser.js";
+import { captureDesktopBrowserGeometry } from "../../../substrates/e2b/desktop-geometry.js";
+import {
+  prepareDesktopMedia,
+  startE2BDesktopMedia,
+} from "../../../substrates/e2b/desktop-media.js";
+import { startE2BDesktopRecording } from "../../../substrates/e2b/desktop-recording.js";
+import type { E2BDesktopSandbox } from "../../../substrates/e2b/sdk.js";
+import { applyParticipantMobileFidelity, mobileLaunchFlags } from "./fidelity.js";
+import type { E2BParticipantContext, E2BParticipantState } from "./state.js";
 
 /** Start the declared speech worker and screen recording. A recording that cannot start is a warning. */
 export async function startParticipantMedia(
