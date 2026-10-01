@@ -183,6 +183,14 @@ describe("judgeOneParticipant", () => {
     expect(judge(undefined, true)).toEqual({ verdict: "contract_proof_only", passed: true });
   });
 
+  it("fails a run whose session threw an error with an empty message", () => {
+    const noSession = { skipped: false, noEngagement: false, selfReportedBlocker: false };
+    expect(judge({ ...noSession, sessionError: "" })).toEqual({
+      verdict: "fail",
+      passed: false,
+    });
+  });
+
   it("holds a run in progress as a contract", () => {
     expect(judge(passed(), false, true).verdict).toBe("contract_proof_only");
   });
@@ -286,6 +294,7 @@ describe("judgeScripted", () => {
     ["a harness error", [ok, harnessError], undefined, "fail", true],
     ["a surface that never returned", [ok], undefined, "pass", true],
     ["a session error", [], "browser pool exploded", "fail", true],
+    ["a session error with an empty message", [], "", "fail", true],
   ])("%s", (_name, surfaces, sessionError, verdict, harnessFailed) => {
     expect(judge(surfaces, sessionError)).toMatchObject({ verdict, harnessFailed });
   });

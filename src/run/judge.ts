@@ -176,7 +176,7 @@ export function judgeOneParticipant(args: {
     ? "contract_proof_only"
     : participant?.status !== undefined
       ? verdictForStatus(participantStatus(participant.status, participant))
-      : participant?.sessionError
+      : participant?.sessionError !== undefined
         ? "fail"
         : "contract_proof_only";
   return {
@@ -278,15 +278,16 @@ export function judgeScripted(args: {
 }): HarnessJudgment {
   const { surfaces } = args;
   const reasons = surfaces.map((surface) => surface.completionReason);
-  const verdict: Verdict = args.sessionError
-    ? "fail"
-    : surfaces.length === 0
-      ? "contract_proof_only"
-      : reasons.some((reason) => reason === "harness_error" || reason === "step_failed")
-        ? "fail"
-        : reasons.some((reason) => reason === "timed_out")
-          ? "timed_out"
-          : "pass";
+  const verdict: Verdict =
+    args.sessionError !== undefined
+      ? "fail"
+      : surfaces.length === 0
+        ? "contract_proof_only"
+        : reasons.some((reason) => reason === "harness_error" || reason === "step_failed")
+          ? "fail"
+          : reasons.some((reason) => reason === "timed_out")
+            ? "timed_out"
+            : "pass";
   const complete = surfaces.length === args.expected;
   return {
     verdict,

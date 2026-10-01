@@ -1116,6 +1116,31 @@ describe("runScriptedBrowserLab", () => {
     });
   });
 
+  it("fails a live run whose session threw an error with an empty message", async () => {
+    await writeCommittedScenario(cwd);
+    const stderr = captureStderr();
+    const outcome = await runLab(scriptedConfig({ count: 1, mode: "live" }), {
+      cwd,
+      scriptedHooks: {
+        runSession: async () => {
+          throw new Error("");
+        },
+        launchBrowser: async () => makeFakeBrowser({}),
+      },
+    }).finally(stderr.stop);
+    if (outcome.backend !== "scripted") throw new Error("expected scripted backend");
+    const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
+    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
+    const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8")) as {
+      outcome?: { verdict?: string };
+    };
+    expect(bundle.mode).toBe("live");
+    expect(bundle.review.verdict).toBe("fail");
+    expect(bundle.simulations[0]?.status).toBe("failed");
+    expect(status.outcome?.verdict).toBe("fail");
+    expect(outcome.result.ok).toBe(false);
+  });
+
   it("rejects callback-returned traversal artifacts before parent bundle finalization", async () => {
     await writeCommittedScenario(cwd);
     const outside = path.join(path.dirname(cwd), "scripted-outside-sentinel.txt");

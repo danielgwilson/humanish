@@ -132,7 +132,7 @@ function cuaLabResult(args: {
     return {
       code,
       message: observer.ok
-        ? `Fan-out run failed: ${laneSummary.passed}/${laneCount} lane(s) passed (${laneSummary.skipped} skipped, ${laneSummary.harnessErrors} harness error(s), ${laneSummary.hollow} hollow)${failingLane?.sessionError ? `; first failure: ${failingLane.sessionError}` : ""}.`
+        ? `Fan-out run failed: ${laneSummary.passed}/${laneCount} lane(s) passed (${laneSummary.skipped} skipped, ${laneSummary.harnessErrors} harness error(s), ${laneSummary.hollow} hollow)${failingLane?.sessionError !== undefined ? `; first failure: ${failingLane.sessionError}` : ""}.`
         : (observer.error?.message ?? "Observer failed for the computer-use fan-out run."),
     };
   })();

@@ -104,7 +104,7 @@ export function buildSingleLaneBundle(args: {
     screenshots: outcome?.screenshots ?? [],
     captureRedaction: args.redactScreenshots ? "blurred" : "raw",
     ...(outcome?.session ? { session: outcome.session } : {}),
-    ...(outcome?.sessionError ? { sessionError: outcome.sessionError } : {}),
+    ...(outcome?.sessionError !== undefined ? { sessionError: outcome.sessionError } : {}),
     ...(outcome === undefined
       ? {}
       : {
@@ -190,7 +190,7 @@ function laneView(args: CuaBundleArgs, publicAppUrl: string) {
       ? "running"
       : args.session
         ? args.session.status
-        : args.sessionError
+        : args.sessionError !== undefined
           ? "failed"
           : "contract_proof_only";
   const reason =
@@ -244,7 +244,7 @@ function laneSimulation(args: CuaBundleArgs, view: LaneView): RunSimulation {
       ? `Computer-use actor (${args.actorId}) drove the subject app ${browserPlace(args)}; ${args.session.completionReason}.`
       : args.inProgress === true
         ? `Computer-use actor (${args.actorId}) is driving the subject app ${browserPlace(args)}.`
-        : args.sessionError
+        : args.sessionError !== undefined
           ? `Computer-use lab failed before a terminal session verdict: ${args.sessionError}`
           : `Contract lane for the computer-use actor (${args.actorId}) against ${publicAppUrl}.`,
     streamIds: ["stream-001"],
@@ -377,7 +377,7 @@ function laneEvents(args: CuaBundleArgs, view: LaneView): RunEvent[] {
             simId: "sim-001",
             streamId: "stream-001",
           }
-        : args.sessionError
+        : args.sessionError !== undefined
           ? {
               id: "event-002-session",
               at: args.createdAt,
@@ -471,7 +471,7 @@ function laneReview(args: CuaBundleArgs, view: LaneView, stream: RunStream): Rev
       ...(singleStudyTasks === undefined ? {} : { tasks: singleStudyTasks }),
       summary: credibilityNote === undefined ? reason : `${credibilityNote} ${reason}`,
       gaps:
-        args.session || args.sessionError
+        args.session || args.sessionError !== undefined
           ? []
           : args.inProgress === true
             ? ["Live desktop session is still running."]

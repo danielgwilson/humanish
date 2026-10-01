@@ -174,7 +174,7 @@ function scriptedEvents(args: ScriptedBundleArgs): RunEvent[] {
         }),
       );
     }
-  } else if (args.sessionError) {
+  } else if (args.sessionError !== undefined) {
     events.push({
       id: "event-003-session-error",
       at: args.createdAt,
@@ -227,7 +227,7 @@ function buildScriptedReview(args: {
   surfaces: readonly BrowserSurface[];
   verdict: ReviewSummary["verdict"];
 }): ReviewSummary {
-  if (args.sessionError) {
+  if (args.sessionError !== undefined) {
     return {
       schema: REVIEW_SCHEMA,
       verdict: args.verdict,
