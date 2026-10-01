@@ -8,8 +8,10 @@ import {
   prepareSelectedOutputDirectory,
 } from "./contained-output.js";
 import {
+  REVIEW_SCHEMA,
   RUN_BUNDLE_FILE,
   buildRunSource,
+  type ReviewSummary,
   type RunBundle,
   type RunEvent,
   type RunSimulation,
@@ -26,11 +28,10 @@ import {
 } from "./participant-records.js";
 import { implicitProjectDirectoryExists, readPackageName, validateCwd } from "./project.js";
 import { loadDryRunInputs } from "./dry-run-inputs.js";
-import { createReviewSummary, renderReviewMarkdown } from "./synthetic-review.js";
-import { judgeExecution, judgePreview, OUTCOME_POLICIES, resultOk } from "./judge.js";
+import { judgeExecution, judgePreview, OUTCOME_POLICIES, resultOk, type Verdict } from "./judge.js";
 
 /**
- * The synthetic dry-run backend. The run scope closes the run it started on every exit, including
+ * The preview route's run. The run scope closes the run it started on every exit, including
  * the fail-closed ones. It renders an Observer only when `options.observer` asks for one.
  */
 export async function runDryRun(options: RunOptions): Promise<RunResult> {
@@ -194,6 +195,47 @@ async function runDryRunInScope(options: RunOptions, scope: RunScope): Promise<R
     ...(observer === undefined ? {} : { observer }),
     warnings,
   };
+}
+
+/**
+ * The preview's review, with the verdict judgePreview gave it. It claims artifact plumbing only,
+ * never product behavior.
+ */
+function createReviewSummary(verdict: Verdict): ReviewSummary {
+  return {
+    schema: REVIEW_SCHEMA,
+    verdict,
+    summary:
+      "Synthetic dry-run bundle was generated. This proves humanish artifact plumbing, not product behavior.",
+    gaps: [
+      "No browser was launched.",
+      "No product state was verified.",
+      "No model, provider, or E2B substrate was used.",
+    ],
+  };
+}
+
+/** The preview's review.md. */
+function renderReviewMarkdown(bundle: RunBundle): string {
+  return `# humanish Run Review
+
+Run: ${bundle.runId}
+
+Mode: ${bundle.mode}
+
+Verdict: ${bundle.review.verdict}
+
+${bundle.review.summary}
+
+## Public-Safety
+
+- Redaction: ${bundle.redaction.status}
+- Notes: ${bundle.redaction.notes}
+
+## Gaps
+
+${bundle.review.gaps.map((gap) => `- ${gap}`).join("\n")}
+`;
 }
 
 /**
