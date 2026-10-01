@@ -25,8 +25,8 @@ export function formatConcurrentSharedWorldLabHuman(
             `overlap: ${result.overlapProven ? "proven" : "not observed"} (this run only; no scale or adoption claim)`,
           ]),
       ...result.roles.map(
-        (role) =>
-          `persona ${role.id} (${role.persona}): ${role.status}${role.session ? ` (${role.session.completionReason})` : ""} ${role.ok ? "ok" : "not-ok"}`,
+        (participant) =>
+          `persona ${participant.id} (${participant.persona}): ${participant.status}${participant.session ? ` (${participant.session.completionReason})` : ""} ${participant.ok ? "ok" : "not-ok"}`,
       ),
       ...(result.subjectSandbox
         ? [
@@ -107,8 +107,8 @@ export function formatCuaLabHuman(result: CuaActorLabResult): string {
       ...(result.diagnostics ? [`diagnostic: ${formatCuaDiagnostics(result.diagnostics)}`] : []),
       ...((result.lanes?.length ?? 0) > 1
         ? result.lanes!.map(
-            (lane) =>
-              `lane ${lane.id}: ${lane.status}${lane.session ? ` (${lane.session.completionReason})` : ""}${lane.diagnostics ? ` · ${formatCuaDiagnostics(lane.diagnostics)}` : ""}${lane.session ? ` · ${lane.session.reason}` : ""}`,
+            (participant) =>
+              `lane ${participant.id}: ${participant.status}${participant.session ? ` (${participant.session.completionReason})` : ""}${participant.diagnostics ? ` · ${formatCuaDiagnostics(participant.diagnostics)}` : ""}${participant.session ? ` · ${participant.session.reason}` : ""}`,
           )
         : []),
       ...(result.session && (result.lanes?.length ?? 0) <= 1

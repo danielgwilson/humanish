@@ -472,12 +472,13 @@ function scorerHooks(
   };
 }
 
-type Lane = { laneId: string; laneIndex: number; laneCount: number };
+/** A participant as the route hooks pass it, with the route's own field names. */
+type HookParticipant = { laneId: string; laneIndex: number; laneCount: number };
 
-const participantOf = (lane: Lane): ParticipantRef => ({
-  id: lane.laneId,
-  index: lane.laneIndex,
-  count: lane.laneCount,
+const participantOf = (participant: HookParticipant): ParticipantRef => ({
+  id: participant.laneId,
+  index: participant.laneIndex,
+  count: participant.laneCount,
 });
 
 function phaseEvent(event: SubjectPhaseEvent, target: SetupTarget): LabEvent {
@@ -536,16 +537,19 @@ function computerUseHooks(
     ...(prepareDesktop === undefined
       ? {}
       : {
-          prepareDesktop: (desktop, lane) =>
-            prepareDesktop(desktop, { kind: "participant", participant: participantOf(lane) }),
+          prepareDesktop: (desktop, participant) =>
+            prepareDesktop(desktop, {
+              kind: "participant",
+              participant: participantOf(participant),
+            }),
         }),
     ...(createProvider === undefined
       ? {}
       : {
-          buildProvider: ({ config: lab, lane, laneCount, executor }) =>
+          buildProvider: ({ config: lab, lane: participant, laneCount, executor }) =>
             createProvider({
               config: lab,
-              participant: participantOf({ ...lane, laneCount }),
+              participant: participantOf({ ...participant, laneCount }),
               executor,
             }),
         }),
@@ -562,16 +566,18 @@ function computerUseHooks(
             emit({
               type: "plan",
               route: "computer-use",
-              participants: plan.lanes.map((lane) => ({
-                id: lane.id,
-                persona: lane.persona,
-                device: lane.device,
-                instructionDigest: lane.instructionDigest,
+              participants: plan.lanes.map((participant) => ({
+                id: participant.id,
+                persona: participant.persona,
+                device: participant.device,
+                instructionDigest: participant.instructionDigest,
               })),
             }),
-          onPhase: (event, lane) => {
-            defaultSubjectPhaseSink(event, lane);
-            emit(phaseEvent(event, { kind: "participant", participant: participantOf(lane) }));
+          onPhase: (event, participant) => {
+            defaultSubjectPhaseSink(event, participant);
+            emit(
+              phaseEvent(event, { kind: "participant", participant: participantOf(participant) }),
+            );
           },
         }),
   };
@@ -586,13 +592,13 @@ function sharedWorldHooks(
     ...(prepareDesktop === undefined
       ? {}
       : {
-          // The provisioned plane prepares the subject sandbox with no lane, then each seat.
-          prepareDesktop: (desktop, lane) =>
+          // The provisioned plane prepares the subject sandbox with no participant, then each one.
+          prepareDesktop: (desktop, participant) =>
             prepareDesktop(
               desktop,
-              lane === undefined
+              participant === undefined
                 ? { kind: "subject" }
-                : { kind: "participant", participant: participantOf(lane) },
+                : { kind: "participant", participant: participantOf(participant) },
             ),
         }),
     ...(onStream === undefined ? {} : streamHooks(onStream)),
@@ -663,7 +669,7 @@ export function optionRefusalOutcome(
         },
       };
     case "shared-world": {
-      const roleCount = config.actors[0]?.lanes?.length ?? 0;
+      const participantCount = config.actors[0]?.lanes?.length ?? 0;
       return {
         route: "shared-world",
         backend: "concurrent-shared-world",
@@ -673,8 +679,8 @@ export function optionRefusalOutcome(
           ok: false,
           topology: "shared-world",
           topologyMode: "concurrent",
-          roleCount,
-          concurrency: config.execution?.concurrency ?? Math.max(1, roleCount),
+          roleCount: participantCount,
+          concurrency: config.execution?.concurrency ?? Math.max(1, participantCount),
           roles: [],
         },
       };

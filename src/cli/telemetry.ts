@@ -340,20 +340,20 @@ export function deriveStudyFacts(result: unknown): TelemetryProperties {
   if (isCuaDiagnosticStopCause(diagnostics?.stopCause)) facts.stopCause = diagnostics.stopCause;
 
   const session = asRecord(r.session);
-  const laneSummary = asRecord(r.laneSummary);
+  const participantSummary = asRecord(r.laneSummary);
   let outcome: string | undefined;
   if (cuaResult && facts.mode === "dry-run") {
     outcome = r.ok === true ? "contract_proof_only" : "error";
   } else if (
-    laneSummary &&
-    typeof laneSummary.total === "number" &&
-    typeof laneSummary.passed === "number" &&
-    laneSummary.total > 1
+    participantSummary &&
+    typeof participantSummary.total === "number" &&
+    typeof participantSummary.passed === "number" &&
+    participantSummary.total > 1
   ) {
     outcome =
-      laneSummary.passed === laneSummary.total
+      participantSummary.passed === participantSummary.total
         ? "all_passed"
-        : laneSummary.passed === 0
+        : participantSummary.passed === 0
           ? "none_passed"
           : "some_passed";
   } else if (typeof session?.status === "string") {
