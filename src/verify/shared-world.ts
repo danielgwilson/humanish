@@ -69,7 +69,7 @@ function sequentialSkippedTailFindings(
   const roster = [...turns, ...declared.roles];
   return [
     ...skippedTailRosterFailures(bundle, sw, sequence, turns, declared, roster),
-    ...skippedTailRoleFailures(bundle, turns, roster),
+    ...skippedTailParticipantFailures(bundle, turns, roster),
     ...skippedTailCauseFailures(bundle, turns, declared),
   ].map((message) => `skippedTail: ${message}`);
 }
@@ -99,7 +99,7 @@ function skippedTailRosterFailures(
     );
   }
   for (const key of ["roleId", "simId", "streamId"] as const) {
-    const ids = roster.map((role) => role[key]);
+    const ids = roster.map((participant) => participant[key]);
     if (
       ids.some((id) => typeof id !== "string" || id.length === 0) ||
       new Set(ids).size !== ids.length
@@ -119,38 +119,38 @@ function skippedTailRosterFailures(
  * Each role's simulation and stream agree in order. An executed role has an actor or an attempted
  * session error; an unstarted one is blocked with a reason, no evidence and one blocked event.
  */
-function skippedTailRoleFailures(bundle: RunBundle, turns: Row[], roster: Row[]): string[] {
+function skippedTailParticipantFailures(bundle: RunBundle, turns: Row[], roster: Row[]): string[] {
   const failures: string[] = [];
-  roster.forEach((role, index) => {
-    const sim = bundle.simulations[index],
+  roster.forEach((participant, index) => {
+    const simulation = bundle.simulations[index],
       stream = bundle.streams[index];
     if (
-      !sim ||
+      !simulation ||
       !stream ||
-      sim.index !== index + 1 ||
-      role.simId !== sim.id ||
-      role.streamId !== stream.id ||
-      stream.simId !== sim.id ||
-      sim.streamIds.length !== 1 ||
-      sim.streamIds[0] !== stream.id
+      simulation.index !== index + 1 ||
+      participant.simId !== simulation.id ||
+      participant.streamId !== stream.id ||
+      stream.simId !== simulation.id ||
+      simulation.streamIds.length !== 1 ||
+      simulation.streamIds[0] !== stream.id
     ) {
       failures.push("ordered role, simulation and stream identities must agree");
       return;
     }
-    const roleEvents = bundle.events.filter(
-      (event) => event.simId === sim.id && event.streamId === stream.id,
+    const participantEvents = bundle.events.filter(
+      (event) => event.simId === simulation.id && event.streamId === stream.id,
     );
     if (index < turns.length) {
       if (
         !stream.actor &&
-        !roleEvents.some((event) => event.type === "shared-world.session.error")
+        !participantEvents.some((event) => event.type === "shared-world.session.error")
       ) {
         failures.push("an executed role needs an actor or an explicit attempted-session error");
       }
       return;
     }
     if (
-      sim.status !== "blocked" ||
+      simulation.status !== "blocked" ||
       stream.status !== "blocked" ||
       stream.actor !== undefined ||
       stream.liveActor !== undefined ||
@@ -160,15 +160,15 @@ function skippedTailRoleFailures(bundle: RunBundle, turns: Row[], roster: Row[])
       stream.artifacts.some(
         (artifact) => artifact.kind === "trace" || artifact.kind === "screenshot",
       ) ||
-      typeof sim.currentStep !== "string" ||
-      sim.currentStep.length === 0 ||
-      stream.ui?.state !== sim.currentStep
+      typeof simulation.currentStep !== "string" ||
+      simulation.currentStep.length === 0 ||
+      stream.ui?.state !== simulation.currentStep
     ) {
       failures.push(
         "an unstarted role must be blocked with a reason and no actor, trace or screenshot",
       );
     }
-    const sessionEvents = roleEvents.filter((event) =>
+    const sessionEvents = participantEvents.filter((event) =>
       event.type.startsWith("shared-world.session."),
     );
     if (sessionEvents.length !== 1 || sessionEvents[0]?.type !== "shared-world.session.blocked") {
@@ -364,12 +364,14 @@ function sequentialSharedWorldFindings(bundle: RunBundle, sw: SharedWorldEvidenc
 
   // Turns: simId/streamId resolve to a real sim/stream.
   for (const turn of turns) {
-    const roleId = typeof turn.roleId === "string" ? turn.roleId : "(unnamed)";
-    if (!bundle.simulations.some((sim) => sim.id === turn.simId)) {
-      findings.push(`turn "${roleId}" references unknown simId "${String(turn.simId)}"`);
+    const participantId = typeof turn.roleId === "string" ? turn.roleId : "(unnamed)";
+    if (!bundle.simulations.some((simulation) => simulation.id === turn.simId)) {
+      findings.push(`turn "${participantId}" references unknown simId "${String(turn.simId)}"`);
     }
     if (!bundle.streams.some((stream) => stream.id === turn.streamId)) {
-      findings.push(`turn "${roleId}" references unknown streamId "${String(turn.streamId)}"`);
+      findings.push(
+        `turn "${participantId}" references unknown streamId "${String(turn.streamId)}"`,
+      );
     }
   }
 

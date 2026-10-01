@@ -76,7 +76,7 @@ export function concurrentSharedWorldFindings(
 
 type Row = Record<string, unknown>;
 
-const roleIdOf = (window: Row): string =>
+const participantIdOf = (window: Row): string =>
   typeof window.roleId === "string" ? window.roleId : "(unnamed)";
 
 /**
@@ -96,15 +96,14 @@ function provisionedGetHostConcurrentFindings(
       "a concurrent shared-world bundle must NOT carry a sequential timeline (topologyMode mismatch)",
     );
   }
-  const laneWindows = recordsOf(sw.laneWindows);
+  const windows = recordsOf(sw.laneWindows);
   const stateSeries = recordsOf(sw.stateSeries);
   const outcomes = recordsOf(sw.outcomes);
-  if (laneWindows === null)
-    findings.push("a concurrent shared-world bundle must carry laneWindows");
+  if (windows === null) findings.push("a concurrent shared-world bundle must carry laneWindows");
   if (stateSeries === null)
     findings.push("a concurrent shared-world bundle must carry stateSeries");
   if (outcomes === null) findings.push("a concurrent shared-world bundle must carry outcomes");
-  if (laneWindows === null || stateSeries === null || outcomes === null) {
+  if (windows === null || stateSeries === null || outcomes === null) {
     return findings; // can't reason further without the core series
   }
 
@@ -116,11 +115,11 @@ function provisionedGetHostConcurrentFindings(
       forbidden: (limit) =>
         `attributionLimits carries the forbidden disclosure "${limit}" — a concurrent run cannot claim a sequential guarantee`,
     }),
-    ...roleCoverageFindings(sw, laneWindows, outcomes),
-    ...laneWindowFindings(bundle, laneWindows, "the host it drove"),
-    ...getHostPlaneFindings(bundle, sw, laneWindows),
+    ...participantCoverageFindings(sw, windows, outcomes),
+    ...windowFindings(bundle, windows, "the host it drove"),
+    ...getHostPlaneFindings(bundle, sw, windows),
     ...stateSeriesFindings(stateSeries),
-    ...concurrencyOnPassFindings(bundle, laneWindows, stateSeries),
+    ...concurrencyOnPassFindings(bundle, windows, stateSeries),
   );
   return findings;
 }
@@ -147,15 +146,15 @@ function attributionLimitFindings(
  * Phantom/dropped role: laneWindows + outcomes each cover exactly roleCount (actors are
  * INDEPENDENT — none are blocked by another, so all N produce a window + outcome).
  */
-function roleCoverageFindings(
+function participantCoverageFindings(
   sw: SharedWorldEvidence,
-  laneWindows: Row[],
+  windows: Row[],
   outcomes: Row[],
 ): string[] {
   const findings: string[] = [];
-  if (laneWindows.length !== sw.roleCount) {
+  if (windows.length !== sw.roleCount) {
     findings.push(
-      `phantom/dropped role: laneWindows count (${laneWindows.length}) must equal roleCount (${sw.roleCount})`,
+      `phantom/dropped role: laneWindows count (${windows.length}) must equal roleCount (${sw.roleCount})`,
     );
   }
   if (outcomes.length !== sw.roleCount) {
@@ -167,29 +166,33 @@ function roleCoverageFindings(
 }
 
 /** laneWindows: numeric well-ordered windows; sim/stream resolve; route-host digest present. */
-function laneWindowFindings(bundle: RunBundle, laneWindows: Row[], routeTarget: string): string[] {
+function windowFindings(bundle: RunBundle, windows: Row[], routeTarget: string): string[] {
   const findings: string[] = [];
-  for (const window of laneWindows) {
-    const roleId = roleIdOf(window);
+  for (const window of windows) {
+    const participantId = participantIdOf(window);
     const startedAt = window.startedAt;
     const endedAt = window.endedAt;
     if (typeof startedAt !== "number" || typeof endedAt !== "number" || !(startedAt <= endedAt)) {
-      findings.push(`laneWindow "${roleId}" must carry numeric startedAt <= endedAt on one clock`);
+      findings.push(
+        `laneWindow "${participantId}" must carry numeric startedAt <= endedAt on one clock`,
+      );
     }
     if (
       typeof window.routeHostDigest !== "string" ||
       !COMMAND_DIGEST_PATTERN.test(window.routeHostDigest)
     ) {
       findings.push(
-        `laneWindow "${roleId}" must record a sha256-16 routeHostDigest of ${routeTarget}`,
+        `laneWindow "${participantId}" must record a sha256-16 routeHostDigest of ${routeTarget}`,
       );
     }
-    if (!bundle.simulations.some((sim) => sim.id === window.simId)) {
-      findings.push(`laneWindow "${roleId}" references unknown simId "${String(window.simId)}"`);
+    if (!bundle.simulations.some((simulation) => simulation.id === window.simId)) {
+      findings.push(
+        `laneWindow "${participantId}" references unknown simId "${String(window.simId)}"`,
+      );
     }
     if (!bundle.streams.some((stream) => stream.id === window.streamId)) {
       findings.push(
-        `laneWindow "${roleId}" references unknown streamId "${String(window.streamId)}"`,
+        `laneWindow "${participantId}" references unknown streamId "${String(window.streamId)}"`,
       );
     }
   }
@@ -203,7 +206,7 @@ function laneWindowFindings(bundle: RunBundle, laneWindows: Row[], routeTarget: 
 function getHostPlaneFindings(
   bundle: RunBundle,
   sw: SharedWorldEvidence,
-  laneWindows: Row[],
+  windows: Row[],
 ): string[] {
   const findings: string[] = [];
   // The harness-minted getHost target. plane.hostDigest present (sha256-16) + every actor's
@@ -215,10 +218,10 @@ function getHostPlaneFindings(
       "sharedWorld.plane.hostDigest (sha256-16 of the harness-minted getHost origin) is required on the concurrent route",
     );
   } else {
-    for (const window of laneWindows) {
+    for (const window of windows) {
       if (typeof window.routeHostDigest === "string" && window.routeHostDigest !== hostDigest) {
         findings.push(
-          `laneWindow "${roleIdOf(window)}" drove a host that differs from the harness-minted plane.hostDigest (invariant 2)`,
+          `laneWindow "${participantIdOf(window)}" drove a host that differs from the harness-minted plane.hostDigest (invariant 2)`,
         );
       }
     }
@@ -239,7 +242,7 @@ function getHostPlaneFindings(
 
   // Single-plane provenance: every laneWindow shares ONE (commit, seedDigest) matching plane.
   findings.push(
-    ...planeProvenanceFindings(laneWindows, plane, {
+    ...planeProvenanceFindings(windows, plane, {
       items: "laneWindows",
       item: "laneWindow",
       run: "concurrent",
@@ -272,8 +275,8 @@ function stateSeriesFindings(stateSeries: Row[]): string[] {
 }
 
 /** The laneWindows rows with numeric start and end, as the shared concurrency facts read them. */
-function participantWindows(laneWindows: Row[]): { startedAt: number; endedAt: number }[] {
-  return laneWindows.flatMap((window) =>
+function participantWindows(windows: Row[]): { startedAt: number; endedAt: number }[] {
+  return windows.flatMap((window) =>
     typeof window.startedAt === "number" && typeof window.endedAt === "number"
       ? [{ startedAt: window.startedAt, endedAt: window.endedAt }]
       : [],
@@ -289,12 +292,12 @@ function participantWindows(laneWindows: Row[]): { startedAt: number; endedAt: n
  */
 function concurrencyOnPassFindings(
   bundle: RunBundle,
-  laneWindows: Row[],
+  windows: Row[],
   stateSeries: Row[],
 ): string[] {
   if (bundle.review.verdict !== "pass") return [];
   const facts = concurrencyFacts(
-    participantWindows(laneWindows),
+    participantWindows(windows),
     stateSeries.flatMap((snapshot) =>
       typeof snapshot.timestamp === "number"
         ? [{ timestamp: snapshot.timestamp, digest: String(snapshot.digest) }]
@@ -333,9 +336,9 @@ function externalPublicConcurrentFindings(bundle: RunBundle, sw: SharedWorldEvid
       "an external-public concurrent bundle must NOT carry a sequential timeline (topologyMode mismatch)",
     );
   }
-  const laneWindows = recordsOf(sw.laneWindows);
+  const windows = recordsOf(sw.laneWindows);
   const outcomes = recordsOf(sw.outcomes);
-  if (laneWindows === null)
+  if (windows === null)
     findings.push("an external-public concurrent bundle must carry laneWindows");
   if (outcomes === null) findings.push("an external-public concurrent bundle must carry outcomes");
   // NO authoritative shared-state proof: a non-empty stateSeries would falsely imply the harness
@@ -346,7 +349,7 @@ function externalPublicConcurrentFindings(bundle: RunBundle, sw: SharedWorldEvid
       "an external-public concurrent bundle must NOT carry a stateSeries — the harness cannot authoritatively digest a real public plane's backend state (no in-sandbox filesystem); concurrency is proven by temporal co-occupancy, not a state series",
     );
   }
-  if (laneWindows === null || outcomes === null) {
+  if (windows === null || outcomes === null) {
     return findings; // can't reason further without the core series
   }
 
@@ -364,9 +367,9 @@ function externalPublicConcurrentFindings(bundle: RunBundle, sw: SharedWorldEvid
           `attributionLimits carries the forbidden disclosure "${limit}" — the external-public plane cannot claim a sequential guarantee or a seeded/synthetic attestation on a real site`,
       },
     ),
-    ...roleCoverageFindings(sw, laneWindows, outcomes),
-    ...laneWindowFindings(bundle, laneWindows, "the origin it reached"),
-    ...externalPublicPlaneFindings(bundle, sw, laneWindows),
+    ...participantCoverageFindings(sw, windows, outcomes),
+    ...windowFindings(bundle, windows, "the origin it reached"),
+    ...externalPublicPlaneFindings(bundle, sw, windows),
   );
 
   // The RELAXED concurrency-on-pass gate: a PASSED external-public run MUST show genuine temporal
@@ -375,7 +378,7 @@ function externalPublicConcurrentFindings(bundle: RunBundle, sw: SharedWorldEvid
   // "they shared a world" claim, disclosed as concurrency-by-temporal-co-occupancy-only.
   if (
     bundle.review.verdict === "pass" &&
-    !concurrencyFacts(participantWindows(laneWindows), undefined).overlap
+    !concurrencyFacts(participantWindows(windows), undefined).overlap
   ) {
     findings.push(
       "review verdict is pass but no two laneWindows overlap in time — the external-public run was not actually concurrent (concurrency is proven by temporal co-occupancy on this class)",
@@ -392,7 +395,7 @@ function externalPublicConcurrentFindings(bundle: RunBundle, sw: SharedWorldEvid
 function externalPublicPlaneFindings(
   bundle: RunBundle,
   sw: SharedWorldEvidence,
-  laneWindows: Row[],
+  windows: Row[],
 ): string[] {
   const findings: string[] = [];
   // The convergence proof is about what the seats OBSERVED, not what was DECLARED.
@@ -412,7 +415,7 @@ function externalPublicPlaneFindings(
     );
   }
   // The observed origins across seats must agree on exactly ONE (that agreement IS the convergence).
-  const observedOrigins = laneWindows
+  const observedOrigins = windows
     .map((window) =>
       typeof window.routeHostDigest === "string" ? window.routeHostDigest : undefined,
     )
@@ -470,7 +473,7 @@ function externalPublicPlaneFindings(
   // Single-plane provenance: every laneWindow shares ONE (commit, seedDigest) matching plane. commit
   // is absent on this class (nothing cloned); seedDigest is the constant empty-recipe digest.
   findings.push(
-    ...planeProvenanceFindings(laneWindows, plane, {
+    ...planeProvenanceFindings(windows, plane, {
       items: "laneWindows",
       item: "laneWindow",
       run: "shared-world",

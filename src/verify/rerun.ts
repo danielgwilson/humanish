@@ -8,41 +8,41 @@ export function rerunLineageFindings(bundle: RunBundle): string[] {
   }
 
   const findings: string[] = [];
-  const selectedLaneIds = rerun.selectedLaneIds;
-  const selectedSet = new Set(selectedLaneIds);
-  const previousLaneIds = rerun.previous.map((entry) => entry.laneId);
-  const previousSet = new Set(previousLaneIds);
-  const currentLaneIds = bundle.streams.map((stream) => stream.laneId);
-  const currentConcreteLaneIds = currentLaneIds.filter(
-    (laneId): laneId is string => typeof laneId === "string" && laneId.trim().length > 0,
+  const selectedIds = rerun.selectedLaneIds;
+  const selectedSet = new Set(selectedIds);
+  const previousIds = rerun.previous.map((entry) => entry.laneId);
+  const previousSet = new Set(previousIds);
+  const currentIds = bundle.streams.map((stream) => stream.laneId);
+  const currentConcreteIds = currentIds.filter(
+    (id): id is string => typeof id === "string" && id.trim().length > 0,
   );
-  const currentSet = new Set(currentConcreteLaneIds);
+  const currentSet = new Set(currentConcreteIds);
 
-  if (selectedSet.size !== selectedLaneIds.length) {
+  if (selectedSet.size !== selectedIds.length) {
     findings.push("selectedLaneIds contains duplicate lane ids");
   }
-  if (previousSet.size !== previousLaneIds.length) {
+  if (previousSet.size !== previousIds.length) {
     findings.push("previous contains duplicate lane ids");
   }
-  if (currentConcreteLaneIds.length !== bundle.streams.length) {
+  if (currentConcreteIds.length !== bundle.streams.length) {
     findings.push("every rerun stream must carry a laneId");
   }
-  for (const laneId of selectedLaneIds) {
-    if (!previousSet.has(laneId)) {
-      findings.push(`selected lane ${laneId} is missing prior status`);
+  for (const id of selectedIds) {
+    if (!previousSet.has(id)) {
+      findings.push(`selected lane ${id} is missing prior status`);
     }
-    if (!currentSet.has(laneId)) {
-      findings.push(`selected lane ${laneId} is missing from current streams`);
-    }
-  }
-  for (const laneId of previousLaneIds) {
-    if (!selectedSet.has(laneId)) {
-      findings.push(`previous lane ${laneId} was not selected`);
+    if (!currentSet.has(id)) {
+      findings.push(`selected lane ${id} is missing from current streams`);
     }
   }
-  for (const laneId of currentConcreteLaneIds) {
-    if (!selectedSet.has(laneId)) {
-      findings.push(`current stream lane ${laneId} was not selected`);
+  for (const id of previousIds) {
+    if (!selectedSet.has(id)) {
+      findings.push(`previous lane ${id} was not selected`);
+    }
+  }
+  for (const id of currentConcreteIds) {
+    if (!selectedSet.has(id)) {
+      findings.push(`current stream lane ${id} was not selected`);
     }
   }
   if (!bundle.events.some((event) => event.type === "cua-lab.fanout.rerun")) {

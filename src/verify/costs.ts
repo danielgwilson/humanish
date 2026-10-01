@@ -53,7 +53,7 @@ export function costAndReceiptFindings(bundle: RunBundle): string[] {
     for (const actor of [stream.actor, stream.liveActor]) {
       findings.push(...executionReceiptFindings(actor));
     }
-    findings.push(...laneEstimateFindings(stream));
+    findings.push(...participantEstimateFindings(stream));
   }
   return findings;
 }
@@ -126,35 +126,35 @@ function executionReceiptFindings(actor: RunStream["actor"] | RunStream["liveAct
   return findings;
 }
 
-function laneEstimateFindings(stream: RunStream): string[] {
+function participantEstimateFindings(stream: RunStream): string[] {
   const findings: string[] = [];
   const estimate = stream.actor?.estimatedCost;
   if (!estimate) return findings;
-  const laneLabel = stream.laneId ?? stream.id;
+  const participantLabel = stream.laneId ?? stream.id;
   if (estimate.schema !== "humanish.actor-estimated-cost.v1") {
     findings.push(
-      `lane ${laneLabel} actor estimatedCost schema is ${String(estimate.schema)}, expected humanish.actor-estimated-cost.v1`,
+      `lane ${participantLabel} actor estimatedCost schema is ${String(estimate.schema)}, expected humanish.actor-estimated-cost.v1`,
     );
   }
   if (estimate.estimatedCostUsd !== null) {
     if (typeof estimate.ratesAsOf !== "string" || estimate.ratesAsOf.length === 0) {
       findings.push(
-        `lane ${laneLabel} claims a model-token cost $${estimate.estimatedCostUsd} without a ratesAsOf date`,
+        `lane ${participantLabel} claims a model-token cost $${estimate.estimatedCostUsd} without a ratesAsOf date`,
       );
     }
     if (typeof estimate.source !== "string" || estimate.source.length === 0) {
       findings.push(
-        `lane ${laneLabel} claims a model-token cost $${estimate.estimatedCostUsd} without a pricing source`,
+        `lane ${participantLabel} claims a model-token cost $${estimate.estimatedCostUsd} without a pricing source`,
       );
     }
   } else {
     // Declared-absent honesty (invariant 5): a null estimate must say WHY and carry null ratesAsOf.
     if (estimate.reason === undefined) {
-      findings.push(`lane ${laneLabel} records a null cost estimate without a reason`);
+      findings.push(`lane ${participantLabel} records a null cost estimate without a reason`);
     }
     if (estimate.ratesAsOf !== null) {
       findings.push(
-        `lane ${laneLabel} records a null cost estimate but carries a non-null ratesAsOf`,
+        `lane ${participantLabel} records a null cost estimate but carries a non-null ratesAsOf`,
       );
     }
   }
