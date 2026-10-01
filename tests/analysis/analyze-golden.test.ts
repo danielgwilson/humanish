@@ -412,17 +412,24 @@ async function storageAndCodexScenarios(scenarios: Record<string, Recorded>): Pr
 }
 
 describe("analyzeStudy characterization golden", () => {
-  it("pins the result, provider requests, progress and files for each scenario", async () => {
-    const scenarios: Record<string, Recorded> = {};
-    vi.stubEnv("OPENAI_API_KEY", "");
-    await admissionAndReuseScenarios(scenarios);
-    await providerFailureScenarios(scenarios);
-    await storageAndCodexScenarios(scenarios);
+  // Every scenario runs analyzeStudy end to end in one test, so its time scales with machine load.
+  // Measured from 4 s to 20 s on a 16-core machine as load rose; 20 s is the default test timeout.
+  // 60 s keeps the golden from failing on a busy machine without hiding a hang.
+  it(
+    "pins the result, provider requests, progress and files for each scenario",
+    { timeout: 60_000 },
+    async () => {
+      const scenarios: Record<string, Recorded> = {};
+      vi.stubEnv("OPENAI_API_KEY", "");
+      await admissionAndReuseScenarios(scenarios);
+      await providerFailureScenarios(scenarios);
+      await storageAndCodexScenarios(scenarios);
 
-    await expect(`${JSON.stringify(scenarios, null, 2)}\n`).toMatchFileSnapshot(
-      "../golden/analysis/analyze-study.json",
-    );
-  });
+      await expect(`${JSON.stringify(scenarios, null, 2)}\n`).toMatchFileSnapshot(
+        "../golden/analysis/analyze-study.json",
+      );
+    },
+  );
 });
 
 describe("runStudyAnalysis characterization golden", () => {
