@@ -2,6 +2,7 @@
 // birth time; each read rechecks them, refuses a symlink anywhere on the path and accepts only a
 // single-link regular file, so a swapped or linked path cannot redirect the read.
 
+import { createHash } from "node:crypto";
 import { constants as fsConstants } from "node:fs";
 import type { BigIntStats } from "node:fs";
 import { lstat, open, realpath, type FileHandle } from "node:fs/promises";
@@ -19,6 +20,8 @@ export interface PinnedDirectory {
    * stats, so a file added or changed after a check of the directory cannot be read.
    */
   readonly admitsFile?: (relativePath: string, stats: BigIntStats) => boolean;
+  /** When set, a file's bytes are served only if this accepts their sha256. */
+  readonly admitsContent?: (relativePath: string, sha256: string) => boolean;
 }
 
 interface PinnedFileIdentity {
@@ -40,6 +43,15 @@ export async function readContainedFile(
       !root.admitsFile(
         relativeToRoot(root, filePathInput),
         await opened.handle.stat({ bigint: true }),
+      )
+    ) {
+      return null;
+    }
+    if (
+      root.admitsContent !== undefined &&
+      !root.admitsContent(
+        relativeToRoot(root, filePathInput),
+        createHash("sha256").update(body).digest("hex"),
       )
     ) {
       return null;
@@ -94,7 +106,20 @@ export async function openContainedFile(
   }
 }
 
-function relativeToRoot(root: PinnedDirectory, filePathInput: string): string {
+/** The sha256 of an opened file, read by position so the handle's own offset is untouched. */
+export async function sha256OfOpenedFile(handle: FileHandle): Promise<string> {
+  const hash = createHash("sha256");
+  const buffer = Buffer.alloc(1 << 20);
+  for (let position = 0; ;) {
+    const { bytesRead } = await handle.read(buffer, 0, buffer.length, position);
+    if (bytesRead === 0) return hash.digest("hex");
+    hash.update(buffer.subarray(0, bytesRead));
+    position += bytesRead;
+  }
+}
+
+/** internal: consumed by src/observer/run-routes.ts */
+export function relativeToRoot(root: PinnedDirectory, filePathInput: string): string {
   return path.relative(root.physicalPath, path.resolve(filePathInput)).split(path.sep).join("/");
 }
 

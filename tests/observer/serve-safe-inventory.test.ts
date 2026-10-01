@@ -1,4 +1,4 @@
-import { appendFile, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { appendFile, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer, type Server } from "node:http";
 import os from "node:os";
 import path from "node:path";
@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { LibraryHistory } from "../../src/observer/library.js";
 import { pinDirectory } from "../../src/observer/pinned-files.js";
+import { readRunInventory, type AdmittedRun } from "../../src/observer/run-inventory.js";
 import {
   createServeRequestHandler,
   createShareSafetyAdmission,
@@ -99,34 +100,40 @@ describe.each(modes)("%s after admission", (_label, overrides) => {
   });
 });
 
+async function startHandler(
+  cwd: string,
+  admit: (runId: string) => Promise<AdmittedRun | null>,
+): Promise<string> {
+  const hosts = new Set<string>();
+  const handler = createServeRequestHandler({
+    proofRoot: await pinDirectory(path.join(cwd, ".humanish", "runs")),
+    safe: true,
+    admit,
+    hostAllowlist: hosts,
+    renderLibrary: () => "",
+  });
+  const server: Server = createServer((request, response) => {
+    void handler(request, response);
+  });
+  await new Promise<void>((done) => server.listen(0, "127.0.0.1", done));
+  cleanups.push(async () => {
+    server.closeAllConnections();
+    await new Promise<void>((done) => server.close(() => done()));
+  });
+  const address = server.address();
+  if (!address || typeof address === "string") throw new Error("server has no address");
+  hosts.add(`127.0.0.1:${address.port}`);
+  return `http://127.0.0.1:${address.port}/`;
+}
+
+// These handlers are given an admission taken before the change, as when a write lands between a
+// request's walk and its read.
 describe("a change that lands after the admission walk", () => {
-  // The handler is given the inventory taken before the change, as when a write lands between a
-  // request's walk and its read.
   it("serves only inventoried files with their admitted identity", async () => {
     const { cwd, runRoot } = await admittedRun();
-    const inventory = await createShareSafetyAdmission(cwd).admit(RUN);
-    expect(inventory?.entries.has("review.md")).toBe(true);
-
-    const hosts = new Set<string>();
-    const handler = createServeRequestHandler({
-      proofRoot: await pinDirectory(path.join(cwd, ".humanish", "runs")),
-      safe: true,
-      admit: async () => inventory,
-      hostAllowlist: hosts,
-      renderLibrary: () => "",
-    });
-    const server: Server = createServer((request, response) => {
-      void handler(request, response);
-    });
-    await new Promise<void>((done) => server.listen(0, "127.0.0.1", done));
-    cleanups.push(async () => {
-      server.closeAllConnections();
-      await new Promise<void>((done) => server.close(() => done()));
-    });
-    const address = server.address();
-    if (!address || typeof address === "string") throw new Error("server has no address");
-    hosts.add(`127.0.0.1:${address.port}`);
-    const base = `http://127.0.0.1:${address.port}/`;
+    const admitted = await createShareSafetyAdmission(cwd).admit(RUN);
+    expect(admitted?.inventory.entries.has("review.md")).toBe(true);
+    const base = await startHandler(cwd, async () => admitted);
 
     expect((await get(base, runPath("review.json"))).status).toBe(200);
 
@@ -144,5 +151,64 @@ describe("a change that lands after the admission walk", () => {
     const page = await get(base, runPath("observer/index.html"));
     expect(page.status).toBe(200);
     expect(page.body.includes(SECRET)).toBe(false);
+  });
+
+  // A store through a shared mmap into an already-dirty page changes no stat field. The walk here
+  // is taken after the change, so every stat matches; only the admitted hashes predate it.
+  it("does not serve bytes that changed with every stat field unchanged", async () => {
+    const { cwd, runRoot } = await admittedRun();
+    const original = await createShareSafetyAdmission(cwd).admit(RUN);
+    await appendFile(path.join(runRoot, "review.md"), SECRET_LINE);
+    const inventory = await readRunInventory(runRoot);
+    if (!original || !inventory) throw new Error("run was not admitted");
+    const forget = vi.fn();
+    const base = await startHandler(cwd, async () => ({
+      inventory,
+      hashes: original.hashes,
+      forget,
+    }));
+
+    const modified = await get(base, runPath("review.md"));
+    expect(modified.status).toBe(404);
+    expect(modified.body.includes(SECRET)).toBe(false);
+    expect(forget).toHaveBeenCalledTimes(1);
+    expect((await get(base, runPath("review.json"))).status).toBe(200);
+    expect(forget).toHaveBeenCalledTimes(1);
+  });
+
+  it("verifies the run again after a hash mismatch", async () => {
+    const { cwd } = await admittedRun();
+    const verify = vi.fn(verifyRun);
+    const admission = createShareSafetyAdmission(cwd, { verifyImpl: verify });
+    const base = await startHandler(cwd, async (runId) => {
+      const admitted = await admission.admit(runId);
+      if (!admitted) return null;
+      const hashes = new Map(admitted.hashes);
+      hashes.set("review.md", "0".repeat(64));
+      return { ...admitted, hashes };
+    });
+
+    expect((await get(base, runPath("review.json"))).status).toBe(200);
+    expect(verify).toHaveBeenCalledTimes(1);
+    expect((await get(base, runPath("review.md"))).status).toBe(404);
+    expect((await get(base, runPath("review.json"))).status).toBe(200);
+    expect(verify).toHaveBeenCalledTimes(2);
+  });
+
+  it("lists history fields from the admitted run only", async () => {
+    const { cwd, runRoot } = await admittedRun();
+    const admitted = await createShareSafetyAdmission(cwd).admit(RUN);
+    const base = await startHandler(cwd, async () => admitted);
+    const bundlePath = path.join(runRoot, "run.json");
+    const bundle = JSON.parse(await readFile(bundlePath, "utf8")) as { createdAt: string };
+    const admittedCreatedAt = bundle.createdAt;
+
+    await writeFile(bundlePath, JSON.stringify({ ...bundle, createdAt: SECRET }));
+
+    const history = await get(base, "/_humanish/history.json");
+    expect(history.status).toBe(200);
+    expect(history.body.includes(SECRET)).toBe(false);
+    const listed = (JSON.parse(history.body) as LibraryHistory).runs;
+    expect(listed.map((run) => [run.runId, run.createdAt])).toEqual([[RUN, admittedCreatedAt]]);
   });
 });

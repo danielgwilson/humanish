@@ -6,7 +6,13 @@ import path from "node:path";
 import { pinDirectChildDirectory, pinDirectory } from "./pinned-files.js";
 import { buildHistoryIndex, matchRunRoute, serveRunPath } from "./run-routes.js";
 import type { PinnedDirectory } from "./pinned-files.js";
-import { inventoryRoot, readRunInventory, type RunInventory } from "./run-inventory.js";
+import {
+  hashRunInventory,
+  inventoryRoot,
+  readRunInventory,
+  type AdmittedRun,
+  type RunInventory,
+} from "./run-inventory.js";
 import { renderLibraryHtml } from "./library.js";
 import type { LibraryHistory } from "./library.js";
 import {
@@ -66,7 +72,7 @@ interface ServeControlPlane {
 
 export interface ShareSafetyAdmission {
   /** The files verify found share_ready, or null when the run is not admitted. */
-  admit(runId: string): Promise<RunInventory | null>;
+  admit(runId: string): Promise<AdmittedRun | null>;
 }
 
 export function createShareSafetyAdmission(
@@ -77,11 +83,34 @@ export function createShareSafetyAdmission(
   const runsRoot = path.join(cwd, ".humanish", "runs");
   // Keyed on a walk of every file in the run, taken on each call: a file added, removed or
   // rewritten since the last verify changes the walk, and the run is verified again before
-  // anything in it is served.
-  const cache = new Map<string, { signature: string; admitted: Promise<RunInventory | null> }>();
+  // anything in it is served. A change that leaves every stat field alone is caught by the
+  // content hash at read time, which drops the entry.
+  const cache = new Map<string, CachedAdmission>();
+
+  const verifyAdmission = async (
+    runId: string,
+    runDirectory: string,
+    before: RunInventory,
+    forget: () => void,
+  ): Promise<AdmittedRun | null> => {
+    const hashesBefore = await hashRunInventory(runDirectory, before);
+    if (!hashesBefore) return null;
+    const verified = await verifyImpl(cwd, runId);
+    if (verified.ok !== true || verified.shareSafety.status !== "share_ready") return null;
+    // A file that changed while verify read the run may not be the version it scanned. A changed
+    // stat shows in the next request's walk; changed bytes alone do not, so they drop the entry.
+    const after = await readRunInventory(runDirectory);
+    if (after?.signature !== before.signature) return null;
+    const hashes = await hashRunInventory(runDirectory, after);
+    if (!hashes || !sameHashes(hashesBefore, hashes)) {
+      forget();
+      return null;
+    }
+    return { inventory: before, hashes, forget };
+  };
 
   return {
-    async admit(runId: string): Promise<RunInventory | null> {
+    async admit(runId: string): Promise<AdmittedRun | null> {
       const runDirectory = path.join(runsRoot, runId);
       const before = isSafeRunIdSegment(runId) ? await readRunInventory(runDirectory) : null;
       if (!before) {
@@ -94,18 +123,30 @@ export function createShareSafetyAdmission(
         return cached.admitted;
       }
 
-      const admitted = verifyImpl(cwd, runId)
-        .then(async (verified) => {
-          if (verified.ok !== true || verified.shareSafety.status !== "share_ready") return null;
-          // A file that changed while verify read the run may not be the version it scanned.
-          const after = await readRunInventory(runDirectory);
-          return after?.signature === before.signature ? before : null;
-        })
-        .catch(() => null);
-      cache.set(runId, { signature: before.signature, admitted });
-      return admitted;
+      const entry: CachedAdmission = {
+        signature: before.signature,
+        admitted: Promise.resolve(null),
+      };
+      const forget = (): void => {
+        if (cache.get(runId) === entry) cache.delete(runId);
+      };
+      entry.admitted = verifyAdmission(runId, runDirectory, before, forget).catch(() => null);
+      cache.set(runId, entry);
+      return entry.admitted;
     },
   };
+}
+
+interface CachedAdmission {
+  signature: string;
+  admitted: Promise<AdmittedRun | null>;
+}
+
+function sameHashes(
+  left: ReadonlyMap<string, string>,
+  right: ReadonlyMap<string, string>,
+): boolean {
+  return left.size === right.size && [...left].every(([key, hash]) => right.get(key) === hash);
 }
 
 export interface ServeRequestHandlerOptions {
@@ -114,7 +155,7 @@ export interface ServeRequestHandlerOptions {
   // Required even when safe is false: a fail-open path where safe===true but
   // admit is absent would silently serve every run. serveObserverLibrary always
   // wires it; the type keeps future callers from omitting it.
-  admit: (runId: string) => Promise<RunInventory | null>;
+  admit: (runId: string) => Promise<AdmittedRun | null>;
   hostAllowlist: ReadonlySet<string>;
   entryRunId?: string;
   renderLibrary: (history: LibraryHistory) => string;
@@ -192,15 +233,15 @@ export function createServeRequestHandler(
           writeText(response, 404, "Run not found");
           return;
         }
-        const inventory = options.safe ? await options.admit(runRoute.runId) : null;
-        if (options.safe && !inventory) {
+        const admitted = options.safe ? await options.admit(runRoute.runId) : null;
+        if (options.safe && !admitted) {
           // Byte-identical to the nonexistent-run 404: no existence oracle.
           writeText(response, 404, "Run not found");
           return;
         }
         const pinned = await pinDirectChildDirectory(options.proofRoot, runRoute.runId);
         // Under --safe every read checks the file against the inventory verify covered.
-        const targetRoot = pinned && inventory ? inventoryRoot(pinned, inventory) : pinned;
+        const targetRoot = pinned && admitted ? inventoryRoot(pinned, admitted) : pinned;
         if (!targetRoot) {
           writeText(response, 404, "Run not found");
           return;
@@ -230,8 +271,8 @@ async function loadFilteredHistory(options: ServeRequestHandlerOptions): Promise
   }
 
   const history = await buildHistoryIndex(options.proofRoot, async (runId, pinned) => {
-    const inventory = await options.admit(runId);
-    return inventory ? inventoryRoot(pinned, inventory) : null;
+    const admitted = await options.admit(runId);
+    return admitted ? inventoryRoot(pinned, admitted) : null;
   });
   const runs = history.runs;
   const latestRunId = runs.some((run) => run.runId === history.latestRunId)
@@ -337,7 +378,7 @@ export async function serveObserverLibrary(
   let shareReadyCount: number | undefined;
   if (options.safe) {
     const admitted = await Promise.all(allRuns.map((run) => admission.admit(run.runId)));
-    shareReadyCount = admitted.filter((inventory) => inventory !== null).length;
+    shareReadyCount = admitted.filter((run) => run !== null).length;
     runsListed = shareReadyCount;
   } else {
     runsListed = allRuns.length;
