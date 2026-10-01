@@ -5,13 +5,13 @@ import {
   type CuaLoopOptions,
   type CuaLoopResult,
   type CuaTurn,
-} from "../src/actors/computer-use/loop.js";
-import { participantFeedbackCandidates } from "../src/routes/computer-use/bundle.js";
+} from "../../../src/actors/computer-use/loop.js";
+import { participantFeedbackCandidates } from "../../../src/routes/computer-use/bundle.js";
 import {
   resolveSelfReportedBlocker,
   resolveSelfReportedFriction,
-} from "../src/routes/computer-use/self-report.js";
-import { containsSensitive, defaultRedactionHooks } from "../src/evidence/redaction.js";
+} from "../../../src/routes/computer-use/self-report.js";
+import { containsSensitive, defaultRedactionHooks } from "../../../src/evidence/redaction.js";
 
 const REPORT = "The Save button did nothing. I used Enter and finished the task.";
 const CLEAN =
