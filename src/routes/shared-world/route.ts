@@ -43,7 +43,7 @@ import { type FinishedRun, runScope, type RunScope } from "../../run/run.js";
 import { makeCuaRunBudget } from "../computer-use/participant-model.js";
 import { runExternalPublicPlane } from "./external-public.js";
 import { planSharedWorldLab, sharedWorldDescriptorOf, type SharedWorldRefusal } from "./plan.js";
-import { localAgentRefusal } from "../../actors/local-agent/readiness.js";
+import { localAgentRefusal, type LocalAgentRefusal } from "../../actors/local-agent/readiness.js";
 import { runProvisionedPlane } from "./provisioned.js";
 import { concurrentLabFailure, finishConcurrentRun } from "./result.js";
 import { prepareConcurrentRun } from "./setup.js";
@@ -63,6 +63,14 @@ import {
   type PlaneSelection,
 } from "./types.js";
 import { rosterOf } from "../../lab/parse/actors.js";
+
+/** The shared-world code for each local-agent refusal, kind for kind with computer-use. */
+const LOCAL_AGENT_REFUSAL_CODES = {
+  "agent-missing": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_AGENT_MISSING",
+  "signin-required": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_AGENT_SIGNIN_REQUIRED",
+  unsupported: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_ACTOR_UNSUPPORTED",
+  "unpriced-cap": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_UNPRICED_CAP",
+} as const satisfies Record<LocalAgentRefusal["kind"], ConcurrentSharedWorldLabErrorCode>;
 
 /**
  * The library entry for a shared-world lab. It plans the config with planSharedWorldLab and runs
@@ -183,15 +191,7 @@ async function admitSharedWorldRun(
     // A missing or signed-out agent found after the seats' desktops are paid for is the same
     // news at the worst moment.
     const refusal = await localAgentRefusal({ agent: plan.brain.agent, env, caps: plan.caps });
-    if (refusal)
-      return fail(
-        refusal.kind === "signin-required"
-          ? "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_AGENT_SIGNIN_REQUIRED"
-          : refusal.kind === "unsupported"
-            ? "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_ACTOR_UNSUPPORTED"
-            : "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
-        refusal.message,
-      );
+    if (refusal) return fail(LOCAL_AGENT_REFUSAL_CODES[refusal.kind], refusal.message);
   }
   const missingSubjectEnv = subjectEnvNames.filter((name) => !env[name]?.trim());
   if (missingSubjectEnv.length > 0) {

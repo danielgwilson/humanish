@@ -8,7 +8,9 @@ import { checkHostedCodexCompatibility, detectLocalAgents, type LocalAgentId } f
 
 /** Why a local-agent participant cannot run here. */
 export type LocalAgentRefusal =
-  /** The CLI is not on PATH, is signed out, or could not report its sign-in status. */
+  /** The CLI is not on PATH. */
+  | { kind: "agent-missing"; message: string }
+  /** The CLI is signed out, or could not report its sign-in status. */
   | { kind: "signin-required"; message: string }
   /** Hosted Codex on an unsupported platform or an unqualified CLI release. */
   | { kind: "unsupported"; message: string }
@@ -25,7 +27,7 @@ export async function localAgentRefusal(args: {
   const chosen = available.find((candidate) => candidate.id === agent);
   if (chosen === undefined) {
     return {
-      kind: "signin-required",
+      kind: "agent-missing",
       message:
         `actors[0].type: local-agent needs the ${agent} CLI on PATH and signed in. ` +
         `Install it, or set OPENAI_API_KEY and use actors[0].type: openai-computer-use instead.`,

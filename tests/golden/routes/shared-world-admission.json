@@ -225,7 +225,7 @@
     "roles": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_UNPRICED_CAP",
       "message": "The declared spend cap cannot be enforced for unpriced model \"unpriced-model\"."
     },
     "automaticAnalysisTrigger": "default",
@@ -575,7 +575,7 @@
     "roles": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+      "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_UNPRICED_CAP",
       "message": "The declared spend cap cannot be enforced for unpriced model \"unpriced-model\"."
     },
     "automaticAnalysisTrigger": "default",

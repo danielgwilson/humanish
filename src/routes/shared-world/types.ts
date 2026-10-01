@@ -88,8 +88,12 @@ export type ConcurrentSharedWorldLabErrorCode =
   | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_ACTOR_UNSUPPORTED"
   | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID"
   | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_KEYS_MISSING"
-  /** A local-agent brain's CLI is not on PATH, is signed out, or could not report its status. */
+  /** A local-agent brain's CLI is not on PATH. */
+  | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_AGENT_MISSING"
+  /** A local-agent brain's CLI is signed out, or could not report its sign-in status. */
   | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_AGENT_SIGNIN_REQUIRED"
+  /** A dollar cap that cannot be priced: an unpriced model, or a ChatGPT-account Codex brain. */
+  | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_UNPRICED_CAP"
   | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_SUBJECT_ENV_MISSING"
   | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_GETHOST_UNAVAILABLE"
   | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_HANDOFF_TIMEOUT"
