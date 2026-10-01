@@ -344,7 +344,7 @@ describe("redacted bundle export", () => {
     },
   );
 
-  it("refuses escaped sensitive YAML and preserves unusual JSON keys", async () => {
+  it("blocks escaped sensitive YAML in verify and export, and preserves unusual JSON keys", async () => {
     await writeFile(
       path.join(runDir, "observation.json"),
       '{"__proto__":{"synthetic":true},"constructor":"synthetic"}',
@@ -360,10 +360,13 @@ describe("redacted bundle export", () => {
       ),
     ).toEqual(JSON.parse('{"__proto__":{"synthetic":true},"constructor":"synthetic"}'));
     await writeFile(path.join(runDir, "encoded.yml"), `token: "\\x73k-${"x".repeat(32)}"`);
-    expect((await verifyRun(cwd, RUN)).ok).toBe(true);
+    // verify decodes the escape as export does, so the source is blocked before export reads it.
+    const verified = await verifyRun(cwd, RUN);
+    expect(verified.ok).toBe(false);
+    expect(verified.shareSafety.status).toBe("blocked");
     result = await exportRun(cwd, RUN, { ...OPTIONS, out: "refused" });
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error.message).toContain("Decoded text");
+    if (!result.ok) expect(result.error.code).toBe("HUMANISH_EXPORT_VERIFY_FAILED");
   });
 
   it("keeps opaque JSON/NDJSON bytes and large identifiers exact", async () => {

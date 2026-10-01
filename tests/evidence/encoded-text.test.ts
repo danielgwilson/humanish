@@ -1,0 +1,58 @@
+import { gzipSync } from "node:zlib";
+import { describe, expect, it } from "vitest";
+
+import { decodeEscapes, scanEncodedText } from "../../src/evidence/encoded-text.js";
+
+// Concatenated so this file never holds a secret-shaped literal; the scan detects it.
+const SECRET = "sk-" + "syntheticvalue1234567890abcdef";
+// Fixed binary that is neither text nor an archive: it starts with 0x0b and holds control and
+// high bytes.
+const binary = (length: number) =>
+  Buffer.from(Array.from({ length }, (_, i) => (i * 37 + 11) % 256));
+
+describe("decodeEscapes", () => {
+  it("undoes JSON, JS, percent and HTML escapes", () => {
+    expect(decodeEscapes("\\u0073\\x6b\\/%2D&#115;&#x6B;&lowbar;&amp;")).toBe("sk/-sk_&");
+  });
+
+  it("leaves text without escapes and unknown references alone", () => {
+    expect(decodeEscapes("plain text &unknown; 100%")).toBe("plain text &unknown; 100%");
+  });
+});
+
+describe("scanEncodedText", () => {
+  it("finds the secret through each encoding", () => {
+    for (const text of [
+      SECRET,
+      Buffer.from(SECRET).toString("base64"),
+      Buffer.from(SECRET, "utf16le").toString("base64"),
+      Buffer.from(Buffer.from(SECRET).toString("base64")).toString("base64"),
+      `"${Buffer.from(SECRET).toString("base64").replace(/\//g, "\\/")}"`,
+    ]) {
+      expect(scanEncodedText(text).sensitive, text).toBe(true);
+    }
+  });
+
+  it("calls an encoded archive or a long encoded binary run opaque", () => {
+    expect(scanEncodedText(gzipSync("anything").toString("base64")).opaque).toBe(true);
+    expect(scanEncodedText(binary(96).toString("base64")).opaque).toBe(true);
+  });
+
+  it("allows opaque runs when the caller says so, but still finds an encoded secret", () => {
+    const options = { allowOpaqueBase64: true };
+    expect(scanEncodedText(binary(96).toString("base64"), options).opaque).toBe(false);
+    expect(scanEncodedText(Buffer.from(SECRET).toString("base64"), options).sensitive).toBe(true);
+  });
+
+  it("leaves hex digests, identifiers, URL paths, filler and short binary runs alone", () => {
+    for (const text of [
+      "sha256:dc1ee8a784c37702b5b456b1657db9c8ce3fc98fd4e30c203b300aaf724eae2f",
+      "runScriptedBrowserSessionInPreparedRoot",
+      "com/danielgwilson/humanish/releases/download/runtime",
+      "x".repeat(2000),
+      binary(48).toString("base64"),
+    ]) {
+      expect(scanEncodedText(text), text).toEqual({ sensitive: false, opaque: false });
+    }
+  });
+});
