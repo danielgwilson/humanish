@@ -30,10 +30,12 @@ reports the first failed step.
    library options with `normalizeRunLabOptions` (`src/lab/run-lab-options.ts`) and plans once with
    `planLab` (`src/lab/plan.ts`), which calls the route's planner, here `planComputerUseLab`
    (`src/routes/computer-use/plan.ts`). The planner runs on every run, CLI or library. A refusal
-   comes back before the CLI loads a declared review scorer. A plan comes back with a `run()` that
-   takes the scorer and calls the route's run function, here `runComputerUsePlan`
-   (`src/routes/computer-use/route.ts`). `runLab` is `prepareLab` followed by that `run()`. A run is
-   live only when the lab declares `scenario.mode: live`; `--dry-run` forces a dry run.
+   comes back before the CLI loads a declared review scorer. So does a terminal lab's refusal for a
+   missing runtime key or `E2B_API_KEY`, from `admitTerminalPlan` (`src/routes/terminal/route.ts`).
+   A plan comes back with a `run()` that takes the scorer and calls the route's run function, here
+   `runComputerUsePlan` (`src/routes/computer-use/route.ts`). `runLab` is `prepareLab` followed by
+   that `run()`. A run is live only when the lab declares `scenario.mode: live`; `--dry-run` forces
+   a dry run.
 3. **Preflight.** `runComputerUsePlan` opens the run's lifetime with `runScope` (`src/run/run.ts`).
    `prepareCuaRun` (`src/routes/computer-use/setup.ts`) plans the lanes and, on a live run, calls
    `liveCuaRejection` (`src/routes/computer-use/preflight.ts`). That checks provider keys, the local

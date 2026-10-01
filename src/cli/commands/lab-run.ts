@@ -99,8 +99,9 @@ export async function runLabCommand(args: {
   }
 
   // The route's CLI setup refuses bad options, and runLab's plan refuses bad labs, before the scorer
-  // loads, so neither imports the scorer's host code. The route's own checks of this machine (keys,
-  // subject env, a browser, a free run id) still come after the scorer loads.
+  // loads, so neither imports the scorer's host code. The terminal route's key checks also come
+  // first. The other routes' checks of this machine (keys, subject env, a browser, a free run id)
+  // still come after the scorer loads.
   const run = routeRunFor(route, { ...args, config, labProvenance: lab });
   if (run === undefined) return;
 
