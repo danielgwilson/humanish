@@ -80,7 +80,7 @@ clone` + `serve` clones, installs, and serves a real app in-sandbox from
   `local-app` (library-assisted, in-process, no desktop), `terminal-product`,
   `desktop-cli` (computer-use participant at a terminal), and `local-tree`;
   each route fails closed on unsupported combinations;
-- bounded per-lane-world fan-out (`actors[0].count`, `lanes[]`, or `roster[]`),
+- bounded fan-out with separate worlds (`actors[0].count`, `lanes[]`, or `roster[]`),
   backed by deterministic and kept live proof;
 - concurrent single-origin shared-world execution with deterministic and kept
   live proof; verify still reads bundles from the sequential route removed in
@@ -95,7 +95,7 @@ clone` + `serve` clones, installs, and serves a real app in-sandbox from
   SMS is not yet a configured execution route;
 - resolved-persona directives that actually shape the actor prompt on the
   terminal-product route (traits are applied and recorded in the actor trace, not
-  decorative), reusing the same `persona.ts` compiler as the computer-use lane;
+  decorative), reusing the same `persona.ts` compiler as the computer-use route;
 - a CLI-loadable adopter scorer seam (`review.scorer.ref` in the lab manifest, or
   a `--scorer <path>` override): a config-declared `.mjs` supplies
   `{score, deriveFeedback, deriveArtifacts}`, resolved with the same containment

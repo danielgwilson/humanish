@@ -67,7 +67,7 @@ and 8. Steps 3 to 6 are the route's run function: `runComputerUsePlan` here, `ru
 | `src/routes/`              | One folder per route; `routeOf` in `src/lab/plan.ts` picks it                          | `src/lab/plan.ts`                   |
 | `src/routes/computer-use/` | Computer-use participants and the desktops composing `src/substrates/` with route code | `src/routes/computer-use/route.ts`  |
 | `src/routes/scripted/`     | Committed scenario steps replayed on a loopback app or a provisioned clone             | `src/routes/scripted/route.ts`      |
-| `src/routes/shared-world/` | Several seats on one shared plane, provisioned or external-public                      | `src/routes/shared-world/route.ts`  |
+| `src/routes/shared-world/` | Several participants on one shared plane, provisioned or external-public               | `src/routes/shared-world/route.ts`  |
 | `src/routes/terminal/`     | A Codex agent in an E2B shell against a terminal product, with its ledgers             | `src/routes/terminal/route.ts`      |
 | `src/actors/`              | The actor contract, the registry and each actor's session code                         | `src/actors/registry.ts`            |
 | `src/subject/`             | Subject provisioning over a `Shell`: clone, local tree, desktop CLI, serve             | `src/subject/serve.ts`              |
