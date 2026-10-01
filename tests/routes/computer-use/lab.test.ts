@@ -673,6 +673,101 @@ describe("runCuaActorLab", () => {
     }
   });
 
+  it("records a drained operator-hosted catch in the bundle and leaves the verdict alone", async () => {
+    const tokenEnv = "CATCH_TOKEN";
+    const token = ["synthetic", "catch", "token"].join("-");
+    const parsed = parseLabConfig({
+      schema: LAB_CONFIG_SCHEMA,
+      id: "cua-external-comms-drained",
+      subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
+      actors: [{ type: "openai-computer-use", persona: "first-time-visitor", mission: "Sign up." }],
+      execution: { target: "e2b-desktop", timeoutMs: 60_000 },
+      comms: {
+        email: {
+          external: { catchBaseUrl: "https://catch.example.test", authTokenEnv: tokenEnv },
+          recipients: [{ lane: "lane-01", address: "user@example.test" }],
+        },
+      },
+      scenario: { mode: "live" },
+      review: { analysis: false },
+    });
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    // The catch holds one send to the declared address, and serves it only with the run's token,
+    // which the drain reads from the participants' env.
+    const send = {
+      path: "/emails",
+      body: JSON.stringify({
+        from: "no-reply@example.test",
+        to: ["user@example.test"],
+        subject: "Confirm your email",
+        html: "<p>Welcome</p>",
+      }),
+      t: 1,
+    };
+    const drainAuth: Array<string | null> = [];
+    vi.stubGlobal("fetch", async (input: string | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/health")) {
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            service: "humanish-comms-catch",
+            capabilities: ["recipient-inbox-v1"],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      if (url.endsWith("/deliveries")) {
+        const auth = new Headers(init?.headers).get("authorization");
+        drainAuth.push(auth);
+        if (auth !== `Bearer ${token}`) return new Response("unauthorized", { status: 401 });
+        return new Response(`${JSON.stringify(send)}\n`, { status: 200 });
+      }
+      throw new Error(`unexpected fetch ${url}`);
+    });
+    try {
+      const { module } = makeFakeModule(makeFakeSandbox());
+      const result = await runCuaActorLab({
+        cwd,
+        config: parsed.config,
+        dryRun: false,
+        hooks: {
+          env: {
+            OPENAI_API_KEY: "test-openai-key",
+            E2B_API_KEY: "test-e2b-key",
+            [tokenEnv]: token,
+          },
+          loadDesktopModule: async () => module,
+          runSession: async (options) =>
+            runCuaActorSession({
+              ...options,
+              openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            }),
+        },
+      });
+      expect(drainAuth).toEqual([`Bearer ${token}`]);
+      expect(result.warnings.join("\n")).not.toContain("Comms");
+      expect(result.ok).toBe(true);
+
+      const runDir = path.join(cwd, ".humanish", "runs", result.runId);
+      const thread = JSON.parse(await readFile(path.join(runDir, "comms", "thread.json"), "utf8"));
+      expect(thread.schema).toBe("humanish.comms-thread.v1");
+      expect(thread).toMatchObject({ channel: "email", count: 1 });
+      expect(thread.thread).toHaveLength(1);
+      const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
+      expect(bundle.review.verdict).toBe("pass");
+      expect(
+        bundle.streams[0].artifacts.some(
+          (artifact: { path: string }) => artifact.path === "comms/thread.json",
+        ),
+      ).toBe(true);
+      const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8"));
+      expect(status.outcome).toMatchObject({ verdict: "pass", ok: true });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it.each(["missing-artifact", "missing-run"] as const)(
     "classifies the real Observer's %s refusal as invalid evidence",
     async (kind) => {

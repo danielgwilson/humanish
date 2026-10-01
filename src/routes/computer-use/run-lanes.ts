@@ -10,42 +10,19 @@ import { startLiveTraceFlush } from "./live-flush.js";
 import { drainExternalComms } from "./external-comms.js";
 import { buildCuaRunBundle, judgeComputerUseRun } from "./assemble.js";
 import { type ParticipantRunOutcome } from "./types.js";
-import type { CuaRunSetup } from "./setup.js";
+import type { CuaParticipantsSetup, CuaRunSetup } from "./setup.js";
 
 /**
- * Runs the lanes (a dry run runs none). Returns the refusal when real email setup fails, or the
- * lane outcomes and the warnings the finish records.
+ * Runs the participants (a dry run runs none). Returns the refusal when real email setup fails, or
+ * the participant outcomes and the warnings the finish records.
  */
-export async function runLabParticipants(setup: CuaRunSetup) {
-  const {
-    plan,
-    input,
-    config,
-    dryRun,
-    cwd,
-    streams,
-    env,
-    inProcessRoute,
-    fail,
-    descriptor,
-    externalCommsConfig,
-    externalCommsEmail,
-    participantRuns,
-    participantPlan,
-    knownSecretValues,
-    scrubKnownValues,
-    subjectEnvNames,
-    run,
-    runId,
-    artifactRoot,
-    runPaths,
-    deps,
-    liveTrace,
-    inProgressSubjects,
-    inProgressAggregateSubject,
-    inProgressProvenance,
-    bundleBase,
-  } = setup;
+export async function runLabParticipants(setup: CuaRunSetup, participants: CuaParticipantsSetup) {
+  const { plan, input, config, cwd, streams, descriptor, subjectRoute, run } = setup;
+  const { participantRuns, participantPlan, scrubKnownValues, bundleBase } = setup;
+  const { env, knownSecretValues, deps, liveTrace, externalComms, inProgress, fail } = participants;
+  const { dryRun } = plan;
+  const { inProcessRoute, subjectEnvNames } = subjectRoute;
+  const { runId, paths: runPaths } = run;
   // A live run writes what it is doing AS IT DOES IT, whether or not anyone is currently watching.
   // This used to be gated on `options.onObserverReady` — the interactive Observer callback — so a
   // run launched by an agent (`lab run --json`), detached, or from the terminal surface recorded
@@ -61,13 +38,13 @@ export async function runLabParticipants(setup: CuaRunSetup) {
       }),
       dryRun: false,
       outcomes: undefined,
-      subjects: inProgressSubjects,
-      aggregateSubject: inProgressAggregateSubject,
-      subjectProvenance: inProgressProvenance,
+      subjects: inProgress.subjects,
+      aggregateSubject: inProgress.aggregateSubject,
+      subjectProvenance: inProgress.provenance,
       inProgress: true,
     });
     await run.writeSnapshot(inProgressBundle);
-    const liveObserver = liveObserverResult(cwd, runId, artifactRoot, [
+    const liveObserver = liveObserverResult(cwd, runId, runPaths.absoluteRunRoot, [
       "Live CUA Observer is attached before final verification; stream auth URLs are runtime-only and are not persisted.",
     ]);
     streams.showIn(liveObserver);
@@ -150,10 +127,10 @@ export async function runLabParticipants(setup: CuaRunSetup) {
   }
 
   const externalCommsWarnings =
-    !dryRun && externalCommsConfig && externalCommsEmail && outcomes !== undefined
+    !dryRun && externalComms && outcomes !== undefined
       ? await drainExternalComms({
-          externalCommsConfig,
-          externalCommsEmail,
+          externalCommsConfig: externalComms.config,
+          externalCommsEmail: externalComms.email,
           env,
           runPaths,
           participantRuns: participantRuns,
