@@ -118,6 +118,8 @@ export async function applyEnvFileOption(args: {
   io: CliIo;
   env?: NodeJS.ProcessEnv;
   onDiscovered?: (names: string[]) => void;
+  /** False for the lab-running commands, which discover only once the lab resolves to live. */
+  discoverKeys?: boolean;
 }): Promise<boolean> {
   const env = args.env ?? process.env;
   if (args.envFile) {
@@ -131,22 +133,40 @@ export async function applyEnvFileOption(args: {
     for (const name of result.loaded) env[name] = stagedEnv[name];
   }
 
-  // Provider-key discovery (#436): fill still-missing keys from the documented project
-  // overlay, the owning vendors' native stores, and the humanish user store — fill-only
-  // (an explicit --env-file or process env always wins), each fill announced by name and
-  // source on stderr, never by value. HUMANISH_STRICT_KEYS=1 restores env-only behavior.
+  if (args.discoverKeys !== false) {
+    await discoverCliKeys({
+      io: args.io,
+      cwd: args.cwd,
+      env,
+      ...(args.onDiscovered === undefined ? {} : { onDiscovered: args.onDiscovered }),
+    });
+  }
+  return true;
+}
+
+/**
+ * Provider-key discovery (#436): fill still-missing keys from the documented project overlay, the
+ * owning vendors' native stores, and the humanish user store. It is fill-only (an explicit
+ * --env-file or process env always wins), and each fill is announced by name and source on
+ * stderr, never by value. HUMANISH_STRICT_KEYS=1 restores env-only behavior.
+ */
+export async function discoverCliKeys(args: {
+  io: CliIo;
+  cwd: string;
+  env?: NodeJS.ProcessEnv;
+  onDiscovered?: (names: string[]) => void;
+}): Promise<void> {
   try {
     const discover = args.io.keyDiscovery ?? discoverProviderKeys;
     const discovered = await discover({
       cwd: args.cwd,
-      env,
+      env: args.env ?? process.env,
       announce: (line) => args.io.writeErr(`${line}\n`),
     });
     args.onDiscovered?.(discovered.map((fill) => fill.name));
   } catch {
     // Discovery must never break a command; a rung that fails to read is a miss, not an error.
   }
-  return true;
 }
 
 export function parseLabCount(value: string | undefined, fallback: number): number | null {

@@ -193,6 +193,8 @@ async function handleLabRun(
       cwd: options.cwd,
       envFile: options.envFile,
       io,
+      // runLabCommand discovers keys once the lab resolves to a live run.
+      discoverKeys: false,
     }))
   ) {
     return;

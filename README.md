@@ -296,6 +296,8 @@ fills from sources 2 to 4, never the value:
 4. `$XDG_CONFIG_HOME/humanish/keys.env` (by default `~/.config/humanish/keys.env`),
    which `humanish keys set` writes as plain text with mode `0600`.
 
+A dry run reads no provider key, so `run`, `lab run` and `watch` consult sources 2 to 4 only
+for a live lab. `lab preflight`, `doctor`, `tui` and the `comms` commands still consult them.
 `HUMANISH_STRICT_KEYS=1` turns off sources 2 to 4. `init`, `doctor` and a live
 computer-use preflight also run `codex login status` and `claude auth status`
 to see which agent is signed in. humanish never reads the subject app's own

@@ -21,6 +21,7 @@ import { terminalRouteRun } from "./lab-route-terminal.js";
 import { maybeLoadAdapterScorer } from "./lab-scorer.js";
 import {
   type CliIo,
+  discoverCliKeys,
   formatRunHuman,
   type LabCommandOptions,
   noteStudyFacts,
@@ -96,6 +97,13 @@ export async function runLabCommand(args: {
     writeResult(args.command, args.io, result, formatRunHuman);
     args.io.setExitCode(2);
     return;
+  }
+
+  // Only a live run reads provider keys, so a dry run looks none up: no `gh auth token`, no e2b
+  // login, overlay or key store. This comes after the option refusals above, which read no key,
+  // and before the route's CLI setup and prepareLab, which do.
+  if (resolveLabDryRun(config, args.options.dryRun, true) === false) {
+    await discoverCliKeys({ io: args.io, cwd: args.options.cwd });
   }
 
   // The route's CLI setup refuses bad options, runLab's plan refuses bad labs, and the route's local

@@ -157,6 +157,8 @@ async function handleWatch(
       cwd: options.cwd,
       envFile: options.envFile,
       io,
+      // runLabCommand discovers keys for a live lab; a preview or a saved run needs none.
+      discoverKeys: false,
     }))
   ) {
     return;
