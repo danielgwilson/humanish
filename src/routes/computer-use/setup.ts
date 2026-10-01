@@ -21,11 +21,11 @@ import { type LocalTreeArchive } from "../../run/source-archive.js";
 import { renderCuaReviewMarkdown } from "./bundle.js";
 import {
   emitPreflightPlan,
-  makeCuaRunBudget,
   compileParticipantPersonas,
   loadCuaParticipants,
   sanitizeParticipantRuns,
-} from "./lane-plan.js";
+} from "./participant-runs.js";
+import { makeCuaRunBudget } from "./participant-model.js";
 import { e2bRequestTimeoutMs } from "../../substrates/e2b/lifetime.js";
 import { subjectProvenanceArg } from "./lanes.js";
 import { liveCuaRejection } from "./preflight.js";

@@ -86,7 +86,7 @@ This walkthrough changes the persona a computer-use lane gets when neither the l
 names one. It runs offline and spends nothing.
 
 1. Change the `"cua-operator"` fallback in `composeParticipantInstructions`
-   (`src/routes/computer-use/lane-plan.ts`).
+   (`src/routes/computer-use/participant-prompt.ts`).
 2. Run `pnpm vitest run tests/routes/computer-use/lane-persona-fallback.test.ts`. It fails because
    it asserts the old id. Update the assertion once the new id is what you want.
 3. Run `mkdir -p .humanish/local/labs`, then copy `humanish/labs/dwell-window-todomvc.yaml` to

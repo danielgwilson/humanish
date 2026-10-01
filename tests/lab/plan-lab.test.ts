@@ -12,7 +12,7 @@ import { selectLabBackend } from "../../src/lab/plan.js";
 import { planLab, routeOf } from "../../src/lab/plan.js";
 import type { LabPlan, PlanResult, Requirement } from "../../src/lab/plan-types.js";
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/lab/types.js";
-import { resolveCuaParticipantPlan } from "../../src/routes/computer-use/lane-plan.js";
+import { resolveCuaParticipantPlan } from "../../src/routes/computer-use/participant-runs.js";
 import { committedLabs } from "../helpers/committed-labs.js";
 
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));

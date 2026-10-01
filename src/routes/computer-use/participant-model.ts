@@ -1,6 +1,6 @@
 // The model side of one computer-use lane: the provider a local agent brings, the session options
-// the loop runs with, the provider cleanup, and the checks on the finished session. The desktop
-// side stays with the lane runner.
+// the loop runs with, the study's shared spend ledger, the provider cleanup, and the checks on the
+// finished session. The desktop side stays with the lane runner.
 
 import type {
   CuaExecutor,
@@ -17,14 +17,14 @@ import { estimateActorCostForExecution, round6 } from "../../run/pricing.js";
 import { redactText } from "../../evidence/redaction.js";
 import { createRestrictedCodexParticipant } from "../../actors/codex/restricted-participant.js";
 import { writeContainedOutputFile } from "../../run/contained-output.js";
-import { withInboxMission } from "./lane-plan.js";
+import { withInboxMission } from "./participant-prompt.js";
 import {
   resolveSelfReportedBlocker,
   resolveSelfReportedFriction,
   sessionEnding,
 } from "./self-report.js";
 import { hollowCompletion } from "../../run/judge.js";
-import type { CuaParticipantDeps, DesktopParticipantRun } from "./types.js";
+import type { CuaParticipantDeps, CuaRunBudget, DesktopParticipantRun } from "./types.js";
 import type { ReadyParticipantDesktop } from "./participant-desktop.js";
 import { legacyHookSpecOf } from "./legacy-lane-spec.js";
 
@@ -280,4 +280,17 @@ export function judgeParticipantSession(
     );
   }
   return { noEngagement, selfReportedBlocker, reportedFriction };
+}
+
+export function makeCuaRunBudget(maxTotalUsd: number): CuaRunBudget {
+  const participantEstimates = new Map<string, number>();
+  return {
+    maxTotalUsd,
+    note(participantId, estimateUsd) {
+      if (estimateUsd !== null) participantEstimates.set(participantId, estimateUsd);
+      let total = 0;
+      for (const value of participantEstimates.values()) total += value;
+      return total;
+    },
+  };
 }

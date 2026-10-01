@@ -19,7 +19,7 @@ import {
   type CuaTurn,
   type CuaTurnRequest,
 } from "../../src/actors/computer-use/loop.js";
-import { composeParticipantInstructions } from "../../src/routes/computer-use/lane-plan.js";
+import { composeParticipantInstructions } from "../../src/routes/computer-use/participant-prompt.js";
 import { DEVICE_PRESETS } from "../../src/lab/device-presets.js";
 import { defaultRedactionHooks } from "../../src/evidence/redaction.js";
 import { aggregateTaskFunnels, formatStudyTaskFunnel } from "../../src/run/outcomes.js";

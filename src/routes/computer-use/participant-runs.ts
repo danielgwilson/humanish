@@ -1,11 +1,13 @@
+// The participant runs a computer-use lab drives, built before anything is created: the sandbox
+// and session budgets, the concurrency bound, each participant's prompt, bundle ids and artifact
+// paths, and the public plan printed before any sandbox or provider call. loadCuaParticipants
+// compiles the committed personas first and narrows a rerun to its selected participants.
+
 import {
   isLocalBrowserLab,
   LOCAL_BROWSER_LIFETIME_MS,
 } from "../../substrates/local/runtime-config.js";
 import { DEFAULT_STATE_STEP_TIMEOUT_MS } from "../../subject/state.js";
-import type { ActorPersonaRef } from "../../actors/contract.js";
-import { recipientInboxUrl } from "../../comms/capture-surface.js";
-import type { DevicePreset } from "../../lab/device-presets.js";
 import {
   computerUseParticipants,
   type ComputerUseParticipant,
@@ -13,18 +15,9 @@ import {
 import type { ComputerUsePlan } from "../../lab/plan-types.js";
 import { resolveParticipant } from "../../run/participant.js";
 import { type LabConfig } from "../../lab/types.js";
-import {
-  personaBrief,
-  personaToDirectives,
-  renderPersonaPromptSection,
-  scrubPersonaBrief,
-  type ResolvedPersona,
-} from "../../lab/persona.js";
-import { digestText, redactText } from "../../evidence/redaction.js";
+import { scrubPersonaBrief, type ResolvedPersona } from "../../lab/persona.js";
+import { redactText } from "../../evidence/redaction.js";
 import { type RunRerunLineage } from "../../run/bundle.js";
-import { type RunStream } from "../../run/streams.js";
-import { loadRunBundle } from "../../run/locate.js";
-import { renderTaskPrompt, type LabTask } from "../../lab/tasks.js";
 import { participantAssignment } from "../../lab/participant-assignment.js";
 import { resolveCommittedPersonas } from "../../lab/persona-resolve.js";
 import type { PreparedSelectedOutputDirectory } from "../../run/contained-output.js";
@@ -35,7 +28,6 @@ import {
   type CuaParticipantPlan,
   type CuaParticipantPlanEntry,
   type DesktopParticipantRun,
-  type CuaRunBudget,
   DEFAULT_APP_URL_SESSION_TIMEOUT_MS,
   type ParticipantRunsAndPlan,
   MIN_DERIVED_SESSION_TIMEOUT_MS,
@@ -46,6 +38,9 @@ import {
   SUBJECT_PROVISION_BUDGET_MS,
 } from "../../substrates/e2b/lifetime.js";
 import { readPositiveInt } from "../../lab/parse/values.js";
+import { digestUrl } from "./bundle-parts.js";
+import { composeParticipantInstructions, DEFAULT_MISSION } from "./participant-prompt.js";
+import { resolveCuaRerunSelection } from "./rerun-selection.js";
 
 export function defaultSessionTimeoutMs(config: LabConfig): number {
   const provisionedRoute =
@@ -61,117 +56,6 @@ export function defaultSessionTimeoutMs(config: LabConfig): number {
     MIN_DERIVED_SESSION_TIMEOUT_MS,
     Math.min(DEFAULT_APP_URL_SESSION_TIMEOUT_MS, room),
   );
-}
-
-const DEFAULT_MISSION =
-  "You are testing a web application. The browser is already open at the subject URL. Explore it, accomplish what the scenario asks, and stop when done.";
-
-/**
- * The participant's outcome as ONE fixed first line of its last message (#570, second half). The
- * free-text computer-use provider has no schema to fill; a fixed line is the next best thing, and
- * the loop reads it into the trace's declaredOutcome. Prompt-only control is weak in general, so
- * adherence is measured (declaredOutcome present or absent on the trace) and the regex over the
- * paragraph stays as the fallback when the line is missing. This is a report format, deliberately
- * not a behavioural instruction: it says how to label the ending, never how to act.
- */
-export const CLOSING_LINE_DIRECTIVE =
-  "When you stop, make the FIRST line of your last message exactly one of these three, on its own line: " +
-  "REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. " +
-  "Then, from the next line, say what you did, what confused you, and where you hesitated.";
-
-/** Compose one lane's actor prompt: persona line + device line + mission + per-lane steer.
- *  At N=1 (homogeneous, no roster) this reproduces the prior composeInstructions byte-for-byte. */
-export function composeParticipantInstructions(args: {
-  mission: string;
-  persona?: string;
-  instruction?: string;
-  /** The lab's declared protocol (#414). Only the participant-facing `goal` halves are rendered
-   *  into the prompt; the `success` criteria never appear here. */
-  tasks?: readonly LabTask[];
-  device: { name: string; preset: DevicePreset };
-  /** The COMPILED persona for `args.persona`, when its committed file resolved (#381). Supplying it
-   *  makes the persona shape behavior — its traits become directives in the prompt and land in
-   *  traitsApplied — instead of appearing as a bare `Persona: <id>.` label. Absent (unsafe id,
-   *  no committed file, unparseable YAML) keeps the honest fallback: the bare line and an EMPTY
-   *  traitsApplied, never fabricated traits. Resolved by the caller so this stays pure. */
-  resolvedPersona?: ResolvedPersona;
-  /**
-   * desktop-cli (#495): the surface under study is a terminal window, not a page. Said plainly
-   * because a participant whose every prior world was a browser will look for one — and because a
-   * capability nobody declares is one the recording cannot later be read against. It states that a
-   * terminal is open and NOT what to type in it: naming commands would answer the question the
-   * study is asking.
-   */
-  surface?: "desktop-cli";
-}): { instructions: string; persona: ActorPersonaRef } {
-  const { name, preset } = args.device;
-  const deviceLine = preset.isMobile
-    ? `You are a mobile user on a ${name} device (${preset.width}x${preset.height} @${preset.deviceScaleFactor}x). Expect a mobile/touch layout.`
-    : `You are a desktop user (${name}, ${preset.width}x${preset.height}).`;
-  // The protocol as the PARTICIPANT reads it: numbered goals, nothing else. The success criteria
-  // are the researcher's instrument and must never reach this prompt — a persona told how it will
-  // be measured optimizes for the measurement instead of using the product (src/lab/tasks.ts).
-  const taskLines = renderTaskPrompt(args.tasks ?? []);
-  // A resolved persona contributes its compiled directives (friction tolerance, skill bias,
-  // accessibility behavior, constraints) through the SAME persona.ts compiler the terminal lane
-  // uses, so one persona file means one behavior across every route.
-  const personaLine = args.resolvedPersona
-    ? renderPersonaPromptSection(args.resolvedPersona)
-    : args.persona
-      ? `Persona: ${args.persona}.`
-      : undefined;
-  const traitsApplied = args.resolvedPersona
-    ? personaToDirectives(args.resolvedPersona).traitsApplied
-    : [];
-  const surfaceLine =
-    args.surface === "desktop-cli"
-      ? "A terminal window is already open on this desktop, and there is a terminal in the dock at the bottom of the screen if you want another. Everything you need is on this machine; there is no browser task here."
-      : undefined;
-  const parts = [
-    personaLine,
-    deviceLine,
-    surfaceLine,
-    args.mission,
-    taskLines,
-    args.instruction ? `Lane focus: ${args.instruction}` : undefined,
-    CLOSING_LINE_DIRECTIVE,
-  ].filter((part): part is string => Boolean(part));
-  const instructions = parts.join("\n\n");
-  return {
-    instructions,
-    persona: {
-      id: args.persona ?? "cua-operator",
-      traitsApplied,
-      ...(args.resolvedPersona ? { brief: personaBrief(args.resolvedPersona) } : {}),
-      promptDigest: digestText(instructions, 16),
-    },
-  };
-}
-
-/** Runtime-inject the persona inbox instruction into a lane's prompt (#297 slice B). The inbox URL is a
- *  runtime loopback/getHost address (not secret), so — mirroring the lobby-code runtime injection — this
- *  augments only the instructions the model receives; the authored prompt + its digest are unchanged.
- *  Returns a new spec (never mutates). Shared by the CUA + concurrent shared-world routes. */
-export function withInboxMission(
-  spec: DesktopParticipantRun,
-  inboxUrl: string,
-  address?: string,
-  receiving = false,
-): DesktopParticipantRun {
-  // No assigned identity means no participant inbox; never fall back to the shared operator view.
-  if (!address?.trim()) return spec;
-  // Captured mail is routed to the assigned identity. Supply that identity and inbox
-  // access without requiring the participant to wait or complete the email flow.
-  const identity = ` Your email address is ${address} — when the app asks for an email address, enter exactly that.`;
-  if (receiving)
-    return {
-      ...spec,
-      instructions: `${spec.instructions}\n\nEmail inbox:${identity} This is a fresh test identity; it does not replace an existing account's email address. When the app says it sent email, open ${inboxUrl} to check your inbox. Delivery may take a little time. Decide whether to wait or continue based on your situation. Report what you observe if mail is missing or unavailable. The inbox may block remote images or undeclared destinations; those are harness limitations.`,
-    };
-  return {
-    ...spec,
-    instructions: `${spec.instructions}\n\nEmail inbox:${identity} Your inbox is available at ${recipientInboxUrl(inboxUrl, address)} in the browser. It contains captured email addressed to your test identity. Delivery may take a little time. Decide whether to check it, wait or stop based on your situation and what you observe.`,
-  };
 }
 
 /** Per-lane sandbox deadline (each lane owns its own desktop). Mirrors the single-lane formula
@@ -345,153 +229,6 @@ function participantRunsAndPlan(
   return { runs, participantPlan };
 }
 
-async function resolveCuaRerunSelection(args: {
-  cwd: string;
-  labId: string;
-  sandboxMs: number;
-  sourceRunId: string;
-  participantIds?: string[];
-  participantRuns: DesktopParticipantRun[];
-  participantPlan: CuaParticipantPlan;
-}): Promise<
-  | {
-      ok: true;
-      participantRuns: DesktopParticipantRun[];
-      participantPlan: CuaParticipantPlan;
-      rerun: RunRerunLineage;
-    }
-  | { ok: false; message: string }
-> {
-  const source = await loadRunBundle(args.cwd, args.sourceRunId);
-  if (!source) {
-    return { ok: false, message: `source run not found or invalid: ${args.sourceRunId}` };
-  }
-  const bundle = source.bundle;
-  if (bundle.mode !== "live") {
-    return {
-      ok: false,
-      message: `source run ${bundle.runId} is ${bundle.mode}; rerun selection only applies to live CUA fan-out evidence.`,
-    };
-  }
-  const fanoutEvent = bundle.events.some((event) => event.type === "cua-lab.fanout.plan");
-  if (!fanoutEvent || bundle.streams.length < 2) {
-    return { ok: false, message: `source run ${bundle.runId} is not a CUA fan-out run.` };
-  }
-
-  const prior = bundle.streams
-    .map(snapshotPriorParticipant)
-    .filter(
-      (entry): entry is NonNullable<ReturnType<typeof snapshotPriorParticipant>> => entry !== null,
-    );
-  const priorById = new Map(prior.map((entry) => [entry.participantId, entry]));
-  if (priorById.size < 2) {
-    return { ok: false, message: `source run ${bundle.runId} does not expose multiple lane ids.` };
-  }
-
-  const explicitIds = uniqueIds(args.participantIds ?? []);
-  const selectedIds =
-    explicitIds.length > 0
-      ? explicitIds
-      : prior.filter((entry) => entry.rerunnable).map((entry) => entry.participantId);
-  if (selectedIds.length === 0) {
-    return {
-      ok: false,
-      message: `source run ${bundle.runId} has no failed, blocked, timed-out, or hollow lanes to rerun.`,
-    };
-  }
-
-  const missingPrior = selectedIds.filter((id) => !priorById.has(id));
-  if (missingPrior.length > 0) {
-    return {
-      ok: false,
-      message: `selected lane id(s) were not present in source run ${bundle.runId}: ${missingPrior.join(", ")}`,
-    };
-  }
-
-  const specsById = new Map(args.participantRuns.map((spec) => [spec.planned.id, spec]));
-  const missingCurrent = selectedIds.filter((id) => !specsById.has(id));
-  if (missingCurrent.length > 0) {
-    return {
-      ok: false,
-      message: `selected lane id(s) are not present in the current lab config ${args.labId}: ${missingCurrent.join(", ")}`,
-    };
-  }
-
-  const selectedSpecs = selectedIds.map((id) => specsById.get(id)!);
-  const selectedPlanIds = new Set(selectedIds);
-  const selectedPlanEntries = args.participantPlan.lanes.filter((entry) =>
-    selectedPlanIds.has(entry.id),
-  );
-  const concurrency = Math.max(1, Math.min(args.participantPlan.concurrency, selectedSpecs.length));
-  const participantPlan: CuaParticipantPlan = {
-    ...args.participantPlan,
-    laneCount: selectedSpecs.length,
-    concurrency,
-    waves: Math.ceil(selectedSpecs.length / concurrency),
-    worstCaseSandboxMinutes: Math.round((selectedSpecs.length * args.sandboxMs) / 60_000),
-    lanes: selectedPlanEntries,
-  };
-
-  const previous = selectedIds.map((id) => priorById.get(id)!.previous);
-  return {
-    ok: true,
-    participantRuns: selectedSpecs,
-    participantPlan,
-    rerun: {
-      sourceRunId: bundle.runId,
-      selectedLaneIds: selectedIds,
-      previous,
-    },
-  };
-}
-
-function uniqueIds(values: string[]): string[] {
-  const seen = new Set<string>();
-  const result: string[] = [];
-  for (const value of values) {
-    const id = value.trim();
-    if (!id || seen.has(id)) continue;
-    seen.add(id);
-    result.push(id);
-  }
-  return result;
-}
-
-function snapshotPriorParticipant(stream: RunStream): {
-  participantId: string;
-  previous: RunRerunLineage["previous"][number];
-  rerunnable: boolean;
-} | null {
-  if (stream.kind !== "browser" || typeof stream.laneId !== "string" || !stream.laneId.trim()) {
-    return null;
-  }
-  const actorStatus = stream.actor?.status;
-  const completionReason = stream.actor?.completionReason;
-  const reason = stream.ui?.state ?? stream.actor?.reason;
-  const actions = stream.actor?.counts.actions ?? 0;
-  const messages = stream.actor?.counts.messages ?? 0;
-  const hollow = completionReason === "goal_satisfied" && actions === 0 && messages === 0;
-  const rerunnable =
-    stream.status !== "passed" ||
-    actorStatus === "failed" ||
-    actorStatus === "blocked" ||
-    actorStatus === "timed_out" ||
-    completionReason === "harness_error" ||
-    hollow;
-  return {
-    participantId: stream.laneId,
-    previous: {
-      laneId: stream.laneId,
-      streamId: stream.id,
-      status: stream.status,
-      ...(reason === undefined ? {} : { reason }),
-      ...(actorStatus === undefined ? {} : { actorStatus }),
-      ...(completionReason === undefined ? {} : { completionReason }),
-    },
-    rerunnable,
-  };
-}
-
 /**
  * Pure pre-flight plan resolver (runs in dry-run AND live). Returns the lane table, the
  * effective concurrency, the wave count, the per-lane session budget, and the worst-case total
@@ -535,32 +272,6 @@ export function formatParticipantPlanEntry(entry: CuaParticipantPlanEntry): stri
     entry.reasoningEffort ? `effort=${entry.reasoningEffort}` : undefined,
   ].filter((part): part is string => part !== undefined);
   return `${entry.id}: persona=${entry.persona}${taxonomy.length > 0 ? ` ${taxonomy.join(" ")}` : ""} device=${entry.device} ${entry.resolution[0]}x${entry.resolution[1]} prompt#${entry.instructionDigest}${entry.targetDigest ? ` target#${entry.targetDigest}` : ""}`;
-}
-
-/** Short id-safe suffix for a subject-phase RunEvent: drops the shared prefix/suffix so each
- *  phase gets a distinct bundle event id (e.g. "clone", "state-before-build"). */
-export function phaseEventIdSuffix(type: string): string {
-  return type
-    .replace(/^cua-lab\.subject\./, "")
-    .replace(/\.(started|completed)$/, "")
-    .replace(/\./g, "-");
-}
-
-export function makeCuaRunBudget(maxTotalUsd: number): CuaRunBudget {
-  const participantEstimates = new Map<string, number>();
-  return {
-    maxTotalUsd,
-    note(participantId, estimateUsd) {
-      if (estimateUsd !== null) participantEstimates.set(participantId, estimateUsd);
-      let total = 0;
-      for (const value of participantEstimates.values()) total += value;
-      return total;
-    },
-  };
-}
-
-export function digestUrl(url: string): string {
-  return digestText(url, 16);
 }
 
 /**

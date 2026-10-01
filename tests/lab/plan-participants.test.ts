@@ -18,7 +18,7 @@ import {
   type ComputerUseParticipant,
 } from "../../src/lab/plan-participants.js";
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/lab/types.js";
-import { loadCuaParticipants } from "../../src/routes/computer-use/lane-plan.js";
+import { loadCuaParticipants } from "../../src/routes/computer-use/participant-runs.js";
 import { planComputerUseLab } from "../../src/routes/computer-use/plan.js";
 import type { DesktopParticipantRun } from "../../src/routes/computer-use/types.js";
 import { runConcurrentSharedWorld } from "../../src/routes/shared-world/route.js";

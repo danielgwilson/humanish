@@ -23,7 +23,7 @@ import {
   MIN_DESKTOP_RENDER_WIDTH,
   resolveParticipantDevice,
 } from "../../../src/lab/device-presets.js";
-import { resolveCuaParticipantPlan } from "../../../src/routes/computer-use/lane-plan.js";
+import { resolveCuaParticipantPlan } from "../../../src/routes/computer-use/participant-runs.js";
 import { runComputerUsePlan, runCuaActorLab } from "../../../src/routes/computer-use/route.js";
 import { planComputerUseLab } from "../../../src/routes/computer-use/plan.js";
 import type { ComputerUsePlan } from "../../../src/lab/plan-types.js";

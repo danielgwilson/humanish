@@ -47,7 +47,7 @@ import {
 import {
   CLOSING_LINE_DIRECTIVE,
   composeParticipantInstructions,
-} from "../../../src/routes/computer-use/lane-plan.js";
+} from "../../../src/routes/computer-use/participant-prompt.js";
 import type {
   E2BDesktopCreateOptions,
   E2BDesktopModule,

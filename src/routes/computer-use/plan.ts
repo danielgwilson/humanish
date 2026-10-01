@@ -43,7 +43,7 @@ import {
   boundedConcurrency,
   defaultSessionTimeoutMs,
   resolveParticipantSandboxMs,
-} from "./lane-plan.js";
+} from "./participant-runs.js";
 import { MAX_SANDBOX_MS } from "../../substrates/e2b/lifetime.js";
 import {
   type CuaActorLabErrorCode,

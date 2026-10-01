@@ -10,8 +10,7 @@ import {
 } from "../../run/participant-records.js";
 import type { RunDesktopGeometry, RunSimulationStatus, RunStream } from "../../run/streams.js";
 import { declaredScreenForRender } from "../../substrates/e2b/desktop-geometry.js";
-import { describeSubjectState, publicSafeAppUrlLabel } from "./bundle-parts.js";
-import { phaseEventIdSuffix } from "./lane-plan.js";
+import { describeSubjectState, phaseEventIdSuffix, publicSafeAppUrlLabel } from "./bundle-parts.js";
 import type { CuaFanoutBundleArgs, DesktopParticipantRun } from "./types.js";
 
 /** What every participant's records share. */

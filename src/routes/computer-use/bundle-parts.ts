@@ -1,18 +1,17 @@
 // The parts both computer-use bundle shapes share: the subject-state story and provenance line,
 // feedback candidates from what live participants reported, provider-resource records, and the
-// public-safe app URL label. The builders are bundle.ts (the dispatcher and the judge),
+// public-safe app URL label, the URL digest and the subject-phase event id suffix. The builders are bundle.ts (the dispatcher and the judge),
 // single-bundle.ts and fanout-bundle.ts.
 
 import { feedbackProofCommands } from "../../feedback/proof.js";
 import type { CuaLoopResult } from "../../actors/computer-use/loop.js";
-import { containsSensitive, redactText } from "../../evidence/redaction.js";
+import { containsSensitive, digestText, redactText } from "../../evidence/redaction.js";
 import {
   type RunFeedbackCandidate,
   type RunProviderResource,
   type RunSubjectProvenance,
 } from "../../run/bundle.js";
 import { participantResourceIds, type ParticipantIds } from "../../run/participant-records.js";
-import { digestUrl } from "./lane-plan.js";
 import { resolveSelfReportedFriction } from "./self-report.js";
 import { type CuaSubjectProvenanceArg, type ParticipantRunOutcome } from "./types.js";
 
@@ -207,4 +206,17 @@ export function providerResourcesForOutcome(args: {
 
 export function publicSafeAppUrlLabel(url: string): string {
   return containsSensitive(url) ? `[target-url:${digestUrl(url)}]` : url;
+}
+
+/** Short id-safe suffix for a subject-phase RunEvent: drops the shared prefix/suffix so each
+ *  phase gets a distinct bundle event id (e.g. "clone", "state-before-build"). */
+export function phaseEventIdSuffix(type: string): string {
+  return type
+    .replace(/^cua-lab\.subject\./, "")
+    .replace(/\.(started|completed)$/, "")
+    .replace(/\./g, "-");
+}
+
+export function digestUrl(url: string): string {
+  return digestText(url, 16);
 }

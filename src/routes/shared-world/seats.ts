@@ -9,7 +9,7 @@ import { resolveParticipant } from "../../run/participant.js";
 import { attachObserverRuntimeStreamUrls } from "../../observer/render.js";
 import type { RunBundle } from "../../run/bundle.js";
 import type { E2BDesktopSandbox } from "../../substrates/e2b/sdk.js";
-import { composeParticipantInstructions } from "../computer-use/lane-plan.js";
+import { composeParticipantInstructions } from "../computer-use/participant-prompt.js";
 import { startLiveTraceFlush } from "../computer-use/live-flush.js";
 import type {
   CuaActorLabHooks,
