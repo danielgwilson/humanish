@@ -990,11 +990,12 @@ describe("runScriptedBrowserLab", () => {
       const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
       const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
       const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8")) as {
-        outcome?: { verdict?: string };
+        outcome?: { verdict?: string; ok?: boolean };
       };
       expect(bundle.review.verdict).toBe(verdict);
       expect(status.outcome?.verdict).toBe(verdict);
       expect(outcome.result.ok).toBe(ok);
+      expect(status.outcome?.ok).toBe(outcome.result.ok);
     });
   });
 
@@ -1132,13 +1133,14 @@ describe("runScriptedBrowserLab", () => {
     const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
     const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8")) as {
-      outcome?: { verdict?: string };
+      outcome?: { verdict?: string; ok?: boolean };
     };
     expect(bundle.mode).toBe("live");
     expect(bundle.review.verdict).toBe("fail");
     expect(bundle.simulations[0]?.status).toBe("failed");
     expect(status.outcome?.verdict).toBe("fail");
     expect(outcome.result.ok).toBe(false);
+    expect(status.outcome?.ok).toBe(outcome.result.ok);
   });
 
   it("rejects callback-returned traversal artifacts before parent bundle finalization", async () => {
@@ -1692,11 +1694,12 @@ describe("scripted run lifetime on the provisioned clone route", () => {
     const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
     const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8")) as {
-      outcome?: { verdict?: string };
+      outcome?: { verdict?: string; ok?: boolean };
     };
     expect(bundle.review.verdict).toBe("pass");
     expect(status.outcome?.verdict).toBe("pass");
     expect(outcome.result.ok).toBe(true);
+    expect(status.outcome?.ok).toBe(outcome.result.ok);
   });
 
   it("S3: after a failed subject teardown, reclaim kills the receipted subject", async () => {

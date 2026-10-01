@@ -1287,7 +1287,21 @@
     "completedAt": "[ts]",
     "outcome": {
       "verdict": "pass",
-      "estimatedCostUsd": null
+      "estimatedCostUsd": null,
+      "ok": false,
+      "execution": {
+        "succeeded": false,
+        "failures": [
+          {
+            "kind": "sandbox-cleanup",
+            "message": "Sandbox teardown unproven (killed=true, remaining=1): kill(id) returned true (found and killed) but getInfo(id) still reports state=running; this sandbox's teardown is not confirmed by id"
+          },
+          {
+            "kind": "evidence",
+            "message": "Run bundle failed verification."
+          }
+        ]
+      }
     }
   },
   "terminal-events.ndjson": [

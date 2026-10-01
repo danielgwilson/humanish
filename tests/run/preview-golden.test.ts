@@ -1,4 +1,4 @@
-import { cp, mkdtemp, rm } from "node:fs/promises";
+import { cp, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -40,5 +40,24 @@ describe("preview run directory golden", () => {
     await expect(`${JSON.stringify(snapshot, null, 2)}\n`).toMatchFileSnapshot(
       "../golden/routes/preview-dry-run.json",
     );
+  });
+
+  // The preview goes through the judge like every route: its verdict is a contract, and status.json
+  // carries the result's ok and execution outcome.
+  it("agrees across bundle, result and status", async () => {
+    const cwd = path.join(root, "minimal-app");
+    await cp(path.resolve("fixtures/minimal-app"), cwd, { recursive: true });
+    const result = await runDryRun({ cwd, dryRun: true, runId: "preview-agreement" });
+    const runDir = path.join(cwd, ".humanish", "runs", "preview-agreement");
+    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as {
+      review: { verdict: string };
+    };
+    const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8")) as {
+      outcome?: { verdict?: string; ok?: boolean; execution?: { succeeded: boolean } };
+    };
+    expect(bundle.review.verdict).toBe("contract_proof_only");
+    expect(status.outcome?.verdict).toBe(bundle.review.verdict);
+    expect(status.outcome?.ok).toBe(result.ok);
+    expect(status.outcome?.execution).toEqual({ succeeded: true, failures: [] });
   });
 });

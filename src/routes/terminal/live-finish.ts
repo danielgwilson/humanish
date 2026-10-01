@@ -19,8 +19,17 @@ import {
   noSpendNotEstablished,
 } from "./ledger.js";
 import type { LiveSandboxInputs, LiveTerminalSandbox } from "./live-sandbox.js";
-import { foldScorerFailures, judgeTerminal } from "../../run/judge.js";
-import { terminalLabResult, terminalParticipantFacts } from "./result.js";
+import {
+  foldScorerFailures,
+  judgeExecution,
+  judgeTerminal,
+  OUTCOME_POLICIES,
+} from "../../run/judge.js";
+import {
+  terminalExecutionFailures,
+  terminalLabResult,
+  terminalParticipantFacts,
+} from "./result.js";
 import { parseTerminalTokenUsage } from "./token-usage.js";
 import { buildTerminalActorTrace, scrubSplitKnownValues, tailOf } from "./trace.js";
 import type {
@@ -190,10 +199,8 @@ export async function finishLiveTerminalSession(
   const { runId, createdAt, paths: runPaths } = run;
   // One judgment, after a blown cap has overridden the session: the bundle's verdict (and so
   // status.json's outcome) and the result's ok both read it.
-  const judgment = judgeTerminal({
-    dryRun: false,
-    participant: terminalParticipantFacts(trace, session.error),
-  });
+  const participant = terminalParticipantFacts(trace, session.error);
+  const judgment = judgeTerminal({ dryRun: false, participant });
 
   // The run cost summary, as the computer-use route records it: the sandbox's compute time from
   // its span and observed size, and the participant's tokens (unpriced for Codex). It is not part
@@ -262,7 +269,19 @@ export async function finishLiveTerminalSession(
   const observer = await finished.renderObserver();
   await validatePreparedRunArtifactPaths(runPaths);
 
-  return terminalLabResult({
+  // A failing agent is captured evidence on this route: only the execution and a declared scorer
+  // fail ok.
+  const execution = judgeExecution(
+    terminalExecutionFailures({
+      participant,
+      capsExceeded,
+      sessionReason: sanitize(session.reason),
+      cleanup: session.cleanup,
+      observer,
+    }),
+    OUTCOME_POLICIES.terminal,
+  );
+  const result = terminalLabResult({
     cwd,
     labId: plan.labId,
     actorId: plan.actor,
@@ -279,7 +298,10 @@ export async function finishLiveTerminalSession(
     capsExceeded,
     declaredScorerFailure: scorer.failures[0],
     judgment,
+    execution,
     observer,
     warnings,
   });
+  await finished.recordOutcome({ ok: result.ok, execution });
+  return result;
 }

@@ -560,7 +560,12 @@
     "updatedAt": "[ts]",
     "completedAt": "[ts]",
     "outcome": {
-      "verdict": "contract_proof_only"
+      "verdict": "contract_proof_only",
+      "ok": true,
+      "execution": {
+        "succeeded": true,
+        "failures": []
+      }
     }
   }
 }

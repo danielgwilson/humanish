@@ -8,7 +8,16 @@ import {
 } from "../../lab/adapter-extension.js";
 import { attachObserverRuntimeStreamUrls, type ObserverResult } from "../../observer/render.js";
 import type { RunSubjectProvenance } from "../../run/bundle.js";
-import { foldScorerFailures, sharedWorldShortfall } from "../../run/judge.js";
+import {
+  foldScorerFailures,
+  judgeExecution,
+  OUTCOME_POLICIES,
+  participantHarnessFailed,
+  resultOk,
+  sharedWorldShortfall,
+  type ExecutionFailure,
+} from "../../run/judge.js";
+import { participantFactsOf } from "../computer-use/bundle.js";
 import { resolveSubjectState } from "../computer-use/route.js";
 import {
   actorRunPassed,
@@ -195,6 +204,36 @@ export function concurrentLabFailure(envelope: {
   });
 }
 
+/**
+ * The run's execution failures: a run error (the handoff, the plane), each seat whose session
+ * failed in the harness, and an Observer that failed.
+ */
+function sharedWorldExecutionFailures(args: {
+  runError: string | undefined;
+  actorResults: readonly ActorRunResult[];
+  observer: Pick<ObserverResult, "ok" | "error">;
+}): ExecutionFailure[] {
+  const { runError, actorResults, observer } = args;
+  return [
+    ...(runError === undefined ? [] : [{ kind: "run" as const, message: runError }]),
+    ...actorResults
+      .filter((result) => participantHarnessFailed(participantFactsOf(result.outcome)))
+      .map((result) => ({
+        kind: "harness" as const,
+        message: `${result.spec.planned.id}: ${result.outcome.sessionError ?? result.outcome.session?.reason ?? "harness error"}`,
+      })),
+    ...(observer.ok
+      ? []
+      : [
+          {
+            kind: "evidence" as const,
+            message:
+              observer.error?.message ?? "Observer failed for the concurrent shared-world run.",
+          },
+        ]),
+  ];
+}
+
 /** Builds and publishes the bundle, renders the Observer and returns the lab result. */
 export async function finishConcurrentRun(
   ctx: PlaneContext,
@@ -298,8 +337,12 @@ export async function finishConcurrentRun(
   // harness/session-credibility gate, not mission-completion proof; a failed actor trace cannot
   // make the route green just because the harness got a terminal.
   const adapterFailure = adapterScoreFailureMessage(bundle);
-  const ok =
-    observer.ok && runError === undefined && judgment.passed && scorerResult.failures.length === 0;
+  const policy = OUTCOME_POLICIES["shared-world"];
+  const execution = judgeExecution(
+    sharedWorldExecutionFailures({ runError, actorResults, observer }),
+    policy,
+  );
+  const ok = resultOk({ judgment, execution, scorerFailures: scorerResult.failures, policy });
 
   const overlapProven = !dryRun && judgment.world.overlap;
 
@@ -317,7 +360,7 @@ export async function finishConcurrentRun(
     shortfall: dryRun ? undefined : sharedWorldShortfall(judgment.world),
   });
 
-  return {
+  const result: ConcurrentSharedWorldLabResult = {
     schema: CONCURRENT_SHARED_WORLD_LAB_SCHEMA,
     ok,
     cwd,
@@ -341,4 +384,6 @@ export async function finishConcurrentRun(
     warnings: [...warnings, ...adapterWarnings, ...observer.warnings],
     ...(errorResult === undefined ? {} : { error: errorResult }),
   };
+  await finished.recordOutcome({ ok, execution });
+  return result;
 }

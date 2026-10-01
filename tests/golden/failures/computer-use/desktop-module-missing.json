@@ -572,7 +572,17 @@
     "updatedAt": "[ts]",
     "completedAt": "[ts]",
     "outcome": {
-      "verdict": "fail"
+      "verdict": "fail",
+      "ok": false,
+      "execution": {
+        "succeeded": false,
+        "failures": [
+          {
+            "kind": "harness",
+            "message": "lane-01: Live E2B desktop launch requires optional peer dependency @e2b/desktop."
+          }
+        ]
+      }
     }
   }
 }

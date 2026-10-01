@@ -1,12 +1,16 @@
 // How humanish judges a run. A route reduces what happened to plain facts and judges them here
-// once, and its bundle's verdict and its result's ok both read that judgment. The file reads in
-// the order a run is judged:
-//   1. session and participant predicates (hollowCompletion, selfReportedBlocker, participantPassed);
-//   2. the judgment shapes (Judgment, HarnessJudgment, SharedWorldJudgment);
+// once. Two facts come out: what the participants experienced (the verdict, which the bundle and
+// status.json show) and whether the run worked as an execution. The result's ok reads both under
+// the route's policy. The file reads in the order a run is judged:
+//   1. session and participant predicates (hollowCompletion, selfReportedBlocker, participantPassed,
+//      participantHarnessFailed);
+//   2. the judgment shapes (Judgment, SharedWorldJudgment, ExecutionOutcome, OutcomePolicy);
 //   3. one judge per route: computer-use calls judgeOneParticipant (one lane, no rerun) or
-//      judgeParticipants, shared-world calls judgeSharedWorld, terminal calls judgeTerminal and
-//      scripted calls judgeScripted;
-//   4. foldScorerFailures, which every route with a scorer applies last, before the run finishes.
+//      judgeParticipants, shared-world calls judgeSharedWorld, terminal calls judgeTerminal,
+//      scripted calls judgeScripted and preview calls judgePreview;
+//   4. foldScorerFailures, which every route with a scorer applies before the run finishes;
+//   5. the outcome: judgeExecution applies the route's policy to its execution failures, and
+//      resultOk gives the result's ok.
 
 import type {
   ActorCompletionReason,
@@ -90,6 +94,14 @@ export function participantPassed(participant: ParticipantFacts): boolean {
 }
 
 /**
+ * The participant's session failed in the harness: it threw before a terminal status, or it ended
+ * in a harness error. That is an execution failure, apart from what the participant experienced.
+ */
+export function participantHarnessFailed(participant: ParticipantFacts): boolean {
+  return participant.sessionError !== undefined || participant.completionReason === "harness_error";
+}
+
+/**
  * The status a participant is tallied under, given what the route made of the session. A
  * goal_satisfied claim with zero engagement is a session that ran out before anything happened;
  * one whose final message describes a blocker is a participant who could not proceed and said so.
@@ -135,15 +147,53 @@ export interface Judgment {
   passed: boolean;
 }
 
-/**
- * The judgment of a route whose result reads harnessFailed: terminal and scripted. A participant
- * that ended failed, blocked or timed out is still evidence there, and only a harness failure
- * fails the result.
- */
-export interface HarnessJudgment {
-  verdict: Verdict;
-  harnessFailed: boolean;
+/** What kind of execution failure a run recorded. */
+type ExecutionFailureKind =
+  | "harness"
+  | "provider-cleanup"
+  | "sandbox-cleanup"
+  | "evidence"
+  | "cap"
+  | "run";
+
+/** One way the run failed as an execution. The message is scrubbed; status.json shows it. */
+export interface ExecutionFailure {
+  kind: ExecutionFailureKind;
+  message: string;
 }
+
+/** Whether the run worked as an execution, apart from what its participants experienced. */
+export interface ExecutionOutcome {
+  /** True when no failure of a kind the route's policy counts was recorded. */
+  succeeded: boolean;
+  /** The failures the policy counts, in the order the route recorded them. */
+  failures: ExecutionFailure[];
+}
+
+/**
+ * How a route turns the facts into its result's ok. A gate route needs every participant to
+ * pass. On an evidence route a participant that failed, was blocked or timed out is captured
+ * evidence, and only the execution and the scorer fail the result. Each of the two policy kinds
+ * says whether that kind of failure fails the execution or stays a warning.
+ */
+export interface OutcomePolicy {
+  participants: "gate" | "evidence";
+  sandboxCleanup: "fails" | "warns";
+  evidence: "fails" | "warns";
+}
+
+/** The routes a run is judged on. */
+export type JudgedRoute = "computer-use" | "shared-world" | "terminal" | "scripted" | "preview";
+
+/** Each route's outcome policy, in one place. */
+export const OUTCOME_POLICIES: Readonly<Record<JudgedRoute, OutcomePolicy>> = {
+  "computer-use": { participants: "gate", sandboxCleanup: "warns", evidence: "fails" },
+  "shared-world": { participants: "gate", sandboxCleanup: "warns", evidence: "fails" },
+  terminal: { participants: "evidence", sandboxCleanup: "fails", evidence: "fails" },
+  scripted: { participants: "evidence", sandboxCleanup: "warns", evidence: "fails" },
+  // The preview's bundle is evidence even when its Observer does not render; export renders it.
+  preview: { participants: "evidence", sandboxCleanup: "warns", evidence: "warns" },
+};
 
 /** What a shared-world run observed about its one world, beside how each seat ended. */
 export interface SharedWorldFacts {
@@ -253,29 +303,25 @@ export function judgeSharedWorld(args: {
 export function judgeTerminal(args: {
   dryRun: boolean;
   participant: ParticipantFacts | undefined;
-}): HarnessJudgment {
-  return {
-    verdict: judgeOneParticipant({
-      dryRun: args.dryRun,
-      inProgress: false,
-      participant: args.participant,
-    }).verdict,
-    harnessFailed: args.participant?.completionReason === "harness_error",
-  };
+}): Judgment {
+  return judgeOneParticipant({
+    dryRun: args.dryRun,
+    inProgress: false,
+    participant: args.participant,
+  });
 }
 
 /**
  * A scripted run: the worst surface decides the verdict. A harness error or a failed step fails
  * the run, then a timeout makes it timed_out, and otherwise it passes. A session error fails it
- * and a run with no surface results is a contract. The harness failed when the session erred, a
- * live surface never returned, or a surface ended in a harness error.
+ * and a run with no surface results is a contract. It passes when every expected surface passed.
  */
 export function judgeScripted(args: {
   dryRun: boolean;
   sessionError: string | undefined;
   expected: number;
   surfaces: ParticipantFacts[];
-}): HarnessJudgment {
+}): Judgment {
   const { surfaces } = args;
   const reasons = surfaces.map((surface) => surface.completionReason);
   const verdict: Verdict =
@@ -288,13 +334,19 @@ export function judgeScripted(args: {
           : reasons.some((reason) => reason === "timed_out")
             ? "timed_out"
             : "pass";
-  const complete = surfaces.length === args.expected;
   return {
     verdict,
-    harnessFailed:
-      args.sessionError !== undefined ||
-      (!args.dryRun && (!complete || reasons.includes("harness_error"))),
+    passed:
+      args.dryRun ||
+      (args.sessionError === undefined &&
+        surfaces.length === args.expected &&
+        surfaces.every(participantPassed)),
   };
+}
+
+/** The preview: a synthetic contract with no participants. */
+export function judgePreview(): Judgment {
+  return { verdict: "contract_proof_only", passed: true };
 }
 
 /**
@@ -317,4 +369,36 @@ export function foldScorerFailures(
     };
   }
   return folded;
+}
+
+/** The run's execution outcome under its route's policy. A failure of a kind the policy lets warn is dropped. */
+export function judgeExecution(
+  failures: readonly ExecutionFailure[],
+  policy: OutcomePolicy,
+): ExecutionOutcome {
+  const counted = failures.filter((failure) =>
+    failure.kind === "sandbox-cleanup"
+      ? policy.sandboxCleanup === "fails"
+      : failure.kind === "evidence"
+        ? policy.evidence === "fails"
+        : true,
+  );
+  return { succeeded: counted.length === 0, failures: counted };
+}
+
+/**
+ * The result's ok: the run worked as an execution, no scorer failed it, and on a gate route every
+ * participant passed. An evidence route ignores how its participants did.
+ */
+export function resultOk(args: {
+  judgment: Judgment;
+  execution: ExecutionOutcome;
+  scorerFailures: readonly string[];
+  policy: OutcomePolicy;
+}): boolean {
+  return (
+    args.execution.succeeded &&
+    args.scorerFailures.length === 0 &&
+    (args.policy.participants === "evidence" || args.judgment.passed)
+  );
 }

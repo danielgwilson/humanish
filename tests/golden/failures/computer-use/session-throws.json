@@ -877,7 +877,17 @@
     "completedAt": "[ts]",
     "outcome": {
       "verdict": "fail",
-      "estimatedCostUsd": 0.00444
+      "estimatedCostUsd": 0.00444,
+      "ok": false,
+      "execution": {
+        "succeeded": false,
+        "failures": [
+          {
+            "kind": "harness",
+            "message": "lane-01: provider exploded mid-session"
+          }
+        ]
+      }
     }
   }
 }

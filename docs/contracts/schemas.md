@@ -1077,6 +1077,13 @@ proof claims zero on a `null` line, or when known spend exceeds the declared cap
 every backend at run start, refreshed on a fixed cadence while the run is
 alive, and finalized when it ends: `{ schema, runId, state: running |
 finished, mode, lab?, pid, startedAt, updatedAt, completedAt?, outcome? }`.
+`outcome` carries the bundle's `verdict`, `participants` and `estimatedCostUsd`
+when the run finishes, then the result's `ok` and `execution: { succeeded,
+failures: [{ kind, message }] }` once the Observer has rendered. The verdict is
+what the participants experienced; `execution` is whether the run worked as an
+execution (`kind` is `harness`, `provider-cleanup`, `sandbox-cleanup`,
+`evidence`, `cap` or `run`), and `ok` reads both under the route's policy
+(`OUTCOME_POLICIES` in `src/run/judge.ts`).
 
 It answers two questions the filesystem could not answer before: **which lab**
 a run belongs to, and **whether it is still alive**, including for runs an

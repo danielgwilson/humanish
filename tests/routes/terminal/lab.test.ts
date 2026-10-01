@@ -2904,6 +2904,7 @@ describe("terminal judgment agreement (bundle verdict, status outcome, result ok
     return {
       verdict: bundle.review.verdict,
       statusVerdict: status.outcome?.verdict,
+      statusOk: status.outcome?.ok,
       ok: result.ok,
       code: result.error?.code,
     };
@@ -2954,6 +2955,7 @@ describe("terminal judgment agreement (bundle verdict, status outcome, result ok
     const outcome = await judged(options);
     expect(outcome.verdict).toBe(expected.verdict);
     expect(outcome.statusVerdict).toBe(outcome.verdict);
+    expect(outcome.statusOk).toBe(outcome.ok);
     expect(outcome.ok).toBe(expected.ok);
     expect(outcome.code).toBe(expected.code);
   });

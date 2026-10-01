@@ -2158,7 +2158,12 @@
     "completedAt": "[ts]",
     "outcome": {
       "verdict": "fail",
-      "estimatedCostUsd": null
+      "estimatedCostUsd": null,
+      "ok": false,
+      "execution": {
+        "succeeded": true,
+        "failures": []
+      }
     }
   }
 }

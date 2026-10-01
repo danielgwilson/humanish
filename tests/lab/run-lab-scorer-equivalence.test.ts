@@ -167,12 +167,13 @@ describe("scorer failures fold into one verdict the bundle, status and result ag
             review: { verdict: string; gaps: string[] };
           };
           const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8")) as {
-            outcome?: { verdict?: string };
+            outcome?: { verdict?: string; ok?: boolean };
           };
           const failed = fails(routeName, behavior, declared);
           expect(bundle.review.verdict).toBe(failed ? "fail" : judged[routeName]);
           expect(status.outcome?.verdict).toBe(bundle.review.verdict);
           expect(outcome.result.ok).toBe(!failed);
+          expect(status.outcome?.ok).toBe(outcome.result.ok);
         });
       }
     }
