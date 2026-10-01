@@ -499,17 +499,17 @@ function concurrentCostSummary(
   if (inProgress) return undefined;
   const subject = args.subjectDesktop;
   return buildRunCostSummary({
-    lanes: args.actorResults.flatMap((result) =>
+    participants: args.actorResults.flatMap((result) =>
       result.outcome.session === undefined
         ? []
-        : [{ laneId: result.spec.planned.id, trace: result.outcome.session.trace }],
+        : [{ participantId: result.spec.planned.id, trace: result.outcome.session.trace }],
     ),
     desktops: [
       ...(subject === undefined
         ? []
         : [
             {
-              laneId: "subject",
+              participantId: "subject",
               minutes: desktopSpanToMinutes(subject.durationMs),
               observation: subject.observation,
               lifetimeComplete: subject.killed,
@@ -520,7 +520,7 @@ function concurrentCostSummary(
           ? []
           : [
               {
-                laneId: result.spec.planned.id,
+                participantId: result.spec.planned.id,
                 minutes: desktopSpanToMinutes(result.outcome.desktopDurationMs),
                 observation: result.outcome.desktopResources,
                 lifetimeComplete: result.outcome.killed,

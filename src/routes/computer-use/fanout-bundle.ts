@@ -164,21 +164,21 @@ function fanoutCost(args: CuaFanoutBundleArgs) {
   // trace.estimatedCost) + a desktop line per owned allocation, priced at its observed resources.
   // Per-lane worlds have no shared provisioning to double-count. Omitted on a pure dry-run.
   const costTraces = specs
-    .map((spec, index) => ({ laneId: spec.planned.id, outcome: outcomes?.[index] }))
+    .map((spec, index) => ({ participantId: spec.planned.id, outcome: outcomes?.[index] }))
     .filter(
-      (entry): entry is { laneId: string; outcome: LaneRunOutcome } =>
+      (entry): entry is { participantId: string; outcome: LaneRunOutcome } =>
         entry.outcome?.session !== undefined,
     )
-    .map((entry) => ({ laneId: entry.laneId, trace: entry.outcome.session!.trace }));
+    .map((entry) => ({ participantId: entry.participantId, trace: entry.outcome.session!.trace }));
   const desktops = (outcomes ?? [])
     .filter((outcome) => outcome.sandboxId !== undefined)
     .map((outcome) => ({
-      laneId: outcome.spec.planned.id,
+      participantId: outcome.spec.planned.id,
       minutes: desktopSpanToMinutes(outcome.desktopDurationMs),
       observation: outcome.desktopResources,
       lifetimeComplete: outcome.killed,
     }));
-  const cost = buildRunCostSummary({ lanes: costTraces, desktops });
+  const cost = buildRunCostSummary({ participants: costTraces, desktops });
   return cost;
 }
 

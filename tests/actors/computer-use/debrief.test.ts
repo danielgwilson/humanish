@@ -124,7 +124,7 @@ describe("read-only participant debrief", () => {
       ratesAsOf: "2026-09-03",
       modelId: "internal-fixture",
     };
-    const cost = buildRunCostSummary({ lanes: [{ trace: result.trace }] });
+    const cost = buildRunCostSummary({ participants: [{ trace: result.trace }] });
     expect(cost?.fullyEstimated).toBe(true);
     expect(cost?.breakdown).toHaveLength(1);
     expect(cost?.breakdown[0]?.estimatedCostUsd).toBe(0.02);
@@ -313,7 +313,7 @@ describe("read-only participant debrief", () => {
       modelId: "internal-fixture",
     };
     const cost = buildRunCostSummary({
-      lanes: [{ laneId: "lane-1", trace: result.trace }],
+      participants: [{ participantId: "lane-1", trace: result.trace }],
       desktopMinutes: undefined,
     });
     expect(cost).toMatchObject({
@@ -373,7 +373,7 @@ describe("read-only participant debrief", () => {
       expect(Number.isFinite(result.trace.tokenUsage?.input)).toBe(true);
       expect(Number.isFinite(result.trace.tokenUsage?.output)).toBe(true);
       const cost = buildRunCostSummary({
-        lanes: [{ trace: result.trace }],
+        participants: [{ trace: result.trace }],
         desktopMinutes: undefined,
       });
       expect(cost?.fullyEstimated).toBe(false);

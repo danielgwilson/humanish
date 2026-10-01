@@ -13,23 +13,25 @@ import { type RunCostLine, type RunCostSummary } from "./bundle.js";
 
 /** One hosted sandbox's observed lifetime and size. */
 export interface DesktopUsage {
-  laneId?: string;
+  /** The participant the sandbox belonged to, saved on its cost lines as `laneId`. */
+  participantId?: string;
   minutes: number | undefined;
   observation: DesktopResourceObservation | undefined;
   lifetimeComplete: boolean;
 }
 
-type CostLane = { laneId?: string; trace: ActorTrace };
+/** One participant's trace; its id is saved on the participant's cost lines as `laneId`. */
+type CostParticipant = { participantId?: string; trace: ActorTrace };
 
 interface CostArgs {
-  lanes: CostLane[];
+  participants: CostParticipant[];
   /** Legacy library input: uses a labeled planning assumption; live routes use desktops. */
   desktopMinutes?: number | undefined;
   desktops?: DesktopUsage[];
 }
 
 export function buildRunCostSummary(args: CostArgs): RunCostSummary | undefined {
-  const breakdown = [...modelCostLines(args.lanes), ...desktopCostLines(args)];
+  const breakdown = [...modelCostLines(args.participants), ...desktopCostLines(args)];
   if (breakdown.length === 0) {
     return undefined;
   }
@@ -42,54 +44,58 @@ export function buildRunCostSummary(args: CostArgs): RunCostSummary | undefined 
     fullyEstimated: !totals.anyNull,
     placeholder: totals.placeholder,
     breakdown,
-    tokenUsage: runTokenUsage(args.lanes),
+    tokenUsage: runTokenUsage(args.participants),
     desktopMinutes: runDesktopMinutes(args),
     note: costNote(args, totals),
   };
 }
 
 /** Each participant's model-token lines: an estimate, and a null line for each unreported part. */
-function modelCostLines(lanes: CostLane[]): RunCostLine[] {
+function modelCostLines(participants: CostParticipant[]): RunCostLine[] {
   const breakdown: RunCostLine[] = [];
-  for (const lane of lanes) {
-    const usage = lane.trace.tokenUsage;
+  for (const participant of participants) {
+    const usage = participant.trace.tokenUsage;
     // A stalled/ambiguous interaction can remain unreported after a later successful retry.
     // Keep known token estimates and make the additional unknown explicit.
-    if (lane.trace.interactionUsageIncomplete === true) {
+    if (participant.trace.interactionUsageIncomplete === true) {
       breakdown.push({
         kind: "model-tokens",
-        ...(lane.laneId === undefined ? {} : { laneId: lane.laneId }),
-        ...(lane.trace.providerVersion === undefined
+        ...(participant.participantId === undefined ? {} : { laneId: participant.participantId }),
+        ...(participant.trace.providerVersion === undefined
           ? {}
-          : { modelId: lane.trace.providerVersion }),
+          : { modelId: participant.trace.providerVersion }),
         estimatedCostUsd: null,
         reason: "interaction_usage_unreported",
         ratesAsOf: null,
       });
     }
     // An attempted closing request has its own accounting boundary.
-    if (lane.trace.debrief?.usageReported === false) {
+    if (participant.trace.debrief?.usageReported === false) {
       breakdown.push({
         kind: "model-tokens",
-        ...(lane.laneId === undefined ? {} : { laneId: lane.laneId }),
-        ...(lane.trace.providerVersion === undefined
+        ...(participant.participantId === undefined ? {} : { laneId: participant.participantId }),
+        ...(participant.trace.providerVersion === undefined
           ? {}
-          : { modelId: lane.trace.providerVersion }),
+          : { modelId: participant.trace.providerVersion }),
         estimatedCostUsd: null,
         reason: "closing_usage_unreported",
         ratesAsOf: null,
       });
     }
     const est =
-      lane.trace.executionProfile?.billing === "account-unknown"
-        ? estimateActorCostForExecution(usage, lane.trace.ids.model, lane.trace.executionProfile)
-        : lane.trace.estimatedCost;
+      participant.trace.executionProfile?.billing === "account-unknown"
+        ? estimateActorCostForExecution(
+            usage,
+            participant.trace.ids.model,
+            participant.trace.executionProfile,
+          )
+        : participant.trace.estimatedCost;
     if (!est) {
       continue;
     }
     breakdown.push({
       kind: "model-tokens",
-      ...(lane.laneId === undefined ? {} : { laneId: lane.laneId }),
+      ...(participant.participantId === undefined ? {} : { laneId: participant.participantId }),
       ...(est.modelId === undefined ? {} : { modelId: est.modelId }),
       estimatedCostUsd: est.estimatedCostUsd,
       ...(est.reason === undefined ? {} : { reason: est.reason }),
@@ -111,7 +117,7 @@ function desktopCostLines(args: Pick<CostArgs, "desktopMinutes" | "desktops">): 
     const estimate = estimateAllocatedDesktopCost(usage.minutes, resources);
     breakdown.push({
       kind: "desktop-minutes",
-      ...(usage.laneId === undefined ? {} : { laneId: usage.laneId }),
+      ...(usage.participantId === undefined ? {} : { laneId: usage.participantId }),
       estimatedCostUsd: estimate.estimatedCostUsd,
       ...(estimate.reason === undefined ? {} : { reason: estimate.reason }),
       ratesAsOf: estimate.ratesAsOf,
@@ -129,7 +135,7 @@ function desktopCostLines(args: Pick<CostArgs, "desktopMinutes" | "desktops">): 
     if (!usage.lifetimeComplete) {
       breakdown.push({
         kind: "desktop-minutes",
-        ...(usage.laneId === undefined ? {} : { laneId: usage.laneId }),
+        ...(usage.participantId === undefined ? {} : { laneId: usage.participantId }),
         estimatedCostUsd: null,
         reason: "desktop_lifetime_incomplete",
         ratesAsOf: null,
@@ -191,7 +197,7 @@ function costNote(args: CostArgs, totals: ReturnType<typeof costTotals>): string
   const { estimatedTotalUsd, anyNull, placeholder, minRatesAsOf } = totals;
   const estimateNote =
     estimatedTotalUsd === null
-      ? `No priced spend lines this run — every cost line is DECLARED ABSENT (unknown rate / no usage / no duration); nothing is guessed. ${args.lanes.some((lane) => lane.trace.executionProfile?.billing === "account-unknown") ? "Account billing remains unknown; API prices do not measure account spend." : "Add a rate to src/run/pricing.ts to estimate this model."}`
+      ? `No priced spend lines this run — every cost line is DECLARED ABSENT (unknown rate / no usage / no duration); nothing is guessed. ${args.participants.some((participant) => participant.trace.executionProfile?.billing === "account-unknown") ? "Account billing remains unknown; API prices do not measure account spend." : "Add a rate to src/run/pricing.ts to estimate this model."}`
       : `Estimated ${estimatedTotalUsd} USD total${anyNull ? " (LOWER BOUND — some lines unmeasured/unpriced)" : ""}${placeholder ? "; includes PLACEHOLDER rate(s) — confirm before trusting the magnitude" : ""}. Every figure is an ESTIMATE (rates as of ${minRatesAsOf} — the OLDEST contributing rate, since an aggregate is only as fresh as its stalest input), a rate-table multiply, NOT an authoritative provider charge.`;
   return (
     estimateNote +
@@ -206,25 +212,33 @@ function costNote(args: CostArgs, totals: ReturnType<typeof costTotals>): string
 }
 
 /** Token totals across participants; an account-billed participant leaves unknown parts out. */
-function runTokenUsage(lanes: CostLane[]): RunCostSummary["tokenUsage"] {
-  const sumInput = lanes.reduce((sum, lane) => sum + (lane.trace.tokenUsage?.input ?? 0), 0);
-  const sumOutput = lanes.reduce((sum, lane) => sum + (lane.trace.tokenUsage?.output ?? 0), 0);
-  return lanes.some((lane) => lane.trace.executionProfile?.billing === "account-unknown")
+function runTokenUsage(participants: CostParticipant[]): RunCostSummary["tokenUsage"] {
+  const sumInput = participants.reduce(
+    (sum, participant) => sum + (participant.trace.tokenUsage?.input ?? 0),
+    0,
+  );
+  const sumOutput = participants.reduce(
+    (sum, participant) => sum + (participant.trace.tokenUsage?.output ?? 0),
+    0,
+  );
+  return participants.some(
+    (participant) => participant.trace.executionProfile?.billing === "account-unknown",
+  )
     ? {
-        ...(lanes.some((lane) => lane.trace.tokenUsage?.input !== undefined)
+        ...(participants.some((participant) => participant.trace.tokenUsage?.input !== undefined)
           ? { input: sumInput }
           : {}),
-        ...(lanes.some((lane) => lane.trace.tokenUsage?.output !== undefined)
+        ...(participants.some((participant) => participant.trace.tokenUsage?.output !== undefined)
           ? { output: sumOutput }
           : {}),
-        ...(lanes.every(
-          (lane) =>
-            lane.trace.tokenUsage?.input !== undefined &&
-            lane.trace.tokenUsage?.output !== undefined &&
-            lane.trace.interactionUsageIncomplete !== true &&
-            lane.trace.debrief?.usageReported !== false &&
-            (lane.trace.executionProfile === undefined ||
-              lane.trace.providerRequests?.every((r) => r.usageComplete) === true),
+        ...(participants.every(
+          (participant) =>
+            participant.trace.tokenUsage?.input !== undefined &&
+            participant.trace.tokenUsage?.output !== undefined &&
+            participant.trace.interactionUsageIncomplete !== true &&
+            participant.trace.debrief?.usageReported !== false &&
+            (participant.trace.executionProfile === undefined ||
+              participant.trace.providerRequests?.every((r) => r.usageComplete) === true),
         )
           ? { total: sumInput + sumOutput }
           : {}),
