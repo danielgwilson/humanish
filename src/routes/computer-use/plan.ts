@@ -75,7 +75,7 @@ export function cuaDescriptorOf(actor: string): CuaActorDescriptor {
 }
 
 /** Which subject route a computer-use lab takes, derived once from its config and hooks. */
-export interface CuaRoute {
+export interface CuaSubjectRoute {
   cloneRoute: boolean;
   /** A CLI studied at a desktop: nothing cloned, no browser, a terminal instead. */
   desktopCliRoute: boolean;
@@ -95,7 +95,7 @@ export interface CuaRoute {
   subjectEnvNames: string[];
 }
 
-export function cuaRoute(config: LabConfig, hooks: CuaActorLabHooks): CuaRoute {
+export function cuaSubjectRoute(config: LabConfig, hooks: CuaActorLabHooks): CuaSubjectRoute {
   const cloneRoute = config.subject.source === "clone";
   const localTreeRoute = config.subject.source === "local-tree";
   const provisionedRoute = cloneRoute || localTreeRoute;
@@ -121,7 +121,7 @@ export function cuaDeclaredState(plan: ComputerUsePlan): LabSubjectState | undef
 }
 
 /** The route facts a planned run takes: its runner's desktop and subject. */
-export function cuaRouteOf(plan: ComputerUsePlan): CuaRoute {
+export function cuaSubjectRouteOf(plan: ComputerUsePlan): CuaSubjectRoute {
   const { desktop, subject } = plan.runner;
   const provisioned =
     subject.kind === "clone" || subject.kind === "local-tree" ? subject : undefined;
@@ -151,12 +151,16 @@ const invalid = (message: string): Rejection => ({
  * is touched. The parser enforces most of these too; the engine repeats them for library callers
  * that hand it a config directly. The groups run in this order, and each returns its first reason.
  */
-function cuaLabRejection(config: LabConfig, hooks: CuaActorLabHooks, route: CuaRoute): Rejection {
+function cuaLabRejection(
+  config: LabConfig,
+  hooks: CuaActorLabHooks,
+  subjectRoute: CuaSubjectRoute,
+): Rejection {
   return (
-    unsupportedDeclarationReason(config, hooks, route) ??
-    subjectStructureReason(config, route) ??
-    entryTargetReason(config, route) ??
-    driverReason(config, hooks, route) ??
+    unsupportedDeclarationReason(config, hooks, subjectRoute) ??
+    subjectStructureReason(config, subjectRoute) ??
+    entryTargetReason(config, subjectRoute) ??
+    driverReason(config, hooks, subjectRoute) ??
     laneShapeReason(config)
   );
 }
@@ -165,7 +169,7 @@ function cuaLabRejection(config: LabConfig, hooks: CuaActorLabHooks, route: CuaR
 function unsupportedDeclarationReason(
   config: LabConfig,
   hooks: CuaActorLabHooks,
-  { inProcessRoute }: CuaRoute,
+  { inProcessRoute }: CuaSubjectRoute,
 ): Rejection {
   const reason =
     desktopMediaValidationReason(config) ||
@@ -193,8 +197,8 @@ function unsupportedDeclarationReason(
 }
 
 /** The subject's own shape: the clone target and repo, the local tree, and declared state. */
-function subjectStructureReason(config: LabConfig, route: CuaRoute): Rejection {
-  const { cloneRoute, localTreeRoute, provisionedRoute, serve, subjectRepo } = route;
+function subjectStructureReason(config: LabConfig, subjectRoute: CuaSubjectRoute): Rejection {
+  const { cloneRoute, localTreeRoute, provisionedRoute, serve, subjectRepo } = subjectRoute;
   const cloneTargetReason = cloneTargetValidationReason(config);
   if (cloneTargetReason) return invalid(cloneTargetReason);
   if (
@@ -228,8 +232,8 @@ function subjectStructureReason(config: LabConfig, route: CuaRoute): Rejection {
  * desktop-cli study has no entry target at all (the subject is a program on the machine, not an
  * address), so the boundary is vacuous there rather than violated by an empty string.
  */
-function entryTargetReason(config: LabConfig, route: CuaRoute): Rejection {
-  const { desktopCliRoute, provisionedRoute, localAppSubject, appUrl } = route;
+function entryTargetReason(config: LabConfig, subjectRoute: CuaSubjectRoute): Rejection {
+  const { desktopCliRoute, provisionedRoute, localAppSubject, appUrl } = subjectRoute;
   if (desktopCliRoute) return undefined;
   const allowPublicTargets = config.policies?.allowPublicTargets === true;
   const declaredTargets = [
@@ -259,7 +263,7 @@ function entryTargetReason(config: LabConfig, route: CuaRoute): Rejection {
 function driverReason(
   config: LabConfig,
   hooks: CuaActorLabHooks,
-  { localAppSubject, inProcessRoute }: CuaRoute,
+  { localAppSubject, inProcessRoute }: CuaSubjectRoute,
 ): Rejection {
   // A custom executor needs a custom provider too: the default OpenAI provider is vision-based
   // and would fail closed against an executor that returns no screenshot.
@@ -358,7 +362,7 @@ export function planComputerUseLab(
       `actors[0].type "${actorType}" is not a registered computer-use actor.`,
     );
   const actor = descriptor.id;
-  const rejection = cuaLabRejection(config, hooks, cuaRoute(config, hooks));
+  const rejection = cuaLabRejection(config, hooks, cuaSubjectRoute(config, hooks));
   if (rejection) return refuse("in-scope", rejection.code, rejection.message, actor);
   // A shared world runs every seat against one app; this route would run them as separate lanes.
   // It comes after the rules above, so a shared-world config that breaks one of them, which runLab
