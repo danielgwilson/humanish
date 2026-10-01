@@ -56,6 +56,7 @@ import { participantAssignment } from "../../lab/participant-assignment.js";
 import { validatePreparedRunArtifactPaths } from "../../run/paths.js";
 import { prepareSelectedOutputDirectory } from "../../run/contained-output.js";
 import { buildRunSource, type RunEvent } from "../../run/bundle.js";
+import { judgeTerminal } from "../../run/judge.js";
 import { buildTerminalProductBundle, renderTerminalReviewMarkdown } from "./bundle.js";
 import { defaultMission, makeTerminalRunId, runLiveTerminalSession } from "./session.js";
 import type { TerminalPlan } from "../../lab/plan-types.js";
@@ -206,6 +207,7 @@ async function runDryTerminalLab(args: {
   });
 
   const policies = plan.residual.policies;
+  const judgment = judgeTerminal({ dryRun: true, participant: undefined });
   const bundle = buildTerminalProductBundle({
     ...(plan.lab === undefined ? {} : { lab: plan.lab }),
     actorId: plan.actor,
@@ -228,13 +230,14 @@ async function runDryTerminalLab(args: {
     },
     runId,
     source,
+    verdict: judgment.verdict,
   });
   bundle.events.push(runtimeDeclaredEvent(plan.runtime, createdAt));
 
   const finished = await run.finish(bundle);
   const observer = await finished.renderObserver();
   await validatePreparedRunArtifactPaths(finished.paths);
-  const ok = observer.ok;
+  const ok = observer.ok && !judgment.harnessFailed;
 
   return {
     schema: TERMINAL_PRODUCT_LAB_SCHEMA,

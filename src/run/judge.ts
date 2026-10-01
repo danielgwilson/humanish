@@ -151,6 +151,33 @@ export function judgeOneParticipant(args: {
 }
 
 /**
+ * A terminal run's judgment. Its lab result reads harnessFailed, not allPassed: an agent that ended
+ * blocked, failed or timed out is evidence, and only a harness error, a blown cap included, fails
+ * the result.
+ */
+export interface TerminalJudgment extends Judgment {
+  harnessFailed: boolean;
+}
+
+/**
+ * A terminal run: one agent session judged as a one-participant run. It has no engagement or
+ * blocker rule; the agent's nonce-verified marker is its declared outcome.
+ */
+export function judgeTerminal(args: {
+  dryRun: boolean;
+  participant: ParticipantFacts | undefined;
+}): TerminalJudgment {
+  return {
+    ...judgeOneParticipant({
+      dryRun: args.dryRun,
+      inProgress: false,
+      participant: args.participant,
+    }),
+    harnessFailed: args.participant?.completionReason === "harness_error",
+  };
+}
+
+/**
  * A run with several participants: it passes only when every expected participant passed. When
  * one did not, a timeout among them makes the run timed_out; otherwise it fails. A dry run and a
  * run still in progress are contracts.

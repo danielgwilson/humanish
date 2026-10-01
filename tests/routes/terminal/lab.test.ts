@@ -2768,3 +2768,118 @@ describe("terminal run lifetime", () => {
     expect(reclaimed).toEqual(["fake-sandbox-1"]);
   });
 });
+
+// One judgment feeds the terminal run's bundle verdict, status.json and result ok. Each case runs
+// the real route against the fake sandbox and reads all three.
+describe("terminal judgment agreement (bundle verdict, status outcome, result ok)", () => {
+  let cwd: string;
+  beforeEach(async () => {
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-tp-judge-"));
+  });
+  afterEach(async () => {
+    await rm(cwd, { recursive: true, force: true });
+  });
+
+  const marker = (status: string) => (cmd: string) => ({
+    exitCode: 0,
+    stdout: `HUMANISH_ACTOR_VERDICT=${status} HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+  });
+  type Case = {
+    codexBehavior?: (cmd: string) => { exitCode: number; stdout?: string };
+    getInfoState?: "running";
+    killThrows?: boolean;
+    costProbe?: TerminalProductLabHooks["costProbe"];
+    outlastClock?: boolean;
+    dryRun?: boolean;
+  };
+  async function judged(options: Case) {
+    let clock = 1_000;
+    const behavior = options.codexBehavior ?? marker("passed");
+    const result = await runTerminalProductLab({
+      cwd,
+      config: liveConfig(),
+      dryRun: options.dryRun ?? false,
+      open: false,
+      hooks: {
+        env: baseEnv(),
+        now: () => clock,
+        ...(options.costProbe ? { costProbe: options.costProbe } : {}),
+        loadModule: async () =>
+          makeFakeModule({
+            creates: [],
+            runs: [],
+            killed: [],
+            ...(options.getInfoState ? { getInfoState: options.getInfoState } : {}),
+            ...(options.killThrows
+              ? { killThrows: () => ({ message: "synthetic kill failure" }) }
+              : {}),
+            codexBehavior: (cmd) => {
+              if (options.outlastClock)
+                queueMicrotask(() => {
+                  clock += 11 * 60_000;
+                });
+              return behavior(cmd);
+            },
+          }),
+      },
+    });
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
+    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
+    const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8"));
+    return {
+      verdict: bundle.review.verdict,
+      statusVerdict: status.outcome?.verdict,
+      ok: result.ok,
+      code: result.error?.code,
+    };
+  }
+
+  it.each<[string, Case, { verdict: string; ok: boolean; code?: string }]>([
+    ["a passed marker", {}, { verdict: "pass", ok: true }],
+    // The failure is the evidence: an agent that ended blocked, failed or timed out still leaves
+    // an ok result. Only a harness error, a blown cap or unproven cleanup fails it.
+    ["a blocked marker", { codexBehavior: marker("blocked") }, { verdict: "blocked", ok: true }],
+    ["a failed marker", { codexBehavior: marker("failed") }, { verdict: "fail", ok: true }],
+    [
+      "no verified marker",
+      { codexBehavior: () => ({ exitCode: 0, stdout: "done\n" }) },
+      { verdict: "blocked", ok: true },
+    ],
+    ["the wall clock running out", { outlastClock: true }, { verdict: "timed_out", ok: true }],
+    [
+      "an exec that could not run",
+      {
+        codexBehavior: () => {
+          throw new Error("synthetic exec failure");
+        },
+      },
+      { verdict: "fail", ok: false, code: "HUMANISH_TERMINAL_LAB_FAILED" },
+    ],
+    [
+      "a known spend over the cap",
+      {
+        costProbe: () => ({
+          product: { usd: 0.5, source: "no-spend-signal", note: "metered product spend" },
+        }),
+      },
+      { verdict: "fail", ok: false, code: "HUMANISH_TERMINAL_LAB_CAPS_EXCEEDED" },
+    ],
+    [
+      "a sandbox teardown it cannot prove",
+      { getInfoState: "running" },
+      { verdict: "pass", ok: false, code: "HUMANISH_TERMINAL_LAB_CLEANUP_UNPROVEN" },
+    ],
+    [
+      "a sandbox kill that throws",
+      { killThrows: true },
+      { verdict: "pass", ok: false, code: "HUMANISH_TERMINAL_LAB_CLEANUP_UNPROVEN" },
+    ],
+    ["a dry run", { dryRun: true }, { verdict: "contract_proof_only", ok: true }],
+  ])("agrees for %s", async (_, options, expected) => {
+    const outcome = await judged(options);
+    expect(outcome.verdict).toBe(expected.verdict);
+    expect(outcome.statusVerdict).toBe(outcome.verdict);
+    expect(outcome.ok).toBe(expected.ok);
+    expect(outcome.code).toBe(expected.code);
+  });
+});
