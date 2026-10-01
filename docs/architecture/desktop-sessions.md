@@ -67,10 +67,12 @@ runtime.
 
 The runner owns instructions, model execution, spend guards, screenshots, trace
 persistence and participant outcome interpretation. It does not invoke desktop
-shell commands or manufacture E2B objects for an alternate executor. The internal
-`createDesktopLane` seam (`CuaParticipantDeps` and `CuaActorLabHooks`) is how local
-Firecracker studies supply their lane and how contract tests inject one; it does
-not add a user-facing runtime option or bypass CLI admission checks.
+shell commands or manufacture E2B objects for an alternate executor. A local
+Firecracker study supplies its desktops through the `PARTICIPANT_DESKTOP` symbol on
+the hook bag (`src/routes/computer-use/participant-desktop.ts`), which no caller
+can set by name. The public `cuaHooks.createDesktopLane` is deprecated, warns once,
+and goes in the next minor; contract tests still inject a desktop through it. Neither
+bypasses CLI admission checks.
 
 Final evidence errors cannot skip desktop release. Existing bundle fields and
 desktop lifetime accounting retain their meanings; unconfirmed or retained

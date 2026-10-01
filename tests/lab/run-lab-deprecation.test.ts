@@ -55,6 +55,21 @@ describe("an old RunLabOptions field", () => {
     ]);
   });
 
+  it("warns once for cuaHooks.createDesktopLane, which has no replacement", () => {
+    const labConfig = config();
+    const createDesktopLane = () => {
+      throw new Error("not called: normalizing options creates no desktop");
+    };
+    for (let i = 0; i < 2; i += 1)
+      normalizeRunLabOptions(labConfig, routeOf(labConfig), {
+        cwd: "/tmp/x",
+        cuaHooks: { createDesktopLane },
+      });
+    expect(deprecations(emitWarning)).toEqual([
+      "RunLabOptions.cuaHooks.createDesktopLane is deprecated and is removed in the next minor. It has no replacement.",
+    ]);
+  });
+
   it("does not warn for a test seam with no new home, or for a refused call", () => {
     const labConfig = config();
     normalizeRunLabOptions(labConfig, routeOf(labConfig), {

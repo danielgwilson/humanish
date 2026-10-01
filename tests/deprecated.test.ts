@@ -34,6 +34,11 @@ vi.mock("../src/run/dry-run.js", async (importOriginal) => ({
 }));
 
 const humanish = await import("../src/index.js");
+const plan = await import("../src/lab/plan.js");
+const routing = await import("../src/lab/routing.js");
+const validation = await import("../src/lab/validation.js");
+const { parseLabConfig } = await import("../src/lab/config.js");
+const { lab } = await import("./admission/fixtures.js");
 
 describe("a deprecated export", () => {
   let emitWarning: { mock: { calls: unknown[][] }; mockRestore: () => void };
@@ -73,5 +78,67 @@ describe("a deprecated export", () => {
     }
     expect(warnings[0]!.message).toContain("singleDispatch: true");
     expect(warnings[1]!.message).toContain("runLab(config, options)");
+  });
+
+  it("warns once for each routing helper, returns what the internal one returns, and leaves internal calls silent", () => {
+    const parsed = parseLabConfig(lab("cuAppUrl"));
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    const config = parsed.config;
+    const pairs = [
+      [
+        "actorResolvesToTerminal",
+        () => humanish.actorResolvesToTerminal("codex"),
+        () => routing.actorResolvesToTerminal("codex"),
+      ],
+      ["cuaLaneCount", () => humanish.cuaLaneCount(config), () => routing.cuaLaneCount(config)],
+      [
+        "resolveSeatUrl",
+        () => humanish.resolveSeatUrl("http://127.0.0.1:3000/", "/a"),
+        () => routing.resolveSeatUrl("http://127.0.0.1:3000/", "/a"),
+      ],
+      [
+        "cuaLaneValidationReason",
+        () => humanish.cuaLaneValidationReason(config),
+        () => validation.cuaLaneValidationReason(config),
+      ],
+      [
+        "sharedWorldValidationReason",
+        () => humanish.sharedWorldValidationReason(config),
+        () => validation.sharedWorldValidationReason(config),
+      ],
+      [
+        "concurrentSharedWorldValidationReason",
+        () => humanish.concurrentSharedWorldValidationReason(config),
+        () => validation.concurrentSharedWorldValidationReason(config),
+      ],
+      [
+        "externalPublicSharedWorldValidationReason",
+        () => humanish.externalPublicSharedWorldValidationReason(config),
+        () => validation.externalPublicSharedWorldValidationReason(config),
+      ],
+      [
+        "resolveLabDryRun",
+        () => humanish.resolveLabDryRun(config, undefined, true),
+        () => plan.resolveLabDryRun(config, undefined, true),
+      ],
+    ] as const;
+
+    for (const [, , internal] of pairs) internal();
+    expect(emitWarning.mock.calls).toEqual([]);
+
+    for (let round = 0; round < 2; round += 1)
+      for (const [, exported, internal] of pairs) expect(exported()).toEqual(internal());
+    const warnings = emitWarning.mock.calls.map(([message, detail]) => ({
+      message: String(message),
+      code: (detail as { code?: string }).code,
+    }));
+    expect(warnings.map((warning) => warning.code)).toEqual(
+      pairs.map(() => "HUMANISH_DEPRECATED_EXPORT"),
+    );
+    for (const [index, [name]] of pairs.entries())
+      expect(warnings[index]!.message).toMatch(
+        new RegExp(`^${name} is deprecated and is removed in the next minor\\. Use `),
+      );
+    expect(humanish.MAX_CUA_LANES).toBe(routing.MAX_CUA_LANES);
   });
 });

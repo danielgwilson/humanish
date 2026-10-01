@@ -49,10 +49,6 @@ export type { RunAdapterArtifact, RunAdapterScore } from "./run/bundle.js";
 
 // Routing: the planLab series deprecates these and removes them in the next minor.
 export {
-  actorResolvesToTerminal,
-  cuaLaneCount,
-  MAX_CUA_LANES,
-  resolveSeatUrl,
   routesToComputerUse,
   routesToConcurrentSharedWorld,
   routesToExternalPublicSharedWorld,
@@ -61,23 +57,25 @@ export {
   routesToSharedWorld,
   routesToTerminalProduct,
 } from "./lab/routing.js";
-export {
-  concurrentSharedWorldValidationReason,
-  cuaLaneValidationReason,
-  externalPublicSharedWorldValidationReason,
-  sharedWorldValidationReason,
-} from "./lab/validation.js";
-export { resolveLabDryRun, selectLabBackend } from "./lab/plan.js";
-export type { LabBackend } from "./lab/plan.js";
+export { selectLabBackend } from "./lab/plan.js";
 
 // Deprecated this minor, removed in the next.
 export {
+  actorResolvesToTerminal,
+  concurrentSharedWorldValidationReason,
+  cuaLaneCount,
+  cuaLaneValidationReason,
+  externalPublicSharedWorldValidationReason,
+  MAX_CUA_LANES,
+  resolveLabDryRun,
+  resolveSeatUrl,
   runConcurrentSharedWorld,
   runCuaActorLab,
   runCuaActorSession,
   runDryRun,
   runScriptedBrowserLab,
   runTerminalProductLab,
+  sharedWorldValidationReason,
 } from "./deprecated.js";
 export type {
   AutomaticAnalysisHooks,
@@ -85,6 +83,7 @@ export type {
   ConcurrentSharedWorldLabResult,
   CuaActorLabHooks,
   CuaActorLabResult,
+  LabBackend,
   RunConcurrentSharedWorldLabOptions,
   RunCuaActorLabOptions,
   RunOptions,
