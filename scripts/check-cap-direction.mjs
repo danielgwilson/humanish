@@ -5,6 +5,7 @@
 // the raise-cap label and a "Cap raise:" line in its body saying why.
 //
 // Usage: node scripts/check-cap-direction.mjs --base <ref>
+// On a merge commit (CI's PR merge ref) the base is HEAD's first parent; --base applies elsewhere.
 // Env: RAISE_CAP is "true" when the PR has the raise-cap label; PR_BODY is the PR's body.
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
@@ -24,11 +25,26 @@ function capsOf(packageJson) {
 }
 
 const baseIndex = process.argv.indexOf("--base");
-const base = baseIndex === -1 ? undefined : process.argv[baseIndex + 1];
-if (!base) {
+const baseArg = baseIndex === -1 ? undefined : process.argv[baseIndex + 1];
+if (!baseArg) {
   process.stderr.write("check-cap-direction: pass --base <ref>.\n");
   process.exit(2);
 }
+// CI checks out a PR's merge ref, built on the base as it was when the PR last synced. Its first
+// parent is that base, so a cap main lowered since then does not read as this PR raising it.
+// Outside a merge commit (a local branch), the given base is used.
+let parents = [];
+try {
+  parents = execFileSync("git", ["rev-list", "--parents", "-n", "1", "HEAD"], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+  })
+    .trim()
+    .split(" ");
+} catch {
+  // No HEAD commit to inspect: use the given base, whose read below fails closed.
+}
+const base = parents.length > 2 ? "HEAD^1" : baseArg;
 
 let basePackage;
 try {
