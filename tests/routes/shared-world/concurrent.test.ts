@@ -2884,3 +2884,42 @@ describe("RunLabOptions homes on the concurrent route", () => {
     );
   });
 });
+
+describe("concurrent shared-world run failure naming", () => {
+  let cwd: string;
+  beforeEach(async () => {
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-sw-run-failure-"));
+  });
+  afterEach(async () => {
+    await rm(cwd, { recursive: true, force: true });
+  });
+
+  it("names a desktop module that fails to load, not only the bundle verify then refused", async () => {
+    const result = await runConcurrentSharedWorld({
+      cwd,
+      config: concurrentConfig(3, 3),
+      dryRun: false,
+      hooks: {
+        env: {
+          OPENAI_API_KEY: "synthetic-openai",
+          E2B_API_KEY: "synthetic-e2b",
+          DATABASE_URL: "postgres://synthetic",
+        },
+        loadDesktopModule: async () => {
+          throw new Error("synthetic desktop module load failure");
+        },
+      },
+    });
+    expect(result.ok).toBe(false);
+    expect(result.error).toEqual({
+      code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED",
+      message: "synthetic desktop module load failure The run bundle it left failed verification.",
+    });
+    const status = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "status.json"), "utf8"),
+    );
+    expect(
+      status.outcome.execution.failures.map((failure: { kind: string }) => failure.kind),
+    ).toEqual(["run", "evidence"]);
+  });
+});
