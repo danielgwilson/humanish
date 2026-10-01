@@ -9,6 +9,10 @@ longer declares that name. [CONTEXT.md](CONTEXT.md) defines the domain terms, an
 
 The steps follow a live computer-use lab on a hosted E2B desktop. The scripted, terminal and
 shared-world routes share steps 1, 2, 7 and 8 and do steps 3 to 6 in their own route files. The
+scripted route's participant is its actor: `runScriptedBrowserSessionInPreparedRoot`
+(`src/actors/scripted-browser/actor.ts`) runs one surface's steps through
+`executeBrowserPersonaStep` (`src/actors/scripted-browser/steps.ts`) and reports the first failed
+step. The
 preview route writes a fixture bundle with `runDryRun` (`src/run/dry-run.ts`), publishes it as in
 step 6, and renders it as in step 7 when `RunOptions.observer` asks, as every CLI caller does.
 
