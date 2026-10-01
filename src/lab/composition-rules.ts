@@ -46,6 +46,10 @@ export function compositionReason(config: LabConfig): string | null {
   );
 }
 
+/** Why a this-repo lab cannot run live. The parser and the preview planner both refuse with it. */
+export const THIS_REPO_DRY_RUN_ONLY =
+  "this-repo labs are dry-run only; use a clone or app-url subject for a live run.";
+
 // this-repo subjects run locally and dry-run only — there is no live execution target for the
 // host repo (clone/app-url provide that). Reject the mis-configs rather than silently mishandle.
 function thisRepoValidationReason(config: LabConfig): string | null {
@@ -54,7 +58,7 @@ function thisRepoValidationReason(config: LabConfig): string | null {
       return "`execution.target` applies only to clone/app-url/local-app subjects; this-repo labs run locally.";
     }
     if (config.scenario?.mode === "live") {
-      return "this-repo labs are dry-run only; use a clone or app-url subject for a live run.";
+      return THIS_REPO_DRY_RUN_ONLY;
     }
   }
   return null;

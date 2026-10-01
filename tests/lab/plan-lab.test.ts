@@ -156,12 +156,13 @@ describe("planLab", () => {
     expect(gap(parsed(cuApp), { cwd: ROOT, count: 17 })).toBe(
       "computer-use HUMANISH_CUA_LAB_FANOUT_INVALID",
     );
+    // A preview plan holds only a dry run.
     expect(
       gap(parsed({ subject: { source: "this-repo" }, actors: [{ type: "synthetic-persona" }] }), {
         cwd: ROOT,
         dryRun: false,
       }),
-    ).toBe("planned");
+    ).toBe("preview HUMANISH_LIVE_RUN_UNIMPLEMENTED");
     const terminal = parsed({
       subject: {
         source: "terminal-product",
@@ -259,5 +260,46 @@ describe("planLab", () => {
     expect(plan.route === "computer-use" && plan.runner.brain).toEqual({ kind: "caller" });
     expect(Object.isFrozen(plan.residual)).toBe(true);
     expect(Object.isFrozen(plan.residual.comms?.email)).toBe(true);
+  });
+});
+
+describe("planLab on the preview route", () => {
+  const thisRepo = parsed({
+    subject: { source: "this-repo" },
+    actors: [{ type: "synthetic-persona" }],
+  });
+
+  it("plans a dry run with the checked count", () => {
+    const plan = planOf(planLab(thisRepo, { cwd: ROOT, dryRun: true, count: 3 }));
+    expect(plan).toMatchObject({ route: "preview", dryRun: true, participantCount: 3 });
+  });
+
+  it.each([0, -1, 1.5, Number.NaN])("refuses a count of %s before the run starts", (count) => {
+    const result = planLab(thisRepo, { cwd: ROOT, dryRun: true, count });
+    expect(result).toEqual({
+      ok: false,
+      refusal: {
+        route: "preview",
+        code: "HUMANISH_INVALID_SIM_COUNT",
+        message: "count must be a positive integer.",
+      },
+    });
+  });
+
+  it("refuses a live request with the parser's this-repo message", () => {
+    const result = planLab(thisRepo, { cwd: ROOT, dryRun: false });
+    expect(result).toEqual({
+      ok: false,
+      refusal: {
+        route: "preview",
+        code: "HUMANISH_LIVE_RUN_UNIMPLEMENTED",
+        message: "this-repo labs are dry-run only; use a clone or app-url subject for a live run.",
+      },
+    });
+  });
+
+  it("refuses a bad count before a live request, as runDryRun ordered them", () => {
+    const result = planLab(thisRepo, { cwd: ROOT, dryRun: false, count: 0 });
+    expect(result.ok ? undefined : result.refusal.code).toBe("HUMANISH_INVALID_SIM_COUNT");
   });
 });

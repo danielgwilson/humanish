@@ -74,11 +74,14 @@ interface PlanBase {
 }
 
 /**
- * The synthetic preview. runDryRun still checks the project directory, the sim count and a live
- * request, in that order, so the plan carries both values unchecked.
+ * The synthetic preview. planPreview refuses a count that is not a positive integer and a live
+ * request, so the plan carries only a dry run and a checked count. runDryRun still checks the
+ * project directory, which needs the file system.
  */
 interface PreviewPlan extends PlanBase {
   readonly route: "preview";
+  readonly dryRun: true;
+  /** A safe integer of at least 1. */
   readonly participantCount: number;
 }
 
@@ -254,7 +257,9 @@ export type PreviewRefusalCode =
   | "HUMANISH_LAB_COMMS_UNSUPPORTED"
   | "HUMANISH_LAB_ANALYSIS_INVALID"
   | "HUMANISH_LAB_ANALYSIS_UNSUPPORTED"
-  | "HUMANISH_LAB_TASKS_UNSUPPORTED";
+  | "HUMANISH_LAB_TASKS_UNSUPPORTED"
+  | "HUMANISH_INVALID_SIM_COUNT"
+  | "HUMANISH_LIVE_RUN_UNIMPLEMENTED";
 
 /** Why planLab refused: the route's own code and message, as its runner returns them. */
 export type PlanRefusal =

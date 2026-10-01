@@ -347,7 +347,35 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_LIVE_RUN_UNIMPLEMENTED",
-          "message": "Only run --dry-run is implemented here. Run a lab for a live study."
+          "message": "this-repo labs are dry-run only; use a clone or app-url subject for a live run."
+        }
+      }
+    },
+    "runner": {
+      "runner": "synthetic"
+    }
+  },
+  "preview count zero": {
+    "parser": {
+      "ok": true
+    },
+    "runLab": {
+      "runs": false,
+      "calls": {
+        "desktop": 0,
+        "executor": 0,
+        "provider": 0,
+        "subprocess": 0
+      },
+      "result": {
+        "backend": "synthetic",
+        "schema": "humanish.run-result.v1",
+        "ok": false,
+        "cwd": "[cwd]",
+        "warnings": [],
+        "error": {
+          "code": "HUMANISH_INVALID_SIM_COUNT",
+          "message": "count must be a positive integer."
         }
       }
     },
