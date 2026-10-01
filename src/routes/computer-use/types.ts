@@ -498,8 +498,8 @@ export interface CuaRunBudget {
  * The subject as a participant's desktop meets it. A computer-use participant gets the plan's
  * subject: a clone or local tree is provisioned in its own sandbox with the declared env, a
  * desktop-cli product is set up there, and an app-url or local-app subject is only opened. A
- * shared-world seat gets `shared-app`: it opens the one app the plane serves, and nothing is
- * provisioned or forwarded into its sandbox.
+ * shared-world seat gets `shared-app`: it opens the one app the plane serves, with no subject env
+ * names forwarded, no GitHub token and no provisioning in its sandbox.
  */
 export type ParticipantSubject = ComputerUseRunner["subject"] | { readonly kind: "shared-app" };
 

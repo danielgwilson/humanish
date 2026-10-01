@@ -201,8 +201,9 @@ function runtimeStreamHooks(hooks: SharedWorldLabHooks, live: LiveParticipants):
 }
 
 /**
- * The runner deps both planes give every participant. The `shared-app` subject provisions nothing
- * and forwards no subject env, which keeps subject creds out of every actor sandbox (FIX-10).
+ * The runner deps both planes give every participant. The `shared-app` subject keeps three things
+ * out of every actor sandbox (FIX-10): the subject env names' values, the GitHub token, and clone
+ * or local-tree provisioning. The committed subject.envValues still reach it, non-secret by parse.
  * `scrubKnownValues` is the plane's scrub: the external-public plane also scrubs the latched lobby
  * code.
  */
