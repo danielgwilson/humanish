@@ -333,7 +333,7 @@ are the `HUMANISH_*` names `src/` read or returned at 0.105.0 and no longer does
   0.154.0 as a pre-existing admission. Each launch is bound to the release it detected, and a
   release outside the host's list is refused with a message listing the admitted ones.
   Maintainers qualify a new release with `pnpm codex:qualify` (#982).
-- Codex CLI 0.159.3, npm's `latest` since 2026-09-30, is admitted on Linux x64 (PR_NUMBER). It
+- Codex CLI 0.159.3, npm's `latest` since 2026-09-30, is admitted on Linux x64 (#1325). It
   passed `pnpm codex:qualify` against 0.159.2 and a hosted local-agent study; its only change is
   in Codex's interactive TUI. Before, a current `npm install -g @openai/codex` was refused by
   Codex participants and Codex-account analysis on Linux x64.
