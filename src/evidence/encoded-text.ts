@@ -70,6 +70,15 @@ export function decodeEscapes(text: string): string {
 // Sixteen characters hold twelve bytes, enough for the start of a key. Shorter runs are mostly
 // words and identifiers.
 const BASE64_RUN = /[A-Za-z0-9+/]{16,}={0,2}/g;
+// The URL-safe alphabet swaps `+/` for `-_`. Only runs that use `-` or `_` need this pass.
+const BASE64URL_RUN = /[A-Za-z0-9_-]{16,}={0,2}/g;
+// MIME and PEM wrap base64 at 64 or 76 characters a line. The lookbehind starts a match only at the
+// start of a run, and each lookahead-backreference pair takes a line whole, so a long unwrapped run
+// cannot backtrack.
+const WRAPPED_BASE64 =
+  /(?<![A-Za-z0-9+/])(?=([A-Za-z0-9+/]{16,}))\1(?:[ \t]*\r?\n[ \t]*(?=([A-Za-z0-9+/]{4,}))\2)+={0,2}/g;
+// Hex-encoded text, at least sixteen bytes of it.
+const HEX_RUN = /(?:[0-9a-f]{2}){16,}/gi;
 // A base64 run that decodes to bytes that are neither text nor an archive is unreadable only past
 // this length. Across 173 real run folders surveyed on 2026-10-01, the longest such run outside
 // observer/index.html was a 69-character URL path in a terminal log; base64 of a 94-byte payload,
@@ -95,19 +104,42 @@ function startsWithArchive(bytes: Uint8Array): boolean {
   return ARCHIVE_MAGIC.some((magic) => magic.every((byte, index) => bytes[index] === byte));
 }
 
-/** Text in UTF-16LE that is mostly ASCII, as a key would be; random bytes rarely qualify. */
+/** UTF-16 text, either byte order, that is mostly ASCII as a key would be; random bytes rarely qualify. */
 function utf16Text(bytes: Uint8Array): string | undefined {
   if (bytes.length < 4 || bytes.length % 2 !== 0) return undefined;
-  let text: string;
-  try {
-    text = new TextDecoder("utf-16le", { fatal: true }).decode(bytes);
-  } catch {
-    return undefined;
+  for (const encoding of ["utf-16le", "utf-16be"]) {
+    let text: string;
+    try {
+      text = new TextDecoder(encoding, { fatal: true }).decode(bytes);
+    } catch {
+      continue;
+    }
+    if (CONTROL_CHARACTERS.test(text)) continue;
+    let ascii = 0;
+    for (const character of text) if (character.charCodeAt(0) < 0x80) ascii += 1;
+    if (ascii >= text.length * 0.9) return text;
   }
-  if (CONTROL_CHARACTERS.test(text)) return undefined;
-  let ascii = 0;
-  for (const character of text) if (character.charCodeAt(0) < 0x80) ascii += 1;
-  return ascii >= text.length * 0.9 ? text : undefined;
+  return undefined;
+}
+
+/** The printable ASCII stretches of binary bytes, one per line, as `strings` would show them. */
+function printableStretches(bytes: Uint8Array): string {
+  return Buffer.from(bytes)
+    .toString("latin1")
+    .replace(/[^\x20-\x7e]+/g, "\n");
+}
+
+/**
+ * Escapes a transfer encoding adds: JSON whitespace escapes, and quoted-printable soft line breaks
+ * and `=XX` bytes. Bundle export does not apply these, so they stay out of decodeEscapes.
+ */
+function decodeTransferEscapes(text: string): string {
+  return text
+    .replace(/\\n/g, "\n")
+    .replace(/\\r/g, "\r")
+    .replace(/\\t/g, "\t")
+    .replace(/=\r?\n/g, "")
+    .replace(/=([0-9A-F]{2})/g, (match, hex: string) => codePoint(Number.parseInt(hex, 16), match));
 }
 
 export interface EncodedTextScan {
@@ -117,10 +149,39 @@ export interface EncodedTextScan {
   opaque: boolean;
 }
 
+const CLEAN: EncodedTextScan = { sensitive: false, opaque: false };
+const SENSITIVE: EncodedTextScan = { sensitive: true, opaque: false };
+
+function inspectDecoded(
+  bytes: Buffer,
+  run: string,
+  options: { allowOpaqueBase64?: boolean },
+  depth: number,
+): EncodedTextScan {
+  if (startsWithArchive(bytes))
+    return { sensitive: false, opaque: options.allowOpaqueBase64 !== true };
+  const plain = readPlainText(bytes);
+  const inner = plain.ok ? plain.text : utf16Text(bytes);
+  if (inner !== undefined) {
+    if (depth < MAX_DEPTH) return scanEncodedText(inner, options, depth + 1);
+    return containsSensitive(inner) || containsSensitive(decodeEscapes(inner)) ? SENSITIVE : CLEAN;
+  }
+  // A key next to a few binary bytes is still a printable stretch.
+  if (containsSensitive(printableStretches(bytes))) return SENSITIVE;
+  return {
+    sensitive: false,
+    opaque:
+      run.length >= MIN_OPAQUE_BASE64_RUN &&
+      new Set(run).size >= MIN_OPAQUE_DISTINCT_CHARACTERS &&
+      options.allowOpaqueBase64 !== true,
+  };
+}
+
 /**
- * Scans text for secrets as written, after decodeEscapes, and inside each base64 run. A run that
- * decodes to text is scanned in turn. A run that decodes to an archive, or to other binary past
- * MIN_OPAQUE_BASE64_RUN characters, is opaque unless the caller allows opaque runs.
+ * Scans text for secrets as written, after decodeEscapes and transfer escapes, and inside each
+ * base64 (standard, URL-safe or line-wrapped) and hex run. A run that decodes to text is scanned in
+ * turn. A run that decodes to an archive, or to other binary past MIN_OPAQUE_BASE64_RUN characters,
+ * is opaque unless the caller allows opaque runs.
  */
 export function scanEncodedText(
   text: string,
@@ -128,37 +189,32 @@ export function scanEncodedText(
   depth = 0,
 ): EncodedTextScan {
   const decoded = decodeEscapes(text);
-  if (containsSensitive(text) || containsSensitive(decoded))
-    return { sensitive: true, opaque: false };
+  const expanded = decodeTransferEscapes(decoded);
+  if (containsSensitive(text) || containsSensitive(decoded) || containsSensitive(expanded))
+    return SENSITIVE;
+  const runs: { run: string; bytes: Buffer }[] = [];
+  for (const [match] of expanded.matchAll(BASE64_RUN)) {
+    // Hex digests and ids decode to noise; the hex pass below reads hex as hex.
+    if (/^[0-9a-f]+$/i.test(match.replace(/=+$/, ""))) continue;
+    runs.push({ run: match, bytes: Buffer.from(match, "base64") });
+  }
+  for (const [match] of expanded.matchAll(BASE64URL_RUN)) {
+    if (/[-_]/.test(match)) runs.push({ run: match, bytes: Buffer.from(match, "base64url") });
+  }
+  for (const [match] of expanded.matchAll(WRAPPED_BASE64)) {
+    const run = match.replace(/\s+/g, "");
+    runs.push({ run, bytes: Buffer.from(run, "base64") });
+  }
   let opaque = false;
-  for (const match of decoded.matchAll(BASE64_RUN)) {
-    const run = match[0];
-    // Hex digests and ids decode to noise and hold no text.
-    if (/^[0-9a-f]+$/i.test(run.replace(/=+$/, ""))) continue;
-    const bytes = Buffer.from(run, "base64");
-    if (startsWithArchive(bytes)) {
-      opaque ||= options.allowOpaqueBase64 !== true;
-      continue;
-    }
-    const plain = readPlainText(bytes);
-    const inner = plain.ok ? plain.text : utf16Text(bytes);
-    if (inner !== undefined) {
-      if (depth < MAX_DEPTH) {
-        const nested = scanEncodedText(inner, options, depth + 1);
-        if (nested.sensitive) return nested;
-        opaque ||= nested.opaque;
-      } else if (containsSensitive(inner) || containsSensitive(decodeEscapes(inner))) {
-        return { sensitive: true, opaque: false };
-      }
-      continue;
-    }
-    if (
-      run.length >= MIN_OPAQUE_BASE64_RUN &&
-      new Set(run).size >= MIN_OPAQUE_DISTINCT_CHARACTERS &&
-      options.allowOpaqueBase64 !== true
-    ) {
-      opaque = true;
-    }
+  for (const { run, bytes } of runs) {
+    const result = inspectDecoded(bytes, run, options, depth);
+    if (result.sensitive) return result;
+    opaque ||= result.opaque;
+  }
+  for (const [match] of expanded.matchAll(HEX_RUN)) {
+    const plain = readPlainText(Buffer.from(match, "hex"));
+    if (plain.ok && depth < MAX_DEPTH && scanEncodedText(plain.text, options, depth + 1).sensitive)
+      return SENSITIVE;
   }
   return { sensitive: false, opaque };
 }

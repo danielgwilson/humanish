@@ -573,14 +573,24 @@ candidates, adapter artifacts or stream artifact entries cite. An unregistered
 findings and block the run.
 
 Before matching, the scan undoes JSON and JS escapes, percent-encoding and HTML
-character references, the decoding bundle export applies (`decodeEscapes`). It
-also reads inside base64 runs of 16 characters or more that are not plain hex. A
-run that decodes to UTF-8 text, or to mostly-ASCII UTF-16, is scanned in turn, up
-to two levels deep. A run that decodes to an archive (gzip, zip, 7z, bzip2, xz,
-zstd), or to other binary of 128 characters or more with at least 16 distinct
-characters, contributes `UNSCANNED_ARTIFACT`. `observer/index.html` is exempt
-from that base64 rule: serve renders it from `run.json`, export regenerates it,
-and it embeds the Observer's own base64 fonts.
+character references, the decoding bundle export applies (`decodeEscapes`), and
+then JSON whitespace escapes and quoted-printable. It reads inside base64 runs of
+16 characters or more in the standard or URL-safe alphabet, including base64
+wrapped across lines, and inside hex runs of 32 characters or more:
+
+- a run that decodes to UTF-8 text, or to mostly-ASCII UTF-16 in either byte
+  order, is scanned in turn, up to three levels of base64 deep;
+- the printable stretches of a run that decodes to other binary are scanned too;
+- a base64 run that decodes to an archive (gzip, zip, 7z, bzip2, xz, zstd), at
+  any length, or to other binary of 128 characters or more with at least 16
+  distinct characters, contributes `UNSCANNED_ARTIFACT`.
+
+`observer/index.html` is exempt from that base64 rule: serve renders it from
+`run.json`, export regenerates it, and it embeds the Observer's own base64 fonts.
+Its text is still scanned. Known limits: base64 split across separate strings,
+nesting deeper than three levels, and encodings a pattern scan cannot undo (such
+as encryption) still grade `share_ready`. `tests/verify/encoding-coverage.test.ts`
+records each case.
 
 Real email receiving adds `publication.restrictions: [real-communications]` and
 an optional `commsReceiving` projection using `humanish.comms-receiving.v2`.

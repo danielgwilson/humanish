@@ -5,13 +5,12 @@ import { gzipSync } from "node:zlib";
 import { PNG } from "pngjs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { parseLabConfig } from "../../src/lab/config.js";
 import { runLab } from "../../src/lab/engine.js";
-import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/lab/types.js";
 import type { BrowserLabScoringContext } from "../../src/lab/adapter-extension.js";
 import { serveObserverLibrary, type ServeLibraryServer } from "../../src/observer/serve.js";
 import type { RunAdapterArtifact } from "../../src/run/bundle.js";
 import { verifyRun } from "../../src/verify/verify.js";
+import { shareSafetyDryRun, shareSafetyDryRunConfig } from "../helpers/share-safety-run.js";
 
 // Concatenated so this file never holds a secret-shaped literal; the text scan detects it.
 const SYNTHETIC_SECRET = "sk-" + "syntheticvalue1234567890abcdef";
@@ -36,25 +35,9 @@ const CASES: Record<string, AdapterFile> = {
   png: { path: "adapter/product-state.png", kind: "screenshot", bytes: PNG_4X4 },
 };
 
-function dryRunConfig(): LabConfig {
-  const parsed = parseLabConfig({
-    schema: LAB_CONFIG_SCHEMA,
-    id: "unscanned-artifact",
-    title: "Unscanned adapter artifact",
-    subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-    actors: [
-      { type: "openai-computer-use", persona: "first-time-visitor", mission: "Explore and stop." },
-    ],
-    execution: { target: "e2b-desktop", timeoutMs: 60_000 },
-    scenario: { mode: "dry-run" },
-  });
-  if (!parsed.ok) throw new Error(parsed.error.message);
-  return parsed.config;
-}
-
 /** A dry run whose adapter scorer writes one artifact into the run directory. */
 async function runWithAdapterFile(cwd: string, file: AdapterFile): Promise<string> {
-  const outcome = await runLab(dryRunConfig(), {
+  const outcome = await runLab(shareSafetyDryRunConfig(), {
     cwd,
     scorer: {
       deriveArtifacts: async (ctx: BrowserLabScoringContext) => {
@@ -159,14 +142,6 @@ describe("verify does not grade an unreadable adapter artifact share_ready", () 
   });
 });
 
-/** A dry run with no scorer: share_ready until the test adds a file to its folder. */
-async function dryRun(cwd: string): Promise<{ runId: string; runDir: string }> {
-  const outcome = await runLab(dryRunConfig(), { cwd });
-  if (outcome.backend !== "cua") throw new Error(`unexpected backend ${outcome.backend}`);
-  const runId = outcome.result.runId;
-  return { runId, runDir: path.join(cwd, ".humanish", "runs", runId) };
-}
-
 // Bytes the text scan cannot read, under names that do not say so. Each holds the synthetic secret.
 const CONTENT_CASES: Record<string, { path: string; bytes: Buffer }> = {
   "gzip as .tar": { path: "adapter/state.tar", bytes: gzipSync(STATE) },
@@ -187,26 +162,26 @@ describe("verify reads a run file by its bytes, not its name", () => {
   beforeAll(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-content-scan-"));
     for (const [name, file] of Object.entries(CONTENT_CASES)) {
-      const { runId, runDir } = await dryRun(cwd);
+      const { runId, runDir } = await shareSafetyDryRun(cwd);
       await mkdir(path.join(runDir, "adapter"), { recursive: true });
       await writeFile(path.join(runDir, file.path), file.bytes);
       unscanned.set(name, { runId, path: file.path });
     }
     {
-      const { runId, runDir } = await dryRun(cwd);
+      const { runId, runDir } = await shareSafetyDryRun(cwd);
       await writeFile(path.join(runDir, "adapter\\secret.txt"), STATE);
       backslash = { runId, path: "adapter\\secret.txt" };
     }
     // Root reads a mode-000 file, so the unreadable case only means something for other users.
     if (process.getuid?.() !== 0) {
-      const { runId, runDir } = await dryRun(cwd);
+      const { runId, runDir } = await shareSafetyDryRun(cwd);
       await writeFile(path.join(runDir, "locked.txt"), STATE);
       await chmod(path.join(runDir, "locked.txt"), 0o000);
       unreadable = { runId, path: "locked.txt" };
     }
     {
       // A sparse file past the 2 GiB a single read can return: the read fails without the bytes.
-      const { runId, runDir } = await dryRun(cwd);
+      const { runId, runDir } = await shareSafetyDryRun(cwd);
       const handle = await open(path.join(runDir, "large.txt"), "w");
       await handle.write(STATE, 0);
       await handle.truncate(2 ** 31 + 1);
@@ -330,7 +305,7 @@ describe("verify decodes the encodings a reader undoes", () => {
   beforeAll(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-encoded-scan-"));
     for (const [name, file] of Object.entries(ENCODED_CASES)) {
-      const { runId, runDir } = await dryRun(cwd);
+      const { runId, runDir } = await shareSafetyDryRun(cwd);
       await mkdir(path.join(runDir, "adapter"), { recursive: true });
       await writeFile(path.join(runDir, file.path), file.text);
       runs.set(name, { runId, path: file.path });
