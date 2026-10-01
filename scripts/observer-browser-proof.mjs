@@ -1595,7 +1595,8 @@ try {
         .getByRole("button", { name: /^Participant details:/ })
         .click();
       await page
-        .getByRole("button", { name: "Pin participant Synthetic participant 40", exact: true })
+        .locator(".pop-panel")
+        .getByRole("button", { name: /^Pin participant / })
         .click();
       const closeDetails = page.getByRole("button", {
         name: "Close participant details",
@@ -2596,13 +2597,10 @@ try {
   await runCase("pin-pages-monitor", { laneCount: 40 }, async ({ page, record, snap }) => {
     assert.equal(await page.locator(".card").count(), 36, "Large grid did not bound one page");
     await page.getByRole("button", { name: "Next page", exact: true }).click();
-    await page
-      .getByRole("button", { name: "Participant details: Synthetic participant 40", exact: true })
+    await studyCard(page, "lane-40")
+      .getByRole("button", { name: /^Participant details:/ })
       .click();
-    const pin = page.getByRole("button", {
-      name: "Pin participant Synthetic participant 40",
-      exact: true,
-    });
+    const pin = page.locator(".pop-panel").getByRole("button", { name: /^Pin participant / });
     await pin.waitFor();
     await pin.click();
     assert.equal(
@@ -2634,7 +2632,8 @@ try {
     await page.locator('.stage-box img[src$="portrait-3.png"]').waitFor();
     await page.getByRole("button", { name: "Saved moments", exact: true }).click();
     await page
-      .getByRole("button", { name: `${data.streams[0].label} · frame 2`, exact: true })
+      .locator(".saved-moments")
+      .getByRole("button", { name: / · frame 2$/ })
       .click();
     await page.locator('.stage-box img[src$="portrait-2.png"]').waitFor();
     record.checks.stored = await page.evaluate(() =>
@@ -2647,10 +2646,8 @@ try {
     );
     await page.getByRole("button", { name: "Saved moments", exact: true }).click();
     await page
-      .getByRole("button", {
-        name: `Remove saved frame 2 from ${data.streams[0].label}`,
-        exact: true,
-      })
+      .locator(".saved-moments")
+      .getByRole("button", { name: /^Remove saved frame 2 from / })
       .click();
     await page.getByText("No saved moments yet.", { exact: true }).waitFor();
     await snap("removed-moment");
@@ -2871,10 +2868,12 @@ try {
       );
       await page.getByText(/Keep at most two participants/).waitFor();
       assert.equal(await page.locator(".compare-participant").count(), 3);
-      record.checks.names = await page.locator(".compare-participant h2").allTextContents();
+      record.checks.streamIds = await page
+        .locator(".compare-participant")
+        .evaluateAll((panels) => panels.map((panel) => panel.getAttribute("data-stream-id")));
       assert.deepEqual(
-        record.checks.names,
-        data.streams.map((stream) => stream.label),
+        record.checks.streamIds,
+        data.streams.map((stream) => stream.id),
       );
       await snap("selection-preserved-at-capacity");
     },
