@@ -151,11 +151,10 @@ export function judgeOneParticipant(args: {
 }
 
 /**
- * A terminal run's judgment. Its lab result reads harnessFailed, not allPassed: an agent that ended
- * blocked, failed or timed out is evidence, and only a harness error, a blown cap included, fails
- * the result.
+ * A judgment whose lab result reads harnessFailed, not allPassed: a participant that ended failed,
+ * blocked or timed out is still evidence, and only a harness failure fails the result.
  */
-export interface TerminalJudgment extends Judgment {
+export interface HarnessJudgment extends Judgment {
   harnessFailed: boolean;
 }
 
@@ -166,7 +165,7 @@ export interface TerminalJudgment extends Judgment {
 export function judgeTerminal(args: {
   dryRun: boolean;
   participant: ParticipantFacts | undefined;
-}): TerminalJudgment {
+}): HarnessJudgment {
   return {
     ...judgeOneParticipant({
       dryRun: args.dryRun,

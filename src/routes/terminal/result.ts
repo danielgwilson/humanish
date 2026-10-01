@@ -1,6 +1,6 @@
 import type { ObserverResult } from "../../observer/render.js";
 import type { ActorCompletionReason, ActorStatus, ActorTrace } from "../../actors/contract.js";
-import type { ParticipantFacts, TerminalJudgment } from "../../run/judge.js";
+import type { HarnessJudgment, ParticipantFacts } from "../../run/judge.js";
 import {
   TERMINAL_PRODUCT_LAB_SCHEMA,
   type NoSpendProof,
@@ -46,7 +46,7 @@ export function terminalLabResult(args: {
   capsExceeded: boolean;
   declaredScorerFailure: string | undefined;
   /** The run's judgment; ok reads its harnessFailed, not a pass. */
-  judgment: TerminalJudgment;
+  judgment: HarnessJudgment;
   observer: ObserverResult;
   warnings: string[];
 }): TerminalProductLabResult {
