@@ -9,41 +9,25 @@ import { isLocalBrowserLab, localBrowserDefaults } from "../substrates/local/run
 // selects the substrate while actors[0].type selects a registered first-party actor.
 
 import type { AutomaticAnalysisHooks } from "../analysis/automatic-completion.js";
-import {
-  computerUseLabRefusal,
-  runComputerUsePlan,
-  runCuaActorLab,
-} from "../routes/computer-use/lab.js";
+import { computerUseLabRefusal, runComputerUsePlan } from "../routes/computer-use/lab.js";
 import {
   type ComputerUseRunInput,
   type CuaActorLabHooks,
   type CuaActorLabResult,
 } from "../routes/computer-use/types.js";
-import {
-  runScriptedBrowserLab,
-  runScriptedPlan,
-  scriptedLabRefusal,
-} from "../routes/scripted-browser/lab.js";
+import { runScriptedPlan, scriptedLabRefusal } from "../routes/scripted-browser/lab.js";
 import {
   type ScriptedBrowserLabHooks,
   type ScriptedBrowserLabResult,
   type ScriptedRunInput,
 } from "../routes/scripted-browser/types.js";
-import {
-  runTerminalPlan,
-  runTerminalProductLab,
-  terminalLabRefusal,
-} from "../routes/terminal/lab.js";
+import { runTerminalPlan, terminalLabRefusal } from "../routes/terminal/lab.js";
 import {
   type TerminalProductLabHooks,
   type TerminalProductLabResult,
   type TerminalRunInput,
 } from "../routes/terminal/types.js";
-import {
-  runConcurrentSharedWorld,
-  runSharedWorldPlan,
-  sharedWorldLabRefusal,
-} from "../routes/shared-world/lab.js";
+import { runSharedWorldPlan, sharedWorldLabRefusal } from "../routes/shared-world/lab.js";
 import {
   type ConcurrentSharedWorldLabResult,
   type SharedWorldLabHooks,
@@ -51,7 +35,7 @@ import {
 } from "../routes/shared-world/types.js";
 import { type RunLabProvenance } from "../run/status.js";
 import type { ObserverResult } from "../observer/render.js";
-import { previewLabRefusal, runPreviewLab, runPreviewPlan } from "../routes/preview.js";
+import { previewLabRefusal, runPreviewPlan } from "../routes/preview.js";
 import { type RunScorerProvenance } from "../run/bundle.js";
 import { type RunResult } from "../run/results.js";
 import { backendOf, planLab, resolveLabDryRun, routeOf, type LabRoute } from "./plan.js";
@@ -152,8 +136,9 @@ export async function runLab(config: LabConfig, options: RunLabOptions): Promise
 
 /**
  * Plans the lab once and runs the plan on its route, or returns the route's refusal. A local
- * browser study first gets its local desktop, so it goes to the local VM study, which re-enters
- * dispatchLab with its own desktop lane.
+ * browser study's desktop lane and provider are bound first, so the plan is made with them; with
+ * createDesktopLane the caller provides the desktop, and with buildExecutor it drives the app in
+ * process and needs none.
  */
 async function planAndRun(config: LabConfig, options: RunLabOptions): Promise<LabOutcome> {
   const hooks = options.cuaHooks;
@@ -162,8 +147,13 @@ async function planAndRun(config: LabConfig, options: RunLabOptions): Promise<La
     hooks?.createDesktopLane === undefined &&
     hooks?.buildExecutor === undefined
   ) {
-    const { runLocalFirecrackerStudy } = await import("../routes/computer-use/local-vm.js");
-    return runLocalFirecrackerStudy({ ...options, config });
+    const { prepareLocalVmStudy } = await import("../routes/computer-use/local-vm.js");
+    const study = prepareLocalVmStudy({ ...options, config });
+    try {
+      return await planAndRun(config, study.options);
+    } finally {
+      await study.close();
+    }
   }
   const planned = planLab(config, options);
   if (!planned.ok) return refusalOutcome(config, options, planned.refusal);
@@ -293,126 +283,4 @@ function scorerOf(options: RunLabOptions) {
   return options.scorerProvenance === undefined
     ? {}
     : { scorerProvenance: options.scorerProvenance };
-}
-
-/**
- * The local VM study's re-entry: it runs with its own desktop lane, so its internal hooks are not
- * checked or warned about as a caller's. The next change plans the study once, with those hooks,
- * and removes this.
- */
-export async function dispatchLab(config: LabConfig, options: RunLabOptions): Promise<LabOutcome> {
-  config = localBrowserDefaults(config);
-  const backend = backendOf(routeOf(config));
-  switch (backend) {
-    case "synthetic":
-      return { backend, result: await runPreviewLab(config, options) };
-    case "cua": {
-      // The config selects the local browser study. Two hooks keep a run out of it: with
-      // createDesktopLane the caller (or the study re-entering here) provides the desktop, and
-      // with buildExecutor the caller drives the app in process and needs no desktop. Every other
-      // hook, such as a scorer, travels with the study.
-      const hooks = options.cuaHooks;
-      if (
-        isLocalBrowserLab(config) &&
-        hooks?.createDesktopLane === undefined &&
-        hooks?.buildExecutor === undefined
-      ) {
-        const { runLocalFirecrackerStudy } = await import("../routes/computer-use/local-vm.js");
-        return runLocalFirecrackerStudy({ ...options, config });
-      }
-      // Spend-safe default: a computer-use lab only goes live when the config (or CLI) says so.
-      const dryRun = resolveLabDryRun(config, options.dryRun, true) ?? true;
-      const result = await runCuaActorLab({
-        ...(options.automaticAnalysis === undefined
-          ? {}
-          : { automaticAnalysis: options.automaticAnalysis }),
-        ...(options.lab === undefined ? {} : { lab: options.lab }),
-        cwd: options.cwd,
-        config,
-        dryRun,
-        // CLI --count overrides the HOMOGENEOUS fan-out lane count (ignored when a lanes roster
-        // is declared — the roster length is authoritative).
-        ...(options.count === undefined ? {} : { countOverride: options.count }),
-        ...(options.open === undefined ? {} : { open: options.open }),
-        ...(options.onObserverReady === undefined
-          ? {}
-          : { onObserverReady: options.onObserverReady }),
-        ...(options.runId === undefined ? {} : { runId: options.runId }),
-        ...(options.rerun === undefined ? {} : { rerun: options.rerun }),
-        ...(options.cuaHooks === undefined ? {} : { hooks: options.cuaHooks }),
-        ...(options.scorerProvenance === undefined
-          ? {}
-          : { scorerProvenance: options.scorerProvenance }),
-      });
-      return { backend, result };
-    }
-    case "scripted": {
-      // Same dry-run default. Provider spend is $0 on this route BY MECHANISM (no model in
-      // the loop), but `scenario.mode: live` is still the gate: a live scripted run actuates a
-      // real browser against a real running app (fills forms, clicks buttons — state-mutating
-      // effects on the operator's app), which deserves the same affirmative declaration as
-      // spend.
-      const dryRun = resolveLabDryRun(config, options.dryRun, true) ?? true;
-      const result = await runScriptedBrowserLab({
-        ...(options.automaticAnalysis === undefined
-          ? {}
-          : { automaticAnalysis: options.automaticAnalysis }),
-        ...(options.lab === undefined ? {} : { lab: options.lab }),
-        cwd: options.cwd,
-        config,
-        dryRun,
-        ...(options.open === undefined ? {} : { open: options.open }),
-        ...(options.runId === undefined ? {} : { runId: options.runId }),
-        ...(options.scriptedHooks === undefined ? {} : { hooks: options.scriptedHooks }),
-      });
-      return { backend, result };
-    }
-    case "terminal": {
-      // Spend-safe default: the shipped live route passes a runtime key only to the in-sandbox
-      // agent command, so it goes live only when the config or CLI affirmatively says so. Dry-run
-      // emits contract evidence without creating a sandbox, reading a key, or spending.
-      const dryRun = resolveLabDryRun(config, options.dryRun, true) ?? true;
-      const result = await runTerminalProductLab({
-        ...(options.automaticAnalysis === undefined
-          ? {}
-          : { automaticAnalysis: options.automaticAnalysis }),
-        ...(options.lab === undefined ? {} : { lab: options.lab }),
-        cwd: options.cwd,
-        config,
-        dryRun,
-        ...(options.open === undefined ? {} : { open: options.open }),
-        ...(options.runId === undefined ? {} : { runId: options.runId }),
-        ...(options.terminalHooks === undefined ? {} : { hooks: options.terminalHooks }),
-        ...(options.scorerProvenance === undefined
-          ? {}
-          : { scorerProvenance: options.scorerProvenance }),
-      });
-      return { backend, result };
-    }
-    case "concurrent-shared-world": {
-      // Spend-safe default: a concurrent shared-world run provisions a real subject sandbox + N
-      // actor sandboxes on the live path, so it only goes live when the config (or CLI) affirms it.
-      // The deterministic PoC proof is fully $0 via the sharedWorldHooks DI seam.
-      const dryRun = resolveLabDryRun(config, options.dryRun, true) ?? true;
-      const result = await runConcurrentSharedWorld({
-        ...(options.automaticAnalysis === undefined
-          ? {}
-          : { automaticAnalysis: options.automaticAnalysis }),
-        ...(options.lab === undefined ? {} : { lab: options.lab }),
-        cwd: options.cwd,
-        config,
-        dryRun,
-        ...(options.open === undefined ? {} : { open: options.open }),
-        ...(options.onObserverReady === undefined
-          ? {}
-          : { onObserverReady: options.onObserverReady }),
-        ...(options.runId === undefined ? {} : { runId: options.runId }),
-        ...(options.sharedWorldHooks === undefined ? {} : { hooks: options.sharedWorldHooks }),
-        ...(options.scorerProvenance === undefined
-          ? {}
-          : { scorerProvenance: options.scorerProvenance }),
-      });
-      return { backend, result };
-    }
-  }
 }

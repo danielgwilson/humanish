@@ -3,7 +3,6 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { dispatchLab as DispatchLab, LabOutcome } from "../../../src/lab/engine.js";
 import type { LabConfig } from "../../../src/lab/types.js";
 import type { createLocalFirecrackerDesktop } from "../../../src/substrates/local/firecracker-desktop.js";
 import type { CuaActorSessionOptions } from "../../../src/actors/computer-use/actor.js";
@@ -13,13 +12,8 @@ import type { PreparedOutputRoot } from "../../../src/run/contained-output.js";
 import type { RunScorerProvenance } from "../../../src/run/bundle.js";
 
 const seams = vi.hoisted(() => ({
-  dispatchLab: vi.fn<typeof DispatchLab>(),
   account: vi.fn(),
   createDesktop: vi.fn<typeof createLocalFirecrackerDesktop>(),
-}));
-vi.mock("../../../src/lab/engine.js", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../../../src/lab/engine.js")>()),
-  dispatchLab: seams.dispatchLab,
 }));
 vi.mock("../../../src/analysis/restricted-codex.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../../src/analysis/restricted-codex.js")>()),
@@ -32,7 +26,7 @@ vi.mock("../../../src/substrates/local/firecracker-desktop.js", async (importOri
   createLocalFirecrackerDesktop: seams.createDesktop,
 }));
 
-import { runLocalFirecrackerStudy } from "../../../src/routes/computer-use/local-vm.js";
+import { prepareLocalVmStudy } from "../../../src/routes/computer-use/local-vm.js";
 
 const appUrl = "http://127.0.0.1:4173/";
 const assets = { image: "synthetic-image", runtimeRevision: "synthetic-revision" };
@@ -48,22 +42,16 @@ function localLab(type: "openai-computer-use" | "local-agent"): LabConfig {
   };
 }
 
-function reentryHooks() {
-  expect(seams.dispatchLab).toHaveBeenCalledOnce();
-  const hooks = seams.dispatchLab.mock.calls[0]![1].cuaHooks;
+function studyHooks(study: ReturnType<typeof prepareLocalVmStudy>) {
+  const hooks = study.options.cuaHooks;
   expect(hooks?.createDesktopLane).toBeTypeOf("function");
   return hooks!;
 }
 
-describe("local study re-entry", () => {
+describe("local study bindings", () => {
   let cwd: string;
-  const outcome: LabOutcome = {
-    backend: "synthetic",
-    result: { schema: "humanish.run-result.v1", ok: true, cwd: "", warnings: [] },
-  };
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-local-reentry-"));
-    seams.dispatchLab.mockResolvedValue(outcome);
   });
   afterEach(async () => {
     vi.resetAllMocks();
@@ -81,14 +69,14 @@ describe("local study re-entry", () => {
       }
     }
     const bag = new CallerHooks();
-    await runLocalFirecrackerStudy({
+    const study = prepareLocalVmStudy({
       cwd,
       config: localLab("openai-computer-use"),
       dryRun: true,
       cuaHooks: bag as never,
     });
 
-    const hooks = reentryHooks();
+    const hooks = studyHooks(study);
     hooks.onPhase!(
       { at: "", type: "phase", message: "cloned" },
       {
@@ -116,15 +104,15 @@ describe("local study re-entry", () => {
       }
     }
     const bag = new AnalysisHooks();
-    await runLocalFirecrackerStudy({
+    const study = prepareLocalVmStudy({
       cwd,
       config: localLab("openai-computer-use"),
       dryRun: true,
       automaticAnalysis: bag,
     });
 
-    reentryHooks();
-    const analysis = seams.dispatchLab.mock.calls[0]![1].automaticAnalysis!;
+    studyHooks(study);
+    const analysis = study.options.automaticAnalysis!;
     analysis.onStart!();
     await expect(analysis.run!({} as never, {} as never, {} as never)).resolves.toBe(skipped);
     expect(bag.calls()).toEqual(["start", "run"]);
@@ -143,7 +131,7 @@ describe("local study re-entry", () => {
       exports: ["score"],
     };
 
-    await runLocalFirecrackerStudy({
+    const study = prepareLocalVmStudy({
       cwd,
       config: localLab("openai-computer-use"),
       dryRun: true,
@@ -151,8 +139,8 @@ describe("local study re-entry", () => {
       scorerProvenance,
     });
 
-    const hooks = reentryHooks();
-    expect(seams.dispatchLab.mock.calls[0]![1].scorerProvenance).toBe(scorerProvenance);
+    const hooks = studyHooks(study);
+    expect(study.options.scorerProvenance).toBe(scorerProvenance);
     // The study forwards the caller's members bound to the caller's bag, so each reaches the
     // caller's function.
     await hooks.score!({} as never);
@@ -178,19 +166,9 @@ describe("local study re-entry", () => {
     seams.createDesktop.mockResolvedValue({ executor: {}, close } as unknown as Awaited<
       ReturnType<typeof createLocalFirecrackerDesktop>
     >);
-    seams.dispatchLab.mockImplementation(async (_config, options) => {
-      const spec: Partial<CuaLaneSpec> = { laneId: "lane-1", targetUrl: appUrl };
-      const lane = options.cuaHooks!.createDesktopLane!(
-        spec as CuaLaneSpec,
-        [],
-        {} as PreparedOutputRoot,
-      );
-      await lane.prepare();
-      return outcome;
-    });
     const signal = new AbortController().signal;
 
-    await runLocalFirecrackerStudy({
+    const study = prepareLocalVmStudy({
       cwd,
       config: localLab("local-agent"),
       dryRun: false,
@@ -198,8 +176,11 @@ describe("local study re-entry", () => {
       signal,
       cuaHooks: { buildProvider, runSession },
     });
+    const hooks = studyHooks(study);
+    const spec: Partial<CuaLaneSpec> = { laneId: "lane-1", targetUrl: appUrl };
+    await hooks.createDesktopLane!(spec as CuaLaneSpec, [], {} as PreparedOutputRoot).prepare();
+    await study.close();
 
-    const hooks = reentryHooks();
     await hooks.buildProvider!({} as never);
     expect(buildProvider).toHaveBeenCalledOnce();
     expect(seams.account).not.toHaveBeenCalled();
@@ -216,17 +197,16 @@ describe("local study re-entry", () => {
     const prepareDesktop = vi.fn(async () => {});
     const packLocalTree = vi.fn();
 
-    await expect(
-      runLocalFirecrackerStudy({
+    expect(() =>
+      prepareLocalVmStudy({
         cwd,
         config: localLab("local-agent"),
         dryRun: false,
         assets,
         cuaHooks: { prepareDesktop, packLocalTree },
       }),
-    ).rejects.toThrow(/does not call cuaHooks\.prepareDesktop, cuaHooks\.packLocalTree\./);
+    ).toThrow(/does not call cuaHooks\.prepareDesktop, cuaHooks\.packLocalTree\./);
 
-    expect(seams.dispatchLab).not.toHaveBeenCalled();
     expect(seams.account).not.toHaveBeenCalled();
     expect(seams.createDesktop).not.toHaveBeenCalled();
     expect(prepareDesktop).not.toHaveBeenCalled();
