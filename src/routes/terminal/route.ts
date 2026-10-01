@@ -1,69 +1,56 @@
-// The terminal-product lab backend: a real autonomous agent (Codex) studying a CLI/product from
-// PUBLIC SURFACES ONLY, running INSIDE an E2B shell with explicit runtime-auth placement, capturing
-// its non-interactive exec output (stdin disabled) as a redacted event stream + normalized
-// transcript, capped at no-spend, emitting durable terminal/substrate/cost/no-spend/cleanup/
-// intervention proof. Mirrors routes/computer-use/route.ts and routes/scripted/route.ts.
+// The terminal-product route: a real autonomous agent (Codex) studies a CLI or product from its
+// public surfaces only, inside an E2B shell. The flow:
+//   1. admit: planTerminalLab refuses what the plan cannot hold, then a live plan's machine checks
+//      (checkLiveTerminalMachine) run before any run scope opens, so the CLI can refuse before it
+//      loads a declared scorer;
+//   2. open the run scope;
+//   3. a live plan runs its session in an E2B sandbox (runLiveTerminalSession, session.ts, with
+//      live-sandbox.ts and live-finish.ts); a dry plan publishes its contract bundle (dry-run.ts);
+//   4. automatic analysis of a run that published its final bundle.
 //
-// BOTH ROUTES ARE IMPLEMENTED.
-//   - DRY-RUN: a contract-only `humanish.run-bundle.v1`, honestly labeled.
-//   - LIVE: the real create -> inject (command-scoped) -> run `codex exec --json` -> capture
-//     (scrub+redact at the source) -> score (verdict-nonce marker) -> teardown (proven cleanup)
-//     orchestrator on the @e2b/desktop commands.run surface.
-//
-// THE SAFETY CONTRACT (docs/goals/terminal-product-lane/goal.md) is enforced BY CONSTRUCTION here
-// and CHECKED by the verifier (verify/actor.ts validateTerminalProductEvidence):
+// THE SAFETY CONTRACT (docs/goals/terminal-product-lane/goal.md) is enforced BY CONSTRUCTION in
+// the files each item names, and CHECKED by the verifier (verify/actor.ts
+// validateTerminalProductEvidence):
 //   1. EXPLICIT KEY PLACEMENT. openai-env (default) injects the raw runtime key command-scoped,
 //      NEVER Sandbox.create({envs}). Opt-in openai-egress sends it only in the host-side E2B
 //      header transform and passes an inert command placeholder. The proxy is spendable by every
 //      sandbox process from creation; this protects the raw key, not provider spending.
+//      Enforced in credentials.ts and runtime-auth.ts.
 //   2. FAIL-CLOSED CAP. The live key is never exercised without scenario.caps in force: maxUsd
 //      (default/require 0 = no-spend) + maxMinutes (wall-clock kill of the codex command).
+//      Enforced in plan.ts (caps required), live-sandbox.ts and lifetime.ts (the wall clock).
 //   3. PUBLIC SURFACES ONLY. The mission references only subject.product.publicSurfaces + the
 //      author mission. No clone, no private-source access — nothing is git-cloned in this lane.
+//      Enforced in session.ts, which composes the prompt.
 //   4. DENY-BY-DEFAULT CREDENTIALS. The command envs are built from an ALLOWLIST of ONLY the
 //      declared runtime key; GITHUB_TOKEN/GH_TOKEN/payment/deploy/db/media keys are excluded by
 //      construction (a banned-name guard also fails closed if one is ever requested).
+//      Enforced in credentials.ts.
 //   5. NO SECRET VALUES IN EVIDENCE. Every captured byte (event stream, transcript, command logs,
 //      agent report, metadata) passes scrubKnownValues (literal scrub of the runtime key + any
 //      provisioned values, >=4 chars, PRE-truncation) THEN redactText (shape patterns) BEFORE
 //      persisting. The transport is labeled HONESTLY (exec-stream/snapshot, NOT an interactive pty).
+//      Enforced in recorder.ts, with the scrubber session.ts builds.
 //   6. METADATA POSITIVE ALLOWLIST. buildSandboxMetadata(allowlist) is the ONLY way metadata is
 //      set; it carries solely non-secret labels (mode/tool/labId/simId/provider/runId).
+//      Enforced in credentials.ts.
 //   7. STDIN DISABLED + INTERVENTIONS LEDGER. stdin is never wired to the codex command; the
 //      bundle ALWAYS carries an interventions ledger (empty array is valid + required-present).
+//      Enforced in live-sandbox.ts (stdin) and recorder.ts (the ledger).
 //   8. PROVEN CLEANUP, BY ID, NEVER ACCOUNT-WIDE. Sandbox.kill(id) in a finally; the cleanup
 //      proof is BY EXACT ID: kill(id)'s own found-and-killed boolean, confirmed further by
 //      Sandbox.getInfo(id) when the SDK exposes it (a thrown SandboxNotFoundError means gone).
 //      humanish NEVER calls Sandbox.list to prove cleanup, so a shared operator key never reaches a
 //      sandbox it did not create. A live run that cannot prove teardown fails closed.
+//      Enforced in sandbox.ts.
 
 import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
 import { completeAutomaticAnalysis } from "../../analysis/automatic-completion.js";
-import { declaredRuntimeProvenance } from "./runtime.js";
-import { realpath } from "node:fs/promises";
 import path from "node:path";
-import { resolveCommittedPersona } from "../../lab/persona-resolve.js";
-import type { ActorPersonaRef } from "../../actors/contract.js";
 import { runScope, type FinishedRun, type RunScope } from "../../run/run.js";
 import { planTerminalLab, type TerminalRefusal } from "./plan.js";
-import {
-  personaBrief,
-  personaToDirectives,
-  renderPersonaPromptSection,
-} from "../../lab/persona.js";
-import { digestText, redactText, scrubLiterals } from "../../evidence/redaction.js";
-import { participantAssignment } from "../../lab/participant-assignment.js";
-import { validatePreparedRunArtifactPaths } from "../../run/paths.js";
-import { prepareSelectedOutputDirectory } from "../../run/contained-output.js";
-import { buildRunSource, type RunEvent } from "../../run/bundle.js";
-import { judgeExecution, judgeTerminal, OUTCOME_POLICIES, resultOk } from "../../run/judge.js";
-import { buildTerminalProductBundle, renderTerminalReviewMarkdown } from "./bundle.js";
-import {
-  checkLiveTerminalMachine,
-  defaultMission,
-  makeTerminalRunId,
-  runLiveTerminalSession,
-} from "./session.js";
+import { runDryTerminalLab } from "./dry-run.js";
+import { checkLiveTerminalMachine, runLiveTerminalSession } from "./session.js";
 import type { TerminalPlan } from "../../lab/plan-types.js";
 import { terminalInputWithScorer } from "../../lab/route-inputs.js";
 import type { AdmittedPlan } from "../../run-lab.js";
@@ -259,204 +246,4 @@ async function runTerminalPlanInScope(
     return runLiveTerminalSession({ plan, input, cwd, warnings, failed, scope, runtimeEnv });
   }
   return runDryTerminalLab({ plan: admitted.plan, input, cwd, warnings, failed, scope });
-}
-
-/**
- * The dry-run path: a contract bundle with the persona and prompt digest bound, published through
- * the run scope with no sandbox, key or spend.
- */
-async function runDryTerminalLab(args: {
-  plan: Extract<TerminalPlan, { readonly dryRun: true }>;
-  input: TerminalRunInput;
-  cwd: string;
-  warnings: string[];
-  failed: RunLiveTerminalSessionArgs["failed"];
-  scope: RunScope;
-}): Promise<TerminalProductLabResult> {
-  const { plan, input, cwd, warnings, failed, scope } = args;
-  const { product } = plan;
-  const hooks = input.hooks ?? {};
-  const { evidenceMission, physicalCwd, persona } = await prepareDryPersona({
-    plan,
-    cwd,
-    env: hooks.env ?? process.env,
-    warnings,
-  });
-
-  const started = await scope.startRun({
-    cwd: physicalCwd,
-    runId: input.runId,
-    mintRunId: makeTerminalRunId,
-    mode: "dry-run",
-    lab: plan.lab,
-    renderReview: renderTerminalReviewMarkdown,
-    observer: { open: input.open === true, render: hooks.renderObserverFn },
-  });
-  if (!started.ok) return failed(started.code, started.message);
-  const { run } = started;
-  const { runId, createdAt } = run;
-  const source = await buildRunSource({
-    capturedAt: createdAt,
-    cwd: physicalCwd,
-    humanishSource: "present",
-    packageName: "humanish",
-  });
-
-  const policies = plan.residual.policies;
-  const judgment = judgeTerminal({ dryRun: true, participant: undefined });
-  const bundle = buildTerminalProductBundle({
-    ...(plan.lab === undefined ? {} : { lab: plan.lab }),
-    actorId: plan.actor,
-    createdAt,
-    dryRun: true,
-    labId: plan.labId,
-    ...(plan.title ? { labTitle: plan.title } : {}),
-    mission: evidenceMission,
-    persona,
-    productName: product.name,
-    publicSurfaces: product.publicSurfaces,
-    ...(plan.caps ? { caps: plan.caps } : {}),
-    ...(plan.runtime.auth ? { runtimeAuth: plan.runtime.auth } : {}),
-    stdin: plan.stdin ?? "disabled",
-    policies: {
-      allowPrivateRepoAccess: policies?.allowPrivateRepoAccess ?? false,
-      allowProviderCredentials: policies?.allowProviderCredentials ?? false,
-      allowPaymentCredentials: policies?.allowPaymentCredentials ?? false,
-      allowGitHubMutation: policies?.allowGitHubMutation ?? false,
-    },
-    runId,
-    source,
-    verdict: judgment.verdict,
-  });
-  bundle.events.push(runtimeDeclaredEvent(plan.runtime, createdAt));
-
-  const finished = await run.finish(bundle);
-  const observer = await finished.renderObserver();
-  await validatePreparedRunArtifactPaths(finished.paths);
-  const policy = OUTCOME_POLICIES.terminal;
-  const execution = judgeExecution(
-    observer.ok
-      ? []
-      : [
-          {
-            kind: "evidence",
-            message: observer.error?.message ?? "Observer failed for the terminal-product lab run.",
-          },
-        ],
-    policy,
-  );
-  const ok = resultOk({ judgment, execution, scorerFailures: [], policy });
-  await finished.recordOutcome({ ok, execution });
-
-  return {
-    schema: TERMINAL_PRODUCT_LAB_SCHEMA,
-    ok,
-    cwd,
-    labId: plan.labId,
-    actor: plan.actor,
-    product: product.name,
-    dryRun: true,
-    runId,
-    observer,
-    warnings: [...warnings, ...observer.warnings],
-    ...(ok
-      ? {}
-      : {
-          error: {
-            code: "HUMANISH_TERMINAL_LAB_FAILED" as const,
-            message: observer.error?.message ?? "Observer failed for the terminal-product lab run.",
-          },
-        }),
-  };
-}
-
-/**
- * The persona and prompt digest a dry run records: the author mission with known key values
- * scrubbed, and the committed persona's traits and brief.
- */
-async function prepareDryPersona(args: {
-  plan: TerminalPlan;
-  cwd: string;
-  env: Record<string, string | undefined>;
-  warnings: string[];
-}): Promise<{ evidenceMission: string; physicalCwd: string; persona: ActorPersonaRef }> {
-  const { plan, cwd, env, warnings } = args;
-  const { product } = plan;
-  const mission = plan.mission ?? defaultMission(product.name);
-  const knownSecretValues = [env.CODEX_API_KEY, env.OPENAI_API_KEY, env.E2B_API_KEY]
-    .map((value) => value?.trim() ?? "")
-    .filter((value) => value.length >= 4);
-  const evidenceMission = participantAssignment(
-    { mission },
-    scrubLiterals(knownSecretValues),
-  ).mission;
-  const personaId = plan.personaId ?? "autonomous-terminal-agent";
-  const physicalCwd = await realpath(cwd);
-  // Resolve the committed persona so its traits actually shape the agent prompt (#308); fail-safe to
-  // the bare persona id (no traits applied) when no persona file is committed.
-  const projectRoot = await prepareSelectedOutputDirectory(path.dirname(physicalCwd), physicalCwd);
-  const resolvedPersona = await resolveCommittedPersona(projectRoot, personaId);
-  warnings.push(...resolvedPersona.warnings);
-  const personaLine = resolvedPersona.persona
-    ? renderPersonaPromptSection(resolvedPersona.persona)
-    : `persona: ${personaId}`;
-  const traitsApplied = resolvedPersona.persona
-    ? personaToDirectives(resolvedPersona.persona).traitsApplied
-    : [];
-  // The composed prompt = mission + persona + public-surface manifest. Only the AUTHOR mission
-  // goes plaintext into evidence (it is public-safe committed lab text); the full composed prompt
-  // is recorded as a DIGEST (the safety contract's mission ruling).
-  const composedPrompt = composePrompt({
-    mission,
-    personaLine,
-    productName: product.name,
-    publicSurfaces: product.publicSurfaces,
-  });
-  const promptDigest = digestText(composedPrompt);
-  const persona: ActorPersonaRef = {
-    id: personaId,
-    traitsApplied,
-    promptDigest,
-    ...(resolvedPersona.persona
-      ? {
-          brief: personaBrief(resolvedPersona.persona, scrubLiterals(knownSecretValues)),
-        }
-      : {}),
-  };
-  return { evidenceMission, physicalCwd, persona };
-}
-
-/** The declared runtime provenance as a dry-run event; nothing is observed without a sandbox. */
-function runtimeDeclaredEvent(runtime: TerminalPlan["runtime"], createdAt: string): RunEvent {
-  const { version, model, reasoningEffort } = runtime;
-  return {
-    id: "event-terminal-runtime-declared",
-    at: createdAt,
-    level: "info",
-    type: "terminal-lab.runtime.declared",
-    message: redactText(
-      JSON.stringify(
-        declaredRuntimeProvenance({
-          ...(version === undefined ? {} : { version }),
-          ...(model === undefined ? {} : { model }),
-          ...(reasoningEffort === undefined ? {} : { reasoningEffort }),
-        }),
-      ),
-    ),
-  };
-}
-
-/** Compose the full prompt the agent would run. Bound to evidence by DIGEST only. */
-function composePrompt(args: {
-  mission: string;
-  personaLine: string;
-  productName: string;
-  publicSurfaces: readonly string[];
-}): string {
-  return [
-    args.personaLine,
-    `product: ${args.productName}`,
-    `public-surfaces: ${args.publicSurfaces.join(" ")}`,
-    `mission: ${args.mission}`,
-  ].join("\n");
 }
