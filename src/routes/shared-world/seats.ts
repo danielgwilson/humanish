@@ -231,6 +231,8 @@ export function participantRunDeps(
     redactScreenshots: ctx.redactScreenshots,
     scrubKnownValues,
     runSession: ctx.runSession,
+    // A local-agent brain runs each seat on the operator's signed-in agent, as on computer use.
+    ...(ctx.plan.brain.kind === "local-agent" ? { localAgent: ctx.plan.brain.agent } : {}),
     ...(receiving ? { receiving } : {}),
     now: ctx.now,
     hooks: runtimeStreamHooks(ctx.hooks, live),

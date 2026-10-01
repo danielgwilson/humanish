@@ -1,16 +1,12 @@
 import type { ComputerUsePlan } from "../../lab/plan-types.js";
 import type { LabCommsExternal } from "../../lab/types.js";
 import { DEFAULT_OPENAI_CU_MODEL } from "../../actors/computer-use/openai-provider.js";
-import {
-  checkHostedCodexCompatibility,
-  detectLocalAgents,
-  type LocalAgentId,
-} from "../../actors/local-agent/cli.js";
+import { detectLocalAgents, type LocalAgentId } from "../../actors/local-agent/cli.js";
+import { localAgentRefusal } from "../../actors/local-agent/readiness.js";
 import { describeMissingKeys } from "../../keys/key-resolution.js";
 import { externalCatchHealthy } from "../../comms/sandbox-catch.js";
 import { MODEL_RATES } from "../../run/pricing.js";
 import type { CuaActorLabErrorCode, CuaActorLabHooks } from "./types.js";
-import { describeQualifiedCodexCliVersions } from "../../actors/codex/qualified-versions.js";
 import { participantDesktopOf } from "./participant-desktop.js";
 
 /**
@@ -71,47 +67,17 @@ export async function liveCuaRejection(args: {
   if (localAgentRoute && !hooks.buildProvider) {
     // Refuse HERE, before a sandbox exists. "codex is not installed" discovered after the
     // machine is paid for is the same information delivered at the worst possible moment.
-    const available = await detectLocalAgents({ env });
-    const chosen = available.find((agent) => agent.id === preferredLocalAgent);
-    if (chosen === undefined) {
+    const refusal = await localAgentRefusal({ agent: preferredLocalAgent, env, caps });
+    if (refusal)
       return {
-        code: "HUMANISH_CUA_LAB_AGENT_SIGNIN_REQUIRED",
-        message:
-          `actors[0].type: local-agent needs the ${preferredLocalAgent} CLI on PATH and signed in. ` +
-          `Install it, or set OPENAI_API_KEY and use actors[0].type: openai-computer-use instead.`,
+        code:
+          refusal.kind === "signin-required"
+            ? "HUMANISH_CUA_LAB_AGENT_SIGNIN_REQUIRED"
+            : refusal.kind === "unsupported"
+              ? "HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED"
+              : "HUMANISH_CUA_LAB_UNPRICED_CAP",
+        message: refusal.message,
       };
-    }
-    if (chosen.authStatus !== "authenticated") {
-      return {
-        code: "HUMANISH_CUA_LAB_AGENT_SIGNIN_REQUIRED",
-        message:
-          chosen.authStatus === "unauthenticated"
-            ? `${chosen.label} reports not signed in — run \`${chosen.id === "codex" ? "codex login" : "claude auth login"}\`, then retry.`
-            : `${chosen.label} authentication status could not be checked. Run \`${chosen.id === "codex" ? "codex login status" : "claude auth status"}\` and update the CLI if needed. No desktop was launched.`,
-      };
-    }
-    if (chosen.id === "codex") {
-      const compatibility = await checkHostedCodexCompatibility(chosen.binPath, { env });
-      if (compatibility !== "supported") {
-        return {
-          code: "HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED",
-          message:
-            compatibility === "unsupported_platform"
-              ? `Hosted Codex participants require Linux or macOS on x64 or arm64. This host is ${process.platform}/${process.arch}; no desktop was launched.`
-              : `Hosted Codex participants require a qualified Codex CLI (${describeQualifiedCodexCliVersions()}). Run \`codex --version\` and install a qualified version before retrying; no desktop was launched.`,
-        };
-      }
-      if (
-        chosen.billing === "account-unknown" &&
-        (caps.maxUsd !== undefined || caps.maxTotalUsd !== undefined)
-      ) {
-        return {
-          code: "HUMANISH_CUA_LAB_UNPRICED_CAP",
-          message:
-            "A ChatGPT-account Codex participant has no API-dollar price, so execution.caps.maxUsd/maxTotalUsd cannot be enforced. Remove the dollar cap and use finite execution timeout/step limits, or use an API-backed participant; no desktop was launched.",
-        };
-      }
-    }
   }
   const missingSubjectEnv = subjectEnvNames.filter((name) => !env[name]?.trim());
   if (missingSubjectEnv.length > 0) {

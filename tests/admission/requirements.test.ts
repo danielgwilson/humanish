@@ -15,8 +15,9 @@ import { lab, SCENARIO_YAML, type RawLab } from "./fixtures.js";
 
 const live = { scenario: { mode: "live" } };
 
-// Each live plan shape whose requirements list a key. A local-agent participant is left out: its
-// sign-in probe runs the agent's CLI, which a test machine may not have.
+// Each live plan shape whose requirements list a key. The test env has no PATH, so a local-agent
+// shape's sign-in probe finds no CLI and spawns nothing; its key checks come first anyway.
+const localAgent = { type: "local-agent", localAgent: "codex" };
 const shapes: Record<string, RawLab> = {
   "computer-use app-url": lab("cuAppUrl", live),
   "computer-use clone": lab("cuClone", live),
@@ -26,6 +27,8 @@ const shapes: Record<string, RawLab> = {
   terminal: lab("terminal", live),
   "shared-world provisioned": lab("sharedProvisioned", live),
   "shared-world external": lab("sharedExternal", live),
+  "shared-world provisioned local-agent": lab("sharedProvisioned", live, localAgent),
+  "shared-world external local-agent": lab("sharedExternal", live, localAgent),
 };
 
 const ALL_KEYS = {
@@ -103,6 +106,31 @@ describe("plan.requirements keys", () => {
         });
         expect(outcome.result.error?.code).toMatch(/_(KEYS|RUNTIME_AUTH)_MISSING$/);
       }
+    },
+    60_000,
+  );
+
+  it.each(Object.entries(shapes))(
+    "%s refuses no live run that has every declared key for a missing key",
+    async (_name, raw) => {
+      const parsed = parseLabConfig(raw);
+      if (!parsed.ok) throw new Error(parsed.error.message);
+      const cwd = await projectDir();
+      const planned = planLab(parsed.config, options(cwd, ALL_KEYS, { count: 0 }));
+      if (!planned.ok) throw new Error(planned.refusal.message);
+      const requirements = planned.planned.plan.requirements;
+      // Only what the plan declares: its keys and its subject env names.
+      const declared = new Set([
+        ...requirements.flatMap(keyNames),
+        ...requirements.flatMap((requirement) =>
+          requirement.kind === "subject-env" ? requirement.names : [],
+        ),
+      ]);
+      const env = Object.fromEntries(
+        Object.entries(ALL_KEYS).filter(([name]) => declared.has(name)),
+      );
+      const outcome = await runLab(parsed.config, options(cwd, env, { count: 0 }));
+      expect(outcome.result.error?.code ?? "").not.toMatch(/_(KEYS|RUNTIME_AUTH)_MISSING$/);
     },
     60_000,
   );

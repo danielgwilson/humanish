@@ -43,6 +43,7 @@ import { runScope, type RunScope } from "../../run/run.js";
 import { makeCuaRunBudget } from "../computer-use/participant-model.js";
 import { runExternalPublicPlane } from "./external-public.js";
 import { planSharedWorldLab, sharedWorldDescriptorOf, type SharedWorldRefusal } from "./plan.js";
+import { localAgentRefusal } from "../../actors/local-agent/readiness.js";
 import { runProvisionedPlane } from "./provisioned.js";
 import { concurrentLabFailure, finishConcurrentRun } from "./result.js";
 import { prepareConcurrentRun } from "./setup.js";
@@ -217,8 +218,11 @@ async function runPlanInScope(
   const hasGithubToken = subjectEnvNames.includes("GITHUB_TOKEN");
 
   if (!dryRun) {
+    // OPENAI_API_KEY drives an openai brain's seats and the external-public plane's lobby-code
+    // reader; a local-agent brain's seats run on the operator's signed-in agent instead.
+    const openaiKeyNeeded = plan.brain.kind === "openai" || plan.plane.kind === "external-public";
     const missingKeys = [
-      ...(openaiApiKey ? [] : ["OPENAI_API_KEY"]),
+      ...(openaiApiKey || !openaiKeyNeeded ? [] : ["OPENAI_API_KEY"]),
       ...(e2bApiKey ? [] : ["E2B_API_KEY"]),
     ];
     if (missingKeys.length > 0) {
@@ -227,6 +231,21 @@ async function runPlanInScope(
         `Live concurrent shared-world labs need ${missingKeys.join(" and ")} in the environment (values are never persisted). ${describeMissingKeys(missingKeys, env)}`,
         descriptor.id,
       );
+    }
+    if (plan.brain.kind === "local-agent") {
+      // Refuse here, before a sandbox exists: a missing or signed-out agent found after the
+      // seats' desktops are paid for is the same news at the worst moment.
+      const refusal = await localAgentRefusal({ agent: plan.brain.agent, env, caps: plan.caps });
+      if (refusal)
+        return fail(
+          refusal.kind === "signin-required"
+            ? "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_AGENT_SIGNIN_REQUIRED"
+            : refusal.kind === "unsupported"
+              ? "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_ACTOR_UNSUPPORTED"
+              : "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+          refusal.message,
+          descriptor.id,
+        );
     }
     const missingSubjectEnv = subjectEnvNames.filter((name) => !env[name]?.trim());
     if (missingSubjectEnv.length > 0) {
