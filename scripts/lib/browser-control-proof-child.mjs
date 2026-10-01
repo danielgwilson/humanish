@@ -70,6 +70,13 @@ async function snapshot() {
     unexpectedRequests,
   };
 }
+// The dispatcher sends only a safe failure code, so the fixture keeps the cause on stderr, which the
+// proof retains and prints when a case fails.
+function recordFailure(operation, error) {
+  if (error instanceof CuaExecutorError) return;
+  const detail = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+  process.stderr.write(`fixture ${operation} failed: ${detail}\n`);
+}
 const executor = {
   async observe() {
     assertAuthorized();
@@ -163,7 +170,18 @@ await new Promise((resolve, reject) => {
 controller = attachBrowserControlDispatcher({
   transport,
   identity,
-  executor,
+  executor: {
+    observe: () =>
+      executor.observe().catch((error) => {
+        recordFailure("observe", error);
+        throw error;
+      }),
+    execute: (action, signal) =>
+      executor.execute(action, signal).catch((error) => {
+        recordFailure(`execute ${action.kind}`, error);
+        throw error;
+      }),
+  },
   isAuthorized: () => !authority.signal.aborted,
   authoritySignal: authority.signal,
 });
@@ -182,12 +200,21 @@ const handleMessage = async (message) => {
   try {
     if (message?.command === "snapshot")
       process.send?.({ event: "snapshot", state: await snapshot() });
+    if (message?.command === "snapshot-after-save") {
+      await page.waitForFunction(
+        () => document.querySelector("#status")?.textContent === "Saved",
+        undefined,
+        { timeout: 10000 },
+      );
+      process.send?.({ event: "snapshot", state: await snapshot() });
+    }
     if (message?.command === "revoke") {
       authority.abort();
       process.send?.({ event: "revoked" });
     }
     if (message?.command === "stop") await stop();
-  } catch {
+  } catch (error) {
+    recordFailure(`command ${message?.command}`, error);
     process.send?.({ event: "fixture-error" });
     await stop();
     process.exitCode = 1;
