@@ -1,24 +1,16 @@
 // The terminal route's dry run: a contract-only bundle with the persona and prompt digest bound,
 // published through the run scope with no sandbox, key or spend. session.ts holds the live path.
 
-import { realpath } from "node:fs/promises";
-import path from "node:path";
 import type { ActorPersonaRef } from "../../actors/contract.js";
 import { digestText, redactText, scrubLiterals } from "../../evidence/redaction.js";
 import { participantAssignment } from "../../lab/participant-assignment.js";
-import {
-  personaBrief,
-  personaToDirectives,
-  renderPersonaPromptSection,
-} from "../../lab/persona.js";
-import { resolveCommittedPersona } from "../../lab/persona-resolve.js";
 import type { TerminalPlan } from "../../lab/plan-types.js";
 import { buildRunSource, type RunEvent } from "../../run/bundle.js";
-import { prepareSelectedOutputDirectory } from "../../run/contained-output.js";
 import { judgeExecution, judgeTerminal, OUTCOME_POLICIES, resultOk } from "../../run/judge.js";
 import { validatePreparedRunArtifactPaths } from "../../run/paths.js";
 import type { RunScope } from "../../run/run.js";
 import { buildTerminalProductBundle, renderTerminalReviewMarkdown } from "./bundle.js";
+import { resolveTerminalPersona, terminalPersonaRef } from "./persona.js";
 import { declaredRuntimeProvenance } from "./runtime.js";
 import { defaultMission, makeTerminalRunId } from "./session.js";
 import {
@@ -157,39 +149,22 @@ async function prepareDryPersona(args: {
     { mission },
     scrubLiterals(knownSecretValues),
   ).mission;
-  const personaId = plan.personaId ?? "autonomous-terminal-agent";
-  const physicalCwd = await realpath(cwd);
-  // Resolve the committed persona so its traits actually shape the agent prompt (#308); fail-safe to
-  // the bare persona id (no traits applied) when no persona file is committed.
-  const projectRoot = await prepareSelectedOutputDirectory(path.dirname(physicalCwd), physicalCwd);
-  const resolvedPersona = await resolveCommittedPersona(projectRoot, personaId);
-  warnings.push(...resolvedPersona.warnings);
-  const personaLine = resolvedPersona.persona
-    ? renderPersonaPromptSection(resolvedPersona.persona)
-    : `persona: ${personaId}`;
-  const traitsApplied = resolvedPersona.persona
-    ? personaToDirectives(resolvedPersona.persona).traitsApplied
-    : [];
+  const terminalPersona = await resolveTerminalPersona({ plan, cwd, warnings });
   // The composed prompt = mission + persona + public-surface manifest. Only the AUTHOR mission
   // goes plaintext into evidence (it is public-safe committed lab text); the full composed prompt
   // is recorded as a DIGEST (the safety contract's mission ruling).
   const composedPrompt = composePrompt({
     mission,
-    personaLine,
+    personaLine: terminalPersona.personaLine,
     productName: product.name,
     publicSurfaces: product.publicSurfaces,
   });
-  const promptDigest = digestText(composedPrompt);
-  const persona: ActorPersonaRef = {
-    id: personaId,
-    traitsApplied,
-    promptDigest,
-    ...(resolvedPersona.persona
-      ? {
-          brief: personaBrief(resolvedPersona.persona, scrubLiterals(knownSecretValues)),
-        }
-      : {}),
-  };
+  const persona = terminalPersonaRef(
+    terminalPersona,
+    digestText(composedPrompt),
+    scrubLiterals(knownSecretValues),
+  );
+  const { physicalCwd } = terminalPersona;
   return { evidenceMission, physicalCwd, persona };
 }
 
@@ -214,7 +189,7 @@ function runtimeDeclaredEvent(runtime: TerminalPlan["runtime"], createdAt: strin
 }
 
 /** Compose the full prompt the agent would run. Bound to evidence by DIGEST only. */
-function composePrompt(args: {
+export function composePrompt(args: {
   mission: string;
   personaLine: string;
   productName: string;

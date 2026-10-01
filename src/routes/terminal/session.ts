@@ -1,20 +1,11 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { declaredRuntimeProvenance } from "./runtime.js";
-import { realpath } from "node:fs/promises";
-import path from "node:path";
-import { resolveCommittedPersona } from "../../lab/persona-resolve.js";
-import type { ActorPersonaRef } from "../../actors/contract.js";
-import {
-  personaBrief,
-  personaToDirectives,
-  renderPersonaPromptSection,
-} from "../../lab/persona.js";
 import { digestText, redactText, scrubLiterals } from "../../evidence/redaction.js";
 import { describeMissingKeys } from "../../keys/key-resolution.js";
-import { prepareSelectedOutputDirectory } from "../../run/contained-output.js";
 import { buildRunSource } from "../../run/bundle.js";
 import { renderTerminalReviewMarkdown } from "./bundle.js";
 import { buildRuntimeAuth, buildSandboxMetadata } from "./credentials.js";
+import { resolveTerminalPersona, terminalPersonaRef } from "./persona.js";
 import type {
   LiveTerminalAuth,
   LiveTerminalPlan,
@@ -193,23 +184,11 @@ async function prepareLivePrompt(args: {
   // Inject a per-run verdict nonce: the agent echoes HUMANISH_ACTOR_VERDICT=<status>
   // HUMANISH_ACTOR_NONCE=<nonce>; the scorer verifies the nonce so replayed text cannot forge it.
   const mission = plan.mission ?? defaultMission(product.name);
-  const personaId = plan.personaId ?? "autonomous-terminal-agent";
-  const physicalCwd = await realpath(cwd);
-  // Resolve the committed persona so its traits actually shape the agent prompt (#308); fail-safe to
-  // the bare persona id (no traits applied) when no persona file is committed.
-  const projectRoot = await prepareSelectedOutputDirectory(path.dirname(physicalCwd), physicalCwd);
-  const resolvedPersona = await resolveCommittedPersona(projectRoot, personaId);
-  warnings.push(...resolvedPersona.warnings);
-  const personaLine = resolvedPersona.persona
-    ? renderPersonaPromptSection(resolvedPersona.persona)
-    : `persona: ${personaId}`;
-  const traitsApplied = resolvedPersona.persona
-    ? personaToDirectives(resolvedPersona.persona).traitsApplied
-    : [];
+  const terminalPersona = await resolveTerminalPersona({ plan, cwd, warnings });
   const verdictNonce = randomUUID().slice(0, 12);
   const composedPrompt = composeLivePrompt({
     mission,
-    personaLine,
+    personaLine: terminalPersona.personaLine,
     productName: product.name,
     publicSurfaces: product.publicSurfaces,
     verdictNonce,
@@ -226,17 +205,10 @@ async function prepareLivePrompt(args: {
   );
   const scrubKnownValues = scrubLiterals(knownSecretValues);
   const sanitize = (text: string): string => redactText(scrubKnownValues(text));
-  const persona: ActorPersonaRef = {
-    id: personaId,
-    traitsApplied,
-    promptDigest,
-    ...(resolvedPersona.persona
-      ? { brief: personaBrief(resolvedPersona.persona, scrubKnownValues) }
-      : {}),
-  };
+  const persona = terminalPersonaRef(terminalPersona, promptDigest, scrubKnownValues);
   return {
     mission,
-    physicalCwd,
+    physicalCwd: terminalPersona.physicalCwd,
     persona,
     composedPrompt,
     verdictNonce,
