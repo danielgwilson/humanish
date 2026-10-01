@@ -384,9 +384,9 @@ export interface CuaSubjectProjection {
   state: RunSubjectProvenance["state"];
 }
 
-/** The provisioned-route-only shape threaded through as buildCuaBundle's subjectProvenance arg
- *  (clone or local-tree; an app-url subject stays undeclared, which buildCuaBundle's own
- *  default branch already handles without this type). */
+/** The provisioned-route-only shape threaded through as buildSingleParticipantBundle's
+ *  subjectProvenance arg (clone or local-tree; an app-url subject stays undeclared, which that
+ *  builder's own default branch already handles without this type). */
 export type CuaSubjectProvenanceArg =
   | {
       source: "clone";

@@ -15,7 +15,6 @@ import {
   type ExecutionOutcome,
   type Judgment,
 } from "../../run/judge.js";
-import { buildParticipantSummary } from "./bundle-parts.js";
 import { participantFactsOf, participantOutcomeOk } from "./participant-facts.js";
 import { summarizeCuaDiagnostics } from "./diagnostics.js";
 import {
@@ -30,13 +29,59 @@ import type { CuaFinishFacts, CuaRunSetup } from "./setup.js";
 import { projectParticipantSubjects } from "./subject-projection.js";
 import {
   CUA_ACTOR_LAB_SCHEMA,
+  CUA_FANOUT_STRATEGY,
   type CuaActorLabErrorCode,
   type CuaActorLabResult,
   type CuaParticipantPlan,
+  type CuaParticipantSummary,
   type DesktopParticipantRun,
   type CuaSubjectProjection,
   type ParticipantRunOutcome,
 } from "./types.js";
+
+/** Aggregate participant counts for the result projection. */
+function buildParticipantSummary(
+  outcomes: ParticipantRunOutcome[] | undefined,
+  participantCount: number,
+  participantPlan: CuaParticipantPlan,
+  dryRun: boolean,
+): CuaParticipantSummary {
+  if (dryRun || !outcomes) {
+    return {
+      strategy: CUA_FANOUT_STRATEGY,
+      total: participantCount,
+      passed: 0,
+      skipped: 0,
+      harnessErrors: 0,
+      hollow: 0,
+      concurrency: participantPlan.concurrency,
+      waves: participantPlan.waves,
+    };
+  }
+  let passed = 0;
+  let skipped = 0;
+  let harnessErrors = 0;
+  let hollow = 0;
+  for (const outcome of outcomes) {
+    if (outcome.skippedReason !== undefined) {
+      skipped += 1;
+      continue;
+    }
+    if (outcome.harnessError) harnessErrors += 1;
+    if (outcome.noEngagement) hollow += 1;
+    if (participantOutcomeOk(outcome, dryRun)) passed += 1;
+  }
+  return {
+    strategy: CUA_FANOUT_STRATEGY,
+    total: participantCount,
+    passed,
+    skipped,
+    harnessErrors,
+    hollow,
+    concurrency: participantPlan.concurrency,
+    waves: participantPlan.waves,
+  };
+}
 
 /**
  * The computer-use lab result for a finished run. The run passes only when the Observer rendered,

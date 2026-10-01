@@ -6,7 +6,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
 
 import { ACTOR_TRACE_SCHEMA, type ActorTrace } from "../../src/actors/contract.js";
 import type { CuaLoopResult } from "../../src/actors/computer-use/loop.js";
-import { buildCuaBundle } from "../../src/routes/computer-use/single-bundle.js";
+import { buildSingleParticipantBundle } from "../../src/routes/computer-use/single-bundle.js";
 import { verdictForStatus } from "../../src/run/judge.js";
 import { renderObserver } from "../../src/observer/render.js";
 import type { LibraryHistory } from "../../src/observer/library.js";
@@ -236,7 +236,7 @@ async function writeLocalOnlyRun(cwd: string, runId: string): Promise<void> {
     reason: trace.reason,
     trace,
   };
-  const bundle = buildCuaBundle({
+  const bundle = buildSingleParticipantBundle({
     verdict: verdictForStatus(session.status),
     actorId: "openai-computer-use",
     appUrl: "http://127.0.0.1:3000/",
@@ -857,7 +857,7 @@ describe("serve library: labeled cost estimate", () => {
       reason: trace.reason,
       trace,
     };
-    const bundle = buildCuaBundle({
+    const bundle = buildSingleParticipantBundle({
       verdict: verdictForStatus(session.status),
       actorId: "openai-computer-use",
       appUrl: "http://127.0.0.1:3000/",

@@ -1,11 +1,8 @@
 import type { RunDesktopRecording } from "../../evidence/desktop-recording-types.js";
-import { e2bDesktopTemplate } from "../../substrates/e2b/sandbox.js";
 import type { SubjectPhaseEvent } from "../../subject/steps.js";
 import type { DesktopBrowserEvidence } from "../../substrates/e2b/desktop-browser.js";
 import type { ActorPersonaRef, ActorStatus } from "../../actors/contract.js";
-import { type CuaActorDescriptor } from "../../actors/registry.js";
 import type { CuaLoopResult } from "../../actors/computer-use/loop.js";
-import type { ComputerUsePlan } from "../../lab/plan-types.js";
 import { participantAssignment } from "../../lab/participant-assignment.js";
 import { redactText } from "../../evidence/redaction.js";
 import { type RunLabProvenance } from "../../run/status.js";
@@ -33,16 +30,11 @@ import {
 import {
   describeSubjectState,
   participantFeedbackCandidates,
-  providerResourcesForOutcome,
   publicSafeAppUrlLabel,
   subjectProvenanceMessage,
 } from "./bundle-parts.js";
 import { participantStatus as participantStatusFor, type Verdict } from "../../run/judge.js";
-import {
-  buildRunCostSummary,
-  desktopSpanToMinutes,
-  type DesktopUsage,
-} from "../../run/cost-summary.js";
+import { buildRunCostSummary, type DesktopUsage } from "../../run/cost-summary.js";
 import { phaseEventIdSuffix } from "./lane-plan.js";
 import {
   participantEvent,
@@ -50,124 +42,20 @@ import {
   participantRecord,
   participantStream,
 } from "../../run/participant-records.js";
-import type {
-  DesktopParticipantRun,
-  CuaSubjectProvenanceArg,
-  ParticipantRunOutcome,
-} from "./types.js";
+import type { CuaSubjectProvenanceArg } from "./types.js";
 
-/** Build the N=1 bundle via the unchanged buildCuaBundle (byte-stable). */
-export function buildSingleParticipantBundle(args: {
-  /** The run's verdict, from the judge. */
-  verdict: Verdict;
-  lab?: RunLabProvenance;
-  spec: DesktopParticipantRun;
-  outcome: ParticipantRunOutcome | undefined;
-  descriptor: CuaActorDescriptor;
-  appUrl: string;
-  createdAt: string;
-  dryRun: boolean;
-  plan: ComputerUsePlan;
-  runId: string;
-  source: RunBundle["source"];
-  redactScreenshots: boolean;
-  subjectProvenance?: CuaSubjectProvenanceArg;
-  inProcessRoute: boolean;
-  localAppSubject: boolean;
-  inProgress?: boolean;
-}): RunBundle {
-  const { spec, outcome, plan } = args;
-  const desktopTemplate = e2bDesktopTemplate(plan.residual);
-  return buildCuaBundle({
-    verdict: args.verdict,
-    realEmail: plan.residual.comms?.email?.kind === "real",
-    ...(args.lab === undefined ? {} : { lab: args.lab }),
-    actorId: args.descriptor.id,
-    appUrl: args.appUrl,
-    participantId: spec.planned.id,
-    ...(spec.planned.labels.actorType === undefined
-      ? {}
-      : { actorType: spec.planned.labels.actorType }),
-    ...(spec.planned.labels.surface === undefined ? {} : { surface: spec.planned.labels.surface }),
-    ...(spec.planned.labels.caseGroup === undefined
-      ? {}
-      : { caseGroup: spec.planned.labels.caseGroup }),
-    createdAt: args.createdAt,
-    dryRun: args.dryRun,
-    labId: plan.labId,
-    ...(plan.title ? { labTitle: plan.title } : {}),
-    mission: spec.evidenceInstructions ?? spec.instructions,
-    ...(spec.evidenceAssignment === undefined ? {} : { assignment: spec.evidenceAssignment }),
-    persona: spec.persona,
-    resolution: spec.planned.device.resolution,
-    desktopRoute: !args.inProcessRoute,
-    substrate: args.inProcessRoute
-      ? "local-filesystem"
-      : plan.residual.execution?.target === "local"
-        ? "local-desktop"
-        : "e2b-desktop",
-    ...(outcome?.desktopGeometry === undefined ? {} : { desktopGeometry: outcome.desktopGeometry }),
-    ...(outcome?.recording === undefined ? {} : { recording: outcome.recording }),
-    isMobile: spec.planned.device.preset.isMobile,
-    runId: args.runId,
-    screenshots: outcome?.screenshots ?? [],
-    captureRedaction: args.redactScreenshots ? "blurred" : "raw",
-    ...(outcome?.session ? { session: outcome.session } : {}),
-    ...(outcome?.sessionError !== undefined ? { sessionError: outcome.sessionError } : {}),
-    ...(outcome === undefined
-      ? {}
-      : {
-          credibility: {
-            noEngagement: outcome.noEngagement === true,
-            selfReportedBlocker: outcome.selfReportedBlocker === true,
-            reportedFriction: outcome.reportedFriction === true,
-          },
-        }),
-    source: args.source,
-    ...(args.inProgress === undefined ? {} : { inProgress: args.inProgress }),
-    ...(args.subjectProvenance === undefined ? {} : { subjectProvenance: args.subjectProvenance }),
-    ...(desktopTemplate === undefined ? {} : { desktopTemplate }),
-    ...(outcome?.desktopBrowser === undefined ? {} : { desktopBrowser: outcome.desktopBrowser }),
-    providerResources: providerResourcesForOutcome({
-      outcome,
-      createdAt: args.createdAt,
-      ids: spec,
-      participantId: spec.planned.id,
-    }),
-    ...(args.localAppSubject || args.inProcessRoute ? { entryKind: "local-app" as const } : {}),
-    ...(outcome?.session ? { traceArtifactPath: spec.traceArtifactPath } : {}),
-    ...(outcome?.commsArtifactPath === undefined
-      ? {}
-      : { commsArtifactPath: outcome.commsArtifactPath }),
-    ...(desktopSpanToMinutes(outcome?.desktopDurationMs) === undefined
-      ? {}
-      : { desktopMinutes: desktopSpanToMinutes(outcome?.desktopDurationMs)! }),
-    ...(outcome?.sandboxId === undefined
-      ? {}
-      : {
-          desktopUsage: {
-            participantId: spec.planned.id,
-            minutes: desktopSpanToMinutes(outcome.desktopDurationMs),
-            observation: outcome.desktopResources,
-            lifetimeComplete: outcome.killed,
-          },
-        }),
-    phaseEvents: outcome?.phaseRecords ?? [],
-  });
-}
-
-type CuaBundleArgs = Parameters<typeof buildCuaBundle>[0];
+type SingleParticipantBundleArgs = Parameters<typeof buildSingleParticipantBundle>[0];
 
 /** The one participant's record and stream ids: sim-001 and stream-001. */
 const SINGLE = participantIds(0);
 
 /** The participant's runner: a hosted E2B desktop, a local VM desktop, or the in-process route. */
-function runnerSubstrate(args: CuaBundleArgs): RunFeedbackCandidate["substrate"] {
+function runnerSubstrate(args: SingleParticipantBundleArgs): RunFeedbackCandidate["substrate"] {
   return args.substrate ?? (args.desktopRoute === false ? "local-filesystem" : "e2b-desktop");
 }
 
 /** Where the participant's browser ran, as the bundle's summary and stream intent say it. */
-function browserPlace(args: CuaBundleArgs): string {
+function browserPlace(args: SingleParticipantBundleArgs): string {
   switch (runnerSubstrate(args)) {
     case "local-desktop":
       return "in a browser on a local VM";
@@ -179,7 +67,7 @@ function browserPlace(args: CuaBundleArgs): string {
 }
 
 /** Run-level cost ESTIMATE (advisory; omitted when nothing was priced and no sandbox ran). */
-function runCost(args: CuaBundleArgs): ReturnType<typeof buildRunCostSummary> {
+function runCost(args: SingleParticipantBundleArgs): ReturnType<typeof buildRunCostSummary> {
   return buildRunCostSummary({
     participants: args.session
       ? [
@@ -195,7 +83,7 @@ function runCost(args: CuaBundleArgs): ReturnType<typeof buildRunCostSummary> {
 }
 
 /** The participant's status, reason, last frame, geometry and screenshot mode, shared by its records. */
-function participantView(args: CuaBundleArgs, publicAppUrl: string) {
+function participantView(args: SingleParticipantBundleArgs, publicAppUrl: string) {
   const status: RunSimulationStatus =
     args.inProgress === true
       ? "running"
@@ -239,7 +127,7 @@ function participantView(args: CuaBundleArgs, publicAppUrl: string) {
 
 type ParticipantView = ReturnType<typeof participantView>;
 
-function singleSimulation(args: CuaBundleArgs, view: ParticipantView): RunSimulation {
+function singleSimulation(args: SingleParticipantBundleArgs, view: ParticipantView): RunSimulation {
   const { publicAppUrl, status, reason } = view;
   return participantRecord(SINGLE, 1, {
     personaId: args.persona.id,
@@ -261,7 +149,7 @@ function singleSimulation(args: CuaBundleArgs, view: ParticipantView): RunSimula
   });
 }
 
-function singleStream(args: CuaBundleArgs, view: ParticipantView): RunStream {
+function singleStream(args: SingleParticipantBundleArgs, view: ParticipantView): RunStream {
   const { publicAppUrl, status, reason, lastScreenshot, desktopGeometry, screenshotMode } = view;
   return participantStream(
     SINGLE,
@@ -325,7 +213,7 @@ function singleStream(args: CuaBundleArgs, view: ParticipantView): RunStream {
   );
 }
 
-function singleEvents(args: CuaBundleArgs, view: ParticipantView): RunEvent[] {
+function singleEvents(args: SingleParticipantBundleArgs, view: ParticipantView): RunEvent[] {
   const { publicAppUrl, desktopGeometry } = view;
   const events: RunEvent[] = [
     {
@@ -426,7 +314,7 @@ function singleEvents(args: CuaBundleArgs, view: ParticipantView): RunEvent[] {
 }
 
 function singleReview(
-  args: CuaBundleArgs,
+  args: SingleParticipantBundleArgs,
   view: ParticipantView,
   stream: RunStream,
 ): ReviewSummary {
@@ -481,7 +369,11 @@ function singleReview(
   return review;
 }
 
-export function buildCuaBundle(args: {
+/**
+ * The bundle of a single-participant run: one participant and no rerun. buildCuaRunBundle
+ * (bundle.ts) maps the run's base and state into these arguments.
+ */
+export function buildSingleParticipantBundle(args: {
   /** The run's verdict, from the judge. */
   verdict: Verdict;
   realEmail?: boolean;

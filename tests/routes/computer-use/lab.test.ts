@@ -31,7 +31,7 @@ import { runComputerUsePlan, runCuaActorLab } from "../../../src/routes/computer
 import { planComputerUseLab } from "../../../src/routes/computer-use/plan.js";
 import { CUA_ACTOR_LAB_PROVIDER_METADATA } from "../../../src/routes/computer-use/e2b-desktop-prepare.js";
 import { makeChromeBrowserStateObserver } from "../../../src/substrates/e2b/desktop-cdp.js";
-import { buildCuaBundle } from "../../../src/routes/computer-use/single-bundle.js";
+import { buildSingleParticipantBundle } from "../../../src/routes/computer-use/single-bundle.js";
 import { buildRunCostSummary } from "../../../src/run/cost-summary.js";
 import { makeParticipantWriteScreenshot } from "../../../src/routes/computer-use/lanes.js";
 import { pngTextChunk, withPngChunk } from "../../helpers/png-chunks.js";
@@ -5124,7 +5124,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
   });
 });
 
-describe("buildCuaBundle", () => {
+describe("buildSingleParticipantBundle", () => {
   describe("local-tree route (subject.source: local-tree, computer-use)", () => {
     let cwd: string;
     beforeEach(async () => {
@@ -5635,7 +5635,7 @@ describe("buildCuaBundle", () => {
   });
 
   it("dry-run bundle shape: contract verdict, no actor seam, public cwd", () => {
-    const bundle = buildCuaBundle({
+    const bundle = buildSingleParticipantBundle({
       verdict: judgeOneParticipant({ dryRun: true, inProgress: false, participant: undefined })
         .verdict,
       actorId: "openai-computer-use",
@@ -5681,7 +5681,7 @@ describe("buildCuaBundle", () => {
 
   it("keeps sensitive public target URLs out of persisted bundle text while preserving lane metadata", () => {
     const rawUrl = "https://3000-example-sandbox.e2b.app/bootstrap/session";
-    const bundle = buildCuaBundle({
+    const bundle = buildSingleParticipantBundle({
       verdict: "contract_proof_only",
       actorId: "openai-computer-use",
       actorType: "reviewer",
@@ -5751,7 +5751,7 @@ describe("buildCuaBundle", () => {
       },
     };
 
-    const blurred = buildCuaBundle({ ...base, captureRedaction: "blurred" });
+    const blurred = buildSingleParticipantBundle({ ...base, captureRedaction: "blurred" });
     expect(blurred.simulations[0]?.progress).toBe(100);
     expect(blurred.streams[0]?.embed?.title).toBe("CUA desktop (blurred)");
     expect(blurred.streams[0]?.artifacts.some((a) => a.label === "screenshot 01 (blurred)")).toBe(
@@ -5759,17 +5759,19 @@ describe("buildCuaBundle", () => {
     );
     expect(blurred.redaction.notes).toContain("capture policy (blurred)");
 
-    const raw = buildCuaBundle({ ...base, captureRedaction: "raw" });
+    const raw = buildSingleParticipantBundle({ ...base, captureRedaction: "raw" });
     expect(raw.streams[0]?.embed?.title).toBe("CUA desktop (raw)");
     expect(raw.streams[0]?.artifacts.some((a) => a.label === "screenshot 01 (raw)")).toBe(true);
     expect(raw.redaction.notes).toContain("capture policy (raw)");
     expect(JSON.stringify(raw)).not.toContain("(redacted)");
 
     // Real email restricts publication on a live run only, saved right after the schema.
-    const restricted = buildCuaBundle({ ...base, realEmail: true });
+    const restricted = buildSingleParticipantBundle({ ...base, realEmail: true });
     expect(restricted.publication).toEqual({ restrictions: ["real-communications"] });
     expect(Object.keys(restricted).slice(0, 2)).toEqual(["schema", "publication"]);
-    expect("publication" in buildCuaBundle({ ...base, realEmail: true, dryRun: true })).toBe(false);
+    expect(
+      "publication" in buildSingleParticipantBundle({ ...base, realEmail: true, dryRun: true }),
+    ).toBe(false);
     expect("publication" in raw).toBe(false);
   });
 });
