@@ -1,17 +1,23 @@
-// Each seat's records in a concurrent shared-world bundle: its simulation, its stream and its
-// events, projected from the lane result (or from the declaration on a dry run or while running).
+// Each participant's records in a concurrent shared-world bundle: its simulation, its stream and
+// its events, projected from the actor's run result (or from the declaration on a dry run or while
+// running).
 
 import { participantAssignment } from "../../lab/participant-assignment.js";
 import type { RunEvent, RunSimulation } from "../../run/bundle.js";
+import {
+  participantEvent,
+  participantRecord,
+  participantStream,
+} from "../../run/participant-records.js";
 import type { RunSimulationStatus, RunStream } from "../../run/streams.js";
 import { declaredScreenForRender } from "../../substrates/e2b/desktop-geometry.js";
 import type { DesktopParticipantRun, LaneRunOutcome } from "../computer-use/types.js";
 import { publicSafeRouteLabel } from "./provenance.js";
-import { laneTaxonomyLabel } from "./seats.js";
+import { participantTaxonomyLabel } from "./seats.js";
 import type { ConcurrentBundleArgs } from "./types.js";
 
-/** What every seat's records share. */
-export interface SeatRecordContext {
+/** What every participant's records share. */
+export interface SharedWorldRecordContext {
   args: ConcurrentBundleArgs;
   external: boolean;
   inProgress: boolean;
@@ -21,7 +27,7 @@ export interface SeatRecordContext {
   nextEventId: (suffix: string) => string;
 }
 
-interface SeatView {
+interface ParticipantView {
   taxonomy: string;
   outcome: LaneRunOutcome | undefined;
   session: LaneRunOutcome["session"];
@@ -34,9 +40,13 @@ interface SeatView {
   screenshotMode: "raw" | "blurred";
 }
 
-function seatView(ctx: SeatRecordContext, spec: DesktopParticipantRun, index: number): SeatView {
+function participantView(
+  ctx: SharedWorldRecordContext,
+  spec: DesktopParticipantRun,
+  index: number,
+): ParticipantView {
   const { args, external, inProgress } = ctx;
-  const taxonomy = laneTaxonomyLabel(spec.planned.labels);
+  const taxonomy = participantTaxonomyLabel(spec.planned.labels);
   const result = args.actorResults[index];
   const outcome = result?.outcome;
   const session = outcome?.session;
@@ -97,17 +107,15 @@ function seatView(ctx: SeatRecordContext, spec: DesktopParticipantRun, index: nu
   };
 }
 
-function seatSimulation(
-  ctx: SeatRecordContext,
+function sharedWorldSimulation(
+  ctx: SharedWorldRecordContext,
   spec: DesktopParticipantRun,
   index: number,
-  view: SeatView,
+  view: ParticipantView,
 ): RunSimulation {
   const { args, inProgress } = ctx;
   const { taxonomy, outcome, session } = view;
-  return {
-    id: spec.simId,
-    index: index + 1,
+  return participantRecord(spec, index + 1, {
     personaId: spec.persona.id,
     scenarioId: `concurrent-shared-world-${args.plan.labId}`,
     status: view.status,
@@ -122,23 +130,20 @@ function seatSimulation(
         : inProgress
           ? `Persona ${spec.planned.id}${taxonomy} (${spec.persona.id}) is running against the shared plane.`
           : `Contract persona ${spec.planned.id}${taxonomy} (${spec.persona.id}) for ${args.descriptor.id} against the shared plane at ${ctx.appUrl}.`,
-    streamIds: [spec.streamId],
     startedAt: args.createdAt,
     updatedAt: args.createdAt,
-  };
+  });
 }
 
-function seatStream(
-  ctx: SeatRecordContext,
+function sharedWorldStream(
+  ctx: SharedWorldRecordContext,
   spec: DesktopParticipantRun,
   index: number,
-  view: SeatView,
+  view: ParticipantView,
 ): RunStream {
   const { args } = ctx;
   const { taxonomy, session, screenshots, lastScreenshot, desktopGeometry, screenshotMode } = view;
-  return {
-    id: spec.streamId,
-    simId: spec.simId,
+  return participantStream(spec, {
     ...(spec.evidenceAssignment === undefined
       ? {}
       : { assignment: participantAssignment(spec.evidenceAssignment) }),
@@ -198,84 +203,76 @@ function seatStream(
         kind: "screenshot" as const,
       })),
     ],
-  };
+  });
 }
 
-function seatEvents(
-  ctx: SeatRecordContext,
+function sharedWorldEvents(
+  ctx: SharedWorldRecordContext,
   spec: DesktopParticipantRun,
-  view: SeatView,
+  view: ParticipantView,
 ): RunEvent[] {
   const { args, inProgress, nextEventId } = ctx;
   const createdAt = args.createdAt;
   const { outcome, session } = view;
   const events: RunEvent[] = [];
+  const record = (event: Omit<RunEvent, "simId" | "streamId">) =>
+    events.push(participantEvent(spec, event));
   for (const warning of outcome?.warnings ?? []) {
-    events.push({
+    record({
       id: nextEventId(`warning-${spec.planned.id}`),
       at: createdAt,
       level: "warn",
       type: "concurrent-shared-world.actor.warning",
       message: `Persona ${spec.planned.id}: ${warning}`,
-      simId: spec.simId,
-      streamId: spec.streamId,
     });
   }
 
   if (session) {
-    events.push({
+    record({
       id: nextEventId(`session-${spec.planned.id}`),
       at: createdAt,
       level: session.status === "passed" ? "info" : "warn",
       type: `concurrent-shared-world.session.${session.completionReason}`,
       message: `Persona ${spec.planned.id}: ${session.status} — ${session.reason}`,
-      simId: spec.simId,
-      streamId: spec.streamId,
     });
   } else if (outcome?.sessionError !== undefined) {
-    events.push({
+    record({
       id: nextEventId(`session-error-${spec.planned.id}`),
       at: createdAt,
       level: "error",
       type: "concurrent-shared-world.session.error",
       message: `Persona ${spec.planned.id}: ${outcome.sessionError}`,
-      simId: spec.simId,
-      streamId: spec.streamId,
     });
   } else if (inProgress) {
-    events.push({
+    record({
       id: nextEventId(`running-${spec.planned.id}`),
       at: createdAt,
       level: "info",
       type: "actor.running",
       message: `Persona ${spec.planned.id}: desktop actor is running; live stream URL is runtime-only and not persisted.`,
-      simId: spec.simId,
-      streamId: spec.streamId,
     });
   } else {
-    events.push({
+    record({
       id: nextEventId(`contract-${spec.planned.id}`),
       at: createdAt,
       level: "info",
       type: "concurrent-shared-world.contract.ready",
       message: `Persona ${spec.planned.id}: dry-run contract actor ready; switch scenario.mode to live for a real concurrent session.`,
-      simId: spec.simId,
-      streamId: spec.streamId,
     });
   }
   return events;
 }
 
-/** One seat's simulation, stream and events. */
-export function seatRecords(
-  ctx: SeatRecordContext,
+/** One participant's simulation, stream and events. */
+export function sharedWorldParticipantRecords(
+  ctx: SharedWorldRecordContext,
   spec: DesktopParticipantRun,
   index: number,
 ): { simulation: RunSimulation; stream: RunStream; events: RunEvent[] } {
-  const view = seatView(ctx, spec, index);
+  const view = participantView(ctx, spec, index);
   return {
-    simulation: seatSimulation(ctx, spec, index, view),
-    stream: seatStream(ctx, spec, index, view),
-    events: seatEvents(ctx, spec, view),
+    simulation: sharedWorldSimulation(ctx, spec, index, view),
+    stream: sharedWorldStream(ctx, spec, index, view),
+    events: sharedWorldEvents(ctx, spec, view),
   };
 }

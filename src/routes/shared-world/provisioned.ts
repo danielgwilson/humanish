@@ -59,12 +59,12 @@ import {
   SUBJECT_PROVISION_BUDGET_MS,
 } from "../../substrates/e2b/lifetime.js";
 import { DEFAULT_STATE_STEP_TIMEOUT_MS } from "../../subject/state.js";
-import { resolveActorSeatUrl, seatLaneDeps, startSeatFlush } from "./seats.js";
+import { resolveActorEntryUrl, participantRunDeps, startParticipantFlush } from "./seats.js";
 import {
   CONCURRENT_SHARED_WORLD_PROVIDER_METADATA,
-  type ActorLaneResult,
+  type ActorRunResult,
   type SubjectDesktopUsage,
-  type LiveSeats,
+  type LiveParticipants,
   type PlaneContext,
 } from "./types.js";
 
@@ -94,7 +94,7 @@ export interface ProvisionedPlaneSetup {
 
 /** What the provisioned plane hands back to the orchestrator. */
 export interface ProvisionedPlaneOutcome {
-  actorResults: ActorLaneResult[];
+  actorResults: ActorRunResult[];
   runError: string | undefined;
   subjectCommit: string | undefined;
   subjectSandboxId: string | undefined;
@@ -468,7 +468,7 @@ class SubjectPlane {
 async function publishInProgress(
   plane: SubjectPlane,
   ctx: PlaneContext,
-  live: LiveSeats,
+  live: LiveParticipants,
   setup: ProvisionedPlaneSetup,
 ): Promise<void> {
   const { plan, input } = ctx;
@@ -519,29 +519,29 @@ async function publishInProgress(
       throw new ObserverGateError(error);
     }
   }
-  startSeatFlush(ctx, live, inProgressBundle);
+  startParticipantFlush(ctx, live, inProgressBundle);
 }
 
 // Launch N actor sandboxes CONCURRENTLY, INDEPENDENT (FIX-11: runCuaLane + mapWithConcurrency,
 // NOT runCuaLanes — no pipeline gate / fail-fast). Each actor's window is measured on the ONE
 // orchestrator clock (FIX-1).
-function runSeats(
+function runParticipants(
   plane: SubjectPlane,
   ctx: PlaneContext,
-  live: LiveSeats,
+  live: LiveParticipants,
   setup: ProvisionedPlaneSetup,
-): Promise<ActorLaneResult[]> {
+): Promise<ActorRunResult[]> {
   const { now } = ctx;
   const participants = ctx.plan.plane.participants;
   const { commsEmail } = setup;
-  const baseActorDeps = seatLaneDeps(ctx, live, ctx.scrubKnownValues);
+  const baseActorDeps = participantRunDeps(ctx, live, ctx.scrubKnownValues);
   return mapWithConcurrency(ctx.actorSpecs, Math.max(1, ctx.concurrency), async (spec, i) => {
-    const route = resolveActorSeatUrl(plane.getHostUrl!, participants[i]?.entry);
+    const route = resolveActorEntryUrl(plane.getHostUrl!, participants[i]?.entry);
     // Tell this persona its (getHost-reachable) inbox URL — but only when comms is live AND this lane
     // has a declared recipient it can actually receive mail into (else it would stall on an empty
     // inbox). Only the in-sandbox catch exists on this plane; the adopter-hosted catch is the
     // external-public plane's (#387).
-    const laneSpec =
+    const actorSpec =
       commsEmail && plane.commsInboxUrl && laneHasInboxRecipient(commsEmail, spec.planned.id)
         ? withInboxMission(
             spec,
@@ -550,7 +550,7 @@ function runSeats(
           )
         : spec;
     const startedAt = now();
-    const outcome = await runCuaLane(laneSpec, { ...baseActorDeps, appUrl: route });
+    const outcome = await runCuaLane(actorSpec, { ...baseActorDeps, appUrl: route });
     const endedAt = now();
     return { spec, outcome, startedAt, endedAt, route };
   });
@@ -558,11 +558,11 @@ function runSeats(
 
 export async function runProvisionedPlane(
   ctx: PlaneContext,
-  live: LiveSeats,
+  live: LiveParticipants,
   setup: ProvisionedPlaneSetup,
 ): Promise<ProvisionedPlaneOutcome> {
   const plane = new SubjectPlane(ctx, setup);
-  let actorResults: ActorLaneResult[] = [];
+  let actorResults: ActorRunResult[] = [];
   let runError: string | undefined;
   let commsArtifactPath: string | undefined;
   try {
@@ -575,7 +575,7 @@ export async function runProvisionedPlane(
     await plane.snapshot();
     await publishInProgress(plane, ctx, live, setup);
     plane.startProber();
-    actorResults = await runSeats(plane, ctx, live, setup);
+    actorResults = await runParticipants(plane, ctx, live, setup);
   } catch (error) {
     if (error instanceof ObserverGateError) throw error.cause;
     runError = redactText(ctx.scrubKnownValues(toErrorMessage(error)));

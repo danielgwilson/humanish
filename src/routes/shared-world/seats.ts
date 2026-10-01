@@ -1,5 +1,5 @@
-// Builds each seat's lane spec and mission, resolves its entry URL, derives the session and
-// sandbox time budgets, and records a follower that never received the host's lobby code.
+// Builds each participant's actor spec and mission, resolves its entry URL, derives the session
+// and sandbox time budgets, and records a follower that never received the host's lobby code.
 
 import { DEFAULT_OPENAI_CU_MODEL } from "../../actors/computer-use/openai-provider.js";
 import { scrubPersonaBrief, type ResolvedPersona } from "../../lab/persona.js";
@@ -17,7 +17,7 @@ import type {
   DesktopParticipantRun,
   LaneRunOutcome,
 } from "../computer-use/types.js";
-import type { LiveSeats, PlaneContext, SharedWorldLabHooks } from "./types.js";
+import type { LiveParticipants, PlaneContext, SharedWorldLabHooks } from "./types.js";
 import { resolveCommittedPersonasForCwd } from "../../lab/persona-resolve.js";
 import { participantAssignment } from "../../lab/participant-assignment.js";
 import { redactText } from "../../evidence/redaction.js";
@@ -35,21 +35,21 @@ import { DEFAULT_STATE_STEP_TIMEOUT_MS } from "../../subject/state.js";
 // seed-heavy lab never gets LESS room than it always had. App-url seats have no subject sandbox
 // and default to 30 minutes (seat sandbox: 30m + 10m buffer stays well under the hour). An
 // explicit execution.timeoutMs is never adjusted. The handoff latch scales off this (40%).
-const MAX_DERIVED_SEAT_SESSION_MS = 15 * 60_000;
+const MAX_DERIVED_SESSION_MS = 15 * 60_000;
 
-const MIN_DERIVED_SEAT_SESSION_MS = 300_000;
+const MIN_DERIVED_SESSION_MS = 300_000;
 
-const DEFAULT_APP_URL_SEAT_SESSION_MS = 30 * 60_000;
+const DEFAULT_APP_URL_SESSION_MS = 30 * 60_000;
 
-export function defaultSeatSessionTimeoutMs(plan: SharedWorldPlan): number {
-  if (plan.plane.kind !== "provisioned") return DEFAULT_APP_URL_SEAT_SESSION_MS;
+export function defaultSessionTimeoutMs(plan: SharedWorldPlan): number {
+  if (plan.plane.kind !== "provisioned") return DEFAULT_APP_URL_SESSION_MS;
   const stateBudgetMs = (plan.plane.subject.state.seed ?? []).reduce(
     (sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS),
     0,
   );
   const room =
     MAX_SANDBOX_MS - SUBJECT_PROVISION_BUDGET_MS - stateBudgetMs - SANDBOX_TIMEOUT_BUFFER_MS;
-  return Math.max(MIN_DERIVED_SEAT_SESSION_MS, Math.min(MAX_DERIVED_SEAT_SESSION_MS, room));
+  return Math.max(MIN_DERIVED_SESSION_MS, Math.min(MAX_DERIVED_SESSION_MS, room));
 }
 
 const DEFAULT_MISSION =
@@ -57,7 +57,7 @@ const DEFAULT_MISSION =
 
 /** Resolve an actor's seat URL against the harness-minted getHost base (entry is a same-origin
  *  relative path, validated at parse against serve.url). */
-export function resolveActorSeatUrl(baseUrl: string, entry: string | undefined): string {
+export function resolveActorEntryUrl(baseUrl: string, entry: string | undefined): string {
   if (!entry) return baseUrl;
   try {
     return new URL(entry, baseUrl).toString();
@@ -66,7 +66,7 @@ export function resolveActorSeatUrl(baseUrl: string, entry: string | undefined):
   }
 }
 
-export function laneTaxonomyLabel(labels: Participant["labels"]): string {
+export function participantTaxonomyLabel(labels: Participant["labels"]): string {
   const parts = [
     labels.actorType ? `type:${labels.actorType}` : undefined,
     labels.surface ? `surface:${labels.surface}` : undefined,
@@ -141,15 +141,22 @@ export function makeBlockedFollowerOutcome(
   };
 }
 
-/** The lane deps every seat shares, on either plane. */
-export type SeatLaneDeps = Omit<CuaLaneDeps, "signalProvisioned" | "appUrl" | "onObservedUrl">;
+/** The computer-use runner deps every participant shares, on either plane. */
+export type ParticipantRunDeps = Omit<
+  CuaLaneDeps,
+  "signalProvisioned" | "appUrl" | "onObservedUrl"
+>;
 
 /**
  * A live run publishes an in-progress bundle before its seats start, whether or not an Observer
  * is attached, and the seats' live traces rewrite it as they go, as on the computer-use route. A
  * run killed mid-way leaves that evidence on disk. The flush starts with the first snapshot.
  */
-export function startSeatFlush(ctx: PlaneContext, live: LiveSeats, bundle: RunBundle): void {
+export function startParticipantFlush(
+  ctx: PlaneContext,
+  live: LiveParticipants,
+  bundle: RunBundle,
+): void {
   live.flush = startLiveTraceFlush({
     bundle,
     laneSpecs: ctx.actorSpecs,
@@ -162,15 +169,15 @@ export function startSeatFlush(ctx: PlaneContext, live: LiveSeats, bundle: RunBu
  * The caller's desktop hooks, plus the runtime stream URLs each seat reports to the live Observer.
  * The Observer learns of a stream before the caller's stream hook runs.
  */
-function runtimeStreamHooks(hooks: SharedWorldLabHooks, live: LiveSeats): CuaActorLabHooks {
+function runtimeStreamHooks(hooks: SharedWorldLabHooks, live: LiveParticipants): CuaActorLabHooks {
   return {
     ...(hooks.loadDesktopModule ? { loadDesktopModule: hooks.loadDesktopModule } : {}),
     ...(hooks.detachedTimers ? { detachedTimers: hooks.detachedTimers } : {}),
     ...(hooks.env ? { env: hooks.env } : {}),
     ...(hooks.prepareDesktop
       ? {
-          prepareDesktop: (desktop: E2BDesktopSandbox, lane) =>
-            hooks.prepareDesktop!(desktop, lane),
+          prepareDesktop: (desktop: E2BDesktopSandbox, participant) =>
+            hooks.prepareDesktop!(desktop, participant),
         }
       : {}),
     onRuntimeStreamReady: (stream) => {
@@ -194,18 +201,19 @@ function runtimeStreamHooks(hooks: SharedWorldLabHooks, live: LiveSeats): CuaAct
 }
 
 /**
- * The lane deps both planes give every seat. cloneRoute=false + subjectEnvNames=[] keep subject
+ * The runner deps both planes give every participant. cloneRoute=false + subjectEnvNames=[] keep subject
  * creds out of every actor sandbox (FIX-10). `scrubKnownValues` is the plane's scrub: the
  * external-public plane also scrubs the latched lobby code.
  */
-export function seatLaneDeps(
+export function participantRunDeps(
   ctx: PlaneContext,
-  live: LiveSeats,
+  live: LiveParticipants,
   scrubKnownValues: (text: string) => string,
-): SeatLaneDeps {
+): ParticipantRunDeps {
   const { config, descriptor, env, receiving, runBudget } = ctx;
   return {
-    onTrace: (laneId, items, usage, metadata) => live.flush?.flush(laneId, items, usage, metadata),
+    onTrace: (participantId, items, usage, metadata) =>
+      live.flush?.flush(participantId, items, usage, metadata),
     config,
     descriptor,
     cloneRoute: false,
@@ -236,11 +244,11 @@ export function seatLaneDeps(
 }
 
 /**
- * Each seat's lane spec, with committed personas compiled in so each seat's prompt carries real
+ * Each participant's actor spec, with committed personas compiled in so each prompt carries real
  * behavioral directives (#381). Evidence copies of the assignment, instructions and persona are
  * scrubbed of the run's known secret values.
  */
-export async function buildSeatSpecs(
+export async function buildParticipantSpecs(
   participants: readonly SharedWorldParticipant[],
   cwd: string,
   scrubKnownValues: (text: string) => string,

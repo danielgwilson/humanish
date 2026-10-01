@@ -1,6 +1,8 @@
 // The sharedWorld block of run.json (humanish.shared-world.v1): the one shared plane, each seat's
 // window, state snapshots and the interleaved timeline of checkpoints and turns.
 
+import type { ParticipantIds } from "./participant-records.js";
+
 export const SHARED_WORLD_SCHEMA = "humanish.shared-world.v1";
 
 /** The ONE shared service-plane provenance for a shared-world run (#164): single commit + a
@@ -58,7 +60,7 @@ export interface SharedWorldPlane {
  * `laneWindows` and `stateSeries` are INDEPENDENT series — there is deliberately NO per-delta→actor
  * field (causation under concurrency is structurally inexpressible — FIX-7).
  */
-export interface SharedWorldLaneWindow {
+export interface SharedWorldParticipantWindow {
   roleId: string;
   actorType?: string;
   surface?: string;
@@ -104,6 +106,28 @@ export interface SharedWorldOutcome {
   completionReason?: string;
   /** Reached its goal (terminal, engaged, no harness error). */
   ok: boolean;
+}
+
+/**
+ * The fields a window and an outcome start with, in the saved order: the participant id saved as
+ * `roleId`, its taxonomy labels when declared, then its record and stream ids.
+ */
+export function sharedWorldParticipantKeys(
+  ids: ParticipantIds,
+  participantId: string,
+  labels: { readonly actorType?: string; readonly surface?: string; readonly caseGroup?: string },
+): Pick<
+  SharedWorldOutcome,
+  "roleId" | "actorType" | "surface" | "caseGroup" | "simId" | "streamId"
+> {
+  return {
+    roleId: participantId,
+    ...(labels.actorType === undefined ? {} : { actorType: labels.actorType }),
+    ...(labels.surface === undefined ? {} : { surface: labels.surface }),
+    ...(labels.caseGroup === undefined ? {} : { caseGroup: labels.caseGroup }),
+    simId: ids.simId,
+    streamId: ids.streamId,
+  };
 }
 
 /** A timeline checkpoint: a read-only digest probe of the shared plane at one moment. Persisted
@@ -197,7 +221,7 @@ export interface SharedWorldEvidence {
   skippedTail?: SharedWorldSkippedTail;
   // --- CONCURRENT shape ---
   /** Per-actor harness-clocked windows (overlap proves simultaneity). */
-  laneWindows?: SharedWorldLaneWindow[];
+  laneWindows?: SharedWorldParticipantWindow[];
   /** Cadence digests of the shared world under load (baseline + periodic + final). */
   stateSeries?: SharedWorldStateSnapshot[];
   /** Per-persona outcomes (the "M of N succeeded" headline). */

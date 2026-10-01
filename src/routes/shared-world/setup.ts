@@ -22,13 +22,13 @@ import {
 import { declaredOriginDigestOf } from "./external-public.js";
 import { packSubjectTree, type ProvisionedPlaneSetup } from "./provisioned.js";
 import { emptyPlaneResults } from "./result.js";
-import { buildSeatSpecs, defaultSeatSessionTimeoutMs } from "./seats.js";
+import { buildParticipantSpecs, defaultSessionTimeoutMs } from "./seats.js";
 import type {
   ConcurrentSharedWorldLabErrorCode,
   ConcurrentSharedWorldLabResult,
   ConcurrentSharedWorldPlaneClass,
   FinishFacts,
-  LiveSeats,
+  LiveParticipants,
   PlaneContext,
   PlaneResults,
   PlaneSelection,
@@ -150,7 +150,7 @@ export async function prepareConcurrentRun(
   | {
       ok: true;
       ctx: PlaneContext;
-      live: LiveSeats;
+      live: LiveParticipants;
       results: PlaneResults;
       plane: PlaneSelection;
       finish: FinishFacts;
@@ -194,7 +194,7 @@ export async function prepareConcurrentRun(
   const { run } = started;
   const { runId, createdAt, paths: runPaths } = run;
   const artifactRoot = runPaths.absoluteRunRoot;
-  const timeoutMs = plan.sessionTimeoutMs ?? defaultSeatSessionTimeoutMs(plan);
+  const timeoutMs = plan.sessionTimeoutMs ?? defaultSessionTimeoutMs(plan);
   const requestTimeoutMs = e2bRequestTimeoutMs(env);
   const redactScreenshots = plan.residual.policies?.redactScreenshots === true;
   const timers: DetachedTimers = hooks.detachedTimers ?? {};
@@ -211,9 +211,9 @@ export async function prepareConcurrentRun(
 
   const stateStepRecords: RunSubjectStateStepRecord[] = [];
   const stateSnapshots: SharedWorldStateSnapshot[] = [];
-  const actorSpecs = await buildSeatSpecs(plan.plane.participants, cwd, scrubKnownValues);
+  const actorSpecs = await buildParticipantSpecs(plan.plane.participants, cwd, scrubKnownValues);
   const results = emptyPlaneResults();
-  const live: LiveSeats = { streamUrls: [] };
+  const live: LiveParticipants = { streamUrls: [] };
 
   const subjectComms = subjectCommsOf(plan.residual, planeClass);
 

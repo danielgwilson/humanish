@@ -1,15 +1,14 @@
 // Builds the run bundle for a concurrent shared-world run: per-seat simulations, streams and
 // events, the sharedWorld evidence block and the review summary.
 
-import path from "node:path";
 import { receivingPublication } from "../../comms/receiving-runtime.js";
 import { redactText } from "../../evidence/redaction.js";
 import type { LabSubjectState } from "../../lab/types.js";
 import { planeStateOf } from "./plan.js";
 import {
-  PUBLIC_TARGET_CWD,
   REVIEW_SCHEMA,
-  RUN_BUNDLE_SCHEMA,
+  bundleArtifacts,
+  bundleHead,
   type ReviewSummary,
   type RunBundle,
   type RunCostSummary,
@@ -19,8 +18,9 @@ import {
 import {
   SHARED_WORLD_SCHEMA,
   concurrencyFacts,
+  sharedWorldParticipantKeys,
   type SharedWorldEvidence,
-  type SharedWorldLaneWindow,
+  type SharedWorldParticipantWindow,
   type SharedWorldOutcome,
   type SharedWorldPlane,
   type SharedWorldStateSnapshot,
@@ -37,11 +37,12 @@ import {
 } from "../../run/judge.js";
 import { combineCheckpointDigest } from "./checkpoints.js";
 import { hostOriginDigest } from "./provenance.js";
-import { seatRecords } from "./seat-records.js";
+import { participantEvent, participantIds } from "../../run/participant-records.js";
+import { sharedWorldParticipantRecords } from "./seat-records.js";
 import {
   CONCURRENT_ATTRIBUTION_LIMITS,
   EXTERNAL_PUBLIC_ATTRIBUTION_LIMITS,
-  type ActorLaneResult,
+  type ActorRunResult,
   type ConcurrentBundleArgs,
 } from "./types.js";
 
@@ -95,7 +96,7 @@ export function judgeSharedWorldRun(
   });
 }
 
-export function actorLanePassed(result: ActorLaneResult | undefined): boolean {
+export function actorRunPassed(result: ActorRunResult | undefined): boolean {
   return result !== undefined && participantPassed(participantFactsOf(result.outcome));
 }
 
@@ -167,19 +168,19 @@ function planeEvents(args: ConcurrentBundleArgs, external: boolean): RunEvent[] 
   // says so rather than naming one.
   const externalPlaneOwner =
     plan.plane.kind === "external-public" ? plan.plane.owner : "(undeclared)";
-  events.push({
-    id: "event-001-plane",
-    at: createdAt,
-    level: "info",
-    type: "concurrent-shared-world.plane.provenance",
-    message: external
-      ? `Shared plane: an EXTERNAL-PUBLIC deployment (operator-attested owner ${externalPlaneOwner}, authorized) used DIRECTLY as the shared plane — NO getHost, clone, subject sandbox, or seed. The harness OBSERVES that each seat reached the operator-declared origin (publicOriginDigest); it did NOT mint or control the plane. Author-trust ownership attestation, NOT a synthetic-data claim.`
-      : dryRun
-        ? `Shared plane declared: ${dryRunPlaneLabel}, served + getHost-exposed in-sandbox (dry-run contract; nothing ${args.subject.source === "local-tree" ? "packed" : "cloned"}). Seed recipe ${args.seedDigest}; SYNTHETIC subject (author-attested); env names: ${args.subject.envNames?.join(", ") || "none"} (values never persisted).`
-        : `Shared plane: ${livePlaneLabel}, served + exposed at the harness-minted getHost URL; seed recipe ${args.seedDigest}; SYNTHETIC subject (author-attested); env names: ${args.subject.envNames?.join(", ") || "none"} (values never persisted).`,
-    simId: actorSpecs[0]?.simId ?? "sim-001",
-    streamId: actorSpecs[0]?.streamId ?? "stream-001",
-  });
+  events.push(
+    participantEvent(actorSpecs[0] ?? participantIds(0), {
+      id: "event-001-plane",
+      at: createdAt,
+      level: "info",
+      type: "concurrent-shared-world.plane.provenance",
+      message: external
+        ? `Shared plane: an EXTERNAL-PUBLIC deployment (operator-attested owner ${externalPlaneOwner}, authorized) used DIRECTLY as the shared plane — NO getHost, clone, subject sandbox, or seed. The harness OBSERVES that each seat reached the operator-declared origin (publicOriginDigest); it did NOT mint or control the plane. Author-trust ownership attestation, NOT a synthetic-data claim.`
+        : dryRun
+          ? `Shared plane declared: ${dryRunPlaneLabel}, served + getHost-exposed in-sandbox (dry-run contract; nothing ${args.subject.source === "local-tree" ? "packed" : "cloned"}). Seed recipe ${args.seedDigest}; SYNTHETIC subject (author-attested); env names: ${args.subject.envNames?.join(", ") || "none"} (values never persisted).`
+          : `Shared plane: ${livePlaneLabel}, served + exposed at the harness-minted getHost URL; seed recipe ${args.seedDigest}; SYNTHETIC subject (author-attested); env names: ${args.subject.envNames?.join(", ") || "none"} (values never persisted).`,
+    }),
+  );
   return events;
 }
 
@@ -191,7 +192,7 @@ function sharedWorldEvidence(
   planeCommit: string | undefined,
 ): {
   sharedWorld: SharedWorldEvidence;
-  laneWindows: SharedWorldLaneWindow[];
+  windows: SharedWorldParticipantWindow[];
   stateSeries: SharedWorldStateSnapshot[] | undefined;
   outcomes: SharedWorldOutcome[];
 } {
@@ -202,23 +203,12 @@ function sharedWorldEvidence(
   const fallbackHostDigest = external
     ? (args.publicOriginDigest ?? commandDigestOf("[external-public-plane]"))
     : (args.hostDigest ?? commandDigestOf("[provisioned-subject]"));
-  const laneWindows: SharedWorldLaneWindow[] = actorSpecs.map((spec, index) => {
+  const windows: SharedWorldParticipantWindow[] = actorSpecs.map((spec, index) => {
     const result = actorResults[index];
     const session = result?.outcome.session;
     const routeHostDigest = result ? hostOriginDigest(result.route) : fallbackHostDigest;
     return {
-      roleId: spec.planned.id,
-      ...(spec.planned.labels.actorType === undefined
-        ? {}
-        : { actorType: spec.planned.labels.actorType }),
-      ...(spec.planned.labels.surface === undefined
-        ? {}
-        : { surface: spec.planned.labels.surface }),
-      ...(spec.planned.labels.caseGroup === undefined
-        ? {}
-        : { caseGroup: spec.planned.labels.caseGroup }),
-      simId: spec.simId,
-      streamId: spec.streamId,
+      ...sharedWorldParticipantKeys(spec, spec.planned.id, spec.planned.labels),
       startedAt: result?.startedAt ?? 0,
       endedAt: result?.endedAt ?? 0,
       verdict: session
@@ -246,20 +236,9 @@ function sharedWorldEvidence(
   const outcomes: SharedWorldOutcome[] = actorSpecs.map((spec, index) => {
     const result = actorResults[index];
     const session = result?.outcome.session;
-    const ok = !dryRun && actorLanePassed(result);
+    const ok = !dryRun && actorRunPassed(result);
     return {
-      roleId: spec.planned.id,
-      ...(spec.planned.labels.actorType === undefined
-        ? {}
-        : { actorType: spec.planned.labels.actorType }),
-      ...(spec.planned.labels.surface === undefined
-        ? {}
-        : { surface: spec.planned.labels.surface }),
-      ...(spec.planned.labels.caseGroup === undefined
-        ? {}
-        : { caseGroup: spec.planned.labels.caseGroup }),
-      simId: spec.simId,
-      streamId: spec.streamId,
+      ...sharedWorldParticipantKeys(spec, spec.planned.id, spec.planned.labels),
       status: session
         ? session.status
         : result?.outcome.sessionError !== undefined
@@ -307,7 +286,7 @@ function sharedWorldEvidence(
     attributionLimits: external
       ? [...EXTERNAL_PUBLIC_ATTRIBUTION_LIMITS]
       : [...CONCURRENT_ATTRIBUTION_LIMITS],
-    laneWindows,
+    laneWindows: windows,
     // Option A: external-public carries NO stateSeries.
     ...(stateSeries === undefined ? {} : { stateSeries }),
     outcomes,
@@ -316,7 +295,7 @@ function sharedWorldEvidence(
       : { lobbyConvergenceDigest: args.lobbyConvergenceDigest }),
   };
 
-  return { sharedWorld, laneWindows, stateSeries, outcomes };
+  return { sharedWorld, windows, stateSeries, outcomes };
 }
 
 /**
@@ -353,7 +332,7 @@ function concurrencyReview(
   nextEventId: (suffix: string) => string,
 ): ReviewSummary {
   const { plan, descriptor, createdAt, dryRun, actorSpecs, actorResults } = args;
-  const { sharedWorld, laneWindows, stateSeries, outcomes } = evidence;
+  const { sharedWorld, windows, stateSeries, outcomes } = evidence;
   const overlaps = args.judgment.world.overlap;
   const deltas = (stateSeries ?? []).filter(
     (snapshot, i) => i > 0 && snapshot.digest !== (stateSeries ?? [])[i - 1]!.digest,
@@ -367,13 +346,13 @@ function concurrencyReview(
   // The count that matters is how many lanes were LIVE AT ONCE, not how many lanes exist — a
   // 6-lane run capped at 3 must never read as 6-wide concurrency (#350, the field failure).
   const capForReport = plan.concurrency;
-  const maxLive = maxSimultaneousWindows(laneWindows);
+  const maxLive = maxSimultaneousWindows(windows);
   events.push({
     id: nextEventId("concurrency"),
     at: createdAt,
     level: "info",
     type: "concurrent-shared-world.concurrency",
-    message: `Concurrency: ${laneWindows.length} lane(s)${dryRun ? " (dry-run contract; $0)" : `, up to ${maxLive} live at once (cap ${capForReport}), overlap ${overlaps ? "PROVEN" : "not observed"}`}; ${stateSeriesLabel}${convergenceLabel}. Attribution ceiling: ${sharedWorld.attributionLimits.join(", ")}. ${dryRun ? "This contract-only run proves no live concurrency, scale, or adoption." : "This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement."}`,
+    message: `Concurrency: ${windows.length} lane(s)${dryRun ? " (dry-run contract; $0)" : `, up to ${maxLive} live at once (cap ${capForReport}), overlap ${overlaps ? "PROVEN" : "not observed"}`}; ${stateSeriesLabel}${convergenceLabel}. Attribution ceiling: ${sharedWorld.attributionLimits.join(", ")}. ${dryRun ? "This contract-only run proves no live concurrency, scale, or adoption." : "This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement."}`,
   });
 
   // The judge's verdict (judgeSharedWorld): every seat produced a terminal, engaged PASSED session.
@@ -428,9 +407,9 @@ export function buildConcurrentSharedWorldBundle(args: ConcurrentBundleArgs): Ru
   const nextEventId = (suffix: string): string =>
     `event-${String(eventSeq++).padStart(3, "0")}-${suffix}`;
 
-  const seatContext = { args, external, inProgress, appUrl, nextEventId };
+  const recordContext = { args, external, inProgress, appUrl, nextEventId };
   actorSpecs.forEach((spec, index) => {
-    const records = seatRecords(seatContext, spec, index);
+    const records = sharedWorldParticipantRecords(recordContext, spec, index);
     simulations.push(records.simulation);
     streams.push(records.stream);
     events.push(...records.events);
@@ -449,16 +428,15 @@ export function buildConcurrentSharedWorldBundle(args: ConcurrentBundleArgs): Ru
 
   const cost = concurrentCostSummary(args, inProgress);
   return {
-    schema: RUN_BUNDLE_SCHEMA,
-    ...receivingPublication(plan.residual, args.dryRun),
-    runId: args.runId,
-    mode: dryRun ? "dry-run" : "live",
-    simCount: actorSpecs.length,
-    createdAt,
-    cwd: PUBLIC_TARGET_CWD,
-    ...(args.lab === undefined ? {} : { lab: args.lab }),
-    artifactRoot: path.join(".humanish", "runs", args.runId),
-    source: args.source,
+    ...bundleHead({
+      ...receivingPublication(plan.residual, args.dryRun),
+      runId: args.runId,
+      mode: dryRun ? "dry-run" : "live",
+      participants: actorSpecs.length,
+      createdAt,
+      ...(args.lab === undefined ? {} : { lab: args.lab }),
+      source: args.source,
+    }),
     persona: {
       id: actorSpecs[0]?.persona.id ?? "concurrent-persona",
       name: `Concurrent shared-world swarm (${actorSpecs.length} personas)`,
@@ -496,13 +474,7 @@ export function buildConcurrentSharedWorldBundle(args: ConcurrentBundleArgs): Ru
           ? "In-progress live Observer snapshot: runtime stream auth URLs are process-local only and are not persisted. Final typed text, traces, and screenshots are pending. stateSeries persists digest-only."
           : "Dry-run concurrent shared-world contract bundle: no sandboxes launched and no screenshots captured. Typed text is recorded as length only and reasoning/messages pass through text redaction whenever a session runs. stateSeries persists digest-only.",
     },
-    artifacts: {
-      run: "run.json",
-      reviewJson: "review.json",
-      reviewMarkdown: "review.md",
-      observerData: "observer/observer-data.json",
-      events: "events.ndjson",
-    },
+    artifacts: bundleArtifacts(),
     review,
     feedbackCandidates: [],
     // Custom desktop image provenance (subject + every actor sandbox launched on it); omitted on the default.

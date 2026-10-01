@@ -11,7 +11,7 @@ import type { RunSubjectProvenance } from "../../run/bundle.js";
 import { foldScorerFailures, sharedWorldShortfall } from "../../run/judge.js";
 import { resolveSubjectState } from "../computer-use/lab.js";
 import {
-  actorLanePassed,
+  actorRunPassed,
   buildConcurrentSharedWorldBundle,
   judgeSharedWorldRun,
   maxSimultaneousWindows,
@@ -20,13 +20,13 @@ import { planeStateOf } from "./plan.js";
 import { buildSubjectProvenance, hostOriginDigest } from "./provenance.js";
 import {
   CONCURRENT_SHARED_WORLD_LAB_SCHEMA,
-  type ActorLaneResult,
+  type ActorRunResult,
   type ConcurrentBundleArgs,
   type ConcurrentSharedWorldLabErrorCode,
   type ConcurrentSharedWorldLabResult,
   type ConcurrentSharedWorldRoleResult,
   type FinishFacts,
-  type LiveSeats,
+  type LiveParticipants,
   type PlaneContext,
   type PlaneResults,
 } from "./types.js";
@@ -50,15 +50,15 @@ export function emptyPlaneResults(): PlaneResults {
   };
 }
 
-/** Each role's outcome, in lane order. */
-function concurrentRoleResults(
+/** Each participant's outcome, in plan order. */
+function concurrentParticipantResults(
   actorSpecs: DesktopParticipantRun[],
-  actorResults: ActorLaneResult[],
+  actorResults: ActorRunResult[],
   dryRun: boolean,
 ): ConcurrentSharedWorldRoleResult[] {
-  const roleOk = (result: ActorLaneResult | undefined): boolean => {
+  const participantOk = (result: ActorRunResult | undefined): boolean => {
     if (dryRun) return true;
-    return actorLanePassed(result);
+    return actorRunPassed(result);
   };
   return actorSpecs.map((spec, index) => {
     const result = actorResults[index];
@@ -67,7 +67,7 @@ function concurrentRoleResults(
       return { ...base, status: "contract_proof_only", ok: dryRun };
     }
     const session = result.outcome.session;
-    const thisOk = roleOk(result);
+    const thisOk = participantOk(result);
     return {
       ...base,
       status: session ? session.status : "failed",
@@ -114,12 +114,12 @@ function concurrentLabError(args: {
   observer: ObserverResult;
   runError: string | undefined;
   adapterFailure: string | undefined;
-  roleResults: ConcurrentSharedWorldRoleResult[];
-  roleCount: number;
+  participantResults: ConcurrentSharedWorldRoleResult[];
+  participantCount: number;
   shortfall: string | undefined;
 }): ConcurrentSharedWorldLabResult["error"] | undefined {
   const { ok, handoffTimedOut, hostHandoffFailure, observer, runError, adapterFailure } = args;
-  const { roleResults, roleCount } = args;
+  const { participantResults, participantCount } = args;
   if (ok) return undefined;
   if (handoffTimedOut) {
     // Checked BEFORE the observer failure: the host never yielded a /lobby/CODE within the
@@ -147,8 +147,8 @@ function concurrentLabError(args: {
   if (adapterFailure !== undefined) {
     return { code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED", message: adapterFailure };
   }
-  const passed = roleResults.filter((role) => role.ok).length;
-  if (passed === roleCount && args.shortfall !== undefined) {
+  const passed = participantResults.filter((result) => result.ok).length;
+  if (passed === participantCount && args.shortfall !== undefined) {
     return {
       code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED",
       message: `Concurrent shared-world run did not run coherently. ${args.shortfall}`,
@@ -156,7 +156,7 @@ function concurrentLabError(args: {
   }
   return {
     code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED",
-    message: `Concurrent shared-world run did not run coherently: ${passed}/${roleCount} actor(s) reached a terminal, engaged passed session.`,
+    message: `Concurrent shared-world run did not run coherently: ${passed}/${participantCount} actor(s) reached a terminal, engaged passed session.`,
   };
 }
 
@@ -198,7 +198,7 @@ export function concurrentLabFailure(envelope: {
 /** Builds and publishes the bundle, renders the Observer and returns the lab result. */
 export async function finishConcurrentRun(
   ctx: PlaneContext,
-  live: LiveSeats,
+  live: LiveParticipants,
   results: PlaneResults,
   plane: FinishFacts,
 ): Promise<ConcurrentSharedWorldLabResult> {
@@ -303,7 +303,7 @@ export async function finishConcurrentRun(
 
   const overlapProven = !dryRun && judgment.world.overlap;
 
-  const roleResults = concurrentRoleResults(actorSpecs, actorResults, dryRun);
+  const participantResults = concurrentParticipantResults(actorSpecs, actorResults, dryRun);
 
   const errorResult = concurrentLabError({
     ok,
@@ -312,8 +312,8 @@ export async function finishConcurrentRun(
     observer,
     runError,
     adapterFailure,
-    roleResults,
-    roleCount: participantCount,
+    participantResults,
+    participantCount,
     shortfall: dryRun ? undefined : sharedWorldShortfall(judgment.world),
   });
 
@@ -336,7 +336,7 @@ export async function finishConcurrentRun(
     ...(dryRun ? {} : { overlapProven }),
     ...(dryRun ? {} : { maxSimultaneousLanes: maxSimultaneousWindows(actorResults) }),
     subject,
-    roles: roleResults,
+    roles: participantResults,
     observer,
     warnings: [...warnings, ...adapterWarnings, ...observer.warnings],
     ...(errorResult === undefined ? {} : { error: errorResult }),
