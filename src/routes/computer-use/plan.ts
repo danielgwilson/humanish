@@ -77,8 +77,13 @@ export function cuaDescriptorOf(actor: string): CuaActorDescriptor {
   return descriptor;
 }
 
-/** Which subject route a computer-use lab takes, derived once from its config and hooks. */
-export interface CuaSubjectRoute {
+/**
+ * The subject a lab declares, read from its config and hooks for the planner's checks. The checks
+ * read the declaration because the planned subject falls back to app-url when a provisioned
+ * subject cannot be built, which would hide the declaration a refusal has to name. A planned run
+ * reads `plan.runner.subject` instead.
+ */
+interface DeclaredSubjectRoute {
   cloneRoute: boolean;
   /** A CLI studied at a desktop: nothing cloned, no browser, a terminal instead. */
   desktopCliRoute: boolean;
@@ -98,7 +103,7 @@ export interface CuaSubjectRoute {
   subjectEnvNames: string[];
 }
 
-export function cuaSubjectRoute(config: LabConfig, hooks: CuaActorLabHooks): CuaSubjectRoute {
+function declaredSubjectRoute(config: LabConfig, hooks: CuaActorLabHooks): DeclaredSubjectRoute {
   const cloneRoute = config.subject.source === "clone";
   const localTreeRoute = config.subject.source === "local-tree";
   const provisionedRoute = cloneRoute || localTreeRoute;
@@ -123,23 +128,17 @@ export function cuaDeclaredState(plan: ComputerUsePlan): LabSubjectState | undef
   return subject.kind === "clone" || subject.kind === "local-tree" ? subject.state : undefined;
 }
 
-/** The route facts a planned run takes: its runner's desktop and subject. */
-export function cuaSubjectRouteOf(plan: ComputerUsePlan): CuaSubjectRoute {
-  const { desktop, subject } = plan.runner;
-  const provisioned =
-    subject.kind === "clone" || subject.kind === "local-tree" ? subject : undefined;
-  return {
-    cloneRoute: subject.kind === "clone",
-    desktopCliRoute: subject.kind === "desktop-cli",
-    localTreeRoute: subject.kind === "local-tree",
-    provisionedRoute: provisioned !== undefined,
-    localAppSubject: subject.kind === "local-app",
-    inProcessRoute: desktop === "in-process",
-    serve: provisioned?.serve,
-    appUrl: provisioned?.serve.url ?? ("appUrl" in subject ? subject.appUrl : ""),
-    subjectRepo: subject.kind === "clone" ? subject.repo : undefined,
-    subjectEnvNames: [...(provisioned?.env ?? [])],
-  };
+/** The URL a refused lab's result names, from its declaration: a provisioned subject's serve URL. */
+export function declaredAppUrl(config: LabConfig): string {
+  const { subject } = config;
+  const provisioned = subject.source === "clone" || subject.source === "local-tree";
+  return (provisioned ? subject.serve?.url : subject.appUrl) ?? "";
+}
+
+/** The URL a planned run's participants open: a provisioned subject's served URL, else its own. */
+export function plannedAppUrl(subject: ComputerUseRunner["subject"]): string {
+  if (subject.kind === "clone" || subject.kind === "local-tree") return subject.serve.url;
+  return "appUrl" in subject ? subject.appUrl : "";
 }
 
 type Rejection = { code: CuaActorLabErrorCode; message: string } | undefined;
@@ -157,7 +156,7 @@ const invalid = (message: string): Rejection => ({
 function cuaLabRejection(
   config: LabConfig,
   hooks: CuaActorLabHooks,
-  subjectRoute: CuaSubjectRoute,
+  subjectRoute: DeclaredSubjectRoute,
 ): Rejection {
   return (
     unsupportedDeclarationReason(config, hooks, subjectRoute) ??
@@ -172,7 +171,7 @@ function cuaLabRejection(
 function unsupportedDeclarationReason(
   config: LabConfig,
   hooks: CuaActorLabHooks,
-  { inProcessRoute }: CuaSubjectRoute,
+  { inProcessRoute }: DeclaredSubjectRoute,
 ): Rejection {
   const reason =
     desktopMediaValidationReason(config) ||
@@ -200,7 +199,7 @@ function unsupportedDeclarationReason(
 }
 
 /** The subject's own shape: the clone target and repo, the local tree, and declared state. */
-function subjectStructureReason(config: LabConfig, subjectRoute: CuaSubjectRoute): Rejection {
+function subjectStructureReason(config: LabConfig, subjectRoute: DeclaredSubjectRoute): Rejection {
   const { cloneRoute, localTreeRoute, provisionedRoute, serve, subjectRepo } = subjectRoute;
   const cloneTargetReason = cloneTargetValidationReason(config);
   if (cloneTargetReason) return invalid(cloneTargetReason);
@@ -235,7 +234,7 @@ function subjectStructureReason(config: LabConfig, subjectRoute: CuaSubjectRoute
  * desktop-cli study has no entry target at all (the subject is a program on the machine, not an
  * address), so the boundary is vacuous there rather than violated by an empty string.
  */
-function entryTargetReason(config: LabConfig, subjectRoute: CuaSubjectRoute): Rejection {
+function entryTargetReason(config: LabConfig, subjectRoute: DeclaredSubjectRoute): Rejection {
   const { desktopCliRoute, provisionedRoute, localAppSubject, appUrl } = subjectRoute;
   if (desktopCliRoute) return undefined;
   const allowPublicTargets = config.policies?.allowPublicTargets === true;
@@ -261,7 +260,7 @@ function entryTargetReason(config: LabConfig, subjectRoute: CuaSubjectRoute): Re
 function driverReason(
   config: LabConfig,
   hooks: CuaActorLabHooks,
-  { localAppSubject, inProcessRoute }: CuaSubjectRoute,
+  { localAppSubject, inProcessRoute }: DeclaredSubjectRoute,
 ): Rejection {
   // A custom executor needs a custom provider too: the default OpenAI provider is vision-based
   // and would fail closed against an executor that returns no screenshot.
@@ -360,7 +359,7 @@ export function planComputerUseLab(
       `actors[0].type "${actorType}" is not a registered computer-use actor.`,
     );
   const actor = descriptor.id;
-  const rejection = cuaLabRejection(config, hooks, cuaSubjectRoute(config, hooks));
+  const rejection = cuaLabRejection(config, hooks, declaredSubjectRoute(config, hooks));
   if (rejection) return refuse("in-scope", rejection.code, rejection.message, actor);
   // A shared world runs every seat against one app; this route would run them as separate lanes.
   // It comes after the rules above, so a shared-world config that breaks one of them, which runLab

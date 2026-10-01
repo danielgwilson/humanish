@@ -8,12 +8,12 @@ import type { LabSubjectState } from "../../lab/types.js";
 import { cuaDeclaredState } from "./plan.js";
 import { type RunSubjectProvenance, type RunSubjectStateStepRecord } from "../../run/bundle.js";
 import { type LocalTreeArchive } from "../../subject/local-tree-archive.js";
-import { type CuaSubjectRoute } from "./plan.js";
 import {
   type DesktopParticipantRun,
   type CuaSubjectProjection,
   type CuaSubjectProvenanceArg,
   type ParticipantRunOutcome,
+  participantSubjectEnv,
 } from "./types.js";
 
 /**
@@ -23,27 +23,28 @@ import {
  */
 export function projectParticipantSubjects(args: {
   plan: ComputerUsePlan;
-  subjectRoute: CuaSubjectRoute;
   publicRepo?: string;
   localTreeArchive?: LocalTreeArchive;
   runs: readonly DesktopParticipantRun[];
   outcomes: readonly ParticipantRunOutcome[] | undefined;
   dryRun: boolean;
 }): CuaSubjectProjection[] {
-  const { subjectRoute, publicRepo, localTreeArchive } = args;
+  const { publicRepo, localTreeArchive } = args;
+  const { subject } = args.plan.runner;
+  const subjectEnvNames = [...participantSubjectEnv(subject)];
+  // Only a provisioned subject declares state; cuaDeclaredState is undefined for the others.
   const declaredState = cuaDeclaredState(args.plan);
   return args.runs.map((_spec, index) => {
     const outcome = args.outcomes?.[index];
     const subjectState = resolveSubjectState({
-      declared: subjectRoute.provisionedRoute ? declaredState : undefined,
+      declared: declaredState,
       dryRun: args.dryRun,
       executed: outcome?.stateStepRecords ?? [],
     });
     return participantSubjectProjection({
-      cloneRoute: subjectRoute.cloneRoute,
-      localTreeRoute: subjectRoute.localTreeRoute,
+      kind: subject.kind,
       ...(publicRepo === undefined ? {} : { publicRepo }),
-      subjectEnvNames: subjectRoute.subjectEnvNames,
+      subjectEnvNames,
       ...(outcome?.subjectCommit === undefined ? {} : { subjectCommit: outcome.subjectCommit }),
       ...(localTreeArchive === undefined ? {} : { localTreeArchive }),
       subjectState,
@@ -103,15 +104,14 @@ export function resolveSubjectState(args: {
  *  commit/dirty (no per-lane divergence is possible, unlike the clone route's per-lane
  *  in-sandbox commit). */
 function participantSubjectProjection(args: {
-  cloneRoute: boolean;
-  localTreeRoute: boolean;
+  kind: ComputerUsePlan["runner"]["subject"]["kind"];
   publicRepo?: string;
   subjectEnvNames: string[];
   subjectCommit?: string;
   localTreeArchive?: LocalTreeArchive;
   subjectState: RunSubjectProvenance["state"];
 }): CuaSubjectProjection {
-  if (args.cloneRoute && args.publicRepo) {
+  if (args.kind === "clone" && args.publicRepo) {
     return {
       source: "clone",
       repo: args.publicRepo,
@@ -120,7 +120,7 @@ function participantSubjectProjection(args: {
       state: args.subjectState,
     };
   }
-  if (args.localTreeRoute) {
+  if (args.kind === "local-tree") {
     const archive = args.localTreeArchive;
     return {
       source: "local-tree",

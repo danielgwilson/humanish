@@ -36,12 +36,7 @@ export interface CuaRunBundleBase {
   participantPlan: CuaParticipantPlan;
   rerun?: RunRerunLineage;
   redactScreenshots: boolean;
-  inProcessRoute: boolean;
-  localAppSubject: boolean;
-  cloneRoute: boolean;
-  localTreeRoute: boolean;
   publicRepo?: string;
-  subjectEnvNames: string[];
 }
 
 /** One participant without a rerun keeps the single-participant bundle shape and its rule. */
@@ -114,10 +109,7 @@ export function buildCuaRunBundle(base: CuaRunBundleBase, state: CuaRunBundleSta
     participantPlan: base.participantPlan,
     ...(base.rerun === undefined ? {} : { rerun: base.rerun }),
     ...(state.failFastReason === undefined ? {} : { failFastReason: state.failFastReason }),
-    cloneRoute: base.cloneRoute,
-    localTreeRoute: base.localTreeRoute,
     ...(base.publicRepo === undefined ? {} : { publicRepo: base.publicRepo }),
-    subjectEnvNames: base.subjectEnvNames,
     ...inProgress,
   });
 }
@@ -153,12 +145,13 @@ function singleParticipantArgs(
     ...(spec.evidenceAssignment === undefined ? {} : { assignment: spec.evidenceAssignment }),
     persona: spec.persona,
     resolution: spec.planned.device.resolution,
-    desktopRoute: !base.inProcessRoute,
-    substrate: base.inProcessRoute
-      ? "local-filesystem"
-      : plan.residual.execution?.target === "local"
-        ? "local-desktop"
-        : "e2b-desktop",
+    desktopRoute: base.plan.runner.desktop !== "in-process",
+    substrate:
+      base.plan.runner.desktop === "in-process"
+        ? "local-filesystem"
+        : plan.residual.execution?.target === "local"
+          ? "local-desktop"
+          : "e2b-desktop",
     ...(outcome?.desktopGeometry === undefined ? {} : { desktopGeometry: outcome.desktopGeometry }),
     ...(outcome?.recording === undefined ? {} : { recording: outcome.recording }),
     isMobile: spec.planned.device.preset.isMobile,
@@ -189,7 +182,9 @@ function singleParticipantArgs(
       ids: spec,
       participantId: spec.planned.id,
     }),
-    ...(base.localAppSubject || base.inProcessRoute ? { entryKind: "local-app" as const } : {}),
+    ...(base.plan.runner.subject.kind === "local-app" || base.plan.runner.desktop === "in-process"
+      ? { entryKind: "local-app" as const }
+      : {}),
     ...(outcome?.session ? { traceArtifactPath: spec.traceArtifactPath } : {}),
     ...(outcome?.commsArtifactPath === undefined
       ? {}

@@ -14,6 +14,10 @@ import { describeSubjectState, phaseEventIdSuffix, publicSafeAppUrlLabel } from 
 import { judgedStatus } from "../../run/judge.js";
 import { participantFactsOf } from "./participant-facts.js";
 import type { CuaFanoutBundleArgs, DesktopParticipantRun } from "./types.js";
+import { participantSubjectEnv } from "./types.js";
+
+const describeEnvNames = (names: readonly string[]): string =>
+  names.length > 0 ? names.join(", ") : "none";
 
 /** What every participant's records share. */
 export interface FanoutParticipantContext {
@@ -230,7 +234,7 @@ function fanoutSubjectEvents(
   const record = (event: Omit<RunEvent, "simId" | "streamId">) =>
     events.push(participantEvent(spec, event));
   // Per-lane subject provenance (invariant 5).
-  if (args.cloneRoute && args.publicRepo) {
+  if (args.plan.runner.subject.kind === "clone" && args.publicRepo) {
     record({
       id: nextEventId(`subject-${spec.planned.id}`),
       at: args.createdAt,
@@ -244,7 +248,7 @@ function fanoutSubjectEvents(
               ? `subject cloned from ${args.publicRepo}@${subject.commit} and served at ${publicTargetUrl} in-sandbox`
               : `subject cloned from ${args.publicRepo}@${subject.commit}; serving did not complete (see session error)`
             : `subject clone attempted from ${args.publicRepo}; commit unresolved`
-      } (subject env names: ${args.subjectEnvNames.length > 0 ? args.subjectEnvNames.join(", ") : "none"}; values never persisted); state: ${describeSubjectState(subject.state, args.dryRun)}.`,
+      } (subject env names: ${describeEnvNames(participantSubjectEnv(args.plan.runner.subject))}; values never persisted); state: ${describeSubjectState(subject.state, args.dryRun)}.`,
     });
   } else if (subject.source === "local-tree") {
     record({
@@ -260,7 +264,7 @@ function fanoutSubjectEvents(
               ? `subject packed (archiveSha256 ${subject.archiveSha256}${subject.dirty === true ? ", dirty working tree" : subject.dirty === false ? ", clean working tree" : ""}) and served at ${publicTargetUrl} in-sandbox`
               : `subject packed (archiveSha256 ${subject.archiveSha256}); serving did not complete (see session error)`
             : "subject local-tree packing attempted; archive digest unresolved"
-      } (subject env names: ${args.subjectEnvNames.length > 0 ? args.subjectEnvNames.join(", ") : "none"}; values never persisted); state: ${describeSubjectState(subject.state, args.dryRun)}.`,
+      } (subject env names: ${describeEnvNames(participantSubjectEnv(args.plan.runner.subject))}; values never persisted); state: ${describeSubjectState(subject.state, args.dryRun)}.`,
     });
   } else {
     record({

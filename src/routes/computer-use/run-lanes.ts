@@ -9,7 +9,7 @@ import { runAllCuaParticipants } from "./lanes.js";
 import { startLiveTraceFlush } from "./live-flush.js";
 import { drainExternalComms } from "./external-comms.js";
 import { buildCuaRunBundle, judgeComputerUseRun } from "./bundle.js";
-import { type ParticipantRunOutcome } from "./types.js";
+import { participantSubjectEnv, type ParticipantRunOutcome } from "./types.js";
 import type { CuaParticipantsSetup, CuaRunSetup } from "./setup.js";
 
 /**
@@ -17,11 +17,12 @@ import type { CuaParticipantsSetup, CuaRunSetup } from "./setup.js";
  * the participant outcomes and the warnings the finish records.
  */
 export async function runLabParticipants(setup: CuaRunSetup, participants: CuaParticipantsSetup) {
-  const { plan, input, cwd, streams, descriptor, subjectRoute, run } = setup;
+  const { plan, input, cwd, streams, descriptor, run } = setup;
   const { participantRuns, participantPlan, scrubKnownValues, bundleBase } = setup;
   const { env, knownSecretValues, deps, liveTrace, externalComms, inProgress, fail } = participants;
   const { dryRun } = plan;
-  const { inProcessRoute, subjectEnvNames } = subjectRoute;
+  const inProcess = plan.runner.desktop === "in-process";
+  const subjectEnvNames = [...participantSubjectEnv(plan.runner.subject)];
   const { runId, paths: runPaths } = run;
   // A live run writes what it is doing AS IT DOES IT, whether or not anyone is currently watching.
   // This used to be gated on `options.onObserverReady` — the interactive Observer callback — so a
@@ -112,7 +113,7 @@ export async function runLabParticipants(setup: CuaRunSetup, participants: CuaPa
         participantRuns,
         deps,
         participantPlan,
-        inProcessRoute,
+        inProcess,
       ));
   } finally {
     try {
