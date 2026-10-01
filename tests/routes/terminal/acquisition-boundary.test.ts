@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
-import { runTerminalProductLab } from "../../../src/routes/terminal/lab.js";
+import { runTerminalProductLab } from "../../../src/routes/terminal/route.js";
 import { reclaimRunSandboxes } from "../../../src/run/reclaim.js";
 import { SANDBOX_RECEIPTS_ARTIFACT } from "../../../src/run/sandbox-receipts.js";
 import { classifyRunStatus, RUN_STATUS_STALE_MS } from "../../../src/run/status.js";
@@ -104,7 +104,7 @@ async function killRouteAfterReceipt(
 ): Promise<NodeJS.Signals | number | null> {
   const root = fileURLToPath(new URL("../../../", import.meta.url));
   const script = `
-    const { runTerminalProductLab } = await import(${JSON.stringify(path.join(root, "src/routes/terminal/lab.ts"))});
+    const { runTerminalProductLab } = await import(${JSON.stringify(path.join(root, "src/routes/terminal/route.ts"))});
     const { parseLabConfig } = await import(${JSON.stringify(path.join(root, "src/lab/config.ts"))});
     const parsed = parseLabConfig(JSON.parse(process.env.BOUNDARY_LAB));
     if (!parsed.ok) throw new Error(parsed.error.message);

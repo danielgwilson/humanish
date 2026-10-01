@@ -21,7 +21,7 @@ import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/lab/types.js";
 import { planCuaParticipants } from "../../src/routes/computer-use/lane-plan.js";
 import { planComputerUseLab } from "../../src/routes/computer-use/plan.js";
 import type { DesktopParticipantRun } from "../../src/routes/computer-use/types.js";
-import { runConcurrentSharedWorld } from "../../src/routes/shared-world/lab.js";
+import { runConcurrentSharedWorld } from "../../src/routes/shared-world/route.js";
 import { prepareSelectedOutputDirectory } from "../../src/run/contained-output.js";
 import { committedLabs } from "../helpers/committed-labs.js";
 

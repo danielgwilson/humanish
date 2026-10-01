@@ -9,7 +9,7 @@ import {
 import { attachObserverRuntimeStreamUrls, type ObserverResult } from "../../observer/render.js";
 import type { RunSubjectProvenance } from "../../run/bundle.js";
 import { foldScorerFailures, sharedWorldShortfall } from "../../run/judge.js";
-import { resolveSubjectState } from "../computer-use/lab.js";
+import { resolveSubjectState } from "../computer-use/route.js";
 import {
   actorRunPassed,
   buildConcurrentSharedWorldBundle,

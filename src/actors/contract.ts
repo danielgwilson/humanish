@@ -497,7 +497,7 @@ export const SCRIPTED_BROWSER_CAPABILITIES: ActorCapabilities = {
   license: "open", // playwright-core (Apache-2.0), already a lazy-imported production dependency
 };
 
-// Terminal agent (src/routes/terminal/lab.ts): a real autonomous coding agent (Codex) discovering
+// Terminal agent (src/routes/terminal/route.ts): a real autonomous coding agent (Codex) discovering
 // and using a CLI/product from inside an E2B shell, capturing its non-interactive exec output as
 // a redacted event stream + normalized transcript. The "terminal" lane is the autonomous-agent
 // study lane (distinct from "code", the operator-machine Codex lanes). byoModel is false: the

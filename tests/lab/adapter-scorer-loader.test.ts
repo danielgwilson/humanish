@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 // / --scorer), so tests reach it through the deep module; the adopter-facing TYPES ship on the barrel.
 import { loadAdapterScorer } from "../../src/lab/adapter-scorer-loader.js";
 import type { AdapterScorerModule, AdapterScoringContext } from "../../src/index.js";
-import { runTerminalProductLab } from "../../src/routes/terminal/lab.js";
+import { runTerminalProductLab } from "../../src/routes/terminal/route.js";
 import {
   applyBrowserAdapterHooks,
   DECLARED_SCORER_MALFORMED,

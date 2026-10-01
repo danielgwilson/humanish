@@ -50,7 +50,7 @@ the file to read first. Keep these layout rules:
 
 - TypeScript ESM with strict settings. No `any`; narrow `unknown` at the boundary.
 - Keep files under about 700 lines and functions under about 150 (oxlint warns past both). Split
-  when it helps a reader; do not add to `src/routes/computer-use/lab.ts` or
+  when it helps a reader; do not add to `src/routes/computer-use/route.ts` or
   `src/actors/computer-use/loop.ts` when a smaller module fits.
 - Comments say why the code is the way it is. History, incident narratives, issue archaeology and
   PR numbers go in the commit message. `TODO(#123)` may link an open issue. No all-caps emphasis.

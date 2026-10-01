@@ -16,7 +16,7 @@ export interface PathIssue {
 export interface RepoIndex {
   /** Every repo file path, relative to the root, with `/` separators. */
   files: ReadonlySet<string>;
-  /** Every trailing slice of every file path (`lab.ts`, `terminal/lab.ts`, ...). */
+  /** Every trailing slice of every file path (`route.ts`, `terminal/route.ts`, ...). */
   suffixes: ReadonlySet<string>;
   /** Every directory name that appears in a file path. */
   directoryNames: ReadonlySet<string>;

@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { parseLabConfig } from "../../../src/lab/config.js";
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
-import { runCuaActorLab } from "../../../src/routes/computer-use/lab.js";
+import { runCuaActorLab } from "../../../src/routes/computer-use/route.js";
 import type { E2BDesktopModule } from "../../../src/substrates/e2b/sdk.js";
 import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
 

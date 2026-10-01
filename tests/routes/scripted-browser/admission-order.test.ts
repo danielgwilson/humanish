@@ -8,7 +8,7 @@ import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
 import type { LabConfig } from "../../../src/lab/types.js";
-import { runScriptedBrowserLab } from "../../../src/routes/scripted-browser/lab.js";
+import { runScriptedBrowserLab } from "../../../src/routes/scripted-browser/route.js";
 import { lab, SCENARIO_YAML } from "../../admission/fixtures.js";
 
 const dirs: string[] = [];

@@ -7,7 +7,7 @@ import { retainLiveRuns } from "../../helpers/live-retention.js";
 
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
-import { runTerminalProductLab } from "../../../src/routes/terminal/lab.js";
+import { runTerminalProductLab } from "../../../src/routes/terminal/route.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 
 // The LIVE rung for the terminal-product lane (#154 SLICE 2): a REAL E2B shell sandbox + a REAL

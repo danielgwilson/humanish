@@ -10,7 +10,7 @@
 
 import { commandDigestOf } from "../../subject/state.js";
 import { toErrorMessage } from "../../evidence/redaction.js";
-import { inboxRecipientFor, laneHasInboxRecipient } from "../computer-use/lab.js";
+import { inboxRecipientFor, laneHasInboxRecipient } from "../computer-use/route.js";
 import { withInboxMission } from "../computer-use/lane-plan.js";
 import { runCuaLane } from "../computer-use/lanes.js";
 import type { DesktopParticipantRun, LaneRunOutcome } from "../computer-use/types.js";

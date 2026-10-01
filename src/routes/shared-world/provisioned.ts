@@ -40,7 +40,7 @@ import {
   inboxRecipientFor,
   laneHasInboxRecipient,
   resolveSubjectState,
-} from "../computer-use/lab.js";
+} from "../computer-use/route.js";
 import { withInboxMission } from "../computer-use/lane-plan.js";
 import { planeStateOf } from "./plan.js";
 import { runCuaLane } from "../computer-use/lanes.js";

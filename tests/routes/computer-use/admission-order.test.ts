@@ -8,7 +8,7 @@ import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
 import type { LabConfig } from "../../../src/lab/types.js";
-import { runCuaActorLab } from "../../../src/routes/computer-use/lab.js";
+import { runCuaActorLab } from "../../../src/routes/computer-use/route.js";
 import type { CuaActorLabHooks } from "../../../src/routes/computer-use/types.js";
 import { lab } from "../../admission/fixtures.js";
 

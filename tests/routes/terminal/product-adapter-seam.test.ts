@@ -32,7 +32,7 @@ type TerminalLedgers = TerminalProductScoringContext["ledgers"];
 // harness in-test — the ADAPTER itself uses the barrel exclusively, asserted below.)
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
-import { runTerminalProductLab } from "../../../src/routes/terminal/lab.js";
+import { runTerminalProductLab } from "../../../src/routes/terminal/route.js";
 import type { TerminalProductLabHooks } from "../../../src/routes/terminal/types.js";
 import type { E2BDesktopModule } from "../../../src/substrates/e2b/sdk.js";
 import { verifyRun } from "../../../src/verify/verify.js";

@@ -17,10 +17,10 @@ import {
   type LabBackend,
 } from "../../src/lab/engine.js";
 import type { LabConfig } from "../../src/lab/types.js";
-import { runCuaActorLab } from "../../src/routes/computer-use/lab.js";
-import { runScriptedBrowserLab } from "../../src/routes/scripted-browser/lab.js";
-import { runConcurrentSharedWorld } from "../../src/routes/shared-world/lab.js";
-import { runTerminalProductLab } from "../../src/routes/terminal/lab.js";
+import { runCuaActorLab } from "../../src/routes/computer-use/route.js";
+import { runScriptedBrowserLab } from "../../src/routes/scripted-browser/route.js";
+import { runConcurrentSharedWorld } from "../../src/routes/shared-world/route.js";
+import { runTerminalProductLab } from "../../src/routes/terminal/route.js";
 import { lab, SCENARIO_YAML } from "./fixtures.js";
 import { parserCases, type AdmissionCase, type AdmissionOptions } from "./parser-cases.js";
 import { routeCases } from "./route-cases.js";

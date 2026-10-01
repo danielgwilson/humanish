@@ -30,19 +30,19 @@ fail-closed cross-validation, and forward-declared warnings.
 
 ## The composition
 
-| Axis                                  | Value                                                                                                                                                 |
-| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `subject.source`                      | `terminal-product`                                                                                                                                    |
-| `subject.product`                     | `{ name, publicSurfaces[], install?, workdir?, upload? }`: the only world the agent sees                                                              |
-| `execution.target`                    | `e2b-terminal` (or absent → implied)                                                                                                                  |
-| `execution.terminal`                  | `{ transport: exec-stream, stdin: disabled }`                                                                                                         |
-| `execution.runtimeAuth`               | `openai-env` (default) or opt-in `openai-egress`; names-only durable evidence                                                                         |
-| `execution.runtime.version`           | Optional exact `@openai/codex` version; observed before keyed execution                                                                               |
-| `actors[0].model` / `reasoningEffort` | Forwarded to Codex; retained as declarations, not observed provider identity                                                                          |
-| `scenario.caps`                       | `{ maxUsd, maxJobs, maxMinutes }`: the blast-radius budget; `maxUsd > 0` is refused unless a `costProbe` measures spend                               |
-| `policies`                            | `allowPrivateRepoAccess` / `allowProviderCredentials` / `allowPaymentCredentials` / `allowGitHubMutation`, all DEFAULT FALSE                          |
-| `actors[0].type`                      | `codex-exec`: a registered terminal actor (`keyPlacement: in-sandbox-command-scoped`)                                                                 |
-| `LabBackend`                          | `terminal` → `runTerminalProductLab` ([`src/routes/terminal/lab.ts`](https://github.com/danielgwilson/humanish/blob/main/src/routes/terminal/lab.ts)) |
+| Axis                                  | Value                                                                                                                                                     |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `subject.source`                      | `terminal-product`                                                                                                                                        |
+| `subject.product`                     | `{ name, publicSurfaces[], install?, workdir?, upload? }`: the only world the agent sees                                                                  |
+| `execution.target`                    | `e2b-terminal` (or absent → implied)                                                                                                                      |
+| `execution.terminal`                  | `{ transport: exec-stream, stdin: disabled }`                                                                                                             |
+| `execution.runtimeAuth`               | `openai-env` (default) or opt-in `openai-egress`; names-only durable evidence                                                                             |
+| `execution.runtime.version`           | Optional exact `@openai/codex` version; observed before keyed execution                                                                                   |
+| `actors[0].model` / `reasoningEffort` | Forwarded to Codex; retained as declarations, not observed provider identity                                                                              |
+| `scenario.caps`                       | `{ maxUsd, maxJobs, maxMinutes }`: the blast-radius budget; `maxUsd > 0` is refused unless a `costProbe` measures spend                                   |
+| `policies`                            | `allowPrivateRepoAccess` / `allowProviderCredentials` / `allowPaymentCredentials` / `allowGitHubMutation`, all DEFAULT FALSE                              |
+| `actors[0].type`                      | `codex-exec`: a registered terminal actor (`keyPlacement: in-sandbox-command-scoped`)                                                                     |
+| `LabBackend`                          | `terminal` → `runTerminalProductLab` ([`src/routes/terminal/route.ts`](https://github.com/danielgwilson/humanish/blob/main/src/routes/terminal/route.ts)) |
 
 Routing is `routeOf` (`src/lab/plan.ts`). It sends every `terminal-product` subject to
 this route, even with an unregistered actor, so this route refuses the actor.

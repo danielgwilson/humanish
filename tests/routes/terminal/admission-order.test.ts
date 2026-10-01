@@ -8,7 +8,7 @@ import { afterAll, describe, expect, it } from "vitest";
 
 import type { LabConfig } from "../../../src/lab/types.js";
 import { LAB_CONFIG_SCHEMA } from "../../../src/lab/types.js";
-import { runTerminalProductLab } from "../../../src/routes/terminal/lab.js";
+import { runTerminalProductLab } from "../../../src/routes/terminal/route.js";
 
 const dirs: string[] = [];
 afterAll(async () => {

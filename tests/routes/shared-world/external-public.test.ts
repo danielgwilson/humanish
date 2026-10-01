@@ -32,7 +32,7 @@ import {
 import {
   runConcurrentSharedWorld,
   runSharedWorldPlan,
-} from "../../../src/routes/shared-world/lab.js";
+} from "../../../src/routes/shared-world/route.js";
 import { planSharedWorldLab } from "../../../src/routes/shared-world/plan.js";
 import { extractLobbyCode } from "../../../src/routes/shared-world/lobby-code.js";
 import { makeChromeBrowserStateObserver } from "../../../src/substrates/e2b/desktop-cdp.js";
