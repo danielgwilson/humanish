@@ -87,16 +87,21 @@ export function createShareSafetyAdmission(
   // content hash at read time, which drops the entry.
   const cache = new Map<string, CachedAdmission>();
 
+  const shareReady = (verified: Awaited<ReturnType<typeof verifyRun>>): boolean =>
+    verified.ok === true && verified.shareSafety.status === "share_ready";
   const verifyAdmission = async (
     runId: string,
     runDirectory: string,
     before: RunInventory,
     forget: () => void,
   ): Promise<AdmittedRun | null> => {
+    // A run verify refuses is never served, so its bytes are never hashed. Hashing reads every
+    // byte, and one large file in a refused run would otherwise cost startup time for nothing.
+    if (!shareReady(await verifyImpl(cwd, runId))) return null;
+    // Admitted: hash, verify again, and hash after, so the served bytes are the ones verify scanned.
     const hashesBefore = await hashRunInventory(runDirectory, before);
     if (!hashesBefore) return null;
-    const verified = await verifyImpl(cwd, runId);
-    if (verified.ok !== true || verified.shareSafety.status !== "share_ready") return null;
+    if (!shareReady(await verifyImpl(cwd, runId))) return null;
     // A file that changed while verify read the run may not be the version it scanned. A changed
     // stat shows in the next request's walk; changed bytes alone do not, so they drop the entry.
     const after = await readRunInventory(runDirectory);
