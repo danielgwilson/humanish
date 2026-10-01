@@ -190,6 +190,11 @@ export async function loadE2BDesktopModule(): Promise<E2BDesktopModule> {
 export const DESKTOP_CREATE_CLEANUP_TIMEOUT_MS = 10_000;
 
 type DesktopCreateCleanup = "killed" | "already_gone" | "unconfirmed";
+interface DesktopCreateCleanupResult {
+  cleanup: DesktopCreateCleanup;
+  /** Why cleanup is unconfirmed, when the SDK answered but the answer proves nothing. */
+  detail?: string;
+}
 type OwnedDesktop = E2BDesktopSandbox & {
   kill(options: { requestTimeoutMs: number; signal: AbortSignal }): Promise<boolean>;
 };
@@ -202,6 +207,7 @@ export class E2BDesktopStartupError extends Error {
   constructor(
     error: unknown,
     readonly cleanup: DesktopCreateCleanup,
+    readonly cleanupDetail?: string,
   ) {
     const detail = error instanceof Error ? error.message : String(error);
     const cleanupNote =
@@ -209,7 +215,7 @@ export class E2BDesktopStartupError extends Error {
         ? "the allocated sandbox was reclaimed"
         : cleanup === "already_gone"
           ? "the allocated sandbox was already gone"
-          : "cleanup of the allocated sandbox was not confirmed; no retry is allowed and its provider timeout remains the backstop";
+          : `cleanup of the allocated sandbox was not confirmed${cleanupDetail === undefined ? "" : ` (${cleanupDetail})`}; no retry is allowed and its provider timeout remains the backstop`;
     super(`Desktop startup failed after allocation; ${cleanupNote}. ${detail}`, { cause: error });
     this.name = "E2BDesktopStartupError";
   }
@@ -241,7 +247,7 @@ export function guardDesktopSandboxCreate(module: E2BDesktopModule): E2BDesktopM
         requestedTimeout !== undefined && Number.isFinite(requestedTimeout) && requestedTimeout > 0
           ? Math.min(requestedTimeout, DESKTOP_CREATE_CLEANUP_TIMEOUT_MS)
           : DESKTOP_CREATE_CLEANUP_TIMEOUT_MS;
-      let cleanupOwned: (() => Promise<DesktopCreateCleanup>) | undefined;
+      let cleanupOwned: (() => Promise<DesktopCreateCleanupResult>) | undefined;
       let restoreKill: (() => void) | undefined;
       // oxlint-disable-next-line typescript/no-this-alias -- the attempt subclasses whichever SDK class was called
       const CallingSandbox = this;
@@ -250,13 +256,13 @@ export function guardDesktopSandboxCreate(module: E2BDesktopModule): E2BDesktopM
           super(...args);
           const kill = this.kill.bind(this);
           const ownKill = Object.getOwnPropertyDescriptor(this, "kill");
-          let receipt: Promise<DesktopCreateCleanup> | undefined;
+          let receipt: Promise<DesktopCreateCleanupResult> | undefined;
           const reclaim = () => (receipt ??= reclaimFailedDesktopCreate(kill, timeoutMs));
           cleanupOwned = reclaim;
           // SDK 2.4 calls this method before create rejects. Keep its boolean contract while
           // recording unconfirmed cleanup independently of the SDK's catch-and-discard path.
           this.kill = async () => {
-            const cleanup = await reclaim();
+            const { cleanup } = await reclaim();
             if (cleanup === "unconfirmed")
               throw new Error("Desktop startup cleanup was not confirmed");
             return cleanup === "killed";
@@ -282,8 +288,8 @@ export function guardDesktopSandboxCreate(module: E2BDesktopModule): E2BDesktopM
         return protectDesktopScreenshotCleanup(desktop);
       } catch (error) {
         if (cleanupOwned === undefined) throw error;
-        const cleanup = await cleanupOwned();
-        throw new E2BDesktopStartupError(error, cleanup);
+        const { cleanup, detail } = await cleanupOwned();
+        throw new E2BDesktopStartupError(error, cleanup, detail);
       }
     }
   }
@@ -293,9 +299,11 @@ export function guardDesktopSandboxCreate(module: E2BDesktopModule): E2BDesktopM
 async function reclaimFailedDesktopCreate(
   kill: OwnedDesktop["kill"],
   timeoutMs: number,
-): Promise<DesktopCreateCleanup> {
+): Promise<DesktopCreateCleanupResult> {
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
+  // The SDK reads the variable when the call starts, so read it at the same point.
+  const debug = e2bDebugMode();
   try {
     const result = await Promise.race([
       kill({ requestTimeoutMs: timeoutMs, signal: controller.signal }),
@@ -306,11 +314,14 @@ async function reclaimFailedDesktopCreate(
         }, timeoutMs);
       }),
     ]);
+    // A true in debug mode sent no request, so it confirms nothing.
+    if (result === true && debug) return { cleanup: "unconfirmed", detail: E2B_DEBUG_KILL_DETAIL };
     // The installed SDK documents false as an exact-id 404: already absent is also reclaimed.
-    return result === true ? "killed" : result === false ? "already_gone" : "unconfirmed";
+    if (result === true) return { cleanup: "killed" };
+    return { cleanup: result === false ? "already_gone" : "unconfirmed" };
   } catch {
     // Do not serialize cleanup options, connection state, or provider errors that may echo auth.
-    return "unconfirmed";
+    return { cleanup: "unconfirmed" };
   } finally {
     if (timer !== undefined) clearTimeout(timer);
   }
@@ -362,3 +373,6 @@ export const E2B_DEBUG_ENV = "E2B_DEBUG";
 export function e2bDebugMode(env: NodeJS.ProcessEnv = process.env): boolean {
   return env[E2B_DEBUG_ENV]?.toLowerCase() === "true";
 }
+
+/** Why a kill that returned true in debug mode is unconfirmed. */
+export const E2B_DEBUG_KILL_DETAIL = `${E2B_DEBUG_ENV}=true makes the E2B SDK return true from Sandbox.kill without contacting E2B`;

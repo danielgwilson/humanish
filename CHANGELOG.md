@@ -13,8 +13,9 @@ The Unreleased section holds the full notes for the next version until it is tag
 - `humanish reclaim` refuses with `HUMANISH_RECLAIM_E2B_DEBUG` (exit 2) when `E2B_DEBUG=true`, and
   kills nothing (#1329). In debug mode the E2B SDK's `Sandbox.kill` returns true without
   contacting E2B, so reclaim reported every recorded sandbox `killed` and discarded preflight
-  journals for sandboxes that may still run. A run's sandbox teardown that gets true in debug mode
-  now reads unconfirmed, and its warning names `E2B_DEBUG`.
+  journals for sandboxes that may still run. A run's sandbox teardown, including the cleanup after
+  a failed desktop startup, that gets true in debug mode now reads unconfirmed, and its warning
+  names `E2B_DEBUG`.
 
 ## 0.106.0: Node 22.19, a smaller library API and stricter share safety (2026-10-01)
 

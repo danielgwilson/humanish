@@ -95,6 +95,7 @@ export class LiveTerminalSandbox {
   private module: E2BDesktopModule | undefined;
   private allocation: OwnedDesktopAllocation | undefined;
   private startupCleanup: E2BDesktopStartupError["cleanup"] | undefined;
+  private startupCleanupDetail: string | undefined;
   // The sandbox's billed span (acquired to cleanup) and size price its compute time.
   private createdAtMs: number | undefined;
   private tornDownAtMs: number | undefined;
@@ -505,7 +506,10 @@ export class LiveTerminalSandbox {
   recordSessionError(error: unknown): void {
     const { sanitize } = this.inputs;
     const { recordLifecycle } = this.inputs.recorder;
-    if (error instanceof E2BDesktopStartupError) this.startupCleanup = error.cleanup;
+    if (error instanceof E2BDesktopStartupError) {
+      this.startupCleanup = error.cleanup;
+      this.startupCleanupDetail = error.cleanupDetail;
+    }
     this.error = sanitize(toErrorMessage(error));
     this.status = "failed";
     this.completionReason = "harness_error";
@@ -522,6 +526,7 @@ export class LiveTerminalSandbox {
       allocation: this.allocation,
       sandboxModule: this.module,
       ...(this.startupCleanup === undefined ? {} : { startupCleanup: this.startupCleanup }),
+      startupCleanupDetail: this.startupCleanupDetail,
       requestTimeoutMs,
       sanitize,
       recordLifecycle,
