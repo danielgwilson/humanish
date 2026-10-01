@@ -150,226 +150,30 @@
       }
     },
     "log": [
-      [
-        "executor.observe",
-        0
-      ],
-      [
-        "onObservedUrl",
-        null
-      ],
-      [
-        "onScreenshot",
-        15
-      ],
-      [
-        "writeScreenshot",
-        "turn-00-start.png",
-        15
-      ],
-      [
-        "onTrace",
-        1,
-        {
-          "input": 0,
-          "output": 0,
-          "cachedInput": 0,
-          "cacheWriteInput": 0
-        },
-        {
-          "providerRequests": [],
-          "historyTurnsOmitted": 0
-        }
-      ],
-      [
-        "provider.nextTurn",
-        {
-          "instructions": "Act as the synthetic persona and finish the task.",
-          "observation": {
-            "screenshot": "[buffer 15 bytes]",
-            "stateSignature": "0"
-          }
-        }
-      ],
-      [
-        "estimateTurnCostUsd",
-        {
-          "input": 10,
-          "output": 2,
-          "cachedInput": 0,
-          "cacheWriteInput": 0,
-          "turns": [
-            {
-              "input": 10,
-              "output": 2
-            }
-          ]
-        },
-        0.12
-      ],
-      [
-        "executor.execute",
-        {
-          "kind": "click",
-          "x": 12,
-          "y": 18
-        }
-      ],
-      [
-        "executor.observe",
-        1
-      ],
-      [
-        "onObservedUrl",
-        null
-      ],
-      [
-        "onScreenshot",
-        15
-      ],
-      [
-        "writeScreenshot",
-        "turn-01.png",
-        15
-      ],
-      [
-        "onTrace",
-        3,
-        {
-          "input": 10,
-          "output": 2,
-          "cachedInput": 0,
-          "cacheWriteInput": 0,
-          "turns": [
-            {
-              "input": 10,
-              "output": 2
-            }
-          ]
-        },
-        {
-          "providerRequests": [],
-          "historyTurnsOmitted": 0
-        }
-      ],
-      [
-        "provider.nextTurn",
-        {
-          "instructions": "Act as the synthetic persona and finish the task.",
-          "observation": {
-            "screenshot": "[buffer 15 bytes]",
-            "stateSignature": "1"
-          },
-          "previousExecution": {
-            "actions": [
-              {
-                "index": 0,
-                "status": "completed"
-              }
-            ]
-          }
-        }
-      ],
-      [
-        "estimateTurnCostUsd",
-        {
-          "input": 18,
-          "output": 3,
-          "cachedInput": 0,
-          "cacheWriteInput": 0,
-          "turns": [
-            {
-              "input": 18,
-              "output": 3
-            }
-          ]
-        },
-        0.21
-      ],
-      [
-        "executor.execute",
-        {
-          "kind": "keypress",
-          "keys": [
-            "ENTER"
-          ]
-        }
-      ],
-      [
-        "executor.observe",
-        2
-      ],
-      [
-        "onObservedUrl",
-        null
-      ],
-      [
-        "onScreenshot",
-        15
-      ],
-      [
-        "writeScreenshot",
-        "turn-02.png",
-        15
-      ],
-      [
-        "onTrace",
-        5,
-        {
-          "input": 18,
-          "output": 3,
-          "cachedInput": 0,
-          "cacheWriteInput": 0,
-          "turns": [
-            {
-              "input": 18,
-              "output": 3
-            }
-          ]
-        },
-        {
-          "providerRequests": [],
-          "historyTurnsOmitted": 0
-        }
-      ],
-      [
-        "provider.nextTurn",
-        {
-          "instructions": "Act as the synthetic persona and finish the task.",
-          "observation": {
-            "screenshot": "[buffer 15 bytes]",
-            "stateSignature": "2"
-          },
-          "previousExecution": {
-            "actions": [
-              {
-                "index": 0,
-                "status": "completed"
-              }
-            ]
-          }
-        }
-      ],
-      [
-        "onMessage",
-        "Finished."
-      ],
-      [
-        "estimateTurnCostUsd",
-        {
-          "input": 20,
-          "output": 4,
-          "cachedInput": 0,
-          "cacheWriteInput": 0,
-          "turns": [
-            {
-              "input": 20,
-              "output": 4
-            }
-          ]
-        },
-        0.24
-      ]
+      ["executor.observe",0],
+      ["onObservedUrl",null],
+      ["onScreenshot",15],
+      ["writeScreenshot","turn-00-start.png",15],
+      ["onTrace",1,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{"providerRequests":[],"historyTurnsOmitted":0}],
+      ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"0"}}],
+      ["estimateTurnCostUsd",{"input":10,"output":2,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":2}]},0.12],
+      ["executor.execute",{"kind":"click","x":12,"y":18}],
+      ["executor.observe",1],
+      ["onObservedUrl",null],
+      ["onScreenshot",15],
+      ["writeScreenshot","turn-01.png",15],
+      ["onTrace",3,{"input":10,"output":2,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":10,"output":2}]},{"providerRequests":[],"historyTurnsOmitted":0}],
+      ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"1"},"previousExecution":{"actions":[{"index":0,"status":"completed"}]}}],
+      ["estimateTurnCostUsd",{"input":18,"output":3,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":18,"output":3}]},0.21],
+      ["executor.execute",{"kind":"keypress","keys":["ENTER"]}],
+      ["executor.observe",2],
+      ["onObservedUrl",null],
+      ["onScreenshot",15],
+      ["writeScreenshot","turn-02.png",15],
+      ["onTrace",5,{"input":18,"output":3,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":18,"output":3}]},{"providerRequests":[],"historyTurnsOmitted":0}],
+      ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"2"},"previousExecution":{"actions":[{"index":0,"status":"completed"}]}}],
+      ["onMessage","Finished."],
+      ["estimateTurnCostUsd",{"input":20,"output":4,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":20,"output":4}]},0.24]
     ]
   },
   "pendingUsageCrossesCap": {
@@ -443,64 +247,13 @@
       }
     },
     "log": [
-      [
-        "executor.observe",
-        0
-      ],
-      [
-        "onObservedUrl",
-        null
-      ],
-      [
-        "onScreenshot",
-        15
-      ],
-      [
-        "writeScreenshot",
-        "turn-00-start.png",
-        15
-      ],
-      [
-        "onTrace",
-        1,
-        {
-          "input": 0,
-          "output": 0,
-          "cachedInput": 0,
-          "cacheWriteInput": 0
-        },
-        {
-          "providerRequests": [],
-          "historyTurnsOmitted": 0
-        }
-      ],
-      [
-        "provider.nextTurn",
-        {
-          "instructions": "Act as the synthetic persona and finish the task.",
-          "observation": {
-            "screenshot": "[buffer 15 bytes]",
-            "stateSignature": "ready"
-          }
-        }
-      ],
-      [
-        "estimateTurnCostUsd",
-        {
-          "input": 20,
-          "output": 1,
-          "cachedInput": 0,
-          "cacheWriteInput": 0,
-          "turns": [
-            {
-              "input": 20,
-              "output": 1,
-              "cachedInput": 0
-            }
-          ]
-        },
-        0.21
-      ]
+      ["executor.observe",0],
+      ["onObservedUrl",null],
+      ["onScreenshot",15],
+      ["writeScreenshot","turn-00-start.png",15],
+      ["onTrace",1,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{"providerRequests":[],"historyTurnsOmitted":0}],
+      ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"ready"}}],
+      ["estimateTurnCostUsd",{"input":20,"output":1,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":20,"output":1,"cachedInput":0}]},0.21]
     ]
   },
   "invalidPendingYield": {
@@ -601,47 +354,12 @@
       }
     },
     "log": [
-      [
-        "executor.observe",
-        0
-      ],
-      [
-        "onObservedUrl",
-        null
-      ],
-      [
-        "onScreenshot",
-        15
-      ],
-      [
-        "writeScreenshot",
-        "turn-00-start.png",
-        15
-      ],
-      [
-        "onTrace",
-        1,
-        {
-          "input": 0,
-          "output": 0,
-          "cachedInput": 0,
-          "cacheWriteInput": 0
-        },
-        {
-          "providerRequests": [],
-          "historyTurnsOmitted": 0
-        }
-      ],
-      [
-        "provider.nextTurn",
-        {
-          "instructions": "Act as the synthetic persona and finish the task.",
-          "observation": {
-            "screenshot": "[buffer 15 bytes]",
-            "stateSignature": "ready"
-          }
-        }
-      ]
+      ["executor.observe",0],
+      ["onObservedUrl",null],
+      ["onScreenshot",15],
+      ["writeScreenshot","turn-00-start.png",15],
+      ["onTrace",1,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{"providerRequests":[],"historyTurnsOmitted":0}],
+      ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"ready"}}]
     ]
   },
   "accountUsageRecorded": {
@@ -808,149 +526,20 @@
       }
     },
     "log": [
-      [
-        "executor.observe",
-        0
-      ],
-      [
-        "onObservedUrl",
-        null
-      ],
-      [
-        "onScreenshot",
-        15
-      ],
-      [
-        "writeScreenshot",
-        "turn-00-start.png",
-        15
-      ],
-      [
-        "onTrace",
-        1,
-        {},
-        {
-          "executionProfile": {
-            "schema": "humanish.actor-execution-profile.v1",
-            "transport": "codex-app-server",
-            "authentication": "chatgpt-account",
-            "billing": "account-unknown",
-            "requestedModel": "gpt-6-astra",
-            "reasoningEffort": "low",
-            "cliVersion": "0.154.0",
-            "toolPolicy": "codex-ui-tools-v1",
-            "participantSchema": "humanish.codex-ui-tool.v1",
-            "memoryPolicy": "continuing-thread-v1"
-          },
-          "providerRequests": [],
-          "historyTurnsOmitted": 0
-        }
-      ],
-      [
-        "provider.nextTurn",
-        {
-          "instructions": "Act as the synthetic persona and finish the task.",
-          "observation": {
-            "screenshot": "[buffer 15 bytes]",
-            "stateSignature": "0"
-          }
-        }
-      ],
-      [
-        "executor.execute",
-        {
-          "kind": "click",
-          "x": 1,
-          "y": 1
-        }
-      ],
-      [
-        "executor.observe",
-        1
-      ],
-      [
-        "onObservedUrl",
-        null
-      ],
-      [
-        "onScreenshot",
-        15
-      ],
-      [
-        "writeScreenshot",
-        "turn-01.png",
-        15
-      ],
-      [
-        "onTrace",
-        3,
-        {
-          "input": 10,
-          "output": 2,
-          "turns": [
-            {
-              "input": 4,
-              "output": 1
-            },
-            {
-              "input": 6,
-              "output": 1
-            }
-          ],
-          "total": 12
-        },
-        {
-          "executionProfile": {
-            "schema": "humanish.actor-execution-profile.v1",
-            "transport": "codex-app-server",
-            "authentication": "chatgpt-account",
-            "billing": "account-unknown",
-            "requestedModel": "gpt-6-astra",
-            "reasoningEffort": "low",
-            "cliVersion": "0.154.0",
-            "toolPolicy": "codex-ui-tools-v1",
-            "participantSchema": "humanish.codex-ui-tool.v1",
-            "memoryPolicy": "continuing-thread-v1"
-          },
-          "providerRequests": [
-            {
-              "ordinal": 1,
-              "kind": "interaction",
-              "dispatched": true,
-              "usageComplete": true,
-              "cleanup": "confirmed",
-              "profileVerified": true,
-              "usage": {
-                "input": 10,
-                "output": 2
-              }
-            }
-          ],
-          "historyTurnsOmitted": 0
-        }
-      ],
-      [
-        "provider.nextTurn",
-        {
-          "instructions": "Act as the synthetic persona and finish the task.",
-          "observation": {
-            "screenshot": "[buffer 15 bytes]",
-            "stateSignature": "1"
-          },
-          "previousExecution": {
-            "actions": [
-              {
-                "index": 0,
-                "status": "completed"
-              }
-            ]
-          }
-        }
-      ],
-      [
-        "onMessage",
-        "Finished."
-      ]
+      ["executor.observe",0],
+      ["onObservedUrl",null],
+      ["onScreenshot",15],
+      ["writeScreenshot","turn-00-start.png",15],
+      ["onTrace",1,{},{"executionProfile":{"schema":"humanish.actor-execution-profile.v1","transport":"codex-app-server","authentication":"chatgpt-account","billing":"account-unknown","requestedModel":"gpt-6-astra","reasoningEffort":"low","cliVersion":"0.154.0","toolPolicy":"codex-ui-tools-v1","participantSchema":"humanish.codex-ui-tool.v1","memoryPolicy":"continuing-thread-v1"},"providerRequests":[],"historyTurnsOmitted":0}],
+      ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"0"}}],
+      ["executor.execute",{"kind":"click","x":1,"y":1}],
+      ["executor.observe",1],
+      ["onObservedUrl",null],
+      ["onScreenshot",15],
+      ["writeScreenshot","turn-01.png",15],
+      ["onTrace",3,{"input":10,"output":2,"turns":[{"input":4,"output":1},{"input":6,"output":1}],"total":12},{"executionProfile":{"schema":"humanish.actor-execution-profile.v1","transport":"codex-app-server","authentication":"chatgpt-account","billing":"account-unknown","requestedModel":"gpt-6-astra","reasoningEffort":"low","cliVersion":"0.154.0","toolPolicy":"codex-ui-tools-v1","participantSchema":"humanish.codex-ui-tool.v1","memoryPolicy":"continuing-thread-v1"},"providerRequests":[{"ordinal":1,"kind":"interaction","dispatched":true,"usageComplete":true,"cleanup":"confirmed","profileVerified":true,"usage":{"input":10,"output":2}}],"historyTurnsOmitted":0}],
+      ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"1"},"previousExecution":{"actions":[{"index":0,"status":"completed"}]}}],
+      ["onMessage","Finished."]
     ]
   }
 }

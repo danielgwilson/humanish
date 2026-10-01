@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { loopGoldenText } from "../helpers/loop-golden-log.js";
 import { dedupeProjections, inflateProjections } from "../helpers/run-golden-projections.js";
 
 // The run-directory golden format (scripts/check-golden-format.ts checks a change of it against
@@ -101,5 +102,28 @@ describe("run-directory golden projections", () => {
   it("leaves a snapshot without a run.json bundle unchanged", () => {
     const loop = { result: { status: "passed" }, log: [["executor.observe", 0]] };
     expect(dedupeProjections(loop)).toBe(loop);
+  });
+});
+
+describe("loop golden layout", () => {
+  const outcome = {
+    result: { status: "passed", reason: "Booked the appointment." },
+    log: [
+      ["executor.observe", 0],
+      ["onTrace", 1, { input: 0, output: 0 }, {}],
+      ["profile", undefined],
+    ],
+  };
+
+  it("writes each logged call on one line, inside a single outcome or named outcomes", () => {
+    expect(loopGoldenText(outcome)).toContain(
+      '"log": [\n    ["executor.observe",0],\n    ["onTrace",1,{"input":0,"output":0},{}],\n    ["profile",null]\n  ]',
+    );
+    expect(loopGoldenText({ first: outcome })).toContain('      ["executor.observe",0],\n');
+  });
+
+  it("keeps the value the old layout pinned", () => {
+    for (const value of [outcome, { first: outcome, second: outcome }])
+      expect(JSON.parse(loopGoldenText(value))).toEqual(JSON.parse(JSON.stringify(value)));
   });
 });

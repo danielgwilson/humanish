@@ -140,211 +140,28 @@
     }
   },
   "log": [
-    [
-      "executor.observe",
-      0
-    ],
-    [
-      "onObservedUrl",
-      null
-    ],
-    [
-      "onScreenshot",
-      15
-    ],
-    [
-      "writeScreenshot",
-      "turn-00-start.png",
-      15
-    ],
-    [
-      "onTrace",
-      1,
-      {
-        "input": 0,
-        "output": 0,
-        "cachedInput": 0,
-        "cacheWriteInput": 0
-      },
-      {}
-    ],
-    [
-      "provider.nextTurn",
-      {
-        "instructions": "Act as the synthetic persona and finish the task.",
-        "observation": {
-          "screenshot": "[buffer 15 bytes]",
-          "stateSignature": "s0"
-        }
-      }
-    ],
-    [
-      "estimateTurnCostUsd",
-      {
-        "input": 100,
-        "output": 50,
-        "cachedInput": 0,
-        "cacheWriteInput": 0,
-        "turns": [
-          {
-            "input": 100,
-            "output": 50
-          }
-        ]
-      },
-      0.15
-    ],
-    [
-      "executor.execute",
-      {
-        "kind": "click",
-        "x": 10,
-        "y": 20
-      }
-    ],
-    [
-      "executor.observe",
-      1
-    ],
-    [
-      "onObservedUrl",
-      null
-    ],
-    [
-      "onScreenshot",
-      15
-    ],
-    [
-      "writeScreenshot",
-      "turn-01.png",
-      15
-    ],
-    [
-      "onTrace",
-      3,
-      {
-        "input": 100,
-        "output": 50,
-        "cachedInput": 0,
-        "cacheWriteInput": 0,
-        "turns": [
-          {
-            "input": 100,
-            "output": 50
-          }
-        ]
-      },
-      {}
-    ],
-    [
-      "provider.nextTurn",
-      {
-        "instructions": "Act as the synthetic persona and finish the task.",
-        "observation": {
-          "screenshot": "[buffer 15 bytes]",
-          "stateSignature": "s1"
-        }
-      }
-    ],
-    [
-      "estimateTurnCostUsd",
-      {
-        "input": 200,
-        "output": 100,
-        "cachedInput": 0,
-        "cacheWriteInput": 0,
-        "turns": [
-          {
-            "input": 100,
-            "output": 50
-          },
-          {
-            "input": 100,
-            "output": 50
-          }
-        ]
-      },
-      0.3
-    ],
-    [
-      "executor.execute",
-      {
-        "kind": "click",
-        "x": 10,
-        "y": 20
-      }
-    ],
-    [
-      "executor.observe",
-      2
-    ],
-    [
-      "onObservedUrl",
-      null
-    ],
-    [
-      "onScreenshot",
-      15
-    ],
-    [
-      "writeScreenshot",
-      "turn-02.png",
-      15
-    ],
-    [
-      "onTrace",
-      5,
-      {
-        "input": 200,
-        "output": 100,
-        "cachedInput": 0,
-        "cacheWriteInput": 0,
-        "turns": [
-          {
-            "input": 100,
-            "output": 50
-          },
-          {
-            "input": 100,
-            "output": 50
-          }
-        ]
-      },
-      {}
-    ],
-    [
-      "provider.nextTurn",
-      {
-        "instructions": "Act as the synthetic persona and finish the task.",
-        "observation": {
-          "screenshot": "[buffer 15 bytes]",
-          "stateSignature": "s2"
-        }
-      }
-    ],
-    [
-      "estimateTurnCostUsd",
-      {
-        "input": 300,
-        "output": 150,
-        "cachedInput": 0,
-        "cacheWriteInput": 0,
-        "turns": [
-          {
-            "input": 100,
-            "output": 50
-          },
-          {
-            "input": 100,
-            "output": 50
-          },
-          {
-            "input": 100,
-            "output": 50
-          }
-        ]
-      },
-      0.45
-    ]
+    ["executor.observe",0],
+    ["onObservedUrl",null],
+    ["onScreenshot",15],
+    ["writeScreenshot","turn-00-start.png",15],
+    ["onTrace",1,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{}],
+    ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"s0"}}],
+    ["estimateTurnCostUsd",{"input":100,"output":50,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":100,"output":50}]},0.15],
+    ["executor.execute",{"kind":"click","x":10,"y":20}],
+    ["executor.observe",1],
+    ["onObservedUrl",null],
+    ["onScreenshot",15],
+    ["writeScreenshot","turn-01.png",15],
+    ["onTrace",3,{"input":100,"output":50,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":100,"output":50}]},{}],
+    ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"s1"}}],
+    ["estimateTurnCostUsd",{"input":200,"output":100,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":100,"output":50},{"input":100,"output":50}]},0.3],
+    ["executor.execute",{"kind":"click","x":10,"y":20}],
+    ["executor.observe",2],
+    ["onObservedUrl",null],
+    ["onScreenshot",15],
+    ["writeScreenshot","turn-02.png",15],
+    ["onTrace",5,{"input":200,"output":100,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":100,"output":50},{"input":100,"output":50}]},{}],
+    ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"s2"}}],
+    ["estimateTurnCostUsd",{"input":300,"output":150,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":100,"output":50},{"input":100,"output":50},{"input":100,"output":50}]},0.45]
   ]
 }
