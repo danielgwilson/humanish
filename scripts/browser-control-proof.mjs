@@ -45,6 +45,20 @@ if (!executablePath)
   throw new Error(
     "Chromium missing. Install the Playwright Chromium build or set HUMANISH_BROWSER_EXECUTABLE.",
   );
+// On a CI runner the first Chrome launch is a cold start that can take tens of seconds, and later
+// launches take under a second. Pay the cold start once here, under its own deadline, so each case's
+// 60 s launch limit measures a warm start.
+const warmupStarted = performance.now();
+const warmBrowser = await chromium.launch({
+  executablePath,
+  headless: true,
+  chromiumSandbox: true,
+  timeout: 180000,
+  args: ["--disable-background-networking", "--disable-component-update", "--no-first-run"],
+});
+await warmBrowser.close();
+const browserWarmupMs = Math.round(performance.now() - warmupStarted);
+process.stdout.write(`browser-control proof: browser warm-up took ${browserWarmupMs} ms\n`);
 const cases = [];
 const capabilities = {
   headless: true,
@@ -237,7 +251,8 @@ async function runCase(mode) {
       assert.equal(loop.completionReason, "goal_satisfied");
       const after = await client.executor.observe();
       await writeFile(path.join(artifactDir, "after.png"), after.screenshot);
-      child.send({ command: "snapshot" });
+      // The page sets the count after its own fetch resolves, so the click can return first.
+      child.send({ command: "snapshot-after-save" });
       const state = (await next("snapshot")).state;
       assert.equal(state.note, "A note entered through the finite control channel.");
       assert.equal(state.saves, "1");
@@ -322,6 +337,10 @@ async function runCase(mode) {
     result.behaviorPassed = true;
   } catch (error) {
     result.failure = error instanceof Error ? error.message : String(error);
+    // A rerun replaces the uploaded artifact, so the job log has to carry the fixture's account.
+    process.stderr.write(
+      `browser-control proof: ${mode} failed; fixture stderr tail:\n${childStderr.slice(-4000)}\n`,
+    );
     throw error;
   } finally {
     client?.close();
@@ -390,6 +409,7 @@ await writeFile(
     {
       scope:
         "real browser/control IPC conformance; page request interception only, no process-wide egress, managed VM or isolation qualification",
+      browserWarmupMs,
       cases,
     },
     null,
