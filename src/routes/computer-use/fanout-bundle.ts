@@ -21,11 +21,8 @@ import {
   withCuaReviewProvenance,
 } from "../../run/outcomes.js";
 import type { TaskFunnel } from "../../lab/tasks.js";
-import {
-  participantFactsOf,
-  participantFeedbackCandidates,
-  providerResourcesForOutcome,
-} from "./bundle-parts.js";
+import { participantFeedbackCandidates, providerResourcesForOutcome } from "./bundle-parts.js";
+import { participantFactsOf } from "./participant-facts.js";
 import { participantPassed, participantStatus } from "../../run/judge.js";
 import { buildRunCostSummary, desktopSpanToMinutes } from "../../run/cost-summary.js";
 import { formatParticipantPlanEntry } from "./lane-plan.js";

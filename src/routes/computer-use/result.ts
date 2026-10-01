@@ -15,11 +15,8 @@ import {
   type ExecutionOutcome,
   type Judgment,
 } from "../../run/judge.js";
-import {
-  buildParticipantSummary,
-  participantFactsOf,
-  participantOutcomeOk,
-} from "./bundle-parts.js";
+import { buildParticipantSummary } from "./bundle-parts.js";
+import { participantFactsOf, participantOutcomeOk } from "./participant-facts.js";
 import { summarizeCuaDiagnostics } from "./diagnostics.js";
 import {
   aggregateCuaSubject,

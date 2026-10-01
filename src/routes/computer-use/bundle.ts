@@ -3,7 +3,7 @@ import type { ComputerUsePlan } from "../../lab/plan-types.js";
 import type { RunBundle, RunRerunLineage } from "../../run/bundle.js";
 import type { RunLabProvenance } from "../../run/status.js";
 import { judgeOneParticipant, judgeParticipants, type Judgment } from "../../run/judge.js";
-import { participantFactsOf } from "./bundle-parts.js";
+import { participantFactsOf } from "./participant-facts.js";
 import { buildCuaFanoutBundle } from "./fanout-bundle.js";
 import { buildSingleParticipantBundle } from "./single-bundle.js";
 import type {
