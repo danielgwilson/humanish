@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import { createServer } from "node:http";
 import { cp, mkdir, readFile, rm, rmdir, writeFile } from "node:fs/promises";
 import { execFile } from "node:child_process";
+import { createRequire } from "node:module";
 import { promisify } from "node:util";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -32,11 +33,16 @@ const json = async (file, value, exclusive = false) =>
     mode: 0o600,
   });
 const readJson = async (file) => JSON.parse(await readFile(file, "utf8"));
-const mod = (name) => import(pathToFileURL(path.join(packageRoot, "dist", `${name}.js`)).href);
-const runtime = await mod("run");
-const evidence = await mod("analysis/evidence");
-const service = await mod("analysis/service");
-const studyAnalysis = await mod("analysis/run-study-analysis");
+// Literal dist paths, so tests/scripts/script-paths.test.ts can resolve each one.
+const mod = (file) => import(pathToFileURL(path.join(packageRoot, file)).href);
+const { resolveRunPath } = await mod("dist/run/locate.js");
+const { runDryRun } = await mod("dist/run/dry-run.js");
+const { verifyRun } = await mod("dist/verify/verify.js");
+const evidence = await mod("dist/analysis/evidence.js");
+// The provider passes an undici Agent as its dispatcher, which Node's built-in fetch rejects.
+const { fetch: packageFetch } = createRequire(path.join(packageRoot, "package.json"))("undici");
+const service = await mod("dist/analysis/service.js");
+const studyAnalysis = await mod("dist/analysis/run-study-analysis.js");
 const config = {
   model: "gpt-6-astra",
   question: null,
@@ -50,14 +56,14 @@ const provenance =
 async function packagePin() {
   const metadata = await readJson(path.join(packageRoot, "package.json"));
   const files = {};
-  for (const name of [
-    "analysis/run-study-analysis",
-    "analysis/provider",
-    "analysis/validation",
-    "analysis/evidence",
-    "analysis/service",
+  for (const file of [
+    "dist/analysis/run-study-analysis.js",
+    "dist/analysis/provider.js",
+    "dist/analysis/validation.js",
+    "dist/analysis/evidence.js",
+    "dist/analysis/service.js",
   ]) {
-    files[`dist/${name}.js`] = hash(await readFile(path.join(packageRoot, "dist", `${name}.js`)));
+    files[file] = hash(await readFile(path.join(packageRoot, file)));
   }
   return {
     version: metadata.version,
@@ -109,8 +115,8 @@ if (command === "author") {
       await mkdir(caseRoot);
       await cp(path.join(repository, "fixtures/minimal-app"), cwd, { recursive: true });
       const runId = `quality-${spec.id}`;
-      await runtime.runDryRun({ cwd, dryRun: true, runId });
-      const prepared = await runtime.resolveRunPath(cwd, runId);
+      await runDryRun({ cwd, dryRun: true, runId });
+      const prepared = await resolveRunPath(cwd, runId);
       const root = prepared.physicalRunRoot;
       const bundle = await readJson(path.join(root, "run.json"));
       const template = bundle.streams[0];
@@ -283,7 +289,7 @@ if (command === "author") {
         bundle.events.map((event) => JSON.stringify(event)).join("\n") + "\n",
       );
       await rm(path.join(root, "status.json"), { force: true });
-      const verification = await runtime.verifyRun(cwd, runId);
+      const verification = await verifyRun(cwd, runId);
       await json(path.join(caseRoot, "verify.json"), verification);
       if (!verification.ok && verification.recordingOk !== true)
         throw new Error(`Source verification failed: ${spec.id}`);
@@ -340,7 +346,7 @@ if (command === "author") {
       await mkdir(caseRoot);
       const cwd = path.join(caseRoot, "project");
       await cp(sourceCase.cwd, cwd, { recursive: true });
-      const prepared = await runtime.resolveRunPath(cwd, sourceCase.runId);
+      const prepared = await resolveRunPath(cwd, sourceCase.runId);
       const bytes = await readFile(path.join(prepared.physicalRunRoot, "run.json"));
       if (hash(bytes) !== sourceCase.sourceRunSha256) throw new Error("Source copy changed.");
       const packet = await evidence.captureStudyEvidence(prepared, bytes);
@@ -406,7 +412,7 @@ if (command === "author") {
           ledger.ceilingUsd
         )
           throw new Error("Evaluation reservation ceiling reached.");
-        const prepared = await runtime.resolveRunPath(freeze.cwd, sourceCase.runId);
+        const prepared = await resolveRunPath(freeze.cwd, sourceCase.runId);
         if (
           hash(await readFile(path.join(prepared.physicalRunRoot, "run.json"))) !==
           sourceCase.sourceRunSha256
@@ -430,7 +436,7 @@ if (command === "author") {
             flag: "wx",
             mode: 0o600,
           });
-          const response = await fetch(url, options);
+          const response = await packageFetch(url, options);
           await writeFile(
             path.join(caseRoot, "response-body.json"),
             await response.clone().text(),
