@@ -18,7 +18,7 @@ import type { CuaParticipantsSetup, CuaRunSetup } from "./setup.js";
  */
 export async function runLabParticipants(setup: CuaRunSetup, participants: CuaParticipantsSetup) {
   const { plan, input, cwd, streams, descriptor, run } = setup;
-  const { participantRuns, participantPlan, scrubKnownValues, bundleBase } = setup;
+  const { participantRuns, participantPlan, bundleBase } = setup;
   const { env, knownSecretValues, deps, liveTrace, externalComms, inProgress, fail } = participants;
   const { dryRun } = plan;
   const inProcess = plan.runner.desktop === "in-process";
@@ -136,7 +136,7 @@ export async function runLabParticipants(setup: CuaRunSetup, participants: CuaPa
           runPaths,
           participantRuns: participantRuns,
           outcomes,
-          scrubKnownValues,
+          knownSecretValues,
         })
       : [];
 

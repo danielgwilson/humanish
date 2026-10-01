@@ -1,9 +1,10 @@
 // An adopter-hosted catch's thread, collected into a run. The computer-use and shared-world routes
-// both call this, so a failed collection is scrubbed the same way on both: the error text can quote
-// a provisioned value or the catch's bearer token, and neither has a secret's shape for pattern
-// redaction to find.
+// both call this, so every warning it returns is scrubbed the same way on both: an error or the
+// catch URL can carry the catch's bearer token or a provisioned value, and neither has a secret's
+// shape for pattern redaction to find.
 
-import { redactText, scrubLiterals, toErrorMessage } from "../evidence/redaction.js";
+import { redactText, toErrorMessage } from "../evidence/redaction.js";
+import { scrubSecretValues } from "../evidence/secret-scrub.js";
 import { addressedRecipients } from "../lab/parse/comms.js";
 import type { LabCommsEmail, LabCommsExternal } from "../lab/types.js";
 import { writeContainedOutputFile } from "../run/contained-output.js";
@@ -13,25 +14,50 @@ import { collectExternalCommsThread } from "./sandbox-catch.js";
 import type { CommsAddress } from "./types.js";
 
 /**
+ * The shortest catch bearer token humanish uses. The token guards GET /deliveries on a host the run
+ * reaches over the network, so it must not be guessable: 16 random base64 characters are 96 bits.
+ * The run also scrubs the token from every warning as a literal, and a short token would scrub
+ * ordinary words.
+ */
+export const MIN_CATCH_TOKEN_LENGTH = 16;
+
+/** Why a catch token cannot be used, or undefined when it can. An unset or empty token is none. */
+export function catchTokenRefusal(token: string | undefined): string | undefined {
+  if (token === undefined || token.length === 0 || token.length >= MIN_CATCH_TOKEN_LENGTH)
+    return undefined;
+  return `The comms catch token is ${token.length} characters; use one of at least ${MIN_CATCH_TOKEN_LENGTH}, such as the output of \`openssl rand -hex 16\`, on the catch and in the run.`;
+}
+
+/** The catch token the run sends: the value of `authTokenEnv`, when the lab names one. */
+export function catchTokenOf(
+  external: LabCommsExternal,
+  env: Record<string, string | undefined>,
+): string | undefined {
+  return external.authTokenEnv === undefined ? undefined : env[external.authTokenEnv];
+}
+
+/**
  * Drains the catch, routes its sends to the declared recipients' inboxes and writes the thread to
  * `comms/thread.json`. Returns that path when a message matched, and the warnings to add to the
- * run. It never throws: the run continues without comms evidence.
+ * run, each scrubbed of the run's known secret values and the catch token, then redacted. It never
+ * throws: the run continues without comms evidence.
  */
 export async function collectExternalCommsEvidence(args: {
   external: LabCommsExternal;
   email: LabCommsEmail;
   env: Record<string, string | undefined>;
   runPaths: PreparedRunArtifactPaths;
-  /** The run's literal scrub of its known secret values. */
-  scrubKnownValues: (text: string) => string;
+  /** The run's known secret values. The route may add to it until the drain runs. */
+  knownSecretValues: readonly string[];
 }): Promise<{ path?: string; warnings: string[] }> {
-  const { external, email, env, runPaths, scrubKnownValues } = args;
-  const authToken = external.authTokenEnv === undefined ? undefined : env[external.authTokenEnv];
-  // The same 4-character floor as the routes' known values: a shorter literal would scrub common
-  // text, and an empty one would split every character.
-  const scrubToken = scrubLiterals(
-    authToken !== undefined && authToken.length >= 4 ? [authToken] : [],
-  );
+  const { external, email, env, runPaths, knownSecretValues } = args;
+  const authToken = catchTokenOf(external, env);
+  const scrub = scrubSecretValues([
+    ...knownSecretValues,
+    ...(authToken === undefined ? [] : [authToken]),
+  ]);
+  const scrubbed = (warnings: string[]): string[] =>
+    warnings.map((warning) => redactText(scrub(warning)));
   try {
     const channel = new FakeInbox();
     const inboxes: CommsAddress[] = [];
@@ -55,21 +81,21 @@ export async function collectExternalCommsEvidence(args: {
     }
     if (collected.captured > 0) {
       return {
-        warnings: [
+        warnings: scrubbed([
           `Comms catch captured ${collected.captured} email send(s) but none matched a declared recipient inbox — no comms evidence written. Declare comms.email.recipients[].address to match the address the app sends to.`,
-        ],
+        ]),
       };
     }
     return {
-      warnings: [
+      warnings: scrubbed([
         `Comms catch captured ZERO email sends — your app never delivered mail through the catch at ${external.catchBaseUrl}. Verify the app's email-API base URL points at it and that the flow reached an email step.`,
-      ],
+      ]),
     };
   } catch (error) {
     return {
-      warnings: [
-        `Comms evidence collection failed against the adopter-hosted catch (run continues): ${redactText(scrubKnownValues(scrubToken(toErrorMessage(error))))}`,
-      ],
+      warnings: scrubbed([
+        `Comms evidence collection failed against the adopter-hosted catch (run continues): ${String(toErrorMessage(error))}`,
+      ]),
     };
   }
 }

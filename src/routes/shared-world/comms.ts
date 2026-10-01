@@ -2,7 +2,11 @@
 // subject sandbox, or adopter-hosted), and the drains that match captured mail to the seats'
 // declared inboxes and write the digest-only thread.
 
-import { collectExternalCommsEvidence } from "../../comms/external-evidence.js";
+import {
+  catchTokenOf,
+  catchTokenRefusal,
+  collectExternalCommsEvidence,
+} from "../../comms/external-evidence.js";
 import { FakeInbox } from "../../comms/fake-inbox.js";
 import { prepareReceivingRun, type ReceivingSource } from "../../comms/receiving-runtime.js";
 import type { SharedWorldPlan } from "../../lab/plan-types.js";
@@ -71,7 +75,17 @@ export async function prepareExternalComms(
   planeClass: ConcurrentSharedWorldPlaneClass,
   dryRun: boolean,
   warnings: string[],
-): Promise<{ ok: true; wiring: ExternalCommsWiring | undefined } | { ok: false; message: string }> {
+  env: Record<string, string | undefined>,
+): Promise<
+  | { ok: true; wiring: ExternalCommsWiring | undefined }
+  | {
+      ok: false;
+      code:
+        | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_TOKEN_TOO_SHORT"
+        | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_CATCH_UNREACHABLE";
+      message: string;
+    }
+> {
   const externalComms =
     planeClass === "external-public" ? config.comms?.email?.external : undefined;
   const externalCommsEmail = externalComms ? config.comms?.email : undefined;
@@ -86,12 +100,20 @@ export async function prepareExternalComms(
   }
   if (!externalComms || !externalCommsEmail) return { ok: true, wiring: undefined };
   const inboxUrl = externalInboxUrl(externalComms);
+  const tokenRefusal = catchTokenRefusal(catchTokenOf(externalComms, env));
+  if (tokenRefusal !== undefined)
+    return {
+      ok: false,
+      code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_TOKEN_TOO_SHORT",
+      message: tokenRefusal,
+    };
   // Fail closed BEFORE any actor sandbox is created: a comms lab whose catch is unreachable
   // collects nothing while every lane still spends. The probe asserts OUR service marker in
   // /health, so an adopter's proxy answering 200 for everything cannot pass for a catch.
   if (!dryRun && !(await externalCatchHealthy(externalComms))) {
     return {
       ok: false,
+      code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_CATCH_UNREACHABLE",
       message: `The external comms catch or inbox is unreachable or incompatible (GET /health must identify humanish-comms-catch and advertise recipient-inbox-v1). Update humanish on the catch host and restart it with \`humanish comms catch\` on that host, or drop comms.email to run without the inbox funnel.`,
     };
   }
@@ -168,7 +190,7 @@ export async function drainExternalComms(
     email: comms.email,
     env: ctx.env,
     runPaths: ctx.runPaths,
-    scrubKnownValues: ctx.scrubKnownValues,
+    knownSecretValues: ctx.knownSecretValues,
   });
   ctx.warnings.push(...warnings);
   return path;

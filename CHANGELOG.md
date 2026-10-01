@@ -16,10 +16,13 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixes
 
-- A failed drain of an adopter-hosted email catch no longer puts a provisioned value or the
-  catch's bearer token into the run's warnings (#1343). Shared-world runs only pattern-redacted
-  the error, and neither route removed the catch token. Both routes now scrub the error with the
-  run's known secret values and the catch token before redacting it.
+- An adopter-hosted email catch's warnings no longer carry a provisioned value or the catch's
+  bearer token (#1343). Shared-world runs only pattern-redacted a failed drain's error, and
+  neither route removed the catch token, its percent-encoded, base64 or JSON-escaped forms, or a
+  token inside the catch URL. Both routes now scrub every comms warning of those values, longest
+  first, before redacting it. A catch token shorter than 16 characters is refused by a live run
+  (`HUMANISH_CUA_LAB_COMMS_TOKEN_TOO_SHORT`, `HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_TOKEN_TOO_SHORT`)
+  and by `humanish comms catch --token`.
 - A computer-use, shared-world or scripted run whose sandbox release was not confirmed records it in
   `status.json` (#1348). `outcome.execution.warnings` gets a `sandbox-cleanup` entry naming the
   participant or `subject`, the release warning and `humanish reclaim --run <id>`. The run stays

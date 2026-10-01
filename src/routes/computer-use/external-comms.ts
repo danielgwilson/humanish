@@ -19,7 +19,7 @@ export async function drainExternalComms(args: {
   runPaths: PreparedRunArtifactPaths;
   participantRuns: readonly DesktopParticipantRun[];
   outcomes: ParticipantRunOutcome[];
-  scrubKnownValues: (text: string) => string;
+  knownSecretValues: readonly string[];
 }): Promise<string[]> {
   const { externalCommsEmail, participantRuns, outcomes } = args;
   const { path: commsPath, warnings } = await collectExternalCommsEvidence({
@@ -27,7 +27,7 @@ export async function drainExternalComms(args: {
     email: externalCommsEmail,
     env: args.env,
     runPaths: args.runPaths,
-    scrubKnownValues: args.scrubKnownValues,
+    knownSecretValues: args.knownSecretValues,
   });
   if (commsPath !== undefined) {
     for (const [index, outcome] of outcomes.entries()) {

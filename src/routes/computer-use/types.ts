@@ -354,6 +354,9 @@ export type CuaActorLabErrorCode =
   // Refused at preflight (before any sandbox): a comms lab whose catch is unreachable collects
   // nothing while every lane still spends (#380).
   | "HUMANISH_CUA_LAB_COMMS_CATCH_UNREACHABLE"
+  // comms.email.external.authTokenEnv names a token shorter than MIN_CATCH_TOKEN_LENGTH
+  // (src/comms/external-evidence.ts). Refused at preflight, before the catch is probed.
+  | "HUMANISH_CUA_LAB_COMMS_TOKEN_TOO_SHORT"
   // watch --expose (tunnel-edge auth) validation + tunnel-startup failures surfaced by runCuaBackend
   // before or around the run. Carried on the CUA lab envelope so `watch <cua-lab> --expose` refusals
   // render through the same formatter as any other CUA lab failure.

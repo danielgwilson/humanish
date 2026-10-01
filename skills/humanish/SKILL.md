@@ -361,7 +361,8 @@ is rejected because it is not wired there.
 For app-url/operator-provided subjects, run `humanish comms catch` on a reachable
 host, point the app's email sends at that catch, and declare
 `comms.email.external.catchBaseUrl` (plus `inboxBaseUrl` if different). A declared
-`authTokenEnv` is an environment variable name, never a credential value.
+`authTokenEnv` is an environment variable name, never a credential value; its
+token must be at least 16 characters.
 The in-sandbox catch
 needs `python3` (the stock E2B desktop has it).
 Evidence is digest-only (`humanish.comms-thread.v1` — counts and digests, never

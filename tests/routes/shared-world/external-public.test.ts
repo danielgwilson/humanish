@@ -1578,6 +1578,41 @@ describe("external-public seat wiring", () => {
       await new Promise<void>((resolve) => server.close(() => resolve()));
     }
   });
+});
+
+// The adopter-hosted catch token: refused when short, and scrubbed from a failed drain's warning.
+describe("external-public comms catch token", () => {
+  it("refuses a catch token shorter than 16 characters before the catch is probed", async () => {
+    const catchBase = "https://catch.example.test";
+    const probes: string[] = [];
+    const realFetch = globalThis.fetch;
+    vi.stubGlobal("fetch", async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input instanceof Request ? input.url : input);
+      if (!url.startsWith(catchBase)) return realFetch(input, init);
+      probes.push(url);
+      return new Response("", { status: 503 });
+    });
+    try {
+      const input = externalPublicConfig() as Record<string, unknown>;
+      const parsed = parseLabConfig({
+        ...input,
+        comms: { email: { external: { catchBaseUrl: catchBase, authTokenEnv: "CATCH_TOKEN" } } },
+      });
+      if (!parsed.ok) throw new Error(parsed.error.message);
+      const { hooks } = makeExternalHooks(makeExternalRunSession({ seen: [] }));
+      const result = await runConcurrentSharedWorld({
+        cwd,
+        config: parsed.config,
+        dryRun: false,
+        hooks: { ...hooks, env: { ...hooks.env, CATCH_TOKEN: "abc" } },
+      });
+      expect(result.ok).toBe(false);
+      expect(result.error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_TOKEN_TOO_SHORT");
+      expect(probes).toEqual([]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 
   it("scrubs the run's secrets and the catch token from a failed catch drain", async () => {
     // The catch passes its health check, then its drain fails with an error that quotes the
