@@ -1,9 +1,9 @@
 // runLab runs one lab. It normalizes the caller's options, binds a local browser study's desktop
 // and provider, and plans the lab once with planLab. A refused plan returns the route's own result
-// envelope before anything starts. A plan runs through one switch on plan.route into that route's
-// run function: runPreviewPlan, runComputerUsePlan, runScriptedPlan, runTerminalPlan or
-// runSharedWorldPlan. prepareLab is the same path in two steps, so the CLI can present a refusal
-// before it loads a declared review scorer.
+// envelope before anything starts. One switch on plan.route then calls the route's admit function,
+// which runs the route's local checks that need no scorer (today the terminal route's keys) and
+// returns the route's run. prepareLab is the same path in two steps, so the CLI can present either
+// refusal before it loads a declared review scorer.
 
 import type { AutomaticAnalysisHooks } from "./analysis/automatic-completion.js";
 import {
@@ -22,21 +22,21 @@ import {
 } from "./lab/run-lab-options.js";
 import { type LabConfig } from "./lab/types.js";
 import type { ObserverResult } from "./observer/render.js";
-import { computerUseLabRefusal, runComputerUsePlan } from "./routes/computer-use/route.js";
+import { admitComputerUsePlan, computerUseLabRefusal } from "./routes/computer-use/route.js";
 import { participantDesktopOf } from "./routes/computer-use/participant-desktop.js";
 import { type CuaActorLabHooks, type CuaActorLabResult } from "./routes/computer-use/types.js";
-import { previewLabRefusal, runPreviewPlan } from "./routes/preview.js";
-import { runScriptedPlan, scriptedLabRefusal } from "./routes/scripted/route.js";
+import { admitPreviewPlan, previewLabRefusal } from "./routes/preview.js";
+import { admitScriptedPlan, scriptedLabRefusal } from "./routes/scripted/route.js";
 import {
   type ScriptedBrowserLabHooks,
   type ScriptedBrowserLabResult,
 } from "./routes/scripted/types.js";
-import { runSharedWorldPlan, sharedWorldLabRefusal } from "./routes/shared-world/route.js";
+import { admitSharedWorldPlan, sharedWorldLabRefusal } from "./routes/shared-world/route.js";
 import {
   type ConcurrentSharedWorldLabResult,
   type SharedWorldLabHooks,
 } from "./routes/shared-world/types.js";
-import { runTerminalPlan, terminalLabRefusal } from "./routes/terminal/route.js";
+import { admitTerminalPlan, terminalLabRefusal } from "./routes/terminal/route.js";
 import {
   type TerminalProductLabHooks,
   type TerminalProductLabResult,
@@ -93,7 +93,12 @@ export async function prepareLab(config: LabConfig, options: RunLabOptions): Pro
     outcome.result.warnings.push(...normalized.warnings);
     return { ok: false, outcome };
   }
-  const { plan } = planned.planned;
+  const admitted = await admitPlan(lab, planning, planned.planned.plan);
+  if (!admitted.ok) {
+    await study?.close();
+    admitted.outcome.result.warnings.push(...normalized.warnings);
+    return { ok: false, outcome: admitted.outcome };
+  }
   return {
     ok: true,
     async run(scorer) {
@@ -107,7 +112,7 @@ export async function prepareLab(config: LabConfig, options: RunLabOptions): Pro
         study = localVm?.({ ...running.options, config: lab });
       }
       try {
-        const outcome = await runPlan(lab, study?.options ?? running.options, plan);
+        const outcome = await admitted.run(study?.options ?? running.options);
         outcome.result.warnings.push(...running.warnings);
         return outcome;
       } finally {
@@ -117,43 +122,23 @@ export async function prepareLab(config: LabConfig, options: RunLabOptions): Pro
   };
 }
 
-/** Runs a plan on its route with the run's options. */
-async function runPlan(
+/** The route's admit function for a plan: its refusal, or its run with the run's options. */
+async function admitPlan(
   config: LabConfig,
   options: RunLabOptions,
   plan: LabPlan,
-): Promise<LabOutcome> {
+): Promise<AdmittedPlan> {
   switch (plan.route) {
     case "preview":
-      return {
-        route: "preview",
-        backend: "synthetic",
-        result: await runPreviewPlan(plan, options),
-      };
+      return admitPreviewPlan(plan);
     case "computer-use":
-      return {
-        route: "computer-use",
-        backend: "cua",
-        result: await runComputerUsePlan(plan, computerUseInput(options), config),
-      };
+      return admitComputerUsePlan(plan, config);
     case "scripted":
-      return {
-        route: "scripted",
-        backend: "scripted",
-        result: await runScriptedPlan(plan, scriptedInput(options)),
-      };
+      return admitScriptedPlan(plan);
     case "terminal":
-      return {
-        route: "terminal",
-        backend: "terminal",
-        result: await runTerminalPlan(plan, terminalInput(options)),
-      };
+      return admitTerminalPlan(plan, terminalInput(options));
     case "shared-world":
-      return {
-        route: "shared-world",
-        backend: "concurrent-shared-world",
-        result: await runSharedWorldPlan(plan, sharedWorldInput(options), config),
-      };
+      return admitSharedWorldPlan(plan, config);
   }
 }
 
@@ -269,6 +254,17 @@ export type LabOutcome =
   | RouteOutcome<"scripted", "scripted", ScriptedBrowserLabResult>
   | RouteOutcome<"terminal", "terminal", TerminalProductLabResult>
   | RouteOutcome<"shared-world", "concurrent-shared-world", ConcurrentSharedWorldLabResult>;
+
+/**
+ * A plan past its route's local checks that need no scorer: the refusal they returned, or the
+ * route's run, which takes the run's options once a declared scorer has joined them.
+ */
+export type AdmittedPlan<R extends LabRoute = LabRoute> =
+  | { readonly ok: false; readonly outcome: Extract<LabOutcome, { route: R }> }
+  | {
+      readonly ok: true;
+      run(options: RunLabOptions): Promise<Extract<LabOutcome, { route: R }>>;
+    };
 
 /** The result of a run on route `R`, the `result` of that route's `LabOutcome`. */
 export type LabResult<R extends LabRoute = LabRoute> = {

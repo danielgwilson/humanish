@@ -47,6 +47,8 @@ import { runProvisionedPlane } from "./provisioned.js";
 import { concurrentLabFailure, finishConcurrentRun } from "./result.js";
 import { prepareConcurrentRun } from "./setup.js";
 import type { SharedWorldPlan } from "../../lab/plan-types.js";
+import { sharedWorldInput } from "../../lab/route-inputs.js";
+import type { AdmittedPlan } from "../../run-lab.js";
 import type { LabConfig } from "../../lab/types.js";
 import {
   type ConcurrentSharedWorldLabResult,
@@ -113,6 +115,21 @@ export function sharedWorldLabRefusal(
     options.automaticAnalysis,
     { trigger: config.review?.analysis === undefined ? "default" : "explicit" },
   );
+}
+
+/** runLab's step for a shared-world plan: its local checks run inside the run, so it returns the run. */
+export function admitSharedWorldPlan(
+  plan: SharedWorldPlan,
+  config: LabConfig,
+): AdmittedPlan<"shared-world"> {
+  return {
+    ok: true,
+    run: async (options) => ({
+      route: "shared-world",
+      backend: "concurrent-shared-world",
+      result: await runSharedWorldPlan(plan, sharedWorldInput(options), config),
+    }),
+  };
 }
 
 /**

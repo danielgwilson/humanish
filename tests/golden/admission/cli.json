@@ -259,6 +259,34 @@
     "subprocess": 0,
     "scorerRan": false
   },
+  "lab run adm-terminal-live --scorer ./scorer.mjs --json": {
+    "exitCode": 2,
+    "stdout": {
+      "schema": "humanish.terminal-lab-result.v1",
+      "ok": false,
+      "cwd": "[cwd]",
+      "labId": "adm-terminal-live",
+      "actor": "codex-exec",
+      "product": "widgetsmith-cli",
+      "dryRun": false,
+      "runId": "not-created",
+      "warnings": [],
+      "error": {
+        "code": "HUMANISH_TERMINAL_LAB_RUNTIME_AUTH_MISSING",
+        "message": "Live terminal-product labs declare runtimeAuth \"openai-env\" and need CODEX_API_KEY or OPENAI_API_KEY in the environment (pass via --env-file; the selected auth mode places the value in command-scoped env or an external E2B header transform; the value is never persisted)."
+      },
+      "automaticAnalysisTrigger": "default",
+      "automaticAnalysis": {
+        "state": "skipped",
+        "reason": "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE"
+      },
+      "runOk": false
+    },
+    "stderr": "",
+    "runs": false,
+    "subprocess": 0,
+    "scorerRan": false
+  },
   "watch adm-shared-live --port 99999": {
     "exitCode": 2,
     "stdout": "humanish lab concurrent-shared-world failed\nHUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED: --port must be an integer between 0 and 65535.\nrun: not-created\nlab: adm-shared-live\nactor: openai-computer-use\ntopology: shared-world/concurrent (2 personas, concurrency 2)\n",

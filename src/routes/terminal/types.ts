@@ -11,6 +11,7 @@ import type {
 import { type RunLabProvenance } from "../../run/status.js";
 import type { CostCategory } from "../../run/terminal-contract.js";
 import type { RunScope } from "../../run/run.js";
+import type { buildRuntimeAuth } from "./credentials.js";
 import type { TerminalPlan } from "../../lab/plan-types.js";
 import type { LabConfig } from "../../lab/types.js";
 import { type E2BDesktopModule } from "../../substrates/e2b/sdk.js";
@@ -391,15 +392,18 @@ export type TerminalRunInput = Omit<RunTerminalProductLabOptions, "config" | "dr
 /** A live terminal plan: its caps are the fail-closed ones planTerminalLab required. */
 export type LiveTerminalPlan = Extract<TerminalPlan, { readonly dryRun: false }>;
 
+export type TerminalProductLabErrorCode = NonNullable<TerminalProductLabResult["error"]>["code"];
+
+/** The runtime key's command-scoped placement, built by a live run's checks of this machine. */
+export type LiveTerminalAuth = Extract<ReturnType<typeof buildRuntimeAuth>, { ok: true }>;
+
 export interface RunLiveTerminalSessionArgs {
   plan: LiveTerminalPlan;
   input: TerminalRunInput;
   cwd: string;
   warnings: string[];
-  failed: (
-    code: NonNullable<TerminalProductLabResult["error"]>["code"],
-    message: string,
-  ) => TerminalProductLabResult;
+  failed: (code: TerminalProductLabErrorCode, message: string) => TerminalProductLabResult;
   /** The lab's run scope; the live session starts its run in it. */
   scope: RunScope;
+  runtimeEnv: LiveTerminalAuth;
 }

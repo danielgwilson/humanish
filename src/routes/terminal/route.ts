@@ -44,7 +44,7 @@ import { realpath } from "node:fs/promises";
 import path from "node:path";
 import { resolveCommittedPersona } from "../../lab/persona-resolve.js";
 import type { ActorPersonaRef } from "../../actors/contract.js";
-import { runScope, type RunScope } from "../../run/run.js";
+import { runScope, type FinishedRun, type RunScope } from "../../run/run.js";
 import { planTerminalLab, type TerminalRefusal } from "./plan.js";
 import {
   personaBrief,
@@ -58,9 +58,18 @@ import { prepareSelectedOutputDirectory } from "../../run/contained-output.js";
 import { buildRunSource, type RunEvent } from "../../run/bundle.js";
 import { judgeExecution, judgeTerminal, OUTCOME_POLICIES, resultOk } from "../../run/judge.js";
 import { buildTerminalProductBundle, renderTerminalReviewMarkdown } from "./bundle.js";
-import { defaultMission, makeTerminalRunId, runLiveTerminalSession } from "./session.js";
-import type { TerminalPlan } from "../../lab/plan-types.js";
 import {
+  checkLiveTerminalMachine,
+  defaultMission,
+  makeTerminalRunId,
+  runLiveTerminalSession,
+} from "./session.js";
+import type { TerminalPlan } from "../../lab/plan-types.js";
+import { terminalInput } from "../../lab/route-inputs.js";
+import type { AdmittedPlan } from "../../run-lab.js";
+import {
+  type LiveTerminalAuth,
+  type LiveTerminalPlan,
   type RunLiveTerminalSessionArgs,
   type RunTerminalProductLabOptions,
   TERMINAL_PRODUCT_LAB_SCHEMA,
@@ -114,6 +123,17 @@ export function terminalLabRefusal(
   );
 }
 
+/** A terminal plan past its local checks, with the warnings those checks wrote. */
+type AdmittedTerminalRun =
+  | { readonly plan: DryTerminalPlan; readonly warnings: string[] }
+  | {
+      readonly plan: LiveTerminalPlan;
+      readonly warnings: string[];
+      readonly runtimeEnv: LiveTerminalAuth;
+    };
+
+type DryTerminalPlan = Extract<TerminalPlan, { readonly dryRun: true }>;
+
 /**
  * Run a terminal plan. The run scope gives a direct library caller the same run lifetime the CLI
  * gets: whichever of its fail-closed exits the lab takes, the run it started is closed, and only a
@@ -123,9 +143,68 @@ export async function runTerminalPlan(
   plan: TerminalPlan,
   input: TerminalRunInput,
 ): Promise<TerminalProductLabResult> {
+  const admission = await admitTerminalRun(plan, input);
+  return admission.ok ? runAdmittedTerminalRun(admission.admitted, input) : admission.result;
+}
+
+/**
+ * runLab's step for a terminal plan. It runs a live plan's local checks (checkLiveTerminalMachine)
+ * before any run scope opens, so the CLI can present their refusal before it loads a declared
+ * scorer, and returns the run that continues from them.
+ */
+export async function admitTerminalPlan(
+  plan: TerminalPlan,
+  input: TerminalRunInput,
+): Promise<AdmittedPlan<"terminal">> {
+  const admission = await admitTerminalRun(plan, input);
+  if (!admission.ok) return { ok: false, outcome: terminalOutcome(admission.result) };
+  return {
+    ok: true,
+    run: async (options) =>
+      terminalOutcome(await runAdmittedTerminalRun(admission.admitted, terminalInput(options))),
+  };
+}
+
+function terminalOutcome(result: TerminalProductLabResult) {
+  return { route: "terminal", backend: "terminal", result } as const;
+}
+
+/**
+ * A live plan's local checks, made outside any run scope. A refusal is the result runTerminalPlan
+ * returns for it, with the analysis record of a run that never started.
+ */
+async function admitTerminalRun(
+  plan: TerminalPlan,
+  input: TerminalRunInput,
+): Promise<
+  | { readonly ok: false; readonly result: TerminalProductLabResult }
+  | { readonly ok: true; readonly admitted: AdmittedTerminalRun }
+> {
+  const warnings: string[] = [];
+  if (plan.dryRun) return { ok: true, admitted: { plan, warnings } };
+  const checked = checkLiveTerminalMachine(plan, input, warnings);
+  if (checked.ok) return { ok: true, admitted: { plan, warnings, runtimeEnv: checked.runtimeEnv } };
+  const refused = terminalFailure(plan, input, warnings)(checked.code, checked.message);
+  return { ok: false, result: await completeTerminalAnalysis(plan, input, refused, undefined) };
+}
+
+/** Runs an admitted plan in its own run scope, then its automatic analysis. */
+async function runAdmittedTerminalRun(
+  admitted: AdmittedTerminalRun,
+  input: TerminalRunInput,
+): Promise<TerminalProductLabResult> {
   const { result, finished } = await runScope((scope) =>
-    runTerminalPlanInScope(plan, input, scope),
+    runTerminalPlanInScope(admitted, input, scope),
   );
+  return completeTerminalAnalysis(admitted.plan, input, result, finished);
+}
+
+function completeTerminalAnalysis(
+  plan: TerminalPlan,
+  input: TerminalRunInput,
+  result: TerminalProductLabResult,
+  finished: FinishedRun | undefined,
+): Promise<TerminalProductLabResult> {
   return completeAutomaticAnalysis(
     result,
     finished,
@@ -138,17 +217,14 @@ export async function runTerminalPlan(
   );
 }
 
-async function runTerminalPlanInScope(
+/** The route's envelope for a run that stops before its bundle. */
+function terminalFailure(
   plan: TerminalPlan,
   input: TerminalRunInput,
-  scope: RunScope,
-): Promise<TerminalProductLabResult> {
+  warnings: string[],
+): RunLiveTerminalSessionArgs["failed"] {
   const cwd = path.resolve(input.cwd);
-  const warnings: string[] = [];
-  const failed = (
-    code: NonNullable<TerminalProductLabResult["error"]>["code"],
-    message: string,
-  ): TerminalProductLabResult => ({
+  return (code, message) => ({
     schema: TERMINAL_PRODUCT_LAB_SCHEMA,
     ok: false,
     cwd,
@@ -160,14 +236,27 @@ async function runTerminalPlanInScope(
     warnings,
     error: { code, message },
   });
+}
+
+async function runTerminalPlanInScope(
+  admitted: AdmittedTerminalRun,
+  input: TerminalRunInput,
+  scope: RunScope,
+): Promise<TerminalProductLabResult> {
+  const cwd = path.resolve(input.cwd);
+  const { warnings } = admitted;
+  const failed = terminalFailure(admitted.plan, input, warnings);
 
   // LIVE path: the real in-sandbox agent session. A separate orchestrator owns the
   // create -> inject (command-scoped) -> run -> capture -> teardown lifecycle so the dry-run path
   // below stays a pure contract builder. It enforces the safety contract by construction (the
   // keyPlacement-routed command-scoped key, the deny-by-default allowlist, the fail-closed cap,
   // the proven cleanup) and fails closed before any sandbox/key/spend on any precondition miss.
-  if (!plan.dryRun) return runLiveTerminalSession({ plan, input, cwd, warnings, failed, scope });
-  return runDryTerminalLab({ plan, input, cwd, warnings, failed, scope });
+  if ("runtimeEnv" in admitted) {
+    const { plan, runtimeEnv } = admitted;
+    return runLiveTerminalSession({ plan, input, cwd, warnings, failed, scope, runtimeEnv });
+  }
+  return runDryTerminalLab({ plan: admitted.plan, input, cwd, warnings, failed, scope });
 }
 
 /**

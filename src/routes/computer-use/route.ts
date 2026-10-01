@@ -28,6 +28,8 @@ import { completeAutomaticAnalysis } from "../../analysis/automatic-completion.j
 import { runScope, type RunScope } from "../../run/run.js";
 import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
 import type { ComputerUsePlan } from "../../lab/plan-types.js";
+import { computerUseInput } from "../../lab/route-inputs.js";
+import type { AdmittedPlan } from "../../run-lab.js";
 import type { LabConfig } from "../../lab/types.js";
 import { planComputerUseLab, type ComputerUseRefusal } from "./plan.js";
 import { finishCuaRun } from "./result.js";
@@ -99,6 +101,21 @@ export async function computerUseLabRefusal(
     options.automaticAnalysis,
     { trigger: config.review?.analysis === undefined ? "default" : "explicit" },
   );
+}
+
+/** runLab's step for a computer-use plan: its local checks run inside the run, so it returns the run. */
+export function admitComputerUsePlan(
+  plan: ComputerUsePlan,
+  config: LabConfig,
+): AdmittedPlan<"computer-use"> {
+  return {
+    ok: true,
+    run: async (options) => ({
+      route: "computer-use",
+      backend: "cua",
+      result: await runComputerUsePlan(plan, computerUseInput(options), config),
+    }),
+  };
 }
 
 /**

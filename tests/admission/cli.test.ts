@@ -33,6 +33,7 @@ const labs: Record<string, RawLab> = {
   "adm-clone-codex-app-server": lab("cuClone", {}, { type: "codex-app-server" }),
   "adm-clone-no-serve": lab("cuClone", { subject: { serve: undefined } }),
   "adm-cu-local-app": lab("cuLocalApp"),
+  "adm-terminal-live": lab("terminal", live),
 };
 
 // Writes a marker when imported, so a case can tell whether scorer host code ran.
@@ -63,6 +64,8 @@ const cases: readonly (readonly string[])[] = [
   // Missing keys win over an unpriced cap on computer use (F3); shared world checks price first.
   ["lab", "run", "adm-cu-unpriced", "--json"],
   ["lab", "run", "adm-shared-unpriced", "--json"],
+  // A terminal key refusal also comes before the scorer loads.
+  ["lab", "run", "adm-terminal-live", "--scorer", "./scorer.mjs", "--json"],
   ["watch", "adm-shared-live", "--port", "99999"],
   // A live run is never share_ready, so watch refuses --safe on every path (lab or not).
   ["watch", "adm-cu", "--safe", "--json"],
@@ -143,18 +146,20 @@ describe("CLI admission today", () => {
         // Human output and an empty stdout stay text.
       }
       const runs = (await readdir(path.join(cwd, ".humanish", "runs")).catch(() => [])).length;
+      const scorerRan = await access(path.join(cwd, "scorer-ran")).then(
+        () => true,
+        () => false,
+      );
       records[name] = {
         exitCode: result.exitCode,
         stdout: parsed,
         stderr: normalize(result.stderr, dirs),
         runs: runs > 0,
         subprocess: subprocess.calls,
-        scorerRan: await access(path.join(cwd, "scorer-ran")).then(
-          () => true,
-          () => false,
-        ),
+        scorerRan,
       };
       expect(runs).toBe(0);
+      expect(scorerRan).toBe(false);
     },
     60_000,
   );

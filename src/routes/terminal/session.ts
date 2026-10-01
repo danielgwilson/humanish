@@ -15,10 +15,52 @@ import { prepareSelectedOutputDirectory } from "../../run/contained-output.js";
 import { buildRunSource } from "../../run/bundle.js";
 import { renderTerminalReviewMarkdown } from "./bundle.js";
 import { buildRuntimeAuth, buildSandboxMetadata } from "./credentials.js";
-import type { RunLiveTerminalSessionArgs, TerminalProductLabResult } from "./types.js";
+import type {
+  LiveTerminalAuth,
+  LiveTerminalPlan,
+  RunLiveTerminalSessionArgs,
+  TerminalProductLabErrorCode,
+  TerminalProductLabResult,
+  TerminalRunInput,
+} from "./types.js";
 import { createTerminalRecorder } from "./recorder.js";
-import { LiveTerminalSandbox, type LiveSandboxInputs } from "./live-sandbox.js";
+import { LiveTerminalSandbox } from "./live-sandbox.js";
 import { finishLiveTerminalSession } from "./live-finish.js";
+
+/**
+ * The checks of this machine a live run makes before its run starts: the runtime key and
+ * E2B_API_KEY. They read only the plan and the environment, so the CLI makes them before it loads
+ * a declared scorer. Returns the runtime key's command-scoped placement, or the refusal.
+ */
+export function checkLiveTerminalMachine(
+  plan: LiveTerminalPlan,
+  input: TerminalRunInput,
+  warnings: string[],
+):
+  | { readonly ok: true; readonly runtimeEnv: LiveTerminalAuth }
+  | { readonly ok: false; readonly code: TerminalProductLabErrorCode; readonly message: string } {
+  const env = input.hooks?.env ?? process.env;
+  const { maxUsd } = plan.caps;
+  // planTerminalLab refuses a positive maxUsd without a costProbe, so one is present here.
+  if (maxUsd > 0) {
+    warnings.push(
+      `scenario.caps.maxUsd=${maxUsd} is checked after the session against the lines the costProbe measures; lines it leaves null (unmeasured) never trip it. scenario.caps.maxMinutes bounds the run while it runs.`,
+    );
+  }
+
+  // --- Safety contract item 4: deny-by-default credentials; build the command-scoped allowlist. ---
+  const runtimeEnv = buildRuntimeAuth({ runtimeAuth: plan.runtime.auth, env });
+  if (!runtimeEnv.ok) return runtimeEnv;
+  // The sandbox is created with E2B_API_KEY, so a missing key is refused before the run starts.
+  if (!env.E2B_API_KEY?.trim()) {
+    return {
+      ok: false,
+      code: "HUMANISH_TERMINAL_LAB_KEYS_MISSING",
+      message: `Live terminal-product labs need E2B_API_KEY in the environment (values are never persisted). ${describeMissingKeys(["E2B_API_KEY"], env)}`,
+    };
+  }
+  return { ok: true, runtimeEnv };
+}
 
 /**
  * The live in-sandbox agent session orchestrator (mirror of runCuaActorLab's E2B branch). Enforces
@@ -30,33 +72,13 @@ import { finishLiveTerminalSession } from "./live-finish.js";
 export async function runLiveTerminalSession(
   args: RunLiveTerminalSessionArgs,
 ): Promise<TerminalProductLabResult> {
-  const { plan, input, cwd, warnings, failed, scope } = args;
+  const { plan, input, cwd, warnings, failed, scope, runtimeEnv } = args;
   const { actor, product } = plan;
   const { maxUsd, maxMinutes } = plan.caps;
   const hooks = input.hooks ?? {};
   const env = hooks.env ?? process.env;
   const now = hooks.now ?? (() => Date.now());
   const nowIso = (): string => new Date(now()).toISOString();
-
-  // planTerminalLab refuses a positive maxUsd without a costProbe, so one is present here.
-  if (maxUsd > 0) {
-    warnings.push(
-      `scenario.caps.maxUsd=${maxUsd} is checked after the session against the lines the costProbe measures; lines it leaves null (unmeasured) never trip it. scenario.caps.maxMinutes bounds the run while it runs.`,
-    );
-  }
-
-  // --- Safety contract item 4: deny-by-default credentials; build the command-scoped allowlist. ---
-  const runtimeEnv = buildRuntimeAuth({ runtimeAuth: plan.runtime.auth, env });
-  if (!runtimeEnv.ok) {
-    return failed(runtimeEnv.code, runtimeEnv.message);
-  }
-  // The sandbox is created with E2B_API_KEY, so a missing key is refused before the run starts.
-  if (!env.E2B_API_KEY?.trim()) {
-    return failed(
-      "HUMANISH_TERMINAL_LAB_KEYS_MISSING",
-      `Live terminal-product labs need E2B_API_KEY in the environment (values are never persisted). ${describeMissingKeys(["E2B_API_KEY"], env)}`,
-    );
-  }
 
   const prepared = await prepareLivePrompt({ plan, cwd, runtimeEnv, env, warnings });
   const { mission, physicalCwd, persona, composedPrompt, verdictNonce } = prepared;
@@ -161,7 +183,7 @@ export async function runLiveTerminalSession(
 async function prepareLivePrompt(args: {
   plan: RunLiveTerminalSessionArgs["plan"];
   cwd: string;
-  runtimeEnv: LiveSandboxInputs["runtimeEnv"];
+  runtimeEnv: LiveTerminalAuth;
   env: Record<string, string | undefined>;
   warnings: string[];
 }) {
