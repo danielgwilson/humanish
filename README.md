@@ -10,7 +10,7 @@ per-task completion funnels, participant outcomes with the denominator
 attached, and estimated cost lines. A fail-closed share-safety gate decides what
 goes into feedback drafts, export bundles and a `serve --safe` library, and the
 end of the pipeline is a public-safe feedback draft you can turn into a real
-issue. Committed study source lives under `humanish/`; run evidence lands under
+issue. Committed lab source lives under `humanish/`; run evidence lands under
 gitignored `.humanish/`.
 
 [![The Observer grid of a saved eight-participant study: eight desktops in one multiplayer lobby, each tile a participant's live screen](https://humanish.dev/runs/lobby-0927/poster.jpg)](https://humanish.dev/demo)
@@ -81,7 +81,7 @@ ahead of time. Supported Macs use Lima instead of Docker Desktop.
 use a separate media runtime. [Optional desktop video/audio](docs/architecture/desktop-recording.md)
 adds continuous Observer playback; screenshots remain the default. [Local captured inboxes](docs/architecture/comms-inbox.md#local-browser-studies) support email verification without mailbox-provider credentials.
 
-For a new local study, initialize with your app URL and task:
+For a new local lab, initialize with your app URL and task:
 
 ```bash
 npx humanish init --yes \
@@ -318,7 +318,7 @@ from the shipped CLI in the [command reference](https://humanish.dev/docs/cli).
 
 | Command                                                  | Purpose                                                                   |
 | -------------------------------------------------------- | ------------------------------------------------------------------------- |
-| `humanish init --yes`                                    | Scaffold study source and ignored runtime state.                          |
+| `humanish init --yes`                                    | Scaffold lab source and ignored runtime state.                            |
 | `humanish doctor --lab <lab> --json`                     | Check the selected route's setup without exposing key values or spending. |
 | `humanish lab list --json`                               | List available labs.                                                      |
 | `humanish lab inspect <lab> --json`                      | Read a lab before running it.                                             |

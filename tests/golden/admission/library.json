@@ -2,7 +2,7 @@
   "smtp on shared world": {
     "parser": {
       "code": "HUMANISH_LAB_INVALID",
-      "message": "SMTP capture is not yet wired for shared-world studies. Use per-lane worlds for SMTP, or configure supported HTTP email capture for concurrent shared-world studies."
+      "message": "SMTP capture is not yet wired for shared-world labs. Use per-lane worlds for SMTP, or configure supported HTTP email capture for concurrent shared-world labs."
     },
     "runLab": {
       "runs": true,
@@ -186,7 +186,7 @@
   "real receiving on scripted": {
     "parser": {
       "code": "HUMANISH_LAB_INVALID",
-      "message": "Real email receiving requires a hosted computer-use browser study with an app-url, clone, or local-tree subject. Scripted, terminal, desktop-cli and local-app routes are unsupported."
+      "message": "Real email receiving requires a hosted computer-use browser lab with an app-url, clone, or local-tree subject. Scripted, terminal, desktop-cli and local-app routes are unsupported."
     },
     "runLab": {
       "runs": false,
@@ -210,7 +210,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID",
-          "message": "Real email receiving is unsupported on the scripted route. Use a supported hosted computer-use browser study."
+          "message": "Real email receiving is unsupported on the scripted route. Use a supported hosted computer-use browser lab."
         }
       }
     },
@@ -2093,7 +2093,7 @@
   "shared world concurrency 1": {
     "parser": {
       "code": "HUMANISH_LAB_INVALID",
-      "message": "shared-world studies need `execution.concurrency` of at least 2 (got 1). Sequential shared-world turns (concurrency 1) were removed in 0.106.0: omit execution.concurrency to run every participant at once, or set it to 2 or more. A provisioned subject also needs `subject.exposure: synthetic` and a `serve.start` that binds 0.0.0.0."
+      "message": "shared-world labs need `execution.concurrency` of at least 2 (got 1). Sequential shared-world turns (concurrency 1) were removed in 0.106.0: omit execution.concurrency to run every participant at once, or set it to 2 or more. A provisioned subject also needs `subject.exposure: synthetic` and a `serve.start` that binds 0.0.0.0."
     },
     "runLab": {
       "runs": false,
@@ -2120,7 +2120,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
-          "message": "shared-world studies need `execution.concurrency` of at least 2 (got 1). Sequential shared-world turns (concurrency 1) were removed in 0.106.0: omit execution.concurrency to run every participant at once, or set it to 2 or more. A provisioned subject also needs `subject.exposure: synthetic` and a `serve.start` that binds 0.0.0.0."
+          "message": "shared-world labs need `execution.concurrency` of at least 2 (got 1). Sequential shared-world turns (concurrency 1) were removed in 0.106.0: omit execution.concurrency to run every participant at once, or set it to 2 or more. A provisioned subject also needs `subject.exposure: synthetic` and a `serve.start` that binds 0.0.0.0."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -2852,7 +2852,7 @@
   "analysis on preview": {
     "parser": {
       "code": "HUMANISH_LAB_INVALID",
-      "message": "review.analysis requires a computer-use, scripted-browser, terminal-product or shared-world study; this lab's route does not produce an eligible live recording."
+      "message": "review.analysis requires a computer-use, scripted-browser, terminal-product or shared-world lab; this lab's route does not produce an eligible live recording."
     },
     "runLab": {
       "runs": false,
@@ -2870,7 +2870,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_LAB_ANALYSIS_UNSUPPORTED",
-          "message": "review.analysis requires a computer-use, scripted-browser, terminal-product or shared-world study; this lab's route does not produce an eligible live recording."
+          "message": "review.analysis requires a computer-use, scripted-browser, terminal-product or shared-world lab; this lab's route does not produce an eligible live recording."
         }
       }
     },
@@ -4087,7 +4087,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID",
-          "message": "Real email receiving is unsupported on the scripted route. Use a supported hosted computer-use browser study."
+          "message": "Real email receiving is unsupported on the scripted route. Use a supported hosted computer-use browser lab."
         }
       }
     },
@@ -4122,7 +4122,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_TERMINAL_LAB_SUBJECT_INVALID",
-          "message": "Real email receiving is unsupported on the terminal route. Use a supported hosted computer-use browser study."
+          "message": "Real email receiving is unsupported on the terminal route. Use a supported hosted computer-use browser lab."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {

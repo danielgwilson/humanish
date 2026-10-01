@@ -72,7 +72,7 @@ function tryLiveLab(actor: StarterActor, localAgent: LocalAgentId = "codex"): St
   run stops before its next model request once the estimate passes $2, so the last request can take
   it slightly over. Hosted desktop time is billed separately.`;
   const participant = account
-    ? `  # Your machine has a coding agent signed in, so this study uses it: no provider API key,
+    ? `  # Your machine has a coding agent signed in, so this lab uses it: no provider API key,
   # only E2B. To use a provider key instead, swap to \`type: openai-computer-use\` and add
   # execution.caps.maxUsd.
   - type: local-agent

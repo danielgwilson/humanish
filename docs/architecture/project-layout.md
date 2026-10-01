@@ -3,11 +3,11 @@
 `humanish init` gives a project two roots:
 
 ```text
-humanish/   # committed study source
+humanish/   # committed lab source
 .humanish/  # ignored runtime state, evidence and local overrides
 ```
 
-## Committed study source: `humanish/`
+## Committed lab source: `humanish/`
 
 `init` writes:
 
@@ -16,7 +16,7 @@ humanish/
   README.md
   labs/
     first-run.yaml          # keyless preview
-    try-live.yaml           # first live study
+    try-live.yaml           # first live lab
     cua-browser.yaml        # computer-use participants on a hosted desktop
     local-browser.yaml      # computer-use participants on a local desktop
     lobby-trivia-3player.yaml
@@ -53,7 +53,7 @@ secrets. `init` adds `.humanish/` to `.gitignore`.
 
 ## Formats
 
-- `.yaml` for human-authored study source: labs, personas, scenarios.
+- `.yaml` for human-authored source: labs, personas, scenarios.
   Prefer `.yaml` over `.yml`.
 - `.mjs` for executable adopter scorers.
 - `.json` for generated artifacts and synthetic fixtures; `.ndjson` for
