@@ -801,9 +801,10 @@ describe("serve: safe mode resilience", () => {
       (await fetch(new URL("/_humanish/runs/cache-ready/observer/index.html", server.url))).status,
     ).toBe(200);
 
-    // One verify per run covers startup, both history requests and the page: nothing in either
-    // run changed, and serving a page writes nothing into the run.
-    expect(callsFor("cache-ready")).toBe(1);
+    // Startup covers both history requests and the page: nothing in either run changed, and
+    // serving a page writes nothing into the run. The admitted run verifies twice (to decide,
+    // then between its pinned hashes); the refused run only once.
+    expect(callsFor("cache-ready")).toBe(2);
     expect(callsFor("cache-blocked")).toBe(1);
 
     // Clean the blocked run by restoring the pre-secret event log. run.json is untouched.
@@ -820,8 +821,8 @@ describe("serve: safe mode resilience", () => {
       "cache-blocked",
       "cache-ready",
     ]);
-    expect(callsFor("cache-blocked")).toBe(2);
-    expect(callsFor("cache-ready")).toBe(1);
+    expect(callsFor("cache-blocked")).toBe(3);
+    expect(callsFor("cache-ready")).toBe(2);
 
     expect(
       (await fetch(new URL("/_humanish/runs/cache-blocked/observer/index.html", server.url)))

@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { LibraryHistory } from "../../src/observer/library.js";
 import { pinDirectory } from "../../src/observer/pinned-files.js";
+import * as runInventory from "../../src/observer/run-inventory.js";
 import { readRunInventory, type AdmittedRun } from "../../src/observer/run-inventory.js";
 import {
   createServeRequestHandler,
@@ -72,7 +73,8 @@ describe.each(modes)("%s after admission", (_label, overrides) => {
     expect(server.shareReadyCount).toBe(1);
     expect((await get(server.url, runPath("observer/index.html"))).status).toBe(200);
     expect((await get(server.url, runPath("review.md"))).status).toBe(200);
-    expect(verify).toHaveBeenCalledTimes(1);
+    // Admission verifies twice: once to decide, then once between the pinned hashes.
+    expect(verify).toHaveBeenCalledTimes(2);
 
     await writeFile(path.join(runRoot, "notes.txt"), SECRET_LINE);
 
@@ -83,7 +85,8 @@ describe.each(modes)("%s after admission", (_label, overrides) => {
     expect((await get(server.url, runPath("observer/index.html"))).status).toBe(404);
     const history = JSON.parse((await get(server.url, "/_humanish/history.json")).body);
     expect((history as LibraryHistory).runs).toEqual([]);
-    expect(verify).toHaveBeenCalledTimes(2);
+    // The changed run is refused on its deciding verify, so nothing is hashed or verified again.
+    expect(verify).toHaveBeenCalledTimes(3);
   });
 
   it("does not serve a file modified after admission", async () => {
@@ -125,6 +128,23 @@ async function startHandler(
   hosts.add(`127.0.0.1:${address.port}`);
   return `http://127.0.0.1:${address.port}/`;
 }
+
+describe("a run verify refuses", () => {
+  it("is refused before any of its files is hashed", async () => {
+    const { cwd } = await admittedRun();
+    const hash = vi.spyOn(runInventory, "hashRunInventory");
+    const refuse = async () => ({ ok: true, shareSafety: { status: "local_only" } });
+    const refusing = createShareSafetyAdmission(cwd, {
+      verifyImpl: refuse as unknown as typeof verifyRun,
+    });
+    expect(await refusing.admit(RUN)).toBeNull();
+    expect(hash).not.toHaveBeenCalled();
+
+    // The same run, admitted: hashed before and after the verify the served bytes are pinned to.
+    expect(await createShareSafetyAdmission(cwd).admit(RUN)).not.toBeNull();
+    expect(hash).toHaveBeenCalledTimes(2);
+  });
+});
 
 // These handlers are given an admission taken before the change, as when a write lands between a
 // request's walk and its read.
@@ -189,10 +209,11 @@ describe("a change that lands after the admission walk", () => {
     });
 
     expect((await get(base, runPath("review.json"))).status).toBe(200);
-    expect(verify).toHaveBeenCalledTimes(1);
+    // Each admission verifies twice: once to decide, then once between the pinned hashes.
+    expect(verify).toHaveBeenCalledTimes(2);
     expect((await get(base, runPath("review.md"))).status).toBe(404);
     expect((await get(base, runPath("review.json"))).status).toBe(200);
-    expect(verify).toHaveBeenCalledTimes(2);
+    expect(verify).toHaveBeenCalledTimes(4);
   });
 
   it("lists history fields from the admitted run only", async () => {

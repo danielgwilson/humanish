@@ -445,6 +445,10 @@ are the `HUMANISH_*` names `src/` read or returned at 0.105.0 and no longer does
 
 ### Fixes
 
+- `humanish serve --safe` verifies a run before it hashes the run's files, so a run that verify
+  grades below `share_ready` is refused without reading its bytes (#1326). A library holding one
+  refused run with a 2 GiB file took about 1.7 s to start; it now starts in under 60 ms. An
+  admitted run is verified once more, about 13 ms for a dry-run bundle.
 - `humanish analyze` uses an OpenAI key saved with `humanish keys set` or in
   `.humanish/local/provider.env` (#1314). It read only the environment, so it failed with
   `ANALYSIS_API_KEY_MISSING` for a key that `lab run` found. A dry run and the Codex analyst still
