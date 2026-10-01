@@ -38,6 +38,7 @@ import {
 import { parseBrowserPersonaJourneyFromScenario } from "../../src/actors/scripted-browser/journey.js";
 import { resolveBrowserCommand } from "../../src/actors/scripted-browser/browser-command.js";
 import { syntheticPng1x1 } from "../image-fixtures.js";
+import { evaluatePagePredicate } from "../helpers/scripted-page-predicate.js";
 
 const PNG_1X1 = syntheticPng1x1();
 
@@ -96,11 +97,9 @@ function makeFakeBrowser(options: FakeAppOptions = {}): {
     },
     locator: locatorFor,
     waitForTimeout: async () => undefined,
-    waitForFunction: async (_fn, needle) => {
-      if (typeof needle === "string" && state.body.includes(needle)) {
-        return undefined;
-      }
-      throw new Error(`Timeout waiting for text ${String(needle)}`);
+    waitForFunction: async (expression) => {
+      if (evaluatePagePredicate(expression, state.body)) return undefined;
+      throw new Error(`Timeout waiting for ${expression}`);
     },
     screenshot: async ({ path: screenshotPath }) => {
       await options.screenshotHook?.();
@@ -277,6 +276,26 @@ describe("runScriptedBrowserSession (completion semantics through the REAL step 
       expect(result.reason).toContain("step-03-submit");
       expect(result.trace.counts.blocked).toBeGreaterThan(0);
       expect(result.trace.status).toBe("failed");
+    });
+  });
+
+  it("step_failed: the state changes but the expected text never appears", async () => {
+    await withHttpServer(async (appUrl) => {
+      const { browser } = makeFakeBrowser({ bodyAfterClick: "Request received" });
+      const result = await runScriptedBrowserSession({
+        appUrl,
+        journey: demoJourney(),
+        surface,
+        persona,
+        timeoutMs: 2_000,
+        artifactRoot,
+        launchBrowser: async () => browser,
+      });
+
+      expect(result.completionReason).toBe("step_failed");
+      expect(result.reason).toContain("step-04-confirm");
+      const confirm = result.capture.steps.find((step) => step.id === "step-04-confirm");
+      expect(confirm?.status).not.toBe("passed");
     });
   });
 

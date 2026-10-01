@@ -203,9 +203,11 @@ async function waitForPageText(
   expectedText: string,
   timeoutMs: number,
 ): Promise<void> {
+  // Playwright evaluates a string predicate as an expression and never calls it, so a
+  // function-shaped string resolves at once to a truthy function. The needle is inlined instead.
   await page.waitForFunction(
-    "(needle) => typeof needle === 'string' && Boolean(document.body?.innerText.includes(needle))",
-    expectedText,
+    `document.body?.innerText.includes(${JSON.stringify(expectedText)}) === true`,
+    undefined,
     { timeout: timeoutMs },
   );
 }
