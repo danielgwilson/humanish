@@ -102,24 +102,26 @@ export default function FailureModes() {
           <div className="fm-prose">
             <p className="sec-sub rev">
               <b>Missions are bounded and the clock is published.</b> The Excalidraw study ran four
-              lanes to completion in 6m 06s wall-clock at ~$1.54 estimated (run{" "}
+              participants to completion in 6m 06s wall-clock at ~$1.54 estimated (run{" "}
               <code>cua-2026-08-07T17-44-48-760Z-87389419</code>, rates as of 2026-08-05). Nothing
               in the shipped labs asks an actor to hold an hour-plus goal, because the benchmark
               above says it would fail about four times in five.
             </p>
             <p className="sec-sub rev">
-              <b>A stalled lane records why it stopped and fails.</b> <code>humanish</code> trips a
-              backstop after N consecutive turns in which the participant repeats a recent action
-              and the UI state does not change, and writes the reason into the bundle verbatim:
-              &ldquo;gave up: N consecutive turns that repeated a recent action on an unchanged UI
-              state&rdquo;. An unchanged screen alone no longer counts, since <Issue n={383} /> on
-              2026-08-08. The Excalidraw study ran the day before, under the older rule and wording:
-              lane 03 <code>sketch-shapes</code> recorded &ldquo;gave up: 8 consecutive turns with
-              no change to the UI state&rdquo;, and the study publishes as 3/4 rather than 4/4.
+              <b>A stalled participant records why it stopped and fails.</b> <code>humanish</code>{" "}
+              trips a backstop after N consecutive turns in which the participant repeats a recent
+              action and the UI state does not change, and writes the reason into the bundle
+              verbatim: &ldquo;gave up: N consecutive turns that repeated a recent action on an
+              unchanged UI state&rdquo;. An unchanged screen alone no longer counts, since{" "}
+              <Issue n={383} /> on 2026-08-08. The Excalidraw study ran the day before, under the
+              older rule and wording: participant 03 <code>sketch-shapes</code> recorded &ldquo;gave
+              up: 8 consecutive turns with no change to the UI state&rdquo;, and the study publishes
+              as 3/4 rather than 4/4.
             </p>
             <p className="sec-sub rev">
-              <b>Our own site study lost half its lanes to this.</b> Four cold-visitor lanes ran
-              against the live humanish.dev on 2026-08-08 and recorded the older wording:
+              <b>Our own site study lost half its participants to this.</b> Four cold-visitor
+              participants ran against the live humanish.dev on 2026-08-08 and recorded the older
+              wording:
             </p>
           </div>
 
@@ -133,7 +135,7 @@ export default function FailureModes() {
               <dd>2026-08-08</dd>
             </div>
             <div>
-              <dt>Lanes</dt>
+              <dt>Participants</dt>
               <dd>2/4 passed</dd>
             </div>
             <div>
@@ -145,14 +147,14 @@ export default function FailureModes() {
               <dd>~$3.57 · estimated (rates as of 2026-08-05)</dd>
             </div>
             <div>
-              <dt>Dead lanes</dt>
+              <dt>Failed participants</dt>
               <dd>~$1.91 of ~$3.57</dd>
             </div>
           </dl>
 
           <div className="ledger fm-ledger rev">
             <div className="lh">
-              <span>Lane · persona</span>
+              <span>Participant · persona</span>
               <span>Outcome · run</span>
             </div>
             <div className="lrow">
@@ -189,14 +191,14 @@ export default function FailureModes() {
 
           <div className="fm-prose">
             <p className="sec-sub rev">
-              Both dead lanes died on our own page. Inside the scroll-pinned replay section, a
-              scroll that doesn&rsquo;t cross a step threshold changes nothing visually, so eight
-              small scrolls produce eight identical screenshots and the staleness guard concludes
-              the lane is spinning. The screenshots show the actor had stepped several panels before
-              it stalled, so it was making progress in the page&rsquo;s own terms. Filed as{" "}
-              <Issue n={393} /> and fixed on 2026-08-11: scroll position is now part of the state
-              the guard compares. The two dead lanes account for ~$1.91 of the study&rsquo;s ~$3.57
-              estimated total.
+              Both failed participants died on our own page. Inside the scroll-pinned replay
+              section, a scroll that doesn&rsquo;t cross a step threshold changes nothing visually,
+              so eight small scrolls produce eight identical screenshots and the staleness guard
+              concludes the participant is spinning. The screenshots show the actor had stepped
+              several panels before it stalled, so it was making progress in the page&rsquo;s own
+              terms. Filed as <Issue n={393} /> and fixed on 2026-08-11: scroll position is now part
+              of the state the guard compares. The two failed participants account for ~$1.91 of the
+              study&rsquo;s ~$3.57 estimated total.
             </p>
             <p className="sec-sub rev">
               That finding cuts against us twice. The guard is our own heuristic, and the page it
@@ -228,14 +230,14 @@ export default function FailureModes() {
               output read more plausibly without making it more accurate.
             </p>
             <p className="sec-sub rev">
-              <b>What humanish does:</b> lanes do not predict clicks. A lane executes a declared
-              mission in a real browser on a hosted desktop, and the bundle records the actions
-              taken, the screenshots seen, and the outcome. humanish publishes no click-distribution
-              claim and no population match. Our own design notes concede the harder version of
-              this: at the kinematic level of pointer paths, timing, and motor noise, the gap
-              between agents and people is total and trivially detectable <Cite id="2604.09574" />,
-              and fidelity here is scoped to which affordances an actor used, not to behavioral
-              realism.
+              <b>What humanish does:</b> participants do not predict clicks. A participant executes
+              a declared mission in a real browser on a hosted desktop, and the bundle records the
+              actions taken, the screenshots seen, and the outcome. humanish publishes no
+              click-distribution claim and no population match. Our own design notes concede the
+              harder version of this: at the kinematic level of pointer paths, timing, and motor
+              noise, the gap between agents and people is total and trivially detectable{" "}
+              <Cite id="2604.09574" />, and fidelity here is scoped to which affordances an actor
+              used, not to behavioral realism.
             </p>
           </div>
 
@@ -264,14 +266,14 @@ export default function FailureModes() {
             </p>
             <p className="sec-sub rev">
               <b>What humanish does:</b> the actor and model are recorded in every bundle. The four
-              self-study lanes above ran <code>openai-responses-cu</code> on <code>gpt-5.5</code>;
-              swapping that model would move the results by an amount we have not measured and do
-              not claim to know. humanish makes no representativeness claim and emits no segment
-              comparison. That last omission is deliberate. Across the General Social Survey and the
-              World Values Survey, LLM synthetic respondents &ldquo;inflate between-segment gaps two
-              to fourfold&rdquo; and &ldquo;would direct a team to the wrong segment in half of U.S.
-              and most cross-cultural cases,&rdquo; and at the individual level &ldquo;no LLM beats
-              even the strongest baseline&rdquo;{" "}
+              self-study participants above ran <code>openai-responses-cu</code> on{" "}
+              <code>gpt-5.5</code>; swapping that model would move the results by an amount we have
+              not measured and do not claim to know. humanish makes no representativeness claim and
+              emits no segment comparison. That last omission is deliberate. Across the General
+              Social Survey and the World Values Survey, LLM synthetic respondents &ldquo;inflate
+              between-segment gaps two to fourfold&rdquo; and &ldquo;would direct a team to the
+              wrong segment in half of U.S. and most cross-cultural cases,&rdquo; and at the
+              individual level &ldquo;no LLM beats even the strongest baseline&rdquo;{" "}
               <Cite work="When Synthetic Users Fail" id="2607.26348" />. There is no survey path in
               humanish, and there is no demographic-segment output.
             </p>
@@ -292,7 +294,7 @@ export default function FailureModes() {
             <p className="sec-sub rev">
               <b>What humanish does:</b> reports ship verbatim and sit next to the trace that
               produced them, so the words can be checked against the actions. The Excalidraw
-              study&rsquo;s three passing lanes reported, in full, &ldquo;Done&rdquo;,
+              study&rsquo;s three passing participants reported, in full, &ldquo;Done&rdquo;,
               &ldquo;Done.&rdquo; and &ldquo;Done&rdquo; &mdash; worth nearly nothing on their own,
               which is the reason they are published beside 28 screenshots, ordered action traces,
               and lifecycle events rather than as a testimonial. humanish does not ask personas to
@@ -313,9 +315,9 @@ export default function FailureModes() {
               worse, which means a happy-path demo is evidence of a compliant simulator.
             </p>
             <p className="sec-sub rev">
-              <b>What humanish does:</b> failed lanes are published at the same weight as passing
-              ones. The Excalidraw study ships as 3/4. The self-study ships as 2/4. Neither number
-              was tuned up before publication.
+              <b>What humanish does:</b> failed participants are published at the same weight as
+              passing ones. The Excalidraw study ships as 3/4. The self-study ships as 2/4. Neither
+              number was tuned up before publication.
             </p>
           </div>
         </section>
@@ -355,10 +357,10 @@ export default function FailureModes() {
               16/16 and produced a draft. The draft was wrong. Its <code>actual</code> field read
               &ldquo;This dry-run produced a contract-proof bundle only; no browser or product
               behavior was exercised&rdquo; &mdash; on a live run with 15 redacted screenshots and a
-              real action trace. The lane&rsquo;s own outcome, its gave-up reason, the subject URL,
-              and the screenshot counts appear nowhere in the draft. Filed as <Issue n={392} />. The
-              share-safety gate worked. The drafter did not. Until #392 closes, read the bundle, not
-              the draft.
+              real action trace. The participant&rsquo;s own outcome, its gave-up reason, the
+              subject URL, and the screenshot counts appear nowhere in the draft. Filed as{" "}
+              <Issue n={392} />. The share-safety gate worked. The drafter did not. Until #392
+              closes, read the bundle, not the draft.
             </p>
           </div>
 
@@ -367,8 +369,8 @@ export default function FailureModes() {
             <p className="sec-sub rev">
               Verify has no opinion on whether a finding is true, whether the mission was worth
               running, or whether the persona behaved like a person would. It checks that the
-              instrument reported honestly about itself. A green lane is a lane that ran and
-              reported, and nothing further.
+              instrument reported honestly about itself. A green participant is a participant that
+              ran and reported, and nothing further.
             </p>
             <p className="sec-sub rev">
               Outcome-only scoring is known to be blind to how a result was reached.
@@ -460,7 +462,7 @@ export default function FailureModes() {
             <div className="cmd-row">
               <b>Accessibility conclusions.</b>
               <p>
-                Lanes drive a standard desktop browser at 1920&times;1080 and record no
+                Participants drive a standard desktop browser at 1920&times;1080 and record no
                 assistive-technology path.
               </p>
             </div>

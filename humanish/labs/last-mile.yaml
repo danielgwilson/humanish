@@ -1,6 +1,6 @@
 schema: humanish.lab.v2
 id: last-mile
-title: How far a coding agent gets toward a real study, with no keys (self-study, terminal lane)
+title: How far a coding agent gets toward a real study, with no keys (self-study, terminal route)
 description: >
   first-contact measured whether an agent can find humanish and get it running. It can. What no
   lab has measured is the LAST MILE: whether an agent can take a person from "installed" to a
@@ -18,8 +18,8 @@ description: >
      invented subcommand is a docs defect with a precise address.
   2. WHERE it looked for key setup, and what it tried first. humanish names its env vars in a
      small number of places; if the agent never reaches them, that is evidence about those pages.
-  3. Did it correctly identify which credentials are needed for which lane? Choosing the wrong
-     lane is a different failure from not finding the keys, and the fixes are different.
+  3. Did it correctly identify which credentials are needed for which route? Choosing the wrong
+     route is a different failure from not finding the keys, and the fixes are different.
   4. Did it believe it had succeeded when it had not? A confident wrong summary is the worst
      outcome and the one most likely to reach a real adopter's teammate.
   Committed as mode: dry-run, so the checked-in fixture builds a contract bundle at $0 and

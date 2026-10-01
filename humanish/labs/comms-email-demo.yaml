@@ -26,11 +26,11 @@ comms:
       # verify the app passes the env through, since a live run whose catch captured zero sends
       # warns at teardown for exactly this.
       #
-      # No `recipients` list: every lane below automatically gets its own deterministic
+      # No `recipients` list: every participant below automatically gets its own deterministic
       # address (signup-a@example.test, signup-b@example.test) and its prompt carries the
       # full handoff — the address to sign up with, the inbox URL, and the wait steering.
-      # Declare recipients only to customize addresses or limit which lanes do email; a
-      # recipient naming a lane that does not exist is a hard parse error.
+      # Declare recipients only to customize addresses or limit which participants do email; a
+      # recipient naming a participant id that does not exist is a hard parse error.
 actors:
   - type: openai-computer-use # REAL dispatch key: resolves in the actor registry
     mission: Sign up with the email address in your instructions, verify it from your inbox, and reach the dashboard.
@@ -42,11 +42,11 @@ actors:
         persona: impatient-skimmer
         instruction: Create an account; if any step is confusing, note the friction — but complete the email verification before stopping.
 execution:
-  target: e2b-desktop # both lanes run at once (the default: concurrency = seat count)
+  target: e2b-desktop # both participants run at once (the default: concurrency = participant count)
   # 20 minutes. A signup-plus-wait-for-email flow is the LONGEST thing this harness runs, and this
   # lab used to ship 180s — every adopter copying it started in a hole. 20m + the clone route's 30m
   # provisioning + 10m teardown headroom exactly fits the 1-hour sandbox cap.
-  timeoutMs: 1200000 # PER-LANE session budget
+  timeoutMs: 1200000 # PER-PARTICIPANT session budget
 scenario:
   mode: dry-run # committed fixture stays contract-only; live needs OPENAI_API_KEY + E2B_API_KEY
 defaults:

@@ -695,7 +695,7 @@
   "fanout-demo": {
     "dry": {
       "labId": "fanout-demo",
-      "title": "Multi-lane computer-use fan-out (per-lane worlds, deterministic dry-run)",
+      "title": "Multi-participant computer-use fan-out (separate worlds, deterministic dry-run)",
       "residual": {
         "execution": {
           "target": "e2b-desktop"
@@ -848,7 +848,7 @@
   "first-contact": {
     "dry": {
       "labId": "first-contact",
-      "title": "A coding agent meets humanish for the first time (self-study, terminal lane)",
+      "title": "A coding agent meets humanish for the first time (self-study, terminal route)",
       "residual": {
         "policies": {
           "allowPrivateRepoAccess": false,
@@ -1007,7 +1007,7 @@
   "last-mile": {
     "dry": {
       "labId": "last-mile",
-      "title": "How far a coding agent gets toward a real study, with no keys (self-study, terminal lane)",
+      "title": "How far a coding agent gets toward a real study, with no keys (self-study, terminal route)",
       "residual": {
         "policies": {
           "allowPrivateRepoAccess": false,

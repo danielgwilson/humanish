@@ -3,7 +3,7 @@ id: shared-world-concurrent-demo
 title: Concurrent shared-world (N personas vs ONE service at once; deterministic dry-run)
 description: >
   THREE distinct personas drive ONE provisioned, mutable service plane SIMULTANEOUSLY — the actual
-  leverage of a sim (#164 phase 2). ONE subject sandbox clones + serves (on 0.0.0.0) + seeds the
+  leverage of a simulation (#164 phase 2). ONE subject sandbox clones + serves (on 0.0.0.0) + seeds the
   app ONCE and exposes it via getHost; then N actor desktop sandboxes each open that ONE getHost URL
   AT THE SAME TIME, bounded by execution.concurrency. A background prober snapshots the subject DB
   checkpoint digests on a cadence → a stateSeries of the shared world evolving under load.
@@ -78,9 +78,9 @@ actors:
         instruction: Skim the feed on a phone and react to the newest note.
 execution:
   target: e2b-desktop # required: each persona drives a hosted desktop browser
-  # PER-PERSONA budget. The subject sandbox must outlive every seat (timeoutMs + 30m provisioning
+  # PER-PERSONA budget. The subject sandbox must outlive every participant (timeoutMs + 30m provisioning
   # + 10m seeding + 10m buffer, capped at E2B's hour), so 10 minutes is this seeded lab's fit.
   timeoutMs: 600000
-  concurrency: 3 # all 3 seats live at once (also the default when omitted: concurrency = seat count); lower it only to cap simultaneous paid desktops
+  concurrency: 3 # all 3 participants live at once (also the default when omitted: concurrency = participant count); lower it only to cap simultaneous paid desktops
 scenario:
   mode: dry-run # default; the live path provisions a real subject + N actor sandboxes — gated

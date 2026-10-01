@@ -89,7 +89,7 @@ comms:
       portEnv: NEXT_PRIVATE_SMTP_PORT
       userEnv: NEXT_PRIVATE_SMTP_USERNAME
       passwordEnv: NEXT_PRIVATE_SMTP_PASSWORD
-    # No recipients block: the lane gets a deterministic address automatically, and its prompt
+    # No recipients block: the participant gets a deterministic address automatically, and its prompt
     # carries the address, the inbox URL, and the wait steering.
 actors:
   - type: openai-computer-use
@@ -144,9 +144,9 @@ execution:
   caps:
     # The STUDY budget is the number a researcher reasons with — decided once, up front, like a
     # recruiting decision. Observed two-participant runs land near $1.50 total, so $25 is deep
-    # headroom, and the per-lane cap stays as the single-runaway backstop.
+    # headroom, and the per-participant cap stays as the single-runaway backstop.
     maxTotalUsd: 25
-    maxUsd: 15 # PER-LANE backstop; the shared maxTotalUsd above caps the run as a whole.
+    maxUsd: 15 # PER-PARTICIPANT backstop; the shared maxTotalUsd above caps the run as a whole.
 scenario:
   mode: dry-run # committed fixture stays contract-only; live needs keys + a gitignored copy
 defaults:
