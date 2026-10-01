@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resolveCommittedPersona } from "../../../src/lab/persona-resolve.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
-import { runTerminalProductLab } from "../../../src/routes/terminal/lab.js";
+import { runTerminalProductLab } from "../../../src/routes/terminal/route.js";
 
 // The dry run takes no hook between resolving the project and starting the run, so the alias is
 // retargeted from inside the persona lookup, the last step before the run starts.

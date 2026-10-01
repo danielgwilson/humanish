@@ -9,25 +9,25 @@ import { isLocalBrowserLab, localBrowserDefaults } from "../substrates/local/run
 // selects the substrate while actors[0].type selects a registered first-party actor.
 
 import type { AutomaticAnalysisHooks } from "../analysis/automatic-completion.js";
-import { computerUseLabRefusal, runComputerUsePlan } from "../routes/computer-use/lab.js";
+import { computerUseLabRefusal, runComputerUsePlan } from "../routes/computer-use/route.js";
 import {
   type ComputerUseRunInput,
   type CuaActorLabHooks,
   type CuaActorLabResult,
 } from "../routes/computer-use/types.js";
-import { runScriptedPlan, scriptedLabRefusal } from "../routes/scripted-browser/lab.js";
+import { runScriptedPlan, scriptedLabRefusal } from "../routes/scripted-browser/route.js";
 import {
   type ScriptedBrowserLabHooks,
   type ScriptedBrowserLabResult,
   type ScriptedRunInput,
 } from "../routes/scripted-browser/types.js";
-import { runTerminalPlan, terminalLabRefusal } from "../routes/terminal/lab.js";
+import { runTerminalPlan, terminalLabRefusal } from "../routes/terminal/route.js";
 import {
   type TerminalProductLabHooks,
   type TerminalProductLabResult,
   type TerminalRunInput,
 } from "../routes/terminal/types.js";
-import { runSharedWorldPlan, sharedWorldLabRefusal } from "../routes/shared-world/lab.js";
+import { runSharedWorldPlan, sharedWorldLabRefusal } from "../routes/shared-world/route.js";
 import {
   type ConcurrentSharedWorldLabResult,
   type SharedWorldLabHooks,

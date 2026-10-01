@@ -6,7 +6,7 @@ import type { RunBundle, RunSubjectProvenance } from "../../run/bundle.js";
 import type { RunScope } from "../../run/run.js";
 import { judgeScripted, type ParticipantFacts } from "../../run/judge.js";
 import { validatePreparedRunArtifactPaths } from "../../run/paths.js";
-import { resolveSubjectState } from "../computer-use/lab.js";
+import { resolveSubjectState } from "../computer-use/route.js";
 import { buildScriptedLabBundle } from "./bundle.js";
 import { existingScreenshots } from "./session-result.js";
 import type { ScriptedSubject } from "./subject.js";

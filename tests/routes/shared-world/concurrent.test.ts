@@ -34,7 +34,7 @@ import { routesToConcurrentSharedWorld } from "../../../src/lab/routing.js";
 import { runLab, selectLabBackend } from "../../../src/lab/engine.js";
 import { runBackend } from "../../../src/cli/commands/lab-backend-run.js";
 import { sharedWorldBackendRun } from "../../../src/cli/commands/lab-backend-shared-world.js";
-import { runConcurrentSharedWorld } from "../../../src/routes/shared-world/lab.js";
+import { runConcurrentSharedWorld } from "../../../src/routes/shared-world/route.js";
 import {
   extractLobbyCodeFromNarration,
   parseLobbyCodeReply,

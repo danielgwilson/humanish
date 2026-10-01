@@ -12,20 +12,20 @@ vi.mock("../src/actors/computer-use/actor.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/actors/computer-use/actor.js")>()),
   runCuaActorSession: spy("runCuaActorSession"),
 }));
-vi.mock("../src/routes/computer-use/lab.js", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../src/routes/computer-use/lab.js")>()),
+vi.mock("../src/routes/computer-use/route.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/routes/computer-use/route.js")>()),
   runCuaActorLab: spy("runCuaActorLab"),
 }));
-vi.mock("../src/routes/scripted-browser/lab.js", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../src/routes/scripted-browser/lab.js")>()),
+vi.mock("../src/routes/scripted-browser/route.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/routes/scripted-browser/route.js")>()),
   runScriptedBrowserLab: spy("runScriptedBrowserLab"),
 }));
-vi.mock("../src/routes/terminal/lab.js", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../src/routes/terminal/lab.js")>()),
+vi.mock("../src/routes/terminal/route.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/routes/terminal/route.js")>()),
   runTerminalProductLab: spy("runTerminalProductLab"),
 }));
-vi.mock("../src/routes/shared-world/lab.js", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../src/routes/shared-world/lab.js")>()),
+vi.mock("../src/routes/shared-world/route.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/routes/shared-world/route.js")>()),
   runConcurrentSharedWorld: spy("runConcurrentSharedWorld"),
 }));
 vi.mock("../src/run/dry-run.js", async (importOriginal) => ({

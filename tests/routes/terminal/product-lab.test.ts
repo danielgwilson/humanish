@@ -17,7 +17,7 @@ import {
 import { runLab, selectLabBackend } from "../../../src/lab/engine.js";
 import { createProgram } from "../../../src/cli/program.js";
 import { verifyRun } from "../../../src/verify/verify.js";
-import { runTerminalPlan, runTerminalProductLab } from "../../../src/routes/terminal/lab.js";
+import { runTerminalPlan, runTerminalProductLab } from "../../../src/routes/terminal/route.js";
 import { planTerminalLab } from "../../../src/routes/terminal/plan.js";
 import { TERMINAL_AGENT_NOT_IMPLEMENTED_CODE } from "../../../src/actors/terminal-agent.js";
 

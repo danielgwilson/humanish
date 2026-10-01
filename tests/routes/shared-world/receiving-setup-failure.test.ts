@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { runConcurrentSharedWorld } from "../../../src/routes/shared-world/lab.js";
+import { runConcurrentSharedWorld } from "../../../src/routes/shared-world/route.js";
 import type { LabConfig } from "../../../src/lab/types.js";
 import { lab } from "../../admission/fixtures.js";
 

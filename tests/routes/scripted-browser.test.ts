@@ -28,8 +28,8 @@ import {
   SANDBOX_RECEIPTS_ARTIFACT,
   type ParsedSandboxReceipt,
 } from "../../src/run/sandbox-receipts.js";
-import { runCuaActorLab } from "../../src/routes/computer-use/lab.js";
-import { runScriptedBrowserLab, runScriptedPlan } from "../../src/routes/scripted-browser/lab.js";
+import { runCuaActorLab } from "../../src/routes/computer-use/route.js";
+import { runScriptedBrowserLab, runScriptedPlan } from "../../src/routes/scripted-browser/route.js";
 import { planScriptedLab } from "../../src/routes/scripted-browser/plan.js";
 import type { ScriptedBrowserLabHooks } from "../../src/routes/scripted-browser/types.js";
 import type {

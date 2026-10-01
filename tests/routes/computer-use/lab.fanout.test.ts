@@ -24,7 +24,7 @@ import {
   resolveLaneDevice,
 } from "../../../src/lab/device-presets.js";
 import { resolveCuaParticipantPlan } from "../../../src/routes/computer-use/lane-plan.js";
-import { runComputerUsePlan, runCuaActorLab } from "../../../src/routes/computer-use/lab.js";
+import { runComputerUsePlan, runCuaActorLab } from "../../../src/routes/computer-use/route.js";
 import { planComputerUseLab } from "../../../src/routes/computer-use/plan.js";
 import type { ComputerUsePlan } from "../../../src/lab/plan-types.js";
 import { declaredScreenForRender } from "../../../src/substrates/e2b/desktop-geometry.js";

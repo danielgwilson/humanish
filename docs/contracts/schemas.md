@@ -996,7 +996,7 @@ contract.
 
 ## Terminal Cost Ledger And No-Spend Proof
 
-The terminal-product lane (`src/routes/terminal/lab.ts`), under the default
+The terminal-product lane (`src/routes/terminal/route.ts`), under the default
 `runtimeAuth: openai-env`, passes a real provider key only to the in-sandbox agent
 command; `openai-egress` gives the command a placeholder and keeps the key in an
 external E2B header transform. Neither mode puts it in sandbox-global env or

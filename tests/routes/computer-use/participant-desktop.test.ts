@@ -11,7 +11,7 @@ import type {
   CuaTurnRequest,
 } from "../../../src/actors/computer-use/loop.js";
 import { describeQualifiedCodexCliVersions } from "../../../src/actors/codex/qualified-versions.js";
-import { runCuaActorLab } from "../../../src/routes/computer-use/lab.js";
+import { runCuaActorLab } from "../../../src/routes/computer-use/route.js";
 import { runCuaLane } from "../../../src/routes/computer-use/lanes.js";
 import { type CuaLaneDeps } from "../../../src/routes/computer-use/types.js";
 import type {

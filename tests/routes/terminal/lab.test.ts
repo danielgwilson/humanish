@@ -11,7 +11,10 @@ import type { AnalysisFetch } from "../../../src/analysis/provider.js";
 
 import { LAB_CONFIG_SCHEMA, type LabConfig, type LabRuntimeAuth } from "../../../src/lab/types.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
-import { resolveTerminalPersona, runTerminalProductLab } from "../../../src/routes/terminal/lab.js";
+import {
+  resolveTerminalPersona,
+  runTerminalProductLab,
+} from "../../../src/routes/terminal/route.js";
 import { type TerminalProductLabHooks } from "../../../src/routes/terminal/types.js";
 import {
   guardDesktopSandboxCreate,

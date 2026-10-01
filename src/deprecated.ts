@@ -9,25 +9,25 @@ import {
 import type { CuaLoopResult } from "./actors/computer-use/loop.js";
 import type { AutomaticAnalysisHooks as AnalysisHooks } from "./analysis/automatic-completion.js";
 import type { BrowserLabAdapterHooks as BrowserAdapterHooks } from "./lab/adapter-extension.js";
-import { runCuaActorLab as cuaActorLab } from "./routes/computer-use/lab.js";
+import { runCuaActorLab as cuaActorLab } from "./routes/computer-use/route.js";
 import type {
   CuaActorLabHooks as CuaHooks,
   CuaActorLabResult as CuaResult,
   RunCuaActorLabOptions as CuaOptions,
 } from "./routes/computer-use/types.js";
-import { runScriptedBrowserLab as scriptedBrowserLab } from "./routes/scripted-browser/lab.js";
+import { runScriptedBrowserLab as scriptedBrowserLab } from "./routes/scripted-browser/route.js";
 import type {
   RunScriptedBrowserLabOptions as ScriptedOptions,
   ScriptedBrowserLabHooks as ScriptedHooks,
   ScriptedBrowserLabResult as ScriptedResult,
 } from "./routes/scripted-browser/types.js";
-import { runConcurrentSharedWorld as concurrentSharedWorld } from "./routes/shared-world/lab.js";
+import { runConcurrentSharedWorld as concurrentSharedWorld } from "./routes/shared-world/route.js";
 import type {
   ConcurrentSharedWorldLabResult as SharedWorldResult,
   RunConcurrentSharedWorldLabOptions as SharedWorldOptions,
   SharedWorldLabHooks as SharedWorldHooks,
 } from "./routes/shared-world/types.js";
-import { runTerminalProductLab as terminalProductLab } from "./routes/terminal/lab.js";
+import { runTerminalProductLab as terminalProductLab } from "./routes/terminal/route.js";
 import type {
   RunTerminalProductLabOptions as TerminalOptions,
   TerminalProductLabHooks as TerminalHooks,

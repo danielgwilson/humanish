@@ -381,7 +381,7 @@ export interface SharedWorldLabHooks extends BrowserLabAdapterHooks {
   /**
    * Local-tree packing DI seam (tests only, no npm dependency needed to exercise the route):
    * defaults to createLocalTreeArchive(root, opts) plus a host-side read of the produced archive
-   * file into an ArrayBuffer (the SAME default routes/computer-use/lab.ts uses). Called ONCE per run, before
+   * file into an ArrayBuffer (the SAME default routes/computer-use/route.ts uses). Called ONCE per run, before
    * the ONE shared-plane sandbox is created, on the live local-tree route.
    */
   packLocalTree?: (args: {
