@@ -146,14 +146,21 @@ function concurrentLabError(args: {
   if (hostHandoffFailure !== undefined) {
     return { code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED", message: hostHandoffFailure };
   }
+  // The run's own failure before the Observer's: a run that stopped early (a desktop module that
+  // failed to load, a plane that failed to start) leaves a bundle verify then refuses, and naming
+  // only that refusal would hide the cause. The execution failures keep the same order (run, then
+  // evidence).
+  if (runError) {
+    return {
+      code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED",
+      message: observer.ok ? runError : `${runError} The run bundle it left failed verification.`,
+    };
+  }
   if (!observer.ok) {
     return {
       code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED",
       message: observer.error?.message ?? "Observer failed for the concurrent shared-world run.",
     };
-  }
-  if (runError) {
-    return { code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED", message: runError };
   }
   if (adapterFailure !== undefined) {
     return { code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED", message: adapterFailure };
