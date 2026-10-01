@@ -6,6 +6,7 @@ import type { RunBundle, RunSubjectProvenance } from "../../run/bundle.js";
 import type { RunScope } from "../../run/run.js";
 import {
   judgeExecution,
+  sandboxCleanupFailure,
   judgeScripted,
   OUTCOME_POLICIES,
   resultOk,
@@ -55,13 +56,16 @@ function scriptedSurfaceFacts(result: ScriptedBrowserSessionResult): Participant
 
 /**
  * The scripted run's execution failures: the session's own error, a live surface that never
- * returned, a surface that ended in a harness error, and an Observer that failed.
+ * returned, a surface that ended in a harness error, a subject sandbox whose release is
+ * unconfirmed, and an Observer that failed.
  */
 export function scriptedExecutionFailures(args: {
   dryRun: boolean;
+  runId: string;
   sessionError: string | undefined;
   expected: number;
   sessionResults: readonly Pick<ScriptedBrowserSessionResult, "completionReason" | "reason">[];
+  subject: Pick<ScriptedSubject, "sandboxId" | "killed" | "releaseWarning"> | undefined;
   observer: Pick<ObserverResult, "ok" | "error">;
 }): ExecutionFailure[] {
   const { sessionError, sessionResults, observer } = args;
@@ -86,6 +90,9 @@ export function scriptedExecutionFailures(args: {
           },
         ]
       : []),
+    ...(args.subject?.sandboxId === undefined || args.subject.killed
+      ? []
+      : [sandboxCleanupFailure("subject", args.subject.releaseWarning, args.runId)]),
     ...(observer.ok
       ? []
       : [
@@ -184,9 +191,11 @@ export async function finishScriptedRun(
   const execution = judgeExecution(
     scriptedExecutionFailures({
       dryRun,
+      runId,
       sessionError,
       expected: surfaces.length,
       sessionResults,
+      subject: scriptedSubject,
       observer,
     }),
     policy,

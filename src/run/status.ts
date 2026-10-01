@@ -12,7 +12,7 @@
 
 import type { RunBundle } from "./bundle.js";
 import { writeContainedOutputFile, type PreparedOutputRoot } from "./contained-output.js";
-import type { ExecutionOutcome } from "./judge.js";
+import type { ExecutionFailure, ExecutionOutcome } from "./judge.js";
 import { redactText } from "../evidence/redaction.js";
 
 export const RUN_STATUS_SCHEMA = "humanish.run-status.v1";
@@ -189,12 +189,16 @@ export function beginRunStatus(
       if (finishedRecord === undefined) return;
       // The record is public-safe by construction, so each message passes the shape redaction
       // again even though the routes scrubbed it.
-      const execution = {
+      const redacted = (failure: ExecutionFailure): ExecutionFailure => ({
+        kind: failure.kind,
+        message: redactText(failure.message),
+      });
+      const execution: ExecutionOutcome = {
         succeeded: result.execution.succeeded,
-        failures: result.execution.failures.map((failure) => ({
-          kind: failure.kind,
-          message: redactText(failure.message),
-        })),
+        failures: result.execution.failures.map(redacted),
+        ...(result.execution.warnings === undefined
+          ? {}
+          : { warnings: result.execution.warnings.map(redacted) }),
       };
       finishedRecord = {
         ...finishedRecord,

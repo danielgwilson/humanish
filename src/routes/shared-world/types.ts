@@ -279,6 +279,8 @@ export interface PlaneResults {
   subjectCommit: string | undefined;
   subjectSandboxId: string | undefined;
   subjectKilled: boolean;
+  /** The subject sandbox's scrubbed release warning when its release is unconfirmed. */
+  subjectReleaseWarning: string | undefined;
   subjectDesktop: SubjectDesktopUsage | undefined;
   getHostUrl: string | undefined;
   // The OBSERVED convergence origin — computed AFTER fan-out from what the seats ACTUALLY reached (the

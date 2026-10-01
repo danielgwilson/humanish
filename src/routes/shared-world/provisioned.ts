@@ -100,6 +100,7 @@ export interface ProvisionedPlaneOutcome {
   subjectCommit: string | undefined;
   subjectSandboxId: string | undefined;
   subjectKilled: boolean;
+  subjectReleaseWarning: string | undefined;
   subjectDesktop: SubjectDesktopUsage | undefined;
   getHostUrl: string | undefined;
   /** Set when the teardown drain wrote a comms thread. */
@@ -125,6 +126,7 @@ class SubjectPlane {
   subjectCommit: string | undefined;
   subjectSandboxId: string | undefined;
   subjectKilled = false;
+  subjectReleaseWarning: string | undefined;
   getHostUrl: string | undefined;
   // The subject desktop's host-side span and size, priced in the run's cost estimate.
   private subjectCreatedAtMs: number | undefined;
@@ -440,6 +442,8 @@ class SubjectPlane {
       });
       this.subjectKilled = reading.released;
       if (reading.warning) warnings.push(reading.warning);
+      if (!reading.released)
+        this.subjectReleaseWarning = reading.warning ?? "Subject sandbox release is unconfirmed.";
       // Without a kill method, or in E2B debug mode, no kill reached E2B, so there is no teardown
       // time to record.
       if (released.status !== "unconfirmed" || released.reason !== "release_unavailable")
@@ -586,6 +590,7 @@ export async function runProvisionedPlane(
     subjectCommit: plane.subjectCommit,
     subjectSandboxId: plane.subjectSandboxId,
     subjectKilled: plane.subjectKilled,
+    subjectReleaseWarning: plane.subjectReleaseWarning,
     subjectDesktop: plane.desktopUsage(),
     getHostUrl: plane.getHostUrl,
     commsArtifactPath,

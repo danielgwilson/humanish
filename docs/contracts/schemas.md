@@ -1084,11 +1084,15 @@ alive, and finalized when it ends: `{ schema, runId, state: running |
 finished, mode, lab?, pid, startedAt, updatedAt, completedAt?, outcome? }`.
 `outcome` carries the bundle's `verdict`, `participants` and `estimatedCostUsd`
 when the run finishes, then the result's `ok` and `execution: { succeeded,
-failures: [{ kind, message }] }` once the Observer has rendered. The verdict is
-what the participants experienced; `execution` is whether the run worked as an
-execution (`kind` is `harness`, `provider-cleanup`, `sandbox-cleanup`,
-`evidence`, `cap` or `run`), and `ok` reads both under the route's policy
-(`OUTCOME_POLICIES` in `src/run/judge.ts`).
+failures: [{ kind, message }], warnings? }` once the Observer has rendered. The
+verdict is what the participants experienced; `execution` is whether the run
+worked as an execution (`kind` is `harness`, `provider-cleanup`,
+`sandbox-cleanup`, `evidence`, `cap` or `run`), and `ok` reads both under the
+route's policy (`OUTCOME_POLICIES` in `src/run/judge.ts`). `warnings`, in the
+same shape, holds the failures the policy lets warn and is omitted when empty:
+on computer-use, shared-world and scripted runs, a `sandbox-cleanup` entry for
+each sandbox whose release was not confirmed, with the participant (or
+`subject`), the release warning and the `humanish reclaim --run <id>` command.
 
 It answers two questions the filesystem could not answer before: **which lab**
 a run belongs to, and **whether it is still alive**, including for runs an

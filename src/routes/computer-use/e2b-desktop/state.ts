@@ -22,7 +22,12 @@ import type { E2BDesktopSandbox } from "../../../substrates/e2b/sdk.js";
 import type { ParticipantDesktopEvidence } from "../participant-desktop.js";
 import type { ParticipantComms, RunningCommsCatch } from "./comms.js";
 import type { ParticipantFidelity } from "./fidelity.js";
-import type { CuaActorLabErrorCode, CuaParticipantDeps, DesktopParticipantRun } from "../types.js";
+import type {
+  CuaActorLabErrorCode,
+  CuaParticipantDeps,
+  DesktopParticipantRun,
+  SandboxReleaseFact,
+} from "../types.js";
 
 /** What every step of one lane reads: its spec, the run's dependencies and where it points. */
 export interface E2BParticipantContext {
@@ -49,6 +54,7 @@ export interface E2BParticipantState {
   sandboxTornDownAtMs: number | undefined;
   desktopResources: DesktopResourceObservation | undefined;
   released: boolean;
+  sandboxRelease: SandboxReleaseFact | undefined;
   failureCode: CuaActorLabErrorCode | undefined;
   commsCatch: RunningCommsCatch | undefined;
   commsArtifactPath: string | undefined;
@@ -87,6 +93,7 @@ export function newParticipantState(spec: DesktopParticipantRun): E2BParticipant
     sandboxTornDownAtMs: undefined,
     desktopResources: undefined,
     released: false,
+    sandboxRelease: undefined,
     failureCode: undefined,
     commsCatch: undefined,
     commsArtifactPath: undefined,
@@ -133,6 +140,7 @@ export function desktopEvidenceOf(state: E2BParticipantState): ParticipantDeskto
     ...(desktopDurationMs === undefined ? {} : { desktopDurationMs }),
     ...(state.desktopResources === undefined ? {} : { desktopResources: state.desktopResources }),
     released: state.released,
+    ...(state.sandboxRelease === undefined ? {} : { sandboxRelease: state.sandboxRelease }),
     streamUrlPresent: state.streamUrl !== undefined,
     ...(state.subjectCommit === undefined ? {} : { subjectCommit: state.subjectCommit }),
     ...(state.desktopBrowser === undefined ? {} : { desktopBrowser: state.desktopBrowser }),

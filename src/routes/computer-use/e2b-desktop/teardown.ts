@@ -13,7 +13,7 @@ import { e2bShell } from "../../../substrates/e2b/shell.js";
 import { drainCommsEvidence } from "./comms.js";
 import { finalParticipantGeometry } from "./fidelity.js";
 import type { E2BParticipantContext, E2BParticipantState } from "./state.js";
-import type { CuaParticipantDeps, DesktopParticipantRun } from "../types.js";
+import type { CuaParticipantDeps, DesktopParticipantRun, SandboxReleaseFact } from "../types.js";
 
 /**
  * Each route's own keep flag gates its own lane only: a clone.keep can never leak into a local-tree
@@ -59,9 +59,9 @@ async function stopParticipantMedia(args: {
 }
 
 /**
- * Release the lane's sandbox, or keep it when a keep flag is set and the lane failed. Returns true
- * only when the release is confirmed. A kept or unconfirmed sandbox can still accrue compute cost,
- * which the warnings say.
+ * Release the lane's sandbox, or keep it when a keep flag is set and the lane failed. `released`
+ * is true only when the release is confirmed; otherwise `sandboxRelease` says why. A kept or
+ * unconfirmed sandbox can still accrue compute cost, which the warnings say.
  */
 async function releaseParticipantDesktop(args: {
   allocation: OwnedDesktopAllocation;
@@ -69,15 +69,14 @@ async function releaseParticipantDesktop(args: {
   failed: boolean;
   deps: CuaParticipantDeps;
   warnings: string[];
-}): Promise<boolean> {
+}): Promise<{ released: boolean; sandboxRelease?: SandboxReleaseFact }> {
   const { allocation, keepReason, deps, warnings } = args;
   const keepForDebug = keepReason !== undefined && args.failed;
   const released = await allocation.close({ retainForDebug: keepForDebug });
   if (released.status === "retained") {
-    warnings.push(
-      `Sandbox ${allocation.resourceId} kept for debugging (${keepReason} on failure); reclaim it via E2B or it will be killed on its server-side timeout.`,
-    );
-    return false;
+    const warning = `Sandbox ${allocation.resourceId} kept for debugging (${keepReason} on failure); reclaim it via E2B or it will be killed on its server-side timeout.`;
+    warnings.push(warning);
+    return { released: false, sandboxRelease: { state: "retained", warning } };
   }
   const reading = readE2BRelease(released, {
     label: "Sandbox",
@@ -85,7 +84,14 @@ async function releaseParticipantDesktop(args: {
     costSpan: true,
   });
   if (reading.warning) warnings.push(reading.warning);
-  return reading.released;
+  if (reading.released) return { released: true };
+  return {
+    released: false,
+    sandboxRelease: {
+      state: "unconfirmed",
+      warning: reading.warning ?? "Sandbox release is unconfirmed.",
+    },
+  };
 }
 
 /**
@@ -154,13 +160,15 @@ export async function finishE2BDesktop(
       mediaStop: state.mediaStop,
       warnings,
     });
-    state.released = await releaseParticipantDesktop({
+    const release = await releaseParticipantDesktop({
       allocation,
       keepReason: participantKeepReason(deps),
       failed,
       deps,
       warnings,
     });
+    state.released = release.released;
+    state.sandboxRelease = release.sandboxRelease;
     // Close the observed span. A kept or unconfirmed sandbox can still accrue compute cost; the
     // summary records that remaining lifetime as unknown instead of calling this complete.
     state.sandboxTornDownAtMs = deps.now();
