@@ -188,6 +188,7 @@ function makeConformanceFakeBrowser(): ScriptedBrowserLike {
     click: async () => {
       state.body = "conformance fixture changed";
     },
+    press: async () => undefined,
     count: async () => 1,
     waitFor: async () => undefined,
     isVisible: async () => true,
@@ -198,6 +199,7 @@ function makeConformanceFakeBrowser(): ScriptedBrowserLike {
       return undefined;
     },
     locator: () => locator,
+    keyboard: { press: async () => undefined },
     waitForTimeout: async () => undefined,
     waitForFunction: async () => undefined,
     screenshot: async ({ path: screenshotPath }) => {

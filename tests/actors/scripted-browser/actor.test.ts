@@ -75,6 +75,7 @@ function makeFakeBrowser(options: FakeAppOptions = {}): {
       click: async () => {
         state.body = options.bodyAfterClick ?? state.body;
       },
+      press: async () => undefined,
       count: async () => count,
       waitFor: async () => {
         if (count === 0) throw new Error(`Timeout waiting for selector ${selector}`);
@@ -96,6 +97,7 @@ function makeFakeBrowser(options: FakeAppOptions = {}): {
       return undefined;
     },
     locator: locatorFor,
+    keyboard: { press: async () => undefined },
     waitForTimeout: async () => undefined,
     waitForFunction: async (expression) => {
       if (evaluatePagePredicate(expression, state.body)) return undefined;

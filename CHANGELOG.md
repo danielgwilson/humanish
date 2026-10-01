@@ -16,6 +16,13 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixes
 
+- A scripted scenario's `press` step sends its key. Before, `press` ran as `click` and its `key` was
+  dropped, so a step that pressed Enter in a form field clicked the field instead, and a 0.106.1
+  live pass on TodoMVC ended `fail` at "Visible page state did not change". `press` now needs `key`
+  (Playwright key syntax: `Enter`, `Tab`, `Control+A`). With a `selector` it focuses that element
+  and presses the key; without one it presses the key on the focused element. The scenario parser
+  refuses a `press` step without `key`, and `key` on any other step. Migration: a scenario that used
+  `press` to click uses `click`.
 - A computer-use, shared-world or scripted run whose sandbox release was not confirmed records it in
   `status.json` (#1348). `outcome.execution.warnings` gets a `sandbox-cleanup` entry naming the
   participant or `subject`, the release warning and `humanish reclaim --run <id>`. The run stays

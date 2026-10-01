@@ -84,6 +84,22 @@ export async function executeBrowserPersonaStep(args: {
     }
     await target.click({ timeout: stepTimeoutMs });
     await args.page.waitForTimeout(300);
+  } else if (args.step.action === "press") {
+    if (!args.step.key) {
+      throw new Error(`${args.step.id} press step is missing key`);
+    }
+    // With a selector, Playwright focuses that element first; without one, the key goes to
+    // whatever has focus, such as the input a fill step just typed into.
+    if (args.step.selector) {
+      const target = args.page.locator(args.step.selector).first();
+      if ((await target.count()) === 0) {
+        throw new Error(`${args.step.id} press step found no target`);
+      }
+      await target.press(args.step.key, { timeout: stepTimeoutMs });
+    } else {
+      await args.page.keyboard.press(args.step.key);
+    }
+    await args.page.waitForTimeout(300);
   } else if (args.step.action === "assertText" || args.step.action === "waitForText") {
     const expectedText = args.step.expectation?.text ?? args.step.value;
     if (!expectedText) {

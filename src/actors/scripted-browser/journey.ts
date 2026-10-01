@@ -118,8 +118,17 @@ function parseBrowserPersonaStep(
   const selector = stringValue(source.selector);
   const pathValue = stringValue(source.path);
   const value = stringValue(source.value);
+  const key = stringValue(source.key);
   const expectation = browserStepExpectationValue(source.expect ?? source.expectation);
 
+  if (action === "press" && !key) {
+    return { failure: `${id} press action requires key (for example Enter).` };
+  }
+  if (action !== "press" && "key" in source) {
+    return {
+      failure: `${id} sets key, which only a press step sends. Supported actions: ${SUPPORTED_ACTIONS}.`,
+    };
+  }
   if (action === "fill" && !selector) {
     return { failure: `${id} fill action requires selector.` };
   }
@@ -139,6 +148,7 @@ function parseBrowserPersonaStep(
       ...(pathValue === undefined ? {} : { path: pathValue }),
       ...(selector === undefined ? {} : { selector }),
       ...(value === undefined ? {} : { value }),
+      ...(key === undefined ? {} : { key }),
     },
   };
 }
@@ -146,6 +156,8 @@ function parseBrowserPersonaStep(
 function hasInlineBrowserSteps(value: unknown): boolean {
   return Array.isArray(value) && value.some((entry) => isRecord(entry) && isRecord(entry.browser));
 }
+
+const SUPPORTED_ACTIONS = "goto, fill, click, press, assertText, waitForText, waitForSelector";
 
 function browserPersonaActionValue(value: unknown): BrowserPersonaAction | null {
   if (typeof value !== "string") {
@@ -156,7 +168,8 @@ function browserPersonaActionValue(value: unknown): BrowserPersonaAction | null 
     .toLowerCase()
     .replace(/[-_\s]+/g, "");
   if (normalized === "goto" || normalized === "open" || normalized === "navigate") return "goto";
-  if (normalized === "click" || normalized === "press") return "click";
+  if (normalized === "click") return "click";
+  if (normalized === "press") return "press";
   if (normalized === "fill" || normalized === "type") return "fill";
   if (normalized === "asserttext" || normalized === "expecttext") return "assertText";
   if (normalized === "waitfortext") return "waitForText";
