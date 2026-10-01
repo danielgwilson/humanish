@@ -243,20 +243,20 @@ const SCAN_CACHE_LIMIT = 256;
 const scanCache = new Map<string, EncodedTextScan>();
 
 /**
- * scanEncodedText for text read from `bytes`, cached in this process by the bytes' sha256, the
- * options and ENCODED_SCAN_VERSION. The scan is a function of those inputs, so a hit returns the
- * result a fresh scan would. Repeated verifies of an unchanged file, as serve admission and the
- * Observer render do, skip the scan.
+ * scanEncodedText, cached in this process. The key is the sha256 of the scanned string's UTF-16
+ * code units, the options and ENCODED_SCAN_VERSION. Encoding as UTF-16LE keeps every code unit,
+ * lone surrogates included, so distinct strings get distinct keys and a hit is the result a fresh
+ * scan of the same string would give. Repeated verifies of an unchanged file, as serve admission
+ * and the Observer render do, skip the scan.
  */
-export function scanEncodedBytes(
-  bytes: Uint8Array,
+export function scanEncodedTextCached(
   text: string,
   options: { allowOpaqueBase64?: boolean } = {},
 ): EncodedTextScan {
   const key = [
     ENCODED_SCAN_VERSION,
     options.allowOpaqueBase64 === true ? "opaque-allowed" : "opaque-unscanned",
-    createHash("sha256").update(bytes).digest("hex"),
+    createHash("sha256").update(Buffer.from(text, "utf16le")).digest("hex"),
   ].join(":");
   const cached = scanCache.get(key);
   if (cached !== undefined) {

@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   decodeEscapes,
-  scanEncodedBytes,
   scanEncodedText,
+  scanEncodedTextCached,
 } from "../../src/evidence/encoded-text.js";
 import { sensitivePatterns } from "../../src/evidence/redaction.js";
 
@@ -84,43 +84,49 @@ describe("the sensitive patterns the UTF-16 gate relies on", () => {
   });
 });
 
-describe("scanEncodedBytes", () => {
+describe("scanEncodedTextCached", () => {
   it("returns what scanEncodedText returns, cached or not", () => {
     for (const text of [
       Buffer.from(SECRET).toString("base64"),
       gzipSync("anything").toString("base64"),
       "plain text",
     ]) {
-      const bytes = Buffer.from(text);
       const fresh = scanEncodedText(text);
-      expect(scanEncodedBytes(bytes, text)).toEqual(fresh);
-      expect(scanEncodedBytes(bytes, text)).toEqual(fresh);
+      expect(scanEncodedTextCached(text)).toEqual(fresh);
+      expect(scanEncodedTextCached(text)).toEqual(fresh);
     }
   });
 
   it("hands out a frozen result, so no caller can change what the cache holds", () => {
     const text = "frozen check";
-    expect(Object.isFrozen(scanEncodedBytes(Buffer.from(text), text))).toBe(true);
+    expect(Object.isFrozen(scanEncodedTextCached(text))).toBe(true);
   });
 
   it("keys the cache on the options as well as the bytes", () => {
     const text = binary(96).toString("base64");
-    const bytes = Buffer.from(text);
-    expect(scanEncodedBytes(bytes, text).opaque).toBe(true);
-    expect(scanEncodedBytes(bytes, text, { allowOpaqueBase64: true }).opaque).toBe(false);
-    expect(scanEncodedBytes(bytes, text).opaque).toBe(true);
+    expect(scanEncodedTextCached(text).opaque).toBe(true);
+    expect(scanEncodedTextCached(text, { allowOpaqueBase64: true }).opaque).toBe(false);
+    expect(scanEncodedTextCached(text).opaque).toBe(true);
+  });
+
+  it("keys on the exact string, so strings that share a UTF-8 encoding stay apart", () => {
+    const loneSurrogate = `${Buffer.from(SECRET).toString("base64")} \ud800`;
+    const replacement = `${Buffer.from(SECRET).toString("base64")} \ufffd`;
+    expect(Buffer.from(loneSurrogate).equals(Buffer.from(replacement))).toBe(true);
+    expect(scanEncodedTextCached(loneSurrogate)).toEqual(scanEncodedText(loneSurrogate));
+    expect(scanEncodedTextCached(replacement)).toEqual(scanEncodedText(replacement));
   });
 
   it("stays correct after more distinct inputs than the cache holds", () => {
     const secret = Buffer.from(SECRET).toString("base64");
-    expect(scanEncodedBytes(Buffer.from(secret), secret).sensitive).toBe(true);
+    expect(scanEncodedTextCached(secret).sensitive).toBe(true);
     for (let index = 0; index < 300; index += 1) {
       const text = `clean text ${index}`;
-      expect(scanEncodedBytes(Buffer.from(text), text)).toEqual({
+      expect(scanEncodedTextCached(text)).toEqual({
         sensitive: false,
         opaque: false,
       });
     }
-    expect(scanEncodedBytes(Buffer.from(secret), secret).sensitive).toBe(true);
+    expect(scanEncodedTextCached(secret).sensitive).toBe(true);
   });
 });
