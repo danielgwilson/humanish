@@ -5,6 +5,7 @@ import type { LabCommsExternal } from "../../lab/types.js";
 import { detectLocalAgents } from "../../actors/local-agent/cli.js";
 import { localAgentRefusal, type LocalAgentRefusal } from "../../actors/local-agent/readiness.js";
 import { describeMissingKeys } from "../../keys/key-resolution.js";
+import { catchTokenOf, catchTokenRefusal } from "../../comms/external-evidence.js";
 import { externalCatchHealthy } from "../../comms/sandbox-catch.js";
 import { MODEL_RATES } from "../../run/pricing.js";
 import type { CuaActorLabErrorCode, CuaActorLabHooks } from "./types.js";
@@ -91,6 +92,12 @@ export async function liveCuaRejection(args: {
   // whose catch is unreachable collects nothing while every lane still spends. The probe asserts
   // OUR service marker in /health, so an adopter's proxy answering 200 for everything cannot
   // pass for a catch.
+  const tokenRefusal =
+    externalCommsConfig === undefined
+      ? undefined
+      : catchTokenRefusal(catchTokenOf(externalCommsConfig, env));
+  if (tokenRefusal !== undefined)
+    return { code: "HUMANISH_CUA_LAB_COMMS_TOKEN_INVALID", message: tokenRefusal };
   if (externalCommsConfig && !(await externalCatchHealthy(externalCommsConfig))) {
     return {
       code: "HUMANISH_CUA_LAB_COMMS_CATCH_UNREACHABLE",

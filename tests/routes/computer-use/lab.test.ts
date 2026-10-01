@@ -646,13 +646,20 @@ describe("desktop-cli runtime prerequisites (#515)", () => {
 
 describe("runCuaActorLab", () => {
   it("carries a failed drain of the operator-hosted catch into the result warnings", async () => {
+    // The drain's error quotes the run's OpenAI key and the catch's bearer token; the warning must
+    // carry neither.
+    const token = ["tango", "lima", "catch", "credential"].join("-");
     const parsed = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
       id: "cua-external-comms",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
       actors: [{ type: "openai-computer-use", persona: "first-time-visitor", mission: "Sign up." }],
       execution: { target: "e2b-desktop", timeoutMs: 60_000 },
-      comms: { email: { external: { catchBaseUrl: "https://catch.example.test" } } },
+      comms: {
+        email: {
+          external: { catchBaseUrl: "https://catch.example.test", authTokenEnv: "CATCH_TOKEN" },
+        },
+      },
       scenario: { mode: "live" },
       review: { analysis: false },
     });
@@ -669,7 +676,7 @@ describe("runCuaActorLab", () => {
           { status: 200, headers: { "content-type": "application/json" } },
         );
       }
-      throw new Error("synthetic catch outage");
+      throw new Error(`synthetic catch outage: refused test-openai-key with bearer ${token}`);
     });
     try {
       const { module } = makeFakeModule(makeFakeSandbox());
@@ -678,7 +685,11 @@ describe("runCuaActorLab", () => {
         config: parsed.config,
         dryRun: false,
         hooks: {
-          env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
+          env: {
+            OPENAI_API_KEY: "test-openai-key",
+            E2B_API_KEY: "test-e2b-key",
+            CATCH_TOKEN: token,
+          },
           loadDesktopModule: async () => module,
           runSession: async (options) =>
             runCuaActorSession({
@@ -687,12 +698,141 @@ describe("runCuaActorLab", () => {
             }),
         },
       });
-      expect(result.warnings.join("\n")).toContain(
+      const warnings = result.warnings.join("\n");
+      expect(warnings).toContain(
         "Comms evidence collection failed against the adopter-hosted catch",
       );
+      expect(warnings).not.toContain("test-openai-key");
+      expect(warnings).not.toContain(token);
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+
+  // A live run against an operator-hosted catch whose token is CATCH_TOKEN. The catch passes its
+  // health check; `deliveries` answers the drain.
+  async function drainWithCatch(options: {
+    token: string;
+    openaiKey?: string;
+    catchBaseUrl?: string;
+    deliveries: () => Promise<Response>;
+  }) {
+    const catchBaseUrl = options.catchBaseUrl ?? "https://catch.example.test";
+    const parsed = parseLabConfig({
+      schema: LAB_CONFIG_SCHEMA,
+      id: "cua-external-comms",
+      subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
+      actors: [{ type: "openai-computer-use", persona: "first-time-visitor", mission: "Sign up." }],
+      execution: { target: "e2b-desktop", timeoutMs: 60_000 },
+      comms: { email: { external: { catchBaseUrl, authTokenEnv: "CATCH_TOKEN" } } },
+      scenario: { mode: "live" },
+      review: { analysis: false },
+    });
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    const drains: string[] = [];
+    vi.stubGlobal("fetch", async (input: string | URL) => {
+      if (String(input).endsWith("/health")) {
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            service: "humanish-comms-catch",
+            capabilities: ["recipient-inbox-v1"],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      drains.push(String(input));
+      return options.deliveries();
+    });
+    try {
+      const { module, created } = makeFakeModule(makeFakeSandbox());
+      const result = await runCuaActorLab({
+        cwd,
+        config: parsed.config,
+        dryRun: false,
+        hooks: {
+          env: {
+            OPENAI_API_KEY: options.openaiKey ?? "test-openai-key",
+            E2B_API_KEY: "test-e2b-key",
+            CATCH_TOKEN: options.token,
+          },
+          loadDesktopModule: async () => module,
+          runSession: async (sessionOptions) =>
+            runCuaActorSession({
+              ...sessionOptions,
+              openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            }),
+        },
+      });
+      return { result, warnings: result.warnings.join("\n"), created, drains };
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  }
+
+  it("removes a known secret whole when the catch token is a part of it", async () => {
+    const token = ["tango", "lima", "catch", "01"].join("-");
+    const openaiKey = `${token}-private-credential`;
+    const { warnings } = await drainWithCatch({
+      token,
+      openaiKey,
+      deliveries: async () => {
+        throw new Error(`refused ${openaiKey}`);
+      },
+    });
+    expect(warnings).toContain("Comms evidence collection failed");
+    expect(warnings).not.toContain("private-credential");
+  });
+
+  it("removes the catch token's percent-encoded, base64 and JSON-escaped forms", async () => {
+    const token = 'tango/lima+key"0123';
+    const forms = [
+      encodeURIComponent(token),
+      Buffer.from(token).toString("base64"),
+      JSON.stringify(token).slice(1, -1),
+    ];
+    const { warnings } = await drainWithCatch({
+      token,
+      deliveries: async () => {
+        throw new Error(`refused ${forms.join(" ")}`);
+      },
+    });
+    expect(warnings).toContain("Comms evidence collection failed");
+    for (const form of forms) expect(warnings).not.toContain(form);
+  });
+
+  it("refuses a catch token shorter than 16 characters before any desktop", async () => {
+    const { result, created, drains } = await drainWithCatch({
+      token: "abc",
+      deliveries: async () => new Response("", { status: 200 }),
+    });
+    expect(result.ok).toBe(false);
+    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_COMMS_TOKEN_INVALID");
+    expect(result.error?.message).not.toContain("abc");
+    expect(created).toHaveLength(0);
+    expect(drains).toEqual([]);
+  });
+
+  it("refuses a catch token that is not well-formed Unicode before any desktop", async () => {
+    const { result, created, drains } = await drainWithCatch({
+      token: "x".repeat(16) + "\uD800",
+      deliveries: async () => new Response("", { status: 200 }),
+    });
+    expect(result.ok).toBe(false);
+    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_COMMS_TOKEN_INVALID");
+    expect(created).toHaveLength(0);
+    expect(drains).toEqual([]);
+  });
+
+  it("scrubs the catch token from the zero-send warning's catch URL", async () => {
+    const token = ["tango", "lima", "catch", "02"].join("-");
+    const { warnings } = await drainWithCatch({
+      token,
+      catchBaseUrl: `https://catch.example.test/${token}`,
+      deliveries: async () => new Response("", { status: 200 }),
+    });
+    expect(warnings).toContain("Comms catch captured ZERO email sends");
+    expect(warnings).not.toContain(token);
   });
 
   it("records a drained operator-hosted catch in the bundle and leaves the verdict alone", async () => {
