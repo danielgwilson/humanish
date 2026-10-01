@@ -1,8 +1,17 @@
+// The computer-use route's judge and bundle builder. judgeComputerUseRun judges a run by its shape,
+// and buildCuaRunBundle sends it to the single-participant or the fan-out builder with that
+// shape's arguments. renderCuaReviewMarkdown writes review.md. shared-world/bundle.ts holds the
+// same for that route.
+
+import type { ActorTrace } from "../../actors/contract.js";
 import type { CuaActorDescriptor } from "../../actors/registry.js";
 import type { ComputerUsePlan } from "../../lab/plan-types.js";
 import type { RunBundle, RunRerunLineage } from "../../run/bundle.js";
 import type { RunLabProvenance } from "../../run/status.js";
 import { judgeOneParticipant, judgeParticipants, type Judgment } from "../../run/judge.js";
+import { desktopSpanToMinutes } from "../../run/cost-summary.js";
+import { e2bDesktopTemplate } from "../../substrates/e2b/sandbox.js";
+import { providerResourcesForOutcome } from "./bundle-parts.js";
 import { participantFactsOf } from "./participant-facts.js";
 import { buildCuaFanoutBundle } from "./fanout-bundle.js";
 import { buildSingleParticipantBundle } from "./single-bundle.js";
@@ -66,49 +75,28 @@ export function judgeComputerUseRun(
   });
 }
 
+/** The run's state a bundle is built from, in progress or final. */
+interface CuaRunBundleState {
+  judgment: Judgment;
+  dryRun: boolean;
+  outcomes: ParticipantRunOutcome[] | undefined;
+  subjects: CuaSubjectProjection[];
+  aggregateSubject: CuaSubjectProjection;
+  subjectProvenance: CuaSubjectProvenanceArg | undefined;
+  failFastReason?: string;
+  inProgress?: true;
+}
+
 /**
- * The run bundle for the current state of a computer-use run. One lane without a rerun keeps the
- * single-lane shape; a fan-out or a rerun uses the fan-out shape, which carries the plan and each
- * lane's subject.
+ * The run bundle for the current state of a computer-use run. One participant without a rerun
+ * keeps the single-participant shape; a fan-out or a rerun uses the fan-out shape, which carries
+ * the participant plan and each participant's subject. Both argument mappings are here.
  */
-export function buildCuaRunBundle(
-  base: CuaRunBundleBase,
-  state: {
-    judgment: Judgment;
-    dryRun: boolean;
-    outcomes: ParticipantRunOutcome[] | undefined;
-    subjects: CuaSubjectProjection[];
-    aggregateSubject: CuaSubjectProjection;
-    subjectProvenance: CuaSubjectProvenanceArg | undefined;
-    failFastReason?: string;
-    inProgress?: true;
-  },
-): RunBundle {
+export function buildCuaRunBundle(base: CuaRunBundleBase, state: CuaRunBundleState): RunBundle {
   const lab = base.lab === undefined ? {} : { lab: base.lab };
   const inProgress = state.inProgress === undefined ? {} : { inProgress: true };
-  if (isOneParticipantRun(base)) {
-    const spec = base.participantRuns[0]!;
-    return buildSingleParticipantBundle({
-      verdict: state.judgment.verdict,
-      ...lab,
-      spec,
-      outcome: state.outcomes?.[0],
-      descriptor: base.descriptor,
-      appUrl: spec.planned.targetUrl ?? base.appUrl,
-      createdAt: base.createdAt,
-      dryRun: state.dryRun,
-      plan: base.plan,
-      runId: base.runId,
-      source: base.source,
-      redactScreenshots: base.redactScreenshots,
-      ...(state.subjectProvenance === undefined
-        ? {}
-        : { subjectProvenance: state.subjectProvenance }),
-      inProcessRoute: base.inProcessRoute,
-      localAppSubject: base.localAppSubject,
-      ...inProgress,
-    });
-  }
+  if (isOneParticipantRun(base))
+    return buildSingleParticipantBundle(singleParticipantArgs(base, state));
   return buildCuaFanoutBundle({
     verdict: state.judgment.verdict,
     ...lab,
@@ -132,4 +120,124 @@ export function buildCuaRunBundle(
     subjectEnvNames: base.subjectEnvNames,
     ...inProgress,
   });
+}
+
+/** The single-participant builder's arguments, from the run's base and current state. */
+function singleParticipantArgs(
+  base: CuaRunBundleBase,
+  state: CuaRunBundleState,
+): Parameters<typeof buildSingleParticipantBundle>[0] {
+  const spec = base.participantRuns[0]!;
+  const outcome = state.outcomes?.[0];
+  const { plan } = base;
+  const desktopTemplate = e2bDesktopTemplate(plan.residual);
+  return {
+    verdict: state.judgment.verdict,
+    realEmail: plan.residual.comms?.email?.kind === "real",
+    ...(base.lab === undefined ? {} : { lab: base.lab }),
+    actorId: base.descriptor.id,
+    appUrl: spec.planned.targetUrl ?? base.appUrl,
+    participantId: spec.planned.id,
+    ...(spec.planned.labels.actorType === undefined
+      ? {}
+      : { actorType: spec.planned.labels.actorType }),
+    ...(spec.planned.labels.surface === undefined ? {} : { surface: spec.planned.labels.surface }),
+    ...(spec.planned.labels.caseGroup === undefined
+      ? {}
+      : { caseGroup: spec.planned.labels.caseGroup }),
+    createdAt: base.createdAt,
+    dryRun: state.dryRun,
+    labId: plan.labId,
+    ...(plan.title ? { labTitle: plan.title } : {}),
+    mission: spec.evidenceInstructions ?? spec.instructions,
+    ...(spec.evidenceAssignment === undefined ? {} : { assignment: spec.evidenceAssignment }),
+    persona: spec.persona,
+    resolution: spec.planned.device.resolution,
+    desktopRoute: !base.inProcessRoute,
+    substrate: base.inProcessRoute
+      ? "local-filesystem"
+      : plan.residual.execution?.target === "local"
+        ? "local-desktop"
+        : "e2b-desktop",
+    ...(outcome?.desktopGeometry === undefined ? {} : { desktopGeometry: outcome.desktopGeometry }),
+    ...(outcome?.recording === undefined ? {} : { recording: outcome.recording }),
+    isMobile: spec.planned.device.preset.isMobile,
+    runId: base.runId,
+    screenshots: outcome?.screenshots ?? [],
+    captureRedaction: base.redactScreenshots ? "blurred" : "raw",
+    ...(outcome?.session ? { session: outcome.session } : {}),
+    ...(outcome?.sessionError !== undefined ? { sessionError: outcome.sessionError } : {}),
+    ...(outcome === undefined
+      ? {}
+      : {
+          credibility: {
+            noEngagement: outcome.noEngagement === true,
+            selfReportedBlocker: outcome.selfReportedBlocker === true,
+            reportedFriction: outcome.reportedFriction === true,
+          },
+        }),
+    source: base.source,
+    ...(state.inProgress === undefined ? {} : { inProgress: state.inProgress }),
+    ...(state.subjectProvenance === undefined
+      ? {}
+      : { subjectProvenance: state.subjectProvenance }),
+    ...(desktopTemplate === undefined ? {} : { desktopTemplate }),
+    ...(outcome?.desktopBrowser === undefined ? {} : { desktopBrowser: outcome.desktopBrowser }),
+    providerResources: providerResourcesForOutcome({
+      outcome,
+      createdAt: base.createdAt,
+      ids: spec,
+      participantId: spec.planned.id,
+    }),
+    ...(base.localAppSubject || base.inProcessRoute ? { entryKind: "local-app" as const } : {}),
+    ...(outcome?.session ? { traceArtifactPath: spec.traceArtifactPath } : {}),
+    ...(outcome?.commsArtifactPath === undefined
+      ? {}
+      : { commsArtifactPath: outcome.commsArtifactPath }),
+    ...(desktopSpanToMinutes(outcome?.desktopDurationMs) === undefined
+      ? {}
+      : { desktopMinutes: desktopSpanToMinutes(outcome?.desktopDurationMs)! }),
+    ...(outcome?.sandboxId === undefined
+      ? {}
+      : {
+          desktopUsage: {
+            participantId: spec.planned.id,
+            minutes: desktopSpanToMinutes(outcome.desktopDurationMs),
+            observation: outcome.desktopResources,
+            lifetimeComplete: outcome.killed,
+          },
+        }),
+    phaseEvents: outcome?.phaseRecords ?? [],
+  };
+}
+
+/** The run's review.md: title, run, mode, gate, summary, subject, actor evidence and gaps. */
+export function renderCuaReviewMarkdown(bundle: RunBundle): string {
+  const trace: ActorTrace | undefined = bundle.streams[0]?.actor;
+  const provenance = bundle.events.find((event) => event.type === "cua-lab.subject.provenance");
+  return [
+    `# ${bundle.scenario.title}`,
+    "",
+    `- run: ${bundle.runId}`,
+    `- mode: ${bundle.mode}`,
+    `- run gate: ${bundle.review.verdict}`,
+    `- summary: ${bundle.review.summary}`,
+    ...(provenance ? [`- subject: ${provenance.message}`] : []),
+    ...(trace
+      ? [
+          `- actor: ${trace.provider} (${trace.lane}/${trace.protocol})`,
+          // Honest count: name the trace's actual screenshot mode ("raw" | "blurred"); say
+          // nothing when no frames exist ("n/a") rather than claim a redaction that never ran.
+          `- evidence: ${trace.items.length} trace item(s), ${trace.counts.screenshots ?? 0} ${
+            trace.redaction.screenshots === "raw" || trace.redaction.screenshots === "blurred"
+              ? `${trace.redaction.screenshots} screenshot(s)`
+              : "screenshot(s)"
+          }`,
+        ]
+      : []),
+    ...(bundle.review.gaps.length > 0
+      ? ["", "## Gaps", ...bundle.review.gaps.map((gap) => `- ${gap}`)]
+      : []),
+    "",
+  ].join("\n");
 }

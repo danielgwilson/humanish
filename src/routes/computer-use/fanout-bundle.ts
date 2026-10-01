@@ -213,7 +213,8 @@ function fanoutFeedbackCandidates(args: CuaFanoutBundleArgs) {
  * is a new producer for the multi-stream shape). One sim + one stream per lane; per-lane
  * provenance/session events; a recorded `cua-lab.fanout.plan` event (and a `cua-lab.fanout.fail-fast`
  * event when a harness error skipped queued lanes). N-ary verify/Observer already handle multiple
- * streams. The N=1 path NEVER reaches here (buildCuaBundle owns it, byte-stable).
+ * streams. A single-participant run without a rerun never reaches here: buildCuaRunBundle
+ * (bundle.ts) sends it to buildSingleParticipantBundle (single-bundle.ts).
  */
 export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
   const { specs, outcomes, plan } = args;

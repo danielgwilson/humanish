@@ -18,7 +18,7 @@ import {
   prepareSelectedOutputDirectory,
 } from "../../run/contained-output.js";
 import { type LocalTreeArchive } from "../../run/source-archive.js";
-import { renderCuaReviewMarkdown } from "./bundle-parts.js";
+import { renderCuaReviewMarkdown } from "./bundle.js";
 import {
   emitPreflightPlan,
   makeCuaRunBudget,

@@ -1,68 +1,20 @@
+// The parts both computer-use bundle shapes share: the subject-state story and provenance line,
+// feedback candidates from what live participants reported, provider-resource records, and the
+// public-safe app URL label. The builders are bundle.ts (the dispatcher and the judge),
+// single-bundle.ts and fanout-bundle.ts.
+
 import { feedbackProofCommands } from "../../feedback/proof.js";
-import type { ActorTrace } from "../../actors/contract.js";
 import type { CuaLoopResult } from "../../actors/computer-use/loop.js";
 import { containsSensitive, redactText } from "../../evidence/redaction.js";
 import {
-  type RunBundle,
   type RunFeedbackCandidate,
   type RunProviderResource,
   type RunSubjectProvenance,
 } from "../../run/bundle.js";
-import { participantOutcomeOk } from "./participant-facts.js";
 import { participantResourceIds, type ParticipantIds } from "../../run/participant-records.js";
 import { digestUrl } from "./lane-plan.js";
 import { resolveSelfReportedFriction } from "./self-report.js";
-import {
-  CUA_FANOUT_STRATEGY,
-  type CuaParticipantPlan,
-  type CuaParticipantSummary,
-  type CuaSubjectProvenanceArg,
-  type ParticipantRunOutcome,
-} from "./types.js";
-
-/** Aggregate lane counts for the result projection. */
-export function buildParticipantSummary(
-  outcomes: ParticipantRunOutcome[] | undefined,
-  participantCount: number,
-  participantPlan: CuaParticipantPlan,
-  dryRun: boolean,
-): CuaParticipantSummary {
-  if (dryRun || !outcomes) {
-    return {
-      strategy: CUA_FANOUT_STRATEGY,
-      total: participantCount,
-      passed: 0,
-      skipped: 0,
-      harnessErrors: 0,
-      hollow: 0,
-      concurrency: participantPlan.concurrency,
-      waves: participantPlan.waves,
-    };
-  }
-  let passed = 0;
-  let skipped = 0;
-  let harnessErrors = 0;
-  let hollow = 0;
-  for (const outcome of outcomes) {
-    if (outcome.skippedReason !== undefined) {
-      skipped += 1;
-      continue;
-    }
-    if (outcome.harnessError) harnessErrors += 1;
-    if (outcome.noEngagement) hollow += 1;
-    if (participantOutcomeOk(outcome, dryRun)) passed += 1;
-  }
-  return {
-    strategy: CUA_FANOUT_STRATEGY,
-    total: participantCount,
-    passed,
-    skipped,
-    harnessErrors,
-    hollow,
-    concurrency: participantPlan.concurrency,
-    waves: participantPlan.waves,
-  };
-}
+import { type CuaSubjectProvenanceArg, type ParticipantRunOutcome } from "./types.js";
 
 /** The human-readable state story appended to the provenance event (and review.md via it). */
 export function describeSubjectState(
@@ -251,36 +203,6 @@ export function providerResourcesForOutcome(args: {
       },
     },
   ];
-}
-
-export function renderCuaReviewMarkdown(bundle: RunBundle): string {
-  const trace: ActorTrace | undefined = bundle.streams[0]?.actor;
-  const provenance = bundle.events.find((event) => event.type === "cua-lab.subject.provenance");
-  return [
-    `# ${bundle.scenario.title}`,
-    "",
-    `- run: ${bundle.runId}`,
-    `- mode: ${bundle.mode}`,
-    `- run gate: ${bundle.review.verdict}`,
-    `- summary: ${bundle.review.summary}`,
-    ...(provenance ? [`- subject: ${provenance.message}`] : []),
-    ...(trace
-      ? [
-          `- actor: ${trace.provider} (${trace.lane}/${trace.protocol})`,
-          // Honest count: name the trace's actual screenshot mode ("raw" | "blurred"); say
-          // nothing when no frames exist ("n/a") rather than claim a redaction that never ran.
-          `- evidence: ${trace.items.length} trace item(s), ${trace.counts.screenshots ?? 0} ${
-            trace.redaction.screenshots === "raw" || trace.redaction.screenshots === "blurred"
-              ? `${trace.redaction.screenshots} screenshot(s)`
-              : "screenshot(s)"
-          }`,
-        ]
-      : []),
-    ...(bundle.review.gaps.length > 0
-      ? ["", "## Gaps", ...bundle.review.gaps.map((gap) => `- ${gap}`)]
-      : []),
-    "",
-  ].join("\n");
 }
 
 export function publicSafeAppUrlLabel(url: string): string {
