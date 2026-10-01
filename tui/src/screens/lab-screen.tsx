@@ -435,7 +435,7 @@ function capsLine(summary: LabSummary | null | undefined): string {
   const study = summary?.caps.studyUsd;
   if (lane === undefined && study === undefined) return "";
   const parts: string[] = [];
-  if (lane !== undefined) parts.push(`$${lane} lane`);
+  if (lane !== undefined) parts.push(`$${lane} per participant`);
   if (study !== undefined) parts.push(`$${study} study`);
   return ` · caps ${parts.join(" / ")}`;
 }

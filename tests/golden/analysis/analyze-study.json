@@ -58,9 +58,9 @@
       "admission": {
         "allowed": false,
         "error": "analysis_budget_exceeded",
-        "inputTokenAllowance": 17750,
+        "inputTokenAllowance": 17756,
         "outputTokenAllowance": 8192,
-        "estimatedCostUsd": 0.25259,
+        "estimatedCostUsd": 0.25262,
         "ratesAsOf": "2026-09-03"
       },
       "warnings": [],
@@ -83,9 +83,9 @@
       "admission": {
         "allowed": true,
         "error": null,
-        "inputTokenAllowance": 17750,
+        "inputTokenAllowance": 17756,
         "outputTokenAllowance": 8192,
-        "estimatedCostUsd": 0.25259,
+        "estimatedCostUsd": 0.25262,
         "ratesAsOf": "2026-09-03"
       },
       "warnings": [],
@@ -104,9 +104,9 @@
       "admission": {
         "allowed": true,
         "error": null,
-        "inputTokenAllowance": 17750,
+        "inputTokenAllowance": 17756,
         "outputTokenAllowance": 32768,
-        "estimatedCostUsd": 0.74411,
+        "estimatedCostUsd": 0.74414,
         "ratesAsOf": "2026-09-03"
       },
       "warnings": [],
@@ -154,9 +154,9 @@
       "admission": {
         "allowed": true,
         "error": null,
-        "inputTokenAllowance": 17750,
+        "inputTokenAllowance": 17756,
         "outputTokenAllowance": 8192,
-        "estimatedCostUsd": 0.25259,
+        "estimatedCostUsd": 0.25262,
         "ratesAsOf": "2026-09-03"
       }
     },
@@ -190,9 +190,9 @@
       "admission": {
         "allowed": true,
         "error": null,
-        "inputTokenAllowance": 17750,
+        "inputTokenAllowance": 17756,
         "outputTokenAllowance": 8192,
-        "estimatedCostUsd": 0.25259,
+        "estimatedCostUsd": 0.25262,
         "ratesAsOf": "2026-09-03"
       },
       "warnings": [],
@@ -208,7 +208,7 @@
         "usageComplete": true,
         "dispatched": true,
         "ratesAsOf": "2026-09-03",
-        "estimatedAdmissionUsd": 0.25259
+        "estimatedAdmissionUsd": 0.25262
       },
       "executionReceiptPath": ".humanish/runs/analysis-golden/analysis-attempts/analysis-golden-1/receipt.json",
       "artifactPath": ".humanish/runs/analysis-golden/analysis/analysis-golden-1/analysis.json"
@@ -218,7 +218,7 @@
         "url": "https://api.openai.com/v1/responses",
         "model": "gpt-5.6-sol",
         "maxOutputTokens": 8192,
-        "bodySha256": "6540ce586816279a"
+        "bodySha256": "d85885a0d4726076"
       }
     ],
     "progress": [
@@ -226,25 +226,25 @@
         "phase": "admitted",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.25259
+        "estimatedAdmissionUsd": 0.25262
       },
       {
         "phase": "requesting",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.25259
+        "estimatedAdmissionUsd": 0.25262
       },
       {
         "phase": "validating",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.25259
+        "estimatedAdmissionUsd": 0.25262
       },
       {
         "phase": "finished",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.25259,
+        "estimatedAdmissionUsd": 0.25262,
         "status": "partial"
       }
     ],
@@ -269,7 +269,7 @@
           "usageComplete": true,
           "dispatched": true,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.25259,
+          "estimatedAdmissionUsd": 0.25262,
           "inputTokens": 13543,
           "outputTokens": 221,
           "estimatedCostUsd": 0.07206
@@ -311,7 +311,7 @@
           "usageComplete": true,
           "dispatched": true,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.25259,
+          "estimatedAdmissionUsd": 0.25262,
           "inputTokens": 13543,
           "outputTokens": 221,
           "estimatedCostUsd": 0.07206
@@ -364,7 +364,7 @@
             "streamId": "sim-01-ui",
             "eventId": "event-001-b",
             "kind": "run_event:sim.live-substrate.missing",
-            "text": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
+            "text": "No live actor launched in dry-run mode; the observer stream is ready for real substrate evidence.",
             "quoteEligible": false,
             "at": "[ts]",
             "elapsedMs": null,
@@ -437,9 +437,9 @@
       "admission": {
         "allowed": true,
         "error": null,
-        "inputTokenAllowance": 17750,
+        "inputTokenAllowance": 17756,
         "outputTokenAllowance": 8192,
-        "estimatedCostUsd": 0.25259,
+        "estimatedCostUsd": 0.25262,
         "ratesAsOf": "2026-09-03"
       },
       "warnings": [],
@@ -452,7 +452,7 @@
         "usageComplete": true,
         "dispatched": true,
         "ratesAsOf": "2026-09-03",
-        "estimatedAdmissionUsd": 0.25259,
+        "estimatedAdmissionUsd": 0.25262,
         "inputTokens": 13543,
         "outputTokens": 221,
         "estimatedCostUsd": 0.07206
@@ -482,7 +482,7 @@
           "usageComplete": true,
           "dispatched": true,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.25259,
+          "estimatedAdmissionUsd": 0.25262,
           "inputTokens": 13543,
           "outputTokens": 221,
           "estimatedCostUsd": 0.07206
@@ -524,7 +524,7 @@
           "usageComplete": true,
           "dispatched": true,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.25259,
+          "estimatedAdmissionUsd": 0.25262,
           "inputTokens": 13543,
           "outputTokens": 221,
           "estimatedCostUsd": 0.07206
@@ -577,7 +577,7 @@
             "streamId": "sim-01-ui",
             "eventId": "event-001-b",
             "kind": "run_event:sim.live-substrate.missing",
-            "text": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
+            "text": "No live actor launched in dry-run mode; the observer stream is ready for real substrate evidence.",
             "quoteEligible": false,
             "at": "[ts]",
             "elapsedMs": null,
@@ -650,9 +650,9 @@
       "admission": {
         "allowed": true,
         "error": null,
-        "inputTokenAllowance": 17750,
+        "inputTokenAllowance": 17756,
         "outputTokenAllowance": 8192,
-        "estimatedCostUsd": 0.25259,
+        "estimatedCostUsd": 0.25262,
         "ratesAsOf": "2026-09-03"
       },
       "warnings": [],
@@ -668,7 +668,7 @@
         "usageComplete": true,
         "dispatched": true,
         "ratesAsOf": "2026-09-03",
-        "estimatedAdmissionUsd": 0.25259
+        "estimatedAdmissionUsd": 0.25262
       },
       "executionReceiptPath": ".humanish/runs/analysis-golden/analysis-attempts/analysis-golden-3/receipt.json",
       "artifactPath": ".humanish/runs/analysis-golden/analysis/analysis-golden-3/analysis.json"
@@ -678,7 +678,7 @@
         "url": "https://api.openai.com/v1/responses",
         "model": "gpt-5.6-sol",
         "maxOutputTokens": 8192,
-        "bodySha256": "6540ce586816279a"
+        "bodySha256": "d85885a0d4726076"
       }
     ],
     "progress": [
@@ -686,25 +686,25 @@
         "phase": "admitted",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.25259
+        "estimatedAdmissionUsd": 0.25262
       },
       {
         "phase": "requesting",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.25259
+        "estimatedAdmissionUsd": 0.25262
       },
       {
         "phase": "validating",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.25259
+        "estimatedAdmissionUsd": 0.25262
       },
       {
         "phase": "finished",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.25259,
+        "estimatedAdmissionUsd": 0.25262,
         "status": "partial"
       }
     ],
@@ -729,7 +729,7 @@
           "usageComplete": true,
           "dispatched": true,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.25259,
+          "estimatedAdmissionUsd": 0.25262,
           "inputTokens": 13543,
           "outputTokens": 221,
           "estimatedCostUsd": 0.07206
@@ -766,7 +766,7 @@
           "usageComplete": true,
           "dispatched": true,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.25259,
+          "estimatedAdmissionUsd": 0.25262,
           "inputTokens": 13543,
           "outputTokens": 221,
           "estimatedCostUsd": 0.07206
@@ -808,7 +808,7 @@
           "usageComplete": true,
           "dispatched": true,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.25259,
+          "estimatedAdmissionUsd": 0.25262,
           "inputTokens": 13543,
           "outputTokens": 221,
           "estimatedCostUsd": 0.07206
@@ -861,7 +861,7 @@
             "streamId": "sim-01-ui",
             "eventId": "event-001-b",
             "kind": "run_event:sim.live-substrate.missing",
-            "text": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
+            "text": "No live actor launched in dry-run mode; the observer stream is ready for real substrate evidence.",
             "quoteEligible": false,
             "at": "[ts]",
             "elapsedMs": null,
@@ -948,7 +948,7 @@
           "usageComplete": true,
           "dispatched": true,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.25259,
+          "estimatedAdmissionUsd": 0.25262,
           "inputTokens": 13543,
           "outputTokens": 221,
           "estimatedCostUsd": 0.07206
@@ -1001,7 +1001,7 @@
             "streamId": "sim-01-ui",
             "eventId": "event-001-b",
             "kind": "run_event:sim.live-substrate.missing",
-            "text": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
+            "text": "No live actor launched in dry-run mode; the observer stream is ready for real substrate evidence.",
             "quoteEligible": false,
             "at": "[ts]",
             "elapsedMs": null,
@@ -1074,9 +1074,9 @@
       "admission": {
         "allowed": true,
         "error": null,
-        "inputTokenAllowance": 17750,
+        "inputTokenAllowance": 17756,
         "outputTokenAllowance": 8192,
-        "estimatedCostUsd": 0.25259,
+        "estimatedCostUsd": 0.25262,
         "ratesAsOf": "2026-09-03"
       },
       "warnings": [],
@@ -1092,7 +1092,7 @@
         "usageComplete": false,
         "dispatched": true,
         "ratesAsOf": "2026-09-03",
-        "estimatedAdmissionUsd": 0.25259
+        "estimatedAdmissionUsd": 0.25262
       },
       "error": {
         "code": "analysis_provider_http_error",
@@ -1107,19 +1107,19 @@
         "phase": "admitted",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.25259
+        "estimatedAdmissionUsd": 0.25262
       },
       {
         "phase": "requesting",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.25259
+        "estimatedAdmissionUsd": 0.25262
       },
       {
         "phase": "finished",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.25259,
+        "estimatedAdmissionUsd": 0.25262,
         "status": "failed"
       }
     ],
@@ -1144,7 +1144,7 @@
           "usageComplete": false,
           "dispatched": true,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.25259,
+          "estimatedAdmissionUsd": 0.25262,
           "inputTokens": null,
           "outputTokens": null,
           "estimatedCostUsd": null
@@ -1186,7 +1186,7 @@
           "usageComplete": false,
           "dispatched": true,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.25259,
+          "estimatedAdmissionUsd": 0.25262,
           "inputTokens": null,
           "outputTokens": null,
           "estimatedCostUsd": null
@@ -1239,7 +1239,7 @@
             "streamId": "sim-01-ui",
             "eventId": "event-001-b",
             "kind": "run_event:sim.live-substrate.missing",
-            "text": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
+            "text": "No live actor launched in dry-run mode; the observer stream is ready for real substrate evidence.",
             "quoteEligible": false,
             "at": "[ts]",
             "elapsedMs": null,
@@ -1262,9 +1262,9 @@
       "admission": {
         "allowed": true,
         "error": null,
-        "inputTokenAllowance": 17750,
+        "inputTokenAllowance": 17756,
         "outputTokenAllowance": 8192,
-        "estimatedCostUsd": 0.25259,
+        "estimatedCostUsd": 0.25262,
         "ratesAsOf": "2026-09-03"
       },
       "warnings": [],
@@ -1280,7 +1280,7 @@
         "usageComplete": true,
         "dispatched": true,
         "ratesAsOf": "2026-09-03",
-        "estimatedAdmissionUsd": 0.25259
+        "estimatedAdmissionUsd": 0.25262
       },
       "error": {
         "code": "analysis_validation_failed_schema_invalid",
@@ -1295,25 +1295,25 @@
         "phase": "admitted",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.25259
+        "estimatedAdmissionUsd": 0.25262
       },
       {
         "phase": "requesting",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.25259
+        "estimatedAdmissionUsd": 0.25262
       },
       {
         "phase": "validating",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.25259
+        "estimatedAdmissionUsd": 0.25262
       },
       {
         "phase": "finished",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.25259,
+        "estimatedAdmissionUsd": 0.25262,
         "status": "failed"
       }
     ],
@@ -1338,7 +1338,7 @@
           "usageComplete": true,
           "dispatched": true,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.25259,
+          "estimatedAdmissionUsd": 0.25262,
           "inputTokens": 13543,
           "outputTokens": 221,
           "estimatedCostUsd": 0.07206
@@ -1380,7 +1380,7 @@
           "usageComplete": true,
           "dispatched": true,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.25259,
+          "estimatedAdmissionUsd": 0.25262,
           "inputTokens": 13543,
           "outputTokens": 221,
           "estimatedCostUsd": 0.07206
@@ -1433,7 +1433,7 @@
             "streamId": "sim-01-ui",
             "eventId": "event-001-b",
             "kind": "run_event:sim.live-substrate.missing",
-            "text": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
+            "text": "No live actor launched in dry-run mode; the observer stream is ready for real substrate evidence.",
             "quoteEligible": false,
             "at": "[ts]",
             "elapsedMs": null,
@@ -1456,9 +1456,9 @@
       "admission": {
         "allowed": true,
         "error": null,
-        "inputTokenAllowance": 17750,
+        "inputTokenAllowance": 17756,
         "outputTokenAllowance": 1024,
-        "estimatedCostUsd": 0.10923,
+        "estimatedCostUsd": 0.10926,
         "ratesAsOf": "2026-09-03"
       },
       "warnings": [],
@@ -1474,7 +1474,7 @@
         "usageComplete": true,
         "dispatched": true,
         "ratesAsOf": "2026-09-03",
-        "estimatedAdmissionUsd": 0.10923
+        "estimatedAdmissionUsd": 0.10926
       },
       "error": {
         "code": "analysis_admission_estimate_exceeded",
@@ -1489,25 +1489,25 @@
         "phase": "admitted",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.10923
+        "estimatedAdmissionUsd": 0.10926
       },
       {
         "phase": "requesting",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.10923
+        "estimatedAdmissionUsd": 0.10926
       },
       {
         "phase": "validating",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.10923
+        "estimatedAdmissionUsd": 0.10926
       },
       {
         "phase": "finished",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.10923,
+        "estimatedAdmissionUsd": 0.10926,
         "status": "partial"
       }
     ],
@@ -1532,7 +1532,7 @@
           "usageComplete": true,
           "dispatched": true,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.10923,
+          "estimatedAdmissionUsd": 0.10926,
           "inputTokens": 13543,
           "outputTokens": 4096,
           "estimatedCostUsd": 0.14956
@@ -1574,7 +1574,7 @@
           "usageComplete": true,
           "dispatched": true,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.10923,
+          "estimatedAdmissionUsd": 0.10926,
           "inputTokens": 13543,
           "outputTokens": 4096,
           "estimatedCostUsd": 0.14956
@@ -1627,7 +1627,7 @@
             "streamId": "sim-01-ui",
             "eventId": "event-001-b",
             "kind": "run_event:sim.live-substrate.missing",
-            "text": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
+            "text": "No live actor launched in dry-run mode; the observer stream is ready for real substrate evidence.",
             "quoteEligible": false,
             "at": "[ts]",
             "elapsedMs": null,
@@ -1710,7 +1710,7 @@
         "phase": "admitted",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.25259
+        "estimatedAdmissionUsd": 0.25262
       }
     ],
     "files": {}
@@ -1724,9 +1724,9 @@
       "admission": {
         "allowed": true,
         "error": null,
-        "inputTokenAllowance": 17750,
+        "inputTokenAllowance": 17756,
         "outputTokenAllowance": 8192,
-        "estimatedCostUsd": 0.25259,
+        "estimatedCostUsd": 0.25262,
         "ratesAsOf": "2026-09-03"
       },
       "warnings": [],
@@ -1742,7 +1742,7 @@
         "usageComplete": false,
         "dispatched": false,
         "ratesAsOf": "2026-09-03",
-        "estimatedAdmissionUsd": 0.25259
+        "estimatedAdmissionUsd": 0.25262
       },
       "error": {
         "code": "analysis_cancelled",
@@ -1757,13 +1757,13 @@
         "phase": "admitted",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.25259
+        "estimatedAdmissionUsd": 0.25262
       },
       {
         "phase": "finished",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.25259,
+        "estimatedAdmissionUsd": 0.25262,
         "status": "cancelled"
       }
     ],
@@ -1788,7 +1788,7 @@
           "usageComplete": false,
           "dispatched": false,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.25259,
+          "estimatedAdmissionUsd": 0.25262,
           "inputTokens": null,
           "outputTokens": null,
           "estimatedCostUsd": null
@@ -1830,7 +1830,7 @@
           "usageComplete": false,
           "dispatched": false,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.25259,
+          "estimatedAdmissionUsd": 0.25262,
           "inputTokens": null,
           "outputTokens": null,
           "estimatedCostUsd": null
@@ -1883,7 +1883,7 @@
             "streamId": "sim-01-ui",
             "eventId": "event-001-b",
             "kind": "run_event:sim.live-substrate.missing",
-            "text": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
+            "text": "No live actor launched in dry-run mode; the observer stream is ready for real substrate evidence.",
             "quoteEligible": false,
             "at": "[ts]",
             "elapsedMs": null,
@@ -1906,9 +1906,9 @@
       "admission": {
         "allowed": true,
         "error": null,
-        "inputTokenAllowance": 17750,
+        "inputTokenAllowance": 17756,
         "outputTokenAllowance": 8192,
-        "estimatedCostUsd": 0.25259,
+        "estimatedCostUsd": 0.25262,
         "ratesAsOf": "2026-09-03"
       },
       "warnings": [],
@@ -1924,7 +1924,7 @@
         "usageComplete": true,
         "dispatched": true,
         "ratesAsOf": "2026-09-03",
-        "estimatedAdmissionUsd": 0.25259
+        "estimatedAdmissionUsd": 0.25262
       },
       "executionReceiptPath": ".humanish/runs/analysis-golden/analysis-attempts/analysis-golden-1/receipt.json",
       "error": {
@@ -1938,25 +1938,25 @@
         "phase": "admitted",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.25259
+        "estimatedAdmissionUsd": 0.25262
       },
       {
         "phase": "requesting",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.25259
+        "estimatedAdmissionUsd": 0.25262
       },
       {
         "phase": "validating",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.25259
+        "estimatedAdmissionUsd": 0.25262
       },
       {
         "phase": "finished",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.25259,
+        "estimatedAdmissionUsd": 0.25262,
         "status": "partial"
       }
     ],
@@ -1981,7 +1981,7 @@
           "usageComplete": true,
           "dispatched": true,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.25259,
+          "estimatedAdmissionUsd": 0.25262,
           "inputTokens": 13543,
           "outputTokens": 221,
           "estimatedCostUsd": 0.07206
@@ -2009,9 +2009,9 @@
       "admission": {
         "allowed": true,
         "error": null,
-        "inputTokenAllowance": 17750,
+        "inputTokenAllowance": 17756,
         "outputTokenAllowance": 8192,
-        "estimatedCostUsd": 0.25259,
+        "estimatedCostUsd": 0.25262,
         "ratesAsOf": "2026-09-03"
       },
       "warnings": [],
@@ -2027,7 +2027,7 @@
         "usageComplete": true,
         "dispatched": true,
         "ratesAsOf": "2026-09-03",
-        "estimatedAdmissionUsd": 0.25259
+        "estimatedAdmissionUsd": 0.25262
       },
       "error": {
         "code": "ANALYSIS_PUBLICATION_FAILED",
@@ -2040,25 +2040,25 @@
         "phase": "admitted",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.25259
+        "estimatedAdmissionUsd": 0.25262
       },
       {
         "phase": "requesting",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.25259
+        "estimatedAdmissionUsd": 0.25262
       },
       {
         "phase": "validating",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.25259
+        "estimatedAdmissionUsd": 0.25262
       },
       {
         "phase": "finished",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.25259,
+        "estimatedAdmissionUsd": 0.25262,
         "status": "partial"
       }
     ],
@@ -2075,9 +2075,9 @@
       "admission": {
         "allowed": true,
         "error": null,
-        "inputTokenAllowance": 17750,
+        "inputTokenAllowance": 17756,
         "outputTokenAllowance": 8192,
-        "estimatedCostUsd": 0.25259,
+        "estimatedCostUsd": 0.25262,
         "ratesAsOf": "2026-09-03"
       },
       "warnings": [
@@ -2095,7 +2095,7 @@
         "usageComplete": true,
         "dispatched": true,
         "ratesAsOf": "2026-09-03",
-        "estimatedAdmissionUsd": 0.25259
+        "estimatedAdmissionUsd": 0.25262
       },
       "executionReceiptPath": ".humanish/runs/analysis-golden/analysis-attempts/analysis-golden-1/receipt.json",
       "artifactPath": ".humanish/runs/analysis-golden/analysis/analysis-golden-1/analysis.json"
@@ -2106,25 +2106,25 @@
         "phase": "admitted",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.25259
+        "estimatedAdmissionUsd": 0.25262
       },
       {
         "phase": "requesting",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.25259
+        "estimatedAdmissionUsd": 0.25262
       },
       {
         "phase": "validating",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.25259
+        "estimatedAdmissionUsd": 0.25262
       },
       {
         "phase": "finished",
         "evidenceCount": 2,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.25259,
+        "estimatedAdmissionUsd": 0.25262,
         "status": "partial"
       }
     ],
@@ -2149,7 +2149,7 @@
           "usageComplete": true,
           "dispatched": true,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.25259,
+          "estimatedAdmissionUsd": 0.25262,
           "inputTokens": 13543,
           "outputTokens": 221,
           "estimatedCostUsd": 0.07206
@@ -2191,7 +2191,7 @@
           "usageComplete": true,
           "dispatched": true,
           "ratesAsOf": "2026-09-03",
-          "estimatedAdmissionUsd": 0.25259,
+          "estimatedAdmissionUsd": 0.25262,
           "inputTokens": 13543,
           "outputTokens": 221,
           "estimatedCostUsd": 0.07206
@@ -2244,7 +2244,7 @@
             "streamId": "sim-01-ui",
             "eventId": "event-001-b",
             "kind": "run_event:sim.live-substrate.missing",
-            "text": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
+            "text": "No live actor launched in dry-run mode; the observer stream is ready for real substrate evidence.",
             "quoteEligible": false,
             "at": "[ts]",
             "elapsedMs": null,
@@ -2345,7 +2345,7 @@
         "model": "gpt-6-astra",
         "maxOutputTokens": null,
         "images": 0,
-        "bodySha256": "5bada3361fe1f63f"
+        "bodySha256": "19260e55ca1a987d"
       }
     ],
     "progress": [
@@ -2502,7 +2502,7 @@
             "streamId": "sim-01-ui",
             "eventId": "event-001-b",
             "kind": "run_event:sim.live-substrate.missing",
-            "text": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
+            "text": "No live actor launched in dry-run mode; the observer stream is ready for real substrate evidence.",
             "quoteEligible": false,
             "at": "[ts]",
             "elapsedMs": null,
@@ -2751,7 +2751,7 @@
             "streamId": "sim-01-ui",
             "eventId": "event-001-b",
             "kind": "run_event:sim.live-substrate.missing",
-            "text": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
+            "text": "No live actor launched in dry-run mode; the observer stream is ready for real substrate evidence.",
             "quoteEligible": false,
             "at": "[ts]",
             "elapsedMs": null,

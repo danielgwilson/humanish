@@ -415,7 +415,7 @@ function buildSyntheticObserverFixtures(args: {
         level: "warn",
         type: "sim.live-substrate.missing",
         message:
-          "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
+          "No live actor launched in dry-run mode; the observer stream is ready for real substrate evidence.",
       }),
     );
   }

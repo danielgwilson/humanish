@@ -304,6 +304,6 @@ function unsupportedCliRoute(config: LabConfig, route: LabRoute): string | undef
   if (route === "preview")
     return "This route only creates synthetic evidence. Use first-run in dry-run mode or a supported live lab.";
   if (route === "shared-world" && config.actors[0]?.type !== "openai-computer-use")
-    return "Shared-world currently requires openai-computer-use with OPENAI_API_KEY; local-agent is supported on independent desktop lanes.";
+    return "Shared-world currently requires openai-computer-use with OPENAI_API_KEY; local-agent is supported for participants on independent desktops.";
   return undefined;
 }
