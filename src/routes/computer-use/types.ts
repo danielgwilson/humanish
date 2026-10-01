@@ -470,7 +470,7 @@ export interface DesktopParticipantRun extends ResolvedParticipant<
 
 export interface ParticipantRunsAndPlan {
   runs: DesktopParticipantRun[];
-  plan: CuaParticipantPlan;
+  participantPlan: CuaParticipantPlan;
 }
 
 /**
@@ -628,10 +628,10 @@ export interface CuaFanoutBundleArgs {
   appUrl: string;
   createdAt: string;
   dryRun: boolean;
-  routePlan: ComputerUsePlan;
+  plan: ComputerUsePlan;
   runId: string;
   source: RunBundle["source"];
-  plan: CuaParticipantPlan;
+  participantPlan: CuaParticipantPlan;
   rerun?: RunRerunLineage;
   failFastReason?: string;
   cloneRoute: boolean;

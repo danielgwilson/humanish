@@ -45,7 +45,7 @@ export function participantOutcomeOk(
 export function buildParticipantSummary(
   outcomes: ParticipantRunOutcome[] | undefined,
   laneCount: number,
-  plan: CuaParticipantPlan,
+  participantPlan: CuaParticipantPlan,
   dryRun: boolean,
 ): CuaParticipantSummary {
   if (dryRun || !outcomes) {
@@ -56,8 +56,8 @@ export function buildParticipantSummary(
       skipped: 0,
       harnessErrors: 0,
       hollow: 0,
-      concurrency: plan.concurrency,
-      waves: plan.waves,
+      concurrency: participantPlan.concurrency,
+      waves: participantPlan.waves,
     };
   }
   let passed = 0;
@@ -80,8 +80,8 @@ export function buildParticipantSummary(
     skipped,
     harnessErrors,
     hollow,
-    concurrency: plan.concurrency,
-    waves: plan.waves,
+    concurrency: participantPlan.concurrency,
+    waves: participantPlan.waves,
   };
 }
 

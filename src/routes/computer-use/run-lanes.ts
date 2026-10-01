@@ -18,7 +18,7 @@ import type { CuaRunSetup } from "./setup.js";
  */
 export async function runLabParticipants(setup: CuaRunSetup) {
   const {
-    routePlan,
+    plan,
     input,
     config,
     dryRun,
@@ -31,7 +31,7 @@ export async function runLabParticipants(setup: CuaRunSetup) {
     externalCommsConfig,
     externalCommsEmail,
     participantRuns,
-    plan,
+    participantPlan,
     knownSecretValues,
     scrubKnownValues,
     subjectEnvNames,
@@ -89,9 +89,9 @@ export async function runLabParticipants(setup: CuaRunSetup) {
 
   const receivingWarnings: string[] = [];
   let receiving: CommsReceivingRun | undefined;
-  const { comms } = routePlan.residual;
+  const { comms } = plan.residual;
   if (!dryRun && comms?.email?.kind === "real") {
-    const { envValues } = routePlan.residual.subject;
+    const { envValues } = plan.residual.subject;
     try {
       receiving = await prepareReceivingRun({
         cwd,
@@ -134,7 +134,7 @@ export async function runLabParticipants(setup: CuaRunSetup) {
       ({ outcomes, failFastReason } = await runAllCuaParticipants(
         participantRuns,
         deps,
-        plan,
+        participantPlan,
         inProcessRoute,
       ));
   } finally {

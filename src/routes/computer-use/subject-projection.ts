@@ -21,7 +21,7 @@ import {
  * state is projected as not yet run.
  */
 export function projectParticipantSubjects(args: {
-  routePlan: ComputerUsePlan;
+  plan: ComputerUsePlan;
   subjectRoute: CuaSubjectRoute;
   publicRepo?: string;
   localTreeArchive?: LocalTreeArchive;
@@ -30,7 +30,7 @@ export function projectParticipantSubjects(args: {
   dryRun: boolean;
 }): CuaSubjectProjection[] {
   const { subjectRoute, publicRepo, localTreeArchive } = args;
-  const declaredState = cuaDeclaredState(args.routePlan);
+  const declaredState = cuaDeclaredState(args.plan);
   return args.runs.map((_spec, index) => {
     const outcome = args.outcomes?.[index];
     const subjectState = resolveSubjectState({

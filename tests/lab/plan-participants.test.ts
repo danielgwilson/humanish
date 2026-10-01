@@ -1,5 +1,5 @@
 // planParticipants must produce the same participants the routes build today. Computer use is
-// compared field by field with the lane specs planCuaParticipants builds from the plan. The
+// compared field by field with the lane specs loadCuaParticipants builds from the plan. The
 // shared-world seat builder is private, so seats are compared with what a shared-world dry run
 // records (seat ids, persona ids, assignment, rendered resolution); limits, entry and host are
 // checked directly.
@@ -18,7 +18,7 @@ import {
   type ComputerUseParticipant,
 } from "../../src/lab/plan-participants.js";
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/lab/types.js";
-import { planCuaParticipants } from "../../src/routes/computer-use/lane-plan.js";
+import { loadCuaParticipants } from "../../src/routes/computer-use/lane-plan.js";
 import { planComputerUseLab } from "../../src/routes/computer-use/plan.js";
 import type { DesktopParticipantRun } from "../../src/routes/computer-use/types.js";
 import { runConcurrentSharedWorld } from "../../src/routes/shared-world/route.js";
@@ -166,7 +166,7 @@ function fromParticipant(participant: ComputerUseParticipant) {
 const plain = (value: unknown): unknown => JSON.parse(JSON.stringify(value));
 
 describe("computerUseParticipants", () => {
-  it("matches the lane specs planCuaParticipants builds, for committed labs and variants", async () => {
+  it("matches the lane specs loadCuaParticipants builds, for committed labs and variants", async () => {
     const configs: [string, LabConfig, number | undefined][] = [
       ...(await committedLabsOn("computer-use")).map(
         ([id, config]) => [id, config, undefined] as [string, LabConfig, undefined],
@@ -181,7 +181,7 @@ describe("computerUseParticipants", () => {
         ...(countOverride === undefined ? {} : { countOverride }),
       });
       if (!planned.ok) throw new Error(`${name}: ${planned.refusal.message}`);
-      const lanes = await planCuaParticipants({
+      const lanes = await loadCuaParticipants({
         plan: planned.plan,
         cwd,
         projectRoot: await prepareSelectedOutputDirectory(path.dirname(cwd), cwd),

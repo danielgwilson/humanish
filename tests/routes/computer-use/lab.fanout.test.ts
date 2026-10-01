@@ -519,7 +519,7 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
         },
       ],
     });
-    const plan = resolveCuaParticipantPlan(config);
+    const participantPlan = resolveCuaParticipantPlan(config);
     const specs: DesktopParticipantRun[] = [
       participantRun({
         id: "role-a",
@@ -575,10 +575,10 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
       appUrl: "http://127.0.0.1:3000/",
       createdAt: "2026-01-01T00:00:00.000Z",
       dryRun: false,
-      routePlan: routePlanOf(config),
+      plan: planOf(config),
       runId: "missing-outcomes-proof",
       source,
-      plan,
+      participantPlan,
       cloneRoute: false,
       subjectEnvNames: [],
     });
@@ -591,7 +591,7 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
 });
 
 /** The computer-use plan a fixture config makes; the bundle reads the lab's identity from it. */
-function routePlanOf(config: LabConfig): ComputerUsePlan {
+function planOf(config: LabConfig): ComputerUsePlan {
   const planned = planComputerUseLab(config, { dryRun: true });
   if (!planned.ok) throw new Error(planned.refusal.message);
   return planned.plan;
@@ -648,7 +648,7 @@ describe("cua fan-out bundle: desktop browser provenance", () => {
       appUrl: "http://127.0.0.1:3000/",
       createdAt: "2026-01-01T00:00:00.000Z",
       dryRun: false,
-      routePlan: routePlanOf(config),
+      plan: planOf(config),
       runId: "browser-provenance-proof",
       source: {
         packageName: "humanish",
@@ -662,7 +662,7 @@ describe("cua fan-out bundle: desktop browser provenance", () => {
           note: "test fixture",
         },
       },
-      plan: resolveCuaParticipantPlan(config),
+      participantPlan: resolveCuaParticipantPlan(config),
       cloneRoute: false,
       subjectEnvNames: [],
     });
