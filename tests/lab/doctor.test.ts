@@ -10,6 +10,9 @@ import type { DetectLocalAgentsOptions } from "../../src/actors/local-agent/cli.
 import { runLabPreflight } from "../../src/lab/preflight.js";
 import { resolveLabManifest } from "../../src/lab/discover.js";
 import { runLab } from "../../src/run-lab.js";
+import { stringify } from "yaml";
+import type { DetectedLocalAgent } from "../../src/actors/local-agent/cli.js";
+import { lab as admissionLab } from "../admission/fixtures.js";
 
 const noAgents: DetectLocalAgentsOptions = { which: async () => undefined };
 const keyless = { HUMANISH_STRICT_KEYS: "1", PATH: "" };
@@ -421,5 +424,59 @@ describe("selected lab setup without paid dispatch", () => {
         expect(JSON.stringify(outcome)).not.toContain("private-account-marker");
       }
     });
+  });
+});
+
+describe("a shared-world lab with a local-agent actor in doctor", () => {
+  const codex = (authStatus: DetectedLocalAgent["authStatus"]): DetectedLocalAgent => ({
+    id: "codex",
+    bin: "codex",
+    label: "Codex",
+    credentialPath: "/synthetic/auth.json",
+    binPath: "/synthetic/codex",
+    credentialsPresent: true,
+    authStatus,
+  });
+
+  async function setup(base: "sharedProvisioned" | "sharedExternal", agents: DetectedLocalAgent[]) {
+    const raw = admissionLab(
+      base,
+      { scenario: { mode: "live" }, review: { analysis: false } },
+      { type: "local-agent", localAgent: "codex" },
+    );
+    return project(stringify(raw), (cwd) =>
+      labSetupChecks({
+        cwd,
+        lab: "humanish/labs/preview.yaml",
+        env: keyless,
+        agents,
+        keyPresent: () => false,
+      }),
+    );
+  }
+
+  it("runs the provisioned plane on E2B alone and shows the agent's sign-in", async () => {
+    const result = await setup("sharedProvisioned", [codex("authenticated")]);
+    expect(result.checks.some((check) => check.name === "live route")).toBe(false);
+    expect(result).toMatchObject({ desktop: true, keys: ["E2B_API_KEY"] });
+    expect(
+      result.checks.find((check) => check.name === "local participant authentication"),
+    ).toMatchObject({ ok: true });
+  });
+
+  it("adds OPENAI_API_KEY on the external-public plane for the lobby-code reader", async () => {
+    const result = await setup("sharedExternal", [codex("authenticated")]);
+    expect(result.checks.some((check) => check.name === "live route")).toBe(false);
+    expect(result.keys).toEqual(["E2B_API_KEY", "OPENAI_API_KEY"]);
+  });
+
+  it.each([
+    ["is signed out", [codex("unauthenticated")], "reports not signed in"],
+    ["is not on PATH", [], "is not on this process's PATH"],
+  ])("fails the sign-in row when the agent %s", async (_name, agents, message) => {
+    const result = await setup("sharedProvisioned", agents);
+    const row = result.checks.find((check) => check.name === "local participant authentication");
+    expect(row).toMatchObject({ ok: false });
+    expect(row?.message).toContain(message);
   });
 });

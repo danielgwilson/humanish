@@ -185,7 +185,11 @@ async function participantChecks(
       },
     ];
   }
-  if (route !== "computer-use" || config.actors[0]?.type !== "local-agent") return [];
+  if (
+    (route !== "computer-use" && route !== "shared-world") ||
+    config.actors[0]?.type !== "local-agent"
+  )
+    return [];
   const choice = config.actors[0]?.localAgent ?? "codex";
   const agent = args.agents.find((entry) => entry.id === choice);
   if (local) return [await localCodexParticipantCheck({ env: args.env, readiness: checkAccount })];
@@ -288,11 +292,14 @@ export function labKeyRequirements(
       route === "shared-world" ||
       (route === "scripted" && config.subject.source === "clone"));
   const keys = desktop ? ["E2B_API_KEY"] : [];
+  const openaiBrain = config.actors[0]?.type !== "local-agent";
   if (route === "terminal")
     keys.push(keyPresent("CODEX_API_KEY") ? "CODEX_API_KEY" : "OPENAI_API_KEY");
+  // Shared world's external-public plane reads the host's lobby code with the OpenAI API,
+  // whatever brain drives the participants (routes/shared-world/plan.ts).
   else if (
-    (route === "computer-use" && config.actors[0]?.type !== "local-agent") ||
-    route === "shared-world"
+    (route === "computer-use" && openaiBrain) ||
+    (route === "shared-world" && (openaiBrain || config.subject.source === "app-url"))
   )
     keys.push("OPENAI_API_KEY");
   return { desktop, keys };
@@ -303,7 +310,5 @@ function unsupportedCliRoute(config: LabConfig, route: LabRoute): string | undef
     return "local-app needs a caller-supplied executor and provider through the library API; the plain CLI cannot run it.";
   if (route === "preview")
     return "This route only creates synthetic evidence. Use first-run in dry-run mode or a supported live lab.";
-  if (route === "shared-world" && config.actors[0]?.type !== "openai-computer-use")
-    return "Shared-world currently requires openai-computer-use with OPENAI_API_KEY; local-agent is supported for participants on independent desktops.";
   return undefined;
 }
