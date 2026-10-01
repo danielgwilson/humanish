@@ -2,7 +2,7 @@ import { mkdtemp, mkdir, readFile, rm, stat, symlink, writeFile } from "node:fs/
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   describeMissingKeys,
@@ -167,6 +167,62 @@ describe("provider-key discovery (#436)", () => {
     });
     expect(calls).toEqual([]); // GITHUB_TOKEN present -> gh never runs
     expect(env2.GH_TOKEN).toBeUndefined();
+  });
+
+  it("runs gh with no provider key in its environment, filled or exported", async () => {
+    // The CLI discovers into process.env itself, so this does too. Every name it touches is
+    // stubbed first, so vitest restores all of them after the test.
+    const bin = path.join(home, "bin");
+    const dump = path.join(home, "gh-env.txt");
+    await mkdir(bin, { recursive: true });
+    await writeFile(
+      path.join(bin, "gh"),
+      '#!/bin/sh\n/usr/bin/env > "$GH_ENV_DUMP"\necho gh-token-value\n',
+      { mode: 0o755 },
+    );
+    await writeOverlay(["ANTHROPIC_API_KEY=synthetic-overlay-anthropic"]);
+    await writeE2bConfig({ teamApiKey: "synthetic-e2b-store" });
+    const exported = {
+      OPENAI_API_KEY: "synthetic-exported-openai",
+      CODEX_API_KEY: "synthetic-exported-codex",
+      AGENTMAIL_API_KEY: "synthetic-exported-agentmail",
+    };
+    for (const name of ["ANTHROPIC_API_KEY", "E2B_API_KEY", "GH_TOKEN", "GITHUB_TOKEN"])
+      vi.stubEnv(name, undefined);
+    for (const [name, value] of Object.entries(exported)) vi.stubEnv(name, value);
+    vi.stubEnv("HUMANISH_STRICT_KEYS", undefined);
+    vi.stubEnv("XDG_CONFIG_HOME", path.join(home, ".config"));
+    vi.stubEnv("PATH", `${bin}:/usr/bin:/bin`);
+    vi.stubEnv("GH_ENV_DUMP", dump);
+    await discoverProviderKeys({
+      cwd,
+      env: process.env,
+      announce: () => {},
+      deps: { homeDir: home },
+    });
+
+    // gh ran after the overlay and e2b rungs filled their keys.
+    expect(process.env.GH_TOKEN).toBe("gh-token-value");
+    expect(process.env.ANTHROPIC_API_KEY).toBe("synthetic-overlay-anthropic");
+    expect(process.env.E2B_API_KEY).toBe("synthetic-e2b-store");
+    const seen = await readFile(dump, "utf8");
+    expect(seen).toContain(`GH_ENV_DUMP=${dump}`);
+    for (const name of [
+      "OPENAI_API_KEY",
+      "ANTHROPIC_API_KEY",
+      "E2B_API_KEY",
+      "GH_TOKEN",
+      "GITHUB_TOKEN",
+      "CODEX_API_KEY",
+      "AGENTMAIL_API_KEY",
+    ])
+      expect(seen).not.toMatch(new RegExp(`^${name}=`, "m"));
+    for (const value of [
+      ...Object.values(exported),
+      "synthetic-overlay-anthropic",
+      "synthetic-e2b-store",
+    ])
+      expect(seen).not.toContain(value);
   });
 
   it("HUMANISH_STRICT_KEYS=1 disables every rung (the pre-#436 behavior)", async () => {
