@@ -6,6 +6,7 @@ import {
   judgeOneParticipant,
   judgeParticipants,
   judgeSharedWorld,
+  judgeTerminal,
   participantPassed,
   participantStatus,
   selfReportedBlocker,
@@ -175,6 +176,50 @@ describe("judgeOneParticipant", () => {
 
   it("holds a run in progress as a contract", () => {
     expect(judge(passed(), false, true).verdict).toBe("contract_proof_only");
+  });
+});
+
+describe("judgeTerminal", () => {
+  const judge = (participant: ParticipantFacts | undefined, dryRun = false) =>
+    judgeTerminal({ dryRun, participant });
+
+  it("takes the verdict from the agent's status, as the one-participant rule does", () => {
+    expect(judge(passed())).toEqual({ verdict: "pass", allPassed: true, harnessFailed: false });
+    expect(judge(passed({ status: "blocked", completionReason: "blocked_approval" }))).toEqual({
+      verdict: "blocked",
+      allPassed: false,
+      harnessFailed: false,
+    });
+    expect(judge(passed({ status: "timed_out", completionReason: "timed_out" }))).toEqual({
+      verdict: "timed_out",
+      allPassed: false,
+      harnessFailed: false,
+    });
+    expect(judge(passed({ status: "failed", completionReason: "gave_up" }))).toEqual({
+      verdict: "fail",
+      allPassed: false,
+      harnessFailed: false,
+    });
+  });
+
+  it("marks a harness error, a blown cap included, as the harness failing", () => {
+    expect(
+      judge(
+        passed({
+          status: "failed",
+          completionReason: "harness_error",
+          sessionError: "known spend over the cap",
+        }),
+      ),
+    ).toEqual({ verdict: "fail", allPassed: false, harnessFailed: true });
+  });
+
+  it("holds a dry run as a contract with no harness failure", () => {
+    expect(judge(undefined, true)).toEqual({
+      verdict: "contract_proof_only",
+      allPassed: true,
+      harnessFailed: false,
+    });
   });
 });
 

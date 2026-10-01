@@ -14,6 +14,7 @@ import {
   type RunEvent,
   type RunSimulation,
 } from "../../run/bundle.js";
+import type { Verdict } from "../../run/judge.js";
 import { type RunSimulationStatus, type RunStream } from "../../run/streams.js";
 import {
   TERMINAL_EVENTS_ARTIFACT,
@@ -53,6 +54,8 @@ export function buildTerminalProductBundle(args: {
   };
   runId: string;
   source: RunBundle["source"];
+  /** The run's judgment verdict (judgeTerminal): a contract for a dry run. */
+  verdict: Verdict;
 }): RunBundle {
   const reason =
     "Contract bundle only: dry-run declared the terminal-product study contract without creating an E2B sandbox, injecting any key, or spending. This run did not execute an agent or prove live behavior.";
@@ -130,7 +133,7 @@ export function buildTerminalProductBundle(args: {
 
   const review: ReviewSummary = {
     schema: REVIEW_SCHEMA,
-    verdict: "contract_proof_only",
+    verdict: args.verdict,
     summary: reason,
     gaps: [
       "This dry-run did not execute the live in-sandbox agent route; it proves contract shape only, not live behavior, scale, or adoption.",
@@ -189,6 +192,8 @@ export function buildLiveTerminalProductBundle(args: {
   ledgers: TerminalLedgers;
   cost?: RunCostSummary;
   sessionReason: string;
+  /** The run's judgment verdict (judgeTerminal). */
+  verdict: Verdict;
 }): RunBundle {
   const simStatus: RunSimulationStatus =
     args.trace.status === "passed"
@@ -252,17 +257,9 @@ export function buildLiveTerminalProductBundle(args: {
     streamId: "stream-001",
   });
 
-  const verdict: ReviewSummary["verdict"] =
-    args.trace.status === "passed"
-      ? "pass"
-      : args.trace.status === "blocked"
-        ? "blocked"
-        : args.trace.status === "timed_out"
-          ? "timed_out"
-          : "fail";
   const review: ReviewSummary = {
     schema: REVIEW_SCHEMA,
-    verdict,
+    verdict: args.verdict,
     summary: args.sessionReason,
     gaps: [
       ...(args.trace.status === "passed"

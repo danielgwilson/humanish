@@ -1,5 +1,6 @@
 import type { ObserverResult } from "../../observer/render.js";
-import type { ActorCompletionReason, ActorStatus } from "../../actors/contract.js";
+import type { ActorCompletionReason, ActorStatus, ActorTrace } from "../../actors/contract.js";
+import type { HarnessJudgment, ParticipantFacts } from "../../run/judge.js";
 import {
   TERMINAL_PRODUCT_LAB_SCHEMA,
   type NoSpendProof,
@@ -7,6 +8,24 @@ import {
   type TerminalLedgers,
   type TerminalProductLabResult,
 } from "./types.js";
+
+/**
+ * What judge.ts reads from a finished terminal session, after a blown cap has overridden it. It has
+ * no engagement or blocker rule: the agent's nonce-verified marker is its declared outcome.
+ */
+export function terminalParticipantFacts(
+  trace: ActorTrace,
+  sessionError: string | undefined,
+): ParticipantFacts {
+  return {
+    status: trace.status,
+    completionReason: trace.completionReason,
+    ...(sessionError === undefined ? {} : { sessionError }),
+    skipped: false,
+    noEngagement: false,
+    selfReportedBlocker: false,
+  };
+}
 
 /** The terminal-product lab result for a live run, from its session, cleanup and cost ledger. */
 export function terminalLabResult(args: {
@@ -26,6 +45,8 @@ export function terminalLabResult(args: {
   noSpendProof: NoSpendProof;
   capsExceeded: boolean;
   declaredScorerFailure: string | undefined;
+  /** The run's judgment; ok reads its harnessFailed, not a pass. */
+  judgment: HarnessJudgment;
   observer: ObserverResult;
   warnings: string[];
 }): TerminalProductLabResult {
@@ -45,6 +66,7 @@ export function terminalLabResult(args: {
     noSpendProof,
     capsExceeded,
     declaredScorerFailure,
+    judgment,
     observer,
     warnings,
   } = args;
@@ -58,10 +80,7 @@ export function terminalLabResult(args: {
   // run RESULT too, not just the persisted verdict — the keystone lane's declared rubric is a gate, so
   // its fail must drive exit code. Library callers never set this (additive, back-compat).
   const ok =
-    observer.ok &&
-    completionReason !== "harness_error" &&
-    cleanupProven &&
-    declaredScorerFailure === undefined;
+    observer.ok && !judgment.harnessFailed && cleanupProven && declaredScorerFailure === undefined;
 
   return {
     schema: TERMINAL_PRODUCT_LAB_SCHEMA,

@@ -19,7 +19,8 @@ import {
   noSpendNotEstablished,
 } from "./ledger.js";
 import type { LiveSandboxInputs, LiveTerminalSandbox } from "./live-sandbox.js";
-import { terminalLabResult } from "./result.js";
+import { judgeTerminal } from "../../run/judge.js";
+import { terminalLabResult, terminalParticipantFacts } from "./result.js";
 import { parseTerminalTokenUsage } from "./token-usage.js";
 import { buildTerminalActorTrace, scrubSplitKnownValues, tailOf } from "./trace.js";
 import type {
@@ -187,6 +188,12 @@ export async function finishLiveTerminalSession(
   const policies = plan.residual.policies;
   const { runtimeEnv, persona, mission, run, source, warnings, session } = inputs;
   const { runId, createdAt, paths: runPaths } = run;
+  // One judgment, after a blown cap has overridden the session: the bundle's verdict (and so
+  // status.json's outcome) and the result's ok both read it.
+  const judgment = judgeTerminal({
+    dryRun: false,
+    participant: terminalParticipantFacts(trace, session.error),
+  });
 
   // The run cost summary, as the computer-use route records it: the sandbox's compute time from
   // its span and observed size, and the participant's tokens (unpriced for Codex). It is not part
@@ -222,6 +229,7 @@ export async function finishLiveTerminalSession(
     ledgers,
     ...(runCost === undefined ? {} : { cost: runCost }),
     sessionReason: sanitize(session.reason),
+    verdict: judgment.verdict,
   });
 
   // --- THE LAYER-6 EXTENSION SEAM (issue #154 acceptance #8). ---
@@ -268,6 +276,7 @@ export async function finishLiveTerminalSession(
     noSpendProof,
     capsExceeded,
     declaredScorerFailure,
+    judgment,
     observer,
     warnings,
   });
