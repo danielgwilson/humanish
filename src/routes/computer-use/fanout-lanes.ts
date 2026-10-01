@@ -1,26 +1,35 @@
-// Each lane's records in a computer-use fan-out bundle: its simulation, its stream, its subject
-// provenance event and the events of its outcome (session, geometry warnings, phase trail).
+// Each participant's records in a computer-use fan-out bundle: its simulation, its stream, its
+// subject provenance event and the events of its outcome (session, geometry warnings, phase trail).
 
 import { participantAssignment } from "../../lab/participant-assignment.js";
 import type { RunEvent, RunSimulation } from "../../run/bundle.js";
+import {
+  participantEvent,
+  participantRecord,
+  participantStream,
+} from "../../run/participant-records.js";
 import type { RunDesktopGeometry, RunSimulationStatus, RunStream } from "../../run/streams.js";
 import { declaredScreenForRender } from "../../substrates/e2b/desktop-geometry.js";
 import { describeSubjectState, publicSafeAppUrlLabel } from "./bundle.js";
 import { phaseEventIdSuffix } from "./lane-plan.js";
 import type { CuaFanoutBundleArgs, DesktopParticipantRun } from "./types.js";
 
-/** What every lane's records share. */
-export interface FanoutLaneContext {
+/** What every participant's records share. */
+export interface FanoutParticipantContext {
   args: CuaFanoutBundleArgs;
   /** Numbers events in the order they are pushed. */
   nextEventId: (suffix: string) => string;
 }
 
-function fanoutLaneView(args: CuaFanoutBundleArgs, spec: DesktopParticipantRun, index: number) {
+function fanoutParticipantView(
+  args: CuaFanoutBundleArgs,
+  spec: DesktopParticipantRun,
+  index: number,
+) {
   const { outcomes, routePlan } = args;
   const outcome = outcomes?.[index];
-  const laneAppUrl = spec.planned.targetUrl ?? args.appUrl;
-  const publicLaneAppUrl = publicSafeAppUrlLabel(laneAppUrl);
+  const targetUrl = spec.planned.targetUrl ?? args.appUrl;
+  const publicTargetUrl = publicSafeAppUrlLabel(targetUrl);
   const subject = args.laneSubjects[index]!;
   const session = outcome?.session;
   const fallbackDeclared = declaredScreenForRender(
@@ -66,7 +75,7 @@ function fanoutLaneView(args: CuaFanoutBundleArgs, spec: DesktopParticipantRun, 
         : "raw";
   return {
     outcome,
-    publicLaneAppUrl,
+    publicTargetUrl,
     subject,
     session,
     desktopGeometry,
@@ -78,19 +87,17 @@ function fanoutLaneView(args: CuaFanoutBundleArgs, spec: DesktopParticipantRun, 
   };
 }
 
-type FanoutLaneView = ReturnType<typeof fanoutLaneView>;
+type FanoutParticipantView = ReturnType<typeof fanoutParticipantView>;
 
-function fanoutLaneSimulation(
+function fanoutParticipantRecord(
   args: CuaFanoutBundleArgs,
   spec: DesktopParticipantRun,
   index: number,
-  view: FanoutLaneView,
+  view: FanoutParticipantView,
 ): RunSimulation {
   const { routePlan } = args;
-  const { outcome, publicLaneAppUrl, session, status, reason } = view;
-  return {
-    id: spec.simId,
-    index: index + 1,
+  const { outcome, publicTargetUrl, session, status, reason } = view;
+  return participantRecord(spec, index + 1, {
     personaId: spec.persona.id,
     scenarioId: `cua-${routePlan.labId}`,
     status,
@@ -106,243 +113,231 @@ function fanoutLaneSimulation(
           ? `Lane ${spec.planned.id} ${outcome.skippedReason}.`
           : outcome?.sessionError !== undefined
             ? `Lane ${spec.planned.id} failed before a terminal session verdict: ${outcome.sessionError}`
-            : `Contract lane ${spec.planned.id} (${spec.persona.id}/${spec.planned.device.name}) for ${args.descriptor.id} against ${publicLaneAppUrl}.`,
-    streamIds: [spec.streamId],
+            : `Contract lane ${spec.planned.id} (${spec.persona.id}/${spec.planned.device.name}) for ${args.descriptor.id} against ${publicTargetUrl}.`,
     startedAt: args.createdAt,
     updatedAt: args.createdAt,
-  };
+  });
 }
 
-function fanoutLaneStream(
+function fanoutParticipantStream(
   args: CuaFanoutBundleArgs,
   spec: DesktopParticipantRun,
-  view: FanoutLaneView,
+  view: FanoutParticipantView,
 ): RunStream {
   const { routePlan } = args;
-  const { outcome, publicLaneAppUrl, session, desktopGeometry, screenshots } = view;
+  const { outcome, publicTargetUrl, session, desktopGeometry, screenshots } = view;
   const { lastScreenshot, status, reason, screenshotMode } = view;
-  return {
-    id: spec.streamId,
-    simId: spec.simId,
-    laneId: spec.planned.id,
-    ...(spec.evidenceAssignment === undefined
-      ? {}
-      : { assignment: participantAssignment(spec.evidenceAssignment) }),
-    ...(spec.planned.labels.actorType === undefined
-      ? {}
-      : { actorType: spec.planned.labels.actorType }),
-    ...(spec.planned.labels.surface === undefined ? {} : { surface: spec.planned.labels.surface }),
-    ...(spec.planned.labels.caseGroup === undefined
-      ? {}
-      : { caseGroup: spec.planned.labels.caseGroup }),
-    kind: "browser",
-    label: `CUA lane ${spec.planned.id} — ${routePlan.labId}`,
-    status,
-    transport: "snapshot",
-    updatedAt: args.createdAt,
-    embed: lastScreenshot
-      ? {
-          kind: "screenshot",
-          url: lastScreenshot,
-          title: `CUA desktop ${spec.planned.id} (${screenshotMode})`,
-        }
-      : { kind: "placeholder", title: `CUA desktop ${spec.planned.id}` },
-    ...(desktopGeometry.viewport === undefined
-      ? {}
-      : {
-          viewport: {
-            width: desktopGeometry.viewport.width,
-            height: desktopGeometry.viewport.height,
-            deviceScaleFactor: desktopGeometry.viewport.deviceScaleFactor,
-            isMobile: spec.planned.device.preset.isMobile,
-          },
-        }),
-    desktopGeometry,
-    ...(outcome?.recording === undefined ? {} : { recording: outcome.recording }),
-    ui: {
-      route: publicLaneAppUrl,
-      intent: `Watch lane ${spec.planned.id} (${spec.persona.id}/${spec.planned.device.name}) drive the subject app in its own hosted desktop.`,
-      state: reason,
-      ...(session ? { actorStatus: session.status } : {}),
-      ...(lastScreenshot ? { screenshotUrl: lastScreenshot } : {}),
+  return participantStream(
+    spec,
+    {
+      ...(spec.evidenceAssignment === undefined
+        ? {}
+        : { assignment: participantAssignment(spec.evidenceAssignment) }),
+      ...(spec.planned.labels.actorType === undefined
+        ? {}
+        : { actorType: spec.planned.labels.actorType }),
+      ...(spec.planned.labels.surface === undefined
+        ? {}
+        : { surface: spec.planned.labels.surface }),
+      ...(spec.planned.labels.caseGroup === undefined
+        ? {}
+        : { caseGroup: spec.planned.labels.caseGroup }),
+      kind: "browser",
+      label: `CUA lane ${spec.planned.id} — ${routePlan.labId}`,
+      status,
+      transport: "snapshot",
+      updatedAt: args.createdAt,
+      embed: lastScreenshot
+        ? {
+            kind: "screenshot",
+            url: lastScreenshot,
+            title: `CUA desktop ${spec.planned.id} (${screenshotMode})`,
+          }
+        : { kind: "placeholder", title: `CUA desktop ${spec.planned.id}` },
+      ...(desktopGeometry.viewport === undefined
+        ? {}
+        : {
+            viewport: {
+              width: desktopGeometry.viewport.width,
+              height: desktopGeometry.viewport.height,
+              deviceScaleFactor: desktopGeometry.viewport.deviceScaleFactor,
+              isMobile: spec.planned.device.preset.isMobile,
+            },
+          }),
+      desktopGeometry,
+      ...(outcome?.recording === undefined ? {} : { recording: outcome.recording }),
+      ui: {
+        route: publicTargetUrl,
+        intent: `Watch lane ${spec.planned.id} (${spec.persona.id}/${spec.planned.device.name}) drive the subject app in its own hosted desktop.`,
+        state: reason,
+        ...(session ? { actorStatus: session.status } : {}),
+        ...(lastScreenshot ? { screenshotUrl: lastScreenshot } : {}),
+      },
+      ...(session ? { actor: session.trace } : {}),
+      artifacts: [
+        { label: "run bundle", path: "run.json", kind: "bundle" as const },
+        { label: "review", path: "review.md", kind: "review" as const },
+        { label: "events", path: "events.ndjson", kind: "events" as const },
+        ...(session
+          ? [
+              {
+                label: `lane ${spec.planned.id} actor trace`,
+                path: spec.traceArtifactPath,
+                kind: "trace" as const,
+              },
+            ]
+          : []),
+        ...(outcome?.commsArtifactPath
+          ? [
+              {
+                label: `lane ${spec.planned.id} comms thread`,
+                path: outcome.commsArtifactPath,
+                kind: "log" as const,
+              },
+            ]
+          : []),
+        ...(outcome?.recording
+          ? [
+              {
+                label: "desktop recording",
+                path: outcome.recording.path,
+                kind: "recording" as const,
+              },
+            ]
+          : []),
+        ...screenshots.map((screenshot, screenshotIndex) => ({
+          label: `lane ${spec.planned.id} screenshot ${String(screenshotIndex + 1).padStart(2, "0")} (${screenshotMode})`,
+          path: screenshot,
+          kind: "screenshot" as const,
+        })),
+      ],
     },
-    ...(session ? { actor: session.trace } : {}),
-    artifacts: [
-      { label: "run bundle", path: "run.json", kind: "bundle" as const },
-      { label: "review", path: "review.md", kind: "review" as const },
-      { label: "events", path: "events.ndjson", kind: "events" as const },
-      ...(session
-        ? [
-            {
-              label: `lane ${spec.planned.id} actor trace`,
-              path: spec.traceArtifactPath,
-              kind: "trace" as const,
-            },
-          ]
-        : []),
-      ...(outcome?.commsArtifactPath
-        ? [
-            {
-              label: `lane ${spec.planned.id} comms thread`,
-              path: outcome.commsArtifactPath,
-              kind: "log" as const,
-            },
-          ]
-        : []),
-      ...(outcome?.recording
-        ? [
-            {
-              label: "desktop recording",
-              path: outcome.recording.path,
-              kind: "recording" as const,
-            },
-          ]
-        : []),
-      ...screenshots.map((screenshot, screenshotIndex) => ({
-        label: `lane ${spec.planned.id} screenshot ${String(screenshotIndex + 1).padStart(2, "0")} (${screenshotMode})`,
-        path: screenshot,
-        kind: "screenshot" as const,
-      })),
-    ],
-  };
+    spec.planned.id,
+  );
 }
 
-function fanoutLaneSubjectEvent(
-  ctx: FanoutLaneContext,
+function fanoutSubjectEvents(
+  ctx: FanoutParticipantContext,
   spec: DesktopParticipantRun,
-  view: FanoutLaneView,
+  view: FanoutParticipantView,
 ): RunEvent[] {
   const { args, nextEventId } = ctx;
-  const { publicLaneAppUrl, subject, session } = view;
+  const { publicTargetUrl, subject, session } = view;
   const events: RunEvent[] = [];
+  const record = (event: Omit<RunEvent, "simId" | "streamId">) =>
+    events.push(participantEvent(spec, event));
   // Per-lane subject provenance (invariant 5).
   if (args.cloneRoute && args.publicRepo) {
-    events.push({
+    record({
       id: nextEventId(`subject-${spec.planned.id}`),
       at: args.createdAt,
       level: "info",
       type: "cua-lab.subject.provenance",
       message: `Lane ${spec.planned.id}: ${
         args.dryRun
-          ? `subject declared — clone of ${args.publicRepo}, served at ${publicLaneAppUrl} in-sandbox (dry-run contract; nothing cloned)`
+          ? `subject declared — clone of ${args.publicRepo}, served at ${publicTargetUrl} in-sandbox (dry-run contract; nothing cloned)`
           : subject.commit
             ? session
-              ? `subject cloned from ${args.publicRepo}@${subject.commit} and served at ${publicLaneAppUrl} in-sandbox`
+              ? `subject cloned from ${args.publicRepo}@${subject.commit} and served at ${publicTargetUrl} in-sandbox`
               : `subject cloned from ${args.publicRepo}@${subject.commit}; serving did not complete (see session error)`
             : `subject clone attempted from ${args.publicRepo}; commit unresolved`
       } (subject env names: ${args.subjectEnvNames.length > 0 ? args.subjectEnvNames.join(", ") : "none"}; values never persisted); state: ${describeSubjectState(subject.state, args.dryRun)}.`,
-      simId: spec.simId,
-      streamId: spec.streamId,
     });
   } else if (subject.source === "local-tree") {
-    events.push({
+    record({
       id: nextEventId(`subject-${spec.planned.id}`),
       at: args.createdAt,
       level: "info",
       type: "cua-lab.subject.provenance",
       message: `Lane ${spec.planned.id}: ${
         args.dryRun
-          ? `subject declared: local working tree, to be packed and served at ${publicLaneAppUrl} in-sandbox (dry-run contract; nothing packed)`
+          ? `subject declared: local working tree, to be packed and served at ${publicTargetUrl} in-sandbox (dry-run contract; nothing packed)`
           : subject.archiveSha256
             ? session
-              ? `subject packed (archiveSha256 ${subject.archiveSha256}${subject.dirty === true ? ", dirty working tree" : subject.dirty === false ? ", clean working tree" : ""}) and served at ${publicLaneAppUrl} in-sandbox`
+              ? `subject packed (archiveSha256 ${subject.archiveSha256}${subject.dirty === true ? ", dirty working tree" : subject.dirty === false ? ", clean working tree" : ""}) and served at ${publicTargetUrl} in-sandbox`
               : `subject packed (archiveSha256 ${subject.archiveSha256}); serving did not complete (see session error)`
             : "subject local-tree packing attempted; archive digest unresolved"
       } (subject env names: ${args.subjectEnvNames.length > 0 ? args.subjectEnvNames.join(", ") : "none"}; values never persisted); state: ${describeSubjectState(subject.state, args.dryRun)}.`,
-      simId: spec.simId,
-      streamId: spec.streamId,
     });
   } else {
-    events.push({
+    record({
       id: nextEventId(`subject-${spec.planned.id}`),
       at: args.createdAt,
       level: "info",
       type: "cua-lab.subject.declared",
-      message: `Lane ${spec.planned.id}: subject app declared at ${publicLaneAppUrl} (loopback inside the lane's own desktop sandbox).`,
-      simId: spec.simId,
-      streamId: spec.streamId,
+      message: `Lane ${spec.planned.id}: subject app declared at ${publicTargetUrl} (loopback inside the lane's own desktop sandbox).`,
     });
   }
   return events;
 }
 
-function fanoutLaneOutcomeEvents(
-  ctx: FanoutLaneContext,
+function fanoutOutcomeEvents(
+  ctx: FanoutParticipantContext,
   spec: DesktopParticipantRun,
-  view: FanoutLaneView,
+  view: FanoutParticipantView,
 ): RunEvent[] {
   const { args, nextEventId } = ctx;
   const { outcome, session, desktopGeometry } = view;
   const events: RunEvent[] = [];
+  const record = (event: Omit<RunEvent, "simId" | "streamId">) =>
+    events.push(participantEvent(spec, event));
   // Per-lane session event.
   if (session) {
-    events.push({
+    record({
       id: nextEventId(`session-${spec.planned.id}`),
       at: args.createdAt,
       level: session.status === "passed" ? "info" : "warn",
       type: `cua-lab.session.${session.completionReason}`,
       message: `Lane ${spec.planned.id}: ${session.status} — ${session.reason}`,
-      simId: spec.simId,
-      streamId: spec.streamId,
     });
   } else if (args.inProgress === true && outcome === undefined) {
-    events.push({
+    record({
       id: nextEventId(`running-${spec.planned.id}`),
       at: args.createdAt,
       level: "info",
       type: "cua-lab.session.running",
       message: `Lane ${spec.planned.id}: live computer-use session is running; terminal evidence has not been written yet.`,
-      simId: spec.simId,
-      streamId: spec.streamId,
     });
   } else if (outcome?.skippedReason !== undefined) {
-    events.push({
+    record({
       id: nextEventId(`blocked-${spec.planned.id}`),
       at: args.createdAt,
       level: "warn",
       type: "cua-lab.session.blocked",
       message: `Lane ${spec.planned.id} ${outcome.skippedReason}.`,
-      simId: spec.simId,
-      streamId: spec.streamId,
     });
   } else if (outcome?.sessionError !== undefined) {
-    events.push({
+    record({
       id: nextEventId(`session-error-${spec.planned.id}`),
       at: args.createdAt,
       level: "error",
       type: "cua-lab.session.error",
       message: `Lane ${spec.planned.id}: ${outcome.sessionError}`,
-      simId: spec.simId,
-      streamId: spec.streamId,
     });
   } else {
-    events.push({
+    record({
       id: nextEventId(`contract-${spec.planned.id}`),
       at: args.createdAt,
       level: "info",
       type: "cua-lab.contract.ready",
       message: `Lane ${spec.planned.id}: dry-run contract lane ready; switch scenario.mode to live for a real desktop session.`,
-      simId: spec.simId,
-      streamId: spec.streamId,
     });
   }
 
   for (const warning of desktopGeometry.warnings ?? []) {
-    events.push({
+    record({
       id: nextEventId(`geometry-warning-${spec.planned.id}`),
       at: args.createdAt,
       level: "warn",
       type: "cua-lab.geometry.warning",
       message: warning,
-      simId: spec.simId,
-      streamId: spec.streamId,
     });
   }
 
   // Persisted per-lane phase trail (real boot timing): one RunEvent per COMPLETED phase
   // boundary this lane recorded (started events never persist here; they carry no durationMs).
   for (const phase of outcome?.phaseRecords ?? []) {
-    events.push({
+    record({
       id: nextEventId(`phase-${spec.planned.id}-${phaseEventIdSuffix(phase.type)}`),
       at: phase.at,
       level: phase.ok === false ? "warn" : "info",
@@ -351,26 +346,21 @@ function fanoutLaneOutcomeEvents(
         phase.durationMs === undefined
           ? `Lane ${spec.planned.id}: ${phase.message}`
           : `Lane ${spec.planned.id}: ${phase.message} (${phase.durationMs}ms)`,
-      simId: spec.simId,
-      streamId: spec.streamId,
     });
   }
   return events;
 }
 
-/** One lane's simulation, stream and events, in the order the bundle records them. */
-export function fanoutLaneRecords(
-  ctx: FanoutLaneContext,
+/** One participant's simulation, stream and events, in the order the bundle records them. */
+export function fanoutParticipantRecords(
+  ctx: FanoutParticipantContext,
   spec: DesktopParticipantRun,
   index: number,
 ): { simulation: RunSimulation; stream: RunStream; events: RunEvent[] } {
-  const view = fanoutLaneView(ctx.args, spec, index);
+  const view = fanoutParticipantView(ctx.args, spec, index);
   return {
-    simulation: fanoutLaneSimulation(ctx.args, spec, index, view),
-    stream: fanoutLaneStream(ctx.args, spec, view),
-    events: [
-      ...fanoutLaneSubjectEvent(ctx, spec, view),
-      ...fanoutLaneOutcomeEvents(ctx, spec, view),
-    ],
+    simulation: fanoutParticipantRecord(ctx.args, spec, index, view),
+    stream: fanoutParticipantStream(ctx.args, spec, view),
+    events: [...fanoutSubjectEvents(ctx, spec, view), ...fanoutOutcomeEvents(ctx, spec, view)],
   };
 }

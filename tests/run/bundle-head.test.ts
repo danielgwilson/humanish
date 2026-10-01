@@ -51,6 +51,23 @@ describe("bundleHead", () => {
     expect(head).toMatchObject({ cwd: "/srv/project", artifactRoot: ".humanish/runs/dryrun-1" });
   });
 
+  it("saves publication restrictions right after the schema, and omits them when absent", () => {
+    const head = bundleHead({
+      publication: { restrictions: ["real-communications"] },
+      runId: "run-1",
+      mode: "live",
+      participants: 1,
+      createdAt: "2026-10-01T00:00:00.000Z",
+      source,
+    });
+    expect(Object.keys(head).slice(0, 3)).toEqual(["schema", "publication", "runId"]);
+    expect(head.publication).toEqual({ restrictions: ["real-communications"] });
+    expect(
+      "publication" in
+        bundleHead({ runId: "run-1", mode: "live", participants: 1, createdAt: "x", source }),
+    ).toBe(false);
+  });
+
   it("names the same run files for every bundle, as a fresh object each time", () => {
     expect(bundleArtifacts()).toEqual({
       run: "run.json",

@@ -560,6 +560,8 @@ export interface StudyTaskFunnel {
  * participant count; the public target cwd and the run's own artifact root are the defaults.
  */
 export function bundleHead(args: {
+  /** Publication restrictions (real communications), saved right after the schema. */
+  publication?: RunBundle["publication"];
   runId: string;
   mode: RunBundle["mode"];
   participants: number;
@@ -570,10 +572,20 @@ export function bundleHead(args: {
   source: RunBundle["source"];
 }): Pick<
   RunBundle,
-  "schema" | "runId" | "mode" | "simCount" | "createdAt" | "cwd" | "artifactRoot" | "lab" | "source"
+  | "schema"
+  | "publication"
+  | "runId"
+  | "mode"
+  | "simCount"
+  | "createdAt"
+  | "cwd"
+  | "artifactRoot"
+  | "lab"
+  | "source"
 > {
   return {
     schema: RUN_BUNDLE_SCHEMA,
+    ...(args.publication === undefined ? {} : { publication: args.publication }),
     runId: args.runId,
     mode: args.mode,
     simCount: args.participants,

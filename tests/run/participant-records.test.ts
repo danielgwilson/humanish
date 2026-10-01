@@ -9,6 +9,7 @@ import {
   recordIdOf,
   streamParticipantIdOf,
 } from "../../src/run/participant-records.js";
+import type { RunStream } from "../../src/run/streams.js";
 
 describe("participant records (bundle write)", () => {
   const ids = participantIds(0);
@@ -55,16 +56,20 @@ describe("participant records (bundle write)", () => {
   });
 
   it("puts a stream's ids first and an event's ids last, as the saved bundles do", () => {
-    const stream = participantStream(ids, {
+    const streamFields: Omit<RunStream, "id" | "simId" | "laneId"> = {
       kind: "terminal",
       label: "Terminal",
       status: "passed",
       transport: "snapshot",
       updatedAt: fields.updatedAt,
       artifacts: [],
-    });
+    };
+    const stream = participantStream(ids, streamFields);
     expect(Object.keys(stream).slice(0, 3)).toEqual(["id", "simId", "kind"]);
     expect(recordIdOf(stream)).toBe("sim-001");
+    const named = participantStream(ids, streamFields, "reviewer");
+    expect(Object.keys(named).slice(0, 4)).toEqual(["id", "simId", "laneId", "kind"]);
+    expect(named).toMatchObject({ id: "stream-001", laneId: "reviewer" });
     const event = participantEvent(ids, {
       id: "event-001",
       at: fields.startedAt,

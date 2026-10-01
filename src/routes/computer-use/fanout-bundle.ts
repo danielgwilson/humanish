@@ -1,13 +1,12 @@
 import { e2bDesktopTemplate } from "../../substrates/e2b/sandbox.js";
 import { receivingPublication } from "../../comms/receiving-runtime.js";
-import path from "node:path";
 import type { ActorStatus } from "../../actors/contract.js";
 import { actorEnding } from "../../actors/stop-cause.js";
 import { redactText } from "../../evidence/redaction.js";
 import {
-  PUBLIC_TARGET_CWD,
   REVIEW_SCHEMA,
-  RUN_BUNDLE_SCHEMA,
+  bundleArtifacts,
+  bundleHead,
   type ReviewSummary,
   type RunBundle,
   type RunEvent,
@@ -31,7 +30,7 @@ import { participantPassed, participantStatus } from "../../run/judge.js";
 import { buildRunCostSummary, desktopSpanToMinutes } from "../../run/cost-summary.js";
 import { formatLanePlanEntry } from "./lane-plan.js";
 import type { CuaFanoutBundleArgs, LaneRunOutcome } from "./types.js";
-import { fanoutLaneRecords } from "./fanout-lanes.js";
+import { fanoutParticipantRecords } from "./fanout-lanes.js";
 
 /** The run's first two events: its creation and the fan-out plan. */
 function fanoutPlanEvents(args: CuaFanoutBundleArgs): RunEvent[] {
@@ -59,7 +58,7 @@ function fanoutReview(args: CuaFanoutBundleArgs, streams: RunStream[]): ReviewSu
   // The judge's verdict: live fan-out must prove every lane (judgeParticipants).
   const verdict = args.verdict;
 
-  const passedLanes = (outcomes ?? []).filter((outcome) =>
+  const passedParticipants = (outcomes ?? []).filter((outcome) =>
     participantPassed(participantFactsOf(outcome)),
   ).length;
   // What happened to the PARTICIPANTS, with the denominator attached. The verdict above has to
@@ -72,8 +71,8 @@ function fanoutReview(args: CuaFanoutBundleArgs, streams: RunStream[]): ReviewSu
     terminalOutcomes.length > 0
       ? tallyParticipantOutcomes(
           // A NO-ENGAGEMENT lane is not a participant who reached the goal. It said "done" having
-          // taken zero actions and said nothing, and `passedLanes` below already refuses to count
-          // it — but `reachedGoal` was reading the trace status directly, so one run could be both
+          // taken zero actions and said nothing, and `passedParticipants` above already refuses to
+          // count it — but `reachedGoal` was reading the trace status directly, so one run could be both
           // "not a passed lane" AND "1/1 reached the goal". The headline number a researcher reads
           // first was the dishonest one. Found by a provider bug that ended a study on turn one.
           terminalOutcomes.map((outcome) =>
@@ -112,7 +111,7 @@ function fanoutReview(args: CuaFanoutBundleArgs, streams: RunStream[]): ReviewSu
           ? `Live computer-use fan-out is running (${specs.length} per-lane worlds); terminal lane evidence has not been written yet.`
           : args.dryRun
             ? `${args.rerun ? `Rerun contract from ${args.rerun.sourceRunId}: ` : ""}Dry-run fan-out contract: ${specs.length} per-lane-world lanes composed for ${args.descriptor.id} against ${args.appUrl}; no desktops launched, $0 spend.`
-            : `${args.rerun ? `Rerun from ${args.rerun.sourceRunId}: ` : ""}Computer-use fan-out (${specs.length} per-lane worlds): ${passedLanes}/${specs.length} lane(s) reached a terminal, engaged verdict${participants ? ` — ${formatParticipantOutcomes(participants, participantEndings)}` : ""}${studyTasks ? `; tasks: ${formatStudyTaskFunnel(studyTasks)}` : ""}.`,
+            : `${args.rerun ? `Rerun from ${args.rerun.sourceRunId}: ` : ""}Computer-use fan-out (${specs.length} per-lane worlds): ${passedParticipants}/${specs.length} lane(s) reached a terminal, engaged verdict${participants ? ` — ${formatParticipantOutcomes(participants, participantEndings)}` : ""}${studyTasks ? `; tasks: ${formatStudyTaskFunnel(studyTasks)}` : ""}.`,
       gaps:
         args.inProgress === true
           ? ["Live fan-out session is still running."]
@@ -164,7 +163,7 @@ function fanoutCost(args: CuaFanoutBundleArgs) {
   // Run-level cost ESTIMATE: one model-token line per lane that ran a session (from its persisted
   // trace.estimatedCost) + a desktop line per owned allocation, priced at its observed resources.
   // Per-lane worlds have no shared provisioning to double-count. Omitted on a pure dry-run.
-  const costLanes = specs
+  const costTraces = specs
     .map((spec, index) => ({ laneId: spec.planned.id, outcome: outcomes?.[index] }))
     .filter(
       (entry): entry is { laneId: string; outcome: LaneRunOutcome } =>
@@ -179,7 +178,7 @@ function fanoutCost(args: CuaFanoutBundleArgs) {
       observation: outcome.desktopResources,
       lifetimeComplete: outcome.killed,
     }));
-  const cost = buildRunCostSummary({ lanes: costLanes, desktops });
+  const cost = buildRunCostSummary({ lanes: costTraces, desktops });
   return cost;
 }
 
@@ -236,12 +235,12 @@ export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
       at: args.createdAt,
       level: "info",
       type: "cua-lab.fanout.rerun",
-      message: `Rerun selected ${args.rerun.selectedLaneIds.length} lane(s) from ${args.rerun.sourceRunId}: ${args.rerun.previous.map((lane) => `${lane.laneId} was ${lane.status}${lane.completionReason ? `/${lane.completionReason}` : ""}`).join(", ")}. This is a new linked run; the source run verdict is unchanged.`,
+      message: `Rerun selected ${args.rerun.selectedLaneIds.length} lane(s) from ${args.rerun.sourceRunId}: ${args.rerun.previous.map((prior) => `${prior.laneId} was ${prior.status}${prior.completionReason ? `/${prior.completionReason}` : ""}`).join(", ")}. This is a new linked run; the source run verdict is unchanged.`,
     });
   }
 
   specs.forEach((spec, index) => {
-    const records = fanoutLaneRecords({ args, nextEventId }, spec, index);
+    const records = fanoutParticipantRecords({ args, nextEventId }, spec, index);
     simulations.push(records.simulation);
     streams.push(records.stream);
     events.push(...records.events);
@@ -280,16 +279,15 @@ export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
   const cost = fanoutCost(args);
 
   return {
-    schema: RUN_BUNDLE_SCHEMA,
-    ...receivingPublication(args.routePlan.residual, args.dryRun),
-    runId: args.runId,
-    mode: args.dryRun ? "dry-run" : "live",
-    simCount: specs.length,
-    createdAt: args.createdAt,
-    cwd: PUBLIC_TARGET_CWD,
-    artifactRoot: path.join(".humanish", "runs", args.runId),
-    ...(args.lab === undefined ? {} : { lab: args.lab }),
-    source: args.source,
+    ...bundleHead({
+      ...receivingPublication(args.routePlan.residual, args.dryRun),
+      runId: args.runId,
+      mode: args.dryRun ? "dry-run" : "live",
+      participants: specs.length,
+      createdAt: args.createdAt,
+      ...(args.lab === undefined ? {} : { lab: args.lab }),
+      source: args.source,
+    }),
     persona: {
       id: specs[0]!.persona.id,
       name: `Computer-use fan-out (${specs.length} lanes)`,
@@ -330,13 +328,7 @@ export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
           : "Typed text recorded as length only and reasoning/messages pass through text redaction. Screenshots are blurred at capture (policies.redactScreenshots: true) for a share-as-is bundle."
         : "Dry-run fan-out contract bundle: no desktops launched and no screenshots captured. Typed text is recorded as length only and reasoning/messages pass through text redaction whenever a session runs.",
     },
-    artifacts: {
-      run: "run.json",
-      reviewJson: "review.json",
-      reviewMarkdown: "review.md",
-      observerData: "observer/observer-data.json",
-      events: "events.ndjson",
-    },
+    artifacts: bundleArtifacts(),
     review,
     // What the participants reported, when any reported anything (#392). Dry-run and in-progress
     // bundles carry none — there is no participant yet to quote.
