@@ -6,7 +6,7 @@ import { execSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { projectShareCheckedAnalysis, studyAnalysisSharingProblems } from "../analysis/sharing.js";
+import { projectShareCheckedAnalysis, analysisSharingProblems } from "../analysis/sharing.js";
 import type { LoadedAnalysis } from "../analysis/types.js";
 import { withObserverEndings, type ObserverData } from "./data.js";
 
@@ -234,7 +234,7 @@ export function renderObserverHtml(
       },
     };
   }
-  const sharing = studyAnalysisSharingProblems(analysis);
+  const sharing = analysisSharingProblems(analysis);
   if (data.publicSafety && (sharing.sensitive || sharing.unverified)) {
     const share = data.publicSafety.share;
     data = {

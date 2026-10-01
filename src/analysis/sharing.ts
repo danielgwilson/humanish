@@ -5,7 +5,7 @@ import { ANALYSIS_DIRECTORY, ANALYSIS_EXECUTION_DIRECTORY } from "./store.js";
 
 /** True for the analysis record files, matched by name inside their directories. Any other file
  * under analysis/ is ordinary evidence and follows the ordinary evidence policy. */
-export function isStudyAnalysisRecordPath(relativePath: string): boolean {
+export function isAnalysisRecordPath(relativePath: string): boolean {
   const parts = relativePath.split("/");
   const leaf = parts.at(-1)!;
   const directory = parts[0];
@@ -21,7 +21,7 @@ export function isStudyAnalysisRecordPath(relativePath: string): boolean {
 }
 
 /** Check the exact in-memory snapshot being projected; a prior filesystem scan cannot approve a later write. */
-export function studyAnalysisSharingProblems(loaded: LoadedAnalysis): {
+export function analysisSharingProblems(loaded: LoadedAnalysis): {
   sensitive: boolean;
   unverified: boolean;
 } {
@@ -47,7 +47,7 @@ export function projectShareCheckedAnalysis(loaded: LoadedAnalysis): LoadedAnaly
   const { automatic: _automatic, ...evidence } = loaded;
   const automatic = projectAutomaticStudyAnalysisView(loaded.automatic);
   const safe = automatic === undefined ? evidence : { ...evidence, automatic };
-  return studyAnalysisSharingProblems(safe).sensitive
+  return analysisSharingProblems(safe).sensitive
     ? {
         state: "invalid",
         analysis: null,

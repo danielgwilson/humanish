@@ -1,7 +1,7 @@
 import { lstat, readdir } from "node:fs/promises";
 import path from "node:path";
 import { isRedactedFrameShape, screenshotEvidenceError } from "../evidence/image.js";
-import { isStudyAnalysisRecordPath } from "../analysis/sharing.js";
+import { isAnalysisRecordPath } from "../analysis/sharing.js";
 import { scanEncodedTextCached } from "../evidence/encoded-text.js";
 import { readPlainText } from "../evidence/plain-text.js";
 import { containsSensitive } from "../evidence/redaction.js";
@@ -395,7 +395,7 @@ async function scanRunPublicSafetyDirectory(
     const stats = await lstat(path.join(current, entryName), { bigint: true }).catch(() => null);
     const selectedFindings =
       !stats?.isDirectory() &&
-      (relativePath === "observer/study-analysis.json" || isStudyAnalysisRecordPath(relativePath))
+      (relativePath === "observer/study-analysis.json" || isAnalysisRecordPath(relativePath))
         ? derivedFindings
         : findings;
     if (isRiskyPublicArtifactPath(relativePath) || containsSensitive(relativePath)) {
