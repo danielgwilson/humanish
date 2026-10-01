@@ -16,6 +16,12 @@ The Unreleased section holds the full notes for the next version until it is tag
   journals for sandboxes that may still run. A run's sandbox teardown, including the cleanup after
   a failed desktop startup, that gets true in debug mode now reads unconfirmed, and its warning
   names `E2B_DEBUG`.
+- Codex CLI 0.160.0, npm's `latest` since 2026-10-01, is admitted on Linux x64 (#1332). In
+  0.106.0 a plain `npm install -g @openai/codex` installed it, and Codex participants,
+  Codex-account analysis and `humanish doctor` refused it as `codex_unsupported_version`. It
+  passed `pnpm codex:qualify` against 0.159.3 and a hosted local-agent study. Doctor's recovery
+  for an unadmitted release now suggests `npm install -g @openai/codex@0.160.0`. macOS arm64
+  stays at 0.154.0.
 
 ## 0.106.0: Node 22.19, a smaller library API and stricter share safety (2026-10-01)
 
