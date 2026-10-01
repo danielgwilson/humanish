@@ -1,24 +1,24 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 
-import type { CuaTurnRequest } from "../src/actors/computer-use/loop.js";
+import type { CuaTurnRequest } from "../../../src/actors/computer-use/loop.js";
 import {
   createOpenAiResponsesProvider,
   type FetchLike,
-} from "../src/actors/computer-use/openai-provider.js";
-import { CuaAdmissionLimitError } from "../src/actors/computer-use/admission-limit.js";
+} from "../../../src/actors/computer-use/openai-provider.js";
+import { CuaAdmissionLimitError } from "../../../src/actors/computer-use/admission-limit.js";
 
 // See the adjacent provenance note. Both positive response shapes are excerpts
 // of a captured live run; negative cases deliberately mutate that real response.
 const pending = JSON.parse(
   readFileSync(
-    new URL("./fixtures/openai-closing-report/pending-computer-call.json", import.meta.url),
+    new URL("../../fixtures/openai-closing-report/pending-computer-call.json", import.meta.url),
     "utf8",
   ),
 );
 const closing = JSON.parse(
   readFileSync(
-    new URL("./fixtures/openai-closing-report/typed-closing-report.json", import.meta.url),
+    new URL("../../fixtures/openai-closing-report/typed-closing-report.json", import.meta.url),
     "utf8",
   ),
 );

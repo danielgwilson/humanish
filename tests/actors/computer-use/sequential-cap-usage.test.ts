@@ -1,24 +1,24 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { runComputerUseLoop } from "../src/actors/computer-use/loop.js";
-import { runCuaActorSession } from "../src/actors/computer-use/actor.js";
+import { runComputerUseLoop } from "../../../src/actors/computer-use/loop.js";
+import { runCuaActorSession } from "../../../src/actors/computer-use/actor.js";
 import {
   createOpenAiResponsesProvider as publicProvider,
   defaultRedactionHooks as publicRedaction,
   runComputerUseLoop as publicLoop,
-} from "../src/index.js";
-import { defaultRedactionHooks } from "../src/evidence/redaction.js";
-import type { CuaTurn } from "../src/actors/computer-use/loop.js";
+} from "../../../src/index.js";
+import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
+import type { CuaTurn } from "../../../src/actors/computer-use/loop.js";
 import {
   OPENAI_RESPONSES_CU_CAPABILITIES,
   type FetchLike,
-} from "../src/actors/computer-use/openai-provider.js";
-import { parseOpenAiResponse } from "../src/actors/computer-use/openai-wire.js";
+} from "../../../src/actors/computer-use/openai-provider.js";
+import { parseOpenAiResponse } from "../../../src/actors/computer-use/openai-wire.js";
 
 const captured = parseOpenAiResponse(
   JSON.parse(
     readFileSync(
-      new URL("./fixtures/openai-closing-report/pending-computer-call.json", import.meta.url),
+      new URL("../../fixtures/openai-closing-report/pending-computer-call.json", import.meta.url),
       "utf8",
     ),
   ),
@@ -273,7 +273,7 @@ describe.each([
     let dispatches = 0;
     const raw = JSON.parse(
       readFileSync(
-        new URL("./fixtures/openai-closing-report/pending-computer-call.json", import.meta.url),
+        new URL("../../fixtures/openai-closing-report/pending-computer-call.json", import.meta.url),
         "utf8",
       ),
     );

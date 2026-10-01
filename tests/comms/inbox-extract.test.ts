@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { extractLinks, extractOtpCodes } from "../src/comms/extract.js";
-import { FakeInbox } from "../src/comms/fake-inbox.js";
-import { startEmailCatchServer, type EmailCatchServer } from "../src/comms/email-catch.js";
+import { extractLinks, extractOtpCodes } from "../../src/comms/extract.js";
+import { FakeInbox } from "../../src/comms/fake-inbox.js";
+import { startEmailCatchServer, type EmailCatchServer } from "../../src/comms/email-catch.js";
 
 // A realistic user-signup verification email (magic link + OTP) — the exact shape an app's signup
 // flow emails. Used across the extraction + end-to-end tests. No external app/repo involved.

@@ -108,7 +108,7 @@ digest-only; adding image capture does not add raw attachments to the run artifa
 ## Reproduce the contract
 
 ```bash
-pnpm exec vitest run tests/comms.test.ts tests/comms/ tests/substrates/local/captured-inbox.test.ts
+pnpm exec vitest run tests/comms/ tests/substrates/local/captured-inbox.test.ts
 pnpm exec tsx scripts/comms-inbox-proof.ts
 ```
 

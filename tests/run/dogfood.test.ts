@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { runDryRun } from "../src/run/dry-run.js";
+import { runDryRun } from "../../src/run/dry-run.js";
 
 async function withDogfoodCopy<T>(callback: (cwd: string) => Promise<T>): Promise<T> {
   const tempRoot = await mkdtemp(path.join(os.tmpdir(), "humanish-dogfood-fixture-"));

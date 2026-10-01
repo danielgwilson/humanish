@@ -4,9 +4,9 @@ import path from "node:path";
 import { Command } from "commander";
 import { describe, expect, it } from "vitest";
 
-import { withSiblingFlagHint } from "../src/cli/program.js";
-import { doctor } from "../src/cli/doctor.js";
-import { terminalSurfaceMessage } from "../src/tui/contract.js";
+import { withSiblingFlagHint } from "../../src/cli/program.js";
+import { doctor } from "../../src/cli/doctor.js";
+import { terminalSurfaceMessage } from "../../src/tui/contract.js";
 
 // Both of these were found by a participant, not by us — labs/first-contact.yaml, a real
 // autonomous agent meeting humanish for the first time in an E2B shell.
