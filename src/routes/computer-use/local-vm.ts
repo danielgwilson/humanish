@@ -1,6 +1,6 @@
 import { collectDesktopRecording } from "../../evidence/desktop-recording-artifact.js";
 import path from "node:path";
-import { dispatchLab, type LabOutcome, type RunLabOptions } from "../../lab/engine.js";
+import type { RunLabOptions } from "../../lab/engine.js";
 import type { LabConfig } from "../../lab/types.js";
 import {
   inboxRecipientFor,
@@ -225,8 +225,18 @@ function accountProvider(state: LocalStudyState): Pick<CuaActorLabHooks, "buildP
   };
 }
 
-/** Local desktop/provider composition over the shared lab runner. */
-export async function runLocalFirecrackerStudy(options: LocalStudyOptions): Promise<LabOutcome> {
+/** A local browser study's bindings, and the cleanup of what its lanes started. */
+export interface LocalVmStudy {
+  /** The caller's runLab options with this study's desktop lane, provider and abort signal. */
+  readonly options: RunLabOptions;
+  close(): Promise<void>;
+}
+
+/**
+ * Local desktop/provider composition: the options the lab is planned and run with. It throws before
+ * anything starts on a lab the local study cannot run, or on a hook only an E2B desktop calls.
+ */
+export function prepareLocalVmStudy(options: LocalStudyOptions): LocalVmStudy {
   const config = localBrowserDefaults(options.config);
   const unsupported = localBrowserUnsupportedReason(config);
   if (unsupported) throw new Error(unsupported);
@@ -249,9 +259,10 @@ export async function runLocalFirecrackerStudy(options: LocalStudyOptions): Prom
     assets: studyAssets(options, account, media !== undefined || recording !== undefined),
     state,
   };
-  try {
-    return await dispatchLab(config, {
-      ...options,
+  const { config: _config, assets: _assets, signal: _signal, ...runOptions } = options;
+  return {
+    options: {
+      ...runOptions,
       // Wrapped rather than spread for the same reason as cuaHooks below.
       automaticAnalysis: withHookOverrides(options.automaticAnalysis, HOOK_MEMBERS.analysis, {
         onStart() {
@@ -259,8 +270,8 @@ export async function runLocalFirecrackerStudy(options: LocalStudyOptions): Prom
           return options.automaticAnalysis?.onStart?.();
         },
       }),
-      // The caller's hooks come first so this study's desktop lane always wins: dispatchLab reads
-      // createDesktopLane as "desktop provided" and does not route back here.
+      // The caller's hooks come first so this study's desktop lane always wins: runLab reads
+      // createDesktopLane as "desktop provided" and plans the computer-use run with these hooks.
       // The caller's bag may be a class instance, so it is wrapped rather than spread.
       cuaHooks: withHookOverrides(callerHooks, HOOK_MEMBERS.cua, {
         createDesktopLane: (spec, warnings, artifactRoot) =>
@@ -273,9 +284,10 @@ export async function runLocalFirecrackerStudy(options: LocalStudyOptions): Prom
             }
           : {}),
       }),
-    });
-  } finally {
-    await Promise.allSettled(state.participants.map((participant) => participant.close()));
-    await Promise.allSettled(state.sessions.map((session) => session.close()));
-  }
+    },
+    async close() {
+      await Promise.allSettled(state.participants.map((participant) => participant.close()));
+      await Promise.allSettled(state.sessions.map((session) => session.close()));
+    },
+  };
 }

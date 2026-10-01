@@ -35,8 +35,8 @@ step 6, and renders it as in step 7 when `RunOptions.observer` asks, as every CL
    (`src/substrates/e2b/sandbox.ts`) appends the sandbox id to `sandbox-receipts.ndjson` before it
    returns the handle. A `clone` or `local-tree` subject is provisioned through `src/subject/`,
    which reaches the sandbox only through the `Shell` that `e2bShell` (`src/substrates/e2b/shell.ts`)
-   returns. An `app-url` lab with `execution.target: local` runs `runLocalFirecrackerStudy`
-   (`src/routes/computer-use/local-vm.ts`) instead.
+   returns. An `app-url` lab with `execution.target: local` runs on a local VM instead:
+   `prepareLocalVmStudy` (`src/routes/computer-use/local-vm.ts`) gives the plan its desktop lane.
 5. **Participants.** `runAllCuaLanes` (`src/routes/computer-use/lanes.ts`) runs `runCuaLane` for
    each participant, at most `execution.concurrency` at a time. A lane's session is
    `runCuaActorSession` (`src/actors/computer-use/actor.ts`), which drives `runComputerUseLoop`

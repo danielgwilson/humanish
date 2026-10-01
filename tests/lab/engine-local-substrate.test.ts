@@ -3,18 +3,18 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { runLocalFirecrackerStudy } from "../../src/routes/computer-use/local-vm.js";
+import type { prepareLocalVmStudy } from "../../src/routes/computer-use/local-vm.js";
 
 const localStudy = vi.hoisted(() =>
-  vi.fn<typeof runLocalFirecrackerStudy>(async () => {
+  vi.fn<typeof prepareLocalVmStudy>(() => {
     throw new Error("unexpected local study");
   }),
 );
 vi.mock("../../src/routes/computer-use/local-vm.js", () => ({
-  runLocalFirecrackerStudy: localStudy,
+  prepareLocalVmStudy: localStudy,
 }));
 
-import { runLab, type LabOutcome } from "../../src/lab/engine.js";
+import { runLab } from "../../src/lab/engine.js";
 import type { LabConfig } from "../../src/lab/types.js";
 import type { RunAdapterScore, RunScorerProvenance } from "../../src/run/bundle.js";
 import type { CuaExecutor } from "../../src/actors/computer-use/loop.js";
@@ -54,16 +54,26 @@ describe("local browser study selection", () => {
     await rm(cwd, { recursive: true, force: true });
   });
 
-  it("runs a local browser lab with a scorer in the local browser study and keeps the scorer", async () => {
-    const outcome: LabOutcome = {
-      backend: "synthetic",
-      result: { schema: "humanish.run-result.v1", ok: true, cwd, warnings: [] },
-    };
-    localStudy.mockResolvedValueOnce(outcome);
+  it("plans a local browser lab with the local study's bindings and keeps the scorer", async () => {
+    const close = vi.fn(async () => {});
+    localStudy.mockImplementationOnce(({ scorerProvenance: _provenance, ...options }) => ({
+      // A dry run creates no desktop, so a stand-in lane is enough to plan and run with. The
+      // synthetic scorer provenance names no real file, so the stand-in run leaves it out.
+      options: {
+        ...options,
+        dryRun: true,
+        open: false,
+        cuaHooks: { ...options.cuaHooks, createDesktopLane: vi.fn() },
+      },
+      close,
+    }));
 
-    await expect(
-      runLab(config, { cwd, dryRun: false, cuaHooks: { score }, scorerProvenance }),
-    ).resolves.toBe(outcome);
+    const outcome = await runLab(config, {
+      cwd,
+      dryRun: false,
+      cuaHooks: { score },
+      scorerProvenance,
+    });
 
     expect(localStudy).toHaveBeenCalledOnce();
     const options = localStudy.mock.calls[0]![0];
@@ -71,6 +81,9 @@ describe("local browser study selection", () => {
     expect(options.scorerProvenance).toBe(scorerProvenance);
     expect(options.config.execution?.target).toBe("local");
     expect(options.config.subject.appUrl).toBe(config.subject.appUrl);
+    expect(outcome.backend).toBe("cua");
+    expect((outcome.result as { ok?: boolean }).ok).toBe(true);
+    expect(close).toHaveBeenCalledOnce();
   });
 
   it("leaves the desktop to a caller that supplies createDesktopLane", async () => {
