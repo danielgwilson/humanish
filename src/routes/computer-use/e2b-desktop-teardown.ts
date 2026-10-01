@@ -13,13 +13,13 @@ import { e2bShell } from "../../substrates/e2b/shell.js";
 import { drainCommsEvidence } from "./e2b-desktop-comms.js";
 import { finalLaneGeometry } from "./e2b-desktop-fidelity.js";
 import type { E2BLaneContext, E2BLaneState } from "./e2b-desktop-state.js";
-import type { CuaLaneDeps, DesktopParticipantRun } from "./types.js";
+import type { CuaParticipantDeps, DesktopParticipantRun } from "./types.js";
 
 /**
  * Each route's own keep flag gates its own lane only: a clone.keep can never leak into a local-tree
  * lane's teardown decision, and vice versa.
  */
-function laneKeepReason(deps: CuaLaneDeps): string | undefined {
+function laneKeepReason(deps: CuaParticipantDeps): string | undefined {
   const { config, cloneRoute, localTreeRoute } = deps;
   if (cloneRoute && config.subject.clone?.keep === true) return "subject.clone.keep";
   if (localTreeRoute && config.subject.localTree?.keep === true) return "subject.localTree.keep";
@@ -29,7 +29,7 @@ function laneKeepReason(deps: CuaLaneDeps): string | undefined {
 /** Collect the recording and stop the speech worker; failures are warnings. */
 async function stopLaneMedia(args: {
   spec: DesktopParticipantRun;
-  deps: CuaLaneDeps;
+  deps: CuaParticipantDeps;
   recording: Awaited<ReturnType<typeof startE2BDesktopRecording>> | undefined;
   speech: Awaited<ReturnType<typeof startE2BDesktopMedia>> | undefined;
   mediaStop: AbortController;
@@ -66,7 +66,7 @@ async function releaseLaneDesktop(args: {
   allocation: OwnedDesktopAllocation;
   keepReason: string | undefined;
   failed: boolean;
-  deps: CuaLaneDeps;
+  deps: CuaParticipantDeps;
   warnings: string[];
 }): Promise<boolean> {
   const { allocation, keepReason, deps, warnings } = args;

@@ -45,8 +45,8 @@ import {
   type CuaActorLabErrorCode,
   type CuaActorLabHooks,
   type CuaActorLabResult,
-  type CuaLaneDeps,
-  type CuaLanePlan,
+  type CuaParticipantDeps,
+  type CuaParticipantPlan,
   type DesktopParticipantRun,
   type CuaSubjectProjection,
   type CuaSubjectProvenanceArg,
@@ -132,7 +132,7 @@ export interface CuaRunSetup {
   externalCommsConfig: LabCommsExternal | undefined;
   externalCommsEmail: LabCommsEmail | undefined;
   participantRuns: DesktopParticipantRun[];
-  plan: CuaLanePlan;
+  plan: CuaParticipantPlan;
   rerunLineage: RunRerunLineage | undefined;
   participantCount: number;
   /** Every known secret value; email setup adds its own before the lanes run. */
@@ -145,7 +145,7 @@ export interface CuaRunSetup {
   artifactRoot: string;
   physicalArtifactRoot: string;
   runPaths: StartedRun["paths"];
-  deps: Omit<CuaLaneDeps, "signalProvisioned">;
+  deps: Omit<CuaParticipantDeps, "signalProvisioned">;
   /** Filled by runLabParticipants on a live run; deps.onTrace reads it. */
   liveTrace: { flush?: LiveTraceFlush["flush"]; stop?: LiveTraceFlush["stop"] };
   subjectArgs: Omit<Parameters<typeof projectParticipantSubjects>[0], "outcomes" | "dryRun">;
@@ -464,7 +464,7 @@ function cuaParticipantDeps(
     redactScreenshots: boolean;
     liveTrace: CuaRunSetup["liveTrace"];
   },
-): Omit<CuaLaneDeps, "signalProvisioned"> {
+): Omit<CuaParticipantDeps, "signalProvisioned"> {
   const { config, dryRun, hooks, streams, env, descriptor, runSession, participantCount } = planned;
   const { localAgentRoute, preferredLocalAgent, hasGithubToken, localTreeArchiveBuffer } = planned;
   const { openaiApiKey, e2bApiKey, scrubKnownValues } = planned;
@@ -496,9 +496,9 @@ function cuaParticipantDeps(
     openaiApiKey,
     e2bApiKey,
     requestTimeoutMs,
-    perLaneSandboxMs: routePlan.sandboxMs,
+    sandboxMs: routePlan.sandboxMs,
     timeoutMs,
-    laneCount: participantCount,
+    participantCount,
     artifactRoot: runPaths,
     labCwd: input.cwd,
     redactScreenshots,

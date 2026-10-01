@@ -85,7 +85,7 @@ pnpm pack:dry-run
 This walkthrough changes the persona a computer-use lane gets when neither the lane nor the actor
 names one. It runs offline and spends nothing.
 
-1. Change the `"cua-operator"` fallback in `composeLaneInstructions`
+1. Change the `"cua-operator"` fallback in `composeParticipantInstructions`
    (`src/routes/computer-use/lane-plan.ts`).
 2. Run `pnpm vitest run tests/lane-persona-fallback.test.ts`. It fails because it asserts the old
    id. Update the assertion once the new id is what you want.

@@ -19,7 +19,7 @@ import {
   type CuaTurn,
   type CuaTurnRequest,
 } from "../../src/actors/computer-use/loop.js";
-import { composeLaneInstructions } from "../../src/routes/computer-use/lane-plan.js";
+import { composeParticipantInstructions } from "../../src/routes/computer-use/lane-plan.js";
 import { DEVICE_PRESETS } from "../../src/lab/device-presets.js";
 import { defaultRedactionHooks } from "../../src/evidence/redaction.js";
 import { aggregateTaskFunnels, formatStudyTaskFunnel } from "../../src/run/outcomes.js";
@@ -243,7 +243,7 @@ describe("the live loop corroborates the protocol (#414 wiring)", () => {
 
 describe("the participant never sees the researcher's criteria (composer)", () => {
   it("renders numbered goals into the lane prompt and nothing from `success`", () => {
-    const composed = composeLaneInstructions({
+    const composed = composeParticipantInstructions({
       mission: "You heard about this document tool and want to try it.",
       tasks: PROTOCOL,
       device: { name: "desktop", preset: DEVICE_PRESETS.desktop },
@@ -266,8 +266,8 @@ describe("the participant never sees the researcher's criteria (composer)", () =
       mission: "You heard about this document tool and want to try it.",
       device: { name: "desktop", preset: DEVICE_PRESETS.desktop },
     } as const;
-    expect(composeLaneInstructions({ ...args }).instructions).toBe(
-      composeLaneInstructions({ ...args, tasks: [] }).instructions,
+    expect(composeParticipantInstructions({ ...args }).instructions).toBe(
+      composeParticipantInstructions({ ...args, tasks: [] }).instructions,
     );
   });
 });

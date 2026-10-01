@@ -14,14 +14,14 @@ import { digestUrl } from "./lane-plan.js";
 import { resolveSelfReportedFriction } from "./self-report.js";
 import {
   CUA_FANOUT_STRATEGY,
-  type CuaLanePlan,
-  type CuaLaneSummary,
+  type CuaParticipantPlan,
+  type CuaParticipantSummary,
   type CuaSubjectProvenanceArg,
-  type LaneRunOutcome,
+  type ParticipantRunOutcome,
 } from "./types.js";
 
 /** A lane outcome's facts for the judge. */
-export function participantFactsOf(outcome: LaneRunOutcome): ParticipantFacts {
+export function participantFactsOf(outcome: ParticipantRunOutcome): ParticipantFacts {
   return {
     ...(outcome.session === undefined
       ? {}
@@ -33,18 +33,21 @@ export function participantFactsOf(outcome: LaneRunOutcome): ParticipantFacts {
   };
 }
 
-export function laneOutcomeOk(outcome: LaneRunOutcome | undefined, dryRun: boolean): boolean {
+export function participantOutcomeOk(
+  outcome: ParticipantRunOutcome | undefined,
+  dryRun: boolean,
+): boolean {
   if (dryRun) return true;
   return outcome !== undefined && participantPassed(participantFactsOf(outcome));
 }
 
 /** Aggregate lane counts for the result projection. */
-export function buildLaneSummary(
-  outcomes: LaneRunOutcome[] | undefined,
+export function buildParticipantSummary(
+  outcomes: ParticipantRunOutcome[] | undefined,
   laneCount: number,
-  plan: CuaLanePlan,
+  plan: CuaParticipantPlan,
   dryRun: boolean,
-): CuaLaneSummary {
+): CuaParticipantSummary {
   if (dryRun || !outcomes) {
     return {
       strategy: CUA_FANOUT_STRATEGY,
@@ -68,7 +71,7 @@ export function buildLaneSummary(
     }
     if (outcome.harnessError) harnessErrors += 1;
     if (outcome.noEngagement) hollow += 1;
-    if (laneOutcomeOk(outcome, dryRun)) passed += 1;
+    if (participantOutcomeOk(outcome, dryRun)) passed += 1;
   }
   return {
     strategy: CUA_FANOUT_STRATEGY,
@@ -242,7 +245,7 @@ export function subjectProvenanceMessage(
 }
 
 export function providerResourcesForOutcome(args: {
-  outcome: LaneRunOutcome | undefined;
+  outcome: ParticipantRunOutcome | undefined;
   createdAt: string;
   ids: ParticipantIds;
   participantId: string;

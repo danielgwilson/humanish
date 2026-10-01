@@ -30,10 +30,10 @@ import type { LocalTreeArchive } from "../../run/source-archive.js";
 import type { RunLabProvenance } from "../../run/status.js";
 import type { LiveTraceFlush } from "../computer-use/live-flush.js";
 import type {
-  CuaLaneDeps,
+  CuaParticipantDeps,
   DesktopParticipantRun,
   CuaRunBudget,
-  LaneRunOutcome,
+  ParticipantRunOutcome,
 } from "../computer-use/types.js";
 import type { ProvisionedPlaneSetup } from "./provisioned.js";
 import type { SharedWorldPlan } from "../../lab/plan-types.js";
@@ -168,7 +168,7 @@ export interface SubjectDesktopUsage {
 /** One actor's measured run (internal). */
 export interface ActorRunResult {
   spec: DesktopParticipantRun;
-  outcome: LaneRunOutcome;
+  outcome: ParticipantRunOutcome;
   startedAt: number;
   endedAt: number;
   route: string;
@@ -188,7 +188,7 @@ export interface PlaneContext {
   env: Record<string, string | undefined>;
   concurrency: number;
   runBudget: CuaRunBudget | undefined;
-  runSession: CuaLaneDeps["runSession"];
+  runSession: CuaParticipantDeps["runSession"];
   openaiApiKey: string;
   e2bApiKey: string;
   scrubKnownValues: (text: string) => string;

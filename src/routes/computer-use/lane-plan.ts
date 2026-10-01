@@ -32,7 +32,7 @@ import {
   CUA_FANOUT_STRATEGY,
   CUA_MAX_CONCURRENCY_ENV,
   type CuaActorLabErrorCode,
-  type CuaLanePlan,
+  type CuaParticipantPlan,
   type CuaParticipantPlanEntry,
   type DesktopParticipantRun,
   type CuaRunBudget,
@@ -81,7 +81,7 @@ export const CLOSING_LINE_DIRECTIVE =
 
 /** Compose one lane's actor prompt: persona line + device line + mission + per-lane steer.
  *  At N=1 (homogeneous, no roster) this reproduces the prior composeInstructions byte-for-byte. */
-export function composeLaneInstructions(args: {
+export function composeParticipantInstructions(args: {
   mission: string;
   persona?: string;
   instruction?: string;
@@ -276,7 +276,7 @@ function participantRunsAndPlan(
     const tasks = participant.tasks;
     const { device, personaId } = participant;
     const resolvedPersona = personaId === undefined ? undefined : opts.personas?.get(personaId);
-    const composed = composeLaneInstructions({
+    const composed = composeParticipantInstructions({
       mission,
       ...(tasks === undefined ? {} : { tasks }),
       ...(personaId === undefined ? {} : { persona: personaId }),
@@ -304,7 +304,7 @@ function participantRunsAndPlan(
   const resolved = envLoweredConcurrency(planned.concurrency, participantCount, env);
   const concurrency = resolved.bound;
   const { sessionBudgetMs, sandboxMs } = planned;
-  const plan: CuaLanePlan = {
+  const plan: CuaParticipantPlan = {
     strategy: CUA_FANOUT_STRATEGY,
     laneCount: participantCount,
     concurrency,
@@ -352,12 +352,12 @@ async function resolveCuaRerunSelection(args: {
   sourceRunId: string;
   participantIds?: string[];
   participantRuns: DesktopParticipantRun[];
-  plan: CuaLanePlan;
+  plan: CuaParticipantPlan;
 }): Promise<
   | {
       ok: true;
       participantRuns: DesktopParticipantRun[];
-      plan: CuaLanePlan;
+      plan: CuaParticipantPlan;
       rerun: RunRerunLineage;
     }
   | { ok: false; message: string }
@@ -421,7 +421,7 @@ async function resolveCuaRerunSelection(args: {
   const selectedPlanIds = new Set(selectedIds);
   const selectedPlanEntries = args.plan.lanes.filter((entry) => selectedPlanIds.has(entry.id));
   const concurrency = Math.max(1, Math.min(args.plan.concurrency, selectedSpecs.length));
-  const plan: CuaLanePlan = {
+  const plan: CuaParticipantPlan = {
     ...args.plan,
     laneCount: selectedSpecs.length,
     concurrency,
@@ -504,14 +504,14 @@ export function resolveCuaParticipantPlan(
     dryRun?: boolean;
     personas?: Map<string, ResolvedPersona>;
   } = {},
-): CuaLanePlan {
+): CuaParticipantPlan {
   const { countOverride, ...rest } = opts;
   return participantRunsAndPlan(plannedParticipantsOf(config, countOverride), rest).plan;
 }
 
 /** Print the lane plan to stderr BEFORE any sandbox/provider call (public-safe: ids, devices,
  *  digests, and budgets only — no prompt text, no secrets). */
-export function emitPreflightPlan(plan: CuaLanePlan, labId: string): void {
+export function emitPreflightPlan(plan: CuaParticipantPlan, labId: string): void {
   const lines: string[] = [];
   lines.push(
     `humanish cua fan-out plan (${labId}): ${plan.laneCount} lane(s), strategy ${plan.strategy}, concurrency ${plan.concurrency}${plan.envLoweredConcurrencyFrom === undefined ? "" : ` (lowered from ${plan.envLoweredConcurrencyFrom} by ${CUA_MAX_CONCURRENCY_ENV})`}, ${plan.waves} wave(s).`,
@@ -520,12 +520,12 @@ export function emitPreflightPlan(plan: CuaLanePlan, labId: string): void {
     `  per-lane session budget ${Math.round(plan.perLaneSessionBudgetMs / 1000)}s; worst-case ~${plan.worstCaseSandboxMinutes} sandbox-minutes total${plan.dryRun ? " (dry-run: $0)" : ""}.`,
   );
   for (const entry of plan.lanes) {
-    lines.push(`  - ${formatLanePlanEntry(entry)}`);
+    lines.push(`  - ${formatParticipantPlanEntry(entry)}`);
   }
   process.stderr.write(`${lines.join("\n")}\n`);
 }
 
-export function formatLanePlanEntry(entry: CuaParticipantPlanEntry): string {
+export function formatParticipantPlanEntry(entry: CuaParticipantPlanEntry): string {
   const taxonomy = [
     entry.actorType ? `type=${entry.actorType}` : undefined,
     entry.surface ? `surface=${entry.surface}` : undefined,
@@ -592,7 +592,7 @@ export async function planCuaParticipants(args: {
   | {
       ok: true;
       participantRuns: DesktopParticipantRun[];
-      plan: CuaLanePlan;
+      plan: CuaParticipantPlan;
       rerunLineage?: RunRerunLineage;
     }
   | { ok: false; code: CuaActorLabErrorCode; message: string }

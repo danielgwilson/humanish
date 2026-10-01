@@ -28,8 +28,8 @@ import {
 } from "./bundle.js";
 import { participantPassed, participantStatus } from "../../run/judge.js";
 import { buildRunCostSummary, desktopSpanToMinutes } from "../../run/cost-summary.js";
-import { formatLanePlanEntry } from "./lane-plan.js";
-import type { CuaFanoutBundleArgs, LaneRunOutcome } from "./types.js";
+import { formatParticipantPlanEntry } from "./lane-plan.js";
+import type { CuaFanoutBundleArgs, ParticipantRunOutcome } from "./types.js";
 import { fanoutParticipantRecords } from "./fanout-lanes.js";
 
 /** The run's first two events: its creation and the fan-out plan. */
@@ -48,7 +48,7 @@ function fanoutPlanEvents(args: CuaFanoutBundleArgs): RunEvent[] {
     at: args.createdAt,
     level: "info",
     type: "cua-lab.fanout.plan",
-    message: `Fan-out plan: ${args.plan.laneCount} lane(s) (${args.plan.strategy}), concurrency ${args.plan.concurrency}, ${args.plan.waves} wave(s); per-lane session budget ${Math.round(args.plan.perLaneSessionBudgetMs / 1000)}s; worst-case ~${args.plan.worstCaseSandboxMinutes} sandbox-minutes${args.dryRun ? " (dry-run: $0)" : ""}. Lanes: ${args.plan.lanes.map(formatLanePlanEntry).join(", ")}.`,
+    message: `Fan-out plan: ${args.plan.laneCount} lane(s) (${args.plan.strategy}), concurrency ${args.plan.concurrency}, ${args.plan.waves} wave(s); per-lane session budget ${Math.round(args.plan.perLaneSessionBudgetMs / 1000)}s; worst-case ~${args.plan.worstCaseSandboxMinutes} sandbox-minutes${args.dryRun ? " (dry-run: $0)" : ""}. Lanes: ${args.plan.lanes.map(formatParticipantPlanEntry).join(", ")}.`,
   });
   return events;
 }
@@ -166,7 +166,7 @@ function fanoutCost(args: CuaFanoutBundleArgs) {
   const costTraces = specs
     .map((spec, index) => ({ participantId: spec.planned.id, outcome: outcomes?.[index] }))
     .filter(
-      (entry): entry is { participantId: string; outcome: LaneRunOutcome } =>
+      (entry): entry is { participantId: string; outcome: ParticipantRunOutcome } =>
         entry.outcome?.session !== undefined,
     )
     .map((entry) => ({ participantId: entry.participantId, trace: entry.outcome.session!.trace }));

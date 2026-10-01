@@ -11,7 +11,7 @@ import {
 } from "../../src/lab/persona.js";
 import { resolveCommittedPersonasForCwd } from "../../src/lab/persona-resolve.js";
 import {
-  composeLaneInstructions,
+  composeParticipantInstructions,
   withInboxMission,
 } from "../../src/routes/computer-use/lane-plan.js";
 import { inspectLabManifest } from "../../src/lab/discover.js";
@@ -60,7 +60,7 @@ describe("rich participant backgrounds", () => {
     expect(persona.background).toBe(background);
     expect(persona.traits).toEqual({});
     expect(resolved.warnings).toEqual([]);
-    const composed = composeLaneInstructions({
+    const composed = composeParticipantInstructions({
       mission: "Organize Saturday's event.",
       resolvedPersona: persona,
       persona: "organizer",

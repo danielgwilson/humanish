@@ -53,7 +53,7 @@ persisted raw into the trace).
 
 The 0.20.0 delta is a single surgical callback: `CuaLoopOptions.onObservedUrl?(url)`, invoked right
 after every `executor.observe()` (the initial observe and each loop observe) with `observation.url`,
-threaded through `CuaActorSessionOptions` → `CuaLaneDeps` → the concurrent orchestrator. No new CDP
+threaded through `CuaActorSessionOptions` → `CuaParticipantDeps` → the concurrent orchestrator. No new CDP
 code; no lobby-trivia change. The CDP URL read later proved unreliable on E2B desktops, so the
 host's code can now also come from its narration or its screen (step 2).
 

@@ -46,7 +46,7 @@ import {
 } from "../../../src/run/judge.js";
 import {
   CLOSING_LINE_DIRECTIVE,
-  composeLaneInstructions,
+  composeParticipantInstructions,
 } from "../../../src/routes/computer-use/lane-plan.js";
 import type {
   E2BDesktopCreateOptions,
@@ -2121,7 +2121,7 @@ describe("runCuaActorLab", () => {
   });
 
   it("every computer-use lane is asked for the fixed closing line, after the mission and the lane focus (#570)", () => {
-    const composed = composeLaneInstructions({
+    const composed = composeParticipantInstructions({
       mission: "Add two tables.",
       instruction: "keyboard only",
       device: { name: "desktop", preset: DEVICE_PRESETS.desktop },
@@ -6518,7 +6518,7 @@ describe("runCuaActorLab cost estimates", () => {
     await rm(cwd, { recursive: true, force: true });
   });
 
-  // A stepped clock: runCuaLane reads it exactly twice — right after create() and right after
+  // A stepped clock: runCuaParticipant reads it exactly twice — right after create() and right after
   // teardown — so delta == one step == the deterministic billed span.
   function steppedClock(stepMs: number): () => number {
     let t = 0;

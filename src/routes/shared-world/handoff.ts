@@ -10,10 +10,10 @@
 
 import { commandDigestOf } from "../../subject/state.js";
 import { toErrorMessage } from "../../evidence/redaction.js";
-import { inboxRecipientFor, laneHasInboxRecipient } from "../computer-use/route.js";
+import { inboxRecipientFor, participantHasInboxRecipient } from "../computer-use/route.js";
 import { withInboxMission } from "../computer-use/lane-plan.js";
-import { runCuaLane } from "../computer-use/lanes.js";
-import type { DesktopParticipantRun, LaneRunOutcome } from "../computer-use/types.js";
+import { runCuaParticipant } from "../computer-use/lanes.js";
+import type { DesktopParticipantRun, ParticipantRunOutcome } from "../computer-use/types.js";
 import { extractLobbyCode, extractLobbyCodeFromNarration } from "./lobby-code.js";
 import { hostOriginDigest } from "./provenance.js";
 import {
@@ -228,7 +228,7 @@ export class LobbyHandoff {
   }
 
   /** Releases waiting followers to fail closed when the host ended without a code. */
-  releaseFollowersIfUnlatched(outcome: LaneRunOutcome | undefined): void {
+  releaseFollowersIfUnlatched(outcome: ParticipantRunOutcome | undefined): void {
     if (!this.lobbyCodeLatch.settled()) {
       const reason =
         outcome?.sessionError ??
@@ -287,7 +287,7 @@ function withParticipantInbox(
   spec: DesktopParticipantRun,
   inbox: ExternalCommsWiring | undefined,
 ): DesktopParticipantRun {
-  return inbox && laneHasInboxRecipient(inbox.email, spec.planned.id)
+  return inbox && participantHasInboxRecipient(inbox.email, spec.planned.id)
     ? withInboxMission(
         spec,
         inbox.inboxUrl,
@@ -343,9 +343,9 @@ export async function runHost(
     },
   };
   const startedAt = deps.now();
-  let outcome: LaneRunOutcome | undefined;
+  let outcome: ParticipantRunOutcome | undefined;
   try {
-    outcome = await runCuaLane(hostSpec, {
+    outcome = await runCuaParticipant(hostSpec, {
       ...deps.runDeps,
       appUrl: deps.publicAppUrl,
       onObservedUrl,
@@ -416,7 +416,7 @@ export async function runFollower(
     },
   );
   const startedAt = deps.now();
-  const outcome = await runCuaLane(followerSpec, {
+  const outcome = await runCuaParticipant(followerSpec, {
     ...deps.runDeps,
     appUrl: deps.publicAppUrl,
     onObservedUrl,

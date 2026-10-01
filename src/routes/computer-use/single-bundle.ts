@@ -50,7 +50,11 @@ import {
   participantRecord,
   participantStream,
 } from "../../run/participant-records.js";
-import type { DesktopParticipantRun, CuaSubjectProvenanceArg, LaneRunOutcome } from "./types.js";
+import type {
+  DesktopParticipantRun,
+  CuaSubjectProvenanceArg,
+  ParticipantRunOutcome,
+} from "./types.js";
 
 /** Build the N=1 bundle via the unchanged buildCuaBundle (byte-stable). */
 export function buildSingleParticipantBundle(args: {
@@ -58,7 +62,7 @@ export function buildSingleParticipantBundle(args: {
   verdict: Verdict;
   lab?: RunLabProvenance;
   spec: DesktopParticipantRun;
-  outcome: LaneRunOutcome | undefined;
+  outcome: ParticipantRunOutcome | undefined;
   descriptor: CuaActorDescriptor;
   appUrl: string;
   createdAt: string;
@@ -550,7 +554,7 @@ export function buildCuaBundle(args: {
   /** Completed subject-phase records (clone/upload/extract/install/build/ready/state groups)
    *  to fold into bundle.events, so run.json carries real phase timing after the fact. */
   phaseEvents?: SubjectPhaseEvent[];
-  /** Host-side E2B desktop billed span for this lane, in minutes (from LaneRunOutcome
+  /** Host-side E2B desktop billed span for this lane, in minutes (from ParticipantRunOutcome
    *  desktopDurationMs). Absent when no sandbox ran (in-process/dry-run) → no desktop cost line. */
   desktopMinutes?: number;
   desktopUsage?: DesktopUsage;

@@ -10,8 +10,8 @@ import { getActor } from "../../../src/actors/registry.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
 import { LAB_CONFIG_SCHEMA } from "../../../src/lab/types.js";
 import { createInProcessDesktop } from "../../../src/routes/computer-use/in-process-desktop.js";
-import { runCuaLane } from "../../../src/routes/computer-use/lanes.js";
-import type { CuaLaneDeps } from "../../../src/routes/computer-use/types.js";
+import { runCuaParticipant } from "../../../src/routes/computer-use/lanes.js";
+import type { CuaParticipantDeps } from "../../../src/routes/computer-use/types.js";
 import { prepareSelectedOutputDirectory } from "../../../src/run/contained-output.js";
 import { participantRun } from "../../helpers/participant-run.js";
 
@@ -54,7 +54,7 @@ async function fixture() {
   const loadDesktopModule = vi.fn(async () => {
     throw new Error("An in-process participant must never load an E2B desktop");
   });
-  const deps: CuaLaneDeps = {
+  const deps: CuaParticipantDeps = {
     config: parsed.config,
     descriptor: getActor("openai-computer-use"),
     appUrl: "http://127.0.0.1:3000/",
@@ -65,9 +65,9 @@ async function fixture() {
     openaiApiKey: "",
     e2bApiKey: "",
     requestTimeoutMs: 60_000,
-    perLaneSandboxMs: 60_000,
+    sandboxMs: 60_000,
     timeoutMs: 60_000,
-    laneCount: 1,
+    participantCount: 1,
     artifactRoot: await prepareSelectedOutputDirectory(cwd, "artifacts"),
     labCwd: cwd,
     redactScreenshots: false,
@@ -170,7 +170,7 @@ describe("in-process participant desktop", () => {
     f.deps.hooks.buildProvider = buildProvider;
     f.deps.createDesktop = () => createInProcessDesktop(f.deps);
 
-    const result = await runCuaLane(f.spec, f.deps);
+    const result = await runCuaParticipant(f.spec, f.deps);
 
     expect(result.harnessError).toBe(false);
     expect(result.session?.status).toBe("passed");

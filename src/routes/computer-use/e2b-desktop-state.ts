@@ -22,12 +22,12 @@ import type { E2BDesktopSandbox } from "../../substrates/e2b/sdk.js";
 import type { ParticipantDesktopEvidence } from "./participant-desktop.js";
 import type { LaneComms, RunningCommsCatch } from "./e2b-desktop-comms.js";
 import type { LaneFidelity } from "./e2b-desktop-fidelity.js";
-import type { CuaActorLabErrorCode, CuaLaneDeps, DesktopParticipantRun } from "./types.js";
+import type { CuaActorLabErrorCode, CuaParticipantDeps, DesktopParticipantRun } from "./types.js";
 
 /** What every step of one lane reads: its spec, the run's dependencies and where it points. */
 export interface E2BLaneContext {
   readonly spec: DesktopParticipantRun;
-  readonly deps: CuaLaneDeps;
+  readonly deps: CuaParticipantDeps;
   readonly warnings: string[];
   readonly targetUrl: string;
   readonly desktopCliRoute: boolean;

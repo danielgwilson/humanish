@@ -68,7 +68,7 @@ runtime.
 The runner owns instructions, model execution, spend guards, screenshots, trace
 persistence and participant outcome interpretation. It does not invoke desktop
 shell commands or manufacture E2B objects for an alternate executor. The internal
-`createDesktopLane` seam (`CuaLaneDeps` and `CuaActorLabHooks`) is how local
+`createDesktopLane` seam (`CuaParticipantDeps` and `CuaActorLabHooks`) is how local
 Firecracker studies supply their lane and how contract tests inject one; it does
 not add a user-facing runtime option or bypass CLI admission checks.
 
@@ -78,7 +78,7 @@ desktops do not become confirmed cleanup. Provider facts remain absent when the
 adapter cannot establish them.
 
 Independent hosted browser and terminal lanes, local Firecracker lanes, and
-shared-world seats that use `runCuaLane` use this boundary. Local execution is
+shared-world seats that use `runCuaParticipant` use this boundary. Local execution is
 described in [local browser studies](local-browser-runtime.md).
 
 The independent lane's `runSession` testing hook now receives a constructed

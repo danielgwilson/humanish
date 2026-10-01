@@ -312,10 +312,10 @@ the computer-use loop distinguishes two ways to hit the cap:
 - **`budget_reached`**: the deadline was reached AFTER at least one material (non-idle)
   action, or a spend, adapter or token limit ended the session. This maps to `ActorStatus:
 "incomplete"`: the participant did not reach the goal, and the harness did not fail.
-  `laneOutcomeOk` is false, the verdict is `fail`, and the CLI exits `2`. The trace
+  `participantOutcomeOk` is false, the verdict is `fail`, and the CLI exits `2`. The trace
   `reason` and optional `stopCause` say which limit ended the session.
 - **`timed_out`**: the deadline was reached with ZERO material actions (a hung provider, an
-  idle-only stall). This maps to `ActorStatus: "timed_out"`, `laneOutcomeOk` is false, the
+  idle-only stall). This maps to `ActorStatus: "timed_out"`, `participantOutcomeOk` is false, the
   verdict is `timed_out`, and the CLI exits `2`.
 
 Earlier, `budget_reached` mapped to `passed` and `ActorStatus` had four members. It gained

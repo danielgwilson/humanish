@@ -14,11 +14,11 @@ import {
 import { openLaneSurface, startLaneMedia, startLaneStream } from "./e2b-desktop-start.js";
 import { laneEvidence, newLaneState, type E2BLaneContext } from "./e2b-desktop-state.js";
 import { finishLane } from "./e2b-desktop-teardown.js";
-import type { CuaLaneDeps, DesktopParticipantRun } from "./types.js";
+import type { CuaParticipantDeps, DesktopParticipantRun } from "./types.js";
 
 export function createE2BParticipantDesktop(
   spec: DesktopParticipantRun,
-  deps: CuaLaneDeps,
+  deps: CuaParticipantDeps,
   warnings: string[],
 ): ParticipantDesktop {
   const targetUrl = spec.planned.targetUrl ?? deps.appUrl;
@@ -38,7 +38,7 @@ export function createE2BParticipantDesktop(
       (deps.hooks.onPhase ?? defaultSubjectPhaseSink)(event, {
         laneId: spec.planned.id,
         laneIndex: spec.planned.index,
-        laneCount: deps.laneCount,
+        laneCount: deps.participantCount,
       });
     },
   };

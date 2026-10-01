@@ -12,7 +12,7 @@ import { type CuaSubjectRoute } from "./plan.js";
 import {
   type DesktopParticipantRun,
   type CuaSubjectProjection,
-  type LaneRunOutcome,
+  type ParticipantRunOutcome,
 } from "./types.js";
 
 /**
@@ -26,7 +26,7 @@ export function projectParticipantSubjects(args: {
   publicRepo?: string;
   localTreeArchive?: LocalTreeArchive;
   runs: readonly DesktopParticipantRun[];
-  outcomes: readonly LaneRunOutcome[] | undefined;
+  outcomes: readonly ParticipantRunOutcome[] | undefined;
   dryRun: boolean;
 }): CuaSubjectProjection[] {
   const { subjectRoute, publicRepo, localTreeArchive } = args;

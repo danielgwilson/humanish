@@ -24,7 +24,7 @@ import {
   sessionEnding,
 } from "./self-report.js";
 import { hollowCompletion } from "../../run/judge.js";
-import type { CuaLaneDeps, DesktopParticipantRun } from "./types.js";
+import type { CuaParticipantDeps, DesktopParticipantRun } from "./types.js";
 import type { ReadyParticipantDesktop } from "./participant-desktop.js";
 import { laneSpecOf } from "./legacy-lane-spec.js";
 
@@ -38,7 +38,7 @@ export interface ParticipantModel {
 /** Starts the lane's model: a caller's provider, the operator's Codex, a Claude session, or none. */
 export async function startParticipantModel(
   spec: DesktopParticipantRun,
-  deps: CuaLaneDeps,
+  deps: CuaParticipantDeps,
   executor: CuaExecutor,
 ): Promise<ParticipantModel> {
   const { config, env } = deps;
@@ -48,7 +48,7 @@ export async function startParticipantModel(
         config,
         actor: deps.descriptor,
         lane: laneSpecOf(spec),
-        laneCount: deps.laneCount,
+        laneCount: deps.participantCount,
         executor,
       }),
     };
@@ -104,7 +104,7 @@ export async function startParticipantModel(
 /** The options the lane's session runs with: prompt, model settings, spend caps and callbacks. */
 export function participantSessionOptions(
   spec: DesktopParticipantRun,
-  deps: CuaLaneDeps,
+  deps: CuaParticipantDeps,
   ready: ReadyParticipantDesktop,
   provider: CuaProvider | undefined,
   writeScreenshot: NonNullable<CuaActorSessionOptions["writeScreenshot"]>,
@@ -232,7 +232,7 @@ export async function closeParticipantModel(
 /** Prices the finished session's tokens onto its trace, writes the trace, and warns on raw screenshots. */
 export async function recordParticipantTrace(
   spec: DesktopParticipantRun,
-  deps: CuaLaneDeps,
+  deps: CuaParticipantDeps,
   session: CuaLoopResult,
   warnings: string[],
 ): Promise<void> {
@@ -261,7 +261,7 @@ export async function recordParticipantTrace(
 /** The checks that keep a goal_satisfied session from counting as a pass, with their warnings. */
 export function judgeParticipantSession(
   session: CuaLoopResult | undefined,
-  deps: CuaLaneDeps,
+  deps: CuaParticipantDeps,
   warnings: string[],
 ): { noEngagement: boolean; selfReportedBlocker: boolean; reportedFriction: boolean } {
   const noEngagement = session !== undefined && hollowCompletion(sessionEnding(session));

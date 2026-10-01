@@ -1,6 +1,6 @@
 // #381: committed personas must reach BROWSER lanes, not just the terminal lane.
 //
-// The regression this pins: `composeLaneInstructions` used to emit a bare `Persona: <id>.` line and
+// The regression this pins: `composeParticipantInstructions` used to emit a bare `Persona: <id>.` line and
 // hardcode `traitsApplied: []`, so on every computer-use route the persona axis was a label with no
 // behavior behind it. A live two-lane contrast (impatient expert vs patient newcomer) came back with
 // near-identical action profiles — which looked like a finding about personas and was actually a
@@ -12,7 +12,7 @@ import path from "node:path";
 import { parse as parseYaml } from "yaml";
 import { describe, expect, it } from "vitest";
 
-import { composeLaneInstructions } from "../../src/routes/computer-use/lane-plan.js";
+import { composeParticipantInstructions } from "../../src/routes/computer-use/lane-plan.js";
 import { DEVICE_PRESETS } from "../../src/lab/device-presets.js";
 import {
   labPersonaIds,
@@ -28,10 +28,10 @@ async function committed(id: string) {
   return parseResolvedPersona(raw, { id, name: personaTitleFromId(id) });
 }
 
-describe("composeLaneInstructions applies committed personas", () => {
+describe("composeParticipantInstructions applies committed personas", () => {
   it("puts the compiled directives in the prompt and records the traits truthfully", async () => {
     const persona = await committed("skeptical-power-user");
-    const composed = composeLaneInstructions({
+    const composed = composeParticipantInstructions({
       mission: "Sign in and rename the workspace.",
       persona: "skeptical-power-user",
       resolvedPersona: persona,
@@ -55,12 +55,12 @@ describe("composeLaneInstructions applies committed personas", () => {
 
   it("gives two different committed personas materially different prompts", async () => {
     const args = { mission: "Sign in and rename the workspace.", device: DEVICE } as const;
-    const expert = composeLaneInstructions({
+    const expert = composeParticipantInstructions({
       ...args,
       persona: "skeptical-power-user",
       resolvedPersona: await committed("skeptical-power-user"),
     });
-    const newcomer = composeLaneInstructions({
+    const newcomer = composeParticipantInstructions({
       ...args,
       persona: "synthetic-new-user",
       resolvedPersona: await committed("synthetic-new-user"),
@@ -72,7 +72,7 @@ describe("composeLaneInstructions applies committed personas", () => {
   });
 
   it("falls back to the bare id with EMPTY traitsApplied when no persona resolved", () => {
-    const composed = composeLaneInstructions({
+    const composed = composeParticipantInstructions({
       mission: "Sign in and rename the workspace.",
       persona: "not-a-committed-persona",
       device: DEVICE,
