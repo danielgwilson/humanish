@@ -23,7 +23,7 @@ import {
   type SubjectPhaseEvent,
 } from "../subject/steps.js";
 import type { AdapterScorerModule } from "./adapter-scorer-loader.js";
-import { HOOK_MEMBERS, withHookOverrides } from "./hook-bag.js";
+import { HOOK_MEMBERS, withHookOverrides } from "./bag-overrides.js";
 import type { LabOutcome, RunLabOptions } from "../run-lab.js";
 import { resolveLabDryRun, type LabRoute } from "./plan.js";
 import { computerUseParticipants } from "./plan-participants.js";

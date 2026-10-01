@@ -10,7 +10,7 @@ import {
   type HooksWithParticipantDesktop,
 } from "./participant-desktop.js";
 import type { CuaActorLabHooks, DesktopParticipantRun } from "./types.js";
-import { HOOK_MEMBERS, withHookOverrides } from "../../lab/hook-bag.js";
+import { HOOK_MEMBERS, withHookOverrides } from "../../lab/bag-overrides.js";
 import { runCuaActorSession } from "../../actors/computer-use/actor.js";
 import {
   createLocalFirecrackerDesktop,
