@@ -480,7 +480,7 @@ export async function openDesktopTerminal(
     requestTimeoutMs,
   });
   if (!result.ok) {
-    throw new Error("desktop-cli lane could not open a terminal on this desktop template");
+    throw new Error("desktop-cli participant could not open a terminal on this desktop template");
   }
 }
 

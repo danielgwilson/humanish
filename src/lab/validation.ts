@@ -36,20 +36,20 @@ export function cuaLaneValidationReason(config: LabConfig): string | null {
   // clone.fanout is a DECLARED behavior change: rejected on the cua route (was inert-warned).
   // Fan-out is declared via actors[0].count/lanes; subject.clone.fanout never applied here.
   if (config.subject.clone?.fanout !== undefined) {
-    return "`subject.clone.fanout` is not used on the computer-use route — declare fan-out with actors[0].count (homogeneous) or actors[0].lanes (a per-lane roster). (No current route reads clone.fanout.)";
+    return "`subject.clone.fanout` is not used on the computer-use route: declare fan-out with actors[0].count (homogeneous) or actors[0].lanes (a roster of participants). (No current route reads clone.fanout.)";
   }
   if (roster !== undefined) {
     if (actor?.count !== undefined) {
-      return "Declare EITHER actors[0].count (a homogeneous lane count) OR actors[0].lanes (a differentiated roster), not both.";
+      return "Declare EITHER actors[0].count (a homogeneous participant count) OR actors[0].lanes (a differentiated roster), not both.";
     }
     if (focusOf(actor) !== undefined) {
-      return "actors[0].laneFocus and actors[0].lanes are mutually exclusive — a roster's per-lane `instruction` is the fan-out steer; laneFocus is the single-lane steer.";
+      return "actors[0].laneFocus and actors[0].lanes are mutually exclusive: each roster entry's `instruction` is the fan-out steer; laneFocus is the steer for a single participant.";
     }
     if (
       config.execution?.desktop?.resolution !== undefined &&
       roster.some((entry) => entry.device !== undefined)
     ) {
-      return "actors[0].lanes[].device and a raw execution.desktop.resolution are mutually exclusive — a per-lane device preset and a single hand-set resolution cannot both govern lane geometry.";
+      return "actors[0].lanes[].device and a raw execution.desktop.resolution are mutually exclusive: a per-participant device preset and a single hand-set resolution cannot both govern participant geometry.";
     }
     const targeted = roster.filter((entry) => entry.target !== undefined);
     if (targeted.length > 0) {
@@ -57,16 +57,16 @@ export function cuaLaneValidationReason(config: LabConfig): string | null {
         return "actors[0].lanes[].target is supported only on app-url computer-use labs — clone/shared-world/local-app routes provision or own their entry URL by mechanism.";
       }
       if (roster.some((entry) => entry.entry !== undefined)) {
-        return "actors[0].lanes[].target and actors[0].lanes[].entry are mutually exclusive — target is an app-url fan-out browser URL; entry is a shared-world same-origin seat path.";
+        return "actors[0].lanes[].target and actors[0].lanes[].entry are mutually exclusive: target is an app-url fan-out browser URL; entry is a shared-world same-origin participant path.";
       }
       if (targeted.length !== roster.length) {
-        return "When any actors[0].lanes[].target is declared, every lane in the roster must declare target — this keeps the setup-produced target contract explicit and prevents accidental mixed worlds.";
+        return "When any actors[0].lanes[].target is declared, every participant in the roster must declare target; this keeps the setup-produced target contract explicit and prevents accidental mixed worlds.";
       }
     }
   }
   const participantCount = cuaLaneCount(config);
   if (participantCount > MAX_CUA_LANES) {
-    return `Computer-use fan-out is capped at ${MAX_CUA_LANES} lanes (declared ${participantCount}); N concurrent paid desktops is real spend — there is no override above the cap this slice.`;
+    return `Computer-use fan-out is capped at ${MAX_CUA_LANES} participants (declared ${participantCount}); N concurrent paid desktops is real spend, and there is no override above the cap this slice.`;
   }
   // Public targets fan out into N independent worlds driving the SAME public app — that is an
   // ambiguous shared-world-ish shape, not a per-lane target swarm. Permit N>1 public runs only when
@@ -80,7 +80,7 @@ export function cuaLaneValidationReason(config: LabConfig): string | null {
     declaredTargets(config).length === 0 &&
     config.subject.topology !== "shared-world"
   ) {
-    return "policies.allowPublicTargets cannot be combined with multi-lane fan-out (N>1) — N lanes against one declared public target is the SHARED-WORLD topology (layer 7, #164), not per-lane worlds. Declare `subject.topology: shared-world` to run the external-public shared-world route, fan out against a loopback/provisioned subject, or run a single public-target lane.";
+    return "policies.allowPublicTargets cannot be combined with fan-out to more than one participant (N>1): N participants against one declared public target is the SHARED-WORLD topology (layer 7, #164), not `per-lane-worlds`. Declare `subject.topology: shared-world` to run the external-public shared-world route, fan out against a loopback/provisioned subject, or run a single public-target participant.";
   }
   return null;
 }
@@ -187,7 +187,7 @@ export function desktopMediaValidationReason(
       config.subject.topology === "shared-world" ||
       config.subject.source === "local-app")
   ) {
-    return "execution.desktop.recording is supported only on independent computer-use desktop lanes. Remove the declaration or select a supported route.";
+    return "execution.desktop.recording is supported only for computer-use participants on independent desktops. Remove the declaration or select a supported route.";
   }
   const media = config.execution?.desktop?.media;
   if (media === undefined) return undefined;
@@ -195,14 +195,14 @@ export function desktopMediaValidationReason(
     return "execution.desktop.media.microphone.source must be speech. Microphone source-file injection is unsupported.";
   }
   if (config.subject.topology === "shared-world") {
-    return "execution.desktop.media is unsupported on shared-world routes; declared capture devices would not be provisioned. Use independent computer-use browser lanes or remove the declaration.";
+    return "execution.desktop.media is unsupported on shared-world routes; declared capture devices would not be provisioned. Use independent computer-use browser participants or remove the declaration.";
   }
   if (
     !supportsMedia ||
     config.subject.source === "desktop-cli" ||
     config.subject.source === "local-app"
   ) {
-    return "execution.desktop.media is supported only on computer-use browser lanes (app-url, clone or local-tree), not this execution route. Remove the declaration or use a supported route.";
+    return "execution.desktop.media is supported only for computer-use browser participants (app-url, clone or local-tree), not this execution route. Remove the declaration or use a supported route.";
   }
   if (config.execution?.desktop?.browser === "firefox") {
     return "execution.desktop.media requires Chrome or Chromium; Firefox cannot receive the declared synthetic capture device. Set execution.desktop.browser: chrome or chromium.";
@@ -248,7 +248,7 @@ export function taskProtocolValidationReason(
   for (const [index, actor] of config.actors.entries()) {
     if (actor.tasks === undefined) continue;
     if (index > 0) {
-      return `actors[${index}].tasks is unsupported: current runners consume only actors[0]. Use the first actor's supported CUA lanes for a task protocol.`;
+      return `actors[${index}].tasks is unsupported: current runners consume only actors[0]. Use the first actor's computer-use participants for a task protocol.`;
     }
     if (!supportsTasks) {
       return "actors[0].tasks is unsupported on this execution path. Task protocols require a per-lane computer-use route; shared-world, terminal-product, scripted-browser and synthetic routes do not consume them. Remove tasks only if a mission-only study is intended.";

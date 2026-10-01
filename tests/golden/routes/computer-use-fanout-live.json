@@ -3643,7 +3643,7 @@
         "createdAt": "[ts]",
         "cleanup": {
           "killed": true,
-          "reason": "killed during normal lane teardown"
+          "reason": "killed during normal participant teardown"
         }
       },
       {
@@ -3659,7 +3659,7 @@
         "createdAt": "[ts]",
         "cleanup": {
           "killed": true,
-          "reason": "killed during normal lane teardown"
+          "reason": "killed during normal participant teardown"
         }
       },
       {
@@ -3675,7 +3675,7 @@
         "createdAt": "[ts]",
         "cleanup": {
           "killed": true,
-          "reason": "killed during normal lane teardown"
+          "reason": "killed during normal participant teardown"
         }
       },
       {
@@ -3691,7 +3691,7 @@
         "createdAt": "[ts]",
         "cleanup": {
           "killed": true,
-          "reason": "killed during normal lane teardown"
+          "reason": "killed during normal participant teardown"
         }
       }
     ],

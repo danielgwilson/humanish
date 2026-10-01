@@ -53,7 +53,7 @@ export function createE2BParticipantDesktop(
 
   async function prepare(): Promise<void> {
     if (preparationStarted || finalization)
-      throw new Error("Desktop lane preparation can only start once, before finalization.");
+      throw new Error("Participant desktop preparation can only start once, before finalization.");
     preparationStarted = true;
     const desktop = await acquireParticipantDesktop(ctx, state);
     // The device claim is verified in the sandbox, and fails closed.
@@ -68,7 +68,7 @@ export function createE2BParticipantDesktop(
     const { desktop, allocation } = state;
     if (!prepared || !desktop || !allocation || opened || finalization)
       throw new Error(
-        "Desktop lane must be prepared and may only be opened once, before finalization.",
+        "The participant desktop must be prepared and may only be opened once, before finalization.",
       );
     opened = true;
     await startParticipantStream(ctx, state, desktop);

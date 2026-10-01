@@ -192,7 +192,7 @@ export function lostRequestUnbounded(turnNumber: number, lost: LostRequest): Sto
 export type LostRequest = "stalled" | "failed in transit";
 
 export function providerStalledTwice(turnNumber: number, afterMs: number): Stop {
-  const reason = `provider turn ${turnNumber} stalled twice (${afterMs}ms each); the model produced no turn and the lane was ended rather than left to run out its budget`;
+  const reason = `provider turn ${turnNumber} stalled twice (${afterMs}ms each); the model produced no turn and the participant was ended rather than left to run out its budget`;
   return {
     completionReason: "harness_error",
     reason,

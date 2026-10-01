@@ -20,7 +20,7 @@ export async function collectDesktopRecording(
   participantId: string,
   receive: (destination: Writable) => Promise<DesktopRecordingMetadata>,
 ): Promise<RunDesktopRecording> {
-  assertSafeOutputPathSegment(participantId, "Recording lane");
+  assertSafeOutputPathSegment(participantId, "Recording participant");
   const path = `recordings/${participantId}/desktop.mp4`;
   const target = await prepareContainedOutputFile(root, path);
   const temporary = await prepareContainedOutputFile(

@@ -190,7 +190,7 @@ function unsupportedDeclarationReason(
     return invalid("Real email receiving requires hosted participant desktops.");
   if (inProcessRoute && config.execution?.desktop?.media !== undefined)
     return invalid(
-      "execution.desktop.media is not provisioned by a caller-supplied executor. Remove the declaration or use a hosted computer-use browser lane.",
+      "execution.desktop.media is not provisioned by a caller-supplied executor. Remove the declaration or use a hosted computer-use browser participant.",
     );
   if (inProcessRoute && config.execution?.desktop?.recording !== undefined)
     return invalid("execution.desktop.recording is not provisioned by a caller-supplied executor.");
@@ -367,7 +367,7 @@ export function planComputerUseLab(
     return refuse(
       "in-scope",
       "HUMANISH_CUA_LAB_SUBJECT_INVALID",
-      "subject.topology: shared-world labs run every seat against one shared app on the shared-world route; runCuaActorLab runs independent lanes. Run the lab with runLab or runConcurrentSharedWorld.",
+      "subject.topology: shared-world labs run every participant against one shared app on the shared-world route; runCuaActorLab runs independent participants. Run the lab with runLab or runConcurrentSharedWorld.",
       actor,
     );
   // The in-process route drives subject.appUrl on this machine and creates no desktop, so it would
@@ -397,7 +397,7 @@ export function planComputerUseLab(
     return refuse(
       "after-personas",
       "HUMANISH_CUA_LAB_FANOUT_INVALID",
-      `Computer-use fan-out is capped at ${MAX_CUA_LANES} lanes (resolved ${participants.length}); N concurrent paid desktops is real spend.`,
+      `Computer-use fan-out is capped at ${MAX_CUA_LANES} participants (resolved ${participants.length}); N concurrent paid desktops is real spend.`,
       actor,
     );
   const [first, ...rest] = participants;
@@ -405,7 +405,7 @@ export function planComputerUseLab(
     return refuse(
       "after-personas",
       "HUMANISH_CUA_LAB_FANOUT_INVALID",
-      "Multi-lane fan-out is not supported on the in-process route (RunLabOptions.inProcess, or the deprecated cuaHooks.buildExecutor) — fan-out provisions one independent E2B desktop per lane, which the in-process route deliberately skips. Run a single in-process lane, or fan out on the E2B route.",
+      "Fan-out to more than one participant is not supported on the in-process route (RunLabOptions.inProcess, or the deprecated cuaHooks.buildExecutor): fan-out provisions one independent E2B desktop per participant, which the in-process route deliberately skips. Run a single in-process participant, or fan out on the E2B route.",
       actor,
     );
   if (first === undefined) throw new Error("computerUseParticipants returned no participant");

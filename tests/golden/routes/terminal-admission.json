@@ -31,7 +31,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_TERMINAL_LAB_SUBJECT_INVALID",
-      "message": "execution.desktop.recording is supported only on independent computer-use desktop lanes. Remove the declaration or select a supported route."
+      "message": "execution.desktop.recording is supported only for computer-use participants on independent desktops. Remove the declaration or select a supported route."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -206,7 +206,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_TERMINAL_LAB_SUBJECT_INVALID",
-      "message": "execution.desktop.recording is supported only on independent computer-use desktop lanes. Remove the declaration or select a supported route."
+      "message": "execution.desktop.recording is supported only for computer-use participants on independent desktops. Remove the declaration or select a supported route."
     }
   },
   "invalid analysis and tasks": {

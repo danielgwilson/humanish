@@ -38,7 +38,7 @@ export function makeParticipantWriteScreenshot(
   screenshots: string[],
 ): (name: string, bytes: Buffer) => Promise<string> {
   if (spec.screenshotDir) {
-    assertSafeOutputPathSegment(spec.screenshotDir, "Screenshot lane id");
+    assertSafeOutputPathSegment(spec.screenshotDir, "Screenshot participant id");
   }
   const dirParts = spec.screenshotDir ? ["screenshots", spec.screenshotDir] : ["screenshots"];
   const relPrefix = spec.screenshotDir
@@ -194,7 +194,7 @@ export async function runCuaParticipants(
         } catch {
           return skippedOutcome(
             spec,
-            `skipped: lane ${runs[0]?.planned.id ?? "lane-01"} failed to provision its world (pipeline gate)`,
+            `skipped: participant ${runs[0]?.planned.id ?? "lane-01"} failed to provision its world (pipeline gate)`,
           );
         }
       }
@@ -238,12 +238,12 @@ export async function runCuaParticipants(
           selfReportedBlocker: false,
           reportedFriction: false,
           harnessError: true,
-          sessionError: `lane runner threw outside the session guard: ${detail}`,
+          sessionError: `participant runner threw outside the session guard: ${detail}`,
         };
       }
       if (outcome.harnessError && !failFast.tripped) {
         failFast.tripped = true;
-        failFast.reason = `a prior lane (${outcome.spec.planned.id}) ended in a harness error (fail-fast)`;
+        failFast.reason = `a prior participant (${outcome.spec.planned.id}) ended in a harness error (fail-fast)`;
       }
       return outcome;
     },

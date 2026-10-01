@@ -276,7 +276,7 @@ const CONFIG_ROWS: readonly InertRow<LabConfig>[] = [
   {
     field: "execution.desktop.fidelity",
     reason:
-      "mobile emulation is applied only to hosted Chromium computer-use lanes on execution.target: e2b-desktop",
+      "mobile emulation is applied only to computer-use participants in hosted Chromium on execution.target: e2b-desktop",
     applies: (config, routes) =>
       !routes.hostedCuaBrowser && config.execution?.desktop?.fidelity !== undefined,
   },
@@ -399,7 +399,7 @@ export function forwardDeclaredWarnings(config: LabConfig): string[] {
     const uncovered = participantIds.filter((id) => !covered.has(id));
     if (covered.size > 0 && uncovered.length > 0 && participantIds.length > 1) {
       warnings.push(
-        `comms.email covers ${covered.size} of ${participantIds.length} lanes; the uncovered lane(s) get no inbox and are never told one exists: ${uncovered.join(", ")}. Add addressed recipients for them if their flows need email.`,
+        `comms.email covers ${covered.size} of ${participantIds.length} participants; the uncovered participant(s) get no inbox and are never told one exists: ${uncovered.join(", ")}. Add addressed recipients for them if their flows need email.`,
       );
     }
   }

@@ -60,7 +60,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID",
-      "message": "execution.desktop.media is supported only on computer-use browser lanes (app-url, clone or local-tree), not this execution route. Remove the declaration or use a supported route."
+      "message": "execution.desktop.media is supported only for computer-use browser participants (app-url, clone or local-tree), not this execution route. Remove the declaration or use a supported route."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -255,7 +255,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID",
-      "message": "execution.desktop.media is supported only on computer-use browser lanes (app-url, clone or local-tree), not this execution route. Remove the declaration or use a supported route."
+      "message": "execution.desktop.media is supported only for computer-use browser participants (app-url, clone or local-tree), not this execution route. Remove the declaration or use a supported route."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {

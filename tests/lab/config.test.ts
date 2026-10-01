@@ -177,7 +177,8 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       multiLane({ email: { injectEnv: "RESEND_API_URL", recipients: [{ lane: "signup-01" }] } }),
     );
     expect(zeroCoverage.ok).toBe(false);
-    if (!zeroCoverage.ok) expect(zeroCoverage.error.message).toContain("no lane with an address");
+    if (!zeroCoverage.ok)
+      expect(zeroCoverage.error.message).toContain("no participant with an address");
 
     // Omitted recipients fill one deterministic address per lane: all seats can do email.
     const filled = parseLabConfig(multiLane({ email: { injectEnv: "RESEND_API_URL" } }));
@@ -202,7 +203,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     );
     expect(partial.ok).toBe(true);
     if (partial.ok) {
-      expect(partial.warnings.join("\n")).toContain("covers 1 of 3 lanes");
+      expect(partial.warnings.join("\n")).toContain("covers 1 of 3 participants");
       expect(partial.warnings.join("\n")).toContain("signup-02, signup-03");
     }
   });

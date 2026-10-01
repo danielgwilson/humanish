@@ -255,7 +255,7 @@
         {
           "at": "[ts]",
           "event": "cua-lab.run.created",
-          "message": "Created computer-use lab run with one desktop browser lane (actor openai-computer-use)."
+          "message": "Created computer-use lab run with one participant in a desktop browser (actor openai-computer-use)."
         }
       ],
       "knownGaps": []
@@ -629,7 +629,7 @@
       {
         "at": "[ts]",
         "event": "cua-lab.run.created",
-        "message": "Created computer-use lab run with one desktop browser lane (actor openai-computer-use)."
+        "message": "Created computer-use lab run with one participant in a desktop browser (actor openai-computer-use)."
       }
     ],
     "simulations": [
@@ -812,7 +812,7 @@
         "createdAt": "[ts]",
         "cleanup": {
           "killed": true,
-          "reason": "killed during normal lane teardown"
+          "reason": "killed during normal participant teardown"
         }
       }
     ],

@@ -295,7 +295,7 @@
     "result": {
       "status": "failed",
       "completionReason": "harness_error",
-      "reason": "provider turn 1 stalled twice (5ms each); the model produced no turn and the lane was ended rather than left to run out its budget",
+      "reason": "provider turn 1 stalled twice (5ms each); the model produced no turn and the participant was ended rather than left to run out its budget",
       "trace": {
         "schema": "humanish.actor-trace.v1",
         "provider": "golden-cua",
@@ -319,7 +319,7 @@
         "durationMs": 8000,
         "status": "failed",
         "completionReason": "harness_error",
-        "reason": "provider turn 1 stalled twice (5ms each); the model produced no turn and the lane was ended rather than left to run out its budget",
+        "reason": "provider turn 1 stalled twice (5ms each); the model produced no turn and the participant was ended rather than left to run out its budget",
         "ids": {
           "model": "golden-1"
         },
@@ -360,7 +360,7 @@
             "lifecycle": "completed",
             "status": "error",
             "title": "provider turn stalled twice",
-            "text": "provider turn 1 stalled twice (5ms each); the model produced no turn and the lane was ended rather than left to run out its budget",
+            "text": "provider turn 1 stalled twice (5ms each); the model produced no turn and the participant was ended rather than left to run out its budget",
             "at": "1970-01-01T00:00:08.000Z"
           }
         ],

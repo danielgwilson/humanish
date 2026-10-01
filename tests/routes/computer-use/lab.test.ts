@@ -5339,7 +5339,7 @@ describe("buildSingleParticipantBundle", () => {
       expect(killed.length).toBeGreaterThan(0);
     });
 
-    it("live fan-out (2 lanes) with maxUsd: warns that maxUsd is a PER-LANE cap and cites the ~N × cap ceiling", async () => {
+    it("live fan-out (2 lanes) with maxUsd: warns that maxUsd is a PER-PARTICIPANT cap and cites the ~N × cap ceiling", async () => {
       const config = localTreeCuaConfig({ count: 2, caps: { maxUsd: 3 } });
       const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
       const { module } = makeFakeModule(sandbox);
@@ -5360,7 +5360,7 @@ describe("buildSingleParticipantBundle", () => {
       if (outcome.backend !== "cua") throw new Error("expected cua backend");
       const result = outcome.result;
 
-      const capWarning = result.warnings.find((w) => w.includes("PER-LANE cap"));
+      const capWarning = result.warnings.find((w) => w.includes("PER-PARTICIPANT cap"));
       expect(capWarning).toBeDefined();
       // 2 lanes × $3 → the true ~$6 ceiling is surfaced, not the per-lane $3 — and the warning
       // points at the shared study budget (#299) as the fix, since it exists now.

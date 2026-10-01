@@ -89,7 +89,7 @@ export function parseActors(raw: unknown): { ok: true; value: LabActor[] } | Lab
     if (count !== undefined) actor.count = count;
     if (entry.lanes !== undefined && entry.roster !== undefined) {
       return invalid(
-        `actors[${index}].lanes and actors[${index}].roster are mutually exclusive — use explicit lanes OR compact roster groups, not both.`,
+        `actors[${index}].lanes and actors[${index}].roster are mutually exclusive: declare participants in \`lanes\` OR in compact \`roster\` groups, not both.`,
       );
     }
     if (entry.roster !== undefined && count !== undefined) {
@@ -99,7 +99,7 @@ export function parseActors(raw: unknown): { ok: true; value: LabActor[] } | Lab
     }
     if (entry.roster !== undefined && entry.laneFocus !== undefined) {
       return invalid(
-        `actors[${index}].roster and actors[${index}].laneFocus are mutually exclusive — a roster group's instruction is the per-lane steer.`,
+        `actors[${index}].roster and actors[${index}].laneFocus are mutually exclusive: a roster group's instruction is each participant's steer.`,
       );
     }
     const rosterResult =
@@ -201,7 +201,7 @@ function parseRosterGroups(
     }
     if (!PARTICIPANT_ID_PATTERN.test(groupId) || groupId.length > PARTICIPANT_ID_MAX_CHARS - 3) {
       return invalid(
-        `actors[${actorIndex}].roster[${groupIndex}].id must be a public-safe token matching ${PARTICIPANT_ID_PATTERN} and at most ${PARTICIPANT_ID_MAX_CHARS - 3} chars (generated lanes use <id>-NN); got "${groupId}".`,
+        `actors[${actorIndex}].roster[${groupIndex}].id must be a public-safe token matching ${PARTICIPANT_ID_PATTERN} and at most ${PARTICIPANT_ID_MAX_CHARS - 3} chars (generated participant ids use <id>-NN); got "${groupId}".`,
       );
     }
     if (seenGroupIds.has(groupId)) {
@@ -248,7 +248,7 @@ function parseParticipantEntries(
   }
   if (!Array.isArray(raw) || raw.length === 0) {
     return invalid(
-      `actors[${actorIndex}].lanes must be a non-empty array of lane objects ({ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry?, host?, reasoningEffort?, stopWhen?, dwell? }) when set.`,
+      `actors[${actorIndex}].lanes must be a non-empty array of participant objects ({ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry?, host?, reasoningEffort?, stopWhen?, dwell? }) when set.`,
     );
   }
   const entries: LabParticipantEntry[] = [];
@@ -264,7 +264,7 @@ function parseParticipantEntries(
     if (id !== undefined) {
       if (!PARTICIPANT_ID_PATTERN.test(id) || id.length > PARTICIPANT_ID_MAX_CHARS) {
         return invalid(
-          `actors[${actorIndex}].lanes[${entryIndex}].id must be a public-safe token matching ${PARTICIPANT_ID_PATTERN} and at most ${PARTICIPANT_ID_MAX_CHARS} chars (it names per-lane evidence paths); got "${id}".`,
+          `actors[${actorIndex}].lanes[${entryIndex}].id must be a public-safe token matching ${PARTICIPANT_ID_PATTERN} and at most ${PARTICIPANT_ID_MAX_CHARS} chars (it names the participant's evidence paths); got "${id}".`,
         );
       }
       if (seenIds.has(id)) {

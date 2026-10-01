@@ -59,7 +59,7 @@ export async function resolveCommittedPersona(
       return {
         persona: null,
         warnings: [
-          `${candidate} could not be parsed as YAML; the lane ran with the persona id only (no traits applied).`,
+          `${candidate} could not be parsed as YAML; the participant ran with the persona id only (no traits applied).`,
         ],
       };
     }

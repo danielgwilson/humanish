@@ -81,10 +81,10 @@ function localAppValidationReason(config: LabConfig): string | null {
       return `actors[0].type must be a registered computer-use actor for local-app subjects (one of: ${registeredComputerUseActors().join(", ")}); the caller's custom executor runs the computer-use loop. Got "${type}".`;
     }
     if (cuaLaneCount(config) > 1) {
-      return "Multi-lane fan-out is not supported on the in-process/local-app route — fan-out provisions one independent E2B desktop per lane, which the in-process route deliberately skips; set actors[0].count to 1 and drop actors[0].lanes (use an app-url or clone subject on execution.target: e2b-desktop for fan-out).";
+      return "Fan-out to more than one participant is not supported on the in-process/local-app route: fan-out provisions one independent E2B desktop per participant, which the in-process route deliberately skips. Set actors[0].count to 1 and drop actors[0].lanes (use an app-url or clone subject on execution.target: e2b-desktop for fan-out).";
     }
     if (rosterOf(config.actors[0]) !== undefined) {
-      return "`actors[0].lanes` (fan-out roster) is not supported on the in-process/local-app route — it provisions one E2B desktop per lane, which this route skips. Use an app-url or clone subject with execution.target: e2b-desktop.";
+      return "`actors[0].lanes` (fan-out roster) is not supported on the in-process/local-app route: it provisions one E2B desktop per participant, which this route skips. Use an app-url or clone subject with execution.target: e2b-desktop.";
     }
     if (config.policies?.allowPublicTargets === true) {
       return "`policies.allowPublicTargets` is not supported on the local-app route — a local-app subject is always a loopback dev server; there is no public target to allow.";
@@ -217,7 +217,7 @@ function cloneComputerUseValidationReason(config: LabConfig): string | null {
       return "clone subjects on the computer-use route require `subject.serve` (start + url) — the lab serves the app in-sandbox before the actor drives it.";
     }
     if ((config.subject.repos?.length ?? 0) !== 1) {
-      return "computer-use clone labs run a single lane; declare exactly one repo in subject.repos.";
+      return "computer-use clone labs serve one repo; declare exactly one repo in subject.repos.";
     }
     const repo = config.subject.repos?.[0] ?? "";
     if (!REPO_SLUG_PATTERN.test(repo)) {
