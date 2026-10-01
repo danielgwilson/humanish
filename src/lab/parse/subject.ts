@@ -1,5 +1,5 @@
 import { normalizeExtraExcludeEntry } from "../../subject/local-tree-archive.js";
-import { ENV_NAME_PATTERN, invalid, isRecord, posInt, str, strList } from "./values.js";
+import { ENV_NAME_PATTERN, invalid, posInt, str, strList } from "./values.js";
 import { parseEnvValues, parseState, subjectStateInvalidReason } from "./subject-state.js";
 import type {
   LabConfigParseFailure,
@@ -9,6 +9,7 @@ import type {
   LabSubjectProduct,
   LabSubjectServe,
 } from "../types.js";
+import { isRecord } from "../../run/type-guards.js";
 
 export function parseSubject(
   raw: unknown,

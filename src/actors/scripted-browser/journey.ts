@@ -2,6 +2,7 @@
 // expectations the scripted browser runs. The journey is the actor's whole behavior.
 
 import path from "node:path";
+import { isRecord } from "../../run/type-guards.js";
 import type {
   BrowserPersonaAction,
   BrowserPersonaJourney,
@@ -181,10 +182,6 @@ function browserStepExpectationValue(value: unknown): BrowserPersonaStepExpectat
     ...(urlIncludes === undefined ? {} : { urlIncludes }),
   };
   return Object.keys(expectation).length === 0 ? undefined : expectation;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
 function stringValue(value: unknown): string | undefined {

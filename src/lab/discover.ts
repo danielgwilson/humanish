@@ -16,6 +16,7 @@ import {
   readContainedRegularFile,
   type PreparedSelectedOutputDirectory,
 } from "../run/contained-output.js";
+import { isNodeError } from "../run/type-guards.js";
 
 const LAB_LIST_SCHEMA = "humanish.lab-list.v1";
 const LAB_INSPECT_SCHEMA = "humanish.lab-inspect.v1";
@@ -578,8 +579,4 @@ function labLooksLikePath(lab: string): boolean {
 function relativeToCwd(cwd: string, filePath: string): string {
   const relative = path.relative(cwd, filePath);
   return relative && !relative.startsWith("..") ? relative : filePath;
-}
-
-function isNodeError(error: unknown): error is NodeJS.ErrnoException {
-  return error instanceof Error && "code" in error;
 }

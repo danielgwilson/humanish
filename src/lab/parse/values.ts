@@ -9,10 +9,6 @@ export function invalid(message: string): LabConfigParseFailure {
   return { ok: false, error: { code: "HUMANISH_LAB_INVALID", message } };
 }
 
-export function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
-
 export function str(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
