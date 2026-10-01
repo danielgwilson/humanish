@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findOrphanDocComments } from "../scripts/lib/orphan-doc-comments.js";
+import { findOrphanDocComments } from "../../../scripts/lib/orphan-doc-comments.js";
 
 const reasons = (source: string) =>
   findOrphanDocComments(source).map(({ line, reason }) => `${line} ${reason}`);

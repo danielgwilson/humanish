@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { findDocSymbolIssues, findSymbolReferences } from "../scripts/lib/doc-symbols.js";
+import { findDocSymbolIssues, findSymbolReferences } from "../../../scripts/lib/doc-symbols.js";
 
 // Negative fixtures start from real files, so a change to how they declare a name is caught here
 // before a doc points at it.

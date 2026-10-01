@@ -10,7 +10,7 @@ import {
   parseUnixPeers,
   parseUnixTable,
   type ObserverIo,
-} from "../scripts/lib/process-observer.js";
+} from "../../../scripts/lib/process-observer.js";
 
 const linux = process.platform === "linux";
 const closed = (child: ReturnType<typeof spawn>) =>

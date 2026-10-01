@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { copyCommand } from "../site/lib/copy-command.js";
+import { copyCommand } from "../../site/lib/copy-command.js";
 
 describe("website install copy outcome", () => {
   it("reports success only after the actual clipboard promise resolves", async () => {

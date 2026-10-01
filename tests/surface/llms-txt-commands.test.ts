@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { Command } from "commander";
 
-import { createProgram } from "../src/cli/program.js";
+import { createProgram } from "../../src/cli/program.js";
 
 // #513: humanish.dev/llms.txt documented four commands while the CLI shipped eighteen. The whole
 // premise of this product is that a coding agent sets it up for someone, and llms.txt is the
@@ -36,7 +36,7 @@ function walk(command: Command, trail: string[] = []): string[] {
 describe("llms.txt documents the CLI that actually ships (#513)", () => {
   it("mentions every command and subcommand", async () => {
     const text = await readFile(
-      path.resolve(import.meta.dirname, "..", "site", "public", "llms.txt"),
+      path.resolve(import.meta.dirname, "..", "..", "site", "public", "llms.txt"),
       "utf8",
     );
     const program = createProgram({});
@@ -51,7 +51,7 @@ describe("llms.txt documents the CLI that actually ships (#513)", () => {
 
   it("names both credentials a live study needs, and how to set each", async () => {
     const text = await readFile(
-      path.resolve(import.meta.dirname, "..", "site", "public", "llms.txt"),
+      path.resolve(import.meta.dirname, "..", "..", "site", "public", "llms.txt"),
       "utf8",
     );
     // Three live last-mile runs showed agents reaching these two facts by exploration. Stating
@@ -64,7 +64,7 @@ describe("llms.txt documents the CLI that actually ships (#513)", () => {
 
   it("tells an agent that tui is for a human", async () => {
     const text = await readFile(
-      path.resolve(import.meta.dirname, "..", "site", "public", "llms.txt"),
+      path.resolve(import.meta.dirname, "..", "..", "site", "public", "llms.txt"),
       "utf8",
     );
     // #495 measured an agent handed a human-shaped job and neither half of the handoff worked.

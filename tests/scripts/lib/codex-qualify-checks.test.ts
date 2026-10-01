@@ -10,7 +10,7 @@ import {
   processChecks,
   selectBaseline,
   type ProbeSummary,
-} from "../scripts/lib/codex-qualify-checks.js";
+} from "../../../scripts/lib/codex-qualify-checks.js";
 import {
   CODE_MODE_HOST,
   HELPERS,
@@ -20,7 +20,7 @@ import {
   probeSet,
   summary,
   traced,
-} from "./helpers/codex-qualify-fixtures.js";
+} from "../../helpers/codex-qualify-fixtures.js";
 
 const PER_SCENARIO = "each scenario's execs stay within the same baseline scenario's";
 const OVERALL = "executed programs (path and full argv) stay within the baseline's";

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { codeMapFolders, findCodeMapIssues, requiredFolders } from "../scripts/lib/code-map.js";
+import {
+  codeMapFolders,
+  findCodeMapIssues,
+  requiredFolders,
+} from "../../../scripts/lib/code-map.js";
 
 const architecture = (rows: string[]) =>
   [

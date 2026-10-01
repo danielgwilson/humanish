@@ -4,7 +4,7 @@ import {
   identifierWords,
   isCounted,
   retiredWordOf,
-} from "../scripts/lib/retired-words.js";
+} from "../../../scripts/lib/retired-words.js";
 
 const words = (name: string) =>
   identifierWords(name)

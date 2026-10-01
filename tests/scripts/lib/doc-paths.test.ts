@@ -5,7 +5,7 @@ import {
   findDocPathIssues,
   isCheckedDoc,
   isCheckedSource,
-} from "../scripts/lib/doc-paths.js";
+} from "../../../scripts/lib/doc-paths.js";
 
 const index = buildRepoIndex([
   "README.md",
