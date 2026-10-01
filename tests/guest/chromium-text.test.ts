@@ -1,77 +1,15 @@
-import { EventEmitter } from "node:events";
 import { runInNewContext } from "node:vm";
 import type { BrowserContext, CDPSession, Page } from "playwright-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createGuestChromiumText } from "../../src/guest/chromium-text.js";
+import {
+  cleanupPorts,
+  deferred,
+  fixture,
+  inserts,
+  prepared,
+} from "../helpers/chromium-text-port.js";
 
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  let reject!: (error: unknown) => void;
-  const promise = new Promise<T>((yes, no) => {
-    resolve = yes;
-    reject = no;
-  });
-  return { promise, resolve, reject };
-}
-
-const cleanups: Array<() => Promise<void>> = [];
-afterEach(async () => {
-  vi.useRealTimers();
-  for (const cleanup of cleanups.splice(0).reverse()) await cleanup();
-});
-
-function fixture() {
-  const pageEvents = new EventEmitter(),
-    contextEvents = new EventEmitter();
-  const send = vi.fn(async (method: string, _params?: Record<string, unknown>): Promise<any> => {
-    if (method === "Page.getFrameTree") return { frameTree: { frame: { id: "owned-frame" } } };
-    if (method === "Page.createIsolatedWorld") return { executionContextId: 7 };
-    if (method === "Runtime.evaluate") return { result: { type: "boolean", value: true } };
-    if (method === "Input.insertText") return {};
-    throw new Error("Unexpected method");
-  });
-  const detach = vi.fn(async () => {});
-  const session = { send, detach } as unknown as CDPSession;
-  const newCDPSession = vi.fn(async () => session);
-  const pages: Page[] = [];
-  const context = Object.assign(contextEvents, {
-    pages: () => [...pages],
-    newCDPSession,
-  }) as unknown as BrowserContext;
-  const page = Object.assign(pageEvents, {
-    isClosed: () => false,
-    context: () => context,
-  }) as unknown as Page;
-  pages.push(page);
-  const assertFocusedWindow = vi.fn(async (_signal: AbortSignal) => {});
-  const port = createGuestChromiumText({ context, page, assertFocusedWindow });
-  const abort = new AbortController();
-  cleanups.push(() => port.close().catch(() => {}));
-  return {
-    port,
-    abort,
-    send,
-    detach,
-    session,
-    context,
-    page,
-    pages,
-    pageEvents,
-    contextEvents,
-    newCDPSession,
-    assertFocusedWindow,
-  };
-}
-
-async function prepared(f: ReturnType<typeof fixture>, text = "Synthetic 你好 👩🏽‍💻 e\u0301\t\n") {
-  const handle = await f.port.prepareText(text, f.abort.signal);
-  cleanups.push(() => handle.close().catch(() => {}));
-  return handle;
-}
-
-function inserts(f: ReturnType<typeof fixture>) {
-  return f.send.mock.calls.filter(([method]) => method === "Input.insertText");
-}
+afterEach(cleanupPorts);
 
 describe("owned Chromium text port", () => {
   it("uses fixed isolated-world probes and inserts exact text once without selecting a target", async () => {
@@ -449,5 +387,141 @@ describe("owned Chromium text port", () => {
       disposition: "outcome_uncertain",
     });
     expect(f.detach).toHaveBeenCalledOnce();
+  });
+
+  // Characterization before the split: each case passes on the unchanged closure.
+  it("probes with fixed, non-awaiting, silent evaluation parameters", async () => {
+    const f = fixture(),
+      handle = await prepared(f);
+    await handle.paste();
+    for (const [, probe] of f.send.mock.calls.filter(([method]) => method === "Runtime.evaluate"))
+      expect(Object.keys(probe!).sort()).toEqual(
+        [
+          "awaitPromise",
+          "contextId",
+          "expression",
+          "includeCommandLineAPI",
+          "returnByValue",
+          "silent",
+          "userGesture",
+        ].sort(),
+      );
+    const [probe] = f.send.mock.calls.filter(([method]) => method === "Runtime.evaluate");
+    expect(probe![1]).toMatchObject({ awaitPromise: false, silent: true });
+  });
+
+  it.each([
+    { frameTree: {} },
+    { frameTree: { frame: { id: "" } } },
+    { frameTree: { frame: { id: 7 } } },
+    { frameTree: { frame: { id: "child", parentId: "parent" } } },
+  ])("refuses a frame tree without one owned top frame as invalid_response", async (tree) => {
+    const f = fixture(),
+      original = f.send.getMockImplementation()!;
+    f.send.mockImplementation(async (method, params) =>
+      method === "Page.getFrameTree" ? tree : original(method, params),
+    );
+    await expect(f.port.prepareText("x", f.abort.signal)).rejects.toMatchObject({
+      code: "invalid_response",
+      disposition: "not_dispatched",
+    });
+    expect(f.send.mock.calls.map(([method]) => method)).toEqual(["Page.getFrameTree"]);
+    expect(f.detach).toHaveBeenCalledOnce();
+  });
+
+  it.each([0, -1, 1.5, "7", Number.MAX_SAFE_INTEGER + 1])(
+    "refuses isolated-world context id %s as invalid_response",
+    async (executionContextId) => {
+      const f = fixture(),
+        original = f.send.getMockImplementation()!;
+      f.send.mockImplementation(async (method, params) =>
+        method === "Page.createIsolatedWorld" ? { executionContextId } : original(method, params),
+      );
+      await expect(f.port.prepareText("x", f.abort.signal)).rejects.toMatchObject({
+        code: "invalid_response",
+        disposition: "not_dispatched",
+      });
+      expect(f.send.mock.calls.some(([method]) => method === "Runtime.evaluate")).toBe(false);
+      expect(f.detach).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("refuses a closed page as action_rejected", async () => {
+    const f = fixture();
+    vi.spyOn(f.page, "isClosed").mockReturnValue(true);
+    await expect(f.port.assertReady(f.abort.signal)).rejects.toMatchObject({
+      code: "action_rejected",
+      disposition: "not_dispatched",
+    });
+    expect(f.assertFocusedWindow).not.toHaveBeenCalled();
+  });
+
+  it("refuses a context whose only page is another page", async () => {
+    const f = fixture();
+    f.pages.splice(0, 1, {} as Page);
+    await expect(f.port.assertReady(f.abort.signal)).rejects.toMatchObject({
+      code: "action_rejected",
+      disposition: "not_dispatched",
+    });
+    expect(f.assertFocusedWindow).not.toHaveBeenCalled();
+  });
+
+  it("orders owner checks and protocol calls across prepare, paste and close", async () => {
+    const f = fixture(),
+      order: string[] = [],
+      original = f.send.getMockImplementation()!;
+    f.assertFocusedWindow.mockImplementation(async () => {
+      order.push("owner");
+    });
+    f.newCDPSession.mockImplementation(async () => {
+      order.push("newCDPSession");
+      return f.session;
+    });
+    f.send.mockImplementation(async (method, params) => {
+      order.push(method);
+      return original(method, params);
+    });
+    f.detach.mockImplementation(async () => {
+      order.push("detach");
+    });
+    const handle = await prepared(f);
+    await handle.paste();
+    await handle.close();
+    expect(order).toEqual([
+      "owner",
+      "newCDPSession",
+      "Page.getFrameTree",
+      "Page.createIsolatedWorld",
+      "Runtime.evaluate",
+      "owner",
+      "Runtime.evaluate",
+      "owner",
+      "Input.insertText",
+      "detach",
+    ]);
+  });
+
+  it("prepares and pastes at the generation current when preparation starts", async () => {
+    const f = fixture();
+    f.pageEvents.emit("framenavigated");
+    const handle = await prepared(f);
+    await handle.paste();
+    expect(inserts(f)).toHaveLength(1);
+  });
+
+  it("calls the owner check without a receiver", async () => {
+    const f = fixture();
+    await f.port.assertReady(f.abort.signal);
+    expect(f.assertFocusedWindow.mock.contexts).toEqual([undefined]);
+  });
+
+  it("reports a scope refusal before a busy refusal", async () => {
+    const f = fixture();
+    await prepared(f);
+    f.pages.push({} as Page);
+    await expect(f.port.prepareText("y", f.abort.signal)).rejects.toMatchObject({
+      code: "action_rejected",
+      disposition: "not_dispatched",
+    });
   });
 });
