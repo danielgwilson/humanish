@@ -42,7 +42,7 @@ import { withTransientCommsSecrets } from "../../run/transient-comms-secrets.js"
 import { runScope, type RunScope } from "../../run/run.js";
 import { makeCuaRunBudget } from "../computer-use/lane-plan.js";
 import { runExternalPublicPlane } from "./external-public.js";
-import { planSharedWorldLab, sharedWorldDescriptorOf } from "./plan.js";
+import { planSharedWorldLab, sharedWorldDescriptorOf, type SharedWorldRefusal } from "./plan.js";
 import { runProvisionedPlane } from "./provisioned.js";
 import { concurrentLabFailure, finishConcurrentRun } from "./result.js";
 import { prepareConcurrentRun } from "./setup.js";
@@ -83,7 +83,15 @@ async function runConcurrentSharedWorldWithSecrets(
     hooks: input.hooks ?? {},
   });
   if (planned.ok) return runPlanWithSecrets(planned.plan, input, config);
+  return sharedWorldLabRefusal(options, planned.refusal);
+}
 
+/** A refused shared-world lab's result: the route's envelope, and a refusal's analysis record. */
+export function sharedWorldLabRefusal(
+  options: RunConcurrentSharedWorldLabOptions,
+  refusal: SharedWorldRefusal,
+): Promise<ConcurrentSharedWorldLabResult> {
+  const { config, dryRun } = options;
   const declared = config.actors[0]?.lanes ?? [];
   const fail = concurrentLabFailure({
     cwd: path.resolve(options.cwd),
@@ -96,7 +104,6 @@ async function runConcurrentSharedWorldWithSecrets(
     dryRun,
     runId: options.runId,
   });
-  const { refusal } = planned;
   // A refusal starts no run, so a declared or default analysis is recorded as skipped.
   const analysis = resolveAutomaticAnalysis(config.review?.analysis);
   return completeAutomaticAnalysis(

@@ -45,7 +45,7 @@ import path from "node:path";
 import { resolveCommittedPersona as resolveTerminalPersona } from "../../lab/persona-resolve.js";
 import type { ActorPersonaRef } from "../../actors/contract.js";
 import { runScope, type RunScope } from "../../run/run.js";
-import { planTerminalLab } from "./plan.js";
+import { planTerminalLab, type TerminalRefusal } from "./plan.js";
 import {
   personaBrief,
   personaToDirectives,
@@ -84,8 +84,15 @@ export async function runTerminalProductLab(
     ...(input.hooks === undefined ? {} : { hooks: input.hooks }),
   });
   if (planned.ok) return runTerminalPlan(planned.plan, input);
+  return terminalLabRefusal(options, planned.refusal);
+}
 
-  const { refusal } = planned;
+/** A refused terminal lab's result: the route's envelope, and the analysis record a refusal gets. */
+export function terminalLabRefusal(
+  options: RunTerminalProductLabOptions,
+  refusal: TerminalRefusal,
+): Promise<TerminalProductLabResult> {
+  const { config, dryRun } = options;
   const refused: TerminalProductLabResult = {
     schema: TERMINAL_PRODUCT_LAB_SCHEMA,
     ok: false,
