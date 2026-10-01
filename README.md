@@ -277,7 +277,7 @@ by runs made outside CI.
 **Codex versions are pinned.** Codex participants (local browser studies and
 `local-agent` with Codex) and the Codex account analyst accept only the Codex
 CLI versions humanish has qualified for your host, listed in
-[`qualified-versions.ts`](src/actors/codex/qualified-versions.ts). Any other
+[`qualified-versions.ts`](https://github.com/danielgwilson/humanish/blob/main/src/actors/codex/qualified-versions.ts). Any other
 version, including one Codex updated itself to, is refused with the list of
 accepted versions.
 
