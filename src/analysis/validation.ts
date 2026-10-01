@@ -8,10 +8,10 @@ import {
   STUDY_ANALYSIS_SCHEMA,
   STUDY_ANALYSIS_CORRECTION_SCHEMA,
   type AnalysisUsage,
-  type StudyAnalysisArtifact,
-  type StudyAnalysisCorrection,
-  type StudyAnalysisInput,
-  type StudyAnalysisResult,
+  type AnalysisArtifact,
+  type AnalysisCorrection,
+  type AnalysisInput,
+  type AnalysisResult,
 } from "./study-analysis.js";
 
 const text = (max: number) =>
@@ -105,7 +105,7 @@ export const studyAnalysisResultJsonSchema = z.toJSONSchema(studyAnalysisRespons
 const normalizedResult = ({
   concernReviews,
   ...result
-}: z.infer<typeof studyAnalysisResultSchema>): StudyAnalysisResult => ({
+}: z.infer<typeof studyAnalysisResultSchema>): AnalysisResult => ({
   ...result,
   ...(concernReviews === undefined ? {} : { concernReviews }),
 });
@@ -319,7 +319,7 @@ export function hashStudyAnalysisValue(value: unknown): string {
 
 export function digestStudyAnalysisInput(
   input: Pick<
-    StudyAnalysisInput,
+    AnalysisInput,
     "runId" | "sourceRunSha256" | "participants" | "coverage" | "evidence" | "captureVersion"
   >,
 ): string {
@@ -336,9 +336,9 @@ export function digestStudyAnalysisInput(
 const distinct = (values: readonly string[]): boolean => new Set(values).size === values.length;
 
 export function checkAnalysisResult(
-  input: StudyAnalysisInput,
+  input: AnalysisInput,
   value: unknown,
-): { ok: true; result: StudyAnalysisResult } | { ok: false; errors: string[] } {
+): { ok: true; result: AnalysisResult } | { ok: false; errors: string[] } {
   const parsed = studyAnalysisResultSchema.safeParse(value);
   if (!parsed.success) return { ok: false, errors: ["ANALYSIS_RESULT_SCHEMA_INVALID"] };
   const result = parsed.data;
@@ -434,20 +434,17 @@ export function checkAnalysisResult(
     : { ok: true, result: normalizedResult(result) };
 }
 
-export function validateAnalysisResult(
-  input: StudyAnalysisInput,
-  value: unknown,
-): StudyAnalysisResult {
+export function validateAnalysisResult(input: AnalysisInput, value: unknown): AnalysisResult {
   const checked = checkAnalysisResult(input, value);
   if (!checked.ok) throw new Error(checked.errors.join(", "));
   return checked.result;
 }
 
-export function validateStudyAnalysisArtifact(value: unknown): StudyAnalysisArtifact {
+export function validateStudyAnalysisArtifact(value: unknown): AnalysisArtifact {
   const parsed = studyAnalysisArtifactSchema.safeParse(value);
   if (!parsed.success) throw new Error("ANALYSIS_ARTIFACT_SCHEMA_INVALID");
   const { captureVersion, ...fields } = parsed.data;
-  const artifact: StudyAnalysisArtifact = {
+  const artifact: AnalysisArtifact = {
     ...fields,
     result: fields.result === null ? null : normalizedResult(fields.result),
     ...(captureVersion === undefined ? {} : { captureVersion }),
@@ -527,7 +524,7 @@ export function validateStudyAnalysisArtifact(value: unknown): StudyAnalysisArti
   return artifact;
 }
 
-export function validateStudyAnalysisCorrection(value: unknown): StudyAnalysisCorrection {
+export function validateStudyAnalysisCorrection(value: unknown): AnalysisCorrection {
   const parsed = studyAnalysisCorrectionSchema.safeParse(value);
   if (
     !parsed.success ||
@@ -561,7 +558,7 @@ const studyAnalysisExecutionReceiptSchema = studyAnalysisArtifactSchema
   })
   .strict();
 
-export type StudyAnalysisExecutionReceipt = z.infer<typeof studyAnalysisExecutionReceiptSchema>;
+export type AnalysisExecutionReceipt = z.infer<typeof studyAnalysisExecutionReceiptSchema>;
 
 /** Persisted before transport. It proves a request may have started, not that it was billed. */
 export const studyAnalysisExecutionStartSchema = studyAnalysisExecutionReceiptSchema
@@ -578,7 +575,7 @@ export const studyAnalysisExecutionStartSchema = studyAnalysisExecutionReceiptSc
     createdAt: z.iso.datetime(),
   })
   .strict();
-export type StudyAnalysisExecutionStart = z.infer<typeof studyAnalysisExecutionStartSchema>;
+export type AnalysisExecutionStart = z.infer<typeof studyAnalysisExecutionStartSchema>;
 
 function assertAnalysisUsage(usage: AnalysisUsage): void {
   if (
@@ -598,9 +595,7 @@ function assertAnalysisUsage(usage: AnalysisUsage): void {
   }
 }
 
-export function validateStudyAnalysisExecutionReceipt(
-  value: unknown,
-): StudyAnalysisExecutionReceipt {
+export function validateStudyAnalysisExecutionReceipt(value: unknown): AnalysisExecutionReceipt {
   const parsed = studyAnalysisExecutionReceiptSchema.safeParse(value);
   if (!parsed.success || Date.parse(parsed.data.completedAt) < Date.parse(parsed.data.createdAt))
     throw new Error("ANALYSIS_RECEIPT_INVALID");
@@ -628,7 +623,7 @@ const inputMetadataSchema = studyAnalysisArtifactSchema.pick({
 });
 
 /** Validate the packet before any paid request, including typed-library callers. */
-export function validateStudyAnalysisInputMetadata(input: StudyAnalysisInput): void {
+export function validateStudyAnalysisInputMetadata(input: AnalysisInput): void {
   const parsed = inputMetadataSchema.safeParse({
     runId: input.runId,
     sourceRunSha256: input.sourceRunSha256,

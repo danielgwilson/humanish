@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { fetchStudyAnalysis, NO_ANALYSIS, type LoadedStudyAnalysis } from "./study-analysis";
+import { fetchStudyAnalysis, NO_ANALYSIS, type LoadedAnalysis } from "./study-analysis";
 import type { ObserverData } from "./observer-data";
 import {
   fetchHistoryIndex,
@@ -18,7 +18,7 @@ export interface ObserverConnection {
 export function useObserverFeed(
   initial: ObserverData | null,
   snapshot = false,
-  initialAnalysis: LoadedStudyAnalysis = NO_ANALYSIS,
+  initialAnalysis: LoadedAnalysis = NO_ANALYSIS,
 ) {
   const [data, setData] = useState(initial);
   const [analysis, setAnalysis] = useState(initialAnalysis);

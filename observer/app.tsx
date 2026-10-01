@@ -46,7 +46,7 @@ import {
 } from "./lib/preferences";
 import { formatHash, parseHash, pushHash } from "./lib/route";
 import { savedEntryLabels } from "./lib/saved-entry-labels";
-import { projectStudyAnalysis, type LoadedStudyAnalysis } from "./lib/study-analysis";
+import { projectStudyAnalysis, type LoadedAnalysis } from "./lib/study-analysis";
 import { useObserverFeed } from "./lib/use-observer-feed";
 import { automaticAnalysisNotice } from "./lib/automatic-analysis";
 import { useStudyPlayback } from "./lib/use-study-playback";
@@ -76,7 +76,7 @@ export function App({
   snapshot?: boolean;
   report?: ReportData;
   library?: StudyLibrary;
-  analysis?: LoadedStudyAnalysis;
+  analysis?: LoadedAnalysis;
 }) {
   const { data, history, connection, retry, analysis } = useObserverFeed(
     initialData,

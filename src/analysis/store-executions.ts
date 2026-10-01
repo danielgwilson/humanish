@@ -25,10 +25,10 @@ import {
   studyAnalysisExecutionStartSchema,
   validateStudyAnalysisArtifact,
   validateStudyAnalysisExecutionReceipt,
-  type StudyAnalysisExecutionReceipt,
-  type StudyAnalysisExecutionStart,
+  type AnalysisExecutionReceipt,
+  type AnalysisExecutionStart,
 } from "./validation.js";
-import type { StudyAnalysisArtifact } from "./study-analysis.js";
+import type { AnalysisArtifact } from "./study-analysis.js";
 
 /** receipt.json and start.json in an execution directory. */
 const MAX_EXECUTION_RECORD_BYTES = 16 * 1024;
@@ -45,7 +45,7 @@ const EXECUTION_BINDING_KEYS = [
 export async function readStudyAnalysisExecution(
   prepared: PreparedRunArtifactPaths,
   id: string,
-): Promise<StudyAnalysisExecutionReceipt | null> {
+): Promise<AnalysisExecutionReceipt | null> {
   if (!safeId(id)) return null;
   try {
     const root = await existingRoot(prepared, STUDY_ANALYSIS_EXECUTION_DIRECTORY);
@@ -71,7 +71,7 @@ export async function readStudyAnalysisExecution(
  */
 export async function writeStudyAnalysisExecutionReceipt(
   prepared: PreparedRunArtifactPaths,
-  value: StudyAnalysisArtifact,
+  value: AnalysisArtifact,
 ): Promise<void> {
   const receipt = executionReceipt(value, prepared);
   const root = await prepareContainedOutputDirectoryRoot(
@@ -83,12 +83,12 @@ export async function writeStudyAnalysisExecutionReceipt(
 }
 
 function executionReceipt(
-  value: StudyAnalysisArtifact,
+  value: AnalysisArtifact,
   prepared: PreparedRunArtifactPaths,
-): StudyAnalysisExecutionReceipt {
+): AnalysisExecutionReceipt {
   const artifact = validateStudyAnalysisArtifact(value);
   if (artifact.runId !== runIdOf(prepared)) throw new Error("ANALYSIS_ID_MISMATCH");
-  const receipt: StudyAnalysisExecutionReceipt = {
+  const receipt: AnalysisExecutionReceipt = {
     schema: "humanish.analysis-execution.v1",
     model: artifact.config.model,
     maxCostUsd: artifact.config.maxCostUsd,
@@ -111,8 +111,8 @@ function executionReceipt(
 /** The returned closure owns one exact directory; persisted IDs never authorize overwriting it. */
 export async function beginStudyAnalysisExecution(
   prepared: PreparedRunArtifactPaths,
-  context: Omit<StudyAnalysisExecutionStart, "schema" | "createdAt">,
-): Promise<(value: StudyAnalysisArtifact) => Promise<void>> {
+  context: Omit<AnalysisExecutionStart, "schema" | "createdAt">,
+): Promise<(value: AnalysisArtifact) => Promise<void>> {
   const start = studyAnalysisExecutionStartSchema.parse({
     ...context,
     schema: "humanish.analysis-execution-start.v1",
@@ -144,10 +144,10 @@ export async function beginStudyAnalysisExecution(
 }
 
 export async function listStudyAnalysisExecutions(prepared: PreparedRunArtifactPaths): Promise<{
-  receipts: StudyAnalysisExecutionReceipt[];
+  receipts: AnalysisExecutionReceipt[];
   warnings: string[];
 }> {
-  const receipts: StudyAnalysisExecutionReceipt[] = [];
+  const receipts: AnalysisExecutionReceipt[] = [];
   const warnings: string[] = [];
   try {
     const root = await existingRoot(prepared, STUDY_ANALYSIS_EXECUTION_DIRECTORY);
@@ -189,10 +189,10 @@ export async function listStudyAnalysisExecutions(prepared: PreparedRunArtifactP
   return { receipts, warnings: [...new Set(warnings)] };
 }
 
-export interface StudyAnalysisAccountingRecord {
+export interface AnalysisAccountingRecord {
   id: string;
-  receipt: StudyAnalysisExecutionReceipt | null;
-  start: StudyAnalysisExecutionStart | null;
+  receipt: AnalysisExecutionReceipt | null;
+  start: AnalysisExecutionStart | null;
   legacy: boolean;
 }
 
@@ -200,10 +200,10 @@ export interface StudyAnalysisAccountingRecord {
 export async function readStudyAnalysisAccountingRecords(
   prepared: PreparedRunArtifactPaths,
 ): Promise<{
-  records: StudyAnalysisAccountingRecord[];
+  records: AnalysisAccountingRecord[];
   warnings: string[];
 }> {
-  const records = new Map<string, StudyAnalysisAccountingRecord>();
+  const records = new Map<string, AnalysisAccountingRecord>();
   const warnings: string[] = [];
   for (const directory of [STUDY_ANALYSIS_EXECUTION_DIRECTORY, STUDY_ANALYSIS_DIRECTORY]) {
     try {

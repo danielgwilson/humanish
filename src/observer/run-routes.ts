@@ -7,7 +7,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import path from "node:path";
 import { isStudyAnalysisRecordPath, projectShareCheckedAnalysis } from "../analysis/sharing.js";
 import { loadStudyAnalysis } from "../analysis/load.js";
-import type { LoadedStudyAnalysis } from "../analysis/study-analysis.js";
+import type { LoadedAnalysis } from "../analysis/study-analysis.js";
 import { listRuns } from "../run/stored-runs.js";
 import { bindExistingRunArtifactPaths, isPathInside, isSafeRunIdSegment } from "../run/paths.js";
 import { RUN_STATUS_FILE, RUN_STATUS_STALE_MS, isRunStatusRecord } from "../run/status.js";
@@ -39,7 +39,7 @@ export interface ObserverRuntimeStreamUrl {
 }
 
 /** Analysis cannot grant filesystem authority or make an otherwise readable recording disappear. */
-async function readObserverAnalysis(runRoot: PinnedDirectory): Promise<LoadedStudyAnalysis> {
+async function readObserverAnalysis(runRoot: PinnedDirectory): Promise<LoadedAnalysis> {
   try {
     const runId = path.basename(runRoot.physicalPath);
     const cwd = path.dirname(path.dirname(path.dirname(runRoot.physicalPath)));

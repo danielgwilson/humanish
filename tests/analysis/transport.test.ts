@@ -4,7 +4,7 @@ import { Agent, fetch as undiciFetch, getGlobalDispatcher, setGlobalDispatcher }
 import { expect, it } from "vitest";
 import {
   createStudyAnalysisProvider,
-  type StudyAnalysisProviderRequest,
+  type AnalysisProviderRequest,
 } from "../../src/analysis/provider.js";
 
 // Captured envelope, as in provider.test.ts; no model request here.
@@ -12,7 +12,7 @@ const captured = readFileSync(
   new URL("../fixtures/openai-closing-report/typed-closing-report.json", import.meta.url),
   "utf8",
 );
-const request: StudyAnalysisProviderRequest = {
+const request: AnalysisProviderRequest = {
   model: "gpt-5.6-sol",
   instructions: "Synthetic transport proof",
   evidence: "Synthetic evidence",

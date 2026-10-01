@@ -1,19 +1,19 @@
 import { physicalCwdOf, validatePreparedRunRootIdentity } from "../run/paths.js";
 import { FinishedRun } from "../run/run.js";
-import type { StudyAnalysisConfig } from "./study-analysis.js";
-import { runAutomaticStudyAnalysis, type AutomaticStudyAnalysisDeps } from "./automatic.js";
-import type { AutomaticStudyAnalysisOutcome } from "./job.js";
+import type { AnalysisConfig } from "./study-analysis.js";
+import { runAutomaticStudyAnalysis, type AutomaticAnalysisDeps } from "./automatic.js";
+import type { AutomaticAnalysisOutcome } from "./job.js";
 
 export interface AutomaticAnalysisHooks {
   /** Provider/test dependencies apply only to analysis, never to the participant. */
-  deps?: AutomaticStudyAnalysisDeps;
+  deps?: AutomaticAnalysisDeps;
   /** Called after the source is finalized; the returned cleanup always runs. */
   onStart?: () => void | (() => void);
   run?: typeof runAutomaticStudyAnalysis;
 }
 
 export interface AutomaticAnalysisResult {
-  automaticAnalysis?: AutomaticStudyAnalysisOutcome;
+  automaticAnalysis?: AutomaticAnalysisOutcome;
   /** Distinguishes the default missing-key skip from failure of an explicit request. */
   automaticAnalysisTrigger?: "default" | "explicit";
 }
@@ -32,7 +32,7 @@ export async function completeAutomaticAnalysis<
 >(
   result: T,
   finished: FinishedRun | undefined,
-  config: StudyAnalysisConfig | undefined,
+  config: AnalysisConfig | undefined,
   hooks?: AutomaticAnalysisHooks,
   {
     trigger = "explicit",

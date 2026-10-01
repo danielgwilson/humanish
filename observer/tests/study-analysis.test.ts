@@ -1,7 +1,7 @@
 import { codexAnalysisIdentity } from "../../src/analysis/codex-config";
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
-import type { LoadedStudyAnalysis } from "../../src/analysis/study-analysis";
+import type { LoadedAnalysis } from "../../src/analysis/study-analysis";
 import {
   fetchStudyAnalysis,
   NO_ANALYSIS,
@@ -286,25 +286,25 @@ describe("independent analysis admission and projection", () => {
     ]);
   });
   it.each([
-    (v: LoadedStudyAnalysis) => {
+    (v: LoadedAnalysis) => {
       v.analysis!.runId = "other-study";
     },
-    (v: LoadedStudyAnalysis) => {
+    (v: LoadedAnalysis) => {
       v.analysis!.result!.findings[0]!.affectedStreamIds.push("lane-1");
     },
-    (v: LoadedStudyAnalysis) => {
+    (v: LoadedAnalysis) => {
       v.analysis!.result!.findings[0]!.exposedStreamIds = [];
     },
-    (v: LoadedStudyAnalysis) => {
+    (v: LoadedAnalysis) => {
       v.analysis!.result!.findings[0]!.observations[0]!.evidenceIds = ["missing"];
     },
-    (v: LoadedStudyAnalysis) => {
+    (v: LoadedAnalysis) => {
       v.analysis!.evidence[0]!.eventId = "missing";
     },
-    (v: LoadedStudyAnalysis) => {
+    (v: LoadedAnalysis) => {
       v.analysis!.result!.participants[0]!.feedback[0]!.text = "An invented quote";
     },
-    (v: LoadedStudyAnalysis) => {
+    (v: LoadedAnalysis) => {
       v.analysis!.result!.participants[0]!.feedback[0]!.evidenceId = v.analysis!.evidence[0]!.id;
     },
   ])(

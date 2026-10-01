@@ -30,7 +30,7 @@ import {
 } from "../../src/analysis/store-executions.js";
 import { captureStudyEvidence } from "../../src/analysis/evidence.js";
 import type { AnalysisFetch } from "../../src/analysis/provider.js";
-import type { StudyAnalysisConfig } from "../../src/analysis/study-analysis.js";
+import type { AnalysisConfig } from "../../src/analysis/study-analysis.js";
 import type { RunBundle } from "../../src/run/bundle.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { resolveRunPath } from "../../src/run/locate.js";
@@ -38,7 +38,7 @@ import type { PreparedRunArtifactPaths } from "../../src/run/paths.js";
 import { syntheticArtifact, syntheticResult } from "./fixtures.js";
 
 const runId = "physical-project-study";
-const config: StudyAnalysisConfig = {
+const config: AnalysisConfig = {
   model: "gpt-5.6-sol",
   question: null,
   maxCostUsd: 5,

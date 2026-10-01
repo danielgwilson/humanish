@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { estimateStudyAnalysisAdmission } from "../../src/analysis/run-study-analysis.js";
 import { highDetailImageTokens } from "../../src/analysis/image-tokens.js";
-import type { StudyAnalysisConfig, StudyAnalysisInput } from "../../src/analysis/study-analysis.js";
+import type { AnalysisConfig, AnalysisInput } from "../../src/analysis/study-analysis.js";
 import { digestStudyAnalysisInput } from "../../src/analysis/validation.js";
 import { syntheticInput } from "./fixtures.js";
 
@@ -65,7 +65,7 @@ const BILLED = [
   },
 ] as const;
 
-const config: StudyAnalysisConfig = {
+const config: AnalysisConfig = {
   provider: "openai",
   model: "gpt-6-astra",
   question: null,
@@ -79,7 +79,7 @@ const MESSAGES = 16;
 
 /** A valid packet with the given captures and `padding` characters spread over the messages. */
 function packet(sizes: readonly (readonly [number, number, number])[], padding: number) {
-  const input: StudyAnalysisInput = syntheticInput();
+  const input: AnalysisInput = syntheticInput();
   const message = input.evidence.find((item) => item.capture === null)!;
   input.evidence = Array.from({ length: MESSAGES }, (_unused, i) => ({
     ...message,

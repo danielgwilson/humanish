@@ -36,7 +36,7 @@ import { readRunDetail } from "../../src/run/detail.js";
 import { stopRun } from "../../src/tui/actions.js";
 import * as automaticJobs from "../../src/analysis/automatic.js";
 import { routeOf } from "../../src/lab/plan.js";
-import type { AutomaticStudyAnalysisOutcome } from "../../src/analysis/job.js";
+import type { AutomaticAnalysisOutcome } from "../../src/analysis/job.js";
 
 const fixtures = JSON.parse(
   await readFile(new URL("../fixtures/task-route-preflight/labs.json", import.meta.url), "utf8"),
@@ -295,7 +295,7 @@ describe("automatic analysis admission and producer boundary", () => {
         ({
           state: "failed",
           reason: "analysis_validation_failed",
-        }) as AutomaticStudyAnalysisOutcome,
+        }) as AutomaticAnalysisOutcome,
     );
     const cleanup = vi.fn();
     const onStart = vi.fn(() => cleanup);
@@ -324,7 +324,7 @@ describe("automatic analysis admission and producer boundary", () => {
   });
   it("uses the finalized physical project, not a later-retargeted cwd alias", async () => {
     const run = vi.fn(
-      async () => ({ state: "failed", reason: "synthetic" }) as AutomaticStudyAnalysisOutcome,
+      async () => ({ state: "failed", reason: "synthetic" }) as AutomaticAnalysisOutcome,
     );
     const finished = await publishRun(cwd, "recording");
     const prepared = finished.paths;
@@ -516,7 +516,7 @@ describe("automatic analysis admission and producer boundary", () => {
           },
           warnings: [],
           error: { code, message: "refused" },
-        } as unknown as NonNullable<AutomaticStudyAnalysisOutcome["result"]>,
+        } as unknown as NonNullable<AutomaticAnalysisOutcome["result"]>,
       },
     });
 

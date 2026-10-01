@@ -1,7 +1,7 @@
 import {
   automaticAnalysisNotice,
   parseAutomaticAnalysis,
-  type AutomaticStudyAnalysisView,
+  type AutomaticAnalysisView,
 } from "../lib/automatic-analysis";
 
 export function AutomaticAnalysisStatus({
@@ -11,7 +11,7 @@ export function AutomaticAnalysisStatus({
   separateAnalysis = false,
   resultAvailable = false,
 }: {
-  automatic: AutomaticStudyAnalysisView;
+  automatic: AutomaticAnalysisView;
   snapshot: boolean;
   now: number;
   separateAnalysis?: boolean;

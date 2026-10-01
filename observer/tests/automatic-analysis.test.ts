@@ -4,16 +4,14 @@ import {
   AUTOMATIC_ANALYSIS_STALE_MS,
   automaticAnalysisNotice,
   parseAutomaticAnalysis,
-  type AutomaticStudyAnalysisView,
+  type AutomaticAnalysisView,
 } from "../lib/automatic-analysis";
 import { parseStudyAnalysis, projectStudyAnalysis } from "../lib/study-analysis";
 import * as fixtures from "../../scripts/observer-browser-fixtures.mjs";
 
 const now = Date.parse("2026-09-15T01:00:00.000Z");
 const data = fixtures.fixture();
-const job = (
-  state: AutomaticStudyAnalysisView["state"] = "running",
-): AutomaticStudyAnalysisView => ({
+const job = (state: AutomaticAnalysisView["state"] = "running"): AutomaticAnalysisView => ({
   state,
   analysisId: null,
   reason: null,

@@ -7,7 +7,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } fr
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { projectShareCheckedAnalysis, studyAnalysisSharingProblems } from "../analysis/sharing.js";
-import type { LoadedStudyAnalysis } from "../analysis/study-analysis.js";
+import type { LoadedAnalysis } from "../analysis/study-analysis.js";
 import { withObserverEndings, type ObserverData } from "./data.js";
 
 const OBSERVER_DATA_PLACEHOLDER = "__HUMANISH_OBSERVER_DATA__";
@@ -174,7 +174,7 @@ function renderExportAssets(assets: ObserverExportAssets): string {
 function renderObserverAppHtml(
   data: ObserverData,
   snapshot: boolean,
-  analysis: LoadedStudyAnalysis,
+  analysis: LoadedAnalysis,
   assets: ObserverExportAssets,
 ): string {
   const artifact = loadObserverArtifact();
@@ -209,7 +209,7 @@ export function renderObserverHtml(
   data: ObserverData,
   options: {
     snapshot?: boolean;
-    analysis?: LoadedStudyAnalysis;
+    analysis?: LoadedAnalysis;
     assets?: ObserverExportAssets;
   } = {},
 ): string {

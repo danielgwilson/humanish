@@ -7,7 +7,7 @@ import {
   RESTRICTED_CODEX_ANALYSIS_IDENTITY,
   RESTRICTED_CODEX_ANALYSIS_MODELS,
 } from "../actors/codex/restricted-policy.js";
-import type { CodexAnalysisIdentity, StudyAnalysisConfig } from "./study-analysis.js";
+import type { CodexAnalysisIdentity, AnalysisConfig } from "./study-analysis.js";
 
 /** This account route is qualified against per-host CLI releases, one model and one tool policy. */
 const CODEX_ANALYSIS_TOOL_POLICY = RESTRICTED_CODEX_ANALYSIS_IDENTITY.toolPolicy;
@@ -58,7 +58,7 @@ const storedProfiles = RECORDED_CODEX_CLI_VERSIONS.map((cliVersion) => ({
   reasoningEffort: "low";
 }[];
 
-function matchesProfile(config: StudyAnalysisConfig, expected: CodexAnalysisIdentity): boolean {
+function matchesProfile(config: AnalysisConfig, expected: CodexAnalysisIdentity): boolean {
   if (config.provider !== "codex") return false;
   return (
     Object.keys(config).every((key) =>
@@ -87,7 +87,7 @@ function matchesProfile(config: StudyAnalysisConfig, expected: CodexAnalysisIden
 
 /** Execution admission: the identity must name a release qualified on this host. */
 export function validCodexAnalysisConfig(
-  config: StudyAnalysisConfig,
+  config: AnalysisConfig,
   platform: NodeJS.Platform = process.platform,
   arch: string = process.arch,
 ): boolean {
@@ -101,6 +101,6 @@ export function validCodexAnalysisConfig(
 }
 
 /** Reading historical artifacts never inserts defaults or selects a launch policy. */
-export function validStoredCodexAnalysisConfig(config: StudyAnalysisConfig): boolean {
+export function validStoredCodexAnalysisConfig(config: AnalysisConfig): boolean {
   return storedProfiles.some((profile) => matchesProfile(config, identityFor(profile)));
 }
