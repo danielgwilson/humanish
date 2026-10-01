@@ -3,7 +3,7 @@ id: participant-camera
 title: "A participant with a camera (#509): the browser's own permission prompt, then a synthetic feed"
 description: >
   A one-page fixture (bench/media-check) with a button that calls getUserMedia and prints the
-  camera's name and frame size. The lane declares a synthetic camera; Chrome presents an ffmpeg
+  camera's name and frame size. The lab declares a synthetic camera; Chrome presents an ffmpeg
   test pattern as a capture device. With the default policies.mediaPermission (prompt) the
   participant meets Chrome's real permission dialog and answers it, which is the moment a real
   person hesitates or refuses; the page's own read-back, in the participant's words, is the proof

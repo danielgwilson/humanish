@@ -5,7 +5,7 @@ description: >
   THREE mobile-layout personas play the SAME multiplayer game lobby on a REAL public
   deployment AT ONCE — the external-public shared-world plane (#164 phase 2). The public site is used
   DIRECTLY as the shared plane: NO getHost, NO clone, NO subject sandbox, NO seed. A host-first
-  barrier extracts the /lobby/CODE from the host seat's CDP-observed URL and threads it into the
+  barrier extracts the /lobby/CODE from the host participant's CDP-observed URL and threads it into the
   follower join missions; followers go through the real Join flow (a direct /lobby/CODE visit does
   not auto-join a non-member). Dry-run (the default) emits ONE run bundle with the external-public
   concurrent evidence block (attributionClass: shared-world; planeClass: external-public;
@@ -14,19 +14,19 @@ description: >
   live.
   MOBILE FIDELITY CAVEAT: on the E2B-desktop route the rendered WIDTH IS FLOORED to
   MIN_DESKTOP_RENDER_WIDTH (500), because Chrome refuses a window narrower than ~500 CSS px and a
-  narrower X screen let the window overflow and clip the page (0.20.3, #304). So BOTH seats below
+  narrower X screen let the window overflow and clip the page (0.20.3, #304). So BOTH participants below
   render at 500 wide: `mobile` (414) and `small-mobile` (360) are IDENTICAL in layout on this route,
   and this lab does NOT currently exercise two different mobile widths. Only the HEIGHT renders as
   declared (896 and 740). The preset widths remain the honest device identity for the persona prompt
   and metadata, not a rendered guarantee; desktopGeometry.screen.verified confirms the FLOORED
   number against itself, so a matching `verified` block is NOT evidence the preset width rendered.
   There is also NO touch input, and isMobile/DPR are prompt-signal + metadata (DPR renders only via
-  the CDP geometry path). "3 mobile personas" means 3 mobile-LAYOUT desktop-Chromium seats, not
+  the CDP geometry path). "3 mobile personas" means 3 mobile-LAYOUT desktop-Chromium participants, not
   touch devices. True sub-500 CSS-viewport rendering is the #221 CDP-device-emulation upgrade.
   HONESTY: this is a real public-application study of a deployment the operator attests they
-  own/operate (subject.publicTarget). The harness OBSERVES that each seat reached the operator-
+  own/operate (subject.publicTarget). The harness OBSERVES that each participant reached the operator-
   declared origin and converged on one lobby path; it did NOT provision, seed, or control the plane.
-  Attribution stays shared-world (N seats, ONE plane) but every strength claim degrades honestly and
+  Attribution stays shared-world (N participants, ONE plane) but every strength claim degrades honestly and
   is asserted-absent: provenance external-public (not seeded); NO synthetic attestation (you cannot
   claim synthetic on a real site); NO authoritative shared-state proof; concurrency by temporal
   co-occupancy + observed lobby convergence. No one run implies adoption, scale, or repeatability.
@@ -47,19 +47,19 @@ actors:
     mission: >-
       You are one of several friends playing a round of an online multiplayer trivia game together on your phones at the
       same time. Play your role, then stop.
-    # The roster IS the persona roster (>=2) with EXACTLY ONE host: true seat. On the external-public
-    # route every seat opens the SAME public appUrl; the host creates the shared lobby and the
+    # The roster IS the persona roster (>=2) with EXACTLY ONE host: true participant. On the external-public
+    # route every participant opens the SAME public appUrl; the host creates the shared lobby and the
     # followers join it through the real UI with the code the host is told.
     lanes:
       - id: host
-        host: true # the designated host seat that creates the shared lobby
+        host: true # the designated host participant that creates the shared lobby
         device: mobile # 414x896 preset, RENDERED AT 500 wide (see the width-floor caveat above)
         persona: party-host
-        # The host-first barrier means the followers only start provisioning AFTER this seat has
+        # The host-first barrier means the followers only start provisioning AFTER this participant has
         # created the lobby, so being alone in the waiting room is the EXPECTED opening state, not a
         # blocker. Say so explicitly: a 2026-08-03 run had the host see "1/8", decide it was blocked
         # from starting, and end its own session 32s in, before either follower had finished joining.
-        # The harness already raises this lane's idle backstop (HOST_WAIT_IDLE_STEPS); this stops the
+        # The harness already raises this participant's idle backstop (HOST_WAIT_IDLE_STEPS); this stops the
         # MODEL from declaring itself done first.
         instruction: >-
           Create a lobby. While you wait in the waiting room, open the host settings and pick the
@@ -83,12 +83,12 @@ actors:
 execution:
   target: e2b-desktop # required: each persona drives a hosted desktop browser (mobile LAYOUT)
   # PER-PERSONA session budget; also caps the host-first handoff deadline. Budget the WHOLE arc:
-  # ~35s seat provisioning + ~45s shared-session assembly + the subject app's own round pacing. A
-  # first live run of this worked example died at 120000 with every seat expiring mid round 1 and
+  # ~35s participant provisioning + ~45s shared-session assembly + the subject app's own round pacing. A
+  # first live run of this worked example died at 120000 with every participant expiring mid round 1 and
   # zero guesses submitted. 7 minutes fits a full game once the host picks the fastest timer.
   timeoutMs: 420000
-  concurrency: 3 # all 3 seats live at once (also the default when omitted: concurrency = seat count); lower it only to cap simultaneous paid desktops
+  concurrency: 3 # all 3 participants live at once (also the default when omitted: concurrency = participant count); lower it only to cap simultaneous paid desktops
 scenario:
-  mode: dry-run # default; the live path opens 3 real mobile-layout seats against the public app
+  mode: dry-run # default; the live path opens 3 real mobile-layout participants against the public app
 defaults:
   open: true

@@ -10,10 +10,10 @@ export default function Study() {
         Four missions drove <em>Excalidraw</em>
       </h2>
       <p className="sec-sub rev" style={{ "--d": ".1s" } as React.CSSProperties}>
-        This is run <code>cua-2026-08-07T17-44-48-760Z-87389419</code>: four computer-use lanes on
-        hosted 1920×1080 desktops, driving a commit-pinned clone of Excalidraw, an open-source
-        virtual whiteboard. 3/4 lanes passed; one gave up; verify ran 16/16 checks. Every number and
-        quote below is read from that run&rsquo;s bundle.
+        This is run <code>cua-2026-08-07T17-44-48-760Z-87389419</code>: four computer-use
+        participants on hosted 1920×1080 desktops, driving a commit-pinned clone of Excalidraw, an
+        open-source virtual whiteboard. 3/4 participants passed; one gave up; verify ran 16/16
+        checks. Every number and quote below is read from that run&rsquo;s bundle.
       </p>
 
       {/* SOURCE carries the provenance the numbers depend on, in the strip that
@@ -35,7 +35,7 @@ export default function Study() {
           <dd>excalidraw/excalidraw · commit-pinned</dd>
         </div>
         <div>
-          <dt>Lanes</dt>
+          <dt>Participants</dt>
           <dd>3/4 passed</dd>
         </div>
         <div>
@@ -68,9 +68,9 @@ export default function Study() {
           Publishing these crops was a reviewed, deliberate act.
         </p>
         <p>
-          In lane sketch-shapes, 8 consecutive turns of freehand strokes left the UI state
-          unchanged, and the backstop of that version ended the lane. Since 2026-08-08 the backstop
-          also requires the participant to repeat a recent action.
+          In participant sketch-shapes, 8 consecutive turns of freehand strokes left the UI state
+          unchanged, and the backstop of that version ended its session. Since 2026-08-08 the
+          backstop also requires the participant to repeat a recent action.
         </p>
         <p>Excalidraw is the application studied; it is not a humanish adopter or endorser.</p>
       </div>

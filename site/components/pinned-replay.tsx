@@ -32,10 +32,10 @@ const BRIEF_YAML = `<span class="cy">run:</span> <span class="cv">cua-2026-08-07
 
 const RAIL_ITEMS: Array<[string, string, string, boolean?]> = [
   ["00", "Brief", "the lab, in YAML"],
-  ["01", "Lane 01", "diagram-login-flow"],
-  ["02", "Lane 02", "sticky-notes"],
-  ["03", "Lane 03", "sketch-shapes · gave up", true],
-  ["04", "Lane 04", "export-drawing"],
+  ["01", "Participant 01", "diagram-login-flow"],
+  ["02", "Participant 02", "sticky-notes"],
+  ["03", "Participant 03", "sketch-shapes · gave up", true],
+  ["04", "Participant 04", "export-drawing"],
   ["05", "Bundle", "what landed in .humanish/"],
   ["06", "Verify", "16/16 checks"],
 ];
@@ -68,7 +68,7 @@ const LANES: Array<{
     idx: "01",
     name: "diagram-login-flow",
     img: "/study/excalidraw-lane1.jpg",
-    alt: "Keyframe from lane diagram-login-flow: the Excalidraw canvas on the sandbox desktop with two rectangles labeled Login and Dashboard connected by an arrow",
+    alt: "Keyframe from participant diagram-login-flow: the Excalidraw canvas on the sandbox desktop with two rectangles labeled Login and Dashboard connected by an arrow",
     reportLabel: "Final report — verbatim",
     report: "Done",
     passed: true,
@@ -77,7 +77,7 @@ const LANES: Array<{
     idx: "02",
     name: "sticky-notes",
     img: "/study/excalidraw-lane2.jpg",
-    alt: "Keyframe from lane sticky-notes: the Excalidraw canvas on the sandbox desktop with three colored to-do notes — Draft plan, Call team, Buy supplies",
+    alt: "Keyframe from participant sticky-notes: the Excalidraw canvas on the sandbox desktop with three colored to-do notes — Draft plan, Call team, Buy supplies",
     reportLabel: "Final report — verbatim",
     report: "Done.",
     passed: true,
@@ -86,7 +86,7 @@ const LANES: Array<{
     idx: "03",
     name: "sketch-shapes",
     img: "/study/excalidraw-lane3.jpg",
-    alt: "Keyframe from lane sketch-shapes: the Excalidraw canvas on the sandbox desktop with an ellipse, a rectangle, stray line strokes, and the freehand tool panel open — the lane gave up here",
+    alt: "Keyframe from participant sketch-shapes: the Excalidraw canvas on the sandbox desktop with an ellipse, a rectangle, stray line strokes, and the freehand tool panel open — the participant gave up here",
     reportLabel: "Recorded reason — verbatim",
     report: "gave up: 8 consecutive turns with no change to the UI state",
     passed: false,
@@ -95,7 +95,7 @@ const LANES: Array<{
     idx: "04",
     name: "export-drawing",
     img: "/study/excalidraw-lane4.jpg",
-    alt: "Keyframe from lane export-drawing: the Excalidraw canvas on the sandbox desktop with a single large rectangle, deselected after the export flow",
+    alt: "Keyframe from participant export-drawing: the Excalidraw canvas on the sandbox desktop with a single large rectangle, deselected after the export flow",
     reportLabel: "Final report — verbatim",
     report: "Done",
     passed: true,
@@ -243,7 +243,7 @@ export default function PinnedReplay() {
           <span>
             Run <b>cua-2026-08-07T17-44-48-760Z-87389419</b> · 2026-08-07
           </span>
-          <span>3/4 lanes passed · verify 16/16 checks</span>
+          <span>3/4 participants passed · verify 16/16 checks</span>
         </p>
         <nav className="rail" aria-label="Run steps">
           <span className="rail-k">Replay · one real run</span>
@@ -281,7 +281,7 @@ export default function PinnedReplay() {
                   <dd>hosted · 1920×1080</dd>
                 </div>
                 <div>
-                  <dt>Lanes</dt>
+                  <dt>Participants</dt>
                   <dd>4 · parallel</dd>
                 </div>
                 <div>
@@ -294,7 +294,7 @@ export default function PinnedReplay() {
             <footer className="pcap">
               <p className="prep">
                 <span className="plab">The lab</span>One YAML lab declares the persona, its four
-                missions, and a commit-pinned Excalidraw clone. Each lane gets its own hosted
+                missions, and a commit-pinned Excalidraw clone. Each participant gets its own hosted
                 1920×1080 desktop.
               </p>
             </footer>
@@ -315,13 +315,13 @@ export default function PinnedReplay() {
             <div className="pbody">
               <div className="ledger">
                 <div className="lh">
-                  .humanish/runs/cua-2026-08-07T17-44-48-760Z-87389419<span>4 lanes</span>
+                  .humanish/runs/cua-2026-08-07T17-44-48-760Z-87389419<span>4 participants</span>
                 </div>
                 <div className="lrow">
                   <span className="ln">
                     <em>├</em>screenshots
                   </span>
-                  <span className="ld">every screenshot each lane saw · 28 frames</span>
+                  <span className="ld">every screenshot each participant saw · 28 frames</span>
                 </div>
                 <div className="lrow">
                   <span className="ln">
@@ -345,15 +345,15 @@ export default function PinnedReplay() {
                   <span className="ln">
                     <em>└</em>wall-clock
                   </span>
-                  <span className="ld">6m 06s · run created → last lane landed</span>
+                  <span className="ld">6m 06s · run created → last participant landed</span>
                 </div>
               </div>
             </div>
             <footer className="pcap">
               <p className="prep">
                 <span className="plab">Where it lands</span>The run lands in gitignored{" "}
-                <code>.humanish/</code>: every screenshot each lane saw, ordered action traces,
-                lifecycle events, and estimated cost at dated rates.
+                <code>.humanish/</code>: every screenshot each participant saw, ordered action
+                traces, lifecycle events, and estimated cost at dated rates.
               </p>
             </footer>
           </article>

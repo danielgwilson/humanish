@@ -79,6 +79,6 @@ execution:
   # PER-PERSONA budget: 15 minutes is this lab's exact fit (15m + 30m provisioning + 5m seed +
   # 10m buffer = E2B's one-hour sandbox cap).
   timeoutMs: 900000
-  concurrency: 3 # all 3 seats live at once (also the default when omitted: concurrency = seat count); lower it only to cap simultaneous paid desktops
+  concurrency: 3 # all 3 participants live at once (also the default when omitted: concurrency = participant count); lower it only to cap simultaneous paid desktops
 scenario:
   mode: dry-run # default safe; the gated live rung flips to live for the authorized paid receipt

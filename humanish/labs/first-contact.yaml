@@ -1,6 +1,6 @@
 schema: humanish.lab.v2
 id: first-contact
-title: A coding agent meets humanish for the first time (self-study, terminal lane)
+title: A coding agent meets humanish for the first time (self-study, terminal route)
 description: >
   humanish studying humanish. A real autonomous terminal agent lands in a fresh Linux shell,
   finds humanish from PUBLIC SURFACES ONLY, and tries to get somewhere useful with it. The

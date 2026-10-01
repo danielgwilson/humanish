@@ -4,7 +4,7 @@ title: Taskly detection benchmark, planted arm
 description: >
   One arm of the planted-defect benchmark (#548). Our nearest analogs lead with efficacy numbers
   (ML6's cua-uat reports 27 of 28 planted bugs caught); humanish has only ever reported process
-  facts like lanes passed and verify checks run. This measures whether a persona doing ordinary
+  facts like participants passed and verify checks run. This measures whether a persona doing ordinary
   work surfaces defects it was never told about.
   The two arms are identical except for which build is served. `taskly-planted` carries five
   defects documented in bench/DEFECTS.md: a dead Clear-completed button, silent truncation past

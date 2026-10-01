@@ -2,7 +2,7 @@ schema: humanish.lab.v2
 id: persona-contrast-demo
 title: Is the persona axis load-bearing? (two contrasting personas, one app, one mission)
 description: >
-  A CONTROL, not a product study. Two lanes clone and drive the SAME public app with the
+  A CONTROL, not a product study. Two participants clone and drive the SAME public app with the
   SAME mission and differ in exactly one variable: the persona. If their traces come back
   indistinguishable, the persona block is decoration and any finding attributed to
   "persona behavior" in this harness is unsupported — which is worth knowing before
@@ -17,8 +17,8 @@ description: >
   Committed as mode: dry-run, so the checked-in fixture builds a contract bundle at $0 and
   launches no sandbox. A live run needs OPENAI_API_KEY + E2B_API_KEY and a gitignored
   .humanish/labs/ copy with mode: live.
-  WHAT TO COMPARE afterwards (per lane, from the run bundle): action count and mix,
-  wall-clock to terminal state, completion reason, how early the lane stopped, whether it
+  WHAT TO COMPARE afterwards (per participant, from the run bundle): action count and mix,
+  wall-clock to terminal state, completion reason, how early the participant stopped, whether it
   reported friction, and the affordance classes it used. Read the two actor traces side by
   side; a persona axis that works shows up as a DIFFERENCE, and one run proves nothing
   about scale or repeatability.
@@ -40,7 +40,7 @@ subject:
 actors:
   - type: openai-computer-use
     maxOutputTokens: 8192 # bounds a stalled request's worst case, so the capped run can retry it
-    # ONE mission for both lanes: the persona is the only declared difference, so any
+    # ONE mission for both participants: the persona is the only declared difference, so any
     # behavioral delta is attributable to it (and any absence of delta is the finding).
     mission: >-
       Create a small database diagram with at least two related tables, then stop.
@@ -52,10 +52,10 @@ actors:
         persona: synthetic-new-user # patience:medium, technical_confidence:medium
         instruction: Build the diagram the way you normally would, and stop when you are done or blocked.
 execution:
-  target: e2b-desktop # both lanes live at once (the default: concurrency = seat count)
-  timeoutMs: 1200000 # PER-LANE session budget; contrast effects GROW with horizon (#383) — a short cap suppresses the axis under study
+  target: e2b-desktop # both participants live at once (the default: concurrency = participant count)
+  timeoutMs: 1200000 # PER-PARTICIPANT session budget; contrast effects GROW with horizon (#383) — a short cap suppresses the axis under study
   caps:
-    maxUsd: 15 # fail-closed per-lane spend abort; the run-level worst case is 2x this. Observed cache-priced lanes land under $1.50
+    maxUsd: 15 # fail-closed per-participant spend abort; the run-level worst case is 2x this. Observed cache-priced participants land under $1.50
 scenario:
   mode: dry-run # committed fixture stays contract-only
 defaults:
