@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, open, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { gzipSync } from "node:zlib";
@@ -156,5 +156,122 @@ describe("verify does not grade an unreadable adapter artifact share_ready", () 
       );
       expect(response.status).toBe(200);
     });
+  });
+});
+
+/** A dry run with no scorer: share_ready until the test adds a file to its folder. */
+async function dryRun(cwd: string): Promise<{ runId: string; runDir: string }> {
+  const outcome = await runLab(dryRunConfig(), { cwd });
+  if (outcome.backend !== "cua") throw new Error(`unexpected backend ${outcome.backend}`);
+  const runId = outcome.result.runId;
+  return { runId, runDir: path.join(cwd, ".humanish", "runs", runId) };
+}
+
+// Bytes the text scan cannot read, under names that do not say so. Each holds the synthetic secret.
+const CONTENT_CASES: Record<string, { path: string; bytes: Buffer }> = {
+  "gzip as .tar": { path: "adapter/state.tar", bytes: gzipSync(STATE) },
+  "gzip as .bin": { path: "adapter/state.bin", bytes: gzipSync(STATE) },
+  "gzip as .json": { path: "adapter/state.json", bytes: gzipSync(STATE) },
+  "gzip as .txt": { path: "adapter/state.txt", bytes: gzipSync(STATE) },
+  "gzip with no extension": { path: "adapter/state", bytes: gzipSync(STATE) },
+  "UTF-16LE text": { path: "adapter/state.txt", bytes: Buffer.from(STATE.toString(), "utf16le") },
+};
+
+describe("verify reads a run file by its bytes, not its name", () => {
+  let cwd: string;
+  const unscanned = new Map<string, { runId: string; path: string }>();
+  let backslash: { runId: string; path: string };
+  let unreadable: { runId: string; path: string } | undefined;
+  let oversized: { runId: string; path: string };
+
+  beforeAll(async () => {
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-content-scan-"));
+    for (const [name, file] of Object.entries(CONTENT_CASES)) {
+      const { runId, runDir } = await dryRun(cwd);
+      await mkdir(path.join(runDir, "adapter"), { recursive: true });
+      await writeFile(path.join(runDir, file.path), file.bytes);
+      unscanned.set(name, { runId, path: file.path });
+    }
+    {
+      const { runId, runDir } = await dryRun(cwd);
+      await writeFile(path.join(runDir, "adapter\\secret.txt"), STATE);
+      backslash = { runId, path: "adapter\\secret.txt" };
+    }
+    // Root reads a mode-000 file, so the unreadable case only means something for other users.
+    if (process.getuid?.() !== 0) {
+      const { runId, runDir } = await dryRun(cwd);
+      await writeFile(path.join(runDir, "locked.txt"), STATE);
+      await chmod(path.join(runDir, "locked.txt"), 0o000);
+      unreadable = { runId, path: "locked.txt" };
+    }
+    {
+      // A sparse file past the 2 GiB a single read can return: the read fails without the bytes.
+      const { runId, runDir } = await dryRun(cwd);
+      const handle = await open(path.join(runDir, "large.txt"), "w");
+      await handle.write(STATE, 0);
+      await handle.truncate(2 ** 31 + 1);
+      await handle.close();
+      oversized = { runId, path: "large.txt" };
+    }
+  }, 60_000);
+
+  afterAll(async () => {
+    if (unreadable)
+      await chmod(path.join(cwd, ".humanish", "runs", unreadable.runId, unreadable.path), 0o600);
+    await rm(cwd, { recursive: true, force: true });
+  });
+
+  it.each(Object.keys(CONTENT_CASES))("grades %s local_only and names the file", async (name) => {
+    const { runId, path: file } = unscanned.get(name)!;
+    const verified = await verifyRun(cwd, runId);
+    expect(verified.ok).toBe(true);
+    expect(verified.shareSafety.status).toBe("local_only");
+    const reason = verified.shareSafety.reasons.find((r) => r.code === "UNSCANNED_ARTIFACT");
+    expect(reason?.message).toContain(file);
+  });
+
+  it("grades a file it could not read local_only", async () => {
+    for (const run of [unreadable, oversized]) {
+      if (run === undefined) continue;
+      const verified = await verifyRun(cwd, run.runId);
+      expect(verified.shareSafety.status).toBe("local_only");
+      const reason = verified.shareSafety.reasons.find((r) => r.code === "UNSCANNED_ARTIFACT");
+      expect(reason?.message).toContain(run.path);
+    }
+  });
+
+  it("blocks a file name with a backslash as an unsafe leaf", async () => {
+    const verified = await verifyRun(cwd, backslash.runId);
+    expect(verified.shareSafety.status).toBe("blocked");
+    expect(verified.checks.find((check) => check.name === "public-safety scan")?.message).toContain(
+      "unsafe artifact leaf",
+    );
+  });
+
+  it("serve --safe returns 404 for every one of these runs", async () => {
+    const started = await serveObserverLibrary(cwd, {
+      port: 0,
+      safe: true,
+      expose: false,
+      edgeAuthed: false,
+    });
+    if (!started.ok) throw new Error(started.error.message);
+    const server = started.server;
+    try {
+      const runs = [
+        ...unscanned.values(),
+        backslash,
+        oversized,
+        ...(unreadable ? [unreadable] : []),
+      ];
+      for (const { runId, path: file } of runs) {
+        for (const route of [encodeURIComponent(file).replace(/%2F/g, "/"), "run.json"]) {
+          const response = await fetch(new URL(`/_humanish/runs/${runId}/${route}`, server.url));
+          expect(response.status).toBe(404);
+        }
+      }
+    } finally {
+      await server.close();
+    }
   });
 });

@@ -560,14 +560,17 @@ over a blurred declaration. Missing or unknown per-frame metadata retains the
 existing permissive compatibility behavior; verification does not infer pixel
 privacy from that absence.
 
-The public-safety scan reads every run file as text except images (`.png`,
-`.jpg`, `.jpeg`, `.webp`, `.gif`), `.mp4` media and archives (`.gz`, `.tgz`,
-`.zip`). `RAW_SCREENSHOTS` and `CONTINUOUS_MEDIA` grade the stream screenshots
-that actor traces reference and the recordings `streams[].recording` registers.
-Any other image or archive contributes `UNSCANNED_ARTIFACT`, whose message lists
-the paths, and keeps otherwise valid evidence `local_only`. This includes images
-that only feedback candidates, adapter artifacts or stream artifact entries cite.
-An unregistered `.mp4` is a public-safety finding and blocks the run.
+The public-safety scan classifies a run file by its bytes, not its name. It scans
+a file for secret and path patterns only when the bytes are strict UTF-8 with no
+control bytes other than tab, line feed and carriage return, the rule bundle
+export uses for text. `RAW_SCREENSHOTS` and `CONTINUOUS_MEDIA` grade the stream
+screenshots that actor traces reference and the recordings `streams[].recording`
+registers. Every other file the scan cannot read as text, or cannot read at all,
+contributes `UNSCANNED_ARTIFACT`. The reason's message lists the paths, and it keeps
+otherwise valid evidence `local_only`. This includes images that only feedback
+candidates, adapter artifacts or stream artifact entries cite. An unregistered
+`.mp4`, and a file or directory whose name contains `\`, are public-safety
+findings and block the run.
 
 Real email receiving adds `publication.restrictions: [real-communications]` and
 an optional `commsReceiving` projection using `humanish.comms-receiving.v2`.

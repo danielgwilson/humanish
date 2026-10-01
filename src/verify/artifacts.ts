@@ -2,6 +2,7 @@ import { lstat, readdir } from "node:fs/promises";
 import path from "node:path";
 import { screenshotEvidenceError } from "../evidence/image.js";
 import { isStudyAnalysisRecordPath } from "../analysis/sharing.js";
+import { readPlainText } from "../evidence/plain-text.js";
 import { containsSensitive } from "../evidence/redaction.js";
 import {
   isLocalEvidenceArtifactPath,
@@ -302,9 +303,9 @@ interface RegisteredStreamMedia {
 }
 
 /**
- * Scans every run file for secret and path patterns and returns the findings. A file the scan
- * cannot read as text (an archive or image) that is not registered stream media goes to
- * `unscanned`, so the caller can keep the run from grading share_ready.
+ * Scans every run file for secret and path patterns and returns the findings. A file that is not
+ * registered stream media and that the scan cannot read as text (readPlainText), or cannot read at
+ * all, goes to `unscanned`, so the caller can keep the run from grading share_ready.
  */
 export async function scanRunPublicSafetyArtifacts(
   runPaths: PreparedRunArtifactPaths,
@@ -349,6 +350,12 @@ async function scanRunPublicSafetyDirectory(
       if (selectedFindings.length < MAX_REPORTED_FINDINGS)
         selectedFindings.push(`risky artifact path ${relativePath}`);
     }
+    // Readers map `\` to `/` and would read some other path, and export refuses the name.
+    if (entryName.includes("\\")) {
+      if (selectedFindings.length < MAX_REPORTED_FINDINGS)
+        selectedFindings.push(`unsafe artifact leaf ${relativePath}`);
+      continue;
+    }
 
     if (
       !stats ||
@@ -377,32 +384,29 @@ async function scanRunPublicSafetyDirectory(
 
     if (selectedFindings.length >= MAX_REPORTED_FINDINGS) continue;
 
-    const extension = path.extname(relativePath).toLowerCase();
-    if (extension === ".mp4" && !media.recordingPaths.has(relativePath)) {
+    if (
+      path.extname(relativePath).toLowerCase() === ".mp4" &&
+      !media.recordingPaths.has(relativePath)
+    ) {
       selectedFindings.push(`unregistered continuous media ${relativePath}`);
-    }
-    if (!shouldScanTextArtifact(relativePath)) {
-      // An archive or an image can hold text this scan never sees. An unregistered .mp4 is
-      // already a finding above.
-      if (extension !== ".mp4" && !media.screenshotPaths.has(relativePath)) {
-        unscanned.push(relativePath);
-      }
       continue;
     }
-
-    const bytes = await readSafeRunArtifactBytes(runPaths, relativePath);
-    const text = bytes?.toString("utf8") ?? null;
-    if (text !== null && containsSensitive(text)) {
+    // RAW_SCREENSHOTS and CONTINUOUS_MEDIA grade the stream media the bundle registers.
+    if (media.recordingPaths.has(relativePath) || media.screenshotPaths.has(relativePath)) {
+      continue;
+    }
+    // The scan reads a file by its bytes, not its name. A file that is not text, or that could
+    // not be read at all, holds bytes the scan never saw.
+    const bytes = await readSafeRunArtifactBytes(runPaths, relativePath).catch(() => null);
+    const decoded = bytes === null ? undefined : readPlainText(bytes);
+    if (decoded === undefined || !decoded.ok) {
+      unscanned.push(relativePath);
+      continue;
+    }
+    if (containsSensitive(decoded.text)) {
       selectedFindings.push(`sensitive text ${relativePath}`);
     }
   }
-}
-
-function shouldScanTextArtifact(relativePath: string): boolean {
-  const extension = path.extname(relativePath).toLowerCase();
-  return ![".png", ".jpg", ".jpeg", ".webp", ".gif", ".mp4", ".tgz", ".gz", ".zip"].includes(
-    extension,
-  );
 }
 
 function normalizeLocalEvidenceReference(value: string | undefined): string | null {
