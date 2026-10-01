@@ -18,13 +18,13 @@ describe("observed desktop resources", () => {
     expect(captured).toHaveLength(2);
     const desktops = await Promise.all(
       captured.map(async (info, index) => ({
-        laneId: `participant-${index + 1}`,
+        participantId: `participant-${index + 1}`,
         minutes: 1,
         observation: await observeDesktopResources({ getInfo: async () => info }),
         lifetimeComplete: true,
       })),
     );
-    const cost = buildRunCostSummary({ lanes: [], desktops })!;
+    const cost = buildRunCostSummary({ participants: [], desktops })!;
     expect(cost.estimatedTotalUsd).toBe(0.01776);
     expect(cost.desktopMinutes).toBe(2);
     expect(cost.fullyEstimated).toBe(true);
@@ -47,12 +47,12 @@ describe("observed desktop resources", () => {
   it("prices mixed custom sizes per allocation and keeps unknown lanes out of the known subtotal", async () => {
     const observed = await observeDesktopResources({ getInfo: async () => captured[0]! });
     const cost = buildRunCostSummary({
-      lanes: [],
+      participants: [],
       desktops: [
-        { laneId: "stock", minutes: 2, observation: observed, lifetimeComplete: true },
+        { participantId: "stock", minutes: 2, observation: observed, lifetimeComplete: true },
         // Explicit synthetic variation of the captured field shape.
         {
-          laneId: "custom",
+          participantId: "custom",
           minutes: 3,
           observation: await observeDesktopResources({
             getInfo: async () => ({ cpuCount: 2, memoryMB: 1024 }),
@@ -60,7 +60,7 @@ describe("observed desktop resources", () => {
           lifetimeComplete: true,
         },
         {
-          laneId: "unknown",
+          participantId: "unknown",
           minutes: 1,
           observation: { reason: "metadata_unavailable" },
           lifetimeComplete: true,
@@ -80,10 +80,10 @@ describe("observed desktop resources", () => {
 
   it("keeps the observed span but records unknown remaining lifetime after unconfirmed cleanup", () => {
     const cost = buildRunCostSummary({
-      lanes: [],
+      participants: [],
       desktops: [
         {
-          laneId: "kept",
+          participantId: "kept",
           minutes: 1,
           observation: { resources: { cpuCount: 8, memoryMiB: 8192 }, source: "e2b.getInfo" },
           lifetimeComplete: false,
@@ -119,8 +119,8 @@ describe("observed desktop resources", () => {
   });
 
   it("keeps no-allocation previews absent and a legacy helper assumption labeled", () => {
-    expect(buildRunCostSummary({ lanes: [], desktops: [] })).toBeUndefined();
-    const legacy = buildRunCostSummary({ lanes: [], desktopMinutes: 1 })!;
+    expect(buildRunCostSummary({ participants: [], desktops: [] })).toBeUndefined();
+    const legacy = buildRunCostSummary({ participants: [], desktopMinutes: 1 })!;
     expect(legacy.estimatedTotalUsd).toBe(0.00888);
     expect(legacy.desktopMinutes).toBe(1);
     expect(legacy.placeholder).toBe(true);

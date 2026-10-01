@@ -175,9 +175,9 @@ describe("explicit adapter admission limits", () => {
           });
           expect(result.trace.taskFunnel?.completed).toBe(1);
           result.trace.estimatedCost = estimateActorCost(result.trace.tokenUsage, "gpt-5.6-sol");
-          expect(buildRunCostSummary({ lanes: [{ trace: result.trace }] })?.fullyEstimated).toBe(
-            true,
-          );
+          expect(
+            buildRunCostSummary({ participants: [{ trace: result.trace }] })?.fullyEstimated,
+          ).toBe(true);
         } else {
           expect(result.trace.tokenUsage).toBeUndefined();
           expect(result.trace.taskFunnel?.completed).toBe(0);
@@ -247,7 +247,7 @@ describe("explicit adapter admission limits", () => {
       expect(result.trace.status).toBe(ending === "refused" ? "incomplete" : "passed");
       expect(result.trace.tokenUsage?.turns).toHaveLength(ending === "refused" ? 1 : 2);
       result.trace.estimatedCost = estimateActorCost(result.trace.tokenUsage, "gpt-5.6-sol");
-      const cost = buildRunCostSummary({ lanes: [{ trace: result.trace }] });
+      const cost = buildRunCostSummary({ participants: [{ trace: result.trace }] });
       expect(cost?.fullyEstimated).toBe(false);
       expect(cost?.breakdown).toEqual(
         expect.arrayContaining([
@@ -295,7 +295,7 @@ describe("explicit adapter admission limits", () => {
       expect(result.trace.status).toBe(ending === "refused" ? "incomplete" : "passed");
       expect(result.trace.tokenUsage?.turns).toHaveLength(ending === "refused" ? 1 : 2);
       result.trace.estimatedCost = estimateActorCost(result.trace.tokenUsage, "gpt-5.6-sol");
-      const cost = buildRunCostSummary({ lanes: [{ trace: result.trace }] });
+      const cost = buildRunCostSummary({ participants: [{ trace: result.trace }] });
       expect(cost?.fullyEstimated).toBe(false);
       expect(cost?.breakdown[0]).toMatchObject({
         reason: "interaction_usage_unreported",

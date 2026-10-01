@@ -207,7 +207,7 @@ export async function finishLiveTerminalSession(
   // of the cap ledger above, whose lines sum against scenario.caps.maxUsd.
   const desktops = session.runCostDesktops();
   const runCost = buildRunCostSummary({
-    lanes: [{ trace }],
+    participants: [{ trace }],
     ...(desktops === undefined ? {} : { desktops }),
   });
 

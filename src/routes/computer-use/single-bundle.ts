@@ -142,7 +142,7 @@ export function buildSingleParticipantBundle(args: {
       ? {}
       : {
           desktopUsage: {
-            laneId: spec.planned.id,
+            participantId: spec.planned.id,
             minutes: desktopSpanToMinutes(outcome.desktopDurationMs),
             observation: outcome.desktopResources,
             lifetimeComplete: outcome.killed,
@@ -177,10 +177,10 @@ function browserPlace(args: CuaBundleArgs): string {
 /** Run-level cost ESTIMATE (advisory; omitted when nothing was priced and no sandbox ran). */
 function runCost(args: CuaBundleArgs): ReturnType<typeof buildRunCostSummary> {
   return buildRunCostSummary({
-    lanes: args.session
+    participants: args.session
       ? [
           {
-            ...(args.participantId === undefined ? {} : { laneId: args.participantId }),
+            ...(args.participantId === undefined ? {} : { participantId: args.participantId }),
             trace: args.session.trace,
           },
         ]

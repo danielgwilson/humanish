@@ -206,10 +206,10 @@ function scriptedCost(
 ) {
   if (subjectDesktop === undefined) return spendFreeCostSummary();
   return buildRunCostSummary({
-    lanes: [],
+    participants: [],
     desktops: [
       {
-        laneId: "subject",
+        participantId: "subject",
         minutes: desktopSpanToMinutes(subjectDesktop.durationMs),
         observation: subjectDesktop.observation,
         lifetimeComplete: subjectDesktop.killed,

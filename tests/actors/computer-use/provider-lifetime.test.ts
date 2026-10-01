@@ -192,7 +192,9 @@ describe("single-dispatch participant request lifetime", () => {
     expect(s.execute).not.toHaveBeenCalled();
     expect(snapshots.at(-1)).not.toHaveProperty("output");
     expect(snapshots.at(-1)).not.toHaveProperty("total");
-    const summary = buildRunCostSummary({ lanes: [{ laneId: "synthetic", trace: r.trace }] });
+    const summary = buildRunCostSummary({
+      participants: [{ participantId: "synthetic", trace: r.trace }],
+    });
     expect(summary?.tokenUsage).toEqual({ input: 7 });
     expect(summary?.fullyEstimated).toBe(false);
   });

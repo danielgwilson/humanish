@@ -6674,9 +6674,9 @@ describe("runCuaActorLab cost estimates", () => {
 
     // Two priced model-token lines with DIVERGENT asOf dates (an operator edited one rate later).
     const cost = buildRunCostSummary({
-      lanes: [
-        { laneId: "lane-01", trace: costTrace(1, "2026-08-01", 1000, 100) },
-        { laneId: "lane-02", trace: costTrace(2, "2026-01-15", 2000, 200) },
+      participants: [
+        { participantId: "lane-01", trace: costTrace(1, "2026-08-01", 1000, 100) },
+        { participantId: "lane-02", trace: costTrace(2, "2026-01-15", 2000, 200) },
       ],
       desktopMinutes: undefined,
     });
