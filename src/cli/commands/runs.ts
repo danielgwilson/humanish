@@ -90,6 +90,8 @@ export function registerRunCommand(parent: Command, io: CliIo): void {
             cwd: options.cwd,
             envFile: options.envFile,
             io,
+            // runLabCommand discovers keys for a live lab; the lab-less preview needs none.
+            discoverKeys: false,
           }))
         ) {
           return;
