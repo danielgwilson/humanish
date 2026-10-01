@@ -1,7 +1,10 @@
 import { createHash } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
+import { isDeepStrictEqual } from "node:util";
 import { vi } from "vitest";
+
+import { dedupeProjections, inflateProjections } from "./run-golden-projections.js";
 
 // Numeric keys that vary between two runs of the same fixture: wall-clock measurements and the
 // writing process id.
@@ -78,6 +81,7 @@ const OBSERVER_BUILD_NOTICE = "observer: building the Observer artifact";
  * the values that differ between two runs of the same deterministic fixture replaced: the given
  * literals, ISO timestamps, epoch milliseconds, UUIDs, measured durations and the caller's
  * `maskKeys`. JSON is parsed so the snapshot diffs by field; binary files are pinned by digest.
+ * A copy of the bundle that equals its source is pinned as a marker (run-golden-projections.ts).
  */
 export async function runDirSnapshot(
   runDir: string,
@@ -132,5 +136,10 @@ export async function runDirSnapshot(
     } else if (TEXT_EXTENSIONS.has(extension)) snapshot[file] = replace(bytes.toString("utf8"));
     else snapshot[file] = `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
   }
-  return snapshot;
+  const pinned = dedupeProjections(snapshot);
+  if (!isDeepStrictEqual(inflateProjections(pinned), snapshot))
+    throw new Error(
+      "dedupeProjections dropped a value; see tests/helpers/run-golden-projections.ts",
+    );
+  return pinned;
 }

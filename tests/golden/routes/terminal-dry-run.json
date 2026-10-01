@@ -42,58 +42,7 @@
     "path": ".humanish/runs/[run]",
     "updatedAt": "[ts]"
   },
-  "events.ndjson": [
-    {
-      "id": "event-000-created",
-      "at": "[ts]",
-      "level": "info",
-      "type": "terminal-lab.run.created",
-      "message": "Created terminal-product lab run for terminal-live-proof (actor codex-exec, product widgetsmith-cli)."
-    },
-    {
-      "id": "event-001-subject",
-      "at": "[ts]",
-      "level": "info",
-      "type": "terminal-lab.subject.declared",
-      "message": "Subject product declared: widgetsmith-cli; public surfaces: https://example.com/widgetsmith. The lab did not provision/clone the product — subject provenance is UNPINNED (a public-surface study cannot be commit-pinned); evidence binds to the composed-prompt digest 5bc9377b0c3e.",
-      "simId": "sim-001",
-      "streamId": "stream-001"
-    },
-    {
-      "id": "event-002-credentials",
-      "at": "[ts]",
-      "level": "info",
-      "type": "terminal-lab.credentials.declared",
-      "message": "Runtime auth channel: openai-env (names only; values never persist; the live engine applies the selected key placement, while this dry-run performs no injection). Credential policies (deny-by-default): allowPrivateRepoAccess=false, allowProviderCredentials=false, allowPaymentCredentials=false, allowGitHubMutation=false.",
-      "simId": "sim-001",
-      "streamId": "stream-001"
-    },
-    {
-      "id": "event-003-caps",
-      "at": "[ts]",
-      "level": "info",
-      "type": "terminal-lab.caps.declared",
-      "message": "Spend/job/time caps: maxUsd=0, maxJobs=0, maxMinutes=10. A live run never exercises the runtime key without a fail-closed cap; its no-spend proof is derived from the persisted cost ledger. This dry-run spends $0 by mechanism.",
-      "simId": "sim-001",
-      "streamId": "stream-001"
-    },
-    {
-      "id": "event-004-contract",
-      "at": "[ts]",
-      "level": "info",
-      "type": "terminal-lab.contract.ready",
-      "message": "Dry-run contract bundle ready. Switch scenario.mode to live with the required runtime auth and caps to exercise the in-sandbox agent route, captured exec stream, and declared runtime-auth placement.",
-      "simId": "sim-001",
-      "streamId": "stream-001"
-    },
-    {
-      "id": "event-terminal-runtime-declared",
-      "at": "[ts]",
-      "level": "info",
-      "type": "terminal-lab.runtime.declared",
-      "message": "{\"schema\":\"humanish.actor-runtime.v1\",\"package\":\"@openai/codex\",\"requestedVersion\":\"latest\",\"versionStatus\":\"unobserved\",\"modelStatus\":\"runtime_default_unobserved\",\"usageGranularity\":\"runtime_turn\"}"
-    }
-  ],
+  "events.ndjson": "[same as run.json events]",
   "observer/index.html": "[observer build]",
   "observer/observer-data.json": {
     "schema": "humanish.observer-data.v1",
@@ -154,159 +103,16 @@
     "laneGroups": [],
     "streams": [
       {
+        "[same as the run.json stream]": "simId assignment kind label status transport updatedAt embed terminal ui artifacts",
         "id": "stream-001",
-        "simId": "sim-001",
-        "assignment": {
-          "mission": "Discover widgetsmith-cli from public surfaces."
-        },
-        "kind": "terminal",
-        "label": "Terminal agent — terminal-live-proof",
-        "status": "contract_proof_only",
-        "transport": "snapshot",
-        "updatedAt": "[ts]",
-        "embed": {
-          "kind": "placeholder",
-          "title": "Terminal agent (widgetsmith-cli)"
-        },
-        "terminal": {
-          "title": "codex-exec exec (stdin disabled)",
-          "format": "plain",
-          "stdin": "disabled",
-          "tail": ""
-        },
-        "ui": {
-          "intent": "Watch the terminal agent discover and use widgetsmith-cli from its public surfaces.",
-          "state": "Contract bundle only: dry-run declared the terminal-product study contract without creating an E2B sandbox, injecting any key, or spending. This run did not execute an agent or prove live behavior."
-        },
-        "artifacts": [
-          {
-            "label": "run bundle",
-            "path": "run.json",
-            "kind": "bundle"
-          },
-          {
-            "label": "review",
-            "path": "review.md",
-            "kind": "review"
-          },
-          {
-            "label": "events",
-            "path": "events.ndjson",
-            "kind": "events"
-          }
-        ],
-        "sim": {
-          "id": "sim-001",
-          "index": 1,
-          "personaId": "autonomous-creative-agent",
-          "scenarioId": "terminal-terminal-live-proof",
-          "status": "contract_proof_only",
-          "streamKind": "terminal",
-          "mode": "cli-sim",
-          "progress": 100,
-          "currentStep": "Contract bundle only: dry-run declared the terminal-product study contract without creating an E2B sandbox, injecting any key, or spending. This run did not execute an agent or prove live behavior.",
-          "summary": "Contract participant for the terminal agent (codex-exec) studying widgetsmith-cli from public surfaces.",
-          "streamIds": [
-            "stream-001"
-          ],
-          "startedAt": "[ts]",
-          "updatedAt": "[ts]"
-        },
+        "sim": "[same as run.json simulation sim-001]",
         "kindLabel": "CLI",
         "statusLabel": "Contract proof",
         "terminalPlain": "",
-        "timeline": [
-          {
-            "id": "event-001-subject",
-            "at": "[ts]",
-            "level": "info",
-            "type": "terminal-lab.subject.declared",
-            "message": "Subject product declared: widgetsmith-cli; public surfaces: https://example.com/widgetsmith. The lab did not provision/clone the product — subject provenance is UNPINNED (a public-surface study cannot be commit-pinned); evidence binds to the composed-prompt digest 5bc9377b0c3e.",
-            "simId": "sim-001",
-            "streamId": "stream-001"
-          },
-          {
-            "id": "event-002-credentials",
-            "at": "[ts]",
-            "level": "info",
-            "type": "terminal-lab.credentials.declared",
-            "message": "Runtime auth channel: openai-env (names only; values never persist; the live engine applies the selected key placement, while this dry-run performs no injection). Credential policies (deny-by-default): allowPrivateRepoAccess=false, allowProviderCredentials=false, allowPaymentCredentials=false, allowGitHubMutation=false.",
-            "simId": "sim-001",
-            "streamId": "stream-001"
-          },
-          {
-            "id": "event-003-caps",
-            "at": "[ts]",
-            "level": "info",
-            "type": "terminal-lab.caps.declared",
-            "message": "Spend/job/time caps: maxUsd=0, maxJobs=0, maxMinutes=10. A live run never exercises the runtime key without a fail-closed cap; its no-spend proof is derived from the persisted cost ledger. This dry-run spends $0 by mechanism.",
-            "simId": "sim-001",
-            "streamId": "stream-001"
-          },
-          {
-            "id": "event-004-contract",
-            "at": "[ts]",
-            "level": "info",
-            "type": "terminal-lab.contract.ready",
-            "message": "Dry-run contract bundle ready. Switch scenario.mode to live with the required runtime auth and caps to exercise the in-sandbox agent route, captured exec stream, and declared runtime-auth placement.",
-            "simId": "sim-001",
-            "streamId": "stream-001"
-          }
-        ]
+        "timeline": "[same as run.json events for this stream]"
       }
     ],
-    "events": [
-      {
-        "id": "event-000-created",
-        "at": "[ts]",
-        "level": "info",
-        "type": "terminal-lab.run.created",
-        "message": "Created terminal-product lab run for terminal-live-proof (actor codex-exec, product widgetsmith-cli)."
-      },
-      {
-        "id": "event-001-subject",
-        "at": "[ts]",
-        "level": "info",
-        "type": "terminal-lab.subject.declared",
-        "message": "Subject product declared: widgetsmith-cli; public surfaces: https://example.com/widgetsmith. The lab did not provision/clone the product — subject provenance is UNPINNED (a public-surface study cannot be commit-pinned); evidence binds to the composed-prompt digest 5bc9377b0c3e.",
-        "simId": "sim-001",
-        "streamId": "stream-001"
-      },
-      {
-        "id": "event-002-credentials",
-        "at": "[ts]",
-        "level": "info",
-        "type": "terminal-lab.credentials.declared",
-        "message": "Runtime auth channel: openai-env (names only; values never persist; the live engine applies the selected key placement, while this dry-run performs no injection). Credential policies (deny-by-default): allowPrivateRepoAccess=false, allowProviderCredentials=false, allowPaymentCredentials=false, allowGitHubMutation=false.",
-        "simId": "sim-001",
-        "streamId": "stream-001"
-      },
-      {
-        "id": "event-003-caps",
-        "at": "[ts]",
-        "level": "info",
-        "type": "terminal-lab.caps.declared",
-        "message": "Spend/job/time caps: maxUsd=0, maxJobs=0, maxMinutes=10. A live run never exercises the runtime key without a fail-closed cap; its no-spend proof is derived from the persisted cost ledger. This dry-run spends $0 by mechanism.",
-        "simId": "sim-001",
-        "streamId": "stream-001"
-      },
-      {
-        "id": "event-004-contract",
-        "at": "[ts]",
-        "level": "info",
-        "type": "terminal-lab.contract.ready",
-        "message": "Dry-run contract bundle ready. Switch scenario.mode to live with the required runtime auth and caps to exercise the in-sandbox agent route, captured exec stream, and declared runtime-auth placement.",
-        "simId": "sim-001",
-        "streamId": "stream-001"
-      },
-      {
-        "id": "event-terminal-runtime-declared",
-        "at": "[ts]",
-        "level": "info",
-        "type": "terminal-lab.runtime.declared",
-        "message": "{\"schema\":\"humanish.actor-runtime.v1\",\"package\":\"@openai/codex\",\"requestedVersion\":\"latest\",\"versionStatus\":\"unobserved\",\"modelStatus\":\"runtime_default_unobserved\",\"usageGranularity\":\"runtime_turn\"}"
-      }
-    ],
+    "events": "[same as run.json events]",
     "artifactLinks": [
       {
         "label": "run bundle",

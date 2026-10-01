@@ -21,33 +21,7 @@
     "path": ".humanish/runs/[run]",
     "updatedAt": "[ts]"
   },
-  "events.ndjson": [
-    {
-      "id": "event-000",
-      "at": "[ts]",
-      "level": "info",
-      "type": "observer.contract.created",
-      "message": "Created public-safe observer stream contract."
-    },
-    {
-      "id": "event-001-a",
-      "at": "[ts]",
-      "level": "info",
-      "type": "sim.contract.ready",
-      "message": "UI journey stream contract ready.",
-      "simId": "sim-01",
-      "streamId": "sim-01-ui"
-    },
-    {
-      "id": "event-001-b",
-      "at": "[ts]",
-      "level": "warn",
-      "type": "sim.live-substrate.missing",
-      "message": "No live actor launched in dry-run mode; the observer stream is ready for real substrate evidence.",
-      "simId": "sim-01",
-      "streamId": "sim-01-ui"
-    }
-  ],
+  "events.ndjson": "[same as run.json events]",
   "observer/observer-data.json": {
     "schema": "humanish.observer-data.v1",
     "schemaVersion": 1,
@@ -123,119 +97,16 @@
     "laneGroups": [],
     "streams": [
       {
+        "[same as the run.json stream]": "simId kind label status transport updatedAt embed viewport terminal ui artifacts",
         "id": "sim-01-ui",
-        "simId": "sim-01",
-        "kind": "ui",
-        "label": "UI journey",
-        "status": "contract_proof_only",
-        "transport": "polling",
-        "updatedAt": "[ts]",
-        "embed": {
-          "kind": "placeholder",
-          "title": "UI journey"
-        },
-        "viewport": {
-          "width": 1440,
-          "height": 960,
-          "deviceScaleFactor": 1
-        },
-        "terminal": {
-          "title": "UI journey",
-          "format": "plain",
-          "stdin": "disabled",
-          "tail": "open target app\nresolve first-run route\ncapture viewport state\nrecord interaction trace"
-        },
-        "ui": {
-          "route": "/first-run",
-          "intent": "Simulated browser participant reserved for VNC playback, screenshots, route state, and interaction trace.",
-          "state": "contract-only"
-        },
-        "artifacts": [
-          {
-            "label": "run bundle",
-            "path": "run.json",
-            "kind": "bundle"
-          },
-          {
-            "label": "review",
-            "path": "review.md",
-            "kind": "review"
-          },
-          {
-            "label": "event log",
-            "path": "events.ndjson",
-            "kind": "events"
-          }
-        ],
-        "sim": {
-          "id": "sim-01",
-          "index": 1,
-          "personaId": "builtin-synthetic-new-user",
-          "scenarioId": "builtin-first-run-smoke",
-          "status": "contract_proof_only",
-          "streamKind": "ui",
-          "mode": "browser-sim",
-          "progress": 100,
-          "currentStep": "Route and viewport contract captured",
-          "summary": "Simulated browser participant reserved for VNC playback, screenshots, route state, and interaction trace.",
-          "streamIds": [
-            "sim-01-ui"
-          ],
-          "startedAt": "[ts]",
-          "updatedAt": "[ts]"
-        },
+        "sim": "[same as run.json simulation sim-01]",
         "kindLabel": "UI",
         "statusLabel": "Contract proof",
         "terminalPlain": "open target app\nresolve first-run route\ncapture viewport state\nrecord interaction trace",
-        "timeline": [
-          {
-            "id": "event-001-a",
-            "at": "[ts]",
-            "level": "info",
-            "type": "sim.contract.ready",
-            "message": "UI journey stream contract ready.",
-            "simId": "sim-01",
-            "streamId": "sim-01-ui"
-          },
-          {
-            "id": "event-001-b",
-            "at": "[ts]",
-            "level": "warn",
-            "type": "sim.live-substrate.missing",
-            "message": "No live actor launched in dry-run mode; the observer stream is ready for real substrate evidence.",
-            "simId": "sim-01",
-            "streamId": "sim-01-ui"
-          }
-        ]
+        "timeline": "[same as run.json events for this stream]"
       }
     ],
-    "events": [
-      {
-        "id": "event-000",
-        "at": "[ts]",
-        "level": "info",
-        "type": "observer.contract.created",
-        "message": "Created public-safe observer stream contract."
-      },
-      {
-        "id": "event-001-a",
-        "at": "[ts]",
-        "level": "info",
-        "type": "sim.contract.ready",
-        "message": "UI journey stream contract ready.",
-        "simId": "sim-01",
-        "streamId": "sim-01-ui"
-      },
-      {
-        "id": "event-001-b",
-        "at": "[ts]",
-        "level": "warn",
-        "type": "sim.live-substrate.missing",
-        "message": "No live actor launched in dry-run mode; the observer stream is ready for real substrate evidence.",
-        "simId": "sim-01",
-        "streamId": "sim-01-ui"
-      }
-    ],
+    "events": "[same as run.json events]",
     "artifactLinks": [
       {
         "label": "run bundle",
