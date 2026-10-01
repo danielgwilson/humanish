@@ -214,7 +214,7 @@ function runtimeDeclaredEvent(runtime: TerminalPlan["runtime"], createdAt: strin
 }
 
 /** Compose the full prompt the agent would run. Bound to evidence by DIGEST only. */
-function composePrompt(args: {
+export function composePrompt(args: {
   mission: string;
   personaLine: string;
   productName: string;

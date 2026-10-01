@@ -104,7 +104,11 @@ export function terminalConfig(extra?: Record<string, unknown>): LabConfig {
   return parsed.config;
 }
 
-export function passingHooks(extra: Partial<TerminalProductLabHooks>): TerminalProductLabHooks {
+/** Hooks for a passing live run; each codex command (which carries the prompt) is pushed to `codexCommands`. */
+export function passingHooks(
+  extra: Partial<TerminalProductLabHooks>,
+  codexCommands: string[] = [],
+): TerminalProductLabHooks {
   const killed: string[] = [];
   return {
     env: {
@@ -115,10 +119,13 @@ export function passingHooks(extra: Partial<TerminalProductLabHooks>): TerminalP
     loadModule: async () =>
       makeFakeModule({
         killed,
-        codexBehavior: (cmd) => ({
-          exitCode: 0,
-          stdout: `made a durable widget\nHUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
-        }),
+        codexBehavior: (cmd) => {
+          codexCommands.push(cmd);
+          return {
+            exitCode: 0,
+            stdout: `made a durable widget\nHUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+          };
+        },
       }),
     ...extra,
   };
