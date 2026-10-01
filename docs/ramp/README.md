@@ -84,7 +84,7 @@ clone` + `serve` clones, installs, and serves a real app in-sandbox from
   backed by deterministic and kept live proof;
 - concurrent single-origin shared-world execution with deterministic and kept
   live proof; verify still reads bundles from the sequential route removed in
-  0.106.0;
+  0.106.0 (unreleased);
 - `subject.source: local-tree`, which packages one selected working tree with a
   content pin before using the same provision-and-serve path as clone subjects;
 - an off-app comms funnel for email-gated flows: a vendor-neutral in-sandbox
