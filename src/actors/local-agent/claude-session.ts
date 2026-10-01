@@ -347,7 +347,7 @@ export async function startClaudeSession(
       // every turn is what the one-shot version had to do, and it is most of what it cost.
       const text =
         turnIndex === 1
-          ? promptFor(request, shot, "claude")
+          ? promptFor(request, shot)
           : `Read the image file ${shot}. That is the CURRENT SCREEN, after your last actions took effect. ` +
             "Same participant, same task: decide what to do next. " +
             "Reply with ONLY a JSON object of the same shape as before." +
