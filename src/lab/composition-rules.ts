@@ -5,12 +5,12 @@
 
 import { isLoopbackUrl } from "./parse/subject.js";
 import { REPO_SLUG_PATTERN } from "./parse/values.js";
+import { declaredTargets } from "./plan-participants.js";
 import {
   actorResolvesToComputerUse,
   actorResolvesToScriptedBrowser,
   actorResolvesToTerminal,
   cuaLaneCount,
-  declaredLaneTargets,
   registeredComputerUseActors,
   registeredScriptedBrowserActors,
   registeredTerminalActors,
@@ -127,9 +127,8 @@ function appUrlValidationReason(config: LabConfig): string | null {
       // lane-level target gates, and the allowPublicTargets+N>1 rejection for ambiguous one-target
       // fan-out).
       // Loopback by default; an owner may declare a public/preview target via policies.
-      const laneTargets = declaredLaneTargets(config);
-      const declaredTargets = [config.subject.appUrl ?? "", ...laneTargets];
-      const unsafeTarget = declaredTargets.find(
+      const targets = [config.subject.appUrl ?? "", ...declaredTargets(config)];
+      const unsafeTarget = targets.find(
         (target) => !config.policies?.allowPublicTargets && !isLoopbackUrl(target),
       );
       if (unsafeTarget !== undefined) {

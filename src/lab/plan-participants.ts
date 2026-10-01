@@ -3,8 +3,8 @@
 
 import type { DwellWindow, StopWhen } from "../actors/stop-conditions.js";
 import type { ReasoningEffort } from "../actors/reasoning-effort.js";
-import { resolveLaneDevice, type DevicePreset } from "./device-presets.js";
-import { participantIdAt } from "./routing.js";
+import { resolveParticipantDevice, type DevicePreset } from "./device-presets.js";
+import { isSharedWorldComposition, participantIdAt } from "./routing.js";
 import type { LabTask } from "./tasks.js";
 import type { LabActorLane, LabConfig } from "./types.js";
 
@@ -50,7 +50,7 @@ export interface ComputerUseParticipant extends DesktopParticipant {
 }
 
 /** A seat on a provisioned plane: an optional same-origin path under `serve.url`. */
-export interface ProvisionedSeat extends DesktopParticipant {
+export interface ProvisionedParticipant extends DesktopParticipant {
   readonly entry?: string;
   // Fields of other participant kinds. `never` keeps them out even through a variable, where
   // TypeScript's excess-property check does not apply.
@@ -60,19 +60,22 @@ export interface ProvisionedSeat extends DesktopParticipant {
 }
 
 /** A seat on an external public plane: exactly one seat hosts the shared session. */
-export interface ExternalPublicSeat extends DesktopParticipant {
+export interface ExternalPublicParticipant extends DesktopParticipant {
   readonly host: boolean;
   readonly entry?: never;
   readonly tasks?: never;
   readonly targetUrl?: never;
 }
 
-export type SharedWorldSeats =
-  | { readonly plane: "provisioned"; readonly seats: readonly ProvisionedSeat[] }
-  | { readonly plane: "external-public"; readonly seats: readonly ExternalPublicSeat[] };
+export type SharedWorldRoster =
+  | { readonly plane: "provisioned"; readonly participants: readonly ProvisionedParticipant[] }
+  | {
+      readonly plane: "external-public";
+      readonly participants: readonly ExternalPublicParticipant[];
+    };
 
 /** One shared-world participant on either plane. */
-export type SharedWorldParticipant = ProvisionedSeat | ExternalPublicSeat;
+export type SharedWorldParticipant = ProvisionedParticipant | ExternalPublicParticipant;
 
 function desktopParticipant(
   config: LabConfig,
@@ -82,7 +85,7 @@ function desktopParticipant(
   focus: string | undefined,
 ): DesktopParticipant {
   const actor = config.actors[0];
-  const device = resolveLaneDevice(config, lane);
+  const device = resolveParticipantDevice(config, lane?.device);
   const personaId = lane?.persona ?? actor?.persona;
   const mission = actor?.mission;
   const stopWhen = lane?.stopWhen ?? actor?.stopWhen;
@@ -134,15 +137,15 @@ export function computerUseParticipants(
   });
 }
 
-/** The seats of a shared-world lab, one per roster entry, typed by the plane they share. */
-export function sharedWorldSeats(config: LabConfig): SharedWorldSeats {
+/** The participants of a shared-world lab, one per roster entry, typed by the plane they share. */
+export function sharedWorldParticipants(config: LabConfig): SharedWorldRoster {
   const roster = config.actors[0]?.lanes ?? [];
   const participantAt = (lane: LabActorLane, index: number): DesktopParticipant =>
     desktopParticipant(config, lane, index, "seat", lane.instruction);
   if (config.subject.source === "app-url") {
     return {
       plane: "external-public",
-      seats: roster.map((lane, index) => ({
+      participants: roster.map((lane, index) => ({
         ...participantAt(lane, index),
         host: lane.host === true,
       })),
@@ -150,9 +153,28 @@ export function sharedWorldSeats(config: LabConfig): SharedWorldSeats {
   }
   return {
     plane: "provisioned",
-    seats: roster.map((lane, index) => ({
+    participants: roster.map((lane, index) => ({
       ...participantAt(lane, index),
       ...(lane.entry === undefined ? {} : { entry: lane.entry }),
     })),
   };
+}
+
+/** The ids of the participants a computer-use or shared-world lab runs, in roster order. */
+export function declaredParticipantIds(config: LabConfig): string[] {
+  const actor = config.actors[0];
+  const roster = actor?.lanes;
+  const kind = isSharedWorldComposition(config) ? "seat" : "lane";
+  if (roster && roster.length > 0) {
+    return roster.map((lane, index) => participantIdAt(index, lane.id, kind));
+  }
+  const count = Math.max(1, actor?.count ?? 1);
+  return Array.from({ length: count }, (_, index) => participantIdAt(index, undefined, kind));
+}
+
+/** The entry URLs roster entries declare in place of the subject URL (computer use, app-url). */
+export function declaredTargets(config: LabConfig): string[] {
+  return (config.actors[0]?.lanes ?? [])
+    .map((lane) => lane.target)
+    .filter((target): target is string => target !== undefined);
 }

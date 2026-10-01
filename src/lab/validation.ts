@@ -1,10 +1,10 @@
 import { isMaxOutputTokens } from "../actors/output-token-limit.js";
 import { LANE_ID_MAX_CHARS, LANE_ID_PATTERN } from "./parse/actors.js";
 import { isHttpUrl, isLoopbackUrl } from "./parse/subject.js";
+import { declaredTargets } from "./plan-participants.js";
 import {
   actorResolvesToComputerUse,
   cuaLaneCount,
-  declaredLaneTargets,
   MAX_CUA_LANES,
   registeredComputerUseActors,
   resolveSeatUrl,
@@ -72,7 +72,7 @@ export function cuaLaneValidationReason(config: LabConfig): string | null {
   if (
     laneCount > 1 &&
     config.policies?.allowPublicTargets === true &&
-    declaredLaneTargets(config).length === 0 &&
+    declaredTargets(config).length === 0 &&
     config.subject.topology !== "shared-world"
   ) {
     return "policies.allowPublicTargets cannot be combined with multi-lane fan-out (N>1) — N lanes against one declared public target is the SHARED-WORLD topology (layer 7, #164), not per-lane worlds. Declare `subject.topology: shared-world` to run the external-public shared-world route, fan out against a loopback/provisioned subject, or run a single public-target lane.";

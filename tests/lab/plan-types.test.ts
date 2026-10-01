@@ -7,8 +7,8 @@ import { describe, expect, it } from "vitest";
 
 import type {
   ComputerUseParticipant,
-  ExternalPublicSeat,
-  ProvisionedSeat,
+  ExternalPublicParticipant,
+  ProvisionedParticipant,
 } from "../../src/lab/plan-participants.js";
 import type {
   AppUrlSubject,
@@ -20,8 +20,8 @@ import type {
 import type { LabSubjectServe } from "../../src/lab/types.js";
 
 declare const participant: ComputerUseParticipant;
-declare const provisionedSeat: ProvisionedSeat;
-declare const externalSeat: ExternalPublicSeat;
+declare const provisionedSeat: ProvisionedParticipant;
+declare const externalSeat: ExternalPublicParticipant;
 declare const serve: LabSubjectServe;
 declare const appUrl: AppUrlSubject;
 declare const liveTerminal: Extract<TerminalPlan, { dryRun: false }>;
@@ -76,13 +76,13 @@ export function refusedShapes(): unknown[] {
     // @ts-expect-error 3. in-process runs one participant
     twoInProcess satisfies ComputerUseRunner,
     // @ts-expect-error 4. only computer-use lanes carry tasks
-    seatWithTasks satisfies ProvisionedSeat,
+    seatWithTasks satisfies ProvisionedParticipant,
     // @ts-expect-error 4, as a literal
-    { ...provisionedSeat, tasks: [] } satisfies ProvisionedSeat,
+    { ...provisionedSeat, tasks: [] } satisfies ProvisionedParticipant,
     // @ts-expect-error 5. external public seats open the public URL
-    externalWithEntry satisfies ExternalPublicSeat,
+    externalWithEntry satisfies ExternalPublicParticipant,
     // @ts-expect-error 5, as a literal
-    { ...externalSeat, entry: "/x" } satisfies ExternalPublicSeat,
+    { ...externalSeat, entry: "/x" } satisfies ExternalPublicParticipant,
     // @ts-expect-error 6. a provisioned clone names its repo
     cloneWithoutRepo satisfies ProvisionedSubject,
     // @ts-expect-error 8. in process, the caller's provider is the brain

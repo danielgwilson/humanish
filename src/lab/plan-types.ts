@@ -14,8 +14,8 @@ import type { ComputerUseRefusal } from "../routes/computer-use/plan.js";
 import type { SharedWorldRefusal } from "../routes/shared-world/plan.js";
 import type {
   ComputerUseParticipant,
-  ExternalPublicSeat,
-  ProvisionedSeat,
+  ExternalPublicParticipant,
+  ProvisionedParticipant,
 } from "./plan-participants.js";
 import type {
   LabConfig,
@@ -159,13 +159,13 @@ export type SharedWorldPlane =
   | {
       readonly kind: "provisioned";
       readonly subject: ProvisionedSubject & { readonly state: CheckpointedState };
-      readonly participants: AtLeastTwo<ProvisionedSeat>;
+      readonly participants: AtLeastTwo<ProvisionedParticipant>;
     }
   | {
       readonly kind: "external-public";
       readonly appUrl: string;
       readonly owner: string;
-      readonly participants: AtLeastTwo<ExternalPublicSeat>;
+      readonly participants: AtLeastTwo<ExternalPublicParticipant>;
     };
 
 export interface SharedWorldPlan extends PlanBase {

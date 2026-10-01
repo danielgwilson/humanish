@@ -21,7 +21,7 @@ import { judgeParticipants } from "../../../src/run/judge.js";
 import {
   floorRenderResolution,
   MIN_DESKTOP_RENDER_WIDTH,
-  resolveLaneDevice,
+  resolveParticipantDevice,
 } from "../../../src/lab/device-presets.js";
 import { resolveCuaParticipantPlan } from "../../../src/routes/computer-use/lane-plan.js";
 import { runComputerUsePlan, runCuaActorLab } from "../../../src/routes/computer-use/route.js";
@@ -2185,7 +2185,7 @@ describe("cua fan-out — cost estimate (sum lane token lines + one aggregate de
   });
 });
 
-describe("resolveLaneDevice floors sub-500 mobile widths to the Chrome window minimum (no clip)", () => {
+describe("resolveParticipantDevice floors sub-500 mobile widths to the Chrome window minimum (no clip)", () => {
   const cfg = (device?: string, rawResolution?: [number, number]): LabConfig => {
     const parsed = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
@@ -2221,12 +2221,7 @@ describe("resolveLaneDevice floors sub-500 mobile widths to the Chrome window mi
   });
 
   it("mobile lane renders at the 500px floor but keeps the 414 device identity", () => {
-    const d = resolveLaneDevice(cfg("mobile"), {
-      id: "solo",
-      device: "mobile",
-      persona: "p",
-      instruction: "x",
-    } as never);
+    const d = resolveParticipantDevice(cfg("mobile"), "mobile");
     expect(d.resolution).toEqual([500, 896]); // rendered screen the window fits (no clip)
     expect(d.preset.width).toBe(414); // declared device identity (prompt + metadata) is unfloored
     expect(d.preset.isMobile).toBe(true);
@@ -2236,24 +2231,14 @@ describe("resolveLaneDevice floors sub-500 mobile widths to the Chrome window mi
     // A floored run must not look like a faithful one. `verified` compares the floored number with
     // itself, so without `declared` a reader sees requested 500 / verified 500 and concludes a
     // 500-wide screen was asked for. Both mobile presets render at 500 and are otherwise identical.
-    const mobile = resolveLaneDevice(cfg("mobile"), {
-      id: "solo",
-      device: "mobile",
-      persona: "p",
-      instruction: "x",
-    } as never);
+    const mobile = resolveParticipantDevice(cfg("mobile"), "mobile");
     expect(declaredScreenForRender(mobile.preset, mobile.name, mobile.resolution)).toEqual({
       width: 414,
       height: 896,
       preset: "mobile",
     });
 
-    const small = resolveLaneDevice(cfg("small-mobile"), {
-      id: "solo",
-      device: "small-mobile",
-      persona: "p",
-      instruction: "x",
-    } as never);
+    const small = resolveParticipantDevice(cfg("small-mobile"), "small-mobile");
     expect(declaredScreenForRender(small.preset, small.name, small.resolution)).toEqual({
       width: 360,
       height: 740,
@@ -2266,38 +2251,23 @@ describe("resolveLaneDevice floors sub-500 mobile widths to the Chrome window mi
   });
 
   it("omits `declared` when the preset rendered faithfully", () => {
-    const desktop = resolveLaneDevice(cfg("desktop"), {
-      id: "solo",
-      device: "desktop",
-      persona: "p",
-      instruction: "x",
-    } as never);
+    const desktop = resolveParticipantDevice(cfg("desktop"), "desktop");
     expect(
       declaredScreenForRender(desktop.preset, desktop.name, desktop.resolution),
     ).toBeUndefined();
   });
 
   it("small-mobile floors to 500 too; desktop is untouched", () => {
-    expect(
-      resolveLaneDevice(cfg("small-mobile"), {
-        id: "solo",
-        device: "small-mobile",
-        persona: "p",
-        instruction: "x",
-      } as never).resolution,
-    ).toEqual([500, 740]);
-    expect(
-      resolveLaneDevice(cfg("desktop"), {
-        id: "solo",
-        device: "desktop",
-        persona: "p",
-        instruction: "x",
-      } as never).resolution,
-    ).toEqual([1440, 950]);
+    expect(resolveParticipantDevice(cfg("small-mobile"), "small-mobile").resolution).toEqual([
+      500, 740,
+    ]);
+    expect(resolveParticipantDevice(cfg("desktop"), "desktop").resolution).toEqual([1440, 950]);
   });
 
   it("a raw sub-500 escape-hatch resolution is floored as well", () => {
-    expect(resolveLaneDevice(cfg(undefined, [400, 800]), undefined).resolution).toEqual([500, 800]);
+    expect(resolveParticipantDevice(cfg(undefined, [400, 800]), undefined).resolution).toEqual([
+      500, 800,
+    ]);
   });
 });
 

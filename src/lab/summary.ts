@@ -80,8 +80,8 @@ function reasoningEffortOf(config: Record<string, unknown>): string {
     | undefined;
   const actor = actors?.[0];
   const fallback = actor?.reasoningEffort ?? DEFAULT_OPENAI_CU_REASONING_EFFORT;
-  const lanes = actor?.lanes ?? [];
-  const resolved = new Set(lanes.map((lane) => lane.reasoningEffort ?? fallback));
+  const roster = actor?.lanes ?? [];
+  const resolved = new Set(roster.map((entry) => entry.reasoningEffort ?? fallback));
   if (resolved.size > 1) return "per-lane";
   return resolved.size === 1 ? [...resolved][0]! : fallback;
 }
@@ -105,11 +105,11 @@ function participantsOf(config: Record<string, unknown>): string | undefined {
     | undefined;
   const actor = actors?.[0];
   if (actor === undefined) return undefined;
-  const lanePersonas = (actor.lanes ?? [])
-    .map((lane) => lane.persona)
+  const rosterPersonas = (actor.lanes ?? [])
+    .map((entry) => entry.persona)
     .filter((persona): persona is string => typeof persona === "string");
   const personas =
-    lanePersonas.length > 0 ? lanePersonas : actor.persona === undefined ? [] : [actor.persona];
+    rosterPersonas.length > 0 ? rosterPersonas : actor.persona === undefined ? [] : [actor.persona];
   const count = actor.count ?? actor.lanes?.length ?? personas.length ?? 1;
   const unique = [...new Set(personas)];
   if (unique.length === 0) return `${count} participant${count === 1 ? "" : "s"}`;
