@@ -7,7 +7,7 @@ import type { DwellWindow, StopWhen, StopWhenRule } from "../actors/stop-conditi
 import type { LabTask } from "./tasks.js";
 import type {
   LabActor,
-  LabActorLane,
+  LabParticipantEntry,
   LabActorRosterGroup,
   LabConfig,
   LabSubject,
@@ -52,7 +52,7 @@ const CAPS = {
   maxMinutes: true,
 } satisfies Keys<Field<Execution, "caps">>;
 
-const LANE = {
+const PARTICIPANT_ENTRY = {
   id: true,
   actorType: true,
   surface: true,
@@ -66,7 +66,7 @@ const LANE = {
   reasoningEffort: true,
   stopWhen: STOP_WHEN,
   dwell: DWELL,
-} satisfies Keys<LabActorLane>;
+} satisfies Keys<LabParticipantEntry>;
 
 const SUBJECT = {
   source: true,
@@ -118,9 +118,9 @@ const SUBJECT = {
 const ACTOR = {
   type: true,
   count: true,
-  lanes: LANE,
+  lanes: PARTICIPANT_ENTRY,
   // Roster groups are lanes with a count; the parser expands them into lanes.
-  roster: { ...LANE, count: true } satisfies Keys<LabActorRosterGroup>,
+  roster: { ...PARTICIPANT_ENTRY, count: true } satisfies Keys<LabActorRosterGroup>,
   persona: true,
   mission: true,
   model: true,

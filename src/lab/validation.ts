@@ -1,5 +1,10 @@
 import { isMaxOutputTokens } from "../actors/output-token-limit.js";
-import { LANE_ID_MAX_CHARS, LANE_ID_PATTERN } from "./parse/actors.js";
+import {
+  PARTICIPANT_ID_MAX_CHARS,
+  PARTICIPANT_ID_PATTERN,
+  focusOf,
+  rosterOf,
+} from "./parse/actors.js";
 import { isHttpUrl, isLoopbackUrl } from "./parse/subject.js";
 import { declaredTargets } from "./plan-participants.js";
 import {
@@ -23,8 +28,8 @@ import type { LabConfig } from "./types.js";
  */
 export function cuaLaneValidationReason(config: LabConfig): string | null {
   const actor = config.actors[0];
-  const lanes = actor?.lanes;
-  const structuralReason = laneRosterStructuralValidationReason(config);
+  const roster = rosterOf(actor);
+  const structuralReason = rosterStructuralValidationReason(config);
   if (structuralReason) {
     return structuralReason;
   }
@@ -33,35 +38,35 @@ export function cuaLaneValidationReason(config: LabConfig): string | null {
   if (config.subject.clone?.fanout !== undefined) {
     return "`subject.clone.fanout` is not used on the computer-use route — declare fan-out with actors[0].count (homogeneous) or actors[0].lanes (a per-lane roster). (No current route reads clone.fanout.)";
   }
-  if (lanes !== undefined) {
+  if (roster !== undefined) {
     if (actor?.count !== undefined) {
       return "Declare EITHER actors[0].count (a homogeneous lane count) OR actors[0].lanes (a differentiated roster), not both.";
     }
-    if (actor?.laneFocus !== undefined) {
+    if (focusOf(actor) !== undefined) {
       return "actors[0].laneFocus and actors[0].lanes are mutually exclusive — a roster's per-lane `instruction` is the fan-out steer; laneFocus is the single-lane steer.";
     }
     if (
       config.execution?.desktop?.resolution !== undefined &&
-      lanes.some((lane) => lane.device !== undefined)
+      roster.some((entry) => entry.device !== undefined)
     ) {
       return "actors[0].lanes[].device and a raw execution.desktop.resolution are mutually exclusive — a per-lane device preset and a single hand-set resolution cannot both govern lane geometry.";
     }
-    const targeted = lanes.filter((lane) => lane.target !== undefined);
+    const targeted = roster.filter((entry) => entry.target !== undefined);
     if (targeted.length > 0) {
       if (config.subject.source !== "app-url") {
         return "actors[0].lanes[].target is supported only on app-url computer-use labs — clone/shared-world/local-app routes provision or own their entry URL by mechanism.";
       }
-      if (lanes.some((lane) => lane.entry !== undefined)) {
+      if (roster.some((entry) => entry.entry !== undefined)) {
         return "actors[0].lanes[].target and actors[0].lanes[].entry are mutually exclusive — target is an app-url fan-out browser URL; entry is a shared-world same-origin seat path.";
       }
-      if (targeted.length !== lanes.length) {
+      if (targeted.length !== roster.length) {
         return "When any actors[0].lanes[].target is declared, every lane in the roster must declare target — this keeps the setup-produced target contract explicit and prevents accidental mixed worlds.";
       }
     }
   }
-  const laneCount = cuaLaneCount(config);
-  if (laneCount > MAX_CUA_LANES) {
-    return `Computer-use fan-out is capped at ${MAX_CUA_LANES} lanes (declared ${laneCount}); N concurrent paid desktops is real spend — there is no override above the cap this slice.`;
+  const participantCount = cuaLaneCount(config);
+  if (participantCount > MAX_CUA_LANES) {
+    return `Computer-use fan-out is capped at ${MAX_CUA_LANES} lanes (declared ${participantCount}); N concurrent paid desktops is real spend — there is no override above the cap this slice.`;
   }
   // Public targets fan out into N independent worlds driving the SAME public app — that is an
   // ambiguous shared-world-ish shape, not a per-lane target swarm. Permit N>1 public runs only when
@@ -70,7 +75,7 @@ export function cuaLaneValidationReason(config: LabConfig): string | null {
   // EXTERNAL-PUBLIC shared-world topology (#164 phase 2) — ROUTE it there (a real public deployment
   // as the shared plane) instead of refusing; externalPublicSharedWorldValidationReason then applies.
   if (
-    laneCount > 1 &&
+    participantCount > 1 &&
     config.policies?.allowPublicTargets === true &&
     declaredTargets(config).length === 0 &&
     config.subject.topology !== "shared-world"
@@ -84,23 +89,27 @@ export function cuaLaneValidationReason(config: LabConfig): string | null {
  * Engine-level path-token validation for configs supplied directly through the
  * public TypeScript/JavaScript API instead of parseLabConfig.
  */
-function laneRosterStructuralValidationReason(config: LabConfig): string | null {
-  const lanes = config.actors[0]?.lanes;
+function rosterStructuralValidationReason(config: LabConfig): string | null {
+  const roster = rosterOf(config.actors[0]);
   const seenIds = new Set<string>();
-  if (lanes !== undefined) {
-    if (!Array.isArray(lanes) || lanes.length === 0) {
+  if (roster !== undefined) {
+    if (!Array.isArray(roster) || roster.length === 0) {
       return "actors[0].lanes must be a non-empty array when set.";
     }
-    for (const [index, lane] of lanes.entries()) {
-      if (!lane || typeof lane !== "object" || Array.isArray(lane)) {
+    for (const [index, entry] of roster.entries()) {
+      if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
         return `actors[0].lanes[${index}] must be an object.`;
       }
-      const id = lane.id;
+      const id = entry.id;
       if (id === undefined) {
         continue;
       }
-      if (typeof id !== "string" || !LANE_ID_PATTERN.test(id) || id.length > LANE_ID_MAX_CHARS) {
-        return `actors[0].lanes[${index}].id must be a public-safe path token matching ${LANE_ID_PATTERN} and at most ${LANE_ID_MAX_CHARS} chars.`;
+      if (
+        typeof id !== "string" ||
+        !PARTICIPANT_ID_PATTERN.test(id) ||
+        id.length > PARTICIPANT_ID_MAX_CHARS
+      ) {
+        return `actors[0].lanes[${index}].id must be a public-safe path token matching ${PARTICIPANT_ID_PATTERN} and at most ${PARTICIPANT_ID_MAX_CHARS} chars.`;
       }
       if (seenIds.has(id)) {
         return `actors[0].lanes ids must be unique (duplicate "${id}").`;
@@ -131,7 +140,7 @@ export function sharedWorldValidationReason(config: LabConfig): string | null {
  * never silently downgraded.
  */
 function provisionedSharedWorldStructureReason(config: LabConfig): string | null {
-  const structuralReason = laneRosterStructuralValidationReason(config);
+  const structuralReason = rosterStructuralValidationReason(config);
   if (structuralReason) {
     return structuralReason;
   }
@@ -148,16 +157,16 @@ function provisionedSharedWorldStructureReason(config: LabConfig): string | null
   if (!serve) {
     return "`subject.topology: shared-world` requires `subject.serve` (start + url) — the lab serves ONE shared app in-sandbox that every role drives.";
   }
-  const lanes = config.actors[0]?.lanes;
-  if (!lanes || lanes.length < 2) {
+  const roster = rosterOf(config.actors[0]);
+  if (!roster || roster.length < 2) {
     return "`subject.topology: shared-world` requires an `actors[0].lanes` roster of at least 2 roles (the roster IS the role roster — declare ≥2 lanes; a single-role shared world proves no interaction).";
   }
   if (!config.subject.state?.checkpoint || config.subject.state.checkpoint.length === 0) {
     return "`subject.topology: shared-world` requires `subject.state.checkpoint` (≥1 read-only digest probe) — the checkpoint series is how the run shows the shared state changing; without it the run cannot show that participants changed the shared app.";
   }
-  for (const lane of lanes) {
-    if (lane.entry !== undefined && resolveSeatUrl(serve.url, lane.entry) === null) {
-      return `actors[0].lanes role "${lane.id ?? "(unnamed)"}".entry must resolve same-origin (loopback) with subject.serve.url (${serve.url}); got "${lane.entry}".`;
+  for (const entry of roster) {
+    if (entry.entry !== undefined && resolveSeatUrl(serve.url, entry.entry) === null) {
+      return `actors[0].lanes role "${entry.id ?? "(unnamed)"}".entry must resolve same-origin (loopback) with subject.serve.url (${serve.url}); got "${entry.entry}".`;
     }
   }
   return null;
@@ -304,7 +313,7 @@ export function outputTokenLimitValidationReason(config: LabConfig): string | nu
 function sharedWorldConcurrencyReason(config: LabConfig): string | null {
   // Direct library callers skip the parser, so an omitted value defaults here exactly as the
   // route does: to the participant count. A missing roster reads as 0 and is refused.
-  const participants = config.actors[0]?.lanes?.length ?? 0;
+  const participants = rosterOf(config.actors[0])?.length ?? 0;
   const concurrency = config.execution?.concurrency ?? participants;
   if (concurrency >= 2) return null;
   return `shared-world studies need \`execution.concurrency\` of at least 2 (got ${concurrency}). Sequential shared-world turns (concurrency 1) were removed in 0.106.0: omit execution.concurrency to run every participant at once, or set it to 2 or more. A provisioned subject also needs \`subject.exposure: synthetic\` and a \`serve.start\` that binds 0.0.0.0.`;
@@ -352,7 +361,7 @@ export function concurrentSharedWorldValidationReason(config: LabConfig): string
  * Enforced at parse AND re-enforced in the engine (runConcurrentSharedWorld is exported npm surface).
  */
 export function externalPublicSharedWorldValidationReason(config: LabConfig): string | null {
-  const structuralReason = laneRosterStructuralValidationReason(config);
+  const structuralReason = rosterStructuralValidationReason(config);
   if (structuralReason) {
     return structuralReason;
   }
@@ -365,8 +374,8 @@ export function externalPublicSharedWorldValidationReason(config: LabConfig): st
   if (!actorResolvesToComputerUse(config.actors[0]?.type)) {
     return `the external-public shared-world route requires a registered computer-use actor (one of: ${registeredComputerUseActors().join(", ")}) — each role seat runs a computer-use session.`;
   }
-  const lanes = config.actors[0]?.lanes;
-  if (!lanes || lanes.length < 2) {
+  const roster = rosterOf(config.actors[0]);
+  if (!roster || roster.length < 2) {
     return "the external-public shared-world route requires an `actors[0].lanes` roster of at least 2 roles (a single-seat shared world proves no shared session).";
   }
   const sharedWorldConcurrency = sharedWorldConcurrencyReason(config);
@@ -402,12 +411,12 @@ export function externalPublicSharedWorldValidationReason(config: LabConfig): st
   if (config.subject.clone !== undefined || config.subject.repos !== undefined) {
     return "`subject.clone`/`subject.repos` are forbidden on the external-public shared-world route — nothing is cloned; the public deployment IS the plane.";
   }
-  if (lanes.some((lane) => lane.entry !== undefined)) {
+  if (roster.some((entry) => entry.entry !== undefined)) {
     return "`actors[0].lanes[].entry` (the loopback same-origin seat path) is forbidden on the external-public shared-world route — there is no harness-served serve.url to resolve it against; seats open the public appUrl and reach the shared session through the real UI.";
   }
-  const hostLanes = lanes.filter((lane) => lane.host === true);
-  if (hostLanes.length !== 1) {
-    return `the external-public shared-world route requires EXACTLY ONE \`host: true\` lane (the designated host seat that creates the shared session; got ${hostLanes.length}). The other ≥1 lanes are followers that join it.`;
+  const hostEntries = roster.filter((entry) => entry.host === true);
+  if (hostEntries.length !== 1) {
+    return `the external-public shared-world route requires EXACTLY ONE \`host: true\` lane (the designated host seat that creates the shared session; got ${hostEntries.length}). The other ≥1 lanes are followers that join it.`;
   }
   return null;
 }

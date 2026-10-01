@@ -7,6 +7,7 @@ import {
 import type { LabConfig } from "./types.js";
 import { declaredParticipantIds } from "./plan-participants.js";
 import { addressedRecipients } from "./parse/comms.js";
+import { focusOf, rosterOf } from "./parse/actors.js";
 
 /** Which routes a config takes, computed once for every row below. */
 interface Routes {
@@ -50,7 +51,7 @@ const ACTOR_ROWS: readonly InertRow<LabActor>[] = [
     reason:
       "the per-role loopback entry is a shared-world capability; needs subject.topology: shared-world",
     applies: (actor, routes) =>
-      Boolean(actor.lanes?.some((lane) => lane.entry !== undefined)) && !routes.shared,
+      Boolean(rosterOf(actor)?.some((entry) => entry.entry !== undefined)) && !routes.shared,
   },
   // The host-seat marker acts ONLY on the external-public shared-world route; inert elsewhere.
   {
@@ -58,20 +59,20 @@ const ACTOR_ROWS: readonly InertRow<LabActor>[] = [
     reason:
       "the designated host-seat marker; needs the external-public shared-world route: app-url × topology shared-world × allowPublicTargets",
     applies: (actor, routes) =>
-      Boolean(actor.lanes?.some((lane) => lane.host === true)) && !routes.externalPublic,
+      Boolean(rosterOf(actor)?.some((entry) => entry.host === true)) && !routes.externalPublic,
   },
   {
     field: "laneFocus.id",
-    applies: (actor, routes) => promptRoute(routes) && Boolean(actor.laneFocus?.id),
+    applies: (actor, routes) => promptRoute(routes) && Boolean(focusOf(actor)?.id),
   },
   {
     field: "laneFocus.label",
-    applies: (actor, routes) => promptRoute(routes) && Boolean(actor.laneFocus?.label),
+    applies: (actor, routes) => promptRoute(routes) && Boolean(focusOf(actor)?.label),
   },
   {
     field: "lanes",
     reason: "fan-out is a computer-use route capability; terminal fan-out is a later slice",
-    applies: (actor, routes) => routes.terminal && Boolean(actor.lanes),
+    applies: (actor, routes) => routes.terminal && Boolean(rosterOf(actor)),
   },
   {
     field: "mission",
@@ -81,7 +82,7 @@ const ACTOR_ROWS: readonly InertRow<LabActor>[] = [
   {
     field: "laneFocus",
     reason: "the scripted-browser actor runs no model",
-    applies: (actor, routes) => scriptedRoute(routes) && Boolean(actor.laneFocus),
+    applies: (actor, routes) => scriptedRoute(routes) && Boolean(focusOf(actor)),
   },
   {
     field: "model",
@@ -91,17 +92,17 @@ const ACTOR_ROWS: readonly InertRow<LabActor>[] = [
   {
     field: "lanes",
     reason: "the scripted-browser route fans out via actors[0].count, not a lane roster",
-    applies: (actor, routes) => scriptedRoute(routes) && Boolean(actor.lanes),
+    applies: (actor, routes) => scriptedRoute(routes) && Boolean(rosterOf(actor)),
   },
   // On every other route the prompt fields, persona and the lane roster are inert.
   { field: "mission", applies: (actor, routes) => otherRoute(routes) && Boolean(actor.mission) },
   {
     field: "laneFocus",
-    applies: (actor, routes) => otherRoute(routes) && Boolean(actor.laneFocus),
+    applies: (actor, routes) => otherRoute(routes) && Boolean(focusOf(actor)),
   },
   { field: "persona", applies: (actor, routes) => otherRoute(routes) && Boolean(actor.persona) },
   { field: "model", applies: (actor, routes) => otherRoute(routes) && Boolean(actor.model) },
-  { field: "lanes", applies: (actor, routes) => otherRoute(routes) && Boolean(actor.lanes) },
+  { field: "lanes", applies: (actor, routes) => otherRoute(routes) && Boolean(rosterOf(actor)) },
 ];
 
 const TERMINAL_ONLY = "needs subject.source: terminal-product + a registered terminal actor";
@@ -380,11 +381,11 @@ export function forwardDeclaredWarnings(config: LabConfig): string[] {
   // the cap delivers waves of M. Say so up front (inspect + dry-run + run) — a green run in waves
   // is otherwise indistinguishable from the all-live run the author meant (#350).
   {
-    const seats = config.actors[0]?.lanes?.length ?? config.actors[0]?.count ?? 1;
+    const participantCount = rosterOf(config.actors[0])?.length ?? config.actors[0]?.count ?? 1;
     const cap = config.execution?.concurrency;
-    if (routes.cua && cap !== undefined && seats > 1 && cap < seats) {
+    if (routes.cua && cap !== undefined && participantCount > 1 && cap < participantCount) {
       warnings.push(
-        `execution.concurrency ${cap} caps a ${seats}-seat roster: seats run in waves of ${cap}, never all live at once. Remove execution.concurrency (the default runs all ${seats} seats simultaneously) or set it to ${seats}; declare a lower cap only to bound simultaneous paid desktops.`,
+        `execution.concurrency ${cap} caps a ${participantCount}-seat roster: seats run in waves of ${cap}, never all live at once. Remove execution.concurrency (the default runs all ${participantCount} seats simultaneously) or set it to ${participantCount}; declare a lower cap only to bound simultaneous paid desktops.`,
       );
     }
   }

@@ -10,6 +10,8 @@ import {
 } from "../run/contained-output.js";
 import { digestText, redactText } from "../evidence/redaction.js";
 import { realpath } from "node:fs/promises";
+import { rosterOf } from "./parse/actors.js";
+import type { LabActor } from "./types.js";
 
 /** Persona ids are file-name segments, never paths: the same grammar the terminal lane enforces. */
 const PERSONA_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
@@ -104,13 +106,13 @@ export async function resolveCommittedPersonas(
  * declared, otherwise the actor-level persona that every fan-out lane inherits.
  */
 export function labPersonaIds(config: {
-  actors?: readonly { persona?: string; lanes?: readonly { persona?: string }[] }[];
+  actors?: readonly Pick<LabActor, "persona" | "lanes">[];
 }): string[] {
   const ids: string[] = [];
   for (const actor of config.actors ?? []) {
     if (actor.persona) ids.push(actor.persona);
-    for (const lane of actor.lanes ?? []) {
-      if (lane.persona) ids.push(lane.persona);
+    for (const entry of rosterOf(actor) ?? []) {
+      if (entry.persona) ids.push(entry.persona);
     }
   }
   return [...new Set(ids)];

@@ -77,6 +77,26 @@ describe("local browser lab configuration", () => {
     expect(parsed.ok).toBe(false);
     expect(!parsed.ok && parsed.error.message).toContain("requires local-agent with Codex");
   });
+  it("refuses a roster target the local runtime cannot reach, as it refuses the subject URL", () => {
+    const roster = (second: string) => ({
+      ...base,
+      actors: [
+        {
+          type: "openai-computer-use",
+          lanes: [
+            { id: "first-01", target: "http://127.0.0.1:3001/" },
+            { id: "second-01", target: second },
+          ],
+        },
+      ],
+    });
+    expect(parseLabConfig(roster("http://localhost:3002/")).ok).toBe(true);
+    const parsed = parseLabConfig(roster("http://127.0.0.1:80/"));
+    expect(parsed.ok).toBe(false);
+    expect(!parsed.ok && parsed.error.message).toBe(
+      "Local browser targets must use localhost or 127.0.0.1 on a port above 1023.",
+    );
+  });
   it("preserves explicit analysis opt-out and hosted routing", () => {
     const local = parseLabConfig({ ...base, review: { analysis: false } });
     expect(local.ok && local.config.review?.analysis).toBe(false);

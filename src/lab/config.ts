@@ -54,7 +54,7 @@ import {
 } from "../substrates/local/runtime-config.js";
 import { compositionReason } from "./composition-rules.js";
 import { findUnknownLabKey } from "./keys.js";
-import { parseActors } from "./parse/actors.js";
+import { parseActors, rosterOf } from "./parse/actors.js";
 import { parseComms, recipientParticipantId } from "./parse/comms.js";
 import {
   parseDefaults,
@@ -183,7 +183,7 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
   // --count override, so the parser leaves it unset for them. A shared world's roster is fixed, so
   // its default is filled here for the envelopes and warnings that read the parsed config.
   {
-    const participantCount = config.actors[0]?.lanes?.length ?? config.actors[0]?.count ?? 1;
+    const participantCount = rosterOf(config.actors[0])?.length ?? config.actors[0]?.count ?? 1;
     if (
       participantCount > 1 &&
       config.execution?.concurrency === undefined &&

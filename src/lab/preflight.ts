@@ -8,6 +8,7 @@ import { digest, fail, finalize, LAB_PREFLIGHT_SCHEMA } from "./preflight-result
 import type { LabBackend } from "./plan.js";
 import { type LabRoute, routeOf } from "./plan.js";
 import { resolveLabManifest, type LabResolveFailure } from "./discover.js";
+import { rosterOf } from "./parse/actors.js";
 
 const DEFAULT_PREFLIGHT_TIMEOUT_MS = 30_000;
 
@@ -210,10 +211,10 @@ function collectTargets(config: LabConfig): LabPreflightTarget[] {
   if (config.subject.appUrl) {
     targets.push(makeTarget("subject.appUrl", "subject.appUrl", config.subject.appUrl));
   }
-  for (const [index, lane] of (config.actors[0]?.lanes ?? []).entries()) {
-    if (lane.target) {
+  for (const [index, entry] of (rosterOf(config.actors[0]) ?? []).entries()) {
+    if (entry.target) {
       targets.push(
-        makeTarget(`actors[0].lanes[${index}].target`, "actors[0].lanes[].target", lane.target),
+        makeTarget(`actors[0].lanes[${index}].target`, "actors[0].lanes[].target", entry.target),
       );
     }
   }

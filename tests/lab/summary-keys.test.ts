@@ -115,3 +115,29 @@ describe("TUI caps summary", () => {
     expect((await summary(base, {})).caps).toEqual({});
   });
 });
+
+describe("lab summary participants", () => {
+  const roster = (personas: (string | undefined)[]) => ({
+    ...base,
+    scenario: { mode: "dry-run" },
+    actors: [
+      {
+        type: "openai-computer-use",
+        mission: "Use the app.",
+        lanes: personas.map((persona, index) => ({
+          id: `entry-0${index + 1}`,
+          ...(persona === undefined ? {} : { persona }),
+        })),
+      },
+    ],
+  });
+
+  it("names a roster's personas and counts every roster entry", async () => {
+    expect((await summary(roster(["p-one", "p-two", undefined]), {})).participants).toBe(
+      "p-one · p-two",
+    );
+    expect((await summary(roster(["p-one", "p-one", undefined]), {})).participants).toBe(
+      "3 × p-one",
+    );
+  });
+});

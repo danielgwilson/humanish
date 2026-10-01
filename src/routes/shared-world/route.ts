@@ -58,6 +58,7 @@ import {
   type RunConcurrentSharedWorldLabOptions,
   type PlaneSelection,
 } from "./types.js";
+import { rosterOf } from "../../lab/parse/actors.js";
 
 /**
  * The library entry for a shared-world lab. It plans the config with planSharedWorldLab and runs
@@ -91,7 +92,7 @@ export function sharedWorldLabRefusal(
   refusal: SharedWorldRefusal,
 ): Promise<ConcurrentSharedWorldLabResult> {
   const { config, dryRun } = options;
-  const declared = config.actors[0]?.lanes ?? [];
+  const declared = rosterOf(config.actors[0]) ?? [];
   const fail = concurrentLabFailure({
     cwd: path.resolve(options.cwd),
     labId: config.id,

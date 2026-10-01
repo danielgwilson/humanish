@@ -23,6 +23,7 @@ import type { LabRoute } from "./plan.js";
 import type { LabPreflightResult, LabPreflightTarget, PreflightContext } from "./preflight.js";
 import { digest, fail, finalize } from "./preflight-result.js";
 import type { LabConfig } from "./types.js";
+import { rosterOf } from "./parse/actors.js";
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 60_000;
 // Room on the probe's lease for desktop boot and teardown around the work it does.
@@ -367,7 +368,7 @@ function targetUrlFor(config: LabConfig, target: LabPreflightTarget): string {
     return config.subject.appUrl;
   }
   if (target.kind === "actors[0].lanes[].target") {
-    const rosterTarget = config.actors[0]?.lanes?.find(
+    const rosterTarget = rosterOf(config.actors[0])?.find(
       (entry) => entry.target && digest(entry.target) === target.targetDigest,
     )?.target;
     if (rosterTarget) return rosterTarget;

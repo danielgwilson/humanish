@@ -15,15 +15,35 @@ import {
   registeredTerminalActors,
 } from "../routing.js";
 import { invalid, isRecord, posInt, str } from "./values.js";
-import type { LabActor, LabActorLane, LabActorLaneFocus, LabConfigParseFailure } from "../types.js";
+import type {
+  LabActor,
+  LabParticipantEntry,
+  LabParticipantFocus,
+  LabConfigParseFailure,
+} from "../types.js";
 
 // A lane id interpolates into per-lane evidence paths (screenshots/<id>/, actors/<id>.json), so
 // it must be a public-safe path token, same shape as a lab id.
-export const LANE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
+export const PARTICIPANT_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
 
-export const LANE_ID_MAX_CHARS = 40;
+export const PARTICIPANT_ID_MAX_CHARS = 40;
 
-const LANE_METADATA_MAX_CHARS = 80;
+const METADATA_MAX_CHARS = 80;
+
+/** The participant entries an actor declares, after roster groups expand into them. The manifest
+ *  spells them `actors[].lanes`. Undefined when the actor declares none. */
+export function rosterOf<Entry = LabParticipantEntry>(
+  actor: { readonly lanes?: readonly Entry[] } | undefined,
+): readonly Entry[] | undefined {
+  return actor?.lanes;
+}
+
+/** An actor's per-participant focus on the app-url route. The manifest spells it `laneFocus`. */
+export function focusOf(
+  actor: Pick<LabActor, "laneFocus"> | undefined,
+): LabParticipantFocus | undefined {
+  return actor?.laneFocus;
+}
 
 // Actor ids humanish no longer registers. Rejecting them at parse keeps a lab that names one
 // from running on a route that ignores actors[0].type, such as a this-repo dry run.
@@ -82,14 +102,14 @@ export function parseActors(raw: unknown): { ok: true; value: LabActor[] } | Lab
         `actors[${index}].roster and actors[${index}].laneFocus are mutually exclusive — a roster group's instruction is the per-lane steer.`,
       );
     }
-    const lanesResult =
+    const rosterResult =
       entry.roster !== undefined
         ? parseRosterGroups(entry.roster, index)
-        : parseLanes(entry.lanes, index);
-    if (!lanesResult.ok) {
-      return lanesResult;
+        : parseParticipantEntries(entry.lanes, index);
+    if (!rosterResult.ok) {
+      return rosterResult;
     }
-    if (lanesResult.value) actor.lanes = lanesResult.value;
+    if (rosterResult.value) actor.lanes = rosterResult.value;
     const persona = str(entry.persona);
     if (persona) actor.persona = persona;
     const mission = str(entry.mission);
@@ -127,25 +147,25 @@ export function parseActors(raw: unknown): { ok: true; value: LabActor[] } | Lab
     const tasksResult = parseTasks(entry.tasks, `actors[${index}].tasks`);
     if (!tasksResult.ok) return tasksResult;
     if (tasksResult.value !== undefined) actor.tasks = tasksResult.value;
-    const laneFocus = parseLaneFocus(entry.laneFocus);
-    if (laneFocus) actor.laneFocus = laneFocus;
+    const focus = parseFocus(entry.laneFocus);
+    if (focus) actor.laneFocus = focus;
     actors.push(actor);
   }
   return { ok: true, value: actors };
 }
 
-function parseLaneFocus(raw: unknown): LabActorLaneFocus | undefined {
+function parseFocus(raw: unknown): LabParticipantFocus | undefined {
   if (!isRecord(raw)) {
     return undefined;
   }
-  const laneFocus: LabActorLaneFocus = {};
+  const focus: LabParticipantFocus = {};
   const id = str(raw.id);
-  if (id) laneFocus.id = id;
+  if (id) focus.id = id;
   const label = str(raw.label);
-  if (label) laneFocus.label = label;
+  if (label) focus.label = label;
   const instruction = str(raw.instruction);
-  if (instruction) laneFocus.instruction = instruction;
-  return Object.keys(laneFocus).length > 0 ? laneFocus : undefined;
+  if (instruction) focus.instruction = instruction;
+  return Object.keys(focus).length > 0 ? focus : undefined;
 }
 
 /**
@@ -155,7 +175,7 @@ function parseLaneFocus(raw: unknown): LabActorLaneFocus | undefined {
 function parseRosterGroups(
   raw: unknown,
   actorIndex: number,
-): { ok: true; value: LabActorLane[] | undefined } | LabConfigParseFailure {
+): { ok: true; value: LabParticipantEntry[] | undefined } | LabConfigParseFailure {
   if (raw === undefined) {
     return { ok: true, value: undefined };
   }
@@ -165,7 +185,7 @@ function parseRosterGroups(
     );
   }
 
-  const expanded: LabActorLane[] = [];
+  const expanded: LabParticipantEntry[] = [];
   const seenGroupIds = new Set<string>();
   for (const [groupIndex, entry] of raw.entries()) {
     if (!isRecord(entry)) {
@@ -176,12 +196,12 @@ function parseRosterGroups(
     const groupId = str(entry.id);
     if (groupId === undefined) {
       return invalid(
-        `actors[${actorIndex}].roster[${groupIndex}].id is required and must be a public-safe token matching ${LANE_ID_PATTERN}.`,
+        `actors[${actorIndex}].roster[${groupIndex}].id is required and must be a public-safe token matching ${PARTICIPANT_ID_PATTERN}.`,
       );
     }
-    if (!LANE_ID_PATTERN.test(groupId) || groupId.length > LANE_ID_MAX_CHARS - 3) {
+    if (!PARTICIPANT_ID_PATTERN.test(groupId) || groupId.length > PARTICIPANT_ID_MAX_CHARS - 3) {
       return invalid(
-        `actors[${actorIndex}].roster[${groupIndex}].id must be a public-safe token matching ${LANE_ID_PATTERN} and at most ${LANE_ID_MAX_CHARS - 3} chars (generated lanes use <id>-NN); got "${groupId}".`,
+        `actors[${actorIndex}].roster[${groupIndex}].id must be a public-safe token matching ${PARTICIPANT_ID_PATTERN} and at most ${PARTICIPANT_ID_MAX_CHARS - 3} chars (generated lanes use <id>-NN); got "${groupId}".`,
       );
     }
     if (seenGroupIds.has(groupId)) {
@@ -196,18 +216,18 @@ function parseRosterGroups(
         `actors[${actorIndex}].roster[${groupIndex}].count is required and must be a positive integer.`,
       );
     }
-    const groupLaneInput: Record<string, unknown> = { ...entry };
-    delete groupLaneInput.id;
-    delete groupLaneInput.count;
+    const groupEntryInput: Record<string, unknown> = { ...entry };
+    delete groupEntryInput.id;
+    delete groupEntryInput.count;
     for (let i = 1; i <= count; i += 1) {
       expanded.push({
-        ...groupLaneInput,
+        ...groupEntryInput,
         id: `${groupId}-${String(i).padStart(2, "0")}`,
       });
     }
   }
 
-  return parseLanes(expanded, actorIndex);
+  return parseParticipantEntries(expanded, actorIndex);
 }
 
 /**
@@ -219,10 +239,10 @@ function parseRosterGroups(
  * route-scoped cross-validation (lanes XOR count/laneFocus, device XOR raw resolution, cap 16)
  * runs in parseLabConfig where the route is known.
  */
-function parseLanes(
+function parseParticipantEntries(
   raw: unknown,
   actorIndex: number,
-): { ok: true; value: LabActorLane[] | undefined } | LabConfigParseFailure {
+): { ok: true; value: LabParticipantEntry[] | undefined } | LabConfigParseFailure {
   if (raw === undefined) {
     return { ok: true, value: undefined };
   }
@@ -231,102 +251,102 @@ function parseLanes(
       `actors[${actorIndex}].lanes must be a non-empty array of lane objects ({ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry?, host?, reasoningEffort?, stopWhen?, dwell? }) when set.`,
     );
   }
-  const lanes: LabActorLane[] = [];
+  const entries: LabParticipantEntry[] = [];
   const seenIds = new Set<string>();
-  for (const [laneIndex, entry] of raw.entries()) {
+  for (const [entryIndex, entry] of raw.entries()) {
     if (!isRecord(entry)) {
       return invalid(
-        `actors[${actorIndex}].lanes[${laneIndex}] must be an object ({ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry?, host?, reasoningEffort?, stopWhen?, dwell? }).`,
+        `actors[${actorIndex}].lanes[${entryIndex}] must be an object ({ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry?, host?, reasoningEffort?, stopWhen?, dwell? }).`,
       );
     }
-    const lane: LabActorLane = {};
+    const parsedEntry: LabParticipantEntry = {};
     const id = str(entry.id);
     if (id !== undefined) {
-      if (!LANE_ID_PATTERN.test(id) || id.length > LANE_ID_MAX_CHARS) {
+      if (!PARTICIPANT_ID_PATTERN.test(id) || id.length > PARTICIPANT_ID_MAX_CHARS) {
         return invalid(
-          `actors[${actorIndex}].lanes[${laneIndex}].id must be a public-safe token matching ${LANE_ID_PATTERN} and at most ${LANE_ID_MAX_CHARS} chars (it names per-lane evidence paths); got "${id}".`,
+          `actors[${actorIndex}].lanes[${entryIndex}].id must be a public-safe token matching ${PARTICIPANT_ID_PATTERN} and at most ${PARTICIPANT_ID_MAX_CHARS} chars (it names per-lane evidence paths); got "${id}".`,
         );
       }
       if (seenIds.has(id)) {
         return invalid(`actors[${actorIndex}].lanes ids must be unique (duplicate "${id}").`);
       }
       seenIds.add(id);
-      lane.id = id;
+      parsedEntry.id = id;
     }
     const device = str(entry.device);
     if (device !== undefined) {
       if (!isDevicePresetName(device)) {
         return invalid(
-          `actors[${actorIndex}].lanes[${laneIndex}].device must be one of: ${DEVICE_PRESET_NAMES.join(", ")}.`,
+          `actors[${actorIndex}].lanes[${entryIndex}].device must be one of: ${DEVICE_PRESET_NAMES.join(", ")}.`,
         );
       }
-      lane.device = device;
+      parsedEntry.device = device;
     }
     const persona = str(entry.persona);
-    if (persona !== undefined) lane.persona = persona;
-    const actorType = parseLaneMetadata(
+    if (persona !== undefined) parsedEntry.persona = persona;
+    const actorType = parseEntryMetadata(
       entry.actorType,
-      `actors[${actorIndex}].lanes[${laneIndex}].actorType`,
+      `actors[${actorIndex}].lanes[${entryIndex}].actorType`,
     );
     if (!actorType.ok) return actorType;
-    if (actorType.value !== undefined) lane.actorType = actorType.value;
-    const surface = parseLaneMetadata(
+    if (actorType.value !== undefined) parsedEntry.actorType = actorType.value;
+    const surface = parseEntryMetadata(
       entry.surface,
-      `actors[${actorIndex}].lanes[${laneIndex}].surface`,
+      `actors[${actorIndex}].lanes[${entryIndex}].surface`,
     );
     if (!surface.ok) return surface;
-    if (surface.value !== undefined) lane.surface = surface.value;
-    const caseGroup = parseLaneMetadata(
+    if (surface.value !== undefined) parsedEntry.surface = surface.value;
+    const caseGroup = parseEntryMetadata(
       entry.caseGroup,
-      `actors[${actorIndex}].lanes[${laneIndex}].caseGroup`,
+      `actors[${actorIndex}].lanes[${entryIndex}].caseGroup`,
     );
     if (!caseGroup.ok) return caseGroup;
-    if (caseGroup.value !== undefined) lane.caseGroup = caseGroup.value;
+    if (caseGroup.value !== undefined) parsedEntry.caseGroup = caseGroup.value;
     const instruction = str(entry.instruction);
-    if (instruction !== undefined) lane.instruction = instruction;
+    if (instruction !== undefined) parsedEntry.instruction = instruction;
     const stopWhenResult = parseStopWhen(
       entry.stopWhen,
-      `actors[${actorIndex}].lanes[${laneIndex}].stopWhen`,
+      `actors[${actorIndex}].lanes[${entryIndex}].stopWhen`,
     );
     if (!stopWhenResult.ok) return stopWhenResult;
-    if (stopWhenResult.value !== undefined) lane.stopWhen = stopWhenResult.value;
-    const dwellResult = parseDwell(entry.dwell, `actors[${actorIndex}].lanes[${laneIndex}].dwell`);
+    if (stopWhenResult.value !== undefined) parsedEntry.stopWhen = stopWhenResult.value;
+    const dwellResult = parseDwell(entry.dwell, `actors[${actorIndex}].lanes[${entryIndex}].dwell`);
     if (!dwellResult.ok) return dwellResult;
-    if (dwellResult.value !== undefined) lane.dwell = dwellResult.value;
+    if (dwellResult.value !== undefined) parsedEntry.dwell = dwellResult.value;
     if (entry.reasoningEffort !== undefined) {
       if (!isReasoningEffort(entry.reasoningEffort)) {
         return invalid(
-          `actors[${actorIndex}].lanes[${laneIndex}].reasoningEffort must be one of: ${reasoningEffortNames()}. Support is model-dependent, so a level this model does not accept fails on the first turn rather than being silently downgraded.`,
+          `actors[${actorIndex}].lanes[${entryIndex}].reasoningEffort must be one of: ${reasoningEffortNames()}. Support is model-dependent, so a level this model does not accept fails on the first turn rather than being silently downgraded.`,
         );
       }
-      lane.reasoningEffort = entry.reasoningEffort;
+      parsedEntry.reasoningEffort = entry.reasoningEffort;
     }
     const target = str(entry.target);
     if (target !== undefined) {
       if (!isHttpUrl(target)) {
         return invalid(
-          `actors[${actorIndex}].lanes[${laneIndex}].target must be an absolute http(s) URL.`,
+          `actors[${actorIndex}].lanes[${entryIndex}].target must be an absolute http(s) URL.`,
         );
       }
-      lane.target = target;
+      parsedEntry.target = target;
     }
     // `entry` is shape-captured here; the same-origin-with-serve.url check needs serve context, so
     // it runs in sharedWorldValidationReason (where the route + serve.url are known).
-    const laneEntry = str(entry.entry);
-    if (laneEntry !== undefined) lane.entry = laneEntry;
+    const entryPath = str(entry.entry);
+    if (entryPath !== undefined) parsedEntry.entry = entryPath;
     // `host` marks the designated host seat on the external-public shared-world route; the
     // exactly-one-host check runs in externalPublicSharedWorldValidationReason (route context).
     if (entry.host !== undefined) {
       if (typeof entry.host !== "boolean") {
         return invalid(
-          `actors[${actorIndex}].lanes[${laneIndex}].host must be a boolean (marks the designated host seat on the external-public shared-world route).`,
+          `actors[${actorIndex}].lanes[${entryIndex}].host must be a boolean (marks the designated host seat on the external-public shared-world route).`,
         );
       }
-      if (entry.host) lane.host = true;
+      if (entry.host) parsedEntry.host = true;
     }
-    lanes.push(lane);
+    entries.push(parsedEntry);
   }
-  return { ok: true, value: lanes };
+  return { ok: true, value: entries };
 }
 
 /**
@@ -448,9 +468,9 @@ function parseStopWhen(
     const rule: StopWhenRule = {};
     const id = str(entry.id);
     if (id !== undefined) {
-      if (!LANE_ID_PATTERN.test(id) || id.length > LANE_METADATA_MAX_CHARS) {
+      if (!PARTICIPANT_ID_PATTERN.test(id) || id.length > METADATA_MAX_CHARS) {
         return invalid(
-          `${field}.any[${index}].id must be a public-safe token matching ${LANE_ID_PATTERN} and at most ${LANE_METADATA_MAX_CHARS} chars; got "${id}".`,
+          `${field}.any[${index}].id must be a public-safe token matching ${PARTICIPANT_ID_PATTERN} and at most ${METADATA_MAX_CHARS} chars; got "${id}".`,
         );
       }
       rule.id = id;
@@ -524,7 +544,7 @@ function parseStopWhenAppStatePathEquals(
   return { ok: true, value: { path: pathValue, equals } };
 }
 
-function parseLaneMetadata(
+function parseEntryMetadata(
   raw: unknown,
   field: string,
 ): { ok: true; value: string | undefined } | LabConfigParseFailure {
@@ -532,9 +552,9 @@ function parseLaneMetadata(
   if (value === undefined) {
     return { ok: true, value: undefined };
   }
-  if (!LANE_ID_PATTERN.test(value) || value.length > LANE_METADATA_MAX_CHARS) {
+  if (!PARTICIPANT_ID_PATTERN.test(value) || value.length > METADATA_MAX_CHARS) {
     return invalid(
-      `${field} must be a public-safe token matching ${LANE_ID_PATTERN} and at most ${LANE_METADATA_MAX_CHARS} chars; got "${value}".`,
+      `${field} must be a public-safe token matching ${PARTICIPANT_ID_PATTERN} and at most ${METADATA_MAX_CHARS} chars; got "${value}".`,
     );
   }
   return { ok: true, value };
