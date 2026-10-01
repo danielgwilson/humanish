@@ -24,6 +24,7 @@ const RUN = "r-export";
 function verified(
   status: VerifyResult["shareSafety"]["status"],
   ok = true,
+  codes: VerifyResult["shareSafety"]["reasons"][number]["code"][] = ["RAW_SCREENSHOTS"],
 ): () => Promise<VerifyResult> {
   return async () =>
     ({
@@ -34,7 +35,7 @@ function verified(
       checks: [],
       shareSafety: {
         status,
-        reasons: status === "share_ready" ? [] : [{ code: "RAW_SCREENSHOTS", message: "raw" }],
+        reasons: status === "share_ready" ? [] : codes.map((code) => ({ code, message: code })),
       },
     }) as unknown as VerifyResult;
 }
@@ -293,7 +294,24 @@ describe("humanish export", () => {
     if (result.ok) return;
     expect(result.error.code).toBe("HUMANISH_EXPORT_SHARE_SAFETY_BLOCKED");
     expect(result.error.message).toContain("RAW_SCREENSHOTS");
+    expect(result.error.message).toContain("policies.redactScreenshots: true");
     expect(result.error.message).toContain("--local-only");
+  });
+
+  // Blurring at capture cannot clear a file verify cannot read, so that advice must not appear.
+  it("names removal, not screenshot blurring, when verify could not read a file", async () => {
+    const result = await exportRun(
+      cwd,
+      RUN,
+      {},
+      { verify: verified("local_only", true, ["UNSCANNED_ARTIFACT"]) },
+    );
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe("HUMANISH_EXPORT_SHARE_SAFETY_BLOCKED");
+    expect(result.error.message).toContain("remove them from the run folder");
+    expect(result.error.message).toContain("--local-only");
+    expect(result.error.message).not.toContain("redactScreenshots");
   });
 
   it("--local-only exports the same bundle with a banner nothing can miss", async () => {

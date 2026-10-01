@@ -11,6 +11,7 @@ import type { ExportFailure, ExportOptions, ExportResult } from "./export.js";
 import { renderObserver } from "../observer/render.js";
 import { buildObserverData } from "../observer/data.js";
 import { containsSensitive, redactScreenshot, redactText } from "../evidence/redaction.js";
+import { streamScreenshotPaths } from "../verify/artifacts.js";
 import { verifyRunPrepared, type VerifyResult } from "../verify/verify.js";
 import { loadRunBundlePrepared, resolveRunPath } from "../run/locate.js";
 import { type RunBundle } from "../run/bundle.js";
@@ -340,20 +341,60 @@ function assertRewritableNumbers(json: string): void {
   }
 }
 
+/** PNG paths that run.json cites outside actor traces: feedback, adapter and stream artifacts. */
+function citedPngPaths(bundle: RunBundle): Set<string> {
+  const cited = [
+    ...bundle.feedbackCandidates.flatMap((candidate) => candidate.evidence.map(({ path }) => path)),
+    ...(bundle.adapterArtifacts ?? []).map((artifact) => artifact.path),
+    ...bundle.streams.flatMap((stream) => stream.artifacts.map((artifact) => artifact.path)),
+  ];
+  return new Set(
+    cited
+      .map((cite) => path.posix.normalize(cite))
+      .filter((cite) => path.extname(cite).toLowerCase() === ".png"),
+  );
+}
+
+/**
+ * The PNGs the derivative keeps. verify cannot read an image, so only one an actor trace registers
+ * as a stream screenshot can be share_ready. A PNG nothing cites is dropped; a PNG that other
+ * evidence cites refuses the export, since dropping it would change that evidence.
+ */
+function keptPngPaths(source: Inventory, bundle: RunBundle): Set<string> {
+  const streamShots = streamScreenshotPaths(bundle);
+  const cited = citedPngPaths(bundle);
+  const kept = new Set<string>();
+  for (const file of source.files) {
+    if (path.extname(file.path).toLowerCase() !== ".png") continue;
+    // A file that only claims to be a PNG may conceal a payload; refuse it rather than drop it.
+    if (!file.bytes.subarray(0, 8).equals(PNG_MAGIC))
+      throw new Error("PNG artifact has invalid signature.");
+    if (streamShots.has(file.path)) {
+      kept.add(file.path);
+    } else if (cited.has(file.path)) {
+      throw new Error(
+        `Evidence cites ${file.path}, an image that is not a stream screenshot; verify cannot read it, so no export of this run can be share_ready.`,
+      );
+    }
+  }
+  return kept;
+}
+
 async function writeDerivative(
   source: Inventory,
   stagePaths: PreparedRunArtifactPaths,
   bundle: RunBundle,
 ): Promise<{ images: number; entries: DerivationEntry[] }> {
   const entries: DerivationEntry[] = [];
-  const imagePaths = new Set(
-    source.files
-      .filter((file) => path.extname(file.path).toLowerCase() === ".png")
-      .map((file) => file.path),
-  );
+  const imagePaths = keptPngPaths(source, bundle);
   let images = 0;
   for (const file of source.files) {
-    const reason = omittedReason(file.path);
+    const isPng = path.extname(file.path).toLowerCase() === ".png";
+    const reason =
+      omittedReason(file.path) ??
+      (isPng && !imagePaths.has(file.path)
+        ? "unreferenced image: nothing cites it and verify cannot read it"
+        : undefined);
     if (reason) {
       entries.push({ path: file.path, sourceSha256: file.sha256, action: "omitted", reason });
       continue;
@@ -607,7 +648,11 @@ async function verifyFrozenSource(
     (verified.shareSafety.status !== "share_ready" &&
       !(
         verified.shareSafety.status === "local_only" &&
-        verified.shareSafety.reasons.every((reason) => reason.code === "RAW_SCREENSHOTS")
+        verified.shareSafety.reasons.every(
+          // Both are repaired in the copy: frames are blurred, and an unread PNG is dropped or
+          // refused by keptPngPaths. Any other unread file fails as an unsupported format.
+          (reason) => reason.code === "RAW_SCREENSHOTS" || reason.code === "UNSCANNED_ARTIFACT",
+        )
       ))
   ) {
     return { shareSafety: verified.shareSafety };

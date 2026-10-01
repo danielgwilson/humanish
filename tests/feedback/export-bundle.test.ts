@@ -228,7 +228,8 @@ describe("redacted bundle export", () => {
     ).toMatchObject({ action: "blurred", sourceSha256: sha(png) });
   });
 
-  it("redacts unreferenced copies and rebuilds stale cached Observer content", async () => {
+  // verify cannot read an image that no stream trace registers, so the copy leaves it out.
+  it("drops unreferenced copies, keeps referenced frames and rebuilds stale cached Observer content", async () => {
     await writeFile(path.join(runDir, "screenshots", "unused.PNG"), png);
     await writeFile(
       path.join(runDir, "observer", "index.html"),
@@ -236,14 +237,51 @@ describe("redacted bundle export", () => {
     );
     const result = await exportRun(cwd, RUN, OPTIONS);
     if (!result.ok) throw new Error(result.error.message);
-    expect(result.embeddedImages).toBe(2);
+    expect(result.embeddedImages).toBe(1);
     const output = path.join(cwd, "shared", ".humanish", "runs", RUN);
+    await expect(stat(path.join(output, "screenshots", "unused.PNG"))).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+    const derivation = JSON.parse(await readFile(path.join(output, "derivation.json"), "utf8"));
     expect(
-      PNG.sync.read(await readFile(path.join(output, "screenshots", "unused.PNG"))).width,
-    ).toBe(96);
+      derivation.files.find((entry: { path: string }) => entry.path === "screenshots/unused.PNG"),
+    ).toMatchObject({ action: "omitted" });
+    // The referenced frame stays at its path, blurred, and the copy holds no unregistered image.
+    const exported = JSON.parse(await readFile(path.join(output, "run.json"), "utf8")) as RunBundle;
+    expect(exported.streams[0]!.actor!.items[0]!.screenshotRef).toEqual({
+      path: "screenshots/frame.png",
+      redaction: "blurred",
+    });
+    expect(PNG.sync.read(await readFile(path.join(output, "screenshots", "frame.png"))).width).toBe(
+      96,
+    );
+    expect(await readdir(path.join(output, "screenshots"))).toEqual(["frame.png"]);
+    const verified = await verifyRun(path.join(cwd, "shared"), RUN);
+    expect(verified.shareSafety).toEqual({ status: "share_ready", reasons: [] });
     expect(await readFile(path.join(output, "observer", "index.html"), "utf8")).not.toContain(
       "STALE",
     );
+  });
+
+  it("refuses to draft or export a run whose evidence cites an image that is not a stream screenshot", async () => {
+    await writeFile(path.join(runDir, "screenshots", "extra.png"), png);
+    original.feedbackCandidates[0]!.evidence.push({
+      path: "screenshots/extra.png",
+      kind: "screenshot",
+      note: "An image no stream trace registers.",
+    });
+    await writeFile(path.join(runDir, "run.json"), JSON.stringify(original));
+    const source = await verifyRun(cwd, RUN);
+    expect(source.shareSafety.reasons.map((reason) => reason.code)).toContain("UNSCANNED_ARTIFACT");
+    const draft = await draftFeedback(cwd, RUN);
+    expect(draft.ok).toBe(false);
+    expect(draft.error?.code).toBe("HUMANISH_FEEDBACK_SHARE_SAFETY_BLOCKED");
+    const result = await exportRun(cwd, RUN, OPTIONS);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe("HUMANISH_EXPORT_BUNDLE_REFUSED");
+    expect(result.error.message).toContain("not a stream screenshot");
+    await expect(stat(path.join(cwd, "shared"))).rejects.toMatchObject({ code: "ENOENT" });
   });
 
   it.each([

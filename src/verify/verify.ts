@@ -21,6 +21,7 @@ import {
   rawScreenshotPostureWarnings,
   rawScreenshotStreamIds,
   scanRunPublicSafetyArtifacts,
+  streamScreenshotPaths,
 } from "./artifacts.js";
 import { runNotFinishedWarnings } from "./liveness.js";
 import { costAndReceiptFindings } from "./costs.js";
@@ -29,6 +30,9 @@ import { sharedWorldEvidenceFindings } from "./shared-world.js";
 import { subjectStateFindings, undeclaredSubjectStateWarnings } from "./subject.js";
 
 export const VERIFY_SCHEMA = "humanish.verify-result.v1";
+
+// The UNSCANNED_ARTIFACT reason names this many paths and counts the rest.
+const MAX_LISTED_UNSCANNED = 10;
 
 export interface VerifyResult {
   schema: typeof VERIFY_SCHEMA;
@@ -52,7 +56,8 @@ export interface VerifyResult {
         | "ANALYSIS_UNVERIFIED"
         | "RAW_SCREENSHOTS"
         | "CONTINUOUS_MEDIA"
-        | "REAL_COMMUNICATIONS";
+        | "REAL_COMMUNICATIONS"
+        | "UNSCANNED_ARTIFACT";
       message: string;
     }>;
   };
@@ -142,14 +147,19 @@ export async function verifyResolvedRun(
 
   checks.push(...bundlePresenceChecks(bundle, reviewJson !== null && reviewMarkdown !== null));
   const derivedPublicSafetyFindings: string[] = [];
+  const unscannedArtifacts: string[] = [];
   const publicSafetyFindings = await scanRunPublicSafetyArtifacts(
     runPaths,
     derivedPublicSafetyFindings,
-    new Set(
-      isRunBundle(bundle)
-        ? bundle.streams.flatMap((stream) => (stream.recording ? [stream.recording.path] : []))
-        : [],
-    ),
+    {
+      recordingPaths: new Set(
+        isRunBundle(bundle)
+          ? bundle.streams.flatMap((stream) => (stream.recording ? [stream.recording.path] : []))
+          : [],
+      ),
+      screenshotPaths: isRunBundle(bundle) ? streamScreenshotPaths(bundle) : new Set(),
+    },
+    unscannedArtifacts,
   );
   // JSON escapes can hide a sensitive value from the byte scan while the
   // decoded recording exposes it to Observer, feedback, or analysis input.
@@ -202,7 +212,7 @@ export async function verifyResolvedRun(
       ]
     : [];
   const shareSafety = isRunBundle(bundle)
-    ? buildShareSafety({ ok, bundle, publicSafetyFindings })
+    ? buildShareSafety({ ok, bundle, publicSafetyFindings, unscannedArtifacts })
     : {
         status: "blocked" as const,
         reasons: [
@@ -415,6 +425,7 @@ function buildShareSafety(args: {
   ok: boolean;
   bundle: RunBundle;
   publicSafetyFindings: string[];
+  unscannedArtifacts: string[];
 }): VerifyResult["shareSafety"] {
   const reasons: VerifyResult["shareSafety"]["reasons"] = [];
 
@@ -445,6 +456,15 @@ function buildShareSafety(args: {
       code: "CONTINUOUS_MEDIA",
       message:
         "Continuous screen/audio recordings are retained for local review. Screenshot redaction does not redact this media.",
+    });
+  }
+  if (args.unscannedArtifacts.length > 0) {
+    const paths = [...args.unscannedArtifacts].sort();
+    const shown = paths.slice(0, MAX_LISTED_UNSCANNED).join(", ");
+    const more = paths.length - MAX_LISTED_UNSCANNED;
+    reasons.push({
+      code: "UNSCANNED_ARTIFACT",
+      message: `The public-safety scan cannot read ${paths.length} archive or image file(s) that are not registered stream screenshots or recordings: ${shown}${more > 0 ? ` and ${more} more` : ""}. Review them before sharing.`,
     });
   }
   const rawStreamIds = rawScreenshotStreamIds(args.bundle);

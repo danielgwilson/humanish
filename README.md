@@ -243,7 +243,9 @@ sensitive to capture in the first place.
 
 **What the automated gate enforces.** `humanish verify` scans public-bound
 artifacts and fails closed on secret, key, and token shapes and on known local
-path shapes. It does not yet detect free-form PII or PHI such as names, emails,
+path shapes. It reads text only: an image or archive in the run folder, other
+than a stream screenshot or recording, keeps the run `local_only`
+(`UNSCANNED_ARTIFACT`). It does not yet detect free-form PII or PHI such as names, emails,
 phone numbers, dates of birth, or medical identifiers. Keeping those out depends
 on using synthetic data and on review, so `redaction: passed` means the
 automated secret and path scan found no matches, not that the artifact was

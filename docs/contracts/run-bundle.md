@@ -560,6 +560,15 @@ over a blurred declaration. Missing or unknown per-frame metadata retains the
 existing permissive compatibility behavior; verification does not infer pixel
 privacy from that absence.
 
+The public-safety scan reads every run file as text except images (`.png`,
+`.jpg`, `.jpeg`, `.webp`, `.gif`), `.mp4` media and archives (`.gz`, `.tgz`,
+`.zip`). `RAW_SCREENSHOTS` and `CONTINUOUS_MEDIA` grade the stream screenshots
+that actor traces reference and the recordings `streams[].recording` registers.
+Any other image or archive contributes `UNSCANNED_ARTIFACT`, whose message lists
+the paths, and keeps otherwise valid evidence `local_only`. This includes images
+that only feedback candidates, adapter artifacts or stream artifact entries cite.
+An unregistered `.mp4` is a public-safety finding and blocks the run.
+
 Real email receiving adds `publication.restrictions: [real-communications]` and
 an optional `commsReceiving` projection using `humanish.comms-receiving.v2`.
 Either field contributes `REAL_COMMUNICATIONS` and keeps the run `local_only`.
@@ -590,7 +599,11 @@ The receipt describes the transformation; it does not attest that a participant'
 finding is true. Its own bytes are not included in its hash inventory. Feedback
 commands can subsequently generate new derivative-local artifacts.
 
-PNG files are re-encoded as blurred thumbnails, including unreferenced images.
+PNG files that actor traces reference as stream screenshots are re-encoded as
+blurred thumbnails. A PNG that nothing in `run.json` cites is omitted and
+inventoried. Export refuses a run whose feedback candidates, adapter artifacts or
+stream artifact entries cite a PNG that is not a stream screenshot, since verify
+cannot read that image and dropping it would change the evidence.
 Known actor screenshot declarations describe export-time blur while retaining the
 original redaction notes. Observer is rebuilt; old feedback outputs, local process
 status and the operational sandbox journal are omitted and inventoried. A derivative

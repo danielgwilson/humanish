@@ -282,7 +282,7 @@ async function resolveExportSource(
       cwd,
       runInput,
       "HUMANISH_EXPORT_SHARE_SAFETY_BLOCKED",
-      `Run ${runId} is ${verified.shareSafety.status}, not share_ready: ${verified.shareSafety.reasons.map((r) => r.code).join(", ")}. Re-run with policies.redactScreenshots: true, or pass --local-only to export a watermarked file for people who may see raw screenshots.`,
+      `Run ${runId} is ${verified.shareSafety.status}, not share_ready: ${verified.shareSafety.reasons.map((r) => r.code).join(", ")}. ${shareSafetyRemedy(verified.shareSafety.reasons.map((r) => r.code))}`,
       verified.shareSafety,
     );
   }
@@ -599,4 +599,21 @@ export function formatExportHuman(result: ExportResult | ExportFailure): string 
     ...result.warnings.map((warning) => `warning: ${warning}`),
   ];
   return `${lines.join("\n")}\n`;
+}
+
+/** What clears each refusal reason, so the advice never names a fix that cannot work. */
+function shareSafetyRemedy(codes: string[]): string {
+  const steps: string[] = [];
+  if (codes.includes("RAW_SCREENSHOTS")) {
+    steps.push("Re-run with policies.redactScreenshots: true to blur screenshots at capture.");
+  }
+  if (codes.includes("UNSCANNED_ARTIFACT")) {
+    steps.push(
+      "verify cannot read the images or archives that `humanish verify --json` lists under UNSCANNED_ARTIFACT: remove them from the run folder, or keep only images an actor trace references as stream screenshots.",
+    );
+  }
+  steps.push(
+    "Or pass --local-only to export a watermarked file for people who may see the evidence as it is.",
+  );
+  return steps.join(" ");
 }
