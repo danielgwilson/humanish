@@ -134,14 +134,18 @@ function snapshotPriorParticipant(stream: RunStream): {
   const reason = stream.ui?.state ?? stream.actor?.reason;
   const actions = stream.actor?.counts.actions ?? 0;
   const messages = stream.actor?.counts.messages ?? 0;
+  // The judge's status decides, so a participant the review counts as blocked is rerunnable. A
+  // bundle written before streams carried it falls back to the trace status and counts.
   const hollow = completionReason === "goal_satisfied" && actions === 0 && messages === 0;
   const rerunnable =
-    stream.status !== "passed" ||
-    actorStatus === "failed" ||
-    actorStatus === "blocked" ||
-    actorStatus === "timed_out" ||
-    completionReason === "harness_error" ||
-    hollow;
+    stream.judgedStatus !== undefined
+      ? stream.judgedStatus !== "passed"
+      : stream.status !== "passed" ||
+        actorStatus === "failed" ||
+        actorStatus === "blocked" ||
+        actorStatus === "timed_out" ||
+        completionReason === "harness_error" ||
+        hollow;
   return {
     participantId: stream.laneId,
     previous: {
