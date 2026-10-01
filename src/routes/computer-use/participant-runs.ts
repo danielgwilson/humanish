@@ -253,10 +253,10 @@ export function resolveCuaParticipantPlan(
 export function emitPreflightPlan(participantPlan: CuaParticipantPlan, labId: string): void {
   const lines: string[] = [];
   lines.push(
-    `humanish cua fan-out plan (${labId}): ${participantPlan.laneCount} lane(s), strategy ${participantPlan.strategy}, concurrency ${participantPlan.concurrency}${participantPlan.envLoweredConcurrencyFrom === undefined ? "" : ` (lowered from ${participantPlan.envLoweredConcurrencyFrom} by ${CUA_MAX_CONCURRENCY_ENV})`}, ${participantPlan.waves} wave(s).`,
+    `humanish cua fan-out plan (${labId}): ${participantPlan.laneCount} participant(s), strategy ${participantPlan.strategy}, concurrency ${participantPlan.concurrency}${participantPlan.envLoweredConcurrencyFrom === undefined ? "" : ` (lowered from ${participantPlan.envLoweredConcurrencyFrom} by ${CUA_MAX_CONCURRENCY_ENV})`}, ${participantPlan.waves} wave(s).`,
   );
   lines.push(
-    `  per-lane session budget ${Math.round(participantPlan.perLaneSessionBudgetMs / 1000)}s; worst-case ~${participantPlan.worstCaseSandboxMinutes} sandbox-minutes total${participantPlan.dryRun ? " (dry-run: $0)" : ""}.`,
+    `  session budget ${Math.round(participantPlan.perLaneSessionBudgetMs / 1000)}s per participant; worst-case ~${participantPlan.worstCaseSandboxMinutes} sandbox-minutes total${participantPlan.dryRun ? " (dry-run: $0)" : ""}.`,
   );
   for (const entry of participantPlan.lanes) {
     lines.push(`  - ${formatParticipantPlanEntry(entry)}`);
