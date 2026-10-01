@@ -146,7 +146,7 @@ assignment:
 ```
 
 `mission` is the authored mission, or the runner's default when omitted. `focus` is the
-original lane/role instruction when one was supplied. `tasks` contains only the IDs and
+participant's original instruction when one was supplied. `tasks` contains only the IDs and
 goals actually composed into participant instructions; hidden success criteria are excluded.
 Computer-use single/fan-out, shared-world, and terminal-product
 runners record assignments in dry-run and live bundles. Current shared-world and terminal
@@ -203,7 +203,7 @@ different facts separate:
   `screen.requested` because the rendered width was floored to Chrome's ~500px window minimum.
   `verified` compares the floored number with itself and reports a match, so a matching
   `verified` block is NOT evidence that the preset width rendered. When `declared` is present,
-  it did not: a `mobile` (414) and a `small-mobile` (360) seat both render at 500 and are
+  it did not: a `mobile` (414) and a `small-mobile` (360) participant both render at 500 and are
   indistinguishable by rendered width;
 - `browserWindow`: measured browser bounds after the window-fill attempt; physical X client
   bounds (`source: xwininfo`) take precedence over page-reported outer bounds (`source: cdp`),
@@ -212,12 +212,12 @@ different facts separate:
 - `viewport`: the page's CSS layout viewport and device-pixel ratio measured through CDP on
   Chromium-family hosted browsers.
 
-Before participant actions, hosted computer-use lanes check measured X bounds against every
+Before participant actions, hosted computer-use participants check measured X bounds against every
 edge of the captured desktop. If a browser is clipped, a bounded move-and-fit correction
 remeasures the client origin after each of up to two resize attempts, preserving browser
 controls when they fit. A fullscreen fallback remains for minimum-width windows that cannot
 fit a narrow desktop. A window that remains clipped, or whose repair
-cannot be verified, ends the lane before participant actions. A fully contained smaller window
+cannot be verified, ends the participant before it acts. A fully contained smaller window
 can run. Missing X measurements are explicitly unverified; an emulated CSS viewport cannot
 establish physical containment. Final capture observes geometry without resizing the app.
 
@@ -246,11 +246,11 @@ enters this field; identity is digests, a sha, a boolean, and counts.
 ## Cost Estimate (advisory)
 
 `cost` is optional and additive (`humanish.run-cost-summary.v1`): the
-computer-use, shared-world, scripted-browser or terminal-product run's cost ESTIMATE: the sum of each lane's
+computer-use, shared-world, scripted-browser or terminal-product run's cost ESTIMATE: the sum of each participant's
 token-derived model cost plus E2B desktop compute lines. New independent CUA runs
-emit one line per owned desktop, keyed by public lane ID and carrying observed CPU/memory,
+emit one line per owned desktop, keyed by public participant ID and carrying observed CPU/memory,
 resource source, host-measured minutes, and the derived per-second rate. Concurrent
-shared-world runs carry the same lines for each seat, plus a desktop line with
+shared-world runs carry the same lines for each participant, plus a desktop line with
 `laneId: subject` for a provisioned plane; an external-public plane is not a humanish
 desktop and has no line. Older single aggregate desktop lines remain valid. Missing resource metadata stays
 unpriced; unconfirmed cleanup adds an unknown remaining-lifetime line. It is an
@@ -268,11 +268,11 @@ a provisioned clone records the clone's desktop as a `laneId: subject` line. A l
 without `cost` has an unmeasured spend. A live terminal run's `cost` prices the E2B terminal
 sandbox as a `desktop-minutes` line from its acquired-to-cleanup span and `e2b.getInfo` size.
 Its Codex `model-tokens` line stays `null` (`no_rate_for_model` with model `codex`, or
-`no_token_usage` when Codex reported none): the lane prices against its provider id `codex`
+`no_token_usage` when Codex reported none): the participant prices against its provider id `codex`
 even when `actors[0].model` is passed as `--model`, and `terminal-ledgers.json` counts those
 tokens without a price.
 So a terminal total is a lower bound (`fullyEstimated: false`), and the unpriced tokens are
-not $0. Each lane's own estimate also rides its
+not $0. Each participant's own estimate also rides its
 `stream.actor.estimatedCost` (`humanish.actor-estimated-cost.v1`), kept distinct
 from the reserved provider-returned `tokenUsage.costUsd`. See
 [`schemas.md`](schemas.md) → Run Cost Summary And Estimated Actor Cost.
@@ -318,9 +318,9 @@ stores those references, Observer links them, and `humanish verify` fails closed
 when any referenced file is missing. The adapter owns the artifact payload schema
 under its namespace.
 
-## Lane Grouping Metadata
+## Participant Grouping Metadata
 
-Multi-lane browser/shared-world routes may carry optional lane grouping metadata:
+Multi-participant browser/shared-world routes may carry optional participant grouping metadata:
 
 ```yaml
 actors:
@@ -332,7 +332,7 @@ actors:
         caseGroup: case-001
 ```
 
-For repeated lanes, authors can use compact roster groups. The parser expands
+For repeated participants, authors can use compact roster groups. The parser expands
 each group into deterministic `lanes[]` before the engine runs:
 
 ```yaml
@@ -348,7 +348,7 @@ actors:
         device: desktop
 ```
 
-The generated lane ids are `<group.id>-01`, `<group.id>-02`, and so on. `roster`
+The generated participant ids are `<group.id>-01`, `<group.id>-02`, and so on. `roster`
 is mutually exclusive with explicit `lanes`, homogeneous `count`, and
 `laneFocus`; it is an authoring convenience, not a second runtime shape.
 
@@ -357,7 +357,7 @@ projects express "N actors of M app-defined types across S surfaces" without
 teaching humanish private product nouns. Values must be public-safe tokens and
 are projected into:
 
-- the preflight lane plan;
+- the preflight participant plan;
 - shared-world `laneWindows[]` and `outcomes[]`;
 - Observer `laneGroups[]`;
 - human-readable Observer stream labels.
@@ -381,7 +381,7 @@ a coding agent setting up humanish inside another project.
 ```yaml
 completion:
   status: "running|passed|failed|blocked|timed_out"
-  reason: "<public-safe lane summary>"
+  reason: "<public-safe participant summary>"
   actorStatus: "not_started|running|passed|failed|blocked|timed_out|suspended|unknown"
   appStatus: "not_started|running|blocked|failed|missing|unknown"
   nestedObserverPresent: true
@@ -415,7 +415,7 @@ A score of 80 or higher is `pass` only when no hard failure is present and
 every rubric component passes. Scores from 45 through 79, or scores of 80 or
 higher with any non-passing component, are `partial`. Scores below 45,
 failed/timed-out bootstraps, missing nested humanish proof, required actor
-failure, or completed lanes without a running visible product surface are
+failure, or completed participants without a running visible product surface are
 `fail`.
 
 ## Relative Artifact Layout
