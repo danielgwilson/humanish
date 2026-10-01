@@ -11,6 +11,7 @@ import type { ExportFailure, ExportOptions, ExportResult } from "./export.js";
 import { renderObserver } from "../observer/render.js";
 import { buildObserverData } from "../observer/data.js";
 import { containsSensitive, redactScreenshot, redactText } from "../evidence/redaction.js";
+import { readPlainText } from "../evidence/plain-text.js";
 import { streamScreenshotPaths } from "../verify/artifacts.js";
 import { verifyRunPrepared, type VerifyResult } from "../verify/verify.js";
 import { loadRunBundlePrepared, resolveRunPath } from "../run/locate.js";
@@ -222,16 +223,15 @@ function assertNoInlineRaster(text: string): void {
 }
 
 function decodeText(file: InventoryFile): string {
-  let text: string;
-  try {
-    text = new TextDecoder("utf-8", { fatal: true }).decode(file.bytes);
-  } catch {
-    throw new Error("Source text contains invalid UTF-8 or binary bytes.");
-  }
-  if (/[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(text))
-    throw new Error("Source text contains binary control bytes.");
-  assertNoInlineRaster(text);
-  return text;
+  const decoded = readPlainText(file.bytes);
+  if (!decoded.ok)
+    throw new Error(
+      decoded.reason === "invalid-utf8"
+        ? "Source text contains invalid UTF-8 or binary bytes."
+        : "Source text contains binary control bytes.",
+    );
+  assertNoInlineRaster(decoded.text);
+  return decoded.text;
 }
 
 function updateScreenshotDeclarations(value: unknown, imagePaths: ReadonlySet<string>): unknown {

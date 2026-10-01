@@ -609,7 +609,7 @@ function shareSafetyRemedy(codes: string[]): string {
   }
   if (codes.includes("UNSCANNED_ARTIFACT")) {
     steps.push(
-      "verify cannot read the images or archives that `humanish verify --json` lists under UNSCANNED_ARTIFACT: remove them from the run folder, or keep only images an actor trace references as stream screenshots.",
+      "verify cannot read the files that `humanish verify --json` lists under UNSCANNED_ARTIFACT as text: remove them from the run folder, or keep only images an actor trace references as stream screenshots.",
     );
   }
   steps.push(
