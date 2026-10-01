@@ -395,7 +395,7 @@ async function startCuaRun(
 
   const bundleBase: CuaRunBundleBase = {
     ...(routePlan.lab === undefined ? {} : { lab: routePlan.lab }),
-    laneSpecs: participantRuns,
+    participantRuns: participantRuns,
     descriptor,
     appUrl,
     createdAt,

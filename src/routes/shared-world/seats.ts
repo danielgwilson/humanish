@@ -159,7 +159,7 @@ export function startParticipantFlush(
 ): void {
   live.flush = startLiveTraceFlush({
     bundle,
-    laneSpecs: ctx.actorSpecs,
+    participantRuns: ctx.actorSpecs,
     model: ctx.config.actors[0]?.model ?? DEFAULT_OPENAI_CU_MODEL,
     write: (snapshot) => ctx.run.writeSnapshot(snapshot),
   });

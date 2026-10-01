@@ -66,7 +66,7 @@ export interface CuaLaneSpec {
 }
 
 /** The flat hook view of one participant run. Called only where a caller's hook receives a lane. */
-export function laneSpecOf(run: DesktopParticipantRun): CuaLaneSpec {
+export function legacyHookSpecOf(run: DesktopParticipantRun): CuaLaneSpec {
   const { planned } = run;
   const { labels, limits, device } = planned;
   return {

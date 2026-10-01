@@ -79,7 +79,7 @@ export async function runLabParticipants(setup: CuaRunSetup) {
     // write began; the route stops the flush timer on every exit below.
     const liveFlush = startLiveTraceFlush({
       bundle: inProgressBundle,
-      laneSpecs: participantRuns,
+      participantRuns: participantRuns,
       model: config.actors[0]?.model ?? DEFAULT_OPENAI_CU_MODEL,
       write: (bundle) => run.writeSnapshot(bundle),
     });
@@ -156,7 +156,7 @@ export async function runLabParticipants(setup: CuaRunSetup) {
           externalCommsEmail,
           env,
           runPaths,
-          laneSpecs: participantRuns,
+          participantRuns: participantRuns,
           outcomes,
           scrubKnownValues,
         })

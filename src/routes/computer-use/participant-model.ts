@@ -26,7 +26,7 @@ import {
 import { hollowCompletion } from "../../run/judge.js";
 import type { CuaParticipantDeps, DesktopParticipantRun } from "./types.js";
 import type { ReadyParticipantDesktop } from "./participant-desktop.js";
-import { laneSpecOf } from "./legacy-lane-spec.js";
+import { legacyHookSpecOf } from "./legacy-lane-spec.js";
 
 /** The model a lane brings besides the default API client, and the handles its cleanup needs. */
 export interface ParticipantModel {
@@ -47,7 +47,7 @@ export async function startParticipantModel(
       provider: await deps.hooks.buildProvider({
         config,
         actor: deps.descriptor,
-        lane: laneSpecOf(spec),
+        lane: legacyHookSpecOf(spec),
         laneCount: deps.participantCount,
         executor,
       }),

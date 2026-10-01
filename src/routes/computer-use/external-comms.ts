@@ -21,7 +21,7 @@ export async function drainExternalComms(args: {
   externalCommsEmail: LabCommsEmail;
   env: Record<string, string | undefined>;
   runPaths: PreparedRunArtifactPaths;
-  laneSpecs: readonly DesktopParticipantRun[];
+  participantRuns: readonly DesktopParticipantRun[];
   outcomes: ParticipantRunOutcome[];
   scrubKnownValues: (text: string) => string;
 }): Promise<string[]> {
@@ -30,7 +30,7 @@ export async function drainExternalComms(args: {
     externalCommsEmail,
     env,
     runPaths,
-    laneSpecs,
+    participantRuns,
     outcomes,
     scrubKnownValues,
   } = args;
@@ -61,11 +61,11 @@ export async function drainExternalComms(args: {
         "utf8",
       );
       for (const [index, outcome] of outcomes.entries()) {
-        const laneId = laneSpecs[index]?.planned.id;
+        const participantId = participantRuns[index]?.planned.id;
         if (
-          laneId !== undefined &&
+          participantId !== undefined &&
           outcome.commsArtifactPath === undefined &&
-          participantHasInboxRecipient(externalCommsEmail, laneId)
+          participantHasInboxRecipient(externalCommsEmail, participantId)
         ) {
           outcome.commsArtifactPath = commsPath;
         }
