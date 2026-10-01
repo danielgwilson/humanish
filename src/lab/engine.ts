@@ -9,29 +9,53 @@ import { isLocalBrowserLab, localBrowserDefaults } from "../substrates/local/run
 // selects the substrate while actors[0].type selects a registered first-party actor.
 
 import type { AutomaticAnalysisHooks } from "../analysis/automatic-completion.js";
-import { runCuaActorLab } from "../routes/computer-use/lab.js";
-import { type CuaActorLabHooks, type CuaActorLabResult } from "../routes/computer-use/types.js";
-import { runScriptedBrowserLab } from "../routes/scripted-browser/lab.js";
+import {
+  computerUseLabRefusal,
+  runComputerUsePlan,
+  runCuaActorLab,
+} from "../routes/computer-use/lab.js";
+import {
+  type ComputerUseRunInput,
+  type CuaActorLabHooks,
+  type CuaActorLabResult,
+} from "../routes/computer-use/types.js";
+import {
+  runScriptedBrowserLab,
+  runScriptedPlan,
+  scriptedLabRefusal,
+} from "../routes/scripted-browser/lab.js";
 import {
   type ScriptedBrowserLabHooks,
   type ScriptedBrowserLabResult,
+  type ScriptedRunInput,
 } from "../routes/scripted-browser/types.js";
-import { runTerminalProductLab } from "../routes/terminal/lab.js";
+import {
+  runTerminalPlan,
+  runTerminalProductLab,
+  terminalLabRefusal,
+} from "../routes/terminal/lab.js";
 import {
   type TerminalProductLabHooks,
   type TerminalProductLabResult,
+  type TerminalRunInput,
 } from "../routes/terminal/types.js";
-import { runConcurrentSharedWorld } from "../routes/shared-world/lab.js";
+import {
+  runConcurrentSharedWorld,
+  runSharedWorldPlan,
+  sharedWorldLabRefusal,
+} from "../routes/shared-world/lab.js";
 import {
   type ConcurrentSharedWorldLabResult,
   type SharedWorldLabHooks,
+  type SharedWorldRunInput,
 } from "../routes/shared-world/types.js";
 import { type RunLabProvenance } from "../run/status.js";
 import type { ObserverResult } from "../observer/render.js";
-import { runPreviewLab } from "../routes/preview.js";
+import { previewLabRefusal, runPreviewLab, runPreviewPlan } from "../routes/preview.js";
 import { type RunScorerProvenance } from "../run/bundle.js";
 import { type RunResult } from "../run/results.js";
-import { backendOf, resolveLabDryRun, routeOf, type LabRoute } from "./plan.js";
+import { backendOf, planLab, resolveLabDryRun, routeOf, type LabRoute } from "./plan.js";
+import type { PlanRefusal } from "./plan-types.js";
 import {
   normalizeRunLabOptions,
   optionRefusalOutcome,
@@ -121,14 +145,160 @@ export async function runLab(config: LabConfig, options: RunLabOptions): Promise
   const route = routeOf(lab);
   const normalized = normalizeRunLabOptions(lab, route, options);
   if (!normalized.ok) return optionRefusalOutcome(lab, route, options, normalized);
-  const outcome = await dispatchLab(config, normalized.options);
+  const outcome = await planAndRun(lab, normalized.options);
   outcome.result.warnings.push(...normalized.warnings);
   return outcome;
 }
 
 /**
- * Dispatch options runLab already normalized. The local VM study re-enters here with its own
- * desktop lane, so its internal hooks are not checked or warned about as a caller's.
+ * Plans the lab once and runs the plan on its route, or returns the route's refusal. A local
+ * browser study first gets its local desktop, so it goes to the local VM study, which re-enters
+ * dispatchLab with its own desktop lane.
+ */
+async function planAndRun(config: LabConfig, options: RunLabOptions): Promise<LabOutcome> {
+  const hooks = options.cuaHooks;
+  if (
+    isLocalBrowserLab(config) &&
+    hooks?.createDesktopLane === undefined &&
+    hooks?.buildExecutor === undefined
+  ) {
+    const { runLocalFirecrackerStudy } = await import("../routes/computer-use/local-vm.js");
+    return runLocalFirecrackerStudy({ ...options, config });
+  }
+  const planned = planLab(config, options);
+  if (!planned.ok) return refusalOutcome(config, options, planned.refusal);
+  const { plan } = planned.planned;
+  switch (plan.route) {
+    case "preview":
+      return { backend: "synthetic", result: await runPreviewPlan(plan, options) };
+    case "computer-use":
+      return {
+        backend: "cua",
+        result: await runComputerUsePlan(plan, computerUseInput(options), config),
+      };
+    case "scripted":
+      return { backend: "scripted", result: await runScriptedPlan(plan, scriptedInput(options)) };
+    case "terminal":
+      return { backend: "terminal", result: await runTerminalPlan(plan, terminalInput(options)) };
+    case "shared-world":
+      return {
+        backend: "concurrent-shared-world",
+        result: await runSharedWorldPlan(plan, sharedWorldInput(options), config),
+      };
+  }
+}
+
+/** The refused route's own result, with the envelope and analysis record its runner returns. */
+async function refusalOutcome(
+  config: LabConfig,
+  options: RunLabOptions,
+  refusal: PlanRefusal,
+): Promise<LabOutcome> {
+  // Spend-safe default: a lab goes live only when the config (or CLI) says so.
+  const dryRun = resolveLabDryRun(config, options.dryRun, true) ?? true;
+  const lab = options.lab === undefined ? {} : { lab: options.lab };
+  switch (refusal.route) {
+    case "preview":
+      return { backend: "synthetic", result: previewLabRefusal(options.cwd, refusal) };
+    case "computer-use":
+      return {
+        backend: "cua",
+        result: await computerUseLabRefusal(
+          { ...computerUseInput(options), ...lab, config, dryRun },
+          refusal,
+        ),
+      };
+    case "scripted":
+      return {
+        backend: "scripted",
+        result: await scriptedLabRefusal(
+          { ...scriptedInput(options), ...lab, config, dryRun },
+          refusal,
+        ),
+      };
+    case "terminal":
+      return {
+        backend: "terminal",
+        result: await terminalLabRefusal(
+          { ...terminalInput(options), ...lab, config, dryRun },
+          refusal,
+        ),
+      };
+    case "shared-world":
+      return {
+        backend: "concurrent-shared-world",
+        result: await sharedWorldLabRefusal(
+          { ...sharedWorldInput(options), ...lab, config, dryRun },
+          refusal,
+        ),
+      };
+  }
+}
+
+function computerUseInput(options: RunLabOptions): ComputerUseRunInput {
+  return {
+    ...analysisOf(options),
+    cwd: options.cwd,
+    // CLI --count overrides the homogeneous fan-out lane count (a declared roster's length wins).
+    ...(options.count === undefined ? {} : { countOverride: options.count }),
+    ...(options.open === undefined ? {} : { open: options.open }),
+    ...(options.onObserverReady === undefined ? {} : { onObserverReady: options.onObserverReady }),
+    ...(options.runId === undefined ? {} : { runId: options.runId }),
+    ...(options.rerun === undefined ? {} : { rerun: options.rerun }),
+    ...(options.cuaHooks === undefined ? {} : { hooks: options.cuaHooks }),
+    ...scorerOf(options),
+  };
+}
+
+function scriptedInput(options: RunLabOptions): ScriptedRunInput {
+  return {
+    ...analysisOf(options),
+    cwd: options.cwd,
+    ...(options.open === undefined ? {} : { open: options.open }),
+    ...(options.runId === undefined ? {} : { runId: options.runId }),
+    ...(options.scriptedHooks === undefined ? {} : { hooks: options.scriptedHooks }),
+  };
+}
+
+function terminalInput(options: RunLabOptions): TerminalRunInput {
+  return {
+    ...analysisOf(options),
+    cwd: options.cwd,
+    ...(options.open === undefined ? {} : { open: options.open }),
+    ...(options.runId === undefined ? {} : { runId: options.runId }),
+    ...(options.terminalHooks === undefined ? {} : { hooks: options.terminalHooks }),
+    ...scorerOf(options),
+  };
+}
+
+function sharedWorldInput(options: RunLabOptions): SharedWorldRunInput {
+  return {
+    ...analysisOf(options),
+    cwd: options.cwd,
+    ...(options.open === undefined ? {} : { open: options.open }),
+    ...(options.onObserverReady === undefined ? {} : { onObserverReady: options.onObserverReady }),
+    ...(options.runId === undefined ? {} : { runId: options.runId }),
+    ...(options.sharedWorldHooks === undefined ? {} : { hooks: options.sharedWorldHooks }),
+    ...scorerOf(options),
+  };
+}
+
+function analysisOf(options: RunLabOptions) {
+  return options.automaticAnalysis === undefined
+    ? {}
+    : { automaticAnalysis: options.automaticAnalysis };
+}
+
+function scorerOf(options: RunLabOptions) {
+  return options.scorerProvenance === undefined
+    ? {}
+    : { scorerProvenance: options.scorerProvenance };
+}
+
+/**
+ * The local VM study's re-entry: it runs with its own desktop lane, so its internal hooks are not
+ * checked or warned about as a caller's. The next change plans the study once, with those hooks,
+ * and removes this.
  */
 export async function dispatchLab(config: LabConfig, options: RunLabOptions): Promise<LabOutcome> {
   config = localBrowserDefaults(config);

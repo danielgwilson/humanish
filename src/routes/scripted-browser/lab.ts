@@ -49,7 +49,7 @@ import {
   writeContainedOutputFile,
 } from "../../run/contained-output.js";
 import { renderScriptedReviewMarkdown } from "./bundle.js";
-import { evidenceAppUrlOf, planScriptedLab } from "./plan.js";
+import { evidenceAppUrlOf, planScriptedLab, type ScriptedRefusal } from "./plan.js";
 import { resolveScriptedScenario } from "./scenario.js";
 import {
   UnsafeScriptedSessionResultError,
@@ -86,8 +86,18 @@ export async function runScriptedBrowserLab(
     ...(input.hooks === undefined ? {} : { hooks: input.hooks }),
   });
   if (planned.ok) return runScriptedPlan(planned.plan, input);
+  return scriptedLabRefusal(options, planned.refusal);
+}
 
-  const { refusal } = planned;
+/**
+ * A refused scripted lab's result, at the refusal's stage: a before-scope refusal has its own field
+ * order and no analysis record; the others come after the output directory checks.
+ */
+export async function scriptedLabRefusal(
+  options: RunScriptedBrowserLabOptions,
+  refusal: ScriptedRefusal,
+): Promise<ScriptedBrowserLabResult> {
+  const { config, dryRun } = options;
   const cwd = path.resolve(options.cwd);
   const actorType = config.actors[0]?.type ?? "";
   if (refusal.beforeScope)

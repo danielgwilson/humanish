@@ -29,7 +29,7 @@ import { runScope, type RunScope } from "../../run/run.js";
 import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
 import type { ComputerUsePlan } from "../../lab/plan-types.js";
 import type { LabConfig } from "../../lab/types.js";
-import { planComputerUseLab } from "./plan.js";
+import { planComputerUseLab, type ComputerUseRefusal } from "./plan.js";
 import { finishCuaRun } from "./result.js";
 import { runLabLanes } from "./run-lanes.js";
 import { prepareCuaRun, refuseCuaLab } from "./setup.js";
@@ -68,8 +68,19 @@ async function runCuaActorLabWithSecrets(
     ...(input.rerun === undefined ? {} : { rerun: input.rerun }),
   });
   if (planned.ok) return runPlanWithSecrets(planned.plan, input, config);
+  return computerUseLabRefusal(options, planned.refusal);
+}
 
-  const { refusal } = planned;
+/**
+ * A refused computer-use lab's result, at the refusal's stage: a before-scope refusal has its own
+ * envelope and no analysis record; the others come after the cwd checks, and the lane cap after
+ * the personas are read.
+ */
+export async function computerUseLabRefusal(
+  options: RunCuaActorLabOptions,
+  refusal: ComputerUseRefusal,
+): Promise<CuaActorLabResult> {
+  const { config, dryRun } = options;
   if (refusal.stage === "before-scope")
     return {
       schema: CUA_ACTOR_LAB_SCHEMA,
