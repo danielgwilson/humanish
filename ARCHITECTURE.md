@@ -60,9 +60,9 @@ reports the first failed step.
    (`src/evidence/image.ts`). Screenshots are blurred only when a lab sets
    `policies.redactScreenshots: true`.
 6. **Judge and publish.** `finishCuaRun` (`src/routes/computer-use/result.ts`) judges the run once
-   with `judgeComputerUseRun` (`src/routes/computer-use/assemble.ts`), whose rules are in
+   with `judgeComputerUseRun` (`src/routes/computer-use/bundle.ts`), whose rules are in
    `src/run/judge.ts`, and builds the bundle from that judgment with `buildCuaRunBundle`
-   (`src/routes/computer-use/assemble.ts`). A declared scorer then scores the bundle through
+   (`src/routes/computer-use/bundle.ts`). A declared scorer then scores the bundle through
    `applyBrowserAdapterHooks` (`src/lab/adapter-extension.ts`), and `foldScorerFailures`
    (`src/run/judge.ts`) folds its failures into the verdict, so a scorer can fail a run but never
    pass one. `Run.finish` publishes `run.json`, then the `status.json` outcome, then `review.json`,
