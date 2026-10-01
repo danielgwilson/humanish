@@ -50,6 +50,11 @@ const KNOWN_PROVIDER_KEYS = [
 ] as const;
 const PROVIDER_KEY_SET = new Set<string>(KNOWN_PROVIDER_KEYS);
 
+/** An env for a vendor CLI that discovery runs: the caller's, without any provider key name. */
+function withoutProviderKeys(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  return Object.fromEntries(Object.entries(env).filter(([name]) => !PROVIDER_KEY_SET.has(name)));
+}
+
 /** `humanish keys set <vendor>` aliases; a raw ENV_NAME is also accepted. */
 const KEY_VENDOR_ALIASES: Record<string, string> = {
   openai: "OPENAI_API_KEY",
@@ -68,7 +73,12 @@ export interface ResolvedKeyFill {
 export interface KeyResolutionDeps {
   /** Injectable for tests: run `gh auth token`-style probes. Resolves to trimmed single-line
    *  stdout, or null on any failure (missing binary, non-zero exit, empty/multi-line output). */
-  execText?: (command: string, args: string[], timeoutMs: number) => Promise<string | null>;
+  execText?: (
+    command: string,
+    args: string[],
+    timeoutMs: number,
+    env?: NodeJS.ProcessEnv,
+  ) => Promise<string | null>;
   homeDir?: string;
 }
 
@@ -95,11 +105,15 @@ function defaultExecText(
   command: string,
   args: string[],
   timeoutMs: number,
+  env?: NodeJS.ProcessEnv,
 ): Promise<string | null> {
   return new Promise((resolve) => {
     let child;
     try {
-      child = spawn(command, args, { stdio: ["ignore", "pipe", "ignore"] });
+      child = spawn(command, args, {
+        stdio: ["ignore", "pipe", "ignore"],
+        ...(env === undefined ? {} : { env }),
+      });
     } catch {
       resolve(null);
       return;
@@ -217,10 +231,11 @@ export async function discoverProviderKeys(args: {
   }
 
   // Rung 3b: the gh CLI's credential chain. Only consulted when NEITHER GitHub env name is
-  // present; fills GH_TOKEN (the name humanish reads first).
+  // present; fills GH_TOKEN (the name humanish reads first). gh runs without any provider key in
+  // its environment, so the keys the rungs above just filled stay in this process.
   if (fillable("GH_TOKEN") && fillable("GITHUB_TOKEN")) {
     const exec = deps.execText ?? defaultExecText;
-    const token = await exec("gh", ["auth", "token"], 3_000);
+    const token = await exec("gh", ["auth", "token"], 3_000, withoutProviderKeys(env));
     if (token !== null) fill("GH_TOKEN", token, "gh auth token");
   }
 
