@@ -1,7 +1,12 @@
 import { gzipSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 
-import { decodeEscapes, scanEncodedText } from "../../src/evidence/encoded-text.js";
+import {
+  decodeEscapes,
+  scanEncodedBytes,
+  scanEncodedText,
+} from "../../src/evidence/encoded-text.js";
+import { sensitivePatterns } from "../../src/evidence/redaction.js";
 
 // Concatenated so this file never holds a secret-shaped literal; the scan detects it.
 const SECRET = "sk-" + "syntheticvalue1234567890abcdef";
@@ -54,5 +59,63 @@ describe("scanEncodedText", () => {
     ]) {
       expect(scanEncodedText(text), text).toEqual({ sensitive: false, opaque: false });
     }
+  });
+});
+
+// utf16Text skips bytes with no 0x00 because every pattern needs ASCII, and ASCII in UTF-16 always
+// has a zero byte. These fail if a pattern that could match without ASCII is ever added.
+describe("the sensitive patterns the UTF-16 gate relies on", () => {
+  it("are written in ASCII without Unicode mode", () => {
+    for (const pattern of sensitivePatterns()) {
+      expect(pattern.source, pattern.source).toMatch(/^[\x20-\x7e]*$/);
+      expect(pattern.unicode || pattern.flags.includes("v"), pattern.source).toBe(false);
+    }
+  });
+
+  it("each require an ASCII letter or digit outside any class or quantifier", () => {
+    for (const pattern of sensitivePatterns()) {
+      const literals = pattern.source
+        .replace(/\\./g, "")
+        .replace(/\[[^\]]*\]/g, "")
+        .replace(/\{\d+(?:,\d*)?\}/g, "")
+        .replace(/[(){}?:*+|^$.]/g, "");
+      expect(literals, pattern.source).toMatch(/[A-Za-z0-9]/);
+    }
+  });
+});
+
+describe("scanEncodedBytes", () => {
+  it("returns what scanEncodedText returns, cached or not", () => {
+    for (const text of [
+      Buffer.from(SECRET).toString("base64"),
+      gzipSync("anything").toString("base64"),
+      "plain text",
+    ]) {
+      const bytes = Buffer.from(text);
+      const fresh = scanEncodedText(text);
+      expect(scanEncodedBytes(bytes, text)).toEqual(fresh);
+      expect(scanEncodedBytes(bytes, text)).toEqual(fresh);
+    }
+  });
+
+  it("keys the cache on the options as well as the bytes", () => {
+    const text = binary(96).toString("base64");
+    const bytes = Buffer.from(text);
+    expect(scanEncodedBytes(bytes, text).opaque).toBe(true);
+    expect(scanEncodedBytes(bytes, text, { allowOpaqueBase64: true }).opaque).toBe(false);
+    expect(scanEncodedBytes(bytes, text).opaque).toBe(true);
+  });
+
+  it("stays correct after more distinct inputs than the cache holds", () => {
+    const secret = Buffer.from(SECRET).toString("base64");
+    expect(scanEncodedBytes(Buffer.from(secret), secret).sensitive).toBe(true);
+    for (let index = 0; index < 300; index += 1) {
+      const text = `clean text ${index}`;
+      expect(scanEncodedBytes(Buffer.from(text), text)).toEqual({
+        sensitive: false,
+        opaque: false,
+      });
+    }
+    expect(scanEncodedBytes(Buffer.from(secret), secret).sensitive).toBe(true);
   });
 });

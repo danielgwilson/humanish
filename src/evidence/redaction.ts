@@ -38,6 +38,11 @@ const LOCAL_PATH_PATTERNS: Array<[RegExp, string]> = [
   [/\/home\/[A-Za-z0-9._-]+(?:\/[^\s"'`<>)]*)?/g, "[REDACTED_RUNTIME_PATH]"],
 ];
 
+/** Every pattern containsSensitive tests. A test pins each to ASCII, which scanEncodedText relies on. */
+export function sensitivePatterns(): readonly RegExp[] {
+  return [...SECRET_PATTERNS, ...LOCAL_PATH_PATTERNS.map(([pattern]) => pattern)];
+}
+
 // Sticky/global regexes carry lastIndex state across .test() calls. Always reset
 // before a detection test so the shared singletons are safe to reuse.
 function matchesPattern(pattern: RegExp, text: string): boolean {

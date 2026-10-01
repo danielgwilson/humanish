@@ -2,7 +2,7 @@ import { lstat, readdir } from "node:fs/promises";
 import path from "node:path";
 import { isRedactedFrameShape, screenshotEvidenceError } from "../evidence/image.js";
 import { isStudyAnalysisRecordPath } from "../analysis/sharing.js";
-import { scanEncodedText } from "../evidence/encoded-text.js";
+import { scanEncodedBytes } from "../evidence/encoded-text.js";
 import { readPlainText } from "../evidence/plain-text.js";
 import { containsSensitive } from "../evidence/redaction.js";
 import {
@@ -451,13 +451,13 @@ async function scanRunPublicSafetyDirectory(
     // not be read at all, holds bytes the scan never saw.
     const bytes = await readSafeRunArtifactBytes(runPaths, relativePath).catch(() => null);
     const decoded = bytes === null ? undefined : readPlainText(bytes);
-    if (decoded === undefined || !decoded.ok) {
+    if (bytes === null || decoded === undefined || !decoded.ok) {
       unscanned.push(relativePath);
       continue;
     }
     // serve renders observer/index.html from run.json and export regenerates it, so the on-disk
     // copy reaches neither. It embeds the Observer's own base64 fonts and scripts.
-    const scan = scanEncodedText(decoded.text, {
+    const scan = scanEncodedBytes(bytes, decoded.text, {
       allowOpaqueBase64: relativePath === "observer/index.html",
     });
     if (scan.sensitive) {
