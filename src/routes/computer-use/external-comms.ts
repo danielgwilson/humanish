@@ -1,13 +1,8 @@
-import { FakeInbox } from "../../comms/fake-inbox.js";
-import { collectExternalCommsThread } from "../../comms/sandbox-catch.js";
-import type { CommsAddress } from "../../comms/types.js";
-import { redactText, toErrorMessage } from "../../evidence/redaction.js";
+import { collectExternalCommsEvidence } from "../../comms/external-evidence.js";
 import type { LabCommsEmail, LabCommsExternal } from "../../lab/types.js";
 import type { PreparedRunArtifactPaths } from "../../run/paths.js";
-import { writeContainedOutputFile } from "../../run/contained-output.js";
 import { participantHasInboxRecipient } from "./participant-desktop.js";
 import type { DesktopParticipantRun, ParticipantRunOutcome } from "./types.js";
-import { addressedRecipients } from "../../lab/parse/comms.js";
 
 /**
  * Adopter-hosted drain (#380): once per RUN, after every lane finished — the catch is one
@@ -26,64 +21,25 @@ export async function drainExternalComms(args: {
   outcomes: ParticipantRunOutcome[];
   scrubKnownValues: (text: string) => string;
 }): Promise<string[]> {
-  const {
-    externalCommsConfig,
-    externalCommsEmail,
-    env,
-    runPaths,
-    participantRuns,
-    outcomes,
-    scrubKnownValues,
-  } = args;
-  const warnings: string[] = [];
-  try {
-    const commsChannel = new FakeInbox();
-    const commsInboxes: CommsAddress[] = [];
-    for (const recipient of addressedRecipients(externalCommsEmail)) {
-      commsInboxes.push(
-        await commsChannel.provisionAddress(recipient.participantId, recipient.address),
-      );
-    }
-    const authToken =
-      externalCommsConfig.authTokenEnv === undefined
-        ? undefined
-        : env[externalCommsConfig.authTokenEnv];
-    const collected = await collectExternalCommsThread({
-      external: { ...externalCommsConfig, ...(authToken === undefined ? {} : { authToken }) },
-      channel: commsChannel,
-      inboxes: commsInboxes,
-    });
-    if (collected.artifact) {
-      const commsPath = "comms/thread.json";
-      await writeContainedOutputFile(
-        runPaths,
-        commsPath,
-        `${JSON.stringify(collected.artifact, null, 2)}\n`,
-        "utf8",
-      );
-      for (const [index, outcome] of outcomes.entries()) {
-        const participantId = participantRuns[index]?.planned.id;
-        if (
-          participantId !== undefined &&
-          outcome.commsArtifactPath === undefined &&
-          participantHasInboxRecipient(externalCommsEmail, participantId)
-        ) {
-          outcome.commsArtifactPath = commsPath;
-        }
+  const { externalCommsEmail, participantRuns, outcomes } = args;
+  const { path: commsPath, warnings } = await collectExternalCommsEvidence({
+    external: args.externalCommsConfig,
+    email: externalCommsEmail,
+    env: args.env,
+    runPaths: args.runPaths,
+    scrubKnownValues: args.scrubKnownValues,
+  });
+  if (commsPath !== undefined) {
+    for (const [index, outcome] of outcomes.entries()) {
+      const participantId = participantRuns[index]?.planned.id;
+      if (
+        participantId !== undefined &&
+        outcome.commsArtifactPath === undefined &&
+        participantHasInboxRecipient(externalCommsEmail, participantId)
+      ) {
+        outcome.commsArtifactPath = commsPath;
       }
-    } else if (collected.captured > 0) {
-      warnings.push(
-        `Comms catch captured ${collected.captured} email send(s) but none matched a declared recipient inbox — no comms evidence written. Declare comms.email.recipients[].address to match the address the app sends to.`,
-      );
-    } else {
-      warnings.push(
-        `Comms catch captured ZERO email sends — your app never delivered mail through the catch at ${externalCommsConfig.catchBaseUrl}. Verify the app's email-API base URL points at it and that the flow reached an email step.`,
-      );
     }
-  } catch (error) {
-    warnings.push(
-      `Comms evidence collection failed against the adopter-hosted catch (run continues): ${redactText(scrubKnownValues(toErrorMessage(error)))}`,
-    );
   }
   return warnings;
 }

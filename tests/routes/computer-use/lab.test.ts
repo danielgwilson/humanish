@@ -646,13 +646,20 @@ describe("desktop-cli runtime prerequisites (#515)", () => {
 
 describe("runCuaActorLab", () => {
   it("carries a failed drain of the operator-hosted catch into the result warnings", async () => {
+    // The drain's error quotes the run's OpenAI key and the catch's bearer token; the warning must
+    // carry neither.
+    const token = ["tango", "lima", "catch", "credential"].join("-");
     const parsed = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
       id: "cua-external-comms",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
       actors: [{ type: "openai-computer-use", persona: "first-time-visitor", mission: "Sign up." }],
       execution: { target: "e2b-desktop", timeoutMs: 60_000 },
-      comms: { email: { external: { catchBaseUrl: "https://catch.example.test" } } },
+      comms: {
+        email: {
+          external: { catchBaseUrl: "https://catch.example.test", authTokenEnv: "CATCH_TOKEN" },
+        },
+      },
       scenario: { mode: "live" },
       review: { analysis: false },
     });
@@ -669,7 +676,7 @@ describe("runCuaActorLab", () => {
           { status: 200, headers: { "content-type": "application/json" } },
         );
       }
-      throw new Error("synthetic catch outage");
+      throw new Error(`synthetic catch outage: refused test-openai-key with bearer ${token}`);
     });
     try {
       const { module } = makeFakeModule(makeFakeSandbox());
@@ -678,7 +685,11 @@ describe("runCuaActorLab", () => {
         config: parsed.config,
         dryRun: false,
         hooks: {
-          env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
+          env: {
+            OPENAI_API_KEY: "test-openai-key",
+            E2B_API_KEY: "test-e2b-key",
+            CATCH_TOKEN: token,
+          },
           loadDesktopModule: async () => module,
           runSession: async (options) =>
             runCuaActorSession({
@@ -687,9 +698,12 @@ describe("runCuaActorLab", () => {
             }),
         },
       });
-      expect(result.warnings.join("\n")).toContain(
+      const warnings = result.warnings.join("\n");
+      expect(warnings).toContain(
         "Comms evidence collection failed against the adopter-hosted catch",
       );
+      expect(warnings).not.toContain("test-openai-key");
+      expect(warnings).not.toContain(token);
     } finally {
       vi.unstubAllGlobals();
     }

@@ -2,6 +2,7 @@
 // subject sandbox, or adopter-hosted), and the drains that match captured mail to the seats'
 // declared inboxes and write the digest-only thread.
 
+import { collectExternalCommsEvidence } from "../../comms/external-evidence.js";
 import { FakeInbox } from "../../comms/fake-inbox.js";
 import { prepareReceivingRun, type ReceivingSource } from "../../comms/receiving-runtime.js";
 import type { SharedWorldPlan } from "../../lab/plan-types.js";
@@ -9,7 +10,6 @@ import type { CommsReceivingRun } from "../../comms/receiving.js";
 import {
   DEFAULT_SANDBOX_CATCH_PORT,
   collectCommsThread,
-  collectExternalCommsThread,
   externalCatchHealthy,
   externalInboxUrl,
   type DeployedCommsCatch,
@@ -163,48 +163,15 @@ export async function drainExternalComms(
   ctx: PlaneContext,
   comms: ExternalCommsWiring,
 ): Promise<string | undefined> {
-  const { env, runPaths, warnings } = ctx;
-  const externalComms = comms.external;
-  const externalCommsEmail = comms.email;
-  try {
-    const commsChannel = new FakeInbox();
-    const commsInboxes: CommsAddress[] = [];
-    for (const recipient of addressedRecipients(externalCommsEmail)) {
-      commsInboxes.push(
-        await commsChannel.provisionAddress(recipient.participantId, recipient.address),
-      );
-    }
-    const authToken =
-      externalComms.authTokenEnv === undefined ? undefined : env[externalComms.authTokenEnv];
-    const collected = await collectExternalCommsThread({
-      external: { ...externalComms, ...(authToken === undefined ? {} : { authToken }) },
-      channel: commsChannel,
-      inboxes: commsInboxes,
-    });
-    if (collected.artifact) {
-      const path = "comms/thread.json";
-      await writeContainedOutputFile(
-        runPaths,
-        path,
-        `${JSON.stringify(collected.artifact, null, 2)}\n`,
-        "utf8",
-      );
-      return path;
-    } else if (collected.captured > 0) {
-      warnings.push(
-        `Comms catch captured ${collected.captured} email send(s) but none matched a declared recipient inbox — no comms evidence written. Declare comms.email.recipients[].address to match the address the app sends to.`,
-      );
-    } else {
-      warnings.push(
-        `Comms catch captured ZERO email sends — your app never delivered mail through the catch at ${externalComms.catchBaseUrl}. Verify the app's email-API base URL points at it and that the flow reached an email step.`,
-      );
-    }
-  } catch (error) {
-    warnings.push(
-      `Comms evidence collection failed against the adopter-hosted catch (run continues): ${redactText(toErrorMessage(error))}`,
-    );
-  }
-  return undefined;
+  const { path, warnings } = await collectExternalCommsEvidence({
+    external: comms.external,
+    email: comms.email,
+    env: ctx.env,
+    runPaths: ctx.runPaths,
+    scrubKnownValues: ctx.scrubKnownValues,
+  });
+  ctx.warnings.push(...warnings);
+  return path;
 }
 
 /** What receiving guards: the lab's email declaration and the subject env names and values. */
