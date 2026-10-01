@@ -54,7 +54,7 @@ export function localBrowserUnsupportedReason(config: LabConfig): string | undef
     desktop.resolution[1] !== 720 ||
     desktop.device !== undefined ||
     (desktop.browser !== undefined && !["default", "chromium"].includes(desktop.browser)) ||
-    actor.lanes?.some((lane) => lane.device !== undefined) ||
+    actor.lanes?.some((entry) => entry.device !== undefined) ||
     desktop.template !== undefined ||
     desktop.sandboxTimeoutMs !== undefined
   ) {
@@ -74,7 +74,7 @@ export function localBrowserUnsupportedReason(config: LabConfig): string | undef
     (actor.model !== "gpt-6-astra" ||
       actor.reasoningEffort !== "low" ||
       actor.lanes?.some(
-        (lane) => lane.reasoningEffort !== undefined && lane.reasoningEffort !== "low",
+        (entry) => entry.reasoningEffort !== undefined && entry.reasoningEffort !== "low",
       ) ||
       actor.maxOutputTokens !== undefined ||
       config.execution?.caps?.maxUsd !== undefined ||
@@ -86,7 +86,7 @@ export function localBrowserUnsupportedReason(config: LabConfig): string | undef
   }
   for (const target of [
     config.subject.appUrl,
-    ...(actor.lanes ?? []).map((lane) => lane.target),
+    ...(actor.lanes ?? []).map((entry) => entry.target),
   ].filter(Boolean)) {
     let url;
     try {

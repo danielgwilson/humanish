@@ -5,7 +5,6 @@ import {
   sharedWorldValidationReason,
 } from "../../src/lab/validation.js";
 import {
-  effectiveComputerUseLaneIds,
   resolveSeatUrl,
   routesToComputerUse,
   routesToConcurrentSharedWorld,
@@ -14,6 +13,7 @@ import {
   routesToSharedWorld,
 } from "../../src/lab/routing.js";
 import { LAB_CONFIG_SCHEMA } from "../../src/lab/types.js";
+import { declaredParticipantIds } from "../../src/lab/plan-participants.js";
 import { parseLabConfig } from "../../src/lab/config.js";
 import { selectLabBackend } from "../../src/lab/engine.js";
 
@@ -207,7 +207,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     }
   });
 
-  it("effectiveComputerUseLaneIds mirrors the engine's lane naming (the #351 validation cannot drift)", () => {
+  it("declaredParticipantIds mirrors the engine's lane naming (the #351 validation cannot drift)", () => {
     const base = {
       schema: LAB_CONFIG_SCHEMA,
       id: "lanes",
@@ -221,25 +221,20 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
     };
     const single = parseLabConfig({ ...base, actors: [{ type: "openai-computer-use", count: 1 }] });
     expect(single.ok).toBe(true);
-    if (single.ok) expect(effectiveComputerUseLaneIds(single.config)).toEqual(["lane-01"]);
+    if (single.ok) expect(declaredParticipantIds(single.config)).toEqual(["lane-01"]);
     const counted = parseLabConfig({
       ...base,
       actors: [{ type: "openai-computer-use", count: 3 }],
     });
     expect(counted.ok).toBe(true);
     if (counted.ok)
-      expect(effectiveComputerUseLaneIds(counted.config)).toEqual([
-        "lane-01",
-        "lane-02",
-        "lane-03",
-      ]);
+      expect(declaredParticipantIds(counted.config)).toEqual(["lane-01", "lane-02", "lane-03"]);
     const rostered = parseLabConfig({
       ...base,
       actors: [{ type: "openai-computer-use", lanes: [{ id: "host" }, { id: "guest" }] }],
     });
     expect(rostered.ok).toBe(true);
-    if (rostered.ok)
-      expect(effectiveComputerUseLaneIds(rostered.config)).toEqual(["host", "guest"]);
+    if (rostered.ok) expect(declaredParticipantIds(rostered.config)).toEqual(["host", "guest"]);
   });
 
   it("defaults comms:email kind to fake and requires a valid injectEnv name", () => {

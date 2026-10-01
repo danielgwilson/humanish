@@ -73,12 +73,6 @@ export function cuaLaneCount(config: LabConfig): number {
   return actor?.count ?? 1;
 }
 
-export function declaredLaneTargets(config: LabConfig): string[] {
-  return (config.actors[0]?.lanes ?? [])
-    .map((lane) => lane.target)
-    .filter((target): target is string => target !== undefined);
-}
-
 /**
  * A participant's id: its declared roster id, else `lane-NN` (independent lanes) or `role-NN`
  * (shared-world seats) from its 0-based position. The parser's filled email recipients and the
@@ -91,18 +85,6 @@ export function participantIdAt(
   kind: "lane" | "seat",
 ): string {
   return declared ?? `${kind === "seat" ? "role" : "lane"}-${String(index + 1).padStart(2, "0")}`;
-}
-
-/** The ids of the participants a computer-use or shared-world lab runs, in roster order. */
-export function effectiveComputerUseLaneIds(config: LabConfig): string[] {
-  const actor = config.actors[0];
-  const roster = actor?.lanes;
-  const kind = isSharedWorldComposition(config) ? "seat" : "lane";
-  if (roster && roster.length > 0) {
-    return roster.map((lane, index) => participantIdAt(index, lane.id, kind));
-  }
-  const count = Math.max(1, actor?.count ?? 1);
-  return Array.from({ length: count }, (_, index) => participantIdAt(index, undefined, kind));
 }
 
 /**

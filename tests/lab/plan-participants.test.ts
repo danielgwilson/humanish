@@ -14,7 +14,7 @@ import { parseLabConfig } from "../../src/lab/config.js";
 import { routeOf } from "../../src/lab/plan.js";
 import {
   computerUseParticipants,
-  sharedWorldSeats,
+  sharedWorldParticipants,
   type ComputerUseParticipant,
 } from "../../src/lab/plan-participants.js";
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/lab/types.js";
@@ -202,7 +202,7 @@ describe("computerUseParticipants", () => {
   });
 });
 
-describe("sharedWorldSeats", () => {
+describe("sharedWorldParticipants", () => {
   const unnamedSeats = parsed({
     subject: {
       source: "clone",
@@ -247,7 +247,7 @@ describe("sharedWorldSeats", () => {
           desktopGeometry?: { screen?: { requested?: { width: number; height: number } } };
         }[];
       };
-      const { seats } = sharedWorldSeats(config);
+      const { participants: seats } = sharedWorldParticipants(config);
       expect(
         seats.map((seat) => ({ id: seat.id, persona: seat.personaId ?? "cua-operator" })),
         name,
@@ -266,15 +266,23 @@ describe("sharedWorldSeats", () => {
   });
 
   it("merges limits and keeps plane-specific fields", () => {
-    const provisioned = sharedWorldSeats(unnamedSeats);
+    const provisioned = sharedWorldParticipants(unnamedSeats);
     expect(provisioned.plane).toBe("provisioned");
-    expect(provisioned.seats.map((seat) => seat.id)).toEqual(["author", "role-02"]);
-    expect(provisioned.seats.map((seat) => seat.personaId)).toEqual(["author", "fallback-persona"]);
-    expect(provisioned.plane === "provisioned" && provisioned.seats[0]?.entry).toBe("/compose");
-    expect(provisioned.seats[1]?.limits).toEqual({ stopWhen: stop, reasoningEffort: "high" });
-    expect(provisioned.seats[0]?.device.name).toBe("small-mobile");
+    expect(provisioned.participants.map((seat) => seat.id)).toEqual(["author", "role-02"]);
+    expect(provisioned.participants.map((seat) => seat.personaId)).toEqual([
+      "author",
+      "fallback-persona",
+    ]);
+    expect(provisioned.plane === "provisioned" && provisioned.participants[0]?.entry).toBe(
+      "/compose",
+    );
+    expect(provisioned.participants[1]?.limits).toEqual({
+      stopWhen: stop,
+      reasoningEffort: "high",
+    });
+    expect(provisioned.participants[0]?.device.name).toBe("small-mobile");
 
-    const external = sharedWorldSeats(
+    const external = sharedWorldParticipants(
       parsed({
         subject: {
           source: "app-url",
@@ -288,8 +296,8 @@ describe("sharedWorldSeats", () => {
       }),
     );
     expect(external.plane).toBe("external-public");
-    expect(external.plane === "external-public" && external.seats.map((seat) => seat.host)).toEqual(
-      [true, false],
-    );
+    expect(
+      external.plane === "external-public" && external.participants.map((seat) => seat.host),
+    ).toEqual([true, false]);
   });
 });

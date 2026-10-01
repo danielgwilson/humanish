@@ -38,10 +38,10 @@ export async function runPublicPreviewPreflight(
     ]);
   }
 
-  const laneTargets = ctx.targets.filter((target) => target.kind === "actors[0].lanes[].target");
+  const rosterTargets = ctx.targets.filter((target) => target.kind === "actors[0].lanes[].target");
   const publicTargets =
-    laneTargets.length > 0
-      ? laneTargets
+    rosterTargets.length > 0
+      ? rosterTargets
       : ctx.targets.filter((target) => target.kind === "subject.appUrl");
   if (publicTargets.length === 0) {
     return fail(
@@ -367,10 +367,10 @@ function targetUrlFor(config: LabConfig, target: LabPreflightTarget): string {
     return config.subject.appUrl;
   }
   if (target.kind === "actors[0].lanes[].target") {
-    const laneTarget = config.actors[0]?.lanes?.find(
-      (lane) => lane.target && digest(lane.target) === target.targetDigest,
+    const rosterTarget = config.actors[0]?.lanes?.find(
+      (entry) => entry.target && digest(entry.target) === target.targetDigest,
     )?.target;
-    if (laneTarget) return laneTarget;
+    if (rosterTarget) return rosterTarget;
   }
   if (target.kind === "subject.serve.url" && config.subject.serve?.url) {
     return config.subject.serve.url;

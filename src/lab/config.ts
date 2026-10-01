@@ -66,11 +66,8 @@ import {
 } from "./parse/execution.js";
 import { parseSubject } from "./parse/subject.js";
 import { invalid, isRecord, optionalStr, str } from "./parse/values.js";
-import {
-  effectiveComputerUseLaneIds,
-  isComputerUseComposition,
-  isSharedWorldComposition,
-} from "./routing.js";
+import { isComputerUseComposition, isSharedWorldComposition } from "./routing.js";
+import { declaredParticipantIds } from "./plan-participants.js";
 import {
   ID_PATTERN,
   LAB_CONFIG_SCHEMA,
@@ -186,13 +183,13 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
   // --count override, so the parser leaves it unset for them. A shared world's roster is fixed, so
   // its default is filled here for the envelopes and warnings that read the parsed config.
   {
-    const seats = config.actors[0]?.lanes?.length ?? config.actors[0]?.count ?? 1;
+    const participantCount = config.actors[0]?.lanes?.length ?? config.actors[0]?.count ?? 1;
     if (
-      seats > 1 &&
+      participantCount > 1 &&
       config.execution?.concurrency === undefined &&
       isSharedWorldComposition(config)
     ) {
-      config.execution = { ...config.execution, concurrency: seats };
+      config.execution = { ...config.execution, concurrency: participantCount };
     }
   }
 
@@ -205,18 +202,20 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
   const receivingReason = receivingEmailValidationReason(config);
   if (receivingReason) return invalid(receivingReason);
   if (config.comms?.email?.kind === "fake" && isComputerUseComposition(config)) {
-    const laneIds = effectiveComputerUseLaneIds(config);
+    const participantIds = declaredParticipantIds(config);
     const email = config.comms.email;
     if (email.recipients === undefined) {
-      email.recipients = laneIds.map((lane) => ({
-        lane,
-        address: `${lane.toLowerCase()}@example.test`,
+      email.recipients = participantIds.map((id) => ({
+        lane: id,
+        address: `${id.toLowerCase()}@example.test`,
       }));
     } else {
-      const unknown = email.recipients.filter((recipient) => !laneIds.includes(recipient.lane));
+      const unknown = email.recipients.filter(
+        (recipient) => !participantIds.includes(recipient.lane),
+      );
       if (unknown.length > 0) {
         return invalid(
-          `comms.email.recipients name lane(s) that do not exist: ${unknown.map((r) => `"${r.lane}"`).join(", ")}. This lab's lane ids are: ${laneIds.join(", ")}. A recipient's lane must match one of them exactly — the inbox instruction is injected per lane, and a mismatch disables the email funnel for that seat.`,
+          `comms.email.recipients name lane(s) that do not exist: ${unknown.map((r) => `"${r.lane}"`).join(", ")}. This lab's lane ids are: ${participantIds.join(", ")}. A recipient's lane must match one of them exactly — the inbox instruction is injected per lane, and a mismatch disables the email funnel for that seat.`,
         );
       }
       if (!email.recipients.some((recipient) => recipient.address !== undefined)) {

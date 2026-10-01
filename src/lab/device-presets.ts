@@ -1,4 +1,4 @@
-import type { LabActorLane, LabConfig } from "./types.js";
+import type { LabConfig } from "./types.js";
 
 // Device/screen presets — a per-persona dimension, with LITERAL values copied from mature
 // in-house ui-sim geometry tables rather than guessed. Where two independent reference sims
@@ -13,7 +13,7 @@ import type { LabActorLane, LabConfig } from "./types.js";
 // Neither a preset nor browser emulation establishes physical-device or touch fidelity.
 //
 // ONE MORE ROUTE CONSTRAINT: Chrome won't render a window narrower than ~500 CSS px, so the RENDERED
-// screen width is floored to MIN_DESKTOP_RENDER_WIDTH in resolveLaneDevice — a sub-500 preset (mobile
+// screen width is floored to MIN_DESKTOP_RENDER_WIDTH in resolveParticipantDevice — a sub-500 preset (mobile
 // 414, small-mobile 360, narrow-mobile 320) is rendered on a 500-wide screen the window fits exactly
 // (otherwise the 500-wide window overflowed the narrow screen and clipped the page). These preset
 // widths remain the requested device identity (prompt + metadata). Opt-in mobile emulation sets
@@ -92,24 +92,25 @@ export function floorRenderResolution(resolution: readonly [number, number]): [n
 }
 
 /**
- * Resolve a lane's device + rendered resolution (most-specific wins, exactly as the single-lane
- * path always has): a raw execution.desktop.resolution escape hatch (only legal when no lane
- * sets a device — XOR enforced at parse) → the lane's named device → the run-wide
+ * Resolve a participant's device + rendered resolution (most-specific wins, exactly as the
+ * single-participant path always has): a raw execution.desktop.resolution escape hatch (only legal
+ * when no roster entry sets a device — XOR enforced at parse) → the participant's named device → the run-wide
  * execution.desktop.device → the default preset. A raw resolution is an unnamed custom desktop
  * (non-mobile, DSF 1): we never claim a named preset's mobile/DPR for hand-set geometry. The rendered
  * `resolution` is floored to MIN_DESKTOP_RENDER_WIDTH so the browser window fits its X screen (no clip);
  * `preset` keeps the declared device identity (a mobile preset stays 414/isMobile for the prompt).
  */
-export function resolveLaneDevice(
+export function resolveParticipantDevice(
   config: LabConfig,
-  lane: LabActorLane | undefined,
+  /** The device the participant's roster entry names, if any. */
+  device: string | undefined,
 ): {
   name: string;
   preset: DevicePreset;
   resolution: [number, number];
 } {
   const rawResolution = config.execution?.desktop?.resolution;
-  if (lane?.device === undefined && rawResolution) {
+  if (device === undefined && rawResolution) {
     const preset: DevicePreset = {
       width: rawResolution[0],
       height: rawResolution[1],
@@ -122,7 +123,7 @@ export function resolveLaneDevice(
       resolution: floorRenderResolution([rawResolution[0], rawResolution[1]]),
     };
   }
-  const candidate = lane?.device ?? config.execution?.desktop?.device;
+  const candidate = device ?? config.execution?.desktop?.device;
   const presetName = isDevicePresetName(candidate) ? candidate : DEFAULT_DEVICE_PRESET;
   const preset = resolveDevicePreset(presetName);
   return {

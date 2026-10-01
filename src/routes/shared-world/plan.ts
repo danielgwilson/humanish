@@ -11,7 +11,7 @@ import {
 } from "../../actors/registry.js";
 import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
 import { brainOf, capsOf, desktopRequirements, isNonEmpty, planBase } from "../../lab/plan-base.js";
-import { sharedWorldSeats } from "../../lab/plan-participants.js";
+import { sharedWorldParticipants } from "../../lab/plan-participants.js";
 import type { SharedWorldPlan, SharedWorldPlane } from "../../lab/plan-types.js";
 import { PUBLIC_TARGET_OWNER_PATTERN } from "../../lab/parse/subject.js";
 import { REPO_SLUG_PATTERN } from "../../lab/parse/values.js";
@@ -182,13 +182,13 @@ export function planeStateOf(plan: SharedWorldPlan): LabSubjectState | undefined
 }
 
 /**
- * The shared plane and its seats. The validation above guarantees two or more seats, and on the
+ * The shared plane and its participants. The validation above guarantees two or more, and on the
  * provisioned plane a clone or local tree with `serve` and at least one checkpoint.
  */
 function planeOf(config: LabConfig): SharedWorldPlane | undefined {
-  const seats = sharedWorldSeats(config);
-  if (seats.plane === "external-public") {
-    const [first, second, ...rest] = seats.seats;
+  const roster = sharedWorldParticipants(config);
+  if (roster.plane === "external-public") {
+    const [first, second, ...rest] = roster.participants;
     if (first === undefined || second === undefined) return undefined;
     const owner = config.subject.publicTarget?.owner;
     if (!owner) return undefined;
@@ -199,7 +199,7 @@ function planeOf(config: LabConfig): SharedWorldPlane | undefined {
       participants: [first, second, ...rest],
     };
   }
-  const [first, second, ...rest] = seats.seats;
+  const [first, second, ...rest] = roster.participants;
   const { serve, state } = config.subject;
   const checkpoint = state?.checkpoint ?? [];
   if (

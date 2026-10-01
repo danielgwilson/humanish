@@ -1,11 +1,11 @@
 import {
-  effectiveComputerUseLaneIds,
   isComputerUseComposition,
   isScriptedBrowserComposition,
   isSharedWorldComposition,
   isTerminalProductComposition,
 } from "./routing.js";
 import type { LabConfig } from "./types.js";
+import { declaredParticipantIds } from "./plan-participants.js";
 
 /** Which routes a config takes, computed once for every row below. */
 interface Routes {
@@ -390,7 +390,7 @@ export function forwardDeclaredWarnings(config: LabConfig): string[] {
   // Partial email coverage is legal but loud (#351): a lane without an addressed recipient never
   // hears an inbox exists, so an email-gated flow on that seat dead-ends by construction.
   if (routes.cua && config.comms?.email?.recipients) {
-    const laneIds = effectiveComputerUseLaneIds(config);
+    const laneIds = declaredParticipantIds(config);
     const covered = new Set(
       config.comms.email.recipients.filter((r) => r.address !== undefined).map((r) => r.lane),
     );
