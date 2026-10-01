@@ -329,10 +329,14 @@ are the `HUMANISH_*` names `src/` read or returned at 0.105.0 and no longer does
   `shared-world`) beside `backend` (#1213), and `humanish lab preflight --json` reports `route`
   too.
 - Codex participants and Codex-account analysis admit a per-host set of Codex CLI releases (#1074):
-  Linux x64 0.154.0, 0.157.1 and 0.159.2; macOS arm64 0.154.0. Linux arm64 and Intel macOS keep
+  Linux x64 0.154.0, 0.157.1, 0.159.2 and 0.159.3; macOS arm64 0.154.0. Linux arm64 and Intel macOS keep
   0.154.0 as a pre-existing admission. Each launch is bound to the release it detected, and a
   release outside the host's list is refused with a message listing the admitted ones.
   Maintainers qualify a new release with `pnpm codex:qualify` (#982).
+- Codex CLI 0.159.3, npm's `latest` since 2026-09-30, is admitted on Linux x64 (PR_NUMBER). It
+  passed `pnpm codex:qualify` against 0.159.2 and a hosted local-agent study; its only change is
+  in Codex's interactive TUI. Before, a current `npm install -g @openai/codex` was refused by
+  Codex participants and Codex-account analysis on Linux x64.
 - `humanish verify` adds a `RUN_NOT_FINISHED` warning when the run did not finish, for example a
   run killed mid-way (#1063). `ok`, `checks` and `shareSafety` do not change.
 - `humanish lab preflight` journals its probe desktop, and `humanish reclaim --preflight` kills
@@ -390,7 +394,7 @@ are the `HUMANISH_*` names `src/` read or returned at 0.105.0 and no longer does
   Both come before the project-directory check, as on the other routes.
 - When a local Codex release is not admitted, `humanish doctor` and its post-run analysis row name
   the release they found, the releases this host accepts, and the install command for the newest,
-  for example `npm install -g @openai/codex@0.159.2` (#1305).
+  for example `npm install -g @openai/codex@0.159.3` (#1305).
 - `humanish init`'s next-step hints say `npx humanish …` (#1305). A dev-dependency install puts no
   `humanish` on PATH, so a bare `humanish` could run a stale global copy.
 - Three computer-use stop reasons are reworded: the account-billing reason, the non-finite estimate

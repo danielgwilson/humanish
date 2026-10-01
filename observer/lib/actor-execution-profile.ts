@@ -1,5 +1,5 @@
 /** Codex CLI releases a saved account profile may name; append-only, like the server reader. */
-export const RECORDED_CODEX_CLI_VERSIONS = ["0.154.0", "0.157.1", "0.159.2"] as const;
+export const RECORDED_CODEX_CLI_VERSIONS = ["0.154.0", "0.157.1", "0.159.2", "0.159.3"] as const;
 
 /** Durable artifact profile. This reader never selects or imports CLI execution policy. */
 export function validActorExecutionProfile(value: unknown): boolean {

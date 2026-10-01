@@ -10,7 +10,7 @@
  * of them.
  */
 export const QUALIFIED_CODEX_CLI_VERSIONS = {
-  "linux-x64": ["0.154.0", "0.157.1", "0.159.2"],
+  "linux-x64": ["0.154.0", "0.157.1", "0.159.2", "0.159.3"],
   "darwin-arm64": ["0.154.0"],
 } as const;
 
