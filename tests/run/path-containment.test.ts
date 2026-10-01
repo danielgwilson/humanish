@@ -424,7 +424,7 @@ describe("run path containment", () => {
     // run.ts calls the guard; every producer starts its run through the run scope.
     const direct = ["run/run.ts"];
     const scoped = [
-      "routes/terminal/route.ts",
+      "routes/terminal/dry-run.ts",
       "routes/terminal/session.ts",
       "routes/scripted/route.ts",
       "run/dry-run.ts",
