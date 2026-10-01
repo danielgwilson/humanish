@@ -11,6 +11,7 @@ import { planTerminalLab } from "../routes/terminal/plan.js";
 import type { RunLabProvenance } from "../run/status.js";
 import { localBrowserDefaults } from "../substrates/local/runtime-config.js";
 import type { RunLabOptions } from "../run-lab.js";
+import { THIS_REPO_DRY_RUN_ONLY } from "./composition-rules.js";
 import { planBase } from "./plan-base.js";
 import type { LabPlan, PlanRefusal, PlanResult, PreviewRefusalCode } from "./plan-types.js";
 import {
@@ -122,12 +123,17 @@ function planPreview(
   if (unsupported) return refuse("HUMANISH_LAB_ANALYSIS_UNSUPPORTED", unsupported);
   const tasksReason = taskProtocolValidationReason(config);
   if (tasksReason) return refuse("HUMANISH_LAB_TASKS_UNSUPPORTED", tasksReason);
+  const participantCount = options.count ?? config.actors[0]?.count ?? 4;
+  if (!Number.isSafeInteger(participantCount) || participantCount < 1)
+    return refuse("HUMANISH_INVALID_SIM_COUNT", "count must be a positive integer.");
+  if (!input.dryRun) return refuse("HUMANISH_LIVE_RUN_UNIMPLEMENTED", THIS_REPO_DRY_RUN_ONLY);
   return {
     ok: true,
     plan: {
       ...planBase(config, { ...input, analysis }),
       route: "preview",
-      participantCount: options.count ?? config.actors[0]?.count ?? 4,
+      dryRun: true,
+      participantCount,
     },
   };
 }

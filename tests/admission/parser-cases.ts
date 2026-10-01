@@ -116,6 +116,12 @@ export const parserCases: readonly AdmissionCase[] = [
     raw: lab("preview", { scenario: { mode: "live" } }),
     parser: "dry-run only",
   },
+  {
+    name: "preview count zero",
+    raw: lab("preview"),
+    parser: "accepts",
+    options: { count: 0 },
+  },
 
   // local-app
   {
