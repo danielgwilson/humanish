@@ -18,6 +18,10 @@ Node and dependencies:
 
 Lab files and the CLI:
 
+- A shared-world lab whose spend cap names a model with no price is refused with
+  `HUMANISH_CONCURRENT_SHARED_WORLD_LAB_UNPRICED_CAP` (#1306), as computer use and terminal already
+  refuse it with their `_UNPRICED_CAP` codes. 0.105.0 refused it with
+  `HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID`. Migration: match the new code.
 - A live terminal lab whose `scenario.caps.maxMinutes` would take its sandbox past E2B's one-hour
   limit (above 49 minutes, or 44 with a product install) is refused with
   `HUMANISH_TERMINAL_LAB_CAPS_INVALID` before any sandbox is created (#1200). The sandbox now
@@ -258,8 +262,8 @@ are the `HUMANISH_*` names `src/` read or returned at 0.105.0 and no longer does
   `HUMANISH_OSS_META_REQUIRE_ACTOR`, `HUMANISH_OSS_META_SCREENSHOT_REFRESH_MS`,
   `HUMANISH_OSS_META_SCREENSHOT_SETTLE_MS`, `HUMANISH_OSS_META_SKIP_ACTOR_PREFLIGHT`,
   `HUMANISH_OSS_META_SKIP_REPO_ACCESS_PREFLIGHT`, `HUMANISH_OSS_META_WATCH_REFRESH_MS`.
-  `HUMANISH_OSS_META_ALLOW_PROVIDER_LIST` went with the hidden `lab cleanup` command; `humanish
-reclaim` kills sandboxes by their journaled ids.
+  `HUMANISH_OSS_META_ALLOW_PROVIDER_LIST` went with the hidden `lab cleanup` command;
+  `humanish reclaim` kills sandboxes by their journaled ids.
 - Environment variables of `humanish run --actor`'s local Codex modes, removed with them (#903).
   Use a lab with `actors[0].type: local-agent`, or a terminal `codex-exec` lab:
   - `HUMANISH_ENABLE_LOCAL_CODEX_APP_SERVER`, `HUMANISH_ENABLE_LOCAL_CODEX_EXEC` and
@@ -352,9 +356,10 @@ reclaim` kills sandboxes by their journaled ids.
 
 ### Changed
 
-- A computer-use run whose local-agent CLI is not on PATH, is signed out, or cannot report its
-  sign-in status is refused as `HUMANISH_CUA_LAB_AGENT_SIGNIN_REQUIRED` (new code, #1275). Before,
-  it was refused as `HUMANISH_CUA_LAB_KEYS_MISSING`. A missing API key keeps that code.
+- A computer-use run whose local-agent CLI is not on PATH is refused as
+  `HUMANISH_CUA_LAB_AGENT_MISSING`, and one whose agent is signed out or cannot report its sign-in
+  status as `HUMANISH_CUA_LAB_AGENT_SIGNIN_REQUIRED` (new codes, #1275, #1306). Before, both were
+  refused as `HUMANISH_CUA_LAB_KEYS_MISSING`, which a missing API key keeps.
 - `lab run` checks this machine before it loads a declared scorer (#1269, #1280): the keys and
   runtime auth, subject env, the local agent's sign-in and spend caps on computer-use,
   shared-world and terminal labs. A refusal from those checks no longer runs the scorer's module
@@ -371,8 +376,9 @@ reclaim` kills sandboxes by their journaled ids.
   `<participant-ids>`. Synthetic dry-run bundles, `humanish verify` findings and Observer text say
   "participant" too, and the synthetic route says "simulated participant" (#1298); recorded
   bundles keep their old wording. The README, the site docs, the bundled skill and the contract
-  docs follow (#1293, #1294, #1295, #1297). Code that matches on message text needs the new
-  wording.
+  docs follow (#1293, #1294, #1295, #1297). The hosted-browser geometry warnings say "for
+  participant <id>", and `HUMANISH_CUA_LAB_DEVICE_GEOMETRY` says "the participant's device
+  geometry" (#1301). Code that matches on message text needs the new wording.
 - The Observer labels each computer-use participant card with its persona, single and fan-out
   runs alike (#1300). Fan-out cards recorded after #1290 showed `CUA participant <id>: <lab>`, and
   single-participant cards showed `CUA browser — <lab>`. The card now reads the participant id
@@ -381,6 +387,11 @@ reclaim` kills sandboxes by their journaled ids.
   `count` is not a positive integer or the run would be live, with the same codes (#1279). The live
   refusal reads "this-repo labs are dry-run only; use a clone or app-url subject for a live run."
   Both come before the project-directory check, as on the other routes.
+- When a local Codex release is not admitted, `humanish doctor` and its post-run analysis row name
+  the release they found, the releases this host accepts, and the install command for the newest,
+  for example `npm install -g @openai/codex@0.159.2` (#1305).
+- `humanish init`'s next-step hints say `npx humanish …` (#1305). A dev-dependency install puts no
+  `humanish` on PATH, so a bare `humanish` could run a stale global copy.
 - Three computer-use stop reasons are reworded: the account-billing reason, the non-finite estimate
   reason and the gave-up rule (#1002).
 - The Codex app-server UI's `promptDigest` in `state.json` and `/state` is the 12-hex SHA-256
@@ -441,8 +452,10 @@ reclaim` kills sandboxes by their journaled ids.
 - Shared-world labs with a `local-agent` actor run each participant on the signed-in agent
   (#1278). They ran on the OpenAI API whatever the lab declared, so an existing local-agent
   shared-world lab now bills the agent's account, not `OPENAI_API_KEY`. External-public labs still
-  need `OPENAI_API_KEY` for the lobby-code reader. A missing or signed-out agent is refused as
-  `HUMANISH_CONCURRENT_SHARED_WORLD_LAB_AGENT_SIGNIN_REQUIRED` (new code).
+  need `OPENAI_API_KEY` for the lobby-code reader. An agent CLI that is not on PATH is refused as
+  `HUMANISH_CONCURRENT_SHARED_WORLD_LAB_AGENT_MISSING`, a signed-out one as
+  `HUMANISH_CONCURRENT_SHARED_WORLD_LAB_AGENT_SIGNIN_REQUIRED`, and a ChatGPT-account Codex with a
+  dollar cap as `HUMANISH_CONCURRENT_SHARED_WORLD_LAB_UNPRICED_CAP` (new codes, #1278, #1306).
 - A provisioned shared-world run whose desktop module fails to load names that failure (#1274),
   and adds "The run bundle it left failed verification." when the Observer also failed. It used to
   say only "Run bundle failed verification." The code stays
@@ -455,6 +468,9 @@ reclaim` kills sandboxes by their journaled ids.
   physical path.
 - The in-sandbox comms catch exits when its inbox port is busy (#909). It used to pass its health
   check and serve no inbox.
+- On a Linux host with no display (`DISPLAY` and `WAYLAND_DISPLAY` unset) or no `xdg-open`, opening
+  the Observer reports `opened: no` with a warning that names the Observer's path (#1305). It used
+  to report `opened: yes`.
 - `humanish serve --safe` no longer serves a file that changed after the run was verified (#1206).
   It used to keep a run's `share_ready` verdict for 30 seconds while only `run.json` was
   unchanged, so a file added to or rewritten in that run was served in that window. Any change to
