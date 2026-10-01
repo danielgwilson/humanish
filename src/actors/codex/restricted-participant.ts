@@ -428,7 +428,6 @@ function launchNativeRun(
         turn: finalTurn(result, receipt, usage, { stopped, failedCleanup: state.failedCleanup }),
       });
     } catch (error) {
-      state.incompleteUsage ||= receipt.dispatched !== false && !receipt.usageComplete;
       revokeParticipant(state);
       state.events.emit({
         error: isCuaProviderError(error)
