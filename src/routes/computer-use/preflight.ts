@@ -1,5 +1,6 @@
 import type { Brain, ComputerUsePlan } from "../../lab/plan-types.js";
 import { pricedModel } from "../../lab/plan-base.js";
+import { missingKeys, missingSubjectEnv } from "../../lab/requirements.js";
 import type { LabCommsExternal } from "../../lab/types.js";
 import { detectLocalAgents } from "../../actors/local-agent/cli.js";
 import { localAgentRefusal, type LocalAgentRefusal } from "../../actors/local-agent/readiness.js";
@@ -7,7 +8,6 @@ import { describeMissingKeys } from "../../keys/key-resolution.js";
 import { externalCatchHealthy } from "../../comms/sandbox-catch.js";
 import { MODEL_RATES } from "../../run/pricing.js";
 import type { CuaActorLabErrorCode, CuaActorLabHooks } from "./types.js";
-import { participantDesktopOf } from "./participant-desktop.js";
 
 /** The computer-use code for each local-agent refusal; shared-world keeps the same kinds. */
 const LOCAL_AGENT_REFUSAL_CODES = {
@@ -29,25 +29,20 @@ export async function liveCuaRejection(args: {
   brain: Brain;
   hooks: CuaActorLabHooks;
   env: Record<string, string | undefined>;
-  openaiApiKey: string;
-  e2bApiKey: string;
-  subjectEnvNames: string[];
+  /** The plan's requirements: which keys and subject env names this run needs. */
+  requirements: ComputerUsePlan["requirements"];
   externalCommsConfig: LabCommsExternal | undefined;
 }): Promise<{ code: CuaActorLabErrorCode; message: string } | undefined> {
-  const { caps, brain, hooks, env, openaiApiKey, e2bApiKey, subjectEnvNames, externalCommsConfig } =
-    args;
-  // The operator's own signed-in coding agent is the brain, so there is no provider key to ask
-  // for. E2B is still required: the persona needs a machine.
+  const { caps, brain, hooks, env, requirements, externalCommsConfig } = args;
+  // The plan lists OPENAI_API_KEY only for an openai brain (a signed-in local agent or the
+  // caller's provider needs none) and E2B_API_KEY only when this run creates hosted desktops.
   const localAgent = brain.kind === "local-agent" ? brain.agent : undefined;
-  const missingKeys = [
-    ...(openaiApiKey || localAgent || hooks.buildProvider ? [] : ["OPENAI_API_KEY"]),
-    ...(e2bApiKey || participantDesktopOf(hooks) !== undefined ? [] : ["E2B_API_KEY"]),
-  ];
-  if (missingKeys.length > 0) {
+  const missing = missingKeys(requirements, env);
+  if (missing.length > 0) {
     // The moment someone new actually hits the wall. If a signed-in coding agent is sitting
     // right there, say so HERE rather than making them go and find an API key — that detour is
     // where most people trying humanish stop.
-    const suggestion = missingKeys.includes("OPENAI_API_KEY")
+    const suggestion = missing.includes("OPENAI_API_KEY")
       ? await (async () => {
           const ready = (await detectLocalAgents({ env })).filter(
             (agent) => agent.authStatus === "authenticated",
@@ -60,7 +55,7 @@ export async function liveCuaRejection(args: {
       : "";
     return {
       code: "HUMANISH_CUA_LAB_KEYS_MISSING",
-      message: `Live computer-use labs need ${missingKeys.join(" and ")} in the environment (values are never persisted). ${describeMissingKeys(missingKeys, env)}${suggestion}`,
+      message: `Live computer-use labs need ${missing.join(" and ")} in the environment (values are never persisted). ${describeMissingKeys(missing, env)}${suggestion}`,
     };
   }
   if (localAgent && !hooks.buildProvider) {
@@ -69,11 +64,11 @@ export async function liveCuaRejection(args: {
     const refusal = await localAgentRefusal({ agent: localAgent, env, caps });
     if (refusal) return { code: LOCAL_AGENT_REFUSAL_CODES[refusal.kind], message: refusal.message };
   }
-  const missingSubjectEnv = subjectEnvNames.filter((name) => !env[name]?.trim());
-  if (missingSubjectEnv.length > 0) {
+  const unsetSubjectEnv = missingSubjectEnv(requirements, env);
+  if (unsetSubjectEnv.length > 0) {
     return {
       code: "HUMANISH_CUA_LAB_SUBJECT_ENV_MISSING",
-      message: `subject.env declares ${missingSubjectEnv.join(", ")} but the environment does not provide ${missingSubjectEnv.length === 1 ? "it" : "them"} (pass via --env-file; values are never persisted).`,
+      message: `subject.env declares ${unsetSubjectEnv.join(", ")} but the environment does not provide ${unsetSubjectEnv.length === 1 ? "it" : "them"} (pass via --env-file; values are never persisted).`,
     };
   }
   // FAIL-CLOSED CAP TENSION (discipline #3): a maxUsd cap needs a MEASURABLE per-turn estimate.

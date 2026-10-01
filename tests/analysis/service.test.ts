@@ -11,7 +11,7 @@ import {
   withAnalysisLock,
 } from "../../src/analysis/service.js";
 import { captureEvidence } from "../../src/analysis/evidence.js";
-import { listAnalyses, writeStudyAnalysis } from "../../src/analysis/store.js";
+import { listAnalyses, writeAnalysis } from "../../src/analysis/store.js";
 import { listStudyAnalysisExecutions } from "../../src/analysis/store-executions.js";
 import { draftFeedback, renderIssueUrl } from "../../src/feedback/feedback.js";
 import { exportRun } from "../../src/feedback/export.js";
@@ -335,7 +335,7 @@ describe("ordinary study analysis flow", () => {
   it("serializes correction writers with the same run lock before changing history", async () => {
     const prepared = (await resolveRunPath(cwd, "analysis-flow"))!;
     const artifact = syntheticArtifact(input);
-    await writeStudyAnalysis(prepared, artifact);
+    await writeAnalysis(prepared, artifact);
     const options = {
       analysisId: artifact.id,
       findingId: "finding-1",
@@ -618,7 +618,7 @@ describe("ordinary study analysis flow", () => {
     const artifact = syntheticArtifact(input);
     const unsafe = "sk-" + "synthetic".repeat(5);
     artifact.result!.summary = unsafe;
-    await writeStudyAnalysis((await resolveRunPath(cwd, "analysis-flow"))!, artifact);
+    await writeAnalysis((await resolveRunPath(cwd, "analysis-flow"))!, artifact);
     expect(await verifyRun(cwd, "analysis-flow")).toMatchObject({
       ok: false,
       recordingOk: true,
@@ -697,7 +697,7 @@ describe("ordinary study analysis flow", () => {
 
   it("refuses sharing and feedback when a saved dismissal becomes unreadable", async () => {
     const artifact = syntheticArtifact(input);
-    await writeStudyAnalysis((await resolveRunPath(cwd, "analysis-flow"))!, artifact);
+    await writeAnalysis((await resolveRunPath(cwd, "analysis-flow"))!, artifact);
     const correction = await correctAnalysis(cwd, "analysis-flow", {
       analysisId: artifact.id,
       findingId: "finding-1",
@@ -737,7 +737,7 @@ describe("ordinary study analysis flow", () => {
         verify: async () => {
           const verified = await verifyRun(cwd, "analysis-flow");
           expect(verified.shareSafety.status).toBe("share_ready");
-          await writeStudyAnalysis((await resolveRunPath(cwd, "analysis-flow"))!, artifact);
+          await writeAnalysis((await resolveRunPath(cwd, "analysis-flow"))!, artifact);
           return verified;
         },
       },
@@ -751,7 +751,7 @@ describe("ordinary study analysis flow", () => {
 
   it("serves a fresh companion feed and rejects a forged saved projection", async () => {
     const artifact = syntheticArtifact(input);
-    await writeStudyAnalysis((await resolveRunPath(cwd, "analysis-flow"))!, artifact);
+    await writeAnalysis((await resolveRunPath(cwd, "analysis-flow"))!, artifact);
     const rendered = await renderObserver(cwd, "analysis-flow");
     expect(rendered.ok).toBe(true);
     await writeFile(path.join(runRoot, "observer/study-analysis.json"), '{"forged":true}');

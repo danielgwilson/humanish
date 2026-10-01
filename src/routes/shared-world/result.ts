@@ -11,13 +11,17 @@ import type { RunSubjectProvenance } from "../../run/bundle.js";
 import {
   foldScorerFailures,
   judgeExecution,
+  sandboxCleanupFailure,
   OUTCOME_POLICIES,
   participantHarnessFailed,
   resultOk,
   sharedWorldShortfall,
   type ExecutionFailure,
 } from "../../run/judge.js";
-import { participantFactsOf } from "../computer-use/participant-facts.js";
+import {
+  participantFactsOf,
+  unreleasedSandboxFailures,
+} from "../computer-use/participant-facts.js";
 import { resolveSubjectState } from "../computer-use/subject-projection.js";
 import {
   actorRunPassed,
@@ -49,6 +53,7 @@ export function emptyPlaneResults(): PlaneResults {
     subjectCommit: undefined,
     subjectSandboxId: undefined,
     subjectKilled: false,
+    subjectReleaseWarning: undefined,
     subjectDesktop: undefined,
     getHostUrl: undefined,
     publicOriginDigest: undefined,
@@ -222,14 +227,16 @@ export function concurrentLabFailure(envelope: {
 
 /**
  * The run's execution failures: a run error (the handoff, the plane), each seat whose session
- * failed in the harness, and an Observer that failed.
+ * failed in the harness, each sandbox whose release is unconfirmed, and an Observer that failed.
  */
 function sharedWorldExecutionFailures(args: {
+  runId: string;
   runError: string | undefined;
   actorResults: readonly ActorRunResult[];
+  subject: Pick<PlaneResults, "subjectSandboxId" | "subjectKilled" | "subjectReleaseWarning">;
   observer: Pick<ObserverResult, "ok" | "error">;
 }): ExecutionFailure[] {
-  const { runError, actorResults, observer } = args;
+  const { runId, runError, actorResults, subject, observer } = args;
   return [
     ...(runError === undefined ? [] : [{ kind: "run" as const, message: runError }]),
     ...actorResults
@@ -248,6 +255,13 @@ function sharedWorldExecutionFailures(args: {
             },
           ],
     ),
+    ...unreleasedSandboxFailures(
+      actorResults.map((result) => result.outcome),
+      runId,
+    ),
+    ...(subject.subjectSandboxId === undefined || subject.subjectKilled
+      ? []
+      : [sandboxCleanupFailure("subject", subject.subjectReleaseWarning, runId)]),
     ...(observer.ok
       ? []
       : [
@@ -365,7 +379,7 @@ export async function finishConcurrentRun(
   const adapterFailure = adapterScoreFailureMessage(bundle);
   const policy = OUTCOME_POLICIES["shared-world"];
   const execution = judgeExecution(
-    sharedWorldExecutionFailures({ runError, actorResults, observer }),
+    sharedWorldExecutionFailures({ runId, runError, actorResults, subject: results, observer }),
     policy,
   );
   const ok = resultOk({ judgment, execution, scorerFailures: scorerResult.failures, policy });

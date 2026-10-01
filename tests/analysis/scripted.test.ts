@@ -5,12 +5,12 @@ import { PNG } from "pngjs";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { prepareRunArtifactPaths, type PreparedRunArtifactPaths } from "../../src/run/paths.js";
 import { captureEvidence } from "../../src/analysis/evidence.js";
-import { writeStudyAnalysis } from "../../src/analysis/store.js";
+import { writeAnalysis } from "../../src/analysis/store.js";
 import {
   listStudyAnalysisExecutions,
   writeStudyAnalysisExecutionReceipt,
 } from "../../src/analysis/store-executions.js";
-import { loadStudyAnalysis } from "../../src/analysis/load.js";
+import { loadAnalysis } from "../../src/analysis/load.js";
 import {
   digestAnalysisInput,
   validateAnalysisArtifact,
@@ -124,8 +124,8 @@ describe("versioned scripted capture evidence", () => {
         .size,
     ).toBe(4);
     expect(input.images).toHaveLength(4);
-    await writeStudyAnalysis(prepared, syntheticArtifact(input));
-    expect(await loadStudyAnalysis(prepared)).toMatchObject({
+    await writeAnalysis(prepared, syntheticArtifact(input));
+    expect(await loadAnalysis(prepared)).toMatchObject({
       state: "ready",
       analysis: { captureVersion: 2 },
     });
@@ -156,8 +156,8 @@ describe("versioned scripted capture evidence", () => {
     expect(input.coverage.omissions).toContain(
       "Some captures were omitted by the capture count limit.",
     );
-    await writeStudyAnalysis(prepared, syntheticArtifact(input));
-    expect((await loadStudyAnalysis(prepared)).state).toBe("ready");
+    await writeAnalysis(prepared, syntheticArtifact(input));
+    expect((await loadAnalysis(prepared)).state).toBe("ready");
   });
 
   it.each(["missing", "unsafe", "unmapped"])(
@@ -175,7 +175,7 @@ describe("versioned scripted capture evidence", () => {
       input.coverage.complete = true;
       input.coverage.omissions = [];
       input.inputDigest = digestAnalysisInput(input);
-      await expect(writeStudyAnalysis(prepared, syntheticArtifact(input))).rejects.toThrow(
+      await expect(writeAnalysis(prepared, syntheticArtifact(input))).rejects.toThrow(
         "ANALYSIS_COVERAGE_INCOMPLETE",
       );
     },
@@ -214,7 +214,7 @@ describe("versioned scripted capture evidence", () => {
     legacy.inputDigest = digestAnalysisInput(legacy);
     expect(legacy.inputDigest).not.toBe(current.inputDigest);
     const artifact = syntheticArtifact(legacy, "legacy-analysis");
-    await writeStudyAnalysis(prepared, artifact);
+    await writeAnalysis(prepared, artifact);
     await writeStudyAnalysisExecutionReceipt(prepared, artifact);
     const artifactPath = path.join(
       prepared.physicalRunRoot,
@@ -225,7 +225,7 @@ describe("versioned scripted capture evidence", () => {
       "analysis-attempts/legacy-analysis/receipt.json",
     );
     const before = await Promise.all([readFile(artifactPath), readFile(receiptPath)]);
-    expect(await loadStudyAnalysis(prepared)).toMatchObject({ state: "ready", analysis: artifact });
+    expect(await loadAnalysis(prepared)).toMatchObject({ state: "ready", analysis: artifact });
     expect((await listStudyAnalysisExecutions(prepared)).receipts[0]).toMatchObject({
       inputDigest: legacy.inputDigest,
     });
@@ -233,7 +233,7 @@ describe("versioned scripted capture evidence", () => {
     expect(await readFile(path.join(prepared.physicalRunRoot, "run.json"))).toEqual(source);
     const forged = { ...artifact, id: "forged-v2", captureVersion: 2 as const };
     forged.inputDigest = digestAnalysisInput(forged);
-    await expect(writeStudyAnalysis(prepared, forged)).rejects.toThrow(
+    await expect(writeAnalysis(prepared, forged)).rejects.toThrow(
       "ANALYSIS_PARTICIPANT_INPUT_INVALID",
     );
   });
@@ -277,7 +277,7 @@ describe("versioned scripted capture evidence", () => {
       capture: null,
       quoteEligible: false,
     });
-    await writeStudyAnalysis(prepared, syntheticArtifact(input));
-    expect((await loadStudyAnalysis(prepared)).state).toBe("ready");
+    await writeAnalysis(prepared, syntheticArtifact(input));
+    expect((await loadAnalysis(prepared)).state).toBe("ready");
   });
 });

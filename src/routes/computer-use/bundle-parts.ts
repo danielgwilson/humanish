@@ -191,14 +191,21 @@ export function providerResourcesForOutcome(args: {
       kind: "sandbox",
       id: args.outcome.sandboxId,
       owner: "humanish",
-      status: args.outcome.killed ? "killed" : "running",
+      // Only a sandbox kept on purpose is known to be running; an unconfirmed release may or may
+      // not have stopped it.
+      status: args.outcome.killed
+        ? "killed"
+        : args.outcome.sandboxRelease?.state === "retained"
+          ? "running"
+          : "unknown",
       ...participantResourceIds(args.ids, args.participantId),
       createdAt: args.createdAt,
       cleanup: {
         killed: args.outcome.killed,
         reason: args.outcome.killed
           ? "killed during normal participant teardown"
-          : "not killed during normal participant teardown; cleanup may reclaim by exact recorded id",
+          : (args.outcome.sandboxRelease?.warning ??
+            "not killed during normal participant teardown; cleanup may reclaim by exact recorded id"),
       },
     },
   ];

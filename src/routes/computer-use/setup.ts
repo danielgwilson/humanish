@@ -245,9 +245,7 @@ export async function admitCuaRun(
       brain: plan.runner.brain,
       hooks,
       env,
-      openaiApiKey,
-      e2bApiKey,
-      subjectEnvNames,
+      requirements: plan.requirements,
       externalCommsConfig,
     });
     if (rejection) return refuse(rejection.code, rejection.message, descriptor.id);

@@ -17,7 +17,11 @@ import {
   type ExecutionOutcome,
   type Judgment,
 } from "../../run/judge.js";
-import { participantFactsOf, participantOutcomeOk } from "./participant-facts.js";
+import {
+  participantFactsOf,
+  participantOutcomeOk,
+  unreleasedSandboxFailures,
+} from "./participant-facts.js";
 import { summarizeCuaDiagnostics } from "./diagnostics.js";
 import { toParticipantResult } from "./lanes.js";
 import { buildCuaRunBundle, judgeComputerUseRun } from "./bundle.js";
@@ -251,12 +255,13 @@ function cuaLabResult(args: {
 }
 
 /**
- * The run's execution failures: each lane whose session failed in the harness, and an Observer
- * that failed.
+ * The run's execution failures: each lane whose session failed in the harness, each sandbox whose
+ * release is unconfirmed, and an Observer that failed.
  */
 function computerUseExecutionFailures(
   outcomes: readonly ParticipantRunOutcome[] | undefined,
   observer: Pick<ObserverResult, "ok" | "error">,
+  runId: string,
 ): ExecutionFailure[] {
   return [
     ...(outcomes ?? [])
@@ -275,6 +280,7 @@ function computerUseExecutionFailures(
             },
           ],
     ),
+    ...unreleasedSandboxFailures(outcomes, runId),
     ...(observer.ok
       ? []
       : [
@@ -366,7 +372,7 @@ export async function finishCuaRun(
   streams.attachFinal(observer);
 
   const execution = judgeExecution(
-    computerUseExecutionFailures(outcomes, observer),
+    computerUseExecutionFailures(outcomes, observer, runId),
     OUTCOME_POLICIES["computer-use"],
   );
   const result = cuaLabResult({

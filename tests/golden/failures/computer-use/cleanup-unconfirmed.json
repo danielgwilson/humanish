@@ -771,14 +771,14 @@
         "kind": "sandbox",
         "id": "fake-sandbox-001",
         "owner": "humanish",
-        "status": "running",
+        "status": "unknown",
         "simId": "sim-001",
         "streamId": "stream-001",
         "laneId": "lane-01",
         "createdAt": "[ts]",
         "cleanup": {
           "killed": false,
-          "reason": "not killed during normal participant teardown; cleanup may reclaim by exact recorded id"
+          "reason": "Sandbox teardown returned an unexpected result; release is unconfirmed and server-side kill-on-timeout remains the backstop."
         }
       }
     ],
@@ -868,7 +868,13 @@
       "ok": true,
       "execution": {
         "succeeded": true,
-        "failures": []
+        "failures": [],
+        "warnings": [
+          {
+            "kind": "sandbox-cleanup",
+            "message": "lane-01: Sandbox teardown returned an unexpected result; release is unconfirmed and server-side kill-on-timeout remains the backstop. Reclaim it by recorded id with `humanish reclaim --run [run]`."
+          }
+        ]
       }
     }
   }

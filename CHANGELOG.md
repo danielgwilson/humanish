@@ -16,6 +16,12 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixes
 
+- A computer-use, shared-world or scripted run whose sandbox release was not confirmed records it in
+  `status.json` (#1348). `outcome.execution.warnings` gets a `sandbox-cleanup` entry naming the
+  participant or `subject`, the release warning and `humanish reclaim --run <id>`. The run stays
+  `ok`. On computer-use runs, `run.json` `providerResources` marks such a sandbox `unknown` rather
+  than `running`, with the release warning as `cleanup.reason`; `running` now means kept for
+  debugging. Before, the run read as a clean success with `execution.failures: []`.
 - `humanish lab run --rerun-failed-from` selects a fan-out participant whose session ended
   goal_satisfied but reported a blocker (#1341). The review counted that participant as blocked,
   but rerun selection read the trace status, `passed`, and answered that nothing needed a rerun.

@@ -18,7 +18,7 @@ import {
 } from "../run/contained-output.js";
 import { pathMissing, readBoundedStudyFile } from "../run/study-files.js";
 import { containsSensitive } from "../evidence/redaction.js";
-import { readStudyAnalysisVersion } from "./store.js";
+import { readAnalysisVersion } from "./store.js";
 import { readStudyAnalysisExecution } from "./store-executions.js";
 import { hashAnalysisValue } from "./validation.js";
 import { ANALYSIS_ID_PATTERN, SHA256_HEX_PATTERN } from "./types.js";
@@ -267,7 +267,7 @@ async function terminalResultMatches(
     return true;
   if (receipt.status !== record.state) return false;
   if (record.state === "failed" || record.state === "cancelled") return true;
-  const entry = await readStudyAnalysisVersion(prepared, record.analysisId);
+  const entry = await readAnalysisVersion(prepared, record.analysisId);
   return (
     entry?.state === "ready" &&
     entry.analysis !== null &&

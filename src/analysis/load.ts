@@ -3,15 +3,15 @@
 
 import type { PreparedRunArtifactPaths } from "../run/paths.js";
 import { readAutomaticStudyAnalysisPrepared } from "./job.js";
-import { loadStudyAnalysisRecord } from "./store.js";
+import { loadAnalysisRecord } from "./store.js";
 import type { LoadedAnalysis } from "./types.js";
 
-export async function loadStudyAnalysis(
+export async function loadAnalysis(
   prepared: PreparedRunArtifactPaths,
   id?: string,
 ): Promise<LoadedAnalysis> {
   const [loaded, automatic] = await Promise.all([
-    loadStudyAnalysisRecord(prepared, id),
+    loadAnalysisRecord(prepared, id),
     readAutomaticStudyAnalysisPrepared(prepared),
   ]);
   return automatic === undefined ? loaded : { ...loaded, automatic };

@@ -20,9 +20,9 @@ import {
 import { analyzeRun } from "../../src/analysis/service.js";
 import {
   listAnalyses,
-  loadStudyAnalysisRecord,
-  readStudyAnalysisVersion,
-  writeStudyAnalysis,
+  loadAnalysisRecord,
+  readAnalysisVersion,
+  writeAnalysis,
 } from "../../src/analysis/store.js";
 import {
   listStudyAnalysisExecutions,
@@ -99,8 +99,8 @@ describe("analysis storage in a symlinked project", () => {
     const versions = await listAnalyses(prepared);
     return {
       versions: versions.map((entry) => [entry.id, entry.state]),
-      version: (await readStudyAnalysisVersion(prepared, analysisId))?.state ?? null,
-      loaded: (await loadStudyAnalysisRecord(prepared)).state,
+      version: (await readAnalysisVersion(prepared, analysisId))?.state ?? null,
+      loaded: (await loadAnalysisRecord(prepared)).state,
       receipts: (await listStudyAnalysisExecutions(prepared)).receipts.length,
       job: (await readAutomaticStudyAnalysisPrepared(prepared))?.state ?? null,
     };
@@ -115,7 +115,7 @@ describe("analysis storage in a symlinked project", () => {
     const source = await readFile(path.join(viaAlias.physicalRunRoot, "run.json"));
     const artifact = syntheticArtifact(await captureEvidence(viaAlias, source));
     await writeStudyAnalysisExecutionReceipt(viaAlias, artifact);
-    await writeStudyAnalysis(viaAlias, artifact);
+    await writeAnalysis(viaAlias, artifact);
     expect(
       await claimAutomaticStudyAnalysis(viaAlias, {
         configDigest: "a".repeat(64),
@@ -171,7 +171,7 @@ describe("analysis storage in a symlinked project", () => {
     );
     expect(result.analysisId).toBeTruthy();
     expect(fetch).toHaveBeenCalledTimes(1);
-    const loaded = await loadStudyAnalysisRecord(viaPhysical);
+    const loaded = await loadAnalysisRecord(viaPhysical);
     expect(loaded.analysis?.id).toBe(result.analysisId);
     expect((await listStudyAnalysisExecutions(viaPhysical)).receipts).toHaveLength(1);
     expect(await decoyRunEntries()).toEqual(decoyBefore);

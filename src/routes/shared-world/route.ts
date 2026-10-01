@@ -34,6 +34,7 @@
 // gate, NOT a no-real-data guarantee (humanish cannot tell synthetic from real data).
 
 import path from "node:path";
+import { missingKeys, missingSubjectEnv } from "../../lab/requirements.js";
 import { completeAutomaticAnalysis } from "../../analysis/automatic-completion.js";
 import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
 import { scrubLiterals } from "../../evidence/redaction.js";
@@ -166,7 +167,6 @@ async function admitSharedWorldRun(
 ): Promise<ConcurrentSharedWorldLabResult | undefined> {
   if (plan.dryRun) return undefined;
   const env = input.hooks?.env ?? process.env;
-  const subjectEnvNames = plan.plane.kind === "provisioned" ? plan.plane.subject.env : [];
   const fail = (code: ConcurrentSharedWorldLabErrorCode, message: string) =>
     completeSharedWorldAnalysis(
       plan,
@@ -174,17 +174,13 @@ async function admitSharedWorldRun(
       sharedWorldFailure(plan, input)(code, message, sharedWorldDescriptorOf(plan.actor).id),
       undefined,
     );
-  // OPENAI_API_KEY drives an openai brain's seats and the external-public plane's lobby-code
-  // reader; a local-agent brain's seats run on the operator's signed-in agent instead.
-  const openaiKeyNeeded = plan.brain.kind === "openai" || plan.plane.kind === "external-public";
-  const missingKeys = [
-    ...(env.OPENAI_API_KEY?.trim() || !openaiKeyNeeded ? [] : ["OPENAI_API_KEY"]),
-    ...(env.E2B_API_KEY?.trim() ? [] : ["E2B_API_KEY"]),
-  ];
-  if (missingKeys.length > 0) {
+  // The plan lists OPENAI_API_KEY for an openai brain's seats and the external-public plane's
+  // lobby-code reader; a local-agent brain's seats run on the operator's signed-in agent instead.
+  const missing = missingKeys(plan.requirements, env);
+  if (missing.length > 0) {
     return fail(
       "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_KEYS_MISSING",
-      `Live concurrent shared-world labs need ${missingKeys.join(" and ")} in the environment (values are never persisted). ${describeMissingKeys(missingKeys, env)}`,
+      `Live concurrent shared-world labs need ${missing.join(" and ")} in the environment (values are never persisted). ${describeMissingKeys(missing, env)}`,
     );
   }
   if (plan.brain.kind === "local-agent") {
@@ -193,11 +189,11 @@ async function admitSharedWorldRun(
     const refusal = await localAgentRefusal({ agent: plan.brain.agent, env, caps: plan.caps });
     if (refusal) return fail(LOCAL_AGENT_REFUSAL_CODES[refusal.kind], refusal.message);
   }
-  const missingSubjectEnv = subjectEnvNames.filter((name) => !env[name]?.trim());
-  if (missingSubjectEnv.length > 0) {
+  const unsetSubjectEnv = missingSubjectEnv(plan.requirements, env);
+  if (unsetSubjectEnv.length > 0) {
     return fail(
       "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_SUBJECT_ENV_MISSING",
-      `subject.env declares ${missingSubjectEnv.join(", ")} but the environment does not provide ${missingSubjectEnv.length === 1 ? "it" : "them"} (pass via --env-file; values are never persisted).`,
+      `subject.env declares ${unsetSubjectEnv.join(", ")} but the environment does not provide ${unsetSubjectEnv.length === 1 ? "it" : "them"} (pass via --env-file; values are never persisted).`,
     );
   }
   return undefined;

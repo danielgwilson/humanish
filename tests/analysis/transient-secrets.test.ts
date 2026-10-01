@@ -11,7 +11,7 @@ import {
 import { prepareRunArtifactPaths, type PreparedRunArtifactPaths } from "../../src/run/paths.js";
 import { runAnalysis } from "../../src/analysis/execute.js";
 import { captureEvidence } from "../../src/analysis/evidence.js";
-import { writeStudyAnalysis } from "../../src/analysis/store.js";
+import { writeAnalysis } from "../../src/analysis/store.js";
 import type { AnalysisConfig, AnalysisInput, AnalysisResult } from "../../src/analysis/types.js";
 import { validateAnalysisResult, validateAnalysisArtifact } from "../../src/analysis/validation.js";
 import { syntheticResult } from "./fixtures.js";
@@ -161,7 +161,7 @@ describe("analysis scrubbing in the originating run scope", () => {
     expect(artifact.inputDigest).toBe(before.inputDigest);
     expect(artifact.sourceRunSha256).toBe(before.sourceRunSha256);
     expect(validateAnalysisArtifact(artifact)).toEqual(artifact);
-    await writeStudyAnalysis(prepared, artifact);
+    await writeAnalysis(prepared, artifact);
     const saved = await readFile(
       path.join(prepared.physicalRunRoot, "analysis", artifact.id, "analysis.json"),
       "utf8",

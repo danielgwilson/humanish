@@ -188,6 +188,27 @@ export interface ExecutionOutcome {
   succeeded: boolean;
   /** The failures the policy counts, in the order the route recorded them. */
   failures: ExecutionFailure[];
+  /**
+   * The failures the policy lets warn, such as a sandbox whose release is unconfirmed on a route
+   * whose evidence stands. They leave `succeeded` and the result's ok alone but stay visible in
+   * status.json. Omitted when there are none.
+   */
+  warnings?: ExecutionFailure[];
+}
+
+/**
+ * The execution failure for one sandbox whose release is unconfirmed. `warning` is the route's
+ * release warning, already scrubbed; reclaim kills by the id the run recorded at create time.
+ */
+export function sandboxCleanupFailure(
+  owner: string,
+  warning: string | undefined,
+  runId: string,
+): ExecutionFailure {
+  return {
+    kind: "sandbox-cleanup",
+    message: `${owner}: ${warning ?? "Sandbox release is unconfirmed."} Reclaim it by recorded id with \`humanish reclaim --run ${runId}\`.`,
+  };
 }
 
 /**
@@ -383,19 +404,24 @@ export function foldScorerFailures(
   return folded;
 }
 
-/** The run's execution outcome under its route's policy. A failure of a kind the policy lets warn is dropped. */
+/** The run's execution outcome under its route's policy. A failure of a kind the policy lets warn is a warning. */
 export function judgeExecution(
   failures: readonly ExecutionFailure[],
   policy: OutcomePolicy,
 ): ExecutionOutcome {
-  const counted = failures.filter((failure) =>
+  const counts = (failure: ExecutionFailure): boolean =>
     failure.kind === "sandbox-cleanup"
       ? policy.sandboxCleanup === "fails"
       : failure.kind === "evidence"
         ? policy.evidence === "fails"
-        : true,
-  );
-  return { succeeded: counted.length === 0, failures: counted };
+        : true;
+  const counted = failures.filter(counts);
+  const warnings = failures.filter((failure) => !counts(failure));
+  return {
+    succeeded: counted.length === 0,
+    failures: counted,
+    ...(warnings.length === 0 ? {} : { warnings }),
+  };
 }
 
 /**
