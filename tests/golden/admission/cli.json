@@ -222,7 +222,7 @@
       },
       "runOk": false
     },
-    "stderr": "After live runs: default analysis · gpt-6-astra · separate $3 admission estimate limit (not a provider billing cap). Set review.analysis: false to disable.\n",
+    "stderr": "",
     "runs": false,
     "subprocess": 0,
     "scorerRan": false
@@ -274,6 +274,67 @@
       "error": {
         "code": "HUMANISH_TERMINAL_LAB_RUNTIME_AUTH_MISSING",
         "message": "Live terminal-product labs declare runtimeAuth \"openai-env\" and need CODEX_API_KEY or OPENAI_API_KEY in the environment (pass via --env-file; the selected auth mode places the value in command-scoped env or an external E2B header transform; the value is never persisted)."
+      },
+      "automaticAnalysisTrigger": "default",
+      "automaticAnalysis": {
+        "state": "skipped",
+        "reason": "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE"
+      },
+      "runOk": false
+    },
+    "stderr": "",
+    "runs": false,
+    "subprocess": 0,
+    "scorerRan": false
+  },
+  "lab run adm-cu-unpriced --scorer ./scorer.mjs --json": {
+    "exitCode": 2,
+    "stdout": {
+      "schema": "humanish.cua-lab-result.v2",
+      "ok": false,
+      "cwd": "[cwd]",
+      "labId": "adm-cu-unpriced",
+      "actor": "openai-computer-use",
+      "appUrl": "http://127.0.0.1:3000/",
+      "dryRun": false,
+      "runId": "not-created",
+      "lanes": [],
+      "warnings": [],
+      "error": {
+        "code": "HUMANISH_CUA_LAB_KEYS_MISSING",
+        "message": "Live computer-use labs need OPENAI_API_KEY and E2B_API_KEY in the environment (values are never persisted). key discovery is disabled (HUMANISH_STRICT_KEYS=1); only process env and --env-file are read. Fill: OPENAI_API_KEY: run `humanish keys set openai`; E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
+      },
+      "automaticAnalysisTrigger": "default",
+      "automaticAnalysis": {
+        "state": "skipped",
+        "reason": "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE"
+      },
+      "runOk": false
+    },
+    "stderr": "",
+    "runs": false,
+    "subprocess": 0,
+    "scorerRan": false
+  },
+  "lab run adm-shared-live --scorer ./scorer.mjs --json": {
+    "exitCode": 2,
+    "stdout": {
+      "schema": "humanish.concurrent-shared-world-lab-result.v1",
+      "ok": false,
+      "cwd": "[cwd]",
+      "labId": "adm-shared-live",
+      "actor": "openai-computer-use",
+      "topology": "shared-world",
+      "topologyMode": "concurrent",
+      "roleCount": 2,
+      "concurrency": 2,
+      "dryRun": false,
+      "runId": "not-created",
+      "roles": [],
+      "warnings": [],
+      "error": {
+        "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_KEYS_MISSING",
+        "message": "Live concurrent shared-world labs need OPENAI_API_KEY and E2B_API_KEY in the environment (values are never persisted). key discovery is disabled (HUMANISH_STRICT_KEYS=1); only process env and --env-file are read. Fill: OPENAI_API_KEY: run `humanish keys set openai`; E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
       },
       "automaticAnalysisTrigger": "default",
       "automaticAnalysis": {

@@ -378,7 +378,7 @@ function withMapped<T extends object>(
   return withHookOverrides(bag, declared, mapped);
 }
 
-function scorerHooks(
+export function scorerHooks(
   scorer: AdapterScorerModule,
 ): Pick<CuaActorLabHooks, "score" | "deriveFeedback" | "deriveArtifacts"> {
   return {

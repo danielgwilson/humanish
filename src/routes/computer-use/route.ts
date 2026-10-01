@@ -25,16 +25,16 @@
 import { withTransientCommsSecrets } from "../../run/transient-comms-secrets.js";
 import path from "node:path";
 import { completeAutomaticAnalysis } from "../../analysis/automatic-completion.js";
-import { runScope, type RunScope } from "../../run/run.js";
+import { type FinishedRun, runScope, type RunScope } from "../../run/run.js";
 import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
 import type { ComputerUsePlan } from "../../lab/plan-types.js";
-import { computerUseInput } from "../../lab/route-inputs.js";
+import { computerUseInputWithScorer } from "../../lab/route-inputs.js";
 import type { AdmittedPlan } from "../../run-lab.js";
 import type { LabConfig } from "../../lab/types.js";
 import { planComputerUseLab, type ComputerUseRefusal } from "./plan.js";
 import { finishCuaRun } from "./result.js";
 import { runLabParticipants } from "./run-lanes.js";
-import { prepareCuaRun, refuseCuaLab } from "./setup.js";
+import { admitCuaRun, type AdmittedCuaRun, refuseCuaLab, startCuaRun } from "./setup.js";
 import {
   type ComputerUseRunInput,
   CUA_ACTOR_LAB_SCHEMA,
@@ -44,17 +44,10 @@ import {
 
 /**
  * The library entry for a computer-use lab. It plans the config with planComputerUseLab and runs
- * the plan as runComputerUsePlan does; runLab calls runComputerUsePlan directly. The
- * withTransientCommsSecrets wrapper scopes any email secret the run registers to this run and its
- * analysis. The run's status record is opened and finalized by the run scope in runPlanWithSecrets.
+ * the plan with runComputerUsePlan, whose run scope and withTransientCommsSecrets wrapper cover the
+ * run and its analysis.
  */
 export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<CuaActorLabResult> {
-  return withTransientCommsSecrets(() => runCuaActorLabWithSecrets(options));
-}
-
-async function runCuaActorLabWithSecrets(
-  options: RunCuaActorLabOptions,
-): Promise<CuaActorLabResult> {
   const { config, dryRun, lab, ...input } = options;
   // planComputerUseLab makes every configuration refusal, in the order this route always has.
   const planned = planComputerUseLab(config, {
@@ -64,7 +57,7 @@ async function runCuaActorLabWithSecrets(
     ...(input.countOverride === undefined ? {} : { countOverride: input.countOverride }),
     ...(input.rerun === undefined ? {} : { rerun: input.rerun }),
   });
-  if (planned.ok) return runPlanWithSecrets(planned.plan, input, config);
+  if (planned.ok) return runComputerUsePlan(planned.plan, input, config);
   return computerUseLabRefusal(options, planned.refusal);
 }
 
@@ -103,45 +96,81 @@ export async function computerUseLabRefusal(
   );
 }
 
-/** runLab's step for a computer-use plan: its local checks run inside the run, so it returns the run. */
-export function admitComputerUsePlan(
+/**
+ * runLab's step for a computer-use plan. It runs the plan's local checks (admitCuaRun: the
+ * participants, the preflight plan, the keys, the local agent, subject env and caps, and the
+ * local-tree archive) before any run scope opens, so the CLI can present their refusal before it
+ * loads a declared scorer, and returns the run that continues from them with that scorer.
+ */
+export async function admitComputerUsePlan(
   plan: ComputerUsePlan,
+  input: ComputerUseRunInput,
   config: LabConfig,
-): AdmittedPlan<"computer-use"> {
+): Promise<AdmittedPlan<"computer-use">> {
+  const admission = await admitCuaRun(plan, input, config);
+  if (!admission.ok)
+    return {
+      ok: false,
+      outcome: cuaOutcome(await completeCuaAnalysis(plan, input, admission.result, undefined)),
+    };
   return {
     ok: true,
-    run: async (options) => ({
-      route: "computer-use",
-      backend: "cua",
-      result: await runComputerUsePlan(plan, computerUseInput(options), config),
-    }),
+    run: async (scorer) => {
+      const running = computerUseInputWithScorer(input, scorer);
+      // The scorer's hooks wrap the admitted bag, so the runSession, provider and desktop the
+      // checks admitted stay the ones the run uses.
+      const admitted = { ...admission.admitted, hooks: running.hooks ?? admission.admitted.hooks };
+      return cuaOutcome(await runAdmittedCuaRun(plan, running, admitted));
+    },
   };
 }
 
+function cuaOutcome(result: CuaActorLabResult) {
+  return { route: "computer-use", backend: "cua", result } as const;
+}
+
 /**
- * Run a computer-use plan. The run scope in runPlanWithSecrets finalizes any status record the run
- * opened, on every exit, so a test or library caller does not leave the 5 s status cadence writing
- * into a directory something else is deleting (an unrelated ENOTEMPTY). Participants come from the
- * plan. `config` is still read for values the plan does not carry yet (the actor's model and local
- * agent, persona ids, comms settings, the per-participant cap) and by the compatibility hooks,
- * which take the whole config.
+ * Run a computer-use plan: its local checks, then the run. The run scope in runAdmittedCuaRun
+ * finalizes any status record the run opened, on every exit, so a test or library caller does not
+ * leave the 5 s status cadence writing into a directory something else is deleting (an unrelated
+ * ENOTEMPTY). Participants come from the plan. `config` is still read for values the plan does not
+ * carry yet (the actor's model and local agent, persona ids, comms settings, the per-participant
+ * cap) and by the compatibility hooks, which take the whole config.
  */
 export async function runComputerUsePlan(
   plan: ComputerUsePlan,
   input: ComputerUseRunInput,
   config: LabConfig,
 ): Promise<CuaActorLabResult> {
-  return withTransientCommsSecrets(() => runPlanWithSecrets(plan, input, config));
+  const admission = await admitCuaRun(plan, input, config);
+  if (!admission.ok) return completeCuaAnalysis(plan, input, admission.result, undefined);
+  return runAdmittedCuaRun(plan, input, admission.admitted);
 }
 
-async function runPlanWithSecrets(
+/**
+ * Runs an admitted plan in its own run scope, then its automatic analysis. The
+ * withTransientCommsSecrets wrapper scopes any email secret the run registers to this run and its
+ * analysis.
+ */
+function runAdmittedCuaRun(
   plan: ComputerUsePlan,
   input: ComputerUseRunInput,
-  config: LabConfig,
+  admitted: AdmittedCuaRun,
 ): Promise<CuaActorLabResult> {
-  const { result, finished } = await runScope((scope) =>
-    runPlanInScope(plan, input, config, scope),
-  );
+  return withTransientCommsSecrets(async () => {
+    const { result, finished } = await runScope((scope) =>
+      runPlanInScope(plan, input, admitted, scope),
+    );
+    return completeCuaAnalysis(plan, input, result, finished);
+  });
+}
+
+function completeCuaAnalysis(
+  plan: ComputerUsePlan,
+  input: ComputerUseRunInput,
+  result: CuaActorLabResult,
+  finished: FinishedRun | undefined,
+): Promise<CuaActorLabResult> {
   return completeAutomaticAnalysis(
     result,
     finished,
@@ -157,10 +186,10 @@ async function runPlanWithSecrets(
 async function runPlanInScope(
   plan: ComputerUsePlan,
   input: ComputerUseRunInput,
-  config: LabConfig,
+  admitted: AdmittedCuaRun,
   scope: RunScope,
 ): Promise<CuaActorLabResult> {
-  const prepared = await prepareCuaRun(plan, input, config, scope);
+  const prepared = await startCuaRun(plan, input, admitted, scope);
   if (!prepared.ok) return prepared.result;
   const ran = await runLabParticipants(prepared.setup, prepared.participants);
   if (!ran.ok) return ran.result;

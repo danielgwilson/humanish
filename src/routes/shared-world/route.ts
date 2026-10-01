@@ -39,7 +39,7 @@ import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
 import { scrubLiterals } from "../../evidence/redaction.js";
 import { describeMissingKeys } from "../../keys/key-resolution.js";
 import { withTransientCommsSecrets } from "../../run/transient-comms-secrets.js";
-import { runScope, type RunScope } from "../../run/run.js";
+import { type FinishedRun, runScope, type RunScope } from "../../run/run.js";
 import { makeCuaRunBudget } from "../computer-use/participant-model.js";
 import { runExternalPublicPlane } from "./external-public.js";
 import { planSharedWorldLab, sharedWorldDescriptorOf, type SharedWorldRefusal } from "./plan.js";
@@ -48,10 +48,11 @@ import { runProvisionedPlane } from "./provisioned.js";
 import { concurrentLabFailure, finishConcurrentRun } from "./result.js";
 import { prepareConcurrentRun } from "./setup.js";
 import type { SharedWorldPlan } from "../../lab/plan-types.js";
-import { sharedWorldInput } from "../../lab/route-inputs.js";
+import { sharedWorldInputWithScorer } from "../../lab/route-inputs.js";
 import type { AdmittedPlan } from "../../run-lab.js";
 import type { LabConfig } from "../../lab/types.js";
 import {
+  type ConcurrentSharedWorldLabErrorCode,
   type ConcurrentSharedWorldLabResult,
   type SharedWorldRunInput,
   type ConcurrentSharedWorldPlaneClass,
@@ -65,17 +66,10 @@ import { rosterOf } from "../../lab/parse/actors.js";
 
 /**
  * The library entry for a shared-world lab. It plans the config with planSharedWorldLab and runs
- * the plan as runSharedWorldPlan does; runLab calls runSharedWorldPlan directly. The
- * withTransientCommsSecrets wrapper scopes any email secret the run registers to this run and its
- * analysis. The run's status record is opened and finalized by the run scope in runPlanWithSecrets.
+ * the plan with runSharedWorldPlan, whose run scope and withTransientCommsSecrets wrapper cover the
+ * run and its analysis.
  */
 export async function runConcurrentSharedWorld(
-  options: RunConcurrentSharedWorldLabOptions,
-): Promise<ConcurrentSharedWorldLabResult> {
-  return withTransientCommsSecrets(() => runConcurrentSharedWorldWithSecrets(options));
-}
-
-async function runConcurrentSharedWorldWithSecrets(
   options: RunConcurrentSharedWorldLabOptions,
 ): Promise<ConcurrentSharedWorldLabResult> {
   const { config, dryRun, lab, ...input } = options;
@@ -85,7 +79,7 @@ async function runConcurrentSharedWorldWithSecrets(
     ...(lab === undefined ? {} : { lab }),
     hooks: input.hooks ?? {},
   });
-  if (planned.ok) return runPlanWithSecrets(planned.plan, input, config);
+  if (planned.ok) return runSharedWorldPlan(planned.plan, input, config);
   return sharedWorldLabRefusal(options, planned.refusal);
 }
 
@@ -118,43 +112,121 @@ export function sharedWorldLabRefusal(
   );
 }
 
-/** runLab's step for a shared-world plan: its local checks run inside the run, so it returns the run. */
-export function admitSharedWorldPlan(
+/**
+ * runLab's step for a shared-world plan. It runs a live plan's local checks (the keys, a local
+ * agent's sign-in and the subject env) before any run scope opens, so the CLI can present their refusal before it loads a
+ * declared scorer, and returns the run that continues from them with that scorer.
+ */
+export async function admitSharedWorldPlan(
   plan: SharedWorldPlan,
+  input: SharedWorldRunInput,
   config: LabConfig,
-): AdmittedPlan<"shared-world"> {
+): Promise<AdmittedPlan<"shared-world">> {
+  const refused = await admitSharedWorldRun(plan, input);
+  if (refused) return { ok: false, outcome: sharedWorldOutcome(refused) };
   return {
     ok: true,
-    run: async (options) => ({
-      route: "shared-world",
-      backend: "concurrent-shared-world",
-      result: await runSharedWorldPlan(plan, sharedWorldInput(options), config),
-    }),
+    run: async (scorer) =>
+      sharedWorldOutcome(
+        await runAdmittedSharedWorldRun(plan, sharedWorldInputWithScorer(input, scorer), config),
+      ),
   };
 }
 
-/**
- * Run a shared-world plan. The run scope gives a direct library caller the same status-record
- * lifetime the CLI gets: returning finalizes any record the run opened, whichever of its
- * fail-closed exits it took. Seats come from the plan's participants. `config` is still read by
- * the computer-use lane runner, whose hooks and desktop setup take the whole config.
- */
+function sharedWorldOutcome(result: ConcurrentSharedWorldLabResult) {
+  return { route: "shared-world", backend: "concurrent-shared-world", result } as const;
+}
+
+/** Run a shared-world plan: its local checks, then the run. */
 export async function runSharedWorldPlan(
   plan: SharedWorldPlan,
   input: SharedWorldRunInput,
   config: LabConfig,
 ): Promise<ConcurrentSharedWorldLabResult> {
-  return withTransientCommsSecrets(() => runPlanWithSecrets(plan, input, config));
+  const refused = await admitSharedWorldRun(plan, input);
+  return refused ?? runAdmittedSharedWorldRun(plan, input, config);
 }
 
-async function runPlanWithSecrets(
+/**
+ * A live plan's local checks, made outside any run scope: the keys, a local agent's sign-in, then
+ * the subject env. A refusal is the result runSharedWorldPlan returns for it, with the analysis
+ * record of a run that never started.
+ */
+async function admitSharedWorldRun(
+  plan: SharedWorldPlan,
+  input: SharedWorldRunInput,
+): Promise<ConcurrentSharedWorldLabResult | undefined> {
+  if (plan.dryRun) return undefined;
+  const env = input.hooks?.env ?? process.env;
+  const subjectEnvNames = plan.plane.kind === "provisioned" ? plan.plane.subject.env : [];
+  const fail = (code: ConcurrentSharedWorldLabErrorCode, message: string) =>
+    completeSharedWorldAnalysis(
+      plan,
+      input,
+      sharedWorldFailure(plan, input)(code, message, sharedWorldDescriptorOf(plan.actor).id),
+      undefined,
+    );
+  // OPENAI_API_KEY drives an openai brain's seats and the external-public plane's lobby-code
+  // reader; a local-agent brain's seats run on the operator's signed-in agent instead.
+  const openaiKeyNeeded = plan.brain.kind === "openai" || plan.plane.kind === "external-public";
+  const missingKeys = [
+    ...(env.OPENAI_API_KEY?.trim() || !openaiKeyNeeded ? [] : ["OPENAI_API_KEY"]),
+    ...(env.E2B_API_KEY?.trim() ? [] : ["E2B_API_KEY"]),
+  ];
+  if (missingKeys.length > 0) {
+    return fail(
+      "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_KEYS_MISSING",
+      `Live concurrent shared-world labs need ${missingKeys.join(" and ")} in the environment (values are never persisted). ${describeMissingKeys(missingKeys, env)}`,
+    );
+  }
+  if (plan.brain.kind === "local-agent") {
+    // A missing or signed-out agent found after the seats' desktops are paid for is the same
+    // news at the worst moment.
+    const refusal = await localAgentRefusal({ agent: plan.brain.agent, env, caps: plan.caps });
+    if (refusal)
+      return fail(
+        refusal.kind === "signin-required"
+          ? "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_AGENT_SIGNIN_REQUIRED"
+          : refusal.kind === "unsupported"
+            ? "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_ACTOR_UNSUPPORTED"
+            : "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+        refusal.message,
+      );
+  }
+  const missingSubjectEnv = subjectEnvNames.filter((name) => !env[name]?.trim());
+  if (missingSubjectEnv.length > 0) {
+    return fail(
+      "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_SUBJECT_ENV_MISSING",
+      `subject.env declares ${missingSubjectEnv.join(", ")} but the environment does not provide ${missingSubjectEnv.length === 1 ? "it" : "them"} (pass via --env-file; values are never persisted).`,
+    );
+  }
+  return undefined;
+}
+
+/**
+ * Runs an admitted plan in its own run scope, then its automatic analysis. The
+ * withTransientCommsSecrets wrapper scopes any email secret the run registers to this run and its
+ * analysis.
+ */
+function runAdmittedSharedWorldRun(
   plan: SharedWorldPlan,
   input: SharedWorldRunInput,
   config: LabConfig,
 ): Promise<ConcurrentSharedWorldLabResult> {
-  const { result, finished } = await runScope((scope) =>
-    runPlanInScope(plan, input, config, scope),
-  );
+  return withTransientCommsSecrets(async () => {
+    const { result, finished } = await runScope((scope) =>
+      runPlanInScope(plan, input, config, scope),
+    );
+    return completeSharedWorldAnalysis(plan, input, result, finished);
+  });
+}
+
+function completeSharedWorldAnalysis(
+  plan: SharedWorldPlan,
+  input: SharedWorldRunInput,
+  result: ConcurrentSharedWorldLabResult,
+  finished: FinishedRun | undefined,
+): Promise<ConcurrentSharedWorldLabResult> {
   return completeAutomaticAnalysis(
     result,
     finished,
@@ -167,6 +239,19 @@ async function runPlanWithSecrets(
   );
 }
 
+/** The route's envelope for a run that stops before its bundle. */
+function sharedWorldFailure(plan: SharedWorldPlan, input: SharedWorldRunInput) {
+  return concurrentLabFailure({
+    cwd: path.resolve(input.cwd),
+    labId: plan.labId,
+    actor: plan.actor,
+    participantCount: plan.plane.participants.length,
+    concurrency: plan.concurrency,
+    dryRun: plan.dryRun,
+    runId: input.runId,
+  });
+}
+
 async function runPlanInScope(
   plan: SharedWorldPlan,
   input: SharedWorldRunInput,
@@ -177,15 +262,7 @@ async function runPlanInScope(
   const requestedCwd = path.resolve(input.cwd);
   const hooks = input.hooks ?? {};
   const env = hooks.env ?? process.env;
-  const fail = concurrentLabFailure({
-    cwd: requestedCwd,
-    labId: plan.labId,
-    actor: plan.actor,
-    participantCount: plan.plane.participants.length,
-    concurrency: plan.concurrency,
-    dryRun,
-    runId: input.runId,
-  });
+  const fail = sharedWorldFailure(plan, input);
   const descriptor = sharedWorldDescriptorOf(plan.actor);
   const planeClass: ConcurrentSharedWorldPlaneClass =
     plan.plane.kind === "external-public" ? "external-public" : "provisioned-getHost";
@@ -216,46 +293,6 @@ async function runPlanInScope(
     plan.residual.policies?.redactRepos ?? subjectEnvNames.includes("GITHUB_TOKEN");
   const publicRepo = redactRepoLabel ? "repo-01" : subjectRepo;
   const hasGithubToken = subjectEnvNames.includes("GITHUB_TOKEN");
-
-  if (!dryRun) {
-    // OPENAI_API_KEY drives an openai brain's seats and the external-public plane's lobby-code
-    // reader; a local-agent brain's seats run on the operator's signed-in agent instead.
-    const openaiKeyNeeded = plan.brain.kind === "openai" || plan.plane.kind === "external-public";
-    const missingKeys = [
-      ...(openaiApiKey || !openaiKeyNeeded ? [] : ["OPENAI_API_KEY"]),
-      ...(e2bApiKey ? [] : ["E2B_API_KEY"]),
-    ];
-    if (missingKeys.length > 0) {
-      return fail(
-        "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_KEYS_MISSING",
-        `Live concurrent shared-world labs need ${missingKeys.join(" and ")} in the environment (values are never persisted). ${describeMissingKeys(missingKeys, env)}`,
-        descriptor.id,
-      );
-    }
-    if (plan.brain.kind === "local-agent") {
-      // Refuse here, before a sandbox exists: a missing or signed-out agent found after the
-      // seats' desktops are paid for is the same news at the worst moment.
-      const refusal = await localAgentRefusal({ agent: plan.brain.agent, env, caps: plan.caps });
-      if (refusal)
-        return fail(
-          refusal.kind === "signin-required"
-            ? "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_AGENT_SIGNIN_REQUIRED"
-            : refusal.kind === "unsupported"
-              ? "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_ACTOR_UNSUPPORTED"
-              : "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
-          refusal.message,
-          descriptor.id,
-        );
-    }
-    const missingSubjectEnv = subjectEnvNames.filter((name) => !env[name]?.trim());
-    if (missingSubjectEnv.length > 0) {
-      return fail(
-        "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_SUBJECT_ENV_MISSING",
-        `subject.env declares ${missingSubjectEnv.join(", ")} but the environment does not provide ${missingSubjectEnv.length === 1 ? "it" : "them"} (pass via --env-file; values are never persisted).`,
-        descriptor.id,
-      );
-    }
-  }
 
   const prepared = await prepareConcurrentRun(
     {

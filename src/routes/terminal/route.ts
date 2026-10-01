@@ -65,7 +65,7 @@ import {
   runLiveTerminalSession,
 } from "./session.js";
 import type { TerminalPlan } from "../../lab/plan-types.js";
-import { terminalInput } from "../../lab/route-inputs.js";
+import { terminalInputWithScorer } from "../../lab/route-inputs.js";
 import type { AdmittedPlan } from "../../run-lab.js";
 import {
   type LiveTerminalAuth,
@@ -150,7 +150,7 @@ export async function runTerminalPlan(
 /**
  * runLab's step for a terminal plan. It runs a live plan's local checks (checkLiveTerminalMachine)
  * before any run scope opens, so the CLI can present their refusal before it loads a declared
- * scorer, and returns the run that continues from them.
+ * scorer, and returns the run that continues from them with that scorer.
  */
 export async function admitTerminalPlan(
   plan: TerminalPlan,
@@ -160,8 +160,10 @@ export async function admitTerminalPlan(
   if (!admission.ok) return { ok: false, outcome: terminalOutcome(admission.result) };
   return {
     ok: true,
-    run: async (options) =>
-      terminalOutcome(await runAdmittedTerminalRun(admission.admitted, terminalInput(options))),
+    run: async (scorer) =>
+      terminalOutcome(
+        await runAdmittedTerminalRun(admission.admitted, terminalInputWithScorer(input, scorer)),
+      ),
   };
 }
 

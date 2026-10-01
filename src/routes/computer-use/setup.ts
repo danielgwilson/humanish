@@ -56,21 +56,6 @@ import {
 import { labPersonaIds } from "../../lab/persona-resolve.js";
 import { participantDesktopOf } from "./participant-desktop.js";
 
-/**
- * Admits the run and starts it. Returns the refusal, with the envelope the route always used, or
- * what runLabParticipants and finishCuaRun read: both read setup, and each reads its own group.
- */
-export async function prepareCuaRun(
-  plan: ComputerUsePlan,
-  input: ComputerUseRunInput,
-  config: LabConfig,
-  scope: RunScope,
-): Promise<PreparedCuaRun> {
-  const admission = await admitCuaRun(plan, input, config);
-  if (!admission.ok) return admission;
-  return startCuaRun(plan, input, admission.admitted, scope);
-}
-
 /** The physical project, bound before any caller hook runs. */
 async function bindProject(cwd: string) {
   // Capture the physical project before reading or invoking any caller hook. A supported
@@ -109,7 +94,10 @@ export async function refuseCuaLab(
   };
 }
 
-type AdmittedCuaRun = Extract<Awaited<ReturnType<typeof admitCuaRun>>, { ok: true }>["admitted"];
+export type AdmittedCuaRun = Extract<
+  Awaited<ReturnType<typeof admitCuaRun>>,
+  { ok: true }
+>["admitted"];
 type StartedRun = Extract<Awaited<ReturnType<RunScope["startRun"]>>, { ok: true }>["run"];
 
 /** What runLabParticipants and finishCuaRun both read. */
@@ -170,7 +158,11 @@ type PreparedCuaRun =
  * local-tree archive. These read files, env and the network, which planLab does not. Returns the
  * refusal, or what startCuaRun reads.
  */
-async function admitCuaRun(plan: ComputerUsePlan, input: ComputerUseRunInput, config: LabConfig) {
+export async function admitCuaRun(
+  plan: ComputerUsePlan,
+  input: ComputerUseRunInput,
+  config: LabConfig,
+) {
   const { dryRun } = plan;
   const projectRoot = await bindProject(input.cwd);
   const cwd = projectRoot.physicalPath;
@@ -332,7 +324,7 @@ async function admitCuaRun(plan: ComputerUsePlan, input: ComputerUseRunInput, co
 }
 
 /** Starts the run and builds what the participants and the finish read: the deps and the bundle base. */
-async function startCuaRun(
+export async function startCuaRun(
   plan: ComputerUsePlan,
   input: ComputerUseRunInput,
   admitted: AdmittedCuaRun,

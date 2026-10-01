@@ -34,6 +34,8 @@ const labs: Record<string, RawLab> = {
   "adm-clone-no-serve": lab("cuClone", { subject: { serve: undefined } }),
   "adm-cu-local-app": lab("cuLocalApp"),
   "adm-terminal-live": lab("terminal", live),
+  "adm-cu-local-tree-live": lab("cuLocalTree", live),
+  "adm-cu-live": lab("cuAppUrl", live),
 };
 
 // Writes a marker when imported, so a case can tell whether scorer host code ran.
@@ -64,8 +66,10 @@ const cases: readonly (readonly string[])[] = [
   // Missing keys win over an unpriced cap on computer use (F3); shared world checks price first.
   ["lab", "run", "adm-cu-unpriced", "--json"],
   ["lab", "run", "adm-shared-unpriced", "--json"],
-  // A terminal key refusal also comes before the scorer loads.
+  // A refusal for this machine (keys, runtime auth) also comes before the scorer loads.
   ["lab", "run", "adm-terminal-live", "--scorer", "./scorer.mjs", "--json"],
+  ["lab", "run", "adm-cu-unpriced", "--scorer", "./scorer.mjs", "--json"],
+  ["lab", "run", "adm-shared-live", "--scorer", "./scorer.mjs", "--json"],
   ["watch", "adm-shared-live", "--port", "99999"],
   // A live run is never share_ready, so watch refuses --safe on every path (lab or not).
   ["watch", "adm-cu", "--safe", "--json"],
@@ -102,13 +106,17 @@ async function projectDir(): Promise<string> {
   return dir;
 }
 
-async function runCli(args: readonly string[]) {
+/** Runs the CLI. `log` also receives its stderr, so a test can order it among other writes. */
+async function runCli(args: readonly string[], log?: string[]) {
   let exitCode = 0;
   const stdout: string[] = [];
   const stderr: string[] = [];
   const program = createProgram({
     writeOut: (text) => stdout.push(text),
-    writeErr: (text) => stderr.push(text),
+    writeErr: (text) => {
+      stderr.push(text);
+      log?.push(text);
+    },
     setExitCode: (code) => {
       exitCode = code;
     },
@@ -160,6 +168,84 @@ describe("CLI admission today", () => {
       };
       expect(runs).toBe(0);
       expect(scorerRan).toBe(false);
+    },
+    60_000,
+  );
+
+  it("leaves no local-tree archive or run when the scorer fails to load after admission", async () => {
+    vi.unstubAllEnvs();
+    const cwd = await projectDir();
+    await writeFile(path.join(cwd, "throwing-scorer.mjs"), 'throw new Error("scorer import");\n');
+    const tmp = await mkdtemp(path.join(tmpdir(), "humanish-admission-tmp-"));
+    cleanup.push(tmp);
+    vi.stubEnv("TMPDIR", tmp);
+    vi.stubEnv("OPENAI_API_KEY", "test-openai-key");
+    vi.stubEnv("E2B_API_KEY", "test-e2b-key");
+    const hostStderr: string[] = [];
+    vi.spyOn(process.stderr, "write").mockImplementation((chunk) => {
+      hostStderr.push(String(chunk));
+      return true;
+    });
+
+    const result = await runCli([
+      "lab",
+      "run",
+      "adm-cu-local-tree-live",
+      "--scorer",
+      "./throwing-scorer.mjs",
+      "--json",
+      "--cwd",
+      cwd,
+    ]);
+
+    // Admission packed the working tree before the scorer failed to load.
+    expect(hostStderr.join("")).toMatch(/humanish local-tree: packed/);
+    expect(result.exitCode).toBe(2);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      error: { code: "HUMANISH_LAB_SCORER_LOAD_FAILED" },
+    });
+    expect(await readdir(tmp)).toEqual([]);
+    expect(await readdir(path.join(cwd, ".humanish", "runs")).catch(() => [])).toEqual([]);
+  }, 60_000);
+
+  it.each([
+    ["a local-tree lab", ["adm-cu-local-tree-live"], "humanish local-tree: packed"],
+    ["a fan-out lab", ["adm-cu-live", "--count", "2"], "humanish cua fan-out plan"],
+  ])(
+    "prints %s's check output before the scorer warning when the checks pass",
+    async (_name, lab, checkLine) => {
+      vi.unstubAllEnvs();
+      const cwd = await projectDir();
+      vi.stubEnv("OPENAI_API_KEY", "test-openai-key");
+      vi.stubEnv("E2B_API_KEY", "test-e2b-key");
+      // A taken run id stops the run after the scorer loads and before anything is acquired.
+      await mkdir(path.join(cwd, ".humanish", "runs", "taken-run"), { recursive: true });
+      const log: string[] = [];
+      vi.spyOn(process.stderr, "write").mockImplementation((chunk) => {
+        log.push(String(chunk));
+        return true;
+      });
+
+      const result = await runCli(
+        ["lab", "run", ...lab, "--scorer", "./scorer.mjs", "--run-id", "taken-run"].concat([
+          "--json",
+          "--cwd",
+          cwd,
+        ]),
+        log,
+      );
+
+      expect(JSON.parse(result.stdout)).toMatchObject({
+        error: { code: "HUMANISH_RUN_ID_IN_USE" },
+      });
+      const text = log.join("");
+      const order = [checkLine, "warning: review scorer", "After live runs: default analysis"].map(
+        (line) => text.indexOf(line),
+      );
+      expect(order.every((index) => index >= 0)).toBe(true);
+      expect(order).toEqual([...order].sort((a, b) => a - b));
+      expect(await access(path.join(cwd, "scorer-ran")).then(() => true)).toBe(true);
+      expect(await readdir(path.join(cwd, ".humanish", "runs"))).toEqual(["taken-run"]);
     },
     60_000,
   );

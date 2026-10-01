@@ -23,7 +23,6 @@ import { completeAutomaticAnalysis } from "../../analysis/automatic-completion.j
 import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
 import { redactText, toErrorMessage } from "../../evidence/redaction.js";
 import type { ScriptedPlan } from "../../lab/plan-types.js";
-import { scriptedInput } from "../../lab/route-inputs.js";
 import type { AdmittedPlan } from "../../run-lab.js";
 import { buildRunSource } from "../../run/bundle.js";
 import { prepareSelectedOutputDirectory } from "../../run/contained-output.js";
@@ -111,14 +110,20 @@ export async function scriptedLabRefusal(
   );
 }
 
-/** runLab's step for a scripted plan: its local checks run inside the run, so it returns the run. */
-export function admitScriptedPlan(plan: ScriptedPlan): AdmittedPlan<"scripted"> {
+/**
+ * runLab's step for a scripted plan. It takes no scorer, and its local checks (keys, a browser)
+ * run inside the run, so it returns the run.
+ */
+export function admitScriptedPlan(
+  plan: ScriptedPlan,
+  input: ScriptedRunInput,
+): AdmittedPlan<"scripted"> {
   return {
     ok: true,
-    run: async (options) => ({
+    run: async () => ({
       route: "scripted",
       backend: "scripted",
-      result: await runScriptedPlan(plan, scriptedInput(options)),
+      result: await runScriptedPlan(plan, input),
     }),
   };
 }

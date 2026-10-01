@@ -22,15 +22,15 @@ and 8. Steps 3 to 6 are the route's run function: `runComputerUsePlan` here, `ru
    (`src/cli/commands/lab-route-computer-use.ts`), hands off to `runRoute`
    (`src/cli/commands/lab-route-run.ts`), which calls `prepareLab` (`src/run-lab.ts`). That picks the
    route with `routeOf` (`src/lab/plan.ts`) and plans once with `planLab` (`src/lab/plan.ts`), here
-   through `planComputerUseLab` (`src/routes/computer-use/plan.ts`). A refusal returns before a
-   declared scorer loads, and so does a terminal lab's refusal for a missing runtime key or
-   `E2B_API_KEY`, from `admitTerminalPlan` (`src/routes/terminal/route.ts`). A plan returns with a
-   `run()` that calls `runComputerUsePlan` (`src/routes/computer-use/route.ts`). `runLab` is
+   through `planComputerUseLab` (`src/routes/computer-use/plan.ts`). It then calls the route's admit
+   function, here `admitComputerUsePlan` (`src/routes/computer-use/route.ts`), which makes the
+   checks in step 3. A refusal from the planner or those checks returns before a declared scorer
+   loads. Otherwise a `run()` returns that takes the scorer and continues the run. `runLab` is
    `prepareLab`, then `run()`.
-3. **Preflight.** `runComputerUsePlan` opens the run's lifetime with `runScope` (`src/run/run.ts`).
-   `prepareCuaRun` (`src/routes/computer-use/setup.ts`) calls `liveCuaRejection`
-   (`src/routes/computer-use/preflight.ts`) for keys, local-agent sign-in, subject env and caps,
-   then `startRun` (`src/run/run.ts`), all before any sandbox or provider call.
+3. **Preflight.** `admitCuaRun` (`src/routes/computer-use/setup.ts`) calls `liveCuaRejection`
+   (`src/routes/computer-use/preflight.ts`) for keys, local-agent sign-in, subject env and caps, and
+   packs a `local-tree` subject. The `run()` opens the run's lifetime with `runScope`
+   (`src/run/run.ts`), and `startCuaRun` calls `startRun`, all before any sandbox or provider call.
 4. **Desktop.** Each participant runs on a `ParticipantDesktop`
    (`src/routes/computer-use/participant-desktop.ts`): a hosted one from
    `createE2BParticipantDesktop` (`src/routes/computer-use/e2b-desktop/desktop.ts`), a local VM

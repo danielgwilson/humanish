@@ -563,9 +563,13 @@ describe("automatic analysis admission and producer boundary", () => {
     }
   });
   it.each([["run"], ["lab", "run"], ["watch"]])(
-    "CLI %j discloses default analysis before a keyless live start",
+    "CLI %j discloses default analysis before a live start",
     async (...prefix) => {
-      vi.stubEnv("E2B_API_KEY", "");
+      // Placeholder keys pass the local checks, and a taken run id stops the run before anything
+      // is acquired. A missing key would refuse before the disclosure.
+      vi.stubEnv("OPENAI_API_KEY", "test-openai-key");
+      vi.stubEnv("E2B_API_KEY", "test-e2b-key");
+      await mkdir(path.join(cwd, ".humanish", "runs", "taken-run"), { recursive: true });
       const base = fixtures.find((row) => row.name === "cua-openai-computer-use-app-url")!.config;
       await mkdir(path.join(cwd, "humanish", "labs"), { recursive: true });
       await writeFile(path.join(cwd, "humanish", "labs", "default.yaml"), JSON.stringify(base));
@@ -590,13 +594,18 @@ describe("automatic analysis admission and producer boundary", () => {
         "--json",
         "--no-open",
         "--detach",
+        "--run-id",
+        "taken-run",
       ]);
       expect(stderr).toContain(
         "default analysis · gpt-6-astra · separate $3 admission estimate limit",
       );
       expect(stderr).toContain("not a provider billing cap");
       expect(stderr).not.toContain("preparing analysis");
-      expect(JSON.parse(stdout).ok).toBe(false); // Missing participant keys, before any recording/provider.
+      expect(JSON.parse(stdout)).toMatchObject({
+        ok: false,
+        error: { code: "HUMANISH_RUN_ID_IN_USE" },
+      });
     },
   );
   it.each([{ prefix: ["run"] }, { prefix: ["lab", "run"] }, { prefix: ["watch"] }])(
