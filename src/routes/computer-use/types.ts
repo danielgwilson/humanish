@@ -166,7 +166,11 @@ export interface CuaActorLabHooks extends BrowserLabAdapterHooks {
     laneCount: number;
     executor: CuaExecutor;
   }) => Promise<CuaProvider>;
-  /** Substitute desktop ownership while retaining the shared participant and evidence loop. */
+  /**
+   * Substitute desktop ownership while retaining the shared participant and evidence loop.
+   * @deprecated No replacement: a run's desktop is E2B, the local VM or in process. This goes in
+   * the next minor.
+   */
   createDesktopLane?: (
     spec: CuaLaneSpec,
     warnings: string[],

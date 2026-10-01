@@ -208,14 +208,20 @@ function oldFieldsInUse(options: RunLabOptions): { home: string; old: string; cl
     .map(([name, bag, member]) => ({ home: name, old: `${bag}.${member}`, clash: home(name) }));
 }
 
+/** Old fields removed in the next minor with no replacement. They warn, and they never clash. */
+function retiredFieldsInUse(options: RunLabOptions): string[] {
+  return hasMember(options.cuaHooks, "createDesktopLane") ? ["cuaHooks.createDesktopLane"] : [];
+}
+
 const warned = new Set<string>();
 
-/** One DeprecationWarning per old field per process. Test seams have no home and never warn. */
-function warnDeprecated(home: string, old: string): void {
+/** One DeprecationWarning per old field per process. The bags' other test seams never warn. */
+function warnDeprecated(home: string | undefined, old: string): void {
   if (warned.has(old)) return;
   warned.add(old);
+  const replacement = home === undefined ? "It has no replacement." : `Use RunLabOptions.${home}.`;
   process.emitWarning(
-    `RunLabOptions.${old} is deprecated and is removed in the next minor. Use RunLabOptions.${home}.`,
+    `RunLabOptions.${old} is deprecated and is removed in the next minor. ${replacement}`,
     { type: "DeprecationWarning", code: "HUMANISH_RUN_LAB_OPTION_DEPRECATED" },
   );
 }
@@ -325,6 +331,7 @@ export function normalizeRunLabOptions(
   const refused = unsupportedOption(config, route, options);
   if (refused) return refused;
   for (const { home, old } of inUse) warnDeprecated(home, old);
+  for (const old of retiredFieldsInUse(options)) warnDeprecated(undefined, old);
 
   const warnings: string[] = [];
   const {

@@ -1,6 +1,7 @@
 // The exports this minor deprecates and the next minor removes (docs/contracts/schemas.md,
 // "Library options"). Each function warns once per process and then runs unchanged. Each type is
-// an alias of the type it always was.
+// an alias of the type it always was, and each constant has the value it always had. Internal code
+// calls the original functions, so only a package caller sees a warning.
 
 import {
   runCuaActorSession as cuaActorSession,
@@ -9,6 +10,20 @@ import {
 import type { CuaLoopResult } from "./actors/computer-use/loop.js";
 import type { AutomaticAnalysisHooks as AnalysisHooks } from "./analysis/automatic-completion.js";
 import type { BrowserLabAdapterHooks as BrowserAdapterHooks } from "./lab/adapter-extension.js";
+import { resolveLabDryRun as labDryRun, type LabBackend as Backend } from "./lab/plan.js";
+import {
+  actorResolvesToTerminal as resolvesToTerminal,
+  cuaLaneCount as laneCount,
+  MAX_CUA_LANES as laneCap,
+  resolveSeatUrl as seatUrl,
+} from "./lab/routing.js";
+import type { LabConfig } from "./lab/types.js";
+import {
+  concurrentSharedWorldValidationReason as concurrentSharedWorldReason,
+  cuaLaneValidationReason as laneRosterReason,
+  externalPublicSharedWorldValidationReason as externalPublicSharedWorldReason,
+  sharedWorldValidationReason as sharedWorldReason,
+} from "./lab/validation.js";
 import { runCuaActorLab as cuaActorLab } from "./routes/computer-use/route.js";
 import type {
   CuaActorLabHooks as CuaHooks,
@@ -91,6 +106,81 @@ export function runDryRun(options: PreviewOptions): Promise<PreviewResult> {
   deprecated("runDryRun", RUN_LAB);
   return dryRun(options);
 }
+
+const PARSE_REASON = "parseLabConfig, which returns the same reason";
+
+/** @deprecated Use `routeOf(config)` on the lab. This goes in the next minor. */
+export function actorResolvesToTerminal(type: string | undefined): boolean {
+  deprecated("actorResolvesToTerminal", "routeOf(config) on the lab");
+  return resolvesToTerminal(type);
+}
+
+/**
+ * @deprecated Use the `plan` `LabEvent` from `RunLabOptions.onEvent`, which lists every
+ * participant. This goes in the next minor.
+ */
+export function cuaLaneCount(config: LabConfig): number {
+  deprecated(
+    "cuaLaneCount",
+    "the plan LabEvent from RunLabOptions.onEvent, which lists every participant",
+  );
+  return laneCount(config);
+}
+
+/**
+ * @deprecated Use `parseLabConfig`, which refuses a seat entry that is not same-origin loopback.
+ * This goes in the next minor.
+ */
+export function resolveSeatUrl(serveUrl: string, entry: string | undefined): string | null {
+  deprecated(
+    "resolveSeatUrl",
+    "parseLabConfig, which refuses a seat entry that is not same-origin loopback",
+  );
+  return seatUrl(serveUrl, entry);
+}
+
+/** @deprecated Use `parseLabConfig`, which returns the same reason. This goes in the next minor. */
+export function cuaLaneValidationReason(config: LabConfig): string | null {
+  deprecated("cuaLaneValidationReason", PARSE_REASON);
+  return laneRosterReason(config);
+}
+
+/** @deprecated Use `parseLabConfig`, which returns the same reason. This goes in the next minor. */
+export function sharedWorldValidationReason(config: LabConfig): string | null {
+  deprecated("sharedWorldValidationReason", PARSE_REASON);
+  return sharedWorldReason(config);
+}
+
+/** @deprecated Use `parseLabConfig`, which returns the same reason. This goes in the next minor. */
+export function concurrentSharedWorldValidationReason(config: LabConfig): string | null {
+  deprecated("concurrentSharedWorldValidationReason", PARSE_REASON);
+  return concurrentSharedWorldReason(config);
+}
+
+/** @deprecated Use `parseLabConfig`, which returns the same reason. This goes in the next minor. */
+export function externalPublicSharedWorldValidationReason(config: LabConfig): string | null {
+  deprecated("externalPublicSharedWorldValidationReason", PARSE_REASON);
+  return externalPublicSharedWorldReason(config);
+}
+
+/**
+ * @deprecated Use `RunLabOptions.dryRun`; without it, `scenario.mode` decides. This goes in the
+ * next minor.
+ */
+export function resolveLabDryRun(
+  config: LabConfig,
+  override: boolean | undefined,
+  fallback: boolean | undefined,
+): boolean | undefined {
+  deprecated("resolveLabDryRun", "RunLabOptions.dryRun; without it, scenario.mode decides");
+  return labDryRun(config, override, fallback);
+}
+
+/** @deprecated `parseLabConfig` refuses a roster larger than this. This goes in the next minor. */
+export const MAX_CUA_LANES = laneCap;
+
+/** @deprecated Use `LabRoute`. `LabOutcome.backend` and this type go in the next minor. */
+export type LabBackend = Backend;
 
 /** @deprecated Use `RunLabOptions` with `runLab`. */
 export type RunCuaActorLabOptions = CuaOptions;

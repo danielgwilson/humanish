@@ -1428,8 +1428,11 @@ use emits one `DeprecationWarning` (code `HUMANISH_RUN_LAB_OPTION_DEPRECATED`) p
 | `automaticAnalysis.deps.signal`                                                                    | `analysisSignal`       |
 | `env` on any bag                                                                                   | `env`                  |
 | `rerun.laneIds`                                                                                    | `rerun.participantIds` |
+| `cuaHooks.createDesktopLane`                                                                       | none                   |
 
-The bags' other fields are test seams with no public replacement, and they do not warn. A
+`cuaHooks.createDesktopLane` warns and goes in the next minor with no replacement: a run's desktop
+is E2B, the local VM or in process. The bags' other fields are test seams with no public
+replacement, and they do not warn. A
 `scorer` passed through `RunLabOptions` behaves exactly like the same functions in the old bag,
 including the route-specific verdict rules in the next section.
 
