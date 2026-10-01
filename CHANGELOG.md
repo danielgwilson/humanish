@@ -444,6 +444,9 @@ are the `HUMANISH_*` names `src/` read or returned at 0.105.0 and no longer does
 
 ### Fixes
 
+- Key discovery runs `gh auth token` without any provider key in its environment (#1315). It
+  used to inherit the process environment, including keys exported by the user and keys
+  discovery had just read from `.humanish/local/provider.env` and `~/.e2b/config.json`.
 - `humanish lab run --rerun-failed-from <run> --lanes <ids>`, the example in `lab run --help`,
   no longer prints a `DeprecationWarning` for `RunLabOptions.rerun.laneIds` (#1309). The CLI
   passes the selection as `rerun.participantIds`.
