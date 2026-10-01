@@ -205,9 +205,11 @@ Fail-closed guards, all BEFORE any key check, so a CLI invocation never sees a m
 `HUMANISH_CUA_LAB_KEYS_MISSING` first:
 
 - `HUMANISH_LAB_OPTION_UNSUPPORTED`: `inProcess` without `createProvider` (from JavaScript,
-  where the type does not stop it), on a subject other than `app-url` or `local-app`, or with
-  more than one participant. `createProvider` alone is allowed; that is a model swap on the
-  normal E2B route.
+  where the type does not stop it), or on a subject other than `app-url` or `local-app`.
+  `createProvider` alone is allowed; that is a model swap on the normal E2B route.
+- `HUMANISH_CUA_LAB_FANOUT_INVALID`: `inProcess`, or the deprecated `cuaHooks.buildExecutor`,
+  with more than one participant. The planner refuses it, because fan-out gives each participant
+  its own E2B desktop and the in-process route has none.
 - `HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR`: a `subject.source: local-app` config run
   without `inProcess` (there is no built-in in-process driver yet). A structured error,
   never a desktop attempt.

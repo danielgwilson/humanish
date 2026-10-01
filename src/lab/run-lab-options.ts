@@ -21,7 +21,6 @@ import type { AdapterScorerModule } from "./adapter-scorer-loader.js";
 import { HOOK_MEMBERS, withHookOverrides } from "./bag-overrides.js";
 import type { LabOutcome, RunLabOptions } from "../run-lab.js";
 import { resolveLabDryRun, type LabRoute } from "./plan.js";
-import { computerUseParticipants } from "./plan-participants.js";
 import type { LabConfig } from "./types.js";
 import {
   knownSecretValues,
@@ -219,8 +218,6 @@ function unsupportedOption(
     if (inProcess !== undefined) {
       if (source !== "app-url" && source !== "local-app")
         return unsupported("inProcess", route, "it drives an app-url or local-app subject.");
-      if (computerUseParticipants(config, options.count).length !== 1)
-        return unsupported("inProcess", route, "it drives exactly one participant.");
     }
     if (prepareDesktop !== undefined) {
       if (isLocalBrowserLab(config))

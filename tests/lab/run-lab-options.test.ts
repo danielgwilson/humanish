@@ -65,10 +65,10 @@ describe("an option the route cannot honor is refused before anything runs", () 
     ["computer use createProvider", () => config("cuAppUrl"), { createProvider }, undefined],
     ["computer use inProcess", () => config("cuAppUrl"), { inProcess, createProvider }, undefined],
     [
-      "computer use inProcess on two participants",
+      "computer use inProcess on two participants (the planner refuses it)",
       () => config("cuAppUrl", { actors: [{ type: "openai-computer-use", count: 2 }] }),
       { inProcess, createProvider },
-      "inProcess",
+      undefined,
     ],
     [
       "computer use inProcess on a clone",
@@ -215,7 +215,7 @@ describe("runLab returns an option refusal in the route's own envelope and write
 
   it.each([
     ["preview", "synthetic", "humanish.run-result.v1", { scorer }],
-    ["cuAppUrl", "cua", "humanish.cua-lab-result.v2", { inProcess, createProvider, count: 2 }],
+    ["cuClone", "cua", "humanish.cua-lab-result.v2", { inProcess, createProvider }],
     ["scriptedAppUrl", "scripted", "humanish.scripted-lab-result.v1", { scorer }],
     ["terminal", "terminal", "humanish.terminal-lab-result.v1", { prepareDesktop }],
     [
@@ -245,6 +245,31 @@ describe("runLab returns an option refusal in the route's own envelope and write
       ok: false,
       error: { code: "HUMANISH_LAB_OPTION_UNSUPPORTED" },
     });
+    expect(desktopLoads).toBe(0);
+    expect(await readdir(cwd)).toEqual([]);
+  });
+
+  it("typed inProcess on two participants gets the planner's fan-out refusal, naming inProcess", async () => {
+    let desktopLoads = 0;
+    const outcome = await runLab(config("cuAppUrl"), {
+      cwd,
+      dryRun: false,
+      runId: "refused",
+      inProcess,
+      createProvider,
+      count: 2,
+      cuaHooks: {
+        loadDesktopModule: async () => {
+          desktopLoads += 1;
+          throw new Error("no desktop in this test");
+        },
+      },
+    });
+    expect(outcome.result).toMatchObject({
+      ok: false,
+      error: { code: "HUMANISH_CUA_LAB_FANOUT_INVALID" },
+    });
+    expect(outcome.result.error?.message).toContain("RunLabOptions.inProcess");
     expect(desktopLoads).toBe(0);
     expect(await readdir(cwd)).toEqual([]);
   });

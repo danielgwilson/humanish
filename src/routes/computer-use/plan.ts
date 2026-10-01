@@ -405,7 +405,7 @@ export function planComputerUseLab(
     return refuse(
       "after-personas",
       "HUMANISH_CUA_LAB_FANOUT_INVALID",
-      "Multi-lane fan-out is not supported on the in-process route (cuaHooks.buildExecutor) — fan-out provisions one independent E2B desktop per lane, which the in-process route deliberately skips. Run a single in-process lane, or fan out on the E2B route.",
+      "Multi-lane fan-out is not supported on the in-process route (RunLabOptions.inProcess, or the deprecated cuaHooks.buildExecutor) — fan-out provisions one independent E2B desktop per lane, which the in-process route deliberately skips. Run a single in-process lane, or fan out on the E2B route.",
       actor,
     );
   if (first === undefined) throw new Error("computerUseParticipants returned no participant");
