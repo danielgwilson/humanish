@@ -103,7 +103,6 @@
       ]
     },
     "warnings": [
-      "Desktop screen geometry could not be parsed for participant lane-01; requested geometry remains unverified.",
       "Browser window bounds could not be measured for participant lane-01; the live stream will use the full desktop.",
       "Physical browser containment is unverified for participant lane-01; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
       "Browser outer bounds could not be measured for participant lane-01.",
@@ -202,7 +201,7 @@
       },
       "active": 0,
       "blocked": 1,
-      "warnings": 5
+      "warnings": 4
     },
     "laneGroups": [],
     "cost": "[same as run.json cost]",
@@ -368,10 +367,14 @@
             "requested": {
               "width": 1280,
               "height": 800
+            },
+            "verified": {
+              "width": 1280,
+              "height": 800,
+              "source": "xdpyinfo"
             }
           },
           "warnings": [
-            "Desktop screen geometry could not be parsed for participant lane-01; requested geometry remains unverified.",
             "Browser window bounds could not be measured for participant lane-01; the live stream will use the full desktop.",
             "Physical browser containment is unverified for participant lane-01; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
             "Browser outer bounds could not be measured for participant lane-01.",
@@ -433,7 +436,7 @@
         "at": "[ts]",
         "level": "warn",
         "type": "cua-lab.geometry.warning",
-        "message": "Desktop screen geometry could not be parsed for participant lane-01; requested geometry remains unverified.",
+        "message": "Browser window bounds could not be measured for participant lane-01; the live stream will use the full desktop.",
         "simId": "sim-001",
         "streamId": "stream-001"
       },
@@ -442,7 +445,7 @@
         "at": "[ts]",
         "level": "warn",
         "type": "cua-lab.geometry.warning",
-        "message": "Browser window bounds could not be measured for participant lane-01; the live stream will use the full desktop.",
+        "message": "Physical browser containment is unverified for participant lane-01; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
         "simId": "sim-001",
         "streamId": "stream-001"
       },
@@ -451,21 +454,12 @@
         "at": "[ts]",
         "level": "warn",
         "type": "cua-lab.geometry.warning",
-        "message": "Physical browser containment is unverified for participant lane-01; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
-        "simId": "sim-001",
-        "streamId": "stream-001"
-      },
-      {
-        "id": "event-006-geometry-warning",
-        "at": "[ts]",
-        "level": "warn",
-        "type": "cua-lab.geometry.warning",
         "message": "Browser outer bounds could not be measured for participant lane-01.",
         "simId": "sim-001",
         "streamId": "stream-001"
       },
       {
-        "id": "event-007-geometry-warning",
+        "id": "event-006-geometry-warning",
         "at": "[ts]",
         "level": "warn",
         "type": "cua-lab.geometry.warning",

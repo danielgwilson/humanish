@@ -120,6 +120,8 @@ function scriptedFetch(responses: unknown[]): FetchLike {
 
 interface FakeSandbox extends E2BDesktopSandbox {
   calls: Array<[string, ...unknown[]]>;
+  /** The resolution Sandbox.create was asked for, which xdpyinfo then reports. */
+  screen?: readonly [number, number] | undefined;
 }
 
 function makeFakeSandbox(
@@ -145,9 +147,16 @@ function makeFakeSandbox(
     async (...args: unknown[]): Promise<void> => {
       calls.push([name, ...args]);
     };
+  let screen: readonly [number, number] | undefined;
   const sandbox = {
     calls,
     sandboxId: "fake-sandbox-001",
+    get screen() {
+      return screen;
+    },
+    set screen(resolution: readonly [number, number] | undefined) {
+      screen = resolution;
+    },
     // Resource fields captured on stock E2B desktops; see fixtures/e2b-desktop-resources.
     getInfo: async () => ({ cpuCount: 8, memoryMB: 8192 }),
     commands: {
@@ -162,7 +171,13 @@ function makeFakeSandbox(
             ...(t.stdout === undefined ? {} : { stdout: t.stdout }),
           });
         }
-        return options.commandHandler?.(command) ?? { exitCode: 0, stdout: "" };
+        const handled = options.commandHandler?.(command);
+        if (handled !== undefined) return handled;
+        // E2B creates the desktop at the requested resolution, and xdpyinfo reports it. The
+        // fake has no Chromium, so window, containment and viewport stay unmeasured.
+        if (command.includes("xdpyinfo") && screen !== undefined)
+          return { exitCode: 0, stdout: `  dimensions:    ${screen[0]}x${screen[1]} pixels\n` };
+        return { exitCode: 0, stdout: "" };
       },
     },
     files: {
@@ -245,6 +260,7 @@ function makeFakeModule(sandbox: FakeSandbox): {
           typeof templateOrOptions === "string" ? maybeOptions! : templateOrOptions;
         templates.push(template);
         created.push(createOptions);
+        sandbox.screen = createOptions.resolution;
         return sandbox;
       },
       kill: async (sandboxId) => {
@@ -1133,16 +1149,16 @@ describe("runCuaActorLab", () => {
     expect(bundle.streams[0].actor.lane).toBe("computer-use");
     expect(bundle.streams[0].actor.provider).toBe("openai-responses-cu");
     expect(bundle.cwd).toBe("[target-cwd]");
-    // This fake does not expose runtime geometry. The bundle keeps the request but does not
-    // falsify it as a measured CSS viewport.
+    // This fake reports its screen through xdpyinfo but has no Chromium, so the bundle keeps the
+    // requested viewport out of stream.viewport instead of falsifying it as measured.
     expect(bundle.streams[0].desktopGeometry).toMatchObject({
-      screen: { requested: { width: 1280, height: 800 } },
+      screen: {
+        requested: { width: 1280, height: 800 },
+        verified: { width: 1280, height: 800, source: "xdpyinfo" },
+      },
     });
     expect(bundle.streams[0].desktopGeometry.warnings).toEqual(
-      expect.arrayContaining([
-        expect.stringContaining("requested geometry remains unverified"),
-        expect.stringContaining("stream.viewport is omitted"),
-      ]),
+      expect.arrayContaining([expect.stringContaining("stream.viewport is omitted")]),
     );
     expect(bundle.streams[0].viewport).toBeUndefined();
 
