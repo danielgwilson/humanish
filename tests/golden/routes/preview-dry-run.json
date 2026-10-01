@@ -43,7 +43,7 @@
       "at": "[ts]",
       "level": "warn",
       "type": "sim.live-substrate.missing",
-      "message": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
+      "message": "No live actor launched in dry-run mode; the observer stream is ready for real substrate evidence.",
       "simId": "sim-01",
       "streamId": "sim-01-ui"
     }
@@ -202,7 +202,7 @@
             "at": "[ts]",
             "level": "warn",
             "type": "sim.live-substrate.missing",
-            "message": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
+            "message": "No live actor launched in dry-run mode; the observer stream is ready for real substrate evidence.",
             "simId": "sim-01",
             "streamId": "sim-01-ui"
           }
@@ -231,7 +231,7 @@
         "at": "[ts]",
         "level": "warn",
         "type": "sim.live-substrate.missing",
-        "message": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
+        "message": "No live actor launched in dry-run mode; the observer stream is ready for real substrate evidence.",
         "simId": "sim-01",
         "streamId": "sim-01-ui"
       }
@@ -435,7 +435,7 @@
         "at": "[ts]",
         "level": "warn",
         "type": "sim.live-substrate.missing",
-        "message": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
+        "message": "No live actor launched in dry-run mode; the observer stream is ready for real substrate evidence.",
         "simId": "sim-01",
         "streamId": "sim-01-ui"
       }

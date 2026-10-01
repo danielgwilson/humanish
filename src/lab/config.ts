@@ -165,7 +165,7 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
   if (commsResult.value) config.comms = commsResult.value;
   if (config.comms?.email?.smtp && config.subject.topology === "shared-world") {
     return invalid(
-      "SMTP capture is not yet wired for shared-world labs. Use per-lane worlds for SMTP, or configure supported HTTP email capture for concurrent shared-world labs.",
+      "SMTP capture is not yet wired for shared-world labs. Use the default per-lane-worlds topology for SMTP, or configure supported HTTP email capture for concurrent shared-world labs.",
     );
   }
 

@@ -370,15 +370,16 @@ are the `HUMANISH_*` names `src/` read or returned at 0.105.0 and no longer does
   `humanish keys:` lines. A scorer that reads keys from `process.env` during a dry run sees only
   the environment and `--env-file`.
 - Refusal, warning, help and run text says "participant" where it said "lane" or "seat" (#1283,
-  #1289, #1290, #1292), and "lab" where it meant the lab file (#1276), without em dashes. Help no
-  longer cites issue numbers (#1005). Codes, flags, keys, strategy values and ids keep their
+  #1289, #1290, #1292, #1312), and "lab" where it meant the lab file (#1276), without em dashes.
+  Help no longer cites issue numbers (#1005). Codes, flags, keys, strategy values and ids keep their
   spelling (`actors[0].lanes`, `per-lane-worlds`, `lane-01`), and `--lanes` shows its argument as
   `<participant-ids>`. Synthetic dry-run bundles, `humanish verify` findings and Observer text say
-  "participant" too, and the synthetic route says "simulated participant" (#1298); recorded
-  bundles keep their old wording. The README, the site docs, the bundled skill and the contract
-  docs follow (#1293, #1294, #1295, #1297). The hosted-browser geometry warnings say "for
-  participant <id>", and `HUMANISH_CUA_LAB_DEVICE_GEOMETRY` says "the participant's device
-  geometry" (#1301). Code that matches on message text needs the new wording.
+  "participant" too, and the synthetic route says "simulated participant" (#1298); recorded bundles
+  keep their old wording. The README, the site docs, the bundled skill and the contract docs follow
+  (#1293, #1294, #1295, #1297). The hosted-browser geometry warnings say "for participant <id>", and
+  `HUMANISH_CUA_LAB_DEVICE_GEOMETRY` says "the participant's device geometry" (#1301). The TUI lab
+  screen shows the per-participant cap as `$N per participant` (#1312). Code that matches on message
+  text needs the new wording.
 - The Observer labels each computer-use participant card with its persona, single and fan-out
   runs alike (#1300). Fan-out cards recorded after #1290 showed `CUA participant <id>: <lab>`, and
   single-participant cards showed `CUA browser — <lab>`. The card now reads the participant id

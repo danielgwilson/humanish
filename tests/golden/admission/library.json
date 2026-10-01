@@ -2,7 +2,7 @@
   "smtp on shared world": {
     "parser": {
       "code": "HUMANISH_LAB_INVALID",
-      "message": "SMTP capture is not yet wired for shared-world labs. Use per-lane worlds for SMTP, or configure supported HTTP email capture for concurrent shared-world labs."
+      "message": "SMTP capture is not yet wired for shared-world labs. Use the default per-lane-worlds topology for SMTP, or configure supported HTTP email capture for concurrent shared-world labs."
     },
     "runLab": {
       "runs": true,
