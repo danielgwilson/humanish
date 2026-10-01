@@ -396,7 +396,8 @@ where a dry-run participant is ok as contract evidence and a live participant mu
 error, engaged, and no self-reported blocker.
 
 Explicit failed-participant reruns are supported on the CUA fan-out route via
-`humanish lab run <lab> --rerun-failed-from <run-id> [--lanes lane-a,lane-b]`.
+`humanish lab run <lab> --rerun-failed-from <run-id> [--lanes <participant-ids>]`, where a
+participant id is a declared `actors[0].lanes[].id`, or `lane-01`, `lane-02`, … by position.
 The source run must be a live CUA fan-out bundle. humanish creates a NEW run for
 the selected failed/blocked/timed-out/hollow participants (or explicit participant ids), leaves
 the source verdict unchanged, and records lineage as `run.rerun` plus a

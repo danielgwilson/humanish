@@ -77,7 +77,7 @@ export function registerLabCommands(parent: Command, io: CliIo): void {
     )
     .option(
       "--lanes <participant-ids>",
-      "CUA rerun only: comma-separated participant ids to rerun from the source run.",
+      "CUA rerun only: comma-separated participant ids from the source run. Ids are the lab's declared actors[0].lanes[].id, or lane-01, lane-02, … by position.",
     )
     .option("--run-id <id>", "Explicit lab run id; refused when that run already exists.")
     .option("--cwd <path>", "Target project directory.", ".")

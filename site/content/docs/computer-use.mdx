@@ -276,7 +276,8 @@ npx humanish lab run cua-browser --rerun-failed-from YOUR_RUN_ID --lanes lane-02
 ```
 
 This creates a new linked run containing only the failed/blocked/timed-out/hollow participants
-(or the explicit `--lanes` selection). The new `run.json` records `rerun.sourceRunId`,
+(or the explicit `--lanes` selection). `--lanes` takes participant ids: each declared
+`actors[0].lanes[].id`, or `lane-01`, `lane-02`, … by position when the lab declares none. The new `run.json` records `rerun.sourceRunId`,
 selected participant ids, and previous participant statuses; the source run's verdict is left unchanged.
 This is intentionally not automatic retry; a passing rerun is evidence of a
 nondeterminism candidate and does not license erasing the original red participant.
