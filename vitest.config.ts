@@ -5,7 +5,7 @@ export default defineConfig({
     include: ["tests/**/*.test.ts"],
     setupFiles: [
       "./tests/helpers/no-implicit-analysis-key.ts",
-      "./tests/helpers/quiet-deprecations.ts",
+      "./tests/helpers/deprecation-guard.ts",
     ],
     // Key discovery (#436) reads REAL machine state (gh auth token, ~/.e2b, ~/.config/humanish)
     // through the CLI seam; the suite runs with the documented strict flag so no developer's or

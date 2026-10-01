@@ -83,7 +83,8 @@ describe("clone subjects run only on execution.target: e2b-desktop", () => {
         const outcome = await runLab(unparsedCloneLab("openai-computer-use", target), {
           cwd,
           dryRun: false,
-          cuaHooks: { env: liveKeys, loadDesktopModule: desktop.load },
+          env: liveKeys,
+          cuaHooks: { loadDesktopModule: desktop.load },
         });
         expect(outcome.backend).toBe("cua");
         expect(outcome.result.ok).toBe(false);

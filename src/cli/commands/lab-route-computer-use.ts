@@ -237,7 +237,9 @@ function cuaRunOptions(
       : {
           rerun: {
             sourceRunId: args.options.rerunFailedFrom,
-            ...(settings.participantIds.length === 0 ? {} : { laneIds: settings.participantIds }),
+            ...(settings.participantIds.length === 0
+              ? {}
+              : { participantIds: settings.participantIds }),
           },
         }),
   };

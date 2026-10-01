@@ -90,7 +90,8 @@ describe("a live route records its status before acquiring a sandbox", () => {
         cwd,
         dryRun: false,
         runId: RUN_ID,
-        cuaHooks: { env, loadDesktopModule: async () => statusCheckingModule(runDir, seen) },
+        env,
+        cuaHooks: { loadDesktopModule: async () => statusCheckingModule(runDir, seen) },
       },
     );
     expect(seen).toEqual([true]);
@@ -105,7 +106,8 @@ describe("a live route records its status before acquiring a sandbox", () => {
       cwd,
       dryRun: false,
       runId: RUN_ID,
-      sharedWorldHooks: { env, loadDesktopModule: async () => statusCheckingModule(runDir, seen) },
+      env,
+      sharedWorldHooks: { loadDesktopModule: async () => statusCheckingModule(runDir, seen) },
     });
     expect(seen[0]).toBe(true);
   });
@@ -134,7 +136,8 @@ describe("a live route records its status before acquiring a sandbox", () => {
         cwd,
         dryRun: false,
         runId: RUN_ID,
-        scriptedHooks: { env, loadDesktopModule: async () => statusCheckingModule(runDir, seen) },
+        env,
+        scriptedHooks: { loadDesktopModule: async () => statusCheckingModule(runDir, seen) },
       },
     );
     expect(seen).toEqual([true]);

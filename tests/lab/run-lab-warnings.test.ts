@@ -12,6 +12,7 @@ import type { LabConfig } from "../../src/lab/types.js";
 import type { RunScorerProvenance } from "../../src/run/bundle.js";
 import { prepareLab, type RunLabOptions } from "../../src/run-lab.js";
 import { lab } from "../admission/fixtures.js";
+import { allowDeprecationsInThisTest } from "../helpers/deprecations.js";
 
 const WARNING = "RunLabOptions.onEvent failed on plan: observer down";
 
@@ -67,6 +68,10 @@ describe("a scorer that joins after the route's checks", () => {
   });
 
   it("keeps it on the result when the scorer is refused", async () => {
+    allowDeprecationsInThisTest(
+      "HUMANISH_RUN_LAB_OPTION_DEPRECATED",
+      "The deprecated cuaHooks.score is what makes the scorer a conflict here.",
+    );
     // The older cuaHooks.score beside a scorer is a conflict, refused when the scorer joins.
     const late = await prepared({ score: scorer.score! });
     const outcome = await late.run({ scorer, scorerProvenance });

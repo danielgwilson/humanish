@@ -85,9 +85,9 @@ describe("shared world with a local-agent brain", () => {
     let loads = 0;
     const outcome = await runLab(config("sharedProvisioned", localAgent), {
       cwd,
+      // No PATH: the codex CLI cannot be found.
+      env: { E2B_API_KEY: "synthetic-e2b", DATABASE_URL: "postgres://synthetic" },
       sharedWorldHooks: {
-        // No PATH: the codex CLI cannot be found.
-        env: { E2B_API_KEY: "synthetic-e2b", DATABASE_URL: "postgres://synthetic" },
         loadDesktopModule: async () => {
           loads += 1;
           throw new Error("a missing-agent refusal must come before any desktop loads");
@@ -129,8 +129,8 @@ describe("shared world with a local-agent brain", () => {
     if (!parsed.ok) throw new Error(parsed.error.message);
     const outcome = await runLab(parsed.config, {
       cwd,
+      env: { PATH: codexPath, HOME: codexPath, E2B_API_KEY: "e2b", DATABASE_URL: "postgres://x" },
       sharedWorldHooks: {
-        env: { PATH: codexPath, HOME: codexPath, E2B_API_KEY: "e2b", DATABASE_URL: "postgres://x" },
         loadDesktopModule: async () => {
           loads += 1;
           throw new Error("a local-agent refusal must come before any desktop loads");

@@ -517,7 +517,7 @@ describe("runTerminalProductLab (dry-run)", () => {
     // live path + credential boundary is covered deterministically in e2b-terminal-lab.test.ts.)
     const outcome = await runLab(parsedTerminalConfig({ mode: "live" }), {
       cwd,
-      terminalHooks: { env: {} },
+      env: {},
     });
     expect(outcome.backend).toBe("terminal");
     if (outcome.backend !== "terminal") return;

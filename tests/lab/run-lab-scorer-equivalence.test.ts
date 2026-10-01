@@ -10,6 +10,12 @@ import type { LabConfig } from "../../src/lab/types.js";
 import type { RunAdapterScore, RunScorerProvenance } from "../../src/run/bundle.js";
 import { lab } from "../admission/fixtures.js";
 import { passingHooks, terminalConfig } from "../helpers/terminal-live-fake.js";
+import { allowDeprecationsInThisFile } from "../helpers/deprecations.js";
+
+allowDeprecationsInThisFile(
+  "HUMANISH_RUN_LAB_OPTION_DEPRECATED",
+  "This file checks the deprecated scorer hooks against RunLabOptions.scorer.",
+);
 
 // RunLabOptions.scorer is the legacy scorer hook under a new name: for each route and each scorer
 // behavior, with and without CLI provenance, the review, the adapter score, the result and its
