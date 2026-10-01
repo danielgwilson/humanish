@@ -15,11 +15,8 @@ import {
   type ExecutionOutcome,
   type Judgment,
 } from "../../run/judge.js";
-import {
-  buildParticipantSummary,
-  participantFactsOf,
-  participantOutcomeOk,
-} from "./bundle-parts.js";
+import { buildParticipantSummary } from "./bundle-parts.js";
+import { participantFactsOf, participantOutcomeOk } from "./participant-facts.js";
 import { summarizeCuaDiagnostics } from "./diagnostics.js";
 import {
   aggregateCuaSubject,
@@ -27,7 +24,7 @@ import {
   subjectProvenanceArg,
   toParticipantResult,
 } from "./lanes.js";
-import { buildCuaRunBundle, judgeComputerUseRun } from "./assemble.js";
+import { buildCuaRunBundle, judgeComputerUseRun } from "./bundle.js";
 import type { runLabParticipants } from "./run-lanes.js";
 import type { CuaFinishFacts, CuaRunSetup } from "./setup.js";
 import { projectParticipantSubjects } from "./subject-projection.js";

@@ -8,7 +8,7 @@ import { DEFAULT_OPENAI_CU_MODEL } from "../../actors/computer-use/openai-provid
 import { runAllCuaParticipants } from "./lanes.js";
 import { startLiveTraceFlush } from "./live-flush.js";
 import { drainExternalComms } from "./external-comms.js";
-import { buildCuaRunBundle, judgeComputerUseRun } from "./assemble.js";
+import { buildCuaRunBundle, judgeComputerUseRun } from "./bundle.js";
 import { type ParticipantRunOutcome } from "./types.js";
 import type { CuaParticipantsSetup, CuaRunSetup } from "./setup.js";
 

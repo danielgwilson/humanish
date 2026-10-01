@@ -15,7 +15,7 @@ import {
   type PreparedOutputRoot,
 } from "../../run/contained-output.js";
 import { type LocalTreeArchive } from "../../run/source-archive.js";
-import { participantOutcomeOk } from "./bundle-parts.js";
+import { participantOutcomeOk } from "./participant-facts.js";
 import {
   closeParticipantModel,
   judgeParticipantSession,

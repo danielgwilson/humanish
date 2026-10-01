@@ -38,7 +38,7 @@ import {
 } from "./plan.js";
 import type { ComputerUsePlan } from "../../lab/plan-types.js";
 import { trackRuntimeStreams, type LiveTraceFlush } from "./live-flush.js";
-import { type CuaRunBundleBase } from "./assemble.js";
+import { type CuaRunBundleBase } from "./bundle.js";
 import { packRunLocalTree } from "./local-tree-pack.js";
 import { projectParticipantSubjects } from "./subject-projection.js";
 import {

@@ -8,7 +8,7 @@ import {
   type RunProviderResource,
   type RunSubjectProvenance,
 } from "../../run/bundle.js";
-import { participantPassed, type ParticipantFacts } from "../../run/judge.js";
+import { participantOutcomeOk } from "./participant-facts.js";
 import { participantResourceIds, type ParticipantIds } from "../../run/participant-records.js";
 import { digestUrl } from "./lane-plan.js";
 import { resolveSelfReportedFriction } from "./self-report.js";
@@ -19,27 +19,6 @@ import {
   type CuaSubjectProvenanceArg,
   type ParticipantRunOutcome,
 } from "./types.js";
-
-/** A lane outcome's facts for the judge. */
-export function participantFactsOf(outcome: ParticipantRunOutcome): ParticipantFacts {
-  return {
-    ...(outcome.session === undefined
-      ? {}
-      : { status: outcome.session.status, completionReason: outcome.session.completionReason }),
-    ...(outcome.sessionError === undefined ? {} : { sessionError: outcome.sessionError }),
-    skipped: outcome.skippedReason !== undefined,
-    noEngagement: outcome.noEngagement === true,
-    selfReportedBlocker: outcome.selfReportedBlocker === true,
-  };
-}
-
-export function participantOutcomeOk(
-  outcome: ParticipantRunOutcome | undefined,
-  dryRun: boolean,
-): boolean {
-  if (dryRun) return true;
-  return outcome !== undefined && participantPassed(participantFactsOf(outcome));
-}
 
 /** Aggregate lane counts for the result projection. */
 export function buildParticipantSummary(
