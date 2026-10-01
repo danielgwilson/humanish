@@ -179,7 +179,7 @@ class SubjectPlane {
   }
 
   async acquire(): Promise<void> {
-    const { plan, hooks, env, requestTimeoutMs, timeoutMs, roles } = this.ctx;
+    const { plan, hooks, env, requestTimeoutMs, timeoutMs } = this.ctx;
     const { subjectEnvNames, commsEnv } = this.setup;
     const subjectModule = await (hooks.loadDesktopModule ?? loadE2BDesktopModule)();
     // The ONE subject sandbox: headless service host (no GUI seat). The SUBJECT env is provisioned
@@ -206,7 +206,7 @@ class SubjectPlane {
           topology: "shared-world",
           topologyMode: "concurrent",
           role: "subject",
-          roleCount: String(roles.length),
+          roleCount: String(plan.plane.participants.length),
         },
         ...(subjectEnvNames.length > 0 || Object.keys(commsEnv).length > 0
           ? {
@@ -498,7 +498,6 @@ async function publishInProgress(
     inProgress: true,
     runId: ctx.runId,
     source: ctx.source,
-    roles: ctx.roles,
     actorSpecs: ctx.actorSpecs,
     actorResults: [],
     stateSnapshots: setup.stateSnapshots,
@@ -534,11 +533,12 @@ function runSeats(
   live: LiveSeats,
   setup: ProvisionedPlaneSetup,
 ): Promise<ActorLaneResult[]> {
-  const { roles, now } = ctx;
+  const { now } = ctx;
+  const participants = ctx.plan.plane.participants;
   const { commsEmail } = setup;
   const baseActorDeps = seatLaneDeps(ctx, live, ctx.scrubKnownValues);
   return mapWithConcurrency(ctx.actorSpecs, Math.max(1, ctx.concurrency), async (spec, i) => {
-    const route = resolveActorSeatUrl(plane.getHostUrl!, roles[i]?.entry);
+    const route = resolveActorSeatUrl(plane.getHostUrl!, participants[i]?.entry);
     // Tell this persona its (getHost-reachable) inbox URL — but only when comms is live AND this lane
     // has a declared recipient it can actually receive mail into (else it would stall on an empty
     // inbox). Only the in-sandbox catch exists on this plane; the adopter-hosted catch is the

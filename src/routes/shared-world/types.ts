@@ -14,7 +14,7 @@ import type {
 } from "../../analysis/automatic-completion.js";
 import type { CuaActorDescriptor } from "../../actors/registry.js";
 import type { CommsReceivingRun } from "../../comms/receiving.js";
-import type { LabActorLane, LabCommsEmail, LabCommsExternal, LabConfig } from "../../lab/types.js";
+import type { LabCommsEmail, LabCommsExternal, LabConfig } from "../../lab/types.js";
 import type { DesktopResourceObservation } from "../../substrates/e2b/desktop-resources.js";
 import type { ObserverResult, renderObserver } from "../../observer/render.js";
 import type { ObserverRuntimeStreamUrl } from "../../observer/run-routes.js";
@@ -180,13 +180,12 @@ type StartedRun = Extract<Awaited<ReturnType<RunScope["startRun"]>>, { ok: true 
 export interface PlaneContext {
   plan: SharedWorldPlan;
   input: SharedWorldRunInput;
-  /** Read for the raw seat roster and by the computer-use lane runner, whose hooks and desktop
-   *  setup take the whole config. Seat specs come from the plan's participants. */
+  /** Read by the computer-use lane runner, whose hooks and desktop setup take the whole config.
+   *  Seats, their count and their host and entry come from the plan's participants. */
   config: LabConfig;
   descriptor: CuaActorDescriptor;
   hooks: SharedWorldLabHooks;
   env: Record<string, string | undefined>;
-  roles: LabActorLane[];
   concurrency: number;
   runBudget: CuaRunBudget | undefined;
   runSession: CuaLaneDeps["runSession"];
@@ -241,7 +240,6 @@ export interface ConcurrentBundleArgs {
   inProgress?: boolean;
   runId: string;
   source: RunBundle["source"];
-  roles: LabActorLane[];
   actorSpecs: DesktopParticipantRun[];
   actorResults: ActorLaneResult[];
   stateSnapshots: SharedWorldStateSnapshot[];

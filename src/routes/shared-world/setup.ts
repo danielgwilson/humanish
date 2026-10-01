@@ -56,8 +56,8 @@ function makeRunId(): string {
 interface AdmittedLab {
   plan: SharedWorldPlan;
   input: SharedWorldRunInput;
-  /** Read for the raw seat roster and by the computer-use lane runner, whose hooks and desktop
-   *  setup take the whole config. Seat specs come from the plan's participants. */
+  /** Read by the computer-use lane runner, whose hooks and desktop setup take the whole config.
+   *  Seats, their count and their host and entry come from the plan's participants. */
   config: LabConfig;
   requestedCwd: string;
   hooks: SharedWorldLabHooks;
@@ -164,7 +164,6 @@ export async function prepareConcurrentRun(
   const { runBudget, runSession, localTreeRoute, subjectEnvNames, publicRepo } = lab;
   const { openaiApiKey, e2bApiKey, knownSecretValues, scrubKnownValues } = lab;
   const { dryRun, concurrency } = plan;
-  const roles = config.actors[0]?.lanes ?? [];
   const cwd = await bindPhysicalProject(requestedCwd);
   const warnings: string[] = [];
   // The comms catch and the packed tree are checked before the run starts, so a refusal leaves
@@ -254,7 +253,6 @@ export async function prepareConcurrentRun(
     descriptor,
     hooks,
     env,
-    roles,
     concurrency,
     runBudget,
     runSession,
