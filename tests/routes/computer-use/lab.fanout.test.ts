@@ -7,7 +7,7 @@ import path from "node:path";
 
 import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
 import { captureStderr, runDirSnapshot } from "../../helpers/run-golden.js";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import { PNG } from "pngjs";
 
 import {
@@ -1160,119 +1160,166 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     expect(handle.maxLive()).toBeLessThanOrEqual(2);
   });
 
-  it("reruns failed fan-out lanes as a new linked run without mutating the source verdict", async () => {
-    const sourceHandle = makeFanoutModule();
-    const sourceOutcome = await runLab(fanoutConfig({ concurrency: 4 }), {
-      cwd,
-      cuaHooks: {
-        ...passingHooks(sourceHandle),
-        runSession: async (options: CuaActorSessionOptions) => {
-          if (options.persona.id === "power-user") {
-            throw new Error("transient actor transport failed");
-          }
-          return runCuaActorSession({
-            ...options,
-            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
-          });
-        },
-      },
+  describe("a rerun of failed fan-out lanes", () => {
+    // The source run and its rerun are made once, in their own project, by the first test that
+    // needs them, and each verify is its own test. As one test, two route runs and four verifies
+    // hit the 20 s default at load 66-78. The per-test cwd above is removed after each test.
+    type RerunProof = {
+      project: string;
+      sourceRunId: string;
+      sourceOk: boolean;
+      sourceLanes: { passed?: number; harnessErrors?: number } | undefined;
+      sourceBundle: RunBundle;
+      sourceAfterRerun: RunBundle;
+      rerun: Extract<Awaited<ReturnType<typeof runLab>>, { backend: "cua" }>["result"];
+      rerunHandle: FanoutModuleHandle;
+      rerunBundle: RunBundle;
+      rerunText: string;
+    };
+    let made: Promise<RerunProof> | undefined;
+    afterAll(async () => {
+      const proof = await made?.catch(() => undefined);
+      if (proof) await rm(proof.project, { recursive: true, force: true });
     });
-    expect(sourceOutcome.backend).toBe("cua");
-    if (sourceOutcome.backend !== "cua") return;
-    expect(sourceOutcome.result.ok).toBe(false);
-    expect(sourceOutcome.result.laneSummary?.passed).toBe(3);
-    expect(sourceOutcome.result.laneSummary?.harnessErrors).toBe(1);
-
-    const sourceBundle = JSON.parse(
-      await readFile(
-        path.join(cwd, ".humanish", "runs", sourceOutcome.result.runId, "run.json"),
+    const rerunPath = (proof: RerunProof) =>
+      path.join(proof.project, ".humanish", "runs", "fanout-rerun-proof", "run.json");
+    const readBundle = async (project: string, runId: string) =>
+      JSON.parse(
+        await readFile(path.join(project, ".humanish", "runs", runId, "run.json"), "utf8"),
+      ) as RunBundle;
+    const rerunProof = () =>
+      (made ??= (async (): Promise<RerunProof> => {
+        const project = await mkdtemp(path.join(tmpdir(), "humanish-fanout-rerun-"));
+        const sourceHandle = makeFanoutModule();
+        const sourceOutcome = await runLab(fanoutConfig({ concurrency: 4 }), {
+          cwd: project,
+          cuaHooks: {
+            ...passingHooks(sourceHandle),
+            runSession: async (options: CuaActorSessionOptions) => {
+              if (options.persona.id === "power-user") {
+                throw new Error("transient actor transport failed");
+              }
+              return runCuaActorSession({
+                ...options,
+                openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+              });
+            },
+          },
+        });
+        if (sourceOutcome.backend !== "cua") throw new Error("the source run is not a cua run");
+        const sourceBundle = await readBundle(project, sourceOutcome.result.runId);
+        const rerunHandle = makeFanoutModule();
+        const rerunOutcome = await runLab(fanoutConfig({ concurrency: 4 }), {
+          cwd: project,
+          runId: "fanout-rerun-proof",
+          rerun: { sourceRunId: sourceOutcome.result.runId },
+          cuaHooks: passingHooks(rerunHandle),
+        });
+        if (rerunOutcome.backend !== "cua") throw new Error("the rerun is not a cua run");
+        const rerunText = await readFile(
+          path.join(project, ".humanish", "runs", "fanout-rerun-proof", "run.json"),
+          "utf8",
+        );
+        return {
+          project,
+          sourceRunId: sourceOutcome.result.runId,
+          sourceOk: sourceOutcome.result.ok,
+          sourceLanes: sourceOutcome.result.laneSummary,
+          sourceBundle,
+          sourceAfterRerun: await readBundle(project, sourceOutcome.result.runId),
+          rerun: rerunOutcome.result,
+          rerunHandle,
+          rerunBundle: JSON.parse(rerunText) as RunBundle,
+          rerunText,
+        };
+      })());
+    async function verifyRerun(proof: RerunProof, bundle?: RunBundle) {
+      await writeFile(
+        rerunPath(proof),
+        bundle === undefined ? proof.rerunText : `${JSON.stringify(bundle, null, 2)}\n`,
         "utf8",
-      ),
-    ) as RunBundle;
-    expect(sourceBundle.review.verdict).toBe("fail");
-    expect(sourceBundle.streams.find((stream) => stream.laneId === "desktop-power")?.status).toBe(
-      "failed",
-    );
+      );
+      return verifyRun(proof.project, "fanout-rerun-proof");
+    }
 
-    const rerunHandle = makeFanoutModule();
-    const rerunOutcome = await runLab(fanoutConfig({ concurrency: 4 }), {
-      cwd,
-      runId: "fanout-rerun-proof",
-      rerun: { sourceRunId: sourceOutcome.result.runId },
-      cuaHooks: passingHooks(rerunHandle),
+    // This test builds the shared proof: two route runs that cannot be split. Measured at 2.3 s
+    // alone and 8.9-13.0 s at load 46-66 (48 and 64 busy loops on 16 cores), so 60 s holds
+    // there and still fails a hang.
+    it("reruns failed fan-out lanes as a new linked run without mutating the source verdict", async () => {
+      const proof = await rerunProof();
+      expect(proof.sourceOk).toBe(false);
+      expect(proof.sourceLanes?.passed).toBe(3);
+      expect(proof.sourceLanes?.harnessErrors).toBe(1);
+      expect(proof.sourceBundle.review.verdict).toBe("fail");
+      expect(
+        proof.sourceBundle.streams.find((stream) => stream.laneId === "desktop-power")?.status,
+      ).toBe("failed");
+
+      expect(proof.rerun.ok).toBe(true);
+      expect(proof.rerun.rerun).toMatchObject({
+        sourceRunId: proof.sourceRunId,
+        selectedLaneIds: ["desktop-power"],
+        previous: [{ laneId: "desktop-power", status: "failed" }],
+      });
+      expect(proof.rerun.laneSummary).toMatchObject({
+        total: 1,
+        passed: 1,
+        skipped: 0,
+        harnessErrors: 0,
+      });
+      expect(proof.rerunHandle.created).toHaveLength(1);
+      expect(proof.rerunHandle.created[0]?.metadata?.laneId).toBe("desktop-power");
+
+      expect(proof.rerunBundle.rerun).toEqual(proof.rerun.rerun);
+      expect(proof.rerunBundle.events.some((event) => event.type === "cua-lab.fanout.rerun")).toBe(
+        true,
+      );
+      expect(proof.rerunBundle.review.summary).toContain(`Rerun from ${proof.sourceRunId}`);
+      expect(proof.sourceAfterRerun.review.verdict).toBe("fail");
+
+      expect((await verifyRerun(proof)).ok).toBe(true);
+    }, 60_000);
+
+    it("fails verify's bundle shape when the rerun drops its previous statuses", async () => {
+      const proof = await rerunProof();
+      const weakLineage = await verifyRerun(proof, {
+        ...proof.rerunBundle,
+        rerun: { ...proof.rerunBundle.rerun!, previous: [] },
+      });
+      expect(weakLineage.ok).toBe(false);
+      expect(weakLineage.checks.find((check) => check.name === "run bundle shape")?.ok).toBe(false);
     });
-    expect(rerunOutcome.backend).toBe("cua");
-    if (rerunOutcome.backend !== "cua") return;
-    expect(rerunOutcome.result.ok).toBe(true);
-    expect(rerunOutcome.result.rerun).toMatchObject({
-      sourceRunId: sourceOutcome.result.runId,
-      selectedLaneIds: ["desktop-power"],
-      previous: [{ laneId: "desktop-power", status: "failed" }],
+
+    it("fails verify's rerun lineage without the rerun event", async () => {
+      const proof = await rerunProof();
+      const missingEvent = await verifyRerun(proof, {
+        ...proof.rerunBundle,
+        events: proof.rerunBundle.events.filter((event) => event.type !== "cua-lab.fanout.rerun"),
+      });
+      expect(missingEvent.ok).toBe(false);
+      const rerunCheck = missingEvent.checks.find((check) => check.name === "rerun lineage");
+      expect(rerunCheck?.ok).toBe(false);
+      expect(rerunCheck?.message).toContain("missing cua-lab.fanout.rerun event");
     });
-    expect(rerunOutcome.result.laneSummary).toMatchObject({
-      total: 1,
-      passed: 1,
-      skipped: 0,
-      harnessErrors: 0,
+
+    it("fails verify's rerun lineage for a selected participant the run lacks", async () => {
+      const proof = await rerunProof();
+      const selectedMismatch = await verifyRerun(proof, {
+        ...proof.rerunBundle,
+        rerun: { ...proof.rerunBundle.rerun!, selectedLaneIds: ["desktop-power", "ghost-lane"] },
+      });
+      expect(selectedMismatch.ok).toBe(false);
+      const selectedMismatchCheck = selectedMismatch.checks.find(
+        (check) => check.name === "rerun lineage",
+      );
+      expect(selectedMismatchCheck?.ok).toBe(false);
+      expect(selectedMismatchCheck?.message).toContain(
+        "selected participant ghost-lane is missing prior status",
+      );
+      expect(selectedMismatchCheck?.message).toContain(
+        "selected participant ghost-lane is missing from current streams",
+      );
     });
-    expect(rerunHandle.created).toHaveLength(1);
-    expect(rerunHandle.created[0]?.metadata?.laneId).toBe("desktop-power");
-
-    const rerunBundle = JSON.parse(
-      await readFile(path.join(cwd, ".humanish", "runs", "fanout-rerun-proof", "run.json"), "utf8"),
-    ) as RunBundle;
-    expect(rerunBundle.rerun).toEqual(rerunOutcome.result.rerun);
-    expect(rerunBundle.events.some((event) => event.type === "cua-lab.fanout.rerun")).toBe(true);
-    expect(rerunBundle.review.summary).toContain(`Rerun from ${sourceOutcome.result.runId}`);
-
-    const sourceAfterRerun = JSON.parse(
-      await readFile(
-        path.join(cwd, ".humanish", "runs", sourceOutcome.result.runId, "run.json"),
-        "utf8",
-      ),
-    ) as RunBundle;
-    expect(sourceAfterRerun.review.verdict).toBe("fail");
-
-    const verified = await verifyRun(cwd, "fanout-rerun-proof");
-    expect(verified.ok).toBe(true);
-
-    await writeFile(
-      path.join(cwd, ".humanish", "runs", "fanout-rerun-proof", "run.json"),
-      `${JSON.stringify({ ...rerunBundle, rerun: { ...rerunBundle.rerun!, previous: [] } }, null, 2)}\n`,
-      "utf8",
-    );
-    const weakLineage = await verifyRun(cwd, "fanout-rerun-proof");
-    expect(weakLineage.ok).toBe(false);
-    expect(weakLineage.checks.find((check) => check.name === "run bundle shape")?.ok).toBe(false);
-
-    await writeFile(
-      path.join(cwd, ".humanish", "runs", "fanout-rerun-proof", "run.json"),
-      `${JSON.stringify({ ...rerunBundle, events: rerunBundle.events.filter((event) => event.type !== "cua-lab.fanout.rerun") }, null, 2)}\n`,
-      "utf8",
-    );
-    const missingEvent = await verifyRun(cwd, "fanout-rerun-proof");
-    expect(missingEvent.ok).toBe(false);
-    const rerunCheck = missingEvent.checks.find((check) => check.name === "rerun lineage");
-    expect(rerunCheck?.ok).toBe(false);
-    expect(rerunCheck?.message).toContain("missing cua-lab.fanout.rerun event");
-
-    await writeFile(
-      path.join(cwd, ".humanish", "runs", "fanout-rerun-proof", "run.json"),
-      `${JSON.stringify({ ...rerunBundle, rerun: { ...rerunBundle.rerun!, selectedLaneIds: ["desktop-power", "ghost-lane"] } }, null, 2)}\n`,
-      "utf8",
-    );
-    const selectedMismatch = await verifyRun(cwd, "fanout-rerun-proof");
-    expect(selectedMismatch.ok).toBe(false);
-    const selectedMismatchCheck = selectedMismatch.checks.find(
-      (check) => check.name === "rerun lineage",
-    );
-    expect(selectedMismatchCheck?.ok).toBe(false);
-    expect(selectedMismatchCheck?.message).toContain(
-      "selected participant ghost-lane is missing prior status",
-    );
-    expect(selectedMismatchCheck?.message).toContain(
-      "selected participant ghost-lane is missing from current streams",
-    );
   });
 
   it("reruns only the participants a rerun names and refuses an id the source run lacks", async () => {

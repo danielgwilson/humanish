@@ -178,35 +178,60 @@ describe("sequential shared-world bundles from before 0.106.0", () => {
 });
 
 describe("sequential shared-world verify findings golden", () => {
-  it("pins verify's failing checks for each fixture and each tamper in a golden", async () => {
-    const entries: Array<readonly [string, PinnedVerifyResult]> = [];
-    const pin = async (name: string, fixture: Fixture, mutate?: (bundle: RunBundle) => void) => {
-      const { cwd, runId } = await prepareFixture(fixture, mutate);
-      entries.push([name, await pinnedVerifyResult(cwd, runId)]);
-    };
-    for (const fixture of Object.keys(FIXTURES) as Fixture[]) await pin(fixture, fixture);
-    for (const [name, mutate] of overclaims) await pin(`passed: ${name}`, "passed", mutate);
-    for (const [name, mutate] of tailTampers)
-      await pin(`skipped-tail: ${name}`, "skipped-tail", mutate);
+  // The golden pins verify's failing checks for each fixture and each tamper. Each case is its own
+  // test with its own timeout: run as one test, 36 verifies hit the 20 s default at load 55-78.
+  // The last test asserts the golden in this order, so it needs every case to have run.
+  const combinedTail = new Set([
+    "wrong blocker",
+    "unknown cause",
+    "invented cost",
+    "duplicate role",
+    "fabricated blocked actor",
+    "fabricated skipped checkpoint",
+    "missing blocked event",
+  ]);
+  const cases: Array<readonly [string, Fixture, ((bundle: RunBundle) => void)?]> = [
+    ...(Object.keys(FIXTURES) as Fixture[]).map((fixture) => [fixture, fixture] as const),
+    ...overclaims.map(
+      ([name, mutate]) => [`passed: ${name}`, "passed" as Fixture, mutate] as const,
+    ),
+    ...tailTampers.map(
+      ([name, mutate]) => [`skipped-tail: ${name}`, "skipped-tail" as Fixture, mutate] as const,
+    ),
     // Several invariants fail at once, so the golden also pins the order across them.
-    await pin("passed: every overclaim at once", "passed", (b) => {
-      for (const [, mutate] of overclaims) mutate(b);
-    });
+    [
+      "passed: every overclaim at once",
+      "passed",
+      (b) => {
+        for (const [, mutate] of overclaims) mutate(b);
+      },
+    ],
     // Tampers that keep the bundle shape valid, from the roster, role and cause checks.
-    const combinedTail = new Set([
-      "wrong blocker",
-      "unknown cause",
-      "invented cost",
-      "duplicate role",
-      "fabricated blocked actor",
-      "fabricated skipped checkpoint",
-      "missing blocked event",
-    ]);
-    await pin(`skipped-tail: ${[...combinedTail].join(", ")}`, "skipped-tail", (b) => {
-      for (const [name, mutate] of tailTampers) if (combinedTail.has(name)) mutate(b);
-    });
-    await expect(verifyGolden(entries)).toMatchFileSnapshot(
-      "../golden/verify/shared-world-sequential.json",
-    );
+    [
+      `skipped-tail: ${[...combinedTail].join(", ")}`,
+      "skipped-tail",
+      (b) => {
+        for (const [name, mutate] of tailTampers) if (combinedTail.has(name)) mutate(b);
+      },
+    ],
+  ];
+  const pinned = new Map<string, PinnedVerifyResult>();
+
+  it.each(cases.map(([name, fixture, mutate]) => ({ name, fixture, mutate })))(
+    "pins verify's failing checks for $name",
+    async ({ name, fixture, mutate }) => {
+      const { cwd, runId } = await prepareFixture(fixture, mutate);
+      const result = await pinnedVerifyResult(cwd, runId);
+      pinned.set(name, result);
+      // Each fixture verifies as it is, and every tamper makes verify fail.
+      expect(result.ok, name).toBe(mutate === undefined);
+    },
+  );
+
+  it("matches the golden for every fixture and tamper", async () => {
+    expect([...pinned.keys()].sort()).toEqual(cases.map(([name]) => name).sort());
+    await expect(
+      verifyGolden(cases.map(([name]) => [name, pinned.get(name)!] as const)),
+    ).toMatchFileSnapshot("../golden/verify/shared-world-sequential.json");
   });
 });

@@ -153,52 +153,63 @@ const CONTENT_CASES: Record<string, { path: string; bytes: Buffer }> = {
 };
 
 describe("verify reads a run file by its bytes, not its name", () => {
-  let cwd: string;
-  const unscanned = new Map<string, { runId: string; path: string }>();
-  let backslash: { runId: string; path: string };
-  let unreadable: { runId: string; path: string } | undefined;
-  let oversized: { runId: string; path: string };
+  // Each run gets its own project, so each serve test below starts a server that verifies only
+  // that run. serve --safe verifies every run in its project at startup, and one server over all
+  // nine runs hit the 20 s default at load 55-78.
+  type Fixture = { project: string; runId: string; path: string };
+  const projects: string[] = [];
+  const unscanned = new Map<string, Fixture>();
+  let backslash: Fixture;
+  let unreadable: Fixture | undefined;
+  let oversized: Fixture;
+  async function project(): Promise<{ project: string; runId: string; runDir: string }> {
+    const dir = await mkdtemp(path.join(tmpdir(), "humanish-content-scan-"));
+    projects.push(dir);
+    return { project: dir, ...(await shareSafetyDryRun(dir)) };
+  }
 
   beforeAll(async () => {
-    cwd = await mkdtemp(path.join(tmpdir(), "humanish-content-scan-"));
     for (const [name, file] of Object.entries(CONTENT_CASES)) {
-      const { runId, runDir } = await shareSafetyDryRun(cwd);
+      const { project: dir, runId, runDir } = await project();
       await mkdir(path.join(runDir, "adapter"), { recursive: true });
       await writeFile(path.join(runDir, file.path), file.bytes);
-      unscanned.set(name, { runId, path: file.path });
+      unscanned.set(name, { project: dir, runId, path: file.path });
     }
     {
-      const { runId, runDir } = await shareSafetyDryRun(cwd);
+      const { project: dir, runId, runDir } = await project();
       await writeFile(path.join(runDir, "adapter\\secret.txt"), STATE);
-      backslash = { runId, path: "adapter\\secret.txt" };
+      backslash = { project: dir, runId, path: "adapter\\secret.txt" };
     }
     // Root reads a mode-000 file, so the unreadable case only means something for other users.
     if (process.getuid?.() !== 0) {
-      const { runId, runDir } = await shareSafetyDryRun(cwd);
+      const { project: dir, runId, runDir } = await project();
       await writeFile(path.join(runDir, "locked.txt"), STATE);
       await chmod(path.join(runDir, "locked.txt"), 0o000);
-      unreadable = { runId, path: "locked.txt" };
+      unreadable = { project: dir, runId, path: "locked.txt" };
     }
     {
       // A sparse file past the 2 GiB a single read can return: the read fails without the bytes.
-      const { runId, runDir } = await shareSafetyDryRun(cwd);
+      const { project: dir, runId, runDir } = await project();
       const handle = await open(path.join(runDir, "large.txt"), "w");
       await handle.write(STATE, 0);
       await handle.truncate(2 ** 31 + 1);
       await handle.close();
-      oversized = { runId, path: "large.txt" };
+      oversized = { project: dir, runId, path: "large.txt" };
     }
   }, 60_000);
 
   afterAll(async () => {
     if (unreadable)
-      await chmod(path.join(cwd, ".humanish", "runs", unreadable.runId, unreadable.path), 0o600);
-    await rm(cwd, { recursive: true, force: true });
+      await chmod(
+        path.join(unreadable.project, ".humanish", "runs", unreadable.runId, unreadable.path),
+        0o600,
+      );
+    for (const dir of projects) await rm(dir, { recursive: true, force: true });
   });
 
   it.each(Object.keys(CONTENT_CASES))("grades %s local_only and names the file", async (name) => {
-    const { runId, path: file } = unscanned.get(name)!;
-    const verified = await verifyRun(cwd, runId);
+    const { project: dir, runId, path: file } = unscanned.get(name)!;
+    const verified = await verifyRun(dir, runId);
     expect(verified.ok).toBe(true);
     expect(verified.shareSafety.status).toBe("local_only");
     const reason = verified.shareSafety.reasons.find((r) => r.code === "UNSCANNED_ARTIFACT");
@@ -208,7 +219,7 @@ describe("verify reads a run file by its bytes, not its name", () => {
   it("grades a file it could not read local_only", async () => {
     for (const run of [unreadable, oversized]) {
       if (run === undefined) continue;
-      const verified = await verifyRun(cwd, run.runId);
+      const verified = await verifyRun(run.project, run.runId);
       expect(verified.shareSafety.status).toBe("local_only");
       const reason = verified.shareSafety.reasons.find((r) => r.code === "UNSCANNED_ARTIFACT");
       expect(reason?.message).toContain(run.path);
@@ -216,37 +227,43 @@ describe("verify reads a run file by its bytes, not its name", () => {
   });
 
   it("blocks a file name with a backslash as an unsafe leaf", async () => {
-    const verified = await verifyRun(cwd, backslash.runId);
+    const verified = await verifyRun(backslash.project, backslash.runId);
     expect(verified.shareSafety.status).toBe("blocked");
     expect(verified.checks.find((check) => check.name === "public-safety scan")?.message).toContain(
       "unsafe artifact leaf",
     );
   });
 
-  it("serve --safe returns 404 for every one of these runs", async () => {
-    const started = await serveObserverLibrary(cwd, {
+  const served = (): Array<[string, Fixture]> => [
+    ...unscanned.entries(),
+    ["a backslash name", backslash],
+    ["a 2 GiB file", oversized],
+    ...(unreadable ? [["an unreadable file", unreadable] as [string, Fixture]] : []),
+  ];
+  it.each([
+    ...Object.keys(CONTENT_CASES),
+    "a backslash name",
+    "a 2 GiB file",
+    "an unreadable file",
+  ])("serve --safe returns 404 for the run with %s", async (name) => {
+    const run = served().find(([label]) => label === name)?.[1];
+    if (run === undefined) return; // The unreadable case does not exist when running as root.
+    const started = await serveObserverLibrary(run.project, {
       port: 0,
       safe: true,
       expose: false,
       edgeAuthed: false,
     });
     if (!started.ok) throw new Error(started.error.message);
-    const server = started.server;
     try {
-      const runs = [
-        ...unscanned.values(),
-        backslash,
-        oversized,
-        ...(unreadable ? [unreadable] : []),
-      ];
-      for (const { runId, path: file } of runs) {
-        for (const route of [encodeURIComponent(file).replace(/%2F/g, "/"), "run.json"]) {
-          const response = await fetch(new URL(`/_humanish/runs/${runId}/${route}`, server.url));
-          expect(response.status).toBe(404);
-        }
+      for (const route of [encodeURIComponent(run.path).replace(/%2F/g, "/"), "run.json"]) {
+        const response = await fetch(
+          new URL(`/_humanish/runs/${run.runId}/${route}`, started.server.url),
+        );
+        expect(response.status).toBe(404);
       }
     } finally {
-      await server.close();
+      await started.server.close();
     }
   });
 });
@@ -299,25 +316,27 @@ const ENCODED_CASES: Record<
 };
 
 describe("verify decodes the encodings a reader undoes", () => {
-  let cwd: string;
-  const runs = new Map<string, { runId: string; path: string }>();
+  // One project per run, so each serve test starts a server that verifies only its own run:
+  // serve --safe verifies every run in its project at startup.
+  const runs = new Map<string, { project: string; runId: string; path: string }>();
 
   beforeAll(async () => {
-    cwd = await mkdtemp(path.join(tmpdir(), "humanish-encoded-scan-"));
     for (const [name, file] of Object.entries(ENCODED_CASES)) {
-      const { runId, runDir } = await shareSafetyDryRun(cwd);
+      const project = await mkdtemp(path.join(tmpdir(), "humanish-encoded-scan-"));
+      const { runId, runDir } = await shareSafetyDryRun(project);
       await mkdir(path.join(runDir, "adapter"), { recursive: true });
       await writeFile(path.join(runDir, file.path), file.text);
-      runs.set(name, { runId, path: file.path });
+      runs.set(name, { project, runId, path: file.path });
     }
   }, 60_000);
 
   afterAll(async () => {
-    await rm(cwd, { recursive: true, force: true });
+    for (const { project } of runs.values()) await rm(project, { recursive: true, force: true });
   });
 
   it.each(Object.entries(ENCODED_CASES))("grades %s", async (name, file) => {
-    const verified = await verifyRun(cwd, runs.get(name)!.runId);
+    const run = runs.get(name)!;
+    const verified = await verifyRun(run.project, run.runId);
     expect(verified.shareSafety.status).toBe(file.grade);
     if (file.grade === "local_only") {
       const reason = verified.shareSafety.reasons.find((r) => r.code === "UNSCANNED_ARTIFACT");
@@ -325,25 +344,27 @@ describe("verify decodes the encodings a reader undoes", () => {
     }
   });
 
-  it("serve --safe returns 404 for each of these runs", async () => {
-    const started = await serveObserverLibrary(cwd, {
-      port: 0,
-      safe: true,
-      expose: false,
-      edgeAuthed: false,
-    });
-    if (!started.ok) throw new Error(started.error.message);
-    try {
-      for (const { runId, path: file } of runs.values()) {
-        for (const route of [file, "run.json"]) {
+  it.each(Object.keys(ENCODED_CASES))(
+    "serve --safe returns 404 for the run with %s",
+    async (name) => {
+      const run = runs.get(name)!;
+      const started = await serveObserverLibrary(run.project, {
+        port: 0,
+        safe: true,
+        expose: false,
+        edgeAuthed: false,
+      });
+      if (!started.ok) throw new Error(started.error.message);
+      try {
+        for (const route of [run.path, "run.json"]) {
           const response = await fetch(
-            new URL(`/_humanish/runs/${runId}/${route}`, started.server.url),
+            new URL(`/_humanish/runs/${run.runId}/${route}`, started.server.url),
           );
           expect(response.status).toBe(404);
         }
+      } finally {
+        await started.server.close();
       }
-    } finally {
-      await started.server.close();
-    }
-  });
+    },
+  );
 });
