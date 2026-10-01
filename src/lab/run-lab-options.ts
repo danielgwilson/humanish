@@ -6,7 +6,6 @@
 import path from "node:path";
 
 import type { CuaExecutor, CuaProvider } from "../actors/computer-use/loop.js";
-import { redactText, scrubLiterals, toErrorMessage } from "../evidence/redaction.js";
 import { CUA_ACTOR_LAB_SCHEMA, type CuaActorLabHooks } from "../routes/computer-use/types.js";
 import { SCRIPTED_BROWSER_LAB_SCHEMA } from "../routes/scripted-browser/types.js";
 import type { SharedWorldLabHooks } from "../routes/shared-world/types.js";
@@ -17,30 +16,23 @@ import {
 } from "../routes/terminal/types.js";
 import type { E2BDesktopSandbox } from "../substrates/e2b/sdk.js";
 import { isLocalBrowserLab } from "../substrates/local/runtime-config.js";
-import {
-  defaultSharedWorldPhaseSink,
-  defaultSubjectPhaseSink,
-  type SubjectPhaseEvent,
-} from "../subject/steps.js";
+import { defaultSharedWorldPhaseSink, defaultSubjectPhaseSink } from "../subject/steps.js";
 import type { AdapterScorerModule } from "./adapter-scorer-loader.js";
 import { HOOK_MEMBERS, withHookOverrides } from "./hook-bag.js";
 import type { LabOutcome, RunLabOptions } from "../run-lab.js";
 import { resolveLabDryRun, type LabRoute } from "./plan.js";
 import { computerUseParticipants } from "./plan-participants.js";
 import type { LabConfig } from "./types.js";
-
-/** One participant, as the options' callbacks see it. */
-interface ParticipantRef {
-  readonly id: string;
-  /** 0-based position in the roster. */
-  readonly index: number;
-  readonly count: number;
-}
-
-/** Provisioned shared world and scripted clone labs prepare the shared subject sandbox first. */
-type SetupTarget =
-  | { readonly kind: "subject" }
-  | { readonly kind: "participant"; readonly participant: ParticipantRef };
+import {
+  knownSecretValues,
+  labEventEmitter,
+  participantOf,
+  phaseEvent,
+  planEvent,
+  type LabEvent,
+  type ParticipantRef,
+  type SetupTarget,
+} from "./run-lab-events.js";
 
 /** What `createProvider` receives for each participant. */
 export interface ProviderContext {
@@ -62,34 +54,6 @@ type StreamEvent =
       url: string;
     }
   | { type: "ended"; participantId: string; simId: string; streamId: string };
-
-/**
- * What a run reports while it runs. `plan` comes from computer use only; the other routes run from
- * the lab plan but do not emit it. `subject-phase` comes from computer use (participant target)
- * and shared world (subject target).
- */
-export type LabEvent =
-  | {
-      type: "plan";
-      route: LabRoute;
-      participants: readonly {
-        id: string;
-        persona: string;
-        device?: string;
-        instructionDigest: string;
-      }[];
-    }
-  | {
-      type: "subject-phase";
-      target: SetupTarget;
-      name: string;
-      message: string;
-      at: string;
-      ok?: boolean;
-      durationMs?: number;
-    }
-  | { type: "analysis-started" }
-  | { type: "analysis-finished" };
 
 /** The options with a typed home, common to every route. */
 export interface RunLabHomes {
@@ -286,37 +250,6 @@ function unsupportedOption(
 }
 
 /**
- * The literal values to scrub from an onEvent warning: the provider keys and the declared subject
- * env from every env the run could read (the `env` option, each bag's env, process.env), and the
- * analysis API key. A callback can hold any of them, and its warning is appended after the route
- * sanitized its own.
- */
-function knownSecretValues(
-  config: LabConfig,
-  options: RunLabOptions,
-  forwardedEnv: Readonly<Record<string, string | undefined>> | undefined,
-): string[] {
-  const sources = [
-    forwardedEnv,
-    options.env,
-    options.cuaHooks?.env,
-    options.scriptedHooks?.env,
-    options.terminalHooks?.env,
-    options.sharedWorldHooks?.env,
-    process.env,
-  ];
-  const names = ["OPENAI_API_KEY", "E2B_API_KEY", "CODEX_API_KEY", ...(config.subject.env ?? [])];
-  const values = new Set<string>();
-  const add = (value: string | undefined): void => {
-    const trimmed = value?.trim() ?? "";
-    if (trimmed.length >= 4) values.add(trimmed);
-  };
-  for (const env of sources) for (const name of names) add(env?.[name]);
-  add(options.automaticAnalysis?.deps?.apiKey);
-  return [...values];
-}
-
-/**
  * Refuse what the route cannot honor, then map the new options into the old bags. Nothing here
  * touches the filesystem, so a refusal leaves no run directory, receipt or sandbox.
  */
@@ -348,31 +281,9 @@ export function normalizeRunLabOptions(
   // The route gets this copy, so it is the env a warning is scrubbed against, whatever the caller
   // does to its own object afterwards.
   const forwardedEnv = env === undefined ? undefined : { ...env };
-  const emit =
-    onEvent === undefined
-      ? undefined
-      : (event: LabEvent): void => {
-          // Read before the callback runs: the callback can redefine anything on the event.
-          const type = event.type;
-          // Total: a thrown value can refuse to become a string, and nothing may escape from here.
-          const report = (error: unknown): void => {
-            let detail: string;
-            try {
-              // Read here, not up front: a run with no failing callback never touches the env.
-              const scrub = scrubLiterals(knownSecretValues(config, options, forwardedEnv));
-              detail = redactText(scrub(toErrorMessage(error)));
-            } catch {
-              detail = "the thrown value has no message";
-            }
-            warnings.push(`RunLabOptions.onEvent failed on ${type}: ${detail}`);
-          };
-          try {
-            const returned = onEvent(event);
-            if (returned !== undefined) Promise.resolve(returned).then(undefined, report);
-          } catch (error) {
-            report(error);
-          }
-        };
+  const emit = labEventEmitter(onEvent, warnings, () =>
+    knownSecretValues(config, options, forwardedEnv),
+  );
 
   const normalized: RunLabOptions = { ...legacy };
   const participantIds = options.rerun?.participantIds;
@@ -479,27 +390,6 @@ function scorerHooks(
   };
 }
 
-/** A participant as the route hooks pass it, with the route's own field names. */
-type HookParticipant = { laneId: string; laneIndex: number; laneCount: number };
-
-const participantOf = (participant: HookParticipant): ParticipantRef => ({
-  id: participant.laneId,
-  index: participant.laneIndex,
-  count: participant.laneCount,
-});
-
-function phaseEvent(event: SubjectPhaseEvent, target: SetupTarget): LabEvent {
-  return {
-    type: "subject-phase",
-    target,
-    name: event.type,
-    message: event.message,
-    at: event.at,
-    ...(event.ok === undefined ? {} : { ok: event.ok }),
-    ...(event.durationMs === undefined ? {} : { durationMs: event.durationMs }),
-  };
-}
-
 /** The route awaits what these return, so onStream keeps the old hooks' barrier and errors. */
 function streamHooks(
   onStream: NonNullable<RunLabHomes["onStream"]>,
@@ -569,17 +459,7 @@ function computerUseHooks(
     ...(emit === undefined
       ? {}
       : {
-          onPreflight: (plan) =>
-            emit({
-              type: "plan",
-              route: "computer-use",
-              participants: plan.lanes.map((participant) => ({
-                id: participant.id,
-                persona: participant.persona,
-                device: participant.device,
-                instructionDigest: participant.instructionDigest,
-              })),
-            }),
+          onPreflight: (plan) => emit(planEvent(plan)),
           onPhase: (event, participant) => {
             defaultSubjectPhaseSink(event, participant);
             emit(

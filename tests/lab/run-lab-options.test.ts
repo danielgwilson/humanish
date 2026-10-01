@@ -9,7 +9,8 @@ import type { AdapterScorerModule } from "../../src/lab/adapter-scorer-loader.js
 import { parseLabConfig } from "../../src/lab/config.js";
 import { runLab, type RunLabOptions } from "../../src/run-lab.js";
 import { routeOf } from "../../src/lab/plan.js";
-import { normalizeRunLabOptions, type LabEvent } from "../../src/lab/run-lab-options.js";
+import type { LabEvent } from "../../src/lab/run-lab-events.js";
+import { normalizeRunLabOptions } from "../../src/lab/run-lab-options.js";
 import type { LabConfig } from "../../src/lab/types.js";
 import type { CuaParticipantPlan } from "../../src/routes/computer-use/types.js";
 import type { CuaLaneSpec } from "../../src/routes/computer-use/legacy-lane-spec.js";
