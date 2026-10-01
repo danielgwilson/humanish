@@ -1,5 +1,6 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { EventEmitter } from "node:events";
+import { chmodSync, rmSync, writeFileSync } from "node:fs";
 import { mkdtemp, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -1406,5 +1407,202 @@ describe("restricted Codex session scheduling", () => {
     } finally {
       await session.close();
     }
+  });
+});
+
+// Paths the session split (restricted-launch.ts) moved that no earlier test pinned. Each case
+// fails if the refusal, receipt or teardown it names changes.
+describe("restricted Codex session launch and teardown receipts", () => {
+  /** The fixture's spawn, recording each child so a test can see whether teardown closed it. */
+  function recordingSpawn(base: RestrictedCodexSpawn, children: ChildProcessWithoutNullStreams[]) {
+    const spawnFn: RestrictedCodexSpawn = (file, args, settings) => {
+      const child = base(file, args, settings);
+      children.push(child);
+      return child;
+    };
+    return spawnFn;
+  }
+
+  it("refuses a relative auth home as unsupported auth, before any login check", async () => {
+    const f = await fixture();
+    const session = createRestrictedCodexSession({ ...f.options, authHome: "relative-auth-home" });
+    expect(await session.run(request)).toMatchObject({
+      errorCode: "codex_unsupported_auth",
+      dispatched: false,
+    });
+    expect(await session.close()).toBe(true);
+  });
+
+  it("closes the app-server when initialize is refused, and refuses every later request", async () => {
+    const f = await fixture("initialize-version-mismatch");
+    const children: ChildProcessWithoutNullStreams[] = [];
+    const session = createRestrictedCodexSession({
+      ...f.options,
+      spawnFn: recordingSpawn(f.options.spawnFn!, children),
+    });
+    expect(await session.run(request)).toMatchObject({
+      errorCode: "codex_unsupported_version",
+      failurePhase: "initialize",
+    });
+    const appServer = children.at(-1)!;
+    await vi.waitFor(
+      () => expect(appServer.exitCode !== null || appServer.signalCode !== null).toBe(true),
+      AFTER_SPAWN,
+    );
+    // Teardown closed the session: no second launch.
+    expect(await session.run(request)).toMatchObject({ errorCode: "invalid_request" });
+    expect(children).toHaveLength(2); // the version check and the one app-server
+    expect(await session.close()).toBe(true);
+  });
+
+  it("names config/read as the phase of a refused configuration", async () => {
+    const f = await fixture("system-config");
+    expect(await f.run(request)).toMatchObject({
+      errorCode: "codex_unsafe_configuration",
+      failurePhase: "config/read",
+    });
+  });
+
+  it("reports the deadline's cancellation over a plain error thrown after the stop", async () => {
+    const f = await fixture();
+    const controller = new AbortController();
+    const base = f.options.spawnFn!;
+    const session = createRestrictedCodexSession({
+      ...f.options,
+      spawnFn: (file, args, settings) => {
+        if (args[0] !== "app-server") return base(file, args, settings);
+        controller.abort();
+        throw new Error("synthetic spawn failure");
+      },
+    });
+    expect(await session.run({ ...request, signal: controller.signal })).toMatchObject({
+      status: "cancelled",
+      errorCode: "cancelled",
+    });
+    expect(await session.close()).toBe(true);
+  });
+
+  it("reports cleanup_failed in the cleanup phase when a failed request cannot be torn down", async () => {
+    const f = await fixture("initialize-version-mismatch");
+    const base = f.options.spawnFn!;
+    const session = createRestrictedCodexSession({
+      ...f.options,
+      spawnFn: (file, args, settings) => {
+        if (args[0] === "app-server") {
+          // Replace the private home's auth link with a file, as an unexpected login rotation does.
+          const link = path.join(String(settings.env?.HOME), "auth.json");
+          rmSync(link);
+          writeFileSync(link, "synthetic-rotated-login", { mode: 0o600 });
+        }
+        return base(file, args, settings);
+      },
+    });
+    expect(await session.run(request)).toMatchObject({
+      errorCode: "codex_cleanup_failed",
+      failurePhase: "cleanup",
+    });
+    expect(await session.close()).toBe(false);
+  });
+
+  it.skipIf(process.getuid?.() === 0)(
+    "keeps a task directory it could not remove and writes a recovery marker for it",
+    async () => {
+      const f = await fixture("initialize-version-mismatch");
+      const base = f.options.spawnFn!;
+      const session = createRestrictedCodexSession({
+        ...f.options,
+        spawnFn: (file, args, settings) => {
+          // The task directory can no longer be removed from its parent.
+          if (args[0] === "app-server") chmodSync(f.tempRoot, 0o500);
+          return base(file, args, settings);
+        },
+      });
+      try {
+        expect(await session.run(request)).toMatchObject({
+          errorCode: "codex_cleanup_failed",
+          failurePhase: "cleanup",
+        });
+        const markers = path.join(f.directory, "cache", "humanish", "codex-analysis-recovery");
+        const [marker] = await readdir(markers);
+        expect(JSON.parse(await readFile(path.join(markers, marker!), "utf8"))).toMatchObject({
+          schema: "humanish.codex-auth-recovery.v1",
+          reason: "process_cleanup_unconfirmed",
+        });
+      } finally {
+        chmodSync(f.tempRoot, 0o700);
+      }
+    },
+  );
+});
+
+// Reads of host-supplied objects keep their old order and timing. The Codex equivalence review of
+// the session split found each of these changed by an earlier draft of it.
+describe("restricted Codex session host reads", () => {
+  const tool = {
+    name: "humanish_ui",
+    description: "Synthetic participant tool.",
+    inputSchema: { type: "object", properties: {} },
+    call: async () => "ok",
+  };
+  const participantRequest = { ...request, model: undefined };
+  /** A participant-mode session on the fake app-server, whose tool comes from `getTool`. */
+  async function participantSession(getTool: () => typeof tool) {
+    const f = await fixture("participant-success");
+    const session = createRestrictedCodexSession({
+      ...f.options,
+      env: { ...f.options.env, HOME: f.directory, CODEX_HOME: f.authHome, NODE_OPTIONS: undefined },
+      participant: {
+        authMode: "operator",
+        reasoningEffort: "high",
+        get tool() {
+          return getTool();
+        },
+      },
+    });
+    return { f, session };
+  }
+
+  it("reads options.env before options.participant", () => {
+    const options = {
+      get env(): NodeJS.ProcessEnv {
+        throw new Error("env read first");
+      },
+      get participant(): RestrictedCodexSessionOptions["participant"] {
+        throw new Error("participant read first");
+      },
+    } as RestrictedCodexSessionOptions;
+    expect(() => createRestrictedCodexSession(options)).toThrow("env read first");
+  });
+
+  it("checks busy when admission reaches it, after the participant's tool is read", async () => {
+    let started = false,
+      nested: Promise<unknown> | undefined;
+    // A tool getter that starts a request of its own while the first is being admitted.
+    const { session } = await participantSession(() => {
+      if (!started) {
+        started = true;
+        nested = session.run(participantRequest, true);
+      }
+      return tool;
+    });
+    expect(await session.run(participantRequest, true)).toMatchObject({
+      errorCode: "codex_busy",
+    });
+    expect(await nested).toMatchObject({ status: "completed", errorCode: null });
+    await session.close();
+  });
+
+  it("sends the request's instructions as read after the participant's tool", async () => {
+    const live = { ...participantRequest, instructions: "original instructions" };
+    let reads = 0;
+    const { f, session } = await participantSession(() => {
+      // The first read is admission's; the second is thread/start's first tool field.
+      if (++reads === 2) live.instructions = "changed instructions";
+      return tool;
+    });
+    expect(await session.run(live, true)).toMatchObject({ status: "completed", errorCode: null });
+    const threadStart = (await f.entries()).find((entry) => entry.method === "thread/start")!;
+    expect((threadStart.params as Trace).baseInstructions).toBe("changed instructions");
+    await session.close();
   });
 });
