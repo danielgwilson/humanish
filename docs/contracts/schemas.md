@@ -403,6 +403,10 @@ the source verdict unchanged, and records lineage as `run.rerun` plus a
 `cua-lab.fanout.rerun` event: source run id, selected participant ids, and previous participant
 statuses/reasons. This is intentionally not automatic retry; a passing rerun is a
 nondeterminism candidate for human/product scoring, not a rewrite of the old run.
+Without `--lanes`, a participant is selected when its stream's `judgedStatus` is not `passed`.
+That field is the judge's status (`judgedStatus` in `src/run/judge.ts`), so a goal_satisfied
+session that reported a blocker counts as blocked. A source bundle without `judgedStatus` falls back
+to the stream's trace status, its actor status and completion reason, and a zero-action check.
 
 Manifests are human-authored `.yaml` source under `humanish/labs/*.yaml` for
 committed public-safe labs, or ignored `.humanish/labs/*.yaml` /

@@ -1632,6 +1632,43 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     },
   );
 
+  // The judge reads a goal_satisfied session that reports a blocker as blocked, so a rerun of the
+  // failed participants must select it. Rerun selection used to read the trace status, which stays
+  // "passed" for that session, and skipped it.
+  it("reruns a participant whose session reported a blocker", async () => {
+    const config = fanoutConfig({
+      concurrency: 1,
+      lanes: [
+        { id: "participant-1", persona: "first-time-visitor" },
+        { id: "participant-2", persona: "first-time-visitor" },
+      ],
+    });
+    const endings: Ending[] = ["pass", "blocker"];
+    let lane = 0;
+    const source = await runLab(config, {
+      cwd,
+      cuaHooks: {
+        ...passingHooks(makeFanoutModule()),
+        runSession: async (options) =>
+          runCuaActorSession({ ...options, provider: scriptedEnding(endings[lane++]!) }),
+      },
+    });
+    if (source.backend !== "cua") throw new Error("expected the computer-use route");
+    expect(source.result.ok).toBe(false);
+
+    const rerun = await runLab(config, {
+      cwd,
+      rerun: { sourceRunId: source.result.runId },
+      cuaHooks: passingHooks(makeFanoutModule()),
+    });
+    if (rerun.backend !== "cua") throw new Error("expected the computer-use route");
+    expect(rerun.result.error).toBeUndefined();
+    expect(rerun.result.rerun).toMatchObject({
+      sourceRunId: source.result.runId,
+      selectedLaneIds: ["participant-2"],
+    });
+  });
+
   // The scorer folds into the judged verdict last, and can only make it stricter: a failing
   // score turns a pass into a fail, a passing score cannot lift a blocked run, and a failing score
   // leaves a blocked run blocked with the scorer's failure as a gap.
