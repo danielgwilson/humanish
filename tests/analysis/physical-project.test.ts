@@ -17,9 +17,9 @@ import {
   readAutomaticStudyAnalysisPrepared,
   claimAutomaticStudyAnalysis,
 } from "../../src/analysis/job.js";
-import { analyzeStudy } from "../../src/analysis/service.js";
+import { analyzeRun } from "../../src/analysis/service.js";
 import {
-  listStudyAnalyses,
+  listAnalyses,
   loadStudyAnalysisRecord,
   readStudyAnalysisVersion,
   writeStudyAnalysis,
@@ -96,7 +96,7 @@ describe("analysis storage in a symlinked project", () => {
   }
 
   async function snapshot(prepared: PreparedRunArtifactPaths, analysisId: string) {
-    const versions = await listStudyAnalyses(prepared);
+    const versions = await listAnalyses(prepared);
     return {
       versions: versions.map((entry) => [entry.id, entry.state]),
       version: (await readStudyAnalysisVersion(prepared, analysisId))?.state ?? null,
@@ -154,7 +154,7 @@ describe("analysis storage in a symlinked project", () => {
     const deps = { apiKey: "synthetic-key", fetch };
 
     await retargetAlias();
-    const refused = await analyzeStudy(
+    const refused = await analyzeRun(
       original,
       runId,
       { config },
@@ -163,7 +163,7 @@ describe("analysis storage in a symlinked project", () => {
     expect(refused.error?.code).toBe("ANALYSIS_SOURCE_CHANGED");
     expect(fetch).not.toHaveBeenCalled();
 
-    const result = await analyzeStudy(
+    const result = await analyzeRun(
       original,
       runId,
       { config },

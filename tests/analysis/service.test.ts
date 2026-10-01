@@ -5,13 +5,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AnalysisFetch } from "../../src/analysis/provider.js";
 import { createProgram } from "../../src/cli/program.js";
 import {
-  analyzeStudy,
-  correctStudyAnalysis,
-  showStudyAnalysis,
-  withStudyAnalysisLock,
+  analyzeRun,
+  correctAnalysis,
+  showAnalysis,
+  withAnalysisLock,
 } from "../../src/analysis/service.js";
 import { captureEvidence } from "../../src/analysis/evidence.js";
-import { listStudyAnalyses, writeStudyAnalysis } from "../../src/analysis/store.js";
+import { listAnalyses, writeStudyAnalysis } from "../../src/analysis/store.js";
 import { listStudyAnalysisExecutions } from "../../src/analysis/store-executions.js";
 import { draftFeedback, renderIssueUrl } from "../../src/feedback/feedback.js";
 import { exportRun } from "../../src/feedback/export.js";
@@ -75,7 +75,7 @@ describe("ordinary study analysis flow", () => {
 
   it("preflights a completed legacy stream without credentials, provider requests or artifacts", async () => {
     const fetch = await transport();
-    const result = await analyzeStudy(
+    const result = await analyzeRun(
       cwd,
       "analysis-flow",
       { config, dryRun: true },
@@ -92,7 +92,7 @@ describe("ordinary study analysis flow", () => {
     const fetch = await transport();
     const baseline = { ...config, maxOutputTokens: 16384 };
     expect(
-      await analyzeStudy(
+      await analyzeRun(
         cwd,
         "analysis-flow",
         { config: baseline, dryRun: true, preferLargerOutput: true },
@@ -100,7 +100,7 @@ describe("ordinary study analysis flow", () => {
       ),
     ).toMatchObject({ ok: true, admission: { outputTokenAllowance: 32768 } });
     expect(
-      await analyzeStudy(cwd, "analysis-flow", { config: baseline, dryRun: true }, { fetch }),
+      await analyzeRun(cwd, "analysis-flow", { config: baseline, dryRun: true }, { fetch }),
     ).toMatchObject({ ok: true, admission: { outputTokenAllowance: 16384 } });
     expect(fetch).not.toHaveBeenCalled();
   });
@@ -116,7 +116,7 @@ describe("ordinary study analysis flow", () => {
     expect(outcome.result).toMatchObject({ ok: true, admission: { outputTokenAllowance: 32768 } });
     expect(JSON.parse(String(fetch.mock.calls[0]?.[1]?.body)).max_output_tokens).toBe(32768);
     expect(fetch).toHaveBeenCalledTimes(1);
-    const saved = await showStudyAnalysis(cwd, "analysis-flow");
+    const saved = await showAnalysis(cwd, "analysis-flow");
     expect(saved.analysis?.config.maxOutputTokens).toBe(32768);
     expect(await readAutomaticStudyAnalysis(cwd, "analysis-flow")).toMatchObject({
       state: outcome.state,
@@ -133,7 +133,7 @@ describe("ordinary study analysis flow", () => {
 
   it("uses real admission, analysis run, storage and render paths; reopening does not dispatch again", async () => {
     const fetch = await transport();
-    const result = await analyzeStudy(
+    const result = await analyzeRun(
       cwd,
       "analysis-flow",
       { config },
@@ -147,12 +147,12 @@ describe("ordinary study analysis flow", () => {
     });
     expect(result.warnings).toEqual([]);
     expect(fetch).toHaveBeenCalledTimes(1);
-    const loaded = await showStudyAnalysis(cwd, "analysis-flow");
+    const loaded = await showAnalysis(cwd, "analysis-flow");
     expect(loaded).toMatchObject({
       state: "ready",
       analysis: { id: result.analysisId, result: syntheticResult(input) },
     });
-    const again = await analyzeStudy(cwd, "analysis-flow", { config }, { apiKey: "", fetch });
+    const again = await analyzeRun(cwd, "analysis-flow", { config }, { apiKey: "", fetch });
     expect(again).toMatchObject({ ok: true, reused: true, analysisId: result.analysisId });
     expect(fetch).toHaveBeenCalledTimes(1);
     expect(await readFile(path.join(runRoot, "run.json"))).toEqual(original);
@@ -169,7 +169,7 @@ describe("ordinary study analysis flow", () => {
       expect(during.ok && during.totals.costs.analysisUnresolvedAttempts).toBe(1);
       return respond(...args);
     });
-    const result = await analyzeStudy(
+    const result = await analyzeRun(
       cwd,
       "analysis-flow",
       { config },
@@ -183,14 +183,14 @@ describe("ordinary study analysis flow", () => {
       analysisUnresolvedAttempts: 0,
       analysisEstimatedUsd: result.usage?.estimatedCostUsd,
     });
-    await analyzeStudy(cwd, "analysis-flow", { config }, { apiKey: "", fetch });
+    await analyzeRun(cwd, "analysis-flow", { config }, { apiKey: "", fetch });
     expect(fetch).toHaveBeenCalledTimes(1);
     expect(await computeStats(cwd)).toEqual(after);
   });
 
   it("a rejected pre-dispatch guard sends nothing and creates no potentially paid attempt", async () => {
     const fetch = await transport();
-    const result = await analyzeStudy(
+    const result = await analyzeRun(
       cwd,
       "analysis-flow",
       { config },
@@ -235,7 +235,7 @@ describe("ordinary study analysis flow", () => {
     }
     expect(
       (
-        await analyzeStudy(
+        await analyzeRun(
           cwd,
           "analysis-flow",
           { config: { ...config, maxCostUsd: NaN }, dryRun: true },
@@ -250,7 +250,7 @@ describe("ordinary study analysis flow", () => {
     const fetch = await transport();
     expect(
       (
-        await analyzeStudy(
+        await analyzeRun(
           cwd,
           "analysis-flow",
           { config: { ...config, maxCostUsd: NaN } },
@@ -260,7 +260,7 @@ describe("ordinary study analysis flow", () => {
     ).toBe("ANALYSIS_CONFIG_INVALID");
     expect(
       (
-        await analyzeStudy(
+        await analyzeRun(
           cwd,
           "analysis-flow",
           { config: { ...config, maxCostUsd: 0.000001 } },
@@ -269,19 +269,19 @@ describe("ordinary study analysis flow", () => {
       ).error?.code,
     ).toBe("analysis_budget_exceeded");
     expect(
-      (await analyzeStudy(cwd, "analysis-flow", { config }, { fetch, signal: AbortSignal.abort() }))
+      (await analyzeRun(cwd, "analysis-flow", { config }, { fetch, signal: AbortSignal.abort() }))
         .error?.code,
     ).toBe("ANALYSIS_CANCELLED");
     const bundle = JSON.parse(original.toString()) as RunBundle;
     bundle.mode = "dry-run";
     await writeFile(path.join(runRoot, "run.json"), JSON.stringify(bundle));
-    expect((await analyzeStudy(cwd, "analysis-flow", { config }, { fetch })).error?.code).toBe(
+    expect((await analyzeRun(cwd, "analysis-flow", { config }, { fetch })).error?.code).toBe(
       "ANALYSIS_REQUIRES_LIVE_RUN",
     );
     bundle.mode = "live";
     bundle.streams[0]!.status = "running";
     await writeFile(path.join(runRoot, "run.json"), JSON.stringify(bundle));
-    expect((await analyzeStudy(cwd, "analysis-flow", { config }, { fetch })).error?.code).toBe(
+    expect((await analyzeRun(cwd, "analysis-flow", { config }, { fetch })).error?.code).toBe(
       "ANALYSIS_RUN_ACTIVE",
     );
     expect(fetch).not.toHaveBeenCalled();
@@ -297,13 +297,13 @@ describe("ordinary study analysis flow", () => {
     const hold = new Promise<void>((done) => {
       release = done;
     });
-    const first = withStudyAnalysisLock(prepared, async () => {
+    const first = withAnalysisLock(prepared, async () => {
       entered();
       await hold;
     });
     await started;
     const fetch = await transport();
-    expect((await analyzeStudy(cwd, "analysis-flow", { config }, { fetch })).error?.code).toBe(
+    expect((await analyzeRun(cwd, "analysis-flow", { config }, { fetch })).error?.code).toBe(
       "ANALYSIS_BUSY",
     );
     expect(fetch).not.toHaveBeenCalled();
@@ -311,7 +311,7 @@ describe("ordinary study analysis flow", () => {
     await first;
     expect(await readdir(runRoot)).not.toContain(".analysis-lock");
     await mkdir(path.join(runRoot, ".analysis-lock"));
-    expect((await analyzeStudy(cwd, "analysis-flow", { config }, { fetch })).error?.code).toBe(
+    expect((await analyzeRun(cwd, "analysis-flow", { config }, { fetch })).error?.code).toBe(
       "ANALYSIS_BUSY",
     );
     expect(await readdir(runRoot)).toContain(".analysis-lock");
@@ -320,7 +320,7 @@ describe("ordinary study analysis flow", () => {
   it("refuses an unreadable oversized status instead of treating it as an absent legacy status", async () => {
     await writeFile(path.join(runRoot, "status.json"), " ".repeat(64 * 1024 + 1));
     const fetch = await transport();
-    const result = await analyzeStudy(
+    const result = await analyzeRun(
       cwd,
       "analysis-flow",
       { config },
@@ -342,10 +342,8 @@ describe("ordinary study analysis flow", () => {
       status: "confirmed" as const,
       reason: "The retained evidence supports this finding.",
     };
-    await withStudyAnalysisLock(prepared, async () => {
-      await expect(correctStudyAnalysis(cwd, "analysis-flow", options)).rejects.toThrow(
-        "ANALYSIS_BUSY",
-      );
+    await withAnalysisLock(prepared, async () => {
+      await expect(correctAnalysis(cwd, "analysis-flow", options)).rejects.toThrow("ANALYSIS_BUSY");
       const output: string[] = [];
       let exit = 0;
       const program = createProgram({
@@ -380,17 +378,17 @@ describe("ordinary study analysis flow", () => {
         ok: false,
         error: { code: "ANALYSIS_BUSY" },
       });
-      expect((await showStudyAnalysis(cwd, "analysis-flow")).corrections).toEqual([]);
+      expect((await showAnalysis(cwd, "analysis-flow")).corrections).toEqual([]);
     });
-    await correctStudyAnalysis(cwd, "analysis-flow", options);
-    expect((await showStudyAnalysis(cwd, "analysis-flow")).corrections).toHaveLength(1);
+    await correctAnalysis(cwd, "analysis-flow", options);
+    expect((await showAnalysis(cwd, "analysis-flow")).corrections).toHaveLength(1);
     expect(await readdir(runRoot)).not.toContain(".analysis-lock");
     expect(await readFile(path.join(runRoot, "run.json"))).toEqual(original);
   });
 
   it("refuses a new paid attempt when history is unreadable or lacks publication capacity, while preserving valid reuse", async () => {
     const fetch = await transport();
-    const first = await analyzeStudy(
+    const first = await analyzeRun(
       cwd,
       "analysis-flow",
       { config },
@@ -402,14 +400,14 @@ describe("ordinary study analysis flow", () => {
         mkdir(path.join(runRoot, "analysis", `interrupted-${index}`)),
       ),
     );
-    const reused = await analyzeStudy(
+    const reused = await analyzeRun(
       cwd,
       "analysis-flow",
       { config },
       { apiKey: "synthetic-key", fetch },
     );
     expect(reused).toMatchObject({ ok: true, reused: true, analysisId: first.analysisId });
-    const atCapacity = await analyzeStudy(
+    const atCapacity = await analyzeRun(
       cwd,
       "analysis-flow",
       { config, rerun: true },
@@ -420,7 +418,7 @@ describe("ordinary study analysis flow", () => {
       error: { code: "ANALYSIS_HISTORY_UNAVAILABLE" },
     });
     await mkdir(path.join(runRoot, "analysis", "one-over-limit"));
-    const unreadable = await analyzeStudy(
+    const unreadable = await analyzeRun(
       cwd,
       "analysis-flow",
       { config },
@@ -450,7 +448,7 @@ describe("ordinary study analysis flow", () => {
     expect((await renderObserver(cwd, "analysis-flow")).ok).toBe(false);
     const fetch = await transport();
     const onProgress = vi.fn();
-    const result = await analyzeStudy(
+    const result = await analyzeRun(
       cwd,
       "analysis-flow",
       { config },
@@ -468,7 +466,7 @@ describe("ordinary study analysis flow", () => {
     // Perturb captured usage to exercise a provider exceeding the requested token bound.
     wire.usage.output_tokens = config.maxOutputTokens + 1;
     const fetch = vi.fn<AnalysisFetch>(async () => new Response(JSON.stringify(wire)));
-    const result = await analyzeStudy(
+    const result = await analyzeRun(
       cwd,
       "analysis-flow",
       { config },
@@ -519,7 +517,7 @@ describe("ordinary study analysis flow", () => {
 
   it("a failed attempt does not hide later valid findings or permanently block sharing", async () => {
     const fetch = await transport();
-    const failed = await analyzeStudy(
+    const failed = await analyzeRun(
       cwd,
       "analysis-flow",
       { config },
@@ -529,14 +527,14 @@ describe("ordinary study analysis flow", () => {
       },
     );
     expect(failed).toMatchObject({ ok: false, status: "failed", usage: { dispatched: true } });
-    const success = await analyzeStudy(
+    const success = await analyzeRun(
       cwd,
       "analysis-flow",
       { config },
       { apiKey: "synthetic-key", fetch },
     );
     expect(success.ok).toBe(true);
-    expect((await showStudyAnalysis(cwd, "analysis-flow")).analysis?.id).toBe(success.analysisId);
+    expect((await showAnalysis(cwd, "analysis-flow")).analysis?.id).toBe(success.analysisId);
     const verified = await verifyRun(cwd, "analysis-flow");
     expect(verified.shareSafety).toMatchObject({ status: "share_ready" });
     const exported = await exportRun(cwd, "analysis-flow");
@@ -544,7 +542,7 @@ describe("ordinary study analysis flow", () => {
   });
 
   it("persists exact review history and drafts evidence-linked feedback without changing participant candidates", async () => {
-    const result = await analyzeStudy(
+    const result = await analyzeRun(
       cwd,
       "analysis-flow",
       { config },
@@ -561,7 +559,7 @@ describe("ordinary study analysis flow", () => {
     const longClaim = "A narrower interpretation is supported by the retained evidence. ".repeat(
       12,
     );
-    await correctStudyAnalysis(cwd, "analysis-flow", {
+    await correctAnalysis(cwd, "analysis-flow", {
       analysisId: result.analysisId!,
       findingId: "finding-1",
       status: "amended",
@@ -572,14 +570,14 @@ describe("ordinary study analysis flow", () => {
     expect(amended.draft?.actual).toContain(longClaim);
     expect(Array.from(amended.draft!.summary).length).toBeLessThanOrEqual(160);
     expect((await renderIssueUrl(cwd, "analysis-flow", "example/app", options)).ok).toBe(true);
-    await correctStudyAnalysis(cwd, "analysis-flow", {
+    await correctAnalysis(cwd, "analysis-flow", {
       analysisId: result.analysisId!,
       findingId: "finding-1",
       status: "dismissed",
       reason: "The fixture does not prove a product issue.",
     });
     expect((await draftFeedback(cwd, "analysis-flow", options)).ok).toBe(false);
-    expect((await showStudyAnalysis(cwd, "analysis-flow")).corrections).toHaveLength(2);
+    expect((await showAnalysis(cwd, "analysis-flow")).corrections).toHaveLength(2);
     expect(await readFile(path.join(runRoot, "run.json"))).toEqual(original);
   });
 
@@ -591,7 +589,7 @@ describe("ordinary study analysis flow", () => {
       await writeFile(path.join(runRoot, "run.json"), JSON.stringify(bundle));
       return ordinary(...args);
     });
-    const result = await analyzeStudy(
+    const result = await analyzeRun(
       cwd,
       "analysis-flow",
       { config },
@@ -605,7 +603,7 @@ describe("ordinary study analysis flow", () => {
     expect(result.executionReceiptPath).toBeTruthy();
     expect(result.artifactPath).toBeUndefined();
     const prepared = (await resolveRunPath(cwd, "analysis-flow"))!;
-    expect(await listStudyAnalyses(prepared)).toEqual([]);
+    expect(await listAnalyses(prepared)).toEqual([]);
     expect((await listStudyAnalysisExecutions(prepared)).receipts).toMatchObject([
       {
         id: result.analysisId,
@@ -677,7 +675,7 @@ describe("ordinary study analysis flow", () => {
       expect(verified.recordingOk === true).toBe(!unsafeSource);
       expect((await renderObserver(cwd, "analysis-flow")).ok).toBe(!unsafeSource);
       const fetch = await transport();
-      const result = await analyzeStudy(cwd, "analysis-flow", { config, dryRun: true }, { fetch });
+      const result = await analyzeRun(cwd, "analysis-flow", { config, dryRun: true }, { fetch });
       expect(result.ok).toBe(!unsafeSource);
       if (unsafeSource) expect(result.error?.code).toBe("ANALYSIS_VERIFY_FAILED");
       expect(fetch).not.toHaveBeenCalled();
@@ -700,7 +698,7 @@ describe("ordinary study analysis flow", () => {
   it("refuses sharing and feedback when a saved dismissal becomes unreadable", async () => {
     const artifact = syntheticArtifact(input);
     await writeStudyAnalysis((await resolveRunPath(cwd, "analysis-flow"))!, artifact);
-    const correction = await correctStudyAnalysis(cwd, "analysis-flow", {
+    const correction = await correctAnalysis(cwd, "analysis-flow", {
       analysisId: artifact.id,
       findingId: "finding-1",
       status: "dismissed",
@@ -717,7 +715,7 @@ describe("ordinary study analysis flow", () => {
       "correction.json",
     );
     await writeFile(correctionPath, JSON.stringify(correction) + " ".repeat(33_000));
-    const loaded = await showStudyAnalysis(cwd, "analysis-flow");
+    const loaded = await showAnalysis(cwd, "analysis-flow");
     expect(loaded.warnings.length).toBeGreaterThan(0);
     const verified = await verifyRun(cwd, "analysis-flow");
     expect(verified.shareSafety.status).toBe("local_only");
@@ -765,9 +763,7 @@ describe("ordinary study analysis flow", () => {
         state: "ready",
         analysis: { id: artifact.id },
       });
-      expect(await listStudyAnalyses((await resolveRunPath(cwd, "analysis-flow"))!)).toHaveLength(
-        1,
-      );
+      expect(await listAnalyses((await resolveRunPath(cwd, "analysis-flow"))!)).toHaveLength(1);
     } finally {
       await server.close();
     }

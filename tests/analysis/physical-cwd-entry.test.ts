@@ -16,7 +16,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readAutomaticStudyAnalysis } from "../../src/analysis/automatic.js";
 import { captureEvidence } from "../../src/analysis/evidence.js";
 import type { AnalysisFetch } from "../../src/analysis/provider.js";
-import { analyzeStudy, showStudyAnalysis } from "../../src/analysis/service.js";
+import { analyzeRun, showAnalysis } from "../../src/analysis/service.js";
 import type { AnalysisConfig } from "../../src/analysis/types.js";
 import type { RunBundle } from "../../src/run/bundle.js";
 import { readRunDetail } from "../../src/run/detail.js";
@@ -89,12 +89,12 @@ describe("analysis entry points given a symlinked project", () => {
       return new Response(JSON.stringify(wire));
     });
 
-    const result = await analyzeStudy(alias, runId, { config }, { apiKey: "synthetic-key", fetch });
+    const result = await analyzeRun(alias, runId, { config }, { apiKey: "synthetic-key", fetch });
     expect(result.error).toBeUndefined();
     expect(result.analysisId).toBeTruthy();
     expect(fetch).toHaveBeenCalledTimes(1);
 
-    const shown = await showStudyAnalysis(original, runId);
+    const shown = await showAnalysis(original, runId);
     expect(shown.analysis?.id).toBe(result.analysisId);
     expect(await decoyRunEntries()).toEqual(decoyBefore);
   });

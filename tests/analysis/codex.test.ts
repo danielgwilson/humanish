@@ -29,7 +29,7 @@ import { captureEvidence } from "../../src/analysis/evidence.js";
 import { codexAnalysisIdentity } from "../../src/analysis/codex-config.js";
 import { bindCodexAnalysisCliVersion } from "../../src/analysis/restricted-codex.js";
 import type { AnalysisProvider } from "../../src/analysis/provider.js";
-import { analyzeStudy, showStudyAnalysis } from "../../src/analysis/service.js";
+import { analyzeRun, showAnalysis } from "../../src/analysis/service.js";
 import { writeStudyAnalysis } from "../../src/analysis/store.js";
 import { listStudyAnalysisExecutions } from "../../src/analysis/store-executions.js";
 import {
@@ -351,14 +351,14 @@ describe("explicit Codex account analysis", () => {
     prior.promptVersion = ANALYSIS_PROMPT_VERSION;
     await writeStudyAnalysis(f.prepared, prior);
     const originalLegacy = JSON.stringify(prior);
-    const first = await analyzeStudy(
+    const first = await analyzeRun(
       f.cwd,
       "codex-analysis",
       { config: config() },
       { apiKey: "", codexProvider: run },
     );
     expect(first).toMatchObject({ ok: true, reused: false, usage: { estimatedCostUsd: null } });
-    const second = await analyzeStudy(
+    const second = await analyzeRun(
       f.cwd,
       "codex-analysis",
       { config: config() },
@@ -366,7 +366,7 @@ describe("explicit Codex account analysis", () => {
     );
     expect(second).toMatchObject({ ok: true, reused: true, analysisId: first.analysisId });
     expect(run).toHaveBeenCalledOnce();
-    expect((await showStudyAnalysis(f.cwd, "codex-analysis", "legacy-api")).analysis).toEqual(
+    expect((await showAnalysis(f.cwd, "codex-analysis", "legacy-api")).analysis).toEqual(
       JSON.parse(originalLegacy),
     );
     const receipts = (await listStudyAnalysisExecutions(f.prepared)).receipts.filter(
@@ -389,7 +389,7 @@ describe("explicit Codex account analysis", () => {
     const stats = await computeStats(f.cwd);
     expect(stats.ok && stats.totals.costs.analysisUnpricedAttempts).toBe(2); // Includes the intentionally unpriced legacy fixture.
     expect(await readFile(f.runFile)).toEqual(f.original);
-    const changed = await analyzeStudy(
+    const changed = await analyzeRun(
       f.cwd,
       "codex-analysis",
       { config: { ...config(), question: "Review recovery." } },
@@ -436,14 +436,14 @@ describe("explicit Codex account analysis", () => {
   it("records the detected release in explicit and automatic reports and their claims", async () => {
     const explicit = await study(),
       run = provider(explicit.input);
-    const result = await analyzeStudy(
+    const result = await analyzeRun(
       explicit.cwd,
       "codex-analysis",
       { config: config() },
       { codexProvider: run, detectCodexCliVersion: async () => "0.154.0" },
     );
     expect(result.ok).toBe(true);
-    const saved = (await showStudyAnalysis(explicit.cwd, "codex-analysis", result.analysisId!))
+    const saved = (await showAnalysis(explicit.cwd, "codex-analysis", result.analysisId!))
       .analysis!;
     expect(saved.config.provider === "codex" && saved.config.identity.cliVersion).toBe("0.154.0");
     expect(saved.configDigest).toBe(hashAnalysisValue(saved.config));
@@ -456,7 +456,7 @@ describe("explicit Codex account analysis", () => {
     });
     expect(outcome.result?.ok).toBe(true);
     const report = (
-      await showStudyAnalysis(automatic.cwd, "codex-analysis", outcome.result!.analysisId!)
+      await showAnalysis(automatic.cwd, "codex-analysis", outcome.result!.analysisId!)
     ).analysis!;
     expect(report.config.provider === "codex" && report.config.identity.cliVersion).toBe("0.154.0");
     // The permanent claim was bound to the same configuration the report records.
@@ -507,7 +507,7 @@ describe("explicit Codex account analysis", () => {
         timeoutMs: 1000,
       });
     };
-    const result = await analyzeStudy(
+    const result = await analyzeRun(
       f.cwd,
       "codex-analysis",
       { config: config() },
@@ -576,7 +576,7 @@ describe("explicit Codex account analysis", () => {
       .spyOn(launcher, "checkRestrictedCodexAnalysisReadiness")
       .mockRejectedValue(new Error("Unexpected readiness probe"));
     try {
-      const result = await analyzeStudy(f.cwd, "codex-analysis", {
+      const result = await analyzeRun(f.cwd, "codex-analysis", {
         config: config(),
         dryRun: true,
       });

@@ -3,9 +3,9 @@ import { resolveRunPath } from "../run/locate.js";
 import { type RunBundle } from "../run/bundle.js";
 import {
   refreshObserver,
-  analyzeStudy,
-  readCompletedStudyAnalysisSource,
-  resolveStudyAnalysisRun,
+  analyzeRun,
+  readCompletedAnalysisSource,
+  resolveAnalysisRun,
   type AnalyzeDeps,
   type AnalyzeResult,
 } from "./service.js";
@@ -132,7 +132,7 @@ async function readAutomaticSource(
 ): Promise<AutomaticAnalysisOutcome | { participantEvidence: boolean; config: AnalysisConfig }> {
   let config = configInput;
   try {
-    const bytes = await readCompletedStudyAnalysisSource(cwd, prepared);
+    const bytes = await readCompletedAnalysisSource(cwd, prepared);
     const bundle = JSON.parse(bytes.toString("utf8")) as RunBundle;
     if (bundle.streams.some((stream) => stream.actor?.stopCause === "harness_aborted"))
       return skipped("AUTOMATIC_ANALYSIS_ACTOR_CANCELLED");
@@ -206,7 +206,7 @@ export async function runAutomaticStudyAnalysis(
 ): Promise<AutomaticAnalysisOutcome> {
   if (!exactId(runId)) return skipped("AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE");
   let cwd = path.resolve(cwdInput);
-  const prepared = await resolveStudyAnalysisRun(cwd, runId, deps.expectedRun).catch(() => null);
+  const prepared = await resolveAnalysisRun(cwd, runId, deps.expectedRun).catch(() => null);
   if (!prepared) return skipped("AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE");
   cwd = physicalCwdOf(prepared);
   const hasKey = Boolean((deps.apiKey ?? process.env.OPENAI_API_KEY)?.trim());
@@ -280,7 +280,7 @@ export async function runAutomaticStudyAnalysis(
               : "AUTOMATIC_ANALYSIS_NO_PARTICIPANT_EVIDENCE",
           );
     } else {
-      const result = await analyzeStudy(
+      const result = await analyzeRun(
         cwd,
         runId,
         { config },

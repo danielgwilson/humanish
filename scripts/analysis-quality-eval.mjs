@@ -351,7 +351,7 @@ if (command === "author") {
       if (hash(bytes) !== sourceCase.sourceRunSha256) throw new Error("Source copy changed.");
       const packet = await evidence.captureEvidence(prepared, bytes);
       const { images, ...metadata } = packet;
-      const admission = await service.analyzeStudy(
+      const admission = await service.analyzeRun(
         cwd,
         sourceCase.runId,
         { config, dryRun: true },
@@ -449,7 +449,7 @@ if (command === "author") {
           );
           return response;
         };
-        const result = await service.analyzeStudy(
+        const result = await service.analyzeRun(
           freeze.cwd,
           sourceCase.runId,
           { config },

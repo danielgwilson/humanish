@@ -17,8 +17,8 @@ import { prepareRunArtifactPaths, type PreparedRunArtifactPaths } from "../../sr
 import { captureEvidence } from "../../src/analysis/evidence.js";
 import {
   appendStudyAnalysisCorrection,
-  assertStudyAnalysisPublicationCapacity,
-  listStudyAnalyses,
+  assertAnalysisPublicationCapacity,
+  listAnalyses,
   writeStudyAnalysis,
 } from "../../src/analysis/store.js";
 import {
@@ -141,7 +141,7 @@ describe("immutable study analysis store", () => {
       state: "invalid",
       analysis: { status: "failed" },
     });
-    expect(await listStudyAnalyses(prepared)).toHaveLength(2);
+    expect(await listAnalyses(prepared)).toHaveLength(2);
   });
 
   it("returns no analysis for an ordinary retained run", async () => {
@@ -154,7 +154,7 @@ describe("immutable study analysis store", () => {
   });
 
   it("checks publication capacity without creating either history directory", async () => {
-    await expect(assertStudyAnalysisPublicationCapacity(prepared)).resolves.toBeUndefined();
+    await expect(assertAnalysisPublicationCapacity(prepared)).resolves.toBeUndefined();
     for (const directory of ["analysis", "analysis-attempts"]) {
       await expect(access(path.join(prepared.physicalRunRoot, directory))).rejects.toMatchObject({
         code: "ENOENT",
@@ -170,9 +170,9 @@ describe("immutable study analysis store", () => {
       await Promise.all(
         Array.from({ length: 255 }, (_, index) => mkdir(path.join(root, `history-${index}`))),
       );
-      await expect(assertStudyAnalysisPublicationCapacity(prepared)).resolves.toBeUndefined();
+      await expect(assertAnalysisPublicationCapacity(prepared)).resolves.toBeUndefined();
       await mkdir(path.join(root, "history-255"));
-      await expect(assertStudyAnalysisPublicationCapacity(prepared)).rejects.toThrow(
+      await expect(assertAnalysisPublicationCapacity(prepared)).rejects.toThrow(
         "ANALYSIS_HISTORY_UNAVAILABLE",
       );
       expect(await readFile(path.join(prepared.physicalRunRoot, "run.json"))).toEqual(source);
@@ -187,12 +187,12 @@ describe("immutable study analysis store", () => {
       const outside = path.join(cwd, "outside-history");
       await mkdir(outside);
       await symlink(outside, path.join(root, "unsafe-entry"));
-      await expect(assertStudyAnalysisPublicationCapacity(prepared)).rejects.toThrow(
+      await expect(assertAnalysisPublicationCapacity(prepared)).rejects.toThrow(
         "ANALYSIS_HISTORY_UNAVAILABLE",
       );
       await rm(path.join(root, "unsafe-entry"));
       await writeFile(path.join(root, "analysis.json"), "{}");
-      await expect(assertStudyAnalysisPublicationCapacity(prepared)).rejects.toThrow(
+      await expect(assertAnalysisPublicationCapacity(prepared)).rejects.toThrow(
         "ANALYSIS_HISTORY_UNAVAILABLE",
       );
     },
@@ -206,9 +206,9 @@ describe("immutable study analysis store", () => {
         writeFile(path.join(root, `legacy-${index}.txt`), "Synthetic evidence."),
       ),
     );
-    await expect(assertStudyAnalysisPublicationCapacity(prepared)).resolves.toBeUndefined();
+    await expect(assertAnalysisPublicationCapacity(prepared)).resolves.toBeUndefined();
     await writeFile(path.join(root, "legacy-255.txt"), "Synthetic evidence.");
-    await expect(assertStudyAnalysisPublicationCapacity(prepared)).rejects.toThrow(
+    await expect(assertAnalysisPublicationCapacity(prepared)).rejects.toThrow(
       "ANALYSIS_HISTORY_UNAVAILABLE",
     );
   });
