@@ -3,6 +3,8 @@
 // entities) and looks inside base64 runs. verify and bundle export share decodeEscapes, so they
 // judge the same decoded text.
 
+import { createHash } from "node:crypto";
+
 import { readPlainText } from "./plain-text.js";
 import { containsSensitive } from "./redaction.js";
 
@@ -107,6 +109,11 @@ function startsWithArchive(bytes: Uint8Array): boolean {
 /** UTF-16 text, either byte order, that is mostly ASCII as a key would be; random bytes rarely qualify. */
 function utf16Text(bytes: Uint8Array): string | undefined {
   if (bytes.length < 4 || bytes.length % 2 !== 0) return undefined;
+  // Every ASCII character in UTF-16, in either byte order, has a 0x00 byte. Without one the decoded
+  // text has no ASCII, so the 90% rule below would reject it, and none of the sensitive patterns
+  // could match it: each needs ASCII characters (sensitivePatterns, pinned in
+  // tests/evidence/encoded-text.test.ts). Skipping the decode changes no result.
+  if (!bytes.includes(0)) return undefined;
   for (const encoding of ["utf-16le", "utf-16be"]) {
     let text: string;
     try {
@@ -144,13 +151,13 @@ function decodeTransferEscapes(text: string): string {
 
 export interface EncodedTextScan {
   /** A secret or private path, in the text or in a decoding of it. */
-  sensitive: boolean;
+  readonly sensitive: boolean;
   /** An encoded archive, or an encoded binary run long enough to hide one, that the scan cannot read. */
-  opaque: boolean;
+  readonly opaque: boolean;
 }
 
-const CLEAN: EncodedTextScan = { sensitive: false, opaque: false };
-const SENSITIVE: EncodedTextScan = { sensitive: true, opaque: false };
+const CLEAN: EncodedTextScan = Object.freeze({ sensitive: false, opaque: false });
+const SENSITIVE: EncodedTextScan = Object.freeze({ sensitive: true, opaque: false });
 
 function inspectDecoded(
   bytes: Buffer,
@@ -164,7 +171,10 @@ function inspectDecoded(
   const inner = plain.ok ? plain.text : utf16Text(bytes);
   if (inner !== undefined) {
     if (depth < MAX_DEPTH) return scanEncodedText(inner, options, depth + 1);
-    return containsSensitive(inner) || containsSensitive(decodeEscapes(inner)) ? SENSITIVE : CLEAN;
+    const innerDecoded = decodeEscapes(inner);
+    return containsSensitive(inner) || (innerDecoded !== inner && containsSensitive(innerDecoded))
+      ? SENSITIVE
+      : CLEAN;
   }
   // A key next to a few binary bytes is still a printable stretch.
   if (containsSensitive(printableStretches(bytes))) return SENSITIVE;
@@ -190,7 +200,12 @@ export function scanEncodedText(
 ): EncodedTextScan {
   const decoded = decodeEscapes(text);
   const expanded = decodeTransferEscapes(decoded);
-  if (containsSensitive(text) || containsSensitive(decoded) || containsSensitive(expanded))
+  // A decoding that returns the same string would match the same way, so it is not matched again.
+  if (
+    containsSensitive(text) ||
+    (decoded !== text && containsSensitive(decoded)) ||
+    (expanded !== decoded && containsSensitive(expanded))
+  )
     return SENSITIVE;
   const runs: { run: string; bytes: Buffer }[] = [];
   for (const [match] of expanded.matchAll(BASE64_RUN)) {
@@ -217,4 +232,45 @@ export function scanEncodedText(
       return SENSITIVE;
   }
   return { sensitive: false, opaque };
+}
+
+// Bump when scanEncodedText, decodeEscapes or the sensitive patterns change what they return. The
+// cache lives in one process, so the version guards results across a hot reload or a test that
+// swaps the scanner.
+const ENCODED_SCAN_VERSION = 1;
+// Distinct files one process verifies in a burst (a run's files, a serve library's runs).
+const SCAN_CACHE_LIMIT = 256;
+const scanCache = new Map<string, EncodedTextScan>();
+
+/**
+ * scanEncodedText, cached in this process. The key is the sha256 of the scanned string's UTF-16
+ * code units, the options and ENCODED_SCAN_VERSION. Encoding as UTF-16LE keeps every code unit,
+ * lone surrogates included, so distinct strings get distinct keys and a hit is the result a fresh
+ * scan of the same string would give. Repeated verifies of an unchanged file, as serve admission
+ * and the Observer render do, skip the scan.
+ */
+export function scanEncodedTextCached(
+  text: string,
+  options: { allowOpaqueBase64?: boolean } = {},
+): EncodedTextScan {
+  const key = [
+    ENCODED_SCAN_VERSION,
+    options.allowOpaqueBase64 === true ? "opaque-allowed" : "opaque-unscanned",
+    createHash("sha256").update(Buffer.from(text, "utf16le")).digest("hex"),
+  ].join(":");
+  const cached = scanCache.get(key);
+  if (cached !== undefined) {
+    // Refresh its place so the least recently used entry is evicted first.
+    scanCache.delete(key);
+    scanCache.set(key, cached);
+    return cached;
+  }
+  // Every caller gets the cached object, so it is frozen.
+  const result = Object.freeze({ ...scanEncodedText(text, options) });
+  scanCache.set(key, result);
+  if (scanCache.size > SCAN_CACHE_LIMIT) {
+    const oldest = scanCache.keys().next().value;
+    if (oldest !== undefined) scanCache.delete(oldest);
+  }
+  return result;
 }
