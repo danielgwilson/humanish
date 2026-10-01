@@ -1,12 +1,18 @@
 import { listenOnLoopback, PortInUseError } from "./listen.js";
 import { createServer } from "node:http";
 import type { IncomingMessage, Server, ServerResponse } from "node:http";
-import { lstat } from "node:fs/promises";
 import path from "node:path";
 
 import { pinDirectChildDirectory, pinDirectory } from "./pinned-files.js";
 import { buildHistoryIndex, matchRunRoute, serveRunPath } from "./run-routes.js";
 import type { PinnedDirectory } from "./pinned-files.js";
+import {
+  hashRunInventory,
+  inventoryRoot,
+  readRunInventory,
+  type AdmittedRun,
+  type RunInventory,
+} from "./run-inventory.js";
 import { renderLibraryHtml } from "./library.js";
 import type { LibraryHistory } from "./library.js";
 import {
@@ -16,6 +22,7 @@ import {
   type ServeMode,
 } from "./http.js";
 import type { ExposureErrorCode } from "./exposure.js";
+import { isSafeRunIdSegment } from "../run/paths.js";
 import { listRuns } from "../run/stored-runs.js";
 import { verifyRun } from "../verify/verify.js";
 
@@ -64,60 +71,82 @@ interface ServeControlPlane {
 }
 
 export interface ShareSafetyAdmission {
-  admit(runId: string): Promise<boolean>;
+  /** The files verify found share_ready, or null when the run is not admitted. */
+  admit(runId: string): Promise<AdmittedRun | null>;
 }
 
 export function createShareSafetyAdmission(
   cwd: string,
-  options: { verifyImpl?: typeof verifyRun; ttlMs?: number; now?: () => number } = {},
+  options: { verifyImpl?: typeof verifyRun } = {},
 ): ShareSafetyAdmission {
   const verifyImpl = options.verifyImpl ?? verifyRun;
-  const now = options.now ?? (() => Date.now());
-  // verifyRun scans the ENTIRE run tree, but the cache key is run.json's stat
-  // identity, so an out-of-band edit to a scanned artifact that leaves run.json
-  // untouched would otherwise keep a stale share_ready verdict. A short TTL
-  // bounds that window: any mutation is re-scanned within ttlMs even when
-  // run.json never changes. Defense in depth on top of pre-persist redaction.
-  const ttlMs = options.ttlMs ?? 30_000;
-  const cache = new Map<
-    string,
-    { identity: string; verifiedAt: number; admitted: Promise<boolean> }
-  >();
+  const runsRoot = path.join(cwd, ".humanish", "runs");
+  // Keyed on a walk of every file in the run, taken on each call: a file added, removed or
+  // rewritten since the last verify changes the walk, and the run is verified again before
+  // anything in it is served. A change that leaves every stat field alone is caught by the
+  // content hash at read time, which drops the entry.
+  const cache = new Map<string, CachedAdmission>();
 
-  const bundleIdentity = async (runId: string): Promise<string | null> => {
-    try {
-      const stats = await lstat(path.join(cwd, ".humanish", "runs", runId, "run.json"), {
-        bigint: true,
-      });
-      if (!stats.isFile()) {
-        return null;
-      }
-      return `${stats.dev}:${stats.ino}:${stats.mtimeNs}:${stats.size}`;
-    } catch {
+  const verifyAdmission = async (
+    runId: string,
+    runDirectory: string,
+    before: RunInventory,
+    forget: () => void,
+  ): Promise<AdmittedRun | null> => {
+    const hashesBefore = await hashRunInventory(runDirectory, before);
+    if (!hashesBefore) return null;
+    const verified = await verifyImpl(cwd, runId);
+    if (verified.ok !== true || verified.shareSafety.status !== "share_ready") return null;
+    // A file that changed while verify read the run may not be the version it scanned. A changed
+    // stat shows in the next request's walk; changed bytes alone do not, so they drop the entry.
+    const after = await readRunInventory(runDirectory);
+    if (after?.signature !== before.signature) return null;
+    const hashes = await hashRunInventory(runDirectory, after);
+    if (!hashes || !sameHashes(hashesBefore, hashes)) {
+      forget();
       return null;
     }
+    return { inventory: before, hashes, forget };
   };
 
   return {
-    async admit(runId: string): Promise<boolean> {
-      const identity = await bundleIdentity(runId);
-      if (!identity) {
+    async admit(runId: string): Promise<AdmittedRun | null> {
+      const runDirectory = path.join(runsRoot, runId);
+      const before = isSafeRunIdSegment(runId) ? await readRunInventory(runDirectory) : null;
+      if (!before) {
         cache.delete(runId);
-        return false;
+        return null;
       }
 
       const cached = cache.get(runId);
-      if (cached && cached.identity === identity && now() - cached.verifiedAt < ttlMs) {
+      if (cached?.signature === before.signature) {
         return cached.admitted;
       }
 
-      const admitted = verifyImpl(cwd, runId)
-        .then((verified) => verified.ok === true && verified.shareSafety.status === "share_ready")
-        .catch(() => false);
-      cache.set(runId, { identity, verifiedAt: now(), admitted });
-      return admitted;
+      const entry: CachedAdmission = {
+        signature: before.signature,
+        admitted: Promise.resolve(null),
+      };
+      const forget = (): void => {
+        if (cache.get(runId) === entry) cache.delete(runId);
+      };
+      entry.admitted = verifyAdmission(runId, runDirectory, before, forget).catch(() => null);
+      cache.set(runId, entry);
+      return entry.admitted;
     },
   };
+}
+
+interface CachedAdmission {
+  signature: string;
+  admitted: Promise<AdmittedRun | null>;
+}
+
+function sameHashes(
+  left: ReadonlyMap<string, string>,
+  right: ReadonlyMap<string, string>,
+): boolean {
+  return left.size === right.size && [...left].every(([key, hash]) => right.get(key) === hash);
 }
 
 export interface ServeRequestHandlerOptions {
@@ -126,7 +155,7 @@ export interface ServeRequestHandlerOptions {
   // Required even when safe is false: a fail-open path where safe===true but
   // admit is absent would silently serve every run. serveObserverLibrary always
   // wires it; the type keeps future callers from omitting it.
-  admit: (runId: string) => Promise<boolean>;
+  admit: (runId: string) => Promise<AdmittedRun | null>;
   hostAllowlist: ReadonlySet<string>;
   entryRunId?: string;
   renderLibrary: (history: LibraryHistory) => string;
@@ -204,12 +233,15 @@ export function createServeRequestHandler(
           writeText(response, 404, "Run not found");
           return;
         }
-        if (options.safe && !(await options.admit(runRoute.runId))) {
+        const admitted = options.safe ? await options.admit(runRoute.runId) : null;
+        if (options.safe && !admitted) {
           // Byte-identical to the nonexistent-run 404: no existence oracle.
           writeText(response, 404, "Run not found");
           return;
         }
-        const targetRoot = await pinDirectChildDirectory(options.proofRoot, runRoute.runId);
+        const pinned = await pinDirectChildDirectory(options.proofRoot, runRoute.runId);
+        // Under --safe every read checks the file against the inventory verify covered.
+        const targetRoot = pinned && admitted ? inventoryRoot(pinned, admitted) : pinned;
         if (!targetRoot) {
           writeText(response, 404, "Run not found");
           return;
@@ -234,15 +266,15 @@ export function createServeRequestHandler(
 }
 
 async function loadFilteredHistory(options: ServeRequestHandlerOptions): Promise<LibraryHistory> {
-  const history = await buildHistoryIndex(options.proofRoot);
   if (!options.safe) {
-    return history;
+    return buildHistoryIndex(options.proofRoot);
   }
 
-  const admissions = await Promise.all(
-    history.runs.map(async (run) => ((await options.admit(run.runId)) === true ? run : null)),
-  );
-  const runs = admissions.filter((run): run is LibraryHistory["runs"][number] => run !== null);
+  const history = await buildHistoryIndex(options.proofRoot, async (runId, pinned) => {
+    const admitted = await options.admit(runId);
+    return admitted ? inventoryRoot(pinned, admitted) : null;
+  });
+  const runs = history.runs;
   const latestRunId = runs.some((run) => run.runId === history.latestRunId)
     ? history.latestRunId
     : (runs[0]?.runId ?? null);
@@ -261,7 +293,6 @@ export interface ServeLibraryOptions {
   entryRunId?: string;
   controlPlane?: ServeControlPlane;
   verifyImpl?: typeof verifyRun;
-  now?: () => number;
 }
 
 export interface ServeLibraryServer {
@@ -300,10 +331,7 @@ export async function serveObserverLibrary(
     };
   }
 
-  const admission = createShareSafetyAdmission(cwd, {
-    verifyImpl,
-    ...(options.now ? { now: options.now } : {}),
-  });
+  const admission = createShareSafetyAdmission(cwd, { verifyImpl });
   // Exposure auth is tunnel-edge only. Under --expose, an edge-authed surface (ngrok --oauth or an
   // operator --public-url) serves every run (mode "exposed"); an un-authed surface is admissible
   // only because --safe narrows it to share_ready runs (mode "share-safe-open").
@@ -324,7 +352,7 @@ export async function serveObserverLibrary(
         error: { code: "HUMANISH_RUN_NOT_FOUND", message: `Run not found: ${options.entryRunId}` },
       };
     }
-    if (options.safe && !(await admission.admit(resolved))) {
+    if (options.safe && (await admission.admit(resolved)) === null) {
       const verified = await verifyImpl(cwd, resolved).catch(() => null);
       const status = verified?.shareSafety.status ?? "unverifiable";
       const reasons =
@@ -350,7 +378,7 @@ export async function serveObserverLibrary(
   let shareReadyCount: number | undefined;
   if (options.safe) {
     const admitted = await Promise.all(allRuns.map((run) => admission.admit(run.runId)));
-    shareReadyCount = admitted.filter(Boolean).length;
+    shareReadyCount = admitted.filter((run) => run !== null).length;
     runsListed = shareReadyCount;
   } else {
     runsListed = allRuns.length;

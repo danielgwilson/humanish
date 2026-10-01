@@ -16,7 +16,7 @@ import { syntheticArtifact } from "./fixtures.js";
 // Constructed synthetic marker, not a credential; never output its value in assertions.
 const marker = "sk-" + "syntheticvalue1234567890abcdef";
 
-describe("analysis sharing through a warmed serving cache", () => {
+describe("analysis sharing through a share-safety admission that misses it", () => {
   it.each(["summary", "excluded concern"])(
     "denies unsafe %s text in raw records and the exact companion payload",
     async (field) => {
@@ -27,9 +27,14 @@ describe("analysis sharing through a warmed serving cache", () => {
         const prepared = (await resolveRunPath(cwd, "synthetic-study"))!;
         const source = await readFile(path.join(prepared.physicalRunRoot, "run.json"));
         const input = await captureStudyEvidence(prepared, source);
-        const admission = createShareSafetyAdmission(cwd, { ttlMs: 30000 });
+        // An admission whose verify passes every bundle: the analysis projection must hold
+        // even when the share-safety verdict misses the unsafe text.
+        const passAll = async () => ({ ok: true, shareSafety: { status: "share_ready" } });
+        const admission = createShareSafetyAdmission(cwd, {
+          verifyImpl: passAll as unknown as typeof verifyRun,
+        });
         expect((await verifyRun(cwd, "synthetic-study")).shareSafety.status).toBe("share_ready");
-        expect(await admission.admit("synthetic-study")).toBe(true);
+        expect(await admission.admit("synthetic-study")).not.toBeNull();
         const artifact = syntheticArtifact(input);
         if (field === "summary") artifact.result!.summary = marker;
         else
@@ -75,8 +80,7 @@ describe("analysis sharing through a warmed serving cache", () => {
           "Synthetic legacy evidence",
         );
         expect((await verifyRun(cwd, "synthetic-study")).shareSafety.status).toBe("blocked");
-        // run.json has not changed, so the old admission is deliberately still warm.
-        expect(await admission.admit("synthetic-study")).toBe(true);
+        expect(await admission.admit("synthetic-study")).not.toBeNull();
         const allowedHosts = new Set<string>();
         const handler = createServeRequestHandler({
           proofRoot: await pinDirectory(prepared.physicalRunsRoot),

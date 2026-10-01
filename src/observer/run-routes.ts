@@ -24,6 +24,8 @@ import {
   openContainedFile,
   pinDirectChildDirectory,
   readContainedFile,
+  relativeToRoot,
+  sha256OfOpenedFile,
   type PinnedDirectory,
 } from "./pinned-files.js";
 
@@ -290,7 +292,11 @@ function runtimeDesktopUrl(value: string): string | null {
 }
 
 /** internal: consumed by src/observer/serve.ts */
-export async function buildHistoryIndex(proofRoot: PinnedDirectory): Promise<{
+export async function buildHistoryIndex(
+  proofRoot: PinnedDirectory,
+  // When set, a run is listed only if this returns a root, and its summary is read through it.
+  admitRun?: (runId: string, pinned: PinnedDirectory) => Promise<PinnedDirectory | null>,
+): Promise<{
   latestRunId: string | null;
   runs: Array<{
     runId: string;
@@ -310,12 +316,16 @@ export async function buildHistoryIndex(proofRoot: PinnedDirectory): Promise<{
   const listed = await listRuns(physicalCwd);
   const runs = await Promise.all(
     listed.runs.slice(0, 80).map(async (run) => {
-      const root = await pinDirectChildDirectory(proofRoot, run.runId);
+      const pinned = await pinDirectChildDirectory(proofRoot, run.runId);
+      const root = pinned && admitRun ? await admitRun(run.runId, pinned) : pinned;
+      if (admitRun && !root) return null;
       const data = root ? await readObserverData(root) : null;
+      // listRuns read run.json before admission, so an admitted run's fields come from its
+      // guarded read instead.
       return {
         runId: run.runId,
-        createdAt: run.createdAt,
-        mode: run.mode,
+        createdAt: admitRun ? (data?.run.createdAt ?? null) : run.createdAt,
+        mode: admitRun ? (data?.run.mode ?? null) : run.mode,
         href: `/_humanish/runs/${encodeURIComponent(run.runId)}/observer/index.html`,
         status: data?.run.status ?? "unknown",
         ...(data?.runtime ? { runtimeState: data.runtime.state } : {}),
@@ -331,7 +341,7 @@ export async function buildHistoryIndex(proofRoot: PinnedDirectory): Promise<{
   await assertPinnedDirectory(proofRoot);
   return {
     latestRunId: listed.latest && isSafeRunIdSegment(listed.latest) ? listed.latest : null,
-    runs,
+    runs: runs.filter((run) => run !== null),
   };
 }
 
@@ -385,6 +395,15 @@ async function serveContainedMedia(
 ): Promise<void> {
   const opened = await openContainedFile(root, filePath);
   if (!opened) {
+    writeResponse(response, 404, "Not found", "text/plain; charset=utf-8");
+    return;
+  }
+  // Checked once, at open: bytes stored into the file while it streams are not re-hashed.
+  if (
+    root.admitsContent !== undefined &&
+    !root.admitsContent(relativeToRoot(root, filePath), await sha256OfOpenedFile(opened.handle))
+  ) {
+    await opened.handle.close();
     writeResponse(response, 404, "Not found", "text/plain; charset=utf-8");
     return;
   }
