@@ -169,12 +169,19 @@ export function planSharedWorldLab(
       caps: capsOf(config),
       requirements: base.dryRun
         ? []
-        : desktopRequirements(config, {
-            e2b: true,
-            brain,
-            localVm: false,
-            externalCatch: plane.kind === "external-public",
-          }),
+        : [
+            ...desktopRequirements(config, {
+              e2b: true,
+              brain,
+              localVm: false,
+              externalCatch: plane.kind === "external-public",
+            }),
+            // The external-public plane reads the host's lobby code with the OpenAI API, whatever
+            // brain drives the seats.
+            ...(plane.kind === "external-public" && brain.kind !== "openai"
+              ? [{ kind: "key" as const, name: "OPENAI_API_KEY" as const }]
+              : []),
+          ],
     },
   };
 }
