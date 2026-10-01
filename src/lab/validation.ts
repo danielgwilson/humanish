@@ -148,10 +148,10 @@ function provisionedSharedWorldStructureReason(config: LabConfig): string | null
     return "`subject.topology: shared-world` requires `subject.source: clone` or `subject.source: local-tree` - the shared world is ONE provisioned, served, seeded plane (#164).";
   }
   if (config.execution?.target !== "e2b-desktop") {
-    return "`subject.topology: shared-world` requires `execution.target: e2b-desktop` — the role seats drive hosted desktop browsers against one in-sandbox app.";
+    return "`subject.topology: shared-world` requires `execution.target: e2b-desktop`: the role participants drive hosted desktop browsers against one in-sandbox app.";
   }
   if (!actorResolvesToComputerUse(config.actors[0]?.type)) {
-    return `\`subject.topology: shared-world\` requires a registered computer-use actor (one of: ${registeredComputerUseActors().join(", ")}) — each role seat runs a computer-use session.`;
+    return `\`subject.topology: shared-world\` requires a registered computer-use actor (one of: ${registeredComputerUseActors().join(", ")}); each role participant runs a computer-use session.`;
   }
   const serve = config.subject.serve;
   if (!serve) {
@@ -159,7 +159,7 @@ function provisionedSharedWorldStructureReason(config: LabConfig): string | null
   }
   const roster = rosterOf(config.actors[0]);
   if (!roster || roster.length < 2) {
-    return "`subject.topology: shared-world` requires an `actors[0].lanes` roster of at least 2 roles (the roster IS the role roster — declare ≥2 lanes; a single-role shared world proves no interaction).";
+    return "`subject.topology: shared-world` requires an `actors[0].lanes` roster of at least 2 roles (the roster IS the role roster: declare ≥2 participants; a single-role shared world proves no interaction).";
   }
   if (!config.subject.state?.checkpoint || config.subject.state.checkpoint.length === 0) {
     return "`subject.topology: shared-world` requires `subject.state.checkpoint` (≥1 read-only digest probe) — the checkpoint series is how the run shows the shared state changing; without it the run cannot show that participants changed the shared app.";
@@ -251,7 +251,7 @@ export function taskProtocolValidationReason(
       return `actors[${index}].tasks is unsupported: current runners consume only actors[0]. Use the first actor's computer-use participants for a task protocol.`;
     }
     if (!supportsTasks) {
-      return "actors[0].tasks is unsupported on this execution path. Task protocols require a per-lane computer-use route; shared-world, terminal-product, scripted-browser and synthetic routes do not consume them. Remove tasks only if a mission-only study is intended.";
+      return "actors[0].tasks is unsupported on this execution path. Task protocols require the computer-use route, with one world per participant; shared-world, terminal-product, scripted-browser and synthetic routes do not consume them. Remove tasks only if a mission-only study is intended.";
     }
   }
   return null;
@@ -369,14 +369,14 @@ export function externalPublicSharedWorldValidationReason(config: LabConfig): st
     return "the external-public shared-world route requires `subject.source: app-url` — a real public deployment is used directly as the shared plane (no clone, no provisioned subject).";
   }
   if (config.execution?.target !== "e2b-desktop") {
-    return "the external-public shared-world route requires `execution.target: e2b-desktop` — the role seats drive hosted desktop browsers against the one public deployment.";
+    return "the external-public shared-world route requires `execution.target: e2b-desktop`: the role participants drive hosted desktop browsers against the one public deployment.";
   }
   if (!actorResolvesToComputerUse(config.actors[0]?.type)) {
-    return `the external-public shared-world route requires a registered computer-use actor (one of: ${registeredComputerUseActors().join(", ")}) — each role seat runs a computer-use session.`;
+    return `the external-public shared-world route requires a registered computer-use actor (one of: ${registeredComputerUseActors().join(", ")}); each role participant runs a computer-use session.`;
   }
   const roster = rosterOf(config.actors[0]);
   if (!roster || roster.length < 2) {
-    return "the external-public shared-world route requires an `actors[0].lanes` roster of at least 2 roles (a single-seat shared world proves no shared session).";
+    return "the external-public shared-world route requires an `actors[0].lanes` roster of at least 2 roles (a single-participant shared world proves no shared session).";
   }
   const sharedWorldConcurrency = sharedWorldConcurrencyReason(config);
   if (sharedWorldConcurrency) return sharedWorldConcurrency;
@@ -412,11 +412,11 @@ export function externalPublicSharedWorldValidationReason(config: LabConfig): st
     return "`subject.clone`/`subject.repos` are forbidden on the external-public shared-world route — nothing is cloned; the public deployment IS the plane.";
   }
   if (roster.some((entry) => entry.entry !== undefined)) {
-    return "`actors[0].lanes[].entry` (the loopback same-origin seat path) is forbidden on the external-public shared-world route — there is no harness-served serve.url to resolve it against; seats open the public appUrl and reach the shared session through the real UI.";
+    return "`actors[0].lanes[].entry` (the loopback same-origin participant path) is forbidden on the external-public shared-world route: there is no harness-served serve.url to resolve it against; participants open the public appUrl and reach the shared session through the real UI.";
   }
   const hostEntries = roster.filter((entry) => entry.host === true);
   if (hostEntries.length !== 1) {
-    return `the external-public shared-world route requires EXACTLY ONE \`host: true\` lane (the designated host seat that creates the shared session; got ${hostEntries.length}). The other ≥1 lanes are followers that join it.`;
+    return `the external-public shared-world route requires EXACTLY ONE \`host: true\` participant (the designated host that creates the shared session; got ${hostEntries.length}). The other ≥1 participants are followers that join it.`;
   }
   return null;
 }

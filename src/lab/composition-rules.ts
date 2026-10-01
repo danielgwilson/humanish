@@ -289,7 +289,7 @@ function terminalValidationReason(config: LabConfig): string | null {
       return `actors[0].type must be a registered terminal actor for terminal-product subjects (one of: ${registeredTerminalActors().join(", ")}). Got "${type}".`;
     }
     if ((config.actors[0]?.count ?? 1) > 1) {
-      return "Multi-lane terminal fan-out is not supported yet; set actors[0].count to 1.";
+      return "Terminal fan-out to more than one participant is not supported yet; set actors[0].count to 1.";
     }
   } else if (config.execution?.target === "e2b-terminal") {
     // e2b-terminal is the terminal-product substrate ONLY. Any other source declaring it is a

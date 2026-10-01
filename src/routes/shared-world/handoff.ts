@@ -237,7 +237,9 @@ export class LobbyHandoff {
         outcome?.sessionError ??
         outcome?.session?.reason ??
         "no terminal host outcome was recorded";
-      this.hostFailure = this.scrub(`Host seat ended before producing a lobby URL: ${reason}`);
+      this.hostFailure = this.scrub(
+        `Host participant ended before producing a lobby URL: ${reason}`,
+      );
       this.lobbyCodeLatch.reject(new Error(this.hostFailure));
     }
   }

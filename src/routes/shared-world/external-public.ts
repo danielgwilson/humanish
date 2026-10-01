@@ -149,7 +149,7 @@ export async function runExternalPublicPlane(
 
   const { publicOriginDigest, lobbyConvergenceDigest } = handoff.convergence(declaredOriginDigest);
   if (handoff.timedOut && runError === undefined) {
-    runError = `The host seat never produced a /lobby/CODE URL within the ${handoff.deadlineMs}ms handoff deadline; follower seats failed closed without opening.`;
+    runError = `The host participant never produced a /lobby/CODE URL within the ${handoff.deadlineMs}ms handoff deadline; follower participants failed closed without opening.`;
   }
   return {
     actorResults,

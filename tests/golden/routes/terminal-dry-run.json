@@ -128,7 +128,7 @@
         {
           "at": "[ts]",
           "event": "terminal-lab.run.created",
-          "message": "Created terminal-product lab run with one in-sandbox agent lane (actor codex-exec, product widgetsmith-cli)."
+          "message": "Created terminal-product lab run with one in-sandbox agent participant (actor codex-exec, product widgetsmith-cli)."
         }
       ],
       "knownGaps": [
@@ -205,7 +205,7 @@
           "mode": "cli-sim",
           "progress": 100,
           "currentStep": "Contract bundle only: dry-run declared the terminal-product study contract without creating an E2B sandbox, injecting any key, or spending. This run did not execute an agent or prove live behavior.",
-          "summary": "Contract lane for the terminal agent (codex-exec) studying widgetsmith-cli from public surfaces.",
+          "summary": "Contract participant for the terminal agent (codex-exec) studying widgetsmith-cli from public surfaces.",
           "streamIds": [
             "stream-001"
           ],
@@ -409,7 +409,7 @@
       {
         "at": "[ts]",
         "event": "terminal-lab.run.created",
-        "message": "Created terminal-product lab run with one in-sandbox agent lane (actor codex-exec, product widgetsmith-cli)."
+        "message": "Created terminal-product lab run with one in-sandbox agent participant (actor codex-exec, product widgetsmith-cli)."
       }
     ],
     "simulations": [
@@ -423,7 +423,7 @@
         "mode": "cli-sim",
         "progress": 100,
         "currentStep": "Contract bundle only: dry-run declared the terminal-product study contract without creating an E2B sandbox, injecting any key, or spending. This run did not execute an agent or prove live behavior.",
-        "summary": "Contract lane for the terminal agent (codex-exec) studying widgetsmith-cli from public surfaces.",
+        "summary": "Contract participant for the terminal agent (codex-exec) studying widgetsmith-cli from public surfaces.",
         "streamIds": [
           "stream-001"
         ],

@@ -37,7 +37,7 @@ export function buildCostLedger(args: {
             source: "unpriced-token-usage",
             note:
               `Provider spend UNPRICED: the run consumed ${describeTokenUsage(args.tokenUsage)}, ` +
-              "but the terminal lane records the model as `codex` and src/run/pricing.ts carries no " +
+              "but the terminal participant records the model as `codex` and src/run/pricing.ts carries no " +
               "rate for it, so no dollar figure is claimed. Tokens are a MEASURED fact here; the " +
               "price is the unknown. Recorded null (never guessed to 0).",
           }

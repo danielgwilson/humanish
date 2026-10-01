@@ -237,7 +237,7 @@ export class LiveTerminalSandbox {
     recordLifecycle(
       "terminal-lab.runtime.bootstrapped",
       bootstrapError
-        ? `Runtime bootstrap FAILED after ${bootstrapDurationMs}ms: ${bootstrapError}. codex exec runs via npx and needs Node/npm present; the lane fails closed rather than attempting an exec with no runtime.`
+        ? `Runtime bootstrap FAILED after ${bootstrapDurationMs}ms: ${bootstrapError}. codex exec runs via npx and needs Node/npm present; the participant fails closed rather than attempting an exec with no runtime.`
         : `Runtime bootstrap ensured Node/npm present in ${bootstrapDurationMs}ms (codex exec runs via npx).`,
     );
 

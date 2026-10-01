@@ -132,7 +132,7 @@ export function planTerminalLab(
   if (keyPlacement !== "in-sandbox-command-scoped")
     return refuse(
       "HUMANISH_TERMINAL_LAB_KEYPLACEMENT_INVALID",
-      `Terminal actor "${descriptor.id}" must declare keyPlacement "in-sandbox-command-scoped" for the live lane (got "${String(keyPlacement)}"). The engine requires this registered default before applying the declared runtime-auth mode.`,
+      `Terminal actor "${descriptor.id}" must declare keyPlacement "in-sandbox-command-scoped" for a live run (got "${String(keyPlacement)}"). The engine requires this registered default before applying the declared runtime-auth mode.`,
       descriptor.id,
     );
   // A live run grants the in-sandbox agent provider access, so a fail-closed cap must be in force.

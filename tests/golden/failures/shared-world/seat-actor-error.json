@@ -426,7 +426,7 @@
       "at": "[ts]",
       "level": "info",
       "type": "concurrent-shared-world.concurrency",
-      "message": "Concurrency: 3 lane(s), up to 3 live at once (cap 3), overlap PROVEN; stateSeries 2 snapshot(s), 1 delta(s). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors. This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement."
+      "message": "Concurrency: 3 participant(s), up to 3 live at once (cap 3), overlap PROVEN; stateSeries 2 snapshot(s), 1 delta(s). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors. This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement."
     }
   ],
   "observer/index.html": "[observer build]",
@@ -463,7 +463,7 @@
         {
           "at": "[ts]",
           "event": "concurrent-shared-world.run.created",
-          "message": "Created concurrent shared-world run with ONE shared plane and 3 simultaneous actor seats (actor openai-computer-use)."
+          "message": "Created concurrent shared-world run with ONE shared plane and 3 simultaneous participants (actor openai-computer-use)."
         }
       ],
       "knownGaps": [
@@ -1218,7 +1218,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.concurrency",
-        "message": "Concurrency: 3 lane(s), up to 3 live at once (cap 3), overlap PROVEN; stateSeries 2 snapshot(s), 1 delta(s). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors. This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement."
+        "message": "Concurrency: 3 participant(s), up to 3 live at once (cap 3), overlap PROVEN; stateSeries 2 snapshot(s), 1 delta(s). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors. This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement."
       }
     ],
     "artifactLinks": [
@@ -1282,7 +1282,7 @@
       "persona-02: failed (actor_error)"
     ]
   },
-  "review.md": "# Concurrent shared-world proof\n\n- run: [run]\n- mode: live\n- attribution class: shared-world\n- topology: shared-world / concurrent\n- personas: 3\n- verdict: fail\n- summary: Concurrent shared-world (ONE plane, 3 simultaneous personas): swarm did not run coherently; 2/3 actor session(s) passed credibility checks; mission endpoint: 2/3 ended goal_satisfied; completion reasons: actor_error 1/3, goal_satisfied 2/3; overlap proven; 1 state delta(s) under load.\n- plane: Shared plane: clone of example-org/collab-app@abc123def4567890abc1, served + exposed at the harness-minted getHost URL; seed recipe da2a491995d48367; SYNTHETIC subject (author-attested); env names: DATABASE_URL (values never persisted).\n- concurrency: Concurrency: 3 lane(s), up to 3 live at once (cap 3), overlap PROVEN; stateSeries 2 snapshot(s), 1 delta(s). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors. This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement.\n- attribution limits: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors\n\n## Gaps\n- persona-02: failed (actor_error)\n",
+  "review.md": "# Concurrent shared-world proof\n\n- run: [run]\n- mode: live\n- attribution class: shared-world\n- topology: shared-world / concurrent\n- personas: 3\n- verdict: fail\n- summary: Concurrent shared-world (ONE plane, 3 simultaneous personas): swarm did not run coherently; 2/3 actor session(s) passed credibility checks; mission endpoint: 2/3 ended goal_satisfied; completion reasons: actor_error 1/3, goal_satisfied 2/3; overlap proven; 1 state delta(s) under load.\n- plane: Shared plane: clone of example-org/collab-app@abc123def4567890abc1, served + exposed at the harness-minted getHost URL; seed recipe da2a491995d48367; SYNTHETIC subject (author-attested); env names: DATABASE_URL (values never persisted).\n- concurrency: Concurrency: 3 participant(s), up to 3 live at once (cap 3), overlap PROVEN; stateSeries 2 snapshot(s), 1 delta(s). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors. This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement.\n- attribution limits: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors\n\n## Gaps\n- persona-02: failed (actor_error)\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -1328,7 +1328,7 @@
       {
         "at": "[ts]",
         "event": "concurrent-shared-world.run.created",
-        "message": "Created concurrent shared-world run with ONE shared plane and 3 simultaneous actor seats (actor openai-computer-use)."
+        "message": "Created concurrent shared-world run with ONE shared plane and 3 simultaneous participants (actor openai-computer-use)."
       }
     ],
     "simulations": [
@@ -1873,7 +1873,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.concurrency",
-        "message": "Concurrency: 3 lane(s), up to 3 live at once (cap 3), overlap PROVEN; stateSeries 2 snapshot(s), 1 delta(s). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors. This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement."
+        "message": "Concurrency: 3 participant(s), up to 3 live at once (cap 3), overlap PROVEN; stateSeries 2 snapshot(s), 1 delta(s). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors. This run reports only its own observed overlap and state changes; it does not prove scale, repeatability, or adopter-harness replacement."
       }
     ],
     "redaction": {

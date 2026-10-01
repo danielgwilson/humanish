@@ -133,7 +133,7 @@
       "at": "[ts]",
       "level": "info",
       "type": "concurrent-shared-world.concurrency",
-      "message": "Concurrency: 3 lane(s) (dry-run contract; $0); stateSeries 1 snapshot(s), 0 delta(s). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors. This contract-only run proves no live concurrency, scale, or adoption."
+      "message": "Concurrency: 3 participant(s) (dry-run contract; $0); stateSeries 1 snapshot(s), 0 delta(s). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors. This contract-only run proves no live concurrency, scale, or adoption."
     }
   ],
   "observer/index.html": "[observer build]",
@@ -170,7 +170,7 @@
         {
           "at": "[ts]",
           "event": "concurrent-shared-world.run.created",
-          "message": "Created concurrent shared-world run with ONE shared plane and 3 simultaneous actor seats (actor openai-computer-use)."
+          "message": "Created concurrent shared-world run with ONE shared plane and 3 simultaneous participants (actor openai-computer-use)."
         }
       ],
       "knownGaps": [
@@ -512,7 +512,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.concurrency",
-        "message": "Concurrency: 3 lane(s) (dry-run contract; $0); stateSeries 1 snapshot(s), 0 delta(s). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors. This contract-only run proves no live concurrency, scale, or adoption."
+        "message": "Concurrency: 3 participant(s) (dry-run contract; $0); stateSeries 1 snapshot(s), 0 delta(s). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors. This contract-only run proves no live concurrency, scale, or adoption."
       }
     ],
     "artifactLinks": [
@@ -570,7 +570,7 @@
       "This dry-run launched no concurrent shared-world session; it proves contract shape only, not live behavior, scale, or adopter-harness replacement."
     ]
   },
-  "review.md": "# Concurrent shared-world proof\n\n- run: [run]\n- mode: dry-run\n- attribution class: shared-world\n- topology: shared-world / concurrent\n- personas: 3\n- verdict: contract_proof_only\n- summary: Dry-run concurrent shared-world contract: 3 persona(s) declared against ONE getHost-exposed plane (openai-computer-use); no sandboxes launched, $0 spend.\n- plane: Shared plane declared: clone of example-org/collab-app, served + getHost-exposed in-sandbox (dry-run contract; nothing cloned). Seed recipe da2a491995d48367; SYNTHETIC subject (author-attested); env names: DATABASE_URL (values never persisted).\n- concurrency: Concurrency: 3 lane(s) (dry-run contract; $0); stateSeries 1 snapshot(s), 0 delta(s). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors. This contract-only run proves no live concurrency, scale, or adoption.\n- attribution limits: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors\n\n## Gaps\n- This dry-run launched no concurrent shared-world session; it proves contract shape only, not live behavior, scale, or adopter-harness replacement.\n",
+  "review.md": "# Concurrent shared-world proof\n\n- run: [run]\n- mode: dry-run\n- attribution class: shared-world\n- topology: shared-world / concurrent\n- personas: 3\n- verdict: contract_proof_only\n- summary: Dry-run concurrent shared-world contract: 3 persona(s) declared against ONE getHost-exposed plane (openai-computer-use); no sandboxes launched, $0 spend.\n- plane: Shared plane declared: clone of example-org/collab-app, served + getHost-exposed in-sandbox (dry-run contract; nothing cloned). Seed recipe da2a491995d48367; SYNTHETIC subject (author-attested); env names: DATABASE_URL (values never persisted).\n- concurrency: Concurrency: 3 participant(s) (dry-run contract; $0); stateSeries 1 snapshot(s), 0 delta(s). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors. This contract-only run proves no live concurrency, scale, or adoption.\n- attribution limits: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors\n\n## Gaps\n- This dry-run launched no concurrent shared-world session; it proves contract shape only, not live behavior, scale, or adopter-harness replacement.\n",
   "run.json": {
     "schema": "humanish.run-bundle.v1",
     "runId": "[run]",
@@ -616,7 +616,7 @@
       {
         "at": "[ts]",
         "event": "concurrent-shared-world.run.created",
-        "message": "Created concurrent shared-world run with ONE shared plane and 3 simultaneous actor seats (actor openai-computer-use)."
+        "message": "Created concurrent shared-world run with ONE shared plane and 3 simultaneous participants (actor openai-computer-use)."
       }
     ],
     "simulations": [
@@ -861,7 +861,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "concurrent-shared-world.concurrency",
-        "message": "Concurrency: 3 lane(s) (dry-run contract; $0); stateSeries 1 snapshot(s), 0 delta(s). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors. This contract-only run proves no live concurrency, scale, or adoption."
+        "message": "Concurrency: 3 participant(s) (dry-run contract; $0); stateSeries 1 snapshot(s), 0 delta(s). Attribution ceiling: concurrent, best-effort-causal-attribution, non-deterministic-shared-state, window-and-snapshot-granularity, contention-observed-not-proven-safe, state-change-not-isolated-to-actors. This contract-only run proves no live concurrency, scale, or adoption."
       }
     ],
     "redaction": {

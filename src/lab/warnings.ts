@@ -57,7 +57,7 @@ const ACTOR_ROWS: readonly InertRow<LabActor>[] = [
   {
     field: "lanes[].host",
     reason:
-      "the designated host-seat marker; needs the external-public shared-world route: app-url × topology shared-world × allowPublicTargets",
+      "the designated host-participant marker; needs the external-public shared-world route: app-url × topology shared-world × allowPublicTargets",
     applies: (actor, routes) =>
       Boolean(rosterOf(actor)?.some((entry) => entry.host === true)) && !routes.externalPublic,
   },
@@ -91,7 +91,8 @@ const ACTOR_ROWS: readonly InertRow<LabActor>[] = [
   },
   {
     field: "lanes",
-    reason: "the scripted-browser route fans out via actors[0].count, not a lane roster",
+    reason:
+      "the scripted-browser route fans out via actors[0].count, not an actors[0].lanes roster",
     applies: (actor, routes) => scriptedRoute(routes) && Boolean(rosterOf(actor)),
   },
   // On every other route the prompt fields, persona and the lane roster are inert.
@@ -134,7 +135,7 @@ const CONFIG_ROWS: readonly InertRow<LabConfig>[] = [
   {
     field: "subject.topology",
     reason:
-      "drives behavior only on the shared-world route; needs subject.topology: shared-world + clone × e2b-desktop × a computer-use actor + a ≥2 lane roster",
+      "drives behavior only on the shared-world route; needs subject.topology: shared-world + clone × e2b-desktop × a computer-use actor + a roster of ≥2 participants",
     applies: (config, routes) => config.subject.topology !== undefined && !routes.shared,
   },
   {
@@ -385,7 +386,7 @@ export function forwardDeclaredWarnings(config: LabConfig): string[] {
     const cap = config.execution?.concurrency;
     if (routes.cua && cap !== undefined && participantCount > 1 && cap < participantCount) {
       warnings.push(
-        `execution.concurrency ${cap} caps a ${participantCount}-seat roster: seats run in waves of ${cap}, never all live at once. Remove execution.concurrency (the default runs all ${participantCount} seats simultaneously) or set it to ${participantCount}; declare a lower cap only to bound simultaneous paid desktops.`,
+        `execution.concurrency ${cap} caps a ${participantCount}-participant roster: participants run in waves of ${cap}, never all live at once. Remove execution.concurrency (the default runs all ${participantCount} participants simultaneously) or set it to ${participantCount}; declare a lower cap only to bound simultaneous paid desktops.`,
       );
     }
   }
