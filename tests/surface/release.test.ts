@@ -102,7 +102,7 @@ describe("release readiness", () => {
     const readme = await readFile("README.md", "utf8");
     const screenshotPath = "docs/assets/humanish-drawdb-hero.png";
     const screenshotMarkdown =
-      `![humanish Observer grid of a live four-persona drawDB study: four completed lanes, each showing its final full-desktop screenshot and outcome]` +
+      `![humanish Observer grid of a live four-persona drawDB study: four completed participants, each showing its final full-desktop screenshot and outcome]` +
       `(https://unpkg.com/humanish@0.16.0/${screenshotPath})`;
     const screenshot = await stat(screenshotPath);
     const inventory = JSON.parse(

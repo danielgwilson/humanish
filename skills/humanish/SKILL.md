@@ -141,7 +141,7 @@ for setup and provider limits. Speech uses the same continuing Codex participant
 not a second conversation. Do not claim that installing the CLI also installs
 Docker or Lima, or qualifies a machine for arbitrary participant counts.
 
-For continuous desktop playback, independent computer-use lanes can opt into
+For continuous desktop playback, independent computer-use participants can opt into
 `execution.desktop.recording: { audio: true }` (`false` for screen-only video).
 Screenshots remain the default. Recording does not enable camera or speech;
 the raw media stays local-only. See [desktop recording](../../docs/architecture/desktop-recording.md)
@@ -256,20 +256,23 @@ warnings for fields the engine does not consume yet.
 
 ### Many actors at once (fan-out, shared worlds, concurrency)
 
-- **Every declared seat runs live at once by default.** A 6-lane roster is 6
-  simultaneous actors; total sessions and spend are the same either way, only
-  wall-clock and simultaneity differ. `execution.concurrency` is a CAP, not a
-  mode: declare it only to bound simultaneous paid desktops, and expect a parse
-  warning when the cap makes seats run in waves (a green waved run looks
-  identical to the all-live run you meant, so the harness says so up front).
-- **Per-lane worlds vs one shared world.** A plain multi-lane computer-use lab
-  gives each actor its OWN app instance (independent studies in parallel). Add
-  `subject.topology: shared-world` for N actors in ONE world (a lobby, a shared
-  DB, actors seeing each other's changes). Shared-world participants run at
-  once; `execution.concurrency` must be at least 2 there.
-- **Watching it:** each live lane is its own Observer tile/stream; lanes beyond
-  a declared cap start when a slot frees, which on a capped run looks like idle
-  tiles — another reason to leave the cap out unless you need it.
+- **Every declared participant runs live at once by default.** A 6-participant
+  roster is 6 simultaneous actors; total sessions and spend are the same either
+  way, only wall-clock and simultaneity differ. `execution.concurrency` is a
+  CAP, not a mode: declare it only to bound simultaneous paid desktops, and
+  expect a parse warning when the cap makes participants run in waves (a green
+  waved run looks identical to the all-live run you meant, so the harness says
+  so up front).
+- **Separate worlds (`per-lane-worlds`) vs one shared world.** A plain
+  multi-participant computer-use lab gives each actor its OWN app instance
+  (independent studies in parallel). Add `subject.topology: shared-world` for N
+  actors in ONE world (a lobby, a shared DB, actors seeing each other's
+  changes). Shared-world participants run at once; `execution.concurrency` must
+  be at least 2 there.
+- **Watching it:** each live participant is its own Observer tile/stream;
+  participants beyond a declared cap start when a slot frees, which on a capped
+  run looks like idle tiles — another reason to leave the cap out unless you
+  need it.
 
 Use committed `humanish/labs/*.yaml` for public-safe, reproducible labs. Use
 ignored `.humanish/labs/*.yaml` or `.humanish/local/labs/*.yaml` for private repo
@@ -329,20 +332,20 @@ comms:
       # A run where the catch captured zero sends warns at teardown for exactly this.
 ```
 
-That is the whole block for the common case. Every lane automatically gets a
+That is the whole block for the common case. Every participant automatically gets a
 deterministic inbox address (`<laneId>@example.test`), and each actor's prompt is
 extended with the full handoff: its address ("when the app asks for an email
 address, enter exactly that"), the inbox URL to open, and the wait steering
 ("waiting for an email is normal, not a blocker"). Declare `recipients` only to
-customize addresses or limit which lanes do email:
+customize addresses or limit which participants do email:
 
 ```yaml
 recipients:
-  - lane: signup-01 # this lab's REAL lane id — a roster lane's `id`, or the
-    # generated lane-01..lane-NN names when you use `count`. An unknown lane
-    # is a hard parse error listing the lab's actual lane ids (a mismatch
-    # would silently disable the funnel for that seat, which is how a
-    # 6-actor field run lost every inbox at once). Lanes you leave out get
+  - lane: signup-01 # this lab's REAL participant id: a roster entry's `id`, or the
+    # generated lane-01..lane-NN names when you use `count`. An unknown id
+    # is a hard parse error listing the lab's actual participant ids (a mismatch
+    # would silently disable the funnel for that participant, which is how a
+    # 6-actor field run lost every inbox at once). Participants you leave out get
     # no inbox and are never told one exists — the parser warns which.
     address: user@example.test # what the actor signs up with; the evidence
     # drain matches captured mail against it.
@@ -352,8 +355,9 @@ The app keeps calling its email API normally (Resend/SendGrid-shaped, or a custo
 profile); only the base URL is redirected. Route support: the clone/local-tree
 computer-use route (inbox on the sandbox's own loopback) and the CONCURRENT
 shared-world route (inbox getHost-exposed from the subject sandbox; the default
-since every seat now runs live at once). SMTP capture is supported on per-lane
-provisioned routes; shared-world SMTP is rejected because it is not wired there.
+since every participant now runs live at once). SMTP capture is supported on
+provisioned routes with separate worlds (`per-lane-worlds`); shared-world SMTP
+is rejected because it is not wired there.
 For app-url/operator-provided subjects, run `humanish comms catch` on a reachable
 host, point the app's email sends at that catch, and declare
 `comms.email.external.catchBaseUrl` (plus `inboxBaseUrl` if different). A declared
@@ -415,7 +419,7 @@ captures desktop and mobile browser evidence against a running app.
 
 ## Optional Live E2B Lab
 
-Live headed E2B desktop lanes are optional. Add the substrate dependency only
+Live headed E2B desktop participants are optional. Add the substrate dependency only
 when the user explicitly wants live E2B execution:
 
 ```bash

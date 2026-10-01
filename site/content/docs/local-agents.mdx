@@ -83,7 +83,7 @@ inputs execute in the selected sandbox; credentials stay with the host CLI.
   reason instead of treating an unpriced run as `$0`. Rate limits on those plans are built for
   interactive coding; humanish fails closed with the CLI's own message and does
   not retry into them.
-- **It is slower.** Launching and communicating with a local CLI adds latency. Give the lane
+- **It is slower.** Launching and communicating with a local CLI adds latency. Give the participant
   enough `execution.timeoutMs` for the task and inspect elapsed time in its evidence.
 - **The evidence says which brain ran it.** The trace records
   the provider and resolved Codex model. Qualified ChatGPT-account participants

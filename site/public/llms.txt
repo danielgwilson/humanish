@@ -151,13 +151,13 @@ Node 20 or newer for the CLI; the human TUI requires Node 22 or newer.
 
 ## Worked example: the Excalidraw study
 
-Run `cua-2026-08-07T17-44-48-760Z-87389419` (2026-08-07): four computer-use lanes on
+Run `cua-2026-08-07T17-44-48-760Z-87389419` (2026-08-07): four computer-use participants on
 hosted 1920×1080 desktops drove a commit-pinned clone of Excalidraw
-(excalidraw/excalidraw@4872083c), an open-source virtual whiteboard. 3/4 lanes passed;
+(excalidraw/excalidraw@4872083c), an open-source virtual whiteboard. 3/4 participants passed;
 one gave up; `humanish verify` ran 16/16 checks. Wall-clock 6m 06s; estimated cost
 ~$1.54 (rates as of 2026-08-05).
 
-Lanes and verbatim outcomes:
+Participants and verbatim outcomes:
 
 - diagram-login-flow — persona final report: "Done"
 - sticky-notes — persona final report: "Done."
@@ -177,7 +177,7 @@ Excalidraw is the application studied; it is not a humanish adopter or endorser.
 
 The limits, cited: what the computer-use substrate cannot do yet, where simulated users
 diverge from real ones, what a passing `humanish verify` grade does not prove, and when to
-recruit real people instead. Includes first-party run ids for our own failed lanes, and
+recruit real people instead. Includes first-party run ids for our own failed participants, and
 the published numbers against simulated users.
 
 - https://humanish.dev/failure-modes
@@ -186,7 +186,7 @@ the published numbers against simulated users.
 
 humanish.dev serves a shadcn-compatible component registry at `https://humanish.dev/r/<name>.json`.
 Items: `humanish-tokens` (the site's token system), `terminal-cast` (static terminal
-transcript), `persona-lane` (run lane with screenshot, verbatim report, honest status
+transcript), `persona-lane` (one participant with screenshot, verbatim report, honest status
 chip), `pinned-replay` (the scroll-pinned run walkthrough, with the Excalidraw study's
 metadata as demo data — screenshots not included).
 

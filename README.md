@@ -37,7 +37,7 @@ reported them 0 of 5 and 0 of 6 ([receipt](https://github.com/danielgwilson/huma
 Planted defects are more legible than real ones and the largest cell is six runs;
 read these as what the machinery found, not as rates for your users.
 
-![humanish Observer grid of a live four-persona drawDB study: four completed lanes, each showing its final full-desktop screenshot and outcome](https://unpkg.com/humanish@0.16.0/docs/assets/humanish-drawdb-hero.png)
+![humanish Observer grid of a live four-persona drawDB study: four completed participants, each showing its final full-desktop screenshot and outcome](https://unpkg.com/humanish@0.16.0/docs/assets/humanish-drawdb-hero.png)
 
 An earlier study, kept here because the image ships in the npm package: four
 personas on [drawDB](https://github.com/drawdb-io/drawdb), a public open-source
