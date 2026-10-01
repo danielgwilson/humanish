@@ -429,6 +429,9 @@ reclaim` kills sandboxes by their journaled ids.
 
 ### Fixes
 
+- `humanish lab run --rerun-failed-from <run> --lanes <ids>`, the example in `lab run --help`,
+  no longer prints a `DeprecationWarning` for `RunLabOptions.rerun.laneIds` (#1309). The CLI
+  passes the selection as `rerun.participantIds`.
 - A live terminal lab without `E2B_API_KEY` fails with `HUMANISH_TERMINAL_LAB_KEYS_MISSING` before
   it creates a run directory (#1261). Before, it created the run and failed at sandbox create.
 - A local-tree run whose `tar` step or archive read fails no longer leaves a `humanish-local-tree-*`
