@@ -1,6 +1,24 @@
 import { execFileSync } from "node:child_process";
-import { readFile, stat } from "node:fs/promises";
+import { readdir, readFile, stat } from "node:fs/promises";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { buildRepoIndex, findDocPathIssues } from "../../scripts/lib/doc-paths.js";
+
+/** The files under one package.json `files` entry, relative to the repo root. */
+async function filesUnder(entry: string): Promise<string[]> {
+  const info = await stat(entry).catch(() => undefined);
+  if (info === undefined) return [];
+  if (info.isFile()) return [entry];
+  const entries = await readdir(entry, { recursive: true, withFileTypes: true });
+  return entries
+    .filter((dirent) => dirent.isFile())
+    .map((dirent) =>
+      path
+        .relative(process.cwd(), path.join(dirent.parentPath, dirent.name))
+        .split(path.sep)
+        .join("/"),
+    );
+}
 
 describe("release readiness", () => {
   it("keeps publication gated while exposing package metadata", async () => {
@@ -39,6 +57,7 @@ describe("release readiness", () => {
       "docs/architecture",
       "docs/assets",
       "docs/contracts",
+      "docs/decisions",
       "docs/goals/current.md",
       "docs/principles",
       "docs/product",
@@ -52,6 +71,8 @@ describe("release readiness", () => {
       "SECURITY.md",
       "CONTRIBUTING.md",
       "ARCHITECTURE.md",
+      "CONTEXT.md",
+      "TELEMETRY.md",
     ]);
     expect(packageJson.scripts.prepack).toBe("pnpm build");
     expect(packageJson.scripts["public-surface:scan"]).toBe("node scripts/public-surface-scan.mjs");
@@ -127,6 +148,21 @@ describe("release readiness", () => {
     expect(packedScreenshot.size).toBe(screenshot.size);
     expect(packedScreenshot.size).toBeGreaterThan(50_000);
   }, 45_000);
+  // Inside node_modules a relative link can only reach what the package ships. Links to repo-only
+  // files use GitHub URLs, which docs:check validates.
+  it("ships every file that a relative link in a shipped doc names", async () => {
+    const { files } = JSON.parse(await readFile("package.json", "utf8")) as { files: string[] };
+    const shipped = ["package.json", ...(await Promise.all(files.map(filesUnder))).flat()];
+    const index = buildRepoIndex(shipped);
+    const broken: string[] = [];
+    for (const doc of shipped.filter((file) => /\.mdx?$/.test(file))) {
+      for (const issue of findDocPathIssues(doc, await readFile(doc, "utf8"), index)) {
+        // Only a markdown link has a resolved target; other doc paths are references.
+        if (issue.resolved !== undefined) broken.push(`${doc}:${issue.line} ${issue.resolved}`);
+      }
+    }
+    expect(broken).toEqual([]);
+  });
 });
 
 describe("npm publishing", () => {

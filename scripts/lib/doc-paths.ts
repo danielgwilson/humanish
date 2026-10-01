@@ -66,14 +66,18 @@ export function isCheckedSource(path: string): boolean {
   return path.startsWith("src/") && path.endsWith(".ts");
 }
 
-// A path from the repo root at the start of a token, behind optional `./` or `../` segments or
-// behind a GitHub blob URL for this repository. It names a file with one of the listed extensions,
+// A path from the repo root at the start of a token, behind optional `./` or `../` segments. It
+// names a file with one of the listed extensions,
 // or a directory written with a trailing `/`. A root folder inside another path (`tui/src/...`
 // holds no root `src/` match) and paths with globs or placeholders do not match. `observer/` is
 // left out because a run bundle has its own `observer/` folder, and `.js` because a `.js` name in
 // a doc is often an emitted file or an ESM specifier.
 const DOC_REPO_PATH =
-  /(?:github\.com\/[\w.-]+\/humanish\/blob\/[\w.-]+\/|(?<![\w.@/-])((?:\.{1,2}\/)*))((?:src|tests|scripts|docs|tui|site|runtime)\/[\w./-]*?(?:\.(?:tsx?|mts|mjs|json|ya?ml|md|py)|\/))(?![\w/-])/g;
+  /(?<![\w.@/-])((?:\.{1,2}\/)*)((?:src|tests|scripts|docs|tui|site|runtime)\/[\w./-]*?(?:\.(?:tsx?|mts|mjs|json|ya?ml|md|py)|\/))(?![\w/-])/g;
+// A link to a file or folder on this repository's main branch. Shipped docs use these for files
+// the npm package leaves out, so any repo path is checked. Links to a tag or a commit name a
+// snapshot and are left alone.
+const REPO_URL = /github\.com\/[\w.-]+\/humanish\/(?:blob|tree)\/main\/([^\s()#?"'<>`|]+)/g;
 // A markdown link target: `[text](target)` or `[text](<target> "title")`.
 const MARKDOWN_LINK = /\]\(\s*<?([^()\s<>]+?)>?(?:\s+"[^"]*")?\s*\)/g;
 
@@ -99,6 +103,14 @@ export function findDocPathIssues(file: string, text: string, index: RepoIndex):
     const known = resolved.endsWith("/") ? index.directories : index.files;
     if (!known.has(resolved)) issues.push({ offset: match.index, path: prefix + path });
   }
+  for (const match of text.matchAll(REPO_URL)) {
+    // A URL that ends a sentence carries the full stop.
+    const path = decodeOrSelf(match[1]!.replace(/[.,;:]+$/, ""));
+    const directory = path.endsWith("/") ? path : `${path}/`;
+    if (!index.files.has(path) && !index.directories.has(directory)) {
+      issues.push({ offset: match.index, path });
+    }
+  }
   return issues
     .sort((left, right) => left.offset - right.offset)
     .map(({ offset, ...issue }) => ({ file, line: lineAt(text, offset), ...issue }));
@@ -111,16 +123,19 @@ function isRelativeLinkTarget(target: string): boolean {
 
 /** The resolved repo path when the link names nothing relative to the doc, else undefined. */
 function missingFromFile(file: string, path: string, index: RepoIndex): string | undefined {
-  let decoded: string;
-  try {
-    decoded = decodeURIComponent(path);
-  } catch {
-    decoded = path;
-  }
+  const decoded = decodeOrSelf(path);
   const resolved = posix.normalize(posix.join(posix.dirname(file), decoded));
   if (index.files.has(resolved)) return undefined;
   if (index.directories.has(resolved.endsWith("/") ? resolved : `${resolved}/`)) return undefined;
   return resolved;
+}
+
+function decodeOrSelf(path: string): string {
+  try {
+    return decodeURIComponent(path);
+  } catch {
+    return path;
+  }
 }
 
 const URL_PATTERN = /\b[a-z][a-z0-9+.-]*:\/\/\S+/gi;

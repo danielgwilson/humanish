@@ -24,16 +24,16 @@ Observer; nothing runs from it.
 
 **Numbers so far, every one with its run ids.** Recall on five planted defects
 in a small task app: 15 of 15 across three live runs
-([benchmark](bench/RESULTS-2026-09-04-0.76.0.md)). Precision on apps the
+([benchmark](https://github.com/danielgwilson/humanish/blob/main/bench/RESULTS-2026-09-04-0.76.0.md)). Precision on apps the
 maintainer did not write: TodoMVC 5 of 6 findings confirmed against the source,
 drawDB 11 of 12, none invented
-([TodoMVC](bench/RESULTS-TODOMVC-2026-09-01.md), [drawDB](bench/RESULTS-DRAWDB-2026-09-01.md)).
+([TodoMVC](https://github.com/danielgwilson/humanish/blob/main/bench/RESULTS-TODOMVC-2026-09-01.md), [drawDB](https://github.com/danielgwilson/humanish/blob/main/bench/RESULTS-DRAWDB-2026-09-01.md)).
 Cold install to a live study: 9 of 9 fresh directories reached the goal in 108 to 200 seconds;
 the five on the API route cost $0.16 to $0.35 each, and the four on Codex or Claude Code are
-unpriced ([receipt](docs/goals/computer-use-actor/receipts/cold-install-try-live-2026-09-01.md)).
+unpriced ([receipt](https://github.com/danielgwilson/humanish/blob/main/docs/goals/computer-use-actor/receipts/cold-install-try-live-2026-09-01.md)).
 Same mission, different personas: keyboard-first participants reported drawDB's
 database modal 5 of 5 times and TodoMVC's mouse-only rename 6 of 6; mouse newcomers
-reported them 0 of 5 and 0 of 6 ([receipt](docs/goals/computer-use-actor/receipts/persona-axis-phone-2026-09-03.md)).
+reported them 0 of 5 and 0 of 6 ([receipt](https://github.com/danielgwilson/humanish/blob/main/docs/goals/computer-use-actor/receipts/persona-axis-phone-2026-09-03.md)).
 Planted defects are more legible than real ones and the largest cell is six runs;
 read these as what the machinery found, not as rates for your users.
 
@@ -304,7 +304,7 @@ fresh hosted inbox.
   and share-safe public exposure.
 
 Mobile viewport and touch flags do not certify gesture equivalence. The
-[2026-09-05 input-conformance correction](docs/goals/computer-use-actor/receipts/mobile-input-conformance-2026-09-05.md)
+[2026-09-05 input-conformance correction](https://github.com/danielgwilson/humanish/blob/main/docs/goals/computer-use-actor/receipts/mobile-input-conformance-2026-09-05.md)
 qualifies the historical results from phone-sized participants: they describe humanish's
 measured input path, not established physical-device app behavior.
 
@@ -342,7 +342,7 @@ take which option.
 
 The researcher declares the study, the participant tries the product, and the
 stakeholder reads what happened. [Three roles](docs/principles/three-roles.md)
-explains the design; the [email-gated signup receipts](docs/goals/email-gated-signup/receipts/)
+explains the design; the [email-gated signup receipts](https://github.com/danielgwilson/humanish/tree/main/docs/goals/email-gated-signup/receipts/)
 show a completed two-participant study and a reported keyboard-accessibility finding.
 
 ## Telemetry

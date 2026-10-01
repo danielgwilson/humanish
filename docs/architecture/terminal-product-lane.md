@@ -9,7 +9,7 @@ the kept 2026-07-09 live receipt verifies 15/15 checks and `share_ready` at a
 `$0` cap. That capability receipt is not adopter replacement: no deletion
 branch has yet removed the reference adopter's bespoke generic study harness.
 See the goal packet
-([`docs/goals/terminal-product-lane/goal.md`](../goals/terminal-product-lane/goal.md))
+([`docs/goals/terminal-product-lane/goal.md`](https://github.com/danielgwilson/humanish/blob/main/docs/goals/terminal-product-lane/goal.md))
 for the full slice plan and the safety contract.
 
 ## What this is
@@ -30,19 +30,19 @@ fail-closed cross-validation, and forward-declared warnings.
 
 ## The composition
 
-| Axis                                  | Value                                                                                                                        |
-| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `subject.source`                      | `terminal-product`                                                                                                           |
-| `subject.product`                     | `{ name, publicSurfaces[], install?, workdir?, upload? }`: the only world the agent sees                                     |
-| `execution.target`                    | `e2b-terminal` (or absent → implied)                                                                                         |
-| `execution.terminal`                  | `{ transport: exec-stream, stdin: disabled }`                                                                                |
-| `execution.runtimeAuth`               | `openai-env` (default) or opt-in `openai-egress`; names-only durable evidence                                                |
-| `execution.runtime.version`           | Optional exact `@openai/codex` version; observed before keyed execution                                                      |
-| `actors[0].model` / `reasoningEffort` | Forwarded to Codex; retained as declarations, not observed provider identity                                                 |
-| `scenario.caps`                       | `{ maxUsd, maxJobs, maxMinutes }`: the blast-radius budget; `maxUsd > 0` is refused unless a `costProbe` measures spend      |
-| `policies`                            | `allowPrivateRepoAccess` / `allowProviderCredentials` / `allowPaymentCredentials` / `allowGitHubMutation`, all DEFAULT FALSE |
-| `actors[0].type`                      | `codex-exec`: a registered terminal actor (`keyPlacement: in-sandbox-command-scoped`)                                        |
-| `LabBackend`                          | `terminal` → `runTerminalProductLab` ([`src/routes/terminal/lab.ts`](../../src/routes/terminal/lab.ts))                      |
+| Axis                                  | Value                                                                                                                                                 |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `subject.source`                      | `terminal-product`                                                                                                                                    |
+| `subject.product`                     | `{ name, publicSurfaces[], install?, workdir?, upload? }`: the only world the agent sees                                                              |
+| `execution.target`                    | `e2b-terminal` (or absent → implied)                                                                                                                  |
+| `execution.terminal`                  | `{ transport: exec-stream, stdin: disabled }`                                                                                                         |
+| `execution.runtimeAuth`               | `openai-env` (default) or opt-in `openai-egress`; names-only durable evidence                                                                         |
+| `execution.runtime.version`           | Optional exact `@openai/codex` version; observed before keyed execution                                                                               |
+| `actors[0].model` / `reasoningEffort` | Forwarded to Codex; retained as declarations, not observed provider identity                                                                          |
+| `scenario.caps`                       | `{ maxUsd, maxJobs, maxMinutes }`: the blast-radius budget; `maxUsd > 0` is refused unless a `costProbe` measures spend                               |
+| `policies`                            | `allowPrivateRepoAccess` / `allowProviderCredentials` / `allowPaymentCredentials` / `allowGitHubMutation`, all DEFAULT FALSE                          |
+| `actors[0].type`                      | `codex-exec`: a registered terminal actor (`keyPlacement: in-sandbox-command-scoped`)                                                                 |
+| `LabBackend`                          | `terminal` → `runTerminalProductLab` ([`src/routes/terminal/lab.ts`](https://github.com/danielgwilson/humanish/blob/main/src/routes/terminal/lab.ts)) |
 
 Routing is `routeOf` (`src/lab/plan.ts`). It sends every `terminal-product` subject to
 this route, even with an unregistered actor, so this route refuses the actor.
@@ -146,7 +146,7 @@ and [E2B's CA installer](https://github.com/e2b-dev/infra/blob/main/packages/env
 E2B's installed
 SDK documents that transformed headers override request headers. Deterministic
 request/redaction tests do not establish live wire behavior. The [2026-09-05
-transport receipt](../goals/terminal-product-lane/receipts/2026-09-05-runtime-egress-auth.md)
+transport receipt](https://github.com/danielgwilson/humanish/blob/main/docs/goals/terminal-product-lane/receipts/2026-09-05-runtime-egress-auth.md)
 records the controlled live header/auth checks and their scope.
 
 ## Runtime prerequisite
@@ -171,7 +171,7 @@ checks Node/npm in both ordinary and sudo shells after installation. The existin
 runtime fast path preserves user-specific installations; a later sudo product
 install can still fail if that installation is absent from sudo's PATH.
 
-The [global executable receipt](../goals/terminal-product-lane/receipts/2026-09-05-global-npm-prefix.md)
+The [global executable receipt](https://github.com/danielgwilson/humanish/blob/main/docs/goals/terminal-product-lane/receipts/2026-09-05-global-npm-prefix.md)
 records the regression found after the initial runtime-only proof and its stock
 desktop checks. npm documents [global executable locations](https://docs.npmjs.com/cli/v10/configuring-npm/folders#executables)
 and the [distribution built-in configuration](https://docs.npmjs.com/cli/v10/configuring-npm/npmrc#built-in-config-file).
@@ -296,7 +296,7 @@ is deferred to SLICE 5.
 The requesting adopter is a public creative-CLI product (see issue #154 for its
 concrete public surfaces). Committed source and docs here stay codename-neutral
 per the public-surface scan; the committed CI fixture
-([`humanish/labs/terminal-product-demo.yaml`](../../humanish/labs/terminal-product-demo.yaml))
+([`humanish/labs/terminal-product-demo.yaml`](https://github.com/danielgwilson/humanish/blob/main/humanish/labs/terminal-product-demo.yaml))
 uses a FICTIONAL mock CLI (`widgetsmith-cli`) with `example.com` surfaces. The
 adopter's real public surfaces appear only in operator-run docs and the GitHub
 issue, never in scanned committed text.

@@ -80,6 +80,21 @@ describe("doc path check", () => {
     ]);
   });
 
+  it("checks any path a main-branch GitHub link names, and leaves tag links alone", () => {
+    const text = [
+      "[folder](https://github.com/example/humanish/tree/main/docs/ramp/)",
+      "[guide](https://github.com/example/humanish/blob/main/tui/src/app.tsx#L3).",
+      "See https://github.com/example/humanish/blob/main/README.md.",
+      "[results](https://github.com/example/humanish/blob/main/bench/RESULTS.md)",
+      "[folder gone](https://github.com/example/humanish/tree/main/observer/)",
+      "[pinned](https://github.com/example/humanish/blob/v0.97.0/docs/release/notes.md)",
+    ].join("\n");
+    expect(paths(findDocPathIssues("README.md", text, index))).toEqual([
+      "bench/RESULTS.md",
+      "observer/",
+    ]);
+  });
+
   it("resolves a markdown link from the file that contains it", () => {
     const text = [
       "Read the [ramp](docs/ramp/README.md) first.",

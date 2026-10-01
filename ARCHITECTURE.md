@@ -127,7 +127,7 @@ code, inputs and goldens.
 The receipt write is best-effort; the sandbox's server-side timeout ends a sandbox with no
 receipt. A lab preflight probe journals its receipt with `withPreflightSandbox`
 (`src/lab/preflight-probes.ts`), and `humanish reclaim --preflight` (`src/run/reclaim.ts`) kills
-what a failed probe left. [Trust boundaries](site/content/docs/trust-boundaries.mdx) gives the
+what a failed probe left. [Trust boundaries](https://github.com/danielgwilson/humanish/blob/main/site/content/docs/trust-boundaries.mdx) gives the
 probe timeouts.
 
 ## Read next

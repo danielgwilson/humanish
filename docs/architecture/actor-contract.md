@@ -351,7 +351,7 @@ from interaction turns, and reported usage contributes to aggregate cost.
 The OpenAI implementation makes one request with tools disabled and structured
 output; no HTTP or policy retries. Stateless/ZDR mode does not offer retrospective
 reporting because it does not retain the required session history. The
-[paired live receipt](../goals/computer-use-actor/receipts/structured-closing-report-2026-09-05.md)
+[paired live receipt](https://github.com/danielgwilson/humanish/blob/main/docs/goals/computer-use-actor/receipts/structured-closing-report-2026-09-05.md)
 records both report recovery and control failures in the separate legacy parser.
 
 ## The state-driven executor seam (shipped)

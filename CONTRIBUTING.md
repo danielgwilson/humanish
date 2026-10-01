@@ -12,7 +12,7 @@ Thanks for helping make humanish better.
 5. [docs/ramp/README.md](docs/ramp/README.md), for depth: current state, how to pick work and the
    quality bar.
 
-[docs/README.md](docs/README.md) sorts the rest of `docs/` into guides, reference, design records
+[docs/README.md](https://github.com/danielgwilson/humanish/blob/main/docs/README.md) sorts the rest of `docs/` into guides, reference, design records
 and history.
 
 ## Ground Rules
