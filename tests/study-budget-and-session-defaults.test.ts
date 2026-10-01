@@ -18,7 +18,10 @@ import {
   type CuaTurn,
   type CuaTurnRequest,
 } from "../src/actors/computer-use/loop.js";
-import { makeCuaRunBudget, resolveCuaLanePlan } from "../src/routes/computer-use/lane-plan.js";
+import {
+  makeCuaRunBudget,
+  resolveCuaParticipantPlan,
+} from "../src/routes/computer-use/lane-plan.js";
 import { parseLabConfig } from "../src/lab/config.js";
 import { defaultRedactionHooks } from "../src/evidence/redaction.js";
 
@@ -209,7 +212,7 @@ describe("caps parsing and session defaults", () => {
     const parsed = parseLabConfig(baseLab);
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
-    expect(resolveCuaLanePlan(parsed.config).perLaneSessionBudgetMs).toBe(30 * 60_000);
+    expect(resolveCuaParticipantPlan(parsed.config).perLaneSessionBudgetMs).toBe(30 * 60_000);
   });
 
   it("derives a provisioned-route default that fits the one-hour sandbox cap", () => {
@@ -224,7 +227,7 @@ describe("caps parsing and session defaults", () => {
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     // 60m cap − 30m provisioning − 10m teardown buffer = 20 minutes of session room.
-    expect(resolveCuaLanePlan(parsed.config).perLaneSessionBudgetMs).toBe(20 * 60_000);
+    expect(resolveCuaParticipantPlan(parsed.config).perLaneSessionBudgetMs).toBe(20 * 60_000);
   });
 
   it("subtracts declared state seeding from the derived default", () => {
@@ -245,6 +248,6 @@ describe("caps parsing and session defaults", () => {
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     // Two 5-minute default seed steps shrink the room to 10 minutes.
-    expect(resolveCuaLanePlan(parsed.config).perLaneSessionBudgetMs).toBe(10 * 60_000);
+    expect(resolveCuaParticipantPlan(parsed.config).perLaneSessionBudgetMs).toBe(10 * 60_000);
   });
 });

@@ -12,7 +12,7 @@ import { selectLabBackend } from "../../src/lab/engine.js";
 import { planLab } from "../../src/lab/plan.js";
 import type { LabPlan, PlanResult, Requirement } from "../../src/lab/plan-types.js";
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/lab/types.js";
-import { resolveCuaLanePlan } from "../../src/routes/computer-use/lane-plan.js";
+import { resolveCuaParticipantPlan } from "../../src/routes/computer-use/lane-plan.js";
 import { committedLabs } from "../helpers/committed-labs.js";
 
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
@@ -83,7 +83,7 @@ describe("planLab", () => {
         planLab(config, { cwd: ROOT, dryRun: true, ...(count === undefined ? {} : { count }) }),
       );
       if (plan.route !== "computer-use") throw new Error(`${name} planned ${plan.route}`);
-      const lanes = resolveCuaLanePlan(config, {
+      const lanes = resolveCuaParticipantPlan(config, {
         env: {},
         ...(count === undefined ? {} : { countOverride: count }),
       });

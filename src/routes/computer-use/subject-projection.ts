@@ -20,18 +20,18 @@ import {
  * state steps it executed; without outcomes (dry run, or a run still in progress) the declared
  * state is projected as not yet run.
  */
-export function projectLaneSubjects(args: {
+export function projectParticipantSubjects(args: {
   routePlan: ComputerUsePlan;
   route: CuaRoute;
   publicRepo?: string;
   localTreeArchive?: LocalTreeArchive;
-  laneSpecs: readonly DesktopParticipantRun[];
+  runs: readonly DesktopParticipantRun[];
   outcomes: readonly LaneRunOutcome[] | undefined;
   dryRun: boolean;
 }): CuaSubjectProjection[] {
   const { route, publicRepo, localTreeArchive } = args;
   const declaredState = cuaDeclaredState(args.routePlan);
-  return args.laneSpecs.map((_spec, index) => {
+  return args.runs.map((_spec, index) => {
     const outcome = args.outcomes?.[index];
     const subjectState = resolveSubjectState({
       declared: route.provisionedRoute ? declaredState : undefined,
