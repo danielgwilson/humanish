@@ -28,12 +28,12 @@ export function createE2BParticipantDesktop(
     deps,
     warnings,
     targetUrl,
-    desktopCliRoute: deps.desktopCliRoute === true,
+    desktopCliRoute: deps.subject.kind === "desktop-cli",
     // Off-app comms (#297): gated entirely on config.comms; no comms declared, no change.
     comms: planParticipantComms(
       deps.config,
       targetUrl,
-      deps.cloneRoute || deps.localTreeRoute === true,
+      deps.subject.kind === "clone" || deps.subject.kind === "local-tree",
     ),
     // The default or injected sink sees every event, started and completed alike, so an operator
     // watching stderr sees both halves of each phase; the state keeps only completed ones.

@@ -240,7 +240,6 @@ export async function admitCuaRun(
     plan.residual.policies?.redactRepos ?? subjectEnvNames.includes("GITHUB_TOKEN");
   const publicRepo =
     cloneRoute && subjectRepo ? (redactRepoLabel ? "repo-01" : subjectRepo) : undefined;
-  const hasGithubToken = subjectEnvNames.includes("GITHUB_TOKEN");
 
   // Key-gating is route-aware: the in-process route uses the caller's OWN model + executor, and
   // the local-agent route uses a CLI the operator has already signed in to.
@@ -304,7 +303,6 @@ export async function admitCuaRun(
       knownSecretValues,
       scrubKnownValues,
       publicRepo,
-      hasGithubToken,
       localTreeArchive,
       localTreeArchiveBuffer,
     },
@@ -448,12 +446,10 @@ function cuaParticipantDeps(
 ): Omit<CuaParticipantDeps, "signalProvisioned"> {
   const { config, dryRun, hooks, streams, env, descriptor, runSession, participantCount } =
     admitted;
-  const { hasGithubToken, localTreeArchiveBuffer } = admitted;
+  const { localTreeArchiveBuffer } = admitted;
   const { openaiApiKey, e2bApiKey, scrubKnownValues } = admitted;
   const { externalCommsConfig, externalCommsEmail } = admitted;
-  const { appUrl, cloneRoute, desktopCliRoute, localTreeRoute, serve, subjectRepo } =
-    admitted.subjectRoute;
-  const { subjectEnvNames } = admitted.subjectRoute;
+  const { appUrl } = admitted.subjectRoute;
   const { runPaths, redactScreenshots, liveTrace } = run;
   const createDesktop = participantDesktopOf(hooks);
   const timeoutMs = plan.sessionBudgetMs;
@@ -466,13 +462,7 @@ function cuaParticipantDeps(
     descriptor,
     appUrl,
     brain: plan.runner.brain,
-    cloneRoute,
-    desktopCliRoute,
-    localTreeRoute,
-    ...(serve === undefined ? {} : { serve }),
-    ...(subjectRepo === undefined ? {} : { subjectRepo }),
-    subjectEnvNames,
-    hasGithubToken,
+    subject: plan.runner.subject,
     ...(localTreeArchiveBuffer === undefined ? {} : { localTreeArchiveBuffer }),
     env,
     openaiApiKey,
