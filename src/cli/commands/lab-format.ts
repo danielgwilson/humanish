@@ -108,7 +108,7 @@ export function formatCuaLabHuman(result: CuaActorLabResult): string {
       ...((result.lanes?.length ?? 0) > 1
         ? result.lanes!.map(
             (participant) =>
-              `lane ${participant.id}: ${participant.status}${participant.session ? ` (${participant.session.completionReason})` : ""}${participant.diagnostics ? ` · ${formatCuaDiagnostics(participant.diagnostics)}` : ""}${participant.session ? ` · ${participant.session.reason}` : ""}`,
+              `participant ${participant.id}: ${participant.status}${participant.session ? ` (${participant.session.completionReason})` : ""}${participant.diagnostics ? ` · ${formatCuaDiagnostics(participant.diagnostics)}` : ""}${participant.session ? ` · ${participant.session.reason}` : ""}`,
           )
         : []),
       ...(result.session && (result.lanes?.length ?? 0) <= 1

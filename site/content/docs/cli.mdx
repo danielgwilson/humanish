@@ -39,7 +39,7 @@ humanish [options] [command]
 - [humanish comms](#humanish-comms): Off-app comms surfaces.
 - [humanish runtime](#humanish-runtime): Prepare or inspect the local browser runtime.
 - [humanish reclaim](#humanish-reclaim): Reclaim an interrupted run's sandboxes by recorded id.
-- [humanish watch](#humanish-watch): Run sims, open the observer, keep the shell attached.
+- [humanish watch](#humanish-watch): Run participants, open the observer, stay attached.
 - [humanish observe](#humanish-observe): Follow a run's saved evidence over loopback http.
 - [humanish serve](#humanish-serve): Serve the run library; optional tunnel-edge exposure.
 - [humanish codex](#humanish-codex): Run Codex-native humanish integration surfaces.
@@ -601,7 +601,7 @@ humanish reclaim [options]
 
 ## humanish watch
 
-Run sims, open the observer, and keep the shell attached.
+Run synthetic participants, open the observer, and keep the shell attached.
 
 ```text
 humanish watch [options] [lab]
@@ -616,8 +616,8 @@ humanish watch [options] [lab]
 | `--lab <id-or-path>` | Explicit lab id or .yaml path. |
 | `--run <id>` | Watch an existing run id or latest pointer. |
 | `--dry-run` | Lab only: render contract evidence without live provider spend. |
-| `--sims <count>` | Start a fresh synthetic run with this many sims before rendering. Defaults to 4 when --run is omitted. |
-| `--count <count>` | Lab only: override headed desktop lane count. |
+| `--sims <count>` | Start a fresh synthetic run with this many participants before rendering. Defaults to 4 when --run is omitted. |
+| `--count <count>` | Lab only: override the headed desktop participant count. |
 | `--scorer <path>` | Terminal/computer-use/shared-world labs only: repo-relative adopter scorer module (.mjs). Overrides review.scorer.ref. Executable code: review it as code. |
 | `--run-id <id>` | Explicit run id for deterministic fixture tests; refused when that run already exists. |
 | `--cwd <path>` | Target project directory. (default: ".") |
@@ -802,10 +802,10 @@ humanish lab run [options] <lab>
 | `--no-open` | Render without opening a browser. |
 | `--detach` | Render/open once and exit without attached watch server. |
 | `--port <port>` | Local observer server port when following. (default: "0") |
-| `--sims <count>` | Override synthetic sims or headed desktop lanes. |
-| `--count <count>` | Computer-use only: override headed desktop lane count. |
-| `--rerun-failed-from <run>` | CUA fan-out only: create a new run for failed lanes from a prior run. |
-| `--lanes <lane-ids>` | CUA rerun only: comma-separated lane ids to rerun from the source run. |
+| `--sims <count>` | Override the synthetic or headed desktop participant count. |
+| `--count <count>` | Computer-use only: override the headed desktop participant count. |
+| `--rerun-failed-from <run>` | CUA fan-out only: create a new run for failed participants from a prior run. |
+| `--lanes <participant-ids>` | CUA rerun only: comma-separated participant ids to rerun from the source run. |
 | `--run-id <id>` | Explicit lab run id; refused when that run already exists. |
 | `--cwd <path>` | Target project directory. (default: ".") |
 | `--scorer <path>` | Terminal/computer-use/shared-world labs only: repo-relative adopter scorer module (.mjs). Overrides review.scorer.ref. Executable code: review it as code. |
