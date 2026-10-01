@@ -2,7 +2,7 @@
 // browser-state observer that watches it for drift (#623), and the final browser geometry.
 
 import { redactText, toErrorMessage } from "../../../evidence/redaction.js";
-import type { LabConfig } from "../../../lab/types.js";
+import type { ResidualConfig } from "../../../lab/plan-types.js";
 import type { RunDesktopGeometry } from "../../../run/streams.js";
 import { readDetachedLog } from "../../../substrates/detached.js";
 import type {
@@ -30,8 +30,11 @@ export interface ParticipantFidelity {
 }
 
 /** Only lanes on a mobile preset are emulated; the flags go on the browser command line. */
-export function mobileLaunchFlags(config: LabConfig, spec: DesktopParticipantRun): string[] {
-  const requested = config.execution?.desktop?.fidelity;
+export function mobileLaunchFlags(
+  residual: Readonly<ResidualConfig>,
+  spec: DesktopParticipantRun,
+): string[] {
+  const requested = residual.execution?.desktop?.fidelity;
   if (!requested?.mobileEmulation || !spec.planned.device.preset.isMobile) return [];
   return [
     `--user-agent=${requested.userAgent ?? DEFAULT_MOBILE_USER_AGENT}`,
@@ -69,7 +72,7 @@ export async function applyParticipantMobileFidelity(args: {
   warnings: string[];
 }): Promise<ParticipantFidelity> {
   const { spec, deps } = args;
-  const request = deps.config.execution?.desktop?.fidelity;
+  const request = deps.residual.execution?.desktop?.fidelity;
   const none: ParticipantFidelity = {
     applied: undefined,
     emulatedTargetId: undefined,

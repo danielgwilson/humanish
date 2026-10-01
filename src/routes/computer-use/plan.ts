@@ -408,15 +408,18 @@ export function planComputerUseLab(
   if (first === undefined) throw new Error("computerUseParticipants returned no participant");
 
   const appUrl = config.subject.appUrl ?? "";
+  const declaredServeUrl = config.subject.serve?.url;
+  const serveUrl = declaredServeUrl === undefined ? {} : { serveUrl: declaredServeUrl };
   const appUrlSubject: AppUrlSubject = {
     kind: "app-url",
     appUrl,
     publicTargets: config.policies?.allowPublicTargets === true,
+    ...serveUrl,
   };
   const product = config.subject.product;
   const hosted =
     source === "desktop-cli" && product !== undefined
-      ? ({ kind: "desktop-cli", product } as const)
+      ? ({ kind: "desktop-cli", product, ...serveUrl } as const)
       : (provisionedSubject(config) ?? appUrlSubject);
   const brain = brainOf(config, hooks.buildProvider !== undefined);
   const runner: ComputerUseRunner =

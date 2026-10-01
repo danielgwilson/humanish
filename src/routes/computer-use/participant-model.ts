@@ -110,14 +110,13 @@ export function participantSessionOptions(
   provider: CuaProvider | undefined,
   writeScreenshot: NonNullable<CuaActorSessionOptions["writeScreenshot"]>,
 ): CuaActorSessionOptions {
-  const { config } = deps;
   const { executor, inbox } = ready;
   // The FAIL-CLOSED spend cap (execution.caps.maxUsd) is wired into the loop as maxUsd + an
   // injected pure per-turn estimator keyed on the resolved model. Preflight already refused a
   // cap on an unpriced model, so the estimate is measurable whenever a cap is in force. The
   // model id here matches provider.version (openai-responses-cu resolves the default when unset).
   const capModelId = pricedModel(deps.brain);
-  const maxUsd = config.execution?.caps?.maxUsd;
+  const maxUsd = deps.caps.maxUsd;
   return {
     instructions: inbox
       ? withInboxMission(spec, inbox.url, inbox.address, inbox.receiving).instructions

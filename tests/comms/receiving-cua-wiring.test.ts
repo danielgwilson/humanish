@@ -101,6 +101,9 @@ describe("real inbox wiring through the actual CUA lane", () => {
         });
         const deps: CuaParticipantDeps & { receiving: CommsReceivingRun } = {
           config: parsed.config,
+          residual: parsed.config,
+          labId: parsed.config.id,
+          caps: {},
           descriptor: getActor("openai-computer-use"),
           brain: { kind: "openai", model: DEFAULT_OPENAI_CU_MODEL },
           appUrl: "http://127.0.0.1:3000/",

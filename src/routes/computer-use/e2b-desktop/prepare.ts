@@ -28,9 +28,9 @@ export async function acquireParticipantDesktop(
   state: E2BParticipantState,
 ): Promise<E2BDesktopSandbox> {
   const { spec, deps, warnings } = ctx;
-  const { config, env } = deps;
+  const { residual, env } = deps;
   const subjectEnvNames = participantSubjectEnv(deps.subject);
-  const subjectEnvValues = config.subject.envValues ?? {};
+  const subjectEnvValues = residual.subject.envValues ?? {};
   // Off-app comms (#297): the base-URL env is injected at sandbox create, so the app reads it at
   // boot; the catch starts right after create.
   const commsEnv = participantCommsEnv(ctx.comms);
@@ -45,7 +45,7 @@ export async function acquireParticipantDesktop(
       timeoutMs: deps.sandboxMs,
       metadata: {
         ...CUA_ACTOR_LAB_PROVIDER_METADATA,
-        labId: config.id,
+        labId: deps.labId,
         simId: spec.recordId,
         laneId: spec.planned.id,
         laneIndex: String(spec.planned.index),
@@ -71,7 +71,7 @@ export async function acquireParticipantDesktop(
       dpi: 96,
       lifecycle: { onTimeout: "kill" },
     },
-    template: e2bDesktopTemplate(config),
+    template: e2bDesktopTemplate(residual),
     retry: {
       // The default loader reclaims an acquired handle before retrying failed desktop startup.
       // Its error names the cleanup outcome; pre-construction allocation failures remain unowned.
@@ -178,16 +178,14 @@ export async function provisionParticipantSubject(
   desktop: E2BDesktopSandbox,
 ): Promise<void> {
   const { deps } = ctx;
-  const { config, subject } = deps;
+  const { residual, subject } = deps;
   const shell = e2bShell(desktop);
-  if (ctx.desktopCliRoute) {
+  if (subject.kind === "desktop-cli") {
     // Prepare the runtime and any declared product install, UNKEYED. With install omitted,
     // the participant discovers and installs the product from its public surfaces.
     await provisionDesktopCli(shell, {
-      product: config.subject.product?.name ?? "",
-      ...(config.subject.product?.install === undefined
-        ? {}
-        : { install: config.subject.product.install }),
+      product: subject.product.name,
+      ...(subject.product.install === undefined ? {} : { install: subject.product.install }),
       requestTimeoutMs: deps.requestTimeoutMs,
       scrub: deps.scrubKnownValues,
       onPhase: ctx.onSubjectPhase,
@@ -196,9 +194,9 @@ export async function provisionParticipantSubject(
   if (subject.kind === "clone") {
     state.subjectCommit = await provisionCloneSubject(shell, {
       repo: subject.repo,
-      depth: config.subject.clone?.depth ?? 1,
+      depth: residual.subject.clone?.depth ?? 1,
       serve: subject.serve,
-      ...(config.subject.state === undefined ? {} : { state: config.subject.state }),
+      ...(subject.state === undefined ? {} : { state: subject.state }),
       hasGithubToken: subject.env.includes("GITHUB_TOKEN"),
       requestTimeoutMs: deps.requestTimeoutMs,
       scrub: deps.scrubKnownValues,
@@ -215,7 +213,7 @@ export async function provisionParticipantSubject(
     await provisionLocalTreeSubject(shell, {
       archiveBuffer: deps.localTreeArchiveBuffer,
       serve: subject.serve,
-      ...(config.subject.state === undefined ? {} : { state: config.subject.state }),
+      ...(subject.state === undefined ? {} : { state: subject.state }),
       requestTimeoutMs: deps.requestTimeoutMs,
       scrub: deps.scrubKnownValues,
       onStateStep: (record) => {
