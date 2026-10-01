@@ -79,10 +79,8 @@ describe("scenario.caps dollar fields on a computer-use lab", () => {
         const outcome = await runLab(computerUseLab({ [key]: 3 }) as unknown as LabConfig, {
           cwd,
           dryRun: false,
-          cuaHooks: {
-            env: { OPENAI_API_KEY: "test-openai", E2B_API_KEY: "test-e2b" },
-            loadDesktopModule,
-          },
+          env: { OPENAI_API_KEY: "test-openai", E2B_API_KEY: "test-e2b" },
+          cuaHooks: { loadDesktopModule },
         });
         expect(outcome.backend).toBe("cua");
         expect(outcome.result.ok).toBe(false);

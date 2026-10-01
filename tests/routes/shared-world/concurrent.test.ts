@@ -61,6 +61,12 @@ import {
   type ObserverServer,
 } from "../../../src/observer/render.js";
 import type { LocalTreeArchive } from "../../../src/subject/local-tree-archive.js";
+import { allowDeprecationsInThisFile } from "../../helpers/deprecations.js";
+
+allowDeprecationsInThisFile(
+  "HUMANISH_RUN_LAB_OPTION_DEPRECATED",
+  "This file drives the route through its hook bag. The bag's deprecated members are its test seams until they move to RunLabOptions homes before the next minor removes them.",
+);
 
 // ---------------------------------------------------------------------------
 // Fakes for the N+1 substrate. The module records create/kill BY id and exposes

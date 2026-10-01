@@ -70,10 +70,11 @@ function options(cwd: string, env: Record<string, string>, loads: { count: numbe
   };
   return {
     cwd,
-    cuaHooks: { env, loadDesktopModule: load },
-    scriptedHooks: { env, loadDesktopModule: load, launchBrowser },
-    terminalHooks: { env, loadModule: load },
-    sharedWorldHooks: { env, loadDesktopModule: load },
+    env,
+    cuaHooks: { loadDesktopModule: load },
+    scriptedHooks: { loadDesktopModule: load, launchBrowser },
+    terminalHooks: { loadModule: load },
+    sharedWorldHooks: { loadDesktopModule: load },
   } satisfies RunLabOptions;
 }
 

@@ -43,6 +43,12 @@ import { syntheticPng1x1 } from "../../image-fixtures.js";
 import { evaluatePagePredicate } from "../../helpers/scripted-page-predicate.js";
 import { captureStderr, runDirSnapshot } from "../../helpers/run-golden.js";
 import { expectFailureGolden } from "../../helpers/failure-golden.js";
+import { allowDeprecationsInThisFile } from "../../helpers/deprecations.js";
+
+allowDeprecationsInThisFile(
+  "HUMANISH_RUN_LAB_OPTION_DEPRECATED",
+  "This file drives the route through its hook bag. The bag's deprecated members are its test seams until they move to RunLabOptions homes before the next minor removes them.",
+);
 
 const ROOT = process.cwd();
 const PNG_1X1 = syntheticPng1x1();

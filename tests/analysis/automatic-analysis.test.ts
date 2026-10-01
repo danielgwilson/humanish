@@ -257,19 +257,20 @@ describe("automatic analysis admission and producer boundary", () => {
     async (backend) => {
       const base = fixtures.find((row) => row.backend === backend)!.config;
       const run = vi.fn();
-      const onStart = vi.fn();
+      const onEvent = vi.fn();
       const output = await runLab(base, {
         cwd,
         dryRun: true,
         open: false,
-        automaticAnalysis: { run, onStart },
+        automaticAnalysis: { run },
+        onEvent,
       });
       expect(output.backend).toBe(backend);
       expect(output.result).toMatchObject({
         automaticAnalysis: { state: "skipped", reason: "AUTOMATIC_ANALYSIS_DRY_RUN" },
       });
       expect(run).not.toHaveBeenCalled();
-      expect(onStart).not.toHaveBeenCalled();
+      expect(onEvent).not.toHaveBeenCalledWith({ type: "analysis-started" });
     },
   );
   it("dry-run never invokes the analysis lifecycle or provider", async () => {

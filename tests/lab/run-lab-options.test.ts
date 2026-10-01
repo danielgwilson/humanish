@@ -17,6 +17,12 @@ import type { CuaLaneSpec } from "../../src/routes/computer-use/legacy-lane-spec
 import type { E2BDesktopSandbox } from "../../src/substrates/e2b/sdk.js";
 import { trackRuntimeStreams } from "../../src/routes/computer-use/live-flush.js";
 import { lab, type BaseName, type Patch } from "../admission/fixtures.js";
+import { allowDeprecationsInThisFile } from "../helpers/deprecations.js";
+
+allowDeprecationsInThisFile(
+  "HUMANISH_RUN_LAB_OPTION_DEPRECATED",
+  "This file tests how runLab maps each deprecated option to its home.",
+);
 
 function config(base: BaseName, patch?: Patch): LabConfig {
   const parsed = parseLabConfig(lab(base, patch));

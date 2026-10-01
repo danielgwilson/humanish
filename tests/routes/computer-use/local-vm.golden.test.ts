@@ -129,8 +129,8 @@ describe("local VM run directory golden", () => {
     const outcome = await runLab(localVmConfig(), {
       cwd,
       automaticAnalysis: { run: automaticAnalysisBoundary() },
+      env: { OPENAI_API_KEY: "test-openai-key" },
       cuaHooks: {
-        env: { OPENAI_API_KEY: "test-openai-key" },
         now: () => (clock += 30_000),
         runSession: async (options) =>
           runCuaActorSession({

@@ -51,7 +51,6 @@ describe("real receiving admission on non-receiving backends", () => {
       const generic = [vi.spyOn(synthetic, "runDryRun")];
       for (const spy of generic) spy.mockImplementation(forbidden);
       const hooks = {
-        env: {},
         loadDesktopModule: forbidden,
         runSession: forbidden,
         renderObserverFn: forbidden,
@@ -61,6 +60,7 @@ describe("real receiving admission on non-receiving backends", () => {
         const outcome = await runLab(resolved, {
           cwd: output,
           dryRun,
+          env: {},
           sharedWorldHooks: hooks,
           terminalHooks: hooks,
           scriptedHooks: hooks,

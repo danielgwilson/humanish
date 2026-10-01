@@ -406,8 +406,8 @@ describe("selected lab setup without paid dispatch", () => {
         let desktopLoads = 0;
         const outcome = await runLab(resolved.config, {
           cwd,
+          env: { ...keyless, PATH: bin, E2B_API_KEY: "synthetic-desktop-marker" },
           cuaHooks: {
-            env: { ...keyless, PATH: bin, E2B_API_KEY: "synthetic-desktop-marker" },
             loadDesktopModule: async () => {
               desktopLoads++;
               throw new Error("Must not reach desktop provider");

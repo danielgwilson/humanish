@@ -113,14 +113,14 @@ describe("account-billed participants", () => {
         runId: "account-proof",
         dryRun: false,
         open: false,
-        cuaHooks: {
-          env: {},
-          buildExecutor: async () => ({
+        env: {},
+        inProcess: {
+          executor: async () => ({
             observe: async () => ({ screenshot: frame, stateSignature: "synthetic" }),
             execute: vi.fn(),
           }),
-          buildProvider: async () => participant.provider,
         },
+        createProvider: async () => participant.provider,
       });
     } finally {
       await participant.close();

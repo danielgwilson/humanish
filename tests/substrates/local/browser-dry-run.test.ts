@@ -16,7 +16,8 @@ vi.mock("../../../src/analysis/restricted-codex.js", async (importOriginal) => (
 
 import type { LabConfig } from "../../../src/lab/types.js";
 import { runLab } from "../../../src/run-lab.js";
-import type { BrowserLabScoringContext } from "../../../src/lab/adapter-extension.js";
+import type { AdapterScoringContext } from "../../../src/lab/adapter-scorer-loader.js";
+import type { LabEvent } from "../../../src/lab/run-lab-events.js";
 import type { RunAdapterScore, RunBundle } from "../../../src/run/bundle.js";
 
 describe("local browser dry-run", () => {
@@ -55,26 +56,27 @@ describe("local browser dry-run", () => {
       execution: { target: "local" },
       scenario: { mode: "live" },
     };
-    const score = vi.fn((ctx: BrowserLabScoringContext): RunAdapterScore => ({
+    const score = vi.fn((ctx: AdapterScoringContext): RunAdapterScore => ({
       schema: "humanish.adapter-score.v1",
       namespace: "example-adapter",
       status: "pass",
       score: 100,
-      summary: `Scored ${ctx.laneCount} lane.`,
+      summary: `Scored ${"laneCount" in ctx ? ctx.laneCount : 0} lane.`,
     }));
-    const onPreflight = vi.fn();
+    const onEvent = vi.fn((_event: LabEvent) => {});
 
     const outcome = await runLab(config, {
       cwd,
       dryRun: true,
       open: false,
-      cuaHooks: { score, onPreflight },
+      scorer: { score },
+      onEvent,
     });
 
     expect(outcome.backend).toBe("cua");
     if (outcome.backend !== "cua") return;
     expect(outcome.result.ok).toBe(true);
-    expect(onPreflight).toHaveBeenCalledOnce();
+    expect(onEvent.mock.calls.filter(([event]) => event.type === "plan")).toHaveLength(1);
     expect(score).toHaveBeenCalledOnce();
     expect(score.mock.calls[0]![0]).toMatchObject({ backend: "cua", dryRun: true });
     const bundle = JSON.parse(
