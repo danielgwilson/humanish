@@ -5,7 +5,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { assertScreenshotEvidence } from "../../evidence/image.js";
+import { assertScreenshotEvidence, stripPngMetadataChunks } from "../../evidence/image.js";
 import { digestText, redactToSecretLabel } from "../../evidence/redaction.js";
 import {
   assertPreparedSelectedOutputDirectory,
@@ -474,8 +474,9 @@ async function captureScriptedPageScreenshot(page: ScriptedPageLike): Promise<Bu
       path: path.join(stagingRoot.physicalPath, "capture.png"),
       fullPage: true,
     });
+    // Evidence holds image data only; see stripPngMetadataChunks.
     if (Buffer.isBuffer(returned) || returned instanceof Uint8Array) {
-      return browserScreenshotBytes(returned);
+      return stripPngMetadataChunks(browserScreenshotBytes(returned));
     }
     const stagedBytes = await readContainedRegularFile(stagingRoot, "capture.png");
     if (!stagedBytes) {
@@ -483,7 +484,7 @@ async function captureScriptedPageScreenshot(page: ScriptedPageLike): Promise<Bu
         "Browser screenshot did not return bytes or write a single-link staging file.",
       );
     }
-    return stagedBytes;
+    return stripPngMetadataChunks(stagedBytes);
   } finally {
     await assertPreparedSelectedOutputDirectory(stagingRoot)
       .then(() => rm(stagingRoot.physicalPath, { force: true, recursive: true }))

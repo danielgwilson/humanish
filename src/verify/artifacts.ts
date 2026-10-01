@@ -166,19 +166,26 @@ function declaredActorScreenshotReferences(
 }
 
 /**
- * The image files that actor traces register as stream screenshots, relative to the run root.
- * RAW_SCREENSHOTS grades these, so the public-safety scan does not report them as unread.
+ * The PNG frames that actor traces register as stream screenshots, relative to the run root.
+ * RAW_SCREENSHOTS grades these, so the public-safety scan does not report them as unread. Only
+ * frames under screenshots/ count: the computer-use lane writer and the scripted-browser steps
+ * write every frame there, and nothing else in the harness does. A trace reference elsewhere (an
+ * adapter's PNG, say) stays required evidence but goes to UNSCANNED_ARTIFACT.
  */
 export function streamScreenshotPaths(bundle: RunBundle): Set<string> {
   const paths = new Set<string>();
   for (const stream of bundle.streams) {
     for (const reference of declaredActorScreenshotReferences(stream)) {
-      if (isRunRootEvidenceReference(reference.path)) {
-        paths.add(path.posix.normalize(reference.path.replace(/\\/g, "/")));
-      }
+      if (!isRunRootEvidenceReference(reference.path)) continue;
+      const normalized = path.posix.normalize(reference.path.replace(/\\/g, "/"));
+      if (isHarnessScreenshotPath(normalized)) paths.add(normalized);
     }
   }
   return paths;
+}
+
+function isHarnessScreenshotPath(normalized: string): boolean {
+  return normalized.startsWith("screenshots/") && normalized.toLowerCase().endsWith(".png");
 }
 
 function isRunRootEvidenceReference(value: unknown): value is string {
@@ -274,22 +281,34 @@ export function rawScreenshotPostureWarnings(bundle: RunBundle): string[] {
   }
 
   return [
-    `Screenshots are FULL-FIDELITY (raw) on ${rawStreamIds.join(", ")} — supported for local use, NOT publish-safe as-is. Verify ok does not mean share-ready; set policies.redactScreenshots: true to blur a share-as-is bundle.`,
+    `Screenshots are FULL-FIDELITY (raw) or carry no redaction claim on ${rawStreamIds.join(", ")} — supported for local use, NOT publish-safe as-is. Verify ok does not mean share-ready; set policies.redactScreenshots: true to blur a share-as-is bundle.`,
   ];
 }
 
+/** The per-frame claims a redacting writer records; see ActorTraceItem.screenshotRef. */
+const REDACTED_FRAME_CLAIMS = new Set<unknown>(["blurred", "ocr_scrubbed"]);
+
+/**
+ * The streams whose frames count as full-fidelity. A frame is redacted only when its own claim
+ * says so, or when it has no claim and the stream's final trace declares a redacted posture: the
+ * computer-use loop blurs every frame of a trace with that posture, and bundles from before
+ * per-frame claims carry only the posture. `none`, any value outside the claim set, and an
+ * unclaimed frame on a raw, silent or partial live trace are raw. An aggregate raw posture
+ * outranks every frame claim.
+ */
 export function rawScreenshotStreamIds(bundle: RunBundle): string[] {
   const rawStreamIds: string[] = [];
   for (const stream of bundle.streams) {
     const trace: unknown = stream.actor;
-    const aggregateRaw =
-      isRecord(trace) && isRecord(trace.redaction) && trace.redaction.screenshots === "raw";
-    // Partial live traces have no final actor summary. An explicit raw frame must also
-    // retain local-only posture, including when it contradicts an aggregate blur claim.
-    const frameRaw = declaredActorScreenshotReferences(stream).some(
-      (reference) => reference.redaction === "none",
+    const posture =
+      isRecord(trace) && isRecord(trace.redaction) ? trace.redaction.screenshots : undefined;
+    const postureRedacted = posture === "blurred" || posture === "ocr_scrubbed";
+    const frameRaw = declaredActorScreenshotReferences(stream).some((reference) =>
+      reference.redaction === undefined
+        ? !postureRedacted
+        : !REDACTED_FRAME_CLAIMS.has(reference.redaction),
     );
-    if (aggregateRaw || frameRaw) {
+    if (posture === "raw" || frameRaw) {
       rawStreamIds.push(stream.id);
     }
   }

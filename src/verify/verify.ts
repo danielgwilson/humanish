@@ -464,14 +464,14 @@ function buildShareSafety(args: {
     const more = paths.length - MAX_LISTED_UNSCANNED;
     reasons.push({
       code: "UNSCANNED_ARTIFACT",
-      message: `The public-safety scan cannot read ${paths.length} file(s) as text, and they are not registered stream screenshots or recordings: ${shown}${more > 0 ? ` and ${more} more` : ""}. Review them before sharing.`,
+      message: `The public-safety scan cannot read ${paths.length} file(s) as text, and they are not stream screenshots under screenshots/ or registered recordings: ${shown}${more > 0 ? ` and ${more} more` : ""}. Review them before sharing.`,
     });
   }
   const rawStreamIds = rawScreenshotStreamIds(args.bundle);
   if (rawStreamIds.length > 0) {
     reasons.push({
       code: "RAW_SCREENSHOTS",
-      message: `Full-fidelity screenshots are present on ${rawStreamIds.join(", ")}. This is valid local evidence, but not share-ready as-is.`,
+      message: `Full-fidelity screenshots, or frames with no redaction claim, are present on ${rawStreamIds.join(", ")}. This is valid local evidence, but not share-ready as-is.`,
     });
   }
 

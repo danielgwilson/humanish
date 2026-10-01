@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { PNG } from "pngjs";
 
-import { assertScreenshotEvidence, screenshotEvidenceError } from "../../src/evidence/image.js";
+import {
+  assertScreenshotEvidence,
+  screenshotEvidenceError,
+  stripPngMetadataChunks,
+} from "../../src/evidence/image.js";
+import { pngTextChunk, withPngChunk } from "../helpers/png-chunks.js";
 
 function encodePng(width = 2, height = 2): Buffer {
   const png = new PNG({ width, height });
@@ -74,5 +79,49 @@ describe("screenshot evidence", () => {
     expect(screenshotEvidenceError("screenshots/tiny.bmp", encodePng())).toBe(
       "unsupported screenshot extension .bmp; only decoded PNG evidence is supported",
     );
+  });
+
+  it.each(["tEXt", "zTXt", "iTXt"] as const)(
+    "rejects a %s chunk, which no pixel review would see",
+    (type) => {
+      const bytes = withPngChunk(encodePng(), type, pngTextChunk(type, "a note"));
+      expect(screenshotEvidenceError("screenshots/frame.png", bytes)).toBe(
+        `PNG carries a ${type} chunk; screenshot evidence may hold image data only`,
+      );
+    },
+  );
+
+  it.each(["eXIf", "iCCP", "tIME", "prVt"])("rejects a %s chunk", (type) => {
+    const bytes = withPngChunk(encodePng(), type, Buffer.from("payload"));
+    expect(screenshotEvidenceError("screenshots/frame.png", bytes)).toContain(`a ${type} chunk`);
+  });
+
+  it("accepts the display chunks an E2B desktop frame carries", () => {
+    const bytes = withPngChunk(
+      withPngChunk(encodePng(), "sBIT", Buffer.from([8, 8, 8, 8])),
+      "gAMA",
+      Buffer.from([0, 0, 0xb1, 0x8f]),
+    );
+    expect(screenshotEvidenceError("screenshots/frame.png", bytes)).toBeNull();
+  });
+
+  it("strips metadata chunks and keeps the image chunks byte for byte", () => {
+    const clean = withPngChunk(encodePng(), "sBIT", Buffer.from([8, 8, 8, 8]));
+    const dirty = withPngChunk(
+      withPngChunk(clean, "tEXt", pngTextChunk("tEXt", "a note")),
+      "eXIf",
+      Buffer.from("payload"),
+    );
+    const stripped = stripPngMetadataChunks(dirty);
+    expect(stripped.equals(clean)).toBe(true);
+    expect(screenshotEvidenceError("screenshots/frame.png", stripped)).toBeNull();
+    expect(stripPngMetadataChunks(clean)).toBe(clean);
+  });
+
+  it("leaves bytes that are not a chunk sequence for the check to reject", () => {
+    const truncated = encodePng().subarray(0, 24);
+    expect(stripPngMetadataChunks(truncated)).toBe(truncated);
+    const notPng = Buffer.from("not an image");
+    expect(stripPngMetadataChunks(notPng)).toBe(notPng);
   });
 });

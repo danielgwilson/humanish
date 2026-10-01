@@ -31,7 +31,8 @@ it("redacts legacy analysis-directory evidence while omitting generated analysis
     image.data.fill(150);
     const png = PNG.sync.write(image);
     await mkdir(path.join(root, "analysis"));
-    await writeFile(path.join(root, "analysis", "frame.png"), png);
+    await mkdir(path.join(root, "screenshots"));
+    await writeFile(path.join(root, "screenshots", "frame.png"), png);
     await writeFile(
       path.join(root, "analysis", "legacy-notes.txt"),
       "Synthetic retained evidence.",
@@ -58,7 +59,7 @@ it("redacts legacy analysis-directory evidence while omitting generated analysis
           kind: "screenshot",
           lifecycle: "completed",
           title: "Observed frame",
-          screenshotRef: { path: "analysis/frame.png", redaction: "none" },
+          screenshotRef: { path: "screenshots/frame.png", redaction: "none" },
         },
       ],
       capabilities: {
@@ -72,7 +73,7 @@ it("redacts legacy analysis-directory evidence while omitting generated analysis
     bundle.streams[0]!.artifacts.push({
       kind: "screenshot",
       label: "frame (raw)",
-      path: "analysis/frame.png",
+      path: "screenshots/frame.png",
     });
     bundle.streams[0]!.artifacts.push({ kind: "trace", label: "actor", path: "actor.json" });
     await writeFile(path.join(root, "run.json"), JSON.stringify(bundle));
@@ -104,7 +105,7 @@ it("redacts legacy analysis-directory evidence while omitting generated analysis
     const sourcePaths = [
       "run.json",
       "actor.json",
-      "analysis/frame.png",
+      "screenshots/frame.png",
       "analysis/legacy-notes.txt",
       ...generatedPaths,
     ];
@@ -129,11 +130,11 @@ it("redacts legacy analysis-directory evidence while omitting generated analysis
       await readFile(path.join(derivative.physicalRunRoot, "run.json"), "utf8"),
     ) as RunBundle;
     expect(copied.streams[0]!.actor!.items[0]!.screenshotRef).toMatchObject({
-      path: "analysis/frame.png",
+      path: "screenshots/frame.png",
       redaction: "blurred",
     });
     const transformed = PNG.sync.read(
-      await readFile(path.join(derivative.physicalRunRoot, "analysis/frame.png")),
+      await readFile(path.join(derivative.physicalRunRoot, "screenshots/frame.png")),
     );
     expect([transformed.width, transformed.height]).toEqual([96, 60]);
     expect(
@@ -148,6 +149,52 @@ it("redacts legacy analysis-directory evidence while omitting generated analysis
     for (let index = 0; index < sourcePaths.length; index++) {
       expect(await readFile(path.join(root, sourcePaths[index]!))).toEqual(originals[index]);
     }
+  } finally {
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
+it("refuses to export a frame a trace registers outside screenshots/", async () => {
+  const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-analysis-export-"));
+  const runId = "synthetic-analysis-frame";
+  try {
+    await runDryRun({ cwd, dryRun: true, runId });
+    const root = (await resolveRunPath(cwd, runId))!.physicalRunRoot;
+    await mkdir(path.join(root, "analysis"));
+    await writeFile(
+      path.join(root, "analysis", "frame.png"),
+      PNG.sync.write(new PNG({ width: 4, height: 4 })),
+    );
+    const bundle = JSON.parse(await readFile(path.join(root, "run.json"), "utf8")) as RunBundle;
+    Object.assign(bundle.streams[0]!, {
+      actor: {
+        schema: ACTOR_TRACE_SCHEMA,
+        redaction: { status: "passed", screenshots: "raw", notes: "Synthetic fixture." },
+        items: [
+          {
+            id: "frame",
+            kind: "screenshot",
+            lifecycle: "completed",
+            title: "Observed frame",
+            screenshotRef: { path: "analysis/frame.png", redaction: "none" },
+          },
+        ],
+      },
+    });
+    await writeFile(path.join(root, "run.json"), JSON.stringify(bundle));
+    const verified = await verifyRun(cwd, runId);
+    expect(verified.shareSafety.status).toBe("local_only");
+    expect(
+      verified.shareSafety.reasons.find((reason) => reason.code === "UNSCANNED_ARTIFACT")?.message,
+    ).toContain("analysis/frame.png");
+    const result = await exportRun(cwd, runId, {
+      format: "bundle",
+      redactScreenshots: true,
+      out: "shared",
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok)
+      expect(result.error.message).toContain("Actor screenshot reference must resolve");
   } finally {
     await rm(cwd, { recursive: true, force: true });
   }

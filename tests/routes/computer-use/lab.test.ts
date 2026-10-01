@@ -34,6 +34,7 @@ import { makeChromeBrowserStateObserver } from "../../../src/substrates/e2b/desk
 import { buildCuaBundle } from "../../../src/routes/computer-use/single-bundle.js";
 import { buildRunCostSummary } from "../../../src/run/cost-summary.js";
 import { makeParticipantWriteScreenshot } from "../../../src/routes/computer-use/lanes.js";
+import { pngTextChunk, withPngChunk } from "../../helpers/png-chunks.js";
 import {
   resolveSelfReportedBlocker,
   resolveSelfReportedFriction,
@@ -912,6 +913,18 @@ describe("runCuaActorLab", () => {
 
     const verified = await verifyRun(physicalA, runId);
     expect(verified.ok).toBe(true);
+  });
+
+  it("writes a frame without the metadata chunks its source PNG carried", async () => {
+    const artifactRoot = path.join(cwd, "screenshot-root");
+    await mkdir(artifactRoot);
+    const preparedRoot = await prepareSelectedOutputDirectory(cwd, artifactRoot);
+    const screenshots: string[] = [];
+    const writer = makeParticipantWriteScreenshot(preparedRoot, { screenshotDir: "" }, screenshots);
+    const frame = makePng(1);
+    const rel = await writer("frame.png", withPngChunk(frame, "tEXt", pngTextChunk("tEXt", "x")));
+    expect(rel).toBe("screenshots/frame.png");
+    expect((await readFile(path.join(artifactRoot, rel))).equals(frame)).toBe(true);
   });
 
   it("rejects path-shaped screenshot names and hardlinked leaves", async () => {

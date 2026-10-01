@@ -157,13 +157,18 @@ describe("verify declared evidence references", () => {
       },
     );
 
-    it.each([undefined, "legacy-unknown"])(
-      `preserves absent/unknown ${field} frame-metadata compatibility: %s`,
-      async (redaction) => {
+    // Only an absent claim defers to the final trace's posture, which a live trace does not have.
+    // A value outside the claim set is not a redaction claim.
+    it.each([
+      [undefined, field === "actor" ? "share_ready" : "local_only"],
+      ["legacy-unknown", "local_only"],
+    ] as const)(
+      `grades an absent or unknown ${field} frame claim under a blurred posture: %s`,
+      async (redaction, grade) => {
         setActor(field, [{ screenshotRef: { path: "screenshots/frame.PNG", redaction } }]);
         if (field === "actor") bundle.streams[0]!.actor!.redaction.screenshots = "blurred";
         await save();
-        expect((await verifyRun(cwd, RUN)).shareSafety.status).toBe("share_ready");
+        expect((await verifyRun(cwd, RUN)).shareSafety.status).toBe(grade);
       },
     );
   }

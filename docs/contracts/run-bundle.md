@@ -516,7 +516,7 @@ shareSafety:
   status: "share_ready|local_only|blocked"
   reasons:
     - code: "RAW_SCREENSHOTS"
-      message: "Full-fidelity screenshots are present ..."
+      message: "Full-fidelity screenshots, or frames with no redaction claim, are present ..."
 ```
 
 `ok: true` means the bundle is valid evidence. It does not necessarily mean the
@@ -553,22 +553,29 @@ may be an empty regular file, consistent with feedback verification, but that
 permission cannot relax another consumer's nonempty-file requirement. The
 qualified zero-event terminal-log exception remains unchanged.
 
-An explicit `screenshotRef.redaction: none` on either final or live actor items
-contributes the existing `RAW_SCREENSHOTS` reason and keeps otherwise valid
-evidence `local_only`. Either an aggregate raw declaration or a raw frame wins
-over a blurred declaration. Missing or unknown per-frame metadata retains the
-existing permissive compatibility behavior; verification does not infer pixel
-privacy from that absence.
+A frame counts as redacted only when its `screenshotRef.redaction` is `blurred`
+or `ocr_scrubbed`, or when it has no `redaction` and the stream's final
+`actor.redaction.screenshots` is `blurred` or `ocr_scrubbed` (bundles from before
+per-frame claims). `none`, any other value, and an unclaimed frame on a raw,
+silent or live-only trace are raw: they contribute `RAW_SCREENSHOTS` and keep
+otherwise valid evidence `local_only`. An aggregate raw declaration wins over
+every frame claim.
+
+A screenshot is a PNG holding image data only. A chunk outside IHDR, PLTE, IDAT,
+IEND, tRNS, cHRM, gAMA, sBIT, sRGB, pHYs and bKGD (text chunks, ICC profiles,
+Exif, timestamps, private chunks) fails verification. The harness writers drop
+those chunks before writing a frame.
 
 The public-safety scan classifies a run file by its bytes, not its name. It scans
 a file for secret and path patterns only when the bytes are strict UTF-8 with no
 control bytes other than tab, line feed and carriage return, the rule bundle
 export uses for text. `RAW_SCREENSHOTS` and `CONTINUOUS_MEDIA` grade the stream
-screenshots that actor traces reference and the recordings `streams[].recording`
-registers. Every other file the scan cannot read as text, or cannot read at all,
+screenshots that actor traces reference under `screenshots/`, where the harness
+writes every frame, and the recordings `streams[].recording` registers. Every other file the scan cannot read as text, or cannot read at all,
 contributes `UNSCANNED_ARTIFACT`. The reason's message lists the paths, and it keeps
 otherwise valid evidence `local_only`. This includes images that only feedback
-candidates, adapter artifacts or stream artifact entries cite. An unregistered
+candidates, adapter artifacts or stream artifact entries cite, and a PNG an actor
+trace references outside `screenshots/`. An unregistered
 `.mp4`, and a file or directory whose name contains `\`, are public-safety
 findings and block the run.
 

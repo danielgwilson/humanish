@@ -43,6 +43,64 @@ export function readPngDeclaredDimensions(bytes: Buffer): PngDimensions | null {
 // admits realistic screenshot payloads while bounding decoder input.
 const SCREENSHOT_MAX_BYTES = 32 * 1024 * 1024;
 
+/**
+ * The PNG chunks screenshot evidence may carry: image data and fixed-format display hints.
+ * Text (tEXt, zTXt, iTXt), ICC profiles, Exif, timestamps and private chunks can hold bytes that
+ * neither the text scan nor a look at the pixels would see, so a screenshot must not carry them.
+ * Frames from E2B desktops carry IHDR, IDAT, IEND and sBIT; blurred frames are re-encoded.
+ */
+const SCREENSHOT_PNG_CHUNKS = new Set([
+  "IHDR",
+  "PLTE",
+  "IDAT",
+  "IEND",
+  "tRNS",
+  "cHRM",
+  "gAMA",
+  "sBIT",
+  "sRGB",
+  "pHYs",
+  "bKGD",
+]);
+
+interface PngChunk {
+  type: string;
+  start: number;
+  end: number;
+}
+
+/** The chunks up to IEND, or null when a chunk runs past the end of the bytes. */
+function readPngChunks(bytes: Buffer): PngChunk[] | null {
+  const chunks: PngChunk[] = [];
+  let offset = PNG_SIGNATURE.length;
+  while (offset + 8 <= bytes.length) {
+    const end = offset + 12 + bytes.readUInt32BE(offset);
+    if (end > bytes.length) return null;
+    const type = bytes.toString("latin1", offset + 4, offset + 8);
+    chunks.push({ type, start: offset, end });
+    offset = end;
+    if (type === "IEND") break;
+  }
+  return chunks;
+}
+
+/**
+ * Drops every chunk outside SCREENSHOT_PNG_CHUNKS, so a frame from any source is written with
+ * image data only. Pixels and the kept chunks are copied unchanged. Bytes that are not a
+ * well-formed chunk sequence are returned as they are, for the evidence check to reject.
+ */
+export function stripPngMetadataChunks(bytes: Buffer): Buffer {
+  if (!hasPngSignature(bytes)) return bytes;
+  const chunks = readPngChunks(bytes);
+  if (chunks === null) return bytes;
+  const kept = chunks.filter((chunk) => SCREENSHOT_PNG_CHUNKS.has(chunk.type));
+  if (kept.length === chunks.length) return bytes;
+  return Buffer.concat([
+    bytes.subarray(0, PNG_SIGNATURE.length),
+    ...kept.map((chunk) => bytes.subarray(chunk.start, chunk.end)),
+  ]);
+}
+
 export function screenshotEvidenceError(relativePath: string, bytes: Buffer): string | null {
   const extension = relativePath.toLowerCase().split(".").pop() ?? "";
 
@@ -56,6 +114,13 @@ export function screenshotEvidenceError(relativePath: string, bytes: Buffer): st
 
   if (bytes.length > SCREENSHOT_MAX_BYTES) {
     return `PNG byte size exceeds ${SCREENSHOT_MAX_BYTES} byte limit`;
+  }
+
+  const chunks = readPngChunks(bytes);
+  const foreign = chunks?.find((chunk) => !SCREENSHOT_PNG_CHUNKS.has(chunk.type));
+  if (foreign !== undefined) {
+    const name = /^[A-Za-z]{4}$/.test(foreign.type) ? foreign.type : "malformed";
+    return `PNG carries a ${name} chunk; screenshot evidence may hold image data only`;
   }
 
   const declaredDimensions = readPngDeclaredDimensions(bytes);
