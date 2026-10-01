@@ -217,8 +217,14 @@ export function participantRunDeps(
     onTrace: (participantId, items, usage, metadata) =>
       live.flush?.flush(participantId, items, usage, metadata),
     config,
+    residual: ctx.plan.residual,
+    labId: ctx.plan.labId,
+    caps: ctx.plan.caps,
     descriptor,
-    subject: { kind: "shared-app" },
+    subject: {
+      kind: "shared-app",
+      ...(config.subject.serve?.url === undefined ? {} : { serveUrl: config.subject.serve.url }),
+    },
     env,
     openaiApiKey: ctx.openaiApiKey,
     e2bApiKey: ctx.e2bApiKey,

@@ -133,9 +133,9 @@ function cuaOutcome(result: CuaActorLabResult) {
  * Run a computer-use plan: its local checks, then the run. The run scope in runAdmittedCuaRun
  * finalizes any status record the run opened, on every exit, so a test or library caller does not
  * leave the 5 s status cadence writing into a directory something else is deleting (an unrelated
- * ENOTEMPTY). Participants and the brain (model and local agent) come from the plan. `config` is
- * still read for values the plan does not carry yet (persona ids, comms settings, the
- * per-participant cap) and by the compatibility hooks, which take the whole config.
+ * ENOTEMPTY). Participants, the brain, the subject, the caps and the residual config come from the
+ * plan. `config` is read only by the deprecated buildProvider and buildExecutor hooks, which take
+ * the whole config.
  */
 export async function runComputerUsePlan(
   plan: ComputerUsePlan,

@@ -44,7 +44,12 @@ export type Requirement =
   | { readonly kind: "host-browser" }
   | { readonly kind: "external-catch"; readonly url: string };
 
-/** Config fields no plan field decides. Routes read nothing else from the config. */
+/**
+ * Config fields no plan field decides. After admission, computer use reads the config only for the
+ * deprecated buildProvider and buildExecutor hooks; its planner, refusal envelopes and local VM
+ * study read it before a plan exists. Shared world, terminal and scripted still read some config
+ * fields at run time.
+ */
 export type ResidualConfig = Pick<
   LabConfig,
   "comms" | "policies" | "personas" | "defaults" | "review"
@@ -115,6 +120,11 @@ export interface AppUrlSubject {
   readonly kind: "app-url";
   readonly appUrl: string;
   readonly publicTargets: boolean;
+  /**
+   * A `subject.serve.url` declared on this subject, which the parser refuses and only a library
+   * config can carry. Participants map links to it back to their own app.
+   */
+  readonly serveUrl?: string;
 }
 
 /**
@@ -129,7 +139,12 @@ export type ComputerUseRunner =
       readonly subject:
         | AppUrlSubject
         | ProvisionedSubject
-        | { readonly kind: "desktop-cli"; readonly product: LabSubjectProduct };
+        | {
+            readonly kind: "desktop-cli";
+            readonly product: LabSubjectProduct;
+            /** As on AppUrlSubject: a library config's declared `subject.serve.url`. */
+            readonly serveUrl?: string;
+          };
     }
   | {
       readonly desktop: "local-vm";
