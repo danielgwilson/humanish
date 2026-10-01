@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 import { Command } from "commander";
 import { COMMS_PROVIDERS, saveCommsConnection } from "../../comms/connections.js";
-import { catchTokenRefusal, MIN_CATCH_TOKEN_LENGTH } from "../../comms/external-evidence.js";
+import { catchTokenRefusal } from "../../comms/external-evidence.js";
 import { readCommsSetup } from "../../comms/setup.js";
 import { checkCommsConnection, configureCommsLab } from "../../comms/setup.js";
 import { inspectCommsRecovery, recoverCommsReceiving } from "../../comms/receiving-recovery.js";
@@ -297,9 +297,10 @@ async function handleCommsCatch(
     recipient?: string[];
   },
 ): Promise<void> {
-  if (catchTokenRefusal(options.token) !== undefined) {
+  const tokenRefusal = catchTokenRefusal(options.token);
+  if (tokenRefusal !== undefined) {
     io.writeErr(
-      `--token must be at least ${MIN_CATCH_TOKEN_LENGTH} characters: it guards GET /deliveries, and runs scrub it from their warnings. Try \`openssl rand -hex 16\`.\n`,
+      `--token: ${tokenRefusal} The token guards GET /deliveries, and runs scrub it from their warnings.\n`,
     );
     io.setExitCode(2);
     return;

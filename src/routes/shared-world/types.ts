@@ -101,9 +101,9 @@ export type ConcurrentSharedWorldLabErrorCode =
   /** A declared adopter-hosted comms catch (#328) did not answer as a humanish catch — fail closed
    *  BEFORE any actor spend, since the funnel would silently collect nothing. */
   | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_CATCH_UNREACHABLE"
-  /** comms.email.external.authTokenEnv names a token shorter than MIN_CATCH_TOKEN_LENGTH
-   *  (src/comms/external-evidence.ts). Refused before the catch is probed. */
-  | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_TOKEN_TOO_SHORT";
+  /** comms.email.external.authTokenEnv names a token shorter than MIN_CATCH_TOKEN_LENGTH or not
+   *  well-formed Unicode (src/comms/external-evidence.ts). Refused before the catch is probed. */
+  | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_TOKEN_INVALID";
 
 /** The two plane classes of the concurrent shared-world route (#164 phase 2). */
 export type ConcurrentSharedWorldPlaneClass = "provisioned-getHost" | "external-public";

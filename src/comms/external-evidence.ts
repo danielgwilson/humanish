@@ -19,13 +19,24 @@ import type { CommsAddress } from "./types.js";
  * The run also scrubs the token from every warning as a literal, and a short token would scrub
  * ordinary words.
  */
-export const MIN_CATCH_TOKEN_LENGTH = 16;
+const MIN_CATCH_TOKEN_LENGTH = 16;
 
-/** Why a catch token cannot be used, or undefined when it can. An unset or empty token is none. */
+/** String.prototype.isWellFormed (ES2024, Node 20+); the ES2023 lib types do not declare it. */
+function isWellFormed(value: string): boolean {
+  return (value as string & { isWellFormed(): boolean }).isWellFormed();
+}
+
+/**
+ * Why a catch token cannot be used, or undefined when it can. An unset or empty token is none. A
+ * token that is not well-formed Unicode cannot be sent as a header or encoded as a URL, so it is
+ * refused with the short ones.
+ */
 export function catchTokenRefusal(token: string | undefined): string | undefined {
-  if (token === undefined || token.length === 0 || token.length >= MIN_CATCH_TOKEN_LENGTH)
-    return undefined;
-  return `The comms catch token is ${token.length} characters; use one of at least ${MIN_CATCH_TOKEN_LENGTH}, such as the output of \`openssl rand -hex 16\`, on the catch and in the run.`;
+  if (token === undefined || token.length === 0) return undefined;
+  if (!isWellFormed(token))
+    return "The comms catch token is not well-formed Unicode; use printable ASCII, such as the output of `openssl rand -hex 16`, on the catch and in the run.";
+  if (token.length >= MIN_CATCH_TOKEN_LENGTH) return undefined;
+  return `The comms catch token is ${token.length} characters; it must be at least ${MIN_CATCH_TOKEN_LENGTH}, such as the output of \`openssl rand -hex 16\`, on the catch and in the run.`;
 }
 
 /** The catch token the run sends: the value of `authTokenEnv`, when the lab names one. */
@@ -52,13 +63,15 @@ export async function collectExternalCommsEvidence(args: {
 }): Promise<{ path?: string; warnings: string[] }> {
   const { external, email, env, runPaths, knownSecretValues } = args;
   const authToken = catchTokenOf(external, env);
-  const scrub = scrubSecretValues([
-    ...knownSecretValues,
-    ...(authToken === undefined ? [] : [authToken]),
-  ]);
-  const scrubbed = (warnings: string[]): string[] =>
-    warnings.map((warning) => redactText(scrub(warning)));
+  // Pattern redaction alone until the literal scrub exists, so a warning built in the catch below
+  // is never unredacted. The scrub is built inside the try, where a failure becomes that warning.
+  let scrubbed = (warnings: string[]): string[] => warnings.map(redactText);
   try {
+    const scrub = scrubSecretValues([
+      ...knownSecretValues,
+      ...(authToken === undefined ? [] : [authToken]),
+    ]);
+    scrubbed = (warnings) => warnings.map((warning) => redactText(scrub(warning)));
     const channel = new FakeInbox();
     const inboxes: CommsAddress[] = [];
     for (const recipient of addressedRecipients(email)) {

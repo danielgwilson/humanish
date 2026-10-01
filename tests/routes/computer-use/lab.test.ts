@@ -807,8 +807,19 @@ describe("runCuaActorLab", () => {
       deliveries: async () => new Response("", { status: 200 }),
     });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_COMMS_TOKEN_TOO_SHORT");
+    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_COMMS_TOKEN_INVALID");
     expect(result.error?.message).not.toContain("abc");
+    expect(created).toHaveLength(0);
+    expect(drains).toEqual([]);
+  });
+
+  it("refuses a catch token that is not well-formed Unicode before any desktop", async () => {
+    const { result, created, drains } = await drainWithCatch({
+      token: "x".repeat(16) + "\uD800",
+      deliveries: async () => new Response("", { status: 200 }),
+    });
+    expect(result.ok).toBe(false);
+    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_COMMS_TOKEN_INVALID");
     expect(created).toHaveLength(0);
     expect(drains).toEqual([]);
   });

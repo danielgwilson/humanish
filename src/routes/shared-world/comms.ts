@@ -81,7 +81,7 @@ export async function prepareExternalComms(
   | {
       ok: false;
       code:
-        | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_TOKEN_TOO_SHORT"
+        | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_TOKEN_INVALID"
         | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_CATCH_UNREACHABLE";
       message: string;
     }
@@ -104,7 +104,7 @@ export async function prepareExternalComms(
   if (tokenRefusal !== undefined)
     return {
       ok: false,
-      code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_TOKEN_TOO_SHORT",
+      code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_TOKEN_INVALID",
       message: tokenRefusal,
     };
   // Fail closed BEFORE any actor sandbox is created: a comms lab whose catch is unreachable

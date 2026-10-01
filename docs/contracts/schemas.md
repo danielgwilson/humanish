@@ -324,9 +324,10 @@ dwell? }`. The parser expands it into
   pass for a catch), the teardown drain over `GET /deliveries`, and the same
   digest-only evidence. `authTokenEnv` names an env var holding a bearer token
   for the drain read. The NAME is recorded as evidence; the value never
-  persists. A live run refuses a token shorter than 16 characters before it
-  probes the catch (`HUMANISH_CUA_LAB_COMMS_TOKEN_TOO_SHORT`,
-  `HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_TOKEN_TOO_SHORT`), as
+  persists. A live run refuses a token shorter than 16 characters, or not
+  well-formed Unicode, before it probes the catch
+  (`HUMANISH_CUA_LAB_COMMS_TOKEN_INVALID`,
+  `HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_TOKEN_INVALID`), as
   `humanish comms catch --token` does, and scrubs the token and its encoded
   forms from every comms warning. Declaring `external` on a harness-provisioned subject warns: two
   catches would exist and the app would point at humanish's own. `linkOrigin`

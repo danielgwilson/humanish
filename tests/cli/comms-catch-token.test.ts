@@ -22,5 +22,5 @@ it("refuses a catch token shorter than 16 characters before it starts", async ()
     },
   );
   expect(exitCode).toBe(2);
-  expect(stderr.join("")).toContain("--token must be at least 16 characters");
+  expect(stderr.join("")).toContain("it must be at least 16");
 });

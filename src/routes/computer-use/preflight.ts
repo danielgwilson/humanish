@@ -97,7 +97,7 @@ export async function liveCuaRejection(args: {
       ? undefined
       : catchTokenRefusal(catchTokenOf(externalCommsConfig, env));
   if (tokenRefusal !== undefined)
-    return { code: "HUMANISH_CUA_LAB_COMMS_TOKEN_TOO_SHORT", message: tokenRefusal };
+    return { code: "HUMANISH_CUA_LAB_COMMS_TOKEN_INVALID", message: tokenRefusal };
   if (externalCommsConfig && !(await externalCatchHealthy(externalCommsConfig))) {
     return {
       code: "HUMANISH_CUA_LAB_COMMS_CATCH_UNREACHABLE",

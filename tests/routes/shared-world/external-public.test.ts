@@ -1607,7 +1607,7 @@ describe("external-public comms catch token", () => {
         hooks: { ...hooks, env: { ...hooks.env, CATCH_TOKEN: "abc" } },
       });
       expect(result.ok).toBe(false);
-      expect(result.error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_TOKEN_TOO_SHORT");
+      expect(result.error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_TOKEN_INVALID");
       expect(probes).toEqual([]);
     } finally {
       vi.unstubAllGlobals();
