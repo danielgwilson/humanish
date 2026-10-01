@@ -39,7 +39,7 @@
       },
       "runOk": false
     },
-    "stderr": "After live runs: default analysis · gpt-6-astra · separate $3 admission estimate limit (not a provider billing cap). Set review.analysis: false to disable.\n",
+    "stderr": "",
     "runs": false,
     "subprocess": 0,
     "scorerRan": false
@@ -141,6 +141,63 @@
     "subprocess": 0,
     "scorerRan": false
   },
+  "lab run adm-terminal-live-no-caps --scorer ./scorer.mjs --json": {
+    "exitCode": 2,
+    "stdout": {
+      "schema": "humanish.terminal-lab-result.v1",
+      "ok": false,
+      "cwd": "[cwd]",
+      "labId": "adm-terminal-live-no-caps",
+      "actor": "codex-exec",
+      "product": "widgetsmith-cli",
+      "dryRun": false,
+      "runId": "not-created",
+      "warnings": [],
+      "error": {
+        "code": "HUMANISH_TERMINAL_LAB_CAPS_MISSING",
+        "message": "A live terminal-product run grants provider access to the in-sandbox agent and so REQUIRES a fail-closed cap: scenario.caps with maxUsd (0 = no-spend) and a positive maxMinutes (the codex command's wall-clock kill). The live key is never exercised without a cap in force."
+      },
+      "automaticAnalysisTrigger": "default",
+      "automaticAnalysis": {
+        "state": "skipped",
+        "reason": "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE"
+      },
+      "runOk": false
+    },
+    "stderr": "",
+    "runs": false,
+    "subprocess": 0,
+    "scorerRan": false
+  },
+  "lab run adm-cu-local-app --scorer ./scorer.mjs --json": {
+    "exitCode": 2,
+    "stdout": {
+      "schema": "humanish.cua-lab-result.v2",
+      "ok": false,
+      "cwd": "[cwd]",
+      "labId": "adm-cu-local-app",
+      "actor": "openai-computer-use",
+      "appUrl": "http://127.0.0.1:3000/",
+      "dryRun": true,
+      "runId": "not-created",
+      "lanes": [],
+      "warnings": [],
+      "error": {
+        "code": "HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR",
+        "message": "subject.source: local-app has no built-in driver. Supply one through runLab(config, { inProcess: { executor }, createProvider }); a state-driven executor needs a non-vision provider."
+      },
+      "automaticAnalysisTrigger": "default",
+      "automaticAnalysis": {
+        "state": "skipped",
+        "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
+      },
+      "runOk": false
+    },
+    "stderr": "",
+    "runs": false,
+    "subprocess": 0,
+    "scorerRan": false
+  },
   "lab run adm-cu-unpriced --json": {
     "exitCode": 2,
     "stdout": {
@@ -197,7 +254,7 @@
       },
       "runOk": false
     },
-    "stderr": "After live runs: default analysis · gpt-6-astra · separate $3 admission estimate limit (not a provider billing cap). Set review.analysis: false to disable.\n",
+    "stderr": "",
     "runs": false,
     "subprocess": 0,
     "scorerRan": false

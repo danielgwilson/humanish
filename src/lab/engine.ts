@@ -39,7 +39,7 @@ import { previewLabRefusal, runPreviewPlan } from "../routes/preview.js";
 import { type RunScorerProvenance } from "../run/bundle.js";
 import { type RunResult } from "../run/results.js";
 import { backendOf, planLab, resolveLabDryRun, routeOf, type LabRoute } from "./plan.js";
-import type { PlanRefusal } from "./plan-types.js";
+import type { LabPlan, PlanRefusal } from "./plan-types.js";
 import {
   normalizeRunLabOptions,
   optionRefusalOutcome,
@@ -125,39 +125,77 @@ export function selectLabBackend(config: LabConfig): LabBackend {
  * on every exit through its own run scope (`src/run/run.ts`).
  */
 export async function runLab(config: LabConfig, options: RunLabOptions): Promise<LabOutcome> {
+  const prepared = await prepareLab(config, options);
+  return prepared.ok ? prepared.run() : prepared.outcome;
+}
+
+/** A lab planned once: the route's refusal, or the run of its plan. */
+export type PreparedLab =
+  | { readonly ok: false; readonly outcome: LabOutcome }
+  | {
+      readonly ok: true;
+      /** Runs the plan. A scorer loaded after planning joins the run's hooks; it changes no plan. */
+      run(scorer?: Pick<RunLabOptions, "scorer" | "scorerProvenance">): Promise<LabOutcome>;
+    };
+
+/**
+ * Normalizes the options and plans the lab once, so a caller can present a refusal before it loads
+ * anything the run needs. A local browser study's desktop lane and provider are bound first, so the
+ * plan is made with them; with createDesktopLane the caller provides the desktop, and with
+ * buildExecutor it drives the app in process and needs none.
+ */
+export async function prepareLab(config: LabConfig, options: RunLabOptions): Promise<PreparedLab> {
   const lab = localBrowserDefaults(config);
   const route = routeOf(lab);
   const normalized = normalizeRunLabOptions(lab, route, options);
-  if (!normalized.ok) return optionRefusalOutcome(lab, route, options, normalized);
-  const outcome = await planAndRun(lab, normalized.options);
-  outcome.result.warnings.push(...normalized.warnings);
-  return outcome;
-}
-
-/**
- * Plans the lab once and runs the plan on its route, or returns the route's refusal. A local
- * browser study's desktop lane and provider are bound first, so the plan is made with them; with
- * createDesktopLane the caller provides the desktop, and with buildExecutor it drives the app in
- * process and needs none.
- */
-async function planAndRun(config: LabConfig, options: RunLabOptions): Promise<LabOutcome> {
-  const hooks = options.cuaHooks;
-  if (
-    isLocalBrowserLab(config) &&
+  if (!normalized.ok)
+    return { ok: false, outcome: optionRefusalOutcome(lab, route, options, normalized) };
+  const hooks = normalized.options.cuaHooks;
+  const localVm =
+    isLocalBrowserLab(lab) &&
     hooks?.createDesktopLane === undefined &&
     hooks?.buildExecutor === undefined
-  ) {
-    const { prepareLocalVmStudy } = await import("../routes/computer-use/local-vm.js");
-    const study = prepareLocalVmStudy({ ...options, config });
-    try {
-      return await planAndRun(config, study.options);
-    } finally {
-      await study.close();
-    }
+      ? (await import("../routes/computer-use/local-vm.js")).prepareLocalVmStudy
+      : undefined;
+  let study = localVm?.({ ...normalized.options, config: lab });
+  const planning = study?.options ?? normalized.options;
+  const planned = planLab(lab, planning);
+  if (!planned.ok) {
+    await study?.close();
+    const outcome = await refusalOutcome(lab, planning, planned.refusal);
+    outcome.result.warnings.push(...normalized.warnings);
+    return { ok: false, outcome };
   }
-  const planned = planLab(config, options);
-  if (!planned.ok) return refusalOutcome(config, options, planned.refusal);
   const { plan } = planned.planned;
+  return {
+    ok: true,
+    async run(scorer) {
+      let running = normalized;
+      if (scorer !== undefined) {
+        const withScorer = normalizeRunLabOptions(lab, route, { ...options, ...scorer });
+        if (!withScorer.ok) return optionRefusalOutcome(lab, route, options, withScorer);
+        running = withScorer;
+        // The study's hooks wrap the caller's, so a scorer added after planning needs a new bag.
+        await study?.close();
+        study = localVm?.({ ...running.options, config: lab });
+      }
+      try {
+        const outcome = await runPlan(lab, study?.options ?? running.options, plan);
+        outcome.result.warnings.push(...running.warnings);
+        return outcome;
+      } finally {
+        await study?.close();
+      }
+    },
+  };
+}
+
+/** Runs a plan on its route with the run's options. */
+async function runPlan(
+  config: LabConfig,
+  options: RunLabOptions,
+  plan: LabPlan,
+): Promise<LabOutcome> {
   switch (plan.route) {
     case "preview":
       return { backend: "synthetic", result: await runPreviewPlan(plan, options) };
