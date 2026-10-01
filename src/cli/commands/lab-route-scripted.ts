@@ -43,8 +43,8 @@ export function scriptedRouteRun(args: ScriptedRouteArgs): RouteRun | undefined 
       ...(args.options.runId === undefined ? {} : { runId: args.options.runId }),
     },
     present: async (outcome) => {
-      if (outcome.backend !== "scripted") {
-        throw new Error(`Expected scripted backend, got ${outcome.backend}.`);
+      if (outcome.route !== "scripted") {
+        throw new Error(`Expected the scripted route, got ${outcome.route}.`);
       }
       const result = outcome.result;
       writeResult(args.command, args.io, result, formatScriptedLabHuman);

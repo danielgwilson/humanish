@@ -64,8 +64,8 @@ export function computerUseRouteRun(args: ComputerUseRouteArgs): RouteRun | unde
     options: cuaRunOptions(args, settings, prepared, live),
     onRunError: (error) => closeLiveAfterRunError(args, settings, live, error),
     present: async (outcome) => {
-      if (outcome.backend !== "cua") {
-        throw new Error(`Expected cua backend, got ${outcome.backend}.`);
+      if (outcome.route !== "computer-use") {
+        throw new Error(`Expected the computer-use route, got ${outcome.route}.`);
       }
       await reportCuaRun(args, prepared, outcome.result, live);
     },

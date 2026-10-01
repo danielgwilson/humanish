@@ -43,8 +43,8 @@ export function terminalRouteRun(args: TerminalRouteArgs): RouteRun | undefined 
       ...(args.options.runId === undefined ? {} : { runId: args.options.runId }),
     },
     present: async (outcome) => {
-      if (outcome.backend !== "terminal") {
-        throw new Error(`Expected terminal backend, got ${outcome.backend}.`);
+      if (outcome.route !== "terminal") {
+        throw new Error(`Expected the terminal route, got ${outcome.route}.`);
       }
       const result = outcome.result;
       writeResult(args.command, args.io, result, formatTerminalLabHuman);
