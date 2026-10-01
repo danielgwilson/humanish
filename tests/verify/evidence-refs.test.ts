@@ -34,14 +34,18 @@ describe("verify declared evidence references", () => {
   const save = async () => {
     await writeFile(path.join(runDir, "run.json"), JSON.stringify(bundle));
   };
-  const setActor = (field: "actor" | "liveActor", items: unknown[]) => {
+  const setActor = (
+    field: "actor" | "liveActor",
+    items: unknown[],
+    screenshots: "raw" | "blurred" = "raw",
+  ) => {
     // The canonical bundle permits partially shaped actor payloads. Verification must
     // inspect declared refs defensively, without requiring unrelated actor fields.
     Object.assign(bundle.streams[0]!, {
       [field]: {
         schema: field === "actor" ? ACTOR_TRACE_SCHEMA : "humanish.live-actor.v1",
         items,
-        redaction: { status: "passed", screenshots: "raw", notes: "Synthetic raw frame." },
+        redaction: { status: "passed", screenshots, notes: `Synthetic ${screenshots} frame.` },
       },
     });
   };
@@ -196,6 +200,12 @@ describe("verify declared evidence references", () => {
     async (text) => {
       await writeFile(path.join(runDir, "candidate.log"), text);
       candidateEvidence("candidate.log");
+      // A real run registers the frame it keeps in its actor trace; a draftable one is blurred.
+      setActor(
+        "actor",
+        [{ screenshotRef: { path: "screenshots/frame.PNG", redaction: "blurred" } }],
+        "blurred",
+      );
       await save();
       expect((await verifyRun(cwd, RUN)).ok).toBe(true);
       expect((await draftFeedback(cwd, RUN)).ok).toBe(true);

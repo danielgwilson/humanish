@@ -11,7 +11,11 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-import type { ActorCapabilities, ActorTrace } from "../../src/actors/contract.js";
+import {
+  ACTOR_TRACE_SCHEMA,
+  type ActorCapabilities,
+  type ActorTrace,
+} from "../../src/actors/contract.js";
 import type { CuaLoopResult } from "../../src/actors/computer-use/loop.js";
 import { participantFeedbackCandidates } from "../../src/routes/computer-use/bundle.js";
 import { draftFeedback, listFeedback } from "../../src/feedback/feedback.js";
@@ -301,6 +305,20 @@ describe("a multi-lane study's second finding is one flag away (#609)", () => {
       const bundle = JSON.parse(await readFile(runJsonPath, "utf8"));
       bundle.mode = "live";
       bundle.feedbackCandidates = candidates;
+      // A real run's actor trace registers every frame it keeps, with its redaction. Without that,
+      // verify cannot tie the cited screenshots to a stream and grades the run local_only.
+      const frames = candidates.flatMap((candidate) =>
+        candidate.evidence.flatMap((evidence) =>
+          evidence.kind === "screenshot" ? [evidence.path] : [],
+        ),
+      );
+      bundle.streams[0].actor = {
+        schema: ACTOR_TRACE_SCHEMA,
+        items: [...new Set(frames)].map((frame) => ({
+          screenshotRef: { path: frame, redaction: "blurred" },
+        })),
+        redaction: { status: "passed", screenshots: "blurred", notes: "Synthetic blurred frames." },
+      };
       await writeFile(runJsonPath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
       // The fixture's findings must retain the evidence they declare, just as a real run does.
       for (const candidate of candidates) {

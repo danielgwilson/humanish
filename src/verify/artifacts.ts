@@ -164,6 +164,22 @@ function declaredActorScreenshotReferences(
   return references;
 }
 
+/**
+ * The image files that actor traces register as stream screenshots, relative to the run root.
+ * RAW_SCREENSHOTS grades these, so the public-safety scan does not report them as unread.
+ */
+export function streamScreenshotPaths(bundle: RunBundle): Set<string> {
+  const paths = new Set<string>();
+  for (const stream of bundle.streams) {
+    for (const reference of declaredActorScreenshotReferences(stream)) {
+      if (isRunRootEvidenceReference(reference.path)) {
+        paths.add(path.posix.normalize(reference.path.replace(/\\/g, "/")));
+      }
+    }
+  }
+  return paths;
+}
+
 function isRunRootEvidenceReference(value: unknown): value is string {
   return (
     typeof value === "string" &&
@@ -279,14 +295,26 @@ export function rawScreenshotStreamIds(bundle: RunBundle): string[] {
   return rawStreamIds;
 }
 
+/** Stream media the bundle registers; other grades (RAW_SCREENSHOTS, CONTINUOUS_MEDIA) cover it. */
+interface RegisteredStreamMedia {
+  recordingPaths: Set<string>;
+  screenshotPaths: Set<string>;
+}
+
+/**
+ * Scans every run file for secret and path patterns and returns the findings. A file the scan
+ * cannot read as text (an archive or image) that is not registered stream media goes to
+ * `unscanned`, so the caller can keep the run from grading share_ready.
+ */
 export async function scanRunPublicSafetyArtifacts(
   runPaths: PreparedRunArtifactPaths,
   derivedFindings: string[],
-  recordingPaths: Set<string>,
+  media: RegisteredStreamMedia,
+  unscanned: string[],
 ): Promise<string[]> {
   const findings: string[] = [];
   await validatePreparedRunArtifactPaths(runPaths);
-  await scanRunPublicSafetyDirectory(runPaths, "", findings, derivedFindings, recordingPaths);
+  await scanRunPublicSafetyDirectory(runPaths, "", findings, derivedFindings, media, unscanned);
   await validatePreparedRunArtifactPaths(runPaths);
   return findings;
 }
@@ -296,7 +324,8 @@ async function scanRunPublicSafetyDirectory(
   relativeDirectory: string,
   findings: string[],
   derivedFindings: string[],
-  recordingPaths: Set<string>,
+  media: RegisteredStreamMedia,
+  unscanned: string[],
 ): Promise<void> {
   // Each authority has its own finding budget. Derived files must never consume
   // the source scan's budget and make an unscanned recording appear verified.
@@ -340,17 +369,24 @@ async function scanRunPublicSafetyDirectory(
         relativePath,
         findings,
         derivedFindings,
-        recordingPaths,
+        media,
+        unscanned,
       );
       continue;
     }
 
     if (selectedFindings.length >= MAX_REPORTED_FINDINGS) continue;
 
-    if (path.extname(relativePath).toLowerCase() === ".mp4" && !recordingPaths.has(relativePath)) {
+    const extension = path.extname(relativePath).toLowerCase();
+    if (extension === ".mp4" && !media.recordingPaths.has(relativePath)) {
       selectedFindings.push(`unregistered continuous media ${relativePath}`);
     }
     if (!shouldScanTextArtifact(relativePath)) {
+      // An archive or an image can hold text this scan never sees. An unregistered .mp4 is
+      // already a finding above.
+      if (extension !== ".mp4" && !media.screenshotPaths.has(relativePath)) {
+        unscanned.push(relativePath);
+      }
       continue;
     }
 

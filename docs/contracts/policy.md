@@ -162,11 +162,11 @@ Required redaction gates:
 `humanish verify` separates bundle validity from public promotion with
 `shareSafety`:
 
-| Status        | Meaning                                                                                                                                      |
-| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `share_ready` | The bundle passed verification and has no known local-only evidence posture. Feedback commands may render public issue drafts.               |
-| `local_only`  | The bundle passed verification and is useful local evidence, but should not be shared as-is. Current example: full-fidelity raw screenshots. |
-| `blocked`     | Verification or public-safety checks failed. The bundle must not be promoted.                                                                |
+| Status        | Meaning                                                                                                                                                                          |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `share_ready` | The bundle passed verification and has no known local-only evidence posture. Feedback commands may render public issue drafts.                                                   |
+| `local_only`  | The bundle passed verification and is useful local evidence, but should not be shared as-is. Examples: full-fidelity raw screenshots, or an image or archive verify cannot read. |
+| `blocked`     | Verification or public-safety checks failed. The bundle must not be promoted.                                                                                                    |
 
 Feedback commands fail closed unless `shareSafety.status` is `share_ready`.
 This keeps the default raw-screenshot capture useful for local review without
