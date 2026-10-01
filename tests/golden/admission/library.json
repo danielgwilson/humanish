@@ -210,7 +210,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID",
-          "message": "Real email receiving is unsupported on the scripted-browser backend. Use a supported hosted computer-use browser study."
+          "message": "Real email receiving is unsupported on the scripted route. Use a supported hosted computer-use browser study."
         }
       }
     },
@@ -4048,7 +4048,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID",
-          "message": "Real email receiving is unsupported on the scripted-browser backend. Use a supported hosted computer-use browser study."
+          "message": "Real email receiving is unsupported on the scripted route. Use a supported hosted computer-use browser study."
         }
       }
     },
@@ -4083,7 +4083,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_TERMINAL_LAB_SUBJECT_INVALID",
-          "message": "Real email receiving is unsupported on the terminal backend. Use a supported hosted computer-use browser study."
+          "message": "Real email receiving is unsupported on the terminal route. Use a supported hosted computer-use browser study."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {

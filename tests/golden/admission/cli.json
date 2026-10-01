@@ -8,7 +8,7 @@
       "warnings": [],
       "error": {
         "code": "HUMANISH_WATCH_OPTION_CONFLICT",
-        "message": "--expose/--tunnel/--oauth stream a live desktop and apply only to computer-use labs; this lab resolved to terminal."
+        "message": "--expose/--tunnel/--oauth stream a live desktop and apply only to computer-use labs; this lab resolved to the terminal route."
       }
     },
     "stderr": "",
@@ -53,7 +53,7 @@
       "warnings": [],
       "error": {
         "code": "HUMANISH_UNSUPPORTED_RERUN_FLAGS",
-        "message": "--rerun-failed-from/--lanes apply only to CUA fan-out labs; this lab resolved to scripted."
+        "message": "--rerun-failed-from/--lanes apply only to computer-use fan-out labs; this lab resolved to the scripted route."
       }
     },
     "stderr": "",
@@ -125,7 +125,7 @@
       "warnings": [],
       "error": {
         "code": "HUMANISH_LAB_SCORER_UNSUPPORTED_BACKEND",
-        "message": "review.scorer.ref is declared but this lab resolves to the scripted backend, which has no adopter-scorer seam. A declared scorer that cannot run must fail closed rather than pass silently — declare it on a terminal, cua, shared-world, or concurrent-shared-world lab."
+        "message": "review.scorer.ref is declared but this lab resolves to the scripted route, which has no adopter-scorer seam. A declared scorer that cannot run must fail closed rather than pass silently — declare it on a terminal, computer-use or shared-world lab."
       }
     },
     "stderr": "",
