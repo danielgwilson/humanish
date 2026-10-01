@@ -6,6 +6,7 @@ import { createHash } from "node:crypto";
 import { cp, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { isDeepStrictEqual } from "node:util";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { resolveAutomaticAnalysis } from "../../src/analysis/automatic-config.js";
@@ -23,6 +24,7 @@ import { digestAnalysisInput } from "../../src/analysis/validation.js";
 import type { RunBundle } from "../../src/run/bundle.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { resolveRunPath } from "../../src/run/locate.js";
+import { expandRepeatedFiles, referenceRepeatedFiles } from "../helpers/analysis-golden-files.js";
 import { syntheticInput, syntheticResult } from "./fixtures.js";
 
 const RUN = "analysis-golden";
@@ -57,14 +59,20 @@ afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
 
+// The bundle analysis reads, frozen (tests/fixtures/analysis-golden-run/README.md): the run.json
+// a dry run wrote. A change to dry-run wording then moves the dry-run goldens, not this one.
+const frozenBundle = new URL("../fixtures/analysis-golden-run/run.json", import.meta.url);
+
 /** A finished live run with one completed stream, as the service test builds it. */
 async function finishedRun(live = true): Promise<string> {
   const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-analyze-golden-"));
   roots.push(cwd);
   await cp(path.resolve("fixtures/minimal-app"), cwd, { recursive: true });
+  // The dry run lays out the run folder; its run.json is replaced by the frozen bundle.
   await runDryRun({ cwd, dryRun: true, runId: RUN });
-  if (!live) return cwd;
   const runRoot = path.join(cwd, ".humanish", "runs", RUN);
+  await writeFile(path.join(runRoot, "run.json"), await readFile(frozenBundle, "utf8"));
+  if (!live) return cwd;
   const bundle = JSON.parse(await readFile(path.join(runRoot, "run.json"), "utf8")) as RunBundle;
   bundle.mode = "live";
   bundle.streams[0]!.status = "complete";
@@ -408,6 +416,20 @@ async function storageAndCodexScenarios(scenarios: Record<string, Recorded>): Pr
   scenarios["dry-run bundle"] = await analyze(cwd, { config: openai });
 }
 
+/**
+ * Pin the scenarios with each file equal to an earlier scenario's same-named file as a reference
+ * (tests/helpers/analysis-golden-files.ts), after checking that the references expand back.
+ */
+async function expectScenarioGolden(scenarios: Record<string, Recorded>, golden: string) {
+  const full = JSON.parse(JSON.stringify(scenarios)) as Record<string, unknown>;
+  const pinned = referenceRepeatedFiles(full);
+  if (!isDeepStrictEqual(expandRepeatedFiles(pinned), full))
+    throw new Error(
+      "referenceRepeatedFiles dropped a file; see tests/helpers/analysis-golden-files.ts",
+    );
+  await expect(`${JSON.stringify(pinned, null, 2)}\n`).toMatchFileSnapshot(golden);
+}
+
 describe("analyzeRun characterization golden", () => {
   // Every scenario runs analyzeRun end to end in one test, so its time scales with machine load.
   // Measured from 4 s to 20 s on a 16-core machine as load rose; 20 s is the default test timeout.
@@ -422,9 +444,7 @@ describe("analyzeRun characterization golden", () => {
       await providerFailureScenarios(scenarios);
       await storageAndCodexScenarios(scenarios);
 
-      await expect(`${JSON.stringify(scenarios, null, 2)}\n`).toMatchFileSnapshot(
-        "../golden/analysis/analyze-study.json",
-      );
+      await expectScenarioGolden(scenarios, "../golden/analysis/analyze-study.json");
     },
   );
 });
@@ -501,8 +521,6 @@ describe("runAnalysis characterization golden", () => {
       }),
     });
 
-    await expect(`${JSON.stringify(scenarios, null, 2)}\n`).toMatchFileSnapshot(
-      "../golden/analysis/run-study-analysis.json",
-    );
+    await expectScenarioGolden(scenarios, "../golden/analysis/run-study-analysis.json");
   });
 });
