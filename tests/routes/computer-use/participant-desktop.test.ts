@@ -27,7 +27,7 @@ import { parseLabConfig } from "../../../src/lab/config.js";
 import { OPENAI_RESPONSES_CU_CAPABILITIES } from "../../../src/actors/computer-use/openai-provider.js";
 import { prepareSelectedOutputDirectory } from "../../../src/run/contained-output.js";
 import { participantRun } from "../../helpers/participant-run.js";
-import { laneSpecOf } from "../../../src/routes/computer-use/legacy-lane-spec.js";
+import { legacyHookSpecOf } from "../../../src/routes/computer-use/legacy-lane-spec.js";
 import {
   participantDesktopOf,
   PARTICIPANT_DESKTOP,
@@ -380,7 +380,7 @@ describe("ready desktop lane contract", () => {
     };
     f.deps.hooks.buildProvider = vi.fn(async ({ lane }) => {
       // The deprecated hook receives the flat view of the lane it runs.
-      expect(lane).toEqual(laneSpecOf(f.spec));
+      expect(lane).toEqual(legacyHookSpecOf(f.spec));
       expect(lane).toMatchObject({ laneId: "participant-a", laneIndex: 0, deviceName: "desktop" });
       return provider;
     });
@@ -657,7 +657,7 @@ describe("participantDesktopOf", () => {
   it("gives a caller's deprecated createDesktopLane the flat lane", () => {
     const createDesktopLane = vi.fn(() => port);
     expect(participantDesktopOf({ createDesktopLane })!(run, [], root)).toBe(port);
-    expect(createDesktopLane).toHaveBeenCalledWith(laneSpecOf(run), [], root);
+    expect(createDesktopLane).toHaveBeenCalledWith(legacyHookSpecOf(run), [], root);
   });
 
   it("prefers a study's own factory, which receives the run itself", () => {

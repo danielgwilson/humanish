@@ -59,8 +59,8 @@ interface LocalStudyState {
   cleanupUnconfirmed: boolean;
 }
 
-/** The inputs every lane of one local study reads. */
-interface LocalLaneContext {
+/** The inputs every participant of one local study reads. */
+interface LocalParticipantContext {
   readonly config: LabConfig;
   readonly cwd: string;
   readonly signal: AbortSignal | undefined;
@@ -126,7 +126,7 @@ function mediaEvidence(
 
 /** One lane's Firecracker desktop and optional captured inbox, released in finalize. */
 function createLocalParticipantDesktop(
-  context: LocalLaneContext,
+  context: LocalParticipantContext,
   run: DesktopParticipantRun,
   warnings: string[],
   artifactRoot: PreparedOutputRoot,
@@ -251,7 +251,7 @@ export function prepareLocalVmStudy(options: LocalStudyOptions): LocalVmStudy {
     config.actors[0]?.type === "local-agent" && callerHooks?.buildProvider === undefined;
   const baseRunSession = callerHooks?.runSession ?? runCuaActorSession;
   const state: LocalStudyState = { sessions: [], participants: [], cleanupUnconfirmed: false };
-  const context: LocalLaneContext = {
+  const context: LocalParticipantContext = {
     config,
     cwd: options.cwd,
     signal: options.signal,

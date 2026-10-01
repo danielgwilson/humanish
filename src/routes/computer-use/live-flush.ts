@@ -7,9 +7,10 @@ import { HOOK_MEMBERS, withHookOverrides } from "../../lab/hook-bag.js";
 import type { CuaActorLabHooks, DesktopParticipantRun } from "./types.js";
 
 export interface LiveTraceFlush {
-  /** Record a lane's recorded-so-far items; the bundle rewrite follows on the flush schedule. */
+  /** Record a participant's recorded-so-far items; the bundle rewrite follows on the flush
+   *  schedule. */
   flush: (
-    laneId: string,
+    participantId: string,
     items: readonly ActorTraceItem[],
     usage?: ActorTokenUsage,
     metadata?: CuaLiveMetadata,
@@ -28,17 +29,19 @@ export interface LiveTraceFlush {
  */
 export function startLiveTraceFlush(args: {
   bundle: RunBundle;
-  laneSpecs: readonly DesktopParticipantRun[];
+  participantRuns: readonly DesktopParticipantRun[];
   /** The model the running usage prices at. Usage without its model is not a cost. */
   model: string;
   /** Publishes one in-progress bundle: the run's `writeSnapshot`. */
   write: (bundle: RunBundle) => Promise<void>;
 }): LiveTraceFlush {
-  const { bundle, laneSpecs, model, write } = args;
-  const streamIdByLane = new Map(laneSpecs.map((spec) => [spec.planned.id, spec.streamId]));
+  const { bundle, participantRuns, model, write } = args;
+  const streamIdByParticipant = new Map(
+    participantRuns.map((spec) => [spec.planned.id, spec.streamId]),
+  );
   // The persona each lane is running, so the live flush can say who is in it.
   const personaByStream = new Map(
-    laneSpecs
+    participantRuns
       .map((spec) => [spec.streamId, spec.persona?.id] as const)
       .filter((entry): entry is readonly [string, string] => typeof entry[1] === "string"),
   );
@@ -112,11 +115,11 @@ export function startLiveTraceFlush(args: {
       flushTimer.unref?.();
     }
   };
-  const flush: LiveTraceFlush["flush"] = (laneId, items, usage, metadata) => {
+  const flush: LiveTraceFlush["flush"] = (participantId, items, usage, metadata) => {
     // An empty snapshot (the initial observation on a frameless route) carries no
     // evidence worth a disk write; the first real item triggers the first flush.
     if (items.length === 0) return;
-    const streamId = streamIdByLane.get(laneId);
+    const streamId = streamIdByParticipant.get(participantId);
     if (streamId === undefined) return;
     liveItemsByStream.set(streamId, items.slice());
     if (metadata !== undefined) liveMetadataByStream.set(streamId, metadata);

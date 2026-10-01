@@ -18,7 +18,7 @@ import {
   planBase,
   provisionedSubject,
 } from "../../lab/plan-base.js";
-import { computerUseParticipants } from "../../lab/plan-participants.js";
+import { computerUseParticipants, declaredTargets } from "../../lab/plan-participants.js";
 import type { AppUrlSubject, ComputerUsePlan, ComputerUseRunner } from "../../lab/plan-types.js";
 import { MAX_CUA_LANES } from "../../lab/routing.js";
 import type { LabConfig, LabSubjectServe, LabSubjectState } from "../../lab/types.js";
@@ -161,7 +161,7 @@ function cuaLabRejection(
     subjectStructureReason(config, subjectRoute) ??
     entryTargetReason(config, subjectRoute) ??
     driverReason(config, hooks, subjectRoute) ??
-    laneShapeReason(config)
+    rosterShapeReason(config)
   );
 }
 
@@ -236,13 +236,8 @@ function entryTargetReason(config: LabConfig, subjectRoute: CuaSubjectRoute): Re
   const { desktopCliRoute, provisionedRoute, localAppSubject, appUrl } = subjectRoute;
   if (desktopCliRoute) return undefined;
   const allowPublicTargets = config.policies?.allowPublicTargets === true;
-  const declaredTargets = [
-    appUrl,
-    ...(config.actors[0]?.lanes ?? [])
-      .map((lane) => lane.target)
-      .filter((target): target is string => target !== undefined),
-  ];
-  const entryTargetSafe = declaredTargets.every((target) =>
+  const entryTargets = [appUrl, ...declaredTargets(config)];
+  const entryTargetSafe = entryTargets.every((target) =>
     provisionedRoute || localAppSubject
       ? isLoopbackUrl(target)
       : allowPublicTargets
@@ -296,7 +291,7 @@ function driverReason(
 }
 
 /** The lane roster, then the sandbox deadline its session budget derives. */
-function laneShapeReason(config: LabConfig): Rejection {
+function rosterShapeReason(config: LabConfig): Rejection {
   // Lanes XOR count/laneFocus, device XOR raw resolution, cap, unique ids,
   // allowPublicTargets with more than one lane, clone.fanout.
   const fanoutReason = cuaLaneValidationReason(config);

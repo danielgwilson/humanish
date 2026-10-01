@@ -2,7 +2,7 @@ import type { CuaExecutor } from "../../actors/computer-use/loop.js";
 import type { CuaActorLabHooks, DesktopParticipantRun, ParticipantRunOutcome } from "./types.js";
 import type { LabCommsEmail, LabCommsRecipient } from "../../lab/types.js";
 import type { PreparedOutputRoot } from "../../run/contained-output.js";
-import { laneSpecOf } from "./legacy-lane-spec.js";
+import { legacyHookSpecOf } from "./legacy-lane-spec.js";
 
 /** A prepared desktop supplies only participant input/observation and its inbox location. */
 export interface ReadyParticipantDesktop {
@@ -80,7 +80,7 @@ export function participantDesktopOf(
   const caller = hooks.createDesktopLane;
   return caller === undefined
     ? undefined
-    : (run, warnings, artifactRoot) => caller(laneSpecOf(run), warnings, artifactRoot);
+    : (run, warnings, artifactRoot) => caller(legacyHookSpecOf(run), warnings, artifactRoot);
 }
 
 /** The lane's addressed comms recipient, when one exists — the gate AND the address source for the

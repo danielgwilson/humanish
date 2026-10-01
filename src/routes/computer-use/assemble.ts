@@ -17,7 +17,7 @@ import type {
 /** What every bundle of one run shares, in progress or final. */
 export interface CuaRunBundleBase {
   lab?: RunLabProvenance;
-  laneSpecs: DesktopParticipantRun[];
+  participantRuns: DesktopParticipantRun[];
   descriptor: CuaActorDescriptor;
   appUrl: string;
   createdAt: string;
@@ -36,8 +36,8 @@ export interface CuaRunBundleBase {
 }
 
 /** One participant without a rerun keeps the single-participant bundle shape and its rule. */
-function isOneParticipantRun(base: Pick<CuaRunBundleBase, "laneSpecs" | "rerun">): boolean {
-  return base.laneSpecs.length === 1 && base.rerun === undefined;
+function isOneParticipantRun(base: Pick<CuaRunBundleBase, "participantRuns" | "rerun">): boolean {
+  return base.participantRuns.length === 1 && base.rerun === undefined;
 }
 
 /**
@@ -46,7 +46,7 @@ function isOneParticipantRun(base: Pick<CuaRunBundleBase, "laneSpecs" | "rerun">
  * verdict and the lab result's ok both come from it.
  */
 export function judgeComputerUseRun(
-  base: Pick<CuaRunBundleBase, "laneSpecs" | "rerun">,
+  base: Pick<CuaRunBundleBase, "participantRuns" | "rerun">,
   state: { dryRun: boolean; outcomes: ParticipantRunOutcome[] | undefined; inProgress?: true },
 ): Judgment {
   const inProgress = state.inProgress === true;
@@ -61,7 +61,7 @@ export function judgeComputerUseRun(
   return judgeParticipants({
     dryRun: state.dryRun,
     inProgress,
-    expected: base.laneSpecs.length,
+    expected: base.participantRuns.length,
     participants: (state.outcomes ?? []).map(participantFactsOf),
   });
 }
@@ -87,7 +87,7 @@ export function buildCuaRunBundle(
   const lab = base.lab === undefined ? {} : { lab: base.lab };
   const inProgress = state.inProgress === undefined ? {} : { inProgress: true };
   if (isOneParticipantRun(base)) {
-    const spec = base.laneSpecs[0]!;
+    const spec = base.participantRuns[0]!;
     return buildSingleParticipantBundle({
       verdict: state.judgment.verdict,
       ...lab,
@@ -112,7 +112,7 @@ export function buildCuaRunBundle(
   return buildCuaFanoutBundle({
     verdict: state.judgment.verdict,
     ...lab,
-    specs: base.laneSpecs,
+    specs: base.participantRuns,
     ...(state.outcomes === undefined ? {} : { outcomes: state.outcomes }),
     subjects: state.subjects,
     aggregateSubject: state.aggregateSubject,
