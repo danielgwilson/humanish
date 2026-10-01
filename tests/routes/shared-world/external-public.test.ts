@@ -1183,57 +1183,65 @@ describe("verify evidence class: external-public fail-closed inversions", () => 
 });
 
 describe("external-public verify findings golden", () => {
-  it("pins verify's failing checks for the good bundle, each inversion and each divergent run", async () => {
-    const entries: Array<readonly [string, PinnedVerifyResult]> = [];
-    const good = await externalPublicRun();
-    const bundlePath = path.join(cwd, ".humanish", "runs", good.runId, "run.json");
-    const original = await readFile(bundlePath, "utf8");
-    entries.push(["good run", await pinnedVerifyResult(cwd, good.runId)]);
-    const variants: ReadonlyArray<readonly [string, (bundle: Record<string, unknown>) => void]> = [
-      ...externalPublicInversions.map(
-        ([name, mutate]) =>
-          [
-            name,
-            (bundle: Record<string, unknown>) => mutate(bundle as unknown as RunBundle),
-          ] as const,
-      ),
-      ...LANE_SHAPE_VARIANTS,
-    ];
-    for (const [name, mutate] of variants) {
-      const bundle = JSON.parse(original) as Record<string, unknown>;
-      mutate(bundle);
-      await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
-      entries.push([name, await pinnedVerifyResult(cwd, good.runId)]);
-    }
-    // Several invariants fail at once, so the golden also pins the order across them.
-    const combined = JSON.parse(original) as Record<string, unknown>;
-    for (const [, mutate] of variants) mutate(combined);
-    await writeFile(bundlePath, `${JSON.stringify(combined, null, 2)}\n`, "utf8");
-    entries.push(["every variant at once", await pinnedVerifyResult(cwd, good.runId)]);
-    const runs: ReadonlyArray<readonly [string, Parameters<typeof makeExternalRunSession>[0]]> = [
-      ["a follower stuck on /", { seen: [], stuckPersonaId: "casual-friend" }],
-      [
-        "seats observed on www while declared apex",
-        { seen: [], observedOrigin: "https://www.lobby-trivia.example.test" },
-      ],
-      [
-        "seats on two different observed origins",
-        {
-          seen: [],
-          observedOrigin: "https://www.lobby-trivia.example.test",
-          divergentPersonaId: "casual-friend",
-          divergentOrigin: "https://lobby-trivia.example.test",
-        },
-      ],
-    ];
-    for (const [name, session] of runs) {
-      const run = await externalPublicRun(session);
-      entries.push([name, await pinnedVerifyResult(cwd, run.runId)]);
-    }
-    await expect(verifyGolden(entries)).toMatchFileSnapshot(
-      "../../golden/verify/shared-world-external-public.json",
-    );
-  });
+  // Four route runs and thirteen verifies in one test, so its time scales with machine load. Alone at
+  // load 25 on 16 cores it took 6.7-11.3 s (median 7.9 s, 10 runs). At load 64 it passed the
+  // default 20 s. 60 s keeps the golden from failing on a busy machine without hiding a hang.
+  it(
+    "pins verify's failing checks for the good bundle, each inversion and each divergent run",
+    { timeout: 60_000 },
+    async () => {
+      const entries: Array<readonly [string, PinnedVerifyResult]> = [];
+      const good = await externalPublicRun();
+      const bundlePath = path.join(cwd, ".humanish", "runs", good.runId, "run.json");
+      const original = await readFile(bundlePath, "utf8");
+      entries.push(["good run", await pinnedVerifyResult(cwd, good.runId)]);
+      const variants: ReadonlyArray<readonly [string, (bundle: Record<string, unknown>) => void]> =
+        [
+          ...externalPublicInversions.map(
+            ([name, mutate]) =>
+              [
+                name,
+                (bundle: Record<string, unknown>) => mutate(bundle as unknown as RunBundle),
+              ] as const,
+          ),
+          ...LANE_SHAPE_VARIANTS,
+        ];
+      for (const [name, mutate] of variants) {
+        const bundle = JSON.parse(original) as Record<string, unknown>;
+        mutate(bundle);
+        await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+        entries.push([name, await pinnedVerifyResult(cwd, good.runId)]);
+      }
+      // Several invariants fail at once, so the golden also pins the order across them.
+      const combined = JSON.parse(original) as Record<string, unknown>;
+      for (const [, mutate] of variants) mutate(combined);
+      await writeFile(bundlePath, `${JSON.stringify(combined, null, 2)}\n`, "utf8");
+      entries.push(["every variant at once", await pinnedVerifyResult(cwd, good.runId)]);
+      const runs: ReadonlyArray<readonly [string, Parameters<typeof makeExternalRunSession>[0]]> = [
+        ["a follower stuck on /", { seen: [], stuckPersonaId: "casual-friend" }],
+        [
+          "seats observed on www while declared apex",
+          { seen: [], observedOrigin: "https://www.lobby-trivia.example.test" },
+        ],
+        [
+          "seats on two different observed origins",
+          {
+            seen: [],
+            observedOrigin: "https://www.lobby-trivia.example.test",
+            divergentPersonaId: "casual-friend",
+            divergentOrigin: "https://lobby-trivia.example.test",
+          },
+        ],
+      ];
+      for (const [name, session] of runs) {
+        const run = await externalPublicRun(session);
+        entries.push([name, await pinnedVerifyResult(cwd, run.runId)]);
+      }
+      await expect(verifyGolden(entries)).toMatchFileSnapshot(
+        "../../golden/verify/shared-world-external-public.json",
+      );
+    },
+  );
 });
 
 // ---------------------------------------------------------------------------
