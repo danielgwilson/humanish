@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { parse } from "yaml";
-import { createProgram } from "../src/cli/program.js";
-import { parseLabConfig } from "../src/lab/config.js";
-import { parseBrowserPersonaJourneyFromScenario } from "../src/actors/scripted-browser/journey.js";
+import { createProgram } from "../../src/cli/program.js";
+import { parseLabConfig } from "../../src/lab/config.js";
+import { parseBrowserPersonaJourneyFromScenario } from "../../src/actors/scripted-browser/journey.js";
 
-const root = resolve(import.meta.dirname, "..");
+const root = resolve(import.meta.dirname, "..", "..");
 const names = readdirSync(resolve(root, "site/content/docs"))
   .filter((name) => name.endsWith(".mdx") && name !== "cli.mdx")
   .map((name) => name.slice(0, -4));

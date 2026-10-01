@@ -98,10 +98,16 @@ step 6, and renders it as in step 7 when `RunOptions.observer` asks, as every CL
 | `runtime/`                     | Desktop and browser image recipes                                                      | `runtime/browser-guest/README.md`    |
 | `scripts/`                     | Proof, release and check scripts that `package.json` runs                              | `scripts/check-doc-paths.ts`         |
 | `docs/contracts/`              | Bundle and schema contracts, whose documented fields are API                           | `docs/contracts/run-bundle.md`       |
-| `tests/`                       | Vitest suites that mirror `src/`, plus `tests/fixtures/` and `tests/golden/`           | `tests/helpers/run-golden.ts`        |
+| `tests/`                       | Vitest suites that mirror `src/`, plus the folders named below the table               | `tests/helpers/run-golden.ts`        |
 
 `pnpm docs:check` fails when a folder directly under `src/` or `src/routes/` has no row here, or
 when a row names a folder that is gone. Add the row in the change that adds the folder.
+
+Six folders in `tests/` sit outside that mirror. `tests/admission/` pins what the CLI and the
+library do when they refuse a lab before a run starts, and `tests/scripts/` tests `scripts/`.
+`tests/surface/` checks the README, the site, `site/public/llms.txt`, the agent skill and the package
+against the shipped CLI. `tests/helpers/`, `tests/fixtures/` and `tests/golden/` hold shared test
+code, inputs and goldens.
 
 ## Keep these invariants when you change code
 

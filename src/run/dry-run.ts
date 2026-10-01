@@ -224,8 +224,8 @@ const SYNTHETIC_STREAM_TEMPLATES = [
     summary:
       "CLI lane reserved for command-by-command persona runs with stdout/stderr and artifact links.",
     // Every command in a shipped sample tail must be one the CLI actually accepts: participants
-    // read and run them. tests/shipped-command-strings.test.ts checks this against the command
-    // table.
+    // read and run them. tests/surface/shipped-command-strings.test.ts checks this against the
+    // command table.
     tail: "$ humanish doctor\nok target cwd\nok humanish source\n$ humanish run first-run\ncontract proof emitted",
     viewport: undefined,
   },

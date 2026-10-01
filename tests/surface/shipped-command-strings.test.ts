@@ -3,7 +3,7 @@ import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import type { Command } from "commander";
 
-import { createProgram } from "../src/cli/program.js";
+import { createProgram } from "../../src/cli/program.js";
 
 // #516: the first Observer a new user ever saw advertised `humanish run --scenario
 // first-run-smoke`. The flag has never existed. It shipped for months because nothing checked
@@ -76,7 +76,7 @@ const INVOCATION =
   /(?:^|[`'"(]|\$ |&& |\| |npx (?:-y |--no-install )?)humanish ((?:[a-z][a-z0-9-]*|--[a-z][a-z0-9-]*|<[a-z-]+>|\[[a-z-]+\])(?:[ \t]+(?:[a-z][a-z0-9-]*|--[a-z][a-z0-9-]*|<[a-z-]+>|\[[a-z-]+\]))*)/gm;
 
 async function collect(): Promise<FoundCommand[]> {
-  const root = path.resolve(import.meta.dirname, "..", "src");
+  const root = path.resolve(import.meta.dirname, "..", "..", "src");
   const found: FoundCommand[] = [];
   for (const file of await sourceFiles(root)) {
     const text = await readFile(file, "utf8");

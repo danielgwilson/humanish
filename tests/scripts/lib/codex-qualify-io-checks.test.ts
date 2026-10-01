@@ -7,7 +7,7 @@ import {
   prepChecks,
   type CommandTrace,
   type LiveObservation,
-} from "../scripts/lib/codex-qualify-io-checks.js";
+} from "../../../scripts/lib/codex-qualify-io-checks.js";
 import {
   fileEvent,
   withFileLog,
@@ -19,7 +19,7 @@ import {
   probeSet,
   summary,
   traced,
-} from "./helpers/codex-qualify-fixtures.js";
+} from "../../helpers/codex-qualify-fixtures.js";
 
 describe("codex:qualify network checks", () => {
   it("passes when each scenario reaches what the baseline reached", () => {

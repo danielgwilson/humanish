@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseTrace, tracedCommand } from "../scripts/lib/strace.js";
+import { parseTrace, tracedCommand } from "../../../scripts/lib/strace.js";
 
 const CODEX = "/opt/codex/vendor/t/bin/codex";
 const REWRITES = [
