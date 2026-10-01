@@ -5,7 +5,8 @@
 // Run a lab.
 export { runLab } from "./run-lab.js";
 export type { LabOutcome, LabResult, RunLabOptions } from "./run-lab.js";
-export type { LabEvent, ProviderContext } from "./lab/run-lab-options.js";
+export type { LabEvent } from "./lab/run-lab-events.js";
+export type { ProviderContext } from "./lab/run-lab-options.js";
 export { routeOf } from "./lab/plan.js";
 export type { LabRoute } from "./lab/plan.js";
 export { parseLabConfig } from "./lab/config.js";
