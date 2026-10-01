@@ -805,7 +805,7 @@ humanish lab run [options] <lab>
 | `--sims <count>` | Override the synthetic or headed desktop participant count. |
 | `--count <count>` | Computer-use only: override the headed desktop participant count. |
 | `--rerun-failed-from <run>` | CUA fan-out only: create a new run for failed participants from a prior run. |
-| `--lanes <participant-ids>` | CUA rerun only: comma-separated participant ids to rerun from the source run. |
+| `--lanes <participant-ids>` | CUA rerun only: comma-separated participant ids from the source run. Ids are the lab's declared actors[0].lanes[].id, or lane-01, lane-02, … by position. |
 | `--run-id <id>` | Explicit lab run id; refused when that run already exists. |
 | `--cwd <path>` | Target project directory. (default: ".") |
 | `--scorer <path>` | Terminal/computer-use/shared-world labs only: repo-relative adopter scorer module (.mjs). Overrides review.scorer.ref. Executable code: review it as code. |

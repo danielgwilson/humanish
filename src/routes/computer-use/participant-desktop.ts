@@ -19,6 +19,7 @@ export type ParticipantDesktopEvidence = {
 } & Pick<
   ParticipantRunOutcome,
   | "sandboxId"
+  | "sandboxRelease"
   | "desktopDurationMs"
   | "desktopResources"
   | "streamUrlPresent"

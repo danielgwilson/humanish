@@ -5,8 +5,8 @@
 import type { FileHandle } from "node:fs/promises";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import path from "node:path";
-import { isStudyAnalysisRecordPath, projectShareCheckedAnalysis } from "../analysis/sharing.js";
-import { loadStudyAnalysis } from "../analysis/load.js";
+import { isAnalysisRecordPath, projectShareCheckedAnalysis } from "../analysis/sharing.js";
+import { loadAnalysis } from "../analysis/load.js";
 import type { LoadedAnalysis } from "../analysis/types.js";
 import { listRuns } from "../run/stored-runs.js";
 import { bindExistingRunArtifactPaths, isPathInside, isSafeRunIdSegment } from "../run/paths.js";
@@ -52,7 +52,7 @@ async function readObserverAnalysis(runRoot: PinnedDirectory): Promise<LoadedAna
     ) {
       throw new Error("ANALYSIS_STORAGE_CHANGED");
     }
-    return projectShareCheckedAnalysis(await loadStudyAnalysis(prepared));
+    return projectShareCheckedAnalysis(await loadAnalysis(prepared));
   } catch {
     return {
       state: "invalid",
@@ -89,7 +89,7 @@ export async function serveRunPath(
   if (
     derivedRoot === ".analysis-lock" ||
     derivedLeaf.startsWith(".humanish-write-") ||
-    isStudyAnalysisRecordPath(cleanedRelativePath)
+    isAnalysisRecordPath(cleanedRelativePath)
   ) {
     writeResponse(response, 404, "Not found", "text/plain; charset=utf-8");
     return;

@@ -1,3 +1,5 @@
+import { isRecord } from "../run/type-guards.js";
+
 export type StopConditionPrimitive = string | number | boolean | null;
 
 interface StopWhenAppStatePathEquals {
@@ -103,8 +105,4 @@ function valueAtPath(source: Record<string, unknown> | undefined, path: string):
     current = current[part];
   }
   return current;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

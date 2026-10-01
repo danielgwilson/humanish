@@ -7,6 +7,7 @@
 // does, so the markers never hide a value.
 
 import { isDeepStrictEqual } from "node:util";
+import { isRecord } from "../../src/run/type-guards.js";
 
 const RUN = "run.json";
 const EVENTS_FILE = "events.ndjson";
@@ -28,9 +29,6 @@ interface Bundle {
   simulations: unknown[];
   cost?: unknown;
 }
-
-const isRecord = (value: unknown): value is Json =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
 
 function bundleOf(snapshot: Json): Bundle | undefined {
   const run = snapshot[RUN];

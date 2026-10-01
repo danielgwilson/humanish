@@ -584,6 +584,12 @@ export interface CuaParticipantDeps {
   ) => void;
 }
 
+/** Why a sandbox was not confirmed released. */
+export interface SandboxReleaseFact {
+  state: "retained" | "unconfirmed";
+  warning: string;
+}
+
 /** One lane's end-to-end run outcome (internal; projected into CuaParticipantResult + the bundle). */
 export interface ParticipantRunOutcome {
   spec: DesktopParticipantRun;
@@ -600,6 +606,9 @@ export interface ParticipantRunOutcome {
   desktopDurationMs?: number;
   desktopResources?: DesktopResourceObservation;
   killed: boolean;
+  /** Set when the sandbox was not confirmed released: kept for debugging, or a release the
+   *  provider did not confirm. `warning` is the scrubbed release warning. */
+  sandboxRelease?: SandboxReleaseFact;
   streamUrlPresent: boolean;
   screenshots: string[];
   subjectCommit?: string;

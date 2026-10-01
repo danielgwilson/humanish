@@ -9,7 +9,7 @@ import { resolveRunPath } from "../../src/run/locate.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { captureEvidence } from "../../src/analysis/evidence.js";
-import { writeStudyAnalysis } from "../../src/analysis/store.js";
+import { writeAnalysis } from "../../src/analysis/store.js";
 import { writeStudyAnalysisExecutionReceipt } from "../../src/analysis/store-executions.js";
 import { syntheticArtifact } from "./fixtures.js";
 
@@ -50,7 +50,7 @@ describe("analysis sharing through a share-safety admission that misses it", () 
             },
           ];
         await writeStudyAnalysisExecutionReceipt(prepared, artifact);
-        await writeStudyAnalysis(prepared, artifact);
+        await writeAnalysis(prepared, artifact);
         // Atomic writer files are private even during publication. Older ordinary
         // files under analysis/ retain the generic contained-file serving contract.
         await writeFile(

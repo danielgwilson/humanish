@@ -9,10 +9,10 @@ import {
   type PreparedOutputRoot,
   writeContainedOutputFile,
 } from "../../run/contained-output.js";
+import { isRecord } from "../../run/type-guards.js";
 import { CodexStdioClient, type CodexStdioHandlers } from "./app-server-client.js";
 import {
   CodexTraceRecorder,
-  isRecord,
   readNestedString,
   redactCodexEnvelope,
   renderTranscript,

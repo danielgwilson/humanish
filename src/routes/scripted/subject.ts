@@ -73,6 +73,8 @@ export interface ScriptedSubjectInputs {
 export class ScriptedSubject {
   sandboxId: string | undefined;
   killed = false;
+  /** The scrubbed release warning when the subject's release is unconfirmed. */
+  releaseWarning: string | undefined;
   commit: string | undefined;
   hostDigest: string | undefined;
   readonly stateStepRecords: RunSubjectStateStepRecord[] = [];
@@ -185,6 +187,8 @@ export class ScriptedSubject {
     });
     this.killed = reading.released;
     if (reading.warning) warnings.push(reading.warning);
+    if (!reading.released)
+      this.releaseWarning = reading.warning ?? "Subject sandbox release is unconfirmed.";
     // Without a kill method, or in E2B debug mode, no kill reached E2B, so there is no teardown
     // time to record.
     if (released.status !== "unconfirmed" || released.reason !== "release_unavailable")

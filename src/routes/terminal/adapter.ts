@@ -14,6 +14,7 @@ import {
   frozenBundleView,
   type ScorerOutcome,
 } from "../../lab/adapter-extension.js";
+import { isRecord } from "../../run/type-guards.js";
 import type {
   TerminalLedgers,
   TerminalProductLabHooks,
@@ -173,7 +174,7 @@ function isAdapterScoreShape(value: unknown): value is RunAdapterScore {
  * candidate is dropped at the extension seam instead of poisoning the persisted bundle. */
 function isAdapterFeedbackCandidateShape(value: unknown): value is RunFeedbackCandidate {
   return (
-    isAdapterRecord(value) &&
+    isRecord(value) &&
     value.schema === "humanish.feedback-candidate.v1" &&
     typeof value.id === "string" &&
     typeof value.run_id === "string" &&
@@ -190,7 +191,7 @@ function isAdapterFeedbackCandidateShape(value: unknown): value is RunFeedbackCa
     typeof value.actual === "string" &&
     Array.isArray(value.evidence) &&
     value.evidence.every(isAdapterFeedbackEvidence) &&
-    isAdapterRecord(value.redaction) &&
+    isRecord(value.redaction) &&
     value.redaction.status === "passed" &&
     typeof value.redaction.notes === "string" &&
     isFeedbackIdempotencyKey(value.idempotency_key) &&
@@ -198,10 +199,10 @@ function isAdapterFeedbackCandidateShape(value: unknown): value is RunFeedbackCa
     Array.isArray(value.acceptance_proof) &&
     value.acceptance_proof.every((item) => typeof item === "string") &&
     (value.adapter === undefined ||
-      (isAdapterRecord(value.adapter) &&
+      (isRecord(value.adapter) &&
         typeof value.adapter.namespace === "string" &&
         value.adapter.namespace.trim().length > 0 &&
-        isAdapterRecord(value.adapter.data)))
+        isRecord(value.adapter.data)))
   );
 }
 
@@ -209,7 +210,7 @@ function isAdapterFeedbackEvidence(
   value: unknown,
 ): value is RunFeedbackCandidate["evidence"][number] {
   return (
-    isAdapterRecord(value) &&
+    isRecord(value) &&
     typeof value.path === "string" &&
     value.path.length > 0 &&
     !path.isAbsolute(value.path) &&
@@ -270,8 +271,4 @@ function isAdapterFeedbackNextState(
     value === "setup-quality-review" ||
     value === "study-quality-review"
   );
-}
-
-function isAdapterRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

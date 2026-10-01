@@ -2,7 +2,7 @@
 // completion, desktop geometry and assignment.
 
 import type { CodexAppServerTrace } from "../actors/codex/app-server-trace.js";
-import type { ActorTrace, ActorTraceItem } from "../actors/contract.js";
+import type { ActorStatus, ActorTrace, ActorTraceItem } from "../actors/contract.js";
 import type { RunDesktopRecording } from "../evidence/desktop-recording-types.js";
 
 export type RunStreamKind =
@@ -207,6 +207,13 @@ export interface RunStream {
   kind: RunStreamKind;
   label: string;
   status: RunSimulationStatus;
+  /**
+   * The judge's status for this participant (`judgedStatus` in src/run/judge.ts). It differs from
+   * the trace status when a goal_satisfied session reported a blocker or never engaged. Computer-use
+   * fan-out writes it for a finished live participant; rerun selection reads it. Absent elsewhere,
+   * and in bundles written before it existed.
+   */
+  judgedStatus?: ActorStatus;
   transport: "snapshot" | "polling" | "sse" | "pty" | "app-server";
   updatedAt: string;
   url?: string;

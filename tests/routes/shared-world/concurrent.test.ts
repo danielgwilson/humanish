@@ -714,6 +714,53 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     });
     expect(result.subjectSandbox).toEqual({ sandboxId: "fake-sandbox-001", killed });
     expect(result.warnings.join("\n")).toContain(warning);
+    // An unconfirmed release leaves the run ok and shows in status.json with the reclaim command.
+    expect(result.ok).toBe(true);
+    const status = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "status.json"), "utf8"),
+    );
+    expect(status.outcome.ok).toBe(true);
+    expect(status.outcome.execution.warnings).toEqual(
+      killed
+        ? undefined
+        : [
+            {
+              kind: "sandbox-cleanup",
+              message: expect.stringMatching(
+                new RegExp(`^subject: ${warning}.*humanish reclaim --run ${result.runId}`),
+              ),
+            },
+          ],
+    );
+  });
+
+  it("records a seat sandbox whose release is unconfirmed as a status.json warning", async () => {
+    const { hooks } = baseHooks({ worldVersion: 0 }, makeRendezvous(3));
+    const module = await hooks.loadDesktopModule!();
+    const kill = module.Sandbox.kill!;
+    // fake-sandbox-001 is the subject; the next one is the first seat's.
+    module.Sandbox.kill = async (sandboxId, options) =>
+      sandboxId === "fake-sandbox-002" ? ("ok" as unknown as boolean) : kill(sandboxId, options);
+    const result = await runConcurrentSharedWorld({
+      cwd,
+      config: concurrentConfig(3, 3),
+      dryRun: false,
+      hooks,
+    });
+    expect(result.ok).toBe(true);
+    const status = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "status.json"), "utf8"),
+    );
+    expect(status.outcome.execution.warnings).toEqual([
+      {
+        kind: "sandbox-cleanup",
+        message: expect.stringMatching(
+          new RegExp(
+            `^[^:]+: Sandbox teardown returned an unexpected result.*humanish reclaim --run ${result.runId}`,
+          ),
+        ),
+      },
+    ]);
   });
 
   it("GOOD run: ONE subject + N actors all torn down BY id (killed==created, N+1), same getHost URL, REAL overlap, state delta, verify ok", async () => {

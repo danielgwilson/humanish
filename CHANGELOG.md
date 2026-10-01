@@ -8,6 +8,26 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Changed
+
+- `humanish lab run --help` says what `--lanes` takes: a participant's declared
+  `actors[0].lanes[].id`, or `lane-01`, `lane-02`, … by position when the lab declares none
+  (#1336).
+
+### Fixes
+
+- A computer-use, shared-world or scripted run whose sandbox release was not confirmed records it in
+  `status.json` (#1348). `outcome.execution.warnings` gets a `sandbox-cleanup` entry naming the
+  participant or `subject`, the release warning and `humanish reclaim --run <id>`. The run stays
+  `ok`. On computer-use runs, `run.json` `providerResources` marks such a sandbox `unknown` rather
+  than `running`, with the release warning as `cleanup.reason`; `running` now means kept for
+  debugging. Before, the run read as a clean success with `execution.failures: []`.
+- `humanish lab run --rerun-failed-from` selects a fan-out participant whose session ended
+  goal_satisfied but reported a blocker (#1341). The review counted that participant as blocked,
+  but rerun selection read the trace status, `passed`, and answered that nothing needed a rerun.
+  Fan-out bundles now record each participant's judged status as `streams[].judgedStatus`, and
+  rerun selection reads it; an older bundle without it keeps the previous rule.
+
 ## 0.106.1: Codex CLI 0.160.0 and reclaim in E2B debug mode (2026-10-01)
 
 Codex participants, Codex-account analysis and `humanish doctor` admit Codex CLI 0.160.0 (published

@@ -3,10 +3,9 @@
 // one line instead of one line per array element, so a golden diff still shows which call changed
 // and every value it carried.
 
-type Json = Record<string, unknown>;
+import { isRecord } from "../../src/run/type-guards.js";
 
-const isRecord = (value: unknown): value is Json =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
+type Json = Record<string, unknown>;
 
 function mapLog(outcome: Json, call: (entry: unknown) => unknown): Json {
   return Array.isArray(outcome.log) ? { ...outcome, log: outcome.log.map(call) } : outcome;

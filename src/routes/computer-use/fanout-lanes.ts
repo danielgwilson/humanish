@@ -11,6 +11,8 @@ import {
 import type { RunDesktopGeometry, RunSimulationStatus, RunStream } from "../../run/streams.js";
 import { declaredScreenForRender } from "../../substrates/e2b/desktop-geometry.js";
 import { describeSubjectState, phaseEventIdSuffix, publicSafeAppUrlLabel } from "./bundle-parts.js";
+import { judgedStatus } from "../../run/judge.js";
+import { participantFactsOf } from "./participant-facts.js";
 import type { CuaFanoutBundleArgs, DesktopParticipantRun } from "./types.js";
 
 /** What every participant's records share. */
@@ -126,6 +128,7 @@ function fanoutParticipantStream(
   const { plan } = args;
   const { outcome, publicTargetUrl, session, desktopGeometry, screenshots } = view;
   const { lastScreenshot, status, reason, screenshotMode } = view;
+  const judged = outcome === undefined ? undefined : judgedStatus(participantFactsOf(outcome));
   return participantStream(
     spec,
     {
@@ -144,6 +147,7 @@ function fanoutParticipantStream(
       kind: "browser",
       label: `CUA participant ${spec.planned.id}: ${plan.labId}`,
       status,
+      ...(judged === undefined ? {} : { judgedStatus: judged }),
       transport: "snapshot",
       updatedAt: args.createdAt,
       embed: lastScreenshot

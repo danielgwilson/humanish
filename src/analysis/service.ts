@@ -28,16 +28,16 @@ import {
   type AnalysisDispatchContext,
 } from "./execute.js";
 import {
-  appendStudyAnalysisCorrection,
+  appendAnalysisCorrection,
   assertAnalysisPublicationCapacity,
   listAnalyses,
-  writeStudyAnalysis,
+  writeAnalysis,
 } from "./store.js";
 import {
   beginStudyAnalysisExecution,
   writeStudyAnalysisExecutionReceipt,
 } from "./store-executions.js";
-import { loadStudyAnalysis } from "./load.js";
+import { loadAnalysis } from "./load.js";
 import { hashAnalysisValue } from "./validation.js";
 import {
   ANALYSIS_CORRECTION_SCHEMA,
@@ -401,7 +401,7 @@ async function publishAttempt(
       analysis.id,
       "receipt.json",
     );
-    await writeStudyAnalysis(prepared, analysis);
+    await writeAnalysis(prepared, analysis);
     result.artifactPath = path.join(
       prepared.relativeRunRoot,
       "analysis",
@@ -526,7 +526,7 @@ export async function analyzeRun(
 export async function showAnalysis(cwd: string, run: string, id?: string): Promise<LoadedAnalysis> {
   const prepared = await resolveRunPath(await resolvePhysicalCwd(cwd), run).catch(() => null);
   return prepared
-    ? loadStudyAnalysis(prepared, id)
+    ? loadAnalysis(prepared, id)
     : { state: "invalid", analysis: null, corrections: [], warnings: ["ANALYSIS_RUN_NOT_FOUND"] };
 }
 
@@ -544,7 +544,7 @@ export async function correctAnalysis(
   const prepared = await resolveRunPath(await resolvePhysicalCwd(cwd), run);
   if (!prepared) throw new Error("ANALYSIS_RUN_NOT_FOUND");
   return withAnalysisLock(prepared, async () => {
-    const loaded = await loadStudyAnalysis(prepared, options.analysisId);
+    const loaded = await loadAnalysis(prepared, options.analysisId);
     const analysis = loaded.analysis;
     const finding = analysis?.result?.findings.find((item) => item.id === options.findingId);
     if (loaded.state !== "ready" || !analysis || !finding)
@@ -563,7 +563,7 @@ export async function correctAnalysis(
       reason: options.reason,
       replacementClaim: options.replacementClaim ?? null,
     };
-    await appendStudyAnalysisCorrection(prepared, correction);
+    await appendAnalysisCorrection(prepared, correction);
     await refreshObserver(cwd, runIdOf(prepared), prepared);
     return correction;
   });

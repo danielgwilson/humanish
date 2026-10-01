@@ -1,7 +1,7 @@
 import path from "node:path";
 import { listStudyAnalysisExecutions } from "../analysis/store-executions.js";
-import { loadStudyAnalysis } from "../analysis/load.js";
-import { studyAnalysisSharingProblems } from "../analysis/sharing.js";
+import { loadAnalysis } from "../analysis/load.js";
+import { analysisSharingProblems } from "../analysis/sharing.js";
 import { containsSensitive } from "../evidence/redaction.js";
 import { validatePreparedRunArtifactPaths, type PreparedRunArtifactPaths } from "../run/paths.js";
 import { RUN_BUNDLE_FILE, RUN_BUNDLE_SCHEMA, type RunBundle } from "../run/bundle.js";
@@ -314,8 +314,8 @@ async function applyAnalysisSharing(
   warnings: string[],
   shareSafety: VerifyResult["shareSafety"],
 ): Promise<void> {
-  const analysis = await loadStudyAnalysis(runPaths);
-  const analysisSharing = studyAnalysisSharingProblems(analysis);
+  const analysis = await loadAnalysis(runPaths);
+  const analysisSharing = analysisSharingProblems(analysis);
   const executionHistory = await listStudyAnalysisExecutions(runPaths);
   if (
     !analysisSharing.unverified &&

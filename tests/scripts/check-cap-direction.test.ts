@@ -92,6 +92,48 @@ describe("check-cap-direction", () => {
     expect(allowed.status).toBe(0);
   });
 
+  it("compares a merge commit with its first parent, not a base that moved since", async () => {
+    // CI checks out the PR's merge ref, built when the PR last synced. If main lowers a cap after
+    // that, the merge commit still carries main's old cap, which this PR did not raise.
+    const root = await mkdtemp(join(tmpdir(), "humanish-cap-direction-"));
+    roots.push(root);
+    const git = (...args: string[]) => {
+      const run = spawnSync(
+        "git",
+        ["-c", "user.name=t", "-c", "user.email=t@example.com", ...args],
+        { cwd: root, encoding: "utf8" },
+      );
+      expect(run.status, run.stderr).toBe(0);
+    };
+    git("init", "--quiet", "--initial-branch=main");
+    await writeFile(join(root, "package.json"), packageJson(BASE_SCRIPTS));
+    git("add", ".");
+    git("commit", "--quiet", "-m", "base");
+    git("checkout", "--quiet", "-b", "pr");
+    await writeFile(join(root, "README.md"), "docs only\n");
+    git("add", ".");
+    git("commit", "--quiet", "-m", "pr");
+    git("checkout", "--quiet", "-b", "merge-ref", "main");
+    git("merge", "--quiet", "--no-ff", "pr", "-m", "merge pr into main");
+    git("checkout", "--quiet", "main");
+    await writeFile(
+      join(root, "package.json"),
+      packageJson({
+        ...BASE_SCRIPTS,
+        "prose:check": "node scripts/check-code-prose.mjs --max-issue-refs=371 --max-caps=1742",
+      }),
+    );
+    git("commit", "--quiet", "-am", "main lowers a cap");
+    git("checkout", "--quiet", "merge-ref");
+    const { RAISE_CAP: _label, PR_BODY: _body, ...inherited } = process.env;
+    const run = spawnSync(process.execPath, [script, "--base", "main"], {
+      cwd: root,
+      encoding: "utf8",
+      env: inherited,
+    });
+    expect(run.status, `${run.stdout}${run.stderr}`).toBe(0);
+  });
+
   it("exits 2 when the base ref has no package.json", async () => {
     const root = await mkdtemp(join(tmpdir(), "humanish-cap-direction-"));
     roots.push(root);

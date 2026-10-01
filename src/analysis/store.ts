@@ -105,7 +105,7 @@ export async function claimDirectory(
 }
 
 /** A claimed version is never reused, including after interruption before publication. */
-export async function writeStudyAnalysis(
+export async function writeAnalysis(
   prepared: PreparedRunArtifactPaths,
   value: AnalysisArtifact,
 ): Promise<void> {
@@ -220,7 +220,7 @@ async function readVersion(
 }
 
 /** Read one exact result without reading automatic job state or unrelated history. */
-export async function readStudyAnalysisVersion(
+export async function readAnalysisVersion(
   prepared: PreparedRunArtifactPaths,
   id: string,
 ): Promise<AnalysisListEntry | null> {
@@ -340,7 +340,7 @@ async function readCorrections(
   return { corrections, warnings };
 }
 
-export async function loadStudyAnalysisRecord(
+export async function loadAnalysisRecord(
   prepared: PreparedRunArtifactPaths,
   id?: string,
 ): Promise<LoadedAnalysis> {
@@ -386,12 +386,12 @@ function assertCorrectionBinding(analysis: AnalysisArtifact, correction: Analysi
     throw new Error("ANALYSIS_CORRECTION_BINDING_INVALID");
 }
 
-export async function appendStudyAnalysisCorrection(
+export async function appendAnalysisCorrection(
   prepared: PreparedRunArtifactPaths,
   value: AnalysisCorrection,
 ): Promise<void> {
   const correction = validateAnalysisCorrection(value);
-  const loaded = await loadStudyAnalysisRecord(prepared, correction.analysisId);
+  const loaded = await loadAnalysisRecord(prepared, correction.analysisId);
   if (loaded.state !== "ready" || !loaded.analysis)
     throw new Error("ANALYSIS_CORRECTION_SOURCE_UNAVAILABLE");
   assertCorrectionBinding(loaded.analysis, correction);
