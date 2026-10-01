@@ -7,11 +7,11 @@ humanish runs studies. Realistic synthetic participants, each with its own
 goals, patience, and skill, actually use your product on isolated desktops while
 you watch. A study leaves verifiable evidence: screenshots, action traces,
 per-task completion funnels, participant outcomes with the denominator
-attached, and estimated cost lines. A fail-closed share-safety gate stands
-between that evidence and anything public, and the end of the pipeline is a
-public-safe feedback draft you can turn into a real issue. Committed study
-source lives under `humanish/`; run evidence lands under gitignored
-`.humanish/`.
+attached, and estimated cost lines. A fail-closed share-safety gate decides what
+goes into feedback drafts, export bundles and a `serve --safe` library, and the
+end of the pipeline is a public-safe feedback draft you can turn into a real
+issue. Committed study source lives under `humanish/`; run evidence lands under
+gitignored `.humanish/`.
 
 [![The Observer grid of a saved eight-participant study: eight desktops in one multiplayer lobby, each tile a participant's live screen](https://humanish.dev/runs/lobby-0927/poster.jpg)](https://humanish.dev/demo)
 
@@ -224,10 +224,22 @@ screenshots contain whatever was on screen. Use synthetic data, verify the
 bundle, and review the actual text and pixels before sharing.
 
 **3. Run bundles are local by default.** Evidence lands under gitignored
-`.humanish/`, and no command publishes it for you. Sharing evidence (committing
-screenshots, pasting transcripts, attaching bundles to issues) is a deliberate
-act, and reviewing what you share is on you. Use synthetic personas and
-synthetic data so there is nothing sensitive to capture in the first place.
+`.humanish/`. No command uploads a bundle or files an issue. Two commands serve
+evidence over the network when you pass `--expose`, and humanish has no auth of
+its own behind either one:
+
+- `humanish watch <lab> --expose` streams a live run, which is never
+  `share_ready`, to whoever your edge admits. It requires edge auth:
+  `--tunnel ngrok --oauth google`, or `--public-url` for an edge you run. Without
+  `--allow-email` or `--allow-domain`, the OAuth edge admits any Google account.
+- `humanish serve --expose` serves your run library. With edge auth and no
+  `--safe`, everyone the edge admits sees every run, raw screenshots included.
+  With `--safe`, it serves only `share_ready` runs, and edge auth is optional.
+
+Sharing evidence (committing screenshots, pasting transcripts, attaching bundles
+to issues, exposing a server) is a deliberate act, and reviewing what you share
+is on you. Use synthetic personas and synthetic data so there is nothing
+sensitive to capture in the first place.
 
 **What the automated gate enforces.** `humanish verify` scans public-bound
 artifacts and fails closed on secret, key, and token shapes and on known local
@@ -247,6 +259,53 @@ certified free of PII or PHI. A first-class PII/PHI detector is on the roadmap
 
 Feedback commands require `share_ready`. A valid local run can still be
 reviewed in Observer without being promoted into a public issue draft.
+
+## Know these limits before you depend on humanish
+
+**Stability.** humanish is 0.x with one maintainer, no support contract and no
+SLA. There is no written compatibility policy, and a minor release can remove
+exports and options that an earlier release deprecated. Pin the exact version
+and read [CHANGELOG.md](CHANGELOG.md) before upgrading.
+
+**CI runs nothing live.** CI runs the offline test suite, the Observer browser
+proofs and, when guest files change, a guest-desktop container proof. It passes
+no provider keys, so no CI job makes a model request, creates a hosted desktop
+or runs a signed-in agent. The `*.live.test.ts` suites run only when a
+`HUMANISH_LIVE_*` variable and real keys are set. Live behavior is checked only
+by runs made outside CI.
+
+**Codex versions are pinned.** Codex participants (local browser studies and
+`local-agent` with Codex) and the Codex account analyst accept only the Codex
+CLI versions humanish has qualified for your host, listed in
+[`qualified-versions.ts`](src/actors/codex/qualified-versions.ts). Any other
+version, including one Codex updated itself to, is refused with the list of
+accepted versions.
+
+**Credentials.** For each provider key a command needs, humanish uses the first
+of these sources that has it. It prints the name and source of each key it
+fills from sources 2 to 4, never the value:
+
+1. the process environment, including a file passed with `--env-file`;
+2. `.humanish/local/provider.env`;
+3. the vendor's own store: `~/.e2b/config.json` for `E2B_API_KEY`, and
+   `gh auth token` for `GH_TOKEN`;
+4. `$XDG_CONFIG_HOME/humanish/keys.env` (by default `~/.config/humanish/keys.env`),
+   which `humanish keys set` writes as plain text with mode `0600`.
+
+`HUMANISH_STRICT_KEYS=1` turns off sources 2 to 4. `init`, `doctor` and a live
+computer-use preflight also run `codex login status` and `claude auth status`
+to see which agent is signed in. humanish never reads the subject app's own
+`.env` files.
+
+**What leaves your machine.** [Trust boundaries](https://humanish.dev/docs/trust-boundaries)
+has the providers' retention terms.
+
+| Party                | What it receives                                                                                                                                                                                                                                                                                                                                            | When                                                                     |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| OpenAI               | Each step's screenshot, the persona, the mission and the actions so far; after a run, selected text and captures for analysis                                                                                                                                                                                                                               | `openai-computer-use` participants; automatic or `humanish analyze` runs |
+| Codex or Claude Code | The same screenshots and prompts, through your signed-in agent and its provider                                                                                                                                                                                                                                                                             | `local-agent` participants, local browser studies, the Codex analyst     |
+| E2B                  | A desktop or shell running your app and everything on its screen; the repository a `clone` subject names; your working tree for a `local-tree` subject, minus gitignored files, `.env*` and other secret-shaped files; the credentials you declare for the subject app; for a terminal study, your OpenAI key unless `execution.runtimeAuth: openai-egress` | Every hosted study                                                       |
+| PostHog              | Telemetry events, described [below](#telemetry)                                                                                                                                                                                                                                                                                                             | By default                                                               |
 
 ## Commands
 
@@ -347,9 +406,17 @@ show a completed two-participant study and a reported keyboard-accessibility fin
 
 ## Telemetry
 
-humanish collects anonymous command usage by default, excluding labs, subjects,
-personas, paths, and evidence. `humanish telemetry disable` or `DO_NOT_TRACK=1`
-turns it off. See [TELEMETRY.md](TELEMETRY.md) for the exact fields.
+humanish sends anonymous usage events to PostHog by default. Each event carries
+the command, the humanish version, your OS and Node major version, whether it
+ran in CI, the exit code, a duration bucket and a random machine id made on
+first use. A study adds whether it was a dry run, an outcome word, the
+participant's brain route, stop and diagnostic categories, and humanish's error
+code when it fails. The lab id is sent only when it is a starter lab that
+`humanish init` writes; any other lab is sent as `custom`. Your lab ids,
+subjects, personas, prompts, paths, run ids and evidence are never sent.
+`humanish telemetry status` prints the exact event, and `humanish telemetry
+disable` or `DO_NOT_TRACK=1` turns it off. [TELEMETRY.md](TELEMETRY.md) lists
+every field.
 
 ## Development
 
