@@ -34,16 +34,31 @@ and history.
 Use Node.js 22.19 or newer and pnpm 12; `packageManager` in `package.json` pins the pnpm version.
 
 ```bash
-pnpm install
+pnpm install --frozen-lockfile # as CI installs
 pnpm vitest run tests/<file>   # one test file: the fast loop
 pnpm format                    # oxfmt; run before every commit
 pnpm check                     # the full local gate
-pnpm release:check             # what CI runs; run it before opening a pull request
+pnpm docs:check                # doc paths, symbols and comments, and a current CLI reference
+pnpm release:check             # CI's test job; run it before opening a pull request
 ```
+
+`release:check` runs `pnpm check`, `api:proof`, `public-surface:scan`, `skill:check` and
+`npm pack --dry-run`. `skill:check` calls `npx skills`, so it needs network access.
+
+CI (`.github/workflows/ci.yml`) runs six jobs on every pull request and every push to `main`:
+
+| Job                          | What it runs                                                                                                                       |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `test` (Node 22.19.0 and 24) | `pnpm release:check`                                                                                                               |
+| `site`                       | `pnpm docs:check`, then the site's typecheck, `registry:check` and build                                                           |
+| `observer`                   | `pnpm build`, the Observer's typecheck and tests, `pnpm browser-control:proof` and the four `observer:*:proof` scripts in Chromium |
+| `tui`                        | The TUI's typecheck and tests                                                                                                      |
+| `guest-desktop`              | Builds the guest image and runs `pnpm guest-desktop:proof`, only when guest files change                                           |
+| `secret-scan`                | gitleaks over the full git history                                                                                                 |
 
 Two kinds of change need one more step:
 
-- After changing a CLI option, run `pnpm docs:generate`. CI fails on a stale
+- After changing a CLI option, run `pnpm docs:generate`. `pnpm docs:check` fails on a stale
   `site/content/docs/cli.mdx`.
 - After changing what `src/index.ts` exports, run `pnpm build`, then `pnpm api:proof --update`, and
   review the diff to `tests/golden/public-api.json`. `pnpm api:proof` also runs `examples/` against
@@ -54,7 +69,7 @@ It also caps three counts in package.json: oxlint warnings (`lint`), prose in `s
 comments (`prose:check`: issue references, `FIX-N` tags, all-caps emphasis), and identifiers in
 `src/` outside `src/observer/` that still say lane, seat, role or sim (`vocabulary:check`). The
 caps only go down; lower one in the PR that reduces its count. `pnpm knip` fails on unused files,
-dependencies and exports, and on import cycles other than the two listed in `knip.jsonc`.
+dependencies and exports, and on any import cycle.
 
 ## Useful Commands
 
@@ -74,27 +89,29 @@ names one. It runs offline and spends nothing.
    (`src/routes/computer-use/lane-plan.ts`).
 2. Run `pnpm vitest run tests/lane-persona-fallback.test.ts`. It fails because it asserts the old
    id. Update the assertion once the new id is what you want.
-3. Copy `humanish/labs/dwell-window-todomvc.yaml` to `.humanish/local/labs/walkthrough.yaml`.
-   Change its `id` to `walkthrough` and delete its `persona:` line.
+3. Run `mkdir -p .humanish/local/labs`, then copy `humanish/labs/dwell-window-todomvc.yaml` to
+   `.humanish/local/labs/walkthrough.yaml`. Change its `id` to `walkthrough` and delete its
+   `persona:` line.
 4. Run `pnpm humanish run walkthrough --dry-run --no-open`. Read `.humanish/runs/latest.json` for
    the run id, then check `persona.id` in `.humanish/runs/<runId>/run.json`.
 5. Run `pnpm humanish verify --run latest`, then `pnpm format` and `pnpm check`.
 
 Common changes touch these tests and contracts:
 
-| Change                    | Tests                                                                        | Contract or doc to update                                          |
-| ------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| A lab manifest field      | `tests/lab/config.test.ts`, the route's tests                                | `docs/contracts/schemas.md`, `site/content/docs/lab-manifests.mdx` |
-| A CLI option              | the command's tests under `tests/cli/`                                       | Run `pnpm docs:generate` to update `site/content/docs/cli.mdx`     |
-| A `run.json` field        | the route's tests; rerun them with `-u` to update `tests/golden/routes/`     | `docs/contracts/run-bundle.md`                                     |
-| Observer data             | `tests/observer/data-contract.test.ts` with `UPDATE_OBSERVER_DATA_GOLDENS=1` | `docs/architecture/observer.md`                                    |
-| Observer UI               | `observer/tests/` and the four `observer:*:proof` scripts                    | `observer/AGENTS.md`                                               |
-| A route's behavior        | `tests/routes/<route>/`, `tests/lab/task-route-preflight.test.ts`            | the support matrix in `docs/ramp/README.md`                        |
-| An actor                  | `tests/actors/`, `tests/actors/conformance.test.ts`                          | `docs/architecture/actor-contract.md`                              |
-| Redaction or share safety | `tests/evidence/`, `tests/run/transient-comms-secrets.test.ts`               | `docs/contracts/policy.md`                                         |
-| Study analysis            | `tests/analysis/`                                                            | `docs/contracts/study-analysis.md`                                 |
-| A public export           | `pnpm build` and `pnpm api:proof` (`--update` to accept)                     | `tests/golden/public-api.json`                                     |
-| An example                | `pnpm build` and `pnpm api:proof`, which runs every example                  | `examples/README.md`                                               |
+| Change                    | Tests                                                                                                                                                        | Contract or doc to update                                                      |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| A lab manifest field      | `tests/lab/config.test.ts`, the route's tests                                                                                                                | `docs/contracts/schemas.md`, `site/content/docs/lab-manifests.mdx`             |
+| A CLI option              | the command's tests under `tests/cli/`                                                                                                                       | Run `pnpm docs:generate` to update `site/content/docs/cli.mdx`                 |
+| A `run.json` field        | the route's tests; rerun them with `-u` to update `tests/golden/routes/` and `tests/golden/failures/<route>/`                                                | `docs/contracts/run-bundle.md`                                                 |
+| An actor trace field      | `tests/actors/`, `tests/actors/conformance.test.ts`, then the route goldens with `-u`                                                                        | `docs/contracts/schemas.md#actor-trace`, `docs/architecture/actor-contract.md` |
+| Observer data             | `tests/observer/data-contract.test.ts` with `UPDATE_OBSERVER_DATA_GOLDENS=1`                                                                                 | `docs/architecture/observer.md`                                                |
+| Observer UI               | `observer/tests/` and the four `observer:*:proof` scripts                                                                                                    | `observer/AGENTS.md`                                                           |
+| A route's behavior        | the route's folder in `tests/routes/` (the scripted route's main suite is `tests/routes/scripted-browser.test.ts`), `tests/lab/task-route-preflight.test.ts` | the support matrix in `docs/ramp/README.md`                                    |
+| An actor                  | `tests/actors/`, `tests/actors/conformance.test.ts`                                                                                                          | `docs/architecture/actor-contract.md`                                          |
+| Redaction or share safety | `tests/evidence/`, `tests/run/transient-comms-secrets.test.ts`                                                                                               | `docs/contracts/policy.md`                                                     |
+| Study analysis            | `tests/analysis/`                                                                                                                                            | `docs/contracts/study-analysis.md`                                             |
+| A public export           | `pnpm build` and `pnpm api:proof` (`--update` to accept)                                                                                                     | `tests/golden/public-api.json`                                                 |
+| An example                | `pnpm build` and `pnpm api:proof`, which runs every example                                                                                                  | `examples/README.md`                                                           |
 
 Three folders hold fixtures. `tests/fixtures/` holds test inputs, `humanish/fixtures/` holds the
 synthetic apps this repo's own labs start, and the root `fixtures/` holds synthetic apps and cases
