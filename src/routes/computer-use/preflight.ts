@@ -2,12 +2,20 @@ import type { ComputerUsePlan } from "../../lab/plan-types.js";
 import type { LabCommsExternal } from "../../lab/types.js";
 import { DEFAULT_OPENAI_CU_MODEL } from "../../actors/computer-use/openai-provider.js";
 import { detectLocalAgents, type LocalAgentId } from "../../actors/local-agent/cli.js";
-import { localAgentRefusal } from "../../actors/local-agent/readiness.js";
+import { localAgentRefusal, type LocalAgentRefusal } from "../../actors/local-agent/readiness.js";
 import { describeMissingKeys } from "../../keys/key-resolution.js";
 import { externalCatchHealthy } from "../../comms/sandbox-catch.js";
 import { MODEL_RATES } from "../../run/pricing.js";
 import type { CuaActorLabErrorCode, CuaActorLabHooks } from "./types.js";
 import { participantDesktopOf } from "./participant-desktop.js";
+
+/** The computer-use code for each local-agent refusal; shared-world keeps the same kinds. */
+const LOCAL_AGENT_REFUSAL_CODES = {
+  "agent-missing": "HUMANISH_CUA_LAB_AGENT_MISSING",
+  "signin-required": "HUMANISH_CUA_LAB_AGENT_SIGNIN_REQUIRED",
+  unsupported: "HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED",
+  "unpriced-cap": "HUMANISH_CUA_LAB_UNPRICED_CAP",
+} as const satisfies Record<LocalAgentRefusal["kind"], CuaActorLabErrorCode>;
 
 /**
  * The first reason a live computer-use run cannot start on this machine: missing keys, a missing
@@ -68,16 +76,7 @@ export async function liveCuaRejection(args: {
     // Refuse HERE, before a sandbox exists. "codex is not installed" discovered after the
     // machine is paid for is the same information delivered at the worst possible moment.
     const refusal = await localAgentRefusal({ agent: preferredLocalAgent, env, caps });
-    if (refusal)
-      return {
-        code:
-          refusal.kind === "signin-required"
-            ? "HUMANISH_CUA_LAB_AGENT_SIGNIN_REQUIRED"
-            : refusal.kind === "unsupported"
-              ? "HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED"
-              : "HUMANISH_CUA_LAB_UNPRICED_CAP",
-        message: refusal.message,
-      };
+    if (refusal) return { code: LOCAL_AGENT_REFUSAL_CODES[refusal.kind], message: refusal.message };
   }
   const missingSubjectEnv = subjectEnvNames.filter((name) => !env[name]?.trim());
   if (missingSubjectEnv.length > 0) {

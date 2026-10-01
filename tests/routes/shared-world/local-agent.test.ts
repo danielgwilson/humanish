@@ -80,7 +80,7 @@ describe("shared world with a local-agent brain", () => {
     expect(keysOf("sharedExternal")).toEqual(["E2B_API_KEY", "OPENAI_API_KEY"]);
   });
 
-  it("refuses a missing agent CLI as a sign-in refusal before any desktop loads, without OPENAI_API_KEY", async () => {
+  it("refuses a missing agent CLI as AGENT_MISSING before any desktop loads, without OPENAI_API_KEY", async () => {
     const cwd = await projectDir();
     let loads = 0;
     const outcome = await runLab(config("sharedProvisioned", localAgent), {
@@ -90,14 +90,12 @@ describe("shared world with a local-agent brain", () => {
         env: { E2B_API_KEY: "synthetic-e2b", DATABASE_URL: "postgres://synthetic" },
         loadDesktopModule: async () => {
           loads += 1;
-          throw new Error("a sign-in refusal must come before any desktop loads");
+          throw new Error("a missing-agent refusal must come before any desktop loads");
         },
       },
     });
     expect(outcome.result.ok).toBe(false);
-    expect(outcome.result.error?.code).toBe(
-      "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_AGENT_SIGNIN_REQUIRED",
-    );
+    expect(outcome.result.error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_AGENT_MISSING");
     expect(outcome.result.error?.message).toContain("needs the codex CLI on PATH and signed in");
     expect(loads).toBe(0);
     expect(await readdir(path.join(cwd, ".humanish", "runs")).catch(() => [])).toEqual([]);
@@ -143,6 +141,16 @@ describe("shared world with a local-agent brain", () => {
     return outcome.result.error;
   }
 
+  it("refuses a signed-out agent CLI as AGENT_SIGNIN_REQUIRED", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "humanish-sw-codex-"));
+    cleanup.push(dir);
+    await writeFile(path.join(dir, "codex"), '#!/bin/sh\necho "Not logged in"\nexit 1\n');
+    await chmod(path.join(dir, "codex"), 0o755);
+    const error = await refusedWith(dir);
+    expect(error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_AGENT_SIGNIN_REQUIRED");
+    expect(error?.message).toContain("reports not signed in");
+  });
+
   it("refuses an unqualified Codex release as ACTOR_UNSUPPORTED", async () => {
     expect((await refusedWith(await signedInCodex("0.0.1")))?.code).toBe(
       "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_ACTOR_UNSUPPORTED",
@@ -151,10 +159,10 @@ describe("shared world with a local-agent brain", () => {
 
   const qualified = admittedCodexCliVersions(process.platform, process.arch)[0];
   it.skipIf(restrictedCodexNpmTarget(process.platform, process.arch) === undefined || !qualified)(
-    "refuses a dollar cap on a ChatGPT-account Codex as INVALID",
+    "refuses a dollar cap on a ChatGPT-account Codex as UNPRICED_CAP",
     async () => {
       const error = await refusedWith(await signedInCodex(qualified!), { maxUsd: 1 });
-      expect(error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID");
+      expect(error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_UNPRICED_CAP");
       expect(error?.message).toContain("no API-dollar price");
     },
   );

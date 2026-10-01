@@ -113,7 +113,7 @@ export function planSharedWorldLab(
     const model = (config.actors[0]?.model ?? DEFAULT_OPENAI_CU_MODEL).trim().toLowerCase();
     if (!MODEL_RATES[model])
       return refuse(
-        invalid,
+        "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_UNPRICED_CAP",
         `The declared spend cap cannot be enforced for unpriced model "${model}".`,
         actor,
       );

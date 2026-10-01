@@ -3354,7 +3354,7 @@
         "roles": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
+          "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_UNPRICED_CAP",
           "message": "The declared spend cap cannot be enforced for unpriced model \"unpriced-model\"."
         },
         "automaticAnalysisTrigger": "default",
@@ -3514,7 +3514,7 @@
         "lanes": [],
         "warnings": [],
         "error": {
-          "code": "HUMANISH_CUA_LAB_AGENT_SIGNIN_REQUIRED",
+          "code": "HUMANISH_CUA_LAB_AGENT_MISSING",
           "message": "actors[0].type: local-agent needs the codex CLI on PATH and signed in. Install it, or set OPENAI_API_KEY and use actors[0].type: openai-computer-use instead."
         },
         "automaticAnalysisTrigger": "default",

@@ -115,7 +115,8 @@ such as `gpt-5.6-terra`, `gpt-5.6-luna`, and `gpt-5.5`; consult the table in you
 installed version instead of assuming a newly available model is priced.
 
 A declared computer-use cap (`maxUsd` or `maxTotalUsd`) on an unpriced model is
-refused at preflight with `HUMANISH_CUA_LAB_UNPRICED_CAP`. This checks whether a
+refused at preflight with `HUMANISH_CUA_LAB_UNPRICED_CAP`, and a shared-world one with
+`HUMANISH_CONCURRENT_SHARED_WORLD_LAB_UNPRICED_CAP`. This checks whether a
 rate is available; it does not prepay or reserve the next request. An absent cap
 is uncapped. A zero threshold can still allow a paid model request before its
 reported usage triggers the stop, so `maxUsd: 0` is not a no-provider-call mode.

@@ -14,7 +14,8 @@ changing the participant alone does not change the analyst.
 
 Replace the `actors` block in your [own-app lab](/docs/your-app) with this fragment,
 and delete `execution.caps`. A Codex participant signed in with a ChatGPT account
-has no API price, so a dollar cap is refused with `HUMANISH_CUA_LAB_UNPRICED_CAP`;
+has no API price, so a dollar cap is refused with `HUMANISH_CUA_LAB_UNPRICED_CAP`
+(`HUMANISH_CONCURRENT_SHARED_WORLD_LAB_UNPRICED_CAP` in a shared-world lab);
 for Claude Code the cap does not bound subscription usage. Keep a finite
 `execution.timeoutMs`, which bounds both.
 
@@ -43,6 +44,9 @@ If signed out, use `codex login` or `claude auth login`. Before launching a
 desktop, humanish asks the selected CLI for its local authentication status.
 An unavailable or unrecognized status fails before desktop creation and asks
 you to check or update the CLI; it is not reported as a confirmed sign-out.
+A CLI that is not on PATH is refused as `HUMANISH_CUA_LAB_AGENT_MISSING`, and a
+signed-out or unrecognized status as `HUMANISH_CUA_LAB_AGENT_SIGNIN_REQUIRED`.
+Shared-world labs use the same endings after `HUMANISH_CONCURRENT_SHARED_WORLD_LAB_`.
 This checks local status, not remote account validity, model access or quota.
 
 [Codex supports ChatGPT sign-in or API-key authentication](https://learn.chatgpt.com/docs/auth).

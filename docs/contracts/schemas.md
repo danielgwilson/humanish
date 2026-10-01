@@ -1290,7 +1290,8 @@ request before reported usage trips it; `maxUsd: 0` is not a no-provider-call
 mode. Use the keyless `humanish run first-run` preview or an explicit
 `humanish lab run <lab> --dry-run` for a path without provider calls. A declared
 threshold on a model `src/run/pricing.ts` cannot price is refused at preflight
-(`HUMANISH_CUA_LAB_UNPRICED_CAP`) before sandbox allocation. This rate-availability
+(`HUMANISH_CUA_LAB_UNPRICED_CAP`, or `HUMANISH_CONCURRENT_SHARED_WORLD_LAB_UNPRICED_CAP` on a
+shared-world lab) before sandbox allocation. This rate-availability
 check is separate from the post-response spend check.
 
 Library callers can make a capped session stricter by composing it from the loop and the default

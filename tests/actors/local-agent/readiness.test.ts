@@ -46,8 +46,13 @@ async function refusal(script: string | undefined, caps: { maxUsd?: number } = {
 }
 
 describe("localAgentRefusal", () => {
+  it("reports a missing CLI when it is not on PATH", async () => {
+    const result = await refusal(undefined);
+    expect(result?.kind).toBe("agent-missing");
+    expect(result?.message).toContain("needs the codex CLI on PATH and signed in");
+  });
+
   it.each([
-    ["is not on PATH", undefined, "needs the codex CLI on PATH and signed in"],
     ["reports not signed in", 'echo "Not logged in"\nexit 1', "reports not signed in"],
     [
       "cannot report its sign-in status",
