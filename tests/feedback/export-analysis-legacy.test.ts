@@ -17,7 +17,7 @@ import { captureStudyEvidence } from "../../src/analysis/evidence.js";
 import { appendStudyAnalysisCorrection, writeStudyAnalysis } from "../../src/analysis/store.js";
 import { writeStudyAnalysisExecutionReceipt } from "../../src/analysis/store-executions.js";
 import { loadStudyAnalysis } from "../../src/analysis/load.js";
-import { hashStudyAnalysisValue } from "../../src/analysis/validation.js";
+import { hashAnalysisValue } from "../../src/analysis/validation.js";
 import { syntheticArtifact } from "../analysis/fixtures.js";
 
 it("redacts legacy analysis-directory evidence while omitting generated analysis records", async () => {
@@ -86,9 +86,9 @@ it("redacts legacy analysis-directory evidence while omitting generated analysis
       schema: "humanish.study-analysis-correction.v1" as const,
       id: "synthetic-correction",
       analysisId: artifact.id,
-      analysisSha256: hashStudyAnalysisValue(artifact),
+      analysisSha256: hashAnalysisValue(artifact),
       findingId: "finding-1",
-      findingSha256: hashStudyAnalysisValue(artifact.result!.findings[0]),
+      findingSha256: hashAnalysisValue(artifact.result!.findings[0]),
       createdAt: "2026-09-01T00:03:00Z",
       status: "confirmed" as const,
       reason: "Synthetic review annotation.",

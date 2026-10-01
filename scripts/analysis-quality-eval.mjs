@@ -67,7 +67,7 @@ async function packagePin() {
   }
   return {
     version: metadata.version,
-    promptVersion: studyAnalysis.STUDY_ANALYSIS_PROMPT_VERSION,
+    promptVersion: studyAnalysis.ANALYSIS_PROMPT_VERSION,
     files,
   };
 }

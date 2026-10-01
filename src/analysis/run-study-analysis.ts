@@ -6,7 +6,7 @@ import { containsSensitive } from "../evidence/redaction.js";
 import { scrubTransientCommsText } from "../run/transient-comms-secrets.js";
 import {
   ANALYSIS_ID_PATTERN,
-  STUDY_ANALYSIS_SCHEMA,
+  ANALYSIS_SCHEMA,
   type AnalysisObservation,
   type AnalysisArtifact,
   type AnalysisConfig,
@@ -22,15 +22,15 @@ import {
 } from "./provider.js";
 import {
   checkAnalysisResult,
-  hashStudyAnalysisValue,
-  studyAnalysisResponseSchema,
-  studyAnalysisResultJsonSchema,
-  validateStudyAnalysisInputMetadata,
+  hashAnalysisValue,
+  analysisResponseSchema,
+  analysisResultJsonSchema,
+  validateAnalysisInputMetadata,
 } from "./validation.js";
-import { STUDY_EVIDENCE_LIMITS } from "./evidence.js";
+import { EVIDENCE_LIMITS } from "./evidence.js";
 
-export const STUDY_ANALYSIS_PROMPT_VERSION = "study-evidence-6";
-const SUPPORTED_STUDY_ANALYSIS_MODELS = Object.freeze([
+export const ANALYSIS_PROMPT_VERSION = "study-evidence-6";
+const SUPPORTED_ANALYSIS_MODELS = Object.freeze([
   "gpt-6-astra",
   "gpt-5.5",
   "gpt-5.6",
@@ -38,7 +38,7 @@ const SUPPORTED_STUDY_ANALYSIS_MODELS = Object.freeze([
   "gpt-5.6-terra",
   "gpt-5.6-luna",
 ]);
-const SUPPORTED_MODELS = new Set(SUPPORTED_STUDY_ANALYSIS_MODELS);
+const SUPPORTED_MODELS = new Set(SUPPORTED_ANALYSIS_MODELS);
 export const isSupportedAnalysisModel = (model: string): boolean => SUPPORTED_MODELS.has(model);
 /** The OpenAI output limit when a lab omits maxOutputTokens, and the most it may ask for. */
 export const DEFAULT_ANALYSIS_MAX_OUTPUT_TOKENS = 16_384;
@@ -115,7 +115,7 @@ function evidenceText(input: AnalysisInput): string {
 
 function inputError(input: AnalysisInput): string | null {
   try {
-    validateStudyAnalysisInputMetadata(input);
+    validateAnalysisInputMetadata(input);
   } catch {
     return "analysis_input_invalid";
   }
@@ -148,7 +148,7 @@ function inputError(input: AnalysisInput): string | null {
   let imageBytes = 0;
   for (const image of input.images) {
     const evidence = captures.find((item) => item.id === image.evidenceId);
-    if (image.dataUrl.length > Math.ceil((STUDY_EVIDENCE_LIMITS.imageBytes * 4) / 3) + 64)
+    if (image.dataUrl.length > Math.ceil((EVIDENCE_LIMITS.imageBytes * 4) / 3) + 64)
       return "analysis_input_limit";
     const parsed = INPUT_IMAGE_DATA_URL.exec(image.dataUrl);
     if (!evidence?.capture || !parsed || evidence.capture.mimeType !== `image/${parsed[1]}`)
@@ -156,8 +156,8 @@ function inputError(input: AnalysisInput): string | null {
     const bytes = Buffer.from(parsed[2]!, "base64");
     imageBytes += bytes.byteLength;
     if (
-      bytes.byteLength > STUDY_EVIDENCE_LIMITS.imageBytes ||
-      imageBytes > STUDY_EVIDENCE_LIMITS.totalImageBytes
+      bytes.byteLength > EVIDENCE_LIMITS.imageBytes ||
+      imageBytes > EVIDENCE_LIMITS.totalImageBytes
     )
       return "analysis_input_limit";
     if (createHash("sha256").update(bytes).digest("hex") !== evidence.capture.sha256)
@@ -235,7 +235,7 @@ export function estimateStudyAnalysisAdmission(
       JSON.stringify({
         instructions: instructions(config),
         evidence: evidenceText(input),
-        schema: studyAnalysisResultJsonSchema,
+        schema: analysisResultJsonSchema,
       }),
     ) +
     2048 +
@@ -376,7 +376,7 @@ type CheckedProviderAnalysis = { ok: true; result: AnalysisResult } | { ok: fals
 
 function checkProviderAnalysis(input: AnalysisInput, value: unknown): CheckedProviderAnalysis {
   try {
-    const parsed = studyAnalysisResponseSchema.safeParse(value);
+    const parsed = analysisResponseSchema.safeParse(value);
     if (!parsed.success)
       return { ok: false, error: VALIDATION_FAILURES.ANALYSIS_RESULT_SCHEMA_INVALID! };
     let scrubbed: AnalysisResult;
@@ -425,7 +425,7 @@ function admitDirectAnalysis(
   if (analysisId !== undefined && !ANALYSIS_ID_PATTERN.test(analysisId)) {
     throw new Error("ANALYSIS_ID_INVALID");
   }
-  validateStudyAnalysisInputMetadata(input);
+  validateAnalysisInputMetadata(input);
   const admission = estimateStudyAnalysisAdmission(input, config);
   if (admission.error === "analysis_config_invalid") throw new Error("ANALYSIS_CONFIG_INVALID");
   // Do not emit progress or construct an artifact containing rejected sensitive
@@ -448,7 +448,7 @@ function initialArtifact(
   createdAt: string,
 ): AnalysisArtifact {
   return {
-    schema: STUDY_ANALYSIS_SCHEMA,
+    schema: ANALYSIS_SCHEMA,
     id,
     runId: input.runId,
     status: "failed",
@@ -457,9 +457,9 @@ function initialArtifact(
     sourceRunSha256: input.sourceRunSha256,
     inputDigest: input.inputDigest,
     ...(input.captureVersion === undefined ? {} : { captureVersion: input.captureVersion }),
-    configDigest: hashStudyAnalysisValue(config),
+    configDigest: hashAnalysisValue(config),
     config: structuredClone(config),
-    promptVersion: STUDY_ANALYSIS_PROMPT_VERSION,
+    promptVersion: ANALYSIS_PROMPT_VERSION,
     provider: config.provider ?? "openai",
     participants: structuredClone(input.participants),
     coverage: structuredClone(input.coverage),
@@ -618,7 +618,7 @@ export async function runStudyAnalysis(
     instructions: instructions(config),
     evidence: evidenceText(input),
     images: input.images,
-    schema: studyAnalysisResultJsonSchema,
+    schema: analysisResultJsonSchema,
     maxOutputTokens: config.maxOutputTokens,
     timeoutMs: config.timeoutMs,
     ...(options.signal === undefined ? {} : { signal: options.signal }),

@@ -3,7 +3,7 @@ import type { AutomaticAnalysisView } from "../../src/analysis/job";
 export type { AutomaticAnalysisView } from "../../src/analysis/job";
 
 // Browser-only mirror: runtime imports from the producer are forbidden. The
-// contract test pins this against AUTOMATIC_STUDY_ANALYSIS_STALE_MS.
+// contract test pins this against src/analysis/job.ts' AUTOMATIC_ANALYSIS_STALE_MS.
 export const AUTOMATIC_ANALYSIS_STALE_MS = 15_000;
 export const ANALYSIS_ADMISSION_EXCEEDED_DETAIL =
   "Reported usage exceeded an admission estimate or configured limit. Findings and known usage were retained. Review the saved usage before making another request.";

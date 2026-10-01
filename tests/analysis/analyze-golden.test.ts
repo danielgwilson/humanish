@@ -19,7 +19,7 @@ import type {
 } from "../../src/analysis/provider.js";
 import { analyzeStudy, type AnalyzeDeps, type AnalyzeOptions } from "../../src/analysis/service.js";
 import type { AnalysisConfig, AnalysisInput } from "../../src/analysis/study-analysis.js";
-import { digestStudyAnalysisInput } from "../../src/analysis/validation.js";
+import { digestAnalysisInput } from "../../src/analysis/validation.js";
 import type { RunBundle } from "../../src/run/bundle.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { resolveRunPath } from "../../src/run/locate.js";
@@ -437,7 +437,7 @@ describe("runStudyAnalysis characterization golden", () => {
     input.evidence = input.evidence.filter((e) => e.capture === null);
     input.coverage.captureCount = 0;
     input.coverage.evidenceCount = input.evidence.length;
-    input.inputDigest = digestStudyAnalysisInput(input);
+    input.inputDigest = digestAnalysisInput(input);
     const direct = async (
       name: string,
       config: AnalysisConfig,

@@ -16,13 +16,13 @@ import {
   type PreparedRunArtifactPaths,
 } from "../run/paths.js";
 import { isRunStatusRecord, RUN_STATUS_FILE } from "../run/status.js";
-import { captureStudyEvidence, STUDY_EVIDENCE_LIMITS } from "./evidence.js";
+import { captureStudyEvidence, EVIDENCE_LIMITS } from "./evidence.js";
 import { pathMissing, readBoundedStudyFile } from "../run/study-files.js";
 import {
   estimateStudyAnalysisAdmission,
   preferLargerStudyAnalysisOutput,
   runStudyAnalysis,
-  STUDY_ANALYSIS_PROMPT_VERSION,
+  ANALYSIS_PROMPT_VERSION,
   type AnalysisAdmission,
   type AnalysisProgress,
   type AnalysisDispatchContext,
@@ -38,9 +38,9 @@ import {
   writeStudyAnalysisExecutionReceipt,
 } from "./store-executions.js";
 import { loadStudyAnalysis } from "./load.js";
-import { hashStudyAnalysisValue } from "./validation.js";
+import { hashAnalysisValue } from "./validation.js";
 import {
-  STUDY_ANALYSIS_CORRECTION_SCHEMA,
+  ANALYSIS_CORRECTION_SCHEMA,
   type AnalysisArtifact,
   type AnalysisConfig,
   type AnalysisCorrection,
@@ -248,11 +248,7 @@ export async function readCompletedStudyAnalysisSource(
   cwd: string,
   prepared: PreparedRunArtifactPaths,
 ): Promise<Buffer> {
-  const bytes = await readBoundedStudyFile(
-    prepared,
-    RUN_BUNDLE_FILE,
-    STUDY_EVIDENCE_LIMITS.sourceBytes,
-  );
+  const bytes = await readBoundedStudyFile(prepared, RUN_BUNDLE_FILE, EVIDENCE_LIMITS.sourceBytes);
   if (!bytes) throw new Error("ANALYSIS_SOURCE_UNAVAILABLE");
   const verified = await verifyRunPrepared(cwd, runIdOf(prepared), prepared);
   if (!verified.ok && verified.recordingOk !== true) throw new Error("ANALYSIS_VERIFY_FAILED");
@@ -343,8 +339,8 @@ async function reusedAnalysisResult(
     (entry) =>
       entry.state === "ready" &&
       entry.analysis?.inputDigest === input.inputDigest &&
-      entry.analysis.configDigest === hashStudyAnalysisValue(config) &&
-      entry.analysis.promptVersion === STUDY_ANALYSIS_PROMPT_VERSION,
+      entry.analysis.configDigest === hashAnalysisValue(config) &&
+      entry.analysis.promptVersion === ANALYSIS_PROMPT_VERSION,
   )?.analysis;
   if (!prior) return undefined;
   await validatePreparedRunRootIdentity(prepared);
@@ -560,12 +556,12 @@ export async function correctStudyAnalysis(
     if (containsSensitive(options.reason) || containsSensitive(options.replacementClaim ?? ""))
       throw new Error("ANALYSIS_CORRECTION_TEXT_UNSAFE");
     const correction: AnalysisCorrection = {
-      schema: STUDY_ANALYSIS_CORRECTION_SCHEMA,
+      schema: ANALYSIS_CORRECTION_SCHEMA,
       id: `correction-${randomUUID()}`,
       analysisId: analysis.id,
-      analysisSha256: hashStudyAnalysisValue(analysis),
+      analysisSha256: hashAnalysisValue(analysis),
       findingId: finding.id,
-      findingSha256: hashStudyAnalysisValue(finding),
+      findingSha256: hashAnalysisValue(finding),
       createdAt: new Date().toISOString(),
       status: options.status,
       reason: options.reason,

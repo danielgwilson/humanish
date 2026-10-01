@@ -25,7 +25,7 @@ import * as analysisService from "../../src/analysis/service.js";
 import {
   claimAutomaticStudyAnalysis,
   readAutomaticStudyAnalysisPrepared,
-  AUTOMATIC_STUDY_ANALYSIS_DIRECTORY,
+  AUTOMATIC_ANALYSIS_DIRECTORY,
 } from "../../src/analysis/job.js";
 import { listStudyAnalysisExecutions } from "../../src/analysis/store-executions.js";
 import { loadStudyAnalysis } from "../../src/analysis/load.js";
@@ -34,9 +34,9 @@ import {
   projectShareCheckedAnalysis,
   studyAnalysisSharingProblems,
 } from "../../src/analysis/sharing.js";
-import { hashStudyAnalysisValue } from "../../src/analysis/validation.js";
+import { hashAnalysisValue } from "../../src/analysis/validation.js";
 import {
-  STUDY_ANALYSIS_PROMPT_VERSION,
+  ANALYSIS_PROMPT_VERSION,
   runStudyAnalysis,
 } from "../../src/analysis/run-study-analysis.js";
 import { resolveRunPath } from "../../src/run/locate.js";
@@ -91,7 +91,7 @@ describe("opted-in automatic analysis ownership", () => {
     vi.restoreAllMocks();
     await rm(cwd, { recursive: true, force: true });
   });
-  const jobPath = () => path.join(root, AUTOMATIC_STUDY_ANALYSIS_DIRECTORY, "job.json");
+  const jobPath = () => path.join(root, AUTOMATIC_ANALYSIS_DIRECTORY, "job.json");
   async function transport() {
     const wire = JSON.parse(await readFile(wirePath, "utf8"));
     wire.output[0].content[0].text = JSON.stringify(syntheticResult(input));
@@ -135,8 +135,8 @@ describe("opted-in automatic analysis ownership", () => {
   );
   async function claimed() {
     return (await claimAutomaticStudyAnalysis(prepared, {
-      configDigest: hashStudyAnalysisValue(config),
-      promptVersion: STUDY_ANALYSIS_PROMPT_VERSION,
+      configDigest: hashAnalysisValue(config),
+      promptVersion: ANALYSIS_PROMPT_VERSION,
     }))!;
   }
 
@@ -504,7 +504,7 @@ describe("opted-in automatic analysis ownership", () => {
         (await runAutomaticStudyAnalysis(cwd, runId, config, { apiKey: "", fetch: h.fetch })).state,
       ).toBe("skipped");
     }
-    expect(await readdir(root)).not.toContain(AUTOMATIC_STUDY_ANALYSIS_DIRECTORY);
+    expect(await readdir(root)).not.toContain(AUTOMATIC_ANALYSIS_DIRECTORY);
     expect(h.fetch).not.toHaveBeenCalled();
   });
 
@@ -546,7 +546,7 @@ describe("opted-in automatic analysis ownership", () => {
     expect(
       await runAutomaticStudyAnalysis(cwd, runId, config, { apiKey: "", fetch: h.fetch }),
     ).toEqual({ state: "skipped", reason: "AUTOMATIC_ANALYSIS_ACTOR_CANCELLED" });
-    expect(await readdir(root)).not.toContain(AUTOMATIC_STUDY_ANALYSIS_DIRECTORY);
+    expect(await readdir(root)).not.toContain(AUTOMATIC_ANALYSIS_DIRECTORY);
     expect(await readFile(path.join(root, "run.json"))).toEqual(aborted);
     bundle.streams[0]!.actor.stopCause = "time_limit";
     bundle.streams[0]!.actor.reason = "The time limit ended the study.";
@@ -702,7 +702,7 @@ describe("opted-in automatic analysis ownership", () => {
 
   it("refuses a replaced claim directory and a foreign cancellation record", async () => {
     const job = await claimed();
-    const cancelPath = path.join(root, AUTOMATIC_STUDY_ANALYSIS_DIRECTORY, "cancel.json");
+    const cancelPath = path.join(root, AUTOMATIC_ANALYSIS_DIRECTORY, "cancel.json");
     await writeFile(
       cancelPath,
       JSON.stringify({
@@ -868,7 +868,7 @@ describe("opted-in automatic analysis ownership", () => {
         { apiKey: "synthetic-key", fetch: h.fetch, expectedRun: prepared },
       ),
     ).toMatchObject({ ok: false, error: { code: "ANALYSIS_SOURCE_UNAVAILABLE" } });
-    expect(await readdir(root)).not.toContain(AUTOMATIC_STUDY_ANALYSIS_DIRECTORY);
+    expect(await readdir(root)).not.toContain(AUTOMATIC_ANALYSIS_DIRECTORY);
     expect(h.fetch).not.toHaveBeenCalled();
   });
 
@@ -980,7 +980,7 @@ describe("opted-in automatic analysis ownership", () => {
         ).ok,
       ).toBe(true);
       expect(await readdir(path.join(derivative, ".humanish/runs", runId))).not.toContain(
-        AUTOMATIC_STUDY_ANALYSIS_DIRECTORY,
+        AUTOMATIC_ANALYSIS_DIRECTORY,
       );
     } finally {
       if (server) {

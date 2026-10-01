@@ -5,7 +5,7 @@
 import path from "node:path";
 import { studyAnalysisSharingProblems } from "../analysis/sharing.js";
 import { loadStudyAnalysis } from "../analysis/load.js";
-import { hashStudyAnalysisValue } from "../analysis/validation.js";
+import { hashAnalysisValue } from "../analysis/validation.js";
 import type { RunBundle, RunFeedbackCandidate } from "../run/bundle.js";
 import {
   formatParticipantOutcomes,
@@ -243,9 +243,9 @@ export async function buildAnalysisDraft(
       : firstLine;
   const source = {
     id: analysis.id,
-    sha256: hashStudyAnalysisValue(analysis),
+    sha256: hashAnalysisValue(analysis),
     finding_id: finding.id,
-    finding_sha256: hashStudyAnalysisValue(finding),
+    finding_sha256: hashAnalysisValue(finding),
     correction_id: correction?.id ?? null,
   };
   return {
@@ -316,7 +316,7 @@ export async function buildAnalysisDraft(
       notes:
         "Source run and derived analysis passed the existing share-safety gate; semantic claims still require human review.",
     },
-    idempotency_key: `humanish:${bundle.runId}:analysis:${hashStudyAnalysisValue(source)}`,
+    idempotency_key: `humanish:${bundle.runId}:analysis:${hashAnalysisValue(source)}`,
     proposed_next_state: "study-quality-review",
     acceptance_proof: [
       feedbackProofCommands(bundle.runId).verify,

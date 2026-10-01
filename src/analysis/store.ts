@@ -14,12 +14,12 @@ import {
   writeContainedOutputFile,
   type PreparedSelectedOutputDirectory,
 } from "../run/contained-output.js";
-import { STUDY_EVIDENCE_LIMITS, validateStudyAnalysisEvidence } from "./evidence.js";
+import { EVIDENCE_LIMITS, validateAnalysisEvidence } from "./evidence.js";
 import { pathMissing, isStudyEvidencePath, readBoundedStudyFile } from "../run/study-files.js";
 import {
-  hashStudyAnalysisValue,
-  validateStudyAnalysisArtifact,
-  validateStudyAnalysisCorrection,
+  hashAnalysisValue,
+  validateAnalysisArtifact,
+  validateAnalysisCorrection,
 } from "./validation.js";
 import {
   ANALYSIS_ID_PATTERN,
@@ -29,8 +29,8 @@ import {
 } from "./study-analysis.js";
 import { RUN_BUNDLE_FILE } from "../run/bundle.js";
 
-export const STUDY_ANALYSIS_DIRECTORY = "analysis";
-export const STUDY_ANALYSIS_EXECUTION_DIRECTORY = "analysis-attempts";
+export const ANALYSIS_DIRECTORY = "analysis";
+export const ANALYSIS_EXECUTION_DIRECTORY = "analysis-attempts";
 export const ANALYSIS_MAX_BYTES = 4 * 1024 * 1024;
 export const MAX_VERSIONS = 256;
 const MAX_CORRECTIONS = 256;
@@ -57,13 +57,13 @@ export async function assertStudyAnalysisPublicationCapacity(
   prepared: PreparedRunArtifactPaths,
 ): Promise<void> {
   try {
-    for (const directory of [STUDY_ANALYSIS_DIRECTORY, STUDY_ANALYSIS_EXECUTION_DIRECTORY]) {
+    for (const directory of [ANALYSIS_DIRECTORY, ANALYSIS_EXECUTION_DIRECTORY]) {
       const root = await existingRoot(prepared, directory);
       if (!root) continue;
       const inventory = await directoryIds(
         root,
         MAX_VERSIONS - 1,
-        directory === STUDY_ANALYSIS_DIRECTORY,
+        directory === ANALYSIS_DIRECTORY,
       );
       if (inventory.warnings.length > 0) throw new Error("Unsafe analysis inventory.");
     }
@@ -74,7 +74,7 @@ export async function assertStudyAnalysisPublicationCapacity(
 
 export async function existingRoot(
   prepared: PreparedRunArtifactPaths,
-  directory = STUDY_ANALYSIS_DIRECTORY,
+  directory = ANALYSIS_DIRECTORY,
 ): Promise<PreparedSelectedOutputDirectory | null> {
   await validatePreparedRunRootIdentity(prepared);
   const cwd = physicalCwdOf(prepared);
@@ -109,23 +109,19 @@ export async function writeStudyAnalysis(
   prepared: PreparedRunArtifactPaths,
   value: AnalysisArtifact,
 ): Promise<void> {
-  const artifact = validateStudyAnalysisArtifact(value);
-  const source = await readBoundedStudyFile(
-    prepared,
-    RUN_BUNDLE_FILE,
-    STUDY_EVIDENCE_LIMITS.sourceBytes,
-  );
+  const artifact = validateAnalysisArtifact(value);
+  const source = await readBoundedStudyFile(prepared, RUN_BUNDLE_FILE, EVIDENCE_LIMITS.sourceBytes);
   if (!source) throw new Error("ANALYSIS_SOURCE_UNAVAILABLE");
-  await validateStudyAnalysisEvidence(prepared, artifact, source);
+  await validateAnalysisEvidence(prepared, artifact, source);
   const bytes = Buffer.from(`${JSON.stringify(artifact, null, 2)}\n`);
   if (bytes.length > ANALYSIS_MAX_BYTES) throw new Error("ANALYSIS_ARTIFACT_TOO_LARGE");
-  const root = await prepareContainedOutputDirectoryRoot(prepared, STUDY_ANALYSIS_DIRECTORY);
+  const root = await prepareContainedOutputDirectoryRoot(prepared, ANALYSIS_DIRECTORY);
   const claimed = await claimDirectory(root, artifact.id);
   // Recheck source immediately before publishing the immutable record.
   const current = await readBoundedStudyFile(
     prepared,
     RUN_BUNDLE_FILE,
-    STUDY_EVIDENCE_LIMITS.sourceBytes,
+    EVIDENCE_LIMITS.sourceBytes,
   );
   if (!current?.equals(source)) throw new Error("ANALYSIS_SOURCE_CHANGED");
   await writeContainedOutputFile(claimed, "analysis.json", bytes);
@@ -191,7 +187,7 @@ async function readVersion(
   }
   let analysis: AnalysisArtifact;
   try {
-    analysis = validateStudyAnalysisArtifact(
+    analysis = validateAnalysisArtifact(
       JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)),
     );
     if (analysis.id !== id || analysis.runId !== runIdOf(prepared))
@@ -203,7 +199,7 @@ async function readVersion(
     return { id, state: "stale", analysis, warnings: ["ANALYSIS_SOURCE_CHANGED"] };
   }
   try {
-    await validateStudyAnalysisEvidence(prepared, analysis, source);
+    await validateAnalysisEvidence(prepared, analysis, source);
   } catch (error) {
     const stale = error instanceof Error && error.message === "ANALYSIS_CAPTURE_CHANGED";
     return {
@@ -236,7 +232,7 @@ export async function readStudyAnalysisVersion(
       prepared,
       root,
       id,
-      await readBoundedStudyFile(prepared, RUN_BUNDLE_FILE, STUDY_EVIDENCE_LIMITS.sourceBytes),
+      await readBoundedStudyFile(prepared, RUN_BUNDLE_FILE, EVIDENCE_LIMITS.sourceBytes),
     );
   } catch {
     return null;
@@ -254,7 +250,7 @@ export async function listStudyAnalyses(
     const source = await readBoundedStudyFile(
       prepared,
       RUN_BUNDLE_FILE,
-      STUDY_EVIDENCE_LIMITS.sourceBytes,
+      EVIDENCE_LIMITS.sourceBytes,
     );
     const results: AnalysisListEntry[] = [];
     for (const id of inventory.ids) {
@@ -298,7 +294,7 @@ async function readCorrections(
       cwd,
       "runs",
       analysis.runId,
-      STUDY_ANALYSIS_DIRECTORY,
+      ANALYSIS_DIRECTORY,
       analysis.id,
       "corrections",
     );
@@ -327,7 +323,7 @@ async function readCorrections(
         continue;
       }
       try {
-        const correction = validateStudyAnalysisCorrection(
+        const correction = validateAnalysisCorrection(
           JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)),
         );
         assertCorrectionBinding(analysis, correction);
@@ -382,9 +378,9 @@ function assertCorrectionBinding(analysis: AnalysisArtifact, correction: Analysi
   const finding = analysis.result?.findings.find((entry) => entry.id === correction.findingId);
   if (
     analysis.id !== correction.analysisId ||
-    hashStudyAnalysisValue(analysis) !== correction.analysisSha256 ||
+    hashAnalysisValue(analysis) !== correction.analysisSha256 ||
     !finding ||
-    hashStudyAnalysisValue(finding) !== correction.findingSha256 ||
+    hashAnalysisValue(finding) !== correction.findingSha256 ||
     Date.parse(correction.createdAt) < Date.parse(analysis.completedAt)
   )
     throw new Error("ANALYSIS_CORRECTION_BINDING_INVALID");
@@ -394,7 +390,7 @@ export async function appendStudyAnalysisCorrection(
   prepared: PreparedRunArtifactPaths,
   value: AnalysisCorrection,
 ): Promise<void> {
-  const correction = validateStudyAnalysisCorrection(value);
+  const correction = validateAnalysisCorrection(value);
   const loaded = await loadStudyAnalysisRecord(prepared, correction.analysisId);
   if (loaded.state !== "ready" || !loaded.analysis)
     throw new Error("ANALYSIS_CORRECTION_SOURCE_UNAVAILABLE");

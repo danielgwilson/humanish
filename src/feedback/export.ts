@@ -22,7 +22,7 @@ import { type RunBundle } from "../run/bundle.js";
 import { exportRedactedBundle } from "./export-bundle.js";
 import { loadStudyAnalysis } from "../analysis/load.js";
 import { studyAnalysisSharingProblems } from "../analysis/sharing.js";
-import { STUDY_EVIDENCE_LIMITS, validateStudyAnalysisEvidence } from "../analysis/evidence.js";
+import { EVIDENCE_LIMITS, validateAnalysisEvidence } from "../analysis/evidence.js";
 import { readBoundedStudyFile } from "../run/study-files.js";
 import { shellQuote } from "../substrates/shell.js";
 
@@ -352,11 +352,7 @@ async function currentObserverData(
 ): Promise<{ value: unknown } | undefined> {
   const saved: unknown = JSON.parse(slot);
   if (analysis.state !== "ready" || !analysis.analysis) return { value: saved };
-  const source = await readBoundedStudyFile(
-    runPaths,
-    "run.json",
-    STUDY_EVIDENCE_LIMITS.sourceBytes,
-  );
+  const source = await readBoundedStudyFile(runPaths, "run.json", EVIDENCE_LIMITS.sourceBytes);
   if (
     !source ||
     createHash("sha256").update(source).digest("hex") !== analysis.analysis.sourceRunSha256
@@ -516,14 +512,10 @@ async function recheckAnalysis(
   // Revalidate the independent interpretation against source evidence. Never trust a
   // saved HTML slot or traverse model-provided strings as image paths.
   if (analysis.state === "ready" && analysis.analysis) {
-    const source = await readBoundedStudyFile(
-      runPaths,
-      "run.json",
-      STUDY_EVIDENCE_LIMITS.sourceBytes,
-    );
+    const source = await readBoundedStudyFile(runPaths, "run.json", EVIDENCE_LIMITS.sourceBytes);
     try {
       if (!source) throw new Error("source unavailable");
-      await validateStudyAnalysisEvidence(runPaths, analysis.analysis, source);
+      await validateAnalysisEvidence(runPaths, analysis.analysis, source);
     } catch {
       return "changed";
     }

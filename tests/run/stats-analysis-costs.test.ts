@@ -9,7 +9,7 @@ import {
   writeStudyAnalysisExecutionReceipt,
 } from "../../src/analysis/store-executions.js";
 import { claimAutomaticStudyAnalysis } from "../../src/analysis/job.js";
-import { digestStudyAnalysisInput, hashStudyAnalysisValue } from "../../src/analysis/validation.js";
+import { digestAnalysisInput, hashAnalysisValue } from "../../src/analysis/validation.js";
 import { syntheticArtifact, syntheticInput } from "../analysis/fixtures.js";
 import { writeFixtureRun } from "../helpers/run-fixtures.js";
 import type { AnalysisArtifact } from "../../src/analysis/study-analysis.js";
@@ -42,7 +42,7 @@ describe("retained study cost accounting", () => {
   function artifact(runId: string, id: string, amount: number | null = 0.5): AnalysisArtifact {
     const input = syntheticInput();
     input.runId = runId;
-    input.inputDigest = digestStudyAnalysisInput(input);
+    input.inputDigest = digestAnalysisInput(input);
     const result = syntheticArtifact(input, id);
     result.usage.estimatedCostUsd = amount;
     result.usage.ratesAsOf = amount === null ? null : "2026-09-01";
@@ -384,8 +384,8 @@ describe("retained study cost accounting", () => {
     });
     expect(await readdir(prepared.physicalRunRoot, { recursive: true })).toEqual(before);
     expect(fetch).not.toHaveBeenCalled();
-    expect(hashStudyAnalysisValue(await readFile(outside))).toBe(
-      hashStudyAnalysisValue(await readFile(receiptPath)),
+    expect(hashAnalysisValue(await readFile(outside))).toBe(
+      hashAnalysisValue(await readFile(receiptPath)),
     );
   });
 });

@@ -8,8 +8,8 @@ import type { CuaGoalSource } from "../actors/goal-source.js";
 import type { AutomaticAnalysisView } from "./job.js";
 
 /** Independent interpretation of retained evidence; never a participant or harness verdict. */
-export const STUDY_ANALYSIS_SCHEMA = "humanish.study-analysis.v1" as const;
-export const STUDY_ANALYSIS_CORRECTION_SCHEMA = "humanish.study-analysis-correction.v1" as const;
+export const ANALYSIS_SCHEMA = "humanish.study-analysis.v1" as const;
+export const ANALYSIS_CORRECTION_SCHEMA = "humanish.study-analysis-correction.v1" as const;
 /**
  * Capture mapping version 2: it also maps each scripted action's own screenshot. An artifact without
  * captureVersion uses the original screenshot-only mapping. A different mapping needs a new version,
@@ -177,7 +177,7 @@ export interface AnalysisUsage {
   estimatedAdmissionUsd: number | null;
 }
 export interface AnalysisArtifact {
-  schema: typeof STUDY_ANALYSIS_SCHEMA;
+  schema: typeof ANALYSIS_SCHEMA;
   id: string;
   runId: string;
   status: AnalysisStatus;
@@ -199,7 +199,7 @@ export interface AnalysisArtifact {
   error: string | null;
 }
 export interface AnalysisCorrection {
-  schema: typeof STUDY_ANALYSIS_CORRECTION_SCHEMA;
+  schema: typeof ANALYSIS_CORRECTION_SCHEMA;
   id: string;
   analysisId: string;
   analysisSha256: string;

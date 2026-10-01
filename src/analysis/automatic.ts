@@ -9,12 +9,9 @@ import {
   type AnalyzeDeps,
   type AnalyzeResult,
 } from "./service.js";
-import {
-  preferLargerStudyAnalysisOutput,
-  STUDY_ANALYSIS_PROMPT_VERSION,
-} from "./run-study-analysis.js";
+import { preferLargerStudyAnalysisOutput, ANALYSIS_PROMPT_VERSION } from "./run-study-analysis.js";
 import { captureStudyEvidence } from "./evidence.js";
-import { hashStudyAnalysisValue } from "./validation.js";
+import { hashAnalysisValue } from "./validation.js";
 import {
   claimAutomaticStudyAnalysis,
   readAutomaticStudyAnalysisPrepared,
@@ -42,7 +39,7 @@ export type AutomaticAnalysisDeps = Omit<AnalyzeDeps, "analysisId" | "beforeDisp
 };
 
 const CANCELLATION_POLL_MS = 250;
-// Well inside AUTOMATIC_STUDY_ANALYSIS_STALE_MS, so a live owner never reads as stale.
+// Well inside AUTOMATIC_ANALYSIS_STALE_MS, so a live owner never reads as stale.
 const HEARTBEAT_MS = 5000;
 const exactId = (runId: string): boolean => runId !== "latest" && ANALYSIS_ID_PATTERN.test(runId);
 const skipped = (reason: string): AutomaticAnalysisOutcome => ({ state: "skipped", reason });
@@ -185,9 +182,9 @@ async function persistOutcome(
         : {
             sourceRunSha256: receipt.sourceRunSha256,
             inputDigest: receipt.inputDigest,
-            receiptSha256: hashStudyAnalysisValue(receipt),
+            receiptSha256: hashAnalysisValue(receipt),
           }),
-      ...(entry?.analysis ? { analysisSha256: hashStudyAnalysisValue(entry.analysis) } : {}),
+      ...(entry?.analysis ? { analysisSha256: hashAnalysisValue(entry.analysis) } : {}),
     });
     const persisted = await readAutomaticStudyAnalysisPrepared(prepared);
     return persisted?.state === "unknown"
@@ -231,8 +228,8 @@ export async function runAutomaticStudyAnalysis(
   let job: AutomaticAnalysisJob;
   try {
     const claimed = await claimAutomaticStudyAnalysis(prepared, {
-      configDigest: hashStudyAnalysisValue(config),
-      promptVersion: STUDY_ANALYSIS_PROMPT_VERSION,
+      configDigest: hashAnalysisValue(config),
+      promptVersion: ANALYSIS_PROMPT_VERSION,
     });
     if (!claimed) return skipped("AUTOMATIC_ANALYSIS_ALREADY_REQUESTED");
     job = claimed;

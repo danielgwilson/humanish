@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { estimateStudyAnalysisAdmission } from "../../src/analysis/run-study-analysis.js";
 import { highDetailImageTokens } from "../../src/analysis/image-tokens.js";
 import type { AnalysisConfig, AnalysisInput } from "../../src/analysis/study-analysis.js";
-import { digestStudyAnalysisInput } from "../../src/analysis/validation.js";
+import { digestAnalysisInput } from "../../src/analysis/validation.js";
 import { syntheticInput } from "./fixtures.js";
 
 /** The first 33 bytes of a PNG: signature, then an IHDR chunk carrying the size. */
@@ -115,7 +115,7 @@ function packet(sizes: readonly (readonly [number, number, number])[], padding: 
     }
   }
   input.coverage = { ...input.coverage, evidenceCount: input.evidence.length, captureCount: n };
-  input.inputDigest = digestStudyAnalysisInput(input);
+  input.inputDigest = digestAnalysisInput(input);
   return input;
 }
 

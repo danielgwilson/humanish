@@ -12,7 +12,7 @@ import { buildPlayerModel } from "./player-model";
 import { RECORDED_CODEX_CLI_VERSIONS } from "./actor-execution-profile";
 
 export type { LoadedAnalysis } from "../../src/analysis/study-analysis";
-export const STUDY_ANALYSIS_SCHEMA = "humanish.study-analysis.v1";
+export const ANALYSIS_SCHEMA = "humanish.study-analysis.v1";
 export const STUDY_ANALYSIS_PLACEHOLDER = ["__HUMANISH", "STUDY_ANALYSIS__"].join("_");
 export const NO_ANALYSIS: LoadedAnalysis = {
   state: "none",
@@ -164,7 +164,7 @@ function parseSelectedAnalysis(value: unknown, data: ObserverData): LoadedAnalys
   const a = value.analysis;
   if (
     !object(a) ||
-    a.schema !== STUDY_ANALYSIS_SCHEMA ||
+    a.schema !== ANALYSIS_SCHEMA ||
     !id(a.id) ||
     a.runId !== data.run.runId ||
     !(a.captureVersion === undefined || a.captureVersion === 2) ||

@@ -13,10 +13,7 @@ import {
   isCuaPromptRefusedError,
 } from "../../../src/actors/computer-use/provider-error.js";
 import { actorEnding } from "../../../src/actors/stop-cause.js";
-import {
-  digestStudyAnalysisInput,
-  validateStudyAnalysisArtifact,
-} from "../../../src/analysis/validation.js";
+import { digestAnalysisInput, validateAnalysisArtifact } from "../../../src/analysis/validation.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
 import { syntheticArtifact, syntheticInput } from "../../analysis/fixtures.js";
 
@@ -113,8 +110,8 @@ it("accepts every recorded stop cause in a study analysis artifact", () => {
   for (const stopCause of ACTOR_STOP_CAUSES) {
     const input = syntheticInput();
     input.participants[0]!.provenance.stopCause = stopCause;
-    input.inputDigest = digestStudyAnalysisInput(input);
+    input.inputDigest = digestAnalysisInput(input);
     const artifact = syntheticArtifact(input);
-    expect(validateStudyAnalysisArtifact(artifact), stopCause).toEqual(artifact);
+    expect(validateAnalysisArtifact(artifact), stopCause).toEqual(artifact);
   }
 });
