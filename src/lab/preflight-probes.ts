@@ -5,7 +5,7 @@
 
 import { cloneProvisioningBudgetMs, provisionCloneSubject } from "../subject/clone.js";
 import { CUA_ACTOR_LAB_PROVIDER_METADATA } from "../routes/computer-use/e2b-desktop-prepare.js";
-import { MAX_SANDBOX_MS } from "../routes/computer-use/types.js";
+import { MAX_SANDBOX_MS } from "../substrates/e2b/lifetime.js";
 import {
   abandonPreflightJournal,
   discardPreflightJournal,

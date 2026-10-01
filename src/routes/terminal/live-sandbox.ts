@@ -43,7 +43,7 @@ import { runWithWallClock, teardownSandbox } from "./sandbox.js";
 import {
   DEFAULT_REQUEST_TIMEOUT_MS,
   PRODUCT_SETUP_TIMEOUT_MS,
-  SANDBOX_TIMEOUT_BUFFER_MS,
+  TERMINAL_SANDBOX_TIMEOUT_BUFFER_MS,
   SANDBOX_WORKDIR,
   UPLOAD_MAX_BYTES,
   type LiveTerminalPlan,
@@ -103,7 +103,7 @@ export class LiveTerminalSandbox {
   constructor(inputs: LiveSandboxInputs) {
     this.inputs = inputs;
     this.wallClockMs = inputs.maxMinutes * 60_000;
-    this.sandboxTimeoutMs = this.wallClockMs + SANDBOX_TIMEOUT_BUFFER_MS;
+    this.sandboxTimeoutMs = this.wallClockMs + TERMINAL_SANDBOX_TIMEOUT_BUFFER_MS;
   }
 
   async acquire(): Promise<void> {

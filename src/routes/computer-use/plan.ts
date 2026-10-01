@@ -34,8 +34,8 @@ import {
 import type { RunLabProvenance } from "../../run/status.js";
 import { isLocalBrowserLab } from "../../substrates/local/runtime-config.js";
 import { defaultSessionTimeoutMs, resolvePerLaneSandboxMs } from "./lane-plan.js";
+import { MAX_SANDBOX_MS } from "../../substrates/e2b/lifetime.js";
 import {
-  MAX_SANDBOX_MS,
   type CuaActorLabErrorCode,
   type CuaActorLabHooks,
   type RunCuaActorLabOptions,

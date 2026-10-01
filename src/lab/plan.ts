@@ -12,13 +12,7 @@ import type { RunLabProvenance } from "../run/status.js";
 import { localBrowserDefaults } from "../substrates/local/runtime-config.js";
 import type { LabBackend, RunLabOptions } from "./engine.js";
 import { planBase } from "./plan-base.js";
-import type {
-  LabBindings,
-  LabPlan,
-  PlanRefusal,
-  PlanResult,
-  PreviewRefusalCode,
-} from "./plan-types.js";
+import type { LabPlan, PlanRefusal, PlanResult, PreviewRefusalCode } from "./plan-types.js";
 import {
   isComputerUseComposition,
   isScriptedBrowserComposition,
@@ -144,15 +138,7 @@ export function planLab(config: LabConfig, options: RunLabOptions): PlanResult {
   };
   const result = planRoute(routeOf(config), lab, options, input);
   if (!result.ok) return result;
-  const bindings: LabBindings = {
-    ...(options.cuaHooks === undefined ? {} : { cuaHooks: options.cuaHooks }),
-    ...(options.scriptedHooks === undefined ? {} : { scriptedHooks: options.scriptedHooks }),
-    ...(options.terminalHooks === undefined ? {} : { terminalHooks: options.terminalHooks }),
-    ...(options.sharedWorldHooks === undefined
-      ? {}
-      : { sharedWorldHooks: options.sharedWorldHooks }),
-  };
-  return { ok: true, planned: { plan: result.plan, bindings } };
+  return { ok: true, planned: { plan: result.plan } };
 }
 
 function planRoute(

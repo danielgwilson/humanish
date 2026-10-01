@@ -55,13 +55,11 @@ import {
   servePort,
 } from "./provenance.js";
 import {
-  DEFAULT_STATE_STEP_TIMEOUT_MS,
   SANDBOX_TIMEOUT_BUFFER_MS,
   SUBJECT_PROVISION_BUDGET_MS,
-  resolveActorSeatUrl,
-  seatLaneDeps,
-  startSeatFlush,
-} from "./seats.js";
+} from "../../substrates/e2b/lifetime.js";
+import { DEFAULT_STATE_STEP_TIMEOUT_MS } from "../../subject/state.js";
+import { resolveActorSeatUrl, seatLaneDeps, startSeatFlush } from "./seats.js";
 import {
   CONCURRENT_SHARED_WORLD_PROVIDER_METADATA,
   type ActorLaneResult,

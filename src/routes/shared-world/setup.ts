@@ -39,13 +39,9 @@ import type { SharedWorldPlan } from "../../lab/plan-types.js";
 import { planeStateOf } from "./plan.js";
 import path from "node:path";
 
-const DEFAULT_PROBER_CADENCE_MS = 1000;
+import { e2bRequestTimeoutMs } from "../../substrates/e2b/lifetime.js";
 
-function readPositiveInt(value: string | undefined, fallback: number): number {
-  if (value === undefined) return fallback;
-  const parsed = Number.parseInt(value, 10);
-  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : fallback;
-}
+const DEFAULT_PROBER_CADENCE_MS = 1000;
 
 function makeRunId(): string {
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
@@ -199,7 +195,7 @@ export async function prepareConcurrentRun(
   const { runId, createdAt, paths: runPaths } = run;
   const artifactRoot = runPaths.absoluteRunRoot;
   const timeoutMs = plan.sessionTimeoutMs ?? defaultSeatSessionTimeoutMs(plan);
-  const requestTimeoutMs = readPositiveInt(env.HUMANISH_E2B_REQUEST_TIMEOUT_MS, 60_000);
+  const requestTimeoutMs = e2bRequestTimeoutMs(env);
   const redactScreenshots = plan.residual.policies?.redactScreenshots === true;
   const timers: DetachedTimers = hooks.detachedTimers ?? {};
   const now = hooks.now ?? Date.now;

@@ -83,16 +83,6 @@ export const MIN_DERIVED_SESSION_TIMEOUT_MS = 5 * 60_000;
 // honest metadata + a prompt signal, not rendered (device-presets.ts FIDELITY NOTE) — and the
 // rendered WIDTH is floored to MIN_DESKTOP_RENDER_WIDTH (Chrome's ~500px window minimum) so a mobile
 // screen the browser can't shrink to does not overflow + clip (see resolveLaneDevice / #221).
-// Server-side reclamation buffer past the loop's own wall-clock stop.
-export const SANDBOX_TIMEOUT_BUFFER_MS = 10 * 60_000;
-
-// Room the clone route adds to the sandbox deadline for clone/install/build/start/probe.
-export const SUBJECT_PROVISION_BUDGET_MS = 30 * 60_000;
-
-/** E2B refuses a sandbox lifetime over one hour ("400: Timeout cannot be greater than 1 hours").
- *  The derived per-lane deadline has to stay under it, and saying so at plan time beats discovering
- *  it from a raw provider 400 after a plan has already printed. */
-export const MAX_SANDBOX_MS = 60 * 60_000;
 
 /**
  * Library-level hooks. `prepareDesktop` runs after sandbox creation and before subject

@@ -20,18 +20,12 @@ import { acquireE2BDesktopSandbox, readE2BRelease } from "../../substrates/e2b/s
 import type { OwnedDesktopAllocation } from "../../substrates/desktop-session.js";
 import { e2bShell } from "../../substrates/e2b/shell.js";
 import type { ScriptedBrowserLabHooks } from "./types.js";
-
-const SANDBOX_TIMEOUT_BUFFER_MS = 10 * 60_000;
-
-const SUBJECT_PROVISION_BUDGET_MS = 30 * 60_000;
-
-const DEFAULT_STATE_STEP_TIMEOUT_MS = 5 * 60_000;
-
-function readPositiveInt(value: string | undefined, fallback: number): number {
-  if (value === undefined) return fallback;
-  const parsed = Number.parseInt(value, 10);
-  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : fallback;
-}
+import {
+  e2bRequestTimeoutMs,
+  SANDBOX_TIMEOUT_BUFFER_MS,
+  SUBJECT_PROVISION_BUDGET_MS,
+} from "../../substrates/e2b/lifetime.js";
+import { DEFAULT_STATE_STEP_TIMEOUT_MS } from "../../subject/state.js";
 
 function servePort(serveUrl: string): number {
   const url = new URL(serveUrl);
@@ -96,7 +90,7 @@ export class ScriptedSubject {
   async provision(): Promise<string> {
     const { plan, clone, hooks, env, e2bApiKey, runPaths, timeoutMs } = this.inputs;
     const { subjectEnvNames, hasGithubToken, scrubKnownValues, now } = this.inputs;
-    const requestTimeoutMs = readPositiveInt(env.HUMANISH_E2B_REQUEST_TIMEOUT_MS, 60_000);
+    const requestTimeoutMs = e2bRequestTimeoutMs(env);
     const timers: DetachedTimers = hooks.detachedTimers ?? {};
     const subjectSandboxTimeoutMs =
       timeoutMs +

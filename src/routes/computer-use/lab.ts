@@ -45,11 +45,10 @@ export { defaultPackLocalTree } from "./local-tree-pack.js";
 export { resolveSubjectState } from "./subject-projection.js";
 
 /**
- * Wrapped so a DIRECT library caller gets the same status-record lifetime the CLI does: returning
- * from this function finalizes any record the run opened, whichever of its fail-closed exits it
- * took. `runLab` establishes a scope too and nesting is harmless — the inner scope owns what it
- * opened. Without this a test or an adopter calling the backend directly leaves the 5s cadence
- * ticking into a directory something else is deleting, which surfaces as an unrelated ENOTEMPTY.
+ * The library entry for a computer-use lab. It plans the config with planComputerUseLab and runs
+ * the plan as runComputerUsePlan does; runLab calls runComputerUsePlan directly. The
+ * withTransientCommsSecrets wrapper scopes any email secret the run registers to this run and its
+ * analysis. The run's status record is opened and finalized by the run scope in runPlanWithSecrets.
  */
 export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<CuaActorLabResult> {
   return withTransientCommsSecrets(() => runCuaActorLabWithSecrets(options));
@@ -107,9 +106,11 @@ export async function computerUseLabRefusal(
 }
 
 /**
- * Run a computer-use plan. The run scope gives a direct library caller the same status-record
- * lifetime the CLI gets. `config` is read only to build participants and by the lane runner, whose
- * hooks take the whole config; step 2A replaces it with the plan's participants.
+ * Run a computer-use plan. The run scope in runPlanWithSecrets finalizes any status record the run
+ * opened, on every exit, so a test or library caller does not leave the 5 s status cadence writing
+ * into a directory something else is deleting (an unrelated ENOTEMPTY). `config` is read only to
+ * build participants and by the lane runner, whose hooks take the whole config. It goes once the
+ * lane runner reads the plan's participants.
  */
 export async function runComputerUsePlan(
   plan: ComputerUsePlan,

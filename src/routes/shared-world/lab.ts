@@ -60,11 +60,10 @@ import {
 } from "./types.js";
 
 /**
- * Wrapped so a DIRECT library caller gets the same status-record lifetime the CLI does: returning
- * from this function finalizes any record the run opened, whichever of its fail-closed exits it
- * took. `runLab` establishes a scope too and nesting is harmless — the inner scope owns what it
- * opened. Without this a test or an adopter calling the backend directly leaves the 5s cadence
- * ticking into a directory something else is deleting, which surfaces as an unrelated ENOTEMPTY.
+ * The library entry for a shared-world lab. It plans the config with planSharedWorldLab and runs
+ * the plan as runSharedWorldPlan does; runLab calls runSharedWorldPlan directly. The
+ * withTransientCommsSecrets wrapper scopes any email secret the run registers to this run and its
+ * analysis. The run's status record is opened and finalized by the run scope in runPlanWithSecrets.
  */
 export async function runConcurrentSharedWorld(
   options: RunConcurrentSharedWorldLabOptions,
