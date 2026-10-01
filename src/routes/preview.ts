@@ -23,14 +23,17 @@ export function previewLabRefusal(
   };
 }
 
-/** runLab's step for a preview plan: it has no local checks, so it returns its run. */
-export function admitPreviewPlan(plan: PreviewPlan): AdmittedPlan<"preview"> {
+/** runLab's step for a preview plan: it has no local checks and takes no scorer, so it returns its run. */
+export function admitPreviewPlan(
+  plan: PreviewPlan,
+  input: Pick<RunLabOptions, "cwd" | "runId" | "open">,
+): AdmittedPlan<"preview"> {
   return {
     ok: true,
-    run: async (options) => ({
+    run: async () => ({
       route: "preview",
       backend: "synthetic",
-      result: await runPreviewPlan(plan, options),
+      result: await runPreviewPlan(plan, input),
     }),
   };
 }

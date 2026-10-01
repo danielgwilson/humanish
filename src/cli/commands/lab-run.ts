@@ -98,10 +98,10 @@ export async function runLabCommand(args: {
     return;
   }
 
-  // The route's CLI setup refuses bad options, and runLab's plan refuses bad labs, before the scorer
-  // loads, so neither imports the scorer's host code. The terminal route's key checks also come
-  // first. The other routes' checks of this machine (keys, subject env, a browser, a free run id)
-  // still come after the scorer loads.
+  // The route's CLI setup refuses bad options, runLab's plan refuses bad labs, and the route's local
+  // checks (keys, runtime auth, subject env, the local agent, caps) refuse this machine, all before
+  // the scorer loads, so none imports the scorer's host code. The scripted route's checks and the
+  // run-id claim still come after it; the scripted route takes no scorer.
   const run = routeRunFor(route, { ...args, config, labProvenance: lab });
   if (run === undefined) return;
 

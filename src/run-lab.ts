@@ -1,13 +1,14 @@
 // runLab runs one lab. It normalizes the caller's options, binds a local browser study's desktop
 // and provider, and plans the lab once with planLab. A refused plan returns the route's own result
 // envelope before anything starts. One switch on plan.route then calls the route's admit function,
-// which runs the route's local checks that need no scorer (today the terminal route's keys) and
+// which runs the route's local checks that need no scorer (keys, subject env, the local agent) and
 // returns the route's run. prepareLab is the same path in two steps, so the CLI can present either
 // refusal before it loads a declared review scorer.
 
 import type { AutomaticAnalysisHooks } from "./analysis/automatic-completion.js";
 import {
   computerUseInput,
+  type LateScorer,
   scriptedInput,
   sharedWorldInput,
   terminalInput,
@@ -62,7 +63,7 @@ export type PreparedLab =
   | {
       readonly ok: true;
       /** Runs the plan. A scorer loaded after planning joins the run's hooks; it changes no plan. */
-      run(scorer?: Pick<RunLabOptions, "scorer" | "scorerProvenance">): Promise<LabOutcome>;
+      run(scorer?: LateScorer): Promise<LabOutcome>;
     };
 
 /**
@@ -84,7 +85,7 @@ export async function prepareLab(config: LabConfig, options: RunLabOptions): Pro
     hooks?.buildExecutor === undefined
       ? (await import("./routes/computer-use/local-vm.js")).prepareLocalVmStudy
       : undefined;
-  let study = localVm?.({ ...normalized.options, config: lab });
+  const study = localVm?.({ ...normalized.options, config: lab });
   const planning = study?.options ?? normalized.options;
   const planned = planLab(lab, planning);
   if (!planned.ok) {
@@ -102,18 +103,19 @@ export async function prepareLab(config: LabConfig, options: RunLabOptions): Pro
   return {
     ok: true,
     async run(scorer) {
-      let running = normalized;
-      if (scorer !== undefined) {
-        const withScorer = normalizeRunLabOptions(lab, route, { ...options, ...scorer });
-        if (!withScorer.ok) return optionRefusalOutcome(lab, route, options, withScorer);
-        running = withScorer;
-        // The study's hooks wrap the caller's, so a scorer added after planning needs a new bag.
-        await study?.close();
-        study = localVm?.({ ...running.options, config: lab });
-      }
       try {
-        const outcome = await admitted.run(study?.options ?? running.options);
-        outcome.result.warnings.push(...running.warnings);
+        let warnings = normalized.warnings;
+        if (scorer !== undefined) {
+          // Checks the scorer against the route and the caller's options, as if passed up front.
+          const withScorer = normalizeRunLabOptions(lab, route, { ...options, ...scorer });
+          if (!withScorer.ok) return optionRefusalOutcome(lab, route, options, withScorer);
+          warnings = withScorer.warnings;
+        }
+        // The route layers the scorer over the inputs it admitted, and the local study is not
+        // rebuilt for it. The admitted runSession, provider and participant desktop belong to this
+        // study, so a rebuilt one would leave the participants they start for no finally to close.
+        const outcome = await admitted.run(scorer);
+        outcome.result.warnings.push(...warnings);
         return outcome;
       } finally {
         await study?.close();
@@ -122,7 +124,7 @@ export async function prepareLab(config: LabConfig, options: RunLabOptions): Pro
   };
 }
 
-/** The route's admit function for a plan: its refusal, or its run with the run's options. */
+/** The route's admit function for a plan, with the route's input from the run's options. */
 async function admitPlan(
   config: LabConfig,
   options: RunLabOptions,
@@ -130,15 +132,15 @@ async function admitPlan(
 ): Promise<AdmittedPlan> {
   switch (plan.route) {
     case "preview":
-      return admitPreviewPlan(plan);
+      return admitPreviewPlan(plan, options);
     case "computer-use":
-      return admitComputerUsePlan(plan, config);
+      return admitComputerUsePlan(plan, computerUseInput(options), config);
     case "scripted":
-      return admitScriptedPlan(plan);
+      return admitScriptedPlan(plan, scriptedInput(options));
     case "terminal":
       return admitTerminalPlan(plan, terminalInput(options));
     case "shared-world":
-      return admitSharedWorldPlan(plan, config);
+      return admitSharedWorldPlan(plan, sharedWorldInput(options), config);
   }
 }
 
@@ -257,13 +259,13 @@ export type LabOutcome =
 
 /**
  * A plan past its route's local checks that need no scorer: the refusal they returned, or the
- * route's run, which takes the run's options once a declared scorer has joined them.
+ * route's run, which takes a scorer loaded after them.
  */
 export type AdmittedPlan<R extends LabRoute = LabRoute> =
   | { readonly ok: false; readonly outcome: Extract<LabOutcome, { route: R }> }
   | {
       readonly ok: true;
-      run(options: RunLabOptions): Promise<Extract<LabOutcome, { route: R }>>;
+      run(scorer?: LateScorer): Promise<Extract<LabOutcome, { route: R }>>;
     };
 
 /** The result of a run on route `R`, the `result` of that route's `LabOutcome`. */
