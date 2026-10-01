@@ -3866,6 +3866,31 @@ describe("runCuaActorLab", () => {
     expect(bundle.cost.breakdown).toContainEqual(
       expect.objectContaining({ reason: "desktop_lifetime_incomplete", estimatedCostUsd: null }),
     );
+    // The sandbox may still be running: the run stays ok, and status.json and the bundle say so.
+    expect(bundle.providerResources[0]).toMatchObject({
+      status: "unknown",
+      cleanup: { killed: false, reason: expect.stringContaining("release is unconfirmed") },
+    });
+    const status = JSON.parse(
+      await readFile(
+        path.join(cwd, ".humanish", "runs", outcome.result.runId, "status.json"),
+        "utf8",
+      ),
+    );
+    expect(status.outcome).toMatchObject({
+      ok: true,
+      execution: { succeeded: true, failures: [] },
+    });
+    expect(status.outcome.execution.warnings).toEqual([
+      {
+        kind: "sandbox-cleanup",
+        message: expect.stringMatching(
+          new RegExp(
+            `^lane-01: .*release is unconfirmed.*humanish reclaim --run ${outcome.result.runId}`,
+          ),
+        ),
+      },
+    ]);
     await expectFailureGolden(
       "computer-use/cleanup-unconfirmed",
       path.join(cwd, ".humanish", "runs", outcome.result.runId),

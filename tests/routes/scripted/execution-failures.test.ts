@@ -7,7 +7,14 @@ import { scriptedExecutionFailures } from "../../../src/routes/scripted/result.j
 describe("scriptedExecutionFailures", () => {
   const observer = { ok: true as const };
   const passed = { completionReason: "goal_satisfied" as const, reason: "satisfied" };
-  const base = { dryRun: false, sessionError: undefined, expected: 2, observer };
+  const base = {
+    dryRun: false,
+    runId: "scripted-run",
+    sessionError: undefined,
+    expected: 2,
+    subject: undefined,
+    observer,
+  };
 
   it("records nothing when every surface returned and the Observer rendered", () => {
     expect(scriptedExecutionFailures({ ...base, sessionResults: [passed, passed] })).toEqual([]);
@@ -28,6 +35,30 @@ describe("scriptedExecutionFailures", () => {
     ]);
     // A dry run returns no surfaces by design.
     expect(scriptedExecutionFailures({ ...base, dryRun: true, sessionResults: [] })).toEqual([]);
+  });
+
+  it("records a subject sandbox whose release is unconfirmed, and nothing for a released one", () => {
+    const subject = {
+      sandboxId: "sb-subject",
+      killed: false,
+      releaseWarning: "Subject sandbox teardown failed.",
+    };
+    expect(
+      scriptedExecutionFailures({ ...base, sessionResults: [passed, passed], subject }),
+    ).toEqual([
+      {
+        kind: "sandbox-cleanup",
+        message:
+          "subject: Subject sandbox teardown failed. Reclaim it by recorded id with `humanish reclaim --run scripted-run`.",
+      },
+    ]);
+    expect(
+      scriptedExecutionFailures({
+        ...base,
+        sessionResults: [passed, passed],
+        subject: { ...subject, killed: true },
+      }),
+    ).toEqual([]);
   });
 
   it("records the session's error, an empty message included, without also counting the missing surfaces", () => {

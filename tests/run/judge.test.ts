@@ -26,6 +26,7 @@ import {
   type SharedWorldFacts,
   judgeExecution,
   judgePreview,
+  sandboxCleanupFailure,
   OUTCOME_POLICIES,
   participantHarnessFailed,
   resultOk,
@@ -466,6 +467,39 @@ describe("the outcome policies", () => {
     expect(counted("terminal")).toEqual(["sandbox-cleanup", "evidence"]);
     expect(counted("scripted")).toEqual(["evidence"]);
     expect(counted("preview")).toEqual([]);
+  });
+
+  it("keeps a failure the policy lets warn as a warning, without changing succeeded", () => {
+    expect(
+      judgeExecution(
+        [failure("sandbox-cleanup"), failure("evidence")],
+        OUTCOME_POLICIES["computer-use"],
+      ),
+    ).toEqual({
+      succeeded: false,
+      failures: [failure("evidence")],
+      warnings: [failure("sandbox-cleanup")],
+    });
+    expect(judgeExecution([failure("sandbox-cleanup")], OUTCOME_POLICIES.scripted)).toEqual({
+      succeeded: true,
+      failures: [],
+      warnings: [failure("sandbox-cleanup")],
+    });
+    expect(judgeExecution([failure("sandbox-cleanup")], OUTCOME_POLICIES.terminal)).toEqual({
+      succeeded: false,
+      failures: [failure("sandbox-cleanup")],
+    });
+  });
+
+  it("names the sandbox's owner, why its release is unconfirmed and the reclaim command", () => {
+    expect(sandboxCleanupFailure("lane-02", "Sandbox teardown failed: boom", "cua-run")).toEqual({
+      kind: "sandbox-cleanup",
+      message:
+        "lane-02: Sandbox teardown failed: boom Reclaim it by recorded id with `humanish reclaim --run cua-run`.",
+    });
+    expect(sandboxCleanupFailure("subject", undefined, "cua-run").message).toMatch(
+      /^subject: Sandbox release is unconfirmed\. Reclaim/,
+    );
   });
 
   // ok reads the execution and the scorer everywhere, and the participants only on a gate route:
