@@ -14,9 +14,9 @@ import { runDryRun } from "../../src/run/dry-run.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { type RunBundle } from "../../src/run/bundle.js";
 import { captureEvidence } from "../../src/analysis/evidence.js";
-import { appendStudyAnalysisCorrection, writeStudyAnalysis } from "../../src/analysis/store.js";
+import { appendAnalysisCorrection, writeAnalysis } from "../../src/analysis/store.js";
 import { writeStudyAnalysisExecutionReceipt } from "../../src/analysis/store-executions.js";
-import { loadStudyAnalysis } from "../../src/analysis/load.js";
+import { loadAnalysis } from "../../src/analysis/load.js";
 import { hashAnalysisValue } from "../../src/analysis/validation.js";
 import { syntheticArtifact } from "../analysis/fixtures.js";
 
@@ -81,7 +81,7 @@ it("redacts legacy analysis-directory evidence while omitting generated analysis
     const input = await captureEvidence(prepared, await readFile(path.join(root, "run.json")));
     const artifact = syntheticArtifact(input);
     await writeStudyAnalysisExecutionReceipt(prepared, artifact);
-    await writeStudyAnalysis(prepared, artifact);
+    await writeAnalysis(prepared, artifact);
     const correction = {
       schema: "humanish.study-analysis-correction.v1" as const,
       id: "synthetic-correction",
@@ -94,7 +94,7 @@ it("redacts legacy analysis-directory evidence while omitting generated analysis
       reason: "Synthetic review annotation.",
       replacementClaim: null,
     };
-    await appendStudyAnalysisCorrection(prepared, correction);
+    await appendAnalysisCorrection(prepared, correction);
     const generatedPaths = [
       `analysis/${artifact.id}/analysis.json`,
       `analysis/${artifact.id}/corrections/${correction.id}/correction.json`,
@@ -144,7 +144,7 @@ it("redacts legacy analysis-directory evidence while omitting generated analysis
       await expect(access(path.join(derivative.physicalRunRoot, relative))).rejects.toMatchObject({
         code: "ENOENT",
       });
-    expect((await loadStudyAnalysis(derivative)).state).toBe("none");
+    expect((await loadAnalysis(derivative)).state).toBe("none");
     expect((await verifyRun(shared, runId)).shareSafety.status).toBe("share_ready");
     for (let index = 0; index < sourcePaths.length; index++) {
       expect(await readFile(path.join(root, sourcePaths[index]!))).toEqual(originals[index]);

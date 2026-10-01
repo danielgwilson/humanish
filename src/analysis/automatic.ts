@@ -22,7 +22,7 @@ import {
   type AutomaticAnalysisJob,
 } from "./job.js";
 import { ANALYSIS_ID_PATTERN, type AnalysisConfig } from "./types.js";
-import { readStudyAnalysisVersion } from "./store.js";
+import { readAnalysisVersion } from "./store.js";
 import { readStudyAnalysisExecution } from "./store-executions.js";
 import { physicalCwdOf, resolvePhysicalCwd, type PreparedRunArtifactPaths } from "../run/paths.js";
 
@@ -166,7 +166,7 @@ async function persistOutcome(
     const analysisId = outcome.result?.analysisId;
     const [entry, receipt] = analysisId
       ? await Promise.all([
-          readStudyAnalysisVersion(prepared, analysisId),
+          readAnalysisVersion(prepared, analysisId),
           readStudyAnalysisExecution(prepared, analysisId),
         ])
       : [null, null];

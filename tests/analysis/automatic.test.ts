@@ -28,11 +28,11 @@ import {
   AUTOMATIC_ANALYSIS_DIRECTORY,
 } from "../../src/analysis/job.js";
 import { listStudyAnalysisExecutions } from "../../src/analysis/store-executions.js";
-import { loadStudyAnalysis } from "../../src/analysis/load.js";
+import { loadAnalysis } from "../../src/analysis/load.js";
 import { captureEvidence } from "../../src/analysis/evidence.js";
 import {
   projectShareCheckedAnalysis,
-  studyAnalysisSharingProblems,
+  analysisSharingProblems,
 } from "../../src/analysis/sharing.js";
 import { hashAnalysisValue } from "../../src/analysis/validation.js";
 import { ANALYSIS_PROMPT_VERSION, runAnalysis } from "../../src/analysis/execute.js";
@@ -290,7 +290,7 @@ describe("opted-in automatic analysis ownership", () => {
       state: "partial",
       reason: "AUTOMATIC_ANALYSIS_ADMISSION_EXCEEDED",
     });
-    expect((await loadStudyAnalysis(prepared)).analysis?.result).not.toBeNull();
+    expect((await loadAnalysis(prepared)).analysis?.result).not.toBeNull();
     expect((await listStudyAnalysisExecutions(prepared)).receipts).toHaveLength(1);
     expect(h.fetch).toHaveBeenCalledOnce();
   });
@@ -346,7 +346,7 @@ describe("opted-in automatic analysis ownership", () => {
       result: { reused: true, analysisId: prior.analysisId },
     });
     for (let i = 0; i < 3; i++) {
-      await loadStudyAnalysis(prepared);
+      await loadAnalysis(prepared);
       await readAutomaticStudyAnalysis(cwd, runId);
       await renderObserver(cwd, runId, { open: false });
       expect(
@@ -444,14 +444,14 @@ describe("opted-in automatic analysis ownership", () => {
       { apiKey: "synthetic-key", fetch: h.fetch },
     );
     await rm(path.join(root, "analysis", next.result!.analysisId!, "analysis.json"));
-    const loaded = await loadStudyAnalysis(prepared);
+    const loaded = await loadAnalysis(prepared);
     expect(loaded).toMatchObject({
       state: "ready",
       analysis: { id: prior.analysisId },
       warnings: [],
       automatic: { state: "unknown" },
     });
-    expect(studyAnalysisSharingProblems(loaded)).toEqual({ sensitive: false, unverified: false });
+    expect(analysisSharingProblems(loaded)).toEqual({ sensitive: false, unverified: false });
     expect(await readFile(path.join(root, "run.json"))).toEqual(original);
   });
 
@@ -472,7 +472,7 @@ describe("opted-in automatic analysis ownership", () => {
         );
       const result = kind === "busy" ? await withAnalysisLock(prepared, call) : await call();
       expect(result.state).toBe(kind === "cancelled" ? "cancelled" : "skipped");
-      expect((await loadStudyAnalysis(prepared)).automatic?.state).toBe(result.state);
+      expect((await loadAnalysis(prepared)).automatic?.state).toBe(result.state);
       expect((await verifyRun(cwd, runId)).shareSafety.status).toBe("share_ready");
       expect(
         (
@@ -686,13 +686,13 @@ describe("opted-in automatic analysis ownership", () => {
         if (kind === "symlink") await symlink(outside, jobPath());
         else await link(outside, jobPath());
       }
-      const loaded = await loadStudyAnalysis(prepared);
+      const loaded = await loadAnalysis(prepared);
       expect(loaded).toMatchObject({
         state: "none",
         warnings: [],
         automatic: { state: "unknown" },
       });
-      expect(studyAnalysisSharingProblems(loaded)).toEqual({ sensitive: false, unverified: false });
+      expect(analysisSharingProblems(loaded)).toEqual({ sensitive: false, unverified: false });
       expect(await readFile(path.join(root, "run.json"))).toEqual(original);
     },
   );
@@ -762,7 +762,7 @@ describe("opted-in automatic analysis ownership", () => {
         { apiKey: "", fetch: h.fetch },
       ),
     ).toMatchObject({ state: "skipped", reason: "AUTOMATIC_ANALYSIS_KEY_MISSING" });
-    expect(await loadStudyAnalysis(prepared)).toMatchObject({
+    expect(await loadAnalysis(prepared)).toMatchObject({
       state: "ready",
       analysis: { id: prior.analysisId },
       automatic: { state: "skipped" },
@@ -921,7 +921,7 @@ describe("opted-in automatic analysis ownership", () => {
       warnings: [],
       automatic: { state: "unknown", reason: "AUTOMATIC_ANALYSIS_OUTCOME_UNKNOWN" },
     });
-    expect(studyAnalysisSharingProblems(loaded)).toEqual({ sensitive: false, unverified: false });
+    expect(analysisSharingProblems(loaded)).toEqual({ sensitive: false, unverified: false });
   });
 
   it("serves only a safe job projection and exports no live execution authority", async () => {

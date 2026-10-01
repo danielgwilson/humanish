@@ -16,17 +16,17 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { prepareRunArtifactPaths, type PreparedRunArtifactPaths } from "../../src/run/paths.js";
 import { captureEvidence } from "../../src/analysis/evidence.js";
 import {
-  appendStudyAnalysisCorrection,
+  appendAnalysisCorrection,
   assertAnalysisPublicationCapacity,
   listAnalyses,
-  writeStudyAnalysis,
+  writeAnalysis,
 } from "../../src/analysis/store.js";
 import {
   beginStudyAnalysisExecution,
   listStudyAnalysisExecutions,
   writeStudyAnalysisExecutionReceipt,
 } from "../../src/analysis/store-executions.js";
-import { loadStudyAnalysis } from "../../src/analysis/load.js";
+import { loadAnalysis } from "../../src/analysis/load.js";
 import { digestAnalysisInput, hashAnalysisValue } from "../../src/analysis/validation.js";
 import type {
   AnalysisArtifact,
@@ -95,32 +95,32 @@ describe("immutable study analysis store", () => {
     expect(input.images).toHaveLength(1);
     expect(input.evidence[0]!.at).toBeNull();
     expect(input.evidence[0]!.elapsedMs).toBeNull();
-    await writeStudyAnalysis(prepared, artifact);
+    await writeAnalysis(prepared, artifact);
     expect(await readFile(path.join(prepared.physicalRunRoot, "run.json"))).toEqual(source);
     const saved = await readFile(artifactPath(), "utf8");
     expect(saved).not.toContain("data:image");
     expect(saved).not.toContain('"images"');
-    expect(await loadStudyAnalysis(prepared)).toMatchObject({
+    expect(await loadAnalysis(prepared)).toMatchObject({
       state: "ready",
       analysis: artifact,
       corrections: [],
       warnings: [],
     });
-    await expect(writeStudyAnalysis(prepared, artifact)).rejects.toThrow("ANALYSIS_ID_EXISTS");
+    await expect(writeAnalysis(prepared, artifact)).rejects.toThrow("ANALYSIS_ID_EXISTS");
     expect(await readFile(artifactPath(), "utf8")).toBe(saved);
   });
 
   it("allows one publisher when concurrent callers claim the same immutable ID", async () => {
     const results = await Promise.allSettled([
-      writeStudyAnalysis(prepared, artifact),
-      writeStudyAnalysis(prepared, artifact),
+      writeAnalysis(prepared, artifact),
+      writeAnalysis(prepared, artifact),
     ]);
     expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
-    expect((await loadStudyAnalysis(prepared)).state).toBe("ready");
+    expect((await loadAnalysis(prepared)).state).toBe("ready");
   });
 
   it("ignores interrupted directories and preserves a prior report after a failed attempt", async () => {
-    await writeStudyAnalysis(prepared, artifact);
+    await writeAnalysis(prepared, artifact);
     await mkdir(path.join(prepared.physicalRunRoot, "analysis", "interrupted"));
     const failed = {
       ...artifact,
@@ -130,14 +130,14 @@ describe("immutable study analysis store", () => {
       result: null,
       error: "analysis_provider_failed",
     };
-    await writeStudyAnalysis(prepared, failed);
-    const latest = await loadStudyAnalysis(prepared);
+    await writeAnalysis(prepared, failed);
+    const latest = await loadAnalysis(prepared);
     expect(latest).toMatchObject({
       state: "ready",
       analysis: { id: "analysis-1" },
       warnings: ["ANALYSIS_FAILED"],
     });
-    expect(await loadStudyAnalysis(prepared, "analysis-2")).toMatchObject({
+    expect(await loadAnalysis(prepared, "analysis-2")).toMatchObject({
       state: "invalid",
       analysis: { status: "failed" },
     });
@@ -145,7 +145,7 @@ describe("immutable study analysis store", () => {
   });
 
   it("returns no analysis for an ordinary retained run", async () => {
-    expect(await loadStudyAnalysis(prepared)).toEqual({
+    expect(await loadAnalysis(prepared)).toEqual({
       state: "none",
       analysis: null,
       corrections: [],
@@ -214,26 +214,26 @@ describe("immutable study analysis store", () => {
   });
 
   it("marks changed run bytes stale and refuses publication against the earlier digest", async () => {
-    await writeStudyAnalysis(prepared, artifact);
+    await writeAnalysis(prepared, artifact);
     await writeFile(
       path.join(prepared.physicalRunRoot, "run.json"),
       Buffer.concat([source, Buffer.from("\n")]),
     );
-    expect((await loadStudyAnalysis(prepared)).state).toBe("stale");
-    await expect(writeStudyAnalysis(prepared, { ...artifact, id: "analysis-2" })).rejects.toThrow(
+    expect((await loadAnalysis(prepared)).state).toBe("stale");
+    await expect(writeAnalysis(prepared, { ...artifact, id: "analysis-2" })).rejects.toThrow(
       "ANALYSIS_SOURCE_CHANGED",
     );
   });
 
   it("marks changed decoded capture bytes stale without serving mismatched findings", async () => {
-    await writeStudyAnalysis(prepared, artifact);
+    await writeAnalysis(prepared, artifact);
     const image = new PNG({ width: 4, height: 4 });
     image.data.fill(255);
     await writeFile(
       path.join(prepared.physicalRunRoot, "captures", "frame.png"),
       PNG.sync.write(image),
     );
-    expect(await loadStudyAnalysis(prepared)).toMatchObject({
+    expect(await loadAnalysis(prepared)).toMatchObject({
       state: "stale",
       analysis: null,
       warnings: ["ANALYSIS_CAPTURE_CHANGED"],
@@ -244,7 +244,7 @@ describe("immutable study analysis store", () => {
     await writeFile(path.join(cwd, "outside.png"), png);
     artifact.evidence[0]!.capture!.path = "outside.png";
     artifact.inputDigest = digestAnalysisInput(artifact);
-    await expect(writeStudyAnalysis(prepared, artifact)).rejects.toThrow(
+    await expect(writeAnalysis(prepared, artifact)).rejects.toThrow(
       "ANALYSIS_CAPTURE_REFERENCE_INVALID",
     );
     expect(await readFile(path.join(cwd, "outside.png"))).toEqual(png);
@@ -253,23 +253,21 @@ describe("immutable study analysis store", () => {
   it("rejects changed participant context and false coverage even with recomputed digests", async () => {
     artifact.participants[0]!.assignment = "A different task.";
     artifact.inputDigest = digestAnalysisInput(artifact);
-    await expect(writeStudyAnalysis(prepared, artifact)).rejects.toThrow(
+    await expect(writeAnalysis(prepared, artifact)).rejects.toThrow(
       "ANALYSIS_PARTICIPANT_INPUT_INVALID",
     );
     artifact = syntheticArtifact(await captureEvidence(prepared, source));
     artifact.evidence[1]!.text = "I could not";
     artifact.result!.participants[0]!.feedback = [];
     artifact.inputDigest = digestAnalysisInput(artifact);
-    await expect(writeStudyAnalysis(prepared, artifact)).rejects.toThrow(
-      "ANALYSIS_COVERAGE_INCOMPLETE",
-    );
+    await expect(writeAnalysis(prepared, artifact)).rejects.toThrow("ANALYSIS_COVERAGE_INCOMPLETE");
   });
 
   it("keeps invalid newer JSON visible as a warning without hiding valid findings", async () => {
-    await writeStudyAnalysis(prepared, artifact);
+    await writeAnalysis(prepared, artifact);
     await mkdir(path.join(prepared.physicalRunRoot, "analysis", "analysis-2"));
     await writeFile(artifactPath("analysis-2"), '{"schema":"unexpected"}');
-    expect(await loadStudyAnalysis(prepared)).toMatchObject({
+    expect(await loadAnalysis(prepared)).toMatchObject({
       state: "ready",
       analysis: { id: "analysis-1" },
       warnings: ["ANALYSIS_ARTIFACT_INVALID"],
@@ -282,7 +280,7 @@ describe("immutable study analysis store", () => {
     await mkdir(path.dirname(artifactPath()), { recursive: true });
     if (kind === "symlink") await symlink(outside, artifactPath());
     else await link(outside, artifactPath());
-    expect(await loadStudyAnalysis(prepared)).toMatchObject({
+    expect(await loadAnalysis(prepared)).toMatchObject({
       state: "invalid",
       analysis: null,
       warnings: ["ANALYSIS_ARTIFACT_UNREADABLE"],
@@ -294,9 +292,9 @@ describe("immutable study analysis store", () => {
     await mkdir(outside);
     await writeFile(path.join(outside, "sentinel"), "unchanged");
     await symlink(outside, path.join(prepared.physicalRunRoot, "analysis"));
-    await expect(writeStudyAnalysis(prepared, artifact)).rejects.toThrow();
-    expect((await loadStudyAnalysis(prepared)).state).toBe("invalid");
-    expect((await loadStudyAnalysis(prepared, "../outside")).state).toBe("invalid");
+    await expect(writeAnalysis(prepared, artifact)).rejects.toThrow();
+    expect((await loadAnalysis(prepared)).state).toBe("invalid");
+    expect((await loadAnalysis(prepared, "../outside")).state).toBe("invalid");
     expect(await readFile(path.join(outside, "sentinel"), "utf8")).toBe("unchanged");
   });
 
@@ -314,29 +312,27 @@ describe("immutable study analysis store", () => {
   });
 
   it("appends corrections bound to the exact analysis and finding without editing either", async () => {
-    await writeStudyAnalysis(prepared, artifact);
+    await writeAnalysis(prepared, artifact);
     const before = await readFile(artifactPath());
     const record = correction();
-    await appendStudyAnalysisCorrection(prepared, record);
-    expect((await loadStudyAnalysis(prepared)).corrections).toEqual([record]);
+    await appendAnalysisCorrection(prepared, record);
+    expect((await loadAnalysis(prepared)).corrections).toEqual([record]);
     expect(await readFile(artifactPath())).toEqual(before);
-    await expect(appendStudyAnalysisCorrection(prepared, record)).rejects.toThrow(
-      "ANALYSIS_ID_EXISTS",
-    );
+    await expect(appendAnalysisCorrection(prepared, record)).rejects.toThrow("ANALYSIS_ID_EXISTS");
   });
 
   it("rejects a correction targeting different analysis or finding content", async () => {
-    await writeStudyAnalysis(prepared, artifact);
+    await writeAnalysis(prepared, artifact);
     await expect(
-      appendStudyAnalysisCorrection(prepared, { ...correction(), findingSha256: "c".repeat(64) }),
+      appendAnalysisCorrection(prepared, { ...correction(), findingSha256: "c".repeat(64) }),
     ).rejects.toThrow("ANALYSIS_CORRECTION_BINDING_INVALID");
     await expect(
-      appendStudyAnalysisCorrection(prepared, { ...correction(), analysisSha256: "c".repeat(64) }),
+      appendAnalysisCorrection(prepared, { ...correction(), analysisSha256: "c".repeat(64) }),
     ).rejects.toThrow("ANALYSIS_CORRECTION_BINDING_INVALID");
   });
 
   it("refuses the 257th correction before claiming it and preserves all prior review decisions", async () => {
-    await writeStudyAnalysis(prepared, artifact);
+    await writeAnalysis(prepared, artifact);
     const before = await readFile(artifactPath());
     const parent = path.join(prepared.physicalRunRoot, "analysis", artifact.id, "corrections");
     await mkdir(parent);
@@ -352,15 +348,15 @@ describe("immutable study analysis store", () => {
       }),
     );
     const last = { ...correction(), id: "correction-255", status: "dismissed" as const };
-    await appendStudyAnalysisCorrection(prepared, last);
+    await appendAnalysisCorrection(prepared, last);
     records.push(last);
     await expect(
-      appendStudyAnalysisCorrection(prepared, { ...correction(), id: "correction-256" }),
+      appendAnalysisCorrection(prepared, { ...correction(), id: "correction-256" }),
     ).rejects.toThrow("ANALYSIS_CORRECTION_HISTORY_UNAVAILABLE");
     await expect(access(path.join(parent, "correction-256"))).rejects.toMatchObject({
       code: "ENOENT",
     });
-    expect(await loadStudyAnalysis(prepared)).toMatchObject({
+    expect(await loadAnalysis(prepared)).toMatchObject({
       state: "ready",
       corrections: records,
       warnings: [],
@@ -372,10 +368,10 @@ describe("immutable study analysis store", () => {
   it.each(["oversized", "malformed", "empty", "symlink", "hardlink"] as const)(
     "warns when a present %s correction cannot preserve the recorded dismissal",
     async (kind) => {
-      await writeStudyAnalysis(prepared, artifact);
+      await writeAnalysis(prepared, artifact);
       const record = { ...correction(), status: "dismissed" as const };
-      await appendStudyAnalysisCorrection(prepared, record);
-      expect((await loadStudyAnalysis(prepared)).corrections).toEqual([record]);
+      await appendAnalysisCorrection(prepared, record);
+      expect((await loadAnalysis(prepared)).corrections).toEqual([record]);
       const target = path.join(
         prepared.physicalRunRoot,
         "analysis",
@@ -399,7 +395,7 @@ describe("immutable study analysis store", () => {
         ? "ANALYSIS_CORRECTION_INVALID"
         : "ANALYSIS_CORRECTION_UNREADABLE";
       for (const id of [undefined, artifact.id]) {
-        expect(await loadStudyAnalysis(prepared, id)).toMatchObject({
+        expect(await loadAnalysis(prepared, id)).toMatchObject({
           state: "ready",
           analysis: { id: artifact.id },
           corrections: [],
@@ -411,32 +407,32 @@ describe("immutable study analysis store", () => {
   );
 
   it("ignores an unpublished correction directory while retaining an existing dismissal", async () => {
-    await writeStudyAnalysis(prepared, artifact);
+    await writeAnalysis(prepared, artifact);
     const record = { ...correction(), status: "dismissed" as const };
-    await appendStudyAnalysisCorrection(prepared, record);
+    await appendAnalysisCorrection(prepared, record);
     await mkdir(
       path.join(prepared.physicalRunRoot, "analysis", artifact.id, "corrections", "interrupted"),
     );
-    expect(await loadStudyAnalysis(prepared)).toMatchObject({
+    expect(await loadAnalysis(prepared)).toMatchObject({
       corrections: [record],
       warnings: [],
     });
   });
 
   it("does not carry approval forward to a subsequent analysis version", async () => {
-    await writeStudyAnalysis(prepared, artifact);
-    await appendStudyAnalysisCorrection(prepared, correction());
-    await writeStudyAnalysis(prepared, {
+    await writeAnalysis(prepared, artifact);
+    await appendAnalysisCorrection(prepared, correction());
+    await writeAnalysis(prepared, {
       ...artifact,
       id: "analysis-2",
       completedAt: "2026-09-01T00:04:00Z",
     });
-    expect(await loadStudyAnalysis(prepared)).toMatchObject({
+    expect(await loadAnalysis(prepared)).toMatchObject({
       state: "ready",
       analysis: { id: "analysis-2" },
       corrections: [],
     });
-    expect((await loadStudyAnalysis(prepared, "analysis-1")).corrections).toHaveLength(1);
+    expect((await loadAnalysis(prepared, "analysis-1")).corrections).toHaveLength(1);
   });
 
   it("retains omission counts and original frame ordinals when an image limit excludes a capture", async () => {
@@ -458,8 +454,8 @@ describe("immutable study analysis store", () => {
       capture: { eventId: "capture-2" },
       elapsedMs: null,
     });
-    await writeStudyAnalysis(prepared, syntheticArtifact(selected));
-    expect((await loadStudyAnalysis(prepared)).analysis?.status).toBe("partial");
+    await writeAnalysis(prepared, syntheticArtifact(selected));
+    expect((await loadAnalysis(prepared)).analysis?.status).toBe("partial");
   });
 
   it("does not analyze live participants or follow nonlocal screenshot references", async () => {
@@ -484,7 +480,7 @@ describe("immutable study analysis store", () => {
       Buffer.concat([source, Buffer.from("\n")]),
     );
     await writeStudyAnalysisExecutionReceipt(prepared, artifact);
-    await expect(writeStudyAnalysis(prepared, artifact)).rejects.toThrow("ANALYSIS_SOURCE_CHANGED");
+    await expect(writeAnalysis(prepared, artifact)).rejects.toThrow("ANALYSIS_SOURCE_CHANGED");
     const execution = await listStudyAnalysisExecutions(prepared);
     expect(execution.warnings).toEqual([]);
     expect(execution.receipts).toHaveLength(1);
@@ -684,10 +680,8 @@ describe("immutable study analysis store", () => {
         ],
       },
     });
-    await writeStudyAnalysis(prepared, syntheticArtifact(captured));
-    expect((await loadStudyAnalysis(prepared)).analysis?.participants).toEqual(
-      captured.participants,
-    );
+    await writeAnalysis(prepared, syntheticArtifact(captured));
+    expect((await loadAnalysis(prepared)).analysis?.participants).toEqual(captured.participants);
     expect(await readFile(path.join(prepared.physicalRunRoot, "run.json"))).toEqual(source);
   });
 
@@ -751,17 +745,15 @@ describe("immutable study analysis store", () => {
       { taskId: "opaque-b", completed: true, inputsObserved: null },
     ]);
     expect(captured.coverage).toMatchObject({ complete: true, omissions: [] });
-    await writeStudyAnalysis(prepared, syntheticArtifact(captured));
-    expect((await loadStudyAnalysis(prepared)).analysis?.participants).toEqual(
-      captured.participants,
-    );
+    await writeAnalysis(prepared, syntheticArtifact(captured));
+    expect((await loadAnalysis(prepared)).analysis?.participants).toEqual(captured.participants);
     const forged = syntheticArtifact(captured, "analysis-forged");
     forged.participants[0]!.assignment = forged.participants[0]!.assignment!.replace(
       '"opaque-b": Rename',
       '"opaque-a": Rename',
     );
     forged.inputDigest = digestAnalysisInput(forged);
-    await expect(writeStudyAnalysis(prepared, forged)).rejects.toThrow(
+    await expect(writeAnalysis(prepared, forged)).rejects.toThrow(
       "ANALYSIS_PARTICIPANT_INPUT_INVALID",
     );
   });
@@ -779,8 +771,8 @@ describe("immutable study analysis store", () => {
       complete: false,
       omissions: ["Participant context exceeded the text limit."],
     });
-    await writeStudyAnalysis(prepared, syntheticArtifact(captured));
-    expect((await loadStudyAnalysis(prepared)).state).toBe("ready");
+    await writeAnalysis(prepared, syntheticArtifact(captured));
+    expect((await loadAnalysis(prepared)).state).toBe("ready");
   });
 
   it("preserves null versus an explicitly empty task measurement and rejects forged provenance", async () => {
@@ -801,7 +793,7 @@ describe("immutable study analysis store", () => {
     const forged = syntheticArtifact(captured);
     forged.participants[0]!.provenance.declaredOutcome = "reached";
     forged.inputDigest = digestAnalysisInput(forged);
-    await expect(writeStudyAnalysis(prepared, forged)).rejects.toThrow(
+    await expect(writeAnalysis(prepared, forged)).rejects.toThrow(
       "ANALYSIS_PARTICIPANT_INPUT_INVALID",
     );
   });
@@ -811,21 +803,21 @@ describe("immutable study analysis store", () => {
     await mkdir(directory);
     await writeFile(path.join(directory, "frame.png"), png);
     await writeFile(path.join(directory, "observations.txt"), "Synthetic legacy observations.");
-    expect(await loadStudyAnalysis(prepared)).toEqual({
+    expect(await loadAnalysis(prepared)).toEqual({
       state: "none",
       analysis: null,
       corrections: [],
       warnings: [],
     });
     await writeFile(path.join(directory, "analysis.json"), "{}");
-    expect((await loadStudyAnalysis(prepared)).state).toBe("invalid");
+    expect((await loadAnalysis(prepared)).state).toBe("invalid");
     await rm(path.join(directory, "analysis.json"));
     const outside = path.join(cwd, "outside.txt");
     await writeFile(outside, "Synthetic unrelated file.");
     await link(outside, path.join(directory, "linked.txt"));
-    expect((await loadStudyAnalysis(prepared)).state).toBe("invalid");
+    expect((await loadAnalysis(prepared)).state).toBe("invalid");
     await rm(path.join(directory, "linked.txt"));
     await symlink(outside, path.join(directory, ".humanish-write-synthetic.tmp"));
-    expect((await loadStudyAnalysis(prepared)).state).toBe("invalid");
+    expect((await loadAnalysis(prepared)).state).toBe("invalid");
   });
 });
