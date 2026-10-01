@@ -21,10 +21,10 @@ export interface CuaRunBundleBase {
   descriptor: CuaActorDescriptor;
   appUrl: string;
   createdAt: string;
-  routePlan: ComputerUsePlan;
+  plan: ComputerUsePlan;
   runId: string;
   source: RunBundle["source"];
-  plan: CuaParticipantPlan;
+  participantPlan: CuaParticipantPlan;
   rerun?: RunRerunLineage;
   redactScreenshots: boolean;
   inProcessRoute: boolean;
@@ -97,7 +97,7 @@ export function buildCuaRunBundle(
       appUrl: spec.planned.targetUrl ?? base.appUrl,
       createdAt: base.createdAt,
       dryRun: state.dryRun,
-      routePlan: base.routePlan,
+      plan: base.plan,
       runId: base.runId,
       source: base.source,
       redactScreenshots: base.redactScreenshots,
@@ -120,10 +120,10 @@ export function buildCuaRunBundle(
     appUrl: base.appUrl,
     createdAt: base.createdAt,
     dryRun: state.dryRun,
-    routePlan: base.routePlan,
+    plan: base.plan,
     runId: base.runId,
     source: base.source,
-    plan: base.plan,
+    participantPlan: base.participantPlan,
     ...(base.rerun === undefined ? {} : { rerun: base.rerun }),
     ...(state.failFastReason === undefined ? {} : { failFastReason: state.failFastReason }),
     cloneRoute: base.cloneRoute,

@@ -53,7 +53,7 @@ function cuaLabResult(args: {
   outcomes: ParticipantRunOutcome[] | undefined;
   subjects: CuaSubjectProjection[];
   aggregateSubject: CuaSubjectProjection;
-  plan: CuaParticipantPlan;
+  participantPlan: CuaParticipantPlan;
   rerunLineage: RunRerunLineage | undefined;
   bundle: RunBundle;
   /** The run's judgment; on this gate route ok requires every participant to have passed. */
@@ -76,7 +76,7 @@ function cuaLabResult(args: {
     outcomes,
     subjects,
     aggregateSubject,
-    plan,
+    participantPlan,
     rerunLineage,
     bundle,
     observer,
@@ -108,7 +108,7 @@ function cuaLabResult(args: {
   const participantResults = participantRuns.map((spec, index) =>
     toParticipantResult(spec, outcomes?.[index], subjects[index]!, dryRun),
   );
-  const summary = buildParticipantSummary(outcomes, participantCount, plan, dryRun);
+  const summary = buildParticipantSummary(outcomes, participantCount, participantPlan, dryRun);
   const firstOutcome = outcomes?.[0];
 
   const errorResult = ((): CuaActorLabResult["error"] | undefined => {
@@ -186,7 +186,7 @@ function cuaLabResult(args: {
         }
       : {}),
     subject: aggregateSubject,
-    plan,
+    plan: participantPlan,
     lanes: participantResults,
     diagnostics: summarizeCuaDiagnostics({
       dryRun,
@@ -243,7 +243,7 @@ export async function finishCuaRun(
   ran: Extract<Awaited<ReturnType<typeof runLabParticipants>>, { ok: true }>,
 ): Promise<CuaActorLabResult> {
   const {
-    routePlan,
+    plan,
     input,
     config,
     dryRun,
@@ -253,7 +253,7 @@ export async function finishCuaRun(
     appUrl,
     descriptor,
     participantRuns,
-    plan,
+    participantPlan,
     rerunLineage,
     participantCount,
     scrubKnownValues,
@@ -298,7 +298,7 @@ export async function finishCuaRun(
     context: {
       bundle,
       runDir: physicalArtifactRoot,
-      labId: routePlan.labId,
+      labId: plan.labId,
       runId,
       actor: descriptor.id,
       backend: "cua",
@@ -323,7 +323,7 @@ export async function finishCuaRun(
     OUTCOME_POLICIES["computer-use"],
   );
   const result = cuaLabResult({
-    labId: routePlan.labId,
+    labId: plan.labId,
     cwd,
     runId,
     actorId: descriptor.id,
@@ -333,7 +333,7 @@ export async function finishCuaRun(
     outcomes,
     subjects,
     aggregateSubject,
-    plan,
+    participantPlan,
     rerunLineage,
     bundle,
     judgment,

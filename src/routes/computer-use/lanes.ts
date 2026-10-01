@@ -489,7 +489,7 @@ export function participantCapWarning(
 export async function runAllCuaParticipants(
   runs: readonly DesktopParticipantRun[],
   deps: Omit<CuaParticipantDeps, "signalProvisioned">,
-  plan: CuaParticipantPlan,
+  participantPlan: CuaParticipantPlan,
   inProcessRoute: boolean,
 ): Promise<{ outcomes: ParticipantRunOutcome[]; failFastReason: string | undefined }> {
   if (inProcessRoute) {
@@ -502,6 +502,6 @@ export async function runAllCuaParticipants(
   }
   if (runs.length === 1)
     return { outcomes: [await runCuaParticipant(runs[0]!, deps)], failFastReason: undefined };
-  const ran = await runCuaParticipants([...runs], deps, plan.concurrency);
+  const ran = await runCuaParticipants([...runs], deps, participantPlan.concurrency);
   return { outcomes: ran.outcomes, failFastReason: ran.failFastReason };
 }

@@ -67,7 +67,7 @@ export function buildSingleParticipantBundle(args: {
   appUrl: string;
   createdAt: string;
   dryRun: boolean;
-  routePlan: ComputerUsePlan;
+  plan: ComputerUsePlan;
   runId: string;
   source: RunBundle["source"];
   redactScreenshots: boolean;
@@ -76,11 +76,11 @@ export function buildSingleParticipantBundle(args: {
   localAppSubject: boolean;
   inProgress?: boolean;
 }): RunBundle {
-  const { spec, outcome, routePlan } = args;
-  const desktopTemplate = e2bDesktopTemplate(routePlan.residual);
+  const { spec, outcome, plan } = args;
+  const desktopTemplate = e2bDesktopTemplate(plan.residual);
   return buildCuaBundle({
     verdict: args.verdict,
-    realEmail: routePlan.residual.comms?.email?.kind === "real",
+    realEmail: plan.residual.comms?.email?.kind === "real",
     ...(args.lab === undefined ? {} : { lab: args.lab }),
     actorId: args.descriptor.id,
     appUrl: args.appUrl,
@@ -94,8 +94,8 @@ export function buildSingleParticipantBundle(args: {
       : { caseGroup: spec.planned.labels.caseGroup }),
     createdAt: args.createdAt,
     dryRun: args.dryRun,
-    labId: routePlan.labId,
-    ...(routePlan.title ? { labTitle: routePlan.title } : {}),
+    labId: plan.labId,
+    ...(plan.title ? { labTitle: plan.title } : {}),
     mission: spec.evidenceInstructions ?? spec.instructions,
     ...(spec.evidenceAssignment === undefined ? {} : { assignment: spec.evidenceAssignment }),
     persona: spec.persona,
@@ -103,7 +103,7 @@ export function buildSingleParticipantBundle(args: {
     desktopRoute: !args.inProcessRoute,
     substrate: args.inProcessRoute
       ? "local-filesystem"
-      : routePlan.residual.execution?.target === "local"
+      : plan.residual.execution?.target === "local"
         ? "local-desktop"
         : "e2b-desktop",
     ...(outcome?.desktopGeometry === undefined ? {} : { desktopGeometry: outcome.desktopGeometry }),

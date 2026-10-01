@@ -23,7 +23,7 @@ import {
   emitPreflightPlan,
   makeCuaRunBudget,
   compileParticipantPersonas,
-  planCuaParticipants,
+  loadCuaParticipants,
   sanitizeParticipantRuns,
 } from "./lane-plan.js";
 import { e2bRequestTimeoutMs } from "../../substrates/e2b/lifetime.js";
@@ -57,18 +57,18 @@ import { labPersonaIds } from "../../lab/persona-resolve.js";
 import { participantDesktopOf } from "./participant-desktop.js";
 
 /**
- * Plans the run and starts it. Returns the refusal, with the envelope the route always used, or
+ * Admits the run and starts it. Returns the refusal, with the envelope the route always used, or
  * everything runLabParticipants and finishCuaRun read.
  */
 export async function prepareCuaRun(
-  routePlan: ComputerUsePlan,
+  plan: ComputerUsePlan,
   input: ComputerUseRunInput,
   config: LabConfig,
   scope: RunScope,
 ): Promise<{ ok: false; result: CuaActorLabResult } | { ok: true; setup: CuaRunSetup }> {
-  const planned = await planCuaRun(routePlan, input, config);
-  if (!planned.ok) return planned;
-  return startCuaRun(routePlan, input, planned.planned, scope);
+  const admission = await admitCuaRun(plan, input, config);
+  if (!admission.ok) return admission;
+  return startCuaRun(plan, input, admission.admitted, scope);
 }
 
 /** The physical project, bound before any caller hook runs. */
@@ -109,12 +109,12 @@ export async function refuseCuaLab(
   };
 }
 
-type PlannedCuaRun = Extract<Awaited<ReturnType<typeof planCuaRun>>, { ok: true }>["planned"];
+type AdmittedCuaRun = Extract<Awaited<ReturnType<typeof admitCuaRun>>, { ok: true }>["admitted"];
 type StartedRun = Extract<Awaited<ReturnType<RunScope["startRun"]>>, { ok: true }>["run"];
 
 /** What the setup hands to runLabParticipants and finishCuaRun. */
 export interface CuaRunSetup {
-  routePlan: ComputerUsePlan;
+  plan: ComputerUsePlan;
   input: ComputerUseRunInput;
   /** Read only to build participants and by the lane runner, whose hooks take the whole config. */
   config: LabConfig;
@@ -132,7 +132,7 @@ export interface CuaRunSetup {
   externalCommsConfig: LabCommsExternal | undefined;
   externalCommsEmail: LabCommsEmail | undefined;
   participantRuns: DesktopParticipantRun[];
-  plan: CuaParticipantPlan;
+  participantPlan: CuaParticipantPlan;
   rerunLineage: RunRerunLineage | undefined;
   participantCount: number;
   /** Every known secret value; email setup adds its own before the lanes run. */
@@ -156,23 +156,20 @@ export interface CuaRunSetup {
 }
 
 /**
- * Everything before the run starts: the physical project, the route, the lane plan and preflight,
- * the key and subject-env scrubber, the live checks that need no sandbox, and the local-tree
- * archive. Returns the refusal, or the plan.
+ * Everything before the run starts: the physical project, the route, the participant plan and
+ * preflight, the key and subject-env scrubber, the live checks that need no sandbox, and the
+ * local-tree archive. These read files, env and the network, which planLab does not. Returns the
+ * refusal, or what startCuaRun reads.
  */
-async function planCuaRun(
-  routePlan: ComputerUsePlan,
-  input: ComputerUseRunInput,
-  config: LabConfig,
-) {
-  const { dryRun } = routePlan;
+async function admitCuaRun(plan: ComputerUsePlan, input: ComputerUseRunInput, config: LabConfig) {
+  const { dryRun } = plan;
   const projectRoot = await bindProject(input.cwd);
   const cwd = projectRoot.physicalPath;
   const hooks = input.hooks ?? {};
   const streams = trackRuntimeStreams(hooks);
   const env = hooks.env ?? process.env;
 
-  const subjectRoute = cuaSubjectRouteOf(routePlan);
+  const subjectRoute = cuaSubjectRouteOf(plan);
   const { cloneRoute, localTreeRoute, inProcessRoute, appUrl, subjectRepo, subjectEnvNames } =
     subjectRoute;
 
@@ -184,8 +181,8 @@ async function planCuaRun(
     schema: CUA_ACTOR_LAB_SCHEMA,
     ok: false,
     cwd,
-    labId: routePlan.labId,
-    actor: actorLabel ?? routePlan.actor,
+    labId: plan.labId,
+    actor: actorLabel ?? plan.actor,
     appUrl,
     dryRun,
     runId: input.runId ?? "not-created",
@@ -198,32 +195,32 @@ async function planCuaRun(
     result: fail(...args),
   });
 
-  const descriptor = cuaDescriptorOf(routePlan.actor);
+  const descriptor = cuaDescriptorOf(plan.actor);
   const runSession = hooks.runSession ?? descriptor.runSession;
   // Adopter-hosted comms plane on the app-url route (#380): humanish provisions no subject here,
   // so it cannot host a catch — the OPERATOR runs one, and humanish still does every other part
   // of the funnel: tells each persona its address and inbox URL, drains the catch over HTTP after
   // the lanes, and writes the same digest-only evidence. Declaring `external` previously did
   // nothing on this route (and, per #387, on every other) while its docs said otherwise.
-  const comms = routePlan.residual.comms;
+  const comms = plan.residual.comms;
   const externalCommsConfig =
     !cloneRoute && !localTreeRoute && !inProcessRoute ? comms?.email?.external : undefined;
   const externalCommsEmail = externalCommsConfig ? comms?.email : undefined;
 
-  const participantPlan = await planCuaParticipants({ plan: routePlan, cwd, projectRoot, env });
-  if (!participantPlan.ok) {
-    return refuse(participantPlan.code, participantPlan.message, descriptor.id);
+  const participants = await loadCuaParticipants({ plan, cwd, projectRoot, env });
+  if (!participants.ok) {
+    return refuse(participants.code, participants.message, descriptor.id);
   }
-  const { participantRuns, plan, rerunLineage } = participantPlan;
+  const { participantRuns, participantPlan, rerunLineage } = participants;
   const participantCount = participantRuns.length;
 
   // Pre-flight plan: BEFORE any sandbox or provider call (dry-run AND live). The hook fires for
   // every N (observable + testable); the stderr table prints for fan-out (N>1) so single-lane
   // runs stay as quiet as they always were.
   if (participantCount > 1) {
-    emitPreflightPlan(plan, routePlan.labId);
+    emitPreflightPlan(participantPlan, plan.labId);
   }
-  hooks.onPreflight?.(plan);
+  hooks.onPreflight?.(participantPlan);
   await assertPreparedSelectedOutputDirectory(projectRoot);
 
   // Read keys once into locals (names only; values never logged or persisted).
@@ -240,7 +237,7 @@ async function planCuaRun(
   sanitizeParticipantRuns(participantRuns, scrubKnownValues);
 
   const redactRepoLabel =
-    routePlan.residual.policies?.redactRepos ?? subjectEnvNames.includes("GITHUB_TOKEN");
+    plan.residual.policies?.redactRepos ?? subjectEnvNames.includes("GITHUB_TOKEN");
   const publicRepo =
     cloneRoute && subjectRepo ? (redactRepoLabel ? "repo-01" : subjectRepo) : undefined;
   const hasGithubToken = subjectEnvNames.includes("GITHUB_TOKEN");
@@ -256,7 +253,7 @@ async function planCuaRun(
   // the local-agent route uses a CLI the operator has already signed in to.
   if (!dryRun && !inProcessRoute) {
     const rejection = await liveCuaRejection({
-      caps: routePlan.caps,
+      caps: plan.caps,
       model: config.actors[0]?.model,
       hooks,
       env,
@@ -279,7 +276,7 @@ async function planCuaRun(
   let localTreeArchiveBuffer: ArrayBuffer | undefined;
   if (localTreeRoute && !dryRun) {
     try {
-      const packed = await packRunLocalTree(hooks, routePlan.residual, cwd);
+      const packed = await packRunLocalTree(hooks, plan.residual, cwd);
       localTreeArchive = packed.archive;
       localTreeArchiveBuffer = packed.buffer;
     } catch (error) {
@@ -293,7 +290,7 @@ async function planCuaRun(
 
   return {
     ok: true as const,
-    planned: {
+    admitted: {
       config,
       dryRun,
       cwd,
@@ -308,7 +305,7 @@ async function planCuaRun(
       externalCommsConfig,
       externalCommsEmail,
       participantRuns,
-      plan,
+      participantPlan,
       rerunLineage,
       participantCount,
       openaiApiKey,
@@ -327,14 +324,15 @@ async function planCuaRun(
 
 /** Starts the run and builds what the lanes and the finish share: the lane deps and the bundle base. */
 async function startCuaRun(
-  routePlan: ComputerUsePlan,
+  plan: ComputerUsePlan,
   input: ComputerUseRunInput,
-  planned: PlannedCuaRun,
+  admitted: AdmittedCuaRun,
   scope: RunScope,
 ): Promise<{ ok: false; result: CuaActorLabResult } | { ok: true; setup: CuaRunSetup }> {
-  const { config, dryRun, cwd, hooks, descriptor, participantRuns, plan, publicRepo } = planned;
+  const { config, dryRun, cwd, hooks, descriptor, participantRuns, participantPlan, publicRepo } =
+    admitted;
   const { appUrl, inProcessRoute, localAppSubject, cloneRoute, localTreeRoute, subjectEnvNames } =
-    planned.subjectRoute;
+    admitted.subjectRoute;
   // The run's status record exists from here on, so anything watching the runs directory can
   // tell which lab this is and that it is alive. The fail-closed returns below leave it finished
   // with no outcome when the scope closes; a crash leaves it stale, which reads as interrupted.
@@ -343,16 +341,16 @@ async function startCuaRun(
     runId: input.runId,
     mintRunId: makeCuaRunId,
     mode: dryRun ? "dry-run" : "live",
-    lab: routePlan.lab,
+    lab: plan.lab,
     renderReview: renderCuaReviewMarkdown,
     observer: { open: input.open === true, render: hooks.renderObserverFn },
   });
-  if (!started.ok) return planned.refuse(started.code, started.message, descriptor.id);
+  if (!started.ok) return admitted.refuse(started.code, started.message, descriptor.id);
   const { run } = started;
   const { runId, createdAt, paths: runPaths } = run;
   const artifactRoot = runPaths.absoluteRunRoot;
   const physicalArtifactRoot = runPaths.physicalRunRoot;
-  const redactScreenshots = routePlan.residual.policies?.redactScreenshots === true;
+  const redactScreenshots = plan.residual.policies?.redactScreenshots === true;
 
   await prepareContainedOutputDirectory(runPaths, "screenshots");
   const source = await buildRunSource({
@@ -366,19 +364,19 @@ async function startCuaRun(
   // to grow; lanes call it through deps.onTrace. It exists before deps so deps can reference it as
   // a stable indirection.
   const liveTrace: { flush?: LiveTraceFlush["flush"]; stop?: LiveTraceFlush["stop"] } = {};
-  const deps = cuaParticipantDeps(routePlan, input, planned, {
+  const deps = cuaParticipantDeps(plan, input, admitted, {
     runPaths,
     redactScreenshots,
     liveTrace,
   });
 
   const subjectArgs = {
-    routePlan,
-    subjectRoute: planned.subjectRoute,
+    plan,
+    subjectRoute: admitted.subjectRoute,
     ...(publicRepo === undefined ? {} : { publicRepo }),
-    ...(planned.localTreeArchive === undefined
+    ...(admitted.localTreeArchive === undefined
       ? {}
-      : { localTreeArchive: planned.localTreeArchive }),
+      : { localTreeArchive: admitted.localTreeArchive }),
     runs: participantRuns,
   };
   const inProgressSubjects = projectParticipantSubjects({
@@ -394,16 +392,16 @@ async function startCuaRun(
   );
 
   const bundleBase: CuaRunBundleBase = {
-    ...(routePlan.lab === undefined ? {} : { lab: routePlan.lab }),
-    participantRuns: participantRuns,
+    ...(plan.lab === undefined ? {} : { lab: plan.lab }),
+    participantRuns,
     descriptor,
     appUrl,
     createdAt,
-    routePlan,
+    plan,
     runId,
     source,
-    plan,
-    ...(planned.rerunLineage === undefined ? {} : { rerun: planned.rerunLineage }),
+    participantPlan,
+    ...(admitted.rerunLineage === undefined ? {} : { rerun: admitted.rerunLineage }),
     redactScreenshots,
     inProcessRoute,
     localAppSubject,
@@ -416,26 +414,26 @@ async function startCuaRun(
   return {
     ok: true as const,
     setup: {
-      routePlan,
+      plan,
       input,
       config,
       dryRun,
       cwd,
       hooks,
-      streams: planned.streams,
-      env: planned.env,
+      streams: admitted.streams,
+      env: admitted.env,
       appUrl,
       inProcessRoute,
-      fail: planned.fail,
+      fail: admitted.fail,
       descriptor,
-      externalCommsConfig: planned.externalCommsConfig,
-      externalCommsEmail: planned.externalCommsEmail,
+      externalCommsConfig: admitted.externalCommsConfig,
+      externalCommsEmail: admitted.externalCommsEmail,
       participantRuns,
-      plan,
-      rerunLineage: planned.rerunLineage,
-      participantCount: planned.participantCount,
-      knownSecretValues: planned.knownSecretValues,
-      scrubKnownValues: planned.scrubKnownValues,
+      participantPlan,
+      rerunLineage: admitted.rerunLineage,
+      participantCount: admitted.participantCount,
+      knownSecretValues: admitted.knownSecretValues,
+      scrubKnownValues: admitted.scrubKnownValues,
       publicRepo,
       subjectEnvNames,
       run,
@@ -456,25 +454,26 @@ async function startCuaRun(
 
 /** The lane deps every lane reads: the route, keys, timeouts, scrubber, budget and hooks. */
 function cuaParticipantDeps(
-  routePlan: ComputerUsePlan,
+  plan: ComputerUsePlan,
   input: ComputerUseRunInput,
-  planned: PlannedCuaRun,
+  admitted: AdmittedCuaRun,
   run: {
     runPaths: StartedRun["paths"];
     redactScreenshots: boolean;
     liveTrace: CuaRunSetup["liveTrace"];
   },
 ): Omit<CuaParticipantDeps, "signalProvisioned"> {
-  const { config, dryRun, hooks, streams, env, descriptor, runSession, participantCount } = planned;
-  const { localAgentRoute, preferredLocalAgent, hasGithubToken, localTreeArchiveBuffer } = planned;
-  const { openaiApiKey, e2bApiKey, scrubKnownValues } = planned;
-  const { externalCommsConfig, externalCommsEmail } = planned;
+  const { config, dryRun, hooks, streams, env, descriptor, runSession, participantCount } =
+    admitted;
+  const { localAgentRoute, preferredLocalAgent, hasGithubToken, localTreeArchiveBuffer } = admitted;
+  const { openaiApiKey, e2bApiKey, scrubKnownValues } = admitted;
+  const { externalCommsConfig, externalCommsEmail } = admitted;
   const { appUrl, cloneRoute, desktopCliRoute, localTreeRoute, serve, subjectRepo } =
-    planned.subjectRoute;
-  const { subjectEnvNames } = planned.subjectRoute;
+    admitted.subjectRoute;
+  const { subjectEnvNames } = admitted.subjectRoute;
   const { runPaths, redactScreenshots, liveTrace } = run;
   const createDesktop = participantDesktopOf(hooks);
-  const timeoutMs = routePlan.sessionBudgetMs;
+  const timeoutMs = plan.sessionBudgetMs;
   const requestTimeoutMs = e2bRequestTimeoutMs(env);
   return {
     ...(createDesktop === undefined ? {} : { createDesktop }),
@@ -496,7 +495,7 @@ function cuaParticipantDeps(
     openaiApiKey,
     e2bApiKey,
     requestTimeoutMs,
-    sandboxMs: routePlan.sandboxMs,
+    sandboxMs: plan.sandboxMs,
     timeoutMs,
     participantCount,
     artifactRoot: runPaths,
@@ -506,9 +505,9 @@ function cuaParticipantDeps(
     runSession,
     // The study-level ledger exists once per RUN, shared by every lane (#299). Dry runs never
     // spend, so they carry none.
-    ...(dryRun || routePlan.caps.maxTotalUsd === undefined
+    ...(dryRun || plan.caps.maxTotalUsd === undefined
       ? {}
-      : { runBudget: makeCuaRunBudget(routePlan.caps.maxTotalUsd) }),
+      : { runBudget: makeCuaRunBudget(plan.caps.maxTotalUsd) }),
     ...(externalCommsConfig === undefined || externalCommsEmail === undefined
       ? {}
       : {

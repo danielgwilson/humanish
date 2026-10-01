@@ -519,7 +519,7 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
         },
       ],
     });
-    const plan = resolveCuaParticipantPlan(config);
+    const participantPlan = resolveCuaParticipantPlan(config);
     const specs: DesktopParticipantRun[] = [
       participantRun({
         id: "role-a",
@@ -575,10 +575,10 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
       appUrl: "http://127.0.0.1:3000/",
       createdAt: "2026-01-01T00:00:00.000Z",
       dryRun: false,
-      routePlan: routePlanOf(config),
+      plan: planOf(config),
       runId: "missing-outcomes-proof",
       source,
-      plan,
+      participantPlan,
       cloneRoute: false,
       subjectEnvNames: [],
     });
@@ -591,7 +591,7 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
 });
 
 /** The computer-use plan a fixture config makes; the bundle reads the lab's identity from it. */
-function routePlanOf(config: LabConfig): ComputerUsePlan {
+function planOf(config: LabConfig): ComputerUsePlan {
   const planned = planComputerUseLab(config, { dryRun: true });
   if (!planned.ok) throw new Error(planned.refusal.message);
   return planned.plan;
@@ -648,7 +648,7 @@ describe("cua fan-out bundle: desktop browser provenance", () => {
       appUrl: "http://127.0.0.1:3000/",
       createdAt: "2026-01-01T00:00:00.000Z",
       dryRun: false,
-      routePlan: routePlanOf(config),
+      plan: planOf(config),
       runId: "browser-provenance-proof",
       source: {
         packageName: "humanish",
@@ -662,7 +662,7 @@ describe("cua fan-out bundle: desktop browser provenance", () => {
           note: "test fixture",
         },
       },
-      plan: resolveCuaParticipantPlan(config),
+      participantPlan: resolveCuaParticipantPlan(config),
       cloneRoute: false,
       subjectEnvNames: [],
     });
@@ -1133,6 +1133,25 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     expect(
       bundle.streams.every((s: { actor?: { lane: string } }) => s.actor?.lane === "computer-use"),
     ).toBe(true);
+  });
+
+  it("runs no more participants at once than the env override allows, below the lab's concurrency", async () => {
+    const handle = makeFanoutModule();
+    const active = { count: 0, max: 0 };
+    const hooks = passingHooks(handle, { active });
+    const outcome = await runLab(fanoutConfig({ concurrency: 4 }), {
+      cwd,
+      cuaHooks: { ...hooks, env: { ...hooks.env, HUMANISH_CUA_MAX_CONCURRENCY: "2" } },
+    });
+    if (outcome.backend !== "cua") throw new Error(`unexpected backend ${outcome.backend}`);
+    const { result } = outcome;
+    expect(result.ok).toBe(true);
+    expect(result.plan).toMatchObject({ concurrency: 2, envLoweredConcurrencyFrom: 4, waves: 2 });
+    expect(result.laneSummary).toMatchObject({ concurrency: 2, waves: 2 });
+    // The lab declares 4. The runner must take its bound from the participant plan, which the env
+    // override lowered to 2; the route plan still says 4, and both have a concurrency field.
+    expect(active.max).toBe(2);
+    expect(handle.maxLive()).toBeLessThanOrEqual(2);
   });
 
   it("reruns failed fan-out lanes as a new linked run without mutating the source verdict", async () => {

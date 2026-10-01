@@ -304,7 +304,7 @@ function participantRunsAndPlan(
   const resolved = envLoweredConcurrency(planned.concurrency, participantCount, env);
   const concurrency = resolved.bound;
   const { sessionBudgetMs, sandboxMs } = planned;
-  const plan: CuaParticipantPlan = {
+  const participantPlan: CuaParticipantPlan = {
     strategy: CUA_FANOUT_STRATEGY,
     laneCount: participantCount,
     concurrency,
@@ -342,7 +342,7 @@ function participantRunsAndPlan(
         : { targetDigest: digestUrl(spec.planned.targetUrl) }),
     })),
   };
-  return { runs, plan };
+  return { runs, participantPlan };
 }
 
 async function resolveCuaRerunSelection(args: {
@@ -352,12 +352,12 @@ async function resolveCuaRerunSelection(args: {
   sourceRunId: string;
   participantIds?: string[];
   participantRuns: DesktopParticipantRun[];
-  plan: CuaParticipantPlan;
+  participantPlan: CuaParticipantPlan;
 }): Promise<
   | {
       ok: true;
       participantRuns: DesktopParticipantRun[];
-      plan: CuaParticipantPlan;
+      participantPlan: CuaParticipantPlan;
       rerun: RunRerunLineage;
     }
   | { ok: false; message: string }
@@ -419,10 +419,12 @@ async function resolveCuaRerunSelection(args: {
 
   const selectedSpecs = selectedIds.map((id) => specsById.get(id)!);
   const selectedPlanIds = new Set(selectedIds);
-  const selectedPlanEntries = args.plan.lanes.filter((entry) => selectedPlanIds.has(entry.id));
-  const concurrency = Math.max(1, Math.min(args.plan.concurrency, selectedSpecs.length));
-  const plan: CuaParticipantPlan = {
-    ...args.plan,
+  const selectedPlanEntries = args.participantPlan.lanes.filter((entry) =>
+    selectedPlanIds.has(entry.id),
+  );
+  const concurrency = Math.max(1, Math.min(args.participantPlan.concurrency, selectedSpecs.length));
+  const participantPlan: CuaParticipantPlan = {
+    ...args.participantPlan,
     laneCount: selectedSpecs.length,
     concurrency,
     waves: Math.ceil(selectedSpecs.length / concurrency),
@@ -434,7 +436,7 @@ async function resolveCuaRerunSelection(args: {
   return {
     ok: true,
     participantRuns: selectedSpecs,
-    plan,
+    participantPlan,
     rerun: {
       sourceRunId: bundle.runId,
       selectedLaneIds: selectedIds,
@@ -506,20 +508,20 @@ export function resolveCuaParticipantPlan(
   } = {},
 ): CuaParticipantPlan {
   const { countOverride, ...rest } = opts;
-  return participantRunsAndPlan(plannedParticipantsOf(config, countOverride), rest).plan;
+  return participantRunsAndPlan(plannedParticipantsOf(config, countOverride), rest).participantPlan;
 }
 
 /** Print the lane plan to stderr BEFORE any sandbox/provider call (public-safe: ids, devices,
  *  digests, and budgets only — no prompt text, no secrets). */
-export function emitPreflightPlan(plan: CuaParticipantPlan, labId: string): void {
+export function emitPreflightPlan(participantPlan: CuaParticipantPlan, labId: string): void {
   const lines: string[] = [];
   lines.push(
-    `humanish cua fan-out plan (${labId}): ${plan.laneCount} lane(s), strategy ${plan.strategy}, concurrency ${plan.concurrency}${plan.envLoweredConcurrencyFrom === undefined ? "" : ` (lowered from ${plan.envLoweredConcurrencyFrom} by ${CUA_MAX_CONCURRENCY_ENV})`}, ${plan.waves} wave(s).`,
+    `humanish cua fan-out plan (${labId}): ${participantPlan.laneCount} lane(s), strategy ${participantPlan.strategy}, concurrency ${participantPlan.concurrency}${participantPlan.envLoweredConcurrencyFrom === undefined ? "" : ` (lowered from ${participantPlan.envLoweredConcurrencyFrom} by ${CUA_MAX_CONCURRENCY_ENV})`}, ${participantPlan.waves} wave(s).`,
   );
   lines.push(
-    `  per-lane session budget ${Math.round(plan.perLaneSessionBudgetMs / 1000)}s; worst-case ~${plan.worstCaseSandboxMinutes} sandbox-minutes total${plan.dryRun ? " (dry-run: $0)" : ""}.`,
+    `  per-lane session budget ${Math.round(participantPlan.perLaneSessionBudgetMs / 1000)}s; worst-case ~${participantPlan.worstCaseSandboxMinutes} sandbox-minutes total${participantPlan.dryRun ? " (dry-run: $0)" : ""}.`,
   );
-  for (const entry of plan.lanes) {
+  for (const entry of participantPlan.lanes) {
     lines.push(`  - ${formatParticipantPlanEntry(entry)}`);
   }
   process.stderr.write(`${lines.join("\n")}\n`);
@@ -578,12 +580,12 @@ export async function compileParticipantPersonas(
 }
 
 /**
- * The participants a computer-use run drives, resolved from its plan before anything is created:
- * committed personas compiled, the pure participant table built from the plan's participants,
- * bound and budgets (the same for dry-run and live), and a rerun narrowed to its selected
- * participants.
+ * The participants a computer-use run drives, loaded before anything is created: committed persona
+ * files read and compiled, the pure participant table built from the plan's participants, bound
+ * and budgets (the same for dry-run and live), and a rerun narrowed to its selected participants
+ * by reading the source run.
  */
-export async function planCuaParticipants(args: {
+export async function loadCuaParticipants(args: {
   plan: ComputerUsePlan;
   cwd: string;
   projectRoot: PreparedSelectedOutputDirectory;
@@ -592,40 +594,40 @@ export async function planCuaParticipants(args: {
   | {
       ok: true;
       participantRuns: DesktopParticipantRun[];
-      plan: CuaParticipantPlan;
+      participantPlan: CuaParticipantPlan;
       rerunLineage?: RunRerunLineage;
     }
   | { ok: false; code: CuaActorLabErrorCode; message: string }
 > {
-  const routePlan = args.plan;
-  const { participants } = routePlan.runner;
+  const { plan } = args;
+  const { participants } = plan.runner;
   // Compile any committed personas BEFORE planning, so the plan builder stays pure and each lane's
   // prompt carries real behavioral directives rather than a bare `Persona: <id>.` label (#381).
   const personas = await compileParticipantPersonas(
     args.projectRoot,
     participants.map((participant) => participant.personaId),
   );
-  const { runs: participantRuns, plan } = participantRunsAndPlan(
+  const { runs: participantRuns, participantPlan } = participantRunsAndPlan(
     {
       participants,
-      concurrency: routePlan.concurrency,
-      sessionBudgetMs: routePlan.sessionBudgetMs,
-      sandboxMs: routePlan.sandboxMs,
-      desktopCli: routePlan.runner.subject.kind === "desktop-cli",
+      concurrency: plan.concurrency,
+      sessionBudgetMs: plan.sessionBudgetMs,
+      sandboxMs: plan.sandboxMs,
+      desktopCli: plan.runner.subject.kind === "desktop-cli",
     },
-    { env: args.env, dryRun: routePlan.dryRun, personas },
+    { env: args.env, dryRun: plan.dryRun, personas },
   );
-  const rerun = routePlan.rerun;
-  if (!rerun) return { ok: true, participantRuns, plan };
+  const rerun = plan.rerun;
+  if (!rerun) return { ok: true, participantRuns, participantPlan };
 
   const selected = await resolveCuaRerunSelection({
     cwd: args.cwd,
-    labId: routePlan.labId,
-    sandboxMs: routePlan.sandboxMs,
+    labId: plan.labId,
+    sandboxMs: plan.sandboxMs,
     sourceRunId: rerun.sourceRunId,
     ...(rerun.participantIds === undefined ? {} : { participantIds: [...rerun.participantIds] }),
     participantRuns,
-    plan,
+    participantPlan,
   });
   if (!selected.ok) {
     return { ok: false, code: "HUMANISH_CUA_LAB_RERUN_INVALID", message: selected.message };
@@ -633,7 +635,7 @@ export async function planCuaParticipants(args: {
   return {
     ok: true,
     participantRuns: selected.participantRuns,
-    plan: selected.plan,
+    participantPlan: selected.participantPlan,
     rerunLineage: selected.rerun,
   };
 }
