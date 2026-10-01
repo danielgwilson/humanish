@@ -8,7 +8,7 @@
 import { describe, expect, it } from "vitest";
 import { PNG } from "pngjs";
 
-import type { ActorCapabilities, ActorPersonaRef } from "../src/actors/contract.js";
+import type { ActorCapabilities, ActorPersonaRef } from "../../../src/actors/contract.js";
 import {
   runComputerUseLoop,
   type CuaAction,
@@ -17,13 +17,13 @@ import {
   type CuaProvider,
   type CuaTurn,
   type CuaTurnRequest,
-} from "../src/actors/computer-use/loop.js";
+} from "../../../src/actors/computer-use/loop.js";
 import {
   makeCuaRunBudget,
   resolveCuaParticipantPlan,
-} from "../src/routes/computer-use/lane-plan.js";
-import { parseLabConfig } from "../src/lab/config.js";
-import { defaultRedactionHooks } from "../src/evidence/redaction.js";
+} from "../../../src/routes/computer-use/lane-plan.js";
+import { parseLabConfig } from "../../../src/lab/config.js";
+import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
 
 const FAKE_CAPS: ActorCapabilities = {
   headless: true,
