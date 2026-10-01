@@ -1,5 +1,5 @@
 // What one E2B desktop lane records as it runs. The prepare, start and teardown steps fill one
-// record in order, and laneEvidence reads it for the lane's outcome.
+// record in order, and desktopEvidenceOf reads it for the lane's outcome.
 
 import type { RunDesktopRecording } from "../../evidence/desktop-recording-types.js";
 import type { RunSubjectStateStepRecord } from "../../run/bundle.js";
@@ -20,23 +20,23 @@ import type { startE2BDesktopRecording } from "../../substrates/e2b/desktop-reco
 import type { DesktopResourceObservation } from "../../substrates/e2b/desktop-resources.js";
 import type { E2BDesktopSandbox } from "../../substrates/e2b/sdk.js";
 import type { ParticipantDesktopEvidence } from "./participant-desktop.js";
-import type { LaneComms, RunningCommsCatch } from "./e2b-desktop-comms.js";
-import type { LaneFidelity } from "./e2b-desktop-fidelity.js";
+import type { ParticipantComms, RunningCommsCatch } from "./e2b-desktop-comms.js";
+import type { ParticipantFidelity } from "./e2b-desktop-fidelity.js";
 import type { CuaActorLabErrorCode, CuaParticipantDeps, DesktopParticipantRun } from "./types.js";
 
 /** What every step of one lane reads: its spec, the run's dependencies and where it points. */
-export interface E2BLaneContext {
+export interface E2BParticipantContext {
   readonly spec: DesktopParticipantRun;
   readonly deps: CuaParticipantDeps;
   readonly warnings: string[];
   readonly targetUrl: string;
   readonly desktopCliRoute: boolean;
-  readonly comms: LaneComms | undefined;
+  readonly comms: ParticipantComms | undefined;
   /** Records a completed phase and passes every phase to the operator's sink. */
   readonly onSubjectPhase: (event: SubjectPhaseEvent) => void;
 }
 
-export interface E2BLaneState {
+export interface E2BParticipantState {
   desktop: E2BDesktopSandbox | undefined;
   allocation: OwnedDesktopAllocation | undefined;
   sandboxId: string | undefined;
@@ -65,7 +65,7 @@ export interface E2BLaneState {
   launchedBrowserFamily: DesktopBrowserFamily;
   browserLaunchIdentity: DesktopBrowserLaunchIdentity | undefined;
   browserLaunched: boolean;
-  fidelity: LaneFidelity;
+  fidelity: ParticipantFidelity;
   initialBrowserGeometry: Awaited<ReturnType<typeof captureDesktopBrowserGeometry>> | undefined;
   browserWindowId: string | undefined;
   browserTargetId: string | undefined;
@@ -73,7 +73,7 @@ export interface E2BLaneState {
   streamUrl: string | undefined;
 }
 
-export function newLaneState(spec: DesktopParticipantRun): E2BLaneState {
+export function newParticipantState(spec: DesktopParticipantRun): E2BParticipantState {
   const declaredScreen = declaredScreenForRender(
     spec.planned.device.preset,
     spec.planned.device.name,
@@ -120,7 +120,7 @@ export function newLaneState(spec: DesktopParticipantRun): E2BLaneState {
 }
 
 /** The lane's outcome evidence, read from its state. */
-export function laneEvidence(state: E2BLaneState): ParticipantDesktopEvidence {
+export function desktopEvidenceOf(state: E2BParticipantState): ParticipantDesktopEvidence {
   // Host-side approximation of the E2B desktop's billed lifetime; feeds the desktop-minute cost
   // estimate. Never negative.
   const desktopDurationMs =

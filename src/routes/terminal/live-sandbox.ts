@@ -155,7 +155,7 @@ export class LiveTerminalSandbox {
         },
       },
       // The receipt is on disk the moment the sandbox exists, so reclaim can kill it by exact id.
-      receipt: { root: runPaths, laneId: "terminal", now },
+      receipt: { root: runPaths, participantId: "terminal", now },
     });
     const sandbox = acquired.sandbox;
     this.sandbox = sandbox;

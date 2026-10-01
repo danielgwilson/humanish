@@ -264,7 +264,7 @@ async function withPreflightSandbox(
         dpi: 96,
       },
       template: ctx.config.execution?.desktop?.template,
-      receipt: journal === undefined ? null : { root: journal.root, laneId: journal.id },
+      receipt: journal === undefined ? null : { root: journal.root, participantId: journal.id },
     });
     acquired = true;
     allocation = probe.allocation;

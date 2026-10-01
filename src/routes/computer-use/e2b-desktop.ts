@@ -4,16 +4,24 @@
 import { defaultSubjectPhaseSink, type SubjectPhaseEvent } from "../../subject/steps.js";
 import { createE2BDesktopExecutor } from "../../substrates/e2b/desktop-executor.js";
 import type { ParticipantDesktop, ReadyParticipantDesktop } from "./participant-desktop.js";
-import { laneInbox, planLaneComms } from "./e2b-desktop-comms.js";
-import { laneBrowserStateObserver } from "./e2b-desktop-fidelity.js";
+import { participantInbox, planParticipantComms } from "./e2b-desktop-comms.js";
+import { participantBrowserStateObserver } from "./e2b-desktop-fidelity.js";
 import {
-  acquireLaneDesktop,
-  provisionLaneSubject,
-  verifyLaneScreen,
+  acquireParticipantDesktop,
+  provisionParticipantSubject,
+  verifyParticipantScreen,
 } from "./e2b-desktop-prepare.js";
-import { openLaneSurface, startLaneMedia, startLaneStream } from "./e2b-desktop-start.js";
-import { laneEvidence, newLaneState, type E2BLaneContext } from "./e2b-desktop-state.js";
-import { finishLane } from "./e2b-desktop-teardown.js";
+import {
+  openParticipantSurface,
+  startParticipantMedia,
+  startParticipantStream,
+} from "./e2b-desktop-start.js";
+import {
+  desktopEvidenceOf,
+  newParticipantState,
+  type E2BParticipantContext,
+} from "./e2b-desktop-state.js";
+import { finishE2BDesktop } from "./e2b-desktop-teardown.js";
 import type { CuaParticipantDeps, DesktopParticipantRun } from "./types.js";
 
 export function createE2BParticipantDesktop(
@@ -22,15 +30,19 @@ export function createE2BParticipantDesktop(
   warnings: string[],
 ): ParticipantDesktop {
   const targetUrl = spec.planned.targetUrl ?? deps.appUrl;
-  const state = newLaneState(spec);
-  const ctx: E2BLaneContext = {
+  const state = newParticipantState(spec);
+  const ctx: E2BParticipantContext = {
     spec,
     deps,
     warnings,
     targetUrl,
     desktopCliRoute: deps.desktopCliRoute === true,
     // Off-app comms (#297): gated entirely on config.comms; no comms declared, no change.
-    comms: planLaneComms(deps.config, targetUrl, deps.cloneRoute || deps.localTreeRoute === true),
+    comms: planParticipantComms(
+      deps.config,
+      targetUrl,
+      deps.cloneRoute || deps.localTreeRoute === true,
+    ),
     // The default or injected sink sees every event, started and completed alike, so an operator
     // watching stderr sees both halves of each phase; the state keeps only completed ones.
     onSubjectPhase: (event: SubjectPhaseEvent): void => {
@@ -51,12 +63,12 @@ export function createE2BParticipantDesktop(
     if (preparationStarted || finalization)
       throw new Error("Desktop lane preparation can only start once, before finalization.");
     preparationStarted = true;
-    const desktop = await acquireLaneDesktop(ctx, state);
+    const desktop = await acquireParticipantDesktop(ctx, state);
     // The device claim is verified in the sandbox, and fails closed.
-    await verifyLaneScreen(ctx, state, desktop);
-    await provisionLaneSubject(ctx, state, desktop);
-    await startLaneMedia(ctx, state, desktop);
-    await openLaneSurface(ctx, state, desktop);
+    await verifyParticipantScreen(ctx, state, desktop);
+    await provisionParticipantSubject(ctx, state, desktop);
+    await startParticipantMedia(ctx, state, desktop);
+    await openParticipantSurface(ctx, state, desktop);
     prepared = true;
   }
 
@@ -67,8 +79,8 @@ export function createE2BParticipantDesktop(
         "Desktop lane must be prepared and may only be opened once, before finalization.",
       );
     opened = true;
-    await startLaneStream(ctx, state, desktop);
-    const inbox = laneInbox({
+    await startParticipantStream(ctx, state, desktop);
+    const inbox = participantInbox({
       spec,
       deps,
       receivingInboxUrl: state.receivingInboxUrl,
@@ -79,7 +91,7 @@ export function createE2BParticipantDesktop(
       desktop,
       state.launchedBrowserFamily === "chromium"
         ? {
-            observeBrowserState: laneBrowserStateObserver({
+            observeBrowserState: participantBrowserStateObserver({
               desktop,
               spec,
               deps,
@@ -101,9 +113,9 @@ export function createE2BParticipantDesktop(
   return {
     prepare,
     openSession,
-    snapshot: () => laneEvidence(state),
+    snapshot: () => desktopEvidenceOf(state),
     finalize({ failed }) {
-      return (finalization ??= finishLane(ctx, state, failed));
+      return (finalization ??= finishE2BDesktop(ctx, state, failed));
     },
   };
 }

@@ -218,7 +218,7 @@ describe("E2B sandbox receipts", () => {
     const pending = acquireE2BDesktopSandbox({
       module: f.module,
       options: { apiKey: "synthetic", timeoutMs: 90_000 },
-      receipt: { root, laneId: "lane-01", now: () => Date.UTC(2026, 8, 30) },
+      receipt: { root, participantId: "lane-01", now: () => Date.UTC(2026, 8, 30) },
     }).then((acquired) => {
       returned = true;
       return acquired;
@@ -244,7 +244,7 @@ describe("E2B sandbox receipts", () => {
     const acquired = await acquireE2BShellSandbox({
       module: f.module,
       options: { apiKey: "synthetic" },
-      receipt: { root, laneId: "terminal" },
+      receipt: { root, participantId: "terminal" },
     });
     f.desktop.sandboxId = "unrelated-desktop";
     expect(acquired.allocation.resourceId).toBe("owned-desktop");
@@ -270,7 +270,7 @@ describe("E2B sandbox receipts", () => {
       const error = await acquireSandbox({
         module: f.module,
         options: { apiKey: "synthetic" },
-        receipt: { root, laneId: "lane-01", now },
+        receipt: { root, participantId: "lane-01", now },
       }).catch((value: unknown) => value);
       expect(error).toBeInstanceOf(Error);
       expect(f.create).toHaveBeenCalledOnce();
@@ -285,7 +285,7 @@ describe("E2B sandbox receipts", () => {
     const acquired = await acquireE2BDesktopSandbox({
       module: f.module,
       options: { apiKey: "synthetic" },
-      receipt: { root, laneId: "lane-01" },
+      receipt: { root, participantId: "lane-01" },
     });
     expect(acquired.sandbox).toBe(f.desktop);
     expect(acquired.allocation.resourceId).toBe("owned-desktop");

@@ -21,10 +21,11 @@ import {
   type E2BDesktopSandbox,
 } from "./sdk.js";
 
-/** Where an allocation's receipt goes: the run's prepared root, under a public-safe lane label. */
+/** Where an allocation's receipt goes: the run's prepared root, under a public-safe participant
+ *  label. The receipt line saves it as `laneId`. */
 interface E2BSandboxReceiptTarget {
   root: PreparedOutputRoot;
-  laneId: string;
+  participantId: string;
   /** Clock for the receipt's `at`; defaults to Date.now. */
   now?: () => number;
 }
@@ -75,12 +76,12 @@ async function acquire(
   const allocation = ownE2BSandbox(module, sandbox.sandboxId);
   try {
     if (request.receipt !== null) {
-      const { root, laneId, now = Date.now } = request.receipt;
+      const { root, participantId, now = Date.now } = request.receipt;
       // Best effort by contract: a failed write leaves the TTL as the only backstop and never
       // fails the lane.
       await appendSandboxReceipt(root, {
         at: new Date(now()).toISOString(),
-        laneId,
+        laneId: participantId,
         provider: "e2b",
         sandboxId: allocation.resourceId,
         ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),

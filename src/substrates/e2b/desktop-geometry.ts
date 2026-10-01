@@ -45,7 +45,7 @@ export function declaredScreenForRender(
  */
 export async function inspectDesktopScreenGeometry(args: {
   desktop: E2BDesktopSandbox;
-  laneId: string;
+  participantId: string;
   requestedScreen: readonly [number, number];
   requestTimeoutMs: number;
 }): Promise<{
@@ -62,13 +62,13 @@ export async function inspectDesktopScreenGeometry(args: {
     out = result.stdout.trim();
   } catch {
     return {
-      warning: `Desktop screen geometry could not be measured for lane ${args.laneId}; requested geometry remains unverified.`,
+      warning: `Desktop screen geometry could not be measured for lane ${args.participantId}; requested geometry remains unverified.`,
     };
   }
   const match = out.match(/(\d+)\s*x\s*(\d+)\s*pixels/i);
   if (!match) {
     return {
-      warning: `Desktop screen geometry could not be parsed for lane ${args.laneId}; requested geometry remains unverified.`,
+      warning: `Desktop screen geometry could not be parsed for lane ${args.participantId}; requested geometry remains unverified.`,
     };
   }
   const width = Number(match[1]);
@@ -79,7 +79,7 @@ export async function inspectDesktopScreenGeometry(args: {
   }
   return {
     verified: { width, height, source: "xdpyinfo" },
-    error: `HUMANISH_CUA_LAB_DEVICE_GEOMETRY: lane ${args.laneId} requested a ${expectedWidth}x${expectedHeight} desktop but xdpyinfo reports ${width}x${height} in-sandbox; the per-lane device geometry is unverified (fail-closed).`,
+    error: `HUMANISH_CUA_LAB_DEVICE_GEOMETRY: lane ${args.participantId} requested a ${expectedWidth}x${expectedHeight} desktop but xdpyinfo reports ${width}x${height} in-sandbox; the per-lane device geometry is unverified (fail-closed).`,
   };
 }
 
@@ -324,7 +324,7 @@ export async function captureDesktopBrowserGeometry(args: {
   /** Launch captures stay pinned; final captures follow the participant's current page. */
   pagePreference?: ChromeCdpPagePreference;
   browserWindowId?: string;
-  laneId: string;
+  participantId: string;
   /** Runtime-only lane target URL (attributes the CDP page); never persisted by this capture. */
   targetUrl: string;
   requestedScreen: readonly [number, number];
@@ -349,7 +349,7 @@ export async function captureDesktopBrowserGeometry(args: {
       args.launchIdentity,
     ).catch((error: unknown) => {
       warnings.push(
-        `Browser window lookup failed for lane ${args.laneId}: ${redactText(toErrorMessage(error))}`,
+        `Browser window lookup failed for lane ${args.participantId}: ${redactText(toErrorMessage(error))}`,
       );
       return undefined;
     });
@@ -374,7 +374,7 @@ export async function captureDesktopBrowserGeometry(args: {
     ).catch(() => undefined);
   } else {
     warnings.push(
-      `Browser window bounds could not be measured for lane ${args.laneId}; the live stream will use the full desktop.`,
+      `Browser window bounds could not be measured for lane ${args.participantId}; the live stream will use the full desktop.`,
     );
   }
 
@@ -394,21 +394,21 @@ export async function captureDesktopBrowserGeometry(args: {
       if (physicalWindow === undefined) {
         // Keep the last measured bad state; a missing observation cannot prove a successful fix.
         physicalWindow = before;
-        unusable = `Physical browser containment could not be verified after correction for lane ${args.laneId}; the last measured window was clipped.`;
+        unusable = `Physical browser containment could not be verified after correction for lane ${args.participantId}; the last measured window was clipped.`;
       } else if (isBrowserWindowContained(physicalWindow, args.requestedScreen)) {
         warnings.push(
-          `Browser window clipping corrected for lane ${args.laneId}; physical bounds are ${physicalWindow.width}x${physicalWindow.height} at (${physicalWindow.x}, ${physicalWindow.y}).`,
+          `Browser window clipping corrected for lane ${args.participantId}; physical bounds are ${physicalWindow.width}x${physicalWindow.height} at (${physicalWindow.x}, ${physicalWindow.y}).`,
         );
       }
     }
     if (unusable === undefined && !isBrowserWindowContained(physicalWindow, args.requestedScreen)) {
-      unusable = `Browser window is outside the captured ${args.requestedScreen[0]}x${args.requestedScreen[1]} desktop for lane ${args.laneId}: physical bounds ${physicalWindow.width}x${physicalWindow.height} at (${physicalWindow.x}, ${physicalWindow.y}), right=${physicalWindow.x + physicalWindow.width}, bottom=${physicalWindow.y + physicalWindow.height}.`;
+      unusable = `Browser window is outside the captured ${args.requestedScreen[0]}x${args.requestedScreen[1]} desktop for lane ${args.participantId}: physical bounds ${physicalWindow.width}x${physicalWindow.height} at (${physicalWindow.x}, ${physicalWindow.y}), right=${physicalWindow.x + physicalWindow.width}, bottom=${physicalWindow.y + physicalWindow.height}.`;
     }
     if (unusable !== undefined) warnings.push(unusable);
   }
   if (physicalWindow === undefined) {
     warnings.push(
-      `Physical browser containment is unverified for lane ${args.laneId}; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.`,
+      `Physical browser containment is unverified for lane ${args.participantId}; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.`,
     );
   }
 
@@ -445,7 +445,7 @@ export async function captureDesktopBrowserGeometry(args: {
   // page's window.outerWidth reports the EMULATED screen (414), which is not a fill failure.
   const fillBounds = physicalWindow;
   if (!browserWindow) {
-    warnings.push(`Browser outer bounds could not be measured for lane ${args.laneId}.`);
+    warnings.push(`Browser outer bounds could not be measured for lane ${args.participantId}.`);
   } else if (
     unusable === undefined &&
     fillBounds !== undefined &&
@@ -455,7 +455,7 @@ export async function captureDesktopBrowserGeometry(args: {
       fillBounds.height !== args.requestedScreen[1])
   ) {
     warnings.push(
-      `Browser window fill did not reach the requested ${args.requestedScreen[0]}x${args.requestedScreen[1]} screen for lane ${args.laneId}; measured physical bounds are ${fillBounds.width}x${fillBounds.height} at (${fillBounds.x}, ${fillBounds.y}).`,
+      `Browser window fill did not reach the requested ${args.requestedScreen[0]}x${args.requestedScreen[1]} screen for lane ${args.participantId}; measured physical bounds are ${fillBounds.width}x${fillBounds.height} at (${fillBounds.x}, ${fillBounds.y}).`,
     );
   }
   if (!viewport) {
@@ -465,8 +465,8 @@ export async function captureDesktopBrowserGeometry(args: {
       cdpUnavailable === undefined ? "" : ` DevTools probe: ${redactText(cdpUnavailable)}.`;
     warnings.push(
       args.browserFamily === "firefox"
-        ? `Browser CSS viewport measurement is unavailable for Firefox on lane ${args.laneId}; stream.viewport is omitted instead of reading a different browser's CDP endpoint.`
-        : `Browser CSS viewport could not be measured for lane ${args.laneId}; stream.viewport is omitted instead of copying the requested screen resolution.${cause}`,
+        ? `Browser CSS viewport measurement is unavailable for Firefox on lane ${args.participantId}; stream.viewport is omitted instead of reading a different browser's CDP endpoint.`
+        : `Browser CSS viewport could not be measured for lane ${args.participantId}; stream.viewport is omitted instead of copying the requested screen resolution.${cause}`,
     );
   }
   return {
