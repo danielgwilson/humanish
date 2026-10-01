@@ -1,4 +1,4 @@
-# Terminal-product real-agent lane (issue #154)
+# Terminal-product real-agent route (issue #154)
 
 Date: 2026-06-16 (runtime-auth contract updated 2026-09-05)
 
@@ -14,18 +14,18 @@ for the full slice plan and the safety contract.
 
 ## What this is
 
-A lab lane for **terminal-product real-agent studies**: a real autonomous coding
+A lab route for **terminal-product real-agent studies**: a real autonomous coding
 agent (Codex) discovering and using a CLI/product from its **public surfaces
 only**, running **inside an E2B shell** with declared runtime-auth placement and
 spend/time caps, emitting durable terminal/substrate/cost/no-spend/cleanup/
 intervention proof that verifies fail-closed. This is distinct from the browser
-lanes. It tests whether an autonomous agent can discover and use a CLI/product
+routes. It tests whether an autonomous agent can discover and use a CLI/product
 surface from public materials. It does not test whether a browser can click a
 local web app.
 
-It rides the established lane-addition pattern (proven by the scripted-browser
-and local-app lanes): a new `subject.source` × `execution.target`, a routing
-predicate, a backend enum + dispatch, a registered actor with a capability lane,
+It rides the established route-addition pattern (proven by the scripted-browser
+and local-app routes): a new `subject.source` × `execution.target`, a routing
+predicate, a backend enum + dispatch, a registered actor that declares the run kind in its capabilities,
 fail-closed cross-validation, and forward-declared warnings.
 
 ## The composition
@@ -64,7 +64,7 @@ execution:
 An explicit version must be exact semver; tags, ranges, URLs, and extra runtime
 fields fail at parsing. Before the keyed actor command, humanish runs an unkeyed
 `npx @openai/codex@<selector> --version` command with a 60-second deadline.
-A malformed result, nonzero exit, or requested/observed mismatch fails the lane
+A malformed result, nonzero exit, or requested/observed mismatch fails the participant
 and reclaims its owned sandbox. When the version is omitted, the probe resolves
 `latest` once and execution uses the exact version it reported.
 
@@ -179,7 +179,7 @@ and the [distribution built-in configuration](https://docs.npmjs.com/cli/v10/con
 An egress allowlist must permit `nodejs.org` if the runtime needs installation,
 as well as the registries and product surfaces the study uses. Missing tools,
 unsupported architectures, a failed download or checksum, and a failed runtime
-check stop the lane before Codex. Downloads have finite connection, transfer, and
+check stop the participant before Codex. Downloads have finite connection, transfer, and
 retry bounds within the existing five-minute bootstrap deadline.
 
 The `desktop-cli` computer-use route uses this same Node/npm prerequisite when
@@ -246,7 +246,7 @@ in favor of `RunLabOptions`.
 
 ## SLICE 4: the product-adapter extension seam (layer 6)
 
-This lane is proof-roadmap **layer 6**: an adopter attaches product-specific
+This route is proof-roadmap **layer 6**: an adopter attaches product-specific
 scoring + feedback as a THIN in-repo extension WITHOUT forking core. SLICE 4
 ships the SEAM. Core ships no built-in product scorer; the adopter's scorecard
 lives in the adopter's repo:
@@ -263,7 +263,7 @@ lives in the adopter's repo:
   `AdapterScorerModule`): `score?(ctx) => RunAdapterScore | Promise<…>` and
   `deriveFeedback?(ctx) => RunFeedbackCandidate[] | Promise<…>`, where this route's
   `ctx` is a `TerminalProductScoringContext`. The older `terminalHooks.score` and
-  `terminalHooks.deriveFeedback` still work and warn as deprecated. The lane calls the
+  `terminalHooks.deriveFeedback` still work and warn as deprecated. The route calls the
   hooks over the FULLY-ASSEMBLED, redacted evidence and attaches the results
   (`bundle.adapterScore`, appended `bundle.feedbackCandidates`) WITHOUT core knowing
   any product noun. Default (no hook) behavior is unchanged: the mission-based verdict
@@ -278,16 +278,16 @@ lives in the adopter's repo:
   core enum (avoiding closed-taxonomy rot); `e2b-terminal` is added to the
   substrate enum so a terminal-agent candidate names its substrate honestly.
 
-The seam is fail-closed: the lane scrubs+redacts the returned payloads and DROPS
+The seam is fail-closed: the route scrubs+redacts the returned payloads and DROPS
 any malformed score/candidate with a warning, and `verifyRun` re-checks the
 surviving shapes, so a bad extension never poisons a verifiable bundle. Proven by
 `tests/routes/terminal/product-adapter-seam.test.ts` (a thin in-repo example adapter
 typing against the barrel only, registering a scorer, attaching namespaced nouns,
 emitting a candidate; the bundle verifies). At SLICE 4 this was contract proof,
-not a live rung; the later end-to-end lane receipt is linked from the status
+not a live rung; the later end-to-end route receipt is linked from the status
 note.
 
-The adopter's real scorecard is its OWN thin extension. The end-to-end lane's
+The adopter's real scorecard is its OWN thin extension. The end-to-end route's
 live receipt is kept under the terminal-product goal, and true duplex PTY replay
 is deferred to SLICE 5.
 

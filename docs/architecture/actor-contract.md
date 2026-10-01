@@ -13,7 +13,7 @@ full `Actor.run(input)` interface, `ApprovalPolicy`, `StagehandCuaActor`, and th
 `persona-fidelity` verify check. `RedactionHooks` ships in `src/evidence/redaction.ts`, and
 the computer-use loop takes it; the other adapters do not take it yet. Of the capabilities,
 routing checks `lanes` and `producesScreenshots` (`src/lab/routing.ts`): an actor that
-declares no screenshots cannot run on the computer-use or scripted-browser lane. Decision
+declares no screenshots cannot run on the computer-use or scripted-browser route. Decision
 6's capture-time screenshot stance was recanted in 0.6.0; see the inline notes and the
 capture-vs-publish rule in
 [`docs/principles/invariants-and-defaults.md`](../principles/invariants-and-defaults.md).
@@ -23,7 +23,7 @@ descriptor `runSession` is a fail-closed compatibility entry. Live execution is
 owned by `runTerminalProductLab`, which coordinates sandbox creation,
 command-scoped runtime auth, evidence, caps, and by-id cleanup.
 
-The `pi-agent-core` and `claude-agent-sdk` descriptors, the `app` lane and the
+The `pi-agent-core` and `claude-agent-sdk` descriptors, the `app` run kind and the
 `in-process-sdk` protocol were removed. No lab route dispatched either descriptor, and a
 lab that names one now fails to parse. A signed-in Claude Code drives computer-use studies
 through `local-agent`, which plugs into the provider-neutral `CuaProvider` port
@@ -92,7 +92,7 @@ API surface.
    flow) will not be dispatched to a code-only actor that would fake success
    via the shell.
 
-6. **Computer-use is one lane behind one adapter.** The shipped computer-use
+6. **Computer-use is one route behind one adapter.** The shipped computer-use
    actor is `openai-computer-use` (fronting the OpenAI Responses adapter); a
    `StagehandCuaActor` fronting the other raw-pixel providers (Anthropic
    computer-use, Gemini) is not-yet-shipped roadmap. Screenshots are the
@@ -257,10 +257,10 @@ export interface Actor {
   single explicit `completionReason`, tear down. No adapter may block waiting on a
   human.
 - **Evidence.** Write redacted events, the `ActorTrace` and a human transcript so the
-  run-bundle wiring is provider-agnostic. The artifact names differ by lane: the Codex
+  run-bundle wiring is provider-agnostic. The artifact names differ by route: the Codex
   app-server adapter writes `events.ndjson`, `summary.json` and `transcript.txt`; a
-  computer-use lane writes its trace to `actor.json` or `actors/<streamId>.json`; the
-  terminal lane writes `terminal-events.ndjson` and `terminal-transcript.txt`.
+  computer-use participant writes its trace to `actor.json` or `actors/<streamId>.json`; the
+  terminal route writes `terminal-events.ndjson` and `terminal-transcript.txt`.
 - **Approvals.** Call `approval.onRequest`; never embed adapter-local decline
   strings. Every call is recorded as an `items[kind=approval]`.
 - **Redaction.** Use the injected `RedactionHooks`. Never re-implement redaction
@@ -284,9 +284,9 @@ export interface Actor {
   depends on the pricing table. An unknown model yields
   `estimatedCostUsd: null` + a `reason`, never a guessed charge.
 
-## The scripted-browser lane (shipped)
+## The scripted-browser route (shipped)
 
-`scripted-browser` is the deterministic, model-free browser-actuation lane, distinct from
+`scripted-browser` is the deterministic, model-free browser-actuation route, distinct from
 `computer-use` (raw pixels + a model deciding actions). The registered
 `scripted-browser` actor (`src/actors/scripted-browser/`) replays a committed scenario's
 browser steps with playwright against a loopback app; the steps ARE the behavior, so
@@ -367,12 +367,12 @@ falsey), keeping the whole lab composition with NO E2B desktop and NO clone. See
 local-app` config surface, the `requiresFrame` provider-authoring contract, and the
 appState-is-runtime-only stance.
 
-## The product-adapter extension seam (shipped in the terminal-product lane, layer 6)
+## The product-adapter extension seam (shipped in the terminal-product route, layer 6)
 
-The terminal-product lane carries the proof-roadmap layer-6 deliverable: a product adopter
+The terminal-product route carries the proof-roadmap layer-6 deliverable: a product adopter
 attaches product-specific scoring + feedback as a THIN in-repo extension WITHOUT forking
 core. The seam is exported contract types (`RunBundle`, `RunFeedbackCandidate`,
-`RunAdapterScore`, `ActorTrace`, `AdapterScorerModule` and the terminal-lane
+`RunAdapterScore`, `ActorTrace`, `AdapterScorerModule` and the terminal-route
 `TerminalProductScoringContext`) plus a registrable scorer module, `RunLabOptions.scorer`,
 with optional `score` and `deriveFeedback`. The older `score` / `deriveFeedback` members of
 `terminalHooks` and `cuaHooks` are deprecated. The adapter records its product nouns ONLY
@@ -506,9 +506,9 @@ turns as a stop signal.
    `@mariozechner/pi-coding-agent`) and the Node `>=22.19` vs engines `>=20` gap
    are pinned against an installed build. The live shim never landed, and the
    mapper-only descriptor was removed because no route dispatched it.
-5. `claude-agent-sdk` adapter (the `app` lane). It shipped as a descriptor with
-   a live session but no route, and was removed along with the `app` lane.
-6. Computer-use lane. (Shipped as `openai-computer-use`: registered 0.3.0,
+5. `claude-agent-sdk` adapter (the `app` run kind). It shipped as a descriptor with
+   a live session but no route, and was removed along with the `app` run kind.
+6. Computer-use route. (Shipped as `openai-computer-use`: registered 0.3.0,
    lab-dispatched 0.4.0; `stagehand-cua` as a multi-provider front remains
    not-yet-shipped roadmap.)
 7. Cross-harness conformance test: one persona x scenario through every adapter,
@@ -521,7 +521,7 @@ turns as a stop signal.
 - Protocol/version drift across four moving harnesses. Pin every binary/SDK and
   assert the init handshake; the registry refuses an actor whose declared
   capabilities do not satisfy the scenario.
-- Screenshot PII in the computer-use lane. Redaction binds the PUBLISH
+- Screenshot PII in the computer-use route. Redaction binds the PUBLISH
   boundary, not capture (0.6.0): raw frames stay local in gitignored
   `.humanish/` and are never emitted by a publish command (this repo's CI
   binary-asset scan also blocks them from commit);

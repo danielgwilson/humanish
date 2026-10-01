@@ -10,7 +10,7 @@ execution:
 ```
 
 Set `audio: false` for screen-only video. Omit `recording` to keep the lightweight
-snapshot recording. This applies to independent computer-use desktop lanes on
+snapshot recording. This applies to independent computer-use desktop participants on
 local Firecracker and E2B; scripted-browser, shared-world and in-process executors
 do not consume this setting and reject it before execution.
 

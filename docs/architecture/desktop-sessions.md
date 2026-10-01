@@ -1,6 +1,6 @@
 # Owned desktop sessions
 
-Independent computer-use lanes, on hosted E2B desktops and local Firecracker
+Independent computer-use participants, on hosted E2B desktops and local Firecracker
 desktops, acquire an owned desktop allocation before subject setup, then bind its
 executor after browser setup. The participant loop still consumes `CuaExecutor`;
 provisioning commands stay in the desktop adapter. This internal interface is not
@@ -49,9 +49,9 @@ span, not a provider billing measurement.
 4. The runner executes the participant loop and closes its model session.
 5. `finalize()` collects final evidence and releases the desktop, including after
    preparation or participant failure. Repeated calls share one finalization.
-6. `snapshot()` supplies the desktop facts for the existing lane outcome.
+6. `snapshot()` supplies the desktop facts for the existing participant outcome.
 
-The E2B lane is composed in `src/routes/computer-use/e2b-desktop/desktop.ts`, with
+The E2B participant desktop is composed in `src/routes/computer-use/e2b-desktop/desktop.ts`, with
 its steps in the files beside it; acquisition and release are in
 `src/substrates/e2b/sandbox.ts`. The local desktop is `createLocalParticipantDesktop` in
 `src/routes/computer-use/local-vm.ts`, over
@@ -79,11 +79,11 @@ desktop lifetime accounting retain their meanings; unconfirmed or retained
 desktops do not become confirmed cleanup. Provider facts remain absent when the
 adapter cannot establish them.
 
-Independent hosted browser and terminal lanes, local Firecracker lanes, and
-shared-world seats that use `runCuaParticipant` use this boundary. Local execution is
+Independent hosted browser and terminal participants, local Firecracker participants, and
+shared-world participants that use `runCuaParticipant` use this boundary. Local execution is
 described in [local browser studies](local-browser-runtime.md).
 
-The independent lane's `runSession` testing hook now receives a constructed
+The `runSession` testing hook for independent participants now receives a constructed
 `executor` instead of `desktop`/`executorOptions`. A hook should consume the
 normal `CuaActorSessionOptions` executor or delegate to `runCuaActorSession`.
 Library calls directly using `runCuaActorSession({ desktop, executorOptions })`
