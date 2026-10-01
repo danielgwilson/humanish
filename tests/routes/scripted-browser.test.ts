@@ -38,6 +38,7 @@ import type {
 } from "../../src/actors/scripted-browser/types.js";
 import type { ScriptedBrowserSessionResult } from "../../src/actors/scripted-browser/actor.js";
 import { syntheticPng1x1 } from "../image-fixtures.js";
+import { evaluatePagePredicate } from "../helpers/scripted-page-predicate.js";
 import { captureStderr, runDirSnapshot } from "../helpers/run-golden.js";
 import { expectFailureGolden } from "../helpers/failure-golden.js";
 
@@ -79,9 +80,9 @@ function makeFakeBrowser(
     },
     locator: locatorFor,
     waitForTimeout: async () => undefined,
-    waitForFunction: async (_fn, needle) => {
-      if (typeof needle === "string" && state.body.includes(needle)) return undefined;
-      throw new Error(`Timeout waiting for text ${String(needle)}`);
+    waitForFunction: async (expression) => {
+      if (evaluatePagePredicate(expression, state.body)) return undefined;
+      throw new Error(`Timeout waiting for ${expression}`);
     },
     screenshot: async ({ path: screenshotPath }) => {
       if (screenshotPath) await writeFile(screenshotPath, PNG_1X1);
