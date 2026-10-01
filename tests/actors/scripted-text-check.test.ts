@@ -13,7 +13,10 @@ import { parse } from "yaml";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { ActorPersonaRef } from "../../src/actors/contract.js";
-import { runScriptedBrowserSession } from "../../src/actors/scripted-browser/actor.js";
+import {
+  runScriptedBrowserSession,
+  type ScriptedBrowserSessionResult,
+} from "../../src/actors/scripted-browser/actor.js";
 import { resolveBrowserCommand } from "../../src/actors/scripted-browser/browser-command.js";
 import { parseBrowserPersonaJourneyFromScenario } from "../../src/actors/scripted-browser/journey.js";
 import { browserSurfaces } from "../../src/actors/scripted-browser/types.js";
@@ -38,6 +41,14 @@ function signupPage(reply: string): string {
     "});</script>",
     "</main></body></html>",
   ].join("");
+}
+
+/** The first step that did not pass, with its own reason, for an assertion message. */
+function outcomeOf(result: ScriptedBrowserSessionResult): string {
+  const failing = result.capture.steps.find((step) => step.status !== "passed");
+  return failing === undefined
+    ? `no step failed; session: ${result.reason}`
+    : `${failing.id} ${failing.status}: ${failing.reason}`;
 }
 
 async function committedJourney() {
@@ -92,7 +103,7 @@ describe.skipIf(browserCommand === null && !browserRequired)(
       { timeout: 60_000 },
       async () => {
         const result = await runAgainst("Request received");
-        expect(result.completionReason).toBe("step_failed");
+        expect(result.completionReason, outcomeOf(result)).toBe("step_failed");
         expect(result.reason).toContain("step-04-confirm");
       },
     );
@@ -102,7 +113,7 @@ describe.skipIf(browserCommand === null && !browserRequired)(
       { timeout: 60_000 },
       async () => {
         const result = await runAgainst("Welcome aboard");
-        expect(result.completionReason).toBe("goal_satisfied");
+        expect(result.completionReason, outcomeOf(result)).toBe("goal_satisfied");
       },
     );
   },
