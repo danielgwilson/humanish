@@ -54,6 +54,8 @@ interface ScriptedBundleArgs {
     killed: boolean;
   };
   surfaces: readonly BrowserSurface[];
+  /** The run's verdict (judgeScripted). */
+  verdict: ReviewSummary["verdict"];
 }
 
 /**
@@ -230,11 +232,12 @@ function buildScriptedReview(args: {
   sessionResults: ScriptedBrowserSessionResult[];
   sessionError?: string;
   surfaces: readonly BrowserSurface[];
+  verdict: ReviewSummary["verdict"];
 }): ReviewSummary {
   if (args.sessionError) {
     return {
       schema: REVIEW_SCHEMA,
-      verdict: "fail",
+      verdict: args.verdict,
       summary: `Scripted lab failed before a terminal session verdict: ${args.sessionError}`,
       gaps: [],
     };
@@ -242,23 +245,16 @@ function buildScriptedReview(args: {
   if (args.sessionResults.length === 0) {
     return {
       schema: REVIEW_SCHEMA,
-      verdict: "contract_proof_only",
+      verdict: args.verdict,
       summary: `Dry-run contract for scenario ${args.journey.scenarioId} (${args.scenarioSource}, ${args.journey.steps.length} steps) against ${args.appUrl}: composition and scenario contract proven at $0; no browser ran.`,
       gaps: ["Live scripted session not yet run (dry-run contract only)."],
     };
   }
 
-  // Worst-of across surfaces: harness/step failures outrank a timeout outranks a pass.
-  const reasons = args.sessionResults.map((result) => result.completionReason);
-  const verdict = reasons.some((reason) => reason === "harness_error" || reason === "step_failed")
-    ? ("fail" as const)
-    : reasons.some((reason) => reason === "timed_out")
-      ? ("timed_out" as const)
-      : ("pass" as const);
   const passed = args.sessionResults.filter((result) => result.status === "passed").length;
   return {
     schema: REVIEW_SCHEMA,
-    verdict,
+    verdict: args.verdict,
     summary: `Scripted-browser actor replayed ${args.journey.scenarioId} on ${args.sessionResults.length} surface${args.sessionResults.length === 1 ? "" : "s"} against ${args.appUrl}: ${passed}/${args.sessionResults.length} satisfied the scenario predicate.`,
     gaps: args.sessionResults
       .filter((result) => result.status !== "passed")

@@ -4,6 +4,7 @@ import type { BrowserPersonaJourney } from "../../actors/scripted-browser/types.
 import type { ScriptedPlan } from "../../lab/plan-types.js";
 import type { RunBundle, RunSubjectProvenance } from "../../run/bundle.js";
 import type { RunScope } from "../../run/run.js";
+import { judgeScripted, type ParticipantFacts } from "../../run/judge.js";
 import { validatePreparedRunArtifactPaths } from "../../run/paths.js";
 import { resolveSubjectState } from "../computer-use/lab.js";
 import { buildScriptedLabBundle } from "./bundle.js";
@@ -31,6 +32,17 @@ export interface ScriptedFinishInputs {
   redactRepoLabel: boolean;
   subjectEnvNames: string[];
   scriptedSubject: ScriptedSubject | undefined;
+}
+
+/** What judgeScripted reads from one surface's session. Scripted has no engagement or blocker rule. */
+function scriptedSurfaceFacts(result: ScriptedBrowserSessionResult): ParticipantFacts {
+  return {
+    status: result.status,
+    completionReason: result.completionReason,
+    skipped: false,
+    noEngagement: false,
+    selfReportedBlocker: false,
+  };
 }
 
 export async function finishScriptedRun(
@@ -69,6 +81,13 @@ export async function finishScriptedRun(
       }
     : undefined;
 
+  // One judgment for the bundle's verdict and the result's ok.
+  const judgment = judgeScripted({
+    dryRun,
+    sessionError,
+    expected: surfaces.length,
+    surfaces: sessionResults.map(scriptedSurfaceFacts),
+  });
   const bundle = buildScriptedLabBundle({
     ...(plan.lab === undefined ? {} : { lab: plan.lab }),
     actorId: actor,
@@ -87,6 +106,7 @@ export async function finishScriptedRun(
     ...(sessionError === undefined ? {} : { sessionError }),
     source,
     surfaces,
+    verdict: judgment.verdict,
     ...(subject === undefined ? {} : { subject }),
     ...(subjectDesktop === undefined ? {} : { subjectDesktop }),
     ...(plan.residual.execution?.desktop?.template === undefined
@@ -107,11 +127,10 @@ export async function finishScriptedRun(
   const observer = await finished.renderObserver();
   await validatePreparedRunArtifactPaths(runPaths);
 
-  const harnessError = sessionResults.some((result) => result.completionReason === "harness_error");
-  const ok =
-    observer.ok &&
-    sessionError === undefined &&
-    (dryRun || (sessionResults.length === surfaces.length && !harnessError));
+  const ok = observer.ok && !judgment.harnessFailed;
+  const harnessErrorSession = sessionResults.find(
+    (result) => result.completionReason === "harness_error",
+  );
 
   return {
     schema: SCRIPTED_BROWSER_LAB_SCHEMA,
@@ -150,8 +169,8 @@ export async function finishScriptedRun(
             message:
               sessionError ??
               (observer.ok
-                ? harnessError
-                  ? `Scripted session ended with a harness error: ${sessionResults.find((result) => result.completionReason === "harness_error")?.reason ?? "unknown"}`
+                ? harnessErrorSession
+                  ? `Scripted session ended with a harness error: ${harnessErrorSession.reason}`
                   : "Scripted lab did not produce terminal sessions for every surface."
                 : (observer.error?.message ?? "Observer failed for the scripted lab run.")),
           },
