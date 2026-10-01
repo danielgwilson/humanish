@@ -445,6 +445,10 @@ are the `HUMANISH_*` names `src/` read or returned at 0.105.0 and no longer does
 
 ### Fixes
 
+- `humanish analyze` uses an OpenAI key saved with `humanish keys set` or in
+  `.humanish/local/provider.env` (#1314). It read only the environment, so it failed with
+  `ANALYSIS_API_KEY_MISSING` for a key that `lab run` found. A dry run and the Codex analyst still
+  read no key.
 - Key discovery runs `gh auth token` without any provider key in its environment (#1315). It
   used to inherit the process environment, including keys exported by the user and keys
   discovery had just read from `.humanish/local/provider.env` and `~/.e2b/config.json`.
