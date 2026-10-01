@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { ACTOR_STATUSES } from "../../src/actors/contract.js";
+import {
+  ACTOR_STATUSES,
+  type ActorCompletionReason,
+  type ActorStatus,
+} from "../../src/actors/contract.js";
 import {
   hollowCompletion,
   judgeOneParticipant,
   judgeParticipants,
+  judgeScripted,
   judgeSharedWorld,
   judgeTerminal,
   participantPassed,
@@ -258,6 +263,37 @@ describe("judgeParticipants", () => {
     expect(
       judgeParticipants({ dryRun: false, inProgress: true, expected: 2, participants: [] }).verdict,
     ).toBe("contract_proof_only");
+  });
+});
+
+describe("judgeScripted", () => {
+  const surface = (status: ActorStatus, completionReason: ActorCompletionReason) =>
+    passed({ status, completionReason });
+  const ok = surface("passed", "goal_satisfied");
+  const stepFailed = surface("failed", "step_failed");
+  const timedOut = surface("timed_out", "timed_out");
+  const harnessError = surface("failed", "harness_error");
+  const judge = (surfaces: ParticipantFacts[], sessionError?: string) =>
+    judgeScripted({ dryRun: false, sessionError, expected: 2, surfaces });
+
+  // The worst surface decides: a harness error or failed step, then a timeout, then a pass. Only a
+  // harness failure fails the result; a failed step or a timeout is evidence.
+  it.each<[string, ParticipantFacts[], string | undefined, string, boolean]>([
+    ["every surface passed", [ok, ok], undefined, "pass", false],
+    ["a failed step", [ok, stepFailed], undefined, "fail", false],
+    ["a timeout", [ok, timedOut], undefined, "timed_out", false],
+    ["a failed step outranks a timeout", [timedOut, stepFailed], undefined, "fail", false],
+    ["a harness error", [ok, harnessError], undefined, "fail", true],
+    ["a surface that never returned", [ok], undefined, "pass", true],
+    ["a session error", [], "browser pool exploded", "fail", true],
+  ])("%s", (_name, surfaces, sessionError, verdict, harnessFailed) => {
+    expect(judge(surfaces, sessionError)).toMatchObject({ verdict, harnessFailed });
+  });
+
+  it("holds a dry run as a contract that passes", () => {
+    expect(
+      judgeScripted({ dryRun: true, sessionError: undefined, expected: 2, surfaces: [] }),
+    ).toEqual({ verdict: "contract_proof_only", allPassed: true, harnessFailed: false });
   });
 });
 

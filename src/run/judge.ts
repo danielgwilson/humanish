@@ -201,6 +201,41 @@ export function judgeParticipants(args: {
   return { verdict, allPassed: args.dryRun || allPassed };
 }
 
+/**
+ * A scripted run: the worst surface decides the verdict. A harness error or a failed step fails
+ * the run, then a timeout makes it timed_out, and otherwise it passes. A session error fails it
+ * and a run with no surface results is a contract. The harness failed when the session erred, a
+ * live surface never returned, or a surface ended in a harness error.
+ */
+export function judgeScripted(args: {
+  dryRun: boolean;
+  sessionError: string | undefined;
+  expected: number;
+  surfaces: ParticipantFacts[];
+}): HarnessJudgment {
+  const { surfaces } = args;
+  const reasons = surfaces.map((surface) => surface.completionReason);
+  const verdict: Verdict = args.sessionError
+    ? "fail"
+    : surfaces.length === 0
+      ? "contract_proof_only"
+      : reasons.some((reason) => reason === "harness_error" || reason === "step_failed")
+        ? "fail"
+        : reasons.some((reason) => reason === "timed_out")
+          ? "timed_out"
+          : "pass";
+  const complete = surfaces.length === args.expected;
+  return {
+    verdict,
+    allPassed:
+      args.dryRun ||
+      (args.sessionError === undefined && complete && surfaces.every(participantPassed)),
+    harnessFailed:
+      args.sessionError !== undefined ||
+      (!args.dryRun && (!complete || reasons.includes("harness_error"))),
+  };
+}
+
 /** What a shared-world run observed about its one world, beside how each seat ended. */
 export interface SharedWorldFacts {
   /** Two or more seats were live at the same time. */

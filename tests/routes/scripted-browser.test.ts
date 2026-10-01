@@ -20,6 +20,7 @@ import { runLab, selectLabBackend } from "../../src/lab/engine.js";
 import { createProgram } from "../../src/cli/program.js";
 import { digestText } from "../../src/evidence/redaction.js";
 import { verifyRun } from "../../src/verify/verify.js";
+import type { RunBundle } from "../../src/run/bundle.js";
 import { computeStats } from "../../src/run/stats.js";
 import { reclaimRunSandboxes } from "../../src/run/reclaim.js";
 import {
@@ -912,6 +913,91 @@ describe("runScriptedBrowserLab", () => {
     });
   });
 
+  // One judgment decides the bundle's verdict and the result's ok, and status.json repeats the
+  // bundle's verdict. The worst surface decides the verdict; only a harness failure fails ok.
+  type SurfaceEnding = "pass" | "step_failed" | "timeout";
+  function surfaceBrowser(
+    endings: Record<"desktop" | "mobile", SurfaceEnding>,
+  ): ScriptedBrowserLike {
+    return {
+      newContext: async (options) => {
+        const ending = endings[options.isMobile ? "mobile" : "desktop"];
+        const context = await makeFakeBrowser(
+          ending === "pass" ? { bodyAfterClick: "Welcome aboard" } : {},
+        ).newContext(options);
+        if (ending !== "timeout") return context;
+        const page = await context.newPage();
+        // The first navigation never settles, so the journey runs into its wall-clock budget.
+        return { newPage: async () => ({ ...page, goto: () => new Promise<undefined>(() => {}) }) };
+      },
+      close: async () => undefined,
+    };
+  }
+  it.each<[string, ScriptedBrowserLabHooks, RunBundle["review"]["verdict"], boolean]>([
+    [
+      "every surface passes",
+      { launchBrowser: async () => surfaceBrowser({ desktop: "pass", mobile: "pass" }) },
+      "pass",
+      true,
+    ],
+    [
+      "a failed step on one surface",
+      { launchBrowser: async () => surfaceBrowser({ desktop: "pass", mobile: "step_failed" }) },
+      "fail",
+      true,
+    ],
+    [
+      "a timeout on one surface",
+      { launchBrowser: async () => surfaceBrowser({ desktop: "pass", mobile: "timeout" }) },
+      "timed_out",
+      true,
+    ],
+    [
+      "a timeout and a failed step",
+      { launchBrowser: async () => surfaceBrowser({ desktop: "timeout", mobile: "step_failed" }) },
+      "fail",
+      true,
+    ],
+    [
+      "a browser that cannot launch",
+      {
+        launchBrowser: async () => {
+          throw new Error("chromium executable missing");
+        },
+      },
+      "fail",
+      false,
+    ],
+    [
+      "a session that throws",
+      {
+        runSession: async () => {
+          throw new Error("synthetic session failure");
+        },
+        launchBrowser: async () => surfaceBrowser({ desktop: "pass", mobile: "pass" }),
+      },
+      "fail",
+      false,
+    ],
+  ])("agrees across bundle, result and status with %s", async (_name, hooks, verdict, ok) => {
+    await writeCommittedScenario(cwd);
+    await withHttpServer(async (appUrl) => {
+      const config = scriptedConfig({ appUrl, count: 2, mode: "live" });
+      config.execution!.timeoutMs = 3_000;
+      const stderr = captureStderr();
+      const outcome = await runLab(config, { cwd, scriptedHooks: hooks }).finally(stderr.stop);
+      if (outcome.backend !== "scripted") throw new Error("expected scripted backend");
+      const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
+      const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
+      const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8")) as {
+        outcome?: { verdict?: string };
+      };
+      expect(bundle.review.verdict).toBe(verdict);
+      expect(status.outcome?.verdict).toBe(verdict);
+      expect(outcome.result.ok).toBe(ok);
+    });
+  });
+
   it("verify fails closed when a live stream references a screenshot that is missing", async () => {
     await writeCommittedScenario(cwd);
     await withHttpServer(async (appUrl) => {
@@ -1563,6 +1649,29 @@ describe("scripted run lifetime on the provisioned clone route", () => {
     if (outcome.backend !== "scripted") throw new Error(`unexpected backend ${outcome.backend}`);
     expect(outcome.result.subjectSandbox).toEqual({ sandboxId: "fake-subject-001", killed });
     expect(outcome.result.warnings.join("\n")).toContain(warning);
+  });
+
+  it("a failed subject teardown leaves a passing run's verdict and ok alone", async () => {
+    const fakeE2B = makeFakeE2BModule();
+    const kill = fakeE2B.module.Sandbox.kill!;
+    fakeE2B.module.Sandbox.kill = async (sandboxId, options) => {
+      await kill(sandboxId, options);
+      throw new Error("synthetic kill failure");
+    };
+    const passing = provisionedCloneHooks(fakeE2B.module).hooks.runSession;
+    const hooks = cloneHooks(fakeE2B.module, passing);
+
+    const outcome = await runLab(provisionedScriptedConfig(), { cwd, scriptedHooks: hooks });
+    if (outcome.backend !== "scripted") throw new Error(`unexpected backend ${outcome.backend}`);
+    expect(outcome.result.subjectSandbox?.killed).toBe(false);
+    const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
+    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
+    const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8")) as {
+      outcome?: { verdict?: string };
+    };
+    expect(bundle.review.verdict).toBe("pass");
+    expect(status.outcome?.verdict).toBe("pass");
+    expect(outcome.result.ok).toBe(true);
   });
 
   it("S3: after a failed subject teardown, reclaim kills the receipted subject", async () => {
