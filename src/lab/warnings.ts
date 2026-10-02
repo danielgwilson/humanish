@@ -49,7 +49,7 @@ const ACTOR_ROWS: readonly InertRow<LabActor>[] = [
   {
     field: "lanes[].entry",
     reason:
-      "the per-role loopback entry is a shared-world capability; needs subject.topology: shared-world",
+      "the per-participant loopback entry is a shared-world capability; needs subject.topology: shared-world",
     applies: (actor, routes) =>
       Boolean(rosterOf(actor)?.some((entry) => entry.entry !== undefined)) && !routes.shared,
   },

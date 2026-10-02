@@ -42,9 +42,9 @@ import {
   concurrentSharedWorldValidationReason,
 } from "../../../src/lab/validation.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
-import { routesToConcurrentSharedWorld } from "../../../src/lab/routing.js";
+import { isSharedWorldComposition } from "../../../src/lab/routing.js";
 import { runLab } from "../../../src/run-lab.js";
-import { selectLabBackend } from "../../../src/lab/plan.js";
+import { routeOf } from "../../../src/lab/plan.js";
 import type { LabDeps } from "../../../src/lab/lab-deps.js";
 import type {
   E2BDesktopCreateOptions,
@@ -524,8 +524,8 @@ describe("extractLobbyCode regex", () => {
 describe("external-public config validation + routing", () => {
   it("app-url + topology shared-world + concurrency 3 + allowPublicTargets + publicTarget.authorized ROUTES to concurrent-shared-world", () => {
     const config = parseExternal();
-    expect(routesToConcurrentSharedWorld(config)).toBe(true);
-    expect(selectLabBackend(config)).toBe("concurrent-shared-world");
+    expect(isSharedWorldComposition(config)).toBe(true);
+    expect(routeOf(config)).toBe("shared-world");
     expect(externalPublicSharedWorldValidationReason(config)).toBeNull();
   });
 
@@ -1276,7 +1276,7 @@ describe("lobby-trivia-3player committed lab", () => {
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     expect(parsed.warnings ?? []).toEqual([]);
-    expect(selectLabBackend(parsed.config)).toBe("concurrent-shared-world");
+    expect(routeOf(parsed.config)).toBe("shared-world");
 
     const outcome = await runLab(parsed.config, { cwd, dryRun: true });
     expect(outcome.route).toBe("shared-world");

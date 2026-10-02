@@ -40,7 +40,7 @@ import type { AutomaticAnalysisOutcome } from "../../src/analysis/job.js";
 
 const fixtures = JSON.parse(
   await readFile(new URL("../fixtures/task-route-preflight/labs.json", import.meta.url), "utf8"),
-) as Array<{ name: string; config: LabConfig; backend: string }>;
+) as Array<{ name: string; config: LabConfig; route: string }>;
 const resolved = resolveAutomaticAnalysis({ maxCostUsd: 5 });
 if (!resolved.ok || !resolved.config || resolved.config.provider === "codex")
   throw new Error("invalid synthetic test config");
@@ -229,7 +229,7 @@ describe("automatic analysis admission and producer boundary", () => {
   it.each([runCuaActorLab, runScriptedBrowserLab, runTerminalProductLab, runConcurrentSharedWorld])(
     "validates direct producer config before hooks",
     async (runner) => {
-      const base = fixtures.find((row) => row.backend === "cua")!.config;
+      const base = fixtures.find((row) => row.route === "computer-use")!.config;
       const forbidden = vi.fn(async () => {
         throw new Error("forbidden hook");
       });
@@ -251,10 +251,10 @@ describe("automatic analysis admission and producer boundary", () => {
       await expect(access(path.join(cwd, "absent"))).rejects.toMatchObject({ code: "ENOENT" });
     },
   );
-  it.each(["cua", "scripted", "terminal", "concurrent-shared-world"])(
+  it.each(["computer-use", "scripted", "terminal", "shared-world"])(
     "runLab %s dry-run skips post-run spend exactly once",
-    async (backend) => {
-      const base = fixtures.find((row) => row.backend === backend)!.config;
+    async (route) => {
+      const base = fixtures.find((row) => row.route === route)!.config;
       const run = vi.fn();
       const onEvent = vi.fn();
       const output = await runLab(

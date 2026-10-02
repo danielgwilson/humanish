@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { createTerminalParticipantReader } from "./participant-text.js";
 import {
   MAX_TRANSCRIPT_BYTES,
   type CommandLogRecord,
@@ -9,7 +10,8 @@ import {
 
 /**
  * The terminal run's ledgers and capture buffers, mutated through the live lifecycle. Every chunk
- * is scrubbed and redacted as it is stored; raw bytes never leave the append functions.
+ * is scrubbed and redacted as it is stored. Raw bytes leave the append functions only for the
+ * in-memory participant reader, which keeps sanitized decoded text.
  */
 export function createTerminalRecorder(args: {
   nowIso: () => string;
@@ -28,6 +30,8 @@ export function createTerminalRecorder(args: {
     ...knownSecretValues.map((value) => value.length - 1),
   );
   const interventions: InterventionRecord[] = []; // ALWAYS empty while no assisted-input path ships.
+  // Reads the agent's text from the raw stdout in memory; it keeps only sanitized decoded text.
+  const participantText = createTerminalParticipantReader(sanitize);
   let transcriptBytes = 0;
 
   const recordLifecycle = (event: string, message: string): void => {
@@ -42,8 +46,10 @@ export function createTerminalRecorder(args: {
       return;
     }
     transcriptBytes += Buffer.byteLength(raw, "utf8");
-    // Scrub THEN redact at the SOURCE — raw bytes never leave this function (safety contract item 5).
+    // Scrub THEN redact at the SOURCE (safety contract item 5). Only the participant reader below
+    // sees the raw bytes, and it stores none of them.
     terminalEvents.push({ at: nowIso(), stream, chunk: sanitize(raw) });
+    if (stream === "stdout") participantText.append(raw);
   };
 
   // E2B can stream every byte through callbacks AND return the same complete output (#667).
@@ -85,6 +91,7 @@ export function createTerminalRecorder(args: {
     terminalEvents,
     interventions,
     discardedPrefixes,
+    participantText,
     recordLifecycle,
     recordStreamedTerminalChunk,
     appendReturnedTerminalOutput,
