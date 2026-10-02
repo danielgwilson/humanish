@@ -267,7 +267,7 @@ describe("selected lab setup without paid dispatch", () => {
     },
   );
 
-  it("names the codex file on PATH it turned down when Codex is unavailable", async () => {
+  it("names the codex file on `PATH` it turned down when Codex is unavailable", async () => {
     const bin = await mkdtemp(path.join(tmpdir(), "humanish-doctor-codex-wrapper-"));
     await writeFile(path.join(bin, "codex"), '#!/bin/sh\nexec real-codex "$@"\n', {
       mode: 0o755,

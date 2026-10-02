@@ -23,7 +23,7 @@ const lab = {
 let cwd: string, env: NodeJS.ProcessEnv;
 beforeEach(async () => {
   cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-comms-config-"));
-  // HOME and PATH point into the temp dir. A test that turns discovery on then finds no gh, so
+  // `HOME` and `PATH` point into the temp dir. A test that turns discovery on then finds no gh, so
   // the gh rung misses and nothing is written outside the temp dir.
   env = {
     XDG_CONFIG_HOME: path.join(cwd, "keys"),

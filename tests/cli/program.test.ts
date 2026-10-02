@@ -809,7 +809,7 @@ describe("humanish CLI scaffold", () => {
 
   it("catches an unexpected fs error at the command boundary and emits a single HUMANISH_UNEXPECTED envelope", async () => {
     await withTempApp({}, async (cwd) => {
-      // .humanish/runs as a FILE (not a directory) makes the unguarded mkdir inside
+      // .humanish/runs as a file (not a directory) makes the unguarded mkdir inside
       // runDryRun reject with ENOTDIR. Before the command-boundary catch-all this
       // crashed raw to stderr with a Node stack trace and zero stdout.
       await mkdir(path.join(cwd, ".humanish"), { recursive: true });
@@ -1009,7 +1009,7 @@ describe("resolveRouteShouldOpen (shared lab-route auto-open gate)", () => {
     ).toBe(true);
   });
 
-  it("human watch opens on a real TTY and NOT without one (the fix)", () => {
+  it("human watch opens on a real TTY and not without one (the fix)", () => {
     process.stdout.isTTY = true;
     expect(
       resolveRouteShouldOpen({
@@ -1210,7 +1210,7 @@ describe("humanish serve command", () => {
       { "package.json": JSON.stringify({ name: "fixture-app" }, null, 2) },
       async (cwd) => {
         const matrix: Array<{ args: string[]; code: string }> = [
-          // Exposure requires EITHER edge auth OR --safe: a bare tunnel to local bundles is refused.
+          // Exposure requires either edge auth or --safe: a bare tunnel to local bundles is refused.
           {
             args: ["--expose", "--tunnel", "ngrok"],
             code: "HUMANISH_SERVE_EXPOSE_REQUIRES_EDGE_AUTH_OR_SAFE",
@@ -1266,7 +1266,7 @@ describe("humanish serve command", () => {
           ["--ttl", "5"],
         ]) {
           // The flags are gone: commander refuses the unknown option (a non-zero exit, surfaced here as
-          // a thrown error), rather than silently accepting a no-op — the pre-1.0 breaking change.
+          // a thrown error), rather than silently accepting a no-op: the pre-1.0 breaking change.
           await expect(
             runCli(["serve", "--cwd", cwd, "--json", "--no-open", ...removed]),
           ).rejects.toThrow();
@@ -1492,7 +1492,7 @@ describe("humanish serve command", () => {
         const port = await findFreePort();
         const originalPath = process.env.PATH;
         // The CLI runs in-process and spawns nothing but ngrok on this path, so a
-        // PATH of one empty directory makes that exact spawn fail ENOENT.
+        // `PATH` of one empty directory makes that exact spawn fail ENOENT.
         process.env.PATH = emptyDir;
         try {
           const result = await runCli([
@@ -1525,8 +1525,8 @@ describe("humanish serve command", () => {
   });
 });
 
-// A live-mode CUA lab so runCuaBackend runs the exposure validator. Every case below is a REFUSAL
-// that aborts at validateExposure BEFORE runLab, so no sandbox/provider spend occurs ($0).
+// A live-mode CUA study so prepareCuaWatch runs the exposure validator. Every case below is a refusal
+// that aborts at validateExposure before runLab, so no sandbox/provider spend occurs ($0).
 const CUA_LAB_FIXTURE: Record<string, string> = {
   "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
   "humanish/labs/cua-live.yaml": [
@@ -1553,7 +1553,7 @@ interface CuaEnvelope {
 }
 
 describe("humanish watch --expose (live CUA) fail-closed matrix", () => {
-  it("refuses a live watch --expose --tunnel ngrok with NO edge auth (edge auth is required)", async () => {
+  it("refuses a live watch --expose --tunnel ngrok with no edge auth (edge auth is required)", async () => {
     await withTempApp(CUA_LAB_FIXTURE, async (cwd) => {
       // No --json: --json would trip the live-follow refusal first; here we isolate the edge-auth gate.
       const result = await runCli([
@@ -1754,9 +1754,9 @@ describe("provider-key discovery at the CLI seam", () => {
 describe("lab provenance survives the whole CLI path", () => {
   // This test exists because a live run caught what the unit tests could not: the provenance was
   // built at the resolution site and forwarded through nine `runLab` call sites, and three of them
-  // silently dropped it — TypeScript cannot catch that, because a spread of an optional field is
+  // silently dropped it: TypeScript cannot catch that, because a spread of an optional field is
   // never an excess-property error. So the guard has to run the CLI end to end and read the disk.
-  it("`lab run` stamps the resolved lab into the bundle AND the status record", async () => {
+  it("`lab run` stamps the resolved study into the bundle and the status record", async () => {
     const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-lab-provenance-"));
     try {
       const labPath = path.join(cwd, "humanish", "labs", "provenance-demo.yaml");

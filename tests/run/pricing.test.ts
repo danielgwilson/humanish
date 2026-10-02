@@ -44,7 +44,7 @@ describe("pricing schema constants", () => {
   it("keeps the shipped rate table keyed lowercase with the CUA default present", () => {
     // The shipped default resolves to gpt-5.6-sol (DEFAULT_OPENAI_CU_MODEL); it must be priceable
     // so a capped run is not refused by default. The 5.6-family rates are confirmed against
-    // OpenAI's live sheet (#334); the previous-generation gpt-5.5 entry stays for pinned labs;
+    // OpenAI's live sheet; the previous-generation gpt-5.5 entry stays for pinned studies;
     // the legacy desktop helper remains a labeled planning assumption, distinct from observed rates.
     expect(MODEL_RATES["gpt-5.6-sol"]?.placeholder).toBeUndefined();
     // OpenAI's own alias for sol must price identically so an alias-configured lab is never unpriced.
@@ -61,7 +61,7 @@ describe("pricing schema constants", () => {
 });
 
 describe("estimateActorCost", () => {
-  it("computes an EXACT rate-table multiply for a known model and carries provenance + breakdown", () => {
+  it("computes an exact rate-table multiply for a known model and carries provenance + breakdown", () => {
     const est = estimateActorCost({ input: 1000, output: 200 }, "test-model", FAKE_RATES);
     const inputUsd = round6(1000 * 2e-6);
     const outputUsd = round6(200 * 5e-6);
@@ -80,7 +80,7 @@ describe("estimateActorCost", () => {
     expect(est.ratesAsOf).toBe("2024-01-01");
   });
 
-  it("DECLARES ABSENT (null + no_rate_for_model) for an unknown model — never a guessed cost", () => {
+  it("declares absent (null + no_rate_for_model) for an unknown model, never a guessed cost", () => {
     const est = estimateActorCost({ input: 1000, output: 200 }, "no-such-model", FAKE_RATES);
     expect(est.estimatedCostUsd).toBeNull();
     expect(est.reason).toBe("no_rate_for_model");
@@ -89,7 +89,7 @@ describe("estimateActorCost", () => {
     expect(est.modelId).toBe("no-such-model");
   });
 
-  it("DECLARES ABSENT (null + no_token_usage) for undefined or empty token usage", () => {
+  it("declares absent (null + no_token_usage) for undefined or empty token usage", () => {
     for (const usage of [undefined, {}, { total: 5 } as const]) {
       const est = estimateActorCost(usage, "test-model", FAKE_RATES);
       expect(est.estimatedCostUsd).toBeNull();
@@ -122,7 +122,7 @@ describe("estimateActorCost: cached input", () => {
   // The bug this pins: every input token was billed at the full rate, and the provider's
   // cached-token count was not even parsed. The CUA loop threads state through the provider and
   // re-sends a growing warm prefix every turn, so most input on a long session is a cache hit. A
-  // live two-lane run read $5.14 per lane and aborted itself against its own $5 cap — for spend it
+  // live two-lane run read $5.14 per lane and aborted itself against its own $5 cap: for spend it
   // very likely never incurred.
   const rate = {
     inputUsdPerToken: 5e-6,
@@ -153,7 +153,7 @@ describe("estimateActorCost: cached input", () => {
     const silent = estimateActorCost({ input: 1_000_000, output: 0 }, "test-model", rates);
     expect(silent.estimatedCostUsd).toBe(5);
     expect(withCache.estimatedCostUsd).toBe(5);
-    // Absent means absent — never reported as an observed zero.
+    // Absent means absent, never reported as an observed zero.
     expect(silent.breakdown?.cachedInputTokens).toBeUndefined();
   });
 
@@ -201,7 +201,7 @@ describe("estimateDesktopCost", () => {
     expect(est.minutes).toBe(3);
   });
 
-  it("DECLARES ABSENT for undefined, NaN, or negative minutes", () => {
+  it("declares absent for undefined, NaN, or negative minutes", () => {
     for (const minutes of [undefined, Number.NaN, -1]) {
       const est = estimateDesktopCost(minutes, FAKE_DESKTOP);
       expect(est.estimatedCostUsd).toBeNull();
@@ -227,8 +227,8 @@ describe("round6", () => {
 
 describe("estimateActorCost: cache writes + long-context tiering", () => {
   // The two billing mechanics gpt-5.6 introduced, pinned with a fake sheet mirroring its shape:
-  // writes bill at their own (1.25x) rate as the TOTAL rate for written tokens, and a request
-  // whose input crosses the threshold re-tiers the WHOLE request (2x input-side, 1.5x output).
+  // writes bill at their own (1.25x) rate as the total rate for written tokens, and a request
+  // whose input crosses the threshold re-tiers the whole request (2x input-side, 1.5x output).
   const rate: ModelRate = {
     inputUsdPerToken: 4e-6,
     cachedInputUsdPerToken: 0.4e-6,
@@ -280,8 +280,8 @@ describe("estimateActorCost: cache writes + long-context tiering", () => {
   });
 
   it("refuses to tier when the ledger omits the cache splits the totals declare", () => {
-    // input/output sums match but the ledger carries no cachedInput — trusting it would price
-    // 400k cache hits at the full rate (3.5x overstatement, the #391 false-cap-trip direction).
+    // input/output sums match but the ledger carries no cachedInput: trusting it would price
+    // 400k cache hits at the full rate (3.5x overstatement, the direction that trips a cap falsely).
     const cost = estimateActorCost(
       {
         input: 1500,
@@ -311,7 +311,7 @@ describe("estimateActorCost: cache writes + long-context tiering", () => {
     expect(cost.breakdown?.cacheWriteInputTokens).toBe(400);
   });
 
-  it("refuses to tier from a partial turns ledger — totals price on the base rate instead", () => {
+  it("refuses to tier from a partial turns ledger: totals price on the base rate instead", () => {
     // The ledger claims less input than the totals report: tiering from it would price the
     // missing remainder at a guessed tier. The estimate falls back to the base-rate totals path.
     const cost = estimateActorCost(

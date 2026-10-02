@@ -23,7 +23,7 @@ import { freePort } from "../helpers/free-port.js";
 import { e2bShell } from "../../src/substrates/e2b/shell.js";
 
 // A probe that a stranger's server cannot satisfy. CI failed this file with "expected
-// '<main>landing page</main>' to contain 'INBOX OK'": between freePort() releasing a port and
+// '<main>landing page</main>' to contain 'inbox OK'": between freePort() releasing a port and
 // python binding it, another worker's fixture server (scripted-browser-lab, which answers every
 // path with 200) took it. The old probe accepted any 200 on /health, so the test then read the
 // wrong server. The script's /health carries a machine marker for exactly this reason.
@@ -38,7 +38,7 @@ async function catchIsUp(port: number): Promise<boolean> {
   }
 }
 
-/** Spawn the catch on fresh ports until OUR listeners answer; a stolen port gets a new pair. */
+/** Spawn the catch on fresh ports until our listeners answer; a stolen port gets a new pair. */
 async function spawnCatchOnFreePorts(
   launch: (port: number, inboxPort: number) => ReturnType<typeof spawn>,
   withInbox: boolean,
@@ -93,7 +93,7 @@ function makeFakeDesktop(
 
 const instantTimers = { now: () => 0, sleep: async () => {} };
 
-describe("comms-sandbox-catch: the in-sandbox capture SCRIPT (run for real, no E2B)", () => {
+describe("comms-sandbox-catch: the in-sandbox capture script (run for real, no E2B)", () => {
   let child: ChildProcess | undefined;
   let dir: string | undefined;
   afterEach(async () => {
@@ -175,7 +175,7 @@ describe("comms-sandbox-catch: the in-sandbox capture SCRIPT (run for real, no E
     const g = await fetch(`http://127.0.0.1:${inboxPort}/inbox`);
     expect(g.status).toBe(200);
     expect(await g.text()).toContain("INBOX OK");
-    // …but rejects capture POSTs (read-only — nothing on the internet can inject a fake send).
+    // …but rejects capture POSTs (read-only: nothing on the internet can inject a fake send).
     expect(
       (await fetch(`http://127.0.0.1:${inboxPort}/emails`, { method: "POST", body: "x" })).status,
     ).toBe(405);
@@ -226,7 +226,7 @@ describe("comms-sandbox-catch: deploy / drain / route over the E2B interface (fa
       timers: instantTimers,
     });
 
-    expect(deployed.baseUrl).toBe("http://127.0.0.1:8025"); // inject THIS as the app's email-API base URL
+    expect(deployed.baseUrl).toBe("http://127.0.0.1:8025"); // inject this as the app's email-API base URL
     expect(deployed.ready).toBe(true);
     // The self-contained capture script was written into the sandbox…
     const written = Object.entries(files).find(([p]) => p.endsWith("catch.py"));
@@ -245,7 +245,7 @@ describe("comms-sandbox-catch: deploy / drain / route over the E2B interface (fa
     ).toBe(true);
   });
 
-  it("deployCommsCatch with an inboxPort passes it as the 4th arg, probes BOTH listeners, and returns it", async () => {
+  it("deployCommsCatch with an inboxPort passes it as the 4th arg, probes both listeners, and returns it", async () => {
     const { desktop, calls, files } = makeFakeDesktop((cmd) =>
       cmd.includes("curl") ? { stdout: '{"ok":true,"service":"humanish-comms-catch"}' } : undefined,
     );
@@ -261,7 +261,7 @@ describe("comms-sandbox-catch: deploy / drain / route over the E2B interface (fa
     expect(Object.values(files).some((v) => v.includes("catch.py") && v.includes(" 8026"))).toBe(
       true,
     );
-    // …and BOTH listeners were probed for readiness (a dead inbox listener would 502 via getHost).
+    // …and both listeners were probed for readiness (a dead inbox listener would 502 via getHost).
     expect(calls.some(([, c]) => typeof c === "string" && c.includes("8025/health"))).toBe(true);
     expect(calls.some(([, c]) => typeof c === "string" && c.includes("8026/health"))).toBe(true);
   });
@@ -288,7 +288,7 @@ describe("comms-sandbox-catch: deploy / drain / route over the E2B interface (fa
     expect(first.cursor).toBe(1);
     expect(first.sends[0]!.path).toBe("/emails");
 
-    // A second send appears; draining from the prior cursor yields ONLY the new one.
+    // A second send appears; draining from the prior cursor yields only the new one.
     ndjson += JSON.stringify({ t: 2, path: "/v3/mail/send", body: "{}" }) + "\n";
     const second = await drainCommsCatch(e2bShell(desktop), deployed, first.cursor);
     expect(second.sends).toHaveLength(1);
@@ -329,13 +329,13 @@ describe("comms-sandbox-catch: deploy / drain / route over the E2B interface (fa
     expect(inbox).toHaveLength(2);
     expect(inbox[0]!.links).toEqual(["https://app.example.test/verify?token=abc123XYZ-9"]);
     expect(inbox[0]!.codes).toEqual(["481920"]);
-    expect(inbox[1]!.codes).toEqual(["903117"]); // the SendGrid-shape send routed through the SAME path
+    expect(inbox[1]!.codes).toEqual(["903117"]); // the SendGrid-shape send routed through the same path
   });
 
   it("end-to-end (fake sandbox): deploy → app sends captured to NDJSON → drain → route → inbox", async () => {
     const bus = new FakeInbox();
     const user = await bus.provision("user-07");
-    // The fake sandbox: /health READY, and cat returns the NDJSON the (simulated) app's POST produced.
+    // The fake sandbox: /health `READY`, and cat returns the NDJSON the (simulated) app's POST produced.
     const captured =
       JSON.stringify({
         t: 1,
@@ -429,8 +429,8 @@ describe("comms-sandbox-catch: collectCommsThread (whole-run evidence collect)",
     expect(emptyCollected.artifact).toBeUndefined();
     expect(emptyCollected.captured).toBe(0); // nothing captured at all
 
-    // Captured mail addressed to an UNPROVISIONED inbox is dropped by deliverRaw → no artifact, but
-    // it WAS captured (matched 0) — the caller warns rather than losing it silently.
+    // Captured mail addressed to an unprovisioned inbox is dropped by deliverRaw → no artifact, but
+    // it was captured (matched 0): the caller warns rather than losing it silently.
     const stranger =
       JSON.stringify({
         t: 1,
@@ -512,10 +512,10 @@ describe("comms-sandbox-catch: refreshInboxSurface (mid-run full rebuild)", () =
     expect(Object.keys(files).length).toBe(before);
   });
 
-  it("is idempotent + retry-safe: a rebuild after a transient render failure does NOT duplicate messages", async () => {
+  it("is idempotent + retry-safe: a rebuild after a transient render failure does not duplicate messages", async () => {
     const nd = { value: captured };
     let failNextWrite = true;
-    // A desktop whose FIRST files.write of the message index throws (transient), then succeeds.
+    // A desktop whose first files.write of the message index throws (transient), then succeeds.
     const calls: Array<[string, ...unknown[]]> = [];
     const files: Record<string, string> = {};
     const desktop = {
@@ -537,7 +537,7 @@ describe("comms-sandbox-catch: refreshInboxSurface (mid-run full rebuild)", () =
     } as unknown as E2BDesktopSandbox;
     const deployed = { deliveriesPath: "/tmp/x/deliveries.ndjson", surfaceDir: "/tmp/x/surface" };
 
-    // First refresh throws mid-render (surface partially/not written); count is NOT advanced by the caller.
+    // First refresh throws mid-render (surface partially/not written); count is not advanced by the caller.
     await expect(
       refreshInboxSurface({ shell: e2bShell(desktop), deployed, recipients, sinceCount: 0 }),
     ).rejects.toThrow();
@@ -549,13 +549,13 @@ describe("comms-sandbox-catch: refreshInboxSurface (mid-run full rebuild)", () =
       sinceCount: 0,
     });
     expect(r).toEqual({ count: 1, rendered: true });
-    // Exactly ONE message rendered — the retry rebuilt from a fresh channel, so no duplicate.
+    // Exactly one message rendered: the retry rebuilt from a fresh channel, so no duplicate.
     const list = JSON.parse(files["/tmp/x/surface/api/inbox/index"]!) as unknown[];
     expect(list).toHaveLength(1);
   });
 });
 
-describe("comms-sandbox-catch: serves the host-rendered inbox SURFACE (script run for real)", () => {
+describe("comms-sandbox-catch: serves the host-rendered inbox surface (script run for real)", () => {
   let child: ChildProcess | undefined;
   let dir: string | undefined;
   afterEach(async () => {
@@ -572,7 +572,7 @@ describe("comms-sandbox-catch: serves the host-rendered inbox SURFACE (script ru
     const surfaceDir = path.join(dir, "surface");
     await writeFile(scriptPath, SANDBOX_CATCH_SCRIPT, "utf8");
 
-    // Host-render (typed) the surface for one captured verification email with an app-LOOPBACK verify
+    // Host-render (typed) the surface for one captured verification email with an app-loopback verify
     // link, then write the files into surfaceDir exactly as the real host bridge (writeInboxSurface) does.
     const loopbackEmail =
       '<p>Hi.</p><p><a href="http://127.0.0.1:3000/verify?token=abc123XYZ-9">Verify</a></p><p>Code: <b>481920</b></p>';
@@ -633,7 +633,7 @@ describe("comms-sandbox-catch: serves the host-rendered inbox SURFACE (script ru
 });
 
 describe("comms-evidence: digest-only comms-thread artifact", () => {
-  it("digests addresses + links, redacts the subject, and stores the OTP as a COUNT (never a reversible digest)", async () => {
+  it("digests addresses + links, redacts the subject, and stores the OTP as a count (never a reversible digest)", async () => {
     const bus = new FakeInbox();
     const user = await bus.provision("user-07");
     await bus.deliverRaw({
@@ -652,7 +652,7 @@ describe("comms-evidence: digest-only comms-thread artifact", () => {
     expect(entry.toDigests[0]).toBe(user.digest);
     expect(entry.linkDigests[0]).toMatch(/^[0-9a-f]{16}$/);
     expect(entry.subjectDigest).toMatch(/^[0-9a-f]{16}$/); // subject digested, never stored as text
-    expect(entry.codeCount).toBe(1); // count only — the OTP "481920" itself is NOT stored
+    expect(entry.codeCount).toBe(1); // count only: the OTP "481920" itself is not stored
 
     // Hygiene: the serialized artifact leaks neither the raw address, the raw link, the OTP code, nor the raw subject.
     const serialized = JSON.stringify(artifact);

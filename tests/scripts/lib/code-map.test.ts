@@ -29,7 +29,7 @@ const files = [
   "observer/main.tsx",
 ];
 
-describe("ARCHITECTURE.md code map check", () => {
+describe("architecture.md code map check", () => {
   it("reads directory rows from the code map section only", () => {
     expect(codeMapFolders(architecture(["src/cli/", "observer/"]))).toEqual([
       "src/cli/",

@@ -53,7 +53,7 @@ const textOf = (message: Record<string, unknown>): string => {
 };
 
 describe("one Claude Code session as the computer-use brain", () => {
-  it("keeps ONE session for the whole run and states the persona once", async () => {
+  it("keeps one session for the whole run and states the persona once", async () => {
     // `claude -p` per turn started every turn cold: 188 actions over 90 turns and never finished,
     // against 21 actions over 8 turns for a participant that remembers.
     const { transport, sent } = fakeSession([
@@ -154,7 +154,7 @@ describe("one Claude Code session as the computer-use brain", () => {
     expect(turn.message).toContain("landed on top");
   });
 
-  it("a turn without structured output is a BROKEN turn, never an empty one", () => {
+  it("a turn without structured output is a broken turn, never an empty one", () => {
     // An empty turn reads to the loop as "the participant chose to do nothing", which ends a
     // study quietly. A thrown error ends it loudly, with the text that came back.
     expect(() =>

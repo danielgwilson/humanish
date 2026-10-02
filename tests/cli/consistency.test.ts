@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import { createProgram } from "../../src/cli/program.js";
 
-// CLIG.dev, "Subcommands": be consistent across subcommands, and do not have ambiguous or
-// similarly-named commands. `humanish run <lab>` and `humanish lab run <lab>` are the SAME
-// operation on the same dispatcher — a participant reached for `humanish run … --no-open`, which
+// Clig.dev, "Subcommands": be consistent across subcommands, and do not have ambiguous or
+// similarly-named commands. `humanish run <lab>` and `humanish lab run <lab>` are the same
+// operation on the same dispatcher: a participant reached for `humanish run … --no-open`, which
 // its sibling accepts, and got a bare "unknown option".
 
 function flagsOf(argv: readonly string[]): string[] {

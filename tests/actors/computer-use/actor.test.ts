@@ -194,7 +194,7 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
       desktop: makeFakeDesktop(),
     });
 
-    // Typed text redaction is UNCONDITIONAL (the value never enters the trace).
+    // Typed text redaction is unconditional (the value never enters the trace).
     expect(JSON.stringify(result.trace)).not.toContain(secret);
     const shots = result.trace.items.filter((item) => item.kind === "screenshot");
     expect(shots.length).toBeGreaterThan(0);
@@ -250,7 +250,7 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
 
     expect(result.status).toBe("blocked");
     expect(result.completionReason).toBe("blocked_approval");
-    // Fail-closed means NOT actuated: the flagged click must never reach the desktop.
+    // Fail-closed means not actuated: the flagged click must never reach the desktop.
     expect(desktop.calls).toHaveLength(0);
   });
 
@@ -288,7 +288,7 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
     });
 
     expect(result.status).toBe("passed");
-    // Acknowledged checks proceed: the flagged click WAS actuated.
+    // Acknowledged checks proceed: the flagged click was actuated.
     expect(desktop.calls).toContainEqual(["leftClick", 1, 2]);
     // And the follow-up POST echoes the verbatim wire triple on the call output.
     const second = bodies[1] as { input?: Array<Record<string, unknown>> };

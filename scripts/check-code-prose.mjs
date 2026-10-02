@@ -1,11 +1,9 @@
 #!/usr/bin/env node
 // Counts kinds of prose in comments and test names under each root in `ROOTS`. A test name is the
 // first string argument of an it, test or describe call, and is read like a comment. Each count is
-// held to a flag in package.json's prose:check script, `--max-<kind>` for src and
-// `--max-<kind>-<root>` for the other roots: a count above its cap fails, and so does one below it,
-// so the PR that removes the prose lowers the cap. A count with no flag fails too, so a merge that
-// drops a flag cannot leave that count unchecked. Code spans are never counted, so the examples
-// below are written as code spans.
+// held to its cap in scripts/caps.json, at `prose.<root>.<kind>`, by the rules in lib/caps.mjs: a
+// count above or below its cap fails, and so does a count with no cap. Code spans are never
+// counted, so the examples below are written as code spans.
 //
 // - `issue-refs`, `fix-tags`, `archaeology`: history that belongs in issues and commit messages. Issue
 //   references (`#123`, except in `TODO(#123)`), review tags (`FIX-5`), and review or plan
@@ -19,14 +17,25 @@
 // - `em-dashes`: `—`, or ` -- ` between words. A colon, a comma or two sentences says the same.
 // - `invariant-refs`: `invariant 6`. The numbers live in docs/principles/invariants-and-defaults.md
 //   and drift; name the rule instead.
-// - `authority`: `load-bearing`, `doctrine`, `canonical`. Say what the code depends on.
+// - `authority`: `load-bearing`, `doctrine`. Say what the code depends on. (`canonical` stays
+//   legal: a canonical form or path is a precise term.)
 // - `seat-comments`, `cua-route`, `honest`, `history`: words held at today's count while comments move to
 //   participant, the computer-use route, a plain claim and the current behavior.
 // - `series-codes`, `name-refs`: a test name that opens with a code such as `L14:` or `W5:`, or
 //   that cites an issue (`#123`). Test names only; the name says the behavior.
+// - `title-case-headers`: a Title Case header (`## How It Works`) in a root `*.md` file, outside
+//   fenced code, capped at `prose.markdown.title-case-headers`. Headers there are sentence-case
+//   verb phrases (`## Read the results`).
+// - `string-*`: em dashes, issue references and caps, plus `a later slice`, harness rationale words
+//   (`fail closed`, `by construction`, `hollow`, `honest`, `safety lie`) and `(s)` plurals, counted
+//   in src string literals and template text: what a person reads in an error, a warning or
+//   command output. Model prompts and the terminal's transcoding table are not counted
+//   (`STRING_EXCLUDED`), nor is the statement after a `prose-check: model prompt` comment, nor a
+//   string literal type.
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
+import { CAPS_FILE, flattenCaps, holdToCaps, readCaps } from "./lib/caps.mjs";
 import { parseSync } from "oxc-parser";
 import {
   CAPS_RUN,
@@ -41,12 +50,7 @@ import {
 } from "./lib/prose-rules.mjs";
 
 // Each root is read recursively; node_modules and dist are skipped. src keeps the bare flag names.
-const ROOTS = [
-  { dir: "src", suffix: "" },
-  { dir: "tests", suffix: "-tests" },
-  { dir: "scripts", suffix: "-scripts" },
-  { dir: "tui", suffix: "-tui" },
-];
+const ROOTS = ["src", "tests", "scripts", "tui"];
 const SOURCE_FILE = /\.(?:ts|tsx|mts|mjs|js)$/;
 const SKIPPED_DIR = /(?:^|\/)(?:node_modules|dist)(?:\/|$)/;
 
@@ -76,23 +80,43 @@ const KINDS = [
 
 const { values } = parseArgs({
   options: {
-    ...Object.fromEntries(
-      ROOTS.flatMap(({ suffix }) =>
-        KINDS.map((kind) => [`max-${kind}${suffix}`, { type: "string" }]),
-      ),
-    ),
     list: { type: "boolean", default: false },
+    caps: { type: "string", default: CAPS_FILE },
   },
 });
 
-/** Every hit, keyed by flag name without the `max-` prefix: `caps`, `caps-tests`, ... */
-const hits = Object.fromEntries(
-  ROOTS.flatMap(({ suffix }) => KINDS.map((kind) => [`${kind}${suffix}`, []])),
-);
+// Files whose strings are not read by a person: model prompts, and the table that maps characters
+// a terminal cannot render to ASCII stand-ins.
+const STRING_EXCLUDED = new Set([
+  "src/analysis/execute.ts",
+  "src/routes/computer-use/participant-prompt.ts",
+  "src/routes/shared-world/lobby-code.ts",
+  "src/routes/terminal/encoding.ts",
+]);
+
+// Kinds counted in src string literals and template text. A CSS color (`color:#111`,
+// `solid #111}`) and an HTML entity (`&#39;`) are not issue references, and `http(s)` is a URL
+// scheme, not a plural.
+const STRING_KINDS = {
+  "string-em-dashes": /—/g,
+  "string-issue-refs": /(?<![&:\w])(?<!TODO\()#\d{1,5}(?![\w;}])/g,
+  "string-slice": /\b(?:a|later|this|first|next) slice\b/gi,
+  "string-rationale":
+    /\b(?:fails? closed|fail-closed|by construction|hollow|honest(?:ly|y)?|safety lie)\b/gi,
+  "string-plural-s": /[a-z](?<!\bhttp)\(s\)/g,
+};
+const STRING_KIND_NAMES = [...Object.keys(STRING_KINDS), "string-caps"];
+
+/** Every hit, keyed by its cap path in scripts/caps.json: `prose.src.caps`, `prose.tests.caps`, ... */
+const hits = new Map([
+  ...ROOTS.flatMap((root) => KINDS.map((kind) => [`prose.${root}.${kind}`, []])),
+  ["prose.markdown.title-case-headers", []],
+  ...STRING_KIND_NAMES.map((kind) => [`prose.src.${kind}`, []]),
+]);
 
 /** Counts each kind in one piece of prose. `at` turns a match into its `file:line word` entry. */
-function scan(text, suffix, at, { testName }) {
-  const add = (kind, match) => hits[`${kind}${suffix}`].push(at(match));
+function scan(text, root, at, { testName }) {
+  const add = (kind, match) => hits.get(`prose.${root}.${kind}`).push(at(match));
   // Code spans hold names and examples, so no kind counts inside them.
   const prose = blankCodeSpans(text);
   // A test name keeps its own issue-ref count, held at 0, so a ref removed from a comment cannot
@@ -108,6 +132,63 @@ function scan(text, suffix, at, { testName }) {
     for (const match of prose.matchAll(pattern)) add(kind, match);
   }
   if (testName) for (const match of prose.matchAll(SERIES_CODE)) add("series-codes", match);
+}
+
+// A comment holding this marks the statement right after it as text a model reads, which is tuned
+// for the model and is not a message to a person.
+const PROMPT_MARK = /prose-check: model prompt/;
+
+/** The [start, end) ranges of the statements a `prose-check: model prompt` comment marks. */
+function promptRanges(parsed, text) {
+  const marks = parsed.comments.filter((c) => PROMPT_MARK.test(c.value)).map((c) => c.end);
+  const ranges = [];
+  if (marks.length === 0) return ranges;
+  const visit = (node) => {
+    if (node === null || typeof node !== "object") return;
+    if (Array.isArray(node)) {
+      for (const child of node) visit(child);
+      return;
+    }
+    // The program can start at its first statement, so it never counts as the marked one.
+    if (node.type !== "Program" && typeof node.start === "number") {
+      for (const end of marks) {
+        if (node.start >= end && /^\s*$/.test(text.slice(end, node.start))) {
+          ranges.push([node.start, node.end]);
+        }
+      }
+    }
+    for (const [key, child] of Object.entries(node)) if (key !== "parent") visit(child);
+  };
+  visit(parsed.program);
+  return ranges;
+}
+
+/** Every string literal and template text in a program, with its offset in the file. */
+function* stringsOf(node) {
+  if (node === null || typeof node !== "object") return;
+  // A string literal type (`mode: "fail-closed" | "record-evidence"`) names a value, not a message.
+  if (node.type === "TSLiteralType") return;
+  if (Array.isArray(node)) {
+    for (const child of node) yield* stringsOf(child);
+    return;
+  }
+  if (node.type === "Literal" && typeof node.value === "string") {
+    yield { text: node.value, start: node.start };
+  } else if (node.type === "TemplateElement") {
+    yield { text: node.value.cooked ?? node.value.raw, start: node.start };
+  }
+  for (const [key, child] of Object.entries(node)) if (key !== "parent") yield* stringsOf(child);
+}
+
+/** Counts the string kinds in one src string. Code spans inside it are not counted. */
+function scanString(text, at) {
+  const prose = blankCodeSpans(text);
+  for (const [kind, pattern] of Object.entries(STRING_KINDS)) {
+    for (const match of prose.matchAll(pattern)) hits.get(`prose.src.${kind}`).push(at(match));
+  }
+  for (const match of prose.matchAll(CAPS_RUN)) {
+    if (isCapsEmphasis(match[0])) hits.get("prose.src.string-caps").push(at(match));
+  }
 }
 
 const TEST_CALLS = new Set(["it", "test", "describe"]);
@@ -145,68 +226,64 @@ function forEachTestName(node, visit) {
     if (key !== "parent") forEachTestName(child, visit);
 }
 
-for (const { dir, suffix } of ROOTS) {
-  for (const file of filesOf(dir)) {
+for (const root of ROOTS) {
+  for (const file of filesOf(root)) {
     const text = readFileSync(file, "utf8");
     const lineOf = (offset) => text.slice(0, offset).split("\n").length;
     const parsed = parseSync(file, text);
     for (const comment of parsed.comments) {
       // comment.value starts after the opening `//` or `/*`.
       const at = (match) => `${file}:${lineOf(comment.start + 2 + match.index)} ${match[0]}`;
-      scan(comment.value, suffix, at, { testName: false });
+      scan(comment.value, root, at, { testName: false });
+    }
+    if (root === "src" && !STRING_EXCLUDED.has(file)) {
+      const prompts = promptRanges(parsed, text);
+      for (const string of stringsOf(parsed.program)) {
+        if (prompts.some(([start, end]) => string.start >= start && string.start < end)) continue;
+        scanString(string.text, (match) => `${file}:${lineOf(string.start)} ${match[0]}`);
+      }
     }
     // Most source files make no test call; skip their syntax tree walk.
     if (!TEST_CALL_TEXT.test(text)) continue;
     forEachTestName(parsed.program, (name, offset) => {
       const at = (match) => `${file}:${lineOf(offset)} ${match[0].trim()}`;
-      scan(name, suffix, at, { testName: true });
+      scan(name, root, at, { testName: true });
     });
   }
 }
 
-for (const kind of Object.keys(hits)) {
-  const max = values[`max-${kind}`];
-  if (max !== undefined && !/^\d+$/.test(max)) {
-    process.stderr.write(`check-code-prose: --max-${kind}=${max} is not a whole number.\n`);
-    process.exit(2);
-  }
+// A header of two or more capitalized words in a root markdown file. Fenced code is skipped.
+const TITLE_CASE_HEADER = /^#{2,4} ([A-Z][a-z-]+)( (A|To|[A-Z][a-z-]+))+$/;
+for (const file of readdirSync(".")
+  .filter((name) => name.endsWith(".md"))
+  .sort()) {
+  let fenced = false;
+  readFileSync(file, "utf8")
+    .split("\n")
+    .forEach((line, index) => {
+      if (/^\s*(```|~~~)/.test(line)) fenced = !fenced;
+      else if (!fenced && TITLE_CASE_HEADER.test(line))
+        hits.get("prose.markdown.title-case-headers").push(`${file}:${index + 1} ${line}`);
+    });
 }
 
-const rose = [];
-const fell = [];
-const uncapped = [];
-for (const [kind, list] of Object.entries(hits)) {
-  const max = values[`max-${kind}`];
-  const cap = max === undefined ? undefined : Number(max);
-  const count = list.length;
-  if (cap === undefined) uncapped.push(`--max-${kind}=${count}`);
-  if (cap !== undefined && count > cap) rose.push(kind);
-  if (cap !== undefined && count < cap) fell.push(`--max-${kind}=${count}`);
-  const status =
-    cap === undefined
-      ? ""
-      : count > cap
-        ? ` (cap ${cap}, over by ${count - cap})`
-        : count < cap
-          ? ` (cap ${cap}, under by ${cap - count})`
-          : ` (cap ${cap})`;
-  process.stdout.write(`${kind}: ${count}${status}\n`);
-  if (values.list) process.stdout.write(list.map((hit) => `  ${hit}\n`).join(""));
+const { flat, invalid } = flattenCaps(readCaps(values.caps));
+if (invalid.length > 0) {
+  process.stderr.write(`${values.caps}: not a whole number at ${invalid.join(", ")}.\n`);
+  process.exit(2);
 }
+const proseCaps = new Map([...flat].filter(([path]) => path.startsWith("prose.")));
+const { ok, rose } = holdToCaps({
+  caps: proseCaps,
+  counts: hits,
+  list: values.list,
+  file: values.caps,
+  write: (text) => process.stdout.write(text),
+});
 if (rose.length > 0) {
   process.stdout.write(
     "A count rose. `node scripts/check-code-prose.mjs --list` prints every hit with its line. Move\n" +
       "history into the commit message or issue, and keep the comment to what the code does.\n",
   );
 }
-if (fell.length > 0) {
-  process.stdout.write(
-    `A count fell. Lower the cap in package.json's prose:check script in this PR: ${fell.join(" ")}.\n`,
-  );
-}
-if (uncapped.length > 0) {
-  process.stdout.write(
-    `A count has no cap. Add it to package.json's prose:check script: ${uncapped.join(" ")}.\n`,
-  );
-}
-if (rose.length > 0 || fell.length > 0 || uncapped.length > 0) process.exitCode = 1;
+if (!ok) process.exitCode = 1;

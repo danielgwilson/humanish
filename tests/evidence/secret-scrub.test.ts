@@ -39,7 +39,7 @@ describe("scrubSecretValues", () => {
     );
   });
 
-  // Codex review round 2 of #1343. T is built at runtime so no literal looks like a credential.
+  // T is built at runtime so no literal looks like a credential.
   const T = ["tango", "lima", "catch", "01"].join("-");
 
   it("removes base64 and base64url of a value at any byte offset", () => {

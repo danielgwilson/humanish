@@ -129,7 +129,7 @@ describe("AgentMail receiving transport", () => {
     expect(calls[0]?.url.pathname).toBe("/v0/inboxes");
     expect(JSON.parse(String(calls[0]?.init.body))).toEqual({ client_id: LEASE.clientId });
   });
-  it("replays the SAME create intent once when the first response is lost", async () => {
+  it("replays the same create intent once when the first response is lost", async () => {
     const { adapter, calls } = queue(new Error("lost create response"), fixture("inbox"));
     expect(await adapter.acquire(LEASE.clientId)).toEqual(LEASE);
     expect(calls).toHaveLength(2);
@@ -437,7 +437,7 @@ describe("AgentMail receiving transport", () => {
     expect(batch.complete).toBe(false);
     expect(batch.limitations).toContain("agentmail_timeout");
   });
-  it("checks ownership before DELETE and distinguishes accepted deletion from confirmed absence", async () => {
+  it("checks ownership before delete and distinguishes accepted deletion from confirmed absence", async () => {
     const deleting = queue(fixture("inbox"), fixture("delete-accepted"), fixture("deleting"));
     expect(await deleting.adapter.release(LEASE)).toEqual({ status: "deleting" });
     expect(deleting.calls.map((call) => call.init.method)).toEqual(["GET", "DELETE", "GET"]);

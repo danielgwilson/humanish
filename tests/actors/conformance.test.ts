@@ -35,7 +35,7 @@ const COMPLETION_REASONS = [
   "blocked_approval",
   "timed_out",
   "actor_error",
-  // The scripted-browser lane's reason: a deterministic step/expectation evaluated false —
+  // The scripted-browser lane's reason: a deterministic step/expectation evaluated false:
   // the subject failed the script while the harness executed faithfully.
   "step_failed",
   "harness_error",
@@ -123,7 +123,7 @@ describe("codex-app-server ActorTrace conformance", () => {
 });
 
 // The scripted-browser actor has no pure mapper (runSession returns the fully-formed trace),
-// so its conformance fixture runs the REAL session against a fake browser at $0.
+// so its conformance fixture runs the real session against a fake browser at $0.
 describe("scripted-browser ActorTrace conformance", () => {
   it("a scripted session trace conforms to humanish.actor-trace.v1", async () => {
     const artifactRoot = await mkdtemp(path.join(tmpdir(), "humanish-scripted-conformance-"));

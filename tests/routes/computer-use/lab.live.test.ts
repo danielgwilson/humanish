@@ -10,17 +10,17 @@ import { LAB_CONFIG_SCHEMA } from "../../../src/lab/types.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
 import { runLab } from "../../../src/run-lab.js";
 
-// The single LIVE rung for the computer-use LAB: a real lab config dispatched through runLab to
+// The single live rung for the computer-use route: a real study config dispatched through runLab to
 // a real E2B desktop driven by the real OpenAI Computer Use loop. Spend-gated exactly like the
 // actor-level live rung (tests/computer-use-actor.live.test.ts):
 //   1. HUMANISH_LIVE_CUA=1 must be set explicitly (the spend opt-in),
 //   2. OPENAI_API_KEY and E2B_API_KEY must both be present,
 //   3. @e2b/desktop is loaded lazily inside the lab (never imported when skipped).
-// The subject is a loopback page served INSIDE the sandbox, provisioned via the prepareDesktop
-// hook — the documented seam for app-url subjects until clone+serve lands. Asserts only that a
-// verified bundle with a terminal, conformant, redacted session came back — never task success.
+// The subject is a loopback page served inside the sandbox, provisioned via the prepareDesktop
+// hook: the documented seam for app-url subjects until clone+serve lands. Asserts only that a
+// verified bundle with a terminal, conformant, redacted session came back, never task success.
 // Fixture refreshes: additionally set HUMANISH_CUA_WIRE_CAPTURE_DIR to a gitignored dir (e.g.
-// under .humanish/) to capture redacted RESPONSE wire bodies — see src/actors/computer-use/openai-provider.ts.
+// under .humanish/) to capture redacted response wire bodies: see src/actors/computer-use/openai-provider.ts.
 const LIVE =
   process.env.HUMANISH_LIVE_CUA === "1" &&
   Boolean(process.env.OPENAI_API_KEY) &&
@@ -34,7 +34,7 @@ const PROOF_HTML = [
   "</body></html>",
 ].join("");
 
-describe.skipIf(!LIVE)("cua-actor-lab (LIVE, spend-gated)", () => {
+describe.skipIf(!LIVE)("cua-actor-lab (live, spend-gated)", () => {
   let cwd: string;
 
   beforeEach(async () => {
@@ -72,7 +72,7 @@ describe.skipIf(!LIVE)("cua-actor-lab (LIVE, spend-gated)", () => {
         cwd,
         prepareDesktop: async (desktop) => {
           await desktop.files.write("/home/user/www/proof.html", PROOF_HTML);
-          // setsid -f fully detaches the server from the command's process tree — a plain `&`
+          // setsid -f fully detaches the server from the command's process tree: a plain `&`
           // leaves E2B's command runner waiting on the child until its own deadline fires.
           await desktop.commands.run(
             "setsid -f python3 -m http.server 8000 --directory /home/user/www >/dev/null 2>&1 < /dev/null",
@@ -89,9 +89,9 @@ describe.skipIf(!LIVE)("cua-actor-lab (LIVE, spend-gated)", () => {
       if (outcome.route !== "computer-use") return;
       const result = outcome.result;
 
-      // Verified bundle + terminal session + reclaimed sandbox + the actor ENGAGED (>=1 action or
-      // message — so a blank/loading screen no-op cannot pass as a live proof). We never assert
-      // task SUCCESS (flaky against a live model), only that it perceived and drove the app.
+      // Verified bundle + terminal session + reclaimed sandbox + the actor engaged (>=1 action or
+      // message, so a blank/loading screen no-op cannot pass as a live proof). We never assert
+      // task success (flaky against a live model), only that it perceived and drove the app.
       expect(["passed", "failed", "blocked", "timed_out"]).toContain(result.session?.status);
       expect(result.session?.completionReason).not.toBe("harness_error");
       expect(result.observer?.ok).toBe(true);

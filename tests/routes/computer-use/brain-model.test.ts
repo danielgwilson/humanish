@@ -208,7 +208,7 @@ async function run(
   return { result, sessions, flushModels };
 }
 
-/** The price the cap estimator puts on USAGE, against the price under `model`. */
+/** The price the cap estimator puts on usage, against the price under `model`. */
 function expectPricedAt(session: CuaActorSessionOptions, model: string) {
   expect(session.estimateTurnCostUsd).toBeDefined();
   expect(session.estimateTurnCostUsd!(USAGE)).toBe(

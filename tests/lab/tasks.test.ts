@@ -1,7 +1,7 @@
 // Tasks: the researcher's protocol, and the wall between it and the participant.
 //
 // A lab could declare a prose mission and nothing else. That is a brief, not a protocol, and it
-// left "where did people get stuck" answerable only from the actor's own narration — the one source
+// left "where did people get stuck" answerable only from the actor's own narration: the one source
 // a study should not have to take on faith.
 //
 // The half of this that needs guarding is the split. `goal` is what the participant is asked to do;
@@ -61,7 +61,7 @@ describe("the participant never sees the success criteria", () => {
 });
 
 describe("TaskTracker", () => {
-  it("completes a task from an OBSERVATION, not from the actor saying so", () => {
+  it("completes a task from an observation, not from the actor saying so", () => {
     const tracker = new TaskTracker(PROTOCOL);
 
     // The actor claiming success changes nothing; only the observed world does.
@@ -162,7 +162,7 @@ describe("tasks config parsing", () => {
     const tasks = parsed.config.actors[0]?.tasks ?? [];
     expect(tasks).toHaveLength(2);
     expect(tasks[0]).toMatchObject({ id: "sign-up", goal: "Create an account." });
-    // A task with no criterion is legal — not everything you ask for is observable.
+    // A task with no criterion is legal: not everything you ask for is observable.
     expect(tasks[1]?.success).toBeUndefined();
   });
 

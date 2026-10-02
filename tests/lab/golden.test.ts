@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { runLab } from "../../src/run-lab.js";
 import { resolveLabManifest } from "../../src/lab/discover.js";
 
-// RUNG 2 (faithfulness): the v2 config + one-engine path must reproduce the pre-refactor run
+// Rung 2 (faithfulness): the v2 config + one-engine path must reproduce the pre-refactor run
 // bundles captured by scripts/capture-lab-goldens.mjs. We pin the same run-id as the golden so
 // only timestamps vary; normalizeTimestamps removes those. The bundle already redacts cwd to a
 // stable placeholder, so the comparison is environment-independent.
@@ -44,9 +44,9 @@ afterEach(async () => {
 
 // Normalize the two ambient, non-behavioral parts of a run bundle: ISO timestamps and the
 // captured git working-tree state. The git-state subtree (status/sha/refState/change-counts) is
-// 100% environment-dependent — it differs between a local worktree (attached HEAD) and a CI PR
-// checkout (detached HEAD) — and is NOT part of what this refactor must preserve. We mask every
-// LEAF VALUE inside it while keeping its STRUCTURE (keys) asserted, so a structural regression in
+// 100% environment-dependent: it differs between a local worktree (attached HEAD) and a CI PR
+// checkout (detached HEAD), and is not part of what this refactor must preserve. We mask every
+// leaf value inside it while keeping its structure (keys) asserted, so a structural regression in
 // that subtree still fails the test but ambient values never make the golden flaky.
 function normalizeBundle(value: unknown, inGitState = false): unknown {
   if (inGitState && (value === null || typeof value !== "object")) {
@@ -84,7 +84,7 @@ describe("lab golden equivalence (rung 2: faithfulness)", () => {
         runId: golden.runId,
         dryRun: true,
         // The golden is captured through the real CLI, which resolves the manifest and stamps the
-        // run's lab provenance (#455). Faithfulness means invoking the same way, so this test
+        // run's study provenance. Faithfulness means invoking the same way, so this test
         // supplies exactly what the resolution step supplies.
         lab: { id: resolved.config.id, path: resolved.path, origin: resolved.origin },
       });

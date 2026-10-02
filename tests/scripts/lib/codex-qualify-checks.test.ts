@@ -94,7 +94,7 @@ describe("codex:qualify sampler checks", () => {
     ]);
   });
 
-  it("fails on a survivor, an unexpected socket or a UDP remote", () => {
+  it("fails on a survivor, an unexpected socket or a udp remote", () => {
     const survivor = probeSet();
     survivor.questions = summary({ aliveAfterStop: ["codex-code-mode-host"] });
     expect(failed(processChecks(probeSet(), survivor))).toContain(

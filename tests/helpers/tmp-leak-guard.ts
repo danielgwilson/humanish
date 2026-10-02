@@ -1,5 +1,5 @@
-// A vitest globalSetup. It points TMPDIR at a new empty dir for the run, and the teardown fails the
-// run when a test left a humanish-* entry there. Workers start after setup and inherit TMPDIR, so every
+// A vitest globalSetup. It points `TMPDIR` at a new empty dir for the run, and the teardown fails the
+// run when a test left a humanish-* entry there. Workers start after setup and inherit `TMPDIR`, so every
 // os.tmpdir() call in a test lands in this dir. Counting the shared temp dir instead would count
 // entries from other runs on the same machine.
 import { mkdtempSync, readdirSync, rmSync } from "node:fs";

@@ -1490,7 +1490,7 @@ async function memorySession(stop: StopTiming) {
 
 describe("restricted Codex session scheduling", () => {
   // The acknowledgment, final answer, usage and completion arrive in one chunk (Codex's
-  // reproduction from the #1132 review). What a caller relies on is which side of that chunk a
+  // reproduction). What a caller relies on is which side of that chunk a
   // stop lands, not how many microtasks after it.
   it("keeps the answer when the stop comes on the task after the chunk that completed the turn", async () => {
     const { session, signal } = await memorySession("after the chunk");

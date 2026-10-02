@@ -1,11 +1,11 @@
-// #380: the adopter-hosted catch must render its own inbox.
+// The adopter-hosted catch must render its own inbox.
 //
 // The regression these pin: `humanish comms catch` created a surface dir, advertised
 // "GET /inbox <- the persona opens this", and never wrote a single file into it. In-sandbox,
 // humanish-as-host renders that surface on a cadence; on a plane humanish does not provision there is
 // no such host, so every persona that reached /inbox got `message not found` from a catch whose
 // /health was green. The funnel dead-ended at a technically-healthy service, which is the worst shape
-// a failure can take — it looks like working infrastructure.
+// a failure can take: it looks like working infrastructure.
 import { spawn, type ChildProcess } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -34,14 +34,14 @@ function sendLine(to: string[], subject: string, html: string): string {
 }
 
 describe("parseDeliveriesNdjson", () => {
-  it("drops a trailing PARTIAL line (a reader racing an append) and skips malformed lines", () => {
+  it("drops a trailing partial line (a reader racing an append) and skips malformed lines", () => {
     const complete = sendLine(["a@example.test"], "One", "<p>hi</p>");
     // No trailing newline: the last line may be half-written, so it must not be parsed yet.
     const sends = parseDeliveriesNdjson(`${complete}\n{"path":"/emails","bo`);
     expect(sends).toHaveLength(1);
     expect(sends[0]!.path).toBe("/emails");
 
-    // With the newline present, the same line is complete and IS parsed.
+    // With the newline present, the same line is complete and is parsed.
     expect(parseDeliveriesNdjson(`${complete}\n`)).toHaveLength(1);
     // A malformed complete line is skipped rather than throwing.
     expect(parseDeliveriesNdjson(`not json\n${complete}\n`)).toHaveLength(1);
@@ -81,10 +81,10 @@ describe("renderInboxSurfaceLocally (the adopter-hosted plane)", () => {
     dir = undefined;
   });
 
-  it("renders an EMPTY inbox when no mail has been captured, so /inbox is never a bare 404", async () => {
+  it("renders an empty inbox when no mail has been captured, so /inbox is never a bare 404", async () => {
     dir = await mkdtemp(path.join(tmpdir(), "humanish-catch-host-"));
     const surfaceDir = path.join(dir, "surface");
-    // Deliberately NO deliveries file: this is the state a freshly started catch is in.
+    // Deliberately no deliveries file: this is the state a freshly started catch is in.
     const result = await renderInboxSurfaceLocally({
       deliveriesPath: path.join(dir, "deliveries.ndjson"),
       surfaceDir,
@@ -242,7 +242,7 @@ describe("catch script: persona-facing routes", () => {
     await mkdir(surfaceDir, { recursive: true });
     await writeFile(scriptPath, SANDBOX_CATCH_SCRIPT, "utf8");
     // A free port from the OS, retried if the child loses a race for it. The old
-    // `8700 + random(200)` was ALSO used by comms/sandbox-catch.test.ts, so two vitest workers
+    // `8700 + random(200)` was also used by comms/sandbox-catch.test.ts, so two vitest workers
     // could hand the same port to two servers; the loser exited and this test waited out a health
     // loop that could never succeed. See tests/helpers/free-port.ts.
     // Resolved before the closure: `dir` is nullable at this scope and TypeScript cannot narrow it
@@ -265,7 +265,7 @@ describe("catch script: persona-facing routes", () => {
           stdio: "ignore",
         },
       );
-      // Sleep on EVERY failed attempt, not only on a thrown one: a non-ok response used to retry
+      // Sleep on every failed attempt, not only on a thrown one: a non-ok response used to retry
       // instantly, burning all 50 attempts inside a few milliseconds.
       for (let i = 0; i < 50; i += 1) {
         try {

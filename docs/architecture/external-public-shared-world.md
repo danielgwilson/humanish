@@ -1,4 +1,4 @@
-# External-public shared-world plane + the CDP lobby-code handoff (#164 phase 2, 0.20.0)
+# External-public shared world and the lobby-code handoff
 
 The shared-world route has two plane classes. This note documents the new
 `external-public` class and the host-first handoff barrier that makes cross-persona coordination on a

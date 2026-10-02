@@ -67,6 +67,9 @@ the test suites, build and the startup proofs), then `api:proof`, `public-surfac
 them in `pnpm check`. The test step prints nothing for a few minutes while it runs. `skill:check`
 runs the pinned `skills` devDependency, so it needs no network after `pnpm install`.
 
+Name a local experiment `*.scratch.test.ts`. vitest skips that suffix, so the file never runs in
+the suite or in CI.
+
 CI (`.github/workflows/ci.yml`) runs six jobs on every pull request and every push to `main`:
 
 | Job                          | What it runs                                                                                                                       |
@@ -87,18 +90,19 @@ Two kinds of change need one more step:
   the packed package.
 
 `pnpm format` rewrites files with oxfmt. `pnpm check` fails on unformatted files.
-It also holds three counts to caps in package.json: oxlint warnings (`lint`), prose in comments
-and test names under `src/`, `tests/`, `scripts/` and `tui/` (`prose:check`: issue references,
-`FIX-N` tags, all-caps emphasis, em dashes, invariant numbers, review labels and the other kinds
-listed at the top of `scripts/check-code-prose.mjs`), and identifiers and file names in `src/`
-outside the exempt contract modules that still say a retired participant word (lane, seat, role or
-sim) or study (`vocabulary:check`). Prose keeps the word study; identifiers say run or lab. Each
-check fails when its count rises above the
-cap and also when it falls below it, so the PR that reduces a count lowers the cap in the same
-commit; the failure message names the flag and the new value. A count with no flag fails as well.
-CI's `caps` workflow (`scripts/check-cap-direction.mjs`) also fails a PR that raises or removes a
-cap against the base branch, unless the PR has the `raise-cap` label and a `Cap raise:` line in its
-body that says why. `pnpm lint` prints the warnings that already exist, several hundred of them;
+It also holds three counts to caps: oxlint warnings (`lint`, capped in package.json), prose in
+comments and test names under `src/`, `tests/`, `scripts/` and `tui/` (`prose:check`: issue
+references, `FIX-N` tags, all-caps emphasis, em dashes, invariant numbers, review labels and the
+other kinds listed at the top of `scripts/check-code-prose.mjs`, which also counts the text of
+`src/` string literals), and identifiers and file names in
+`src/` outside the exempt contract modules that still say a retired participant word (lane, seat,
+role or sim) or lab (`vocabulary:check`). A study is what a user designs and runs, and a run is
+one execution of it; lab is the old name for a study. The last two read their caps from `scripts/caps.json`. Each check fails when its count rises above
+the cap and also when it falls below it, so the PR that reduces a count lowers the cap in the same
+commit; the failure message names the cap and the new value. A count with no cap fails as well. CI's
+`caps` workflow (`scripts/check-cap-direction.mjs`) also fails a PR that raises or removes a cap
+against the base branch, unless the PR has the `raise-cap` label and a `Cap raise:` line in its body
+that says why. `pnpm lint` prints the warnings that already exist, several hundred of them;
 that is expected. `pnpm knip` fails on unused files, dependencies and exports, and on any import
 cycle.
 
@@ -127,7 +131,7 @@ Common changes touch these tests and contracts:
 | An actor                  | `tests/actors/`, `tests/actors/conformance.test.ts`                                                                                                        | `docs/architecture/actor-contract.md`                                          |
 | Redaction or share safety | `tests/evidence/`, `tests/run/transient-comms-secrets.test.ts`                                                                                             | `docs/contracts/policy.md`                                                     |
 | Study analysis            | `tests/analysis/`                                                                                                                                          | `docs/contracts/study-analysis.md`                                             |
-| A public export           | `pnpm build` and `pnpm api:proof` (`--update` to accept)                                                                                                   | `tests/golden/public-api.json`                                                 |
+| A public export           | `pnpm build` and `pnpm api:proof` (`--update` to accept)                                                                                                   | `tests/golden/public-api.json`, and a doc comment on the declaration           |
 | An example                | `pnpm build` and `pnpm api:proof`, which runs every example                                                                                                | `examples/README.md`                                                           |
 
 Six folders hold fixtures:

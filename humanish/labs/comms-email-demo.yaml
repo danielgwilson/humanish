@@ -1,14 +1,13 @@
 schema: humanish.lab.v2
 id: comms-email-demo
-title: Email-gated signup with the in-sandbox catch (deterministic dry-run)
-description: >
-  Two personas sign up for an app whose flow is gated behind a verification email
-  (a magic link). The comms block redirects the app's email-API sends into a catch
-  INSIDE the subject sandbox — no mail leaves the machine — and each persona is
-  told its own inbox address, the inbox URL, and that waiting for an email is a
-  next step rather than a blocker. Committed as mode: dry-run, so the checked-in
-  lab builds a contract bundle at $0 (no sandbox, no keys, no network). Flip a
-  gitignored .humanish/labs/ copy to mode: live for the real study.
+title: Email-gated signup with the in-sandbox mail catch (dry run)
+description: >-
+  Two personas sign up for an app whose signup sends a verification email with a magic link. The
+  comms block sends the app's email API calls to a catch inside the subject sandbox, so no mail
+  leaves the machine, and each persona is told its own inbox address, the inbox URL, and that
+  waiting for an email is a normal next step. Committed as a dry run, which builds a dry-run bundle
+  at no cost. It starts no sandbox and needs no keys or network. For the live study, set mode: live
+  in a gitignored .humanish/labs/ copy.
 subject:
   source: clone
   repos:
