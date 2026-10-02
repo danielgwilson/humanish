@@ -10,7 +10,7 @@
     "runId": "not-created",
     "warnings": [],
     "error": {
-      "code": "HUMANISH_TERMINAL_LAB_SUBJECT_INVALID",
+      "code": "HUMANISH_TERMINAL_SUBJECT_INVALID",
       "message": "Real email receiving is unsupported on the terminal route. Use a supported hosted computer-use browser lab."
     },
     "automaticAnalysisTrigger": "default",
@@ -30,7 +30,7 @@
     "runId": "not-created",
     "warnings": [],
     "error": {
-      "code": "HUMANISH_TERMINAL_LAB_SUBJECT_INVALID",
+      "code": "HUMANISH_TERMINAL_SUBJECT_INVALID",
       "message": "execution.desktop.recording is supported only for computer-use participants on independent desktops. Remove the declaration or select a supported route."
     },
     "automaticAnalysisTrigger": "default",
@@ -50,7 +50,7 @@
     "runId": "not-created",
     "warnings": [],
     "error": {
-      "code": "HUMANISH_LAB_ANALYSIS_INVALID",
+      "code": "HUMANISH_STUDY_ANALYSIS_INVALID",
       "message": "review.analysis must be false or a mapping containing only provider, maxCostUsd, model, question, timeoutMs and maxOutputTokens."
     }
   },
@@ -65,7 +65,7 @@
     "runId": "not-created",
     "warnings": [],
     "error": {
-      "code": "HUMANISH_LAB_TASKS_UNSUPPORTED",
+      "code": "HUMANISH_STUDY_TASKS_UNSUPPORTED",
       "message": "actors[0].tasks is unsupported on this execution path. Task protocols require the computer-use route, with one world per participant; shared-world, terminal-product, scripted-browser and synthetic routes do not consume them. Remove tasks only if a mission-only study is intended."
     },
     "automaticAnalysisTrigger": "default",
@@ -85,7 +85,7 @@
     "runId": "not-created",
     "warnings": [],
     "error": {
-      "code": "HUMANISH_TERMINAL_LAB_ACTOR_UNSUPPORTED",
+      "code": "HUMANISH_TERMINAL_ACTOR_UNSUPPORTED",
       "message": "actors[0].type \"not-an-actor\" is not a registered terminal actor."
     },
     "automaticAnalysisTrigger": "default",
@@ -105,7 +105,7 @@
     "runId": "not-created",
     "warnings": [],
     "error": {
-      "code": "HUMANISH_TERMINAL_LAB_FAILED",
+      "code": "HUMANISH_TERMINAL_FAILED",
       "message": "Terminal runtime settings require an exact Codex version, a nonempty model when declared, and a supported reasoning-effort value."
     },
     "automaticAnalysisTrigger": "default",
@@ -125,7 +125,7 @@
     "runId": "not-created",
     "warnings": [],
     "error": {
-      "code": "HUMANISH_TERMINAL_LAB_SUBJECT_INVALID",
+      "code": "HUMANISH_TERMINAL_SUBJECT_INVALID",
       "message": "terminal-product subjects require `subject.product` with a name and at least one public surface URL."
     },
     "automaticAnalysisTrigger": "default",
@@ -145,7 +145,7 @@
     "runId": "not-created",
     "warnings": [],
     "error": {
-      "code": "HUMANISH_TERMINAL_LAB_CAPS_MISSING",
+      "code": "HUMANISH_TERMINAL_CAPS_MISSING",
       "message": "A live terminal-product run grants provider access to the in-sandbox agent and so REQUIRES a fail-closed cap: scenario.caps with maxUsd (0 = no-spend) and a positive maxMinutes (the codex command's wall-clock kill). The live key is never exercised without a cap in force."
     },
     "automaticAnalysisTrigger": "default",
@@ -165,7 +165,7 @@
     "runId": "not-created",
     "warnings": [],
     "error": {
-      "code": "HUMANISH_TERMINAL_LAB_UNPRICED_CAP",
+      "code": "HUMANISH_TERMINAL_UNPRICED_CAP",
       "message": "scenario.caps.maxUsd=1 cannot be enforced: Codex reports no provider cost for the participant (its token cost is only estimated after the run) and no product, media or payment spend is measured, so a positive dollar cap can never trip. Set scenario.caps.maxUsd to 0 and bound the run with scenario.caps.maxMinutes, the codex command's wall-clock kill. No sandbox was created and the runtime key was not used."
     },
     "automaticAnalysisTrigger": "default",
@@ -185,7 +185,7 @@
     "runId": "not-created",
     "warnings": [],
     "error": {
-      "code": "HUMANISH_TERMINAL_LAB_SUBJECT_INVALID",
+      "code": "HUMANISH_TERMINAL_SUBJECT_INVALID",
       "message": "Real email receiving is unsupported on the terminal route. Use a supported hosted computer-use browser lab."
     },
     "automaticAnalysisTrigger": "default",
@@ -205,7 +205,7 @@
     "runId": "not-created",
     "warnings": [],
     "error": {
-      "code": "HUMANISH_TERMINAL_LAB_SUBJECT_INVALID",
+      "code": "HUMANISH_TERMINAL_SUBJECT_INVALID",
       "message": "execution.desktop.recording is supported only for computer-use participants on independent desktops. Remove the declaration or select a supported route."
     }
   },
@@ -220,7 +220,7 @@
     "runId": "not-created",
     "warnings": [],
     "error": {
-      "code": "HUMANISH_LAB_ANALYSIS_INVALID",
+      "code": "HUMANISH_STUDY_ANALYSIS_INVALID",
       "message": "review.analysis must be false or a mapping containing only provider, maxCostUsd, model, question, timeoutMs and maxOutputTokens."
     }
   },
@@ -235,7 +235,7 @@
     "runId": "not-created",
     "warnings": [],
     "error": {
-      "code": "HUMANISH_LAB_TASKS_UNSUPPORTED",
+      "code": "HUMANISH_STUDY_TASKS_UNSUPPORTED",
       "message": "actors[0].tasks is unsupported on this execution path. Task protocols require the computer-use route, with one world per participant; shared-world, terminal-product, scripted-browser and synthetic routes do not consume them. Remove tasks only if a mission-only study is intended."
     },
     "automaticAnalysisTrigger": "default",
@@ -255,7 +255,7 @@
     "runId": "not-created",
     "warnings": [],
     "error": {
-      "code": "HUMANISH_TERMINAL_LAB_ACTOR_UNSUPPORTED",
+      "code": "HUMANISH_TERMINAL_ACTOR_UNSUPPORTED",
       "message": "actors[0].type \"not-an-actor\" is not a registered terminal actor."
     },
     "automaticAnalysisTrigger": "default",
@@ -275,7 +275,7 @@
     "runId": "not-created",
     "warnings": [],
     "error": {
-      "code": "HUMANISH_TERMINAL_LAB_FAILED",
+      "code": "HUMANISH_TERMINAL_FAILED",
       "message": "Terminal runtime settings require an exact Codex version, a nonempty model when declared, and a supported reasoning-effort value."
     },
     "automaticAnalysisTrigger": "default",
@@ -295,7 +295,7 @@
     "runId": "not-created",
     "warnings": [],
     "error": {
-      "code": "HUMANISH_TERMINAL_LAB_SUBJECT_INVALID",
+      "code": "HUMANISH_TERMINAL_SUBJECT_INVALID",
       "message": "terminal-product subjects require `subject.product` with a name and at least one public surface URL."
     },
     "automaticAnalysisTrigger": "default",

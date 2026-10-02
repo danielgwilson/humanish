@@ -9,7 +9,7 @@ import { lab } from "../admission/fixtures.js";
 
 // `lab run --rerun-failed-from <run> --participants <ids>` is the example in `lab run --help`.
 // The CLI must pass the selection as rerun.participantIds: runLab refuses the removed
-// rerun.laneIds with HUMANISH_LAB_OPTION_UNSUPPORTED. A child process gives the real stderr, where
+// rerun.laneIds with HUMANISH_STUDY_OPTION_UNSUPPORTED. A child process gives the real stderr, where
 // Node prints warnings.
 
 const execFileAsync = promisify(execFile);
@@ -53,5 +53,5 @@ it("passes the selected participants to the rerun check without a warning", asyn
   expect(child.stderr).not.toContain("DeprecationWarning");
   // The selection reached the rerun check: there is no earlier run to rerun from.
   const result = JSON.parse(child.stdout) as { error?: { code?: string } };
-  expect(result.error?.code).toBe("HUMANISH_CUA_LAB_RERUN_INVALID");
+  expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_RERUN_INVALID");
 });

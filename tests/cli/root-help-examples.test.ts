@@ -51,7 +51,7 @@ describe("the root help's examples", () => {
       const args = [...example.split(" ").slice(1), "--cwd", dir];
       if (NOT_RUN[example] === "readiness") {
         const { output } = await runCli([...args, "--json"]);
-        expect(output, example).not.toContain("HUMANISH_LAB_NOT_FOUND");
+        expect(output, example).not.toContain("HUMANISH_STUDY_NOT_FOUND");
         continue;
       }
       if (NOT_RUN[example] !== undefined) continue;

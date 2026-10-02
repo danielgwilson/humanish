@@ -52,15 +52,15 @@ function planPreview(
   });
   if (String(config.comms?.email?.kind) === "real")
     return refuse(
-      "HUMANISH_LAB_COMMS_UNSUPPORTED",
+      "HUMANISH_STUDY_COMMS_UNSUPPORTED",
       "Real email receiving is unsupported on the preview route. Use a supported hosted computer-use lab.",
     );
   const analysis = resolveAutomaticAnalysis(config.review?.analysis);
-  if (!analysis.ok) return refuse("HUMANISH_LAB_ANALYSIS_INVALID", analysis.message);
+  if (!analysis.ok) return refuse("HUMANISH_STUDY_ANALYSIS_INVALID", analysis.message);
   const unsupported = automaticAnalysisRouteReason(config);
-  if (unsupported) return refuse("HUMANISH_LAB_ANALYSIS_UNSUPPORTED", unsupported);
+  if (unsupported) return refuse("HUMANISH_STUDY_ANALYSIS_UNSUPPORTED", unsupported);
   const tasksReason = taskProtocolValidationReason(config);
-  if (tasksReason) return refuse("HUMANISH_LAB_TASKS_UNSUPPORTED", tasksReason);
+  if (tasksReason) return refuse("HUMANISH_STUDY_TASKS_UNSUPPORTED", tasksReason);
   const participantCount = options.count ?? config.actors[0]?.count ?? 4;
   if (!Number.isSafeInteger(participantCount) || participantCount < 1)
     return refuse("HUMANISH_INVALID_SIM_COUNT", "count must be a positive integer.");

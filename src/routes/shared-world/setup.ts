@@ -183,7 +183,7 @@ export async function prepareConcurrentRun(
   if (!packed.ok) {
     return {
       ok: false,
-      result: fail("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED", packed.message, descriptor.id),
+      result: fail("HUMANISH_SHARED_WORLD_FAILED", packed.message, descriptor.id),
     };
   }
   const localTreeArchive = packed.archive;
@@ -235,7 +235,7 @@ export async function prepareConcurrentRun(
     return {
       ok: false,
       result: {
-        ...fail("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID", email.message, descriptor.id),
+        ...fail("HUMANISH_SHARED_WORLD_INVALID", email.message, descriptor.id),
         runId,
       },
     };

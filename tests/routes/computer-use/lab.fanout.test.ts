@@ -1377,7 +1377,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     expect(ghost.route).toBe("computer-use");
     if (ghost.route !== "computer-use") return;
     expect(ghost.result.ok).toBe(false);
-    expect(ghost.result.error?.code).toBe("HUMANISH_CUA_LAB_RERUN_INVALID");
+    expect(ghost.result.error?.code).toBe("HUMANISH_COMPUTER_USE_RERUN_INVALID");
     expect(ghost.result.error?.message).toContain("ghost-lane");
   });
 
@@ -2192,7 +2192,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     const result = outcome.result;
 
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_DEVICE_GEOMETRY");
+    expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_DEVICE_GEOMETRY");
     // The sandbox was still torn down by id (fail-closed never leaks).
     expect(handle.killed).toEqual(handle.createdIds);
   });
@@ -2282,7 +2282,7 @@ describe("cua fan-out: engine fail-closed guards", () => {
       }),
     });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_FANOUT_INVALID");
+    expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_FANOUT_INVALID");
     // Nothing was provisioned.
     expect(handle.created).toHaveLength(0);
   });
@@ -2292,7 +2292,7 @@ describe("cua fan-out: engine fail-closed guards", () => {
     const tampered = { ...base, subject: { ...base.subject, clone: { fanout: 2 } } } as LabConfig;
     const result = await runCuaActorLab({ cwd, config: tampered, dryRun: true });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_FANOUT_INVALID");
+    expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_FANOUT_INVALID");
   });
 });
 

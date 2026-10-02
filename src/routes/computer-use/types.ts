@@ -242,39 +242,39 @@ export interface CuaParticipantSummary {
 }
 
 export type CuaActorLabErrorCode =
-  | "HUMANISH_LAB_ANALYSIS_INVALID"
-  | "HUMANISH_LAB_TASKS_UNSUPPORTED"
-  | "HUMANISH_LAB_OPTION_UNSUPPORTED"
-  | "HUMANISH_CUA_LAB_FAILED"
-  | "HUMANISH_CUA_LAB_KEYS_MISSING"
+  | "HUMANISH_STUDY_ANALYSIS_INVALID"
+  | "HUMANISH_STUDY_TASKS_UNSUPPORTED"
+  | "HUMANISH_STUDY_OPTION_UNSUPPORTED"
+  | "HUMANISH_COMPUTER_USE_FAILED"
+  | "HUMANISH_COMPUTER_USE_KEYS_MISSING"
   // A local-agent participant's CLI is not on `PATH`. Refused at preflight (before any sandbox).
-  | "HUMANISH_CUA_LAB_AGENT_MISSING"
+  | "HUMANISH_COMPUTER_USE_AGENT_MISSING"
   // A local-agent participant's CLI reports not signed in, or could not report its sign-in status.
   // Refused at preflight (before any sandbox); the message names the fix.
-  | "HUMANISH_CUA_LAB_AGENT_SIGNIN_REQUIRED"
-  | "HUMANISH_CUA_LAB_SUBJECT_ENV_MISSING"
-  | "HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED"
-  | "HUMANISH_CUA_LAB_SUBJECT_INVALID"
-  | "HUMANISH_CUA_LAB_SUBJECT_UNSAFE"
-  | "HUMANISH_CUA_LAB_EXECUTOR_NO_PROVIDER"
-  | "HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR"
-  | "HUMANISH_CUA_LAB_LOCAL_DESKTOP_MISSING"
-  | "HUMANISH_CUA_LAB_FANOUT_INVALID"
-  | "HUMANISH_CUA_LAB_RERUN_INVALID"
-  | "HUMANISH_CUA_LAB_DEVICE_GEOMETRY"
+  | "HUMANISH_COMPUTER_USE_AGENT_SIGNIN_REQUIRED"
+  | "HUMANISH_COMPUTER_USE_SUBJECT_ENV_MISSING"
+  | "HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED"
+  | "HUMANISH_COMPUTER_USE_SUBJECT_INVALID"
+  | "HUMANISH_COMPUTER_USE_SUBJECT_UNSAFE"
+  | "HUMANISH_COMPUTER_USE_EXECUTOR_NO_PROVIDER"
+  | "HUMANISH_COMPUTER_USE_LOCAL_APP_NO_EXECUTOR"
+  | "HUMANISH_COMPUTER_USE_LOCAL_DESKTOP_MISSING"
+  | "HUMANISH_COMPUTER_USE_FANOUT_INVALID"
+  | "HUMANISH_COMPUTER_USE_RERUN_INVALID"
+  | "HUMANISH_COMPUTER_USE_DEVICE_GEOMETRY"
   | "HUMANISH_RUN_ID_IN_USE"
   // A fail-closed spend cap (execution.caps.maxUsd) was set but src/run/pricing.ts has no rate for the
   // resolved model, so the cap could not be enforced. Refused at preflight (before any sandbox)
   // rather than run uncapped: an unenforceable cap is more dangerous than none.
-  | "HUMANISH_CUA_LAB_UNPRICED_CAP"
+  | "HUMANISH_COMPUTER_USE_UNPRICED_CAP"
   // comms.email.external was declared but its catch did not answer as a humanish comms catch.
   // Refused at preflight (before any sandbox): a comms lab whose catch is unreachable collects
   // nothing while every participant still spends.
-  | "HUMANISH_CUA_LAB_COMMS_CATCH_UNREACHABLE"
+  | "HUMANISH_COMPUTER_USE_COMMS_CATCH_UNREACHABLE"
   // comms.email.external.authTokenEnv names a token shorter than MIN_CATCH_TOKEN_LENGTH or not
   // well-formed Unicode (src/comms/external-evidence.ts). Refused at preflight, before the catch is
   // probed.
-  | "HUMANISH_CUA_LAB_COMMS_TOKEN_INVALID"
+  | "HUMANISH_COMPUTER_USE_COMMS_TOKEN_INVALID"
   // watch --expose (tunnel-edge auth) validation + tunnel-startup failures surfaced by prepareCuaWatch
   // before or around the run. Carried on the CUA lab envelope so `watch <cua-lab> --expose` refusals
   // render through the same formatter as any other CUA lab failure.

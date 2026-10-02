@@ -41,6 +41,18 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Changed
 
+- Error codes name the study or the route where they said lab. Only the prefix changes.
+  - `HUMANISH_LAB_*` is `HUMANISH_STUDY_*`, so `HUMANISH_LAB_INVALID` is `HUMANISH_STUDY_INVALID`.
+  - `HUMANISH_CUA_LAB_*` is `HUMANISH_COMPUTER_USE_*`.
+  - `HUMANISH_CONCURRENT_SHARED_WORLD_LAB_*` is `HUMANISH_SHARED_WORLD_*`.
+  - `HUMANISH_TERMINAL_LAB_*` is `HUMANISH_TERMINAL_*`, and `HUMANISH_SCRIPTED_LAB_*` is
+    `HUMANISH_SCRIPTED_*`.
+  - `HUMANISH_LAUNCH_INVALID_LAB` is `HUMANISH_LAUNCH_INVALID_STUDY`.
+
+  A script or library caller that matches a code by its old name needs the new one. Runs saved
+  before the change keep the codes they were written with, and nothing reads a code back from a
+  saved run.
+
 - Computer-use streams in `run.json` are labelled `<participant id> · browser`, such as
   `lane-01 · browser`, in place of `CUA browser — <study>` and `CUA participant <id>: <study>`, and
   their screenshot embed title is `Desktop (raw)` or `Desktop (blurred)` in place of
@@ -71,6 +83,25 @@ The Unreleased section holds the full notes for the next version until it is tag
   longer warns that `first-time-visitor` has no file. The generated `AGENTS.md` section loses its
   em dash and its all-caps word. A test now runs init and holds these files to zero of each
   (#1440).
+- `humanish verify` prints one line for a passing run, "verified <runId> · share_ready · 16 checks
+  passed", with `latest` resolved to the run id. A failing run lists only its failing checks, each
+  as what verify found, such as "redaction did not pass (status: pending)" or "review.md is
+  missing", then names `verify --verbose`, which prints every check as before. A missing run prints
+  only that. `--json` keeps its fields.
+  - A check that reads bundle content says "not checked, because run.json failed the shape check"
+    when run.json fails its shape check. Before, it printed its pass sentence.
+  - Each check has a pass message and a different fail message, in JSON and human output. Before,
+    `run schema`, `run bundle shape`, `redaction passed` and `review artifacts exist` printed the
+    rule they enforce on both sides, such as "redaction status must be passed".
+- `humanish stats` on a project with only previews prints one line, "2 previews ($0); no live
+  runs yet". Otherwise previews get their own `previews:` line, followed by spend, outcomes and the
+  per-lab and per-day lines. Counts read "3 runs" and "1 preview" in place of "run(s)", zero counts
+  are left out, and the closing note is one sentence. docs/contracts/study-costs.md holds the
+  accounting rules.
+  - A dry run that records no cost counts as $0 in `stats --json`. It no longer adds to
+    `unpricedRuns` or `incompleteRunEstimates`, and its `runEstimatedUsd` is 0. Before, each
+    preview counted as unpriced, with incomplete accounting. A dry run that records an unknown
+    (null) figure stays unpriced.
 - Codex CLI releases are admitted by rule. Every stable release from 0.154.0 on launches, except
   those in `REFUSED_CODEX_CLI_VERSIONS` in `src/actors/codex/codex-admission.ts` (empty). Before,
   each host had a fixed list: Linux x64 took 0.154.0, 0.157.1, 0.159.2, 0.159.3 and 0.160.0;

@@ -62,7 +62,7 @@
     "failing": [
       {
         "name": "actor engagement",
-        "message": "no-engagement findings: stream-001 live actor trace (fake-cua) claims goal_satisfied with zero actions and zero messages — a hollow run is not credible evidence"
+        "message": "no-engagement findings: stream-001 live actor trace (fake-cua) claims goal_satisfied with zero actions and zero messages"
       }
     ]
   },
@@ -125,7 +125,7 @@
     "failing": [
       {
         "name": "actor engagement",
-        "message": "no-engagement findings: stream-001 live actor trace (fake-cua) claims goal_satisfied with zero actions and zero messages — a hollow run is not credible evidence"
+        "message": "no-engagement findings: stream-001 live actor trace (fake-cua) claims goal_satisfied with zero actions and zero messages"
       },
       {
         "name": "shared-world evidence",

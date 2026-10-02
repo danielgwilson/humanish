@@ -49,7 +49,7 @@ function config(raw: Raw): LabConfig {
 function refusal(raw: Raw): string {
   const result = parseLabConfig(raw);
   if (result.ok) throw new Error("parsed");
-  expect(result.error.code).toBe("HUMANISH_LAB_INVALID");
+  expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
   return result.error.message;
 }
 
