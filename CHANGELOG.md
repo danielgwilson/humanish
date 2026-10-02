@@ -22,6 +22,11 @@ The Unreleased section holds the full notes for the next version until it is tag
   `runComputerUseLoop`. Wrap the executor's `observe` and read `url` or `screenshot` from each
   observation, or wrap the provider's `nextTurn` and read `reasoning` and `message` from each
   turn. The options work as before and print no warning; the next minor removes them.
+- `BrowserLabScoringContext.laneCount` and `.backend`, the scorer context on computer-use and
+  shared-world runs. Read `participantCount` and `route` (`computer-use` or `shared-world`),
+  which the context now carries. The older fields still carry the same facts, and the first
+  read of each prints one `DeprecationWarning` with code
+  `HUMANISH_SCORING_CONTEXT_FIELD_DEPRECATED`. The next minor removes them.
 
 ### Removed
 
