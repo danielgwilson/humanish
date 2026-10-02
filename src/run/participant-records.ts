@@ -47,7 +47,7 @@ export function participantRecord(
 }
 
 /**
- * A participant's stream. `participantId` is the route's own participant id (a fan-out lane's id),
+ * A participant's stream. `participantId` is the route's own participant id (a fan-out entry's `lane-NN` id),
  * saved right after the record id when the route has one.
  */
 export function participantStream(
@@ -89,7 +89,7 @@ export function eventRecordIdOf(event: RunEvent): string | undefined {
   return event.simId;
 }
 
-/** The participant id an adapter recorded on a saved stream (a fan-out lane id), when it has one. */
+/** The participant id an adapter recorded on a saved stream (a fan-out `lane-NN` id), when it has one. */
 export function streamParticipantIdOf(stream: RunStream): string | undefined {
   return stream.laneId;
 }

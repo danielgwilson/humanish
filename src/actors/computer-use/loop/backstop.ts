@@ -166,7 +166,7 @@ export function advanceBackstop(
   // CORROBORATION (#383). A stale frame alone is NOT evidence of a stuck agent. The frame hash is
   // a coarse whole-screen measure, and on a light-themed web app it can miss a renamed row, a new
   // list item, or an opened panel — a measured run had 9 visibly different consecutive frames hash
-  // identically while the agent was a foreign key away from finishing. Ending a lane on that
+  // identically while the agent was a foreign key away from finishing. Ending a participant on that
   // signal alone recorded working sessions as `gave_up`, capping every browser run at roughly
   // noProgressSteps turns and writing harness artifacts into evidence as actor behavior.
   //

@@ -51,7 +51,7 @@ export interface TelemetryProperties {
   /** One of humanish's OWN error codes (`HUMANISH_*`), never a message. Which failure ends a
    *  first run is the question the funnel exists to answer. */
   errorCode?: string;
-  /** Finite result categories and recorded stop causes; never raw errors or lane details. */
+  /** Finite result categories and recorded stop causes; never raw errors or participant details. */
   diagnosticCategory?: string;
   stopCause?: string;
 }

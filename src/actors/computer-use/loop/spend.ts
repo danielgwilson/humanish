@@ -4,7 +4,7 @@ import type { LoopSession } from "./session.js";
 import { notice } from "./trace.js";
 import type { CuaSpendGate } from "./types.js";
 
-// The spend guards. The lane cap (maxUsd) and the study budget (overRunBudget) are priced from
+// The spend guards. The per-participant cap (maxUsd) and the study budget (overRunBudget) are priced from
 // the usage each reply reports, plus a worst-case charge booked for each request lost without a
 // reply. A request whose cost is unknown and unbounded stops a capped session before the next one.
 
@@ -17,7 +17,7 @@ export class LostRequestRefused extends Error {
 
 /**
  * The spend caps, checked before the next provider request so a model stuck retrying cannot keep
- * spending. The lane cap stops the session once the running estimate crosses maxUsd; a null
+ * spending. The per-participant cap stops the session once the running estimate crosses maxUsd; a null
  * estimate cannot trip it, because preflight guaranteed a rate. The study budget (#299) is checked
  * next.
  */

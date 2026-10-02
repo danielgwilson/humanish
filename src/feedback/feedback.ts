@@ -40,7 +40,7 @@ export interface FeedbackResult {
   issueMarkdown?: string;
   issueUrl?: string;
   draft?: FeedbackDraft;
-  /** Every usable candidate on the bundle, so a multi-lane study's second and third findings can be
+  /** Every usable candidate on the bundle, so a multi-participant study's second and third findings can be
    *  chosen with `--candidate` instead of being invisible behind the first (#609). */
   candidates?: FeedbackCandidateSummary[];
   shareSafety?: VerifyResult["shareSafety"];
