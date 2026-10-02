@@ -13,7 +13,7 @@ import type { RunSimulationStatus, RunStream } from "../../run/streams.js";
 import { declaredScreenForRender } from "../../substrates/e2b/desktop-geometry.js";
 import type { DesktopParticipantRun, ParticipantRunOutcome } from "../computer-use/types.js";
 import { publicSafeRouteLabel } from "./provenance.js";
-import { participantTaxonomyLabel } from "./seats.js";
+import { participantTaxonomyLabel } from "./participant-specs.js";
 import type { ConcurrentBundleArgs } from "./types.js";
 
 /** What every participant's records share. */

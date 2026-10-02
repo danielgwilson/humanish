@@ -34,7 +34,7 @@ import type { AdmittedPlan } from "../../run-lab.js";
 import type { LabConfig } from "../../lab/types.js";
 import { callerDrivingOf, planComputerUseLab, type ComputerUseRefusal } from "./plan.js";
 import { finishCuaRun } from "./result.js";
-import { runLabParticipants } from "./run-lanes.js";
+import { runLabParticipants } from "./live-phase.js";
 import { admitCuaRun, type AdmittedCuaRun, refuseCuaLab, startCuaRun } from "./setup.js";
 import {
   type ComputerUseRunInput,

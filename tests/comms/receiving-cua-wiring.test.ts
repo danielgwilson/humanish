@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { getActor } from "../../src/actors/registry.js";
-import { runCuaParticipant } from "../../src/routes/computer-use/lanes.js";
+import { runCuaParticipant } from "../../src/routes/computer-use/participant-execution.js";
 import { type CuaParticipantDeps } from "../../src/routes/computer-use/types.js";
 import type {
   E2BDesktopCreateOptions,

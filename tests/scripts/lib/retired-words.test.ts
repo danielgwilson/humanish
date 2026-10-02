@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  findRetiredPathWords,
   findRetiredWords,
   identifierWords,
   isCounted,
@@ -66,6 +67,29 @@ describe("retired vocabulary count", () => {
       { line: 6, word: "role", identifier: "roles" },
       { line: 6, word: "lane", identifier: "laneId" },
     ]);
+  });
+
+  it("counts retired words in directory and file names, at line 0", () => {
+    expect(findRetiredPathWords("src/routes/computer-use/lanes.ts")).toEqual([
+      { line: 0, word: "lane", identifier: "lanes" },
+    ]);
+    expect(findRetiredPathWords("src/routes/shared-world/seat-records.ts")).toEqual([
+      { line: 0, word: "seat", identifier: "seat-records" },
+    ]);
+    expect(findRetiredPathWords("src/run/study-files.ts")).toEqual([
+      { line: 0, word: "study", identifier: "study-files" },
+    ]);
+    expect(findRetiredPathWords("src/studies/runLaneIndex.ts")).toEqual([
+      { line: 0, word: "study", identifier: "studies" },
+      { line: 0, word: "lane", identifier: "runLaneIndex" },
+    ]);
+    for (const path of [
+      "src/routes/computer-use/participant-execution.ts",
+      "src/routes/shared-world/bundle-records.ts",
+      "src/routes/shared-world/plane.ts",
+      "src/run/simulation-ids.ts",
+    ])
+      expect(findRetiredPathWords(path), path).toEqual([]);
   });
 
   it("counts src/ TypeScript outside the Observer projection", () => {

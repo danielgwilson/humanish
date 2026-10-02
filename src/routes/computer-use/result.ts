@@ -20,9 +20,9 @@ import {
   unreleasedSandboxFailures,
 } from "./participant-facts.js";
 import { summarizeCuaDiagnostics } from "./diagnostics.js";
-import { toParticipantResult } from "./lanes.js";
+import { toParticipantResult } from "./participant-execution.js";
 import { buildCuaRunBundle, judgeComputerUseRun } from "./bundle.js";
-import type { runLabParticipants } from "./run-lanes.js";
+import type { runLabParticipants } from "./live-phase.js";
 import type { CuaFinishFacts, CuaRunSetup } from "./setup.js";
 import {
   aggregateCuaSubject,

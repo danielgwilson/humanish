@@ -5,7 +5,7 @@ import { prepareReceivingRun } from "../../comms/receiving-runtime.js";
 import type { CommsReceivingRun } from "../../comms/receiving.js";
 import { liveObserverResult } from "../../observer/live.js";
 import { pricedModel } from "../../lab/plan-base.js";
-import { runAllCuaParticipants } from "./lanes.js";
+import { runAllCuaParticipants } from "./participant-execution.js";
 import { startLiveTraceFlush } from "./live-flush.js";
 import { drainExternalComms } from "./external-comms.js";
 import { buildCuaRunBundle, judgeComputerUseRun } from "./bundle.js";
