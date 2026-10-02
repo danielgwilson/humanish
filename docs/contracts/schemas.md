@@ -1356,9 +1356,9 @@ on, and any failed or stalled request stops the session; both stop with `harness
 `stopCause: usage_unreported`, and the label “provider usage unavailable.” It is not recorded as a
 crossed threshold. `singleDispatch: true` disables the OpenAI adapter's HTTP and
 policy-negotiation retries, so each turn makes at most one request.
-`runCuaActorSession({ requireReportedUsageForSpendCap: true })` sets `singleDispatch` itself and
-is deprecated in this minor. It also attaches `trace.estimatedCost` for an injected
-account-billed provider, which the composition does not. The loop cancels its owned request signal when a
+This composition replaces `runCuaActorSession`, which set `singleDispatch` itself and was removed
+in 0.107.0. Unlike `runCuaActorSession`, it attaches no `trace.estimatedCost` for an injected
+account-billed provider. The loop cancels its owned request signal when a
 request ends or its timeout wins; injected providers must honor cancellation
 and remain responsible for their own internal dispatch. Known usage remains in
 the trace alongside an explicit unknown. Reported zero input and output counts
@@ -1474,6 +1474,23 @@ bag field's job went:
 `cuaHooks.createDesktopLane` has no replacement: a run's desktop is E2B, the local VM or in
 process. The bags' other fields were test seams with no public replacement. `scorer` keeps the
 route-specific verdict rules in the next section.
+
+0.107.0 also removed these exports from `humanish`. A removed function no longer warns; an import
+of it fails.
+
+| Removed export                                                                                                                                 | Use                                                                                                        |
+| ---------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `runDryRun`, `RunOptions`, `RunResult`                                                                                                         | `runLab(config, options)` on a `this-repo` lab; its result is `LabResult<"preview">`                       |
+| `runCuaActorSession`                                                                                                                           | `runComputerUseLoop` with `createOpenAiResponsesProvider({ singleDispatch: true })`                        |
+| `CuaActorLabResult`, `ScriptedBrowserLabResult`, `TerminalProductLabResult`, `ConcurrentSharedWorldLabResult`                                  | `LabResult<"computer-use">`, `LabResult<"scripted">`, `LabResult<"terminal">`, `LabResult<"shared-world">` |
+| `SubjectPhaseEvent`                                                                                                                            | the `subject-phase` `LabEvent` through `onEvent`                                                           |
+| `LabOutcome.backend`, `LabBackend`                                                                                                             | `outcome.route`                                                                                            |
+| `selectLabBackend`, the `routesTo*` predicates, `actorResolvesToTerminal`                                                                      | `routeOf(config)`                                                                                          |
+| `resolveLabDryRun`                                                                                                                             | `RunLabOptions.dryRun`; without it, `scenario.mode` decides                                                |
+| `cuaLaneCount`                                                                                                                                 | the `plan` `LabEvent`, which lists every participant                                                       |
+| `resolveSeatUrl`                                                                                                                               | `parseLabConfig`, which refuses a participant entry that is not same-origin loopback                       |
+| `cuaLaneValidationReason`, `sharedWorldValidationReason`, `concurrentSharedWorldValidationReason`, `externalPublicSharedWorldValidationReason` | `parseLabConfig`, which returns the same reason                                                            |
+| `MAX_CUA_LANES`                                                                                                                                | none; `parseLabConfig` refuses a roster of more than 16 participants                                       |
 
 ## Product-Adapter Extension Seam
 

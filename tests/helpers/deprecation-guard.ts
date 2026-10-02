@@ -1,7 +1,7 @@
 import { afterAll, afterEach } from "vitest";
 import {
   deprecationGuardState,
-  HUMANISH_DEPRECATION_CODES,
+  isHumanishDeprecation,
   resetDeprecationGuard,
 } from "./deprecations.js";
 
@@ -12,10 +12,8 @@ import {
 // reaches its listeners unchanged. Tests that spy on process.emitWarning wrap this filter, so
 // they still see every call.
 //
-// Each deprecated export warns once per process, so after an allowed test triggers it, a later
-// test in the same file that uses the same export emits nothing for this guard to catch.
-
-const CODES: ReadonlySet<string> = new Set(HUMANISH_DEPRECATION_CODES);
+// A deprecation that warns once per process emits nothing after an allowed test triggers it, so
+// a later test in the same file that uses the same surface emits nothing for this guard to catch.
 
 // A worker runs several test files in one process and this file runs once per test file, so the
 // filter always wraps the original function instead of the previous file's filter.
@@ -26,16 +24,21 @@ const original = (holder[ORIGINAL] ??= process.emitWarning.bind(process) as Emit
 
 resetDeprecationGuard();
 
-/** The code a warning was emitted with: `(warning, { code })` or `(warning, type, code)`. */
-function warningCode([typeOrOptions, code]: readonly unknown[]): unknown {
-  if (typeof typeOrOptions === "object" && typeOrOptions !== null)
-    return (typeOrOptions as { code?: unknown }).code;
-  return code;
+/** The type and code a warning was emitted with: `(warning, { type, code })` or `(warning, type, code)`. */
+function typeAndCode(
+  warning: string | Error,
+  [typeOrOptions, code]: readonly unknown[],
+): unknown[] {
+  if (typeof typeOrOptions === "object" && typeOrOptions !== null) {
+    const options = typeOrOptions as { type?: unknown; code?: unknown };
+    return [options.type ?? (warning instanceof Error ? warning.name : undefined), options.code];
+  }
+  return [typeOrOptions ?? (warning instanceof Error ? warning.name : undefined), code];
 }
 
 process.emitWarning = ((warning: string | Error, ...args: unknown[]) => {
-  const code = warningCode(args);
-  if (typeof code !== "string" || !CODES.has(code)) {
+  const [type, code] = typeAndCode(warning, args);
+  if (!isHumanishDeprecation(type, code)) {
     original(warning, ...args);
     return;
   }

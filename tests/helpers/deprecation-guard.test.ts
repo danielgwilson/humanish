@@ -32,22 +32,22 @@ it("holds back a humanish deprecation without an allowance, to fail the test", a
   const seen = await warningsSeen(() => {
     process.emitWarning("option form", {
       type: "DeprecationWarning",
-      code: "HUMANISH_DEPRECATED_EXPORT",
+      code: "HUMANISH_EXAMPLE_DEPRECATED",
     });
-    process.emitWarning("positional form", "DeprecationWarning", "HUMANISH_DEPRECATED_EXPORT");
+    process.emitWarning("positional form", "DeprecationWarning", "HUMANISH_EXAMPLE_DEPRECATED");
   });
   expect(seen).toEqual([]);
   // The guard's afterEach throws on these; take them so this test can pass.
   expect(deprecationGuardState().unexpected.splice(0)).toEqual([
-    "[HUMANISH_DEPRECATED_EXPORT] option form",
-    "[HUMANISH_DEPRECATED_EXPORT] positional form",
+    "[HUMANISH_EXAMPLE_DEPRECATED] option form",
+    "[HUMANISH_EXAMPLE_DEPRECATED] positional form",
   ]);
 });
 
 it("drops an allowed humanish deprecation", async () => {
-  allowDeprecationsInThisTest("HUMANISH_DEPRECATED_EXPORT", "the guard's own test");
+  allowDeprecationsInThisTest("HUMANISH_EXAMPLE_DEPRECATED", "the guard's own test");
   const seen = await warningsSeen(() =>
-    process.emitWarning("allowed", "DeprecationWarning", "HUMANISH_DEPRECATED_EXPORT"),
+    process.emitWarning("allowed", "DeprecationWarning", "HUMANISH_EXAMPLE_DEPRECATED"),
   );
   expect(seen).toEqual([]);
   expect(deprecationGuardState().unexpected).toEqual([]);
