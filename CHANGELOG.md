@@ -32,7 +32,7 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 - `AdapterScorerModule<C>` takes the context its functions read as a type parameter, defaulting to
   the union of the browser and terminal contexts (#1357). `browserScorer` and `terminalScorer`
-  pass a scorer written for one context as `RunLabOptions.scorer` without a cast (#PRNUM): a
+  pass a scorer written for one context as `RunLabOptions.scorer` without a cast (#1360): a
   scorer whose functions took `BrowserLabScoringContext` or `TerminalProductScoringContext` did
   not typecheck as `scorer` before. Inline scorers keep their contextual types.
 - `humanish lab run --help` says what `--lanes` takes: a participant's declared
