@@ -37,13 +37,13 @@ describe("vocabulary:check holds each word to its cap in scripts/caps.json", () 
 
   it("fails when a word has no cap, naming its path and today's count", async () => {
     const caps = repoCaps();
-    delete caps.vocabulary.study;
+    delete caps.vocabulary.lab;
     const result = await run(caps);
 
     expect(result.status).toBe(1);
-    const count = /^vocabulary\.study: (\d+) \(no cap\)$/m.exec(result.stdout)?.[1];
+    const count = /^vocabulary\.lab: (\d+) \(no cap\)$/m.exec(result.stdout)?.[1];
     expect(result.stdout).toMatch(
-      new RegExp(`A count has no cap\\. Add it to .*: vocabulary\\.study: ${count}\\.`),
+      new RegExp(`A count has no cap\\. Add it to .*: vocabulary\\.lab: ${count}\\.`),
     );
   });
 
