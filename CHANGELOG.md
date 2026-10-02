@@ -47,6 +47,16 @@ The Unreleased section holds the full notes for the next version until it is tag
   longer warns that `first-time-visitor` has no file. The generated `AGENTS.md` section loses its
   em dash and its all-caps word. A test now runs init and holds these files to zero of each
   (#1440).
+- `humanish verify` prints one line for a passing run, "verified <runId> · share_ready · 16 checks
+  passed", with `latest` resolved to the run id. A failing run lists only its failing checks, each
+  as what verify found, such as "redaction did not pass (status: pending)" or "review.md is
+  missing", then names `verify --verbose`, which prints every check as before. A missing run prints
+  only that. `--json` keeps its fields.
+  - A check that reads bundle content says "not checked, because run.json failed the shape check"
+    when run.json fails its shape check. Before, it printed its pass sentence.
+  - Each check has a pass message and a different fail message, in JSON and human output. Before,
+    `run schema`, `run bundle shape`, `redaction passed` and `review artifacts exist` printed the
+    rule they enforce on both sides, such as "redaction status must be passed".
 - Codex CLI releases are admitted by rule. Every stable release from 0.154.0 on launches, except
   those in `REFUSED_CODEX_CLI_VERSIONS` in `src/actors/codex/codex-admission.ts` (empty). Before,
   each host had a fixed list: Linux x64 took 0.154.0, 0.157.1, 0.159.2, 0.159.3 and 0.160.0;
