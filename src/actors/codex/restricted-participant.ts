@@ -289,6 +289,62 @@ function participantSession(
     },
   });
 }
+/** What doctor's hosted-participant check found, before any turn. */
+export interface ParticipantReadiness {
+  ready: boolean;
+  errorCode: RestrictedCodexAnalysisErrorCode | null;
+  /** The release the launch admitted. */
+  cliVersion?: string;
+  /** The model thread/start resolved from the operator's configuration or the declared model. */
+  resolvedModel?: string;
+  authentication?: "chatgpt-account" | "api-key";
+}
+
+/**
+ * doctor's check for a hosted Codex participant: the operator-auth launch up to an ephemeral
+ * thread (the version check, initialize, config/read, account/read and thread/start). It sends no
+ * turn, so no model request is made, and its tool is never called.
+ */
+export async function checkRestrictedCodexParticipantReadiness(options: {
+  session?: RestrictedCodexSessionOptions;
+  model?: string;
+  reasoningEffort?: ReasoningEffort;
+  timeoutMs?: number;
+}): Promise<ParticipantReadiness> {
+  const session = participantSession(
+    {
+      authMode: "operator",
+      ...(options.session === undefined ? {} : { session: options.session }),
+    },
+    false,
+    options.reasoningEffort ?? "low",
+    async () => {
+      throw new Error("A readiness check makes no tool call");
+    },
+  );
+  const result = await session.run(
+    {
+      ...(options.model === undefined ? {} : { model: options.model }),
+      instructions: participantInstructions("Readiness check only.", false),
+      evidence: "",
+      images: [],
+      schema: PARTICIPANT_FINAL_SCHEMA,
+      maxOutputTokens: null,
+      timeoutMs: options.timeoutMs ?? 15_000,
+    },
+    true,
+  );
+  const closed = await session.close();
+  const errorCode = closed ? result.errorCode : (result.errorCode ?? "codex_cleanup_failed");
+  return {
+    ready: errorCode === null && result.status === "completed",
+    errorCode,
+    ...(session.cliVersion === undefined ? {} : { cliVersion: session.cliVersion }),
+    ...(session.resolvedModel === undefined ? {} : { resolvedModel: session.resolvedModel }),
+    ...(session.authentication === undefined ? {} : { authentication: session.authentication }),
+  };
+}
+
 /**
  * The profile a run records: the detected release, or the host default before the first launch.
  * An operator-auth session has one only once it resolved a model on a ChatGPT account.
