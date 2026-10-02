@@ -57,6 +57,9 @@ its report was published, its findings are current, or the original recording
 later changed. The receipt and report with the same run/analysis ID count once;
 new IDs from explicit reruns count separately. Reusing a prior result adds no
 attempt or expense. Conflicting accounting for the same ID stays unresolved.
+A dry run with no recorded cost counts as a known $0, because it makes no model
+request and creates no desktop. A dry run that records an unknown figure stays
+unknown.
 
 Older reports without receipts contribute their strictly validated accounting
 metadata with a legacy warning. Provider requests that left no durable record

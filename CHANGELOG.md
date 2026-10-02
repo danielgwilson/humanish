@@ -57,6 +57,15 @@ The Unreleased section holds the full notes for the next version until it is tag
   - Each check has a pass message and a different fail message, in JSON and human output. Before,
     `run schema`, `run bundle shape`, `redaction passed` and `review artifacts exist` printed the
     rule they enforce on both sides, such as "redaction status must be passed".
+- `humanish stats` on a project with only previews prints one line, "2 previews ($0); no live
+  runs yet". Otherwise previews get their own `previews:` line, followed by spend, outcomes and the
+  per-lab and per-day lines. Counts read "3 runs" and "1 preview" in place of "run(s)", zero counts
+  are left out, and the closing note is one sentence. docs/contracts/study-costs.md holds the
+  accounting rules.
+  - A dry run that records no cost counts as $0 in `stats --json`. It no longer adds to
+    `unpricedRuns` or `incompleteRunEstimates`, and its `runEstimatedUsd` is 0. Before, each
+    preview counted as unpriced, with incomplete accounting. A dry run that records an unknown
+    (null) figure stays unpriced.
 - Codex CLI releases are admitted by rule. Every stable release from 0.154.0 on launches, except
   those in `REFUSED_CODEX_CLI_VERSIONS` in `src/actors/codex/codex-admission.ts` (empty). Before,
   each host had a fixed list: Linux x64 took 0.154.0, 0.157.1, 0.159.2, 0.159.3 and 0.160.0;
