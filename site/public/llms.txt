@@ -1,8 +1,8 @@
 # humanish
 
-> Open-source (MIT) TypeScript CLI for running a user study before you have users. One command puts
-> a synthetic participant with a persona and a task in front of your app in a real browser, on a local
-> or hosted desktop. What comes back lands in your repo: captures, actions, findings, and usage evidence.
+> You can't run a user study on an app that has no users yet. humanish runs one anyway. One command
+> puts a synthetic participant with a persona and a task in front of your app in a real browser; what
+> comes back is what they did, where they got stuck, and what it cost.
 
 ## When to use humanish
 
@@ -37,7 +37,7 @@ npx humanish doctor
 npx humanish run try-live
 ```
 
-Node 20 or newer. Install `humanish` and `@e2b/desktop` in the same project for live runs;
+Node 22.19 or newer. Install `humanish` and `@e2b/desktop` in the same project for live runs;
 a one-shot `npx humanish@latest` can miss the optional desktop peer. The keyless preview
 only needs `humanish`.
 
@@ -115,7 +115,7 @@ This command index is generated from the shipped CLI. Full arguments and options
 
 <!-- humanish-cli:end -->
 
-`humanish tui` is for a human: Node 22+, interactive stdin and stdout. It refuses
+`humanish tui` is for a human: interactive stdin and stdout. It refuses
 detected coding-agent sessions even with a TTY (`HUMANISH_TUI_AGENT_SESSION`), or
 non-TTY input/output (`HUMANISH_TUI_REQUIRES_TTY`); both return exit code 2.
 `--json` reports that refusal; it does not make the TUI usable by an agent.
@@ -147,7 +147,7 @@ The hosted API route needs:
 the command to fix missing prerequisites without printing key values. Persisted text is scrubbed for known
 secret values and patterns; this is not a guarantee that all sensitive content is detected.
 
-Node 20 or newer for the CLI; the human TUI requires Node 22 or newer.
+Node 22.19 or newer.
 
 ## Worked example: the Excalidraw study
 

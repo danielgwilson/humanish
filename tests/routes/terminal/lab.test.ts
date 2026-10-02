@@ -30,14 +30,14 @@ import { readAutomaticAnalysis, runAutomaticAnalysis } from "../../../src/analys
 import { resolveAutomaticAnalysis } from "../../../src/analysis/automatic-config.js";
 import { inertDesktopInput } from "../../helpers/inert-desktop-input.js";
 
-// SLICE 2 deterministic safety net: drive the REAL live orchestration (dryRun:false) against a
-// FAKE E2B module + a MOCK codex CLI at zero spend. The load-bearing assertions are the
-// credential-boundary ones — the runtime key reaches ONLY the per-command envs, never
-// Sandbox.create envs / metadata / the persisted bundle — because that is the inversion this
+// Slice 2 deterministic safety net: drive the real live orchestration (dryRun:false) against a
+// fake E2B module + a mock codex CLI at zero spend. The assertions that matter are the
+// credential-boundary ones: the runtime key reaches only the per-command envs, never
+// Sandbox.create envs / metadata / the persisted bundle, because that is the inversion this
 // lane introduces and the single most dangerous surface in the project.
 
-// A fake key VALUE the test controls. Deliberately NOT secret-SHAPED (no sk-/ghp_ prefix) so it
-// would NOT be caught by pattern redaction alone — only the literal scrub of known provisioned
+// A fake key value the test controls. Deliberately not secret-shaped (no sk-/ghp_ prefix) so it
+// would not be caught by pattern redaction alone: only the literal scrub of known provisioned
 // values catches it. If it survives into the bundle, the scrub failed.
 const FAKE_RUNTIME_KEY = "FAKEKEY-terminal-slice2-do-not-leak-1234567890";
 
@@ -69,10 +69,10 @@ function makeFakeModule(opts: {
   createErrors?: Error[];
   runs: RecordedRun[];
   killed: string[];
-  /** Records every Sandbox.list(id) call. Teardown must NEVER call it (by-id proof only, never
+  /** Records every Sandbox.list(id) call. Teardown must never call it (by-id proof only, never
    *  a re-list); tests assert this array stays empty after a run. */
   listCalls?: string[];
-  /** When set, Sandbox.kill(id) THROWS instead of resolving (the "kill itself failed" case ->
+  /** When set, Sandbox.kill(id) throws instead of resolving (the "kill itself failed" case ->
    *  fail-closed remaining=-1). */
   killThrows?: (sandboxId: string) => { message?: string; name?: string } | undefined;
   /** Sandbox.kill(id)'s own resolved boolean ("found and killed", per the real SDK) when it does
@@ -82,8 +82,8 @@ function makeFakeModule(opts: {
   killAnswer?: unknown;
   /**
    * Controls Sandbox.getInfo(id): "not-found" throws a SandboxNotFoundError-shaped error (the
-   * by-id CONFIRMED-reclaimed case, remaining=0 -- this is the default, matching a genuinely
-   * reclaimed sandbox); "running"/"paused" returns a live SandboxInfo (NOT confirmed reclaimed,
+   * by-id confirmed-reclaimed case, remaining=0: this is the default, matching a genuinely
+   * reclaimed sandbox); "running"/"paused" returns a live SandboxInfo (not confirmed reclaimed,
    * remaining=1).
    */
   getInfoState?: "not-found" | "running" | "paused";
@@ -94,7 +94,7 @@ function makeFakeModule(opts: {
    * Throws a CommandExitError-shaped error (real-SDK-accurate: the real @e2b/desktop Sandbox
    * throws on any non-zero exit rather than returning one) for the runtime-bootstrap command.
    * Mirrors tests/routes/computer-use/lab.test.ts's makeFakeSandbox convention, so the bootstrap-failure
-   * path is covered by the THROWING shape, not just a structural non-zero return.
+   * path is covered by the throwing shape, not just a structural non-zero return.
    */
   bootstrapThrow?: (
     command: string,
@@ -108,7 +108,7 @@ function makeFakeModule(opts: {
   let counter = 0;
   return {
     Sandbox: {
-      // Mirror the real @e2b/desktop overload: create(opts) OR create(template, opts). The terminal
+      // Mirror the real @e2b/desktop overload: create(opts) or create(template, opts). The terminal
       // route never passes a template, but the fake must accept the overload to type-check.
       async create(templateOrOptions: string | RecordedCreate, maybeOptions?: RecordedCreate) {
         const options =
@@ -163,7 +163,7 @@ function makeFakeModule(opts: {
                 };
               }
               if (command.includes("# humanish node-bootstrap")) {
-                // The UNKEYED runtime-bootstrap command (ensure Node/npm before the keyed exec).
+                // The unkeyed runtime-bootstrap command (ensure Node/npm before the keyed exec).
                 const thrown = opts.bootstrapThrow?.(command);
                 if (thrown) {
                   throw Object.assign(
@@ -239,7 +239,7 @@ function makeFakeModule(opts: {
             },
           }),
       // Kept only for structural parity with the real SDK (older callers, e.g. lab-preflight.ts,
-      // still use it for their own purposes). Teardown must NEVER call this -- see listCalls.
+      // still use it for their own purposes). Teardown must never call this: see listCalls.
       list(_options: unknown) {
         opts.listCalls?.push("called");
         const paginator = {
@@ -258,7 +258,7 @@ function makeFakeModule(opts: {
 const PRODUCT_INSTALL = "synthetic-product-install --yes";
 
 // Extract the per-run verdict nonce the lab embedded in the codex command, so the mock can echo
-// a NONCE-VERIFIED marker exactly as a real agent would (the scorer rejects a bare marker).
+// a nonce-verified marker exactly as a real agent would (the scorer rejects a bare marker).
 function nonceFrom(command: string): string {
   const m = /HUMANISH_ACTOR_NONCE=([A-Za-z0-9-]+)/.exec(command);
   return m?.[1] ?? "unknown-nonce";
@@ -315,7 +315,7 @@ function baseEnv(): Record<string, string | undefined> {
   return {
     OPENAI_API_KEY: FAKE_RUNTIME_KEY,
     E2B_API_KEY: "FAKE-E2B-KEY-also-do-not-leak-0987654321",
-    // Banned credentials present in the operator env — must NOT be forwarded into the sandbox.
+    // Banned credentials present in the operator env: must not be forwarded into the sandbox.
     GITHUB_TOKEN: "FAKE-github-token-name-present-not-forwarded",
     DATABASE_URL: "FAKE-database-url-name-present-not-forwarded",
     STRIPE_SECRET_KEY: "FAKE-stripe-key",
@@ -1837,7 +1837,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     expect(bundle.redaction.notes).not.toContain("Codex received");
   });
 
-  it("injects the runtime key ONLY command-scoped, never into Sandbox.create or metadata or the bundle", async () => {
+  it("injects the runtime key only command-scoped, never into Sandbox.create or metadata or the bundle", async () => {
     const creates: RecordedCreate[] = [];
     const runs: RecordedRun[] = [];
     const killed: string[] = [];
@@ -1854,7 +1854,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
             listCalls,
             codexBehavior: (cmd) => ({
               exitCode: 0,
-              // A real agent echoes the nonce-verified verdict AND some output — INCLUDING the key value
+              // A real agent echoes the nonce-verified verdict and some output, including the key value
               // (simulating an agent that transcribed its key into output). The scrub must catch it.
               stdout: `working on it... key seen: ${FAKE_RUNTIME_KEY}\nHUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
             }),
@@ -1872,24 +1872,24 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       ...inputs,
     });
 
-    // Sandbox created + killed; cleanup proven BY EXACT ID (getInfo(id) confirms
-    // SandboxNotFoundError). Sandbox.list is NEVER called on the teardown path.
+    // Sandbox created + killed; cleanup proven by exact ID (getInfo(id) confirms
+    // SandboxNotFoundError). Sandbox.list is never called on the teardown path.
     expect(creates.length).toBe(1);
     expect(killed.length).toBe(1);
     expect(result.sandbox?.killed).toBe(true);
     expect(result.sandbox?.remaining).toBe(0);
     expect(listCalls.length).toBe(0);
 
-    // CREDENTIAL BOUNDARY: Sandbox.create carried NO envs (key never sandbox-global) and no key in metadata.
+    // Credential boundary: Sandbox.create carried no envs (key never sandbox-global) and no key in metadata.
     expect(creates[0]?.envs).toBeUndefined();
     expect(JSON.stringify(creates[0]?.metadata ?? {})).not.toContain(FAKE_RUNTIME_KEY);
     // The labels name the lab and the participant's run.json simulations[] record.
     expect(creates[0]?.metadata).toMatchObject({ labId: config.id, recordId: "sim-001" });
 
-    // The codex command run carried the key in its OWN envs (command-scoped) — and ONLY the runtime key.
+    // The codex command run carried the key in its own envs (command-scoped), and only the runtime key.
     const codexRun = runs.find((r) => r.command.includes(" exec "));
     expect(codexRun?.command).toContain(config.actors[0]!.mission);
-    // Pinned via npx, never an ambient/preinstalled `codex` binary (issue #159).
+    // Pinned via npx, never an ambient/preinstalled `codex` binary.
     expect(codexRun?.command).toContain("npx -y @openai/codex@0.153.3 exec");
     // The lab declares no model, so the route passes the participant default rather than leaving
     // the choice to whichever default this Codex release ships.
@@ -1897,11 +1897,11 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     expect(codexRun?.command).not.toContain("codex exec"); // never the bare ambient-binary form
     // codex's inner sandbox is bypassed: the E2B sandbox is the trust boundary.
     expect(codexRun?.command).toContain("--dangerously-bypass-approvals-and-sandbox");
-    // Preference order: only OPENAI_API_KEY was set, so its value is injected under BOTH names,
+    // Preference order: only OPENAI_API_KEY was set, so its value is injected under both names,
     // so codex exec's documented single-invocation auth channel (CODEX_API_KEY) is populated too.
     expect(codexRun?.envs?.OPENAI_API_KEY).toBe(FAKE_RUNTIME_KEY);
     expect(codexRun?.envs?.CODEX_API_KEY).toBe(FAKE_RUNTIME_KEY);
-    // The key names, plus the study-participant marker that rides the same command (#546): a
+    // The key names, plus the study-participant marker that rides the same command: a
     // participant's own humanish telemetry must not read as a new adopter.
     expect(
       Object.keys(codexRun?.envs ?? {})
@@ -1913,7 +1913,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     expect(codexRun?.envs).not.toHaveProperty("DATABASE_URL");
     expect(codexRun?.envs).not.toHaveProperty("STRIPE_SECRET_KEY");
 
-    // The planted key value must be SCRUBBED out of every persisted artifact.
+    // The planted key value must be scrubbed out of every persisted artifact.
     const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     expect(bundle.simulations[0]?.progress).toBe(100);
@@ -1963,7 +1963,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     expect(codexEntry?.envNames.slice().sort()).toEqual(["CODEX_API_KEY", "OPENAI_API_KEY"]);
   });
 
-  it("runs the runtime bootstrap UNKEYED, before the keyed codex exec, with an explicit generous timeout", async () => {
+  it("runs the runtime bootstrap unkeyed, before the keyed codex exec, with an explicit generous timeout", async () => {
     const creates: RecordedCreate[] = [];
     const runs: RecordedRun[] = [];
     const killed: string[] = [];
@@ -1998,7 +1998,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     expect(bootstrapIndex).toBeGreaterThan(readinessIndex);
     expect(codexIndex).toBeGreaterThan(bootstrapIndex);
 
-    // UNKEYED: the runtime-bootstrap command carries no envs at all (no runtime key touches it).
+    // Unkeyed: the runtime-bootstrap command carries no envs at all (no runtime key touches it).
     expect(runs[bootstrapIndex]?.envs).toBeUndefined();
     // Explicit generous timeout: the SDK's commands.run default (60s) can be too short for a verified runtime download.
     expect(runs[bootstrapIndex]?.timeoutMs).toBe(300_000);
@@ -2035,8 +2035,8 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
               exitCode: 0,
               stdout: "HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=should-not-run\n",
             }),
-            // Real-SDK-accurate: the real @e2b/desktop Sandbox THROWS a CommandExitError on a
-            // non-zero exit rather than returning one; cover the THROWING shape, not just a
+            // Real-SDK-accurate: the real @e2b/desktop Sandbox throws a CommandExitError on a
+            // non-zero exit rather than returning one; cover the throwing shape, not just a
             // structural non-zero return.
             bootstrapThrow: () => ({ exitCode: 1, stderr: "sudo: a password is required" }),
           }),
@@ -2051,7 +2051,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       ...inputs,
     }).finally(stderr.stop);
 
-    // The keyed exec is NEVER attempted once the runtime bootstrap has failed.
+    // The keyed exec is never attempted once the runtime bootstrap has failed.
     expect(runs.some((r) => r.command.includes(" exec "))).toBe(false);
 
     // Fails closed as a structured lane result: the run completes (no unhandled throw escapes
@@ -2082,7 +2082,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     });
   });
 
-  it("fails closed BEFORE creating a sandbox when no fail-closed cap is in force", async () => {
+  it("fails closed before creating a sandbox when no fail-closed cap is in force", async () => {
     const creates: RecordedCreate[] = [];
     const runs: RecordedRun[] = [];
     const killed: string[] = [];
@@ -2105,7 +2105,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     expect(creates.length).toBe(0); // the live key is never exercised without a cap
   });
 
-  it("keeps a BLOCKED agent run (no verified verdict) structurally verifiable", async () => {
+  it("keeps a blocked agent run (no verified verdict) structurally verifiable", async () => {
     const creates: RecordedCreate[] = [];
     const runs: RecordedRun[] = [];
     const killed: string[] = [];
@@ -2118,7 +2118,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
             creates,
             runs,
             killed,
-            // Exits 0 but emits NO nonce-verified verdict marker -> blocked evidence, not a hollow pass.
+            // Exits 0 but emits no nonce-verified verdict marker -> blocked evidence, not a hollow pass.
             codexBehavior: () => ({ exitCode: 0, stdout: "I could not find the product docs.\n" }),
           }),
       },
@@ -2152,7 +2152,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
             runs,
             killed,
             listCalls,
-            // kill(id) resolves, but getInfo(id) STILL reports the sandbox running -> not confirmed
+            // kill(id) resolves, but getInfo(id) still reports the sandbox running -> not confirmed
             // reclaimed by id. Never a re-list.
             getInfoState: "running",
             codexBehavior: (cmd) => ({
@@ -2517,7 +2517,7 @@ describe("runtime-auth key allowlist preference (CODEX_API_KEY over OPENAI_API_K
     expect(ledgers.commandLog[0]?.envNames).toEqual(["CODEX_API_KEY"]);
   });
 
-  it("injects the value under BOTH CODEX_API_KEY and OPENAI_API_KEY when only OPENAI_API_KEY is set", async () => {
+  it("injects the value under both CODEX_API_KEY and OPENAI_API_KEY when only OPENAI_API_KEY is set", async () => {
     const creates: RecordedCreate[] = [];
     const runs: RecordedRun[] = [];
     const killed: string[] = [];
@@ -2615,7 +2615,7 @@ describe("terminal persona traits", () => {
     await rm(cwd, { recursive: true, force: true });
   });
 
-  it("applies committed persona traits to the agent prompt AND records them in the actor trace", async () => {
+  it("applies committed persona traits to the agent prompt and records them in the actor trace", async () => {
     await mkdir(path.join(cwd, "humanish", "personas"), { recursive: true });
     await writeFile(
       path.join(cwd, "humanish", "personas", "autonomous-creative-agent.yaml"),
@@ -2661,12 +2661,12 @@ describe("terminal persona traits", () => {
     });
     expect(result.ok).toBe(true);
 
-    // The persona's low-patience directive reached the agent's ACTUAL composed prompt.
+    // The persona's low-patience directive reached the agent's actual composed prompt.
     const codexRun = runs.find((r) => r.command.includes(" exec "));
     expect(codexRun?.command).toContain("impatient");
     expect(codexRun?.command).not.toContain("persona: autonomous-creative-agent");
 
-    // The actor trace records WHICH traits took effect — no longer the hardcoded [].
+    // The actor trace records which traits took effect: no longer the hardcoded [].
     const bundle = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
     );

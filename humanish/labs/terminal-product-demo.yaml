@@ -1,13 +1,11 @@
 schema: humanish.lab.v2
 id: terminal-product-demo
-title: Terminal-product real-agent study (dry-run contract; neutral mock CLI)
-description: >
-  A real autonomous terminal agent (codex-exec) discovers and uses a CLI/product
-  from PUBLIC SURFACES ONLY, inside an E2B shell, capped at no-spend. This neutral
-  fixture stays dry-run for CI and produces a verified contract-only bundle. The
-  shipped live terminal-product route and command-scoped credential boundary are
-  not exercised by this fixture; this FICTIONAL mock CLI does not claim live or
-  adopter proof.
+title: Terminal-product study with a mock CLI (dry run)
+description: >-
+  An autonomous terminal agent (codex-exec) finds and uses a CLI from its public pages only, inside
+  an E2B shell, capped at no spend. This fixture stays a dry run for CI and produces a verified
+  dry-run bundle. It does not exercise the live terminal-product route or its command-scoped
+  credential boundary, and its fictional mock CLI is not evidence of a live or adopter run.
 subject:
   source: terminal-product
   product:

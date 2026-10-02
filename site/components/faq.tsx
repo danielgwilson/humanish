@@ -1,4 +1,4 @@
-import { GITHUB } from "@/lib/site-data";
+import { GITHUB, NODE_FLOOR } from "@/lib/site-data";
 
 /** The questions the personas asked on the site study, answered with what the docs state; each links the page that backs it. */
 const ITEMS = [
@@ -18,9 +18,9 @@ const ITEMS = [
     q: "What do I need to run one?",
     a: (
       <>
-        Node 20 or newer, an OpenAI API key, and an E2B key for the hosted desktop. If you are
-        signed in to Codex or Claude Code, that can drive the participant instead of an OpenAI key.
-        You still need E2B.
+        Node {NODE_FLOOR} or newer, an OpenAI API key, and an E2B key for the hosted desktop. If you
+        are signed in to Codex or Claude Code, that can drive the participant instead of an OpenAI
+        key. You still need E2B.
       </>
     ),
     link: { href: "/docs", label: "Setup for each option" },
@@ -69,7 +69,7 @@ const ITEMS = [
         nothing about how many of your users would.
       </>
     ),
-    link: { href: "/failure-modes", label: "What it cannot tell you" },
+    link: { href: "/failure-modes", label: "Known failure modes" },
   },
   {
     q: "Why does this exist?",

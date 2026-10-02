@@ -158,7 +158,7 @@ export default function StudyV3() {
             </p>
             <div className="repair-links">
               <a href={`${RECEIPTS}/persona-contrast-live-2026-09-01.md`} rel="noopener">
-                drawDB receipt →
+                drawDB study notes →
               </a>
               <a href={`${RECEIPTS}/persona-contrast-todomvc-2026-09-01.md`} rel="noopener">
                 TodoMVC receipt →
