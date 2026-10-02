@@ -358,6 +358,30 @@ describe("explicit Codex account analysis", () => {
     expect(JSON.stringify(saved)).not.toContain("futureProgress");
   });
 
+  it("warns with each protocol change when the Codex schema check refuses", async () => {
+    const f = await study(),
+      run = vi.fn<AnalysisProvider>(async () => ({
+        status: "failed" as const,
+        output: null,
+        usage: null,
+        usageComplete: false,
+        dispatched: false,
+        errorCode: "codex_incompatible_release" as const,
+        protocolIncompatibilities: ["turn/start response turn.id is no longer in the schema"],
+      }));
+    const result = await analyzeRun(
+      f.cwd,
+      "codex-analysis",
+      { config: config() },
+      { apiKey: "", codexProvider: run },
+    );
+    expect(result.warnings).toContain(
+      `Codex CLI ${defaultCodexCliVersion()} changed the app-server protocol humanish uses: turn/start response turn.id is no longer in the schema.`,
+    );
+    expect(result.error).toMatchObject({ code: "analysis_codex_incompatible_release" });
+    expect(result.error?.message).toContain("changed app-server protocol fields humanish reads");
+  });
+
   it("does not reuse API reports, reuses an exact account report, and accounts unpriced work once", async () => {
     const f = await study(),
       run = provider(f.input),

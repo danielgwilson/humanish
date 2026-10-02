@@ -21,6 +21,7 @@ import {
 } from "../../../src/actors/codex/restricted-session.js";
 import type { RestrictedCodexSpawn } from "../../../src/actors/codex/restricted-transport.js";
 import { checkRestrictedCodexParticipantReadiness } from "../../../src/actors/codex/restricted-participant.js";
+import { isSchemaSpawn, writeCodexSchema } from "../../helpers/codex-schema.js";
 
 const fake = fileURLToPath(
   new URL("../../fixtures/restricted-codex/fake-process.mjs", import.meta.url),
@@ -168,6 +169,13 @@ describe("restricted Codex analyst session", () => {
     });
     expect(f.spawns.map((item) => item.args)).toEqual([
       ["--version"],
+      [
+        "app-server",
+        "generate-json-schema",
+        "--experimental",
+        "--out",
+        expect.stringMatching(/humanish-codex-analysis-.*\/schema$/),
+      ],
       ["app-server", "--strict-config"],
     ]);
     for (const child of f.spawns) {
@@ -369,6 +377,51 @@ describe("restricted Codex analyst session", () => {
     expect(await readdir(f.tempRoot)).toEqual([]);
   });
 
+  it.each([
+    ["schema-incompatible", "thread/start response thread.id is no longer in the schema"],
+    ["schema-exit", "it did not generate an app-server schema"],
+    ["schema-missing", "its generated app-server schema could not be read"],
+    ["schema-special-file", "its generated app-server schema could not be read"],
+  ])(
+    "refuses %s at the protocol check, before app-server starts",
+    async (scenario, incompatibility) => {
+      const f = await fixture(scenario);
+      const result = await f.run(request);
+      expect(result).toMatchObject({
+        status: "failed",
+        output: null,
+        dispatched: false,
+        errorCode: "codex_incompatible_release",
+        protocolIncompatibilities: [incompatibility],
+      });
+      // schema-incompatible also adds an item type; a refused launch reports none as recorded.
+      expect(result).not.toHaveProperty("protocolAdditions");
+      expect((await f.entries()).map((entry) => entry.operation)).toEqual([
+        "--version",
+        "generate-json-schema",
+      ]);
+      expect(await readdir(f.tempRoot)).toEqual([]);
+    },
+  );
+
+  it("records a schema value beyond the baseline and completes the run", async () => {
+    const f = await fixture("schema-addition");
+    const result = await f.run(request);
+    expect(result).toMatchObject({
+      status: "completed",
+      protocolAdditions: [
+        "item/started item.type now also allows synthetic_new_item",
+        "item/completed item.type now also allows synthetic_new_item",
+      ],
+    });
+    expect(result.protocolIncompatibilities).toBeUndefined();
+    expect(await (await fixture()).run(request)).not.toHaveProperty("protocolAdditions");
+    // Readiness carries them too, for doctor's row.
+    expect(
+      await checkRestrictedCodexAnalysisReadiness({}, (await fixture("schema-addition")).options),
+    ).toMatchObject({ ready: true, protocolAdditions: result.protocolAdditions });
+  });
+
   it("refuses missing file login, unsupported platform/model and numeric token caps without model dispatch", async () => {
     const f = await fixture();
     for (const overrides of [{ maxOutputTokens: 1000 }, { model: "unqualified-model" }]) {
@@ -394,7 +447,7 @@ describe("restricted Codex analyst session", () => {
       errorCode: "codex_login_required",
       dispatched: false,
     });
-    expect(f.spawns).toHaveLength(1);
+    expect(f.spawns).toHaveLength(2); // the version check and the protocol schema
     expect(await readdir(f.tempRoot)).toEqual([]);
   });
 
@@ -503,6 +556,11 @@ describe("restricted Codex analyst session", () => {
 
   it.each([
     ["hang-version", "startup", (entry: Trace) => entry.operation === "--version"],
+    [
+      "hang-generate-json-schema",
+      "startup",
+      (entry: Trace) => entry.operation === "generate-json-schema",
+    ],
     ["hang-initialize", "initialize", (entry: Trace) => entry.method === "initialize"],
     ["hang-thread-start", "thread/start", (entry: Trace) => entry.method === "thread/start"],
     ["hang-turn-start", "turn/start", (entry: Trace) => entry.method === "turn/start"],
@@ -639,7 +697,11 @@ describe("restricted Codex analyst session", () => {
       let closed: Promise<void> | undefined;
       f.options.spawnFn = (file, args, settings) => {
         const child = spawnOriginal(file, args, settings);
-        if (args[0] === (stage === "version" ? "--version" : "app-server")) {
+        if (
+          stage === "version"
+            ? args[0] === "--version"
+            : args[0] === "app-server" && !isSchemaSpawn(args)
+        ) {
           heldChild = child;
           originalKill = child.kill.bind(child);
           closed = new Promise((resolve) => child.once("close", () => resolve()));
@@ -717,7 +779,7 @@ describe("continuing restricted Codex conversation", () => {
       expect(turns.at(-1)!.input).toEqual(
         expect.arrayContaining([expect.objectContaining({ text: "Observation 11" })]),
       );
-      expect(f.spawns).toHaveLength(2); // version + app-server, not per turn
+      expect(f.spawns).toHaveLength(3); // version, schema and app-server, not per turn
       expect(await readdir(f.tempRoot)).toHaveLength(1);
     } finally {
       expect(await session.close()).toBe(true);
@@ -842,7 +904,7 @@ describe("continuing restricted Codex conversation", () => {
       errorCode: "codex_process_failed",
       dispatched: false,
     });
-    expect(f.spawns).toHaveLength(2);
+    expect(f.spawns).toHaveLength(3);
     expect(await session.close()).toBe(true);
   });
 });
@@ -898,7 +960,9 @@ describe("restricted Codex Code Mode participant session", () => {
       });
       expect(elapsed).toBe(900);
       expect(calls).toEqual([{ kind: "observe" }]);
-      const appServer = f.spawns.find((entry) => entry.args[0] === "app-server")!;
+      const appServer = f.spawns.find(
+        (entry) => entry.args[0] === "app-server" && !isSchemaSpawn(entry.args),
+      )!;
       expect(appServer.env).toMatchObject({
         HOME: f.directory,
         CODEX_HOME: f.authHome,
@@ -1335,6 +1399,7 @@ async function memorySession(stop: StopTiming) {
   );
   const controller = new AbortController();
   const spawnFn: RestrictedCodexSpawn = (_file, args, settings) => {
+    if (isSchemaSpawn(args)) writeCodexSchema(args);
     const stdout = new PassThrough();
     const deliver = (lines: unknown[]) =>
       stdout.emit("data", Buffer.from(lines.map((line) => `${JSON.stringify(line)}\n`).join("")));
@@ -1408,6 +1473,7 @@ async function memorySession(stop: StopTiming) {
         stdout.emit("data", Buffer.from("codex-cli 0.157.1\n"));
         closed();
       });
+    else if (isSchemaSpawn(args)) closed();
     return child as unknown as ChildProcessWithoutNullStreams;
   };
   const session = createRestrictedCodexSession({
@@ -1492,7 +1558,7 @@ describe("restricted Codex session launch and teardown receipts", () => {
     );
     // Teardown closed the session: no second launch.
     expect(await session.run(request)).toMatchObject({ errorCode: "invalid_request" });
-    expect(children).toHaveLength(2); // the version check and the one app-server
+    expect(children).toHaveLength(3); // the version check, the schema and the one app-server
     expect(await session.close()).toBe(true);
   });
 
@@ -1511,7 +1577,7 @@ describe("restricted Codex session launch and teardown receipts", () => {
     const session = createRestrictedCodexSession({
       ...f.options,
       spawnFn: (file, args, settings) => {
-        if (args[0] !== "app-server") return base(file, args, settings);
+        if (args[0] !== "app-server" || isSchemaSpawn(args)) return base(file, args, settings);
         controller.abort();
         throw new Error("synthetic spawn failure");
       },
@@ -1529,7 +1595,7 @@ describe("restricted Codex session launch and teardown receipts", () => {
     const session = createRestrictedCodexSession({
       ...f.options,
       spawnFn: (file, args, settings) => {
-        if (args[0] === "app-server") {
+        if (args[0] === "app-server" && !isSchemaSpawn(args)) {
           // Replace the private home's auth link with a file, as an unexpected login rotation does.
           const link = path.join(String(settings.env?.HOME), "auth.json");
           rmSync(link);
@@ -1554,7 +1620,7 @@ describe("restricted Codex session launch and teardown receipts", () => {
         ...f.options,
         spawnFn: (file, args, settings) => {
           // The task directory can no longer be removed from its parent.
-          if (args[0] === "app-server") chmodSync(f.tempRoot, 0o500);
+          if (args[0] === "app-server" && !isSchemaSpawn(args)) chmodSync(f.tempRoot, 0o500);
           return base(file, args, settings);
         },
       });
@@ -1649,7 +1715,7 @@ describe("restricted Codex notifications outside a turn", () => {
     const session = createRestrictedCodexSession({
       ...f.options,
       spawnFn: (file, args, settings) => {
-        if (args[0] === "app-server") home = String(settings.env?.HOME);
+        if (args[0] === "app-server" && !isSchemaSpawn(args)) home = String(settings.env?.HOME);
         return base(file, args, settings);
       },
     });
@@ -1776,6 +1842,39 @@ describe("hosted Codex participant readiness", () => {
     );
     expect(methods).not.toContain("turn/start");
     expect(await readdir(f.tempRoot)).toEqual([]);
+  });
+
+  it("reports schema values beyond the baseline from a handshake that passed", async () => {
+    const f = await fixture("participant-schema-addition");
+    const result = await checkRestrictedCodexParticipantReadiness({
+      session: { ...f.options, env: operatorEnv(f) },
+      reasoningEffort: "high",
+    });
+    expect(result).toMatchObject({
+      ready: true,
+      protocolAdditions: [
+        "item/started item.type now also allows synthetic_new_item",
+        "item/completed item.type now also allows synthetic_new_item",
+      ],
+    });
+  });
+
+  it("refuses a release whose schema changed at the protocol check, before the handshake", async () => {
+    const f = await fixture("schema-incompatible");
+    const result = await checkRestrictedCodexParticipantReadiness({
+      session: { ...f.options, env: operatorEnv(f) },
+    });
+    expect(result).toMatchObject({
+      ready: false,
+      errorCode: "codex_incompatible_release",
+      cliVersion: "0.157.1",
+      protocolIncompatibilities: ["thread/start response thread.id is no longer in the schema"],
+    });
+    expect(result).not.toHaveProperty("protocolAdditions");
+    expect((await f.entries()).map((entry) => entry.operation)).toEqual([
+      "--version",
+      "generate-json-schema",
+    ]);
   });
 
   it("refuses an unadmitted release at the version check, before the handshake", async () => {

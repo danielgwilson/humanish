@@ -12,9 +12,8 @@ import type { LabConfig } from "../../src/lab/types.js";
 import { runPackageLab, type RunLabOptions } from "../../src/run-lab.js";
 import { lab } from "../admission/fixtures.js";
 
-// rerun.laneIds warns once per process. This file runs in its own worker, so the
-// once-per-process record starts empty here. The route hook bags were removed from the package's
-// RunLabOptions: its runLab refuses them, and only tests set them on the internal options.
+// The package's runLab refuses the RunLabOptions fields it no longer has, and the typed options
+// emit no deprecation warning. Only tests set the internal options.
 
 function config(): LabConfig {
   const parsed = parseLabConfig(lab("cuAppUrl"));
@@ -24,43 +23,27 @@ function config(): LabConfig {
 
 type WarningSpy = { mock: { calls: unknown[][] } };
 
-const deprecations = (spy: WarningSpy): string[] =>
+/** The humanish warning codes `spy` saw, in either emitWarning form. */
+const humanishWarnings = (spy: WarningSpy): string[] =>
   spy.mock.calls
-    .filter(([, options]) => {
-      const code = (options as { code?: unknown } | undefined)?.code;
-      return code === "HUMANISH_RUN_LAB_OPTION_DEPRECATED";
-    })
-    .map(([message]) => String(message));
+    .map(([, options, code]) => (options as { code?: unknown } | undefined)?.code ?? code)
+    .filter((code): code is string => typeof code === "string" && code.startsWith("HUMANISH_"));
 
-describe("rerun.laneIds", () => {
-  let emitWarning: WarningSpy & { mockRestore: () => void };
-  beforeEach(() => {
-    emitWarning = vi.spyOn(process, "emitWarning").mockImplementation(() => undefined);
-  });
-  afterEach(() => {
-    emitWarning.mockRestore();
-  });
-
-  it("warns once per process, naming its home", () => {
-    const labConfig = config();
-    for (let i = 0; i < 2; i += 1)
+describe("the typed options", () => {
+  it("emit no deprecation warning", () => {
+    const emitWarning = vi.spyOn(process, "emitWarning").mockImplementation(() => undefined);
+    try {
+      const labConfig = config();
       normalizeRunLabOptions(labConfig, routeOf(labConfig), {
         cwd: "/tmp/x",
-        rerun: { sourceRunId: "r", laneIds: ["lane-01"] },
+        env: {},
+        prepareDesktop: async () => undefined,
+        rerun: { sourceRunId: "r", participantIds: ["lane-01"] },
       });
-    expect(deprecations(emitWarning)).toEqual([
-      "RunLabOptions.rerun.laneIds is deprecated and is removed in the next minor. Use RunLabOptions.rerun.participantIds.",
-    ]);
-  });
-
-  it("is the only field that warns: the typed options are silent", () => {
-    const labConfig = config();
-    normalizeRunLabOptions(labConfig, routeOf(labConfig), {
-      cwd: "/tmp/x",
-      env: {},
-      prepareDesktop: async () => undefined,
-    });
-    expect(deprecations(emitWarning)).toEqual([]);
+      expect(humanishWarnings(emitWarning)).toEqual([]);
+    } finally {
+      emitWarning.mockRestore();
+    }
   });
 });
 
@@ -92,6 +75,21 @@ describe("the package's runLab", () => {
     expect(outcome.result.error).toEqual({
       code: "HUMANISH_LAB_OPTION_UNSUPPORTED",
       message: `RunLabOptions.${field} was removed. ${home} See docs/contracts/schemas.md, "Library options".`,
+    });
+    expect(await readdir(cwd)).toEqual([]);
+  });
+
+  it("refuses rerun.laneIds, whose rerun would otherwise select every failed participant", async () => {
+    const options = {
+      cwd,
+      dryRun: true,
+      rerun: { sourceRunId: "prior", laneIds: ["lane-01"] },
+    } as unknown as RunLabOptions;
+    const outcome = await runPackageLab(config(), options);
+    expect(outcome.result.error).toEqual({
+      code: "HUMANISH_LAB_OPTION_UNSUPPORTED",
+      message:
+        'RunLabOptions.rerun.laneIds was removed. Use rerun.participantIds. See docs/contracts/schemas.md, "Library options".',
     });
     expect(await readdir(cwd)).toEqual([]);
   });
@@ -153,7 +151,7 @@ describe("the CLI uses only the new homes", () => {
         ],
         { from: "node" },
       );
-      expect(deprecations(emitWarning)).toEqual([]);
+      expect(humanishWarnings(emitWarning)).toEqual([]);
     } finally {
       emitWarning.mockRestore();
     }

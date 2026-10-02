@@ -13,7 +13,7 @@ import {
 /**
  * Prepare a CLI study's runtime and, only when declared, its product (#495, #515).
  *
- * The install runs UNKEYED and before the session starts, for the same reason the clone route
+ * The install runs unkeyed and before the session starts, for the same reason the clone route
  * provisions its subject first: what is being studied begins when the participant looks at the
  * screen. Omitting install deliberately studies product installation; Node/npm remain a
  * harness prerequisite so the participant can follow the product's public npm instructions.

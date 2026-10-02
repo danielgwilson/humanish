@@ -12,8 +12,8 @@ import {
 // reaches its listeners unchanged. Tests that spy on process.emitWarning wrap this filter, so
 // they still see every call.
 //
-// Each deprecated field or export warns once per process, so after an allowed test triggers it,
-// a later test in the same file that uses the same field emits nothing for this guard to catch.
+// Each deprecated export warns once per process, so after an allowed test triggers it, a later
+// test in the same file that uses the same export emits nothing for this guard to catch.
 
 const CODES: ReadonlySet<string> = new Set(HUMANISH_DEPRECATION_CODES);
 

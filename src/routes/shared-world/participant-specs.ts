@@ -27,11 +27,11 @@ import {
 } from "../../substrates/e2b/lifetime.js";
 import { DEFAULT_STATE_STEP_TIMEOUT_MS } from "../../subject/state.js";
 
-// The DEFAULT per-seat session budget is DERIVED, not flat. On a provisioned route the binding
-// constraint is the SUBJECT sandbox (it must outlive every seat: timeoutMs + provisioning +
+// The default per-seat session budget is derived from the route. On a provisioned route the binding
+// constraint is the subject sandbox (it must outlive every seat: timeoutMs + provisioning +
 // seeding + teardown buffer, and E2B refuses a sandbox over one hour), so the derivation hands
 // each seat the most that cap allows — capped at 15 minutes, floored at the historical 300s so a
-// seed-heavy lab never gets LESS room than it always had. App-url seats have no subject sandbox
+// seed-heavy lab never gets less room than it always had. App-url seats have no subject sandbox
 // and default to 30 minutes (seat sandbox: 30m + 10m buffer stays well under the hour). An
 // explicit execution.timeoutMs is never adjusted. The handoff latch scales off this (40%).
 const MAX_DERIVED_SESSION_MS = 15 * 60_000;
@@ -103,9 +103,9 @@ function buildActorSpec(
   };
 }
 
-/** Thread the host-yielded lobby CODE into a follower's mission at runtime (external-public route).
- *  The CODE flows into the follower's join instruction; it is persisted only as the composed prompt
- *  the model reads (never a raw bundle field), and the lab scrubs the CODE from all narration. The
+/** Thread the host-yielded lobby code into a follower's mission at runtime (external-public route).
+ *  The code flows into the follower's join instruction; it is persisted only as the composed prompt
+ *  the model reads (never a raw bundle field), and the lab scrubs the code from all narration. The
  *  follower joins through the real UI (a direct /lobby/CODE visit does not auto-join a non-member). */
 export function withLobbyCodeMission(
   spec: DesktopParticipantRun,
@@ -185,7 +185,7 @@ function participantStreams(
 
 /**
  * The runner deps both planes give every participant. The `shared-app` subject keeps three things
- * out of every actor sandbox (FIX-10): the subject env names' values, the GitHub token, and clone
+ * out of every actor sandbox: the subject env names' values, the GitHub token, and clone
  * or local-tree provisioning. The committed subject.envValues still reach it, non-secret by parse.
  * `scrubKnownValues` is the plane's scrub: the external-public plane also scrubs the latched lobby
  * code.

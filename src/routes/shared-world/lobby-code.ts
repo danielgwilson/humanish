@@ -7,11 +7,11 @@ import { OPENAI_RESPONSES_URL } from "../../actors/openai-endpoint.js";
 /**
  * The lobby-trivia (and general "/lobby/CODE") shared-session URL matcher. A code is exactly 6 chars of
  * the [A-Z2-9] class; a locale prefix (/en/lobby/…) and a query/hash suffix are tolerated. RUNTIME-ONLY
- * input (a live location.href); only the extracted CODE is used, and it lands only as a digest.
+ * input (a live location.href); only the extracted code is used, and it lands only as a digest.
  */
 const LOBBY_CODE_PATTERN = /\/lobby\/([A-Z2-9]{6})(?:$|[/?#])/;
 
-/** Extract the shared-session CODE from a (runtime-only) observed URL, or undefined. Exported for the
+/** Extract the shared-session code from a (runtime-only) observed URL, or undefined. Exported for the
  *  handoff regex table test — pure, no side effects, never persists its input. */
 export function extractLobbyCode(url: string | undefined): string | undefined {
   if (typeof url !== "string") return undefined;
@@ -20,7 +20,7 @@ export function extractLobbyCode(url: string | undefined): string | undefined {
 }
 
 /**
- * Extract a lobby CODE from free-form ACTOR NARRATION (the host's reasoning/message where it states
+ * Extract a lobby code from free-form actor narration (the host's reasoning/message where it states
  * the lobby URL it sees), where the /lobby/CODE is followed by arbitrary prose (a space, backtick,
  * newline) rather than end-of-string or /?# — so the strict LOBBY_CODE_PATTERN would miss it. Uses a
  * negative-lookahead boundary (exactly 6 code chars). This is the CDP-INDEPENDENT handoff path: the
@@ -34,10 +34,10 @@ export function extractLobbyCodeFromNarration(text: string | undefined): string 
   const inUrl = text.match(LOBBY_CODE_IN_TEXT);
   if (inUrl) return inUrl[1];
   // Fallback: an explicitly-labeled bare code (e.g. "LOBBY_CODE=ABC123"), which the host may state
-  // if it copied the code rather than the URL. The label is matched case-insensitively, but the CODE
-  // itself must be UPPERCASE [A-Z2-9] — a real lobby code always renders uppercase, whereas an /i match
+  // if it copied the code rather than the URL. The label is matched case-insensitively, but the code
+  // itself must be uppercase [A-Z2-9]: a real lobby code always renders uppercase, whereas an /i match
   // on the code class would also grab an ordinary lowercase word after "lobby code " (e.g. "the lobby
-  // code screen") and latch a WRONG code. Precision-first, matching parseLobbyCodeReply's rationale.
+  // code screen") and latch a wrong code. Precision-first, matching parseLobbyCodeReply's rationale.
   const labeled = text.match(/lobby[ _-]?code[=:\s]+([A-Z2-9]{6})(?![A-Za-z2-9])/i);
   return labeled && labeled[1] && /^[A-Z2-9]{6}$/.test(labeled[1]) ? labeled[1] : undefined;
 }
@@ -68,10 +68,10 @@ export function extractResponsesOutputText(parsed: unknown): string | undefined 
   return parts.length > 0 ? parts.join("\n") : undefined;
 }
 
-/** Parse a vision reply into a lobby CODE. PRECISION-FIRST: accept ONLY when the whole reply IS the
+/** Parse a vision reply into a lobby code. Precision-first: accept only when the whole reply is the
  *  six-character code, or when it echoes an explicit /lobby/CODE — never a bare 6-letter token buried in
- *  prose (e.g. "I see a home SCREEN"), because a wrong latch fails the entire run, whereas a miss just
- *  retries on the next frame while the host keeps waiting. NONE (the instructed "no code" reply) is
+ *  prose (e.g. "I see a home `SCREEN`"), because a wrong latch fails the entire run, whereas a miss just
+ *  retries on the next frame while the host keeps waiting. `NONE` (the instructed "no code" reply) is
  *  rejected. Pure. */
 export function parseLobbyCodeReply(reply: string | undefined): string | undefined {
   if (typeof reply !== "string") return undefined;
@@ -89,11 +89,11 @@ const LOBBY_CODE_VISION_PROMPT =
   "exactly those 6 characters in uppercase and NOTHING else (no words, no punctuation). If no lobby " +
   "code is visible on this screen (e.g. it is the home screen or a game round), reply exactly NONE.";
 
-// A single-frame OCR-style read. gpt-5.5 (the CU default) is used deliberately: it reliably reads the
+// A single-frame OCR-style read. gpt-5.5 (the computer-use default) is used deliberately: it reliably reads the
 // 6-char code off a dense MOBILE-viewport waiting room — a smaller/cheaper model (gpt-4.1-mini) was
-// tried and could NOT read it. reasoning.effort stays "low" (minimal) and the output budget is small
+// tried and could not read it. reasoning.effort stays "low" (minimal) and the output budget is small
 // but comfortably clear of the "incomplete on reasoning overflow" edge. Kept on the same account/key
-// as the actor; the same full-fidelity frame is already sent to this API by the CU provider, so this
+// as the actor; the same full-fidelity frame is already sent to this API by the computer-use provider, so this
 // adds no new data-exposure surface. See onScreenshot in runHost.
 const LOBBY_CODE_VISION_MODEL = "gpt-5.5";
 
@@ -113,7 +113,7 @@ export interface ReadLobbyCodeOptions {
 }
 
 /**
- * Vision-read a lobby CODE straight off a host waiting-room FRAME (the robust, CDP-independent handoff
+ * Vision-read a lobby code straight off a host waiting-room frame (the robust, CDP-independent handoff
  * relay). Fail-soft: any network/HTTP/parse problem returns undefined so the caller simply retries on
  * the next frame. The frame is runtime-only; only the extracted code is used (as a digest downstream).
  */

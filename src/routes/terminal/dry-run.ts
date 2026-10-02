@@ -147,9 +147,9 @@ async function prepareDryPersona(args: {
     scrubLiterals(knownSecretValues),
   ).mission;
   const terminalPersona = await resolveTerminalPersona({ plan, cwd, warnings });
-  // The composed prompt = mission + persona + public-surface manifest. Only the AUTHOR mission
+  // The composed prompt = mission + persona + public-surface manifest. Only the author mission
   // goes plaintext into evidence (it is public-safe committed lab text); the full composed prompt
-  // is recorded as a DIGEST (the safety contract's mission ruling).
+  // is recorded as a digest (the safety contract's mission ruling).
   const composedPrompt = composePrompt({
     mission,
     personaLine: terminalPersona.personaLine,
@@ -185,7 +185,7 @@ function runtimeDeclaredEvent(runtime: TerminalPlan["runtime"], createdAt: strin
   };
 }
 
-/** Compose the full prompt the agent would run. Bound to evidence by DIGEST only. */
+/** Compose the full prompt the agent would run. Bound to evidence by digest only. */
 export function composePrompt(args: {
   mission: string;
   personaLine: string;

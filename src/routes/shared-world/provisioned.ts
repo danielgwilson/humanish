@@ -1,4 +1,4 @@
-// The PROVISIONED-GETHOST plane: the harness provisions ONE subject sandbox (clone or local-tree,
+// The provisioned-getHost plane: the harness provisions one subject sandbox (clone or local-tree,
 // install/build, seed, serve on 0.0.0.0), exposes it through getHost, probes its state on a
 // cadence, and runs every seat against that one shared plane. All sandboxes are torn down by exact
 // id in the plane's finally, never through Sandbox.list.
@@ -126,7 +126,7 @@ class ObserverGateError extends Error {
   }
 }
 
-/** The ONE subject sandbox and the loops that run against it until teardown. */
+/** The one subject sandbox and the loops that run against it until teardown. */
 class SubjectPlane {
   commsInboxUrl: string | undefined;
   subjectCommit: string | undefined;
@@ -143,17 +143,17 @@ class SubjectPlane {
   private subjectAllocation: OwnedDesktopAllocation | undefined;
   private subjectDesktop: E2BDesktopSandbox | undefined;
   private subjectShell: Shell | undefined;
-  // The in-sandbox email catch on the ONE subject sandbox (#297); drained at teardown. Undefined
+  // The in-sandbox email catch on the one subject sandbox (#297); drained at teardown. Undefined
   // unless a comms lab declared it.
   private deployedComms: DeployedCommsCatch | undefined;
-  // Background prober dispose signal (FIX-9: cleared in teardown).
+  // Background prober dispose signal, cleared in teardown.
   private proberDisposed = false;
   private releaseDispose: () => void = () => {};
   private readonly disposeSignal: Promise<void>;
   private proberLoop: Promise<void> | undefined;
   private snapshotIndex = 0;
-  // Persona inbox SURFACE (#297 slice B, shared-world): the serve->getHost origin-rewrite map
-  // (REQUIRED here so the app's loopback verify links resolve to a reachable host), and the
+  // Persona inbox surface (#297 slice B, shared-world): the serve->getHost origin-rewrite map
+  // (required here so the app's loopback verify links resolve to a reachable host), and the
   // dedicated surface render loop.
   private commsOriginMap: OriginMap = [];
   private surfaceRenderedCount = 0;
@@ -189,9 +189,9 @@ class SubjectPlane {
     const { plan, deps, env, requestTimeoutMs, timeoutMs } = this.ctx;
     const { subjectEnvNames, commsEnv } = this.setup;
     const subjectModule = await (deps.desktopModule ?? loadE2BDesktopModule)();
-    // The ONE subject sandbox: headless service host (no GUI seat). The SUBJECT env is provisioned
-    // HERE; the actor sandboxes get NONE of it (FIX-10). A custom desktop template (image) is
-    // honored on BOTH the subject sandbox (here) and every actor sandbox (via runCuaParticipant, which
+    // The one subject sandbox: headless service host (no GUI seat). The subject env is provisioned
+    // here; the actor sandboxes get none of it. A custom desktop template (image) is
+    // honored on both the subject sandbox (here) and every actor sandbox (via runCuaParticipant, which
     // reads the same config); absent keeps the byte-stable Sandbox.create(opts) default. The
     // receipt is on disk before any work, so `humanish reclaim` can kill it by exact id.
     const subject = await acquireE2BDesktopSandbox({
@@ -239,14 +239,14 @@ class SubjectPlane {
     await this.ctx.input.prepareDesktop?.(this.subjectDesktop, { kind: "subject" });
   }
 
-  // Start the in-sandbox email catch BEFORE the subject serve, so the app's send-API base URL
+  // Start the in-sandbox email catch before the subject serve, so the app's send-API base URL
   // (injected into its env at create) resolves the moment it boots. Fail closed if the catch can't
   // stand up rather than let a comms-declared app silently send real mail to the internet.
   async deployCatch(): Promise<void> {
     const { commsEmail, commsPort } = this.setup;
     if (commsEmail && commsPort !== undefined) {
-      // A SECOND (0.0.0.0) read-only inbox listener on commsPort+1 so the persona — which lives in a
-      // DIFFERENT sandbox here — can reach the inbox surface via getHost; capture stays loopback.
+      // A second (0.0.0.0) read-only inbox listener on commsPort+1 so the persona, which lives in
+      // another sandbox here, can reach the inbox surface via getHost; capture stays loopback.
       this.deployedComms = await deployCommsCatch(this.subjectShell!, {
         port: commsPort,
         inboxPort: commsPort + 1,
@@ -261,8 +261,8 @@ class SubjectPlane {
     }
   }
 
-  // Provision the ONE shared plane: clone + install/build + seed + serve on 0.0.0.0 + probe
-  // (clone route), or upload/extract the once-per-run packed archive + the SAME shared serve
+  // Provision the one shared plane: clone + install/build + seed + serve on 0.0.0.0 + probe
+  // (clone route), or upload/extract the once-per-run packed archive + the same shared serve
   // pipeline (local-tree route).
   async provision(): Promise<void> {
     const { plan, requestTimeoutMs, scrubKnownValues } = this.ctx;
@@ -308,7 +308,7 @@ class SubjectPlane {
     }
   }
 
-  // Expose the served port via getHost (FIX-2). Fail closed if the SDK lacks it.
+  // Expose the served port via getHost. Fail closed if the SDK lacks it.
   exposeHost(): void {
     const subjectDesktop = this.subjectDesktop!;
     if (typeof subjectDesktop.getHost !== "function") {
@@ -316,7 +316,7 @@ class SubjectPlane {
         "the installed @e2b/desktop SDK does not expose getHost(port); the concurrent shared-world route requires it to reach the subject plane",
       );
     }
-    // getHost returns a BARE host (e.g. "3000-<sandboxId>.e2b.app", no scheme); e2b exposes the
+    // getHost returns a bare host (e.g. "3000-<sandboxId>.e2b.app", no scheme); e2b exposes the
     // port over https. Normalize to a full URL before the tokenless check + before persisting.
     const rawHost = subjectDesktop.getHost(servePort(this.setup.serve.url));
     const hostUrl = /^https?:\/\//i.test(rawHost) ? rawHost : `https://${rawHost}`;
@@ -328,12 +328,12 @@ class SubjectPlane {
     this.getHostUrl = hostUrl;
   }
 
-  // Persona inbox SURFACE (#297 slice B, shared-world): getHost-expose the read-only inbox listener so
-  // a persona in a DIFFERENT sandbox can open it; build the serve->getHost origin map (REQUIRED here —
+  // Persona inbox surface (#297 slice B, shared-world): getHost-expose the read-only inbox listener so
+  // a persona in another sandbox can open it; build the serve->getHost origin map (required here:
   // the app's loopback verify links must be rewritten to a reachable host); provision the surface
-  // channel; write the EMPTY inbox up front (so /inbox never 404s); and start a render loop that drains
+  // channel; write the empty inbox up front (so /inbox never 404s); and start a render loop that drains
   // + re-renders on a cadence. The loop shares the prober's dispose signal (disposed together, before
-  // the teardown evidence drain), and uses a DEDICATED FakeInbox + cursor (independent of that drain).
+  // the teardown evidence drain), and uses a dedicated FakeInbox + cursor (independent of that drain).
   async startInboxSurface(): Promise<void> {
     const { commsEmail } = this.setup;
     const { requestTimeoutMs } = this.ctx;
@@ -404,7 +404,7 @@ class SubjectPlane {
           }),
           this.disposeSignal,
         ]);
-        if (timer) clearTimeout(timer); // FIX-9: no dangling prober timer.
+        if (timer) clearTimeout(timer); // No dangling prober timer.
         if (this.proberDisposed) break;
         await this.snapshot().catch(() => undefined);
       }
@@ -412,8 +412,8 @@ class SubjectPlane {
   }
 
   /**
-   * FIX-9: stop the prober, take a final snapshot while the subject is still alive, then tear
-   * down the ONE subject sandbox BY id (the actor sandboxes are torn down inside runCuaParticipant).
+   * Stop the prober, take a final snapshot while the subject is still alive, then tear
+   * down the one subject sandbox by id (the actor sandboxes are torn down inside runCuaParticipant).
    * Returns the comms thread's path when the drain wrote one.
    */
   async teardown(): Promise<string | undefined> {
@@ -530,9 +530,9 @@ async function publishInProgress(
   startParticipantFlush(ctx, live, inProgressBundle);
 }
 
-// Launch N actor sandboxes CONCURRENTLY, INDEPENDENT (FIX-11: runCuaParticipant + mapWithConcurrency,
-// NOT runCuaParticipants — no pipeline gate / fail-fast). Each actor's window is measured on the ONE
-// orchestrator clock (FIX-1).
+// Launch N actor sandboxes concurrently and independently (runCuaParticipant + mapWithConcurrency;
+// runCuaParticipants would add a pipeline gate and fail-fast). Each actor's window is measured on the
+// one orchestrator clock.
 function runParticipants(
   plane: SubjectPlane,
   ctx: PlaneContext,
@@ -545,7 +545,7 @@ function runParticipants(
   const baseActorDeps = participantRunDeps(ctx, live, ctx.scrubKnownValues);
   return mapWithConcurrency(ctx.actorSpecs, Math.max(1, ctx.concurrency), async (spec, i) => {
     const route = resolveActorEntryUrl(plane.getHostUrl!, participants[i]?.entry);
-    // Tell this persona its (getHost-reachable) inbox URL — but only when comms is live AND this participant
+    // Tell this persona its (getHost-reachable) inbox URL, but only when comms is live and this participant
     // has a declared recipient it can actually receive mail into (else it would stall on an empty
     // inbox). Only the in-sandbox catch exists on this plane; the adopter-hosted catch is the
     // external-public plane's (#387).

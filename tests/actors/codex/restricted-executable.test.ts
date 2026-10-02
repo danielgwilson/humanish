@@ -10,6 +10,7 @@ import {
   restrictedCodexNpmTarget,
 } from "../../../src/actors/codex/restricted-executable.js";
 import type { RestrictedCodexSpawn } from "../../../src/actors/codex/restricted-transport.js";
+import { isSchemaSpawn, writeCodexSchema } from "../../helpers/codex-schema.js";
 
 const directories: string[] = [];
 afterEach(async () => {
@@ -97,6 +98,7 @@ describe("restricted Codex npm executable resolution", () => {
         const calls: { file: string; args: string[]; detached: boolean }[] = [];
         const spawnFn: RestrictedCodexSpawn = (file, args, settings) => {
           calls.push({ file, args, detached: settings.detached });
+          if (isSchemaSpawn(args)) writeCodexSchema(args);
           // Exercise version admission without executing a foreign-architecture fixture.
           return spawn(process.execPath, ["-e", `console.log('codex-cli ${qualified}')`], settings);
         };
@@ -112,8 +114,20 @@ describe("restricted Codex npm executable resolution", () => {
           },
         );
         expect(result).toEqual({ ready: false, errorCode: "codex_login_required" });
+        const file = await realpath(native);
         expect(calls).toEqual([
-          { file: await realpath(native), args: ["--version"], detached: false },
+          { file, args: ["--version"], detached: false },
+          {
+            file,
+            args: [
+              "app-server",
+              "generate-json-schema",
+              "--experimental",
+              "--out",
+              expect.any(String),
+            ],
+            detached: false,
+          },
         ]);
         expect(await readdir(tempRoot)).toEqual([]);
         expect(await readdir(authHome)).toEqual([]);

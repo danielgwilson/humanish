@@ -1,37 +1,37 @@
-// The CONCURRENT shared-world lab backend (#164 phase 2): N persona participants drive ONE shared,
-// mutable service plane SIMULTANEOUSLY — the actual leverage of a sim. A recomposition of shipped
+// The concurrent shared-world lab backend (#164 phase 2): N persona participants drive one shared,
+// mutable service plane at the same time. A recomposition of shipped
 // pieces + the getHost wrapper:
 //
-//   - ONE SUBJECT sandbox: provisionCloneSubject ONCE (clone+install+build+seed) + serve on
+//   - One subject sandbox: provisionCloneSubject once (clone+install+build+seed) + serve on
 //     0.0.0.0, exposed via getHost(port) → a tokenless reachable URL (the headless service host;
 //     no GUI seat).
-//   - N ACTOR desktop sandboxes: fan-out's runCuaParticipant machinery (per-participant device/persona, by-id
+//   - N actor desktop sandboxes: fan-out's runCuaParticipant machinery (per-participant device/persona, by-id
 //     teardown) bounded by execution.concurrency, each browser pointed at the getHost URL —
-//     driving the shared service AT THE SAME TIME. INDEPENDENT (FIX-11): no pipeline gate, no
+//     driving the shared service at the same time. Independent: no pipeline gate, no
 //     fail-fast — one actor's failure must not block the swarm or corrupt the "M of N" outcomes.
 //   - A background prober snapshots the subject DB checkpoint digests on a cadence → a stateSeries
 //     of the shared world evolving under load.
-//   - ALL N+1 sandboxes torn down BY exact id in a finally — NEVER Sandbox.list.
+//   - All N+1 sandboxes torn down by exact id in a finally, never through Sandbox.list.
 //
-// HONEST ATTRIBUTION (verify-enforced, doctrine-audit fixes incorporated): the bundle declares
-// attributionClass: shared-world + a CONCURRENT humanish.shared-world.v1 block (topologyMode
-// "concurrent"; laneWindows + stateSeries + outcomes; NO timeline) whose attributionLimits drop
+// Attribution (enforced by verify): the bundle declares
+// attributionClass: shared-world + a concurrent humanish.shared-world.v1 block (topologyMode
+// "concurrent"; laneWindows + stateSeries + outcomes; no timeline) whose attributionLimits drop
 // `sequential-only`/`no-concurrent-races` and add `concurrent`,
 // `best-effort-causal-attribution`, `non-deterministic-shared-state`,
 // `window-and-snapshot-granularity`, `contention-observed-not-proven-safe`,
-// `state-change-not-isolated-to-actors`. laneWindows + stateSeries are INDEPENDENT series with NO
+// `state-change-not-isolated-to-actors`. laneWindows + stateSeries are independent series with no
 // per-delta→actor field — causation under concurrency is structurally inexpressible.
 //
-// CAPABILITY vs PROOF (FIX-1): the deterministic $0 gate proves the PLUMBING + the honesty
+// Capability and proof: the deterministic $0 gate proves the plumbing + the honesty
 // contract — the real mapWithConcurrency produces genuinely overlapping laneWindows (a rendezvous
-// latch in the fake session forces two participant fns in-flight while the REAL orchestrator clock
+// latch in the fake session forces two participant fns in-flight while the real orchestrator clock
 // measures the windows). Every generated bundle describes only its own observations; no one run
 // establishes scale, repeatability, or adopter-harness replacement.
 //
-// Synthetic-subject (FIX-3): a getHost URL is internet-reachable for the run, so this route is
-// synthetic-seeded-subjects ONLY. Verify fail-closes on subject.state.provenance != "seeded" and
+// Synthetic subject: a getHost URL is internet-reachable for the run, so this route is for
+// synthetic seeded subjects only. Verify fail-closes on subject.state.provenance != "seeded" and
 // requires the author attestation subject.exposure: synthetic. This is author-trust + a provenance
-// gate, NOT a no-real-data guarantee (humanish cannot tell synthetic from real data).
+// gate; humanish cannot tell synthetic from real data, so it makes no claim about real data.
 
 import path from "node:path";
 import { missingKeys, missingSubjectEnv } from "../../lab/requirements.js";
