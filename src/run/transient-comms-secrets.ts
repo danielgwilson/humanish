@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 
+import { scrubSecretValues } from "../evidence/secret-scrub.js";
 import { escapeRegExp } from "./text.js";
 
 /** Host-only, invocation-local exact values. No serializer, durable identifier or global fallback. */
@@ -80,4 +81,15 @@ export function scrubTransientCommsText(text: string): string {
   } catch {
     return fail(scope);
   }
+}
+
+/**
+ * The scope's values as a scrubSecretValues scrub, which also finds them percent-encoded, escaped or
+ * base64-encoded and returns decoded text. Outside a scope it changes nothing.
+ */
+export function transientCommsEncodedScrub(): (text: string) => string {
+  const scope = scopes.getStore();
+  if (!scope) return (text) => text;
+  usable(scope);
+  return scrubSecretValues([...scope.values]);
 }
