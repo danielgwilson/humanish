@@ -333,7 +333,7 @@ function renderCodexAppServerUiHtml(): string {
         <h1>Codex App-Server Actor</h1>
         <p id="subtitle">Connecting to humanish state...</p>
       </div>
-      <div class="pill" id="status" data-status="starting">STARTING</div>
+      <div class="pill" id="status" data-status="starting">starting</div>
     </header>
     <main>
       <aside>

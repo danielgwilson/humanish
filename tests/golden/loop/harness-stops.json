@@ -20,7 +20,7 @@
         "redaction": {
           "status": "passed",
           "screenshots": "raw",
-          "notes": "3 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+          "notes": "3 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
         },
         "startedAt": "1970-01-01T00:00:01.000Z",
         "completedAt": "1970-01-01T00:00:19.000Z",
@@ -174,7 +174,7 @@
         "redaction": {
           "status": "passed",
           "screenshots": "raw",
-          "notes": "1 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+          "notes": "1 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
         },
         "startedAt": "1970-01-01T00:00:01.000Z",
         "completedAt": "1970-01-01T00:00:07.000Z",
@@ -260,7 +260,7 @@
         "redaction": {
           "status": "passed",
           "screenshots": "n/a",
-          "notes": "no screenshots captured. App state was observed each turn to drive progress detection (a state-driven executor) and was NOT written to the trace — it is a runtime-only progress input, never persisted as evidence in this slice."
+          "notes": "no screenshots captured. App state was read each turn to detect progress (an in-process executor) and was not written to the trace: it is used only while the run is live and is never stored as evidence."
         },
         "startedAt": "1970-01-01T00:00:01.000Z",
         "completedAt": "1970-01-01T00:00:05.000Z",
@@ -348,7 +348,7 @@
         "redaction": {
           "status": "passed",
           "screenshots": "raw",
-          "notes": "2 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+          "notes": "2 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
         },
         "startedAt": "1970-01-01T00:00:01.000Z",
         "completedAt": "1970-01-01T00:00:12.000Z",
@@ -486,7 +486,7 @@
         "redaction": {
           "status": "passed",
           "screenshots": "raw",
-          "notes": "6 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+          "notes": "6 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
         },
         "startedAt": "1970-01-01T00:00:00.001Z",
         "completedAt": "1970-01-01T00:00:00.123Z",
@@ -695,7 +695,7 @@
         "redaction": {
           "status": "passed",
           "screenshots": "raw",
-          "notes": "4 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+          "notes": "4 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
         },
         "startedAt": "1970-01-01T00:00:00.001Z",
         "completedAt": "1970-01-01T00:00:00.074Z",
@@ -849,7 +849,7 @@
         "redaction": {
           "status": "passed",
           "screenshots": "raw",
-          "notes": "1 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+          "notes": "1 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
         },
         "startedAt": "1970-01-01T00:00:00.001Z",
         "completedAt": "1970-01-01T00:00:00.010Z",
@@ -945,7 +945,7 @@
         "redaction": {
           "status": "passed",
           "screenshots": "raw",
-          "notes": "3 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+          "notes": "3 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
         },
         "startedAt": "1970-01-01T00:00:00.001Z",
         "completedAt": "1970-01-01T00:00:00.032Z",
@@ -1071,7 +1071,7 @@
         "redaction": {
           "status": "passed",
           "screenshots": "n/a",
-          "notes": "no screenshots captured. App state was observed each turn to drive progress detection (a state-driven executor) and was NOT written to the trace — it is a runtime-only progress input, never persisted as evidence in this slice."
+          "notes": "no screenshots captured. App state was read each turn to detect progress (an in-process executor) and was not written to the trace: it is used only while the run is live and is never stored as evidence."
         },
         "startedAt": "1970-01-01T00:00:00.001Z",
         "completedAt": "1970-01-01T00:00:00.034Z",
@@ -1176,7 +1176,7 @@
         "redaction": {
           "status": "passed",
           "screenshots": "n/a",
-          "notes": "no screenshots captured. App state was observed each turn to drive progress detection (a state-driven executor) and was NOT written to the trace — it is a runtime-only progress input, never persisted as evidence in this slice."
+          "notes": "no screenshots captured. App state was read each turn to detect progress (an in-process executor) and was not written to the trace: it is used only while the run is live and is never stored as evidence."
         },
         "startedAt": "1970-01-01T00:00:00.001Z",
         "completedAt": "1970-01-01T00:00:00.034Z",
@@ -1281,7 +1281,7 @@
         "redaction": {
           "status": "passed",
           "screenshots": "raw",
-          "notes": "6 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+          "notes": "6 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
         },
         "startedAt": "1970-01-01T00:00:00.001Z",
         "completedAt": "1970-01-01T00:00:00.049Z",

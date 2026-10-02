@@ -149,7 +149,7 @@ function sharedWorldStream(
       ? {}
       : { assignment: participantAssignment(spec.evidenceAssignment) }),
     kind: "browser",
-    label: `Concurrent persona ${spec.planned.id}${taxonomy} — ${args.plan.labId}`,
+    label: `Concurrent persona ${spec.planned.id}${taxonomy} · ${args.plan.labId}`,
     status: view.status,
     transport: "snapshot",
     updatedAt: args.run.createdAt,
@@ -173,7 +173,7 @@ function sharedWorldStream(
     desktopGeometry,
     ui: {
       route: view.route,
-      intent: `Watch persona ${spec.planned.id}${taxonomy} (${spec.persona.id}) drive the SHARED plane concurrently with the other personas.`,
+      intent: `Watch persona ${spec.planned.id}${taxonomy} (${spec.persona.id}) use the shared app at the same time as the other personas.`,
       state: view.reason,
       ...(session ? { actorStatus: session.status } : {}),
       ...(lastScreenshot ? { screenshotUrl: lastScreenshot } : {}),
@@ -234,7 +234,7 @@ function sharedWorldEvents(
       at: createdAt,
       level: session.status === "passed" ? "info" : "warn",
       type: `concurrent-shared-world.session.${session.completionReason}`,
-      message: `Persona ${spec.planned.id}: ${session.status} — ${session.reason}`,
+      message: `Persona ${spec.planned.id}: ${session.status} (${session.reason})`,
     });
   } else if (outcome?.sessionError !== undefined) {
     record({

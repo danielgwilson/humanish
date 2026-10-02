@@ -135,7 +135,7 @@
     "redaction": {
       "status": "passed",
       "screenshots": "n/a",
-      "notes": "no screenshots captured. App state was observed each turn to drive progress detection (a state-driven executor) and was NOT written to the trace — it is a runtime-only progress input, never persisted as evidence in this slice."
+      "notes": "no screenshots captured. App state was read each turn to detect progress (an in-process executor) and was not written to the trace: it is used only while the run is live and is never stored as evidence."
     },
     "startedAt": "[ts]",
     "completedAt": "[ts]",
@@ -458,7 +458,7 @@
           "redaction": {
             "status": "passed",
             "screenshots": "n/a",
-            "notes": "no screenshots captured. App state was observed each turn to drive progress detection (a state-driven executor) and was NOT written to the trace — it is a runtime-only progress input, never persisted as evidence in this slice."
+            "notes": "no screenshots captured. App state was read each turn to detect progress (an in-process executor) and was not written to the trace: it is used only while the run is live and is never stored as evidence."
           },
           "startedAt": "[ts]",
           "completedAt": "[ts]",
@@ -568,7 +568,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "cua-lab.subject.declared",
-        "message": "Subject app declared at http://localhost:5173/ (already-running LOCAL dev server driven in-process; NO clone, NO E2B desktop). Provenance: caller-provisioned and UNPINNED — a running dev server cannot be commit-pinned.",
+        "message": "Subject app declared at http://localhost:5173/: a running local dev server driven in this process, with no clone and no E2B desktop. Provenance: provided by the caller and unpinned, because a running dev server has no commit to pin.",
         "simId": "sim-001",
         "streamId": "stream-001"
       },

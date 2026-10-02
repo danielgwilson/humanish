@@ -52,6 +52,7 @@ export function defaultSessionTimeoutMs(plan: SharedWorldPlan): number {
   return Math.max(MIN_DERIVED_SESSION_MS, Math.min(MAX_DERIVED_SESSION_MS, room));
 }
 
+// prose-check: model prompt (the participant model reads this, not a person)
 const DEFAULT_MISSION =
   "You are one of MANY users hitting a shared web application at the same time. The browser is already open at the app. Accomplish your role's task, then stop.";
 
@@ -112,6 +113,7 @@ export function withLobbyCodeMission(
   spec: DesktopParticipantRun,
   code: string,
 ): DesktopParticipantRun {
+  // prose-check: model prompt (the participant model reads this, not a person)
   return {
     ...spec,
     instructions: `${spec.instructions}\n\nThe multiplayer lobby code is ${code}. On the home screen choose Join, enter this lobby code, enter your name, and submit to join the shared game (do not open a lobby URL directly — go through the Join flow).`,
@@ -127,7 +129,7 @@ export function makeBlockedFollowerOutcome(
 ): ParticipantRunOutcome {
   return {
     spec,
-    sessionError: `handoff barrier: ${reason}; this follower failed closed WITHOUT opening (no wasted turns).`,
+    sessionError: `handoff barrier: ${reason}; this follower stopped before opening the app, so no turns were spent.`,
     killed: false,
     streamUrlPresent: false,
     screenshots: [],

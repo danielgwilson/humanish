@@ -171,7 +171,7 @@ describe("computer-use run reads the plan's residual fields", () => {
     const plan = { ...planned.plan, caps: { maxUsd: 4 } };
     const result = await runComputerUsePlan(plan, { cwd }, parsed.config);
     expect(result.warnings.join("\n")).toContain(
-      "execution.caps.maxUsd ($4) is a PER-PARTICIPANT cap",
+      "execution.caps.maxUsd ($4) caps each participant",
     );
   });
 

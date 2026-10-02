@@ -20,7 +20,7 @@
         "redaction": {
           "status": "passed",
           "screenshots": "raw",
-          "notes": "2 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+          "notes": "2 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
         },
         "startedAt": "1970-01-01T00:00:01.000Z",
         "completedAt": "1970-01-01T00:00:15.000Z",
@@ -155,7 +155,7 @@
         "redaction": {
           "status": "passed",
           "screenshots": "raw",
-          "notes": "5 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+          "notes": "5 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
         },
         "startedAt": "1970-01-01T00:00:01.000Z",
         "completedAt": "1970-01-01T00:00:30.000Z",
@@ -369,7 +369,7 @@
         "redaction": {
           "status": "passed",
           "screenshots": "raw",
-          "notes": "2 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+          "notes": "2 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
         },
         "startedAt": "1970-01-01T00:00:01.000Z",
         "completedAt": "1970-01-01T00:00:14.000Z",
@@ -499,7 +499,7 @@
         "redaction": {
           "status": "passed",
           "screenshots": "raw",
-          "notes": "1 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+          "notes": "1 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
         },
         "startedAt": "1970-01-01T00:00:01.000Z",
         "completedAt": "1970-01-01T00:00:08.000Z",
@@ -599,7 +599,7 @@
         "redaction": {
           "status": "passed",
           "screenshots": "raw",
-          "notes": "1 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+          "notes": "1 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
         },
         "startedAt": "1970-01-01T00:00:01.000Z",
         "completedAt": "1970-01-01T00:00:08.000Z",
@@ -699,7 +699,7 @@
         "redaction": {
           "status": "passed",
           "screenshots": "raw",
-          "notes": "1 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+          "notes": "1 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
         },
         "startedAt": "1970-01-01T00:00:01.000Z",
         "completedAt": "1970-01-01T00:00:07.000Z",
@@ -790,7 +790,7 @@
         "redaction": {
           "status": "passed",
           "screenshots": "raw",
-          "notes": "1 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+          "notes": "1 unblurred screenshot(s) kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
         },
         "startedAt": "1970-01-01T00:00:01.000Z",
         "completedAt": "1970-01-01T00:00:10.000Z",

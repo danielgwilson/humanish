@@ -60,7 +60,7 @@ describe("a local-agent participant's CLI at preflight", () => {
   });
 
   it.each([
-    ["reports not signed in", 'echo "Not logged in"\nexit 1', "reports not signed in"],
+    ["reports it is not signed in", 'echo "Not logged in"\nexit 1', "reports it is not signed in"],
     [
       "cannot report its sign-in status",
       'echo "unexpected output"\nexit 2',

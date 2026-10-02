@@ -934,7 +934,7 @@ describe("runSharedWorldPlan", () => {
     const plane = bundle.events.find(
       (event) => event.type === "concurrent-shared-world.plane.provenance",
     );
-    expect(plane?.message).toContain("owner planned/owner");
+    expect(plane?.message).toContain("(planned/owner, authorized)");
   });
 
   it("refuses subject.env on an external-public config a library caller builds", async () => {
@@ -955,9 +955,9 @@ describe("review.summary is external-public plane-aware", () => {
       await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
     ) as RunBundle;
     const summary = bundle.review.summary;
-    expect(summary).toContain("external-public");
-    expect(summary).toContain("no getHost");
-    expect(summary).not.toContain("getHost-exposed");
+    expect(summary).toContain("one public deployment");
+    expect(summary).toContain("no sandbox, clone or seed");
+    expect(summary).not.toContain("public sandbox URL");
   });
 
   it("live summary reports lobby convergence and drops the 'state delta(s) under load' clause", async () => {
@@ -1005,7 +1005,7 @@ describe("review.summary is external-public plane-aware", () => {
 
     expect(bundle.review.verdict).toBe("pass");
     const expectedSummary =
-      "Concurrent shared-world (ONE external-public plane, 3 simultaneous personas): swarm ran coherently; 3/3 actor session(s) passed credibility checks; mission endpoint: 0/3 ended goal_satisfied; completion reasons: budget_reached 3/3; overlap proven; 3 participants converged on one lobby.";
+      "Concurrent shared-world (one public deployment, 3 personas at once): swarm ran coherently; 3/3 actor session(s) passed credibility checks; mission endpoint: 0/3 ended goal_satisfied; completion reasons: budget_reached 3/3; overlap proven; 3 participants converged on one lobby.";
     expect(bundle.review.summary).toBe(expectedSummary);
     expect(bundle.review.summary).not.toContain("reached their goal");
     expect(reviewMarkdown).toContain("- verdict: pass");

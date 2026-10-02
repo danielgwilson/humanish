@@ -121,7 +121,7 @@ export function buildTerminalActorTrace(args: {
       status: "passed",
       screenshots: "n/a",
       notes:
-        "Terminal exec output captured via commands.run onStdout/onStderr, scrubbed (literal known values) then redacted (shape patterns) AT THE SOURCE before persisting; no screenshots on this lane.",
+        "Terminal output captured through commands.run onStdout and onStderr; known values are scrubbed and shape patterns redacted before anything is stored. This route takes no screenshots.",
     },
     startedAt: args.createdAt,
     completedAt: args.completedAt,

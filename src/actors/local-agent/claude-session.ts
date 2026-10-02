@@ -345,6 +345,7 @@ export async function startClaudeSession(
           : `\n\nNote from the harness: ${request.contextHint}`;
       // The persona and the reply shape are in the conversation after turn one; re-sending them
       // every turn is what the one-shot version had to do, and it is most of what it cost.
+      // prose-check: model prompt (the participant model reads this, not a person)
       const text =
         turnIndex === 1
           ? promptFor(request, shot)

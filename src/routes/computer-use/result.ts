@@ -199,7 +199,7 @@ function cuaLabResult(args: {
     return {
       code,
       message: observer.ok
-        ? `Fan-out run failed: ${summary.passed}/${participantCount} participant(s) passed (${summary.skipped} skipped, ${summary.harnessErrors} harness error(s), ${summary.hollow} hollow)${failing?.sessionError !== undefined ? `; first failure: ${failing.sessionError}` : failing === undefined && args.execution.failures[0] !== undefined ? `; ${args.execution.failures[0].message}` : ""}.`
+        ? `Fan-out run failed: ${summary.passed}/${participantCount} participant(s) passed (${summary.skipped} skipped, ${summary.harnessErrors} harness error(s), ${summary.hollow} without engagement)${failing?.sessionError !== undefined ? `; first failure: ${failing.sessionError}` : failing === undefined && args.execution.failures[0] !== undefined ? `; ${args.execution.failures[0].message}` : ""}.`
         : (observer.error?.message ?? "Observer failed for the computer-use fan-out run."),
     };
   })();
@@ -311,7 +311,7 @@ function participantCapWarning(
   const capUsd = caps.maxUsd;
   if (capUsd === undefined || participantCount <= 1) return undefined;
   if (caps.maxTotalUsd !== undefined) return undefined;
-  return `execution.caps.maxUsd ($${capUsd}) is a PER-PARTICIPANT cap; ${participantCount} participants may spend up to ${participantCount} × $${capUsd} (~$${round6(capUsd * participantCount)} total) before any participant aborts. Set execution.caps.maxTotalUsd for a shared study budget.`;
+  return `execution.caps.maxUsd ($${capUsd}) caps each participant, so ${participantCount} participants may spend up to ${participantCount} × $${capUsd} (about $${round6(capUsd * participantCount)}) before any of them stops. Set execution.caps.maxTotalUsd for one budget across the study.`;
 }
 
 /** Builds and publishes the final bundle, runs the adapter hooks, renders the Observer and returns the result. */

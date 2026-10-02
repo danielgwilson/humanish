@@ -167,7 +167,7 @@ export class LiveTerminalSandbox {
     await validatePreparedRunArtifactPaths(runPaths);
     recordLifecycle(
       "terminal-lab.sandbox.created",
-      `E2B shell sandbox ${sandboxId} created with positive-allowlist metadata and kill-on-timeout; NO sandbox-global env.`,
+      `E2B shell sandbox ${sandboxId} created with allowlisted metadata and kill-on-timeout, and with no sandbox-wide environment variables.`,
     );
     const sandboxResources = await observeDesktopResources(sandbox);
     this.resources = sandboxResources;
@@ -181,7 +181,7 @@ export class LiveTerminalSandbox {
     recordLifecycle(
       "terminal-lab.egress.policy",
       egressAllow === undefined
-        ? "Egress UNRESTRICTED (no execution.egressAllow declared)."
+        ? "Egress is unrestricted (no execution.egressAllow declared)."
         : `Egress routing allowlist: ${egressAllow.length} declared host(s): ${egressAllow.join(", ")}; deny-all fallback. Domain routing is not strict destination isolation on shared infrastructure.`,
     );
 
@@ -238,7 +238,7 @@ export class LiveTerminalSandbox {
     recordLifecycle(
       "terminal-lab.runtime.bootstrapped",
       bootstrapError
-        ? `Runtime bootstrap FAILED after ${bootstrapDurationMs}ms: ${bootstrapError}. codex exec runs via npx and needs Node/npm present; the participant fails closed rather than attempting an exec with no runtime.`
+        ? `Runtime bootstrap failed after ${bootstrapDurationMs}ms: ${bootstrapError}. codex exec runs through npx and needs Node and npm, so the participant stops here instead of starting codex with no runtime.`
         : `Runtime bootstrap ensured Node/npm present in ${bootstrapDurationMs}ms (codex exec runs via npx).`,
     );
 
@@ -378,7 +378,7 @@ export class LiveTerminalSandbox {
     recordLifecycle(
       "terminal-lab.product.prepared",
       setupError
-        ? `Product setup FAILED after ${Math.max(0, now() - setupStartedAt)}ms: ${sanitize(setupError)}`
+        ? `Product setup failed after ${Math.max(0, now() - setupStartedAt)}ms: ${sanitize(setupError)}`
         : `Product setup completed in ${Math.max(0, now() - setupStartedAt)}ms (no runtime env; declared egress auth may already be available).`,
     );
     if (setupError) {

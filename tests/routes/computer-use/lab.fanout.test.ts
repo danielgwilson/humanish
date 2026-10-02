@@ -2039,7 +2039,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
       const result = outcome.result;
       expect(result.lanes?.map((entry) => entry.subject?.commit)).toEqual(commits);
       expect(result.subject?.commit).toBeUndefined();
-      expect(result.warnings.some((warning) => warning.includes("DIVERGENT subject commits"))).toBe(
+      expect(result.warnings.some((warning) => warning.includes("different subject commits"))).toBe(
         true,
       );
     });

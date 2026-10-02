@@ -112,7 +112,7 @@ export async function runLiveTerminalSession(
 
   recorder.recordLifecycle(
     "terminal-lab.run.created",
-    `Created live terminal-product run ${runId} (actor ${actor}, product ${product.name}). Caps: maxUsd=${maxUsd}, maxMinutes=${maxMinutes}. Subject provenance UNPINNED (public surfaces only).`,
+    `Created live terminal-product run ${runId} (actor ${actor}, product ${product.name}). Caps: maxUsd=${maxUsd}, maxMinutes=${maxMinutes}. Subject provenance: unpinned (public pages only).`,
   );
 
   const session = new LiveTerminalSandbox({
@@ -227,6 +227,7 @@ function composeLivePrompt(args: {
   publicSurfaces: readonly string[];
   verdictNonce: string;
 }): string {
+  // prose-check: model prompt (the terminal agent reads this, not a person)
   return [
     args.personaLine,
     `product: ${args.productName}`,

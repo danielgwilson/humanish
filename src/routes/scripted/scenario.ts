@@ -45,7 +45,7 @@ export async function resolveScriptedScenario(
     if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) {
       return {
         ok: false,
-        message: `scenario.ref path must stay inside the target cwd (got "${trimmed}") — provenance is recorded repo-relative and an escaping path cannot be.`,
+        message: `scenario.ref must stay inside the project directory, and "${trimmed}" does not: the run records it relative to the project.`,
       };
     }
     source = relative.split(path.sep).join("/");
@@ -100,7 +100,7 @@ export async function resolveScriptedScenario(
   if (!parsed.journey) {
     return {
       ok: false,
-      message: `${source} declares no executable browser steps — the scripted-browser actor needs a scenario with browser.steps.`,
+      message: `${source} declares no browser steps, and the scripted-browser actor needs a scenario with browser.steps.`,
     };
   }
 

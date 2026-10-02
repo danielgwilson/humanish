@@ -648,7 +648,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_SCRIPTED_SCENARIO_INVALID",
-          "message": "scripted-browser labs require `scenario.ref` — the committed scenario's browser steps are what this actor executes."
+          "message": "A scripted-browser study needs `scenario.ref`: the actor runs the browser steps in that scenario file."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -1111,7 +1111,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_SCRIPTED_SCENARIO_INVALID",
-          "message": "scripted-browser labs require `scenario.ref` — the committed scenario's browser steps are what this actor executes."
+          "message": "A scripted-browser study needs `scenario.ref`: the actor runs the browser steps in that scenario file."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -1314,7 +1314,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
-          "message": "clone subjects on the computer-use route require `subject.serve` (start + url) — the lab serves the app in-sandbox."
+          "message": "A clone subject on the computer-use route needs `subject.serve` (start and url): humanish starts the app in the sandbox before the participant opens it."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -3071,7 +3071,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_COMPUTER_USE_EXECUTOR_NO_PROVIDER",
-          "message": "RunLabOptions.inProcess requires RunLabOptions.createProvider — a state-driven executor returns no screenshot, so it must be paired with a NON-vision provider (the default OpenAI computer-use provider is vision-based and would fail closed)."
+          "message": "RunLabOptions.inProcess needs RunLabOptions.createProvider: an in-process executor returns no screenshot, so it needs a provider that does not read images. The default OpenAI computer-use provider reads screenshots and would stop the session."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -3287,7 +3287,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_TERMINAL_CAPS_MISSING",
-          "message": "A live terminal-product run grants provider access to the in-sandbox agent and so REQUIRES a fail-closed cap: scenario.caps with maxUsd (0 = no-spend) and a positive maxMinutes (the codex command's wall-clock kill). The live key is never exercised without a cap in force."
+          "message": "A live terminal-product run gives the agent in the sandbox access to a model provider, so it needs a cap: set scenario.caps with maxUsd (0 means no spend) and a positive maxMinutes (the time limit for the codex command). The key is used only while the cap is in force."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {

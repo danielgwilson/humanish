@@ -124,8 +124,8 @@ export function spendLimit(session: LoopSession, estimate: number, maxUsd: numbe
     completionReason: "budget_reached",
     reason:
       materialActions > 0
-        ? `${spend} crossed execution.caps.maxUsd=$${maxUsd} after productive activity (${materialActions} material action(s), ${turns} turn(s)); aborted fail-closed before the next model turn`
-        : `${spend} crossed execution.caps.maxUsd=$${maxUsd} with no material progress; aborted fail-closed before the next model turn`,
+        ? `Stopped before the next model turn: ${spend} passed execution.caps.maxUsd=$${maxUsd} after productive activity (${materialActions} material action(s), ${turns} turn(s))`
+        : `Stopped before the next model turn: ${spend} passed execution.caps.maxUsd=$${maxUsd} with no material progress`,
     stopCause: "spend_limit",
   };
 }
