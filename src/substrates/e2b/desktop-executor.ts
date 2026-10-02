@@ -9,7 +9,7 @@ import { xdotoolHeldModifiers } from "../../guest/desktop-keys.js";
 // The desktop side of the computer-use loop: a CuaExecutor (from src/actors/computer-use/loop.ts)
 // backed by an E2B desktop sandbox. All of its behavior goes through a narrow injected port
 // (E2BDesktopLike), so tests drive it with a fake desktop that records calls: no SDK, no sandbox,
-// no spend. The E2B desktop lane (src/routes/computer-use/e2b-desktop/desktop.ts) passes the real
+// no spend. The E2B desktop route (src/routes/computer-use/e2b-desktop/desktop.ts) passes the real
 // Sandbox.
 //
 // E2BDesktopLike is a structural subset of the @e2b/desktop Sandbox (peer range ^2.3.2). Each

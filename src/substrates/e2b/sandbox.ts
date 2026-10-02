@@ -80,7 +80,7 @@ async function acquire(
     if (request.receipt !== null) {
       const { root, participantId, now = Date.now } = request.receipt;
       // Best effort by contract: a failed write leaves the TTL as the only backstop and never
-      // fails the lane.
+      // fails the participant.
       await appendSandboxReceipt(root, {
         at: new Date(now()).toISOString(),
         laneId: participantId,

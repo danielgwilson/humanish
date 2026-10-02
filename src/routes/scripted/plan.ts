@@ -21,7 +21,7 @@ import {
   taskProtocolValidationReason,
 } from "../../lab/validation.js";
 
-// Default surface roster is 1 (desktop only): the defaults-table single-lane row governs;
+// Default surface roster is 1 (desktop only): the defaults-table single-participant row governs;
 // `count: 2` is the declared override that adds the mobile surface.
 const DEFAULT_SURFACE_COUNT = 1;
 

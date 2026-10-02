@@ -33,7 +33,7 @@ import { estimateActorCostForExecution } from "../../run/pricing.js";
 import type { LabTask } from "../../lab/tasks.js";
 
 export interface CuaActorSessionOptions {
-  /** The composed mission (persona + scenario/lane instruction) handed to the model. */
+  /** The composed mission (persona + scenario/participant instruction) handed to the model. */
   instructions: string;
   /** Provenance of the persona this actor embodies (id + applied traits + prompt digest). */
   persona: ActorPersonaRef;

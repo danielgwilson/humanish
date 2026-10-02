@@ -1,5 +1,5 @@
 // The addressed message bus for captured mail (#297): the email or SMS a persona receives off the
-// app, as a testable surface. One port, addressed by lane, so the inbox surface and the evidence
+// app, as a testable surface. One port, addressed by participant, so the inbox surface and the evidence
 // writer read messages without knowing how they were captured.
 //
 // PUBLIC-SAFETY: raw address values, message bodies, links, and codes are RUNTIME-ONLY. Only the

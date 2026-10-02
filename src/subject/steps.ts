@@ -58,8 +58,8 @@ export function emitPhaseCompleted(
   });
 }
 
-/** Default phase-boundary sink (stderr): one line per event, prefixed with the lane id ONLY
- *  when laneCount > 1. Single-lane emission is unconditional: total single-lane silence for the
+/** Default phase-boundary sink (stderr): one line per event, prefixed with the participant id
+ *  ONLY when laneCount > 1. Single-participant emission is unconditional: total single-participant silence for the
  *  whole clone/install/build/ready boot is the bug this event stream exists to close.
  *  Overridable via LabDeps.subjectPhaseSink so deterministic tests capture instead of writing to
  *  the real stderr. */
@@ -73,7 +73,7 @@ export function defaultSubjectPhaseSink(
   process.stderr.write(`${prefix}: ${event.message}${durationSuffix}\n`);
 }
 
-/** The shared-world subject's phase line: one shared plane, so no lane prefix. */
+/** The shared-world subject's phase line: one shared plane, so no participant prefix. */
 export function defaultSharedWorldPhaseSink(event: SubjectPhaseEvent): void {
   const durationSuffix = event.durationMs === undefined ? "" : ` (${event.durationMs}ms)`;
   process.stderr.write(`humanish shared-world (concurrent): ${event.message}${durationSuffix}\n`);

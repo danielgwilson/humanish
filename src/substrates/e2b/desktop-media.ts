@@ -98,7 +98,7 @@ export interface DesktopMediaEvidence {
   flags: string[];
 }
 
-/** Where a lane's synthetic camera feed lives inside the sandbox: a tmpfs the sandbox user can
+/** Where a participant's synthetic camera feed lives inside the sandbox: a tmpfs the sandbox user can
  *  write, and a path that contains neither /tmp/ nor /home/, which the public-safety scan reads
  *  as an operator's local path (this one is the harness's own and belongs in the bundle). */
 const SANDBOX_MEDIA_DIR = "/dev/shm/humanish-media";
@@ -129,7 +129,7 @@ export async function prepareDesktopMedia(
       throw new Error("Microphone source-file injection is unsupported; use source: speech.");
     if (media.camera !== undefined)
       throw new Error("Hosted synthetic cameras cannot be combined with speech.");
-    // The lane starts and admits the speech worker before launching the browser.
+    // The participant's setup starts and admits the speech worker before launching the browser.
     return {
       microphone: { source: "speech" },
       permission,

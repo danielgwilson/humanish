@@ -169,7 +169,7 @@ function declaredActorScreenshotReferences(
 /**
  * The PNG frames that actor traces register as stream screenshots, relative to the run root.
  * RAW_SCREENSHOTS grades these, so the public-safety scan does not report them as unread. Only
- * frames under screenshots/ count: the computer-use lane writer and the scripted-browser steps
+ * frames under screenshots/ count: the computer-use frame writer and the scripted-browser steps
  * write every frame there, and nothing else in the harness does. A trace reference elsewhere (an
  * adapter's PNG, say) stays required evidence but goes to UNSCANNED_ARTIFACT.
  */

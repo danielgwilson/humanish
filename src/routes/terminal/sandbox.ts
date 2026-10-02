@@ -43,7 +43,7 @@ export async function teardownSandbox(args: {
   } = args;
   if (allocation === undefined || !sandboxModule) {
     // create() can reject AFTER its constructor acquired a handle. The default loader retains
-    // that authority and reclaims it before rejecting; the lane itself never receives its ID.
+    // that authority and reclaims it before rejecting; the route itself never receives its ID.
     if (startupCleanup === "killed" || startupCleanup === "already_gone") {
       const reason = `desktop startup guard confirmed its acquired sandbox ${startupCleanup === "killed" ? "was killed" : "was already gone"}`;
       recordLifecycle("terminal-lab.cleanup.killed", reason);

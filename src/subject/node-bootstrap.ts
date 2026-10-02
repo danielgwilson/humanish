@@ -23,7 +23,7 @@ export const NODE_BOOTSTRAP_TIMEOUT_MS = 5 * 60_000;
 
 /**
  * Install Node from the pinned official archive when the desktop has no working Node >=20 and
- * npm. The terminal lane, desktop CLI studies and the subject serve pipeline share it. It needs no
+ * npm. The terminal route, desktop CLI studies and the subject serve pipeline share it. It needs no
  * apt: every network call is one bounded curl, so a stalled mirror fails the step within minutes.
  */
 export const NODE_BOOTSTRAP_COMMAND = [

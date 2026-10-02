@@ -13,17 +13,17 @@ import type { E2BDesktopSandbox } from "./sdk.js";
 import { e2bShell } from "./shell.js";
 
 /**
- * Runtime-only CDP endpoint attribution for the exact chromium this lane launched. Port
+ * Runtime-only CDP endpoint attribution for the exact chromium this participant launched. Port
  * resolution at OBSERVE time: the cached launch-time `cdpPort` wins; absent that, the observer
  * probe re-reads `profileDir`'s DevToolsActivePort marker (a slow cold start can publish it
- * after the launch-time poll gave up); absent both it uses 9222, the port every lane launches
+ * after the launch-time poll gave up); absent both it uses 9222, the port every participant launches
  * Chrome with, where a dead endpoint degrades into a warning that names the cause.
  */
 export interface ChromeCdpEndpoint {
   cdpPort?: number;
   /** The launched profile dir; lets observers re-read DevToolsActivePort at observe time. */
   profileDir?: string;
-  /** The URL this lane opened; attributes the CDP page when no target id is pinned yet. */
+  /** The URL this participant opened; attributes the CDP page when no target id is pinned yet. */
   targetUrl: string;
 }
 
@@ -32,7 +32,7 @@ export interface ChromeCdpEndpoint {
  * after the launch page, so a tab the participant opens later should lay out at the phone width
  * too. The first observation on each new target reads that page's own report; a target that
  * reports the requested width is recorded through `onCovered`, and one that does not (or cannot be
- * read) fires `onDrift` once, so a phone-labelled lane that spent part of its session at desktop
+ * read) fires `onDrift` once, so a phone-labelled participant that spent part of its session at desktop
  * layout says so with the number the page gave.
  */
 export interface ChromeEmulationDrift {
@@ -56,7 +56,7 @@ export interface ChromeEmulationDrift {
  * reading the old tab forever).
  *
  * `onUnavailable` fires ONCE, on the first probe that could not read the page, with the reason.
- * The observer still degrades to `{}` for the loop; the callback is how a lane says out loud that
+ * The observer still degrades to `{}` for the loop; the callback is how a participant says out loud that
  * url/text criteria are not being measured, instead of letting the funnel report 0/N (#514).
  */
 export function makeChromeBrowserStateObserver(
@@ -159,12 +159,12 @@ export function makeChromeBrowserStateObserver(
   };
 }
 
-/** The user agent a mobile-emulated lane presents unless the lab sets its own. */
+/** The user agent a mobile-emulated participant presents unless the lab sets its own. */
 export const DEFAULT_MOBILE_USER_AGENT =
   "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
 
 /**
- * Apply mobile emulation (#221) to the lane's launch page and read back what the page reports.
+ * Apply mobile emulation (#221) to the participant's launch page and read back what the page reports.
  * Fails CLOSED: a request that cannot be applied throws, because a desktop run labelled mobile is
  * the over-trust this feature exists to prevent. A read-back that cannot be taken is a warning
  * (the emulation was applied; only the proof is missing).
@@ -205,7 +205,7 @@ export async function applyMobileEmulation(
   };
   // The UA / touch / DPR overrides are bound to the DevTools session that set them and lapse the
   // moment its socket closes (measured: only the viewport width survived a one-shot apply). So the
-  // applier stays attached for the lane's whole life as a detached process; the sandbox teardown
+  // applier stays attached for the participant's whole life as a detached process; the sandbox teardown
   // ends it. Its first stdout line says what was applied.
   const holderName = `mobile-emulation-${Date.now().toString(36)}`;
   await startDetachedProcess(shell, {

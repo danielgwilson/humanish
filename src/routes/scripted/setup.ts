@@ -145,7 +145,7 @@ export async function prepareScriptedRun(
   const persona: ActorPersonaRef = {
     id: plan.personaId ?? "scripted-journey",
     traitsApplied: [],
-    // The step manifest IS the "prompt" on this lane; the digest binds the trace to the
+    // The step manifest IS the "prompt" on this route; the digest binds the trace to the
     // committed scenario text.
     promptDigest: journey.sourceDigest.slice(0, 16),
   };

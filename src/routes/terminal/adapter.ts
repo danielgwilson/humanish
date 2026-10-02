@@ -23,7 +23,7 @@ import type { TerminalLedgers, TerminalScorer, TerminalProductScoringContext } f
  *  - `score`: when present, the returned namespaced `RunAdapterScore` lands on `bundle.adapterScore`.
  *    For a LIBRARY caller (no `scorerProvenance`), the adapter score is additive and never a
  *    failure. For a CONFIG-DECLARED scorer (#316; `scorerProvenance` present), a status:"fail" is a
- *    failure (the keystone lane is the product's own definition of pass/fail), and so is a scorer
+ *    failure (the keystone route is the product's own definition of pass/fail), and so is a scorer
  *    that THROWS or returns a malformed value, so a crashed declared gate is never a silent green.
  *  - `deriveFeedback`: when present, the returned candidates are appended to
  *    `bundle.feedbackCandidates`; each carries its own namespaced `adapter` product-noun block.

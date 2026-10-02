@@ -243,7 +243,7 @@ export class LiveTerminalSandbox {
     );
 
     if (bootstrapError) {
-      // Fail closed as a structured lane status (never a raw throw): no codex exec is attempted
+      // Fail closed as a structured route status (never a raw throw): no codex exec is attempted
       // without a proven runtime; this mirrors the exec-error status assignment below so the
       // bundle and verify surface the failure the same way.
       this.status = "failed";
@@ -301,10 +301,10 @@ export class LiveTerminalSandbox {
     const { requestTimeoutMs } = this;
     // --- Optional product setup (no runtime env), before the Codex exec. ---
     // Same channel and same guarantees as the runtime bootstrap above: no runtime key touches it,
-    // and a failure fails the lane closed rather than handing the agent a half-built world. It
+    // and a failure fails the run closed rather than handing the agent a half-built world. It
     // exists so a study can put the participant IN a prepared project — asking an agent what
     // studies a project contains, in an empty directory, measures the lab and not the product
-    // (learned the hard way on the desktop lane, labs/tui-self-study.yaml).
+    // (learned the hard way on the desktop route, labs/tui-self-study.yaml).
     const install = plan.product.install;
     if (install === undefined) return true;
 
@@ -339,8 +339,8 @@ export class LiveTerminalSandbox {
           destination,
           bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
         );
-        // Inlined into the command string rather than passed as `envs`: the ONLY call in this
-        // lane that carries envs is the keyed codex exec, and that invariant is worth more than
+        // Inlined into the command string rather than passed as `envs`: the ONLY call on this
+        // route that carries envs is the keyed codex exec, and that invariant is worth more than
         // the convenience of a second envs channel.
         uploadAssignment = `export HUMANISH_PRODUCT_UPLOAD=${shellQuote(destination)}; `;
         recordLifecycle(
@@ -462,7 +462,7 @@ export class LiveTerminalSandbox {
     });
 
     // Score by the verdict-nonce marker over the SCRUBBED+REDACTED, NORMALIZED transcript — the
-    // exact same logic the local-actor lanes use (extractLocalActorVerdict/normalizeLocalActorTranscript).
+    // exact same logic the local-actor routes use (extractLocalActorVerdict/normalizeLocalActorTranscript).
     const rawTranscript = terminalEvents.map((e) => e.chunk).join("");
     const normalizedTranscript = normalizeLocalActorTranscript(rawTranscript);
     const markerStatus = extractLocalActorVerdict(normalizedTranscript, verdictNonce);
