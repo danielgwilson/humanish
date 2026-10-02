@@ -37,10 +37,22 @@
 //   string literal type.
 // - `prompt-markers`: each `prose-check: model prompt` comment in src. The marker exempts the
 //   statement after it, so a new one raises this cap where a reviewer sees it.
+//
+// The current docs are read too, by lib/doc-prose.mjs, under the roots `docs`, `site` and
+// `evidence`, for the kinds `issue-refs`, `caps`, `em-dashes`, `invariant-refs`, `authority`,
+// `honest`, `archaeology` (which adds `SLICE 2` and `phase 2` for docs) and `contrast` (`not
+// just`, `not merely`, `rather than`).
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { CAPS_FILE, flattenCaps, holdToCaps, readCaps } from "./lib/caps.mjs";
+import {
+  DOC_WORD_KINDS,
+  ROOT_GUIDES,
+  docProse,
+  docRootOf,
+  isDocCapsEmphasis,
+} from "./lib/doc-prose.mjs";
 import { parseSync } from "oxc-parser";
 import { parse as parseYaml } from "yaml";
 import {
@@ -305,6 +317,42 @@ for (const file of readdirSync(".")
       else if (!fenced && TITLE_CASE_HEADER.test(line))
         hits.get("prose.markdown.title-case-headers").push(`${file}:${index + 1} ${line}`);
     });
+}
+
+// The docs roots, counted over the pages docRootOf names.
+const DOC_ROOTS = ["docs", "site", "evidence"];
+const DOC_KINDS = ["issue-refs", "caps", "em-dashes", ...Object.keys(DOC_WORD_KINDS)];
+for (const root of DOC_ROOTS) {
+  for (const kind of DOC_KINDS) hits.set(`prose.${root}.${kind}`, []);
+}
+/** Every page under `dir`, recursively, with node_modules and dist skipped. */
+const pagesUnder = (dir) =>
+  existsSync(dir)
+    ? readdirSync(dir, { recursive: true, encoding: "utf8" })
+        .map((file) => `${dir}/${file.split("\\").join("/")}`)
+        .filter((file) => !SKIPPED_DIR.test(file))
+    : [];
+const docPages = [
+  ...ROOT_GUIDES.filter((file) => existsSync(file)),
+  ...pagesUnder("docs"),
+  ...pagesUnder("site/content/docs"),
+]
+  .filter((file) => docRootOf(file) !== undefined)
+  .sort();
+for (const file of docPages) {
+  const root = docRootOf(file);
+  const text = readFileSync(file, "utf8");
+  const prose = docProse(text);
+  const add = (kind, match) =>
+    hits
+      .get(`prose.${root}.${kind}`)
+      .push(`${file}:${text.slice(0, match.index).split("\n").length} ${match[0]}`);
+  for (const match of prose.matchAll(ISSUE_REF)) add("issue-refs", match);
+  for (const match of prose.matchAll(CAPS_RUN)) if (isDocCapsEmphasis(match[0])) add("caps", match);
+  for (const match of prose.matchAll(EM_DASH)) add("em-dashes", match);
+  for (const [kind, pattern] of Object.entries(DOC_WORD_KINDS)) {
+    for (const match of prose.matchAll(pattern)) add(kind, match);
+  }
 }
 
 const { flat, invalid } = flattenCaps(readCaps(values.caps));
