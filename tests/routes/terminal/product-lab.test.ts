@@ -658,9 +658,9 @@ describe("humanish lab run terminal-product-demo (CLI)", () => {
       "terminal-cli-human",
     ]);
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("humanish lab terminal dry-run");
+    expect(result.stdout).toContain("humanish run terminal-product-demo: dry run finished");
+    expect(result.stdout).toContain("route: terminal");
     expect(result.stdout).toContain("run: terminal-cli-human");
-    expect(result.stdout).toContain("lab: terminal-product-demo");
     expect(result.stdout).toContain("actor: codex-exec");
     expect(result.stdout).toContain("product: widgetsmith-cli");
   });

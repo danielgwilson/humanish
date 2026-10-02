@@ -11,6 +11,7 @@ import {
   type ReclaimResult,
 } from "../../run/reclaim.js";
 import type { CleanupResult, RunResult } from "../../run/results.js";
+import type { ReviewSummary } from "../../run/bundle.js";
 import type { RunsResult } from "../../run/stored-runs.js";
 import type { VerifyResult } from "../../verify/verify.js";
 import { runLabCommand } from "./lab-run.js";
@@ -191,14 +192,14 @@ export function registerCleanupCommand(parent: Command, io: CliIo): void {
 export function registerReviewCommand(parent: Command, io: CliIo): void {
   parent
     .command("review")
-    .description("Build a review packet from verified run evidence.")
+    .description("Show a run's review: verdict, summary and gaps.")
     .summary("Build a review packet from verified run evidence.")
     .option("--run <id>", "Run id or latest pointer.", "latest")
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (options: { cwd: string; json?: boolean; run: string }, command) => {
       const result = await readReview(options.cwd, options.run);
-      writeResult(command, io, result, (value) => `${JSON.stringify(value, null, 2)}\n`);
+      writeResult(command, io, result, formatReviewHuman);
       io.setExitCode("ok" in result && result.ok === false ? 2 : 0);
     });
 }
@@ -394,6 +395,36 @@ function formatReclaimHuman(result: ReclaimResult): string {
   for (const warning of result.warnings) lines.push(`  warning: ${warning}`);
   if (result.error) lines.push(`  error: ${result.error.message}`);
   return lines.join("\n");
+}
+
+const REVIEW_VERDICTS: Record<ReviewSummary["verdict"], string> = {
+  contract_proof_only: "preview only; no product behavior was tested",
+  pass: "pass",
+  fail: "fail",
+  blocked: "blocked",
+  timed_out: "timed out",
+};
+
+/** A run's review: its verdict, summary and gaps, and where review.json is. */
+function formatReviewHuman(
+  result: VerifyResult | (ReviewSummary & { path: string; runId: string }),
+): string {
+  if (!("verdict" in result)) {
+    const why = result.error
+      ? `${result.error.code}: ${result.error.message}`
+      : `the run did not pass verify; humanish verify --run ${result.run} shows why`;
+    return `humanish review failed\nrun: ${result.run}\n${why}\n`;
+  }
+  return (
+    [
+      `humanish review ${result.runId}: ${REVIEW_VERDICTS[result.verdict]}`,
+      "",
+      result.summary,
+      ...(result.gaps.length === 0 ? [] : ["", "gaps:", ...result.gaps.map((gap) => `- ${gap}`)]),
+      "",
+      `review: ${result.path}`,
+    ].join("\n") + "\n"
+  );
 }
 
 /** The run id verify read, from the bundle path, so `latest` prints as the id it points at. */

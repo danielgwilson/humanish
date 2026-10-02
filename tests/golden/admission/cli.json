@@ -350,7 +350,7 @@
   },
   "watch adm-shared-live --port 99999": {
     "exitCode": 2,
-    "stdout": "humanish lab concurrent-shared-world failed\nHUMANISH_SHARED_WORLD_FAILED: --port must be an integer between 0 and 65535.\nrun: not-created\nlab: adm-shared-live\nactor: openai-computer-use\ntopology: shared-world/concurrent (2 personas, concurrency 2)\n",
+    "stdout": "humanish run adm-shared-live: live run failed\nroute: shared-world\nHUMANISH_SHARED_WORLD_FAILED: --port must be an integer between 0 and 65535.\nrun: not-created\nactor: openai-computer-use\ntopology: shared-world/concurrent (2 personas, concurrency 2)\n",
     "stderr": "",
     "runs": false,
     "subprocess": 0,

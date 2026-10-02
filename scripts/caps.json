@@ -79,7 +79,11 @@
     "seat": 0,
     "role": 49,
     "sim": 21,
-    "lab": 2337,
+    "lab": 2335,
     "doc-backend": 17
+  },
+  "site": {
+    "css-hex-literals": 11,
+    "unused-classes": 0
   }
 }

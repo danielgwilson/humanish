@@ -8,6 +8,7 @@ import { RUN_BUNDLE_FILE, RUN_BUNDLE_SCHEMA, type RunBundle } from "../run/bundl
 import { isCleanupResult, isRunBundle } from "../run/bundle-shape.js";
 import { readRunJsonIfExists, readRunTextIfExists, resolveRunPath } from "../run/locate.js";
 import { isRecord } from "../run/type-guards.js";
+import { runNotFoundMessage } from "../run/run-not-found.js";
 import {
   actorVerdictConsistencyFindings,
   noEngagementActorFindings,
@@ -117,26 +118,16 @@ export async function verifyResolvedRun(
   const checks: VerifyResult["checks"] = [];
 
   if (!runPaths) {
+    const message = await runNotFoundMessage(cwd, runInput);
     return {
       schema: VERIFY_SCHEMA,
       ok: false,
       cwd,
       run: runInput,
       checks,
-      shareSafety: {
-        status: "blocked",
-        reasons: [
-          {
-            code: "VERIFY_FAILED",
-            message: `Run not found: ${runInput}`,
-          },
-        ],
-      },
+      shareSafety: { status: "blocked", reasons: [{ code: "VERIFY_FAILED", message }] },
       warnings: [],
-      error: {
-        code: "HUMANISH_RUN_NOT_FOUND",
-        message: `Run not found: ${runInput}`,
-      },
+      error: { code: "HUMANISH_RUN_NOT_FOUND", message },
     };
   }
 

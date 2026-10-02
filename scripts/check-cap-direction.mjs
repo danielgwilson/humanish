@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 // Fails a pull request that raises or drops a cap, compared with the base branch. The caps are
-// lint's --max-warnings in package.json and every prose:check and vocabulary:check cap in
-// scripts/caps.json. Those checks hold each count to its cap from both sides; this check makes the
-// caps move only down. A PR that has to raise one carries the raise-cap label and a "Cap raise:"
-// line in its body saying why.
+// lint's --max-warnings in package.json and every cap in scripts/caps.json. The checkers hold each
+// count to its cap from both sides; this check makes the caps move only down. A PR that has to
+// raise one carries the raise-cap label and a "Cap raise:" line in its body saying why.
 //
 // Usage: node scripts/check-cap-direction.mjs --base <ref>
 // On a merge commit (CI's PR merge ref) the base is HEAD's first parent; --base applies elsewhere.
