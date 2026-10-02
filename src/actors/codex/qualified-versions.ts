@@ -104,8 +104,15 @@ export function codexVersionRecovery(
     detected === undefined
       ? "The installed Codex CLI did not report a recognizable version"
       : `Found Codex CLI ${detected}`;
-  const install = `npm install -g @openai/codex@${defaultCodexCliVersion(platform, arch)}`;
-  return `${found}; ${describeQualifiedCodexCliVersions(platform, arch)}. Install the newest with \`${install}\`, then sign in with a ChatGPT account (\`codex login\`).`;
+  return `${found}; ${describeQualifiedCodexCliVersions(platform, arch)}. Install the newest with \`${codexInstallCommand(platform, arch)}\`, then sign in with a ChatGPT account (\`codex login\`).`;
+}
+
+/** The command that installs the newest Codex CLI this host admits. */
+export function codexInstallCommand(
+  platform: NodeJS.Platform = process.platform,
+  arch: string = process.arch,
+): string {
+  return `npm install -g @openai/codex@${defaultCodexCliVersion(platform, arch)}`;
 }
 
 /** For refusal messages: the admitted releases on this host, or every host when it has none. */

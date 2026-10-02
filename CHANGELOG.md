@@ -72,6 +72,15 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixes
 
+- `humanish doctor --lab` and the TUI's lab screen give each Codex failure its own recovery
+  (#1371). A Codex that is installed but signed out says to run `codex login`; signed in with an
+  API key, to run `codex logout` and `codex login` with a ChatGPT account. A `codex` humanish cannot
+  run names the file it found on PATH and why, such as a wrapper script that is neither the native
+  executable nor the npm launcher, and gives the install command. Before, every code but an
+  unsupported version said "Install the supported Codex CLI version and sign in", which the 0.106.1
+  release dogfood got for a signed-out Codex 0.160.0. A provider key that is present but that the
+  lab does not read now shows `present (<source>), not used by this lab` in place of `supplied by`.
+  With a declared scorer, which may read any key, doctor makes no such claim.
 - A local VM run whose desktop shutdown is unconfirmed records it in `status.json` (#1363).
   `outcome.execution.warnings` gets a `sandbox-cleanup` entry naming the container and the
   `docker rm --force --volumes <container>` command that removes it; `ok` is unchanged. Its

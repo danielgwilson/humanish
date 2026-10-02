@@ -179,6 +179,86 @@ describe("selected lab setup without paid dispatch", () => {
     }
   });
 
+  const localCodexLab =
+    lab("local-agent")
+      .replace("https://preview.example.test/", "http://localhost:3000/")
+      .replace("target: e2b-desktop", "target: local") +
+    "\nreview:\n  analysis:\n    provider: codex\n";
+  const install = `npm install -g @openai/codex@${defaultCodexCliVersion()}`;
+  const notCodex = "it is neither a native Codex executable nor the @openai/codex npm launcher";
+
+  it.each([
+    ["codex_login_required", undefined, ["Run `codex login`"], ["Install"]],
+    ["codex_unsupported_auth", undefined, ["`codex logout`", "`codex login`"], ["Install"]],
+    [
+      "codex_unavailable",
+      { path: "/opt/tools/codex", reason: notCodex },
+      ["humanish found `/opt/tools/codex` and cannot run it", notCodex, install],
+      [],
+    ],
+    [
+      "codex_unavailable",
+      { reason: "no executable `codex` is on PATH" },
+      ["no executable `codex` is on PATH", install],
+      [],
+    ],
+  ] as const)(
+    "gives %s its own recovery on both Codex rows",
+    async (errorCode, refusedExecutable, says, omits) => {
+      await project(localCodexLab, async (cwd) => {
+        const result = await labSetupChecks({
+          cwd,
+          lab: "preview",
+          env: keyless,
+          agents: [],
+          keyPresent: () => false,
+          localRuntimeReadiness: async () => ({ ok: true, installed: true, message: "Ready" }),
+          codexAnalysisReadiness: async () => ({
+            ready: false,
+            errorCode,
+            ...(refusedExecutable === undefined ? {} : { refusedExecutable }),
+          }),
+        });
+        for (const name of ["local participant authentication", "post-run analysis"]) {
+          const message = result.checks.find((item) => item.name === name)!.message;
+          for (const text of says) expect(message, name).toContain(text);
+          for (const text of omits) expect(message, name).not.toContain(text);
+        }
+      });
+    },
+  );
+
+  it("names the codex file on PATH it turned down when Codex is unavailable", async () => {
+    const bin = await mkdtemp(path.join(tmpdir(), "humanish-doctor-codex-wrapper-"));
+    await writeFile(path.join(bin, "codex"), '#!/bin/sh\nexec real-codex "$@"\n', {
+      mode: 0o755,
+    });
+    const launcher = await import("../../src/analysis/restricted-codex.js");
+    const readiness = vi
+      .spyOn(launcher, "checkRestrictedCodexAnalysisReadiness")
+      .mockResolvedValue({ ready: false, errorCode: "codex_unavailable" });
+    try {
+      await project(localCodexLab, async (cwd) => {
+        const result = await labSetupChecks({
+          cwd,
+          lab: "preview",
+          env: { ...keyless, PATH: bin },
+          agents: [],
+          keyPresent: () => false,
+          localRuntimeReadiness: async () => ({ ok: true, installed: true, message: "Ready" }),
+        });
+        const message = result.checks.find(
+          (item) => item.name === "local participant authentication",
+        )!.message;
+        expect(message).toContain(`\`${path.join(bin, "codex")}\``);
+        expect(message).toContain(notCodex);
+      });
+    } finally {
+      readiness.mockRestore();
+      await rm(bin, { recursive: true, force: true });
+    }
+  });
+
   it("uses the doctor's selected environment for the restricted account readiness check", async () => {
     const launcher = await import("../../src/analysis/restricted-codex.js");
     const readiness = vi
@@ -359,6 +439,34 @@ describe("selected lab setup without paid dispatch", () => {
         "no paid resources",
       );
       expect(JSON.stringify(result)).not.toMatch(/synthetic-invalid/);
+    });
+  });
+
+  it.each([
+    ["without a scorer", "", "present (process env), not used by this lab"],
+    [
+      "with a declared scorer, whose code may read any key",
+      "\nreview:\n  scorer:\n    ref: humanish/scorers/judge.mjs\n",
+      "supplied by process env; presence only, validity not tested",
+    ],
+  ])("says when a present key is one the lab does not read, %s", async (_name, extra, codexRow) => {
+    await project(lab("local-agent") + extra, async (cwd) => {
+      const result = await doctor(cwd, {
+        lab: "preview",
+        env: {
+          ...keyless,
+          OPENAI_API_KEY: "synthetic-model",
+          E2B_API_KEY: "synthetic-desktop",
+          CODEX_API_KEY: "synthetic-codex",
+        },
+        localAgents: noAgents,
+      });
+      const message = (name: string) =>
+        result.checks.find((check) => check.name === `key ${name}`)?.message;
+      expect(message("CODEX_API_KEY")).toBe(codexRow);
+      // E2B_API_KEY is required, and the default automatic analysis reads OPENAI_API_KEY.
+      expect(message("E2B_API_KEY")).toContain("supplied by process env");
+      expect(message("OPENAI_API_KEY")).toContain("supplied by process env");
     });
   });
 

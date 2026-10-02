@@ -329,11 +329,16 @@ function keyChecks(
       : probe.name === "E2B_API_KEY" ||
         (probe.name === "OPENAI_API_KEY" &&
           !agents.some((agent) => agent.authStatus === "authenticated"));
+    // A key the lab is known not to read says so, so a present but unused key does not read as
+    // one the run will use.
+    const unused = setup?.reads !== undefined && !setup.reads.has(probe.name);
     return {
       name: `key ${probe.name}`,
       ok: present || !required,
       message: present
-        ? `supplied by ${probe.source}; presence only, validity not tested`
+        ? unused
+          ? `present (${probe.source}), not used by this lab`
+          : `supplied by ${probe.source}; presence only, validity not tested`
         : required
           ? `missing from every source — ${hint}`
           : `not required for ${setup ? "the selected participant route" : "every route"}; ${hint}`,

@@ -5,7 +5,10 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { checkRestrictedCodexAnalysisReadiness } from "../../../src/analysis/restricted-codex.js";
 import { qualifiedCodexCliVersions } from "../../../src/actors/codex/qualified-versions.js";
-import { restrictedCodexNpmTarget } from "../../../src/actors/codex/restricted-executable.js";
+import {
+  refusedCodexExecutable,
+  restrictedCodexNpmTarget,
+} from "../../../src/actors/codex/restricted-executable.js";
 import type { RestrictedCodexSpawn } from "../../../src/actors/codex/restricted-transport.js";
 
 const directories: string[] = [];
@@ -146,5 +149,31 @@ describe("restricted Codex npm executable resolution", () => {
     );
     expect(result).toEqual({ ready: false, errorCode: "codex_unsupported_version" });
     expect(await readdir(tempRoot)).toEqual([]);
+  });
+});
+
+describe("the codex file resolveExecutable turns down", () => {
+  it("names no file when PATH has no codex", async () => {
+    const empty = await mkdtemp(path.join(tmpdir(), "humanish-codex-empty-path-"));
+    directories.push(empty);
+
+    expect(await refusedCodexExecutable({ PATH: empty })).toEqual({
+      reason: "no executable `codex` is on PATH",
+    });
+  });
+
+  it("names a wrapper script on PATH and says it is not Codex's executable or launcher", async () => {
+    const bin = await mkdtemp(path.join(tmpdir(), "humanish-codex-wrapper-"));
+    directories.push(bin);
+    await writeFile(path.join(bin, "codex"), '#!/bin/sh\nexec real-codex "$@"\n', {
+      mode: 0o755,
+    });
+
+    expect(await refusedCodexExecutable({ PATH: bin }, { platform: "linux", arch: "x64" })).toEqual(
+      {
+        path: await realpath(path.join(bin, "codex")),
+        reason: "it is neither a native Codex executable nor the @openai/codex npm launcher",
+      },
+    );
   });
 });
