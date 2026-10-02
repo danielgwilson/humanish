@@ -3,6 +3,7 @@ import {
   citesEvidenceOnly,
   findHistoryLinks,
   findPreambleLines,
+  findSiteArchitectureLinks,
   findUnindexedDocs,
 } from "../../../scripts/lib/doc-index.js";
 
@@ -118,5 +119,25 @@ describe("findHistoryLinks", () => {
         citesEvidenceOnly,
       ),
     ).toEqual(["README.md", "site/content/docs/x.mdx"]);
+  });
+});
+
+describe("findSiteArchitectureLinks", () => {
+  const url = (page: string) => `https://github.com/danielgwilson/humanish/blob/main/${page}`;
+
+  it("names an architecture page a site page links outside the reference list", () => {
+    const page = [
+      `[serve](${url("docs/architecture/serve.md")})`,
+      `[guide](${url("docs/architecture/local-browser-runtime.md")}#start)`,
+      `[again](${url("docs/architecture/local-browser-runtime.md")})`,
+    ].join("\n");
+    expect(findSiteArchitectureLinks("site/content/docs/x.mdx", page)).toEqual([
+      "docs/architecture/local-browser-runtime.md",
+    ]);
+  });
+
+  it("ignores pages outside the site", () => {
+    const text = `[guide](${url("docs/architecture/local-browser-runtime.md")})`;
+    expect(findSiteArchitectureLinks("README.md", text)).toEqual([]);
   });
 });

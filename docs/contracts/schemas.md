@@ -376,7 +376,7 @@ acquisition and cleanup status. It contains no raw addresses, bodies, provider I
 or content digests. `run.json` embeds the final projection as `commsReceiving` and
 carries `publication.restrictions: [real-communications]`. Verification keeps the
 run local-only regardless of screenshot redaction. See the
-[receiving contract](../architecture/real-email-receiving.md).
+[receiving contract](https://humanish.dev/docs/email-receiving).
 
 Lab routes report results in their own schemas (`humanish.run-result.v1`,
 `humanish.cua-lab-result.v2`, `humanish.scripted-lab-result.v1`,

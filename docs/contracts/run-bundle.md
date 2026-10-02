@@ -188,7 +188,7 @@ field means no retained video, not proof that nothing happened between captures.
 Verification checks the local file, declared size, MP4 header and matching artifact
 entry without loading the whole video into memory. Raw continuous media makes the
 run `local_only` regardless of screenshot redaction. Analysis input remains text
-and screenshots. See [desktop recording](../architecture/desktop-recording.md).
+and screenshots. See [desktop recording](https://humanish.dev/docs/desktop-recording).
 
 ## Hosted Desktop Geometry
 
