@@ -290,7 +290,7 @@ export async function finishConcurrentRun(
   results: PlaneResults,
   plane: FinishFacts,
 ): Promise<ConcurrentSharedWorldLabResult> {
-  const { plan, input, descriptor, actorSpecs, run, runId, createdAt } = ctx;
+  const { plan, input, descriptor, actorSpecs, run, runId } = ctx;
   const participantCount = plan.plane.participants.length;
   const { cwd, concurrency, source, seedDigest, receiving, warnings, scrubKnownValues } = ctx;
   const { dryRun } = plan;
@@ -326,12 +326,10 @@ export async function finishConcurrentRun(
   }
 
   const bundleArgs: Omit<ConcurrentBundleArgs, "judgment"> = {
-    ...(plan.lab === undefined ? {} : { lab: plan.lab }),
+    run,
     plan,
     descriptor,
-    createdAt,
     dryRun,
-    runId,
     source,
     actorSpecs,
     actorResults,

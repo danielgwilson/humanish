@@ -40,8 +40,8 @@ import type {
 } from "../../lab/plan-types.js";
 import { type LabCommsEmail, type LabConfig } from "../../lab/types.js";
 import { type ObserverResult } from "../../observer/render.js";
-import { type RunLabProvenance } from "../../run/status.js";
 import {
+  type BundleRun,
   type RunBundle,
   type RunRerunLineage,
   type RunScorerProvenance,
@@ -599,18 +599,16 @@ export interface ParticipantRunOutcome {
 export interface CuaFanoutBundleArgs {
   /** The run's verdict, from the judge. */
   verdict: Verdict;
-  /** Lab provenance for the bundle's own `lab` field (#455). */
-  lab?: RunLabProvenance;
+  /** The run this bundle belongs to; the bundle head reads its id, mode, start and lab. */
+  run: BundleRun;
   specs: DesktopParticipantRun[];
   outcomes?: ParticipantRunOutcome[];
   subjects: CuaSubjectProjection[];
   aggregateSubject: CuaSubjectProjection;
   descriptor: CuaActorDescriptor;
   appUrl: string;
-  createdAt: string;
   dryRun: boolean;
   plan: ComputerUsePlan;
-  runId: string;
   source: RunBundle["source"];
   participantPlan: CuaParticipantPlan;
   rerun?: RunRerunLineage;

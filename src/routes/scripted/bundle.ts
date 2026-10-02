@@ -19,19 +19,18 @@ import {
   type RunSubjectProvenance,
   bundleArtifacts,
   bundleHead,
+  type BundleRun,
 } from "../../run/bundle.js";
 import { type RunStream } from "../../run/streams.js";
-import type { RunLabProvenance } from "../../run/status.js";
 import { participantEvent, recordIdOf } from "../../run/participant-records.js";
 import { scriptedSurfaceIds, scriptedSurfaceRecords } from "./surface-records.js";
 
 /** What the scripted lab's bundle is built from. */
 interface ScriptedBundleArgs {
-  /** Lab provenance for the bundle\'s own `lab` field (#455). */
-  lab?: RunLabProvenance;
+  /** The run this bundle belongs to; the bundle head reads its id, mode, start and lab. */
+  run: BundleRun;
   actorId: string;
   appUrl: string;
-  createdAt: string;
   desktopTemplate?: string;
   dryRun: boolean;
   hostDigest?: string;
@@ -39,7 +38,6 @@ interface ScriptedBundleArgs {
   labId: string;
   labTitle?: string;
   persona: ActorPersonaRef;
-  runId: string;
   scenarioSource: string;
   scenarioSourceDigest: string;
   screenshotsBySurface: Map<string, string[]>;
@@ -68,9 +66,11 @@ export function buildScriptedLabBundle(args: ScriptedBundleArgs): RunBundle {
   const resultBySurface = new Map(
     args.sessionResults.map((result) => [result.capture.surface.id, result]),
   );
+  // Each surface's records are stamped with the run's start.
+  const context = { ...args, createdAt: args.run.createdAt };
   const records = args.surfaces.map((surface, index) =>
     scriptedSurfaceRecords(
-      args,
+      context,
       surface,
       index,
       resultBySurface.get(surface.id),
@@ -84,14 +84,7 @@ export function buildScriptedLabBundle(args: ScriptedBundleArgs): RunBundle {
 
   const cost = args.dryRun ? undefined : scriptedCost(args.subjectDesktop);
   return {
-    ...bundleHead({
-      runId: args.runId,
-      mode: args.dryRun ? "dry-run" : "live",
-      participants: args.surfaces.length,
-      createdAt: args.createdAt,
-      ...(args.lab === undefined ? {} : { lab: args.lab }),
-      source: args.source,
-    }),
+    ...bundleHead(args.run, { participants: args.surfaces.length, source: args.source }),
     persona: {
       id: args.persona.id,
       name: `Scripted journey persona (${args.persona.id})`,
@@ -107,7 +100,7 @@ export function buildScriptedLabBundle(args: ScriptedBundleArgs): RunBundle {
     },
     lifecycle: [
       {
-        at: args.createdAt,
+        at: args.run.createdAt,
         event: "scripted-lab.run.created",
         message: `Created scripted-browser lab run with ${args.surfaces.length} surface${args.surfaces.length === 1 ? "" : "s"} (actor ${args.actorId}).`,
       },
@@ -135,14 +128,14 @@ function scriptedEvents(args: ScriptedBundleArgs): RunEvent[] {
   const events: RunEvent[] = [
     {
       id: "event-000-created",
-      at: args.createdAt,
+      at: args.run.createdAt,
       level: "info",
       type: "scripted-lab.run.created",
       message: `Created scripted-browser lab run for ${args.labId} (actor ${args.actorId}, ${args.surfaces.length} surface${args.surfaces.length === 1 ? "" : "s"}).`,
     },
     {
       id: "event-001-subject",
-      at: args.createdAt,
+      at: args.run.createdAt,
       level: "info",
       type: "scripted-lab.subject.declared",
       // Invariant 5: provenance recorded or its absence DECLARED. The lab did not provision
@@ -153,7 +146,7 @@ function scriptedEvents(args: ScriptedBundleArgs): RunEvent[] {
     },
     {
       id: "event-002-spend",
-      at: args.createdAt,
+      at: args.run.createdAt,
       level: "info",
       type: "scripted-lab.spend",
       message: args.subject
@@ -177,7 +170,7 @@ function scriptedEvents(args: ScriptedBundleArgs): RunEvent[] {
   } else if (args.sessionError !== undefined) {
     events.push({
       id: "event-003-session-error",
-      at: args.createdAt,
+      at: args.run.createdAt,
       level: "error",
       type: "scripted-lab.session.error",
       message: args.sessionError,
@@ -185,7 +178,7 @@ function scriptedEvents(args: ScriptedBundleArgs): RunEvent[] {
   } else {
     events.push({
       id: "event-003-contract",
-      at: args.createdAt,
+      at: args.run.createdAt,
       level: "info",
       type: "scripted-lab.contract.ready",
       message: `Dry-run contract bundle ready: scenario ${args.journey.scenarioId} @ ${args.scenarioSourceDigest} (${args.scenarioSource}, ${args.journey.steps.length} step${args.journey.steps.length === 1 ? "" : "s"}) parsed and digest-pinned; switch scenario.mode to live to actuate a real browser.`,

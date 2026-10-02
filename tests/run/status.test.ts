@@ -5,7 +5,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { activeRuns } from "../../src/run/active-runs.js";
-import type { RunBundle } from "../../src/run/bundle.js";
+import { bundleHead, type RunBundle } from "../../src/run/bundle.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { createRunArtifactPaths } from "../../src/run/paths.js";
 import { runScope, type RunScope } from "../../src/run/run.js";
@@ -100,6 +100,20 @@ describe("run status: identity + liveness on disk (#455)", () => {
       const raw = await readFile(statusPath("run-a"), "utf8");
       expect(raw).not.toMatch(/host/i);
       expect(raw).not.toContain(cwd);
+    });
+  });
+
+  it("hands the run's lab to every bundle head built from the run", async () => {
+    const source = {} as never;
+    await runScope(async (scope) => {
+      const run = await startLive(scope, "run-lab-head", lab);
+      const head = bundleHead(run, { participants: 1, source });
+      expect(head).toMatchObject({ runId: "run-lab-head", mode: "live", lab });
+      expect(head.createdAt).toBe(run.createdAt);
+    });
+    await runScope(async (scope) => {
+      const run = await startLive(scope, "run-no-lab");
+      expect("lab" in bundleHead(run, { participants: 1, source })).toBe(false);
     });
   });
 

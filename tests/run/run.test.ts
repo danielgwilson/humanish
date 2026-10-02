@@ -170,6 +170,19 @@ describe("dry-run bundles", () => {
     });
   });
 
+  it("stamps the minted run id and the bundle head with one start time", async () => {
+    await withFixtureCopy(async (cwd) => {
+      const run = await runDryRun({ cwd, dryRun: true });
+      expect(run.ok).toBe(true);
+      const bundle = JSON.parse(
+        await readFile(path.join(cwd, ".humanish/runs", run.runId!, "run.json"), "utf8"),
+      ) as { createdAt: string };
+      expect(run.runId).toMatch(
+        new RegExp(`^dryrun-${bundle.createdAt.replace(/[:.]/g, "-")}-[0-9a-f]{8}$`),
+      );
+    });
+  });
+
   it("does not hang a generic dry-run on special .git metadata", async () => {
     await withFixtureCopy(async (cwd) => {
       await execFileAsync("mkfifo", [path.join(cwd, ".git")]);
@@ -1064,13 +1077,12 @@ async function writeCuaRunFixture(
     verdict: session ? verdictForStatus(session.status) : "contract_proof_only",
     actorId: "openai-computer-use",
     appUrl: "http://127.0.0.1:3000/",
-    createdAt: "2026-01-01T00:00:00.000Z",
+    run: { runId, mode: args.dryRun ? "dry-run" : "live", createdAt: "2026-01-01T00:00:00.000Z" },
     dryRun: args.dryRun,
     labId: "verify-hardening-proof",
     mission: "Explore the app and stop.",
     persona: { id: "first-time-visitor", traitsApplied: [], promptDigest: "digest" },
     resolution: [1440, 960],
-    runId,
     screenshots: [],
     ...(session ? { session, traceArtifactPath: "actor.json" } : {}),
     source: await buildRunSource({ cwd, humanishSource: "present", packageName: "humanish" }),

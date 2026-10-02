@@ -340,7 +340,7 @@ export async function startCuaRun(
   });
   if (!started.ok) return admitted.refuse(started.code, started.message, descriptor.id);
   const { run } = started;
-  const { runId, createdAt, paths: runPaths } = run;
+  const { createdAt, paths: runPaths } = run;
   const redactScreenshots = plan.residual.policies?.redactScreenshots === true;
 
   await prepareContainedOutputDirectory(runPaths, "screenshots");
@@ -380,13 +380,11 @@ export async function startCuaRun(
   ]);
 
   const bundleBase: CuaRunBundleBase = {
-    ...(plan.lab === undefined ? {} : { lab: plan.lab }),
+    run,
     participantRuns,
     descriptor,
     appUrl,
-    createdAt,
     plan,
-    runId,
     source,
     participantPlan,
     ...(admitted.rerunLineage === undefined ? {} : { rerun: admitted.rerunLineage }),
