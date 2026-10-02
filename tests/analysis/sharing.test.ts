@@ -10,7 +10,7 @@ import { runDryRun } from "../../src/run/dry-run.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { captureEvidence } from "../../src/analysis/evidence.js";
 import { writeAnalysis } from "../../src/analysis/store.js";
-import { writeStudyAnalysisExecutionReceipt } from "../../src/analysis/store-executions.js";
+import { writeAnalysisExecutionReceipt } from "../../src/analysis/store-executions.js";
 import { syntheticArtifact } from "./fixtures.js";
 
 // Constructed synthetic marker, not a credential; never output its value in assertions.
@@ -49,7 +49,7 @@ describe("analysis sharing through a share-safety admission that misses it", () 
               reason: marker,
             },
           ];
-        await writeStudyAnalysisExecutionReceipt(prepared, artifact);
+        await writeAnalysisExecutionReceipt(prepared, artifact);
         await writeAnalysis(prepared, artifact);
         // Atomic writer files are private even during publication. Older ordinary
         // files under analysis/ retain the generic contained-file serving contract.

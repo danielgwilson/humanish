@@ -33,10 +33,7 @@ import {
   listAnalyses,
   writeAnalysis,
 } from "./store.js";
-import {
-  beginStudyAnalysisExecution,
-  writeStudyAnalysisExecutionReceipt,
-} from "./store-executions.js";
+import { beginAnalysisExecution, writeAnalysisExecutionReceipt } from "./store-executions.js";
 import { loadAnalysis } from "./load.js";
 import { hashAnalysisValue } from "./validation.js";
 import {
@@ -394,7 +391,7 @@ async function publishAttempt(
 ): Promise<boolean> {
   try {
     if (finalizeExecution) await finalizeExecution(analysis);
-    else await writeStudyAnalysisExecutionReceipt(prepared, analysis);
+    else await writeAnalysisExecutionReceipt(prepared, analysis);
     result.executionReceiptPath = path.join(
       prepared.relativeRunRoot,
       "analysis-attempts",
@@ -470,7 +467,7 @@ async function executeAnalysis(attempt: AnalyzeAttempt): Promise<AnalyzeResult> 
     ...(deps.analysisId === undefined ? {} : { analysisId: deps.analysisId }),
     beforeDispatch: async (context) => {
       await deps.beforeDispatch?.(context);
-      finalizeExecution = await beginStudyAnalysisExecution(prepared, context);
+      finalizeExecution = await beginAnalysisExecution(prepared, context);
     },
     ...(deps.signal === undefined ? {} : { signal: deps.signal }),
     ...(deps.onProgress === undefined ? {} : { onProgress: deps.onProgress }),

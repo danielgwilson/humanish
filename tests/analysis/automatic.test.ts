@@ -16,18 +16,18 @@ import os from "node:os";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AnalysisFetch } from "../../src/analysis/provider.js";
 import {
-  runAutomaticStudyAnalysis,
-  readAutomaticStudyAnalysis,
-  requestAutomaticStudyAnalysisCancellation,
+  runAutomaticAnalysis,
+  readAutomaticAnalysis,
+  requestAutomaticAnalysisCancellation,
 } from "../../src/analysis/automatic.js";
 import { analyzeRun, withAnalysisLock } from "../../src/analysis/service.js";
 import * as analysisService from "../../src/analysis/service.js";
 import {
-  claimAutomaticStudyAnalysis,
-  readAutomaticStudyAnalysisPrepared,
+  claimAutomaticAnalysis,
+  readAutomaticAnalysisPrepared,
   AUTOMATIC_ANALYSIS_DIRECTORY,
 } from "../../src/analysis/job.js";
-import { listStudyAnalysisExecutions } from "../../src/analysis/store-executions.js";
+import { listAnalysisExecutions } from "../../src/analysis/store-executions.js";
 import { loadAnalysis } from "../../src/analysis/load.js";
 import { captureEvidence } from "../../src/analysis/evidence.js";
 import {
@@ -100,7 +100,7 @@ describe("opted-in automatic analysis ownership", () => {
       // The retained synthetic source has run events and no participant trace.
       // Explicit diagnosis remains available, but a default run must not spend on setup alone.
       const h = await transport();
-      const outcome = await runAutomaticStudyAnalysis(cwd, runId, config, {
+      const outcome = await runAutomaticAnalysis(cwd, runId, config, {
         apiKey: "synthetic-key",
         fetch: h.fetch,
         defaultRequest: trigger === "default",
@@ -111,17 +111,17 @@ describe("opted-in automatic analysis ownership", () => {
           reason: "AUTOMATIC_ANALYSIS_NO_PARTICIPANT_EVIDENCE",
         });
         expect(h.fetch).not.toHaveBeenCalled();
-        expect(await listStudyAnalysisExecutions(prepared)).toEqual({ receipts: [], warnings: [] });
+        expect(await listAnalysisExecutions(prepared)).toEqual({ receipts: [], warnings: [] });
       } else {
         expect(outcome.state).toBe("partial");
         expect(h.fetch).toHaveBeenCalledTimes(1);
       }
-      expect(await readAutomaticStudyAnalysis(cwd, runId)).toMatchObject({
+      expect(await readAutomaticAnalysis(cwd, runId)).toMatchObject({
         state: outcome.state,
         reason: outcome.reason,
       });
       expect(
-        await runAutomaticStudyAnalysis(cwd, runId, config, {
+        await runAutomaticAnalysis(cwd, runId, config, {
           apiKey: "synthetic-key",
           fetch: h.fetch,
           defaultRequest: true,
@@ -131,7 +131,7 @@ describe("opted-in automatic analysis ownership", () => {
     },
   );
   async function claimed() {
-    return (await claimAutomaticStudyAnalysis(prepared, {
+    return (await claimAutomaticAnalysis(prepared, {
       configDigest: hashAnalysisValue(config),
       promptVersion: ANALYSIS_PROMPT_VERSION,
     }))!;
@@ -193,7 +193,7 @@ describe("opted-in automatic analysis ownership", () => {
       }
       const h = await transport();
       if (state === "failed") h.fetch.mockRejectedValue(new Error("Synthetic transport failure"));
-      const outcome = await runAutomaticStudyAnalysis(cwd, runId, config, {
+      const outcome = await runAutomaticAnalysis(cwd, runId, config, {
         apiKey: state === "skipped" ? "" : "synthetic-key",
         fetch: h.fetch,
       });
@@ -238,7 +238,7 @@ describe("opted-in automatic analysis ownership", () => {
       }
       return render(...args);
     });
-    const outcome = await runAutomaticStudyAnalysis(cwd, runId, config, {
+    const outcome = await runAutomaticAnalysis(cwd, runId, config, {
       apiKey: "synthetic-key",
       fetch: h.fetch,
       expectedRun: prepared,
@@ -272,7 +272,7 @@ describe("opted-in automatic analysis ownership", () => {
     const h = await transport();
     // Perturb the captured envelope's usage count, preserving its wire shape.
     h.wire.usage.output_tokens = config.maxOutputTokens + 1;
-    const outcome = await runAutomaticStudyAnalysis(cwd, runId, config, {
+    const outcome = await runAutomaticAnalysis(cwd, runId, config, {
       apiKey: "synthetic-key",
       fetch: h.fetch,
     });
@@ -291,7 +291,7 @@ describe("opted-in automatic analysis ownership", () => {
       reason: "AUTOMATIC_ANALYSIS_ADMISSION_EXCEEDED",
     });
     expect((await loadAnalysis(prepared)).analysis?.result).not.toBeNull();
-    expect((await listStudyAnalysisExecutions(prepared)).receipts).toHaveLength(1);
+    expect((await listAnalysisExecutions(prepared)).receipts).toHaveLength(1);
     expect(h.fetch).toHaveBeenCalledOnce();
   });
 
@@ -299,12 +299,12 @@ describe("opted-in automatic analysis ownership", () => {
     const h = await transport();
     const seen: unknown[] = [];
     h.fetch.mockImplementation(async () => {
-      seen.push(await readAutomaticStudyAnalysis(cwd, runId));
+      seen.push(await readAutomaticAnalysis(cwd, runId));
       return new Response(JSON.stringify(h.wire));
     });
     const outcomes = await Promise.all(
       [1, 2, 3].map(() =>
-        runAutomaticStudyAnalysis(cwd, runId, config, { apiKey: "synthetic-key", fetch: h.fetch }),
+        runAutomaticAnalysis(cwd, runId, config, { apiKey: "synthetic-key", fetch: h.fetch }),
       ),
     );
     expect(h.fetch).toHaveBeenCalledTimes(1);
@@ -324,14 +324,14 @@ describe("opted-in automatic analysis ownership", () => {
       inputDigest: input.inputDigest,
       state: "partial",
     });
-    expect((await listStudyAnalysisExecutions(prepared)).receipts).toHaveLength(1);
+    expect((await listAnalysisExecutions(prepared)).receipts).toHaveLength(1);
     expect(await readFile(path.join(root, "run.json"))).toEqual(original);
     expect((await captureEvidence(prepared, original)).inputDigest).toBe(input.inputDigest);
   });
 
   it("records a route's refusal as a skip the readers see, without a provider call", async () => {
     const h = await transport();
-    const outcome = await runAutomaticStudyAnalysis(cwd, runId, config, {
+    const outcome = await runAutomaticAnalysis(cwd, runId, config, {
       apiKey: "synthetic-key",
       fetch: h.fetch,
       refusal: () => "AUTOMATIC_ANALYSIS_CLEANUP_UNCONFIRMED",
@@ -339,7 +339,7 @@ describe("opted-in automatic analysis ownership", () => {
     expect(outcome).toEqual({ state: "skipped", reason: "AUTOMATIC_ANALYSIS_CLEANUP_UNCONFIRMED" });
     expect(h.fetch).not.toHaveBeenCalled();
     // The TUI and the Observer read this view.
-    expect(await readAutomaticStudyAnalysis(cwd, runId)).toMatchObject({
+    expect(await readAutomaticAnalysis(cwd, runId)).toMatchObject({
       state: "skipped",
       reason: "AUTOMATIC_ANALYSIS_CLEANUP_UNCONFIRMED",
     });
@@ -353,7 +353,7 @@ describe("opted-in automatic analysis ownership", () => {
       { config },
       { apiKey: "synthetic-key", fetch: h.fetch },
     );
-    const automatic = await runAutomaticStudyAnalysis(cwd, runId, config, {
+    const automatic = await runAutomaticAnalysis(cwd, runId, config, {
       apiKey: "",
       fetch: h.fetch,
     });
@@ -363,11 +363,11 @@ describe("opted-in automatic analysis ownership", () => {
     });
     for (let i = 0; i < 3; i++) {
       await loadAnalysis(prepared);
-      await readAutomaticStudyAnalysis(cwd, runId);
+      await readAutomaticAnalysis(cwd, runId);
       await renderObserver(cwd, runId, { open: false });
       expect(
         (
-          await runAutomaticStudyAnalysis(cwd, runId, config, {
+          await runAutomaticAnalysis(cwd, runId, config, {
             apiKey: "synthetic-key",
             fetch: h.fetch,
           })
@@ -375,7 +375,7 @@ describe("opted-in automatic analysis ownership", () => {
       ).toBe("AUTOMATIC_ANALYSIS_ALREADY_REQUESTED");
     }
     expect(h.fetch).toHaveBeenCalledTimes(1);
-    expect((await readAutomaticStudyAnalysis(cwd, runId))?.state).toBe(automatic.state);
+    expect((await readAutomaticAnalysis(cwd, runId))?.state).toBe(automatic.state);
     const record = JSON.parse(await readFile(jobPath(), "utf8"));
     expect(record).toMatchObject({
       sourceRunSha256: input.sourceRunSha256,
@@ -400,7 +400,7 @@ describe("opted-in automatic analysis ownership", () => {
     "foreign-id",
   ])("does not trust terminal job metadata after %s changes", async (kind) => {
     const h = await transport();
-    const outcome = await runAutomaticStudyAnalysis(cwd, runId, config, {
+    const outcome = await runAutomaticAnalysis(cwd, runId, config, {
       apiKey: "synthetic-key",
       fetch: h.fetch,
     });
@@ -433,10 +433,10 @@ describe("opted-in automatic analysis ownership", () => {
     if (kind === "status") record.state = "complete";
     if (kind === "foreign-id") record.analysisId = "analysis-other";
     await writeFile(jobPath(), JSON.stringify(record));
-    expect((await readAutomaticStudyAnalysis(cwd, runId))?.state).toBe("unknown");
+    expect((await readAutomaticAnalysis(cwd, runId))?.state).toBe("unknown");
     expect(
       (
-        await runAutomaticStudyAnalysis(cwd, runId, config, {
+        await runAutomaticAnalysis(cwd, runId, config, {
           apiKey: "synthetic-key",
           fetch: h.fetch,
         })
@@ -453,7 +453,7 @@ describe("opted-in automatic analysis ownership", () => {
       { config },
       { apiKey: "synthetic-key", fetch: h.fetch },
     );
-    const next = await runAutomaticStudyAnalysis(
+    const next = await runAutomaticAnalysis(
       cwd,
       runId,
       { ...config, question: "Review recovery." },
@@ -476,7 +476,7 @@ describe("opted-in automatic analysis ownership", () => {
     async (kind) => {
       const h = await transport();
       const call = () =>
-        runAutomaticStudyAnalysis(
+        runAutomaticAnalysis(
           cwd,
           runId,
           kind === "admission" ? { ...config, maxCostUsd: 0.000001 } : config,
@@ -492,7 +492,7 @@ describe("opted-in automatic analysis ownership", () => {
       expect((await verifyRun(cwd, runId)).shareSafety.status).toBe("share_ready");
       expect(
         (
-          await runAutomaticStudyAnalysis(cwd, runId, config, {
+          await runAutomaticAnalysis(cwd, runId, config, {
             apiKey: "synthetic-key",
             fetch: h.fetch,
           })
@@ -505,8 +505,7 @@ describe("opted-in automatic analysis ownership", () => {
   it("does not claim active/dry-run evidence or a moving latest pointer", async () => {
     const h = await transport();
     expect(
-      (await runAutomaticStudyAnalysis(cwd, "latest", config, { apiKey: "", fetch: h.fetch }))
-        .state,
+      (await runAutomaticAnalysis(cwd, "latest", config, { apiKey: "", fetch: h.fetch })).state,
     ).toBe("skipped");
     for (const mode of ["active", "dry-run"]) {
       const bundle = JSON.parse(original.toString()) as RunBundle;
@@ -514,7 +513,7 @@ describe("opted-in automatic analysis ownership", () => {
       else bundle.mode = "dry-run";
       await writeFile(path.join(root, "run.json"), JSON.stringify(bundle));
       expect(
-        (await runAutomaticStudyAnalysis(cwd, runId, config, { apiKey: "", fetch: h.fetch })).state,
+        (await runAutomaticAnalysis(cwd, runId, config, { apiKey: "", fetch: h.fetch })).state,
       ).toBe("skipped");
     }
     expect(await readdir(root)).not.toContain(AUTOMATIC_ANALYSIS_DIRECTORY);
@@ -556,16 +555,17 @@ describe("opted-in automatic analysis ownership", () => {
     const aborted = Buffer.from(JSON.stringify(bundle));
     await writeFile(path.join(root, "run.json"), aborted);
     expect((await verifyRun(cwd, runId)).checks.filter((check) => !check.ok)).toEqual([]);
-    expect(
-      await runAutomaticStudyAnalysis(cwd, runId, config, { apiKey: "", fetch: h.fetch }),
-    ).toEqual({ state: "skipped", reason: "AUTOMATIC_ANALYSIS_ACTOR_CANCELLED" });
+    expect(await runAutomaticAnalysis(cwd, runId, config, { apiKey: "", fetch: h.fetch })).toEqual({
+      state: "skipped",
+      reason: "AUTOMATIC_ANALYSIS_ACTOR_CANCELLED",
+    });
     expect(await readdir(root)).not.toContain(AUTOMATIC_ANALYSIS_DIRECTORY);
     expect(await readFile(path.join(root, "run.json"))).toEqual(aborted);
     bundle.streams[0]!.actor.stopCause = "time_limit";
     bundle.streams[0]!.actor.reason = "The time limit ended the study.";
     await writeFile(path.join(root, "run.json"), JSON.stringify(bundle));
     expect(
-      await runAutomaticStudyAnalysis(cwd, runId, config, { apiKey: "", fetch: h.fetch }),
+      await runAutomaticAnalysis(cwd, runId, config, { apiKey: "", fetch: h.fetch }),
     ).toMatchObject({ state: "skipped", reason: "AUTOMATIC_ANALYSIS_KEY_MISSING" });
     expect(h.fetch).not.toHaveBeenCalled();
   });
@@ -585,7 +585,7 @@ describe("opted-in automatic analysis ownership", () => {
       const record = state === "empty" ? undefined : JSON.parse(await readFile(jobPath(), "utf8"));
       expect(
         (
-          await readAutomaticStudyAnalysisPrepared(
+          await readAutomaticAnalysisPrepared(
             prepared,
             record ? Date.parse(record.updatedAt) + 15001 : Date.now(),
           )
@@ -593,7 +593,7 @@ describe("opted-in automatic analysis ownership", () => {
       ).toBe("unknown");
       expect(
         (
-          await runAutomaticStudyAnalysis(cwd, runId, config, {
+          await runAutomaticAnalysis(cwd, runId, config, {
             apiKey: "synthetic-key",
             fetch: h.fetch,
           })
@@ -632,7 +632,7 @@ describe("opted-in automatic analysis ownership", () => {
           }),
       );
       const controller = new AbortController();
-      const operation = runAutomaticStudyAnalysis(cwd, runId, config, {
+      const operation = runAutomaticAnalysis(cwd, runId, config, {
         apiKey: "synthetic-key",
         fetch: h.fetch,
         signal: controller.signal,
@@ -640,7 +640,7 @@ describe("opted-in automatic analysis ownership", () => {
       // The job writes its records before dispatch; under load that can outlast waitFor's 1 s default.
       await vi.waitFor(() => expect(h.fetch).toHaveBeenCalledTimes(1), { timeout: 15_000 });
       if (kind === "marker")
-        expect(await requestAutomaticStudyAnalysisCancellation(cwd, runId)).toEqual({
+        expect(await requestAutomaticAnalysisCancellation(cwd, runId)).toEqual({
           requested: true,
           reason: null,
         });
@@ -649,10 +649,10 @@ describe("opted-in automatic analysis ownership", () => {
         state: "cancelled",
         result: { usage: { dispatched: true, inputTokens: null, estimatedCostUsd: null } },
       });
-      expect((await listStudyAnalysisExecutions(prepared)).receipts).toHaveLength(1);
+      expect((await listAnalysisExecutions(prepared)).receipts).toHaveLength(1);
       expect(
         (
-          await runAutomaticStudyAnalysis(cwd, runId, config, {
+          await runAutomaticAnalysis(cwd, runId, config, {
             apiKey: "synthetic-key",
             fetch: h.fetch,
           })
@@ -670,7 +670,7 @@ describe("opted-in automatic analysis ownership", () => {
       return new Response(JSON.stringify(h.wire));
     });
     expect(
-      await runAutomaticStudyAnalysis(cwd, runId, config, {
+      await runAutomaticAnalysis(cwd, runId, config, {
         apiKey: "synthetic-key",
         fetch: h.fetch,
       }),
@@ -679,7 +679,7 @@ describe("opted-in automatic analysis ownership", () => {
       reason: "AUTOMATIC_ANALYSIS_PUBLICATION_FAILED",
       result: { executionReceiptPath: expect.any(String), usage: { dispatched: true } },
     });
-    expect((await listStudyAnalysisExecutions(prepared)).receipts).toHaveLength(1);
+    expect((await listAnalysisExecutions(prepared)).receipts).toHaveLength(1);
     expect(h.fetch).toHaveBeenCalledTimes(1);
   });
 
@@ -739,7 +739,7 @@ describe("opted-in automatic analysis ownership", () => {
     await symlink(outside, path.dirname(jobPath()));
     expect(
       (
-        await runAutomaticStudyAnalysis(cwd, runId, config, {
+        await runAutomaticAnalysis(cwd, runId, config, {
           apiKey: "synthetic-key",
           fetch: h.fetch,
         })
@@ -753,7 +753,7 @@ describe("opted-in automatic analysis ownership", () => {
       Array.from({ length: 256 }, (_, index) => mkdir(path.join(history, `attempt-${index}`))),
     );
     expect(
-      await runAutomaticStudyAnalysis(cwd, runId, config, {
+      await runAutomaticAnalysis(cwd, runId, config, {
         apiKey: "synthetic-key",
         fetch: h.fetch,
       }),
@@ -771,7 +771,7 @@ describe("opted-in automatic analysis ownership", () => {
     );
     const before = await readFile(path.join(root, "analysis", prior.analysisId!, "analysis.json"));
     expect(
-      await runAutomaticStudyAnalysis(
+      await runAutomaticAnalysis(
         cwd,
         runId,
         { ...config, question: "Review recovery." },
@@ -806,7 +806,7 @@ describe("opted-in automatic analysis ownership", () => {
       const before = await readdir(root);
       const result =
         mode === "automatic"
-          ? await runAutomaticStudyAnalysis(cwd, runId, config, {
+          ? await runAutomaticAnalysis(cwd, runId, config, {
               apiKey: "",
               fetch: h.fetch,
               expectedRun: prepared,
@@ -847,7 +847,7 @@ describe("opted-in automatic analysis ownership", () => {
       return service(...args);
     });
     expect(
-      await runAutomaticStudyAnalysis(cwd, runId, config, {
+      await runAutomaticAnalysis(cwd, runId, config, {
         apiKey: "synthetic-key",
         fetch: h.fetch,
         expectedRun: prepared,
@@ -867,7 +867,7 @@ describe("opted-in automatic analysis ownership", () => {
     const selectedCwd = kind === "cwd" ? path.join(cwd, "other-project") : cwd;
     const selectedId = kind === "runId" ? "other-run" : runId;
     expect(
-      await runAutomaticStudyAnalysis(selectedCwd, selectedId, config, {
+      await runAutomaticAnalysis(selectedCwd, selectedId, config, {
         apiKey: "synthetic-key",
         fetch: h.fetch,
         expectedRun: prepared,
@@ -889,7 +889,7 @@ describe("opted-in automatic analysis ownership", () => {
     const h = await transport();
     const alias = path.join(cwd, "project-alias");
     await symlink(cwd, alias, "dir");
-    const outcome = await runAutomaticStudyAnalysis(alias, runId, config, {
+    const outcome = await runAutomaticAnalysis(alias, runId, config, {
       apiKey: "synthetic-key",
       fetch: h.fetch,
     });
@@ -947,7 +947,7 @@ describe("opted-in automatic analysis ownership", () => {
       analysisId: job.attemptId,
       startedAt: new Date().toISOString(),
     });
-    expect(await requestAutomaticStudyAnalysisCancellation(cwd, runId)).toMatchObject({
+    expect(await requestAutomaticAnalysisCancellation(cwd, runId)).toMatchObject({
       requested: true,
     });
     const pinned = await pinDirectory(root);

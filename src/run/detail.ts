@@ -8,7 +8,7 @@
 // Reading both means the same screen renders a run the whole way through rather than going blank
 // at the moment it completes.
 
-import { readAutomaticStudyAnalysis } from "../analysis/automatic.js";
+import { readAutomaticAnalysis } from "../analysis/automatic.js";
 import type { AutomaticAnalysisView } from "../analysis/job.js";
 import path from "node:path";
 
@@ -200,7 +200,7 @@ export async function readRunDetail(cwdInput: string, runId: string): Promise<Ru
   const streams = Array.isArray(bundle.streams) ? bundle.streams : [];
   const observerAbsolute = path.join(runPaths.absoluteRunRoot, "observer", "index.html");
 
-  const automaticAnalysis = await readAutomaticStudyAnalysis(cwd, runId);
+  const automaticAnalysis = await readAutomaticAnalysis(cwd, runId);
   return {
     ...(automaticAnalysis === undefined ? {} : { automaticAnalysis }),
     schema: RUN_DETAIL_SCHEMA,
