@@ -2,7 +2,7 @@
   "comms-email-demo": {
     "dry": {
       "labId": "comms-email-demo",
-      "title": "Email-gated signup with the in-sandbox catch (deterministic dry-run)",
+      "title": "Email-gated signup with the in-sandbox mail catch (dry run)",
       "residual": {
         "comms": {
           "email": {
@@ -135,7 +135,7 @@
   "detect-taskly-clean": {
     "dry": {
       "labId": "detect-taskly-clean",
-      "title": "Taskly detection benchmark, clean arm",
+      "title": "Taskly detection benchmark: clean build",
       "residual": {
         "policies": {
           "allowPrivateRepoAccess": false,
@@ -228,7 +228,7 @@
   "detect-taskly-planted": {
     "dry": {
       "labId": "detect-taskly-planted",
-      "title": "Taskly detection benchmark, planted arm",
+      "title": "Taskly detection benchmark: planted build",
       "residual": {
         "policies": {
           "allowPrivateRepoAccess": false,
@@ -321,7 +321,7 @@
   "detect-todomvc": {
     "dry": {
       "labId": "detect-todomvc",
-      "title": "Detection benchmark, real third-party app (TodoMVC javascript-es6)",
+      "title": "Detection benchmark on a third-party app: TodoMVC javascript-es6",
       "residual": {
         "policies": {
           "allowPrivateRepoAccess": false,
@@ -422,7 +422,7 @@
   "dwell-window-todomvc": {
     "dry": {
       "labId": "dwell-window-todomvc",
-      "title": "A declared observation window on TodoMVC (#510): hold for a minute after the first task lands, then continue",
+      "title": "A declared observation window on TodoMVC: hold for a minute after the first task, then continue",
       "residual": {
         "policies": {
           "allowPrivateRepoAccess": false,
@@ -695,7 +695,7 @@
   "fanout-demo": {
     "dry": {
       "labId": "fanout-demo",
-      "title": "Multi-participant computer-use fan-out (separate worlds, deterministic dry-run)",
+      "title": "Computer-use fan-out: four participants in separate worlds (dry run)",
       "residual": {
         "execution": {
           "target": "e2b-desktop"
@@ -1090,7 +1090,7 @@
   "later-tab-emulation": {
     "dry": {
       "labId": "later-tab-emulation",
-      "title": "Mobile emulation follows the participant into a tab that opens later (#623)",
+      "title": "Mobile emulation follows the participant into a tab that opens later",
       "residual": {
         "policies": {
           "allowPrivateRepoAccess": false,
@@ -1342,7 +1342,7 @@
   "participant-camera": {
     "dry": {
       "labId": "participant-camera",
-      "title": "A participant with a camera (#509): the browser's own permission prompt, then a synthetic feed",
+      "title": "A participant with a camera: the browser's own permission prompt, then a synthetic feed",
       "residual": {
         "policies": {
           "mediaPermission": "prompt",
@@ -1589,7 +1589,7 @@
   "scripted-demo": {
     "dry": {
       "labId": "scripted-demo",
-      "title": "Scripted browser journey (deterministic, zero provider spend)",
+      "title": "Scripted browser journey (no model, no provider spend)",
       "residual": {
         "review": {
           "analysis": false
@@ -1644,7 +1644,7 @@
   "shared-world-concurrent-demo": {
     "dry": {
       "labId": "shared-world-concurrent-demo",
-      "title": "Concurrent shared-world (N personas vs ONE service at once; deterministic dry-run)",
+      "title": "Concurrent shared world: three participants on one service at once (dry run)",
       "residual": {
         "execution": {
           "target": "e2b-desktop"
@@ -1820,7 +1820,7 @@
   "shared-world-concurrent-live": {
     "dry": {
       "labId": "shared-world-concurrent-live",
-      "title": "Concurrent shared-world live rung (synthetic shared task board)",
+      "title": "Concurrent shared world, live: three participants on a synthetic task board",
       "residual": {
         "execution": {
           "target": "e2b-desktop"
@@ -2232,7 +2232,7 @@
   "terminal-product-demo": {
     "dry": {
       "labId": "terminal-product-demo",
-      "title": "Terminal-product real-agent study (dry-run contract; neutral mock CLI)",
+      "title": "Terminal-product study with a mock CLI (dry run)",
       "residual": {
         "policies": {
           "allowPrivateRepoAccess": false,

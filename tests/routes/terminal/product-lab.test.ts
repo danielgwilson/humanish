@@ -602,9 +602,11 @@ describe("humanish lab run terminal-product-demo (CLI)", () => {
       "utf8",
     );
     expect(lab).toMatch(
-      /shipped live terminal-product route and command-scoped credential boundary are\s+not exercised by this fixture/,
+      /does not exercise the live terminal-product route or its\s+command-scoped\s+credential\s+boundary/,
     );
-    expect(lab).toMatch(/this FICTIONAL mock CLI does not claim live or\s+adopter proof/);
+    expect(lab).toMatch(
+      /fictional\s+mock\s+CLI\s+is\s+not\s+evidence\s+of\s+a\s+live\s+or\s+adopter\s+run/,
+    );
     expect(lab).not.toMatch(/SLICE\s+[12]/);
   });
 
