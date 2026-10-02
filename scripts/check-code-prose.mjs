@@ -22,6 +22,9 @@
 //   participant, the computer-use route, a plain claim and the current behavior.
 // - `series-codes`, `name-refs`: a test name that opens with a code such as `L14:` or `W5:`, or
 //   that cites an issue (`#123`). Test names only; the name says the behavior.
+// - `title-case-headers`: a Title Case header (`## How It Works`) in a root `*.md` file, outside
+//   fenced code, capped at `prose.markdown.title-case-headers`. Headers there are sentence-case
+//   verb phrases (`## Read the results`).
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
@@ -76,7 +79,10 @@ const { values } = parseArgs({
 });
 
 /** Every hit, keyed by its cap path in scripts/caps.json: `prose.src.caps`, `prose.tests.caps`, ... */
-const hits = new Map(ROOTS.flatMap((root) => KINDS.map((kind) => [`prose.${root}.${kind}`, []])));
+const hits = new Map([
+  ...ROOTS.flatMap((root) => KINDS.map((kind) => [`prose.${root}.${kind}`, []])),
+  ["prose.markdown.title-case-headers", []],
+]);
 
 /** Counts each kind in one piece of prose. `at` turns a match into its `file:line word` entry. */
 function scan(text, root, at, { testName }) {
@@ -150,6 +156,21 @@ for (const root of ROOTS) {
       scan(name, root, at, { testName: true });
     });
   }
+}
+
+// A header of two or more capitalized words in a root markdown file. Fenced code is skipped.
+const TITLE_CASE_HEADER = /^#{2,4} ([A-Z][a-z-]+)( (A|To|[A-Z][a-z-]+))+$/;
+for (const file of readdirSync(".")
+  .filter((name) => name.endsWith(".md"))
+  .sort()) {
+  let fenced = false;
+  readFileSync(file, "utf8")
+    .split("\n")
+    .forEach((line, index) => {
+      if (/^\s*(```|~~~)/.test(line)) fenced = !fenced;
+      else if (!fenced && TITLE_CASE_HEADER.test(line))
+        hits.get("prose.markdown.title-case-headers").push(`${file}:${index + 1} ${line}`);
+    });
 }
 
 const { flat, invalid } = flattenCaps(readCaps(values.caps));

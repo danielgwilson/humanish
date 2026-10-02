@@ -25,7 +25,7 @@ const KINDS = [
 const ROOTS = ["src", "tests", "scripts", "tui"] as const;
 const ROOT_SUFFIXES = ["", "-tests", "-scripts", "-tui"] as const;
 /** A count named for its kind and root suffix: `caps` for src, `caps-tests` for the tests root. */
-type Count = `${(typeof KINDS)[number]}${(typeof ROOT_SUFFIXES)[number]}`;
+type Count = `${(typeof KINDS)[number]}${(typeof ROOT_SUFFIXES)[number]}` | "title-case-headers";
 
 /** A fixture scripts/caps.json: every count capped at 0 except the ones given, minus `omit`. */
 function capsFile(caps: Partial<Record<Count, number>> = {}, omit: Count[] = []): string {
@@ -40,7 +40,9 @@ function capsFile(caps: Partial<Record<Count, number>> = {}, omit: Count[] = [])
       ),
     ]),
   );
-  return `${JSON.stringify({ prose }, null, 2)}\n`;
+  const titleCase: Count = "title-case-headers";
+  const markdown = omit.includes(titleCase) ? {} : { [titleCase]: caps[titleCase] ?? 0 };
+  return `${JSON.stringify({ prose: { ...prose, markdown } }, null, 2)}\n`;
 }
 
 /** Runs the checker over one fixture file (src/fixture.ts unless given) with a fixture
@@ -311,5 +313,32 @@ describe("prose:check reads its caps from scripts/caps.json", () => {
   it("exits 2 on a cap that is not a whole number", async () => {
     const caps = capsFile().replace('"caps": 0', '"caps": -1');
     expect((await run([], "// clean\n", undefined, caps)).status).toBe(2);
+  });
+});
+
+describe("prose:check counts Title Case headers in the root markdown files", () => {
+  it("counts a header of capitalized words, and skips sentence case and fenced code", async () => {
+    const readme = [
+      "# humanish",
+      "## How It Works",
+      "## Read the results",
+      "### Library API",
+      "```text",
+      "## Exit Codes",
+      "```",
+      "## Release Status",
+      "",
+    ].join("\n");
+    const { status, stdout } = await run(["--list"], readme, "README.md");
+    const lines = stdout.split("\n");
+    const header = lines.findIndex((line) =>
+      line.startsWith("prose.markdown.title-case-headers: "),
+    );
+    expect(lines[header]).toBe("prose.markdown.title-case-headers: 2 (cap 0, over by 2)");
+    expect(lines.slice(header + 1, header + 3)).toEqual([
+      "  README.md:2 ## How It Works",
+      "  README.md:8 ## Release Status",
+    ]);
+    expect(status).toBe(1);
   });
 });
