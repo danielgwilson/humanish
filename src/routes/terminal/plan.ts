@@ -12,7 +12,6 @@ import {
   desktopMediaValidationReason,
   taskProtocolValidationReason,
 } from "../../lab/validation.js";
-import type { RunLabProvenance } from "../../run/status.js";
 import { MAX_SANDBOX_MS } from "../../substrates/e2b/lifetime.js";
 import { NODE_BOOTSTRAP_TIMEOUT_MS } from "../../subject/node-bootstrap.js";
 import { terminalSandboxTimeoutMs } from "./lifetime.js";
@@ -41,7 +40,6 @@ export function planTerminalLab(
   config: LabConfig,
   input: {
     readonly dryRun: boolean;
-    readonly lab?: RunLabProvenance;
     /** A test's costProbe can measure spend lines, so a positive maxUsd can trip. */
     readonly hasCostProbe?: boolean;
   },
@@ -99,7 +97,6 @@ export function planTerminalLab(
 
   const base = planBase(config, {
     dryRun: input.dryRun,
-    ...(input.lab === undefined ? {} : { lab: input.lab }),
     analysis,
   });
   const egressAllow = config.execution?.egressAllow;

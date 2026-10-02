@@ -1,6 +1,5 @@
 import { automaticAnalysisSucceeded } from "../../analysis/automatic-completion.js";
 import { Command } from "commander";
-import type { RunLabProvenance } from "../../run/status.js";
 import type { LabConfig } from "../../lab/types.js";
 import { cliAnalysisOptions } from "./analysis-signals.js";
 import { type CliIo, type LabCommandOptions, wantsJson, writeResult } from "../io.js";
@@ -13,7 +12,6 @@ interface ScriptedRouteArgs {
   command: Command;
   io: CliIo;
   config: LabConfig;
-  labProvenance?: RunLabProvenance;
   mode: "run" | "watch";
   options: LabCommandOptions;
 }
@@ -37,7 +35,6 @@ export function scriptedRouteRun(args: ScriptedRouteArgs): RouteRun | undefined 
     options: {
       ...cliAnalysisOptions(args.io),
       cwd: args.options.cwd,
-      ...(args.labProvenance === undefined ? {} : { lab: args.labProvenance }),
       open: observerOpen(args.mode, finishedPlan, shouldOpen),
       ...(args.options.dryRun === undefined ? {} : { dryRun: args.options.dryRun }),
       ...(args.options.runId === undefined ? {} : { runId: args.options.runId }),

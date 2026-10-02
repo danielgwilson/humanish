@@ -49,11 +49,10 @@ import {
  * run and its analysis.
  */
 export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<CuaActorLabResult> {
-  const { config, dryRun, lab, ...input } = options;
+  const { config, dryRun, ...input } = options;
   // planComputerUseLab makes every configuration refusal, in the order this route always has.
   const planned = planComputerUseLab(config, {
     dryRun,
-    ...(lab === undefined ? {} : { lab }),
     ...(input.hooks === undefined ? {} : { hooks: input.hooks }),
     driving: callerDrivingOf(input),
     ...(input.countOverride === undefined ? {} : { countOverride: input.countOverride }),

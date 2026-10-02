@@ -2,7 +2,6 @@
 // and the requirement and subject helpers.
 
 import { DEFAULT_OPENAI_CU_MODEL } from "../actors/computer-use/openai-provider.js";
-import type { RunLabProvenance } from "../run/status.js";
 import type {
   Brain,
   ComputerUsePlan,
@@ -136,7 +135,6 @@ export function planBase(
   config: LabConfig,
   input: {
     readonly dryRun: boolean;
-    readonly lab?: RunLabProvenance;
     readonly analysis?: {
       readonly config?: PlannedAnalysis["config"] | undefined;
       readonly preferLargerOutput?: boolean | undefined;
@@ -147,7 +145,6 @@ export function planBase(
   return {
     labId: config.id,
     ...(config.title === undefined ? {} : { title: config.title }),
-    ...(input.lab === undefined ? {} : { lab: input.lab }),
     residual: residualOf(config),
     dryRun: input.dryRun,
     ...(analysis === undefined

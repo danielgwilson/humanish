@@ -118,8 +118,10 @@ export async function runLabCommand(args: {
   // checks (keys, runtime auth, subject env, the local agent, caps) refuse this machine, all before
   // the scorer loads, so none imports the scorer's host code. The scripted route's checks and the
   // run-id claim still come after it; the scripted route takes no scorer.
-  const run = routeRunFor(route, { ...args, config, labProvenance: lab });
-  if (run === undefined) return;
+  const routeRun = routeRunFor(route, { ...args, config });
+  if (routeRun === undefined) return;
+  // Every route's runLab options carry the lab's provenance, from here only.
+  const run = { ...routeRun, options: { ...routeRun.options, lab } };
 
   // From here a signal marks the run interrupted and reclaims its sandboxes (run-signals.ts).
   const signals = beginRunSignalPhase(args.io);
@@ -194,7 +196,6 @@ function routeRunFor(
     io: CliIo;
     lab: string;
     config: LabConfig;
-    labProvenance: RunLabProvenance;
     mode: "run" | "watch";
     options: LabCommandOptions;
   },

@@ -8,7 +8,6 @@ import { callerDrivingOf, planComputerUseLab } from "../routes/computer-use/plan
 import { injectedBrowser, planScriptedLab } from "../routes/scripted/plan.js";
 import { planSharedWorldLab } from "../routes/shared-world/plan.js";
 import { planTerminalLab } from "../routes/terminal/plan.js";
-import type { RunLabProvenance } from "../run/status.js";
 import { localBrowserDefaults } from "../substrates/local/runtime-config.js";
 import type { InternalRunLabOptions } from "../run-lab.js";
 import type { LabDeps } from "./lab-deps.js";
@@ -107,7 +106,7 @@ export function resolveLabDryRun(
 function planPreview(
   config: LabConfig,
   options: InternalRunLabOptions,
-  input: { readonly dryRun: boolean; readonly lab?: RunLabProvenance },
+  input: { readonly dryRun: boolean },
 ): RoutePlanResult {
   const refuse = (code: PreviewRefusalCode, message: string): RoutePlanResult => ({
     ok: false,
@@ -154,20 +153,20 @@ export function planLab(
   deps: LabDeps = {},
 ): PlanResult {
   const lab = localBrowserDefaults(config);
-  const input = {
-    dryRun: resolveLabDryRun(lab, options.dryRun, true) ?? true,
-    ...(options.lab === undefined ? {} : { lab: options.lab }),
-  };
+  const input = { dryRun: resolveLabDryRun(lab, options.dryRun, true) ?? true };
   const result = planRoute(routeOf(config), lab, options, input, deps);
   if (!result.ok) return result;
-  return { ok: true, planned: { plan: result.plan } };
+  // The manifest the CLI resolved (#455) enters the plan here and nowhere else; the routes read
+  // plan.lab for the run's status record and bundle.
+  const plan = options.lab === undefined ? result.plan : { ...result.plan, lab: options.lab };
+  return { ok: true, planned: { plan } };
 }
 
 function planRoute(
   route: LabRoute,
   lab: LabConfig,
   options: InternalRunLabOptions,
-  input: { readonly dryRun: boolean; readonly lab?: RunLabProvenance },
+  input: { readonly dryRun: boolean },
   deps: LabDeps,
 ): RoutePlanResult {
   switch (route) {
