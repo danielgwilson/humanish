@@ -18,6 +18,14 @@ The Unreleased section holds the full notes for the next version until it is tag
   that launched; before, one outside that list was recorded as the host default, which only a
   `codex:qualify` candidate could reach. Published humanish and Observer builds keep their closed
   list, so they still reject a bundle that names a release they never listed.
+- The metadata humanish sets on the E2B sandboxes it creates uses participant names. A
+  computer-use participant's sandbox carries `participantId`, `participantIndex`,
+  `participantCount` and `recordId` (the participant's `simulations[]` id in `run.json`) in place
+  of `laneId`, `laneIndex`, `laneCount` and `simId`. A terminal sandbox carries `recordId` in place
+  of `simId`. A shared-world or scripted subject sandbox carries `kind: subject` in place of
+  `role: subject`, and the shared-world one `participantCount` in place of `roleCount`. Nothing in
+  humanish reads these labels back; an E2B dashboard filter on the old keys needs the new ones
+  (#1419).
 
 ## 0.107.0: A 44-name library API, --count and --participants (2026-10-02)
 

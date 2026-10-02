@@ -4,7 +4,6 @@
 
 import { redactText, scrubLiterals, toErrorMessage } from "../evidence/redaction.js";
 import type { CuaParticipantPlan } from "../routes/computer-use/types.js";
-import type { PhaseParticipant } from "./lab-deps.js";
 import type { SubjectPhaseEvent } from "../subject/steps.js";
 import type { InternalRunLabOptions } from "../run-lab.js";
 import type { LabRoute } from "./plan.js";
@@ -120,13 +119,6 @@ export function planEvent(plan: CuaParticipantPlan): LabEvent {
     })),
   };
 }
-
-/** A participant as the route reports a phase for it, renamed to the event's field names. */
-export const participantOf = (participant: PhaseParticipant): ParticipantRef => ({
-  id: participant.laneId,
-  index: participant.laneIndex,
-  count: participant.laneCount,
-});
 
 export function phaseEvent(event: SubjectPhaseEvent, target: SetupTarget): LabEvent {
   return {

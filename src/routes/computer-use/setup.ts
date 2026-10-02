@@ -30,7 +30,7 @@ import { liveCuaRejection } from "./preflight.js";
 import { cuaDescriptorOf, declaredAppUrl, plannedAppUrl, type ComputerUseRefusal } from "./plan.js";
 import type { ComputerUsePlan } from "../../lab/plan-types.js";
 import { trackRuntimeStreams, type LiveTraceFlush } from "./live-flush.js";
-import { participantOf, phaseEvent, planEvent } from "../../lab/run-lab-events.js";
+import { phaseEvent, planEvent } from "../../lab/run-lab-events.js";
 import { defaultSubjectPhaseSink } from "../../subject/steps.js";
 import { type CuaRunBundleBase } from "./bundle.js";
 import { packRunLocalTree } from "./local-tree-pack.js";
@@ -519,9 +519,7 @@ function subjectPhaseReporter(
   const sink = input.deps?.subjectPhaseSink ?? defaultSubjectPhaseSink;
   return (event, participant) => {
     sink(event, participant);
-    input.emit?.(
-      phaseEvent(event, { kind: "participant", participant: participantOf(participant) }),
-    );
+    input.emit?.(phaseEvent(event, { kind: "participant", participant }));
   };
 }
 

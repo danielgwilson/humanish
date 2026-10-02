@@ -46,10 +46,10 @@ export async function acquireParticipantDesktop(
       metadata: {
         ...CUA_ACTOR_LAB_PROVIDER_METADATA,
         labId: deps.labId,
-        simId: spec.recordId,
-        laneId: spec.planned.id,
-        laneIndex: String(spec.planned.index),
-        laneCount: String(deps.participantCount),
+        recordId: spec.recordId,
+        participantId: spec.planned.id,
+        participantIndex: String(spec.planned.index),
+        participantCount: String(deps.participantCount),
       },
       // The participant's model key never enters the sandbox (the model drives from outside).
       // The subject's declared env names are provisioned here on the clone route.

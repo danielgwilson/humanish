@@ -9,10 +9,10 @@ import { isHttpUrl, isLoopbackUrl } from "./parse/subject.js";
 import { declaredTargets } from "./plan-participants.js";
 import {
   actorResolvesToComputerUse,
-  cuaLaneCount,
-  MAX_CUA_LANES,
+  computerUseParticipantCount,
+  MAX_COMPUTER_USE_PARTICIPANTS,
   registeredComputerUseActors,
-  resolveSeatUrl,
+  resolveEntryUrl,
   isComputerUseComposition,
   isScriptedBrowserComposition,
   isSharedWorldComposition,
@@ -22,11 +22,11 @@ import type { LabConfig } from "./types.js";
 
 /**
  * Cross-validate the computer-use fan-out declaration (`per-lane-worlds`). Returns the failure
- * message, or null when valid. Enforced at parse and re-enforced in the engine (runCuaActorLab
- * is itself exported npm surface). Structural roster shape (id/device validity, id uniqueness) is
- * already checked in parseLanes; this is the route-scoped XOR/cap/policy layer.
+ * message, or null when valid. The parser enforces it, and runLab checks it again for a config
+ * that skipped the parser. It runs rosterStructuralValidationReason (id and device
+ * validity, unique ids) first, then the route-scoped XOR, cap and policy checks.
  */
-export function cuaLaneValidationReason(config: LabConfig): string | null {
+export function computerUseValidationReason(config: LabConfig): string | null {
   const actor = config.actors[0];
   const roster = rosterOf(actor);
   const structuralReason = rosterStructuralValidationReason(config);
@@ -64,9 +64,9 @@ export function cuaLaneValidationReason(config: LabConfig): string | null {
       }
     }
   }
-  const participantCount = cuaLaneCount(config);
-  if (participantCount > MAX_CUA_LANES) {
-    return `Computer-use fan-out is capped at ${MAX_CUA_LANES} participants (declared ${participantCount}); N concurrent paid desktops is real spend, and there is no override above the cap this slice.`;
+  const participantCount = computerUseParticipantCount(config);
+  if (participantCount > MAX_COMPUTER_USE_PARTICIPANTS) {
+    return `Computer-use fan-out is capped at ${MAX_COMPUTER_USE_PARTICIPANTS} participants (declared ${participantCount}); N concurrent paid desktops is real spend, and there is no override above the cap this slice.`;
   }
   // Public targets fan out into N independent worlds driving the same public app, which is an
   // ambiguous shared-world-ish shape, not a per-participant target swarm. Permit N>1 public runs only
@@ -165,7 +165,7 @@ function provisionedSharedWorldStructureReason(config: LabConfig): string | null
     return "`subject.topology: shared-world` requires `subject.state.checkpoint` (≥1 read-only digest probe) — the checkpoint series is how the run shows the shared state changing; without it the run cannot show that participants changed the shared app.";
   }
   for (const entry of roster) {
-    if (entry.entry !== undefined && resolveSeatUrl(serve.url, entry.entry) === null) {
+    if (entry.entry !== undefined && resolveEntryUrl(serve.url, entry.entry) === null) {
       return `actors[0].lanes role "${entry.id ?? "(unnamed)"}".entry must resolve same-origin (loopback) with subject.serve.url (${serve.url}); got "${entry.entry}".`;
     }
   }

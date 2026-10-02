@@ -13,7 +13,7 @@ import {
   actorResolvesToComputerUse,
   actorResolvesToScriptedBrowser,
   actorResolvesToTerminal,
-  cuaLaneCount,
+  computerUseParticipantCount,
   registeredComputerUseActors,
   registeredScriptedBrowserActors,
   registeredTerminalActors,
@@ -22,7 +22,7 @@ import {
 import type { LabConfig } from "./types.js";
 import {
   cloneTargetValidationReason,
-  cuaLaneValidationReason,
+  computerUseValidationReason,
   sharedWorldValidationReason,
 } from "./validation.js";
 import { rosterOf } from "./parse/actors.js";
@@ -39,7 +39,7 @@ export function compositionReason(config: LabConfig): string | null {
     cloneComputerUseValidationReason(config) ??
     localTreeValidationReason(config) ??
     // Independent computer-use participants: the roster contract on every route that resolves to cua.
-    (isComputerUseComposition(config) ? cuaLaneValidationReason(config) : null) ??
+    (isComputerUseComposition(config) ? computerUseValidationReason(config) : null) ??
     // Whenever shared world is declared, not only when it routes, so a half-declared shared world
     // fails with a precise reason instead of running as independent participants.
     (config.subject.topology === "shared-world" ? sharedWorldValidationReason(config) : null) ??
@@ -83,7 +83,7 @@ function localAppValidationReason(config: LabConfig): string | null {
     if (!actorResolvesToComputerUse(type)) {
       return `actors[0].type must be a registered computer-use actor for local-app subjects (one of: ${registeredComputerUseActors().join(", ")}); the caller's custom executor runs the computer-use loop. Got "${type}".`;
     }
-    if (cuaLaneCount(config) > 1) {
+    if (computerUseParticipantCount(config) > 1) {
       return "Fan-out to more than one participant is not supported on the in-process/local-app route: fan-out provisions one independent E2B desktop per participant, which the in-process route deliberately skips. Set actors[0].count to 1 and drop actors[0].lanes (use an app-url or clone subject on execution.target: e2b-desktop for fan-out).";
     }
     if (rosterOf(config.actors[0]) !== undefined) {
