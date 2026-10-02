@@ -12,7 +12,7 @@ import {
   parseCodexCliVersion,
   qualifiedCodexCliVersions,
 } from "../../../src/actors/codex/qualified-versions.js";
-import { RECORDED_CODEX_CLI_VERSIONS } from "../../../src/actors/contract.js";
+import { isRecordedCodexCliVersion } from "../../../src/actors/contract.js";
 
 const numeric = (version: string): number[] => version.split(".").map(Number);
 const ascending = (a: string, b: string): number => {
@@ -28,9 +28,7 @@ describe("per-host Codex CLI admission", () => {
       expect(new Set(versions).size, host).toBe(versions.length);
       expect([...versions].sort(ascending), host).toEqual([...versions]);
       for (const version of versions)
-        expect(RECORDED_CODEX_CLI_VERSIONS as readonly string[], `${host} ${version}`).toContain(
-          version,
-        );
+        expect(isRecordedCodexCliVersion(version), `${host} ${version}`).toBe(true);
     }
   });
 

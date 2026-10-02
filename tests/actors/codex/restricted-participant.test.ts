@@ -10,6 +10,8 @@ import {
   parseParticipantTool,
 } from "../../../src/actors/codex/restricted-participant-policy.js";
 import { createRestrictedCodexSession } from "../../../src/actors/codex/restricted-session.js";
+import { defaultCodexCliVersion } from "../../../src/actors/codex/qualified-versions.js";
+import { validActorExecutionProfile } from "../../../src/actors/contract.js";
 import type {
   RestrictedCodexRequest,
   RestrictedCodexResult,
@@ -158,6 +160,19 @@ describe("restricted participant conversation", () => {
       await h.close();
     },
   );
+  it("records the release that launched, including one no admission list names, and the default before", async () => {
+    run.mockImplementation(async () => {
+      // A candidate admitted through the qualifier's cliVersions seam.
+      metadata.cliVersion = "0.161.0";
+      return result();
+    });
+    const h = createRestrictedCodexParticipant();
+    expect(h.provider.executionProfile).toMatchObject({ cliVersion: defaultCodexCliVersion() });
+    await h.provider.nextTurn(request(), new AbortController().signal);
+    expect(h.provider.executionProfile).toMatchObject({ cliVersion: "0.161.0" });
+    expect(validActorExecutionProfile(h.provider.executionProfile)).toBe(true);
+    await h.close();
+  });
   it("strictly validates native tool batches and final accounts without rounding or filtering", () => {
     expect(
       parseParticipantTool({

@@ -30,8 +30,8 @@ path; it does not pin the executable's contents, and a modified binary can repor
 The launcher records the detected release in the participant execution profile and in the
 analysis identity. A recorded release alone is not execution proof: prelaunch and failed
 attempts can carry the declared default, and a request's `dispatched` and `profileVerified`
-receipt shows that the launched release passed its checks. Saved bundles naming any recorded
-release stay readable.
+receipt shows that the launched release passed its checks. Saved bundles naming any stable
+release from 0.154.0 on stay readable, whether or not a launch list names it.
 Readiness validates the installation and effective profile without submitting a
 model turn; it does not guarantee current quota or model access.
 
@@ -182,10 +182,10 @@ binary built to evade it is safe. Pair that with the attestation limit above: th
 admits by release string and does not pin the executable.
 
 Then commit the release in `QUALIFIED_CODEX_CLI_VERSIONS`
-(`src/actors/codex/qualified-versions.ts`) for that host, in `RECORDED_CODEX_CLI_VERSIONS`
-(`src/actors/contract.ts`) and in the Observer's copy
-(`observer/lib/actor-execution-profile.ts`). If any check fails, change no code and record
-what differs.
+(`src/actors/codex/qualified-versions.ts`) for that host. Readers need no change: saved
+profiles may name any stable release from `RECORDED_CODEX_CLI_FLOOR` (0.154.0) on, in
+`src/actors/contract.ts` and the Observer's copy (`observer/lib/actor-execution-profile.ts`).
+If any check fails, change no code and record what differs.
 
 ### The qualifier
 
