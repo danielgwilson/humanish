@@ -61,7 +61,7 @@ export function declaredOutcomeOf(turn: CuaTurn): ParticipantDeclaredOutcome | u
 /**
  * The participant reported a natural endpoint. "not_reached" is a participant who stopped without
  * finishing: gave_up, which tallies as abandoned. "blocked" keeps goal_satisfied here (the actor
- * did stop on purpose) and the lane's credibility read turns it into a blocked participant, the
+ * did stop on purpose) and the route's credibility read turns it into a blocked participant, the
  * same path a narrated blocker takes.
  */
 export function participantEnded(

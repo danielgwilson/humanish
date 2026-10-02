@@ -257,7 +257,7 @@ function stopBeforeActing(
   if (accountBillingConflicts(session.provider, session.settings)) return stops.accountBilledCaps;
   if (turn.interruption !== undefined) {
     // Preserve usage and partial narration of an interrupted response. Its usage still counts
-    // toward the study budget; when that exhausts it, sibling lanes stop, so this trace says why.
+    // toward the study budget; when that exhausts it, sibling participants stop, so this trace says why.
     const runBudgetStop = overRunBudget?.(session.usage.forCap());
     recordNarration(session, turn, turnNumber, "interrupted");
     if (runBudgetStop != null) {

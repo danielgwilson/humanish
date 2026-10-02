@@ -255,7 +255,7 @@ async function renderPreviewObserver(
   }
 }
 
-/** One synthetic stream per lane kind; the preview cycles through them. */
+/** One synthetic stream per stream kind (UI, terminal and the rest); the preview cycles through them. */
 const SYNTHETIC_STREAM_TEMPLATES = [
   {
     kind: "ui" as const,

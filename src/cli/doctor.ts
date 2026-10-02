@@ -230,7 +230,7 @@ async function projectChecks(projectRoot: PreparedSelectedOutputDirectory): Prom
 }
 
 /**
- * The optional peer dep every live browser and terminal lane needs (#346). `npx -y humanish` does
+ * The optional peer dep every live browser and terminal route needs (#346). `npx -y humanish` does
  * not pull optional peers, so an adopter's FIRST live run used to fail on it — safely and at $0,
  * but as a burned first impression on the flagship path. Answering it here means the readiness
  * command actually answers readiness.

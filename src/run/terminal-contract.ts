@@ -8,7 +8,7 @@ export const TERMINAL_EVENTS_ARTIFACT = "terminal-events.ndjson";
 export const TERMINAL_TRANSCRIPT_ARTIFACT = "terminal-transcript.txt";
 export const TERMINAL_LEDGERS_ARTIFACT = "terminal-ledgers.json";
 
-/** The cost categories the lane meters. product/media/payment are adapter signals; core can
+/** The cost categories the terminal route meters. product/media/payment are adapter signals; core can
  *  populate the provider line from the actor trace's tokenUsage.costUsd when present. */
 export type CostCategory = "product" | "media" | "payment" | "provider";
 
@@ -22,8 +22,8 @@ export const COST_CATEGORIES: readonly CostCategory[] = [
 
 /**
  * Strip ANSI/control noise from a captured terminal transcript into stable, scannable text. Pure
- * (no IO). Exported so the terminal-product lane (src/routes/terminal/live-sandbox.ts) normalizes
- * its captured exec stream EXACTLY as the local-actor lanes do — the verdict-nonce scorer is only
+ * (no IO). Exported so the terminal-product route (src/routes/terminal/live-sandbox.ts) normalizes
+ * its captured exec stream EXACTLY as the local-actor routes do — the verdict-nonce scorer is only
  * sound against the same normalization the marker is matched on, so the logic must not diverge.
  */
 export function normalizeLocalActorTranscript(transcript: string): string {
@@ -42,8 +42,8 @@ type ActorVerdict = "passed" | "blocked" | "failed";
  * Extract the per-run verdict from a normalized transcript: the agent must print exactly
  * `HUMANISH_ACTOR_VERDICT=<status> HUMANISH_ACTOR_NONCE=<nonce>`, and the nonce is mandatory so a
  * bare marker (echoed or replayed from untrusted text) can never forge a verdict. Pure (no IO).
- * Exported so the terminal-product lane scores its in-sandbox `codex exec` run by the same marker;
- * divergent verdict logic would let the two lanes disagree about what "passed" means.
+ * Exported so the terminal-product route scores its in-sandbox `codex exec` run by the same marker;
+ * divergent verdict logic would let the two routes disagree about what "passed" means.
  */
 export function extractLocalActorVerdict(
   transcript: string,

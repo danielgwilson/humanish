@@ -74,7 +74,7 @@ export class TraceRecorder {
 export function statusForCompletionReason(reason: ActorCompletionReason): ActorStatus {
   switch (reason) {
     case "goal_satisfied":
-    case "turn_completed": // turn_completed is a Codex-lane reason; this loop emits goal_satisfied
+    case "turn_completed": // turn_completed is a Codex reason; this loop emits goal_satisfied
       return "passed";
     // A session that ran out of time or budget did not reach its goal, whatever it achieved along
     // the way. Calling that `passed` is how a truncated study came to be reported as a green one —
@@ -93,7 +93,7 @@ export function statusForCompletionReason(reason: ActorCompletionReason): ActorS
       return "abandoned";
     // Only the harness failing is a harness failure.
     case "actor_error":
-    case "step_failed": // step_failed is the scripted-browser lane's reason; this loop never emits it
+    case "step_failed": // step_failed is the scripted-browser route's reason; this loop never emits it
     case "harness_error":
       return "failed";
   }

@@ -1,5 +1,5 @@
 // Every created sandbox id is journaled to the run dir the moment create returns, before any work
-// happens in it. The lane loop lives in the caller's local process, so a sleeping laptop, crash or
+// happens in it. The participant loop lives in the caller's local process, so a sleeping laptop, crash or
 // kill loses every in-memory id; this append-only file keeps them for `humanish reclaim`.
 import { appendFile } from "node:fs/promises";
 
@@ -12,7 +12,7 @@ export type SandboxProviderId = "e2b";
 
 export interface SandboxReceipt {
   at: string;
-  /** The lane/role/subject label the sandbox belongs to (public-safe token). */
+  /** The participant or subject label the sandbox belongs to (public-safe token). */
   laneId: string;
   /** Who allocated the sandbox. Receipts written before this field existed have none. */
   provider?: SandboxProviderId;
@@ -32,9 +32,9 @@ export interface ParsedSandboxReceipt extends Omit<SandboxReceipt, "provider"> {
 
 /**
  * Append one receipt. Best-effort BY DESIGN: the receipt exists to protect the run, so a failed
- * receipt write must never fail the lane — the only cost of a miss is that `reclaim` cannot see
+ * receipt write must never fail the participant — the only cost of a miss is that `reclaim` cannot see
  * this id and the TTL backstop covers it instead. Containment is the same prepare step every
- * artifact write uses; append (not atomic-replace) keeps racing lanes' receipts intact.
+ * artifact write uses; append (not atomic-replace) keeps racing participants' receipts intact.
  */
 export async function appendSandboxReceipt(
   root: PreparedOutputRoot,

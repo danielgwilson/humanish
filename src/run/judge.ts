@@ -6,7 +6,7 @@
 //      participantPassed, participantHarnessFailed);
 //   2. the judgment shapes (Judgment and judgmentOf, SharedWorldJudgment, ExecutionOutcome,
 //      OutcomePolicy);
-//   3. one judge per route: computer-use calls judgeOneParticipant (one lane, no rerun) or
+//   3. one judge per route: computer-use calls judgeOneParticipant (one participant, no rerun) or
 //      judgeParticipants, shared-world calls judgeSharedWorld, terminal calls judgeTerminal,
 //      scripted calls judgeScripted and preview calls judgePreview;
 //   4. foldScorerFailures, which every route with a scorer applies before the run finishes;
@@ -114,7 +114,7 @@ export function participantHarnessFailed(participant: ParticipantFacts): boolean
  * goal_satisfied claim with zero engagement is a session that ran out before anything happened;
  * one whose final message describes a blocker is a participant who could not proceed and said so.
  * Both keep their trace status (the claim is evidence); neither is a participant who reached the
- * goal. One rule for the single lane and the fan-out roll-up (#476).
+ * goal. One rule for the single participant and the fan-out roll-up (#476).
  */
 export function participantStatus(
   status: ActorStatus,
@@ -258,7 +258,7 @@ export interface SharedWorldJudgment extends Judgment {
  * A run with one participant: its tallied status is the verdict, so a hollow pass fails and a
  * self-reported blocker reads as blocked. Without a session, a harness failure fails the run and
  * a dry run is a contract. A run still in progress is a contract until it finishes. Computer-use
- * calls it for one lane with no rerun, and terminal calls it through judgeTerminal.
+ * calls it for one participant with no rerun, and terminal calls it through judgeTerminal.
  */
 export function judgeOneParticipant(args: {
   dryRun: boolean;
