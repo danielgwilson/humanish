@@ -11,7 +11,7 @@ The Unreleased section holds the full notes for the next version until it is tag
 ### Removed
 
 - `RunLabOptions` no longer takes the route hook bags `cuaHooks`, `scriptedHooks`,
-  `terminalHooks`, `sharedWorldHooks` and `automaticAnalysis` (#PRNUM). Use the typed options:
+  `terminalHooks`, `sharedWorldHooks` and `automaticAnalysis` (#1353). Use the typed options:
   `scorer`, `createProvider`, `inProcess`, `prepareDesktop`, `env`, `onEvent`, `onStream` and
   `analysisSignal`. `docs/contracts/schemas.md`, "Library options", maps each bag field to its
   option. A JavaScript caller that still passes a bag gets `HUMANISH_LAB_OPTION_UNSUPPORTED`
