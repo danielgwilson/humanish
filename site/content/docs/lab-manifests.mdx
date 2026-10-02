@@ -98,9 +98,12 @@ browser:
         stateChanged: true
 ```
 
-Supported actions are `goto`, `fill`, `click`, `assertText`, `waitForText`,
-and `waitForSelector`. Supported expectations are `text`, `selectorVisible`,
-`urlIncludes`, and `stateChanged`.
+Supported actions are `goto`, `fill`, `click`, `press`, `assertText`,
+`waitForText`, and `waitForSelector`. A `press` step needs `key`, in Playwright's
+key syntax (`Enter`, `Tab`, `Control+A`). With a `selector` it focuses that
+element and presses the key; without one it presses the key on the focused
+element. Supported expectations are `text`, `selectorVisible`, `urlIncludes`,
+and `stateChanged`.
 
 Save the scenario as `humanish/scenarios/todo-onboarding.yaml` and point a lab at
 it. [`humanish/labs/scripted-demo.yaml`](https://github.com/danielgwilson/humanish/blob/main/humanish/labs/scripted-demo.yaml)
