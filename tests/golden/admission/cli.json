@@ -53,7 +53,7 @@
       "warnings": [],
       "error": {
         "code": "HUMANISH_UNSUPPORTED_RERUN_FLAGS",
-        "message": "--rerun-failed-from/--lanes apply only to computer-use fan-out labs; this lab resolved to the scripted route."
+        "message": "--rerun-failed-from/--participants apply only to computer-use fan-out labs; this lab resolved to the scripted route."
       }
     },
     "stderr": "",
@@ -61,10 +61,10 @@
     "subprocess": 0,
     "scorerRan": false
   },
-  "lab run adm-cu --lanes lane-01 --json": {
+  "lab run adm-cu --participants lane-01 --json": {
     "exitCode": 2,
     "stdout": "",
-    "stderr": "error: --lanes requires --rerun-failed-from.\n",
+    "stderr": "error: --participants requires --rerun-failed-from.\n",
     "runs": false,
     "subprocess": 0,
     "scorerRan": false

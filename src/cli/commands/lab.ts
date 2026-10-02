@@ -9,7 +9,7 @@ import {
   type LabPreflightResult,
 } from "../../lab/preflight.js";
 import { runLabCommand } from "./lab-run.js";
-import { countOption } from "../renamed-options.js";
+import { countOption, participantsOption } from "../renamed-options.js";
 import {
   applyEnvFileOption,
   type CliIo,
@@ -78,9 +78,11 @@ export function registerLabCommands(parent: Command, io: CliIo): void {
       "CUA fan-out only: create a new run for failed participants from a prior run.",
     )
     .option(
-      "--lanes <participant-ids>",
+      "--participants <ids>",
       "CUA rerun only: comma-separated participant ids from the source run. Ids are the lab's declared actors[0].lanes[].id, or lane-01, lane-02, … by position.",
     )
+    // The older spelling of --participants, hidden and noted on stderr (renamed-options.ts).
+    .addOption(new Option("--lanes <participant-ids>").hideHelp())
     .option("--run-id <id>", "Explicit lab run id; refused when that run already exists.")
     .option("--cwd <path>", "Target project directory.", ".")
     .option(
@@ -94,7 +96,7 @@ export function registerLabCommands(parent: Command, io: CliIo): void {
         "",
         "Examples:",
         "  humanish lab run first-run",
-        "  humanish lab run fanout-demo --rerun-failed-from latest --lanes lane-02,lane-04",
+        "  humanish lab run fanout-demo --rerun-failed-from latest --participants lane-02,lane-04",
         "  humanish lab run my-terminal-lab --scorer scorers/product.mjs",
         "  humanish lab run .humanish/labs/private-dogfood.yaml --env-file .humanish/local/provider.env",
         "",
@@ -186,10 +188,11 @@ async function handleLabPreflight(
 async function handleLabRun(
   io: CliIo,
   labName: string,
-  options: LabCommandOptions & { sims?: string },
+  options: LabCommandOptions & { sims?: string; lanes?: string },
   command: Command,
 ): Promise<void> {
   const count = countOption(io, options);
+  const participants = participantsOption(io, options);
   if (
     !(await applyEnvFileOption({
       command,
@@ -208,7 +211,7 @@ async function handleLabRun(
     io,
     lab: labName,
     mode: "run",
-    options: { ...options, count },
+    options: { ...options, count, participants },
   });
 }
 

@@ -20,6 +20,14 @@ function renamedOption(
   return value ?? olderValue;
 }
 
+/** `--participants`, or `--lanes` when only the older spelling is set. */
+export function participantsOption(
+  io: CliIo,
+  options: { participants?: string | undefined; lanes?: string | undefined },
+): string | undefined {
+  return renamedOption(io, "participants", options.participants, "lanes", options.lanes);
+}
+
 /** `--count`, or `--sims` when only the older spelling is set. */
 export function countOption(
   io: CliIo,

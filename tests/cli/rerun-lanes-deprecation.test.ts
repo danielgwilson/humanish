@@ -7,7 +7,7 @@ import { afterAll, expect, it } from "vitest";
 import { stringify } from "yaml";
 import { lab } from "../admission/fixtures.js";
 
-// `lab run --rerun-failed-from <run> --lanes <ids>` is the example in `lab run --help`. The CLI
+// `lab run --rerun-failed-from <run> --participants <ids>` is the example in `lab run --help`. The CLI
 // must pass the selection under its current name, so Node prints no DeprecationWarning. A child
 // process gives the real stderr, where Node prints warnings.
 
@@ -41,7 +41,7 @@ it("reruns selected participants without a DeprecationWarning on stderr", async 
       cwd,
       "--rerun-failed-from",
       "latest",
-      "--lanes",
+      "--participants",
       "lane-02",
       "--dry-run",
       "--json",

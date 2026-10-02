@@ -51,8 +51,8 @@ export interface LabCommandOptions {
   dryRun?: boolean | undefined;
   envFile?: string | undefined;
   json?: boolean | undefined;
-  lanes?: string | undefined;
   open?: boolean | undefined;
+  participants?: string | undefined;
   port?: string | undefined;
   rerunFailedFrom?: string | undefined;
   runId?: string | undefined;
