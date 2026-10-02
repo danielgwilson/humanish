@@ -12,7 +12,8 @@ From the repo root (pnpm workspace):
 
 - `pnpm install` installs the site workspace too.
 - `pnpm --filter humanish-site dev` runs the dev server on http://localhost:3000.
-- `pnpm --filter humanish-site build` makes a production build.
+- `pnpm --filter humanish-site build` makes a production build, then
+  `scripts/check-docs-highlighting.mjs` fails it if a docs page lost its syntax colors in one theme.
 - `pnpm --filter humanish-site start` serves the production build.
 - `pnpm --filter humanish-site typecheck` runs TypeScript only.
 - `pnpm --filter humanish-site registry:build` regenerates the component registry: it extracts
