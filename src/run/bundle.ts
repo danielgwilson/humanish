@@ -15,8 +15,8 @@ export const PUBLIC_TARGET_CWD = "[target-cwd]";
 
 /**
  * A namespaced, product-agnostic score a thin adapter attaches to the bundle via a route's `score`
- * hook, on terminal-product or a browser route (the layer-6 extension seam, issue #154 acceptance
- * #8). Core never reads its `data` and knows none of the adopter's nouns — the `namespace` (e.g.
+ * hook, on terminal-product or a browser route (the layer-6 extension seam).
+ * Core never reads its `data` and knows none of the adopter's nouns: the `namespace` (e.g.
  * `"acme-pixelforge"`) scopes the whole record so core schemas stay product-agnostic and a future
  * inert-field audit does not misfire on a noun core never owned. The adopter's real scorecard
  * (component weights, product rubric) lives in the adopter's repo and is summarized into the generic
@@ -25,7 +25,7 @@ export const PUBLIC_TARGET_CWD = "[target-cwd]";
  */
 export interface RunAdapterScore {
   schema: "humanish.adapter-score.v1";
-  /** The adapter's namespace — non-core, product-scoped (e.g. an adopter slug). Required + non-empty. */
+  /** The adapter's namespace: non-core, product-scoped (e.g. an adopter slug). Required + non-empty. */
   namespace: string;
   status: "pass" | "partial" | "fail";
   /** A 0-100 summary the adapter derived from its own (off-core) rubric. */
@@ -50,7 +50,7 @@ export interface RunFeedbackCandidate {
     | "computer-use"
     | "synthetic-dry-run"
     | "unknown";
-  // `e2b-terminal`: the in-sandbox command-scoped terminal-agent substrate (issue #154, slice 4).
+  // `e2b-terminal`: the in-sandbox command-scoped terminal-agent substrate.
   substrate:
     | "e2b-desktop"
     | "local-desktop"
@@ -81,9 +81,8 @@ export interface RunFeedbackCandidate {
     | "study-quality-review";
   acceptance_proof: string[];
   /**
-   * Optional, adapter-namespaced product-noun block (the layer-6 extension seam, issue #154
-   * acceptance #8 + the "record product-specific concepts as NON-core nouns" list). A thin adapter
-   * records product-specific concepts — public CLI/product command observed, hosted product
+   * Optional, adapter-namespaced product-noun block (the layer-6 extension seam). A thin adapter
+   * records product-specific concepts: public CLI/product command observed, hosted product
    * success-or-blocker, feedback id/draft observed, media/job/asset ids, explicit
    * no-media/no-provider-spend proof, defection/friction risk, without making any of them core
    * primitives. They ride under a single namespaced field so core's feedback enums
@@ -94,7 +93,7 @@ export interface RunFeedbackCandidate {
   adapter?: {
     /** Non-core, product-scoped namespace (e.g. an adopter slug). Required + non-empty. */
     namespace: string;
-    /** The adapter's product nouns. Core never reads these keys — it stays product-agnostic. */
+    /** The adapter's product nouns. Core never reads these keys, so it stays product-agnostic. */
     data: Record<string, unknown>;
   };
 }
@@ -114,11 +113,11 @@ export interface RunAdapterArtifact {
 }
 
 /**
- * Provenance for a CONFIG-DECLARED adopter scorer (#316): the repo-relative entry path and a digest
+ * Provenance for a config-declared adopter scorer: the repo-relative entry path and a digest
  * of its ENTRY-MODULE bytes, recorded so a `review.scorer.ref`/`--scorer` run honestly states which
  * out-of-tree judgment it attached. Core-computed (path + digest), never adopter-supplied. A library
  * caller (hooks passed directly through RunLabOptions) has implicit provenance, because its code is its
- * provenance, so this block is absent there and every pre-#316 bundle stays byte-stable + verifiable.
+ * provenance, so this block is absent there and every older bundle stays byte-stable + verifiable.
  *
  * The digest pins the entry file's identity only; modules it loads are outside it: a `export { score } from
  * "../outside.mjs"` re-export is not captured, and `import()` re-opens the path (a benign same-author
@@ -210,14 +209,14 @@ export interface RunSubjectProvenance {
   state: {
     /**
      * seeded: live run, steps declared, all ran ok, no external state declared.
-     * unpinned: external state declared (seed records, if any, still attached — migrating
+     * unpinned: external state declared (seed records, if any, still attached; migrating
      *   an external DB is still unpinned overall).
-     * declared-not-run: steps declared but not (all) executed ok — dry-run contract bundles
+     * declared-not-run: steps declared but not (all) executed ok: dry-run contract bundles
      *   and failed live provisioning.
-     * undeclared: no subject.state block (stateless apps, app-url subjects) — the explicit
+     * undeclared: no subject.state block (stateless apps, app-url subjects), the explicit
      *   "absence declared" marker invariant 5 requires.
-     * external-public: (#164 phase 2) an operator-DECLARED, operator-OWNED public deployment used
-     *   directly as the shared plane — humanish neither provisioned nor seeded it (no getHost, no
+     * external-public: an operator-DECLARED, operator-OWNED public deployment used
+     *   directly as the shared plane; humanish neither provisioned nor seeded it (no getHost, no
      *   clone, no in-sandbox filesystem). It is not "seeded" (nothing was seeded) and not "unpinned" (this is
      *   an owned target, not an uncontrolled external DB). The honest marker for the external-public
      *   plane class; verify asserts it in place of the getHost seeded gate.
@@ -306,7 +305,7 @@ export interface RunBundle {
     requested: "default" | "chrome" | "chromium" | "firefox";
     resolved?: string;
     /**
-     * Synthetic media devices the browser was launched with (#509): the camera feed's origin and
+     * Synthetic media devices the browser was launched with: the camera feed's origin and
      * in-sandbox path, how the permission dialog is answered, and the exact flags.
      */
     media?: {
@@ -323,7 +322,7 @@ export interface RunBundle {
    */
   rerun?: RunRerunLineage;
   /**
-   * The interaction-attribution honesty axis (#164). Absent == `isolated` (every existing bundle
+   * The interaction-attribution honesty axis. Absent == `isolated` (every existing bundle
    * byte-stable). Set to `shared-world` by the shared-world backend, paired with `sharedWorld`.
    */
   attributionClass?: RunAttributionClass;
@@ -333,15 +332,15 @@ export interface RunBundle {
    */
   sharedWorld?: SharedWorldEvidence;
   /**
-   * Optional, adapter-namespaced product score (the layer-6 extension seam, issue #154 acceptance
-   * #8). A thin adapter's `score` hook returns a `RunAdapterScore`; the route attaches it here
+   * Optional, adapter-namespaced product score (the layer-6 extension seam).
+   * A thin adapter's `score` hook returns a `RunAdapterScore`; the route attaches it here
    * without core knowing any product noun (the score is namespaced + its breakdown lives in `data`).
    * The default mission-based verdict (`review`) is unchanged when no scorer hook is given.
    */
   adapterScore?: RunAdapterScore;
   /**
-   * Optional provenance for a config-declared scorer (#316). Present only when the scorer was loaded
-   * from `review.scorer.ref` / `--scorer`; absent for library callers and every pre-#316 bundle
+   * Optional provenance for a config-declared scorer. Present only when the scorer was loaded
+   * from `review.scorer.ref` / `--scorer`; absent for library callers and every older bundle
    * (tolerated-absent in isRunBundle so those still verify). Evidence, not a gate.
    */
   scorerProvenance?: RunScorerProvenance;
@@ -358,7 +357,7 @@ export interface RunBundle {
    */
   providerResources?: RunProviderResource[];
   /**
-   * Which lab manifest produced this run (#455). Optional + additive: absent on every bundle
+   * Which lab manifest produced this run. Optional + additive: absent on every bundle
    * written before this contract and on library callers who pass a LabConfig directly (the run is
    * then honestly lab-less rather than guessed). For older bundles a reader may fall back to
    * `inferLegacyLabId`, which reads only the historical `persona.source = "lab:<id>"` convention.
@@ -473,7 +472,7 @@ export interface RunRerunLineage {
 /**
  * What happened to the participants in a study, with the denominator attached.
  *
- * A stakeholder watching through the glass forms conclusions from vivid moments — that is the
+ * A stakeholder watching through the glass forms conclusions from vivid moments. That is the
  * classic failure of the viewing room, and it is why researchers synthesize rather than letting the
  * room decide. So anything shown to a stakeholder carries its count, or it becomes a machine for
  * manufacturing certainty from n=1 (docs/principles/three-roles.md).
@@ -483,7 +482,7 @@ export interface RunRerunLineage {
  * product, is what went wrong.
  */
 export interface ParticipantOutcomes {
-  /** Participants whose sessions reached a terminal state — the denominator for every count below. */
+  /** Participants whose sessions reached a terminal state: the denominator for every count below. */
   total: number;
   /** Recorded successful sessions; completion provenance depends on the actor and its evidence. */
   reachedGoal: number;
@@ -516,14 +515,14 @@ export interface ReviewSummary {
    * The study result, separate from the verdict above.
    *
    * `verdict` answers a gate-shaped question and has to collapse a run to one word. This answers
-   * the research question — what happened to the people in the study — and does not collapse: a run
+   * the research question (what happened to the people in the study) and does not collapse: a run
    * where two of three participants finished is not usefully "fail", and a run where the harness
    * broke is a different thing from one where a persona gave up. Absent on a dry-run contract
    * bundle, which has no participants.
    */
   participants?: ParticipantOutcomes;
   /**
-   * The study's per-task completion rates (#414) — present only when the lab declared a protocol
+   * The study's per-task completion rates, present only when the lab declared a protocol
    * and at least one session produced a funnel. Absent means no protocol was measured, never that
    * everyone finished.
    */
@@ -532,27 +531,27 @@ export interface ReviewSummary {
 
 /**
  * The study's task funnel: for each declared task, how many participants completed it, out of how
- * many sessions produced a funnel. This is "where did people get stuck" as data — the number a
- * researcher reads first — where the per-participant funnels answer it one journey at a time.
+ * many sessions produced a funnel. This is "where did people get stuck" as data, the number a
+ * researcher reads first, where the per-participant funnels answer it one journey at a time.
  *
  * Aggregated by task id in declaration order. Every participant in a run shares the actor's protocol, so
  * ids line up across participants; a funnel missing a task id (a future mixed-protocol route)
  * simply does not count toward that task's denominator.
  */
 export interface RunTaskFunnel {
-  /** Sessions that produced a funnel — the denominator for every count below. */
+  /** Sessions that produced a funnel: the denominator for every count below. */
   sessions: number;
   tasks: Array<{
     id: string;
     /** Participants whose sessions corroborated this task complete. */
     completed: number;
-    /** Sessions whose protocol declared this task — its denominator. */
+    /** Sessions whose protocol declared this task: its denominator. */
     sessions: number;
     /** False when the task declared no success criterion: asked for, never measurable. */
     observable: boolean;
     /** Sessions where this task's criteria were never evaluated, because the observations they
      *  read never arrived. Counted apart from failures: "0/3 completed" with 3 unmeasured is a
-     *  statement about our instrument, not about the participants (#514). */
+     *  statement about our instrument, not about the participants. */
     unmeasured: number;
   }>;
 }
@@ -562,7 +561,7 @@ export interface BundleRun {
   readonly runId: string;
   readonly mode: RunBundle["mode"];
   readonly createdAt: string;
-  /** The manifest the run came from (#455), as the plan carried it to startRun. */
+  /** The manifest the run came from, as the plan carried it to startRun. */
   readonly lab?: RunLabProvenance | undefined;
 }
 

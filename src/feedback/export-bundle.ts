@@ -1,4 +1,4 @@
-// The publish boundary for existing raw runs (#136). A derivative is an isolated
+// The publish boundary for existing raw runs. A derivative is an isolated
 // workspace, never a new run in the source history. No provider APIs are involved.
 import { createHash } from "node:crypto";
 import { lstat, mkdir, mkdtemp, readdir, realpath, rename, rm, rmdir } from "node:fs/promises";

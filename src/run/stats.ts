@@ -76,7 +76,7 @@ export interface StatsResult {
   days: StatsDayRow[];
   /** Same selected runs; individual accounting gaps are inspectable without reading private evidence. */
   costsByRun: CostRow[];
-  /** Directories that could not be read, by name — surfaced, never silently dropped. */
+  /** Directories that could not be read, by name: surfaced, never silently dropped. */
   unreadable: string[];
   note: string;
 }

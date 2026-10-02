@@ -111,7 +111,7 @@ export interface RunStatusHandle {
    *  still has a record to classify. */
   readonly started: Promise<void>;
   /** Finalize: state `finished`, `completedAt`, and the derived outcome. Stops the cadence.
-   *  Idempotent — a second call is a no-op, so a backend with several exit paths is safe. */
+   *  Idempotent: a second call is a no-op, so a route with several exit paths is safe. */
   finish(outcome?: RunStatusOutcome): Promise<void>;
   /** After finish, add the result's ok and execution outcome to the finished record, so status.json
    *  and the result agree. Before finish it does nothing. */
@@ -132,7 +132,7 @@ export interface BeginRunStatusOptions {
 /**
  * Start a run's status record and keep it fresh. Fire-and-forget by design: a status write that
  * fails must never fail the run it describes, so every write swallows its error. The interval is
- * `unref`'d — this file can never be the reason a process stays alive.
+ * `unref`'d, so this file can never be the reason a process stays alive.
  */
 export function beginRunStatus(
   runPaths: PreparedOutputRoot,
@@ -280,7 +280,7 @@ export function isRunStatusRecord(value: unknown): value is RunStatusRecord {
 /**
  * The legacy bridge: infer a lab id for a bundle written before this contract, where the only
  * attribution was the `lab:<id>` convention on persona/scenario source strings. Deliberately
- * conservative — it reads the convention and nothing else, and a `lab:` prefix with an empty
+ * conservative: it reads the convention and nothing else, and a `lab:` prefix with an empty
  * remainder is not an id. Ids may contain colons (the removed meta-lab wrote `oss:meta`), so
  * only the first segment is stripped. Returns undefined when the bundle carries no such marker.
  */

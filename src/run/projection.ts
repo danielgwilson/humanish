@@ -1,4 +1,4 @@
-// The disk→view-model projection (#455 PR 2). Pure functions, no I/O, no rendering: this is where
+// The disk→view-model projection. Pure functions, no I/O, no rendering: this is where
 // lab grouping, the trust line's arithmetic, thought normalization and list-window math live, so
 // the parts most likely to be wrong are testable without a terminal.
 //
@@ -19,13 +19,13 @@ export interface LabRollup {
   live: number;
   /** The newest run of this lab, whatever its state. */
   latest?: RunIndexEntry;
-  /** Live runs, newest first — the labs list shows the first one inline. */
+  /** Live runs, newest first; the labs list shows the first one inline. */
   liveRuns: RunIndexEntry[];
 }
 
 /**
  * Group runs by lab, newest-first within each lab and by recency between labs. Runs with no lab
- * attribution are collected under `unattributed` rather than invented into a lab — the honest
+ * attribution are collected under `unattributed` rather than invented into a lab. That is the honest
  * home for pre-contract runs and library callers.
  */
 export function groupRunsByLab(entries: readonly RunIndexEntry[]): {
@@ -84,7 +84,7 @@ export interface LabExpectation {
   /** Range across the sample, so the UI can show a span instead of a false point estimate. */
   durationRangeMs?: { min: number; max: number };
   medianCostUsd?: number;
-  /** Completed runs whose cost was declared absent — excluded from the median, reported here so
+  /** Completed runs whose cost was declared absent: excluded from the median, reported here so
    *  a partial sample can never masquerade as a full one. */
   costUnknown: number;
 }
@@ -95,7 +95,7 @@ export interface LabExpectation {
  * estimate the operator uses to decide whether to press Start.
  *
  * The mode matters: mixing modes produces a false figure. A dry run spends nothing and
- * takes no time, so a median over nine dry runs and one live one reports that a live run is free —
+ * takes no time, so a median over nine dry runs and one live one reports that a live run is free,
  * next to a control that spends money. Pass the mode the figure is about; omit it only for a
  * summary that is not attached to an action.
  */
@@ -116,7 +116,7 @@ export function expectationFor(
     .filter((value): value is number => typeof value === "number" && Number.isFinite(value))
     .sort((a, b) => a - b);
   // A cost is unknown whether it was declared absent (`null`) or never recorded at all
-  // (`undefined` — every fail-closed exit finalized with no outcome). Counting only the first
+  // (`undefined`: every fail-closed exit finalized with no outcome). Counting only the first
   // reports "~$1.20 median · 3 runs" for a sample where two runs were never priced, which claims a
   // denominator the figure does not have.
   const costUnknown = finished.filter(
@@ -144,7 +144,7 @@ function median(sorted: readonly number[]): number {
 /**
  * The one sentence the launch screen shows about time and money, with its denominator attached.
  * A lab with no history says so plainly instead of borrowing another lab's numbers or inventing
- * a range — "no runs yet" is information, and the operator can still press Start.
+ * a range. "No runs yet" is information, and the operator can still press Start.
  */
 export function expectationLine(expectation: LabExpectation): string {
   if (expectation.sample === 0) return "no runs yet";
@@ -177,7 +177,7 @@ export function expectationLine(expectation: LabExpectation): string {
  *
  * Prefers live figures: cost and duration are what someone reads before spending, and a median
  * diluted by dry runs reports a live study as cheaper and faster than it has ever been. With no
- * live history it reports the count and claims nothing about time or money — which is why this is
+ * live history it reports the count and claims nothing about time or money. That is why this is
  * shared rather than reimplemented per surface, since the two disagreeing is the whole failure.
  */
 export function labSummaryLine(
@@ -200,7 +200,7 @@ export function formatDuration(ms: number): string {
 
 export interface NormalizedThought {
   lines: string[];
-  /** True when the source text did not fit and was cut — shown, never silent. */
+  /** True when the source text did not fit and was cut; shown, never silent. */
   truncated: boolean;
 }
 
@@ -209,7 +209,7 @@ export interface NormalizedThought {
  * arrive with markdown section leads (`**Thinking through setup**`) and hard newlines; a terminal
  * needs plain text wrapped to a line budget.
  *
- * The text is never paraphrased or shortened by meaning — only wrapped, and cut at a word boundary
+ * The text is never paraphrased or shortened by meaning. It is only wrapped, and cut at a word boundary
  * with an ellipsis when it does not fit. `truncated` is how the surface says so.
  */
 export function normalizeThought(
@@ -319,7 +319,7 @@ export interface LabRow {
   /**
    * The shortest label that is unique among the rows it is listed with: the title when no other
    * lab shares it, else the filename, else the full path. A list is only navigable if every row can
-   * be told from every other one, and a title is not guaranteed to be distinct — two manifests in
+   * be told from every other one, and a title is not guaranteed to be distinct: two manifests in
    * this repo carry the same title and the same declared id, differing only by filename.
    */
   label: string;
@@ -336,7 +336,7 @@ export interface LabRow {
   declared: boolean;
   /**
    * How many other manifests declare this same lab id. Above zero, the run history below is shared
-   * between them and cannot be attributed to one file — worth saying, because it is a
+   * between them and cannot be attributed to one file. That is worth saying, because it is a
    * misconfiguration the operator almost certainly does not know about.
    */
   sharesIdWith: number;
@@ -346,7 +346,7 @@ export interface LabRow {
   liveRuns: RunIndexEntry[];
   /** Across every finished run, whatever its mode. A summary, never attached to a spend decision. */
   expectation: LabExpectation;
-  /** Live runs only — the figure that belongs beside anything that spends money. */
+  /** Live runs only: the figure that belongs beside anything that spends money. */
   liveExpectation: LabExpectation;
 }
 
@@ -368,16 +368,16 @@ export interface DeclaredLab {
 /**
  * Join declared lab manifests to run history.
  *
- * Neither side alone is the truth. A fresh project has manifests and no runs — those labs are the
+ * Neither side alone is the truth. A fresh project has manifests and no runs, and those labs are the
  * whole screen, and a list built only from history would be empty on exactly the first visit that
  * matters. A long-lived project accumulates runs from labs whose manifest has since been renamed or
- * deleted — that evidence still exists on disk, so dropping those rows would make real runs
+ * deleted. That evidence still exists on disk, so dropping those rows would make real runs
  * unreachable from the surface that is supposed to list them.
  *
  * One row per manifest, not per id. The two are not the same thing: a manifest is addressed by its
  * filename while its runs attribute to the id declared inside it, so several files can legitimately
  * share an id. Collapsing them hides a real file; keying by id duplicates a row with no way to tell
- * the copies apart. Both happen in practice — this repo has exactly that pair.
+ * the copies apart. Both happen in practice: this repo has exactly that pair.
  *
  * Order puts a lab someone is working in first, then labs by how recently they ran, then declared
  * labs that have never run (alphabetically by the displayed label, so the order on screen is the
@@ -457,8 +457,8 @@ export function labRows(
 /**
  * Give every row the shortest label that distinguishes it: title, else filename, else path.
  *
- * Falling straight back to the filename whenever a title repeats — rather than decorating the
- * duplicate with a suffix — keeps the label something the operator can act on, because the filename
+ * Falling straight back to the filename whenever a title repeats, instead of decorating the
+ * duplicate with a suffix, keeps the label something the operator can act on, because the filename
  * is exactly what `humanish lab run` takes.
  */
 function assignLabels(rows: LabRow[]): void {

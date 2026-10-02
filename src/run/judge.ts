@@ -27,7 +27,7 @@ export interface BlockerFacts {
   completionReason: ActorCompletionReason;
   /** A harness-owned stop condition ended the session: a matched stopWhen or a completed dwell window. */
   stopConditionMatched: boolean;
-  /** What the participant declared in a field, when its provider has one (#570). */
+  /** What the participant declared in a field, when its provider has one. */
   declaredOutcome?: ParticipantDeclaredOutcome;
   /** The route's reading of the closing report: it describes a blocker or asks for instructions. */
   closingReportReadsBlocked: boolean;
@@ -54,7 +54,7 @@ export function hollowCompletion(ending: SessionEnding): boolean {
 
 /**
  * The participant said it reached the goal but reported a blocker. A declared outcome is its own
- * word and wins (#570). Without one, the closing report is read, unless a stop condition ended the
+ * word and wins. Without one, the closing report is read, unless a stop condition ended the
  * session: a matched stopWhen is structured completion evidence and overrides the text.
  */
 export function selfReportedBlocker(ending: BlockerFacts): boolean {
@@ -114,7 +114,7 @@ export function participantHarnessFailed(participant: ParticipantFacts): boolean
  * goal_satisfied claim with zero engagement is a session that ran out before anything happened;
  * one whose final message describes a blocker is a participant who could not proceed and said so.
  * Both keep their trace status (the claim is evidence); neither is a participant who reached the
- * goal. One rule for the single participant and the fan-out roll-up (#476).
+ * goal. One rule for the single participant and the fan-out roll-up.
  */
 export function participantStatus(
   status: ActorStatus,

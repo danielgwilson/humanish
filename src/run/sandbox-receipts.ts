@@ -17,7 +17,7 @@ export interface SandboxReceipt {
   /** Who allocated the sandbox. Receipts written before this field existed have none. */
   provider?: SandboxProviderId;
   sandboxId: string;
-  /** The create-time sandbox TTL (ms), when known — how long the server-side backstop runs. */
+  /** The create-time sandbox TTL (ms), when known: how long the server-side backstop runs. */
   timeoutMs?: number;
 }
 
@@ -32,7 +32,7 @@ export interface ParsedSandboxReceipt extends Omit<SandboxReceipt, "provider"> {
 
 /**
  * Append one receipt. Best-effort by design: the receipt exists to protect the run, so a failed
- * receipt write must never fail the participant — the only cost of a miss is that `reclaim` cannot see
+ * receipt write must never fail the participant. The only cost of a miss is that `reclaim` cannot see
  * this id and the TTL backstop covers it instead. Containment is the same prepare step every
  * artifact write uses; append (not atomic-replace) keeps racing participants' receipts intact.
  */
@@ -44,7 +44,7 @@ export async function appendSandboxReceipt(
     const filePath = await prepareContainedOutputFile(root, SANDBOX_RECEIPTS_ARTIFACT);
     await appendFile(filePath, `${JSON.stringify(receipt)}\n`, "utf8");
   } catch {
-    // Swallowed on purpose — see the contract above.
+    // Swallowed on purpose; see the contract above.
   }
 }
 
@@ -71,7 +71,7 @@ export function parseSandboxReceipts(text: string): ParsedSandboxReceipt[] {
         });
       }
     } catch {
-      // torn line — skip
+      // A torn line: skip it.
     }
   }
   return receipts;

@@ -41,7 +41,7 @@ export interface FeedbackResult {
   issueUrl?: string;
   draft?: FeedbackDraft;
   /** Every usable candidate on the bundle, so a multi-participant study's second and third findings can be
-   *  chosen with `--candidate` instead of being invisible behind the first (#609). */
+   *  chosen with `--candidate` instead of being invisible behind the first. */
   candidates?: FeedbackCandidateSummary[];
   shareSafety?: VerifyResult["shareSafety"];
   error?: {
@@ -359,7 +359,7 @@ export async function listFeedback(cwdInput: string, runInput: string): Promise<
     run: runInput,
     ...(draft ? { draftPath, draft } : {}),
     // The choice set for `draft --candidate`: a three-participant study has up to three findings,
-    // and until #609 only the first ever reached a draft.
+    // and each can reach a draft.
     candidates: summarizeCandidates(context.loaded.bundle),
   };
 }

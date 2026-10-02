@@ -31,7 +31,7 @@ interface RunThought {
 }
 
 export interface RunParticipant {
-  /** Stream id — stable within a run, and what distinguishes participants of one study. */
+  /** Stream id: stable within a run, and what distinguishes participants of one study. */
   id: string;
   /** What to call them on screen: the participant's own label, else the persona id. */
   label: string;
@@ -39,11 +39,11 @@ export interface RunParticipant {
   personaId?: string;
   /**
    * The persona's declared traits (`patience:medium`, `skill:medium`, …). This is the abbreviated
-   * persona a reader actually wants beside a live thought — it says who is struggling, which a
+   * persona a reader actually wants beside a live thought. It says who is struggling, which a
    * name alone does not.
    */
   traits: string[];
-  /** `running`, `passed`, `failed`, `contract_proof_only` — the participant's own word for itself. */
+  /** `running`, `passed`, `failed`, `contract_proof_only`: the participant's own word for itself. */
   status?: string;
   /** Why the actor stopped, when it has. */
   completionReason?: string;
@@ -52,7 +52,7 @@ export interface RunParticipant {
   actions?: number;
   /**
    * Thoughts recorded so far. The mid-run flush carries the trace items but not the `counts` block,
-   * so a live participant has no turn count to show — but the thoughts can be counted directly, and
+   * so a live participant has no turn count to show, but the thoughts can be counted directly, and
    * "8 thoughts" is a true statement about progress rather than an inferred turn number.
    */
   thoughts?: number;
@@ -99,7 +99,7 @@ interface StreamFacts {
  *
  * Takes the last reasoning item rather than the newest by timestamp: the trace is append-ordered by
  * construction, and half of a live flush may not carry `at` yet. An item still in flight is skipped
- * — a partial thought read mid-write would be quoted as though the participant had finished it.
+ * because a partial thought read mid-write would be quoted as though the participant had finished it.
  */
 function latestThought(trace: ActorTraceFacts): RunThought | undefined {
   const items = trace.items ?? [];
@@ -148,7 +148,7 @@ function participantFrom(stream: StreamFacts, index: number): RunParticipant {
  *
  * A finished trace carries its own `estimatedCost`. A live one carries the running usage and the
  * model it prices at, so the same estimator gives a figure mid-run instead of the screen reporting
- * the cost as unknown until the moment the run ends — which is the half of a run where knowing what
+ * the cost as unknown until the moment the run ends. That is the half of a run where knowing what
  * it is costing actually changes what you do.
  */
 function costOf(trace: ActorTraceFacts): { estimatedCostUsd?: number | null } {
@@ -170,13 +170,13 @@ function costOf(trace: ActorTraceFacts): { estimatedCostUsd?: number | null } {
 }
 
 /**
- * Read one run's participants. Returns null when the run has no readable bundle yet — an ordinary
+ * Read one run's participants. Returns null when the run has no readable bundle yet, an ordinary
  * state for a run that has just started, not a failure.
  *
  * Reads the bundle narrowly rather than through `loadRunBundle`, which applies the strict
  * evidence-of-record guard. That guard is right for verification and wrong here: a mid-run flush is
  * a partial document by definition, so validating it as a complete bundle would make the live view
- * — the only view that needs this — the one case that never renders. Nothing read here is treated
+ * (the only view that needs this) the one case that never renders. Nothing read here is treated
  * as a claim about what a participant did; it is what to put on a screen.
  */
 export async function readRunDetail(cwdInput: string, runId: string): Promise<RunDetail | null> {

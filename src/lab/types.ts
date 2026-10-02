@@ -30,8 +30,8 @@ type LabSubjectSource =
 
 /**
  * How a subject's world relates across participants. `per-lane-worlds` (the default; absent ==
- * this) is the only fan-out topology the computer-use route ships — N participants, N independent
- * worlds, isolation + per-participant attribution. `shared-world` (#164) is the declared override: one
+ * this) is the only fan-out topology the computer-use route ships: N participants, N independent
+ * worlds, isolation + per-participant attribution. `shared-world` is the declared override: one
  * mutable service plane that N participants use at the same time, so their actions interact through
  * shared state. Consumed only on the shared-world routes (a provisioned clone plane, or an
  * external-public app-url plane) with a computer-use actor; inert/warned everywhere else
@@ -67,11 +67,11 @@ export interface LabSubjectServe {
   install?: string;
   /** Optional bounded build step. */
   build?: string;
-  /** Required long-lived start command — launched detached; the sandbox lifecycle owns it. */
+  /** Required long-lived start command, launched detached; the sandbox lifecycle owns it. */
   start: string;
   /** Loopback entry URL: the readiness-probe target and the URL the actor drives. The lab
    *  serves the clone inside the sandbox, so this is always loopback (not subject to
-   *  allowPublicTargets — that governs app-url subjects, i.e. external deployments). */
+   *  allowPublicTargets, which governs app-url subjects, i.e. external deployments). */
   url: string;
   /** Budget for the served app to answer the readiness probe. Default 180000. */
   readyTimeoutMs?: number;
@@ -87,21 +87,21 @@ export type LabStateStepWhen = "before-build" | "before-start" | "after-ready";
 interface LabSubjectStateStep {
   /**
    * [a-z0-9-] step label (must start alphanumeric), <=40 chars, unique across steps; becomes
-   * the detached-step name `subject-state-<name>` (interpolates into in-sandbox file paths —
+   * the detached-step name `subject-state-<name>` (interpolates into in-sandbox file paths, so
    * the shape is load-bearing, validated at parse and re-enforced in the engine).
    */
   name: string;
   /**
-   * Author-trusted shell command (same trust class as serve.install/build/start — the
+   * Author-trusted shell command (same trust class as serve.install/build/start: the
    * "serve commands are author-trusted" corollary). Runs detached in the subject directory
    * with an atomic status file, kill-on-timeout, and a capped log tail. Persisted in
    * evidence as a sha256-16 digest only, never as text.
    */
   command: string;
   /**
-   * Phase: before-build (after install — for builds that read the DB, e.g. SSG),
-   * before-start (after build, before the server launches — migrations, SQL/file fixtures,
-   * an in-sandbox `service postgresql start`), after-ready (after the readiness probe —
+   * Phase: before-build (after install, for builds that read the DB, e.g. SSG),
+   * before-start (after build, before the server launches: migrations, SQL/file fixtures,
+   * an in-sandbox `service postgresql start`), after-ready (after the readiness probe:
    * fixtures loaded through the running app's API). Default: before-start.
    */
   when?: LabStateStepWhen;
@@ -113,18 +113,18 @@ interface LabSubjectStateStep {
  * A shared-world state checkpoint: an author-trusted, read-only, aggregate/digest probe command
  * (counts, max-timestamps, hashes) run at baseline and after each role's turn. Reuses the
  * seed-step validation shape (name [a-z0-9-] ≤40, unique; command required). Persisted DIGEST-ONLY
- * (only sha256-16(scrub+redact(stdout)) ever lands — never the raw value), same lockdown as the
- * seed surface. Consumed only on the shared-world route (#164); inert/warned elsewhere.
+ * (only sha256-16(scrub+redact(stdout)) ever lands, never the raw value), same lockdown as the
+ * seed surface. Consumed only on the shared-world route; inert/warned elsewhere.
  */
 export interface LabSubjectStateCheckpoint {
   /**
    * [a-z0-9-] probe label (must start alphanumeric), <=40 chars, unique across checkpoints;
-   * names the detached step (`checkpoint-<snapshot>-<name>`) — load-bearing shape, validated at
+   * names the detached step (`checkpoint-<snapshot>-<name>`), a load-bearing shape validated at
    * parse and re-enforced in the engine.
    */
   name: string;
   /**
-   * Author-trusted READ-ONLY shell command (same trust class as serve/seed — the "serve commands
+   * Author-trusted READ-ONLY shell command (same trust class as serve/seed: the "serve commands
    * are author-trusted" corollary). Its stdout is scrubbed + pattern-redacted, then digested
    * (sha256-16); the raw value never persists.
    */
@@ -148,7 +148,7 @@ export interface LabSubjectState {
    */
   external?: string[];
   /**
-   * Shared-world state checkpoints (#164): read-only digest probes run at baseline + after each
+   * Shared-world state checkpoints: read-only digest probes run at baseline + after each
    * role's turn to produce the harness-clocked interaction timeline. Consumed only on the
    * shared-world route; inert/warned elsewhere (invariant 6). Shape-validated everywhere.
    */
@@ -170,7 +170,7 @@ export interface LabSubjectProduct {
    * desktop) and `terminal-product` (an agent in a shell).
    *
    * Absent means the participant installs it themselves from the public surfaces, which is a
-   * different study — one about the install, not about the tool. Present means the study starts
+   * different study, one about the install. Present means the study starts
    * where you want it to start: asking a participant what studies a project contains, in an empty
    * directory, measures the lab rather than the product.
    * Both routes prepare Node/npm when install is absent; product installation remains the
@@ -200,7 +200,7 @@ export interface LabSubjectProduct {
    * autonomous agent is about to drive.
    *
    * It exists so a study can test a build that is not published yet. Installing `@latest` measures
-   * the last release, which is exactly the wrong artifact for a pre-release gate — the point is to
+   * the last release, which is exactly the wrong artifact for a pre-release gate. The point is to
    * meet the candidate before anyone else does. Any adopter shipping a CLI wants the same thing.
    */
   upload?: string;
@@ -210,14 +210,14 @@ export interface LabSubject {
   source: LabSubjectSource;
   /**
    * World topology across participants. Absent == `per-lane-worlds` (the isolation default; every
-   * existing lab is byte-stable). `shared-world` is the declared override (#164): one mutable
+   * existing lab is byte-stable). `shared-world` is the declared override: one mutable
    * service plane, N role seats at once. Consumed only on the shared-world routes (a provisioned
    * clone or an external-public app-url plane, a computer-use actor, and a roster of ≥2 participants);
    * inert/warned elsewhere.
    */
   topology?: LabSubjectTopology;
   /**
-   * Concurrent shared-world route only (#164 phase 2): the author's required attestation that the
+   * Concurrent shared-world route only: the author's required attestation that the
    * subject behind the internet-reachable `getHost` URL is synthetic seeded data. The concurrent
    * route exposes the subject on a tokenless public URL for the run's duration, so real/external
    * data must never sit behind it. This is author-trust + a provenance gate (verify also requires
@@ -226,16 +226,16 @@ export interface LabSubject {
    */
   exposure?: "synthetic";
   /**
-   * External-public shared-world route only (#164 phase 2): the author's required ownership
+   * External-public shared-world route only: the author's required ownership
    * attestation when a real public deployment (`source: app-url` + `topology: shared-world` +
    * `concurrency > 1` + `policies.allowPublicTargets: true`) is used directly as the shared plane.
    * The harness neither provisions nor exposes this target (no getHost, no clone, no seed), so it
    * cannot attest the data is synthetic; instead the operator must attest they own/operate it.
-   * `owner` is a public-safe operator/repo label; `authorized` must be true. This is author-trust —
-   * the harness cannot verify ownership — surfaced honestly in the evidence class. Required on the
+   * `owner` is a public-safe operator/repo label; `authorized` must be true. This is author-trust:
+   * the harness cannot verify ownership, and the evidence class says so. Required on the
    * external-public branch. On a non-`app-url` subject it is rejected (parse error); on any other
    * `app-url` config that does not route to external-public shared-world it is IGNORED-WITH-A-WARNING
-   * (forwardDeclaredWarnings), never silently consumed — it is meaningless without that plane.
+   * (forwardDeclaredWarnings), never silently consumed, because it is meaningless without that plane.
    */
   publicTarget?: { owner: string; authorized: boolean };
   /** `clone`: one or more owner/repo slugs (public or authorized-private). */
@@ -243,12 +243,12 @@ export interface LabSubject {
   clone?: LabSubjectClone;
   /**
    * `app-url`: a loopback http(s) URL the computer-use actor drives (127.0.0.1/localhost
-   * only — driving arbitrary public sites is not allowed). The URL must be reachable from
+   * only; driving arbitrary public sites is not allowed). The URL must be reachable from
    * inside the desktop sandbox; library callers provision it via the prepareDesktop hook.
-   * For a config-only path use `clone` + `serve` — the lab serves the app itself.
+   * For a config-only path use `clone` + `serve`: the lab serves the app itself.
    *
    * `local-app`: the loopback http(s) URL of an already-running local dev server the caller's
-   * custom CuaExecutor drives in-process (no sandbox, no public-target option — always
+   * custom CuaExecutor drives in-process (no sandbox, no public-target option, always
    * loopback). Passed to `inProcess.executor` so the bridge knows where the app lives.
    */
   appUrl?: string;
@@ -272,7 +272,7 @@ export interface LabSubject {
    */
   envValues?: Record<string, string>;
   /**
-   * `clone` (computer-use route): the subject's state story — seed/migration/fixture steps
+   * `clone` (computer-use route): the subject's state story, as seed/migration/fixture steps
    * executed in-sandbox around the serve sequence, and/or declared external state. Recorded
    * in the run bundle as structured provenance (invariant 5): seeded with command digests,
    * unpinned for external state, declared-not-run for dry-run/failed provisioning.
@@ -331,7 +331,7 @@ export interface LabParticipantEntry {
    * observation matches any declared rule; actor-level stopWhen is used as the default.
    */
   stopWhen?: StopWhen;
-  /** A declared observation window for this participant (#510); actor-level dwell is the default. */
+  /** A declared observation window for this participant; actor-level dwell is the default. */
   dwell?: DwellWindow;
   /**
    * How hard the model is asked to think for this participant; actor-level reasoningEffort is the default.
@@ -348,14 +348,14 @@ export interface LabParticipantEntry {
    */
   target?: string;
   /**
-   * Shared-world only (#164): this participant's loopback entry route, resolved against
+   * Shared-world only: this participant's loopback entry route, resolved against
    * `subject.serve.url`. It must be same-origin (loopback) with it, and the participant opens
    * `serve.url + entry`. Validated at parse and re-enforced in the engine. Inert/warned on every
    * non-shared-world route (the per-lane-worlds fan-out roster has no per-participant entry).
    */
   entry?: string;
   /**
-   * External-public shared-world only (#164 phase 2): marks this participant as the host. It
+   * External-public shared-world only: marks this participant as the host. It
    * creates the shared session (e.g. a multiplayer lobby) that the follower seats then join. Exactly
    * one participant in the roster may carry `host: true` (validated in externalPublicSharedWorldValidationReason).
    * The orchestrator watches the host seat's observed URL for the shared-session code and threads it
@@ -398,14 +398,14 @@ export interface LabActor {
   /** Consumed on the app-url route (laneFocus.instruction appended to the mission). XOR `lanes`. */
   laneFocus?: LabParticipantFocus;
   /** Free-form mission threaded into the actor prompt. Consumed on the app-url route. A mission on
-   *  its own is a complete, valid lab — `tasks` is additive, never required. */
+   *  its own is a complete, valid lab; `tasks` is additive, never required. */
   mission?: string;
   /**
    * The researcher's protocol: discrete tasks, each with what the participant is asked to do and
    * (optionally) how the researcher measures it. Additive to `mission`, which stays the brief.
    *
    * The two halves belong to different people. `goal` reaches the participant's prompt; `success`
-   * never does — a moderator does not read the success criterion aloud, because telling someone how
+   * never does. A moderator does not read the success criterion aloud, because telling someone how
    * they will be judged changes what they do. See src/lab/tasks.ts.
    * Supported only on the first actor of per-participant CUA routes; other routes fail preflight.
    */
@@ -443,7 +443,7 @@ export interface LabActor {
    */
   stopWhen?: StopWhen;
   /**
-   * A declared observation window (#510), the default for every participant; a `lanes[]` entry's dwell overrides
+   * A declared observation window, the default for every participant; a `lanes[]` entry's dwell overrides
    * it. `when` is a stopWhen-shaped condition (absent: the window opens after the first
    * observation); `ms` is the hold, `everyMs` the frame cadence (default 10 s), `then` whether
    * the participant continues afterwards (default) or the session ends. The harness takes no
@@ -455,7 +455,7 @@ export interface LabActor {
 type LabExecutionTarget = "local" | "e2b-desktop" | "e2b-terminal";
 
 /** Terminal transport: the captured non-interactive exec stream (stdin disabled). It is not an
- *  interactive duplex PTY — labeling captured exec output "pty" would be a claim/mechanism
+ *  interactive duplex PTY; labeling captured exec output "pty" would be a claim/mechanism
  *  mismatch (invariant 6 + the goal packet's PTY ruling), so this route uses "exec-stream". */
 type LabTerminalTransport = "exec-stream";
 
@@ -487,10 +487,10 @@ export interface LabExecutionDesktop {
    * Named device preset (mobile / small-mobile / narrow-mobile / tablet / desktop / wide) the
    * run renders at. Consumed on the computer-use route; default `desktop` (1440x950). On that
    * route only width/height physically render (the X screen is sized to the preset, so
-   * width-based responsive CSS fires) — touch/DPR/UA are sim-parity prompt signals, not rendered.
+   * width-based responsive CSS fires). Touch/DPR/UA are sim-parity prompt signals and do not render.
    */
   device?: string;
-  /** Raw hosted screen resolution [width, height] — an escape hatch that overrides `device`. */
+  /** Raw hosted screen resolution [width, height]: an escape hatch that overrides `device`. */
   resolution?: [number, number];
   /**
    * Browser family to launch for hosted desktop participants. Absent/default preserves the
@@ -515,7 +515,7 @@ export interface LabExecutionDesktop {
   /** Use the Codex app-server client mode for headed desktop actor surfaces. Consumed (meta). */
   codexAppServer?: boolean;
   /**
-   * Mobile fidelity beyond viewport size (#221). With `mobileEmulation: true`, every hosted
+   * Mobile fidelity beyond viewport size. With `mobileEmulation: true`, every hosted
    * Chromium computer-use participant on a mobile preset (mobile / small-mobile / narrow-mobile) gets
    * CDP device emulation applied to its launch page before the participant arrives; desktop,
    * tablet and wide participants in the same run are untouched and carry no fidelity block. Applied: the participant's device preset width/height as the CSS viewport, the preset's
@@ -527,14 +527,14 @@ export interface LabExecutionDesktop {
    * viewport and touch read-back is recorded separately; missing or different values warn.
    */
   fidelity?: LabDesktopFidelity;
-  /** Synthetic media devices behind the browser's own permission prompt (#509). */
+  /** Synthetic media devices behind the browser's own permission prompt. */
   media?: LabDesktopMedia;
   /** Optional retained screen video. Capture is independent of participant media input. */
   recording?: { audio: boolean };
 }
 
 /**
- * A participant with a camera (#509): a property of the environment, like the screen preset and
+ * A participant with a camera: a property of the environment, like the screen preset and
  * the browser, never support for any conferencing product. `camera.source: synthetic` generates
  * a test pattern in the sandbox with the image's own ffmpeg; a `.y4m` path on the host is
  * uploaded instead on hosted desktops. `microphone.source: speech` enables the participant's
@@ -573,7 +573,7 @@ export interface LabExecution {
    * it (the runaway-retry guard), and a cap on a model src/run/pricing.ts cannot price is refused at
    * preflight rather than run uncapped. It is a PER-PARTICIPANT cap: enforced inside each participant's loop,
    * so an N-participant fan-out can spend up to N × maxUsd before any participant aborts (the run warns with the
-   * true ~N × cap ceiling). `caps.maxTotalUsd` is the shared study budget (#299): one ledger
+   * true ~N × cap ceiling). `caps.maxTotalUsd` is the shared study budget: one ledger
    * across every participant, the knob a researcher actually reasons with. Absent = uncapped (the
    * historical CUA behavior); maxUsd: 0 still permits a request before reported usage trips it. Inert
    * (warned) on non-CUA routes. Reuses the same LabScenarioCaps shape as the terminal route's
@@ -590,7 +590,7 @@ export interface LabExecution {
   /**
    * `terminal-product` route: outbound routing allowlist passed to E2B with a deny-all fallback.
    * Domain filtering is a routing control, not strict destination isolation on shared hosting.
-   * It does not constrain spending through an allowed runtime provider (#538), including when
+   * It does not constrain spending through an allowed runtime provider, including when
    * openai-egress keeps the raw runtime key outside the sandbox.
    *
    * Absent means unrestricted, which is the historical behavior and stays the default, because a
@@ -617,11 +617,11 @@ export interface LabScenarioCaps {
   /** Max USD the run may spend (provider + product). 0 = no-spend. */
   maxUsd?: number;
   /**
-   * STUDY-LEVEL model-spend budget (#299), the number a researcher actually reasons with: "this
-   * study is N participants, roughly $X" — decided once, up front, where recruiting decisions are
+   * STUDY-LEVEL model-spend budget, the number a researcher actually reasons with: "this
+   * study is N participants, roughly $X", decided once, up front, where recruiting decisions are
    * made. The computer-use route reads it from `execution.caps.maxTotalUsd` only: every participant's
    * running estimated model spend feeds one shared ledger, and the moment the run total crosses
-   * this, each participant stops at its next turn with an honest `budget_reached` (status `incomplete` —
+   * this, each participant stops at its next turn with an honest `budget_reached` (status `incomplete`:
    * the participant ran out of budget; never `gave_up`, because a study-level stop is not the
    * participant's doing). Estimated model spend only; desktop-minutes ride the cost summary but
    * not this ledger. Independent of the per-participant `maxUsd` backstop; either, both, or neither may
@@ -671,7 +671,7 @@ export interface LabPolicies {
    */
   allowPublicTargets?: boolean;
   /**
-   * How the browser's camera/microphone permission is answered (#509). `prompt` (default): the
+   * How the browser's camera/microphone permission is answered. `prompt` (default): the
    * participant meets Chrome's real dialog and answers it, which is where a real person hesitates
    * or refuses. `granted`: the dialog is bypassed (`--use-fake-ui-for-media-stream`, which Chrome
    * marks with an "unsupported command-line flag" banner), for studies about what happens after
@@ -702,10 +702,10 @@ export interface LabReview {
   /** FORWARD-DECLARED (PR #2). */
   vocabulary?: string;
   /**
-   * #316 code escape hatch: a repo-relative path to an adopter scorer module (.mjs recommended) that
+   * Code escape hatch: a repo-relative path to an adopter scorer module (.mjs recommended) that
    * exports any of `{score, deriveFeedback, deriveArtifacts}`. Consumed on the scorer-capable routes
    * (terminal / computer-use / shared-world); loaded fail-closed (typed error, pre-spend). The entry
-   * is executable code — review a PR that adds one as code, not config.
+   * is executable code: review a PR that adds one as code.
    */
   scorer?: { ref: string };
 }
@@ -714,7 +714,7 @@ export interface LabDefaults {
   open?: boolean;
 }
 
-/** Off-app comms (email/SMS the persona lives in) the harness provides for the run (#297). */
+/** Off-app comms (email/SMS the persona lives in) the harness provides for the run. */
 export interface LabComms {
   email?: LabCommsEmail;
 }
@@ -754,12 +754,12 @@ interface LabCommsCaptureEmail {
   connection?: never;
   allowedOrigins?: never;
   /** Which implementation backs the inbox (a backend discriminator, distinct from `scenario.mode`):
-   *  `fake` (default) is an in-harness in-memory inbox in the Fowler test-double sense — an in-sandbox
+   *  `fake` (default) is an in-harness in-memory inbox in the Fowler test-double sense: an in-sandbox
    *  catch captures the app's sends. Provider-backed receiving uses the separate
    *  LabCommsReceivingEmail configuration selected by a saved connection. */
   kind: "fake";
   /**
-   * The subject-env var the harness sets to the in-sandbox catch's base URL — ADOPTER-NAMED (an app
+   * The subject-env var the harness sets to the in-sandbox catch's base URL. The adopter names it (an app
    * calling Resend's API directly reads `RESEND_API_URL`; an app using the SDK reads `RESEND_BASE_URL`).
    * The value is computed by the harness (a loopback URL), so it is not declared in `subject.env`.
    * Required on the provisioned routes; absent (and meaningless) when `external` is declared,
@@ -787,7 +787,7 @@ interface LabCommsCaptureEmail {
   /** Each participant's inbox address: the actor is told to sign up with it (the injected inbox
    *  instruction carries it) and the teardown drain matches captured mail against it. Omit the
    *  whole list and the parser fills one deterministic address per participant (`<laneId>@example.test`)
-   *  so every seat can do email out of the box (#351). When declared: a `lane` naming a participant that
+   *  so every seat can do email out of the box. When declared: a `lane` naming a participant that
    *  does not exist is a hard parse error (a mismatch silently disables the funnel for that seat),
    *  zero covered participants is a hard error, and partial coverage warns with the uncovered ones. An
    *  entry without `address` is legal but inert for the funnel: the drain does not match it,
@@ -795,8 +795,8 @@ interface LabCommsCaptureEmail {
    *  never silently dropped. */
   recipients?: LabCommsRecipient[];
   /**
-   * ADOPTER-HOSTED ingress (#328). Declaring this says: the operator runs the catch and the inbox
-   * themselves, so humanish neither provisions the subject nor injects `injectEnv` — it points the
+   * ADOPTER-HOSTED ingress. Declaring this says: the operator runs the catch and the inbox
+   * themselves, so humanish neither provisions the subject nor injects `injectEnv`. It points the
    * persona at the declared inbox, drains the declared catch over HTTP at teardown, and writes the
    * same digest-only evidence. This is what makes comms work on the app-url / operator-provisioned
    * plane, where humanish holds no sandbox handle to host a catch in and the block was previously
@@ -817,7 +817,7 @@ export interface LabCommsExternal {
 
 export interface LabCommsRecipient {
   lane: string;
-  /** The literal address the app sends to — what the evidence drain matches. Omit to reserve the participant
+  /** The literal address the app sends to, which the evidence drain matches. Omit to reserve the participant
    *  for the persona surface's default address (not drain-matched). */
   address?: string;
 }

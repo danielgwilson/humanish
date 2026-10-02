@@ -120,11 +120,10 @@ export function buildDraft(
     };
   }
 
-  // #392: the fallback below is DRY-RUN-shaped, and it used to be the fallback for every bundle
-  // without a candidate — so a live run whose route filed no participant report got a draft
-  // claiming "no browser behavior was exercised" over 15 screenshots of browser behavior. A live
-  // bundle now gets a draft that describes the run that happened, built from the same review lines
-  // the stakeholder surfaces show (participants and tasks keep their denominators).
+  // The fallback below is DRY-RUN-shaped: it says no browser behavior was exercised. A live
+  // bundle without a candidate gets a draft that describes the run that happened instead, built
+  // from the same review lines the stakeholder surfaces show (participants and tasks keep their
+  // denominators).
   if (bundle.mode === "live") {
     const participantEndings = participantOutcomeDetails(bundle.streams);
     const review = withCuaReviewProvenance(bundle.review, bundle.streams);

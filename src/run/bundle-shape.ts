@@ -206,9 +206,9 @@ function isDesktopBrowserEvidence(value: unknown): value is RunBundle["desktopBr
 /** Short lowercase-hex content digest (digestText default is 12 chars; tolerate longer future digests). */
 const SCORER_DIGEST_PATTERN = /^[a-f0-9]{12,64}$/;
 
-/** Shape guard for RunScorerProvenance (#316), mirroring isRunSubjectProvenance: tolerated-absent in
+/** Shape guard for RunScorerProvenance, mirroring isRunSubjectProvenance: tolerated-absent in
  *  isRunBundle, well-shaped when present. Semantics (does the digest still match the file) are not a
- *  verify concern — the block is core-stamped evidence of what was loaded, not a re-execution proof. */
+ *  verify concern: the block is core-stamped evidence of what was loaded and proves no re-execution. */
 function isRunScorerProvenance(value: unknown): value is RunScorerProvenance {
   return (
     isRecord(value) &&
@@ -241,7 +241,7 @@ export function isRunAdapterScore(value: unknown): value is RunAdapterScore {
 }
 
 // The local-tree archive content pin: sha256 hex, full 64 chars (unlike the repo's 16-char
-// display-digest convention -- this value is the provenance pin itself, persisted in full).
+// display-digest convention; this value is the provenance pin itself, persisted in full).
 export const ARCHIVE_SHA256_PATTERN = /^[a-f0-9]{64}$/;
 
 function isRunSubjectProvenance(value: unknown): value is RunSubjectProvenance {

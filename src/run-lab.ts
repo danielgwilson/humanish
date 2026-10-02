@@ -243,13 +243,13 @@ export type InternalRunLabOptions = RunLabOptions & RunLabInternals;
 
 interface RunLabInternals {
   /**
-   * Which manifest this run came from (#455). planLab puts it on the plan, and the route reads
+   * Which manifest this run came from. planLab puts it on the plan, and the route reads
    * plan.lab for the run's status record and bundle. Absent for a library caller that passes a
    * LabConfig directly; that run records no lab.
    */
   lab?: RunLabProvenance;
   /**
-   * CONFIG-DECLARED scorer provenance (#316), forwarded alongside whichever hooks bag carries the
+   * Config-declared scorer provenance, forwarded alongside the
    * loaded scorer. Its presence is the "declared" marker the terminal route reads to flip a
    * status:"fail" verdict; the browser routes stamp it as evidence (they already flip). Core-computed
    * (path + digest), never adopter-supplied; absent for library callers.

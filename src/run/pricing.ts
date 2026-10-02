@@ -11,7 +11,7 @@
 // token-derived estimate here always lives under `estimatedCostUsd` so a reader can never confuse
 // an estimate for an authoritative charge (invariant 6).
 
-// A type-only import — erased at compile time, so the pricing <-> src/actors/contract.ts cycle is
+// A type-only import, erased at compile time, so the pricing <-> src/actors/contract.ts cycle is
 // not a runtime cycle.
 import type { ActorTokenUsage } from "../actors/contract.js";
 
@@ -169,7 +169,7 @@ const GPT6_ASTRA_AS_OF = "2026-09-03";
 // case-insensitive on a trimmed id). An id missing here is declared absent, never guessed.
 export const MODEL_RATES: Record<string, ModelRate> = {
   // OpenAI computer-use-preview (the classic CUA model). ~$3 / 1M input, ~$12 / 1M output.
-  // source: openai.com/api/pricing (verify — providers change without notice).
+  // source: openai.com/api/pricing (verify: providers change without notice).
   "computer-use-preview": {
     inputUsdPerToken: 3e-6,
     outputUsdPerToken: 12e-6,
@@ -298,7 +298,7 @@ export function round6(n: number): number {
 /**
  * Estimate one actor trace's model-token cost from its trace tokenUsage + model id. Deterministic;
  * the rate table is injectable (tests pass a fake sheet). Returns a DECLARED-ABSENT estimate
- * (estimatedCostUsd: null + a reason) for a missing rate or missing usage — never a guessed cost.
+ * (estimatedCostUsd: null + a reason) for a missing rate or missing usage, never a guessed cost.
  */
 export function estimateActorCostForExecution(
   usage: ActorTokenUsage | undefined,
@@ -359,7 +359,7 @@ export function estimateActorCost(
   const outTok = tokenUsage.output ?? 0;
   // Long-context tiering needs to know each request's input size (the provider re-prices whole
   // requests past the threshold), so it engages only when per-turn usage records exist and their
-  // input sums to the reported total — a partial turn ledger must not silently price the missing
+  // input sums to the reported total, because a partial turn ledger must not silently price the missing
   // remainder at the wrong tier. Otherwise totals price on the base (short-context) rate, which is
   // the under-estimate direction and never trips a cap early.
   const turns = tokenUsage.turns ?? [];
@@ -458,7 +458,7 @@ export function estimateActorCost(
 /**
  * Estimate the E2B desktop-minute cost from a host-side create->teardown span (minutes). The rate
  * is injectable. Returns a DECLARED-ABSENT estimate (null + "no_duration") when no duration was
- * measured (no sandbox / unmeasurable span) — never a guessed 0.
+ * measured (no sandbox / unmeasurable span), never a guessed 0.
  */
 export function estimateDesktopCost(
   minutes: number | undefined,

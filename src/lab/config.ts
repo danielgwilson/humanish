@@ -19,13 +19,13 @@
 // clone slice it also consumes subject.{repos,serve,env,state,exposure,clone.depth} and
 // execution.desktop.template. actors[0].{mission,laneFocus,model} are inert on that route
 // because no model runs, and most execution.desktop.* fields remain forward-declared (device
-// presets belong to the cua route — scripted surfaces are the driver's own desktop/mobile
+// presets belong to the cua route; scripted surfaces are the driver's own desktop/mobile
 // viewports where isMobile/DSF genuinely render via playwright emulation).
 // On the other routes those fields remain forward-declared and are not yet consumed:
 // parseLabConfig emits a warning listing any such field that is set, so `lab inspect` shows
 // the truth.
 //
-// NOTE on actors[0].count: it now carries ROUTE-SPECIFIC meanings — synthetic route: simCount;
+// NOTE on actors[0].count: it carries ROUTE-SPECIFIC meanings. Preview route: simCount;
 // scripted-browser route: surface roster {1 = desktop, 2 = desktop + mobile}, default 1 (the
 // defaults-table single-participant row governs; count: 2 is the declared override); computer-use
 // E2B route: the homogeneous fan-out participant count (N identical participants, each its own E2B
@@ -179,7 +179,7 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
   const scenarioCapsReason = scenarioCapsValidationReason(config);
   if (scenarioCapsReason) return invalid(scenarioCapsReason);
 
-  // All-parallel default (#350): a multi-seat lab that does not declare execution.concurrency runs
+  // All-parallel default: a multi-seat lab that does not declare execution.concurrency runs
   // every seat at once; the declared field is a cap the author chose, never a mode. Independent
   // computer-use participants resolve that default from the final participant count when they plan, after any
   // --count override, so the parser leaves it unset for them. A shared world's roster is fixed, so
@@ -195,8 +195,8 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
     }
   }
 
-  // Email that just works (#351): the funnel's only handoff to an actor is the per-participant
-  // inbox instruction, gated on recipients[]. Guessed participant ids broke a field run —
+  // Email that just works: the funnel's only handoff to an actor is the per-participant
+  // inbox instruction, gated on recipients[]. Guessed participant ids broke a field run:
   // recipients copied from a single-participant example matched nothing, so every actor was left inbox-blind with zero
   // signal. Omitted recipients are therefore filled (one deterministic address per participant);
   // a recipient naming an unknown participant is a hard error listing the real ids; declared

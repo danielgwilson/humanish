@@ -1,6 +1,6 @@
-// The run index (#455 PR 2): list and classify every run in a project without parsing bundles.
+// The run index: list and classify every run in a project without parsing bundles.
 //
-// The existing `listRuns` walks each run tree — screenshots included — validating symlinks and
+// The existing `listRuns` walks each run tree, screenshots included, validating symlinks and
 // then parses each `run.json`: measured 197ms cold / 152ms warm at 25 runs. That is fine for a
 // command that prints once and exits, and much too hot for a surface that refreshes on a cadence
 // over SSH. This module reads the small `status.json` record each run now writes (586 bytes beside
@@ -11,7 +11,7 @@
 //     classification; nothing here is a claim about what a participant did.
 //   - A run with no status record is not assumed finished. It is classified from what is on disk:
 //     a bundle means finished, receipts without a bundle mean interrupted. That is the honest
-//     reading of a run whose process died — and, before this contract existed, of every run.
+//     reading of a run whose process died (and, before this contract existed, of every run).
 //   - One unreadable run directory degrades that run, never the listing.
 
 import { readdir, readFile, stat } from "node:fs/promises";
@@ -58,7 +58,7 @@ export interface RunIndexResult {
   cwd: string;
   /** Newest first, by the best timestamp each entry has. */
   runs: RunIndexEntry[];
-  /** Directories that could not be read at all, by name — surfaced, never silently dropped. */
+  /** Directories that could not be read at all, by name: surfaced, never silently dropped. */
   unreadable: string[];
 }
 
@@ -233,8 +233,8 @@ export interface ReadRunIndexOptions {
   cache?: RunIndexCache;
   /** Injectable clock, so liveness classification is reproducible in tests. */
   nowMs?: number;
-  /** Cap the number of runs returned (newest first). The full directory is still enumerated —
-   *  a cap on reads, not on truth — and the count reflects what was read. */
+  /** Cap the number of runs returned (newest first). The full directory is still enumerated;
+   *  the cap limits reads, and the count reflects what was read. */
   limit?: number;
 }
 
@@ -322,7 +322,7 @@ export async function readRunIndex(
     }
 
     // Neither record nor bundle: receipts without an outcome. That is precisely an interrupted
-    // run — the shape a dropped connection leaves — and saying so is more useful than hiding it.
+    // run (the shape a dropped connection leaves), and saying so is more useful than hiding it.
     runs.push({ runId, derivedFrom: "directory", liveness: "interrupted" });
   }
 

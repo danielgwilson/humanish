@@ -8,7 +8,7 @@ import type { RunLabProvenance } from "./status.js";
 export const CLEANUP_SCHEMA = "humanish.cleanup-result.v1";
 
 export interface RunOptions {
-  /** Which manifest produced this run (#455). */
+  /** Which manifest produced this run. */
   lab?: RunLabProvenance;
   cwd: string;
   dryRun?: boolean;
@@ -49,7 +49,7 @@ export interface RunResult {
       | "HUMANISH_WATCH_OPTION_CONFLICT"
       | "HUMANISH_WATCH_SAFE_NOT_APPLICABLE"
       | "HUMANISH_APP_URL_REMOVED"
-      // #316 CLI-loadable adopter scorer — fail-closed at load, pre-spend.
+      // CLI-loadable adopter scorer: fail-closed at load, pre-spend.
       | "HUMANISH_LAB_SCORER_BAD_REF"
       | "HUMANISH_LAB_SCORER_NOT_FOUND"
       | "HUMANISH_LAB_SCORER_LOAD_FAILED"

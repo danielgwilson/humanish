@@ -5,7 +5,7 @@ import type { ParticipantIds } from "./participant-records.js";
 
 export const SHARED_WORLD_SCHEMA = "humanish.shared-world.v1";
 
-/** The shared service-plane provenance for a shared-world run (#164): single commit + a
+/** The shared service-plane provenance for a shared-world run: single commit + a
  *  seed-recipe digest + the provisioned env names (never values). */
 export interface SharedWorldPlane {
   /** The cloned commit SHA of the shared plane (when the clone resolved one). */
@@ -16,10 +16,10 @@ export interface SharedWorldPlane {
   /** Declared env names provisioned for the shared plane (values never surface). */
   envNames: string[];
   /**
-   * Concurrent route only (#164 phase 2): sha256-16 of the harness-minted `getHost` URL's origin
+   * Concurrent route only: sha256-16 of the harness-minted `getHost` URL's origin
    * (the first-class provisioned-subject target every actor drove, per invariant 2). A digest replaces the
    * raw URL: a getHost URL embeds the (live) sandbox id and matches the publish-safety e2b-URL
-   * redaction, so — like the stream URL and like sandbox ids — it never lands raw in a published
+   * redaction, so, like the stream URL and sandbox ids, it never lands raw in a published
    * bundle (the raw tokenless URL is surfaced only on the ephemeral lab result). The orchestrator
    * confirms the URL is tokenless (no authKey, per invariant 1) before digesting. verify proves every
    * actor drove this host by digest equality. Absent on the sequential route.
@@ -35,7 +35,7 @@ export interface SharedWorldPlane {
    */
   exposure?: "synthetic";
   /**
-   * External-public plane class only (#164 phase 2): sha256-16 of the observed origin the seats
+   * External-public plane class only: sha256-16 of the observed origin the seats
    * converged on. It is the counterpart of hostDigest with a weaker, disclosed claim: the harness only
    * observes that each seat reached this origin and never minted it. It is derived from what the
    * seats actually reached; the declared appUrl does not feed it. verify proves every laneWindow.routeHostDigest
@@ -55,7 +55,7 @@ export interface SharedWorldPlane {
 }
 
 /**
- * Concurrent shape (#164 phase 2): one actor's harness-clocked activity window against the one
+ * Concurrent shape: one actor's harness-clocked activity window against the one
  * shared plane. Overlapping windows mechanically prove ≥2 personas were active simultaneously.
  * `laneWindows` and `stateSeries` are independent series. There is deliberately no per-delta→actor
  * field, because under concurrency the evidence cannot say which actor caused a state change.
@@ -76,7 +76,7 @@ export interface SharedWorldParticipantWindow {
   verdict: string;
   /** sha256-16 of the origin of the getHost seat URL this actor drove. verify confirms it equals
    *  plane.hostDigest, so the actor drove exactly the harness-minted host (invariant 2).
-   *  A digest, not the raw URL (a getHost URL is not publish-safe — see SharedWorldPlane.hostDigest). */
+   *  A digest, not the raw URL (a getHost URL is not publish-safe; see SharedWorldPlane.hostDigest). */
   routeHostDigest: string;
   /** The shared plane's commit this actor observed (omitted when unresolved). */
   commit?: string;
@@ -131,20 +131,20 @@ export function sharedWorldParticipantKeys(
 }
 
 /** A timeline checkpoint: a read-only digest probe of the shared plane at one moment. Persisted
- *  DIGEST-ONLY — `digest` is sha256-16(scrub+redact(stdout)); no raw value ever lands. */
+ *  DIGEST-ONLY: `digest` is sha256-16(scrub+redact(stdout)); no raw value ever lands. */
 export interface SharedWorldCheckpoint {
   kind: "checkpoint";
   /** "cp-baseline" for the baseline snapshot; "cp-after-<roleId>" after each role's turn. */
   name: string;
   /** sha256-16 of the (scrubbed, redacted) combined probe output at this snapshot. */
   digest: string;
-  /** True when this snapshot's digest differs from the previous checkpoint's — the observed
+  /** True when this snapshot's digest differs from the previous checkpoint's, meaning the observed
    *  state changed across the intervening turn (the delta is attributed to the whole turn). */
   deltaFromPrev: boolean;
 }
 
 /** A timeline turn: one role's seat session against the shared plane. Carries the plane
- *  provenance it observed (identical across turns by construction — the single-plane proof). */
+ *  provenance it observed (identical across turns by construction: the single-plane proof). */
 interface SharedWorldTurn {
   kind: "turn";
   roleId: string;
@@ -178,10 +178,10 @@ interface SharedWorldSkippedTail {
  * - Sequential (`topologyMode: "sequential"`): `sequence` + an alternating `timeline`
  *   (cp-baseline → turn → cp → … → cp); limits `sequential-only` etc. No route writes it since
  *   0.106.0; verify still reads it so older bundles keep verifying.
- * - Concurrent (`topologyMode: "concurrent"`, #164 phase 2): `laneWindows` + `stateSeries` +
+ * - Concurrent (`topologyMode: "concurrent"`): `laneWindows` + `stateSeries` +
  *   `outcomes`; limits `concurrent` etc. No `timeline`.
  *
- * Additive + optional on `humanish.run-bundle.v1` — absent on every non-shared-world bundle.
+ * Additive + optional on `humanish.run-bundle.v1`: absent on every non-shared-world bundle.
  * The mandatory `attributionLimits` are verify-enforced (fail closed on a missing required or a
  * present forbidden limit).
  */
@@ -191,12 +191,12 @@ export interface SharedWorldEvidence {
   /** The substrate discriminator. Branched on first by sharedWorldEvidenceFindings. */
   topologyMode: "sequential" | "concurrent";
   /**
-   * Concurrent route only (#164 phase 2): the plane-class discriminator. Absent == the historical
-   * "provisioned-getHost" plane (a clone/local-tree subject served + getHost-exposed in-sandbox — the
+   * Concurrent route only: the plane-class discriminator. Absent == the historical
+   * "provisioned-getHost" plane (a clone/local-tree subject served + getHost-exposed in-sandbox; the
    * harness minted the host; synthetic-seeded attestation + authoritative in-sandbox checkpoint
    * stateSeries). "external-public" == a real operator-owned public deployment used directly as the
    * plane (no getHost/clone/seed; the operator attests it and the harness does not control it; no authoritative
-   * shared-state proof — concurrency evidenced by temporal co-occupancy + observed lobby convergence).
+   * shared-state proof: concurrency evidenced by temporal co-occupancy + observed lobby convergence).
    * verify gates every getHost-specific assertion on this discriminator; existing bundles omit it and
    * default to provisioned-getHost, byte-stable.
    */
@@ -207,7 +207,7 @@ export interface SharedWorldEvidence {
   /** The pinned, verify-enforced attribution ceiling (the set differs per topologyMode/planeClass). */
   attributionLimits: string[];
   /**
-   * EXTERNAL-PUBLIC plane class only (#164 phase 2, optional-but-strong): sha256-16 of the shared
+   * EXTERNAL-PUBLIC plane class only (optional-but-strong): sha256-16 of the shared
    * `/lobby/CODE` path every seat's CDP-observed URL converged on: the concrete "they were in one
    * shared world" proof, observation-derived and needing no subject change. Digest-only (the raw
    * 6-char lobby code and full URLs are runtime-only and never land). Absent when seats did not converge.

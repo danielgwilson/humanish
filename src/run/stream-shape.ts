@@ -181,7 +181,7 @@ export function isRunSimulationStatus(value: unknown): value is RunSimulationSta
     value === "running" ||
     value === "passed" ||
     // Participant outcomes (docs/principles/three-roles.md). This runtime allowlist is the actual
-    // gate — the TS union alone does not validate a bundle read back from disk.
+    // gate; the TS union alone does not validate a bundle read back from disk.
     value === "abandoned" ||
     value === "incomplete" ||
     value === "complete" ||
