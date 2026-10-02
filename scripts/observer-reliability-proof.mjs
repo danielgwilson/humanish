@@ -141,9 +141,14 @@ async function sample(page, selector, ms) {
       while (performance.now() - start < ms) {
         const image = document.querySelector(selector),
           box = image?.getBoundingClientRect(),
-          style = image && getComputedStyle(image);
+          style = image && getComputedStyle(image),
+          stage = image?.closest(".evidence-stage");
         values.push({
           t: performance.now() - start,
+          // The stage that sized the frame, so a geometry failure shows why the frame changed.
+          stage: stage ? `${stage.clientWidth}x${stage.clientHeight}` : undefined,
+          fitRatio: stage?.style.getPropertyValue("--fit-ratio") || undefined,
+          fitRecording: stage ? stage.hasAttribute("data-fit-recording") : undefined,
           src: image?.getAttribute("src"),
           visible:
             !!image &&

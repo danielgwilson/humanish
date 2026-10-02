@@ -226,29 +226,16 @@ A host adapter may provide:
 If no embed URL exists, the Observer still renders the Codex-style timeline and
 session contract instead of failing the stream.
 
-## Historical slice and remaining gaps
+## Remaining gaps
 
-The original 2026-06-01 slice implemented the Observer substrate and synthetic
-stream contracts; local `codex-exec` active-run snapshots followed.
-
-Subsequent additions through 2026-06-11 included:
-
-- Playwright-backed browser proof with scripted, app-specific
-  `browser.steps` authored in `humanish/scenarios/*.yaml` (`src/actors/scripted-browser/`);
-- native Codex app-server session adapter (`src/actors/codex/app-server.ts`,
-  registered in `src/actors/registry.ts`);
-- E2B desktop participants on the computer-use and shared-world routes;
-- computer-use bundles persist a `screenshots/` directory and the Observer
-  renders the frames (`src/routes/computer-use/participant-execution.ts` writes them).
-
-Intentionally still adapter work:
+These remain adapter work:
 
 - local PTY capture;
 - Codex TUI live follow after workspace trust bootstrap;
 - richer screenshot/trace galleries across multi-step product journeys;
 - reviewer acceptance gates over real product behavior.
 
-## The rendering layer (#426, cut over 2026-08-16)
+## The rendering layer
 
 The renderer is the `observer/` workspace: a Vite single-file build on the
 `@humanish` registry tokens, frozen against `humanish.observer-data.v1`

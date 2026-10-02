@@ -72,3 +72,5 @@ export function useDecodedImage(href: string | null) {
     },
   };
 }
+
+export type DecodedImageState = ReturnType<typeof useDecodedImage>;
