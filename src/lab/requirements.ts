@@ -1,9 +1,9 @@
 // The keys and subject env a live plan's requirements list. Each route's preflight asks
 // missingKeys and missingSubjectEnv which names to refuse on, doctor and the TUI ask requiredKeys
-// and requiredSubjectEnv which names to report, and `lab run` asks keyNamesOf which names to look
-// up, so the planner alone decides what a run needs. A route keeps its own error codes, messages
-// and check order. The terminal runtime key (`key-one-of`) stays with buildRuntimeAuth at run
-// time, which also picks its placement.
+// and requiredSubjectEnv which names to report, and `lab run` asks keyNamesOf which key-source
+// lines to print, so the planner alone decides what a run needs. A route keeps its own error
+// codes, messages and check order. The terminal runtime key (`key-one-of`) stays with
+// buildRuntimeAuth at run time, which also picks its placement.
 import type { LabPlan, Requirement } from "./plan-types.js";
 
 /** Provider keys in the order the routes name them in a refusal. */
