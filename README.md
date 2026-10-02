@@ -30,10 +30,10 @@ drawDB 11 of 12, none invented
 ([TodoMVC](https://github.com/danielgwilson/humanish/blob/main/bench/RESULTS-TODOMVC-2026-09-01.md), [drawDB](https://github.com/danielgwilson/humanish/blob/main/bench/RESULTS-DRAWDB-2026-09-01.md)).
 Cold install to a live study: 9 of 9 fresh directories reached the goal in 108 to 200 seconds;
 the five on the API route cost $0.16 to $0.35 each, and the four on Codex or Claude Code are
-unpriced ([receipt](https://github.com/danielgwilson/humanish/blob/main/docs/goals/computer-use-actor/receipts/cold-install-try-live-2026-09-01.md)).
+unpriced ([receipt](https://github.com/danielgwilson/humanish/blob/main/docs/evidence/computer-use/cold-install-try-live-2026-09-01.md)).
 Same mission, different personas: keyboard-first participants reported drawDB's
 database modal 5 of 5 times and TodoMVC's mouse-only rename 6 of 6; mouse newcomers
-reported them 0 of 5 and 0 of 6 ([receipt](https://github.com/danielgwilson/humanish/blob/main/docs/goals/computer-use-actor/receipts/persona-axis-phone-2026-09-03.md)).
+reported them 0 of 5 and 0 of 6 ([receipt](https://github.com/danielgwilson/humanish/blob/main/docs/evidence/computer-use/persona-axis-phone-2026-09-03.md)).
 Planted defects are more legible than real ones and the largest cell is six runs;
 read these as what the machinery found, not as rates for your users.
 
@@ -386,7 +386,7 @@ fresh hosted inbox.
   and share-safe public exposure.
 
 Mobile viewport and touch flags do not certify gesture equivalence. The
-[2026-09-05 input-conformance correction](https://github.com/danielgwilson/humanish/blob/main/docs/goals/computer-use-actor/receipts/mobile-input-conformance-2026-09-05.md)
+[2026-09-05 input-conformance correction](https://github.com/danielgwilson/humanish/blob/main/docs/evidence/computer-use/mobile-input-conformance-2026-09-05.md)
 qualifies the historical results from phone-sized participants: they describe humanish's
 measured input path, not established physical-device app behavior.
 
@@ -424,7 +424,7 @@ take which option.
 
 The researcher declares the study, the participant tries the product, and the
 stakeholder reads what happened. [Three roles](docs/principles/three-roles.md)
-explains the design; the [email-gated signup receipts](https://github.com/danielgwilson/humanish/tree/main/docs/goals/email-gated-signup/receipts/)
+explains the design; the [email-gated signup receipts](https://github.com/danielgwilson/humanish/tree/main/docs/evidence/email-signup/)
 show a completed two-participant study and a reported keyboard-accessibility finding.
 
 ## Telemetry
@@ -466,7 +466,7 @@ Maintainers draft this repository's feedback issues with
 ## Docs
 
 - [User guides and generated CLI reference](https://humanish.dev/docs)
-- [Current safety state and goals](docs/goals/current.md)
+- [Current safety state and goals](docs/status.md)
 - [Contributing: reading order, commands and pull requests](CONTRIBUTING.md)
 - [Contributor and agent ramp](docs/ramp/README.md)
 - [Architecture: the run path, code map and invariants](ARCHITECTURE.md)

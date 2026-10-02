@@ -1,7 +1,8 @@
 /**
- * Fails when a doc or a src/ comment names a repo file that does not exist, when ARCHITECTURE.md's
+ * Fails when a doc or a src/ comment names a repo file that does not exist, when `ARCHITECTURE.md`'s
  * code map misses a src/ folder or lists one that is gone, when no index links a checked page
- * under docs/, or when a checked doc opens a line with `Date:` or `Status:`. Run by docs:check.
+ * under docs/, when a checked doc opens a line with `Date:` or `Status:`, or when `README.md` or a
+ * site page links into docs/history/. Run by docs:check.
  */
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
@@ -16,7 +17,12 @@ import {
   markdownAnchors,
 } from "./lib/doc-paths.js";
 import { findCodeMapIssues, requiredFolders } from "./lib/code-map.js";
-import { findPreambleLines, findUnindexedDocs } from "./lib/doc-index.js";
+import {
+  citesEvidenceOnly,
+  findHistoryLinks,
+  findPreambleLines,
+  findUnindexedDocs,
+} from "./lib/doc-index.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 // Tracked plus untracked-but-not-ignored files, so a file added before `git add` counts, and a
@@ -51,15 +57,22 @@ for (const issue of codeMapIssues) process.stderr.write(`${issue}\n`);
 const unindexed = findUnindexedDocs(paths, (path) =>
   index.files.has(path) ? read(path) : undefined,
 );
-const preambles = docs.flatMap((path) =>
-  findPreambleLines(read(path)).map((line) => `${path}:${line}`),
-);
+// A study record under docs/evidence/ keeps its date line: the date is part of the record.
+const preambles = docs
+  .filter((path) => !path.startsWith("docs/evidence/"))
+  .flatMap((path) => findPreambleLines(read(path)).map((line) => `${path}:${line}`));
 for (const at of preambles) {
   process.stderr.write(`${at} opens with Date: or Status:; git log holds dates\n`);
 }
+const historyLinks = docs
+  .filter(citesEvidenceOnly)
+  .flatMap((path) => findHistoryLinks(path, read(path)).map((line) => `${path}:${line}`));
+for (const at of historyLinks) {
+  process.stderr.write(`${at} links into docs/history/; cite docs/evidence/ or a current page\n`);
+}
 for (const path of unindexed) {
   process.stderr.write(
-    `${path} is linked from neither docs/README.md nor its folder's README.md\n`,
+    `${path} is linked from no README.md in its folders, up to docs/README.md\n`,
   );
 }
 
@@ -85,7 +98,7 @@ if (codeMapIssues.length > 0) {
 }
 if (unindexed.length > 0) {
   process.stderr.write(
-    `${unindexed.length} unindexed page(s). Link each from docs/README.md or its folder's README.md.\n`,
+    `${unindexed.length} unindexed page(s). Link each from docs/README.md or a README.md in its folders.\n`,
   );
 }
 if (preambles.length > 0) {
@@ -93,10 +106,20 @@ if (preambles.length > 0) {
     `${preambles.length} preamble line(s). Delete them, keeping a scope sentence where it carries a fact.\n`,
   );
 }
-if (issues.length > 0 || codeMapIssues.length > 0 || unindexed.length > 0 || preambles.length > 0) {
+if (historyLinks.length > 0) {
+  process.stderr.write(`${historyLinks.length} history link(s) from the README or the site.\n`);
+}
+if (
+  issues.length > 0 ||
+  codeMapIssues.length > 0 ||
+  unindexed.length > 0 ||
+  preambles.length > 0 ||
+  historyLinks.length > 0
+) {
   process.exitCode = 1;
 } else {
   process.stdout.write(`Paths resolve in ${docs.length} docs and ${sources.length} src files.\n`);
   process.stdout.write(`The code map covers all ${requiredFolders(paths).length} src folders.\n`);
   process.stdout.write("An index links every checked page under docs/, and none has a preamble.\n");
+  process.stdout.write("The README and the site cite no page under docs/history/.\n");
 }

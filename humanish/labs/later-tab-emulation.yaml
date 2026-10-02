@@ -7,7 +7,7 @@ description: >
   participant under mobile emulation opens the guide and reports the guide's numbers. The guide's
   own numbers, in the participant's words and in the bundle's fidelity read-back
   (desktopGeometry.fidelity.laterTargets), are the proof that the override reached the later tab.
-  Receipt: docs/goals/computer-use-actor/receipts/later-tab-emulation-2026-09-04.md.
+  Receipt: docs/evidence/computer-use/later-tab-emulation-2026-09-04.md.
   Committed as mode: dry-run. A live run needs OPENAI_API_KEY and E2B_API_KEY and costs about $0.02.
 subject:
   source: local-tree

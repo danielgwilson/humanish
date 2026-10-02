@@ -8,7 +8,7 @@ description: >
   participant meets Chrome's real permission dialog and answers it, which is the moment a real
   person hesitates or refuses; the page's own read-back, in the participant's words, is the proof
   that a camera was there. The bundle records the feed and the launch flags under
-  desktopBrowser.media. Receipt: docs/goals/computer-use-actor/receipts/participant-camera-2026-09-04.md.
+  desktopBrowser.media. Receipt: docs/evidence/computer-use/participant-camera-2026-09-04.md.
   Committed as mode: dry-run. A live run needs OPENAI_API_KEY and E2B_API_KEY and costs about $0.05.
 subject:
   source: local-tree

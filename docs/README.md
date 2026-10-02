@@ -57,14 +57,17 @@ than one kind is split file by file.
 - [architecture/actor-contract.md](architecture/actor-contract.md) and
   [architecture/github-feedback-loop.md](architecture/github-feedback-loop.md): design records with
   their context and open items.
-- [product/open-source-install-experience.md](product/open-source-install-experience.md): the
-  product target for install and first run.
 
-## Treat these folders as history
+## Check the current state and the evidence behind it
 
-`goals/`, `plans/` and `roadmap/` hold dated plans, status logs and receipts. They may name files
+- [status.md](status.md): what ships today, by surface, and the work that is gated.
+- [evidence/](evidence/README.md): dated study records that the README, the site and these pages
+  cite. `docs:check` covers them.
+
+## Treat history as history
+
+[history/](history/README.md) holds dated goal packets, plans and the roadmap. They may name files
 that have since moved, so `docs:check` skips them (`HISTORY_DIRECTORIES` in
-[scripts/lib/doc-paths.ts](../scripts/lib/doc-paths.ts)). One file there is current, and
-`docs:check` covers it: [goals/current.md](goals/current.md), the live status page.
+[scripts/lib/doc-paths.ts](../scripts/lib/doc-paths.ts)).
 
 `assets/` holds images that ship in the npm package, such as the README hero.

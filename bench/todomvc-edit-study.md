@@ -1,6 +1,6 @@
 # Rebuild the TodoMVC Edit patch and author a comparison
 
-The [September 5 receipt](../docs/goals/computer-use-actor/receipts/todomvc-edit-confirmation-2026-09-05.md)
+The [September 5 receipt](../docs/evidence/computer-use/todomvc-edit-confirmation-2026-09-05.md)
 compares TodoMVC's original double-click editor with a local keyboard-accessible Edit patch.
 The [patch](fixtures/todomvc-visible-edit.patch) is the exact source change studied.
 It modifies public TodoMVC source under its [MIT license](fixtures/todomvc-LICENSE.txt); the upstream notice is preserved beside the patch.
@@ -75,7 +75,7 @@ the Edit button in either mission.
 The recorded comparison used three repetitions per build/input mode, twelve attempts
 total, with interleaved order, no replacements, a five-minute actor horizon, and natural
 participant endings. Keep interrupted attempts visible. Do not combine mobile-emulated
-sessions with desktop keyboard sessions; the [mobile conformance receipt](../docs/goals/computer-use-actor/receipts/mobile-input-conformance-2026-09-05.md)
+sessions with desktop keyboard sessions; the [mobile conformance receipt](../docs/evidence/computer-use/mobile-input-conformance-2026-09-05.md)
 explains the held touch comparison.
 
 ## Observe the same item without teaching the participant the answer

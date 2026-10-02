@@ -1064,7 +1064,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
 
   // Captured verbatim from the real Codex event shape on 2026-09-05. This record has no
   // identifiers or participant prose. The E2B callback/returned-stdout duplication is proven
-  // byte-for-byte in docs/goals/terminal-product-lane/receipts/2026-09-05-runtime-egress-auth.md.
+  // byte-for-byte in docs/evidence/terminal-product/2026-09-05-runtime-egress-auth.md.
   const capturedUsage =
     '{"type":"turn.completed","usage":{"input_tokens":94325,"cached_input_tokens":55936,"cache_write_input_tokens":0,"output_tokens":1407,"reasoning_output_tokens":864}}\n';
 

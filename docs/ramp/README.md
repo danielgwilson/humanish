@@ -9,7 +9,7 @@ other reference pages. It adds current state, how to pick work and the quality b
 
 Start with two things:
 
-1. The current task and [`docs/goals/current.md`](../goals/current.md) for current
+1. The current task and [`docs/status.md`](../status.md) for current
    product status. Explicit task direction takes precedence over historical queues.
 2. Instructions in the component being changed, then its relevant contracts.
 
@@ -18,14 +18,14 @@ to resume automatically. Keep one concise current task handoff with the requeste
 outcome, demonstrated behavior, next complete result, constraints and rejected or
 deferred approaches; link evidence rather than repeating its chronology.
 
-| When working on                            | Reference                                                                                                                                                                      |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Install, commands or first-run UX          | [`README.md`](../../README.md), [install experience](../product/open-source-install-experience.md)                                                                             |
-| Security, evidence handling or defaults    | [Invariants and defaults](../principles/invariants-and-defaults.md)                                                                                                            |
-| Observer                                   | [Observer architecture](../architecture/observer.md) and its component instructions                                                                                            |
-| Bundle formats or policy                   | [Run bundle](../contracts/run-bundle.md), [policy](../contracts/policy.md)                                                                                                     |
-| Public artifacts or packaging              | [Public-readiness standard](../release/public-readiness-standard.md), [release procedure](../release/publish.md)                                                               |
-| Proof architecture or historical decisions | [Proof roadmap](https://github.com/danielgwilson/humanish/blob/main/docs/goals/proof-roadmap/goal.md), [historical delivery roadmap](../roadmap/world-class-open-source-v0.md) |
+| When working on                            | Reference                                                                                                                                                                                      |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Install, commands or first-run UX          | [`README.md`](../../README.md), [the docs tutorial](https://humanish.dev/docs)                                                                                                                 |
+| Security, evidence handling or defaults    | [Invariants and defaults](../principles/invariants-and-defaults.md)                                                                                                                            |
+| Observer                                   | [Observer architecture](../architecture/observer.md) and its component instructions                                                                                                            |
+| Bundle formats or policy                   | [Run bundle](../contracts/run-bundle.md), [policy](../contracts/policy.md)                                                                                                                     |
+| Public artifacts or packaging              | [Public-readiness standard](../release/public-readiness-standard.md), [release procedure](../release/publish.md)                                                                               |
+| Proof architecture or historical decisions | [Proof roadmap](https://github.com/danielgwilson/humanish/blob/main/docs/history/goals/proof-roadmap/goal.md), [historical delivery roadmap](../history/roadmap/world-class-open-source-v0.md) |
 
 ## Mental Model
 
@@ -187,7 +187,7 @@ pnpm humanish watch .humanish/labs/local-dogfood.yaml --env-file .humanish/local
 
 ## How To Pick Work
 
-Start from [`docs/goals/current.md`](../goals/current.md).
+Start from [`docs/status.md`](../status.md).
 
 Prefer work that makes humanish more believable to a new maintainer:
 

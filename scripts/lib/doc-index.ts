@@ -1,8 +1,7 @@
-// Every checked page under docs/ is reachable from an index: docs/README.md, or the README.md of
-// the page's own folder. A page no index links is one a reader cannot find from the docs front
-// door. A checked page also carries no `Date:` or
-// `Status:` preamble: git log holds the dates, and a status line goes stale while the page around
-// it is kept current.
+// Every checked page under docs/ is reachable from an index: `docs/README.md`, or the `README.md`
+// of one of the folders that hold the page. A page no index links is one a reader cannot find from
+// the docs front door. A checked page also carries no `Date:` or `Status:` preamble: git log holds
+// the dates, and a status line goes stale while the page around it is kept current.
 import { posix } from "node:path";
 import { isCheckedDoc } from "./doc-paths.js";
 
@@ -21,8 +20,18 @@ function linkedPaths(indexPath: string, text: string): Set<string> {
   return linked;
 }
 
+/** The `README.md` of each folder from the page's own up to docs/, leaving out the page itself. */
+function indexesOf(path: string): string[] {
+  const indexes: string[] = [];
+  for (let folder = posix.dirname(path); ; folder = posix.dirname(folder)) {
+    const index = posix.join(folder, "README.md");
+    if (index !== path) indexes.push(index);
+    if (folder === "docs" || !folder.startsWith("docs/")) return indexes;
+  }
+}
+
 /**
- * The checked pages under docs/ that neither docs/README.md nor their folder's README.md links.
+ * The checked pages under docs/ that no `README.md` in their folders, up to `docs/README.md`, links.
  * `read` returns a file's text, or undefined when the file does not exist.
  */
 export function findUnindexedDocs(
@@ -41,9 +50,7 @@ export function findUnindexedDocs(
   };
   return paths.filter((path) => {
     if (!path.startsWith("docs/") || !isCheckedDoc(path) || path === DOCS_INDEX) return false;
-    if (linksOf(DOCS_INDEX).has(path)) return false;
-    const folderIndex = posix.join(posix.dirname(path), "README.md");
-    return folderIndex === path || !linksOf(folderIndex).has(path);
+    return !indexesOf(path).some((index) => linksOf(index).has(path));
   });
 }
 
@@ -52,6 +59,32 @@ export function findPreambleLines(text: string): number[] {
   const lines: number[] = [];
   text.split("\n").forEach((line, index) => {
     if (/^(Date|Status):/.test(line)) lines.push(index + 1);
+  });
+  return lines;
+}
+
+/** True for `README.md` and site pages, which cite evidence and never history. */
+export function citesEvidenceOnly(path: string): boolean {
+  return path === "README.md" || (path.startsWith("site/content/") && path.endsWith(".mdx"));
+}
+
+/**
+ * The 1-based lines where a page links into docs/history/, by relative link or GitHub URL.
+ * `README.md` and the site cite dated results from docs/evidence/, which docs:check covers; history is not
+ * maintained, so a claim backed by it can go stale unseen.
+ */
+export function findHistoryLinks(path: string, text: string): number[] {
+  const lines: number[] = [];
+  text.split("\n").forEach((line, index) => {
+    const viaUrl = /github\.com\/[\w.-]+\/humanish\/(?:blob|tree)\/main\/docs\/history\//.test(
+      line,
+    );
+    const viaLink = [...line.matchAll(MARKDOWN_LINK)].some((match) => {
+      const target = match[1]!.split("#")[0]!;
+      if (target === "" || /^[a-z][a-z0-9+.-]*:/i.test(target)) return false;
+      return posix.normalize(posix.join(posix.dirname(path), target)).startsWith("docs/history/");
+    });
+    if (viaUrl || viaLink) lines.push(index + 1);
   });
   return lines;
 }
