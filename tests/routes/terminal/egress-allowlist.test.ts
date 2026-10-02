@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { LAB_CONFIG_SCHEMA } from "../../../src/lab/types.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
 
-// #538: the terminal lane injects the operator's runtime LLM key command-scoped, and codex spawns
-// the participant's shell as a child, so the participant INHERITS that key. Two participants in a
+// The terminal route injects the operator's runtime LLM key command-scoped, and codex spawns
+// the participant's shell as a child, so the participant inherits that key. Two participants in a
 // live study flagged the contradiction unprompted and one deleted the variable mid-study. The key
 // is spendable against any endpoint, outside scenario.caps and outside allowProviderCredentials.
 //
@@ -30,7 +30,7 @@ describe("terminal egress allowlist", () => {
     const result = parse({});
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    // Absent, NOT an empty array: a wrong host list fails studies in ways that look like product
+    // Absent, not an empty array: a wrong host list fails studies in ways that look like product
     // bugs, so restricting egress is opt-in per lab.
     expect(result.config.execution?.egressAllow).toBeUndefined();
   });
