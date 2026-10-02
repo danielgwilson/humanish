@@ -3269,7 +3269,7 @@ describe("runCuaActorLab", () => {
         // #357 lifecycle: ready fires while the sandbox lives and ended after its teardown.
         // The pair lets the watch overlay stop serving a dead stream URL.
         onStream: (event) => {
-          streamLifecycle.push(`${event.type}:${event.streamId}`);
+          streamLifecycle.push(`${event.type}:${event.streamId}:${event.recordId}`);
         },
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
       },
@@ -3308,7 +3308,7 @@ describe("runCuaActorLab", () => {
     ).toBe(true);
     // #357 lifecycle: the lane announced its live stream while the sandbox lived, and announced
     // the END after teardown — ready strictly before ended, one pair, same stream id.
-    expect(streamLifecycle).toEqual(["ready:stream-001", "ended:stream-001"]);
+    expect(streamLifecycle).toEqual(["ready:stream-001:sim-001", "ended:stream-001:sim-001"]);
   });
 
   it("comms:email:fake — writes an EMPTY inbox up front so /inbox never 404s before mail arrives", async () => {
