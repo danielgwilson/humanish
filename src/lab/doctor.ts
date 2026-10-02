@@ -1,3 +1,4 @@
+import path from "node:path";
 import { isLocalBrowserLab } from "../substrates/local/runtime-config.js";
 import { localRuntimeStatus, type LocalRuntimeStatus } from "../substrates/local/runtime.js";
 import type { LabConfig } from "./types.js";
@@ -9,7 +10,12 @@ import type { DoctorResult } from "../cli/doctor.js";
 import { automaticAnalysisBudget } from "../analysis/automatic-config.js";
 import { externalCatchHealthy } from "../comms/sandbox-catch.js";
 import { receivingRequiredKey } from "../comms/setup.js";
-import { codexInstallCommand, codexVersionRecovery } from "../actors/codex/qualified-versions.js";
+import {
+  classifyCodexInstallation,
+  codexInstallAdvice,
+  codexVersionRecovery,
+  type CodexInstallation,
+} from "../actors/codex/qualified-versions.js";
 import type { RefusedCodexExecutable } from "../actors/codex/restricted-executable.js";
 
 type Check = DoctorResult["checks"][number];
@@ -22,22 +28,53 @@ type CodexReadiness = {
   errorCode: string | null;
   detectedCliVersion?: string;
   refusedExecutable?: RefusedCodexExecutable;
+  /** Where the `codex` on `PATH` was installed, for the command that replaces it. */
+  installation?: CodexInstallation;
 };
+
+/** npm's global prefix (`npm prefix -g`), or undefined when npm does not answer. */
+async function npmGlobalPrefix(env: NodeJS.ProcessEnv): Promise<string | undefined> {
+  const { execFile } = await import("node:child_process");
+  return new Promise((resolve) => {
+    execFile("npm", ["prefix", "-g"], { env, timeout: 5000 }, (error, stdout) => {
+      const prefix = String(stdout).trim();
+      resolve(error === null && path.isAbsolute(prefix) ? prefix : undefined);
+    });
+  });
+}
+
+/** Where the `codex` on `PATH` was installed; npm's prefix is read only when not project-local. */
+async function codexInstallation(env: NodeJS.ProcessEnv): Promise<CodexInstallation | undefined> {
+  const { foundCodexExecutable } = await import("../actors/codex/restricted-executable.js");
+  const found = await foundCodexExecutable(env).catch(() => undefined);
+  if (found === undefined) return undefined;
+  const local = classifyCodexInstallation(found, undefined);
+  return local.kind === "project"
+    ? local
+    : classifyCodexInstallation(found, await npmGlobalPrefix(env));
+}
 
 /**
  * The account check doctor and the TUI share. The version probe runs only for an unadmitted CLI,
- * and the executable lookup only for an unavailable one.
+ * the executable lookup only for an unavailable one, and both name where the binary came from.
  */
 async function codexAccountReadiness(env: NodeJS.ProcessEnv): Promise<CodexReadiness> {
-  const readiness = await (
+  const checked = await (
     await import("../analysis/restricted-codex.js")
   ).checkRestrictedCodexAnalysisReadiness({ timeoutMs: 5000 }, { env });
+  if (
+    checked.errorCode !== "codex_unavailable" &&
+    checked.errorCode !== "codex_unsupported_version"
+  )
+    return checked;
+  const installation = await codexInstallation(env);
+  const readiness: CodexReadiness =
+    installation === undefined ? checked : { ...checked, installation };
   if (readiness.errorCode === "codex_unavailable") {
     const { refusedCodexExecutable } = await import("../actors/codex/restricted-executable.js");
     const refused = await refusedCodexExecutable(env).catch(() => undefined);
     return refused === undefined ? readiness : { ...readiness, refusedExecutable: refused };
   }
-  if (readiness.errorCode !== "codex_unsupported_version") return readiness;
   const { detectRestrictedCodexCliVersion } = await import("../actors/codex/restricted-session.js");
   const detected = await detectRestrictedCodexCliVersion({ timeoutMs: 5000 }, { env }).catch(
     () => undefined,
@@ -55,7 +92,7 @@ async function codexAccountReadiness(env: NodeJS.ProcessEnv): Promise<CodexReadi
 function codexRecovery(readiness: CodexReadiness, fallback: string): string {
   switch (readiness.errorCode) {
     case "codex_unsupported_version":
-      return codexVersionRecovery(readiness.detectedCliVersion);
+      return codexVersionRecovery(readiness.detectedCliVersion, readiness.installation);
     case "codex_login_required":
       return "Codex is installed but not signed in. Run `codex login` and sign in with a ChatGPT account.";
     case "codex_unsupported_auth":
@@ -68,7 +105,7 @@ function codexRecovery(readiness: CodexReadiness, fallback: string): string {
           : refused.path === undefined
             ? `Codex is unavailable: ${refused.reason}.`
             : `humanish found \`${refused.path}\` and cannot run it: ${refused.reason}.`;
-      return `${found} Install Codex with \`${codexInstallCommand()}\`, then sign in with a ChatGPT account (\`codex login\`).`;
+      return `${found} ${codexInstallAdvice(readiness.installation)} Then sign in with a ChatGPT account (\`codex login\`).`;
     }
     default:
       return fallback;

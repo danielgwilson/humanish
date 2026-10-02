@@ -98,27 +98,45 @@ export async function refusedCodexExecutable(
   return "refused" in located ? located.refused : undefined;
 }
 
+/** The first executable `codex` on `PATH`, as resolveExecutable picks it. */
+async function firstCodexOnPath(env: NodeJS.ProcessEnv): Promise<string | undefined> {
+  for (const directory of (env.PATH ?? "")
+    .split(path.delimiter)
+    .filter((entry) => path.isAbsolute(entry))) {
+    const candidate = path.join(directory, "codex");
+    try {
+      await access(candidate, constants.X_OK);
+      return candidate;
+    } catch {
+      /* Continue PATH. */
+    }
+  }
+  return undefined;
+}
+
+/**
+ * The `codex` resolveExecutable picks from `PATH`, runnable or not, and the file it resolves to:
+ * what decides the command that replaces it. Undefined when `PATH` has none that resolves.
+ */
+export async function foundCodexExecutable(
+  env: NodeJS.ProcessEnv,
+): Promise<{ path: string; resolved: string } | undefined> {
+  const selected = await firstCodexOnPath(env);
+  if (selected === undefined) return undefined;
+  try {
+    return { path: selected, resolved: await realpath(selected) };
+  } catch {
+    return undefined;
+  }
+}
+
 async function locateExecutable(
   options: { executable?: string; platform?: NodeJS.Platform; arch?: string },
   env: NodeJS.ProcessEnv,
 ): Promise<{ file: string } | { refused: RefusedCodexExecutable }> {
   const platform = options.platform ?? process.platform,
     arch = options.arch ?? process.arch;
-  let selected = options.executable;
-  if (selected === undefined) {
-    for (const directory of (env.PATH ?? "")
-      .split(path.delimiter)
-      .filter((entry) => path.isAbsolute(entry))) {
-      const candidate = path.join(directory, "codex");
-      try {
-        await access(candidate, constants.X_OK);
-        selected = candidate;
-        break;
-      } catch {
-        /* Continue PATH. */
-      }
-    }
-  }
+  const selected = options.executable ?? (await firstCodexOnPath(env));
   const refused = (reason: string, file?: string) => ({
     refused: { ...(file === undefined ? {} : { path: file }), reason },
   });

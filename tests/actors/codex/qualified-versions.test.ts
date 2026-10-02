@@ -3,7 +3,9 @@ import {
   PREEXISTING_CODEX_CLI_ADMISSIONS,
   QUALIFIED_CODEX_CLI_VERSIONS,
   admittedCodexCliVersions,
+  classifyCodexInstallation,
   codexHost,
+  codexInstallAdvice,
   codexVersionRecovery,
   defaultCodexCliVersion,
   describeQualifiedCodexCliVersions,
@@ -73,7 +75,7 @@ describe("per-host Codex CLI admission", () => {
       ["darwin", "arm64"],
       ["linux", "arm64"],
     ] as const) {
-      const recovery = codexVersionRecovery("0.150.0", platform, arch);
+      const recovery = codexVersionRecovery("0.150.0", undefined, platform, arch);
       expect(recovery).toContain("Found Codex CLI 0.150.0");
       for (const version of admittedCodexCliVersions(platform, arch))
         expect(recovery).toContain(version);
@@ -81,8 +83,54 @@ describe("per-host Codex CLI admission", () => {
         `npm install -g @openai/codex@${admittedCodexCliVersions(platform, arch).at(-1)}`,
       );
     }
-    expect(codexVersionRecovery(undefined, "linux", "x64")).toContain(
+    expect(codexVersionRecovery(undefined, undefined, "linux", "x64")).toContain(
       "did not report a recognizable version",
     );
+  });
+});
+
+describe("the command that replaces the Codex CLI humanish found", () => {
+  const latest = defaultCodexCliVersion("linux", "x64");
+  const projectCodex = {
+    path: "/work/app/node_modules/.bin/codex",
+    resolved: "/work/app/node_modules/@openai/codex/bin/codex.js",
+  };
+  const globalCodex = {
+    path: "/usr/local/bin/codex",
+    resolved: "/usr/local/lib/node_modules/@openai/codex/bin/codex.js",
+  };
+
+  it("classifies a project's, npm's global and any other codex by the file it resolves to", () => {
+    expect(classifyCodexInstallation(projectCodex, "/usr/local")).toEqual({
+      kind: "project",
+      path: projectCodex.path,
+      project: "/work/app",
+    });
+    expect(classifyCodexInstallation(globalCodex, "/usr/local")).toEqual({
+      kind: "global",
+      path: globalCodex.path,
+    });
+    // A .bin/codex that resolves outside the project's @openai/codex is not its npm install.
+    const linked = { path: projectCodex.path, resolved: "/opt/codex/bin/codex" };
+    expect(classifyCodexInstallation(linked, "/usr/local").kind).toBe("other");
+    // Without npm's prefix, nothing is known to be its global install.
+    expect(classifyCodexInstallation(globalCodex, undefined).kind).toBe("other");
+  });
+
+  it("gives each a sentence with the command that replaces that binary", () => {
+    expect(codexInstallAdvice(undefined, "linux", "x64")).toBe(
+      `Install the newest with \`npm install -g @openai/codex@${latest}\`.`,
+    );
+    expect(
+      codexInstallAdvice(classifyCodexInstallation(globalCodex, "/usr/local"), "linux", "x64"),
+    ).toBe(`Replace it with \`npm install -g @openai/codex@${latest}\`.`);
+    expect(
+      codexInstallAdvice(classifyCodexInstallation(projectCodex, undefined), "linux", "x64"),
+    ).toBe(
+      `It is installed in this project: run \`npm install -D @openai/codex@${latest}\` in \`/work/app\`, or \`npm uninstall @openai/codex\` there to use the global Codex.`,
+    );
+    expect(
+      codexInstallAdvice({ kind: "other", path: "/opt/homebrew/bin/codex" }, "linux", "x64"),
+    ).toBe(`Update it with the tool that installed it, or put Codex ${latest} first on PATH.`);
   });
 });
