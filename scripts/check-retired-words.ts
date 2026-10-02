@@ -2,7 +2,8 @@
  * Counts the retired words (lane, seat, role, sim, study) in src/ identifiers and file names
  * outside the exempt paths (see lib/retired-words.ts) and holds each count to its cap in package.json's
  * vocabulary:check script: a count above its cap fails, and so does one below it, so the PR that
- * removes the words lowers the cap.
+ * removes the words lowers the cap. A count with no flag fails too, so a merge that drops a flag
+ * cannot leave that word unchecked.
  */
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
@@ -54,10 +55,12 @@ for (const word of RETIRED_WORDS) {
 
 const rose: string[] = [];
 const fell: string[] = [];
+const uncapped: string[] = [];
 for (const [word, list] of hits) {
   const max = values[`max-${word}`];
   const cap = typeof max === "string" ? Number(max) : undefined;
   const count = list.length;
+  if (cap === undefined) uncapped.push(`--max-${word}=${count}`);
   if (cap !== undefined && count > cap) rose.push(word);
   if (cap !== undefined && count < cap) fell.push(`--max-${word}=${count}`);
   const status =
@@ -82,4 +85,9 @@ if (fell.length > 0) {
     `A retired word count fell. Lower the cap in package.json's vocabulary:check script in this PR: ${fell.join(" ")}.\n`,
   );
 }
-if (rose.length > 0 || fell.length > 0) process.exitCode = 1;
+if (uncapped.length > 0) {
+  process.stdout.write(
+    `A count has no cap. Add it to package.json's vocabulary:check script: ${uncapped.join(" ")}.\n`,
+  );
+}
+if (rose.length > 0 || fell.length > 0 || uncapped.length > 0) process.exitCode = 1;

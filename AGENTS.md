@@ -36,8 +36,9 @@ Three counts are held to caps in package.json: oxlint warnings (`lint`, `--max-w
 prose (`prose:check`) and the retired words lane, seat, role, sim and study in `src/` identifiers
 and file names (`vocabulary:check`). Each checker fails when a count is above its cap or below it,
 so the PR that reduces a count lowers its cap to the new count; the failure names the flag and the
-value. CI's `caps` workflow fails a PR that raises or removes a cap against the base branch, unless
-the PR has the `raise-cap` label and a `Cap raise:` line in its body that says why.
+value. A count with no flag fails too, naming the flag to add. CI's `caps` workflow fails a PR that
+raises or removes a cap against the base branch, unless the PR has the `raise-cap` label and a
+`Cap raise:` line in its body that says why.
 
 ## Layout
 
@@ -57,7 +58,8 @@ the file to read first. Keep these layout rules:
   when it helps a reader; do not add to `src/routes/computer-use/route.ts` or
   `src/actors/computer-use/loop.ts` when a smaller module fits.
 - Comments say why the code is the way it is. History, incident narratives, issue archaeology and
-  PR numbers go in the commit message. `TODO(#123)` may link an open issue. No all-caps emphasis.
+  PR numbers go in the commit message. `TODO(#123)` may link an open issue. No all-caps emphasis,
+  and no em dashes (`—`, or two hyphens between spaces): use a colon, a comma or two sentences.
   `prose:check` counts violations in `src/`.
 - Tests assert behavior. Do not pin prose in docs or comments with `toContain`. The default test
   timeout is 20 s. Provider-API fixtures come from captured wire shapes.
