@@ -67,7 +67,7 @@ function fanoutReview(args: CuaFanoutBundleArgs, streams: RunStream[]): ReviewSu
   const participants =
     terminalOutcomes.length > 0
       ? tallyParticipantOutcomes(
-          // A NO-ENGAGEMENT participant is not one who reached the goal. It said "done" having
+          // A no-engagement participant is not one who reached the goal. It said "done" having
           // taken zero actions and said nothing, and `passedParticipants` above already refuses to
           // count it, but `reachedGoal` was reading the trace status directly, so one run could be both
           // "not a passed participant" and "1/1 reached the goal". The headline number a researcher reads

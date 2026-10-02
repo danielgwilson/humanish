@@ -42,7 +42,7 @@ export async function provisionCloneSubject(
     state?: LabSubjectState;
     hasGithubToken: boolean;
     requestTimeoutMs: number;
-    /** Literal scrubber for known provisioned values, applied to log tails PRE-truncation. */
+    /** Literal scrubber for known provisioned values, applied to log tails pre-truncation. */
     scrub: (text: string) => string;
     /** Called the moment the cloned commit resolves, so provenance survives later failures. */
     onCommit?: (commit: string) => void;

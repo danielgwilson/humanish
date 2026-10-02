@@ -72,7 +72,7 @@ export async function liveCuaRejection(args: {
       message: `subject.env declares ${unsetSubjectEnv.join(", ")} but the environment does not provide ${unsetSubjectEnv.length === 1 ? "it" : "them"} (pass via --env-file; values are never persisted).`,
     };
   }
-  // Fail-closed cap (discipline #3): a maxUsd cap needs a measurable per-turn estimate.
+  // Fail-closed cap: a maxUsd cap needs a measurable per-turn estimate.
   // If the operator set execution.caps.maxUsd but src/run/pricing.ts has no rate for the resolved
   // model, the loop could not enforce the cap, and silently running uncapped would break the
   // runaway-retry protection. Refuse at preflight (before any sandbox/spend) rather than run

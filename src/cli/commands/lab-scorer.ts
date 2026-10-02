@@ -4,7 +4,7 @@ import type { RunScorerProvenance } from "../../run/bundle.js";
 import type { LabConfig } from "../../lab/types.js";
 import type { RunResult } from "../../run/results.js";
 
-/** A CONFIG-DECLARED scorer that resolved + loaded fail-closed, ready to thread into a backend. */
+/** A config-declared scorer that resolved + loaded fail-closed, ready to thread into a backend. */
 export interface LoadedAdapterScorer {
   hooks: AdapterScorerModule;
   provenance: RunScorerProvenance;
@@ -12,7 +12,7 @@ export interface LoadedAdapterScorer {
 
 /**
  * Resolve `review.scorer.ref` (or the `--scorer` override) to a loaded adopter scorer, fail-closed
- * (typed error) PRE-SPEND. Precedence: CLI `--scorer` overrides the manifest; `source` records which
+ * (typed error) pre-spend. Precedence: CLI `--scorer` overrides the manifest; `source` records which
  * won. No scorer declared → `{ ok: true }` with no scorer. A declared scorer on an unsupported
  * backend, or a bad/unreadable/broken ref, → `{ ok: false }` so the caller aborts with exit 2.
  */

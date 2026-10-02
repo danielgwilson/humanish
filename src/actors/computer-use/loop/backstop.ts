@@ -180,7 +180,7 @@ export function advanceBackstop(
   const recentFingerprints = [...previous.recentFingerprints, fingerprint].slice(
     -ACTION_REPEAT_WINDOW,
   );
-  // Corroboration governs the FRAME-STALENESS backstop only. The idle backstop below is a direct
+  // Corroboration governs the frame-staleness backstop only. The idle backstop below is a direct
   // behavioral signal already (the agent took nothing but screenshots and waits), so it keeps
   // reading the frame on its own: a repeated screenshot is exactly what an idle streak is, and
   // feeding repetition into it would grant an extra forgiveness step for being idle.

@@ -120,7 +120,7 @@ export function buildDraft(
     };
   }
 
-  // The fallback below is DRY-RUN-shaped: it says no browser behavior was exercised. A live
+  // The fallback below is dry-run-shaped: it says no browser behavior was exercised. A live
   // bundle without a candidate gets a draft that describes the run that happened instead, built
   // from the same review lines the stakeholder surfaces show (participants and tasks keep their
   // denominators).

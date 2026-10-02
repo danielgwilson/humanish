@@ -142,7 +142,7 @@ function esc(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
-/** Defense-in-depth stripping before rendering the app's real email HTML. The LOAD-BEARING protection is
+/** Defense-in-depth stripping before rendering the app's real email HTML. The main protection is
  *  the page CSP (`script-src 'none'`, set both as a page() meta and as a catch response header), which is
  *  browser-enforced and neuters inline handlers, `javascript:` URLs, and injected <script> regardless of
  *  what this misses. This strip additionally removes elements CSP does not cover (a redirecting

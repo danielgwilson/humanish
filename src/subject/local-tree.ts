@@ -33,7 +33,7 @@ export async function provisionLocalTreeSubject(
     /** Declared subject state (seed steps; external declaration is provenance-only). */
     state?: LabSubjectState;
     requestTimeoutMs: number;
-    /** Literal scrubber for known provisioned values, applied to log tails PRE-truncation. */
+    /** Literal scrubber for known provisioned values, applied to log tails pre-truncation. */
     scrub: (text: string) => string;
     /** Called the moment each state step finishes, success or failure. */
     onStateStep?: (record: RunSubjectStateStepRecord) => void;

@@ -45,7 +45,7 @@ export interface SharedWorldPlane {
    */
   publicOriginDigest?: string;
   /**
-   * EXTERNAL-PUBLIC plane class only: sha256-16 of the operator-DECLARED origin (from subject.appUrl),
+   * External-public plane class only: sha256-16 of the operator-declared origin (from subject.appUrl),
    * recorded for reference/evidence only. It is never asserted equal to publicOriginDigest: a normal
    * cross-origin redirect (apex->www, http->https) makes the observed origin differ from the declared
    * one, which is expected. Operator ownership rests on the subject.publicTarget.authorized attestation
@@ -131,7 +131,7 @@ export function sharedWorldParticipantKeys(
 }
 
 /** A timeline checkpoint: a read-only digest probe of the shared plane at one moment. Persisted
- *  DIGEST-ONLY: `digest` is sha256-16(scrub+redact(stdout)); no raw value ever lands. */
+ *  digest-only: `digest` is sha256-16(scrub+redact(stdout)); no raw value ever lands. */
 export interface SharedWorldCheckpoint {
   kind: "checkpoint";
   /** "cp-baseline" for the baseline snapshot; "cp-after-<roleId>" after each role's turn. */
@@ -207,7 +207,7 @@ export interface SharedWorldEvidence {
   /** The pinned, verify-enforced attribution ceiling (the set differs per topologyMode/planeClass). */
   attributionLimits: string[];
   /**
-   * EXTERNAL-PUBLIC plane class only (optional-but-strong): sha256-16 of the shared
+   * External-public plane class only (optional-but-strong): sha256-16 of the shared
    * `/lobby/CODE` path every seat's CDP-observed URL converged on: the concrete "they were in one
    * shared world" proof, observation-derived and needing no subject change. Digest-only (the raw
    * 6-char lobby code and full URLs are runtime-only and never land). Absent when seats did not converge.

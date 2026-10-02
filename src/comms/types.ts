@@ -2,7 +2,7 @@
 // app, as a testable surface. One port, addressed by participant, so the inbox surface and the evidence
 // writer read messages without knowing how they were captured.
 //
-// PUBLIC-SAFETY: raw address values, message bodies, links, and codes are RUNTIME-ONLY. Only the
+// Public safety: raw address values, message bodies, links, and codes are runtime-only. Only the
 // address digest (sha256-short, via redaction.digestText) is ever meant to reach a persisted bundle;
 // a verification link / OTP has "no secret shape" (like the lobby code) → literal-scrub + digest.
 

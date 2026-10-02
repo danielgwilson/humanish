@@ -24,7 +24,7 @@ async function run(args: string[], source: string): Promise<{ status: number; st
 
 /** One kind's hits, from `--list`. */
 async function hitsOf(
-  kind: "lane-comments" | "em-dashes",
+  kind: (typeof KINDS)[number],
   source: string,
 ): Promise<{ count: number; words: string[] }> {
   const { stdout } = await run(["--list"], source);
@@ -134,6 +134,42 @@ describe("prose:check counts em dashes in comment prose", () => {
     expect(await exitWith({ "em-dashes": 2 }, source)).toBe(0);
     expect(await exitWith({ "em-dashes": 1 }, source)).toBe(1);
     expect(await exitWith({ "em-dashes": 3 }, source)).toBe(1);
+  });
+});
+
+describe("prose:check counts all-caps runs and issue references", () => {
+  it("counts a hyphenated caps word and a one-digit issue reference", async () => {
+    const source = "// The LOAD-BEARING check stays.\n// Forward-declared (PR #2).\n";
+
+    const caps = await hitsOf("caps", source);
+    const refs = await hitsOf("issue-refs", source);
+
+    expect(caps.words).toEqual(["LOAD-BEARING"]);
+    expect(refs.words).toEqual(["#2"]);
+    expect(caps.count + refs.count).toBe(2);
+  });
+
+  it("counts a caps part inside a mixed compound once", async () => {
+    const hits = await hitsOf("caps", "// An operator-DECLARED origin, NOT the observed one.\n");
+
+    expect(hits.words).toEqual(["operator-DECLARED", "NOT"]);
+  });
+
+  it("does not count compounds whose caps parts are all acronyms, paths, placeholders or code", async () => {
+    const hits = await hitsOf(
+      "caps",
+      [
+        "// JSON-RPC over an E2B-desktop, read as UTF-8 by the CLI.",
+        "// The path /lobby/CODE and the placeholder <PORT>.",
+        "// Code spans: `LOAD-BEARING`, `NOT`.",
+        "// TODO(#12) stays a link.",
+        "",
+      ].join("\n"),
+    );
+    const refs = await hitsOf("issue-refs", "// TODO(#12) stays a link.\n");
+
+    expect(hits.words).toEqual([]);
+    expect(refs.count).toBe(0);
   });
 });
 
