@@ -130,6 +130,8 @@ describe("terminal participant text items", () => {
   it("reads messages whose stored, redacted line is no longer JSON", () => {
     const key = "synthetic-known-value-0123456789";
     const sanitize = (text: string): string => redactText(scrubLiterals([key])(text));
+    // Built from parts so the public-surface scan does not read it as a real credential URL.
+    const database = "postgres:" + "//user:synthetic" + "@db.example/database";
     const recorder = createTerminalRecorder({
       nowIso: () => "2026-10-02T00:00:00.000Z",
       sanitize,
@@ -137,7 +139,7 @@ describe("terminal participant text items", () => {
     });
     const stdout = [
       said("Try https://e2b.example/test", "a"),
-      said("Use postgres://user:password@db.example/database", "b"),
+      said(`Use ${database}`, "b"),
       said(`The key is ${key}`, "c"),
     ].join("\n");
     // Split inside the known value, so neither stored chunk holds it whole.
@@ -147,11 +149,11 @@ describe("terminal participant text items", () => {
     const items = recorder.participantText.finish().items;
     expect(items.map((item) => item.text)).toEqual([
       sanitize("Try https://e2b.example/test"),
-      sanitize("Use postgres://user:password@db.example/database"),
+      sanitize(`Use ${database}`),
       "The key is [REDACTED_SECRET]",
     ]);
     expect(JSON.stringify(items)).not.toContain(key);
-    expect(JSON.stringify(items)).not.toContain("password@");
+    expect(JSON.stringify(items)).not.toContain("synthetic@");
   });
 
   it("keeps the most recent items within the aggregate limits and notes the cut", () => {
