@@ -126,7 +126,7 @@ export async function admitComputerUsePlan(
 }
 
 function cuaOutcome(result: CuaActorLabResult) {
-  return { route: "computer-use", backend: "cua", result } as const;
+  return { route: "computer-use", result } as const;
 }
 
 /**

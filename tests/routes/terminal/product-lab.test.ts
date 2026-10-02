@@ -431,8 +431,8 @@ describe("runTerminalProductLab (dry-run)", () => {
 
   it("dry-run produces a VERIFIED contract bundle: terminal stream, UNPINNED subject, caps/policies/auth declared", async () => {
     const outcome = await runLab(parsedTerminalConfig(), { cwd, dryRun: true });
-    expect(outcome.backend).toBe("terminal");
-    if (outcome.backend !== "terminal") return;
+    expect(outcome.route).toBe("terminal");
+    if (outcome.route !== "terminal") return;
     const result = outcome.result;
 
     expect(result.ok).toBe(true);
@@ -519,8 +519,8 @@ describe("runTerminalProductLab (dry-run)", () => {
       cwd,
       env: {},
     });
-    expect(outcome.backend).toBe("terminal");
-    if (outcome.backend !== "terminal") return;
+    expect(outcome.route).toBe("terminal");
+    if (outcome.route !== "terminal") return;
     const result = outcome.result;
     expect(result.ok).toBe(false);
     expect(result.dryRun).toBe(false);

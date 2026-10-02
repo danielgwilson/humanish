@@ -121,7 +121,6 @@ export function admitScriptedPlan(
     ok: true,
     run: async () => ({
       route: "scripted",
-      backend: "scripted",
       result: await runScriptedPlan(plan, input),
     }),
   };

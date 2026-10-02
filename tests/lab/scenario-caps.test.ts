@@ -87,7 +87,7 @@ describe("scenario.caps dollar fields on a computer-use lab", () => {
             desktopModule: loadDesktopModule,
           },
         );
-        expect(outcome.backend).toBe("cua");
+        expect(outcome.route).toBe("computer-use");
         expect(outcome.result.ok).toBe(false);
         expect(outcome.result.error?.code).toBe("HUMANISH_CUA_LAB_SUBJECT_INVALID");
         expect(outcome.result.error?.message).toContain(`execution.caps.${key}`);

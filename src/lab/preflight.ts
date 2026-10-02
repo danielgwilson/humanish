@@ -5,7 +5,6 @@ import { isLoopbackUrl } from "./parse/subject.js";
 import { type LabConfig } from "./types.js";
 import { runPublicPreviewPreflight, runSandboxLoopbackPreflight } from "./preflight-probes.js";
 import { digest, fail, finalize, LAB_PREFLIGHT_SCHEMA } from "./preflight-result.js";
-import type { LabBackend } from "./plan.js";
 import { type LabRoute, routeOf } from "./plan.js";
 import { resolveLabManifest, type LabResolveFailure } from "./discover.js";
 import { rosterOf } from "./parse/actors.js";
@@ -66,8 +65,6 @@ export interface LabPreflightResult {
   labId?: string;
   origin?: string;
   path?: string;
-  /** The route's older name; `route` is the current one. */
-  backend?: LabBackend;
   route?: LabRoute;
   reachability: LabPreflightReachabilityMode;
   checks: LabPreflightCheck[];
@@ -169,7 +166,7 @@ export async function runLabPreflight(
     hooks: options.hooks ?? {},
     checks: [
       { name: "lab manifest", ok: true, message: `resolved ${resolved.origin} lab manifest` },
-      { name: "backend", ok: true, message: `selected the ${route} route` },
+      { name: "route", ok: true, message: `selected the ${route} route` },
     ],
     targets: collectTargets(resolved.config),
     sandbox: { created: false },

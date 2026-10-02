@@ -85,8 +85,8 @@ describe.skipIf(!LIVE)("cua-actor-lab (LIVE, spend-gated)", () => {
           );
         },
       });
-      expect(outcome.backend).toBe("cua");
-      if (outcome.backend !== "cua") return;
+      expect(outcome.route).toBe("computer-use");
+      if (outcome.route !== "computer-use") return;
       const result = outcome.result;
 
       // Verified bundle + terminal session + reclaimed sandbox + the actor ENGAGED (>=1 action or

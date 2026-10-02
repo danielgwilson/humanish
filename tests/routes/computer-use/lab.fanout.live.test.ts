@@ -88,8 +88,8 @@ describe.skipIf(!LIVE)("cua-actor-lab fan-out (LIVE, spend-gated)", () => {
           );
         },
       });
-      expect(outcome.backend).toBe("cua");
-      if (outcome.backend !== "cua") return;
+      expect(outcome.route).toBe("computer-use");
+      if (outcome.route !== "computer-use") return;
       const result = outcome.result;
 
       // Two lanes, both terminal + engaged, each its own DISTINCT sandbox, all reclaimed by id.

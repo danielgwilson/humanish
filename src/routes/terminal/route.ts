@@ -158,7 +158,7 @@ export async function admitTerminalPlan(
 }
 
 function terminalOutcome(result: TerminalProductLabResult) {
-  return { route: "terminal", backend: "terminal", result } as const;
+  return { route: "terminal", result } as const;
 }
 
 /**

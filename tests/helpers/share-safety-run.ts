@@ -25,7 +25,7 @@ export function shareSafetyDryRunConfig(): LabConfig {
 
 export async function shareSafetyDryRun(cwd: string): Promise<{ runId: string; runDir: string }> {
   const outcome = await runLab(shareSafetyDryRunConfig(), { cwd });
-  if (outcome.backend !== "cua") throw new Error(`unexpected backend ${outcome.backend}`);
+  if (outcome.route !== "computer-use") throw new Error(`unexpected backend ${outcome.route}`);
   const runId = outcome.result.runId;
   return { runId, runDir: path.join(cwd, ".humanish", "runs", runId) };
 }

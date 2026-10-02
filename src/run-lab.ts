@@ -13,7 +13,7 @@ import {
   sharedWorldInput,
   terminalInput,
 } from "./lab/route-inputs.js";
-import { planLab, resolveLabDryRun, routeOf, type LabBackend, type LabRoute } from "./lab/plan.js";
+import { planLab, resolveLabDryRun, routeOf, type LabRoute } from "./lab/plan.js";
 import type { LabPlan, PlanRefusal } from "./lab/plan-types.js";
 import type { LabDeps } from "./lab/lab-deps.js";
 import type { LabEvent } from "./lab/run-lab-events.js";
@@ -180,13 +180,11 @@ async function refusalOutcome(
     case "preview":
       return {
         route: "preview",
-        backend: "synthetic",
         result: previewLabRefusal(options.cwd, refusal),
       };
     case "computer-use":
       return {
         route: "computer-use",
-        backend: "cua",
         result: await computerUseLabRefusal(
           { ...computerUseInput(options, deps, emit), config, dryRun },
           refusal,
@@ -195,7 +193,6 @@ async function refusalOutcome(
     case "scripted":
       return {
         route: "scripted",
-        backend: "scripted",
         result: await scriptedLabRefusal(
           { ...scriptedInput(options, deps, emit), config, dryRun },
           refusal,
@@ -204,7 +201,6 @@ async function refusalOutcome(
     case "terminal":
       return {
         route: "terminal",
-        backend: "terminal",
         result: await terminalLabRefusal(
           { ...terminalInput(options, deps, emit), config, dryRun },
           refusal,
@@ -213,7 +209,6 @@ async function refusalOutcome(
     case "shared-world":
       return {
         route: "shared-world",
-        backend: "concurrent-shared-world",
         result: await sharedWorldLabRefusal(
           { ...sharedWorldInput(options, deps, emit), config, dryRun },
           refusal,
@@ -267,19 +262,17 @@ interface RunLabInternals {
 }
 
 /** A run's result and the route it ran on. */
-interface RouteOutcome<R extends LabRoute, B extends LabBackend, T> {
+interface RouteOutcome<R extends LabRoute, T> {
   route: R;
-  /** @deprecated The route's older name. Use `route`; this field goes in the next minor. */
-  backend: B;
   result: T;
 }
 
 export type LabOutcome =
-  | RouteOutcome<"preview", "synthetic", RunResult>
-  | RouteOutcome<"computer-use", "cua", CuaActorLabResult>
-  | RouteOutcome<"scripted", "scripted", ScriptedBrowserLabResult>
-  | RouteOutcome<"terminal", "terminal", TerminalProductLabResult>
-  | RouteOutcome<"shared-world", "concurrent-shared-world", ConcurrentSharedWorldLabResult>;
+  | RouteOutcome<"preview", RunResult>
+  | RouteOutcome<"computer-use", CuaActorLabResult>
+  | RouteOutcome<"scripted", ScriptedBrowserLabResult>
+  | RouteOutcome<"terminal", TerminalProductLabResult>
+  | RouteOutcome<"shared-world", ConcurrentSharedWorldLabResult>;
 
 /**
  * A plan past its route's local checks that need no scorer: the refusal they returned, or the

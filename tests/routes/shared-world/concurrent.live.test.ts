@@ -61,8 +61,8 @@ describe.skipIf(!LIVE)(
         if (!parsed.ok) throw new Error(parsed.error.message);
 
         const outcome = await runLab(parsed.config, { cwd, dryRun: false });
-        expect(outcome.backend).toBe("concurrent-shared-world");
-        if (outcome.backend !== "concurrent-shared-world") return;
+        expect(outcome.route).toBe("shared-world");
+        if (outcome.route !== "shared-world") return;
         const result = outcome.result;
 
         // ONE getHost-exposed subject plane; 3 personas.

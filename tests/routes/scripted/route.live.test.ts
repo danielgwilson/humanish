@@ -85,8 +85,8 @@ describe.skipIf(!LIVE)("scripted-browser-lab (LIVE, actuation-gated; $0 by mecha
       if (!parsed.ok) throw new Error(parsed.error.message);
 
       const outcome = await runLab(parsed.config, { cwd });
-      expect(outcome.backend).toBe("scripted");
-      if (outcome.backend !== "scripted") return;
+      expect(outcome.route).toBe("scripted");
+      if (outcome.route !== "scripted") return;
       const result = outcome.result;
 
       // The subject affords the journey on BOTH surfaces; the bundle verifies independently.

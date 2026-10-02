@@ -109,12 +109,12 @@ describe("a new run creates its directory exclusively", () => {
 
 describe("every producer refuses a run id that is in use", () => {
   it.each([
-    ["preview", "first-run", "synthetic"],
+    ["preview", "first-run", "preview"],
     ["terminal", "terminal-product-demo", "terminal"],
     ["scripted", "scripted-demo", "scripted"],
-    ["computer use", "fanout-demo", "cua"],
-    ["concurrent shared world", "shared-world-concurrent-demo", "concurrent-shared-world"],
-  ] as const)("%s (%s)", async (_route, labId, backend) => {
+    ["computer use", "fanout-demo", "computer-use"],
+    ["concurrent shared world", "shared-world-concurrent-demo", "shared-world"],
+  ] as const)("%s (%s)", async (_name, labId, route) => {
     // The labs read their personas and scenarios from the project they run in.
     await cp(path.resolve("humanish"), path.join(cwd, "humanish"), { recursive: true });
     const resolved = await resolveLabManifest(cwd, labId);
@@ -122,7 +122,7 @@ describe("every producer refuses a run id that is in use", () => {
     const runDir = path.join(cwd, ".humanish", "runs", "in-use");
 
     const first = await runLab(resolved.config, { cwd, dryRun: true, runId: "in-use" });
-    expect(first.backend).toBe(backend);
+    expect(first.route).toBe(route);
     expect(first.result.ok).toBe(true);
     const before = {
       run: await readFile(path.join(runDir, "run.json"), "utf8"),

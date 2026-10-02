@@ -32,7 +32,6 @@ export function admitPreviewPlan(
     ok: true,
     run: async () => ({
       route: "preview",
-      backend: "synthetic",
       result: await runPreviewPlan(plan, input),
     }),
   };

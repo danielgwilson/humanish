@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parseLabConfig } from "../../src/lab/config.js";
 import { type LabConfig } from "../../src/lab/types.js";
 import { runLab } from "../../src/run-lab.js";
-import { selectLabBackend } from "../../src/lab/plan.js";
+import { routeOf, selectLabBackend } from "../../src/lab/plan.js";
 import { runTerminalProductLab } from "../../src/routes/terminal/route.js";
 import { runScriptedBrowserLab } from "../../src/routes/scripted/route.js";
 import * as synthetic from "../../src/run/dry-run.js";
@@ -62,7 +62,7 @@ describe("real receiving admission on non-receiving backends", () => {
             renderObserver: forbidden,
           },
         );
-        expect(outcome.backend).toBe(backend);
+        expect(outcome.route).toBe(routeOf(resolved));
         expect(outcome.result.ok).toBe(false);
         expect(outcome.result.error?.message).toMatch(/Real email receiving is unsupported/);
         if (backend === "synthetic") {
