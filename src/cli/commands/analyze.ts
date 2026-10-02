@@ -12,7 +12,7 @@ import {
   showAnalysis,
 } from "../../analysis/service.js";
 import { listAnalyses } from "../../analysis/store.js";
-import { listStudyAnalysisExecutions } from "../../analysis/store-executions.js";
+import { listAnalysisExecutions } from "../../analysis/store-executions.js";
 import { resolveRunPath } from "../../run/locate.js";
 import { type CliIo, discoverCliKeys, JSON_OPTION_DESCRIPTION, writeResult } from "../io.js";
 import { resolvePhysicalCwd } from "../../run/paths.js";
@@ -243,7 +243,7 @@ async function handleAnalyzeList(
   );
   const versions = prepared ? await listAnalyses(prepared) : [];
   const executions = prepared
-    ? await listStudyAnalysisExecutions(prepared)
+    ? await listAnalysisExecutions(prepared)
     : { receipts: [], warnings: [] };
   const result = {
     schema: "humanish.analysis-history.v1",

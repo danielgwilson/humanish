@@ -13,10 +13,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  readAutomaticStudyAnalysisPrepared,
-  claimAutomaticStudyAnalysis,
-} from "../../src/analysis/job.js";
+import { readAutomaticAnalysisPrepared, claimAutomaticAnalysis } from "../../src/analysis/job.js";
 import { analyzeRun } from "../../src/analysis/service.js";
 import {
   listAnalyses,
@@ -25,8 +22,8 @@ import {
   writeAnalysis,
 } from "../../src/analysis/store.js";
 import {
-  listStudyAnalysisExecutions,
-  writeStudyAnalysisExecutionReceipt,
+  listAnalysisExecutions,
+  writeAnalysisExecutionReceipt,
 } from "../../src/analysis/store-executions.js";
 import { captureEvidence } from "../../src/analysis/evidence.js";
 import type { AnalysisFetch } from "../../src/analysis/provider.js";
@@ -101,8 +98,8 @@ describe("analysis storage in a symlinked project", () => {
       versions: versions.map((entry) => [entry.id, entry.state]),
       version: (await readAnalysisVersion(prepared, analysisId))?.state ?? null,
       loaded: (await loadAnalysisRecord(prepared)).state,
-      receipts: (await listStudyAnalysisExecutions(prepared)).receipts.length,
-      job: (await readAutomaticStudyAnalysisPrepared(prepared))?.state ?? null,
+      receipts: (await listAnalysisExecutions(prepared)).receipts.length,
+      job: (await readAutomaticAnalysisPrepared(prepared))?.state ?? null,
     };
   }
 
@@ -114,10 +111,10 @@ describe("analysis storage in a symlinked project", () => {
     const decoyBefore = await decoyRunEntries();
     const source = await readFile(path.join(viaAlias.physicalRunRoot, "run.json"));
     const artifact = syntheticArtifact(await captureEvidence(viaAlias, source));
-    await writeStudyAnalysisExecutionReceipt(viaAlias, artifact);
+    await writeAnalysisExecutionReceipt(viaAlias, artifact);
     await writeAnalysis(viaAlias, artifact);
     expect(
-      await claimAutomaticStudyAnalysis(viaAlias, {
+      await claimAutomaticAnalysis(viaAlias, {
         configDigest: "a".repeat(64),
         promptVersion: "synthetic-v1",
       }),
@@ -173,7 +170,7 @@ describe("analysis storage in a symlinked project", () => {
     expect(fetch).toHaveBeenCalledTimes(1);
     const loaded = await loadAnalysisRecord(viaPhysical);
     expect(loaded.analysis?.id).toBe(result.analysisId);
-    expect((await listStudyAnalysisExecutions(viaPhysical)).receipts).toHaveLength(1);
+    expect((await listAnalysisExecutions(viaPhysical)).receipts).toHaveLength(1);
     expect(await decoyRunEntries()).toEqual(decoyBefore);
   });
 });

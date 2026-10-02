@@ -26,10 +26,7 @@ import {
 } from "../../../src/routes/terminal/runtime-auth.js";
 import { reclaimRunSandboxes } from "../../../src/run/reclaim.js";
 import { verifyRun } from "../../../src/verify/verify.js";
-import {
-  readAutomaticStudyAnalysis,
-  runAutomaticStudyAnalysis,
-} from "../../../src/analysis/automatic.js";
+import { readAutomaticAnalysis, runAutomaticAnalysis } from "../../../src/analysis/automatic.js";
 import { resolveAutomaticAnalysis } from "../../../src/analysis/automatic-config.js";
 import { inertDesktopInput } from "../../helpers/inert-desktop-input.js";
 
@@ -1143,13 +1140,13 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
         ? { state: "failed", reason: "AUTOMATIC_ANALYSIS_FAILED" }
         : { state: "skipped", reason: "AUTOMATIC_ANALYSIS_NO_PARTICIPANT_EVIDENCE" },
     );
-    expect(await readAutomaticStudyAnalysis(cwd, result.runId)).toMatchObject({
+    expect(await readAutomaticAnalysis(cwd, result.runId)).toMatchObject({
       state: result.automaticAnalysis!.state,
     });
     const resolved = resolveAutomaticAnalysis(undefined);
     if (!resolved.ok || !resolved.config) throw new Error("Default analysis config unavailable");
     expect(
-      await runAutomaticStudyAnalysis(cwd, result.runId, resolved.config, {
+      await runAutomaticAnalysis(cwd, result.runId, resolved.config, {
         defaultRequest: true,
         apiKey: "synthetic-analysis-key",
         fetch,

@@ -28,7 +28,7 @@ import { runCuaActorLab } from "../../src/routes/computer-use/route.js";
 import { runConcurrentSharedWorld } from "../../src/routes/shared-world/route.js";
 import { runTerminalProductLab } from "../../src/routes/terminal/route.js";
 import { runScriptedBrowserLab } from "../../src/routes/scripted/route.js";
-import { claimAutomaticStudyAnalysis } from "../../src/analysis/job.js";
+import { claimAutomaticAnalysis } from "../../src/analysis/job.js";
 import { prepareRunArtifactPaths } from "../../src/run/paths.js";
 import { resolveRunPath } from "../../src/run/locate.js";
 import { verifyRun } from "../../src/verify/verify.js";
@@ -661,7 +661,7 @@ describe("automatic analysis admission and producer boundary", () => {
       open: false,
     });
     const cancel = vi
-      .spyOn(automaticJobs, "requestAutomaticStudyAnalysisCancellation")
+      .spyOn(automaticJobs, "requestAutomaticAnalysisCancellation")
       .mockResolvedValue({ requested: true, reason: null });
     const kill = vi.spyOn(process, "kill");
     const result = await stopRun(cwd, prior.runId);
@@ -684,7 +684,7 @@ describe("automatic analysis admission and producer boundary", () => {
       const prepared = await resolveRunPath(cwd, "changed-status");
       if (!prepared) throw new Error("missing synthetic run");
       // Queue metadata is synthetic here; this test exercises cancellation authority, never admission.
-      const job = await claimAutomaticStudyAnalysis(prepared, {
+      const job = await claimAutomaticAnalysis(prepared, {
         configDigest: "a".repeat(64),
         promptVersion: "study-evidence-4",
       });
@@ -716,7 +716,7 @@ describe("automatic analysis admission and producer boundary", () => {
   );
   it("failed marker cancellation cannot fall back to signalling a recorded process", async () => {
     const cancel = vi
-      .spyOn(automaticJobs, "requestAutomaticStudyAnalysisCancellation")
+      .spyOn(automaticJobs, "requestAutomaticAnalysisCancellation")
       .mockResolvedValue({ requested: false, reason: "AUTOMATIC_ANALYSIS_OUTCOME_UNKNOWN" });
     const kill = vi.spyOn(process, "kill").mockImplementation(() => true);
     expect((await stopRun(cwd, "absent", "analysis")).ok).toBe(false);

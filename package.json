@@ -93,7 +93,7 @@
     "lint": "node scripts/check-lint-cap.mjs --max-warnings=442",
     "knip": "knip",
     "prose:check": "node scripts/check-code-prose.mjs --max-issue-refs=361 --max-fix-tags=22 --max-caps=1717",
-    "vocabulary:check": "tsx scripts/check-retired-words.ts --max-lane=150 --max-seat=6 --max-role=52 --max-sim=43 --max-study=228"
+    "vocabulary:check": "tsx scripts/check-retired-words.ts --max-lane=150 --max-seat=6 --max-role=52 --max-sim=43 --max-study=162"
   },
   "dependencies": {
     "commander": "^15.0.0",

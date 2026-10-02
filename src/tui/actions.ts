@@ -1,4 +1,4 @@
-import { requestAutomaticStudyAnalysisCancellation } from "../analysis/automatic.js";
+import { requestAutomaticAnalysisCancellation } from "../analysis/automatic.js";
 // The two things a run card can DO (#455 rev 8).
 //
 // The mock's run screen is an outcome CARD with actions, not a field list, and an action that does
@@ -170,7 +170,7 @@ export async function stopRun(
   // The selected action carries its authority. Never infer permission to signal a process from
   // mutable status metadata after the operator asked only to cancel analysis.
   if (intent === "analysis") {
-    const analysis = await requestAutomaticStudyAnalysisCancellation(cwd, runId);
+    const analysis = await requestAutomaticAnalysisCancellation(cwd, runId);
     return {
       schema: TUI_ACTION_SCHEMA,
       ok: analysis.requested,
@@ -208,7 +208,7 @@ export async function stopRun(
     };
   }
   if (record.state === "finished") {
-    const analysis = await requestAutomaticStudyAnalysisCancellation(cwd, runId);
+    const analysis = await requestAutomaticAnalysisCancellation(cwd, runId);
     if (analysis.requested)
       return {
         schema: TUI_ACTION_SCHEMA,

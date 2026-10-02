@@ -2,7 +2,7 @@
 // and the job module each stay importable without the other.
 
 import type { PreparedRunArtifactPaths } from "../run/paths.js";
-import { readAutomaticStudyAnalysisPrepared } from "./job.js";
+import { readAutomaticAnalysisPrepared } from "./job.js";
 import { loadAnalysisRecord } from "./store.js";
 import type { LoadedAnalysis } from "./types.js";
 
@@ -12,7 +12,7 @@ export async function loadAnalysis(
 ): Promise<LoadedAnalysis> {
   const [loaded, automatic] = await Promise.all([
     loadAnalysisRecord(prepared, id),
-    readAutomaticStudyAnalysisPrepared(prepared),
+    readAutomaticAnalysisPrepared(prepared),
   ]);
   return automatic === undefined ? loaded : { ...loaded, automatic };
 }

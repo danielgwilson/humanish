@@ -1,5 +1,5 @@
 import path from "node:path";
-import { listStudyAnalysisExecutions } from "../analysis/store-executions.js";
+import { listAnalysisExecutions } from "../analysis/store-executions.js";
 import { loadAnalysis } from "../analysis/load.js";
 import { analysisSharingProblems } from "../analysis/sharing.js";
 import { containsSensitive } from "../evidence/redaction.js";
@@ -316,7 +316,7 @@ async function applyAnalysisSharing(
 ): Promise<void> {
   const analysis = await loadAnalysis(runPaths);
   const analysisSharing = analysisSharingProblems(analysis);
-  const executionHistory = await listStudyAnalysisExecutions(runPaths);
+  const executionHistory = await listAnalysisExecutions(runPaths);
   if (
     !analysisSharing.unverified &&
     !analysisSharing.sensitive &&
