@@ -30,10 +30,7 @@ import { participantDesktopOf } from "./routes/computer-use/participant-desktop.
 import { type CuaActorLabHooks, type CuaActorLabResult } from "./routes/computer-use/types.js";
 import { admitPreviewPlan, previewLabRefusal } from "./routes/preview.js";
 import { admitScriptedPlan, scriptedLabRefusal } from "./routes/scripted/route.js";
-import {
-  type ScriptedBrowserLabHooks,
-  type ScriptedBrowserLabResult,
-} from "./routes/scripted/types.js";
+import { type ScriptedBrowserLabResult } from "./routes/scripted/types.js";
 import { admitSharedWorldPlan, sharedWorldLabRefusal } from "./routes/shared-world/route.js";
 import {
   type ConcurrentSharedWorldLabResult,
@@ -164,7 +161,7 @@ async function admitPlan(
     case "computer-use":
       return admitComputerUsePlan(plan, computerUseInput(options), config);
     case "scripted":
-      return admitScriptedPlan(plan, scriptedInput(options));
+      return admitScriptedPlan(plan, scriptedInput(options, deps));
     case "terminal":
       return admitTerminalPlan(plan, terminalInput(options, deps));
     case "shared-world":
@@ -203,7 +200,7 @@ async function refusalOutcome(
         route: "scripted",
         backend: "scripted",
         result: await scriptedLabRefusal(
-          { ...scriptedInput(options), ...lab, config, dryRun },
+          { ...scriptedInput(options, deps), ...lab, config, dryRun },
           refusal,
         ),
       };
@@ -270,8 +267,6 @@ interface RunLabInternals {
   automaticAnalysis?: AutomaticAnalysisHooks;
   /** Computer-use route hooks: subject provisioning (library callers) + test DI seams. */
   cuaHooks?: CuaActorLabHooks;
-  /** Scripted-browser route hooks: browser injection + test DI seams (mirror of cuaHooks). */
-  scriptedHooks?: ScriptedBrowserLabHooks;
   /** Shared-world route hooks: sandbox / runSession / checkpoint DI seams (mirror of cuaHooks). */
   sharedWorldHooks?: SharedWorldLabHooks;
 }

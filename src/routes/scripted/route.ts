@@ -28,7 +28,7 @@ import { buildRunSource } from "../../run/bundle.js";
 import { prepareSelectedOutputDirectory } from "../../run/contained-output.js";
 import { runScope, type RunScope } from "../../run/run.js";
 import { renderScriptedReviewMarkdown } from "./bundle.js";
-import { planScriptedLab, type ScriptedRefusal } from "./plan.js";
+import { injectedBrowser, planScriptedLab, type ScriptedRefusal } from "./plan.js";
 import { finishScriptedRun } from "./result.js";
 import { UnsafeScriptedSessionResultError } from "./session-result.js";
 import { prepareScriptedRun } from "./setup.js";
@@ -53,7 +53,7 @@ export async function runScriptedBrowserLab(
   const planned = planScriptedLab(config, {
     dryRun,
     ...(lab === undefined ? {} : { lab }),
-    ...(input.hooks === undefined ? {} : { hooks: input.hooks }),
+    injectedBrowser: injectedBrowser(input.deps),
   });
   if (planned.ok) return runScriptedPlan(planned.plan, input);
   return scriptedLabRefusal(options, planned.refusal);
@@ -172,7 +172,7 @@ async function runScriptedPlanInScope(
     mode: dryRun ? "dry-run" : "live",
     lab: plan.lab,
     renderReview: renderScriptedReviewMarkdown,
-    observer: { open: input.open === true, render: setup.hooks.renderObserverFn },
+    observer: { open: input.open === true, render: setup.deps.renderObserver },
   });
   if (!started.ok) {
     return setup.failed(started.code, started.message);
@@ -191,7 +191,8 @@ async function runScriptedPlanInScope(
     ? new ScriptedSubject({
         plan,
         clone: setup.clone,
-        hooks: setup.hooks,
+        deps: setup.deps,
+        ...(input.prepareDesktop === undefined ? {} : { prepareDesktop: input.prepareDesktop }),
         env: setup.env,
         e2bApiKey: setup.e2bApiKey,
         runPaths,
@@ -199,7 +200,7 @@ async function runScriptedPlanInScope(
         subjectEnvNames: setup.subjectEnvNames,
         hasGithubToken: setup.hasGithubToken,
         scrubKnownValues: setup.scrubKnownValues,
-        now: setup.hooks.now ?? Date.now,
+        now: setup.deps.now ?? Date.now,
         warnings: setup.warnings,
       })
     : undefined;
@@ -221,7 +222,7 @@ async function runScriptedPlanInScope(
         },
         {
           surfaces: setup.surfaces,
-          hooks: setup.hooks,
+          deps: setup.deps,
           browserCommand: setup.browserCommand,
           runPaths,
         },

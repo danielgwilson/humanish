@@ -96,7 +96,8 @@ describe("scripted admission order", () => {
         cwd,
         config,
         dryRun,
-        hooks: { env: {}, loadDesktopModule },
+        env: {},
+        deps: { desktopModule: loadDesktopModule },
       });
       expect(await readdir(cwd), name).toEqual(["humanish"]);
       let text = JSON.stringify(result);

@@ -32,7 +32,14 @@ import {
 import { runCuaActorLab } from "../../../src/routes/computer-use/route.js";
 import { runScriptedBrowserLab, runScriptedPlan } from "../../../src/routes/scripted/route.js";
 import { planScriptedLab } from "../../../src/routes/scripted/plan.js";
-import type { ScriptedBrowserLabHooks } from "../../../src/routes/scripted/types.js";
+import type { LabDeps } from "../../../src/lab/lab-deps.js";
+import type { RunScriptedBrowserLabOptions } from "../../../src/routes/scripted/types.js";
+
+/** A scripted test's typed options and seams, as it spreads them into a runner's options. */
+type ScriptedTestInputs = Pick<RunScriptedBrowserLabOptions, "env" | "prepareDesktop" | "deps">;
+
+/** The typed options of a test's inputs, to spread beside the rest of runLab's options. */
+const scriptedOptions = ({ deps: _deps, ...options }: ScriptedTestInputs) => options;
 import type {
   ScriptedBrowserLike,
   ScriptedLocatorLike,
@@ -387,125 +394,121 @@ describe("lab routing (app-url × scripted-browser → scripted)", () => {
  * captures instead of launching a browser, and one monotonic clock drives every provisioned poll.
  */
 function provisionedCloneHooks(module: E2BDesktopModule): {
-  hooks: ScriptedBrowserLabHooks;
+  hooks: ScriptedTestInputs;
   rawSessionUrls: string[];
 } {
   let clock = Date.parse("2026-09-04T00:00:00.000Z");
   const rawSessionUrls: string[] = [];
-  const hooks: ScriptedBrowserLabHooks = {
+  const hooks: ScriptedTestInputs = {
     env: {
       E2B_API_KEY: "fake-e2b-key-for-test",
       GITHUB_TOKEN: "github-token-test",
     },
-    loadDesktopModule: async () => module,
-    // The injected session writes synthetic captures; it does not launch a host browser.
-    browserCommand: "/synthetic/browser",
-    runSession: async (options) => {
-      rawSessionUrls.push(options.appUrl);
-      expect(options.evidenceAppUrl).toBe("[provisioned-subject]");
-      expect(options.urlPolicy).toEqual({
-        kind: "provisioned-subject",
-        evidenceOrigin: "[provisioned-subject]",
-      });
-      const capturedAt = "2026-06-19T00:00:00.000Z";
-      const screenshotPath = `screenshots/${options.surface.id}-step-01-load.png`;
-      const tracePath = `traces/${options.surface.id}.json`;
-      await mkdir(path.join(options.artifactRoot, "screenshots"), { recursive: true });
-      await mkdir(path.join(options.artifactRoot, "traces"), { recursive: true });
-      await writeFile(path.join(options.artifactRoot, screenshotPath), PNG_1X1);
-      const reason = `${options.surface.label} completed 1/1 scripted browser steps from [provisioned-subject] with HTTP 200.`;
-      const capture = {
-        capturedAt,
-        durationMs: 1,
-        httpStatus: 200,
-        ok: true,
-        reason,
-        screenshotPath,
-        steps: [
-          {
-            action: "goto" as const,
-            completedAt: capturedAt,
-            durationMs: 1,
-            id: "step-01-load",
-            label: "Load landing page",
-            reason: "goto completed for Load landing page.",
-            screenshotPath,
-            status: "passed" as const,
-            url: "[provisioned-subject]/",
-          },
-        ],
-        surface: options.surface,
-        tracePath,
-      };
-      await writeFile(
-        path.join(options.artifactRoot, tracePath),
-        `${JSON.stringify(
-          {
-            schema: "humanish.browser-persona-trace.v1",
-            capturedAt,
-            appUrl: "[provisioned-subject]",
-            browserCommand: "injected-browser",
-            durationMs: 1,
-            httpStatus: 200,
-            ok: true,
-            reason,
-            screenshotPath,
-            steps: capture.steps,
-            surface: options.surface,
-            redaction: "passed",
-          },
-          null,
-          2,
-        )}\n`,
-      );
-      return {
-        status: "passed",
-        completionReason: "goal_satisfied",
-        reason,
-        capture,
-        trace: {
-          schema: ACTOR_TRACE_SCHEMA,
-          provider: "browser-persona",
-          protocol: "scripted-steps",
-          lane: "scripted-browser",
-          persona: options.persona,
-          redaction: {
-            status: "passed",
-            screenshots: "raw",
-            notes: "fake provisioned scripted trace",
-          },
-          startedAt: capturedAt,
-          completedAt: capturedAt,
+    deps: {
+      desktopModule: async () => module,
+      browserCommand: "/synthetic/browser",
+      runScriptedSession: async (options) => {
+        rawSessionUrls.push(options.appUrl);
+        expect(options.evidenceAppUrl).toBe("[provisioned-subject]");
+        expect(options.urlPolicy).toEqual({
+          kind: "provisioned-subject",
+          evidenceOrigin: "[provisioned-subject]",
+        });
+        const capturedAt = "2026-06-19T00:00:00.000Z";
+        const screenshotPath = `screenshots/${options.surface.id}-step-01-load.png`;
+        const tracePath = `traces/${options.surface.id}.json`;
+        await mkdir(path.join(options.artifactRoot, "screenshots"), { recursive: true });
+        await mkdir(path.join(options.artifactRoot, "traces"), { recursive: true });
+        await writeFile(path.join(options.artifactRoot, screenshotPath), PNG_1X1);
+        const reason = `${options.surface.label} completed 1/1 scripted browser steps from [provisioned-subject] with HTTP 200.`;
+        const capture = {
+          capturedAt,
           durationMs: 1,
+          httpStatus: 200,
+          ok: true,
+          reason,
+          screenshotPath,
+          steps: [
+            {
+              action: "goto" as const,
+              completedAt: capturedAt,
+              durationMs: 1,
+              id: "step-01-load",
+              label: "Load landing page",
+              reason: "goto completed for Load landing page.",
+              screenshotPath,
+              status: "passed" as const,
+              url: "[provisioned-subject]/",
+            },
+          ],
+          surface: options.surface,
+          tracePath,
+        };
+        await writeFile(
+          path.join(options.artifactRoot, tracePath),
+          `${JSON.stringify(
+            {
+              schema: "humanish.browser-persona-trace.v1",
+              capturedAt,
+              appUrl: "[provisioned-subject]",
+              browserCommand: "injected-browser",
+              durationMs: 1,
+              httpStatus: 200,
+              ok: true,
+              reason,
+              screenshotPath,
+              steps: capture.steps,
+              surface: options.surface,
+              redaction: "passed",
+            },
+            null,
+            2,
+          )}\n`,
+        );
+        return {
           status: "passed",
           completionReason: "goal_satisfied",
           reason,
-          ids: {},
-          counts: { steps: 1, actions: 1, assertions: 0, blocked: 0, screenshots: 1 },
-          items: [
-            {
-              id: "step-01-load",
-              kind: "ui_action",
-              lifecycle: "completed",
+          capture,
+          trace: {
+            schema: ACTOR_TRACE_SCHEMA,
+            provider: "browser-persona",
+            protocol: "scripted-steps",
+            lane: "scripted-browser",
+            persona: options.persona,
+            redaction: {
               status: "passed",
-              title: "Load landing page",
-              screenshotRef: { path: screenshotPath, redaction: "none" },
+              screenshots: "raw",
+              notes: "fake provisioned scripted trace",
             },
-          ],
-          tokenUsage: { input: 0, output: 0, total: 0, costUsd: 0 },
-          capabilities: SCRIPTED_BROWSER_CAPABILITIES,
+            startedAt: capturedAt,
+            completedAt: capturedAt,
+            durationMs: 1,
+            status: "passed",
+            completionReason: "goal_satisfied",
+            reason,
+            ids: {},
+            counts: { steps: 1, actions: 1, assertions: 0, blocked: 0, screenshots: 1 },
+            items: [
+              {
+                id: "step-01-load",
+                kind: "ui_action",
+                lifecycle: "completed",
+                status: "passed",
+                title: "Load landing page",
+                screenshotRef: { path: screenshotPath, redaction: "none" },
+              },
+            ],
+            tokenUsage: { input: 0, output: 0, total: 0, costUsd: 0 },
+            capabilities: SCRIPTED_BROWSER_CAPABILITIES,
+          },
+        };
+      },
+      detachedTimers: {
+        now: () => clock,
+        sleep: async (ms) => {
+          clock += ms;
         },
-      };
-    },
-    // An injected monotonic clock (#276): every poll loop on the provisioned path (install, build,
-    // readiness, seed steps) computes its deadline from `now()` and advances only through
-    // `sleep()`, so no wall-clock deadline can decide this case on a loaded runner. The earlier
-    // `now: Date.now` with a no-op sleep let a real 15 s budget expire twice on CI (2026-07 and
-    // 2026-09-03) while three local runs passed in under a second.
-    detachedTimers: {
-      now: () => clock,
-      sleep: async (ms) => {
-        clock += ms;
       },
     },
   };
@@ -622,17 +625,23 @@ describe("runScriptedBrowserLab", () => {
     async (analysisMode) => {
       await writeCommittedScenario(cwd);
       await withHttpServer(async (appUrl) => {
-        const hooks: ScriptedBrowserLabHooks = {
-          launchBrowser: async () => makeFakeBrowser({ bodyAfterClick: "Welcome aboard" }),
+        const hooks: ScriptedTestInputs = {
+          deps: {
+            launchBrowser: async () => makeFakeBrowser({ bodyAfterClick: "Welcome aboard" }),
+          },
         };
         const config = scriptedConfig({ appUrl, count: 2, mode: "live" });
         if (analysisMode === "disabled") config.review = { analysis: false };
         const analyze = automaticAnalysisBoundary();
-        const outcome = await runLab(config, {
-          cwd,
-          scriptedHooks: hooks,
-          automaticAnalysis: { run: analyze },
-        });
+        const outcome = await runLab(
+          config,
+          {
+            cwd,
+            ...scriptedOptions(hooks),
+            automaticAnalysis: { run: analyze },
+          },
+          hooks.deps,
+        );
         expect(analyze).toHaveBeenCalledTimes(analysisMode === "disabled" ? 0 : 1);
         if (analysisMode === "disabled")
           expect(outcome.result).not.toHaveProperty("automaticAnalysis");
@@ -727,15 +736,25 @@ describe("runScriptedBrowserLab", () => {
       resources: { cpuCount: 8, memoryMB: 8192 },
     });
     const { hooks, rawSessionUrls } = provisionedCloneHooks(fakeE2B.module);
+    const targets: unknown[] = [];
 
-    const outcome = await runLab(provisionedScriptedConfig(), {
-      cwd,
-      runId,
-      scriptedHooks: hooks,
-    });
+    const outcome = await runLab(
+      provisionedScriptedConfig(),
+      {
+        cwd,
+        runId,
+        ...scriptedOptions(hooks),
+        prepareDesktop: async (_desktop, target) => {
+          targets.push(target);
+        },
+      },
+      hooks.deps,
+    );
     expect(outcome.backend).toBe("scripted");
     if (outcome.backend !== "scripted") return;
     const result = outcome.result;
+    // prepareDesktop runs once, on the subject sandbox, before provisioning.
+    expect(targets).toEqual([{ kind: "subject" }]);
 
     // Name the step on failure: "expected false to be true" said nothing on either CI leg.
     expect(result.ok, JSON.stringify({ error: result.error, warnings: result.warnings })).toBe(
@@ -833,13 +852,17 @@ describe("runScriptedBrowserLab", () => {
     await writeCommittedScenario(cwd);
     await withHttpServer(async (appUrl) => {
       // Click never produces the Welcome state -> stateChanged + waitForText fail honestly.
-      const hooks: ScriptedBrowserLabHooks = {
-        launchBrowser: async () => makeFakeBrowser({}),
+      const hooks: ScriptedTestInputs = {
+        deps: { launchBrowser: async () => makeFakeBrowser({}) },
       };
-      const outcome = await runLab(scriptedConfig({ appUrl, count: 1, mode: "live" }), {
-        cwd,
-        scriptedHooks: hooks,
-      });
+      const outcome = await runLab(
+        scriptedConfig({ appUrl, count: 1, mode: "live" }),
+        {
+          cwd,
+          ...scriptedOptions(hooks),
+        },
+        hooks.deps,
+      );
       if (outcome.backend !== "scripted") throw new Error("expected scripted backend");
       const result = outcome.result;
 
@@ -866,16 +889,22 @@ describe("runScriptedBrowserLab", () => {
   it("a browser that cannot launch is a harness error: lab ok false, failed-evidence bundle persisted", async () => {
     await writeCommittedScenario(cwd);
     await withHttpServer(async (appUrl) => {
-      const hooks: ScriptedBrowserLabHooks = {
-        launchBrowser: async () => {
-          throw new Error("chromium executable missing");
+      const hooks: ScriptedTestInputs = {
+        deps: {
+          launchBrowser: async () => {
+            throw new Error("chromium executable missing");
+          },
         },
       };
       const stderr = captureStderr();
-      const outcome = await runLab(scriptedConfig({ appUrl, count: 1, mode: "live" }), {
-        cwd,
-        scriptedHooks: hooks,
-      }).finally(stderr.stop);
+      const outcome = await runLab(
+        scriptedConfig({ appUrl, count: 1, mode: "live" }),
+        {
+          cwd,
+          ...scriptedOptions(hooks),
+        },
+        hooks.deps,
+      ).finally(stderr.stop);
       if (outcome.backend !== "scripted") throw new Error("expected scripted backend");
       const result = outcome.result;
 
@@ -936,7 +965,7 @@ describe("runScriptedBrowserLab", () => {
       close: async () => undefined,
     };
   }
-  it.each<[string, ScriptedBrowserLabHooks, RunBundle["review"]["verdict"], boolean]>([
+  it.each<[string, LabDeps, RunBundle["review"]["verdict"], boolean]>([
     [
       "every surface passes",
       { launchBrowser: async () => surfaceBrowser({ desktop: "pass", mobile: "pass" }) },
@@ -974,7 +1003,7 @@ describe("runScriptedBrowserLab", () => {
     [
       "a session that throws",
       {
-        runSession: async () => {
+        runScriptedSession: async () => {
           throw new Error("synthetic session failure");
         },
         launchBrowser: async () => surfaceBrowser({ desktop: "pass", mobile: "pass" }),
@@ -982,13 +1011,13 @@ describe("runScriptedBrowserLab", () => {
       "fail",
       false,
     ],
-  ])("agrees across bundle, result and status with %s", async (_name, hooks, verdict, ok) => {
+  ])("agrees across bundle, result and status with %s", async (_name, deps, verdict, ok) => {
     await writeCommittedScenario(cwd);
     await withHttpServer(async (appUrl) => {
       const config = scriptedConfig({ appUrl, count: 2, mode: "live" });
       config.execution!.timeoutMs = 3_000;
       const stderr = captureStderr();
-      const outcome = await runLab(config, { cwd, scriptedHooks: hooks }).finally(stderr.stop);
+      const outcome = await runLab(config, { cwd }, deps).finally(stderr.stop);
       if (outcome.backend !== "scripted") throw new Error("expected scripted backend");
       const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
       const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
@@ -1007,12 +1036,13 @@ describe("runScriptedBrowserLab", () => {
     await withHttpServer(async (appUrl) => {
       const config = scriptedConfig({ appUrl, count: 1, mode: "live" });
       config.review = { analysis: false };
-      const outcome = await runLab(config, {
-        cwd,
-        scriptedHooks: {
-          launchBrowser: async () => makeFakeBrowser({ bodyAfterClick: "Welcome aboard" }),
+      const outcome = await runLab(
+        config,
+        {
+          cwd,
         },
-      });
+        { launchBrowser: async () => makeFakeBrowser({ bodyAfterClick: "Welcome aboard" }) },
+      );
       if (outcome.backend !== "scripted") throw new Error("expected scripted backend");
       const { runId } = outcome.result;
       const runDir = path.join(cwd, ".humanish", "runs", runId);
@@ -1047,12 +1077,13 @@ describe("runScriptedBrowserLab", () => {
         "?access_token=secret-token#private-fragment";
       const config = scriptedConfig({ appUrl: polluted, count: 1, mode: "live" });
       config.review = { analysis: false };
-      const outcome = await runLab(config, {
-        cwd,
-        scriptedHooks: {
-          launchBrowser: async () => makeFakeBrowser({ bodyAfterClick: "Welcome aboard" }),
+      const outcome = await runLab(
+        config,
+        {
+          cwd,
         },
-      });
+        { launchBrowser: async () => makeFakeBrowser({ bodyAfterClick: "Welcome aboard" }) },
+      );
       if (outcome.backend !== "scripted") throw new Error("expected scripted backend");
       expect(outcome.result.ok).toBe(true);
       expect(outcome.result.sessions[0]?.completionReason).toBe("goal_satisfied");
@@ -1084,17 +1115,23 @@ describe("runScriptedBrowserLab", () => {
   it("an unexpected runSession throw becomes a redacted structured failure with a failed bundle (no raw throw)", async () => {
     const secretToken = "Bearer " + "a1b2c3d4e5".repeat(4);
     await writeCommittedScenario(cwd);
-    const hooks: ScriptedBrowserLabHooks = {
-      runSession: async () => {
-        throw new Error(`session exploded with ${secretToken}`);
+    const hooks: ScriptedTestInputs = {
+      deps: {
+        runScriptedSession: async () => {
+          throw new Error(`session exploded with ${secretToken}`);
+        },
+        launchBrowser: async () => makeFakeBrowser({}),
       },
-      launchBrowser: async () => makeFakeBrowser({}),
     };
     const stderr = captureStderr();
-    const outcome = await runLab(scriptedConfig({ count: 1, mode: "live" }), {
-      cwd,
-      scriptedHooks: hooks,
-    }).finally(stderr.stop);
+    const outcome = await runLab(
+      scriptedConfig({ count: 1, mode: "live" }),
+      {
+        cwd,
+        ...scriptedOptions(hooks),
+      },
+      hooks.deps,
+    ).finally(stderr.stop);
     if (outcome.backend !== "scripted") throw new Error("expected scripted backend");
     const result = outcome.result;
 
@@ -1123,15 +1160,18 @@ describe("runScriptedBrowserLab", () => {
   it("fails a live run whose session threw an error with an empty message", async () => {
     await writeCommittedScenario(cwd);
     const stderr = captureStderr();
-    const outcome = await runLab(scriptedConfig({ count: 1, mode: "live" }), {
-      cwd,
-      scriptedHooks: {
-        runSession: async () => {
+    const outcome = await runLab(
+      scriptedConfig({ count: 1, mode: "live" }),
+      {
+        cwd,
+      },
+      {
+        runScriptedSession: async () => {
           throw new Error("");
         },
         launchBrowser: async () => makeFakeBrowser({}),
       },
-    }).finally(stderr.stop);
+    ).finally(stderr.stop);
     if (outcome.backend !== "scripted") throw new Error("expected scripted backend");
     const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
@@ -1151,39 +1191,41 @@ describe("runScriptedBrowserLab", () => {
     const outside = path.join(path.dirname(cwd), "scripted-outside-sentinel.txt");
     await writeFile(outside, "UNCHANGED", "utf8");
     const runId = "unsafe-hook-result";
-    const hooks: ScriptedBrowserLabHooks = {
-      browserCommand: "/synthetic/browser",
-      runSession: async (options) =>
-        ({
-          status: "passed",
-          completionReason: "goal_satisfied",
-          reason: "synthetic malicious callback result",
-          capture: {
-            capturedAt: "2026-07-13T00:00:00.000Z",
-            durationMs: 1,
-            ok: true,
-            reason: "synthetic malicious callback result",
-            steps: [],
-            surface: options.surface,
-            tracePath: "../../scripted-outside-sentinel.txt",
-          },
-          trace: {
-            schema: ACTOR_TRACE_SCHEMA,
-            provider: "browser-persona",
-            protocol: "scripted-steps",
-            lane: "scripted-browser",
-            persona: options.persona,
-            redaction: { status: "passed", screenshots: "none", notes: "synthetic" },
-            startedAt: "2026-07-13T00:00:00.000Z",
-            completedAt: "2026-07-13T00:00:00.000Z",
+    const hooks: ScriptedTestInputs = {
+      deps: {
+        browserCommand: "/synthetic/browser",
+        runScriptedSession: async (options) =>
+          ({
             status: "passed",
             completionReason: "goal_satisfied",
-            summary: "synthetic",
-            capabilities: SCRIPTED_BROWSER_CAPABILITIES,
-            actions: [],
-            tokenUsage: { input: 0, output: 0, total: 0, costUsd: 0 },
-          },
-        }) as unknown as ScriptedBrowserSessionResult,
+            reason: "synthetic malicious callback result",
+            capture: {
+              capturedAt: "2026-07-13T00:00:00.000Z",
+              durationMs: 1,
+              ok: true,
+              reason: "synthetic malicious callback result",
+              steps: [],
+              surface: options.surface,
+              tracePath: "../../scripted-outside-sentinel.txt",
+            },
+            trace: {
+              schema: ACTOR_TRACE_SCHEMA,
+              provider: "browser-persona",
+              protocol: "scripted-steps",
+              lane: "scripted-browser",
+              persona: options.persona,
+              redaction: { status: "passed", screenshots: "none", notes: "synthetic" },
+              startedAt: "2026-07-13T00:00:00.000Z",
+              completedAt: "2026-07-13T00:00:00.000Z",
+              status: "passed",
+              completionReason: "goal_satisfied",
+              summary: "synthetic",
+              capabilities: SCRIPTED_BROWSER_CAPABILITIES,
+              actions: [],
+              tokenUsage: { input: 0, output: 0, total: 0, costUsd: 0 },
+            },
+          }) as unknown as ScriptedBrowserSessionResult,
+      },
     };
 
     await expect(
@@ -1191,7 +1233,7 @@ describe("runScriptedBrowserLab", () => {
         cwd,
         config: scriptedConfig({ count: 1, mode: "live" }),
         dryRun: false,
-        hooks,
+        ...hooks,
         runId,
       }),
     ).rejects.toThrow(/unsafe artifact path/i);
@@ -1298,9 +1340,9 @@ describe("runScriptedBrowserLab", () => {
         cwd,
         config: scriptedConfig({ ref: "linked", mode: "live" }),
         dryRun: false,
-        hooks: {
+        deps: {
           browserCommand: "/synthetic/browser",
-          runSession: async () => {
+          runScriptedSession: async () => {
             hookCalled = true;
             throw new Error("must not run");
           },
@@ -1487,13 +1529,14 @@ describe("scripted-browser run directory goldens", () => {
   it("live journey that passes on a fake browser", async () => {
     await withHttpServer(async (appUrl) => {
       const stderr = captureStderr();
-      const outcome = await runLab(scriptedConfig({ appUrl, count: 1, mode: "live" }), {
-        cwd,
-        automaticAnalysis: { run: automaticAnalysisBoundary() },
-        scriptedHooks: {
-          launchBrowser: async () => makeFakeBrowser({ bodyAfterClick: "Welcome aboard" }),
+      const outcome = await runLab(
+        scriptedConfig({ appUrl, count: 1, mode: "live" }),
+        {
+          cwd,
+          automaticAnalysis: { run: automaticAnalysisBoundary() },
         },
-      }).finally(stderr.stop);
+        { launchBrowser: async () => makeFakeBrowser({ bodyAfterClick: "Welcome aboard" }) },
+      ).finally(stderr.stop);
       const runId = outcome.result.runId;
       if (!runId) throw new Error("the run wrote no bundle");
       const snapshot = await runDirSnapshot(path.join(cwd, ".humanish", "runs", runId), {
@@ -1526,15 +1569,17 @@ describe("scripted-browser run directory goldens", () => {
     // are fixed instead of measured.
     let clock = 0;
     const stderr = captureStderr();
-    const outcome = await runLab(provisionedScriptedConfig(), {
-      cwd,
-      runId,
-      automaticAnalysis: { run: automaticAnalysisBoundary() },
-      scriptedHooks: {
-        ...provisionedCloneHooks(fakeE2B.module).hooks,
-        now: () => (clock += 60_000),
+    const inputs = provisionedCloneHooks(fakeE2B.module).hooks;
+    const outcome = await runLab(
+      provisionedScriptedConfig(),
+      {
+        cwd,
+        runId,
+        automaticAnalysis: { run: automaticAnalysisBoundary() },
+        ...scriptedOptions(inputs),
       },
-    }).finally(stderr.stop);
+      { ...inputs.deps, now: () => (clock += 60_000) },
+    ).finally(stderr.stop);
     expect(outcome.result.ok).toBe(true);
     const snapshot = await runDirSnapshot(path.join(cwd, ".humanish", "runs", runId), {
       result: outcome.result,
@@ -1562,18 +1607,20 @@ describe("scripted run lifetime on the provisioned clone route", () => {
 
   function cloneHooks(
     module: E2BDesktopModule,
-    runSession: ScriptedBrowserLabHooks["runSession"],
-  ): ScriptedBrowserLabHooks {
+    runScriptedSession: LabDeps["runScriptedSession"],
+  ): ScriptedTestInputs {
     let clock = Date.parse("2026-09-30T00:00:00.000Z");
     return {
       env: { E2B_API_KEY: "fake-e2b-key-for-test", GITHUB_TOKEN: "github-token-test" },
-      loadDesktopModule: async () => module,
-      browserCommand: "/synthetic/browser",
-      ...(runSession === undefined ? {} : { runSession }),
-      detachedTimers: {
-        now: () => clock,
-        sleep: async (ms) => {
-          clock += ms;
+      deps: {
+        desktopModule: async () => module,
+        browserCommand: "/synthetic/browser",
+        ...(runScriptedSession === undefined ? {} : { runScriptedSession }),
+        detachedTimers: {
+          now: () => clock,
+          sleep: async (ms) => {
+            clock += ms;
+          },
         },
       },
     };
@@ -1604,12 +1651,16 @@ describe("scripted run lifetime on the provisioned clone route", () => {
     );
 
     await expect(
-      runLab(provisionedScriptedConfig(), {
-        cwd,
-        runId,
-        scriptedHooks: hooks,
-        automaticAnalysis: { run: analysis },
-      }),
+      runLab(
+        provisionedScriptedConfig(),
+        {
+          cwd,
+          runId,
+          ...scriptedOptions(hooks),
+          automaticAnalysis: { run: analysis },
+        },
+        hooks.deps,
+      ),
     ).rejects.toThrow(/unsafe artifact path/i);
 
     expect(fakeE2B.killed).toEqual(["fake-subject-001"]);
@@ -1629,11 +1680,15 @@ describe("scripted run lifetime on the provisioned clone route", () => {
     });
 
     const stderr = captureStderr();
-    const outcome = await runLab(provisionedScriptedConfig(), {
-      cwd,
-      runId,
-      scriptedHooks: hooks,
-    }).finally(stderr.stop);
+    const outcome = await runLab(
+      provisionedScriptedConfig(),
+      {
+        cwd,
+        runId,
+        ...scriptedOptions(hooks),
+      },
+      hooks.deps,
+    ).finally(stderr.stop);
     if (outcome.backend !== "scripted") throw new Error(`unexpected backend ${outcome.backend}`);
     expect(outcome.result.ok).toBe(false);
     expect(fakeE2B.killed).toEqual(["fake-subject-001"]);
@@ -1675,7 +1730,11 @@ describe("scripted run lifetime on the provisioned clone route", () => {
     const hooks = cloneHooks(fakeE2B.module, async () => {
       throw new Error("synthetic session failure");
     });
-    const outcome = await runLab(provisionedScriptedConfig(), { cwd, scriptedHooks: hooks });
+    const outcome = await runLab(
+      provisionedScriptedConfig(),
+      { cwd, ...scriptedOptions(hooks) },
+      hooks.deps,
+    );
     if (outcome.backend !== "scripted") throw new Error(`unexpected backend ${outcome.backend}`);
     expect(outcome.result.subjectSandbox).toEqual({ sandboxId: "fake-subject-001", killed });
     expect(outcome.result.warnings.join("\n")).toContain(warning);
@@ -1688,10 +1747,14 @@ describe("scripted run lifetime on the provisioned clone route", () => {
       await kill(sandboxId, options);
       throw new Error("synthetic kill failure");
     };
-    const passing = provisionedCloneHooks(fakeE2B.module).hooks.runSession;
+    const passing = provisionedCloneHooks(fakeE2B.module).hooks.deps?.runScriptedSession;
     const hooks = cloneHooks(fakeE2B.module, passing);
 
-    const outcome = await runLab(provisionedScriptedConfig(), { cwd, scriptedHooks: hooks });
+    const outcome = await runLab(
+      provisionedScriptedConfig(),
+      { cwd, ...scriptedOptions(hooks) },
+      hooks.deps,
+    );
     if (outcome.backend !== "scripted") throw new Error(`unexpected backend ${outcome.backend}`);
     expect(outcome.result.subjectSandbox?.killed).toBe(false);
     const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
@@ -1717,7 +1780,11 @@ describe("scripted run lifetime on the provisioned clone route", () => {
       throw new Error("synthetic session failure");
     });
 
-    const outcome = await runLab(provisionedScriptedConfig(), { cwd, runId, scriptedHooks: hooks });
+    const outcome = await runLab(
+      provisionedScriptedConfig(),
+      { cwd, runId, ...scriptedOptions(hooks) },
+      hooks.deps,
+    );
     if (outcome.backend !== "scripted") throw new Error(`unexpected backend ${outcome.backend}`);
     expect(outcome.result.subjectSandbox).toEqual({ sandboxId: "fake-subject-001", killed: false });
 

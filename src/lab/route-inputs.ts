@@ -25,13 +25,15 @@ export function computerUseInput(options: InternalRunLabOptions): ComputerUseRun
   };
 }
 
-export function scriptedInput(options: InternalRunLabOptions): ScriptedRunInput {
+export function scriptedInput(options: InternalRunLabOptions, deps: LabDeps): ScriptedRunInput {
   return {
     ...analysisOf(options),
     cwd: options.cwd,
     ...(options.open === undefined ? {} : { open: options.open }),
     ...(options.runId === undefined ? {} : { runId: options.runId }),
-    ...(options.scriptedHooks === undefined ? {} : { hooks: options.scriptedHooks }),
+    ...(options.env === undefined ? {} : { env: options.env }),
+    ...(options.prepareDesktop === undefined ? {} : { prepareDesktop: options.prepareDesktop }),
+    deps,
   };
 }
 

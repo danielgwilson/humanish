@@ -5,7 +5,7 @@
 
 import { resolveAutomaticAnalysis } from "../analysis/automatic-config.js";
 import { planComputerUseLab } from "../routes/computer-use/plan.js";
-import { planScriptedLab } from "../routes/scripted/plan.js";
+import { injectedBrowser, planScriptedLab } from "../routes/scripted/plan.js";
 import { planSharedWorldLab } from "../routes/shared-world/plan.js";
 import { planTerminalLab } from "../routes/terminal/plan.js";
 import type { RunLabProvenance } from "../run/status.js";
@@ -188,9 +188,6 @@ function planRoute(
     case "terminal":
       return planTerminalLab(lab, { ...input, hasCostProbe: deps.costProbe !== undefined });
     case "scripted":
-      return planScriptedLab(lab, {
-        ...input,
-        ...(options.scriptedHooks === undefined ? {} : { hooks: options.scriptedHooks }),
-      });
+      return planScriptedLab(lab, { ...input, injectedBrowser: injectedBrowser(deps) });
   }
 }

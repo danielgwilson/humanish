@@ -87,7 +87,7 @@ type Refusal = {
 type Normalized = {
   ok: true;
   /** The options with each typed home mapped into the route's bag and removed, except on a route
-   *  that reads its homes directly (terminal). */
+   *  that reads its homes directly (terminal, scripted). */
   options: InternalRunLabOptions;
   /** Filled by onEvent failures while the run runs; runLab appends them to the result. */
   warnings: string[];
@@ -287,19 +287,11 @@ export function normalizeRunLabOptions(
       if (forwardedEnv !== undefined) normalized.env = forwardedEnv;
       if (scorer !== undefined) normalized.scorer = scorer;
       break;
-    case "scripted": {
-      const hooks = withMapped(legacy.scriptedHooks, {
-        ...envHome,
-        ...(prepareDesktop === undefined
-          ? {}
-          : {
-              prepareDesktop: (desktop: E2BDesktopSandbox) =>
-                prepareDesktop(desktop, { kind: "subject" }),
-            }),
-      });
-      if (hooks !== undefined) normalized.scriptedHooks = hooks;
+    case "scripted":
+      // The scripted route reads its typed options directly.
+      if (forwardedEnv !== undefined) normalized.env = forwardedEnv;
+      if (prepareDesktop !== undefined) normalized.prepareDesktop = prepareDesktop;
       break;
-    }
     case "preview":
       break;
   }

@@ -71,25 +71,24 @@ function options(cwd: string, env: Record<string, string>, loads: { count: numbe
     loads.count += 1;
     throw new Error("a key refusal must come before any desktop or sandbox module loads");
   };
-  const launchBrowser = async (): Promise<never> => {
-    loads.count += 1;
-    throw new Error("a key refusal must come before the browser launches");
-  };
   return {
     cwd,
     env,
     cuaHooks: { loadDesktopModule: load },
-    scriptedHooks: { loadDesktopModule: load, launchBrowser },
     sharedWorldHooks: { loadDesktopModule: load },
   } satisfies InternalRunLabOptions;
 }
 
-/** The terminal route's seams: its E2B module load counts as a load too. */
+/** The terminal and scripted routes' seams: an E2B module load or a browser launch counts too. */
 function deps(loads: { count: number }): LabDeps {
   return {
     desktopModule: async (): Promise<never> => {
       loads.count += 1;
       throw new Error("a key refusal must come before any desktop or sandbox module loads");
+    },
+    launchBrowser: async (): Promise<never> => {
+      loads.count += 1;
+      throw new Error("a key refusal must come before the browser launches");
     },
   };
 }

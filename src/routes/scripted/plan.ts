@@ -2,6 +2,7 @@
 // its order and with its codes, then the plan the run uses. What stays in the route reads external
 // state: the scenario file, the E2B key, subject env values and the host browser.
 
+import type { LabDeps } from "../../lab/lab-deps.js";
 import { actorRegistry, isScriptedBrowserActorDescriptor } from "../../actors/registry.js";
 import { normalizeLocalAppUrl } from "../../actors/scripted-browser/steps.js";
 import { browserSurfaces } from "../../actors/scripted-browser/types.js";
@@ -51,6 +52,11 @@ export function evidenceAppUrlOf(subject: ScriptedPlan["subject"]): string {
   return subject.kind === "clone" ? "[provisioned-subject]" : subject.appUrl;
 }
 
+/** Whether a test injected the browser, so a live run needs no host browser. */
+export function injectedBrowser(deps: LabDeps | undefined): boolean {
+  return Boolean(deps?.launchBrowser || deps?.browserCommand);
+}
+
 /**
  * Plan a scripted-browser lab. It is called for any config handed to the scripted runner, not only
  * one routeOf sends here, so a config for another route gets this route's refusal.
@@ -60,8 +66,8 @@ export function planScriptedLab(
   input: {
     readonly dryRun: boolean;
     readonly lab?: RunLabProvenance;
-    /** An injected browser means a live run needs no host browser. */
-    readonly hooks?: { readonly launchBrowser?: unknown; readonly browserCommand?: string };
+    /** A test's injected browser means a live run needs no host browser. */
+    readonly injectedBrowser?: boolean;
   },
 ): ScriptedPlanResult {
   const refuse = (
@@ -130,15 +136,13 @@ export function planScriptedLab(
       { actor, appUrl: evidenceAppUrlOf(subject) },
     );
 
-  const hooks = input.hooks ?? {};
   const requirements: Requirement[] = [];
   if (!input.dryRun && subject.kind === "clone") {
     requirements.push({ kind: "key", name: "E2B_API_KEY" });
     if (isNonEmpty(subject.env)) requirements.push({ kind: "subject-env", names: subject.env });
   }
   // The browser runs on this machine on both subjects; a clone's is pointed at its getHost URL.
-  if (!input.dryRun && !hooks.launchBrowser && !hooks.browserCommand)
-    requirements.push({ kind: "host-browser" });
+  if (!input.dryRun && input.injectedBrowser !== true) requirements.push({ kind: "host-browser" });
   const persona = config.actors[0]?.persona;
   const timeoutMs = config.execution?.timeoutMs;
   return {

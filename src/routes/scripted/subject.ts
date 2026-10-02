@@ -19,7 +19,8 @@ import {
 import { acquireE2BDesktopSandbox, readE2BRelease } from "../../substrates/e2b/sandbox.js";
 import type { OwnedDesktopAllocation } from "../../substrates/desktop-session.js";
 import { e2bShell } from "../../substrates/e2b/shell.js";
-import type { ScriptedBrowserLabHooks } from "./types.js";
+import type { LabDeps } from "../../lab/lab-deps.js";
+import type { RunLabHomes } from "../../lab/run-lab-options.js";
 import {
   e2bRequestTimeoutMs,
   SANDBOX_TIMEOUT_BUFFER_MS,
@@ -56,8 +57,10 @@ type ScriptedCloneSubject = Extract<ScriptedPlan["subject"], { readonly kind: "c
 export interface ScriptedSubjectInputs {
   plan: ScriptedPlan;
   clone: ScriptedCloneSubject;
-  hooks: ScriptedBrowserLabHooks;
-  env: Record<string, string | undefined>;
+  deps: LabDeps;
+  /** Runs after the subject sandbox exists and before provisioning. */
+  prepareDesktop?: NonNullable<RunLabHomes["prepareDesktop"]>;
+  env: Readonly<Record<string, string | undefined>>;
   e2bApiKey: string;
   runPaths: PreparedRunArtifactPaths;
   timeoutMs: number;
@@ -90,10 +93,10 @@ export class ScriptedSubject {
 
   /** Acquires, provisions and serves the subject. Returns the tokenless getHost URL to drive. */
   async provision(): Promise<string> {
-    const { plan, clone, hooks, env, e2bApiKey, runPaths, timeoutMs } = this.inputs;
+    const { plan, clone, deps, prepareDesktop, env, e2bApiKey, runPaths, timeoutMs } = this.inputs;
     const { subjectEnvNames, hasGithubToken, scrubKnownValues, now } = this.inputs;
     const requestTimeoutMs = e2bRequestTimeoutMs(env);
-    const timers: DetachedTimers = hooks.detachedTimers ?? {};
+    const timers: DetachedTimers = deps.detachedTimers ?? {};
     const subjectSandboxTimeoutMs =
       timeoutMs +
       SUBJECT_PROVISION_BUDGET_MS +
@@ -102,7 +105,7 @@ export class ScriptedSubject {
         0,
       ) +
       SANDBOX_TIMEOUT_BUFFER_MS;
-    const subjectModule = await (hooks.loadDesktopModule ?? loadE2BDesktopModule)();
+    const subjectModule = await (deps.desktopModule ?? loadE2BDesktopModule)();
     await validatePreparedRunArtifactPaths(runPaths);
     // The receipt is on disk before any work on the sandbox, so `humanish reclaim` can kill
     // it by exact id when this process dies mid-run; the finally block below only runs while
@@ -137,8 +140,8 @@ export class ScriptedSubject {
     this.createdAtMs = now();
     this.resources = await observeDesktopResources(subjectDesktop);
 
-    if (hooks.prepareDesktop) {
-      await hooks.prepareDesktop(subjectDesktop);
+    if (prepareDesktop) {
+      await prepareDesktop(subjectDesktop, { kind: "subject" });
       await validatePreparedRunArtifactPaths(runPaths);
     }
 
