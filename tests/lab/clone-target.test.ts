@@ -106,7 +106,8 @@ describe("clone subjects run only on execution.target: e2b-desktop", () => {
         cwd,
         config: unparsedCloneLab("scripted-browser", "local"),
         dryRun: false,
-        hooks: { env: liveKeys, loadDesktopModule: desktop.load },
+        env: liveKeys,
+        deps: { desktopModule: desktop.load },
       });
       expect(result.ok).toBe(false);
       expect(result.error?.code).toBe("HUMANISH_SCRIPTED_LAB_SUBJECT_UNSAFE");

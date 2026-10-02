@@ -18,10 +18,10 @@ import { evidenceAppUrlOf } from "./plan.js";
 import { resolveScriptedScenario } from "./scenario.js";
 import {
   SCRIPTED_BROWSER_LAB_SCHEMA,
-  type ScriptedBrowserLabHooks,
   type ScriptedBrowserLabResult,
   type ScriptedRunInput,
 } from "./types.js";
+import type { LabDeps } from "../../lab/lab-deps.js";
 
 // Journey wall-clock budget per surface: 5 minutes. A scripted surface has zero model cost and
 // sandbox-seconds are pennies; a short default only truncated slow-loading subjects.
@@ -31,7 +31,7 @@ const DEFAULT_SESSION_TIMEOUT_MS = 300_000;
 export interface ScriptedRunSetup {
   cwd: string;
   physicalCwd: string;
-  hooks: ScriptedBrowserLabHooks;
+  deps: LabDeps;
   warnings: string[];
   failed: (
     code: NonNullable<ScriptedBrowserLabResult["error"]>["code"],
@@ -70,7 +70,7 @@ export async function prepareScriptedRun(
   const cwd = path.resolve(input.cwd);
   const physicalCwd = await realpath(cwd);
   const projectRoot = await prepareSelectedOutputDirectory(path.dirname(physicalCwd), physicalCwd);
-  const hooks = input.hooks ?? {};
+  const deps = input.deps ?? {};
   const warnings: string[] = [];
   const clone = plan.subject.kind === "clone" ? plan.subject : undefined;
   const evidenceAppUrl = evidenceAppUrlOf(plan.subject);
@@ -95,7 +95,7 @@ export async function prepareScriptedRun(
     ? { kind: "provisioned-subject", evidenceOrigin: evidenceAppUrl }
     : { kind: "loopback" };
   const subjectEnvNames = [...(clone?.env ?? [])];
-  const env = hooks.env ?? process.env;
+  const env = input.env ?? process.env;
   const e2bApiKey = env.E2B_API_KEY?.trim() ?? "";
   const hasGithubToken = subjectEnvNames.includes("GITHUB_TOKEN");
   const redactRepoLabel = plan.residual.policies?.redactRepos ?? hasGithubToken;
@@ -151,8 +151,8 @@ export async function prepareScriptedRun(
   };
 
   // Live runs need a browser BEFORE any actuation (unless one is injected).
-  let browserCommand = hooks.browserCommand;
-  if (!dryRun && !hooks.launchBrowser && !browserCommand) {
+  let browserCommand = deps.browserCommand;
+  if (!dryRun && !deps.launchBrowser && !browserCommand) {
     const resolved = await resolveBrowserCommand();
     if (!resolved) {
       return {
@@ -170,7 +170,7 @@ export async function prepareScriptedRun(
     setup: {
       cwd,
       physicalCwd,
-      hooks,
+      deps,
       warnings,
       failed,
       clone,

@@ -59,8 +59,8 @@ describe("real receiving admission on non-receiving backends", () => {
       for (const dryRun of [false, true]) {
         const outcome = await runLab(
           resolved,
-          { cwd: output, dryRun, env: {}, sharedWorldHooks: hooks, scriptedHooks: hooks },
-          { desktopModule: forbidden, renderObserver: forbidden },
+          { cwd: output, dryRun, env: {}, sharedWorldHooks: hooks },
+          { desktopModule: forbidden, runScriptedSession: forbidden, renderObserver: forbidden },
         );
         expect(outcome.backend).toBe(backend);
         expect(outcome.result.ok).toBe(false);
@@ -92,11 +92,11 @@ describe("real receiving admission on non-receiving backends", () => {
           cwd: path.join(cwd, "must-not-exist"),
           config,
           dryRun,
-          hooks: {
-            env: {},
-            loadDesktopModule: forbidden,
-            runSession: forbidden,
-            renderObserverFn: forbidden,
+          env: {},
+          deps: {
+            desktopModule: forbidden,
+            runScriptedSession: forbidden,
+            renderObserver: forbidden,
           },
         });
         expect(result).toMatchObject({

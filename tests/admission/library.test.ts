@@ -88,10 +88,9 @@ function hooksFor(options: AdmissionOptions, calls: Calls) {
   };
   return {
     cuaHooks,
-    scriptedHooks: { env, loadDesktopModule },
     sharedWorldHooks: { env, loadDesktopModule },
-    // The terminal route reads env and its seams directly.
-    terminal: { env, deps: { desktopModule: loadDesktopModule } },
+    // The terminal and scripted routes read env and their seams directly.
+    typed: { env, deps: { desktopModule: loadDesktopModule } },
   };
 }
 
@@ -106,7 +105,7 @@ async function runEntry(
     vi.stubEnv("HUMANISH_BROWSER_COMMAND", "");
   }
   const calls: Calls = { desktop: 0, executor: 0, provider: 0, subprocess: 0 };
-  const { terminal, ...hooks } = hooksFor(options, calls);
+  const { typed, ...hooks } = hooksFor(options, calls);
   const backend: LabBackend | "none" =
     options.runner ?? (entry === "runner" ? selectLabBackend(config) : "none");
   const dryRun = resolveLabDryRun(config, options.dryRun, true) ?? true;
@@ -120,12 +119,12 @@ async function runEntry(
         {
           cwd,
           ...hooks,
-          env: terminal.env,
+          env: typed.env,
           ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
           ...(options.count === undefined ? {} : { count: options.count }),
           ...rerun,
         },
-        terminal.deps,
+        typed.deps,
       );
       result = { backend: outcome.backend, ...outcome.result };
     } else if (backend === "cua") {
@@ -138,9 +137,9 @@ async function runEntry(
         ...rerun,
       });
     } else if (backend === "scripted") {
-      result = await runScriptedBrowserLab({ cwd, config, dryRun, hooks: hooks.scriptedHooks });
+      result = await runScriptedBrowserLab({ cwd, config, dryRun, ...typed });
     } else if (backend === "terminal") {
-      result = await runTerminalProductLab({ cwd, config, dryRun, ...terminal });
+      result = await runTerminalProductLab({ cwd, config, dryRun, ...typed });
     } else if (backend === "concurrent-shared-world") {
       result = await runConcurrentSharedWorld({
         cwd,

@@ -65,7 +65,6 @@ export function knownSecretValues(
     forwardedEnv,
     options.env,
     options.cuaHooks?.env,
-    options.scriptedHooks?.env,
     options.sharedWorldHooks?.env,
     process.env,
   ];

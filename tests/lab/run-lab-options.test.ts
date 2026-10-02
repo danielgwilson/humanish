@@ -269,22 +269,25 @@ describe("each new option lands in the bag the route reads", () => {
     const loadDesktopModule = async () => {
       throw new Error("unused");
     };
-    const options = normalized(config("scriptedAppUrl"), {
+    const options = normalized(config("sharedProvisioned"), {
       env: { OPENAI_API_KEY: "k" },
-      scriptedHooks: { loadDesktopModule },
+      sharedWorldHooks: { loadDesktopModule },
     });
-    expect(options.scriptedHooks!.env).toEqual({ OPENAI_API_KEY: "k" });
-    await expect(options.scriptedHooks!.loadDesktopModule!()).rejects.toThrow("unused");
+    expect(options.sharedWorldHooks!.env).toEqual({ OPENAI_API_KEY: "k" });
+    await expect(options.sharedWorldHooks!.loadDesktopModule!()).rejects.toThrow("unused");
   });
 
-  it("env stays on the options for terminal, as a copy", () => {
-    const env = { OPENAI_API_KEY: "k" };
-    const options = normalized(config("terminal"), { env });
-    expect(options.env).toEqual(env);
-    expect(options.env).not.toBe(env);
-  });
+  it.each(["terminal", "scriptedAppUrl"] as const)(
+    "env stays on the options for %s, as a copy",
+    (base) => {
+      const env = { OPENAI_API_KEY: "k" };
+      const options = normalized(config(base), { env });
+      expect(options.env).toEqual(env);
+      expect(options.env).not.toBe(env);
+    },
+  );
 
-  it("prepareDesktop gets a participant target on computer use and the subject on scripted", async () => {
+  it("prepareDesktop gets a participant target on computer use and stays on the options for scripted", async () => {
     const targets: unknown[] = [];
     const record = async (_desktop: E2BDesktopSandbox, target: unknown): Promise<void> => {
       targets.push(target);
@@ -293,11 +296,11 @@ describe("each new option lands in the bag the route reads", () => {
       desktop,
       lane,
     );
-    await normalized(config("scriptedClone"), { prepareDesktop: record }).scriptedHooks!
-      .prepareDesktop!(desktop);
+    expect(normalized(config("scriptedClone"), { prepareDesktop: record }).prepareDesktop).toBe(
+      record,
+    );
     expect(targets).toEqual([
       { kind: "participant", participant: { id: "lane-02", index: 1, count: 3 } },
-      { kind: "subject" },
     ]);
   });
 

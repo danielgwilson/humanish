@@ -13,7 +13,7 @@ import {
   type PreparedRunArtifactPaths,
 } from "../../run/paths.js";
 import { validateScriptedSessionResult } from "./session-result.js";
-import type { ScriptedBrowserLabHooks } from "./types.js";
+import type { LabDeps } from "../../lab/lab-deps.js";
 
 /** One session per surface, in parallel. */
 export function runScriptedSessions(
@@ -31,14 +31,14 @@ export function runScriptedSessions(
   >,
   run: {
     surfaces: ScriptedPlan["surfaces"];
-    hooks: ScriptedBrowserLabHooks;
+    deps: LabDeps;
     browserCommand: string | undefined;
     runPaths: PreparedRunArtifactPaths;
   },
 ): Promise<ScriptedBrowserSessionResult[]> {
   const { appUrl, evidenceAppUrl, urlPolicy, journey, persona, timeoutMs, artifactRoot } = session;
-  const { surfaces, hooks, browserCommand, runPaths } = run;
-  const runSession = hooks.runSession;
+  const { surfaces, deps, browserCommand, runPaths } = run;
+  const runSession = deps.runScriptedSession;
   return Promise.all(
     surfaces.map((surface) => {
       const sessionOptions: ScriptedBrowserSessionOptions = {
@@ -51,8 +51,8 @@ export function runScriptedSessions(
         timeoutMs,
         artifactRoot,
         ...(browserCommand === undefined ? {} : { browserCommand }),
-        ...(hooks.launchBrowser === undefined ? {} : { launchBrowser: hooks.launchBrowser }),
-        ...(hooks.now === undefined ? {} : { now: hooks.now }),
+        ...(deps.launchBrowser === undefined ? {} : { launchBrowser: deps.launchBrowser }),
+        ...(deps.now === undefined ? {} : { now: deps.now }),
       };
       return runSession
         ? runSession(sessionOptions).then(async (result) => {

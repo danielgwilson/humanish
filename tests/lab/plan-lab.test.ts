@@ -246,22 +246,18 @@ describe("planLab", () => {
       scenario: { ref: "scripted-first-run" },
       execution: { target: "e2b-desktop" },
     });
-    const requirements = (
-      config: LabConfig,
-      options: Pick<Parameters<typeof planLab>[1], "scriptedHooks">,
-    ) => planOf(planLab(config, { cwd: ROOT, dryRun: false, ...options })).requirements;
+    const requirements = (config: LabConfig, deps: Parameters<typeof planLab>[2]) =>
+      planOf(planLab(config, { cwd: ROOT, dryRun: false }, deps)).requirements;
     expect(requirements(parsed(scriptedApp), {})).toEqual([{ kind: "host-browser" }]);
     expect(requirements(clone, {})).toEqual([
       { kind: "key", name: "E2B_API_KEY" },
       { kind: "subject-env", names: ["DATABASE_URL"] },
       { kind: "host-browser" },
     ]);
-    expect(requirements(clone, { scriptedHooks: { browserCommand: "/usr/bin/chromium" } })).toEqual(
-      [
-        { kind: "key", name: "E2B_API_KEY" },
-        { kind: "subject-env", names: ["DATABASE_URL"] },
-      ],
-    );
+    expect(requirements(clone, { browserCommand: "/usr/bin/chromium" })).toEqual([
+      { kind: "key", name: "E2B_API_KEY" },
+      { kind: "subject-env", names: ["DATABASE_URL"] },
+    ]);
   });
 
   it("plans a caller-provided brain from the hooks and freezes the residual config", () => {

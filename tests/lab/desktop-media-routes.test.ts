@@ -152,7 +152,13 @@ describe("declared camera capabilities must reach an implemented route", () => {
           },
         }),
         runConcurrentSharedWorld({ cwd, config: shared, dryRun: false, hooks }),
-        runScriptedBrowserLab({ cwd, config: scripted, dryRun: false, hooks }),
+        runScriptedBrowserLab({
+          cwd,
+          config: scripted,
+          dryRun: false,
+          env: {},
+          deps: { desktopModule: loadDesktopModule },
+        }),
         runTerminalProductLab({
           cwd,
           config: terminal,
