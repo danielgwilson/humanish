@@ -47,7 +47,7 @@ const HANDOFF_DEADLINE_BUDGET_FRACTION = 0.4;
 // budget, fold the estimate in.
 const MAX_LOBBY_CODE_VISION_READS = 30;
 
-// Idle/no-progress backstop for the HOST lane specifically (default is 6/8). The host legitimately sits
+// Idle/no-progress backstop for the HOST participant specifically (default is 6/8). The host legitimately sits
 // on an unchanging waiting-room screen while followers provision and join; it must not give up first.
 const HOST_WAIT_IDLE_STEPS = 80;
 
@@ -90,7 +90,7 @@ class HandoffTimeoutError extends Error {
   }
 }
 
-/** What the host and follower lanes need besides the handoff. */
+/** What the host and follower participants need besides the handoff. */
 export interface HandoffParticipantDeps {
   runDeps: ParticipantRunDeps;
   publicAppUrl: string;
@@ -105,7 +105,7 @@ export interface HandoffParticipantDeps {
  * full-fidelity unless redactScreenshots is set — the digesting is about narration/URL metadata.)
  */
 export class LobbyHandoff {
-  // Per-lane runtime-only observed state (never persisted raw): the last observed URL and the last
+  // Per-participant runtime-only observed state (never persisted raw): the last observed URL and the last
   // observed /lobby/CODE per seat, fed by onObservedUrl. The URL is digested to ORIGIN for each seat's
   // routeHostDigest (no code leaks); the codes drive the cross-seat lobby-convergence digest.
   readonly observedFinalUrls: (string | undefined)[];
@@ -301,14 +301,14 @@ function withParticipantInbox(
     : spec;
 }
 
-// The HOST lane (which yields the /lobby/CODE the followers wait on) runs on its OWN dedicated
+// The HOST participant (which yields the /lobby/CODE the followers wait on) runs on its OWN dedicated
 // slot, and the FOLLOWERS run through a bounded pool of size concurrency-1 (blockers 1 & 4):
-// followers block on the host's code while holding a worker slot, so if the host lane were
+// followers block on the host's code while holding a worker slot, so if the host participant were
 // scheduled INSIDE the same bounded pool it could be starved (never scheduled among the first
-// `concurrency` workers) and the run would die with a spurious HANDOFF_TIMEOUT (e.g. lanes
+// `concurrency` workers) and the run would die with a spurious HANDOFF_TIMEOUT (e.g. participants
 // [p2,p3,host] with concurrency 2). Giving the host its own slot, started IMMEDIATELY and OUTSIDE
 // the follower pool, guarantees it is ALWAYS schedulable regardless of its roster position or of
-// concurrency vs lane count — while total in-flight paid desktops stay ≤ the declared concurrency
+// concurrency vs participant count — while total in-flight paid desktops stay ≤ the declared concurrency
 // (host + up to concurrency-1 followers), preserving the spend cap.
 export async function runHost(
   handoff: LobbyHandoff,

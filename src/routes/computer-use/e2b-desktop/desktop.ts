@@ -1,5 +1,5 @@
 // E2B owns provisioning and final evidence; the participant runner only uses the ready port. The
-// lane's steps live in prepare.ts, start.ts and teardown.ts beside this file, and fill the state
+// participant's steps live in prepare.ts, start.ts and teardown.ts beside this file, and fill the state
 // record in state.ts in the order below.
 import type { SubjectPhaseEvent } from "../../../subject/steps.js";
 import { createE2BDesktopExecutor } from "../../../substrates/e2b/desktop-executor.js";

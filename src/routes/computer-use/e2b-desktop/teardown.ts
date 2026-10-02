@@ -1,4 +1,4 @@
-// Teardown for one E2B desktop lane: its final geometry and comms evidence are collected, then the
+// Teardown for one E2B desktop participant: its final geometry and comms evidence are collected, then the
 // recording and speech worker, then the sandbox is released by id (or kept for debugging), with a
 // warning for every outcome that is not a confirmed release.
 
@@ -16,8 +16,8 @@ import type { E2BParticipantContext, E2BParticipantState } from "./state.js";
 import type { E2BDesktopDeps, DesktopParticipantRun, SandboxReleaseFact } from "../types.js";
 
 /**
- * Each route's own keep flag gates its own lane only: a clone.keep can never leak into a local-tree
- * lane's teardown decision, and vice versa.
+ * Each route's own keep flag gates its own participants only: a clone.keep can never leak into a
+ * local-tree participant's teardown decision, and vice versa.
  */
 function participantKeepReason(deps: E2BDesktopDeps): string | undefined {
   const { residual, subject } = deps;
@@ -60,7 +60,7 @@ async function stopParticipantMedia(args: {
 }
 
 /**
- * Release the lane's sandbox, or keep it when a keep flag is set and the lane failed. `released`
+ * Release the participant's sandbox, or keep it when a keep flag is set and the participant failed. `released`
  * is true only when the release is confirmed; otherwise `sandboxRelease` says why. A kept or
  * unconfirmed sandbox can still accrue compute cost, which the warnings say.
  */
@@ -96,7 +96,7 @@ async function releaseParticipantDesktop(args: {
 }
 
 /**
- * Finish a lane: collect its final geometry and comms evidence, then stop its media and release
+ * Finish a participant: collect its final geometry and comms evidence, then stop its media and release
  * its sandbox. Evidence failures are warnings; the release always runs.
  */
 export async function finishE2BDesktop(
@@ -173,7 +173,7 @@ export async function finishE2BDesktop(
     // Close the observed span. A kept or unconfirmed sandbox can still accrue compute cost; the
     // summary records that remaining lifetime as unknown instead of calling this complete.
     state.sandboxTornDownAtMs = deps.now();
-    // The lane's live stream is now a dead page whichever teardown path ran (released, kept, or
+    // The participant's live stream is now a dead page whichever teardown path ran (released, kept, or
     // release-failed-awaiting-TTL); tell the watch overlay so the tile falls back to recorded
     // evidence instead of "sandbox not found" (#357). Guarded: a viewer callback must never
     // break teardown.

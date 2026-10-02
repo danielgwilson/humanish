@@ -80,7 +80,7 @@ export function cuaParticipantDiagnostics(input: {
     : { category: "unknown" };
 }
 
-/** Each lane retains its details. The summary never borrows lane one's ending for other lanes. */
+/** Each participant retains its details. The summary never borrows the first one's ending for the others. */
 export function summarizeCuaDiagnostics(input: {
   dryRun: boolean;
   evidenceInvalid: boolean;
