@@ -8,5 +8,4 @@ human(ish)             signup-flow · cc33dd44
 
 ❯ Run again
 
-↑↓ move   ⏎ select   esc back   ? keys   q
-quit
+↑↓ move  ⏎ select  esc back  ? keys  q quit
