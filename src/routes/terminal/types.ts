@@ -213,7 +213,6 @@ export interface TerminalProductLabResult extends AutomaticAnalysisResult {
     code:
       | "HUMANISH_LAB_ANALYSIS_INVALID"
       | "HUMANISH_LAB_TASKS_UNSUPPORTED"
-      | "HUMANISH_LAB_OPTION_CONFLICT"
       | "HUMANISH_LAB_OPTION_UNSUPPORTED"
       | "HUMANISH_TERMINAL_LAB_FAILED"
       | "HUMANISH_TERMINAL_LAB_ACTOR_UNSUPPORTED"

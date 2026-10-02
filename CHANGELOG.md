@@ -45,8 +45,11 @@ The Unreleased section holds the full notes for the next version until it is tag
 - The hook bag types `CuaActorLabHooks`, `ScriptedBrowserLabHooks`, `TerminalProductLabHooks`,
   `SharedWorldLabHooks`, `AutomaticAnalysisHooks` and `BrowserLabAdapterHooks`. Use the typed
   options; `AdapterScorerModule` is the scorer's type.
-- `HUMANISH_LAB_OPTION_CONFLICT` now covers only `rerun.laneIds` beside `rerun.participantIds`,
-  and only `rerun.laneIds` emits `HUMANISH_RUN_LAB_OPTION_DEPRECATED`.
+- `RunLabOptions.rerun.laneIds`, the older name of `rerun.participantIds` (#1405). Use
+  `rerun.participantIds`. A JavaScript caller that still passes `laneIds` gets
+  `HUMANISH_LAB_OPTION_UNSUPPORTED` before anything runs. The error code
+  `HUMANISH_LAB_OPTION_CONFLICT`, which refused `laneIds` beside `participantIds`, and the warning
+  code `HUMANISH_RUN_LAB_OPTION_DEPRECATED`, which only `laneIds` emitted, are gone.
 - `LabOutcome.backend` and the `LabBackend` type (#1388). Narrow on `outcome.route` instead.
   The old names map to routes: `cua` is `computer-use`, `concurrent-shared-world` is `shared-world`,
   `synthetic` is `preview`, and `scripted` and `terminal` keep their names.

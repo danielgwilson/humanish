@@ -154,18 +154,6 @@ describe("an option the route cannot honor is refused before anything runs", () 
   });
 });
 
-describe("rerun.laneIds set beside rerun.participantIds is refused", () => {
-  it("names both fields", () => {
-    const result = normalize(config("cuAppUrl"), {
-      rerun: { sourceRunId: "r", participantIds: ["a"], laneIds: ["a"] },
-    });
-    expect(result).toMatchObject({ ok: false, code: "HUMANISH_LAB_OPTION_CONFLICT" });
-    if (result.ok) return;
-    expect(result.message).toContain("RunLabOptions.rerun.participantIds");
-    expect(result.message).toContain("rerun.laneIds");
-  });
-});
-
 describe("runLab returns an option refusal in the route's own envelope and writes nothing", () => {
   let cwd: string;
   beforeEach(async () => {
@@ -234,15 +222,6 @@ describe("runLab returns an option refusal in the route's own envelope and write
     });
     expect(outcome.result.error?.message).toContain("RunLabOptions.inProcess");
     expect(desktopLoads).toBe(0);
-    expect(await readdir(cwd)).toEqual([]);
-  });
-
-  it("a conflict comes back the same way", async () => {
-    const outcome = await runLab(config("cuAppUrl"), {
-      cwd,
-      rerun: { sourceRunId: "r", participantIds: ["a"], laneIds: ["a"] },
-    });
-    expect(outcome.result.error).toMatchObject({ code: "HUMANISH_LAB_OPTION_CONFLICT" });
     expect(await readdir(cwd)).toEqual([]);
   });
 });
@@ -314,11 +293,11 @@ describe("stream, rerun and analysis options land where the route reads them", (
     expect(events).toEqual([ready, ended]);
   });
 
-  it("rerun.participantIds becomes rerun.laneIds", () => {
+  it("rerun.participantIds reaches the route as given", () => {
     expect(
       normalized(config("cuAppUrl"), { rerun: { sourceRunId: "r", participantIds: ["lane-02"] } })
         .rerun,
-    ).toEqual({ sourceRunId: "r", laneIds: ["lane-02"] });
+    ).toEqual({ sourceRunId: "r", participantIds: ["lane-02"] });
   });
 
   it("analysisSignal stays on the options for the route's analysis", () => {

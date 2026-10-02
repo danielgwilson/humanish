@@ -18,13 +18,13 @@ import { rosterOf } from "./parse/actors.js";
 
 type Refusal = {
   ok: false;
-  code: "HUMANISH_LAB_OPTION_CONFLICT" | "HUMANISH_LAB_OPTION_UNSUPPORTED";
+  code: "HUMANISH_LAB_OPTION_UNSUPPORTED";
   message: string;
 };
 
 type Normalized = {
   ok: true;
-  /** The options the route reads: onEvent removed, env copied, rerun.participantIds renamed. */
+  /** The options the route reads: onEvent removed, env copied. */
   options: InternalRunLabOptions;
   /** Filled by onEvent failures while the run runs; runLab appends them to the result. */
   warnings: string[];
@@ -32,29 +32,11 @@ type Normalized = {
   emit: ((event: LabEvent) => void) | undefined;
 };
 
-const conflict = (home: string, old: string): Refusal => ({
-  ok: false,
-  code: "HUMANISH_LAB_OPTION_CONFLICT",
-  message: `RunLabOptions.${home} and ${old} are both set. ${old} is the older form of ${home}; set only ${home}.`,
-});
-
 const unsupported = (option: string, route: LabRoute, reason: string): Refusal => ({
   ok: false,
   code: "HUMANISH_LAB_OPTION_UNSUPPORTED",
   message: `RunLabOptions.${option} is not supported on the ${route} route: ${reason}`,
 });
-
-let olderRerunNameWarned = false;
-
-/** `rerun.laneIds`, the older name of `rerun.participantIds`, warns once per process. */
-function warnOlderRerunName(): void {
-  if (olderRerunNameWarned) return;
-  olderRerunNameWarned = true;
-  process.emitWarning(
-    "RunLabOptions.rerun.laneIds is deprecated and is removed in the next minor. Use RunLabOptions.rerun.participantIds.",
-    { type: "DeprecationWarning", code: "HUMANISH_RUN_LAB_OPTION_DEPRECATED" },
-  );
-}
 
 // Fields RunLabOptions no longer has, and where each one's job went.
 const REMOVED_OPTIONS: Readonly<Record<string, string>> = {
@@ -69,6 +51,15 @@ const REMOVED_OPTIONS: Readonly<Record<string, string>> = {
 
 /** The refusal for a field a JavaScript caller passed that RunLabOptions no longer has. */
 export function removedOptionRefusal(options: RunLabOptions): Refusal | undefined {
+  // rerun.laneIds, the older name of rerun.participantIds, would otherwise be ignored, so the rerun
+  // would select every failed participant instead of the ones the caller named.
+  if (options.rerun !== undefined && Reflect.get(options.rerun, "laneIds") !== undefined)
+    return {
+      ok: false,
+      code: "HUMANISH_LAB_OPTION_UNSUPPORTED",
+      message:
+        'RunLabOptions.rerun.laneIds was removed. Use rerun.participantIds. See docs/contracts/schemas.md, "Library options".',
+    };
   const field = Object.keys(REMOVED_OPTIONS).find((key) => Reflect.get(options, key) !== undefined);
   if (field === undefined) return undefined;
   return {
@@ -139,12 +130,8 @@ export function normalizeRunLabOptions(
   route: LabRoute,
   options: InternalRunLabOptions,
 ): Normalized | Refusal {
-  const olderRerunIds = options.rerun?.laneIds;
-  if (olderRerunIds !== undefined && options.rerun?.participantIds !== undefined)
-    return conflict("rerun.participantIds", "rerun.laneIds");
   const refused = unsupportedOption(config, route, options);
   if (refused) return refused;
-  if (olderRerunIds !== undefined) warnOlderRerunName();
 
   const warnings: string[] = [];
   const { env, onEvent, ...forwarded } = options;
@@ -159,11 +146,6 @@ export function normalizeRunLabOptions(
   // already refused an option no route reads; the preview route reads no env.
   const normalized: InternalRunLabOptions = { ...forwarded };
   if (route !== "preview" && forwardedEnv !== undefined) normalized.env = forwardedEnv;
-  const participantIds = options.rerun?.participantIds;
-  if (options.rerun !== undefined && participantIds !== undefined) {
-    const { participantIds: _ids, ...rerun } = options.rerun;
-    normalized.rerun = { ...rerun, laneIds: participantIds };
-  }
   return { ok: true, options: normalized, warnings, emit };
 }
 

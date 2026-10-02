@@ -312,6 +312,17 @@ function rosterShapeReason(config: LabConfig): Rejection {
   );
 }
 
+/** The plan's rerun: the source run and, when given, the participants to rerun. */
+function rerunPlan({
+  sourceRunId,
+  participantIds,
+}: {
+  sourceRunId: string;
+  participantIds?: string[];
+}) {
+  return { sourceRunId, ...(participantIds === undefined ? {} : { participantIds }) };
+}
+
 /**
  * Plan a computer-use lab. It is called for any config handed to the computer-use runner, not only
  * one routeOf sends here, so a config for another route gets this route's refusal.
@@ -458,14 +469,7 @@ export function planComputerUseLab(
       sessionBudgetMs: config.execution?.timeoutMs ?? defaultSessionTimeoutMs(config),
       sandboxMs: resolveParticipantSandboxMs(config),
       caps: capsOf(config),
-      ...(input.rerun === undefined
-        ? {}
-        : {
-            rerun: {
-              sourceRunId: input.rerun.sourceRunId,
-              ...(input.rerun.laneIds === undefined ? {} : { participantIds: input.rerun.laneIds }),
-            },
-          }),
+      ...(input.rerun === undefined ? {} : { rerun: rerunPlan(input.rerun) }),
       requirements:
         base.dryRun || runner.desktop === "in-process"
           ? []
