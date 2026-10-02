@@ -67,6 +67,17 @@ The Unreleased section holds the full notes for the next version until it is tag
 - The `HUMANISH_TERMINAL_AGENT_NOT_IMPLEMENTED` value of `TerminalProductLabResult.error.code`.
   No humanish release since 0.106.0 produces it; the terminal agent runs only inside the terminal
   route. Migration: delete any branch that matches it.
+- The exports 0.106.0 deprecated (#1411): `runDryRun`, `runCuaActorSession`,
+  `resolveLabDryRun`, `actorResolvesToTerminal`, `cuaLaneCount`, `resolveSeatUrl`,
+  `cuaLaneValidationReason`, `sharedWorldValidationReason`, `concurrentSharedWorldValidationReason`,
+  `externalPublicSharedWorldValidationReason` and `MAX_CUA_LANES`, and the types
+  `CuaActorLabResult`, `ScriptedBrowserLabResult`, `TerminalProductLabResult`,
+  `ConcurrentSharedWorldLabResult`, `RunOptions`, `RunResult` and `SubjectPhaseEvent`. Use `runLab`
+  and `LabResult<route>`, `runComputerUseLoop` with
+  `createOpenAiResponsesProvider({ singleDispatch: true })`, `routeOf`, `parseLabConfig`, and the
+  `plan` and `subject-phase` events through `onEvent`. `docs/contracts/schemas.md`, "Library
+  options", names the replacement for each. The package exports 13 values and 31 types, and no
+  export emits `HUMANISH_DEPRECATED_EXPORT` any more.
 
 ### Changed
 
