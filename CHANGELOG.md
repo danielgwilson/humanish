@@ -8,6 +8,14 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Deprecated
+
+- `simId` on the events `RunLabOptions.onStream` receives. Read `recordId`, which each event now
+  carries: the id of the participant's entry in `run.json` `simulations[]`, such as `sim-001`.
+  `simId` holds the same value, and the first read prints one `DeprecationWarning` with code
+  `HUMANISH_STREAM_EVENT_FIELD_DEPRECATED`. The next minor removes it. A spread or
+  `JSON.stringify` of an event no longer includes `simId`.
+
 ### Changed
 
 - Saved bundles and Codex-account analyses may name any stable Codex CLI release from 0.154.0 on
