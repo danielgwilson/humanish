@@ -1,6 +1,6 @@
-// What a person — or the coding agent setting humanish up for them — should do NEXT.
+// What a person, or the coding agent setting humanish up for them, should do next.
 //
-// WHY: `humanish init` wrote twenty files and stopped. The only lab that could actually run was a
+// Why: `humanish init` wrote twenty files and stopped. The only lab that could actually run was a
 // $0 dry run; the two live ones were templates with `your-org/your-app` in them, so the first live
 // run a newcomer tried could not succeed no matter what credentials they had. Three independent
 // sources reached the same place — a participant in our own TUI study walked to the Start row and
@@ -10,7 +10,7 @@
 //
 // The fix is not more surface. Increasingly the thing running `init` is a coding agent acting for
 // someone, and an agent reads stdout and does what it says. So init ends by naming the next
-// command — and names the one that will actually work ON THIS MACHINE, because a next step that
+// command, and names the one that will actually work on this machine, because a next step that
 // fails is worse than none.
 
 import type { LocalAgentId } from "../actors/local-agent/cli.js";
@@ -25,7 +25,7 @@ export interface FirstRunEnvironment {
   /** A sandbox to run the study in. Nothing live happens without it. */
   hasE2bKey: boolean;
   /**
-   * Whether `@e2b/desktop` resolves from this project. It is an OPTIONAL peer — the no-keys path
+   * Whether `@e2b/desktop` resolves from this project. It is an optional peer: the no-keys path
    * does not need it — so a fresh `npx humanish` install does not have it, and a live run stops
    * with "install this other package first". Found by running the published artifact cold, after
    * two local runs passed because they resolved the peer from the repo's own node_modules.
@@ -33,7 +33,7 @@ export interface FirstRunEnvironment {
   hasDesktopSdk: boolean;
   /**
    * Whether humanish itself is installed in this project rather than running from an npx cache.
-   * It changes what advice is TRUE: a one-shot `npx humanish` resolves its optional peer relative
+   * It changes what advice is true: a one-shot `npx humanish` resolves its optional peer relative
    * to itself, so "install the peer here" cannot work — humanish has to be installed alongside it.
    */
   installedInProject: boolean;
@@ -51,7 +51,7 @@ export type FirstRunActor = "openai-computer-use" | "local-agent";
 /**
  * Which brain the starter live lab should be written for. A machine with a signed-in coding agent
  * and no provider key can still do a real live run; writing the lab for the credential the
- * operator DOESN'T have is how a starter file becomes homework.
+ * operator doesn't have is how a starter file becomes homework.
  */
 export function starterActorFor(env: FirstRunEnvironment): FirstRunActor {
   if (!env.hasProviderKey && env.localAgents.length > 0) return "local-agent";
@@ -73,7 +73,7 @@ export function starterLocalAgentFor(env: FirstRunEnvironment): LocalAgentId | u
 
 /**
  * How each hint invokes the CLI. \`npx humanish\` works from a project install and from an npx cache;
- * a dev-dependency install puts no \`humanish\` on PATH, so a bare name can reach a stale global one.
+ * a dev-dependency install puts no \`humanish\` on \`PATH\`, so a bare name can reach a stale global one.
  */
 const HUMANISH = "npx humanish";
 
@@ -85,7 +85,7 @@ export interface FirstRunStep {
 }
 
 /**
- * The next one or two commands, in order. Deliberately SHORT: a list of twelve options is the same
+ * The next one or two commands, in order. Deliberately short: a list of twelve options is the same
  * as no guidance, and the reader here has just been handed twenty files.
  */
 export function firstRunSteps(env: FirstRunEnvironment): FirstRunStep[] {
@@ -168,12 +168,12 @@ export function firstRunGuidance(env: FirstRunEnvironment): string[] {
 export const AGENTS_SECTION_MARKER = "<!-- humanish:agents-guide -->";
 
 /**
- * What the NEXT coding agent needs to know about humanish in this project.
+ * What the next coding agent needs to know about humanish in this project.
  *
- * AGENTS.md is the cross-vendor convention (agents.md) that Codex, Claude Code, Cursor and others
+ * `AGENTS.md` is the cross-vendor convention (agents.md) that Codex, Claude Code, Cursor and others
  * read on arrival. Increasingly the thing that ran `humanish init` was itself an agent working for
  * someone, and the agent that shows up tomorrow finds a `humanish/` directory with no idea what it
- * is for. Deliberately SHORT and command-first: an agent acts on commands, not on prose.
+ * is for. Deliberately short and command-first, because an agent acts on the commands it is given.
  */
 export function agentsSection(): string {
   return [

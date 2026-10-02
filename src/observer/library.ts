@@ -9,7 +9,7 @@ export interface LibraryHistory {
     /** Current contained status-record observation, separate from the evidence verdict. */
     runtimeState?: "running" | "finished" | "interrupted" | "unknown";
     streamCount: number;
-    /** Labeled run-total cost ESTIMATE (null when the run carries no cost summary). */
+    /** Labeled run-total cost estimate (null when the run carries no cost summary). */
     estimatedCostUsd: number | null;
     costRatesAsOf: string | null;
     costPlaceholder: boolean;

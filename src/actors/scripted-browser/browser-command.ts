@@ -1,5 +1,5 @@
 // Find a Chromium binary on the host for the scripted browser: HUMANISH_BROWSER_COMMAND first, then
-// the macOS Chrome path, then google-chrome, chromium and chromium-browser on PATH. A candidate
+// the macOS Chrome path, then google-chrome, chromium and chromium-browser on `PATH`. A candidate
 // counts only if `--version` runs.
 
 import { execFile } from "node:child_process";

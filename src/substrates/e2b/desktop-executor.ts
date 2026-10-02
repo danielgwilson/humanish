@@ -34,7 +34,7 @@ import { xdotoolHeldModifiers } from "../../guest/desktop-keys.js";
 //    moves the cursor to the action's point first, ignores dx, and maps dy to direction and
 //    amount.
 //  - drag takes two coordinate tuples (from, to), not an N-point path, so we drag
-//    from the FIRST point of action.path to the LAST and drop intermediate points.
+//    from the first point of action.path to the last and drop intermediate points.
 //  - write is the typing method (there is no `type` method); press is the key
 //    method (there is no `keyPress`), and press accepts the keys array directly.
 //

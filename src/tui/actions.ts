@@ -1,7 +1,7 @@
 import { requestAutomaticAnalysisCancellation } from "../analysis/automatic.js";
-// The two things a run card can DO (#455 rev 8).
+// The two things a run card can do (#455 rev 8).
 //
-// The mock's run screen is an outcome CARD with actions, not a field list, and an action that does
+// The mock's run screen is an outcome card with actions, not a field list, and an action that does
 // nothing is worse than no action — so this ships the two that are genuinely implementable today
 // and nothing else. `Share…` waits for the export contract (#471) rather than appearing as a
 // control that fails.
@@ -149,7 +149,7 @@ export function createTuiObserverSession(
  * The counterpart to starting one: a study that is going nowhere costs money every turn, and until
  * now the only way to end it was to find the pid yourself.
  *
- * It signals the PROCESS GROUP, not the process. A run is spawned detached — its own group — and it
+ * It signals the process group, not the process. A run is spawned detached, in its own group, and it
  * has children: the CLI, and whatever it spawned to reach the sandbox. Signalling only the parent
  * leaves those orphaned and still working.
  *

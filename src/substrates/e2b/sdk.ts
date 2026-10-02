@@ -16,7 +16,7 @@ export interface E2BDesktopModule {
     /** The stock `desktop` template (no custom image). */
     create(options: E2BDesktopCreateOptions): Promise<E2BDesktopSandbox>;
     /**
-     * Launch on a CUSTOM E2B desktop template (image) by NAME or ID — the SDK's
+     * Launch on a custom E2B desktop template (image) by name or ID: the SDK's
      * `Sandbox.create(template, opts)` overload. Lets a lab run on an adopter-maintained image
      * with extra runtimes baked in (e.g. node/bun/a local Postgres the stock `desktop` template
      * lacks), instead of the stock template. The base @e2b/desktop SDK implements this; the
@@ -24,15 +24,15 @@ export interface E2BDesktopModule {
      */
     create(template: string, options: E2BDesktopCreateOptions): Promise<E2BDesktopSandbox>;
     /**
-     * Kill the sandbox specified by exact id. Returns true iff THAT sandbox was found and
-     * killed, false otherwise (the SDK's own doc comment). This boolean is the PRIMARY by-id
+     * Kill the sandbox specified by exact id. Returns true iff that sandbox was found and
+     * killed, false otherwise (the SDK's own doc comment). This boolean is the primary by-id
      * cleanup proof: a caller never needs to re-list to confirm reclamation.
      */
     kill?(sandboxId: string, options?: { requestTimeoutMs?: number }): Promise<boolean>;
     /**
-     * Fetch ONE sandbox by its exact id (never account-wide). Throws a SandboxNotFoundError-
+     * Fetch one sandbox by its exact id (never account-wide). Throws a SandboxNotFoundError-
      * shaped error (see isSandboxNotFoundError below) when the id no longer exists; that thrown
-     * error IS the by-id confirmation that a killed sandbox is gone. Optional: older SDKs may
+     * error is the by-id confirmation that a killed sandbox is gone. Optional: older SDKs may
      * lack it, so callers fall back to kill()'s own boolean rather than ever calling Sandbox.list.
      */
     getInfo?(sandboxId: string, options?: { requestTimeoutMs?: number }): Promise<E2BSandboxInfo>;
@@ -135,9 +135,9 @@ export interface E2BDesktopSandbox {
   open?(fileOrUrl: string): Promise<void>;
   /**
    * Map an in-sandbox port to a reachable host URL — `https://<port>-<sandboxId>.e2b.app`,
-   * TOKENLESS (no authKey, unlike `stream.getUrl`). The base `e2b` SDK (v2.27.0) implements this;
-   * the wrapper just exposes it. Used by the CONCURRENT shared-world topology (#164 phase 2) to
-   * expose the ONE subject service plane to N actor sandboxes. Optional: older SDKs may lack it, so
+   * tokenless (no authKey, unlike `stream.getUrl`). The base `e2b` SDK (v2.27.0) implements this;
+   * the wrapper just exposes it. Used by the concurrent shared-world topology (#164 phase 2) to
+   * expose the one subject service plane to N actor sandboxes. Optional: older SDKs may lack it, so
    * the concurrent backend fails closed when it is absent rather than calling a missing method.
    */
   getHost?(port: number): string;
@@ -330,8 +330,8 @@ async function reclaimFailedDesktopCreate(
 /**
  * Is humanish running from this project's node_modules, or from an npx cache?
  *
- * It decides which advice is TRUE. `npx humanish@latest` resolves its optional peer relative to
- * ITSELF, so "install @e2b/desktop in this project" is advice that cannot work there — and that
+ * It decides which advice is true. `npx humanish@latest` resolves its optional peer relative to
+ * itself, so "install @e2b/desktop in this project" is advice that cannot work there, and that
  * message cost two cold verification runs before the difference was noticed. A one-shot npx
  * invocation cannot do a live desktop run at all; humanish has to be installed alongside the peer.
  */
@@ -346,7 +346,7 @@ function isMissingE2BDesktopDependency(error: unknown): boolean {
 }
 
 /**
- * Detect a SandboxNotFoundError-shaped error from the real @e2b/desktop SDK, WITHOUT importing
+ * Detect a SandboxNotFoundError-shaped error from the real @e2b/desktop SDK, without importing
  * its class (this module stays optional-peer / lazily-loaded, same as everything else here).
  * The real SDK sets `this.name = "SandboxNotFoundError"` on the class (it extends the
  * deprecated NotFoundError), so checking `.name` is the stable, import-free detection contract.

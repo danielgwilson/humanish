@@ -1,9 +1,9 @@
 // A VENDOR-NEUTRAL loopback catch server for email-send APIs (#297). An app hardwired to a hosted
-// email provider is redirected into the fake bus with ONE env var and no code change: point the app's
+// email provider is redirected into the fake bus with one env var and no code change: point the app's
 // API base URL at this server. The catch does not depend on, or name itself after, any one vendor —
 // it normalizes each provider's distinct wire shape (Resend's flat body, SendGrid's nested
 // personalizations, Postmark's TitleCase, a custom app's own JSON) to one shape via pluggable
-// PROFILES, and routes the result into a CommsChannel. Resend-compatible and SendGrid-compatible out
+// profiles, and routes the result into a CommsChannel. Resend-compatible and SendGrid-compatible out
 // of the box; extend with a custom profile for anything else. (There is no standardized email-send
 // request shape across vendors, so normalization is by design, not a shortcut.)
 //
@@ -26,7 +26,7 @@ interface NormalizedSend {
 
 /**
  * A provider wire-shape adapter. Vendor-neutral seam: the server owns the HTTP + routing + bus
- * delivery; a profile only knows how ONE provider (or a custom app) shapes its send request.
+ * delivery; a profile only knows how one provider (or a custom app) shapes its send request.
  */
 export interface EmailSendProfile {
   /** Descriptive name (e.g. "generic", "sendgrid"). Not a dependency — just a label. */
@@ -49,7 +49,7 @@ export interface EmailCatchServer {
 }
 
 export interface EmailCatchOptions {
-  /** Bind host. Default 127.0.0.1 (loopback ONLY). */
+  /** Bind host. Default 127.0.0.1 (loopback only). */
   host?: string;
   /** Port. Default 0 (ephemeral). */
   port?: number;
@@ -84,8 +84,8 @@ function toAddresses(value: unknown): string[] {
 
 // ---------------------------------------------------------------- built-in profiles
 
-/** The flat-JSON shape: `{ from, to, subject, html, text }`. Matches Resend (POST /emails) AND a
- *  custom app that sends the common shape AND Postmark's TitleCase keys (From/To/HtmlBody/…). */
+/** The flat-JSON shape: `{ from, to, subject, html, text }`. Matches Resend (POST /emails) and a
+ *  custom app that sends the common shape and Postmark's TitleCase keys (From/To/HtmlBody/…). */
 const genericEmailProfile: EmailSendProfile = {
   name: "generic",
   sendPaths: ["/emails", "/emails/batch", "/email", "/email/batch", "/send"],
@@ -174,7 +174,7 @@ function readBody(req: IncomingMessage, limit: number): Promise<string> {
     req.on("data", (chunk: Buffer) => {
       size += chunk.length;
       if (size > limit) {
-        // Reject WITHOUT destroying the socket here: the handler responds 413 cleanly first (a
+        // Reject without destroying the socket here: the handler responds 413 cleanly first (a
         // write-after-destroy would otherwise reset the connection), then tears the request down.
         reject(new BodyTooLargeError("request body too large"));
         return;

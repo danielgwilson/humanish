@@ -420,7 +420,7 @@ export async function serveObserverLibrary(
     entryRunId = resolved;
   }
 
-  // Counts are computed over the UNCAPPED run list, not the 80-item history
+  // Counts are computed over the uncapped run list, not the 80-item history
   // index: an edge-authed surface (non-safe) grants access to every run by direct
   // URL, and share-safe modes admit every share_ready run per request, so a
   // count capped at 80 would understate exactly what the exposure warning

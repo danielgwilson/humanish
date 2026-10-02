@@ -3,7 +3,7 @@
 // writer read messages without knowing how they were captured.
 //
 // PUBLIC-SAFETY: raw address values, message bodies, links, and codes are RUNTIME-ONLY. Only the
-// address DIGEST (sha256-short, via redaction.digestText) is ever meant to reach a persisted bundle;
+// address digest (sha256-short, via redaction.digestText) is ever meant to reach a persisted bundle;
 // a verification link / OTP has "no secret shape" (like the lobby code) → literal-scrub + digest.
 
 export type CommsChannelKind = "email" | "sms";
@@ -49,7 +49,7 @@ export interface CommsMessage {
   deliveredAt: number;
 }
 
-/** An actor sending OUT (a reply/compose); recipients are known CommsAddresses. */
+/** An actor sending out (a reply/compose); recipients are known CommsAddresses. */
 export interface OutboundMessage {
   from: CommsAddress;
   to: CommsAddress[];
@@ -58,7 +58,7 @@ export interface OutboundMessage {
   inlineImages?: CommsInlineImage[];
 }
 
-/** A raw inbound from an INGRESS (the vendor-neutral email catch, an SMTP sink, …): recipients are
+/** A raw inbound from an ingress (the vendor-neutral email catch, an SMTP sink, …): recipients are
  *  raw address strings the bus resolves against its provisioned inboxes. */
 export interface InboundRaw {
   from: string;

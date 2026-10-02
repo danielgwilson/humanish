@@ -272,7 +272,7 @@ export const TRANSIENT_RETRY_DELAY_MS = 3_000;
  *   describing, the same routing gap seen from the upload side.
  * - transport resets (`fetch failed`, `ECONNRESET`, `socket hang up`, 502/503/504).
  *
- * NOT retried: timeouts (the budget is spent), auth (401/403), quota and rate limits (429: a burst
+ * Not retried: timeouts (the budget is spent), auth (401/403), quota and rate limits (429: a burst
  * that hit the limit should be spaced, not repeated), and anything that names the request as wrong.
  */
 export function isTransientE2BError(error: unknown): boolean {
