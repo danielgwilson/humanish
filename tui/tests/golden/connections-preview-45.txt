@@ -15,4 +15,4 @@ Provider charges are separate.
 ❯ Save lab copy
   Cancel
 
-↑↓ move   ⏎ select   esc back   q quit
+↑↓ move  ⏎ select  esc back  q quit

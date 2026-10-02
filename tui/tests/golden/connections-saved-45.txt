@@ -18,4 +18,4 @@ Email receiving in studies is not available
 yet.
 Local capture: lab config · SMS: unavailable
 
-↑↓ move   ⏎ select   esc back   q quit
+↑↓ move  ⏎ select  esc back  q quit

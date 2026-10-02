@@ -387,7 +387,7 @@ export function ConnectionsScreen({
             Choose a lab for real email
           </Text>
           <Text dimColor>Preview a local copy before saving.</Text>
-          {labs.length ? menu : <Text>No labs are available in this project.</Text>}
+          {labs.length ? menu : <Text>No studies are available in this project.</Text>}
           {labs[active] ? (
             <Box marginTop={1}>
               <Text dimColor>{labs[active]!.path}</Text>

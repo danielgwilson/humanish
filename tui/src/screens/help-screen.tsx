@@ -22,11 +22,11 @@ export function HelpScreen({
   const rows: [string, string][] = [
     ["↑ ↓  ·  k j", "move the cursor"],
     ["⏎  ·  →", "open what the cursor is on, or run the action it names"],
-    ["esc  ·  ←", "back — and it cancels an armed confirmation first"],
+    ["esc  ·  ←", "back; it cancels an armed confirmation first"],
     ["g  ·  G", "jump to the top, jump to the bottom"],
     ...(connections ? [["c", "connections and provider key setup"] as [string, string]] : []),
     ["?", "these keys"],
-    ["q", "quit — a run you started keeps going without this window"],
+    ["q", "quit; a run you started keeps going without this window"],
   ];
   return (
     <Box flexDirection="column" width={columns}>
