@@ -68,6 +68,8 @@ export interface LaunchState {
   resolvedModel: string | undefined;
   authentication: "chatgpt-account" | "api-key" | undefined;
   cliVersion: string | undefined;
+  /** Notification methods this humanish does not know that carried no item, by count. */
+  unknownNotifications: Map<string, number>;
 }
 
 /** An admitted value, or the refusal a launch stops with. */
@@ -262,6 +264,7 @@ export async function launchAdmittedAppServer(
   deadline: RestrictedCodexDeadline,
   frameLimit: number,
   enter: (phase: CuaProviderFailurePhase) => void,
+  install: (transport: RestrictedCodexTransport) => void,
 ): Promise<RestrictedCodexTransport> {
   const { options, sourceEnv, participant, operatorAuth, reasoningEffort, spawnFn } = settings;
   const file = await resolveExecutable(options, sourceEnv);
@@ -312,6 +315,8 @@ export async function launchAdmittedAppServer(
     }),
   );
   const launched = new RestrictedCodexTransport(owned, deadline, frameLimit);
+  // The session's handlers check output from the first byte, before initialize returns.
+  install(launched);
   state.transport = launched;
   enter("initialize");
   const initialize = await launched.rpc("initialize", {

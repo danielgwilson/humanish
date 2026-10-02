@@ -587,6 +587,9 @@ export interface ParticipantRunOutcome {
   /** The model provider's cleanup is unconfirmed after the session. An execution failure only:
    *  it does not change how the participant's session ended. */
   providerCleanupError?: string;
+  /** The model provider reported a disallowed operation after the session's last request, which
+   *  the session's evidence does not show. An execution failure, scrubbed, like the cleanup one. */
+  providerPolicyError?: string;
   sandboxId?: string;
   /** Host-side E2B desktop create->teardown span (ms). An APPROXIMATION of E2B's server-side
    *  billed lifetime (server-side kill-on-timeout can extend it) — so the derived dollar figure is

@@ -1093,15 +1093,22 @@ when the run finishes, then the result's `ok` and `execution: { succeeded,
 failures: [{ kind, message }], warnings? }` once the Observer has rendered. The
 verdict is what the participants experienced; `execution` is whether the run
 worked as an execution (`kind` is `harness`, `provider-cleanup`,
-`sandbox-cleanup`, `evidence`, `cap` or `run`), and `ok` reads both under the
-route's policy (`OUTCOME_POLICIES` in `src/run/judge.ts`). `warnings`, in the
-same shape, holds the failures the policy lets warn and is omitted when empty:
-on computer-use, shared-world and scripted runs, a `sandbox-cleanup` entry for
-each sandbox whose release was not confirmed, with the participant (or
-`subject`), the release warning and the `humanish reclaim --run <id>` command.
-A local VM writes no receipt, so its entry names the container and the
-`docker rm --force --volumes <container>` command that removes it (through
-`limactl shell` on a Mac).
+`provider-policy`, `sandbox-cleanup`, `evidence`, `cap` or `run`), and `ok`
+reads both under the route's policy (`OUTCOME_POLICIES` in `src/run/judge.ts`).
+`provider-policy` names a computer-use or shared-world participant whose Codex
+app-server reported a disallowed item at any point in the session, or whose
+output could not be checked (a byte, frame or event limit, a malformed line, or
+a last frame cut off by anything but humanish's own signal, which is a run
+warning with its byte count). It is recorded even when a request already failed for it,
+because a step that tolerates a failed request (the debrief) would otherwise
+absorb it, and it fails the run on every route.
+`warnings`, in the same shape, holds the failures the policy lets warn and is
+omitted when empty: on computer-use, shared-world and scripted runs, a
+`sandbox-cleanup` entry for each sandbox whose release was not confirmed, with
+the participant (or `subject`), the release warning and the
+`humanish reclaim --run <id>` command. A local VM writes no receipt, so its
+entry names the container and the `docker rm --force --volumes <container>`
+command that removes it (through `limactl shell` on a Mac).
 
 `interrupted` with `signal` (`SIGINT`, `SIGTERM` or `SIGHUP`) is written by
 the CLI's run command when that signal stops a live run outside post-run

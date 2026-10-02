@@ -22,6 +22,7 @@ import { prepareLocalRuntime } from "../../substrates/local/runtime.js";
 import { dockerCommandLine } from "../../substrates/local/runtime-host.js";
 import { checkRestrictedCodexAnalysisReadiness } from "../../analysis/restricted-codex.js";
 import { createRestrictedCodexParticipant } from "../../actors/codex/restricted-participant.js";
+import { withCloseReport } from "./participant-model.js";
 import { guestMediaConfigSchema, type GuestMediaConfig } from "../../guest/media-config.js";
 import { startLocalCapturedInbox } from "../../substrates/local/captured-inbox.js";
 import type { DesktopRecordingConfig } from "../../evidence/desktop-recording-types.js";
@@ -217,7 +218,7 @@ function accountProvider(state: LocalStudyState): ProviderFactory {
       speechEnabled: executor.speechEnabled === true,
     });
     state.participants.push(participant);
-    return Object.assign(participant.provider, {
+    const provider = Object.assign(participant.provider, {
       async close() {
         if ((await participant.close()).status !== "confirmed") {
           state.cleanupUnconfirmed = true;
@@ -225,6 +226,8 @@ function accountProvider(state: LocalStudyState): ProviderFactory {
         }
       },
     });
+    // The lane reads the session's warnings and late refusal from the same, idempotent close.
+    return withCloseReport(provider, () => participant.close());
   };
 }
 

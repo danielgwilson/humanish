@@ -103,17 +103,31 @@ export function retainUnclosedChild(closed: Promise<void>): void {
 }
 export const hasUnclosedChildren = (): boolean => unclosedChildren.size > 0;
 
+/** How the process exited: its exit code, or the signal that ended it. */
+interface OwnedCodexExit {
+  code: number | null;
+  signal: NodeJS.Signals | null;
+}
 export interface OwnedCodexProcess {
   child: ChildProcessWithoutNullStreams;
   closed: Promise<void>;
   isClosed(): boolean;
   hasExited(): boolean;
+  /** Resolves with the 'exit' event's code and signal. */
+  readonly exit: Promise<OwnedCodexExit>;
+  /** The signals humanish delivered while the process was still running (signalOwnedChild). */
+  signalsSent(): readonly NodeJS.Signals[];
+  recordSignal(signal: NodeJS.Signals): void;
 }
 export function ownCodexProcess(child: ChildProcessWithoutNullStreams): OwnedCodexProcess {
   let closed = false,
     exited = false;
-  child.once("exit", () => {
-    exited = true;
+  const sent: NodeJS.Signals[] = [];
+  const exit = new Promise<OwnedCodexExit>((resolve) => {
+    child.once("exit", (code: number | null, signal: NodeJS.Signals | null) => {
+      exited = true;
+      resolve({ code, signal });
+    });
   });
   const completion = new Promise<void>((resolve) => {
     child.once("close", () => {
@@ -121,7 +135,17 @@ export function ownCodexProcess(child: ChildProcessWithoutNullStreams): OwnedCod
       resolve();
     });
   });
-  return { child, closed: completion, isClosed: () => closed, hasExited: () => exited };
+  return {
+    child,
+    closed: completion,
+    isClosed: () => closed,
+    hasExited: () => exited,
+    exit,
+    signalsSent: () => sent,
+    recordSignal: (signal) => {
+      sent.push(signal);
+    },
+  };
 }
 
 async function settlesWithin(promise: Promise<unknown>, ms: number): Promise<boolean> {
@@ -146,7 +170,8 @@ async function settlesWithin(promise: Promise<unknown>, ms: number): Promise<boo
 function signalOwnedChild(owned: OwnedCodexProcess, signal: NodeJS.Signals): void {
   if (owned.hasExited() || owned.isClosed()) return;
   try {
-    owned.child.kill(signal);
+    // kill() is true when the signal was delivered.
+    if (owned.child.kill(signal)) owned.recordSignal(signal);
   } catch {
     /* Closing is still checked below. */
   }
@@ -164,6 +189,15 @@ export async function closeOwnedCodexProcess(owned: OwnedCodexProcess): Promise<
   return closed;
 }
 
+function isJson(text: string): boolean {
+  try {
+    JSON.parse(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 type Pending = {
   resolve(value: Record<string, unknown>): void;
   reject(error: RestrictedCodexStop): void;
@@ -179,6 +213,13 @@ export class RestrictedCodexTransport {
   private eventCount = 0;
   private closing = false;
   onNotification: (method: string, params: Record<string, unknown>) => void = () => undefined;
+  /** Notifications after the deadline stopped or close began: no turn handles them, only the policy. */
+  onPolicyOnlyNotification: (method: string, params: Record<string, unknown>) => void = () =>
+    undefined;
+  /** A server request with no handler, or output that could not be checked (failUninspected). */
+  onPolicyFailure: (code: RestrictedCodexAnalysisErrorCode) => void = () => undefined;
+  /** The size of a last frame cut off after humanish stopped the process: a warning only. */
+  onTruncatedFrame: (bytes: number) => void = () => undefined;
   onRequest:
     | ((method: string, params: Record<string, unknown>) => Promise<Record<string, unknown>>)
     | undefined;
@@ -193,40 +234,56 @@ export class RestrictedCodexTransport {
     child.on("error", () => this.fail("codex_process_failed"));
     child.stdin.on("error", () => this.fail("codex_process_failed"));
     child.on("close", () => this.fail("codex_process_failed"));
+    // Output is read until the process exits. Once the deadline stops or close begins, it is read
+    // for the item policy only (message); only the byte and frame limits stop reading, and they
+    // count as unchecked output.
     child.stdout.on("data", (chunk: Buffer) => {
-      if (
-        (!this.closing && this.deadline.code !== null) ||
-        (this.closing && this.pending.size === 0)
-      )
-        return;
       this.stdoutBytes += chunk.length;
       if (
         this.stdoutBytes >
         Math.max(CODEX_MAX_STDOUT_BYTES, this.frameLimit * 2 + CODEX_MAX_OUTPUT_BYTES * 2)
       ) {
-        this.fail("response_too_large");
+        this.failUninspected("response_too_large");
         return;
       }
       this.line += this.decoder.write(chunk);
       if (Buffer.byteLength(this.line) > this.frameLimit) {
-        this.fail("response_too_large");
+        this.failUninspected("response_too_large");
         return;
       }
       while (this.line.includes("\n")) {
-        const split = this.line.indexOf("\n"),
-          line = this.line.slice(0, split);
+        const split = this.line.indexOf("\n");
+        const line = this.line.slice(0, split);
         this.line = this.line.slice(split + 1);
-        if (line.length === 0) {
-          this.fail("codex_protocol_error");
-          return;
-        }
-        try {
-          this.message(JSON.parse(line) as unknown);
-        } catch {
-          this.fail("codex_protocol_error");
-        }
-        if (this.deadline.code !== null && !this.closing) return;
+        this.frame(line);
       }
+    });
+    // A last frame without its newline is parsed when it is whole JSON. A cut-off frame is a
+    // warning with its size only when humanish's own signal cut it: the signal reached the running
+    // process before its output ended, and the process then exited by that signal or with a code.
+    // Any other cut-off frame (an exit on its own, a crash, a signal humanish did not send) went
+    // unchecked.
+    child.stdout.on("end", () => {
+      const rest = this.line + this.decoder.end();
+      this.line = "";
+      const lines = rest.split("\n").filter((line) => line.length > 0);
+      const last = lines.pop();
+      for (const line of lines) this.frame(line);
+      if (last === undefined) return;
+      if (isJson(last)) {
+        this.frame(last);
+        return;
+      }
+      if (this.owned.signalsSent().length === 0) {
+        this.failUninspected("codex_protocol_error");
+        return;
+      }
+      const bytes = Buffer.byteLength(last);
+      void this.owned.exit.then(({ code, signal }) => {
+        const ours = signal === null ? code !== null : this.owned.signalsSent().includes(signal);
+        if (ours) this.onTruncatedFrame(bytes);
+        else this.failUninspected("codex_protocol_error");
+      });
     });
     child.stderr.on("data", (chunk: Buffer) => {
       this.stderrBytes += chunk.length;
@@ -244,6 +301,39 @@ export class RestrictedCodexTransport {
     this.stderrBytes = 0;
     this.eventCount = 0;
   }
+  /** One line of output: a malformed line could not be checked. */
+  private frame(line: string): void {
+    let parsed: unknown;
+    try {
+      parsed = line.length === 0 ? undefined : (JSON.parse(line) as unknown);
+    } catch {
+      parsed = undefined;
+    }
+    if (parsed === undefined) {
+      this.failUninspected("codex_protocol_error");
+      return;
+    }
+    try {
+      this.message(parsed);
+    } catch {
+      this.fail("codex_protocol_error");
+    }
+  }
+  /**
+   * Output that could not be checked: past a byte, frame or event limit, malformed, or cut off.
+   * The session records it through onPolicyFailure, whatever state the transport is in.
+   */
+  private failUninspected(code: RestrictedCodexAnalysisErrorCode): void {
+    this.onPolicyFailure(code);
+    this.fail(code);
+  }
+  /**
+   * Refuses the session with `code`: stops the current deadline and rejects pending requests.
+   * Between requests the stopped deadline makes the next beginRequest throw the code.
+   */
+  refuse(code: RestrictedCodexAnalysisErrorCode): void {
+    this.fail(code);
+  }
   private fail(code: RestrictedCodexAnalysisErrorCode): void {
     if (!this.closing) this.deadline.stop(code);
     for (const pending of this.pending.values()) pending.reject(new RestrictedCodexStop(code));
@@ -252,13 +342,30 @@ export class RestrictedCodexTransport {
   private message(raw: unknown): void {
     const value = codexRecord(raw);
     if (Object.keys(value).length === 0) {
-      this.fail("codex_protocol_error");
+      this.failUninspected("codex_protocol_error");
       return;
     }
+    // After the deadline stopped or close began, output is read for the item policy only.
+    const policyOnly = this.closing || this.deadline.code !== null;
     if (value.id !== undefined && typeof value.method === "string") {
+      // A server request is then declined unhandled: its turn is over or being interrupted, so a
+      // tool call that crossed the stop runs nothing and is not a policy refusal.
+      if (policyOnly) {
+        try {
+          this.write({
+            id: value.id,
+            error: { code: -32601, message: "Host request is disabled" },
+          });
+        } catch {
+          /* The process is already closing. */
+        }
+        return;
+      }
       if (!this.onRequest || ++this.eventCount > CODEX_MAX_EVENTS) {
+        const code = this.eventCount > CODEX_MAX_EVENTS ? "response_too_large" : "codex_tool_call";
+        this.onPolicyFailure(code);
         this.write({ id: value.id, error: { code: -32601, message: "Host request is disabled" } });
-        this.fail(this.eventCount > CODEX_MAX_EVENTS ? "response_too_large" : "codex_tool_call");
+        this.fail(code);
         return;
       }
       const id = value.id;
@@ -290,7 +397,8 @@ export class RestrictedCodexTransport {
     if (typeof value.id === "number" && value.method === undefined) {
       const pending = this.pending.get(value.id);
       if (!pending) {
-        this.fail("codex_protocol_error");
+        // A late reply, such as an interrupt's after its wait, carries no item.
+        if (!policyOnly) this.fail("codex_protocol_error");
         return;
       }
       this.pending.delete(value.id);
@@ -310,10 +418,13 @@ export class RestrictedCodexTransport {
       value.id !== undefined ||
       ++this.eventCount > CODEX_MAX_EVENTS
     ) {
-      this.fail(this.eventCount > CODEX_MAX_EVENTS ? "response_too_large" : "codex_protocol_error");
+      this.failUninspected(
+        this.eventCount > CODEX_MAX_EVENTS ? "response_too_large" : "codex_protocol_error",
+      );
       return;
     }
-    if (!this.closing) this.onNotification(value.method, codexRecord(value.params));
+    if (policyOnly) this.onPolicyOnlyNotification(value.method, codexRecord(value.params));
+    else this.onNotification(value.method, codexRecord(value.params));
   }
   private write(value: unknown): void {
     if (this.owned.isClosed() || this.owned.child.stdin.destroyed)
@@ -357,6 +468,9 @@ export class RestrictedCodexTransport {
   }
   async close(interrupt?: { threadId: string; turnId: string }): Promise<boolean> {
     this.closing = true;
+    // Shutdown output gets its own byte and event budget.
+    this.stdoutBytes = 0;
+    this.eventCount = 0;
     if (interrupt && !this.owned.isClosed()) {
       const { id, result } = this.request("turn/interrupt", interrupt);
       await settlesWithin(result, 1000);

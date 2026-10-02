@@ -404,6 +404,10 @@ describe("restricted Codex analyst session", () => {
     ["wrong-thread", "codex_protocol_error"],
     ["wrong-turn", "codex_protocol_error"],
     ["raw-tool", "codex_tool_call"],
+    // A native command item under a method humanish does not know, before an ordinary answer.
+    ["unknown-item-notification", "codex_tool_call"],
+    // A native command item in turn/completed's items, after an ordinary answer.
+    ["nested-turn-item", "codex_tool_call"],
     ["async-question", "codex_tool_call"],
     ["invalid-json", "invalid_response"],
     ["multiple-answers", "invalid_response"],
@@ -427,6 +431,28 @@ describe("restricted Codex analyst session", () => {
     expect(JSON.stringify(result)).not.toContain("SYNTHETIC_PRIVATE_ERROR_PAYLOAD");
     expect(JSON.stringify(result)).not.toContain(f.directory);
     expect(await readdir(f.tempRoot)).toEqual([]);
+  });
+
+  it("refuses a disallowed item that arrives during the handshake, before any dispatch", async () => {
+    const f = await fixture("handshake-item");
+    expect(await f.run(request)).toMatchObject({
+      status: "failed",
+      errorCode: "codex_tool_call",
+      dispatched: false,
+      output: null,
+    });
+    expect((await f.entries()).some((entry) => entry.method === "turn/start")).toBe(false);
+    expect(await readdir(f.tempRoot)).toEqual([]);
+  });
+
+  it("records an unknown progress notification without an item and completes", async () => {
+    const f = await fixture("unknown-progress");
+    expect(await f.run(request)).toMatchObject({
+      status: "completed",
+      errorCode: null,
+      output: { observedCode: "BLUE-4821" },
+      unknownNotifications: { "thread/futureProgress/updated": 2 },
+    });
   });
 
   it("handles notifications before the turn acknowledgment, without losing the answer", async () => {
@@ -1591,6 +1617,130 @@ describe("restricted Codex session host reads", () => {
       errorCode: "codex_busy",
     });
     expect(await nested).toMatchObject({ status: "completed", errorCode: null });
+    await session.close();
+  });
+});
+
+describe("restricted Codex notifications outside a turn", () => {
+  it("refuses the next request after a disallowed item arrives between requests", async () => {
+    const f = await fixture("continuing-idle-item"),
+      session = createRestrictedCodexSession(f.options);
+    expect(await session.run(request)).toMatchObject({ status: "completed" });
+    expect(session.policyRefusal).toBeUndefined();
+    await writeFile(`${f.trace}.idle-item`, "");
+    await vi.waitFor(() => expect(session.policyRefusal).toBe("codex_tool_call"), AFTER_SPAWN);
+    expect(await session.run(request)).toMatchObject({
+      errorCode: "codex_tool_call",
+      dispatched: false,
+    });
+    // The record stays after a request reported it, so a caller that tolerates the failure
+    // cannot absorb it.
+    expect(session.policyRefusal).toBe("codex_tool_call");
+    expect((await f.entries()).filter((entry) => entry.method === "turn/start")).toHaveLength(1);
+    expect(await session.close()).toBe(true);
+    expect(await readdir(f.tempRoot)).toEqual([]);
+  });
+
+  it("keeps a refusal between requests when the next request's cleanup fails", async () => {
+    const f = await fixture("continuing-idle-item");
+    const base = f.options.spawnFn!;
+    let home: string | undefined;
+    const session = createRestrictedCodexSession({
+      ...f.options,
+      spawnFn: (file, args, settings) => {
+        if (args[0] === "app-server") home = String(settings.env?.HOME);
+        return base(file, args, settings);
+      },
+    });
+    expect(await session.run(request)).toMatchObject({ status: "completed" });
+    await writeFile(`${f.trace}.idle-item`, "");
+    await vi.waitFor(() => expect(session.policyRefusal).toBe("codex_tool_call"), AFTER_SPAWN);
+    // An unexpected login rotation makes the teardown after the refused request fail.
+    rmSync(path.join(home!, "auth.json"));
+    writeFileSync(path.join(home!, "auth.json"), "synthetic-rotated-login", { mode: 0o600 });
+    expect(await session.run(request)).toMatchObject({ errorCode: "codex_cleanup_failed" });
+    expect(session.policyRefusal).toBe("codex_tool_call");
+  });
+
+  it("records a server request between requests, and the next request reports it", async () => {
+    const f = await fixture("continuing-idle-request"),
+      session = createRestrictedCodexSession(f.options);
+    expect(await session.run(request)).toMatchObject({ status: "completed" });
+    await writeFile(`${f.trace}.idle-request`, "");
+    await vi.waitFor(() => expect(session.policyRefusal).toBe("codex_tool_call"), AFTER_SPAWN);
+    expect(await session.run(request)).toMatchObject({
+      errorCode: "codex_tool_call",
+      dispatched: false,
+    });
+    expect(session.policyRefusal).toBe("codex_tool_call");
+    expect(await session.close()).toBe(true);
+  });
+
+  it("fails a completed one-shot request when a disallowed item arrives during close", async () => {
+    const f = await fixture("close-item-after-answer");
+    expect(await f.run(request)).toMatchObject({
+      status: "failed",
+      errorCode: "codex_tool_call",
+      dispatched: true,
+      output: null,
+    });
+    expect(await readdir(f.tempRoot)).toEqual([]);
+  });
+
+  it("records a disallowed item that arrives while the session closes", async () => {
+    const f = await fixture("close-item"),
+      session = createRestrictedCodexSession(f.options);
+    const pending = session.run(request);
+    await vi.waitFor(
+      async () => expect((await f.entries()).some((e) => e.method === "turn/start")).toBe(true),
+      AFTER_SPAWN,
+    );
+    expect(await session.close()).toBe(true);
+    expect(await pending).toMatchObject({ status: "cancelled" });
+    expect((await f.entries()).some((entry) => entry.method === "turn/interrupt")).toBe(true);
+    expect(session.policyRefusal).toBe("codex_tool_call");
+    expect(await readdir(f.tempRoot)).toEqual([]);
+  });
+});
+
+describe("restricted Codex output it could not check", () => {
+  it("records a malformed line between requests", async () => {
+    const f = await fixture("continuing-idle-malformed"),
+      session = createRestrictedCodexSession(f.options);
+    expect(await session.run(request)).toMatchObject({ status: "completed" });
+    await writeFile(`${f.trace}.idle-malformed`, "");
+    await vi.waitFor(() => expect(session.policyRefusal).toBe("codex_protocol_error"), AFTER_SPAWN);
+    expect(await session.close()).toBe(true);
+    expect(session.policyRefusal).toBe("codex_protocol_error");
+  });
+
+  it("keeps a completed request when humanish's own stop cut the last frame, with its size", async () => {
+    const f = await fixture("close-partial-after-answer");
+    expect(await f.run(request)).toMatchObject({
+      status: "completed",
+      errorCode: null,
+      truncatedFrameBytes: 40,
+    });
+    expect(await readdir(f.tempRoot)).toEqual([]);
+  });
+
+  it("records a frame cut off when the process exits on its own", async () => {
+    const f = await fixture("continuing-exit-partial"),
+      session = createRestrictedCodexSession(f.options);
+    expect(await session.run(request)).toMatchObject({ status: "completed" });
+    await writeFile(`${f.trace}.exit-partial`, "");
+    await vi.waitFor(() => expect(session.policyRefusal).toBe("codex_protocol_error"), AFTER_SPAWN);
+    expect(session.truncatedFrameBytes).toBeUndefined();
+    await session.close();
+  });
+});
+
+describe("restricted Codex refusals a request reported", () => {
+  it("keeps the refusal of a request that failed in its turn", async () => {
+    const f = await fixture("raw-tool"),
+      session = createRestrictedCodexSession(f.options);
+    expect(await session.run(request)).toMatchObject({ errorCode: "codex_tool_call" });
+    expect(session.policyRefusal).toBe("codex_tool_call");
     await session.close();
   });
 });
