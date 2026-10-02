@@ -1,4 +1,16 @@
-import { cp, mkdtemp, readFile, readdir, rm, stat, utimes, writeFile } from "node:fs/promises";
+import {
+  cp,
+  mkdir,
+  mkdtemp,
+  readFile,
+  readdir,
+  rename,
+  rm,
+  stat,
+  symlink,
+  utimes,
+  writeFile,
+} from "node:fs/promises";
 import { get } from "node:http";
 import os from "node:os";
 import path from "node:path";
@@ -22,6 +34,10 @@ import { serveObserverLibrary } from "../../src/observer/serve.js";
 import type { RunBundle } from "../../src/run/bundle.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { resolveRunPath } from "../../src/run/locate.js";
+import {
+  registerTransientCommsSecrets,
+  withTransientCommsSecrets,
+} from "../../src/run/transient-comms-secrets.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { syntheticResult } from "./fixtures.js";
 
@@ -194,6 +210,17 @@ describe("rejected analysis output", () => {
     }
     expect(await leaks(path.join(cwd, ".humanish/runs"))).toEqual([]);
   });
+});
+
+describe("rejected analysis records", () => {
+  let cwd: string;
+  beforeEach(async () => {
+    cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-rejected-records-"));
+    await mkdir(path.join(cwd, ".humanish/runs", RUN), { recursive: true });
+  });
+  afterEach(async () => {
+    await rm(cwd, { recursive: true, force: true });
+  });
 
   it("keeps only the newest rejected outputs across runs", async () => {
     const rejected = { error: "analysis_validation_failed_quote_invalid", errors: [], output: {} };
@@ -222,5 +249,61 @@ describe("rejected analysis output", () => {
     expect(files).toContain("analysis-last.json");
     expect(files).not.toContain("analysis-2.json");
     await expect(stat(path.join(cwd, kept[0]!))).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("scrubs a known value in encoded forms, keys and scalars, and keeps other spellings", async () => {
+    const secret = "654321";
+    const output = {
+      // Percent-encoded and base64 forms of the value, then the value as a number.
+      "%36%35%34%33%32%31": "NjU0MzIx",
+      plain: `code ${secret}`,
+      numeric: 654321,
+      flag: true,
+      quote: "Printed a\\nb and a%20b",
+    };
+    const relative = await withTransientCommsSecrets(async () => {
+      registerTransientCommsSecrets([secret]);
+      return keepRejectedAnalysisOutput(
+        cwd,
+        { runId: RUN, analysisId: "analysis-encoded", model: config.model, promptVersion: "p" },
+        { error: "analysis_validation_failed_schema_invalid", errors: [], output },
+      );
+    });
+    const kept = JSON.parse(await readFile(path.join(cwd, relative), "utf8"));
+    expect(kept.output).toEqual({
+      "[REDACTED_SECRET]": "[REDACTED_SECRET]",
+      plain: "code [REDACTED_SECRET]",
+      numeric: "[REDACTED_SECRET]",
+      flag: true,
+      quote: "Printed a\\nb and a%20b",
+    });
+  });
+
+  it("refuses to prune through a run directory swapped for a symlink after listing", async () => {
+    const victim = path.join(cwd, ".humanish/runs", RUN, "analysis-0.json");
+    await writeFile(victim, "victim\n");
+    const diagnostics = path.join(cwd, ".humanish/analysis-diagnostics");
+    const rejected = { error: "analysis_validation_failed_quote_invalid", errors: [], output: {} };
+    const keep = (analysisId: string, hooks = {}) =>
+      keepRejectedAnalysisOutput(
+        cwd,
+        { runId: "old", analysisId, model: config.model, promptVersion: "p" },
+        rejected,
+        hooks,
+      );
+    for (let index = 0; index < MAX_ANALYSIS_DIAGNOSTICS; index += 1) {
+      const relative = await keep(`analysis-${index}`);
+      const when = new Date(Date.UTC(2026, 0, 1, 0, 0, index));
+      await utimes(path.join(cwd, relative), when, when);
+    }
+    // The next write lists 21 records, oldest analysis-0.json, then the directory is swapped.
+    await keep("analysis-new", {
+      beforeRemove: async () => {
+        await rename(path.join(diagnostics, "old"), path.join(diagnostics, "old-moved"));
+        await symlink(path.join(cwd, ".humanish/runs", RUN), path.join(diagnostics, "old"), "dir");
+      },
+    });
+    expect(await readFile(victim, "utf8")).toBe("victim\n");
+    expect(await readdir(path.join(diagnostics, "old-moved"))).toContain("analysis-0.json");
   });
 });

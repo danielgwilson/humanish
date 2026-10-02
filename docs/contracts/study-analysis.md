@@ -183,8 +183,10 @@ artifact. For diagnosis, humanish keeps it locally at
 
 - the run and analysis IDs, the model and the prompt version;
 - the allowlisted code and every failed rule code;
-- the response, with each string passed through the transient-secret scrub and
-  shape redaction.
+- the response, scrubbed. Every string and key loses known transient secret
+  values, including their percent-encoded, escaped and base64 forms, and then gets
+  shape redaction. A number or boolean equal to a known value is replaced. A
+  string with no known value keeps its original spelling.
 
 When validation ran, the response is the one validation saw, after the narrative
 scrub. A schema or scrub rejection keeps the parsed response. An unexpected
@@ -193,7 +195,9 @@ validation exception keeps nothing.
 The directory sits outside every run directory, and export, verify and the
 Observer read only run directories. `humanish analyze` returns the file's path as
 `rejectedOutputPath` and prints it, and so does a lab run's automatic analysis.
-Each write removes all but the newest 20 records across runs. The record's
+Each write removes all but the newest 20 records across runs. It removes a
+record only while its directory is still the listed one, so a directory
+replaced by a symlink after listing is left alone. The record's
 feedback quotes cite evidence IDs that the run's own `analysis.json` resolves.
 
 Participant reviews cite distinct packet-local evidence IDs belonging only to
