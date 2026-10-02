@@ -20,6 +20,7 @@ import {
   type RestrictedCodexSessionOptions,
 } from "../../../src/actors/codex/restricted-session.js";
 import type { RestrictedCodexSpawn } from "../../../src/actors/codex/restricted-transport.js";
+import { checkRestrictedCodexParticipantReadiness } from "../../../src/actors/codex/restricted-participant.js";
 
 const fake = fileURLToPath(
   new URL("../../fixtures/restricted-codex/fake-process.mjs", import.meta.url),
@@ -1742,5 +1743,47 @@ describe("restricted Codex refusals a request reported", () => {
     expect(await session.run(request)).toMatchObject({ errorCode: "codex_tool_call" });
     expect(session.policyRefusal).toBe("codex_tool_call");
     await session.close();
+  });
+});
+
+describe("hosted Codex participant readiness", () => {
+  const operatorEnv = (f: Awaited<ReturnType<typeof fixture>>) => ({
+    ...f.options.env,
+    HOME: f.directory,
+    CODEX_HOME: f.authHome,
+    NODE_OPTIONS: undefined,
+  });
+
+  it("runs the operator handshake to an ephemeral thread and sends no turn", async () => {
+    const f = await fixture("participant-success");
+    // The fake app-server reports the operator's effort as high, as its participant scenarios do.
+    const result = await checkRestrictedCodexParticipantReadiness({
+      session: { ...f.options, env: operatorEnv(f) },
+      reasoningEffort: "high",
+    });
+    expect(result).toEqual({
+      ready: true,
+      errorCode: null,
+      cliVersion: "0.157.1",
+      resolvedModel: "operator-configured-model",
+      authentication: "chatgpt-account",
+    });
+    const methods = (await f.entries()).flatMap((entry) =>
+      typeof entry.method === "string" ? [entry.method] : [],
+    );
+    expect(methods).toEqual(
+      expect.arrayContaining(["initialize", "config/read", "account/read", "thread/start"]),
+    );
+    expect(methods).not.toContain("turn/start");
+    expect(await readdir(f.tempRoot)).toEqual([]);
+  });
+
+  it("refuses an unadmitted release at the version check, before the handshake", async () => {
+    const f = await fixture("version-0.150.0");
+    const result = await checkRestrictedCodexParticipantReadiness({
+      session: { ...f.options, env: operatorEnv(f) },
+    });
+    expect(result).toMatchObject({ ready: false, errorCode: "codex_unsupported_version" });
+    expect((await f.entries()).some((entry) => entry.operation === "app-server")).toBe(false);
   });
 });

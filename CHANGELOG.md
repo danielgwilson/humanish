@@ -30,6 +30,14 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Changed
 
+- `humanish doctor --lab` checks a hosted Codex participant (a local-agent lab on an E2B desktop)
+  by starting it as a run would, up to an ephemeral thread and without a turn: the release check,
+  then `initialize`, `config/read`, `account/read` and `thread/start` with the operator's Codex
+  configuration and the lab's declared model and reasoning effort. The row names the release, the
+  model and whether Codex is signed in with a ChatGPT account or an API key, which bills its usage
+  to that key; a failure gets the same recovery as the local participant row. Before, doctor
+  reported only `codex login status` for hosted participants, so a refused release, configuration
+  or model first showed up in the run. A Codex that reports signed out still gets the sign-in row.
 - Three CLI messages use plain words (#1374). The dry-run summary prints `participants: N`
   in place of `sims: N`. The line before a live run reads "refused before it starts if its
   estimate is over $3; this is not a billing cap" in place of "separate $3 admission estimate limit

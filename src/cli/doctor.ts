@@ -13,7 +13,7 @@ import {
   type DetectedLocalAgent,
   type DetectLocalAgentsOptions,
 } from "../actors/local-agent/cli.js";
-import { labSetupChecks } from "../lab/doctor.js";
+import { labSetupChecks, type LabSetupCheckArgs } from "../lab/doctor.js";
 import {
   prepareSelectedOutputDirectory,
   type PreparedSelectedOutputDirectory,
@@ -97,6 +97,8 @@ export async function doctor(
     localAgents?: DetectLocalAgentsOptions;
     /** Where the key probe looks for vendor stores; tests point it at a temp home. */
     keyDeps?: KeyResolutionDeps;
+    /** The hosted Codex participant's operator handshake; tests replace it. */
+    codexParticipantReadiness?: LabSetupCheckArgs["codexParticipantReadiness"];
   } = {},
 ): Promise<DoctorResult> {
   const cwd = path.resolve(cwdInput);
@@ -132,6 +134,9 @@ export async function doctor(
         env,
         agents,
         keyPresent: (name) => probes.some((probe) => probe.name === name && probe.source !== null),
+        ...(options.codexParticipantReadiness === undefined
+          ? {}
+          : { codexParticipantReadiness: options.codexParticipantReadiness }),
       })
     : undefined;
   const checks: DoctorResult["checks"] = [

@@ -40,6 +40,13 @@ codex login status                 # or: claude auth status
 npx humanish doctor --lab .humanish/labs/your-app.yaml
 ```
 
+For a signed-in Codex participant on an E2B desktop, `doctor --lab` also starts
+Codex as the run would, up to an ephemeral thread and without a model turn: the
+release check, then `initialize`, `config/read`, `account/read` and `thread/start`
+with your Codex configuration and the lab's `model` and reasoning effort. The row
+names the release, the model and whether Codex is signed in with ChatGPT or an API
+key. A refused release, configuration or model shows up there instead of in the run.
+
 If signed out, use `codex login` or `claude auth login`. Before launching a
 desktop, humanish asks the selected CLI for its local authentication status.
 An unavailable or unrecognized status fails before desktop creation and asks
