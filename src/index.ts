@@ -49,18 +49,6 @@ export type { BrowserLabScoringContext } from "./lab/adapter-extension.js";
 export type { TerminalProductScoringContext } from "./routes/terminal/types.js";
 export type { RunAdapterArtifact, RunAdapterScore } from "./run/bundle.js";
 
-// Routing: the planLab series deprecates these and removes them in the next minor.
-export {
-  routesToComputerUse,
-  routesToConcurrentSharedWorld,
-  routesToExternalPublicSharedWorld,
-  routesToProvisionedSharedWorld,
-  routesToScriptedBrowser,
-  routesToSharedWorld,
-  routesToTerminalProduct,
-} from "./lab/routing.js";
-export { selectLabBackend } from "./lab/plan.js";
-
 // Deprecated this minor, removed in the next.
 export {
   actorResolvesToTerminal,

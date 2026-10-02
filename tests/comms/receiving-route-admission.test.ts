@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parseLabConfig } from "../../src/lab/config.js";
 import { type LabConfig } from "../../src/lab/types.js";
 import { runLab } from "../../src/run-lab.js";
-import { routeOf, selectLabBackend } from "../../src/lab/plan.js";
+import { routeOf } from "../../src/lab/plan.js";
 import { runTerminalProductLab } from "../../src/routes/terminal/route.js";
 import { runScriptedBrowserLab } from "../../src/routes/scripted/route.js";
 import * as synthetic from "../../src/run/dry-run.js";
@@ -15,7 +15,7 @@ const fixtures = JSON.parse(
 ) as Array<{
   name: string;
   config: LabConfig;
-  backend: string;
+  route: string;
 }>;
 function baseline(raw: LabConfig): LabConfig {
   const result = parseLabConfig(raw);
@@ -26,9 +26,7 @@ function baseline(raw: LabConfig): LabConfig {
 function receiving(config: LabConfig): LabConfig {
   return Object.assign(config, { comms: { email: { kind: "real", connection: "mail" } } });
 }
-const unsupported = fixtures.filter(
-  (row) => !["cua", "concurrent-shared-world"].includes(row.backend),
-);
+const unsupported = fixtures.filter((row) => !["computer-use", "shared-world"].includes(row.route));
 
 describe("real receiving admission on non-receiving backends", () => {
   let cwd: string;
@@ -42,9 +40,9 @@ describe("real receiving admission on non-receiving backends", () => {
 
   it.each(unsupported)(
     "refuses runLab $name before runtime hooks or filesystem allocation",
-    async ({ config, backend }) => {
+    async ({ config, route }) => {
       const resolved = receiving(baseline(config));
-      expect(selectLabBackend(resolved)).toBe(backend);
+      expect(routeOf(resolved)).toBe(route);
       const forbidden = vi.fn(async () => {
         throw new Error("must not invoke runtime");
       });
@@ -65,7 +63,7 @@ describe("real receiving admission on non-receiving backends", () => {
         expect(outcome.route).toBe(routeOf(resolved));
         expect(outcome.result.ok).toBe(false);
         expect(outcome.result.error?.message).toMatch(/Real email receiving is unsupported/);
-        if (backend === "synthetic") {
+        if (route === "preview") {
           expect(outcome.result.error?.code).toBe("HUMANISH_LAB_COMMS_UNSUPPORTED");
         }
       }

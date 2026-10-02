@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { parseLabConfig } from "../../src/lab/config.js";
-import { selectLabBackend } from "../../src/lab/plan.js";
+import { routeOf } from "../../src/lab/plan.js";
 import { planLab, type LabRoute } from "../../src/lab/plan.js";
 import type { LabPlan, PlanResult } from "../../src/lab/plan-types.js";
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/lab/types.js";
@@ -62,7 +62,7 @@ describe("planLab", () => {
   it("derives computer-use concurrency, session budget and sandbox time as the lane plan does", async () => {
     const configs: [string, LabConfig, number | undefined][] = [
       ...(await committedLabs(ROOT))
-        .filter(([, config]) => selectLabBackend(config) === "cua")
+        .filter(([, config]) => routeOf(config) === "computer-use")
         .map(([id, config]) => [id, config, undefined] as [string, LabConfig, undefined]),
       [
         "declared concurrency",

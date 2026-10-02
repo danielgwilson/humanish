@@ -140,7 +140,7 @@ export function isSharedWorldComposition(config: LabConfig): boolean {
 }
 
 /** The getHost provisioned-subject shared-world shape (clone/local-tree served + exposed in-sandbox). */
-function isProvisionedSharedWorldComposition(config: LabConfig): boolean {
+export function isProvisionedSharedWorldComposition(config: LabConfig): boolean {
   return (
     (config.subject.source === "clone" || config.subject.source === "local-tree") &&
     config.subject.topology === "shared-world" &&
@@ -158,7 +158,7 @@ function isProvisionedSharedWorldComposition(config: LabConfig): boolean {
  * half-declared external-public config still routes here to get its precise fail-closed reason
  * rather than silently downgrading to the per-participant cua route).
  */
-function isExternalPublicSharedWorldComposition(config: LabConfig): boolean {
+export function isExternalPublicSharedWorldComposition(config: LabConfig): boolean {
   return (
     config.subject.source === "app-url" &&
     config.subject.topology === "shared-world" &&
@@ -228,45 +228,4 @@ export function isTerminalProductComposition(config: LabConfig): boolean {
   return (
     config.subject.source === "terminal-product" && actorResolvesToTerminal(config.actors[0]?.type)
   );
-}
-
-// The package's older names for these predicates. routeOf is the route decision; each of these
-// says whether a config composes that route with a registered actor of its kind.
-
-/** @deprecated Use `routeOf`. This goes in the next minor. */
-export function routesToComputerUse(config: LabConfig): boolean {
-  return isComputerUseComposition(config);
-}
-
-/** @deprecated Use `routeOf`. This goes in the next minor. */
-export function routesToSharedWorld(config: LabConfig): boolean {
-  return isSharedWorldComposition(config);
-}
-
-/** @deprecated Use `routeOf`. This goes in the next minor. */
-export function routesToProvisionedSharedWorld(config: LabConfig): boolean {
-  return isProvisionedSharedWorldComposition(config);
-}
-
-/** @deprecated Use `routeOf`. This goes in the next minor. */
-export function routesToExternalPublicSharedWorld(config: LabConfig): boolean {
-  return isExternalPublicSharedWorldComposition(config);
-}
-
-/**
- * @deprecated Every shared-world study runs its participants at once since the sequential
- * shared-world route was removed. Use `routeOf`; this alias goes in the next minor.
- */
-export function routesToConcurrentSharedWorld(config: LabConfig): boolean {
-  return isSharedWorldComposition(config);
-}
-
-/** @deprecated Use `routeOf`. This goes in the next minor. */
-export function routesToScriptedBrowser(config: LabConfig): boolean {
-  return isScriptedBrowserComposition(config);
-}
-
-/** @deprecated Use `routeOf`. This goes in the next minor. */
-export function routesToTerminalProduct(config: LabConfig): boolean {
-  return isTerminalProductComposition(config);
 }

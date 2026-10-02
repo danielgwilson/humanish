@@ -1,21 +1,20 @@
-// Pins the route every config shape selects, and the value of every exported routesTo* predicate,
-// over a grid that includes partial and unsupported configs a library caller can pass. The
-// predicates overlap (a provisioned shared-world config is also routesToComputerUse), so each is
-// pinned on its own rather than derived from the route.
+// Pins the route every config shape selects, and the value of every composition predicate, over a
+// grid that includes partial and unsupported configs a library caller can pass. The predicates
+// overlap (a provisioned shared-world config is also isComputerUseComposition), so each is pinned
+// on its own rather than derived from the route.
 
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-import { selectLabBackend } from "../../src/lab/plan.js";
+import { routeOf } from "../../src/lab/plan.js";
 import {
-  routesToComputerUse,
-  routesToConcurrentSharedWorld,
-  routesToExternalPublicSharedWorld,
+  isComputerUseComposition,
+  isSharedWorldComposition,
+  isExternalPublicSharedWorldComposition,
   isProvisionedScriptedBrowserComposition,
-  routesToProvisionedSharedWorld,
-  routesToScriptedBrowser,
-  routesToSharedWorld,
-  routesToTerminalProduct,
+  isProvisionedSharedWorldComposition,
+  isScriptedBrowserComposition,
+  isTerminalProductComposition,
 } from "../../src/lab/routing.js";
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/lab/types.js";
 import { committedLabs } from "../helpers/committed-labs.js";
@@ -43,26 +42,25 @@ const actors = [
 ];
 
 const predicates = {
-  computerUse: routesToComputerUse,
-  sharedWorld: routesToSharedWorld,
-  provisionedSharedWorld: routesToProvisionedSharedWorld,
-  externalPublicSharedWorld: routesToExternalPublicSharedWorld,
-  concurrentSharedWorld: routesToConcurrentSharedWorld,
-  scriptedBrowser: routesToScriptedBrowser,
+  computerUse: isComputerUseComposition,
+  sharedWorld: isSharedWorldComposition,
+  provisionedSharedWorld: isProvisionedSharedWorldComposition,
+  externalPublicSharedWorld: isExternalPublicSharedWorldComposition,
+  scriptedBrowser: isScriptedBrowserComposition,
   provisionedScriptedBrowser: isProvisionedScriptedBrowserComposition,
-  terminalProduct: routesToTerminalProduct,
+  terminalProduct: isTerminalProductComposition,
 };
 
-/** "backend predicate-names-that-hold", one line per config. */
+/** "route predicate-names-that-hold", one line per config. */
 function describeRouting(config: LabConfig): string {
   const held = Object.entries(predicates)
     .filter(([, predicate]) => predicate(config))
     .map(([name]) => name);
-  return [selectLabBackend(config), ...held].join(" ");
+  return [routeOf(config), ...held].join(" ");
 }
 
 describe("lab routing", () => {
-  it("pins the backend and every routesTo* predicate over the config grid", async () => {
+  it("pins the route and every composition predicate over the config grid", async () => {
     const grid: Record<string, string> = {};
     for (const source of sources)
       for (const target of targets)
