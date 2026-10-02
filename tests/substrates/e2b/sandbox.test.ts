@@ -421,7 +421,7 @@ describe("readE2BRelease", () => {
   });
 });
 
-// ARCHITECTURE.md's invariant "A sandbox id is recorded before any work runs in it" holds only if
+// Architecture.md's invariant "A sandbox id is recorded before any work runs in it" holds only if
 // every E2B sandbox comes from acquire(), which journals the receipt before returning the handle.
 describe("E2B sandbox creation", () => {
   it("has one call site in src: acquire() in src/substrates/e2b/sandbox.ts", async () => {

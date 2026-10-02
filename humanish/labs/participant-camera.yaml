@@ -1,15 +1,15 @@
 schema: humanish.lab.v2
 id: participant-camera
-title: "A participant with a camera (#509): the browser's own permission prompt, then a synthetic feed"
-description: >
+title: "A participant with a camera: the browser's own permission prompt, then a synthetic feed"
+description: >-
   A one-page fixture (bench/media-check) with a button that calls getUserMedia and prints the
-  camera's name and frame size. The lab declares a synthetic camera; Chrome presents an ffmpeg
-  test pattern as a capture device. With the default policies.mediaPermission (prompt) the
-  participant meets Chrome's real permission dialog and answers it, which is the moment a real
-  person hesitates or refuses; the page's own read-back, in the participant's words, is the proof
-  that a camera was there. The bundle records the feed and the launch flags under
-  desktopBrowser.media. Receipt: docs/evidence/computer-use/participant-camera-2026-09-04.md.
-  Committed as mode: dry-run. A live run needs OPENAI_API_KEY and E2B_API_KEY and costs about $0.05.
+  camera's name and frame size. The lab declares a synthetic camera, and Chrome presents an ffmpeg
+  test pattern as a capture device. With the default policies.mediaPermission (prompt), the
+  participant meets Chrome's own permission dialog and answers it, the moment a real person
+  hesitates or refuses. The page's read-back, in the participant's words, shows a camera was there,
+  and the bundle records the feed and the launch flags under desktopBrowser.media. Study record:
+  docs/evidence/computer-use/participant-camera-2026-09-04.md. Committed as a dry run. A live run
+  needs OPENAI_API_KEY and E2B_API_KEY and costs about $0.05.
 subject:
   source: local-tree
   serve:

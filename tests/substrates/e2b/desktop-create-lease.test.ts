@@ -11,7 +11,7 @@ import {
 import { isTransientE2BError } from "../../../src/substrates/e2b/sandbox.js";
 import { acquireE2BDesktopSandbox } from "../../../src/substrates/e2b/sandbox.js";
 
-// Conformance against the REAL installed desktop + base SDK. Debug mode avoids allocation;
+// Conformance against the real installed desktop + base SDK. Debug mode avoids allocation;
 // only SDK command/kill methods are replaced with local fault ports. No provider HTTP response
 // fixtures are fabricated. Dependency upgrades must preserve constructor-before-bootstrap order.
 const options = {
@@ -104,7 +104,7 @@ describe("desktop allocation ownership survives startup failure", () => {
       cleanup: "killed",
     });
     expect(probe.instances).toHaveLength(1);
-    expect(probe.killed).toEqual([1]); // Internal SDK cleanup and our fallback share THIS handle.
+    expect(probe.killed).toEqual([1]); // Internal SDK cleanup and our fallback share this handle.
     expect(probe.events).toEqual(["construct-1", "command-1", "kill-1"]);
     expect(probe.list).not.toHaveBeenCalled();
     expect(probe.allocation).not.toHaveBeenCalled();

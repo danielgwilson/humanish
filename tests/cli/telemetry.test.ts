@@ -40,7 +40,7 @@ describe("what telemetry can possibly contain", () => {
       },
     });
     expect(Object.keys(payload.properties).sort()).toEqual(
-      // studyParticipant joins the allowlist deliberately (#546): a boolean marking traffic from
+      // studyParticipant joins the allowlist deliberately: a boolean marking traffic from
       // a humanish study participant, so our own instrument stays separable from real adopters.
       // Same shape and same privacy profile as `ci`; it carries no identity and no free text.
       [
@@ -106,7 +106,7 @@ describe("what telemetry can possibly contain", () => {
     expect(lower.properties.error_code).toBeUndefined();
   });
 
-  it("NEVER names a lab that is not one of ours", () => {
+  it("never names a study that is not one of ours", () => {
     // An adopter's lab id can be the name of a product they have not announced.
     expect(safeLabId("first-run")).toBe("first-run");
     expect(safeLabId("try-live")).toBe("try-live");
@@ -174,7 +174,7 @@ describe("turning it off", () => {
   it("honours DO_NOT_TRACK, the cross-tool standard", () => {
     expect(disabledByEnvironment({ DO_NOT_TRACK: "1" })).toBe(true);
     expect(disabledByEnvironment({ HUMANISH_TELEMETRY_DISABLED: "1" })).toBe(true);
-    // A blank or falsey value is not an opt-out — it is an unset variable with a value.
+    // A blank or falsey value is not an opt-out: it is an unset variable with a value.
     expect(disabledByEnvironment({ DO_NOT_TRACK: "0" })).toBe(false);
     expect(disabledByEnvironment({ DO_NOT_TRACK: "" })).toBe(false);
     expect(disabledByEnvironment({})).toBe(false);
@@ -217,7 +217,7 @@ describe("it can never hurt the command that triggered it", () => {
     ).resolves.toBeUndefined();
   });
 
-  it("gives up rather than hanging — the request carries an abort signal", async () => {
+  it("gives up rather than hanging: the request carries an abort signal", async () => {
     // Real fetch rejects when the signal fires; this fake proves the signal is actually passed,
     // which is the part we control.
     let sawSignal = false;
@@ -357,7 +357,7 @@ describe("what a study reports about itself", () => {
     expect(foreign.outcome).toBe("error");
   });
 
-  it("NEVER names an adopter's lab, and never forwards free-text status", () => {
+  it("never names an adopter's study, and never forwards free-text status", () => {
     const facts = deriveRunFacts({
       labId: "acme-checkout-v2",
       dryRun: false,

@@ -4,6 +4,8 @@
 }
 .evidence-player .viewer {
   min-height: 0;
+  /* The phone stage height follows the viewer's width. */
+  container: evidence-viewer / inline-size;
 }
 .evidence-player .player-heading {
   display: flex;
@@ -85,6 +87,8 @@
   padding: 0;
   min-height: 180px;
   overscroll-behavior: contain;
+  /* A fitted frame is sized from the stage's current box in the same layout pass. */
+  container: evidence-stage / size;
 }
 .evidence-player .evidence-canvas {
   display: flex;
@@ -105,6 +109,17 @@
   border-radius: 4px;
   outline: 1px solid var(--line);
   overflow: hidden;
+  /* Pin tips size their room against the frame's own width. */
+  container-type: inline-size;
+}
+/* Fit: the largest raster rectangle inside the stage less the 12px canvas inset on each side.
+   The stage size is rounded to whole pixels, as clientWidth and clientHeight are. */
+.evidence-player .evidence-image[data-fit] {
+  width: min(calc(round(100cqw, 1px) - 24px), calc((round(100cqh, 1px) - 24px) / var(--fit-ratio)));
+  height: min(
+    calc(round(100cqh, 1px) - 24px),
+    calc((round(100cqw, 1px) - 24px) * var(--fit-ratio))
+  );
 }
 .evidence-player .evidence-image img {
   display: block;
@@ -511,7 +526,7 @@
   /* Fit recordings need only the raster height plus the canvas inset. Zoomed
      images and live streams retain their bounded, scrollable viewing area. */
   .evidence-player .evidence-stage[data-fit-recording] {
-    height: min(52dvh, var(--fit-stage-height));
+    height: min(52dvh, calc((round(100cqw, 1px) - 24px) * var(--fit-ratio) + 24px));
     min-height: 0;
   }
   .evidence-player .tbtn {

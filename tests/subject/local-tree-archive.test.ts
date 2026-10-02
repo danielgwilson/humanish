@@ -25,7 +25,7 @@ import {
 } from "../../src/subject/local-tree-archive.js";
 
 // Deterministic author/committer identity so `git commit` never depends on
-// (or waits on) the host's global gitconfig -- no GPG signing, no missing
+// (or waits on) the host's global gitconfig: no GPG signing, no missing
 // user.name/user.email.
 const GIT_ENV: NodeJS.ProcessEnv = {
   ...process.env,
@@ -84,7 +84,7 @@ function packTree(
  * A git fixture exercising every enumeration edge case in one tree: a tracked
  * file, a gitignored build-output file, an untracked-but-not-ignored file,
  * planted secret-shaped files (some tracked), and a nested repo boundary.
- * Intentionally left with untracked content, so it is NOT a "clean" fixture --
+ * Intentionally left with untracked content, so it is not a "clean" fixture:
  * tests that need a clean/dirty distinction build their own minimal repo.
  */
 async function buildGitFixture(): Promise<{ root: string }> {
@@ -117,7 +117,7 @@ async function buildGitFixture(): Promise<{ root: string }> {
   runGit(root, ["init", "-q", "."]);
   commitAll(root, ["tracked.txt", ".gitignore", ".env", ".env.example", "key.pem"], "init");
 
-  // Make nested-repo its own repo AFTER the parent's first commit, so the
+  // Make nested-repo its own repo after the parent's first commit, so the
   // parent never tracked its contents as plain files.
   runGit(path.join(root, "nested-repo"), ["init", "-q", "."]);
 
@@ -305,7 +305,7 @@ describe("symlinks", () => {
     expect(linkLine?.startsWith("l")).toBe(true);
     expect(linkLine).toContain(`-> ${secretPath}`);
 
-    // The digest hashes the target STRING, not target bytes: changing the
+    // The digest hashes the target string, not target bytes: changing the
     // outside file's content must not change archiveSha256...
     const beforeContentChange = packTree(root).archiveSha256;
     await writeFile(secretPath, "completely different content\n");
@@ -444,7 +444,7 @@ describe("temp dir cleanup", () => {
     vi.unstubAllEnvs();
   });
 
-  /** Puts a `tar` running `script` first on PATH and points TMPDIR at an empty dir it returns. */
+  /** Puts a `tar` running `script` first on `PATH` and points `TMPDIR` at an empty dir it returns. */
   async function fakeTar(script: string): Promise<string> {
     const dir = await makeTempRoot("fake-tar");
     const bin = path.join(dir, "bin");

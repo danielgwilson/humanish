@@ -25,7 +25,7 @@ export interface AdmissionOptions {
   readonly hooks?: "executor" | "provider" | "executor+provider";
   /** Hook env: none (default), both hosted keys, E2B only or OpenAI only. */
   readonly env?: "none" | "keys" | "e2b" | "openai";
-  /** Make browser discovery find nothing: stub PATH and HUMANISH_BROWSER_COMMAND. */
+  /** Make browser discovery find nothing: stub `PATH` and HUMANISH_BROWSER_COMMAND. */
   readonly isolateBrowser?: boolean;
   /** Call this route's runner regardless of the config's route. */
   readonly runner?: "computer-use" | "scripted" | "terminal" | "shared-world";

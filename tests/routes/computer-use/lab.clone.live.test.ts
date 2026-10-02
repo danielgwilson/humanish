@@ -10,22 +10,22 @@ import { LAB_CONFIG_SCHEMA } from "../../../src/lab/types.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
 import { runLab } from "../../../src/run-lab.js";
 
-// The LIVE rung for the clone subject provider: a config-only lab that clones a small public
-// static-site repo INTO a real E2B desktop, serves it with the declared command, probes
+// The live rung for the clone subject provider: a config-only study that clones a small public
+// static-site repo into a real E2B desktop, serves it with the declared command, probes
 // readiness, and lets the real actor drive it. Spend-gated exactly like the other live rungs:
 //   1. HUMANISH_LIVE_CUA=1 must be set explicitly (the spend opt-in),
 //   2. OPENAI_API_KEY and E2B_API_KEY must both be present,
 //   3. @e2b/desktop is loaded lazily inside the lab (never imported when skipped).
 // The subject repo is a tiny, long-stable MDN sample site (public, no build step). Asserts a
-// verified bundle with provenance and a terminal session — never task success.
+// verified bundle with provenance and a terminal session, never task success.
 // Fixture refreshes: additionally set HUMANISH_CUA_WIRE_CAPTURE_DIR to a gitignored dir (e.g.
-// under .humanish/) to capture redacted RESPONSE wire bodies — see src/actors/computer-use/openai-provider.ts.
+// under .humanish/) to capture redacted response wire bodies: see src/actors/computer-use/openai-provider.ts.
 const LIVE =
   process.env.HUMANISH_LIVE_CUA === "1" &&
   Boolean(process.env.OPENAI_API_KEY) &&
   Boolean(process.env.E2B_API_KEY);
 
-describe.skipIf(!LIVE)("cua-actor-lab clone subject (LIVE, spend-gated)", () => {
+describe.skipIf(!LIVE)("cua-actor-lab clone subject (live, spend-gated)", () => {
   let cwd: string;
 
   beforeEach(async () => {
@@ -72,8 +72,8 @@ describe.skipIf(!LIVE)("cua-actor-lab clone subject (LIVE, spend-gated)", () => 
       const result = outcome.result;
 
       // The bundle verified, the sandbox is reclaimed, and the session reached a terminal verdict
-      // without a harness error. We do NOT assert result.ok===true: ok additionally requires the
-      // actor to have ENGAGED (>=1 action or message — the no-engagement honesty guard), which a
+      // without a harness error. We do not assert result.ok===true: ok additionally requires the
+      // actor to have engaged (>=1 action or message: the no-engagement honesty guard), which a
       // trivial "look and report" mission against a static page may not elicit. Engagement is
       // asserted explicitly below so a blank-screen no-op cannot masquerade as a live proof.
       expect(["passed", "failed", "blocked", "timed_out"]).toContain(result.session?.status);

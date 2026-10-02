@@ -43,7 +43,7 @@ const observe = async (io: ObserverIo) =>
   observeProcesses({ rootPid: 100, proc: "/p", io, intervalMs: 5 }).stop();
 
 describe("process observer tables", () => {
-  it("reads named unix sockets, unix peers and TCP and UDP remotes", () => {
+  it("reads named unix sockets, unix peers and TCP and udp remotes", () => {
     const unix = parseUnixTable(
       "Num       RefCount Protocol Flags    Type St Inode Path\n" +
         "0000000000000000: 00000002 00000000 00010000 0001 01 1234 /tmp/codex-daemon-1000/abc\n" +
