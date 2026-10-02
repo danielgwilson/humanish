@@ -241,8 +241,8 @@ SLICE 1 declared the DI seams SLICE 2 needed (`loadModule`, `buildSandbox`,
 `runtimeAuthEnv`, `detachedTimers`) on `TerminalProductLabHooks`; only the dry-run
 path was implemented in that slice. The hook bag now carries `loadModule`, `env`,
 `renderObserverFn`, `now`, `costProbe`, `score` and `deriveFeedback`
-(`src/routes/terminal/types.ts`), and `TerminalProductLabHooks` itself is deprecated
-in favor of `RunLabOptions`.
+(`src/routes/terminal/types.ts`). `TerminalProductLabHooks` is internal: the package's
+`RunLabOptions` no longer takes it.
 
 ## SLICE 4: the product-adapter extension seam (layer 6)
 
@@ -263,7 +263,7 @@ lives in the adopter's repo:
   `AdapterScorerModule`): `score?(ctx) => RunAdapterScore | Promise<…>` and
   `deriveFeedback?(ctx) => RunFeedbackCandidate[] | Promise<…>`, where this route's
   `ctx` is a `TerminalProductScoringContext`. The older `terminalHooks.score` and
-  `terminalHooks.deriveFeedback` still work and warn as deprecated. The route calls the
+  `terminalHooks.deriveFeedback` were removed with the bag. The route calls the
   hooks over the FULLY-ASSEMBLED, redacted evidence and attaches the results
   (`bundle.adapterScore`, appended `bundle.feedbackCandidates`) WITHOUT core knowing
   any product noun. Default (no hook) behavior is unchanged: the mission-based verdict

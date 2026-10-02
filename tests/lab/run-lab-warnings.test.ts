@@ -10,9 +10,8 @@ import type { AdapterScorerModule } from "../../src/lab/adapter-scorer-loader.js
 import { parseLabConfig } from "../../src/lab/config.js";
 import type { LabConfig } from "../../src/lab/types.js";
 import type { RunScorerProvenance } from "../../src/run/bundle.js";
-import { prepareLab, type RunLabOptions } from "../../src/run-lab.js";
+import { prepareLab } from "../../src/run-lab.js";
 import { lab } from "../admission/fixtures.js";
-import { allowDeprecationsInThisTest } from "../helpers/deprecations.js";
 
 const WARNING = "RunLabOptions.onEvent failed on plan: observer down";
 
@@ -33,8 +32,8 @@ const scorerProvenance: RunScorerProvenance = {
   exports: ["score"],
 };
 
-function config(): LabConfig {
-  const parsed = parseLabConfig(lab("cuAppUrl"));
+function config(base: "cuAppUrl" | "scriptedAppUrl" = "cuAppUrl"): LabConfig {
+  const parsed = parseLabConfig(lab(base));
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
 }
@@ -48,14 +47,13 @@ describe("a scorer that joins after the route's checks", () => {
     await rm(cwd, { recursive: true, force: true });
   });
 
-  async function prepared(cuaHooks?: RunLabOptions["cuaHooks"]) {
-    const result = await prepareLab(config(), {
+  async function prepared(base?: "scriptedAppUrl") {
+    const result = await prepareLab(config(base), {
       cwd,
       dryRun: true,
       onEvent: () => {
         throw new Error("observer down");
       },
-      ...(cuaHooks === undefined ? {} : { cuaHooks }),
     });
     if (!result.ok) throw new Error("the lab was refused before it ran");
     return result;
@@ -67,15 +65,10 @@ describe("a scorer that joins after the route's checks", () => {
     expect(outcome.result.warnings).toContain(WARNING);
   });
 
-  it("keeps it on the result when the scorer is refused", async () => {
-    allowDeprecationsInThisTest(
-      "HUMANISH_RUN_LAB_OPTION_DEPRECATED",
-      "The deprecated cuaHooks.score is what makes the scorer a conflict here.",
-    );
-    // The older cuaHooks.score beside a scorer is a conflict, refused when the scorer joins.
-    const late = await prepared({ score: scorer.score! });
+  it("refuses a late scorer the route cannot honor", async () => {
+    // Scripted runs take no scorer, so one that joins after the checks is refused.
+    const late = await prepared("scriptedAppUrl");
     const outcome = await late.run({ scorer, scorerProvenance });
-    expect(outcome.result.error?.code).toBe("HUMANISH_LAB_OPTION_CONFLICT");
-    expect(outcome.result.warnings).toContain(WARNING);
+    expect(outcome.result.error?.code).toBe("HUMANISH_LAB_OPTION_UNSUPPORTED");
   });
 });

@@ -61,12 +61,6 @@ import {
   type ObserverServer,
 } from "../../../src/observer/render.js";
 import type { LocalTreeArchive } from "../../../src/subject/local-tree-archive.js";
-import { allowDeprecationsInThisFile } from "../../helpers/deprecations.js";
-
-allowDeprecationsInThisFile(
-  "HUMANISH_RUN_LAB_OPTION_DEPRECATED",
-  "This file drives the route through its hook bag. The bag's deprecated members are its test seams until they move to RunLabOptions homes before the next minor removes them.",
-);
 
 // ---------------------------------------------------------------------------
 // Fakes for the N+1 substrate. The module records create/kill BY id and exposes
@@ -1589,7 +1583,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
         options: { cwd, dryRun: false, open: false },
       });
       if (run === undefined) throw new Error("expected the run setup to proceed");
-      // The CLI sets onEvent, which refuses the older onPhase hook beside it.
+      // The CLI maps its onEvent over the bag's onPhase, so the world's own onPhase is dropped.
       const { onPhase: _onPhase, ...hooks } = worldHooks(world);
       await runRoute(config, { ...run, options: { ...run.options, sharedWorldHooks: hooks } });
       exitCodes.push(exitCode);

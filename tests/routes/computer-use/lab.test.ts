@@ -79,12 +79,6 @@ import { prepareSelectedOutputDirectory } from "../../../src/run/contained-outpu
 import type { LocalTreeArchive } from "../../../src/subject/local-tree-archive.js";
 import { freePort } from "../../helpers/free-port.js";
 import { NODE_BOOTSTRAP_COMMAND } from "../../../src/subject/node-bootstrap.js";
-import { allowDeprecationsInThisFile } from "../../helpers/deprecations.js";
-
-allowDeprecationsInThisFile(
-  "HUMANISH_RUN_LAB_OPTION_DEPRECATED",
-  "This file drives the route through its hook bag. The bag's deprecated members are its test seams until they move to RunLabOptions homes before the next minor removes them.",
-);
 
 // ---------------------------------------------------------------------------
 // Fakes. The desktop module fake serves BOTH faces of the sandbox: the

@@ -3,7 +3,7 @@
 // docs/contracts/schemas.md, "Library options", and the site's library page.
 
 // Run a lab.
-export { runLab } from "./run-lab.js";
+export { runPackageLab as runLab } from "./run-lab.js";
 export type { LabOutcome, LabResult, RunLabOptions } from "./run-lab.js";
 export type { LabEvent } from "./lab/run-lab-events.js";
 export type { ProviderContext } from "./lab/run-lab-options.js";
@@ -70,31 +70,17 @@ export {
   MAX_CUA_LANES,
   resolveLabDryRun,
   resolveSeatUrl,
-  runConcurrentSharedWorld,
-  runCuaActorLab,
   runCuaActorSession,
   runDryRun,
-  runScriptedBrowserLab,
-  runTerminalProductLab,
   sharedWorldValidationReason,
 } from "./deprecated.js";
 export type {
-  AutomaticAnalysisHooks,
-  BrowserLabAdapterHooks,
   ConcurrentSharedWorldLabResult,
-  CuaActorLabHooks,
   CuaActorLabResult,
   LabBackend,
-  RunConcurrentSharedWorldLabOptions,
-  RunCuaActorLabOptions,
   RunOptions,
   RunResult,
-  RunScriptedBrowserLabOptions,
-  RunTerminalProductLabOptions,
-  ScriptedBrowserLabHooks,
   ScriptedBrowserLabResult,
-  SharedWorldLabHooks,
   SubjectPhaseEvent,
-  TerminalProductLabHooks,
   TerminalProductLabResult,
 } from "./deprecated.js";

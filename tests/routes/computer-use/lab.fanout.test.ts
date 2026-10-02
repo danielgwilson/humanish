@@ -60,12 +60,6 @@ import { verifyRun } from "../../../src/verify/verify.js";
 import { participantRun } from "../../helpers/participant-run.js";
 import type { CuaLaneSpec } from "../../../src/routes/computer-use/legacy-lane-spec.js";
 import { DEVICE_PRESETS } from "../../../src/lab/device-presets.js";
-import { allowDeprecationsInThisFile } from "../../helpers/deprecations.js";
-
-allowDeprecationsInThisFile(
-  "HUMANISH_RUN_LAB_OPTION_DEPRECATED",
-  "This file drives the route through its hook bag. The bag's deprecated members are its test seams until they move to RunLabOptions homes before the next minor removes them.",
-);
 
 // ---------------------------------------------------------------------------
 // Fan-out fakes: a desktop module that mints a DISTINCT sandbox per create()

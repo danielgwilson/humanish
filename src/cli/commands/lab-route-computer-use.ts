@@ -1,6 +1,6 @@
 import { automaticAnalysisSucceeded } from "../../analysis/automatic-completion.js";
 import { Command } from "commander";
-import { type RunLabOptions } from "../../run-lab.js";
+import { type InternalRunLabOptions } from "../../run-lab.js";
 import { resolveLabDryRun } from "../../lab/plan.js";
 import type { RunLabProvenance } from "../../run/status.js";
 import { CUA_ACTOR_LAB_SCHEMA } from "../../routes/computer-use/types.js";
@@ -206,7 +206,7 @@ function cuaRunOptions(
   settings: CuaRunSettings,
   prepared: CuaWatchPlan,
   live: CuaLiveAttachment,
-): RunLabOptions {
+): InternalRunLabOptions {
   const { finishedPlan } = prepared;
   return {
     ...cliAnalysisOptions(args.io),

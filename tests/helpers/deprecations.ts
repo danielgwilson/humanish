@@ -1,6 +1,6 @@
 // Shared state for tests/helpers/deprecation-guard.ts, the setup file that fails a test when a
 // humanish DeprecationWarning fires in it. A test that uses a deprecated option or export on
-// purpose says so with one of the two allow functions below.
+// purpose says so with allowDeprecationsInThisTest below.
 //
 // The state lives on globalThis, so a test file that imports this module sees the same state as
 // the setup file even if the two imports evaluate it separately.
@@ -13,8 +13,6 @@ export const HUMANISH_DEPRECATION_CODES = [
 export type HumanishDeprecationCode = (typeof HUMANISH_DEPRECATION_CODES)[number];
 
 interface DeprecationGuardState {
-  /** Codes the current test file allows for every test. */
-  readonly file: Set<string>;
   /** Codes the running test allows. Cleared after each test. */
   readonly test: Set<string>;
   /** Warnings no allowance covered, waiting for the next check. */
@@ -25,21 +23,12 @@ const KEY = Symbol.for("humanish.tests.deprecationGuard");
 const holder = globalThis as unknown as Record<symbol, DeprecationGuardState | undefined>;
 
 export function deprecationGuardState(): DeprecationGuardState {
-  return (holder[KEY] ??= { file: new Set(), test: new Set(), unexpected: [] });
+  return (holder[KEY] ??= { test: new Set(), unexpected: [] });
 }
 
 /** Starts a test file with no allowances. The setup file calls this once per test file. */
 export function resetDeprecationGuard(): void {
-  holder[KEY] = { file: new Set(), test: new Set(), unexpected: [] };
-}
-
-/**
- * Lets every test in this file emit `code`. Call it at the top level of a file whose subject is
- * the deprecated surface. `reason` is for the reader.
- */
-export function allowDeprecationsInThisFile(code: HumanishDeprecationCode, reason: string): void {
-  void reason;
-  deprecationGuardState().file.add(code);
+  holder[KEY] = { test: new Set(), unexpected: [] };
 }
 
 /** Lets the running test emit `code`. Call it inside the test. `reason` is for the reader. */

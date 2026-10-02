@@ -1,6 +1,6 @@
 import { collectDesktopRecording } from "../../evidence/desktop-recording-artifact.js";
 import path from "node:path";
-import type { RunLabOptions } from "../../run-lab.js";
+import type { InternalRunLabOptions } from "../../run-lab.js";
 import type { LabConfig } from "../../lab/types.js";
 import {
   inboxRecipientFor,
@@ -10,7 +10,6 @@ import {
   type HooksWithParticipantDesktop,
 } from "./participant-desktop.js";
 import type { CuaActorLabHooks, DesktopParticipantRun } from "./types.js";
-import { HOOK_MEMBERS, withHookOverrides } from "../../lab/bag-overrides.js";
 import { runCuaActorSession } from "../../actors/computer-use/actor.js";
 import {
   createLocalFirecrackerDesktop,
@@ -46,7 +45,7 @@ function refuseE2BDesktopHooks(hooks: CuaActorLabHooks | undefined): void {
   );
 }
 
-type LocalStudyOptions = RunLabOptions & {
+type LocalStudyOptions = InternalRunLabOptions & {
   config: LabConfig;
   assets?: LocalFirecrackerAssets;
   signal?: AbortSignal;
@@ -229,7 +228,7 @@ function accountProvider(state: LocalStudyState): Pick<CuaActorLabHooks, "buildP
 /** A local browser study's bindings, and the cleanup of what its lanes started. */
 export interface LocalVmStudy {
   /** The caller's runLab options with this study's desktop lane, provider and abort signal. */
-  readonly options: RunLabOptions;
+  readonly options: InternalRunLabOptions;
   close(): Promise<void>;
 }
 
@@ -261,30 +260,31 @@ export function prepareLocalVmStudy(options: LocalStudyOptions): LocalVmStudy {
     state,
   };
   const { config: _config, assets: _assets, signal: _signal, ...runOptions } = options;
+  // These overrides go over the caller's hooks so this study's desktop always wins:
+  // participantDesktopOf takes [PARTICIPANT_DESKTOP] before a caller's createDesktopLane.
+  const cuaHooks: HooksWithParticipantDesktop = {
+    ...callerHooks,
+    [PARTICIPANT_DESKTOP]: (run, warnings, artifactRoot) =>
+      createLocalParticipantDesktop(context, run, warnings, artifactRoot),
+    ...(account ? accountProvider(state) : {}),
+    ...(options.signal
+      ? {
+          runSession: (input: Parameters<typeof runCuaActorSession>[0]) =>
+            baseRunSession({ ...input, signal: options.signal! }),
+        }
+      : {}),
+  };
   return {
     options: {
       ...runOptions,
-      // Wrapped rather than spread for the same reason as cuaHooks below.
-      automaticAnalysis: withHookOverrides(options.automaticAnalysis, HOOK_MEMBERS.analysis, {
+      automaticAnalysis: {
+        ...options.automaticAnalysis,
         onStart() {
           if (state.cleanupUnconfirmed) throw new Error("Local study cleanup is unconfirmed.");
           return options.automaticAnalysis?.onStart?.();
         },
-      }),
-      // These overrides go over the caller's hooks so this study's desktop always wins:
-      // participantDesktopOf takes [PARTICIPANT_DESKTOP] before a caller's createDesktopLane.
-      // The caller's bag may be a class instance, so it is wrapped rather than spread.
-      cuaHooks: withHookOverrides<HooksWithParticipantDesktop>(callerHooks, HOOK_MEMBERS.cua, {
-        [PARTICIPANT_DESKTOP]: (run, warnings, artifactRoot) =>
-          createLocalParticipantDesktop(context, run, warnings, artifactRoot),
-        ...(account ? accountProvider(state) : {}),
-        ...(options.signal
-          ? {
-              runSession: (input: Parameters<typeof runCuaActorSession>[0]) =>
-                baseRunSession({ ...input, signal: options.signal! }),
-            }
-          : {}),
-      }),
+      },
+      cuaHooks,
     },
     async close() {
       await Promise.allSettled(state.participants.map((participant) => participant.close()));
