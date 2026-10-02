@@ -57,7 +57,8 @@ the file to read first. Keep these layout rules:
   when it helps a reader; do not add to `src/routes/computer-use/route.ts` or
   `src/actors/computer-use/loop.ts` when a smaller module fits.
 - Comments say why the code is the way it is. History, incident narratives, issue archaeology and
-  PR numbers go in the commit message. `TODO(#123)` may link an open issue. No all-caps emphasis.
+  PR numbers go in the commit message. `TODO(#123)` may link an open issue. No all-caps emphasis,
+  and no em dashes (`—`, or two hyphens between spaces): use a colon, a comma or two sentences.
   `prose:check` counts violations in `src/`.
 - Tests assert behavior. Do not pin prose in docs or comments with `toContain`. The default test
   timeout is 20 s. Provider-API fixtures come from captured wire shapes.

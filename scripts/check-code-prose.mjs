@@ -1,9 +1,11 @@
 #!/usr/bin/env node
-// Counts four kinds of prose in src/ comments. Three belong in issues and commit messages: issue
+// Counts five kinds of prose in src/ comments. Three belong in issues and commit messages: issue
 // references (#123, except in TODO(#123)), red-team tags (FIX-5) and all-caps emphasis (NOT, ONLY,
 // NEVER). The fourth is the retired word "lane" or "lanes", which CONTEXT.md replaces with
 // participant; the contract spellings it lists (`lanes[]`, `laneId`, `per-lane-worlds`, `lane-NN`,
-// `--lanes`, and any code span) are not counted. Each count is held to a flag in package.json's
+// `--lanes`, and any code span) are not counted. The fifth is the em dash, written as `—` or as
+// ` -- ` between words; a colon, a comma or two sentences says the same. Code spans are not counted
+// for caps, lane or em dashes. Each count is held to a flag in package.json's
 // prose:check script: a count above its cap fails, and so does one below it, so the PR that removes
 // the prose lowers the cap.
 import { readFileSync, readdirSync } from "node:fs";
@@ -17,6 +19,7 @@ const { values } = parseArgs({
     "max-fix-tags": { type: "string" },
     "max-caps": { type: "string" },
     "max-lane-comments": { type: "string" },
+    "max-em-dashes": { type: "string" },
     list: { type: "boolean", default: false },
   },
 });
@@ -41,7 +44,12 @@ const files = readdirSync("src", { recursive: true, encoding: "utf8" })
 // (`lanes[]`), a flag (`--lanes`), an id (`lane-01`, `lane-NN`) or the `per-lane-worlds` topology.
 const LANE_WORD = /(?<![\w.]|--)lanes?(?![\w[]|-\d|-NN|-worlds)/gi;
 
-const hits = { "issue-refs": [], "fix-tags": [], caps: [], "lane-comments": [] };
+// An em dash, or two hyphens standing alone between spaces. A flag (`--count`) and a rule (`---`)
+// are not dashes, and neither is the ` -- ` that separates a lint directive from its reason.
+const EM_DASH = /—|(?<=\s)--(?=\s)/g;
+const LINT_DIRECTIVE = /^(\s*(?:oxlint|eslint)-(?:disable|enable)\S*[^\n]*?\s)--(?=\s)/;
+
+const hits = { "issue-refs": [], "fix-tags": [], caps: [], "lane-comments": [], "em-dashes": [] };
 for (const file of files) {
   const text = readFileSync(file, "utf8");
   for (const comment of parseSync(file, text).comments) {
@@ -60,6 +68,8 @@ for (const file of files) {
       if (!ACRONYMS.has(match[0])) hits.caps.push(at(match));
     }
     for (const match of prose.matchAll(LANE_WORD)) hits["lane-comments"].push(at(match));
+    const dashProse = prose.replace(LINT_DIRECTIVE, "$1  ");
+    for (const match of dashProse.matchAll(EM_DASH)) hits["em-dashes"].push(at(match));
   }
 }
 
