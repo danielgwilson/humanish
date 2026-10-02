@@ -176,5 +176,5 @@ export function automaticAnalysisBudget(
 export function formatAutomaticAnalysisBudget(budget: AutomaticAnalysisBudget): string {
   if (budget.provider === "codex")
     return `After live runs: Codex account analysis · ${budget.model} · separate restricted analyst with remote inference. Account limits apply; dollar cost and output-token ceiling are unknown. Set review.analysis: false to disable.`;
-  return `After live runs: ${budget.trigger} analysis · ${budget.model} · separate $${budget.maxCostUsd} admission estimate limit (not a provider billing cap). Set review.analysis: false to disable.`;
+  return `After live runs: ${budget.trigger} analysis · ${budget.model} · refused before it starts if its estimate is over $${budget.maxCostUsd}; this is not a billing cap. Set review.analysis: false to disable.`;
 }

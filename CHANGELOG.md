@@ -30,6 +30,12 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Changed
 
+- Three CLI messages use plain words (#1374). The dry-run summary prints `participants: N`
+  in place of `sims: N`. The line before a live run reads "refused before it starts if its
+  estimate is over $3; this is not a billing cap" in place of "separate $3 admission estimate limit
+  (not a provider billing cap)", and doctor's analysis row says the same. Computer-use progress lines
+  and the fan-out plan line start `humanish computer-use` in place of `humanish cua`; participant
+  ids such as `lane-01` are unchanged.
 - A live `run`, `lab run` or `watch` prints a `humanish keys:` line only for the provider keys its
   lab's plan reads (#1367): the model, desktop and runtime keys, the `subject.env` names, the
   variable `comms.email.external.authTokenEnv` names, `ANTHROPIC_API_KEY` for a Claude Code

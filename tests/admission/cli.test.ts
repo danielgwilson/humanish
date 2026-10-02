@@ -210,7 +210,7 @@ describe("CLI admission today", () => {
 
   it.each([
     ["a local-tree lab", ["adm-cu-local-tree-live"], "humanish local-tree: packed"],
-    ["a fan-out lab", ["adm-cu-live", "--count", "2"], "humanish cua fan-out plan"],
+    ["a fan-out lab", ["adm-cu-live", "--count", "2"], "humanish computer-use fan-out plan"],
   ])(
     "prints %s's check output before the scorer warning when the checks pass",
     async (_name, lab, checkLine) => {
