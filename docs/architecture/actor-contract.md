@@ -298,7 +298,7 @@ export interface Actor {
   depends on the pricing table. An unknown model yields
   `estimatedCostUsd: null` + a `reason`, never a guessed charge.
 
-## The scripted-browser route (shipped)
+## The scripted-browser route
 
 `scripted-browser` is the deterministic, model-free browser-actuation route, distinct from
 `computer-use` (raw pixels + a model deciding actions). The registered
@@ -368,7 +368,7 @@ reporting because it does not retain the required session history. The
 [paired live receipt](https://github.com/danielgwilson/humanish/blob/main/docs/goals/computer-use-actor/receipts/structured-closing-report-2026-09-05.md)
 records both report recovery and control failures in the separate legacy parser.
 
-## The state-driven executor seam (shipped)
+## The state-driven executor seam
 
 The `CuaExecutor` / `CuaProvider` ports are the concrete realization of the "plural harnesses /
 transport-agnostic" intent above: the computer-use loop does not require a screen or a vision
@@ -381,7 +381,7 @@ falsey), keeping the whole lab composition with NO E2B desktop and NO clone. See
 local-app` config surface, the `requiresFrame` provider-authoring contract, and the
 appState-is-runtime-only stance.
 
-## The product-adapter extension seam (shipped in the terminal-product route, layer 6)
+## The product-adapter extension seam
 
 The terminal-product route carries the proof-roadmap layer-6 deliverable: a product adopter
 attaches product-specific scoring + feedback as a THIN in-repo extension WITHOUT forking
@@ -393,7 +393,7 @@ removed from `RunLabOptions`. The adapter records its product nouns ONLY
 under an adapter-NAMESPACED block (`RunFeedbackCandidate.adapter` /
 `RunAdapterScore.{namespace,data}`), so core's enums stay product-agnostic: no adopter noun
 is hardcoded into a core enum. Default (no hook) behavior is unchanged. See
-[`terminal-product-route.md`](./terminal-product-route.md#slice-4-the-product-adapter-extension-seam-layer-6)
+[`terminal-product-route.md`](./terminal-product-route.md#the-product-adapter-extension-seam)
 for the full seam and the thin-adapter conformance proof.
 
 ## Making personas load-bearing
@@ -521,35 +521,6 @@ turns as a stop signal.
 | pi-agent-core (removed)                                                                       | yes (SDK + rpc/json)         | event stream + session JSONL + token/cost | BYO container + hook gating          | 15+ providers, local    | MIT                       | code, app    |
 | claude-agent-sdk (removed)                                                                    | yes (SDK + `-p` stream-json) | typed ToolUse/ToolResult + cost           | OS sandbox + dontAsk/allowedTools    | Anthropic-centric       | SDK MIT (CLI proprietary) | code, app    |
 | stagehand-cua (roadmap, not shipped; `openai-computer-use` is the shipped computer-use actor) | yes (SDK, mode:'cua')        | structured results + replay               | Playwright/Browserbase isolation     | OpenAI/Anthropic/Google | MIT                       | computer-use |
-
-## Sequencing
-
-1. This document.
-2. Shared `RedactionHooks` module (completes the remaining #107 criterion) plus
-   the `Actor` contract types, with the Codex integration refactored to implement
-   `Actor` and emit `ActorTrace` behind the back-compat alias. Add an
-   `actorRegistry`; generalize `RunStream.codex` to `RunStream.actor`.
-3. Personas load-bearing: `ResolvedPersona`, `personaToDirectives`, harness turn
-   budget, and the `persona-fidelity` verify check.
-4. `pi-agent-core` adapter (proves the contract against a non-Codex protocol;
-   local-model dogfood for ~$0). Landed in two slices: first the pure
-   `piSessionToActorTrace` mapper + registry generalization (discriminated
-   `ActorDescriptor` union + `getActor` overloads) + a fixture conformance test,
-   with no pi dependency and no model key required (proves the evidence contract
-   is provider-neutral); then a follow-up live SDK shim behind a DI seam, deferred
-   until the package identity (`@earendil-works/pi-agent-core` vs
-   `@mariozechner/pi-coding-agent`) and the Node `>=22.19` vs engines `>=20` gap
-   are pinned against an installed build. The live shim never landed, and #955
-   removed the mapper-only descriptor because no route dispatched it.
-5. `claude-agent-sdk` adapter (the `app` run kind). It shipped as a descriptor with
-   a live session but no route, and #955 removed it along with the `app` run kind.
-6. Computer-use route. (Shipped as `openai-computer-use`: registered 0.3.0,
-   lab-dispatched 0.4.0; `stagehand-cua` as a multi-provider front remains
-   not-yet-shipped roadmap.)
-7. Cross-harness conformance test: one persona x scenario through every adapter,
-   asserting identical trace shape, completion vocabulary, and redaction status.
-8. The proof point: run the harness-plural loop against popular OSS repos and turn
-   real, merged issues into the receipt.
 
 ## Risks
 

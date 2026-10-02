@@ -688,7 +688,7 @@ attribution contract. A kept 2026-06-17 live receipt separately proves one
 bounded three-persona trial against a synthetic plane. Neither the deterministic
 gate nor that receipt proves scale, repeatability, or adopter-harness replacement.
 
-### Concurrent plane classes: provisioned-getHost vs external-public (#164 phase 2, 0.20.0)
+### Concurrent plane classes: provisioned and external-public
 
 The CONCURRENT shape carries a PLANE-class discriminator, `sharedWorld.planeClass:
 "provisioned-getHost" | "external-public"`. Absent == `provisioned-getHost` (every existing
@@ -1132,7 +1132,7 @@ terminal leaves exactly that shape, so the record reads as interrupted
 public-safe by construction: no hostname and no user paths, because a run
 directory may be shared.
 
-## Run Index, Run Detail, And The Terminal Surface (#455)
+## Run Index, Run Detail, And The Terminal Surface
 
 Three derived projections that exist so a surface can list, classify and watch
 runs without opening evidence for all of them. None is authoritative: `run.json`

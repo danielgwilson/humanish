@@ -2,7 +2,7 @@
 
 The library path ships: a custom executor and a non-vision provider, driven through a study with
 no E2B desktop and no vision model. A config-only deterministic route and a `subject.contract.ref`
-module loader are not built (see Deferred, below).
+module loader are not built (see Not built, below).
 
 ## What this is
 
@@ -131,7 +131,7 @@ provider that forgets to set it would get a blank-frame crash instead of a clean
 This slice accepts it because every in-tree vision provider sets it: OpenAI computer use,
 the local-agent Codex and Claude sessions, and the restricted Codex participant.
 
-## `appState` is RUNTIME-ONLY (not evidence, in this slice)
+## `appState` is runtime-only
 
 `appState` is an in-memory progress-comparison input, exactly like
 `stateSignature` (which is itself never written as text). It is **never** copied
@@ -233,14 +233,14 @@ on an interface-typed value is rejected. Use one of:
 Read every optional field defensively, and spread-omit optional fields
 (`...(x === undefined ? {} : { x })`) rather than assigning `undefined`.
 
-## Deferred (tracked, not shipped here)
+## Not built
 
-- **PR2: a config-only deterministic `state-contract` route.** A registered,
+- **A config-only deterministic `state-contract` route.** A registered,
   model-free route driving a built-in `window.app.*` bridge over the existing
   `ScriptedPageLike.evaluate` primitive + a YAML step program, `scenario.mode:
 live` gating actuation. It would be deterministic step replay, NOT
   `runComputerUseLoop`, and must not overclaim friction-loop reuse.
-- **PR3: a `subject.contract.ref` JS-module loader.** A config-referenced module
+- **A `subject.contract.ref` JS-module loader.** A config-referenced module
   loaded and run in-process with full harness privileges is a genuinely NEW trust
   surface with no precedent in this repo (the scripted route loads only declarative
   YAML; serve commands run isolated inside the disposable E2B sandbox). It earns
