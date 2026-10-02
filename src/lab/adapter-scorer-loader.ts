@@ -58,11 +58,23 @@ export interface AdapterScorerModule<C extends AdapterScoringContext = AdapterSc
   // NOTE: costProbe is deliberately NOT loadable via config/flag — see the trust model above.
 }
 
-/** A scorer for one route family's context, or for both: what `RunLabOptions.scorer` takes. */
-export type RunLabScorer =
-  | AdapterScorerModule<BrowserLabScoringContext>
-  | AdapterScorerModule<TerminalProductScoringContext>
-  | AdapterScorerModule;
+/**
+ * A scorer written for computer use and shared world, as `RunLabOptions.scorer` takes it. Those
+ * routes pass the browser context; another route that calls it passes a context it was not written
+ * for. The call states the kind, so the module itself needs no cast.
+ */
+export function browserScorer(
+  scorer: AdapterScorerModule<BrowserLabScoringContext>,
+): AdapterScorerModule {
+  return scorer as AdapterScorerModule;
+}
+
+/** A scorer written for terminal runs, as `RunLabOptions.scorer` takes it (see browserScorer). */
+export function terminalScorer(
+  scorer: AdapterScorerModule<TerminalProductScoringContext>,
+): AdapterScorerModule {
+  return scorer as AdapterScorerModule;
+}
 
 /**
  * The scorer as a computer-use or shared-world run calls it, with the browser context. The caller
@@ -70,14 +82,14 @@ export type RunLabScorer =
  * narrowing is here. A terminal-typed scorer on a browser route reads fields the context lacks.
  */
 export function browserRouteScorer(
-  scorer: RunLabScorer,
+  scorer: AdapterScorerModule,
 ): AdapterScorerModule<BrowserLabScoringContext> {
   return scorer as AdapterScorerModule<BrowserLabScoringContext>;
 }
 
 /** The scorer as a terminal run calls it, with the terminal context (see browserRouteScorer). */
 export function terminalRouteScorer(
-  scorer: RunLabScorer,
+  scorer: AdapterScorerModule,
 ): AdapterScorerModule<TerminalProductScoringContext> {
   return scorer as AdapterScorerModule<TerminalProductScoringContext>;
 }
