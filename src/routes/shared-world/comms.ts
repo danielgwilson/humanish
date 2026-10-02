@@ -1,5 +1,5 @@
 // Off-app comms for the concurrent shared-world route: which email catch a plane gets (in the
-// subject sandbox, or adopter-hosted), and the drains that match captured mail to the seats'
+// subject sandbox, or adopter-hosted), and the drains that match captured mail to the participants'
 // declared inboxes and write the digest-only thread.
 
 import {

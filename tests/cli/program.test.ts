@@ -654,7 +654,7 @@ describe("humanish CLI scaffold", () => {
     }
   });
 
-  it("fails closed when rerun flags are used on a non-CUA lab", async () => {
+  it("fails closed when rerun flags are used on a non-computer-use study", async () => {
     await withTempApp(
       {
         "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),

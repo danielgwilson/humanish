@@ -201,7 +201,7 @@ export interface SharedWorldPlan extends PlanBase {
   readonly plane: SharedWorldPlane;
   /** At least 2. */
   readonly concurrency: number;
-  /** The declared seat session timeout; the route supplies its default. */
+  /** The declared participant session timeout; the route supplies its default. */
   readonly sessionTimeoutMs?: number;
   readonly brain: Extract<Brain, { kind: "openai" | "local-agent" }>;
   readonly caps: { readonly maxUsd?: number; readonly maxTotalUsd?: number };

@@ -93,12 +93,13 @@ function safePort(url: string | undefined): string | undefined {
 /**
  * Build the [internalOrigin → reachableOrigin] rewrite rows for a run. The app-under-test bakes its own
  * origin into the verify links it emails (usually its loopback serve origin); the persona reaches the
- * app at a possibly-different origin: the same loopback on the CUA route (identity, a no-op), the
- * harness-minted getHost URL on the shared-world route (where the rewrite is required). Emits the serve
- * origin plus its loopback aliases at the serve port (127.0.0.1 / localhost / 0.0.0.0) so an app that
- * stamps `localhost` still rewrites, and (because the harness cannot infer an absolute public base URL
- * an app was configured with) an operator-declared `linkOrigin` escape hatch, matched first. Origins
- * only (no trailing slash, no path), so replaceOriginBoundary matches on a URL boundary.
+ * app at a possibly-different origin: the same loopback on the computer-use route (identity, a
+ * no-op), the harness-minted getHost URL on the shared-world route (where the rewrite is required).
+ * Emits the serve origin plus its loopback aliases at the serve port (127.0.0.1 / localhost /
+ * 0.0.0.0) so an app that stamps `localhost` still rewrites, and (because the harness cannot infer
+ * an absolute public base URL an app was configured with) an operator-declared `linkOrigin` escape
+ * hatch, matched first. Origins only (no trailing slash, no path), so replaceOriginBoundary matches
+ * on a URL boundary.
  */
 export function buildOriginMap(args: {
   internalServeUrl?: string | undefined;

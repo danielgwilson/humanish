@@ -58,7 +58,7 @@ export interface LabCommandOptions {
   runId?: string | undefined;
   /** Repo-relative path to an adopter scorer module; overrides review.scorer.ref when set. */
   scorer?: string | undefined;
-  // watch --expose surface (tunnel-edge auth). Only the CUA backend live-serves a run; other
+  // watch --expose surface (tunnel-edge auth). Only the computer-use route live-serves a run; other
   // backends refuse exposure. See prepareCuaWatch + validateExposure.
   expose?: boolean | undefined;
   tunnel?: "ngrok" | undefined;

@@ -1,5 +1,5 @@
 // The concurrent shared-world route's schema constants, attribution limits, options and result
-// types, and the per-seat result the planes collect.
+// types, and the per-participant result the planes collect.
 
 import type { LabDeps } from "../../lab/lab-deps.js";
 import type { LabEvent } from "../../lab/run-lab-events.js";
@@ -65,7 +65,8 @@ export interface RunConcurrentSharedWorldLabOptions {
   env?: Readonly<Record<string, string | undefined>>;
   /**
    * Runs after a sandbox exists and before anything is provisioned on it: the provisioned plane's
-   * subject sandbox, then each seat's desktop. The external-public plane has seats only.
+   * subject sandbox, then each participant's desktop. The external-public plane has participants
+   * only.
    */
   prepareDesktop?: NonNullable<RunLabHomes["prepareDesktop"]>;
   /** Awaited after a participant's live stream starts, and again after its sandbox is gone. */
@@ -196,8 +197,8 @@ type StartedRun = Extract<Awaited<ReturnType<RunScope["startRun"]>>, { ok: true 
 export interface PlaneContext {
   plan: SharedWorldPlan;
   input: SharedWorldRunInput;
-  /** Read for the subject's serve URL, which each seat's subject names. Seats, their count and
-   *  their host and entry come from the plan's participants. */
+  /** Read for the subject's serve URL, which each participant's subject names. Participants, their
+   *  count and their host and entry come from the plan's participants. */
   config: LabConfig;
   descriptor: CuaActorDescriptor;
   /** The run's test seams; empty outside tests. */
@@ -209,7 +210,8 @@ export interface PlaneContext {
   openaiApiKey: string;
   e2bApiKey: string;
   scrubKnownValues: (text: string) => string;
-  /** The values scrubKnownValues removes. Real email receiving adds its secrets before seats start. */
+  /** The values scrubKnownValues removes. Real email receiving adds its secrets before participants
+   *  start. */
   knownSecretValues: readonly string[];
   cwd: string;
   run: StartedRun;
@@ -230,8 +232,9 @@ export interface PlaneContext {
 }
 
 /**
- * What the seats feed while they run. A plane sets the attached Observer and starts the trace
- * flush; each seat's onStream appends stream URLs; the orchestrator reads all three at finish.
+ * What the participants feed while they run. A plane sets the attached Observer and starts the
+ * trace flush; each participant's onStream appends stream URLs; the orchestrator reads all three at
+ * finish.
  */
 export interface LiveParticipants {
   observer?: ObserverResult & { ok: true };
@@ -270,13 +273,14 @@ export interface ConcurrentBundleArgs {
   commsArtifactPath?: string;
   /** The plane-class discriminator (default provisioned-getHost, byte-stable). */
   planeClass?: ConcurrentSharedWorldPlaneClass;
-  /** external-public only: sha256-16 of the observed origin the seats converged on (the convergence
-   *  proof: what the seats actually reached, tolerant of a declared->observed redirect). */
+  /** external-public only: sha256-16 of the observed origin the participants converged on (the
+   *  convergence proof: what the participants actually reached, tolerant of a declared->observed
+   *  redirect). */
   publicOriginDigest?: string;
   /** external-public only: sha256-16 of the operator-declared plane origin (evidence/reference only;
    *  never asserted equal to the observed origin, since a cross-origin redirect is normal). */
   declaredOriginDigest?: string;
-  /** external-public only: sha256-16 of the shared /lobby/CODE path all seats converged on. */
+  /** external-public only: sha256-16 of the /lobby/CODE path all participants converged on. */
   lobbyConvergenceDigest?: string;
   runError?: string;
   /** The provisioned plane's own desktop; absent on external-public planes and dry runs. */
@@ -294,8 +298,8 @@ export interface PlaneResults {
   subjectReleaseWarning: string | undefined;
   subjectDesktop: SubjectDesktopUsage | undefined;
   getHostUrl: string | undefined;
-  // The observed convergence origin, computed after fan-out from what the seats reached (the
-  // convergence proof is what the seats observed). Set iff every observing seat
+  // The observed convergence origin, computed after fan-out from what the participants reached (the
+  // convergence proof is what the participants observed). Set iff every observing participant
   // agrees on one origin; that agreement is the convergence proof and becomes plane.publicOriginDigest.
   publicOriginDigest: string | undefined;
   lobbyConvergenceDigest: string | undefined;

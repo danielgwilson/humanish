@@ -1,8 +1,8 @@
 // planParticipants must produce the same participants the routes build today. Computer use is
 // compared field by field with the lane specs loadCuaParticipants builds from the plan. The
-// shared-world seat builder is private, so seats are compared with what a shared-world dry run
-// records (seat ids, persona ids, assignment, rendered resolution); limits, entry and host are
-// checked directly.
+// shared-world participant builder is private, so participants are compared with what a
+// shared-world dry run records (participant ids, persona ids, assignment, rendered resolution);
+// limits, entry and host are checked directly.
 
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -230,7 +230,7 @@ describe("sharedWorldParticipants", () => {
     execution: { target: "e2b-desktop", timeoutMs: 60_000 },
   });
 
-  it("matches the seats a shared-world dry run records", async () => {
+  it("matches the participants a shared-world dry run records", async () => {
     const configs = [
       ...(await committedLabsOn("shared-world")),
       ["unnamed seats", unnamedSeats] as [string, LabConfig],
