@@ -136,14 +136,6 @@ const approvedBinaryAssets = new Map([
     "site/app/fonts/0-display-geist-600.woff2",
     "1cba40e360183117988926de0f2cea6504c9cc3ed8afaa20309045853257607b",
   ],
-  [
-    "docs/assets/humanish-observer-hero.png",
-    "74cd3b6fba5e26fa3a09fec7a886d3af2b4707c7cecbf6e9a997aaa21ef5b6a1",
-  ],
-  [
-    "docs/assets/humanish-drawdb-hero.png",
-    "0a61840bd7615af7b869f7fb9ca40090af151bbf3109894503e8cd9629d65983",
-  ],
   // The humanish.dev landing page's study keyframes: crops from the live
   // Excalidraw study run (cua-2026-08-07T17-44-48-760Z-87389419), manually
   // reviewed before their exact bytes were approved for publication.

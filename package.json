@@ -27,7 +27,6 @@
     "CHANGELOG.md",
     "dist",
     "docs/architecture",
-    "docs/assets",
     "docs/contracts",
     "docs/decisions",
     "docs/status.md",

@@ -36,7 +36,7 @@ export default function Hero() {
         </div>
         <p className="hero-limits rev" style={{ "--d": ".15s" } as React.CSSProperties}>
           It shows you where one participant got stuck, not how many of your users would.{" "}
-          <a href="/failure-modes">What it cannot tell you</a>
+          <a href="/failure-modes">Known failure modes</a>
         </p>
         <div className="console rev" id="install" style={{ "--d": ".18s" } as React.CSSProperties}>
           <div className="c-run">

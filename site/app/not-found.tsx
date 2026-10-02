@@ -36,7 +36,7 @@ export default function NotFound() {
             <a href="/docs">Docs</a>
           </li>
           <li>
-            <a href="/failure-modes">Known limits</a>
+            <a href="/failure-modes">Known failure modes</a>
           </li>
         </ul>
       </main>

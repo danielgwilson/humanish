@@ -35,8 +35,8 @@ diff.
 Three counts are held to caps: oxlint warnings (`lint`, `--max-warnings` in package.json), comment
 prose (`prose:check`) and words in `src/` identifiers and file names (`vocabulary:check`). The last
 two read their caps from `scripts/caps.json`. The retired participant words are lane, seat, role and
-sim. `study` stays the prose word for what a run produces; identifiers say run or lab, so
-vocabulary:check counts it too. Each checker fails when a count is above its cap or below it, so the
+sim. `lab` is retired too: a study is what a user designs and runs, and a run is one execution of
+it. Each checker fails when a count is above its cap or below it, so the
 PR that reduces a count lowers its cap to the new count; the failure names the cap and the value. A
 count with no cap fails too, naming the cap to add. CI's `caps` workflow fails a PR that raises or
 removes a cap against the base branch, unless the PR has the `raise-cap` label and a `Cap raise:`
