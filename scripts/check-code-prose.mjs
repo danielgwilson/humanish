@@ -11,7 +11,8 @@
 //   references (`#123`, except in `TODO(#123)`), review tags (`FIX-5`), and review or plan
 //   labels (`red-team`, `blocker 2`, `goal packet`, `safety contract item 4`, `this slice`,
 //   `layer 6`).
-// - `caps`: all-caps emphasis (`NOT`, `ONLY`, `LOAD-BEARING`), except the names in `ACRONYMS`.
+// - `caps`: all-caps emphasis (`NOT`, `ONLY`, `LOAD-BEARING`), except the names in `ACRONYMS`
+//   (scripts/lib/prose-rules.mjs).
 // - `lane-comments`: the retired word `lane`, which `CONTEXT.md` replaces with participant. The
 //   contract spellings it lists (`lanes[]`, `laneId`, `per-lane-worlds`, `lane-NN`, `--lanes`)
 //   are not counted.
@@ -27,20 +28,17 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { parseSync } from "oxc-parser";
-
-// All-caps words that are names or comment tags, not emphasis.
-const ACRONYMS = new Set(
-  (
-    "TODO NOTE API CDP CI CLI CPU CSP CSS CUA DB DI DNS DOM DPR ESM GPU HTML HTTP HTTPS ID ISO JSON JWT " +
-    "KVM LLM MB KB GB MIME NDJSON OIDC OTP PID PNG POSIX PR PTY SDK SHA SMTP SSH TCP TLS TTL " +
-    "TTY TUI UI URL USD UTC UTF UUID VM VNC XDG XOR YAML ZDR E2B AX UX GET POST PUT HEAD RFC " +
-    "OS PDF JPEG JS TS ASCII EOF IP IO MCP OAUTH OK EXIF DOCTYPE RGB RGBA WSL PCM WAV PII IHDR " +
-    "ENOENT EEXIST ENOTEMPTY ENOTDIR EISDIR EACCES EPERM EPIPE EBUSY ELOOP EXDEV SIGTERM SIGKILL SIGINT " +
-    "CA GNU GUI LTS OCR SSG ABA CIDR SNI TOCTOU DSF ENOSPC OSS SQL " +
-    "CRC CSD EAGAIN EMFILE ENOMEM FIFO HAR ICC IDAT IEND IME NUL OOM PEM PHI RPC SIGHUP SMS SVG TOML UA " +
-    "VFR XFCE XML GPT MAS"
-  ).split(" "),
-);
+import {
+  CAPS_RUN,
+  EM_DASH,
+  FIX_TAG,
+  ISSUE_REF,
+  LANE_WORD,
+  LINT_DIRECTIVE,
+  WORD_KINDS,
+  blankCodeSpans,
+  isCapsEmphasis,
+} from "./lib/prose-rules.mjs";
 
 // Each root is read recursively; node_modules and dist are skipped. src keeps the bare flag names.
 const ROOTS = [
@@ -61,33 +59,6 @@ function filesOf(dir) {
     .map((file) => join(dir, file))
     .sort();
 }
-
-// `lane` or `lanes` as a word, except in a property path (`actors[0].lanes`), an array
-// (`lanes[]`), a flag (`--lanes`), an id (`lane-01`, `lane-NN`) or the `per-lane-worlds` topology.
-const LANE_WORD = /(?<![\w.]|--)lanes?(?![\w[]|-\d|-NN|-worlds)/gi;
-
-// A word with two or more capitals and no lowercase letter, alone or as one part of a hyphenated
-// compound: `NOT`, `LOAD-BEARING` and `operator-DECLARED` each count once. A compound whose caps
-// parts are all in `ACRONYMS` (`JSON-RPC`, `E2B-desktop`) is a name. Path segments (`/lobby/CODE`)
-// and placeholders (`<PORT>`) are not counted.
-const CAPS_RUN = /(?<![\w/<])(?:[A-Za-z0-9]+-)*[A-Z]{2,}(?:-[A-Za-z0-9]+)*(?![\w/>])/g;
-
-// An em dash, or two hyphens standing alone between spaces. A flag (`--count`) and a rule (`---`)
-// are not dashes, and neither is the ` -- ` that separates a lint directive from its reason.
-const EM_DASH = /—|(?<=\s)--(?=\s)/g;
-const LINT_DIRECTIVE = /^(\s*(?:oxlint|eslint)-(?:disable|enable)\S*[^\n]*?\s)--(?=\s)/;
-
-// Word kinds matched against comment prose with code spans blanked.
-const WORD_KINDS = {
-  "invariant-refs": /\binvariants? #?\d+\b/gi,
-  authority: /\b(?:load-bearing|doctrine|canonical(?:ly)?)\b/gi,
-  archaeology:
-    /\b(?:red-team(?:ed)?|blocker \d+|goal packet|safety contract item \d+|this slice|layer[- ]\d+)\b/gi,
-  "seat-comments": /\bseats?\b/gi,
-  "cua-route": /\bcua (?:route|backend|lab)s?\b/gi,
-  honest: /\bhonest(?:ly|y)?\b/gi,
-  history: /\b(?:used to|rediscovered|post-?mortem)\b/gi,
-};
 
 // A test name that opens with a series code (`L14:`, `W5.`) instead of the behavior.
 const SERIES_CODE = /^\s*[A-Z]{1,3}\d+[a-z]?\s*[:.)]/g;
@@ -123,16 +94,13 @@ const hits = Object.fromEntries(
 function scan(text, suffix, at, { testName }) {
   const add = (kind, match) => hits[`${kind}${suffix}`].push(at(match));
   // Code spans hold names and examples, so no kind counts inside them.
-  const prose = text.replace(/`[^`\n]*`/g, (span) => " ".repeat(span.length));
+  const prose = blankCodeSpans(text);
   // A test name keeps its own issue-ref count, held at 0, so a ref removed from a comment cannot
   // make room for one in a name.
   const refKind = testName ? "name-refs" : "issue-refs";
-  for (const match of prose.matchAll(/(?<!TODO\()#\d{1,5}\b/g)) add(refKind, match);
-  for (const match of prose.matchAll(/\bFIX-\d+\b/g)) add("fix-tags", match);
-  for (const match of prose.matchAll(CAPS_RUN)) {
-    const parts = match[0].split("-").filter((part) => /^[A-Z]{2,}$/.test(part));
-    if (parts.some((part) => !ACRONYMS.has(part))) add("caps", match);
-  }
+  for (const match of prose.matchAll(ISSUE_REF)) add(refKind, match);
+  for (const match of prose.matchAll(FIX_TAG)) add("fix-tags", match);
+  for (const match of prose.matchAll(CAPS_RUN)) if (isCapsEmphasis(match[0])) add("caps", match);
   for (const match of prose.matchAll(LANE_WORD)) add("lane-comments", match);
   const dashProse = prose.replace(LINT_DIRECTIVE, "$1  ");
   for (const match of dashProse.matchAll(EM_DASH)) add("em-dashes", match);
