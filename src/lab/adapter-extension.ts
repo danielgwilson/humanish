@@ -70,23 +70,23 @@ function warnOlderField(name: string, replacement: string): void {
 
 /**
  * The scorer's context: the facts, plus the older `backend` and `laneCount` as getters that warn
- * once when a scorer reads them. Core never reads them, so only a scorer that still uses the
- * older names sees a warning. They are enumerable, so a scorer that spreads the context keeps
- * them.
+ * once when a scorer reads them. They are not enumerable, so a spread, `Object.assign`,
+ * `JSON.stringify` or `structuredClone` of the context skips them and warns about no field the
+ * code never named. `"backend" in ctx` still finds them. Core never reads them.
  */
 function scorerContext(facts: BrowserScoringFacts): BrowserLabScoringContext {
   return Object.defineProperties(
     { ...facts },
     {
       backend: {
-        enumerable: true,
+        enumerable: false,
         get: () => {
           warnOlderField("backend", "route");
           return OLDER_BACKEND[facts.route];
         },
       },
       laneCount: {
-        enumerable: true,
+        enumerable: false,
         get: () => {
           warnOlderField("laneCount", "participantCount");
           return facts.participantCount;

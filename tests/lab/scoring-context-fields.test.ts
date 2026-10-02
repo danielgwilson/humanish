@@ -87,6 +87,37 @@ describe("BrowserLabScoringContext", () => {
     expect(deprecationCodes(spy)).toEqual([]);
   });
 
+  it("copies and serializes without reading the deprecated fields", async () => {
+    const spy = vi.spyOn(process, "emitWarning");
+
+    const [copies] = await readThroughScorer("computer-use", (ctx) => ({
+      spread: { ...ctx },
+      assigned: Object.assign({}, ctx),
+      json: JSON.parse(JSON.stringify(ctx)) as Record<string, unknown>,
+      cloned: structuredClone(ctx),
+      keys: Object.keys(ctx),
+      declared: "laneCount" in ctx && "backend" in ctx,
+    }));
+
+    const { spread, assigned, json, cloned, keys, declared } = copies as {
+      spread: Record<string, unknown>;
+      assigned: Record<string, unknown>;
+      json: Record<string, unknown>;
+      cloned: Record<string, unknown>;
+      keys: string[];
+      declared: boolean;
+    };
+    for (const copy of [spread, assigned, json, cloned]) {
+      expect(copy).toMatchObject({ route: "computer-use", participantCount: 3 });
+      expect(copy).not.toHaveProperty("laneCount");
+      expect(copy).not.toHaveProperty("backend");
+    }
+    expect(keys).not.toContain("laneCount");
+    expect(keys).not.toContain("backend");
+    expect(declared).toBe(true);
+    expect(deprecationCodes(spy)).toEqual([]);
+  });
+
   it("still fills laneCount and backend, and warns once per field", async () => {
     allowDeprecationsInThisTest(CODE, "reads the deprecated fields on purpose");
     const spy = vi.spyOn(process, "emitWarning");
@@ -94,14 +125,13 @@ describe("BrowserLabScoringContext", () => {
     const computerUse = await readThroughScorer("computer-use", (ctx) => [
       ctx.backend,
       ctx.laneCount,
-      Object.keys(ctx).includes("laneCount") && Object.keys(ctx).includes("backend"),
     ]);
     const sharedWorld = await readThroughScorer("shared-world", (ctx) => ctx.backend);
 
     expect(computerUse).toEqual([
-      ["cua", 3, true],
-      ["cua", 3, true],
-      ["cua", 3, true],
+      ["cua", 3],
+      ["cua", 3],
+      ["cua", 3],
     ]);
     expect(sharedWorld).toEqual([
       "concurrent-shared-world",
