@@ -7,13 +7,13 @@
 //   execution.target + execution.desktop.codexAppServer, scenario.mode,
 //   policies.redactRepos, defaults.open.
 // On the computer-use routes (app-url × e2b-desktop, and clone × e2b-desktop with a
-// computer-use actor), `actors[0].type` is load-bearing: it must resolve to a registered
+// computer-use actor), `actors[0].type` selects the actor: it must resolve to a registered
 // computer-use actor, and that descriptor runs the session. Those routes also consume
 // actors[0].{mission,persona,laneFocus.instruction,model,reasoningEffort}, execution.timeoutMs,
 // execution.desktop.{browser,resolution,sandboxTimeoutMs}, and (clone)
 // subject.{serve,env,state,clone.depth}.
 // On the scripted-browser route (app-url × local-or-absent, or clone × e2b-desktop, with a
-// registered scripted-browser actor), `actors[0].type` is equally load-bearing, and the route
+// registered scripted-browser actor), `actors[0].type` selects the actor too, and the route
 // consumes scenario.ref (required there, because the committed scenario's browser steps are what the
 // actor executes), actors[0].{persona,count}, and execution.timeoutMs. On the provisioned
 // clone slice it also consumes subject.{repos,serve,env,state,exposure,clone.depth} and
@@ -32,7 +32,7 @@
 // desktop), capped at 16; the in-process/local-app cua route stays single-participant (no E2B to
 // fan out).
 //
-// NOTE on actors[0].lanes / actors[0].roster (computer-use E2B route, this slice): a
+// NOTE on actors[0].lanes / actors[0].roster (computer-use E2B route): a
 // differentiated fan-out roster: each `{ id?, persona?, device?, instruction?, target? }` becomes one
 // independent E2B desktop (`per-lane-worlds`, the default topology). `roster[]` is parser sugar for
 // repeated groups and is normalized into `lanes[]` before the engine sees it. `lanes|roster` XOR

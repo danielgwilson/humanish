@@ -11,7 +11,7 @@ import { isRecord } from "../run/type-guards.js";
 import { concurrentSharedWorldFindings } from "./shared-world-concurrent.js";
 
 /**
- * The `shared-world evidence` check (invariant 4 + invariant 6): a live shared-world bundle's
+ * The `shared-world evidence` check: a live shared-world bundle's
  * interaction claim must match its recorded timeline + plane provenance, and its attribution
  * ceiling must be pinned. Mirrors validateTerminalProductEvidence: live-only (dry-run contract
  * bundles are skipped, exactly like the other live-only checks). Fail-closed on every overclaim.

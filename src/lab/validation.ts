@@ -354,7 +354,7 @@ export function concurrentSharedWorldValidationReason(config: LabConfig): string
  * deployment used directly as the shared plane (no getHost, no clone, no subject sandbox, no seed).
  * The counterpart of concurrentSharedWorldValidationReason for a plane the harness does not own:
  * it rejects every provisioned-subject field (serve/state.seed/state.checkpoint/exposure/clone/repos
- * are inert with no sandbox, so they fail closed per invariant 6), and requires a
+ * are inert with no sandbox, so they fail closed), and requires a
  * non-loopback appUrl + allowPublicTargets + the operator-ownership attestation subject.publicTarget +
  * concurrency >= 2 + an actors[0].lanes roster of ≥2 with exactly one host participant. The getHost synthetic
  * gate is deliberately unreachable here (there is no internet-reachable harness-owned URL to attest).
@@ -393,7 +393,7 @@ export function externalPublicSharedWorldValidationReason(config: LabConfig): st
     return "the external-public shared-world route requires `subject.publicTarget: { owner, authorized: true }` — you must attest you own/operate the public deployment used as the shared plane (author-trust; the harness cannot verify ownership).";
   }
   // No provisioned-subject field is allowed: with no sandbox they cannot act, so they are rejected
-  // with a precise reason, never silently ignored (invariant 6). exposure: synthetic in particular
+  // with a precise reason, never silently ignored. exposure: synthetic in particular
   // would be a false claim on a real site (the harness neither provisioned nor exposed it).
   if (config.subject.exposure !== undefined) {
     return "`subject.exposure: synthetic` is forbidden on the external-public shared-world route — you cannot attest a real public deployment is synthetic seeded data; use `subject.publicTarget` to attest ownership instead.";

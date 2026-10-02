@@ -35,7 +35,7 @@ type LabSubjectSource =
  * mutable service plane that N participants use at the same time, so their actions interact through
  * shared state. Consumed only on the shared-world routes (a provisioned clone plane, or an
  * external-public app-url plane) with a computer-use actor; inert/warned everywhere else
- * (invariant 6).
+ * (claims match mechanism).
  */
 type LabSubjectTopology = "per-lane-worlds" | "shared-world";
 
@@ -88,7 +88,7 @@ interface LabSubjectStateStep {
   /**
    * [a-z0-9-] step label (must start alphanumeric), <=40 chars, unique across steps; becomes
    * the detached-step name `subject-state-<name>` (interpolates into in-sandbox file paths, so
-   * the shape is load-bearing, validated at parse and re-enforced in the engine).
+   * the shape is validated at parse and re-enforced in the engine).
    */
   name: string;
   /**
@@ -119,7 +119,7 @@ interface LabSubjectStateStep {
 export interface LabSubjectStateCheckpoint {
   /**
    * [a-z0-9-] probe label (must start alphanumeric), <=40 chars, unique across checkpoints;
-   * names the detached step (`checkpoint-<snapshot>-<name>`), a load-bearing shape validated at
+   * names the detached step (`checkpoint-<snapshot>-<name>`), a shape validated at
    * parse and re-enforced in the engine.
    */
   name: string;
@@ -150,7 +150,7 @@ export interface LabSubjectState {
   /**
    * Shared-world state checkpoints: read-only digest probes run at baseline + after each
    * role's turn to produce the harness-clocked interaction timeline. Consumed only on the
-   * shared-world route; inert/warned elsewhere (invariant 6). Shape-validated everywhere.
+   * shared-world route; inert/warned elsewhere. Shape-validated everywhere.
    */
   checkpoint?: LabSubjectStateCheckpoint[];
 }
@@ -158,7 +158,7 @@ export interface LabSubjectState {
 /**
  * `terminal-product`: the product-under-study a terminal agent must discover and use from public
  * surfaces only (the terminal-product route's subject). The subject is not provisioned or cloned:
- * the agent drives the declared public surfaces, so provenance is unpinned (invariant 5). The
+ * the agent drives the declared public surfaces, so provenance is declared unpinned. The
  * concrete product name + surfaces are operator data; committed fixtures use a neutral mock name.
  */
 export interface LabSubjectProduct {
@@ -274,7 +274,7 @@ export interface LabSubject {
   /**
    * `clone` (computer-use route): the subject's state story, as seed/migration/fixture steps
    * executed in-sandbox around the serve sequence, and/or declared external state. Recorded
-   * in the run bundle as structured provenance (invariant 5): seeded with command digests,
+   * in the run bundle as structured provenance: seeded with command digests,
    * unpinned for external state, declared-not-run for dry-run/failed provisioning.
    */
   state?: LabSubjectState;
@@ -456,7 +456,7 @@ type LabExecutionTarget = "local" | "e2b-desktop" | "e2b-terminal";
 
 /** Terminal transport: the captured non-interactive exec stream (stdin disabled). It is not an
  *  interactive duplex PTY; labeling captured exec output "pty" would be a claim/mechanism
- *  mismatch (invariant 6 + the goal packet's PTY ruling), so this route uses "exec-stream". */
+ *  mismatch, so this route uses "exec-stream". */
 type LabTerminalTransport = "exec-stream";
 
 /** Whether operator stdin reaches the in-sandbox agent. Disabled by default (the run is

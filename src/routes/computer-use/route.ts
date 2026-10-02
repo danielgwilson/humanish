@@ -1,6 +1,6 @@
 // The computer-use lab backend: a subject (an app-url the caller provisioned, or a repo the
 // lab clones and serves in-sandbox) driven by a registry-resolved computer-use actor inside a
-// hosted E2B desktop. This is the path that makes `actors[].type` load-bearing: the
+// hosted E2B desktop. On this path `actors[].type` selects the actor: the
 // descriptor returned by the registry runs the session; the lab provisions the desktop and
 // subject, composes the prompt from config, persists the evidence bundle, and tears down.
 //
@@ -8,7 +8,7 @@
 // - The desktop is created via the shared loader in src/substrates/e2b/sdk.ts with
 //   kill-on-timeout lifecycle, so a dead host process can never orphan a sandbox past its
 //   server-side deadline.
-// - Env placement follows the doctrine (docs/principles/invariants-and-defaults.md): the
+// - Env placement follows the placement rule (docs/principles/invariants-and-defaults.md): the
 //   actor's key never enters the sandbox (the model drives from outside via the provider API);
 //   the subject's declared env names are provisioned in on the clone route; values come from
 //   the caller's environment and are never logged or persisted.
@@ -44,7 +44,8 @@ import {
 } from "./types.js";
 
 /**
- * The library entry for a computer-use lab. It plans the config with planComputerUseLab and runs
+ * Plans and runs a computer-use lab in one call. It is not exported from src/index.ts; tests call
+ * it. It plans the config with planComputerUseLab and runs
  * the plan with runComputerUsePlan, whose run scope and withTransientCommsSecrets wrapper cover the
  * run and its analysis.
  */

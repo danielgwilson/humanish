@@ -103,7 +103,7 @@ type ActorRunKind = "code" | "computer-use" | "scripted-browser" | "terminal";
 // "terminal-exec" is the captured non-interactive exec stream of an in-sandbox agent (stdin
 // disabled): `codex exec --json` launched via `commands.run`, output captured. It is not an
 // interactive duplex PTY; labeling captured exec output as an interactive transport would be a
-// claim/mechanism mismatch (invariant 6 + the goal packet's PTY ruling), so it gets its own
+// claim/mechanism mismatch, so it gets its own
 // honest protocol label distinct from "cua-loop"/"scripted-steps".
 type ActorProtocol = "json-rpc" | "json-stream" | "cua-loop" | "scripted-steps" | "terminal-exec";
 
@@ -477,7 +477,7 @@ export interface ActorTrace {
    * Additive + optional token-derived cost estimate for this trace (humanish.actor-estimated-cost.v1).
    * Distinct from `tokenUsage.costUsd`, which is reserved for a real provider-returned charge: a
    * bare `costUsd` always means "the provider billed this", while `estimatedCost.estimatedCostUsd`
-   * is a rate-table multiply named honestly as an estimate (invariant 6). Absent on the Codex
+   * is a rate-table multiply named as an estimate, so the claim matches the mechanism. Absent on the Codex
    * app-server and scripted traces and on every pre-existing bundle; the terminal trace records a
    * null estimate. Its absence is tolerated by verify (fail-open on display). A `null`
    * estimatedCostUsd is declared absent (unknown rate / no usage), never 0.
@@ -528,7 +528,7 @@ export const SCRIPTED_BROWSER_CAPABILITIES: ActorCapabilities = {
 // a redacted event stream + normalized transcript. The "terminal" lane is the autonomous-agent
 // study lane (distinct from "code", the operator-machine Codex lanes). byoModel is false: the
 // agent runs its own model via the command-scoped runtime auth, not a humanish-supplied provider.
-// keyPlacement is "in-sandbox-command-scoped": the load-bearing inversion of every existing
+// keyPlacement is "in-sandbox-command-scoped": the inversion of every other
 // E2B route's external-key default (the agent is the keyed process and it runs inside the sandbox). The
 // terminal-product live route enforces the boundary before sandbox creation.
 export const TERMINAL_AGENT_CAPABILITIES: ActorCapabilities = {

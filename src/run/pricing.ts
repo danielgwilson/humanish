@@ -6,10 +6,10 @@
 // This module is pure (node builtins only, no deps) and deterministic: the estimator functions take
 // an optional injected rate table/rate so tests drive assertions with a fake sheet and never depend
 // on the live numbers below. An unknown model/desktop rate yields a declared-absent estimate
-// (estimatedCostUsd: null + a reason) and never a guessed or silent-zero cost (invariant 5). A bare
+// (estimatedCostUsd: null + a reason) and never a guessed or silent-zero cost. A bare
 // `costUsd` elsewhere in the contract means a provider actually billed that amount; the
 // token-derived estimate here always lives under `estimatedCostUsd` so a reader can never confuse
-// an estimate for an authoritative charge (invariant 6).
+// an estimate for an authoritative charge.
 
 // A type-only import, erased at compile time, so the pricing <-> src/actors/contract.ts cycle is
 // not a runtime cycle.

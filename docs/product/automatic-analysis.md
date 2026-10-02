@@ -32,7 +32,7 @@ includes reasoning as well as the report; exhausting it does not produce a usabl
 report and never starts an automatic retry. Analysis
 sends selected retained text and captures to OpenAI using `OPENAI_API_KEY`.
 Analysis runs in the humanish runner using its credentials. This setting adds no
-credential channel to the target application; each participant backend retains
+credential channel to the target application; each participant's route keeps
 its existing authentication boundary. Review the separate analysis budget before running a manifest live; an actor's
 zero-dollar cap does not cap post-run analysis. The bundled first-contact
 zero-spend product fixture explicitly disables analysis.
@@ -96,7 +96,7 @@ action writes a cancellation request for that recording; it does not signal the
 finished participant process. Cancelling cannot undo provider work already
 accepted. Known usage is retained; missing usage remains unknown.
 
-The CLI's JSON keeps `runOk` for the original backend result, `automaticAnalysis`
+The CLI's JSON keeps `runOk` for the route's own result, `automaticAnalysis`
 for post-run analysis, and `ok` for the overall request. Failed, cancelled or
 unknown analysis produces exit code 2 without discarding the recording. A missing
 `OPENAI_API_KEY` skips default analysis and preserves a successful run exit;

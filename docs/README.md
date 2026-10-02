@@ -25,7 +25,7 @@ than one kind is split file by file.
 
 ## Look up what the code does now
 
-- [contracts/](contracts/schemas.md): bundle, lab, policy, feedback, analysis and cost contracts.
+- [contracts/](contracts/README.md): bundle, lab, policy, feedback, analysis and cost contracts.
   Documented fields are API. [contracts/schemas.md](contracts/schemas.md) indexes every schema.
 - [architecture/observer.md](architecture/observer.md), [architecture/serve.md](architecture/serve.md):
   the Observer and the run library server.
@@ -47,8 +47,12 @@ than one kind is split file by file.
 
 ## Read why the code is shaped this way
 
-- [principles/](principles/engineering.md): engineering, invariants and defaults, actor fidelity,
-  the three roles and the self-driving harness.
+- [principles/engineering.md](principles/engineering.md),
+  [principles/invariants-and-defaults.md](principles/invariants-and-defaults.md),
+  [principles/actor-fidelity.md](principles/actor-fidelity.md),
+  [principles/three-roles.md](principles/three-roles.md) and
+  [principles/self-driving-harness.md](principles/self-driving-harness.md): engineering,
+  invariants and defaults, actor fidelity, the three roles and the self-driving harness.
 - [decisions/](decisions/README.md): one record per decision, each naming the code or test that
   enforces it.
 - [architecture/actor-contract.md](architecture/actor-contract.md) and
@@ -61,7 +65,7 @@ than one kind is split file by file.
 
 `goals/`, `plans/` and `roadmap/` hold dated plans, status logs and receipts. They may name files
 that have since moved, so `docs:check` skips them (`HISTORY_DIRECTORIES` in
-[scripts/lib/doc-paths.ts](../scripts/lib/doc-paths.ts)). One file there is current:
-[goals/current.md](goals/current.md), the live status page.
+[scripts/lib/doc-paths.ts](../scripts/lib/doc-paths.ts)). One file there is current, and
+`docs:check` covers it: [goals/current.md](goals/current.md), the live status page.
 
 `assets/` holds images that ship in the npm package, such as the README hero.

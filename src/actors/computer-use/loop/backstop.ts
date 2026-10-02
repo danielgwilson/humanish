@@ -30,7 +30,7 @@ const STABLE_KEY_MAX_TOTAL = 8192;
  * to the same string, so key reordering can never fabricate a progress delta; two different
  * states map to different strings (within the caps).
  *
- * Correctness-load-bearing: it must not throw on a cyclic or huge input. Cycles are detected
+ * Correctness depends on this: it must not throw on a cyclic or huge input. Cycles are detected
  * with a seen-set (a back-edge degrades to the marker "[Circular]"); depth, key count, array
  * length, string length, and total output length are all capped so an adversarial or merely
  * large appState degrades to a bounded value rather than crashing the loop. Pure: it never

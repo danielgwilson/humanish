@@ -401,8 +401,8 @@ export class LiveTerminalSandbox {
     const { requestTimeoutMs, wallClockMs } = this;
     // --- The keyed run: `codex exec --json` non-interactively (stdin disabled). ---
     // openai-env passes the real key here; openai-egress passes an inert placeholder. stdin is
-    // never wired (safety contract item 7): commands.run takes no stdin channel. The command's
-    // wall-clock is bounded by maxMinutes (safety contract item 2): commands.run timeoutMs +
+    // never wired: commands.run takes no stdin channel. The command's
+    // wall-clock is bounded by maxMinutes: commands.run timeoutMs +
     // an injected-clock guard so a mock/real run that exceeds it is killed and fails closed.
     const codexCommand = buildCodexExecCommand({
       workdir: SANDBOX_WORKDIR,
@@ -520,7 +520,7 @@ export class LiveTerminalSandbox {
     const { now, sanitize, warnings } = this.inputs;
     const { recordLifecycle } = this.inputs.recorder;
     const { requestTimeoutMs } = this;
-    // --- Safety contract item 8: proven cleanup, by exact id, never Sandbox.list. ---
+    // --- Proven cleanup, by exact id, never Sandbox.list. ---
     this.cleanup = await teardownSandbox({
       allocation: this.allocation,
       sandboxModule: this.module,

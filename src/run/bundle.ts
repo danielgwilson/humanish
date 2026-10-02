@@ -15,7 +15,7 @@ export const PUBLIC_TARGET_CWD = "[target-cwd]";
 
 /**
  * A namespaced, product-agnostic score a thin adapter attaches to the bundle via a route's `score`
- * hook, on terminal-product or a browser route (the layer-6 extension seam).
+ * hook, on terminal-product or a browser route (the adapter extension seam).
  * Core never reads its `data` and knows none of the adopter's nouns: the `namespace` (e.g.
  * `"acme-pixelforge"`) scopes the whole record so core schemas stay product-agnostic and a future
  * inert-field audit does not misfire on a noun core never owned. The adopter's real scorecard
@@ -81,7 +81,7 @@ export interface RunFeedbackCandidate {
     | "study-quality-review";
   acceptance_proof: string[];
   /**
-   * Optional, adapter-namespaced product-noun block (the layer-6 extension seam). A thin adapter
+   * Optional, adapter-namespaced product-noun block (the adapter extension seam). A thin adapter
    * records product-specific concepts: public CLI/product command observed, hosted product
    * success-or-blocker, feedback id/draft observed, media/job/asset ids, explicit
    * no-media/no-provider-spend proof, defection/friction risk, without making any of them core
@@ -181,7 +181,7 @@ export interface RunSubjectStateStepRecord {
 }
 
 /**
- * Structured subject provenance (invariant 5): what the subject was, as a code pin (repo/commit,
+ * Structured subject provenance: what the subject was, as a code pin (repo/commit,
  * or a local-tree archive digest) and state story. Optional additive field on
  * humanish.run-bundle.v1; absent on bundles from backends that have not adopted it (and on all
  * pre-existing bundles).
@@ -214,7 +214,7 @@ export interface RunSubjectProvenance {
      * declared-not-run: steps declared but not (all) executed ok: dry-run contract bundles
      *   and failed live provisioning.
      * undeclared: no subject.state block (stateless apps, app-url subjects), the explicit
-     *   "absence declared" marker invariant 5 requires.
+     *   "absence declared" marker that provenance requires when there is none.
      * external-public: an operator-declared, operator-owned public deployment used
      *   directly as the shared plane; humanish neither provisioned nor seeded it (no getHost, no
      *   clone, no in-sandbox filesystem). It is not "seeded" (nothing was seeded) and not "unpinned" (this is
@@ -284,7 +284,7 @@ export interface RunBundle {
   };
   review: ReviewSummary;
   feedbackCandidates: RunFeedbackCandidate[];
-  /** Structured subject provenance (invariant 5). Optional and additive: emitted by the
+  /** Structured subject provenance. Optional and additive: emitted by the
    * computer-use and shared-world backends and the clone scripted-browser route; tolerated absent
    * everywhere else. */
   subject?: RunSubjectProvenance;
@@ -332,7 +332,7 @@ export interface RunBundle {
    */
   sharedWorld?: SharedWorldEvidence;
   /**
-   * Optional, adapter-namespaced product score (the layer-6 extension seam).
+   * Optional, adapter-namespaced product score (the adapter extension seam).
    * A thin adapter's `score` hook returns a `RunAdapterScore`; the route attaches it here
    * without core knowing any product noun (the score is namespaced + its breakdown lives in `data`).
    * The default mission-based verdict (`review`) is unchanged when no scorer hook is given.
@@ -376,7 +376,7 @@ export interface RunBundle {
 /**
  * One contributing cost line of a RunCostSummary. A line is present even when it cannot be priced
  * (it records that we tried and could not): an unpriceable line carries estimatedCostUsd: null + a
- * `reason` and contributes nothing to the summary total (invariant 5). `estimatedCostUsd` is never
+ * `reason` and contributes nothing to the summary total. `estimatedCostUsd` is never
  * coerced to 0.
  */
 export interface RunCostLine {

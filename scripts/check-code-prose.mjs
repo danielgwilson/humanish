@@ -1,14 +1,22 @@
 #!/usr/bin/env node
-// Counts five kinds of prose in src/ comments. Three belong in issues and commit messages: issue
-// references (#123, except in TODO(#123)), red-team tags (FIX-5) and all-caps emphasis (NOT, ONLY,
-// NEVER). The fourth is the retired word "lane" or "lanes", which CONTEXT.md replaces with
-// participant; the contract spellings it lists (`lanes[]`, `laneId`, `per-lane-worlds`, `lane-NN`,
-// `--lanes`, and any code span) are not counted. The fifth is the em dash, written as `—` or as
-// ` -- ` between words; a colon, a comma or two sentences says the same. Code spans are not counted
-// for caps, lane or em dashes. Each count is held to a flag in package.json's
+// Counts kinds of prose in src/ comments. Each count is held to a flag in package.json's
 // prose:check script: a count above its cap fails, and so does one below it, so the PR that removes
 // the prose lowers the cap. A count with no flag fails too, so a merge that drops a flag cannot
-// leave that count unchecked.
+// leave that count unchecked. Code spans are never counted.
+//
+// - issue-refs, fix-tags, archaeology: history that belongs in issues and commit messages. Issue
+//   references (#123, except in TODO(#123)), red-team tags (FIX-5), and review or plan labels
+//   (red-team, blocker 2, goal packet, safety contract item 4, this slice, layer 6).
+// - caps: all-caps emphasis (NOT, ONLY, LOAD-BEARING), except the names in ACRONYMS.
+// - lane-comments: the retired word "lane", which CONTEXT.md replaces with participant. The
+//   contract spellings it lists (`lanes[]`, `laneId`, `per-lane-worlds`, `lane-NN`, `--lanes`)
+//   are not counted.
+// - em-dashes: `—`, or ` -- ` between words. A colon, a comma or two sentences says the same.
+// - invariant-refs: "invariant 6". The numbers live in docs/principles/invariants-and-defaults.md
+//   and drift; name the rule instead.
+// - authority: load-bearing, doctrine, canonical. Say what the code depends on.
+// - seat-comments, cua-route, honest, history: words held at today's count while comments move to
+//   participant, the computer-use route, a plain claim and the current behavior.
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
@@ -21,6 +29,13 @@ const { values } = parseArgs({
     "max-caps": { type: "string" },
     "max-lane-comments": { type: "string" },
     "max-em-dashes": { type: "string" },
+    "max-invariant-refs": { type: "string" },
+    "max-authority": { type: "string" },
+    "max-archaeology": { type: "string" },
+    "max-seat-comments": { type: "string" },
+    "max-cua-route": { type: "string" },
+    "max-honest": { type: "string" },
+    "max-history": { type: "string" },
     list: { type: "boolean", default: false },
   },
 });
@@ -59,7 +74,26 @@ const CAPS_RUN = /(?<![\w/<])(?:[A-Za-z0-9]+-)*[A-Z]{2,}(?:-[A-Za-z0-9]+)*(?![\w
 const EM_DASH = /—|(?<=\s)--(?=\s)/g;
 const LINT_DIRECTIVE = /^(\s*(?:oxlint|eslint)-(?:disable|enable)\S*[^\n]*?\s)--(?=\s)/;
 
-const hits = { "issue-refs": [], "fix-tags": [], caps: [], "lane-comments": [], "em-dashes": [] };
+// Word kinds matched against comment prose with code spans blanked.
+const WORD_KINDS = {
+  "invariant-refs": /\binvariants? #?\d+\b/gi,
+  authority: /\b(?:load-bearing|doctrine|canonical(?:ly)?)\b/gi,
+  archaeology:
+    /\b(?:red-team(?:ed)?|blocker \d+|goal packet|safety contract item \d+|this slice|layer[- ]\d+)\b/gi,
+  "seat-comments": /\bseats?\b/gi,
+  "cua-route": /\bcua (?:route|backend|lab)s?\b/gi,
+  honest: /\bhonest(?:ly|y)?\b/gi,
+  history: /\b(?:used to|rediscovered|post-?mortem)\b/gi,
+};
+
+const hits = {
+  "issue-refs": [],
+  "fix-tags": [],
+  caps: [],
+  "lane-comments": [],
+  "em-dashes": [],
+  ...Object.fromEntries(Object.keys(WORD_KINDS).map((kind) => [kind, []])),
+};
 for (const file of files) {
   const text = readFileSync(file, "utf8");
   for (const comment of parseSync(file, text).comments) {
@@ -81,6 +115,9 @@ for (const file of files) {
     for (const match of prose.matchAll(LANE_WORD)) hits["lane-comments"].push(at(match));
     const dashProse = prose.replace(LINT_DIRECTIVE, "$1  ");
     for (const match of dashProse.matchAll(EM_DASH)) hits["em-dashes"].push(at(match));
+    for (const [kind, pattern] of Object.entries(WORD_KINDS)) {
+      for (const match of prose.matchAll(pattern)) hits[kind].push(at(match));
+    }
   }
 }
 

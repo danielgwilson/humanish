@@ -85,6 +85,22 @@ Assume this repository is public.
 - Naming the owner's other projects, products or domains in public material needs explicit
   sign-off. Use fictional examples. Named public third-party OSS study subjects are fine.
 
+## Run safety
+
+- Copy the run bundles a worktree's `.humanish/runs` holds before removing the worktree.
+- Managed paths bind to validated filesystem identities. A stored provider id is evidence:
+  reclaim only resources the operation owns, and leave cleanup it cannot confirm marked
+  unresolved.
+- `humanish verify` grades a run `share_ready`, `local_only` or `blocked`, and only
+  `share_ready` evidence is shared. Feedback drafts do not mutate GitHub by default. Live spend,
+  publishing, external mutation and broader credential access each need an explicit choice.
+- Credential placement depends on the route. The computer-use model key stays on the host; the
+  default terminal runtime gets command-scoped credentials.
+- Report a cost estimate, an unknown or a failure as it is, never as zero or success. Run more
+  than one participant where a claim depends on replication.
+- Issue readiness grants no authority. Its machine-readiness fields gate automated queue pickup,
+  and directly assigned work follows its assignment.
+
 ## Working
 
 - Read the current task and the contract for the boundary you are changing.

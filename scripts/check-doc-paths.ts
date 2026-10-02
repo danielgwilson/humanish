@@ -1,6 +1,7 @@
 /**
- * Fails when a doc or a src/ comment names a repo file that does not exist, or when ARCHITECTURE.md's
- * code map misses a src/ folder or lists one that is gone. Run by docs:check.
+ * Fails when a doc or a src/ comment names a repo file that does not exist, when ARCHITECTURE.md's
+ * code map misses a src/ folder or lists one that is gone, or when no index links a checked page
+ * under docs/. Run by docs:check.
  */
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
@@ -15,6 +16,7 @@ import {
   markdownAnchors,
 } from "./lib/doc-paths.js";
 import { findCodeMapIssues, requiredFolders } from "./lib/code-map.js";
+import { findUnindexedDocs } from "./lib/doc-index.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 // Tracked plus untracked-but-not-ignored files, so a file added before `git add` counts, and a
@@ -46,6 +48,15 @@ const issues = [
 const codeMapIssues = findCodeMapIssues(read("ARCHITECTURE.md"), paths);
 for (const issue of codeMapIssues) process.stderr.write(`${issue}\n`);
 
+const unindexed = findUnindexedDocs(paths, (path) =>
+  index.files.has(path) ? read(path) : undefined,
+);
+for (const path of unindexed) {
+  process.stderr.write(
+    `${path} is linked from neither docs/README.md nor its folder's README.md\n`,
+  );
+}
+
 for (const { file, line, path, resolved, anchor } of issues) {
   if (anchor !== undefined) {
     process.stderr.write(
@@ -66,9 +77,15 @@ if (codeMapIssues.length > 0) {
     `${codeMapIssues.length} code map gap(s). Add or remove the folder's row in ARCHITECTURE.md.\n`,
   );
 }
-if (issues.length > 0 || codeMapIssues.length > 0) {
+if (unindexed.length > 0) {
+  process.stderr.write(
+    `${unindexed.length} unindexed page(s). Link each from docs/README.md or its folder's README.md.\n`,
+  );
+}
+if (issues.length > 0 || codeMapIssues.length > 0 || unindexed.length > 0) {
   process.exitCode = 1;
 } else {
   process.stdout.write(`Paths resolve in ${docs.length} docs and ${sources.length} src files.\n`);
   process.stdout.write(`The code map covers all ${requiredFolders(paths).length} src folders.\n`);
+  process.stdout.write("An index links every checked page under docs/.\n");
 }

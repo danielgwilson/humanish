@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  findDocBackendWords,
   findRetiredPathWords,
   findRetiredWords,
   identifierWords,
@@ -112,5 +113,28 @@ describe("retired vocabulary count", () => {
       "src/lab/keys.ts.backup.ts",
       "src/lab/types.ts.generated.ts",
     ]);
+  });
+});
+
+describe("findDocBackendWords", () => {
+  it("counts backend in any case or compound, and the routesTo predicates, by line", () => {
+    const text = [
+      "Narrow on `outcome.route`.",
+      "| `LabOutcome.backend`, `LabBackend` | `outcome.route` |",
+      "`selectLabBackend` and the `routesTo*` predicates; routesToComputerUse too.",
+      "Backends report results.",
+    ].join("\n");
+    expect(findDocBackendWords(text)).toEqual([
+      { line: 2, word: "backend" },
+      { line: 2, word: "LabBackend" },
+      { line: 3, word: "selectLabBackend" },
+      { line: 3, word: "routesTo" },
+      { line: 3, word: "routesToComputerUse" },
+      { line: 4, word: "Backends" },
+    ]);
+  });
+
+  it("ignores words that only contain the letters", () => {
+    expect(findDocBackendWords("backendless routes and a backended draft")).toEqual([]);
   });
 });
