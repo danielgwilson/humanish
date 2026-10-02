@@ -14,7 +14,7 @@ The Unreleased section holds the full notes for the next version until it is tag
   carries: the id of the participant's entry in `run.json` `simulations[]`, such as `sim-001`.
   `simId` holds the same value, and the first read prints one `DeprecationWarning` with code
   `HUMANISH_STREAM_EVENT_FIELD_DEPRECATED`. The next minor removes it. A spread or
-  `JSON.stringify` of an event no longer includes `simId`.
+  `JSON.stringify` of an event no longer includes `simId` (#1422).
 
 ### Changed
 
