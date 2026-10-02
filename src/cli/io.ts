@@ -207,10 +207,7 @@ export function writeResult<T>(
     io.writeOut(formatHuman(output));
     if (output !== null && typeof output === "object" && "automaticAnalysis" in output) {
       const analysis = (output as AutomaticAnalysisResult).automaticAnalysis;
-      if (analysis)
-        io.writeOut(
-          `analysis: ${analysis.state}${analysis.reason ? ` (${analysis.reason})` : ""}\n`,
-        );
+      if (analysis) io.writeOut(`analysis: ${analysisOutcomeText(analysis)}\n`);
       const rejected = analysis?.result?.rejectedOutputPath;
       if (rejected)
         io.writeOut(
@@ -330,6 +327,39 @@ export function wantsJson(command: Command): boolean {
   }
 
   return false;
+}
+
+/** What the automatic analysis did, in words; JSON output keeps the reason code. */
+const ANALYSIS_REASON_TEXT: Readonly<Record<string, string>> = {
+  AUTOMATIC_ANALYSIS_DRY_RUN: "skipped for dry runs",
+  AUTOMATIC_ANALYSIS_KEY_MISSING: "skipped because OPENAI_API_KEY is not set",
+  AUTOMATIC_ANALYSIS_NO_PARTICIPANT_EVIDENCE: "skipped because no participant left evidence",
+  AUTOMATIC_ANALYSIS_ACTOR_CANCELLED:
+    "skipped because the run stopped before its participants finished",
+  AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE: "skipped because the run's evidence could not be read",
+  AUTOMATIC_ANALYSIS_ALREADY_REQUESTED: "skipped because this run's analysis was already requested",
+  AUTOMATIC_ANALYSIS_BUSY: "skipped because another analysis is running",
+  AUTOMATIC_ANALYSIS_ADMISSION_REFUSED:
+    "not started because its configuration or question was refused",
+  AUTOMATIC_ANALYSIS_CLEANUP_UNCONFIRMED: "not started because the run's cleanup was not confirmed",
+  AUTOMATIC_ANALYSIS_REUSED: "complete, reusing an earlier analysis of the same evidence",
+  AUTOMATIC_ANALYSIS_LIMITATIONS: "partial, because it covered only part of the evidence",
+  AUTOMATIC_ANALYSIS_ADMISSION_EXCEEDED:
+    "partial, because it went over its estimated cost or output",
+  AUTOMATIC_ANALYSIS_FAILED: "failed",
+  AUTOMATIC_ANALYSIS_CANCELLED: "cancelled",
+  AUTOMATIC_ANALYSIS_CODEX_UNAVAILABLE: "failed because the Codex analyst could not run",
+  AUTOMATIC_ANALYSIS_PUBLICATION_FAILED: "failed because the report could not be saved",
+  AUTOMATIC_ANALYSIS_SOURCE_CHANGED: "failed because the run's evidence changed during analysis",
+  AUTOMATIC_ANALYSIS_CANCELLATION_UNAVAILABLE:
+    "outcome unknown: a cancellation could not be recorded",
+  AUTOMATIC_ANALYSIS_STORAGE_UNAVAILABLE: "outcome unknown: analysis storage is unavailable",
+  AUTOMATIC_ANALYSIS_OUTCOME_UNKNOWN: "outcome unknown",
+};
+
+export function analysisOutcomeText(analysis: { state: string; reason: string | null }): string {
+  if (analysis.reason === null) return analysis.state;
+  return ANALYSIS_REASON_TEXT[analysis.reason] ?? `${analysis.state} (${analysis.reason})`;
 }
 
 /** Preserve the run's own result while making requested post-processing failures machine-visible. */

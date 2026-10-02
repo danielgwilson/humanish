@@ -4,15 +4,31 @@ import type { ScriptedBrowserLabResult } from "../../routes/scripted/types.js";
 import type { TerminalProductLabResult } from "../../routes/terminal/types.js";
 import type { ConcurrentSharedWorldLabResult } from "../../routes/shared-world/types.js";
 
+/** A lab run's first lines: the command that ran, whether it was a dry run, how it ended, and its route. */
+function runHeader(
+  result: { ok: boolean; dryRun?: boolean; labId: string },
+  route: "computer-use" | "terminal" | "scripted" | "shared-world",
+): string[] {
+  const kind = result.dryRun === true ? "dry run" : result.dryRun === false ? "live run" : "run";
+  return [
+    `humanish run ${result.labId}: ${kind} ${result.ok ? "finished" : "failed"}`,
+    `route: ${route}`,
+  ];
+}
+
+/** A participant's status in words: a dry run's placeholder status says that nothing ran live. */
+function participantStatus(status: string): string {
+  return status === "contract_proof_only" ? "dry run, nothing ran live" : status;
+}
+
 export function formatConcurrentSharedWorldLabHuman(
   result: ConcurrentSharedWorldLabResult,
 ): string {
   return (
     [
-      `humanish lab concurrent-shared-world ${result.ok ? (result.dryRun ? "dry-run" : "live") : "failed"}`,
+      ...runHeader(result, "shared-world"),
       ...(result.error ? [`${result.error.code}: ${result.error.message}`] : []),
       `run: ${result.runId}`,
-      `lab: ${result.labId}`,
       `actor: ${result.actor}`,
       `topology: ${result.topology}/${result.topologyMode} (${result.roleCount} persona${result.roleCount === 1 ? "" : "s"}, concurrency ${result.concurrency})`,
       ...(result.host ? [`host: ${result.host}`] : []),
@@ -26,7 +42,7 @@ export function formatConcurrentSharedWorldLabHuman(
           ]),
       ...result.roles.map(
         (participant) =>
-          `persona ${participant.id} (${participant.persona}): ${participant.status}${participant.session ? ` (${participant.session.completionReason})` : ""} ${participant.ok ? "ok" : "not-ok"}`,
+          `persona ${participant.id} (${participant.persona}): ${participantStatus(participant.status)}${participant.session ? ` (${participant.session.completionReason})` : ""}${participant.ok ? "" : ", not ok"}`,
       ),
       ...(result.subjectSandbox
         ? [
@@ -45,10 +61,9 @@ export function formatConcurrentSharedWorldLabHuman(
 export function formatTerminalLabHuman(result: TerminalProductLabResult): string {
   return (
     [
-      `humanish lab terminal ${result.ok ? (result.dryRun ? "dry-run" : "live") : "failed"}`,
+      ...runHeader(result, "terminal"),
       ...(result.error ? [`${result.error.code}: ${result.error.message}`] : []),
       `run: ${result.runId}`,
-      `lab: ${result.labId}`,
       `actor: ${result.actor}`,
       `product: ${result.product}`,
       ...(result.observer?.observerPath ? [`observer: ${result.observer.observerPath}`] : []),
@@ -63,10 +78,9 @@ export function formatTerminalLabHuman(result: TerminalProductLabResult): string
 export function formatScriptedLabHuman(result: ScriptedBrowserLabResult): string {
   return (
     [
-      `humanish lab scripted ${result.ok ? (result.dryRun ? "dry-run" : "live") : "failed"}`,
+      ...runHeader(result, "scripted"),
       ...(result.error ? [`${result.error.code}: ${result.error.message}`] : []),
       `run: ${result.runId}`,
-      `lab: ${result.labId}`,
       `actor: ${result.actor}`,
       `subject: ${result.appUrl}`,
       ...(result.scenario
@@ -90,10 +104,9 @@ export function formatScriptedLabHuman(result: ScriptedBrowserLabResult): string
 export function formatCuaLabHuman(result: CuaActorLabResult): string {
   return (
     [
-      `humanish lab cua ${result.ok ? (result.dryRun ? "dry-run" : "live") : "failed"}`,
+      ...runHeader(result, "computer-use"),
       ...(result.error ? [`${result.error.code}: ${result.error.message}`] : []),
       `run: ${result.runId}`,
-      `lab: ${result.labId}`,
       `actor: ${result.actor}`,
       `subject: ${result.appUrl}`,
       ...(result.subject?.source === "clone"
@@ -108,12 +121,12 @@ export function formatCuaLabHuman(result: CuaActorLabResult): string {
       ...((result.lanes?.length ?? 0) > 1
         ? result.lanes!.map(
             (participant) =>
-              `participant ${participant.id}: ${participant.status}${participant.session ? ` (${participant.session.completionReason})` : ""}${participant.diagnostics ? ` · ${formatCuaDiagnostics(participant.diagnostics)}` : ""}${participant.session ? ` · ${participant.session.reason}` : ""}`,
+              `participant ${participant.id}: ${participantStatus(participant.status)}${participant.session ? ` (${participant.session.completionReason})` : ""}${participant.diagnostics ? ` · ${formatCuaDiagnostics(participant.diagnostics)}` : ""}${participant.session ? ` · ${participant.session.reason}` : ""}`,
           )
         : []),
       ...(result.session && (result.lanes?.length ?? 0) <= 1
         ? [
-            `session: ${result.session.status} (${result.session.completionReason})${result.session.stopCause ? ` · ${formatCuaStopCause(result.session.stopCause)}` : ""} · ${result.session.reason}`,
+            `session: ${participantStatus(result.session.status)} (${result.session.completionReason})${result.session.stopCause ? ` · ${formatCuaStopCause(result.session.stopCause)}` : ""} · ${result.session.reason}`,
             `screenshots: ${result.session.screenshots}`,
           ]
         : []),
