@@ -77,7 +77,7 @@ The observed executable version also appears as `providerVersion`.
 Codex's `--json` stream does not name the model it used, and its built-in default can change
 with any release. So the route always passes `--model`: the lab's `actors[0].model`
 (`modelStatus: declared`), or humanish's participant default `gpt-5.6-sol`
-(`modelStatus: humanish-default`). Bundles written before 0.107.0 record
+(`modelStatus: humanish_default`). Bundles written before 0.107.0 record
 `runtime_default_unobserved` with no requested model.
 Dry runs record declarations only, in a `terminal-lab.runtime.declared` event.
 

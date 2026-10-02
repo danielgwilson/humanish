@@ -796,7 +796,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       expect(actor.runtime.versionStatus).toBe("failed");
       expect(actor.runtime).toMatchObject({
         requestedModel: "gpt-5.6-sol",
-        modelStatus: "humanish-default",
+        modelStatus: "humanish_default",
       });
       expect(actor.ids.model).toBeUndefined();
       expect(actor.providerVersion).toBeUndefined();
@@ -1923,7 +1923,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       observedVersion: "0.153.3",
       versionStatus: "verified",
       requestedModel: "gpt-5.6-sol",
-      modelStatus: "humanish-default",
+      modelStatus: "humanish_default",
     });
     expect(bundle.streams[0].actor.ids.model).toBeUndefined();
     for (const file of [

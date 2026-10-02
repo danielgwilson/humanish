@@ -114,7 +114,7 @@ export function planTerminalLab(
       // Codex's own default can change with any release and its JSON stream does not name it, so
       // the route always passes a model: the declared one, else humanish's participant default.
       ...(actor?.model === undefined
-        ? { model: DEFAULT_OPENAI_CU_MODEL, modelSource: "humanish-default" as const }
+        ? { model: DEFAULT_OPENAI_CU_MODEL, modelSource: "humanish_default" as const }
         : { model: actor.model, modelSource: "declared" as const }),
       ...(actor?.reasoningEffort === undefined ? {} : { reasoningEffort: actor.reasoningEffort }),
       ...(config.execution?.runtimeAuth === undefined

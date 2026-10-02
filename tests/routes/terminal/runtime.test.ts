@@ -73,14 +73,14 @@ describe("terminal Codex runtime selection", () => {
 
   it("records where the model came from and no per-request usage provenance", () => {
     expect(
-      declaredRuntimeProvenance({ model: "gpt-5.6-sol", modelSource: "humanish-default" }),
+      declaredRuntimeProvenance({ model: "gpt-5.6-sol", modelSource: "humanish_default" }),
     ).toEqual({
       schema: "humanish.actor-runtime.v1",
       package: "@openai/codex",
       requestedVersion: "latest",
       versionStatus: "unobserved",
       requestedModel: "gpt-5.6-sol",
-      modelStatus: "humanish-default",
+      modelStatus: "humanish_default",
       usageGranularity: "runtime_turn",
     });
   });

@@ -220,7 +220,7 @@ export type TerminalPlan = PlanBase & {
     /** Passed to Codex as `--model` on every run, so the bundle can name and price it. */
     readonly model: string;
     /** `declared` by the lab's actor, or humanish's participant default. */
-    readonly modelSource: "declared" | "humanish-default";
+    readonly modelSource: "declared" | "humanish_default";
     readonly reasoningEffort?: ReasoningEffort;
     readonly auth?: LabRuntimeAuth;
   };

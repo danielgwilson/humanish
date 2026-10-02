@@ -52,7 +52,7 @@ export function buildRuntimeExecPrefix(
 export function declaredRuntimeProvenance(args: {
   version?: string;
   model: string;
-  modelSource: "declared" | "humanish-default";
+  modelSource: "declared" | "humanish_default";
   reasoningEffort?: ReasoningEffort;
 }): ActorRuntimeProvenance {
   return {
