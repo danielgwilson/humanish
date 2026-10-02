@@ -6,17 +6,29 @@ import { describe, expect, it } from "vitest";
 import { makeTestTempDir } from "../helpers/temp-dir.js";
 
 const SCRIPT = path.resolve("scripts/check-code-prose.mjs");
+const KINDS = ["issue-refs", "fix-tags", "caps", "lane-comments", "em-dashes"] as const;
 
-/** Runs the checker over one fixture file in src/ and returns one kind's hits. */
+/** Runs the checker over one fixture file in src/ and returns its exit status and stdout. */
+async function run(args: string[], source: string): Promise<{ status: number; stdout: string }> {
+  const cwd = await makeTestTempDir("humanish-prose-check-");
+  await mkdir(path.join(cwd, "src"));
+  await writeFile(path.join(cwd, "src", "fixture.ts"), source);
+  try {
+    const stdout = execFileSync(process.execPath, [SCRIPT, ...args], { cwd, encoding: "utf8" });
+    return { status: 0, stdout };
+  } catch (error) {
+    const failed = error as { status: number; stdout: string };
+    return { status: failed.status, stdout: failed.stdout };
+  }
+}
+
+/** One kind's hits, from `--list`. */
 async function hitsOf(
   kind: "lane-comments" | "em-dashes",
   source: string,
 ): Promise<{ count: number; words: string[] }> {
-  const cwd = await makeTestTempDir("humanish-prose-check-");
-  await mkdir(path.join(cwd, "src"));
-  await writeFile(path.join(cwd, "src", "fixture.ts"), source);
-  const output = execFileSync(process.execPath, [SCRIPT, "--list"], { cwd, encoding: "utf8" });
-  const lines = output.split("\n");
+  const { stdout } = await run(["--list"], source);
+  const lines = stdout.split("\n");
   const header = lines.findIndex((line) => line.startsWith(`${kind}: `));
   const after = lines.slice(header + 1);
   const listed = after.slice(
@@ -30,17 +42,10 @@ async function hitsOf(
 
 const laneHits = (source: string) => hitsOf("lane-comments", source);
 
-/** The checker's exit status over `source` with one cap flag. */
-async function exitWith(flag: string, source: string): Promise<number> {
-  const cwd = await makeTestTempDir("humanish-prose-cap-");
-  await mkdir(path.join(cwd, "src"));
-  await writeFile(path.join(cwd, "src", "fixture.ts"), source);
-  try {
-    execFileSync(process.execPath, [SCRIPT, flag], { cwd });
-    return 0;
-  } catch (error) {
-    return (error as { status: number }).status;
-  }
+/** The checker's exit status with every cap at 0 except the ones given. */
+async function exitWith(caps: Partial<Record<(typeof KINDS)[number], number>>, source: string) {
+  const flags = KINDS.map((kind) => `--max-${kind}=${caps[kind] ?? 0}`);
+  return (await run(flags, source)).status;
 }
 
 describe("prose:check counts lane in comment prose", () => {
@@ -76,9 +81,9 @@ describe("prose:check counts lane in comment prose", () => {
 
   it("fails both above and below --max-lane-comments", async () => {
     const source = "// one lane\n// another lane\n";
-    expect(await exitWith("--max-lane-comments=2", source)).toBe(0);
-    expect(await exitWith("--max-lane-comments=1", source)).toBe(1);
-    expect(await exitWith("--max-lane-comments=3", source)).toBe(1);
+    expect(await exitWith({ "lane-comments": 2 }, source)).toBe(0);
+    expect(await exitWith({ "lane-comments": 1 }, source)).toBe(1);
+    expect(await exitWith({ "lane-comments": 3 }, source)).toBe(1);
   });
 });
 
@@ -126,8 +131,18 @@ describe("prose:check counts em dashes in comment prose", () => {
 
   it("fails both above and below --max-em-dashes", async () => {
     const source = "// one \u2014 two\n// three -- four\n";
-    expect(await exitWith("--max-em-dashes=2", source)).toBe(0);
-    expect(await exitWith("--max-em-dashes=1", source)).toBe(1);
-    expect(await exitWith("--max-em-dashes=3", source)).toBe(1);
+    expect(await exitWith({ "em-dashes": 2 }, source)).toBe(0);
+    expect(await exitWith({ "em-dashes": 1 }, source)).toBe(1);
+    expect(await exitWith({ "em-dashes": 3 }, source)).toBe(1);
+  });
+});
+
+describe("prose:check needs a cap for every count", () => {
+  it("fails when a count has no --max flag, naming the flag and today's count", async () => {
+    const flags = KINDS.filter((kind) => kind !== "em-dashes").map((kind) => `--max-${kind}=0`);
+    const result = await run(flags, "// one \u2014 two\n// three -- four\n");
+
+    expect(result.status).toBe(1);
+    expect(result.stdout).toContain("--max-em-dashes=2");
   });
 });

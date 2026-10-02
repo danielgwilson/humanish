@@ -7,7 +7,8 @@
 // ` -- ` between words; a colon, a comma or two sentences says the same. Code spans are not counted
 // for caps, lane or em dashes. Each count is held to a flag in package.json's
 // prose:check script: a count above its cap fails, and so does one below it, so the PR that removes
-// the prose lowers the cap.
+// the prose lowers the cap. A count with no flag fails too, so a merge that drops a flag cannot
+// leave that count unchecked.
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
@@ -83,10 +84,12 @@ for (const kind of Object.keys(hits)) {
 
 const rose = [];
 const fell = [];
+const uncapped = [];
 for (const [kind, list] of Object.entries(hits)) {
   const max = values[`max-${kind}`];
   const cap = max === undefined ? undefined : Number(max);
   const count = list.length;
+  if (cap === undefined) uncapped.push(`--max-${kind}=${count}`);
   if (cap !== undefined && count > cap) rose.push(kind);
   if (cap !== undefined && count < cap) fell.push(`--max-${kind}=${count}`);
   const status =
@@ -111,4 +114,9 @@ if (fell.length > 0) {
     `A count fell. Lower the cap in package.json's prose:check script in this PR: ${fell.join(" ")}.\n`,
   );
 }
-if (rose.length > 0 || fell.length > 0) process.exitCode = 1;
+if (uncapped.length > 0) {
+  process.stdout.write(
+    `A count has no cap. Add it to package.json's prose:check script: ${uncapped.join(" ")}.\n`,
+  );
+}
+if (rose.length > 0 || fell.length > 0 || uncapped.length > 0) process.exitCode = 1;
