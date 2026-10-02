@@ -53,6 +53,8 @@ export interface ServeResult {
   oauth?: { provider: "google"; allowEmails: string[]; allowDomains: string[] };
   runsListed: number;
   shareReadyCount?: number;
+  /** With --safe: the runs left out, grouped by grade and reasons. */
+  hiddenRuns?: HiddenRunGroup[];
   entryRunId?: string;
   opened?: boolean;
   openCommand?: string;
@@ -70,9 +72,24 @@ interface ServeControlPlane {
   }): Promise<{ accepted: boolean; runId?: string }>;
 }
 
+/** Why verify kept a run out of a share-safe library: its grade and reason codes. */
+interface ShareRefusal {
+  status: string;
+  reasons: string[];
+}
+
+/** Runs a share-safe library left out for the same grade and reasons. */
+export interface HiddenRunGroup {
+  status: string;
+  reasons: string[];
+  runs: number;
+}
+
 export interface ShareSafetyAdmission {
   /** The files verify found share_ready, or null when the run is not admitted. */
   admit(runId: string): Promise<AdmittedRun | null>;
+  /** Why verify refused the run, after admit returned null for it; undefined otherwise. */
+  refusal(runId: string): ShareRefusal | undefined;
 }
 
 export function createShareSafetyAdmission(
@@ -93,11 +110,20 @@ export function createShareSafetyAdmission(
     runId: string,
     runDirectory: string,
     before: RunInventory,
+    entry: CachedAdmission,
     forget: () => void,
   ): Promise<AdmittedRun | null> => {
     // A run verify refuses is never served, so its bytes are never hashed. Hashing reads every
     // byte, and one large file in a refused run would otherwise cost startup time for nothing.
-    if (!shareReady(await verifyImpl(cwd, runId))) return null;
+    const verified = await verifyImpl(cwd, runId);
+    if (!shareReady(verified)) {
+      entry.refusal = {
+        status:
+          verified.shareSafety.status === "share_ready" ? "blocked" : verified.shareSafety.status,
+        reasons: verified.shareSafety.reasons.map((reason) => reason.code),
+      };
+      return null;
+    }
     // Admitted: hash, verify again, and hash after, so the served bytes are the ones verify scanned.
     const hashesBefore = await hashRunInventory(runDirectory, before);
     if (!hashesBefore) return null;
@@ -135,9 +161,15 @@ export function createShareSafetyAdmission(
       const forget = (): void => {
         if (cache.get(runId) === entry) cache.delete(runId);
       };
-      entry.admitted = verifyAdmission(runId, runDirectory, before, forget).catch(() => null);
+      entry.admitted = verifyAdmission(runId, runDirectory, before, entry, forget).catch(() => {
+        entry.refusal = { status: "unverifiable", reasons: ["VERIFY_FAILED"] };
+        return null;
+      });
       cache.set(runId, entry);
       return entry.admitted;
+    },
+    refusal(runId: string): ShareRefusal | undefined {
+      return cache.get(runId)?.refusal;
     },
   };
 }
@@ -145,6 +177,19 @@ export function createShareSafetyAdmission(
 interface CachedAdmission {
   signature: string;
   admitted: Promise<AdmittedRun | null>;
+  refusal?: ShareRefusal;
+}
+
+/** The refused runs grouped by grade and reasons, the largest group first. */
+function hiddenRunGroups(refusals: readonly ShareRefusal[]): HiddenRunGroup[] {
+  const groups = new Map<string, HiddenRunGroup>();
+  for (const refusal of refusals) {
+    const key = `${refusal.status}\0${refusal.reasons.join(",")}`;
+    const group = groups.get(key);
+    if (group) group.runs += 1;
+    else groups.set(key, { ...refusal, runs: 1 });
+  }
+  return [...groups.values()].sort((left, right) => right.runs - left.runs);
 }
 
 function sameHashes(
@@ -306,6 +351,8 @@ export interface ServeLibraryServer {
   mode: ServeMode;
   runsListed: number;
   shareReadyCount?: number;
+  /** With safe: the runs left out, grouped by grade and reasons. */
+  hiddenRuns?: HiddenRunGroup[];
   entryRunId?: string;
   addPublicOrigin(origin: string): void;
   close(): Promise<void>;
@@ -381,10 +428,20 @@ export async function serveObserverLibrary(
   const allRuns = (await listRuns(cwd)).runs;
   let runsListed: number;
   let shareReadyCount: number | undefined;
+  let hiddenRuns: HiddenRunGroup[] | undefined;
   if (options.safe) {
     const admitted = await Promise.all(allRuns.map((run) => admission.admit(run.runId)));
     shareReadyCount = admitted.filter((run) => run !== null).length;
     runsListed = shareReadyCount;
+    // A run refused before verify ran, such as one whose files cannot be listed, is unverifiable.
+    hiddenRuns = hiddenRunGroups(
+      allRuns
+        .filter((_run, index) => admitted[index] === null)
+        .map(
+          (run) =>
+            admission.refusal(run.runId) ?? { status: "unverifiable", reasons: ["VERIFY_FAILED"] },
+        ),
+    );
   } else {
     runsListed = allRuns.length;
   }
@@ -435,6 +492,7 @@ export async function serveObserverLibrary(
       mode,
       runsListed,
       ...(shareReadyCount !== undefined ? { shareReadyCount } : {}),
+      ...(hiddenRuns !== undefined ? { hiddenRuns } : {}),
       ...(entryRunId ? { entryRunId } : {}),
       // A tunnel's public origin is only known after the tunnel starts (post bind); this lets the
       // caller declare it, extending the Host allowlist so the authenticated edge forwarding under

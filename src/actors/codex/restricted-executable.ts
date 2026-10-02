@@ -71,12 +71,37 @@ export function restrictedCodexNpmTarget(
   return undefined;
 }
 
+/** The `codex` file humanish found and would not run, and why. No path: none was found. */
+export interface RefusedCodexExecutable {
+  readonly path?: string;
+  readonly reason: string;
+}
+
 /** Resolve PATH without running a shell. The npm launcher is resolved to its
  * native optional package so cleanup owns the real app-server child. */
 export async function resolveExecutable(
   options: { executable?: string; platform?: NodeJS.Platform; arch?: string },
   env: NodeJS.ProcessEnv,
 ): Promise<string> {
+  const located = await locateExecutable(options, env);
+  // The stop carries only its code; doctor asks refusedCodexExecutable for the file and reason.
+  if ("refused" in located) throw new RestrictedCodexStop("codex_unavailable");
+  return located.file;
+}
+
+/** The `codex` resolveExecutable turns down and why, or undefined when it finds one to run. */
+export async function refusedCodexExecutable(
+  env: NodeJS.ProcessEnv,
+  options: { platform?: NodeJS.Platform; arch?: string } = {},
+): Promise<RefusedCodexExecutable | undefined> {
+  const located = await locateExecutable(options, env);
+  return "refused" in located ? located.refused : undefined;
+}
+
+async function locateExecutable(
+  options: { executable?: string; platform?: NodeJS.Platform; arch?: string },
+  env: NodeJS.ProcessEnv,
+): Promise<{ file: string } | { refused: RefusedCodexExecutable }> {
   const platform = options.platform ?? process.platform,
     arch = options.arch ?? process.arch;
   let selected = options.executable;
@@ -94,19 +119,23 @@ export async function resolveExecutable(
       }
     }
   }
-  if (selected === undefined || !path.isAbsolute(selected))
-    throw new RestrictedCodexStop("codex_unavailable");
+  const refused = (reason: string, file?: string) => ({
+    refused: { ...(file === undefined ? {} : { path: file }), reason },
+  });
+  if (selected === undefined) return refused("no executable `codex` is on PATH");
+  if (!path.isAbsolute(selected)) return refused("it is not an absolute path", selected);
   let resolved: string;
   try {
     resolved = await realpath(selected);
   } catch {
-    throw new RestrictedCodexStop("codex_unavailable");
+    return refused("it does not resolve to a file", selected);
   }
-  if (await isNativeExecutable(resolved, platform)) return resolved;
+  if (await isNativeExecutable(resolved, platform)) return { file: resolved };
   if (path.basename(resolved) === "codex.js" && path.basename(path.dirname(resolved)) === "bin") {
     const packageRoot = path.dirname(path.dirname(resolved));
     const target = restrictedCodexNpmTarget(platform, arch);
-    if (!target) throw new RestrictedCodexStop("codex_unavailable");
+    if (!target)
+      return refused(`the npm package has no native build for ${platform}-${arch}`, resolved);
     const { triple, packageName: nativePackage } = target;
     const candidates: string[] = [];
     try {
@@ -119,10 +148,14 @@ export async function resolveExecutable(
     }
     candidates.push(path.join(packageRoot, "vendor", triple, "bin", "codex"));
     for (const candidate of candidates) {
-      if (await isNativeExecutable(candidate, platform)) return realpath(candidate);
+      if (await isNativeExecutable(candidate, platform)) return { file: await realpath(candidate) };
     }
+    return refused(`the npm package's native ${nativePackage} build is missing`, resolved);
   }
-  throw new RestrictedCodexStop("codex_unavailable");
+  return refused(
+    "it is neither a native Codex executable nor the @openai/codex npm launcher",
+    resolved,
+  );
 }
 
 /** Returns the detected release after checking it against the admitted list. */

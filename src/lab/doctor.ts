@@ -3,23 +3,40 @@ import { localRuntimeStatus, type LocalRuntimeStatus } from "../substrates/local
 import type { LabConfig } from "./types.js";
 import type { LabRoute } from "./plan.js";
 import type { PlanResult } from "./plan-types.js";
-import { requiredKeys, requiredSubjectEnv } from "./requirements.js";
+import { keyNamesOf, requiredKeys, requiredSubjectEnv } from "./requirements.js";
 import type { DetectedLocalAgent } from "../actors/local-agent/cli.js";
 import type { DoctorResult } from "../cli/doctor.js";
 import { automaticAnalysisBudget } from "../analysis/automatic-config.js";
 import { externalCatchHealthy } from "../comms/sandbox-catch.js";
 import { receivingRequiredKey } from "../comms/setup.js";
-import { codexVersionRecovery } from "../actors/codex/qualified-versions.js";
+import { codexInstallCommand, codexVersionRecovery } from "../actors/codex/qualified-versions.js";
+import type { RefusedCodexExecutable } from "../actors/codex/restricted-executable.js";
 
 type Check = DoctorResult["checks"][number];
-/** Read-only Codex account readiness. An unadmitted CLI also reports the release it found. */
-type CodexReadiness = { ready: boolean; errorCode: string | null; detectedCliVersion?: string };
+/**
+ * Read-only Codex account readiness. An unadmitted CLI also reports the release it found, and an
+ * unavailable one the file humanish found and turned down.
+ */
+type CodexReadiness = {
+  ready: boolean;
+  errorCode: string | null;
+  detectedCliVersion?: string;
+  refusedExecutable?: RefusedCodexExecutable;
+};
 
-/** The account check doctor and the TUI share; the version probe runs only for an unadmitted CLI. */
+/**
+ * The account check doctor and the TUI share. The version probe runs only for an unadmitted CLI,
+ * and the executable lookup only for an unavailable one.
+ */
 async function codexAccountReadiness(env: NodeJS.ProcessEnv): Promise<CodexReadiness> {
   const readiness = await (
     await import("../analysis/restricted-codex.js")
   ).checkRestrictedCodexAnalysisReadiness({ timeoutMs: 5000 }, { env });
+  if (readiness.errorCode === "codex_unavailable") {
+    const { refusedCodexExecutable } = await import("../actors/codex/restricted-executable.js");
+    const refused = await refusedCodexExecutable(env).catch(() => undefined);
+    return refused === undefined ? readiness : { ...readiness, refusedExecutable: refused };
+  }
   if (readiness.errorCode !== "codex_unsupported_version") return readiness;
   const { detectRestrictedCodexCliVersion } = await import("../actors/codex/restricted-session.js");
   const detected = await detectRestrictedCodexCliVersion({ timeoutMs: 5000 }, { env }).catch(
@@ -30,11 +47,32 @@ async function codexAccountReadiness(env: NodeJS.ProcessEnv): Promise<CodexReadi
   return version === undefined ? readiness : { ...readiness, detectedCliVersion: version };
 }
 
-/** What to do about a Codex readiness failure; an unadmitted CLI gets its exact install command. */
+/**
+ * What to do about a Codex readiness failure, one line per code: an unadmitted CLI gets its exact
+ * install command, a missing login `codex login`, and an unavailable CLI the file humanish turned
+ * down and why. Other codes get `fallback`.
+ */
 function codexRecovery(readiness: CodexReadiness, fallback: string): string {
-  return readiness.errorCode === "codex_unsupported_version"
-    ? codexVersionRecovery(readiness.detectedCliVersion)
-    : fallback;
+  switch (readiness.errorCode) {
+    case "codex_unsupported_version":
+      return codexVersionRecovery(readiness.detectedCliVersion);
+    case "codex_login_required":
+      return "Codex is installed but not signed in. Run `codex login` and sign in with a ChatGPT account.";
+    case "codex_unsupported_auth":
+      return "Codex is signed in without a ChatGPT account, for example with an API key. Run `codex logout`, then `codex login` with a ChatGPT account.";
+    case "codex_unavailable": {
+      const refused = readiness.refusedExecutable;
+      const found =
+        refused === undefined
+          ? "humanish could not start the Codex CLI."
+          : refused.path === undefined
+            ? `Codex is unavailable: ${refused.reason}.`
+            : `humanish found \`${refused.path}\` and cannot run it: ${refused.reason}.`;
+      return `${found} Install Codex with \`${codexInstallCommand()}\`, then sign in with a ChatGPT account (\`codex login\`).`;
+    }
+    default:
+      return fallback;
+  }
 }
 
 /** Shared read-only Codex account check for local participants in doctor and the TUI. */
@@ -68,10 +106,18 @@ interface LabSetupCheckArgs {
 type AccountReadiness = () => Promise<CodexReadiness>;
 type AnalysisBudget = NonNullable<ReturnType<typeof automaticAnalysisBudget>>;
 
-/** Setup checks only: no model turn, browser or desktop creation. CLI startup may use the network. */
-export async function labSetupChecks(
-  args: LabSetupCheckArgs,
-): Promise<{ desktop: boolean; keys: string[]; checks: Check[] }> {
+/**
+ * Setup checks only: no model turn, browser or desktop creation. CLI startup may use the network.
+ * `keys` are the keys a live run requires. `reads` are the provider keys the lab is known to read,
+ * required or not; it is undefined when that is unknown: the lab does not plan, or a declared
+ * scorer's host code may read any key.
+ */
+export async function labSetupChecks(args: LabSetupCheckArgs): Promise<{
+  desktop: boolean;
+  keys: string[];
+  reads?: ReadonlySet<string>;
+  checks: Check[];
+}> {
   const { resolveLabManifest } = await import("./discover.js");
   const { resolveLabDryRun, routeOf } = await import("./plan.js");
   const resolved = await resolveLabManifest(args.cwd, args.lab);
@@ -91,7 +137,7 @@ export async function labSetupChecks(
       message: `${config.id}: ${config.actors[0]?.type ?? "synthetic"} / ${route} / ${dryRun ? "dry-run (no live participant)" : "live"}`,
     },
   ];
-  if (dryRun) return { desktop: false, keys: [], checks };
+  if (dryRun) return { desktop: false, keys: [], reads: new Set(), checks };
   const unsupported = unsupportedCliRoute(config, route);
   if (unsupported)
     return {
@@ -126,7 +172,11 @@ export async function labSetupChecks(
   const analysis = automaticAnalysisBudget(config.review?.analysis, route);
   if (analysis) checks.push(await analysisCheck(analysis, args, checkAccount));
   checks.push(checkScope(analysis));
-  return { desktop, keys, checks };
+  const reads =
+    config.review?.scorer === undefined
+      ? new Set([...keyNamesOf(planned.planned.plan), ...keys])
+      : undefined;
+  return { desktop, keys, ...(reads === undefined ? {} : { reads }), checks };
 }
 
 /** A local browser study's runtime and, with an external catch, its captured inbox. */
