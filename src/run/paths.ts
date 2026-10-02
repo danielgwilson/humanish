@@ -366,7 +366,7 @@ async function assertNoSymlinkDescendants(directory: string): Promise<void> {
   const entries = await readdir(directory, { withFileTypes: true });
   for (const entry of entries) {
     const child = path.join(directory, entry.name);
-    // A run directory can be written CONCURRENTLY with this walk — the atomic writer creates a
+    // A run directory can be written concurrently with this walk: the atomic writer creates a
     // `.humanish-write-*.tmp` sibling and renames it, and a run now also refreshes its own status
     // record on a cadence. An entry that vanished between readdir and lstat therefore proves
     // nothing except that it is gone, and a path that no longer exists cannot be a symlink escape:
