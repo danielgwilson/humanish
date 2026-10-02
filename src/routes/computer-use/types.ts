@@ -55,8 +55,8 @@ import type { ResolvedParticipant } from "../../run/participant.js";
 
 export const CUA_ACTOR_LAB_SCHEMA = "humanish.cua-lab-result.v2";
 
-// The only fan-out topology this slice ships: N lanes = N independent E2B desktop sandboxes,
-// each its own world (clone/serve + subject.state per lane). Shared-world is layer 7 (#164).
+// The only fan-out topology this slice ships: N participants = N independent E2B desktop
+// sandboxes, each its own world (clone/serve + subject.state per participant). Shared-world is layer 7 (#164).
 export const CUA_FANOUT_STRATEGY = "per-lane-worlds" as const;
 
 // Env override that may only LOWER the effective concurrency (never raise concurrent paid
@@ -114,10 +114,10 @@ export interface RunCuaActorLabOptions {
   dryRun: boolean;
   open?: boolean;
   runId?: string;
-  /** CLI `--count` override for the homogeneous fan-out lane count (ignored when a `lanes`
+  /** CLI `--count` override for the homogeneous fan-out participant count (ignored when a `lanes`
    *  roster is declared — a roster's length is authoritative). */
   countOverride?: number;
-  /** Explicitly create a new run containing failed or selected lanes from a prior fan-out run. */
+  /** Explicitly create a new run containing failed or selected participants from a prior fan-out run. */
   rerun?: {
     sourceRunId: string;
     laneIds?: string[];
@@ -146,7 +146,7 @@ export interface RunCuaActorLabOptions {
   scorerProvenance?: RunScorerProvenance;
 }
 
-/** A lane's row in the pre-flight plan: identity + the device/persona it will drive. The prompt
+/** A participant's row in the pre-flight plan: identity + the device/persona it will drive. The prompt
  *  text never leaks — only a sha256-16 digest of the composed instructions. */
 export interface CuaParticipantPlanEntry {
   id: string;
@@ -160,15 +160,15 @@ export interface CuaParticipantPlanEntry {
   /** Requested E2B/X screen resolution. This is not the measured browser CSS viewport. */
   resolution: [number, number];
   instructionDigest: string;
-  /** The declared reasoning effort for this lane, when the lab declared one. The plan line is what
-   *  you read BEFORE spending money, so a declared per-lane difference has to be visible there. */
+  /** The declared reasoning effort for this participant, when the lab declared one. The plan line is what
+   *  you read BEFORE spending money, so a declared per-participant difference has to be visible there. */
   reasoningEffort?: string;
   maxOutputTokens?: number;
-  /** Present only when a lane overrides subject.appUrl; digest avoids leaking preview hosts in plan logs. */
+  /** Present only when a participant overrides subject.appUrl; digest avoids leaking preview hosts in plan logs. */
   targetDigest?: string;
 }
 
-/** The pre-flight spend/lane plan (pure; printed to stderr + recorded as a bundle event before
+/** The pre-flight spend and participant plan (pure; printed to stderr + recorded as a bundle event before
  *  any sandbox or provider call; identical in dry-run, marked $0). */
 export interface CuaParticipantPlan {
   strategy: typeof CUA_FANOUT_STRATEGY;
@@ -181,17 +181,17 @@ export interface CuaParticipantPlan {
   envLoweredConcurrencyFrom?: number;
   /** ceil(laneCount / concurrency). */
   waves: number;
-  /** Per-lane session wall-clock budget (execution.timeoutMs); there is no run-level wall clock. */
+  /** Per-participant session wall-clock budget (execution.timeoutMs); there is no run-level wall clock. */
   perLaneSessionBudgetMs: number;
-  /** Worst-case TOTAL sandbox-minutes across all lanes (each lane's full sandbox deadline). */
+  /** Worst-case TOTAL sandbox-minutes across all participants (each one's full sandbox deadline). */
   worstCaseSandboxMinutes: number;
   /** True for a dry-run plan (no spend); the same table appears live. */
   dryRun: boolean;
   lanes: CuaParticipantPlanEntry[];
 }
 
-/** One lane's outcome in the result projection. ALWAYS present in `result.lanes` (length 1 at
- *  N=1). A `blocked` lane is one the pipeline-gate / fail-fast skipped before it ran. */
+/** One participant's outcome in the result projection. ALWAYS present in `result.lanes` (length
+ *  1 at N=1). A `blocked` participant is one the pipeline-gate / fail-fast skipped before it ran. */
 export interface CuaParticipantResult {
   id: string;
   actorType?: string;
@@ -202,7 +202,7 @@ export interface CuaParticipantResult {
   device: string;
   /** Requested E2B/X screen resolution. See the run stream's desktopGeometry for measurements. */
   resolution: [number, number];
-  /** Terminal lane status; "blocked" = skipped (gate/fail-fast); "contract_proof_only" = dry-run. */
+  /** Terminal participant status; "blocked" = skipped (gate/fail-fast); "contract_proof_only" = dry-run. */
   status: ActorStatus | "blocked" | "contract_proof_only";
   ok: boolean;
   session?: {
@@ -220,22 +220,22 @@ export interface CuaParticipantResult {
   };
   subject: CuaSubjectProjection;
   diagnostics?: CuaDiagnostics;
-  /** Set when the lane was skipped (pinned reason string). */
+  /** Set when the participant was skipped (pinned reason string). */
   skippedReason?: string;
   error?: { code: CuaActorLabErrorCode; message: string };
 }
 
-/** Aggregate counts across lanes. */
+/** Aggregate counts across participants. */
 export interface CuaParticipantSummary {
   strategy: typeof CUA_FANOUT_STRATEGY;
   total: number;
-  /** Lanes whose own verdict is ok (terminal, engaged, no harness error). */
+  /** Participants whose own verdict is ok (terminal, engaged, no harness error). */
   passed: number;
-  /** Lanes skipped by the pipeline gate / fail-fast. */
+  /** Participants skipped by the pipeline gate / fail-fast. */
   skipped: number;
-  /** Lanes that ended in a harness error. */
+  /** Participants that ended in a harness error. */
   harnessErrors: number;
-  /** Lanes that returned goal_satisfied with zero engagement (hollow). */
+  /** Participants that returned goal_satisfied with zero engagement (hollow). */
   hollow: number;
   concurrency: number;
   waves: number;
@@ -270,7 +270,7 @@ export type CuaActorLabErrorCode =
   | "HUMANISH_CUA_LAB_UNPRICED_CAP"
   // comms.email.external was declared but its catch did not answer as a humanish comms catch.
   // Refused at preflight (before any sandbox): a comms lab whose catch is unreachable collects
-  // nothing while every lane still spends (#380).
+  // nothing while every participant still spends (#380).
   | "HUMANISH_CUA_LAB_COMMS_CATCH_UNREACHABLE"
   // comms.email.external.authTokenEnv names a token shorter than MIN_CATCH_TOKEN_LENGTH or not
   // well-formed Unicode (src/comms/external-evidence.ts). Refused at preflight, before the catch is
@@ -332,7 +332,7 @@ export type CuaSubjectProvenanceArg =
 
 export interface CuaActorLabResult extends AutomaticAnalysisResult {
   schema: typeof CUA_ACTOR_LAB_SCHEMA;
-  /** True when the Observer verified the bundle, all live lanes passed credibility checks
+  /** True when the Observer verified the bundle, all live participants passed credibility checks
    * (or this is a dry-run), and no declared adapter/scorer verdict failed. */
   ok: boolean;
   cwd: string;
@@ -358,15 +358,15 @@ export interface CuaActorLabResult extends AutomaticAnalysisResult {
     streamUrlPresent: boolean;
   };
   /** Subject provenance (invariant 5): what the actor actually drove. At N>1 this is the
-   *  unanimity-gated aggregate (top-level `commit` only when every lane resolved the same one). */
+   *  unanimity-gated aggregate (top-level `commit` only when every participant resolved the same one). */
   subject?: CuaSubjectProjection;
-  /** The pre-flight lane plan (present once lanes resolve; absent on early validation errors). */
+  /** The pre-flight participant plan (present once participants resolve; absent on early validation errors). */
   plan?: CuaParticipantPlan;
-  /** Per-lane results — ALWAYS present once lanes resolve (length 1 at N=1). */
+  /** Per-participant results — ALWAYS present once participants resolve (length 1 at N=1). */
   lanes?: CuaParticipantResult[];
-  /** Aggregate lane counts. */
+  /** Aggregate participant counts. */
   laneSummary?: CuaParticipantSummary;
-  /** Present when this run explicitly re-executes selected lanes from a prior CUA fan-out run. */
+  /** Present when this run explicitly re-executes selected participants from a prior CUA fan-out run. */
   rerun?: RunRerunLineage;
   observer?: ObserverResult;
   diagnostics?: CuaDiagnostics;
@@ -378,7 +378,7 @@ export interface CuaActorLabResult extends AutomaticAnalysisResult {
 }
 
 /**
- * What a computer-use lane or a shared-world seat runs: the resolved participant, plus where its
+ * What a computer-use or shared-world participant runs: the resolved participant, plus where its
  * evidence goes and any backstop override its route sets. The public projections are
  * CuaParticipantPlanEntry and CuaParticipantResult.
  */
@@ -404,15 +404,15 @@ export interface ParticipantRunsAndPlan {
 }
 
 /**
- * The STUDY's shared spend ledger (#299): one counter across every lane. Each lane notes its own
- * latest running MODEL-spend estimate (monotone per lane — an estimate can only grow) and reads
- * back the run total; the loop stops the lane the moment the total crosses the study budget.
+ * The STUDY's shared spend ledger (#299): one counter across every participant. Each one notes its
+ * own latest running MODEL-spend estimate (monotone per participant — an estimate can only grow)
+ * and reads back the run total; the loop stops the participant the moment the total crosses the study budget.
  * Estimated model spend only: desktop-minutes ride the cost summary, not this ledger.
  */
 export interface CuaRunBudget {
   maxTotalUsd: number;
-  /** Record this lane's latest running estimate (null = unpriceable, ignored) and return the
-   *  run's current total across all lanes. */
+  /** Record this participant's latest running estimate (null = unpriceable, ignored) and return
+   *  the run's current total across all participants. */
   note(participantId: string, estimateUsd: number | null): number;
 }
 
@@ -451,7 +451,7 @@ export interface E2BDesktopDeps {
   /** What the participant's desktop does with the subject before the participant starts. */
   subject: ParticipantSubject;
   /** Local-tree route only: the once-per-run packed archive bytes, shared byte-identically
-   *  across every fan-out lane's upload step. Absent on dry-run and every other route. */
+   *  across every fan-out participant's upload step. Absent on dry-run and every other route. */
   localTreeArchiveBuffer?: ArrayBuffer;
   env: Record<string, string | undefined>;
   e2bApiKey: string;
@@ -464,8 +464,8 @@ export interface E2BDesktopDeps {
   scrubKnownValues: (text: string) => string;
   receiving?: CommsReceivingRun;
   /** Adopter-hosted comms plane (#380): present on the app-url route when comms.email.external is
-   *  declared. Carries the parsed comms block (recipients drive the per-lane inbox instruction)
-   *  and the inbox URL the persona opens. The drain runs once at run level, not per lane. */
+   *  declared. Carries the parsed comms block (recipients drive the per-participant inbox instruction)
+   *  and the inbox URL the persona opens. The drain runs once at run level, not per participant. */
   externalComms?: { email: LabCommsEmail; inboxUrl: string };
   /** Injected clock (ms). Used to measure the host-side E2B desktop create->teardown span so the
    *  desktop-minute cost estimate is deterministic in tests. Defaults to Date.now. */
@@ -482,10 +482,10 @@ export interface E2BDesktopDeps {
   reportSubjectPhase: (event: SubjectPhaseEvent, participant: PhaseParticipant) => void;
   /**
    * How a PARSEABLE requested-vs-verified screen mismatch is treated. Default ("fail-closed"):
-   * the lane's device claim is falsified, so the lane fails with DEVICE_GEOMETRY (the
-   * single-lane/fan-out contract). "record-evidence" (the concurrent shared-world route):
+   * the participant's device claim is falsified, so it fails with DEVICE_GEOMETRY (the
+   * single-participant/fan-out contract). "record-evidence" (the concurrent shared-world route):
    * requested and verified stay recorded as separate facts plus an explicit warning, and the
-   * lane keeps running, so one seat's screen drift cannot abort a live multi-actor world.
+   * participant keeps running, so one participant's screen drift cannot abort a live multi-actor world.
    */
   screenMismatchPolicy?: "fail-closed" | "record-evidence";
 }
@@ -509,7 +509,7 @@ export interface ParticipantModelDeps {
    *  live run (#299). Preflight already refused the cap on an unpriced model. */
   runBudget?: CuaRunBudget;
   /**
-   * RUNTIME-ONLY observed-URL callback (#164 handoff crux): threaded into the lane's session so the
+   * RUNTIME-ONLY observed-URL callback (#164 handoff crux): threaded into the participant's session so the
    * orchestrator watches this seat's live location.href mid-run. Never persisted (see
    * CuaLoopOptions.onObservedUrl). The concurrent shared-world barrier passes a host-seat latch here
    * to extract a /lobby/CODE; on ordinary routes it is undefined (no-op).
@@ -558,7 +558,7 @@ export interface SandboxReleaseFact {
   recovery?: string;
 }
 
-/** One lane's end-to-end run outcome (internal; projected into CuaParticipantResult + the bundle). */
+/** One participant's end-to-end run outcome (internal; projected into CuaParticipantResult + the bundle). */
 export interface ParticipantRunOutcome {
   spec: DesktopParticipantRun;
   session?: CuaLoopResult;
@@ -592,19 +592,19 @@ export interface ParticipantRunOutcome {
    *  folded into bundle.events at build time. Empty on the in-process route (no provisioning). */
   phaseRecords: SubjectPhaseEvent[];
   warnings: string[];
-  /** Set when the lane was skipped by the pipeline gate / fail-fast (a pinned reason). */
+  /** Set when the participant was skipped by the pipeline gate / fail-fast (a pinned reason). */
   skippedReason?: string;
   noEngagement: boolean;
   selfReportedBlocker: boolean;
   /** The inclusive friction read (#453): blocker-shaped narration incl. self-resolved arcs.
-   *  Feeds the participants tally and feedback candidates; never the lane verdict. Optional so
+   *  Feeds the participants tally and feedback candidates; never the participant verdict. Optional so
    *  external outcome constructors (shared-world, test fakes) stay valid; absent counts as false. */
   reportedFriction?: boolean;
   harnessError: boolean;
   failureCode?: CuaActorLabErrorCode;
-  /** Relative run-dir path of the digest-only comms-thread evidence artifact this lane wrote
+  /** Relative run-dir path of the digest-only comms-thread evidence artifact this participant wrote
    *  (humanish.comms-thread.v1), when a comms lab captured mail into its in-sandbox catch. Registered
-   *  in the lane's stream artifacts. Absent when no comms lab ran or nothing was captured. */
+   *  in the participant's stream artifacts. Absent when no comms lab ran or nothing was captured. */
   commsArtifactPath?: string;
 }
 
