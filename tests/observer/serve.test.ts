@@ -77,7 +77,7 @@ async function startLibrary(
 }
 
 // Edge-authed exposure (ngrok --oauth or an operator --public-url): the auth gate lives at the
-// tunnel edge, so this loopback server serves every route with NO cookie and NO 401.
+// tunnel edge, so this loopback server serves every route with no cookie and no 401.
 function exposedOptions(
   overrides: Partial<ServeLibraryOptions> = {},
 ): Partial<ServeLibraryOptions> {
@@ -310,9 +310,9 @@ describe("serve: loopback mode", () => {
     expect(projectFile.status).toBe(404);
     expect(projectFile.body).not.toContain('"name"');
 
-    // Raw /../ between two run ids: WHATWG URL parsing (client and server
+    // Raw /../ between two run ids: whatwg URL parsing (client and server
     // alike) resolves dot segments before routing, so this arrives as the
-    // ordinary run-beta route -- byte-identical to requesting run-beta
+    // ordinary run-beta route: byte-identical to requesting run-beta
     // directly, and still subject to every route gate (safe-mode admission is
     // pinned in the safe-mode suite below). The traversal path never reaches
     // the file layer.
@@ -471,7 +471,7 @@ describe("serve: exposed (edge-authed) mode", () => {
     await writeFile(path.join(runDir, "screenshots", "proof.png"), PNG_1X1);
   });
 
-  it("(15) serves every route with NO cookie and NO 401 — the gate moved to the tunnel edge", async () => {
+  it("(15) serves every route with no cookie and no 401: the gate moved to the tunnel edge", async () => {
     const server = await startLibrary(cwd, exposedOptions());
     expect(server.mode).toBe("exposed");
     // The in-process capability-link token is gone entirely.
@@ -606,8 +606,8 @@ describe("serve: safe mode", () => {
 
   it("(27) safe mode composes with edge auth: no cookie needed, non-admitted runs still 404", async () => {
     const server = await startLibrary(cwd, exposedOptions({ safe: true }));
-    // With edge auth AND --safe, the mode stays exposed (edge-authed) and the share-safety admission
-    // still hides non-share_ready runs — defense in depth, no in-process cookie.
+    // With edge auth and --safe, the mode stays exposed (edge-authed) and the share-safety admission
+    // still hides non-share_ready runs: defense in depth, no in-process cookie.
     expect(server.mode).toBe("exposed");
 
     const blocked = await rawRequest(
@@ -809,7 +809,7 @@ describe("serve library: labeled cost estimate", () => {
     const history = (await historyResponse.json()) as LibraryHistory;
     const row = history.runs.find((run) => run.runId === "cost-run");
     if (!row) throw new Error("cost-run missing from history");
-    // Run-total: model 2.5 + desktop (1 min * placeholder rate) — a positive number carrying its date.
+    // Run-total: model 2.5 + desktop (1 min * placeholder rate); a positive number carrying its date.
     expect(row.estimatedCostUsd).not.toBeNull();
     expect(row.estimatedCostUsd as number).toBeGreaterThan(2.5);
     expect(row.costRatesAsOf).toBe("2026-08-01");
@@ -818,7 +818,7 @@ describe("serve library: labeled cost estimate", () => {
     const html = await (await fetch(server.url)).text();
     const embedded = extractLibraryData(html);
     expect(embedded.runs.find((run) => run.runId === "cost-run")?.estimatedCostUsd).not.toBeNull();
-    // The library client always renders "~$X est." (never a bare "$X") — the token literal ships
+    // The library client always renders "~$X est." (never a bare "$X"): the token literal ships
     // in the inlined client, and the embedded data drives its value.
     expect(html).toContain(" est.");
   });

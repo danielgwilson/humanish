@@ -50,7 +50,7 @@ describe("provider-key discovery", () => {
     await writeFile(path.join(store, "keys.env"), `${lines.join("\n")}\n`, "utf8");
   }
 
-  it("fills from the project overlay and ANNOUNCES name + source, never the value", async () => {
+  it("fills from the project overlay and announces name + source, never the value", async () => {
     await writeOverlay(["OPENAI_API_KEY=sk-test-overlay-secret"]);
     const env: NodeJS.ProcessEnv = {};
     const announced: string[] = [];
@@ -68,7 +68,7 @@ describe("provider-key discovery", () => {
     expect(announced.join("\n")).not.toContain("sk-test-overlay-secret");
   });
 
-  it("is FILL-ONLY at every rung: process env beats overlay beats vendor store beats user store", async () => {
+  it("is fill-only at every rung: process env beats overlay beats vendor store beats user store", async () => {
     await writeOverlay(["OPENAI_API_KEY=from-overlay", "E2B_API_KEY=from-overlay"]);
     await writeE2bConfig({ teamApiKey: "from-e2b-config" });
     await writeUserStore(["OPENAI_API_KEY=from-user-store", "CODEX_API_KEY=from-user-store"]);
@@ -141,7 +141,7 @@ describe("provider-key discovery", () => {
     expect(env3.E2B_API_KEY).toBeUndefined();
   });
 
-  it("consults gh auth token only when NEITHER GitHub env name is set", async () => {
+  it("consults gh auth token only when neither GitHub env name is set", async () => {
     const calls: string[][] = [];
     const gh = async (cmd: string, args: string[]): Promise<string | null> => {
       calls.push([cmd, ...args]);
@@ -282,7 +282,7 @@ describe("provider-key discovery", () => {
     expect(env.OPENAI_API_KEY).toBeUndefined();
   });
 
-  it("probeKeySources reports the winning source per key WITHOUT mutating env", async () => {
+  it("probeKeySources reports the winning source per key without mutating env", async () => {
     await writeOverlay(["E2B_API_KEY=from-overlay"]);
     const env: NodeJS.ProcessEnv = { OPENAI_API_KEY: "in-env" };
     const probes = await probeKeySources(["OPENAI_API_KEY", "E2B_API_KEY", "GH_TOKEN"], {
@@ -322,7 +322,7 @@ describe("the user key store (`humanish keys`)", () => {
   });
   const deps = () => ({ homeDir: home });
 
-  it("set writes 0600, list shows NAMES only, unset removes, and discovery reads it back", async () => {
+  it("set writes 0600, list shows names only, unset removes, and discovery reads it back", async () => {
     const env: NodeJS.ProcessEnv = {};
     const written = setUserKey("OPENAI_API_KEY", "sk-user-store-secret", env, deps());
     expect(written.path).toBe(userKeyStorePath(env, deps()));
@@ -402,7 +402,7 @@ describe("the user key store (`humanish keys`)", () => {
       expect(() => setUserKey("OPENAI_API_KEY", "sk-x", {}, { homeDir: home2 })).toThrow(
         /symlinked store directory/,
       );
-      // And discovery refuses to READ through the symlinked dir.
+      // And discovery refuses to read through the symlinked dir.
       await writeFileP(path.join(attackerDir, "keys.env"), "OPENAI_API_KEY=planted\n", "utf8");
       const env: NodeJS.ProcessEnv = {};
       await discoverProviderKeys({

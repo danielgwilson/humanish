@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { OBSERVER_DATA_SCHEMA, buildObserverData } from "../../src/observer/data.js";
 import type { RunBundle } from "../../src/run/bundle.js";
 
-// CONTRACT FREEZE for humanish.observer-data.v1 (#426). The Observer rebuild is a
+// Contract freeze for humanish.observer-data.v1. The Observer rebuild is a
 // rendering-layer swap only if the data it renders cannot drift underneath it, so this
 // test pins the bundle -> observer-data transform against committed goldens derived from
 // the deterministic lab goldens in tests/golden/labs/ (same inputs as lab-golden.test.ts).
@@ -15,16 +15,16 @@ import type { RunBundle } from "../../src/run/bundle.js";
 // workspace renders, so a shape change here is visible in the same diff that causes it.
 //
 // Intentional contract changes: rerun with UPDATE_OBSERVER_DATA_GOLDENS=1, review the
-// golden diff, and say why in the commit message. Goldens are stored RAW (fixed
+// golden diff, and say why in the commit message. Goldens are stored raw (fixed
 // generatedAt); normalization happens identically on both sides of the comparison, so
 // the committed fixture stays human-diffable (same policy as tests/golden/labs/).
 
 const ROOT = process.cwd();
 const GOLDEN_DIR = path.join(ROOT, "tests", "golden", "observer-data");
 const FIXED_GENERATED_AT = "2026-01-01T00:00:00.000Z";
-// "live" is a pinned REAL-run snapshot (kept receipt cua-2026-08-17T18-17-25-392Z-9b6aa972,
+// "live" is a pinned real-run snapshot (kept receipt cua-2026-08-17T18-17-25-392Z-9b6aa972,
 // sandbox id synthesized): frames with `at` stamps, structured click coords, and reasoning
-// items — the player's committed fixture (#441). capture-lab-goldens.mjs regenerates only the
+// items: the player's committed fixture. capture-lab-goldens.mjs regenerates only the
 // dry-run goldens; refresh `live` from a new kept live receipt, never from a dry-run.
 const GOLDENS = ["first-run", "oss", "live"] as const;
 

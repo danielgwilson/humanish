@@ -167,7 +167,7 @@ describe("restricted Codex npm executable resolution", () => {
 });
 
 describe("the codex file resolveExecutable turns down", () => {
-  it("names no file when PATH has no codex", async () => {
+  it("names no file when `PATH` has no codex", async () => {
     const empty = await mkdtemp(path.join(tmpdir(), "humanish-codex-empty-path-"));
     directories.push(empty);
 
@@ -176,7 +176,7 @@ describe("the codex file resolveExecutable turns down", () => {
     });
   });
 
-  it("names a wrapper script on PATH and says it is not Codex's executable or launcher", async () => {
+  it("names a wrapper script on `PATH` and says it is not Codex's executable or launcher", async () => {
     const bin = await mkdtemp(path.join(tmpdir(), "humanish-codex-wrapper-"));
     directories.push(bin);
     await writeFile(path.join(bin, "codex"), '#!/bin/sh\nexec real-codex "$@"\n', {

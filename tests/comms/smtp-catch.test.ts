@@ -3,7 +3,7 @@
 // Why this exists: most self-hostable apps send mail through SMTP rather than a provider's HTTP API.
 // An HTTP-only catch could not study them at all, which is what pushed subject selection toward the
 // small set of apps that happen to POST JSON. SMTP is treated as a transport, not a second pipeline
-// — a captured message is normalized into the SAME NDJSON line an HTTP send produces, so every
+// so a captured message is normalized into the same NDJSON line an HTTP send produces, so every
 // host-side profile, the inbox surface, and the drain work unchanged.
 import { spawn, type ChildProcess } from "node:child_process";
 import { createConnection, createServer } from "node:net";
@@ -20,7 +20,7 @@ import { FakeInbox } from "../../src/comms/fake-inbox.js";
 
 /**
  * Ask the OS for a free port instead of guessing one. Picking randomly from a fixed range collides
- * with whatever else is running — including another vitest worker — and produced a flaky failure
+ * with whatever else is running (including another vitest worker) and produced a flaky failure
  * that looked like a real bug.
  */
 function freePort(): Promise<number> {

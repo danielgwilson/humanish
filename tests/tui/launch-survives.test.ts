@@ -8,11 +8,11 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 const run = promisify(execFile);
 
-// THE property a launched run depends on: it must outlive the surface that started it.
+// The property a launched run depends on: it must outlive the surface that started it.
 //
-// A study takes minutes and costs money. If closing the TUI — or losing the SSH session it runs
-// over — killed the run, the surface would be actively dangerous to use from a laptop. Asserting
-// `detached: true` was passed only checks that we asked; this checks that it WORKED, by killing the
+// A study takes minutes and costs money. If closing the TUI, or losing the SSH session it runs
+// over: killed the run, the surface would be actively dangerous to use from a laptop. Asserting
+// `detached: true` was passed only checks that we asked; this checks that it worked, by killing the
 // parent for real and watching the child finish anyway.
 
 describe("a launched run outlives the process that started it", () => {
@@ -37,7 +37,7 @@ describe("a launched run outlives the process that started it", () => {
       "utf8",
     );
 
-    // A parent that launches and then exits IMMEDIATELY — the surface being closed mid-run.
+    // A parent that launches and then exits immediately: the surface being closed mid-run.
     const parent = path.join(dir, "parent.mjs");
     const launchModule = path.resolve("src/tui/launch.ts");
     await writeFile(

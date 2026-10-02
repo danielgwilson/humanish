@@ -242,7 +242,7 @@ describe("run status: identity + liveness on disk", () => {
     expect((await stat(statusPath("run-d"))).isDirectory()).toBe(true);
   });
 
-  it("the record is one small file — the point is listing runs without parsing bundles", async () => {
+  it("the record is one small file: the point is listing runs without parsing bundles", async () => {
     const bundle = await bundleFor("run-e");
     await runScope(async (scope) => {
       await (await startLive(scope, "run-e", lab)).finish(bundle);
@@ -276,7 +276,7 @@ describe("run status: identity + liveness on disk", () => {
     );
     // Ids may legitimately contain a colon (the removed OSS meta-lab wrote `oss:meta`).
     expect(inferLegacyLabId({ scenario: { source: "lab:oss:meta" } })).toBe("oss:meta");
-    // A plain persona path is NOT a lab marker — those runs are honestly lab-less.
+    // A plain persona path is not a `lab:` marker, so those runs get no study id.
     expect(
       inferLegacyLabId({ persona: { source: "humanish/personas/synthetic-new-user.yaml" } }),
     ).toBeUndefined();

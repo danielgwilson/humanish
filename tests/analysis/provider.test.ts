@@ -8,7 +8,7 @@ import {
 } from "../../src/analysis/provider.js";
 
 // Transport envelope/usage derive from the retained live closing-report response. See that
-// fixture's provenance README. Analysis content is synthetic; negative cases mutate that wire.
+// fixture's provenance readme. Analysis content is synthetic; negative cases mutate that wire.
 const captured = JSON.parse(
   readFileSync(
     new URL("../fixtures/openai-closing-report/typed-closing-report.json", import.meta.url),

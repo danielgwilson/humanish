@@ -17,7 +17,8 @@
 // - `em-dashes`: `—`, or ` -- ` between words. A colon, a comma or two sentences says the same.
 // - `invariant-refs`: `invariant 6`. The numbers live in docs/principles/invariants-and-defaults.md
 //   and drift; name the rule instead.
-// - `authority`: `load-bearing`, `doctrine`, `canonical`. Say what the code depends on.
+// - `authority`: `load-bearing`, `doctrine`. Say what the code depends on. (`canonical` stays
+//   legal: a canonical form or path is a precise term.)
 // - `seat-comments`, `cua-route`, `honest`, `history`: words held at today's count while comments move to
 //   participant, the computer-use route, a plain claim and the current behavior.
 // - `series-codes`, `name-refs`: a test name that opens with a code such as `L14:` or `W5:`, or
