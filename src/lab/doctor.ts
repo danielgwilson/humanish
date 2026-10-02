@@ -7,6 +7,10 @@ import type { PlanResult } from "./plan-types.js";
 import { keyNamesOf, requiredKeys, requiredSubjectEnv } from "./requirements.js";
 import type { DetectedLocalAgent } from "../actors/local-agent/cli.js";
 import type { ReasoningEffort } from "../actors/reasoning-effort.js";
+import {
+  protocolAdditionsWarning,
+  protocolIncompatibilityMessage,
+} from "../actors/codex/protocol-compat.js";
 import type { DoctorResult } from "../cli/doctor.js";
 import { automaticAnalysisBudget } from "../analysis/automatic-config.js";
 import { externalCatchHealthy } from "../comms/sandbox-catch.js";
@@ -31,7 +35,20 @@ type CodexReadiness = {
   refusedExecutable?: RefusedCodexExecutable;
   /** Where the `codex` on `PATH` was installed, for the command that replaces it. */
   installation?: CodexInstallation;
+  /** How the release's app-server schema differs from the fields humanish reads. */
+  protocolIncompatibilities?: readonly string[];
+  /** Schema values beyond the baseline, recorded by a launch that passed. */
+  protocolAdditions?: readonly string[];
 };
+
+/** A ready row's message, with the schema values the launch recorded. */
+function readyMessage(
+  message: string,
+  readiness: CodexReadiness & { cliVersion?: string },
+): string {
+  const additions = protocolAdditionsWarning(readiness.cliVersion, readiness.protocolAdditions);
+  return additions === undefined ? message : `${message} ${additions}`;
+}
 
 /** npm's global prefix (`npm prefix -g`), or undefined when npm does not answer. */
 async function npmGlobalPrefix(env: NodeJS.ProcessEnv): Promise<string | undefined> {
@@ -100,7 +117,8 @@ async function withCodexRecoveryDetails(
 ): Promise<CodexReadiness> {
   if (
     checked.errorCode !== "codex_unavailable" &&
-    checked.errorCode !== "codex_unsupported_version"
+    checked.errorCode !== "codex_unsupported_version" &&
+    checked.errorCode !== "codex_incompatible_release"
   )
     return checked;
   const installation = await codexInstallation(env);
@@ -129,6 +147,8 @@ function codexRecovery(readiness: CodexReadiness, fallback: string): string {
   switch (readiness.errorCode) {
     case "codex_unsupported_version":
       return codexVersionRecovery(readiness.detectedCliVersion, readiness.installation);
+    case "codex_incompatible_release":
+      return `${protocolIncompatibilityMessage(readiness.detectedCliVersion, readiness.protocolIncompatibilities ?? [])} ${codexInstallAdvice(readiness.installation)} Then sign in with a ChatGPT account (\`codex login\`).`;
     case "codex_login_required":
       return "Codex is installed but not signed in. Run `codex login` and sign in with a ChatGPT account.";
     case "codex_unsupported_auth":
@@ -160,7 +180,10 @@ export async function localCodexParticipantCheck(args: {
     name: "local participant authentication",
     ok: readiness.ready,
     message: readiness.ready
-      ? "Qualified Codex CLI and ChatGPT login are ready for restricted local browser participants. No E2B or model API key is required; inference is remote, and model access and account quota remain untested."
+      ? readyMessage(
+          "Qualified Codex CLI and ChatGPT login are ready for restricted local browser participants. No E2B or model API key is required; inference is remote, and model access and account quota remain untested.",
+          readiness,
+        )
       : `Local Codex participant setup is unavailable (${readiness.errorCode}). ${codexRecovery(readiness, "Install the supported Codex CLI version and sign in with a ChatGPT account.")} No API fallback is used.`,
   };
 }
@@ -368,7 +391,10 @@ async function hostedCodexParticipantCheck(
     name: "local participant authentication",
     ok: readiness.ready,
     message: readiness.ready
-      ? `Codex CLI ${readiness.cliVersion ?? "(unknown release)"} passed the operator handshake without a turn (initialize, config/read, account/read and an ephemeral thread/start): model ${readiness.resolvedModel ?? "(not reported)"} on ${account}. E2B supplies the desktop; no OpenAI API key is required for this participant.`
+      ? readyMessage(
+          `Codex CLI ${readiness.cliVersion ?? "(unknown release)"} passed the operator handshake without a turn (initialize, config/read, account/read and an ephemeral thread/start): model ${readiness.resolvedModel ?? "(not reported)"} on ${account}. E2B supplies the desktop; no OpenAI API key is required for this participant.`,
+          readiness,
+        )
       : `Hosted Codex participant setup is unavailable (${readiness.errorCode}). ${codexRecovery(readiness, "Check `codex login status` and the operator's Codex configuration, then rerun doctor.")} No API fallback is used.`,
   };
 }
@@ -417,7 +443,10 @@ async function analysisCheck(
       name: "post-run analysis",
       ok: readiness.ready,
       message: readiness.ready
-        ? "Qualified Codex CLI and ChatGPT account login are ready for a separate restricted analyst. Analysis sends selected evidence to remote inference; model access and account allowance remain untested. Dollar cost and output-token ceilings are unavailable."
+        ? readyMessage(
+            "Qualified Codex CLI and ChatGPT account login are ready for a separate restricted analyst. Analysis sends selected evidence to remote inference; model access and account allowance remain untested. Dollar cost and output-token ceilings are unavailable.",
+            readiness,
+          )
         : `Codex account analysis is unavailable (${readiness.errorCode ?? "codex_unavailable"}). ${recovery} No API fallback is used; participant readiness is independent.`,
     };
   }

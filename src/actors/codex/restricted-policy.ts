@@ -23,6 +23,7 @@ export type RestrictedCodexAnalysisErrorCode =
   | "output_incomplete"
   | "codex_unavailable"
   | "codex_unsupported_version"
+  | "codex_incompatible_release"
   | "codex_unsupported_platform"
   | "codex_login_required"
   | "codex_unsupported_auth"
@@ -61,6 +62,10 @@ export interface RestrictedCodexResult {
   errorCode: RestrictedCodexAnalysisErrorCode | null;
   /** Notification methods this humanish does not know that carried no item, by count. */
   unknownNotifications?: Readonly<Record<string, number>>;
+  /** How the release's app-server schema differs from the fields humanish reads (protocol-compat). */
+  protocolIncompatibilities?: readonly string[];
+  /** Schema values beyond the baseline humanish knows; recorded, and the launch continued. */
+  protocolAdditions?: readonly string[];
   /** Bytes of a last frame cut off when humanish stopped the app-server. */
   truncatedFrameBytes?: number;
 }

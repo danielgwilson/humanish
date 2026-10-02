@@ -120,9 +120,14 @@ export async function runRestrictedCodexSession(
   const closed = await session.close();
   const unknownNotifications = session.unknownNotifications ?? {};
   const truncatedFrameBytes = session.truncatedFrameBytes;
+  const { protocolIncompatibilities, protocolAdditions } = session;
   const noted = {
     ...(Object.keys(unknownNotifications).length === 0 ? {} : { unknownNotifications }),
     ...(truncatedFrameBytes === undefined ? {} : { truncatedFrameBytes }),
+    ...(protocolIncompatibilities === undefined ? {} : { protocolIncompatibilities }),
+    ...(protocolAdditions === undefined || protocolAdditions.length === 0
+      ? {}
+      : { protocolAdditions }),
   };
   if (!closed)
     return {
@@ -286,6 +291,10 @@ export interface RestrictedCodexSession {
   readonly policyRefusal?: RestrictedCodexAnalysisErrorCode | undefined;
   /** Bytes of last frames cut off after humanish stopped the app-server; a run warning. */
   readonly truncatedFrameBytes?: number | undefined;
+  /** How the release's schema differs from the fields humanish reads, when that refused it. */
+  readonly protocolIncompatibilities?: readonly string[] | undefined;
+  /** Schema values beyond the baseline humanish knows, recorded at launch. */
+  readonly protocolAdditions?: readonly string[] | undefined;
   run(request: RestrictedCodexRequest, readinessOnly?: boolean): Promise<RestrictedCodexResult>;
   close(): Promise<boolean>;
 }
@@ -554,6 +563,8 @@ export function createRestrictedCodexSession(
     authentication: undefined,
     cliVersion: undefined,
     unknownNotifications: new Map<string, number>(),
+    protocolIncompatibilities: undefined,
+    protocolAdditions: undefined,
     activeDeadline: undefined,
     interrupt: undefined,
     closed: false,
@@ -593,6 +604,12 @@ export function createRestrictedCodexSession(
     },
     get truncatedFrameBytes() {
       return state.truncatedFrameBytes;
+    },
+    get protocolIncompatibilities() {
+      return state.protocolIncompatibilities;
+    },
+    get protocolAdditions() {
+      return state.protocolAdditions;
     },
     run(request, readinessOnly = false) {
       const refusal = refusedRun(settings, state, request, () => pending !== undefined);
