@@ -42,11 +42,12 @@ fail-closed cross-validation, and forward-declared warnings.
 | `scenario.caps`                       | `{ maxUsd, maxJobs, maxMinutes }`: the blast-radius budget; `maxUsd > 0` is refused unless a `costProbe` measures spend                                   |
 | `policies`                            | `allowPrivateRepoAccess` / `allowProviderCredentials` / `allowPaymentCredentials` / `allowGitHubMutation`, all DEFAULT FALSE                              |
 | `actors[0].type`                      | `codex-exec`: a registered terminal actor (`keyPlacement: in-sandbox-command-scoped`)                                                                     |
-| `LabBackend`                          | `terminal` → `runTerminalProductLab` ([`src/routes/terminal/route.ts`](https://github.com/danielgwilson/humanish/blob/main/src/routes/terminal/route.ts)) |
+| route                                 | `terminal` → `runTerminalProductLab` ([`src/routes/terminal/route.ts`](https://github.com/danielgwilson/humanish/blob/main/src/routes/terminal/route.ts)) |
 
 Routing is `routeOf` (`src/lab/plan.ts`). It sends every `terminal-product` subject to
 this route, even with an unregistered actor, so this route refuses the actor.
-`routesToTerminalProduct(config)` also feeds the forward-declared warnings.
+`isTerminalProductComposition(config)` (`src/lab/routing.ts`) also feeds the forward-declared
+warnings.
 
 ## Repeating a terminal study with the same runtime
 

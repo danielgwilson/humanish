@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parseLabConfig } from "../../src/lab/config.js";
 import { type LabConfig } from "../../src/lab/types.js";
 import { runLab } from "../../src/run-lab.js";
-import { routeOf, selectLabBackend } from "../../src/lab/plan.js";
+import { routeOf } from "../../src/lab/plan.js";
 import { runCuaActorLab } from "../../src/routes/computer-use/route.js";
 import { runConcurrentSharedWorld } from "../../src/routes/shared-world/route.js";
 import { runTerminalProductLab } from "../../src/routes/terminal/route.js";
@@ -18,7 +18,7 @@ const fixtures = JSON.parse(
   name: string;
   config: LabConfig;
   supported: boolean;
-  backend: string;
+  route: string;
 }>;
 const tasks = [
   {
@@ -46,8 +46,8 @@ describe("declared task protocol admission", () => {
 
   it.each(fixtures)(
     "preserves mission-only $name and enforces its actual protocol support",
-    ({ config, supported, backend }) => {
-      expect(selectLabBackend(validConfig(config))).toBe(backend);
+    ({ config, supported, route }) => {
+      expect(routeOf(validConfig(config))).toBe(route);
       const declared = structuredClone(config);
       declared.actors[0]!.tasks = tasks;
       const result = parseLabConfig(declared);
@@ -96,12 +96,12 @@ describe("declared task protocol admission", () => {
   );
 
   it.each([
-    ["concurrent-shared-world", runConcurrentSharedWorld],
+    ["shared-world", runConcurrentSharedWorld],
     ["terminal", runTerminalProductLab],
     ["scripted", runScriptedBrowserLab],
   ] as const)(
     "direct %s entry refuses tasks even when given a CUA-shaped config",
-    async (_backend, runner) => {
+    async (_route, runner) => {
       const config = validConfig(fixtures.find((row) => row.supported)!.config);
       config.actors[0]!.tasks = tasks;
       const result = await runner({ cwd: path.join(cwd, "must-not-exist"), config, dryRun: false });

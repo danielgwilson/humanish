@@ -62,7 +62,7 @@ import { externalCatchHealthy } from "../../../src/comms/sandbox-catch.js";
 import { SANDBOX_CATCH_SCRIPT } from "../../../src/comms/sandbox-catch-script.js";
 import { recipientInboxUrl } from "../../../src/comms/capture-surface.js";
 import { runLab } from "../../../src/run-lab.js";
-import { selectLabBackend } from "../../../src/lab/plan.js";
+import { routeOf } from "../../../src/lab/plan.js";
 import {
   renderObserver,
   serveObserver,
@@ -456,8 +456,8 @@ function cloneCuaConfig(extra?: {
 }
 
 describe("lab routing (app-url → cua)", () => {
-  it("selectLabBackend routes app-url to the cua backend and leaves the other routes untouched", () => {
-    expect(selectLabBackend(cuaConfig())).toBe("cua");
+  it("routeOf sends app-url to computer-use and leaves the other routes untouched", () => {
+    expect(routeOf(cuaConfig())).toBe("computer-use");
     const synthetic = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
       id: "s",
@@ -465,7 +465,7 @@ describe("lab routing (app-url → cua)", () => {
       actors: [{ type: "synthetic-persona" }],
     });
     if (!synthetic.ok) throw new Error("fixture config must parse");
-    expect(selectLabBackend(synthetic.config)).toBe("synthetic");
+    expect(routeOf(synthetic.config)).toBe("preview");
     // A clone lab without a computer-use or scripted actor no longer parses; a library caller that
     // skips the parser still routes to cua.
     for (const type of ["humanish-setup", "codex-app-server"]) {
@@ -477,12 +477,12 @@ describe("lab routing (app-url → cua)", () => {
         execution: { target: "e2b-desktop" },
       } as const;
       expect(parseLabConfig(clone).ok).toBe(false);
-      expect(selectLabBackend(clone as unknown as LabConfig)).toBe("cua");
+      expect(routeOf(clone as unknown as LabConfig)).toBe("computer-use");
     }
   });
 
   it("routes every clone subject to cua, where a non-computer-use actor fails closed", async () => {
-    expect(selectLabBackend(cloneCuaConfig())).toBe("cua");
+    expect(routeOf(cloneCuaConfig())).toBe("computer-use");
     // A non-computer-use actor also routes to cua, whose actor gate refuses it before any
     // sandbox or filesystem work.
     // The parser refuses this config now; runLab is reached by a library caller that skips it.
@@ -493,7 +493,7 @@ describe("lab routing (app-url → cua)", () => {
       actors: [{ type: "codex-app-server" }],
       execution: { target: "e2b-desktop" },
     } as unknown as LabConfig;
-    expect(selectLabBackend(meta)).toBe("cua");
+    expect(routeOf(meta)).toBe("computer-use");
     const cwd = await mkdtemp(path.join(tmpdir(), "humanish-clone-actor-"));
     try {
       const outcome = await runLab(meta, { cwd, dryRun: true });
