@@ -9,10 +9,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { reclaimRunSandboxes } from "../../src/run/reclaim.js";
 import type { E2BDesktopModule } from "../../src/substrates/e2b/sdk.js";
 
-// A run has no SIGINT or SIGTERM handler of its own: the process exits at once. What it leaves is
-// the contract the TUI's Stop and `humanish reclaim` rely on: a status record that stops refreshing
-// and the create-time sandbox receipt, which reclaim kills by id. A fake E2B module stands in for
-// the provider; its session never ends, so the signal lands mid-run.
+// A library caller of runLab gets no signal handler (the CLI installs one, tested in
+// tests/cli/run-interrupt-child.test.ts): the process exits at once. What it leaves is the contract
+// `humanish reclaim` relies on: a status record that stops refreshing and the create-time sandbox
+// receipt, which reclaim kills by id. A fake E2B module stands in for the provider; its session
+// never ends, so the signal lands mid-run.
 
 const ROOT = fileURLToPath(new URL("../../", import.meta.url));
 

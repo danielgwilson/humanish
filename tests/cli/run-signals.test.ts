@@ -1,0 +1,140 @@
+import { EventEmitter } from "node:events";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { cliAnalysisOptions } from "../../src/cli/commands/analysis-signals.js";
+import { beginRunSignalPhase } from "../../src/cli/commands/run-signals.js";
+import { registerActiveRun } from "../../src/run/active-runs.js";
+import { runDryRun } from "../../src/run/dry-run.js";
+import { resolveRunPath } from "../../src/run/locate.js";
+import { RECLAIM_RECEIPT_ARTIFACT } from "../../src/run/reclaim.js";
+import { appendSandboxReceipt } from "../../src/run/sandbox-receipts.js";
+import type { RunInterruptSignal } from "../../src/run/status.js";
+import type { E2BDesktopModule } from "../../src/substrates/e2b/sdk.js";
+
+// The run command's handler: the first signal marks the run interrupted, reclaims the sandboxes
+// its receipts name and exits 128+n; a second exits at once; analysis takes the signals over.
+describe("the run command's signal handler", () => {
+  let cwd: string;
+  let target: EventEmitter;
+  let cleanups: Array<() => void>;
+  const RUN = "cua-2026-10-01T00-00-00-000Z-5191a1ed";
+
+  beforeEach(async () => {
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-run-signals-"));
+    target = new EventEmitter();
+    cleanups = [];
+    expect((await runDryRun({ cwd, dryRun: true, runId: RUN })).ok).toBe(true);
+    const runPaths = await resolveRunPath(cwd, RUN);
+    if (!runPaths) throw new Error("dry run left no run");
+    await appendSandboxReceipt(runPaths, { at: "t1", laneId: "lane-01", sandboxId: "sb-1" });
+  });
+  afterEach(async () => {
+    for (const cleanup of cleanups) cleanup();
+    await rm(cwd, { recursive: true, force: true });
+  });
+
+  function setup(options: {
+    interrupted?: boolean;
+    kill?: (sandboxId: string) => Promise<boolean>;
+    deadlineMs?: number;
+  }) {
+    const interrupt = vi.fn(async (_signal: RunInterruptSignal) => options.interrupted ?? true);
+    cleanups.push(registerActiveRun({ cwd, runId: RUN, status: { interrupt } }));
+    const killed: string[] = [];
+    const module = {
+      Sandbox: {
+        create: async () => {
+          throw new Error("reclaim never creates sandboxes");
+        },
+        kill: async (sandboxId: string) => {
+          killed.push(sandboxId);
+          return (options.kill ?? (async () => true))(sandboxId);
+        },
+      },
+    } as unknown as E2BDesktopModule;
+    const exit = vi.fn();
+    let stderr = "";
+    const phase = beginRunSignalPhase(
+      { writeErr: (text) => (stderr += text) },
+      {
+        signalTarget: target,
+        exit,
+        reclaim: { loadModule: async () => module },
+        ...(options.deadlineMs === undefined ? {} : { deadlineMs: options.deadlineMs }),
+      },
+    );
+    cleanups.push(phase.end);
+    return { interrupt, killed, exit, phase, stderr: () => stderr };
+  }
+
+  it("marks the run interrupted, reclaims its receipts and exits 128+n", async () => {
+    const run = setup({});
+    target.emit("SIGTERM");
+    await vi.waitFor(() => expect(run.exit).toHaveBeenCalledWith(143));
+    expect(run.interrupt).toHaveBeenCalledExactlyOnceWith("SIGTERM");
+    expect(run.killed).toEqual(["sb-1"]);
+    const receipt = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", RUN, RECLAIM_RECEIPT_ARTIFACT), "utf8"),
+    ) as { outcomes: unknown[] };
+    expect(receipt.outcomes).toEqual([{ sandboxId: "sb-1", laneId: "lane-01", state: "killed" }]);
+    expect(run.stderr()).toBe(
+      `humanish: SIGTERM: run ${RUN} marked interrupted; sandboxes: 1 killed.\n`,
+    );
+  });
+
+  it("exits at once on a second signal while reclaim is still waiting", async () => {
+    const run = setup({ kill: () => new Promise<boolean>(() => undefined), deadlineMs: 2_000 });
+    target.emit("SIGINT");
+    await vi.waitFor(() => expect(run.killed).toEqual(["sb-1"]));
+    expect(run.exit).not.toHaveBeenCalled();
+    target.emit("SIGINT");
+    expect(run.exit).toHaveBeenCalledExactlyOnceWith(130);
+  });
+
+  it("exits after the deadline and names the reclaim command", async () => {
+    const run = setup({ kill: () => new Promise<boolean>(() => undefined), deadlineMs: 50 });
+    target.emit("SIGHUP");
+    await vi.waitFor(() => expect(run.exit).toHaveBeenCalledWith(129));
+    expect(run.stderr()).toContain(`run \`humanish reclaim --run ${RUN}\``);
+  });
+
+  it("leaves a run that had already finished to its route", async () => {
+    const run = setup({ interrupted: false });
+    target.emit("SIGTERM");
+    await vi.waitFor(() => expect(run.exit).toHaveBeenCalledWith(143));
+    expect(run.killed).toEqual([]);
+    expect(run.stderr()).toBe("");
+  });
+
+  it("takes no signal after end", () => {
+    const run = setup({});
+    run.phase.end();
+    expect(target.listenerCount("SIGTERM")).toBe(0);
+    target.emit("SIGTERM");
+    expect(run.exit).not.toHaveBeenCalled();
+  });
+
+  it("hands the signals to analysis cancellation when analysis starts", () => {
+    const exit = vi.fn();
+    const signals = ["SIGINT", "SIGTERM", "SIGHUP"] as const;
+    const before = new Map(signals.map((signal) => [signal, process.listeners(signal)]));
+    const phase = beginRunSignalPhase({ writeErr: () => undefined }, { exit });
+    cleanups.push(phase.end);
+    const analysis = cliAnalysisOptions({ writeErr: () => undefined });
+    void analysis.onEvent?.({ type: "analysis-started" });
+    // Only the analysis listener is new: the run's handlers left when analysis started. Calling
+    // the listeners directly keeps the test runner's own signal handling out of it.
+    for (const signal of signals) {
+      const added = process.listeners(signal).filter((l) => !before.get(signal)?.includes(l));
+      expect(added).toHaveLength(1);
+      for (const listener of added) (listener as (received: string) => void)(signal);
+    }
+    expect(analysis.analysisSignal?.aborted).toBe(true);
+    expect(exit).not.toHaveBeenCalled();
+    void analysis.onEvent?.({ type: "analysis-finished" });
+    for (const signal of signals) expect(process.listeners(signal)).toEqual(before.get(signal));
+  });
+});

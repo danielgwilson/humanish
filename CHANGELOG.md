@@ -30,6 +30,14 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Changed
 
+- The first SIGINT, SIGTERM or SIGHUP to `humanish run`, `lab run` or `watch` during a live run
+  (outside post-run analysis) writes `status.json` `state: "interrupted"` with the signal (#1354).
+  It then kills the E2B sandboxes the run's create-time receipts name, records them in
+  `reclaim-receipt.json` as `humanish reclaim` does, and exits 128+n. A second signal exits at
+  once. The TUI's Stop shows the run as interrupted at once instead of after the stale window.
+  Before, the process exited at once, its record read `running` until stale, and its sandboxes
+  waited for `humanish reclaim` or their timeout. An older humanish reading the new state falls
+  back to bundle liveness.
 - `RunLabOptions.scorer` takes a scorer typed for the context it reads,
   `AdapterScorerModule<BrowserLabScoringContext>` or
   `AdapterScorerModule<TerminalProductScoringContext>`, without a cast (#1357). Before, a scorer

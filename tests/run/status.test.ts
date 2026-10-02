@@ -4,6 +4,7 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { activeRuns } from "../../src/run/active-runs.js";
 import type { RunBundle } from "../../src/run/bundle.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 import { runScope, type RunScope } from "../../src/run/run.js";
@@ -127,6 +128,52 @@ describe("run status: identity + liveness on disk (#455)", () => {
     });
   });
 
+  it("an interrupt ends the record, and neither the cadence nor a late finish writes over it", async () => {
+    const bundle = await bundleFor("run-f");
+    vi.useFakeTimers({
+      toFake: ["setInterval", "clearInterval", "Date"],
+      now: Date.parse("2026-08-19T10:00:00.000Z"),
+    });
+    await runScope(async (scope) => {
+      const run = await startLive(scope, "run-f");
+      const [active] = activeRuns().filter((entry) => entry.runId === "run-f");
+      if (active === undefined) throw new Error("the started run was not registered");
+      expect(active.cwd).toBe(cwd);
+
+      vi.advanceTimersByTime(1_000);
+      expect(await active.status.interrupt("SIGTERM")).toBe(true);
+      const interrupted = await read("run-f");
+      expect(interrupted).toMatchObject({
+        state: "interrupted",
+        signal: "SIGTERM",
+        updatedAt: "2026-08-19T10:00:01.000Z",
+        completedAt: "2026-08-19T10:00:01.000Z",
+      });
+      expect(isRunStatusRecord(interrupted)).toBe(true);
+      expect(classifyRunStatus(interrupted, Date.now())).toBe("interrupted");
+
+      // The route keeps going until the process exits: its ticks and its finish change nothing.
+      expect(vi.getTimerCount()).toBe(0);
+      vi.advanceTimersByTime(RUN_STATUS_TOUCH_MS * 3);
+      await run.finish(bundle);
+      expect(await read("run-f")).toEqual(interrupted);
+      expect(await active.status.interrupt("SIGINT")).toBe(false);
+    });
+    expect(activeRuns().some((entry) => entry.runId === "run-f")).toBe(false);
+  });
+
+  it("an interrupt after finish writes nothing", async () => {
+    const bundle = await bundleFor("run-g");
+    await runScope(async (scope) => {
+      const run = await startLive(scope, "run-g");
+      const [active] = activeRuns().filter((entry) => entry.runId === "run-g");
+      await run.finish(bundle);
+      const finished = await read("run-g");
+      expect(await active?.status.interrupt("SIGTERM")).toBe(false);
+      expect(await read("run-g")).toEqual(finished);
+    });
+  });
+
   it("classifies liveness from the record: running, stale-means-interrupted, finished", () => {
     const at = (iso: string) => ({ state: "running" as const, updatedAt: iso });
     const now = Date.parse("2026-08-19T10:01:00.000Z");
@@ -141,6 +188,10 @@ describe("run status: identity + liveness on disk (#455)", () => {
     expect(
       classifyRunStatus({ state: "finished", updatedAt: "2026-08-19T09:00:00.000Z" }, now),
     ).toBe("finished");
+    // A record its stopped process wrote is interrupted at once, without waiting to go stale.
+    expect(
+      classifyRunStatus({ state: "interrupted", updatedAt: "2026-08-19T10:00:59.000Z" }, now),
+    ).toBe("interrupted");
     // A record whose timestamp cannot be parsed is interrupted, never optimistically alive.
     expect(classifyRunStatus(at("not-a-date"), now)).toBe("interrupted");
     // The threshold gives three touch intervals of slack, so a hiccup never mislabels a live run.
@@ -185,6 +236,8 @@ describe("run status: identity + liveness on disk (#455)", () => {
     };
     expect(isRunStatusRecord({ ...base, somethingNewLater: true })).toBe(true);
     expect(isRunStatusRecord({ ...base, state: "sleeping" })).toBe(false);
+    expect(isRunStatusRecord({ ...base, state: "interrupted", signal: "SIGTERM" })).toBe(true);
+    expect(isRunStatusRecord({ ...base, state: "interrupted", signal: "SIGKILL" })).toBe(false);
     expect(isRunStatusRecord({ ...base, schema: "humanish.run-status.v2" })).toBe(false);
     expect(isRunStatusRecord({ ...base, lab: { path: "x" } })).toBe(false);
     expect(isRunStatusRecord(null)).toBe(false);
