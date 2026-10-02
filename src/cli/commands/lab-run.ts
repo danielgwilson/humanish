@@ -218,7 +218,7 @@ function routeRunFor(
 }
 
 function labRerunFlagsRequested(options: LabCommandOptions): boolean {
-  return options.rerunFailedFrom !== undefined || options.lanes !== undefined;
+  return options.rerunFailedFrom !== undefined || options.participants !== undefined;
 }
 
 function writeUnsupportedRerunFlagsResult(
@@ -236,7 +236,7 @@ function writeUnsupportedRerunFlagsResult(
     warnings: [],
     error: {
       code: "HUMANISH_UNSUPPORTED_RERUN_FLAGS",
-      message: `--rerun-failed-from/--lanes apply only to computer-use fan-out labs; this lab resolved to the ${route} route.`,
+      message: `--rerun-failed-from/--participants apply only to computer-use fan-out labs; this lab resolved to the ${route} route.`,
     },
   };
   writeResult(args.command, args.io, result, formatRunHuman);

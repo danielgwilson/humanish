@@ -136,9 +136,9 @@ function resolveCuaSettings(args: ComputerUseRouteArgs): CuaRunSettings | undefi
     mode: args.mode,
     wantsMachine,
   });
-  const participantIds = parseParticipantIds(args.options.lanes);
+  const participantIds = parseParticipantIds(args.options.participants);
   if (participantIds.length > 0 && !args.options.rerunFailedFrom) {
-    args.io.writeErr("error: --lanes requires --rerun-failed-from.\n");
+    args.io.writeErr("error: --participants requires --rerun-failed-from.\n");
     args.io.setExitCode(2);
     return undefined;
   }
