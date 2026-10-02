@@ -82,23 +82,21 @@ describe("local study bindings", () => {
       cwd,
       config: localLab("openai-computer-use"),
       dryRun: true,
-      cuaHooks: { score, onPhase, deriveArtifacts },
+      cuaHooks: { onPhase },
+      scorer: { score, deriveArtifacts },
       scorerProvenance,
     });
 
     const hooks = studyHooks(study);
     expect(study.options.scorerProvenance).toBe(scorerProvenance);
-    // The study forwards the caller's members bound to the caller's bag, so each reaches the
-    // caller's function.
-    await hooks.score!({} as never);
+    // The scorer stays on the options; the study forwards the caller's own hook to its function.
+    expect(study.options.scorer?.score).toBe(score);
+    expect(study.options.scorer?.deriveArtifacts).toBe(deriveArtifacts);
     hooks.onPhase!(
       { at: "", type: "phase", message: "m" },
       { laneId: "lane-01", laneIndex: 0, laneCount: 1 },
     );
-    await hooks.deriveArtifacts!({} as never);
-    expect(score).toHaveBeenCalledOnce();
     expect(onPhase).toHaveBeenCalledOnce();
-    expect(deriveArtifacts).toHaveBeenCalledOnce();
     // The desktop goes to the run as localVm, not through the hooks.
     expect(hooks.buildProvider).toBeUndefined();
     expect(hooks.runSession).toBeUndefined();

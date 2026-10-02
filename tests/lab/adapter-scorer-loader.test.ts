@@ -9,10 +9,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { loadAdapterScorer } from "../../src/lab/adapter-scorer-loader.js";
 import type { AdapterScorerModule, AdapterScoringContext } from "../../src/index.js";
 import { runTerminalProductLab } from "../../src/routes/terminal/route.js";
-import {
-  applyBrowserAdapterHooks,
-  DECLARED_SCORER_MALFORMED,
-} from "../../src/lab/adapter-extension.js";
+import { applyBrowserScorer, DECLARED_SCORER_MALFORMED } from "../../src/lab/adapter-extension.js";
 import { foldScorerFailures } from "../../src/run/judge.js";
 import { LAB_CONFIG_SCHEMA } from "../../src/lab/types.js";
 import { parseLabConfig } from "../../src/lab/config.js";
@@ -597,8 +594,8 @@ describe("browser routes flip AND stamp provenance", () => {
 
   it("a DECLARED fail score is a failure the fold turns into a fail, and stamps provenance", async () => {
     const bundle = freshBundle();
-    const res = await applyBrowserAdapterHooks({
-      hooks: {
+    const res = await applyBrowserScorer({
+      scorer: {
         score: () => ({
           schema: "humanish.adapter-score.v1",
           namespace: "example-ns",
@@ -611,7 +608,6 @@ describe("browser routes flip AND stamp provenance", () => {
       bundle,
       sanitize: (t) => t,
       warnings: [],
-      hookLabel: "cuaHooks",
       scorerProvenance: provenance,
     });
     // The seam leaves the review to the route's fold.
@@ -624,8 +620,8 @@ describe("browser routes flip AND stamp provenance", () => {
 
   it("a DECLARED browser scorer that THROWS fails the run (red-team finding #2 — was a silent green)", async () => {
     const bundle = freshBundle();
-    const res = await applyBrowserAdapterHooks({
-      hooks: {
+    const res = await applyBrowserScorer({
+      scorer: {
         score: () => {
           throw new Error("browser boom");
         },
@@ -634,7 +630,6 @@ describe("browser routes flip AND stamp provenance", () => {
       bundle,
       sanitize: (t) => t,
       warnings: [],
-      hookLabel: "cuaHooks",
       scorerProvenance: provenance,
     });
     expect(res.failures).toHaveLength(1);
@@ -645,8 +640,8 @@ describe("browser routes flip AND stamp provenance", () => {
 
   it("a DECLARED browser scorer returning a MALFORMED value fails the run (red-team finding #1)", async () => {
     const bundle = freshBundle();
-    const res = await applyBrowserAdapterHooks({
-      hooks: {
+    const res = await applyBrowserScorer({
+      scorer: {
         score: () => ({
           schema: "humanish.adapter-score.v1",
           namespace: "",
@@ -659,7 +654,6 @@ describe("browser routes flip AND stamp provenance", () => {
       bundle,
       sanitize: (t) => t,
       warnings: [],
-      hookLabel: "cuaHooks",
       scorerProvenance: provenance,
     });
     expect(res.failures).toEqual([DECLARED_SCORER_MALFORMED]);
@@ -669,8 +663,8 @@ describe("browser routes flip AND stamp provenance", () => {
 
   it("a LIBRARY browser scorer that throws does NOT flip and signals no failure (back-compat)", async () => {
     const bundle = freshBundle();
-    const res = await applyBrowserAdapterHooks({
-      hooks: {
+    const res = await applyBrowserScorer({
+      scorer: {
         score: () => {
           throw new Error("boom");
         },
@@ -679,7 +673,6 @@ describe("browser routes flip AND stamp provenance", () => {
       bundle,
       sanitize: (t) => t,
       warnings: [],
-      hookLabel: "cuaHooks",
       // no scorerProvenance → library caller, additive
     });
     expect(res.failures).toEqual([]);
@@ -688,8 +681,8 @@ describe("browser routes flip AND stamp provenance", () => {
 
   it("a DECLARED scorer cannot mutate the bundle in place — the frozen view protects noSpend/review (finding #3)", async () => {
     const bundle = freshBundle();
-    const res = await applyBrowserAdapterHooks({
-      hooks: {
+    const res = await applyBrowserScorer({
+      scorer: {
         score: (ctx) => {
           (ctx.bundle as unknown as { noSpend: { satisfied: boolean } }).noSpend.satisfied = true; // tamper on the frozen view → throws
           return {
@@ -705,7 +698,6 @@ describe("browser routes flip AND stamp provenance", () => {
       bundle,
       sanitize: (t) => t,
       warnings: [],
-      hookLabel: "cuaHooks",
       scorerProvenance: provenance,
     });
     // The REAL bundle was never mutated by the scorer (it saw a frozen clone).

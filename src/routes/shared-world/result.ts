@@ -2,10 +2,7 @@
 // lab result with each role's outcome and the one error a run that did not pass reports.
 
 import { redactText } from "../../evidence/redaction.js";
-import {
-  adapterScoreFailureMessage,
-  applyBrowserAdapterHooks,
-} from "../../lab/adapter-extension.js";
+import { adapterScoreFailureMessage, applyBrowserScorer } from "../../lab/adapter-extension.js";
 import { attachObserverRuntimeStreamUrls, type ObserverResult } from "../../observer/render.js";
 import type { RunSubjectProvenance } from "../../run/bundle.js";
 import {
@@ -281,7 +278,7 @@ export async function finishConcurrentRun(
   results: PlaneResults,
   plane: FinishFacts,
 ): Promise<ConcurrentSharedWorldLabResult> {
-  const { plan, input, descriptor, hooks, actorSpecs, run, runId, createdAt } = ctx;
+  const { plan, input, descriptor, actorSpecs, run, runId, createdAt } = ctx;
   const participantCount = plan.plane.participants.length;
   const { cwd, concurrency, source, seedDigest, receiving, warnings, scrubKnownValues } = ctx;
   const { dryRun } = plan;
@@ -344,8 +341,8 @@ export async function finishConcurrentRun(
   const bundle = buildConcurrentSharedWorldBundle({ ...bundleArgs, judgment });
 
   const adapterWarnings: string[] = [];
-  const scorerResult = await applyBrowserAdapterHooks({
-    hooks,
+  const scorerResult = await applyBrowserScorer({
+    scorer: input.scorer,
     bundle,
     context: {
       bundle,
@@ -359,7 +356,6 @@ export async function finishConcurrentRun(
     },
     sanitize: (text) => redactText(scrubKnownValues(text)),
     warnings: adapterWarnings,
-    hookLabel: "sharedWorldHooks",
     ...(input.scorerProvenance === undefined ? {} : { scorerProvenance: input.scorerProvenance }),
   });
   // The one final verdict fold: scoring can only make the judged verdict stricter.

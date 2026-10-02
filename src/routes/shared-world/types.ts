@@ -4,7 +4,7 @@
 import type { SharedWorldJudgment } from "../../run/judge.js";
 import type { CuaActorSessionOptions } from "../../actors/computer-use/actor.js";
 import type { CuaLoopResult } from "../../actors/computer-use/loop.js";
-import type { BrowserLabAdapterHooks } from "../../lab/adapter-extension.js";
+import type { BrowserScorer } from "../../lab/adapter-extension.js";
 import type { SubjectPhaseEvent } from "../../subject/steps.js";
 import type { DetachedTimers } from "../../substrates/detached.js";
 import type { E2BDesktopModule, E2BDesktopSandbox } from "../../substrates/e2b/sdk.js";
@@ -68,8 +68,10 @@ export interface RunConcurrentSharedWorldLabOptions {
   runId?: string;
   onObserverReady?: (observer: ObserverResult & { ok: true }) => Promise<void> | void;
   hooks?: SharedWorldLabHooks;
-  /** Present only when the browser-route scorer hooks were CONFIG-DECLARED and loaded by the CLI
-   *  (#316); core-stamped onto the bundle as evidence. Absent for library callers. */
+  /** Scores the assembled evidence: `RunLabOptions.scorer`, or the scorer the CLI loads. */
+  scorer?: BrowserScorer;
+  /** Present only when the scorer was CONFIG-DECLARED and loaded by the CLI (#316);
+   *  core-stamped onto the bundle as evidence. Absent for library callers. */
   scorerProvenance?: RunScorerProvenance;
 }
 
@@ -323,7 +325,7 @@ export interface FinishFacts {
  * orchestration with fakes at $0/zero-network. The fake desktop module records create/kill BY id
  * and exposes NO `list` method (the by-id teardown rail is then provable by construction).
  */
-export interface SharedWorldLabHooks extends BrowserLabAdapterHooks {
+export interface SharedWorldLabHooks {
   /** Lazy-load the E2B desktop module (tests inject a fake; default loadE2BDesktopModule). */
   loadDesktopModule?: () => Promise<E2BDesktopModule>;
   /**

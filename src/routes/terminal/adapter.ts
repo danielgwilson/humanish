@@ -107,16 +107,14 @@ export async function applyAdapterExtensionSeam(args: {
         if (message !== undefined) failures.push(message);
       } else {
         warnings.push(
-          "terminalHooks.score returned a value that is not a well-formed humanish.adapter-score.v1 (non-empty namespace + status + numeric score + summary); dropped so the bundle stays verifiable.",
+          "scorer.score returned a value that is not a well-formed humanish.adapter-score.v1 (non-empty namespace + status + numeric score + summary); dropped so the bundle stays verifiable.",
         );
         // A declared gate that returned a MALFORMED value never rendered a verdict — fail closed.
         if (declared) failures.push(DECLARED_SCORER_MALFORMED);
       }
     } catch (error) {
       const detail = sanitize(error instanceof Error ? error.message : String(error));
-      warnings.push(
-        `terminalHooks.score threw (${detail}); dropped so the bundle stays verifiable.`,
-      );
+      warnings.push(`scorer.score threw (${detail}); dropped so the bundle stays verifiable.`);
       // A crashed DECLARED gate must be visible, never a silent pass: it fails the review and the
       // run result.
       if (declared) failures.push(declaredScorerThrew(detail));
@@ -132,7 +130,7 @@ export async function applyAdapterExtensionSeam(args: {
         if (isAdapterFeedbackCandidateShape(cleaned)) accepted.push(cleaned);
         else
           warnings.push(
-            "terminalHooks.deriveFeedback returned a candidate that is not a well-formed humanish.feedback-candidate.v1 (or its adapter block lacked a non-empty namespace + data record); dropped so the bundle stays verifiable.",
+            "scorer.deriveFeedback returned a candidate that is not a well-formed humanish.feedback-candidate.v1 (or its adapter block lacked a non-empty namespace + data record); dropped so the bundle stays verifiable.",
           );
       }
       if (accepted.length > 0) {
@@ -140,7 +138,7 @@ export async function applyAdapterExtensionSeam(args: {
       }
     } catch (error) {
       warnings.push(
-        `terminalHooks.deriveFeedback threw (${sanitize(error instanceof Error ? error.message : String(error))}); dropped so the bundle stays verifiable.`,
+        `scorer.deriveFeedback threw (${sanitize(error instanceof Error ? error.message : String(error))}); dropped so the bundle stays verifiable.`,
       );
     }
   }

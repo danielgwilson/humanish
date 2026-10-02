@@ -1,4 +1,5 @@
 import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
+import type { BrowserScorer } from "../../../src/lab/adapter-extension.js";
 import { captureStderr, runDirSnapshot } from "../../helpers/run-golden.js";
 import { expectFailureGolden } from "../../helpers/failure-golden.js";
 import { mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
@@ -1383,39 +1384,42 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
   it("adapter fail score turns a coherent concurrent shared-world run red while keeping evidence verifiable", async () => {
     const state = { worldVersion: 0 };
     const { hooks } = baseHooks(state, makeRendezvous(3));
-    hooks.score = concurrentFailScore;
-    hooks.deriveArtifacts = async (ctx) => {
-      await mkdir(path.join(ctx.runDir, "adapter"), { recursive: true });
-      await writeFile(
-        path.join(ctx.runDir, "adapter", "concurrent-readback.json"),
-        `${JSON.stringify(
+    const scorer: BrowserScorer = {
+      score: concurrentFailScore,
+      deriveArtifacts: async (ctx) => {
+        await mkdir(path.join(ctx.runDir, "adapter"), { recursive: true });
+        await writeFile(
+          path.join(ctx.runDir, "adapter", "concurrent-readback.json"),
+          `${JSON.stringify(
+            {
+              schema: "example.concurrent-readback.v1",
+              status: "review-required",
+              backend: ctx.backend,
+              laneCount: ctx.laneCount,
+            },
+            null,
+            2,
+          )}\n`,
+          "utf8",
+        );
+        return [
           {
-            schema: "example.concurrent-readback.v1",
-            status: "review-required",
-            backend: ctx.backend,
-            laneCount: ctx.laneCount,
+            schema: "humanish.adapter-artifact.v1",
+            namespace: CONCURRENT_ADAPTER_NAMESPACE,
+            label: "Concurrent adapter readback",
+            path: "adapter/concurrent-readback.json",
+            kind: "state",
+            note: "Adapter-owned concurrent shared-world readback.",
           },
-          null,
-          2,
-        )}\n`,
-        "utf8",
-      );
-      return [
-        {
-          schema: "humanish.adapter-artifact.v1",
-          namespace: CONCURRENT_ADAPTER_NAMESPACE,
-          label: "Concurrent adapter readback",
-          path: "adapter/concurrent-readback.json",
-          kind: "state",
-          note: "Adapter-owned concurrent shared-world readback.",
-        },
-      ];
+        ];
+      },
     };
     const result = await runConcurrentSharedWorld({
       cwd,
       config: concurrentConfig(3, 3),
       dryRun: false,
       hooks,
+      scorer,
     });
 
     expect(result.ok).toBe(false);
