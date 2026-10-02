@@ -45,8 +45,8 @@ describe("terminal Codex runtime selection", () => {
   it("permits exact prerelease versions and resolves latest only in the unkeyed probe", () => {
     expect(isExactRuntimeVersion("0.154.0-alpha.2+build.1")).toBe(true);
     expect(buildRuntimeVersionCommand()).toContain("@openai/codex@latest --version");
-    expect(buildRuntimeExecPrefix("0.153.3")).toBe(
-      "npm_config_update_notifier=false npx -y @openai/codex@0.153.3 exec",
+    expect(buildRuntimeExecPrefix("0.153.3", "gpt-5.6-sol")).toBe(
+      "npm_config_update_notifier=false npx -y @openai/codex@0.153.3 exec --model 'gpt-5.6-sol'",
     );
   });
 
@@ -71,13 +71,16 @@ describe("terminal Codex runtime selection", () => {
     ]);
   });
 
-  it("does not invent a model or per-request usage provenance", () => {
-    expect(declaredRuntimeProvenance({})).toEqual({
+  it("records where the model came from and no per-request usage provenance", () => {
+    expect(
+      declaredRuntimeProvenance({ model: "gpt-5.6-sol", modelSource: "humanish-default" }),
+    ).toEqual({
       schema: "humanish.actor-runtime.v1",
       package: "@openai/codex",
       requestedVersion: "latest",
       versionStatus: "unobserved",
-      modelStatus: "runtime_default_unobserved",
+      requestedModel: "gpt-5.6-sol",
+      modelStatus: "humanish-default",
       usageGranularity: "runtime_turn",
     });
   });

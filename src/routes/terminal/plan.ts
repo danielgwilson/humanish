@@ -2,6 +2,7 @@
 // its order and with its codes, then the plan the run uses. The route checks nothing here again;
 // what stays in the route reads external state (keys, the runtime env, the sandbox).
 
+import { DEFAULT_OPENAI_CU_MODEL } from "../../actors/computer-use/openai-provider.js";
 import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
 import { isReasoningEffort } from "../../actors/reasoning-effort.js";
 import { actorRegistry, isTerminalActorDescriptor } from "../../actors/registry.js";
@@ -110,7 +111,11 @@ export function planTerminalLab(
     ...(actor?.mission === undefined ? {} : { mission: actor.mission }),
     runtime: {
       ...(runtimeVersion === undefined ? {} : { version: runtimeVersion }),
-      ...(actor?.model === undefined ? {} : { model: actor.model }),
+      // Codex's own default can change with any release and its JSON stream does not name it, so
+      // the route always passes a model: the declared one, else humanish's participant default.
+      ...(actor?.model === undefined
+        ? { model: DEFAULT_OPENAI_CU_MODEL, modelSource: "humanish-default" as const }
+        : { model: actor.model, modelSource: "declared" as const }),
       ...(actor?.reasoningEffort === undefined ? {} : { reasoningEffort: actor.reasoningEffort }),
       ...(config.execution?.runtimeAuth === undefined
         ? {}
@@ -142,14 +147,14 @@ export function planTerminalLab(
       descriptor.id,
     );
   // maxUsd is checked against the cost ledger after the session, and only known lines can trip it.
-  // Core records the Codex provider line as unpriced tokens (no rate for model `codex`) and has no
-  // product, media or payment signal, so without a costProbe every line is null and a positive
-  // maxUsd could never trip. That cap would promise a bound nothing enforces, so it is refused;
-  // maxMinutes is what bounds a live run.
+  // The ledger's provider line takes only provider-reported cost, which Codex does not report (the
+  // token estimate in run.json is not a measurement), and core has no product, media or payment
+  // signal, so without a costProbe every line is null and a positive maxUsd could never trip. That
+  // cap would promise a bound nothing enforces, so it is refused; maxMinutes bounds a live run.
   if (maxUsd > 0 && input.hasCostProbe !== true)
     return refuse(
       "HUMANISH_TERMINAL_LAB_UNPRICED_CAP",
-      `scenario.caps.maxUsd=${maxUsd} cannot be enforced: the Codex participant's provider spend is recorded as unpriced tokens and no product, media or payment spend is measured, so a positive dollar cap can never trip. Set scenario.caps.maxUsd to 0 and bound the run with scenario.caps.maxMinutes, the codex command's wall-clock kill. No sandbox was created and the runtime key was not used.`,
+      `scenario.caps.maxUsd=${maxUsd} cannot be enforced: Codex reports no provider cost for the participant (its token cost is only estimated after the run) and no product, media or payment spend is measured, so a positive dollar cap can never trip. Set scenario.caps.maxUsd to 0 and bound the run with scenario.caps.maxMinutes, the codex command's wall-clock kill. No sandbox was created and the runtime key was not used.`,
       descriptor.id,
     );
   // The sandbox's timeout covers the steps before the codex command, maxMinutes and the teardown

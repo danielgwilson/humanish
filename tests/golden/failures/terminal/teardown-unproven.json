@@ -80,7 +80,8 @@
       "package": "@openai/codex",
       "requestedVersion": "latest",
       "versionStatus": "verified",
-      "modelStatus": "runtime_default_unobserved",
+      "requestedModel": "gpt-5.6-sol",
+      "modelStatus": "humanish-default",
       "usageGranularity": "runtime_turn",
       "observedVersion": "0.153.3"
     },
@@ -207,7 +208,7 @@
         {
           "at": "[ts]",
           "event": "terminal-lab.runtime.version",
-          "message": "Codex requested latest, observed 0.153.3; exact version selected for execution. Model runtime default (unobserved); reasoning effort runtime default (unobserved)."
+          "message": "Codex requested latest, observed 0.153.3; exact version selected for execution. Model gpt-5.6-sol (humanish-default); reasoning effort runtime default (unobserved)."
         },
         {
           "at": "[ts]",
@@ -383,7 +384,7 @@
       {
         "at": "[ts]",
         "event": "terminal-lab.runtime.version",
-        "message": "Codex requested latest, observed 0.153.3; exact version selected for execution. Model runtime default (unobserved); reasoning effort runtime default (unobserved)."
+        "message": "Codex requested latest, observed 0.153.3; exact version selected for execution. Model gpt-5.6-sol (humanish-default); reasoning effort runtime default (unobserved)."
       },
       {
         "at": "[ts]",
@@ -460,7 +461,8 @@
             "package": "@openai/codex",
             "requestedVersion": "latest",
             "versionStatus": "verified",
-            "modelStatus": "runtime_default_unobserved",
+            "requestedModel": "gpt-5.6-sol",
+            "modelStatus": "humanish-default",
             "usageGranularity": "runtime_turn",
             "observedVersion": "0.153.3"
           },
@@ -622,7 +624,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "terminal-lab.runtime.version",
-        "message": "Codex requested latest, observed 0.153.3; exact version selected for execution. Model runtime default (unobserved); reasoning effort runtime default (unobserved).",
+        "message": "Codex requested latest, observed 0.153.3; exact version selected for execution. Model gpt-5.6-sol (humanish-default); reasoning effort runtime default (unobserved).",
         "simId": "sim-001",
         "streamId": "stream-001"
       },
@@ -784,7 +786,8 @@
       "package": "@openai/codex",
       "requestedVersion": "latest",
       "versionStatus": "verified",
-      "modelStatus": "runtime_default_unobserved",
+      "requestedModel": "gpt-5.6-sol",
+      "modelStatus": "humanish-default",
       "usageGranularity": "runtime_turn",
       "observedVersion": "0.153.3"
     },
@@ -822,7 +825,7 @@
       {
         "at": "[ts]",
         "event": "terminal-lab.runtime.version",
-        "message": "Codex requested latest, observed 0.153.3; exact version selected for execution. Model runtime default (unobserved); reasoning effort runtime default (unobserved)."
+        "message": "Codex requested latest, observed 0.153.3; exact version selected for execution. Model gpt-5.6-sol (humanish-default); reasoning effort runtime default (unobserved)."
       },
       {
         "at": "[ts]",

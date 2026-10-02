@@ -376,7 +376,9 @@ export interface ActorRuntimeProvenance {
   observedVersion?: string;
   versionStatus: "unobserved" | "verified" | "failed";
   requestedModel?: string;
-  modelStatus: "declared" | "runtime_default_unobserved";
+  /** Where requestedModel came from. Bundles written before humanish always passed a model record
+   *  `runtime_default_unobserved`, with no requestedModel. */
+  modelStatus: "declared" | "humanish-default" | "runtime_default_unobserved";
   requestedReasoningEffort?: string;
   /** Codex turn.completed aggregates requests; it cannot establish per-request pricing tiers. */
   usageGranularity: "runtime_turn";

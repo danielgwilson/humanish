@@ -92,6 +92,10 @@ export interface ActorEstimatedCost {
   modelId?: string;
   /** true when the rate is a stand-in, not a live sheet. */
   placeholder?: boolean;
+  /** Set when usage arrived as runtime-turn totals that each sum several requests. No request's
+   *  own size is known, so no per-request long-context tier was applied: tokens are priced at the
+   *  base tier, cached input at the cached rate. */
+  basis?: "aggregated_turns_base_rate";
   breakdown?: {
     inputUsd: number;
     outputUsd: number;
@@ -310,6 +314,22 @@ export function estimateActorCostForExecution(
         ...(modelId === undefined ? {} : { modelId }),
       }
     : estimateActorCost(usage, modelId);
+}
+
+/**
+ * Price usage reported as runtime-turn totals, such as Codex `turn.completed`, which sums every
+ * request in the turn. Pricing a turn as one request would apply the long-context tier to the
+ * whole turn, so the per-turn records are dropped and the totals price on the base tier.
+ */
+export function estimateAggregatedTurnCost(
+  tokenUsage: ActorTokenUsage | undefined,
+  modelId: string | undefined,
+): ActorEstimatedCost {
+  const { turns: _turns, ...totals } = tokenUsage ?? {};
+  const estimate = estimateActorCost(tokenUsage === undefined ? undefined : totals, modelId);
+  return estimate.estimatedCostUsd === null
+    ? estimate
+    : { ...estimate, basis: "aggregated_turns_base_rate" };
 }
 
 export function estimateActorCost(

@@ -9,7 +9,7 @@ import {
   validatePreparedRunArtifactPaths,
   type PreparedRunArtifactPaths,
 } from "../../run/paths.js";
-import { estimateActorCost } from "../../run/pricing.js";
+import { estimateAggregatedTurnCost } from "../../run/pricing.js";
 import {
   normalizeLocalActorTranscript,
   TERMINAL_EVENTS_ARTIFACT,
@@ -108,8 +108,9 @@ function buildLiveTrace(inputs: LiveFinishInputs): {
     runtime,
     ...(terminalTokenUsage === undefined ? {} : { tokenUsage: terminalTokenUsage }),
   });
-  // Codex tokens stay unpriced: the route records its model as `codex`, which has no rate.
-  trace.estimatedCost = estimateActorCost(trace.tokenUsage, trace.provider);
+  // Priced from the model the route passed to Codex. turn.completed sums a turn's requests, so the
+  // estimate uses base rates and says so.
+  trace.estimatedCost = estimateAggregatedTurnCost(trace.tokenUsage, runtime.requestedModel);
   return { normalizedTranscript, trace };
 }
 

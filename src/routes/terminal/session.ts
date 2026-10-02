@@ -102,10 +102,11 @@ export async function runLiveTerminalSession(
 
   // The ledgers + capture buffers, mutated through the live lifecycle.
   const recorder = createTerminalRecorder({ nowIso, sanitize, knownSecretValues });
-  const { version, model, reasoningEffort } = plan.runtime;
+  const { version, model, modelSource, reasoningEffort } = plan.runtime;
   const runtime = declaredRuntimeProvenance({
     ...(version === undefined ? {} : { version }),
-    ...(model === undefined ? {} : { model: sanitize(model) }),
+    model: sanitize(model),
+    modelSource,
     ...(reasoningEffort === undefined ? {} : { reasoningEffort }),
   });
 

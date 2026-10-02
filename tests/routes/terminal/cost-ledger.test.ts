@@ -11,6 +11,7 @@ import type { TerminalTestInputs } from "../../helpers/terminal-live-fake.js";
 import type { E2BDesktopModule } from "../../../src/substrates/e2b/sdk.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 import { estimateAllocatedDesktopCost } from "../../../src/run/pricing.js";
+import { DEFAULT_OPENAI_CU_MODEL } from "../../../src/actors/computer-use/openai-provider.js";
 
 // SLICE 3 deterministic proof ($0, NO live E2B): the cost/spend ledger + the null-vs-zero-vs-absent
 // discipline + the no-spend proof DERIVED from the ledger + FULL caps enforcement (fail-closed).
@@ -478,7 +479,8 @@ describe("the terminal sandbox's compute time in the run cost summary", () => {
     await rm(cwd, { recursive: true, force: true });
   });
 
-  // One turn of Codex usage, so the model line is unpriced for want of a rate, not of usage.
+  // One turn of Codex usage. The lab declares no model, so the route passes the participant
+  // default and prices the turn at its base rates.
   const codexWithUsage = (cmd: string) => ({
     exitCode: 0,
     stdout:
@@ -512,7 +514,7 @@ describe("the terminal sandbox's compute time in the run cost summary", () => {
     return { result, cost: bundle.cost, ledgers };
   }
 
-  it("prices a sized sandbox's span and leaves Codex tokens unpriced", async () => {
+  it("prices a sized sandbox's span and the Codex tokens from the model it passed", async () => {
     const { result, cost, ledgers } = await run({ cpuCount: 2, memoryMB: 2048 });
     expect(result.ok).toBe(true);
     const desktop = cost.breakdown.find(
@@ -530,15 +532,19 @@ describe("the terminal sandbox's compute time in the run cost summary", () => {
     });
     expect(desktop.estimatedCostUsd).toBe(expected.estimatedCostUsd);
     expect(desktop.estimatedCostUsd).toBeGreaterThan(0);
-    expect(cost.breakdown).toContainEqual({
-      kind: "model-tokens",
-      modelId: "codex",
-      estimatedCostUsd: null,
-      reason: "no_rate_for_model",
-      ratesAsOf: null,
+    const tokens = cost.breakdown.find((line: { kind: string }) => line.kind === "model-tokens");
+    expect(tokens).toMatchObject({
+      modelId: DEFAULT_OPENAI_CU_MODEL,
+      basis: "aggregated_turns_base_rate",
+      ratesAsOf: expect.any(String),
+      source: expect.any(String),
     });
-    expect(cost.estimatedTotalUsd).toBe(desktop.estimatedCostUsd);
-    expect(cost.fullyEstimated).toBe(false);
+    expect(tokens.estimatedCostUsd).toBeGreaterThan(0);
+    expect(cost.estimatedTotalUsd).toBeCloseTo(
+      desktop.estimatedCostUsd + tokens.estimatedCostUsd,
+      6,
+    );
+    expect(cost.fullyEstimated).toBe(true);
     // The sandbox line is not part of the cap ledger: a maxUsd 0 run still passes its cap.
     expect(Object.keys(ledgers.cost.lines).sort()).toEqual([
       "media",
@@ -578,6 +584,9 @@ describe("the terminal sandbox's compute time in the run cost summary", () => {
       reason: "no_desktop_resources",
       desktop: { resourceUnavailableReason: "metadata_unavailable" },
     });
-    expect(cost.estimatedTotalUsd).toBeNull();
+    // Only the sandbox line is unpriced, so the total is the token estimate, as a lower bound.
+    const tokens = cost.breakdown.find((line: { kind: string }) => line.kind === "model-tokens");
+    expect(cost.estimatedTotalUsd).toBe(tokens.estimatedCostUsd);
+    expect(cost.fullyEstimated).toBe(false);
   });
 });
