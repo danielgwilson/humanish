@@ -1,5 +1,5 @@
-name: Agent-ready work
-description: Narrow work item with explicit autonomous-readiness boundaries
+name: "Maintainer: agent-ready work"
+description: A narrow work item with the readiness fields an automated queue needs
 title: "[agent] "
 labels:
   - agent-candidate
@@ -9,8 +9,8 @@ body:
     attributes:
       value: |
         This repository is public. Do not include secrets or private data in issues.
-        This form is for automated queue pickup. Missing readiness fields mean `needs-spec`, not silent pickup.
-        Directly assigned, explicitly authorized interactive work does not require this form; its scope and applicable repository rules still govern.
+        Maintainers use this form for work an automated queue picks up. An issue missing a readiness field gets `needs-spec`.
+        To report a bug, use the bug report form.
   - type: textarea
     id: goal
     attributes:

@@ -4,8 +4,8 @@ humanish runs persona studies: AI participants use a target app, CLI or agent-fa
 hosted or local desktops, and every run leaves a verifiable evidence bundle. Run bundles are the
 source of truth; the Observer is their review surface.
 
-Sub-guides take precedence inside their directories: [observer/](https://github.com/danielgwilson/humanish/blob/main/observer/AGENTS.md),
-[tui/](https://github.com/danielgwilson/humanish/blob/main/tui/AGENTS.md), [site/](https://github.com/danielgwilson/humanish/blob/main/site/AGENTS.md). The reasoning behind the rules below is in
+Sub-guides take precedence inside their directories: [observer/](https://github.com/danielgwilson/humanish/blob/main/observer/README.md),
+[tui/](https://github.com/danielgwilson/humanish/blob/main/tui/README.md), [site/](https://github.com/danielgwilson/humanish/blob/main/site/README.md). The reasoning behind the rules below is in
 [docs/principles/engineering.md](docs/principles/engineering.md). [CONTEXT.md](CONTEXT.md) defines
 the domain terms, and [docs/decisions/](docs/decisions/README.md) records the decisions that
 shape the code.
@@ -33,8 +33,9 @@ temporary project, compares its export names with `tests/golden/public-api.json`
 diff.
 
 Three counts are held to caps in package.json: oxlint warnings (`lint`, `--max-warnings`), comment
-prose (`prose:check`) and the retired words lane, seat, role, sim and study in `src/` identifiers
-and file names (`vocabulary:check`). Each checker fails when a count is above its cap or below it,
+prose (`prose:check`) and words in `src/` identifiers and file names (`vocabulary:check`). The
+retired participant words are lane, seat, role and sim. `study` stays the prose word for what a
+run produces; identifiers say run or lab, so vocabulary:check counts it too. Each checker fails when a count is above its cap or below it,
 so the PR that reduces a count lowers its cap to the new count; the failure names the flag and the
 value. A count with no flag fails too, naming the flag to add. CI's `caps` workflow fails a PR that
 raises or removes a cap against the base branch, unless the PR has the `raise-cap` label and a
@@ -86,8 +87,8 @@ Assume this repository is public.
 
 ## Working
 
-- Read the files in [CONTRIBUTING.md's reading order](CONTRIBUTING.md#read-these-in-order), then
-  the current task; read the contract for the boundary you are changing. Historical plans do not
+- Read the current task and the contract for the boundary you are changing.
+  [CONTRIBUTING.md](CONTRIBUTING.md#look-up-how-the-code-works) lists the reference pages. Historical plans do not
   authorize work.
 - Keep `main` clean: one worktree and branch per task, reviewable commits, squash merges.
 - Before adding a service, protocol, mode or framework, state the concrete need in the PR.

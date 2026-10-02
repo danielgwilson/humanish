@@ -1,6 +1,9 @@
 - name: product-feedback
   color: "0E8A16"
-  description: Evidence-backed feedback from a persona, sim run, or review.
+  description: Evidence-backed feedback from a persona run or a review.
+- name: bug
+  color: "D73A4A"
+  description: Something humanish does wrong; filed with the bug report form.
 - name: agent-candidate
   color: "C5DEF5"
   description: May become eligible for autonomous pickup after readiness validation.
@@ -18,7 +21,7 @@
   description: Cannot close without command, artifact, review, or run-bundle proof.
 - name: privacy-boundary
   color: "B60205"
-  description: PII, PHI, secret, token, or future-public safety boundary.
+  description: PII, PHI, secret, token or other public-safety boundary.
 - name: feedback-loop
   color: "5319E7"
   description: Feedback, issue-draft, queue, or GitHub workflow plumbing.
@@ -115,3 +118,6 @@
 - name: next:park
   color: "EDEDED"
   description: Parked until later.
+- name: raise-cap
+  color: "D93F0B"
+  description: "This PR raises a cap in package.json; its body has a 'Cap raise:' line saying why"

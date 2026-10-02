@@ -98,9 +98,9 @@ not.
 | `src/tui/`                 | The CLI side of `humanish tui`                                                         | `src/tui/launch.ts`                 |
 | `src/browser-control/`     | The host-guest browser control protocol                                                | `src/browser-control/protocol.ts`   |
 | `src/guest/`               | The guest runtime that the local VM image runs: bootstrap, desktop, input and media    | `src/guest/runtime.ts`              |
-| `observer/`                | The Observer page, a single-file Vite build                                            | `observer/AGENTS.md`                |
-| `tui/`                     | The Ink terminal app                                                                   | `tui/AGENTS.md`                     |
-| `site/`                    | humanish.dev and its user docs in `site/content/docs/`                                 | `site/AGENTS.md`                    |
+| `observer/`                | The Observer page, a single-file Vite build                                            | `observer/README.md`                |
+| `tui/`                     | The Ink terminal app                                                                   | `tui/README.md`                     |
+| `site/`                    | humanish.dev and its user docs in `site/content/docs/`                                 | `site/README.md`                    |
 | `humanish/`                | This repo's own labs, personas, scenarios, fixtures and coverage notes                 | `humanish/labs/first-run.yaml`      |
 | `examples/`                | Library examples shipped in the npm package: a participant and a scorer                | `examples/README.md`                |
 | `adapters/`                | Adapter fixture sets that `tests/lab/adapter-fixtures.test.ts` checks                  | `adapters/fixtures/README.md`       |
