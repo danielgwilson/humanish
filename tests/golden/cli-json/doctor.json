@@ -1,11 +1,12 @@
 {
-  "exitCode": 2,
+  "exitCode": 0,
   "shape": {
     "checks": [
       {
         "message": "string",
         "name": "string",
-        "ok": "boolean"
+        "ok": "boolean",
+        "status": "string"
       }
     ],
     "cwd": "string",

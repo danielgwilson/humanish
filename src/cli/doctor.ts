@@ -10,10 +10,11 @@ import { nodeSupportsTui, terminalSurfaceMessage, TUI_BUNDLE_URL } from "../tui/
 import {
   detectLocalAgents,
   localAgentDoctorMessage,
+  NO_LOCAL_AGENT_MESSAGE,
   type DetectedLocalAgent,
   type DetectLocalAgentsOptions,
 } from "../actors/local-agent/cli.js";
-import { labSetupChecks, type LabSetupCheckArgs } from "../lab/doctor.js";
+import { labSetupChecks, labsByRequiredKey, type LabSetupCheckArgs } from "../lab/doctor.js";
 import {
   prepareSelectedOutputDirectory,
   type PreparedSelectedOutputDirectory,
@@ -26,6 +27,12 @@ import {
 
 const DOCTOR_SCHEMA = "humanish.doctor-result.v1";
 
+/**
+ * A row's verdict, as the human output prints it. A "note" is advisory: it never fails the run, so
+ * its `ok` is true. "not_checked" goes with `checked: false`.
+ */
+type DoctorStatus = "ok" | "missing" | "not_checked" | "note";
+
 export interface DoctorResult {
   schema: typeof DOCTOR_SCHEMA;
   ok: boolean;
@@ -33,6 +40,7 @@ export interface DoctorResult {
   checks: Array<{
     name: string;
     ok: boolean;
+    status: DoctorStatus;
     message: string;
     /**
      * Additive + optional. `false` means the check never ran: the directory could not be read, so
@@ -86,7 +94,11 @@ async function installedDesktopSdkVersion(): Promise<string | undefined> {
   }
 }
 
-type DoctorCheck = DoctorResult["checks"][number];
+/** A row as a check writes it. Doctor derives `status`; an advisory row sets "note" itself. */
+export type DoctorCheckDraft = Omit<DoctorResult["checks"][number], "status"> & {
+  status?: "note";
+};
+type DoctorCheck = DoctorCheckDraft;
 type LabSetup = Awaited<ReturnType<typeof labSetupChecks>>;
 
 export async function doctor(
@@ -110,7 +122,7 @@ export async function doctor(
       "this directory does not exist, or humanish cannot read it",
       "not checked — the target directory could not be read",
     );
-    return { schema: DOCTOR_SCHEMA, ok: false, cwd, checks };
+    return { schema: DOCTOR_SCHEMA, ok: false, cwd, checks: withStatus(checks) };
   }
 
   let projectRoot: PreparedSelectedOutputDirectory;
@@ -121,34 +133,34 @@ export async function doctor(
       "target directory failed containment validation",
       "not checked — containment validation failed first",
     );
-    return { schema: DOCTOR_SCHEMA, ok: false, cwd, checks };
+    return { schema: DOCTOR_SCHEMA, ok: false, cwd, checks: withStatus(checks) };
   }
 
   const env = options.env ?? process.env;
   const agents = await detectLocalAgents({ ...options.localAgents, env });
   const { probes, receivingKey } = await probeDoctorKeys(cwd, env, options.lab, options.keyDeps);
+  const keyPresent = (name: string) =>
+    probes.some((probe) => probe.name === name && probe.source !== null);
   const setup = options.lab
     ? await labSetupChecks({
         cwd,
         lab: options.lab,
         env,
         agents,
-        keyPresent: (name) => probes.some((probe) => probe.name === name && probe.source !== null),
+        keyPresent,
         ...(options.codexParticipantReadiness === undefined
           ? {}
           : { codexParticipantReadiness: options.codexParticipantReadiness }),
       })
     : undefined;
-  const checks: DoctorResult["checks"] = [
+  // Without --lab, each key row names the labs that need it instead of failing.
+  const keyUsers = setup ? undefined : await labsByRequiredKey(cwd, keyPresent);
+  const checks: DoctorCheck[] = [
     ...(await projectChecks(projectRoot)),
     await desktopSdkCheck(setup),
     terminalSurfaceCheck(),
-    // The operator's own signed-in coding agent, reported as a capability and never a gate: a
-    // machine with none is not broken, it just needs a provider key. This row exists because
-    // "go make an API key" is where most people trying humanish stop, and a developer very often
-    // already has one of these signed in.
-    { name: "local agents", ok: true, message: localAgentDoctorMessage(agents) },
-    ...keyChecks(probes, receivingKey, setup, agents),
+    ...localAgentChecks(agents),
+    ...keyChecks(probes, receivingKey, setup, keyUsers),
     ...(setup?.checks ?? [
       {
         name: "setup route",
@@ -163,8 +175,15 @@ export async function doctor(
     schema: DOCTOR_SCHEMA,
     ok: checks.every((check) => check.ok),
     cwd,
-    checks,
+    checks: withStatus(checks),
   };
+}
+
+function withStatus(checks: readonly DoctorCheck[]): DoctorResult["checks"] {
+  return checks.map((check) => ({
+    ...check,
+    status: check.ok ? (check.status ?? "ok") : check.checked === false ? "not_checked" : "missing",
+  }));
 }
 
 /** The rows for a target directory doctor could not open: the failure, then three unrun checks. */
@@ -260,9 +279,12 @@ async function desktopSdkCheck(setup: LabSetup | undefined): Promise<DoctorCheck
   });
   const version = present ? await installedDesktopSdkVersion() : undefined;
   const advisory = desktopSdkAdvisory(version);
+  // Without --lab nothing selects a desktop route yet, so an absent SDK is advisory.
+  const advisoryOnly = !present && setup === undefined;
   return {
     name: "e2b desktop sdk",
-    ok: present || setup?.desktop === false,
+    ok: present || advisoryOnly || setup?.desktop === false,
+    ...(advisoryOnly ? { status: "note" as const } : {}),
     message: present
       ? `optional peer @e2b/desktop ${version ?? "(version unread)"} is installed; provider access is not tested${advisory === undefined ? "" : `. ${advisory}`}`
       : setup?.desktop === false
@@ -290,6 +312,7 @@ function terminalSurfaceCheck(): DoctorCheck {
   return {
     name: "terminal surface",
     ok: true,
+    ...(supported && bundlePresent ? {} : { status: "note" as const }),
     message: terminalSurfaceMessage({
       supported,
       bundlePresent,
@@ -326,15 +349,41 @@ async function probeDoctorKeys(
 }
 
 /**
+ * The operator's own coding agents, one row each, reported as a capability and never a gate: a
+ * machine with none is not broken, it just needs a provider key. These rows exist because "go make
+ * an API key" is where most people trying humanish stop, and a developer very often already has one
+ * of these signed in. An agent that is installed but not signed in is a note.
+ */
+function localAgentChecks(agents: readonly DetectedLocalAgent[]): DoctorCheck[] {
+  if (agents.length === 0)
+    return [{ name: "local agents", ok: true, message: NO_LOCAL_AGENT_MESSAGE }];
+  return agents.map((agent) => ({
+    name: `local agent ${agent.bin}`,
+    ok: true,
+    ...(agent.authStatus === "authenticated" ? {} : { status: "note" as const }),
+    message: localAgentDoctorMessage(agent),
+  }));
+}
+
+/** "try-live", "try-live and local-browser", "a, b and c". */
+function labList(labs: readonly string[]): string {
+  return labs.length < 2 ? labs.join("") : `${labs.slice(0, -1).join(", ")} and ${labs.at(-1)}`;
+}
+
+/**
  * Provider-key discovery: which source supplies each live-run key, through the same
  * chain a live command resolves (env/--env-file, project overlay, vendor stores, the
  * humanish user store). Values never appear; sources and fill commands do.
+ *
+ * With --lab, a key the selected route requires fails when missing. Without it, `keyUsers` maps
+ * each key to the project's labs that need it, and a key row never fails: a missing key one of
+ * them needs is a note.
  */
 function keyChecks(
   probes: readonly KeySourceProbe[],
   receivingKey: string | null,
   setup: LabSetup | undefined,
-  agents: readonly DetectedLocalAgent[],
+  keyUsers: ReadonlyMap<string, readonly string[]> | undefined,
 ): DoctorCheck[] {
   return probes.map((probe) => {
     const present = probe.source !== null;
@@ -342,15 +391,23 @@ function keyChecks(
       probe.name === receivingKey
         ? `provide ${probe.name} through process env or --env-file`
         : probe.hint;
+    if (!setup) {
+      const users = keyUsers?.get(probe.name) ?? [];
+      const usedBy = users.length > 0 ? `used by ${labList(users)}` : undefined;
+      return {
+        name: `key ${probe.name}`,
+        ok: true,
+        ...(present || usedBy === undefined ? {} : { status: "note" as const }),
+        message: present
+          ? `supplied by ${probe.source}; presence only, validity not tested${usedBy ? `; ${usedBy}` : ""}`
+          : `missing; ${usedBy ?? "not used by any lab in this project"}; ${hint}`,
+      };
+    }
     // GH_TOKEN is needed only for private clone subjects, so its absence is informational.
-    const required = setup
-      ? setup.keys.includes(probe.name)
-      : probe.name === "E2B_API_KEY" ||
-        (probe.name === "OPENAI_API_KEY" &&
-          !agents.some((agent) => agent.authStatus === "authenticated"));
+    const required = setup.keys.includes(probe.name);
     // A key the lab is known not to read says so, so a present but unused key does not read as
     // one the run will use.
-    const unused = setup?.reads !== undefined && !setup.reads.has(probe.name);
+    const unused = setup.reads !== undefined && !setup.reads.has(probe.name);
     return {
       name: `key ${probe.name}`,
       ok: present || !required,
@@ -360,7 +417,7 @@ function keyChecks(
           : `supplied by ${probe.source}; presence only, validity not tested`
         : required
           ? `missing from every source — ${hint}`
-          : `not required for ${setup ? "the selected participant route" : "every route"}; ${hint}`,
+          : `not required for the selected participant route; ${hint}`,
     };
   });
 }

@@ -5,7 +5,8 @@
       {
         "message": "string",
         "name": "string",
-        "ok": "boolean"
+        "ok": "boolean",
+        "status": "string"
       }
     ],
     "cwd": "string",

@@ -11,7 +11,7 @@ import {
   protocolAdditionsWarning,
   protocolIncompatibilityMessage,
 } from "../actors/codex/protocol-compat.js";
-import type { DoctorResult } from "../cli/doctor.js";
+import type { DoctorCheckDraft } from "../cli/doctor.js";
 import { automaticAnalysisBudget } from "../analysis/automatic-config.js";
 import { externalCatchHealthy } from "../comms/sandbox-catch.js";
 import { receivingRequiredKey } from "../comms/setup.js";
@@ -23,7 +23,7 @@ import {
 } from "../actors/codex/codex-admission.js";
 import type { RefusedCodexExecutable } from "../actors/codex/restricted-executable.js";
 
-type Check = DoctorResult["checks"][number];
+type Check = DoctorCheckDraft;
 /**
  * Read-only Codex account readiness. An unadmitted CLI also reports the release it found, and an
  * unavailable one the file humanish found and turned down.
@@ -447,10 +447,12 @@ async function analysisCheck(
         : `Codex account analysis is unavailable (${readiness.errorCode ?? "codex_unavailable"}). ${recovery} No API fallback is used; participant readiness is independent.`,
     };
   }
+  const keyed = args.keyPresent("OPENAI_API_KEY");
   return {
     name: "post-run analysis",
     ok: true,
-    message: args.keyPresent("OPENAI_API_KEY")
+    ...(keyed ? {} : { status: "note" as const }),
+    message: keyed
       ? `OPENAI_API_KEY is present for the separate automatic analysis request; model access and quota are not tested. The analysis is refused before it starts if its estimate is over $${analysis.maxCostUsd}; this is not a billing cap. Participant readiness is independent.`
       : "Will be skipped: OPENAI_API_KEY is missing. The participant may run, but there will be no automatic findings report. Add an OpenAI API key or set review.analysis: false deliberately.",
   };
@@ -466,6 +468,30 @@ function checkScope(analysis: ReturnType<typeof automaticAnalysisBudget>): Check
         ? "The Codex setup check inspects local login and configuration without a model turn or participant resources. Remote account validity, model access, quota and target reachability remain untested; CLI startup may use the network."
         : "Local setup only. Provider credentials are not validated, model access/quota and target reachability are untested, and no paid resources were created.",
   };
+}
+
+/**
+ * The project's labs that need each provider key for a live run, from the same plan `doctor --lab`
+ * reads. A lab that runs dry, that the plain CLI cannot run, or that does not plan needs none.
+ */
+export async function labsByRequiredKey(
+  cwd: string,
+  keyPresent: (name: string) => boolean,
+): Promise<Map<string, string[]>> {
+  const { listLabManifests, resolveLabManifest } = await import("./discover.js");
+  const { resolveLabDryRun, routeOf } = await import("./plan.js");
+  const users = new Map<string, string[]>();
+  const ids = new Set((await listLabManifests(cwd)).labs.map((lab) => lab.id));
+  for (const id of ids) {
+    const resolved = await resolveLabManifest(cwd, id);
+    if (!resolved.ok || resolveLabDryRun(resolved.config, undefined, true) === true) continue;
+    if (unsupportedCliRoute(resolved.config, routeOf(resolved.config))) continue;
+    const planned = await planCliRun(resolved.config, cwd);
+    if (!planned.ok) continue;
+    for (const key of new Set(requiredKeys(planned.planned.plan.requirements, keyPresent)))
+      users.set(key, [...(users.get(key) ?? []), id]);
+  }
+  return users;
 }
 
 /**
