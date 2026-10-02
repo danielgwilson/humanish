@@ -339,13 +339,13 @@
           "focus": "Focus on the landing page."
         },
         "kind": "browser",
-        "label": "CUA browser — cua-routing-proof",
+        "label": "lane-01 · browser",
         "status": "failed",
         "transport": "snapshot",
         "updatedAt": "[ts]",
         "embed": {
           "kind": "placeholder",
-          "title": "CUA desktop"
+          "title": "Desktop"
         },
         "desktopGeometry": {
           "screen": {
