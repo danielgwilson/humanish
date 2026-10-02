@@ -1,11 +1,9 @@
 #!/usr/bin/env node
 // Counts kinds of prose in comments and test names under each root in `ROOTS`. A test name is the
 // first string argument of an it, test or describe call, and is read like a comment. Each count is
-// held to a flag in package.json's prose:check script, `--max-<kind>` for src and
-// `--max-<kind>-<root>` for the other roots: a count above its cap fails, and so does one below it,
-// so the PR that removes the prose lowers the cap. A count with no flag fails too, so a merge that
-// drops a flag cannot leave that count unchecked. Code spans are never counted, so the examples
-// below are written as code spans.
+// held to its cap in scripts/caps.json, at `prose.<root>.<kind>`, by the rules in lib/caps.mjs: a
+// count above or below its cap fails, and so does a count with no cap. Code spans are never
+// counted, so the examples below are written as code spans.
 //
 // - `issue-refs`, `fix-tags`, `archaeology`: history that belongs in issues and commit messages. Issue
 //   references (`#123`, except in `TODO(#123)`), review tags (`FIX-5`), and review or plan
@@ -26,6 +24,7 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
+import { CAPS_FILE, flattenCaps, holdToCaps, readCaps } from "./lib/caps.mjs";
 import { parseSync } from "oxc-parser";
 
 // All-caps words that are names or comment tags, not emphasis.
@@ -43,12 +42,7 @@ const ACRONYMS = new Set(
 );
 
 // Each root is read recursively; node_modules and dist are skipped. src keeps the bare flag names.
-const ROOTS = [
-  { dir: "src", suffix: "" },
-  { dir: "tests", suffix: "-tests" },
-  { dir: "scripts", suffix: "-scripts" },
-  { dir: "tui", suffix: "-tui" },
-];
+const ROOTS = ["src", "tests", "scripts", "tui"];
 const SOURCE_FILE = /\.(?:ts|tsx|mts|mjs|js)$/;
 const SKIPPED_DIR = /(?:^|\/)(?:node_modules|dist)(?:\/|$)/;
 
@@ -105,23 +99,17 @@ const KINDS = [
 
 const { values } = parseArgs({
   options: {
-    ...Object.fromEntries(
-      ROOTS.flatMap(({ suffix }) =>
-        KINDS.map((kind) => [`max-${kind}${suffix}`, { type: "string" }]),
-      ),
-    ),
     list: { type: "boolean", default: false },
+    caps: { type: "string", default: CAPS_FILE },
   },
 });
 
-/** Every hit, keyed by flag name without the `max-` prefix: `caps`, `caps-tests`, ... */
-const hits = Object.fromEntries(
-  ROOTS.flatMap(({ suffix }) => KINDS.map((kind) => [`${kind}${suffix}`, []])),
-);
+/** Every hit, keyed by its cap path in scripts/caps.json: `prose.src.caps`, `prose.tests.caps`, ... */
+const hits = new Map(ROOTS.flatMap((root) => KINDS.map((kind) => [`prose.${root}.${kind}`, []])));
 
 /** Counts each kind in one piece of prose. `at` turns a match into its `file:line word` entry. */
-function scan(text, suffix, at, { testName }) {
-  const add = (kind, match) => hits[`${kind}${suffix}`].push(at(match));
+function scan(text, root, at, { testName }) {
+  const add = (kind, match) => hits.get(`prose.${root}.${kind}`).push(at(match));
   // Code spans hold names and examples, so no kind counts inside them.
   const prose = text.replace(/`[^`\n]*`/g, (span) => " ".repeat(span.length));
   // A test name keeps its own issue-ref count, held at 0, so a ref removed from a comment cannot
@@ -177,68 +165,42 @@ function forEachTestName(node, visit) {
     if (key !== "parent") forEachTestName(child, visit);
 }
 
-for (const { dir, suffix } of ROOTS) {
-  for (const file of filesOf(dir)) {
+for (const root of ROOTS) {
+  for (const file of filesOf(root)) {
     const text = readFileSync(file, "utf8");
     const lineOf = (offset) => text.slice(0, offset).split("\n").length;
     const parsed = parseSync(file, text);
     for (const comment of parsed.comments) {
       // comment.value starts after the opening `//` or `/*`.
       const at = (match) => `${file}:${lineOf(comment.start + 2 + match.index)} ${match[0]}`;
-      scan(comment.value, suffix, at, { testName: false });
+      scan(comment.value, root, at, { testName: false });
     }
     // Most source files make no test call; skip their syntax tree walk.
     if (!TEST_CALL_TEXT.test(text)) continue;
     forEachTestName(parsed.program, (name, offset) => {
       const at = (match) => `${file}:${lineOf(offset)} ${match[0].trim()}`;
-      scan(name, suffix, at, { testName: true });
+      scan(name, root, at, { testName: true });
     });
   }
 }
 
-for (const kind of Object.keys(hits)) {
-  const max = values[`max-${kind}`];
-  if (max !== undefined && !/^\d+$/.test(max)) {
-    process.stderr.write(`check-code-prose: --max-${kind}=${max} is not a whole number.\n`);
-    process.exit(2);
-  }
+const { flat, invalid } = flattenCaps(readCaps(values.caps));
+if (invalid.length > 0) {
+  process.stderr.write(`${values.caps}: not a whole number at ${invalid.join(", ")}.\n`);
+  process.exit(2);
 }
-
-const rose = [];
-const fell = [];
-const uncapped = [];
-for (const [kind, list] of Object.entries(hits)) {
-  const max = values[`max-${kind}`];
-  const cap = max === undefined ? undefined : Number(max);
-  const count = list.length;
-  if (cap === undefined) uncapped.push(`--max-${kind}=${count}`);
-  if (cap !== undefined && count > cap) rose.push(kind);
-  if (cap !== undefined && count < cap) fell.push(`--max-${kind}=${count}`);
-  const status =
-    cap === undefined
-      ? ""
-      : count > cap
-        ? ` (cap ${cap}, over by ${count - cap})`
-        : count < cap
-          ? ` (cap ${cap}, under by ${cap - count})`
-          : ` (cap ${cap})`;
-  process.stdout.write(`${kind}: ${count}${status}\n`);
-  if (values.list) process.stdout.write(list.map((hit) => `  ${hit}\n`).join(""));
-}
+const proseCaps = new Map([...flat].filter(([path]) => path.startsWith("prose.")));
+const { ok, rose } = holdToCaps({
+  caps: proseCaps,
+  counts: hits,
+  list: values.list,
+  file: values.caps,
+  write: (text) => process.stdout.write(text),
+});
 if (rose.length > 0) {
   process.stdout.write(
     "A count rose. `node scripts/check-code-prose.mjs --list` prints every hit with its line. Move\n" +
       "history into the commit message or issue, and keep the comment to what the code does.\n",
   );
 }
-if (fell.length > 0) {
-  process.stdout.write(
-    `A count fell. Lower the cap in package.json's prose:check script in this PR: ${fell.join(" ")}.\n`,
-  );
-}
-if (uncapped.length > 0) {
-  process.stdout.write(
-    `A count has no cap. Add it to package.json's prose:check script: ${uncapped.join(" ")}.\n`,
-  );
-}
-if (rose.length > 0 || fell.length > 0 || uncapped.length > 0) process.exitCode = 1;
+if (!ok) process.exitCode = 1;

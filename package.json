@@ -92,8 +92,8 @@
     "format:check": "oxfmt --check",
     "lint": "node scripts/check-lint-cap.mjs --max-warnings=442",
     "knip": "knip",
-    "prose:check": "node scripts/check-code-prose.mjs --max-issue-refs=0 --max-fix-tags=0 --max-caps=0 --max-lane-comments=20 --max-em-dashes=0 --max-invariant-refs=0 --max-authority=0 --max-archaeology=0 --max-seat-comments=162 --max-cua-route=28 --max-honest=72 --max-history=18 --max-series-codes=0 --max-issue-refs-tests=93 --max-fix-tags-tests=8 --max-caps-tests=985 --max-lane-comments-tests=340 --max-em-dashes-tests=371 --max-invariant-refs-tests=11 --max-authority-tests=19 --max-archaeology-tests=6 --max-seat-comments-tests=87 --max-cua-route-tests=26 --max-honest-tests=56 --max-history-tests=12 --max-series-codes-tests=0 --max-issue-refs-scripts=5 --max-fix-tags-scripts=0 --max-caps-scripts=62 --max-lane-comments-scripts=7 --max-em-dashes-scripts=15 --max-invariant-refs-scripts=0 --max-authority-scripts=1 --max-archaeology-scripts=0 --max-seat-comments-scripts=2 --max-cua-route-scripts=0 --max-honest-scripts=3 --max-history-scripts=0 --max-series-codes-scripts=0 --max-issue-refs-tui=11 --max-fix-tags-tui=0 --max-caps-tui=154 --max-lane-comments-tui=2 --max-em-dashes-tui=96 --max-invariant-refs-tui=0 --max-authority-tui=0 --max-archaeology-tui=0 --max-seat-comments-tui=0 --max-cua-route-tui=0 --max-honest-tui=3 --max-history-tui=1 --max-series-codes-tui=0 --max-name-refs=0 --max-name-refs-tests=0 --max-name-refs-scripts=0 --max-name-refs-tui=0",
-    "vocabulary:check": "tsx scripts/check-retired-words.ts --max-lane=98 --max-seat=0 --max-role=49 --max-sim=21 --max-study=9 --max-doc-backend=17"
+    "prose:check": "node scripts/check-code-prose.mjs",
+    "vocabulary:check": "tsx scripts/check-retired-words.ts"
   },
   "dependencies": {
     "commander": "^15.0.0",

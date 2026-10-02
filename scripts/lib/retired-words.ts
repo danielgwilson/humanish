@@ -128,7 +128,7 @@ export function findRetiredWords(path: string, source: string): RetiredWordHit[]
 // Removed API names that checked docs keep only in migration notes: `backend`, the old name for a
 // route (`LabOutcome.backend`, `LabBackend`, `selectLabBackend` and the scoring context's
 // deprecated field), and the `routesTo*` predicates. vocabulary:check holds their count in
-// isCheckedDoc pages to --max-doc-backend.
+// isCheckedDoc pages to `vocabulary.doc-backend` in scripts/caps.json.
 const DOC_BACKEND_WORD = /\b\w*backends?\b|\broutesTo\w*/gi;
 
 /** Every `backend` or `routesTo` word in a doc's text, with its 1-based line. */
