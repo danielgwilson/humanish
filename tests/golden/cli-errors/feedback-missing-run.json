@@ -1,0 +1,13 @@
+{
+  "exitCode": 2
+}
+{
+  "schema": "humanish.feedback-result.v1",
+  "ok": false,
+  "cwd": "[cwd]",
+  "run": "nope",
+  "error": {
+    "code": "HUMANISH_RUN_NOT_FOUND",
+    "message": "No runs in [cwd] yet; start one with humanish run first-run."
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "exitCode": 2
+}
+{
+  "schema": "humanish.run-result.v1",
+  "ok": false,
+  "cwd": "[cwd]",
+  "warnings": [],
+  "error": {
+    "code": "HUMANISH_INVALID_SIM_COUNT",
+    "message": "--count must be a positive integer."
+  }
+}
