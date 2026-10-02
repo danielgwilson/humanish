@@ -442,49 +442,27 @@ export function participantServeUrl(subject: ParticipantSubject): string | undef
   return "serveUrl" in subject ? subject.serveUrl : undefined;
 }
 
-/** Shared deps every lane runner needs (resolved once in the engine). */
-export interface CuaParticipantDeps {
-  /** Internal ready-desktop seam. The factory must not allocate; prepare owns that work. */
-  createDesktop?: (
-    spec: DesktopParticipantRun,
-    warnings: string[],
-    artifactRoot: PreparedOutputRoot,
-  ) => ParticipantDesktop;
-  /** The caller's createProvider with the run's config bound. Absent, the plan's brain drives. */
-  createProvider?: (participant: ParticipantRef, executor: CuaExecutor) => Promise<CuaProvider>;
-  /** The caller's inProcess executor with the run's config bound. Read by the in-process desktop. */
-  inProcessExecutor?: (appUrl: string) => Promise<CuaExecutor>;
+/** What the E2B desktop (e2b-desktop/*) reads from a participant's deps. */
+export interface E2BDesktopDeps {
   /** The plan's residual config: comms, policies, the desktop and target, and subject leftovers. */
   residual: Readonly<ResidualConfig>;
   labId: string;
-  /** The plan's spend caps; maxUsd is each participant's own. */
-  caps: ComputerUsePlan["caps"];
-  descriptor: CuaActorDescriptor;
   appUrl: string;
-  /** The plan's brain: the model and, for a local agent, which signed-in CLI drives the participant. */
-  brain: Brain;
   /** What the participant's desktop does with the subject before the participant starts. */
   subject: ParticipantSubject;
   /** Local-tree route only: the once-per-run packed archive bytes, shared byte-identically
    *  across every fan-out lane's upload step. Absent on dry-run and every other route. */
   localTreeArchiveBuffer?: ArrayBuffer;
   env: Record<string, string | undefined>;
-  openaiApiKey: string;
   e2bApiKey: string;
   requestTimeoutMs: number;
   sandboxMs: number;
-  timeoutMs: number;
   participantCount: number;
   artifactRoot: PreparedOutputRoot;
   /** The lab's resolution directory: relative paths in the config (a camera .y4m) resolve here. */
   labCwd: string;
-  redactScreenshots: boolean;
   scrubKnownValues: (text: string) => string;
   receiving?: CommsReceivingRun;
-  runSession: (options: CuaActorSessionOptions) => Promise<CuaLoopResult>;
-  /** The study's shared spend ledger, present exactly when execution.caps.maxTotalUsd is set on a
-   *  live run (#299). Preflight already refused the cap on an unpriced model. */
-  runBudget?: CuaRunBudget;
   /** Adopter-hosted comms plane (#380): present on the app-url route when comms.email.external is
    *  declared. Carries the parsed comms block (recipients drive the per-lane inbox instruction)
    *  and the inbox URL the persona opens. The drain runs once at run level, not per lane. */
@@ -502,8 +480,6 @@ export interface CuaParticipantDeps {
   onStream: NonNullable<RunLabHomes["onStream"]>;
   /** Reports a subject phase to the phase sink (stderr by default) and to onEvent. */
   reportSubjectPhase: (event: SubjectPhaseEvent, participant: PhaseParticipant) => void;
-  /** Lane-0 only: signal the pipeline gate after provisioning succeeds (true) or fails (false). */
-  signalProvisioned?: (ok: boolean) => void;
   /**
    * How a PARSEABLE requested-vs-verified screen mismatch is treated. Default ("fail-closed"):
    * the lane's device claim is falsified, so the lane fails with DEVICE_GEOMETRY (the
@@ -512,6 +488,26 @@ export interface CuaParticipantDeps {
    * lane keeps running, so one seat's screen drift cannot abort a live multi-actor world.
    */
   screenMismatchPolicy?: "fail-closed" | "record-evidence";
+}
+
+/** What a participant's model and session (participant-model.ts) read from its deps. */
+export interface ParticipantModelDeps {
+  /** The caller's createProvider with the run's config bound. Absent, the plan's brain drives. */
+  createProvider?: (participant: ParticipantRef, executor: CuaExecutor) => Promise<CuaProvider>;
+  /** The plan's spend caps; maxUsd is each participant's own. */
+  caps: ComputerUsePlan["caps"];
+  /** The plan's brain: the model and, for a local agent, which signed-in CLI drives the participant. */
+  brain: Brain;
+  env: Record<string, string | undefined>;
+  openaiApiKey: string;
+  timeoutMs: number;
+  participantCount: number;
+  artifactRoot: PreparedOutputRoot;
+  redactScreenshots: boolean;
+  scrubKnownValues: (text: string) => string;
+  /** The study's shared spend ledger, present exactly when execution.caps.maxTotalUsd is set on a
+   *  live run (#299). Preflight already refused the cap on an unpriced model. */
+  runBudget?: CuaRunBudget;
   /**
    * RUNTIME-ONLY observed-URL callback (#164 handoff crux): threaded into the lane's session so the
    * orchestrator watches this seat's live location.href mid-run. Never persisted (see
@@ -534,6 +530,25 @@ export interface CuaParticipantDeps {
     metadata?: CuaLiveMetadata,
   ) => void;
 }
+
+/**
+ * One participant's deps: the E2B desktop's and the model's, and what runCuaParticipant reads to
+ * choose the desktop and run the session. setup.ts and shared-world participant-specs.ts build it.
+ */
+export type CuaParticipantDeps = E2BDesktopDeps &
+  ParticipantModelDeps & {
+    /** Internal ready-desktop seam. The factory must not allocate; prepare owns that work. */
+    createDesktop?: (
+      spec: DesktopParticipantRun,
+      warnings: string[],
+      artifactRoot: PreparedOutputRoot,
+    ) => ParticipantDesktop;
+    /** The caller's inProcess executor with the run's config bound. Read by the in-process desktop. */
+    inProcessExecutor?: (appUrl: string) => Promise<CuaExecutor>;
+    runSession: (options: CuaActorSessionOptions) => Promise<CuaLoopResult>;
+    /** Lane-0 only: signal the pipeline gate after provisioning succeeds (true) or fails (false). */
+    signalProvisioned?: (ok: boolean) => void;
+  };
 
 /** Why a sandbox was not confirmed released. */
 export interface SandboxReleaseFact {

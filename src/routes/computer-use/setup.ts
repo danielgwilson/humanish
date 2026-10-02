@@ -438,8 +438,7 @@ function cuaParticipantDeps(
     liveTrace: CuaParticipantsSetup["liveTrace"];
   },
 ): Omit<CuaParticipantDeps, "signalProvisioned"> {
-  const { config, dryRun, seams, streams, env, descriptor, runSession, participantCount } =
-    admitted;
+  const { config, dryRun, seams, streams, env, runSession, participantCount } = admitted;
   const { localTreeArchiveBuffer } = admitted;
   const { openaiApiKey, e2bApiKey, scrubKnownValues } = admitted;
   const { externalCommsConfig, externalCommsEmail } = admitted;
@@ -456,7 +455,6 @@ function cuaParticipantDeps(
     residual: plan.residual,
     labId: plan.labId,
     caps: plan.caps,
-    descriptor,
     appUrl,
     brain: plan.runner.brain,
     subject: plan.runner.subject,

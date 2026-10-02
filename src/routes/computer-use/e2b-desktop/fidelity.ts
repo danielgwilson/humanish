@@ -18,7 +18,7 @@ import {
 import { captureDesktopBrowserGeometry } from "../../../substrates/e2b/desktop-geometry.js";
 import type { E2BDesktopSandbox } from "../../../substrates/e2b/sdk.js";
 import { e2bShell } from "../../../substrates/e2b/shell.js";
-import type { CuaParticipantDeps, DesktopParticipantRun } from "../types.js";
+import type { E2BDesktopDeps, DesktopParticipantRun } from "../types.js";
 
 type BrowserGeometry = Awaited<ReturnType<typeof captureDesktopBrowserGeometry>>;
 
@@ -64,7 +64,7 @@ function cdpEndpoint(
 export async function applyParticipantMobileFidelity(args: {
   desktop: E2BDesktopSandbox;
   spec: DesktopParticipantRun;
-  deps: CuaParticipantDeps;
+  deps: E2BDesktopDeps;
   targetUrl: string;
   browserFamily: DesktopBrowserFamily;
   launchIdentity: DesktopBrowserLaunchIdentity | undefined;
@@ -109,7 +109,7 @@ export async function applyParticipantMobileFidelity(args: {
 export function participantBrowserStateObserver(args: {
   desktop: E2BDesktopSandbox;
   spec: DesktopParticipantRun;
-  deps: CuaParticipantDeps;
+  deps: E2BDesktopDeps;
   targetUrl: string;
   launchIdentity: DesktopBrowserLaunchIdentity | undefined;
   targetId: string | undefined;
@@ -169,7 +169,7 @@ export function participantBrowserStateObserver(args: {
 export async function finalParticipantGeometry(args: {
   desktop: E2BDesktopSandbox;
   spec: DesktopParticipantRun;
-  deps: CuaParticipantDeps;
+  deps: E2BDesktopDeps;
   targetUrl: string;
   browserFamily: DesktopBrowserFamily;
   launchIdentity: DesktopBrowserLaunchIdentity | undefined;
