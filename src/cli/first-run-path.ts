@@ -77,6 +77,14 @@ export function starterLocalAgentFor(env: FirstRunEnvironment): LocalAgentId | u
  */
 const HUMANISH = "npx humanish";
 
+/** Hosts the local browser lab runs on: Linux x64 and Apple Silicon Macs. */
+export function supportsLocalBrowser(
+  platform: NodeJS.Platform | undefined,
+  arch: string | undefined,
+): boolean {
+  return (platform === "linux" && arch === "x64") || (platform === "darwin" && arch === "arm64");
+}
+
 export interface FirstRunStep {
   /** The exact command to run. */
   command: string;
@@ -96,10 +104,7 @@ export function firstRunSteps(env: FirstRunEnvironment): FirstRunStep[] {
     },
   ];
 
-  const localPlatform =
-    (env.platform === "linux" && env.arch === "x64") ||
-    (env.platform === "darwin" && env.arch === "arm64");
-  if (localPlatform) {
+  if (supportsLocalBrowser(env.platform, env.arch)) {
     const prerequisites =
       env.platform === "darwin"
         ? "M3-or-newer Mac, native ARM64 Node, Lima 2.2+, and a supported signed-in Codex CLI"

@@ -212,21 +212,35 @@ async function projectChecks(projectRoot: PreparedSelectedOutputDirectory): Prom
         };
       }
     })(),
-    {
-      name: "humanish source",
-      ok: await safeCheck(() => implicitProjectDirectoryExists(projectRoot, "humanish")),
-      message: "committed humanish/ source directory is present and safe to read",
-    },
-    {
-      name: "runtime ignore",
-      ok: await safeCheck(
-        async () =>
-          (await readImplicitProjectFile(projectRoot, ".gitignore"))?.includes(".humanish/") ??
-          false,
-      ),
-      message: ".gitignore safely contains .humanish/",
-    },
+    await sourceCheck(projectRoot),
+    await runtimeIgnoreCheck(projectRoot),
   ];
+}
+
+// Each row says what it found, and a failing one names the command that fixes it.
+async function sourceCheck(projectRoot: PreparedSelectedOutputDirectory) {
+  const ok = await safeCheck(() => implicitProjectDirectoryExists(projectRoot, "humanish"));
+  return {
+    name: "humanish source",
+    ok,
+    message: ok
+      ? "committed humanish/ source directory is present and safe to read"
+      : "no readable humanish/ source directory; run humanish init --yes",
+  };
+}
+
+async function runtimeIgnoreCheck(projectRoot: PreparedSelectedOutputDirectory) {
+  const ok = await safeCheck(
+    async () =>
+      (await readImplicitProjectFile(projectRoot, ".gitignore"))?.includes(".humanish/") ?? false,
+  );
+  return {
+    name: "runtime ignore",
+    ok,
+    message: ok
+      ? ".gitignore lists .humanish/"
+      : ".gitignore does not list .humanish/; run humanish init --yes",
+  };
 }
 
 /**
