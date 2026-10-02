@@ -167,7 +167,7 @@ function onLocalDesktop(config: LabConfig): LabConfig {
   return { ...config, execution: { ...config.execution, target: "local" } };
 }
 
-const fakeLocalVm = () => ({ desktop: () => fakeDesktop(), analysisGate: () => undefined });
+const fakeLocalVm = () => ({ desktop: () => fakeDesktop(), analysisRefusal: () => undefined });
 
 /** Runs one live participant and returns what its session and the live flush received. */
 async function run(config: LabConfig, hooks: CuaActorLabHooks = {}, { localDesktop = true } = {}) {

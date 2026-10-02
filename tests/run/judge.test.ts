@@ -497,6 +497,17 @@ describe("the outcome policies", () => {
       message:
         "lane-02: Sandbox teardown failed: boom Reclaim it by recorded id with `humanish reclaim --run cua-run`.",
     });
+    // A local VM has no receipt, so its recovery replaces the reclaim command.
+    expect(
+      sandboxCleanupFailure(
+        "lane-01",
+        "Local desktop cleanup is unconfirmed.",
+        "cua-run",
+        "Remove it with `docker rm --force --volumes c1`.",
+      ).message,
+    ).toBe(
+      "lane-01: Local desktop cleanup is unconfirmed. Remove it with `docker rm --force --volumes c1`.",
+    );
     expect(sandboxCleanupFailure("subject", undefined, "cua-run").message).toMatch(
       /^subject: Sandbox release is unconfirmed\. Reclaim/,
     );

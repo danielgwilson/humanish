@@ -56,6 +56,13 @@ export async function runtimeExec(
       )
     : hostExec(file, args, options, timeout);
 }
+/** The shell command an operator runs for `docker <args>` on this host, as runtimeDocker runs it. */
+export function dockerCommandLine(args: string[], options: RuntimeHostOptions = {}): string {
+  return usesLima(options)
+    ? `limactl shell ${LIMA_INSTANCE} -- sudo docker --host unix:///var/run/docker.sock ${args.join(" ")}`
+    : `docker ${args.join(" ")}`;
+}
+
 export async function runtimeDocker(
   args: string[],
   options: RuntimeHostOptions = {},

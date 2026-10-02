@@ -94,7 +94,7 @@ describe("local study bindings", () => {
     expect(hooks.buildProvider).toBeUndefined();
     expect(hooks.runSession).toBeUndefined();
     expect(study.localVm.signal).toBeUndefined();
-    expect(() => study.localVm.analysisGate()).not.toThrow();
+    expect(study.localVm.analysisRefusal()).toBeUndefined();
   });
 
   it("uses a caller's provider in place of the Codex account and hands the run the abort signal", async () => {
@@ -135,9 +135,12 @@ describe("local study bindings", () => {
 
   it("stops automatic analysis once a desktop's cleanup is unconfirmed", async () => {
     const close = vi.fn(async () => ({ status: "failed" as const }));
-    seams.createDesktop.mockResolvedValue({ executor: {}, close } as unknown as Awaited<
-      ReturnType<typeof createLocalFirecrackerDesktop>
-    >);
+    const container = "c".repeat(64);
+    seams.createDesktop.mockResolvedValue({
+      executor: {},
+      close,
+      resourceId: container,
+    } as unknown as Awaited<ReturnType<typeof createLocalFirecrackerDesktop>>);
     const study = prepareLocalVmStudy({
       cwd,
       config: localLab("openai-computer-use"),
@@ -147,7 +150,13 @@ describe("local study bindings", () => {
     const desktop = study.localVm.desktop(laneRun(), [], {} as PreparedOutputRoot);
     await desktop.prepare();
     await desktop.finalize({ failed: false });
-    expect(() => study.localVm.analysisGate()).toThrow("Local study cleanup is unconfirmed.");
+    expect(study.localVm.analysisRefusal()).toBe("AUTOMATIC_ANALYSIS_CLEANUP_UNCONFIRMED");
+    // No receipt names a local VM, so the lane carries the command that removes its container.
+    expect(desktop.snapshot().sandboxRelease).toEqual({
+      state: "unconfirmed",
+      warning: "Local desktop cleanup is unconfirmed.",
+      recovery: expect.stringContaining(`docker rm --force --volumes ${container}`),
+    });
     await study.close();
   });
 

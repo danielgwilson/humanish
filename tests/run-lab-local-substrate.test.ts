@@ -60,7 +60,7 @@ describe("local browser study selection", () => {
       // A dry run creates no desktop, so a stand-in desktop is enough to plan and run with. The
       // synthetic scorer provenance names no real file, so the stand-in run leaves it out.
       options: { ...options, dryRun: true, open: false },
-      localVm: { desktop: vi.fn(), analysisGate: () => undefined },
+      localVm: { desktop: vi.fn(), analysisRefusal: () => undefined },
       close,
     }));
 
@@ -91,7 +91,7 @@ describe("local browser study selection", () => {
       cwd,
       dryRun: true,
       open: false,
-      localVm: { desktop, analysisGate: () => undefined },
+      localVm: { desktop, analysisRefusal: () => undefined },
     });
 
     expect(localVm).not.toHaveBeenCalled();

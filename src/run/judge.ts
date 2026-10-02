@@ -198,16 +198,18 @@ export interface ExecutionOutcome {
 
 /**
  * The execution failure for one sandbox whose release is unconfirmed. `warning` is the route's
- * release warning, already scrubbed; reclaim kills by the id the run recorded at create time.
+ * release warning, already scrubbed. `recovery` says how to release it by hand; without one,
+ * reclaim kills by the id the run recorded at create time.
  */
 export function sandboxCleanupFailure(
   owner: string,
   warning: string | undefined,
   runId: string,
+  recovery?: string,
 ): ExecutionFailure {
   return {
     kind: "sandbox-cleanup",
-    message: `${owner}: ${warning ?? "Sandbox release is unconfirmed."} Reclaim it by recorded id with \`humanish reclaim --run ${runId}\`.`,
+    message: `${owner}: ${warning ?? "Sandbox release is unconfirmed."} ${recovery ?? `Reclaim it by recorded id with \`humanish reclaim --run ${runId}\`.`}`,
   };
 }
 

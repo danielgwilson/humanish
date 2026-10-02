@@ -1099,6 +1099,9 @@ same shape, holds the failures the policy lets warn and is omitted when empty:
 on computer-use, shared-world and scripted runs, a `sandbox-cleanup` entry for
 each sandbox whose release was not confirmed, with the participant (or
 `subject`), the release warning and the `humanish reclaim --run <id>` command.
+A local VM writes no receipt, so its entry names the container and the
+`docker rm --force --volumes <container>` command that removes it (through
+`limactl shell` on a Mac).
 
 `interrupted` with `signal` (`SIGINT`, `SIGTERM` or `SIGHUP`) is written by
 the CLI's run command when that signal stops a live run outside post-run

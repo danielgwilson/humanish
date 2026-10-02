@@ -491,7 +491,7 @@ describe("ready desktop lane contract", () => {
       config: localFeedbackLab(f),
       runId: "local-feedback",
       dryRun: false,
-      localVm: { desktop: () => f.port, analysisGate: () => undefined },
+      localVm: { desktop: () => f.port, analysisRefusal: () => undefined },
       hooks: { ...f.deps.hooks, env: {}, buildProvider: reachedProvider },
     });
     expect(result.ok, JSON.stringify(result)).toBe(true);
@@ -504,6 +504,74 @@ describe("ready desktop lane contract", () => {
     expect(f.release).toHaveBeenCalledOnce();
   });
 
+  it("records an unconfirmed local VM shutdown in status.json with its removal command", async () => {
+    const f = await fixture();
+    const recovery =
+      "If container c1 is still listed by `docker ps`, remove it with `docker rm --force --volumes c1`.";
+    const unconfirmed: ParticipantDesktop = {
+      ...f.port,
+      snapshot: () => ({
+        ...f.port.snapshot(),
+        released: false,
+        sandboxRelease: {
+          state: "unconfirmed",
+          warning: "Local desktop cleanup is unconfirmed.",
+          recovery,
+        },
+      }),
+    };
+    const result = await runCuaActorLab({
+      cwd: f.cwd,
+      config: localFeedbackLab(f),
+      runId: "local-unconfirmed",
+      dryRun: false,
+      localVm: { desktop: () => unconfirmed, analysisRefusal: () => undefined },
+      hooks: { ...f.deps.hooks, env: {}, buildProvider: reachedProvider },
+    });
+    expect(result.ok, JSON.stringify(result)).toBe(true);
+    const status = JSON.parse(
+      await readFile(path.join(f.cwd, ".humanish/runs/local-unconfirmed/status.json"), "utf8"),
+    );
+    expect(status.outcome.ok).toBe(true);
+    expect(status.outcome.execution.warnings).toEqual([
+      {
+        kind: "sandbox-cleanup",
+        message: `lane-01: Local desktop cleanup is unconfirmed. ${recovery}`,
+      },
+    ]);
+  });
+
+  it("hands the local VM's analysis refusal to automatic analysis", async () => {
+    const f = await fixture();
+    const run = vi.fn(
+      async (
+        _cwd: string,
+        _runId: string,
+        _config: unknown,
+        deps?: { refusal?: () => string | undefined },
+      ) => ({ state: "skipped" as const, reason: deps?.refusal?.() ?? null }),
+    );
+    // Without a review block the plan runs its default analysis.
+    const config: LabConfig = localFeedbackLab(f);
+    delete config.review;
+    const result = await runCuaActorLab({
+      cwd: f.cwd,
+      config,
+      dryRun: false,
+      localVm: {
+        desktop: () => f.port,
+        analysisRefusal: () => "AUTOMATIC_ANALYSIS_CLEANUP_UNCONFIRMED",
+      },
+      automaticAnalysis: { run },
+      hooks: { ...f.deps.hooks, env: {}, buildProvider: reachedProvider },
+    });
+    expect(run).toHaveBeenCalledOnce();
+    expect(result.automaticAnalysis).toEqual({
+      state: "skipped",
+      reason: "AUTOMATIC_ANALYSIS_CLEANUP_UNCONFIRMED",
+    });
+  });
+
   it("runs a local VM's sessions on its abort signal", async () => {
     const f = await fixture();
     const signal = new AbortController().signal;
@@ -514,7 +582,7 @@ describe("ready desktop lane contract", () => {
       cwd: f.cwd,
       config: localFeedbackLab(f),
       dryRun: false,
-      localVm: { desktop: () => f.port, analysisGate: () => undefined, signal },
+      localVm: { desktop: () => f.port, analysisRefusal: () => undefined, signal },
       hooks: { ...f.deps.hooks, env: {}, buildProvider: reachedProvider, runSession },
     });
     expect(result.ok, JSON.stringify(result)).toBe(true);
