@@ -72,10 +72,9 @@ import {
 export async function runTerminalProductLab(
   options: RunTerminalProductLabOptions,
 ): Promise<TerminalProductLabResult> {
-  const { config, dryRun, lab, ...input } = options;
+  const { config, dryRun, ...input } = options;
   const planned = planTerminalLab(config, {
     dryRun,
-    ...(lab === undefined ? {} : { lab }),
     hasCostProbe: input.deps?.costProbe !== undefined,
   });
   if (planned.ok) return runTerminalPlan(planned.plan, input);

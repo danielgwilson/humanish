@@ -39,7 +39,6 @@ import {
   taskProtocolValidationReason,
 } from "../../lab/validation.js";
 import { desktopCliProductReason } from "../../lab/composition-rules.js";
-import type { RunLabProvenance } from "../../run/status.js";
 import { isLocalBrowserLab } from "../../substrates/local/runtime-config.js";
 import {
   boundedConcurrency,
@@ -325,7 +324,6 @@ export function planComputerUseLab(
   config: LabConfig,
   input: {
     readonly dryRun: boolean;
-    readonly lab?: RunLabProvenance;
     readonly hooks?: CuaActorLabHooks;
     /** Which of the caller's driving homes are set; neither when absent. */
     readonly driving?: CallerDriving;
@@ -445,7 +443,6 @@ export function planComputerUseLab(
   const provisioned = source === "clone" || source === "local-tree";
   const base = planBase(config, {
     dryRun: input.dryRun,
-    ...(input.lab === undefined ? {} : { lab: input.lab }),
     analysis,
   });
   return {

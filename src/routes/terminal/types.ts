@@ -8,7 +8,6 @@ import type {
   ActorStatus,
   ActorTrace,
 } from "../../actors/contract.js";
-import { type RunLabProvenance } from "../../run/status.js";
 import type { CostCategory } from "../../run/terminal-contract.js";
 import type { RunScope } from "../../run/run.js";
 import type { buildRuntimeAuth } from "./credentials.js";
@@ -127,8 +126,6 @@ export interface TerminalScorer {
 
 export interface RunTerminalProductLabOptions {
   automaticAnalysis?: AutomaticAnalysisHooks;
-  /** Which manifest produced this run (#455); threaded into the status record + bundle. */
-  lab?: RunLabProvenance;
   cwd: string;
   config: LabConfig;
   /** Resolved upstream (scenario.mode + CLI override); defaults safe (dry-run). */

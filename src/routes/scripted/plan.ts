@@ -20,7 +20,6 @@ import {
   desktopMediaValidationReason,
   taskProtocolValidationReason,
 } from "../../lab/validation.js";
-import type { RunLabProvenance } from "../../run/status.js";
 
 // Default surface roster is 1 (desktop only): the defaults-table single-lane row governs;
 // `count: 2` is the declared override that adds the mobile surface.
@@ -65,7 +64,6 @@ export function planScriptedLab(
   config: LabConfig,
   input: {
     readonly dryRun: boolean;
-    readonly lab?: RunLabProvenance;
     /** A test's injected browser means a live run needs no host browser. */
     readonly injectedBrowser?: boolean;
   },
@@ -150,7 +148,6 @@ export function planScriptedLab(
     plan: {
       ...planBase(config, {
         dryRun: input.dryRun,
-        ...(input.lab === undefined ? {} : { lab: input.lab }),
         analysis,
       }),
       route: "scripted",

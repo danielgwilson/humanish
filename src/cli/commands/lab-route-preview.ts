@@ -1,5 +1,4 @@
 import { Command } from "commander";
-import type { RunLabProvenance } from "../../run/status.js";
 import type { LabConfig } from "../../lab/types.js";
 import type { RunResult } from "../../run/results.js";
 import {
@@ -17,7 +16,6 @@ interface PreviewRouteArgs {
   io: CliIo;
   lab: string;
   config: LabConfig;
-  labProvenance?: RunLabProvenance;
   mode: "run" | "watch";
   options: LabCommandOptions;
 }
@@ -65,7 +63,6 @@ export function previewRouteRun(args: PreviewRouteArgs): RouteRun | undefined {
   return {
     options: {
       cwd: args.options.cwd,
-      ...(args.labProvenance === undefined ? {} : { lab: args.labProvenance }),
       count: participantCount,
       ...(args.options.dryRun === undefined ? {} : { dryRun: args.options.dryRun }),
       ...(args.options.runId === undefined ? {} : { runId: args.options.runId }),

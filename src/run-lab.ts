@@ -181,7 +181,6 @@ async function refusalOutcome(
 ): Promise<LabOutcome> {
   // Spend-safe default: a lab goes live only when the config (or CLI) says so.
   const dryRun = resolveLabDryRun(config, options.dryRun, true) ?? true;
-  const lab = options.lab === undefined ? {} : { lab: options.lab };
   switch (refusal.route) {
     case "preview":
       return {
@@ -194,7 +193,7 @@ async function refusalOutcome(
         route: "computer-use",
         backend: "cua",
         result: await computerUseLabRefusal(
-          { ...computerUseInput(options, deps, emit), ...lab, config, dryRun },
+          { ...computerUseInput(options, deps, emit), config, dryRun },
           refusal,
         ),
       };
@@ -203,7 +202,7 @@ async function refusalOutcome(
         route: "scripted",
         backend: "scripted",
         result: await scriptedLabRefusal(
-          { ...scriptedInput(options, deps), ...lab, config, dryRun },
+          { ...scriptedInput(options, deps), config, dryRun },
           refusal,
         ),
       };
@@ -212,7 +211,7 @@ async function refusalOutcome(
         route: "terminal",
         backend: "terminal",
         result: await terminalLabRefusal(
-          { ...terminalInput(options, deps), ...lab, config, dryRun },
+          { ...terminalInput(options, deps), config, dryRun },
           refusal,
         ),
       };
@@ -221,7 +220,7 @@ async function refusalOutcome(
         route: "shared-world",
         backend: "concurrent-shared-world",
         result: await sharedWorldLabRefusal(
-          { ...sharedWorldInput(options, deps, emit), ...lab, config, dryRun },
+          { ...sharedWorldInput(options, deps, emit), config, dryRun },
           refusal,
         ),
       };
@@ -255,9 +254,11 @@ interface RunLabBase {
 export type InternalRunLabOptions = RunLabOptions & RunLabInternals;
 
 interface RunLabInternals {
-  /** Which manifest this run came from (#455): threaded to the route so the run's own
-   *  status record and bundle can say which lab produced it. Absent for library callers who
-   *  hand a LabConfig directly — the run is then honestly lab-less rather than guessed. */
+  /**
+   * Which manifest this run came from (#455). planLab puts it on the plan, and the route reads
+   * plan.lab for the run's status record and bundle. Absent for a library caller that passes a
+   * LabConfig directly; that run records no lab.
+   */
   lab?: RunLabProvenance;
   /**
    * CONFIG-DECLARED scorer provenance (#316), forwarded alongside whichever hooks bag carries the

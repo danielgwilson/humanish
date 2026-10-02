@@ -153,8 +153,6 @@ export interface RunCuaActorLabOptions {
   automaticAnalysis?: AutomaticAnalysisHooks;
   cwd: string;
   config: LabConfig;
-  /** Which manifest produced this run (#455); threaded into the run's status record + bundle. */
-  lab?: RunLabProvenance;
   /** Resolved upstream (scenario.mode + CLI override); defaults safe (dry-run). */
   dryRun: boolean;
   open?: boolean;

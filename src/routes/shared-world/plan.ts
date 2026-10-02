@@ -31,7 +31,6 @@ import {
   taskProtocolValidationReason,
 } from "../../lab/validation.js";
 import { MODEL_RATES } from "../../run/pricing.js";
-import type { RunLabProvenance } from "../../run/status.js";
 import type { ConcurrentSharedWorldLabErrorCode } from "./types.js";
 
 /** The error a shared-world lab returns before a run starts. */
@@ -61,7 +60,6 @@ export function planSharedWorldLab(
   config: LabConfig,
   input: {
     readonly dryRun: boolean;
-    readonly lab?: RunLabProvenance;
     /** A caller's session runner cannot enforce maxOutputTokens. */
     readonly hooks?: { readonly runSession?: unknown };
   },
@@ -151,7 +149,6 @@ export function planSharedWorldLab(
   if (brain.kind === "caller") throw new Error("a shared-world participant has no caller brain");
   const base = planBase(config, {
     dryRun: input.dryRun,
-    ...(input.lab === undefined ? {} : { lab: input.lab }),
     analysis,
   });
   return {

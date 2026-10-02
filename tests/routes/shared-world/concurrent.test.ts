@@ -560,12 +560,10 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
       path: "humanish/labs/shared-lab.yaml",
       origin: "committed" as const,
     };
-    const result = await runConcurrentSharedWorld({
-      cwd,
-      config: concurrentConfig(),
-      dryRun: true,
-      lab,
-    });
+    // runLab takes the provenance the CLI resolved, and planLab puts it on the plan.
+    const outcome = await runLab(concurrentConfig(), { cwd, dryRun: true, lab });
+    if (outcome.route !== "shared-world") throw new Error(`routed to ${outcome.route}`);
+    const { result } = outcome;
     expect(result.ok).toBe(true);
     const bundle = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
