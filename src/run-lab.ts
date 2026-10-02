@@ -17,6 +17,7 @@ import {
 import { planLab, resolveLabDryRun, routeOf, type LabBackend, type LabRoute } from "./lab/plan.js";
 import type { LabPlan, PlanRefusal } from "./lab/plan-types.js";
 import type { LabDeps } from "./lab/lab-deps.js";
+import type { LabEvent } from "./lab/run-lab-events.js";
 import {
   normalizeRunLabOptions,
   optionRefusalOutcome,
@@ -110,11 +111,11 @@ export async function prepareLab(
   const planned = planLab(lab, planning, deps);
   if (!planned.ok) {
     await vm?.close();
-    const outcome = await refusalOutcome(lab, planning, planned.refusal, deps);
+    const outcome = await refusalOutcome(lab, planning, planned.refusal, deps, normalized.emit);
     outcome.result.warnings.push(...normalized.warnings);
     return { ok: false, outcome };
   }
-  const admitted = await admitPlan(lab, planning, planned.planned.plan, deps);
+  const admitted = await admitPlan(lab, planning, planned.planned.plan, deps, normalized.emit);
   if (!admitted.ok) {
     await vm?.close();
     admitted.outcome.result.warnings.push(...normalized.warnings);
@@ -155,18 +156,19 @@ async function admitPlan(
   options: InternalRunLabOptions,
   plan: LabPlan,
   deps: LabDeps,
+  emit: ((event: LabEvent) => void) | undefined,
 ): Promise<AdmittedPlan> {
   switch (plan.route) {
     case "preview":
       return admitPreviewPlan(plan, options);
     case "computer-use":
-      return admitComputerUsePlan(plan, computerUseInput(options), config);
+      return admitComputerUsePlan(plan, computerUseInput(options, deps, emit), config);
     case "scripted":
       return admitScriptedPlan(plan, scriptedInput(options, deps));
     case "terminal":
       return admitTerminalPlan(plan, terminalInput(options, deps));
     case "shared-world":
-      return admitSharedWorldPlan(plan, sharedWorldInput(options), config);
+      return admitSharedWorldPlan(plan, sharedWorldInput(options, deps, emit), config);
   }
 }
 
@@ -176,6 +178,7 @@ async function refusalOutcome(
   options: InternalRunLabOptions,
   refusal: PlanRefusal,
   deps: LabDeps,
+  emit: ((event: LabEvent) => void) | undefined,
 ): Promise<LabOutcome> {
   // Spend-safe default: a lab goes live only when the config (or CLI) says so.
   const dryRun = resolveLabDryRun(config, options.dryRun, true) ?? true;
@@ -192,7 +195,7 @@ async function refusalOutcome(
         route: "computer-use",
         backend: "cua",
         result: await computerUseLabRefusal(
-          { ...computerUseInput(options), ...lab, config, dryRun },
+          { ...computerUseInput(options, deps, emit), ...lab, config, dryRun },
           refusal,
         ),
       };
@@ -219,7 +222,7 @@ async function refusalOutcome(
         route: "shared-world",
         backend: "concurrent-shared-world",
         result: await sharedWorldLabRefusal(
-          { ...sharedWorldInput(options), ...lab, config, dryRun },
+          { ...sharedWorldInput(options, deps, emit), ...lab, config, dryRun },
           refusal,
         ),
       };

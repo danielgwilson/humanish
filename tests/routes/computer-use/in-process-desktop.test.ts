@@ -77,6 +77,8 @@ async function fixture() {
     runSession: runCuaActorSession,
     now: Date.now,
     hooks: { buildExecutor, loadDesktopModule },
+    onStream: async () => undefined,
+    reportSubjectPhase: () => undefined,
   };
   return { spec, deps, executor, buildExecutor, loadDesktopModule };
 }
