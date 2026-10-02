@@ -113,10 +113,10 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixes
 
-- Automatic analysis of a terminal run quotes the agent's own words. The terminal trace now has
-  one `message` item per Codex `agent_message` and one `reasoning` item per `reasoning` item,
-  decoded from the exec JSON stream. Before, its only `message` item was the last 2000 characters
-  of the raw stream: JSON-escaped command output, the `HUMANISH_ACTOR_NONCE` line and token usage.
+- Automatic analysis of a terminal run quotes the agent's own words (#1402). The terminal trace now
+  has one `message` item per Codex `agent_message` and one `reasoning` item per `reasoning` item,
+  decoded from the exec JSON stream. Before, its only `message` item was the last 2000 characters of
+  the raw stream: JSON-escaped command output, the `HUMANISH_ACTOR_NONCE` line and token usage.
   Analysis could quote that text, and a quote that decoded a `\n` escape failed with
   `analysis_validation_failed_quote_invalid`. The stream tail stays in the `command` item's
   `outputTail`, which analysis does not quote. `counts.messages` now counts message items, where it
