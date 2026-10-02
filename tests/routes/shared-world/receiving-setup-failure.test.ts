@@ -39,13 +39,13 @@ describe("shared-world email receiving setup failure", () => {
       cwd,
       config: realEmailSharedWorldConfig(),
       dryRun: false,
-      hooks: {
-        env: {
-          OPENAI_API_KEY: "synthetic-openai",
-          E2B_API_KEY: "synthetic-e2b",
-          DATABASE_URL: "postgres://synthetic",
-        },
-        loadDesktopModule: async () => {
+      env: {
+        OPENAI_API_KEY: "synthetic-openai",
+        E2B_API_KEY: "synthetic-e2b",
+        DATABASE_URL: "postgres://synthetic",
+      },
+      deps: {
+        desktopModule: async () => {
           desktops += 1;
           throw new Error("no sandbox may be created after a receiving refusal");
         },

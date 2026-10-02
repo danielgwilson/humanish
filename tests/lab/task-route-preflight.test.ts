@@ -80,8 +80,13 @@ describe("declared task protocol admission", () => {
       };
       const outcome = await runLab(
         parsed,
-        { cwd: output, dryRun: false, env: {}, cuaHooks: hooks, sharedWorldHooks: hooks },
-        { desktopModule: forbidden, runScriptedSession: forbidden, renderObserver: forbidden },
+        { cwd: output, dryRun: false, env: {}, cuaHooks: hooks },
+        {
+          desktopModule: forbidden,
+          runSession: forbidden,
+          runScriptedSession: forbidden,
+          renderObserver: forbidden,
+        },
       );
       expect(outcome.backend).toBe(backend);
       expect(outcome.result.ok).toBe(false);

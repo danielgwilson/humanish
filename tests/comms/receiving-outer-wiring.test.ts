@@ -8,7 +8,7 @@ import type { CuaLoopResult } from "../../src/actors/computer-use/loop.js";
 import { runCuaActorLab } from "../../src/routes/computer-use/route.js";
 import { type CuaActorLabHooks } from "../../src/routes/computer-use/types.js";
 import { runConcurrentSharedWorld } from "../../src/routes/shared-world/route.js";
-import type { SharedWorldLabHooks } from "../../src/routes/shared-world/types.js";
+import type { LabDeps } from "../../src/lab/lab-deps.js";
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/lab/types.js";
 import { parseLabConfig } from "../../src/lab/config.js";
 import type {
@@ -372,7 +372,7 @@ describe("configured receiving through exported study runners", () => {
         },
       };
     };
-    const hooks: CuaActorLabHooks & SharedWorldLabHooks = {
+    const hooks: CuaActorLabHooks = {
       env: {
         OPENAI_API_KEY: "synthetic-openai",
         E2B_API_KEY: "synthetic-e2b",
@@ -381,9 +381,6 @@ describe("configured receiving through exported study runners", () => {
       loadDesktopModule: async () => sandbox.module,
       runSession,
       detachedTimers: { now: () => 0, sleep: async () => undefined },
-      proberCadenceMs: 100_000,
-      handoffDeadlineMs: 1500,
-      readLobbyCodeFromFrame: async () => undefined,
       packLocalTree: async () => ({
         archive: {
           archivePath: "/unused/source.tar.gz",
@@ -402,9 +399,27 @@ describe("configured receiving through exported study runners", () => {
         warnings: [],
       }),
     };
+    // Shared world takes the same fakes as seams, plus its own.
+    const sharedDeps: LabDeps = {
+      ...quietPhases,
+      desktopModule: hooks.loadDesktopModule!,
+      runSession,
+      detachedTimers: hooks.detachedTimers!,
+      packLocalTree: hooks.packLocalTree!,
+      renderObserver: hooks.renderObserverFn!,
+      proberCadenceMs: 100_000,
+      handoffDeadlineMs: 1500,
+      readLobbyCodeFromFrame: async () => undefined,
+    };
     const result = route.startsWith("cua-")
       ? await runCuaActorLab({ cwd, config, dryRun: false, hooks, deps: quietPhases })
-      : await runConcurrentSharedWorld({ cwd, config, dryRun: false, hooks, deps: quietPhases });
+      : await runConcurrentSharedWorld({
+          cwd,
+          config,
+          dryRun: false,
+          env: hooks.env!,
+          deps: sharedDeps,
+        });
     expect(events.indexOf("receiving-acquire")).toBeGreaterThanOrEqual(0);
     expect(events.indexOf("receiving-acquire")).toBeLessThan(events.indexOf("desktop-create"));
     expect(finish).toHaveBeenCalledOnce();

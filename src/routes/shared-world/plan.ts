@@ -60,8 +60,8 @@ export function planSharedWorldLab(
   config: LabConfig,
   input: {
     readonly dryRun: boolean;
-    /** A caller's session runner cannot enforce maxOutputTokens. */
-    readonly hooks?: { readonly runSession?: unknown };
+    /** Whether deps.runSession is set: a caller's session runner cannot enforce maxOutputTokens. */
+    readonly hasRunSession?: boolean;
   },
 ): SharedWorldPlanResult {
   const refuse = (
@@ -103,7 +103,7 @@ export function planSharedWorldLab(
       ? externalPublicSharedWorldValidationReason(config)
       : concurrentSharedWorldValidationReason(config));
   if (invalidReason) return refuse(invalid, invalidReason, actor);
-  if (config.actors[0]?.maxOutputTokens !== undefined && input.hooks?.runSession)
+  if (config.actors[0]?.maxOutputTokens !== undefined && input.hasRunSession === true)
     return refuse(invalid, "maxOutputTokens cannot be enforced by a custom runSession.", actor);
 
   const caps = config.execution?.caps;

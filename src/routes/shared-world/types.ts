@@ -5,11 +5,7 @@ import type { LabDeps } from "../../lab/lab-deps.js";
 import type { LabEvent } from "../../lab/run-lab-events.js";
 import type { RunLabHomes } from "../../lab/run-lab-options.js";
 import type { SharedWorldJudgment } from "../../run/judge.js";
-import type { CuaActorSessionOptions } from "../../actors/computer-use/actor.js";
-import type { CuaLoopResult } from "../../actors/computer-use/loop.js";
 import type { BrowserScorer } from "../../lab/adapter-extension.js";
-import type { DetachedTimers } from "../../substrates/detached.js";
-import type { E2BDesktopModule, E2BDesktopSandbox } from "../../substrates/e2b/sdk.js";
 import type {
   AutomaticAnalysisHooks,
   AutomaticAnalysisResult,
@@ -18,7 +14,7 @@ import type { CuaActorDescriptor } from "../../actors/registry.js";
 import type { CommsReceivingRun } from "../../comms/receiving.js";
 import type { LabCommsEmail, LabCommsExternal, LabConfig } from "../../lab/types.js";
 import type { DesktopResourceObservation } from "../../substrates/e2b/desktop-resources.js";
-import type { ObserverResult, renderObserver } from "../../observer/render.js";
+import type { ObserverResult } from "../../observer/render.js";
 import type { ObserverRuntimeStreamUrl } from "../../observer/run-routes.js";
 import type {
   RunBundle,
@@ -67,7 +63,13 @@ export interface RunConcurrentSharedWorldLabOptions {
   open?: boolean;
   runId?: string;
   onObserverReady?: (observer: ObserverResult & { ok: true }) => Promise<void> | void;
-  hooks?: SharedWorldLabHooks;
+  /** Keys and subject env for the run. Defaults to process.env. */
+  env?: Readonly<Record<string, string | undefined>>;
+  /**
+   * Runs after a sandbox exists and before anything is provisioned on it: the provisioned plane's
+   * subject sandbox, then each seat's desktop. The external-public plane has seats only.
+   */
+  prepareDesktop?: NonNullable<RunLabHomes["prepareDesktop"]>;
   /** Awaited after a participant's live stream starts, and again after its sandbox is gone. */
   onStream?: NonNullable<RunLabHomes["onStream"]>;
   /** Reports subject phases to onEvent; built by normalizeRunLabOptions. */
@@ -197,11 +199,12 @@ type StartedRun = Extract<Awaited<ReturnType<RunScope["startRun"]>>, { ok: true 
 export interface PlaneContext {
   plan: SharedWorldPlan;
   input: SharedWorldRunInput;
-  /** Read by the computer-use lane runner, whose hooks and desktop setup take the whole config.
-   *  Seats, their count and their host and entry come from the plan's participants. */
+  /** Read for the subject's serve URL, which each seat's subject names. Seats, their count and
+   *  their host and entry come from the plan's participants. */
   config: LabConfig;
   descriptor: CuaActorDescriptor;
-  hooks: SharedWorldLabHooks;
+  /** The run's test seams; empty outside tests. */
+  deps: LabDeps;
   env: Record<string, string | undefined>;
   concurrency: number;
   runBudget: CuaRunBudget | undefined;
@@ -231,7 +234,7 @@ export interface PlaneContext {
 
 /**
  * What the seats feed while they run. A plane sets the attached Observer and starts the trace
- * flush; the runtime stream hooks append stream URLs; the orchestrator reads all three at finish.
+ * flush; each seat's onStream appends stream URLs; the orchestrator reads all three at finish.
  */
 export interface LiveParticipants {
   observer?: ObserverResult & { ok: true };
@@ -324,65 +327,4 @@ export interface FinishFacts {
   stateStepRecords: RunSubjectStateStepRecord[];
   stateSnapshots: SharedWorldStateSnapshot[];
   declaredOriginDigest: string | undefined;
-}
-
-/**
- * Library-level hooks mirroring CuaActorLabHooks — the DI seams that let CI drive the FULL
- * orchestration with fakes at $0/zero-network. The fake desktop module records create/kill BY id
- * and exposes NO `list` method (the by-id teardown rail is then provable by construction).
- */
-export interface SharedWorldLabHooks {
-  /** Lazy-load the E2B desktop module (tests inject a fake; default loadE2BDesktopModule). */
-  loadDesktopModule?: () => Promise<E2BDesktopModule>;
-  /**
-   * Runs after a sandbox is created and before anything is provisioned on it. The provisioned
-   * plane calls it for the subject sandbox with no lane, then for each seat's desktop with its lane;
-   * the external-public plane calls it for the seats only.
-   */
-  prepareDesktop?: (
-    desktop: E2BDesktopSandbox,
-    lane?: { laneId: string; laneIndex: number; laneCount: number },
-  ) => Promise<void>;
-  /** The per-seat computer-use session runner (default: the resolved actor descriptor's). */
-  runSession?: (options: CuaActorSessionOptions) => Promise<CuaLoopResult>;
-  /** The operator environment (keys + subject env values). Defaults to process.env. */
-  env?: Record<string, string | undefined>;
-  renderObserverFn?: typeof renderObserver;
-  /** Injected clock/sleep for the detached-step polling (tests only). */
-  detachedTimers?: DetachedTimers;
-  /**
-   * CONCURRENT route only (#164 phase 2): the harness clock used to MEASURE each actor's laneWindow
-   * [start,end] (default Date.now). The deterministic heart test does NOT override this — overlap is
-   * produced by a rendezvous latch in the fake runSession + measured by the REAL clock (FIX-1), so
-   * the windows are real, not injected. (A test may override only for non-overlap assertions.)
-   */
-  now?: () => number;
-  /** CONCURRENT route only: the background stateSeries prober cadence (ms). Default 1000. */
-  proberCadenceMs?: number;
-  /**
-   * EXTERNAL-PUBLIC concurrent route only (#164 phase 2): the host-first handoff barrier deadline
-   * (ms). The host seat must surface a shared-session (/lobby/CODE) URL within this budget or the run
-   * fails closed with HUMANISH_CONCURRENT_SHARED_WORLD_LAB_HANDOFF_TIMEOUT and no follower opens.
-   * Default 120000 (also capped by execution.timeoutMs). Tests inject a short value to exercise the
-   * fail-closed path deterministically.
-   */
-  handoffDeadlineMs?: number;
-  /**
-   * EXTERNAL-PUBLIC concurrent route only: the vision reader that extracts a /lobby/CODE off a seat's
-   * screenshot frame (the CDP-independent handoff relay + per-seat convergence observation). Defaults to
-   * the real single-frame OpenAI read (readLobbyCodeFromFrame). Tests inject a fake so the barrier's
-   * handoff + convergence proof can be exercised deterministically without a live vision call.
-   */
-  readLobbyCodeFromFrame?: (frame: Buffer, apiKey: string) => Promise<string | undefined>;
-  /**
-   * Local-tree packing DI seam (tests only, no npm dependency needed to exercise the route):
-   * defaults to createLocalTreeArchive(root, opts) plus a host-side read of the produced archive
-   * file into an ArrayBuffer (the SAME default routes/computer-use/route.ts uses). Called ONCE per run, before
-   * the ONE shared-plane sandbox is created, on the live local-tree route.
-   */
-  packLocalTree?: (args: {
-    root: string;
-    extraExclude?: string[];
-    maxArchiveBytes?: number;
-  }) => Promise<{ archive: LocalTreeArchive; buffer: ArrayBuffer }>;
 }

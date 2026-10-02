@@ -10,10 +10,13 @@ import type {
   ScriptedBrowserLaunchArgs,
   ScriptedBrowserLike,
 } from "../actors/scripted-browser/types.js";
+import type { CuaActorSessionOptions } from "../actors/computer-use/actor.js";
+import type { CuaLoopResult } from "../actors/computer-use/loop.js";
 import type { renderObserver } from "../observer/render.js";
 import type { TerminalCostProbe } from "../routes/terminal/types.js";
 import type { DetachedTimers } from "../substrates/detached.js";
 import type { E2BDesktopModule } from "../substrates/e2b/sdk.js";
+import type { LocalTreeArchive } from "../subject/local-tree-archive.js";
 import type { SubjectPhaseEvent } from "../subject/steps.js";
 
 /** The participant a computer-use subject phase belongs to, with the route's field names. */
@@ -38,6 +41,32 @@ export interface LabDeps {
    * receives every phase.
    */
   readonly subjectPhaseSink?: (event: SubjectPhaseEvent, participant?: PhaseParticipant) => void;
+  /**
+   * Shared world: runs each seat's computer-use session in place of the actor's own. The planner
+   * reads whether it is set: a custom runner cannot enforce actors[0].maxOutputTokens.
+   */
+  readonly runSession?: (options: CuaActorSessionOptions) => Promise<CuaLoopResult>;
+  /**
+   * Shared world: packs a local-tree subject on the host. Defaults to createLocalTreeArchive and a
+   * read of the archive it writes. Called once per run, before the subject sandbox exists.
+   */
+  readonly packLocalTree?: (args: {
+    root: string;
+    extraExclude?: string[];
+    maxArchiveBytes?: number;
+  }) => Promise<{ archive: LocalTreeArchive; buffer: ArrayBuffer }>;
+  /** Shared world: the background stateSeries prober's cadence in milliseconds. Defaults to 1000. */
+  readonly proberCadenceMs?: number;
+  /**
+   * Shared world, external-public plane: how long the host seat has to surface a /lobby/CODE URL
+   * before the run fails closed. Defaults to 120000, capped by execution.timeoutMs.
+   */
+  readonly handoffDeadlineMs?: number;
+  /**
+   * Shared world, external-public plane: reads a /lobby/CODE off a seat's screenshot. Defaults to
+   * the single-frame OpenAI read.
+   */
+  readonly readLobbyCodeFromFrame?: (frame: Buffer, apiKey: string) => Promise<string | undefined>;
   /** Scripted: runs one surface's session in place of the scripted-browser actor. */
   readonly runScriptedSession?: (
     options: ScriptedBrowserSessionOptions,

@@ -262,19 +262,19 @@ describe("each new option lands in the bag the route reads", () => {
     expect(normalized(config("cuAppUrl"), { scorer: module }).cuaHooks).toBeUndefined();
   });
 
-  it("env goes to the route's bag, beside the bag's other fields", async () => {
+  it("env goes to the computer-use bag, beside the bag's other fields", async () => {
     const loadDesktopModule = async () => {
       throw new Error("unused");
     };
-    const options = normalized(config("sharedProvisioned"), {
+    const options = normalized(config("cuAppUrl"), {
       env: { OPENAI_API_KEY: "k" },
-      sharedWorldHooks: { loadDesktopModule },
+      cuaHooks: { loadDesktopModule },
     });
-    expect(options.sharedWorldHooks!.env).toEqual({ OPENAI_API_KEY: "k" });
-    await expect(options.sharedWorldHooks!.loadDesktopModule!()).rejects.toThrow("unused");
+    expect(options.cuaHooks!.env).toEqual({ OPENAI_API_KEY: "k" });
+    await expect(options.cuaHooks!.loadDesktopModule!()).rejects.toThrow("unused");
   });
 
-  it.each(["terminal", "scriptedAppUrl"] as const)(
+  it.each(["sharedProvisioned", "terminal", "scriptedAppUrl"] as const)(
     "env stays on the options for %s, as a copy",
     (base) => {
       const env = { OPENAI_API_KEY: "k" };

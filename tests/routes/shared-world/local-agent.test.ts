@@ -46,7 +46,7 @@ function planeContext(brain: PlaneContext["plan"]["brain"]): PlaneContext {
     input: {},
     config: { subject: {} },
     descriptor: { id: "local-agent" },
-    hooks: {},
+    deps: {},
     env: {},
     openaiApiKey: "",
     e2bApiKey: "synthetic-e2b",
@@ -86,17 +86,20 @@ describe("shared world with a local-agent brain", () => {
   it("refuses a missing agent CLI as AGENT_MISSING before any desktop loads, without OPENAI_API_KEY", async () => {
     const cwd = await projectDir();
     let loads = 0;
-    const outcome = await runLab(config("sharedProvisioned", localAgent), {
-      cwd,
-      // No PATH: the codex CLI cannot be found.
-      env: { E2B_API_KEY: "synthetic-e2b", DATABASE_URL: "postgres://synthetic" },
-      sharedWorldHooks: {
-        loadDesktopModule: async () => {
+    const outcome = await runLab(
+      config("sharedProvisioned", localAgent),
+      {
+        cwd,
+        // No PATH: the codex CLI cannot be found.
+        env: { E2B_API_KEY: "synthetic-e2b", DATABASE_URL: "postgres://synthetic" },
+      },
+      {
+        desktopModule: async () => {
           loads += 1;
           throw new Error("a missing-agent refusal must come before any desktop loads");
         },
       },
-    });
+    );
     expect(outcome.result.ok).toBe(false);
     expect(outcome.result.error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_AGENT_MISSING");
     expect(outcome.result.error?.message).toContain("needs the codex CLI on PATH and signed in");
@@ -130,16 +133,19 @@ describe("shared world with a local-agent brain", () => {
       caps === undefined ? base : { ...base, execution: { ...(base.execution as object), caps } };
     const parsed = parseLabConfig(raw);
     if (!parsed.ok) throw new Error(parsed.error.message);
-    const outcome = await runLab(parsed.config, {
-      cwd,
-      env: { PATH: codexPath, HOME: codexPath, E2B_API_KEY: "e2b", DATABASE_URL: "postgres://x" },
-      sharedWorldHooks: {
-        loadDesktopModule: async () => {
+    const outcome = await runLab(
+      parsed.config,
+      {
+        cwd,
+        env: { PATH: codexPath, HOME: codexPath, E2B_API_KEY: "e2b", DATABASE_URL: "postgres://x" },
+      },
+      {
+        desktopModule: async () => {
           loads += 1;
           throw new Error("a local-agent refusal must come before any desktop loads");
         },
       },
-    });
+    );
     expect(loads).toBe(0);
     return outcome.result.error;
   }

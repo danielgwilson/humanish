@@ -3,6 +3,7 @@
 
 import { defaultSubjectPhaseSink } from "../../subject/steps.js";
 import { pricedModel } from "../../lab/plan-base.js";
+import { participantOf } from "../../lab/run-lab-events.js";
 import { scrubPersonaBrief, type ResolvedPersona } from "../../lab/persona.js";
 import type { SharedWorldPlan } from "../../lab/plan-types.js";
 import type { Participant, SharedWorldParticipant } from "../../lab/plan-participants.js";
@@ -18,12 +19,7 @@ import type {
   DesktopParticipantRun,
   ParticipantRunOutcome,
 } from "../computer-use/types.js";
-import type {
-  LiveParticipants,
-  PlaneContext,
-  SharedWorldLabHooks,
-  SharedWorldRunInput,
-} from "./types.js";
+import type { LiveParticipants, PlaneContext, SharedWorldRunInput } from "./types.js";
 import { resolveCommittedPersonasForCwd } from "../../lab/persona-resolve.js";
 import { participantAssignment } from "../../lab/participant-assignment.js";
 import { redactText } from "../../evidence/redaction.js";
@@ -171,16 +167,20 @@ export function startParticipantFlush(
   });
 }
 
-/** The caller's desktop hooks each seat's participant runner reads. */
-function participantDesktopHooks(hooks: SharedWorldLabHooks): CuaActorLabHooks {
+/** The desktop seams and the caller's prepareDesktop, as each seat's participant runner reads them. */
+function participantDesktopHooks(ctx: PlaneContext): CuaActorLabHooks {
+  const { deps } = ctx;
+  const prepareDesktop = ctx.input.prepareDesktop;
   return {
-    ...(hooks.loadDesktopModule ? { loadDesktopModule: hooks.loadDesktopModule } : {}),
-    ...(hooks.detachedTimers ? { detachedTimers: hooks.detachedTimers } : {}),
-    ...(hooks.env ? { env: hooks.env } : {}),
-    ...(hooks.prepareDesktop
+    ...(deps.desktopModule ? { loadDesktopModule: deps.desktopModule } : {}),
+    ...(deps.detachedTimers ? { detachedTimers: deps.detachedTimers } : {}),
+    ...(prepareDesktop
       ? {
           prepareDesktop: (desktop: E2BDesktopSandbox, participant) =>
-            hooks.prepareDesktop!(desktop, participant),
+            prepareDesktop(desktop, {
+              kind: "participant",
+              participant: participantOf(participant),
+            }),
         }
       : {}),
   };
@@ -245,7 +245,7 @@ export function participantRunDeps(
     brain: ctx.plan.brain,
     ...(receiving ? { receiving } : {}),
     now: ctx.now,
-    hooks: participantDesktopHooks(ctx.hooks),
+    hooks: participantDesktopHooks(ctx),
     onStream: participantStreams(ctx.input.onStream, live),
     // A seat visits the shared app and provisions no subject, so it reports no phase of its own.
     reportSubjectPhase: defaultSubjectPhaseSink,

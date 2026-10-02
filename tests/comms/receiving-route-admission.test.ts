@@ -50,17 +50,17 @@ describe("real receiving admission on non-receiving backends", () => {
       });
       const generic = [vi.spyOn(synthetic, "runDryRun")];
       for (const spy of generic) spy.mockImplementation(forbidden);
-      const hooks = {
-        loadDesktopModule: forbidden,
-        runSession: forbidden,
-        renderObserverFn: forbidden,
-      };
       const output = path.join(cwd, "must-not-exist");
       for (const dryRun of [false, true]) {
         const outcome = await runLab(
           resolved,
-          { cwd: output, dryRun, env: {}, sharedWorldHooks: hooks },
-          { desktopModule: forbidden, runScriptedSession: forbidden, renderObserver: forbidden },
+          { cwd: output, dryRun, env: {} },
+          {
+            desktopModule: forbidden,
+            runSession: forbidden,
+            runScriptedSession: forbidden,
+            renderObserver: forbidden,
+          },
         );
         expect(outcome.backend).toBe(backend);
         expect(outcome.result.ok).toBe(false);

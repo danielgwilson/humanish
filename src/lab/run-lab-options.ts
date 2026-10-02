@@ -8,7 +8,6 @@ import path from "node:path";
 import type { CuaExecutor, CuaProvider } from "../actors/computer-use/loop.js";
 import { CUA_ACTOR_LAB_SCHEMA, type CuaActorLabHooks } from "../routes/computer-use/types.js";
 import { SCRIPTED_BROWSER_LAB_SCHEMA } from "../routes/scripted/types.js";
-import type { SharedWorldLabHooks } from "../routes/shared-world/types.js";
 import { CONCURRENT_SHARED_WORLD_LAB_SCHEMA } from "../routes/shared-world/types.js";
 import { TERMINAL_PRODUCT_LAB_SCHEMA } from "../routes/terminal/types.js";
 import type { E2BDesktopSandbox } from "../substrates/e2b/sdk.js";
@@ -258,20 +257,13 @@ export function normalizeRunLabOptions(
       if (hooks !== undefined) normalized.cuaHooks = hooks;
       break;
     }
-    case "shared-world": {
-      const hooks = withMapped(legacy.sharedWorldHooks, {
-        ...envHome,
-        ...sharedWorldHooks({ prepareDesktop }),
-      });
-      if (hooks !== undefined) normalized.sharedWorldHooks = hooks;
-      break;
-    }
     case "terminal":
       // The terminal route reads its typed options directly.
       if (forwardedEnv !== undefined) normalized.env = forwardedEnv;
       break;
+    case "shared-world":
     case "scripted":
-      // The scripted route reads its typed options directly.
+      // The shared-world and scripted routes read their typed options directly.
       if (forwardedEnv !== undefined) normalized.env = forwardedEnv;
       if (prepareDesktop !== undefined) normalized.prepareDesktop = prepareDesktop;
       break;
@@ -292,23 +284,6 @@ function computerUseHooks(prepareDesktop: RunLabHomes["prepareDesktop"]): CuaAct
   return {
     prepareDesktop: (desktop, participant) =>
       prepareDesktop(desktop, { kind: "participant", participant: participantOf(participant) }),
-  };
-}
-
-function sharedWorldHooks(homes: {
-  prepareDesktop: RunLabHomes["prepareDesktop"];
-}): SharedWorldLabHooks {
-  const { prepareDesktop } = homes;
-  if (prepareDesktop === undefined) return {};
-  return {
-    // The provisioned plane prepares the subject sandbox with no participant, then each one.
-    prepareDesktop: (desktop, participant) =>
-      prepareDesktop(
-        desktop,
-        participant === undefined
-          ? { kind: "subject" }
-          : { kind: "participant", participant: participantOf(participant) },
-      ),
   };
 }
 

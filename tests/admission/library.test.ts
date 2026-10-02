@@ -91,8 +91,7 @@ function hooksFor(options: AdmissionOptions, calls: Calls) {
   return {
     cuaHooks: { env, loadDesktopModule },
     driving,
-    sharedWorldHooks: { env, loadDesktopModule },
-    // The terminal and scripted routes read env and their seams directly.
+    // The shared-world, terminal and scripted routes read env and their seams directly.
     typed: { env, deps: { desktopModule: loadDesktopModule } },
   };
 }
@@ -146,12 +145,7 @@ async function runEntry(
     } else if (backend === "terminal") {
       result = await runTerminalProductLab({ cwd, config, dryRun, ...typed });
     } else if (backend === "concurrent-shared-world") {
-      result = await runConcurrentSharedWorld({
-        cwd,
-        config,
-        dryRun,
-        hooks: hooks.sharedWorldHooks,
-      });
+      result = await runConcurrentSharedWorld({ cwd, config, dryRun, ...typed });
     } else {
       // The preview runner (runDryRun) takes no config, so there is nothing to pin.
       return { runner: backend };

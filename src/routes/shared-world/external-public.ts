@@ -49,7 +49,7 @@ export async function runExternalPublicPlane(
   live: LiveParticipants,
   inbox: ExternalCommsWiring | undefined,
 ): Promise<ExternalPublicPlaneOutcome> {
-  const { plan, hooks, actorSpecs, concurrency, warnings } = ctx;
+  const { plan, deps: seams, actorSpecs, concurrency, warnings } = ctx;
   const participants = plan.plane.participants;
   // publicAppUrl is the operator-declared shared plane; its ORIGIN is persisted digest-only
   // (publicOriginDigest), never raw (the raw URL + the runtime observed lobby CODE never land —
@@ -59,11 +59,11 @@ export async function runExternalPublicPlane(
   const handoff = new LobbyHandoff({
     participantCount: participants.length,
     timeoutMs: ctx.timeoutMs,
-    deadlineMs: hooks.handoffDeadlineMs,
+    deadlineMs: seams.handoffDeadlineMs,
     scrubKnownValues: ctx.scrubKnownValues,
     // The per-seat vision lobby-code reader (default: the real single-frame OpenAI read). Injectable
     // so the barrier's handoff + convergence proof are testable without a live vision call.
-    readLobbyCode: hooks.readLobbyCodeFromFrame ?? readLobbyCodeFromFrame,
+    readLobbyCode: seams.readLobbyCodeFromFrame ?? readLobbyCodeFromFrame,
     openaiApiKey: ctx.openaiApiKey,
   });
   const deps: HandoffParticipantDeps = {
