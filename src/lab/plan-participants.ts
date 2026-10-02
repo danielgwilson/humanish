@@ -1,5 +1,5 @@
 // Who takes part in a lab: one record per participant, built from the declared roster or a count.
-// Computer-use lanes and shared-world seats share the desktop fields; each kind adds its own.
+// Computer-use and shared-world participants share the desktop fields; each kind adds its own.
 
 import type { DwellWindow, StopWhen } from "../actors/stop-conditions.js";
 import type { ReasoningEffort } from "../actors/reasoning-effort.js";
@@ -11,7 +11,7 @@ import { focusOf, rosterOf } from "./parse/actors.js";
 
 /** Who one participant is. Every route with participants carries this record. */
 export interface Participant {
-  /** Declared roster id, else `lane-NN` (independent lanes) or `role-NN` (shared-world seats). */
+  /** Declared roster id, else `lane-NN` (independent participants) or `role-NN` (shared-world participants). */
   readonly id: string;
   /** 0-based position in the roster. Bundle `sim-NNN` and `stream-NNN` ids derive from it. */
   readonly index: number;
@@ -34,7 +34,7 @@ interface DesktopParticipant extends Participant {
     readonly preset: DevicePreset;
     readonly resolution: [number, number];
   };
-  /** Lane value, else actor value, else absent (the provider default is recorded in the trace). */
+  /** The `lanes[]` entry's value, else actor value, else absent (the provider default is recorded in the trace). */
   readonly limits: {
     readonly stopWhen?: StopWhen;
     readonly dwell?: DwellWindow;
@@ -43,10 +43,10 @@ interface DesktopParticipant extends Participant {
   };
 }
 
-/** Only independent computer-use lanes consume a task protocol and a per-lane target. */
+/** Only independent computer-use participants consume a task protocol and their own target. */
 export interface ComputerUseParticipant extends DesktopParticipant {
   readonly tasks?: readonly LabTask[];
-  /** app-url fan-out only: this lane's own entry URL; absent means the subject URL. */
+  /** app-url fan-out only: this participant's own entry URL; absent means the subject URL. */
   readonly targetUrl?: string;
 }
 
@@ -117,7 +117,7 @@ function desktopParticipant(
 }
 
 /**
- * The lanes of a computer-use lab: the declared roster, else `count` identical lanes. A count
+ * The participants of a computer-use lab: the declared roster, else `count` identical ones. A count
  * override (`--count`) applies only when no roster is declared.
  */
 export function computerUseParticipants(

@@ -6,6 +6,7 @@ import type { LabRoute } from "./plan.js";
 import type { PlanResult } from "./plan-types.js";
 import { keyNamesOf, requiredKeys, requiredSubjectEnv } from "./requirements.js";
 import type { DetectedLocalAgent } from "../actors/local-agent/cli.js";
+import type { ReasoningEffort } from "../actors/reasoning-effort.js";
 import type { DoctorResult } from "../cli/doctor.js";
 import { automaticAnalysisBudget } from "../analysis/automatic-config.js";
 import { externalCatchHealthy } from "../comms/sandbox-catch.js";
@@ -54,14 +55,49 @@ async function codexInstallation(env: NodeJS.ProcessEnv): Promise<CodexInstallat
     : classifyCodexInstallation(found, await npmGlobalPrefix(env));
 }
 
-/**
- * The account check doctor and the TUI share. The version probe runs only for an unadmitted CLI,
- * the executable lookup only for an unavailable one, and both name where the binary came from.
- */
+/** The account check doctor and the TUI share: the isolated launch, with recovery details. */
 async function codexAccountReadiness(env: NodeJS.ProcessEnv): Promise<CodexReadiness> {
   const checked = await (
     await import("../analysis/restricted-codex.js")
   ).checkRestrictedCodexAnalysisReadiness({ timeoutMs: 5000 }, { env });
+  return withCodexRecoveryDetails(env, checked);
+}
+
+/** What doctor's hosted Codex participant check found: a readiness result and what it admitted. */
+type HostedCodexReadiness = CodexReadiness & {
+  cliVersion?: string;
+  resolvedModel?: string;
+  authentication?: "chatgpt-account" | "api-key";
+};
+
+/**
+ * The hosted participant check: the operator-auth launch to an ephemeral thread, with no turn,
+ * using the lab's declared model and reasoning effort as a run would.
+ */
+async function hostedCodexReadiness(
+  env: NodeJS.ProcessEnv,
+  actor: { model?: string; reasoningEffort?: ReasoningEffort },
+): Promise<HostedCodexReadiness> {
+  const { checkRestrictedCodexParticipantReadiness } =
+    await import("../actors/codex/restricted-participant.js");
+  const checked = await checkRestrictedCodexParticipantReadiness({
+    session: { env },
+    ...(actor.model === undefined ? {} : { model: actor.model }),
+    ...(actor.reasoningEffort === undefined ? {} : { reasoningEffort: actor.reasoningEffort }),
+  });
+  return checked.ready
+    ? checked
+    : { ...checked, ...(await withCodexRecoveryDetails(env, checked)) };
+}
+
+/**
+ * Adds what the recovery line names to a failed check. An unadmitted CLI gets its release, an
+ * unavailable one the file humanish turned down, and both where the binary came from.
+ */
+async function withCodexRecoveryDetails(
+  env: NodeJS.ProcessEnv,
+  checked: CodexReadiness,
+): Promise<CodexReadiness> {
   if (
     checked.errorCode !== "codex_unavailable" &&
     checked.errorCode !== "codex_unsupported_version"
@@ -129,7 +165,7 @@ export async function localCodexParticipantCheck(args: {
   };
 }
 
-interface LabSetupCheckArgs {
+export interface LabSetupCheckArgs {
   cwd: string;
   lab: string;
   env: NodeJS.ProcessEnv;
@@ -138,6 +174,8 @@ interface LabSetupCheckArgs {
   /** Internal read-only qualification seam; never a participant/model request. */
   localRuntimeReadiness?: () => Promise<LocalRuntimeStatus>;
   codexAnalysisReadiness?: (env: NodeJS.ProcessEnv) => Promise<CodexReadiness>;
+  /** The hosted Codex participant's operator handshake; tests replace it. */
+  codexParticipantReadiness?: typeof hostedCodexReadiness;
 }
 
 type AccountReadiness = () => Promise<CodexReadiness>;
@@ -292,6 +330,10 @@ async function participantChecks(
   const choice = config.actors[0]?.localAgent ?? "codex";
   const agent = args.agents.find((entry) => entry.id === choice);
   if (local) return [await localCodexParticipantCheck({ env: args.env, readiness: checkAccount })];
+  // A signed-in hosted Codex gets the operator handshake; its sign-in status alone does not show
+  // that the operator's config, release and model admit a launch.
+  if (choice === "codex" && agent?.authStatus === "authenticated")
+    return [await hostedCodexParticipantCheck(args, config.actors[0])];
   return [
     {
       name: "local participant authentication",
@@ -304,6 +346,31 @@ async function participantChecks(
             : `${choice} is not on this process's PATH. Install and sign in to that CLI, or choose openai-computer-use with OPENAI_API_KEY.`,
     },
   ];
+}
+
+/** The hosted Codex participant row: what the operator handshake admitted, or how to fix it. */
+async function hostedCodexParticipantCheck(
+  args: LabSetupCheckArgs,
+  actor: { model?: string; reasoningEffort?: ReasoningEffort } | undefined,
+): Promise<Check> {
+  const declared = {
+    ...(actor?.model === undefined ? {} : { model: actor.model }),
+    ...(actor?.reasoningEffort === undefined ? {} : { reasoningEffort: actor.reasoningEffort }),
+  };
+  const readiness: HostedCodexReadiness = await (
+    args.codexParticipantReadiness ?? hostedCodexReadiness
+  )(args.env, declared).catch(() => ({ ready: false, errorCode: "codex_unavailable" }));
+  const account =
+    readiness.authentication === "api-key"
+      ? "an API key, which bills its usage to that key"
+      : "a ChatGPT account";
+  return {
+    name: "local participant authentication",
+    ok: readiness.ready,
+    message: readiness.ready
+      ? `Codex CLI ${readiness.cliVersion ?? "(unknown release)"} passed the operator handshake without a turn (initialize, config/read, account/read and an ephemeral thread/start): model ${readiness.resolvedModel ?? "(not reported)"} on ${account}. E2B supplies the desktop; no OpenAI API key is required for this participant.`
+      : `Hosted Codex participant setup is unavailable (${readiness.errorCode}). ${codexRecovery(readiness, "Check `codex login status` and the operator's Codex configuration, then rerun doctor.")} No API fallback is used.`,
+  };
 }
 
 /** The local Chrome/Chromium the scripted-browser route drives. */

@@ -95,7 +95,7 @@ const ACTOR_ROWS: readonly InertRow<LabActor>[] = [
       "the scripted-browser route fans out via actors[0].count, not an actors[0].lanes roster",
     applies: (actor, routes) => scriptedRoute(routes) && Boolean(rosterOf(actor)),
   },
-  // On every other route the prompt fields, persona and the lane roster are inert.
+  // On every other route the prompt fields, persona and the `lanes[]` roster are inert.
   { field: "mission", applies: (actor, routes) => otherRoute(routes) && Boolean(actor.mission) },
   {
     field: "laneFocus",
@@ -203,7 +203,7 @@ const CONFIG_ROWS: readonly InertRow<LabConfig>[] = [
     field: "execution.completionTimeoutMs",
     applies: (config) => config.execution?.completionTimeoutMs !== undefined,
   },
-  // execution.concurrency is CONSUMED on the cua route (it bounds in-flight fan-out lanes);
+  // execution.concurrency is CONSUMED on the cua route (it bounds in-flight fan-out participants);
   // inert (warned) everywhere else.
   {
     field: "execution.concurrency",
@@ -390,7 +390,7 @@ export function forwardDeclaredWarnings(config: LabConfig): string[] {
       );
     }
   }
-  // Partial email coverage is legal but loud (#351): a lane without an addressed recipient never
+  // Partial email coverage is legal but loud (#351): a participant without an addressed recipient never
   // hears an inbox exists, so an email-gated flow on that seat dead-ends by construction.
   if (routes.cua && config.comms?.email?.recipients) {
     const participantIds = declaredParticipantIds(config);

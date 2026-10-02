@@ -13,9 +13,9 @@ import { preferLargerAnalysisOutput, ANALYSIS_PROMPT_VERSION } from "./execute.j
 import { captureEvidence } from "./evidence.js";
 import { hashAnalysisValue } from "./validation.js";
 import {
-  claimAutomaticStudyAnalysis,
-  readAutomaticStudyAnalysisPrepared,
-  requestAutomaticStudyAnalysisCancellationPrepared,
+  claimAutomaticAnalysis,
+  readAutomaticAnalysisPrepared,
+  requestAutomaticAnalysisCancellationPrepared,
   type AutomaticAnalysisView,
   type AutomaticAnalysisOutcome,
   type AutomaticAnalysisRefusal,
@@ -24,7 +24,7 @@ import {
 } from "./job.js";
 import { ANALYSIS_ID_PATTERN, type AnalysisConfig } from "./types.js";
 import { readAnalysisVersion } from "./store.js";
-import { readStudyAnalysisExecution } from "./store-executions.js";
+import { readAnalysisExecution } from "./store-executions.js";
 import { physicalCwdOf, resolvePhysicalCwd, type PreparedRunArtifactPaths } from "../run/paths.js";
 
 export type {
@@ -68,23 +68,23 @@ function hasParticipantEvidence(bundle: RunBundle): boolean {
 }
 
 /** Small read-only TUI/CLI projection. Neither this nor Observer can resume a job. */
-export async function readAutomaticStudyAnalysis(
+export async function readAutomaticAnalysis(
   cwd: string,
   runId: string,
 ): Promise<AutomaticAnalysisView | undefined> {
   if (!exactId(runId)) return undefined;
   const prepared = await resolveRunPath(await resolvePhysicalCwd(cwd), runId).catch(() => null);
-  return prepared ? readAutomaticStudyAnalysisPrepared(prepared) : undefined;
+  return prepared ? readAutomaticAnalysisPrepared(prepared) : undefined;
 }
 
-export async function requestAutomaticStudyAnalysisCancellation(
+export async function requestAutomaticAnalysisCancellation(
   cwd: string,
   runId: string,
 ): Promise<AutomaticAnalysisCancellation> {
   if (!exactId(runId)) return { requested: false, reason: "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE" };
   const prepared = await resolveRunPath(await resolvePhysicalCwd(cwd), runId).catch(() => null);
   return prepared
-    ? requestAutomaticStudyAnalysisCancellationPrepared(prepared)
+    ? requestAutomaticAnalysisCancellationPrepared(prepared)
     : { requested: false, reason: "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE" };
 }
 
@@ -174,7 +174,7 @@ async function persistOutcome(
     const [entry, receipt] = analysisId
       ? await Promise.all([
           readAnalysisVersion(prepared, analysisId),
-          readStudyAnalysisExecution(prepared, analysisId),
+          readAnalysisExecution(prepared, analysisId),
         ])
       : [null, null];
     await job.update({
@@ -193,7 +193,7 @@ async function persistOutcome(
           }),
       ...(entry?.analysis ? { analysisSha256: hashAnalysisValue(entry.analysis) } : {}),
     });
-    const persisted = await readAutomaticStudyAnalysisPrepared(prepared);
+    const persisted = await readAutomaticAnalysisPrepared(prepared);
     return persisted?.state === "unknown"
       ? { ...outcome, state: "unknown", reason: persisted.reason }
       : outcome;
@@ -205,7 +205,7 @@ async function persistOutcome(
 /** One permanent claim per completed run, consumed even when preparation/cancellation fails.
  * Only the original producer calls this after all recording writes return.
  * No file reader, restart recovery, Observer poll or export calls this function. */
-export async function runAutomaticStudyAnalysis(
+export async function runAutomaticAnalysis(
   cwdInput: string,
   runId: string,
   configInput: AnalysisConfig,
@@ -234,7 +234,7 @@ export async function runAutomaticStudyAnalysis(
     ).bindCodexAnalysisCliVersion(config, deps.detectCodexCliVersion);
   let job: AutomaticAnalysisJob;
   try {
-    const claimed = await claimAutomaticStudyAnalysis(prepared, {
+    const claimed = await claimAutomaticAnalysis(prepared, {
       configDigest: hashAnalysisValue(config),
       promptVersion: ANALYSIS_PROMPT_VERSION,
     });

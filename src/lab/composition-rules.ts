@@ -38,10 +38,10 @@ export function compositionReason(config: LabConfig): string | null {
     cloneTargetValidationReason(config) ??
     cloneComputerUseValidationReason(config) ??
     localTreeValidationReason(config) ??
-    // Independent computer-use lanes: the roster contract on every route that resolves to cua.
+    // Independent computer-use participants: the roster contract on every route that resolves to cua.
     (isComputerUseComposition(config) ? cuaLaneValidationReason(config) : null) ??
     // Whenever shared world is declared, not only when it routes, so a half-declared shared world
-    // fails with a precise reason instead of running as independent lanes.
+    // fails with a precise reason instead of running as independent participants.
     (config.subject.topology === "shared-world" ? sharedWorldValidationReason(config) : null) ??
     desktopCliValidationReason(config) ??
     terminalValidationReason(config) ??
@@ -130,9 +130,9 @@ function appUrlValidationReason(config: LabConfig): string | null {
       if (!actorResolvesToComputerUse(type)) {
         return `actors[0].type must be a registered computer-use actor for app-url × e2b-desktop labs (one of: ${registeredComputerUseActors().join(", ")}); for local scripted execution use a registered scripted-browser actor (${registeredScriptedBrowserActors().join(", ")}). Got "${type}".`;
       }
-      // Multi-lane fan-out is CONSUMED on this route (per-lane worlds; the shared cua-lane
-      // cross-validation below enforces lanes/count XOR rules, the 16 cap, and the
-      // lane-level target gates, and the allowPublicTargets+N>1 rejection for ambiguous one-target
+      // Multi-participant fan-out is CONSUMED on this route (`per-lane-worlds`; the shared cua
+      // cross-validation below enforces `lanes`/`count` XOR rules, the 16 cap, and the
+      // per-participant target gates, and the allowPublicTargets+N>1 rejection for ambiguous one-target
       // fan-out).
       // Loopback by default; an owner may declare a public/preview target via policies.
       const targets = [config.subject.appUrl ?? "", ...declaredTargets(config)];
@@ -226,9 +226,9 @@ function cloneComputerUseValidationReason(config: LabConfig): string | null {
     if (!REPO_SLUG_PATTERN.test(repo)) {
       return `subject.repos[0] must be an owner/repo slug (got "${repo}").`;
     }
-    // Fan-out is CONSUMED here: N lanes each clone the SAME single repo into their own E2B
-    // desktop (per-lane worlds). The shared cua-lane cross-validation below enforces the
-    // lanes/count rules and the 16 cap; the single-repo rule above is unchanged.
+    // Fan-out is CONSUMED here: N participants each clone the SAME single repo into their own
+    // E2B desktop (`per-lane-worlds`). The shared cua cross-validation below enforces the
+    // `lanes`/`count` rules and the 16 cap; the single-repo rule above is unchanged.
   }
   return null;
 }
@@ -286,8 +286,8 @@ function desktopCliValidationReason(config: LabConfig): string | null {
 // terminal-product route: a real autonomous agent studies a CLI/product from PUBLIC surfaces
 // inside an E2B shell. Fail-closed (invariant 6 — a field that cannot act on this route is an
 // honest parse error): a registered terminal actor only, execution.target e2b-terminal or absent
-// (absent defaults to e2b-terminal — the only honest target for an in-sandbox agent), single
-// lane until fan-out lands.
+// (absent defaults to e2b-terminal — the only honest target for an in-sandbox agent), one
+// participant until fan-out lands.
 function terminalValidationReason(config: LabConfig): string | null {
   if (config.subject.source === "terminal-product") {
     const type = config.actors[0]?.type ?? "";

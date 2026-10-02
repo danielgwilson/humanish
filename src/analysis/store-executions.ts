@@ -42,7 +42,7 @@ const EXECUTION_BINDING_KEYS = [
 ] as const;
 
 /** Exact bounded receipt lookup for an already claimed execution, never a dispatch decision. */
-export async function readStudyAnalysisExecution(
+export async function readAnalysisExecution(
   prepared: PreparedRunArtifactPaths,
   id: string,
 ): Promise<AnalysisExecutionReceipt | null> {
@@ -69,7 +69,7 @@ export async function readStudyAnalysisExecution(
  * Publish accounting first. Unlike a usable report, this receipt does not claim
  * the source still matches; its digests name the exact input that was attempted.
  */
-export async function writeStudyAnalysisExecutionReceipt(
+export async function writeAnalysisExecutionReceipt(
   prepared: PreparedRunArtifactPaths,
   value: AnalysisArtifact,
 ): Promise<void> {
@@ -106,7 +106,7 @@ function executionReceipt(
 }
 
 /** The returned closure owns one exact directory; persisted IDs never authorize overwriting it. */
-export async function beginStudyAnalysisExecution(
+export async function beginAnalysisExecution(
   prepared: PreparedRunArtifactPaths,
   context: Omit<AnalysisExecutionStart, "schema" | "createdAt">,
 ): Promise<(value: AnalysisArtifact) => Promise<void>> {
@@ -137,7 +137,7 @@ export async function beginStudyAnalysisExecution(
   };
 }
 
-export async function listStudyAnalysisExecutions(prepared: PreparedRunArtifactPaths): Promise<{
+export async function listAnalysisExecutions(prepared: PreparedRunArtifactPaths): Promise<{
   receipts: AnalysisExecutionReceipt[];
   warnings: string[];
 }> {
@@ -191,9 +191,7 @@ export interface AnalysisAccountingRecord {
 }
 
 /** Accounting is independent of source freshness and findings validation. No evidence is opened. */
-export async function readStudyAnalysisAccountingRecords(
-  prepared: PreparedRunArtifactPaths,
-): Promise<{
+export async function readAnalysisAccountingRecords(prepared: PreparedRunArtifactPaths): Promise<{
   records: AnalysisAccountingRecord[];
   warnings: string[];
 }> {
@@ -243,7 +241,7 @@ export async function readStudyAnalysisAccountingRecords(
           // accounting metadata still records incurred usage; it never approves those findings.
           const candidate = legacy
             ? Object.fromEntries(
-                Object.keys(studyAnalysisExecutionReceiptKeys).map((key) => [key, raw[key]]),
+                Object.keys(analysisExecutionReceiptKeys).map((key) => [key, raw[key]]),
               )
             : raw;
           if (legacy)
@@ -282,7 +280,7 @@ export async function readStudyAnalysisAccountingRecords(
   return { records: [...records.values()], warnings: [...new Set(warnings)] };
 }
 
-const studyAnalysisExecutionReceiptKeys = {
+const analysisExecutionReceiptKeys = {
   id: true,
   runId: true,
   status: true,

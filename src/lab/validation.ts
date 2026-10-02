@@ -21,9 +21,9 @@ import {
 import type { LabConfig } from "./types.js";
 
 /**
- * Cross-validate the computer-use fan-out declaration (per-lane worlds). Returns the failure
+ * Cross-validate the computer-use fan-out declaration (`per-lane-worlds`). Returns the failure
  * message, or null when valid. Enforced at parse AND re-enforced in the engine (runCuaActorLab
- * is itself exported npm surface). Structural lane shape (id/device validity, id uniqueness) is
+ * is itself exported npm surface). Structural roster shape (id/device validity, id uniqueness) is
  * already checked in parseLanes; this is the route-scoped XOR/cap/policy layer.
  */
 export function cuaLaneValidationReason(config: LabConfig): string | null {
@@ -34,7 +34,7 @@ export function cuaLaneValidationReason(config: LabConfig): string | null {
     return structuralReason;
   }
   // clone.fanout is a DECLARED behavior change: rejected on the cua route (was inert-warned).
-  // Fan-out is declared via actors[0].count/lanes; subject.clone.fanout never applied here.
+  // Fan-out is declared via `actors[0].count` or `actors[0].lanes`; subject.clone.fanout never applied here.
   if (config.subject.clone?.fanout !== undefined) {
     return "`subject.clone.fanout` is not used on the computer-use route: declare fan-out with actors[0].count (homogeneous) or actors[0].lanes (a roster of participants). (No current route reads clone.fanout.)";
   }
@@ -69,9 +69,9 @@ export function cuaLaneValidationReason(config: LabConfig): string | null {
     return `Computer-use fan-out is capped at ${MAX_CUA_LANES} participants (declared ${participantCount}); N concurrent paid desktops is real spend, and there is no override above the cap this slice.`;
   }
   // Public targets fan out into N independent worlds driving the SAME public app — that is an
-  // ambiguous shared-world-ish shape, not a per-lane target swarm. Permit N>1 public runs only when
-  // every roster lane declares its own target, making the adapter-owned topology explicit. But when
-  // `subject.topology: shared-world` is ALSO declared, N lanes against one public target is the
+  // ambiguous shared-world-ish shape, not a per-participant target swarm. Permit N>1 public runs only
+  // when every roster entry declares its own target, making the adapter-owned topology explicit. But when
+  // `subject.topology: shared-world` is ALSO declared, N participants against one public target is the
   // EXTERNAL-PUBLIC shared-world topology (#164 phase 2) — ROUTE it there (a real public deployment
   // as the shared plane) instead of refusing; externalPublicSharedWorldValidationReason then applies.
   if (
@@ -308,7 +308,7 @@ export function outputTokenLimitValidationReason(config: LabConfig): string | nu
  * Shared-world participants share one live app, so at least two must be live at once. The
  * sequential shared-world route (`execution.concurrency: 1`) was removed in 0.106.0; the parser
  * fills an omitted concurrency with the participant count. Both callers check it after their
- * two-lane roster floor, so a one-seat roster gets the roster refusal, never this one.
+ * two-participant roster floor, so a one-seat roster gets the roster refusal, never this one.
  */
 function sharedWorldConcurrencyReason(config: LabConfig): string | null {
   // Direct library callers skip the parser, so an omitted value defaults here exactly as the
@@ -356,7 +356,7 @@ export function concurrentSharedWorldValidationReason(config: LabConfig): string
  * it FORBIDS every provisioned-subject field (serve/state.seed/state.checkpoint/exposure/clone/repos
  * are inert with no sandbox — fail closed, never silently ignored, per invariant 6), and REQUIRES a
  * non-loopback appUrl + allowPublicTargets + the operator-ownership attestation subject.publicTarget +
- * concurrency >= 2 + an actors[0].lanes roster of ≥2 with EXACTLY ONE host lane. The getHost synthetic
+ * concurrency >= 2 + an actors[0].lanes roster of ≥2 with EXACTLY ONE host participant. The getHost synthetic
  * gate is deliberately unreachable here (there is no internet-reachable harness-owned URL to attest).
  * Enforced at parse AND re-enforced in the engine (runConcurrentSharedWorld is exported npm surface).
  */

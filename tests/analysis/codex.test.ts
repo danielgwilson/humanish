@@ -12,10 +12,7 @@ import {
   formatAutomaticAnalysisBudget,
   resolveAutomaticAnalysis,
 } from "../../src/analysis/automatic-config.js";
-import {
-  readAutomaticStudyAnalysis,
-  runAutomaticStudyAnalysis,
-} from "../../src/analysis/automatic.js";
+import { readAutomaticAnalysis, runAutomaticAnalysis } from "../../src/analysis/automatic.js";
 import { parseLabConfig } from "../../src/lab/config.js";
 import { createProgram } from "../../src/cli/program.js";
 import { resolveRunPath } from "../../src/run/locate.js";
@@ -31,7 +28,7 @@ import { bindCodexAnalysisCliVersion } from "../../src/analysis/restricted-codex
 import type { AnalysisProvider } from "../../src/analysis/provider.js";
 import { analyzeRun, showAnalysis } from "../../src/analysis/service.js";
 import { writeAnalysis } from "../../src/analysis/store.js";
-import { listStudyAnalysisExecutions } from "../../src/analysis/store-executions.js";
+import { listAnalysisExecutions } from "../../src/analysis/store-executions.js";
 import {
   digestAnalysisInput,
   hashAnalysisValue,
@@ -394,7 +391,7 @@ describe("explicit Codex account analysis", () => {
     expect((await showAnalysis(f.cwd, "codex-analysis", "legacy-api")).analysis).toEqual(
       JSON.parse(originalLegacy),
     );
-    const receipts = (await listStudyAnalysisExecutions(f.prepared)).receipts.filter(
+    const receipts = (await listAnalysisExecutions(f.prepared)).receipts.filter(
       (r) => r.provider === "codex",
     );
     expect(receipts).toHaveLength(1);
@@ -428,18 +425,18 @@ describe("explicit Codex account analysis", () => {
     const f = await study(),
       run = provider(f.input),
       fetch = vi.fn();
-    const outcome = await runAutomaticStudyAnalysis(f.cwd, "codex-analysis", config(), {
+    const outcome = await runAutomaticAnalysis(f.cwd, "codex-analysis", config(), {
       apiKey: "",
       codexProvider: run,
       fetch,
     });
     expect(outcome.result?.ok).toBe(true);
-    expect(await readAutomaticStudyAnalysis(f.cwd, "codex-analysis")).toMatchObject({
+    expect(await readAutomaticAnalysis(f.cwd, "codex-analysis")).toMatchObject({
       state: outcome.state,
     });
     expect(
       (
-        await runAutomaticStudyAnalysis(f.cwd, "codex-analysis", config(), {
+        await runAutomaticAnalysis(f.cwd, "codex-analysis", config(), {
           apiKey: "",
           codexProvider: run,
         })
@@ -474,7 +471,7 @@ describe("explicit Codex account analysis", () => {
     expect(saved.configDigest).toBe(hashAnalysisValue(saved.config));
 
     const automatic = await study();
-    const outcome = await runAutomaticStudyAnalysis(automatic.cwd, "codex-analysis", config(), {
+    const outcome = await runAutomaticAnalysis(automatic.cwd, "codex-analysis", config(), {
       apiKey: "",
       codexProvider: provider(automatic.input),
       detectCodexCliVersion: async () => "0.154.0",
@@ -485,7 +482,7 @@ describe("explicit Codex account analysis", () => {
     ).analysis!;
     expect(report.config.provider === "codex" && report.config.identity.cliVersion).toBe("0.154.0");
     // The permanent claim was bound to the same configuration the report records.
-    expect(await readAutomaticStudyAnalysis(automatic.cwd, "codex-analysis")).toMatchObject({
+    expect(await readAutomaticAnalysis(automatic.cwd, "codex-analysis")).toMatchObject({
       state: outcome.state,
     });
   });
@@ -501,7 +498,7 @@ describe("explicit Codex account analysis", () => {
       dispatched: false,
       errorCode: "codex_login_required",
     }));
-    const outcome = await runAutomaticStudyAnalysis(f.cwd, "codex-analysis", config(), {
+    const outcome = await runAutomaticAnalysis(f.cwd, "codex-analysis", config(), {
       apiKey: "synthetic-api-key",
       codexProvider: run,
       fetch,

@@ -27,21 +27,22 @@
 //
 // NOTE on actors[0].count: it now carries ROUTE-SPECIFIC meanings — synthetic route: simCount;
 // scripted-browser route: surface roster {1 = desktop, 2 = desktop + mobile}, default 1 (the
-// defaults-table single-lane row governs; count: 2 is the declared override); computer-use
-// E2B route: the HOMOGENEOUS fan-out lane count (N identical lanes, each its own E2B desktop),
-// capped at 16; the in-process/local-app cua route stays single lane (no E2B to fan out).
+// defaults-table single-participant row governs; count: 2 is the declared override); computer-use
+// E2B route: the HOMOGENEOUS fan-out participant count (N identical participants, each its own E2B
+// desktop), capped at 16; the in-process/local-app cua route stays single-participant (no E2B to
+// fan out).
 //
 // NOTE on actors[0].lanes / actors[0].roster (computer-use E2B route, this slice): a
 // DIFFERENTIATED fan-out roster — each `{ id?, persona?, device?, instruction?, target? }` becomes one
-// independent E2B desktop (per-lane worlds, the default topology). `roster[]` is parser sugar for
+// independent E2B desktop (`per-lane-worlds`, the default topology). `roster[]` is parser sugar for
 // repeated groups and is normalized into `lanes[]` before the engine sees it. `lanes|roster` XOR
 // `count` (declare a differentiated roster OR a homogeneous count, never both); `lanes|roster`
-// XOR `actors[0].laneFocus` (per-lane `instruction` is the roster's steer); `lanes[].device` XOR
-// raw `execution.desktop.resolution`. `execution.concurrency` bounds in-flight lanes (default: the
-// lane count, every lane at once; env HUMANISH_CUA_MAX_CONCURRENCY may only LOWER it — invariant
+// XOR `actors[0].laneFocus` (each entry's `instruction` is the roster's steer); `lanes[].device` XOR
+// raw `execution.desktop.resolution`. `execution.concurrency` bounds in-flight participants (default:
+// the participant count, all at once; env HUMANISH_CUA_MAX_CONCURRENCY may only LOWER it — invariant
 // 3). On every non-cua route normalized `lanes` are inert (warned). subject.clone.fanout is
 // REJECTED on the cua route. `lanes[].target` is app-url × computer-use ONLY: an absolute browser
-// URL this lane opens instead of `subject.appUrl`; it is the generic setup-produced-target
+// URL this participant opens instead of `subject.appUrl`; it is the generic setup-produced-target
 // handoff, not a service topology primitive.
 //
 // There is deliberately NO v1 compatibility: v1 had zero real users. Breaking schema changes
@@ -180,7 +181,7 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
 
   // All-parallel default (#350): a multi-seat lab that does not declare execution.concurrency runs
   // every seat at once; the declared field is a cap the author chose, never a mode. Independent
-  // computer-use lanes resolve that default from the final seat count when they plan, after any
+  // computer-use participants resolve that default from the final participant count when they plan, after any
   // --count override, so the parser leaves it unset for them. A shared world's roster is fixed, so
   // its default is filled here for the envelopes and warnings that read the parsed config.
   {
@@ -194,12 +195,12 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
     }
   }
 
-  // Email that just works (#351): the funnel's ONLY handoff to an actor is the per-lane inbox
-  // instruction, gated on recipients[]. Guessed lane names broke a field run — recipients copied
-  // from a single-lane example matched nothing, so every actor was left inbox-blind with zero
-  // signal. Omitted recipients are therefore FILLED (one deterministic address per lane); a
-  // recipient naming an unknown lane is a hard error listing the real lane ids; declared
-  // recipients covering zero lanes are a hard error (a guaranteed-dead funnel).
+  // Email that just works (#351): the funnel's ONLY handoff to an actor is the per-participant
+  // inbox instruction, gated on recipients[]. Guessed participant ids broke a field run —
+  // recipients copied from a single-participant example matched nothing, so every actor was left inbox-blind with zero
+  // signal. Omitted recipients are therefore FILLED (one deterministic address per participant);
+  // a recipient naming an unknown participant is a hard error listing the real ids; declared
+  // recipients covering zero participants are a hard error (a guaranteed-dead funnel).
   const receivingReason = receivingEmailValidationReason(config);
   if (receivingReason) return invalid(receivingReason);
   if (config.comms?.email?.kind === "fake" && isComputerUseComposition(config)) {

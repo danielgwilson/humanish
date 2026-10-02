@@ -3,7 +3,7 @@ import { actorRegistry } from "../actors/registry.js";
 import { isLoopbackUrl } from "./parse/subject.js";
 import type { LabConfig } from "./types.js";
 
-// Hard cap on fan-out lanes (per the ratified design). No HUMANISH_MAX_LANES escape above this
+// Hard cap on fan-out participants (per the ratified design). No HUMANISH_MAX_LANES escape above this
 // until a reference panel demands it — N concurrent paid desktops is real money.
 export const MAX_CUA_LANES = 16;
 
@@ -64,9 +64,9 @@ export function registeredTerminalActors(): string[] {
 }
 
 /**
- * The declared fan-out lane count on the computer-use route: a `lanes[]` roster's length, else
+ * The declared fan-out participant count on the computer-use route: a `lanes[]` roster's length, else
  * a homogeneous `count`, else 1. The single source of truth shared by the parser, the engine,
- * and the pre-flight plan so the lane count is computed ONE way everywhere.
+ * and the pre-flight plan so the participant count is computed ONE way everywhere.
  */
 export function cuaLaneCount(config: LabConfig): number {
   const actor = config.actors[0];
@@ -77,7 +77,7 @@ export function cuaLaneCount(config: LabConfig): number {
 }
 
 /**
- * A participant's id: its declared roster id, else `lane-NN` (independent lanes) or `role-NN`
+ * A participant's id: its declared roster id, else `lane-NN` (independent participants) or `role-NN`
  * (shared-world seats) from its 0-based position. The parser's filled email recipients and the
  * routes that name participants both call this, so a filled recipient names a participant that
  * runs.
@@ -95,7 +95,7 @@ export function participantIdAt(
  * actor resolves to a registered computer-use actor, or a clone subject on a hosted desktop
  * whose first actor does. Single source of truth — routeOf and the warning logic
  * both use it. (The app-url branch used to be unconditionally true; it narrowed when the
- * scripted-browser lane arrived. Behavior-preserving for every parse-valid config —
+ * scripted-browser route arrived. Behavior-preserving for every parse-valid config —
  * routeOf keeps a bare app-url fallback to the cua backend so library-API configs
  * with unknown actors still hit its fail-closed ACTOR_UNSUPPORTED.)
  */
@@ -106,7 +106,7 @@ export function isComputerUseComposition(config: LabConfig): boolean {
     return actorResolvesToComputerUse(config.actors[0]?.type);
   }
   // desktop-cli hands the participant a terminal instead of a served page (#495), but it is the
-  // same lane: same desktop, same actor, same prompt fields. Leaving it out of this predicate told
+  // same route: same desktop, same actor, same prompt fields. Leaving it out of this predicate told
   // adopters their mission and persona were inert on the one route whose whole point is that a
   // person reads a screen.
   if (config.subject.source === "desktop-cli") {
@@ -156,7 +156,7 @@ function isProvisionedSharedWorldComposition(config: LabConfig): boolean {
  * seed. The operator-ownership attestation `subject.publicTarget` is required (validated in
  * externalPublicSharedWorldValidationReason, not here — this predicate is the router only, so a
  * half-declared external-public config still routes here to get its precise fail-closed reason
- * rather than silently downgrading to the per-lane cua route).
+ * rather than silently downgrading to the per-participant cua route).
  */
 function isExternalPublicSharedWorldComposition(config: LabConfig): boolean {
   return (

@@ -45,7 +45,7 @@ export function parseExecution(
     return desktopResult;
   }
   if (desktopResult.value) execution.desktop = desktopResult.value;
-  // Reuse the terminal lane's caps parser (same shape, not a fork) — a malformed budget is a hard
+  // Reuse the terminal route's caps parser (same shape, not a fork) — a malformed budget is a hard
   // error, never silently dropped (a cap that silently does nothing would be a safety lie).
   const capsResult = parseCaps(raw.caps);
   if (!capsResult.ok) {

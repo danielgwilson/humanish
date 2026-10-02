@@ -5,10 +5,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { computeStats, formatStatsHuman } from "../../src/run/stats.js";
 import { bindExistingRunArtifactPaths } from "../../src/run/paths.js";
 import {
-  beginStudyAnalysisExecution,
-  writeStudyAnalysisExecutionReceipt,
+  beginAnalysisExecution,
+  writeAnalysisExecutionReceipt,
 } from "../../src/analysis/store-executions.js";
-import { claimAutomaticStudyAnalysis } from "../../src/analysis/job.js";
+import { claimAutomaticAnalysis } from "../../src/analysis/job.js";
 import { digestAnalysisInput, hashAnalysisValue } from "../../src/analysis/validation.js";
 import { syntheticArtifact, syntheticInput } from "../analysis/fixtures.js";
 import { writeFixtureRun } from "../helpers/run-fixtures.js";
@@ -57,13 +57,13 @@ describe("retained study cost accounting", () => {
   it("adds every distinct attempt once across receipt/report duplicates, failed attempts and reruns", async () => {
     const prepared = await study();
     const first = artifact("study-a", "analysis-a", 0.5);
-    await writeStudyAnalysisExecutionReceipt(prepared, first);
+    await writeAnalysisExecutionReceipt(prepared, first);
     await mkdir(path.join(prepared.physicalRunRoot, "analysis", first.id), { recursive: true });
     await writeFile(
       path.join(prepared.physicalRunRoot, "analysis", first.id, "analysis.json"),
       JSON.stringify(first),
     );
-    await writeStudyAnalysisExecutionReceipt(prepared, {
+    await writeAnalysisExecutionReceipt(prepared, {
       ...artifact("study-a", "analysis-b", 0.75),
       status: "failed",
       result: null,
@@ -111,7 +111,7 @@ describe("retained study cost accounting", () => {
       inputTokens: null,
       outputTokens: null,
     };
-    await writeStudyAnalysisExecutionReceipt(prepared, {
+    await writeAnalysisExecutionReceipt(prepared, {
       ...missing,
       status: "failed",
       result: null,
@@ -119,7 +119,7 @@ describe("retained study cost accounting", () => {
     });
     const stopped = artifact("study-a", "before-transport", null);
     stopped.usage = { ...missing.usage, dispatched: false };
-    await writeStudyAnalysisExecutionReceipt(prepared, {
+    await writeAnalysisExecutionReceipt(prepared, {
       ...stopped,
       status: "cancelled",
       result: null,
@@ -127,7 +127,7 @@ describe("retained study cost accounting", () => {
     });
     const pending = artifact("study-a", "unfinished");
     const { id, runId, sourceRunSha256, inputDigest, configDigest, promptVersion } = pending;
-    const finalize = await beginStudyAnalysisExecution(prepared, {
+    const finalize = await beginAnalysisExecution(prepared, {
       id,
       runId,
       sourceRunSha256,
@@ -157,8 +157,8 @@ describe("retained study cost accounting", () => {
   it("does not count automatic reuse as a new attempt, but retains a started job without final usage", async () => {
     const prepared = await study();
     const first = artifact("study-a", "prior-analysis", 0.3);
-    await writeStudyAnalysisExecutionReceipt(prepared, first);
-    const job = await claimAutomaticStudyAnalysis(prepared, {
+    await writeAnalysisExecutionReceipt(prepared, first);
+    const job = await claimAutomaticAnalysis(prepared, {
       configDigest: first.configDigest,
       promptVersion: first.promptVersion,
     });
@@ -172,7 +172,7 @@ describe("retained study cost accounting", () => {
       analysisEstimatedUsd: 0.3,
     });
     const other = await study("study-b");
-    const interrupted = await claimAutomaticStudyAnalysis(other, {
+    const interrupted = await claimAutomaticAnalysis(other, {
       configDigest: first.configDigest,
       promptVersion: first.promptVersion,
     });
@@ -189,7 +189,7 @@ describe("retained study cost accounting", () => {
     async (state) => {
       const prepared = await study();
       const first = artifact("study-a", "configuration-only");
-      const job = await claimAutomaticStudyAnalysis(prepared, {
+      const job = await claimAutomaticAnalysis(prepared, {
         configDigest: first.configDigest,
         promptVersion: first.promptVersion,
       });
@@ -230,7 +230,7 @@ describe("retained study cost accounting", () => {
     });
     expect(result.costsByRun[0]?.warnings).toContain("ANALYSIS_ACCOUNTING_INVALID");
     const conflicting = artifact("study-a", "conflict");
-    await writeStudyAnalysisExecutionReceipt(prepared, conflicting);
+    await writeAnalysisExecutionReceipt(prepared, conflicting);
     await mkdir(path.join(prepared.physicalRunRoot, "analysis", conflicting.id), {
       recursive: true,
     });
@@ -247,8 +247,8 @@ describe("retained study cost accounting", () => {
   it("filters by run date and lab while retaining later analysis reruns in that run's day", async () => {
     const early = await study("old-study", "old-lab", "2026-08-01T10:00:00Z");
     const recent = await study("new-study", "new-lab", "2026-09-01T10:00:00Z");
-    await writeStudyAnalysisExecutionReceipt(early, artifact("old-study", "late-analysis", 10));
-    await writeStudyAnalysisExecutionReceipt(recent, artifact("new-study", "new-analysis", 0.5));
+    await writeAnalysisExecutionReceipt(early, artifact("old-study", "late-analysis", 10));
+    await writeAnalysisExecutionReceipt(recent, artifact("new-study", "new-analysis", 0.5));
     const byDate = await computeStats(cwd, { since: "2026-09-01" });
     const byLab = await computeStats(cwd, { lab: "new-lab" });
     expect(byDate.ok && byDate.totals.costs.estimatedTotalUsd).toBe(0.75);
@@ -262,7 +262,7 @@ describe("retained study cost accounting", () => {
   it("does not let a mismatched listing ID count another run's accounting twice", async () => {
     const first = await study("study-a");
     const second = await study("study-b");
-    await writeStudyAnalysisExecutionReceipt(first, artifact("study-a", "analysis-a", 0.5));
+    await writeAnalysisExecutionReceipt(first, artifact("study-a", "analysis-a", 0.5));
     const statusFile = path.join(second.physicalRunRoot, "status.json");
     const status = JSON.parse(await readFile(statusFile, "utf8"));
     status.runId = "study-a";
@@ -275,7 +275,7 @@ describe("retained study cost accounting", () => {
   it("rejects oversized and cross-run receipt metadata while retaining the uncertainty", async () => {
     const prepared = await study();
     const original = artifact("study-a", "bad-receipt");
-    await writeStudyAnalysisExecutionReceipt(prepared, original);
+    await writeAnalysisExecutionReceipt(prepared, original);
     const file = path.join(
       prepared.physicalRunRoot,
       "analysis-attempts",
@@ -297,7 +297,7 @@ describe("retained study cost accounting", () => {
 
   it("retains paid receipts when legacy source metadata is unreadable, without guessing filtered attribution", async () => {
     const prepared = await study();
-    await writeStudyAnalysisExecutionReceipt(prepared, artifact("study-a", "kept-accounting", 0.5));
+    await writeAnalysisExecutionReceipt(prepared, artifact("study-a", "kept-accounting", 0.5));
     await rm(path.join(prepared.physicalRunRoot, "status.json"));
     await writeFile(path.join(prepared.physicalRunRoot, "run.json"), "not valid JSON");
     const result = await stats();
@@ -320,7 +320,7 @@ describe("retained study cost accounting", () => {
 
   it("keeps an account-billing contradiction a run-cost warning, not analysis-history uncertainty", async () => {
     const prepared = await study();
-    await writeStudyAnalysisExecutionReceipt(prepared, artifact("study-a", "analysis-a", 0.5));
+    await writeAnalysisExecutionReceipt(prepared, artifact("study-a", "analysis-a", 0.5));
     // A recorded, priced attempt: the analysis history is certain before the run cost changes.
     expect((await stats()).totals.costs.analysisHistoryUncertainRuns).toBe(0);
 
@@ -360,7 +360,7 @@ describe("retained study cost accounting", () => {
     const bundle = JSON.parse(await readFile(file, "utf8"));
     bundle.cost.fullyEstimated = false;
     await writeFile(file, JSON.stringify(bundle));
-    await writeStudyAnalysisExecutionReceipt(prepared, artifact("study-a", "analysis-a", 0.5));
+    await writeAnalysisExecutionReceipt(prepared, artifact("study-a", "analysis-a", 0.5));
     expect((await stats()).totals.costs).toMatchObject({
       estimatedTotalUsd: 0.75,
       incompleteRunEstimates: 1,
