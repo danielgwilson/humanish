@@ -17,7 +17,7 @@ import {
 } from "../run/paths.js";
 import { isRunStatusRecord, RUN_STATUS_FILE } from "../run/status.js";
 import { captureEvidence, EVIDENCE_LIMITS } from "./evidence.js";
-import { pathMissing, readBoundedStudyFile } from "../run/study-files.js";
+import { pathMissing, readBoundedFile } from "../run/evidence-files.js";
 import {
   estimateAnalysisAdmission,
   preferLargerAnalysisOutput,
@@ -245,14 +245,14 @@ export async function readCompletedAnalysisSource(
   cwd: string,
   prepared: PreparedRunArtifactPaths,
 ): Promise<Buffer> {
-  const bytes = await readBoundedStudyFile(prepared, RUN_BUNDLE_FILE, EVIDENCE_LIMITS.sourceBytes);
+  const bytes = await readBoundedFile(prepared, RUN_BUNDLE_FILE, EVIDENCE_LIMITS.sourceBytes);
   if (!bytes) throw new Error("ANALYSIS_SOURCE_UNAVAILABLE");
   const verified = await verifyRunPrepared(cwd, runIdOf(prepared), prepared);
   if (!verified.ok && verified.recordingOk !== true) throw new Error("ANALYSIS_VERIFY_FAILED");
   const loaded = await loadRunBundlePrepared(cwd, prepared);
   if (!loaded || loaded.bundle.streams.length === 0) throw new Error("ANALYSIS_NO_PARTICIPANTS");
   if (loaded.bundle.mode !== "live") throw new Error("ANALYSIS_REQUIRES_LIVE_RUN");
-  const statusBytes = await readBoundedStudyFile(prepared, RUN_STATUS_FILE, MAX_STATUS_BYTES);
+  const statusBytes = await readBoundedFile(prepared, RUN_STATUS_FILE, MAX_STATUS_BYTES);
   if (!statusBytes) {
     const missing = await pathMissing(path.join(prepared.physicalRunRoot, RUN_STATUS_FILE)).catch(
       (): never => {

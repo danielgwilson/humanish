@@ -7,7 +7,7 @@ import {
 } from "../actors/goal-source.js";
 import { actorEnding } from "../actors/stop-cause.js";
 import type { TaskFunnel } from "../lab/tasks.js";
-import type { ParticipantOutcomes, ReviewSummary, StudyTaskFunnel } from "./bundle.js";
+import type { ParticipantOutcomes, ReviewSummary, RunTaskFunnel } from "./bundle.js";
 import { isNonNegativeSafeInteger, isRecord } from "./type-guards.js";
 
 /** Tally participant outcomes from actor statuses. Statuses this does not recognise are counted in
@@ -37,7 +37,7 @@ export function tallyParticipantOutcomes(
 }
 
 /** Roll per-participant funnels up into the study funnel. Undefined when nothing measured one. */
-export function aggregateTaskFunnels(funnels: readonly TaskFunnel[]): StudyTaskFunnel | undefined {
+export function aggregateTaskFunnels(funnels: readonly TaskFunnel[]): RunTaskFunnel | undefined {
   if (funnels.length === 0) return undefined;
   const order: string[] = [];
   const byId = new Map<
@@ -74,7 +74,7 @@ export function aggregateTaskFunnels(funnels: readonly TaskFunnel[]): StudyTaskF
 }
 
 /** The funnel as one line, denominator on every number: `signup 2/2 · verify-email 1/2`. */
-export function formatStudyTaskFunnel(funnel: StudyTaskFunnel): string {
+export function formatRunTaskFunnel(funnel: RunTaskFunnel): string {
   if (funnel.tasks.length === 0) return "no tasks declared";
   return funnel.tasks
     .map((task) => {
@@ -212,7 +212,7 @@ export function withCuaReviewProvenance(
   const outcomes = formatParticipantOutcomes(review.participants, details);
   // Preserve rerun context, participant narration and adapter-specific findings. Refreshing a
   // historical summary qualifies its old tally instead of silently discarding that context.
-  const header = `Run gate: ${review.verdict}. Participants: ${outcomes}.${review.tasks ? ` Tasks: ${formatStudyTaskFunnel(review.tasks)}.` : ""}`;
+  const header = `Run gate: ${review.verdict}. Participants: ${outcomes}.${review.tasks ? ` Tasks: ${formatRunTaskFunnel(review.tasks)}.` : ""}`;
   const prefix = `${header} Recorded summary: `;
   const recorded = review.summary.startsWith(prefix)
     ? review.summary.slice(prefix.length)

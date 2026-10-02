@@ -3,13 +3,13 @@ import { bindExistingRunArtifactPaths } from "./paths.js";
 import type { RunIndexEntry } from "./run-index.js";
 import { contradictsAccountBilling } from "../verify/costs.js";
 import { EVIDENCE_LIMITS } from "../analysis/evidence.js";
-import { readBoundedStudyFile } from "./study-files.js";
+import { readBoundedFile } from "./evidence-files.js";
 import { readAutomaticAnalysisAccounting } from "../analysis/job.js";
 import { readAnalysisAccountingRecords } from "../analysis/store-executions.js";
 import { RUN_BUNDLE_FILE } from "./bundle.js";
 
 /** Additive accounting for retained attempts. Null means no estimate, never an invented zero. */
-export interface StudyCosts {
+export interface CostTotals {
   estimatedTotalUsd: number | null;
   runEstimatedUsd: number | null;
   analysisEstimatedUsd: number | null;
@@ -26,13 +26,13 @@ export interface StudyCosts {
   analysisHistoryUncertainRuns: number;
 }
 
-export interface StudyCostRow {
+export interface CostRow {
   runId: string;
-  costs: StudyCosts;
+  costs: CostTotals;
   warnings: string[];
 }
 
-export function emptyStudyCosts(): StudyCosts {
+export function emptyCostTotals(): CostTotals {
   return {
     estimatedTotalUsd: null,
     runEstimatedUsd: null,
@@ -52,7 +52,7 @@ const isKnownUsd = (value: unknown): value is number =>
 function sumKnown(a: number | null, b: number | null): number | null {
   return a === null && b === null ? null : round6((a ?? 0) + (b ?? 0));
 }
-export function addStudyCosts(into: StudyCosts, next: StudyCosts): void {
+export function addCostTotals(into: CostTotals, next: CostTotals): void {
   for (const key of ["estimatedTotalUsd", "runEstimatedUsd", "analysisEstimatedUsd"] as const) {
     into[key] = sumKnown(into[key], next[key]);
   }
@@ -70,8 +70,8 @@ export function addStudyCosts(into: StudyCosts, next: StudyCosts): void {
 }
 
 /** A read-only, bounded accounting pass. Never validates findings, dispatches, repairs or writes. */
-export async function readStudyCosts(cwd: string, entry: RunIndexEntry): Promise<StudyCostRow> {
-  const costs = emptyStudyCosts();
+export async function readCostTotals(cwd: string, entry: RunIndexEntry): Promise<CostRow> {
+  const costs = emptyCostTotals();
   // Run-cost and analysis-history warnings stay apart: only the second kind makes the history
   // uncertain, whatever a run-cost warning is named.
   const runWarnings: string[] = [];
@@ -79,11 +79,7 @@ export async function readStudyCosts(cwd: string, entry: RunIndexEntry): Promise
   costs.runEstimatedUsd = isKnownUsd(entry.estimatedCostUsd) ? entry.estimatedCostUsd : null;
   try {
     const prepared = await bindExistingRunArtifactPaths(cwd, entry.runId);
-    const bytes = await readBoundedStudyFile(
-      prepared,
-      RUN_BUNDLE_FILE,
-      EVIDENCE_LIMITS.sourceBytes,
-    );
+    const bytes = await readBoundedFile(prepared, RUN_BUNDLE_FILE, EVIDENCE_LIMITS.sourceBytes);
     let bundle = null;
     try {
       bundle = bytes ? JSON.parse(bytes.toString("utf8")) : null;

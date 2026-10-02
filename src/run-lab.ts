@@ -97,7 +97,7 @@ export async function prepareLab(
   // its localVm, which a second study would replace.
   const prepareLocalVm =
     isLocalBrowserLab(lab) && options.inProcess === undefined && options.localVm === undefined
-      ? (await import("./routes/computer-use/local-vm.js")).prepareLocalVmStudy
+      ? (await import("./routes/computer-use/local-vm.js")).prepareLocalVmRun
       : undefined;
   const vm = prepareLocalVm?.({ ...normalized.options, config: lab });
   const planning: InternalRunLabOptions =

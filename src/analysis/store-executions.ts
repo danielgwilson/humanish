@@ -9,7 +9,7 @@ import {
   prepareContainedOutputDirectoryRoot,
   writeContainedOutputFile,
 } from "../run/contained-output.js";
-import { pathMissing, readBoundedStudyFile } from "../run/study-files.js";
+import { pathMissing, readBoundedFile } from "../run/evidence-files.js";
 import {
   ANALYSIS_MAX_BYTES,
   MAX_VERSIONS,
@@ -50,11 +50,7 @@ export async function readAnalysisExecution(
   try {
     const root = await existingRoot(prepared, ANALYSIS_EXECUTION_DIRECTORY);
     if (!root) return null;
-    const bytes = await readBoundedStudyFile(
-      root,
-      `${id}/receipt.json`,
-      MAX_EXECUTION_RECORD_BYTES,
-    );
+    const bytes = await readBoundedFile(root, `${id}/receipt.json`, MAX_EXECUTION_RECORD_BYTES);
     if (!bytes) return null;
     const receipt = validateAnalysisExecutionReceipt(
       JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)),
@@ -149,11 +145,7 @@ export async function listAnalysisExecutions(prepared: PreparedRunArtifactPaths)
     const inventory = await directoryIds(root, MAX_VERSIONS);
     warnings.push(...inventory.warnings);
     for (const id of inventory.ids) {
-      const bytes = await readBoundedStudyFile(
-        root,
-        `${id}/receipt.json`,
-        MAX_EXECUTION_RECORD_BYTES,
-      );
+      const bytes = await readBoundedFile(root, `${id}/receipt.json`, MAX_EXECUTION_RECORD_BYTES);
       if (!bytes) {
         if (
           !(await pathMissing(path.join(root.physicalPath, id, "receipt.json")).catch(() => false))
@@ -210,7 +202,7 @@ export async function readAnalysisAccountingRecords(prepared: PreparedRunArtifac
           records.set(id, record);
         }
         if (directory === ANALYSIS_EXECUTION_DIRECTORY) {
-          const startBytes = await readBoundedStudyFile(
+          const startBytes = await readBoundedFile(
             root,
             `${id}/start.json`,
             MAX_EXECUTION_RECORD_BYTES,
@@ -228,7 +220,7 @@ export async function readAnalysisAccountingRecords(prepared: PreparedRunArtifac
           }
         }
         const legacy = directory === ANALYSIS_DIRECTORY;
-        const bytes = await readBoundedStudyFile(
+        const bytes = await readBoundedFile(
           root,
           `${id}/${legacy ? "analysis.json" : "receipt.json"}`,
           legacy ? ANALYSIS_MAX_BYTES : MAX_EXECUTION_RECORD_BYTES,

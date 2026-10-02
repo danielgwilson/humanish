@@ -9,7 +9,7 @@ import { hashAnalysisValue } from "../analysis/validation.js";
 import type { RunBundle, RunFeedbackCandidate } from "../run/bundle.js";
 import {
   formatParticipantOutcomes,
-  formatStudyTaskFunnel,
+  formatRunTaskFunnel,
   participantOutcomeDetails,
   withCuaReviewProvenance,
 } from "../run/outcomes.js";
@@ -137,7 +137,7 @@ export function buildDraft(
           ]),
       ...(bundle.review.tasks === undefined
         ? []
-        : [`Tasks: ${formatStudyTaskFunnel(bundle.review.tasks)}.`]),
+        : [`Tasks: ${formatRunTaskFunnel(bundle.review.tasks)}.`]),
     ];
     return {
       schema: FEEDBACK_SCHEMA,

@@ -18,7 +18,7 @@ import { isNodeError } from "./type-guards.js";
  * percent-decoded up to five times, and each round must still be a plain relative path, so an
  * encoded `..` or separator cannot survive into a later decode.
  */
-export function isStudyEvidencePath(value: string): boolean {
+export function isEvidencePath(value: string): boolean {
   return decodesToPlainRelativePath(value, 1024, /[\\:\x00-\x1f\x7f]|^\//);
 }
 
@@ -63,12 +63,12 @@ export function decodesToPlainRelativePath(
  * not turn an analysis budget into an unbounded read. No returned bytes have
  * authority to select another file or initiate a network request.
  */
-export async function readBoundedStudyFile(
+export async function readBoundedFile(
   root: PreparedOutputRoot,
   relativePath: string,
   maxBytes: number,
 ): Promise<Buffer | null> {
-  const result = await readBoundedStudyFileResult(root, relativePath, maxBytes);
+  const result = await readBoundedFileResult(root, relativePath, maxBytes);
   return result.state === "read" ? result.bytes : null;
 }
 
@@ -103,19 +103,19 @@ export async function pathMissing(filePath: string): Promise<boolean> {
   }
 }
 
-export type BoundedStudyFileResult =
+export type BoundedFileResult =
   | { state: "read"; bytes: Buffer }
   | { state: "limit"; size: bigint }
   | { state: "unavailable" };
 const unavailable = { state: "unavailable" } as const;
 
 /** Size refusals are distinguished only after the same contained regular-file checks. */
-export async function readBoundedStudyFileResult(
+export async function readBoundedFileResult(
   root: PreparedOutputRoot,
   relativePath: string,
   maxBytes: number,
-): Promise<BoundedStudyFileResult> {
-  if (!isStudyEvidencePath(relativePath) || !Number.isSafeInteger(maxBytes) || maxBytes < 1)
+): Promise<BoundedFileResult> {
+  if (!isEvidencePath(relativePath) || !Number.isSafeInteger(maxBytes) || maxBytes < 1)
     return unavailable;
   const validateRoot = async (): Promise<string> => {
     if ("physicalRunRoot" in root) {

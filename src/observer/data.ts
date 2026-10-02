@@ -2,7 +2,7 @@ import { actorEnding, type ActorEnding } from "../actors/stop-cause.js";
 import { isCommsReceivingEvidence, receivingAnalysisContext } from "../comms/receiving-evidence.js";
 import {
   formatParticipantOutcomes,
-  formatStudyTaskFunnel,
+  formatRunTaskFunnel,
   participantOutcomeDetails,
   withCuaReviewProvenance,
 } from "../run/outcomes.js";
@@ -232,7 +232,7 @@ export function buildObserverData(
         ? {}
         : {
             tasks: bundle.review.tasks,
-            tasksLine: formatStudyTaskFunnel(bundle.review.tasks),
+            tasksLine: formatRunTaskFunnel(bundle.review.tasks),
           }),
     },
     summary: {

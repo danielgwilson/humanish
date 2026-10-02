@@ -6,7 +6,7 @@ import { starterFiles } from "../../src/lab/init-templates.js";
 
 import {
   buildPayload,
-  deriveStudyFacts,
+  deriveRunFacts,
   disabledByEnvironment,
   durationBucket,
   readTelemetryState,
@@ -294,7 +294,7 @@ describe("study-participant marking (#546)", () => {
 describe("what a study reports about itself", () => {
   it("reads mode, starter lab, outcome, and brain off a single-lane computer-use result", () => {
     expect(
-      deriveStudyFacts({
+      deriveRunFacts({
         schema: "humanish.cua-lab-result.v2",
         ok: true,
         labId: "try-live",
@@ -312,20 +312,20 @@ describe("what a study reports about itself", () => {
 
   it("rolls a fan-out up to all/some/none passed, never per-lane detail", () => {
     const base = { labId: "cua-browser", actor: "openai-computer-use", dryRun: false, ok: true };
-    expect(deriveStudyFacts({ ...base, laneSummary: { total: 3, passed: 3 } }).outcome).toBe(
+    expect(deriveRunFacts({ ...base, laneSummary: { total: 3, passed: 3 } }).outcome).toBe(
       "all_passed",
     );
-    expect(deriveStudyFacts({ ...base, laneSummary: { total: 3, passed: 1 } }).outcome).toBe(
+    expect(deriveRunFacts({ ...base, laneSummary: { total: 3, passed: 1 } }).outcome).toBe(
       "some_passed",
     );
-    expect(deriveStudyFacts({ ...base, laneSummary: { total: 3, passed: 0 } }).outcome).toBe(
+    expect(deriveRunFacts({ ...base, laneSummary: { total: 3, passed: 0 } }).outcome).toBe(
       "none_passed",
     );
   });
 
   it("reports a dry run as brain none, whatever actor would have run it", () => {
     expect(
-      deriveStudyFacts({
+      deriveRunFacts({
         labId: "first-run",
         actor: "openai-computer-use",
         dryRun: true,
@@ -336,7 +336,7 @@ describe("what a study reports about itself", () => {
 
   it("names the failure by our own code, and only ours", () => {
     expect(
-      deriveStudyFacts({
+      deriveRunFacts({
         ok: false,
         labId: "try-live",
         dryRun: false,
@@ -348,7 +348,7 @@ describe("what a study reports about itself", () => {
       outcome: "error",
       errorCode: "HUMANISH_CUA_LAB_KEYS_MISSING",
     });
-    const foreign = deriveStudyFacts({
+    const foreign = deriveRunFacts({
       ok: false,
       dryRun: false,
       error: { code: "ECONNREFUSED", message: "x" },
@@ -358,7 +358,7 @@ describe("what a study reports about itself", () => {
   });
 
   it("NEVER names an adopter's lab, and never forwards free-text status", () => {
-    const facts = deriveStudyFacts({
+    const facts = deriveRunFacts({
       labId: "acme-checkout-v2",
       dryRun: false,
       ok: true,
@@ -372,7 +372,7 @@ describe("what a study reports about itself", () => {
 
   it("reads the plain run result and the preflight result too", () => {
     expect(
-      deriveStudyFacts({
+      deriveRunFacts({
         schema: "humanish.run-result.v1",
         ok: true,
         mode: "dry-run",
@@ -382,7 +382,7 @@ describe("what a study reports about itself", () => {
       }),
     ).toEqual({ mode: "dry-run", outcome: "ok" });
     expect(
-      deriveStudyFacts({
+      deriveRunFacts({
         schema: "humanish.lab-preflight-result.v1",
         ok: false,
         lab: "try-live",
@@ -398,10 +398,10 @@ describe("what a study reports about itself", () => {
 
   it("says nothing about a result that carries no study", () => {
     expect(
-      deriveStudyFacts({ schema: "humanish.doctor-result.v1", ok: true, cwd: "/x", checks: [] }),
+      deriveRunFacts({ schema: "humanish.doctor-result.v1", ok: true, cwd: "/x", checks: [] }),
     ).toEqual({});
-    expect(deriveStudyFacts("not an object")).toEqual({});
-    expect(deriveStudyFacts(null)).toEqual({});
+    expect(deriveRunFacts("not an object")).toEqual({});
+    expect(deriveRunFacts(null)).toEqual({});
   });
 });
 
@@ -415,19 +415,18 @@ describe("finite CUA diagnostics", () => {
         laneSummary: { total, passed: 0 },
         diagnostics: { category: "preview" },
       };
-      expect(deriveStudyFacts(base).outcome).toBe("contract_proof_only");
+      expect(deriveRunFacts(base).outcome).toBe("contract_proof_only");
       expect(
-        deriveStudyFacts({ ...base, ok: false, error: { code: "HUMANISH_CUA_LAB_FAILED" } })
-          .outcome,
+        deriveRunFacts({ ...base, ok: false, error: { code: "HUMANISH_CUA_LAB_FAILED" } }).outcome,
       ).toBe("error");
       if (total > 1)
-        expect(deriveStudyFacts({ ...base, dryRun: false, ok: false }).outcome).toBe("none_passed");
+        expect(deriveRunFacts({ ...base, dryRun: false, ok: false }).outcome).toBe("none_passed");
     }
   });
 
   it("reads only the finite summary, never a first-lane cause or raw failure text", () => {
     expect(
-      deriveStudyFacts({
+      deriveRunFacts({
         schema: "humanish.cua-lab-result.v2",
         diagnostics: { category: "mixed", stopCause: "mixed" },
         session: { stopCause: "provider_output_limit" },
@@ -436,13 +435,13 @@ describe("finite CUA diagnostics", () => {
       }),
     ).toEqual({ diagnosticCategory: "mixed", stopCause: "mixed" });
     expect(
-      deriveStudyFacts({
+      deriveRunFacts({
         schema: "humanish.cua-lab-result.v2",
         diagnostics: { category: "private.example", stopCause: "secret reason" },
       }),
     ).toEqual({});
     expect(
-      deriveStudyFacts({
+      deriveRunFacts({
         schema: "another-result",
         diagnostics: { category: "mixed", stopCause: "mixed" },
       }),
