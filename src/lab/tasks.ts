@@ -39,9 +39,9 @@ const TASK_FUNNEL_SCHEMA = "humanish.task-funnel.v1" as const;
 export interface LabTask {
   /** Stable id, used in evidence and in the funnel. Researcher-facing. */
   id: string;
-  /** PARTICIPANT-FACING. What they are asked to do. The only half that reaches the prompt. */
+  /** Participant-facing. What they are asked to do. The only half that reaches the prompt. */
   goal: string;
-  /** RESEARCHER-FACING. Observation-shaped proof the task happened. Never rendered to the
+  /** Researcher-facing. Observation-shaped proof the task happened. Never rendered to the
    *  participant. Absent means the task is narrative-only: it is asked for but cannot be measured,
    *  and the funnel says so rather than quietly counting it as failed. */
   success?: StopWhen;

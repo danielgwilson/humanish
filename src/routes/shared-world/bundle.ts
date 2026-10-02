@@ -205,7 +205,7 @@ function sharedWorldEvidence(
   const { plan, dryRun, actorSpecs, actorResults } = args;
   // Build the concurrent shared-world evidence block. routeHostDigest is sha256-16 of the origin each
   // seat reached: on getHost the seat URL the actor drove (verify confirms == plane.hostDigest); on
-  // external-public the seat's CDP-OBSERVED URL origin (verify confirms == plane.publicOriginDigest).
+  // external-public the seat's CDP-observed URL origin (verify confirms == plane.publicOriginDigest).
   const fallbackHostDigest = external
     ? (args.publicOriginDigest ?? commandDigestOf("[external-public-plane]"))
     : (args.hostDigest ?? commandDigestOf("[provisioned-subject]"));

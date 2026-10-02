@@ -342,7 +342,7 @@ export interface CuaLoopOptions {
    */
   estimateTurnCostUsd?: (usage: ActorTokenUsage) => number | null;
   /**
-   * RUN-LEVEL spend guard: called with this participant's running usage each turn, at the same
+   * Run-level spend guard: called with this participant's running usage each turn, at the same
    * point the per-participant cap is checked. Returns a human-readable reason when the study's shared
    * budget is exhausted, else null. On a non-null return the loop stops with `budget_reached`
    * regardless of material progress: a study-level stop is a recruiting decision hitting its

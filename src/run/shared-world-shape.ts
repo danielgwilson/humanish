@@ -19,7 +19,7 @@ export const MANDATORY_ATTRIBUTION_LIMITS = [
   "delta-attributed-to-turn-not-action",
 ] as const;
 
-// A shared-world checkpoint record persists DIGEST-ONLY: exactly these keys, nothing value-shaped.
+// A shared-world checkpoint record persists digest-only: exactly these keys, nothing value-shaped.
 export const SHARED_WORLD_CHECKPOINT_KEYS = new Set(["kind", "name", "digest", "deltaFromPrev"]);
 
 // A concurrent stateSeries record is digest-only too: it permits a numeric timestamp + the

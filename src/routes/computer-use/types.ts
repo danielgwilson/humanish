@@ -81,7 +81,7 @@ export const MIN_DERIVED_SESSION_TIMEOUT_MS = 5 * 60_000;
 
 // Device/screen size comes from the named-preset registry (device-presets.ts), selectable per run
 // via execution.desktop.device (default `desktop`=1440x950). NOTE: this is run-wide for now; a
-// per-PERSONA device dimension (N personas × devices, as the bespoke sims author) lands with
+// per-persona device dimension (N personas × devices, as the bespoke sims author) lands with
 // fan-out. On this E2B-desktop route only width/height physically render; isMobile/DSF are
 // honest metadata + a prompt signal and are not rendered (see the header of device-presets.ts), and the
 // rendered width is floored to MIN_DESKTOP_RENDER_WIDTH (Chrome's ~500px window minimum) so a mobile
@@ -404,7 +404,7 @@ export interface ParticipantRunsAndPlan {
 
 /**
  * The study's shared spend ledger: one counter across every participant. Each one notes its
- * own latest running MODEL-spend estimate (monotone per participant: an estimate can only grow)
+ * own latest running model-spend estimate (monotone per participant: an estimate can only grow)
  * and reads back the run total; the loop stops the participant the moment the total crosses the study budget.
  * Estimated model spend only: desktop-minutes ride the cost summary, not this ledger.
  */
@@ -508,16 +508,16 @@ export interface ParticipantModelDeps {
    *  live run. Preflight already refused the cap on an unpriced model. */
   runBudget?: CuaRunBudget;
   /**
-   * RUNTIME-ONLY observed-URL callback (the shared-world handoff): threaded into the participant's session so the
+   * runtime-only observed-URL callback (the shared-world handoff): threaded into the participant's session so the
    * orchestrator watches this seat's live location.href mid-run. Never persisted (see
    * CuaLoopOptions.onObservedUrl). The concurrent shared-world barrier passes a host-seat latch here
    * to extract a /lobby/CODE; on ordinary routes it is undefined (no-op).
    */
   onObservedUrl?: (url: string | undefined) => void;
-  /** RUNTIME-ONLY per-turn narration callback; see CuaLoopOptions.onMessage. The concurrent
+  /** runtime-only per-turn narration callback; see CuaLoopOptions.onMessage. The concurrent
    * shared-world barrier passes a host-seat message scanner here to latch the lobby code. */
   onMessage?: (text: string) => void;
-  /** RUNTIME-ONLY per-turn raw-frame callback; see CuaLoopOptions.onScreenshot. The concurrent
+  /** runtime-only per-turn raw-frame callback; see CuaLoopOptions.onScreenshot. The concurrent
    * shared-world barrier passes a host-seat vision reader here to latch the lobby code off-screen. */
   onScreenshot?: (frame: Buffer) => void;
   /** Per-turn trace snapshot from a participant's loop, keyed by participant. The live path

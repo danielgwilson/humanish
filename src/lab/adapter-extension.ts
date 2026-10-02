@@ -134,7 +134,7 @@ export async function applyBrowserScorer(args: {
   // original path); a declared scorer that throws or returns a malformed value is one too (below).
   if (scorerProvenance) bundle.scorerProvenance = scorerProvenance;
 
-  // The scorer sees a READ-ONLY view of the bundle: it cannot mutate noSpend/cost/review in place to
+  // The scorer sees a read-only view of the bundle: it cannot mutate noSpend/cost/review in place to
   // launder a verdict (a tamper attempt throws in the scorer's strict-mode ESM and is caught below as
   // a hook failure). The seam still stamps the real bundle.
   const scoringContext = scorerContext({
@@ -232,7 +232,7 @@ export function adapterScoreFailureMessage(bundle: RunBundle): string | undefine
 }
 
 /**
- * Deep-freeze a structured clone so a loaded scorer sees a READ-ONLY bundle: it cannot mutate
+ * Deep-freeze a structured clone so a loaded scorer sees a read-only bundle: it cannot mutate
  * noSpend/cost/review in place to launder a verdict (which would defeat the costProbe-not-loadable
  * guarantee). A tamper attempt throws in the scorer's strict-mode ESM and is caught as a hook failure.
  * Legitimate read-only scoring is unaffected. The seam always stamps the real bundle, never this view.

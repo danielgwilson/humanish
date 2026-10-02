@@ -317,7 +317,7 @@ export async function runHost(
   participantIndex: number,
 ): Promise<ActorRunResult> {
   const onObservedUrl = handoff.makeObservedUrl(participantIndex, true);
-  // CDP-INDEPENDENT handoff paths (the E2B-desktop CDP url-read the onObservedUrl path relies on is
+  // CDP-independent handoff paths (the E2B-desktop CDP url-read the onObservedUrl path relies on is
   // unreliable in practice). Two backups, both resolving the same latch; whichever sees the code first
   // wins, all digest-only:
   //   (1) onMessage: scan the host's own narration if it happens to state the lobby URL; and

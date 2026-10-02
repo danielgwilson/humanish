@@ -1,5 +1,5 @@
 // Shared fail-closed exposure validation + tunnel orchestration for both `serve` (a library of
-// finished runs) and `watch` (one live run). Exposure auth is TUNNEL-EDGE only: humanish carries no
+// finished runs) and `watch` (one live run). Exposure auth is tunnel-edge only: humanish carries no
 // in-process auth. Exposure is admitted only behind edge auth (ngrok --oauth google, or an operator
 // --public-url they secure) or, for serve, behind --safe (share_ready runs only). A live watch run
 // is never share_ready (raw, unverified screenshots), so watch --expose always requires edge auth.

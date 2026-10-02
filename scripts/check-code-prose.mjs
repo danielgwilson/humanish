@@ -35,7 +35,7 @@ const ACRONYMS = new Set(
     "ENOENT EEXIST ENOTEMPTY ENOTDIR EISDIR EACCES EPERM EPIPE EBUSY ELOOP EXDEV SIGTERM SIGKILL SIGINT " +
     "CA GNU GUI LTS OCR SSG ABA CIDR SNI TOCTOU DSF ENOSPC OSS SQL " +
     "CRC CSD EAGAIN EMFILE ENOMEM FIFO HAR ICC IDAT IEND IME NUL OOM PEM PHI RPC SIGHUP SMS SVG TOML UA " +
-    "VFR XFCE XML"
+    "VFR XFCE XML GPT MAS"
   ).split(" "),
 );
 
@@ -47,6 +47,12 @@ const files = readdirSync("src", { recursive: true, encoding: "utf8" })
 // "lane" or "lanes" as a word, except in a property path (`actors[0].lanes`), an array
 // (`lanes[]`), a flag (`--lanes`), an id (`lane-01`, `lane-NN`) or the `per-lane-worlds` topology.
 const LANE_WORD = /(?<![\w.]|--)lanes?(?![\w[]|-\d|-NN|-worlds)/gi;
+
+// A word with two or more capitals and no lowercase letter, alone or as one part of a hyphenated
+// compound: `NOT`, `LOAD-BEARING` and `operator-DECLARED` each count once. A compound whose caps
+// parts are all in ACRONYMS (`JSON-RPC`, `E2B-desktop`) is a name. Path segments (`/lobby/CODE`)
+// and placeholders (`<PORT>`) are not counted.
+const CAPS_RUN = /(?<![\w/<])(?:[A-Za-z0-9]+-)*[A-Z]{2,}(?:-[A-Za-z0-9]+)*(?![\w/>])/g;
 
 // An em dash, or two hyphens standing alone between spaces. A flag (`--count`) and a rule (`---`)
 // are not dashes, and neither is the ` -- ` that separates a lint directive from its reason.
@@ -62,14 +68,15 @@ for (const file of files) {
       const line = text.slice(0, comment.start + 2 + match.index).split("\n").length;
       return `${file}:${line} ${match[0]}`;
     };
-    for (const match of comment.value.matchAll(/(?<!TODO\()#\d{2,5}\b/g)) {
+    for (const match of comment.value.matchAll(/(?<!TODO\()#\d{1,5}\b/g)) {
       hits["issue-refs"].push(at(match));
     }
     for (const match of comment.value.matchAll(/\bFIX-\d+\b/g)) hits["fix-tags"].push(at(match));
     // Code spans and path segments (`/lobby/CODE`) hold placeholders, not emphasis.
     const prose = comment.value.replace(/`[^`\n]*`/g, (span) => " ".repeat(span.length));
-    for (const match of prose.matchAll(/(?<![\w/<-])[A-Z]{2,}(?![\w/>-])/g)) {
-      if (!ACRONYMS.has(match[0])) hits.caps.push(at(match));
+    for (const match of prose.matchAll(CAPS_RUN)) {
+      const parts = match[0].split("-").filter((part) => /^[A-Z]{2,}$/.test(part));
+      if (parts.some((part) => !ACRONYMS.has(part))) hits.caps.push(at(match));
     }
     for (const match of prose.matchAll(LANE_WORD)) hits["lane-comments"].push(at(match));
     const dashProse = prose.replace(LINT_DIRECTIVE, "$1  ");

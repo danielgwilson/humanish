@@ -115,7 +115,7 @@ export type ConcurrentSharedWorldLabErrorCode =
 /** The two plane classes of the concurrent shared-world route. */
 export type ConcurrentSharedWorldPlaneClass = "provisioned-getHost" | "external-public";
 
-// EXTERNAL-PUBLIC plane class: the honest-downgrade attribution ceiling. The concurrent family
+// External-public plane class: the honest-downgrade attribution ceiling. The concurrent family
 // (an honest ceiling) plus the mandatory external-public disclosures, mirrored in the required
 // set in verify/shared-world-concurrent.ts (CONCURRENT_ATTRIBUTION_LIMITS +
 // EXTERNAL_PUBLIC_EXTRA_LIMITS). Verify fails closed on a missing one.
@@ -273,7 +273,7 @@ export interface ConcurrentBundleArgs {
   /** external-public only: sha256-16 of the observed origin the seats converged on (the convergence
    *  proof: what the seats actually reached, tolerant of a declared->observed redirect). */
   publicOriginDigest?: string;
-  /** external-public only: sha256-16 of the operator-DECLARED plane origin (evidence/reference only;
+  /** external-public only: sha256-16 of the operator-declared plane origin (evidence/reference only;
    *  never asserted equal to the observed origin, since a cross-origin redirect is normal). */
   declaredOriginDigest?: string;
   /** external-public only: sha256-16 of the shared /lobby/CODE path all seats converged on. */

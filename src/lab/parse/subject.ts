@@ -114,7 +114,7 @@ function misplacedFieldFailure(
       "`subject.state` applies only to clone subjects or local-tree subjects (the lab seeds the state it serves).",
     );
   }
-  // repos/clone are clone-ONLY (a fresh-clone subject's git inputs). local-tree packs the
+  // repos/clone are clone-only (a fresh-clone subject's git inputs). local-tree packs the
   // resolution cwd itself, so it has no repo slug to clone and gets its own precise reasons
   // rather than falling through to the generic clone-only message below.
   if (source === "local-tree" && raw.repos !== undefined) {
@@ -137,13 +137,13 @@ function misplacedFieldFailure(
   if (source !== "clone" && raw.clone !== undefined) {
     return invalid("`subject.clone` applies only to clone subjects (clone depth/fanout/keep).");
   }
-  // localTree is local-tree-ONLY (pack/upload knobs for the packed working tree).
+  // localTree is local-tree-only (pack/upload knobs for the packed working tree).
   if (source !== "local-tree" && raw.localTree !== undefined) {
     return invalid(
       "`subject.localTree` applies only to local-tree subjects (keep/exclude/maxArchiveBytes for packing the working tree).",
     );
   }
-  // publicTarget is app-url-ONLY (the external-public shared-world ownership attestation). It is
+  // publicTarget is app-url-only (the external-public shared-world ownership attestation). It is
   // meaningless without a real public deployment as the plane, so reject it elsewhere (invariant 6).
   if (source !== "app-url" && raw.publicTarget !== undefined) {
     return invalid(
@@ -268,7 +268,7 @@ function parseAppSubject(
   }
   subject.appUrl = appUrl;
   // publicTarget (external-public shared-world ownership attestation) is app-url-only. Shape it
-  // here; its REQUIRED-on-that-route semantics live in externalPublicSharedWorldValidationReason.
+  // here; its required-on-that-route semantics live in externalPublicSharedWorldValidationReason.
   if (source === "app-url" && raw.publicTarget !== undefined) {
     const publicTargetResult = parsePublicTarget(raw.publicTarget);
     if (!publicTargetResult.ok) {

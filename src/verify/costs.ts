@@ -37,8 +37,8 @@ export function contradictsAccountBilling(
 /**
  * Verify the labeling/provenance of any cost figure a bundle claims, and never its magnitude. Returns
  * [] (pass) unless a dollar claim lacks its provenance (invariant 6) or a total misreports its
- * known lines. Absence always passes (fail-open on display, discipline #3): a bundle with no cost,
- * a null estimate, or a participant without estimatedCost is fine. A NON-NULL figure must carry its
+ * known lines. Absence always passes (fail-open on display): a bundle with no cost,
+ * a null estimate, or a participant without estimatedCost is fine. A non-null figure must carry its
  * ratesAsOf date + source; a number total must equal round6(sum of only the non-null lines) and a
  * null line may never be coerced to 0. A null estimate must be declared honestly (a reason + null
  * ratesAsOf), mirroring the terminal no-spend proof's null-discipline. Account-billed participants

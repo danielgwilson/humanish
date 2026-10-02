@@ -22,7 +22,7 @@ const CONCURRENT_REQUIRED_LIMITS = [
 
 const CONCURRENT_FORBIDDEN_LIMITS = ["sequential-only", "no-concurrent-races"] as const;
 
-// EXTERNAL-PUBLIC plane class: the honest-downgrade required set. Keeps the concurrent family (an
+// External-public plane class: the honest-downgrade required set. Keeps the concurrent family (an
 // honest ceiling) and adds the mandatory disclosures for a plane the harness does not own: the
 // operator-attested target the harness does not control, the absence of a synthetic attestation (you
 // cannot claim synthetic on a real site), the absence of an authoritative shared-state proof (no
@@ -80,7 +80,7 @@ const participantIdOf = (window: Row): string =>
   typeof window.roleId === "string" ? window.roleId : "(unnamed)";
 
 /**
- * PROVISIONED-getHost concurrent branch: a clone/local-tree subject served and getHost-exposed
+ * Provisioned-getHost concurrent branch: a clone/local-tree subject served and getHost-exposed
  * in-sandbox. The harness minted the host, so this asserts the synthetic-seeded attestation, the
  * harness-minted host identity, and an authoritative in-sandbox checkpoint state-delta on pass.
  */
@@ -251,7 +251,7 @@ function getHostPlaneFindings(
   return findings;
 }
 
-/** stateSeries is DIGEST-ONLY with the allowed-keys tripwire (no per-delta→actor field). */
+/** stateSeries is digest-only with the allowed-keys tripwire (no per-delta→actor field). */
 function stateSeriesFindings(stateSeries: Row[]): string[] {
   const findings: string[] = [];
   for (const snapshot of stateSeries) {

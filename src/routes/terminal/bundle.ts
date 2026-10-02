@@ -31,7 +31,7 @@ import { describeMeasuredSpend, noSpendLineMeasured, noSpendNotEstablished } fro
 
 /**
  * Project the terminal-product lab run into a humanish.run-bundle.v1 (no schema change: a new
- * producer only). DRY-RUN: a contract bundle. The terminal stream is a contract placeholder
+ * producer only). Dry run: a contract bundle. The terminal stream is a contract placeholder
  * (stdin disabled, no captured tail, because nothing ran), the subject is declared unpinned, and
  * the caps/policies/runtime-auth declarations are recorded without pretending that live ledgers
  * exist. The shipped live builder fills the same evidence contract. Exported for tests.

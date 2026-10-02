@@ -4,7 +4,7 @@
 // - Scripts are written via `writeFile`, never heredocs, which eliminates the
 //   sentinel-collision bug class (a command line that equals the heredoc terminator) by
 //   construction.
-// - Bounded steps (install/build) run detached with an ATOMICALLY-written status file
+// - Bounded steps (install/build) run detached with an atomically-written status file
 //   (write tmp + mv), polled by short foreground commands; a timeout kills the process
 //   group and surfaces a capped log tail for the caller to redact and persist.
 // - Long-lived steps (a dev/prod server) launch fully detached through `Shell.start`; the
@@ -166,7 +166,7 @@ export async function runDetachedStep(
 }
 
 /**
- * Launch a LONG-LIVED process (the subject's server) fully detached and return immediately.
+ * Launch a long-lived process (the subject's server) fully detached and return immediately.
  * No status polling: liveness is the caller's readiness probe, and reclamation belongs to
  * the sandbox lifecycle (create with kill-on-timeout).
  */

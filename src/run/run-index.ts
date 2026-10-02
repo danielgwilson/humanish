@@ -177,7 +177,7 @@ function usableStatusRecord(raw: unknown, runId: string): raw is RunStatusRecord
 
 /**
  * The bundle-only reading, for a run with no usable status record. A bundle on disk usually means
- * the run reached its final write. But a live run now flushes an IN-PROGRESS bundle as it goes (so
+ * the run reached its final write. But a live run now flushes an in-progress bundle as it goes (so
  * anything asking what a participant is doing has something to read), and that bundle marks its
  * simulations `running`. With no status record there is no freshness to judge, and the honest
  * reading of "it started, and nothing here says it finished" is interrupted, not finished.
