@@ -19,13 +19,21 @@ const KINDS = [
   "cua-route",
   "honest",
   "history",
+  "series-codes",
 ] as const;
+const ROOT_SUFFIXES = ["", "-tests", "-scripts", "-tui"] as const;
+type Count = `${(typeof KINDS)[number]}${(typeof ROOT_SUFFIXES)[number]}`;
 
-/** Runs the checker over one fixture file in src/ and returns its exit status and stdout. */
-async function run(args: string[], source: string): Promise<{ status: number; stdout: string }> {
+/** Runs the checker over one fixture file (src/fixture.ts unless given) and returns its exit status
+ *  and stdout. */
+async function run(
+  args: string[],
+  source: string,
+  file = "src/fixture.ts",
+): Promise<{ status: number; stdout: string }> {
   const cwd = await makeTestTempDir("humanish-prose-check-");
-  await mkdir(path.join(cwd, "src"));
-  await writeFile(path.join(cwd, "src", "fixture.ts"), source);
+  await mkdir(path.dirname(path.join(cwd, file)), { recursive: true });
+  await writeFile(path.join(cwd, file), source);
   try {
     const stdout = execFileSync(process.execPath, [SCRIPT, ...args], { cwd, encoding: "utf8" });
     return { status: 0, stdout };
@@ -37,10 +45,11 @@ async function run(args: string[], source: string): Promise<{ status: number; st
 
 /** One kind's hits, from `--list`. */
 async function hitsOf(
-  kind: (typeof KINDS)[number],
+  kind: Count,
   source: string,
+  file?: string,
 ): Promise<{ count: number; words: string[] }> {
-  const { stdout } = await run(["--list"], source);
+  const { stdout } = await run(["--list"], source, file);
   const lines = stdout.split("\n");
   const header = lines.findIndex((line) => line.startsWith(`${kind}: `));
   const after = lines.slice(header + 1);
@@ -56,8 +65,10 @@ async function hitsOf(
 const laneHits = (source: string) => hitsOf("lane-comments", source);
 
 /** The checker's exit status with every cap at 0 except the ones given. */
-async function exitWith(caps: Partial<Record<(typeof KINDS)[number], number>>, source: string) {
-  const flags = KINDS.map((kind) => `--max-${kind}=${caps[kind] ?? 0}`);
+async function exitWith(caps: Partial<Record<Count, number>>, source: string) {
+  const flags = ROOT_SUFFIXES.flatMap((suffix) =>
+    KINDS.map((kind) => `--max-${kind}${suffix}=${caps[`${kind}${suffix}`] ?? 0}`),
+  );
   return (await run(flags, source)).status;
 }
 
@@ -196,7 +207,7 @@ describe("prose:check counts invariant numbers, authority words and review label
       "",
     ].join("\n");
 
-    // `--list` prints each hit's last word, so "invariant 6" reads back as "6".
+    // `--list` prints each hit's last word, so `invariant 6` reads back as `6`.
     expect((await hitsOf("invariant-refs", source)).words).toEqual(["6", "5"]);
     expect((await hitsOf("authority", source)).count).toBe(3);
     expect((await hitsOf("archaeology", source)).words).toEqual([
@@ -230,9 +241,38 @@ describe("prose:check counts invariant numbers, authority words and review label
   });
 });
 
+describe("prose:check reads every root and counts test names", () => {
+  it("counts a comment under tests/ against the -tests flag", async () => {
+    const file = "tests/fixture.test.ts";
+
+    expect((await hitsOf("caps-tests", "// NOT here\n", file)).count).toBe(1);
+    expect((await hitsOf("caps", "// NOT here\n", file)).count).toBe(0);
+  });
+
+  it("reads it, describe and test names like comments, and series codes in names only", async () => {
+    const source = [
+      "// L14: a comment that opens with a code is not a test name.",
+      'describe("L14: refuses a bad flag (#123)", () => {',
+      '  it.each([1])("returns NOT %i", () => {});',
+      '  test(`W5. keeps ${"x"} \u2014 the order`, () => {});',
+      '  const label = "L2: a plain string";',
+      "});",
+      "",
+    ].join("\n");
+    const file = "tests/fixture.test.ts";
+
+    expect((await hitsOf("series-codes-tests", source, file)).words).toEqual(["L14:", "W5."]);
+    expect((await hitsOf("issue-refs-tests", source, file)).words).toEqual(["#123"]);
+    expect((await hitsOf("caps-tests", source, file)).words).toEqual(["NOT"]);
+    expect((await hitsOf("em-dashes-tests", source, file)).count).toBe(1);
+  });
+});
+
 describe("prose:check needs a cap for every count", () => {
   it("fails when a count has no --max flag, naming the flag and today's count", async () => {
-    const flags = KINDS.filter((kind) => kind !== "em-dashes").map((kind) => `--max-${kind}=0`);
+    const flags = ROOT_SUFFIXES.flatMap((suffix) => KINDS.map((kind) => `${kind}${suffix}`))
+      .filter((count) => count !== "em-dashes")
+      .map((count) => `--max-${count}=0`);
     const result = await run(flags, "// one \u2014 two\n// three -- four\n");
 
     expect(result.status).toBe(1);

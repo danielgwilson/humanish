@@ -87,11 +87,13 @@ Two kinds of change need one more step:
   the packed package.
 
 `pnpm format` rewrites files with oxfmt. `pnpm check` fails on unformatted files.
-It also holds three counts to caps in package.json: oxlint warnings (`lint`), prose in `src/`
-comments (`prose:check`: issue references, `FIX-N` tags, all-caps emphasis, the word lane and em
-dashes), and identifiers and file names in `src/` outside the exempt contract modules that still say
-a retired participant word (lane, seat, role or sim) or study (`vocabulary:check`). Prose keeps the
-word study; identifiers say run or lab. Each check fails when its count rises above the
+It also holds three counts to caps in package.json: oxlint warnings (`lint`), prose in comments
+and test names under `src/`, `tests/`, `scripts/` and `tui/` (`prose:check`: issue references,
+`FIX-N` tags, all-caps emphasis, em dashes, invariant numbers, review labels and the other kinds
+listed at the top of `scripts/check-code-prose.mjs`), and identifiers and file names in `src/`
+outside the exempt contract modules that still say a retired participant word (lane, seat, role or
+sim) or study (`vocabulary:check`). Prose keeps the word study; identifiers say run or lab. Each
+check fails when its count rises above the
 cap and also when it falls below it, so the PR that reduces a count lowers the cap in the same
 commit; the failure message names the flag and the new value. A count with no flag fails as well.
 CI's `caps` workflow (`scripts/check-cap-direction.mjs`) also fails a PR that raises or removes a
