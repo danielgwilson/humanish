@@ -464,7 +464,7 @@ export async function openDesktopTerminal(
       '  if command -v "$candidate" >/dev/null 2>&1; then',
       // `LANG` is set on the terminal we open, not globally: the stock image declares no locale, and
       // a study that measures our own mojibake against an unconfigured template would be measuring
-      // the template. The PRODUCT-side fix (an ASCII fallback when the locale is not UTF-8) is in
+      // the template. The product-side fix (an ASCII fallback when the locale is not UTF-8) is in
       // src/routes/terminal/encoding.ts, and it is the one that matters for real users.
       `    (cd ${shellQuote(dir)} 2>/dev/null || cd /home/user; DISPLAY=:0 LANG=C.UTF-8 LC_ALL=C.UTF-8 HUMANISH_STUDY_PARTICIPANT=1 nohup "$candidate" >/dev/null 2>&1 &)`,
       "    sleep 3",

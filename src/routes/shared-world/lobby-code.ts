@@ -6,7 +6,7 @@ import { OPENAI_RESPONSES_URL } from "../../actors/openai-endpoint.js";
 
 /**
  * The lobby-trivia (and general "/lobby/CODE") shared-session URL matcher. A code is exactly 6 chars of
- * the [A-Z2-9] class; a locale prefix (/en/lobby/…) and a query/hash suffix are tolerated. RUNTIME-ONLY
+ * the [A-Z2-9] class; a locale prefix (/en/lobby/…) and a query/hash suffix are tolerated. Runtime-only
  * input (a live location.href); only the extracted code is used, and it lands only as a digest.
  */
 const LOBBY_CODE_PATTERN = /\/lobby\/([A-Z2-9]{6})(?:$|[/?#])/;
@@ -23,7 +23,7 @@ export function extractLobbyCode(url: string | undefined): string | undefined {
  * Extract a lobby code from free-form actor narration (the host's reasoning/message where it states
  * the lobby URL it sees), where the /lobby/CODE is followed by arbitrary prose (a space, backtick,
  * newline) rather than end-of-string or /?#, so the strict LOBBY_CODE_PATTERN would miss it. Uses a
- * negative-lookahead boundary (exactly 6 code chars). This is the CDP-INDEPENDENT handoff path: the
+ * negative-lookahead boundary (exactly 6 code chars). This is the CDP-independent handoff path: the
  * host reads the code on screen and states it, and this reads it from the model's own text. Pure;
  * input is runtime-only; only the code is used (as a digest).
  */
@@ -90,7 +90,7 @@ const LOBBY_CODE_VISION_PROMPT =
   "code is visible on this screen (e.g. it is the home screen or a game round), reply exactly NONE.";
 
 // A single-frame OCR-style read. gpt-5.5 (the computer-use default) is used deliberately: it reliably reads the
-// 6-char code off a dense MOBILE-viewport waiting room. A smaller/cheaper model (gpt-4.1-mini) was
+// 6-char code off a dense mobile-viewport waiting room. A smaller/cheaper model (gpt-4.1-mini) was
 // tried and could not read it. reasoning.effort stays "low" (minimal) and the output budget is small
 // but comfortably clear of the "incomplete on reasoning overflow" edge. Kept on the same account/key
 // as the actor; the same full-fidelity frame is already sent to this API by the computer-use provider, so this

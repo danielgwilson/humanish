@@ -568,7 +568,7 @@ export interface InboxSurfaceRecipient {
  * The full rebuild is deliberate because it is idempotent and retry-safe: a transient writeInboxSurface failure
  * propagates (the caller retries next tick without advancing its `sinceCount`), and because each rebuild
  * starts from a clean channel, a send is never routed twice, so the persona never sees duplicate emails.
- * Pass `sinceCount` (the last SUCCESSFULLY-rendered send count) to skip the (N-file) render when nothing
+ * Pass `sinceCount` (the last successfully-rendered send count) to skip the (N-file) render when nothing
  * new has arrived. This is independent of the teardown collectCommsThread drain (its own fresh channel,
  * also cursor 0), so no evidence is lost or altered. The NDJSON is small for a run, so re-reading it is cheap.
  */

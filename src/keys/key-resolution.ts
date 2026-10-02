@@ -1,7 +1,7 @@
 // Provider-key discovery: resolve the keys a live run needs through each vendor's
 // native chain instead of demanding a per-repo --env-file that operators hand-copy keys into.
 //
-// The chain, per key, FILL-ONLY (a rung never overrides anything already present):
+// The chain, per key, fill-only (a rung never overrides anything already present):
 //   1. process env, including whatever --env-file just loaded (explicit always wins);
 //   2. `.humanish/local/provider.env`, the project-local overlay this CLI's own --help
 //      examples document;

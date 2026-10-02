@@ -1,4 +1,4 @@
-// A VENDOR-NEUTRAL loopback catch server for email-send APIs. An app hardwired to a hosted
+// A vendor-neutral loopback catch server for email-send APIs. An app hardwired to a hosted
 // email provider is redirected into the fake bus with one env var and no code change: point the app's
 // API base URL at this server. The catch does not depend on, or name itself after, any one vendor:
 // it normalizes each provider's distinct wire shape (Resend's flat body, SendGrid's nested

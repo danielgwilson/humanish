@@ -25,7 +25,7 @@
 // parseLabConfig emits a warning listing any such field that is set, so `lab inspect` shows
 // the truth.
 //
-// NOTE on actors[0].count: it carries ROUTE-SPECIFIC meanings. Preview route: simCount;
+// NOTE on actors[0].count: it carries route-specific meanings. Preview route: simCount;
 // scripted-browser route: surface roster {1 = desktop, 2 = desktop + mobile}, default 1 (the
 // defaults-table single-participant row governs; count: 2 is the declared override); computer-use
 // E2B route: the homogeneous fan-out participant count (N identical participants, each its own E2B

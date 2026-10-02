@@ -8,7 +8,7 @@ const ANCHOR_LEVELS = 16;
 
 /**
  * A perceptual hash of a PNG frame for no-progress detection. Decodes the PNG, area-averages it to
- * a SIGNATURE_GRID x SIGNATURE_GRID grayscale grid, CONTRAST-NORMALIZES that grid, quantizes each
+ * a SIGNATURE_GRID x SIGNATURE_GRID grayscale grid, contrast-normalizes that grid, quantizes each
  * cell to SIGNATURE_LEVELS, and packs the cells into a hex string. Deterministic (no Date, no
  * random). Returns SIGNATURE_FALLBACK on any decode failure so two unreadable frames compare equal.
  * The hash cannot be reversed to the image, so exposing it in a trace is public-safe.

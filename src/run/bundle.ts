@@ -114,7 +114,7 @@ export interface RunAdapterArtifact {
 
 /**
  * Provenance for a config-declared adopter scorer: the repo-relative entry path and a digest
- * of its ENTRY-MODULE bytes, recorded so a `review.scorer.ref`/`--scorer` run honestly states which
+ * of its entry-module bytes, recorded so a `review.scorer.ref`/`--scorer` run states which
  * out-of-tree judgment it attached. Core-computed (path + digest), never adopter-supplied. A library
  * caller (hooks passed directly through RunLabOptions) has implicit provenance, because its code is its
  * provenance, so this block is absent there and every older bundle stays byte-stable + verifiable.
@@ -215,7 +215,7 @@ export interface RunSubjectProvenance {
      *   and failed live provisioning.
      * undeclared: no subject.state block (stateless apps, app-url subjects), the explicit
      *   "absence declared" marker invariant 5 requires.
-     * external-public: an operator-DECLARED, operator-OWNED public deployment used
+     * external-public: an operator-declared, operator-owned public deployment used
      *   directly as the shared plane; humanish neither provisioned nor seeded it (no getHost, no
      *   clone, no in-sandbox filesystem). It is not "seeded" (nothing was seeded) and not "unpinned" (this is
      *   an owned target, not an uncontrolled external DB). The honest marker for the external-public

@@ -51,7 +51,7 @@ export interface CuaActorSessionOptions {
    * DI seams: inject to bypass live construction (CI uses these for zero-spend tests; library
    * callers use them to drive a state-driven, non-vision flow). NOTE: a state executor (one
    * whose observe() returns no screenshot; see CuaObservation.screenshot optional) must be
-   * paired with a NON-vision provider (requiresFrame falsey). The default OpenAI provider is
+   * paired with a non-vision provider (requiresFrame falsey). The default OpenAI provider is
    * vision-based and would fail closed against a screenshot-less observation. See
    * docs/architecture/state-driven-executor.md.
    */
@@ -84,21 +84,21 @@ export interface CuaActorSessionOptions {
    *  Only the `success` criteria are read here; the participant-facing goals are already composed
    *  into `instructions` upstream, and the criteria never reach the prompt. */
   tasks?: readonly LabTask[];
-  /** FAIL-CLOSED spend cap (USD) threaded to the loop; absent = uncapped. See CuaLoopOptions.maxUsd. */
+  /** Fail-closed spend cap (USD) threaded to the loop; absent = uncapped. See CuaLoopOptions.maxUsd. */
   maxUsd?: number;
   /** Injected pure per-turn cost estimator paired with `maxUsd`. See CuaLoopOptions.estimateTurnCostUsd. */
   estimateTurnCostUsd?: (usage: ActorTokenUsage) => number | null;
-  /** RUN-LEVEL spend guard threaded to the loop. See CuaLoopOptions.overRunBudget. */
+  /** Run-level spend guard threaded to the loop. See CuaLoopOptions.overRunBudget. */
   overRunBudget?: (usage: ActorTokenUsage) => string | null;
   /** Stricter unknown-usage policy for capped sessions (see CuaLoopOptions); it also makes the
    *  OpenAI provider send one HTTP dispatch per turn. Library-only. */
   requireReportedUsageForSpendCap?: boolean;
-  /** RUNTIME-ONLY observed-URL callback threaded to the loop; see CuaLoopOptions.onObservedUrl. Used by
+  /** Runtime-only observed-URL callback threaded to the loop; see CuaLoopOptions.onObservedUrl. Used by
    *  the concurrent shared-world handoff barrier to latch a host seat's live /lobby/CODE URL. */
   onObservedUrl?: (url: string | undefined) => void;
-  /** RUNTIME-ONLY per-turn narration callback threaded to the loop; see CuaLoopOptions.onMessage. */
+  /** Runtime-only per-turn narration callback threaded to the loop; see CuaLoopOptions.onMessage. */
   onMessage?: (text: string) => void;
-  /** RUNTIME-ONLY per-turn raw-frame callback threaded to the loop; see CuaLoopOptions.onScreenshot. */
+  /** Runtime-only per-turn raw-frame callback threaded to the loop; see CuaLoopOptions.onScreenshot. */
   onScreenshot?: (frame: Buffer) => void;
   /** Per-turn trace snapshot callback threaded to the loop; see CuaLoopOptions.onTrace. */
   onTrace?: (

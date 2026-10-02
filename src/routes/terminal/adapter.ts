@@ -67,7 +67,7 @@ export async function applyAdapterExtensionSeam(args: {
   // still loaded and attempted).
   if (scorerProvenance) bundle.scorerProvenance = scorerProvenance;
 
-  // The scorer sees a READ-ONLY view of the bundle so it cannot mutate noSpend/cost/review in place to
+  // The scorer sees a read-only view of the bundle so it cannot mutate noSpend/cost/review in place to
   // launder a verdict (a tamper attempt throws and is caught as a hook failure below). The seam stamps
   // the real bundle. The transcript is the same normalized, source-scrubbed text the run persists as
   // terminal-transcript.txt, so the scorer sees nothing beyond what disk already holds.
@@ -100,7 +100,7 @@ export async function applyAdapterExtensionSeam(args: {
       const cleaned = scrubValue(score);
       if (isRunAdapterScore(cleaned)) {
         bundle.adapterScore = cleaned;
-        // A CONFIG-DECLARED terminal scorer owns the product verdict: a status:"fail" fails the
+        // A config-declared terminal scorer owns the product verdict: a status:"fail" fails the
         // review and the run result. A library caller keeps the additive no-fail behavior.
         const message = declared ? adapterScoreFailureMessage(bundle) : undefined;
         if (message !== undefined) failures.push(message);

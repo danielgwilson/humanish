@@ -200,7 +200,7 @@ async function prepareLivePrompt(args: {
   // --- Safety contract item 5: literal-scrub every known value, then pattern-redact, at the source. ---
   // The runtime key value (+ any other provisioned value) is scrubbed by literal match before
   // anything persists (a key has no detectable "shape" if it is an arbitrary token); redactText is
-  // the second pass for secret-SHAPED content. Applied PRE-truncation so a cut can never split a
+  // the second pass for secret-shaped content. Applied pre-truncation so a cut can never split a
   // value past the scrubber.
   const knownSecretValues = [runtimeEnv.keyValue, env.E2B_API_KEY?.trim() ?? ""].filter(
     (v) => v.length >= 4,
