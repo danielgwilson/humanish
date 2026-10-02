@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import type { AddressInfo } from "node:net";
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, onTestFinished } from "vitest";
 
 import { ACTOR_TRACE_SCHEMA, SCRIPTED_BROWSER_CAPABILITIES } from "../../../src/actors/contract.js";
 import type {
@@ -1190,6 +1190,7 @@ describe("runScriptedBrowserLab", () => {
     await writeCommittedScenario(cwd);
     const outside = path.join(path.dirname(cwd), "scripted-outside-sentinel.txt");
     await writeFile(outside, "UNCHANGED", "utf8");
+    onTestFinished(() => rm(outside, { force: true }));
     const runId = "unsafe-hook-result";
     const hooks: ScriptedTestInputs = {
       deps: {
@@ -1332,6 +1333,7 @@ describe("runScriptedBrowserLab", () => {
         "utf8",
       );
       await writeFile(outsideScenario, `${scenarioText}\n# ${secretMarker}\n`, "utf8");
+      onTestFinished(() => rm(outsideScenario, { force: true }));
       await mkdir(path.join(cwd, "humanish", "scenarios"), { recursive: true });
       await symlink(outsideScenario, path.join(cwd, "humanish", "scenarios", "linked.yaml"));
       let hookCalled = false;

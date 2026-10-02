@@ -1,6 +1,5 @@
 import { execFile } from "node:child_process";
-import { link, mkdir, mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { link, mkdir, readFile, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
@@ -11,11 +10,13 @@ import {
   resolveLabManifest,
 } from "../../src/lab/discover.js";
 
+import { makeTestTempDir } from "../helpers/temp-dir.js";
+
 const execFileAsync = promisify(execFile);
 
 describe("lab manifest resolution", () => {
   it("resolves committed, ignored, and explicit .yaml lab manifests", async () => {
-    const cwd = await mkdtemp(path.join(tmpdir(), "humanish-labs-"));
+    const cwd = await makeTestTempDir("humanish-labs-");
     await writeLab(
       cwd,
       "humanish/labs/first-run.yaml",
@@ -71,7 +72,7 @@ describe("lab manifest resolution", () => {
   });
 
   it("warns on .yml and fails invalid schemas", async () => {
-    const cwd = await mkdtemp(path.join(tmpdir(), "humanish-labs-invalid-"));
+    const cwd = await makeTestTempDir("humanish-labs-invalid-");
     await writeLab(
       cwd,
       "humanish/labs/compat.yml",
@@ -102,7 +103,7 @@ describe("lab manifest resolution", () => {
   it.each(["symlink", "hardlink", "fifo"] as const)(
     "rejects an unsafe higher-priority managed %s leaf without falling through or blocking",
     async (kind) => {
-      const root = await mkdtemp(path.join(tmpdir(), "humanish-labs-unsafe-leaf-"));
+      const root = await makeTestTempDir("humanish-labs-unsafe-leaf-");
       const cwd = path.join(root, "project");
       const outside = path.join(root, `outside-${kind}.yaml`);
       const candidate = path.join(cwd, "humanish", "labs", "priority.yaml");
@@ -147,7 +148,7 @@ describe("lab manifest resolution", () => {
   it.each(["symlink", "fifo"] as const)(
     "rejects an unsafe managed %s lab directory and lists other safe roots",
     async (kind) => {
-      const root = await mkdtemp(path.join(tmpdir(), "humanish-labs-unsafe-dir-"));
+      const root = await makeTestTempDir("humanish-labs-unsafe-dir-");
       const cwd = path.join(root, "project");
       const committedParent = path.join(cwd, "humanish");
       const committedLabs = path.join(committedParent, "labs");
@@ -179,7 +180,7 @@ describe("lab manifest resolution", () => {
   );
 
   it("keeps explicit symlink aliases as caller-selected input authority", async () => {
-    const root = await mkdtemp(path.join(tmpdir(), "humanish-labs-explicit-alias-"));
+    const root = await makeTestTempDir("humanish-labs-explicit-alias-");
     const cwd = path.join(root, "project");
     const target = path.join(root, "outside", "selected.yaml");
     const alias = path.join(cwd, "aliases", "selected.yaml");
@@ -199,7 +200,7 @@ describe("lab manifest resolution", () => {
   it.each(["hardlink", "fifo"] as const)(
     "rejects an explicit %s manifest without blocking",
     async (kind) => {
-      const root = await mkdtemp(path.join(tmpdir(), "humanish-labs-explicit-unsafe-"));
+      const root = await makeTestTempDir("humanish-labs-explicit-unsafe-");
       const cwd = path.join(root, "project");
       const selected = path.join(cwd, `selected-${kind}.yaml`);
       await mkdir(cwd, { recursive: true });
@@ -229,7 +230,7 @@ describe("lab manifest resolution", () => {
   );
 
   it("resolves managed manifests from a caller-selected symlink cwd alias", async () => {
-    const root = await mkdtemp(path.join(tmpdir(), "humanish-labs-cwd-alias-"));
+    const root = await makeTestTempDir("humanish-labs-cwd-alias-");
     const physicalCwd = path.join(root, "physical-project");
     const aliasCwd = path.join(root, "project-alias");
     await writeLab(physicalCwd, "humanish/labs/aliased.yaml", labYaml("aliased"));

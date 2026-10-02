@@ -3,6 +3,8 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     include: ["tests/**/*.test.ts"],
+    // Runs the suite in its own temp dir and fails it when a test leaves a humanish-* entry there.
+    globalSetup: ["./tests/helpers/tmp-leak-guard.ts"],
     setupFiles: [
       "./tests/helpers/no-implicit-analysis-key.ts",
       "./tests/helpers/deprecation-guard.ts",

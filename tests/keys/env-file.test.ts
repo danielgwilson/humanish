@@ -1,13 +1,14 @@
-import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { loadEnvFile } from "../../src/keys/env-file.js";
 
+import { makeTestTempDir } from "../helpers/temp-dir.js";
+
 describe("env-file loader", () => {
   it("loads env var names without exposing values or overriding existing env", async () => {
-    const cwd = await mkdtemp(path.join(tmpdir(), "humanish-env-file-"));
+    const cwd = await makeTestTempDir("humanish-env-file-");
     const envPath = path.join(cwd, ".humanish", "local", ".env");
     const env: NodeJS.ProcessEnv = {
       OPENAI_API_KEY: "existing-value",
@@ -41,7 +42,7 @@ describe("env-file loader", () => {
   });
 
   it("fails closed for invalid env assignments", async () => {
-    const cwd = await mkdtemp(path.join(tmpdir(), "humanish-env-file-invalid-"));
+    const cwd = await makeTestTempDir("humanish-env-file-invalid-");
     const envPath = path.join(cwd, ".env.local");
     await writeFile(envPath, "1_BAD=value\n", "utf8");
 

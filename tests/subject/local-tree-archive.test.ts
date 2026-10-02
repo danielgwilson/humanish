@@ -70,6 +70,16 @@ async function makeTempRoot(label: string): Promise<string> {
   return dir;
 }
 
+/** createLocalTreeArchive, with the temp dir it packs into removed with the other temp dirs. */
+function packTree(
+  root: string,
+  options?: Parameters<typeof createLocalTreeArchive>[1],
+): ReturnType<typeof createLocalTreeArchive> {
+  const archive = createLocalTreeArchive(root, options);
+  if (options?.outputPath === undefined) tempDirsToClean.push(path.dirname(archive.archivePath));
+  return archive;
+}
+
 /**
  * A git fixture exercising every enumeration edge case in one tree: a tracked
  * file, a gitignored build-output file, an untracked-but-not-ignored file,
@@ -164,7 +174,7 @@ describe("git-aware enumeration", () => {
     expect(entries.some((entry) => entry.relPath === "dist/junk.txt")).toBe(false);
     expect(entries.some((entry) => entry.relPath.startsWith("dist/"))).toBe(false);
 
-    const archive = createLocalTreeArchive(root);
+    const archive = packTree(root);
     const tarEntries = listTarEntries(archive.archivePath);
     expect(tarEntries).not.toContain("dist/junk.txt");
     expect(tarEntries.some((entry) => entry.startsWith("dist/"))).toBe(false);
@@ -176,7 +186,7 @@ describe("git-aware enumeration", () => {
     const { entries } = enumerateLocalTree(root);
     expect(entries.some((entry) => entry.relPath === "loose.txt")).toBe(true);
 
-    const archive = createLocalTreeArchive(root);
+    const archive = packTree(root);
     expect(listTarEntries(archive.archivePath)).toContain("loose.txt");
   });
 
@@ -189,7 +199,7 @@ describe("git-aware enumeration", () => {
     expect(relPaths).not.toContain(".env.example");
     expect(relPaths).not.toContain("key.pem");
 
-    const archive = createLocalTreeArchive(root);
+    const archive = packTree(root);
     const tarEntries = listTarEntries(archive.archivePath);
     expect(tarEntries).not.toContain(".env");
     expect(tarEntries).not.toContain(".env.example");
@@ -204,7 +214,7 @@ describe("git-aware enumeration", () => {
     expect(relPaths).not.toContain("nested-repo/");
     expect(relPaths.some((relPath) => relPath.startsWith("nested-repo/"))).toBe(false);
 
-    const archive = createLocalTreeArchive(root);
+    const archive = packTree(root);
     expect(
       listTarEntries(archive.archivePath).some((entry) => entry.startsWith("nested-repo")),
     ).toBe(false);
@@ -285,7 +295,7 @@ describe("symlinks", () => {
     const linkEntry = entries.find((entry) => entry.relPath === "link-to-secret");
     expect(linkEntry?.kind).toBe("symlink");
 
-    const archive = createLocalTreeArchive(root);
+    const archive = packTree(root);
     const archiveBytes = await readFile(archive.archivePath);
     expect(archiveBytes.includes(Buffer.from(secretBytes, "utf8"))).toBe(false);
 
@@ -297,9 +307,9 @@ describe("symlinks", () => {
 
     // The digest hashes the target STRING, not target bytes: changing the
     // outside file's content must not change archiveSha256...
-    const beforeContentChange = createLocalTreeArchive(root).archiveSha256;
+    const beforeContentChange = packTree(root).archiveSha256;
     await writeFile(secretPath, "completely different content\n");
-    const afterContentChange = createLocalTreeArchive(root).archiveSha256;
+    const afterContentChange = packTree(root).archiveSha256;
     expect(afterContentChange).toBe(beforeContentChange);
 
     // ...but re-pointing the symlink at a different target string does.
@@ -308,7 +318,7 @@ describe("symlinks", () => {
       path.join(outsideDir, "does-not-need-to-exist.txt"),
       path.join(root, "link-to-secret"),
     );
-    const afterRetarget = createLocalTreeArchive(root).archiveSha256;
+    const afterRetarget = packTree(root).archiveSha256;
     expect(afterRetarget).not.toBe(beforeContentChange);
   });
 
@@ -328,9 +338,7 @@ describe("symlinks", () => {
         runGit(root, ["init", "-q", "."]);
       }
 
-      expect(() => createLocalTreeArchive(root, { outputPath })).toThrow(
-        /hardlinked source files/i,
-      );
+      expect(() => packTree(root, { outputPath })).toThrow(/hardlinked source files/i);
       await expect(stat(outputPath)).rejects.toMatchObject({ code: "ENOENT" });
       const archiveBytes = await readFile(outputPath).catch(() => Buffer.alloc(0));
       expect(archiveBytes.includes(Buffer.from(secretBytes, "utf8"))).toBe(false);
@@ -343,8 +351,8 @@ describe("digest stability", () => {
   it("is stable across repeated calls on an unchanged tree", async () => {
     const { root } = await buildGitFixture();
 
-    const first = createLocalTreeArchive(root);
-    const second = createLocalTreeArchive(root);
+    const first = packTree(root);
+    const second = packTree(root);
     expect(first.archiveSha256).toMatch(/^[a-f0-9]{64}$/);
     expect(second.archiveSha256).toBe(first.archiveSha256);
   });
@@ -352,19 +360,19 @@ describe("digest stability", () => {
   it("changes when a tracked file's content changes", async () => {
     const { root } = await buildGitFixture();
 
-    const before = createLocalTreeArchive(root).archiveSha256;
+    const before = packTree(root).archiveSha256;
     await writeFile(path.join(root, "tracked.txt"), "tracked content v2, now edited\n");
-    const after = createLocalTreeArchive(root).archiveSha256;
+    const after = packTree(root).archiveSha256;
     expect(after).not.toBe(before);
   });
 
   it("does not change when an ignored/excluded path is mutated", async () => {
     const { root } = await buildGitFixture();
 
-    const before = createLocalTreeArchive(root).archiveSha256;
+    const before = packTree(root).archiveSha256;
     await writeFile(path.join(root, "dist/junk.txt"), "totally different build output\n");
     await writeFile(path.join(root, ".env"), "SECRET=different-value-entirely\n");
-    const after = createLocalTreeArchive(root).archiveSha256;
+    const after = packTree(root).archiveSha256;
     expect(after).toBe(before);
   });
 });
@@ -402,7 +410,7 @@ describe("fail-closed behavior", () => {
 
     let thrown: unknown;
     try {
-      createLocalTreeArchive(root, { maxArchiveBytes: 10 });
+      packTree(root, { maxArchiveBytes: 10 });
     } catch (error) {
       thrown = error;
     }
@@ -414,20 +422,20 @@ describe("fail-closed behavior", () => {
 
   it("rejects an empty root (zero packable entries)", async () => {
     const root = await makeTempRoot("empty-root");
-    expect(() => createLocalTreeArchive(root)).toThrowError(/packable/);
+    expect(() => packTree(root)).toThrowError(/packable/);
   });
 
   it("rejects a root that does not exist", async () => {
     const parent = await makeTempRoot("missing-parent");
     const missingRoot = path.join(parent, "does-not-exist");
-    expect(() => createLocalTreeArchive(missingRoot)).toThrowError(/does not exist/);
+    expect(() => packTree(missingRoot)).toThrowError(/does not exist/);
   });
 
   it("rejects a root that is not a directory", async () => {
     const root = await makeTempRoot("not-a-directory");
     const filePath = path.join(root, "file.txt");
     await writeFile(filePath, "hi\n");
-    expect(() => createLocalTreeArchive(filePath)).toThrowError(/not a directory/);
+    expect(() => packTree(filePath)).toThrowError(/not a directory/);
   });
 });
 
@@ -456,7 +464,7 @@ describe("temp dir cleanup", () => {
       'while [ $# -gt 0 ]; do [ "$1" = "-czf" ] && printf partial > "$2"; shift; done; exit 2',
     );
 
-    expect(() => createLocalTreeArchive(root)).toThrowError(/tar archive/);
+    expect(() => packTree(root)).toThrowError(/tar archive/);
     expect(await readdir(tmp)).toEqual([]);
   });
 
@@ -477,7 +485,7 @@ describe("archive shape", () => {
     await writeFile(path.join(root, "a.txt"), "hello world\n");
     await writeFile(path.join(root, "b.txt"), "second file\n");
 
-    const archive = createLocalTreeArchive(root);
+    const archive = packTree(root);
     expect(archive.archiveSha256).toMatch(/^[a-f0-9]{64}$/);
     expect(archive.fileCount).toBe(2);
     expect(archive.totalBytes).toBeGreaterThan(0);
@@ -491,7 +499,7 @@ describe("archive shape", () => {
     const outDir = await makeTempRoot("custom-output-dest");
     const outputPath = path.join(outDir, "nested", "archive.tar.gz");
 
-    const archive = createLocalTreeArchive(root, { outputPath });
+    const archive = packTree(root, { outputPath });
     expect(archive.archivePath).toBe(path.resolve(outputPath));
     await expect(stat(archive.archivePath)).resolves.toBeTruthy();
   });
@@ -547,7 +555,7 @@ describe("adversarial-review hardening (PR #265 pre-merge findings)", () => {
     await writeFile(path.join(root, "fresh.txt"), "scaffolded\n");
     runGit(root, ["init", "-q", "."]);
 
-    const archive = createLocalTreeArchive(root);
+    const archive = packTree(root);
     expect(archive.git).toBeUndefined();
     expect(archive.fileCount).toBeGreaterThan(0);
     expect(listTarEntries(archive.archivePath).join("\n")).toContain("fresh.txt");
@@ -579,7 +587,7 @@ describe("adversarial-review hardening (PR #265 pre-merge findings)", () => {
   it("packing error messages never contain the absolute root path", async () => {
     const root = await makeTempRoot("error-paths");
     try {
-      createLocalTreeArchive(root);
+      packTree(root);
       expect.unreachable("empty root must throw");
     } catch (error) {
       expect(error).toBeInstanceOf(Error);
