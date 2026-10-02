@@ -1,4 +1,4 @@
-// Provider token accounting for the terminal lane (#531).
+// Provider token accounting for the terminal route (#531).
 //
 // THE GAP THIS CLOSES. A live terminal run reported `cost.lines.provider = null` with source
 // "unmeasured", and the no-spend proof then read `satisfied: true` for `maxUsd: 0` on a run that
@@ -10,8 +10,8 @@
 //   {"type":"turn.completed","usage":{"input_tokens":201536,"cached_input_tokens":170558,
 //    "cache_write_input_tokens":30951,"output_tokens":2283,"reasoning_output_tokens":902}}
 //
-// So the lane can record a MEASURED token fact even when it cannot record a priced one. Rates stay
-// out of this module deliberately: pricing lives in src/run/pricing.ts, and the terminal lane has no
+// So the route can record a MEASURED token fact even when it cannot record a priced one. Rates stay
+// out of this module deliberately: pricing lives in src/run/pricing.ts, and the terminal route has no
 // real model id to price against (it records `model: "codex"`), so the honest output is
 // tokens-known-rate-unknown rather than a guessed dollar figure.
 

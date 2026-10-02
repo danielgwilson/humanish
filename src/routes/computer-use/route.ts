@@ -92,7 +92,7 @@ export async function computerUseLabRefusal(
     await refuseCuaLab(options, refusal),
     undefined,
     analysis.ok ? analysis.config : undefined,
-    options.automaticAnalysis,
+    options,
     { trigger: config.review?.analysis === undefined ? "default" : "explicit" },
   );
 }
@@ -172,16 +172,10 @@ function completeCuaAnalysis(
 ): Promise<CuaActorLabResult> {
   // A local VM study whose cleanup is unconfirmed records a skip instead of analyzing.
   const refusal = input.localVm?.analysisRefusal;
-  const analysisHooks =
-    refusal === undefined
-      ? input.automaticAnalysis
-      : {
-          ...input.automaticAnalysis,
-          deps: { ...input.automaticAnalysis?.deps, refusal },
-        };
-  return completeAutomaticAnalysis(result, finished, plan.analysis?.config, analysisHooks, {
+  return completeAutomaticAnalysis(result, finished, plan.analysis?.config, input, {
     ...(plan.analysis === undefined ? {} : { trigger: plan.analysis.trigger }),
     preferLargerOutput: plan.analysis?.preferLargerOutput === true,
+    ...(refusal === undefined ? {} : { refusal }),
   });
 }
 

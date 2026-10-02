@@ -15,7 +15,7 @@ import type { ReceivingSurfaceFile } from "./receiving-types.js";
 import type { CommsMessage } from "./types.js";
 
 /** [fromOrigin, toOrigin] pairs: rewrite a link/href whose origin is the app's in-sandbox origin into a
- *  lane-reachable origin, so the persona's browser can actually follow the verify link when it clicks. */
+ *  participant-reachable origin, so the persona's browser can actually follow the verify link when it clicks. */
 export type OriginMap = Array<[string, string]>;
 
 export interface InboxRenderOptions {

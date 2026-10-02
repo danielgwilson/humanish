@@ -408,9 +408,8 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
         config,
         dryRun: false,
         open: false,
-        automaticAnalysis: { run: analyze },
         env: baseEnv(),
-        deps: { desktopModule: async () => probe.module },
+        deps: { analysis: { run: analyze }, desktopModule: async () => probe.module },
       });
       expect(analyze).toHaveBeenCalledOnce();
       expect(result.automaticAnalysis?.reason).toBe("synthetic_no_provider");
@@ -1096,9 +1095,10 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       config: liveConfig(),
       dryRun: false,
       open: false,
-      automaticAnalysis: { deps: { apiKey: "synthetic-analysis-key", fetch } },
       env: baseEnv(),
       deps: {
+        analysis: { deps: { apiKey: "synthetic-analysis-key", fetch } },
+
         now: () => 1_000,
         desktopModule: async () =>
           makeFakeModule({
@@ -2685,9 +2685,10 @@ describe("terminal run directory golden", () => {
       config: liveConfig(),
       dryRun: false,
       open: false,
-      automaticAnalysis: { run: automaticAnalysisBoundary() },
       env: baseEnv(),
       deps: {
+        analysis: { run: automaticAnalysisBoundary() },
+
         now: () => 1_000,
         desktopModule: async () =>
           makeFakeModule({
@@ -2726,9 +2727,10 @@ describe("terminal run directory golden", () => {
       config: liveConfig(),
       dryRun: true,
       open: false,
-      automaticAnalysis: { run: automaticAnalysisBoundary() },
       env: baseEnv(),
       deps: {
+        analysis: { run: automaticAnalysisBoundary() },
+
         now: () => 1_000,
         desktopModule: async () => {
           throw new Error("a dry run must not load the E2B module");
@@ -2790,9 +2792,8 @@ describe("terminal run lifetime", () => {
       dryRun: false,
       open: false,
       runId: "older",
-      automaticAnalysis: { run: analysis },
       env: { E2B_API_KEY: "FAKE-E2B-KEY" },
-      deps: { desktopModule: noModule },
+      deps: { analysis: { run: analysis }, desktopModule: noModule },
     });
     expect(keyless).toMatchObject({ ok: false, runId: "older", automaticAnalysis: skipped });
 
@@ -2802,9 +2803,8 @@ describe("terminal run lifetime", () => {
       dryRun: false,
       open: false,
       runId: "older",
-      automaticAnalysis: { run: analysis },
       env: baseEnv(),
-      deps: { desktopModule: noModule },
+      deps: { analysis: { run: analysis }, desktopModule: noModule },
     });
     expect(inUse).toMatchObject({
       ok: false,

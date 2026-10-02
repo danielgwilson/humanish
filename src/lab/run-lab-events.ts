@@ -70,7 +70,6 @@ export function knownSecretValues(
     if (trimmed.length >= 4) values.add(trimmed);
   };
   for (const env of sources) for (const name of names) add(env?.[name]);
-  add(options.automaticAnalysis?.deps?.apiKey);
   return [...values];
 }
 

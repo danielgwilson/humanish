@@ -38,9 +38,9 @@ export function declaredScreenForRender(
 }
 
 /**
- * Verify the desktop screen geometry IN-SANDBOX (the per-lane device claim is checked, never
+ * Verify the desktop screen geometry IN-SANDBOX (the participant's device claim is checked, never
  * assumed). A parseable mismatch fails closed. Unavailable/unparseable evidence is returned as
- * an explicit warning: the lane may still run, but its bundle records only the requested screen
+ * an explicit warning: the participant may still run, but its bundle records only the requested screen
  * and never upgrades that request into a verified measurement.
  */
 export async function inspectDesktopScreenGeometry(args: {
@@ -315,7 +315,7 @@ async function fitBrowserWindowWithinDesktop(
   return resized;
 }
 
-/** Hosted-browser geometry capture shared by the per-lane and shared-world routes. */
+/** Hosted-browser geometry capture shared by the computer-use and shared-world routes. */
 export async function captureDesktopBrowserGeometry(args: {
   desktop: E2BDesktopSandbox;
   browserFamily: DesktopBrowserFamily;
@@ -325,7 +325,7 @@ export async function captureDesktopBrowserGeometry(args: {
   pagePreference?: ChromeCdpPagePreference;
   browserWindowId?: string;
   participantId: string;
-  /** Runtime-only lane target URL (attributes the CDP page); never persisted by this capture. */
+  /** Runtime-only participant target URL (attributes the CDP page); never persisted by this capture. */
   targetUrl: string;
   requestedScreen: readonly [number, number];
   requestTimeoutMs: number;

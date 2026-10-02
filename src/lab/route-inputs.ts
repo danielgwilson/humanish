@@ -1,5 +1,5 @@
 // What each route's run takes from runLab's options: the shared run settings, the typed options
-// the route reads, the automatic-analysis hooks and the declared scorer's provenance.
+// the route reads, the event emitter, the test seams and the declared scorer's provenance.
 
 import type { InternalRunLabOptions } from "../run-lab.js";
 import type { RunScorerProvenance } from "../run/bundle.js";
@@ -40,9 +40,14 @@ export function computerUseInput(
   };
 }
 
-export function scriptedInput(options: InternalRunLabOptions, deps: LabDeps): ScriptedRunInput {
+export function scriptedInput(
+  options: InternalRunLabOptions,
+  deps: LabDeps,
+  emit: LabEmit | undefined,
+): ScriptedRunInput {
   return {
     ...analysisOf(options),
+    ...(emit === undefined ? {} : { emit }),
     cwd: options.cwd,
     ...(options.open === undefined ? {} : { open: options.open }),
     ...(options.runId === undefined ? {} : { runId: options.runId }),
@@ -52,9 +57,14 @@ export function scriptedInput(options: InternalRunLabOptions, deps: LabDeps): Sc
   };
 }
 
-export function terminalInput(options: InternalRunLabOptions, deps: LabDeps): TerminalRunInput {
+export function terminalInput(
+  options: InternalRunLabOptions,
+  deps: LabDeps,
+  emit: LabEmit | undefined,
+): TerminalRunInput {
   return {
     ...analysisOf(options),
+    ...(emit === undefined ? {} : { emit }),
     cwd: options.cwd,
     ...(options.open === undefined ? {} : { open: options.open }),
     ...(options.runId === undefined ? {} : { runId: options.runId }),
@@ -118,9 +128,7 @@ function observersOf(options: InternalRunLabOptions, emit: LabEmit | undefined) 
 }
 
 function analysisOf(options: InternalRunLabOptions) {
-  return options.automaticAnalysis === undefined
-    ? {}
-    : { automaticAnalysis: options.automaticAnalysis };
+  return options.analysisSignal === undefined ? {} : { analysisSignal: options.analysisSignal };
 }
 
 function scorerOf<S>(options: InternalRunLabOptions, narrow: NarrowScorer<S>) {

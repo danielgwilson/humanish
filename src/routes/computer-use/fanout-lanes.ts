@@ -119,8 +119,8 @@ function fanoutParticipantRecord(
           : outcome?.sessionError !== undefined
             ? `Participant ${spec.planned.id} failed before a terminal session verdict: ${outcome.sessionError}`
             : `Contract participant ${spec.planned.id} (${spec.persona.id}/${spec.planned.device.name}) for ${args.descriptor.id} against ${publicTargetUrl}.`,
-    startedAt: args.createdAt,
-    updatedAt: args.createdAt,
+    startedAt: args.run.createdAt,
+    updatedAt: args.run.createdAt,
   });
 }
 
@@ -153,7 +153,7 @@ function fanoutParticipantStream(
       status,
       ...(judged === undefined ? {} : { judgedStatus: judged }),
       transport: "snapshot",
-      updatedAt: args.createdAt,
+      updatedAt: args.run.createdAt,
       embed: lastScreenshot
         ? {
             kind: "screenshot",
@@ -237,7 +237,7 @@ function fanoutSubjectEvents(
   if (args.plan.runner.subject.kind === "clone" && args.publicRepo) {
     record({
       id: nextEventId(`subject-${spec.planned.id}`),
-      at: args.createdAt,
+      at: args.run.createdAt,
       level: "info",
       type: "cua-lab.subject.provenance",
       message: `Participant ${spec.planned.id}: ${
@@ -253,7 +253,7 @@ function fanoutSubjectEvents(
   } else if (subject.source === "local-tree") {
     record({
       id: nextEventId(`subject-${spec.planned.id}`),
-      at: args.createdAt,
+      at: args.run.createdAt,
       level: "info",
       type: "cua-lab.subject.provenance",
       message: `Participant ${spec.planned.id}: ${
@@ -269,7 +269,7 @@ function fanoutSubjectEvents(
   } else {
     record({
       id: nextEventId(`subject-${spec.planned.id}`),
-      at: args.createdAt,
+      at: args.run.createdAt,
       level: "info",
       type: "cua-lab.subject.declared",
       message: `Participant ${spec.planned.id}: subject app declared at ${publicTargetUrl} (loopback inside the participant's own desktop sandbox).`,
@@ -292,7 +292,7 @@ function fanoutOutcomeEvents(
   if (session) {
     record({
       id: nextEventId(`session-${spec.planned.id}`),
-      at: args.createdAt,
+      at: args.run.createdAt,
       level: session.status === "passed" ? "info" : "warn",
       type: `cua-lab.session.${session.completionReason}`,
       message: `Participant ${spec.planned.id} ${session.status}: ${session.reason}`,
@@ -300,7 +300,7 @@ function fanoutOutcomeEvents(
   } else if (args.inProgress === true && outcome === undefined) {
     record({
       id: nextEventId(`running-${spec.planned.id}`),
-      at: args.createdAt,
+      at: args.run.createdAt,
       level: "info",
       type: "cua-lab.session.running",
       message: `Participant ${spec.planned.id}: live computer-use session is running; terminal evidence has not been written yet.`,
@@ -308,7 +308,7 @@ function fanoutOutcomeEvents(
   } else if (outcome?.skippedReason !== undefined) {
     record({
       id: nextEventId(`blocked-${spec.planned.id}`),
-      at: args.createdAt,
+      at: args.run.createdAt,
       level: "warn",
       type: "cua-lab.session.blocked",
       message: `Participant ${spec.planned.id} ${outcome.skippedReason}.`,
@@ -316,7 +316,7 @@ function fanoutOutcomeEvents(
   } else if (outcome?.sessionError !== undefined) {
     record({
       id: nextEventId(`session-error-${spec.planned.id}`),
-      at: args.createdAt,
+      at: args.run.createdAt,
       level: "error",
       type: "cua-lab.session.error",
       message: `Participant ${spec.planned.id}: ${outcome.sessionError}`,
@@ -324,7 +324,7 @@ function fanoutOutcomeEvents(
   } else {
     record({
       id: nextEventId(`contract-${spec.planned.id}`),
-      at: args.createdAt,
+      at: args.run.createdAt,
       level: "info",
       type: "cua-lab.contract.ready",
       message: `Participant ${spec.planned.id}: dry-run contract participant ready; switch scenario.mode to live for a real desktop session.`,
@@ -334,7 +334,7 @@ function fanoutOutcomeEvents(
   for (const warning of desktopGeometry.warnings ?? []) {
     record({
       id: nextEventId(`geometry-warning-${spec.planned.id}`),
-      at: args.createdAt,
+      at: args.run.createdAt,
       level: "warn",
       type: "cua-lab.geometry.warning",
       message: warning,

@@ -5,11 +5,11 @@ import type { ActorPersonaRef, ActorStatus } from "../../actors/contract.js";
 import type { CuaLoopResult } from "../../actors/computer-use/loop.js";
 import { participantAssignment } from "../../lab/participant-assignment.js";
 import { redactText } from "../../evidence/redaction.js";
-import { type RunLabProvenance } from "../../run/status.js";
 import {
   REVIEW_SCHEMA,
   bundleArtifacts,
   bundleHead,
+  type BundleRun,
   type ReviewSummary,
   type RunBundle,
   type RunEvent,
@@ -144,8 +144,8 @@ function singleSimulation(args: SingleParticipantBundleArgs, view: ParticipantVi
         : args.sessionError !== undefined
           ? `Computer-use lab failed before a terminal session verdict: ${args.sessionError}`
           : `Contract participant for the computer-use actor (${args.actorId}) against ${publicAppUrl}.`,
-    startedAt: args.createdAt,
-    updatedAt: args.createdAt,
+    startedAt: args.run.createdAt,
+    updatedAt: args.run.createdAt,
   });
 }
 
@@ -164,7 +164,7 @@ function singleStream(args: SingleParticipantBundleArgs, view: ParticipantView):
       label: `CUA browser — ${args.labId}`,
       status,
       transport: "snapshot",
-      updatedAt: args.createdAt,
+      updatedAt: args.run.createdAt,
       embed: lastScreenshot
         ? { kind: "screenshot", url: lastScreenshot, title: `CUA desktop (${screenshotMode})` }
         : { kind: "placeholder", title: "CUA desktop" },
@@ -218,7 +218,7 @@ function singleEvents(args: SingleParticipantBundleArgs, view: ParticipantView):
   const events: RunEvent[] = [
     {
       id: "event-000-created",
-      at: args.createdAt,
+      at: args.run.createdAt,
       level: "info",
       type: "cua-lab.run.created",
       message: `Created computer-use lab run for ${args.labId} (actor ${args.actorId}).`,
@@ -226,7 +226,7 @@ function singleEvents(args: SingleParticipantBundleArgs, view: ParticipantView):
     args.subjectProvenance
       ? participantEvent(SINGLE, {
           id: "event-001-subject",
-          at: args.createdAt,
+          at: args.run.createdAt,
           level: "info" as const,
           type: "cua-lab.subject.provenance",
           // HONEST WORDING: claim "cloned/packed and served" only when it actually happened.
@@ -234,7 +234,7 @@ function singleEvents(args: SingleParticipantBundleArgs, view: ParticipantView):
         })
       : participantEvent(SINGLE, {
           id: "event-001-subject",
-          at: args.createdAt,
+          at: args.run.createdAt,
           level: "info" as const,
           type: "cua-lab.subject.declared",
           // Invariant 5: declare what the subject WAS, including the ABSENCE of a pin. A
@@ -252,7 +252,7 @@ function singleEvents(args: SingleParticipantBundleArgs, view: ParticipantView):
     args.session
       ? participantEvent(SINGLE, {
           id: "event-002-session",
-          at: args.createdAt,
+          at: args.run.createdAt,
           level: args.session.status === "passed" ? "info" : "warn",
           type: `cua-lab.session.${args.session.completionReason}`,
           message: `${args.session.status}: ${args.session.reason}`,
@@ -260,7 +260,7 @@ function singleEvents(args: SingleParticipantBundleArgs, view: ParticipantView):
       : args.inProgress === true
         ? participantEvent(SINGLE, {
             id: "event-002-running",
-            at: args.createdAt,
+            at: args.run.createdAt,
             level: "info" as const,
             type: "cua-lab.session.running",
             message:
@@ -269,14 +269,14 @@ function singleEvents(args: SingleParticipantBundleArgs, view: ParticipantView):
         : args.sessionError !== undefined
           ? participantEvent(SINGLE, {
               id: "event-002-session",
-              at: args.createdAt,
+              at: args.run.createdAt,
               level: "error" as const,
               type: "cua-lab.session.error",
               message: args.sessionError,
             })
           : participantEvent(SINGLE, {
               id: "event-002-contract",
-              at: args.createdAt,
+              at: args.run.createdAt,
               level: "info" as const,
               type: "cua-lab.contract.ready",
               message:
@@ -304,7 +304,7 @@ function singleEvents(args: SingleParticipantBundleArgs, view: ParticipantView):
   for (const warning of desktopGeometry?.warnings ?? []) {
     record({
       id: `event-${String(phaseEventSeq++).padStart(3, "0")}-geometry-warning`,
-      at: args.createdAt,
+      at: args.run.createdAt,
       level: "warn",
       type: "cua-lab.geometry.warning",
       message: warning,
@@ -377,8 +377,8 @@ export function buildSingleParticipantBundle(args: {
   /** The run's verdict, from the judge. */
   verdict: Verdict;
   realEmail?: boolean;
-  /** Lab provenance for the bundle's own `lab` field (#455). */
-  lab?: RunLabProvenance;
+  /** The run this bundle belongs to; the bundle head reads its id, mode, start and lab. */
+  run: BundleRun;
   actorId: string;
   appUrl: string;
   /** The participant's plan id, saved as the stream's laneId ("lane-01" when absent). */
@@ -386,7 +386,6 @@ export function buildSingleParticipantBundle(args: {
   actorType?: string;
   surface?: string;
   caseGroup?: string;
-  createdAt: string;
   dryRun: boolean;
   labId: string;
   labTitle?: string;
@@ -404,7 +403,6 @@ export function buildSingleParticipantBundle(args: {
   /** Device-preset touch metadata echoed on the measured stream viewport (a prompt signal on
    *  this route, never a rendered claim); the measured width/height/DPR stay authoritative. */
   isMobile?: boolean;
-  runId: string;
   screenshots: string[];
   /** Relative run-dir path of the digest-only comms-thread evidence artifact (humanish.comms-thread.v1),
    *  when a comms lab captured mail; registered as a "log" stream artifact. */
@@ -461,15 +459,11 @@ export function buildSingleParticipantBundle(args: {
   const review = singleReview(args, view, stream);
 
   return {
-    ...bundleHead({
+    ...bundleHead(args.run, {
       ...(args.realEmail && !args.dryRun
         ? { publication: { restrictions: ["real-communications"] as ["real-communications"] } }
         : {}),
-      runId: args.runId,
-      mode: args.dryRun ? "dry-run" : "live",
       participants: 1,
-      createdAt: args.createdAt,
-      ...(args.lab === undefined ? {} : { lab: args.lab }),
       source: args.source,
     }),
     persona: {
@@ -487,7 +481,7 @@ export function buildSingleParticipantBundle(args: {
     },
     lifecycle: [
       {
-        at: args.createdAt,
+        at: args.run.createdAt,
         event: "cua-lab.run.created",
         message: `Created computer-use lab run with one participant in a desktop browser (actor ${args.actorId}).`,
       },
@@ -514,7 +508,7 @@ export function buildSingleParticipantBundle(args: {
       args.dryRun || args.inProgress === true
         ? []
         : participantFeedbackCandidates({
-            runId: args.runId,
+            runId: args.run.runId,
             scenarioId: `cua-${args.labId}`,
             adapterId: args.labId,
             goal: redactText(args.mission),

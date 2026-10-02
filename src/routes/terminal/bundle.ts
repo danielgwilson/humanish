@@ -1,5 +1,4 @@
 import type { ActorPersonaRef, ActorTrace } from "../../actors/contract.js";
-import { type RunLabProvenance } from "../../run/status.js";
 import type { LabScenarioCaps, LabRuntimeAuth } from "../../lab/types.js";
 import { redactText } from "../../evidence/redaction.js";
 import { participantAssignment } from "../../lab/participant-assignment.js";
@@ -12,6 +11,7 @@ import {
   type RunSimulation,
   bundleArtifacts,
   bundleHead,
+  type BundleRun,
 } from "../../run/bundle.js";
 import type { Verdict } from "../../run/judge.js";
 import { type RunSimulationStatus, type RunStream } from "../../run/streams.js";
@@ -37,10 +37,9 @@ import { describeMeasuredSpend, noSpendLineMeasured, noSpendNotEstablished } fro
  * exist. The shipped live builder fills the same evidence contract. Exported for tests.
  */
 export function buildTerminalProductBundle(args: {
-  /** Lab provenance for the bundle\'s own `lab` field (#455). */
-  lab?: RunLabProvenance;
+  /** The run this bundle belongs to; the bundle head reads its id, mode, start and lab. */
+  run: BundleRun;
   actorId: string;
-  createdAt: string;
   dryRun: boolean;
   labId: string;
   labTitle?: string;
@@ -57,7 +56,6 @@ export function buildTerminalProductBundle(args: {
     allowPaymentCredentials: boolean;
     allowGitHubMutation: boolean;
   };
-  runId: string;
   source: RunBundle["source"];
   /** The run's judgment verdict (judgeTerminal): a contract for a dry run. */
   verdict: Verdict;
@@ -73,7 +71,7 @@ export function buildTerminalProductBundle(args: {
     status: "contract_proof_only",
     reason,
     summary: `Contract participant for the terminal agent (${args.actorId}) studying ${args.productName} from public surfaces.`,
-    updatedAt: args.createdAt,
+    updatedAt: args.run.createdAt,
     stdin: args.stdin,
     tail: "",
     artifacts: [
@@ -87,14 +85,14 @@ export function buildTerminalProductBundle(args: {
   const events: RunEvent[] = [
     {
       id: "event-000-created",
-      at: args.createdAt,
+      at: args.run.createdAt,
       level: "info",
       type: "terminal-lab.run.created",
       message: `Created terminal-product lab run for ${args.labId} (actor ${args.actorId}, product ${args.productName}).`,
     },
     participantEvent(TERMINAL_IDS, {
       id: "event-001-subject",
-      at: args.createdAt,
+      at: args.run.createdAt,
       level: "info",
       type: "terminal-lab.subject.declared",
       // Invariant 5: provenance recorded or its absence DECLARED. The agent drives PUBLIC surfaces,
@@ -104,7 +102,7 @@ export function buildTerminalProductBundle(args: {
     }),
     participantEvent(TERMINAL_IDS, {
       id: "event-002-credentials",
-      at: args.createdAt,
+      at: args.run.createdAt,
       level: "info",
       type: "terminal-lab.credentials.declared",
       // Names-only evidence (invariant 1): the runtime-auth CHANNEL is declared; no value is ever
@@ -113,14 +111,14 @@ export function buildTerminalProductBundle(args: {
     }),
     participantEvent(TERMINAL_IDS, {
       id: "event-003-caps",
-      at: args.createdAt,
+      at: args.run.createdAt,
       level: "info",
       type: "terminal-lab.caps.declared",
       message: `Spend/job/time caps: ${capsText}. A live run never exercises the runtime key without a fail-closed cap; its no-spend proof is derived from the persisted cost ledger. This dry-run spends $0 by mechanism.`,
     }),
     participantEvent(TERMINAL_IDS, {
       id: "event-004-contract",
-      at: args.createdAt,
+      at: args.run.createdAt,
       level: "info",
       type: "terminal-lab.contract.ready",
       message:
@@ -139,10 +137,9 @@ export function buildTerminalProductBundle(args: {
   };
 
   return terminalRunBundle(args, {
-    mode: args.dryRun ? "dry-run" : "live",
     lifecycle: [
       {
-        at: args.createdAt,
+        at: args.run.createdAt,
         event: "terminal-lab.run.created",
         message: `Created terminal-product lab run with one in-sandbox agent participant (actor ${args.actorId}, product ${args.productName}).`,
       },
@@ -164,10 +161,9 @@ export function buildTerminalProductBundle(args: {
  * mode==="live") enforces the ledgers + proven cleanup + interventions-present over this bundle.
  */
 export function buildLiveTerminalProductBundle(args: {
-  /** Lab provenance for the bundle\'s own `lab` field (#455). */
-  lab?: RunLabProvenance;
+  /** The run this bundle belongs to; the bundle head reads its id, mode, start and lab. */
+  run: BundleRun;
   actorId: string;
-  createdAt: string;
   labId: string;
   labTitle?: string;
   mission: string;
@@ -183,7 +179,6 @@ export function buildLiveTerminalProductBundle(args: {
     allowPaymentCredentials: boolean;
     allowGitHubMutation: boolean;
   };
-  runId: string;
   source: RunBundle["source"];
   trace: ActorTrace;
   ledgers: TerminalLedgers;
@@ -277,7 +272,6 @@ export function buildLiveTerminalProductBundle(args: {
   };
 
   return terminalRunBundle(args, {
-    mode: "live",
     lifecycle: args.ledgers.lifecycle.map((record) => ({
       at: record.at,
       event: record.event,
@@ -294,15 +288,13 @@ export function buildLiveTerminalProductBundle(args: {
 
 /** What both builders read to name the run, its persona and its scenario. */
 interface TerminalBundleCommon {
-  lab?: RunLabProvenance;
+  run: BundleRun;
   actorId: string;
-  createdAt: string;
   labId: string;
   labTitle?: string;
   mission: string;
   persona: ActorPersonaRef;
   productName: string;
-  runId: string;
   source: RunBundle["source"];
 }
 
@@ -332,7 +324,7 @@ function terminalParticipant(
     progress: 100,
     currentStep: session.reason,
     summary: session.summary,
-    startedAt: args.createdAt,
+    startedAt: args.run.createdAt,
     updatedAt: session.updatedAt,
   });
   const stream = participantStream(TERMINAL_IDS, {
@@ -359,11 +351,10 @@ function terminalParticipant(
   return { simulation, stream };
 }
 
-/** The run bundle around the lane: the fields both builders fill the same way. */
+/** The run bundle around the terminal session: the fields both builders fill the same way. */
 function terminalRunBundle(
   args: TerminalBundleCommon,
   parts: {
-    mode: RunBundle["mode"];
     lifecycle: RunBundle["lifecycle"];
     simulation: RunSimulation;
     stream: RunStream;
@@ -374,14 +365,7 @@ function terminalRunBundle(
   },
 ): RunBundle {
   return {
-    ...bundleHead({
-      runId: args.runId,
-      mode: parts.mode,
-      participants: 1,
-      createdAt: args.createdAt,
-      ...(args.lab === undefined ? {} : { lab: args.lab }),
-      source: args.source,
-    }),
+    ...bundleHead(args.run, { participants: 1, source: args.source }),
     persona: {
       id: args.persona.id,
       name: `Autonomous terminal agent (${args.persona.id})`,

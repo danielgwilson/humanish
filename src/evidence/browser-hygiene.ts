@@ -1,7 +1,7 @@
 /**
  * Browser chrome that belongs to the host environment (update prompts, password
  * save bubbles, first-run UI) pollutes product evidence. Keep these knobs in one
- * place so browser-backed lanes can prefer product pixels over browser UI.
+ * place so browser-backed routes can prefer product pixels over browser UI.
  */
 export const CHROMIUM_EVIDENCE_HYGIENE_FLAGS = [
   "--disable-background-networking",

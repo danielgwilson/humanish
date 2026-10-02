@@ -59,7 +59,7 @@ import { readReview } from "../../../src/run/stored-runs.js";
 import { reclaimRunSandboxes } from "../../../src/run/reclaim.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 import { participantRun } from "../../helpers/participant-run.js";
-import type { ProviderContext } from "../../../src/lab/run-lab-options.js";
+import type { ProviderContext } from "../../../src/lab/run-lab-homes.js";
 import { DEVICE_PRESETS } from "../../../src/lab/device-presets.js";
 
 // ---------------------------------------------------------------------------
@@ -582,10 +582,9 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
       aggregateSubject: subject,
       descriptor: getActor("openai-computer-use"),
       appUrl: "http://127.0.0.1:3000/",
-      createdAt: "2026-01-01T00:00:00.000Z",
+      run: { runId: "missing-outcomes-proof", mode: "live", createdAt: "2026-01-01T00:00:00.000Z" },
       dryRun: false,
       plan: planOf(config),
-      runId: "missing-outcomes-proof",
       source,
       participantPlan,
     });
@@ -653,10 +652,13 @@ describe("cua fan-out bundle: desktop browser provenance", () => {
       aggregateSubject: subject,
       descriptor: getActor("openai-computer-use"),
       appUrl: "http://127.0.0.1:3000/",
-      createdAt: "2026-01-01T00:00:00.000Z",
+      run: {
+        runId: "browser-provenance-proof",
+        mode: "live",
+        createdAt: "2026-01-01T00:00:00.000Z",
+      },
       dryRun: false,
       plan: planOf(config),
-      runId: "browser-provenance-proof",
       source: {
         packageName: "humanish",
         humanishSource: "present",
@@ -733,10 +735,12 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       fanoutConfig({ concurrency: 1 }),
       {
         cwd,
-        automaticAnalysis: { run: automaticAnalysisBoundary() },
         env: FANOUT_ENV,
       },
-      passingSeams(handle, { now: () => 1_000_000 }),
+      {
+        ...passingSeams(handle, { now: () => 1_000_000 }),
+        analysis: { run: automaticAnalysisBoundary() },
+      },
     ).finally(stderr.stop);
     const runId = outcome.result.runId;
     if (!runId) throw new Error("the run wrote no bundle");
@@ -778,14 +782,16 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       fanoutConfig({ concurrency: 1 }),
       {
         cwd,
-        automaticAnalysis: { run: automaticAnalysisBoundary() },
         env: FANOUT_ENV,
         createProvider: async ({ participant }) => {
           seen.push(participant);
           return provider;
         },
       },
-      passingSeams(makeFanoutModule(), { now: () => 1_000_000 }),
+      {
+        ...passingSeams(makeFanoutModule(), { now: () => 1_000_000 }),
+        analysis: { run: automaticAnalysisBoundary() },
+      },
     );
     const lanes = golden["<result>"].plan.lanes;
     expect(seen).toEqual(

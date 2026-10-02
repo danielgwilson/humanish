@@ -567,7 +567,7 @@ describe("ready desktop lane contract", () => {
         desktop: () => f.port,
         analysisRefusal: () => "AUTOMATIC_ANALYSIS_CLEANUP_UNCONFIRMED",
       },
-      automaticAnalysis: { run },
+      deps: { ...seamsOf(f), analysis: { run } },
       createProvider: reachedProvider,
     });
     expect(run).toHaveBeenCalledOnce();

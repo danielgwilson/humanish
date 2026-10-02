@@ -3,13 +3,10 @@
 
 import type { LabDeps } from "../../lab/lab-deps.js";
 import type { LabEvent } from "../../lab/run-lab-events.js";
-import type { RunLabHomes } from "../../lab/run-lab-options.js";
+import type { RunLabHomes } from "../../lab/run-lab-homes.js";
 import type { SharedWorldJudgment } from "../../run/judge.js";
 import type { BrowserScorer } from "../../lab/adapter-extension.js";
-import type {
-  AutomaticAnalysisHooks,
-  AutomaticAnalysisResult,
-} from "../../analysis/automatic-completion.js";
+import type { AutomaticAnalysisResult } from "../../analysis/automatic-completion.js";
 import type { CuaActorDescriptor } from "../../actors/registry.js";
 import type { CommsReceivingRun } from "../../comms/receiving.js";
 import type { LabCommsEmail, LabCommsExternal, LabConfig } from "../../lab/types.js";
@@ -17,6 +14,7 @@ import type { DesktopResourceObservation } from "../../substrates/e2b/desktop-re
 import type { ObserverResult } from "../../observer/render.js";
 import type { ObserverRuntimeStreamUrl } from "../../observer/run-routes.js";
 import type {
+  BundleRun,
   RunBundle,
   RunScorerProvenance,
   RunSubjectProvenance,
@@ -25,7 +23,6 @@ import type {
 import type { RunScope } from "../../run/run.js";
 import type { SharedWorldStateSnapshot } from "../../run/shared-world-evidence.js";
 import type { LocalTreeArchive } from "../../subject/local-tree-archive.js";
-import type { RunLabProvenance } from "../../run/status.js";
 import type { LiveTraceFlush } from "../computer-use/live-flush.js";
 import type {
   CuaParticipantDeps,
@@ -55,7 +52,8 @@ export const CONCURRENT_ATTRIBUTION_LIMITS = [
 ] as const;
 
 export interface RunConcurrentSharedWorldLabOptions {
-  automaticAnalysis?: AutomaticAnalysisHooks;
+  /** Cancels post-run analysis only. */
+  analysisSignal?: AbortSignal;
   cwd: string;
   config: LabConfig;
   /** Resolved upstream (scenario.mode + CLI override); defaults safe (dry-run). */
@@ -253,14 +251,12 @@ export interface ExternalCommsWiring {
 export interface ConcurrentBundleArgs {
   /** The run's judgment (judgeSharedWorldRun over the other fields). */
   judgment: SharedWorldJudgment;
-  /** Lab provenance for the bundle\'s own `lab` field (#455). */
-  lab?: RunLabProvenance;
+  /** The run this bundle belongs to; the bundle head reads its id, mode, start and lab. */
+  run: BundleRun;
   plan: SharedWorldPlan;
   descriptor: CuaActorDescriptor;
-  createdAt: string;
   dryRun: boolean;
   inProgress?: boolean;
-  runId: string;
   source: RunBundle["source"];
   actorSpecs: DesktopParticipantRun[];
   actorResults: ActorRunResult[];

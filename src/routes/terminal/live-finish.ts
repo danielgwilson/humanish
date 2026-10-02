@@ -107,7 +107,7 @@ function buildLiveTrace(inputs: LiveFinishInputs): {
     runtime,
     ...(terminalTokenUsage === undefined ? {} : { tokenUsage: terminalTokenUsage }),
   });
-  // Codex tokens stay unpriced: the lane records its model as `codex`, which has no rate.
+  // Codex tokens stay unpriced: the route records its model as `codex`, which has no rate.
   trace.estimatedCost = estimateActorCost(trace.tokenUsage, trace.provider);
   return { normalizedTranscript, trace };
 }
@@ -195,7 +195,7 @@ export async function finishLiveTerminalSession(
   const { product, caps } = plan;
   const policies = plan.residual.policies;
   const { runtimeEnv, persona, mission, run, source, warnings, session } = inputs;
-  const { runId, createdAt, paths: runPaths } = run;
+  const { runId, paths: runPaths } = run;
   // One judgment, after a blown cap has overridden the session: the bundle's verdict (and so
   // status.json's outcome) and the result's ok both read it.
   const participant = terminalParticipantFacts(trace, session.error);
@@ -211,9 +211,8 @@ export async function finishLiveTerminalSession(
   });
 
   const bundle = buildLiveTerminalProductBundle({
-    ...(plan.lab === undefined ? {} : { lab: plan.lab }),
+    run,
     actorId: plan.actor,
-    createdAt,
     labId: plan.labId,
     ...(plan.title ? { labTitle: plan.title } : {}),
     mission: sanitize(mission),
@@ -229,7 +228,6 @@ export async function finishLiveTerminalSession(
       allowPaymentCredentials: policies?.allowPaymentCredentials ?? false,
       allowGitHubMutation: policies?.allowGitHubMutation ?? false,
     },
-    runId,
     source,
     trace,
     ledgers,

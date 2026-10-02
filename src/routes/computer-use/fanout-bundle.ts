@@ -35,14 +35,14 @@ function fanoutPlanEvents(args: CuaFanoutBundleArgs): RunEvent[] {
   const events: RunEvent[] = [];
   events.push({
     id: "event-000-created",
-    at: args.createdAt,
+    at: args.run.createdAt,
     level: "info",
     type: "cua-lab.run.created",
     message: `Created computer-use fan-out run for ${plan.labId} (actor ${args.descriptor.id}, ${specs.length} participants, one world each).`,
   });
   events.push({
     id: "event-001-fanout-plan",
-    at: args.createdAt,
+    at: args.run.createdAt,
     level: "info",
     type: "cua-lab.fanout.plan",
     message: `Fan-out plan: ${args.participantPlan.laneCount} participant(s) (${args.participantPlan.strategy}), concurrency ${args.participantPlan.concurrency}, ${args.participantPlan.waves} wave(s); session budget ${Math.round(args.participantPlan.perLaneSessionBudgetMs / 1000)}s per participant; worst-case ~${args.participantPlan.worstCaseSandboxMinutes} sandbox-minutes${args.dryRun ? " (dry-run: $0)" : ""}. Participants: ${args.participantPlan.lanes.map(formatParticipantPlanEntry).join(", ")}.`,
@@ -184,7 +184,7 @@ function fanoutFeedbackCandidates(args: CuaFanoutBundleArgs) {
   return args.dryRun || args.inProgress === true
     ? []
     : participantFeedbackCandidates({
-        runId: args.runId,
+        runId: args.run.runId,
         scenarioId: `cua-${plan.labId}`,
         adapterId: plan.labId,
         goal: redactText(specs[0]!.evidenceInstructions ?? specs[0]!.instructions),
@@ -229,7 +229,7 @@ export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
   if (args.rerun) {
     events.push({
       id: nextEventId("fanout-rerun"),
-      at: args.createdAt,
+      at: args.run.createdAt,
       level: "info",
       type: "cua-lab.fanout.rerun",
       message: `Rerun selected ${args.rerun.selectedLaneIds.length} participant(s) from ${args.rerun.sourceRunId}: ${args.rerun.previous.map((prior) => `${prior.laneId} was ${prior.status}${prior.completionReason ? `/${prior.completionReason}` : ""}`).join(", ")}. This is a new linked run; the source run verdict is unchanged.`,
@@ -246,7 +246,7 @@ export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
   if (args.failFastReason) {
     events.push({
       id: nextEventId("fanout-fail-fast"),
-      at: args.createdAt,
+      at: args.run.createdAt,
       level: "warn",
       type: "cua-lab.fanout.fail-fast",
       message: `Fan-out fail-fast: ${args.failFastReason}. In-flight participants finished; queued participants were skipped (blocked); completed evidence is retained.`,
@@ -266,7 +266,7 @@ export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
   const providerResources = (outcomes ?? []).flatMap((outcome) =>
     providerResourcesForOutcome({
       outcome,
-      createdAt: args.createdAt,
+      createdAt: args.run.createdAt,
       ids: outcome.spec,
       participantId: outcome.spec.planned.id,
     }),
@@ -275,13 +275,9 @@ export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
   const cost = fanoutCost(args);
 
   return {
-    ...bundleHead({
+    ...bundleHead(args.run, {
       ...receivingPublication(args.plan.residual, args.dryRun),
-      runId: args.runId,
-      mode: args.dryRun ? "dry-run" : "live",
       participants: specs.length,
-      createdAt: args.createdAt,
-      ...(args.lab === undefined ? {} : { lab: args.lab }),
       source: args.source,
     }),
     persona: {
@@ -307,7 +303,7 @@ export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
     },
     lifecycle: [
       {
-        at: args.createdAt,
+        at: args.run.createdAt,
         event: "cua-lab.run.created",
         message: `Created computer-use fan-out run with ${specs.length} participants, each in its own desktop browser (actor ${args.descriptor.id}).`,
       },

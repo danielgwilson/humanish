@@ -555,22 +555,31 @@ export interface StudyTaskFunnel {
   }>;
 }
 
+/** The run a bundle belongs to: the Run startRun returned, or a test's stand-in. */
+export interface BundleRun {
+  readonly runId: string;
+  readonly mode: RunBundle["mode"];
+  readonly createdAt: string;
+  /** The manifest the run came from (#455), as the plan carried it to startRun. */
+  readonly lab?: RunLabProvenance | undefined;
+}
+
 /**
- * The fields every run bundle starts with, in the saved order. A route passes its run, mode and
- * participant count; the public target cwd and the run's own artifact root are the defaults.
+ * The fields every run bundle starts with, in the saved order. The run supplies its id, mode,
+ * start time and lab; the route passes the participant count and source. The public target cwd
+ * and the run's own artifact root are the defaults.
  */
-export function bundleHead(args: {
-  /** Publication restrictions (real communications), saved right after the schema. */
-  publication?: RunBundle["publication"];
-  runId: string;
-  mode: RunBundle["mode"];
-  participants: number;
-  createdAt: string;
-  cwd?: string;
-  artifactRoot?: string;
-  lab?: RunLabProvenance;
-  source: RunBundle["source"];
-}): Pick<
+export function bundleHead(
+  run: BundleRun,
+  args: {
+    /** Publication restrictions (real communications), saved right after the schema. */
+    publication?: RunBundle["publication"];
+    participants: number;
+    cwd?: string;
+    artifactRoot?: string;
+    source: RunBundle["source"];
+  },
+): Pick<
   RunBundle,
   | "schema"
   | "publication"
@@ -586,13 +595,13 @@ export function bundleHead(args: {
   return {
     schema: RUN_BUNDLE_SCHEMA,
     ...(args.publication === undefined ? {} : { publication: args.publication }),
-    runId: args.runId,
-    mode: args.mode,
+    runId: run.runId,
+    mode: run.mode,
     simCount: args.participants,
-    createdAt: args.createdAt,
+    createdAt: run.createdAt,
     cwd: args.cwd ?? PUBLIC_TARGET_CWD,
-    artifactRoot: args.artifactRoot ?? path.join(".humanish", "runs", args.runId),
-    ...(args.lab === undefined ? {} : { lab: args.lab }),
+    artifactRoot: args.artifactRoot ?? path.join(".humanish", "runs", run.runId),
+    ...(run.lab === undefined ? {} : { lab: run.lab }),
     source: args.source,
   };
 }

@@ -10,10 +10,7 @@ import type { CommsReceivingRun } from "../../comms/receiving.js";
 import { type ParticipantDesktop, type ParticipantDesktopFactory } from "./participant-desktop.js";
 import type { SubjectPhaseEvent } from "../../subject/steps.js";
 import type { DesktopBrowserEvidence } from "../../substrates/e2b/desktop-browser.js";
-import {
-  type AutomaticAnalysisHooks,
-  type AutomaticAnalysisResult,
-} from "../../analysis/automatic-completion.js";
+import { type AutomaticAnalysisResult } from "../../analysis/automatic-completion.js";
 import type { AutomaticAnalysisRefusal } from "../../analysis/job.js";
 import { type CuaDiagnostics } from "./diagnostics.js";
 import type {
@@ -26,7 +23,7 @@ import type {
 import { type CuaActorDescriptor } from "../../actors/registry.js";
 import type { LabDeps, PhaseParticipant } from "../../lab/lab-deps.js";
 import type { LabEvent, ParticipantRef } from "../../lab/run-lab-events.js";
-import type { InProcessDriver, ProviderFactory, RunLabHomes } from "../../lab/run-lab-options.js";
+import type { InProcessDriver, ProviderFactory, RunLabHomes } from "../../lab/run-lab-homes.js";
 import { type BrowserScorer } from "../../lab/adapter-extension.js";
 import type { CuaActorSessionOptions } from "../../actors/computer-use/actor.js";
 import { type E2BDesktopModule } from "../../substrates/e2b/sdk.js";
@@ -40,8 +37,8 @@ import type {
 } from "../../lab/plan-types.js";
 import { type LabCommsEmail, type LabConfig } from "../../lab/types.js";
 import { type ObserverResult } from "../../observer/render.js";
-import { type RunLabProvenance } from "../../run/status.js";
 import {
+  type BundleRun,
   type RunBundle,
   type RunRerunLineage,
   type RunScorerProvenance,
@@ -109,7 +106,8 @@ export interface LocalVmInput {
 }
 
 export interface RunCuaActorLabOptions {
-  automaticAnalysis?: AutomaticAnalysisHooks;
+  /** Cancels post-run analysis only. */
+  analysisSignal?: AbortSignal;
   cwd: string;
   config: LabConfig;
   /** Resolved upstream (scenario.mode + CLI override); defaults safe (dry-run). */
@@ -599,18 +597,16 @@ export interface ParticipantRunOutcome {
 export interface CuaFanoutBundleArgs {
   /** The run's verdict, from the judge. */
   verdict: Verdict;
-  /** Lab provenance for the bundle's own `lab` field (#455). */
-  lab?: RunLabProvenance;
+  /** The run this bundle belongs to; the bundle head reads its id, mode, start and lab. */
+  run: BundleRun;
   specs: DesktopParticipantRun[];
   outcomes?: ParticipantRunOutcome[];
   subjects: CuaSubjectProjection[];
   aggregateSubject: CuaSubjectProjection;
   descriptor: CuaActorDescriptor;
   appUrl: string;
-  createdAt: string;
   dryRun: boolean;
   plan: ComputerUsePlan;
-  runId: string;
   source: RunBundle["source"];
   participantPlan: CuaParticipantPlan;
   rerun?: RunRerunLineage;

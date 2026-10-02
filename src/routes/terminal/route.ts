@@ -8,7 +8,7 @@
 //      live-sandbox.ts and live-finish.ts); a dry plan publishes its contract bundle (dry-run.ts);
 //   4. automatic analysis of a run that published its final bundle.
 //
-// THE SAFETY CONTRACT (docs/goals/terminal-product-lane/goal.md) is enforced BY CONSTRUCTION in
+// THE SAFETY CONTRACT (`docs/goals/terminal-product-lane/goal.md`) is enforced BY CONSTRUCTION in
 // the files each item names, and CHECKED by the verifier (verify/actor.ts
 // validateTerminalProductEvidence):
 //   1. EXPLICIT KEY PLACEMENT. openai-env (default) injects the raw runtime key command-scoped,
@@ -20,7 +20,7 @@
 //      (default/require 0 = no-spend) + maxMinutes (wall-clock kill of the codex command).
 //      Enforced in plan.ts (caps required), live-sandbox.ts and lifetime.ts (the wall clock).
 //   3. PUBLIC SURFACES ONLY. The mission references only subject.product.publicSurfaces + the
-//      author mission. No clone, no private-source access — nothing is git-cloned in this lane.
+//      author mission. No clone, no private-source access — nothing is git-cloned on this route.
 //      Enforced in session.ts, which composes the prompt.
 //   4. DENY-BY-DEFAULT CREDENTIALS. The command envs are built from an ALLOWLIST of ONLY the
 //      declared runtime key; GITHUB_TOKEN/GH_TOKEN/payment/deploy/db/media keys are excluded by
@@ -105,7 +105,7 @@ export function terminalLabRefusal(
     refused,
     undefined,
     analysis.ok ? analysis.config : undefined,
-    options.automaticAnalysis,
+    options,
     { trigger: config.review?.analysis === undefined ? "default" : "explicit" },
   );
 }
@@ -197,16 +197,10 @@ function completeTerminalAnalysis(
   result: TerminalProductLabResult,
   finished: FinishedRun | undefined,
 ): Promise<TerminalProductLabResult> {
-  return completeAutomaticAnalysis(
-    result,
-    finished,
-    plan.analysis?.config,
-    input.automaticAnalysis,
-    {
-      ...(plan.analysis === undefined ? {} : { trigger: plan.analysis.trigger }),
-      preferLargerOutput: plan.analysis?.preferLargerOutput === true,
-    },
-  );
+  return completeAutomaticAnalysis(result, finished, plan.analysis?.config, input, {
+    ...(plan.analysis === undefined ? {} : { trigger: plan.analysis.trigger }),
+    preferLargerOutput: plan.analysis?.preferLargerOutput === true,
+  });
 }
 
 /** The route's envelope for a run that stops before its bundle. */

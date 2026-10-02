@@ -988,9 +988,10 @@ describe("runCuaActorLab", () => {
       cwd,
       config,
       dryRun: false,
-      automaticAnalysis: { run: analyze },
       env: { OPENAI_API_KEY: "synthetic", E2B_API_KEY: "synthetic" },
       deps: {
+        analysis: { run: analyze },
+
         desktopModule: async () => module,
       },
     }).finally(() => vi.unstubAllGlobals());
@@ -5994,10 +5995,11 @@ describe("buildSingleParticipantBundle", () => {
         config,
         {
           cwd,
-          automaticAnalysis: { run: analysis },
           env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
         },
         {
+          analysis: { run: analysis },
+
           desktopModule: async () => module,
           packLocalTree: async () => {
             // A realistic createLocalTreeArchive-shaped failure: names counts, includes an
@@ -6061,13 +6063,12 @@ describe("buildSingleParticipantBundle", () => {
         .verdict,
       actorId: "openai-computer-use",
       appUrl: "http://127.0.0.1:3000/",
-      createdAt: "2026-01-01T00:00:00.000Z",
+      run: { runId: "cua-test-run", mode: "dry-run", createdAt: "2026-01-01T00:00:00.000Z" },
       dryRun: true,
       labId: "shape-proof",
       mission: "Explore.",
       persona: { id: "p1", traitsApplied: [], promptDigest: "digest" },
       resolution: [1440, 960],
-      runId: "cua-test-run",
       screenshots: [],
       source: {
         packageName: "humanish",
@@ -6109,13 +6110,12 @@ describe("buildSingleParticipantBundle", () => {
       surface: "inbox",
       caseGroup: "message-flow",
       appUrl: rawUrl,
-      createdAt: "2026-01-01T00:00:00.000Z",
+      run: { runId: "cua-test-run", mode: "dry-run", createdAt: "2026-01-01T00:00:00.000Z" },
       dryRun: true,
       labId: "shape-proof",
       mission: "Explore.",
       persona: { id: "p1", traitsApplied: [], promptDigest: "digest" },
       resolution: [414, 896],
-      runId: "cua-test-run",
       screenshots: [],
       source: {
         packageName: "humanish",
@@ -6150,13 +6150,12 @@ describe("buildSingleParticipantBundle", () => {
       verdict: "fail" as const,
       actorId: "openai-computer-use",
       appUrl: "http://127.0.0.1:3000/",
-      createdAt: "2026-01-01T00:00:00.000Z",
+      run: { runId: "cua-test-run", mode: "live" as const, createdAt: "2026-01-01T00:00:00.000Z" },
       dryRun: false,
       labId: "shape-proof",
       mission: "Explore.",
       persona: { id: "p1", traitsApplied: [], promptDigest: "digest" },
       resolution: [1440, 960] as [number, number],
-      runId: "cua-test-run",
       screenshots: ["screenshots/turn-001.png"],
       sessionError: "provider exploded mid-loop",
       source: {
@@ -6990,13 +6989,14 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
         cuaConfig(),
         {
           cwd,
-          automaticAnalysis: { run: analysis },
           onObserverReady: async () => {
             throw tunnelFailure;
           },
           env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
         },
         {
+          analysis: { run: analysis },
+
           desktopModule: async () => module,
         },
       ),
@@ -7578,10 +7578,11 @@ describe("computer-use run id reuse", () => {
           cwd,
           dryRun: false,
           runId: "older-run",
-          automaticAnalysis: { run: analysis },
           env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
         },
         {
+          analysis: { run: analysis },
+
           desktopModule: loadDesktopModule,
         },
       );
@@ -7626,10 +7627,11 @@ describe("computer-use run directory goldens", () => {
       {
         cwd: goldenCwd,
         dryRun,
-        automaticAnalysis: { run: automaticAnalysisBoundary() },
         env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
       },
       {
+        analysis: { run: automaticAnalysisBoundary() },
+
         desktopModule: async () => module,
         now: () => (clock += 30_000),
         runSession: async (options) =>
@@ -7662,13 +7664,14 @@ describe("computer-use run directory goldens", () => {
       localAppConfig(),
       {
         cwd: goldenCwd,
-        automaticAnalysis: { run: automaticAnalysisBoundary() },
         // The in-process route needs no keys; an empty env keeps the operator's env out of the result.
         env: {},
         inProcess: { executor: async () => makeStateExecutor() },
         createProvider: async () => makeStateProvider(),
       },
       {
+        analysis: { run: automaticAnalysisBoundary() },
+
         desktopModule: async () => module,
         now: () => (clock += 30_000),
       },

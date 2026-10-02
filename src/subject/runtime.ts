@@ -2,7 +2,7 @@
 //
 // The stock E2B `desktop` template ships python3 and curl but NO Node. That fact has now been
 // rediscovered three times: the in-sandbox comms catch was rewritten from node to python3 in 0.29.0
-// for exactly this reason, the terminal lane bootstraps Node explicitly, and the computer-use
+// for exactly this reason, the terminal route bootstraps Node explicitly, and the computer-use
 // clone/local-tree route did neither — so any lab whose `serve.install` runs npm or pnpm died with
 // `pnpm: command not found` AFTER a sandbox had been created and paid for.
 //
@@ -12,7 +12,7 @@
 //
 // The posture here is PROVIDE, not warn. An adopter writing a lab for a Node app should not have to
 // know which binaries the template happens to carry — that is the harness's job, and the terminal
-// lane already treats it that way. Detection is conservative and the bootstrap is skipped whenever
+// route already treats it that way. Detection is conservative and the bootstrap is skipped whenever
 // a runtime is already present, so a custom template that ships Node pays nothing.
 
 /** Package managers and runtimes whose absence on the stock template breaks a serve pipeline. */
