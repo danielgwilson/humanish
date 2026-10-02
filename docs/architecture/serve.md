@@ -1,22 +1,17 @@
 # Serve: the run library surface
 
-Date: 2026-08-02
-
-Status: shipped. The `loopback`, `exposed` (edge-authed) and `share-safe-open`
-modes live in `src/observer/serve.ts`, `src/observer/library.ts`,
-`src/observer/http.ts`, `src/observer/exposure.ts` and `src/observer/tunnel.ts`,
-with per-run routes and the history index in `src/observer/run-routes.ts` and the
-loopback bind in `src/observer/listen.ts`. The CLI wiring is in
+The `loopback`, `exposed` (edge-authed) and `share-safe-open` modes live in
+`src/observer/serve.ts`, `src/observer/library.ts`, `src/observer/http.ts`,
+`src/observer/exposure.ts` and `src/observer/tunnel.ts`, with per-run routes and the history
+index in `src/observer/run-routes.ts` and the loopback bind in `src/observer/listen.ts`. The CLI wiring is in
 `src/cli/commands/observe.ts`. The `/_humanish/api/*` control-plane namespace is
 reserved and answers `501`; no mutating route ships.
 
-Exposure auth is **tunnel-edge only**. As of 0.18.0 humanish carries NO
-in-process auth: the hand-rolled capability-link (cookie/token/TTL, its auth
-module and the `serve --auth link|none` flags) was removed as
-a pre-1.0 breaking change. The gate now lives entirely at the edge: ngrok
-`--oauth google` (with `--allow-email`/`--allow-domain` allow rules), or an
-operator-secured `--public-url` (Cloudflare Access, Tailscale, a reverse proxy
-you own).
+Exposure auth happens only at the tunnel edge. humanish has had no in-process auth since 0.18.0,
+which removed the capability link (cookie, token and TTL), its auth module and the
+`serve --auth link|none` flags. The gate is ngrok `--oauth google` with `--allow-email` or
+`--allow-domain` rules, or an operator-secured `--public-url` (Cloudflare Access, Tailscale or a
+reverse proxy you own).
 
 ## What serve is
 

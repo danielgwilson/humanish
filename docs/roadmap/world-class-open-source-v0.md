@@ -204,7 +204,7 @@ issue draft.
 Status: public package candidate, blocked only on explicit publish approval.
 
 Readiness lives in
-[`docs/release/open-source-readiness.md`](../release/open-source-readiness.md).
+[`docs/release/publish.md`](../release/publish.md).
 The package has MIT metadata and public npm package shape. `npm publish`
 remains a human release action.
 

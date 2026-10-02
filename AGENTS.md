@@ -113,6 +113,5 @@ Assume this repository is public.
   behavior need a retained run bundle, since dry runs do not establish live behavior. PRs say
   what changed, what was checked and what was not.
 - With shipping authority: push, open the PR, address checks, merge when green, fast-forward
-  main and remove the worktree and branch. Releases follow the
-  [release procedure](docs/release/open-source-readiness.md). Stay on `0.x` until the maintainer
-  chooses 1.0; the minor after `0.99.0` is `0.100.0`.
+  main and remove the worktree and branch. Releases follow
+  [docs/release/publish.md](docs/release/publish.md).

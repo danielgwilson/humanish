@@ -1,9 +1,5 @@
 # Self-Driving Harness Principles
 
-Date: 2026-06-01
-
-Status: initial principles for `humanish`.
-
 ## Thesis
 
 `humanish` should be a closed-loop product simulation system. Launching agents
@@ -27,7 +23,7 @@ context.
 
 ## Public Boundary
 
-This repo must be designed as if it will become public.
+This repository is public.
 
 No PII, PHI, secrets, keys, tokens, raw private transcripts, real patient data,
 real customer data, or private product artifacts belong here. Examples,

@@ -58,7 +58,7 @@ low maintenance cost, alongside correctness, privacy and security.
   treat an old plan as authorization to resume paused or rejected work.
 - When granted autonomous shipping authority, push, open the PR, address reviews
   and required checks, merge when green, fast-forward main and clean up the task
-  worktree/branch. Follow [release gates](../release/open-source-readiness.md)
+  worktree/branch. Follow [the release procedure](../release/publish.md)
   when a release is authorized; do not add new approval steps on your own.
 - Stay on `0.x` until the maintainer explicitly chooses 1.0. The next minor
   after `0.99.0` is `0.100.0`; routine shipping authority does not authorize 1.0.

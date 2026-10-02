@@ -24,7 +24,7 @@ deferred approaches; link evidence rather than repeating its chronology.
 | Security, evidence handling or defaults    | [Invariants and defaults](../principles/invariants-and-defaults.md)                                                                                                            |
 | Observer                                   | [Observer architecture](../architecture/observer.md) and its component instructions                                                                                            |
 | Bundle formats or policy                   | [Run bundle](../contracts/run-bundle.md), [policy](../contracts/policy.md)                                                                                                     |
-| Public artifacts or packaging              | [Public-readiness standard](../release/public-readiness-standard.md), [release procedure](../release/open-source-readiness.md)                                                 |
+| Public artifacts or packaging              | [Public-readiness standard](../release/public-readiness-standard.md), [release procedure](../release/publish.md)                                                               |
 | Proof architecture or historical decisions | [Proof roadmap](https://github.com/danielgwilson/humanish/blob/main/docs/goals/proof-roadmap/goal.md), [historical delivery roadmap](../roadmap/world-class-open-source-v0.md) |
 
 ## Mental Model
