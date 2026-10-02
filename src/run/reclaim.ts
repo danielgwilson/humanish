@@ -1,4 +1,4 @@
-// `humanish reclaim`: kill an interrupted run's sandboxes by the EXACT ids the run journaled at
+// `humanish reclaim`: kill an interrupted run's sandboxes by the exact ids the run journaled at
 // create time (sandbox-receipts.ndjson), and report what happened to each. It reads one file inside
 // the managed run dir, kills by id, and never lists the account: an account-wide operation once
 // destroyed unrelated infrastructure. Without it, orphaned sandboxes run until the server-side

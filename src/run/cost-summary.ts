@@ -169,8 +169,8 @@ function costTotals(breakdown: RunCostLine[]): {
   let anyKnown = false;
   let anyNull = false;
   let placeholder = false;
-  // Aggregate freshness is CONSERVATIVE: an aggregate estimate is only as current as its OLDEST
-  // contributing rate, so ratesAsOf takes the MIN (oldest) asOf — MAX would overclaim freshness the
+  // Aggregate freshness is conservative: an aggregate estimate is only as current as its oldest
+  // contributing rate, so ratesAsOf takes the minimum (oldest) asOf; the maximum would overclaim freshness the
   // moment operator-edited rates in src/run/pricing.ts diverge. Each breakdown line keeps its own true asOf.
   let minRatesAsOf: string | null = null;
   for (const line of breakdown) {

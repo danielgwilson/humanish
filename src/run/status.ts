@@ -24,7 +24,7 @@ export const RUN_STATUS_FILE = "status.json";
 export const RUN_STATUS_TOUCH_MS = 5_000;
 
 /**
- * A `running` record whose `updatedAt` is older than this is INTERRUPTED, not alive: the process
+ * A `running` record whose `updatedAt` is older than this is interrupted, not alive: the process
  * died without finalizing (a dropped SSH, a killed terminal, a crash). Three touch intervals of
  * slack so an ordinary scheduling hiccup or a slow disk never mislabels a healthy run.
  */
@@ -278,11 +278,11 @@ export function isRunStatusRecord(value: unknown): value is RunStatusRecord {
 }
 
 /**
- * The legacy bridge: infer a lab id for a bundle written BEFORE this contract, where the only
+ * The legacy bridge: infer a lab id for a bundle written before this contract, where the only
  * attribution was the `lab:<id>` convention on persona/scenario source strings. Deliberately
  * conservative — it reads the convention and nothing else, and a `lab:` prefix with an empty
  * remainder is not an id. Ids may contain colons (the removed meta-lab wrote `oss:meta`), so
- * only the FIRST segment is stripped. Returns undefined when the bundle carries no such marker.
+ * only the first segment is stripped. Returns undefined when the bundle carries no such marker.
  */
 export function inferLegacyLabId(bundle: {
   persona?: { source?: string };
