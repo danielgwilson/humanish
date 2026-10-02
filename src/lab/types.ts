@@ -5,6 +5,9 @@ import { type ReasoningEffort } from "../actors/reasoning-effort.js";
 
 export const LAB_CONFIG_SCHEMA = "humanish.lab.v2";
 
+/** The study format: it declares its route, one actor, its participants and one caps block. */
+export const STUDY_SCHEMA = "humanish.study.v3";
+
 // Must start alphanumeric so an id never collides with the path-vs-id resolver heuristic
 // (a leading "." or "/" is read as a file path; a leading "-" collides with CLI flags).
 export const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
@@ -823,7 +826,8 @@ export interface LabCommsRecipient {
 }
 
 export interface LabConfig {
-  schema: typeof LAB_CONFIG_SCHEMA;
+  /** The format the file was written in. Both parse into this one shape. */
+  schema: typeof LAB_CONFIG_SCHEMA | typeof STUDY_SCHEMA;
   id: string;
   title?: string;
   description?: string;

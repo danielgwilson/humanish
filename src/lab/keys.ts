@@ -120,7 +120,10 @@ const ACTOR = {
   count: true,
   lanes: PARTICIPANT_ENTRY,
   // Roster groups are participants with a count; the parser expands them into `lanes[]`.
-  roster: { ...PARTICIPANT_ENTRY, count: true } satisfies Keys<LabActorRosterGroup>,
+  roster: {
+    ...PARTICIPANT_ENTRY,
+    count: true,
+  } satisfies Keys<LabActorRosterGroup>,
   persona: true,
   mission: true,
   model: true,
@@ -231,15 +234,49 @@ const LAB_KEYS = {
   comms: { email: EMAIL } satisfies Keys<Field<LabConfig, "comms">>,
 } satisfies Keys<LabConfig>;
 
-/** The first key in `raw` that LAB_KEYS does not list, as an error message; undefined if none. */
-export function findUnknownLabKey(raw: unknown): string | undefined {
-  return walk(raw, LAB_KEYS, "");
+function without(shape: KeyShape, ...keys: string[]): KeyShape {
+  return Object.fromEntries(Object.entries(shape).filter(([key]) => !keys.includes(key)));
 }
 
-function walk(value: unknown, shape: KeyShape, path: string): string | undefined {
+// humanish.study.v3. The route is declared, so `subject.topology` goes. The participant keys leave
+// the actor for `participants`, and `caps` is one top-level block. Top-level `personas` and
+// `scenario.inline` are read by no route, and `scenario` is a string.
+const STUDY_KEYS: KeyShape = {
+  schema: true,
+  id: true,
+  title: true,
+  description: true,
+  route: true,
+  mode: true,
+  subject: without(SUBJECT, "topology"),
+  actor: without(ACTOR, "count", "lanes", "roster", "laneFocus"),
+  // A count, `{ count, instruction }` or a list of entries. studyToV2 checks which form the route
+  // takes; an entry with a count is a group.
+  participants: { ...PARTICIPANT_ENTRY, count: true },
+  surfaces: true,
+  caps: CAPS,
+  execution: without(EXECUTION, "caps"),
+  scenario: true,
+  policies: LAB_KEYS.policies,
+  review: LAB_KEYS.review,
+  defaults: LAB_KEYS.defaults,
+  comms: LAB_KEYS.comms,
+};
+
+/** The first key in `raw` that LAB_KEYS does not list, as an error message; undefined if none. */
+export function findUnknownLabKey(raw: unknown): string | undefined {
+  return walk(raw, LAB_KEYS, "", "lab");
+}
+
+/** The first key in a humanish.study.v3 document that the format does not have; undefined if none. */
+export function findUnknownStudyKey(raw: unknown): string | undefined {
+  return walk(raw, STUDY_KEYS, "", "study");
+}
+
+function walk(value: unknown, shape: KeyShape, path: string, noun: string): string | undefined {
   if (Array.isArray(value)) {
     for (const [index, item] of value.entries()) {
-      const found = walk(item, shape, `${path}[${index}]`);
+      const found = walk(item, shape, `${path}[${index}]`, noun);
       if (found) return found;
     }
     return undefined;
@@ -249,23 +286,28 @@ function walk(value: unknown, shape: KeyShape, path: string): string | undefined
   const known = Object.keys(shape);
   // Object.hasOwn: a key like `constructor` must not match Object.prototype.
   const unknown = Object.keys(record).filter((key) => !Object.hasOwn(shape, key));
-  if (unknown.length > 0) return unknownKeysMessage(path, unknown, known);
+  if (unknown.length > 0) return unknownKeysMessage(path, unknown, known, noun);
   for (const [key, child] of Object.entries(record)) {
     const expected = shape[key];
     if (expected !== true && expected !== undefined) {
-      const found = walk(child, expected, path ? `${path}.${key}` : key);
+      const found = walk(child, expected, path ? `${path}.${key}` : key, noun);
       if (found) return found;
     }
   }
   return undefined;
 }
 
-function unknownKeysMessage(path: string, unknown: string[], known: string[]): string {
+function unknownKeysMessage(
+  path: string,
+  unknown: string[],
+  known: string[],
+  noun: string,
+): string {
   const named = unknown.map((key) => {
     const suggestion = closest(key, known);
     return suggestion ? `${key} (did you mean \`${suggestion}\`?)` : key;
   });
-  return `Unknown lab field(s)${path ? ` in \`${path}\`` : ""}: ${named.join(", ")}. Known fields: ${known.join(", ")}.`;
+  return `Unknown ${noun} field(s)${path ? ` in \`${path}\`` : ""}: ${named.join(", ")}. Known fields: ${known.join(", ")}.`;
 }
 
 // The known key within edit distance 2, or one that differs only in case.
