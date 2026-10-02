@@ -7,7 +7,8 @@ import { Command } from "commander";
 import { deriveStudyFacts } from "../telemetry.js";
 import { resolveLabManifest } from "../../lab/discover.js";
 import type { LabResolveFailure } from "../../lab/discover.js";
-import { resolveLabDryRun } from "../../lab/plan.js";
+import { planLab, resolveLabDryRun } from "../../lab/plan.js";
+import { keyNamesOf } from "../../lab/requirements.js";
 import { type LabRoute, routeOf } from "../../lab/plan.js";
 import type { LabConfig } from "../../lab/types.js";
 import type { RunLabProvenance } from "../../run/status.js";
@@ -101,10 +102,16 @@ export async function runLabCommand(args: {
   }
 
   // Only a live run reads provider keys, so a dry run looks none up: no `gh auth token`, no e2b
-  // login, overlay or key store. This comes after the option refusals above, which read no key,
-  // and before the route's CLI setup and prepareLab, which do.
+  // login, overlay or key store. A live run fills every key it finds and prints a line only for
+  // the keys its plan reads. This comes after the option refusals above, which read no key, and
+  // before the route's CLI setup and prepareLab, which do.
   if (resolveLabDryRun(config, args.options.dryRun, true) === false) {
-    await discoverCliKeys({ io: args.io, cwd: args.options.cwd });
+    const announced = announcedKeyNames(config, args.options);
+    await discoverCliKeys({
+      io: args.io,
+      cwd: args.options.cwd,
+      ...(announced === undefined ? {} : { announced }),
+    });
   }
 
   // The route's CLI setup refuses bad options, runLab's plan refuses bad labs, and the route's local
@@ -163,6 +170,20 @@ export async function runLabCommand(args: {
   } finally {
     signals.release();
   }
+}
+
+/**
+ * The filled keys a live run prints a line for: the ones its plan reads. Count and rerun options
+ * change who runs, not which keys. Undefined, so every fill is printed, when a scorer is declared,
+ * since its host code may read any key, and when the lab does not plan.
+ */
+function announcedKeyNames(
+  config: LabConfig,
+  options: LabCommandOptions,
+): ReadonlySet<string> | undefined {
+  if (options.scorer !== undefined || config.review?.scorer !== undefined) return undefined;
+  const planned = planLab(config, { cwd: options.cwd, dryRun: false });
+  return planned.ok ? keyNamesOf(planned.planned.plan) : undefined;
 }
 
 /** The route's CLI setup. Undefined when the setup has already written its own result. */

@@ -169,6 +169,45 @@ describe("provider-key discovery (#436)", () => {
     expect(env2.GH_TOKEN).toBeUndefined();
   });
 
+  it("with announced, fills every key as without it and announces only the named fills", async () => {
+    await writeE2bConfig({ teamApiKey: "test-e2b-key" });
+    await writeUserStore([
+      "OPENAI_API_KEY=test-openai-key",
+      "AGENTMAIL_API_KEY=test-agentmail-key",
+    ]);
+    const calls: string[][] = [];
+    const gh = async (cmd: string, args: string[]): Promise<string | null> => {
+      calls.push([cmd, ...args]);
+      return "gh-token-value";
+    };
+    const run = async (announced?: ReadonlySet<string>) => {
+      const env: NodeJS.ProcessEnv = {};
+      const lines: string[] = [];
+      const fills = await discoverProviderKeys({
+        cwd,
+        env,
+        announce: (line) => lines.push(line),
+        deps: { homeDir: home, execText: gh },
+        ...(announced === undefined ? {} : { announced }),
+      });
+      return { env, fills, lines };
+    };
+
+    const all = await run();
+    const filtered = await run(new Set(["OPENAI_API_KEY"]));
+
+    expect(filtered.fills).toEqual(all.fills);
+    expect(filtered.env).toEqual(all.env);
+    expect(all.lines).toHaveLength(4);
+    expect(filtered.lines).toEqual([
+      "humanish keys: OPENAI_API_KEY from ~/.config/humanish/keys.env",
+    ]);
+    expect(calls).toEqual([
+      ["gh", "auth", "token"],
+      ["gh", "auth", "token"],
+    ]);
+  });
+
   it("runs gh with no provider key in its environment, filled or exported", async () => {
     // The CLI discovers into process.env itself, so this does too. Every name it touches is
     // stubbed first, so vitest restores all of them after the test.

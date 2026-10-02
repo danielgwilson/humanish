@@ -155,6 +155,8 @@ export async function discoverCliKeys(args: {
   cwd: string;
   env?: NodeJS.ProcessEnv;
   onDiscovered?: (names: string[]) => void;
+  /** Announce only the fills of these names; every key is still filled. Undefined announces all. */
+  announced?: ReadonlySet<string>;
 }): Promise<void> {
   try {
     const discover = args.io.keyDiscovery ?? discoverProviderKeys;
@@ -162,6 +164,7 @@ export async function discoverCliKeys(args: {
       cwd: args.cwd,
       env: args.env ?? process.env,
       announce: (line) => args.io.writeErr(`${line}\n`),
+      ...(args.announced === undefined ? {} : { announced: args.announced }),
     });
     args.onDiscovered?.(discovered.map((fill) => fill.name));
   } catch {

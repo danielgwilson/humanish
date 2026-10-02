@@ -1,9 +1,10 @@
 // The keys and subject env a live plan's requirements list. Each route's preflight asks
-// missingKeys and missingSubjectEnv which names to refuse on, and doctor and the TUI ask
-// requiredKeys and requiredSubjectEnv which names to report, so the planner alone decides what a
-// run needs. A route keeps its own error codes, messages and check order. The terminal runtime key
-// (`key-one-of`) stays with buildRuntimeAuth at run time, which also picks its placement.
-import type { Requirement } from "./plan-types.js";
+// missingKeys and missingSubjectEnv which names to refuse on, doctor and the TUI ask requiredKeys
+// and requiredSubjectEnv which names to report, and `lab run` asks keyNamesOf which names to look
+// up, so the planner alone decides what a run needs. A route keeps its own error codes, messages
+// and check order. The terminal runtime key (`key-one-of`) stays with buildRuntimeAuth at run
+// time, which also picks its placement.
+import type { LabPlan, Requirement } from "./plan-types.js";
 
 /** Provider keys in the order the routes name them in a refusal. */
 const KEY_ORDER = ["OPENAI_API_KEY", "E2B_API_KEY"] as const;
@@ -51,4 +52,27 @@ export function requiredSubjectEnv(requirements: readonly Requirement[]): string
   return requirements.flatMap((requirement) =>
     requirement.kind === "subject-env" ? requirement.names : [],
   );
+}
+
+/**
+ * The provider keys a live run of `plan` is known to read: its `key` and `key-one-of` names, its
+ * subject env, the external catch's token variable, ANTHROPIC_API_KEY for a Claude Code
+ * participant, and OPENAI_API_KEY when automatic analysis runs on OpenAI. `lab run` prints a
+ * key-source line for these only. Discovery still fills every key it finds: other readers, such as
+ * a declared scorer's host code, are not in the plan.
+ */
+export function keyNamesOf(plan: LabPlan): ReadonlySet<string> {
+  const names = new Set<string>();
+  for (const requirement of plan.requirements) {
+    if (requirement.kind === "key") names.add(requirement.name);
+    if (requirement.kind === "key-one-of" || requirement.kind === "subject-env")
+      for (const name of requirement.names) names.add(name);
+    if (requirement.kind === "local-agent" && requirement.agent === "claude")
+      names.add("ANTHROPIC_API_KEY");
+  }
+  const catchToken = plan.residual.comms?.email?.external?.authTokenEnv;
+  if (catchToken !== undefined) names.add(catchToken);
+  if (plan.analysis !== undefined && plan.analysis.config.provider !== "codex")
+    names.add("OPENAI_API_KEY");
+  return names;
 }

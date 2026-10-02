@@ -294,8 +294,8 @@ and Intel macOS keep the one version they ran before qualification began, which 
 qualified there. Any other version, including one Codex updated itself to, is refused with the
 list of accepted versions.
 
-**Credentials.** For each provider key a command needs, humanish uses the first
-of these sources that has it. It prints the name and source of each key it
+**Credentials.** humanish fills each provider key that is not already set from
+the first of these sources that has it. It prints the name and source of a key it
 fills from sources 2 to 4, never the value:
 
 1. the process environment, including a file passed with `--env-file`;
@@ -306,7 +306,12 @@ fills from sources 2 to 4, never the value:
    which `humanish keys set` writes as plain text with mode `0600`.
 
 A dry run reads no provider key, so `run`, `lab run` and `watch` consult sources 2 to 4 only
-for a live lab. `lab preflight`, `doctor`, `tui` and the `comms` commands still consult them.
+for a live lab. A live run fills every key it finds and prints the ones its plan reads: its model,
+desktop and runtime keys, its `subject.env` names, the variable
+`comms.email.external.authTokenEnv` names, `ANTHROPIC_API_KEY` for a Claude Code participant, and
+`OPENAI_API_KEY` when its automatic analysis runs on OpenAI. With a declared scorer it prints
+every key it fills, since the scorer's code may read any. `lab preflight`, `doctor`, `tui` and the
+`comms` commands still consult them.
 `humanish analyze` consults them for a live OpenAI analysis, and not for `--dry-run` or the
 Codex analyst.
 `HUMANISH_STRICT_KEYS=1` turns off sources 2 to 4. `init` and `doctor` also run
