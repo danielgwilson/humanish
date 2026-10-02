@@ -76,7 +76,9 @@ describe("release readiness", () => {
     ]);
     expect(packageJson.scripts.prepack).toBe("pnpm build");
     expect(packageJson.scripts["public-surface:scan"]).toBe("node scripts/public-surface-scan.mjs");
-    expect(packageJson.scripts["skill:check"]).toBe("DISABLE_TELEMETRY=1 npx skills add . --list");
+    expect(packageJson.scripts["skill:check"]).toBe(
+      "DISABLE_TELEMETRY=1 pnpm exec skills add . --list",
+    );
     expect(packageJson.scripts["pack:dry-run"]).toBe("npm pack --dry-run");
     expect(packageJson.scripts["api:proof"]).toBe("node scripts/public-api-proof.mjs");
     expect(packageJson.scripts["release:check"]).toBe(
