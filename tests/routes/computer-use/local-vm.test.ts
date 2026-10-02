@@ -25,7 +25,7 @@ vi.mock("../../../src/substrates/local/firecracker-desktop.js", async (importOri
   createLocalFirecrackerDesktop: seams.createDesktop,
 }));
 
-import { prepareLocalVmStudy } from "../../../src/routes/computer-use/local-vm.js";
+import { prepareLocalVmRun } from "../../../src/routes/computer-use/local-vm.js";
 
 const appUrl = "http://127.0.0.1:4173/";
 const assets = { image: "synthetic-image", runtimeRevision: "synthetic-revision" };
@@ -71,7 +71,7 @@ describe("local study bindings", () => {
       exports: ["score"],
     };
 
-    const study = prepareLocalVmStudy({
+    const study = prepareLocalVmRun({
       cwd,
       config: localLab("openai-computer-use"),
       dryRun: true,
@@ -99,7 +99,7 @@ describe("local study bindings", () => {
     >);
     const signal = new AbortController().signal;
 
-    const study = prepareLocalVmStudy({
+    const study = prepareLocalVmRun({
       cwd,
       config: localLab("local-agent"),
       dryRun: false,
@@ -130,7 +130,7 @@ describe("local study bindings", () => {
       close,
       resourceId: container,
     } as unknown as Awaited<ReturnType<typeof createLocalFirecrackerDesktop>>);
-    const study = prepareLocalVmStudy({
+    const study = prepareLocalVmRun({
       cwd,
       config: localLab("openai-computer-use"),
       dryRun: false,

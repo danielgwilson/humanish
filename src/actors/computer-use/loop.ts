@@ -258,11 +258,11 @@ function stopBeforeActing(
   if (turn.interruption !== undefined) {
     // Preserve usage and partial narration of an interrupted response. Its usage still counts
     // toward the study budget; when that exhausts it, sibling lanes stop, so this trace says why.
-    const studyStop = overRunBudget?.(session.usage.forCap());
+    const runBudgetStop = overRunBudget?.(session.usage.forCap());
     recordNarration(session, turn, turnNumber, "interrupted");
-    if (studyStop != null) {
+    if (runBudgetStop != null) {
       session.trace.record("notice", () =>
-        notice("warn", "study budget reached during an interrupted response", studyStop),
+        notice("warn", "study budget reached during an interrupted response", runBudgetStop),
       );
     }
     return stops.providerInterrupted(turn.interruption);

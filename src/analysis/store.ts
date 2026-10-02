@@ -15,7 +15,7 @@ import {
   type PreparedSelectedOutputDirectory,
 } from "../run/contained-output.js";
 import { EVIDENCE_LIMITS, validateAnalysisEvidence } from "./evidence.js";
-import { pathMissing, isStudyEvidencePath, readBoundedStudyFile } from "../run/study-files.js";
+import { pathMissing, isEvidencePath, readBoundedFile } from "../run/evidence-files.js";
 import {
   hashAnalysisValue,
   validateAnalysisArtifact,
@@ -110,7 +110,7 @@ export async function writeAnalysis(
   value: AnalysisArtifact,
 ): Promise<void> {
   const artifact = validateAnalysisArtifact(value);
-  const source = await readBoundedStudyFile(prepared, RUN_BUNDLE_FILE, EVIDENCE_LIMITS.sourceBytes);
+  const source = await readBoundedFile(prepared, RUN_BUNDLE_FILE, EVIDENCE_LIMITS.sourceBytes);
   if (!source) throw new Error("ANALYSIS_SOURCE_UNAVAILABLE");
   await validateAnalysisEvidence(prepared, artifact, source);
   const bytes = Buffer.from(`${JSON.stringify(artifact, null, 2)}\n`);
@@ -118,11 +118,7 @@ export async function writeAnalysis(
   const root = await prepareContainedOutputDirectoryRoot(prepared, ANALYSIS_DIRECTORY);
   const claimed = await claimDirectory(root, artifact.id);
   // Recheck source immediately before publishing the immutable record.
-  const current = await readBoundedStudyFile(
-    prepared,
-    RUN_BUNDLE_FILE,
-    EVIDENCE_LIMITS.sourceBytes,
-  );
+  const current = await readBoundedFile(prepared, RUN_BUNDLE_FILE, EVIDENCE_LIMITS.sourceBytes);
   if (!current?.equals(source)) throw new Error("ANALYSIS_SOURCE_CHANGED");
   await writeContainedOutputFile(claimed, "analysis.json", bytes);
 }
@@ -153,7 +149,7 @@ export async function directoryIds(
       if (entry.name.startsWith(".humanish-write-")) continue;
       if (
         ignoreLegacyFiles &&
-        isStudyEvidencePath(entry.name) &&
+        isEvidencePath(entry.name) &&
         !["analysis.json", "correction.json", "receipt.json"].includes(entry.name)
       )
         continue;
@@ -178,7 +174,7 @@ async function readVersion(
 ): Promise<AnalysisListEntry | null> {
   if (!safeId(id))
     return { id: "invalid", state: "invalid", analysis: null, warnings: ["ANALYSIS_ID_INVALID"] };
-  const bytes = await readBoundedStudyFile(root, `${id}/analysis.json`, ANALYSIS_MAX_BYTES);
+  const bytes = await readBoundedFile(root, `${id}/analysis.json`, ANALYSIS_MAX_BYTES);
   // A claimed directory without a published record is an interrupted write, not a report.
   if (bytes === null) {
     if (await pathMissing(path.join(root.physicalPath, id, "analysis.json")).catch(() => false))
@@ -232,7 +228,7 @@ export async function readAnalysisVersion(
       prepared,
       root,
       id,
-      await readBoundedStudyFile(prepared, RUN_BUNDLE_FILE, EVIDENCE_LIMITS.sourceBytes),
+      await readBoundedFile(prepared, RUN_BUNDLE_FILE, EVIDENCE_LIMITS.sourceBytes),
     );
   } catch {
     return null;
@@ -247,11 +243,7 @@ export async function listAnalyses(
     const root = await existingRoot(prepared);
     if (!root) return [];
     const inventory = await directoryIds(root, MAX_VERSIONS, true);
-    const source = await readBoundedStudyFile(
-      prepared,
-      RUN_BUNDLE_FILE,
-      EVIDENCE_LIMITS.sourceBytes,
-    );
+    const source = await readBoundedFile(prepared, RUN_BUNDLE_FILE, EVIDENCE_LIMITS.sourceBytes);
     const results: AnalysisListEntry[] = [];
     for (const id of inventory.ids) {
       const entry = await readVersion(prepared, root, id, source);
@@ -303,7 +295,7 @@ async function readCorrections(
     const inventory = await directoryIds(bound, MAX_CORRECTIONS);
     warnings.push(...inventory.warnings);
     for (const id of inventory.ids) {
-      const bytes = await readBoundedStudyFile(
+      const bytes = await readBoundedFile(
         root,
         `${analysis.id}/corrections/${id}/correction.json`,
         MAX_CORRECTION_BYTES,

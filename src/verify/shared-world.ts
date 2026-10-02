@@ -209,7 +209,7 @@ function skippedTailCauseFailures(bundle: RunBundle, turns: Row[], tail: Skipped
     )
       failures.push("usage_unreported requires recorded unavailable usage");
   } else if (tail.cause === "study_spend_limit") {
-    if (!studySpendLimitRecorded(bundle, turns, tail)) {
+    if (!runSpendLimitRecorded(bundle, turns, tail)) {
       failures.push(
         "study_spend_limit requires known prefix estimates exceeding the recorded finite threshold",
       );
@@ -227,7 +227,7 @@ function skippedTailCauseFailures(bundle: RunBundle, turns: Row[], tail: Skipped
 }
 
 /** Every executed participant's estimate is known, and their sum exceeds the recorded threshold. */
-function studySpendLimitRecorded(bundle: RunBundle, turns: Row[], tail: SkippedTail): boolean {
+function runSpendLimitRecorded(bundle: RunBundle, turns: Row[], tail: SkippedTail): boolean {
   const estimates = bundle.streams
     .slice(0, turns.length)
     .map((stream) => stream.actor?.estimatedCost?.estimatedCostUsd);

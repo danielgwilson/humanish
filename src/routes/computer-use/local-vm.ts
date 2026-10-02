@@ -28,14 +28,14 @@ import { startLocalCapturedInbox } from "../../substrates/local/captured-inbox.j
 import type { DesktopRecordingConfig } from "../../evidence/desktop-recording-types.js";
 import type { PreparedOutputRoot } from "../../run/contained-output.js";
 
-type LocalStudyOptions = InternalRunLabOptions & {
+type LocalVmRunOptions = InternalRunLabOptions & {
   config: LabConfig;
   assets?: LocalFirecrackerAssets;
   signal?: AbortSignal;
 };
 
 /** What one study's lanes and participants share: their cleanup handles and one unconfirmed flag. */
-interface LocalStudyState {
+interface LocalVmRunState {
   readonly sessions: LocalFirecrackerDesktop[];
   readonly participants: ReturnType<typeof createRestrictedCodexParticipant>[];
   cleanupUnconfirmed: boolean;
@@ -49,10 +49,10 @@ interface LocalParticipantContext {
   readonly media: GuestMediaConfig | undefined;
   readonly recording: DesktopRecordingConfig | undefined;
   readonly assets: () => Promise<LocalFirecrackerAssets>;
-  readonly state: LocalStudyState;
+  readonly state: LocalVmRunState;
 }
 
-function studyMedia(config: LabConfig): GuestMediaConfig | undefined {
+function guestMedia(config: LabConfig): GuestMediaConfig | undefined {
   const declaredMedia = config.execution?.desktop?.media;
   return declaredMedia === undefined
     ? undefined
@@ -63,8 +63,8 @@ function studyMedia(config: LabConfig): GuestMediaConfig | undefined {
 }
 
 /** The runtime image, prepared once per study on first use, after the account check. */
-function studyAssets(
-  options: LocalStudyOptions,
+function guestAssets(
+  options: LocalVmRunOptions,
   account: boolean,
   needsMedia: boolean,
 ): () => Promise<LocalFirecrackerAssets> {
@@ -196,7 +196,7 @@ function createLocalParticipantDesktop(
 }
 
 /** The Codex account participant, whose unconfirmed cleanup blocks the study's analysis. */
-function accountProvider(state: LocalStudyState): ProviderFactory {
+function accountProvider(state: LocalVmRunState): ProviderFactory {
   return async ({ executor }) => {
     const participant = createRestrictedCodexParticipant({
       speechEnabled: executor.speechEnabled === true,
@@ -216,7 +216,7 @@ function accountProvider(state: LocalStudyState): ProviderFactory {
 }
 
 /** A local browser study's bindings, and the cleanup of what its lanes started. */
-export interface LocalVmStudy {
+export interface LocalVmRun {
   /** The caller's runLab options, with the account provider when the study runs one. */
   readonly options: InternalRunLabOptions;
   /** The desktop, the analysis gate and the abort signal the computer-use run takes. */
@@ -228,23 +228,23 @@ export interface LocalVmStudy {
  * Local desktop/provider composition: the options the lab is planned and run with. It throws before
  * anything starts on a lab the local study cannot run.
  */
-export function prepareLocalVmStudy(options: LocalStudyOptions): LocalVmStudy {
+export function prepareLocalVmRun(options: LocalVmRunOptions): LocalVmRun {
   const config = localBrowserDefaults(options.config);
   const unsupported = localBrowserUnsupportedReason(config);
   if (unsupported) throw new Error(unsupported);
   const recording = config.execution?.desktop?.recording;
-  const media = studyMedia(config);
+  const media = guestMedia(config);
   // A caller-supplied provider replaces the Codex account participant, so the account is
   // neither checked nor used.
   const account = config.actors[0]?.type === "local-agent" && options.createProvider === undefined;
-  const state: LocalStudyState = { sessions: [], participants: [], cleanupUnconfirmed: false };
+  const state: LocalVmRunState = { sessions: [], participants: [], cleanupUnconfirmed: false };
   const context: LocalParticipantContext = {
     config,
     cwd: options.cwd,
     signal: options.signal,
     media,
     recording,
-    assets: studyAssets(options, account, media !== undefined || recording !== undefined),
+    assets: guestAssets(options, account, media !== undefined || recording !== undefined),
     state,
   };
   const { config: _config, assets: _assets, signal: _signal, ...runOptions } = options;

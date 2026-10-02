@@ -4,7 +4,7 @@ import {
 } from "../../analysis/automatic-config.js";
 import { resolve } from "node:path";
 import { Command } from "commander";
-import { deriveStudyFacts } from "../telemetry.js";
+import { deriveRunFacts } from "../telemetry.js";
 import { resolveLabManifest } from "../../lab/discover.js";
 import type { LabResolveFailure } from "../../lab/discover.js";
 import { planLab, resolveLabDryRun } from "../../lab/plan.js";
@@ -25,7 +25,7 @@ import {
   discoverCliKeys,
   formatRunHuman,
   type LabCommandOptions,
-  noteStudyFacts,
+  noteRunFacts,
   writeResult,
 } from "../io.js";
 import { watchExposeRequested } from "../observer-follow.js";
@@ -60,7 +60,7 @@ export async function runLabCommand(args: {
   const lab: RunLabProvenance = { id: config.id, path: resolved.path, origin: resolved.origin };
   // Named here, once, for every route: a preview or terminal result carries no labId, so the
   // starter lab `first-run` went unnamed in telemetry while the computer-use ones were named.
-  noteStudyFacts(args.command, deriveStudyFacts({ labId: config.id }));
+  noteRunFacts(args.command, deriveRunFacts({ labId: config.id }));
   const route = routeOf(config);
   if (route !== "computer-use" && labRerunFlagsRequested(args.options)) {
     writeUnsupportedRerunFlagsResult(args, route);

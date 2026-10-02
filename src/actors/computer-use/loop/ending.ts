@@ -139,7 +139,7 @@ export const nonFiniteEstimate: Stop = {
 };
 
 /** A study-level stop is a recruiting decision hitting its limit, not this participant's runaway. */
-export function studySpendLimit(reason: string): Stop {
+export function runSpendLimit(reason: string): Stop {
   return { completionReason: "budget_reached", reason, stopCause: "study_spend_limit" };
 }
 

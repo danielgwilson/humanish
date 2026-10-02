@@ -11,7 +11,7 @@ import { Command } from "commander";
 import { loadEnvFile } from "../keys/env-file.js";
 import { discoverProviderKeys } from "../keys/key-resolution.js";
 import type { EnvFileLoadResult } from "../keys/env-file.js";
-import { deriveStudyFacts, type TelemetryProperties } from "./telemetry.js";
+import { deriveRunFacts, type TelemetryProperties } from "./telemetry.js";
 import { forTerminal } from "../routes/terminal/encoding.js";
 import type { RunResult } from "../run/results.js";
 
@@ -219,19 +219,19 @@ export function writeResult<T>(
   markInvocationEnvelopeWritten(command);
   // Every backend's result passes through here, so this is where a study's facts get read for
   // telemetry — not in each backend, which is how they went unreported for two releases.
-  noteStudyFacts(command, deriveStudyFacts(result));
+  noteRunFacts(command, deriveRunFacts(result));
 }
 
-const studyFactsByCommand = new WeakMap<Command, TelemetryProperties>();
+const runFactsByCommand = new WeakMap<Command, TelemetryProperties>();
 
-export function noteStudyFacts(command: Command, facts: TelemetryProperties): void {
+export function noteRunFacts(command: Command, facts: TelemetryProperties): void {
   if (Object.keys(facts).length === 0) return;
-  studyFactsByCommand.set(command, { ...studyFactsByCommand.get(command), ...facts });
+  runFactsByCommand.set(command, { ...runFactsByCommand.get(command), ...facts });
 }
 
 /** Exported for tests: the facts writeResult read off a command's result document. */
-export function studyFactsFor(command: Command): TelemetryProperties {
-  return { ...studyFactsByCommand.get(command) };
+export function runFactsFor(command: Command): TelemetryProperties {
+  return { ...runFactsByCommand.get(command) };
 }
 
 export function formatRunHuman(result: RunResult): string {

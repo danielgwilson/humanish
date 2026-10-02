@@ -3,15 +3,15 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { prepareLocalVmStudy } from "../src/routes/computer-use/local-vm.js";
+import type { prepareLocalVmRun } from "../src/routes/computer-use/local-vm.js";
 
 const localVm = vi.hoisted(() =>
-  vi.fn<typeof prepareLocalVmStudy>(() => {
+  vi.fn<typeof prepareLocalVmRun>(() => {
     throw new Error("unexpected local study");
   }),
 );
 vi.mock("../src/routes/computer-use/local-vm.js", () => ({
-  prepareLocalVmStudy: localVm,
+  prepareLocalVmRun: localVm,
 }));
 
 import { runLab } from "../src/run-lab.js";

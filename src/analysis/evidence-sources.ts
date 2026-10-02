@@ -10,7 +10,7 @@ import {
   type AnalysisParticipantInput,
   type CaptureVersion,
 } from "./types.js";
-import { decodesToPlainRelativePath, isStudyEvidencePath } from "../run/study-files.js";
+import { decodesToPlainRelativePath, isEvidencePath } from "../run/evidence-files.js";
 
 // How a run bundle becomes analysis sources: each participant's recorded provenance and assignment,
 // the evidence entries its trace offers, and the order in which entries are admitted under the
@@ -188,7 +188,7 @@ export function sourceEntries(
       isCaptureItem(item, captureVersion) &&
       isRecord(item.screenshotRef) &&
       typeof item.screenshotRef.path === "string" &&
-      isStudyEvidencePath(item.screenshotRef.path)
+      isEvidencePath(item.screenshotRef.path)
         ? item.screenshotRef.path
         : null;
     if (frameIds.has(item.id)) frame++;

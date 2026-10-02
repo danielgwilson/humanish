@@ -30,7 +30,7 @@ export function spendStop(session: LoopSession): Stop | undefined {
   }
   if (overRunBudget) {
     const runStop = overRunBudget(session.usage.forCap());
-    if (runStop !== null) return stops.studySpendLimit(runStop);
+    if (runStop !== null) return stops.runSpendLimit(runStop);
   }
   return undefined;
 }

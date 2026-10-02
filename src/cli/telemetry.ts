@@ -308,7 +308,7 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
  * or an outcome — the vocabulary existed, nothing populated it — so the one question telemetry
  * was added to answer ("does anyone get to a working LIVE first run") had no answer in the data.
  */
-export function deriveStudyFacts(result: unknown): TelemetryProperties {
+export function deriveRunFacts(result: unknown): TelemetryProperties {
   const r = asRecord(result);
   if (!r) return {};
   const facts: TelemetryProperties = {};

@@ -14,7 +14,7 @@ vi.mock("../../../src/actors/codex/restricted-participant.js", async (importOrig
   createRestrictedCodexParticipant: vi.fn(() => participant),
 }));
 
-import { prepareLocalVmStudy } from "../../../src/routes/computer-use/local-vm.js";
+import { prepareLocalVmRun } from "../../../src/routes/computer-use/local-vm.js";
 import { closeParticipantModel } from "../../../src/routes/computer-use/participant-model.js";
 
 const config: LabConfig = {
@@ -41,7 +41,7 @@ describe("local study Codex participant close", () => {
       warnings: ["synthetic unknown-method warning"],
       refusal: "codex_tool_call",
     });
-    const study = prepareLocalVmStudy({
+    const study = prepareLocalVmRun({
       cwd,
       config,
       dryRun: false,
