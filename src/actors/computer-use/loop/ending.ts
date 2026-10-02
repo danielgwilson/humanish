@@ -33,7 +33,7 @@ export interface Stop {
 }
 
 /**
- * Read the fixed closing line the prompt asks for (#570): the FIRST non-empty line of the
+ * Read the fixed closing line the prompt asks for (#570): the first non-empty line of the
  * participant's last message, exactly one of three phrases, punctuation and case forgiven. Anything
  * else is absence, never a guess. Exported for tests.
  */
@@ -86,7 +86,7 @@ export const harnessAborted: Stop = {
 
 /**
  * The wall-clock deadline. A session that took at least one material (non-idle) action before the
- * cap reached its BUDGET rather than stalling; a deadline hit with zero material actions is still
+ * cap reached its budget rather than stalling; a deadline hit with zero material actions is still
  * an honest failure (timed_out).
  */
 export function timeLimit(session: LoopSession): Stop {
@@ -238,7 +238,7 @@ export function providerInterrupted(interruption: NonNullable<CuaTurn["interrupt
 
 /**
  * Safety-check categories are provider-defined enums (e.g. "malicious_instructions"), not free
- * text; the evidence records them (redacted for defense-in-depth) so it shows WHY the run paused.
+ * text; the evidence records them (redacted for defense-in-depth) so it shows why the run paused.
  */
 export function blockedOnSafetyChecks(checks: string): Stop {
   return {

@@ -412,9 +412,9 @@ async function evidenceChecks(
       "rerun bundles either are absent or link selected participants to their prior status and a fan-out rerun event",
       "rerun lineage findings",
     ),
-    // Cost is ADVISORY on magnitude, FAIL-CLOSED on labeling/provenance (claims match mechanism).
-    // Absence PASSES (fail-open on display); a claimed dollar figure without its ratesAsOf date +
-    // source, or a total that does not match its known lines, FAILS. Magnitude is never inspected —
+    // Cost is advisory on magnitude and fail-closed on labeling/provenance (claims match mechanism).
+    // Absence passes (fail-open on display); a claimed dollar figure without its ratesAsOf date +
+    // source, or a total that does not match its known lines, fails. Magnitude is never inspected:
     // a correctly-labeled huge estimate still passes.
     findingsCheck(
       "cost estimate labeling",

@@ -32,7 +32,7 @@ const PERSONA_DIRECTORIES = [
 ] as const;
 
 /**
- * Resolve ONE persona from `humanish/personas/`, then the ignored `.humanish/local/personas/`.
+ * Resolve one persona from `humanish/personas/`, then the ignored `.humanish/local/personas/`.
  * Returns `null` with a warning when the id is unsafe or no file exists. Invalid rich backgrounds
  * reject the study before execution.
  */
@@ -82,7 +82,7 @@ export async function resolveCommittedPersona(
 
 /**
  * Resolve every distinct persona id a run will use, once, before participant specs are built. Returning a
- * map keeps the plan builder PURE (it is exported npm surface and asserted pure by tests): the
+ * map keeps the plan builder pure (it is exported npm surface and asserted pure by tests): the
  * async file reads happen here, and the composer only does a lookup.
  */
 export async function resolveCommittedPersonas(

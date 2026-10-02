@@ -30,31 +30,31 @@ import { OPENAI_RESPONSES_URL } from "../openai-endpoint.js";
 // A public-safe re-derivation of the OpenAI Responses API computer-use provider,
 // behind the CuaProvider port from src/actors/computer-use/loop.ts. The pure wire mapping
 // (openAiActionToCua, parseOpenAiResponse and the request builders) is in openai-wire.ts.
-// This module is the live shim: createOpenAiResponsesProvider does a RAW POST to the
+// This module is the live shim: createOpenAiResponsesProvider does a raw POST to the
 // Responses endpoint (no SDK dependency) through an injectable FetchLike seam, so the retry,
 // ZDR fallback, and state threading are testable with a fake.
 //
 // Public-safety invariants (this is an OSS repo): the apiKey only ever appears in
 // the Authorization header, never in a returned object, thrown error, or comment.
 // Request bodies (which carry base64 screenshots and the persona instructions)
-// and screenshots are never logged or returned; nextTurn returns ONLY a CuaTurn,
+// and screenshots are never logged or returned; nextTurn returns only a CuaTurn,
 // and the engine handles redaction of CuaTurn fields downstream. Error messages
 // carry the HTTP status only, never the response body (it can echo the input).
 //
 // Wire capture (fixture provenance). The 0.6.1 parser incident — the parser read
 // `computer_call.action` (singular) while the live API returns `actions` (array),
-// and the hand-written fixtures encoded the SAME wrong shape, so tests passed in
+// and the hand-written fixtures encoded the same wrong shape, so tests passed in
 // lockstep with the bug while every live action was silently dropped — taught us
-// that deterministic fixtures must derive from CAPTURED live wire shapes, never
+// that deterministic fixtures must derive from captured live wire shapes, never
 // from memory. Setting HUMANISH_CUA_WIRE_CAPTURE_DIR makes the live shim persist
-// each successful Responses RESPONSE body into that directory as pretty-printed
+// each successful Responses response body into that directory as pretty-printed
 // JSON, one file per provider call in call order (wire-001.json, wire-002.json,
 // ...), for refreshing fixtures. The capture seam is:
-//  - OPT-IN: unset (or empty) env means zero behavior change — nothing is written;
-//  - RESPONSE-side only: request bodies carry base64 screenshots and the persona
-//    instructions and are NEVER captured; non-ok response bodies can echo the
+//  - Opt-in: unset (or empty) env means zero behavior change, and nothing is written;
+//  - Response-side only: request bodies carry base64 screenshots and the persona
+//    instructions and are never captured; non-ok response bodies can echo the
 //    request and are never captured either;
-//  - REDACTED: every string field (keys and values) passes through the shared
+//  - Redacted: every string field (keys and values) passes through the shared
 //    redactText (src/evidence/redaction.ts) before writing, so a secret-shaped echo in a
 //    response cannot persist to disk.
 // Point the env var at a gitignored path (e.g. under .humanish/): raw captures must
@@ -224,7 +224,7 @@ export interface OpenAiResponsesProviderOptions {
   model?: string;
   /**
    * How hard the model is asked to think per turn. Absent = the provider default below.
-   * The vocabulary is the documented union across models; SUPPORT IS MODEL-DEPENDENT, so an
+   * The vocabulary is the documented union across models; support is model-dependent, so an
    * unsupported level surfaces as the provider's own first-turn error rather than a silent
    * downgrade to something the trace would then misreport. See src/actors/reasoning-effort.ts.
    */
@@ -322,11 +322,11 @@ function isAbortError(error: unknown): boolean {
 interface WireCapture {
   /** Preflight the next capture file; undefined when capture is off. */
   prepareNext(): Promise<PreparedSelectedOutputDirectory | undefined>;
-  /** Persist one successful RESPONSE body, redacted and pretty-printed. */
+  /** Persist one successful response body, redacted and pretty-printed. */
   record(raw: unknown): Promise<void>;
 }
 
-// Opt-in response wire capture (see module header): an undefined directory means OFF and zero
+// Opt-in response wire capture (see module header): an undefined directory means off and zero
 // behavior change. The counter is per-provider, so file order is call order.
 function createWireCapture(captureDir: string | undefined): WireCapture {
   let captureCount = 0;
@@ -370,7 +370,7 @@ interface ResponsesTransport {
 
 // POST the JSON body and return the parsed JSON on success. Retries on
 // transient statuses (408/409/429/>=500). Maps a ZDR-policy 400 to a typed
-// ZdrError; any other non-ok status throws with the STATUS ONLY (never the
+// ZdrError; any other non-ok status throws with the status only (never the
 // body, which can echo the input/screenshot).
 async function postResponse(
   transport: ResponsesTransport,
@@ -422,7 +422,7 @@ async function postResponse(
     }
     if (res.ok) {
       const parsed: unknown = await res.json();
-      // Capture AFTER ok and BEFORE parse-to-CuaTurn: responses only, never the
+      // Capture after ok and before parse-to-CuaTurn: responses only, never the
       // request (screenshots/instructions) and never a non-ok body (input echo).
       await transport.capture.record(parsed);
       return parsed;
@@ -481,7 +481,7 @@ async function postResponse(
  * call outputs (with the latest screenshot) and thread state via
  * previous_response_id, transparently falling back to explicit-context mode if
  * the account rejects server-side retention. Transient HTTP failures are retried
- * with exponential backoff. Returns ONLY a CuaTurn from nextTurn; nothing
+ * with exponential backoff. Returns only a CuaTurn from nextTurn; nothing
  * sensitive (the key, the request body, the screenshot, the raw response body)
  * is ever returned or logged.
  */
@@ -602,7 +602,7 @@ export function createOpenAiResponsesProvider(
       ...(maxOutputTokens === undefined ? {} : { maxOutputTokens }),
     },
     capabilities: OPENAI_RESPONSES_CU_CAPABILITIES,
-    // This is a VISION provider: nextTurn sends the screenshot as the computer_call_output, so
+    // This is a vision provider: nextTurn sends the screenshot as the computer_call_output, so
     // it cannot reason over a screenshot-less observation. The loop reads this to fail closed
     // (harness_error) when a state-only executor is paired with it (provider-authoring contract).
     requiresFrame: true,

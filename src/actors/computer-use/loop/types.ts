@@ -191,7 +191,7 @@ export interface CuaProvider {
   readonly version?: string | undefined;
   /**
    * The request settings this provider will actually send, for the trace to record. `version` says
-   * WHICH model; this says how it was asked to run. Optional: a provider with no such settings
+   * which model; this says how it was asked to run. Optional: a provider with no such settings
    * records none, and absence stays absence rather than becoming a default nobody chose.
    */
   readonly modelSettings?: {
@@ -284,19 +284,19 @@ export interface CuaLoopOptions {
    */
   acknowledgeSafetyChecks?: (checks: CuaSafetyCheck[]) => CuaSafetyCheck[] | null;
   /**
-   * Redact (blur+downscale) persisted screenshots. Default FALSE — full-fidelity frames are
-   * retained, because the common case is a developer watching a sim of their OWN app locally
+   * Redact (blur+downscale) persisted screenshots. Default `false`: full-fidelity frames are
+   * retained, because the common case is a developer watching a sim of their own app locally
    * (gitignored .humanish), where blur destroys the core deliverable. Set true for unowned
-   * subjects or when the bundle is meant to be shared as-is. The frame sent to the PROVIDER is
+   * subjects or when the bundle is meant to be shared as-is. The frame sent to the provider is
    * always full-resolution regardless (the model must see the screen to act); this flag only
-   * governs what is PERSISTED. Publish-safety belongs at the publish boundary (commit scan / redactScreenshots), not capture.
+   * governs what is persisted. Publish-safety belongs at the publish boundary (commit scan / redactScreenshots), not capture.
    */
   redactScreenshots?: boolean;
   /**
-   * Extra literal scrub for KNOWN provisioned values (which have no detectable "shape", so
-   * pattern redaction cannot catch them), composed BEFORE redactText on every model-authored
+   * Extra literal scrub for known provisioned values (which have no detectable "shape", so
+   * pattern redaction cannot catch them), composed before redactText on every model-authored
    * text item (reasoning, message, completion summary) and the loop error. The lab passes the
-   * env-value scrubber here so a value the MODEL narrates can never land raw in the trace.
+   * env-value scrubber here so a value the model narrates can never land raw in the trace.
    * Default: identity (the loop is shape-only on its own).
    */
   scrubText?: (text: string) => string;
@@ -322,7 +322,7 @@ export interface CuaLoopOptions {
    * same observations stopWhen reads, on the same cadence. The tracker never influences the loop's
    * control flow — a completed task list does not stop a session (that is stopWhen's job); it only
    * records the funnel that lands on the trace. The participant-facing halves of these tasks are
-   * already IN `instructions` (composed upstream); the loop reads only the `success` criteria,
+   * already in `instructions` (composed upstream); the loop reads only the `success` criteria,
    * which never reach the prompt.
    */
   tasks?: readonly LabTask[];
@@ -334,7 +334,7 @@ export interface CuaLoopOptions {
    */
   maxUsd?: number;
   /**
-   * Injected PURE per-turn cost estimator (keeps the loop free of the operator rate table and
+   * Injected pure per-turn cost estimator (keeps the loop free of the operator rate table and
    * makes the cap deterministic in tests). Given running (input, output) token totals, returns the
    * estimated USD, or null when unpriceable. Only consulted when `maxUsd` is set. A null estimate
    * mid-run cannot trip the cap — preflight already guaranteed a rate exists, so a null here is a
@@ -343,7 +343,7 @@ export interface CuaLoopOptions {
   estimateTurnCostUsd?: (usage: ActorTokenUsage) => number | null;
   /**
    * RUN-LEVEL spend guard (#299): called with this participant's running usage each turn, at the same
-   * point the per-participant cap is checked. Returns a human-readable reason when the STUDY's shared
+   * point the per-participant cap is checked. Returns a human-readable reason when the study's shared
    * budget is exhausted, else null. On a non-null return the loop stops with `budget_reached`
    * regardless of material progress — a study-level stop is a recruiting decision hitting its
    * limit, not this participant's runaway, so it never reads as `gave_up`.

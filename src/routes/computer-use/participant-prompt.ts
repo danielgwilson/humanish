@@ -19,7 +19,7 @@ export const DEFAULT_MISSION =
   "You are testing a web application. The browser is already open at the subject URL. Explore it, accomplish what the scenario asks, and stop when done.";
 
 /**
- * The participant's outcome as ONE fixed first line of its last message (#570, second half). The
+ * The participant's outcome as one fixed first line of its last message (#570, second half). The
  * free-text computer-use provider has no schema to fill; a fixed line is the next best thing, and
  * the loop reads it into the trace's declaredOutcome. Prompt-only control is weak in general, so
  * adherence is measured (declaredOutcome present or absent on the trace) and the regex over the
@@ -44,17 +44,17 @@ export function composeParticipantInstructions(args: {
    *  into the prompt; the `success` criteria never appear here. */
   tasks?: readonly LabTask[];
   device: { name: string; preset: DevicePreset };
-  /** The COMPILED persona for `args.persona`, when its committed file resolved (#381). Supplying it
+  /** The compiled persona for `args.persona`, when its committed file resolved (#381). Supplying it
    *  makes the persona shape behavior — its traits become directives in the prompt and land in
    *  traitsApplied — instead of appearing as a bare `Persona: <id>.` label. Absent (unsafe id,
-   *  no committed file, unparseable YAML) keeps the honest fallback: the bare line and an EMPTY
+   *  no committed file, unparseable YAML) keeps the honest fallback: the bare line and an empty
    *  traitsApplied, never fabricated traits. Resolved by the caller so this stays pure. */
   resolvedPersona?: ResolvedPersona;
   /**
    * desktop-cli (#495): the surface under study is a terminal window, not a page. Said plainly
    * because a participant whose every prior world was a browser will look for one — and because a
    * capability nobody declares is one the recording cannot later be read against. It states that a
-   * terminal is open and NOT what to type in it: naming commands would answer the question the
+   * terminal is open and does not say what to type in it: naming commands would answer the question the
    * study is asking.
    */
   surface?: "desktop-cli";
@@ -63,12 +63,12 @@ export function composeParticipantInstructions(args: {
   const deviceLine = preset.isMobile
     ? `You are a mobile user on a ${name} device (${preset.width}x${preset.height} @${preset.deviceScaleFactor}x). Expect a mobile/touch layout.`
     : `You are a desktop user (${name}, ${preset.width}x${preset.height}).`;
-  // The protocol as the PARTICIPANT reads it: numbered goals, nothing else. The success criteria
+  // The protocol as the participant reads it: numbered goals, nothing else. The success criteria
   // are the researcher's instrument and must never reach this prompt — a persona told how it will
   // be measured optimizes for the measurement instead of using the product (src/lab/tasks.ts).
   const taskLines = renderTaskPrompt(args.tasks ?? []);
   // A resolved persona contributes its compiled directives (friction tolerance, skill bias,
-  // accessibility behavior, constraints) through the SAME persona.ts compiler the terminal route
+  // accessibility behavior, constraints) through the same persona.ts compiler the terminal route
   // uses, so one persona file means one behavior across every route.
   const personaLine = args.resolvedPersona
     ? renderPersonaPromptSection(args.resolvedPersona)

@@ -24,11 +24,11 @@ export function isZeroEventTerminalTrace(value: unknown): boolean {
 
 /**
  * Verifier for the terminal-product real-agent route (the in-sandbox command-scoped key route). A
- * LIVE terminal stream must carry the durable proof the safety contract requires, and must FAIL
- * CLOSED when any of it is missing — a blocked/failed agent run stays structurally verifiable (the
- * failure is the evidence) ONLY when the substrate/cleanup/interventions ledgers are present; it
+ * live terminal stream must carry the durable proof the safety contract requires, and must fail
+ * closed when any of it is missing. A blocked/failed agent run stays structurally verifiable (the
+ * failure is the evidence) only when the substrate/cleanup/interventions ledgers are present; it
  * must never become a hollow pass. Credential-shape leakage across every artifact file is already
- * caught by scanRunPublicSafetyArtifacts; this check enforces the STRUCTURAL evidence + the
+ * caught by scanRunPublicSafetyArtifacts; this check enforces the structural evidence + the
  * proven-teardown invariant. Dry-run/contract bundles are exempt (mode !== live).
  */
 export async function validateTerminalProductEvidence(
@@ -39,7 +39,7 @@ export async function validateTerminalProductEvidence(
     return [];
   }
   const findings: string[] = [];
-  // Detect the terminal-PRODUCT route by its unique actor-trace protocol ("terminal-exec"), NOT by
+  // Detect the terminal-product route by its unique actor-trace protocol ("terminal-exec") instead of
   // the broad stream.kind "terminal" — the existing local codex-exec/TUI routes also use terminal
   // streams (with a different protocol) and must not be held to this route's ledger contract.
   const terminalStreams = bundle.streams.filter(
@@ -59,7 +59,7 @@ export async function validateTerminalProductEvidence(
     return findings;
   }
 
-  // Substrate lifecycle ledger: must record at least sandbox creation AND teardown.
+  // Substrate lifecycle ledger: must record at least sandbox creation and teardown.
   const lifecycle = Array.isArray(ledgers.lifecycle) ? ledgers.lifecycle : [];
   if (lifecycle.length === 0) {
     findings.push(
@@ -73,7 +73,7 @@ export async function validateTerminalProductEvidence(
     findings.push("command log ledger is missing or not an array");
   }
 
-  // Interventions ledger: must be PRESENT (an array). Empty is valid and expected (stdin disabled,
+  // Interventions ledger: must be present (an array). Empty is valid and expected (stdin disabled,
   // no assisted-input path) — but absent fails, so an assisted run can never masquerade as one
   // without an interventions record.
   if (!Array.isArray(ledgers.interventions)) {
@@ -82,7 +82,7 @@ export async function validateTerminalProductEvidence(
     );
   }
 
-  // Cleanup proof: the sandbox must be killed and proven reclaimed BY EXACT ID (remaining===0).
+  // Cleanup proof: the sandbox must be killed and proven reclaimed by exact ID (remaining===0).
   // humanish never calls Sandbox.list to derive this field; a live run that cannot prove teardown
   // fails closed (remaining===1 still-present-unconfirmed, remaining===-1 kill(id) itself
   // failed -- the server-side kill-on-timeout is the backstop for both).
@@ -95,7 +95,7 @@ export async function validateTerminalProductEvidence(
     );
   }
 
-  // The redacted exec-stream + normalized transcript artifacts must be WRITTEN (the producer
+  // The redacted exec-stream + normalized transcript artifacts must be written (the producer
   // always writes them on the live path, even empty for a no-output blocked run — so absence is a
   // real evidence gap, while emptiness is legitimate and keeps blocked runs verifiable).
   if (!(await readSafeRunArtifactBytes(runPaths, TERMINAL_EVENTS_ARTIFACT))) {
@@ -128,12 +128,12 @@ export async function validateTerminalProductEvidence(
 }
 
 /**
- * Verifier for the terminal cost ledger and no-spend proof. A LIVE terminal-product bundle MUST
+ * Verifier for the terminal cost ledger and no-spend proof. A live terminal-product bundle must
  * carry both (fail closed if absent on a live run). The load-bearing honesty check: the no-spend
- * proof may NOT claim zero on a line the ledger marks `null`
- * (UNMEASURED) — a proof can never claim more than the ledger measured. And the observed KNOWN
+ * proof may not claim zero on a line the ledger marks `null`
+ * (unmeasured): a proof can never claim more than the ledger measured. And the observed known
  * spend may not exceed the declared cap (the proof's own maxUsd) — fail-closed, not advisory.
- * The null discipline is enforced here too: a present line's `usd` must be a number OR literally
+ * The null discipline is enforced here too: a present line's `usd` must be a number or literally
  * null (never undefined/omitted), so "not measured" can never be silently dropped.
  */
 function validateTerminalCostEvidence(ledgers: Record<string, unknown>): string[] {
@@ -152,7 +152,7 @@ function validateTerminalCostEvidence(ledgers: Record<string, unknown>): string[
     return findings;
   }
 
-  // The null discipline: every applicable category line must be PRESENT with `usd` as a number or
+  // The null discipline: every applicable category line must be present with `usd` as a number or
   // literally null. `undefined`/omitted is forbidden — that would silently lose the "not measured"
   // distinction. Track which categories the ledger marks null so the no-spend proof cannot lie about them.
   const nullCategories = new Set<string>();
@@ -184,7 +184,7 @@ function validateTerminalCostEvidence(ledgers: Record<string, unknown>): string[
     return findings;
   }
 
-  // HONESTY CHECK: the no-spend proof must NOT claim zero on a line the ledger marks `null`. A
+  // Honesty check: the no-spend proof must not claim zero on a line the ledger marks `null`. A
   // knownZeroLines entry that is actually unmeasured in the ledger means the proof claimed more than
   // it measured — fail closed.
   const knownZeroLines = Array.isArray(proof.knownZeroLines) ? proof.knownZeroLines : [];
@@ -196,7 +196,7 @@ function validateTerminalCostEvidence(ledgers: Record<string, unknown>): string[
     }
   }
 
-  // FAIL-CLOSED CAP: observed KNOWN spend may not exceed the declared cap (the proof's maxUsd). The
+  // Fail-closed cap: observed known spend may not exceed the declared cap (the proof's maxUsd). The
   // ledger's knownTotalUsd is the measured spend; null lines do not count toward it (and the proof
   // reports them as unmeasured). A satisfied proof whose known total exceeds its cap is contradictory.
   const knownTotalUsd = typeof cost.knownTotalUsd === "number" ? cost.knownTotalUsd : Number.NaN;
@@ -285,7 +285,7 @@ export async function validateCodexAppServerEvidence(
   return findings;
 }
 
-// Trace item kinds that show the actor DID something (drove UI, ran a command, called a tool,
+// Trace item kinds that show the actor did something (drove UI, ran a command, called a tool,
 // changed a file). reasoning/screenshot/plan/notice items are observation, not engagement.
 const ACTION_BEARING_ACTOR_ITEM_KINDS = new Set([
   "ui_action",
@@ -296,12 +296,12 @@ const ACTION_BEARING_ACTOR_ITEM_KINDS = new Set([
 
 /**
  * Independent mirror of the producer-side no-engagement guard
- * (routes/computer-use/participant-execution.ts): a LIVE actor trace claiming goal_satisfied while
- * carrying zero action-bearing items AND zero message items is a hollow run — the actor neither did
- * nor said anything — and must not verify as evidence (invariant 4: evidence verifies fail-closed).
+ * (routes/computer-use/participant-execution.ts): a live actor trace claiming goal_satisfied while
+ * carrying zero action-bearing items and zero message items is a hollow run (the actor neither did
+ * nor said anything) and must not verify as evidence (invariant 4: evidence verifies fail-closed).
  * Live-vs-dry-run is judged exactly as the producer judges it, from bundle.mode alone;
  * dry-run/contract bundles legitimately carry no actions and stay exempt. Engagement is accepted
- * from EITHER surface — itemized trace items or the producer's counts — because providers differ in
+ * from either surface (itemized trace items or the producer's counts), because providers differ in
  * what they itemize; a hollow run reports zero on both. The trace is read defensively: isRunStream
  * does not validate the actor seam, and verify must not throw on a malformed one.
  */

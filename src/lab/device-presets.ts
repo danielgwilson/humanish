@@ -1,6 +1,6 @@
 import type { LabConfig } from "./types.js";
 
-// Device/screen presets — a per-persona dimension, with LITERAL values copied from mature
+// Device/screen presets: a per-persona dimension, with literal values copied from mature
 // in-house ui-sim geometry tables rather than guessed. Where two independent reference sims
 // agree (mobile/small-mobile/tablet) the value is copied verbatim; where they diverge (desktop
 // baseline) both are kept as distinct named presets (laptop vs external monitor).
@@ -12,7 +12,7 @@ import type { LabConfig } from "./types.js";
 // those overrides through a held CDP session, including later tabs, and record page read-back.
 // Neither a preset nor browser emulation establishes physical-device or touch fidelity.
 //
-// ONE MORE ROUTE CONSTRAINT: Chrome won't render a window narrower than ~500 CSS px, so the RENDERED
+// One more route constraint: Chrome won't render a window narrower than ~500 CSS px, so the rendered
 // screen width is floored to MIN_DESKTOP_RENDER_WIDTH in resolveParticipantDevice — a sub-500 preset (mobile
 // 414, small-mobile 360, narrow-mobile 320) is rendered on a 500-wide screen the window fits exactly
 // (otherwise the 500-wide window overflowed the narrow screen and clipped the page). These preset
@@ -75,18 +75,18 @@ export function resolveDevicePreset(name: DevicePresetName | undefined): DeviceP
 }
 
 /**
- * The narrowest browser WINDOW Chrome/Chromium will render on the E2B desktop. Chrome refuses to
+ * The narrowest browser window Chrome/Chromium will render on the E2B desktop. Chrome refuses to
  * make its window narrower than this (~500 CSS px observed: a 414-wide X screen produced a 500-wide
- * window that OVERFLOWED it, clipping the right edge of the page off-screen). So the physically
- * RENDERED screen width is floored here: a sub-500 mobile preset (mobile 414, small-mobile 360,
- * narrow-mobile 320) gets a 500-wide screen the window fits exactly — no clip. The device PRESET keeps
+ * window that overflowed it, clipping the right edge of the page off-screen). So the physically
+ * rendered screen width is floored here: a sub-500 mobile preset (mobile 414, small-mobile 360,
+ * narrow-mobile 320) gets a 500-wide screen the window fits exactly, with no clip. The device preset keeps
  * its true identity (isMobile, nominal width) for the persona prompt + metadata; only the rendered
  * screen is floored. True sub-500 CSS-viewport rendering (page laid out at 414 regardless of window
  * width, via CDP device-metric emulation) is the separate #221 upgrade.
  */
 export const MIN_DESKTOP_RENDER_WIDTH = 500;
 
-/** Floor a screen resolution's WIDTH to what Chrome can actually render (see MIN_DESKTOP_RENDER_WIDTH). */
+/** Floor a screen resolution's width to what Chrome can actually render (see MIN_DESKTOP_RENDER_WIDTH). */
 export function floorRenderResolution(resolution: readonly [number, number]): [number, number] {
   return [Math.max(resolution[0], MIN_DESKTOP_RENDER_WIDTH), resolution[1]];
 }

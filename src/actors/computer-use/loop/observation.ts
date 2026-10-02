@@ -22,7 +22,7 @@ interface DwellEnd {
   readonly heldMs: number;
 }
 
-// One projection feeds BOTH the stop guard and the task tracker, so a criterion that would stop
+// One projection feeds both the stop guard and the task tracker, so a criterion that would stop
 // the run and a criterion that completes a task can never see different evidence for one turn.
 function stopObservationOf(observation: CuaObservation): StopConditionObservation {
   return {
@@ -225,13 +225,13 @@ export class DesktopObserver {
     session.trace.bump("screenshots");
   }
 
-  // Evaluated BEFORE the stopWhen check each turn so a final task whose criterion coincides with
+  // Evaluated before the stopWhen check each turn so a final task whose criterion coincides with
   // the stop condition still lands in the funnel of the very turn that ends the session.
   private observeTasks(observation: CuaObservation, turnNumber: number): void {
     const { taskTracker } = this.session;
     if (taskTracker === undefined) return;
     for (const completion of taskTracker.observe(stopObservationOf(observation), turnNumber)) {
-      // The id is researcher-authored config and the kinds are rule-type names; the matched VALUES
+      // The id is researcher-authored config and the kinds are rule-type names; the matched values
       // (a URL, page text) never appear here — the same discipline as the stopWhen notice.
       this.session.trace.record("notice", () =>
         notice(
@@ -297,7 +297,7 @@ export class DesktopObserver {
     const heldMs = session.now() - dwellStartedAtMs;
     session.trace.record("notice", () =>
       notice(
-        // A window that ENDS the session is structured, harness-owned completion evidence, the
+        // A window that ends the session is structured, harness-owned completion evidence, the
         // same class as a matched stopWhen, and the verdict resolver reads it that way.
         dwell.then === "stop" ? "matched" : "ok",
         "dwell window complete",
