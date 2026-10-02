@@ -98,7 +98,7 @@ mismatched records omit the observation. A stale heartbeat alone does not prove
 interruption, and stored PIDs are neither probed nor returned. Static rendering
 and export do not create this served-only observation.
 
-Watch is deliberately distinct from `humanish serve`. Watch serves ONE
+Watch is deliberately distinct from `humanish serve`. Watch serves one
 attached run, and the process that created it may inject runtime stream URLs
 (live hosted-desktop viewers) into the observer data it serves. Serve is the
 library surface (every run under `.humanish/runs/`) and never serves runtime
@@ -118,21 +118,21 @@ Misdirected Request` otherwise) and the shared `buildServeSecurityHeaders()` on
 every response (both live in `src/observer/http.ts`, shared without a module cycle).
 The Host allowlist applies in exposed mode; frame-denial headers apply in both modes.
 
-Exposed mode also SCOPES the surface to the attached live run (`result.run`): the
+Exposed mode also scopes the surface to the attached live run (`result.run`): the
 `/_humanish/history.json` index is filtered to that one run, and `/_humanish/runs/<id>/…`
 404s byte-identically to a nonexistent run for any other id. A remote viewer who
 clears the edge auth can therefore see only the run being watched. They can never
 enumerate or fetch a prior run's raw, unverified evidence. Loopback keeps the full cross-run
 library (history + any run by id) exactly as before.
 
-`watch --expose` is the ONE surface that DELIBERATELY streams the live E2B
+`watch --expose` is the one surface that deliberately streams the live E2B
 desktop to a remote viewer: the attached watch process genuinely holds the
 runtime stream URLs (in the in-memory `WeakMap`, never persisted), and watching
 from a phone needs them. It is safe only because the
 ngrok edge (Google OAuth + allow rules) or an operator `--public-url` edge
 authenticates the viewer first, so `watch --expose` always requires edge
 auth (a live run is never `share_ready`, so `--safe` alone cannot gate it). The
-attached server comes up DURING the run and survives a `timed_out`/`failed` run
+attached server comes up during the run and survives a `timed_out`/`failed` run
 (serving is not gated on pass/fail), so a failed run's evidence stays inspectable
 to Ctrl-C. `serve` still never injects stream URLs. See
 [Serve: the run library surface](serve.md).
@@ -194,7 +194,7 @@ the frozen Observer data schema or start provider requests. Analysis polling has
 an independent lifecycle, so a delayed companion does not stall recording updates.
 Invalid or stale interpretation never overwrites original participant outcomes.
 Recording navigation retains its originating view, and nonvisual citations open
-the source event rather than inventing a playback frame.
+the source event with no invented playback frame.
 
 The participant grid uses equal-height previews whose widths follow each screen's
 aspect ratio. A 44px identity/source/outcome caption sits below the captured pixels;
