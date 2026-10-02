@@ -7,7 +7,7 @@
     "runLab": {
       "runs": true,
       "result": {
-        "backend": "concurrent-shared-world",
+        "route": "shared-world",
         "ok": true
       }
     },
@@ -30,7 +30,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "concurrent-shared-world",
+        "route": "shared-world",
         "schema": "humanish.concurrent-shared-world-lab-result.v1",
         "ok": false,
         "cwd": "[cwd]",
@@ -74,7 +74,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "scripted",
+        "route": "scripted",
         "schema": "humanish.scripted-lab-result.v1",
         "ok": false,
         "cwd": "[cwd]",
@@ -115,7 +115,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -156,7 +156,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -197,7 +197,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "scripted",
+        "route": "scripted",
         "schema": "humanish.scripted-lab-result.v1",
         "ok": false,
         "cwd": "[cwd]",
@@ -233,7 +233,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -268,7 +268,7 @@
     "runLab": {
       "runs": true,
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "ok": true,
         "plan": {
           "laneCount": 1,
@@ -293,7 +293,7 @@
     "runLab": {
       "runs": true,
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "ok": true,
         "plan": {
           "laneCount": 1,
@@ -318,7 +318,7 @@
     "runLab": {
       "runs": true,
       "result": {
-        "backend": "synthetic",
+        "route": "preview",
         "ok": true
       }
     },
@@ -340,7 +340,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "synthetic",
+        "route": "preview",
         "schema": "humanish.run-result.v1",
         "ok": false,
         "cwd": "[cwd]",
@@ -368,7 +368,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "synthetic",
+        "route": "preview",
         "schema": "humanish.run-result.v1",
         "ok": false,
         "cwd": "[cwd]",
@@ -397,7 +397,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -438,7 +438,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -479,7 +479,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -520,7 +520,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -561,7 +561,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -596,7 +596,7 @@
     "runLab": {
       "runs": true,
       "result": {
-        "backend": "scripted",
+        "route": "scripted",
         "ok": true
       }
     },
@@ -619,7 +619,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "scripted",
+        "route": "scripted",
         "schema": "humanish.scripted-lab-result.v1",
         "ok": false,
         "cwd": "[cwd]",
@@ -654,7 +654,7 @@
     "runLab": {
       "runs": true,
       "result": {
-        "backend": "scripted",
+        "route": "scripted",
         "ok": true
       }
     },
@@ -671,7 +671,7 @@
     "runLab": {
       "runs": true,
       "result": {
-        "backend": "scripted",
+        "route": "scripted",
         "ok": true
       }
     },
@@ -688,7 +688,7 @@
     "runLab": {
       "runs": true,
       "result": {
-        "backend": "scripted",
+        "route": "scripted",
         "ok": true
       }
     },
@@ -711,7 +711,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "scripted",
+        "route": "scripted",
         "schema": "humanish.scripted-lab-result.v1",
         "ok": false,
         "cwd": "[cwd]",
@@ -746,7 +746,7 @@
     "runLab": {
       "runs": true,
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "ok": true,
         "plan": {
           "laneCount": 1,
@@ -777,7 +777,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -818,7 +818,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -859,7 +859,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -900,7 +900,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -941,7 +941,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -982,7 +982,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "scripted",
+        "route": "scripted",
         "schema": "humanish.scripted-lab-result.v1",
         "ok": false,
         "cwd": "[cwd]",
@@ -1017,7 +1017,7 @@
     "runLab": {
       "runs": true,
       "result": {
-        "backend": "scripted",
+        "route": "scripted",
         "ok": true
       }
     },
@@ -1034,7 +1034,7 @@
     "runLab": {
       "runs": true,
       "result": {
-        "backend": "scripted",
+        "route": "scripted",
         "ok": true
       }
     },
@@ -1051,7 +1051,7 @@
     "runLab": {
       "runs": true,
       "result": {
-        "backend": "scripted",
+        "route": "scripted",
         "ok": true
       }
     },
@@ -1074,7 +1074,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "scripted",
+        "route": "scripted",
         "schema": "humanish.scripted-lab-result.v1",
         "ok": false,
         "cwd": "[cwd]",
@@ -1109,7 +1109,7 @@
     "runLab": {
       "runs": true,
       "result": {
-        "backend": "scripted",
+        "route": "scripted",
         "ok": true
       }
     },
@@ -1126,7 +1126,7 @@
     "runLab": {
       "runs": true,
       "result": {
-        "backend": "scripted",
+        "route": "scripted",
         "ok": true
       }
     },
@@ -1143,7 +1143,7 @@
     "runLab": {
       "runs": true,
       "result": {
-        "backend": "scripted",
+        "route": "scripted",
         "ok": true
       }
     },
@@ -1160,7 +1160,7 @@
     "runLab": {
       "runs": true,
       "result": {
-        "backend": "scripted",
+        "route": "scripted",
         "ok": true
       }
     },
@@ -1177,7 +1177,7 @@
     "runLab": {
       "runs": true,
       "result": {
-        "backend": "scripted",
+        "route": "scripted",
         "ok": true
       }
     },
@@ -1194,7 +1194,7 @@
     "runLab": {
       "runs": true,
       "result": {
-        "backend": "scripted",
+        "route": "scripted",
         "ok": true
       }
     },
@@ -1211,7 +1211,7 @@
     "runLab": {
       "runs": true,
       "result": {
-        "backend": "scripted",
+        "route": "scripted",
         "ok": true
       }
     },
@@ -1234,7 +1234,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -1275,7 +1275,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -1310,7 +1310,7 @@
     "runLab": {
       "runs": true,
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "ok": true,
         "plan": {
           "laneCount": 1,
@@ -1341,7 +1341,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -1382,7 +1382,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -1423,7 +1423,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -1464,7 +1464,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -1505,7 +1505,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -1546,7 +1546,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -1587,7 +1587,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -1628,7 +1628,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -1669,7 +1669,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -1710,7 +1710,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -1751,7 +1751,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -1792,7 +1792,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -1833,7 +1833,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -1874,7 +1874,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -1915,7 +1915,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -1956,7 +1956,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "concurrent-shared-world",
+        "route": "shared-world",
         "schema": "humanish.concurrent-shared-world-lab-result.v1",
         "ok": false,
         "cwd": "[cwd]",
@@ -2000,7 +2000,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "concurrent-shared-world",
+        "route": "shared-world",
         "schema": "humanish.concurrent-shared-world-lab-result.v1",
         "ok": false,
         "cwd": "[cwd]",
@@ -2044,7 +2044,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "concurrent-shared-world",
+        "route": "shared-world",
         "schema": "humanish.concurrent-shared-world-lab-result.v1",
         "ok": false,
         "cwd": "[cwd]",
@@ -2088,7 +2088,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "concurrent-shared-world",
+        "route": "shared-world",
         "schema": "humanish.concurrent-shared-world-lab-result.v1",
         "ok": false,
         "cwd": "[cwd]",
@@ -2132,7 +2132,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "concurrent-shared-world",
+        "route": "shared-world",
         "schema": "humanish.concurrent-shared-world-lab-result.v1",
         "ok": false,
         "cwd": "[cwd]",
@@ -2176,7 +2176,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "concurrent-shared-world",
+        "route": "shared-world",
         "schema": "humanish.concurrent-shared-world-lab-result.v1",
         "ok": false,
         "cwd": "[cwd]",
@@ -2220,7 +2220,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "concurrent-shared-world",
+        "route": "shared-world",
         "schema": "humanish.concurrent-shared-world-lab-result.v1",
         "ok": false,
         "cwd": "[cwd]",
@@ -2264,7 +2264,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "concurrent-shared-world",
+        "route": "shared-world",
         "schema": "humanish.concurrent-shared-world-lab-result.v1",
         "ok": false,
         "cwd": "[cwd]",
@@ -2308,7 +2308,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -2349,7 +2349,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "concurrent-shared-world",
+        "route": "shared-world",
         "schema": "humanish.concurrent-shared-world-lab-result.v1",
         "ok": false,
         "cwd": "[cwd]",
@@ -2393,7 +2393,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "concurrent-shared-world",
+        "route": "shared-world",
         "schema": "humanish.concurrent-shared-world-lab-result.v1",
         "ok": false,
         "cwd": "[cwd]",
@@ -2437,7 +2437,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "concurrent-shared-world",
+        "route": "shared-world",
         "schema": "humanish.concurrent-shared-world-lab-result.v1",
         "ok": false,
         "cwd": "[cwd]",
@@ -2481,7 +2481,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "concurrent-shared-world",
+        "route": "shared-world",
         "schema": "humanish.concurrent-shared-world-lab-result.v1",
         "ok": false,
         "cwd": "[cwd]",
@@ -2525,7 +2525,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "concurrent-shared-world",
+        "route": "shared-world",
         "schema": "humanish.concurrent-shared-world-lab-result.v1",
         "ok": false,
         "cwd": "[cwd]",
@@ -2569,7 +2569,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "concurrent-shared-world",
+        "route": "shared-world",
         "schema": "humanish.concurrent-shared-world-lab-result.v1",
         "ok": false,
         "cwd": "[cwd]",
@@ -2613,7 +2613,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -2648,7 +2648,7 @@
     "runLab": {
       "runs": true,
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "ok": true,
         "plan": {
           "laneCount": 1,
@@ -2679,7 +2679,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -2714,7 +2714,7 @@
     "runLab": {
       "runs": true,
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "ok": true,
         "plan": {
           "laneCount": 1,
@@ -2739,7 +2739,7 @@
     "runLab": {
       "runs": true,
       "result": {
-        "backend": "terminal",
+        "route": "terminal",
         "ok": true
       }
     },
@@ -2762,7 +2762,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "terminal",
+        "route": "terminal",
         "schema": "humanish.terminal-lab-result.v1",
         "ok": false,
         "cwd": "[cwd]",
@@ -2796,7 +2796,7 @@
     "runLab": {
       "runs": true,
       "result": {
-        "backend": "terminal",
+        "route": "terminal",
         "ok": true
       }
     },
@@ -2819,7 +2819,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "scripted",
+        "route": "scripted",
         "schema": "humanish.scripted-lab-result.v1",
         "ok": false,
         "cwd": "[cwd]",
@@ -2855,7 +2855,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -2891,7 +2891,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "synthetic",
+        "route": "preview",
         "schema": "humanish.run-result.v1",
         "ok": false,
         "cwd": "[cwd]",
@@ -2925,7 +2925,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -2965,7 +2965,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -3027,7 +3027,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -3067,7 +3067,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -3107,7 +3107,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -3141,7 +3141,7 @@
     "runLab": {
       "runs": true,
       "result": {
-        "backend": "scripted",
+        "route": "scripted",
         "ok": true
       }
     },
@@ -3163,7 +3163,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -3203,7 +3203,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "terminal",
+        "route": "terminal",
         "schema": "humanish.terminal-lab-result.v1",
         "ok": false,
         "cwd": "[cwd]",
@@ -3242,7 +3242,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "terminal",
+        "route": "terminal",
         "schema": "humanish.terminal-lab-result.v1",
         "ok": false,
         "cwd": "[cwd]",
@@ -3282,7 +3282,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "terminal",
+        "route": "terminal",
         "schema": "humanish.terminal-lab-result.v1",
         "ok": false,
         "cwd": "[cwd]",
@@ -3322,7 +3322,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "terminal",
+        "route": "terminal",
         "schema": "humanish.terminal-lab-result.v1",
         "ok": false,
         "cwd": "[cwd]",
@@ -3361,7 +3361,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "concurrent-shared-world",
+        "route": "shared-world",
         "schema": "humanish.concurrent-shared-world-lab-result.v1",
         "ok": false,
         "cwd": "[cwd]",
@@ -3404,7 +3404,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -3444,7 +3444,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -3484,7 +3484,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -3524,7 +3524,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -3564,7 +3564,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -3604,7 +3604,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -3644,7 +3644,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "scripted",
+        "route": "scripted",
         "schema": "humanish.scripted-lab-result.v1",
         "ok": false,
         "cwd": "[cwd]",
@@ -3684,7 +3684,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "scripted",
+        "route": "scripted",
         "schema": "humanish.scripted-lab-result.v1",
         "ok": false,
         "cwd": "[cwd]",
@@ -3724,7 +3724,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "terminal",
+        "route": "terminal",
         "schema": "humanish.terminal-lab-result.v1",
         "ok": false,
         "cwd": "[cwd]",
@@ -3763,7 +3763,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "terminal",
+        "route": "terminal",
         "schema": "humanish.terminal-lab-result.v1",
         "ok": false,
         "cwd": "[cwd]",
@@ -3802,7 +3802,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "terminal",
+        "route": "terminal",
         "schema": "humanish.terminal-lab-result.v1",
         "ok": false,
         "cwd": "[cwd]",
@@ -3841,7 +3841,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "concurrent-shared-world",
+        "route": "shared-world",
         "schema": "humanish.concurrent-shared-world-lab-result.v1",
         "ok": false,
         "cwd": "[cwd]",
@@ -4024,7 +4024,7 @@
     "runLab": {
       "runs": true,
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "ok": true,
         "plan": {
           "laneCount": 3,
@@ -4050,7 +4050,7 @@
     "runLab": {
       "runs": true,
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "ok": true,
         "plan": {
           "laneCount": 3,
@@ -4083,7 +4083,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "cua",
+        "route": "computer-use",
         "schema": "humanish.cua-lab-result.v2",
         "ok": false,
         "cwd": "[cwd]",
@@ -4124,7 +4124,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "scripted",
+        "route": "scripted",
         "schema": "humanish.scripted-lab-result.v1",
         "ok": false,
         "cwd": "[cwd]",
@@ -4160,7 +4160,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "terminal",
+        "route": "terminal",
         "schema": "humanish.terminal-lab-result.v1",
         "ok": false,
         "cwd": "[cwd]",
@@ -4200,7 +4200,7 @@
         "subprocess": 0
       },
       "result": {
-        "backend": "concurrent-shared-world",
+        "route": "shared-world",
         "schema": "humanish.concurrent-shared-world-lab-result.v1",
         "ok": false,
         "cwd": "[cwd]",

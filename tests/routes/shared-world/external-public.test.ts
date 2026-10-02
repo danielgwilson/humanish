@@ -1279,8 +1279,8 @@ describe("lobby-trivia-3player committed lab", () => {
     expect(selectLabBackend(parsed.config)).toBe("concurrent-shared-world");
 
     const outcome = await runLab(parsed.config, { cwd, dryRun: true });
-    expect(outcome.backend).toBe("concurrent-shared-world");
-    if (outcome.backend !== "concurrent-shared-world") return;
+    expect(outcome.route).toBe("shared-world");
+    if (outcome.route !== "shared-world") return;
     expect(outcome.result.ok).toBe(true);
     expect(outcome.result.host).toBeUndefined();
     expect(outcome.result.subjectSandbox).toBeUndefined();

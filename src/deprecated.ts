@@ -8,7 +8,7 @@ import {
   type CuaActorSessionOptions,
 } from "./actors/computer-use/actor.js";
 import type { CuaLoopResult } from "./actors/computer-use/loop.js";
-import { resolveLabDryRun as labDryRun, type LabBackend as Backend } from "./lab/plan.js";
+import { resolveLabDryRun as labDryRun } from "./lab/plan.js";
 import {
   actorResolvesToTerminal as resolvesToTerminal,
   cuaLaneCount as laneCount,
@@ -132,9 +132,6 @@ export function resolveLabDryRun(
 
 /** @deprecated `parseLabConfig` refuses a roster larger than this. This goes in the next minor. */
 export const MAX_CUA_LANES = laneCap;
-
-/** @deprecated Use `LabRoute`. `LabOutcome.backend` and this type go in the next minor. */
-export type LabBackend = Backend;
 
 /** @deprecated Use `LabResult<"computer-use">`. */
 export type CuaActorLabResult = CuaResult;

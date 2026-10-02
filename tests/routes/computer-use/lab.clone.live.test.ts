@@ -67,8 +67,8 @@ describe.skipIf(!LIVE)("cua-actor-lab clone subject (LIVE, spend-gated)", () => 
       if (!parsed.ok) throw new Error(parsed.error.message);
 
       const outcome = await runLab(parsed.config, { cwd });
-      expect(outcome.backend).toBe("cua");
-      if (outcome.backend !== "cua") return;
+      expect(outcome.route).toBe("computer-use");
+      if (outcome.route !== "computer-use") return;
       const result = outcome.result;
 
       // The bundle verified, the sandbox is reclaimed, and the session reached a terminal verdict

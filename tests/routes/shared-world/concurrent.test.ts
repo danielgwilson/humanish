@@ -1718,8 +1718,8 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     const config = concurrentConfig(3, 3);
     expect(selectLabBackend(config)).toBe("concurrent-shared-world");
     const outcome = await runLab(config, { cwd, dryRun: false, env }, deps);
-    expect(outcome.backend).toBe("concurrent-shared-world");
-    if (outcome.backend !== "concurrent-shared-world") return;
+    expect(outcome.route).toBe("shared-world");
+    if (outcome.route !== "shared-world") return;
     expect(outcome.result.ok).toBe(true);
   });
 
@@ -1761,7 +1761,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     delete config.execution!.concurrency;
     expect(sharedWorldValidationReason(config)).toBeNull();
     const outcome = await runLab(config, { cwd, dryRun: false, env }, deps);
-    expect(outcome.backend).toBe("concurrent-shared-world");
+    expect(outcome.route).toBe("shared-world");
     expect(outcome.result.ok).toBe(true);
   });
 
@@ -2144,8 +2144,8 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
     const config = localTreeConcurrentConfig(3, 3);
     expect(selectLabBackend(config)).toBe("concurrent-shared-world");
     const outcome = await runLab(config, { cwd, dryRun: false, env }, deps);
-    expect(outcome.backend).toBe("concurrent-shared-world");
-    if (outcome.backend !== "concurrent-shared-world") return;
+    expect(outcome.route).toBe("shared-world");
+    if (outcome.route !== "shared-world") return;
     expect(outcome.result.ok).toBe(true);
   });
 });
@@ -2431,8 +2431,8 @@ describe("committed live-fixture lab (deterministic $0 wiring proof)", () => {
 
   it("dry-runs this exact committed config to a verified concurrent shared-world bundle at $0", async () => {
     const outcome = await runLab(loadLiveLab(), { cwd, dryRun: true });
-    expect(outcome.backend).toBe("concurrent-shared-world");
-    if (outcome.backend !== "concurrent-shared-world") return;
+    expect(outcome.route).toBe("shared-world");
+    if (outcome.route !== "shared-world") return;
     expect(outcome.result.ok).toBe(true);
     const bundle = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"),

@@ -540,7 +540,7 @@ describe("selected lab setup without paid dispatch", () => {
             },
           },
         );
-        if (outcome.backend !== "cua") throw new Error("Expected CUA route");
+        if (outcome.route !== "computer-use") throw new Error("Expected CUA route");
         expect(outcome.result.error?.message).toContain(message);
         expect(outcome.result.runId).toBe("not-created");
         expect(desktopLoads).toBe(0);

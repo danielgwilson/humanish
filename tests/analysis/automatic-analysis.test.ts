@@ -267,7 +267,7 @@ describe("automatic analysis admission and producer boundary", () => {
         },
         { analysis: { run } },
       );
-      expect(output.backend).toBe(backend);
+      expect(output.route).toBe(routeOf(base));
       expect(output.result).toMatchObject({
         automaticAnalysis: { state: "skipped", reason: "AUTOMATIC_ANALYSIS_DRY_RUN" },
       });

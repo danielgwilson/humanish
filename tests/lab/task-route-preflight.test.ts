@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parseLabConfig } from "../../src/lab/config.js";
 import { type LabConfig } from "../../src/lab/types.js";
 import { runLab } from "../../src/run-lab.js";
-import { selectLabBackend } from "../../src/lab/plan.js";
+import { routeOf, selectLabBackend } from "../../src/lab/plan.js";
 import { runCuaActorLab } from "../../src/routes/computer-use/route.js";
 import { runConcurrentSharedWorld } from "../../src/routes/shared-world/route.js";
 import { runTerminalProductLab } from "../../src/routes/terminal/route.js";
@@ -63,7 +63,7 @@ describe("declared task protocol admission", () => {
 
   it.each(fixtures.filter(({ supported }) => !supported))(
     "refuses live runLab $name before any runner side effect",
-    async ({ config, backend }) => {
+    async ({ config }) => {
       const parsed = validConfig(config);
       parsed.actors[0]!.tasks = tasks; // Direct library caller bypasses parse.
       const forbidden = vi.fn(async () => {
@@ -82,7 +82,7 @@ describe("declared task protocol admission", () => {
           renderObserver: forbidden,
         },
       );
-      expect(outcome.backend).toBe(backend);
+      expect(outcome.route).toBe(routeOf(parsed));
       expect(outcome.result.ok).toBe(false);
       expect(outcome.result.error).toMatchObject({ code: "HUMANISH_LAB_TASKS_UNSUPPORTED" });
       expect(JSON.stringify(outcome.result)).not.toMatch(

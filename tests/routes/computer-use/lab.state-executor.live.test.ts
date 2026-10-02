@@ -166,8 +166,8 @@ describe.skipIf(!LIVE)(
           createProvider: async () => createStateBrain(),
         });
 
-        expect(outcome.backend).toBe("cua");
-        if (outcome.backend !== "cua") return;
+        expect(outcome.route).toBe("computer-use");
+        if (outcome.route !== "computer-use") return;
         const result = outcome.result;
 
         // The acceptance proof: goal_satisfied via getState(), and NO E2B sandbox created.

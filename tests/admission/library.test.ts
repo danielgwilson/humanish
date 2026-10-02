@@ -127,7 +127,7 @@ async function runEntry(
         } as InternalRunLabOptions,
         typed.deps,
       );
-      result = { backend: outcome.backend, ...outcome.result };
+      result = { route: outcome.route, ...outcome.result };
     } else if (backend === "cua") {
       result = await runCuaActorLab({
         cwd,
@@ -164,13 +164,13 @@ async function runEntry(
 /** A run that started writes timestamps and ids; pin only what decides admission. */
 function summary(result: Json): Json {
   const value = result as {
-    backend?: string;
+    route?: string;
     ok?: boolean;
     error?: { code?: string };
     plan?: { laneCount?: number; concurrency?: number; waves?: number; lanes?: { id: string }[] };
   };
   return {
-    ...(value.backend === undefined ? {} : { backend: value.backend }),
+    ...(value.route === undefined ? {} : { route: value.route }),
     ok: value.ok,
     ...(value.error?.code === undefined ? {} : { error: value.error.code }),
     ...(value.plan === undefined
@@ -192,7 +192,7 @@ function sameAsRunLab(runner: Record<string, Json>, runLabRecord: Json): Record<
   const { runner: name, ...rest } = runner;
   const strip = (record: Json): string => {
     const value = structuredClone(record) as { result?: Record<string, Json> };
-    if (value.result) delete value.result.backend;
+    if (value.result) delete value.result.route;
     return JSON.stringify(value);
   };
   return strip(rest) === strip(runLabRecord) ? { runner: name, sameAsRunLab: true } : runner;

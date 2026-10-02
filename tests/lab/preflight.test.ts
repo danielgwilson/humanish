@@ -224,7 +224,8 @@ describe("lab preflight", () => {
         expect(result.stderr).toBe("");
         expect(envelope.ok).toBe(true);
         expect(envelope.reachability).toBe("metadata");
-        expect([envelope.route, envelope.backend]).toEqual(["preview", "synthetic"]);
+        expect(envelope.route).toBe("preview");
+        expect(envelope).not.toHaveProperty("backend");
         expect(envelope.spend).toEqual({ e2bDesktop: false, model: false });
         expect(envelope.checks.some((check) => check.name === "reachability")).toBe(true);
       },

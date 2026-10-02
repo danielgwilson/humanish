@@ -418,8 +418,8 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
         if (event.type === "plan") planEvents.push(event);
       },
     });
-    expect(outcome.backend).toBe("cua");
-    if (outcome.backend !== "cua") return;
+    expect(outcome.route).toBe("computer-use");
+    if (outcome.route !== "computer-use") return;
     const result = outcome.result;
 
     expect(result.ok).toBe(true);
@@ -832,7 +832,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       seams,
     );
 
-    expect(result.backend).toBe("cua");
+    expect(result.route).toBe("computer-use");
     // Both lanes share a persona and a mission; the effort is the only thing that may differ.
     expect([...seen].sort()).toEqual(["high", "medium"]);
   });
@@ -949,8 +949,8 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
 
       releaseActors();
       const outcome = await runPromise;
-      expect(outcome.backend).toBe("cua");
-      if (outcome.backend !== "cua") return;
+      expect(outcome.route).toBe("computer-use");
+      if (outcome.route !== "computer-use") return;
       expect(outcome.result.ok).toBe(true);
 
       const finalRunText = await readFile(path.join(runRoot, "run.json"), "utf8");
@@ -987,8 +987,8 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       { cwd, env: FANOUT_ENV },
       passingSeams(handle),
     );
-    expect(outcome.backend).toBe("cua");
-    if (outcome.backend !== "cua") return;
+    expect(outcome.route).toBe("computer-use");
+    if (outcome.route !== "computer-use") return;
     expect(outcome.result.ok).toBe(true);
     // All four per-lane desktops launched on the custom template (subject + every lane is uniform).
     expect(handle.created).toHaveLength(4);
@@ -1014,8 +1014,8 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       },
       passingSeams(handle),
     );
-    expect(outcome.backend).toBe("cua");
-    if (outcome.backend !== "cua") return;
+    expect(outcome.route).toBe("computer-use");
+    if (outcome.route !== "computer-use") return;
     expect(handle.created).toHaveLength(4);
     expect(handle.templates).toEqual([undefined, undefined, undefined, undefined]);
     const bundle = JSON.parse(
@@ -1039,7 +1039,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       },
       passingSeams(handle, { active: { count: 0, max: 0 } }),
     );
-    if (outcome.backend !== "cua") throw new Error(`unexpected backend ${outcome.backend}`);
+    if (outcome.route !== "computer-use") throw new Error(`unexpected backend ${outcome.route}`);
     expect(handle.createdIds).toHaveLength(4);
 
     const reclaimed: string[] = [];
@@ -1068,8 +1068,8 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       },
       passingSeams(handle, { active }),
     );
-    expect(outcome.backend).toBe("cua");
-    if (outcome.backend !== "cua") return;
+    expect(outcome.route).toBe("computer-use");
+    if (outcome.route !== "computer-use") return;
     const result = outcome.result;
 
     expect(result.ok).toBe(true);
@@ -1152,7 +1152,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
         ...seams,
       },
     );
-    if (outcome.backend !== "cua") throw new Error(`unexpected backend ${outcome.backend}`);
+    if (outcome.route !== "computer-use") throw new Error(`unexpected backend ${outcome.route}`);
     const { result } = outcome;
     expect(result.ok).toBe(true);
     expect(result.plan).toMatchObject({ concurrency: 2, envLoweredConcurrencyFrom: 4, waves: 2 });
@@ -1174,7 +1174,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       sourceLanes: { passed?: number; harnessErrors?: number } | undefined;
       sourceBundle: RunBundle;
       sourceAfterRerun: RunBundle;
-      rerun: Extract<Awaited<ReturnType<typeof runLab>>, { backend: "cua" }>["result"];
+      rerun: Extract<Awaited<ReturnType<typeof runLab>>, { route: "computer-use" }>["result"];
       rerunHandle: FanoutModuleHandle;
       rerunBundle: RunBundle;
       rerunText: string;
@@ -1210,7 +1210,8 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
             },
           },
         );
-        if (sourceOutcome.backend !== "cua") throw new Error("the source run is not a cua run");
+        if (sourceOutcome.route !== "computer-use")
+          throw new Error("the source run is not a cua run");
         const sourceRunId = sourceOutcome.result.runId;
         const sourceBundle = await readBundle(project, sourceRunId);
         const rerunHandle = makeFanoutModule();
@@ -1219,7 +1220,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
           { cwd: project, runId: "fanout-rerun-proof", rerun: { sourceRunId }, env: FANOUT_ENV },
           passingSeams(rerunHandle),
         );
-        if (rerunOutcome.backend !== "cua") throw new Error("the rerun is not a cua run");
+        if (rerunOutcome.route !== "computer-use") throw new Error("the rerun is not a cua run");
         const rerunText = await readFile(
           path.join(project, ".humanish", "runs", "fanout-rerun-proof", "run.json"),
           "utf8",
@@ -1335,8 +1336,8 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       },
       passingSeams(makeFanoutModule()),
     );
-    expect(sourceOutcome.backend).toBe("cua");
-    if (sourceOutcome.backend !== "cua") return;
+    expect(sourceOutcome.route).toBe("computer-use");
+    if (sourceOutcome.route !== "computer-use") return;
     expect(sourceOutcome.result.ok).toBe(true);
 
     const rerunHandle = makeFanoutModule();
@@ -1350,8 +1351,8 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       },
       passingSeams(rerunHandle),
     );
-    expect(named.backend).toBe("cua");
-    if (named.backend !== "cua") return;
+    expect(named.route).toBe("computer-use");
+    if (named.route !== "computer-use") return;
     expect(named.result.rerun).toMatchObject({
       selectedLaneIds: ["small-skimmer"],
       previous: [{ laneId: "small-skimmer", status: "passed" }],
@@ -1369,8 +1370,8 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       },
       passingSeams(makeFanoutModule()),
     );
-    expect(ghost.backend).toBe("cua");
-    if (ghost.backend !== "cua") return;
+    expect(ghost.route).toBe("computer-use");
+    if (ghost.route !== "computer-use") return;
     expect(ghost.result.ok).toBe(false);
     expect(ghost.result.error?.code).toBe("HUMANISH_CUA_LAB_RERUN_INVALID");
     expect(ghost.result.error?.message).toContain("ghost-lane");
@@ -1409,8 +1410,8 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       },
       passingSeams(handle),
     );
-    expect(outcome.backend).toBe("cua");
-    if (outcome.backend !== "cua") return;
+    expect(outcome.route).toBe("computer-use");
+    if (outcome.route !== "computer-use") return;
 
     expect(outcome.result.ok).toBe(true);
     expect(handle.opened).toEqual(["http://127.0.0.1:3001/role-a", "http://127.0.0.1:3002/role-b"]);
@@ -1464,8 +1465,8 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       ],
     });
     const outcome = await runLab(config, { cwd, env: FANOUT_ENV }, passingSeams(handle));
-    expect(outcome.backend).toBe("cua");
-    if (outcome.backend !== "cua") return;
+    expect(outcome.route).toBe("computer-use");
+    if (outcome.route !== "computer-use") return;
 
     expect(outcome.result.ok).toBe(true);
     expect(handle.opened).toEqual(["http://127.0.0.1:3001/role-a?scenario=alpha"]);
@@ -1535,8 +1536,8 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
           },
         },
       );
-      expect(outcome.backend).toBe("cua");
-      if (outcome.backend !== "cua") return;
+      expect(outcome.route).toBe("computer-use");
+      if (outcome.route !== "computer-use") return;
       const result = outcome.result;
       expect(result.ok).toBe(false);
       const runDir = path.join(cwd, ".humanish", "runs", result.runId);
@@ -1646,7 +1647,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
             runCuaActorSession({ ...options, provider: scriptedEnding(endings[lane++]!) }),
         },
       );
-      if (outcome.backend !== "cua") throw new Error("expected the computer-use route");
+      if (outcome.route !== "computer-use") throw new Error("expected the computer-use route");
       const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
       const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
       const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8")) as {
@@ -1684,7 +1685,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
           runCuaActorSession({ ...options, provider: scriptedEnding(endings[lane++]!) }),
       },
     );
-    if (source.backend !== "cua") throw new Error("expected the computer-use route");
+    if (source.route !== "computer-use") throw new Error("expected the computer-use route");
     expect(source.result.ok).toBe(false);
 
     const rerun = await runLab(
@@ -1696,7 +1697,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       },
       passingSeams(makeFanoutModule()),
     );
-    if (rerun.backend !== "cua") throw new Error("expected the computer-use route");
+    if (rerun.route !== "computer-use") throw new Error("expected the computer-use route");
     expect(rerun.result.error).toBeUndefined();
     expect(rerun.result.rerun).toMatchObject({
       sourceRunId: source.result.runId,
@@ -1739,7 +1740,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
           runCuaActorSession({ ...options, provider: scriptedEnding(ending) }),
       },
     );
-    if (outcome.backend !== "cua") throw new Error("expected the computer-use route");
+    if (outcome.route !== "computer-use") throw new Error("expected the computer-use route");
     const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
     const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8")) as {
@@ -1773,7 +1774,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
         },
       },
     );
-    if (outcome.backend !== "cua") throw new Error("expected the computer-use route");
+    if (outcome.route !== "computer-use") throw new Error("expected the computer-use route");
     const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
     const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8")) as {
@@ -1820,7 +1821,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
           runCuaActorSession({ ...options, provider: scriptedEnding("pass") }),
       },
     );
-    if (outcome.backend !== "cua") throw new Error("expected the computer-use route");
+    if (outcome.route !== "computer-use") throw new Error("expected the computer-use route");
     const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
     const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8")) as {
@@ -1861,7 +1862,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
           runCuaActorSession({ ...options, provider: scriptedEnding("pass") }),
       },
     );
-    if (outcome.backend !== "cua") throw new Error("expected the computer-use route");
+    if (outcome.route !== "computer-use") throw new Error("expected the computer-use route");
     const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
     const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8")) as {
@@ -1915,8 +1916,8 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
         },
       },
     );
-    expect(outcome.backend).toBe("cua");
-    if (outcome.backend !== "cua") return;
+    expect(outcome.route).toBe("computer-use");
+    if (outcome.route !== "computer-use") return;
     const result = outcome.result;
     expect(result.ok).toBe(false);
     expect(result.laneSummary).toMatchObject({ total: 2, passed: 0, harnessErrors: 0 });
@@ -1957,8 +1958,8 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       passingSeams(handle),
     );
 
-    expect(outcome.backend).toBe("cua");
-    if (outcome.backend !== "cua") return;
+    expect(outcome.route).toBe("computer-use");
+    if (outcome.route !== "computer-use") return;
     const result = outcome.result;
     expect(result.laneSummary).toMatchObject({
       total: 4,
@@ -2030,7 +2031,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
         },
         passingSeams(cloneModule(commits)),
       );
-      if (outcome.backend !== "cua") throw new Error("expected cua backend");
+      if (outcome.route !== "computer-use") throw new Error("expected cua backend");
       const result = outcome.result;
       expect(result.lanes?.map((entry) => entry.subject?.commit)).toEqual(commits);
       expect(result.subject?.commit).toBeUndefined();
@@ -2049,7 +2050,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
         },
         passingSeams(cloneModule([commit, commit])),
       );
-      if (outcome.backend !== "cua") throw new Error("expected cua backend");
+      if (outcome.route !== "computer-use") throw new Error("expected cua backend");
       expect(outcome.result.subject?.commit).toBe(commit);
       expect(outcome.result.warnings.some((warning) => warning.includes("DIVERGENT"))).toBe(false);
     });
@@ -2070,7 +2071,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       },
       passingSeams(handle),
     );
-    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    if (outcome.route !== "computer-use") throw new Error("expected cua backend");
     const result = outcome.result;
 
     expect(result.ok).toBe(false);
@@ -2113,7 +2114,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
         },
       },
     );
-    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    if (outcome.route !== "computer-use") throw new Error("expected cua backend");
     const result = outcome.result;
 
     expect(result.ok).toBe(false);
@@ -2157,7 +2158,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
         },
       },
     );
-    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    if (outcome.route !== "computer-use") throw new Error("expected cua backend");
     const result = outcome.result;
 
     expect(result.ok).toBe(false);
@@ -2183,7 +2184,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     });
     if (!config.ok) throw new Error(config.error.message);
     const outcome = await runLab(config.config, { cwd, env: FANOUT_ENV }, passingSeams(handle));
-    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    if (outcome.route !== "computer-use") throw new Error("expected cua backend");
     const result = outcome.result;
 
     expect(result.ok).toBe(false);
@@ -2216,7 +2217,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
         },
       },
     );
-    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    if (outcome.route !== "computer-use") throw new Error("expected cua backend");
     const result = outcome.result;
 
     const runDir = path.join(cwd, ".humanish", "runs", result.runId);
@@ -2343,8 +2344,8 @@ describe("cua fan-out — cost estimate (sum lane token lines + one aggregate de
           }),
       },
     );
-    expect(outcome.backend).toBe("cua");
-    if (outcome.backend !== "cua") return;
+    expect(outcome.route).toBe("computer-use");
+    if (outcome.route !== "computer-use") return;
     const result = outcome.result;
     expect(result.ok).toBe(true);
 

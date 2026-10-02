@@ -1,7 +1,6 @@
 // The preflight result a run returns, built from its context. preflight.ts and the probes in
 // preflight-probes.ts both finish through these, so they live below both.
 
-import { backendOf } from "./plan.js";
 import { automaticAnalysisBudget } from "../analysis/automatic-config.js";
 import { digestText } from "../evidence/redaction.js";
 import type { LabPreflightCheck, LabPreflightResult, PreflightContext } from "./preflight.js";
@@ -25,7 +24,6 @@ export function finalize(
     labId: ctx.labId,
     origin: ctx.origin,
     path: ctx.path,
-    backend: backendOf(ctx.route),
     route: ctx.route,
     reachability: ctx.reachability,
     checks,

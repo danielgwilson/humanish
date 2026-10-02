@@ -184,13 +184,11 @@ export function optionRefusalOutcome(
     case "preview":
       return {
         route: "preview",
-        backend: "synthetic",
         result: { schema: "humanish.run-result.v1", ok: false, cwd, warnings: [], error },
       };
     case "computer-use":
       return {
         route: "computer-use",
-        backend: "cua",
         result: {
           schema: CUA_ACTOR_LAB_SCHEMA,
           ...common,
@@ -202,7 +200,6 @@ export function optionRefusalOutcome(
     case "scripted":
       return {
         route: "scripted",
-        backend: "scripted",
         result: {
           schema: SCRIPTED_BROWSER_LAB_SCHEMA,
           ...common,
@@ -214,7 +211,6 @@ export function optionRefusalOutcome(
     case "terminal":
       return {
         route: "terminal",
-        backend: "terminal",
         result: {
           schema: TERMINAL_PRODUCT_LAB_SCHEMA,
           ...common,
@@ -226,7 +222,6 @@ export function optionRefusalOutcome(
       const participantCount = rosterOf(config.actors[0])?.length ?? 0;
       return {
         route: "shared-world",
-        backend: "concurrent-shared-world",
         result: {
           schema: CONCURRENT_SHARED_WORLD_LAB_SCHEMA,
           ...common,

@@ -46,7 +46,7 @@ describe("preview admission", () => {
     const cwd = await mkdtemp(path.join(tmpdir(), "humanish-preview-admission-"));
     dirs.push(cwd);
     const outcome = await runLab(preview(extra), { cwd, dryRun: true });
-    expect(outcome.backend).toBe("synthetic");
+    expect(outcome.route).toBe("preview");
     expect(outcome.result).toEqual({
       schema: "humanish.run-result.v1",
       ok: false,
