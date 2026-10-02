@@ -76,7 +76,13 @@ export async function readCostTotals(cwd: string, entry: RunIndexEntry): Promise
   // uncertain, whatever a run-cost warning is named.
   const runWarnings: string[] = [];
   const analysisWarnings: string[] = [];
-  costs.runEstimatedUsd = isKnownUsd(entry.estimatedCostUsd) ? entry.estimatedCostUsd : null;
+  // A dry run makes no model request and creates no desktop, so with no figure it costs $0. A
+  // recorded unknown (null) figure stays unknown.
+  costs.runEstimatedUsd = isKnownUsd(entry.estimatedCostUsd)
+    ? entry.estimatedCostUsd
+    : entry.estimatedCostUsd === undefined && entry.mode === "dry-run"
+      ? 0
+      : null;
   try {
     const prepared = await bindExistingRunArtifactPaths(cwd, entry.runId);
     const bytes = await readBoundedFile(prepared, RUN_BUNDLE_FILE, EVIDENCE_LIMITS.sourceBytes);

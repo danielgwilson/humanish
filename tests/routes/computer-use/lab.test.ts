@@ -501,7 +501,7 @@ describe("lab routing (app-url → cua)", () => {
       const outcome = await runLab(meta, { cwd, dryRun: true });
       expect(outcome.route).toBe("computer-use");
       expect(outcome.result.ok).toBe(false);
-      expect(outcome.result.error?.code).toBe("HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED");
+      expect(outcome.result.error?.code).toBe("HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED");
       expect(await readdir(cwd)).toEqual([]);
     } finally {
       await rm(cwd, { recursive: true, force: true });
@@ -806,7 +806,7 @@ describe("runCuaActorLab", () => {
       deliveries: async () => new Response("", { status: 200 }),
     });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_COMMS_TOKEN_INVALID");
+    expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_COMMS_TOKEN_INVALID");
     expect(result.error?.message).not.toContain("abc");
     expect(created).toHaveLength(0);
     expect(drains).toEqual([]);
@@ -818,7 +818,7 @@ describe("runCuaActorLab", () => {
       deliveries: async () => new Response("", { status: 200 }),
     });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_COMMS_TOKEN_INVALID");
+    expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_COMMS_TOKEN_INVALID");
     expect(created).toHaveLength(0);
     expect(drains).toEqual([]);
   });
@@ -2214,7 +2214,7 @@ describe("runCuaActorLab", () => {
     );
     if (outcome.route !== "computer-use") throw new Error("wrong route");
     expect(outcome.result.ok).toBe(false);
-    expect(outcome.result.error?.code).toBe("HUMANISH_CUA_LAB_DEVICE_GEOMETRY");
+    expect(outcome.result.error?.code).toBe("HUMANISH_COMPUTER_USE_DEVICE_GEOMETRY");
     expect(outcome.result.error?.message).toContain("Participant actions were not started");
     expect(participantSessions).toBe(0);
     expect(killed).toEqual(["fake-sandbox-001"]);
@@ -2819,7 +2819,7 @@ describe("runCuaActorLab", () => {
     ).toBe(true);
 
     // Claims match mechanism: a raw run must never be labeled "redacted" anywhere.
-    expect(bundle.streams[0].embed.title).toBe("CUA desktop (raw)");
+    expect(bundle.streams[0].embed.title).toBe("Desktop (raw)");
     const screenshotLabels = bundle.streams[0].artifacts
       .filter((a: { kind: string }) => a.kind === "screenshot")
       .map((a: { label: string }) => a.label);
@@ -2873,7 +2873,7 @@ describe("runCuaActorLab", () => {
     );
 
     // Claims match mechanism: the blurred mode is named as such, not a vague "redacted".
-    expect(bundle.streams[0].embed.title).toBe("CUA desktop (blurred)");
+    expect(bundle.streams[0].embed.title).toBe("Desktop (blurred)");
     const screenshotLabels = bundle.streams[0].artifacts
       .filter((a: { kind: string }) => a.kind === "screenshot")
       .map((a: { label: string }) => a.label);
@@ -2929,7 +2929,7 @@ describe("runCuaActorLab", () => {
     );
     if (blocked.route !== "computer-use") throw new Error("expected cua backend");
     expect(blocked.result.ok).toBe(false);
-    expect(blocked.result.error?.code).toBe("HUMANISH_CUA_LAB_SUBJECT_UNSAFE");
+    expect(blocked.result.error?.code).toBe("HUMANISH_COMPUTER_USE_SUBJECT_UNSAFE");
   });
 
   it("comms:email:fake: injects the catch env, deploys the catch, and drains captured mail into a digest-only evidence artifact", async () => {
@@ -3436,7 +3436,7 @@ describe("runCuaActorLab", () => {
   });
 
   it("a participant the harness refused as 'not a credible pass' is not written up as a pass", async () => {
-    // Found on a real run: the lane said ok:false / HUMANISH_CUA_LAB_FAILED / "not a credible
+    // Found on a real run: the lane said ok:false / HUMANISH_COMPUTER_USE_FAILED / "not a credible
     // pass", and the bundle said verdict pass, 1/1 reached the goal. Every projection of the
     // bundle (Observer tally, `humanish runs`, the status index, a share) repeated the pass.
     const sandbox = makeFakeSandbox();
@@ -3461,7 +3461,7 @@ describe("runCuaActorLab", () => {
     // The lane's judgment, unchanged: the actor claimed goal_satisfied, the harness refused it.
     expect(result.session?.completionReason).toBe("goal_satisfied");
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_FAILED");
+    expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_FAILED");
     expect(result.error?.message).toContain("not a credible pass");
 
     // The durable evidence now says the same thing the lane said.
@@ -3789,7 +3789,7 @@ describe("runCuaActorLab", () => {
     if (outcome.route !== "computer-use") throw new Error("expected cua backend");
     const result = outcome.result;
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_KEYS_MISSING");
+    expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_KEYS_MISSING");
     expect(result.error?.message).toContain("E2B_API_KEY");
     expect(result.error?.message).not.toContain("OPENAI_API_KEY and");
     expect(result.error?.message).not.toContain("present-key");
@@ -3823,7 +3823,7 @@ describe("runCuaActorLab", () => {
     const result = outcome.result;
 
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_FAILED");
+    expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_FAILED");
     expect(result.error?.message).toContain("provider exploded");
     expect(killed).toEqual(["fake-sandbox-001"]);
 
@@ -3851,7 +3851,7 @@ describe("runCuaActorLab", () => {
     const tampered = { ...config, actors: [{ type: "codex-app-server" }] };
     const result = await runCuaActorLab({ cwd, config: tampered, dryRun: true });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED");
+    expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED");
   });
 
   it("rejects path-shaped runtime lane ids before provider or desktop hooks", async () => {
@@ -3875,7 +3875,7 @@ describe("runCuaActorLab", () => {
       },
     });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_FANOUT_INVALID");
+    expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_FANOUT_INVALID");
     expect(result.runId).toBe("not-created");
     expect(desktopLoads).toBe(0);
   });
@@ -3888,7 +3888,7 @@ describe("runCuaActorLab", () => {
     };
     const result = await runCuaActorLab({ cwd, config: tampered, dryRun: true });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_SUBJECT_UNSAFE");
+    expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_SUBJECT_UNSAFE");
     // Nothing was persisted, so no artifact can mislabel the public URL as loopback.
     expect(result.runId).toBe("not-created");
     await expect(readdir(path.join(cwd, ".humanish", "runs"))).rejects.toThrow();
@@ -3952,7 +3952,7 @@ describe("runCuaActorLab", () => {
     const result = outcome.result;
 
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_FAILED");
+    expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_FAILED");
     expect(result.error?.message).toContain("@e2b/desktop");
     // The run dir is a complete failed-evidence bundle, not an orphan screenshots/ shell.
     const runDir = path.join(cwd, ".humanish", "runs", result.runId);
@@ -4514,7 +4514,7 @@ describe("runCuaActorLab", () => {
     );
     if (outcome.route !== "computer-use") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(false);
-    expect(outcome.result.error?.code).toBe("HUMANISH_CUA_LAB_SUBJECT_ENV_MISSING");
+    expect(outcome.result.error?.code).toBe("HUMANISH_COMPUTER_USE_SUBJECT_ENV_MISSING");
     expect(outcome.result.error?.message).toContain("DATABASE_URL");
     expect(created).toHaveLength(0);
   });
@@ -4807,7 +4807,7 @@ describe("runCuaActorLab", () => {
     const tampered: LabConfig = { ...config, subject: subjectWithoutServe };
     const result = await runCuaActorLab({ cwd, config: tampered, dryRun: true });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_SUBJECT_INVALID");
+    expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_SUBJECT_INVALID");
   });
 
   it("persists a failed-evidence bundle (with the server log tail) when the subject never answers the probe", async () => {
@@ -4840,7 +4840,7 @@ describe("runCuaActorLab", () => {
     if (outcome.route !== "computer-use") throw new Error("expected cua backend");
     const result = outcome.result;
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_FAILED");
+    expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_FAILED");
     expect(result.error?.message).toContain("did not answer");
     expect(result.error?.message).toContain("server crashed at boot");
     expect(killed).toEqual(["fake-sandbox-001"]);
@@ -5486,7 +5486,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
       dryRun: true,
     });
     expect(badName.ok).toBe(false);
-    expect(badName.error?.code).toBe("HUMANISH_CUA_LAB_SUBJECT_INVALID");
+    expect(badName.error?.code).toBe("HUMANISH_COMPUTER_USE_SUBJECT_INVALID");
     expect(badName.runId).toBe("not-created");
 
     // Duplicate step names.
@@ -5500,7 +5500,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
       }),
       dryRun: true,
     });
-    expect(dupe.error?.code).toBe("HUMANISH_CUA_LAB_SUBJECT_INVALID");
+    expect(dupe.error?.code).toBe("HUMANISH_COMPUTER_USE_SUBJECT_INVALID");
 
     // external must name a provisioned channel (subset of subject.env).
     const unbacked = await runCuaActorLab({
@@ -5508,7 +5508,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
       config: tamper({ external: ["REDIS_URL"] }),
       dryRun: true,
     });
-    expect(unbacked.error?.code).toBe("HUMANISH_CUA_LAB_SUBJECT_INVALID");
+    expect(unbacked.error?.code).toBe("HUMANISH_COMPUTER_USE_SUBJECT_INVALID");
 
     // state on an app-url subject is rejected, never silently inert.
     const appUrlBase = cuaConfig();
@@ -5518,7 +5518,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
     } as LabConfig;
     const onAppUrl = await runCuaActorLab({ cwd, config: appUrlTampered, dryRun: true });
     expect(onAppUrl.ok).toBe(false);
-    expect(onAppUrl.error?.code).toBe("HUMANISH_CUA_LAB_SUBJECT_INVALID");
+    expect(onAppUrl.error?.code).toBe("HUMANISH_COMPUTER_USE_SUBJECT_INVALID");
     expect(onAppUrl.error?.message).toContain("clone subjects");
   });
 });
@@ -6023,7 +6023,7 @@ describe("buildSingleParticipantBundle", () => {
       if (outcome.route !== "computer-use") throw new Error("expected cua backend");
 
       expect(outcome.result.ok).toBe(false);
-      expect(outcome.result.error?.code).toBe("HUMANISH_CUA_LAB_SUBJECT_INVALID");
+      expect(outcome.result.error?.code).toBe("HUMANISH_COMPUTER_USE_SUBJECT_INVALID");
       expect(outcome.result.error?.message).toContain("zero packable entries");
       expect(outcome.result.error?.message).not.toContain(["", "Users", "fake-operator"].join("/"));
       expect(created).toHaveLength(0);
@@ -6180,14 +6180,14 @@ describe("buildSingleParticipantBundle", () => {
 
     const blurred = buildSingleParticipantBundle({ ...base, captureRedaction: "blurred" });
     expect(blurred.simulations[0]?.progress).toBe(100);
-    expect(blurred.streams[0]?.embed?.title).toBe("CUA desktop (blurred)");
+    expect(blurred.streams[0]?.embed?.title).toBe("Desktop (blurred)");
     expect(blurred.streams[0]?.artifacts.some((a) => a.label === "screenshot 01 (blurred)")).toBe(
       true,
     );
     expect(blurred.redaction.notes).toContain("capture policy (blurred)");
 
     const raw = buildSingleParticipantBundle({ ...base, captureRedaction: "raw" });
-    expect(raw.streams[0]?.embed?.title).toBe("CUA desktop (raw)");
+    expect(raw.streams[0]?.embed?.title).toBe("Desktop (raw)");
     expect(raw.streams[0]?.artifacts.some((a) => a.label === "screenshot 01 (raw)")).toBe(true);
     expect(raw.redaction.notes).toContain("capture policy (raw)");
     expect(JSON.stringify(raw)).not.toContain("(redacted)");
@@ -6599,7 +6599,7 @@ describe("runCuaActorLab in-process (state-driven, no E2B)", () => {
     });
     expect(created).toHaveLength(0);
     expect(outcome.ok).toBe(false);
-    expect(outcome.error?.code).toBe("HUMANISH_CUA_LAB_EXECUTOR_NO_PROVIDER");
+    expect(outcome.error?.code).toBe("HUMANISH_COMPUTER_USE_EXECUTOR_NO_PROVIDER");
     expect(outcome.sandbox).toBeUndefined();
   });
 
@@ -6617,7 +6617,7 @@ describe("runCuaActorLab in-process (state-driven, no E2B)", () => {
     });
     expect(created).toHaveLength(0);
     expect(outcome.ok).toBe(false);
-    expect(outcome.error?.code).toBe("HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR");
+    expect(outcome.error?.code).toBe("HUMANISH_COMPUTER_USE_LOCAL_APP_NO_EXECUTOR");
     expect(outcome.error?.message).toContain("inProcess: { executor }, createProvider");
     expect(outcome.error?.message).not.toContain("cuaHooks");
     expect(outcome.sandbox).toBeUndefined();
@@ -6634,7 +6634,7 @@ describe("runCuaActorLab in-process (state-driven, no E2B)", () => {
     });
     if (outcome.route !== "computer-use") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
-    expect(outcome.result.error?.code).not.toBe("HUMANISH_CUA_LAB_EXECUTOR_NO_PROVIDER");
+    expect(outcome.result.error?.code).not.toBe("HUMANISH_COMPUTER_USE_EXECUTOR_NO_PROVIDER");
   });
 });
 
@@ -7363,7 +7363,7 @@ describe("runCuaActorLab cost estimates", () => {
       },
     });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_UNPRICED_CAP");
+    expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_UNPRICED_CAP");
     expect(created).toHaveLength(0);
   });
 
@@ -7384,7 +7384,7 @@ describe("runCuaActorLab cost estimates", () => {
           }),
       },
     });
-    expect(result.error?.code).not.toBe("HUMANISH_CUA_LAB_UNPRICED_CAP");
+    expect(result.error?.code).not.toBe("HUMANISH_COMPUTER_USE_UNPRICED_CAP");
     expect(result.ok).toBe(true);
     const bundle = await readBundle(result.runId);
     // computer-use-preview is a confirmed (non-placeholder) model rate: the per-actor estimate
@@ -7443,7 +7443,7 @@ describe("adopter-hosted comms on the app-url route", () => {
       );
       if (outcome.route !== "computer-use") throw new Error("expected cua backend");
       expect(outcome.result.ok).toBe(false);
-      expect(outcome.result.error?.code).toBe("HUMANISH_CUA_LAB_COMMS_CATCH_UNREACHABLE");
+      expect(outcome.result.error?.code).toBe("HUMANISH_COMPUTER_USE_COMMS_CATCH_UNREACHABLE");
       expect(outcome.result.error?.message).toContain("restart");
       expect(outcome.result.error?.message).toContain("recipient-inbox-v1");
       expect(loadDesktopModule).not.toHaveBeenCalled();

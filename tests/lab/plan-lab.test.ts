@@ -132,9 +132,11 @@ describe("planLab", () => {
       typeof planLab
     >[1];
     expect(gap(parsed(cuApp), executorOnly)).toBe(
-      "computer-use HUMANISH_CUA_LAB_EXECUTOR_NO_PROVIDER",
+      "computer-use HUMANISH_COMPUTER_USE_EXECUTOR_NO_PROVIDER",
     );
-    expect(gap(local, { cwd: ROOT })).toBe("computer-use HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR");
+    expect(gap(local, { cwd: ROOT })).toBe(
+      "computer-use HUMANISH_COMPUTER_USE_LOCAL_APP_NO_EXECUTOR",
+    );
     expect(gap(local, { cwd: ROOT, inProcess: { executor }, createProvider: provider })).toBe(
       "planned",
     );
@@ -145,9 +147,9 @@ describe("planLab", () => {
         inProcess: { executor },
         createProvider: provider,
       }),
-    ).toBe("computer-use HUMANISH_CUA_LAB_FANOUT_INVALID");
+    ).toBe("computer-use HUMANISH_COMPUTER_USE_FANOUT_INVALID");
     expect(gap(parsed(cuApp), { cwd: ROOT, count: 17 })).toBe(
-      "computer-use HUMANISH_CUA_LAB_FANOUT_INVALID",
+      "computer-use HUMANISH_COMPUTER_USE_FANOUT_INVALID",
     );
     // A preview plan holds only a dry run.
     expect(
@@ -164,7 +166,7 @@ describe("planLab", () => {
       actors: [{ type: "codex-exec" }],
     });
     expect(gap(terminal, { cwd: ROOT, dryRun: false })).toBe(
-      "terminal HUMANISH_TERMINAL_LAB_CAPS_MISSING",
+      "terminal HUMANISH_TERMINAL_CAPS_MISSING",
     );
     expect(gap(terminal, { cwd: ROOT, dryRun: true })).toBe("planned");
     // The terminal route refuses real receiving before it reads the analysis config.
@@ -174,12 +176,12 @@ describe("planLab", () => {
       review: { analysis: "yes" },
     } as unknown as LabConfig;
     expect(gap(receivingTerminal, { cwd: ROOT })).toBe(
-      "terminal HUMANISH_TERMINAL_LAB_SUBJECT_INVALID",
+      "terminal HUMANISH_TERMINAL_SUBJECT_INVALID",
     );
     // A positive maxUsd can trip only when the caller's costProbe measures spend.
     const pricedTerminal = { ...terminal, scenario: { caps: { maxUsd: 1, maxMinutes: 5 } } };
     expect(gap(pricedTerminal, { cwd: ROOT, dryRun: false })).toBe(
-      "terminal HUMANISH_TERMINAL_LAB_UNPRICED_CAP",
+      "terminal HUMANISH_TERMINAL_UNPRICED_CAP",
     );
     expect(gap(pricedTerminal, { cwd: ROOT, dryRun: false }, { costProbe: () => ({}) })).toBe(
       "planned",
@@ -188,15 +190,13 @@ describe("planLab", () => {
       ...parsed(scriptedApp),
       subject: { source: "app-url", appUrl: "https://example.com/" },
     } as LabConfig;
-    expect(gap(publicScripted, { cwd: ROOT })).toBe(
-      "scripted HUMANISH_SCRIPTED_LAB_SUBJECT_UNSAFE",
-    );
+    expect(gap(publicScripted, { cwd: ROOT })).toBe("scripted HUMANISH_SCRIPTED_SUBJECT_UNSAFE");
     const unknownActor = { ...parsed(cuApp), actors: [{ type: "not-an-actor" }] } as LabConfig;
     expect(gap(unknownActor, { cwd: ROOT })).toBe(
-      "computer-use HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED",
+      "computer-use HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED",
     );
     const badAnalysis = { ...parsed(cuApp), review: { analysis: "yes" } } as unknown as LabConfig;
-    expect(gap(badAnalysis, { cwd: ROOT })).toBe("computer-use HUMANISH_LAB_ANALYSIS_INVALID");
+    expect(gap(badAnalysis, { cwd: ROOT })).toBe("computer-use HUMANISH_STUDY_ANALYSIS_INVALID");
   });
 
   it("asks a live scripted run for a host browser unless the caller injects one", () => {

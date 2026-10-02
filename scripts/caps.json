@@ -11,15 +11,15 @@
       "archaeology": 0,
       "seat-comments": 162,
       "cua-route": 28,
-      "honest": 72,
+      "honest": 71,
       "history": 18,
       "series-codes": 0,
       "name-refs": 0,
-      "string-em-dashes": 160,
+      "string-em-dashes": 158,
       "string-issue-refs": 10,
       "string-slice": 10,
-      "string-rationale": 30,
-      "string-plural-s": 62,
+      "string-rationale": 28,
+      "string-plural-s": 57,
       "string-caps": 278
     },
     "tests": {
@@ -79,7 +79,7 @@
     "seat": 0,
     "role": 49,
     "sim": 21,
-    "lab": 2324,
+    "lab": 2339,
     "doc-backend": 17
   }
 }

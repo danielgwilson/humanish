@@ -95,7 +95,7 @@ export async function runLabParticipants(setup: CuaRunSetup, participants: CuaPa
         ok: false as const,
         result: {
           ...fail(
-            "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+            "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
             "Real email setup failed before desktop allocation. Run humanish comms check --online and humanish comms recover to inspect authentication and pending cleanup.",
             descriptor.id,
           ),

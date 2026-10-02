@@ -288,7 +288,7 @@ describe("ready desktop lane contract", () => {
     });
 
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_UNPRICED_CAP");
+    expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_UNPRICED_CAP");
     expect(result.error?.message).toContain("ChatGPT-account");
     expect(f.loadDesktopModule).not.toHaveBeenCalled();
     expect(restrictedParticipantFactory).not.toHaveBeenCalled();
@@ -451,7 +451,7 @@ describe("ready desktop lane contract", () => {
     expect(parseLabConfig(config).ok).toBe(true);
     const result = await runCuaActorLab({ cwd: f.cwd, config, dryRun: false, deps: seamsOf(f) });
     expect(result.ok).toBe(false);
-    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_LOCAL_DESKTOP_MISSING");
+    expect(result.error?.code).toBe("HUMANISH_COMPUTER_USE_LOCAL_DESKTOP_MISSING");
     expect(result.error?.message).toContain("needs a local desktop");
     expect(f.loadDesktopModule).not.toHaveBeenCalled();
   });
@@ -466,7 +466,7 @@ describe("ready desktop lane contract", () => {
       execution: { ...f.config.execution, target: "local" as const },
     } as unknown as LabConfig;
     const result = await runCuaActorLab({ cwd: f.cwd, config, dryRun: true, deps: seamsOf(f) });
-    expect(result.error?.code).not.toBe("HUMANISH_CUA_LAB_LOCAL_DESKTOP_MISSING");
+    expect(result.error?.code).not.toBe("HUMANISH_COMPUTER_USE_LOCAL_DESKTOP_MISSING");
     expect(result.ok, JSON.stringify(result.error)).toBe(true);
   });
 

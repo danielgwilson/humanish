@@ -222,7 +222,7 @@ describe("automatic analysis admission and producer boundary", () => {
         { ...base, review: { analysis: { maxCostUsd: 5 } } },
         { cwd: path.join(cwd, "absent"), dryRun: false },
       );
-      expect(outcome.result.error?.code).toBe("HUMANISH_LAB_ANALYSIS_UNSUPPORTED");
+      expect(outcome.result.error?.code).toBe("HUMANISH_STUDY_ANALYSIS_UNSUPPORTED");
       expect(await readdir(cwd)).toEqual([]);
     },
   );
@@ -246,7 +246,7 @@ describe("automatic analysis admission and producer boundary", () => {
         inProcess: { executor: forbidden },
         createProvider: forbidden,
       });
-      expect(result.error?.code).toBe("HUMANISH_LAB_ANALYSIS_INVALID");
+      expect(result.error?.code).toBe("HUMANISH_STUDY_ANALYSIS_INVALID");
       expect(forbidden).not.toHaveBeenCalled();
       await expect(access(path.join(cwd, "absent"))).rejects.toMatchObject({ code: "ENOENT" });
     },

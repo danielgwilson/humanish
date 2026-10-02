@@ -75,11 +75,11 @@ export function ParticipantStub({
       <p className="stub-note o-mono">
         {selectedEventId
           ? "This entry has no preceding retained capture. Its recorded text is shown without a fabricated frame."
-          : "This lane recorded no screenshot frames, so the review player has no timeline to run. Below is the recorded evidence it carries."}
+          : "This participant recorded no screenshot frames, so the review player has no timeline to run. Below is the recorded evidence it carries."}
       </p>
       {keyframe !== null ? (
         <div className="blk">
-          <span className="o-label">Keyframe — last recorded screenshot</span>
+          <span className="o-label">Keyframe · last recorded screenshot</span>
           <img
             className="stub-keyframe"
             src={keyframe}
@@ -94,7 +94,7 @@ export function ParticipantStub({
         </span>
         <span className="k">Scenario</span>
         <span className="v">{data.run.scenario.title}</span>
-        <span className="k">Lane</span>
+        <span className="k">Participant</span>
         <span className="v">{stream.label}</span>
         <span className="k">Kind</span>
         <span className="v">{stream.kindLabel}</span>
@@ -148,7 +148,7 @@ export function ParticipantStub({
           </>
         ) : actor?.estimatedCost && typeof actor.estimatedCost.estimatedCostUsd === "number" ? (
           <>
-            <span className="k">Est. lane cost</span>
+            <span className="k">Est. participant cost</span>
             <span className="v">
               ~${actor.estimatedCost.estimatedCostUsd.toFixed(2)} (rates as of{" "}
               {actor.estimatedCost.ratesAsOf})
@@ -196,9 +196,9 @@ export function ParticipantStub({
       ) : null}
       {stream.ui ? (
         <div className="blk">
-          <span className="o-label">UI lane contract</span>
+          <span className="o-label">Declared UI route</span>
           <p className="verbatim">
-            {stream.ui.route} — {stream.ui.intent}
+            {stream.ui.route} · {stream.ui.intent}
           </p>
         </div>
       ) : null}
@@ -233,7 +233,7 @@ export function ParticipantStub({
             <div key={event.id} className={event.level === "warn" ? "arow ev warn" : "arow ev"}>
               <span className="tc">{event.level}</span>
               <span>
-                {event.type} — {event.message}
+                {event.type}: {event.message}
               </span>
             </div>
           ))}

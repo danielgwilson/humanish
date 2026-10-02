@@ -32,16 +32,16 @@ const tasks = { actors: [{ type: "synthetic-persona", tasks: [{ id: "t", goal: "
 
 describe("preview admission", () => {
   it.each([
-    ["real receiving", receiving, "HUMANISH_LAB_COMMS_UNSUPPORTED"],
-    ["invalid analysis", badAnalysis, "HUMANISH_LAB_ANALYSIS_INVALID"],
-    ["declared analysis", analysis, "HUMANISH_LAB_ANALYSIS_UNSUPPORTED"],
-    ["tasks", tasks, "HUMANISH_LAB_TASKS_UNSUPPORTED"],
+    ["real receiving", receiving, "HUMANISH_STUDY_COMMS_UNSUPPORTED"],
+    ["invalid analysis", badAnalysis, "HUMANISH_STUDY_ANALYSIS_INVALID"],
+    ["declared analysis", analysis, "HUMANISH_STUDY_ANALYSIS_UNSUPPORTED"],
+    ["tasks", tasks, "HUMANISH_STUDY_TASKS_UNSUPPORTED"],
     [
       "receiving wins over analysis",
       { ...receiving, ...badAnalysis },
-      "HUMANISH_LAB_COMMS_UNSUPPORTED",
+      "HUMANISH_STUDY_COMMS_UNSUPPORTED",
     ],
-    ["analysis wins over tasks", { ...analysis, ...tasks }, "HUMANISH_LAB_ANALYSIS_UNSUPPORTED"],
+    ["analysis wins over tasks", { ...analysis, ...tasks }, "HUMANISH_STUDY_ANALYSIS_UNSUPPORTED"],
   ] as const)("refuses %s before any run", async (_name, extra, code) => {
     const cwd = await mkdtemp(path.join(tmpdir(), "humanish-preview-admission-"));
     dirs.push(cwd);

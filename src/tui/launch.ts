@@ -72,7 +72,7 @@ export type LaunchRunResult =
   | { ok: true; run: LaunchedRun }
   | { ok: false; error: { code: LaunchErrorCode; message: string } };
 
-export type LaunchErrorCode = "HUMANISH_LAUNCH_INVALID_LAB" | "HUMANISH_LAUNCH_FAILED";
+export type LaunchErrorCode = "HUMANISH_LAUNCH_INVALID_STUDY" | "HUMANISH_LAUNCH_FAILED";
 
 /** Where the CLI lives, relative to this compiled module. */
 function defaultCliPath(): string {
@@ -88,7 +88,7 @@ export async function launchRun(options: LaunchRunOptions): Promise<LaunchRunRes
     return {
       ok: false,
       error: {
-        code: "HUMANISH_LAUNCH_INVALID_LAB",
+        code: "HUMANISH_LAUNCH_INVALID_STUDY",
         message: `"${options.lab}" is not a usable lab handle. Run it by path with \`humanish lab run <path>\` instead.`,
       },
     };
@@ -102,7 +102,7 @@ export async function launchRun(options: LaunchRunOptions): Promise<LaunchRunRes
       return {
         ok: false,
         error: {
-          code: "HUMANISH_LAUNCH_INVALID_LAB",
+          code: "HUMANISH_LAUNCH_INVALID_STUDY",
           message: "The selected lab path could not be read safely. Refresh the lab list.",
         },
       };

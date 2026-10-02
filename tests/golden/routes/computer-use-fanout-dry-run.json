@@ -493,13 +493,13 @@
           "focus": "Sign up from a phone."
         },
         "kind": "browser",
-        "label": "CUA participant mobile-newcomer: fanout-proof",
+        "label": "mobile-newcomer · browser",
         "status": "contract_proof_only",
         "transport": "snapshot",
         "updatedAt": "[ts]",
         "embed": {
           "kind": "placeholder",
-          "title": "CUA desktop mobile-newcomer"
+          "title": "Desktop"
         },
         "desktopGeometry": {
           "screen": {
@@ -546,13 +546,13 @@
           "focus": "Skim and bounce."
         },
         "kind": "browser",
-        "label": "CUA participant small-skimmer: fanout-proof",
+        "label": "small-skimmer · browser",
         "status": "contract_proof_only",
         "transport": "snapshot",
         "updatedAt": "[ts]",
         "embed": {
           "kind": "placeholder",
-          "title": "CUA desktop small-skimmer"
+          "title": "Desktop"
         },
         "desktopGeometry": {
           "screen": {
@@ -599,13 +599,13 @@
           "focus": "Open advanced settings."
         },
         "kind": "browser",
-        "label": "CUA participant desktop-power: fanout-proof",
+        "label": "desktop-power · browser",
         "status": "contract_proof_only",
         "transport": "snapshot",
         "updatedAt": "[ts]",
         "embed": {
           "kind": "placeholder",
-          "title": "CUA desktop desktop-power"
+          "title": "Desktop"
         },
         "desktopGeometry": {
           "screen": {
@@ -647,13 +647,13 @@
           "focus": "Compare the plans."
         },
         "kind": "browser",
-        "label": "CUA participant wide-researcher: fanout-proof",
+        "label": "wide-researcher · browser",
         "status": "contract_proof_only",
         "transport": "snapshot",
         "updatedAt": "[ts]",
         "embed": {
           "kind": "placeholder",
-          "title": "CUA desktop wide-researcher"
+          "title": "Desktop"
         },
         "desktopGeometry": {
           "screen": {

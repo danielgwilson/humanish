@@ -9,8 +9,8 @@ export function EmptyState() {
       <span className="o-label">Observer</span>
       <p>
         This artifact was opened without run data. The humanish CLI injects a run&rsquo;s
-        <code> observer-data.v1</code> snapshot when it writes <code>observer/index.html</code> —
-        open a run through <code>humanish observe</code> or <code>humanish watch</code>.
+        <code> observer-data.v1</code> snapshot when it writes <code>observer/index.html</code>.
+        Open a run through <code>humanish observe</code> or <code>humanish watch</code>.
       </p>
     </div>
   );

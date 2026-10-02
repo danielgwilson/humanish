@@ -60,7 +60,7 @@ describe("computer-use route reads of the planned subject", () => {
       },
     }).catch((error: unknown) => ({ error: { code: String(error) } }));
     expect(fetched.filter((url) => url.startsWith("https://catch.example.test"))).toEqual([]);
-    expect(result.error?.code).not.toBe("HUMANISH_CUA_LAB_COMMS_CATCH_UNREACHABLE");
+    expect(result.error?.code).not.toBe("HUMANISH_COMPUTER_USE_COMMS_CATCH_UNREACHABLE");
   });
 
   it("records each fan-out participant's clone provenance", async () => {

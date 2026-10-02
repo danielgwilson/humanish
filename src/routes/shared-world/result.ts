@@ -101,7 +101,7 @@ function concurrentParticipantResults(
         ? {}
         : {
             error: {
-              code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED" as const,
+              code: "HUMANISH_SHARED_WORLD_FAILED" as const,
               message:
                 result.outcome.sessionError ??
                 (result.outcome.noEngagement
@@ -140,14 +140,14 @@ function concurrentLabError(args: {
     // itself make the Observer unable to render a coherent run. Report the distinct, honest
     // handoff-timeout code rather than a generic observer/run failure.
     return {
-      code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_HANDOFF_TIMEOUT",
+      code: "HUMANISH_SHARED_WORLD_HANDOFF_TIMEOUT",
       message:
         runError ??
         "The host participant never produced a /lobby/CODE URL within the handoff deadline.",
     };
   }
   if (hostHandoffFailure !== undefined) {
-    return { code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED", message: hostHandoffFailure };
+    return { code: "HUMANISH_SHARED_WORLD_FAILED", message: hostHandoffFailure };
   }
   // The run's own failure before the Observer's: a run that stopped early (a desktop module that
   // failed to load, a plane that failed to start) leaves a bundle verify then refuses, and naming
@@ -155,34 +155,34 @@ function concurrentLabError(args: {
   // evidence).
   if (runError) {
     return {
-      code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED",
+      code: "HUMANISH_SHARED_WORLD_FAILED",
       message: observer.ok ? runError : `${runError} The run bundle it left failed verification.`,
     };
   }
   if (!observer.ok) {
     return {
-      code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED",
+      code: "HUMANISH_SHARED_WORLD_FAILED",
       message: observer.error?.message ?? "Observer failed for the concurrent shared-world run.",
     };
   }
   if (adapterFailure !== undefined) {
-    return { code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED", message: adapterFailure };
+    return { code: "HUMANISH_SHARED_WORLD_FAILED", message: adapterFailure };
   }
   const passed = participantResults.filter((result) => result.ok).length;
   if (passed === participantCount && args.shortfall !== undefined) {
     return {
-      code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED",
+      code: "HUMANISH_SHARED_WORLD_FAILED",
       message: `Concurrent shared-world run did not run coherently. ${args.shortfall}`,
     };
   }
   if (passed === participantCount && args.executionFailure !== undefined) {
     return {
-      code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED",
+      code: "HUMANISH_SHARED_WORLD_FAILED",
       message: `Concurrent shared-world run failed as an execution. ${args.executionFailure}`,
     };
   }
   return {
-    code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED",
+    code: "HUMANISH_SHARED_WORLD_FAILED",
     message: `Concurrent shared-world run did not run coherently: ${passed}/${participantCount} actor(s) reached a terminal, engaged passed session.`,
   };
 }

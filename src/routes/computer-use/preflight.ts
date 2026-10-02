@@ -12,10 +12,10 @@ import type { CuaActorLabErrorCode } from "./types.js";
 
 /** The computer-use code for each local-agent refusal; shared-world keeps the same kinds. */
 const LOCAL_AGENT_REFUSAL_CODES = {
-  "agent-missing": "HUMANISH_CUA_LAB_AGENT_MISSING",
-  "signin-required": "HUMANISH_CUA_LAB_AGENT_SIGNIN_REQUIRED",
-  unsupported: "HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED",
-  "unpriced-cap": "HUMANISH_CUA_LAB_UNPRICED_CAP",
+  "agent-missing": "HUMANISH_COMPUTER_USE_AGENT_MISSING",
+  "signin-required": "HUMANISH_COMPUTER_USE_AGENT_SIGNIN_REQUIRED",
+  unsupported: "HUMANISH_COMPUTER_USE_ACTOR_UNSUPPORTED",
+  "unpriced-cap": "HUMANISH_COMPUTER_USE_UNPRICED_CAP",
 } as const satisfies Record<LocalAgentRefusal["kind"], CuaActorLabErrorCode>;
 
 /**
@@ -54,7 +54,7 @@ export async function liveCuaRejection(args: {
         })()
       : "";
     return {
-      code: "HUMANISH_CUA_LAB_KEYS_MISSING",
+      code: "HUMANISH_COMPUTER_USE_KEYS_MISSING",
       message: `Live computer-use labs need ${missing.join(" and ")} in the environment (values are never persisted). ${describeMissingKeys(missing, env)}${suggestion}`,
     };
   }
@@ -68,7 +68,7 @@ export async function liveCuaRejection(args: {
   const unsetSubjectEnv = missingSubjectEnv(requirements, env);
   if (unsetSubjectEnv.length > 0) {
     return {
-      code: "HUMANISH_CUA_LAB_SUBJECT_ENV_MISSING",
+      code: "HUMANISH_COMPUTER_USE_SUBJECT_ENV_MISSING",
       message: `subject.env declares ${unsetSubjectEnv.join(", ")} but the environment does not provide ${unsetSubjectEnv.length === 1 ? "it" : "them"} (pass via --env-file; values are never persisted).`,
     };
   }
@@ -83,7 +83,7 @@ export async function liveCuaRejection(args: {
     const capModelId = model.trim().toLowerCase();
     if (!MODEL_RATES[capModelId]) {
       return {
-        code: "HUMANISH_CUA_LAB_UNPRICED_CAP",
+        code: "HUMANISH_COMPUTER_USE_UNPRICED_CAP",
         message: `execution.caps declares a spend cap (maxUsd/maxTotalUsd) but src/run/pricing.ts has no rate for model "${model}"; add a rate or remove the cap — an unenforceable cap is refused rather than run uncapped.`,
       };
     }
@@ -97,10 +97,10 @@ export async function liveCuaRejection(args: {
       ? undefined
       : catchTokenRefusal(catchTokenOf(externalCommsConfig, env));
   if (tokenRefusal !== undefined)
-    return { code: "HUMANISH_CUA_LAB_COMMS_TOKEN_INVALID", message: tokenRefusal };
+    return { code: "HUMANISH_COMPUTER_USE_COMMS_TOKEN_INVALID", message: tokenRefusal };
   if (externalCommsConfig && !(await externalCatchHealthy(externalCommsConfig))) {
     return {
-      code: "HUMANISH_CUA_LAB_COMMS_CATCH_UNREACHABLE",
+      code: "HUMANISH_COMPUTER_USE_COMMS_CATCH_UNREACHABLE",
       message:
         "The external comms catch or inbox is unreachable or incompatible (GET /health must identify humanish-comms-catch and advertise recipient-inbox-v1). Update humanish on the catch host and restart it with `humanish comms catch` on that host, or drop comms.email to run without the inbox funnel.",
     };
