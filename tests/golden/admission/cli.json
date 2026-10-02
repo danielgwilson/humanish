@@ -125,7 +125,7 @@
       "warnings": [],
       "error": {
         "code": "HUMANISH_STUDY_SCORER_UNSUPPORTED_BACKEND",
-        "message": "review.scorer.ref is declared but this lab resolves to the scripted route, which has no adopter-scorer seam. A declared scorer that cannot run must fail closed rather than pass silently — declare it on a terminal, computer-use or shared-world lab."
+        "message": "review.scorer.ref is set, but this study runs on the scripted route, which cannot run a scorer. The run stops here so the scorer is not silently skipped. Use it with a terminal, computer-use or shared-world study, or remove review.scorer.ref."
       }
     },
     "stderr": "",
@@ -455,7 +455,7 @@
       "lab": "adm-clone-no-serve",
       "error": {
         "code": "HUMANISH_STUDY_INVALID",
-        "message": "clone subjects on the computer-use route require `subject.serve` (start + url) — the lab serves the app in-sandbox before the actor drives it."
+        "message": "A clone subject on the computer-use route needs `subject.serve` (start and url): humanish starts the app in the sandbox before the participant opens it."
       },
       "warnings": []
     },

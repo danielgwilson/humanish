@@ -761,7 +761,7 @@ describe("provenance verify (tolerated-absent, rejected-when-malformed)", () => 
 });
 
 describe("parser: review.scorer consumed on scorer-capable routes, typos rejected", () => {
-  it("a terminal study declaring review.scorer emits no 'not yet consumed' warning for scorer", () => {
+  it("a terminal study declaring review.scorer emits no unread-field warning for scorer", () => {
     const result = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
       id: "terminal-scorer",

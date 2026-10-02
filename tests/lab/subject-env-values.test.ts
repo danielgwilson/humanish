@@ -88,7 +88,7 @@ describe("subject.envValues", () => {
   it("refuses keys that are not env var names", () => {
     const parsed = cloneLab({ envValues: { "not a var": "x" } });
     expect(parsed.ok).toBe(false);
-    if (!parsed.ok) expect(parsed.error.message).toContain("env var NAMES");
+    if (!parsed.ok) expect(parsed.error.message).toContain("environment variable names");
   });
 
   it("refuses a non-scalar value rather than silently stringifying an object", () => {

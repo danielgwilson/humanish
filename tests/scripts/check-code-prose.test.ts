@@ -36,6 +36,7 @@ const STRING_KINDS = [
   "string-rationale",
   "string-plural-s",
   "string-caps",
+  "prompt-markers",
 ] as const;
 /** A count named for its kind and root suffix: `caps` for src, `caps-tests` for the tests root. */
 type Count =
@@ -428,6 +429,18 @@ describe("prose:check counts prose in src strings apart from comments", () => {
 
     expect(dashes.count).toBe(1);
     expect(caps.count).toBe(0);
+  });
+
+  it("counts each prompt marker, so a new exemption raises a cap", async () => {
+    const marked = [
+      "// prose-check: model prompt (the participant model reads this)",
+      'const prompt = "Reply with JSON only.";',
+      "",
+    ].join("\n");
+    const hits = await hitsOf("prompt-markers", marked);
+    expect(hits.count).toBe(1);
+    expect(await exitWith({ "prompt-markers": 1 }, marked)).toBe(0);
+    expect(await exitWith({ "prompt-markers": 0 }, marked)).toBe(1);
   });
 
   it("does not count string literal types", async () => {

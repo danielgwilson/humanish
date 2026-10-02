@@ -229,6 +229,6 @@ export const routeCases: readonly AdmissionCase[] = [
   {
     name: "overlap shared world: tasks and one seat",
     raw: lab("sharedProvisioned", {}, { tasks: task, lanes: [{ id: "author", entry: "/seat-1" }] }),
-    parser: "at least 2 roles",
+    parser: "roster of at least 2",
   },
 ];

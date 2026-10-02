@@ -199,6 +199,6 @@ export function formatTaskFunnel(funnel: TaskFunnel): string {
   const unmeasured =
     funnel.unmeasured === 0
       ? ""
-      : `, ${funnel.unmeasured} NEVER MEASURED (the observations their criteria read never arrived)`;
+      : `, ${funnel.unmeasured} never measured (the observations their criteria read never arrived)`;
   return `${base}${stopped}${unobservable}${unmeasured}`;
 }
