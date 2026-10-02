@@ -532,11 +532,11 @@ in-progress bundle that can pass every check. When the run is not finished,
 `warnings[]` carries one entry starting with the stable code `RUN_NOT_FINISHED`.
 `ok` and `shareSafety` do not change. Verify decides "not finished" by the run
 index's rule, which the TUI and `humanish stats` use: the run's `status.json` when
-it is well formed and names the run, else a simulation still `running` in the
+it is well formed and names the run, else a `simulations[]` entry still `running` in the
 bundle. A `running` record updated within the stale window reads as still
 writing; an older one reads as interrupted. The warning names what verify saw:
 
-- the record's state and its last `updatedAt`, or the running simulations when
+- the record's state and its last `updatedAt`, or the running `simulations[]` entries when
   there is no usable record;
 - how many streams are still `running`;
 - what `reclaim-receipt.json` records: how many of the run's sandboxes are gone
