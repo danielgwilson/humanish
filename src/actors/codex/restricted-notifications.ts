@@ -3,7 +3,16 @@
 // carries an item is checked against the item policy whatever its method, so a new method cannot
 // carry a native operation past it. A method this humanish does not know that carries no item is
 // counted and reported, not refused, so a release's new progress events do not break a run.
-import { toolPolicyViolation, type RestrictedCodexAnalysisErrorCode } from "./restricted-policy.js";
+import {
+  codexRecord,
+  toolPolicyViolation,
+  type RestrictedCodexAnalysisErrorCode,
+} from "./restricted-policy.js";
+import {
+  RestrictedCodexStop,
+  type RestrictedCodexDeadline,
+  type RestrictedCodexTransport,
+} from "./restricted-transport.js";
 
 const rawCompactionTypes = ["compaction", "compaction_summary", "context_compaction"] as const;
 /** Raw response item types an analyst turn may produce. */
@@ -141,17 +150,57 @@ export function countUnknownNotification(counts: Map<string, number>, method: st
   counts.set(method, (counts.get(method) ?? 0) + 1);
 }
 
-/** The item a notification carries: an `item` object with a string `type`, or none. */
-export function notificationItem(
+const isItem = (value: unknown): value is Record<string, unknown> =>
+  value !== null &&
+  typeof value === "object" &&
+  !Array.isArray(value) &&
+  typeof (value as Record<string, unknown>).type === "string";
+
+/**
+ * The items a notification carries, each with the method whose policy it takes, or null when one
+ * is malformed. 0.160.0's schema puts a ThreadItem in `params.item` (item/started,
+ * item/completed), `params.turn.items` (turn/started, turn/completed) and
+ * `params.thread.turns[].items` (thread/started). An `item` array and an `items` array are read
+ * too, for a release that adds them. A nested ThreadItem takes the item/completed policy.
+ */
+export function notificationItems(
+  method: string,
   params: Record<string, unknown>,
-): Record<string, unknown> | undefined {
-  const item = params.item;
-  return item !== null &&
-    typeof item === "object" &&
-    !Array.isArray(item) &&
-    typeof (item as Record<string, unknown>).type === "string"
-    ? (item as Record<string, unknown>)
-    : undefined;
+): { method: string; item: Record<string, unknown> }[] | null {
+  const found: { method: string; item: Record<string, unknown> }[] = [];
+  let malformed = false;
+  const add = (value: unknown, itemMethod: string): void => {
+    if (isItem(value)) found.push({ method: itemMethod, item: value });
+    else malformed = true;
+  };
+  const addAll = (value: unknown, itemMethod: string): void => {
+    if (Array.isArray(value)) for (const item of value) add(item, itemMethod);
+  };
+  if (Array.isArray(params.item)) addAll(params.item, method);
+  else if (params.item !== undefined && params.item !== null) add(params.item, method);
+  addAll(params.items, method);
+  addAll(codexRecord(params.turn).items, "item/completed");
+  const turns = codexRecord(params.thread).turns;
+  if (Array.isArray(turns))
+    for (const turn of turns) addAll(codexRecord(turn).items, "item/completed");
+  return malformed ? null : found;
+}
+
+/**
+ * How a notification fares under the item policy: it carries no item, only allowed items, or a
+ * disallowed or malformed one.
+ */
+export function itemPolicyOf(
+  method: string,
+  params: Record<string, unknown>,
+  policy: NotificationPolicy,
+): "none" | "allowed" | "violation" {
+  const found = notificationItems(method, params);
+  if (found === null) return "violation";
+  if (found.length === 0) return "none";
+  return found.some((entry) => itemPolicyViolation(entry.method, entry.item, policy))
+    ? "violation"
+    : "allowed";
 }
 
 /**
@@ -179,8 +228,9 @@ export function itemPolicyViolation(
 
 /**
  * The handler for notifications outside a dispatched turn: during the handshake, before
- * turn/start, and between requests. A disallowed item refuses; an unknown method without an item
- * is counted; anything else is ignored, as there is no turn to apply it to.
+ * turn/start, between requests and while closing. A disallowed or malformed item refuses; an
+ * unknown method without an item is counted; anything else is ignored, as there is no turn to
+ * apply it to.
  */
 export function idleNotificationHandler(
   policy: NotificationPolicy,
@@ -188,12 +238,9 @@ export function idleNotificationHandler(
   refuse: (code: RestrictedCodexAnalysisErrorCode) => void,
 ): (method: string, params: Record<string, unknown>) => void {
   return (method, params) => {
-    const item = notificationItem(params);
-    if (item !== undefined) {
-      if (itemPolicyViolation(method, item, policy)) refuse("codex_tool_call");
-      return;
-    }
-    if (!KNOWN_CODEX_NOTIFICATIONS.has(method)) recordUnknown(method);
+    const items = itemPolicyOf(method, params, policy);
+    if (items === "violation") refuse("codex_tool_call");
+    else if (items === "none" && !KNOWN_CODEX_NOTIFICATIONS.has(method)) recordUnknown(method);
   };
 }
 
@@ -206,4 +253,83 @@ export function unknownNotificationsWarning(
   if (entries.length === 0) return undefined;
   const list = entries.map(([method, count]) => `${method} ×${count}`).join(", ");
   return `Codex CLI${cliVersion === undefined ? "" : ` ${cliVersion}`} sent notification methods humanish does not know: ${list}. They carried no item and were ignored.`;
+}
+
+/** The session fields its handlers outside a turn read and write (restricted-session). */
+export interface NotificationSessionState {
+  readonly unknownNotifications: Map<string, number>;
+  /** The request in flight's deadline, or undefined between requests. */
+  readonly activeDeadline: RestrictedCodexDeadline | undefined;
+  readonly transport: RestrictedCodexTransport | undefined;
+  /** A policy refusal no request reported; a request that fails with it clears it. */
+  unreportedRefusal: RestrictedCodexAnalysisErrorCode | undefined;
+}
+type Participant = { readonly tool: { readonly name: string } } | undefined;
+
+/** Records a refusal no request will report: none is active, or the active one stopped already. */
+function noteUnreported(
+  state: NotificationSessionState,
+  code: RestrictedCodexAnalysisErrorCode,
+): void {
+  const deadline = state.activeDeadline;
+  if (deadline === undefined || (deadline.code !== null && deadline.code !== code))
+    state.unreportedRefusal ??= code;
+}
+
+/**
+ * A policy refusal: the active request stops with `code`, pending RPCs are rejected, and between
+ * requests the next request fails with it. A refusal no request can report is recorded.
+ */
+export function refuseSession(
+  state: NotificationSessionState,
+  code: RestrictedCodexAnalysisErrorCode,
+): void {
+  state.activeDeadline?.stop(code);
+  noteUnreported(state, code);
+  state.transport?.refuse(code);
+}
+
+/** The session's handler for notifications outside a dispatched turn, on its current transport. */
+export function idleNotifications(
+  participant: Participant,
+  state: NotificationSessionState,
+): (method: string, params: Record<string, unknown>) => void {
+  return idleNotificationHandler(
+    notificationPolicyOf(participant),
+    (method) => countUnknownNotification(state.unknownNotifications, method),
+    (code) => refuseSession(state, code),
+  );
+}
+
+/** While the transport closes: the item policy only, and a refusal waits for the session's close. */
+export function closingNotifications(
+  participant: Participant,
+  state: NotificationSessionState,
+): (method: string, params: Record<string, unknown>) => void {
+  return idleNotificationHandler(
+    notificationPolicyOf(participant),
+    (method) => countUnknownNotification(state.unknownNotifications, method),
+    (code) => {
+      state.unreportedRefusal ??= code;
+    },
+  );
+}
+
+/** A server request outside a turn is refused; the transport answers it and stops the request. */
+function idleRequests(
+  state: NotificationSessionState,
+): NonNullable<RestrictedCodexTransport["onRequest"]> {
+  return async () => {
+    noteUnreported(state, "codex_tool_call");
+    throw new RestrictedCodexStop("codex_tool_call");
+  };
+}
+
+/** After a request: the turn's handlers come off the transport, and the idle handlers go on. */
+export function detachTurn(participant: Participant, state: NotificationSessionState): void {
+  const transport = state.transport;
+  if (!transport) return;
+  transport.onNotification = idleNotifications(participant, state);
+  transport.onRequest = idleRequests(state);
+  transport.onRequestComplete = undefined;
 }

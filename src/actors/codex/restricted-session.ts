@@ -48,9 +48,12 @@ import {
 } from "./restricted-executable.js";
 import { RestrictedCodexTurn } from "./restricted-turn.js";
 import {
+  closingNotifications,
   countUnknownNotification,
-  idleNotificationHandler,
+  detachTurn,
+  idleNotifications,
   notificationPolicyOf,
+  refuseSession,
 } from "./restricted-notifications.js";
 
 /** Internal host dependencies. None of these options is accepted from a study artifact. */
@@ -114,15 +117,20 @@ export async function runRestrictedCodexSession(
 ): Promise<RestrictedCodexResult> {
   const session = createRestrictedCodexSession(options);
   const result = await session.run(request, readinessOnly);
+  const closed = await session.close();
   const unknownNotifications = session.unknownNotifications ?? {};
   const noted = Object.keys(unknownNotifications).length === 0 ? {} : { unknownNotifications };
-  return (await session.close())
-    ? { ...result, ...noted }
-    : {
-        ...restrictedCodexFailure("codex_cleanup_failed", result.dispatched, result.usage),
-        failurePhase: "cleanup",
-        ...noted,
-      };
+  if (!closed)
+    return {
+      ...restrictedCodexFailure("codex_cleanup_failed", result.dispatched, result.usage),
+      failurePhase: "cleanup",
+      ...noted,
+    };
+  // A disallowed item while the app-server shut down fails a request that had completed.
+  const refusal = session.unreportedRefusal;
+  return refusal !== undefined && result.errorCode === null
+    ? { ...restrictedCodexFailure(refusal, result.dispatched, result.usage), ...noted }
+    : { ...result, ...noted };
 }
 
 async function writeRecoveryMarker(
@@ -267,8 +275,11 @@ export interface RestrictedCodexSession {
   readonly cliVersion?: string | undefined;
   /** Notification methods this humanish does not know that carried no item, by count. */
   readonly unknownNotifications?: Readonly<Record<string, number>>;
-  /** A refusal between requests that no later request has reported, such as a disallowed item. */
-  readonly refusedBetweenRequests?: RestrictedCodexAnalysisErrorCode | undefined;
+  /**
+   * A policy refusal no request reported: between requests, while closing, or after the request
+   * stopped for another reason. A participant's close fails the run with it.
+   */
+  readonly unreportedRefusal?: RestrictedCodexAnalysisErrorCode | undefined;
   run(request: RestrictedCodexRequest, readinessOnly?: boolean): Promise<RestrictedCodexResult>;
   close(): Promise<boolean>;
 }
@@ -300,8 +311,8 @@ interface SessionState extends LaunchState {
   closed: boolean;
   /** False once a request reported codex_cleanup_failed (each request; teardown). */
   cleanupTrusted: boolean;
-  /** A refusal between requests (the idle handler); the next request reports it and clears it. */
-  idleRefusal: RestrictedCodexAnalysisErrorCode | undefined;
+  /** A policy refusal no request reported (noteUnreported); a request that fails with it clears it. */
+  unreportedRefusal: RestrictedCodexAnalysisErrorCode | undefined;
 }
 
 /** Teardown: close the app-server, unlink the auth link and remove the task directory. */
@@ -309,6 +320,7 @@ async function disposeSession(settings: SessionSettings, state: SessionState): P
   // Each field is read at its use, after the awaits before it, as the session always has.
   let cleaned = state.cleanupTrusted;
   if (state.transport) {
+    state.transport.onClosingNotification = closingNotifications(settings.participant, state);
     cleaned = (await state.transport.close(state.interrupt).catch(() => false)) && cleaned;
     if (!cleaned) retainUnclosedChild(state.transport!.owned.closed);
   }
@@ -382,33 +394,10 @@ function newTurn(
       state.interrupt = { threadId: state.threadId!, turnId };
     },
     policy: notificationPolicyOf(participant),
-    idle: (method, params) => idleNotifications(settings, state)(method, params),
+    idle: (method, params) => idleNotifications(participant, state)(method, params),
     recordUnknown: (method) => countUnknownNotification(state.unknownNotifications, method),
+    refuse: (code) => refuseSession(state, code),
   });
-}
-
-/** The session's handler for notifications outside a dispatched turn, on its current transport. */
-function idleNotifications(
-  settings: SessionSettings,
-  state: SessionState,
-): (method: string, params: Record<string, unknown>) => void {
-  return idleNotificationHandler(
-    notificationPolicyOf(settings.participant),
-    (method) => countUnknownNotification(state.unknownNotifications, method),
-    (code) => {
-      if (state.activeDeadline === undefined) state.idleRefusal ??= code;
-      state.transport?.refuse(code);
-    },
-  );
-}
-
-/** After a request: the turn's handlers come off the transport, and the idle handler goes on. */
-function detachTurn(settings: SessionSettings, state: SessionState): void {
-  const transport = state.transport;
-  if (!transport) return;
-  transport.onNotification = idleNotifications(settings, state);
-  transport.onRequest = undefined;
-  transport.onRequestComplete = undefined;
 }
 
 /** Request dispatch: launch on the first request, then one turn; a failed request tears down. */
@@ -422,8 +411,6 @@ async function runTurn(
   const participant = settings.participant;
   const deadline = new RestrictedCodexDeadline(request.timeoutMs, request.signal);
   state.activeDeadline = deadline;
-  // A refusal between requests stopped the transport, so this request fails with its code.
-  state.idleRefusal = undefined;
   let turn: RestrictedCodexTurn | undefined;
   let result: RestrictedCodexResult = restrictedCodexFailure("codex_process_failed");
   let phase: CuaProviderFailurePhase = "startup";
@@ -443,6 +430,7 @@ async function runTurn(
         (next) => {
           phase = next;
         },
+        idleNotifications(participant, state),
       );
       selectedModel = state.identity!.model;
     } else state.transport.beginRequest(deadline, frameLimit);
@@ -481,7 +469,10 @@ async function runTurn(
     state.pendingInferenceUsage = undefined;
     deadline.close();
     state.activeDeadline = undefined;
-    detachTurn(settings, state);
+    detachTurn(participant, state);
+    // This request reported the refusal it failed with.
+    if (result.errorCode !== null && result.errorCode === state.unreportedRefusal)
+      state.unreportedRefusal = undefined;
     if (result.errorCode !== null) {
       if (result.errorCode === "codex_cleanup_failed") state.cleanupTrusted = false;
       if (!(await dispose()))
@@ -563,7 +554,7 @@ export function createRestrictedCodexSession(
     interrupt: undefined,
     closed: false,
     cleanupTrusted: true,
-    idleRefusal: undefined,
+    unreportedRefusal: undefined,
   };
   let pending: Promise<RestrictedCodexResult> | undefined,
     closing: Promise<boolean> | undefined,
@@ -592,8 +583,8 @@ export function createRestrictedCodexSession(
     get unknownNotifications() {
       return Object.fromEntries(state.unknownNotifications);
     },
-    get refusedBetweenRequests() {
-      return state.idleRefusal;
+    get unreportedRefusal() {
+      return state.unreportedRefusal;
     },
     run(request, readinessOnly = false) {
       const refusal = refusedRun(settings, state, request, () => pending !== undefined);

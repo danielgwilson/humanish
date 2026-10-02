@@ -2,8 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 import {
   KNOWN_CODEX_NOTIFICATIONS,
   idleNotificationHandler,
+  itemPolicyOf,
   itemPolicyViolation,
-  notificationItem,
+  notificationItems,
   notificationPolicyOf,
   unknownNotificationsWarning,
 } from "../../../src/actors/codex/restricted-notifications.js";
@@ -14,11 +15,39 @@ const command = { type: "commandExecution", id: "cmd-1", command: "true" };
 const answer = { type: "agentMessage", id: "msg-1", text: "{}", phase: "final_answer" };
 const tool = { type: "dynamicToolCall", id: "call-1", tool: "humanish_ui", namespace: null };
 
-describe("notificationItem", () => {
-  it("returns an item object with a string type and nothing else", () => {
-    expect(notificationItem({ item: command })).toBe(command);
-    for (const item of [undefined, null, "commandExecution", [command], { type: 1 }, {}])
-      expect(notificationItem({ item })).toBeUndefined();
+describe("notificationItems", () => {
+  it("finds items wherever the schema nests them, and nothing without an item", () => {
+    const m = "thread/x";
+    expect(notificationItems(m, { item: command })).toEqual([{ method: m, item: command }]);
+    expect(notificationItems(m, { item: [command] })).toEqual([{ method: m, item: command }]);
+    expect(notificationItems(m, { items: [command] })).toEqual([{ method: m, item: command }]);
+    const nested = { method: "item/completed", item: command };
+    expect(notificationItems("turn/completed", { turn: { items: [command] } })).toEqual([nested]);
+    expect(
+      notificationItems("thread/started", { thread: { turns: [{ items: [command] }] } }),
+    ).toEqual([nested]);
+    for (const params of [{}, { item: null }, { items: "x" }, { turn: { items: [] } }])
+      expect(notificationItems(m, params)).toEqual([]);
+  });
+
+  it("returns null when an item is malformed", () => {
+    for (const item of ["commandExecution", { type: 1 }, {}, [{}]])
+      expect(notificationItems("thread/x", { item })).toBeNull();
+    expect(notificationItems("turn/completed", { turn: { items: [null] } })).toBeNull();
+  });
+});
+
+describe("itemPolicyOf", () => {
+  it("refuses a disallowed or malformed item in any position", () => {
+    expect(itemPolicyOf("turn/completed", { turn: { items: [answer, command] } }, analyst)).toBe(
+      "violation",
+    );
+    expect(itemPolicyOf("thread/x", { items: [command] }, analyst)).toBe("violation");
+    expect(itemPolicyOf("thread/x", { item: { kind: "commandExecution" } }, analyst)).toBe(
+      "violation",
+    );
+    expect(itemPolicyOf("turn/completed", { turn: { items: [answer] } }, analyst)).toBe("allowed");
+    expect(itemPolicyOf("thread/x", { progress: 1 }, analyst)).toBe("none");
   });
 });
 

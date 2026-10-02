@@ -179,6 +179,9 @@ export class RestrictedCodexTransport {
   private eventCount = 0;
   private closing = false;
   onNotification: (method: string, params: Record<string, unknown>) => void = () => undefined;
+  /** Notifications that arrive after close() began: no turn handles them, only the policy. */
+  onClosingNotification: (method: string, params: Record<string, unknown>) => void = () =>
+    undefined;
   onRequest:
     | ((method: string, params: Record<string, unknown>) => Promise<Record<string, unknown>>)
     | undefined;
@@ -194,11 +197,9 @@ export class RestrictedCodexTransport {
     child.stdin.on("error", () => this.fail("codex_process_failed"));
     child.on("close", () => this.fail("codex_process_failed"));
     child.stdout.on("data", (chunk: Buffer) => {
-      if (
-        (!this.closing && this.deadline.code !== null) ||
-        (this.closing && this.pending.size === 0)
-      )
-        return;
+      // While closing, lines are still read, so a notification sent during shutdown passes the
+      // item policy (onClosingNotification); the byte and event limits still apply.
+      if (!this.closing && this.deadline.code !== null) return;
       this.stdoutBytes += chunk.length;
       if (
         this.stdoutBytes >
@@ -321,6 +322,7 @@ export class RestrictedCodexTransport {
       return;
     }
     if (!this.closing) this.onNotification(value.method, codexRecord(value.params));
+    else this.onClosingNotification(value.method, codexRecord(value.params));
   }
   private write(value: unknown): void {
     if (this.owned.isClosed() || this.owned.child.stdin.destroyed)

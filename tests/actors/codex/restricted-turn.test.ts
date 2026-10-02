@@ -47,6 +47,7 @@ function setup(
     policy: notificationPolicyOf(options.analyst ? undefined : holder),
     idle: (method) => idle.push(method),
     recordUnknown: (method) => unknown.push(method),
+    refuse: (code) => deadline.stop(code),
   });
   turn.dispatched = options.dispatched ?? true;
   return { turn, deadline, holder, reported, idle, unknown };
@@ -335,5 +336,69 @@ describe("restricted Codex turn review cases", () => {
     turn.onNotification("turn/completed", completion());
     expect(deadline.code).toBe("invalid_response");
     expect(reported.at(-1)).toMatchObject({ usage: { input: 10, output: 2 } });
+  });
+});
+
+describe("restricted Codex turn notification policy", () => {
+  it("refuses a disallowed item nested in turn/completed's items", () => {
+    const { turn, deadline } = setup({ analyst: true });
+    turn.acknowledge(TURN);
+    turn.onNotification("item/completed", event(answer()));
+    turn.onNotification(
+      "turn/completed",
+      completion({ items: [answer(), { type: "commandExecution" }] }),
+    );
+    expect(deadline.code).toBe("codex_tool_call");
+  });
+
+  it("counts an unknown method that names the turn before the acknowledgment", () => {
+    const { turn, deadline, unknown } = setup();
+    turn.onNotification("thread/futureProgress/updated", { threadId: THREAD, turnId: TURN });
+    turn.acknowledge(TURN);
+    expect(deadline.code).toBeNull();
+    expect(unknown).toEqual(["thread/futureProgress/updated"]);
+  });
+
+  it("refuses an early unknown method for another turn once the turn is acknowledged", () => {
+    const { turn, deadline } = setup();
+    turn.onNotification("thread/futureProgress/updated", { threadId: THREAD, turnId: "turn-2" });
+    expect(deadline.code).toBeNull();
+    turn.acknowledge(TURN);
+    expect(deadline.code).toBe("codex_protocol_error");
+  });
+
+  it("refuses a tool request before dispatch without calling the tool", async () => {
+    let called = false;
+    const { turn, deadline } = setup({
+      dispatched: false,
+      reply: async () => {
+        called = true;
+        return '{"ok":true}';
+      },
+    });
+    await expect(turn.onRequest("item/tool/call", toolRequest())).rejects.toMatchObject({
+      code: "codex_tool_call",
+    });
+    expect(deadline.code).toBe("codex_tool_call");
+    expect(called).toBe(false);
+  });
+
+  it("refuses a tool request after the turn completed without calling the tool", async () => {
+    let called = false;
+    const { turn, deadline } = setup({
+      reply: async () => {
+        called = true;
+        return '{"ok":true}';
+      },
+    });
+    turn.acknowledge(TURN);
+    turn.onNotification("item/completed", event(answer()));
+    turn.onNotification("turn/completed", completion());
+    await expect(turn.finished).resolves.toMatchObject({ status: "completed" });
+    await expect(turn.onRequest("item/tool/call", toolRequest())).rejects.toMatchObject({
+      code: "codex_tool_call",
+    });
+    expect(deadline.code).toBe("codex_tool_call");
+    expect(called).toBe(false);
   });
 });

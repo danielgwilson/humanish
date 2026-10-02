@@ -27,11 +27,6 @@ import {
   ownCodexProcess,
   type RestrictedCodexSpawn,
 } from "./restricted-transport.js";
-import {
-  countUnknownNotification,
-  idleNotificationHandler,
-  notificationPolicyOf,
-} from "./restricted-notifications.js";
 
 /** The host options a launch reads; RestrictedCodexSessionOptions carries them. */
 interface LaunchOptions {
@@ -76,6 +71,9 @@ export interface LaunchState {
   /** Notification methods this humanish does not know that carried no item, by count. */
   unknownNotifications: Map<string, number>;
 }
+
+/** The session's policy for notifications outside a dispatched turn (restricted-notifications). */
+type IdleNotifications = (method: string, params: Record<string, unknown>) => void;
 
 /** An admitted value, or the refusal a launch stops with. */
 export type Admission<T> =
@@ -269,6 +267,7 @@ export async function launchAdmittedAppServer(
   deadline: RestrictedCodexDeadline,
   frameLimit: number,
   enter: (phase: CuaProviderFailurePhase) => void,
+  idle: IdleNotifications,
 ): Promise<RestrictedCodexTransport> {
   const { options, sourceEnv, participant, operatorAuth, reasoningEffort, spawnFn } = settings;
   const file = await resolveExecutable(options, sourceEnv);
@@ -320,11 +319,7 @@ export async function launchAdmittedAppServer(
   );
   const launched = new RestrictedCodexTransport(owned, deadline, frameLimit);
   // Notifications are checked from the first byte, before initialize returns.
-  launched.onNotification = idleNotificationHandler(
-    notificationPolicyOf(participant),
-    (method) => countUnknownNotification(state.unknownNotifications, method),
-    (code) => launched.refuse(code),
-  );
+  launched.onNotification = idle;
   state.transport = launched;
   enter("initialize");
   const initialize = await launched.rpc("initialize", {

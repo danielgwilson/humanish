@@ -85,10 +85,14 @@ if (operation === "--version") {
     thread.thread.cliVersion = consistentVersion;
   }
   // A native command reported as a thread item: the policy refuses it under any method, at any time.
-  // Before turn/start's reply, an unscoped method that names a turn fails the scope check, so the
-  // unknown-method envelopes carry only the thread.
   const commandItem = turnId => ({ threadId: thread.thread.id, turnId,
     item: { type: "commandExecution", id: "cmd-synthetic", command: "synthetic-command", status: "completed" } });
+  // An item written as the process shuts down, after a completed answer. The timer keeps the
+  // process alive past stdin's end until SIGTERM, and exit waits for the write.
+  if (scenario === "close-item-after-answer") {
+    setInterval(() => undefined, 1000);
+    process.on("SIGTERM", () => process.stdout.write(`${JSON.stringify({ method: "item/completed", params: commandItem("turn-synthetic") })}\n`, () => process.exit(0)));
+  }
   const rl = readline.createInterface({ input: process.stdin });
   rl.on("line", line => {
     const message = JSON.parse(line);
@@ -132,6 +136,9 @@ if (operation === "--version") {
           tools: { cached_synthetic_tool: {} }, resources: [], resourceTemplates: [], authStatus: "unsupported" })), nextCursor: null }
           : capture("mcp-status.json"));
     else if (message.method === "turn/interrupt") {
+      // Before the reply: once humanish reads the reply it signals this process, and a write
+      // still queued then is lost.
+      if (scenario === "close-item") emit({ method: "item/completed", params: commandItem("turn-synthetic") });
       reply(message.id, {});
       for (const event of capture("interrupted-turn.json")) emit(event);
     } else if (message.method === "turn/start") {
@@ -178,11 +185,11 @@ if (operation === "--version") {
         emit(raw);
       }
       if (scenario === "unknown-item-notification")
-        emit({ method: "thread/sideEffect/completed", params: commandItem(undefined) });
+        emit({ method: "thread/sideEffect/completed", params: commandItem(answer.params.turnId) });
       if (scenario === "unknown-progress")
-        emit({ method: "thread/futureProgress/updated", params: { threadId: thread.thread.id, progress: 2 } });
+        emit({ method: "thread/futureProgress/updated", params: { threadId: thread.thread.id, turnId: answer.params.turnId, progress: 2 } });
       if (scenario === "exit-after-dispatch") { process.exit(7); return; }
-      if (["hang-turn", "ignore-term"].includes(scenario)) return;
+      if (["hang-turn", "ignore-term", "close-item"].includes(scenario)) return;
       if (scenario === "stdout-large") { process.stdout.write("x".repeat(2 * 1024 * 1024 + 1)); return; }
       if (scenario === "stderr-large") { process.stderr.write("x".repeat(2 * 1024 * 1024 + 1)); return; }
       if (scenario === "event-overflow") { for (let n = 0; n < 65538; n++) emit({ method: "warning", params: {} }); return; }
@@ -222,14 +229,17 @@ if (operation === "--version") {
       if (scenario === "missing-usage-turn") delete usage.params.turnId;
       if (scenario === "missing-completion-thread") delete completion.params.threadId;
       if (scenario === "missing-completion-id") delete completion.params.turn.id;
+      if (scenario === "nested-turn-item") completion.params.turn.items.push(commandItem().item);
       if (scenario !== "missing-answer") emit(answer);
       if (scenario !== "missing-usage") emit(usage);
       if (scenario === "partial-usage") { process.exit(7); return; }
       emit(completion);
       if (scenario === "continuing-idle-item" && turnNumber === 1)
         afterGate("idle-item", () => emit({ method: "item/started", params: commandItem("turn-idle") }));
+      if (scenario === "continuing-idle-request" && turnNumber === 1)
+        afterGate("idle-request", () => write({ id: 77, method: "item/commandExecution/requestApproval", params: {} }));
       if (scenario === "early-events") reply(message.id, turn);
     }
   });
-  rl.on("close", () => { if (scenario !== "ignore-term") process.exit(0); });
+  rl.on("close", () => { if (scenario !== "ignore-term" && scenario !== "close-item-after-answer") process.exit(0); });
 }
