@@ -142,7 +142,7 @@ describe.each(["openai-computer-use", "local-agent"] as const)("the %s starter s
             ...(local ? {} : { loadDesktopModule: async () => desktopReached() }),
           },
           ...(local
-            ? { localVm: { desktop: () => desktopReached(), analysisGate: () => undefined } }
+            ? { localVm: { desktop: () => desktopReached(), analysisRefusal: () => undefined } }
             : {}),
         });
         refusal = `${live.error?.code} ${live.error?.message}`;

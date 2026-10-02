@@ -18,6 +18,7 @@ import {
   localBrowserUnsupportedReason,
 } from "../../substrates/local/runtime-config.js";
 import { prepareLocalRuntime } from "../../substrates/local/runtime.js";
+import { dockerCommandLine } from "../../substrates/local/runtime-host.js";
 import { checkRestrictedCodexAnalysisReadiness } from "../../analysis/restricted-codex.js";
 import { createRestrictedCodexParticipant } from "../../actors/codex/restricted-participant.js";
 import { guestMediaConfigSchema, type GuestMediaConfig } from "../../guest/media-config.js";
@@ -194,7 +195,14 @@ function createLocalParticipantDesktop(
         }
         if (!evidence.released) {
           state.cleanupUnconfirmed = true;
-          warnings.push("Local desktop cleanup is unconfirmed.");
+          const warning = "Local desktop cleanup is unconfirmed.";
+          warnings.push(warning);
+          // No receipt names a local VM, so the record carries the command that removes it.
+          evidence.sandboxRelease = {
+            state: "unconfirmed",
+            warning,
+            recovery: `If container ${session.resourceId} is still listed by \`${dockerCommandLine(["ps"])}\`, remove it with \`${dockerCommandLine(["rm", "--force", "--volumes", session.resourceId])}\`.`,
+          };
         }
       })());
     },
@@ -268,9 +276,8 @@ export function prepareLocalVmStudy(options: LocalStudyOptions): LocalVmStudy {
     localVm: {
       desktop: (run, warnings, artifactRoot) =>
         createLocalParticipantDesktop(context, run, warnings, artifactRoot),
-      analysisGate: () => {
-        if (state.cleanupUnconfirmed) throw new Error("Local study cleanup is unconfirmed.");
-      },
+      analysisRefusal: () =>
+        state.cleanupUnconfirmed ? "AUTOMATIC_ANALYSIS_CLEANUP_UNCONFIRMED" : undefined,
       ...(options.signal === undefined ? {} : { signal: options.signal }),
     },
     async close() {

@@ -329,6 +329,22 @@ describe("opted-in automatic analysis ownership", () => {
     expect((await captureEvidence(prepared, original)).inputDigest).toBe(input.inputDigest);
   });
 
+  it("records a route's refusal as a skip the readers see, without a provider call", async () => {
+    const h = await transport();
+    const outcome = await runAutomaticStudyAnalysis(cwd, runId, config, {
+      apiKey: "synthetic-key",
+      fetch: h.fetch,
+      refusal: () => "AUTOMATIC_ANALYSIS_CLEANUP_UNCONFIRMED",
+    });
+    expect(outcome).toEqual({ state: "skipped", reason: "AUTOMATIC_ANALYSIS_CLEANUP_UNCONFIRMED" });
+    expect(h.fetch).not.toHaveBeenCalled();
+    // The TUI and the Observer read this view.
+    expect(await readAutomaticStudyAnalysis(cwd, runId)).toMatchObject({
+      state: "skipped",
+      reason: "AUTOMATIC_ANALYSIS_CLEANUP_UNCONFIRMED",
+    });
+  });
+
   it("reuses an existing result without another call and never retries after reopening", async () => {
     const h = await transport();
     const prior = await analyzeRun(

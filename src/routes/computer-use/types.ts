@@ -14,6 +14,7 @@ import {
   type AutomaticAnalysisHooks,
   type AutomaticAnalysisResult,
 } from "../../analysis/automatic-completion.js";
+import type { AutomaticAnalysisRefusal } from "../../analysis/job.js";
 import { type CuaDiagnostics } from "./diagnostics.js";
 import type {
   ActorCompletionReason,
@@ -200,13 +201,13 @@ export type ComputerUseRunInput = Omit<RunCuaActorLabOptions, "config" | "dryRun
 
 /**
  * What runLab's local VM study gives a computer-use run: the desktop each participant runs on, the
- * check that stops automatic analysis when the study's cleanup is unconfirmed, and the signal its
+ * reason automatic analysis must not run (the study's cleanup is unconfirmed), and the signal its
  * sessions abort on.
  */
 export interface LocalVmInput {
   readonly desktop: ParticipantDesktopFactory;
-  /** Throws when the study's cleanup is unconfirmed; called before automatic analysis starts. */
-  readonly analysisGate: () => void;
+  /** The skip reason automatic analysis records instead of running, or undefined to run it. */
+  readonly analysisRefusal: () => AutomaticAnalysisRefusal | undefined;
   readonly signal?: AbortSignal;
 }
 
@@ -623,6 +624,8 @@ export interface CuaParticipantDeps {
 export interface SandboxReleaseFact {
   state: "retained" | "unconfirmed";
   warning: string;
+  /** How to release it by hand, when `humanish reclaim` cannot: a local VM has no receipt. */
+  recovery?: string;
 }
 
 /** One lane's end-to-end run outcome (internal; projected into CuaParticipantResult + the bundle). */

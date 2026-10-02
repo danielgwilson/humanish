@@ -81,7 +81,11 @@ const reasons = [
   "AUTOMATIC_ANALYSIS_ADMISSION_EXCEEDED",
   "AUTOMATIC_ANALYSIS_ACTOR_CANCELLED",
   "AUTOMATIC_ANALYSIS_NO_PARTICIPANT_EVIDENCE",
+  "AUTOMATIC_ANALYSIS_CLEANUP_UNCONFIRMED",
 ] as const;
+
+/** A route's reason not to analyze a run it recorded, persisted as the job's skip reason. */
+export type AutomaticAnalysisRefusal = "AUTOMATIC_ANALYSIS_CLEANUP_UNCONFIRMED";
 const id = z.string().regex(ANALYSIS_ID_PATTERN);
 const date = z.iso.datetime();
 const digest = z.string().regex(SHA256_HEX_PATTERN);
